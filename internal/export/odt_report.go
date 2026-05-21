@@ -6,16 +6,16 @@ package export
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/xml"
 	"fmt"
+	"sort"
 	"time"
-
-	"pmforge/internal/kernel"
 )
 
 // renderDocumentODT produces an OpenDocument Text (.odt) file containing the 
 // CPM schedule data from the ReportPayload. It follows the same structure as 
 // the PDF report but hand-builds the ODT XML package.
-func renderDocumentODT(payload ReportPayload, opts ExportOptions) ([]byte, error) {
+func renderDocumentODT(payload export.ReportPayload, opts export.ExportOptions) ([]byte, error) {
 	// Build the document body XML for the CPM report
 	body, err := renderODTReportBody(payload, opts.Title)
 	if err != nil {
@@ -68,7 +68,7 @@ func renderDocumentODT(payload ReportPayload, opts ExportOptions) ([]byte, error
 }
 
 // renderODTReportBody generates the content.xml for a CPM report ODT file.
-func renderODTReportBody(payload ReportPayload, title string) (string, error) {
+func renderODTReportBody(payload export.ReportPayload, title string) (string, error) {
 	var buf bytes.Buffer
 	buf.WriteString(`<?xml version="1.0" encoding="UTF-8"?>
 <office:document-content ` + odtNS + ` office:version="1.2">

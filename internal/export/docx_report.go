@@ -11,14 +11,12 @@ import (
 	"time"
 	
 	"github.com/gomutex/godocx"
-	
-	"pmforge/internal/kernel"
 )
 
 // renderDocumentDOCX produces a Microsoft Word file containing the CPM schedule
 // data from the ReportPayload. It follows the same structure as the PDF report
 // but uses gomutex/godocx for DOCX generation.
-func renderDocumentDOCX(payload ReportPayload, opts ExportOptions) ([]byte, error) {
+func renderDocumentDOCX(payload export.ReportPayload, opts export.ExportOptions) ([]byte, error) {
 	doc, err := godocx.NewDocument()
 	if err != nil {
 		return nil, fmt.Errorf("export: godocx new: %w", err)
