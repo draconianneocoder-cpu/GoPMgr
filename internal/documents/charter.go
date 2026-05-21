@@ -1,0 +1,519 @@
+// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package documents
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"sort"
+	"time"
+
+	"github.com/jung-kurt/gofpdf"
+
+	"pmforge/internal/pdfmeta"
+)
+
+// ErrMissingRequired is returned by Validate when a required field is
+// empty or missing.
+var ErrMissingRequired = errors.New("documents: required field is empty")
+
+// Validate checks that a document's content satisfies the schema for
+// its Kind. Currently enforces:
+//
+//   - Every Field with Required=true must be present and non-empty.
+//
+// Returns a wrapped ErrMissingRequired so callers can errors.Is() it.
+//
+// Future enhancements: type checking (string vs number), enum
+// validation (status values), and per-kind cross-field constraints.
+func Validate(k Kind, contentJSON string) error {
+	fields := EffectiveFields(k)
+	if fields == nil {
+		return fmt.Errorf("documents: unknown kind %q", k)
+	}
+
+	var content map[string]interface{}
+	if err := json.Unmarshal([]byte(contentJSON), &content); err != nil {
+		return fmt.Errorf("documents: invalid JSON content: %w", err)
+	}
+
+	for _, f := range fields {
+		if !f.Required {
+			continue
+		}
+		v, ok := content[f.Key]
+		if !ok || isZero(v) {
+			return fmt.Errorf("%w: %q", ErrMissingRequired, f.Key)
+		}
+	}
+	return nil
+}
+
+func isZero(v interface{}) bool {
+	switch x := v.(type) {
+	case nil:
+		return true
+	case string:
+		return x == ""
+	case float64:
+		return x == 0
+	case bool:
+		return !x
+	case []interface{}:
+		return len(x) == 0
+	case map[string]interface{}:
+		return len(x) == 0
+	}
+	return false
+}
+
+// RenderCharterPDF produces an archival-quality PDF for the Project
+// Charter document. This is the fully-implemented reference renderer
+// in V2; other 24 document kinds get a fallback generic renderer
+// (see Render() below) until they get bespoke layouts.
+//
+// Layout:
+//
+//	Title block (project name, charter date)
+//	Section: Purpose / Business Need
+//	Section: Objectives (bulleted)
+//	Section: Scope (in / out / deliverables)
+//	Section: Stakeholders (table)
+//	Section: High-Level Schedule + Milestones (table)
+//	Section: Budget
+//	Section: Assumptions / Constraints / Risks
+//	Section: Success Criteria
+//	Section: Authorisation block
+//	Footer:  RFC3339Nano generation timestamp, PMForge version
+func RenderCharterPDF(content map[string]interface{}, projectName string) ([]byte, error) {
+	pdf := newDocPDF("P")
+	pdf.SetMargins(20, 18, 20)
+	pdf.SetAutoPageBreak(true, 18)
+	pdf.SetTitle("Project Charter", true)
+	pdf.AddPage()
+
+	// Title
+	pdf.SetFont("Helvetica", "B", 22)
+	pdf.Cell(0, 12, getString(content, "project_name", projectName))
+	pdf.Ln(14)
+
+	pdf.SetFont("Helvetica", "", 10)
+	pdf.SetTextColor(110, 110, 110)
+	pdf.Cell(0, 6, "Project Charter")
+	pdf.Ln(5)
+	if d := getString(content, "charter_date", ""); d != "" {
+		pdf.Cell(0, 6, "Charter date: "+d)
+		pdf.Ln(5)
+	}
+	pdf.SetTextColor(0, 0, 0)
+	pdf.Ln(4)
+
+	// Sponsor / PM
+	if v := getString(content, "sponsor", ""); v != "" {
+		writeKV(pdf, "Sponsor", v)
+	}
+	if v := getString(content, "project_manager", ""); v != "" {
+		writeKV(pdf, "Project manager", v)
+	}
+	pdf.Ln(2)
+
+	// Sections
+	writeSection(pdf, "Purpose / Business Need", getString(content, "purpose", ""))
+	writeBulletSection(pdf, "Objectives", getStringSlice(content, "objectives"))
+	writeBulletSection(pdf, "In Scope", getStringSlice(content, "scope_in"))
+	writeBulletSection(pdf, "Out of Scope", getStringSlice(content, "scope_out"))
+	writeBulletSection(pdf, "Deliverables", getStringSlice(content, "deliverables"))
+
+	// Stakeholder table
+	if stakeholders := getObjectSlice(content, "stakeholders"); len(stakeholders) > 0 {
+		writeHeading(pdf, "Stakeholders")
+		writeTable(pdf,
+			[]string{"Name", "Role", "Interest / Influence"},
+			[]float64{50, 50, 70},
+			stakeholders,
+			[]string{"name", "role", "interest"},
+		)
+	}
+
+	// Schedule
+	writeSection(pdf, "High-Level Schedule", getString(content, "high_level_schedule", ""))
+	if ms := getObjectSlice(content, "milestones"); len(ms) > 0 {
+		writeTable(pdf,
+			[]string{"Milestone", "Target Date"},
+			[]float64{110, 60},
+			ms,
+			[]string{"name", "date"},
+		)
+	}
+
+	// Budget
+	if b, ok := content["high_level_budget"].(float64); ok && b > 0 {
+		writeKV(pdf, "High-level budget (USD)", fmt.Sprintf("%.2f", b))
+		pdf.Ln(2)
+	}
+
+	writeBulletSection(pdf, "Assumptions", getStringSlice(content, "assumptions"))
+	writeBulletSection(pdf, "Constraints", getStringSlice(content, "constraints"))
+	writeBulletSection(pdf, "Initial Risks", getStringSlice(content, "risks"))
+	writeBulletSection(pdf, "Success Criteria", getStringSlice(content, "success_criteria"))
+
+	writeSection(pdf, "Authorisation", getString(content, "authorisation", ""))
+
+	// Footer
+	pdf.SetY(-20)
+	pdf.SetFont("Helvetica", "I", 8)
+	pdf.SetTextColor(120, 120, 120)
+	pdf.CellFormat(0, 5,
+		fmt.Sprintf("Generated by PMForge at %s", time.Now().UTC().Format(time.RFC3339Nano)),
+		"", 0, "C", false, 0, "")
+
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// ----- small helpers -----
+
+func writeHeading(pdf *gofpdf.Fpdf, text string) {
+	pdf.Ln(3)
+	pdf.SetFont("Helvetica", "B", 12)
+	pdf.SetTextColor(0, 80, 130)
+	pdf.Cell(0, 7, text)
+	pdf.Ln(7)
+	pdf.SetTextColor(0, 0, 0)
+}
+
+func writeSection(pdf *gofpdf.Fpdf, heading, body string) {
+	if body == "" {
+		return
+	}
+	writeHeading(pdf, heading)
+	pdf.SetFont("Helvetica", "", 10)
+	pdf.MultiCell(0, 5, body, "", "L", false)
+	pdf.Ln(2)
+}
+
+func writeBulletSection(pdf *gofpdf.Fpdf, heading string, items []string) {
+	if len(items) == 0 {
+		return
+	}
+	writeHeading(pdf, heading)
+	pdf.SetFont("Helvetica", "", 10)
+	for _, it := range items {
+		pdf.Cell(5, 5, "•")
+		pdf.MultiCell(0, 5, it, "", "L", false)
+	}
+	pdf.Ln(2)
+}
+
+func writeKV(pdf *gofpdf.Fpdf, k, v string) {
+	pdf.SetFont("Helvetica", "B", 10)
+	pdf.CellFormat(40, 5, k+":", "", 0, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "", 10)
+	pdf.MultiCell(0, 5, v, "", "L", false)
+}
+
+func writeTable(pdf *gofpdf.Fpdf, headers []string, widths []float64, rows []map[string]interface{}, keys []string) {
+	pdf.SetFont("Helvetica", "B", 9)
+	pdf.SetFillColor(235, 240, 245)
+	for i, h := range headers {
+		pdf.CellFormat(widths[i], 6, h, "1", 0, "L", true, 0, "")
+	}
+	pdf.Ln(-1)
+	pdf.SetFont("Helvetica", "", 9)
+	for _, row := range rows {
+		for i, k := range keys {
+			v, _ := row[k].(string)
+			pdf.CellFormat(widths[i], 6, v, "1", 0, "L", false, 0, "")
+		}
+		pdf.Ln(-1)
+	}
+	pdf.Ln(2)
+}
+
+func getString(m map[string]interface{}, key, def string) string {
+	if v, ok := m[key].(string); ok && v != "" {
+		return v
+	}
+	return def
+}
+
+func getStringSlice(m map[string]interface{}, key string) []string {
+	v, ok := m[key].([]interface{})
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(v))
+	for _, x := range v {
+		if s, ok := x.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+func getObjectSlice(m map[string]interface{}, key string) []map[string]interface{} {
+	v, ok := m[key].([]interface{})
+	if !ok {
+		return nil
+	}
+	out := make([]map[string]interface{}, 0, len(v))
+	for _, x := range v {
+		if obj, ok := x.(map[string]interface{}); ok {
+			out = append(out, obj)
+		}
+	}
+	return out
+}
+
+// Render dispatches to the kind-specific PDF renderer (or the generic
+// fallback) and then embeds the canonical XMP metadata packet via a
+// PDF incremental update. The XMP step is fail-soft: if injection
+// fails for any reason, the un-tagged-but-valid PDF is returned rather
+// than erroring the whole export. This keeps document export robust
+// while still tagging every PDF that can be tagged.
+func Render(kind Kind, contentJSON, projectName string) ([]byte, error) {
+	raw, err := renderRaw(kind, contentJSON, projectName)
+	if err != nil {
+		return nil, err
+	}
+
+	def, ok := Get(kind)
+	name := projectName
+	if ok {
+		name = projectName + ": " + def.Name
+	}
+	xmp := pdfmeta.BuildXMPPacket(pdfmeta.XMPSpec{
+		Title:       name,
+		Author:      "PMForge",
+		Subject:     string(kind),
+		CreatorTool: "PMForge",
+	})
+	if tagged, ierr := pdfmeta.InjectXMPStream(raw, xmp); ierr == nil {
+		return tagged, nil
+	}
+	// Fail-soft: return the valid but un-tagged PDF.
+	return raw, nil
+}
+
+// renderRaw dispatches to the kind-specific PDF renderer, or falls
+// back to a generic key/value renderer for kinds without bespoke
+// layouts. It returns the PDF exactly as the renderer produced it,
+// before XMP metadata injection.
+func renderRaw(kind Kind, contentJSON, projectName string) ([]byte, error) {
+	var content map[string]interface{}
+	if err := json.Unmarshal([]byte(contentJSON), &content); err != nil {
+		return nil, fmt.Errorf("documents: invalid JSON: %w", err)
+	}
+
+	switch kind {
+	case KindProjectCharterWord, KindProjectCharterExcel:
+		return RenderCharterPDF(content, projectName)
+	case KindStatusReport:
+		return RenderStatusReportPDF(content, projectName)
+	case KindRiskRegister:
+		return RenderRiskRegisterPDF(content, projectName)
+	case KindProjectPlanWord, KindProjectPlanExcel:
+		return RenderProjectPlanPDF(content, projectName)
+	case KindCommunicationPlan:
+		return RenderCommunicationPlanPDF(content, projectName)
+	case KindStatementOfWork:
+		return RenderStatementOfWorkPDF(content, projectName)
+	case KindProjectClosure:
+		return RenderProjectClosurePDF(content, projectName)
+	case KindStakeholderAnalysis:
+		return RenderStakeholderAnalysisPDF(content, projectName)
+	case KindScopeStatement:
+		return RenderScopeStatementPDF(content, projectName)
+	case KindProjectBudget:
+		return RenderProjectBudgetPDF(content, projectName)
+	case KindRequirements:
+		return RenderRequirementsPDF(content, projectName)
+	case KindIssueLog:
+		return RenderIssueLogPDF(content, projectName)
+	case KindChangeRequest:
+		return RenderChangeRequestPDF(content, projectName)
+	case KindBusinessCase:
+		return RenderBusinessCasePDF(content, projectName)
+	case KindProcurementPlan:
+		return RenderProcurementPlanPDF(content, projectName)
+	case KindTeamCharter:
+		return RenderTeamCharterPDF(content, projectName)
+	case KindExecutionPlan:
+		return RenderExecutionPlanPDF(content, projectName)
+	case KindWBSDocument:
+		return RenderWBSDocumentPDF(content, projectName)
+	case KindRACIDocument:
+		return RenderRACIDocumentPDF(content, projectName)
+	case KindProjectProposal:
+		return RenderProjectProposalPDF(content, projectName)
+	case KindProjectSchedule:
+		return RenderProjectSchedulePDF(content, projectName)
+	case KindProjectBrief:
+		return RenderProjectBriefPDF(content, projectName)
+	case KindProjectOverview:
+		return RenderProjectOverviewPDF(content, projectName)
+	}
+
+	// Generic fallback. Produces a presentable PDF for every Kind that
+	// does not yet have a bespoke renderer — useful so the user can
+	// always export what they typed even if the layout is plain.
+	//
+	// Adding a new bespoke renderer is documented in AGENT.md §10.
+	return renderGenericPDF(kind, content, projectName)
+}
+
+func renderGenericPDF(kind Kind, content map[string]interface{}, projectName string) ([]byte, error) {
+	def, ok := Get(kind)
+	if !ok {
+		return nil, fmt.Errorf("documents: unknown kind %q", kind)
+	}
+
+	pdf := newDocPDF("P")
+	pdf.SetMargins(20, 18, 20)
+	pdf.SetAutoPageBreak(true, 18)
+	pdf.SetTitle(def.Name, true)
+	pdf.AddPage()
+
+	pdf.SetFont("Helvetica", "B", 20)
+	pdf.Cell(0, 12, projectName)
+	pdf.Ln(12)
+	pdf.SetFont("Helvetica", "", 11)
+	pdf.SetTextColor(110, 110, 110)
+	pdf.Cell(0, 6, def.Name)
+	pdf.Ln(8)
+	pdf.SetTextColor(0, 0, 0)
+
+	// Render fields in registry order so the document layout is
+	// deterministic across exports.
+	fields := EffectiveFields(kind)
+	for _, f := range fields {
+		v, ok := content[f.Key]
+		if !ok {
+			continue
+		}
+		switch f.Type {
+		case FieldStringArr:
+			writeBulletSection(pdf, f.Label, toStringSlice(v))
+		case FieldObjectArr:
+			if objs := toObjectSlice(v); len(objs) > 0 {
+				writeHeading(pdf, f.Label)
+				renderObjectArray(pdf, f, objs)
+			}
+		case FieldText:
+			writeSection(pdf, f.Label, toString(v))
+		case FieldNumber:
+			if n, ok := v.(float64); ok && n != 0 {
+				writeKV(pdf, f.Label, fmt.Sprintf("%.2f", n))
+			}
+		case FieldBool:
+			if b, ok := v.(bool); ok {
+				writeKV(pdf, f.Label, fmt.Sprintf("%t", b))
+			}
+		default:
+			if s := toString(v); s != "" {
+				writeKV(pdf, f.Label, s)
+			}
+		}
+	}
+
+	pdf.SetY(-20)
+	pdf.SetFont("Helvetica", "I", 8)
+	pdf.SetTextColor(120, 120, 120)
+	pdf.CellFormat(0, 5,
+		fmt.Sprintf("Generated by PMForge at %s", time.Now().UTC().Format(time.RFC3339Nano)),
+		"", 0, "C", false, 0, "")
+
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func renderObjectArray(pdf *gofpdf.Fpdf, f Field, objs []map[string]interface{}) {
+	if len(f.ObjectShape) == 0 || len(objs) == 0 {
+		return
+	}
+	// Build header from sub-field labels.
+	headers := make([]string, len(f.ObjectShape))
+	keys := make([]string, len(f.ObjectShape))
+	for i, sub := range f.ObjectShape {
+		headers[i] = sub.Label
+		keys[i] = sub.Key
+	}
+	// Stringify cells (numbers/dates rendered as %v).
+	stringified := make([]map[string]interface{}, len(objs))
+	for i, obj := range objs {
+		row := make(map[string]interface{}, len(keys))
+		for _, k := range keys {
+			row[k] = toString(obj[k])
+		}
+		stringified[i] = row
+	}
+	// Compute widths: equal split across the available 170mm body.
+	w := 170.0 / float64(len(headers))
+	widths := make([]float64, len(headers))
+	for i := range widths {
+		widths[i] = w
+	}
+	writeTable(pdf, headers, widths, stringified, keys)
+}
+
+func toString(v interface{}) string {
+	switch x := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return x
+	case float64:
+		if x == float64(int64(x)) {
+			return fmt.Sprintf("%d", int64(x))
+		}
+		return fmt.Sprintf("%.2f", x)
+	case bool:
+		return fmt.Sprintf("%t", x)
+	}
+	return fmt.Sprintf("%v", v)
+}
+
+func toStringSlice(v interface{}) []string {
+	if arr, ok := v.([]interface{}); ok {
+		out := make([]string, 0, len(arr))
+		for _, x := range arr {
+			out = append(out, toString(x))
+		}
+		return out
+	}
+	return nil
+}
+
+func toObjectSlice(v interface{}) []map[string]interface{} {
+	if arr, ok := v.([]interface{}); ok {
+		out := make([]map[string]interface{}, 0, len(arr))
+		for _, x := range arr {
+			if obj, ok := x.(map[string]interface{}); ok {
+				out = append(out, obj)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+// KindsSorted returns every Kind in stable name order. Useful for
+// menus.
+func KindsSorted() []Kind {
+	defs := All()
+	sort.Slice(defs, func(i, j int) bool { return defs[i].Name < defs[j].Name })
+	out := make([]Kind, len(defs))
+	for i, d := range defs {
+		out[i] = d.Kind
+	}
+	return out
+}

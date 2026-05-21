@@ -1,0 +1,82 @@
+# GitLab CI/CD configuration for PMForge
+# This builds and tests the Go + Svelte application
+
+stages:
+  - build
+  - test
+  - release
+
+variables:
+  # Go configuration
+  GOFLAGS: "-mod=readonly"
+  GOPROXY: "https://proxy.golang.org,direct"
+  # Node configuration
+  NODE_ENV: "production"
+
+cache:
+  paths:
+    - go/pkg/mod/
+    - frontend/node_modules/
+    - internal/fonts/assets/
+
+before_script:
+  # Install Go dependencies
+  - go mod tidy
+  # Install Node dependencies
+  - cd frontend && npm ci
+  # Download fonts if needed
+  - make fonts
+
+build:
+  stage: build
+  script:
+    - go build -o pmforge ./cmd/pmforge
+    - wails build -platform linux/amd64
+  artifacts:
+    paths:
+      - pmforge
+      - build/
+    expire_in: 1 week
+
+test:
+  stage: test
+  script:
+    # Run Go tests
+    - go test ./... -v
+    # Run frontend tests if they exist
+    - cd frontend && npm run test || echo "No frontend tests configured"
+
+release:
+  stage: release
+  script:
+    - echo "Creating release artifacts..."
+    - mkdir -p release
+    - cp pmforge release/
+    - tar -czvf release/pmforge-linux-amd64.tar.gz pmforge
+    - wails build -platform darwin/amd64 -o release/pmforge-darwin-amd64
+    - wails build -platform windows/amd64 -o release/pmforge-windows-amd64.exe
+  artifacts:
+    paths:
+      - release/
+    expire_in: 1 week
+  only:
+    - tags
+    - main
+
+# Code quality checks
+lint:
+  stage: test
+  script:
+    # Go linting
+    - golangci-lint run ./...
+    # Frontend linting
+    - cd frontend && npm run lint
+  allow_failure: true  # Allow failure if linters not installed
+
+# Security scanning
+security:
+  stage: test
+  script:
+    - echo "Running security scans..."
+    # Add security scanning tools here if desired
+  allow_failure: true

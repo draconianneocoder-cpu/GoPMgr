@@ -1,0 +1,67 @@
+// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Package admin implements the Administrative Pack workflows: document
+// control, secure archiving, and signature-event logging.
+package admin
+
+import (
+	"fmt"
+	"time"
+
+	"pmforge/internal/db"
+	"pmforge/internal/debug"
+)
+
+// Service is the entry point for admin-pack workflows. Construct one
+// per project using NewService.
+type Service struct {
+	DB *db.Database
+}
+
+// NewService binds an admin service to a database handle.
+func NewService(d *db.Database) *Service { return &Service{DB: d} }
+
+// SecureArchive creates a .pmba bundle next to the project file. The
+// active signing certificate (if any) is included. Returns the path of
+// the archive written.
+func (s *Service) SecureArchive(projectPath string) (string, error) {
+	settings, err := s.DB.GetSettings()
+	if err != nil {
+		return "", debug.Wrap(err, "ARCHIVE_SETTINGS_LOAD_FAILED").ToError()
+	}
+
+	timestamp := time.Now().UTC().Format("20060102-150405")
+	backupName := fmt.Sprintf("PMForge_Archive_%s.pmba", timestamp)
+
+	certs := []string{}
+	if settings.CertPath != "" {
+		certs = append(certs, settings.CertPath)
+	}
+
+	if err := s.DB.CreateArchivalBundle(backupName, certs); err != nil {
+		report := debug.Wrap(err, "ARCHIVAL_BUNDLE_ERROR")
+		_ = s.DB.LogAction("System", "ARCHIVE_FAILED", projectPath, report.Message)
+		return "", fmt.Errorf("security backup failed: %s", report.Message)
+	}
+
+	_ = s.DB.LogAction("System", "ARCHIVE_CREATED", projectPath, backupName)
+	return backupName, nil
+}
+
+// LogSignatureEvent records the outcome of a digital-signature attempt
+// against a document. Always returns nil; signature outcomes must not
+// fail the caller's broader workflow just because the audit write
+// failed (we still attempt to log to stderr via debug.Wrap).
+func (s *Service) LogSignatureEvent(docID string, success bool, err error) {
+	status := "SUCCESS"
+	details := "Digital signature applied successfully."
+	if !success {
+		status = "FAILED"
+		details = fmt.Sprintf("Signature failed: %v", err)
+		// Capture context so future "Self-Healing" surfaces can correlate.
+		report := debug.Wrap(err, "PDF_SIGNATURE_ERROR")
+		fmt.Printf("[signature trace] %s\n", report.Stack)
+	}
+	_ = s.DB.LogAction("System", "SIGNATURE_EVENT", docID, fmt.Sprintf("[%s] %s", status, details))
+}

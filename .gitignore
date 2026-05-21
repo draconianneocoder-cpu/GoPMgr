@@ -1,0 +1,45 @@
+# Build artifacts
+/build/
+/bin/
+*.exe
+*.dll
+*.so
+*.dylib
+pmforge
+pmforge-*
+
+# Wails generated bindings
+/frontend/wailsjs/
+
+# Node
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.svelte-kit/
+
+# Go
+*.test
+*.out
+coverage.txt
+
+# Project data (don't commit user data)
+*.pmforge
+*.pmforge-wal
+*.pmforge-shm
+*.pmba
+*.bak
+temp_snapshot.db
+
+# Certificates (NEVER commit private keys)
+*.p12
+*.pfx
+*.key
+*.pem
+!LICENSES/*.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~

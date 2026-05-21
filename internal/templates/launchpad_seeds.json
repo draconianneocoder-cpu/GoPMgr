@@ -1,0 +1,124 @@
+{
+  "$comment": "PMForge Launchpad seeding rules. Evaluated by gorules/zen-go. Edit and rebuild — the JDM is embedded via //go:embed. Input shape: {industry, methodology}. Output shape: {seeds: [string]}.",
+  "contentType": "application/vnd.gorules.decision",
+  "nodes": [
+    {
+      "id": "input",
+      "name": "Request",
+      "type": "inputNode",
+      "position": { "x": 100, "y": 200 }
+    },
+    {
+      "id": "table",
+      "name": "Launchpad rules",
+      "type": "decisionTableNode",
+      "position": { "x": 400, "y": 200 },
+      "content": {
+        "hitPolicy": "first",
+        "inputs": [
+          { "id": "industry",    "field": "industry",    "name": "industry"    },
+          { "id": "methodology", "field": "methodology", "name": "methodology" }
+        ],
+        "outputs": [
+          { "id": "seeds", "field": "seeds", "name": "seeds" }
+        ],
+        "rules": [
+          {
+            "_id": "1",
+            "_description": "Software + Scrum: Kanban board, Charter, Backlog, Sprint 1",
+            "industry":    "'software'",
+            "methodology": "'scrum'",
+            "seeds":       "['kanban','charter','backlog','sprint1']"
+          },
+          {
+            "_id": "2",
+            "_description": "Software + Kanban: Kanban board, Charter, Backlog (no sprints)",
+            "industry":    "'software'",
+            "methodology": "'kanban'",
+            "seeds":       "['kanban','charter','backlog']"
+          },
+          {
+            "_id": "3",
+            "_description": "Software + Scrumban: same as Scrum but no fixed sprint",
+            "industry":    "'software'",
+            "methodology": "'scrumban'",
+            "seeds":       "['kanban','charter','backlog']"
+          },
+          {
+            "_id": "4",
+            "_description": "Construction + Waterfall: WBS, Statement of Work, Risk Register, Schedule (CPM)",
+            "industry":    "'construction'",
+            "methodology": "'waterfall'",
+            "seeds":       "['wbs','statement_of_work','risk_register','cpm']"
+          },
+          {
+            "_id": "5",
+            "_description": "Construction + Lean: WBS, Cumulative Flow, Risk Register",
+            "industry":    "'construction'",
+            "methodology": "'lean'",
+            "seeds":       "['wbs','cumulative_flow','risk_register']"
+          },
+          {
+            "_id": "6",
+            "_description": "Engineering + CPM: CPM chart, WBS, Risk Register, Charter",
+            "industry":    "'engineering'",
+            "methodology": "'cpm'",
+            "seeds":       "['cpm','wbs','risk_register','charter']"
+          },
+          {
+            "_id": "7",
+            "_description": "Engineering + Six Sigma: Control chart, Pareto, Fishbone",
+            "industry":    "'engineering'",
+            "methodology": "'six_sigma'",
+            "seeds":       "['control','pareto','fishbone']"
+          },
+          {
+            "_id": "8",
+            "_description": "Business + Lean: Pareto, Cumulative Flow, SWOT",
+            "industry":    "'business'",
+            "methodology": "'lean'",
+            "seeds":       "['pareto','cumulative_flow','swot']"
+          },
+          {
+            "_id": "9",
+            "_description": "Business + OKRs: Project Plan, Stakeholder Analysis, Status Report",
+            "industry":    "'business'",
+            "methodology": "'okrs'",
+            "seeds":       "['plan_word','stakeholder_analysis_doc','status_report']"
+          },
+          {
+            "_id": "10",
+            "_description": "Administration + Waterfall: Charter, Scope Statement, Risk Register, Communication Plan",
+            "industry":    "'administration'",
+            "methodology": "'waterfall'",
+            "seeds":       "['charter','scope_statement','risk_register','communication_plan']"
+          },
+          {
+            "_id": "11",
+            "_description": "Administration + PRINCE2: Charter, Project Plan, Risk Register",
+            "industry":    "'administration'",
+            "methodology": "'prince2'",
+            "seeds":       "['charter','plan_word','risk_register']"
+          },
+          {
+            "_id": "12",
+            "_description": "Fallback: any unrecognised combination just gets a Charter",
+            "industry":    "",
+            "methodology": "",
+            "seeds":       "['charter']"
+          }
+        ]
+      }
+    },
+    {
+      "id": "output",
+      "name": "Response",
+      "type": "outputNode",
+      "position": { "x": 700, "y": 200 }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "sourceId": "input",  "targetId": "table"  },
+    { "id": "e2", "sourceId": "table",  "targetId": "output" }
+  ]
+}
