@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
@@ -12,10 +12,13 @@ data integrity, scheduling math (CPM, EVM, MSPDI interchange), local
 authentication, and document rendering. The Svelte 5 frontend
 (mounted via Wails v2) provides the reactive UI.
 
-This is the **V2 foundation**. V2 expands V1 with local multi-user
-accounts, an extended data model covering all 19 chart types and 25
-document types, and end-to-end implementations of the WBS chart and
-Project Charter document as reference slices.
+The app has reached **V2.x** maturity: all 20 chart kinds and all 25
+document kinds are implemented end-to-end with bespoke PDF renderers,
+DOCX/ODT export, and a combined report builder with embedded vector
+chart visualisations. The Agile/Software-Dev Pack (Kanban, Backlog,
+Sprints, DORA metrics) and the Process Excellence (Sigma) Pack are
+complete. Local multi-user accounts with Argon2id authentication and
+account recovery codes are in place.
 
 Every file carries an SPDX header and is licensed GPL-3.0-or-later.
 
@@ -38,7 +41,13 @@ wails dev
 # 4. Build a production binary (embeds the built frontend via go:embed)
 make build
 
-# 5. Full release gate (versions + REUSE + build)
+# 5. Run the unit test suite
+make test              # go test ./cmd/... ./internal/... (28 packages, ~2s)
+make race              # same with -race (concurrency hardening)
+make check-pades       # generate + locally verify an embedded signed PDF sample
+make check-pades-external # verify extracted CMS/ByteRange with available external tools
+
+# 6. Full release gate (versions + REUSE + build + frontend checks)
 make check-release
 ```
 
@@ -76,8 +85,8 @@ charts    (id, project_id, kind, title, data JSON, config JSON, ...)
 documents (id, project_id, kind, title, content JSON, version, status, ...)
 ```
 
-The `kind` column is the discriminator. The 19 chart kinds map to
-five engines (DAG, stats, matrix, flow, special); the 25 document
+The `kind` column is the discriminator. The 20 chart kinds map to
+four engines (DAG, stats, matrix, flow); the 25 document
 kinds map to one generic field-based editor + per-kind PDF renderers.
 This avoids 44 separate code paths and lets every new kind be added
 with one registry entry plus, optionally, a bespoke renderer.
@@ -122,9 +131,8 @@ The PDF contains:
    included document (a Project Plan's WBS / Schedule / RACI / etc.)
    is followed by a dedicated page rendering that chart via
    `internal/charts/pdfrender` — vector primitives straight to the
-   PDF, no PNG screenshots and no headless browser. All 19 chart
-   kinds are supported across the five engines (DAG, Fishbone, Flow,
-   Matrix, Stats).
+   PDF, no PNG screenshots and no headless browser. All 20 chart
+   kinds are supported across the four engines (DAG, Flow, Matrix, Stats).
 
 Implementation: `internal/documents/report.go` (`BuildCombinedReport`),
 exposed as `App.ExportCombinedReport(reportTitle, subtitle, sections)`
@@ -134,7 +142,7 @@ from the database in one pass and threads the map through
 
 ## Coverage table
 
-### Chart types — 19 total, all in backend taxonomy
+### Chart types — 20 total, all in backend taxonomy
 
 | Family    | Kind                       | Status                                              |
 | --------- | -------------------------- | --------------------------------------------------- |
@@ -162,43 +170,44 @@ from the database in one pass and threads the map through
 ### Document types — 25 total, all in backend taxonomy
 
 Organised here by lifecycle phase. Every entry has a complete schema
-in `internal/documents/templates.go` and a default empty content
-generator (`DefaultContent`). The generic renderer (`Render`)
-produces a presentable PDF for every kind out of the box; bespoke
-layouts live in dedicated files (currently only Charter has one).
+in `internal/documents/templates.go`, a default content generator
+(`DefaultContent`), and a bespoke PDF renderer in a dedicated file.
+The two Excel aliases share their Word counterpart's layout at
+dispatch time; all 25 kinds effectively have dedicated rendering.
 
-| Phase       | Kind                              | Bespoke renderer? |
-| ----------- | --------------------------------- | ----------------- |
-| Initiation  | Project Charter (Word)            | **Yes** (charter.go) |
-| Initiation  | Project Charter (Excel)           | Reuses Word charter layout |
-| Initiation  | Business Case                     | Generic           |
-| Initiation  | Project Proposal                  | Generic           |
-| Initiation  | Stakeholder Analysis Document     | Generic           |
-| Planning    | Project Plan (Word)               | Generic           |
-| Planning    | Project Plan (Excel)              | Generic           |
-| Planning    | Project Schedule                  | Generic           |
-| Planning    | Work Breakdown Structure          | Generic           |
-| Planning    | RACI Chart Document               | Generic           |
-| Planning    | Risk Register                     | Generic           |
-| Planning    | Scope Statement                   | Generic           |
-| Planning    | Project Budget                    | Generic           |
-| Planning    | Communication Plan                | Generic           |
-| Planning    | Project Execution Plan            | Generic           |
-| Planning    | Statement of Work                 | Generic           |
-| Planning    | Procurement Plan                  | Generic           |
-| Planning    | Requirements Document             | Generic           |
-| Planning    | Team Charter                      | Generic           |
-| Execution   | Project Brief                     | Generic           |
-| Execution   | Project Overview                  | Generic           |
-| Monitoring  | Status Report                     | Generic           |
-| Monitoring  | Issue Log                         | Generic           |
-| Monitoring  | Change Request Form               | Generic           |
-| Closing     | Project Closure                   | Generic           |
+| Phase       | Kind                              | Renderer file                  |
+| ----------- | --------------------------------- | ------------------------------ |
+| Initiation  | Project Charter (Word)            | `charter.go`                   |
+| Initiation  | Project Charter (Excel)           | Alias → charter_word           |
+| Initiation  | Business Case                     | `business_case.go`             |
+| Initiation  | Project Proposal                  | `project_proposal.go`          |
+| Initiation  | Stakeholder Analysis Document     | `stakeholder_analysis.go`      |
+| Planning    | Project Plan (Word)               | `project_plan.go`              |
+| Planning    | Project Plan (Excel)              | Alias → plan_word              |
+| Planning    | Project Schedule                  | `project_schedule.go`          |
+| Planning    | Work Breakdown Structure Document | `wbs_document.go`              |
+| Planning    | RACI Chart Document               | `raci_document.go`             |
+| Planning    | Risk Register                     | `risk_register.go`             |
+| Planning    | Scope Statement                   | `scope_statement.go`           |
+| Planning    | Project Budget                    | `project_budget.go`            |
+| Planning    | Communication Plan                | `communication_plan.go`        |
+| Planning    | Project Execution Plan            | `execution_plan.go`            |
+| Planning    | Statement of Work                 | `statement_of_work.go`         |
+| Planning    | Procurement Plan                  | `procurement_plan.go`          |
+| Planning    | Requirements Document             | `requirements.go`              |
+| Planning    | Team Charter                      | `team_charter.go`              |
+| Execution   | Project Brief                     | `project_brief.go`             |
+| Execution   | Project Overview                  | `project_overview.go`          |
+| Monitoring  | Status Report                     | `status_report.go`             |
+| Monitoring  | Issue Log                         | `issue_log.go`                 |
+| Monitoring  | Change Request Form               | `change_request.go`            |
+| Closing     | Project Closure                   | `closure.go`                   |
 
-The generic renderer reads the kind's `Field` definitions and emits
-sections, bulleted lists, and tables automatically. Upgrading any of
-these to bespoke is one new function in `internal/documents/<kind>.go`
-plus one switch case in `documents.Render`.
+A generic field-walker fallback still exists in the dispatch for
+forward-compatibility if a new kind is registered before its bespoke
+renderer ships. Adding a new kind = one registry entry in
+`templates.go` + one bespoke file + one switch arm in
+`documents.Render()`.
 
 ---
 
@@ -206,110 +215,102 @@ plus one switch case in `documents.Render`.
 
 ```
 pmforge/
-├── LICENSES/                  # REUSE-compliant license texts
-├── cmd/pmforge/main.go        # CLI dispatch + Wails bootstrap
+├── AGENT.md                     # AI development handbook (read first)
+├── LICENSES/                    # REUSE-compliant license texts
+├── cmd/pmforge/main.go          # CLI dispatch + Wails bootstrap (App struct)
 ├── internal/
-│   ├── admin/workflow.go      # Administrative Pack (V1)
-│   ├── agile/doc.go           # Software Dev Pack placeholder (V1)
-│   ├── auth/password.go       # Argon2id PHC hash/verify           (V2)
-│   ├── users/store.go         # system.db + per-user folders       (V2)
+│   ├── admin/workflow.go        # Administrative Pack
+│   ├── agile/                   # Software-Dev Pack (complete)
+│   │   ├── agile.go             # types: WorkItem, Column, Board, Sprint
+│   │   ├── store.go             # CRUD for all 5 agile tables
+│   │   └── dora.go              # DORA metric computation
+│   ├── auth/password.go         # Argon2id PHC hash/verify
+│   ├── budget/                  # Budget rollup (stakeholder rates × work items)
+│   ├── calendar/calendar.go     # Country holiday datasets (rickar/cal/v2 wrapper)
 │   ├── charts/
-│   │   ├── registry.go        # 19-kind taxonomy + 5 engines       (V2)
-│   │   ├── engines.go         # Layout() dispatcher                (V2)
-│   │   └── dag/wbs.go         # Full WBS data model + layout       (V2)
-│   ├── cli/parser.go          # GNU-style flag parser (V1)
+│   │   ├── registry.go          # 20-kind taxonomy + 4 engines
+│   │   ├── engines.go           # Layout() dispatcher
+│   │   ├── dag/                 # WBS, Network, PERT, CPM, Fishbone, Cause-Effect
+│   │   ├── flow/                # Workflow, Activity
+│   │   ├── matrix/              # RACI, SWOT, Stakeholder, Generic
+│   │   ├── stats/               # Line, Bar, Pareto, Pie, BurnUp, BurnDown, CumFlow, Control
+│   │   └── pdfrender/           # Vector chart renderers for PDF embed
+│   ├── cli/parser.go            # GNU-style flag parser
 │   ├── crypto/
-│   │   ├── encrypt.go         # AES-256-GCM + Argon2id KDF
-│   │   └── pdf_sign.go        # X.509/RSA signing
+│   │   ├── encrypt.go           # AES-256-GCM + Argon2id KDF
+│   │   └── pdf_sign.go          # X.509/RSA + PAdES B-B embedding
 │   ├── db/
-│   │   ├── sqlite.go          # WAL SQLite + V1+V2 migrations
-│   │   ├── settings.go
-│   │   ├── audit.go
-│   │   ├── repair.go
-│   │   ├── backup.go
-│   │   ├── ids.go             # short random IDs                   (V2)
-│   │   ├── project.go         # Project CRUD                       (V2)
-│   │   ├── charts.go          # Chart CRUD                         (V2)
-│   │   └── documents.go       # Document CRUD                      (V2)
-│   ├── debug/report.go        # ErrorReport + .ToError()
-│   ├── documents/
-│   │   ├── registry.go        # 25-kind taxonomy + Field types     (V2)
-│   │   ├── templates.go       # All 25 default schemas             (V2)
-│   │   ├── defaults.go        # DefaultContent + EffectiveFields   (V2)
-│   │   └── charter.go         # Validate + RenderCharterPDF + Render(generic) (V2)
-│   ├── export/                # PDF/XLSX/CSV/MSPDI renderers (V1)
-│   ├── kernel/scheduler.go    # CPM forward+backward+critical (V1)
-│   └── update/check.go        # update stub
+│   │   ├── sqlite.go            # WAL SQLite + all migrations
+│   │   ├── settings.go          # UserSettings singleton
+│   │   ├── project.go           # Project CRUD
+│   │   ├── charts.go / documents.go / stakeholders.go
+│   │   ├── audit.go / repair.go / backup.go / ids.go
+│   ├── debug/report.go          # ErrorReport + .ToError()
+│   ├── documents/               # 25 bespoke PDF renderers + registry
+│   │   ├── registry.go / templates.go / defaults.go
+│   │   ├── charter.go           # also hosts generic Render() dispatcher
+│   │   └── <kind>.go            # one file per bespoke renderer (23 files)
+│   ├── export/                  # DOCX (godocx), ODT (hand-built), XLSX, iCal, PDF/A
+│   ├── fonts/                   # bundled TTF catalog + user import
+│   ├── kernel/scheduler.go      # CPM forward+backward pass
+│   ├── pdfmeta/pdfmeta.go       # XMP metadata + PAdES signature injection (dep-free)
+│   ├── sigma/                   # Process Excellence (Six Sigma) Pack
+│   ├── templates/               # Launchpad seeding rules (zen-go JDM)
+│   ├── timeline/                # Timeline assembly + iCal export
+│   ├── update/check.go          # Signed Ed25519 update-manifest checker
+│   └── users/store.go           # system.db + per-user folder provisioning
 ├── frontend/
 │   └── src/
-│       ├── App.svelte         # routing                            (V2)
-│       ├── main.ts
-│       ├── app.css
-│       ├── wails-window.d.ts  # full V2 API surface                (V2)
+│       ├── App.svelte           # lazy route loader (charter, documents, all charts, …)
+│       ├── wails-window.d.ts    # TypeScript declarations for all App methods
 │       └── lib/
-│           ├── session.svelte.ts                                   (V2)
+│           ├── session.svelte.ts
 │           └── components/
-│               ├── GanttChart.svelte
-│               ├── Settings.svelte
-│               ├── admin/SignatureSettings.svelte
-│               ├── auth/Login.svelte                               (V2)
-│               ├── auth/CreateAccount.svelte                       (V2)
-│               ├── project/ProjectPicker.svelte                    (V2)
-│               ├── project/Dashboard.svelte                        (V2)
-│               ├── charts/WBSEditor.svelte                         (V2)
-│               ├── documents/CharterEditor.svelte                  (V2)
-│               └── documents/DocumentFieldEditor.svelte            (V2)
-├── scripts/check-release.sh
+│               ├── auth/        # Login, CreateAccount, RecoveryReset
+│               ├── project/     # ProjectPicker, Launchpad, Dashboard, Settings,
+│               │                # StakeholderManager, TimelineView
+│               ├── charts/      # 20 editor components + shared shells
+│               ├── documents/   # CharterEditor (generic), DocumentFieldEditor,
+│               │                # ChartPicker, ReportComposer
+│               ├── agile/       # KanbanBoard, Backlog, SprintList, DORADashboard
+│               └── sigma/       # SigmaWorkspace + per-tool views
+├── scripts/
+│   ├── check-release.sh / memory-safety-scan.sh / fetch-fonts.sh
+│   ├── frontend-stability-check.sh / frontend-build-budget.sh
+│   └── validate-pdfa.sh / validate-pades.sh
 ├── Makefile
-├── go.mod
-└── wails.json
+├── go.mod / wails.json
 ```
 
 ---
 
-## How to wire up the next chart or document type
+## How to add a new chart or document kind
 
-The V2 foundation is deliberately shaped so each remaining chart/doc
-type is a small, self-contained change. Use the WBS and Charter as
-references.
+All 20 chart kinds and all 25 document kinds are fully implemented.
+The taxonomy is designed for extension: adding a new kind is a small,
+self-contained change.
 
-### Adding a new chart renderer (e.g. RACI Matrix)
+### Adding a new chart kind
 
-1. The kind already exists in `internal/charts/registry.go`.
-2. Create `internal/charts/matrix/raci.go` with:
-   - A struct for the data shape (`{roles, tasks, assignments}`).
-   - A `Layout(doc, opt) Layout` function returning `NodeLayout`s.
-3. Add a case in `internal/charts/engines.go`:
-   ```go
-   case KindRACI:
-       doc, _ := matrix.Parse(rawData)
-       layout := matrix.LayoutRACI(doc)
-       body, _ := json.Marshal(layout)
-       return LayoutResult{Engine: def.Engine, Kind: kind, Title: def.Name, Body: body}, nil
-   ```
-4. Create `frontend/src/lib/components/charts/RACIEditor.svelte`
-   modelled on `WBSEditor.svelte`.
-5. Add a routing branch in `App.svelte`.
+1. Add a `Definition` entry to `internal/charts/registry.go`.
+2. Create or extend the engine package (`dag/`, `flow/`, `matrix/`,
+   `stats/`) with a data struct + `Layout()` function.
+3. Add a dispatch arm in `internal/charts/engines.go`.
+4. Add a vector PDF renderer in `internal/charts/pdfrender/`.
+5. Create `frontend/src/lib/components/charts/<Kind>Editor.svelte`.
+6. Add a route entry in `App.svelte` and a dashboard card in
+   `Dashboard.svelte`.
 
-### Adding a bespoke document renderer (e.g. Risk Register)
+### Adding a new document kind
 
-1. The kind already exists in `internal/documents/registry.go` and
-   has a full schema in `templates.go`.
-2. Create `internal/documents/risk_register.go` with a
-   `RenderRiskRegisterPDF(content map[string]interface{}, projectName string) ([]byte, error)`
-   function modelled on `RenderCharterPDF`.
-3. Add a case in `documents.Render()`:
-   ```go
-   case KindRiskRegister:
-       return RenderRiskRegisterPDF(content, projectName)
-   ```
-4. (Optional) Create a bespoke editor at
-   `frontend/src/lib/components/documents/RiskRegisterEditor.svelte`
-   if the generic `DocumentFieldEditor` form isn't expressive enough.
-
-Until step 2 lands, the generic renderer + the generic editor still
-let the user view, edit, save, version, and PDF-export the document
-end-to-end.
+1. Add a `Kind` constant and a `Definition` (with full `Fields` slice)
+   to `internal/documents/registry.go` and `templates.go`.
+2. Create `internal/documents/<kind>.go` with a bespoke PDF renderer.
+3. Add a dispatch arm in `documents.Render()`.
+4. No frontend changes needed: `Dashboard.svelte` fetches
+   `ListDocumentKinds()` and renders a create button automatically;
+   the `documents` route in `App.svelte` already handles any kind
+   through the generic `CharterEditor` (field-based) component.
 
 ---
 
@@ -329,12 +330,25 @@ These remain from V1 plus a handful of new V2 items.
 
 ### From V1
 
-1. **DOCX / ODT export** — `internal/export/engine.go` returns
-   `EXPORT_FORMAT_UNIMPLEMENTED`.
-2. **PDF/A-3 conformance.**
-3. **CMS/PKCS#7 signature embedding.**
-4. **Wails file-picker for certs** in `SignatureSettings.svelte`.
-5. **Update channel** in `internal/update/check.go`.
+1. ~~DOCX / ODT export.~~ **Done.** DOCX uses
+   `gomutex/godocx`; ODT is generated directly.
+2. **PDF/A-3 conformance.** XMP Catalog metadata, embedded fonts,
+   OutputIntent/ICC injection, PDF trailer IDs, and binary header
+   comments are implemented. The schedule-report, document, and
+   combined-report samples now pass the veraPDF PDF/A-3b gate locally;
+   remaining work is release-builder soak before this becomes a hard
+   release claim.
+3. ~~CMS/PKCS#7 + PAdES signature embedding.~~ **Done.** Signed
+   exports use CMS/PKCS#7 plus an embedded PDF signature dictionary,
+   invisible widget field, `/ByteRange`, and padded `/Contents`.
+   `make check-pades` generates a local signed sample and verifies the
+   embedded CMS against the declared `/ByteRange`; `make
+   check-pades-external` also verifies the sample with OpenSSL,
+   `qpdf`, and `pdfsig` when those tools are installed. Remaining
+   external validation is Acrobat/DSS coverage for sample signed PDFs.
+4. ~~Wails file-picker for certs.~~ **Done.**
+5. ~~Update channel.~~ **Done.** Signed Ed25519 manifests are fetched
+   and verified by `internal/update`.
 6. ~~Agile Pack.~~ **Done.** `internal/agile/` provides the Kanban
    board, Backlog, Sprint management, and DORA metrics with elite/
    high/medium/low classification. Frontend components live in
@@ -346,18 +360,22 @@ These remain from V1 plus a handful of new V2 items.
 
 ### New in V2
 
-8. **Per-user database encryption at rest.** Today the per-user
-   folder relies on `chmod 0700`. Encrypting each `.pmforge` with a
-   key derived from the user's password would also defeat raw-disk
-   reads and is the strongest possible local-multi-user isolation.
-9. **All 19 chart kinds are now implemented.** DAG (WBS, Network,
+8. **Per-user at-rest protection.** V2 protects local project data
+   with per-user data directories and private filesystem permissions.
+   For raw-disk theft or admin-level host access, the supported V2
+   path is OS-level disk encryption: FileVault on macOS, BitLocker on
+   Windows, and LUKS on Linux. SQLCipher native database encryption is
+   deferred to V3 because it adds native packaging complexity and must
+   be designed with crash recovery and migration semantics.
+9. **All 20 chart kinds are now implemented.** DAG (WBS, Network,
    PERT, CPM, Fishbone, Cause-and-Effect), Flow (Workflow, Activity),
    Matrix (RACI, SWOT, Stakeholder, Generic), and Stats (Line, Bar,
    Pareto, Pie, BurnUp, BurnDown, CumulativeFlow, Control) all have
    end-to-end backend layouts + frontend editors. Stats charts use
    Chart.js via the shared `StatsChart.svelte` host.
-10. **24 bespoke document renderers.** The generic renderer covers
-    all 25 kinds today; upgrading each one is similarly self-contained.
+10. ~~Bespoke document renderers.~~ **Done.** All 25 document kinds
+    now route to dedicated layouts, with the Word/Excel alias kinds
+    sharing their canonical renderer.
 11. ~~Chart picker in the field editor.~~ **Done.** `chart_ref`
     fields render via `ChartPicker.svelte`; document templates
     declare `ChartKind` so the picker filters to the appropriate
@@ -368,9 +386,10 @@ These remain from V1 plus a handful of new V2 items.
     visualisations** for every chart_ref field. Each referenced
     chart renders on its own page using the `pdfrender` engine
     (vector graphics, no PNG screenshots).
-13. **Account recovery.** No "forgot password" flow today. A
-    recovery-code option (mentioned at account creation) is the
-    cleanest fit for a local-first app.
+13. ~~Account recovery.~~ **Done.** Eight Argon2id-hashed one-time
+    recovery codes are issued at account creation. The "Forgot
+    password?" link on the login screen opens `RecoveryReset.svelte`.
+    Backend: `App.IssueRecoveryCodes`, `App.ResetWithRecoveryCode`.
 
 ---
 
@@ -378,14 +397,14 @@ These remain from V1 plus a handful of new V2 items.
 
 Source code: **GPL-3.0-or-later**. Documentation: **GFDL-1.3-or-later**.
 This README and small configuration files are released under
-**CC0-1.0**. See `LICENSES/README.md`.
+**CC0-1.0**. See `LICENSES.md`.
 
 External libraries adopted in V2.x:
 
-- [`gorules/zen-go`](https://github.com/gorules/zen-go) (Apache-2.0)
-  — drives the Project Launchpad's seeding rules as JDM
-  (JSON Decision Model) data. Adding industries/methodologies is a
-  one-row edit in `internal/templates/launchpad_seeds.json`.
+- [`github.com/gorules/zen`](https://github.com/gorules/zen) (MIT) via its
+  Go binding (`zen-go`) — drives the Project Launchpad's seeding rules
+  as JDM (JSON Decision Model) data. Adding industries/methodologies is
+  a one-row edit in `internal/templates/launchpad_seeds.json`.
 - [`rickar/cal/v2`](https://github.com/rickar/cal) (BSD-2-Clause) —
   maintained holiday datasets for ~40 countries. Used by
   `internal/calendar` (Timeline view holiday markers) and
@@ -471,13 +490,13 @@ This downloads the `.ttf` files into `internal/fonts/assets/`, where
 app falls back to the next available family (ultimately gofpdf's core
 Helvetica) — it always builds and runs.
 
-**Adding your own font.** In the app, import any TrueType (`.ttf`) file
-via the font picker (backed by `App.ImportFont`). The file is validated
-(OpenType/CFF `.otf`, WOFF, and collections are rejected — the PDF
-engine embeds TrueType outlines only) and copied into your per-user
-`fonts/` directory, after which it appears in the font list. Set the
-document-export font with `App.SetDefaultFont`; the choice persists in
-the project's `settings.default_font`.
+**Adding your own font.** `App.ImportFont` opens a native file dialog,
+validates the `.ttf` signature (OpenType/CFF, WOFF, and collections are
+rejected), and copies the file into your per-user `fonts/` directory.
+`App.ListFonts` returns the available families; `App.SetDefaultFont`
+persists the choice in `settings.default_font`. The font picker
+(family dropdown + Import button) lives in the "Document Font" section
+of **Project Settings**.
 
 Implementation: the chosen family is registered under the name
 "Helvetica" on each new PDF, so every renderer's existing
@@ -495,11 +514,14 @@ returned if injection ever fails). `internal/export/pdfa.go` remains
 as the thin gofpdf adapter that sets the library's Title / Author /
 Subject / Creator / Keywords fields.
 
-Strict PDF/A-3 conformance still requires (a) shipping a TTF and
-switching gofpdf to UTF-8-embed mode, (b) an OutputIntent + ICC
-profile, and (c) running every release through veraPDF. The Catalog
-metadata-stream injection — formerly the blocking unknown — is done.
-Remaining items tracked as a V3 milestone in AGENT.md §8.
+Strict PDF/A-3 conformance now depends on release validation rather
+than missing renderer primitives: font embedding, Catalog XMP
+metadata-stream injection, and OutputIntent + ICC injection are all
+implemented. `make check-pdfa` validates schedule-report, document,
+and combined-report samples against veraPDF's PDF/A-3b profile. It
+remains a soft gate until those representative generated PDFs pass
+reliably on release builders. Remaining validator hardening is tracked
+as a V3 milestone in AGENT.md §8.
 
 ## Project Launchpad
 
@@ -529,13 +551,23 @@ appear on the Dashboard, ready to edit.
 ## Project Settings
 
 Every open project shows a "Settings" link in the Dashboard header.
-Use it to edit the project's name, description, owner, industry,
-sub-category, methodology, country code, lifecycle status / phase,
-start / end dates, and budget — every field the Launchpad asked
-about is editable later. The classification fields (industry +
-methodology + country) feed live into the Launchpad-seeding rules,
-the terminology resolver, and the calendar holidays the Timeline
-overlays. Budget feeds the Dashboard's Budget panel.
+Use it to edit:
+
+- The project's name, description, owner, industry, sub-category,
+  methodology, country code, lifecycle status / phase, start / end
+  dates, and budget.
+- **Export & Signature settings** — export theme (`modern` / `classic`
+  / `archival`), auto-repair toggle, signing certificate path, and the
+  signature-enabled toggle. Changes are saved as the per-project
+  settings singleton.
+- **Document Font** — pick from the bundled catalog families or import
+  your own `.ttf` file. The chosen family is applied to all PDF exports
+  from this project immediately.
+
+The classification fields (industry + methodology + country) feed live
+into the Launchpad-seeding rules, the terminology resolver, and the
+calendar holidays the Timeline overlays. Budget feeds the Dashboard's
+Budget panel.
 
 ## Stakeholders & Budget
 
@@ -550,3 +582,27 @@ The Dashboard's top row now exposes:
 - **Budget panel** — live rollup of `project.budget` vs
   Σ vendor contracts + Σ (work-item points × matched hourly rate).
   Tints red on overspend.
+
+## Dashboard UX
+
+The Dashboard shows two item lists — Charts and Documents. Both support
+**inline delete** with a two-step confirm: click the trash icon, then
+confirm with a second click. No browser confirm dialog; no page reload.
+The item disappears from the list immediately on success.
+
+## Editor shortcuts and document status
+
+All editors (document, chart layered/DAG, chart stats) support
+**Ctrl+S / Cmd+S** to save without reaching for the toolbar.
+
+The **CharterEditor** (used for all 25 document kinds) shows:
+
+- An **"Unsaved changes"** amber badge in the header when in-memory
+  content differs from the last saved version.
+- A **status dropdown** (`draft` → `review` → `approved` → `archived`)
+  in the header. Selecting a new status saves the document immediately
+  so the status transition is always persisted.
+
+The Software-Dev Pack toggle (Kanban / Backlog / Sprints / DORA) now
+**persists across project close and reopen** — it is stored in the
+per-project settings database row rather than only in process memory.

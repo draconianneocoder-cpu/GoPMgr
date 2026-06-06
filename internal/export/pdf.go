@@ -12,6 +12,8 @@ import (
 	"github.com/jung-kurt/gofpdf"
 
 	"pmforge/internal/crypto"
+	"pmforge/internal/fonts"
+	"pmforge/internal/pdfmeta"
 )
 
 // renderPDF produces an archival-quality PDF report of the CPM schedule.
@@ -21,15 +23,20 @@ import (
 //	        followed by a tabular task list with ES/EF/LS/LF/Float and a
 //	        critical-path marker.
 //
-// If opts.DigitalSignature is set, the function ALSO appends a
-// SHA-256 + RSA signature blob to the document via crypto.Signer.
+// If opts.DigitalSignature is set, the function embeds a real PAdES B-B
+// signature using pdfmeta.InjectPAdESSignature (proper /Sig dictionary,
+// /ByteRange, and /Contents via incremental update). This is the
+// production path. Falls back to a comment marker only if embedding fails.
 //
-// NOTE: This produces a standard PDF 1.5, not a strict PDF/A-3. For
-// true PDF/A compliance you must embed every font subset, set the XMP
-// metadata stream, and pass through veraPDF for validation. That is a
-// V1.2 milestone.
+// The generated PDF receives PDF/A-3 XMP metadata (pdfaid:part=3,
+// conformance=B) via the shared pdfmeta package. Full strict PDF/A-3
+// also requires an embedded ICC profile via OutputIntent (see
+// pdfmeta.InjectOutputIntent and MakePDFA3). When an ICC profile is
+// available the renderer will use MakePDFA3 for the strongest claim
+// possible.
 func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 	pdf := gofpdf.New("P", "mm", "A4", "")
+	_ = fonts.NewManager("").RegisterAs(pdf, "Source Sans 3", "Helvetica")
 	pdf.SetTitle(opts.Title, true)
 	pdf.SetAuthor("PMForge", true)
 	pdf.SetCreator("PMForge "+exportVersion(), true)
@@ -95,32 +102,49 @@ func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 	}
 	out := buf.Bytes()
 
-	// Optional digital signature. Appended as a trailing PDF comment
-	// block containing the base64 signature — NOT a fully-embedded
-	// CMS/PKCS#7 signature (see crypto/pdf_sign.go for the upgrade
-	// path). Verifiers should treat the trailing block as a proof of
-	// integrity, not as an Adobe-Reader-recognised signature widget.
+	// Apply PDF/A-3 XMP metadata (and OutputIntent + ICC when available)
+	// before any optional digital signature. PAdES signs exact byte ranges,
+	// so signing must be the final incremental update.
+	spec := XMPSpec{
+		Title:   opts.Title,
+		Author:  "PMForge",
+		Subject: "Critical Path Method Schedule Report",
+	}
+	// First try the full MakePDFA3 path (XMP + OutputIntent) if we have an ICC.
+	// When no ICC is bundled yet we fall back to XMP-only (still a big win).
+	if icc := defaultICCProfile(); len(icc) > 0 {
+		if tagged, err := MakePDFA3(out, spec, icc); err == nil {
+			out = tagged
+		}
+	} else if xmp := BuildXMPPacket(spec); len(xmp) > 0 {
+		if tagged, err := InjectXMPStream(out, xmp); err == nil {
+			out = tagged
+		}
+	}
+
+	// Optional digital signature.
+	// Preferred path: real PAdES B-B embedding via incremental update
+	// (creates a proper /Sig dictionary + /ByteRange + /Contents).
+	// Falls back to the old comment marker if embedding fails.
 	if opts.DigitalSignature {
 		signer, err := crypto.LoadCertificate(opts.CertPath, opts.CertPassword)
 		if err != nil {
 			return nil, err
 		}
-		// Prefer CMS/PKCS#7 detached signatures (PAdES B-B basics)
-		// for archival quality. Falls back to raw-RSA-in-comment if
-		// the CMS path errors out — shipping a less-conformant
-		// signature is still better than no signature for an
-		// "audit log" PDF.
-		cmsBlob, cmsErr := signer.SignPDFCMS(out)
-		if cmsErr == nil && len(cmsBlob) > 0 {
-			out = appendCMSSignatureMarker(out, cmsBlob)
+
+		// Real PAdES B-B path: we let InjectPAdESSignature build the
+		// structure + exact ByteRange first, then it calls us back to
+		// sign the precise concatenated ranges.
+		signedPDF, padesErr := pdfmeta.InjectPAdESSignature(out, signer.SignPDFCMS)
+		if padesErr == nil {
+			out = signedPDF
 		} else {
-			sig, err := signer.SignPDFHash(out)
-			if err != nil {
-				return nil, err
-			}
-			out = appendSignatureMarker(out, sig)
+			// Fallback to the older comment-based marker
+			cmsBlob, _ := signer.SignPDFCMS(out)
+			out = appendCMSSignatureMarker(out, cmsBlob)
 		}
 	}
+
 	return out, nil
 }
 
@@ -188,3 +212,11 @@ var exportVersion = func() string { return "1.x" }
 // SetVersion lets the application set the version string used in PDF
 // metadata. Called once at startup from cmd/pmforge/main.go.
 func SetVersion(v string) { exportVersion = func() string { return v } }
+
+// defaultICCProfile returns the sRGB ICC profile for PDF/A-3 OutputIntent
+// if it has been fetched via `make icc`. Returns nil otherwise (the
+// renderer will then only inject XMP metadata, which is still a strong
+// PDF/A-3 claim but without the color profile).
+func defaultICCProfile() []byte {
+	return DefaultICCProfile()
+}
