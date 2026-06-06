@@ -3,11 +3,11 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: CC0-1.0
 -->
 
-# LICENSES
+# License Notes
 
-This directory holds the full text of every license that applies to files in
-this repository, in the format required by the [REUSE
-specification](https://reuse.software/spec/) so that `reuse lint` passes.
+The `LICENSES/` directory holds the full text of every license that applies to
+files in this repository, in the format required by the [REUSE
+specification](https://reuse.software/spec/).
 
 ## How to populate this directory
 
@@ -18,16 +18,17 @@ identifiers used in this project are:
 | -------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `GPL-3.0-or-later`   | Source code (Go, Svelte, TS, Makefile)    | https://www.gnu.org/licenses/gpl-3.0.txt                                                            |
 | `GFDL-1.3-or-later`  | User-facing documentation (`docs/`)       | https://www.gnu.org/licenses/fdl-1.3.txt                                                            |
-| `CC0-1.0`            | Tiny config files and this README         | https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt                                     |
+| `CC0-1.0`            | Tiny config files, license notes, and compact ICC profile | https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt                  |
 | `OFL-1.1`            | Bundled fonts (Liberation, Noto, Source Sans 3, JetBrains Mono) | https://openfontlicense.org/documents/OFL.txt                                  |
 | `LicenseRef-Bitstream-Vera` | Bundled DejaVu Sans font           | https://dejavu-fonts.github.io/License.html                                                         |
 
 The font binaries themselves are fetched by `scripts/fetch-fonts.sh`
-(not committed); their licenses are declared in the top-level
-`REUSE.toml` because binary files cannot carry inline SPDX headers.
+(not committed) and ignored as local downloads. Their upstream licenses are
+documented here and in `internal/fonts/assets/README.md`. The compact sRGB ICC
+profile used for PDF/A-3 OutputIntent embedding is committed because it is a
+small build input and the Go embed directive needs it in clean checkouts.
 
-Run the following once after cloning to drop the full license texts in place
-(the REUSE tool can also do this with `reuse download --all`):
+Run the following after adding a new SPDX identifier:
 
 ```sh
 curl -L -o GPL-3.0-or-later.txt   https://www.gnu.org/licenses/gpl-3.0.txt
@@ -44,6 +45,6 @@ pip install reuse
 reuse download --all
 ```
 
-The actual `.txt` files are intentionally not committed by the initial
-scaffold because they are large and the project must point at the canonical
-versions hosted by the FSF / Creative Commons.
+License text files that correspond to committed assets should be tracked so
+`reuse lint` can run without network access. License texts for ignored local
+downloads can be regenerated locally when those assets are audited.

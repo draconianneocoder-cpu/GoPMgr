@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-License-Identifier: GFDL-1.3-or-later
+-->
+
 # Universal AI Agent Instructions for Go Repositories
 
 This `AGENTS.md` file defines the expected behavior, constraints, and coding standards for any AI agent operating within this Go codebase. These rules are synthesized from Effective Go, Google's Go Style Guide, and standard cryptographic practices to ensure high-quality, idiomatic, and secure Go code.
@@ -39,12 +44,12 @@ This `AGENTS.md` file defines the expected behavior, constraints, and coding sta
 ## 6. Cryptography & Security
 
 - **Standard Library Exclusivity:** Rely solely on `crypto/*` standard libraries (e.g., `crypto/aes`, `crypto/rand`, `crypto/sha256`) or `golang.org/x/crypto/`. Do not implement custom cryptographic algorithms.
-- **Randomness:** Always use `crypto/rand` for cryptographically secure random numbers (keys, nonces, salts). Never use `math/rand` for security contexts.
+- **Randomness:** Always use `crypto/rand` for cryptographically secure random numbers (keys, nonces, salts). Never use `math/rand` for security contexts. For **recoverable** code paths (ID generation, password salts, recovery codes — anything that returns an `error`), use `io.ReadFull(rand.Reader, buf)` rather than `rand.Read(buf)` directly. In Go 1.26, `rand.Read` fatals the process if the CSPRNG fails; `io.ReadFull` returns a contextual error instead. Signing APIs like `rsa.SignPKCS1v15(rand.Reader, ...)` already return errors on entropy failure and do not need this workaround.
 - **Symmetric Encryption:** Use Authenticated Encryption with Associated Data (AEAD) via `crypto/cipher` with `AES-GCM`. Always generate a unique nonce using `crypto/rand` for every encryption.
 - **Hashing:** Use SHA-256 or higher for data integrity. For password hashing, rely strictly on `golang.org/x/crypto/bcrypt` or `argon2`. Never use MD5 or SHA-1.
 
 ## 7. App-Server & API Structs
 
-- **JSON Serialization:** Always expose fields in `camelCase` on the wire using `json:"camelCase"` tags. 
+- **JSON Serialization:** This codebase uses `snake_case` on the wire (e.g. `json:"project_id"`, `json:"created_at"`). Use `json:"snake_case"` tags consistently. Do not use `camelCase` for new struct fields — the Wails TypeScript surface mirrors the Go tags directly and the existing frontend code references snake_case field names throughout.
 - **OmitEmpty:** Use `omitempty` carefully. Remember that `false` and `0` are omitted. If you need to distinguish between "unset" and a zero-value, use pointers (e.g., `*bool` or `*int`).
 - **Timestamps:** Use `time.Time` for standard RFC3339 serialization, or `int64` for UNIX epoch seconds. Name timestamp fields explicitly (e.g., `createdAt`, `updatedAt`).

@@ -20,12 +20,12 @@ PMForge is a **local-first project controls desktop application** for technical,
 - **Storage**: SQLite with WAL journaling. Per-user folder isolation; one `.pmforge` file per project.
 - **Charting library**: Chart.js v4.4.6 on the frontend; gofpdf for server-side PDF chart rendering.
 - **Crypto**: `golang.org/x/crypto/argon2` for password hashing (PHC string format), AES-256-GCM for encryption, X.509/RSA for digital signatures.
-- **Rules engine**: `gorules/zen-go` (Apache-2.0) — Launchpad seeding rules expressed as JDM data, not Go switch. Used by `internal/templates`.
+- **Rules engine**: `github.com/gorules/zen` (MIT) via its official Go binding (zen-go) — Launchpad seeding rules expressed as JDM data, not Go switch. Used by `internal/templates`.
 - **Holiday data**: `rickar/cal/v2` (BSD-2-Clause) — country holiday datasets. Wrapped by `internal/calendar`.
 - **CMS/PKCS#7**: `digitorus/pkcs7` (FreeBSD-2-clause) — wraps raw RSA signatures into the CMS SignedData structure Adobe Reader / PAdES expects. Used by `internal/crypto/pdf_sign.go`.
 - **DOCX writer**: `gomutex/godocx` (MIT, pure Go) — picked from pkg.go.dev after a survey. Used by `internal/export/docx.go`. ODT export (`internal/export/odt.go`) is hand-built because no equivalently-maintained pure-Go ODT generator exists (kpmy/odf hasn't been touched since 2014).
 
-The app has reached **V2.x** maturity: all 19 chart kinds and all 25 document templates implemented end-to-end, combined report builder with embedded vector chart visualisations, self-heal with atomic database swap, multi-user accounts. The Agile Pack is the current frontier.
+The app has reached **V2.x** maturity: all 20 chart kinds and all 25 document templates implemented end-to-end, combined report builder with embedded vector chart visualisations, self-heal with atomic database swap, multi-user accounts. The Agile Pack is the current frontier.
 
 ---
 
@@ -54,7 +54,7 @@ pmforge/
 │   ├── auth/password.go         # Argon2id PHC hash/verify
 │   ├── cli/parser.go            # GNU-style CLI flags; Version constant lives here
 │   ├── charts/
-│   │   ├── registry.go          # 19-kind taxonomy + 4 engines (DAG/Stats/Matrix/Flow)
+│   │   ├── registry.go          # 20-kind taxonomy + 4 engines (DAG/Stats/Matrix/Flow)
 │   │   ├── engines.go           # Layout() dispatcher → kind-specific layout fn
 │   │   ├── dag/                 # WBS, Network, PERT, CPM, Fishbone, Cause-Effect
 │   │   ├── flow/                # Workflow, Activity (+ swimlanes)
@@ -133,14 +133,14 @@ pmforge/
 All tables created idempotently in `db.Database.Migrate()` (internal/db/sqlite.go). Migrations are additive only — never DROP or ALTER existing columns. New columns get a default.
 
 ### V1 tables (initial release)
-- **`settings`** — singleton row (CHECK id=1). Columns: `default_password`, `export_theme`, `auto_repair`, `cert_path`, `signature_enabled`, `default_font` (document-export font family; empty = catalog default). `default_font` added 2026-05-20 via the `migrateLegacyColumns` PRAGMA-probe pattern (now covers both `project` and `settings`).
+- **`settings`** — singleton row (CHECK id=1). Columns: `default_password`, `export_theme`, `auto_repair`, `cert_path`, `signature_enabled`, `default_font` (document-export font family; empty = catalog default), `agile_enabled` (Software-Dev Pack toggle; persisted so the pack state survives project close/reopen). `default_font` and `agile_enabled` were added 2026-05-20 and 2026-06-04 respectively via the `settingsMigrations` loop in `migrateLegacyColumns` (PRAGMA-probe pattern covering both `project` and `settings`).
 - **`tasks`** — V1 scheduler tasks: `id`, `title`, `duration`, `precedents` (JSON array of IDs), `created_at`, `updated_at`.
 - **`command_log`** — append-only command journal: `id`, `ts`, `actor`, `command`, `payload` (JSON).
 - **`audit_log`** — `id`, `ts`, `actor`, `action`, `target_id`, `details`. Indexed by target_id and ts.
 
 ### V2 tables (multi-entity model)
 - **`project`** — one row per .pmforge: `id`, `name`, `description`, `status`, `phase`, `start_date`, `end_date`, `budget`, `owner`, timestamps. Status ∈ {planning, active, on_hold, complete, cancelled}. Phase ∈ {initiation, planning, execution, monitoring, closing}.
-- **`charts`** — unified table for all 19 chart kinds: `id`, `project_id`, `kind`, `title`, `data` (JSON), `config` (JSON), `template_id`, timestamps. FK ON DELETE CASCADE.
+- **`charts`** — unified table for all 20 chart kinds: `id`, `project_id`, `kind`, `title`, `data` (JSON), `config` (JSON), `template_id`, timestamps. FK ON DELETE CASCADE.
 - **`documents`** — unified for all 25 doc kinds: `id`, `project_id`, `kind`, `title`, `content` (JSON), `template_id`, `version` (monotonic), `status` (draft|review|approved|archived), timestamps.
 - **`templates`** — user-saved templates: `id`, `scope` ('chart' or 'document'), `kind`, `name`, `description`, `defaults` (JSON), `is_builtin`, `created_at`.
 
@@ -214,13 +214,15 @@ make build
 
 # Quality gates
 make lint              # golangci-lint + npm run lint
-make test              # go test ./...
-make race              # go test -race ./... (V2.x — concurrency hardening gate)
+make test              # go test ./cmd/... ./internal/... (PMForge-owned Go packages)
+make race              # go test -race ./cmd/... ./internal/... (V2.x concurrency hardening gate)
 make memory-scan       # scripts/memory-safety-scan.sh (V2.x)
+make frontend-stability # svelte-check --fail-on-warnings + Sigma regression gates
+make frontend-build-budget # Vite build without large main bundle regressions
 make license-check     # reuse lint
 make check-release     # version consistency + REUSE + build
 
-# Packaging
+# Packaging (host-local deterministic tarballs; cross-platform targets require matching runners)
 make package-linux / package-windows / package-darwin
 ```
 
@@ -251,22 +253,22 @@ make package-linux / package-windows / package-darwin
 ## 7. Memory & resource safety
 
 `make memory-scan` runs:
-1. `go vet ./...` — standard correctness checks.
+1. `go vet ./cmd/... ./internal/...` — standard correctness checks.
 2. Custom grep gate (scripts/memory-safety-scan.sh) for:
    - `os.Open(` without nearby `defer .*Close()`
    - `sql.Open(` without nearby `defer .*Close()`
    - `unsafe.Pointer` (forbidden in this codebase)
    - missing `errors.Is`/`errors.As` against package `Err*` sentinels
-3. (When installed) `staticcheck ./...` for deeper analysis.
-4. (When installed) `gosec ./...` for security-flavoured patterns.
+3. (When installed) advisory `staticcheck ./cmd/... ./internal/...` for deeper analysis.
+4. (When installed) advisory `gosec ./cmd/... ./internal/...` for security-flavoured patterns.
 
-A new contribution should land **with `make memory-scan` passing**. The gate is wired into `make check-release`.
+A new contribution should land **with `make memory-scan` passing**. Optional scanners report findings without failing by default so the release gate is not dependent on locally installed tools; set `PMFORGE_STRICT_OPTIONAL_SCANS=1` when you want optional staticcheck/gosec/govulncheck findings to fail the gate. The gate is wired into `make check-release`.
 
 ---
 
 ## 8. Feature coverage (live status)
 
-### Charts: 19/19 implemented end-to-end (UI + Go layout + frontend renderer + PDF embed)
+### Charts: 20/20 implemented end-to-end (UI + Go layout + frontend renderer + PDF embed)
 - **DAG family** (6): WBS, Network, PERT, CPM, Fishbone, Cause-Effect.
 - **Flow family** (2): Workflow, Activity.
 - **Matrix family** (4): RACI, SWOT, Stakeholder Analysis, Generic Matrix.
@@ -281,32 +283,37 @@ A new contribution should land **with `make memory-scan` passing**. The gate is 
 - Chart picker for FieldChartRef (constrained by `ChartKind`)
 - Audit log with CSV export
 - Archival backup bundles (`.pmba`)
+- **Full document create→edit→export loop for all 25 kinds.** Dashboard template cards are clickable buttons; `App.svelte` routes both `charter` and `documents` views to `CharterEditor.svelte` (the generic document editor); header toolbar exposes DOCX, ODT, PDF, and Signed-PDF export for every kind.
+- **Delete buttons for charts and documents in Dashboard.** Inline two-step confirm pattern (click Delete → confirm → delete) with local state filter; no page reload.
+- **Export & Signature settings in Project Settings panel.** `ProjectSettings.svelte` now reads/writes `export_theme`, `auto_repair`, `cert_path`, `signature_enabled` from the settings DB row. Font picker (family dropdown + Import button) also lives there.
+- **Ctrl+S keyboard shortcut in all editors.** `CharterEditor.svelte`, `_layered_editor_shell.svelte`, and `_stats_editor_shell.svelte` all register a `keydown` listener in `onMount` and remove it in `onDestroy`.
+- **Dirty indicator and status dropdown in CharterEditor.** Baseline `lastSavedContent`/`lastSavedTitle` set after load; `dirty` derived state drives an amber "Unsaved changes" badge. Status dropdown (`draft|review|approved|archived`) in the header calls `save()` on change.
 
 ### Agile Pack (V2.x — complete)
 - **Backend**: schema (5 tables in db/sqlite.go), types (agile/agile.go), CRUD storage (agile/store.go), DORA metrics with elite/high/medium/low classification (agile/dora.go), Wails methods in cmd/pmforge/main.go §Agile Pack.
 - **Frontend**: KanbanBoard (drag-and-drop with WIP badges), Backlog (priority + drag reorder + Start-work), SprintList (planning/active/complete lifecycle with single-active invariant), DORADashboard (4 KPI cards + deploy-trend line via StatsChart + inline +Deployment form). All live under `frontend/src/lib/components/agile/`.
-- **Wiring**: 4 new session view union members (`kanban`, `backlog`, `sprints`, `dora`), App.svelte routes, Dashboard "Software-Dev Pack" section with enable/disable toggle backed by `App.AgileEnabled` / `App.SetAgileEnabled`.
+- **Wiring**: 4 new session view union members (`kanban`, `backlog`, `sprints`, `dora`), App.svelte routes, Dashboard "Software-Dev Pack" section with enable/disable toggle backed by `App.AgileEnabled` / `App.SetAgileEnabled`. As of 2026-06-04, `AgileEnabled` is **persisted to `settings.agile_enabled`** (not in-memory only); `SetAgileEnabled` does a DB roundtrip and updates `agile.PackEnabled` as a cache.
 
 ### Memory & concurrency gates (V2.x)
 - **`make memory-scan`** runs `scripts/memory-safety-scan.sh`. Currently passing in the sandbox; on a dev box with Go in PATH it also runs `go vet` and a Go-helper scan for unclosed `os.Open` handles. Optional integrations: `staticcheck`, `gosec`, `govulncheck` — auto-detected.
-- **`make race`** runs `go test -race ./...`.
+- **`make race`** runs `go test -race ./cmd/... ./internal/...`.
 - Both are wired into `scripts/check-release.sh` so the release gate fails if either does.
 
 ### Remaining V2 TODOs (status snapshot)
 1. ~~DOCX / ODT export.~~ **Done.** `internal/export/docx.go` uses `gomutex/godocx`; `internal/export/odt.go` is hand-built (no maintained ODT library exists). App methods `ExportDocumentDOCX` / `ExportDocumentODT`.
-2. **PDF/A-3 strict conformance** — partial, advanced 2026-05-20 on two fronts. (i) The dependency-free `internal/pdfmeta` package builds the canonical XMP packet AND injects it into the PDF Catalog via a spec-conformant **incremental update** (`InjectXMPStream`); `documents.Render()` tags every generated PDF (fail-soft). (ii) **Font embedding is now available** via `internal/fonts` — bundled TrueType families (fetched by `make fonts`) embed into PDFs through the "register under Helvetica" trick, replacing the non-embeddable core fonts. Remaining for full conformance: (a) OutputIntent + ICC profile, (b) veraPDF validation in `make check-release`. Both the Catalog-stream injection and font embedding — previously the two blocking unknowns — are **done**.
-3. ~~CMS/PKCS#7 signature embedding.~~ **Done** via `digitorus/pkcs7`. Caveat: signature lives in a trailing PDF comment, not in a `/Sig` widget with `/ByteRange` + `/Contents`. PAdES B-B requires the widget form; that's an incremental-update + xref-table rewrite that's non-trivial with gofpdf. Deferred to V3.
+2. **PDF/A-3 strict conformance** — partial, advanced 2026-05-20, 2026-05-25, and 2026-06-06. (i) The dependency-free `internal/pdfmeta` package builds the canonical XMP packet AND injects it into the PDF Catalog via a spec-conformant **incremental update** (`InjectXMPStream`); `documents.Render()` tags every generated PDF (fail-soft). (ii) **Font embedding is now available** via `internal/fonts` — bundled TrueType families (fetched by `make fonts`) embed into PDFs through the "register under Helvetica" trick, replacing the non-embeddable core fonts. (iii) OutputIntent + ICC profile injection is implemented (`InjectOutputIntent`, `MakePDFA3`, `make icc`) and used when an ICC profile is embedded. (iv) The schedule-report, document, and combined-report samples now pass `make check-pdfa` with veraPDF's PDF/A-3b profile after adding binary header comments, trailer IDs, stream-length correctness, latest-incremental Catalog rewrites, and embedded Source Sans 3 for representative exports. Remaining for full release-grade conformance: prove the expanded soft gate is stable on release builders before promoting `make check-pdfa` to a hard release gate.
+3. ~~CMS/PKCS#7 + PAdES signature widget embedding.~~ **Done** via `digitorus/pkcs7` plus `pdfmeta.InjectPAdESSignature`. The PAdES path appends a `/Sig` dictionary, invisible `/Widget` field, `/AcroForm`, fixed-width `/ByteRange`, and padded `/Contents` in the final incremental update. `make check-pades` verifies the local invariant, and `make check-pades-external` extracts the embedded CMS for OpenSSL detached verification, checks `qpdf --check`, and requires `pdfsig` to report a valid signature when those tools are installed; remaining hardening is Acrobat/DSS validation coverage when available.
 4. ~~Wails file-picker for certs.~~ **Done.** `App.ChooseCertFile` calls `wailsruntime.OpenFileDialog`.
 5. ~~HTTPS update channel with signed release manifest.~~ **Done.** `internal/update` fetches a signed JSON manifest, verifies Ed25519, returns `Status`. `ManifestURL` and `UpdateChannelPublicKey` set at build time via `-ldflags`.
-8. **Per-user database encryption at rest** — deferred. Production-grade implementation requires either SQLCipher (libsqlcipher native dep — significant build complexity) or whole-file AES-at-rest with crash-recovery semantics. Recommended stopgap for V2: document OS-level disk encryption (FileVault / BitLocker / LUKS) in the user-facing docs.
+8. ~~Per-user database encryption-at-rest decision.~~ **V2 stopgap decided.** README documents OS-level disk encryption (FileVault / BitLocker / LUKS) as the supported V2 path for raw-disk theft or admin-level host access. `scripts/release-gate-scope-check.sh` guards that README keeps both the OS-level encryption guidance and the SQLCipher/V3 deferral clear. Native database encryption remains a V3 design item because SQLCipher adds native packaging complexity and whole-file AES-at-rest needs crash-recovery semantics.
 9. **Bespoke renderers for the 24 non-Charter document kinds** — Status Report shipped as the reference (`internal/documents/status_report.go`). The other 23 follow the AGENT.md §10 recipe. Generic renderer keeps every kind exportable in the meantime.
 10. ~~Embed chart visualisations in combined reports.~~ Done in earlier slice.
 13. ~~Account recovery codes.~~ **Done.** 8 Argon2id-hashed codes generated at account creation, redeemable once each. `App.IssueRecoveryCodes` + `App.ResetWithRecoveryCode`. Frontend: `RecoveryReset.svelte`.
 
 ### Still deferred to V3
-- Strict PDF/A-3 — XMP Catalog injection now done (`internal/pdfmeta`); still needs font embedding + OutputIntent + veraPDF gate.
-- PAdES B-B signature widget (incremental update + xref rewrite). NOTE: `internal/pdfmeta`'s incremental-update machinery is a reusable starting point — the same append-object + delta-xref + /Prev-trailer pattern applies to embedding a `/Sig` widget.
-- Per-user encryption at rest (SQLCipher integration).
+- Strict PDF/A-3 release claim — the schedule-report, document, and combined-report samples now pass local veraPDF PDF/A-3b validation; still needs release-builder soak before the GUI/docs claim strict conformance as a hard gate.
+- External PAdES validation hardening — the widget is embedded and locally sample-verified by `make check-pades`; OpenSSL detached CMS verification plus local `qpdf`/`pdfsig` checks are covered by `make check-pades-external`, but sample signed PDFs still need Acrobat/DSS validation before treating the implementation as fully battle-tested.
+- Per-user database encryption at rest (SQLCipher/native implementation design).
 - PDM date-dragging on the Timeline (major editor rewrite).
 
 ---
@@ -411,7 +418,7 @@ This section is the running log of non-obvious discoveries. Every session that l
   11. **Persuasive CTA layout** — Project Proposal (the ASK).
   12. **Baseline stamp** — Project Schedule (green when set, slate when unset).
   13. **Audience-friendly summary** — Project Brief.
-- **What's next.** Bespoke coverage saturated. The next investment areas per AGENT.md §8 are: (a) PDF/A-3 strict conformance (font embedding + Catalog stream + OutputIntent + veraPDF gate), (b) PAdES B-B signature widget (incremental update + xref rewrite), (c) per-user encryption at rest (SQLCipher), (d) PDM date-dragging on the Timeline. All four are V3 milestones requiring significantly larger slices.
+- **What's next.** Bespoke coverage saturated. The next investment areas per AGENT.md §8 are: (a) PDF/A-3 strict conformance validation (veraPDF gate hardening now that font embedding, Catalog XMP, and OutputIntent/ICC code exist), (b) external PAdES validator hardening for signed sample PDFs, (c) per-user encryption at rest (SQLCipher), (d) PDM date-dragging on the Timeline. All four are V3 milestones requiring significantly larger slices.
 
 ### 2026-05-19 — Project Schedule bespoke renderer (planning phase ~complete)
 - **Bespoke coverage 21/25; planning 13/14 (Plan Excel aliased → 14/14 effectively).** Only execution (Project Brief + Project Overview) remains.
@@ -508,14 +515,202 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **The killer integration trick: register the chosen family under the name "Helvetica".** All 276 `SetFont(...)` calls across documents+export use `"Helvetica"`. gofpdf's `AddUTF8FontFromBytes` *overrides a core-font family name* when you register an embedded TTF under it. So `Manager.RegisterAs(pdf, family, "Helvetica")` swaps the font for the ENTIRE renderer codebase with zero per-renderer SetFont changes. The only renderer change was `gofpdf.New("P"/"L", "mm", "A4", "")` → `newDocPDF("P"/"L")` (a helper that applies the active font), done as a mechanical perl pass across 24 files and verified by a clean compile.
 - **gofpdf UTF-8 path is TrueType-only.** `validateTrueType` checks the sfnt signature and rejects OpenType/CFF ("OTTO"), WOFF, and collections ("ttcf") with actionable errors. `ImportFont` enforces `.ttf` + signature before copying into `<user>/fonts/`.
 - **Wiring**: `documents.UseFont(mgr, family)` installs the applier hook (mutex-guarded; the Wails runtime renders on arbitrary goroutines). App calls it from `OpenProject` (apply saved `settings.default_font`), `CloseProject` (revert), and `SetDefaultFont` (apply immediately). New Wails methods: `ListFonts`, `ImportFont` (native file dialog, like `ChooseCertFile`), `GetDefaultFont`, `SetDefaultFont`. New TS interface `FontFamilyInfo` in wails-window.d.ts.
-- **REUSE.toml added** (first one in the repo) to declare licenses for the fetched `.ttf` binaries, since binaries can't carry inline SPDX headers. OFL-1.1 + LicenseRef-Bitstream-Vera added to LICENSES/README.md.
+- **REUSE.toml added** (first one in the repo) to declare licenses for fetched `.ttf` binaries, embedded ICC profiles, generated lockfiles, and other files that cannot carry inline SPDX headers. OFL-1.1 + LicenseRef-Bitstream-Vera are documented in LICENSES.md.
 - **FOUND + FIXED a latent compile error**: `internal/documents/report.go` called `pdf.GetPageHeight()`, which does NOT exist in the pinned gofpdf v1.16.2 (it has `GetPageSize() (w, h)`). The `documents` package had therefore never compiled — masked in the sandbox because `export` always failed first on godocx/pkcs7 resolution. Fixed to `_, pageH := pd.GetPageSize()`. **Lesson: the combined-report chart-embed path (report.go) was shipped untested against the pinned gofpdf version. Worth a smoke test on the user's machine.** When verifying, build `./internal/documents/` in isolation — it has no godocx/pkcs7 deps and now compiles cleanly in the sandbox.
 - **Remaining for the frontend**: a Settings-panel font picker (dropdown over `ListFonts()`, an "Import font…" button calling `ImportFont()`, persisted via `SetDefaultFont`). The backend is complete; this is Svelte work.
 - **Sandbox build note**: `go build ./internal/documents/ ./internal/fonts/ ./internal/pdfmeta/ ./internal/charts/... ./internal/db/` all succeed. `export` and `cmd/pmforge` still can't build in the sandbox (godocx v0.1.16 + pkcs7 pinned revisions don't resolve) — a pre-existing limitation, not introduced here.
 
+### 2026-06-04 — CPM kernel + DORA classification tests
+- **`internal/kernel` now has 10 unit tests covering every branch of CalculateCPM and topoSort.** Cases: empty map, single task, linear chain (A→B→C), diamond network (A→B/C→D with longer branch on critical path), parallel equal-length paths (both critical), zero-duration milestones, cycle detection (mutual reference + self-loop). `topoSort` tests cover dependency ordering and alphabetical determinism. The package doc comment explicitly noted isolation testing was intended — this was pure overdue work.
+- **`internal/agile/dora.go` now has 35 unit tests (in `dora_test.go`).** Covers all four classification functions at each band boundary (`classifyDeployFrequency`, `classifyLeadTime`, `classifyCFR`, `classifyMTTR`), the `median` helper (empty, odd, even, unsorted input), the `formatFloat1` shim (zero, whole, decimal, negative), and `ComputeDORA` end-to-end (empty, window filtering, default window fallback, elite-team scenario, daily trend length, medium CFR scenario).
+- **Test misread correction: deploy-frequency thresholds.** 0.5 deploys/day is "high" (not "elite" — elite requires ≥ 1.0/day). 1/14-day is "medium" (not "high" — high requires ≥ 1/7-day). Both the code and DORA spec are correct; the initial test expectations were wrong. This illustrates why boundary tests should be written from the code, not from memory.
+- **`range N` syntax is idiomatic Go 1.22+.** Used in `dora_test.go` for the elite-team loop; this Go module targets 1.26.4 so no compatibility concern.
+
+### 2026-06-04 — Sigma tollgate + stats tests
+- **`internal/sigma/tollgate` now has 23 unit tests in `readiness_test.go`.** Covers all four phase checkers (Define, Analyze, Improve, Control) and the `CheckPhase` router, including the 80%-threshold for Define (5/7 ≠ advance, 6/7 = advance), the 100%-threshold for Analyze/Improve/Control, CTQ spec-limit requirement, minimum character lengths for all five charter text fields, SIPOC element count, fishbone causes vs. 5-Whys drill-down depth (3 levels minimum), solution count + impact/effort scoring + selection, control item owner + response-plan presence, and the Measure phase auto-approve default arm.
+- **`internal/sigma/stats` now has 10 unit tests in `basic_test.go`.** Covers `CalculateDescriptive` (empty error, single value, odd/even count, positive std dev), `CalculateCapability` (empty error, zero-std-dev error, Cp formula positive, Cpk < Cp for off-center process, DPMO band at sigma ≥ 6 = 3.4 defects/million).
+- **Boundary-value misread lesson (second occurrence).** In the Define-phase test, "Also short." (11 chars) satisfied the BusinessCase ≥ 10 minimum. The pattern: always verify lengths in Go before writing a test that assumes a string is "too short."
+- **`range N` is idiomatic in Go 1.22+ (this module targets 1.26.4).** Used in stats_test.go loops; avoids the `for i := 0; i < N; i++` boilerplate.
+
+### 2026-06-04 — PERT math, RACI validation, AES-GCM crypto tests
+- **`internal/charts/dag` now has 6 PERT unit tests in `pert_test.go`.** Verifies the textbook beta-distribution formulas (E=(O+4M+P)/6, V=((P-O)/6)^2, σ=√V) against hand-calculated values, the all-zero no-op guard, the certain-duration case (V=σ=0), structural invariants (StdDev=√Variance, Duration=Expected), and the symmetric-range case. `annotatePERT` is unexported but accessible from within `package dag`.
+- **`internal/charts/matrix` now has 12 RACI unit tests in `raci_test.go`.** Covers `ParseRACI` (empty string, `"{}"` early-return path, invalid JSON, valid document), `LayoutRACI` cell-grid size (roles×tasks), zero-Accountable issue, multiple-Accountable issue, exactly-one-A no-issue, zero-Responsible issue, valid complete matrix, empty document, and `Validation.AddIssue` incrementing ErrorCount. Found that `ParseRACI("{}")` returns early before the nil-Assignments guard — documented in the test comment.
+- **`internal/crypto` now has 6 AES-GCM+Argon2id tests in `encrypt_test.go`.** The three cheap tests (empty-password errors, truncated ciphertext) run in <1 ms. The three Argon2id-heavy tests (roundtrip, wrong-password, fresh-nonce) are guarded with `t.Skip` in short mode; on this machine they each take ~0.02-0.03 s because Go is fast with argonThreads=4. The guard stays for CI environments with restricted memory.
+- **19 packages now have test coverage.** Remaining `[no test files]` packages: `admin`, `charts/flow`, `charts/pdfrender`, `charts/stats`, `cli`, `debug`, `sigma/charts`, `sigma/domain`, `sigma/service`. The pure-data leaf packages (dag, matrix, kernel, crypto, sigma/tollgate, sigma/stats, agile/dora) are now covered.
+
+### 2026-06-04 — Pareto sort + Control chart tests (charts/stats)
+- **`internal/charts/stats` now has 27 unit tests in `stats_test.go`.** Covers `ParsePareto` (empty/`"{}"` early-return, invalid JSON, valid doc), `LayoutPareto` (descending sort by count, exact cumulative-percentage values at 50/80/100%, zero-total stays all-zero, dashed 80% annotation present, YAxisRight min=0 max=100, kind="pareto" with bar+line series), `ParseControl` (same early-return and JSON patterns as Pareto), `LayoutControl` (auto-compute mean±3σ when Mean=UCL=LCL=0 verified against known values, explicit limits are not overridden, above-UCL flag at correct point index, below-LCL flag, no flags when all within limits, empty Y produces no flags, Categories derived from floatsToStrings(X)), and the unexported helpers `computeMean` (known values + empty=0) and `computeStdDev` (sample std dev sqrt(sum/n-1), single-element=0, empty=0).
+- **20 packages now have test coverage.** Remaining `[no test files]` packages: `admin`, `charts/flow`, `charts/pdfrender`, `cli`, `debug`, `sigma/charts`, `sigma/domain`, `sigma/service`. All pure-data leaf packages are now covered (dag, matrix, kernel, crypto, sigma/tollgate, sigma/stats, agile/dora, charts/stats).
+- **`computeStdDev` uses n-1 (sample std dev).** For `[1,2,3]` with mean=2: sum of squares=2, divided by 2, sqrt=1.0. Future Control chart consumers expecting population std dev should note this distinction.
+
+### 2026-06-04 — debug error envelope, sigma/charts Pareto, cli version tests
+- **`internal/debug` now has 9 unit tests in `report_test.go`.** Covers `Wrap` with a non-nil error (Context/Message/Cause fields), `Wrap` with nil (Message==context, Cause==""), file:line capture (File ends with `_test.go` — Wrap records the immediate caller), non-empty Stack, nanosecond-resolution Timestamp within ±1s, `ToError()` returning a non-nil error whose string equals Message, round-trip through `ToError`/`Report` recovering the original ErrorReport, and `Report` returning false for plain `errors.New` and for nil.
+- **`internal/sigma/charts` now has 10 unit tests in `pareto_test.go`.** Covers `CalculatePareto` error paths (empty input, length mismatch, zero total), single-item edge case (pct=100, cum=100), descending sort by count, exact percentage values, exact cumulative percentage values (50/80/100 for input 50/30/20), structural invariant (last CumulativePercentage == 100.0), stable sort for equal counts, and output-length matches input.
+- **`internal/cli` now has 3 unit tests in `parser_test.go`.** Covers `Version` non-empty, `PrintVersion` stdout output containing "PMForge", `Version`, and "GPL" (via `os.Pipe` capture), and `Config` zero-value coherence (bool fields default false, string fields default empty). `ParseFlags()` is not unit-tested because it calls `flag.Parse()` against the global `flag.CommandLine` and `os.Args` — the safe test boundary is the banner and the type structure.
+- **23 packages now have test coverage.** Remaining `[no test files]` packages: `admin`, `charts/flow`, `charts/pdfrender`, `sigma/domain`, `sigma/service`. All pure-function leaf packages are now covered; remaining gaps require SQLite or are type-only definitions with no logic.
+
+### 2026-06-04 — Flow chart layout tests (charts/flow)
+- **`internal/charts/flow` now has 33 unit tests in `flow_test.go`.** Covers: `ParseWorkflow`/`ParseActivity` (empty string, `"{}"`, invalid JSON, valid document), `EncodeWorkflow` round-trip, `layerNodes` (linear chain A→B→C giving ranks 0/1/2, diamond A→B/C→D giving D rank 2, mutual-cycle returning ok=false, alphabetical queue ordering verified on three parallel sources), `resolveWorkflowShape` (all six known shapes pass through; unknown defaults to "action"), `resolveActivityShape` (all six known shapes pass through; unknown defaults to "activity"), `activityNodeSize` (initial/final=28×28, fork/join=SwimlaneWidth-40×8, activity=NodeWidth-20×NodeHeight), `hasDefaultLane` (all-assigned=false, empty SwimlaneID=true, unknown SwimlaneID=true), `LayoutWorkflow` (empty nodes returns empty layout, single-node geometry X=0/Y=0/W=150/H=60, decision node taller than action, linear chain B.Y equals rowStride, cycle returns ErrCycle, three parallel nodes all X≥0, edge label preserved), `LayoutActivity` (empty nodes returns swimlane bands with correct X offsets, cycle returns ErrCycleActivity, unassigned node triggers default lane with ID="" in output).
+- **24 packages now have test coverage.** Remaining `[no test files]`: `admin`, `charts/pdfrender`, `sigma/domain`, `sigma/service`. The remaining gaps all require SQLite or are pure type definitions with no logic to test.
+- **`layerNodes` uses Kahn's algorithm with a sorted queue for deterministic output.** The alphabetical ordering is enforced by `sort.Strings(queue)` after every indegree-zero node is pushed. Tests rely on this guarantee for layer-content assertions.
+- **Activity layout adds an "(unassigned)" swimlane on demand.** The `hasDefaultLane` check runs before layout; if any node has an empty or unknown SwimlaneID, an extra column appears at the right of the canvas with `ID=""`. Tests confirm both the presence detection and the output lane count.
+
+### 2026-06-04 — WBS, Fishbone, Causal Tree, Layered layout tests (charts/dag)
+- **`internal/charts/dag` now has 43 tests total (37 new in `dag_test.go` + 6 existing in `pert_test.go`).** New tests cover: `Parse` (empty string → ErrEmptyTree, null root → ErrEmptyTree, invalid JSON, valid document), `Renumber` (single node "1", two children "1.1"/"1.2", three-level "1.1.1", nil/empty no panic), `FlattenLeaves` (single root is a leaf; parent with children is excluded), `TotalEffort` (sums leaf efforts, ignoring parent's own Effort field), `LayoutWBS` (nil root → empty, single node has non-negative XY and positive canvas, parent+children → 2 edges), `itoa` (0→"0", 1→"1", 10→"10", 123→"123"), `ParseLayered` (empty, invalid JSON), `LayoutLayered` (empty, single node Y≥0, linear chain A.Depth=0/B.Depth=1 and B.X>A.X, cycle → ErrCycle, two parallel nodes both Y≥0 after shiftY pass), `barycenter` (no neighbours → self pos, two neighbours → mean 2.0), `findMinY` (empty → 0, negative Y → min), `ParseFishbone` (empty, invalid JSON), `LayoutFishbone` (no categories → 1 effect node, with category → effect present, 1-category 2-causes → 4 total nodes, canvas size positive), `ParseCausalTree` (empty, invalid JSON), `LayoutCausalTree` (nil root → ErrNoRoot, single node → 1 node 0 edges, root+2 children → 3 nodes 2 edges).
+- **`within` helper from `pert_test.go` is shared.** Both files live in `package dag`; new dag test files must not re-declare `within`.
+- **`LayoutLayered` shifts Y when the centering offset produces negative coordinates.** Two nodes in the same layer get `offsetY = -(N-1)*rowStride/2` which is negative; the `findMinY + shiftY` pass corrects this so all output Y ≥ 0.
+- **`TotalEffort` ignores parent-node effort.** Only leaf nodes (no children) contribute to the sum. A parent's `Effort` field is irrelevant — effort is meant to be estimated at the work-package level.
+
 ### Future sessions: append below
 <!-- yyyy-mm-dd — short title -->
 <!-- - one-line takeaway -->
+
+### 2026-06-04 — Chart count audit: 19 → 20 everywhere; race + memory-scan clean
+- **Registry has 20 chart kinds, not 19.** 6 DAG + 8 Stats + 4 Matrix + 2 Flow = 20. The off-by-one originated in the initial project scaffold comment before the 20th kind was wired up. All references to "19 chart kinds" in README.md (7 sites), AGENT.md (3 sites), and `internal/charts/registry.go` package comment are now corrected to 20.
+- **"Five engines" corrected to "four engines" in two places.** `registry.go` package comment and README.md both said "five engines"; only four Engine constants exist (DAG, Stats, Matrix, Flow). The five *renderer files* in `pdfrender/` (dag, fishbone, flow, matrix, stats) are correctly five because Fishbone has its own renderer file, but the taxonomy engine count is four.
+- **`make race` passes clean** across all 28 packages — no data races detected.
+- **`make memory-scan` passes clean** — `go vet` clean, goroutine inventory zero PMForge spawns, gosec clean, govulncheck reports zero vulnerabilities in PMForge's own code.
+- **28 packages have test coverage; `sigma/domain` is intentionally excluded** (pure type constants and struct definitions — no logic to test).
+
+### 2026-06-04 — Settings tests + UX hardening (Ctrl+S, dirty indicator, status dropdown, delete buttons, font/export settings)
+- **`AgileEnabled` persistence shipped with only a `go build` check — now covered by unit tests.** `internal/db/settings_test.go` uses the existing `newBackupTestDB(t)` helper (same db package) and covers: defaults when no row exists (`ExportTheme=="modern"`, `AutoRepair==true`, `AgileEnabled==false`), full enable/disable roundtrip, `agile_enabled` column presence after migration, and all-field preservation on `SaveSettings`. Run with `go test ./internal/db/ -run TestSettings`.
+- **Drop auto-save in CharterEditor — version inflation.** `SaveDocument` increments `version` monotonically on every call. Auto-saving on every keystroke would mint dozens of versions per typing session with no user value. Explicit save (button + Ctrl+S) is the right contract for documents.
+- **Ctrl+S requires a `keydown` listener, not a global shortcut.** All three editor shells register `window.addEventListener('keydown', handleKeyDown)` in `onMount` and remove it in `onDestroy`. The handler calls `void save()` (chart shells) or `save()` (CharterEditor) on `Ctrl+S` / `Meta+S` with `e.preventDefault()` to suppress the browser's native save dialog.
+- **Dirty tracking baseline must be set after content is parsed, not after the DB read.** `lastSavedContent = JSON.stringify(content)` is set in `onMount` after the `JSON.parse(doc.content)` step; using `doc.content` directly would differ from the re-serialised form and falsely flag clean documents as dirty on load.
+- **Status dropdown calls `save()` immediately on change.** This is user-intentional (changing status is a deliberate action), so version increment is acceptable here unlike keystroke-level auto-save.
+- **AgileEnabled: `AgileEnabled()` now returns `(bool, error)` and reads from DB.** `SetAgileEnabled(enabled bool)` returns `error` and persists via `GetSettings()+SaveSettings()`. The in-memory `agile.PackEnabled` is updated as a cache; functions that only need the pack state still read the cache for speed, while the DB is the source of truth on next open.
+- **`settingsMigrations` loop replaces the single `default_font` migration block.** Adding a new settings column now requires one extra `{name, ddl}` struct in the loop — no other changes. The loop is in `db.Database.Migrate()` inside `migrateLegacyColumns`.
+- **`svelte-check --fail-on-warnings` remains clean (0 errors, 0 warnings)** after all frontend changes in this session. Run before every commit.
+
+### 2026-05-25 — PAdES ByteRange hardening
+- **PAdES signing must be the final PDF mutation.** Render any visible signature block before calling `pdfmeta.InjectPAdESSignature`; appending a separate appearance PDF or injecting PDF/A metadata after signing leaves bytes outside the signed `/ByteRange`.
+- **`/ByteRange` patching needs fixed-width space.** The signature dictionary now reserves a fixed-width `/ByteRange` slot and signs exactly the two declared ranges, excluding the complete `<...>` `/Contents` hex string. The regression test reconstructs those ranges from the final PDF and compares them to the callback input.
+- **Invisible signature widgets still need widget shape.** The PAdES field now writes `/Subtype /Widget` with `/Rect [0 0 0 0]` and the AcroForm field reference, so readers see a concrete invisible signature field rather than only a detached signature dictionary.
+
+### 2026-05-25 — Frontend compile recovery after signed-export/Sigma merge
+- **`npm run check` is back to 0 errors.** The blocking failures were malformed signed-report state, stale component import paths, invalid Svelte 5 event modifier syntax, missing Wails ambient method/type declarations, Sigma route state using a nonexistent `session.viewId`, and Svelte 4-style Sigma props in runes-mode components.
+- **Use `session.editingId` for routed record IDs.** `goto(view, editingId)` is the app's existing route contract; new feature views should not introduce parallel `viewId` fields unless the session model is deliberately changed everywhere.
+- **Wails bridge declarations must track real `*App` methods.** Signed PDF/report exports, schedule report exports, ProjectMeta industry fields, and Sigma methods/types now live under `window.go.main.App` in `frontend/src/wails-window.d.ts`. Verify against `cmd/pmforge/main.go` before adding names.
+- **Remaining frontend debt is warning-level, not compile-blocking.** `svelte-check` still reports accessibility/deprecated-event warnings, especially in Sigma helper components and the signature modal. The production build also emits the existing large-chunk warning. Treat warning cleanup as a follow-up hardening slice.
+
+### 2026-05-25 — veraPDF gate hardening
+- **`scripts/validate-pdfa.sh` now has a testable helper layer.** `scripts/validate-pdfa-lib.sh` owns compliance-output parsing, Docker path mapping, portable veraPDF executable lookup, archive validation, and stale-wrapper detection; `scripts/validate-pdfa-lib_test.sh` covers those behaviors plus an integration path with a fake veraPDF CLI.
+- **Do not grep text output for `compliant`.** That false-positives on "not compliant". The gate now requests XML and accepts only explicit `<isCompliant>true</isCompliant>` (or JSON `isCompliant: true` if a future runner emits JSON).
+- **Generate validation samples inside the repo, not `/tmp`.** Docker receives `/work/...` paths for samples under `.tmp/pmforge-pdfa-test`; CLI mode receives host paths. This matters because the PMForge workspace path contains spaces and Docker cannot see host-only `/tmp` paths unless mounted.
+- **The sample generator must set `ExportOptions.Format`.** Missing `FormatPDF` made the old gate "pass" with no samples after `[EXPORT_FORMAT_UNKNOWN] unknown format ""`. Sample-generation failure is now a real gate failure; missing veraPDF tooling remains a soft skip.
+- **Stale/corrupt veraPDF downloads are ignored.** The installer validates downloaded zip/jar files before accepting them and refreshes wrapper scripts that point at invalid jars. On this machine, Docker is absent and auto-install still cannot fetch a valid veraPDF artifact, so `make check-pdfa` skips cleanly rather than validating.
+
+### 2026-05-25 — Frontend stability/performance hardening
+- **Keep `xlsx` lazy-loaded in the Sigma import flow.** `SigmaProjectView.svelte` now imports `xlsx` only inside the spreadsheet-import path, so Vite splits it into `dist/assets/xlsx-*.js` instead of forcing every PMForge launch to parse the spreadsheet engine.
+- **`scripts/frontend-stability-check.sh` protects this boundary.** The guard fails on static Sigma `xlsx` imports, deprecated Svelte 4 `on:*=` directives in Sigma components, `createEventDispatcher` usage in Sigma components, and SVG text actions without keyboard handlers in `SigmaFishbone.svelte`.
+- **Sigma save notifications use Svelte 5 callback props.** `SigmaVoCCTQ`, `SigmaSIPOC`, `SigmaSolutionMatrix`, and `SigmaControlPlan` expose optional `onSaved` callbacks instead of dispatching legacy component events; parent calls should pass function props such as `onSaved={loadCharter}`.
+- **Frontend warnings are now a hard gate.** `scripts/frontend-stability-check.sh` runs `svelte-check --fail-on-warnings`; future Svelte diagnostics must be fixed rather than tolerated. Current `npm run check` from `frontend/` reports 0 errors and 0 warnings.
+- **Route-level feature islands are lazy-loaded from `App.svelte`.** App no longer eagerly imports every chart, document, Agile, project, and Sigma component at launch. The current production build has no Vite large-chunk warning; `index` is roughly 48 kB minified / 19 kB gzip, with heavy surfaces split into route chunks plus `StatsChart` (~188 kB) and `xlsx` (~429 kB) async chunks.
+- **`scripts/frontend-build-budget.sh` protects the split.** It runs the production build and fails if Vite emits a large-chunk warning or if the main `index-*.js` chunk exceeds 500,000 bytes. Prefer lazy route/component splits over raising the Vite warning limit.
+
+### 2026-05-25 — Release gate scope and deterministic build hardening
+- **Do not use the unscoped all-packages pattern for Go quality gates in this repo.** With `frontend/node_modules` installed, it discovers npm dependency packages such as `frontend/node_modules/flatted/golang/pkg/flatted`. Use `./cmd/... ./internal/...` for PMForge-owned Go gates.
+- **`scripts/release-gate-scope-check.sh` protects release wiring.** It fails on unscoped Go quality commands and requires `check-release.sh` to include the frontend stability and bundle-budget gates.
+- **Optional scanners are advisory by default.** `memory-safety-scan.sh` still runs detected `staticcheck`, `gosec`, and `govulncheck`, but only mandatory checks fail by default. Set `PMFORGE_STRICT_OPTIONAL_SCANS=1` for security-focused strict runs. This avoids release-gate behavior changing just because one developer has `gosec` installed.
+- **Wails CLI builds require a root Go package; PMForge's entrypoint lives under `cmd/pmforge`.** `make build` now runs the frontend budget build, syncs `frontend/dist` into `cmd/pmforge/frontend/dist` for the existing `go:embed`, and then runs `go build ./cmd/pmforge`. Passing `-compiler gcc` to Wails was wrong because Wails expects a Go compiler there; it tried to run `gcc mod tidy`.
+- **`check-release.sh` now runs the complete local release gate successfully on this machine.** It verifies scope, memory safety, frontend warning-clean state, frontend bundle budget, race detector, deterministic build, and the PDF/A soft gate. `reuse` still skips if the tool is not installed.
+
+### 2026-05-26 — Deterministic package targets
+- **Package targets now use `scripts/package.sh`, not Wails CLI packaging.** The script calls the proven `make build` path, stages `pmforge` with `README.md` plus `LICENSES/`, and writes `build/packages/pmforge-<goos>-<goarch>.tar.gz`.
+- **Packaging is host-local by design.** `package-darwin` runs on macOS; `package-linux` and `package-windows` fail fast with a clear message unless run on matching hosts/CI runners. This avoids pretending that CGO/Wails cross-packaging is portable from one desktop machine.
+- **`scripts/release-gate-scope-check.sh` also rejects Wails CLI package invocations.** Future package target edits should keep using the deterministic script unless the repo intentionally reintroduces app-bundle packaging with a verified root-main Wails layout.
+
+### 2026-05-26 — Strict gosec and Sigma persistence hardening
+- **Strict optional scanners are now clean on this machine.** `PMFORGE_STRICT_OPTIONAL_SCANS=1 make memory-scan` passes with gosec installed; normal `make memory-scan` remains clean. Keep any future `#nosec G304` comments narrow and tied to a real product boundary, such as user-selected certificate/export/font paths or `os.CreateTemp` paths created by PMForge itself.
+- **Sigma persisted JSON must fail loudly when corrupt.** `SigmaGetCharter`, `SigmaGetFishbone`, `SigmaGetSolutions`, `SigmaGetControlPlan`, `SigmaGetSIPOC`, and `SigmaGetVoC` now return contextual decode errors instead of silently treating malformed JSON as empty domain data. The regression tests insert corrupt JSON directly into SQLite so the failure mode stays covered.
+- **Fishbone storage shape is full `FishboneData`, not bare branches.** `SigmaSaveFishbone` writes the full object; `SigmaGetFishbone` now reads that shape and preserves the legacy bare-`[]FishboneBranch` fallback. Without this, saved causes could disappear on reload because the previous getter ignored the unmarshal error.
+- **Argon2 PHC parsing must validate bounds before calling `argon2.IDKey`.** Malformed hashes with `p=256`, zero parameters, empty salt, or empty key material can otherwise panic or truncate during conversion. Keep these checks before the `uint8` / `uint32` conversions.
+- **Export and account artifacts should default private.** Sigma reports, audit CSV exports, backup bundles, the Sigma export directory, and the PMForge system root now use `0600`/`0700` permissions where PMForge owns the write path. Per-user subdirectories already used `0700`; the root now matches the isolation claim in §5.
+
+### 2026-05-26 — Backup and audit artifact durability
+- **Never string-interpolate `VACUUM INTO` paths.** A backup/snapshot destination containing a single quote used to fail with a SQLite syntax error. `CreateSnapshot` now binds the target path as a SQLite parameter, and regression tests cover both direct snapshots and `.pmba` archival bundles with quoted destination names.
+- **Archival writers must finalize explicitly.** `CreateArchivalBundle` now returns errors from `zip.Writer.Close`, archive-file close, and source-file close when those are the first failure. A backup function returning nil means the zip central directory and underlying file close both completed.
+- **Audit CSV export now checks flush and close errors.** `ExportAuditCSV` explicitly flushes, checks `csv.Writer.Error`, checks row iteration, and returns close errors when no earlier error occurred. The regression test verifies a private `0600` CSV with comma/newline escaping intact.
+
+### 2026-05-26 — Update-channel fail-closed hardening
+- **Manifest URLs must be HTTPS.** `CheckLatest` now rejects configured non-HTTPS or hostless manifest URLs before issuing a network request, matching the package threat model that the signed release manifest is fetched over HTTPS. Tests cover the fail-closed status path.
+- **Manifest bodies are bounded explicitly.** `readManifestBody` reads at most `maxManifestBytes + 1` and returns a clear "manifest too large" error if the server exceeds 64 KiB, rather than passing a silently truncated body into signature verification. Keep this limit check before `VerifyManifest`.
+
+### 2026-05-26 — Existing directory permission repair
+- **`MkdirAll(path, 0700)` is not enough for privacy.** It applies the mode only when the directory is newly created; existing `0755` PMForge roots or per-user folders stayed too broad. `users.ensurePrivateDir` now runs `MkdirAll` and then `Chmod(0700)` for the system root plus each account's `projects`, `certs`, and `exports` directories.
+- **Directory-mode gosec suppressions must explain directory semantics.** `#nosec G302` is acceptable on `Chmod(..., 0700)` only where the target is a private directory; files should remain `0600` or stricter.
+
+### 2026-05-26 — Recovery-code paste tolerance
+- **Recovery-code canonicalisation must strip all whitespace, not just spaces.** Users often paste backup codes with tabs, newlines, or wrapped clipboard text. `canonicalise` now removes Unicode whitespace plus dashes and uppercases before Argon2 verification; the regression test exercises lower-case pasted codes with tabs/newlines.
+
+### 2026-05-26 — SQLite file permission repair
+- **Private directories do not guarantee private SQLite files.** `sql.Open` creates `system.db` and `.pmforge` files using the process umask, which can leave them `0644` even inside `0700` directories. `InitDB` and `users.Open` now explicitly chmod the main database file plus existing `-wal`/`-shm` sidecars to `0600` after migration.
+- **Repair existing database file modes on open.** Tests cover both new and pre-existing broad `0644` files so upgrades tighten old installs as well as fresh databases.
+
+### 2026-05-26 — Self-heal swap preflight hardening
+- **Do every non-mutating `SwapInSnapshot` preflight before closing the live DB.** The swap path now rejects missing, non-regular, or SQLite-invalid `.bak` snapshots before touching the live handle, so bad recovery artifacts leave the current database open and usable.
+- **Stale `.corrupt` cleanup must fail loudly.** A non-removable existing forensic path now returns a contextual `clear stale corrupt` error before the live file is moved aside, rather than surfacing a later rename failure after the connection is closed.
+- **Rollback failures need to be visible.** If the snapshot rename fails after the live DB has moved to `.corrupt`, the rollback attempt is still made and any rollback error is included in the returned error instead of being discarded.
+
+### 2026-05-26 — ID entropy failure hardening
+- **Do not use `crypto/rand.Read` in recoverable code paths on Go 1.26.** In this toolchain it fatals the process if the reader fails. PMForge's DB and Agile ID generators now use `io.ReadFull(rand.Reader, ...)` and return contextual errors instead of crashing or emitting zero IDs.
+- **Generated IDs are part of persistence correctness.** `UpsertProject`, chart/document/stakeholder saves, and Agile board/column/work-item/sprint/deployment saves now abort when entropy is unavailable, so a failed CSPRNG cannot create predictable or colliding primary keys.
+- **Tests should force entropy failure through `crypto/rand.Reader`.** The regression tests replace the reader with an erroring source and assert that persistence APIs fail before any write that would rely on a generated ID.
+
+### 2026-05-31 — Agile default board self-repair
+- **`EnsureDefaultBoard` must repair missing standard columns on existing boards.** A default board row can survive a partial seed, manual table edit, or interrupted migration while its `todo`/`doing`/`review`/`done` columns are incomplete. The store now replays idempotent column inserts before returning the board.
+- **Default board creation should be transactional.** Board and column seeding now happen in one transaction so a new default board is not committed without its standard columns.
+- **Do not overwrite customized columns during repair.** Missing defaults are inserted with `ON CONFLICT DO NOTHING`, preserving an existing column's name, order, and WIP limit.
+
+### 2026-05-31 — Recoverable entropy reads
+- **Use `io.ReadFull(rand.Reader, ...)` for recoverable random-byte generation.** `crypto/rand.Read` can fatal the process on this Go toolchain when the reader fails, so password salts, recovery codes, DB IDs, and Agile IDs now use `io.ReadFull` and return contextual errors instead.
+- **Keep signing on signer APIs.** `rsa.SignPKCS1v15(rand.Reader, ...)` already reports entropy/signature failures as an error, so it is not the same hazard as direct `rand.Read`.
+- **Entropy-failure tests should assert errors, not zero output.** The auth and recovery-code tests replace `crypto/rand.Reader` with an erroring source and require `HashPassword` / `generateCode` to return their existing contextual errors.
+
+### 2026-05-31 — Authentication persistence errors
+- **Successful authentication must not hide post-auth write failures.** `Authenticate` now returns contextual errors if `last_login` cannot be updated, matching its documented behavior and surfacing system database write faults.
+- **Transparent password rehash is a persistence operation, not best-effort logging.** If a stored hash needs stronger Argon2id parameters, entropy-generation or `password_hash` update failures now return errors instead of silently leaving the weaker hash in place.
+- **SQLite triggers are useful durability test fixtures.** The auth regression tests use `RAISE(ABORT, ...)` triggers to force specific metadata-write failures without corrupting the database file or relying on platform permissions.
+
+### 2026-05-31 — Atomic backup publication
+- **Do not create the destination `.pmba` until snapshot preparation succeeds.** `CreateArchivalBundle` now clears and creates the SQLite snapshot before opening any archive output, so a blocked stale temp snapshot cannot leave an empty backup file behind.
+- **Publish backups through a side-by-side temp archive.** The zip is written to `<dest>.tmp.archive`, explicitly closed, and only then renamed into place. Cert/manifest/zip failures leave no destination archive for users or automation to mistake as valid.
+- **Temp cleanup errors matter only on success.** Snapshot cleanup is returned if it is the only failure; temp archive cleanup is best-effort after an already-failed backup so the primary user-facing error is preserved.
+
+### 2026-06-04 — Document create→edit→export loop (all 25 kinds)
+- **All 25 document template items in the Dashboard are now clickable.** The "Available document templates" list was non-interactive `<li>` text. Each item is now a `<button>` that calls `NewDocument(kind, name)` and routes to the document editor. The new `newDocument(kind, title)` helper in `Dashboard.svelte` routes to the `'documents'` view; the pre-existing `newCharter()` keeps routing to `'charter'` for the featured card.
+- **`App.svelte` now has a `documents` route loader** that points to `CharterEditor.svelte`. Previously, only `charter` and `report_composer` were wired; any non-charter document opened from the existing-documents list fell to the "no editor" fallback screen. The `CharterEditor` component is already fully generic — it fetches the document by `session.editingId`, looks up the `DocumentDefinition` by `doc.kind`, and renders all fields via `DocumentFieldEditor` — so pointing `documents` at it costs one route-loader line.
+- **DOCX and ODT export buttons are now in the CharterEditor header.** Backend methods `ExportDocumentDOCX` / `ExportDocumentODT` existed since 2026-05-16 but had no frontend entrypoint. Added `exportDOCX()` / `exportODT()` functions (same save-then-export pattern as `exportPDF()`) and two header buttons alongside the existing PDF and Signed PDF buttons.
+- **Excel-alias fallback was hardcoded to `charter_word` — fixed.** `CharterEditor.onMount` had `all.find(d => d.kind === 'charter_word')` as the fallback for a definition with empty fields. There are **two** empty-fields Excel aliases: `charter_excel` and `plan_excel`. The hardcoded fallback would load charter fields for any `plan_excel` document, causing silent data corruption. Fixed to derive the sibling word-kind from the current kind: `doc.kind.endsWith('_excel') ? doc.kind.replace('_excel', '_word') : null`. The guard also tightens the condition to only trigger on `_excel` kinds, so non-Excel kinds with hypothetically empty fields do not fall through.
+
+### 2026-06-04 — User font directory privacy repair
+- **Imported font storage must repair existing directory modes.** `ImportFont` now uses `ensurePrivateDir` for the user font directory, so a pre-existing broad `0755` directory is tightened to `0700` before user-supplied font files are copied into it.
+- **Test existing directories, not only fresh installs.** The font regression creates a broad directory first, imports a `.ttf`, and verifies the directory mode is repaired. Keep this pattern for privacy-sensitive local storage paths where `MkdirAll(..., 0700)` alone does not upgrade old installs.
+
+### 2026-06-05 — Sigma report export directory privacy repair
+- **Sigma report exports must repair existing export directory modes.** `GenerateSigmaReport` writes PDFs as `0600`, but `getExportDir` previously left a pre-existing broad `$HOME/PMForge/exports` directory untouched. It now chmods the directory back to `0700` after `MkdirAll`.
+- **Keep gosec suppressions directory-specific.** `#nosec G302` is acceptable on the Sigma export directory chmod because the target is a private directory. The report file itself remains `0600`, and the regression covers the upgrade path from an existing `0755` directory.
+
+### 2026-06-05 — Secure archive audit fail-closed
+- **SecureArchive success requires a durable `ARCHIVE_CREATED` audit row.** If the archive bundle is written but the success audit insert fails, `SecureArchive` now removes the just-created archive and returns the audit error instead of reporting success with an unaudited artifact.
+- **Use SQLite triggers for audit-failure regressions.** The admin regression blocks only `ARCHIVE_CREATED` inserts, calls the real archive workflow in a temp working directory, and verifies no `PMForge_Archive_*.pmba` file is left behind after the forced audit failure.
+
+### 2026-06-06 — PAdES external validator hardening
+- **CAdES/PAdES CMS needs `SigningCertificateV2` for Poppler validation.** OpenSSL verified the detached CMS without it, but `pdfsig` reported the signature invalid until `Signer.SignPDFCMS` added the RFC 5035 `signingCertificateV2` signed attribute binding the signer cert hash plus issuer/serial into the signed attributes.
+- **External validator harnesses must fail on validator failures through `tee`.** `scripts/validate-pades-external.sh` now uses `pipefail`; `qpdf --check` failure and missing `pdfsig` valid-signature output are hard failures instead of being masked by the report pipe.
+- **The local signed sample must be a syntactically valid PDF, not only ByteRange-verifiable bytes.** The generated sample now has a real one-page Pages tree so `qpdf --check` validates the same artifact used for CMS and `pdfsig` checks.
+
+### 2026-06-06 — PDF/A-3b schedule gate hardening
+- **Use the installed veraPDF before attempting stale auto-downloads.** `scripts/validate-pdfa.sh` now prefers `verapdf` on `PATH`, then falls back to the `/tmp` wrapper/download path. The helper test injects a fake CLI through `PATH` so it remains hermetic.
+- **Validate the intended profile explicitly.** The gate now calls veraPDF with `-f 3b`; otherwise veraPDF can default to PDF/A-1b and report irrelevant failures, including embedded-file restrictions that are valid for PDF/A-3.
+- **Incremental updates must rewrite from the latest object revision.** `MakePDFA3` injects XMP, then OutputIntent; `findObjectBody` must return the latest Catalog object or the second rewrite drops `/Metadata`.
+- **PDF/A stream lengths exclude the EOL marker before `endstream`.** Metadata and ICC streams now always write a separate EOL before `endstream`, so `/Length` matches the payload bytes veraPDF counts.
+- **gofpdf schedule reports need PDF/A post-processing beyond XMP.** `MakePDFA3` now adds the required binary header comment and trailer `/ID`; schedule PDF exports register bundled Source Sans 3 as the Helvetica alias when the font assets are available, avoiding core-font PDF/A failures.
+- **Representative PDF/A samples should use public export APIs.** `scripts/validate-pdfa.sh` now generates a schedule report through `export.GenerateArchivalReport`, a standalone charter through `documents.Render`, and a combined report through `documents.BuildCombinedReport`, all with Source Sans 3 registered where needed.
+
+### 2026-06-06 — V2 encryption-at-rest stopgap
+- **Do not imply PMForge encrypts `.pmforge` databases at rest in V2.** README now states the supported V2 protection path: private per-user data directories plus OS-level disk encryption with FileVault, BitLocker, or LUKS.
+- **Guard release security claims with a cheap textual gate.** `scripts/release-gate-scope-check.sh` now fails if README stops mentioning the OS-level disk-encryption path or the SQLCipher/V3 deferral. This keeps the release docs from drifting into an unsupported native-encryption claim.
 
 ---
 
@@ -524,13 +719,13 @@ This section is the running log of non-obvious discoveries. Every session that l
 | Task                                      | File(s) to touch                                                          |
 | ----------------------------------------- | ------------------------------------------------------------------------- |
 | New chart kind                            | `internal/charts/registry.go` (Definition entry); pick or add engine pkg; engines.go switch; new Svelte editor; App.svelte route; Dashboard card. |
-| New document kind                         | `internal/documents/registry.go` (Kind const + Definition in templates.go). |
+| New document kind                         | `internal/documents/registry.go` (Kind const + Definition in templates.go). Frontend create path is automatic: Dashboard fetches `ListDocumentKinds()` and renders a button per kind; the `documents` route in `App.svelte` already points to `CharterEditor` which handles any kind generically. |
 | New document bespoke PDF renderer         | `internal/documents/<kind>.go` with `Render<Kind>PDF()`; switch in `documents.Render()`. |
 | New database column                       | `internal/db/sqlite.go` Migrate() — additive only.                        |
 | New CLI flag                              | `internal/cli/parser.go` Config struct + flag.*Var; handle in main.go.    |
 | New Wails-exposed App method              | Add to `*App` in `cmd/pmforge/main.go`; declare in `frontend/src/wails-window.d.ts`. |
 | New shared editor pattern                 | `frontend/src/lib/components/charts/_*_shell.svelte` (snippet-based).     |
-| Change SPDX license for a directory       | Update each file's header; add the SPDX ID to `LICENSES/README.md`.       |
+| Change SPDX license for a directory       | Update each file's header; add the SPDX ID to `LICENSES.md`.              |
 
 ---
 

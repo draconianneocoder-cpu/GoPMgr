@@ -9,13 +9,36 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/asn1"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 
 	"github.com/digitorus/pkcs7"
 	"golang.org/x/crypto/pkcs12"
 )
+
+var (
+	oidAttributeSigningCertificateV2 = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 16, 2, 47}
+	oidDigestAlgorithmSHA256         = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 1}
+)
+
+type signingCertificateV2 struct {
+	Certs []essCertIDV2
+}
+
+type essCertIDV2 struct {
+	HashAlgorithm pkix.AlgorithmIdentifier
+	CertHash      []byte
+	IssuerSerial  essIssuerSerial
+}
+
+type essIssuerSerial struct {
+	Issuer       []asn1.RawValue
+	SerialNumber *big.Int
+}
 
 // Signer holds a decoded X.509 certificate and its RSA private key,
 // loaded once from a .p12 / .pfx file and reused for every signing
@@ -92,7 +115,9 @@ func (s *Signer) SignPDFCMS(pdfContent []byte) ([]byte, error) {
 	// this digest level.
 	sd.SetDigestAlgorithm(pkcs7.OIDDigestAlgorithmSHA256)
 
-	if err := sd.AddSigner(s.Cert, s.PrivateKey, pkcs7.SignerInfoConfig{}); err != nil {
+	if err := sd.AddSigner(s.Cert, s.PrivateKey, pkcs7.SignerInfoConfig{
+		ExtraSignedAttributes: []pkcs7.Attribute{signingCertificateV2Attribute(s.Cert)},
+	}); err != nil {
 		return nil, fmt.Errorf("crypto: add signer: %w", err)
 	}
 
@@ -107,4 +132,26 @@ func (s *Signer) SignPDFCMS(pdfContent []byte) ([]byte, error) {
 	sd.Detach()
 
 	return sd.Finish()
+}
+
+func signingCertificateV2Attribute(cert *x509.Certificate) pkcs7.Attribute {
+	certHash := sha256.Sum256(cert.Raw)
+	return pkcs7.Attribute{
+		Type: oidAttributeSigningCertificateV2,
+		Value: signingCertificateV2{
+			Certs: []essCertIDV2{{
+				HashAlgorithm: pkix.AlgorithmIdentifier{Algorithm: oidDigestAlgorithmSHA256},
+				CertHash:      certHash[:],
+				IssuerSerial: essIssuerSerial{
+					Issuer: []asn1.RawValue{{
+						Class:      asn1.ClassContextSpecific,
+						Tag:        4,
+						IsCompound: true,
+						Bytes:      cert.RawIssuer,
+					}},
+					SerialNumber: cert.SerialNumber,
+				},
+			}},
+		},
+	}
 }

@@ -1,13 +1,69 @@
 # SPDX-FileCopyrightText: 2026 The PMForge Contributors
 # SPDX-License-Identifier: CC0-1.0
 #
-# REUSE 3.x annotations for files that cannot carry an inline SPDX
-# header. Today that is the bundled TrueType font binaries, which are
-# fetched by scripts/fetch-fonts.sh (not committed) and embedded at
-# build time. Declaring their licenses here keeps `reuse lint` passing
-# once the fonts are present.
+# REUSE 3.x annotations for files that cannot carry an inline SPDX header.
 
 version = 1
+
+[[annotations]]
+path = ".claude/settings.local.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The PMForge Contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = ".tmp/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The PMForge Contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "PMForge * Image *.png"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "frontend/package-lock.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The PMForge Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "frontend/package.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The PMForge Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "frontend/tsconfig.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The PMForge Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "go.sum"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The PMForge Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "internal/pdfmeta/assets/sRGB.icc"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The Compact ICC Profiles contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "internal/templates/launchpad_seeds.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The PMForge Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
+path = "wails.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The PMForge Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
 path = "internal/fonts/assets/Liberation*.ttf"

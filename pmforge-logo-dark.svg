@@ -1,0 +1,38 @@
+<!--
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-License-Identifier: GPL-3.0-or-later
+
+PMForge Full Logo - Dark Mode
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200" viewBox="0 0 800 200" aria-labelledby="title desc">
+  <title id="title">PMForge Logo - Dark Mode</title>
+  <desc id="desc">PMForge local-first project manager logo: cyan Gantt/anvil icon on deep navy blueprint grid with white text.</desc>
+  <!-- Dark navy background with faint grid -->
+  <defs>
+    <pattern id="darkgrid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1E3A5F" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="200" fill="#0A2540"/>
+  <rect width="800" height="200" fill="url(#darkgrid)" opacity="0.25"/>
+
+  <!-- Gantt/Anvil Icon (cyan bars + anvil base) -->
+  <g transform="translate(45,38)">
+    <!-- Timeline grid lines -->
+    <line x1="0" y1="0" x2="0" y2="125" stroke="#A3C4FF" stroke-width="3" opacity="0.7"/>
+    <line x1="32" y1="0" x2="32" y2="125" stroke="#A3C4FF" stroke-width="3" opacity="0.7"/>
+    <line x1="64" y1="0" x2="64" y2="125" stroke="#A3C4FF" stroke-width="3" opacity="0.7"/>
+    <line x1="96" y1="0" x2="96" y2="125" stroke="#A3C4FF" stroke-width="3" opacity="0.7"/>
+    <!-- Gantt bars (increasing length) -->
+    <rect x="8" y="8" width="38" height="19" rx="4" fill="#00D4FF"/>
+    <rect x="8" y="34" width="58" height="19" rx="4" fill="#00D4FF"/>
+    <rect x="8" y="60" width="88" height="19" rx="4" fill="#00D4FF"/>
+    <!-- Longest bar + anvil base -->
+    <rect x="8" y="86" width="118" height="19" rx="4" fill="#00D4FF"/>
+    <!-- Anvil horn silhouette -->
+    <polygon points="8,115 28,115 38,135 88,135 98,115" fill="#00D4FF"/>
+  </g>
+
+  <!-- PMForge text -->
+  <text x="225" y="142" font-family="'Arial Black', system-ui, sans-serif" font-size="98" font-weight="900" fill="#FFFFFF" letter-spacing="-3.5px" paint-order="stroke fill" stroke="#0A2540" stroke-width="4">PMForge</text>
+</svg>

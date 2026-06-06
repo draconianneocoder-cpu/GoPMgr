@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 The PMForge Contributors
+# SPDX-License-Identifier: CC0-1.0
+
 # Build artifacts
 /build/
 /bin/
@@ -7,6 +10,8 @@
 *.dylib
 pmforge
 pmforge-*
+!pmforge-icon-*.svg
+!pmforge-logo-*.svg
 
 # Wails generated bindings
 /frontend/wailsjs/
@@ -15,6 +20,9 @@ pmforge-*
 /frontend/node_modules/
 /frontend/dist/
 /frontend/.svelte-kit/
+
+# Local validation scratch space
+/.tmp/
 
 # Go
 *.test
@@ -29,12 +37,18 @@ coverage.txt
 *.bak
 temp_snapshot.db
 
+# Downloaded/generated binary inputs
+/internal/fonts/assets/*.ttf
+/PMForge Icon Image *.png
+/PMForge Logo Image *.png
+
 # Certificates (NEVER commit private keys)
 *.p12
 *.pfx
 *.key
 *.pem
 !LICENSES/*.txt
+/LICENSES/OFL-1.1.txt
 
 # OS / editor
 .DS_Store

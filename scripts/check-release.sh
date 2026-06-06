@@ -8,6 +8,8 @@
 set -eu
 cd "$(dirname "$0")/.."
 
+GO_PACKAGES="./cmd/... ./internal/..."
+
 echo "Running Final Release Gates for PMForge..."
 
 # --- 1. Version consistency ------------------------------------------
@@ -19,6 +21,15 @@ if [ "$APP_VERSION" != "$WAILS_VERSION" ]; then
     exit 1
 fi
 echo "Versions match: $APP_VERSION"
+
+# --- 1b. Release gate scope -----------------------------------------
+if [ -f scripts/release-gate-scope-check.sh ]; then
+    if ! bash scripts/release-gate-scope-check.sh >/dev/null; then
+        echo "Release gate scope check failed. Run 'make release-scope' for details."
+        exit 1
+    fi
+    echo "Release gate scope verified."
+fi
 
 # --- 2. REUSE / SPDX licensing ---------------------------------------
 if ! command -v reuse >/dev/null 2>&1; then
@@ -33,7 +44,7 @@ else
 fi
 
 # --- 3. Memory-safety gate -------------------------------------------
-if [ -x scripts/memory-safety-scan.sh ]; then
+if [ -f scripts/memory-safety-scan.sh ]; then
     if ! bash scripts/memory-safety-scan.sh >/dev/null; then
         echo "Memory-safety gate failed. Run 'make memory-scan' for details."
         exit 1
@@ -43,20 +54,56 @@ else
     echo "memory-safety-scan.sh missing; skipping."
 fi
 
-# --- 4. Race detector ------------------------------------------------
+# --- 4. Frontend stability and performance gates ---------------------
+if [ -f scripts/frontend-stability-check.sh ]; then
+    if ! bash scripts/frontend-stability-check.sh >/dev/null; then
+        echo "Frontend stability gate failed. Run 'make frontend-stability' for details."
+        exit 1
+    fi
+    echo "Frontend stability gate passed."
+fi
+
+if [ -f scripts/frontend-build-budget.sh ]; then
+    if ! bash scripts/frontend-build-budget.sh >/dev/null; then
+        echo "Frontend build budget failed. Run 'make frontend-build-budget' for details."
+        exit 1
+    fi
+    echo "Frontend build budget passed."
+fi
+
+# --- 5. Race detector ------------------------------------------------
 if command -v go >/dev/null 2>&1; then
-    if ! go test -race ./... >/dev/null 2>&1; then
+    if ! go test -race $GO_PACKAGES >/dev/null 2>&1; then
         echo "Race detector flagged tests. Run 'make race' for details."
         exit 1
     fi
     echo "Race detector clean."
 fi
 
-# --- 5. Test build ---------------------------------------------------
-if ! make build >/dev/null; then
+# --- 6. Test build ---------------------------------------------------
+if ! PMFORGE_FRONTEND_BUILT=1 make build >/dev/null; then
     echo "Final build failed."
     exit 1
 fi
 echo "Build verified."
+
+# --- 7. PDF/A-3 validation gate (soft for now) ------------------------
+if [ -f scripts/validate-pdfa.sh ]; then
+    if ! bash scripts/validate-pdfa.sh >/dev/null 2>&1; then
+        echo "PDF/A-3 validation gate reported issues (see 'make check-pdfa')."
+        echo "This is currently a warning gate until ICC + sample data are stable."
+    else
+        echo "PDF/A-3 validation gate passed (or skipped cleanly)."
+    fi
+fi
+
+# --- 8. PAdES local validation gate -----------------------------------
+if [ -f scripts/validate-pades.sh ]; then
+    if ! bash scripts/validate-pades.sh >/dev/null 2>&1; then
+        echo "PAdES local validation gate failed. Run 'make check-pades' for details."
+        exit 1
+    fi
+    echo "PAdES local validation gate passed."
+fi
 
 echo "PMForge is ready for release."

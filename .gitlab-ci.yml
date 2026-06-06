@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 The PMForge Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # GitLab CI/CD configuration for PMForge
 # This builds and tests the Go + Svelte application
 
