@@ -87,6 +87,8 @@ lint-all: lint-go lint-frontend ## Run both linters.
 lint: lint-all ## Alias for lint-all.
 
 license-check: ## Verify REUSE/SPDX compliance.
+	rm -rf cmd/pmforge/frontend/dist
+	find . -name .DS_Store -delete
 	reuse lint
 
 package-linux: ## Build a Linux tarball on a Linux host.

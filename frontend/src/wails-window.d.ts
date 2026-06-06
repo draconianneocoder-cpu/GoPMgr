@@ -102,6 +102,11 @@ declare global {
           SaveStakeholder: (s: Stakeholder) => Promise<Stakeholder>;
           DeleteStakeholder: (id: string) => Promise<void>;
           BuildTimeline: () => Promise<TimelineEntry[]>;
+          MoveTimelineEntry: (
+            kind: TimelineKind,
+            sourceID: string,
+            dateISO: string,
+          ) => Promise<TimelineEntry[]>;
           ListHolidays: (fromISO: string, toISO: string) => Promise<HolidayEvent[]>;
           ComputeBudget: () => Promise<BudgetSummary>;
           ExportProjectICS: (includeHolidays: boolean) => Promise<string>;
@@ -186,6 +191,8 @@ declare global {
     end_date?: string;
     description?: string;
     source_id?: string;
+    editable?: boolean;
+    edit_field?: 'start_date' | 'end_date' | string;
   }
 
   interface HolidayEvent {
