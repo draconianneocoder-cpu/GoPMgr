@@ -8,8 +8,8 @@
 *.dll
 *.so
 *.dylib
-pmforge
-pmforge-*
+/pmforge
+/pmforge-*
 !pmforge-icon-*.svg
 !pmforge-logo-*.svg
 
@@ -20,6 +20,7 @@ pmforge-*
 /frontend/node_modules/
 /frontend/dist/
 /frontend/.svelte-kit/
+/cmd/pmforge/frontend/dist/
 
 # Local validation scratch space
 /.tmp/

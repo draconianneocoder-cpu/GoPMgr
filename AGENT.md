@@ -314,7 +314,7 @@ A new contribution should land **with `make memory-scan` passing**. Optional sca
 - Strict PDF/A-3 release claim — the schedule-report, document, and combined-report samples now pass local veraPDF PDF/A-3b validation; still needs release-builder soak before the GUI/docs claim strict conformance as a hard gate.
 - External PAdES validation hardening — the widget is embedded and locally sample-verified by `make check-pades`; OpenSSL detached CMS verification plus local `qpdf`/`pdfsig` checks are covered by `make check-pades-external`, but sample signed PDFs still need Acrobat/DSS validation before treating the implementation as fully battle-tested.
 - Per-user database encryption at rest (SQLCipher/native implementation design).
-- PDM date-dragging on the Timeline (major editor rewrite).
+- CPM/PDM dependency-lag editor design if task-level precedence relationships need visual lag editing beyond the shipped Timeline project/sprint date dragging.
 
 ---
 
@@ -711,6 +711,12 @@ This section is the running log of non-obvious discoveries. Every session that l
 ### 2026-06-06 — V2 encryption-at-rest stopgap
 - **Do not imply PMForge encrypts `.pmforge` databases at rest in V2.** README now states the supported V2 protection path: private per-user data directories plus OS-level disk encryption with FileVault, BitLocker, or LUKS.
 - **Guard release security claims with a cheap textual gate.** `scripts/release-gate-scope-check.sh` now fails if README stops mentioning the OS-level disk-encryption path or the SQLCipher/V3 deferral. This keeps the release docs from drifting into an unsupported native-encryption claim.
+
+### 2026-06-06 — Timeline date-dragging
+- **Keep timeline editing scoped to real timeline boundaries.** `MoveTimelineEntry` updates project start/end and sprint start/end dates, returns a rebuilt timeline, and rejects deployment moves because deployments are DORA history.
+- **Expose editability from the backend.** `timeline.Entry` now carries `editable` and `edit_field`; the Svelte view does not infer write permissions from labels or colors.
+- **The root binary ignore must stay anchored.** `.gitignore` uses `/pmforge` and `/pmforge-*` for root build outputs so `cmd/pmforge` source files remain trackable, while `cmd/pmforge/frontend/dist/` stays ignored as generated embed output.
+- **Release gates must manage generated embed output explicitly.** REUSE scans generated files if `cmd/pmforge/frontend/dist/` is left behind, so `make license-check` cleans it first; `check-release.sh` then recreates it before `go test ./cmd/...` needs the `go:embed` tree.
 
 ---
 

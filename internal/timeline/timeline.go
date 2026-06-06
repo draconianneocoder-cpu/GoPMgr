@@ -26,10 +26,10 @@ import (
 type EntryKind string
 
 const (
-	KindSprintStart EntryKind = "sprint_start"
-	KindSprintEnd   EntryKind = "sprint_end"
-	KindDeployment  EntryKind = "deployment"
-	KindMilestone   EntryKind = "milestone"
+	KindSprintStart  EntryKind = "sprint_start"
+	KindSprintEnd    EntryKind = "sprint_end"
+	KindDeployment   EntryKind = "deployment"
+	KindMilestone    EntryKind = "milestone"
 	KindProjectStart EntryKind = "project_start"
 	KindProjectEnd   EntryKind = "project_end"
 )
@@ -39,9 +39,11 @@ type Entry struct {
 	Kind        EntryKind `json:"kind"`
 	Title       string    `json:"title"`
 	Date        time.Time `json:"date"`
-	EndDate     time.Time `json:"end_date,omitempty"`  // for ranges (sprints)
+	EndDate     time.Time `json:"end_date,omitempty"` // for ranges (sprints)
 	Description string    `json:"description,omitempty"`
 	SourceID    string    `json:"source_id,omitempty"` // sprint ID, deployment ID, etc.
+	Editable    bool      `json:"editable,omitempty"`
+	EditField   string    `json:"edit_field,omitempty"`
 }
 
 // Build returns every timeline Entry for the project in ascending
@@ -52,18 +54,22 @@ func Build(project db.Project, sprints []agile.Sprint, deploys []agile.Deploymen
 
 	if t, ok := parseDate(project.StartDate); ok {
 		out = append(out, Entry{
-			Kind:  KindProjectStart,
-			Title: project.Name + " — start",
-			Date:  t,
-			SourceID: project.ID,
+			Kind:      KindProjectStart,
+			Title:     project.Name + " — start",
+			Date:      t,
+			SourceID:  project.ID,
+			Editable:  true,
+			EditField: "start_date",
 		})
 	}
 	if t, ok := parseDate(project.EndDate); ok {
 		out = append(out, Entry{
-			Kind:     KindProjectEnd,
-			Title:    project.Name + " — end",
-			Date:     t,
-			SourceID: project.ID,
+			Kind:      KindProjectEnd,
+			Title:     project.Name + " — end",
+			Date:      t,
+			SourceID:  project.ID,
+			Editable:  true,
+			EditField: "end_date",
 		})
 	}
 
@@ -77,14 +83,18 @@ func Build(project db.Project, sprints []agile.Sprint, deploys []agile.Deploymen
 				EndDate:     end,
 				Description: s.Goal,
 				SourceID:    s.ID,
+				Editable:    true,
+				EditField:   "start_date",
 			})
 		}
 		if t, ok := parseDate(s.EndDate); ok {
 			out = append(out, Entry{
-				Kind:     KindSprintEnd,
-				Title:    s.Name + " ends",
-				Date:     t,
-				SourceID: s.ID,
+				Kind:      KindSprintEnd,
+				Title:     s.Name + " ends",
+				Date:      t,
+				SourceID:  s.ID,
+				Editable:  true,
+				EditField: "end_date",
 			})
 		}
 	}
