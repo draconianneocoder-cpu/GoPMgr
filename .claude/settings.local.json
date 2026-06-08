@@ -40,7 +40,10 @@
       "Bash(bash -n scripts/validate-pdfa.sh scripts/check-release.sh)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(rm \"/Users/jamesburns/Documents/GitLab/PMForge - Go + Typescript/.git/index.lock\" && echo \"removed lock\")"
+      "Bash(rm \"/Users/jamesburns/Documents/GitLab/PMForge - Go + Typescript/.git/index.lock\" && echo \"removed lock\")",
+      "Bash(make check-pdfa *)",
+      "Bash(make license-check *)",
+      "Bash(make check-release *)"
     ]
   }
 }
