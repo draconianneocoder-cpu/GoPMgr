@@ -95,8 +95,10 @@ fi
 echo "Build verified."
 
 # --- 8. PDF/A-3 validation gate (hard) ----------------------------------
+# Strict: a missing validator/ICC/sample set fails the release rather than
+# certifying PDF/A-3 conformance we could not actually verify.
 if [ -f scripts/validate-pdfa.sh ]; then
-    if ! bash scripts/validate-pdfa.sh >/dev/null 2>&1; then
+    if ! PMFORGE_PDFA_STRICT=1 bash scripts/validate-pdfa.sh >/dev/null 2>&1; then
         echo "PDF/A-3 validation gate failed. Run 'make check-pdfa' for details."
         exit 1
     fi
