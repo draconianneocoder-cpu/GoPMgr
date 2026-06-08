@@ -5,7 +5,7 @@
 // starter artifacts" behaviour. The rules — which industry +
 // methodology combination produces which seed actions — are
 // expressed as a JDM (JSON Decision Model) document evaluated by
-// gorules/zen-go.
+// github.com/gorules/zen (Go binding at zen-go).
 //
 // Why JDM rather than a Go switch
 //
@@ -48,16 +48,16 @@ var rulesJSON []byte
 // Evaluate() call so the spelling is centralised here.
 const decisionKey = "launchpad_seeds"
 
-// Engine is a small wrapper around zen-go's decision engine that
+// Engine is a small wrapper around the zen (github.com/gorules/zen) decision engine (Go binding) that
 // remembers the parsed Launchpad rules. Construct one per process;
 // the underlying engine is safe for concurrent Evaluate calls.
 type Engine struct {
 	z zen.Engine
 }
 
-// NewEngine wires zen-go to the embedded JDM document.
+// NewEngine wires the zen (github.com/gorules/zen) Go binding to the embedded JDM document.
 //
-// The loader is a `func(key string) ([]byte, error)` — zen-go's
+// The loader is a `func(key string) ([]byte, error)` — zen's (Go binding)
 // pluggable file-source interface. We close over the embedded bytes
 // rather than reading from disk so the running binary is
 // self-contained.
@@ -96,7 +96,7 @@ type SeedResponse struct {
 // an error — the GUI treats that as "no auto-seed, user starts
 // blank".
 //
-// zen-go's Evaluate takes the decision key and an input map. We
+// The zen (Go binding) Evaluate takes the decision key and an input map. We
 // build the map by marshalling SeedRequest to JSON and back into a
 // map[string]any — slower than constructing the map directly but
 // keeps SeedRequest as the single source of truth for the input
@@ -114,12 +114,12 @@ func (e *Engine) Evaluate(ctx context.Context, req SeedRequest) (SeedResponse, e
 		return SeedResponse{}, err
 	}
 
-	result, err := e.z.Evaluate(ctx, decisionKey, input)
+	result, err := e.z.Evaluate(decisionKey, input)
 	if err != nil {
 		return SeedResponse{}, fmt.Errorf("templates: evaluate: %w", err)
 	}
 
-	// zen-go's EvaluationResult.Result is a JSON-encoded map; marshal
+	// The zen (Go binding) EvaluationResult.Result is a JSON-encoded map; marshal
 	// back into our typed shape.
 	resultRaw, err := json.Marshal(result.Result)
 	if err != nil {

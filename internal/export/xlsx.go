@@ -19,12 +19,18 @@ import (
 //
 // Excelize writes a real XLSX (zipped XML), not a CSV with an .xlsx
 // extension, so opens cleanly in Excel, LibreOffice Calc, and Numbers.
-func renderXLSX(payload ReportPayload, opts ExportOptions) ([]byte, error) {
+func renderXLSX(payload ReportPayload, opts ExportOptions) (out []byte, err error) {
 	f := excelize.NewFile()
-	defer f.Close()
+	defer func() {
+		if closeErr := f.Close(); err == nil && closeErr != nil {
+			err = closeErr
+		}
+	}()
 
 	const sheet = "Schedule"
-	f.SetSheetName("Sheet1", sheet)
+	if err := f.SetSheetName("Sheet1", sheet); err != nil {
+		return nil, err
+	}
 
 	header := []interface{}{"ID", "Title", "Duration", "ES", "EF", "LS", "LF", "Float", "Critical"}
 	if err := f.SetSheetRow(sheet, "A1", &header); err != nil {

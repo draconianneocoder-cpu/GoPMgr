@@ -11,6 +11,7 @@ import (
 	"sort"
 
 	"github.com/gomutex/godocx"
+	"github.com/gomutex/godocx/docx"
 
 	"pmforge/internal/documents"
 )
@@ -51,8 +52,12 @@ func RenderDocumentDOCX(kind documents.Kind, contentJSON, projectName string) ([
 	}
 
 	// Title block
-	doc.AddHeading(projectName, 0)
-	doc.AddHeading(def.Name, 1)
+	if err := addHeadingDOCX(doc, projectName, 0); err != nil {
+		return nil, err
+	}
+	if err := addHeadingDOCX(doc, def.Name, 1); err != nil {
+		return nil, err
+	}
 
 	// Walk the kind's schema and emit content in registry order.
 	for _, f := range documents.EffectiveFields(kind) {
@@ -66,7 +71,9 @@ func RenderDocumentDOCX(kind documents.Kind, contentJSON, projectName string) ([
 			if len(arr) == 0 {
 				continue
 			}
-			doc.AddHeading(f.Label, 2)
+			if err := addHeadingDOCX(doc, f.Label, 2); err != nil {
+				return nil, err
+			}
 			for _, item := range arr {
 				doc.AddParagraph("• " + item)
 			}
@@ -75,14 +82,18 @@ func RenderDocumentDOCX(kind documents.Kind, contentJSON, projectName string) ([
 			if len(objs) == 0 {
 				continue
 			}
-			doc.AddHeading(f.Label, 2)
+			if err := addHeadingDOCX(doc, f.Label, 2); err != nil {
+				return nil, err
+			}
 			renderObjectArrayDOCX(doc, f, objs)
 		case documents.FieldText:
 			body := toStringLocal(v)
 			if body == "" {
 				continue
 			}
-			doc.AddHeading(f.Label, 2)
+			if err := addHeadingDOCX(doc, f.Label, 2); err != nil {
+				return nil, err
+			}
 			doc.AddParagraph(body)
 		case documents.FieldNumber:
 			if n, ok := v.(float64); ok && n != 0 {
@@ -111,38 +122,60 @@ func RenderDocumentDOCX(kind documents.Kind, contentJSON, projectName string) ([
 		}
 	}
 
-	// gomutex/godocx writes via a path or io.Writer; we serialise
-	// to a temp file and read it back so the export pipeline can
-	// hand back bytes (PMForge always returns []byte from
-	// renderers).
-	tmp, err := os.CreateTemp("", "pmforge-docx-*.docx")
+	return renderDOCXToBytes(doc, "pmforge-docx")
+}
+
+func addHeadingDOCX(doc *docx.RootDoc, text string, level uint) error {
+	if _, err := doc.AddHeading(text, level); err != nil {
+		return fmt.Errorf("export: docx heading: %w", err)
+	}
+	return nil
+}
+
+func renderDOCXToBytes(doc *docx.RootDoc, tempPrefix string) (out []byte, err error) {
+	// gomutex/godocx writes via a path; serialise to a temp file and read it
+	// back so PMForge's export pipeline can continue returning []byte.
+	tmp, err := os.CreateTemp("", tempPrefix+"-*.docx")
 	if err != nil {
 		return nil, err
 	}
 	tmpPath := tmp.Name()
-	tmp.Close()
-	defer os.Remove(tmpPath)
+	if err := tmp.Close(); err != nil {
+		if removeErr := os.Remove(tmpPath); removeErr != nil && !os.IsNotExist(removeErr) {
+			return nil, fmt.Errorf("export: close temp docx: %w; remove: %v", err, removeErr)
+		}
+		return nil, fmt.Errorf("export: close temp docx: %w", err)
+	}
+	defer func() {
+		if removeErr := os.Remove(tmpPath); err == nil && removeErr != nil && !os.IsNotExist(removeErr) {
+			err = fmt.Errorf("export: remove temp docx: %w", removeErr)
+		}
+	}()
 
 	if err := doc.SaveTo(tmpPath); err != nil {
 		return nil, fmt.Errorf("export: docx save: %w", err)
 	}
-	return os.ReadFile(tmpPath)
+	out, err = os.ReadFile(tmpPath) // #nosec G304 -- tmpPath was created by os.CreateTemp in this function.
+	if err != nil {
+		return nil, fmt.Errorf("export: read temp docx: %w", err)
+	}
+	return out, nil
 }
 
 // renderObjectArrayDOCX writes an object-array field. We deliberately
 // render it as a bullet list rather than a Word table, for two
 // reasons:
 //
-//   1. godocx's table API surface (AddRow / AddCell / AddParagraph
-//      chaining + return types) has shifted across minor versions,
-//      so the safest cross-version code path is the paragraph-based
-//      one that's been stable since v0.1.
-//   2. Bulleted lists with bold labels still parse correctly when
-//      the .docx is re-imported into Word / Google Docs / Pages.
+//  1. godocx's table API surface (AddRow / AddCell / AddParagraph
+//     chaining + return types) has shifted across minor versions,
+//     so the safest cross-version code path is the paragraph-based
+//     one that's been stable since v0.1.
+//  2. Bulleted lists with bold labels still parse correctly when
+//     the .docx is re-imported into Word / Google Docs / Pages.
 //
 // When a future version of godocx settles on a documented table
 // signature, this function is the only place to upgrade.
-func renderObjectArrayDOCX(doc *godocx.RootDoc, f documents.Field, objs []map[string]interface{}) {
+func renderObjectArrayDOCX(doc *docx.RootDoc, f documents.Field, objs []map[string]interface{}) {
 	if len(f.ObjectShape) == 0 {
 		for i, obj := range objs {
 			keys := make([]string, 0, len(obj))

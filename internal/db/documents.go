@@ -6,6 +6,7 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -38,7 +39,11 @@ var ValidDocumentStatuses = []string{"draft", "review", "approved", "archived"}
 // bumped automatically.
 func (db *Database) SaveDocument(d Document) (Document, error) {
 	if d.ID == "" {
-		d.ID = newID("doc")
+		id, err := newID("doc")
+		if err != nil {
+			return Document{}, fmt.Errorf("generate document id: %w", err)
+		}
+		d.ID = id
 	}
 	if d.Content == "" {
 		d.Content = "{}"

@@ -59,11 +59,18 @@ declare global {
             subtitle: string,
             sections: ReportSection[],
           ) => Promise<string>;
+          ExportCombinedReportSigned: (
+            reportTitle: string,
+            subtitle: string,
+            sections: ReportSection[],
+            certPath: string,
+            certPassword: string,
+          ) => Promise<string>;
           RepairAndSwap: () => Promise<RepairResult>;
 
           // ----- V2.x: Agile Pack -----
-          AgileEnabled: () => Promise<boolean>;
-          SetAgileEnabled: (enabled: boolean) => Promise<void>;
+          AgileEnabled: () => Promise<boolean>; // persists to project settings
+          SetAgileEnabled: (enabled: boolean) => Promise<void>; // persists to project settings
           EnsureDefaultBoard: () => Promise<[AgileBoard, AgileColumn[]]>;
           SaveColumn: (c: AgileColumn) => Promise<void>;
           DeleteColumn: (id: string) => Promise<void>;
@@ -119,6 +126,55 @@ declare global {
           CheckLatestVersion: () => Promise<UpdateStatus>;
           ExportDocumentDOCX: (id: string) => Promise<string>;
           ExportDocumentODT: (id: string) => Promise<string>;
+          ExportDocumentPDFSigned: (
+            id: string,
+            certPath: string,
+            certPassword: string,
+          ) => Promise<string>;
+          ExportScheduleReportDOCX: () => Promise<string>;
+          ExportScheduleReportODT: () => Promise<string>;
+          ExportScheduleReportPDF: () => Promise<string>;
+
+          // ----- Process Excellence Suite (Six Sigma) -----
+          SigmaCreateProject: (
+            title: string,
+            description: string,
+            beltLevel: string,
+          ) => Promise<SigmaProject>;
+          SigmaListProjects: () => Promise<SigmaProject[]>;
+          SigmaGetProject: (id: string) => Promise<SigmaProject>;
+          SigmaSaveCharter: (c: SigmaCharter) => Promise<void>;
+          SigmaGetCharter: (projectID: string) => Promise<SigmaCharter>;
+          SigmaAdvancePhase: (projectID: string, phase: string) => Promise<void>;
+          SigmaCalculateDescriptive: (values: number[]) => Promise<DescriptiveResult>;
+          SigmaCalculateCapability: (
+            values: number[],
+            usl: number,
+            lsl: number,
+          ) => Promise<CapabilityResult>;
+          SigmaCalculatePareto: (
+            categories: string[],
+            counts: number[],
+          ) => Promise<ParetoItem[]>;
+          SigmaCheckReadiness: (projectID: string, phase: string) => Promise<TollgateResult>;
+          SigmaSaveFishbone: (projectID: string, fb: FishboneData) => Promise<void>;
+          SigmaGetFishbone: (projectID: string) => Promise<FishboneData>;
+          SigmaSaveSolutions: (
+            projectID: string,
+            solutions: SigmaSolution[],
+          ) => Promise<void>;
+          SigmaGetSolutions: (projectID: string) => Promise<SigmaSolution[]>;
+          SigmaSaveControlPlan: (
+            projectID: string,
+            items: SigmaControlPlanItem[],
+          ) => Promise<void>;
+          SigmaGetControlPlan: (projectID: string) => Promise<SigmaControlPlanItem[]>;
+          SigmaSaveSIPOC: (projectID: string, data: SIPOCData) => Promise<void>;
+          SigmaGetSIPOC: (projectID: string) => Promise<SIPOCData>;
+          SigmaGetToolStatus: (projectID: string, phase: string) => Promise<PhaseTools>;
+          SigmaExportProjectReport: (projectID: string) => Promise<string>;
+          SigmaSaveVoC: (projectID: string, data: VoCData) => Promise<void>;
+          SigmaGetVoC: (projectID: string) => Promise<VoCData>;
 
           // ----- Fonts -----
           ListFonts: () => Promise<FontFamilyInfo[]>;
@@ -226,6 +282,8 @@ declare global {
     auto_repair: boolean;
     cert_path: string;
     signature_enabled: boolean;
+    default_font?: string;
+    agile_enabled?: boolean;
   }
 
   interface Account {
@@ -252,6 +310,10 @@ declare global {
     end_date: string;
     budget: number;
     owner: string;
+    industry: string;
+    sub_category: string;
+    methodology: string;
+    country_code: string;
     created_at: string;
     updated_at: string;
   }
@@ -425,5 +487,168 @@ declare global {
     lf: number;
     float: number;
     is_critical: boolean;
+  }
+
+  interface CTQ {
+    customer_need: string;
+    ctq: string;
+    lower_spec: number;
+    upper_spec: number;
+  }
+
+  interface VoCEntry {
+    id: string;
+    customer_need: string;
+    ctq: string;
+    lower_spec: number;
+    upper_spec: number;
+    measurement: string;
+    data_collection: string;
+    priority: number;
+    source: string;
+  }
+
+  interface VoCData {
+    project_id: string;
+    entries: VoCEntry[];
+  }
+
+  type SigmaPhase = 'define' | 'measure' | 'analyze' | 'improve' | 'control';
+  type SigmaProjectStatus = 'active' | 'on_hold' | 'complete';
+  type SigmaBeltLevel = 'green' | 'black' | 'master';
+
+  interface SigmaProject {
+    id: string;
+    title: string;
+    description: string;
+    belt_level: SigmaBeltLevel;
+    phase: SigmaPhase;
+    status: SigmaProjectStatus;
+    sponsor: string;
+    process_owner: string;
+    belt_lead: string;
+    created_at: string;
+    updated_at: string;
+  }
+
+  interface SigmaCharter {
+    id: string;
+    project_id: string;
+    problem_statement: string;
+    business_case: string;
+    goal_statement: string;
+    scope_in: string[];
+    scope_out: string[];
+    ctqs: CTQ[];
+    sponsor: string;
+    updated_at: string;
+  }
+
+  interface DescriptiveResult {
+    mean: number;
+    median: number;
+    std_dev: number;
+    min: number;
+    max: number;
+    count: number;
+  }
+
+  interface CapabilityResult {
+    cp: number;
+    cpk: number;
+    pp: number;
+    ppk: number;
+    sigma_level: number;
+    dpmo: number;
+  }
+
+  interface ParetoItem {
+    category: string;
+    count: number;
+    percentage: number;
+    cumulative_percentage: number;
+  }
+
+  interface TollgateCheck {
+    name: string;
+    passed: boolean;
+    message: string;
+  }
+
+  interface TollgateResult {
+    score: number;
+    can_advance: boolean;
+    checks: TollgateCheck[];
+    missing_list: string;
+  }
+
+  interface FishboneData {
+    problem_statement: string;
+    branches: FishboneBranch[];
+  }
+
+  interface FishboneBranch {
+    category: string;
+    causes: FishboneCause[];
+  }
+
+  interface FishboneCause {
+    id: string;
+    description: string;
+    is_root_cause: boolean;
+    five_whys: string[];
+    evidence: string;
+  }
+
+  interface SigmaSolution {
+    id: string;
+    title: string;
+    description: string;
+    impact: number;
+    effort: number;
+    risk: number;
+    cost: number;
+    selected: boolean;
+    status: string;
+  }
+
+  interface SigmaControlPlanItem {
+    id: string;
+    process_step: string;
+    metric: string;
+    specification: string;
+    measurement_method: string;
+    frequency: string;
+    owner: string;
+    response_plan: string;
+  }
+
+  interface SIPOCElement {
+    id: string;
+    category: string;
+    description: string;
+    owner: string;
+    requirements: string;
+    order: number;
+  }
+
+  interface SIPOCData {
+    project_id: string;
+    process_name: string;
+    process_scope: string;
+    start_trigger: string;
+    end_trigger: string;
+    elements: SIPOCElement[];
+  }
+
+  interface ToolStatus {
+    name: string;
+    icon: string;
+    status: 'completed' | 'active' | 'not_started' | string;
+  }
+
+  interface PhaseTools {
+    phase: string;
+    tools: ToolStatus[];
   }
 }

@@ -64,6 +64,8 @@ func RenderTeamCharterPDF(content map[string]interface{}, projectName string) ([
 
 	tcBullets(pdf, "Ground Rules", getStringSlice(content, "ground_rules"))
 
+	DrawCompactSignatureBox(pdf, projectName, time.Now().Format("2006-01-02"))
+
 	// Footer
 	pdf.SetY(-15)
 	pdf.SetFont("Helvetica", "I", 8)

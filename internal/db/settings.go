@@ -21,6 +21,9 @@ type UserSettings struct {
 	// fonts catalog or a user-imported family). Empty means "use the
 	// catalog default".
 	DefaultFont string `json:"default_font"`
+	// AgileEnabled persists the Software-Dev Pack toggle so the pack
+	// state survives project close/reopen without a CLI flag.
+	AgileEnabled bool `json:"agile_enabled"`
 }
 
 // SaveSettings upserts the singleton settings row. The id is hard-coded
@@ -28,16 +31,17 @@ type UserSettings struct {
 func (db *Database) SaveSettings(s UserSettings) error {
 	const q = `
 		INSERT INTO settings
-			(id, default_password, export_theme, auto_repair, cert_path, signature_enabled, default_font)
+			(id, default_password, export_theme, auto_repair, cert_path, signature_enabled, default_font, agile_enabled)
 		VALUES
-			(1, ?, ?, ?, ?, ?, ?)
+			(1, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			default_password  = excluded.default_password,
 			export_theme      = excluded.export_theme,
 			auto_repair       = excluded.auto_repair,
 			cert_path         = excluded.cert_path,
 			signature_enabled = excluded.signature_enabled,
-			default_font      = excluded.default_font
+			default_font      = excluded.default_font,
+			agile_enabled     = excluded.agile_enabled
 	`
 	_, err := db.Conn.Exec(q,
 		s.DefaultPassword,
@@ -46,6 +50,7 @@ func (db *Database) SaveSettings(s UserSettings) error {
 		s.CertPath,
 		boolToInt(s.SignatureEnabled),
 		s.DefaultFont,
+		boolToInt(s.AgileEnabled),
 	)
 	return err
 }
@@ -54,14 +59,15 @@ func (db *Database) SaveSettings(s UserSettings) error {
 // (theme=modern, auto-repair=on) when no row has been written yet.
 func (db *Database) GetSettings() (UserSettings, error) {
 	var (
-		s           UserSettings
-		autoRepair  int
-		signatureOn int
+		s            UserSettings
+		autoRepair   int
+		signatureOn  int
+		agileEnabled int
 	)
 	err := db.Conn.QueryRow(
-		`SELECT default_password, export_theme, auto_repair, cert_path, signature_enabled, default_font
+		`SELECT default_password, export_theme, auto_repair, cert_path, signature_enabled, default_font, agile_enabled
 		 FROM settings WHERE id = 1`,
-	).Scan(&s.DefaultPassword, &s.ExportTheme, &autoRepair, &s.CertPath, &signatureOn, &s.DefaultFont)
+	).Scan(&s.DefaultPassword, &s.ExportTheme, &autoRepair, &s.CertPath, &signatureOn, &s.DefaultFont, &agileEnabled)
 
 	if err == sql.ErrNoRows {
 		return UserSettings{ExportTheme: "modern", AutoRepair: true}, nil
@@ -71,6 +77,7 @@ func (db *Database) GetSettings() (UserSettings, error) {
 	}
 	s.AutoRepair = autoRepair != 0
 	s.SignatureEnabled = signatureOn != 0
+	s.AgileEnabled = agileEnabled != 0
 	return s, nil
 }
 

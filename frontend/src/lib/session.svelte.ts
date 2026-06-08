@@ -42,6 +42,8 @@ export const session = $state<{
     | 'backlog'
     | 'sprints'
     | 'dora'
+    | 'sigma_dashboard'
+    | 'sigma_project'
     | 'launchpad'
     | 'stakeholders'
     | 'timeline'

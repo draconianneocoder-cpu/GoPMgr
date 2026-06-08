@@ -6,16 +6,15 @@ package export
 import (
 	"archive/zip"
 	"bytes"
-	"encoding/xml"
 	"fmt"
 	"sort"
 	"time"
 )
 
-// renderDocumentODT produces an OpenDocument Text (.odt) file containing the 
-// CPM schedule data from the ReportPayload. It follows the same structure as 
+// renderDocumentODT produces an OpenDocument Text (.odt) file containing the
+// CPM schedule data from the ReportPayload. It follows the same structure as
 // the PDF report but hand-builds the ODT XML package.
-func renderDocumentODT(payload export.ReportPayload, opts export.ExportOptions) ([]byte, error) {
+func renderDocumentODT(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 	// Build the document body XML for the CPM report
 	body, err := renderODTReportBody(payload, opts.Title)
 	if err != nil {
@@ -68,7 +67,7 @@ func renderDocumentODT(payload export.ReportPayload, opts export.ExportOptions) 
 }
 
 // renderODTReportBody generates the content.xml for a CPM report ODT file.
-func renderODTReportBody(payload export.ReportPayload, title string) (string, error) {
+func renderODTReportBody(payload ReportPayload, title string) (string, error) {
 	var buf bytes.Buffer
 	buf.WriteString(`<?xml version="1.0" encoding="UTF-8"?>
 <office:document-content ` + odtNS + ` office:version="1.2">
@@ -124,112 +123,29 @@ func renderODTReportBody(payload export.ReportPayload, title string) (string, er
 	return buf.String(), nil
 }
 
-// ---- XML templates ----
-
-const odtNS = `xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" ` +
-	`xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" ` +
-	`xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" ` +
-	`xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" ` +
-	`xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"`
-
-func odtManifest() string {
-	return `<?xml version="1.0" encoding="UTF-8"?>
-<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2">
-  <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.text" manifest:full-path="/"/>
-  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="content.xml"/>
-  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="styles.xml"/>
-  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="meta.xml"/>
-</manifest:manifest>
-`
-}
-
-func odtMeta(title, subject, isoNow string) string {
-	// The dc: namespace fields are what readers display in
-	// File → Properties.
-	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<office:document-meta xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
-                      xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0"
-                      xmlns:dc="http://purl.org/dc/elements/1.1/"
-                      office:version="1.2">
-  <office:meta>
-    <meta:generator>PMForge</meta:generator>
-    <dc:title>%s</dc:title>
-    <dc:subject>%s</dc:subject>
-    <meta:creation-date>%s</meta:creation-date>
-    <dc:date>%s</dc:date>
-  </office:meta>
-</office:document-meta>
-`, xmlEscape(title), xmlEscape(subject), isoNow, isoNow)
-}
-
-// odtStyles holds the heading + table styles content.xml references.
-func odtStyles() string {
-	return `<?xml version="1.0" encoding="UTF-8"?>
-<office:document-styles ` + odtNS + ` office:version="1.2">
-  <office:styles>
-    <style:style style:name="Title" style:family="paragraph" style:parent-style-name="Standard">
-      <style:text-properties fo:font-size="24pt" fo:font-weight="bold"/>
-      <style:paragraph-properties fo:margin-bottom="0.25in"/>
-    </style:style>
-    <style:style style:name="Heading_1" style:family="paragraph" style:parent-style-name="Standard">
-      <style:text-properties fo:font-size="18pt" fo:font-weight="bold"/>
-      <style:paragraph-properties fo:margin-top="0.20in" fo:margin-bottom="0.10in"/>
-    </style:style>
-    <style:style style:name="Heading_2" style:family="paragraph" style:parent-style-name="Standard">
-      <style:text-properties fo:font-size="14pt" fo:font-weight="bold"/>
-      <style:paragraph-properties fo:margin-top="0.15in" fo:margin-bottom="0.05in"/>
-    </style:style>
-    <style:style style:name="Standard" style:family="paragraph" style:parent-style-name="Standard"/>
-    <style:style style:name="CellHeader" style:family="table-cell">
-      <style:table-cell-properties fo:padding="0.04in" fo:border="0.5pt solid #94a3b8" fo:background-color="#1e293b"/>
-    </style:style>
-    <style:style style:name="Cell" style:family="table-cell">
-      <style:table-cell-properties fo:padding="0.04in" fo:border="0.5pt solid #94a3b8"/>
-    </style:style>
-  </office:styles>
-</office:document-styles>
-`
-}
-
-// writeODTPara emits a paragraph with the given text style.
-func writeODTPara(buf *bytes.Buffer, style, text string) {
-	fmt.Fprintf(buf, `    <text:p text:style-name="%s">%s</text:p>`+"\n",
-		style, xmlEscape(text))
-}
-
-// writeODTTableHeaders emits a table header row.
 func writeODTTableHeaders(buf *bytes.Buffer, headers []string) {
-	fmt.Fprintf(buf, `    <table:table>`+"\n")
-	// Column declarations
+	buf.WriteString(`    <table:table>` + "\n")
 	for range headers {
-		fmt.Fprintf(buf, `      <table:table-column/>`+"\n")
+		buf.WriteString(`      <table:table-column/>` + "\n")
 	}
-	// Header row
-	fmt.Fprintf(buf, `      <table:table-row>`+"\n")
+	buf.WriteString(`      <table:table-row>` + "\n")
 	for _, h := range headers {
-		fmt.Fprintf(buf, `        <table:table-cell table:style-name="CellHeader">`+"\n")
+		buf.WriteString(`        <table:table-cell table:style-name="CellHeader">` + "\n")
 		writeODTPara(buf, "Standard", h)
-		fmt.Fprintf(buf, `        </table:table-cell>`+"\n")
+		buf.WriteString(`        </table:table-cell>` + "\n")
 	}
-	fmt.Fprintf(buf, `      </table:table-row>`+"\n")
+	buf.WriteString(`      </table:table-row>` + "\n")
 }
 
-// writeODTTableRows emits the table body rows.
 func writeODTTableRows(buf *bytes.Buffer, rows [][]string) {
 	for _, row := range rows {
-		fmt.Fprintf(buf, `      <table:table-row>`+"\n")
+		buf.WriteString(`      <table:table-row>` + "\n")
 		for _, cell := range row {
-			fmt.Fprintf(buf, `        <table:table-cell table:style-name="Cell">`+"\n")
+			buf.WriteString(`        <table:table-cell table:style-name="Cell">` + "\n")
 			writeODTPara(buf, "Standard", cell)
-			fmt.Fprintf(buf, `        </table:table-cell>`+"\n")
+			buf.WriteString(`        </table:table-cell>` + "\n")
 		}
-		fmt.Fprintf(buf, `      </table:table-row>`+"\n")
+		buf.WriteString(`      </table:table-row>` + "\n")
 	}
-	fmt.Fprintf(buf, `    </table:table>`+"\n")
-}
-
-func xmlEscape(s string) string {
-	var b bytes.Buffer
-	_ = xml.EscapeText(&b, []byte(s))
-	return b.String()
+	buf.WriteString(`    </table:table>` + "\n")
 }

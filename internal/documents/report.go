@@ -12,6 +12,7 @@ import (
 	"github.com/jung-kurt/gofpdf"
 
 	"pmforge/internal/charts/pdfrender"
+	"pmforge/internal/pdfmeta"
 )
 
 // ReportSection is one entry in a combined report. The caller passes
@@ -35,6 +36,10 @@ type ReportSpec struct {
 	ProjectName    string                   `json:"project_name"`
 	Sections       []ReportSection          `json:"sections"`
 	ResolvedCharts map[string]ResolvedChart `json:"-"`
+	// AddSignatureBlock causes a compact PAdES signature box to be drawn
+	// at the bottom of the last content page (instead of always appending
+	// a full separate page).
+	AddSignatureBlock bool
 }
 
 // ResolvedChart carries the data BuildCombinedReport needs to embed
@@ -177,11 +182,33 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 		}
 	}
 
+	if spec.AddSignatureBlock {
+		DrawCompactSignatureBox(pdf, spec.Author, time.Now().UTC().Format("2006-01-02"))
+	}
+
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	raw := buf.Bytes()
+
+	// Apply PDF/A-3 XMP + OutputIntent to combined reports as well.
+	xspec := pdfmeta.XMPSpec{
+		Title:       spec.ReportTitle,
+		Author:      spec.Author,
+		Subject:     "PMForge Combined Report",
+		CreatorTool: "PMForge",
+	}
+	if icc := pdfmeta.DefaultICCProfile(); len(icc) > 0 {
+		if tagged, err := pdfmeta.MakePDFA3(raw, xspec, icc); err == nil {
+			return tagged, nil
+		}
+	} else if xmp := pdfmeta.BuildXMPPacket(xspec); len(xmp) > 0 {
+		if tagged, err := pdfmeta.InjectXMPStream(raw, xmp); err == nil {
+			return tagged, nil
+		}
+	}
+	return raw, nil
 }
 
 // chartRefMention is one chart_ref field BuildCombinedReport

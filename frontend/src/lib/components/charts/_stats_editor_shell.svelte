@@ -45,21 +45,33 @@ JSON.stringified back to db.charts.data.
   let status = $state('');
   let layoutError = $state('');
 
-  // Initialise doc from the prop's initial value. Editors pass a
-  // structurally-complete blank document so the form fields all bind
+  function initialDocValue() {
+    return initialDoc;
+  }
+
+  // Initialise doc from the prop's current initial value. Editors pass
+  // a structurally-complete blank document so the form fields all bind
   // to defined slots.
   if (doc === undefined) {
-    doc = initialDoc;
+    doc = initialDocValue();
+  }
+
+  function handleKeyDown(e: KeyboardEvent) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      void save();
+    }
   }
 
   onMount(async () => {
+    window.addEventListener('keydown', handleKeyDown);
     if (!session.editingId) return;
     chart = await window.go.main.App.GetChart(session.editingId);
     try {
       const parsed = JSON.parse(chart.data) as TDoc;
-      doc = { ...initialDoc, ...parsed };
+      doc = { ...initialDocValue(), ...parsed };
     } catch {
-      doc = initialDoc;
+      doc = initialDocValue();
     }
     await refreshLayout();
   });
@@ -113,6 +125,7 @@ JSON.stringified back to db.charts.data.
   // Concurrency hardening: cancel pending debounce on unmount.
   // (AGENT.md §6 — every editor with a setTimeout MUST clean up.)
   onDestroy(() => {
+    window.removeEventListener('keydown', handleKeyDown);
     if (debounceTimer) {
       clearTimeout(debounceTimer);
       debounceTimer = null;

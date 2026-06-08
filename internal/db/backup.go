@@ -34,7 +34,7 @@ type BackupManifest struct {
 // It refuses to back up a corrupt database — there is no point in
 // preserving bad state. Run InformativeSelfHeal first if integrity
 // fails.
-func (db *Database) CreateArchivalBundle(destPath string, certPaths []string) error {
+func (db *Database) CreateArchivalBundle(destPath string, certPaths []string) (err error) {
 	// 1. Integrity gate.
 	ok, err := db.CheckIntegrity()
 	if err != nil {
@@ -47,24 +47,50 @@ func (db *Database) CreateArchivalBundle(destPath string, certPaths []string) er
 		).ToError()
 	}
 
-	// 2. Create the archive file.
-	archiveFile, err := os.Create(destPath)
-	if err != nil {
-		return debug.Wrap(err, "BACKUP_FILE_CREATION_FAILED").ToError()
-	}
-	defer archiveFile.Close()
-
-	zipWriter := zip.NewWriter(archiveFile)
-	defer zipWriter.Close()
-
-	// 3. Snapshot the database into a temp file, then bundle it.
+	// 2. Snapshot the database into a temp file before creating the
+	// destination archive. A snapshot failure must not publish an empty
+	// or partial backup bundle.
 	tempDB := destPath + ".tmp.snapshot"
 	// VACUUM INTO refuses to overwrite, so clear any stale temp first.
-	_ = os.Remove(tempDB)
+	if err := removeIfExists(tempDB); err != nil {
+		return debug.Wrap(err, "BACKUP_STALE_SNAPSHOT_REMOVE_FAILED").ToError()
+	}
 	if err := db.CreateSnapshot(tempDB); err != nil {
 		return debug.Wrap(err, "BACKUP_SNAPSHOT_FAILED").ToError()
 	}
-	defer os.Remove(tempDB)
+	defer func() {
+		if cleanupErr := removeIfExists(tempDB); err == nil && cleanupErr != nil {
+			err = debug.Wrap(cleanupErr, "BACKUP_SNAPSHOT_CLEANUP_FAILED").ToError()
+		}
+	}()
+
+	// 3. Write into a side-by-side temp archive, then publish with a
+	// rename only after the zip central directory and file close succeed.
+	tempArchive := destPath + ".tmp.archive"
+	if err := removeIfExists(tempArchive); err != nil {
+		return debug.Wrap(err, "BACKUP_STALE_ARCHIVE_REMOVE_FAILED").ToError()
+	}
+	archiveFile, err := os.OpenFile(tempArchive, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) // #nosec G304 -- user-selected backup destination path-derived temp file.
+	if err != nil {
+		return debug.Wrap(err, "BACKUP_FILE_CREATION_FAILED").ToError()
+	}
+
+	zipWriter := zip.NewWriter(archiveFile)
+	archiveClosed := false
+	defer func() {
+		if !archiveClosed {
+			if closeErr := closeZipArchive(zipWriter, archiveFile); err == nil && closeErr != nil {
+				err = closeErr
+			}
+		}
+		if err != nil {
+			// Preserve the primary backup failure; temp cleanup is best-effort
+			// once the user-facing operation has already failed.
+			if cleanupErr := removeIfExists(tempArchive); cleanupErr != nil {
+				return
+			}
+		}
+	}()
 
 	if err := addFileToZip(zipWriter, tempDB, "project.pmforge"); err != nil {
 		return debug.Wrap(err, "BACKUP_SNAPSHOT_BUNDLE_FAILED").ToError()
@@ -105,15 +131,37 @@ func (db *Database) CreateArchivalBundle(destPath string, certPaths []string) er
 		return debug.Wrap(err, "MANIFEST_WRITE_FAILED").ToError()
 	}
 
+	if err := closeZipArchive(zipWriter, archiveFile); err != nil {
+		return err
+	}
+	archiveClosed = true
+	if err := os.Rename(tempArchive, destPath); err != nil {
+		return debug.Wrap(err, "BACKUP_ARCHIVE_PUBLISH_FAILED").ToError()
+	}
+
 	return nil
 }
 
-func addFileToZip(zw *zip.Writer, srcPath, destName string) error {
-	src, err := os.Open(srcPath)
+func closeZipArchive(zw *zip.Writer, file *os.File) error {
+	if err := zw.Close(); err != nil {
+		return debug.Wrap(err, "BACKUP_ZIP_CLOSE_FAILED").ToError()
+	}
+	if err := file.Close(); err != nil {
+		return debug.Wrap(err, "BACKUP_FILE_CLOSE_FAILED").ToError()
+	}
+	return nil
+}
+
+func addFileToZip(zw *zip.Writer, srcPath, destName string) (err error) {
+	src, err := os.Open(srcPath) // #nosec G304 -- backup sources are PMForge snapshots or user-selected certificate files.
 	if err != nil {
 		return err
 	}
-	defer src.Close()
+	defer func() {
+		if closeErr := src.Close(); err == nil && closeErr != nil {
+			err = closeErr
+		}
+	}()
 
 	dst, err := zw.Create(destName)
 	if err != nil {

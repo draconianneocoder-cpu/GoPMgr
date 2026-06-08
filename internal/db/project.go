@@ -6,6 +6,7 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -64,7 +65,11 @@ func (db *Database) GetProject() (Project, error) {
 // a new project is created and its ID returned via the result.
 func (db *Database) UpsertProject(p Project) (Project, error) {
 	if p.ID == "" {
-		p.ID = newID("prj")
+		id, err := newID("prj")
+		if err != nil {
+			return Project{}, fmt.Errorf("generate project id: %w", err)
+		}
+		p.ID = id
 	}
 	if p.CountryCode == "" {
 		p.CountryCode = "US"

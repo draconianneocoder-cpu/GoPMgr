@@ -9,8 +9,10 @@ import (
 	"encoding/base32"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
+	"unicode"
 
 	"pmforge/internal/auth"
 )
@@ -199,7 +201,7 @@ func (s *Store) RemainingRecoveryCodes(username string) (int, error) {
 // for legibility. Example: "JBSWY3DP-EHPK3PXP".
 func generateCode() (string, error) {
 	var buf [rawCodeBytes]byte
-	if _, err := rand.Read(buf[:]); err != nil {
+	if _, err := io.ReadFull(rand.Reader, buf[:]); err != nil {
 		return "", fmt.Errorf("recovery: read entropy: %w", err)
 	}
 	enc := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(buf[:])
@@ -213,8 +215,13 @@ func generateCode() (string, error) {
 // and uppercases it. The user might paste "abcd-1234" or "ABCD 1234"
 // or "abcd1234" — all three should match the same stored hash.
 func canonicalise(s string) string {
-	s = strings.ToUpper(s)
-	s = strings.ReplaceAll(s, "-", "")
-	s = strings.ReplaceAll(s, " ", "")
-	return s
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range strings.ToUpper(s) {
+		if r == '-' || unicode.IsSpace(r) {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }

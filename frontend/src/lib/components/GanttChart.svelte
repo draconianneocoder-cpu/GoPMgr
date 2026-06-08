@@ -39,7 +39,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
           aria-valuemin="0"
           aria-valuemax={totalDuration}
           aria-label={`Task ${task.title}`}
-          tabindex="0"
         >
           <span class="sr-only">
             {task.title} starts on day {task.es} and ends on day {task.ef}.

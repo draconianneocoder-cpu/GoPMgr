@@ -14,6 +14,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onMount } from 'svelte';
   import { goto } from '../../session.svelte';
+  import { showToast } from '../../toast';
+  import SignCertificateModal from '../SignCertificateModal.svelte';
 
   let reportTitle = $state('Project Report');
   let subtitle = $state('');
@@ -23,6 +25,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let status = $state('');
   let exporting = $state(false);
   let dragIndex = $state<number | null>(null);
+  let showSignModal = $state(false);
+  let pendingSignCertPath = $state('');
 
   onMount(async () => {
     try {
@@ -37,10 +41,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (included.find((x) => x.id === d.id)) return;
     included = [...included, d];
   }
+
   function exclude(id: string) {
     included = included.filter((d) => d.id !== id);
     delete descriptions[id];
   }
+
   function move(id: string, delta: -1 | 1) {
     const i = included.findIndex((d) => d.id === id);
     const j = i + delta;
@@ -49,13 +55,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
     [next[i], next[j]] = [next[j], next[i]];
     included = next;
   }
+
   function onDragStart(e: DragEvent, i: number) {
     dragIndex = i;
     e.dataTransfer?.setData('text/plain', String(i));
   }
+
   function onDragOver(e: DragEvent) {
     e.preventDefault();
   }
+
   function onDrop(e: DragEvent, target: number) {
     e.preventDefault();
     const src = dragIndex;
@@ -67,6 +76,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     included = next;
   }
 
+  function buildSections(): ReportSection[] {
+    return included.map((d) => ({
+      document_id: d.id,
+      title: d.title,
+      description: descriptions[d.id] ?? '',
+    }));
+  }
+
   async function exportReport() {
     if (included.length === 0) {
       status = 'Add at least one section before exporting.';
@@ -75,17 +92,58 @@ SPDX-License-Identifier: GPL-3.0-or-later
     exporting = true;
     status = '';
     try {
-      const sections = included.map((d) => ({
-        document_id: d.id,
-        title: d.title,
-        description: descriptions[d.id] ?? '',
-      }));
-      const path = await window.go.main.App.ExportCombinedReport(reportTitle, subtitle, sections);
+      const path = await window.go.main.App.ExportCombinedReport(
+        reportTitle,
+        subtitle,
+        buildSections(),
+      );
       status = `Report exported to ${path}`;
     } catch (err: any) {
       status = `Export failed: ${err}`;
     } finally {
       exporting = false;
+    }
+  }
+
+  async function exportSignedReport() {
+    if (included.length === 0) {
+      status = 'Add at least one section before exporting.';
+      return;
+    }
+    let certPath = '';
+    try {
+      const s = await window.go.main.App.GetSettings();
+      if (s?.cert_path) certPath = s.cert_path;
+    } catch {}
+    pendingSignCertPath = certPath;
+    showSignModal = true;
+  }
+
+  async function handleSignedConfirm(pwd: string) {
+    showSignModal = false;
+    if (!pendingSignCertPath || !pwd) {
+      status = 'Certificate path and password are required for signed export.';
+      return;
+    }
+
+    exporting = true;
+    status = '';
+    try {
+      const path = await window.go.main.App.ExportCombinedReportSigned(
+        reportTitle,
+        subtitle,
+        buildSections(),
+        pendingSignCertPath,
+        pwd,
+      );
+      status = `Signed report exported to ${path}`;
+      showToast('Signed combined report exported successfully', 'success');
+    } catch (err: any) {
+      status = `Signed export failed: ${err}`;
+      showToast(`Signed export failed: ${err}`, 'error');
+    } finally {
+      exporting = false;
+      pendingSignCertPath = '';
     }
   }
 
@@ -109,6 +167,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
       class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
     >
       {exporting ? 'Exporting...' : 'Export PDF'}
+    </button>
+    <button
+      onclick={exportSignedReport}
+      disabled={exporting || included.length === 0}
+      class="text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
+      title="Export with an embedded PAdES B-B digital signature"
+    >
+      {exporting ? 'Signing...' : 'Sign & Export'}
     </button>
   </header>
 
@@ -212,4 +278,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </section>
     </div>
   </main>
+
+  <SignCertificateModal
+    bind:open={showSignModal}
+    certPath={pendingSignCertPath}
+    onConfirm={handleSignedConfirm}
+  />
 </div>

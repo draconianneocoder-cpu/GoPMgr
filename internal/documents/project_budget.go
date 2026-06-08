@@ -6,6 +6,7 @@ package documents
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jung-kurt/gofpdf"
@@ -176,14 +177,15 @@ func formatMoney(v float64) string {
 	intPart := s[:dotIdx]
 	fracPart := s[dotIdx:]
 	// Insert commas every three digits from right.
-	out := make([]byte, 0, len(intPart)+len(intPart)/3+1)
+	var out strings.Builder
+	out.Grow(len(intPart) + len(intPart)/3 + 1)
 	for i, ch := range intPart {
 		if i > 0 && (len(intPart)-i)%3 == 0 {
-			out = append(out, ',')
+			out.WriteByte(',')
 		}
-		out = append(out, byte(ch))
+		out.WriteRune(ch)
 	}
-	return string(out) + fracPart
+	return out.String() + fracPart
 }
 
 func getStringBudget(m map[string]interface{}, key string) string {

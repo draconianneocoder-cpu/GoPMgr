@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -42,11 +43,13 @@ var ManifestURL = ""
 // AND the update check, fail-closed.
 var UpdateChannelPublicKey = ""
 
+const maxManifestBytes int64 = 64 * 1024
+
 // Status is the result returned to the GUI / CLI.
 type Status struct {
-	Configured      bool   `json:"configured"`        // ManifestURL + key set?
-	Current         string `json:"current"`           // running binary version
-	Latest          string `json:"latest,omitempty"`  // empty when no update
+	Configured      bool   `json:"configured"`       // ManifestURL + key set?
+	Current         string `json:"current"`          // running binary version
+	Latest          string `json:"latest,omitempty"` // empty when no update
 	UpdateAvailable bool   `json:"update_available"`
 	ReleaseNotes    string `json:"release_notes,omitempty"`
 	DownloadURL     string `json:"download_url,omitempty"`
@@ -80,6 +83,12 @@ func CheckLatest(ctx context.Context) (Status, error) {
 		return st, fmt.Errorf("update: public key has wrong length %d", len(pubBytes))
 	}
 
+	manifestURL, err := url.Parse(ManifestURL)
+	if err != nil || manifestURL.Scheme != "https" || manifestURL.Host == "" {
+		st.Error = "update: manifest URL must be HTTPS"
+		return st, nil
+	}
+
 	client := &http.Client{Timeout: 8 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, "GET", ManifestURL, nil)
 	if err != nil {
@@ -98,7 +107,7 @@ func CheckLatest(ctx context.Context) (Status, error) {
 		return st, nil
 	}
 
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	raw, err := readManifestBody(resp.Body)
 	if err != nil {
 		st.Error = "read: " + err.Error()
 		return st, nil
@@ -115,6 +124,17 @@ func CheckLatest(ctx context.Context) (Status, error) {
 	st.DownloadURL = payload.DownloadURL
 	st.UpdateAvailable = isNewer(payload.LatestVersion, cli.Version)
 	return st, nil
+}
+
+func readManifestBody(r io.Reader) ([]byte, error) {
+	raw, err := io.ReadAll(io.LimitReader(r, maxManifestBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(raw)) > maxManifestBytes {
+		return nil, fmt.Errorf("manifest too large: exceeds %d bytes", maxManifestBytes)
+	}
+	return raw, nil
 }
 
 // Check is the CLI `--update` entry point. Prints a one-line

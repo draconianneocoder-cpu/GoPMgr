@@ -887,6 +887,7 @@ func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, erro
 	appended.WriteString("  /Type /Sig\n")
 	appended.WriteString("  /Filter /Adobe.PPKLite\n")
 	appended.WriteString("  /SubFilter /ETSI.CAdES.detached\n")
+	fmt.Fprintf(&appended, "  /M (%s)\n", pdfDateUTC(time.Now()))
 	// Large zero placeholder for Contents
 	fmt.Fprintf(&appended, "  /Contents <%s>\n", bytes.Repeat([]byte("00"), placeholderHexLen/2))
 	fmt.Fprintf(&appended, "  /ByteRange [%s]\n", bytes.Repeat([]byte(" "), byteRangePlaceholderLen))
@@ -1039,6 +1040,10 @@ func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, erro
 	copy(out[contentsHexStart:], realContents)
 
 	return out, nil
+}
+
+func pdfDateUTC(t time.Time) string {
+	return t.UTC().Format("D:20060102150405Z")
 }
 
 // hexEncodeTo writes the hex representation of src into dst (must be large enough).

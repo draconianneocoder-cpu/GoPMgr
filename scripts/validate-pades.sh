@@ -15,9 +15,25 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 SAMPLE_DIR="$ROOT/.tmp/pmforge-pades-test"
+PADES_LOCK="$ROOT/.tmp/pmforge-pades-test.lock"
 GENERATOR="$SAMPLE_DIR/validate_pades.go"
 
 echo "=== PAdES Local Validation Gate ==="
+
+acquire_pades_lock() {
+	if [ "${PMFORGE_PADES_LOCK_HELD:-0}" = "1" ]; then
+		return
+	fi
+	mkdir -p "$ROOT/.tmp"
+	while ! mkdir "$PADES_LOCK" 2>/dev/null; do
+		sleep 0.1
+	done
+	echo "$$" > "$PADES_LOCK/pid"
+	trap 'rm -rf "$PADES_LOCK"' EXIT INT TERM
+	export PMFORGE_PADES_LOCK_HELD=1
+}
+
+acquire_pades_lock
 
 rm -rf "$SAMPLE_DIR"
 mkdir -p "$SAMPLE_DIR"
@@ -62,6 +78,7 @@ func main() {
 		[]byte("/Type /Sig"),
 		[]byte("/Filter /Adobe.PPKLite"),
 		[]byte("/SubFilter /ETSI.CAdES.detached"),
+		[]byte("/M (D:"),
 		[]byte("/Subtype /Widget"),
 		[]byte("/FT /Sig"),
 		[]byte("/AcroForm"),

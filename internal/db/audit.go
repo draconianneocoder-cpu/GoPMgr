@@ -28,23 +28,30 @@ func (db *Database) LogAction(actor, action, targetID, details string) error {
 
 // ExportAuditCSV dumps the audit_log table to a CSV file at the given
 // path. Used by the `--export-audit` CLI flag.
-func (db *Database) ExportAuditCSV(path string) error {
+func (db *Database) ExportAuditCSV(path string) (err error) {
 	rows, err := db.Conn.Query(
 		`SELECT id, ts, actor, action, target_id, details FROM audit_log ORDER BY id ASC`,
 	)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); err == nil && closeErr != nil {
+			err = closeErr
+		}
+	}()
 
-	f, err := os.Create(path)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) // #nosec G304 -- CLI/user-selected audit export destination.
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if closeErr := f.Close(); err == nil && closeErr != nil {
+			err = closeErr
+		}
+	}()
 
 	w := csv.NewWriter(f)
-	defer w.Flush()
 
 	if err := w.Write([]string{"id", "ts", "actor", "action", "target_id", "details"}); err != nil {
 		return err
@@ -62,5 +69,12 @@ func (db *Database) ExportAuditCSV(path string) error {
 			return err
 		}
 	}
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return err
+	}
+	return nil
 }

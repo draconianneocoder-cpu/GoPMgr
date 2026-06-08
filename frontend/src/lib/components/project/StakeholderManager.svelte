@@ -197,7 +197,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <input
               bind:value={editing.name}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-              autofocus
             />
           </label>
           <label class="block">

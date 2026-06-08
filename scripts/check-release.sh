@@ -94,14 +94,13 @@ if ! PMFORGE_FRONTEND_BUILT=1 make build >/dev/null; then
 fi
 echo "Build verified."
 
-# --- 8. PDF/A-3 validation gate (soft for now) ------------------------
+# --- 8. PDF/A-3 validation gate (hard) ----------------------------------
 if [ -f scripts/validate-pdfa.sh ]; then
     if ! bash scripts/validate-pdfa.sh >/dev/null 2>&1; then
-        echo "PDF/A-3 validation gate reported issues (see 'make check-pdfa')."
-        echo "This is currently a warning gate until ICC + sample data are stable."
-    else
-        echo "PDF/A-3 validation gate passed (or skipped cleanly)."
+        echo "PDF/A-3 validation gate failed. Run 'make check-pdfa' for details."
+        exit 1
     fi
+    echo "PDF/A-3 validation gate passed."
 fi
 
 # --- 9. PAdES local validation gate -----------------------------------

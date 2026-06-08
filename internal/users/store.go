@@ -65,7 +65,7 @@ type Store struct {
 // Open opens (or creates) the system database at rootDir/system.db and
 // runs the schema migration. rootDir is created if missing.
 func Open(rootDir string) (*Store, error) {
-	if err := os.MkdirAll(rootDir, 0o755); err != nil {
+	if err := ensurePrivateDir(rootDir); err != nil {
 		return nil, fmt.Errorf("users: mkdir root: %w", err)
 	}
 
@@ -75,14 +75,24 @@ func Open(rootDir string) (*Store, error) {
 		return nil, err
 	}
 	if _, err := conn.Exec(`PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;`); err != nil {
-		conn.Close()
-		return nil, err
+		if closeErr := conn.Close(); closeErr != nil {
+			return nil, fmt.Errorf("users: enable pragmas: %w; close: %v", err, closeErr)
+		}
+		return nil, fmt.Errorf("users: enable pragmas: %w", err)
 	}
 
 	s := &Store{conn: conn, rootDir: rootDir}
 	if err := s.migrate(); err != nil {
-		conn.Close()
-		return nil, err
+		if closeErr := conn.Close(); closeErr != nil {
+			return nil, fmt.Errorf("users: migrate: %w; close: %v", err, closeErr)
+		}
+		return nil, fmt.Errorf("users: migrate: %w", err)
+	}
+	if err := ensurePrivateSQLiteFiles(dbPath); err != nil {
+		if closeErr := conn.Close(); closeErr != nil {
+			return nil, fmt.Errorf("users: private database file: %w; close: %v", err, closeErr)
+		}
+		return nil, fmt.Errorf("users: private database file: %w", err)
 	}
 	return s, nil
 }
@@ -152,7 +162,7 @@ func (s *Store) CreateAccount(username, displayName, password string) (Account, 
 	dataDir := filepath.Join(s.rootDir, username)
 	for _, sub := range []string{"", "projects", "certs", "exports"} {
 		path := filepath.Join(dataDir, sub)
-		if err := os.MkdirAll(path, 0o700); err != nil {
+		if err := ensurePrivateDir(path); err != nil {
 			return Account{}, fmt.Errorf("users: provision %s: %w", path, err)
 		}
 	}
@@ -222,12 +232,18 @@ func (s *Store) Authenticate(username, password string) (Account, error) {
 
 	// Update last_login.
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	_, _ = s.conn.Exec(`UPDATE users SET last_login = ? WHERE username = ?`, now, username)
+	if _, err := s.conn.Exec(`UPDATE users SET last_login = ? WHERE username = ?`, now, username); err != nil {
+		return Account{}, fmt.Errorf("users: update last_login: %w", err)
+	}
 
 	// Transparent re-hash if parameters have been strengthened.
 	if auth.NeedsRehash(hash) {
-		if newHash, err := auth.HashPassword(password); err == nil {
-			_, _ = s.conn.Exec(`UPDATE users SET password_hash = ? WHERE username = ?`, newHash, username)
+		newHash, err := auth.HashPassword(password)
+		if err != nil {
+			return Account{}, fmt.Errorf("users: rehash password: %w", err)
+		}
+		if _, err := s.conn.Exec(`UPDATE users SET password_hash = ? WHERE username = ?`, newHash, username); err != nil {
+			return Account{}, fmt.Errorf("users: persist password rehash: %w", err)
 		}
 	}
 
@@ -280,4 +296,23 @@ func DefaultRootDir() (string, error) {
 		return "", err
 	}
 	return filepath.Join(home, "Documents", "PMForge"), nil
+}
+
+func ensurePrivateDir(path string) error {
+	if err := os.MkdirAll(path, 0o700); err != nil {
+		return err
+	}
+	return os.Chmod(path, 0o700) // #nosec G302 -- this is a private directory mode, not a file mode.
+}
+
+func ensurePrivateSQLiteFiles(path string) error {
+	if err := os.Chmod(path, 0o600); err != nil {
+		return err
+	}
+	for _, sidecar := range []string{path + "-wal", path + "-shm"} {
+		if err := os.Chmod(sidecar, 0o600); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
 }

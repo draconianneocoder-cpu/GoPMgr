@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
@@ -33,6 +34,9 @@ const (
 	pwThreads = 4
 	pwKeyLen  = 32
 	pwSaltLen = 16
+
+	maxArgon2Threads = 1<<8 - 1
+	maxArgon2KeyLen  = 1<<32 - 1
 )
 
 // ErrInvalidHash is returned when the stored hash string is malformed.
@@ -51,7 +55,7 @@ func HashPassword(password string) (string, error) {
 	}
 
 	salt := make([]byte, pwSaltLen)
-	if _, err := rand.Read(salt); err != nil {
+	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
 		return "", fmt.Errorf("auth: read salt: %w", err)
 	}
 
@@ -102,8 +106,16 @@ func VerifyPassword(password, encoded string) error {
 	if err != nil {
 		return ErrInvalidHash
 	}
+	if memory == 0 || time == 0 || threads == 0 || threads > maxArgon2Threads {
+		return ErrInvalidHash
+	}
+	if len(salt) == 0 || len(want) == 0 || uint64(len(want)) > maxArgon2KeyLen {
+		return ErrInvalidHash
+	}
+	threads8 := uint8(threads)  // #nosec G115 -- bounded by maxArgon2Threads above.
+	keyLen := uint32(len(want)) // #nosec G115 -- bounded by maxArgon2KeyLen above.
 
-	got := argon2.IDKey([]byte(password), salt, time, memory, uint8(threads), uint32(len(want)))
+	got := argon2.IDKey([]byte(password), salt, time, memory, threads8, keyLen)
 	if subtle.ConstantTimeCompare(got, want) == 1 {
 		return nil
 	}

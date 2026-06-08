@@ -62,6 +62,7 @@ func RenderStatementOfWorkPDF(content map[string]interface{}, projectName string
 	sowBullets(pdf, "Acceptance Criteria", getStringSliceSOW(content, "acceptance_criteria"))
 
 	drawSOWSignOff(pdf)
+	DrawCompactSignatureBox(pdf, projectName, time.Now().Format("2006-01-02"))
 
 	// Footer
 	pdf.SetY(-15)

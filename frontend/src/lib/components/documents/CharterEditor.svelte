@@ -3,8 +3,10 @@ SPDX-FileCopyrightText: 2026 The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { showToast } from '../../toast';
+  import SignCertificateModal from '../SignCertificateModal.svelte';
   import DocumentFieldEditor from './DocumentFieldEditor.svelte';
 
   let doc = $state<DocumentRecord | null>(null);
@@ -13,7 +15,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let status = $state('');
   let saving = $state(false);
 
+  let lastSavedContent = $state<string | null>(null);
+  let lastSavedTitle = $state<string | null>(null);
+  let dirty = $derived(
+    lastSavedContent !== null &&
+      (JSON.stringify(content) !== lastSavedContent || doc?.title !== lastSavedTitle),
+  );
+
+  const docStatuses = ['draft', 'review', 'approved', 'archived'] as const;
+
+  function handleKeyDown(e: KeyboardEvent) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      save();
+    }
+  }
+
   onMount(async () => {
+    window.addEventListener('keydown', handleKeyDown);
     if (!session.editingId) return;
     doc = await window.go.main.App.GetDocument(session.editingId);
     try {
@@ -21,13 +40,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } catch {
       content = {};
     }
-    // Look up the charter definition (works for both Word and Excel variants).
+    lastSavedContent = JSON.stringify(content);
+    lastSavedTitle = doc.title;
     const all = await window.go.main.App.ListDocumentKinds();
     definition = all.find((d) => d.kind === doc!.kind) ?? null;
-    // If the kind is the Excel alias, fall back to the Word kind's schema.
-    if (definition && definition.fields.length === 0) {
-      definition = all.find((d) => d.kind === 'charter_word') ?? definition;
+    // charter_excel and plan_excel carry empty fields — borrow the paired _word schema.
+    if (definition && definition.fields.length === 0 && doc!.kind.endsWith('_excel')) {
+      const wordKind = doc!.kind.replace('_excel', '_word');
+      definition = all.find((d) => d.kind === wordKind) ?? definition;
     }
+  });
+
+  onDestroy(() => {
+    window.removeEventListener('keydown', handleKeyDown);
   });
 
   async function save() {
@@ -40,6 +65,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
         content: JSON.stringify(content),
       });
       doc = updated;
+      lastSavedContent = JSON.stringify(content);
+      lastSavedTitle = updated.title;
       status = `Saved. Version ${updated.version} at ${new Date().toLocaleTimeString()}.`;
     } catch (err: any) {
       status = `Save failed: ${err}`;
@@ -52,13 +79,89 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!doc) return;
     status = '';
     try {
-      // Save first so the export reflects the latest edits.
       await save();
       const path = await window.go.main.App.ExportDocumentPDF(doc.id);
       status = `Exported to ${path}`;
     } catch (err: any) {
       status = `Export failed: ${err}`;
     }
+  }
+
+  async function exportDOCX() {
+    if (!doc) return;
+    status = '';
+    try {
+      await save();
+      const path = await window.go.main.App.ExportDocumentDOCX(doc.id);
+      status = `Exported to ${path}`;
+    } catch (err: any) {
+      status = `Export failed: ${err}`;
+    }
+  }
+
+  async function exportODT() {
+    if (!doc) return;
+    status = '';
+    try {
+      await save();
+      const path = await window.go.main.App.ExportDocumentODT(doc.id);
+      status = `Exported to ${path}`;
+    } catch (err: any) {
+      status = `Export failed: ${err}`;
+    }
+  }
+
+  let certPathForSign = $state('');
+  let signing = $state(false);
+  let showSignModal = $state(false);
+  let pendingCertPath = $state('');
+
+  async function exportSignedPDF() {
+    if (!doc) return;
+    status = '';
+    signing = true;
+    try {
+      await save();
+
+      if (!certPathForSign) {
+        try {
+          const s = await window.go.main.App.GetSettings();
+          if (s?.cert_path) certPathForSign = s.cert_path;
+        } catch {
+          /* ignore */
+        }
+      }
+
+      pendingCertPath = certPathForSign;
+      showSignModal = true;
+      signing = false; // modal will handle the actual signing
+    } catch (err: any) {
+      status = `Signed export failed: ${err}`;
+      signing = false;
+    }
+  }
+
+  function handleSignedConfirm(pwd: string) {
+    showSignModal = false;
+    if (!pendingCertPath || !pwd || !doc) return;
+
+    signing = true;
+    (async () => {
+      try {
+        const path = await window.go.main.App.ExportDocumentPDFSigned(
+          doc.id,
+          pendingCertPath,
+          pwd,
+        );
+        status = `Signed PDF exported to ${path}`;
+        showToast(`Signed PDF exported successfully`, 'success');
+      } catch (err: any) {
+        status = `Signed export failed: ${err}`;
+      } finally {
+        signing = false;
+        pendingCertPath = '';
+      }
+    })();
   }
 </script>
 
@@ -72,12 +175,38 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {definition?.name ?? 'Document'}
       </h1>
       {#if doc}
-        <span class="text-xs text-slate-500">v{doc.version} · {doc.status}</span>
+        <span class="text-xs text-slate-500">v{doc.version}</span>
+        <select
+          bind:value={doc.status}
+          onchange={() => save()}
+          class="text-xs bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded"
+        >
+          {#each docStatuses as s (s)}
+            <option value={s}>{s}</option>
+          {/each}
+        </select>
+        {#if dirty}
+          <span class="text-xs text-amber-400 font-semibold">Unsaved changes</span>
+        {/if}
       {/if}
     </div>
     <div class="flex items-center gap-2">
+      <button onclick={exportDOCX} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
+        Export DOCX
+      </button>
+      <button onclick={exportODT} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
+        Export ODT
+      </button>
       <button onclick={exportPDF} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
         Export PDF
+      </button>
+      <button
+        onclick={exportSignedPDF}
+        disabled={signing}
+        class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 px-3 py-1 rounded"
+        title="Export with an embedded PAdES B-B digital signature"
+      >
+        {signing ? 'Signing…' : 'Export Signed PDF'}
       </button>
       <button
         onclick={save}
@@ -108,8 +237,29 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {#each definition.fields as field (field.key)}
         <DocumentFieldEditor {field} bind:value={content[field.key]} />
       {/each}
+
+      <!-- Digital signature action next to human sign-off fields -->
+      <div class="mt-6 p-4 border border-emerald-800 bg-emerald-950/30 rounded">
+        <div class="text-xs uppercase tracking-widest text-emerald-400 mb-2">Digital Signature</div>
+        <p class="text-xs text-slate-400 mb-3">
+          Apply an embedded PAdES B-B digital signature with a tamper-evident ByteRange.
+        </p>
+        <button
+          onclick={exportSignedPDF}
+          disabled={signing}
+          class="text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-1.5 rounded"
+        >
+          {signing ? 'Signing…' : 'Sign & Export PDF'}
+        </button>
+      </div>
     {:else}
       <p class="text-sm text-slate-500">Loading...</p>
     {/if}
   </main>
+
+  <SignCertificateModal
+    bind:open={showSignModal}
+    certPath={pendingCertPath}
+    onConfirm={handleSignedConfirm}
+  />
 </div>

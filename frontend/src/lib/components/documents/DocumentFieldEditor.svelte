@@ -44,6 +44,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function removeObjectRow(i: number) {
     value = (value as Record<string, unknown>[]).filter((_, idx) => idx !== i);
   }
+
+  function updateBool(event: Event) {
+    value = (event.currentTarget as HTMLInputElement).checked;
+  }
 </script>
 
 <label class="block space-y-1">
@@ -80,7 +84,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
       class="w-full bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
     />
   {:else if field.type === 'bool'}
-    <input type="checkbox" bind:checked={value} class="accent-cyan-500" />
+    <input
+      type="checkbox"
+      checked={Boolean(value)}
+      onchange={updateBool}
+      class="accent-cyan-500"
+    />
   {:else if field.type === 'chart_ref'}
     <ChartPicker bind:value={value as string} chartKind={field.chart_kind ?? ''} />
   {:else if field.type === 'string_array'}
