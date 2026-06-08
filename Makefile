@@ -47,7 +47,7 @@ fonts: ## Download the bundled TrueType fonts into internal/fonts/assets.
 icc: ## Download the sRGB ICC profile for PDF/A-3 OutputIntent embedding.
 	@bash scripts/fetch-icc.sh
 
-check-pdfa: ## Validate generated PDFs for PDF/A-3 conformance using veraPDF (soft gate).
+check-pdfa: ## Validate generated PDFs for PDF/A-3 conformance using veraPDF (hard gate; PMFORGE_PDFA_STRICT=0 to skip locally).
 	@bash scripts/validate-pdfa.sh
 
 check-pades: ## Generate and locally verify an embedded PAdES signed PDF sample.

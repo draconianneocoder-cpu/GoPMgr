@@ -525,9 +525,17 @@ metadata-stream injection, and OutputIntent + ICC injection are all
 implemented. `make check-pdfa` validates schedule-report, document,
 and combined-report samples against veraPDF's PDF/A-3b profile. All
 three samples pass and the gate is a **hard release blocker** --
-`check-release.sh` exits non-zero if any sample regresses. Remaining
-V3 hardening (trusted signing chain, Acrobat coverage) is tracked in
-AGENT.md §8.
+`check-release.sh` exits non-zero if any sample regresses.
+
+The gate is strict by default: a missing veraPDF validator, a missing
+ICC profile, or an empty sample set is treated as a **failure**, not a
+silent skip, so the release gate can never certify PDF/A-3 conformance
+it did not actually verify. `check-release.sh` always runs it strict
+(`PMFORGE_PDFA_STRICT=1`). For local convenience on a machine without
+Docker or a veraPDF CLI, run `PMFORGE_PDFA_STRICT=0 make check-pdfa` to
+downgrade those unmet preconditions to a warned skip; an actually
+non-compliant sample still fails in either mode. Remaining V3 hardening
+(trusted signing chain, Acrobat coverage) is tracked in AGENT.md §8.
 
 ## Project Launchpad
 

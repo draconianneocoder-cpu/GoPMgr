@@ -8,12 +8,20 @@
 # It generates representative samples from the live renderers and validates
 # each with veraPDF (3b profile). Exit 1 on any non-compliant PDF.
 #
-# Requirements:
-#   - Docker (preferred) or Java (for veraPDF CLI fallback)
+# Hard gate. By default (PMFORGE_PDFA_STRICT=1) a missing validator, a missing
+# ICC profile, or a missing sample set is a FAILURE, not a silent skip: the
+# release gate must never certify PDF/A-3 conformance it could not actually
+# check. Run with PMFORGE_PDFA_STRICT=0 for local convenience on machines
+# without Docker/veraPDF, where those preconditions degrade to a warned skip.
+# `scripts/check-release.sh` always invokes this script strict.
+#
+# Requirements (strict mode):
+#   - Docker (preferred) or a veraPDF CLI on PATH (Java-backed)
 #   - `make icc` has been run at least once (sRGB.icc present)
 #
 # Usage:
-#   make check-pdfa
+#   make check-pdfa                       # strict by default
+#   PMFORGE_PDFA_STRICT=0 make check-pdfa # degrade missing tooling to a skip
 
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,7 +29,26 @@ cd "$ROOT"
 
 . "$ROOT/scripts/validate-pdfa-lib.sh"
 
-ICC_PROFILE="internal/pdfmeta/assets/sRGB.icc"
+# Strictness. When strict (the default, and always under the release gate),
+# unmet preconditions fail the gate. When non-strict, they degrade to a warned
+# skip so developers without Docker/veraPDF are not blocked locally.
+PDFA_STRICT="${PMFORGE_PDFA_STRICT:-1}"
+
+# pdfa_precondition_unmet <human-readable reason>
+# Fails under strict mode, skips (exit 0) otherwise.
+pdfa_precondition_unmet() {
+    if [ "$PDFA_STRICT" = "1" ]; then
+        echo "FAIL: $1"
+        echo "The PDF/A-3 gate is strict: install Docker or a veraPDF CLI and run 'make icc'."
+        echo "Set PMFORGE_PDFA_STRICT=0 to downgrade this to a local skip."
+        exit 1
+    fi
+    echo "SKIP: $1"
+    echo "(non-strict) Set PMFORGE_PDFA_STRICT=1 to make this a hard failure; the release gate does."
+    exit 0
+}
+
+ICC_PROFILE="${PMFORGE_ICC_PROFILE:-internal/pdfmeta/assets/sRGB.icc}"
 VERAPDF_VERSION="1.28.1"
 VERAPDF_DIR="/tmp/verapdf-${VERAPDF_VERSION}"
 VERAPDF_CLI="${VERAPDF_DIR}/verapdf"
@@ -32,9 +59,7 @@ SAMPLE_DIR="$ROOT/.tmp/pmforge-pdfa-test"
 echo "=== PDF/A-3 Validation Gate ==="
 
 if [ ! -s "$ICC_PROFILE" ]; then
-    echo "SKIP: No ICC profile found (run 'make icc' first)."
-    echo "PDF/A-3 OutputIntent will not be present; validation skipped."
-    exit 0
+    pdfa_precondition_unmet "No ICC profile found at $ICC_PROFILE (run 'make icc' first); PDF/A-3 OutputIntent cannot be validated."
 fi
 
 # --- 1. Try Docker first (most reliable) --------------------------------
@@ -127,10 +152,7 @@ EOF
     fi
 
     if [ ! -x "$VERAPDF_CLI" ]; then
-        echo "WARNING: Could not automatically install veraPDF CLI."
-        echo "Please install Docker or ensure Java is available and veraPDF is installed."
-        echo "Skipping PDF/A validation."
-        exit 0   # soft fail
+        pdfa_precondition_unmet "Could not obtain a veraPDF CLI (no Docker, none on PATH, and auto-install failed); cannot validate PDF/A-3."
     fi
     VERAPDF_MODE="cli"
     VERAPDF_CMD=("$VERAPDF_CLI")
@@ -316,8 +338,7 @@ while IFS= read -r -d '' pdf; do
 done < <(find "$SAMPLE_DIR" -name "*.pdf" -print0 2>/dev/null)
 
 if [ "${#SAMPLES[@]}" -eq 0 ]; then
-    echo "No sample PDFs found to validate. Gate passed (nothing to check)."
-    exit 0
+    pdfa_precondition_unmet "No sample PDFs were found to validate after generation."
 fi
 
 echo "Validating PDFs with veraPDF..."
