@@ -9,6 +9,7 @@ import (
 	"github.com/jung-kurt/gofpdf"
 
 	"pmforge/internal/fonts"
+	"pmforge/internal/pdfmeta"
 )
 
 // Font integration.
@@ -73,5 +74,13 @@ func newDocPDF(orientation string) *gofpdf.Fpdf {
 	if fn != nil {
 		fn(pdf)
 	}
+
+	// Apply PDF/A-3 metadata setters early. Individual renderers can
+	// still override Title/Author/Subject with more specific values.
+	pdfmeta.ApplyPDFAMetadata(pdf, pdfmeta.XMPSpec{
+		Author:      "PMForge",
+		CreatorTool: "PMForge",
+	})
+
 	return pdf
 }

@@ -190,6 +190,33 @@ func TestImportFontAndRegister(t *testing.T) {
 	}
 }
 
+func TestImportFontTightensExistingUserDirectory(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "fonts")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatalf("mkdir font dir: %v", err)
+	}
+	if err := os.Chmod(dir, 0o755); err != nil {
+		t.Fatalf("chmod broad font dir: %v", err)
+	}
+	src := filepath.Join(t.TempDir(), "Acme-Regular.ttf")
+	if err := os.WriteFile(src, fakeTTF(), 0o600); err != nil {
+		t.Fatalf("write src: %v", err)
+	}
+
+	mgr := NewManager(dir)
+	if _, err := mgr.ImportFont(src); err != nil {
+		t.Fatalf("ImportFont: %v", err)
+	}
+
+	info, err := os.Stat(dir)
+	if err != nil {
+		t.Fatalf("stat font dir: %v", err)
+	}
+	if mode := info.Mode().Perm(); mode != 0o700 {
+		t.Fatalf("font dir mode = %o, want 700", mode)
+	}
+}
+
 func TestImportFont_RejectsNonTTF(t *testing.T) {
 	dir := t.TempDir()
 	mgr := NewManager(dir)

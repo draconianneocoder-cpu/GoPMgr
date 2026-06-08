@@ -82,6 +82,7 @@ func RenderProjectClosurePDF(content map[string]interface{}, projectName string)
 		pdf.MultiCell(0, 5, signoff, "", "L", false)
 	}
 	drawClosureSignatureLine(pdf)
+	DrawCompactSignatureBox(pdf, projectName, time.Now().Format("2006-01-02"))
 
 	// Footer
 	pdf.SetY(-15)

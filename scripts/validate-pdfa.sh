@@ -5,8 +5,8 @@
 # PDF/A-3 validation gate using veraPDF.
 #
 # This gate ensures that the PDFs we claim are PDF/A-3 really are.
-# It is intentionally soft on developer machines (warns instead of failing)
-# until the full ICC profile + test data story is mature.
+# It generates representative samples from the live renderers and validates
+# each with veraPDF (3b profile). Exit 1 on any non-compliant PDF.
 #
 # Requirements:
 #   - Docker (preferred) or Java (for veraPDF CLI fallback)
@@ -14,9 +14,6 @@
 #
 # Usage:
 #   make check-pdfa
-#
-# In CI this should be promoted to a hard gate once we have reliable
-# sample PDF generation for both schedule reports and documents.
 
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

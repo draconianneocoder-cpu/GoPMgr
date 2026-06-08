@@ -344,8 +344,13 @@ These remain from V1 plus a handful of new V2 items.
    `make check-pades` generates a local signed sample and verifies the
    embedded CMS against the declared `/ByteRange`; `make
    check-pades-external` also verifies the sample with OpenSSL,
-   `qpdf`, and `pdfsig` when those tools are installed. Remaining
-   external validation is Acrobat/DSS coverage for sample signed PDFs.
+   `qpdf`, `pdfsig`, veraPDF signature feature extraction, and
+   `dss-validation-tool` when those tools are installed. Current DSS
+   coverage classifies the deterministic self-signed sample as
+   `PAdES-BASELINE-B`; release-certificate trust-chain validation
+   remains indeterminate until a trusted signing source is configured.
+   Remaining external validation is Acrobat coverage for sample signed
+   PDFs.
 4. ~~Wails file-picker for certs.~~ **Done.**
 5. ~~Update channel.~~ **Done.** Signed Ed25519 manifests are fetched
    and verified by `internal/update`.
@@ -518,10 +523,11 @@ Strict PDF/A-3 conformance now depends on release validation rather
 than missing renderer primitives: font embedding, Catalog XMP
 metadata-stream injection, and OutputIntent + ICC injection are all
 implemented. `make check-pdfa` validates schedule-report, document,
-and combined-report samples against veraPDF's PDF/A-3b profile. It
-remains a soft gate until those representative generated PDFs pass
-reliably on release builders. Remaining validator hardening is tracked
-as a V3 milestone in AGENT.md §8.
+and combined-report samples against veraPDF's PDF/A-3b profile. All
+three samples pass and the gate is a **hard release blocker** --
+`check-release.sh` exits non-zero if any sample regresses. Remaining
+V3 hardening (trusted signing chain, Acrobat coverage) is tracked in
+AGENT.md §8.
 
 ## Project Launchpad
 

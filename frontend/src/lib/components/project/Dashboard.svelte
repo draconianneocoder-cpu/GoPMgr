@@ -3,15 +3,25 @@ SPDX-FileCopyrightText: 2026 The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { session, goto } from '../../session.svelte';
-  import BudgetPanel from './BudgetPanel.svelte';
+import { onMount } from 'svelte';
+import { session, goto } from '../../session.svelte';
+import { showToast } from '../../toast';
+import SignCertificateModal from '../SignCertificateModal.svelte';
+import BudgetPanel from './BudgetPanel.svelte';
 
   let chartKinds = $state<ChartDefinition[]>([]);
   let docKinds = $state<DocumentDefinition[]>([]);
   let charts = $state<ChartRecord[]>([]);
   let docs = $state<DocumentRecord[]>([]);
   let agileEnabled = $state(false);
+
+  // Delete confirmation: holds the id of the item awaiting confirmation.
+  let deletingChartId = $state<string | null>(null);
+  let deletingDocId = $state<string | null>(null);
+
+  // Signed export state (shared for all documents in the list)
+  let signCertPath = $state('');
+  let signingDocId = $state<string | null>(null);
 
   onMount(async () => {
     chartKinds = (await window.go.main.App.ListChartKinds()) ?? [];
@@ -26,6 +36,49 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   });
 
+  let showSignModal = $state(false);
+  let pendingCertPathForDash = $state('');
+  let pendingDocForSign: DocumentRecord | null = $state(null);
+
+  async function exportSignedDocument(d: DocumentRecord) {
+    signingDocId = d.id;
+    pendingDocForSign = d;
+
+    if (!signCertPath) {
+      try {
+        const s = await window.go.main.App.GetSettings();
+        if (s?.cert_path) signCertPath = s.cert_path;
+      } catch {}
+    }
+
+    pendingCertPathForDash = signCertPath;
+    showSignModal = true;
+    signingDocId = null; // modal will control final state
+  }
+
+  function handleDashboardSignedConfirm(pwd: string) {
+    showSignModal = false;
+    if (!pendingCertPathForDash || !pwd || !pendingDocForSign) return;
+
+    signingDocId = pendingDocForSign.id;
+    (async () => {
+      try {
+        const path = await window.go.main.App.ExportDocumentPDFSigned(
+          pendingDocForSign!.id,
+          pendingCertPathForDash,
+          pwd,
+        );
+        showToast(`Signed PDF exported to: ${path}`, 'success');
+      } catch (e: any) {
+        showToast(`Signed export failed: ${e}`, 'error');
+      } finally {
+        signingDocId = null;
+        pendingDocForSign = null;
+        pendingCertPathForDash = '';
+      }
+    })();
+  }
+
   async function toggleAgile() {
     const next = !agileEnabled;
     try {
@@ -33,6 +86,28 @@ SPDX-License-Identifier: GPL-3.0-or-later
       agileEnabled = next;
     } catch {
       // Binding missing; do nothing.
+    }
+  }
+
+  async function confirmDeleteChart(id: string) {
+    try {
+      await window.go.main.App.DeleteChart(id);
+      charts = charts.filter((c) => c.id !== id);
+    } catch (err: any) {
+      showToast(`Delete failed: ${err}`, 'error');
+    } finally {
+      deletingChartId = null;
+    }
+  }
+
+  async function confirmDeleteDoc(id: string) {
+    try {
+      await window.go.main.App.DeleteDocument(id);
+      docs = docs.filter((d) => d.id !== id);
+    } catch (err: any) {
+      showToast(`Delete failed: ${err}`, 'error');
+    } finally {
+      deletingDocId = null;
     }
   }
 
@@ -111,6 +186,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function newCharter() {
     const d = await window.go.main.App.NewDocument('charter_word', 'Project Charter');
     goto('charter', d.id);
+  }
+
+  async function newDocument(kind: string, defaultTitle: string) {
+    const d = await window.go.main.App.NewDocument(kind, defaultTitle);
+    goto('documents', d.id);
   }
 
   // Cards for the "New chart" grid. Order intentionally puts the
@@ -203,8 +283,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </button>
         <div class="md:col-span-2 lg:col-span-1">
           <BudgetPanel />
-        </div>
-      </div>
+  </div>
+
+  <SignCertificateModal
+    bind:open={showSignModal}
+    certPath={pendingCertPathForDash}
+    onConfirm={handleDashboardSignedConfirm}
+  />
+</div>
     </section>
 
     <!-- New chart actions (DAG family fully implemented) -->
@@ -331,10 +417,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {:else}
         <ul class="space-y-2">
           {#each charts as c (c.id)}
-            <li>
+            <li class="flex items-center gap-2">
               <button
                 onclick={() => goto(chartRoutes[c.kind] ?? 'charts', c.id)}
-                class="w-full text-left p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex items-center justify-between"
+                class="flex-1 text-left p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex items-center justify-between"
               >
                 <div>
                   <div class="font-bold text-white">{c.title}</div>
@@ -342,6 +428,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 </div>
                 <span class="text-xs text-slate-500">{c.updated_at?.slice(0, 10) ?? ''}</span>
               </button>
+              {#if deletingChartId === c.id}
+                <span class="text-xs text-slate-400">Delete?</span>
+                <button
+                  onclick={() => confirmDeleteChart(c.id)}
+                  class="text-xs bg-red-800 hover:bg-red-700 text-white px-2 py-1 rounded"
+                >Yes</button>
+                <button
+                  onclick={() => (deletingChartId = null)}
+                  class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded"
+                >No</button>
+              {:else}
+                <button
+                  onclick={() => (deletingChartId = c.id)}
+                  class="text-xs bg-slate-800 hover:bg-red-900 px-2 py-1 rounded text-slate-400 hover:text-red-300"
+                  title="Delete chart"
+                >Del</button>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -356,10 +459,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {:else}
         <ul class="space-y-2">
           {#each docs as d (d.id)}
-            <li>
+            <li class="flex items-center gap-2">
               <button
                 onclick={() => goto(d.kind.startsWith('charter') ? 'charter' : 'documents', d.id)}
-                class="w-full text-left p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex items-center justify-between"
+                class="flex-1 text-left p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex items-center justify-between"
               >
                 <div>
                   <div class="font-bold text-white">{d.title}</div>
@@ -367,6 +470,31 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 </div>
                 <span class="text-xs text-slate-500">v{d.version}</span>
               </button>
+              <button
+                onclick={() => exportSignedDocument(d)}
+                disabled={signingDocId === d.id}
+                class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 px-2 py-1 rounded self-center"
+                title="Export with PAdES B-B digital signature"
+              >
+                {signingDocId === d.id ? '…' : 'Sign & Export'}
+              </button>
+              {#if deletingDocId === d.id}
+                <span class="text-xs text-slate-400">Delete?</span>
+                <button
+                  onclick={() => confirmDeleteDoc(d.id)}
+                  class="text-xs bg-red-800 hover:bg-red-700 text-white px-2 py-1 rounded"
+                >Yes</button>
+                <button
+                  onclick={() => (deletingDocId = null)}
+                  class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded"
+                >No</button>
+              {:else}
+                <button
+                  onclick={() => (deletingDocId = d.id)}
+                  class="text-xs bg-slate-800 hover:bg-red-900 px-2 py-1 rounded text-slate-400 hover:text-red-300"
+                  title="Delete document"
+                >Del</button>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -388,7 +516,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
               </div>
               <ul class="space-y-1 text-xs">
                 {#each list as d (d.kind)}
-                  <li class="text-slate-400">{d.name}</li>
+                  <li>
+                    <button
+                      onclick={() => newDocument(d.kind, d.name)}
+                      class="text-left text-slate-400 hover:text-cyan-400 w-full"
+                    >
+                      {d.name}
+                    </button>
+                  </li>
                 {/each}
               </ul>
             </div>

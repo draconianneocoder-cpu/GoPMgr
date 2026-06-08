@@ -176,7 +176,7 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 		}
 		registered := 0
 		for style, path := range uf.styles {
-			b, err := os.ReadFile(path)
+			b, err := os.ReadFile(path) // #nosec G304 -- paths come from scanning the configured user font directory.
 			if err != nil {
 				continue
 			}
@@ -211,7 +211,7 @@ func (m *Manager) ImportFont(srcPath string) (FamilyInfo, error) {
 		return FamilyInfo{}, fmt.Errorf("fonts: only .ttf files are supported (got %q); OpenType/CFF .otf and WOFF are not supported by the PDF engine", ext)
 	}
 
-	b, err := os.ReadFile(srcPath)
+	b, err := os.ReadFile(srcPath) // #nosec G304 -- user-selected font import path; extension and signature are validated before copy.
 	if err != nil {
 		return FamilyInfo{}, fmt.Errorf("fonts: read source: %w", err)
 	}
@@ -219,7 +219,7 @@ func (m *Manager) ImportFont(srcPath string) (FamilyInfo, error) {
 		return FamilyInfo{}, err
 	}
 
-	if err := os.MkdirAll(m.userDir, 0o700); err != nil {
+	if err := ensurePrivateDir(m.userDir); err != nil {
 		return FamilyInfo{}, fmt.Errorf("fonts: create font dir: %w", err)
 	}
 
@@ -400,20 +400,33 @@ func validateTrueType(b []byte) error {
 // partial write never leaves a corrupt font in place.
 func writeFileAtomic(path string, b []byte) error {
 	tmp := path + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) // #nosec G304 -- tmp is derived from PMForge's configured user font destination.
 	if err != nil {
 		return err
 	}
 	if _, err := f.Write(b); err != nil {
-		f.Close()
-		os.Remove(tmp)
+		if closeErr := f.Close(); closeErr != nil {
+			err = fmt.Errorf("%w; close: %v", err, closeErr)
+		}
+		if removeErr := os.Remove(tmp); removeErr != nil && !os.IsNotExist(removeErr) {
+			err = fmt.Errorf("%w; remove: %v", err, removeErr)
+		}
 		return err
 	}
 	if err := f.Close(); err != nil {
-		os.Remove(tmp)
+		if removeErr := os.Remove(tmp); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("%w; remove: %v", err, removeErr)
+		}
 		return err
 	}
 	return os.Rename(tmp, path)
+}
+
+func ensurePrivateDir(path string) error {
+	if err := os.MkdirAll(path, 0o700); err != nil {
+		return err
+	}
+	return os.Chmod(path, 0o700) // #nosec G302 -- this is a private directory mode, not a file mode.
 }
 
 // ensure embed.FS satisfies fs.FS (compile-time guard; also keeps the

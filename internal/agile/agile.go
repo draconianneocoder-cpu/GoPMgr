@@ -13,6 +13,7 @@ package agile
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"io"
 	"time"
 )
 
@@ -36,10 +37,10 @@ const (
 type Priority string
 
 const (
-	PrioLow     Priority = "low"
-	PrioMedium  Priority = "medium"
-	PrioHigh    Priority = "high"
-	PrioUrgent  Priority = "urgent"
+	PrioLow    Priority = "low"
+	PrioMedium Priority = "medium"
+	PrioHigh   Priority = "high"
+	PrioUrgent Priority = "urgent"
 )
 
 // WorkItem is one story / bug / task / epic on the board or backlog.
@@ -49,8 +50,8 @@ type WorkItem struct {
 	Type        WorkItemType `json:"type"`
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
-	State       string       `json:"state"`     // column ID, or "backlog"
-	Points      float64      `json:"points"`    // estimate, story points
+	State       string       `json:"state"`  // column ID, or "backlog"
+	Points      float64      `json:"points"` // estimate, story points
 	Assignee    string       `json:"assignee"`
 	SprintID    string       `json:"sprint_id"` // empty == not in a sprint
 	Priority    Priority     `json:"priority"`
@@ -121,18 +122,20 @@ type Deployment struct {
 // newID returns a short, URL-safe identifier prefixed with `prefix`.
 // Mirrors db.newID so the agile package can issue IDs without a db
 // import cycle.
-func newID(prefix string) string {
+func newID(prefix string) (string, error) {
 	var buf [4]byte
-	_, _ = rand.Read(buf[:])
-	return prefix + "_" + hex.EncodeToString(buf[:])
+	if _, err := io.ReadFull(rand.Reader, buf[:]); err != nil {
+		return "", err
+	}
+	return prefix + "_" + hex.EncodeToString(buf[:]), nil
 }
 
 // NewBoardID, NewColumnID, etc. are sugar so call sites read clearly.
-func NewBoardID() string      { return newID("board") }
-func NewColumnID() string     { return newID("col") }
-func NewWorkItemID() string   { return newID("wi") }
-func NewSprintID() string     { return newID("sprint") }
-func NewDeploymentID() string { return newID("deploy") }
+func NewBoardID() (string, error)      { return newID("board") }
+func NewColumnID() (string, error)     { return newID("col") }
+func NewWorkItemID() (string, error)   { return newID("wi") }
+func NewSprintID() (string, error)     { return newID("sprint") }
+func NewDeploymentID() (string, error) { return newID("deploy") }
 
 // DefaultColumns returns the columns PMForge seeds a brand-new
 // board with. The IDs are stable strings (rather than newID() calls)

@@ -56,12 +56,12 @@ type Signer struct {
 // Signer ready to sign. Only RSA keys are accepted; if you need EC
 // support, branch on the type assertion below.
 func LoadCertificate(path, password string) (*Signer, error) {
-	p12Data, err := os.ReadFile(path)
+	p12Data, err := os.ReadFile(path) // #nosec G304 -- user-selected PKCS#12 certificate bundle path.
 	if err != nil {
 		return nil, err
 	}
 
-	privateKey, certificate, caCerts, err := pkcs12.DecodeChain(p12Data, password)
+	privateKey, certificate, err := pkcs12.Decode(p12Data, password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode P12: %w", err)
 	}
@@ -71,10 +71,23 @@ func LoadCertificate(path, password string) (*Signer, error) {
 		return nil, errors.New("crypto: private key is not RSA")
 	}
 
+	var extraCerts []*x509.Certificate
+	blocks, err := pkcs12.ToPEM(p12Data, password)
+	if err == nil {
+		for _, block := range blocks {
+			if block.Type == "CERTIFICATE" {
+				cert, err := x509.ParseCertificate(block.Bytes)
+				if err == nil && !cert.Equal(certificate) {
+					extraCerts = append(extraCerts, cert)
+				}
+			}
+		}
+	}
+
 	return &Signer{
 		Cert:       certificate,
 		PrivateKey: rsaKey,
-		ExtraCerts: caCerts,
+		ExtraCerts: extraCerts,
 	}, nil
 }
 
@@ -107,31 +120,7 @@ func (s *Signer) SignPDFCMS(pdfContent []byte) ([]byte, error) {
 		return nil, errors.New("crypto: signer missing key or cert")
 	}
 
-	sd, err := pkcs7.NewSignedData(pdfContent)
-	if err != nil {
-		return nil, fmt.Errorf("crypto: new signed data: %w", err)
-	}
-	// SHA-256 is the modern default; everything we ship signs at
-	// this digest level.
-	sd.SetDigestAlgorithm(pkcs7.OIDDigestAlgorithmSHA256)
-
-	if err := sd.AddSigner(s.Cert, s.PrivateKey, pkcs7.SignerInfoConfig{
-		ExtraSignedAttributes: []pkcs7.Attribute{signingCertificateV2Attribute(s.Cert)},
-	}); err != nil {
-		return nil, fmt.Errorf("crypto: add signer: %w", err)
-	}
-
-	// Embed the intermediate chain so verifiers can build the
-	// trust path without OCSP/AIA fetches.
-	for _, ca := range s.ExtraCerts {
-		sd.AddCertificate(ca)
-	}
-
-	// Detached: the PDF content is hashed but not duplicated inside
-	// the CMS blob.
-	sd.Detach()
-
-	return sd.Finish()
+	return signDetachedPAdESCMS(pdfContent, s.Cert, s.PrivateKey, s.ExtraCerts)
 }
 
 func signingCertificateV2Attribute(cert *x509.Certificate) pkcs7.Attribute {

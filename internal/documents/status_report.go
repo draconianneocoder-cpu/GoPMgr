@@ -79,6 +79,8 @@ func RenderStatusReportPDF(content map[string]interface{}, projectName string) (
 	writeStatusSection(pdf, "Blockers", getStringSliceS(content, "blockers"), bulletRed)
 	writeStatusSection(pdf, "Upcoming", getStringSliceS(content, "upcoming"), bulletNormal)
 
+	DrawCompactSignatureBox(pdf, projectName, time.Now().Format("2006-01-02"))
+
 	// Footer
 	pdf.SetY(-20)
 	pdf.SetFont("Helvetica", "I", 8)

@@ -60,12 +60,17 @@ func For(countryCode string) *Calendar {
 	case "FR":
 		bc.AddHoliday(fr.Holidays...)
 	case "AU":
-		bc.AddHoliday(au.Holidays...)
+		bc.AddHoliday(au.HolidaysNSW...)
 	default:
-		// rickar/cal/v2/aa carries the universal/secular holiday
-		// set (New Year's Day, Christmas, etc.) — a sensible
-		// fallback when the user's country isn't yet supported.
-		bc.AddHoliday(aa.Holidays...)
+		bc.AddHoliday(
+			aa.NewYear,
+			aa.GoodFriday,
+			aa.Easter,
+			aa.EasterMonday,
+			aa.WorkersDay,
+			aa.ChristmasDay,
+			aa.ChristmasDay2,
+		)
 	}
 	return &Calendar{bc: bc, CountryCode: code}
 }

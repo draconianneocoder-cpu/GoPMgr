@@ -4,6 +4,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 
@@ -76,10 +77,10 @@ func (db *Database) InformativeSelfHeal(path string) (RepairResult, error) {
 // SwapInSnapshot atomically replaces the live database file with the
 // .bak snapshot produced by InformativeSelfHeal. Steps:
 //
-//	1. Close the live connection.
-//	2. Move the live file aside to <path>.corrupt (kept for forensics).
-//	3. Rename <path>.bak → <path>.
-//	4. Re-open the live file.
+//  1. Close the live connection.
+//  2. Move the live file aside to <path>.corrupt (kept for forensics).
+//  3. Rename <path>.bak → <path>.
+//  4. Re-open the live file.
 //
 // On POSIX systems os.Rename is atomic when source and destination
 // are on the same filesystem, which is always the case here because
@@ -91,8 +92,18 @@ func (db *Database) SwapInSnapshot(livePath string) (*Database, error) {
 	snapshotPath := livePath + ".bak"
 	corruptPath := livePath + ".corrupt"
 
-	if _, err := os.Stat(snapshotPath); err != nil {
+	info, err := os.Stat(snapshotPath)
+	if err != nil {
 		return nil, fmt.Errorf("swap: snapshot %s missing: %w", snapshotPath, err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("swap: snapshot is not a regular file: %s", snapshotPath)
+	}
+	if err := checkSnapshotIntegrity(snapshotPath); err != nil {
+		return nil, fmt.Errorf("swap: snapshot integrity %s: %w", snapshotPath, err)
+	}
+	if err := removeIfExists(corruptPath); err != nil {
+		return nil, fmt.Errorf("swap: clear stale corrupt %s: %w", corruptPath, err)
 	}
 
 	// Step 1: Close the live connection so the file can be moved.
@@ -100,24 +111,58 @@ func (db *Database) SwapInSnapshot(livePath string) (*Database, error) {
 		return nil, fmt.Errorf("swap: close live: %w", err)
 	}
 
-	// Step 2: Move the live file aside. Clear any pre-existing
-	// .corrupt first so the rename does not fail.
-	_ = os.Remove(corruptPath)
+	// Step 2: Move the live file aside.
+	movedLive := false
 	if _, err := os.Stat(livePath); err == nil {
 		if err := os.Rename(livePath, corruptPath); err != nil {
 			return nil, fmt.Errorf("swap: rename live → corrupt: %w", err)
 		}
+		movedLive = true
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("swap: stat live %s: %w", livePath, err)
 	}
 
 	// Step 3: Move the snapshot into place. If this fails, try to
 	// roll the live file back so the user is never left without any
 	// database at all.
 	if err := os.Rename(snapshotPath, livePath); err != nil {
-		_ = os.Rename(corruptPath, livePath)
+		if movedLive {
+			if restoreErr := os.Rename(corruptPath, livePath); restoreErr != nil {
+				return nil, fmt.Errorf("swap: rename snapshot → live: %w; rollback live: %v", err, restoreErr)
+			}
+		}
 		return nil, fmt.Errorf("swap: rename snapshot → live: %w", err)
 	}
 
 	// Step 4: Re-open. The fresh handle is what the caller should
 	// hold from this point on.
 	return InitDB(livePath)
+}
+
+func removeIfExists(path string) error {
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+func checkSnapshotIntegrity(path string) error {
+	conn, err := sql.Open("sqlite3", path)
+	if err != nil {
+		return err
+	}
+
+	var result string
+	queryErr := conn.QueryRow("PRAGMA integrity_check;").Scan(&result)
+	closeErr := conn.Close()
+	if queryErr != nil {
+		return queryErr
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	if result != "ok" {
+		return fmt.Errorf("integrity_check returned %q", result)
+	}
+	return nil
 }

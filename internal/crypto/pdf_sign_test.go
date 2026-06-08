@@ -78,6 +78,25 @@ func TestSignPDFCMSProducesDetachedVerifiableSignedData(t *testing.T) {
 	}
 }
 
+func TestSignPDFCMSOmitsPAdESBaselineBSigningTime(t *testing.T) {
+	signer := newTestCMSSigner(t, "PMForge PAdES Baseline B Signer")
+	content := []byte("%PDF-1.7\n% PAdES baseline-B signed sample\n")
+
+	cms, err := signer.SignPDFCMS(content)
+	if err != nil {
+		t.Fatalf("SignPDFCMS: %v", err)
+	}
+	p7, err := pkcs7.Parse(cms)
+	if err != nil {
+		t.Fatalf("parse CMS: %v", err)
+	}
+
+	var signingTime time.Time
+	if err := p7.UnmarshalSignedAttribute(pkcs7.OIDAttributeSigningTime, &signingTime); err == nil {
+		t.Fatalf("CMS includes signing-time %s; PAdES baseline-B requires omitting it", signingTime.Format(time.RFC3339))
+	}
+}
+
 func assertSigningCertificateV2Attribute(t *testing.T, p7 *pkcs7.PKCS7, signerCert *x509.Certificate) {
 	t.Helper()
 

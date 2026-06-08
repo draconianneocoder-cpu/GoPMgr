@@ -12,6 +12,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"os"
 
 	// Register the SQLite3 driver. CGO_ENABLED=1 is required.
 	_ "github.com/mattn/go-sqlite3"
@@ -43,13 +44,19 @@ func InitDB(path string) (*Database, error) {
 	}
 	for _, p := range pragmas {
 		if _, err := conn.Exec(p); err != nil {
+			_ = conn.Close()
 			return nil, fmt.Errorf("pragma %q: %w", p, err)
 		}
 	}
 
 	db := &Database{Conn: conn, Path: path}
 	if err := db.Migrate(); err != nil {
+		_ = conn.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
+	}
+	if err := ensurePrivateSQLiteFiles(path); err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("private database file: %w", err)
 	}
 	return db, nil
 }
@@ -307,6 +314,80 @@ func (db *Database) Migrate() error {
 
 	CREATE INDEX IF NOT EXISTS idx_stakeholders_project ON stakeholders(project_id);
 	CREATE INDEX IF NOT EXISTS idx_stakeholders_cat     ON stakeholders(project_id, category);
+
+	-- Process Excellence Suite (Six Sigma) — MVP 1
+	CREATE TABLE IF NOT EXISTS sigma_projects (
+		id             TEXT PRIMARY KEY,
+		title          TEXT NOT NULL,
+		description    TEXT NOT NULL DEFAULT '',
+		belt_level     TEXT NOT NULL DEFAULT 'green',
+		phase          TEXT NOT NULL DEFAULT 'define',
+		status         TEXT NOT NULL DEFAULT 'active',
+		sponsor        TEXT NOT NULL DEFAULT '',
+		process_owner  TEXT NOT NULL DEFAULT '',
+		belt_lead      TEXT NOT NULL DEFAULT '',
+		created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		updated_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		FOREIGN KEY (id) REFERENCES project(id) ON DELETE CASCADE
+	);
+
+	CREATE TABLE IF NOT EXISTS sigma_charters (
+		id               TEXT PRIMARY KEY,
+		project_id       TEXT NOT NULL UNIQUE,
+		problem_statement TEXT NOT NULL DEFAULT '',
+		business_case    TEXT NOT NULL DEFAULT '',
+		goal_statement   TEXT NOT NULL DEFAULT '',
+		scope_in         TEXT NOT NULL DEFAULT '[]',
+		scope_out        TEXT NOT NULL DEFAULT '[]',
+		ctqs             TEXT NOT NULL DEFAULT '[]',
+		sponsor          TEXT NOT NULL DEFAULT '',
+		updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		FOREIGN KEY (project_id) REFERENCES sigma_projects(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_sigma_projects_phase ON sigma_projects(phase);
+	CREATE INDEX IF NOT EXISTS idx_sigma_projects_status ON sigma_projects(status);
+
+	CREATE TABLE IF NOT EXISTS sigma_fishbones (
+		id                TEXT PRIMARY KEY,
+		project_id        TEXT NOT NULL UNIQUE,
+		problem_statement TEXT NOT NULL DEFAULT '',
+		data_json         TEXT NOT NULL DEFAULT '{"branches":[]}',
+		updated_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		FOREIGN KEY (project_id) REFERENCES sigma_projects(id) ON DELETE CASCADE
+	);
+
+	CREATE TABLE IF NOT EXISTS sigma_solutions (
+		id         TEXT PRIMARY KEY,
+		project_id TEXT NOT NULL UNIQUE,
+		data_json  TEXT NOT NULL DEFAULT '[]',
+		updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		FOREIGN KEY (project_id) REFERENCES sigma_projects(id) ON DELETE CASCADE
+	);
+
+	CREATE TABLE IF NOT EXISTS sigma_control_plans (
+		id         TEXT PRIMARY KEY,
+		project_id TEXT NOT NULL UNIQUE,
+		data_json  TEXT NOT NULL DEFAULT '[]',
+		updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		FOREIGN KEY (project_id) REFERENCES sigma_projects(id) ON DELETE CASCADE
+	);
+
+	CREATE TABLE IF NOT EXISTS sigma_sipocs (
+		id         TEXT PRIMARY KEY,
+		project_id TEXT NOT NULL UNIQUE,
+		data_json  TEXT NOT NULL DEFAULT '{"elements":[]}',
+		updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		FOREIGN KEY (project_id) REFERENCES sigma_projects(id) ON DELETE CASCADE
+	);
+
+	CREATE TABLE IF NOT EXISTS sigma_voc (
+		id         TEXT PRIMARY KEY,
+		project_id TEXT NOT NULL UNIQUE,
+		data_json  TEXT NOT NULL DEFAULT '{"entries":[]}',
+		updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		FOREIGN KEY (project_id) REFERENCES sigma_projects(id) ON DELETE CASCADE
+	);
 	`
 	if _, err := db.Conn.Exec(schema); err != nil {
 		return err
@@ -346,16 +427,24 @@ func (db *Database) migrateLegacyColumns() error {
 		}
 	}
 
-	// settings.default_font (added when the font subsystem shipped).
+	// settings columns added after the initial schema shipped.
 	settingsCols, err := db.columnSet("settings")
 	if err != nil {
 		return err
 	}
-	if _, ok := settingsCols["default_font"]; !ok {
-		if _, err := db.Conn.Exec(
-			"ALTER TABLE settings ADD COLUMN default_font TEXT NOT NULL DEFAULT ''",
-		); err != nil {
-			return fmt.Errorf("add column default_font: %w", err)
+	settingsMigrations := []struct {
+		name string
+		ddl  string
+	}{
+		{"default_font", "ALTER TABLE settings ADD COLUMN default_font TEXT NOT NULL DEFAULT ''"},
+		{"agile_enabled", "ALTER TABLE settings ADD COLUMN agile_enabled INTEGER NOT NULL DEFAULT 0"},
+	}
+	for _, m := range settingsMigrations {
+		if _, ok := settingsCols[m.name]; ok {
+			continue
+		}
+		if _, err := db.Conn.Exec(m.ddl); err != nil {
+			return fmt.Errorf("add column %s: %w", m.name, err)
 		}
 	}
 	return nil
@@ -406,10 +495,7 @@ func (db *Database) CheckIntegrity() (bool, error) {
 // NOTE: VACUUM INTO is rejected if targetPath already exists. Callers
 // should remove or rename existing files first.
 func (db *Database) CreateSnapshot(targetPath string) error {
-	// fmt.Sprintf is acceptable here because targetPath comes from the
-	// application (settings dialog) rather than user-controlled input.
-	// If you ever expose this to untrusted callers, validate the path.
-	_, err := db.Conn.Exec(fmt.Sprintf("VACUUM INTO '%s';", targetPath))
+	_, err := db.Conn.Exec("VACUUM INTO ?", targetPath)
 	return err
 }
 
@@ -425,4 +511,16 @@ func (db *Database) Close() error {
 		return nil
 	}
 	return db.Conn.Close()
+}
+
+func ensurePrivateSQLiteFiles(path string) error {
+	if err := os.Chmod(path, 0o600); err != nil {
+		return err
+	}
+	for _, sidecar := range []string{path + "-wal", path + "-shm"} {
+		if err := os.Chmod(sidecar, 0o600); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
 }

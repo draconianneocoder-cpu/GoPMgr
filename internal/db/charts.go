@@ -6,6 +6,7 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -17,8 +18,8 @@ type Chart struct {
 	ProjectID  string    `json:"project_id"`
 	Kind       string    `json:"kind"`
 	Title      string    `json:"title"`
-	Data       string    `json:"data"`        // JSON string
-	Config     string    `json:"config"`      // JSON string
+	Data       string    `json:"data"`   // JSON string
+	Config     string    `json:"config"` // JSON string
 	TemplateID string    `json:"template_id"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
@@ -31,7 +32,11 @@ var ErrNoChart = errors.New("db: chart not found")
 // a new ID; the resulting Chart is returned.
 func (db *Database) SaveChart(c Chart) (Chart, error) {
 	if c.ID == "" {
-		c.ID = newID("chart")
+		id, err := newID("chart")
+		if err != nil {
+			return Chart{}, fmt.Errorf("generate chart id: %w", err)
+		}
+		c.ID = id
 	}
 	if c.Data == "" {
 		c.Data = "{}"

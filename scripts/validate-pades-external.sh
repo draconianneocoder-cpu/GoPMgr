@@ -6,22 +6,41 @@
 #
 # This script complements validate-pades.sh. It generates the PMForge signed
 # sample, extracts the CMS DER and signed ByteRange bytes, verifies the detached
-# CMS with OpenSSL, and records which higher-level PDF/PAdES validators are
-# available locally. Acrobat/DSS/veraPDF interoperability still needs a machine
-# with those validators installed.
+# CMS with OpenSSL, and runs locally installed PDF/PAdES validators where their
+# command-line checks are deterministic. Acrobat and DSS validation still need a
+# machine with those validators installed.
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 SAMPLE_DIR="$ROOT/.tmp/pmforge-pades-test"
+PADES_LOCK="$ROOT/.tmp/pmforge-pades-test.lock"
 PDF_PATH="${1:-$SAMPLE_DIR/signed-sample.pdf}"
 CMS_DER="$SAMPLE_DIR/signed-sample.cms.der"
 SIGNED_BYTES="$SAMPLE_DIR/signed-sample.byterange.bin"
 EXTRACT_INFO="$SAMPLE_DIR/signed-sample.extract.txt"
+VERAPDF_XML="$SAMPLE_DIR/verapdf-signature-features.xml"
+VERAPDF_ERR="$SAMPLE_DIR/verapdf-signature-features.stderr"
+DSS_OUTPUT="$SAMPLE_DIR/dss-validation-output.txt"
 REPORT="$SAMPLE_DIR/external-validation-report.txt"
 
 echo "=== PAdES External Validation Harness ==="
+
+acquire_pades_lock() {
+	if [ "${PMFORGE_PADES_LOCK_HELD:-0}" = "1" ]; then
+		return
+	fi
+	mkdir -p "$ROOT/.tmp"
+	while ! mkdir "$PADES_LOCK" 2>/dev/null; do
+		sleep 0.1
+	done
+	echo "$$" > "$PADES_LOCK/pid"
+	trap 'rm -rf "$PADES_LOCK"' EXIT INT TERM
+	export PMFORGE_PADES_LOCK_HELD=1
+}
+
+acquire_pades_lock
 
 if [ ! -s "$PDF_PATH" ]; then
 	echo "Generating local PAdES sample first..."
@@ -183,14 +202,77 @@ PY
 
 	if command -v verapdf >/dev/null 2>&1; then
 		echo "veraPDF CLI: available ($(verapdf --version 2>/dev/null | head -1 || true))"
-		echo "veraPDF PAdES interoperability: TODO run manually with the signed sample and record results"
+		if verapdf --off --extract signature --format xml "$PDF_PATH" >"$VERAPDF_XML" 2>"$VERAPDF_ERR"; then
+			if python3 - "$VERAPDF_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+xml_path = Path(sys.argv[1])
+root = ET.parse(xml_path).getroot()
+summary = root.find(".//batchSummary")
+if summary is not None:
+    for attr in ("failedToParse", "encrypted", "outOfMemory", "veraExceptions"):
+        if summary.attrib.get(attr, "0") != "0":
+            raise SystemExit(f"veraPDF batch summary {attr}={summary.attrib.get(attr)}")
+feature_reports = root.find(".//featureReports")
+if feature_reports is not None and feature_reports.attrib.get("failedJobs", "0") != "0":
+    raise SystemExit(f"veraPDF feature extraction failedJobs={feature_reports.attrib.get('failedJobs')}")
+matches = []
+for sig in root.findall(".//signature"):
+    filter_text = (sig.findtext("filter") or "").strip()
+    sub_filter = (sig.findtext("subFilter") or "").strip()
+    if filter_text == "Adobe.PPKLite" and sub_filter == "ETSI.CAdES.detached":
+        matches.append(sig)
+if not matches:
+    raise SystemExit("veraPDF did not extract the expected PAdES signature metadata")
+PY
+			then
+				echo "veraPDF signature feature extraction: PASS"
+				echo "veraPDF signature feature report: $VERAPDF_XML"
+				if [ -s "$VERAPDF_ERR" ]; then
+					echo "veraPDF stderr: $VERAPDF_ERR"
+				fi
+			else
+				echo "veraPDF signature feature extraction: FAIL"
+				exit 1
+			fi
+		else
+			echo "veraPDF signature feature extraction: FAIL"
+			if [ -s "$VERAPDF_ERR" ]; then
+				cat "$VERAPDF_ERR"
+			fi
+			exit 1
+		fi
 	else
 		echo "veraPDF CLI: SKIP (verapdf not installed)"
 	fi
 
 	if command -v dss-validation-tool >/dev/null 2>&1; then
 		echo "DSS validation tool: available"
-		echo "DSS PAdES interoperability: TODO run manually with the signed sample and record results"
+		if dss-validation-tool validate "$PDF_PATH" >"$DSS_OUTPUT" 2>&1; then
+			echo "DSS validation: PASS"
+			echo "DSS validation report: $DSS_OUTPUT"
+			cat "$DSS_OUTPUT"
+			if grep -q "PAdESBaselineRequirementsChecker" "$DSS_OUTPUT"; then
+				echo "DSS PAdES baseline requirements: FAIL"
+				exit 1
+			fi
+			if grep -q "^signature.format=" "$DSS_OUTPUT"; then
+				if grep -q "^signature.format=PAdES-BASELINE-B$" "$DSS_OUTPUT"; then
+					echo "DSS PAdES baseline format: PASS"
+				else
+					echo "DSS PAdES baseline format: FAIL"
+					exit 1
+				fi
+			fi
+		else
+			echo "DSS validation: FAIL"
+			if [ -s "$DSS_OUTPUT" ]; then
+				cat "$DSS_OUTPUT"
+			fi
+			exit 1
+		fi
 	else
 		echo "DSS validation tool: SKIP (dss-validation-tool not installed)"
 	fi
@@ -200,6 +282,7 @@ PY
 	echo "  $PDF_PATH"
 	echo "  $CMS_DER"
 	echo "  $SIGNED_BYTES"
+	echo "  $DSS_OUTPUT"
 	echo "  $REPORT"
 } | tee "$REPORT"
 

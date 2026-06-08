@@ -9,6 +9,7 @@ fail=0
 go_scope_matches="$(mktemp "${TMPDIR:-/tmp}/pmforge-go-scope-matches.XXXXXX")"
 go_list_scope="$(mktemp "${TMPDIR:-/tmp}/pmforge-go-list-scope.XXXXXX")"
 readme_text="$(tr '\n' ' ' < README.md)"
+agent_text="$(tr '\n' ' ' < AGENT.md)"
 trap 'rm -f "$go_scope_matches" "$go_list_scope"' EXIT
 
 if rg -n '((go|\$\(GO\)) (test|vet)( -race)?|staticcheck|gosec -quiet|govulncheck) \./\.\.\.' Makefile scripts AGENT.md >"$go_scope_matches"; then
@@ -34,6 +35,17 @@ fi
 
 if ! printf '%s\n' "$readme_text" | rg -q 'SQLCipher.*V3|V3.*SQLCipher|deferred.*SQLCipher|SQLCipher.*deferred'; then
 	echo "release-scope: README.md must state that SQLCipher/native database encryption is deferred beyond V2." >&2
+	fail=1
+fi
+
+if ! printf '%s\n' "$readme_text $agent_text" | rg -q 'DSS.*PAdES-BASELINE-B|PAdES-BASELINE-B.*DSS'; then
+	echo "release-scope: README.md/AGENT.md must document the current DSS PAdES-BASELINE-B validation result." >&2
+	fail=1
+fi
+
+if rg -n 'Acrobat/DSS coverage|DSS validation coverage when available|DSS remains skipped|DSS CLI tooling is not installed' README.md AGENT.md >"$go_scope_matches"; then
+	echo "release-scope: README.md/AGENT.md contain stale DSS validation status." >&2
+	cat "$go_scope_matches" >&2
 	fail=1
 fi
 

@@ -7,6 +7,7 @@ package admin
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"pmforge/internal/db"
@@ -45,7 +46,12 @@ func (s *Service) SecureArchive(projectPath string) (string, error) {
 		return "", fmt.Errorf("security backup failed: %s", report.Message)
 	}
 
-	_ = s.DB.LogAction("System", "ARCHIVE_CREATED", projectPath, backupName)
+	if err := s.DB.LogAction("System", "ARCHIVE_CREATED", projectPath, backupName); err != nil {
+		if removeErr := os.Remove(backupName); removeErr != nil && !os.IsNotExist(removeErr) {
+			return "", fmt.Errorf("archive audit failed: %w; remove unaudited archive: %v", err, removeErr)
+		}
+		return "", fmt.Errorf("archive audit failed: %w", err)
+	}
 	return backupName, nil
 }
 

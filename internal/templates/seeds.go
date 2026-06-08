@@ -4,7 +4,6 @@
 package templates
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"pmforge/internal/agile"

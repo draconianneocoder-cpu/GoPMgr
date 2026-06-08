@@ -21,6 +21,27 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let status = $state('');
   let error = $state('');
 
+  // Schedule report export state
+  let exporting = $state(false);
+  let exportFormat = $state<'pdf' | 'docx' | 'odt' | null>(null);
+  let exportStatus = $state('');
+  let exportError = $state(false);
+
+  // Export / signature settings
+  let exportTheme = $state<'modern' | 'classic' | 'archival'>('modern');
+  let autoRepair = $state(true);
+  let certPath = $state('');
+  let signatureEnabled = $state(false);
+  let settingsBusy = $state(false);
+  let settingsStatus = $state('');
+  let settingsError = $state('');
+
+  // Font settings
+  let fonts = $state<FontFamilyInfo[]>([]);
+  let defaultFont = $state('');
+  let fontBusy = $state(false);
+  let fontStatus = $state('');
+
   onMount(async () => {
     try {
       const p = await window.go.main.App.GetProjectMeta();
@@ -28,6 +49,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
       original = p;
     } catch (err: any) {
       error = `Could not load project: ${err}`;
+    }
+    try {
+      const s = await window.go.main.App.GetSettings();
+      exportTheme = s.export_theme;
+      autoRepair = s.auto_repair;
+      certPath = s.cert_path ?? '';
+      signatureEnabled = s.signature_enabled;
+    } catch {
+      // non-fatal; leave defaults
+    }
+    try {
+      fonts = (await window.go.main.App.ListFonts()) ?? [];
+      defaultFont = (await window.go.main.App.GetDefaultFont()) ?? '';
+    } catch {
+      // non-fatal
     }
   });
 
@@ -67,6 +103,90 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   function revert() {
     if (original) draft = { ...original };
+  }
+
+  async function saveExportSettings() {
+    settingsBusy = true;
+    settingsStatus = '';
+    settingsError = '';
+    try {
+      const current = await window.go.main.App.GetSettings();
+      await window.go.main.App.SaveSettings({
+        ...current,
+        export_theme: exportTheme,
+        auto_repair: autoRepair,
+        cert_path: certPath,
+        signature_enabled: signatureEnabled,
+      });
+      settingsStatus = 'Saved.';
+    } catch (err: any) {
+      settingsError = `Save failed: ${err}`;
+    } finally {
+      settingsBusy = false;
+    }
+  }
+
+  async function chooseCert() {
+    try {
+      const p = await window.go.main.App.ChooseCertFile();
+      if (p) certPath = p;
+    } catch {
+      // user cancelled
+    }
+  }
+
+  async function applyFont() {
+    if (!defaultFont) return;
+    fontBusy = true;
+    fontStatus = '';
+    try {
+      await window.go.main.App.SetDefaultFont(defaultFont);
+      fontStatus = 'Default font updated.';
+    } catch (err: any) {
+      fontStatus = `Failed: ${err}`;
+    } finally {
+      fontBusy = false;
+    }
+  }
+
+  async function importFont() {
+    fontBusy = true;
+    fontStatus = '';
+    try {
+      const fi = await window.go.main.App.ImportFont();
+      fonts = [...fonts.filter((f) => f.name !== fi.name), fi];
+      defaultFont = fi.name;
+      fontStatus = `Imported "${fi.name}".`;
+    } catch (err: any) {
+      fontStatus = `Import failed: ${err}`;
+    } finally {
+      fontBusy = false;
+    }
+  }
+
+  async function exportScheduleReport(format: 'pdf' | 'docx' | 'odt') {
+    exporting = true;
+    exportFormat = format;
+    exportStatus = '';
+    exportError = false;
+
+    try {
+      let path: string;
+      if (format === 'pdf') {
+        path = await window.go.main.App.ExportScheduleReportPDF();
+      } else if (format === 'docx') {
+        path = await window.go.main.App.ExportScheduleReportDOCX();
+      } else {
+        path = await window.go.main.App.ExportScheduleReportODT();
+      }
+      exportStatus = `Exported to: ${path}`;
+    } catch (err: any) {
+      exportError = true;
+      exportStatus = `Export failed: ${err}`;
+    } finally {
+      exporting = false;
+      exportFormat = null;
+    }
   }
 
   onDestroy(() => {});
@@ -248,9 +368,155 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="block text-[10px] text-slate-500 mt-1">
               Feeds the Dashboard Budget panel via stakeholder rates × work-item points.
             </span>
-          </label>
-        </div>
-      </section>
-    {/if}
-  </main>
-</div>
+           </label>
+         </div>
+       </section>
+
+       <!-- Schedule Reports (CPM) -->
+       <section>
+         <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+           Schedule Reports (CPM)
+         </h2>
+         <p class="text-xs text-slate-400 mb-3">
+           Export the current project schedule with full Critical Path Method (ES/EF/LS/LF/Float/Critical) calculations.
+         </p>
+
+         <div class="flex flex-wrap gap-2">
+           <button
+             onclick={() => exportScheduleReport('pdf')}
+             disabled={exporting}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
+           >
+             {exporting && exportFormat === 'pdf' ? 'Exporting…' : 'Export PDF'}
+           </button>
+
+           <button
+             onclick={() => exportScheduleReport('docx')}
+             disabled={exporting}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
+           >
+             {exporting && exportFormat === 'docx' ? 'Exporting…' : 'Export DOCX'}
+           </button>
+
+           <button
+             onclick={() => exportScheduleReport('odt')}
+             disabled={exporting}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
+           >
+             {exporting && exportFormat === 'odt' ? 'Exporting…' : 'Export ODT'}
+           </button>
+         </div>
+
+         {#if exportStatus}
+           <p class="text-xs mt-2 {exportError ? 'text-red-400' : 'text-cyan-400'}">
+             {exportStatus}
+           </p>
+         {/if}
+       </section>
+
+       <!-- Export & Signature Settings -->
+       <section>
+         <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+           Export &amp; Signature Settings
+         </h2>
+         <div class="space-y-3">
+           <label class="block">
+             <span class="text-xs text-slate-500 uppercase">Export Theme</span>
+             <select
+               bind:value={exportTheme}
+               class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded"
+             >
+               <option value="modern">Modern (Dark)</option>
+               <option value="classic">Classic (Light)</option>
+               <option value="archival">Archival (B&amp;W)</option>
+             </select>
+           </label>
+
+           <label class="flex items-center gap-3 cursor-pointer">
+             <input type="checkbox" bind:checked={autoRepair} class="accent-cyan-500" />
+             <span class="text-sm text-slate-300">Enable background self-healing</span>
+           </label>
+
+           <label class="flex items-center gap-3 cursor-pointer">
+             <input type="checkbox" bind:checked={signatureEnabled} class="accent-cyan-500" />
+             <span class="text-sm text-slate-300">Enable PDF digital signatures</span>
+           </label>
+
+           <div>
+             <span class="text-xs text-slate-500 uppercase">Certificate path</span>
+             <div class="flex gap-2 mt-1">
+               <input
+                 bind:value={certPath}
+                 placeholder="Path to .p12 / .pfx certificate"
+                 class="flex-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none text-sm"
+               />
+               <button
+                 onclick={chooseCert}
+                 class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded"
+               >
+                 Browse…
+               </button>
+             </div>
+           </div>
+
+           <button
+             onclick={saveExportSettings}
+             disabled={settingsBusy}
+             class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-1.5 rounded"
+           >
+             {settingsBusy ? 'Saving…' : 'Save export settings'}
+           </button>
+
+           {#if settingsStatus}
+             <p class="text-xs text-cyan-400">{settingsStatus}</p>
+           {/if}
+           {#if settingsError}
+             <p class="text-xs text-red-400">{settingsError}</p>
+           {/if}
+         </div>
+       </section>
+
+       <!-- Document Font -->
+       <section>
+         <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+           Document Font
+         </h2>
+         <p class="text-xs text-slate-400 mb-3">
+           Applies to all PDF, DOCX, and ODT exports for this project.
+         </p>
+         <div class="flex flex-wrap gap-2 items-end">
+           <div class="flex-1 min-w-40">
+             <label class="block">
+               <span class="text-xs text-slate-500 uppercase">Default family</span>
+               <select
+                 bind:value={defaultFont}
+                 class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded"
+               >
+                 {#each fonts as f (f.name)}
+                   <option value={f.name}>{f.name} ({f.category})</option>
+                 {/each}
+               </select>
+             </label>
+           </div>
+           <button
+             onclick={applyFont}
+             disabled={fontBusy || !defaultFont}
+             class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+           >
+             Apply
+           </button>
+           <button
+             onclick={importFont}
+             disabled={fontBusy}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded"
+           >
+             Import font…
+           </button>
+         </div>
+         {#if fontStatus}
+           <p class="text-xs mt-2 text-cyan-400">{fontStatus}</p>
+         {/if}
+       </section>
+     {/if}
+   </main>
+ </div>

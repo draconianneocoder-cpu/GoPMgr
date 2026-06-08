@@ -6,6 +6,7 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -50,7 +51,11 @@ var ErrNoStakeholder = errors.New("db: stakeholder not found")
 // defaults to "team"; empty ID gets a fresh one.
 func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 	if s.ID == "" {
-		s.ID = newID("stk")
+		id, err := newID("stk")
+		if err != nil {
+			return Stakeholder{}, fmt.Errorf("generate stakeholder id: %w", err)
+		}
+		s.ID = id
 	}
 	if s.Category == "" {
 		s.Category = StakeholderTeam

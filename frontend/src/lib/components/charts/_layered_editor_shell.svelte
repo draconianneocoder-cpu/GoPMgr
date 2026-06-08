@@ -18,6 +18,7 @@ not routed directly.
   interface LayeredNode {
     id: string;
     label: string;
+    [k: string]: unknown;
     note?: string;
     owner?: string;
     duration?: number;
@@ -39,6 +40,17 @@ not routed directly.
     to: string;
     label?: string;
   }
+  interface LayeredLayoutNode {
+    id: string;
+    title: string;
+    note?: string;
+    owner?: string;
+    depth: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }
   interface LayeredDoc {
     nodes: LayeredNode[];
     edges: LayeredEdge[];
@@ -54,7 +66,7 @@ not routed directly.
     chartKind: string; // 'network' | 'pert' | 'cpm'
     headingLabel: string;
     nodeDetailPanel?: Snippet<[LayeredNode]>;
-    nodeContent?: Snippet<[LayeredNode, unknown]>;
+    nodeContent?: Snippet<[LayeredNode, LayeredLayoutNode]>;
   } = $props();
 
   // State
@@ -72,8 +84,16 @@ not routed directly.
   let layoutError = $state('');
   let pendingEdge = $state<string | null>(null); // ID of from-node when picking the to-node
 
+  function handleKeyDown(e: KeyboardEvent) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      void save();
+    }
+  }
+
   // Load
   onMount(async () => {
+    window.addEventListener('keydown', handleKeyDown);
     if (!session.editingId) return;
     chart = await window.go.main.App.GetChart(session.editingId);
     try {
@@ -195,6 +215,7 @@ not routed directly.
   // navigation away from a half-edited chart doesn't fire a save
   // call on an unmounted component. (AGENT.md §6.)
   onDestroy(() => {
+    window.removeEventListener('keydown', handleKeyDown);
     if (debounceTimer) {
       clearTimeout(debounceTimer);
       debounceTimer = null;

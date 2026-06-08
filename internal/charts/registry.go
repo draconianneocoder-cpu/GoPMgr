@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026 The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package charts is the taxonomy and dispatch layer for PMForge's 19
+// Package charts is the taxonomy and dispatch layer for PMForge's 20
 // chart and diagram types.
 //
 // Architectural overview
 //
-// Rather than 19 separate packages, all chart types share five
+// Rather than 20 separate packages, all chart types share four
 // engines. Each engine knows how to take a JSON `data` blob and a
 // JSON `config` blob and produce (a) an internal layout suitable for
 // the Svelte frontend, and (b) a rendering to PDF/PNG/SVG for export:
@@ -121,7 +121,7 @@ var registry = []Definition{
 		Name:        "Cause-and-Effect Diagram",
 		Engine:      EngineDAG,
 		Description: "Generic cause/effect tree. Less rigid than Fishbone; supports nested causes.",
-		DataExample: `{"effect":"Outcome","causes":[{"label":"Cause 1"}]}`,
+		DataExample: `{"effect":"Outcome","root":{"id":"c1","label":"Cause 1"}}`,
 	},
 
 	// -------- Statistical family --------
@@ -188,7 +188,7 @@ var registry = []Definition{
 		Name:        "RACI Matrix",
 		Engine:      EngineMatrix,
 		Description: "Responsibility assignment: Responsible, Accountable, Consulted, Informed per (task, role).",
-		DataExample: `{"roles":["PM","Dev"],"tasks":["Plan"],"assignments":{"Plan":{"PM":"A","Dev":"R"}}}`,
+		DataExample: `{"roles":["PM","Dev"],"tasks":[{"id":"t1","title":"Plan"}],"assignments":{"t1":{"PM":"A","Dev":"R"}}}`,
 	},
 	{
 		Kind:        KindSWOT,

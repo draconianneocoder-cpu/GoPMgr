@@ -64,6 +64,8 @@ func RenderRiskRegisterPDF(content map[string]interface{}, projectName string) (
 		drawRiskTable(pdf, risks)
 	}
 
+	DrawCompactSignatureBox(pdf, projectName, time.Now().Format("2006-01-02"))
+
 	// Footer
 	pdf.SetY(-15)
 	pdf.SetFont("Helvetica", "I", 8)

@@ -201,6 +201,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           {@const wip = wipState(col)}
           <section
             class="flex-shrink-0 w-72 bg-slate-900 border border-slate-800 rounded-lg flex flex-col"
+            aria-label={`${col.name} work items`}
             ondragover={onDragOver}
             ondrop={(e) => onDrop(e, col.id)}
           >

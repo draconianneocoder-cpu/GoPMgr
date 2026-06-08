@@ -13,6 +13,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -411,6 +412,25 @@ func TestInjectPAdESSignature_SignsDeclaredByteRange(t *testing.T) {
 	}
 	if !bytes.HasSuffix(contents, []byte(">")) {
 		t.Fatalf("Contents range does not end at closing hex delimiter: %.32q", contents[len(contents)-32:])
+	}
+}
+
+func TestInjectPAdESSignature_IncludesSignedModificationTime(t *testing.T) {
+	out, err := InjectPAdESSignature(minimalPDF(), func([]byte) ([]byte, error) {
+		return []byte{0xca, 0xfe}, nil
+	})
+	if err != nil {
+		t.Fatalf("InjectPAdESSignature: %v", err)
+	}
+
+	modTime := regexp.MustCompile(`/M \(D:\d{14}Z\)`).Find(out)
+	if modTime == nil {
+		t.Fatalf("signed PDF missing PAdES signature dictionary /M timestamp:\n%s", string(out))
+	}
+
+	br := parseByteRangeForTest(t, out)
+	if !bytes.Contains(byteRangeBytesForTest(t, out, br), modTime) {
+		t.Fatalf("/M timestamp %q is not covered by the declared ByteRange", string(modTime))
 	}
 }
 

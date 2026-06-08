@@ -45,6 +45,9 @@ func (s *Store) EnsureDefaultBoard() (Board, error) {
 		b.IsDefault = isDefault != 0
 		b.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
 		b.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updated)
+		if err := ensureDefaultColumns(s.Conn, b.ID); err != nil {
+			return Board{}, err
+		}
 		return b, nil
 	}
 	if err != sql.ErrNoRows {
@@ -52,29 +55,54 @@ func (s *Store) EnsureDefaultBoard() (Board, error) {
 	}
 
 	// Seed.
+	boardID, err := NewBoardID()
+	if err != nil {
+		return Board{}, fmt.Errorf("generate board id: %w", err)
+	}
 	b = Board{
-		ID:        NewBoardID(),
+		ID:        boardID,
 		ProjectID: s.ProjectID,
 		Name:      "Main board",
 		IsDefault: true,
 	}
-	if _, err := s.Conn.Exec(
+	tx, err := s.Conn.Begin()
+	if err != nil {
+		return Board{}, err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(
 		`INSERT INTO agile_boards (id, project_id, name, is_default)
 		 VALUES (?, ?, ?, 1)`,
 		b.ID, b.ProjectID, b.Name,
 	); err != nil {
 		return Board{}, err
 	}
-	for _, c := range DefaultColumns(b.ID) {
-		if _, err := s.Conn.Exec(
-			`INSERT INTO agile_columns (id, board_id, name, order_idx, wip_limit)
-			 VALUES (?, ?, ?, ?, ?)`,
-			c.ID, c.BoardID, c.Name, c.OrderIdx, c.WIPLimit,
-		); err != nil {
-			return Board{}, err
-		}
+	if err := ensureDefaultColumns(tx, b.ID); err != nil {
+		return Board{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Board{}, err
 	}
 	return s.EnsureDefaultBoard()
+}
+
+type columnExecutor interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}
+
+func ensureDefaultColumns(exec columnExecutor, boardID string) error {
+	for _, c := range DefaultColumns(boardID) {
+		if _, err := exec.Exec(
+			`INSERT INTO agile_columns (id, board_id, name, order_idx, wip_limit)
+			 VALUES (?, ?, ?, ?, ?)
+			 ON CONFLICT(id) DO NOTHING`,
+			c.ID, c.BoardID, c.Name, c.OrderIdx, c.WIPLimit,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ListColumns returns every column on the given board, ordered by
@@ -105,7 +133,11 @@ func (s *Store) ListColumns(boardID string) ([]Column, error) {
 // its WIP limit.
 func (s *Store) SaveColumn(c Column) error {
 	if c.ID == "" {
-		c.ID = NewColumnID()
+		id, err := NewColumnID()
+		if err != nil {
+			return fmt.Errorf("generate column id: %w", err)
+		}
+		c.ID = id
 	}
 	_, err := s.Conn.Exec(`
 		INSERT INTO agile_columns (id, board_id, name, order_idx, wip_limit)
@@ -135,7 +167,11 @@ var ErrNoWorkItem = errors.New("agile: work item not found")
 // closed_at so DORA can compute lead times.
 func (s *Store) SaveWorkItem(wi WorkItem) (WorkItem, error) {
 	if wi.ID == "" {
-		wi.ID = NewWorkItemID()
+		id, err := NewWorkItemID()
+		if err != nil {
+			return WorkItem{}, fmt.Errorf("generate work item id: %w", err)
+		}
+		wi.ID = id
 	}
 	if wi.ProjectID == "" {
 		wi.ProjectID = s.ProjectID
@@ -289,9 +325,9 @@ func scanWorkItem(row interface {
 	Scan(...interface{}) error
 }) (WorkItem, error) {
 	var (
-		wi                                   WorkItem
-		typeStr, prio                        string
-		created, updated, closed             string
+		wi                       WorkItem
+		typeStr, prio            string
+		created, updated, closed string
 	)
 	err := row.Scan(
 		&wi.ID, &wi.ProjectID, &typeStr, &wi.Title, &wi.Description,
@@ -324,7 +360,11 @@ var ErrNoSprint = errors.New("agile: sprint not found")
 // only one sprint is active at a time (the GUI enforces this).
 func (s *Store) SaveSprint(sp Sprint) (Sprint, error) {
 	if sp.ID == "" {
-		sp.ID = NewSprintID()
+		id, err := NewSprintID()
+		if err != nil {
+			return Sprint{}, fmt.Errorf("generate sprint id: %w", err)
+		}
+		sp.ID = id
 	}
 	if sp.ProjectID == "" {
 		sp.ProjectID = s.ProjectID
@@ -410,9 +450,9 @@ func scanSprint(row interface {
 	Scan(...interface{}) error
 }) (Sprint, error) {
 	var (
-		sp                Sprint
-		status            string
-		created           string
+		sp      Sprint
+		status  string
+		created string
 	)
 	err := row.Scan(
 		&sp.ID, &sp.ProjectID, &sp.Name, &sp.Goal, &status,
@@ -435,7 +475,11 @@ func scanSprint(row interface {
 // from this table — every push to production should produce one row.
 func (s *Store) SaveDeployment(d Deployment) (Deployment, error) {
 	if d.ID == "" {
-		d.ID = NewDeploymentID()
+		id, err := NewDeploymentID()
+		if err != nil {
+			return Deployment{}, fmt.Errorf("generate deployment id: %w", err)
+		}
+		d.ID = id
 	}
 	if d.ProjectID == "" {
 		d.ProjectID = s.ProjectID

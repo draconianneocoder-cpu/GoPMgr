@@ -13,6 +13,7 @@ import (
 
 	"github.com/jung-kurt/gofpdf"
 
+	"pmforge/internal/crypto"
 	"pmforge/internal/pdfmeta"
 )
 
@@ -288,17 +289,83 @@ func Render(kind Kind, contentJSON, projectName string) ([]byte, error) {
 	if ok {
 		name = projectName + ": " + def.Name
 	}
-	xmp := pdfmeta.BuildXMPPacket(pdfmeta.XMPSpec{
+
+	spec := pdfmeta.XMPSpec{
 		Title:       name,
 		Author:      "PMForge",
 		Subject:     string(kind),
 		CreatorTool: "PMForge",
-	})
-	if tagged, ierr := pdfmeta.InjectXMPStream(raw, xmp); ierr == nil {
-		return tagged, nil
 	}
-	// Fail-soft: return the valid but un-tagged PDF.
+
+	// Prefer full PDF/A-3 (XMP + OutputIntent + ICC) when the profile
+	// has been fetched via `make icc`. Fall back to XMP-only otherwise.
+	if icc := pdfmeta.DefaultICCProfile(); len(icc) > 0 {
+		if tagged, err := pdfmeta.MakePDFA3(raw, spec, icc); err == nil {
+			return tagged, nil
+		}
+	} else if xmp := pdfmeta.BuildXMPPacket(spec); len(xmp) > 0 {
+		if tagged, err := pdfmeta.InjectXMPStream(raw, xmp); err == nil {
+			return tagged, nil
+		}
+	}
+
+	// Fail-soft: return the valid but minimally-tagged PDF.
 	return raw, nil
+}
+
+// RenderSigned renders the document and applies a real PAdES B-B digital
+// signature using the provided certificate. It performs the full pipeline:
+//
+//  1. Raw content rendering
+//  2. PDF/A-3 metadata + OutputIntent (if ICC available)
+//  3. Real embedded PAdES B-B signature via pdfmeta.InjectPAdESSignature
+//
+// Callers that need a visible signature appearance must render it before
+// this function signs the PDF. Appending another PDF after signing would
+// leave those bytes outside the declared /ByteRange.
+func RenderSigned(kind Kind, contentJSON, projectName, certPath, certPassword string) ([]byte, error) {
+	raw, err := renderRaw(kind, contentJSON, projectName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 1: PDF/A-3 post-processing (same as normal Render)
+	def, ok := Get(kind)
+	name := projectName
+	if ok {
+		name = projectName + ": " + def.Name
+	}
+
+	spec := pdfmeta.XMPSpec{
+		Title:       name,
+		Author:      "PMForge",
+		Subject:     string(kind),
+		CreatorTool: "PMForge",
+	}
+
+	pdfBytes := raw
+	if icc := pdfmeta.DefaultICCProfile(); len(icc) > 0 {
+		if tagged, err := pdfmeta.MakePDFA3(raw, spec, icc); err == nil {
+			pdfBytes = tagged
+		}
+	} else if xmp := pdfmeta.BuildXMPPacket(spec); len(xmp) > 0 {
+		if tagged, err := pdfmeta.InjectXMPStream(raw, xmp); err == nil {
+			pdfBytes = tagged
+		}
+	}
+
+	// Step 2: Real PAdES B-B digital signature
+	signer, err := crypto.LoadCertificate(certPath, certPassword)
+	if err != nil {
+		return nil, fmt.Errorf("documents: load certificate for signing: %w", err)
+	}
+
+	signed, err := pdfmeta.InjectPAdESSignature(pdfBytes, signer.SignPDFCMS)
+	if err != nil {
+		return nil, fmt.Errorf("documents: PAdES embedding failed: %w", err)
+	}
+
+	return signed, nil
 }
 
 // renderRaw dispatches to the kind-specific PDF renderer, or falls
