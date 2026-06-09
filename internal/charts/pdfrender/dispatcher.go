@@ -18,6 +18,7 @@ package pdfrender
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/jung-kurt/gofpdf"
@@ -83,8 +84,12 @@ func RenderChartToPDF(pdf *gofpdf.Fpdf, kind string, data string, title string, 
 // kind has no registered PDF renderer.
 var ErrUnsupportedKind = fmt.Errorf("pdfrender: unsupported chart kind")
 
+// isEngineNotImpl reports whether err is the charts package's
+// "engine not implemented" sentinel. Using errors.Is (rather than a
+// string compare against the message) keeps this robust to wrapping
+// and to any future change in the error's text.
 func isEngineNotImpl(err error) bool {
-	return err != nil && err.Error() == "charts: engine renderer not yet implemented"
+	return errors.Is(err, charts.ErrEngineNotImplemented)
 }
 
 func drawTitle(pdf *gofpdf.Fpdf, x, y, w, h float64, sectionLabel, chartKindName string) {
