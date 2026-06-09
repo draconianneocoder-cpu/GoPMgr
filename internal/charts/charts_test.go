@@ -5,7 +5,11 @@ package charts
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
+
+	"pmforge/internal/charts/dag"
+	"pmforge/internal/charts/flow"
 )
 
 // --- registry ---
@@ -204,5 +208,62 @@ func TestLayout_AllKindsHaveDataExample(t *testing.T) {
 				t.Errorf("Layout(%q, DataExample) error: %v", d.Kind, err)
 			}
 		})
+	}
+}
+
+// cycleJSON is a minimal directed graph with a mutual A↔B edge,
+// triggering cycle detection in any layered-layout engine.
+const cycleJSON = `{"nodes":[{"id":"A"},{"id":"B"}],"edges":[{"from":"A","to":"B"},{"from":"B","to":"A"}]}`
+
+func TestLayout_AllKinds_RejectsBadJSON(t *testing.T) {
+	for _, d := range All() {
+		t.Run(string(d.Kind), func(t *testing.T) {
+			_, err := Layout(d.Kind, "{bad}")
+			if err == nil {
+				t.Errorf("Layout(%q, bad JSON) returned nil error, want parse error", d.Kind)
+			}
+		})
+	}
+}
+
+func TestLayout_Network_CycleError(t *testing.T) {
+	_, err := Layout(KindNetworkDiagram, cycleJSON)
+	if !errors.Is(err, dag.ErrCycle) {
+		t.Errorf("Layout(KindNetworkDiagram, cycle) err = %v, want dag.ErrCycle", err)
+	}
+}
+
+func TestLayout_PERT_CycleError(t *testing.T) {
+	_, err := Layout(KindPERT, cycleJSON)
+	if !errors.Is(err, dag.ErrCycle) {
+		t.Errorf("Layout(KindPERT, cycle) err = %v, want dag.ErrCycle", err)
+	}
+}
+
+func TestLayout_CPM_CycleError(t *testing.T) {
+	_, err := Layout(KindCPM, cycleJSON)
+	if !errors.Is(err, dag.ErrCycle) {
+		t.Errorf("Layout(KindCPM, cycle) err = %v, want dag.ErrCycle", err)
+	}
+}
+
+func TestLayout_CauseAndEffect_NilRootError(t *testing.T) {
+	_, err := Layout(KindCauseAndEffect, "{}")
+	if !errors.Is(err, dag.ErrNoRoot) {
+		t.Errorf("Layout(KindCauseAndEffect, empty doc) err = %v, want dag.ErrNoRoot", err)
+	}
+}
+
+func TestLayout_Workflow_CycleError(t *testing.T) {
+	_, err := Layout(KindWorkflow, cycleJSON)
+	if !errors.Is(err, flow.ErrCycle) {
+		t.Errorf("Layout(KindWorkflow, cycle) err = %v, want flow.ErrCycle", err)
+	}
+}
+
+func TestLayout_Activity_CycleError(t *testing.T) {
+	_, err := Layout(KindActivity, cycleJSON)
+	if !errors.Is(err, flow.ErrCycleActivity) {
+		t.Errorf("Layout(KindActivity, cycle) err = %v, want flow.ErrCycleActivity", err)
 	}
 }
