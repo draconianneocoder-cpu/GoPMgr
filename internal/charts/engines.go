@@ -24,21 +24,25 @@ type LayoutResult struct {
 	Body   json.RawMessage `json:"body"`
 }
 
-// ErrEngineNotImplemented is returned by Layout for kinds that ship
-// in the V2 foundation as backend taxonomy entries but do not yet
-// have a renderer wired up.
+// ErrEngineNotImplemented is the defensive default returned by Layout
+// when a kind is in the registry (Get succeeds) but has no switch arm
+// below. All 20 shipped kinds have arms, so this is unreachable for
+// them; it guards against a new registry entry added without a matching
+// renderer. main.go treats it as a non-fatal "skip this chart" signal.
 var ErrEngineNotImplemented = errors.New("charts: engine renderer not yet implemented")
 
 // Layout dispatches a (kind, raw-JSON-data) pair to the correct
 // engine and returns a LayoutResult the frontend can draw directly.
 //
-// DAG family — fully implemented in V2.1:
-//   WBS, Network Diagram, PERT, CPM, Fishbone, Cause-and-Effect.
+// All four families are fully implemented:
+//   DAG:    WBS, Network Diagram, PERT, CPM, Fishbone, Cause-and-Effect
+//   Flow:   Workflow, Activity
+//   Matrix: RACI, SWOT, Stakeholder, Generic
+//   Stats:  Line, Bar, Pareto, Pie, BurnUp, BurnDown, CumulativeFlow, Control
 //
-// Stats / Matrix / Flow families return ErrEngineNotImplemented.
-// Implementing one of them is a self-contained change: add a function
-// next to dag.LayoutWBS / stats.LayoutLine / matrix.LayoutRACI /
-// flow.LayoutWorkflow and add a case to the switch below.
+// Adding a kind is a self-contained change: add a function next to the
+// family's existing layouts (dag.LayoutWBS / flow.LayoutWorkflow /
+// matrix.LayoutRACI / stats.LayoutLine) and add a case to the switch.
 //
 // The PERT and CPM cases also re-encode the input document with the
 // computed annotations (Expected/Variance/StdDev or ES/EF/LS/LF/Float)

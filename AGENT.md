@@ -812,6 +812,14 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **There are now two `parseDate`s in the tree with different signatures.** `timeline.parseDate` returns `(time.Time, bool)`; `documents.parseDate` (in `execution_plan.go`) returns a bare `time.Time` and loops `{"2006-01-02", RFC3339, RFC3339Nano}`. No collision (different packages), but assert against each one's actual signature; don't copy timeline's `ok` checks into documents.
 - **The pure-logic well is now near-dry.** After this, the remaining low-coverage packages (`cli`, `export`, `charts/pdfrender`, `sigma/service`, `db`) are predominantly glue (flag registration, file writers, gofpdf, SQLite CRUD) already correctly rejected by the discriminator. A future survey turning up "no legitimately testable target, stop" is a valid outcome, not a reason to reach for glue.
 
+### 2026-06-09 — stale-doc TODO cleanup (report.go, engines.go)
+
+- **With the coverage well dry, the next legitimate work is closing stale TODO/completion comments that contradict shipped code.** Grepping `TODO|FIXME|this v1|follow-up|not yet|do not yet` over `internal`/`cmd` (excluding `_test.go`) surfaces them. Two were materially wrong:
+  - `documents/report.go` claimed "charts are referenced only by ID in this V1 ... embedding ... as raster images is a follow-up." The code already embeds each `chart_ref` as a *vector* visualisation on its own page via `pdfrender.RenderChartToPDF` (confirmed by reading `BuildCombinedReport`/`renderSectionBody`), matching README TODO #12 (Done). Rewrote the comment to describe actual behavior.
+  - `charts/engines.go` claimed "Stats / Matrix / Flow families return ErrEngineNotImplemented" and "DAG fully implemented in V2.1." All 20 kinds have switch arms (the `TestLayout_AllKindsHaveDataExample` test exercises every one), so that text was stale. Rewrote to list all four families as implemented.
+- **`ErrEngineNotImplemented` is NOT dead code despite all kinds being implemented; verify usage before deleting an error var.** It is still the switch's default-return (engines.go ~228) and is handled non-fatally in `main.go` (`errors.Is(err, charts.ErrEngineNotImplemented)`). It guards the case where a future registry entry is added without a renderer arm. Keep the var; only the surrounding doc text was stale. The lesson: a "not yet implemented" *string* can be a live defensive default, not evidence of incomplete work - read the call sites.
+- **README's "Real TODOs in the V2 scaffold" list (§"Real TODOs") is the project's actual TODO list.** Its open items are now all non-code: #2 PDF/A-3 release-builder soak, #3 PAdES Acrobat external validation, #8 SQLCipher deferred to V3. There is no actionable feature code left in it; "complete the TODO list" reduces to keeping code comments honest with what already shipped.
+
 ---
 
 ## 10. Quick map: "where do I add ..."
