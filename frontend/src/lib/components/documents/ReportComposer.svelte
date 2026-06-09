@@ -14,7 +14,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onMount } from 'svelte';
   import { goto } from '../../session.svelte';
-  import { showToast } from '../../toast';
+  import { showToast } from '../../toast.svelte';
   import SignCertificateModal from '../SignCertificateModal.svelte';
 
   let reportTitle = $state('Project Report');

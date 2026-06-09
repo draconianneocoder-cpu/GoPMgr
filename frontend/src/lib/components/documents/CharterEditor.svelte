@@ -5,7 +5,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
-  import { showToast } from '../../toast';
+  import { showToast } from '../../toast.svelte';
   import SignCertificateModal from '../SignCertificateModal.svelte';
   import DocumentFieldEditor from './DocumentFieldEditor.svelte';
 

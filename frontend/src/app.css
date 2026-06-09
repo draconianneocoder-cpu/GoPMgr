@@ -5,6 +5,54 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------------------------------------------------------
+   Global foundation (unlayered, so it wins over Tailwind's @layer
+   utilities where needed). These rules polish the whole app at once
+   rather than per-component.
+   --------------------------------------------------------------------- */
+
+:root {
+  /* Render native controls (scrollbars, date pickers, form widgets) in
+     dark mode and tint checkboxes/radios with the PMForge accent. */
+  color-scheme: dark;
+  accent-color: #00d4ff;
+}
+
+html {
+  /* Crisper text on the dark background. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Visible keyboard-focus indicator. Most components apply Tailwind's
+   `outline-none` (which is a transparent outline, not `outline: none`),
+   so keyboard users had no focus ring on buttons. This unlayered rule
+   overrides that layered utility for interactive elements only, while
+   mouse/touch focus stays clean (:focus-visible matches keyboard use). */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:not([tabindex='-1']):focus-visible {
+  outline: 2px solid #00d4ff;
+  outline-offset: 2px;
+}
+
+/* Respect the OS "reduce motion" preference app-wide. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Screen-reader-only helper — used by GanttChart for a11y labels. */
 .sr-only {
   position: absolute;

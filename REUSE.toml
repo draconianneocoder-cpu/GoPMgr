@@ -12,6 +12,12 @@ SPDX-FileCopyrightText = "2026 The PMForge Contributors"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
+path = ".claude/launch.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The PMForge Contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
 path = ".tmp/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 The PMForge Contributors"
