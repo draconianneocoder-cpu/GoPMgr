@@ -482,3 +482,192 @@ func TestLayoutCausalTree_RootWithChildren_HasEdges(t *testing.T) {
 		t.Fatalf("expected 2 edges (root→c1, root→c2), got %d", len(layout.Edges))
 	}
 }
+
+// ===== Encode round-trips (Encode/EncodeLayered/EncodeFishbone/EncodeCausalTree) =====
+//
+// Each Encode is the inverse of its Parse. A round-trip both exercises
+// the encoder and drives the Parse success path (valid non-empty JSON),
+// which the existing empty/invalid-only Parse tests leave uncovered.
+
+func TestEncodeWBS_RoundTrip(t *testing.T) {
+	doc := WBSDocument{Root: &WBSNode{
+		ID: "r", Title: "Project", Children: []*WBSNode{
+			{ID: "a", Title: "Phase A", Effort: 3},
+		},
+	}}
+	raw, err := Encode(doc)
+	if err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	got, err := Parse(raw)
+	if err != nil {
+		t.Fatalf("Parse(Encode(doc)): %v", err)
+	}
+	if got.Root == nil || got.Root.Title != "Project" {
+		t.Fatalf("round-trip lost root: %+v", got.Root)
+	}
+	if len(got.Root.Children) != 1 || got.Root.Children[0].ID != "a" {
+		t.Errorf("round-trip lost children: %+v", got.Root.Children)
+	}
+}
+
+func TestEncodeLayered_RoundTrip(t *testing.T) {
+	doc := LayeredDocument{
+		Nodes: []LayeredNode{{ID: "A", Label: "Start", Duration: 2}},
+		Edges: []LayeredEdge{{From: "A", To: "B", Label: "FS"}},
+	}
+	raw, err := EncodeLayered(doc)
+	if err != nil {
+		t.Fatalf("EncodeLayered: %v", err)
+	}
+	got, err := ParseLayered(raw)
+	if err != nil {
+		t.Fatalf("ParseLayered(EncodeLayered(doc)): %v", err)
+	}
+	if len(got.Nodes) != 1 || got.Nodes[0].ID != "A" {
+		t.Errorf("round-trip lost nodes: %+v", got.Nodes)
+	}
+	if len(got.Edges) != 1 || got.Edges[0].Label != "FS" {
+		t.Errorf("round-trip lost edges: %+v", got.Edges)
+	}
+}
+
+func TestEncodeFishbone_RoundTrip(t *testing.T) {
+	doc := FishboneDocument{
+		Effect: "Defects",
+		Categories: []FishboneCategory{
+			{Name: "People", Causes: []string{"training", "fatigue"}},
+		},
+	}
+	raw, err := EncodeFishbone(doc)
+	if err != nil {
+		t.Fatalf("EncodeFishbone: %v", err)
+	}
+	got, err := ParseFishbone(raw)
+	if err != nil {
+		t.Fatalf("ParseFishbone(EncodeFishbone(doc)): %v", err)
+	}
+	if got.Effect != "Defects" {
+		t.Errorf("round-trip lost effect: %q", got.Effect)
+	}
+	if len(got.Categories) != 1 || len(got.Categories[0].Causes) != 2 {
+		t.Errorf("round-trip lost categories: %+v", got.Categories)
+	}
+}
+
+func TestEncodeCausalTree_RoundTrip(t *testing.T) {
+	doc := CausalTreeDocument{
+		Effect: "Outage",
+		Root:   &CauseNode{ID: "r", Label: "Root", Children: []*CauseNode{{ID: "c", Label: "Cause"}}},
+	}
+	raw, err := EncodeCausalTree(doc)
+	if err != nil {
+		t.Fatalf("EncodeCausalTree: %v", err)
+	}
+	got, err := ParseCausalTree(raw)
+	if err != nil {
+		t.Fatalf("ParseCausalTree(EncodeCausalTree(doc)): %v", err)
+	}
+	if got.Effect != "Outage" || got.Root == nil {
+		t.Fatalf("round-trip lost effect/root: %+v", got)
+	}
+	if len(got.Root.Children) != 1 || got.Root.Children[0].ID != "c" {
+		t.Errorf("round-trip lost children: %+v", got.Root.Children)
+	}
+}
+
+// ===== Kind-specific layout wrappers (network.go, pert.go, cpm.go) =====
+
+func TestNewLayeredNode(t *testing.T) {
+	n := NewLayeredNode("n1", "Task One")
+	if n.ID != "n1" || n.Label != "Task One" {
+		t.Errorf("NewLayeredNode: got %+v", n)
+	}
+}
+
+func TestLayoutNetwork_LinearChain(t *testing.T) {
+	doc := LayeredDocument{
+		Nodes: []LayeredNode{{ID: "A", Label: "A"}, {ID: "B", Label: "B"}},
+		Edges: []LayeredEdge{{From: "A", To: "B"}},
+	}
+	layout, err := LayoutNetwork(doc)
+	if err != nil {
+		t.Fatalf("LayoutNetwork: %v", err)
+	}
+	if len(layout.Nodes) != 2 {
+		t.Errorf("expected 2 nodes, got %d", len(layout.Nodes))
+	}
+}
+
+func TestLayoutNetwork_Cycle_ReturnsErrCycle(t *testing.T) {
+	doc := LayeredDocument{
+		Nodes: []LayeredNode{{ID: "A"}, {ID: "B"}},
+		Edges: []LayeredEdge{{From: "A", To: "B"}, {From: "B", To: "A"}},
+	}
+	if _, err := LayoutNetwork(doc); !errors.Is(err, ErrCycle) {
+		t.Errorf("expected ErrCycle, got %v", err)
+	}
+}
+
+func TestLayoutPERT_FillsExpected(t *testing.T) {
+	nodes := []LayeredNode{{ID: "A", Label: "A", Optimistic: 2, MostLikely: 4, Pessimistic: 12}}
+	doc := LayeredDocument{Nodes: nodes}
+	layout, err := LayoutPERT(doc)
+	if err != nil {
+		t.Fatalf("LayoutPERT: %v", err)
+	}
+	if len(layout.Nodes) != 1 {
+		t.Fatalf("expected 1 node, got %d", len(layout.Nodes))
+	}
+	// LayoutPERT mutates the node slice in place: E = (2 + 4*4 + 12)/6 = 5.
+	within(t, "A.Expected", nodes[0].Expected, 5)
+	if nodes[0].Duration != nodes[0].Expected {
+		t.Errorf("Duration (%v) should equal Expected (%v)", nodes[0].Duration, nodes[0].Expected)
+	}
+}
+
+func TestLayoutCPM_LinearChain_MarksCritical(t *testing.T) {
+	nodes := []LayeredNode{
+		{ID: "A", Label: "A", Duration: 3},
+		{ID: "B", Label: "B", Duration: 2},
+	}
+	doc := LayeredDocument{
+		Nodes: nodes,
+		Edges: []LayeredEdge{{From: "A", To: "B"}},
+	}
+	layout, err := LayoutCPM(doc)
+	if err != nil {
+		t.Fatalf("LayoutCPM: %v", err)
+	}
+	if len(layout.Nodes) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(layout.Nodes))
+	}
+	// A linear chain has zero float throughout: every node is critical.
+	// LayoutCPM writes results back into the shared node slice.
+	for _, n := range nodes {
+		if !n.IsCritical {
+			t.Errorf("node %s should be on the critical path", n.ID)
+		}
+	}
+	within(t, "A.EF", nodes[0].EF, 3)
+}
+
+func TestLayoutCPM_Cycle_ReturnsErrCycle(t *testing.T) {
+	doc := LayeredDocument{
+		Nodes: []LayeredNode{{ID: "A", Duration: 1}, {ID: "B", Duration: 1}},
+		Edges: []LayeredEdge{{From: "A", To: "B"}, {From: "B", To: "A"}},
+	}
+	if _, err := LayoutCPM(doc); !errors.Is(err, ErrCycle) {
+		t.Errorf("expected ErrCycle, got %v", err)
+	}
+}
+
+// TestWalk_NilNode covers the nil guard in walk (reached when a tree
+// contains a nil child pointer or walk is seeded with nil).
+func TestWalk_NilNode(t *testing.T) {
+	count := 0
+	walk(nil, func(*WBSNode) { count++ })
+	if count != 0 {
+		t.Errorf("walk(nil) visited %d nodes, want 0", count)
+	}
+}
