@@ -3,8 +3,8 @@ SPDX-FileCopyrightText: 2026 The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
-  import { getToasts, dismissToast, pauseToast, resumeToast } from '../toast';
-  import type { Toast } from '../toast';
+  import { getToasts, dismissToast, pauseToast, resumeToast } from '../toast.svelte';
+  import type { Toast } from '../toast.svelte';
 
   let toasts = $derived(getToasts());
 

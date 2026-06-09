@@ -129,7 +129,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <RouteComponent {...routeProps} />
 {:else if routeLoaders[session.view]}
   <div class="min-h-screen bg-slate-950 text-slate-400 flex items-center justify-center">
-    <p class="text-xs uppercase tracking-widest">Loading view...</p>
+    <div class="flex items-center gap-3" role="status" aria-live="polite">
+      <span
+        class="h-4 w-4 rounded-full border-2 border-slate-700 border-t-cyan-400 animate-spin"
+        aria-hidden="true"
+      ></span>
+      <p class="text-xs uppercase tracking-widest">Loading</p>
+    </div>
   </div>
 {:else}
   <!-- Safety fallback: all known views are in routeLoaders above. This
