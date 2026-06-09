@@ -631,6 +631,61 @@ func parsePAdESSignedDataForTest(t *testing.T, pdf []byte, br [4]int) *pkcs7.PKC
 	return p7
 }
 
+// ----- xmlEscape -----
+
+func TestXmlEscape_Empty(t *testing.T) {
+	if got := xmlEscape(""); got != "" {
+		t.Errorf("xmlEscape(\"\") = %q, want empty", got)
+	}
+}
+
+func TestXmlEscape_AllSpecialChars(t *testing.T) {
+	got := xmlEscape(`&<>"'`)
+	want := "&amp;&lt;&gt;&quot;&apos;"
+	if got != want {
+		t.Errorf("xmlEscape = %q, want %q", got, want)
+	}
+}
+
+func TestXmlEscape_NoSpecialChars(t *testing.T) {
+	in := "hello world 123"
+	if got := xmlEscape(in); got != in {
+		t.Errorf("xmlEscape(%q) = %q, want passthrough", in, got)
+	}
+}
+
+func TestXmlEscape_Mixed(t *testing.T) {
+	got := xmlEscape("a&b<c")
+	want := "a&amp;b&lt;c"
+	if got != want {
+		t.Errorf("xmlEscape = %q, want %q", got, want)
+	}
+}
+
+// ----- DefaultICCProfile / HasDefaultICC -----
+
+func TestDefaultICCProfile_NonNil(t *testing.T) {
+	got := DefaultICCProfile()
+	if len(got) == 0 {
+		t.Error("DefaultICCProfile() returned nil or empty slice")
+	}
+}
+
+func TestDefaultICCProfile_ReturnsCopy(t *testing.T) {
+	a := DefaultICCProfile()
+	a[0] ^= 0xFF
+	b := DefaultICCProfile()
+	if b[0] == a[0] {
+		t.Error("DefaultICCProfile() returned a reference to the embedded slice, not a copy")
+	}
+}
+
+func TestHasDefaultICC_ReturnsTrue(t *testing.T) {
+	if !HasDefaultICC() {
+		t.Error("HasDefaultICC() = false, want true")
+	}
+}
+
 func newTestPAdESSigner(t *testing.T, commonName string) *pmcrypto.Signer {
 	t.Helper()
 

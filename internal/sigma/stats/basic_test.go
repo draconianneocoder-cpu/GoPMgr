@@ -158,43 +158,43 @@ func TestCalculateCapability_CpkLessThanCpWhenOffCenter(t *testing.T) {
 }
 
 func TestCalculateCapability_DPMOBands(t *testing.T) {
-	// Verify each sigma-level DPMO band. We drive sigma level via Cpk.
-	// sigma_level = 3*Cpk + 1.5 (shift assumption in the code).
-	// So to hit a given sigma_level L, we need Cpk = (L - 1.5) / 3.
-
-	// We want a dataset with known Cpk. Use a centered process (mean = midpoint).
-	// mean = (USL+LSL)/2, and standard deviation σ chosen so that
-	// Cpk = (USL-mean)/(3σ) = desired_cpk.
-	// Pick USL=10, LSL=0, mean=5. For cpk=c: σ = (10-5)/(3c) = 5/(3c).
-	// We simulate by using values [mean-σ, mean, mean+σ] as a 3-element dataset.
-	// gonum's StdDev (sample) of {mean-σ, mean, mean+σ} = σ*sqrt(1.5) — different
-	// from population σ. Use enough points to approximate σ well.
-
-	// Instead, parameterise by checking that:
-	//   sigmaLevel >= 6 → dpmo = 3.4
-	//   sigmaLevel >= 5 → dpmo = 233
-	//   sigmaLevel >= 4 → dpmo = 6210
-	//   etc.
-	// Build synthetic values that get us into each band by inspection.
-	// We'll trust the code's switch statement once the formula is verified.
-
-	// For sigma_level >= 6: need 3*Cpk + 1.5 >= 6 → Cpk >= 1.5.
-	// Cp = Cpk when centered. Cp = (USL-LSL)/(6σ).
-	// If USL=100, LSL=0, mean=50, σ=5: Cp = 100/30 ≈ 3.33, Cpk ≈ same (centered).
-	// sigma_level = 3*3.33+1.5 = 11.49 → dpmo = 3.4.
-	var vals6 []float64
-	for i := range 200 {
-		// approximately normal around 50 with σ≈5: use arithmetic series
-		vals6 = append(vals6, 40+float64(i)*20.0/199.0)
+	// Verify every sigma-level DPMO band, not just the top one.
+	//
+	// The dataset {-1, 1} has sample mean 0 and sample StdDev exactly √2
+	// (variance = ((-1)^2 + 1^2)/(2-1) = 2). With a centered spec
+	// USL = H, LSL = -H the code computes:
+	//   cpk        = H / (3σ)
+	//   sigmaLevel = 3*cpk + 1.5 = H/σ + 1.5
+	// Choosing H = √2 * k makes sigmaLevel = k + 1.5 exactly. Each k below
+	// lands its sigmaLevel at least 0.3 inside the target band, so float
+	// rounding cannot flip a band boundary.
+	values := []float64{-1, 1}
+	tests := []struct {
+		name       string
+		k          float64 // sigmaLevel = k + 1.5
+		wantSigma  float64
+		wantDPMO   float64
+	}{
+		{"sigma>=6", 5.5, 7.0, 3.4},
+		{"sigma>=5", 4.0, 5.5, 233},
+		{"sigma>=4", 3.0, 4.5, 6210},
+		{"sigma>=3", 2.0, 3.5, 66807},
+		{"sigma>=2", 1.0, 2.5, 308537},
+		{"sigma<2", 0.3, 1.8, 691462},
 	}
-	res6, err := CalculateCapability(vals6, 100, 0)
-	if err != nil {
-		t.Fatalf("sigma 6 band: unexpected error: %v", err)
-	}
-	if res6.SigmaLevel < 6 {
-		t.Errorf("expected sigma_level >= 6, got %v (dpmo=%v)", res6.SigmaLevel, res6.DPMO)
-	}
-	if res6.DPMO != 3.4 {
-		t.Errorf("expected DPMO=3.4 for sigma>=6, got %v", res6.DPMO)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := math.Sqrt2 * tt.k
+			res, err := CalculateCapability(values, h, -h)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if math.Abs(res.SigmaLevel-tt.wantSigma) > 1e-9 {
+				t.Errorf("sigma_level: got %v, want %v", res.SigmaLevel, tt.wantSigma)
+			}
+			if res.DPMO != tt.wantDPMO {
+				t.Errorf("DPMO: got %v, want %v (sigma=%v)", res.DPMO, tt.wantDPMO, res.SigmaLevel)
+			}
+		})
 	}
 }

@@ -55,6 +55,45 @@ func TestWorkdaysFromSkipsWeekend(t *testing.T) {
 	}
 }
 
+// TestFor_AllSupportedCountries exercises every country switch case and
+// confirms Christmas Day (2026-12-25) is recognised as a holiday in each.
+func TestFor_AllSupportedCountries(t *testing.T) {
+	christmas := time.Date(2026, 12, 25, 0, 0, 0, 0, time.UTC)
+	tests := []struct{ code string }{
+		{"GB"},
+		{"UK"}, // alias — same holiday pack as GB, distinct CountryCode
+		{"CA"},
+		{"DE"},
+		{"FR"},
+		{"AU"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.code, func(t *testing.T) {
+			c := For(tt.code)
+			if c == nil {
+				t.Fatalf("For(%q) returned nil", tt.code)
+			}
+			if c.CountryCode != tt.code {
+				t.Errorf("CountryCode: got %q, want %q", c.CountryCode, tt.code)
+			}
+			if !c.IsHoliday(christmas) {
+				t.Errorf("For(%q): Christmas 2026-12-25 should be a holiday", tt.code)
+			}
+		})
+	}
+}
+
+// TestWorkdaysFrom_BackwardWalk confirms the negative-days path counts
+// backward correctly. One workday before Monday 2026-01-05 is Friday 2026-01-02.
+func TestWorkdaysFrom_BackwardWalk(t *testing.T) {
+	c := For("US")
+	mon := time.Date(2026, 1, 5, 12, 0, 0, 0, time.UTC)
+	got := c.WorkdaysFrom(mon, -1)
+	if got.Weekday() != time.Friday {
+		t.Errorf("WorkdaysFrom(Monday, -1) = %v (%v), want Friday", got, got.Weekday())
+	}
+}
+
 // TestHolidaysInWindow: the US July window includes Independence
 // Day; an empty span includes nothing.
 func TestHolidaysInWindow(t *testing.T) {

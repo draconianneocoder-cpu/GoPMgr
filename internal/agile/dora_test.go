@@ -240,6 +240,33 @@ func TestComputeDORADailyTrendLength(t *testing.T) {
 	}
 }
 
+func TestFormatHours(t *testing.T) {
+	tests := []struct {
+		v    float64
+		want string
+	}{
+		{0, "—"},
+		{-1, "—"},
+		{0.5, "30 min"},
+		{2, "2 h"},
+		{72, "3 d"},
+		{800, "4.8 wk"},
+	}
+	for _, tt := range tests {
+		got := formatHours(tt.v)
+		if got != tt.want {
+			t.Errorf("formatHours(%v) = %q, want %q", tt.v, got, tt.want)
+		}
+	}
+}
+
+func TestComputeDORAZeroNowFallsBack(t *testing.T) {
+	res := ComputeDORA(nil, 7, time.Time{})
+	if res.From.IsZero() {
+		t.Error("ComputeDORA with zero now should use time.Now(), giving non-zero From")
+	}
+}
+
 func TestComputeDORAChangeFailureRateMedium(t *testing.T) {
 	now := time.Date(2026, 6, 4, 12, 0, 0, 0, time.UTC)
 	deploys := []Deployment{

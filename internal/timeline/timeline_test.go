@@ -100,7 +100,7 @@ func TestBuildAcceptsRFC3339(t *testing.T) {
 }
 
 // TestBuildSkipsZeroDeployTS: a deployment with a zero TS is skipped
-// (defensive — Go's time.Time zero value would otherwise sort first
+// (defensive: Go's time.Time zero value would otherwise sort first
 // and corrupt the timeline).
 func TestBuildSkipsZeroDeployTS(t *testing.T) {
 	deploys := []agile.Deployment{
@@ -109,5 +109,49 @@ func TestBuildSkipsZeroDeployTS(t *testing.T) {
 	got := Build(db.Project{}, nil, deploys)
 	if len(got) != 0 {
 		t.Errorf("zero-TS deployment should be skipped; got %d entries", len(got))
+	}
+}
+
+// TestBuildFailedDeploymentTitle: an unsuccessful deployment is labelled
+// "(failed)" so the timeline distinguishes good releases from rollbacks.
+func TestBuildFailedDeploymentTitle(t *testing.T) {
+	deploys := []agile.Deployment{
+		{ID: "d1", Version: "v2.0", TS: time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC), Successful: false},
+	}
+	got := Build(db.Project{}, nil, deploys)
+	if len(got) != 1 {
+		t.Fatalf("want 1 entry, got %d", len(got))
+	}
+	if got[0].Title != "Deploy v2.0 (failed)" {
+		t.Errorf("failed deploy title: got %q, want %q", got[0].Title, "Deploy v2.0 (failed)")
+	}
+}
+
+// TestParseDate exercises parseDate directly across its accepted formats
+// and rejection paths. The RFC3339Nano layout is a superset of RFC3339,
+// so a non-empty unparseable string is the only way to reach the final
+// false return.
+func TestParseDate(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want bool
+	}{
+		{"empty", "", false},
+		{"iso date", "2026-05-15", true},
+		{"rfc3339", "2026-05-15T08:30:00Z", true},
+		{"rfc3339 nano", "2026-05-15T08:30:00.123456789Z", true},
+		{"garbage", "not-a-date", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := parseDate(tt.in)
+			if ok != tt.want {
+				t.Errorf("parseDate(%q) ok = %v, want %v", tt.in, ok, tt.want)
+			}
+			if ok && got.IsZero() {
+				t.Errorf("parseDate(%q) returned ok but zero time", tt.in)
+			}
+		})
 	}
 }
