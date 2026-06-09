@@ -67,6 +67,18 @@ if [ -f scripts/frontend-stability-check.sh ]; then
     echo "Frontend stability gate passed."
 fi
 
+# --- 4b. Frontend runtime smoke check --------------------------------
+# Loads and renders App.svelte through the real Vite + Svelte compiler.
+# Catches load-time crashes (e.g. a $state rune in a plain .ts) that
+# svelte-check and the build pass but that leave #app empty in the app.
+if [ -f scripts/frontend-smoke-check.sh ]; then
+    if ! bash scripts/frontend-smoke-check.sh >/dev/null; then
+        echo "Frontend runtime smoke check failed. Run 'make frontend-smoke' for details."
+        exit 1
+    fi
+    echo "Frontend runtime smoke check passed."
+fi
+
 # --- 5. Memory-safety gate -------------------------------------------
 if [ -f scripts/memory-safety-scan.sh ]; then
     if ! bash scripts/memory-safety-scan.sh >/dev/null; then

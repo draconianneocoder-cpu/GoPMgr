@@ -16,7 +16,7 @@ export CC
 .PHONY: help build dev tidy test race lint lint-go lint-frontend lint-all \
         license-check memory-scan package-linux package-windows package-darwin \
         check-release clean fonts icc check-pdfa frontend-stability \
-        frontend-build-budget release-scope check-pades check-pades-external
+        frontend-build-budget frontend-smoke release-scope check-pades check-pades-external
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -67,6 +67,9 @@ frontend-stability: ## Run Svelte warning-clean and Sigma regression gates.
 
 frontend-build-budget: ## Build frontend and enforce route-split bundle budgets.
 	@bash scripts/frontend-build-budget.sh
+
+frontend-smoke: ## Load + render App.svelte via Vite SSR to catch runtime mount crashes.
+	@bash scripts/frontend-smoke-check.sh
 
 release-scope: ## Verify release gates target PMForge-owned source only.
 	@bash scripts/release-gate-scope-check.sh
