@@ -5,8 +5,12 @@ package pdfrender
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"math"
 	"testing"
+
+	"pmforge/internal/charts"
 )
 
 // --- fit ---
@@ -116,5 +120,29 @@ func TestParseBody_EmptyObject_NoError(t *testing.T) {
 	var out map[string]any
 	if err := parseBody(json.RawMessage(`{}`), &out); err != nil {
 		t.Errorf("parseBody({}) error: %v", err)
+	}
+}
+
+// --- isEngineNotImpl ---
+
+func TestIsEngineNotImpl(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"sentinel", charts.ErrEngineNotImplemented, true},
+		// Wrapping is the case a string compare against err.Error() would
+		// have missed: errors.Is unwraps, a literal == does not.
+		{"wrapped sentinel", fmt.Errorf("pdfrender: %w", charts.ErrEngineNotImplemented), true},
+		{"unrelated error", errors.New("charts: unknown kind \"bogus\""), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isEngineNotImpl(tt.err); got != tt.want {
+				t.Errorf("isEngineNotImpl(%v) = %v, want %v", tt.err, got, tt.want)
+			}
+		})
 	}
 }
