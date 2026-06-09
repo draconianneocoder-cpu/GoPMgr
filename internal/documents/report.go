@@ -75,9 +75,11 @@ type ResolvedSection struct {
 //	                      specific or generic renderer (we call
 //	                      Render() with a small adapter).
 //
-// Charts are referenced only by ID in this V1 of the report
-// builder; embedding chart visualisations as raster images is a
-// follow-up (see README V2 TODOs).
+// Each chart_ref field is embedded as a vector visualisation on its
+// own page via the pdfrender engine (see renderSectionBody and the
+// ResolvedCharts map). An unresolved chart ID falls back to the inline
+// text line, and a per-chart render failure draws a placeholder rather
+// than aborting the whole report.
 func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, error) {
 	pdf := newDocPDF("P")
 	pdf.SetMargins(20, 18, 20)
