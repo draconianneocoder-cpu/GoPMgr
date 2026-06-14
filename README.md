@@ -338,9 +338,9 @@ These remain from V1 plus a handful of new V2 items.
 2. **PDF/A-3 conformance.** XMP Catalog metadata, embedded fonts,
    OutputIntent/ICC injection, PDF trailer IDs, and binary header
    comments are implemented. The schedule-report, document, and
-   combined-report samples now pass the veraPDF PDF/A-3b gate locally;
-   remaining work is release-builder soak before this becomes a hard
-   release claim.
+   combined-report samples pass the veraPDF PDF/A-3b gate locally.
+   `make check-pdfa` is a hard release blocker wired into
+   `make check-release`.
 3. ~~CMS/PKCS#7 + PAdES signature embedding.~~ **Done.** Signed
    exports use CMS/PKCS#7 plus an embedded PDF signature dictionary,
    invisible widget field, `/ByteRange`, and padded `/Contents`.
