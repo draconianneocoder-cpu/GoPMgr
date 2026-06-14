@@ -34,6 +34,19 @@ not routed directly.
     lf?: number;
     float?: number;
     is_critical?: boolean;
+    start_date?: string;
+    finish_date?: string;
+    constraint?: string;
+    constraint_date?: string;
+    constraint_violated?: boolean;
+    percent_complete?: number;
+    milestone?: boolean;
+    actual_start?: string;
+    actual_finish?: string;
+    budgeted_cost?: number;
+    actual_cost?: number;
+    assignments?: { resource: string; units?: number }[];
+    overallocated?: boolean;
   }
   interface LayeredEdge {
     from: string;
@@ -62,11 +75,17 @@ not routed directly.
     headingLabel,
     nodeDetailPanel,
     nodeContent,
+    toolbarExtra,
+    asideExtra,
   }: {
     chartKind: string; // 'network' | 'pert' | 'cpm'
     headingLabel: string;
     nodeDetailPanel?: Snippet<[LayeredNode]>;
     nodeContent?: Snippet<[LayeredNode, LayeredLayoutNode]>;
+    /** Optional kind-specific toolbar buttons (e.g. CPM's Set baseline). */
+    toolbarExtra?: Snippet<[]>;
+    /** Optional chart-level panel at the bottom of the aside (e.g. CPM's EVM card). */
+    asideExtra?: Snippet<[]>;
   } = $props();
 
   // State
@@ -92,8 +111,7 @@ not routed directly.
   }
 
   // Load
-  onMount(async () => {
-    window.addEventListener('keydown', handleKeyDown);
+  async function loadChart() {
     if (!session.editingId) return;
     chart = await window.go.main.App.GetChart(session.editingId);
     try {
@@ -104,7 +122,19 @@ not routed directly.
       doc = { nodes: [], edges: [] };
     }
     await refreshLayout();
+  }
+
+  onMount(async () => {
+    window.addEventListener('keydown', handleKeyDown);
+    await loadChart();
   });
+
+  // reloadFromDB lets kind-specific toolbars (e.g. CPM's Level
+  // resources, which mutates the chart server-side) refresh the
+  // in-memory doc so a later Ctrl+S can't clobber backend changes.
+  export async function reloadFromDB() {
+    await loadChart();
+  }
 
   async function refreshLayout() {
     if (!chart) return;
@@ -242,6 +272,9 @@ not routed directly.
       <h1 class="text-sm font-bold tracking-widest uppercase text-white">{headingLabel}</h1>
     </div>
     <div class="flex items-center gap-2">
+      {#if toolbarExtra}
+        {@render toolbarExtra()}
+      {/if}
       <button onclick={addNode} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
         + Node
       </button>
@@ -327,6 +360,30 @@ not routed directly.
             ></textarea>
           </label>
 
+          {#if doc.edges.some((e) => e.to === selectedNode.id)}
+            <div class="border-t border-slate-800 pt-3">
+              <span class="text-xs text-slate-500 uppercase">Incoming links</span>
+              {#each doc.edges.filter((e) => e.to === selectedNode.id) as edge (edge.from)}
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="flex-1 text-xs text-slate-400 truncate">
+                    from {doc.nodes.find((n) => n.id === edge.from)?.label ?? edge.from}
+                  </span>
+                  <input
+                    bind:value={edge.label}
+                    placeholder="FS"
+                    class="w-24 bg-slate-950 border border-slate-800 p-1 rounded text-xs font-mono focus:border-cyan-500 outline-none"
+                  />
+                </div>
+              {/each}
+              {#if chartKind === 'cpm'}
+                <p class="text-[10px] text-slate-500 mt-1">
+                  Link type and lag in days: FS, SS, FF, SF with optional
+                  +n/-n (e.g. SS+2, FS-1). Blank = FS. Drives the schedule.
+                </p>
+              {/if}
+            </div>
+          {/if}
+
           {#if nodeDetailPanel}
             <div class="border-t border-slate-800 pt-3">
               {@render nodeDetailPanel(selectedNode)}
@@ -339,6 +396,12 @@ not routed directly.
         <p class="text-xs text-slate-500">
           Click a node in the diagram to edit it. Click <strong>+ Node</strong> to add one.
         </p>
+      {/if}
+
+      {#if asideExtra}
+        <div class="border-t border-slate-800 mt-4 pt-4">
+          {@render asideExtra()}
+        </div>
       {/if}
     </aside>
   </div>

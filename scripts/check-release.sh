@@ -106,7 +106,16 @@ if ! PMFORGE_FRONTEND_BUILT=1 make build >/dev/null; then
 fi
 echo "Build verified."
 
-# --- 8. PDF/A-3 validation gate (hard) ----------------------------------
+# --- 8. Encrypted database validation gate ----------------------------
+if [ -f scripts/validate-encrypted-db.sh ]; then
+    if ! bash scripts/validate-encrypted-db.sh >/dev/null 2>&1; then
+        echo "Encrypted database validation gate failed. Run 'make check-encrypted-db' for details."
+        exit 1
+    fi
+    echo "Encrypted database validation gate passed."
+fi
+
+# --- 9. PDF/A-3 validation gate (hard) ----------------------------------
 # Strict: a missing validator/ICC/sample set fails the release rather than
 # certifying PDF/A-3 conformance we could not actually verify.
 if [ -f scripts/validate-pdfa.sh ]; then
@@ -117,7 +126,7 @@ if [ -f scripts/validate-pdfa.sh ]; then
     echo "PDF/A-3 validation gate passed."
 fi
 
-# --- 9. PAdES local validation gate -----------------------------------
+# --- 10. PAdES local validation gate ----------------------------------
 if [ -f scripts/validate-pades.sh ]; then
     if ! bash scripts/validate-pades.sh >/dev/null 2>&1; then
         echo "PAdES local validation gate failed. Run 'make check-pades' for details."

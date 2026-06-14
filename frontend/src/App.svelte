@@ -21,6 +21,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     network: () => import('./lib/components/charts/NetworkEditor.svelte'),
     pert: () => import('./lib/components/charts/PERTEditor.svelte'),
     cpm: () => import('./lib/components/charts/CPMEditor.svelte'),
+    gantt: () => import('./lib/components/charts/GanttEditor.svelte'),
     fishbone: () => import('./lib/components/charts/FishboneEditor.svelte'),
     cause_effect: () => import('./lib/components/charts/CauseEffectEditor.svelte'),
     workflow: () => import('./lib/components/charts/WorkflowEditor.svelte'),
@@ -60,8 +61,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function propsForView(view: string): Record<string, unknown> {
     if (view === 'launchpad') {
       return {
-        onCreated: (p: ProjectMeta) => {
+        onCreated: (p: ProjectMeta, projectPath?: string) => {
           session.project = p;
+          session.projectPath = projectPath ?? null;
           goto('dashboard');
         },
         onCancel: () => goto('project_picker'),

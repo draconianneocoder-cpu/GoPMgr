@@ -121,6 +121,7 @@ import BudgetPanel from './BudgetPanel.svelte';
     network: () => ({ nodes: [], edges: [] }),
     pert: () => ({ nodes: [], edges: [] }),
     cpm: () => ({ nodes: [], edges: [] }),
+    gantt: () => ({ nodes: [], edges: [] }),
     fishbone: () => ({ effect: session.project!.name + ' issue', categories: [] }),
     cause_effect: () => ({
       effect: session.project!.name + ' outcome',
@@ -149,6 +150,7 @@ import BudgetPanel from './BudgetPanel.svelte';
     network: 'network',
     pert: 'pert',
     cpm: 'cpm',
+    gantt: 'gantt',
     fishbone: 'fishbone',
     cause_effect: 'cause_effect',
     workflow: 'workflow',
@@ -188,6 +190,19 @@ import BudgetPanel from './BudgetPanel.svelte';
     goto('charter', d.id);
   }
 
+  let importMsg = $state('');
+
+  async function importMSPDI() {
+    importMsg = '';
+    try {
+      const c = await window.go.main.App.ImportMSPDIChart();
+      goto(chartRoutes['cpm'] ?? 'charts', c.id);
+    } catch (err: any) {
+      const msg = String(err?.message ?? err);
+      if (!msg.includes('cancelled')) importMsg = msg;
+    }
+  }
+
   async function newDocument(kind: string, defaultTitle: string) {
     const d = await window.go.main.App.NewDocument(kind, defaultTitle);
     goto('documents', d.id);
@@ -198,6 +213,7 @@ import BudgetPanel from './BudgetPanel.svelte';
   const newChartCards: { kind: string; title: string; description: string }[] = [
     { kind: 'wbs', title: 'Work Breakdown Structure', description: 'Decompose scope into work packages.' },
     { kind: 'cpm', title: 'CPM Chart', description: 'Activities with ES/EF/LS/LF and critical-path highlighting.' },
+    { kind: 'gantt', title: 'Gantt Chart', description: 'Schedule bars with dependencies, critical path, progress, and baseline overlay.' },
     { kind: 'pert', title: 'PERT Chart', description: 'Three-point estimates with expected duration and variance.' },
     { kind: 'network', title: 'Network Diagram', description: 'Activity-on-node precedence diagram.' },
     { kind: 'fishbone', title: 'Fishbone (Ishikawa)', description: 'Root-cause analysis around a central effect.' },
@@ -221,6 +237,7 @@ import BudgetPanel from './BudgetPanel.svelte';
   async function close() {
     await window.go.main.App.CloseProject();
     session.project = null;
+    session.projectPath = null;
     goto('project_picker');
   }
 
@@ -295,9 +312,23 @@ import BudgetPanel from './BudgetPanel.svelte';
 
     <!-- New chart actions (DAG family fully implemented) -->
     <section>
-      <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">
-        New chart
-      </h2>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500">
+          New chart
+        </h2>
+        <div class="flex items-center gap-2">
+          {#if importMsg}
+            <span class="text-xs text-amber-300">{importMsg}</span>
+          {/if}
+          <button
+            onclick={importMSPDI}
+            class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded"
+            title="Import an MSPDI XML schedule as a new CPM chart"
+          >
+            Import schedule (MSPDI)
+          </button>
+        </div>
+      </div>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {#each newChartCards as card (card.kind)}
           <button

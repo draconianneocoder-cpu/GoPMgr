@@ -26,9 +26,8 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
-
 	"pmforge/internal/auth"
+	"pmforge/internal/sqlitedriver"
 )
 
 // ErrUserExists is returned by CreateAccount when the username is taken.
@@ -70,7 +69,7 @@ func Open(rootDir string) (*Store, error) {
 	}
 
 	dbPath := filepath.Join(rootDir, "system.db")
-	conn, err := sql.Open("sqlite3", dbPath)
+	conn, err := sql.Open(sqlitedriver.Name, dbPath)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +122,11 @@ func (s *Store) migrate() error {
 		return err
 	}
 	// V2.x — recovery codes table (recovery.go).
-	return s.migrateRecoveryTable()
+	if err := s.migrateRecoveryTable(); err != nil {
+		return err
+	}
+	// V3 / ADR-001 — wrapped-DEK columns (dek.go).
+	return s.migrateDEKColumns()
 }
 
 // ValidateUsername returns ErrInvalidUsername if name doesn't conform

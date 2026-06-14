@@ -16,7 +16,8 @@ export CC
 .PHONY: help build dev tidy test race lint lint-go lint-frontend lint-all \
         license-check memory-scan package-linux package-windows package-darwin \
         check-release clean fonts icc check-pdfa frontend-stability \
-        frontend-build-budget frontend-smoke release-scope check-pades check-pades-external
+        frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
+        check-encrypted-db
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -55,6 +56,9 @@ check-pades: ## Generate and locally verify an embedded PAdES signed PDF sample.
 
 check-pades-external: ## Run available external validators against the signed PAdES sample.
 	@bash scripts/validate-pades-external.sh
+
+check-encrypted-db: ## Validate SQLCipher encrypted project DB create/open/migration/backup.
+	@bash scripts/validate-encrypted-db.sh
 
 test: ## Run Go unit tests.
 	$(GO) test $(GO_PACKAGES)
@@ -103,7 +107,7 @@ package-windows: ## Build a Windows tarball on a Windows host.
 package-darwin: ## Build a macOS tarball on a macOS host.
 	@bash scripts/package.sh darwin
 
-check-release: ## Run the full release gate (versions, REUSE, memory-safety, race, frontend, build, PDF/A, PAdES).
+check-release: ## Run the full release gate (versions, REUSE, memory-safety, race, frontend, build, encrypted DB, PDF/A, PAdES).
 	@bash scripts/check-release.sh
 
 clean: ## Remove build artifacts.

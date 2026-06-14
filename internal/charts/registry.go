@@ -30,6 +30,7 @@ const (
 	KindNetworkDiagram   Kind = "network"
 	KindPERT             Kind = "pert"
 	KindCPM              Kind = "cpm"
+	KindGantt            Kind = "gantt"
 	KindFishbone         Kind = "fishbone"
 	KindCauseAndEffect   Kind = "cause_effect"
 
@@ -108,6 +109,13 @@ var registry = []Definition{
 		Engine:      EngineDAG,
 		Description: "Activity nodes annotated with ES/EF/LS/LF and critical-path highlighting.",
 		DataExample: `{"nodes":[{"id":"A","duration":3}],"edges":[]}`,
+	},
+	{
+		Kind:        KindGantt,
+		Name:        "Gantt Chart",
+		Engine:      EngineDAG,
+		Description: "Schedule bars over a time axis with dependencies, critical path, progress, and baseline overlay. Shares the CPM data model.",
+		DataExample: `{"nodes":[{"id":"A","label":"Design","duration":3}],"edges":[]}`,
 	},
 	{
 		Kind:        KindFishbone,

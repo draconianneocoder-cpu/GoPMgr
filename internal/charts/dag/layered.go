@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"sort"
+
+	"pmforge/internal/kernel"
 )
 
 // LayeredNode is the unified node shape used by Network Diagram,
@@ -46,6 +48,37 @@ type LayeredNode struct {
 	LF         float64 `json:"lf,omitempty"`
 	Float      float64 `json:"float,omitempty"`
 	IsCritical bool    `json:"is_critical,omitempty"`
+
+	// CPM calendar-anchored dates (filled by AnchorCPMDates when the
+	// project has a start date). YYYY-MM-DD; empty when un-anchored.
+	StartDate  string `json:"start_date,omitempty"`
+	FinishDate string `json:"finish_date,omitempty"`
+
+	// CPM scheduling constraint (input): ASAP (default), ALAP, SNET,
+	// FNLT, MFO; SNET/FNLT/MFO carry ConstraintDate (YYYY-MM-DD) and
+	// only take effect when the schedule is calendar-anchored.
+	// ConstraintViolated is computed by the kernel.
+	Constraint         string `json:"constraint,omitempty"`
+	ConstraintDate     string `json:"constraint_date,omitempty"`
+	ConstraintViolated bool   `json:"constraint_violated,omitempty"`
+
+	// Progress tracking (input, reporting-only): 0..100 percent
+	// complete and an explicit milestone marker, plus observed
+	// actual dates (YYYY-MM-DD).
+	PercentComplete float64 `json:"percent_complete,omitempty"`
+	Milestone       bool    `json:"milestone,omitempty"`
+	ActualStart     string  `json:"actual_start,omitempty"`
+	ActualFinish    string  `json:"actual_finish,omitempty"`
+
+	// Cost tracking for EVM (input): task budget at completion and
+	// actual cost to date.
+	BudgetedCost float64 `json:"budgeted_cost,omitempty"`
+	ActualCost   float64 `json:"actual_cost,omitempty"`
+
+	// Resource assignments (input) and the computed overallocation
+	// flag (set by the CPM layout paths via DetectOverallocations).
+	Assignments   []kernel.Assignment `json:"assignments,omitempty"`
+	Overallocated bool                `json:"overallocated,omitempty"`
 }
 
 // LayeredEdge is one precedence relationship.

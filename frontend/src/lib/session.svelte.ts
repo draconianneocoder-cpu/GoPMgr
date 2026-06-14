@@ -8,6 +8,7 @@
 export const session = $state<{
   user: Account | null;
   project: ProjectMeta | null;
+  projectPath: string | null;
   // High-level view state: drives App.svelte's routing. The union
   // grows as more chart/document editors are implemented.
   view:
@@ -20,6 +21,7 @@ export const session = $state<{
     | 'network'
     | 'pert'
     | 'cpm'
+    | 'gantt'
     | 'fishbone'
     | 'cause_effect'
     | 'workflow'
@@ -55,6 +57,7 @@ export const session = $state<{
 }>({
   user: null,
   project: null,
+  projectPath: null,
   view: 'login',
   editingId: null,
 });

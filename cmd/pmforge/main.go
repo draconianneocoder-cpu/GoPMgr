@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -37,6 +38,7 @@ import (
 	"pmforge/internal/budget"
 	"pmforge/internal/calendar"
 	"pmforge/internal/charts"
+	"pmforge/internal/charts/dag"
 	"pmforge/internal/cli"
 	"pmforge/internal/crypto"
 	"pmforge/internal/db"
@@ -80,6 +82,7 @@ type App struct {
 	mu        sync.RWMutex
 	store     *users.Store   // immutable after NewApp — safe to read without lock
 	user      *users.Account // nil unless logged in
+	dek       []byte         // ADR-001: session DEK, unlocked at login; nil when logged out
 	db        *db.Database   // nil unless a project is open
 	dbPath    string         // absolute path of the open .pmforge
 	adminSvc  *admin.Service
@@ -149,8 +152,15 @@ func (a *App) CreateAccount(username, displayName, password string) (users.Accou
 	if err != nil {
 		return users.Account{}, err
 	}
+	// ADR-001: unlock (here: lazily create) the per-user DEK while we
+	// hold the verified password — the only moment that is possible.
+	dek, err := a.store.UnlockDEK(username, password)
+	if err != nil {
+		return users.Account{}, err
+	}
 	a.mu.Lock()
 	a.user = &acc
+	a.dek = dek
 	a.mu.Unlock()
 	return acc, nil
 }
@@ -169,8 +179,15 @@ func (a *App) Login(username, password string) (users.Account, error) {
 		}
 		return users.Account{}, err
 	}
+	// ADR-001: unlock the per-user DEK with the verified password.
+	// Lazy generation covers accounts that predate the key hierarchy.
+	dek, err := a.store.UnlockDEK(username, password)
+	if err != nil {
+		return users.Account{}, err
+	}
 	a.mu.Lock()
 	a.user = &acc
+	a.dek = dek
 	a.mu.Unlock()
 	return acc, nil
 }
@@ -187,7 +204,12 @@ func (a *App) IssueRecoveryCodes() ([]string, error) {
 	if u == nil {
 		return nil, errors.New("not signed in")
 	}
-	return a.store.IssueRecoveryCodes(u.Username)
+	// ADR-001: wrap the session DEK into every code so a recovery
+	// reset can re-wrap the same DEK (encrypted projects survive).
+	a.mu.RLock()
+	dek := a.dek
+	a.mu.RUnlock()
+	return a.store.IssueRecoveryCodes(u.Username, dek)
 }
 
 // RemainingRecoveryCodes returns the count of unused recovery codes
@@ -219,6 +241,11 @@ func (a *App) Logout() error {
 		a.adminSvc = nil
 	}
 	a.user = nil
+	// ADR-001: zero the session DEK before dropping it.
+	for i := range a.dek {
+		a.dek[i] = 0
+	}
+	a.dek = nil
 	return nil
 }
 
@@ -240,6 +267,10 @@ type ProjectFile struct {
 	Name     string `json:"name"`
 	Modified string `json:"modified"`
 }
+
+var ErrProjectRequiresEncryptionMigration = errors.New("project requires encryption migration")
+
+var ErrRecoveryCodesRequireReissue = errors.New("Reissue recovery codes before enabling database encryption. Old recovery codes cannot preserve encrypted projects during password reset.")
 
 // ListProjects returns every .pmforge file under the current user's
 // projects/ folder.
@@ -290,6 +321,12 @@ func (a *App) CreateProject(name, description string) (ProjectFile, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return ProjectFile{}, err
 	}
+	a.mu.RLock()
+	dek, err := a.requireDEKLocked()
+	a.mu.RUnlock()
+	if err != nil {
+		return ProjectFile{}, err
+	}
 
 	// Choose a non-conflicting filename.
 	path := filepath.Join(dir, safe+".pmforge")
@@ -300,7 +337,7 @@ func (a *App) CreateProject(name, description string) (ProjectFile, error) {
 		path = filepath.Join(dir, fmt.Sprintf("%s-%d.pmforge", safe, i))
 	}
 
-	d, err := db.InitDB(path)
+	d, err := db.InitEncryptedDB(path, dek)
 	if err != nil {
 		return ProjectFile{}, err
 	}
@@ -328,12 +365,19 @@ func (a *App) OpenProject(path string) (db.Project, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
+	dek, err := a.requireDEKLocked()
+	if err != nil {
+		return db.Project{}, err
+	}
 	if a.db != nil {
 		_ = a.db.Close()
 		a.db = nil
 	}
-	d, err := db.InitDB(path)
+	d, err := db.InitEncryptedDB(path, dek)
 	if err != nil {
+		if encrypted, encErr := db.IsEncryptedFile(path); encErr == nil && !encrypted {
+			return db.Project{}, ErrProjectRequiresEncryptionMigration
+		}
 		return db.Project{}, err
 	}
 	a.db = d
@@ -346,6 +390,48 @@ func (a *App) OpenProject(path string) (db.Project, error) {
 	// font dir; configureFonts must not re-acquire a.mu.
 	a.configureFontsLocked(d)
 	return proj, projErr
+}
+
+// IsProjectEncrypted reports whether a .pmforge file is already
+// SQLCipher-encrypted. Used by the Settings migration flow before
+// presenting the opt-in action.
+func (a *App) IsProjectEncrypted(path string) (bool, error) {
+	return db.IsEncryptedFile(path)
+}
+
+// EncryptProjectAtRest migrates a legacy plaintext .pmforge file to
+// SQLCipher with the active user's session DEK. Active recovery codes
+// must already carry DEK wraps; otherwise a future recovery reset
+// would orphan encrypted projects.
+func (a *App) EncryptProjectAtRest(path string) (string, error) {
+	user := a.requireUser()
+	if user == nil {
+		return "", errors.New("not signed in")
+	}
+	needsReissue, err := a.store.HasLegacyRecoveryCodeWraps(user.Username)
+	if err != nil {
+		return "", err
+	}
+	if needsReissue {
+		return "", ErrRecoveryCodesRequireReissue
+	}
+
+	a.mu.Lock()
+	dek, err := a.requireDEKLocked()
+	if err != nil {
+		a.mu.Unlock()
+		return "", err
+	}
+	if a.db != nil && samePath(a.dbPath, path) {
+		_ = a.db.Close()
+		a.db = nil
+		a.dbPath = ""
+		a.adminSvc = nil
+		a.sigmaSvc = nil
+	}
+	a.mu.Unlock()
+
+	return db.MigratePlaintextToEncrypted(path, dek)
 }
 
 // CloseProject closes the currently-open .pmforge.
@@ -454,6 +540,11 @@ func (a *App) DeleteChart(id string) error {
 
 // LayoutChart asks the chart engine to produce a frontend-ready
 // layout. The Svelte renderer reads `engine` and dispatches.
+//
+// CPM charts are calendar-anchored when the open project has a start
+// date: each node additionally carries StartDate/FinishDate computed
+// against the project country's work calendar. Projects without a
+// start date keep the plain day-offset layout.
 func (a *App) LayoutChart(id string) (charts.LayoutResult, error) {
 	d := a.requireDB()
 	if d == nil {
@@ -463,12 +554,488 @@ func (a *App) LayoutChart(id string) (charts.LayoutResult, error) {
 	if err != nil {
 		return charts.LayoutResult{}, err
 	}
-	res, err := charts.Layout(charts.Kind(c.Kind), c.Data)
+
+	var (
+		projectStart time.Time
+		isWorkday    kernel.WorkdayFunc
+		capacities   map[string]float64
+	)
+	if proj, perr := d.GetProject(); perr == nil {
+		if start, ok := parseProjectDate(proj.StartDate); ok {
+			projectStart = start
+			isWorkday = calendar.For(proj.CountryCode).IsWorkday
+			capacities = stakeholderCapacities(d, proj.ID)
+		}
+	}
+
+	res, err := charts.LayoutWithSchedule(charts.Kind(c.Kind), c.Data, projectStart, isWorkday, capacities)
 	if err != nil && !errors.Is(err, charts.ErrEngineNotImplemented) {
 		return charts.LayoutResult{}, err
 	}
 	res.Title = c.Title
 	return res, nil
+}
+
+// =========================================================
+// Schedule baselines (roadmap item 17)
+// =========================================================
+
+// SetScheduleBaseline snapshots the current scheduled state of a CPM
+// chart under an optional name. The stored payload is the fully
+// scheduled kernel task map (constraints armed, CPM run, dates
+// anchored when the project has a start date).
+func (a *App) SetScheduleBaseline(chartID, name string) (db.Baseline, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Baseline{}, errors.New("no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return db.Baseline{}, err
+	}
+	c, err := d.GetChart(chartID)
+	if err != nil {
+		return db.Baseline{}, err
+	}
+	tasks, err := cpmChartDataToKernelTasks(c.Data)
+	if err != nil {
+		return db.Baseline{}, err
+	}
+	if len(tasks) == 0 {
+		return db.Baseline{}, errors.New("chart has no tasks to baseline")
+	}
+	scheduleProjectTasks(proj, tasks)
+	blob, err := json.Marshal(tasks)
+	if err != nil {
+		return db.Baseline{}, err
+	}
+	return d.SaveBaseline(db.Baseline{
+		ProjectID: proj.ID,
+		ChartID:   chartID,
+		Name:      name,
+		Data:      string(blob),
+	})
+}
+
+// ListScheduleBaselines returns a chart's baselines, newest first.
+func (a *App) ListScheduleBaselines(chartID string) ([]db.Baseline, error) {
+	d := a.requireDB()
+	if d == nil {
+		return nil, errors.New("no project open")
+	}
+	return d.ListBaselines(chartID)
+}
+
+// DeleteScheduleBaseline removes a baseline snapshot.
+func (a *App) DeleteScheduleBaseline(id string) error {
+	d := a.requireDB()
+	if d == nil {
+		return errors.New("no project open")
+	}
+	return d.DeleteBaseline(id)
+}
+
+// CompareScheduleBaseline diffs the chart's CURRENT schedule against
+// a stored baseline (the newest one when baselineID is empty).
+// Returns per-task variances keyed by task ID; an empty map when the
+// chart has no baseline yet.
+func (a *App) CompareScheduleBaseline(chartID, baselineID string) (map[string]kernel.ScheduleVariance, error) {
+	d := a.requireDB()
+	if d == nil {
+		return nil, errors.New("no project open")
+	}
+
+	var (
+		base db.Baseline
+		err  error
+	)
+	if baselineID != "" {
+		base, err = d.GetBaseline(baselineID)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		list, lerr := d.ListBaselines(chartID)
+		if lerr != nil {
+			return nil, lerr
+		}
+		if len(list) == 0 {
+			return map[string]kernel.ScheduleVariance{}, nil
+		}
+		base = list[0]
+	}
+
+	baseline := make(map[string]*kernel.Task)
+	if err := json.Unmarshal([]byte(base.Data), &baseline); err != nil {
+		return nil, fmt.Errorf("baseline %s is corrupt: %w", base.ID, err)
+	}
+
+	proj, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	c, err := d.GetChart(chartID)
+	if err != nil {
+		return nil, err
+	}
+	current, err := cpmChartDataToKernelTasks(c.Data)
+	if err != nil {
+		return nil, err
+	}
+	scheduleProjectTasks(proj, current)
+
+	return kernel.CompareSchedules(current, baseline), nil
+}
+
+// ComputeScheduleEVM derives earned-value metrics for a CPM chart at
+// a status date ("" = today, else YYYY-MM-DD). EVM needs the project
+// start date to place the status date on the schedule's working-day
+// axis, so projects without one get a clear error instead of numbers
+// that look right but mean nothing.
+func (a *App) ComputeScheduleEVM(chartID, asOfDate string) (kernel.EVMetrics, error) {
+	d := a.requireDB()
+	if d == nil {
+		return kernel.EVMetrics{}, errors.New("no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return kernel.EVMetrics{}, err
+	}
+	start, ok := parseProjectDate(proj.StartDate)
+	if !ok {
+		return kernel.EVMetrics{}, errors.New("earned value needs a project start date (Project Settings)")
+	}
+
+	c, err := d.GetChart(chartID)
+	if err != nil {
+		return kernel.EVMetrics{}, err
+	}
+	tasks, err := cpmChartDataToKernelTasks(c.Data)
+	if err != nil {
+		return kernel.EVMetrics{}, err
+	}
+	if len(tasks) == 0 {
+		return kernel.EVMetrics{}, errors.New("chart has no tasks")
+	}
+	scheduleProjectTasks(proj, tasks)
+
+	asOf := time.Now().UTC()
+	if asOfDate != "" {
+		parsed, perr := time.Parse(kernel.DateLayout, asOfDate)
+		if perr != nil {
+			return kernel.EVMetrics{}, fmt.Errorf("status date %q: want YYYY-MM-DD", asOfDate)
+		}
+		asOf = parsed
+	}
+	cal := calendar.For(proj.CountryCode)
+	asOfDay, ok := kernel.DayOffset(start, asOf, cal.IsWorkday)
+	if !ok {
+		return kernel.EVMetrics{}, errors.New("status date is unreachably far from the project start")
+	}
+
+	return kernel.ComputeEVM(tasks, asOfDay), nil
+}
+
+// LevelChartResources runs the kernel's serial resource-levelling
+// pass on a CPM chart and PERSISTS the result: every task that
+// levelling delayed beyond its precedence-earliest start gets a SNET
+// constraint at its levelled start date. Nodes with a user-set
+// constraint other than SNET are never touched (links and user intent
+// win); previously levelled SNET pins are recomputed. Requires a
+// project start date to express levelled offsets as dates.
+//
+// Returns the number of tasks pinned.
+func (a *App) LevelChartResources(chartID string) (int, error) {
+	d := a.requireDB()
+	if d == nil {
+		return 0, errors.New("no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return 0, err
+	}
+	start, ok := parseProjectDate(proj.StartDate)
+	if !ok {
+		return 0, errors.New("resource levelling needs a project start date (Project Settings)")
+	}
+	c, err := d.GetChart(chartID)
+	if err != nil {
+		return 0, err
+	}
+
+	var doc dagDoc
+	if err := json.Unmarshal([]byte(c.Data), &doc); err != nil {
+		return 0, err
+	}
+
+	cal := calendar.For(proj.CountryCode)
+
+	// Baseline pass: precedence-only ES per task.
+	plain, err := cpmChartDataToKernelTasks(c.Data)
+	if err != nil {
+		return 0, err
+	}
+	if len(plain) == 0 {
+		return 0, errors.New("chart has no tasks")
+	}
+	kernel.ApplyConstraintDates(plain, start, cal.IsWorkday)
+	if !kernel.CalculateCPM(plain) {
+		return 0, errors.New("chart contains a dependency cycle")
+	}
+
+	// Levelling pass on a fresh copy.
+	levelled, err := cpmChartDataToKernelTasks(c.Data)
+	if err != nil {
+		return 0, err
+	}
+	kernel.ApplyConstraintDates(levelled, start, cal.IsWorkday)
+	if !kernel.LevelResources(levelled, stakeholderCapacities(d, proj.ID)) {
+		return 0, errors.New("chart contains a dependency cycle")
+	}
+	kernel.AnchorSchedule(levelled, start, cal.IsWorkday)
+
+	pinned := 0
+	for i := range doc.Nodes {
+		n := &doc.Nodes[i]
+		lt, lok := levelled[n.ID]
+		pt, pok := plain[n.ID]
+		if !lok || !pok {
+			continue
+		}
+		existing := strings.ToUpper(strings.TrimSpace(n.Constraint))
+		if existing != "" && existing != string(kernel.StartNoEarlierThan) {
+			continue // never override a user-set non-SNET constraint
+		}
+		if lt.ES > pt.ES+1e-9 {
+			n.Constraint = string(kernel.StartNoEarlierThan)
+			n.ConstraintDate = lt.StartDate
+			pinned++
+		} else if existing == string(kernel.StartNoEarlierThan) && n.ConstraintDate != "" {
+			// A previous levelling pin that's no longer needed.
+			n.Constraint = ""
+			n.ConstraintDate = ""
+		}
+	}
+
+	blob, err := json.Marshal(doc)
+	if err != nil {
+		return 0, err
+	}
+	c.Data = string(blob)
+	if _, err := d.SaveChart(c); err != nil {
+		return 0, err
+	}
+	return pinned, nil
+}
+
+// GenerateResourceHistogram builds (or refreshes) a Bar chart showing
+// each resource's per-day demand for a CPM chart's schedule. The
+// histogram is a snapshot: regenerate it after editing the schedule.
+// The bar chart's config carries {"source_chart_id": ...} so repeated
+// generation updates the same chart instead of accumulating copies.
+func (a *App) GenerateResourceHistogram(chartID string) (db.Chart, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Chart{}, errors.New("no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return db.Chart{}, err
+	}
+	c, err := d.GetChart(chartID)
+	if err != nil {
+		return db.Chart{}, err
+	}
+	tasks, err := cpmChartDataToKernelTasks(c.Data)
+	if err != nil {
+		return db.Chart{}, err
+	}
+	if len(tasks) == 0 {
+		return db.Chart{}, errors.New("chart has no tasks")
+	}
+	scheduleProjectTasks(proj, tasks)
+
+	usage := kernel.ResourceUsage(tasks)
+	if len(usage) == 0 {
+		return db.Chart{}, errors.New("no resource assignments on this chart")
+	}
+
+	// Shared horizon across resources; day labels are real dates when
+	// the project is anchored, plain offsets otherwise.
+	horizon := 0
+	for _, profile := range usage {
+		if len(profile) > horizon {
+			horizon = len(profile)
+		}
+	}
+	categories := make([]string, horizon)
+	if start, ok := parseProjectDate(proj.StartDate); ok {
+		cal := calendar.For(proj.CountryCode)
+		dayTasks := make(map[string]*kernel.Task, horizon)
+		for i := 0; i < horizon; i++ {
+			id := fmt.Sprintf("d%d", i)
+			dayTasks[id] = &kernel.Task{ID: id, Duration: 1, ES: float64(i), EF: float64(i + 1)}
+		}
+		kernel.AnchorSchedule(dayTasks, start, cal.IsWorkday)
+		for i := 0; i < horizon; i++ {
+			categories[i] = dayTasks[fmt.Sprintf("d%d", i)].StartDate
+		}
+	} else {
+		for i := 0; i < horizon; i++ {
+			categories[i] = fmt.Sprintf("Day %d", i+1)
+		}
+	}
+
+	resources := make([]string, 0, len(usage))
+	for r := range usage {
+		resources = append(resources, r)
+	}
+	sort.Strings(resources)
+
+	type barSeries struct {
+		Name   string    `json:"name"`
+		Values []float64 `json:"values"`
+	}
+	barDoc := struct {
+		Title      string      `json:"title"`
+		XLabel     string      `json:"x_label"`
+		YLabel     string      `json:"y_label"`
+		Categories []string    `json:"categories"`
+		Series     []barSeries `json:"series"`
+	}{
+		Title:      "Resource usage — " + c.Title,
+		XLabel:     "Day",
+		YLabel:     "Units",
+		Categories: categories,
+	}
+	for _, r := range resources {
+		values := make([]float64, horizon)
+		copy(values, usage[r])
+		barDoc.Series = append(barDoc.Series, barSeries{Name: r, Values: values})
+	}
+
+	blob, err := json.Marshal(barDoc)
+	if err != nil {
+		return db.Chart{}, err
+	}
+
+	// Reuse the previous histogram for this source chart if present.
+	configMarker := fmt.Sprintf(`{"source_chart_id":%q}`, chartID)
+	target := db.Chart{
+		ProjectID: proj.ID,
+		Kind:      string(charts.KindBar),
+		Title:     "Resource Histogram — " + c.Title,
+		Config:    configMarker,
+	}
+	if existing, lerr := d.ListCharts(proj.ID, string(charts.KindBar)); lerr == nil {
+		for _, e := range existing {
+			if e.Config == configMarker {
+				target.ID = e.ID
+				break
+			}
+		}
+	}
+	target.Data = string(blob)
+	return d.SaveChart(target)
+}
+
+// dagDoc is the minimal layered-document shape LevelChartResources
+// round-trips. It must list every persisted node field so the
+// re-marshal does not drop data.
+type dagDoc struct {
+	Nodes []dag.LayeredNode `json:"nodes"`
+	Edges []dag.LayeredEdge `json:"edges"`
+}
+
+// ImportMSPDIChart opens a file dialog for a Microsoft Project Data
+// Interchange XML file and imports it as a new CPM chart in the open
+// project. If the project has no start date yet and the file carries
+// one, the project start date is adopted so the imported schedule
+// anchors immediately.
+func (a *App) ImportMSPDIChart() (db.Chart, error) {
+	if a.ctx == nil {
+		return db.Chart{}, errors.New("no context (Wails not started)")
+	}
+	path, err := wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
+		Title: "Import MSPDI schedule",
+		Filters: []wailsruntime.FileFilter{
+			{DisplayName: "MSPDI XML (*.xml)", Pattern: "*.xml"},
+			{DisplayName: "All files", Pattern: "*.*"},
+		},
+	})
+	if err != nil {
+		return db.Chart{}, err
+	}
+	if path == "" {
+		return db.Chart{}, errors.New("import cancelled")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return db.Chart{}, err
+	}
+	return a.importMSPDIFromBytes(data)
+}
+
+// importMSPDIFromBytes is ImportMSPDIChart minus the file dialog so
+// the conversion is unit-testable.
+func (a *App) importMSPDIFromBytes(data []byte) (db.Chart, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Chart{}, errors.New("no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return db.Chart{}, err
+	}
+
+	imported, err := export.FromMSPDI(data)
+	if err != nil {
+		return db.Chart{}, err
+	}
+
+	var doc dagDoc
+	for _, t := range imported.Tasks {
+		doc.Nodes = append(doc.Nodes, dag.LayeredNode{
+			ID:              t.UID,
+			Label:           t.Name,
+			Duration:        t.DurationDays,
+			Milestone:       t.Milestone,
+			PercentComplete: t.PercentComplete,
+			Assignments:     t.Assignments,
+		})
+		for _, l := range t.Links {
+			doc.Edges = append(doc.Edges, dag.LayeredEdge{
+				From:  l.Pred,
+				To:    t.UID,
+				Label: dag.FormatLinkLabel(l.Type, l.Lag),
+			})
+		}
+	}
+
+	blob, err := json.Marshal(doc)
+	if err != nil {
+		return db.Chart{}, err
+	}
+
+	title := imported.Title
+	if title == "" {
+		title = "Imported Schedule"
+	}
+
+	// Adopt the file's start date when the project lacks one.
+	if _, ok := parseProjectDate(proj.StartDate); !ok && imported.StartDate != "" {
+		proj.StartDate = imported.StartDate
+		if _, err := d.UpsertProject(proj); err != nil {
+			return db.Chart{}, err
+		}
+	}
+
+	return d.SaveChart(db.Chart{
+		ProjectID: proj.ID,
+		Kind:      string(charts.KindCPM),
+		Title:     title,
+		Data:      string(blob),
+	})
 }
 
 // =========================================================
@@ -722,6 +1289,11 @@ func (a *App) RepairAndSwap() (db.RepairResult, error) {
 	a.mu.RLock()
 	d := a.db
 	path := a.dbPath
+	var dek []byte
+	if len(a.dek) == crypto.DEKSize {
+		dek = make([]byte, len(a.dek))
+		copy(dek, a.dek)
+	}
 	a.mu.RUnlock()
 	if d == nil {
 		return db.RepairResult{}, errors.New("no project open")
@@ -734,7 +1306,22 @@ func (a *App) RepairAndSwap() (db.RepairResult, error) {
 	// If the result.Log mentions a snapshot, do the swap. We detect
 	// this by checking for a .bak file rather than re-parsing the log.
 	if _, statErr := os.Stat(path + ".bak"); statErr == nil {
-		fresh, err := d.SwapInSnapshot(path)
+		encrypted, err := db.IsEncryptedFile(path)
+		if err != nil {
+			result.Log = append(result.Log, "Swap failed: "+err.Error())
+			return result, err
+		}
+		var fresh *db.Database
+		if encrypted {
+			if len(dek) != crypto.DEKSize {
+				err := errors.New("database key is locked; sign in again")
+				result.Log = append(result.Log, "Swap failed: "+err.Error())
+				return result, err
+			}
+			fresh, err = d.SwapInEncryptedSnapshot(path, dek)
+		} else {
+			fresh, err = d.SwapInSnapshot(path)
+		}
 		if err != nil {
 			result.Log = append(result.Log, "Swap failed: "+err.Error())
 			return result, err
@@ -849,11 +1436,24 @@ func (a *App) exportScheduleReportAs(format export.ExportFormat) (string, error)
 	}
 
 	if len(kernelTasks) > 0 {
-		// Ensure CPM fields are populated (defensive; chart data may be raw).
-		kernel.CalculateCPM(kernelTasks)
+		// Full scheduling pipeline: arm date constraints, run CPM,
+		// anchor onto real dates (the latter two steps only when the
+		// project has a parseable start date).
+		scheduleProjectTasks(proj, kernelTasks)
 	}
 
 	payload := export.ReportPayload{Tasks: kernelTasks}
+
+	// Earned-value summary at today's status date — only when the
+	// project is anchored (offsets map to dates); renderers further
+	// suppress the section when there is no cost data.
+	if start, ok := parseProjectDate(proj.StartDate); ok && len(kernelTasks) > 0 {
+		cal := calendar.For(proj.CountryCode)
+		if day, dok := kernel.DayOffset(start, time.Now().UTC(), cal.IsWorkday); dok {
+			m := kernel.ComputeEVM(kernelTasks, day)
+			payload.EVM = &m
+		}
+	}
 
 	opts := export.ExportOptions{
 		Format: format,
@@ -890,6 +1490,63 @@ func (a *App) exportScheduleReportAs(format export.ExportFormat) (string, error)
 	return outPath, nil
 }
 
+// stakeholderCapacities builds the resource-capacity map the kernel's
+// overallocation detection and levelling consume: stakeholder name →
+// availability in units (1.0 = full-time). Assignments naming
+// resources that are not stakeholders fall back to the kernel's 1.0
+// default. Best-effort: a lookup failure returns nil (default
+// capacities) rather than blocking scheduling.
+func stakeholderCapacities(d *db.Database, projectID string) map[string]float64 {
+	list, err := d.ListStakeholders(projectID, "")
+	if err != nil || len(list) == 0 {
+		return nil
+	}
+	out := make(map[string]float64, len(list))
+	for _, s := range list {
+		if s.Name != "" && s.Availability > 0 {
+			out[s.Name] = s.Availability
+		}
+	}
+	return out
+}
+
+// scheduleProjectTasks runs the full scheduling pipeline on a kernel
+// task map: date constraints are armed against the project start date
+// and country work calendar, CPM computes the schedule, and the
+// offsets are anchored onto real dates. Projects without a parseable
+// start date still get plain CPM (date constraints stay dormant and
+// no calendar dates are emitted), preserving legacy behaviour.
+func scheduleProjectTasks(proj db.Project, tasks map[string]*kernel.Task) {
+	if len(tasks) == 0 {
+		return
+	}
+	start, ok := parseProjectDate(proj.StartDate)
+	if !ok {
+		kernel.CalculateCPM(tasks)
+		return
+	}
+	c := calendar.For(proj.CountryCode)
+	kernel.ApplyConstraintDates(tasks, start, c.IsWorkday)
+	kernel.CalculateCPM(tasks)
+	kernel.AnchorSchedule(tasks, start, c.IsWorkday)
+}
+
+// parseProjectDate accepts the two date shapes stored in
+// project.start_date: plain YYYY-MM-DD and full RFC3339.
+func parseProjectDate(s string) (time.Time, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}, false
+	}
+	if t, err := time.Parse("2006-01-02", s); err == nil {
+		return t, true
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t, true
+	}
+	return time.Time{}, false
+}
+
 // loadCurrentProjectSchedule returns the best available schedule data
 // as a kernel.Task map (with CPM fields computed).
 //
@@ -915,13 +1572,26 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 	}
 	var doc struct {
 		Nodes []struct {
-			ID       string  `json:"id"`
-			Label    string  `json:"label"`
-			Duration float64 `json:"duration"`
+			ID              string  `json:"id"`
+			Label           string  `json:"label"`
+			Duration        float64 `json:"duration"`
+			Constraint      string  `json:"constraint"`
+			ConstraintDate  string  `json:"constraint_date"`
+			PercentComplete float64 `json:"percent_complete"`
+			Milestone       bool    `json:"milestone"`
+			ActualStart     string  `json:"actual_start"`
+			ActualFinish    string  `json:"actual_finish"`
+			BudgetedCost    float64 `json:"budgeted_cost"`
+			ActualCost      float64 `json:"actual_cost"`
+			Assignments     []struct {
+				Resource string  `json:"resource"`
+				Units    float64 `json:"units"`
+			} `json:"assignments"`
 		} `json:"nodes"`
 		Edges []struct {
-			From string `json:"from"`
-			To   string `json:"to"`
+			From  string `json:"from"`
+			To    string `json:"to"`
+			Label string `json:"label"`
 		} `json:"edges"`
 	}
 	if err := json.Unmarshal([]byte(dataJSON), &doc); err != nil {
@@ -930,15 +1600,31 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 
 	tasks := make(map[string]*kernel.Task, len(doc.Nodes))
 	for _, n := range doc.Nodes {
-		tasks[n.ID] = &kernel.Task{
-			ID:       n.ID,
-			Title:    n.Label,
-			Duration: n.Duration,
+		t := &kernel.Task{
+			ID:              n.ID,
+			Title:           n.Label,
+			Duration:        n.Duration,
+			Constraint:      kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(n.Constraint))),
+			ConstraintDate:  n.ConstraintDate,
+			PercentComplete: n.PercentComplete,
+			Milestone:       n.Milestone,
+			ActualStart:     n.ActualStart,
+			ActualFinish:    n.ActualFinish,
+			BudgetedCost:    n.BudgetedCost,
+			ActualCost:      n.ActualCost,
 		}
+		for _, a := range n.Assignments {
+			t.Assignments = append(t.Assignments, kernel.Assignment{
+				Resource: a.Resource,
+				Units:    a.Units,
+			})
+		}
+		tasks[n.ID] = t
 	}
 	for _, e := range doc.Edges {
 		if t, ok := tasks[e.To]; ok {
-			t.Precedents = append(t.Precedents, e.From)
+			typ, lag := dag.ParseLinkLabel(e.Label)
+			t.Links = append(t.Links, kernel.Link{Pred: e.From, Type: typ, Lag: lag})
 		}
 	}
 	return tasks, nil
@@ -1320,6 +2006,12 @@ func (a *App) CreateProjectFromLaunchpad(
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return db.Project{}, nil, "", err
 	}
+	a.mu.RLock()
+	dek, err := a.requireDEKLocked()
+	a.mu.RUnlock()
+	if err != nil {
+		return db.Project{}, nil, "", err
+	}
 
 	// Choose a non-conflicting filename, same logic as CreateProject.
 	path := filepath.Join(dir, safe+".pmforge")
@@ -1330,7 +2022,7 @@ func (a *App) CreateProjectFromLaunchpad(
 		path = filepath.Join(dir, fmt.Sprintf("%s-%d.pmforge", safe, i))
 	}
 
-	d, err := db.InitDB(path)
+	d, err := db.InitEncryptedDB(path, dek)
 	if err != nil {
 		return db.Project{}, nil, "", err
 	}
@@ -1852,6 +2544,17 @@ func (a *App) requireUser() *users.Account {
 	return a.user
 }
 
+// requireDEKLocked returns a copy of the active user's unlocked DEK.
+// Caller must hold a.mu for reading or writing.
+func (a *App) requireDEKLocked() ([]byte, error) {
+	if len(a.dek) != crypto.DEKSize {
+		return nil, errors.New("database key is locked; sign in again")
+	}
+	dek := make([]byte, len(a.dek))
+	copy(dek, a.dek)
+	return dek, nil
+}
+
 // requireDB returns the open *db.Database under a read lock. A
 // concurrent Logout/CloseProject may Close the returned handle
 // before the caller's query runs; the caller receives "sql:
@@ -1870,6 +2573,18 @@ func (a *App) requireDBAndPath() (*db.Database, string) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return a.db, a.dbPath
+}
+
+func samePath(a, b string) bool {
+	if a == "" || b == "" {
+		return false
+	}
+	absA, errA := filepath.Abs(a)
+	absB, errB := filepath.Abs(b)
+	if errA == nil && errB == nil {
+		return absA == absB
+	}
+	return a == b
 }
 
 // =========================================================
@@ -2193,8 +2908,9 @@ func main() {
 	}
 
 	// CLI mode that operates on a single .pmforge file directly
-	// (--check / --repair / --vacuum / --export-audit). We do NOT
-	// require a logged-in user here; the file is identified by path.
+	// (--check / --repair / --vacuum / --export-audit). Plaintext files
+	// open directly; encrypted files require --username plus
+	// --password-env so the user's DEK can be unlocked from system.db.
 	if cfg.ProjectPath != "" && headlessProjectMode(cfg) {
 		runHeadless(cfg)
 		return
@@ -2228,8 +2944,58 @@ func headlessProjectMode(cfg *cli.Config) bool {
 	return cfg.CheckOnly || cfg.Repair || cfg.Vacuum || cfg.ExportAuditPath != ""
 }
 
+func openHeadlessDB(cfg *cli.Config) (*db.Database, error) {
+	encrypted, err := db.IsEncryptedFile(cfg.ProjectPath)
+	if err != nil {
+		return nil, fmt.Errorf("inspect project encryption: %w", err)
+	}
+	if !encrypted {
+		return db.InitDB(cfg.ProjectPath)
+	}
+	if strings.TrimSpace(cfg.Username) == "" {
+		return nil, errors.New("--username is required for encrypted project maintenance")
+	}
+	if strings.TrimSpace(cfg.PasswordEnv) == "" {
+		return nil, errors.New("--password-env is required for encrypted project maintenance")
+	}
+	password, ok := os.LookupEnv(cfg.PasswordEnv)
+	if !ok || password == "" {
+		return nil, fmt.Errorf("password environment variable %q is not set", cfg.PasswordEnv)
+	}
+	rootDir, err := inferHeadlessRootDir(cfg.ProjectPath, cfg.Username)
+	if err != nil {
+		return nil, err
+	}
+	store, err := users.Open(rootDir)
+	if err != nil {
+		return nil, fmt.Errorf("open system database: %w", err)
+	}
+	defer store.Close()
+	if _, err := store.Authenticate(cfg.Username, password); err != nil {
+		return nil, fmt.Errorf("authenticate headless user: %w", err)
+	}
+	dek, err := store.UnlockDEK(cfg.Username, password)
+	if err != nil {
+		return nil, fmt.Errorf("unlock database key: %w", err)
+	}
+	return db.InitEncryptedDB(cfg.ProjectPath, dek)
+}
+
+func inferHeadlessRootDir(projectPath, username string) (string, error) {
+	absPath, err := filepath.Abs(projectPath)
+	if err != nil {
+		return "", err
+	}
+	projectsDir := filepath.Dir(absPath)
+	userDir := filepath.Dir(projectsDir)
+	if filepath.Base(projectsDir) != "projects" || filepath.Base(userDir) != username {
+		return "", fmt.Errorf("encrypted headless project must be under <pmforge-root>/%s/projects", username)
+	}
+	return filepath.Dir(userDir), nil
+}
+
 func runHeadless(cfg *cli.Config) {
-	d, err := db.InitDB(cfg.ProjectPath)
+	d, err := openHeadlessDB(cfg)
 	if err != nil {
 		log.Fatalf("init db: %v", err)
 	}

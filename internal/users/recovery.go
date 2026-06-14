@@ -15,6 +15,7 @@ import (
 	"unicode"
 
 	"pmforge/internal/auth"
+	"pmforge/internal/crypto"
 )
 
 // RecoveryCodeCount is the number of one-time codes generated at
@@ -54,10 +55,17 @@ func (s *Store) migrateRecoveryTable() error {
 // The plaintext codes are returned to the caller exactly ONCE — they
 // MUST be shown to the user and never persisted in plaintext.
 //
+// When dek is non-nil (ADR-001), each code additionally stores the
+// user's DEK wrapped by that code's plaintext, so a later
+// ResetWithRecoveryCode can re-wrap the same DEK and the user's
+// encrypted projects survive the password reset. A nil dek issues
+// plain codes (legacy behaviour, valid only while the user has no
+// encrypted data).
+//
 // Calling IssueRecoveryCodes a second time invalidates any unused
 // previous codes (delete-then-insert in one transaction), matching
 // the "rotate codes" UX users expect.
-func (s *Store) IssueRecoveryCodes(username string) ([]string, error) {
+func (s *Store) IssueRecoveryCodes(username string, dek []byte) ([]string, error) {
 	if err := ValidateUsername(username); err != nil {
 		return nil, err
 	}
@@ -72,6 +80,7 @@ func (s *Store) IssueRecoveryCodes(username string) ([]string, error) {
 
 	plain := make([]string, RecoveryCodeCount)
 	hashes := make([]string, RecoveryCodeCount)
+	wraps := make([]string, RecoveryCodeCount)
 	for i := 0; i < RecoveryCodeCount; i++ {
 		code, err := generateCode()
 		if err != nil {
@@ -83,6 +92,13 @@ func (s *Store) IssueRecoveryCodes(username string) ([]string, error) {
 		}
 		plain[i] = code
 		hashes[i] = hash
+		if dek != nil {
+			wrap, err := crypto.WrapKey(dek, canonicalise(code))
+			if err != nil {
+				return nil, err
+			}
+			wraps[i] = wrap
+		}
 	}
 
 	tx, err := s.conn.Begin()
@@ -95,10 +111,10 @@ func (s *Store) IssueRecoveryCodes(username string) ([]string, error) {
 		return nil, err
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	for _, h := range hashes {
+	for i, h := range hashes {
 		if _, err := tx.Exec(
-			`INSERT INTO recovery_codes (username, code_hash, created_at) VALUES (?, ?, ?)`,
-			username, h, now,
+			`INSERT INTO recovery_codes (username, code_hash, wrapped_dek, created_at) VALUES (?, ?, ?, ?)`,
+			username, h, wraps[i], now,
 		); err != nil {
 			return nil, err
 		}
@@ -125,7 +141,7 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 	}
 
 	rows, err := s.conn.Query(
-		`SELECT id, code_hash FROM recovery_codes WHERE username = ? AND used = 0`,
+		`SELECT id, code_hash, wrapped_dek FROM recovery_codes WHERE username = ? AND used = 0`,
 		username,
 	)
 	if err != nil {
@@ -135,14 +151,16 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 
 	canon := canonicalise(code)
 	var matchID int64 = -1
+	var matchWrap string
 	for rows.Next() {
 		var id int64
-		var hash string
-		if err := rows.Scan(&id, &hash); err != nil {
+		var hash, wrap string
+		if err := rows.Scan(&id, &hash, &wrap); err != nil {
 			return err
 		}
 		if auth.VerifyPassword(canon, hash) == nil {
 			matchID = id
+			matchWrap = wrap
 			break
 		}
 	}
@@ -153,7 +171,31 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 		return ErrInvalidRecoveryCode
 	}
 
-	// Atomically: mark code used + rotate password hash.
+	// ADR-001: recover the DEK so encrypted projects survive the
+	// reset. A code issued with a DEK wrap re-wraps the SAME DEK
+	// under the new password. A legacy code (no wrap) generates a
+	// FRESH DEK — only safe while the user has no encrypted data,
+	// which is guaranteed because enabling encryption forces a code
+	// re-issue (ADR-001 migration step).
+	var dek []byte
+	if matchWrap != "" {
+		dek, err = crypto.UnwrapKey(matchWrap, canon)
+		if err != nil {
+			// The hash matched but the wrap did not — corrupt row.
+			return fmt.Errorf("users: recovery wrap corrupt: %w", err)
+		}
+	} else {
+		dek, err = crypto.GenerateDEK()
+		if err != nil {
+			return err
+		}
+	}
+	newWrapPW, err := crypto.WrapKey(dek, newPassword)
+	if err != nil {
+		return err
+	}
+
+	// Atomically: mark code used + rotate password hash + re-wrap DEK.
 	tx, err := s.conn.Begin()
 	if err != nil {
 		return err
@@ -172,8 +214,8 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 		return err
 	}
 	if _, err := tx.Exec(
-		`UPDATE users SET password_hash = ? WHERE username = ?`,
-		newHash, username,
+		`UPDATE users SET password_hash = ?, wrapped_dek_pw = ? WHERE username = ?`,
+		newHash, newWrapPW, username,
 	); err != nil {
 		return err
 	}

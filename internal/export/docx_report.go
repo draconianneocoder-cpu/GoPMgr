@@ -50,5 +50,16 @@ func renderDocumentDOCX(payload ReportPayload, opts ExportOptions) ([]byte, erro
 			id, t.Title, t.Duration, t.ES, t.EF, t.LS, t.LF, t.Float, criticalText))
 	}
 
+	// Earned-value summary (suppressed without cost data).
+	if lines := evmSummaryLines(payload.EVM); lines != nil {
+		doc.AddParagraph("")
+		if err := addHeadingDOCX(doc, "Earned Value (status date: today)", 1); err != nil {
+			return nil, err
+		}
+		for _, line := range lines {
+			doc.AddParagraph(line)
+		}
+	}
+
 	return renderDOCXToBytes(doc, "pmforge-report")
 }

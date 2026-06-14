@@ -14,10 +14,10 @@ import (
 
 // --- registry ---
 
-func TestAll_Returns20Definitions(t *testing.T) {
+func TestAll_Returns21Definitions(t *testing.T) {
 	all := All()
-	if len(all) != 20 {
-		t.Errorf("All() = %d definitions, want 20", len(all))
+	if len(all) != 21 {
+		t.Errorf("All() = %d definitions, want 21", len(all))
 	}
 }
 
@@ -67,10 +67,10 @@ func TestGet_UnknownKind_ReturnsFalse(t *testing.T) {
 	}
 }
 
-func TestByEngine_DAG_Returns6Kinds(t *testing.T) {
+func TestByEngine_DAG_Returns7Kinds(t *testing.T) {
 	defs := ByEngine(EngineDAG)
-	if len(defs) != 6 {
-		t.Errorf("ByEngine(EngineDAG) = %d, want 6", len(defs))
+	if len(defs) != 7 {
+		t.Errorf("ByEngine(EngineDAG) = %d, want 7", len(defs))
 	}
 }
 

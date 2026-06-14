@@ -36,6 +36,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let settingsStatus = $state('');
   let settingsError = $state('');
 
+  // Database encryption state
+  let encryptionState = $state<'unknown' | 'plaintext' | 'encrypted'>('unknown');
+  let encryptionBusy = $state(false);
+  let encryptionStatus = $state('');
+  let encryptionError = $state('');
+  let encryptionBackupPath = $state('');
+  let recoveryCodes = $state<string[]>([]);
+
   // Font settings
   let fonts = $state<FontFamilyInfo[]>([]);
   let defaultFont = $state('');
@@ -65,6 +73,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } catch {
       // non-fatal
     }
+    await loadEncryptionState();
   });
 
   let dirty = $derived(
@@ -123,6 +132,67 @@ SPDX-License-Identifier: GPL-3.0-or-later
       settingsError = `Save failed: ${err}`;
     } finally {
       settingsBusy = false;
+    }
+  }
+
+  function recoveryReissueRequired(message: string) {
+    return message.includes('Reissue recovery codes before enabling database encryption');
+  }
+
+  async function loadEncryptionState() {
+    encryptionStatus = '';
+    encryptionError = '';
+    encryptionBackupPath = '';
+    recoveryCodes = [];
+    if (!session.projectPath) {
+      encryptionState = 'unknown';
+      encryptionError = 'Open this project from the project list before checking database encryption.';
+      return;
+    }
+    try {
+      const encrypted = await window.go.main.App.IsProjectEncrypted(session.projectPath);
+      encryptionState = encrypted ? 'encrypted' : 'plaintext';
+    } catch (err: any) {
+      encryptionState = 'unknown';
+      encryptionError = `Could not check encryption: ${err}`;
+    }
+  }
+
+  async function encryptDatabase() {
+    if (!session.projectPath) {
+      encryptionError = 'Open this project from the project list before encrypting the database.';
+      return;
+    }
+    encryptionBusy = true;
+    encryptionStatus = '';
+    encryptionError = '';
+    encryptionBackupPath = '';
+    recoveryCodes = [];
+    try {
+      const backupPath = await window.go.main.App.EncryptProjectAtRest(session.projectPath);
+      encryptionBackupPath = backupPath;
+      encryptionState = 'encrypted';
+      encryptionStatus = 'Database encrypted.';
+    } catch (err: any) {
+      const message = String(err?.message ?? err);
+      encryptionError = message;
+    } finally {
+      encryptionBusy = false;
+    }
+  }
+
+  async function reissueRecoveryCodes() {
+    encryptionBusy = true;
+    encryptionStatus = '';
+    encryptionError = '';
+    recoveryCodes = [];
+    try {
+      recoveryCodes = (await window.go.main.App.IssueRecoveryCodes()) ?? [];
+      encryptionStatus = 'Recovery codes reissued. Save these codes, then encrypt the database.';
+    } catch (err: any) {
+      encryptionError = `Recovery-code reissue failed: ${err}`;
+    } finally {
+      encryptionBusy = false;
     }
   }
 
@@ -412,6 +482,84 @@ SPDX-License-Identifier: GPL-3.0-or-later
              {exportStatus}
            </p>
          {/if}
+       </section>
+
+       <!-- Database Encryption -->
+       <section>
+         <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+           Database Encryption
+         </h2>
+         <div class="border border-slate-800 bg-slate-900/60 rounded p-4 space-y-3">
+           <div class="flex flex-wrap items-center justify-between gap-3">
+             <div>
+               <span class="text-xs text-slate-500 uppercase">State</span>
+               <p class="text-sm font-semibold text-white">
+                 {encryptionState === 'encrypted'
+                   ? 'Encrypted'
+                   : encryptionState === 'plaintext'
+                     ? 'Plaintext'
+                     : 'Unknown'}
+               </p>
+             </div>
+             {#if encryptionState === 'plaintext'}
+               <button
+                 onclick={encryptDatabase}
+                 disabled={encryptionBusy}
+                 class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+               >
+                 {encryptionBusy ? 'Encrypting…' : 'Encrypt database'}
+               </button>
+             {:else}
+               <button
+                 onclick={loadEncryptionState}
+                 disabled={encryptionBusy}
+                 class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded"
+               >
+                 Refresh
+               </button>
+             {/if}
+           </div>
+
+           {#if encryptionState === 'plaintext'}
+             <p class="text-xs text-slate-400">
+               Encryption keeps project rows in a SQLCipher database and retains a plaintext backup
+               beside the project file.
+             </p>
+           {/if}
+
+           {#if encryptionBackupPath}
+             <p class="text-xs text-cyan-400">
+               Backup retained at: {encryptionBackupPath}
+             </p>
+           {/if}
+           {#if encryptionStatus}
+             <p class="text-xs text-cyan-400">{encryptionStatus}</p>
+           {/if}
+           {#if encryptionError}
+             <div class="space-y-2">
+               <p class="text-xs text-red-400" role="alert">{encryptionError}</p>
+               {#if recoveryReissueRequired(encryptionError)}
+                 <button
+                   onclick={reissueRecoveryCodes}
+                   disabled={encryptionBusy}
+                   class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
+                 >
+                   {encryptionBusy ? 'Reissuing…' : 'Reissue recovery codes'}
+                 </button>
+               {/if}
+             </div>
+           {/if}
+           {#if recoveryCodes.length > 0}
+             <div class="border border-cyan-900/60 bg-cyan-950/20 rounded p-3">
+               <p class="text-xs text-cyan-300 mb-2">Save these new recovery codes now.</p>
+               <ul class="grid grid-cols-1 sm:grid-cols-2 gap-1 font-mono text-xs text-slate-200">
+                 {#each recoveryCodes as code}
+                   <li>{code}</li>
+                 {/each}
+               </ul>
+             </div>
+           {/if}
+         </div>
        </section>
 
        <!-- Export & Signature Settings -->

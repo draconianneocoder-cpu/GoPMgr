@@ -10,7 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "lint": "eslint --ext .ts,.svelte src"
+    "lint": "eslint --ext .ts,.svelte src",
+    "test:project-settings-encryption": "node scripts/project-settings-encryption-check.mjs"
   },
   "dependencies": {
     "chart.js": "^4.4.6",

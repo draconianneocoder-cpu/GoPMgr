@@ -1,0 +1,95 @@
+// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package db
+
+import (
+	"errors"
+	"fmt"
+	"time"
+)
+
+// Baseline is one snapshot of a CPM chart's scheduled task map.
+// Data is opaque JSON (kernel.Task keyed by task ID) — the database
+// does not interpret it.
+type Baseline struct {
+	ID        string    `json:"id"`
+	ProjectID string    `json:"project_id"`
+	ChartID   string    `json:"chart_id"`
+	Name      string    `json:"name"`
+	Data      string    `json:"data"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// ErrNoBaseline is returned when GetBaseline can't find the ID.
+var ErrNoBaseline = errors.New("db: baseline not found")
+
+// SaveBaseline inserts a new baseline snapshot. Baselines are
+// immutable: there is no update path, only insert and delete.
+func (db *Database) SaveBaseline(b Baseline) (Baseline, error) {
+	if b.ID == "" {
+		id, err := newID("baseline")
+		if err != nil {
+			return Baseline{}, fmt.Errorf("generate baseline id: %w", err)
+		}
+		b.ID = id
+	}
+	if b.Data == "" {
+		b.Data = "{}"
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+
+	_, err := db.Conn.Exec(`
+		INSERT INTO baselines (id, project_id, chart_id, name, data, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, b.ID, b.ProjectID, b.ChartID, b.Name, b.Data, now)
+	if err != nil {
+		return Baseline{}, err
+	}
+	return db.GetBaseline(b.ID)
+}
+
+// GetBaseline fetches a baseline by ID.
+func (db *Database) GetBaseline(id string) (Baseline, error) {
+	row := db.Conn.QueryRow(`
+		SELECT id, project_id, chart_id, name, data, created_at
+		FROM baselines WHERE id = ?
+	`, id)
+	var b Baseline
+	var created string
+	if err := row.Scan(&b.ID, &b.ProjectID, &b.ChartID, &b.Name, &b.Data, &created); err != nil {
+		return Baseline{}, ErrNoBaseline
+	}
+	b.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
+	return b, nil
+}
+
+// ListBaselines returns every baseline for a chart, newest first.
+func (db *Database) ListBaselines(chartID string) ([]Baseline, error) {
+	rows, err := db.Conn.Query(`
+		SELECT id, project_id, chart_id, name, data, created_at
+		FROM baselines WHERE chart_id = ? ORDER BY created_at DESC
+	`, chartID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []Baseline
+	for rows.Next() {
+		var b Baseline
+		var created string
+		if err := rows.Scan(&b.ID, &b.ProjectID, &b.ChartID, &b.Name, &b.Data, &created); err != nil {
+			return nil, err
+		}
+		b.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
+// DeleteBaseline removes a baseline snapshot.
+func (db *Database) DeleteBaseline(id string) error {
+	_, err := db.Conn.Exec(`DELETE FROM baselines WHERE id = ?`, id)
+	return err
+}

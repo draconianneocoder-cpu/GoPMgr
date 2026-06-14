@@ -25,7 +25,7 @@ PMForge is a **local-first project controls desktop application** for technical,
 - **CMS/PKCS#7**: PMForge builds the PAdES detached CMS structure in `internal/crypto/pdf_cms.go`, using `digitorus/pkcs7` OIDs/parsing helpers where useful. The PDF embedding path lives in `internal/pdfmeta/pdfmeta.go`.
 - **DOCX writer**: `gomutex/godocx` (MIT, pure Go) — picked from pkg.go.dev after a survey. Used by `internal/export/docx.go`. ODT export (`internal/export/odt.go`) is hand-built because no equivalently-maintained pure-Go ODT generator exists (kpmy/odf hasn't been touched since 2014).
 
-The app has reached **V2.x** maturity: all 20 chart kinds and all 25 document templates implemented end-to-end, combined report builder with embedded vector chart visualisations, self-heal with atomic database swap, multi-user accounts. The Agile Pack is the current frontier.
+The app has reached **V2.x** maturity: all 21 chart kinds and all 25 document templates implemented end-to-end, combined report builder with embedded vector chart visualisations, self-heal with atomic database swap, multi-user accounts. The Agile Pack is the current frontier.
 
 ---
 
@@ -54,7 +54,7 @@ pmforge/
 │   ├── auth/password.go         # Argon2id PHC hash/verify
 │   ├── cli/parser.go            # GNU-style CLI flags; Version constant lives here
 │   ├── charts/
-│   │   ├── registry.go          # 20-kind taxonomy + 4 engines (DAG/Stats/Matrix/Flow)
+│   │   ├── registry.go          # 21-kind taxonomy + 4 engines (DAG/Stats/Matrix/Flow)
 │   │   ├── engines.go           # Layout() dispatcher → kind-specific layout fn
 │   │   ├── dag/                 # WBS, Network, PERT, CPM, Fishbone, Cause-Effect
 │   │   ├── flow/                # Workflow, Activity (+ swimlanes)
@@ -140,7 +140,7 @@ All tables created idempotently in `db.Database.Migrate()` (internal/db/sqlite.g
 
 ### V2 tables (multi-entity model)
 - **`project`** — one row per .pmforge: `id`, `name`, `description`, `status`, `phase`, `start_date`, `end_date`, `budget`, `owner`, timestamps. Status ∈ {planning, active, on_hold, complete, cancelled}. Phase ∈ {initiation, planning, execution, monitoring, closing}.
-- **`charts`** — unified table for all 20 chart kinds: `id`, `project_id`, `kind`, `title`, `data` (JSON), `config` (JSON), `template_id`, timestamps. FK ON DELETE CASCADE.
+- **`charts`** — unified table for all 21 chart kinds: `id`, `project_id`, `kind`, `title`, `data` (JSON), `config` (JSON), `template_id`, timestamps. FK ON DELETE CASCADE.
 - **`documents`** — unified for all 25 doc kinds: `id`, `project_id`, `kind`, `title`, `content` (JSON), `template_id`, `version` (monotonic), `status` (draft|review|approved|archived), timestamps.
 - **`templates`** — user-saved templates: `id`, `scope` ('chart' or 'document'), `kind`, `name`, `description`, `defaults` (JSON), `is_builtin`, `created_at`.
 
@@ -268,7 +268,7 @@ A new contribution should land **with `make memory-scan` passing**. Optional sca
 
 ## 8. Feature coverage (live status)
 
-### Charts: 20/20 implemented end-to-end (UI + Go layout + frontend renderer + PDF embed)
+### Charts: 21/21 implemented end-to-end (UI + Go layout + frontend renderer + PDF embed)
 - **DAG family** (6): WBS, Network, PERT, CPM, Fishbone, Cause-Effect.
 - **Flow family** (2): Workflow, Activity.
 - **Matrix family** (4): RACI, SWOT, Stakeholder Analysis, Generic Matrix.
@@ -305,7 +305,7 @@ A new contribution should land **with `make memory-scan` passing**. Optional sca
 3. ~~CMS/PKCS#7 + PAdES signature widget embedding.~~ **Done** via PMForge's detached CMS encoder plus `pdfmeta.InjectPAdESSignature`. The PAdES path appends a `/Sig` dictionary, invisible `/Widget` field, `/AcroForm`, fixed-width `/ByteRange`, signed `/M` timestamp, and padded `/Contents` in the final incremental update. `make check-pades` verifies the local invariant, and `make check-pades-external` extracts the embedded CMS for OpenSSL detached verification, checks `qpdf --check`, requires `pdfsig` to report a valid signature, verifies veraPDF signature metadata, and requires DSS to classify the deterministic self-signed sample as `PAdES-BASELINE-B` when those tools are installed. Release-certificate trust-chain validation remains indeterminate until a trusted signing source is configured; remaining hardening is Acrobat coverage for sample signed PDFs.
 4. ~~Wails file-picker for certs.~~ **Done.** `App.ChooseCertFile` calls `wailsruntime.OpenFileDialog`.
 5. ~~HTTPS update channel with signed release manifest.~~ **Done.** `internal/update` fetches a signed JSON manifest, verifies Ed25519, returns `Status`. `ManifestURL` and `UpdateChannelPublicKey` set at build time via `-ldflags`.
-8. ~~Per-user database encryption-at-rest decision.~~ **V2 stopgap decided.** README documents OS-level disk encryption (FileVault / BitLocker / LUKS) as the supported V2 path for raw-disk theft or admin-level host access. `scripts/release-gate-scope-check.sh` guards that README keeps both the OS-level encryption guidance and the SQLCipher/V3 deferral clear. Native database encryption remains a V3 design item because SQLCipher adds native packaging complexity and whole-file AES-at-rest needs crash-recovery semantics.
+8. ~~Per-user database encryption-at-rest decision.~~ **Implemented 2026-06-13.** New per-user `.pmforge` project databases are SQLCipher-encrypted with the user's DEK; existing plaintext project databases can be migrated from Project Settings after recovery codes are reissued. `system.db` remains plaintext by design and stores password hashes plus wrapped DEKs, not project records. `.pmba` bundles preserve encrypted `project.pmforge` bytes. OS-level encryption (FileVault / BitLocker / LUKS) remains recommended whole-device defence in depth.
 9. ~~Bespoke renderers for the 24 non-Charter document kinds.~~ **Done.** All 23 bespoke renderers + 2 aliases shipped (see §8 feature coverage). `internal/documents/documents_test.go` adds 33 tests: registry (All/Get/ByPhase), DefaultContent round-trip for all 25 kinds, and `TestRender_AllKindsProduceValidPDF` which smoke-tests every dispatcher branch (2026-06-08).
 10. ~~Embed chart visualisations in combined reports.~~ Done in earlier slice.
 13. ~~Account recovery codes.~~ **Done.** 8 Argon2id-hashed codes generated at account creation, redeemable once each. `App.IssueRecoveryCodes` + `App.ResetWithRecoveryCode`. Frontend: `RecoveryReset.svelte`.
@@ -313,8 +313,11 @@ A new contribution should land **with `make memory-scan` passing**. Optional sca
 ### Still deferred to V3
 - ~~Strict PDF/A-3 release claim~~ **Done (2026-06-08).** All three representative samples pass veraPDF PDF/A-3b; `make check-pdfa` is a hard gate in `check-release.sh`. V3 remainder: Acrobat coverage and trusted signing chain.
 - External PAdES validation hardening — the widget is embedded and locally sample-verified by `make check-pades`; OpenSSL detached CMS verification, local `qpdf`/`pdfsig` checks, veraPDF signature feature extraction, and DSS `PAdES-BASELINE-B` classification are covered by `make check-pades-external`, but sample signed PDFs still need Acrobat and trusted-chain validation before treating the implementation as fully battle-tested.
-- Per-user database encryption at rest (SQLCipher/native implementation design).
 - CPM/PDM dependency-lag editor design if task-level precedence relationships need visual lag editing beyond the shipped Timeline project/sprint date dragging.
+
+### Scheduling core roadmap (V3) — added 2026-06-10
+
+Canonical list lives in README.md ("Scheduling core roadmap", items 14–20). PMForge stays local-first; the roadmap deepens the scheduling kernel in dependency order: (14) date-anchored calendar-aware CPM — **done 2026-06-10** (`kernel.AnchorSchedule`; anchored MSPDI/schedule-report exports; CPM editor shows real dates via `charts.LayoutWithSchedule`; date-axis Gantt strip deferred to item 20), (15) dependency types FS/SS/FF/SF + lag — **done 2026-06-10** (`kernel.Link` + PDM passes with projectEF-bounded LF; `dag.ParseLinkLabel`; "Incoming links" edge-label editor in the layered shell; legacy Precedents preserved), (16) task constraints — **done 2026-06-10** (`kernel.ConstraintType` ASAP/ALAP/SNET/FNLT/MFO; `ApplyConstraintDates` arming; links-win-with-violation-flag semantics; negative float = super-critical; CPM editor dropdown/date/amber marker; `dag.LayoutCPMScheduled`), (17) progress/milestones/baselines — **done 2026-06-10** (`Task.PercentComplete/Milestone/ActualStart/ActualFinish`; `baselines` table + CRUD; `kernel.CompareSchedules`; Set-baseline button + variance rows in CPMEditor; actual-date entry UI deferred to item 18 where AC matters), (18) Earned Value Management — **done 2026-06-10** (`kernel.ComputeEVM` PV/EV/AC + SV/CV/SPI/CPI/EAC/ETC/VAC at a status day; Task.BudgetedCost/ActualCost; `App.ComputeScheduleEVM` requires a project start date; EVM panel in CPMEditor via new asideExtra shell slot; the docs-must-not-claim-EVM rule is retired — the claim is now true; report-renderer EVM sections remain an optional follow-up), (19) resource layer — **kernel core + assignment UI + Level/Histogram actions done 2026-06-10** (`Assignment`/`ResourceUsage`/`DetectOverallocations`/`LevelResources`; CPMEditor Assignments section with stakeholder datalist; overallocation flags with orange edge strip; `App.LevelChartResources` persists delays as SNET pins + shell `reloadFromDB` guards against stale-doc clobber; `App.GenerateResourceHistogram` snapshots demand into a Bar chart keyed by `source_chart_id`; availability column on stakeholders (additive migration, default 1.0) feeds capacity maps for layout-path overallocation + levelling, done 2026-06-10; per-resource calendars deferred to V3), (20) schedule interchange + first-class Gantt — **done 2026-06-10** (`export.FromMSPDI` import with typed links/lag/milestones/percent/assignments and summary-row skipping; `ToMSPDI` enriched for round-trip with PredecessorLink/Milestone/PercentComplete/Resources/Assignments; `App.ImportMSPDIChart` + Dashboard button; file start date adopted when project lacks one; .mpp binary out of scope; Gantt is the 21st chart kind: dag.LayoutGantt[Scheduled], pdfrender renderer, GanttEditor.svelte with grid/links/bars/deps/baseline ghosts; registry tests updated 20→21 and README chart counts swept). Items 14–18 are kernel-pure. This supersedes the older "CPM/PDM dependency-lag editor design" bullet above (now roadmap item 15).
 
 ---
 
@@ -709,8 +712,8 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Representative PDF/A samples should use public export APIs.** `scripts/validate-pdfa.sh` now generates a schedule report through `export.GenerateArchivalReport`, a standalone charter through `documents.Render`, and a combined report through `documents.BuildCombinedReport`, all with Source Sans 3 registered where needed.
 
 ### 2026-06-06 — V2 encryption-at-rest stopgap
-- **Do not imply PMForge encrypts `.pmforge` databases at rest in V2.** README now states the supported V2 protection path: private per-user data directories plus OS-level disk encryption with FileVault, BitLocker, or LUKS.
-- **Guard release security claims with a cheap textual gate.** `scripts/release-gate-scope-check.sh` now fails if README stops mentioning the OS-level disk-encryption path or the SQLCipher/V3 deferral. This keeps the release docs from drifting into an unsupported native-encryption claim.
+- **Historical note, superseded 2026-06-13.** This stopgap said not to imply PMForge encrypted `.pmforge` databases at rest. That was correct before SQLCipher landed; current release docs now state the implemented behavior: new project DBs are SQLCipher-encrypted, Settings can migrate existing plaintext DBs after recovery-code reissue, and OS-level disk encryption remains whole-device defence in depth.
+- **Guard release security claims with a cheap textual gate.** `scripts/release-gate-scope-check.sh` now fails if README says SQLCipher/native database encryption is still deferred, if `go.mod` lacks `github.com/mutecomm/go-sqlcipher/v4`, or if README stops documenting SQLCipher-encrypted per-user `.pmforge` project databases.
 
 ### 2026-06-06 — Timeline date-dragging
 - **Keep timeline editing scoped to real timeline boundaries.** `MoveTimelineEntry` updates project start/end and sprint start/end dates, returns a rebuilt timeline, and rejects deployment moves because deployments are DORA history.
@@ -818,7 +821,7 @@ This section is the running log of non-obvious discoveries. Every session that l
   - `documents/report.go` claimed "charts are referenced only by ID in this V1 ... embedding ... as raster images is a follow-up." The code already embeds each `chart_ref` as a *vector* visualisation on its own page via `pdfrender.RenderChartToPDF` (confirmed by reading `BuildCombinedReport`/`renderSectionBody`), matching README TODO #12 (Done). Rewrote the comment to describe actual behavior.
   - `charts/engines.go` claimed "Stats / Matrix / Flow families return ErrEngineNotImplemented" and "DAG fully implemented in V2.1." All 20 kinds have switch arms (the `TestLayout_AllKindsHaveDataExample` test exercises every one), so that text was stale. Rewrote to list all four families as implemented.
 - **`ErrEngineNotImplemented` is NOT dead code despite all kinds being implemented; verify usage before deleting an error var.** It is still the switch's default-return (engines.go ~228) and is handled non-fatally in `main.go` (`errors.Is(err, charts.ErrEngineNotImplemented)`). It guards the case where a future registry entry is added without a renderer arm. Keep the var; only the surrounding doc text was stale. The lesson: a "not yet implemented" *string* can be a live defensive default, not evidence of incomplete work - read the call sites.
-- **README's "Real TODOs in the V2 scaffold" list (§"Real TODOs") is the project's actual TODO list.** Its open items are now all non-code: #2 PDF/A-3 release-builder soak, #3 PAdES Acrobat external validation, #8 SQLCipher deferred to V3. There is no actionable feature code left in it; "complete the TODO list" reduces to keeping code comments honest with what already shipped.
+- **Historical note, superseded 2026-06-13.** At the time, README's "Real TODOs in the V2 scaffold" list had only non-code items left and #8 still deferred SQLCipher. SQLCipher encryption-at-rest has since landed; future "complete the TODO list" work should re-read the current README/AGENT/session-notes rather than trusting this 2026-06-09 snapshot.
 
 ### 2026-06-09 — pdfrender error-sentinel robustness (errors.Is over string compare)
 

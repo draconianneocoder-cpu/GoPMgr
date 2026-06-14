@@ -29,12 +29,24 @@ if ! rg -q 'frontend-build-budget\.sh' scripts/check-release.sh; then
 fi
 
 if ! printf '%s\n' "$readme_text" | rg -q 'FileVault.*BitLocker.*LUKS|BitLocker.*FileVault.*LUKS|LUKS.*FileVault.*BitLocker'; then
-	echo "release-scope: README.md must document OS-level disk encryption as the V2 at-rest protection path." >&2
+	echo "release-scope: README.md must document OS-level disk encryption as whole-device protection." >&2
 	fail=1
 fi
 
-if ! printf '%s\n' "$readme_text" | rg -q 'SQLCipher.*V3|V3.*SQLCipher|deferred.*SQLCipher|SQLCipher.*deferred'; then
-	echo "release-scope: README.md must state that SQLCipher/native database encryption is deferred beyond V2." >&2
+if ! rg -q 'github.com/mutecomm/go-sqlcipher/v4' go.mod; then
+	echo "release-scope: go.mod must include github.com/mutecomm/go-sqlcipher/v4 for native encrypted project databases." >&2
+	fail=1
+fi
+
+if printf '%s\n' "$readme_text" | rg -q 'SQLCipher[^.]{0,160}deferred|deferred[^.]{0,160}SQLCipher|native database encryption[^.]{0,160}deferred|native encryption[^.]{0,160}deferred'; then
+	echo "release-scope: README.md still says SQLCipher/native database encryption is deferred." >&2
+	rg -n 'SQLCipher|deferred|native database encryption|native encryption' README.md >"$go_scope_matches" || true
+	cat "$go_scope_matches" >&2
+	fail=1
+fi
+
+if ! printf '%s\n' "$readme_text" | rg -q 'SQLCipher.*encrypted.*\.pmforge|\.pmforge.*SQLCipher.*encrypted'; then
+	echo "release-scope: README.md must document SQLCipher-encrypted per-user .pmforge project databases." >&2
 	fail=1
 fi
 

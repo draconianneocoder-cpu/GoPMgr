@@ -34,6 +34,8 @@ declare global {
           ListProjects: () => Promise<ProjectFile[]>;
           CreateProject: (name: string, description: string) => Promise<ProjectFile>;
           OpenProject: (path: string) => Promise<ProjectMeta>;
+          IsProjectEncrypted: (path: string) => Promise<boolean>;
+          EncryptProjectAtRest: (path: string) => Promise<string>;
           CloseProject: () => Promise<void>;
           GetProjectMeta: () => Promise<ProjectMeta>;
           UpdateProjectMeta: (p: ProjectMeta) => Promise<ProjectMeta>;
@@ -45,6 +47,19 @@ declare global {
           SaveChart: (c: ChartRecord) => Promise<ChartRecord>;
           DeleteChart: (id: string) => Promise<void>;
           LayoutChart: (id: string) => Promise<ChartLayoutResult>;
+
+          // ----- Schedule baselines (roadmap item 17) -----
+          SetScheduleBaseline: (chartId: string, name: string) => Promise<BaselineRecord>;
+          ListScheduleBaselines: (chartId: string) => Promise<BaselineRecord[]>;
+          DeleteScheduleBaseline: (id: string) => Promise<void>;
+          CompareScheduleBaseline: (
+            chartId: string,
+            baselineId: string
+          ) => Promise<Record<string, ScheduleVariance>>;
+          ComputeScheduleEVM: (chartId: string, asOfDate: string) => Promise<EVMetrics>;
+          LevelChartResources: (chartId: string) => Promise<number>;
+          GenerateResourceHistogram: (chartId: string) => Promise<ChartRecord>;
+          ImportMSPDIChart: () => Promise<ChartRecord>;
 
           // ----- V2: documents -----
           ListDocumentKinds: () => Promise<DocumentDefinition[]>;
@@ -225,6 +240,7 @@ declare global {
     email: string;
     phone: string;
     category: StakeholderCategory;
+    availability: number;
     hourly_rate: number;
     contract_value: number;
     notes: string;
@@ -487,6 +503,68 @@ declare global {
     lf: number;
     float: number;
     is_critical: boolean;
+    /** Calendar-anchored dates (YYYY-MM-DD), present once the backend
+     *  has applied kernel.AnchorSchedule; empty/undefined otherwise. */
+    start_date?: string;
+    finish_date?: string;
+    constraint?: string;
+    constraint_date?: string;
+    constraint_violated?: boolean;
+    percent_complete?: number;
+    milestone?: boolean;
+    actual_start?: string;
+    actual_finish?: string;
+    budgeted_cost?: number;
+    actual_cost?: number;
+    assignments?: ResourceAssignment[];
+    overallocated?: boolean;
+  }
+
+  interface ResourceAssignment {
+    resource: string;
+    units?: number;
+  }
+
+  interface BaselineRecord {
+    id: string;
+    project_id: string;
+    chart_id: string;
+    name: string;
+    data: string;
+    created_at: string;
+  }
+
+  interface ScheduleVariance {
+    task_id: string;
+    baseline_start?: string;
+    baseline_finish?: string;
+    start_var_days: number;
+    finish_var_days: number;
+  }
+
+  interface TaskEV {
+    task_id: string;
+    title: string;
+    bac: number;
+    pv: number;
+    ev: number;
+    ac: number;
+  }
+
+  interface EVMetrics {
+    as_of_day: number;
+    bac: number;
+    pv: number;
+    ev: number;
+    ac: number;
+    sv: number;
+    cv: number;
+    spi: number;
+    cpi: number;
+    eac: number;
+    etc: number;
+    vac: number;
+    tasks: TaskEV[];
   }
 
   interface CTQ {

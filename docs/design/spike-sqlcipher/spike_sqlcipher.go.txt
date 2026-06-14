@@ -1,0 +1,192 @@
+// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// ADR-001 Phase 0 spike: mutecomm/go-sqlcipher/v4 against PMForge's
+// usage profile (WAL, foreign keys, charts-like schema). Scratch code,
+// not part of the PMForge repo.
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	sqlite3 "github.com/mutecomm/go-sqlcipher/v4"
+)
+
+const key = "2DD29CA851E7B56E4697B0E1F08507293D761A05CE4D1B628663F411A8086D99"
+
+const schema = `
+CREATE TABLE IF NOT EXISTS charts (
+	id TEXT PRIMARY KEY,
+	project_id TEXT NOT NULL,
+	kind TEXT NOT NULL,
+	title TEXT NOT NULL,
+	data TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_charts_project ON charts(project_id);
+`
+
+func must(step string, err error) {
+	if err != nil {
+		fmt.Printf("FAIL %s: %v\n", step, err)
+		os.Exit(1)
+	}
+}
+
+func open(path, dsnKey string) (*sql.DB, error) {
+	dsn := path
+	if dsnKey != "" {
+		dsn += "?_pragma_key=x'" + dsnKey + "'"
+	}
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range []string{
+		"PRAGMA journal_mode = WAL;",
+		"PRAGMA foreign_keys = ON;",
+	} {
+		if _, err := db.Exec(p); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("%s: %w", p, err)
+		}
+	}
+	// Force a real read so a wrong key fails HERE, not lazily.
+	var n int
+	if err := db.QueryRow("SELECT count(*) FROM sqlite_master").Scan(&n); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
+}
+
+func workload(db *sql.DB, rows int) (insert, scan time.Duration, err error) {
+	if _, err = db.Exec(schema); err != nil {
+		return
+	}
+	start := time.Now()
+	tx, err := db.Begin()
+	if err != nil {
+		return
+	}
+	stmt, err := tx.Prepare("INSERT INTO charts (id, project_id, kind, title, data) VALUES (?, ?, ?, ?, ?)")
+	if err != nil {
+		return
+	}
+	blob := `{"nodes":[{"id":"A","label":"Design","duration":3,"assignments":[{"resource":"alice"}]}],"edges":[]}`
+	for i := 0; i < rows; i++ {
+		if _, err = stmt.Exec(fmt.Sprintf("c%d", i), "p1", "cpm", "Chart", blob); err != nil {
+			return
+		}
+	}
+	if err = tx.Commit(); err != nil {
+		return
+	}
+	insert = time.Since(start)
+
+	start = time.Now()
+	var total int
+	if err = db.QueryRow("SELECT count(*) FROM charts WHERE data LIKE '%alice%'").Scan(&total); err != nil {
+		return
+	}
+	if total != rows {
+		err = fmt.Errorf("scan saw %d rows, want %d", total, rows)
+		return
+	}
+	scan = time.Since(start)
+	return
+}
+
+func main() {
+	dir, err := os.MkdirTemp("", "spike")
+	must("tempdir", err)
+	defer os.RemoveAll(dir)
+	encPath := filepath.Join(dir, "enc.pmforge")
+	plainPath := filepath.Join(dir, "plain.pmforge")
+
+	// 1. Versions.
+	db, err := open(encPath, key)
+	must("open encrypted", err)
+	var sv, cv string
+	must("sqlite_version", db.QueryRow("SELECT sqlite_version()").Scan(&sv))
+	must("cipher_version", db.QueryRow("PRAGMA cipher_version").Scan(&cv))
+	fmt.Printf("OK versions: sqlite=%s sqlcipher=%q\n", sv, cv)
+
+	// 2. PMForge-like workload on the encrypted db (WAL + FK active).
+	ins, scan, err := workload(db, 5000)
+	must("workload encrypted", err)
+	var jm string
+	must("journal_mode", db.QueryRow("PRAGMA journal_mode").Scan(&jm))
+	fmt.Printf("OK encrypted workload: journal_mode=%s insert5000=%v scan=%v\n", jm, ins, scan)
+
+	// 3. Integrity checks.
+	var ic string
+	must("integrity_check", db.QueryRow("PRAGMA integrity_check").Scan(&ic))
+	rows, err := db.Query("PRAGMA cipher_integrity_check")
+	must("cipher_integrity_check", err)
+	breaches := 0
+	for rows.Next() {
+		breaches++
+	}
+	rows.Close()
+	fmt.Printf("OK integrity: integrity_check=%s cipher_integrity_check_failures=%d\n", ic, breaches)
+	must("close encrypted", db.Close())
+
+	// 4. Header + IsEncrypted.
+	head := make([]byte, 16)
+	f, err := os.Open(encPath)
+	must("open file", err)
+	_, err = f.Read(head)
+	must("read header", err)
+	f.Close()
+	if strings.HasPrefix(string(head), "SQLite format 3") {
+		fmt.Println("FAIL header: file is PLAINTEXT")
+		os.Exit(1)
+	}
+	encFlag, err := sqlite3.IsEncrypted(encPath)
+	must("IsEncrypted", err)
+	fmt.Printf("OK at-rest: header random, IsEncrypted=%v\n", encFlag)
+
+	// 5. Wrong key and no key must fail.
+	if _, err := open(encPath, strings.Repeat("00", 32)); err == nil {
+		fmt.Println("FAIL wrong key was accepted")
+		os.Exit(1)
+	}
+	if _, err := open(encPath, ""); err == nil {
+		fmt.Println("FAIL keyless open of encrypted db succeeded")
+		os.Exit(1)
+	}
+	db, err = open(encPath, key)
+	must("reopen with right key", err)
+	var n int
+	must("reread", db.QueryRow("SELECT count(*) FROM charts").Scan(&n))
+	fmt.Printf("OK keys: wrong key rejected, keyless rejected, right key reads %d rows\n", n)
+	db.Close()
+
+	// 6. Plaintext db via the same driver, then migrate via sqlcipher_export.
+	pdb, err := open(plainPath, "")
+	must("open plaintext", err)
+	_, _, err = workload(pdb, 500)
+	must("workload plaintext", err)
+	migrated := filepath.Join(dir, "migrated.pmforge")
+	_, err = pdb.Exec(fmt.Sprintf("ATTACH DATABASE '%s' AS encrypted KEY \"x'%s'\"", migrated, key))
+	must("attach encrypted", err)
+	var exportRes sql.NullString
+	must("sqlcipher_export", pdb.QueryRow("SELECT sqlcipher_export('encrypted')").Scan(&exportRes))
+	_, err = pdb.Exec("DETACH DATABASE encrypted")
+	must("detach", err)
+	pdb.Close()
+	mdb, err := open(migrated, key)
+	must("open migrated", err)
+	must("migrated count", mdb.QueryRow("SELECT count(*) FROM charts").Scan(&n))
+	mdb.Close()
+	mEnc, err := sqlite3.IsEncrypted(migrated)
+	must("IsEncrypted migrated", err)
+	fmt.Printf("OK migration: sqlcipher_export moved %d rows, migrated file encrypted=%v\n", n, mEnc)
+
+	fmt.Println("SPIKE PASS")
+}

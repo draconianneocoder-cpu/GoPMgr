@@ -62,4 +62,10 @@ func TestConfig_DefaultValues(t *testing.T) {
 	if cfg.ProjectPath != "" {
 		t.Errorf("ProjectPath should default empty, got %q", cfg.ProjectPath)
 	}
+	if cfg.Username != "" {
+		t.Errorf("Username should default empty, got %q", cfg.Username)
+	}
+	if cfg.PasswordEnv != "" {
+		t.Errorf("PasswordEnv should default empty, got %q", cfg.PasswordEnv)
+	}
 }
