@@ -14,8 +14,7 @@ import (
 	"fmt"
 	"os"
 
-	// Register the SQLite3 driver. CGO_ENABLED=1 is required.
-	_ "github.com/mattn/go-sqlite3"
+	"pmforge/internal/sqlitedriver"
 )
 
 // Database is the canonical handle passed to every service. Keep it
@@ -31,22 +30,18 @@ type Database struct {
 // safe for concurrent use by multiple goroutines because *sql.DB is
 // already a connection pool.
 func InitDB(path string) (*Database, error) {
-	conn, err := sql.Open("sqlite3", path)
+	return initDBWithDSN(path, path)
+}
+
+func initDBWithDSN(path, dsn string) (*Database, error) {
+	conn, err := sql.Open(sqlitedriver.Name, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("sql.Open: %w", err)
 	}
 
-	pragmas := []string{
-		"PRAGMA journal_mode = WAL;",
-		"PRAGMA synchronous = NORMAL;",
-		"PRAGMA foreign_keys = ON;",
-		"PRAGMA temp_store = MEMORY;",
-	}
-	for _, p := range pragmas {
-		if _, err := conn.Exec(p); err != nil {
-			_ = conn.Close()
-			return nil, fmt.Errorf("pragma %q: %w", p, err)
-		}
+	if err := applyStandardPragmas(conn); err != nil {
+		_ = conn.Close()
+		return nil, err
 	}
 
 	db := &Database{Conn: conn, Path: path}
@@ -59,6 +54,21 @@ func InitDB(path string) (*Database, error) {
 		return nil, fmt.Errorf("private database file: %w", err)
 	}
 	return db, nil
+}
+
+func applyStandardPragmas(conn *sql.DB) error {
+	pragmas := []string{
+		"PRAGMA journal_mode = WAL;",
+		"PRAGMA synchronous = NORMAL;",
+		"PRAGMA foreign_keys = ON;",
+		"PRAGMA temp_store = MEMORY;",
+	}
+	for _, p := range pragmas {
+		if _, err := conn.Exec(p); err != nil {
+			return fmt.Errorf("pragma %q: %w", p, err)
+		}
+	}
+	return nil
 }
 
 // Migrate creates every table PMForge needs if it does not already exist.
@@ -173,6 +183,22 @@ func (db *Database) Migrate() error {
 
 	CREATE INDEX IF NOT EXISTS idx_charts_project ON charts(project_id);
 	CREATE INDEX IF NOT EXISTS idx_charts_kind    ON charts(kind);
+
+	-- Schedule baselines (roadmap item 17). One row per snapshot of a
+	-- CPM chart's scheduled task map (opaque JSON of kernel.Task keyed
+	-- by task ID); used for planned-vs-baseline variance.
+	CREATE TABLE IF NOT EXISTS baselines (
+		id           TEXT PRIMARY KEY,
+		project_id   TEXT NOT NULL,
+		chart_id     TEXT NOT NULL,
+		name         TEXT NOT NULL DEFAULT '',
+		data         TEXT NOT NULL DEFAULT '{}',
+		created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE,
+		FOREIGN KEY (chart_id)   REFERENCES charts(id)  ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_baselines_chart ON baselines(chart_id);
 
 	-- Documents table. ` + "`kind`" + ` is one of the 25 document types defined
 	-- in internal/documents/registry.go. ` + "`content`" + ` is JSON keyed by the
@@ -306,6 +332,7 @@ func (db *Database) Migrate() error {
 		category        TEXT NOT NULL DEFAULT 'team',  -- team | vendor | sponsor | external
 		hourly_rate     REAL NOT NULL DEFAULT 0,
 		contract_value  REAL NOT NULL DEFAULT 0,
+		availability    REAL NOT NULL DEFAULT 1, -- resource capacity in units (1 = full-time)
 		notes           TEXT NOT NULL DEFAULT '',
 		created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
 		updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -445,6 +472,20 @@ func (db *Database) migrateLegacyColumns() error {
 		}
 		if _, err := db.Conn.Exec(m.ddl); err != nil {
 			return fmt.Errorf("add column %s: %w", m.name, err)
+		}
+	}
+
+	// stakeholders columns added after the initial schema shipped
+	// (roadmap item 19: availability = resource capacity in units).
+	stakeholderCols, err := db.columnSet("stakeholders")
+	if err != nil {
+		return err
+	}
+	if _, ok := stakeholderCols["availability"]; !ok {
+		if _, err := db.Conn.Exec(
+			"ALTER TABLE stakeholders ADD COLUMN availability REAL NOT NULL DEFAULT 1",
+		); err != nil {
+			return fmt.Errorf("add column availability: %w", err)
 		}
 	}
 	return nil

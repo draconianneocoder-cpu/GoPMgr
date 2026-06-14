@@ -3,7 +3,7 @@
 
 module pmforge
 
-go 1.26.3
+go 1.26.4
 
 require (
 	github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c
@@ -15,7 +15,6 @@ require (
 	// are one row in launchpad_seeds.json. Used in internal/templates.
 	github.com/gorules/zen-go v0.20.0
 	github.com/jung-kurt/gofpdf v1.16.2
-	github.com/mattn/go-sqlite3 v1.14.22
 
 	// rickar/cal/v2 supplies maintained holiday datasets for ~40
 	// countries. Used by internal/calendar and internal/export/ical.go
@@ -27,7 +26,10 @@ require (
 	golang.org/x/crypto v0.31.0
 )
 
-require gonum.org/v1/gonum v0.17.0
+require (
+	github.com/mutecomm/go-sqlcipher/v4 v4.4.2
+	gonum.org/v1/gonum v0.17.0
+)
 
 require (
 	github.com/bep/debounce v1.2.1 // indirect

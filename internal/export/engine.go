@@ -45,10 +45,43 @@ type ExportOptions struct {
 }
 
 // ReportPayload is the kernel-level data the export engine renders.
-// Right now it carries CPM tasks; future Packs (Agile, EVM) can grow
-// this struct with additional fields.
+// It carries CPM tasks (which include progress and cost fields) and,
+// optionally, earned-value metrics computed at export time. EVM is
+// nil when the project lacks a start date or the caller skipped it;
+// renderers also suppress the section when BAC is zero (no cost data
+// means the numbers would be noise). Future Packs can grow this
+// struct with additional fields.
 type ReportPayload struct {
 	Tasks map[string]*kernel.Task
+	EVM   *kernel.EVMetrics
+}
+
+// evmSummaryLines renders the earned-value block shared by the DOCX,
+// ODT, and PDF schedule reports: one "label: value" line per metric.
+// Returns nil when the section should be suppressed.
+func evmSummaryLines(m *kernel.EVMetrics) []string {
+	if m == nil || m.BAC <= 0 {
+		return nil
+	}
+	idx := func(v float64) string {
+		if v <= 0 {
+			return "n/a"
+		}
+		return fmt.Sprintf("%.2f", v)
+	}
+	return []string{
+		fmt.Sprintf("Budget at completion (BAC): %.2f", m.BAC),
+		fmt.Sprintf("Planned value (PV): %.2f", m.PV),
+		fmt.Sprintf("Earned value (EV): %.2f", m.EV),
+		fmt.Sprintf("Actual cost (AC): %.2f", m.AC),
+		fmt.Sprintf("Schedule variance (SV): %.2f", m.SV),
+		fmt.Sprintf("Cost variance (CV): %.2f", m.CV),
+		"Schedule performance index (SPI): " + idx(m.SPI),
+		"Cost performance index (CPI): " + idx(m.CPI),
+		fmt.Sprintf("Estimate at completion (EAC): %.2f", m.EAC),
+		fmt.Sprintf("Estimate to complete (ETC): %.2f", m.ETC),
+		fmt.Sprintf("Variance at completion (VAC): %.2f", m.VAC),
+	}
 }
 
 // GenerateArchivalReport renders payload into the chosen format and

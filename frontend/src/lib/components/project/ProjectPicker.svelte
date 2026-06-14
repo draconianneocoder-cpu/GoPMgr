@@ -27,6 +27,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       const meta = await window.go.main.App.OpenProject(p.path);
       session.project = meta;
+      session.projectPath = p.path;
       goto('dashboard');
     } catch (err: any) {
       error = String(err?.message ?? err);
@@ -52,6 +53,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     await window.go.main.App.Logout();
     session.user = null;
     session.project = null;
+    session.projectPath = null;
     goto('login');
   }
 </script>

@@ -1,0 +1,100 @@
+<!--
+SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-License-Identifier: GFDL-1.3-or-later
+-->
+
+# Testing
+
+PMForge uses focused package tests during development and broader gates
+before release or handoff. Do not claim a command passes unless it was
+run in the current session.
+
+## Fast Local Checks
+
+```sh
+go test ./cmd/... ./internal/...
+npm --prefix frontend run check
+git diff --check && git diff --cached --check
+```
+
+Use package-scoped variants while developing a narrow slice:
+
+```sh
+go test -count=1 ./internal/db
+go test -count=1 ./internal/users ./internal/crypto
+go test -count=1 ./cmd/pmforge
+```
+
+## Race and Runtime Checks
+
+```sh
+go test -race ./cmd/... ./internal/...
+make frontend-smoke
+```
+
+Run race tests for concurrency-sensitive backend work and before
+release claims. Run the frontend smoke gate for frontend changes because
+it catches module-load and SSR-render failures that `svelte-check` and
+`vite build` can miss.
+
+## Frontend Checks
+
+```sh
+npm --prefix frontend run check
+npm --prefix frontend run build
+npm --prefix frontend run lint
+make frontend-stability
+make frontend-build-budget
+make frontend-smoke
+```
+
+`make build` and `make check-release` rely on a built frontend. The
+Makefile copies `frontend/dist` into `cmd/pmforge/frontend/dist` so the
+Go `go:embed` directive can compile.
+
+## Document and PDF Gates
+
+```sh
+make check-pdfa
+make check-pades
+make check-pades-external
+```
+
+`make check-pdfa` is strict by default. It needs veraPDF available
+directly or through Docker and fails if conformance cannot be verified.
+`make check-pades` is the deterministic local PAdES invariant gate.
+`make check-pades-external` uses installed external validators such as
+OpenSSL, qpdf, pdfsig, veraPDF, and DSS when present.
+
+## Release Gates
+
+```sh
+make license-check
+make release-scope
+make memory-scan
+make check-release
+```
+
+`make check-release` is the final gate. It currently covers version
+consistency, REUSE/SPDX, frontend build budget, release-scope guards,
+frontend stability, frontend runtime smoke, memory-safety scan, Go race
+tests, production build, PDF/A-3 validation, and PAdES local validation.
+
+Run `make license-check` after adding files or generated assets. Run
+`make release-scope` after documentation changes that touch release
+claims, especially PDF/A, PAdES, encryption, or public-repo hygiene.
+
+## Test Style
+
+- Prefer table tests for parser, scheduler, renderer, and data-migration
+  cases.
+- Use temporary directories for database, export, and filesystem tests.
+- Preserve deterministic fixtures. Avoid tests that depend on wall-clock
+  time unless the clock is injected or fixed.
+- For encryption work, test wrong-key rejection, keyless rejection,
+  integrity checks, file-header encryption, and migration row parity.
+- For PDF work, test structural invariants in addition to byte output.
+  PDF signatures and metadata often require validator evidence, not just
+  byte containment.
+- For frontend regressions, add the narrowest check that catches the
+  original failure class and keep the runtime smoke gate in mind.

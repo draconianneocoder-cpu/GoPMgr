@@ -5,6 +5,7 @@ package db
 
 import (
 	"archive/zip"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -120,6 +121,54 @@ func TestCreateArchivalBundleAcceptsQuotedDestination(t *testing.T) {
 			t.Fatalf("archive missing %s", name)
 		}
 	}
+}
+
+func TestCreateArchivalBundlePreservesEncryptedProjectBytes(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "encrypted.pmforge")
+	d, err := InitEncryptedDB(dbPath, testDEK(t, 0x55))
+	if err != nil {
+		t.Fatalf("InitEncryptedDB: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := d.Close(); err != nil {
+			t.Fatalf("close db: %v", err)
+		}
+	})
+	if _, err := d.UpsertProject(Project{Name: "Encrypted Backup"}); err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	requireEncryptedHeader(t, dbPath)
+
+	destPath := filepath.Join(t.TempDir(), "encrypted.pmba")
+	if err := d.CreateArchivalBundle(destPath, nil); err != nil {
+		t.Fatalf("CreateArchivalBundle: %v", err)
+	}
+
+	zr, err := zip.OpenReader(destPath)
+	if err != nil {
+		t.Fatalf("open archive: %v", err)
+	}
+	defer zr.Close()
+
+	for _, f := range zr.File {
+		if f.Name != "project.pmforge" {
+			continue
+		}
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatalf("open project.pmforge entry: %v", err)
+		}
+		defer rc.Close()
+		header := make([]byte, len(sqliteHeader))
+		if _, err := io.ReadFull(rc, header); err != nil {
+			t.Fatalf("read archived project header: %v", err)
+		}
+		if string(header) == sqliteHeader {
+			t.Fatal("archived project.pmforge exposes a plaintext SQLite header")
+		}
+		return
+	}
+	t.Fatal("archive missing project.pmforge")
 }
 
 func TestCreateArchivalBundleRejectsBlockedStaleTempBeforeCreatingArchive(t *testing.T) {

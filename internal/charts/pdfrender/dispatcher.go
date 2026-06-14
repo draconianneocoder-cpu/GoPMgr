@@ -64,10 +64,13 @@ func RenderChartToPDF(pdf *gofpdf.Fpdf, kind string, data string, title string, 
 
 	switch result.Engine {
 	case charts.EngineDAG:
-		// Fishbone uses a bespoke layout (effect + bones + causes)
-		// rather than the shared NodeLayout/EdgeLayout shape.
+		// Fishbone and Gantt use bespoke layouts rather than the
+		// shared NodeLayout/EdgeLayout shape.
 		if kind == string(charts.KindFishbone) {
 			return renderFishbone(pdf, result.Body, body)
+		}
+		if kind == string(charts.KindGantt) {
+			return renderGantt(pdf, result.Body, body)
 		}
 		return renderDAG(pdf, kind, result.Body, body)
 	case charts.EngineMatrix:

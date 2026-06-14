@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 
+	"pmforge/internal/sqlitedriver"
+
 	"pmforge/internal/debug"
 )
 
@@ -139,6 +141,54 @@ func (db *Database) SwapInSnapshot(livePath string) (*Database, error) {
 	return InitDB(livePath)
 }
 
+// SwapInEncryptedSnapshot is the SQLCipher-aware variant of
+// SwapInSnapshot. It verifies the snapshot with the active user's DEK
+// before closing the live handle, then reopens the published live file
+// as encrypted data.
+func (db *Database) SwapInEncryptedSnapshot(livePath string, dek []byte) (*Database, error) {
+	snapshotPath := livePath + ".bak"
+	corruptPath := livePath + ".corrupt"
+
+	info, err := os.Stat(snapshotPath)
+	if err != nil {
+		return nil, fmt.Errorf("swap: snapshot %s missing: %w", snapshotPath, err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("swap: snapshot is not a regular file: %s", snapshotPath)
+	}
+	if err := CheckEncryptedSnapshotIntegrity(snapshotPath, dek); err != nil {
+		return nil, fmt.Errorf("swap: encrypted snapshot integrity %s: %w", snapshotPath, err)
+	}
+	if err := removeIfExists(corruptPath); err != nil {
+		return nil, fmt.Errorf("swap: clear stale corrupt %s: %w", corruptPath, err)
+	}
+
+	if err := db.Close(); err != nil {
+		return nil, fmt.Errorf("swap: close live: %w", err)
+	}
+
+	movedLive := false
+	if _, err := os.Stat(livePath); err == nil {
+		if err := os.Rename(livePath, corruptPath); err != nil {
+			return nil, fmt.Errorf("swap: rename live → corrupt: %w", err)
+		}
+		movedLive = true
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("swap: stat live %s: %w", livePath, err)
+	}
+
+	if err := os.Rename(snapshotPath, livePath); err != nil {
+		if movedLive {
+			if restoreErr := os.Rename(corruptPath, livePath); restoreErr != nil {
+				return nil, fmt.Errorf("swap: rename snapshot → live: %w; rollback live: %v", err, restoreErr)
+			}
+		}
+		return nil, fmt.Errorf("swap: rename snapshot → live: %w", err)
+	}
+
+	return InitEncryptedDB(livePath, dek)
+}
+
 func removeIfExists(path string) error {
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return err
@@ -146,8 +196,33 @@ func removeIfExists(path string) error {
 	return nil
 }
 
+// CheckEncryptedSnapshotIntegrity verifies that an encrypted snapshot is
+// readable with the given DEK and passes both SQLite and SQLCipher
+// integrity checks.
+func CheckEncryptedSnapshotIntegrity(path string, dek []byte) error {
+	encrypted, err := IsEncryptedFile(path)
+	if err != nil {
+		return err
+	}
+	if !encrypted {
+		return fmt.Errorf("snapshot is not encrypted: %s", path)
+	}
+
+	dsn, err := encryptedDSN(path, dek)
+	if err != nil {
+		return err
+	}
+	conn, err := sql.Open(sqlitedriver.Name, dsn)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	return requireEncryptedIntegrity(conn)
+}
+
 func checkSnapshotIntegrity(path string) error {
-	conn, err := sql.Open("sqlite3", path)
+	conn, err := sql.Open(sqlitedriver.Name, path)
 	if err != nil {
 		return err
 	}

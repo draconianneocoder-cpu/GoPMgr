@@ -37,6 +37,8 @@ type Config struct {
 	SchemaDump      bool
 	ShowStats       bool
 	Vacuum          bool
+	Username        string
+	PasswordEnv     string
 
 	// Export / interchange (added per V1 Extended scope)
 	ExportFormat  string // pdf | odt | docx | xlsx | mspdi
@@ -70,6 +72,8 @@ func ParseFlags() *Config {
 	flag.BoolVar(&cfg.SchemaDump, "schema-dump", false, "Dump SQL schema to stdout")
 	flag.BoolVar(&cfg.ShowStats, "stats", false, "Show project statistics")
 	flag.BoolVar(&cfg.Vacuum, "vacuum", false, "Optimize database (VACUUM)")
+	flag.StringVar(&cfg.Username, "username", "", "Username for encrypted headless maintenance")
+	flag.StringVar(&cfg.PasswordEnv, "password-env", "", "Environment variable containing the password for encrypted headless maintenance")
 
 	// Export
 	flag.StringVar(&cfg.ExportFormat, "format", "pdf", "Format for headless export (pdf, odt, docx, xlsx, mspdi)")

@@ -96,6 +96,19 @@ func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 		pdf.Ln(-1)
 	}
 
+	// Earned-value summary (suppressed without cost data).
+	if lines := evmSummaryLines(payload.EVM); lines != nil {
+		pdf.Ln(6)
+		pdf.SetFont("Helvetica", "B", 12)
+		pdf.Cell(0, 8, "Earned Value (status date: today)")
+		pdf.Ln(9)
+		pdf.SetFont("Helvetica", "", 9)
+		for _, line := range lines {
+			pdf.Cell(0, 5.5, line)
+			pdf.Ln(5.5)
+		}
+	}
+
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
 		return nil, err

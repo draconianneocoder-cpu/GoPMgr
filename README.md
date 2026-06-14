@@ -8,11 +8,13 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 PMForge is a local-first project controls desktop application for
 technical, engineering, IT, construction, and administrative
 organizations. The Go backend acts as a high-performance kernel for
-data integrity, scheduling math (CPM, EVM, MSPDI interchange), local
-authentication, and document rendering. The Svelte 5 frontend
-(mounted via Wails v2) provides the reactive UI.
+data integrity, scheduling math (CPM with typed dependencies and
+constraints, calendar-anchored dates, baselines, Earned Value
+Management, MSPDI export), local authentication, and document
+rendering. The Svelte 5 frontend (mounted via Wails v2) provides the
+reactive UI.
 
-The app has reached **V2.x** maturity: all 20 chart kinds and all 25
+The app has reached **V2.x** maturity: all 21 chart kinds and all 25
 document kinds are implemented end-to-end with bespoke PDF renderers,
 DOCX/ODT export, and a combined report builder with embedded vector
 chart visualisations. The Agile/Software-Dev Pack (Kanban, Backlog,
@@ -85,7 +87,7 @@ charts    (id, project_id, kind, title, data JSON, config JSON, ...)
 documents (id, project_id, kind, title, content JSON, version, status, ...)
 ```
 
-The `kind` column is the discriminator. The 20 chart kinds map to
+The `kind` column is the discriminator. The 21 chart kinds map to
 four engines (DAG, stats, matrix, flow); the 25 document
 kinds map to one generic field-based editor + per-kind PDF renderers.
 This avoids 44 separate code paths and lets every new kind be added
@@ -131,7 +133,7 @@ The PDF contains:
    included document (a Project Plan's WBS / Schedule / RACI / etc.)
    is followed by a dedicated page rendering that chart via
    `internal/charts/pdfrender` — vector primitives straight to the
-   PDF, no PNG screenshots and no headless browser. All 20 chart
+   PDF, no PNG screenshots and no headless browser. All 21 chart
    kinds are supported across the four engines (DAG, Flow, Matrix, Stats).
 
 Implementation: `internal/documents/report.go` (`BuildCombinedReport`),
@@ -142,7 +144,7 @@ from the database in one pass and threads the map through
 
 ## Coverage table
 
-### Chart types — 20 total, all in backend taxonomy
+### Chart types — 21 total, all in backend taxonomy
 
 | Family    | Kind                       | Status                                              |
 | --------- | -------------------------- | --------------------------------------------------- |
@@ -150,6 +152,7 @@ from the database in one pass and threads the map through
 | DAG       | Network Diagram            | **Full** — layered activity-on-node diagram         |
 | DAG       | PERT Chart                 | **Full** — O/M/P → E + σ², layered                  |
 | DAG       | CPM Chart                  | **Full** — reuses `internal/kernel` for ES/EF/LS/LF |
+| DAG       | Gantt Chart                | **Full** — schedule bars, deps, critical, progress, baseline ghosts |
 | DAG       | Fishbone Diagram           | **Full** — radial Ishikawa with 6 Ms preset         |
 | DAG       | Cause-and-Effect Diagram   | **Full** — generic causal tree for 5-Whys analyses  |
 | Stats     | Line Chart                 | **Full** — Chart.js host, multiple series, dashed   |
@@ -228,7 +231,7 @@ pmforge/
 │   ├── budget/                  # Budget rollup (stakeholder rates × work items)
 │   ├── calendar/calendar.go     # Country holiday datasets (rickar/cal/v2 wrapper)
 │   ├── charts/
-│   │   ├── registry.go          # 20-kind taxonomy + 4 engines
+│   │   ├── registry.go          # 21-kind taxonomy + 4 engines
 │   │   ├── engines.go           # Layout() dispatcher
 │   │   ├── dag/                 # WBS, Network, PERT, CPM, Fishbone, Cause-Effect
 │   │   ├── flow/                # Workflow, Activity
@@ -286,7 +289,7 @@ pmforge/
 
 ## How to add a new chart or document kind
 
-All 20 chart kinds and all 25 document kinds are fully implemented.
+All 21 chart kinds and all 25 document kinds are fully implemented.
 The taxonomy is designed for extension: adding a new kind is a small,
 self-contained change.
 
@@ -365,14 +368,20 @@ These remain from V1 plus a handful of new V2 items.
 
 ### New in V2
 
-8. **Per-user at-rest protection.** V2 protects local project data
-   with per-user data directories and private filesystem permissions.
-   For raw-disk theft or admin-level host access, the supported V2
-   path is OS-level disk encryption: FileVault on macOS, BitLocker on
-   Windows, and LUKS on Linux. SQLCipher native database encryption is
-   deferred to V3 because it adds native packaging complexity and must
-   be designed with crash recovery and migration semantics.
-9. **All 20 chart kinds are now implemented.** DAG (WBS, Network,
+8. **Per-user at-rest protection.** New per-user `.pmforge` project
+   databases are SQLCipher-encrypted with a per-user DEK, and existing
+   plaintext project databases can be migrated from Project Settings
+   after recovery codes are reissued. `system.db` remains plaintext by
+   design and stores password hashes plus wrapped DEKs, not project
+   records. OS-level disk encryption is still recommended as
+   whole-device protection for raw-disk theft or admin-level host
+   access: FileVault on macOS, BitLocker on Windows, and LUKS on Linux.
+   `.pmba` archival bundles preserve the encrypted `project.pmforge`
+   bytes, so backup files inherit project database encryption.
+   Design details live in
+   `docs/design/ADR-001-database-encryption-at-rest.md`.
+9. **All chart kinds are implemented** (20 in V2; the 21st — Gantt —
+   landed 2026-06-10 as roadmap item 20). DAG (WBS, Network,
    PERT, CPM, Fishbone, Cause-and-Effect), Flow (Workflow, Activity),
    Matrix (RACI, SWOT, Stakeholder, Generic), and Stats (Line, Bar,
    Pareto, Pie, BurnUp, BurnDown, CumulativeFlow, Control) all have
@@ -395,6 +404,147 @@ These remain from V1 plus a handful of new V2 items.
     recovery codes are issued at account creation. The "Forgot
     password?" link on the login screen opens `RecoveryReset.svelte`.
     Backend: `App.IssueRecoveryCodes`, `App.ResetWithRecoveryCode`.
+
+### Scheduling core roadmap (V3)
+
+PMForge remains a **local-first, single-machine** application; none of
+these items introduce cloud services, accounts, or telemetry. They
+deepen the scheduling kernel so PMForge stands on its own as a
+full project-controls scheduler. Listed in dependency order — each
+item builds on the previous one.
+
+14. **Date-anchored, calendar-aware CPM.** *Done 2026-06-10.*
+    `kernel.AnchorSchedule` maps CPM day-offsets onto real calendar
+    dates from the project start date, skipping non-working days via
+    an injected `WorkdayFunc` (`internal/calendar` supplies the
+    country calendar). Wired end-to-end: the schedule-report export
+    path and MSPDI export emit real dates, and the CPM chart editor
+    shows per-node start/finish dates on the canvas and in the detail
+    panel (`charts.LayoutWithSchedule`, CPM-only anchoring; all other
+    kinds delegate to the plain `Layout`). A date-axis Gantt strip is
+    deliberately deferred to item 20's first-class Gantt chart kind.
+15. **Dependency types and lag.** *Done 2026-06-10.* `kernel.Link`
+    carries FS/SS/FF/SF link types with lag/lead, honoured by both
+    CPM passes (every task's late finish is additionally bounded by
+    the project finish so SS predecessors and leads keep float
+    meaningful). The legacy `Precedents` list still works (plain
+    FS+0; a typed Link for the same predecessor wins). CPM chart
+    edge labels ("SS+2", "FS-1", parsed by `dag.ParseLinkLabel`,
+    fail-soft to FS) are now real scheduling inputs, editable in the
+    layered editor's "Incoming links" panel and honoured by the
+    schedule-report/MSPDI export path.
+16. **Task constraints.** *Done 2026-06-10.* `kernel.ConstraintType`
+    adds ASAP (default), ALAP, SNET, FNLT, and MFO. Date-bearing
+    constraints are armed by `kernel.ApplyConstraintDates` (date →
+    working-day offset against the project calendar; finish
+    constraints account for EF being exclusive) and require a project
+    start date; ALAP works un-anchored. Links always win: an
+    unsatisfiable constraint sets `ConstraintViolated` instead of
+    breaking precedence, FNLT/MFO squeezes surface as negative float
+    (super-critical, `IsCritical` now flags Float <= 0), and ALAP
+    moves a task to its late dates in a post-pass. The CPM editor has
+    a constraint dropdown + date picker per node, an amber dashed
+    outline + "!" canvas marker, and a violation explainer in the
+    detail panel. Honoured end-to-end via `dag.LayoutCPMScheduled`
+    and the schedule-report/MSPDI export pipeline
+    (`scheduleProjectTasks` in main.go).
+17. **Progress and baselines.** *Done 2026-06-10.* `kernel.Task`
+    gains percent-complete (clamped 0–100 by `CalculateCPM`,
+    reporting-only — it never reschedules), an explicit milestone
+    flag, and actual start/finish date fields (consumed by EVM in
+    item 18; no dedicated entry UI yet). Baselines: the new
+    `baselines` table snapshots a CPM chart's fully scheduled task
+    map (immutable rows; `internal/db/baselines.go`), exposed as
+    `App.SetScheduleBaseline` / `ListScheduleBaselines` /
+    `DeleteScheduleBaseline` / `CompareScheduleBaseline`, with
+    `kernel.CompareSchedules` computing per-task start/finish
+    variance in working days (positive = slip). The CPM editor has a
+    "Set baseline" toolbar button, a per-node % Complete input +
+    milestone toggle, a progress strip and ◆ marker on the canvas,
+    and baseline variance rows (late red / early green) in the
+    detail panel.
+18. **Earned Value Management.** *Done 2026-06-10.* `kernel.ComputeEVM`
+    derives PV/EV/AC, SV/CV, SPI/CPI, and EAC/ETC/VAC at a status
+    date (working-day offset; PV is linear across each task's ES..EF
+    window, milestones earn fully at ES; SPI/CPI report 0 = "n/a"
+    when undefined; EAC = BAC/CPI with a BAC fallback). Tasks carry
+    `BudgetedCost`/`ActualCost`, and the actual start/finish entry UI
+    deferred from item 17 landed too. `App.ComputeScheduleEVM` maps a
+    YYYY-MM-DD status date (or today) through the project calendar
+    and requires a project start date — it errors rather than emit
+    meaningless numbers. The CPM editor's Earned Value panel (status
+    date + Compute) shows the full metric grid with red/green
+    coloring. The kernel package comment's EVM claim is finally true.
+    *Follow-up landed 2026-06-10:* the schedule-report exports (PDF,
+    DOCX, ODT) append an "Earned Value (status date: today)" summary
+    via a shared `evmSummaryLines` block — emitted only when the
+    project is anchored AND the chart carries cost data, so reports
+    without budgets are unchanged. EVM inside the Status Report
+    document renderer / combined report builder remains a possible
+    later enhancement (those render document content, not schedule
+    payloads, and would need chart_ref-based resolution design).
+19. **Resource layer.** *Kernel core landed 2026-06-10; UI layer
+    remaining.* `internal/kernel/resources.go` ships task-resource
+    assignments (`kernel.Assignment`, units default 1.0),
+    `ResourceUsage` per-day demand profiles, `DetectOverallocations`
+    (capacity map, missing = 1.0; flags offending tasks and reports
+    sorted breaches), and `LevelResources` — serial-method leveling
+    that processes ready tasks in least-float order, honours typed
+    links + lag against levelled predecessors, books capacity, and
+    leaves impossible demand at its earliest start still flagged.
+    Documented simplifications: integer-day booking; LS/LF/Float
+    still describe the precedence-only schedule after leveling.
+    The assignment UI landed the same day: an Assignments section in
+    the CPM editor (stakeholder suggestions via datalist, units,
+    add/remove), overallocation computed on every layout pass
+    (orange edge strip + explainer on offending nodes), and
+    assignments flowing through the export/EVM/baseline loaders.
+    The Level and Histogram actions landed the same day:
+    `App.LevelChartResources` persists resource-caused delays as SNET
+    constraint dates (user-set non-SNET constraints are never
+    touched; stale levelling pins are cleared; the editor reloads its
+    doc afterwards so a later save can't clobber the pins), and
+    `App.GenerateResourceHistogram` saves a per-day per-resource
+    demand Bar chart (snapshot semantics; regeneration updates the
+    same chart via a `source_chart_id` config marker, and it embeds
+    in combined reports like any other chart). *Completed
+    2026-06-10:* stakeholders carry an **availability** field
+    (units; 1 = full-time, additive `ALTER TABLE` migration,
+    editable in the Stakeholder manager) that feeds the capacity
+    maps for overallocation detection (scheduled chart layout paths)
+    and resource levelling — assignments naming non-stakeholder
+    resources keep the 1.0 default. Per-resource calendars remain a
+    V3 refinement (resource-specific non-working days interact with
+    the anchoring layer and need design).
+20. **Schedule interchange and first-class Gantt.** *Done
+    2026-06-10.* `export.FromMSPDI` imports MSPDI XML — tasks
+    (durations at 8 h/day), typed predecessor links (MSPDI Type
+    0=FF/1=FS/2=SF/3=SS, lag from tenths-of-a-minute), milestones,
+    percent complete, and resource assignments flattened to names;
+    summary/null rows are skipped with their dangling links dropped.
+    `ToMSPDI` export was enriched to round-trip: PredecessorLink,
+    Milestone, PercentComplete, Resources, and Assignments are
+    emitted (verified by an export→import round-trip test).
+    `App.ImportMSPDIChart` (Dashboard → "Import schedule (MSPDI)")
+    creates a CPM chart from the file and adopts the file's start
+    date when the project has none. Binary `.mpp` import is out of
+    scope — MSPDI XML is the supported interchange format.
+    The first-class Gantt chart kind landed the same day, completing
+    this item: `gantt` is the 21st registry kind sharing the
+    layered/CPM data model, with `dag.LayoutGantt[Scheduled]`
+    (rows sorted by ES, full CPM semantics incl. constraints and
+    overallocation), a bespoke `pdfrender` renderer (bars, critical
+    red, progress strip, milestones, anchored dates, day grid) so it
+    embeds in combined reports, and `GanttEditor.svelte` — editable
+    task grid (label/duration/%/milestone), link add/edit/delete
+    with the FS/SS/FF/SF±lag grammar, zoomable bar canvas with
+    dependency elbows, critical colouring, progress overlay,
+    baseline ghost bars, overallocation outlines, and constraint
+    markers. Baselines/histogram/levelling all work on Gantt charts
+    since they share the CPM data model.
+
+Items 14–18 are kernel-pure and unit-testable in isolation, matching
+the kernel's no-I/O design.
 
 ---
 
@@ -429,13 +579,18 @@ All four licenses are GPL-3.0-compatible.
 
 At account creation, PMForge issues eight one-time **recovery codes**
 (16 base32 chars each, dashed for legibility). They're Argon2id-hashed
-in the system database; the plaintext is shown to the user exactly
-once. Each code can reset the password once and is then permanently
-marked used.
+in the system database; for encrypted project databases, the same
+codes also wrap the user's project-database DEK. The plaintext is
+shown to the user exactly once. Each code can reset the password once
+and is then permanently marked used.
 
 Login → "Forgot password? Use a recovery code" → username + code +
 new password → done. The flow is built around `App.IssueRecoveryCodes`
-and `App.ResetWithRecoveryCode`.
+and `App.ResetWithRecoveryCode`. After enabling database encryption
+for an existing plaintext project, recovery codes must be reissued so
+the active codes can unlock the DEK. If the password and all valid
+wrapped recovery codes are lost, encrypted project databases are
+unrecoverable by design.
 
 ## Document export formats
 

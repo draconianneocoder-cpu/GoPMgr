@@ -1,0 +1,93 @@
+// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// ADR-001 Phase 0 spike: mattn/go-sqlite3 v1.14.22 baseline with the
+// identical workload, for overhead comparison. Scratch code.
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	_ "github.com/mattn/go-sqlite3"
+)
+
+const schema = `
+CREATE TABLE IF NOT EXISTS charts (
+	id TEXT PRIMARY KEY,
+	project_id TEXT NOT NULL,
+	kind TEXT NOT NULL,
+	title TEXT NOT NULL,
+	data TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_charts_project ON charts(project_id);
+`
+
+func must(step string, err error) {
+	if err != nil {
+		fmt.Printf("FAIL %s: %v\n", step, err)
+		os.Exit(1)
+	}
+}
+
+func workload(db *sql.DB, rows int) (insert, scan time.Duration, err error) {
+	if _, err = db.Exec(schema); err != nil {
+		return
+	}
+	start := time.Now()
+	tx, err := db.Begin()
+	if err != nil {
+		return
+	}
+	stmt, err := tx.Prepare("INSERT INTO charts (id, project_id, kind, title, data) VALUES (?, ?, ?, ?, ?)")
+	if err != nil {
+		return
+	}
+	blob := `{"nodes":[{"id":"A","label":"Design","duration":3,"assignments":[{"resource":"alice"}]}],"edges":[]}`
+	for i := 0; i < rows; i++ {
+		if _, err = stmt.Exec(fmt.Sprintf("c%d", i), "p1", "cpm", "Chart", blob); err != nil {
+			return
+		}
+	}
+	if err = tx.Commit(); err != nil {
+		return
+	}
+	insert = time.Since(start)
+
+	start = time.Now()
+	var total int
+	if err = db.QueryRow("SELECT count(*) FROM charts WHERE data LIKE '%alice%'").Scan(&total); err != nil {
+		return
+	}
+	if total != rows {
+		err = fmt.Errorf("scan saw %d rows, want %d", total, rows)
+		return
+	}
+	scan = time.Since(start)
+	return
+}
+
+func main() {
+	dir, err := os.MkdirTemp("", "spike")
+	must("tempdir", err)
+	defer os.RemoveAll(dir)
+
+	db, err := sql.Open("sqlite3", filepath.Join(dir, "plain.pmforge"))
+	must("open", err)
+	for _, p := range []string{"PRAGMA journal_mode = WAL;", "PRAGMA foreign_keys = ON;"} {
+		_, err = db.Exec(p)
+		must(p, err)
+	}
+	var sv string
+	must("sqlite_version", db.QueryRow("SELECT sqlite_version()").Scan(&sv))
+	ins, scan, err := workload(db, 5000)
+	must("workload", err)
+	var jm string
+	must("journal_mode", db.QueryRow("PRAGMA journal_mode").Scan(&jm))
+	fmt.Printf("OK mattn baseline: sqlite=%s journal_mode=%s insert5000=%v scan=%v\n", sv, jm, ins, scan)
+	db.Close()
+	fmt.Println("BASELINE PASS")
+}

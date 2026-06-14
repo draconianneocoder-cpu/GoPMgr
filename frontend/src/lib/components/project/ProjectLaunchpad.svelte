@@ -25,7 +25,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     onCreated,
     onCancel,
   }: {
-    onCreated: (project: ProjectMeta) => void;
+    onCreated: (project: ProjectMeta, projectPath?: string) => void;
     onCancel: () => void;
   } = $props();
 
@@ -122,7 +122,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     try {
       const seeds = suggestedSeeds.filter((s) => seedsChecked[s]);
-      const [project] = await window.go.main.App.CreateProjectFromLaunchpad(
+      const [project, , projectPath] = await window.go.main.App.CreateProjectFromLaunchpad(
         name,
         description,
         industry,
@@ -131,7 +131,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         countryCode,
         seeds,
       );
-      onCreated(project);
+      onCreated(project, projectPath);
     } catch (err: any) {
       error = `Create failed: ${err}`;
     } finally {

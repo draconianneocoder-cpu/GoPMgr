@@ -48,6 +48,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       category: 'team',
       hourly_rate: 0,
       contract_value: 0,
+      availability: 1,
       notes: '',
       created_at: '',
       updated_at: '',
@@ -263,6 +264,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
             />
           </label>
         </div>
+        <label class="block">
+          <span class="text-xs text-slate-500 uppercase">Availability (units)</span>
+          <input
+            type="number"
+            min="0.1"
+            max="10"
+            step="0.1"
+            bind:value={editing.availability}
+            class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+          />
+          <span class="text-[10px] text-slate-500">
+            Resource capacity for scheduling: 1 = full-time, 0.5 =
+            half-time, 2 = a two-person pool. Overallocation flags and
+            resource levelling use this.
+          </span>
+        </label>
         <label class="block">
           <span class="text-xs text-slate-500 uppercase">Notes</span>
           <textarea

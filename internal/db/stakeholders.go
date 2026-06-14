@@ -39,9 +39,14 @@ type Stakeholder struct {
 	Category      StakeholderCategory `json:"category"`
 	HourlyRate    float64             `json:"hourly_rate"`
 	ContractValue float64             `json:"contract_value"`
-	Notes         string              `json:"notes"`
-	CreatedAt     time.Time           `json:"created_at"`
-	UpdatedAt     time.Time           `json:"updated_at"`
+	// Availability is the stakeholder's resource capacity in units
+	// (1.0 = full-time, 0.5 = half-time). It feeds the scheduling
+	// kernel's overallocation detection and resource levelling as the
+	// capacity for assignments naming this stakeholder.
+	Availability float64   `json:"availability"`
+	Notes        string    `json:"notes"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // ErrNoStakeholder is returned by GetStakeholder for unknown IDs.
@@ -60,13 +65,16 @@ func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 	if s.Category == "" {
 		s.Category = StakeholderTeam
 	}
+	if s.Availability <= 0 {
+		s.Availability = 1
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	_, err := db.Conn.Exec(`
 		INSERT INTO stakeholders (id, project_id, name, role, organisation,
-			email, phone, category, hourly_rate, contract_value, notes,
-			created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			email, phone, category, hourly_rate, contract_value, availability,
+			notes, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			name           = excluded.name,
 			role           = excluded.role,
@@ -76,11 +84,13 @@ func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 			category       = excluded.category,
 			hourly_rate    = excluded.hourly_rate,
 			contract_value = excluded.contract_value,
+			availability   = excluded.availability,
 			notes          = excluded.notes,
 			updated_at     = excluded.updated_at
 	`,
 		s.ID, s.ProjectID, s.Name, s.Role, s.Organisation,
-		s.Email, s.Phone, string(s.Category), s.HourlyRate, s.ContractValue, s.Notes,
+		s.Email, s.Phone, string(s.Category), s.HourlyRate, s.ContractValue,
+		s.Availability, s.Notes,
 		now, now,
 	)
 	if err != nil {
@@ -93,7 +103,7 @@ func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 func (db *Database) GetStakeholder(id string) (Stakeholder, error) {
 	row := db.Conn.QueryRow(`
 		SELECT id, project_id, name, role, organisation, email, phone,
-		       category, hourly_rate, contract_value, notes, created_at, updated_at
+		       category, hourly_rate, contract_value, availability, notes, created_at, updated_at
 		FROM stakeholders WHERE id = ?
 	`, id)
 	return scanStakeholder(row)
@@ -109,13 +119,13 @@ func (db *Database) ListStakeholders(projectID, category string) ([]Stakeholder,
 	if category == "" {
 		rows, err = db.Conn.Query(`
 			SELECT id, project_id, name, role, organisation, email, phone,
-			       category, hourly_rate, contract_value, notes, created_at, updated_at
+			       category, hourly_rate, contract_value, availability, notes, created_at, updated_at
 			FROM stakeholders WHERE project_id = ? ORDER BY name ASC
 		`, projectID)
 	} else {
 		rows, err = db.Conn.Query(`
 			SELECT id, project_id, name, role, organisation, email, phone,
-			       category, hourly_rate, contract_value, notes, created_at, updated_at
+			       category, hourly_rate, contract_value, availability, notes, created_at, updated_at
 			FROM stakeholders WHERE project_id = ? AND category = ? ORDER BY name ASC
 		`, projectID, category)
 	}
@@ -153,7 +163,7 @@ func scanStakeholder(row interface {
 	)
 	err := row.Scan(
 		&s.ID, &s.ProjectID, &s.Name, &s.Role, &s.Organisation,
-		&s.Email, &s.Phone, &category, &s.HourlyRate, &s.ContractValue, &s.Notes,
+		&s.Email, &s.Phone, &category, &s.HourlyRate, &s.ContractValue, &s.Availability, &s.Notes,
 		&created, &updated,
 	)
 	if err == sql.ErrNoRows {

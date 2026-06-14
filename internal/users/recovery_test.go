@@ -37,7 +37,7 @@ func TestResetWithRecoveryCodeCanonicalisesPastedWhitespace(t *testing.T) {
 	if _, err := store.CreateAccount("alice", "Alice", "old password"); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	codes, err := store.IssueRecoveryCodes("alice")
+	codes, err := store.IssueRecoveryCodes("alice", nil)
 	if err != nil {
 		t.Fatalf("IssueRecoveryCodes: %v", err)
 	}
