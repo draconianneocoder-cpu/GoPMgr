@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
@@ -42,7 +42,7 @@ pmforge/
 │   ├── check-release.sh         # version + REUSE + build gate
 │   └── memory-safety-scan.sh    # go vet + custom safety greps (V2.x)
 │
-├── cmd/pmforge/main.go          # entry point: CLI dispatch + Wails bootstrap
+├── main.go                      # entry point (repo root; required by wails build): CLI dispatch + Wails bootstrap
 │                                # Hosts the App struct that Wails exposes to the frontend.
 │
 ├── internal/
@@ -101,7 +101,7 @@ pmforge/
         └── lib/
             ├── session.svelte.ts   # rune-based shared session state
             └── components/
-                ├── GanttChart.svelte / Settings.svelte
+                ├── GanttChart.svelte
                 ├── admin/SignatureSettings.svelte
                 ├── auth/Login.svelte, CreateAccount.svelte
                 ├── project/ProjectPicker.svelte, Dashboard.svelte
@@ -162,7 +162,7 @@ All tables created idempotently in `db.Database.Migrate()` (internal/db/sqlite.g
 ### SPDX headers — REQUIRED on every source file
 
 ```go
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 ```
 
@@ -214,8 +214,8 @@ make build
 
 # Quality gates
 make lint              # golangci-lint + npm run lint
-make test              # go test ./cmd/... ./internal/... (PMForge-owned Go packages)
-make race              # go test -race ./cmd/... ./internal/... (V2.x concurrency hardening gate)
+make test              # go test . ./internal/... (PMForge-owned Go packages)
+make race              # go test -race . ./internal/... (V2.x concurrency hardening gate)
 make memory-scan       # scripts/memory-safety-scan.sh (V2.x)
 make frontend-stability # svelte-check --fail-on-warnings + Sigma regression gates
 make frontend-build-budget # Vite build without large main bundle regressions
@@ -232,7 +232,7 @@ make package-linux / package-windows / package-darwin
 
 ## 6. Locking & concurrency invariants
 
-**The Wails runtime dispatches every frontend call on a separate goroutine.** The App struct in `cmd/pmforge/main.go` is therefore accessed concurrently and must be guarded.
+**The Wails runtime dispatches every frontend call on a separate goroutine.** The App struct in the root `main.go` is therefore accessed concurrently and must be guarded.
 
 ### App locking rules
 - `App.mu` is a `sync.RWMutex` (V2.x hardening).
@@ -253,14 +253,14 @@ make package-linux / package-windows / package-darwin
 ## 7. Memory & resource safety
 
 `make memory-scan` runs:
-1. `go vet ./cmd/... ./internal/...` — standard correctness checks.
+1. `go vet . ./internal/...` — standard correctness checks.
 2. Custom grep gate (scripts/memory-safety-scan.sh) for:
    - `os.Open(` without nearby `defer .*Close()`
    - `sql.Open(` without nearby `defer .*Close()`
    - `unsafe.Pointer` (forbidden in this codebase)
    - missing `errors.Is`/`errors.As` against package `Err*` sentinels
-3. (When installed) advisory `staticcheck ./cmd/... ./internal/...` for deeper analysis.
-4. (When installed) advisory `gosec ./cmd/... ./internal/...` for security-flavoured patterns.
+3. (When installed) advisory `staticcheck . ./internal/...` for deeper analysis.
+4. (When installed) advisory `gosec . ./internal/...` for security-flavoured patterns.
 
 A new contribution should land **with `make memory-scan` passing**. Optional scanners report findings without failing by default so the release gate is not dependent on locally installed tools; set `PMFORGE_STRICT_OPTIONAL_SCANS=1` when you want optional staticcheck/gosec/govulncheck findings to fail the gate. The gate is wired into `make check-release`.
 
@@ -290,13 +290,13 @@ A new contribution should land **with `make memory-scan` passing**. Optional sca
 - **Dirty indicator and status dropdown in CharterEditor.** Baseline `lastSavedContent`/`lastSavedTitle` set after load; `dirty` derived state drives an amber "Unsaved changes" badge. Status dropdown (`draft|review|approved|archived`) in the header calls `save()` on change.
 
 ### Agile Pack (V2.x — complete)
-- **Backend**: schema (5 tables in db/sqlite.go), types (agile/agile.go), CRUD storage (agile/store.go), DORA metrics with elite/high/medium/low classification (agile/dora.go), Wails methods in cmd/pmforge/main.go §Agile Pack.
+- **Backend**: schema (5 tables in db/sqlite.go), types (agile/agile.go), CRUD storage (agile/store.go), DORA metrics with elite/high/medium/low classification (agile/dora.go), Wails methods in the root main.go §Agile Pack.
 - **Frontend**: KanbanBoard (drag-and-drop with WIP badges), Backlog (priority + drag reorder + Start-work), SprintList (planning/active/complete lifecycle with single-active invariant), DORADashboard (4 KPI cards + deploy-trend line via StatsChart + inline +Deployment form). All live under `frontend/src/lib/components/agile/`.
 - **Wiring**: 4 new session view union members (`kanban`, `backlog`, `sprints`, `dora`), App.svelte routes, Dashboard "Software-Dev Pack" section with enable/disable toggle backed by `App.AgileEnabled` / `App.SetAgileEnabled`. As of 2026-06-04, `AgileEnabled` is **persisted to `settings.agile_enabled`** (not in-memory only); `SetAgileEnabled` does a DB roundtrip and updates `agile.PackEnabled` as a cache.
 
 ### Memory & concurrency gates (V2.x)
 - **`make memory-scan`** runs `scripts/memory-safety-scan.sh`. Currently passing in the sandbox; on a dev box with Go in PATH it also runs `go vet` and a Go-helper scan for unclosed `os.Open` handles. Optional integrations: `staticcheck`, `gosec`, `govulncheck` — auto-detected.
-- **`make race`** runs `go test -race ./cmd/... ./internal/...`.
+- **`make race`** runs `go test -race . ./internal/...`.
 - Both are wired into `scripts/check-release.sh` so the release gate fails if either does.
 
 ### Remaining V2 TODOs (status snapshot)
@@ -593,7 +593,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 ### 2026-05-25 — Frontend compile recovery after signed-export/Sigma merge
 - **`npm run check` is back to 0 errors.** The blocking failures were malformed signed-report state, stale component import paths, invalid Svelte 5 event modifier syntax, missing Wails ambient method/type declarations, Sigma route state using a nonexistent `session.viewId`, and Svelte 4-style Sigma props in runes-mode components.
 - **Use `session.editingId` for routed record IDs.** `goto(view, editingId)` is the app's existing route contract; new feature views should not introduce parallel `viewId` fields unless the session model is deliberately changed everywhere.
-- **Wails bridge declarations must track real `*App` methods.** Signed PDF/report exports, schedule report exports, ProjectMeta industry fields, and Sigma methods/types now live under `window.go.main.App` in `frontend/src/wails-window.d.ts`. Verify against `cmd/pmforge/main.go` before adding names.
+- **Wails bridge declarations must track real `*App` methods.** Signed PDF/report exports, schedule report exports, ProjectMeta industry fields, and Sigma methods/types now live under `window.go.main.App` in `frontend/src/wails-window.d.ts`. Verify against the root `main.go` before adding names.
 - **Remaining frontend debt is warning-level, not compile-blocking.** `svelte-check` still reports accessibility/deprecated-event warnings, especially in Sigma helper components and the signature modal. The production build also emits the existing large-chunk warning. Treat warning cleanup as a follow-up hardening slice.
 
 ### 2026-05-25 — veraPDF gate hardening
@@ -612,10 +612,10 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **`scripts/frontend-build-budget.sh` protects the split.** It runs the production build and fails if Vite emits a large-chunk warning or if the main `index-*.js` chunk exceeds 500,000 bytes. Prefer lazy route/component splits over raising the Vite warning limit.
 
 ### 2026-05-25 — Release gate scope and deterministic build hardening
-- **Do not use the unscoped all-packages pattern for Go quality gates in this repo.** With `frontend/node_modules` installed, it discovers npm dependency packages such as `frontend/node_modules/flatted/golang/pkg/flatted`. Use `./cmd/... ./internal/...` for PMForge-owned Go gates.
+- **Do not use the unscoped all-packages pattern for Go quality gates in this repo.** With `frontend/node_modules` installed, it discovers npm dependency packages such as `frontend/node_modules/flatted/golang/pkg/flatted`. Use `. ./internal/...` for PMForge-owned Go gates.
 - **`scripts/release-gate-scope-check.sh` protects release wiring.** It fails on unscoped Go quality commands and requires `check-release.sh` to include the frontend stability and bundle-budget gates.
 - **Optional scanners are advisory by default.** `memory-safety-scan.sh` still runs detected `staticcheck`, `gosec`, and `govulncheck`, but only mandatory checks fail by default. Set `PMFORGE_STRICT_OPTIONAL_SCANS=1` for security-focused strict runs. This avoids release-gate behavior changing just because one developer has `gosec` installed.
-- **Wails CLI builds require a root Go package; PMForge's entrypoint lives under `cmd/pmforge`.** `make build` now runs the frontend budget build, syncs `frontend/dist` into `cmd/pmforge/frontend/dist` for the existing `go:embed`, and then runs `go build ./cmd/pmforge`. Passing `-compiler gcc` to Wails was wrong because Wails expects a Go compiler there; it tried to run `gcc mod tidy`.
+- **Wails CLI builds require the main package at the repo root.** PMForge's entrypoint was moved from `cmd/pmforge/main.go` to `./main.go` (with its `*_test.go` files) so `make build` can run `wails build` directly. `wails build` builds the frontend into the repo-root `frontend/dist`, embeds it via the root `go:embed`, injects the `desktop,production` tags, and links the platform frameworks (on macOS, `UniformTypeIdentifiers` for `UTType`) - the work the old hand-rolled `go build ./cmd/pmforge` had to replicate (and which failed at runtime without the tags and at link without the framework). Install the CLI with `go install github.com/wailsapp/wails/v2/cmd/wails@latest`. `make build` passes `-skipbindings` (default `WAILS_BUILD_FLAGS`): PMForge hand-declares the bridge in `wails-window.d.ts` and never imports the generated `frontend/wailsjs`, and on macOS 15 letting Wails build+run the app for binding generation stamps the binary with `com.apple.provenance`, which then breaks Wails' own ad-hoc self-sign ("resource fork, Finder information, or similar detritus not allowed").
 - **`check-release.sh` now runs the complete local release gate successfully on this machine.** It verifies scope, memory safety, frontend warning-clean state, frontend bundle budget, race detector, deterministic build, and the PDF/A soft gate. `reuse` still skips if the tool is not installed.
 
 ### 2026-05-26 — Deterministic package targets
@@ -718,8 +718,8 @@ This section is the running log of non-obvious discoveries. Every session that l
 ### 2026-06-06 — Timeline date-dragging
 - **Keep timeline editing scoped to real timeline boundaries.** `MoveTimelineEntry` updates project start/end and sprint start/end dates, returns a rebuilt timeline, and rejects deployment moves because deployments are DORA history.
 - **Expose editability from the backend.** `timeline.Entry` now carries `editable` and `edit_field`; the Svelte view does not infer write permissions from labels or colors.
-- **The root binary ignore must stay anchored.** `.gitignore` uses `/pmforge` and `/pmforge-*` for root build outputs so `cmd/pmforge` source files remain trackable, while `cmd/pmforge/frontend/dist/` stays ignored as generated embed output.
-- **Release gates must manage generated embed output explicitly.** REUSE scans generated files if `cmd/pmforge/frontend/dist/` is left behind, so `make license-check` cleans it first; `check-release.sh` then recreates it before `go test ./cmd/...` needs the `go:embed` tree.
+- **The build/ ignore must keep the Wails scaffold trackable.** `.gitignore` ignores everything under `build/` except `build/darwin/Info.plist` and `build/darwin/Info.dev.plist` (the Wails macOS bundle scaffold, which sets `CFBundleIdentifier dev.pmforge.PMForge`). Compiled output (`build/bin`, `build/packages`) stays ignored. `make clean` therefore deletes `build/bin`/`build/packages` but never the tracked scaffold.
+- **Generated embed output needs no special handling now.** The root `main.go` embeds the repo-root `frontend/dist`, which is gitignored; `reuse lint` skips gitignored paths, so no pre-clean is required. `wails build` regenerates `frontend/dist` on each build.
 
 ### 2026-06-07 — veraPDF PAdES feature extraction
 - **veraPDF is a useful PAdES feature extractor, not the primary signature-validity oracle.** `scripts/validate-pades-external.sh` now runs `verapdf --off --extract signature --format xml` and checks for `Adobe.PPKLite` plus `ETSI.CAdES.detached`; `pdfsig` remains the local validity gate for `Signature Validation: Signature is Valid`.
@@ -853,6 +853,32 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **A regression gate is worthless until you prove it fails on the bug.** Verified end-to-end: dropped a plain `.ts` using `$state` into App's graph and confirmed `make frontend-smoke` exits 1 with "the app failed to load or render ... #app would not mount", then restored via `git checkout` and confirmed exit 0. Note the error string differs by context (`rune_outside_svelte` in the browser stub vs. `$state is not defined` ReferenceError under Node SSR) - the gate keys off *any* throw, not a specific message, so both are caught.
 - **Wiring:** `scripts/frontend-smoke-check.sh` (bash wrapper, `cd frontend && node scripts/smoke-mount.mjs`), `make frontend-smoke` target, and `check-release.sh` step 4b after the stability gate. Requires `frontend/node_modules` like the other frontend gates.
 
+### 2026-06-20 — Code quality audit + data management controls
+
+- **`CloneProject` WAL checkpoint race fixed.** When the source path is the currently-open project (`samePath(a.dbPath, clean)` true), the code now calls `openDB.CreateSnapshot(dest)` (`VACUUM INTO ?`) rather than a raw `copyFile`. `VACUUM INTO` checkpoints all WAL data atomically before writing the snapshot. The raw-copy path is retained for closed/external projects. Both paths `os.Chmod(dest, 0o600)` on success.
+- **Audit logging for destructive operations.** `DeleteChart`, `DeleteDocument`, and `DeleteWorkItem` in `main.go` each call `d.LogAction(actor, action, id, "")` (best-effort via `_ =`) before executing the deletion. `DeleteWorkItem` was also refactored to take an explicit `requireDB()` guard before delegating to `agileStore()` — it previously lacked a nil check.
+- **Orphaned `Settings.svelte` deleted.** `frontend/src/lib/components/Settings.svelte` was a 94-line component never wired into App.svelte's routing; `AppSettings.svelte` (app-level) and `ProjectSettings.svelte` (per-project) covered its intended purpose. Removed with `git rm -f`.
+
+### 2026-06-20 — UI/UX polish pass (AppSettings, Dashboard)
+
+- **`AppSettings.svelte` Save button moved to page-level footer.** Previously nested inside the "Defaults for new projects" section, making it look like a section-scoped action. Moved outside all `<section>` blocks into a standalone footer `div`. Error display: the existing top-level error alert already covers both load and save failures; the footer does not duplicate it (only the "Saved." success span lives in the footer).
+- **`Dashboard.svelte` `newCharter`/`newDocument` now surface errors via toast.** Both async functions were fire-and-forget; they now wrap the Wails call in try/catch and call `showToast(message, 'error')` on failure.
+- **Document status shown as styled badge.** Added a `docStatusStyles` map (draft/review/approved/archived) and replaced the raw text status cell with a badge rendered via `border` + background color classes, matching the existing `statusStyles` pattern on Portfolio.
+- **Delete buttons accessibility hardened.** "Del" labels renamed to "Delete" with `aria-label` attributes on chart and document delete buttons.
+
+### 2026-06-20 — APFS username-collision security fix + regression tests
+
+- **APFS case-insensitive collision:** On macOS APFS `~/Documents/PMForge/James` and `~/Documents/PMForge/james` are the same physical directory. Because `CreateAccount` used `WHERE username = ?` (case-sensitive), both accounts were created and shared a data directory, leaking project filenames via `ListProjects()`. Fix: `WHERE lower(username) = lower(?)` in `internal/users/store.go`. No DB constraint added — the live `system.db` already contained both rows; a COLLATE NOCASE UNIQUE index would have failed on the existing duplicate. Application-level check is correct for tolerating the legacy collision while blocking new ones.
+- **`TestCreateAccount_RejectsCaseVariantUsername`** (`store_test.go`): Creates "alice", asserts "Alice"/"ALICE"/"aLiCe" each return `ErrUserExists`. Filesystem-independent — exercises the SQL check, passes on case-sensitive CI.
+- **`TestHasLegacyRecoveryCodeWraps`** (`dek_test.go`): Covers all three states — no codes (false), nil-DEK legacy codes (true, blocks encryption enablement), codes with DEK (false, guard cleared). Coverage: 0% → 80%.
+- **`RemainingRecoveryCodes` skip:** `SELECT COUNT(*)` always returns one row; `sql.ErrNoRows` branch is unreachable. Glue-vs-logic discriminator applied: no test written.
+- **Duplicate account deleted:** Removed `James` row from live `system.db` via `DELETE FROM users WHERE username = 'James'`. No filesystem changes — APFS shared the directory with `james`.
+
+### 2026-06-20 — REUSE compliance + WAL/audit test coverage
+
+- **REUSE gate restored.** Three root causes: (1) stale `cmd/pmforge/frontend/dist/` from the 2026-06-15 main-package relocation — not gitignored at that path, deleted via `rm -rf cmd`, `/cmd/` added to `.gitignore`; (2) `frontend/package.json.md5` not gitignored — added; (3) `build/bin/**` + `build/packages/**` are gitignored but `reuse` 6.x scans them anyway — added REUSE.toml glob annotations. All 11 `make check-release` gates pass.
+- **`audit_actions_test.go` (4 tests, race-clean).** `TestCloneOpenProject_DataSurvivesSnapshot` saves a chart to the open project before cloning, then opens the clone and asserts the chart is present — the actual VACUUM INTO invariant (a raw `copyFile` can miss data still in the WAL). `TestDeleteChart/Document/WorkItem_WritesAuditLog` each save an entity, delete it, and query `app.db.Conn` directly to confirm one `audit_log` row with the correct action and target_id. All 11 `make check-release` gates pass on the final tree.
+
 ---
 
 ## 10. Quick map: "where do I add ..."
@@ -864,7 +890,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 | New document bespoke PDF renderer         | `internal/documents/<kind>.go` with `Render<Kind>PDF()`; switch in `documents.Render()`. |
 | New database column                       | `internal/db/sqlite.go` Migrate() — additive only.                        |
 | New CLI flag                              | `internal/cli/parser.go` Config struct + flag.*Var; handle in main.go.    |
-| New Wails-exposed App method              | Add to `*App` in `cmd/pmforge/main.go`; declare in `frontend/src/wails-window.d.ts`. |
+| New Wails-exposed App method              | Add to `*App` in the root `main.go`; declare in `frontend/src/wails-window.d.ts`. |
 | New shared editor pattern                 | `frontend/src/lib/components/charts/_*_shell.svelte` (snippet-based).     |
 | Change SPDX license for a directory       | Update each file's header; add the SPDX ID to `LICENSES.md`.              |
 
