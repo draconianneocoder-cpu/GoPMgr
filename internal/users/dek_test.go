@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package users
@@ -119,6 +119,50 @@ func TestRecoveryResetLegacyCodesFreshDEK(t *testing.T) {
 	}
 	if bytes.Equal(got, dek) {
 		t.Error("legacy reset should have generated a FRESH DEK")
+	}
+}
+
+// TestHasLegacyRecoveryCodeWraps pins the DEK-orphan guard: if any active
+// recovery code lacks a wrapped DEK, a future password reset would generate
+// a fresh DEK and silently orphan every encrypted project.
+func TestHasLegacyRecoveryCodeWraps(t *testing.T) {
+	s := newDEKTestStore(t)
+
+	// No codes yet: must not block encryption enablement.
+	has, err := s.HasLegacyRecoveryCodeWraps("alice")
+	if err != nil {
+		t.Fatalf("HasLegacyRecoveryCodeWraps (no codes): %v", err)
+	}
+	if has {
+		t.Error("HasLegacyRecoveryCodeWraps = true before any codes issued")
+	}
+
+	// Legacy codes (nil DEK): must signal that codes need re-issuing.
+	if _, err := s.IssueRecoveryCodes("alice", nil); err != nil {
+		t.Fatalf("IssueRecoveryCodes (nil DEK): %v", err)
+	}
+	has, err = s.HasLegacyRecoveryCodeWraps("alice")
+	if err != nil {
+		t.Fatalf("HasLegacyRecoveryCodeWraps (legacy codes): %v", err)
+	}
+	if !has {
+		t.Error("HasLegacyRecoveryCodeWraps = false with nil-DEK codes — DEK-orphan guard broken")
+	}
+
+	// Re-issue with DEK: guard must clear.
+	dek, err := s.UnlockDEK("alice", "p4ssw0rd-original")
+	if err != nil {
+		t.Fatalf("UnlockDEK: %v", err)
+	}
+	if _, err := s.IssueRecoveryCodes("alice", dek); err != nil {
+		t.Fatalf("IssueRecoveryCodes (with DEK): %v", err)
+	}
+	has, err = s.HasLegacyRecoveryCodeWraps("alice")
+	if err != nil {
+		t.Fatalf("HasLegacyRecoveryCodeWraps (after re-issue with DEK): %v", err)
+	}
+	if has {
+		t.Error("HasLegacyRecoveryCodeWraps = true after codes re-issued with DEK")
 	}
 }
 
