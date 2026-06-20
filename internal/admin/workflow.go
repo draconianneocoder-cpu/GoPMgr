@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package admin implements the Administrative Pack workflows: document
@@ -65,9 +65,7 @@ func (s *Service) LogSignatureEvent(docID string, success bool, err error) {
 	if !success {
 		status = "FAILED"
 		details = fmt.Sprintf("Signature failed: %v", err)
-		// Capture context so future "Self-Healing" surfaces can correlate.
-		report := debug.Wrap(err, "PDF_SIGNATURE_ERROR")
-		fmt.Printf("[signature trace] %s\n", report.Stack)
+		debug.Wrap(err, "PDF_SIGNATURE_ERROR") // logs to the persistent log file as a side effect
 	}
 	_ = s.DB.LogAction("System", "SIGNATURE_EVENT", docID, fmt.Sprintf("[%s] %s", status, details))
 }

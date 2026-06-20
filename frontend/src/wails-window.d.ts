@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Type declarations for the Wails-injected `window.go.main.App` bridge.
@@ -33,6 +33,11 @@ declare global {
           // ----- V2: projects -----
           ListProjects: () => Promise<ProjectFile[]>;
           CreateProject: (name: string, description: string) => Promise<ProjectFile>;
+          DeleteProject: (path: string) => Promise<void>;
+          CloneProject: (path: string) => Promise<ProjectFile>;
+          ProjectsOverview: () => Promise<ProjectSummary[]>;
+          GetAppInfo: () => Promise<AppInfo>;
+          SaveAppSettings: (s: AppSettings) => Promise<void>;
           OpenProject: (path: string) => Promise<ProjectMeta>;
           IsProjectEncrypted: (path: string) => Promise<boolean>;
           EncryptProjectAtRest: (path: string) => Promise<string>;
@@ -86,7 +91,7 @@ declare global {
           // ----- V2.x: Agile Pack -----
           AgileEnabled: () => Promise<boolean>; // persists to project settings
           SetAgileEnabled: (enabled: boolean) => Promise<void>; // persists to project settings
-          EnsureDefaultBoard: () => Promise<[AgileBoard, AgileColumn[]]>;
+          EnsureDefaultBoard: () => Promise<{ board: AgileBoard; columns: AgileColumn[] }>;
           SaveColumn: (c: AgileColumn) => Promise<void>;
           DeleteColumn: (id: string) => Promise<void>;
           SaveWorkItem: (wi: AgileWorkItem) => Promise<AgileWorkItem>;
@@ -113,7 +118,7 @@ declare global {
             methodology: string,
             countryCode: string,
             seeds: string[],
-          ) => Promise<[ProjectMeta, SeedReceipt[], string]>;
+          ) => Promise<{ project: ProjectMeta; seeds: SeedReceipt[]; path: string }>;
           UpdateProjectIndustry: (
             industry: string,
             subCategory: string,
@@ -149,6 +154,9 @@ declare global {
           ExportScheduleReportDOCX: () => Promise<string>;
           ExportScheduleReportODT: () => Promise<string>;
           ExportScheduleReportPDF: () => Promise<string>;
+          ExportScheduleReportCSV: () => Promise<string>;
+          ExportScheduleReportHTML: () => Promise<string>;
+          ExportScheduleReportMSPDI: () => Promise<string>;
 
           // ----- Process Excellence Suite (Six Sigma) -----
           SigmaCreateProject: (
@@ -196,6 +204,10 @@ declare global {
           ImportFont: () => Promise<FontFamilyInfo>;
           GetDefaultFont: () => Promise<string>;
           SetDefaultFont: (family: string) => Promise<void>;
+
+          // ----- Diagnostics -----
+          OpenLogsFolder: () => Promise<void>;
+          GenerateBugReport: () => Promise<string>;
         };
       };
     };
@@ -314,6 +326,35 @@ declare global {
     path: string;
     name: string;
     modified: string;
+  }
+
+  interface ProjectSummary {
+    path: string;
+    name: string;
+    status: string;
+    phase: string;
+    start_date: string;
+    end_date: string;
+    modified: string;
+    charts: number;
+    documents: number;
+    readable: boolean;
+  }
+
+  interface AppSettings {
+    default_font: string;
+    default_theme: string;
+    app_theme: string;
+    auto_save_seconds: number;
+  }
+
+  interface AppInfo {
+    version: string;
+    data_location: string;
+    username: string;
+    settings: AppSettings;
+    fonts: FontFamilyInfo[];
+    logs_dir: string;
   }
 
   interface ProjectMeta {

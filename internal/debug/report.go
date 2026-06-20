@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package debug provides structured, high-precision error reports for
@@ -10,6 +10,7 @@ package debug
 import (
 	"errors"
 	"fmt"
+	"log"
 	"runtime"
 	"time"
 )
@@ -44,6 +45,9 @@ func (e *reportError) Report() ErrorReport { return e.r }
 // short uppercase tag (SNAPSHOT_FAILED, CERT_BUNDLING_FAILED, ...) that
 // the UI can match against to render a specific recovery hint.
 //
+// When err is non-nil, Wrap emits one line to the standard logger so the
+// error reaches the persistent log file without any additional call sites.
+//
 // Passing a nil error returns a zero-value ErrorReport whose Message is
 // empty; callers should not Wrap nil unless they specifically want a
 // placeholder.
@@ -58,6 +62,7 @@ func Wrap(err error, context string) ErrorReport {
 	if err != nil {
 		msg = fmt.Sprintf("[%s] %v", context, err)
 		cause = err.Error()
+		log.Printf("debug: [%s] %v (at %s:%d)", context, err, file, line)
 	}
 
 	return ErrorReport{
