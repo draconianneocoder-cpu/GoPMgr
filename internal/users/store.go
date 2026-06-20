@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package users owns PMForge's local-multi-user system. It provides:
@@ -148,9 +148,10 @@ func (s *Store) CreateAccount(username, displayName, password string) (Account, 
 		return Account{}, err
 	}
 
-	// Check duplicate.
+	// Check duplicate — case-insensitive so that "Alice" and "alice" cannot
+	// coexist and collide on case-insensitive filesystems (e.g. macOS APFS).
 	var count int
-	if err := s.conn.QueryRow(`SELECT COUNT(*) FROM users WHERE username = ?`, username).Scan(&count); err != nil {
+	if err := s.conn.QueryRow(`SELECT COUNT(*) FROM users WHERE lower(username) = lower(?)`, username).Scan(&count); err != nil {
 		return Account{}, err
 	}
 	if count > 0 {

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package users
@@ -209,6 +209,32 @@ func TestAuthenticateReturnsPasswordRehashUpdateError(t *testing.T) {
 	_, err = store.Authenticate("alice", password)
 	if err == nil || !strings.Contains(err.Error(), "persist password rehash") {
 		t.Fatalf("Authenticate error = %v, want persist password rehash error", err)
+	}
+}
+
+// TestCreateAccount_RejectsCaseVariantUsername is a regression test for the
+// APFS case-insensitive filesystem collision: "alice" and "Alice" resolve to
+// the same directory on macOS, leaking project names across accounts.
+// The fix uses lower(username) = lower(?) in the duplicate check.
+func TestCreateAccount_RejectsCaseVariantUsername(t *testing.T) {
+	store, err := Open(filepath.Join(t.TempDir(), "PMForge"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Fatalf("Close: %v", err)
+		}
+	})
+
+	if _, err := store.CreateAccount("alice", "Alice", "correct horse battery staple"); err != nil {
+		t.Fatalf("CreateAccount (original): %v", err)
+	}
+	for _, variant := range []string{"Alice", "ALICE", "aLiCe"} {
+		_, got := store.CreateAccount(variant, "Alice", "another-password")
+		if got != ErrUserExists {
+			t.Errorf("CreateAccount(%q) error = %v, want ErrUserExists", variant, got)
+		}
 	}
 }
 
