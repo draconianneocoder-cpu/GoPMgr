@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Command pmforge is the entry point for the PMForge desktop
@@ -19,21 +19,27 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/menu"
+	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"pmforge/internal/admin"
 	"pmforge/internal/agile"
+	"pmforge/internal/applog"
 	"pmforge/internal/auth"
 	"pmforge/internal/budget"
 	"pmforge/internal/calendar"
@@ -88,6 +94,10 @@ type App struct {
 	adminSvc  *admin.Service
 	templates *templates.Engine       // immutable after NewApp; safe lock-free read
 	sigmaSvc  *service.ProjectService // initialized when a project is open
+
+	// Diagnostic logging — set in main() after applog.Init; never reassigned.
+	logPath string // dated log file path, e.g. .../logs/pmforge-2026-06-20.log
+	logDir  string // parent of logPath, e.g. .../logs
 }
 
 // NewApp constructs an App at process start. It opens the system DB
@@ -280,27 +290,13 @@ func (a *App) ListProjects() ([]ProjectFile, error) {
 		return nil, errors.New("not signed in")
 	}
 	dir := filepath.Join(user.DataDir, "projects")
-	entries, err := os.ReadDir(dir)
+	entries, err := enumerateProjects(dir)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return []ProjectFile{}, nil
-		}
 		return nil, err
 	}
-	var out []ProjectFile
+	out := make([]ProjectFile, 0, len(entries))
 	for _, e := range entries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".pmforge" {
-			continue
-		}
-		info, err := e.Info()
-		if err != nil {
-			continue
-		}
-		out = append(out, ProjectFile{
-			Path:     filepath.Join(dir, e.Name()),
-			Name:     trimExt(e.Name()),
-			Modified: info.ModTime().Format(time.RFC3339),
-		})
+		out = append(out, ProjectFile{Path: e.Path, Name: e.Name, Modified: e.Modified})
 	}
 	return out, nil
 }
@@ -328,13 +324,10 @@ func (a *App) CreateProject(name, description string) (ProjectFile, error) {
 		return ProjectFile{}, err
 	}
 
-	// Choose a non-conflicting filename.
-	path := filepath.Join(dir, safe+".pmforge")
-	for i := 2; ; i++ {
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			break
-		}
-		path = filepath.Join(dir, fmt.Sprintf("%s-%d.pmforge", safe, i))
+	// Each project gets its own uniquely-named, time-stamped subfolder.
+	path, err := newProjectPath(dir, safe)
+	if err != nil {
+		return ProjectFile{}, err
 	}
 
 	d, err := db.InitEncryptedDB(path, dek)
@@ -351,6 +344,7 @@ func (a *App) CreateProject(name, description string) (ProjectFile, error) {
 		_ = d.Close()
 		return ProjectFile{}, err
 	}
+	a.applyGlobalDefaults(d)
 	_ = d.Close()
 
 	return ProjectFile{
@@ -358,6 +352,466 @@ func (a *App) CreateProject(name, description string) (ProjectFile, error) {
 		Name:     name,
 		Modified: time.Now().UTC().Format(time.RFC3339),
 	}, nil
+}
+
+// projectPathFor validates that path points at a .pmforge file inside the
+// signed-in user's own projects directory and returns the cleaned path plus
+// the account. It rejects anything outside that directory so DeleteProject
+// and CloneProject can never touch arbitrary files on disk.
+func (a *App) projectPathFor(path string) (string, *users.Account, error) {
+	user := a.requireUser()
+	if user == nil {
+		return "", nil, errors.New("not signed in")
+	}
+	clean := filepath.Clean(path)
+	if filepath.Ext(clean) != ".pmforge" {
+		return "", nil, errors.New("not a project file")
+	}
+	projectsDir := filepath.Clean(filepath.Join(user.DataDir, "projects"))
+	parent := filepath.Dir(clean)
+	// Allowed: legacy flat layout (<projects>/<name>.pmforge) where parent is
+	// the projects dir, OR the current layout (<projects>/<id>/project.pmforge)
+	// where the parent is an immediate subfolder of the projects dir. Anything
+	// deeper or outside is rejected.
+	if parent != projectsDir && filepath.Dir(parent) != projectsDir {
+		return "", nil, errors.New("project is outside your projects folder")
+	}
+	return clean, user, nil
+}
+
+// DeleteProject permanently removes a project's .pmforge file and its
+// WAL/SHM sidecars from the signed-in user's projects folder. If the project
+// is the one currently open it is closed first so we never unlink an in-use
+// database. The path must live inside the user's own projects directory.
+func (a *App) DeleteProject(path string) error {
+	clean, user, err := a.projectPathFor(path)
+	if err != nil {
+		return err
+	}
+	a.mu.RLock()
+	openPath := a.dbPath
+	a.mu.RUnlock()
+	if openPath != "" && filepath.Clean(openPath) == clean {
+		if err := a.CloseProject(); err != nil {
+			return err
+		}
+	}
+	projectsDir := filepath.Clean(filepath.Join(user.DataDir, "projects"))
+	parent := filepath.Dir(clean)
+	if parent != projectsDir {
+		// Current layout: the project owns its subfolder; remove it whole
+		// (DB + WAL/SHM sidecars). projectPathFor already proved `parent` is
+		// an immediate child of the user's projects dir, so this is safe.
+		return os.RemoveAll(parent)
+	}
+	// Legacy flat layout: remove just the file and its sidecars.
+	for _, p := range []string{clean, clean + "-wal", clean + "-shm"} {
+		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+// CloneProject duplicates a project file under a new, non-conflicting name in
+// the same folder and returns the new ProjectFile. Bytes are copied verbatim,
+// so an encrypted project's clone stays encrypted under the same user DEK.
+// WAL/SHM sidecars are copied when present so no committed data is lost if the
+// source had uncheckpointed pages.
+func (a *App) CloneProject(path string) (ProjectFile, error) {
+	clean, user, err := a.projectPathFor(path)
+	if err != nil {
+		return ProjectFile{}, err
+	}
+	projectsDir := filepath.Join(user.DataDir, "projects")
+	// Recover the source's display name from either layout.
+	var srcName string
+	if filepath.Dir(clean) == filepath.Clean(projectsDir) {
+		srcName = trimExt(filepath.Base(clean)) // legacy flat
+	} else {
+		srcName = projectDisplayName(filepath.Base(filepath.Dir(clean))) // subfolder
+	}
+	cloneName := strings.TrimSpace(srcName) + " copy"
+	dest, err := newProjectPath(projectsDir, sanitizeFilename(cloneName))
+	if err != nil {
+		return ProjectFile{}, err
+	}
+	// When the source is the currently-open project, raw file copy can race
+	// against a WAL checkpoint and produce a clone missing committed data.
+	// Use VACUUM INTO for an atomic, fully-checkpointed snapshot instead.
+	a.mu.RLock()
+	isOpen := a.db != nil && samePath(a.dbPath, clean)
+	openDB := a.db
+	a.mu.RUnlock()
+
+	if isOpen {
+		if err := openDB.CreateSnapshot(dest); err != nil {
+			return ProjectFile{}, fmt.Errorf("clone snapshot: %w", err)
+		}
+		if err := os.Chmod(dest, 0o600); err != nil {
+			_ = os.Remove(dest)
+			return ProjectFile{}, err
+		}
+	} else {
+		if err := copyFile(clean, dest); err != nil {
+			return ProjectFile{}, err
+		}
+		for _, suffix := range []string{"-wal", "-shm"} {
+			if _, statErr := os.Stat(clean + suffix); statErr == nil {
+				_ = copyFile(clean+suffix, dest+suffix)
+			}
+		}
+	}
+	modified := time.Now().UTC().Format(time.RFC3339)
+	if info, statErr := os.Stat(dest); statErr == nil {
+		modified = info.ModTime().Format(time.RFC3339)
+	}
+	return ProjectFile{
+		Path:     dest,
+		Name:     cloneName,
+		Modified: modified,
+	}, nil
+}
+
+// copyFile copies src to dst, creating dst with private (0600) permissions.
+func copyFile(src, dst string) (err error) {
+	in, err := os.Open(src) // #nosec G304 -- src is a validated project path under the user's folder.
+	if err != nil {
+		return err
+	}
+	defer func() { _ = in.Close() }()
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) // #nosec G304 -- dst derived from the user's projects folder.
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if cerr := out.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
+	_, err = io.Copy(out, in)
+	return err
+}
+
+// newProjectPath creates a fresh, uniquely-named subfolder for a project
+// under dir and returns the path of the project database inside it. The
+// folder ID is "<YYYYMMDD-HHMMSS>-<safe-name>", so every project gets a
+// unique, time-stamped folder - this avoids name collisions and keeps a
+// project's files grouped together. `safe` must be a non-empty sanitized
+// name (the caller validates it).
+func newProjectPath(dir, safe string) (string, error) {
+	id := time.Now().Format("20060102-150405") + "-" + safe
+	folder := filepath.Join(dir, id)
+	for i := 2; ; i++ {
+		if _, err := os.Stat(folder); os.IsNotExist(err) {
+			break
+		}
+		folder = filepath.Join(dir, fmt.Sprintf("%s-%d", id, i))
+	}
+	if err := os.MkdirAll(folder, 0o700); err != nil {
+		return "", err
+	}
+	return filepath.Join(folder, "project.pmforge"), nil
+}
+
+// projectFolderRe matches the "<YYYYMMDD-HHMMSS>-" prefix newProjectPath puts
+// on a project folder, so the display name can be recovered from it.
+var projectFolderRe = regexp.MustCompile(`^\d{8}-\d{6}-`)
+
+// projectDisplayName recovers a human-readable name from a project folder
+// name by stripping the timestamp prefix.
+func projectDisplayName(folder string) string {
+	return projectFolderRe.ReplaceAllString(folder, "")
+}
+
+// projectEntry is one discovered project file plus lightweight metadata.
+type projectEntry struct {
+	Path     string
+	Name     string
+	Modified string
+}
+
+// enumerateProjects lists every project in projectsDir, supporting BOTH the
+// current layout (each project in its own "<id>/project.pmforge" subfolder)
+// and the legacy flat layout ("<name>.pmforge" directly in projectsDir), so
+// projects created before the subfolder change keep working.
+func enumerateProjects(projectsDir string) ([]projectEntry, error) {
+	entries, err := os.ReadDir(projectsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var out []projectEntry
+	for _, e := range entries {
+		if e.IsDir() {
+			pf := filepath.Join(projectsDir, e.Name(), "project.pmforge")
+			info, serr := os.Stat(pf)
+			if serr != nil {
+				continue // not a project subfolder
+			}
+			out = append(out, projectEntry{
+				Path:     pf,
+				Name:     projectDisplayName(e.Name()),
+				Modified: info.ModTime().Format(time.RFC3339),
+			})
+			continue
+		}
+		if filepath.Ext(e.Name()) != ".pmforge" {
+			continue
+		}
+		info, ierr := e.Info()
+		if ierr != nil {
+			continue
+		}
+		out = append(out, projectEntry{
+			Path:     filepath.Join(projectsDir, e.Name()),
+			Name:     trimExt(e.Name()),
+			Modified: info.ModTime().Format(time.RFC3339),
+		})
+	}
+	return out, nil
+}
+
+// ProjectSummary is a portfolio-level snapshot of one project, produced by
+// ProjectsOverview without making the project the active one.
+type ProjectSummary struct {
+	Path      string `json:"path"`
+	Name      string `json:"name"`
+	Status    string `json:"status"` // planning|active|on_hold|complete|cancelled ("" if unreadable)
+	Phase     string `json:"phase"`  // initiation|planning|execution|monitoring|closing
+	StartDate string `json:"start_date"`
+	EndDate   string `json:"end_date"`
+	Modified  string `json:"modified"`
+	Charts    int    `json:"charts"`
+	Documents int    `json:"documents"`
+	Readable  bool   `json:"readable"` // false if the file could not be opened/decrypted
+}
+
+// ProjectsOverview returns a portfolio snapshot of every project in the
+// signed-in user's folder: each project's status / phase / dates plus chart
+// and document counts. Each project database is opened with the session DEK
+// and closed again, so the app's active project is left untouched. A project
+// that cannot be opened is still listed (Readable=false) so nothing silently
+// disappears from the overview.
+func (a *App) ProjectsOverview() ([]ProjectSummary, error) {
+	user := a.requireUser()
+	if user == nil {
+		return nil, errors.New("not signed in")
+	}
+	a.mu.RLock()
+	dek, err := a.requireDEKLocked()
+	a.mu.RUnlock()
+	if err != nil {
+		return nil, err
+	}
+	dir := filepath.Join(user.DataDir, "projects")
+	entries, err := enumerateProjects(dir)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ProjectSummary, 0, len(entries))
+	for _, e := range entries {
+		sum := ProjectSummary{Path: e.Path, Name: e.Name, Modified: e.Modified}
+		if d, derr := db.InitEncryptedDB(e.Path, dek); derr == nil {
+			if p, perr := d.GetProject(); perr == nil {
+				if strings.TrimSpace(p.Name) != "" {
+					sum.Name = p.Name // prefer the real (typed) project name
+				}
+				sum.Status = p.Status
+				sum.Phase = p.Phase
+				sum.StartDate = p.StartDate
+				sum.EndDate = p.EndDate
+				if cs, cerr := d.ListCharts(p.ID, ""); cerr == nil {
+					sum.Charts = len(cs)
+				}
+				if ds, dderr := d.ListDocuments(p.ID, ""); dderr == nil {
+					sum.Documents = len(ds)
+				}
+				sum.Readable = true
+			}
+			_ = d.Close()
+		}
+		out = append(out, sum)
+	}
+	return out, nil
+}
+
+// AppSettings holds per-user, app-level preferences that apply across all
+// projects (currently the default font/theme used when creating a project).
+// Stored as JSON in the user's data folder, independent of any project DB.
+type AppSettings struct {
+	// DefaultFont is the export font seeded into newly created projects.
+	DefaultFont string `json:"default_font"`
+	// DefaultTheme is the export theme: modern|classic|archival ("" => modern).
+	DefaultTheme string `json:"default_theme"`
+	// AppTheme is the UI theme: light|dark ("" => dark).
+	AppTheme string `json:"app_theme"`
+	// AutoSaveSeconds is the editor auto-save interval in seconds; 0 disables auto-save.
+	AutoSaveSeconds int `json:"auto_save_seconds"`
+}
+
+// defaultAppSettings is what a brand-new user gets before they save any
+// preferences: auto-save on at 60s, theme/font left to their built-in
+// defaults (dark / catalog font).
+func defaultAppSettings() AppSettings {
+	return AppSettings{AutoSaveSeconds: 60}
+}
+
+// AppInfo is the global-settings screen payload: editable app settings plus
+// read-only environment info and the available font catalog.
+type AppInfo struct {
+	Version      string             `json:"version"`
+	DataLocation string             `json:"data_location"`
+	Username     string             `json:"username"`
+	Settings     AppSettings        `json:"settings"`
+	Fonts        []fonts.FamilyInfo `json:"fonts"`
+	LogsDir      string             `json:"logs_dir"`
+}
+
+func (a *App) appSettingsPath() (string, error) {
+	user := a.requireUser()
+	if user == nil {
+		return "", errors.New("not signed in")
+	}
+	return filepath.Join(user.DataDir, "app-settings.json"), nil
+}
+
+// loadGlobalAppSettings reads the per-user app settings, returning zero values
+// (no error) when the file is missing or unreadable.
+func (a *App) loadGlobalAppSettings() AppSettings {
+	path, err := a.appSettingsPath()
+	if err != nil {
+		return defaultAppSettings()
+	}
+	data, err := os.ReadFile(path) // #nosec G304 -- path is under the user's own data folder.
+	if err != nil {
+		// No settings yet: hand back the defaults (auto-save on at 60s).
+		return defaultAppSettings()
+	}
+	var s AppSettings
+	_ = json.Unmarshal(data, &s)
+	return s
+}
+
+// GetAppInfo returns the global application-settings screen payload.
+func (a *App) GetAppInfo() (AppInfo, error) {
+	user := a.requireUser()
+	if user == nil {
+		return AppInfo{}, errors.New("not signed in")
+	}
+	return AppInfo{
+		Version:      cli.Version,
+		DataLocation: user.DataDir,
+		Username:     user.Username,
+		Settings:     a.loadGlobalAppSettings(),
+		Fonts:        a.ListFonts(),
+		LogsDir:      a.logDir,
+	}, nil
+}
+
+// SaveAppSettings persists the per-user, app-level preferences as JSON.
+func (a *App) SaveAppSettings(s AppSettings) error {
+	path, err := a.appSettingsPath()
+	if err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o600)
+}
+
+// OpenLogsFolder opens the PMForge log directory in the system file manager
+// so the user can inspect or attach log files to a bug report manually.
+func (a *App) OpenLogsFolder() error {
+	if a.logDir == "" {
+		return errors.New("log directory not available")
+	}
+	return applog.OpenFolder(a.logDir)
+}
+
+// GenerateBugReport writes a self-contained diagnostic bundle to the logs
+// directory and returns its path. The bundle includes environment info and
+// the tail of today's log file. It never contains credentials or key material.
+func (a *App) GenerateBugReport() (string, error) {
+	if a.logDir == "" {
+		return "", errors.New("log directory not available")
+	}
+	if err := os.MkdirAll(a.logDir, 0o700); err != nil {
+		return "", fmt.Errorf("ensure log dir: %w", err)
+	}
+	ts := time.Now().UTC()
+	reportPath := filepath.Join(a.logDir, fmt.Sprintf("bug-report-%s.txt", ts.Format("20060102-150405")))
+
+	var buf strings.Builder
+	fmt.Fprintf(&buf, "PMForge Diagnostic Report\n")
+	fmt.Fprintf(&buf, "Generated: %s\n\n", ts.Format(time.RFC3339Nano))
+	fmt.Fprintf(&buf, "=== Environment ===\n")
+	fmt.Fprintf(&buf, "PMForge version: %s\n", cli.Version)
+	fmt.Fprintf(&buf, "OS:              %s/%s\n", runtime.GOOS, runtime.GOARCH)
+	fmt.Fprintf(&buf, "Go runtime:      %s\n", runtime.Version())
+	fmt.Fprintf(&buf, "PID:             %d\n", os.Getpid())
+	fmt.Fprintf(&buf, "Log directory:   %s\n", a.logDir)
+	if a.logPath != "" {
+		fmt.Fprintf(&buf, "Log file:        %s\n", a.logPath)
+	}
+	if user := a.requireUser(); user != nil {
+		fmt.Fprintf(&buf, "Data directory:  %s\n", user.DataDir)
+	}
+	fmt.Fprintf(&buf, "\n=== Recent Log (last 200 lines) ===\n")
+	if a.logPath != "" {
+		tail, err := logTail(a.logPath, 200)
+		if err != nil {
+			fmt.Fprintf(&buf, "(could not read log: %v)\n", err)
+		} else {
+			buf.WriteString(tail)
+		}
+	} else {
+		fmt.Fprintf(&buf, "(no log file — logging fell back to stderr at startup)\n")
+	}
+
+	if err := os.WriteFile(reportPath, []byte(buf.String()), 0o600); err != nil { // #nosec G306 -- 0o600: report is private to the user.
+		return "", fmt.Errorf("write bug report: %w", err)
+	}
+	log.Printf("bug report written to: %s", reportPath)
+	return reportPath, nil
+}
+
+// logTail returns up to maxLines lines from the end of the file at path.
+func logTail(path string, maxLines int) (string, error) {
+	data, err := os.ReadFile(path) // #nosec G304 -- path is the PMForge log file, resolved at startup.
+	if err != nil {
+		return "", err
+	}
+	lines := strings.Split(string(data), "\n")
+	if len(lines) > maxLines {
+		lines = lines[len(lines)-maxLines:]
+	}
+	return strings.Join(lines, "\n"), nil
+}
+
+// applyGlobalDefaults seeds a freshly created project's settings with the
+// user's app-level default font/theme. Best-effort: any failure is ignored so
+// project creation never fails because of a preference.
+func (a *App) applyGlobalDefaults(d *db.Database) {
+	g := a.loadGlobalAppSettings()
+	if g.DefaultFont == "" && g.DefaultTheme == "" {
+		return
+	}
+	s, err := d.GetSettings()
+	if err != nil {
+		return
+	}
+	if g.DefaultFont != "" {
+		s.DefaultFont = g.DefaultFont
+	}
+	if g.DefaultTheme != "" {
+		s.ExportTheme = g.DefaultTheme
+	}
+	_ = d.SaveSettings(s)
 }
 
 // OpenProject loads a .pmforge file as the current project.
@@ -535,6 +989,11 @@ func (a *App) DeleteChart(id string) error {
 	if d == nil {
 		return errors.New("no project open")
 	}
+	actor := "unknown"
+	if u := a.requireUser(); u != nil {
+		actor = u.Username
+	}
+	_ = d.LogAction(actor, "delete_chart", id, "")
 	return d.DeleteChart(id)
 }
 
@@ -957,9 +1416,11 @@ func (a *App) ImportMSPDIChart() (db.Chart, error) {
 		return db.Chart{}, errors.New("no context (Wails not started)")
 	}
 	path, err := wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
-		Title: "Import MSPDI schedule",
+		Title:            "Import project schedule",
+		DefaultDirectory: a.userDir(),
 		Filters: []wailsruntime.FileFilter{
-			{DisplayName: "MSPDI XML (*.xml)", Pattern: "*.xml"},
+			{DisplayName: "Project schedules (*.xml, *.mpp, *.mpx, *.pod)", Pattern: "*.xml;*.mpp;*.mpx;*.pod"},
+			{DisplayName: "MS Project XML (*.xml)", Pattern: "*.xml"},
 			{DisplayName: "All files", Pattern: "*.*"},
 		},
 	})
@@ -969,11 +1430,39 @@ func (a *App) ImportMSPDIChart() (db.Chart, error) {
 	if path == "" {
 		return db.Chart{}, errors.New("import cancelled")
 	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return db.Chart{}, err
+	return a.importScheduleFile(path)
+}
+
+// importScheduleFile routes an imported project file by extension. MS Project
+// XML (MSPDI, *.xml) is parsed directly. Binary/serialized formats (.mpp,
+// .pod) and the legacy .mpx text format cannot be read in pure Go, so we
+// return a precise, actionable message pointing at the universally-supported
+// MS Project XML interchange path rather than failing opaquely.
+func (a *App) importScheduleFile(path string) (db.Chart, error) {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".mpp":
+		return db.Chart{}, errors.New(
+			"Microsoft Project .mpp is a binary format PMForge cannot read directly. " +
+				"In Microsoft Project choose File → Save As → \"Microsoft Project XML (*.xml)\", " +
+				"then import that .xml here.")
+	case ".mpx":
+		return db.Chart{}, errors.New(
+			"The legacy .mpx format is not supported directly. Re-save it as " +
+				"\"Microsoft Project XML (*.xml)\" from Microsoft Project and import the .xml here.")
+	case ".pod":
+		return db.Chart{}, errors.New(
+			"ProjectLibre .pod is a native binary format PMForge cannot read directly. " +
+				"In ProjectLibre choose File → Save As / Export → \"Microsoft Project XML (*.xml)\", " +
+				"then import that .xml here.")
+	default:
+		// .xml or any other extension: attempt the MSPDI parser (it fails
+		// clearly if the content is not MSPDI XML).
+		data, err := os.ReadFile(path) // #nosec G304 -- user-selected import file.
+		if err != nil {
+			return db.Chart{}, err
+		}
+		return a.importMSPDIFromBytes(data)
 	}
-	return a.importMSPDIFromBytes(data)
 }
 
 // importMSPDIFromBytes is ImportMSPDIChart minus the file dialog so
@@ -1105,6 +1594,11 @@ func (a *App) DeleteDocument(id string) error {
 	if d == nil {
 		return errors.New("no project open")
 	}
+	actor := "unknown"
+	if u := a.requireUser(); u != nil {
+		actor = u.Username
+	}
+	_ = d.LogAction(actor, "delete_document", id, "")
 	return d.DeleteDocument(id)
 }
 
@@ -1372,6 +1866,25 @@ func (a *App) ExportScheduleReportPDF() (string, error) {
 	return a.exportScheduleReportAs(export.FormatPDF)
 }
 
+// ExportScheduleReportCSV writes the current project's schedule (tasks with
+// CPM fields) as a UTF-8 CSV for spreadsheets (Excel, Google Sheets).
+func (a *App) ExportScheduleReportCSV() (string, error) {
+	return a.exportScheduleReportAs(export.FormatCSV)
+}
+
+// ExportScheduleReportHTML writes a self-contained, printable HTML report of
+// the current project's schedule for publishing or viewing in a browser.
+func (a *App) ExportScheduleReportHTML() (string, error) {
+	return a.exportScheduleReportAs(export.FormatHTML)
+}
+
+// ExportScheduleReportMSPDI writes the current project's schedule as Microsoft
+// Project MSPDI XML (.xml) for interchange with MS Project, GanttProject,
+// ProjectLibre, and other tools that read the MSPDI schema.
+func (a *App) ExportScheduleReportMSPDI() (string, error) {
+	return a.exportScheduleReportAs(export.FormatMSPDI)
+}
+
 // exportDocumentAs is the shared body of every per-format export
 // method on App: fetch the document, call the format-specific
 // renderer, write to the user's exports/ folder.
@@ -1470,9 +1983,20 @@ func (a *App) exportScheduleReportAs(format export.ExportFormat) (string, error)
 		return "", err
 	}
 
-	ext := ".docx"
-	if format == export.FormatODT {
+	var ext string
+	switch format {
+	case export.FormatODT:
 		ext = ".odt"
+	case export.FormatPDF:
+		ext = ".pdf"
+	case export.FormatCSV:
+		ext = ".csv"
+	case export.FormatHTML:
+		ext = ".html"
+	case export.FormatMSPDI:
+		ext = ".xml"
+	default:
+		ext = ".docx"
 	}
 
 	outPath := filepath.Join(outDir, fmt.Sprintf("Schedule-Report-%s%s",
@@ -1556,7 +2080,9 @@ func loadCurrentProjectSchedule(d *db.Database, projectID string) (map[string]*k
 	// 1. Try current V2 CPM chart (preferred)
 	if chs, err := d.ListCharts(projectID, string(charts.KindCPM)); err == nil && len(chs) > 0 {
 		// Most recently updated
-		sort.Slice(chs, func(i, j int) bool { return chs[i].UpdatedAt.After(chs[j].UpdatedAt) })
+		// UpdatedAt is an RFC3339Nano string; lexicographic order matches
+		// chronological order, so ">" yields most-recent-first.
+		sort.Slice(chs, func(i, j int) bool { return chs[i].UpdatedAt > chs[j].UpdatedAt })
 		if tasks, err := cpmChartDataToKernelTasks(chs[0].Data); err == nil && len(tasks) > 0 {
 			return tasks, nil
 		}
@@ -1807,20 +2333,29 @@ func (a *App) SetAgileEnabled(enabled bool) error {
 
 // EnsureDefaultBoard returns (and creates if missing) the default
 // Kanban board for the open project, along with its seeded columns.
-func (a *App) EnsureDefaultBoard() (agile.Board, []agile.Column, error) {
+// BoardWithColumns is the single-object result of EnsureDefaultBoard.
+// Returned as one struct (not multiple values) so the Wails bridge marshals
+// it to a JS object with named fields, which the frontend reads as
+// `res.board` / `res.columns` instead of destructuring an array.
+type BoardWithColumns struct {
+	Board   agile.Board    `json:"board"`
+	Columns []agile.Column `json:"columns"`
+}
+
+func (a *App) EnsureDefaultBoard() (BoardWithColumns, error) {
 	s, err := a.agileStore()
 	if err != nil {
-		return agile.Board{}, nil, err
+		return BoardWithColumns{}, err
 	}
 	b, err := s.EnsureDefaultBoard()
 	if err != nil {
-		return agile.Board{}, nil, err
+		return BoardWithColumns{}, err
 	}
 	cols, err := s.ListColumns(b.ID)
 	if err != nil {
-		return agile.Board{}, nil, err
+		return BoardWithColumns{}, err
 	}
-	return b, cols, nil
+	return BoardWithColumns{Board: b, Columns: cols}, nil
 }
 
 // SaveColumn upserts a column (rename, change WIP, reorder).
@@ -1873,6 +2408,15 @@ func (a *App) ListWorkItems(sprintID, state, assignee string) ([]agile.WorkItem,
 
 // DeleteWorkItem removes a work item.
 func (a *App) DeleteWorkItem(id string) error {
+	d := a.requireDB()
+	if d == nil {
+		return errors.New("no project open")
+	}
+	actor := "unknown"
+	if u := a.requireUser(); u != nil {
+		actor = u.Username
+	}
+	_ = d.LogAction(actor, "delete_work_item", id, "")
 	s, err := a.agileStore()
 	if err != nil {
 		return err
@@ -1990,41 +2534,50 @@ func (a *App) LaunchpadEvaluate(industry, methodology string) ([]string, error) 
 // CreateProject, then applies the seed actions returned by the
 // templates engine. The receipts slice records what was created so
 // the GUI can show the user a "we set up the following for you" toast.
+// LaunchpadResult is the single-object result of CreateProjectFromLaunchpad.
+// Returned as one struct (not multiple values) so the Wails bridge marshals
+// it to a JS object with named fields, which the frontend reads as
+// `res.project` / `res.path` instead of destructuring an array (a null
+// array result silently broke project creation in the UI).
+type LaunchpadResult struct {
+	Project db.Project              `json:"project"`
+	Seeds   []templates.SeedReceipt `json:"seeds"`
+	Path    string                  `json:"path"`
+}
+
 func (a *App) CreateProjectFromLaunchpad(
 	name, description, industry, subCategory, methodology, countryCode string,
 	seeds []string,
-) (db.Project, []templates.SeedReceipt, string, error) {
+) (LaunchpadResult, error) {
 	user := a.requireUser()
 	if user == nil {
-		return db.Project{}, nil, "", errors.New("not signed in")
+		return LaunchpadResult{}, errors.New("not signed in")
 	}
 	safe := sanitizeFilename(name)
 	if safe == "" {
-		return db.Project{}, nil, "", errors.New("invalid project name")
+		return LaunchpadResult{}, errors.New("invalid project name")
 	}
 	dir := filepath.Join(user.DataDir, "projects")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return db.Project{}, nil, "", err
+		return LaunchpadResult{}, err
 	}
 	a.mu.RLock()
 	dek, err := a.requireDEKLocked()
 	a.mu.RUnlock()
 	if err != nil {
-		return db.Project{}, nil, "", err
+		return LaunchpadResult{}, err
 	}
 
-	// Choose a non-conflicting filename, same logic as CreateProject.
-	path := filepath.Join(dir, safe+".pmforge")
-	for i := 2; ; i++ {
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			break
-		}
-		path = filepath.Join(dir, fmt.Sprintf("%s-%d.pmforge", safe, i))
+	// Each project gets its own uniquely-named, time-stamped subfolder
+	// (same scheme as CreateProject).
+	path, err := newProjectPath(dir, safe)
+	if err != nil {
+		return LaunchpadResult{}, err
 	}
 
 	d, err := db.InitEncryptedDB(path, dek)
 	if err != nil {
-		return db.Project{}, nil, "", err
+		return LaunchpadResult{}, err
 	}
 	// We close the local handle at the end and rely on OpenProject
 	// to install the project as the app's active one, so the flow
@@ -2042,21 +2595,31 @@ func (a *App) CreateProjectFromLaunchpad(
 	})
 	if err != nil {
 		_ = d.Close()
-		return db.Project{}, nil, "", err
+		return LaunchpadResult{}, err
 	}
+	a.applyGlobalDefaults(d)
 
 	// Apply seeds via the dedicated seeder.
 	seeder := templates.NewSeeder(d, proj.ID)
 	receipts, seedErr := seeder.Apply(seeds)
 	_ = d.Close()
 
+	// Install as the active project now so that dashboard operations
+	// (opening charts, documents, etc.) work immediately after creation
+	// without requiring a separate OpenProject call from the frontend.
+	if _, openErr := a.OpenProject(path); openErr != nil {
+		return LaunchpadResult{Project: proj, Seeds: receipts, Path: path},
+			fmt.Errorf("project created but could not activate: %w", openErr)
+	}
+
 	// Even on seedErr we keep the project — the user can fix it
 	// from the dashboard. Bubble the error up so the GUI shows a
 	// notice.
 	if seedErr != nil {
-		return proj, receipts, path, fmt.Errorf("project created but seeding partial: %w", seedErr)
+		return LaunchpadResult{Project: proj, Seeds: receipts, Path: path},
+			fmt.Errorf("project created but seeding partial: %w", seedErr)
 	}
-	return proj, receipts, path, nil
+	return LaunchpadResult{Project: proj, Seeds: receipts, Path: path}, nil
 }
 
 // UpdateProjectIndustry persists changes to industry / sub-category /
@@ -2309,7 +2872,8 @@ func (a *App) ChooseCertFile() (string, error) {
 		return "", errors.New("no context (Wails not started)")
 	}
 	return wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
-		Title: "Select signing certificate",
+		Title:            "Select signing certificate",
+		DefaultDirectory: a.userDir(),
 		Filters: []wailsruntime.FileFilter{
 			{
 				DisplayName: "PKCS#12 bundles (*.p12, *.pfx)",
@@ -2358,7 +2922,8 @@ func (a *App) ImportFont() (fonts.FamilyInfo, error) {
 		return fonts.FamilyInfo{}, errors.New("not signed in")
 	}
 	path, err := wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
-		Title: "Select a TrueType font (.ttf)",
+		Title:            "Select a TrueType font (.ttf)",
+		DefaultDirectory: a.userDir(),
 		Filters: []wailsruntime.FileFilter{
 			{DisplayName: "TrueType fonts (*.ttf)", Pattern: "*.ttf"},
 		},
@@ -2542,6 +3107,18 @@ func (a *App) requireUser() *users.Account {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return a.user
+}
+
+// userDir returns the signed-in user's data directory, or "" if nobody is
+// signed in. Used to open native file pickers in the user's own folder
+// rather than a shared/last-used location. (This sets only the dialog's
+// initial directory; it is a nudge, not a hard boundary - project contents
+// are protected by per-user encryption regardless.)
+func (a *App) userDir() string {
+	if u := a.requireUser(); u != nil {
+		return u.DataDir
+	}
+	return ""
 }
 
 // requireDEKLocked returns a copy of the active user's unlocked DEK.
@@ -2894,6 +3471,86 @@ func sanitizeFilename(s string) string {
 // main: CLI dispatch + Wails launch
 // =========================================================
 
+// buildAppMenu constructs the native application menu. The File submenu drives
+// the project lifecycle and Help shows an About dialog. Menu items emit Wails
+// runtime events that the frontend (App.svelte) listens for and turns into
+// navigation, so the menu triggers the same flows as the in-app buttons. On
+// macOS the standard App and Edit menus are included so Quit/Hide and
+// copy/paste/select-all keep working when a custom menu is set.
+func buildAppMenu(app *App) *menu.Menu {
+	// emit returns a menu callback that fires a frontend event. app.ctx is nil
+	// until OnStartup runs, but menu clicks only happen after the window is up,
+	// so the guard is belt-and-suspenders.
+	emit := func(event string) func(*menu.CallbackData) {
+		return func(_ *menu.CallbackData) {
+			if app.ctx != nil {
+				wailsruntime.EventsEmit(app.ctx, event)
+			}
+		}
+	}
+
+	m := menu.NewMenu()
+	if runtime.GOOS == "darwin" {
+		m.Append(menu.AppMenu()) // standard macOS app menu: About/Hide/Quit
+	}
+
+	fileMenu := m.AddSubmenu("File")
+	fileMenu.AddText("Dashboard", keys.CmdOrCtrl("d"), emit("menu:dashboard"))
+	fileMenu.AddText("New Project", keys.CmdOrCtrl("n"), emit("menu:new-project"))
+	fileMenu.AddText("Open Project…", keys.CmdOrCtrl("o"), emit("menu:open-project"))
+	fileMenu.AddSeparator()
+	fileMenu.AddText("Application Settings…", keys.CmdOrCtrl(","), emit("menu:app-settings"))
+	fileMenu.AddText("Project Settings…", nil, emit("menu:settings"))
+	fileMenu.AddSeparator()
+	fileMenu.AddText("Close Project", keys.CmdOrCtrl("w"), emit("menu:close-project"))
+	if runtime.GOOS != "darwin" {
+		// macOS gets Quit from the App menu; other platforms need it here.
+		fileMenu.AddSeparator()
+		fileMenu.AddText("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
+			if app.ctx != nil {
+				wailsruntime.Quit(app.ctx)
+			}
+		})
+	}
+
+	if runtime.GOOS == "darwin" {
+		m.Append(menu.EditMenu())   // undo/redo/cut/copy/paste/select-all
+		m.Append(menu.WindowMenu()) // Minimize (Cmd+M), Zoom, Bring All to Front
+	} else {
+		// Windows and Linux don't get the macOS role-based Window menu, so
+		// wire Maximize explicitly so keyboard users aren't forced to reach
+		// for the title-bar button.
+		windowMenu := m.AddSubmenu("Window")
+		windowMenu.AddText("Maximize / Restore", keys.Key("F11"), func(_ *menu.CallbackData) {
+			if app.ctx != nil {
+				wailsruntime.WindowToggleMaximise(app.ctx)
+			}
+		})
+		windowMenu.AddText("Minimize", nil, func(_ *menu.CallbackData) {
+			if app.ctx != nil {
+				wailsruntime.WindowMinimise(app.ctx)
+			}
+		})
+	}
+
+	helpMenu := m.AddSubmenu("Help")
+	helpMenu.AddText("About PMForge", nil, func(_ *menu.CallbackData) {
+		if app.ctx == nil {
+			return
+		}
+		_, _ = wailsruntime.MessageDialog(app.ctx, wailsruntime.MessageDialogOptions{
+			Type:  wailsruntime.InfoDialog,
+			Title: "About PMForge",
+			Message: fmt.Sprintf(
+				"PMForge %s\n\nLocal-first project controls.\nCopyright (C) 2026 James L. Burns and The PMForge Contributors.\nLicensed under GPL-3.0-or-later.",
+				cli.Version,
+			),
+		})
+	})
+
+	return m
+}
+
 func main() {
 	cfg := cli.ParseFlags()
 	export.SetVersion(cli.Version)
@@ -2917,18 +3574,41 @@ func main() {
 	}
 
 	// GUI mode.
+	//
+	// Initialise diagnostic logging before anything else in this path. A
+	// Wails binary launched from Finder/Explorer/.desktop has its stderr
+	// routed to a null sink, so a bare log.Fatalf here would make the app
+	// die with no window and no trace. applog tees the log to stderr AND a
+	// dated file under the PMForge data tree, and applog.Fatal additionally
+	// shows a native error dialog so a startup failure is never silent.
+	root, rootErr := users.DefaultRootDir()
+	if rootErr != nil {
+		// Non-fatal: applog falls back to a home/temp logs directory.
+		root = ""
+	}
+	logPath, closeLog := applog.Init(root)
+	defer closeLog()
+	log.Printf("PMForge %s starting (pid=%d, %s/%s, %s)",
+		cli.Version, os.Getpid(), runtime.GOOS, runtime.GOARCH, runtime.Version())
+
 	app, err := NewApp()
 	if err != nil {
-		log.Fatalf("init app: %v", err)
+		applog.Fatal("PMForge could not start",
+			"PMForge failed to initialise its local data store.", logPath, err)
 	}
+	app.logPath = logPath
+	app.logDir = applog.LogDir(root)
 
 	err = wails.Run(&options.App{
-		Title:  "PMForge",
-		Width:  1280,
-		Height: 800,
+		Title:     "PMForge",
+		Width:     1280,
+		Height:    800,
+		MinWidth:  800,
+		MinHeight: 600,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
+		Menu: buildAppMenu(app),
 		OnStartup: func(ctx context.Context) {
 			app.ctx = ctx
 		},
@@ -2936,8 +3616,10 @@ func main() {
 		Bind:       []interface{}{app},
 	})
 	if err != nil {
-		log.Fatalf("wails: %v", err)
+		applog.Fatal("PMForge could not start",
+			"PMForge failed to start its application window.", logPath, err)
 	}
+	log.Print("PMForge exited cleanly")
 }
 
 func headlessProjectMode(cfg *cli.Config) bool {
@@ -2987,6 +3669,12 @@ func inferHeadlessRootDir(projectPath, username string) (string, error) {
 		return "", err
 	}
 	projectsDir := filepath.Dir(absPath)
+	// Current layout nests each project in its own subfolder:
+	// <root>/<username>/projects/<id>/project.pmforge. Step up out of the
+	// per-project subfolder so projectsDir points at ".../projects".
+	if filepath.Base(projectsDir) != "projects" {
+		projectsDir = filepath.Dir(projectsDir)
+	}
 	userDir := filepath.Dir(projectsDir)
 	if filepath.Base(projectsDir) != "projects" || filepath.Base(userDir) != username {
 		return "", fmt.Errorf("encrypted headless project must be under <pmforge-root>/%s/projects", username)

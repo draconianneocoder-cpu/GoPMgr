@@ -1,10 +1,11 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package debug
 
 import (
 	"errors"
+	"log"
 	"strings"
 	"testing"
 	"time"
@@ -112,5 +113,29 @@ func TestReport_NilError_ReturnsFalse(t *testing.T) {
 	_, ok := Report(nil)
 	if ok {
 		t.Error("Report should return false for nil")
+	}
+}
+
+func TestWrap_LogsNonNilError(t *testing.T) {
+	var buf strings.Builder
+	saved := log.Writer()
+	log.SetOutput(&buf)
+	t.Cleanup(func() { log.SetOutput(saved) })
+
+	Wrap(errors.New("disk full"), "SNAPSHOT_FAILED")
+	if !strings.Contains(buf.String(), "SNAPSHOT_FAILED") {
+		t.Errorf("Wrap with non-nil err did not log context tag; got: %q", buf.String())
+	}
+}
+
+func TestWrap_DoesNotLogNilError(t *testing.T) {
+	var buf strings.Builder
+	saved := log.Writer()
+	log.SetOutput(&buf)
+	t.Cleanup(func() { log.SetOutput(saved) })
+
+	Wrap(nil, "PLACEHOLDER")
+	if buf.Len() > 0 {
+		t.Errorf("Wrap with nil err must not emit a log line; got: %q", buf.String())
 	}
 }
