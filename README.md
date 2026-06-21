@@ -615,6 +615,18 @@ both fatal startup branches - local data-store initialisation and
 (`--check` / `--repair` / `--version`) are unchanged: they log to stderr,
 which is visible in the terminal where they are run.
 
+## Security hardening (2026-06-21)
+
+A full-codebase audit fixed six backend and three frontend bugs:
+
+- **sigmaSvc nil-pointer dereference race (HIGH):** All Sigma API methods accessed `a.sigmaSvc` after releasing the RLock. New `requireSigmaSvc()` helper; all ~20 Sigma methods updated.
+- **DEK use-after-wipe (HIGH):** `IssueRecoveryCodes` copied the DEK slice header (shared backing array); `Logout()` zeros it in place. Fixed with `requireDEKLocked()` (deep copy).
+- **RepairAndSwap sigmaSvc leak (MEDIUM):** After an atomic DB swap, `a.sigmaSvc` still pointed at the closed database. Fixed alongside `a.adminSvc` assignment.
+- **PackEnabled data race (MEDIUM):** `agile.PackEnabled bool` accessed from multiple goroutines. Changed to `atomic.Bool` (Go 1.19+).
+- **TOCTOU on recovery code redemption (MEDIUM):** Begin the db transaction before the hash scan; close the rows cursor explicitly before writes to prevent cursor-across-write conflict in SQLite.
+- **ReportComposer concurrent export (MEDIUM):** Plain Export PDF was not disabled while the Sign modal was open. Fixed with `|| showSignModal` guard.
+- **SignCertificateModal `onConfirm` signature (LOW):** Updated to two-arg `(password, certPath)` so the parent receives the cert path chosen inside the dialog, not only the prop value.
+
 ## License
 
 Source code: **GPL-3.0-or-later**. Documentation: **GFDL-1.3-or-later**.
