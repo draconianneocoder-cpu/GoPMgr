@@ -3620,6 +3620,7 @@ func buildAppMenu(app *App) *menu.Menu {
 	}
 
 	helpMenu := m.AddSubmenu("Help")
+	helpMenu.AddText("User Guide", nil, emit("menu:help"))
 	helpMenu.AddText("About PMForge", nil, func(_ *menu.CallbackData) {
 		if app.ctx == nil {
 			return

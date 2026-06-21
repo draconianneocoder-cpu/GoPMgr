@@ -10,12 +10,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../session.svelte';
   import Logo from './Logo.svelte';
 
-  let { active = 'portfolio' }: { active?: 'portfolio' | 'projects' | 'settings' | 'admin' } = $props();
+  let { active = 'portfolio' }: { active?: 'portfolio' | 'projects' | 'settings' | 'admin' | 'help' } = $props();
 
-  const baseNav: { key: 'portfolio' | 'projects' | 'settings' | 'admin'; label: string; view: typeof session.view }[] = [
+  const baseNav: { key: 'portfolio' | 'projects' | 'settings' | 'admin' | 'help'; label: string; view: typeof session.view }[] = [
     { key: 'portfolio', label: 'Dashboard', view: 'portfolio' },
     { key: 'projects', label: 'Projects', view: 'project_picker' },
     { key: 'settings', label: 'App Settings', view: 'app_settings' },
+    { key: 'help', label: 'Help', view: 'help' },
   ];
 
   const nav = $derived(

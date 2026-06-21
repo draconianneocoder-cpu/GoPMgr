@@ -54,7 +54,8 @@ export const session = $state<{
     | 'project_settings'
     | 'documents'
     | 'charts'
-    | 'admin_panel';
+    | 'admin_panel'
+    | 'help';
   // When `view` is a chart/doc editor, the currently-edited record ID.
   editingId: string | null;
 }>({

@@ -39,6 +39,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     portfolio: () => import('./lib/components/project/Portfolio.svelte'),
     app_settings: () => import('./lib/components/AppSettings.svelte'),
     admin_panel: () => import('./lib/components/admin/AdminPanel.svelte'),
+    help: () => import('./lib/components/HelpGuide.svelte'),
     dashboard: () => import('./lib/components/project/Dashboard.svelte'),
     wbs: () => import('./lib/components/charts/WBSEditor.svelte'),
     network: () => import('./lib/components/charts/NetworkEditor.svelte'),
@@ -154,6 +155,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       });
       rt.EventsOn('menu:app-settings', () => {
         if (session.user) goto('app_settings');
+      });
+      rt.EventsOn('menu:help', () => {
+        if (session.user) goto('help');
       });
     }
 
