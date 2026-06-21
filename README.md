@@ -43,8 +43,11 @@ wails dev
 # 4. Build a production binary (embeds the built frontend via go:embed)
 make build
 
-# 5. Run the unit test suite
-make test              # go test ./cmd/... ./internal/... (28 packages, ~2s)
+# 5. Fast pre-commit gate (run this before every commit)
+make verify            # go test + svelte-check + frontend (Vite) build
+
+# 5b. Individual checks
+make test              # go test . ./internal/... (~2s)
 make race              # same with -race (concurrency hardening)
 make check-pades       # generate + locally verify an embedded signed PDF sample
 make check-pades-external # verify extracted CMS/ByteRange with available external tools
@@ -53,16 +56,55 @@ make check-pades-external # verify extracted CMS/ByteRange with available extern
 make check-release
 ```
 
+> **`make verify`** is the fast gate that catches the common breakages
+> (failing Go tests, type/svelte-check errors, and frontend build/CSS
+> errors) in one command. It is exactly what CI runs on every push, so
+> local and CI stay in lockstep. `make check-release` is the heavier,
+> tag-time gate (adds REUSE, race, memory-safety, PDF/A, PAdES, the full
+> Wails build, and version-consistency checks).
+
 > **Toolchain.** `go.mod` pins **Go 1.26.3** and **Wails v2.9.2** as
 > specified in the design transcript. If your Go is older, edit the
 > `go` line in `go.mod` and rerun `go mod tidy`. CGO is required
-> because `mattn/go-sqlite3` is a C library.
+> because the SQLite driver is a C library.
+>
+> **Building.** `make build` runs the **Wails CLI** (`wails build`), which
+> is the supported way to build the app. It builds and embeds the frontend,
+> injects the required `desktop,production` build tags, and links the
+> platform frameworks (on macOS, `UniformTypeIdentifiers` for `UTType`).
+> Install the CLI once with
+> `go install github.com/wailsapp/wails/v2/cmd/wails@latest`. The Go main
+> package lives at the **repo root** (`main.go`) because `wails build`
+> requires it there. `make build` runs `scripts/wails-build.sh`, which calls
+> `wails build -skipbindings` and then, on macOS, strips extended-attribute
+> detritus and ad-hoc signs the `.app` itself. This is necessary because a
+> repo under iCloud-synced `~/Documents` picks up `com.apple.FinderInfo`/
+> file-provider attributes that make `codesign` fail with "resource fork,
+> Finder information, or similar detritus not allowed" - which breaks Wails'
+> in-process self-sign. (`-skipbindings` is also correct here: PMForge
+> declares the Wails bridge by hand in `wails-window.d.ts` and never imports
+> the generated `frontend/wailsjs`.) If codesign still fails because iCloud
+> re-adds attributes mid-sign, build from a non-synced path such as
+> `~/Developer`. A plain `go build .` without the tags compiles but
+> aborts at launch with "Wails applications will not build without the
+> correct build tags" (Wails links a stub `Run()`), and on the macOS 15 SDK
+> also fails to link `UTType` - both reasons to use `wails build`.
+>
+> **App icon.** `build/appicon.png` (1024x1024, rendered from the tracked
+> `pmforge-icon-dark.svg`) is the master icon; `wails build` derives the
+> macOS `.icns` and Windows `.ico` from it. To rebrand, replace that PNG
+> (or re-render the SVG) and rebuild.
 
 > **First-run layout.** On first launch, PMForge creates
 > `~/Documents/PMForge/system.db` (account list) and provisions
 > `~/Documents/PMForge/<username>/{projects,certs,exports}/` for each
 > user. POSIX permissions on the per-user folder are set to `0700` so
-> other OS accounts cannot read PMForge data without elevation.
+> other OS accounts cannot read PMForge data without elevation. Each
+> project lives in its own time-stamped subfolder
+> `projects/<YYYYMMDD-HHMMSS>-<name>/project.pmforge` (unique per project;
+> legacy flat `projects/<name>.pmforge` files are still recognised). A
+> dated diagnostic log is also written to `~/Documents/PMForge/logs/` on
+> every GUI launch (see "Logs and startup diagnostics" below).
 
 ---
 
@@ -220,7 +262,8 @@ renderer ships. Adding a new kind = one registry entry in
 pmforge/
 ├── AGENT.md                     # AI development handbook (read first)
 ├── LICENSES/                    # REUSE-compliant license texts
-├── cmd/pmforge/main.go          # CLI dispatch + Wails bootstrap (App struct)
+├── main.go                      # CLI dispatch + Wails bootstrap (App struct; root for wails build)
+├── build/darwin/                # Wails macOS bundle scaffold (Info.plist, Info.dev.plist)
 ├── internal/
 │   ├── admin/workflow.go        # Administrative Pack
 │   ├── agile/                   # Software-Dev Pack (complete)
@@ -548,6 +591,30 @@ the kernel's no-I/O design.
 
 ---
 
+## Logs and startup diagnostics
+
+Every GUI launch writes a dated diagnostic log to
+`~/Documents/PMForge/logs/pmforge-<YYYY-MM-DD>.log` (under
+`$XDG_DATA_HOME/PMForge/logs/` when that variable is set). The standard
+logger is teed to both this file and stderr, so `wails dev` and terminal
+launches still print output while packaged GUI launches - whose stderr is
+discarded by the OS - retain a readable record by default.
+
+If startup fails, PMForge no longer dies silently. `internal/applog`
+records the failure with a stack trace to the log file and shows a native
+OS error dialog (macOS `osascript`, Windows `MessageBox`, Linux
+`zenity`/`kdialog`/`notify-send`) naming the log path, then exits
+non-zero. This turns the previously invisible "the app never opens"
+failure into a visible, debuggable error for users and maintainers alike.
+
+Implementation: `internal/applog` is stdlib-only (native dialogs are
+invoked through each OS's own tooling, so no dependency is added).
+The root `main.go` initialises it at the top of the GUI path and routes
+both fatal startup branches - local data-store initialisation and
+`wails.Run` - through `applog.Fatal`. The CLI maintenance paths
+(`--check` / `--repair` / `--version`) are unchanged: they log to stderr,
+which is visible in the terminal where they are run.
+
 ## License
 
 Source code: **GPL-3.0-or-later**. Documentation: **GFDL-1.3-or-later**.
@@ -607,6 +674,28 @@ All three text formats walk the kind's schema and emit headings,
 paragraphs, bullet lists, and tables — so any of the 25 document
 kinds round-trips through any format without per-kind code.
 
+## Project interchange (schedule import/export)
+
+From **Project Settings → Schedule Reports**, the current project's CPM
+schedule exports to:
+
+| Format            | Extension | Wails method                  | Use |
+| ----------------- | --------- | ----------------------------- | --- |
+| PDF / DOCX / ODT  | `.pdf` / `.docx` / `.odt` | `ExportScheduleReportPDF/DOCX/ODT` | Reports |
+| **MS Project XML**| `.xml`    | `ExportScheduleReportMSPDI`   | Interchange with MS Project, GanttProject, ProjectLibre, etc. |
+| **CSV**           | `.csv`    | `ExportScheduleReportCSV`     | Tasks for Excel / Google Sheets |
+| **HTML**          | `.html`   | `ExportScheduleReportHTML`    | Publish / view in a browser |
+
+**Import** (Dashboard → "Import schedule") reads **Microsoft Project XML
+(MSPDI, `.xml`)** directly via `App.ImportMSPDIChart`. The binary/serialized
+formats — **`.mpp`** (MS Project), **`.pod`** (ProjectLibre), and the legacy
+**`.mpx`** — cannot be parsed in pure Go (the only robust reader is the Java
+MPXJ library, which would contradict PMForge's dependency-free, local-first
+design). The import dialog accepts those extensions and returns a precise
+message: re-save the file as **Microsoft Project XML (`.xml`)** from MS
+Project or ProjectLibre, then import that — the same MSPDI schema PMForge
+reads and writes, so the round-trip is lossless for the supported fields.
+
 ## Update channel
 
 If the binary is built with `-ldflags` setting
@@ -637,6 +726,10 @@ use and GPL-compatible:
 | Noto Sans         | sans     | OFL-1.1        | Broad international coverage        |
 | Source Sans 3     | sans     | OFL-1.1        | Adobe's modern professional sans   |
 | JetBrains Mono    | mono     | OFL-1.1        | Modern monospaced                  |
+| Roboto            | sans     | Apache-2.0     | Google's screen-optimised UI sans  |
+| Arimo             | sans     | Apache-2.0     | Arial-metric-compatible, corporate |
+| Cousine           | mono     | Apache-2.0     | Arimo's monospaced companion       |
+| Ledger            | serif    | OFL-1.1        | Modern business serif              |
 
 The font binaries are **not committed** to the repository (they are
 large and carry their own upstream licenses). Fetch them once:
@@ -759,10 +852,78 @@ The Dashboard shows two item lists — Charts and Documents. Both support
 confirm with a second click. No browser confirm dialog; no page reload.
 The item disappears from the list immediately on success.
 
+The **Your Projects** screen offers per-project **Clone** and **Delete**
+actions. Clone duplicates the `.pmforge` file under a `…-copy` name (the
+copy stays encrypted under your DEK). Delete uses the same two-step confirm
+and removes the project file plus its WAL/SHM sidecars; both actions are
+restricted to files inside your own `projects/` folder.
+
+When exporting a signed PDF, the **Digital Signature** dialog has a
+**Choose certificate…** button (native file picker) so you can select a
+`.p12`/`.pfx` for a one-off signing without first configuring one in
+Project Settings; Sign & Export stays disabled until a certificate is set.
+
+A native **application menu** is available: **File** (Dashboard ⌘D, New
+Project ⌘N, Open Project ⌘O, Application Settings ⌘,, Project Settings,
+Close Project ⌘W) and **Help** (User Guide, About PMForge). On macOS the
+standard application and Edit menus are included so Quit/Hide and copy/paste
+keep working. Menu items drive the same navigation as the in-app buttons.
+
+After signing in you land on the **Portfolio dashboard** — a status overview
+of every project (status, phase, dates, chart/document counts), with
+in-progress projects listed first; click a card to open it. A shared toolbar
+switches between **Dashboard**, **Projects**, **App Settings**, and **Help**.
+**Application Settings** holds per-user, app-level preferences: a **Light/
+Dark application theme** (previewed instantly, persisted on Save), the
+default document font and export theme applied to newly created projects,
+plus version and data-location info — distinct from per-project Settings.
+The theme flips the whole UI via a `data-theme` attribute backed by CSS
+variables (chart/SVG internals keep their own palette).
+
+## In-app Help Guide
+
+The **Help** tab (top navigation bar) and **Help → User Guide** menu item
+open a full in-app reference with sidebar navigation organized into four
+groups:
+
+- **Overview** — Getting Started and the Industry &amp; Methodology matrix
+  (what artifacts the Launchpad seeds for each industry/methodology pair).
+- **Methodologies** — one section per methodology (Scrum, Kanban, Scrumban,
+  Lean, OKRs, Waterfall, PRINCE2, PMBOK, CPM, Six Sigma): when to use it,
+  PMForge setup, workflow steps, recommended charts, and key terminology.
+- **Features** — detailed how-to for every application feature: Portfolio,
+  Project Dashboard, Timeline, Stakeholder Manager, Report Composer,
+  Export &amp; Digital Signing, Database Encryption, Admin Panel, App Settings.
+- **Reference** — complete Charts Reference (all 21 kinds across four
+  engine families), Documents Reference (all 25 kinds by PMBOK phase),
+  DMAIC Pack (Six Sigma structured project views), and a 60+ term Glossary.
+
+All content is derived from the live codebase. Navigation links within the
+guide cross-reference related sections (e.g. the Six Sigma methodology
+section links to the DMAIC Pack reference; the encryption section links to
+the recovery code prerequisite).
+
+Implementation: `frontend/src/lib/components/HelpGuide.svelte` — a single
+Svelte 5 component with a `$state<SectionId>` active-section cursor and
+sidebar navigation groups. No Go backend calls; the guide is entirely
+frontend-static content.
+
 ## Editor shortcuts and document status
 
 All editors (document, chart layered/DAG, chart stats) support
-**Ctrl+S / Cmd+S** to save without reaching for the toolbar.
+**Ctrl+S / Cmd+S** to save without reaching for the toolbar, and every
+editor has a **Save** button.
+
+### Auto-save
+
+Open editors are also saved automatically on a timer. The interval and an
+on/off switch live in **Application Settings → Saving** (default: on, every
+60 seconds). Auto-save is snapshot-based, so it only writes when there are
+unsaved changes — an idle editor is never re-saved and `updated_at` is not
+churned. Manual save (Ctrl/Cmd+S and the Save button) always works
+regardless of the auto-save setting. The interval is stored per user in
+`app-settings.json` (`auto_save_seconds`; `0` disables auto-save) and a
+single shared timer coordinates every open editor.
 
 The **CharterEditor** (used for all 25 document kinds) shows:
 
