@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -119,9 +119,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     showSignModal = true;
   }
 
-  async function handleSignedConfirm(pwd: string) {
+  async function handleSignedConfirm(pwd: string, certPath: string) {
     showSignModal = false;
-    if (!pendingSignCertPath || !pwd) {
+    if (!certPath || !pwd) {
       status = 'Certificate path and password are required for signed export.';
       return;
     }
@@ -133,7 +133,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         reportTitle,
         subtitle,
         buildSections(),
-        pendingSignCertPath,
+        certPath,
         pwd,
       );
       status = `Signed report exported to ${path}`;
@@ -159,18 +159,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">Combined Report</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Combined Report</h1>
     </div>
     <button
       onclick={exportReport}
-      disabled={exporting || included.length === 0}
+      disabled={exporting || showSignModal || included.length === 0}
       class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
     >
       {exporting ? 'Exporting...' : 'Export PDF'}
     </button>
     <button
       onclick={exportSignedReport}
-      disabled={exporting || included.length === 0}
+      disabled={exporting || showSignModal || included.length === 0}
       class="text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
       title="Export with an embedded PAdES B-B digital signature"
     >
@@ -217,7 +217,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             {#each remaining as d (d.id)}
               <li class="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded">
                 <div>
-                  <div class="font-bold text-white text-sm">{d.title}</div>
+                  <div class="font-bold text-slate-50 text-sm">{d.title}</div>
                   <div class="text-xs text-slate-500">{d.kind} · v{d.version} · {d.status}</div>
                 </div>
                 <button
@@ -253,7 +253,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               >
                 <div class="flex items-start justify-between gap-2">
                   <div class="flex-1 min-w-0">
-                    <div class="font-bold text-white text-sm">
+                    <div class="font-bold text-slate-50 text-sm">
                       <span class="text-cyan-400 mr-2">{i + 1}.</span>
                       {d.title}
                     </div>
