@@ -12,6 +12,7 @@ package export
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"pmforge/internal/crypto"
@@ -93,7 +94,7 @@ func evmSummaryLines(m *kernel.EVMetrics) []string {
 // export with the audit log.
 func GenerateArchivalReport(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 	reportTime := time.Now().UTC().Format(time.RFC3339Nano)
-	fmt.Printf("[export] %s report at %s\n", opts.Format, reportTime)
+	log.Printf("[export] %s report at %s", opts.Format, reportTime)
 
 	var (
 		raw []byte

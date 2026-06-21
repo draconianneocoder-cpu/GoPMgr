@@ -228,7 +228,7 @@ import TollgateChecklist from './TollgateChecklist.svelte';
     try {
       phaseTools = await window.go.main.App.SigmaGetToolStatus(project.id, project.phase);
     } catch (err: any) {
-      console.error('Failed to load tool status:', err);
+      showToast(`Could not load tool status: ${err}`, 'error');
     }
   }
 
