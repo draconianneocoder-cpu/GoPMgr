@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -22,7 +22,7 @@ func createHeadlessEncryptedProject(t *testing.T) (projectPath, password string)
 	if err != nil {
 		t.Fatalf("users.Open: %v", err)
 	}
-	acc, err := store.CreateAccount("alice", "Alice", password)
+	acc, err := store.CreateAccount("alice", "Alice", password, false)
 	if err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}

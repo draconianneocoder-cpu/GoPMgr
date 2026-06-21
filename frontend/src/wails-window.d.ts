@@ -21,11 +21,17 @@ declare global {
 
           // ----- V2: accounts & session -----
           ListUsers: () => Promise<Account[]>;
+          HasAnyAdmin: () => Promise<boolean>;
           CreateAccount: (
             username: string,
             displayName: string,
             password: string,
+            isAdmin: boolean,
           ) => Promise<Account>;
+          BecomeAdmin: () => Promise<void>;
+          AdminListUsers: () => Promise<Account[]>;
+          AdminDeleteUser: (username: string) => Promise<void>;
+          AdminSetUserRole: (username: string, isAdmin: boolean) => Promise<void>;
           Login: (username: string, password: string) => Promise<Account>;
           Logout: () => Promise<void>;
           CurrentUser: () => Promise<Account | null>;
@@ -320,6 +326,7 @@ declare global {
     data_dir: string;
     created_at: string;
     last_login: string;
+    is_admin: boolean;
   }
 
   interface ProjectFile {

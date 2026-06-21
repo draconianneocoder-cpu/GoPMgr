@@ -10,6 +10,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import AppHeader from './AppHeader.svelte';
   import { applyTheme } from '../theme';
   import { autosave } from '../autosave.svelte';
+  import { session } from '../session.svelte';
+  import { showToast } from '../toast.svelte';
 
   let info = $state<AppInfo | null>(null);
   let font = $state('');
@@ -25,6 +27,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let generatingReport = $state(false);
   let reportPath = $state('');
   let diagError = $state('');
+  let hasAdmin = $state(true);
+  let claimingAdmin = $state(false);
 
   const themes = [
     { value: '', label: 'Modern (default)' },
@@ -40,7 +44,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
     { value: 300, label: 'Every 5 minutes' },
   ];
 
-  onMount(load);
+  onMount(async () => {
+    await load();
+    try { hasAdmin = await window.go.main.App.HasAnyAdmin(); } catch { hasAdmin = true; }
+  });
 
   async function load() {
     loading = true;
@@ -75,6 +82,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
       diagError = `Could not open logs folder: ${err}`;
     } finally {
       openingLogs = false;
+    }
+  }
+
+  async function claimAdmin() {
+    claimingAdmin = true;
+    try {
+      await window.go.main.App.BecomeAdmin();
+      hasAdmin = true;
+      if (session.user) session.user = { ...session.user, is_admin: true };
+      showToast('You are now the administrator.', 'success');
+    } catch (err: any) {
+      showToast(`Could not claim administrator: ${err}`, 'error');
+    } finally {
+      claimingAdmin = false;
     }
   }
 
@@ -214,6 +235,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </button>
           {#if status}<span class="text-xs text-emerald-400">{status}</span>{/if}
         </div>
+
+        {#if !hasAdmin && !session.user?.is_admin}
+          <section class="p-4 bg-amber-950/30 border border-amber-700/50 rounded-lg space-y-3 text-xs">
+            <h3 class="text-xs font-bold uppercase tracking-widest text-amber-400">No administrator configured</h3>
+            <p class="text-amber-300/80">
+              This machine has no PMForge administrator. An administrator can create and delete accounts
+              and manage roles. Claim this role to take responsibility for managing users on this machine.
+            </p>
+            <button
+              onclick={claimAdmin}
+              disabled={claimingAdmin}
+              class="bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
+            >
+              {claimingAdmin ? 'Claiming…' : 'Become administrator'}
+            </button>
+          </section>
+        {/if}
 
         <section class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-2 text-xs">
           <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">About</h3>

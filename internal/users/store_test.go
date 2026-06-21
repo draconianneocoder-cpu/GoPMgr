@@ -5,6 +5,7 @@ package users
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -133,7 +134,7 @@ func TestCreateAccountTightensExistingUserDirectories(t *testing.T) {
 		}
 	})
 
-	if _, err := store.CreateAccount("alice", "Alice", "correct horse battery staple"); err != nil {
+	if _, err := store.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 	for _, sub := range []string{"alice", filepath.Join("alice", "projects"), filepath.Join("alice", "certs"), filepath.Join("alice", "exports")} {
@@ -157,7 +158,7 @@ func TestAuthenticateReturnsLastLoginUpdateError(t *testing.T) {
 			t.Fatalf("Close: %v", err)
 		}
 	})
-	if _, err := store.CreateAccount("alice", "Alice", "correct horse battery staple"); err != nil {
+	if _, err := store.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 	if _, err := store.conn.Exec(`
@@ -187,7 +188,7 @@ func TestAuthenticateReturnsPasswordRehashUpdateError(t *testing.T) {
 		}
 	})
 	const password = "correct horse battery staple"
-	if _, err := store.CreateAccount("alice", "Alice", password); err != nil {
+	if _, err := store.CreateAccount("alice", "Alice", password, false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 	if _, err := store.conn.Exec(
@@ -227,11 +228,11 @@ func TestCreateAccount_RejectsCaseVariantUsername(t *testing.T) {
 		}
 	})
 
-	if _, err := store.CreateAccount("alice", "Alice", "correct horse battery staple"); err != nil {
+	if _, err := store.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
 		t.Fatalf("CreateAccount (original): %v", err)
 	}
 	for _, variant := range []string{"Alice", "ALICE", "aLiCe"} {
-		_, got := store.CreateAccount(variant, "Alice", "another-password")
+		_, got := store.CreateAccount(variant, "Alice", "another-password", false)
 		if got != ErrUserExists {
 			t.Errorf("CreateAccount(%q) error = %v, want ErrUserExists", variant, got)
 		}
@@ -254,4 +255,155 @@ func weakPasswordHash(password string) string {
 		base64.RawStdEncoding.EncodeToString(salt),
 		base64.RawStdEncoding.EncodeToString(key),
 	)
+}
+
+// --- admin role tests -------------------------------------------------------
+
+func openTestStore(t *testing.T) *Store {
+	t.Helper()
+	store, err := Open(filepath.Join(t.TempDir(), "PMForge"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Fatalf("Close: %v", err)
+		}
+	})
+	return store
+}
+
+func TestHasAnyAdmin_FalseOnFreshStore(t *testing.T) {
+	store := openTestStore(t)
+	got, err := store.HasAnyAdmin()
+	if err != nil {
+		t.Fatalf("HasAnyAdmin: %v", err)
+	}
+	if got {
+		t.Fatal("HasAnyAdmin = true on empty store, want false")
+	}
+}
+
+func TestHasAnyAdmin_TrueAfterAdminCreated(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	got, err := store.HasAnyAdmin()
+	if err != nil {
+		t.Fatalf("HasAnyAdmin: %v", err)
+	}
+	if !got {
+		t.Fatal("HasAnyAdmin = false after admin created, want true")
+	}
+}
+
+func TestSetAdmin_DemoteSoleAdminReturnsErrLastAdmin(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if err := store.SetAdmin("alice", false); !errors.Is(err, ErrLastAdmin) {
+		t.Fatalf("SetAdmin sole admin to false: got %v, want ErrLastAdmin", err)
+	}
+}
+
+func TestSetAdmin_DemoteNonAdminSucceeds(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
+		t.Fatalf("CreateAccount admin: %v", err)
+	}
+	if _, err := store.CreateAccount("bob", "Bob", "passphrase-long", false); err != nil {
+		t.Fatalf("CreateAccount standard: %v", err)
+	}
+	// Demoting a non-admin with exactly one real admin should NOT return ErrLastAdmin.
+	if err := store.SetAdmin("bob", false); err != nil {
+		t.Fatalf("SetAdmin non-admin to false: got %v, want nil", err)
+	}
+}
+
+func TestSetAdmin_DemoteSucceedsWhenMultipleAdmins(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
+		t.Fatalf("CreateAccount alice: %v", err)
+	}
+	if _, err := store.CreateAccount("bob", "Bob", "passphrase-long", true); err != nil {
+		t.Fatalf("CreateAccount bob: %v", err)
+	}
+	if err := store.SetAdmin("alice", false); err != nil {
+		t.Fatalf("SetAdmin alice to false: %v", err)
+	}
+	// Verify bob is still admin.
+	accs, err := store.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	for _, a := range accs {
+		if a.Username == "bob" && !a.IsAdmin {
+			t.Error("bob should still be admin after alice demoted")
+		}
+		if a.Username == "alice" && a.IsAdmin {
+			t.Error("alice should no longer be admin")
+		}
+	}
+}
+
+func TestDeleteAccount_SoleAdminReturnsErrLastAdmin(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if err := store.DeleteAccount("alice"); !errors.Is(err, ErrLastAdmin) {
+		t.Fatalf("DeleteAccount sole admin: got %v, want ErrLastAdmin", err)
+	}
+}
+
+func TestDeleteAccount_StandardUserSucceeds(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
+		t.Fatalf("CreateAccount admin: %v", err)
+	}
+	if _, err := store.CreateAccount("bob", "Bob", "passphrase-long", false); err != nil {
+		t.Fatalf("CreateAccount standard: %v", err)
+	}
+	if err := store.DeleteAccount("bob"); err != nil {
+		t.Fatalf("DeleteAccount standard user: %v", err)
+	}
+	accs, err := store.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	for _, a := range accs {
+		if strings.EqualFold(a.Username, "bob") {
+			t.Error("bob still present after DeleteAccount")
+		}
+	}
+}
+
+func TestDeleteAccount_CascadesRecoveryCodes(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
+		t.Fatalf("CreateAccount admin: %v", err)
+	}
+	if _, err := store.CreateAccount("bob", "Bob", "passphrase-long", false); err != nil {
+		t.Fatalf("CreateAccount standard: %v", err)
+	}
+	// Insert a fake recovery code for bob directly via the connection.
+	if _, err := store.conn.Exec(
+		`INSERT INTO recovery_codes (username, code_hash, used, created_at) VALUES ('bob', 'fakehash', 0, '2026-01-01T00:00:00Z')`,
+	); err != nil {
+		t.Fatalf("insert recovery code: %v", err)
+	}
+	if err := store.DeleteAccount("bob"); err != nil {
+		t.Fatalf("DeleteAccount: %v", err)
+	}
+	var n int
+	if err := store.conn.QueryRow(
+		`SELECT COUNT(*) FROM recovery_codes WHERE username = 'bob'`,
+	).Scan(&n); err != nil {
+		t.Fatalf("count recovery_codes: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("recovery_codes: got %d rows for deleted user, want 0", n)
+	}
 }

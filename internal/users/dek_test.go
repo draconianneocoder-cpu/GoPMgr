@@ -16,7 +16,7 @@ func newDEKTestStore(t *testing.T) *Store {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
-	if _, err := s.CreateAccount("alice", "Alice", "p4ssw0rd-original"); err != nil {
+	if _, err := s.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 	return s

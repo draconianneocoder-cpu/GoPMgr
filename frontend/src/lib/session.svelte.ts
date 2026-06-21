@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Session is the in-memory state shared across components: who is
@@ -16,6 +16,8 @@ export const session = $state<{
     | 'create_account'
     | 'recovery_reset'
     | 'project_picker'
+    | 'portfolio'
+    | 'app_settings'
     | 'dashboard'
     | 'wbs'
     | 'network'
@@ -51,7 +53,8 @@ export const session = $state<{
     | 'timeline'
     | 'project_settings'
     | 'documents'
-    | 'charts';
+    | 'charts'
+    | 'admin_panel';
   // When `view` is a chart/doc editor, the currently-edited record ID.
   editingId: string | null;
 }>({
