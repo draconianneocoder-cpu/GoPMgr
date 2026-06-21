@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package agile implements PMForge's Agile / Software-Dev Pack:
@@ -14,12 +14,15 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"io"
+	"sync/atomic"
 	"time"
 )
 
 // PackEnabled is the in-memory toggle. main.go flips it true when
 // the CLI flag is set or the user enables the pack from settings.
-var PackEnabled bool
+// atomic.Bool eliminates the data race between the Wails goroutines
+// that read and write this flag concurrently.
+var PackEnabled atomic.Bool
 
 // ----- Domain types -----
 

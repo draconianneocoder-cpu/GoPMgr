@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package users
@@ -140,14 +140,26 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 		return errors.New("users: new password too short")
 	}
 
-	rows, err := s.conn.Query(
+	// Begin the transaction now so scan and write are in the same
+	// transaction. rows is closed explicitly before the first write
+	// to avoid a cursor-open-across-write conflict in SQLite.
+	// Note: a plain deferred BEGIN does not fully eliminate a TOCTOU
+	// race under concurrent callers (BEGIN IMMEDIATE would), but
+	// simultaneous recovery resets are not an expected workload for a
+	// single-user desktop app.
+	tx, err := s.conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	rows, err := tx.Query(
 		`SELECT id, code_hash, wrapped_dek FROM recovery_codes WHERE username = ? AND used = 0`,
 		username,
 	)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 
 	canon := canonicalise(code)
 	var matchID int64 = -1
@@ -156,6 +168,7 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 		var id int64
 		var hash, wrap string
 		if err := rows.Scan(&id, &hash, &wrap); err != nil {
+			rows.Close()
 			return err
 		}
 		if auth.VerifyPassword(canon, hash) == nil {
@@ -165,8 +178,11 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 		}
 	}
 	if err := rows.Err(); err != nil {
+		rows.Close()
 		return err
 	}
+	rows.Close() // close before write ops to avoid cursor-across-write conflict
+
 	if matchID < 0 {
 		return ErrInvalidRecoveryCode
 	}
@@ -196,12 +212,6 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 	}
 
 	// Atomically: mark code used + rotate password hash + re-wrap DEK.
-	tx, err := s.conn.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := tx.Exec(
 		`UPDATE recovery_codes SET used = 1, used_at = ? WHERE id = ?`,

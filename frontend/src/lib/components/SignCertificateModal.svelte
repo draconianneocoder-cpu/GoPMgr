@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -8,7 +8,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // <SignCertificateModal
   //   bind:open={showModal}
   //   certPath={currentCertPath}
-  //   onConfirm={(pwd) => doSignedExport(pwd)}
+  //   onConfirm={(pwd, certPath) => doSignedExport(pwd, certPath)}
   // />
 
   let {
@@ -18,23 +18,38 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }: {
     open: boolean;
     certPath?: string;
-    onConfirm: (password: string) => void;
+    // Receives the entered password and the effective certificate path
+    // (the one passed in, or one the user picked via "Choose certificate").
+    onConfirm: (password: string, certPath: string) => void;
   } = $props();
 
   let password = $state('');
-  let busy = $state(false);
+  // A certificate the user picked in this dialog overrides the prop.
+  let chosenPath = $state('');
+  let chooseError = $state('');
+  const effectivePath = $derived(chosenPath || certPath);
+
+  async function chooseCert() {
+    chooseError = '';
+    try {
+      const picked = await window.go.main.App.ChooseCertFile();
+      if (picked) chosenPath = picked;
+    } catch (err: any) {
+      chooseError = `Could not choose certificate: ${err}`;
+    }
+  }
 
   function confirm() {
-    if (!password) return;
-    busy = true;
-    onConfirm(password);
-    // Parent is responsible for closing and clearing
+    if (!password || !effectivePath) return;
+    onConfirm(password, effectivePath);
+    // Parent is responsible for closing the modal via bind:open.
     password = '';
-    busy = false;
   }
 
   function cancel() {
     password = '';
+    chosenPath = '';
+    chooseError = '';
     open = false;
   }
 
@@ -68,10 +83,25 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
       <div class="space-y-4">
         <div>
-          <div class="text-xs text-slate-400">Certificate</div>
-          <div class="mt-1 text-xs bg-slate-800 border border-slate-700 p-2 rounded font-mono break-all">
-            {certPath || '(no certificate configured)'}
+          <div class="flex items-center justify-between">
+            <div class="text-xs text-slate-400">Certificate</div>
+            <button
+              type="button"
+              onclick={chooseCert}
+              class="text-[11px] uppercase tracking-wider px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
+            >
+              Choose certificate…
+            </button>
           </div>
+          <div
+            class="mt-1 text-xs bg-slate-800 border border-slate-700 p-2 rounded font-mono break-all"
+            class:text-slate-500={!effectivePath}
+          >
+            {effectivePath || '(no certificate configured)'}
+          </div>
+          {#if chooseError}
+            <p class="mt-1 text-[11px] text-red-400" role="alert">{chooseError}</p>
+          {/if}
         </div>
 
         <div>
@@ -96,10 +126,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </button>
         <button
           onclick={confirm}
-          disabled={!password || busy}
+          disabled={!password || !effectivePath}
+          title={!effectivePath ? 'Choose a certificate first' : undefined}
           class="text-xs px-4 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold"
         >
-          {busy ? 'Signing...' : 'Sign & Export'}
+          Sign & Export
         </button>
       </div>
 
