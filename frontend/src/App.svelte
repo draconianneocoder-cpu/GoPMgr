@@ -1,12 +1,32 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
   import { session, goto } from './lib/session.svelte';
+  import { applyTheme } from './lib/theme';
+  import { autosave } from './lib/autosave.svelte';
 
   import ToastContainer from './lib/components/ToastContainer.svelte';
+
+  // On sign-in, load the user's app settings to apply the UI theme and the
+  // auto-save interval; on sign-out, revert to the dark default and stop
+  // auto-save (the login screen is always dark with no editors open).
+  $effect(() => {
+    if (session.user) {
+      const p = window.go?.main?.App?.GetAppInfo?.();
+      if (p) {
+        p.then((info) => {
+          applyTheme(info?.settings?.app_theme);
+          autosave.setInterval(info?.settings?.auto_save_seconds ?? 0);
+        }).catch(() => {});
+      }
+    } else {
+      applyTheme('dark');
+      autosave.setInterval(0);
+    }
+  });
 
   type RouteComponentModule = { default: any };
   type RouteLoader = () => Promise<RouteComponentModule>;
@@ -16,6 +36,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     create_account: () => import('./lib/components/auth/CreateAccount.svelte'),
     recovery_reset: () => import('./lib/components/auth/RecoveryReset.svelte'),
     project_picker: () => import('./lib/components/project/ProjectPicker.svelte'),
+    portfolio: () => import('./lib/components/project/Portfolio.svelte'),
+    app_settings: () => import('./lib/components/AppSettings.svelte'),
+    admin_panel: () => import('./lib/components/admin/AdminPanel.svelte'),
     dashboard: () => import('./lib/components/project/Dashboard.svelte'),
     wbs: () => import('./lib/components/charts/WBSEditor.svelte'),
     network: () => import('./lib/components/charts/NetworkEditor.svelte'),
@@ -99,15 +122,47 @@ SPDX-License-Identifier: GPL-3.0-or-later
       });
   });
 
-  // On first mount, check whether a user is already signed in
-  // (the Go side keeps state across `wails dev` HMR cycles).
+  // On first mount, wire the native menu and check whether a user is already
+  // signed in (the Go side keeps state across `wails dev` HMR cycles).
   onMount(async () => {
+    // Native menu items (built in Go) emit these events; turn them into
+    // navigation. `window.runtime` is injected by the Wails runtime.
+    const rt = (window as any).runtime;
+    if (rt?.EventsOn) {
+      rt.EventsOn('menu:new-project', () => {
+        if (session.user) goto('launchpad');
+      });
+      rt.EventsOn('menu:open-project', () => {
+        if (session.user) goto('project_picker');
+      });
+      rt.EventsOn('menu:settings', () => {
+        if (session.user && session.project) goto('project_settings');
+      });
+      rt.EventsOn('menu:close-project', async () => {
+        if (!session.project) return;
+        try {
+          await window.go.main.App.CloseProject();
+        } catch {
+          /* ignore */
+        }
+        session.project = null;
+        session.projectPath = null;
+        goto('portfolio');
+      });
+      rt.EventsOn('menu:dashboard', () => {
+        if (session.user) goto('portfolio');
+      });
+      rt.EventsOn('menu:app-settings', () => {
+        if (session.user) goto('app_settings');
+      });
+    }
+
     if (!window.go?.main?.App?.CurrentUser) return;
     try {
       const u = await window.go.main.App.CurrentUser();
       if (u) {
         session.user = u;
-        goto('project_picker');
+        goto('portfolio');
       }
     } catch {
       // No active session — stay on login.

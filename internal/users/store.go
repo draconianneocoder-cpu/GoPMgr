@@ -45,6 +45,13 @@ var ErrNoSuchUser = errors.New("users: no such user")
 // Disallows path separators so it can safely be used as a folder name.
 var usernameRE = regexp.MustCompile(`^[A-Za-z0-9_-]{3,32}$`)
 
+// ErrNotAdmin is returned when the caller is not an administrator.
+var ErrNotAdmin = errors.New("users: administrator privileges required")
+
+// ErrLastAdmin is returned when an operation would leave the system
+// with no administrator at all (e.g. demoting the only admin).
+var ErrLastAdmin = errors.New("users: cannot remove the last administrator")
+
 // Account is the persisted user record.
 type Account struct {
 	Username    string    `json:"username"`
@@ -52,6 +59,7 @@ type Account struct {
 	DataDir     string    `json:"data_dir"`
 	CreatedAt   time.Time `json:"created_at"`
 	LastLogin   time.Time `json:"last_login"`
+	IsAdmin     bool      `json:"is_admin"`
 }
 
 // Store is the connection to system.db. Construct one per process via
@@ -126,7 +134,41 @@ func (s *Store) migrate() error {
 		return err
 	}
 	// V3 / ADR-001 — wrapped-DEK columns (dek.go).
-	return s.migrateDEKColumns()
+	if err := s.migrateDEKColumns(); err != nil {
+		return err
+	}
+	// Admin role — additive column; safe to run on existing databases.
+	return s.migrateAdminColumn()
+}
+
+// migrateAdminColumn adds is_admin to pre-admin databases. Idempotent.
+func (s *Store) migrateAdminColumn() error {
+	var cols []string
+	rows, err := s.conn.Query(`PRAGMA table_info(users)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, typ, notnull string
+		var dflt sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		cols = append(cols, name)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, c := range cols {
+		if c == "is_admin" {
+			return nil // already present
+		}
+	}
+	_, err = s.conn.Exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0`)
+	return err
 }
 
 // ValidateUsername returns ErrInvalidUsername if name doesn't conform
@@ -138,12 +180,83 @@ func ValidateUsername(name string) error {
 	return nil
 }
 
+// HasAnyAdmin reports whether at least one administrator account exists.
+// Safe to call without authentication; used by the login and account-
+// creation screens to decide whether to show the admin claim prompt.
+func (s *Store) HasAnyAdmin() (bool, error) {
+	var n int
+	err := s.conn.QueryRow(`SELECT COUNT(*) FROM users WHERE is_admin = 1`).Scan(&n)
+	return n > 0, err
+}
+
+// SetAdmin promotes or demotes username. It returns ErrLastAdmin if the
+// operation would leave the system with zero administrators (i.e. demoting
+// the last admin). Demoting a non-admin is a no-op and never returns
+// ErrLastAdmin.
+func (s *Store) SetAdmin(username string, isAdmin bool) error {
+	if !isAdmin {
+		// Only guard the last-admin case when the target is currently an admin.
+		var targetIsAdmin int
+		if err := s.conn.QueryRow(`SELECT is_admin FROM users WHERE username = ?`, username).Scan(&targetIsAdmin); err != nil {
+			return err
+		}
+		if targetIsAdmin == 1 {
+			var n int
+			if err := s.conn.QueryRow(`SELECT COUNT(*) FROM users WHERE is_admin = 1`).Scan(&n); err != nil {
+				return err
+			}
+			if n <= 1 {
+				return ErrLastAdmin
+			}
+		}
+	}
+	_, err := s.conn.Exec(`UPDATE users SET is_admin = ? WHERE username = ?`, boolToInt(isAdmin), username)
+	return err
+}
+
+// DeleteAccount removes the account row from system.db. The foreign key
+// CASCADE on recovery_codes and the wrapped-DEK column on users are
+// handled automatically. The user's data directory is NOT removed —
+// project files remain on disk and an administrator can access them
+// through the filesystem.
+//
+// Returns ErrLastAdmin if deleting this account would leave no admins.
+func (s *Store) DeleteAccount(username string) error {
+	// Guard against orphaning the system by deleting the last admin.
+	var isAdmin int
+	if err := s.conn.QueryRow(`SELECT is_admin FROM users WHERE username = ?`, username).Scan(&isAdmin); err != nil {
+		return err
+	}
+	if isAdmin == 1 {
+		var n int
+		if err := s.conn.QueryRow(`SELECT COUNT(*) FROM users WHERE is_admin = 1`).Scan(&n); err != nil {
+			return err
+		}
+		if n <= 1 {
+			return ErrLastAdmin
+		}
+	}
+	_, err := s.conn.Exec(`DELETE FROM users WHERE username = ?`, username)
+	return err
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
 // CreateAccount provisions a new user: hashes the password, creates
 // ~/Documents/PMForge/<username>/{projects,certs,exports}/, and
 // records the account in system.db.
 //
+// isAdmin marks the new account as an administrator. If an
+// administrator already exists, callers MUST enforce that only an
+// existing admin can set isAdmin=true (or at all create the account).
+//
 // Returns ErrUserExists if username is already taken.
-func (s *Store) CreateAccount(username, displayName, password string) (Account, error) {
+func (s *Store) CreateAccount(username, displayName, password string, isAdmin bool) (Account, error) {
 	if err := ValidateUsername(username); err != nil {
 		return Account{}, err
 	}
@@ -173,9 +286,9 @@ func (s *Store) CreateAccount(username, displayName, password string) (Account, 
 
 	now := time.Now().UTC()
 	_, err = s.conn.Exec(
-		`INSERT INTO users (username, display_name, password_hash, data_dir, created_at)
-		 VALUES (?, ?, ?, ?, ?)`,
-		username, strings.TrimSpace(displayName), hash, dataDir, now.Format(time.RFC3339Nano),
+		`INSERT INTO users (username, display_name, password_hash, data_dir, created_at, is_admin)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		username, strings.TrimSpace(displayName), hash, dataDir, now.Format(time.RFC3339Nano), boolToInt(isAdmin),
 	)
 	if err != nil {
 		return Account{}, err
@@ -183,9 +296,10 @@ func (s *Store) CreateAccount(username, displayName, password string) (Account, 
 
 	return Account{
 		Username:    username,
-		DisplayName: displayName,
+		DisplayName: strings.TrimSpace(displayName),
 		DataDir:     dataDir,
 		CreatedAt:   now,
+		IsAdmin:     isAdmin,
 	}, nil
 }
 
@@ -207,12 +321,13 @@ func (s *Store) Authenticate(username, password string) (Account, error) {
 		hash      string
 		createdAt string
 		lastLogin string
+		isAdmin   int
 	)
 	err := s.conn.QueryRow(
-		`SELECT username, display_name, password_hash, data_dir, created_at, last_login
+		`SELECT username, display_name, password_hash, data_dir, created_at, last_login, is_admin
 		 FROM users WHERE username = ?`,
 		username,
-	).Scan(&acc.Username, &acc.DisplayName, &hash, &acc.DataDir, &createdAt, &lastLogin)
+	).Scan(&acc.Username, &acc.DisplayName, &hash, &acc.DataDir, &createdAt, &lastLogin, &isAdmin)
 	if err == sql.ErrNoRows {
 		return Account{}, ErrNoSuchUser
 	}
@@ -223,6 +338,8 @@ func (s *Store) Authenticate(username, password string) (Account, error) {
 	if err := auth.VerifyPassword(password, hash); err != nil {
 		return Account{}, err
 	}
+
+	acc.IsAdmin = isAdmin == 1
 
 	// Parse timestamps (silently ignore parse errors — they're cosmetic).
 	if t, err := time.Parse(time.RFC3339Nano, createdAt); err == nil {
@@ -255,10 +372,10 @@ func (s *Store) Authenticate(username, password string) (Account, error) {
 }
 
 // List returns every account on the system, ordered by username. Used
-// by the GUI's user-switcher dropdown.
+// by the GUI's user-switcher dropdown and admin panel.
 func (s *Store) List() ([]Account, error) {
 	rows, err := s.conn.Query(
-		`SELECT username, display_name, data_dir, created_at, last_login
+		`SELECT username, display_name, data_dir, created_at, last_login, is_admin
 		 FROM users ORDER BY username ASC`,
 	)
 	if err != nil {
@@ -271,8 +388,9 @@ func (s *Store) List() ([]Account, error) {
 		var (
 			a                    Account
 			createdAt, lastLogin string
+			isAdmin              int
 		)
-		if err := rows.Scan(&a.Username, &a.DisplayName, &a.DataDir, &createdAt, &lastLogin); err != nil {
+		if err := rows.Scan(&a.Username, &a.DisplayName, &a.DataDir, &createdAt, &lastLogin, &isAdmin); err != nil {
 			return nil, err
 		}
 		if t, err := time.Parse(time.RFC3339Nano, createdAt); err == nil {
@@ -283,6 +401,7 @@ func (s *Store) List() ([]Account, error) {
 				a.LastLogin = t
 			}
 		}
+		a.IsAdmin = isAdmin == 1
 		out = append(out, a)
 	}
 	return out, rows.Err()

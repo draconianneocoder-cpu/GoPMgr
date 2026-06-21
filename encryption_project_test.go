@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -27,7 +27,7 @@ func newEncryptionProjectTestApp(t *testing.T) *App {
 
 func TestCreateProjectEncryptsAndReopensWithSessionDEK(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
-	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple"); err != nil {
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 
@@ -54,11 +54,11 @@ func TestCreateProjectEncryptsAndReopensWithSessionDEK(t *testing.T) {
 
 func TestCreateProjectFromLaunchpadEncryptsProject(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
-	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple"); err != nil {
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 
-	proj, receipts, path, err := app.CreateProjectFromLaunchpad(
+	res, err := app.CreateProjectFromLaunchpad(
 		"Launchpad Secret",
 		"seeded and encrypted",
 		"software",
@@ -70,21 +70,50 @@ func TestCreateProjectFromLaunchpadEncryptsProject(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateProjectFromLaunchpad: %v", err)
 	}
-	if proj.Name != "Launchpad Secret" || len(receipts) != 0 {
-		t.Fatalf("project=%#v receipts=%#v", proj, receipts)
+	if res.Project.Name != "Launchpad Secret" || len(res.Seeds) != 0 {
+		t.Fatalf("project=%#v receipts=%#v", res.Project, res.Seeds)
 	}
-	encrypted, err := db.IsEncryptedFile(path)
+	encrypted, err := db.IsEncryptedFile(res.Path)
 	if err != nil {
 		t.Fatalf("IsEncryptedFile: %v", err)
 	}
 	if !encrypted {
-		t.Fatalf("launchpad project %s is plaintext", path)
+		t.Fatalf("launchpad project %s is plaintext", res.Path)
+	}
+}
+
+// TestCreateProjectFromLaunchpadActivatesProject verifies that the project is
+// immediately usable after CreateProjectFromLaunchpad without a separate
+// OpenProject call. Previously the backend closed the DB and returned without
+// setting a.db, so every chart/document operation failed until the user
+// manually closed and reopened the project.
+func TestCreateProjectFromLaunchpadActivatesProject(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+
+	if _, err := app.CreateProjectFromLaunchpad(
+		"Immediate Access",
+		"db must be active",
+		"software",
+		"web",
+		"agile",
+		"US",
+		nil,
+	); err != nil {
+		t.Fatalf("CreateProjectFromLaunchpad: %v", err)
+	}
+
+	// Call a method that requires requireDB() without calling OpenProject first.
+	if _, err := app.ListCharts(""); err != nil {
+		t.Fatalf("ListCharts immediately after launchpad creation (without OpenProject): %v", err)
 	}
 }
 
 func TestOpenProjectRejectsDifferentUsersDEK(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
-	if _, err := app.CreateAccount("alice", "Alice", "alice-password"); err != nil {
+	if _, err := app.CreateAccount("alice", "Alice", "alice-password", false); err != nil {
 		t.Fatalf("CreateAccount alice: %v", err)
 	}
 	file, err := app.CreateProject("Alice Only", "")
@@ -94,7 +123,7 @@ func TestOpenProjectRejectsDifferentUsersDEK(t *testing.T) {
 	if err := app.Logout(); err != nil {
 		t.Fatalf("Logout alice: %v", err)
 	}
-	if _, err := app.CreateAccount("bob", "Bob", "bob-password"); err != nil {
+	if _, err := app.CreateAccount("bob", "Bob", "bob-password", false); err != nil {
 		t.Fatalf("CreateAccount bob: %v", err)
 	}
 
@@ -105,7 +134,7 @@ func TestOpenProjectRejectsDifferentUsersDEK(t *testing.T) {
 
 func TestOpenProjectPlaintextRequiresMigration(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
-	if _, err := app.CreateAccount("alice", "Alice", "alice-password"); err != nil {
+	if _, err := app.CreateAccount("alice", "Alice", "alice-password", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 	path := filepath.Join(t.TempDir(), "legacy.pmforge")

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package users
@@ -34,7 +34,7 @@ func newRecoveryTestStore(t *testing.T) *Store {
 
 func TestResetWithRecoveryCodeCanonicalisesPastedWhitespace(t *testing.T) {
 	store := newRecoveryTestStore(t)
-	if _, err := store.CreateAccount("alice", "Alice", "old password"); err != nil {
+	if _, err := store.CreateAccount("alice", "Alice", "old password", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 	codes, err := store.IssueRecoveryCodes("alice", nil)

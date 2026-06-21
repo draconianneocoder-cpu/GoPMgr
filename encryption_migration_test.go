@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -50,7 +50,7 @@ func createPlaintextProjectForMigration(t *testing.T) string {
 
 func TestEncryptProjectAtRestRequiresWrappedRecoveryCodes(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
-	if _, err := app.CreateAccount("alice", "Alice", "alice-password"); err != nil {
+	if _, err := app.CreateAccount("alice", "Alice", "alice-password", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 	path := createPlaintextProjectForMigration(t)
@@ -76,7 +76,7 @@ func TestEncryptProjectAtRestRequiresWrappedRecoveryCodes(t *testing.T) {
 
 func TestEncryptProjectAtRestMigratesAfterRecoveryCodeReissue(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
-	if _, err := app.CreateAccount("alice", "Alice", "alice-password"); err != nil {
+	if _, err := app.CreateAccount("alice", "Alice", "alice-password", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 	path := createPlaintextProjectForMigration(t)

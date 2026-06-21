@@ -1,18 +1,29 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
 
   let username = $state('');
   let displayName = $state('');
   let password = $state('');
   let confirm = $state('');
+  let isAdmin = $state(false);
   let error = $state('');
   let busy = $state(false);
+  let hasAdmin = $state(true); // optimistic: assume admin exists until we know otherwise
 
   const usernameRule = /^[A-Za-z0-9_-]{3,32}$/;
+
+  onMount(async () => {
+    try {
+      hasAdmin = await window.go.main.App.HasAnyAdmin();
+    } catch {
+      hasAdmin = true; // safe default: don't show admin prompt on error
+    }
+  });
 
   async function submit(e: Event) {
     e.preventDefault();
@@ -33,9 +44,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
     busy = true;
     try {
-      const acc = await window.go.main.App.CreateAccount(username, displayName || username, password);
+      const acc = await window.go.main.App.CreateAccount(username, displayName || username, password, isAdmin);
       session.user = acc;
-      goto('project_picker');
+      goto('portfolio');
     } catch (err: any) {
       error = String(err?.message ?? err);
     } finally {
@@ -49,10 +60,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
     class="w-full max-w-sm p-8 bg-slate-900 border border-slate-800 rounded-xl shadow-xl space-y-4"
     onsubmit={submit}
   >
-    <h1 class="text-xl font-bold text-white tracking-widest uppercase text-center">Create Account</h1>
+    <h1 class="text-xl font-bold text-slate-50 tracking-widest uppercase text-center">Create Account</h1>
     <p class="text-xs text-slate-500 text-center">
       Your data is stored under ~/Documents/PMForge/&lt;username&gt;/ on this machine.
     </p>
+
+    {#if !hasAdmin}
+      <div class="bg-amber-950/40 border border-amber-700/50 rounded-lg p-3 text-xs text-amber-300 space-y-1">
+        <p class="font-semibold">No administrator configured</p>
+        <p class="text-amber-400/80">
+          This machine has no PMForge administrator yet. You may claim that role below.
+          Administrators can create and delete accounts and manage other users.
+        </p>
+      </div>
+    {/if}
 
     <label class="block">
       <span class="text-xs font-semibold text-slate-500 uppercase">Username</span>
@@ -93,6 +114,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
         class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
       />
     </label>
+
+    {#if !hasAdmin}
+      <label class="flex items-start gap-3 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          bind:checked={isAdmin}
+          class="mt-0.5 accent-cyan-500"
+        />
+        <span class="text-xs text-slate-300">
+          <span class="font-semibold text-slate-100">Make this account an administrator</span><br />
+          <span class="text-slate-500">
+            Grants the ability to create and delete PMForge accounts on this machine.
+            This option is only available while no administrator exists.
+          </span>
+        </span>
+      </label>
+    {/if}
 
     {#if error}
       <p class="text-xs text-red-400" role="alert">{error}</p>
