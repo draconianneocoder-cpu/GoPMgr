@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -102,7 +102,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">Stakeholders</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Stakeholders</h1>
       <span class="text-xs text-slate-500">{list.length}</span>
     </div>
     <div class="flex gap-2 items-center">
@@ -147,7 +147,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               class="flex-1 text-left min-w-0"
             >
               <div class="flex items-center gap-2">
-                <span class="font-bold text-white">{s.name}</span>
+                <span class="font-bold text-slate-50">{s.name}</span>
                 <span class="text-[10px] px-2 py-0.5 rounded uppercase tracking-widest {tone(s.category)}">
                   {s.category}
                 </span>
@@ -186,7 +186,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   >
     <div class="w-full max-w-xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl">
       <header class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
-        <h2 class="text-sm font-bold tracking-widest uppercase text-white">
+        <h2 class="text-sm font-bold tracking-widest uppercase text-slate-50">
           {editing.id ? 'Edit stakeholder' : 'New stakeholder'}
         </h2>
         <button onclick={() => (editing = null)} class="text-slate-500 hover:text-slate-200">×</button>

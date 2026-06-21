@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
@@ -42,9 +42,10 @@ automated engineering work.
 ## Project Invariants
 
 - `go.mod` pins Go 1.26.3 and Wails v2.9.2. CGO is required.
-- The production build embeds `cmd/pmforge/frontend/dist` through
-  `go:embed`. `make build` creates that tree by building `frontend/dist`
-  and copying it into the Go package.
+- The main package is the root `main.go` (required by `wails build`). The
+  production build embeds the repo-root `frontend/dist` through `go:embed`.
+  `make build` runs `wails build`, which builds `frontend/dist`, injects the
+  `desktop,production` tags, and links the platform frameworks.
 - `system.db` stores local account metadata. Per-project `.pmforge`
   databases hold project data and are SQLCipher-capable through
   `internal/sqlitedriver`.
@@ -58,8 +59,8 @@ automated engineering work.
 ## Useful Commands
 
 ```sh
-go test ./cmd/... ./internal/...
-go test -race ./cmd/... ./internal/...
+go test . ./internal/...
+go test -race . ./internal/...
 npm --prefix frontend run check
 npm --prefix frontend run build
 make frontend-smoke

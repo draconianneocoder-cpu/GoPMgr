@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -122,7 +122,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     try {
       const seeds = suggestedSeeds.filter((s) => seedsChecked[s]);
-      const [project, , projectPath] = await window.go.main.App.CreateProjectFromLaunchpad(
+      const res = await window.go.main.App.CreateProjectFromLaunchpad(
         name,
         description,
         industry,
@@ -131,7 +131,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         countryCode,
         seeds,
       );
-      onCreated(project, projectPath);
+      onCreated(res.project, res.path);
     } catch (err: any) {
       error = `Create failed: ${err}`;
     } finally {
@@ -179,7 +179,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 <div class="min-h-screen bg-slate-950 text-slate-200 flex flex-col">
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
-    <h1 class="text-sm font-bold tracking-widest uppercase text-white">
+    <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">
       New Project · Step {step} of 4
     </h1>
     <button onclick={onCancel} class="text-xs text-slate-400 hover:text-cyan-400">
@@ -209,7 +209,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             onclick={() => { industry = ind.id; subCategory = ''; methodology = ''; next(); }}
             class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
           >
-            <div class="text-base font-bold text-white">{ind.label}</div>
+            <div class="text-base font-bold text-slate-50">{ind.label}</div>
             <p class="text-xs text-slate-500 mt-1">{ind.blurb}</p>
           </button>
         {/each}
@@ -241,7 +241,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             onclick={() => { methodology = m.id; next(); }}
             class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
           >
-            <div class="text-base font-bold text-white">{m.label}</div>
+            <div class="text-base font-bold text-slate-50">{m.label}</div>
             <p class="text-xs text-slate-500 mt-1">{m.blurb}</p>
           </button>
         {/each}

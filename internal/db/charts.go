@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package db
@@ -21,8 +21,13 @@ type Chart struct {
 	Data       string    `json:"data"`   // JSON string
 	Config     string    `json:"config"` // JSON string
 	TemplateID string    `json:"template_id"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	// CreatedAt/UpdatedAt are RFC3339Nano strings (server-managed). They
+	// are strings rather than time.Time so the Wails bridge can round-trip
+	// records whose timestamps are empty (new records) without failing to
+	// unmarshal "" into time.Time. RFC3339 sorts lexicographically, so the
+	// "ORDER BY updated_at" / string comparisons stay chronological.
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // ErrNoChart is returned when GetChart can't find the requested ID.
@@ -130,11 +135,7 @@ func scanChart(row interface {
 	if err != nil {
 		return Chart{}, err
 	}
-	if t, err := time.Parse(time.RFC3339Nano, created); err == nil {
-		c.CreatedAt = t
-	}
-	if t, err := time.Parse(time.RFC3339Nano, updated); err == nil {
-		c.UpdatedAt = t
-	}
+	c.CreatedAt = created
+	c.UpdatedAt = updated
 	return c, nil
 }

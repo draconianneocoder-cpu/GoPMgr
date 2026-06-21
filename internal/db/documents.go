@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package db
@@ -25,8 +25,10 @@ type Document struct {
 	TemplateID string    `json:"template_id"`
 	Version    int       `json:"version"`
 	Status     string    `json:"status"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	// RFC3339Nano strings (server-managed); see the note on db.Chart for why
+	// these are strings rather than time.Time (Wails empty-string round-trip).
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // ErrNoDocument is returned when GetDocument can't find the ID.
@@ -143,11 +145,7 @@ func scanDocument(row interface {
 	if err != nil {
 		return Document{}, err
 	}
-	if t, err := time.Parse(time.RFC3339Nano, created); err == nil {
-		d.CreatedAt = t
-	}
-	if t, err := time.Parse(time.RFC3339Nano, updated); err == nil {
-		d.UpdatedAt = t
-	}
+	d.CreatedAt = created
+	d.UpdatedAt = updated
 	return d, nil
 }

@@ -627,6 +627,14 @@ A full-codebase audit fixed six backend and three frontend bugs:
 - **ReportComposer concurrent export (MEDIUM):** Plain Export PDF was not disabled while the Sign modal was open. Fixed with `|| showSignModal` guard.
 - **SignCertificateModal `onConfirm` signature (LOW):** Updated to two-arg `(password, certPath)` so the parent receives the cert path chosen inside the dialog, not only the prop value.
 
+## UI/UX enhancements (2026-06-21)
+
+- **Portfolio landing screen.** `Portfolio.svelte` is the post-login home: project cards with status badges and one-click navigation to Dashboard, Settings, or the chart/document browser. Access from any header via the "Projects" nav tab.
+- **Autosave for all chart editors.** Every chart editor registers with `autosave.svelte.ts` on mount and unregisters on destroy. Saves fire only when the document has actually changed (snapshot diff), so idle sessions generate no spurious version increments.
+- **HTML schedule-report export.** Project Settings → Schedule Reports → HTML produces a self-contained HTML file, joining the existing PDF/DOCX/ODT/CSV/MSPDI schedule export formats.
+- **Native startup-failure dialogs.** When PMForge cannot initialise its data store or the Wails runtime, it now shows a native OS error dialog naming the log file path (macOS `osascript`, Windows `MessageBox`, Linux `zenity`/`kdialog`/`notify-send`) before exiting. Previously, startup failures were silent.
+- **Copyright attribution.** All source file SPDX headers updated to "James L. Burns and The PMForge Contributors."
+
 ## License
 
 Source code: **GPL-3.0-or-later**. Documentation: **GFDL-1.3-or-later**.

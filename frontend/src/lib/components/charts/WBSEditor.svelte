@@ -1,10 +1,11 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { autosave } from '../../autosave.svelte';
 
   // ---------- types & state ----------
   interface WBSNode {
@@ -50,6 +51,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let status = $state('');
 
   // ---------- load ----------
+  let stopAutosave: (() => void) | null = null;
+
   onMount(async () => {
     if (!session.editingId) return;
     chart = await window.go.main.App.GetChart(session.editingId);
@@ -59,6 +62,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
       doc = { root: { id: 'r', title: chart.title, children: [] } };
     }
     await refreshLayout();
+    // Register for timed auto-save now the saved doc is loaded.
+    stopAutosave = autosave.register(
+      () => JSON.stringify(doc),
+      () => save(),
+    );
   });
 
   async function refreshLayout() {
@@ -171,6 +179,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   // Concurrency hardening: cancel pending debounce on unmount.
   onDestroy(() => {
+    stopAutosave?.();
     if (debounceTimer) {
       clearTimeout(debounceTimer);
       debounceTimer = null;
@@ -187,7 +196,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       >
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">
         {chart?.title ?? 'Work Breakdown Structure'}
       </h1>
     </div>

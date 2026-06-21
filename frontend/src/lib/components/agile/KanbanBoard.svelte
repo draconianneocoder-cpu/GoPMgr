@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -32,9 +32,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     loading = true;
     try {
-      const [b, cols] = await window.go.main.App.EnsureDefaultBoard();
-      board = b;
-      columns = cols;
+      const res = await window.go.main.App.EnsureDefaultBoard();
+      board = res.board;
+      columns = res.columns;
       await refresh();
     } catch (err: any) {
       error = `Could not load board: ${err}`;
@@ -165,7 +165,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">
         Kanban · {board?.name ?? '...'}
       </h1>
     </div>
@@ -220,7 +220,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     onclick={() => openExisting(item)}
                     class="w-full text-left p-2 bg-slate-950 hover:bg-slate-800 rounded {priorityTint(item.priority)} cursor-grab active:cursor-grabbing"
                   >
-                    <div class="text-sm font-bold text-white">
+                    <div class="text-sm font-bold text-slate-50">
                       {item.title || '(untitled)'}
                     </div>
                     <div class="flex items-center justify-between mt-1">

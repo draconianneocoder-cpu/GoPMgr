@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -248,7 +248,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">Timeline</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Timeline</h1>
       <span class="text-xs text-slate-500">{entries.length} events</span>
     </div>
     <div class="flex gap-2">

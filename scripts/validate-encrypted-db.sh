@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Deterministic SQLCipher encrypted database validation gate.
@@ -19,6 +19,6 @@ echo "=== Encrypted Database Validation Gate ==="
 
 go test -count=1 -run 'Test(InitEncryptedDBCreatesEncryptedDatabase|InitEncryptedDBRejectsWrongKey|MigratePlaintextToEncryptedPreservesData|OpenEncryptedDBRejectsBadDEKLength|SwapInEncryptedSnapshotPreservesEncryptionAndReopensWithDEK|CreateArchivalBundlePreservesEncryptedProjectBytes)$' ./internal/db
 
-go test -count=1 -run 'Test(CreateProjectEncryptsAndReopensWithSessionDEK|CreateProjectFromLaunchpadEncryptsProject|OpenProjectRejectsDifferentUsersDEK|OpenProjectPlaintextRequiresMigration|EncryptProjectAtRest|OpenHeadlessDB)' ./cmd/pmforge
+go test -count=1 -run 'Test(CreateProjectEncryptsAndReopensWithSessionDEK|CreateProjectFromLaunchpadEncryptsProject|OpenProjectRejectsDifferentUsersDEK|OpenProjectPlaintextRequiresMigration|EncryptProjectAtRest|OpenHeadlessDB)' .
 
 echo "Encrypted database validation gate PASSED."

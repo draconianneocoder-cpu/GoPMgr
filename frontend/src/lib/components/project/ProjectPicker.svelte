@@ -1,16 +1,22 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import AppHeader from '../AppHeader.svelte';
 
   let projects = $state<ProjectFile[]>([]);
   let creating = $state(false);
   let newName = $state('');
   let newDesc = $state('');
   let error = $state('');
+  // Path of the project whose Delete button is awaiting a confirming second
+  // click (two-step delete so a destructive action can't fire by accident).
+  let confirmingDelete = $state<string | null>(null);
+  // Path of a project with a clone/delete request in flight (disables its row).
+  let busyPath = $state<string | null>(null);
 
   onMount(refresh);
 
@@ -49,25 +55,41 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  async function logout() {
-    await window.go.main.App.Logout();
-    session.user = null;
-    session.project = null;
-    session.projectPath = null;
-    goto('login');
+  async function clone(p: ProjectFile) {
+    error = '';
+    busyPath = p.path;
+    try {
+      await window.go.main.App.CloneProject(p.path);
+      await refresh();
+    } catch (err: any) {
+      error = `Clone failed: ${err}`;
+    } finally {
+      busyPath = null;
+    }
+  }
+
+  async function confirmDelete(p: ProjectFile) {
+    error = '';
+    busyPath = p.path;
+    try {
+      await window.go.main.App.DeleteProject(p.path);
+      confirmingDelete = null;
+      // If the deleted project was the open one, drop it from the session.
+      if (session.projectPath === p.path) {
+        session.project = null;
+        session.projectPath = null;
+      }
+      await refresh();
+    } catch (err: any) {
+      error = `Delete failed: ${err}`;
+    } finally {
+      busyPath = null;
+    }
   }
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">
-  <header class="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-    <div>
-      <h1 class="text-lg font-bold tracking-widest uppercase">PMForge</h1>
-      <p class="text-xs text-slate-500">Signed in as {session.user?.display_name ?? session.user?.username}</p>
-    </div>
-    <button onclick={logout} class="text-xs text-slate-400 hover:text-cyan-400 underline">
-      Sign out
-    </button>
-  </header>
+  <AppHeader active="projects" />
 
   <main class="max-w-3xl mx-auto p-8">
     <div class="flex items-center justify-between mb-6">
@@ -123,17 +145,54 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {:else}
       <ul class="space-y-2">
         {#each projects as p (p.path)}
-          <li>
+          <li class="flex items-stretch gap-2" class:opacity-50={busyPath === p.path}>
             <button
               onclick={() => open(p)}
-              class="w-full text-left p-4 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg flex items-center justify-between"
+              disabled={busyPath === p.path}
+              class="flex-1 min-w-0 text-left p-4 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg flex items-center justify-between gap-4"
             >
-              <div>
-                <div class="font-bold text-white">{p.name}</div>
-                <div class="text-xs text-slate-500">{p.path}</div>
+              <div class="min-w-0">
+                <div class="font-bold text-slate-50 truncate">{p.name}</div>
+                <div class="text-xs text-slate-500 truncate">{p.path}</div>
               </div>
-              <div class="text-xs text-slate-500">{p.modified}</div>
+              <div class="text-xs text-slate-500 shrink-0">{p.modified}</div>
             </button>
+
+            <div class="flex flex-col justify-center gap-1 shrink-0">
+              {#if confirmingDelete === p.path}
+                <button
+                  onclick={() => confirmDelete(p)}
+                  disabled={busyPath === p.path}
+                  class="text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white"
+                  aria-label={`Confirm delete ${p.name}`}
+                >
+                  Confirm
+                </button>
+                <button
+                  onclick={() => (confirmingDelete = null)}
+                  class="text-[11px] uppercase tracking-wider px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
+                >
+                  Cancel
+                </button>
+              {:else}
+                <button
+                  onclick={() => clone(p)}
+                  disabled={busyPath === p.path}
+                  class="text-[11px] uppercase tracking-wider px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300"
+                  aria-label={`Clone ${p.name}`}
+                >
+                  Clone
+                </button>
+                <button
+                  onclick={() => (confirmingDelete = p.path)}
+                  disabled={busyPath === p.path}
+                  class="text-[11px] uppercase tracking-wider px-3 py-1.5 rounded bg-slate-800 hover:bg-red-600/80 hover:text-white disabled:opacity-50 text-slate-400"
+                  aria-label={`Delete ${p.name}`}
+                >
+                  Delete
+                </button>
+              {/if}
+            </div>
           </li>
         {/each}
       </ul>

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package export converts PMForge's internal data models into the
@@ -29,6 +29,7 @@ const (
 	FormatODT   ExportFormat = "odt"
 	FormatXLSX  ExportFormat = "xlsx"
 	FormatCSV   ExportFormat = "csv"
+	FormatHTML  ExportFormat = "html"
 	FormatMSPDI ExportFormat = "mspdi"
 )
 
@@ -109,6 +110,8 @@ func GenerateArchivalReport(payload ReportPayload, opts ExportOptions) ([]byte, 
 		raw, err = ToMSPDI(opts.Title, payload.Tasks)
 	case FormatCSV:
 		raw, err = renderCSV(payload, opts)
+	case FormatHTML:
+		raw, err = renderHTML(payload, opts)
 	case FormatDOCX:
 		raw, err = renderDocumentDOCX(payload, opts)
 	case FormatODT:

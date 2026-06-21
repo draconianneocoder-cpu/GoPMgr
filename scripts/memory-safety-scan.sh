@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Memory-safety hardening gate.
@@ -9,7 +9,7 @@
 # script exits non-zero so CI can fail the build.
 #
 # What this catches:
-#   1. go vet ./cmd/... ./internal/... — standard correctness checks
+#   1. go vet . ./internal/... — standard correctness checks
 #      (printf format, suspicious assignments, lock copies, ...)
 #   2. unsafe.Pointer usage         — forbidden in this codebase
 #   3. os.Open without nearby Close — likely file-handle leak
@@ -20,9 +20,9 @@
 #      allow-list at the bottom.
 #
 # Optional tools (auto-detected; skipped silently if absent):
-#   staticcheck ./cmd/... ./internal/...
-#   gosec ./cmd/... ./internal/...
-#   govulncheck ./cmd/... ./internal/...
+#   staticcheck . ./internal/...
+#   gosec . ./internal/...
+#   govulncheck . ./internal/...
 #
 # Optional tools are advisory by default because not every developer
 # or CI image has the same optional scanner set installed. Set
@@ -42,8 +42,8 @@ fi
 # Scope: only scan PMForge's own source tree. Other directories
 # (vendored libraries, sibling repos accidentally cloned at the root)
 # are explicitly excluded so the scan stays focused.
-PMF_DIRS="./cmd ./internal ./scripts"
-GO_PACKAGES="./cmd/... ./internal/..."
+PMF_DIRS="./main.go ./internal ./scripts"
+GO_PACKAGES=". ./internal/..."
 
 fail=0
 section () {

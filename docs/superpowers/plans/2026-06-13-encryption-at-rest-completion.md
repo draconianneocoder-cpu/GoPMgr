@@ -111,7 +111,7 @@ Expected: `go.mod` requires `github.com/mutecomm/go-sqlcipher/v4 v4.4.2` and no 
 Create `internal/sqlitedriver/driver.go`:
 
 ```go
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package sqlitedriver

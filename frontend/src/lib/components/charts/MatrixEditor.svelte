@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -17,8 +17,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   //     "cells": [["x", ""], ["", "x"]]  // [rowIdx][colIdx]
   //   }
 
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { autosave } from '../../autosave.svelte';
 
   interface MatrixDoc {
     title?: string;
@@ -46,6 +47,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let newRow = $state('');
   let newCol = $state('');
 
+  let stopAutosave: (() => void) | null = null;
+
   onMount(async () => {
     if (!session.editingId) return;
     chart = await window.go.main.App.GetChart(session.editingId);
@@ -64,6 +67,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
     normalize();
     await refreshLayout();
+    // Register for timed auto-save now the saved doc is loaded.
+    stopAutosave = autosave.register(
+      () => JSON.stringify(doc),
+      () => save(),
+    );
+  });
+
+  onDestroy(() => {
+    stopAutosave?.();
   });
 
   // Ensure cells is a strict rows × cols rectangle.
@@ -161,7 +173,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">Matrix Diagram</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Matrix Diagram</h1>
     </div>
     <button
       onclick={save}

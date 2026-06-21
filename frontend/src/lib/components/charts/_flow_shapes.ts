@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Geometry helpers shared by WorkflowEditor and ActivityEditor.

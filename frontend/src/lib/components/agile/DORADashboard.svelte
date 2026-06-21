@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -132,7 +132,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">DORA Metrics</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">DORA Metrics</h1>
     </div>
     <div class="flex items-center gap-2">
       <label class="text-xs text-slate-500 flex items-center gap-2">
@@ -177,7 +177,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500">
               Deployment frequency
             </h3>
-            <p class="text-2xl font-bold text-white mt-1">{dora.deploy_frequency.label}</p>
+            <p class="text-2xl font-bold text-slate-50 mt-1">{dora.deploy_frequency.label}</p>
             <p class="text-[10px] uppercase tracking-widest mt-1 {df.text}">
               {dora.deploy_frequency.class}
             </p>
@@ -191,7 +191,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500">
               Lead time for changes
             </h3>
-            <p class="text-2xl font-bold text-white mt-1">{dora.lead_time.label}</p>
+            <p class="text-2xl font-bold text-slate-50 mt-1">{dora.lead_time.label}</p>
             <p class="text-[10px] uppercase tracking-widest mt-1 {lt.text}">
               {dora.lead_time.class}
             </p>
@@ -205,7 +205,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500">
               Change failure rate
             </h3>
-            <p class="text-2xl font-bold text-white mt-1">{dora.change_failure_rate.label}</p>
+            <p class="text-2xl font-bold text-slate-50 mt-1">{dora.change_failure_rate.label}</p>
             <p class="text-[10px] uppercase tracking-widest mt-1 {cfr.text}">
               {dora.change_failure_rate.class}
             </p>
@@ -219,7 +219,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500">
               MTTR
             </h3>
-            <p class="text-2xl font-bold text-white mt-1">{dora.mttr.label}</p>
+            <p class="text-2xl font-bold text-slate-50 mt-1">{dora.mttr.label}</p>
             <p class="text-[10px] uppercase tracking-widest mt-1 {mt.text}">
               {dora.mttr.class}
             </p>
@@ -316,7 +316,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <span class="text-[10px] font-mono text-slate-500 w-32 shrink-0">
                 {d.ts.slice(0, 19).replace('T', ' ')}
               </span>
-              <span class="text-xs font-bold text-white truncate flex-1">
+              <span class="text-xs font-bold text-slate-50 truncate flex-1">
                 {d.version}
               </span>
               <span class="text-[10px] px-2 py-0.5 rounded {d.successful ? 'bg-emerald-900 text-emerald-200' : 'bg-red-900 text-red-200'}">

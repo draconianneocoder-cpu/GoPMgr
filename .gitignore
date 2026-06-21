@@ -1,8 +1,16 @@
-# SPDX-FileCopyrightText: 2026 The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 # SPDX-License-Identifier: CC0-1.0
 
-# Build artifacts
-/build/
+# Build artifacts. The Wails build scaffold is tracked: build/appicon.png
+# (master app icon, wails derives the platform .icns/.ico from it) and the
+# build/darwin Info plists. Everything else under build/ is generated output
+# (compiled .app/binaries, packages, generated icons).
+/build/*
+!/build/appicon.png
+!/build/darwin/
+/build/darwin/*
+!/build/darwin/Info.plist
+!/build/darwin/Info.dev.plist
 /bin/
 *.exe
 *.dll
@@ -16,11 +24,14 @@
 # Wails generated bindings
 /frontend/wailsjs/
 
+# Stale pre-relocation embed copy (main package moved from cmd/pmforge to root)
+/cmd/
+
 # Node
 /frontend/node_modules/
 /frontend/dist/
 /frontend/.svelte-kit/
-/cmd/pmforge/frontend/dist/
+frontend/package.json.md5
 
 # Local validation scratch space
 /.tmp/
@@ -50,6 +61,9 @@ temp_snapshot.db
 *.pem
 !LICENSES/*.txt
 /LICENSES/OFL-1.1.txt
+
+# Agent memory (local-only; not for public consumption)
+/.agent_memory/
 
 # OS / editor
 .DS_Store

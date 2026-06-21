@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
@@ -19,8 +19,10 @@ local machine.
   encrypted per-project `.pmforge` files.
 - Documents: Go PDF/DOCX/ODT/XLSX/iCal renderers. PDF/A-3 and PAdES
   support are implemented in Go.
-- Build: `make build` builds the frontend, copies `frontend/dist` into
-  `cmd/pmforge/frontend/dist`, and compiles the Wails backend with CGO.
+- Build: `make build` runs `wails build`, which builds the frontend into
+  `frontend/dist`, embeds it via the root `main.go` `go:embed`, injects the
+  `desktop,production` tags, links the platform frameworks, and compiles the
+  Wails backend with CGO.
 
 ## Data Layout
 
@@ -47,8 +49,9 @@ families.
 
 ## Important Packages
 
-- `cmd/pmforge`: Wails app object, CLI dispatch, account/session flow,
-  project lifecycle, export entry points, and frontend embed.
+- `main.go` (repo root): Wails app object, CLI dispatch, account/session
+  flow, project lifecycle, export entry points, and frontend embed. Lives at
+  the root because `wails build` requires the main package there.
 - `internal/users`: Local account store, Argon2id authentication,
   recovery codes, and wrapped DEK handling.
 - `internal/db`: Project database schema, migrations, CRUD, backup,
@@ -105,5 +108,5 @@ consistency, REUSE/SPDX compliance, frontend budget and stability,
 frontend runtime smoke, memory-safety checks, Go race tests, production
 build, strict PDF/A-3 validation, and local PAdES validation.
 
-Generated embed output under `cmd/pmforge/frontend/dist` is build
-output. Release checks remove and recreate it as needed.
+Generated embed output under `frontend/dist` (repo root) is build output
+embedded by the root `main.go`. `wails build` regenerates it as needed.

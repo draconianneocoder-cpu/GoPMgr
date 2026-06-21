@@ -1,10 +1,11 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { autosave } from '../../autosave.svelte';
   import { showToast } from '../../toast.svelte';
   import SignCertificateModal from '../SignCertificateModal.svelte';
   import DocumentFieldEditor from './DocumentFieldEditor.svelte';
@@ -31,6 +32,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  let stopAutosave: (() => void) | null = null;
+
   onMount(async () => {
     window.addEventListener('keydown', handleKeyDown);
     if (!session.editingId) return;
@@ -49,10 +52,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const wordKind = doc!.kind.replace('_excel', '_word');
       definition = all.find((d) => d.kind === wordKind) ?? definition;
     }
+    // Snapshot covers both field content and the title, matching `dirty`.
+    stopAutosave = autosave.register(
+      () => JSON.stringify({ c: content, t: doc?.title }),
+      () => save(),
+    );
   });
 
   onDestroy(() => {
     window.removeEventListener('keydown', handleKeyDown);
+    stopAutosave?.();
   });
 
   async function save() {
@@ -141,16 +150,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  function handleSignedConfirm(pwd: string) {
+  function handleSignedConfirm(pwd: string, certPath: string) {
     showSignModal = false;
-    if (!pendingCertPath || !pwd || !doc) return;
+    if (!certPath || !pwd || !doc) return;
 
     signing = true;
     (async () => {
       try {
         const path = await window.go.main.App.ExportDocumentPDFSigned(
           doc.id,
-          pendingCertPath,
+          certPath,
           pwd,
         );
         status = `Signed PDF exported to ${path}`;
@@ -171,7 +180,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">
         {definition?.name ?? 'Document'}
       </h1>
       {#if doc}

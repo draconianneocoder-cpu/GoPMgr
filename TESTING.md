@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
@@ -12,7 +12,7 @@ run in the current session.
 ## Fast Local Checks
 
 ```sh
-go test ./cmd/... ./internal/...
+go test . ./internal/...
 npm --prefix frontend run check
 git diff --check && git diff --cached --check
 ```
@@ -22,13 +22,13 @@ Use package-scoped variants while developing a narrow slice:
 ```sh
 go test -count=1 ./internal/db
 go test -count=1 ./internal/users ./internal/crypto
-go test -count=1 ./cmd/pmforge
+go test -count=1 .                 # root main package (App methods, CLI dispatch)
 ```
 
 ## Race and Runtime Checks
 
 ```sh
-go test -race ./cmd/... ./internal/...
+go test -race . ./internal/...
 make frontend-smoke
 ```
 
@@ -48,9 +48,11 @@ make frontend-build-budget
 make frontend-smoke
 ```
 
-`make build` and `make check-release` rely on a built frontend. The
-Makefile copies `frontend/dist` into `cmd/pmforge/frontend/dist` so the
-Go `go:embed` directive can compile.
+`make build` runs `wails build`, which builds the frontend into
+`frontend/dist` and embeds it via the root `main.go` `go:embed` directive.
+When running the Go gates directly (`go test . ...`), build the frontend
+first (`make frontend-build-budget` or `npm --prefix frontend run build`)
+so `frontend/dist` exists for the embed to compile.
 
 ## Document and PDF Gates
 

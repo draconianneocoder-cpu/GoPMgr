@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package templates drives the Project Launchpad's "seed me some
@@ -23,7 +23,7 @@
 //
 //	{ "seeds": ["kanban", "charter", "backlog", "sprint"] }
 //
-// The caller (cmd/pmforge/main.go) dispatches each seed string to
+// The caller (root main.go) dispatches each seed string to
 // the corresponding action — see seeds.go.
 package templates
 

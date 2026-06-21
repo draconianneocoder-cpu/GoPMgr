@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Downloads the bundled TrueType fonts into internal/fonts/assets/.
@@ -143,6 +143,36 @@ fetch "JetBrainsMono-Regular.ttf"    "$JBM/JetBrainsMono-Regular.ttf"
 fetch "JetBrainsMono-Bold.ttf"       "$JBM/JetBrainsMono-Bold.ttf"
 fetch "JetBrainsMono-Italic.ttf"     "$JBM/JetBrainsMono-Italic.ttf"
 fetch "JetBrainsMono-BoldItalic.ttf" "$JBM/JetBrainsMono-BoldItalic.ttf"
+
+# --- Roboto, Apache-2.0 ----------------------------------------------
+# NOTE: google/fonts now ships Roboto as a variable font; the static
+# instances live under apache/roboto/static/. If these 404, grab static
+# TTFs from https://github.com/googlefonts/roboto-3-classic releases.
+ROBOTO="https://github.com/google/fonts/raw/main/apache/roboto/static"
+fetch "Roboto-Regular.ttf"    "$ROBOTO/Roboto-Regular.ttf"
+fetch "Roboto-Bold.ttf"       "$ROBOTO/Roboto-Bold.ttf"
+fetch "Roboto-Italic.ttf"     "$ROBOTO/Roboto-Italic.ttf"
+fetch "Roboto-BoldItalic.ttf" "$ROBOTO/Roboto-BoldItalic.ttf"
+
+# --- Arimo (Arial-metric-compatible), Apache-2.0 ---------------------
+# NOTE: if the static path drifts, Arimo static TTFs are also published
+# in the Croscore font release.
+ARIMO="https://github.com/google/fonts/raw/main/apache/arimo/static"
+fetch "Arimo-Regular.ttf"    "$ARIMO/Arimo-Regular.ttf"
+fetch "Arimo-Bold.ttf"       "$ARIMO/Arimo-Bold.ttf"
+fetch "Arimo-Italic.ttf"     "$ARIMO/Arimo-Italic.ttf"
+fetch "Arimo-BoldItalic.ttf" "$ARIMO/Arimo-BoldItalic.ttf"
+
+# --- Cousine (monospaced companion to Arimo), Apache-2.0 -------------
+COUSINE="https://github.com/google/fonts/raw/main/apache/cousine"
+fetch "Cousine-Regular.ttf"    "$COUSINE/Cousine-Regular.ttf"
+fetch "Cousine-Bold.ttf"       "$COUSINE/Cousine-Bold.ttf"
+fetch "Cousine-Italic.ttf"     "$COUSINE/Cousine-Italic.ttf"
+fetch "Cousine-BoldItalic.ttf" "$COUSINE/Cousine-BoldItalic.ttf"
+
+# --- Ledger (modern business serif), SIL OFL 1.1 ---------------------
+LEDGER="https://github.com/google/fonts/raw/main/ofl/ledger"
+fetch "Ledger-Regular.ttf" "$LEDGER/Ledger-Regular.ttf"
 
 if [ "$LIST" -eq 1 ]; then
 	exit 0

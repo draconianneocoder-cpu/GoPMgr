@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package fonts manages the TrueType fonts PMForge embeds in generated
@@ -207,6 +207,55 @@ var Catalog = []FontFamily{
 			{Bold, "JetBrainsMono-Bold.ttf"},
 			{Italic, "JetBrainsMono-Italic.ttf"},
 			{BoldItalic, "JetBrainsMono-BoldItalic.ttf"},
+		},
+	},
+	{
+		Name:        "Roboto",
+		Category:    "sans",
+		Description: "Google's screen-optimised neo-grotesque; ideal primary UI font.",
+		License:     "Apache-2.0",
+		Source:      "https://github.com/google/roboto",
+		Files: []FontFile{
+			{Regular, "Roboto-Regular.ttf"},
+			{Bold, "Roboto-Bold.ttf"},
+			{Italic, "Roboto-Italic.ttf"},
+			{BoldItalic, "Roboto-BoldItalic.ttf"},
+		},
+	},
+	{
+		Name:        "Arimo",
+		Category:    "sans",
+		Description: "Arial-metric-compatible sans; clean, corporate, native on desktop.",
+		License:     "Apache-2.0",
+		Source:      "https://github.com/google/fonts/tree/main/apache/arimo",
+		Files: []FontFile{
+			{Regular, "Arimo-Regular.ttf"},
+			{Bold, "Arimo-Bold.ttf"},
+			{Italic, "Arimo-Italic.ttf"},
+			{BoldItalic, "Arimo-BoldItalic.ttf"},
+		},
+	},
+	{
+		Name:        "Cousine",
+		Category:    "mono",
+		Description: "Monospaced companion to Arimo for code, logs, and commit hashes.",
+		License:     "Apache-2.0",
+		Source:      "https://github.com/google/fonts/tree/main/apache/cousine",
+		Files: []FontFile{
+			{Regular, "Cousine-Regular.ttf"},
+			{Bold, "Cousine-Bold.ttf"},
+			{Italic, "Cousine-Italic.ttf"},
+			{BoldItalic, "Cousine-BoldItalic.ttf"},
+		},
+	},
+	{
+		Name:        "Ledger",
+		Category:    "serif",
+		Description: "Modern business serif with strong on-screen legibility.",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/google/fonts/tree/main/ofl/ledger",
+		Files: []FontFile{
+			{Regular, "Ledger-Regular.ttf"},
 		},
 	},
 }

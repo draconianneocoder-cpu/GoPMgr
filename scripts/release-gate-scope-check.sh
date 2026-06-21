@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set -euo pipefail
@@ -13,7 +13,7 @@ agent_text="$(tr '\n' ' ' < AGENT.md)"
 trap 'rm -f "$go_scope_matches" "$go_list_scope"' EXIT
 
 if rg -n '((go|\$\(GO\)) (test|vet)( -race)?|staticcheck|gosec -quiet|govulncheck) \./\.\.\.' Makefile scripts AGENT.md >"$go_scope_matches"; then
-	echo "release-scope: Go quality gates must target ./cmd/... ./internal/... instead of ./..." >&2
+	echo "release-scope: Go quality gates must target . ./internal/... instead of ./..." >&2
 	cat "$go_scope_matches" >&2
 	fail=1
 fi
@@ -68,7 +68,7 @@ if awk '/^package-(linux|windows|darwin):/{in_target=1; next} /^[A-Za-z0-9_-]+:/
 fi
 
 if command -v go >/dev/null 2>&1; then
-	if go list ./cmd/... ./internal/... | rg -n '/frontend/|/node_modules/' >"$go_list_scope"; then
+	if go list . ./internal/... | rg -n '/frontend/|/node_modules/' >"$go_list_scope"; then
 		echo "release-scope: scoped Go package list unexpectedly includes frontend or node_modules packages." >&2
 		cat "$go_list_scope" >&2
 		fail=1

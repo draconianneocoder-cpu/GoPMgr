@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -23,7 +23,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   // Schedule report export state
   let exporting = $state(false);
-  let exportFormat = $state<'pdf' | 'docx' | 'odt' | null>(null);
+  let exportFormat = $state<'pdf' | 'docx' | 'odt' | 'csv' | 'html' | 'mspdi' | null>(null);
   let exportStatus = $state('');
   let exportError = $state(false);
 
@@ -234,21 +234,25 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  async function exportScheduleReport(format: 'pdf' | 'docx' | 'odt') {
+  type ScheduleExportFormat = 'pdf' | 'docx' | 'odt' | 'csv' | 'html' | 'mspdi';
+
+  async function exportScheduleReport(format: ScheduleExportFormat) {
     exporting = true;
     exportFormat = format;
     exportStatus = '';
     exportError = false;
 
+    const exporters: Record<ScheduleExportFormat, () => Promise<string>> = {
+      pdf: () => window.go.main.App.ExportScheduleReportPDF(),
+      docx: () => window.go.main.App.ExportScheduleReportDOCX(),
+      odt: () => window.go.main.App.ExportScheduleReportODT(),
+      csv: () => window.go.main.App.ExportScheduleReportCSV(),
+      html: () => window.go.main.App.ExportScheduleReportHTML(),
+      mspdi: () => window.go.main.App.ExportScheduleReportMSPDI(),
+    };
+
     try {
-      let path: string;
-      if (format === 'pdf') {
-        path = await window.go.main.App.ExportScheduleReportPDF();
-      } else if (format === 'docx') {
-        path = await window.go.main.App.ExportScheduleReportDOCX();
-      } else {
-        path = await window.go.main.App.ExportScheduleReportODT();
-      }
+      const path = await exporters[format]();
       exportStatus = `Exported to: ${path}`;
     } catch (err: any) {
       exportError = true;
@@ -268,7 +272,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">Project Settings</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Project Settings</h1>
     </div>
     <div class="flex gap-2">
       <button
@@ -475,6 +479,30 @@ SPDX-License-Identifier: GPL-3.0-or-later
            >
              {exporting && exportFormat === 'odt' ? 'Exporting…' : 'Export ODT'}
            </button>
+
+           <button
+             onclick={() => exportScheduleReport('csv')}
+             disabled={exporting}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
+           >
+             {exporting && exportFormat === 'csv' ? 'Exporting…' : 'Export CSV'}
+           </button>
+
+           <button
+             onclick={() => exportScheduleReport('html')}
+             disabled={exporting}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
+           >
+             {exporting && exportFormat === 'html' ? 'Exporting…' : 'Export HTML'}
+           </button>
+
+           <button
+             onclick={() => exportScheduleReport('mspdi')}
+             disabled={exporting}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
+           >
+             {exporting && exportFormat === 'mspdi' ? 'Exporting…' : 'Export MS Project XML'}
+           </button>
          </div>
 
          {#if exportStatus}
@@ -493,7 +521,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
            <div class="flex flex-wrap items-center justify-between gap-3">
              <div>
                <span class="text-xs text-slate-500 uppercase">State</span>
-               <p class="text-sm font-semibold text-white">
+               <p class="text-sm font-semibold text-slate-50">
                  {encryptionState === 'encrypted'
                    ? 'Encrypted'
                    : encryptionState === 'plaintext'

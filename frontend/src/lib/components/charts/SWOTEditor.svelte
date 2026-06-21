@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -13,8 +13,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // server-side via the `tone` field on each quadrant so the GUI and
   // any future PDF export agree on the styling.
 
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { autosave } from '../../autosave.svelte';
 
   interface SWOTDoc {
     title?: string;
@@ -48,6 +49,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let status = $state('');
   let saving = $state(false);
 
+  let stopAutosave: (() => void) | null = null;
+
   onMount(async () => {
     if (!session.editingId) return;
     chart = await window.go.main.App.GetChart(session.editingId);
@@ -64,6 +67,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
       doc = { strengths: [], weaknesses: [], opportunities: [], threats: [] };
     }
     await refreshLayout();
+    // Register for timed auto-save now the saved doc is loaded.
+    stopAutosave = autosave.register(
+      () => JSON.stringify(doc),
+      () => save(),
+    );
+  });
+
+  onDestroy(() => {
+    stopAutosave?.();
   });
 
   async function refreshLayout() {
@@ -161,7 +173,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">SWOT Matrix</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">SWOT Matrix</h1>
     </div>
     <button
       onclick={save}
