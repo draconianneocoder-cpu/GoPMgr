@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -51,7 +51,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-lg font-bold tracking-widest uppercase text-white">Process Excellence Suite</h1>
+      <h1 class="text-lg font-bold tracking-widest uppercase text-slate-50">Process Excellence Suite</h1>
     </div>
   </header>
 
@@ -93,7 +93,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               onclick={() => goto('sigma_project', p.id)}
               class="text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg p-5 transition"
             >
-              <div class="font-bold text-white mb-1">{p.title}</div>
+              <div class="font-bold text-slate-50 mb-1">{p.title}</div>
               <div class="text-xs text-slate-400 mb-2">
                 {p.belt_level.toUpperCase()} BELL · {p.phase.toUpperCase()} PHASE
               </div>

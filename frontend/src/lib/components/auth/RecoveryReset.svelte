@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -55,7 +55,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     class="w-full max-w-sm p-8 bg-slate-900 border border-slate-800 rounded-xl shadow-xl space-y-4"
     onsubmit={submit}
   >
-    <h1 class="text-xl font-bold text-white tracking-widest uppercase text-center">
+    <h1 class="text-xl font-bold text-slate-50 tracking-widest uppercase text-center">
       Reset Password
     </h1>
     <p class="text-xs text-slate-500 text-center">

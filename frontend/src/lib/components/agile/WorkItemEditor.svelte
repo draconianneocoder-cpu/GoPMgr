@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -127,7 +127,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   >
     <div class="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
       <header class="px-6 py-3 border-b border-slate-800 flex items-center justify-between">
-        <h2 class="text-sm font-bold tracking-widest uppercase text-white">
+        <h2 class="text-sm font-bold tracking-widest uppercase text-slate-50">
           {draft.id ? 'Edit work item' : 'New work item'}
         </h2>
         <button

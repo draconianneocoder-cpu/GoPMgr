@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 
 Shared editor shell for every Stats-family chart. Handles:
@@ -23,6 +23,7 @@ JSON.stringified back to db.charts.data.
 <script lang="ts" generics="TDoc">
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { autosave } from '../../autosave.svelte';
   import StatsChart from './StatsChart.svelte';
   import type { Snippet } from 'svelte';
   import type { StatsLayout } from './_stats_types';
@@ -63,6 +64,8 @@ JSON.stringified back to db.charts.data.
     }
   }
 
+  let stopAutosave: (() => void) | null = null;
+
   onMount(async () => {
     window.addEventListener('keydown', handleKeyDown);
     if (!session.editingId) return;
@@ -74,6 +77,11 @@ JSON.stringified back to db.charts.data.
       doc = initialDocValue();
     }
     await refreshLayout();
+    // Register after load so the baseline snapshot is the saved doc.
+    stopAutosave = autosave.register(
+      () => JSON.stringify(doc),
+      () => save(),
+    );
   });
 
   async function refreshLayout() {
@@ -126,6 +134,7 @@ JSON.stringified back to db.charts.data.
   // (AGENT.md §6 — every editor with a setTimeout MUST clean up.)
   onDestroy(() => {
     window.removeEventListener('keydown', handleKeyDown);
+    stopAutosave?.();
     if (debounceTimer) {
       clearTimeout(debounceTimer);
       debounceTimer = null;
@@ -139,7 +148,7 @@ JSON.stringified back to db.charts.data.
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">{headingLabel}</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">{headingLabel}</h1>
     </div>
     <button
       onclick={save}

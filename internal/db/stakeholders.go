@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package db
@@ -45,8 +45,10 @@ type Stakeholder struct {
 	// capacity for assignments naming this stakeholder.
 	Availability float64   `json:"availability"`
 	Notes        string    `json:"notes"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	// RFC3339Nano strings (server-managed); see the note on db.Chart for why
+	// these are strings rather than time.Time (Wails empty-string round-trip).
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // ErrNoStakeholder is returned by GetStakeholder for unknown IDs.
@@ -173,11 +175,7 @@ func scanStakeholder(row interface {
 		return Stakeholder{}, err
 	}
 	s.Category = StakeholderCategory(category)
-	if t, err := time.Parse(time.RFC3339Nano, created); err == nil {
-		s.CreatedAt = t
-	}
-	if t, err := time.Parse(time.RFC3339Nano, updated); err == nil {
-		s.UpdatedAt = t
-	}
+	s.CreatedAt = created
+	s.UpdatedAt = updated
 	return s, nil
 }

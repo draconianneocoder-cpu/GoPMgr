@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -250,7 +250,7 @@ import TollgateChecklist from './TollgateChecklist.svelte';
       <button onclick={() => goto('sigma_dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Sigma Home
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">
         {project?.title ?? 'Loading...'}
       </h1>
       {#if project}
@@ -283,7 +283,7 @@ import TollgateChecklist from './TollgateChecklist.svelte';
           <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 flex items-center gap-3">
             <span class="text-2xl">{tool.icon}</span>
             <div class="flex-1">
-              <div class="text-sm font-medium text-white">{tool.name}</div>
+              <div class="text-sm font-medium text-slate-50">{tool.name}</div>
               <div class="text-[10px] uppercase tracking-wider {tool.status === 'completed' ? 'text-emerald-400' : tool.status === 'active' ? 'text-amber-400' : 'text-slate-400'}">
                 {tool.status === 'completed' ? '✓ Completed' : tool.status === 'active' ? '● In Progress' : '○ Not Started'}
               </div>

@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -18,8 +18,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   //     }
   //   }
 
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { autosave } from '../../autosave.svelte';
 
   interface RACITask {
     id: string;
@@ -65,6 +66,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let newRole = $state('');
   let newTaskTitle = $state('');
 
+  let stopAutosave: (() => void) | null = null;
+
   onMount(async () => {
     if (!session.editingId) return;
     chart = await window.go.main.App.GetChart(session.editingId);
@@ -79,6 +82,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
       doc = { roles: [], tasks: [], assignments: {} };
     }
     await refreshLayout();
+    // Register for timed auto-save now the saved doc is loaded.
+    stopAutosave = autosave.register(
+      () => JSON.stringify(doc),
+      () => save(),
+    );
+  });
+
+  onDestroy(() => {
+    stopAutosave?.();
   });
 
   async function refreshLayout() {
@@ -183,7 +195,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">RACI Matrix</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">RACI Matrix</h1>
       {#if layout.validation.error_count > 0}
         <span class="text-xs px-2 py-1 bg-red-900 text-red-200 rounded-full">
           {layout.validation.error_count} issue{layout.validation.error_count === 1 ? '' : 's'}

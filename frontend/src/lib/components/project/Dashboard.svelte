@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -56,16 +56,16 @@ import BudgetPanel from './BudgetPanel.svelte';
     signingDocId = null; // modal will control final state
   }
 
-  function handleDashboardSignedConfirm(pwd: string) {
+  function handleDashboardSignedConfirm(pwd: string, certPath: string) {
     showSignModal = false;
-    if (!pendingCertPathForDash || !pwd || !pendingDocForSign) return;
+    if (!certPath || !pwd || !pendingDocForSign) return;
 
     signingDocId = pendingDocForSign.id;
     (async () => {
       try {
         const path = await window.go.main.App.ExportDocumentPDFSigned(
           pendingDocForSign!.id,
-          pendingCertPathForDash,
+          certPath,
           pwd,
         );
         showToast(`Signed PDF exported to: ${path}`, 'success');
@@ -170,24 +170,32 @@ import BudgetPanel from './BudgetPanel.svelte';
   };
 
   async function newChart(kind: string, title: string) {
-    const starter = chartStarters[kind]?.() ?? {};
-    const c = await window.go.main.App.SaveChart({
-      id: '',
-      project_id: session.project!.id,
-      kind,
-      title,
-      data: JSON.stringify(starter),
-      config: '{}',
-      template_id: '',
-      created_at: '',
-      updated_at: '',
-    } as any);
-    goto(chartRoutes[kind] ?? 'charts', c.id);
+    try {
+      const starter = chartStarters[kind]?.() ?? {};
+      const c = await window.go.main.App.SaveChart({
+        id: '',
+        project_id: session.project!.id,
+        kind,
+        title,
+        data: JSON.stringify(starter),
+        config: '{}',
+        template_id: '',
+        created_at: '',
+        updated_at: '',
+      } as any);
+      goto(chartRoutes[kind] ?? 'charts', c.id);
+    } catch (err: any) {
+      showToast(`Could not create chart: ${err}`, 'error');
+    }
   }
 
   async function newCharter() {
-    const d = await window.go.main.App.NewDocument('charter_word', 'Project Charter');
-    goto('charter', d.id);
+    try {
+      const d = await window.go.main.App.NewDocument('charter_word', 'Project Charter');
+      goto('charter', d.id);
+    } catch (err: any) {
+      showToast(`Could not create charter: ${err}`, 'error');
+    }
   }
 
   let importMsg = $state('');
@@ -204,8 +212,12 @@ import BudgetPanel from './BudgetPanel.svelte';
   }
 
   async function newDocument(kind: string, defaultTitle: string) {
-    const d = await window.go.main.App.NewDocument(kind, defaultTitle);
-    goto('documents', d.id);
+    try {
+      const d = await window.go.main.App.NewDocument(kind, defaultTitle);
+      goto('documents', d.id);
+    } catch (err: any) {
+      showToast(`Could not create document: ${err}`, 'error');
+    }
   }
 
   // Cards for the "New chart" grid. Order intentionally puts the
@@ -238,8 +250,13 @@ import BudgetPanel from './BudgetPanel.svelte';
     await window.go.main.App.CloseProject();
     session.project = null;
     session.projectPath = null;
-    goto('project_picker');
+    goto('portfolio');
   }
+
+  // Human-readable label lookups — built once from the static lists so
+  // the chart/document rows in the existing-items sections stay clean.
+  const chartKindLabel = new Map(newChartCards.map(c => [c.kind, c.title]));
+  const docKindLabel   = $derived(new Map(docKinds.map(d => [d.kind, d.name])));
 
   const phasesOrder = ['initiation', 'planning', 'execution', 'monitoring', 'closing'];
   const docsByPhase = $derived(() => {
@@ -250,19 +267,51 @@ import BudgetPanel from './BudgetPanel.svelte';
     }
     return map;
   });
+
+  const statusStyles: Record<string, string> = {
+    active:    'bg-emerald-900 text-emerald-300 border-emerald-700/40',
+    planning:  'bg-cyan-900/60 text-cyan-300 border-cyan-700/40',
+    on_hold:   'bg-amber-900/60 text-amber-300 border-amber-700/40',
+    complete:  'bg-slate-700/40 text-slate-300 border-slate-600/40',
+    cancelled: 'bg-red-900/60 text-red-300 border-red-700/40',
+  };
+  const statusLabel = (s: string) => (s ? s.replace('_', ' ') : 'unknown');
+
+  const docStatusStyles: Record<string, string> = {
+    draft:    'bg-slate-700/40 text-slate-400 border-slate-600/40',
+    review:   'bg-amber-900/60 text-amber-300 border-amber-700/40',
+    approved: 'bg-emerald-900 text-emerald-300 border-emerald-700/40',
+    archived: 'bg-slate-800/60 text-slate-500 border-slate-700/40',
+  };
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">
-  <header class="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-    <div>
-      <h1 class="text-lg font-bold tracking-widest uppercase">
-        {session.project?.name ?? 'Project'}
-      </h1>
-      <p class="text-xs text-slate-500">
-        {session.project?.phase} · {session.project?.status}
-      </p>
+  <header class="border-b border-slate-800 px-6 py-4 flex items-center justify-between gap-4">
+    <div class="min-w-0">
+      <div class="flex items-center gap-3 flex-wrap">
+        <h1 class="text-lg font-bold tracking-widest uppercase truncate">
+          {session.project?.name ?? 'Project'}
+        </h1>
+        {#if session.project?.status}
+          <span class={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${statusStyles[session.project.status] ?? 'bg-slate-700/40 text-slate-300 border-slate-600/40'}`}>
+            {statusLabel(session.project.status)}
+          </span>
+        {/if}
+      </div>
+      {#if session.project}
+        {@const meta = [
+          session.project.phase,
+          session.project.methodology,
+          (session.project.start_date || session.project.end_date)
+            ? `${session.project.start_date || '?'} → ${session.project.end_date || 'ongoing'}`
+            : null,
+        ].filter(Boolean)}
+        {#if meta.length > 0}
+          <p class="text-xs text-slate-500 mt-0.5">{meta.join(' · ')}</p>
+        {/if}
+      {/if}
     </div>
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-4 shrink-0">
       <button onclick={() => goto('project_settings')} class="text-xs text-slate-400 hover:text-cyan-400 underline">
         Settings
       </button>
@@ -272,18 +321,24 @@ import BudgetPanel from './BudgetPanel.svelte';
     </div>
   </header>
 
+  <SignCertificateModal
+    bind:open={showSignModal}
+    certPath={pendingCertPathForDash}
+    onConfirm={handleDashboardSignedConfirm}
+  />
+
   <main class="max-w-6xl mx-auto p-8 space-y-8">
     <!-- Project navigation row: Stakeholders + Timeline are always
          available (not gated on a pack toggle). Budget panel shows
          a live summary. -->
     <section>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <button
           onclick={() => goto('stakeholders')}
           class="p-4 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
         >
           <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">People</div>
-          <div class="text-base font-bold text-white mt-1">Stakeholders</div>
+          <div class="text-base font-bold text-slate-50 mt-1">Stakeholders</div>
           <p class="text-xs text-slate-500 mt-1">
             Project-level address book; rates &amp; contracts feed the budget panel.
           </p>
@@ -293,24 +348,113 @@ import BudgetPanel from './BudgetPanel.svelte';
           class="p-4 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
         >
           <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Calendar</div>
-          <div class="text-base font-bold text-white mt-1">Timeline</div>
+          <div class="text-base font-bold text-slate-50 mt-1">Timeline</div>
           <p class="text-xs text-slate-500 mt-1">
             Sprint + deployment + milestone strip, with country holidays, exportable to iCal.
           </p>
         </button>
         <div class="md:col-span-2 lg:col-span-1">
           <BudgetPanel />
-  </div>
-
-  <SignCertificateModal
-    bind:open={showSignModal}
-    certPath={pendingCertPathForDash}
-    onConfirm={handleDashboardSignedConfirm}
-  />
-</div>
+        </div>
+      </div>
     </section>
 
-    <!-- New chart actions (DAG family fully implemented) -->
+    <!-- Existing charts (shown first so returning users reach their work quickly) -->
+    {#if charts.length > 0}
+    <section>
+      <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">Charts</h2>
+      <ul class="space-y-2">
+        {#each charts as c (c.id)}
+          <li class="flex items-center gap-2">
+            <button
+              onclick={() => goto(chartRoutes[c.kind] ?? 'charts', c.id)}
+              class="flex-1 text-left p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex items-center justify-between"
+            >
+              <div>
+                <div class="font-bold text-slate-50">{c.title}</div>
+                <div class="text-xs text-slate-500">{chartKindLabel.get(c.kind) ?? c.kind}</div>
+              </div>
+              <span class="text-xs text-slate-500">{c.updated_at?.slice(0, 10) ?? ''}</span>
+            </button>
+            {#if deletingChartId === c.id}
+              <span class="text-xs text-slate-400 shrink-0">Delete?</span>
+              <button
+                onclick={() => confirmDeleteChart(c.id)}
+                class="text-xs bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded"
+                aria-label={`Confirm delete ${c.title}`}
+              >Yes</button>
+              <button
+                onclick={() => (deletingChartId = null)}
+                class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded"
+              >No</button>
+            {:else}
+              <button
+                onclick={() => (deletingChartId = c.id)}
+                class="text-xs bg-slate-800 hover:bg-red-900/60 px-2 py-1 rounded text-slate-500 hover:text-red-300"
+                aria-label={`Delete ${c.title}`}
+              >Delete</button>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    </section>
+    {/if}
+
+    <!-- Existing documents (shown before new-document actions for return-user flow) -->
+    {#if docs.length > 0}
+    <section>
+      <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">Documents</h2>
+      <ul class="space-y-2">
+        {#each docs as d (d.id)}
+          <li class="flex items-center gap-2">
+            <button
+              onclick={() => goto(d.kind.startsWith('charter') ? 'charter' : 'documents', d.id)}
+              class="flex-1 text-left p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex items-center justify-between gap-3"
+            >
+              <div class="min-w-0">
+                <div class="font-bold text-slate-50 truncate">{d.title}</div>
+                <div class="text-xs text-slate-500 mt-0.5">{docKindLabel.get(d.kind) ?? d.kind}</div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${docStatusStyles[d.status] ?? 'bg-slate-700/40 text-slate-400 border-slate-600/40'}`}>
+                  {d.status || 'draft'}
+                </span>
+                <span class="text-xs text-slate-500">v{d.version}</span>
+              </div>
+            </button>
+            <button
+              onclick={() => exportSignedDocument(d)}
+              disabled={signingDocId === d.id}
+              class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 px-2 py-1 rounded self-center"
+              title="Export with PAdES B-B digital signature"
+            >
+              {signingDocId === d.id ? '…' : 'Sign & Export'}
+            </button>
+            {#if deletingDocId === d.id}
+              <span class="text-xs text-slate-400 shrink-0">Delete?</span>
+              <button
+                onclick={() => confirmDeleteDoc(d.id)}
+                class="text-xs bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded"
+                aria-label={`Confirm delete ${d.title}`}
+              >Yes</button>
+              <button
+                onclick={() => (deletingDocId = null)}
+                class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded"
+              >No</button>
+            {:else}
+              <button
+                onclick={() => (deletingDocId = d.id)}
+                class="text-xs bg-slate-800 hover:bg-red-900/60 px-2 py-1 rounded text-slate-500 hover:text-red-300"
+                aria-label={`Delete ${d.title}`}
+              >Delete</button>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    </section>
+    {/if}
+
+    <!-- New chart actions -->
     <section>
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500">
@@ -338,7 +482,7 @@ import BudgetPanel from './BudgetPanel.svelte';
             <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">
               {card.kind.replace('_', '-')}
             </div>
-            <div class="text-base font-bold text-white mt-1">{card.title}</div>
+            <div class="text-base font-bold text-slate-50 mt-1">{card.title}</div>
             <p class="text-xs text-slate-500 mt-1">{card.description}</p>
           </button>
         {/each}
@@ -356,7 +500,7 @@ import BudgetPanel from './BudgetPanel.svelte';
           class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
         >
           <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Charter</div>
-          <div class="text-base font-bold text-white mt-1">Project Charter</div>
+          <div class="text-base font-bold text-slate-50 mt-1">Project Charter</div>
           <p class="text-xs text-slate-500 mt-1">
             Foundational document that authorises the project.
           </p>
@@ -367,7 +511,7 @@ import BudgetPanel from './BudgetPanel.svelte';
           class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
         >
           <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Report</div>
-          <div class="text-base font-bold text-white mt-1">Combined Report</div>
+          <div class="text-base font-bold text-slate-50 mt-1">Combined Report</div>
           <p class="text-xs text-slate-500 mt-1">
             Bundle multiple documents into one PDF with cover and TOC.
           </p>
@@ -395,7 +539,7 @@ import BudgetPanel from './BudgetPanel.svelte';
             class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
           >
             <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Board</div>
-            <div class="text-base font-bold text-white mt-1">Kanban</div>
+            <div class="text-base font-bold text-slate-50 mt-1">Kanban</div>
             <p class="text-xs text-slate-500 mt-1">
               Drag work items between columns; WIP-limit indicators.
             </p>
@@ -405,7 +549,7 @@ import BudgetPanel from './BudgetPanel.svelte';
             class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
           >
             <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">List</div>
-            <div class="text-base font-bold text-white mt-1">Backlog</div>
+            <div class="text-base font-bold text-slate-50 mt-1">Backlog</div>
             <p class="text-xs text-slate-500 mt-1">
               Prioritized work waiting to be picked up.
             </p>
@@ -415,7 +559,7 @@ import BudgetPanel from './BudgetPanel.svelte';
             class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
           >
             <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Iteration</div>
-            <div class="text-base font-bold text-white mt-1">Sprints</div>
+            <div class="text-base font-bold text-slate-50 mt-1">Sprints</div>
             <p class="text-xs text-slate-500 mt-1">
               Plan, activate, and complete time-boxed sprints.
             </p>
@@ -425,7 +569,7 @@ import BudgetPanel from './BudgetPanel.svelte';
             class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
           >
             <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Metrics</div>
-            <div class="text-base font-bold text-white mt-1">DORA Dashboard</div>
+            <div class="text-base font-bold text-slate-50 mt-1">DORA Dashboard</div>
             <p class="text-xs text-slate-500 mt-1">
               Deploy frequency, lead time, CFR, MTTR with classifications.
             </p>
@@ -440,102 +584,10 @@ import BudgetPanel from './BudgetPanel.svelte';
       {/if}
     </section>
 
-    <!-- Existing charts -->
-    <section>
-      <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">Charts</h2>
-      {#if charts.length === 0}
-        <p class="text-sm text-slate-500">No charts yet.</p>
-      {:else}
-        <ul class="space-y-2">
-          {#each charts as c (c.id)}
-            <li class="flex items-center gap-2">
-              <button
-                onclick={() => goto(chartRoutes[c.kind] ?? 'charts', c.id)}
-                class="flex-1 text-left p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex items-center justify-between"
-              >
-                <div>
-                  <div class="font-bold text-white">{c.title}</div>
-                  <div class="text-xs text-slate-500">{c.kind}</div>
-                </div>
-                <span class="text-xs text-slate-500">{c.updated_at?.slice(0, 10) ?? ''}</span>
-              </button>
-              {#if deletingChartId === c.id}
-                <span class="text-xs text-slate-400">Delete?</span>
-                <button
-                  onclick={() => confirmDeleteChart(c.id)}
-                  class="text-xs bg-red-800 hover:bg-red-700 text-white px-2 py-1 rounded"
-                >Yes</button>
-                <button
-                  onclick={() => (deletingChartId = null)}
-                  class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded"
-                >No</button>
-              {:else}
-                <button
-                  onclick={() => (deletingChartId = c.id)}
-                  class="text-xs bg-slate-800 hover:bg-red-900 px-2 py-1 rounded text-slate-400 hover:text-red-300"
-                  title="Delete chart"
-                >Del</button>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </section>
-
-    <!-- Existing documents -->
-    <section>
-      <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">Documents</h2>
-      {#if docs.length === 0}
-        <p class="text-sm text-slate-500">No documents yet.</p>
-      {:else}
-        <ul class="space-y-2">
-          {#each docs as d (d.id)}
-            <li class="flex items-center gap-2">
-              <button
-                onclick={() => goto(d.kind.startsWith('charter') ? 'charter' : 'documents', d.id)}
-                class="flex-1 text-left p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex items-center justify-between"
-              >
-                <div>
-                  <div class="font-bold text-white">{d.title}</div>
-                  <div class="text-xs text-slate-500">{d.kind} · {d.status}</div>
-                </div>
-                <span class="text-xs text-slate-500">v{d.version}</span>
-              </button>
-              <button
-                onclick={() => exportSignedDocument(d)}
-                disabled={signingDocId === d.id}
-                class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 px-2 py-1 rounded self-center"
-                title="Export with PAdES B-B digital signature"
-              >
-                {signingDocId === d.id ? '…' : 'Sign & Export'}
-              </button>
-              {#if deletingDocId === d.id}
-                <span class="text-xs text-slate-400">Delete?</span>
-                <button
-                  onclick={() => confirmDeleteDoc(d.id)}
-                  class="text-xs bg-red-800 hover:bg-red-700 text-white px-2 py-1 rounded"
-                >Yes</button>
-                <button
-                  onclick={() => (deletingDocId = null)}
-                  class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded"
-                >No</button>
-              {:else}
-                <button
-                  onclick={() => (deletingDocId = d.id)}
-                  class="text-xs bg-slate-800 hover:bg-red-900 px-2 py-1 rounded text-slate-400 hover:text-red-300"
-                  title="Delete document"
-                >Del</button>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </section>
-
-    <!-- Available document kinds by phase -->
+    <!-- Available document templates by phase (reference section) -->
     <section>
       <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">
-        Available document templates ({docKinds.length})
+        Document templates ({docKinds.length})
       </h2>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {#each phasesOrder as phase}
@@ -563,11 +615,12 @@ import BudgetPanel from './BudgetPanel.svelte';
       </div>
     </section>
 
-    <!-- Available chart kinds by engine -->
+    <!-- Available chart templates by engine (reference section) -->
     <section>
-      <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">
-        Available chart templates ({chartKinds.length})
+      <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-1">
+        Chart templates ({chartKinds.length})
       </h2>
+      <p class="text-xs text-slate-500 mb-3">Click a template to create that chart.</p>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {#each ['dag', 'stats', 'matrix', 'flow'] as engine}
           {@const list = chartKinds.filter((k) => k.engine === engine)}
@@ -576,9 +629,17 @@ import BudgetPanel from './BudgetPanel.svelte';
               <div class="text-xs font-bold uppercase tracking-widest text-cyan-400 mb-2">
                 {engine}
               </div>
-              <ul class="space-y-1 text-xs">
+              <ul class="space-y-0.5 text-xs">
                 {#each list as c (c.kind)}
-                  <li class="text-slate-400">{c.name}</li>
+                  <li>
+                    <button
+                      onclick={() => newChart(c.kind, c.name)}
+                      class="w-full text-left text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 rounded px-2 py-1 -mx-2 transition-colors"
+                      title={`Create a ${c.name}`}
+                    >
+                      {c.name}
+                    </button>
+                  </li>
                 {/each}
               </ul>
             </div>

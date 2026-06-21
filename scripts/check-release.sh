@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Final release gate. Exits non-zero on any failure so it can be
@@ -8,7 +8,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-GO_PACKAGES="./cmd/... ./internal/..."
+GO_PACKAGES=". ./internal/..."
 
 echo "Running Final Release Gates for PMForge..."
 
@@ -23,7 +23,9 @@ fi
 echo "Versions match: $APP_VERSION"
 
 # --- 2. REUSE / SPDX licensing ---------------------------------------
-rm -rf cmd/pmforge/frontend/dist
+# The embedded frontend now lives at the repo-root frontend/dist (the real
+# Vite output, gitignored), so there is no separate copy to clean. reuse
+# lint skips gitignored paths, so frontend/dist is not linted.
 find . -name .DS_Store -delete
 
 if ! command -v reuse >/dev/null 2>&1; then
@@ -45,9 +47,8 @@ if [ -f scripts/frontend-build-budget.sh ]; then
     echo "Frontend build budget passed."
 fi
 
-rm -rf cmd/pmforge/frontend/dist
-mkdir -p cmd/pmforge/frontend
-cp -R frontend/dist cmd/pmforge/frontend/dist
+# The frontend-build-budget gate above produces the repo-root frontend/dist
+# that the root main package embeds, so the Go gates below compile cleanly.
 
 # --- 3. Release gate scope -------------------------------------------
 if [ -f scripts/release-gate-scope-check.sh ]; then
@@ -99,9 +100,12 @@ if command -v go >/dev/null 2>&1; then
     echo "Race detector clean."
 fi
 
-# --- 7. Test build ---------------------------------------------------
-if ! PMFORGE_FRONTEND_BUILT=1 make build >/dev/null; then
-    echo "Final build failed."
+# --- 7. Production build (via Wails CLI) -----------------------------
+# `make build` now runs `wails build`, which rebuilds the frontend, injects
+# the desktop,production tags, links the macOS frameworks, and produces the
+# packaged app under build/bin. Requires the `wails` CLI on PATH.
+if ! make build >/dev/null; then
+    echo "Final build failed (is the 'wails' CLI installed? See 'go install github.com/wailsapp/wails/v2/cmd/wails@latest')."
     exit 1
 fi
 echo "Build verified."

@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -14,6 +14,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { autosave } from '../../autosave.svelte';
 
   interface FishboneCategory {
     name: string;
@@ -56,6 +57,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let status = $state('');
   let saving = $state(false);
 
+  let stopAutosave: (() => void) | null = null;
+
   onMount(async () => {
     if (!session.editingId) return;
     chart = await window.go.main.App.GetChart(session.editingId);
@@ -67,6 +70,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
       doc = { effect: '', categories: [] };
     }
     await refreshLayout();
+    // Register for timed auto-save now the saved doc is loaded.
+    stopAutosave = autosave.register(
+      () => JSON.stringify(doc),
+      () => save(),
+    );
   });
 
   async function refreshLayout() {
@@ -146,6 +154,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   // Concurrency hardening: cancel pending debounce on unmount.
   onDestroy(() => {
+    stopAutosave?.();
     if (debounceTimer) {
       clearTimeout(debounceTimer);
       debounceTimer = null;
@@ -159,7 +168,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">Fishbone Diagram</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Fishbone Diagram</h1>
     </div>
     <div class="flex items-center gap-2">
       <button onclick={applySixMs} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">

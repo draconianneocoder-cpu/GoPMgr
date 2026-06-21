@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -61,7 +61,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
       <div>
         <div class="text-[10px] uppercase tracking-widest text-slate-500">Budget</div>
-        <div class="text-lg font-bold text-white">{fmt(summary.budget)}</div>
+        <div class="text-lg font-bold text-slate-50">{fmt(summary.budget)}</div>
       </div>
       <div>
         <div class="text-[10px] uppercase tracking-widest text-slate-500">Committed</div>

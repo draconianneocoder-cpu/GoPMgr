@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -148,7 +148,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">Sprints</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Sprints</h1>
     </div>
     <button
       onclick={openNew}
@@ -181,7 +181,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <div class="flex items-start justify-between gap-3">
               <button onclick={() => openExisting(s)} class="flex-1 text-left min-w-0">
                 <div class="flex items-center gap-2">
-                  <span class="font-bold text-white">{s.name || '(untitled sprint)'}</span>
+                  <span class="font-bold text-slate-50">{s.name || '(untitled sprint)'}</span>
                   <span class="text-[10px] px-2 py-0.5 rounded uppercase tracking-widest {statusTint(s.status)}">
                     {s.status}
                   </span>
@@ -242,7 +242,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <div data-role="backdrop" class="absolute inset-0"></div>
     <div class="relative w-full max-w-lg bg-slate-900 border border-slate-700 rounded-xl shadow-2xl">
       <header class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
-        <h2 class="text-sm font-bold tracking-widest uppercase text-white">
+        <h2 class="text-sm font-bold tracking-widest uppercase text-slate-50">
           {editing.id ? 'Edit sprint' : 'New sprint'}
         </h2>
         <button onclick={() => (editing = null)} class="text-slate-500 hover:text-slate-200">×</button>

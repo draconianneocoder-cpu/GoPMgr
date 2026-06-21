@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -12,6 +12,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // overlay, and baseline ghost bars.
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { autosave } from '../../autosave.svelte';
 
   interface GanttRow {
     id: string;
@@ -194,11 +195,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  let stopAutosave: (() => void) | null = null;
+
   onMount(() => {
     window.addEventListener('keydown', handleKeyDown);
-    void loadChart();
+    // Register after the chart loads so the baseline snapshot is the saved
+    // doc and auto-save only fires on real edits.
+    void loadChart().then(() => {
+      stopAutosave = autosave.register(
+        () => JSON.stringify(doc),
+        () => save(),
+      );
+    });
   });
-  onDestroy(() => window.removeEventListener('keydown', handleKeyDown));
+  onDestroy(() => {
+    window.removeEventListener('keydown', handleKeyDown);
+    stopAutosave?.();
+  });
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200 flex flex-col">
@@ -207,7 +220,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">Gantt Chart</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Gantt Chart</h1>
       {#if status}<span class="text-xs text-cyan-300">{status}</span>{/if}
     </div>
     <div class="flex items-center gap-2">

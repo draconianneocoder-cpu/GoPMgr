@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package db
@@ -36,8 +36,10 @@ type Project struct {
 	SubCategory string    `json:"sub_category"`
 	Methodology string    `json:"methodology"`
 	CountryCode string    `json:"country_code"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	// RFC3339Nano strings (server-managed); see the note on db.Chart for why
+	// these are strings rather than time.Time (Wails empty-string round-trip).
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // ValidPhases is the canonical set of project phases.
@@ -127,12 +129,8 @@ func scanProject(row interface {
 	if err != nil {
 		return Project{}, err
 	}
-	if t, err := time.Parse(time.RFC3339Nano, created); err == nil {
-		p.CreatedAt = t
-	}
-	if t, err := time.Parse(time.RFC3339Nano, updated); err == nil {
-		p.UpdatedAt = t
-	}
+	p.CreatedAt = created
+	p.UpdatedAt = updated
 	if p.CountryCode == "" {
 		p.CountryCode = "US"
 	}

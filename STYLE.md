@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
@@ -20,7 +20,8 @@ changed.
 ## Go
 
 - Keep domain logic in `internal/...` packages and Wails orchestration in
-  `cmd/pmforge`.
+  the root `main.go` (the main package must live at the repo root for
+  `wails build`).
 - Return contextual errors with `%w` where callers can use wrapping.
 - Keep database writes transactional when multiple records or files must
   change together.

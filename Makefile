@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # PMForge build automation. All targets are .PHONY because they
@@ -8,13 +8,23 @@ CC      := gcc
 GO      := go
 WAILS   := wails
 NPM     := npm
-GO_PACKAGES := ./cmd/... ./internal/...
+# Flags passed to `wails build`. Bindings ARE generated (no -skipbindings):
+# Wails needs them so multi-value method results marshal correctly to the
+# frontend. The codesign "detritus" problem that -skipbindings previously
+# worked around is handled instead by scripts/wails-build.sh, which strips
+# extended attributes and ad-hoc signs the .app after the build. Override on
+# the command line, e.g. `make build WAILS_BUILD_FLAGS="-clean"`.
+WAILS_BUILD_FLAGS ?=
+# The main package now lives at the repo root (canonical Wails layout), so
+# Go quality gates scope to the root package plus internal/... . Avoid the
+# bare ./... form: the release-scope gate forbids it.
+GO_PACKAGES := . ./internal/...
 
 export CGO_ENABLED := 1
 export CC
 
-.PHONY: help build dev tidy test race lint lint-go lint-frontend lint-all \
-        license-check memory-scan package-linux package-windows package-darwin \
+.PHONY: help build dev tidy test race verify lint lint-go lint-frontend lint-all \
+        license-check memory-scan package-linux package-windows package-darwin package-macos-installer \
         check-release clean fonts icc check-pdfa frontend-stability \
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-encrypted-db
@@ -23,17 +33,14 @@ help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-build: ## Build a production binary (CGO + Wails frontend embed).
-	@if [ "$${PMFORGE_FRONTEND_BUILT:-0}" = "1" ]; then \
-		echo "Using existing frontend/dist from prior frontend-build-budget gate."; \
-	else \
-		$(MAKE) frontend-build-budget; \
-	fi
-	rm -rf cmd/pmforge/frontend/dist
-	mkdir -p cmd/pmforge/frontend
-	cp -R frontend/dist cmd/pmforge/frontend/dist
-	mkdir -p build/bin
-	$(GO) build -trimpath -ldflags="-s -w" -o build/bin/pmforge ./cmd/pmforge
+build: ## Build a production .app/binary via the Wails CLI (handles tags + frameworks).
+	# scripts/wails-build.sh wraps `wails build`: the CLI injects the required
+	# desktop,production tags, links the macOS frameworks (UniformTypeIdentifiers
+	# / UTType), builds the frontend, and embeds it; the wrapper then strips
+	# extended-attribute detritus and ad-hoc signs the macOS .app (Wails' own
+	# self-sign fails on iCloud-synced trees - see the script header).
+	# Output: build/bin/<ProductName>.app on macOS, build/bin/pmforge elsewhere.
+	@bash scripts/wails-build.sh $(WAILS_BUILD_FLAGS)
 
 dev: ## Run Wails in development mode (hot-reload Svelte + Go).
 	$(WAILS) dev
@@ -66,6 +73,9 @@ test: ## Run Go unit tests.
 race: ## Run Go tests with the race detector (concurrency gate).
 	$(GO) test -race $(GO_PACKAGES)
 
+verify: test frontend-stability frontend-build-budget ## Fast pre-commit gate: Go tests + svelte-check + frontend (Vite) build.
+	@echo "verify: Go tests, svelte-check, and frontend build all passed."
+
 frontend-stability: ## Run Svelte warning-clean and Sigma regression gates.
 	@bash scripts/frontend-stability-check.sh
 
@@ -83,7 +93,7 @@ memory-scan: ## Run the memory-safety hardening gate.
 
 lint-go: ## Lint Go packages with golangci-lint.
 	@echo "Linting Go code..."
-	golangci-lint run ./internal/... ./cmd/...
+	golangci-lint run . ./internal/...
 
 lint-frontend: ## Lint Svelte + TS with the npm lint script.
 	@echo "Linting Frontend code..."
@@ -94,7 +104,6 @@ lint-all: lint-go lint-frontend ## Run both linters.
 lint: lint-all ## Alias for lint-all.
 
 license-check: ## Verify REUSE/SPDX compliance.
-	rm -rf cmd/pmforge/frontend/dist
 	find . -name .DS_Store -delete
 	reuse lint
 
@@ -107,8 +116,11 @@ package-windows: ## Build a Windows tarball on a Windows host.
 package-darwin: ## Build a macOS tarball on a macOS host.
 	@bash scripts/package.sh darwin
 
+package-macos-installer: ## Build a local macOS .pkg installer for /Applications.
+	@bash scripts/package-macos-installer.sh
+
 check-release: ## Run the full release gate (versions, REUSE, memory-safety, race, frontend, build, encrypted DB, PDF/A, PAdES).
 	@bash scripts/check-release.sh
 
-clean: ## Remove build artifacts.
-	rm -rf build/ bin/ frontend/dist/ frontend/wailsjs/ cmd/pmforge/frontend/dist/
+clean: ## Remove build artifacts (keeps the tracked build/darwin scaffold).
+	rm -rf build/bin/ build/packages/ build/macos/ build/appicon.png bin/ frontend/dist/ frontend/wailsjs/

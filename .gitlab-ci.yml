@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # GitLab CI/CD configuration for PMForge
@@ -25,37 +25,43 @@ cache:
 before_script:
   # Install Go dependencies
   - go mod tidy
-  # Install Node dependencies
-  - cd frontend && npm ci
+  # Install Node dependencies. Use a subshell so the working directory
+  # returns to the repo root for the steps that follow (otherwise `make`
+  # would run from frontend/ and fail).
+  - (cd frontend && npm ci)
   # Download fonts if needed
   - make fonts
 
 build:
   stage: build
   script:
-    - go build -o pmforge ./cmd/pmforge
+    # Wails CLI builds the frontend, injects desktop,production tags, links
+    # platform frameworks, and embeds the UI. The main package is at the repo
+    # root (Wails requirement), so no package path is needed.
     - wails build -platform linux/amd64
   artifacts:
     paths:
-      - pmforge
-      - build/
+      - build/bin/
     expire_in: 1 week
 
 test:
   stage: test
   script:
-    # Run Go tests
-    - go test ./... -v
-    # Run frontend tests if they exist
-    - cd frontend && npm run test || echo "No frontend tests configured"
+    # Single source of truth for the pre-merge gate: Go unit tests +
+    # svelte-check (type/warning clean) + the frontend Vite build. This is
+    # the same `make verify` developers run locally, so CI and local stay
+    # in lockstep and can't drift. (The full release gate lives in
+    # `make check-release`, run on tags.)
+    - make verify
 
 release:
   stage: release
   script:
     - echo "Creating release artifacts..."
     - mkdir -p release
-    - cp pmforge release/
-    - tar -czvf release/pmforge-linux-amd64.tar.gz pmforge
+    - wails build -platform linux/amd64
+    - cp build/bin/pmforge release/
+    - tar -czvf release/pmforge-linux-amd64.tar.gz -C build/bin pmforge
     - wails build -platform darwin/amd64 -o release/pmforge-darwin-amd64
     - wails build -platform windows/amd64 -o release/pmforge-windows-amd64.exe
   artifacts:

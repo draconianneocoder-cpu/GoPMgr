@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package cli parses GNU-style command-line flags for PMForge.
@@ -95,7 +95,7 @@ func ParseFlags() *Config {
 // PrintVersion writes the canonical GPL-style version banner to stdout.
 func PrintVersion() {
 	fmt.Fprintf(os.Stdout,
-		"PMForge %s\nCopyright (C) 2026 The PMForge Contributors\nLicense GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law.\n",
+		"PMForge %s\nCopyright (C) 2026 James L. Burns and The PMForge Contributors\nLicense GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law.\n",
 		Version,
 	)
 }

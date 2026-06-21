@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -33,8 +33,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       // Use EnsureDefaultBoard to learn the columns; we need the
       // first column ID for "Start work".
-      const [, cols] = await window.go.main.App.EnsureDefaultBoard();
-      columns = cols;
+      const res = await window.go.main.App.EnsureDefaultBoard();
+      columns = res.columns;
       await refresh();
     } catch (err: any) {
       error = `Could not load backlog: ${err}`;
@@ -176,7 +176,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">Backlog</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Backlog</h1>
       <span class="text-xs text-slate-500">{items.length} item{items.length === 1 ? '' : 's'}</span>
     </div>
     <div class="flex gap-2">
@@ -223,7 +223,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               onclick={() => openExisting(item)}
               class="flex-1 text-left min-w-0"
             >
-              <div class="font-bold text-white truncate">
+              <div class="font-bold text-slate-50 truncate">
                 {item.title || '(untitled)'}
               </div>
               <div class="text-[10px] text-slate-500 uppercase mt-0.5">

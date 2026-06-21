@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package export
@@ -218,12 +218,12 @@ func truncate(s string, n int) string {
 }
 
 // exportVersion is a small indirection so the PDF metadata block can
-// learn the live app version without import cycles. The cmd/pmforge
-// main package wires this at startup.
+// learn the live app version without import cycles. The root main
+// package wires this at startup.
 var exportVersion = func() string { return "1.x" }
 
 // SetVersion lets the application set the version string used in PDF
-// metadata. Called once at startup from cmd/pmforge/main.go.
+// metadata. Called once at startup from the root main.go.
 func SetVersion(v string) { exportVersion = func() string { return v } }
 
 // defaultICCProfile returns the sRGB ICC profile for PDF/A-3 OutputIntent

@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 
 Shared editor shell for the three layered-DAG editors (Network, PERT,
@@ -12,6 +12,7 @@ not routed directly.
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { autosave } from '../../autosave.svelte';
   import LayeredDiagram from './LayeredDiagram.svelte';
   import type { Snippet } from 'svelte';
 
@@ -124,9 +125,17 @@ not routed directly.
     await refreshLayout();
   }
 
+  let stopAutosave: (() => void) | null = null;
+
   onMount(async () => {
     window.addEventListener('keydown', handleKeyDown);
     await loadChart();
+    // Register after load so the baseline snapshot is the saved doc and
+    // auto-save only fires on real edits.
+    stopAutosave = autosave.register(
+      () => JSON.stringify(doc),
+      () => save(),
+    );
   });
 
   // reloadFromDB lets kind-specific toolbars (e.g. CPM's Level
@@ -246,6 +255,7 @@ not routed directly.
   // call on an unmounted component. (AGENT.md §6.)
   onDestroy(() => {
     window.removeEventListener('keydown', handleKeyDown);
+    stopAutosave?.();
     if (debounceTimer) {
       clearTimeout(debounceTimer);
       debounceTimer = null;
@@ -269,7 +279,7 @@ not routed directly.
       <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
         &larr; Dashboard
       </button>
-      <h1 class="text-sm font-bold tracking-widest uppercase text-white">{headingLabel}</h1>
+      <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">{headingLabel}</h1>
     </div>
     <div class="flex items-center gap-2">
       {#if toolbarExtra}
