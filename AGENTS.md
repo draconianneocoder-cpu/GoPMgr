@@ -15,10 +15,10 @@ automated engineering work.
 1. Confirm the active checkout with `pwd` and `git status --short`.
    Older handoffs may mention stale clone paths; verify before running
    release or build commands.
-2. Read `session-notes.md` and the relevant files in `.agent_memory/`
-   before choosing backlog work or changing behavior.
+2. When present, read local `session-notes.md` and the relevant files in
+   `.agent_memory/` before choosing backlog work or changing behavior.
 3. Inspect existing source before editing. Do not read `AGENT.md` in
-   full unless required; it is a large legacy handbook. Prefer targeted
+   full unless required; it is a large developer handbook. Prefer targeted
    `rg` searches and small snippets.
 4. Assume the worktree can contain unrelated user or agent changes. Do
    not revert, restage, or flatten changes you did not make.
@@ -28,6 +28,9 @@ automated engineering work.
 - Plan first for any multi-file change. Keep the plan scoped to a
   reviewable slice.
 - Use repository patterns instead of inventing new architecture.
+- Read existing files before editing. Do not guess APIs, versions,
+  flags, commit SHAs, or package names; verify by reading code or
+  documentation first.
 - Add or update focused tests when behavior changes. Documentation-only
   changes should still be checked with `git diff --check`.
 - Preserve REUSE/SPDX compliance. New tracked files need SPDX metadata
@@ -38,6 +41,31 @@ automated engineering work.
   otherwise.
 - Stage intentionally by path or hunk. Avoid broad `git add .` in a
   dirty worktree.
+- Be concise in public documentation. Summarize long generated output
+  and point to the command or artifact that reproduces it.
+
+## Go Engineering Rules
+
+- Keep package boundaries domain-oriented. Do not add broad `common` or
+  `util` packages unless a narrow existing pattern already supports it.
+- Prefer synchronous APIs. Start background goroutines only when the
+  owner, cancellation path, and cleanup lifecycle are explicit.
+- Use guard clauses for error and edge handling. Keep the normal path
+  shallow and readable.
+- Return `error` as the last value, wrap it with operation context, and
+  use `errors.Is` / `errors.As` for inspection.
+- Run `gofmt` or `goimports` after Go edits. Keep imports grouped as
+  standard library, third-party, then first-party packages.
+- Use table-driven tests for multi-case logic. Use `t.Cleanup` for test
+  cleanup that must run after `t.Fatal`.
+- For complex comparisons, prefer `github.com/google/go-cmp/cmp` over
+  `reflect.DeepEqual`.
+- Use `crypto/rand` for security-sensitive randomness. In recoverable
+  paths such as IDs, salts, or recovery codes, use
+  `io.ReadFull(rand.Reader, buf)` so entropy failures return errors
+  instead of terminating the process.
+- Use `snake_case` JSON tags on Wails-bound structs; the TypeScript
+  surface and existing frontend code expect those wire names.
 
 ## Project Invariants
 

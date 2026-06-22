@@ -5,954 +5,197 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # PMForge
 
-PMForge is a local-first project controls desktop application for
-technical, engineering, IT, construction, and administrative
-organizations. The Go backend acts as a high-performance kernel for
-data integrity, scheduling math (CPM with typed dependencies and
-constraints, calendar-anchored dates, baselines, Earned Value
-Management, MSPDI export), local authentication, and document
-rendering. The Svelte 5 frontend (mounted via Wails v2) provides the
-reactive UI.
+PMForge is a local-first desktop project-controls application for
+technical, engineering, IT, construction, and administrative work. It is
+built with a Go backend, Wails v2, and a Svelte 5 frontend.
 
-The app has reached **V2.x** maturity: all 21 chart kinds and all 25
-document kinds are implemented end-to-end with bespoke PDF renderers,
-DOCX/ODT export, and a combined report builder with embedded vector
-chart visualisations. The Agile/Software-Dev Pack (Kanban, Backlog,
-Sprints, DORA metrics) and the Process Excellence (Sigma) Pack are
-complete. Local multi-user accounts with Argon2id authentication and
-account recovery codes are in place.
+The application keeps project data on the local machine, supports
+multi-user local accounts, and provides planning, scheduling, document,
+chart, export, and reporting tools without requiring a hosted service.
 
-Every file carries an SPDX header and is licensed GPL-3.0-or-later.
+## Current Capability
 
----
+- **Project controls:** lifecycle status, budgets, stakeholders, timeline
+  events, project settings, audit records, repair, backup, and local
+  project files.
+- **Scheduling:** CPM schedules with typed dependencies, lag,
+  constraints, baselines, progress, Earned Value Management, resources,
+  Gantt charts, MSPDI import/export, CSV, HTML, and report exports.
+- **Charts:** 21 chart kinds across DAG, flow, matrix, and statistical
+  engines, with frontend editing and vector PDF rendering.
+- **Documents:** 25 project document kinds with schema-driven editing,
+  bespoke PDF renderers, DOCX/ODT export, and combined reports with
+  embedded chart visualisations.
+- **Methodology packs:** Agile/Software-Dev views for Kanban, Backlog,
+  Sprints, and DORA metrics; Process Excellence views for Six Sigma/DMAIC
+  work.
+- **Security and compliance:** local Argon2id accounts, one-time recovery
+  codes, SQLCipher-encrypted per-user `.pmforge` project databases, PDF/A
+  validation, and PAdES signing support.
 
-## Quick start
+## Quick Start
 
 ```sh
-# 1. Dependencies
 go mod tidy
 (cd frontend && npm install)
-make fonts          # download the bundled TrueType fonts (see "Fonts" below)
+make fonts
 
-# 2. (optional) Drop the GPL/GFDL/CC0 license texts in place
-pip install reuse && reuse download --all
-
-# 3. Develop with hot-reload
 wails dev
-
-# 4. Build a production binary (embeds the built frontend via go:embed)
 make build
+make verify
+```
 
-# 5. Fast pre-commit gate (run this before every commit)
-make verify            # go test + svelte-check + frontend (Vite) build
+`make verify` is the fast local and CI gate: Go tests, frontend stability,
+and frontend build-budget checks. Run it before ordinary commits.
 
-# 5b. Individual checks
-make test              # go test . ./internal/... (~2s)
-make race              # same with -race (concurrency hardening)
-make check-pades       # generate + locally verify an embedded signed PDF sample
-make check-pades-external # verify extracted CMS/ByteRange with available external tools
+The full release gate is:
 
-# 6. Full release gate (versions + REUSE + build + frontend checks)
+```sh
 make check-release
 ```
 
-> **`make verify`** is the fast gate that catches the common breakages
-> (failing Go tests, type/svelte-check errors, and frontend build/CSS
-> errors) in one command. It is exactly what CI runs on every push, so
-> local and CI stay in lockstep. `make check-release` is the heavier,
-> tag-time gate (adds REUSE, race, memory-safety, PDF/A, PAdES, the full
-> Wails build, and version-consistency checks).
+It includes version consistency, REUSE/SPDX compliance, frontend runtime
+checks, release-scope guards, memory-safety scanning, race tests,
+production build, encrypted database validation, strict PDF/A-3
+validation, and local PAdES validation.
 
-> **Toolchain.** `go.mod` pins **Go 1.26.3** and **Wails v2.9.2** as
-> specified in the design transcript. If your Go is older, edit the
-> `go` line in `go.mod` and rerun `go mod tidy`. CGO is required
-> because the SQLite driver is a C library.
->
-> **Building.** `make build` runs the **Wails CLI** (`wails build`), which
-> is the supported way to build the app. It builds and embeds the frontend,
-> injects the required `desktop,production` build tags, and links the
-> platform frameworks (on macOS, `UniformTypeIdentifiers` for `UTType`).
-> Install the CLI once with
-> `go install github.com/wailsapp/wails/v2/cmd/wails@latest`. The Go main
-> package lives at the **repo root** (`main.go`) because `wails build`
-> requires it there. `make build` runs `scripts/wails-build.sh`, which calls
-> `wails build -skipbindings` and then, on macOS, strips extended-attribute
-> detritus and ad-hoc signs the `.app` itself. This is necessary because a
-> repo under iCloud-synced `~/Documents` picks up `com.apple.FinderInfo`/
-> file-provider attributes that make `codesign` fail with "resource fork,
-> Finder information, or similar detritus not allowed" - which breaks Wails'
-> in-process self-sign. (`-skipbindings` is also correct here: PMForge
-> declares the Wails bridge by hand in `wails-window.d.ts` and never imports
-> the generated `frontend/wailsjs`.) If codesign still fails because iCloud
-> re-adds attributes mid-sign, build from a non-synced path such as
-> `~/Developer`. A plain `go build .` without the tags compiles but
-> aborts at launch with "Wails applications will not build without the
-> correct build tags" (Wails links a stub `Run()`), and on the macOS 15 SDK
-> also fails to link `UTType` - both reasons to use `wails build`.
->
-> **App icon.** `build/appicon.png` (1024x1024, rendered from the tracked
-> `pmforge-icon-dark.svg`) is the master icon; `wails build` derives the
-> macOS `.icns` and Windows `.ico` from it. To rebrand, replace that PNG
-> (or re-render the SVG) and rebuild.
+Useful focused gates:
 
-> **First-run layout.** On first launch, PMForge creates
-> `~/Documents/PMForge/system.db` (account list) and provisions
-> `~/Documents/PMForge/<username>/{projects,certs,exports}/` for each
-> user. POSIX permissions on the per-user folder are set to `0700` so
-> other OS accounts cannot read PMForge data without elevation. Each
-> project lives in its own time-stamped subfolder
-> `projects/<YYYYMMDD-HHMMSS>-<name>/project.pmforge` (unique per project;
-> legacy flat `projects/<name>.pmforge` files are still recognised). A
-> dated diagnostic log is also written to `~/Documents/PMForge/logs/` on
-> every GUI launch (see "Logs and startup diagnostics" below).
-
----
-
-## V2 architecture
-
-### Local multi-user authentication
-
-- Argon2id password hashes in PHC string format
-  (`$argon2id$v=19$m=65536,t=3,p=4$...$...`) stored in `system.db`.
-- Per-user folder isolation under `~/Documents/PMForge/<username>/`.
-- Transparent re-hashing on login if parameters have been strengthened
-  since the account was created.
-- Generic "invalid credentials" error path that does not distinguish
-  unknown-user from wrong-password (timing-safe and message-safe).
-
-### Unified data model
-
-Two tables back every chart and document in the system:
-
-```sql
-charts    (id, project_id, kind, title, data JSON, config JSON, ...)
-documents (id, project_id, kind, title, content JSON, version, status, ...)
+```sh
+go test . ./internal/...
+go test -race . ./internal/...
+npm --prefix frontend run check
+npm --prefix frontend run build
+make frontend-smoke
+make check-encrypted-db
+make check-pdfa
+make check-pades
+make check-pades-external
+make release-scope
+make license-check
 ```
 
-The `kind` column is the discriminator. The 21 chart kinds map to
-four engines (DAG, stats, matrix, flow); the 25 document
-kinds map to one generic field-based editor + per-kind PDF renderers.
-This avoids 44 separate code paths and lets every new kind be added
-with one registry entry plus, optionally, a bespoke renderer.
+## Toolchain
 
-### Project lifecycle
+- Go: `go.mod` pins Go 1.26.3.
+- Wails: the project uses Wails v2.9.2. Install the matching CLI with:
 
-The `project` table tracks PMI process groups:
-
-```
-phase  := initiation | planning | execution | monitoring | closing
-status := planning | active | on_hold | complete | cancelled
+```sh
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.9.2
 ```
 
-The Dashboard groups document templates by phase so the user can see
-what they typically create at each stage of the project.
+- Node dependencies live under `frontend/`.
+- CGO is required for the SQLite/SQLCipher driver path.
+- `make build` is the supported production build path. It runs the Wails
+  build through `scripts/wails-build.sh`.
 
----
+See [DEPENDENCIES.md](DEPENDENCIES.md) for dependency policy and external
+validator tools.
 
-## Combined reports
+## Runtime Data
 
-PMForge can bundle multiple documents into a single PDF — useful for
-the "Project Plan" pattern where a stakeholder-facing deliverable
-aggregates Charter + Scope + Budget + Schedule + RACI + Status into
-one file.
+On first launch, PMForge creates a local data area under
+`~/Documents/PMForge/` by default:
 
-From the Dashboard, click **New document → Combined Report**. The
-composer presents two columns: available project documents on the
-left, the in-report section list on the right. Add documents, drag
-them into order, optionally type a one-line intro per section, then
-click **Export PDF**. The output lands in
-`~/Documents/PMForge/<username>/exports/`.
+- `system.db`: local account metadata, password hashes, and wrapped DEKs.
+- `<username>/projects/`: per-user project folders and `.pmforge` files.
+- `<username>/certs/`: user certificate files.
+- `<username>/exports/`: generated exports.
+- `logs/`: dated startup and runtime diagnostics.
 
-The PDF contains:
+Per-user folders are created with private POSIX permissions where the
+platform supports them. Project databases are stored as one `.pmforge`
+file per project, with WAL/SHM sidecars when SQLite needs them.
 
-1. A cover page with the report title, subtitle, author (your display
-   name), project name, and a nanosecond-precision generation
-   timestamp.
-2. An auto-generated table of contents.
-3. One section per included document, rendered with sub-headings that
-   match each kind's schema.
-4. **Embedded chart visualisations.** Every chart_ref field in an
-   included document (a Project Plan's WBS / Schedule / RACI / etc.)
-   is followed by a dedicated page rendering that chart via
-   `internal/charts/pdfrender` — vector primitives straight to the
-   PDF, no PNG screenshots and no headless browser. All 21 chart
-   kinds are supported across the four engines (DAG, Flow, Matrix, Stats).
+## Security Model
 
-Implementation: `internal/documents/report.go` (`BuildCombinedReport`),
-exposed as `App.ExportCombinedReport(reportTitle, subtitle, sections)`
-on the Wails surface. main.go pre-resolves every referenced chart
-from the database in one pass and threads the map through
-`ReportSpec.ResolvedCharts` so this package stays database-free.
+New per-user `.pmforge` project databases are SQLCipher-encrypted with the
+user's DEK. Existing plaintext project databases can be migrated from
+Project Settings after recovery codes are reissued. `system.db` remains
+plaintext by design and stores password hashes plus wrapped DEKs, not
+project records.
 
-## Coverage table
+OS-level disk encryption is still recommended as whole-device protection
+for raw-disk theft or administrator-level host access: FileVault on macOS,
+BitLocker on Windows, and LUKS on Linux.
 
-### Chart types — 21 total, all in backend taxonomy
+At account creation, PMForge issues one-time recovery codes. For encrypted
+project databases, valid recovery codes also wrap the user's DEK. If the
+password and all valid wrapped recovery codes are lost, encrypted project
+databases are unrecoverable by design.
 
-| Family    | Kind                       | Status                                              |
-| --------- | -------------------------- | --------------------------------------------------- |
-| DAG       | Work Breakdown Structure   | **Full** — visual tree editor + hierarchical layout |
-| DAG       | Network Diagram            | **Full** — layered activity-on-node diagram         |
-| DAG       | PERT Chart                 | **Full** — O/M/P → E + σ², layered                  |
-| DAG       | CPM Chart                  | **Full** — reuses `internal/kernel` for ES/EF/LS/LF |
-| DAG       | Gantt Chart                | **Full** — schedule bars, deps, critical, progress, baseline ghosts |
-| DAG       | Fishbone Diagram           | **Full** — radial Ishikawa with 6 Ms preset         |
-| DAG       | Cause-and-Effect Diagram   | **Full** — generic causal tree for 5-Whys analyses  |
-| Stats     | Line Chart                 | **Full** — Chart.js host, multiple series, dashed   |
-| Stats     | Bar Chart                  | **Full** — categorical, multi-series                |
-| Stats     | Pareto Chart               | **Full** — sort+cum%, 80% reference, dual y-axis    |
-| Stats     | Pie Chart                  | **Full** — auto percentages, tooltip slice details  |
-| Stats     | Burn-Up Chart              | **Full** — completed vs scope, dashed scope line    |
-| Stats     | Burn-Down Chart            | **Full** — actual + ideal trajectory                |
-| Stats     | Cumulative Flow Diagram    | **Full** — stacked areas, reorderable states        |
-| Stats     | Control Chart              | **Full** — UCL/LCL annotations, outlier highlights  |
-| Matrix    | RACI Matrix                | **Full** — grid + R/A/C/I validation (one A per task) |
-| Matrix    | SWOT Matrix                | **Full** — 2×2 quadrants with colour-coded panes    |
-| Matrix    | Stakeholder Analysis Matrix| **Full** — Power × Interest plot, 4 strategies      |
-| Matrix    | Matrix Diagram             | **Full** — editable m×n grid for traceability       |
-| Flow      | Workflow Diagram           | **Full** — 6 node shapes, top-down rank layout      |
-| Flow      | Activity Diagram           | **Full** — UML swimlanes, fork/join, decision       |
+See [SECURITY.md](SECURITY.md) and
+[ADR-001](docs/design/ADR-001-database-encryption-at-rest.md) for the
+full security architecture.
 
-### Document types — 25 total, all in backend taxonomy
+## PDF, Signing, and Release Claims
 
-Organised here by lifecycle phase. Every entry has a complete schema
-in `internal/documents/templates.go`, a default content generator
-(`DefaultContent`), and a bespoke PDF renderer in a dedicated file.
-The two Excel aliases share their Word counterpart's layout at
-dispatch time; all 25 kinds effectively have dedicated rendering.
+PMForge generates PDF/A-3b representative samples during release
+validation. `make check-pdfa` validates schedule-report, document, and
+combined-report samples with veraPDF and is strict by default: missing
+validator tooling, a missing ICC profile, or an empty sample set fails the
+gate unless `PMFORGE_PDFA_STRICT=0` is set for local convenience.
 
-| Phase       | Kind                              | Renderer file                  |
-| ----------- | --------------------------------- | ------------------------------ |
-| Initiation  | Project Charter (Word)            | `charter.go`                   |
-| Initiation  | Project Charter (Excel)           | Alias → charter_word           |
-| Initiation  | Business Case                     | `business_case.go`             |
-| Initiation  | Project Proposal                  | `project_proposal.go`          |
-| Initiation  | Stakeholder Analysis Document     | `stakeholder_analysis.go`      |
-| Planning    | Project Plan (Word)               | `project_plan.go`              |
-| Planning    | Project Plan (Excel)              | Alias → plan_word              |
-| Planning    | Project Schedule                  | `project_schedule.go`          |
-| Planning    | Work Breakdown Structure Document | `wbs_document.go`              |
-| Planning    | RACI Chart Document               | `raci_document.go`             |
-| Planning    | Risk Register                     | `risk_register.go`             |
-| Planning    | Scope Statement                   | `scope_statement.go`           |
-| Planning    | Project Budget                    | `project_budget.go`            |
-| Planning    | Communication Plan                | `communication_plan.go`        |
-| Planning    | Project Execution Plan            | `execution_plan.go`            |
-| Planning    | Statement of Work                 | `statement_of_work.go`         |
-| Planning    | Procurement Plan                  | `procurement_plan.go`          |
-| Planning    | Requirements Document             | `requirements.go`              |
-| Planning    | Team Charter                      | `team_charter.go`              |
-| Execution   | Project Brief                     | `project_brief.go`             |
-| Execution   | Project Overview                  | `project_overview.go`          |
-| Monitoring  | Status Report                     | `status_report.go`             |
-| Monitoring  | Issue Log                         | `issue_log.go`                 |
-| Monitoring  | Change Request Form               | `change_request.go`            |
-| Closing     | Project Closure                   | `closure.go`                   |
+PAdES signing is applied as the final PDF mutation. `make check-pades`
+generates a deterministic signed sample and verifies the embedded CMS
+against the declared `/ByteRange`. `make check-pades-external` adds
+external checks when tools are installed: OpenSSL, `qpdf`, `pdfsig`,
+veraPDF signature feature extraction, and DSS. Current DSS coverage
+classifies the deterministic self-signed sample as `PAdES-BASELINE-B`;
+trusted-chain validation and Acrobat coverage still require a real trusted
+signing source.
 
-A generic field-walker fallback still exists in the dispatch for
-forward-compatibility if a new kind is registered before its bespoke
-renderer ships. Adding a new kind = one registry entry in
-`templates.go` + one bespoke file + one switch arm in
-`documents.Render()`.
+Public release claims are guarded by `make release-scope`.
 
----
+## User Workflows
 
-## Directory layout
+See [docs/user-guide.md](docs/user-guide.md) for the current user-facing
+workflow guide:
 
-```
+- New project Launchpad and seeded artifacts.
+- Portfolio, Dashboard, Project Settings, and Application Settings.
+- Charts, documents, combined reports, and exports.
+- Schedule import/export.
+- PDF signing, fonts, logs, recovery codes, and auto-save.
+
+The in-app Help Guide contains the most detailed end-user reference and is
+available from the Help tab or the native Help menu.
+
+## Developer Documentation
+
+- [ARCHITECTURE.md](ARCHITECTURE.md): runtime shape, data layout,
+  package map, and release architecture.
+- [TESTING.md](TESTING.md): focused and full verification gates.
+- [SECURITY.md](SECURITY.md): local account model, encryption, secrets,
+  PDF signing, and release-safety rules.
+- [DEPENDENCIES.md](DEPENDENCIES.md): Go, frontend, and external tool
+  dependencies.
+- [STYLE.md](STYLE.md): repository, Go, frontend, and documentation style.
+- [AGENTS.md](AGENTS.md): current automated-agent operating guide.
+- [AGENT.md](AGENT.md): PMForge Developer Handbook with long-form
+  implementation history, release-gate status, and lessons learned.
+
+## Repository Layout
+
+```text
 pmforge/
-├── AGENT.md                     # AI development handbook (read first)
-├── LICENSES/                    # REUSE-compliant license texts
-├── main.go                      # CLI dispatch + Wails bootstrap (App struct; root for wails build)
-├── build/darwin/                # Wails macOS bundle scaffold (Info.plist, Info.dev.plist)
-├── internal/
-│   ├── admin/workflow.go        # Administrative Pack
-│   ├── agile/                   # Software-Dev Pack (complete)
-│   │   ├── agile.go             # types: WorkItem, Column, Board, Sprint
-│   │   ├── store.go             # CRUD for all 5 agile tables
-│   │   └── dora.go              # DORA metric computation
-│   ├── auth/password.go         # Argon2id PHC hash/verify
-│   ├── budget/                  # Budget rollup (stakeholder rates × work items)
-│   ├── calendar/calendar.go     # Country holiday datasets (rickar/cal/v2 wrapper)
-│   ├── charts/
-│   │   ├── registry.go          # 21-kind taxonomy + 4 engines
-│   │   ├── engines.go           # Layout() dispatcher
-│   │   ├── dag/                 # WBS, Network, PERT, CPM, Fishbone, Cause-Effect
-│   │   ├── flow/                # Workflow, Activity
-│   │   ├── matrix/              # RACI, SWOT, Stakeholder, Generic
-│   │   ├── stats/               # Line, Bar, Pareto, Pie, BurnUp, BurnDown, CumFlow, Control
-│   │   └── pdfrender/           # Vector chart renderers for PDF embed
-│   ├── cli/parser.go            # GNU-style flag parser
-│   ├── crypto/
-│   │   ├── encrypt.go           # AES-256-GCM + Argon2id KDF
-│   │   └── pdf_sign.go          # X.509/RSA + PAdES B-B embedding
-│   ├── db/
-│   │   ├── sqlite.go            # WAL SQLite + all migrations
-│   │   ├── settings.go          # UserSettings singleton
-│   │   ├── project.go           # Project CRUD
-│   │   ├── charts.go / documents.go / stakeholders.go
-│   │   ├── audit.go / repair.go / backup.go / ids.go
-│   ├── debug/report.go          # ErrorReport + .ToError()
-│   ├── documents/               # 25 bespoke PDF renderers + registry
-│   │   ├── registry.go / templates.go / defaults.go
-│   │   ├── charter.go           # also hosts generic Render() dispatcher
-│   │   └── <kind>.go            # one file per bespoke renderer (23 files)
-│   ├── export/                  # DOCX (godocx), ODT (hand-built), XLSX, iCal, PDF/A
-│   ├── fonts/                   # bundled TTF catalog + user import
-│   ├── kernel/scheduler.go      # CPM forward+backward pass
-│   ├── pdfmeta/pdfmeta.go       # XMP metadata + PAdES signature injection (dep-free)
-│   ├── sigma/                   # Process Excellence (Six Sigma) Pack
-│   ├── templates/               # Launchpad seeding rules (zen-go JDM)
-│   ├── timeline/                # Timeline assembly + iCal export
-│   ├── update/check.go          # Signed Ed25519 update-manifest checker
-│   └── users/store.go           # system.db + per-user folder provisioning
-├── frontend/
-│   └── src/
-│       ├── App.svelte           # lazy route loader (charter, documents, all charts, …)
-│       ├── wails-window.d.ts    # TypeScript declarations for all App methods
-│       └── lib/
-│           ├── session.svelte.ts
-│           └── components/
-│               ├── auth/        # Login, CreateAccount, RecoveryReset
-│               ├── project/     # ProjectPicker, Launchpad, Dashboard, Settings,
-│               │                # StakeholderManager, TimelineView
-│               ├── charts/      # 20 editor components + shared shells
-│               ├── documents/   # CharterEditor (generic), DocumentFieldEditor,
-│               │                # ChartPicker, ReportComposer
-│               ├── agile/       # KanbanBoard, Backlog, SprintList, DORADashboard
-│               └── sigma/       # SigmaWorkspace + per-tool views
-├── scripts/
-│   ├── check-release.sh / memory-safety-scan.sh / fetch-fonts.sh
-│   ├── frontend-stability-check.sh / frontend-build-budget.sh
-│   └── validate-pdfa.sh / validate-pades.sh
-├── Makefile
-├── go.mod / wails.json
+├── main.go              # Wails entry point and App surface
+├── internal/            # Go backend packages
+├── frontend/            # Svelte frontend
+├── docs/                # public design and user documentation
+├── scripts/             # release, validation, and packaging scripts
+├── build/darwin/        # tracked Wails macOS plist scaffold
+├── AGENTS.md            # current agent operating guide
+└── AGENT.md             # PMForge Developer Handbook
 ```
 
----
-
-## How to add a new chart or document kind
-
-All 21 chart kinds and all 25 document kinds are fully implemented.
-The taxonomy is designed for extension: adding a new kind is a small,
-self-contained change.
-
-### Adding a new chart kind
-
-1. Add a `Definition` entry to `internal/charts/registry.go`.
-2. Create or extend the engine package (`dag/`, `flow/`, `matrix/`,
-   `stats/`) with a data struct + `Layout()` function.
-3. Add a dispatch arm in `internal/charts/engines.go`.
-4. Add a vector PDF renderer in `internal/charts/pdfrender/`.
-5. Create `frontend/src/lib/components/charts/<Kind>Editor.svelte`.
-6. Add a route entry in `App.svelte` and a dashboard card in
-   `Dashboard.svelte`.
-
-### Adding a new document kind
-
-1. Add a `Kind` constant and a `Definition` (with full `Fields` slice)
-   to `internal/documents/registry.go` and `templates.go`.
-2. Create `internal/documents/<kind>.go` with a bespoke PDF renderer.
-3. Add a dispatch arm in `documents.Render()`.
-4. No frontend changes needed: `Dashboard.svelte` fetches
-   `ListDocumentKinds()` and renders a create button automatically;
-   the `documents` route in `App.svelte` already handles any kind
-   through the generic `CharterEditor` (field-based) component.
-
----
-
-## V1 → V2 schema migration
-
-Because every V2 table is created with `CREATE TABLE IF NOT EXISTS`
-and every column has a default, opening a V1 `.pmforge` file with the
-V2 binary triggers an additive migration: the four new tables are
-created, V1 tables are untouched. No downgrade is provided — opening
-a V2 file with V1 will see the old four tables and ignore the new ones.
-
----
-
-## Real TODOs in the V2 scaffold
-
-These remain from V1 plus a handful of new V2 items.
-
-### From V1
-
-1. ~~DOCX / ODT export.~~ **Done.** DOCX uses
-   `gomutex/godocx`; ODT is generated directly.
-2. **PDF/A-3 conformance.** XMP Catalog metadata, embedded fonts,
-   OutputIntent/ICC injection, PDF trailer IDs, and binary header
-   comments are implemented. The schedule-report, document, and
-   combined-report samples pass the veraPDF PDF/A-3b gate locally.
-   `make check-pdfa` is a hard release blocker wired into
-   `make check-release`.
-3. ~~CMS/PKCS#7 + PAdES signature embedding.~~ **Done.** Signed
-   exports use CMS/PKCS#7 plus an embedded PDF signature dictionary,
-   invisible widget field, `/ByteRange`, and padded `/Contents`.
-   `make check-pades` generates a local signed sample and verifies the
-   embedded CMS against the declared `/ByteRange`; `make
-   check-pades-external` also verifies the sample with OpenSSL,
-   `qpdf`, `pdfsig`, veraPDF signature feature extraction, and
-   `dss-validation-tool` when those tools are installed. Current DSS
-   coverage classifies the deterministic self-signed sample as
-   `PAdES-BASELINE-B`; release-certificate trust-chain validation
-   remains indeterminate until a trusted signing source is configured.
-   Remaining external validation is Acrobat coverage for sample signed
-   PDFs.
-4. ~~Wails file-picker for certs.~~ **Done.**
-5. ~~Update channel.~~ **Done.** Signed Ed25519 manifests are fetched
-   and verified by `internal/update`.
-6. ~~Agile Pack.~~ **Done.** `internal/agile/` provides the Kanban
-   board, Backlog, Sprint management, and DORA metrics with elite/
-   high/medium/low classification. Frontend components live in
-   `frontend/src/lib/components/agile/` and are reachable from the
-   Dashboard's "Software-Dev Pack" section (toggle to enable).
-7. ~~Database swap after self-heal in `internal/db/repair.go`.~~
-   **Done.** `SwapInSnapshot` atomically renames the .bak into place;
-   exposed as `App.RepairAndSwap` in the Wails surface.
-
-### New in V2
-
-8. **Per-user at-rest protection.** New per-user `.pmforge` project
-   databases are SQLCipher-encrypted with a per-user DEK, and existing
-   plaintext project databases can be migrated from Project Settings
-   after recovery codes are reissued. `system.db` remains plaintext by
-   design and stores password hashes plus wrapped DEKs, not project
-   records. OS-level disk encryption is still recommended as
-   whole-device protection for raw-disk theft or admin-level host
-   access: FileVault on macOS, BitLocker on Windows, and LUKS on Linux.
-   `.pmba` archival bundles preserve the encrypted `project.pmforge`
-   bytes, so backup files inherit project database encryption.
-   Design details live in
-   `docs/design/ADR-001-database-encryption-at-rest.md`.
-9. **All chart kinds are implemented** (20 in V2; the 21st — Gantt —
-   landed 2026-06-10 as roadmap item 20). DAG (WBS, Network,
-   PERT, CPM, Fishbone, Cause-and-Effect), Flow (Workflow, Activity),
-   Matrix (RACI, SWOT, Stakeholder, Generic), and Stats (Line, Bar,
-   Pareto, Pie, BurnUp, BurnDown, CumulativeFlow, Control) all have
-   end-to-end backend layouts + frontend editors. Stats charts use
-   Chart.js via the shared `StatsChart.svelte` host.
-10. ~~Bespoke document renderers.~~ **Done.** All 25 document kinds
-    now route to dedicated layouts, with the Word/Excel alias kinds
-    sharing their canonical renderer.
-11. ~~Chart picker in the field editor.~~ **Done.** `chart_ref`
-    fields render via `ChartPicker.svelte`; document templates
-    declare `ChartKind` so the picker filters to the appropriate
-    family (e.g. wbs_ref → WBS charts only).
-12. ~~Combined report builder.~~ **Done.** `App.ExportCombinedReport`
-    assembles multiple documents into one PDF with a cover page,
-    auto-generated table of contents, and **embedded chart
-    visualisations** for every chart_ref field. Each referenced
-    chart renders on its own page using the `pdfrender` engine
-    (vector graphics, no PNG screenshots).
-13. ~~Account recovery.~~ **Done.** Eight Argon2id-hashed one-time
-    recovery codes are issued at account creation. The "Forgot
-    password?" link on the login screen opens `RecoveryReset.svelte`.
-    Backend: `App.IssueRecoveryCodes`, `App.ResetWithRecoveryCode`.
-
-### Scheduling core roadmap (V3)
-
-PMForge remains a **local-first, single-machine** application; none of
-these items introduce cloud services, accounts, or telemetry. They
-deepen the scheduling kernel so PMForge stands on its own as a
-full project-controls scheduler. Listed in dependency order — each
-item builds on the previous one.
-
-14. **Date-anchored, calendar-aware CPM.** *Done 2026-06-10.*
-    `kernel.AnchorSchedule` maps CPM day-offsets onto real calendar
-    dates from the project start date, skipping non-working days via
-    an injected `WorkdayFunc` (`internal/calendar` supplies the
-    country calendar). Wired end-to-end: the schedule-report export
-    path and MSPDI export emit real dates, and the CPM chart editor
-    shows per-node start/finish dates on the canvas and in the detail
-    panel (`charts.LayoutWithSchedule`, CPM-only anchoring; all other
-    kinds delegate to the plain `Layout`). A date-axis Gantt strip is
-    deliberately deferred to item 20's first-class Gantt chart kind.
-15. **Dependency types and lag.** *Done 2026-06-10.* `kernel.Link`
-    carries FS/SS/FF/SF link types with lag/lead, honoured by both
-    CPM passes (every task's late finish is additionally bounded by
-    the project finish so SS predecessors and leads keep float
-    meaningful). The legacy `Precedents` list still works (plain
-    FS+0; a typed Link for the same predecessor wins). CPM chart
-    edge labels ("SS+2", "FS-1", parsed by `dag.ParseLinkLabel`,
-    fail-soft to FS) are now real scheduling inputs, editable in the
-    layered editor's "Incoming links" panel and honoured by the
-    schedule-report/MSPDI export path.
-16. **Task constraints.** *Done 2026-06-10.* `kernel.ConstraintType`
-    adds ASAP (default), ALAP, SNET, FNLT, and MFO. Date-bearing
-    constraints are armed by `kernel.ApplyConstraintDates` (date →
-    working-day offset against the project calendar; finish
-    constraints account for EF being exclusive) and require a project
-    start date; ALAP works un-anchored. Links always win: an
-    unsatisfiable constraint sets `ConstraintViolated` instead of
-    breaking precedence, FNLT/MFO squeezes surface as negative float
-    (super-critical, `IsCritical` now flags Float <= 0), and ALAP
-    moves a task to its late dates in a post-pass. The CPM editor has
-    a constraint dropdown + date picker per node, an amber dashed
-    outline + "!" canvas marker, and a violation explainer in the
-    detail panel. Honoured end-to-end via `dag.LayoutCPMScheduled`
-    and the schedule-report/MSPDI export pipeline
-    (`scheduleProjectTasks` in main.go).
-17. **Progress and baselines.** *Done 2026-06-10.* `kernel.Task`
-    gains percent-complete (clamped 0–100 by `CalculateCPM`,
-    reporting-only — it never reschedules), an explicit milestone
-    flag, and actual start/finish date fields (consumed by EVM in
-    item 18; no dedicated entry UI yet). Baselines: the new
-    `baselines` table snapshots a CPM chart's fully scheduled task
-    map (immutable rows; `internal/db/baselines.go`), exposed as
-    `App.SetScheduleBaseline` / `ListScheduleBaselines` /
-    `DeleteScheduleBaseline` / `CompareScheduleBaseline`, with
-    `kernel.CompareSchedules` computing per-task start/finish
-    variance in working days (positive = slip). The CPM editor has a
-    "Set baseline" toolbar button, a per-node % Complete input +
-    milestone toggle, a progress strip and ◆ marker on the canvas,
-    and baseline variance rows (late red / early green) in the
-    detail panel.
-18. **Earned Value Management.** *Done 2026-06-10.* `kernel.ComputeEVM`
-    derives PV/EV/AC, SV/CV, SPI/CPI, and EAC/ETC/VAC at a status
-    date (working-day offset; PV is linear across each task's ES..EF
-    window, milestones earn fully at ES; SPI/CPI report 0 = "n/a"
-    when undefined; EAC = BAC/CPI with a BAC fallback). Tasks carry
-    `BudgetedCost`/`ActualCost`, and the actual start/finish entry UI
-    deferred from item 17 landed too. `App.ComputeScheduleEVM` maps a
-    YYYY-MM-DD status date (or today) through the project calendar
-    and requires a project start date — it errors rather than emit
-    meaningless numbers. The CPM editor's Earned Value panel (status
-    date + Compute) shows the full metric grid with red/green
-    coloring. The kernel package comment's EVM claim is finally true.
-    *Follow-up landed 2026-06-10:* the schedule-report exports (PDF,
-    DOCX, ODT) append an "Earned Value (status date: today)" summary
-    via a shared `evmSummaryLines` block — emitted only when the
-    project is anchored AND the chart carries cost data, so reports
-    without budgets are unchanged. EVM inside the Status Report
-    document renderer / combined report builder remains a possible
-    later enhancement (those render document content, not schedule
-    payloads, and would need chart_ref-based resolution design).
-19. **Resource layer.** *Done 2026-06-10 (kernel core + assignment
-    UI + Level/Histogram actions).* `internal/kernel/resources.go` ships task-resource
-    assignments (`kernel.Assignment`, units default 1.0),
-    `ResourceUsage` per-day demand profiles, `DetectOverallocations`
-    (capacity map, missing = 1.0; flags offending tasks and reports
-    sorted breaches), and `LevelResources` — serial-method leveling
-    that processes ready tasks in least-float order, honours typed
-    links + lag against levelled predecessors, books capacity, and
-    leaves impossible demand at its earliest start still flagged.
-    Documented simplifications: integer-day booking; LS/LF/Float
-    still describe the precedence-only schedule after leveling.
-    The assignment UI landed the same day: an Assignments section in
-    the CPM editor (stakeholder suggestions via datalist, units,
-    add/remove), overallocation computed on every layout pass
-    (orange edge strip + explainer on offending nodes), and
-    assignments flowing through the export/EVM/baseline loaders.
-    The Level and Histogram actions landed the same day:
-    `App.LevelChartResources` persists resource-caused delays as SNET
-    constraint dates (user-set non-SNET constraints are never
-    touched; stale levelling pins are cleared; the editor reloads its
-    doc afterwards so a later save can't clobber the pins), and
-    `App.GenerateResourceHistogram` saves a per-day per-resource
-    demand Bar chart (snapshot semantics; regeneration updates the
-    same chart via a `source_chart_id` config marker, and it embeds
-    in combined reports like any other chart). *Completed
-    2026-06-10:* stakeholders carry an **availability** field
-    (units; 1 = full-time, additive `ALTER TABLE` migration,
-    editable in the Stakeholder manager) that feeds the capacity
-    maps for overallocation detection (scheduled chart layout paths)
-    and resource levelling — assignments naming non-stakeholder
-    resources keep the 1.0 default. Per-resource calendars remain a
-    V3 refinement (resource-specific non-working days interact with
-    the anchoring layer and need design).
-20. **Schedule interchange and first-class Gantt.** *Done
-    2026-06-10.* `export.FromMSPDI` imports MSPDI XML — tasks
-    (durations at 8 h/day), typed predecessor links (MSPDI Type
-    0=FF/1=FS/2=SF/3=SS, lag from tenths-of-a-minute), milestones,
-    percent complete, and resource assignments flattened to names;
-    summary/null rows are skipped with their dangling links dropped.
-    `ToMSPDI` export was enriched to round-trip: PredecessorLink,
-    Milestone, PercentComplete, Resources, and Assignments are
-    emitted (verified by an export→import round-trip test).
-    `App.ImportMSPDIChart` (Dashboard → "Import schedule (MSPDI)")
-    creates a CPM chart from the file and adopts the file's start
-    date when the project has none. Binary `.mpp` import is out of
-    scope — MSPDI XML is the supported interchange format.
-    The first-class Gantt chart kind landed the same day, completing
-    this item: `gantt` is the 21st registry kind sharing the
-    layered/CPM data model, with `dag.LayoutGantt[Scheduled]`
-    (rows sorted by ES, full CPM semantics incl. constraints and
-    overallocation), a bespoke `pdfrender` renderer (bars, critical
-    red, progress strip, milestones, anchored dates, day grid) so it
-    embeds in combined reports, and `GanttEditor.svelte` — editable
-    task grid (label/duration/%/milestone), link add/edit/delete
-    with the FS/SS/FF/SF±lag grammar, zoomable bar canvas with
-    dependency elbows, critical colouring, progress overlay,
-    baseline ghost bars, overallocation outlines, and constraint
-    markers. Baselines/histogram/levelling all work on Gantt charts
-    since they share the CPM data model.
-
-Items 14–18 are kernel-pure and unit-testable in isolation, matching
-the kernel's no-I/O design.
-
----
-
-## Logs and startup diagnostics
-
-Every GUI launch writes a dated diagnostic log to
-`~/Documents/PMForge/logs/pmforge-<YYYY-MM-DD>.log` (under
-`$XDG_DATA_HOME/PMForge/logs/` when that variable is set). The standard
-logger is teed to both this file and stderr, so `wails dev` and terminal
-launches still print output while packaged GUI launches - whose stderr is
-discarded by the OS - retain a readable record by default.
-
-If startup fails, PMForge no longer dies silently. `internal/applog`
-records the failure with a stack trace to the log file and shows a native
-OS error dialog (macOS `osascript`, Windows `MessageBox`, Linux
-`zenity`/`kdialog`/`notify-send`) naming the log path, then exits
-non-zero. This turns the previously invisible "the app never opens"
-failure into a visible, debuggable error for users and maintainers alike.
-
-Implementation: `internal/applog` is stdlib-only (native dialogs are
-invoked through each OS's own tooling, so no dependency is added).
-The root `main.go` initialises it at the top of the GUI path and routes
-both fatal startup branches - local data-store initialisation and
-`wails.Run` - through `applog.Fatal`. The CLI maintenance paths
-(`--check` / `--repair` / `--version`) are unchanged: they log to stderr,
-which is visible in the terminal where they are run.
-
-## Security hardening (2026-06-21)
-
-A full-codebase audit fixed six backend and three frontend bugs:
-
-- **sigmaSvc nil-pointer dereference race (HIGH):** All Sigma API methods accessed `a.sigmaSvc` after releasing the RLock. New `requireSigmaSvc()` helper; all ~20 Sigma methods updated.
-- **DEK use-after-wipe (HIGH):** `IssueRecoveryCodes` copied the DEK slice header (shared backing array); `Logout()` zeros it in place. Fixed with `requireDEKLocked()` (deep copy).
-- **RepairAndSwap sigmaSvc leak (MEDIUM):** After an atomic DB swap, `a.sigmaSvc` still pointed at the closed database. Fixed alongside `a.adminSvc` assignment.
-- **PackEnabled data race (MEDIUM):** `agile.PackEnabled bool` accessed from multiple goroutines. Changed to `atomic.Bool` (Go 1.19+).
-- **TOCTOU on recovery code redemption (MEDIUM):** Begin the db transaction before the hash scan; close the rows cursor explicitly before writes to prevent cursor-across-write conflict in SQLite.
-- **ReportComposer concurrent export (MEDIUM):** Plain Export PDF was not disabled while the Sign modal was open. Fixed with `|| showSignModal` guard.
-- **SignCertificateModal `onConfirm` signature (LOW):** Updated to two-arg `(password, certPath)` so the parent receives the cert path chosen inside the dialog, not only the prop value.
-
-## UI/UX enhancements (2026-06-21)
-
-- **Portfolio landing screen.** `Portfolio.svelte` is the post-login home: project cards with status badges and one-click navigation to Dashboard, Settings, or the chart/document browser. Access from any header via the "Projects" nav tab.
-- **Autosave for all chart editors.** Every chart editor registers with `autosave.svelte.ts` on mount and unregisters on destroy. Saves fire only when the document has actually changed (snapshot diff), so idle sessions generate no spurious version increments.
-- **HTML schedule-report export.** Project Settings → Schedule Reports → HTML produces a self-contained HTML file, joining the existing PDF/DOCX/ODT/CSV/MSPDI schedule export formats.
-- **Native startup-failure dialogs.** When PMForge cannot initialise its data store or the Wails runtime, it now shows a native OS error dialog naming the log file path (macOS `osascript`, Windows `MessageBox`, Linux `zenity`/`kdialog`/`notify-send`) before exiting. Previously, startup failures were silent.
-- **Copyright attribution.** All source file SPDX headers updated to "James L. Burns and The PMForge Contributors."
+Generated outputs, local handoff notes, validation scratch space, bundled
+font downloads, project databases, certificates, and package artifacts are
+ignored by `.gitignore`.
 
 ## License
 
-Source code: **GPL-3.0-or-later**. Documentation: **GFDL-1.3-or-later**.
-This README and small configuration files are released under
-**CC0-1.0**. See `LICENSES.md`.
-
-External libraries adopted in V2.x:
-
-- [`github.com/gorules/zen`](https://github.com/gorules/zen) (MIT) via its
-  Go binding (`zen-go`) — drives the Project Launchpad's seeding rules
-  as JDM (JSON Decision Model) data. Adding industries/methodologies is
-  a one-row edit in `internal/templates/launchpad_seeds.json`.
-- [`rickar/cal/v2`](https://github.com/rickar/cal) (BSD-2-Clause) —
-  maintained holiday datasets for ~40 countries. Used by
-  `internal/calendar` (Timeline view holiday markers) and
-  `internal/export/ical.go` (iCal export with optional holiday VEVENTs).
-- [`digitorus/pkcs7`](https://github.com/digitorus/pkcs7) (FreeBSD
-  2-clause) — wraps raw RSA signatures into the CMS/PKCS#7
-  SignedData structure that PAdES validators look for. Used by
-  `internal/crypto/pdf_sign.go`.
-- [`gomutex/godocx`](https://github.com/gomutex/godocx) (MIT, pure
-  Go) — DOCX writer used by `internal/export/docx.go`. Picked from
-  pkg.go.dev after a survey; ODT export is hand-built because no
-  equivalently-maintained pure-Go ODT generator exists.
-
-All four licenses are GPL-3.0-compatible.
-
-## Account recovery codes
-
-At account creation, PMForge issues eight one-time **recovery codes**
-(16 base32 chars each, dashed for legibility). They're Argon2id-hashed
-in the system database; for encrypted project databases, the same
-codes also wrap the user's project-database DEK. The plaintext is
-shown to the user exactly once. Each code can reset the password once
-and is then permanently marked used.
-
-Login → "Forgot password? Use a recovery code" → username + code +
-new password → done. The flow is built around `App.IssueRecoveryCodes`
-and `App.ResetWithRecoveryCode`. After enabling database encryption
-for an existing plaintext project, recovery codes must be reissued so
-the active codes can unlock the DEK. If the password and all valid
-wrapped recovery codes are lost, encrypted project databases are
-unrecoverable by design.
-
-## Document export formats
-
-Every document kind now exports to four formats:
-
-| Format | Wails method            | Library             |
-| ------ | ----------------------- | ------------------- |
-| PDF    | `ExportDocumentPDF`     | `gofpdf` + custom   |
-| DOCX   | `ExportDocumentDOCX`    | `gomutex/godocx`    |
-| ODT    | `ExportDocumentODT`     | hand-built XML zip  |
-| (XLSX) | (per-kind, where useful)| `xuri/excelize/v2`  |
-
-All three text formats walk the kind's schema and emit headings,
-paragraphs, bullet lists, and tables — so any of the 25 document
-kinds round-trips through any format without per-kind code.
-
-## Project interchange (schedule import/export)
-
-From **Project Settings → Schedule Reports**, the current project's CPM
-schedule exports to:
-
-| Format            | Extension | Wails method                  | Use |
-| ----------------- | --------- | ----------------------------- | --- |
-| PDF / DOCX / ODT  | `.pdf` / `.docx` / `.odt` | `ExportScheduleReportPDF/DOCX/ODT` | Reports |
-| **MS Project XML**| `.xml`    | `ExportScheduleReportMSPDI`   | Interchange with MS Project, GanttProject, ProjectLibre, etc. |
-| **CSV**           | `.csv`    | `ExportScheduleReportCSV`     | Tasks for Excel / Google Sheets |
-| **HTML**          | `.html`   | `ExportScheduleReportHTML`    | Publish / view in a browser |
-
-**Import** (Dashboard → "Import schedule") reads **Microsoft Project XML
-(MSPDI, `.xml`)** directly via `App.ImportMSPDIChart`. The binary/serialized
-formats — **`.mpp`** (MS Project), **`.pod`** (ProjectLibre), and the legacy
-**`.mpx`** — cannot be parsed in pure Go (the only robust reader is the Java
-MPXJ library, which would contradict PMForge's dependency-free, local-first
-design). The import dialog accepts those extensions and returns a precise
-message: re-save the file as **Microsoft Project XML (`.xml`)** from MS
-Project or ProjectLibre, then import that — the same MSPDI schema PMForge
-reads and writes, so the round-trip is lossless for the supported fields.
-
-## Update channel
-
-If the binary is built with `-ldflags` setting
-`pmforge/internal/update.ManifestURL` and
-`pmforge/internal/update.UpdateChannelPublicKey`, PMForge fetches a
-signed JSON manifest at the URL and verifies its Ed25519 signature
-against the embedded public key before reporting a newer version.
-Builds without those `-ldflags` settings silently skip the check.
-
-Generate the keypair once for your release pipeline; ship only the
-public key in the binary. Manifest schema is documented at the top
-of `internal/update/manifest.go`.
-
-## Fonts
-
-PMForge embeds TrueType fonts in generated PDFs (the gofpdf core fonts
-are not embeddable and not permitted by strict PDF/A). The
-`internal/fonts` package ships a curated catalog of professional,
-modern, open-source families — all free for commercial AND personal
-use and GPL-compatible:
-
-| Family            | Category | License        | Notes                              |
-| ----------------- | -------- | -------------- | ---------------------------------- |
-| Liberation Sans   | sans     | OFL-1.1        | Arial-metric-compatible (default)  |
-| Liberation Serif  | serif    | OFL-1.1        | Times-New-Roman-metric-compatible  |
-| Liberation Mono   | mono     | OFL-1.1        | Courier-metric-compatible          |
-| DejaVu Sans       | sans     | Bitstream Vera | Widest glyph coverage              |
-| Noto Sans         | sans     | OFL-1.1        | Broad international coverage        |
-| Source Sans 3     | sans     | OFL-1.1        | Adobe's modern professional sans   |
-| JetBrains Mono    | mono     | OFL-1.1        | Modern monospaced                  |
-| Roboto            | sans     | Apache-2.0     | Google's screen-optimised UI sans  |
-| Arimo             | sans     | Apache-2.0     | Arial-metric-compatible, corporate |
-| Cousine           | mono     | Apache-2.0     | Arimo's monospaced companion       |
-| Ledger            | serif    | OFL-1.1        | Modern business serif              |
-
-The font binaries are **not committed** to the repository (they are
-large and carry their own upstream licenses). Fetch them once:
-
-```sh
-make fonts          # or: scripts/fetch-fonts.sh
-```
-
-This downloads the `.ttf` files into `internal/fonts/assets/`, where
-`go:embed` bundles them into the build. If a family isn't fetched, the
-app falls back to the next available family (ultimately gofpdf's core
-Helvetica) — it always builds and runs.
-
-**Adding your own font.** `App.ImportFont` opens a native file dialog,
-validates the `.ttf` signature (OpenType/CFF, WOFF, and collections are
-rejected), and copies the file into your per-user `fonts/` directory.
-`App.ListFonts` returns the available families; `App.SetDefaultFont`
-persists the choice in `settings.default_font`. The font picker
-(family dropdown + Import button) lives in the "Document Font" section
-of **Project Settings**.
-
-Implementation: the chosen family is registered under the name
-"Helvetica" on each new PDF, so every renderer's existing
-`SetFont("Helvetica", ...)` call transparently uses the embedded font
-without per-renderer changes.
-
-## PDF/A note
-
-`internal/pdfmeta` builds the canonical XMP packet identifying a PDF
-as PMForge-generated PDF/A-3 level B, and **injects it into the PDF
-Catalog as a metadata stream** via a spec-conformant incremental
-update (`InjectXMPStream`). `documents.Render()` tags every generated
-document PDF automatically (fail-soft: a valid but un-tagged PDF is
-returned if injection ever fails). `internal/export/pdfa.go` remains
-as the thin gofpdf adapter that sets the library's Title / Author /
-Subject / Creator / Keywords fields.
-
-Strict PDF/A-3 conformance now depends on release validation rather
-than missing renderer primitives: font embedding, Catalog XMP
-metadata-stream injection, and OutputIntent + ICC injection are all
-implemented. `make check-pdfa` validates schedule-report, document,
-and combined-report samples against veraPDF's PDF/A-3b profile. All
-three samples pass and the gate is a **hard release blocker** --
-`check-release.sh` exits non-zero if any sample regresses.
-
-The gate is strict by default: a missing veraPDF validator, a missing
-ICC profile, or an empty sample set is treated as a **failure**, not a
-silent skip, so the release gate can never certify PDF/A-3 conformance
-it did not actually verify. `check-release.sh` always runs it strict
-(`PMFORGE_PDFA_STRICT=1`). For local convenience on a machine without
-Docker or a veraPDF CLI, run `PMFORGE_PDFA_STRICT=0 make check-pdfa` to
-downgrade those unmet preconditions to a warned skip; an actually
-non-compliant sample still fails in either mode. Remaining V3 hardening
-(trusted signing chain, Acrobat coverage) is tracked in AGENT.md §8.
-
-## Project Launchpad
-
-`New Project` no longer drops you into a blank one-field form. The
-Launchpad walks you through four steps:
-
-1. **Industry** — Business / Administration / Engineering / Software /
-   Construction / Custom.
-2. **Sub-category** — industry-aware (e.g. Software → Web / Mobile /
-   AI / DevOps / Game).
-3. **Methodology** — recommended set for the industry (Scrum, Kanban,
-   CPM, Waterfall, Six Sigma, Lean, OKRs, PRINCE2). The user can
-   override.
-4. **Details & starter artifacts** — name, description, country
-   (for holidays), and a checklist of suggested seed artifacts that
-   the zen-go decision engine returned for the (industry, methodology)
-   combo. Examples:
-   - Software + Scrum → Kanban board, Project Charter, Backlog (3
-     placeholders), Sprint 1.
-   - Construction + Waterfall → WBS, Statement of Work, Risk Register,
-     CPM schedule.
-   - Engineering + Six Sigma → Control chart, Pareto, Fishbone.
-
-The user can deselect any seed. After creation the seeded artifacts
-appear on the Dashboard, ready to edit.
-
-## Project Settings
-
-Every open project shows a "Settings" link in the Dashboard header.
-Use it to edit:
-
-- The project's name, description, owner, industry, sub-category,
-  methodology, country code, lifecycle status / phase, start / end
-  dates, and budget.
-- **Export & Signature settings** — export theme (`modern` / `classic`
-  / `archival`), auto-repair toggle, signing certificate path, and the
-  signature-enabled toggle. Changes are saved as the per-project
-  settings singleton.
-- **Document Font** — pick from the bundled catalog families or import
-  your own `.ttf` file. The chosen family is applied to all PDF exports
-  from this project immediately.
-
-The classification fields (industry + methodology + country) feed live
-into the Launchpad-seeding rules, the terminology resolver, and the
-calendar holidays the Timeline overlays. Budget feeds the Dashboard's
-Budget panel.
-
-## Stakeholders & Budget
-
-The Dashboard's top row now exposes:
-
-- **Stakeholders** — project-level address book (team / vendor /
-  sponsor / external). Each carries `hourly_rate` and `contract_value`.
-- **Timeline** — the same data as the Dashboard's chart panel but
-  rendered as a horizontal strip with country-aware holiday markers.
-  Export the project to `.ics` (with or without holidays) from the
-  same view.
-- **Budget panel** — live rollup of `project.budget` vs
-  Σ vendor contracts + Σ (work-item points × matched hourly rate).
-  Tints red on overspend.
-
-## Dashboard UX
-
-The Dashboard shows two item lists — Charts and Documents. Both support
-**inline delete** with a two-step confirm: click the trash icon, then
-confirm with a second click. No browser confirm dialog; no page reload.
-The item disappears from the list immediately on success.
-
-The **Your Projects** screen offers per-project **Clone** and **Delete**
-actions. Clone duplicates the `.pmforge` file under a `…-copy` name (the
-copy stays encrypted under your DEK). Delete uses the same two-step confirm
-and removes the project file plus its WAL/SHM sidecars; both actions are
-restricted to files inside your own `projects/` folder.
-
-When exporting a signed PDF, the **Digital Signature** dialog has a
-**Choose certificate…** button (native file picker) so you can select a
-`.p12`/`.pfx` for a one-off signing without first configuring one in
-Project Settings; Sign & Export stays disabled until a certificate is set.
-
-A native **application menu** is available: **File** (Dashboard ⌘D, New
-Project ⌘N, Open Project ⌘O, Application Settings ⌘,, Project Settings,
-Close Project ⌘W) and **Help** (User Guide, About PMForge). On macOS the
-standard application and Edit menus are included so Quit/Hide and copy/paste
-keep working. Menu items drive the same navigation as the in-app buttons.
-
-After signing in you land on the **Portfolio dashboard** — a status overview
-of every project (status, phase, dates, chart/document counts), with
-in-progress projects listed first; click a card to open it. A shared toolbar
-switches between **Dashboard**, **Projects**, **App Settings**, and **Help**.
-**Application Settings** holds per-user, app-level preferences: a **Light/
-Dark application theme** (previewed instantly, persisted on Save), the
-default document font and export theme applied to newly created projects,
-plus version and data-location info — distinct from per-project Settings.
-The theme flips the whole UI via a `data-theme` attribute backed by CSS
-variables (chart/SVG internals keep their own palette).
-
-## In-app Help Guide
-
-The **Help** tab (top navigation bar) and **Help → User Guide** menu item
-open a full in-app reference with sidebar navigation organized into four
-groups:
-
-- **Overview** — Getting Started and the Industry &amp; Methodology matrix
-  (what artifacts the Launchpad seeds for each industry/methodology pair).
-- **Methodologies** — one section per methodology (Scrum, Kanban, Scrumban,
-  Lean, OKRs, Waterfall, PRINCE2, PMBOK, CPM, Six Sigma): when to use it,
-  PMForge setup, workflow steps, recommended charts, and key terminology.
-- **Features** — detailed how-to for every application feature: Portfolio,
-  Project Dashboard, Timeline, Stakeholder Manager, Report Composer,
-  Export &amp; Digital Signing, Database Encryption, Admin Panel, App Settings.
-- **Reference** — complete Charts Reference (all 21 kinds across four
-  engine families), Documents Reference (all 25 kinds by PMBOK phase),
-  DMAIC Pack (Six Sigma structured project views), and a 60+ term Glossary.
-
-All content is derived from the live codebase. Navigation links within the
-guide cross-reference related sections (e.g. the Six Sigma methodology
-section links to the DMAIC Pack reference; the encryption section links to
-the recovery code prerequisite).
-
-Implementation: `frontend/src/lib/components/HelpGuide.svelte` — a single
-Svelte 5 component with a `$state<SectionId>` active-section cursor and
-sidebar navigation groups. No Go backend calls; the guide is entirely
-frontend-static content.
-
-## Editor shortcuts and document status
-
-All editors (document, chart layered/DAG, chart stats) support
-**Ctrl+S / Cmd+S** to save without reaching for the toolbar, and every
-editor has a **Save** button.
-
-### Auto-save
-
-Open editors are also saved automatically on a timer. The interval and an
-on/off switch live in **Application Settings → Saving** (default: on, every
-60 seconds). Auto-save is snapshot-based, so it only writes when there are
-unsaved changes — an idle editor is never re-saved and `updated_at` is not
-churned. Manual save (Ctrl/Cmd+S and the Save button) always works
-regardless of the auto-save setting. The interval is stored per user in
-`app-settings.json` (`auto_save_seconds`; `0` disables auto-save) and a
-single shared timer coordinates every open editor.
-
-The **CharterEditor** (used for all 25 document kinds) shows:
-
-- An **"Unsaved changes"** amber badge in the header when in-memory
-  content differs from the last saved version.
-- A **status dropdown** (`draft` → `review` → `approved` → `archived`)
-  in the header. Selecting a new status saves the document immediately
-  so the status transition is always persisted.
-
-The Software-Dev Pack toggle (Kanban / Backlog / Sprints / DORA) now
-**persists across project close and reopen** — it is stored in the
-per-project settings database row rather than only in process memory.
+Source code is licensed under GPL-3.0-or-later. Documentation, including
+this README, is licensed under GFDL-1.3-or-later. Small configuration files
+may use CC0-1.0. See [LICENSES.md](LICENSES.md) and the SPDX headers in
+individual files.
