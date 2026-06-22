@@ -71,6 +71,11 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config
 
       - name: Install Wails CLI
+        # wails v2.9.2 transitively pulls golang.org/x/tools@v0.17.0, which fails to
+        # compile under Go 1.26. Build the CLI with Go 1.24 so its x/tools compiles;
+        # the app itself is still built with the repo's Go 1.26.4.
+        env:
+          GOTOOLCHAIN: go1.24.0
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.9.2
 
       - name: Fetch bundled fonts (graceful — app falls back to core fonts if a fetch fails)
