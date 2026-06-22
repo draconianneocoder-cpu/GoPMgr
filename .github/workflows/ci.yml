@@ -11,9 +11,16 @@
 #
 # The full release gate (`make check-release`) and packaging live in release.yml (on tags).
 #
-# Runner note: the root `pmforge` package imports the Wails v2 library, whose Linux
-# build needs GTK3 + WebKit2GTK headers. `make` uses no `webkit2_41` build tag, so we
-# pin ubuntu-22.04 (which still ships libwebkit2gtk-4.0-dev) to match the local flow.
+# Two clean-checkout facts shape this file:
+#   1. The root `pmforge` package has `//go:embed all:frontend/dist`. `frontend/dist` is
+#      gitignored, so it does NOT exist on a fresh checkout — the root package will not
+#      compile (test/vet/lint) until the frontend is built. Jobs that compile the root
+#      package therefore build the frontend (or stub the embed dir for vet/lint) first.
+#   2. The root package links the Wails v2 library (GTK3 + WebKit2GTK). `make` uses no
+#      `webkit2_41` tag, so we pin ubuntu-22.04, which still ships libwebkit2gtk-4.0-dev.
+#
+# Bundled fonts are fetched over the network and degrade gracefully (the app falls back to
+# core fonts), so font fetching is never a hard gate here — only release embeds them.
 
 name: CI
 
@@ -38,16 +45,16 @@ jobs:
     name: Verify (Go tests + svelte-check + Vite build)
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
@@ -65,8 +72,9 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Fetch bundled fonts
-        run: make fonts
+      - name: Build frontend (creates frontend/dist for //go:embed before go test)
+        working-directory: frontend
+        run: npm run build
 
       - name: Pre-merge gate (make verify)
         run: make verify
@@ -75,16 +83,16 @@ jobs:
     name: Build (Wails, linux/amd64)
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
@@ -98,14 +106,17 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.9.2
 
-      - name: Fetch bundled fonts
+      - name: Fetch bundled fonts (non-fatal — app falls back to core fonts if a CDN fails)
+        continue-on-error: true
         run: make fonts
 
+      # Wails runs `npm install` + `npm run build` itself, creating frontend/dist before
+      # compiling Go, so no separate frontend build step is needed here.
       - name: Wails build
         run: wails build -platform linux/amd64
 
       - name: Upload Linux build
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: pmforge-linux-amd64
           path: build/bin/
@@ -115,18 +126,20 @@ jobs:
     name: Lint (non-blocking)
     runs-on: ubuntu-22.04
     # Mirrors GitLab `allow_failure: true`: surfaces lint findings without blocking merges.
+    # NOTE: golangci-lint currently bundles an x/tools that cannot compile under Go 1.26
+    # (upstream). This job stays non-blocking until a Go 1.26-compatible release is pinned.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
@@ -137,8 +150,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config
 
+      - name: Stub embedded frontend (satisfies //go:embed for type-check; real assets not needed)
+        run: |
+          mkdir -p frontend/dist
+          printf '<!doctype html>\n' > frontend/dist/index.html
+
       - name: "golangci-lint (scope: . ./internal/...)"
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@v6
         with:
           args: . ./internal/...
 
@@ -156,10 +174,10 @@ jobs:
     # Mirrors GitLab `security` (allow_failure: true), upgraded from a placeholder to a real scan.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
@@ -168,6 +186,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config
+
+      - name: Stub embedded frontend (satisfies //go:embed for go vet; real assets not needed)
+        run: |
+          mkdir -p frontend/dist
+          printf '<!doctype html>\n' > frontend/dist/index.html
 
       - name: Memory-safety / vet scan (make memory-scan)
         run: make memory-scan
