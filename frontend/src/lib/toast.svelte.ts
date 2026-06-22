@@ -17,6 +17,13 @@ export type Toast = {
 	undoLabel?: string;
 };
 
+type ToastOptions = {
+	type?: ToastType;
+	duration?: number;
+	undo?: () => void;
+	undoLabel?: string;
+};
+
 const MAX_TOASTS = 5;
 const DEFAULT_DURATION = 4500;
 
@@ -31,14 +38,9 @@ const dismissAtMap = new Map<number, number>();
 
 export function showToast(
 	message: string,
-	arg: ToastType | {
-		type?: ToastType;
-		duration?: number;
-		undo?: () => void;
-		undoLabel?: string;
-	} = 'success',
+	arg: ToastType | ToastOptions = 'success',
 ) {
-	let options: any = {};
+	let options: ToastOptions = {};
 	if (typeof arg === 'string') {
 		options.type = arg;
 	} else {
