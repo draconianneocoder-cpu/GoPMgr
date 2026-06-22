@@ -65,6 +65,9 @@ temp_snapshot.db
 # Agent memory (local-only; not for public consumption)
 /.agent_memory/
 
+# Claude Code local permission allowlist (machine-specific, not public)
+/.claude/settings.local.json
+
 # OS / editor
 .DS_Store
 Thumbs.db
