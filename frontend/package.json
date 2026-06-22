@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "chart.js": "^4.4.6",
-    "xlsx": "^0.18.5"
+    "read-excel-file": "^9.2.0"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0",

@@ -121,23 +121,25 @@ import TollgateChecklist from './TollgateChecklist.svelte';
       let values: number[] = [];
       const ext = file.name.split('.').pop()?.toLowerCase();
 
-      if (ext === 'xlsx' || ext === 'xls') {
-        const XLSX = await import('xlsx');
-        const buffer = await file.arrayBuffer();
-        const workbook = XLSX.read(buffer, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as unknown[][];
+      if (ext === 'xlsx') {
+        // read-excel-file is a maintained, npm-native reader. It replaced the
+        // dead-ended SheetJS `xlsx` (frozen at 0.18.5 with unpatched prototype-
+        // pollution / ReDoS CVEs). `readSheet` returns the first sheet's rows;
+        // legacy binary `.xls` is intentionally unsupported (re-save as .xlsx/CSV).
+        const { readSheet } = await import('read-excel-file/browser');
+        const rows = await readSheet(file);
 
-        for (const row of jsonData) {
-          if (Array.isArray(row)) {
-            for (const cell of row) {
-              const num = typeof cell === 'number' ? cell : parseFloat(String(cell));
-              if (!isNaN(num)) {
-                values.push(num);
-              }
+        for (const row of rows) {
+          for (const cell of row) {
+            const num = typeof cell === 'number' ? cell : parseFloat(String(cell));
+            if (!isNaN(num)) {
+              values.push(num);
             }
           }
         }
+      } else if (ext === 'xls') {
+        showToast('Legacy .xls is not supported — re-save as .xlsx or export to CSV.', 'error');
+        return;
       } else {
         const text = await file.text();
         const lines = text.split(/\r?\n/).filter(line => line.trim());
@@ -367,11 +369,11 @@ import TollgateChecklist from './TollgateChecklist.svelte';
               <div class="mt-1 flex items-center gap-3">
                 <input
                   type="file"
-                  accept=".csv,.tsv,.txt,.xlsx,.xls"
+                  accept=".csv,.tsv,.txt,.xlsx"
                   onchange={handleDataImport}
                   class="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-cyan-600 file:text-white hover:file:bg-cyan-500"
                 />
-                <span class="text-xs text-slate-500">Supports CSV, TSV, Excel (.xlsx/.xls)</span>
+                <span class="text-xs text-slate-500">Supports CSV, TSV, Excel (.xlsx)</span>
               </div>
             </label>
           </div>
