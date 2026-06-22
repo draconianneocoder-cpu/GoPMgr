@@ -1,0 +1,126 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# GitHub Actions release pipeline for PMForge.
+#
+# Translates the GitLab `release` stage. GitLab cross-compiled all three OSes from a
+# single Linux runner; Wails does not truly cross-compile (especially to macOS), so this
+# builds each target on its native runner instead — the idiomatic, actually-working
+# GitHub approach. Each leg produces a packaged archive; a final job attaches them to a
+# GitHub Release.
+#
+# Trigger: pushing a version tag, e.g. `git tag v1.1.0 && git push origin v1.1.0`.
+# (GitLab also released on `main`; tag-only is the GitHub convention. Adjust if desired.)
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  GOFLAGS: -mod=readonly
+  GOPROXY: https://proxy.golang.org,direct
+  CGO_ENABLED: "1"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            label: linux/amd64
+            platform: linux/amd64
+          - os: macos-latest
+            label: darwin/universal
+            platform: darwin/universal
+          - os: windows-latest
+            label: windows/amd64
+            platform: windows/amd64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.9.2
+
+      - name: Fetch bundled fonts (graceful — app falls back to core fonts if a fetch fails)
+        continue-on-error: true
+        run: bash scripts/fetch-fonts.sh
+
+      - name: Wails build
+        run: wails build -platform ${{ matrix.platform }}
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: tar -czf "pmforge-${GITHUB_REF_NAME}-linux-amd64.tar.gz" -C build/bin pmforge
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: (cd build/bin && zip -r "../../pmforge-${GITHUB_REF_NAME}-darwin-universal.zip" PMForge.app)
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: 7z a "pmforge-${GITHUB_REF_NAME}-windows-amd64.zip" ./build/bin/pmforge.exe
+
+      - name: Upload archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmforge-${{ matrix.os }}
+          path: |
+            pmforge-*.tar.gz
+            pmforge-*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create / update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "PMForge $GITHUB_REF_NAME" \
+            --generate-notes \
+            dist/*

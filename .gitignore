@@ -18,6 +18,7 @@
 *.dylib
 /pmforge
 /pmforge-*
+/PMForge/
 !pmforge-icon-*.svg
 !pmforge-logo-*.svg
 
@@ -35,6 +36,15 @@ frontend/package.json.md5
 
 # Local validation scratch space
 /.tmp/
+
+# Local agent handoff and execution plans. These can contain machine-specific
+# paths, dirty-worktree notes, and private planning context.
+/session-notes.md
+/docs/superpowers/plans/
+
+# Superseded root agent-instruction duplicates; keep public guidance in AGENTS.md.
+/CLAUDE.md
+/GO_CODER_AGENTS.md
 
 # Go
 *.test
