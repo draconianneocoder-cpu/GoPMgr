@@ -932,6 +932,13 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Scope-filter before calling a code review complete.** Use `git diff HEAD --name-only -- '*.go' '*.svelte' '*.ts' | while read f; do n=$(git diff HEAD -- "$f" | grep -E '^[+-]' | grep -vE '^[+-]{2}|SPDX-FileCopyright|<cosmetic pattern>' | wc -l); [ "$n" -gt 0 ] && echo "$n $f"; done | sort -rn` to isolate files with real functional diffs from cosmetic sweeps. Cross-check the output against what was actually reviewed before declaring done.
 - **Tuple-to-struct API migrations must be aligned frontend and backend.** `EnsureDefaultBoard` and `CreateProjectFromLaunchpad` both changed from returning multiple Go values (serialized as a JSON array by Wails) to returning named structs (serialized as a JSON object). Frontend callers migrated from destructuring `const [a, b] = await ...` to `const res = await ...; res.field`. Always verify the Go return type matches the frontend access pattern when both sides change.
 
+### 2026-06-22 — Wire sigma workspace into Dashboard navigation
+
+- **Methodology-gated sections use `{#if session.project?.methodology === 'six_sigma'}`.** The optional chain is required: `session.project` is null before a project is open, so a bare `session.project.methodology` would throw. Gate is placed after the nav row and before the charts section so sigma-methodology projects get the Process Excellence card at the top of the content area. Non-sigma projects are completely unaffected.
+- **Verify the methodology string traces through the creation path before relying on it in a gate.** `ProjectLaunchpad.svelte` uses `let methodology = $state('')`; the selector sets `methodology = m.id` (line 241, where `m.id` is `'six_sigma'` verbatim); `CreateProjectFromLaunchpad` receives and stores it directly. Confirmed by reading the component — no label transform, no enum mapping.
+- **`SigmaWorkspace` is a global sigma-project list, not scoped to the current `.pmforge` project.** `SigmaListProjects()` returns all sigma projects regardless of which PMForge project is open. The Dashboard card is a navigation entry to that global workspace, not a scoped view. Card copy should reflect this (e.g., "DMAIC project tracking", not "this project's DMAIC"). The design is intentional — confirmed before wiring.
+- **One entry point unlocks the full reachability chain.** Before this change, `sigma_dashboard` / `sigma_project` / TollgateChecklist were all unreachable. Adding the single Dashboard card restores the chain: Dashboard → SigmaWorkspace → SigmaProjectView → TollgateChecklist. No additional wiring is needed.
+
 ---
 
 ## 10. Quick map: "where do I add ..."

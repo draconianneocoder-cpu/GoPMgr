@@ -359,6 +359,27 @@ import BudgetPanel from './BudgetPanel.svelte';
       </div>
     </section>
 
+    <!-- Process Excellence (Six Sigma) — shown only for six_sigma methodology projects -->
+    {#if session.project?.methodology === 'six_sigma'}
+      <section>
+        <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">
+          Process Excellence
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <button
+            onclick={() => goto('sigma_dashboard')}
+            class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
+          >
+            <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Six Sigma</div>
+            <div class="text-base font-bold text-slate-50 mt-1">DMAIC Workspace</div>
+            <p class="text-xs text-slate-500 mt-1">
+              Define · Measure · Analyze · Improve · Control — phase tollgates, fishbone analysis, and DMAIC project tracking.
+            </p>
+          </button>
+        </div>
+      </section>
+    {/if}
+
     <!-- Existing charts (shown first so returning users reach their work quickly) -->
     {#if charts.length > 0}
     <section>
