@@ -29,8 +29,8 @@ import (
 // FishboneDocument is the JSON shape stored in db.charts.data for a
 // Fishbone chart.
 type FishboneDocument struct {
-	Effect     string              `json:"effect"`
-	Categories []FishboneCategory  `json:"categories"`
+	Effect     string             `json:"effect"`
+	Categories []FishboneCategory `json:"categories"`
 }
 
 // FishboneCategory is one diagonal bone.
@@ -56,11 +56,11 @@ type FishboneNode struct {
 // strokes are emitted as additional edges from the cause position
 // perpendicular onto the bone.
 type FishboneEdge struct {
-	X1 float64 `json:"x1"`
-	Y1 float64 `json:"y1"`
-	X2 float64 `json:"x2"`
-	Y2 float64 `json:"y2"`
-	Kind string `json:"kind"` // "spine" | "bone" | "cause"
+	X1   float64 `json:"x1"`
+	Y1   float64 `json:"y1"`
+	X2   float64 `json:"x2"`
+	Y2   float64 `json:"y2"`
+	Kind string  `json:"kind"` // "spine" | "bone" | "cause"
 }
 
 // FishboneLayout is the full render-ready output.
@@ -94,15 +94,15 @@ func EncodeFishbone(doc FishboneDocument) (string, error) {
 
 // FishboneLayoutOptions controls visual spacing.
 type FishboneLayoutOptions struct {
-	EffectWidth   float64 // width of the effect node
-	EffectHeight  float64
-	CategoryWidth float64 // width of each category label
+	EffectWidth    float64 // width of the effect node
+	EffectHeight   float64
+	CategoryWidth  float64 // width of each category label
 	CategoryHeight float64
-	CauseHeight   float64 // height of each cause line
-	BoneLengthMin float64 // shortest diagonal bone
-	BoneStep      float64 // extra length per cause on the bone
-	CauseGap      float64 // horizontal gap between causes on a bone
-	BoneAngleDeg  float64 // angle of bones from horizontal
+	CauseHeight    float64 // height of each cause line
+	BoneLengthMin  float64 // shortest diagonal bone
+	BoneStep       float64 // extra length per cause on the bone
+	CauseGap       float64 // horizontal gap between causes on a bone
+	BoneAngleDeg   float64 // angle of bones from horizontal
 }
 
 // DefaultFishboneOptions returns the spacing the GUI uses by default.
@@ -171,7 +171,6 @@ func LayoutFishbone(doc FishboneDocument, opt FishboneLayoutOptions) FishboneLay
 	leftMargin := 80.0
 	gapBeforeEffect := 40.0
 	spineLeftX := leftMargin + maxHorizProj
-	spineRightX := spineLeftX + float64(len(doc.Categories)-1)*attachmentStride/2 + maxHorizProj + gapBeforeEffect
 	// We want at least N/2 attachments above + N/2 below; each side
 	// has ceil(N/2) attachments separated by attachmentStride.
 	halfCount := (len(doc.Categories) + 1) / 2
@@ -179,7 +178,7 @@ func LayoutFishbone(doc FishboneDocument, opt FishboneLayoutOptions) FishboneLay
 	if spineWidth < attachmentStride*2 {
 		spineWidth = attachmentStride * 2
 	}
-	spineRightX = spineLeftX + spineWidth
+	spineRightX := spineLeftX + spineWidth
 
 	// Vertical extent: max vertical projection of any bone + cause overhang.
 	maxVertProj := 0.0
