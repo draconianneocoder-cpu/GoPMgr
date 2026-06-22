@@ -526,8 +526,8 @@ item builds on the previous one.
     document renderer / combined report builder remains a possible
     later enhancement (those render document content, not schedule
     payloads, and would need chart_ref-based resolution design).
-19. **Resource layer.** *Kernel core landed 2026-06-10; UI layer
-    remaining.* `internal/kernel/resources.go` ships task-resource
+19. **Resource layer.** *Done 2026-06-10 (kernel core + assignment
+    UI + Level/Histogram actions).* `internal/kernel/resources.go` ships task-resource
     assignments (`kernel.Assignment`, units default 1.0),
     `ResourceUsage` per-day demand profiles, `DetectOverallocations`
     (capacity map, missing = 1.0; flags offending tasks and reports
