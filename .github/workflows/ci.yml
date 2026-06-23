@@ -194,3 +194,21 @@ jobs:
 
       - name: Memory-safety / vet scan (make memory-scan)
         run: make memory-scan
+
+  analytics-duckdb:
+    name: Analytics engine (-tags duckdb)
+    runs-on: ubuntu-latest
+    # Builds and tests the optional DuckDB analytics engine so it can't bitrot.
+    # internal/analytics imports duckdb-go (CGO) but not Wails, so no GTK/WebKit
+    # is needed; the default-build jobs above never link DuckDB.
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build + test the DuckDB analytics engine
+        run: go test -tags duckdb ./internal/analytics/...
