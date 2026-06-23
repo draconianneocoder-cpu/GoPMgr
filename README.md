@@ -77,11 +77,11 @@ make license-check
 
 ## Toolchain
 
-- Go: `go.mod` pins Go 1.26.3.
-- Wails: the project uses Wails v2.9.2. Install the matching CLI with:
+- Go: `go.mod` pins Go 1.26.4.
+- Wails: the project uses Wails v2.12.0. Install the matching CLI with:
 
 ```sh
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.9.2
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 ```
 
 - Node dependencies live under `frontend/`.
