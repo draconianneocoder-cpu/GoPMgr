@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+[Desktop Entry]
+Type=Application
+Name=PMForge
+GenericName=Project Management
+Comment=Local-first project controls desktop application
+Exec=pmforge
+Icon=pmforge
+Terminal=false
+Categories=Office;ProjectManagement;
+Keywords=project;management;gantt;cpm;evm;sigma;
+StartupWMClass=pmforge

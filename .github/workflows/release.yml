@@ -1,16 +1,19 @@
 # SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# GitHub Actions release pipeline for PMForge.
+# GitHub Actions release pipeline for PMForge — click-installable packages.
 #
-# Translates the GitLab `release` stage. GitLab cross-compiled all three OSes from a
-# single Linux runner; Wails does not truly cross-compile (especially to macOS), so this
-# builds each target on its native runner instead — the idiomatic, actually-working
-# GitHub approach. Each leg produces a packaged archive; a final job attaches them to a
-# GitHub Release.
+# Wails does not truly cross-compile, so each OS builds on its native runner:
+#   Linux (x86_64)        -> .deb + .rpm (nfpm) + .AppImage (linuxdeploy)
+#   Windows (x86_64)      -> NSIS .exe installer (wails build -nsis)
+#   macOS (Apple Silicon) -> .dmg (drag-to-Applications)
+# A final job attaches everything to a GitHub Release.
 #
-# Trigger: pushing a version tag, e.g. `git tag v1.1.0 && git push origin v1.1.0`.
-# (GitLab also released on `main`; tag-only is the GitHub convention. Adjust if desired.)
+# Code-signing/notarization is OFF (packages install/run but show OS
+# "unidentified developer" warnings). The signing hooks live in
+# scripts/package-macos.sh and are enabled by adding certs as CI secrets.
+#
+# Trigger: push a version tag, e.g. `git tag v1.2.0 && git push origin v1.2.0`.
 
 name: Release
 
@@ -33,20 +36,20 @@ defaults:
 
 jobs:
   build:
-    name: Build ${{ matrix.label }}
+    name: Package ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-22.04
-            label: linux/amd64
+            label: linux/amd64 (.deb/.rpm/AppImage)
             platform: linux/amd64
           - os: macos-latest
-            label: darwin/universal
-            platform: darwin/universal
+            label: darwin/arm64 (.dmg)
+            platform: darwin/arm64
           - os: windows-latest
-            label: windows/amd64
+            label: windows/amd64 (.exe)
             platform: windows/amd64
     steps:
       - uses: actions/checkout@v7
@@ -73,32 +76,50 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 
-      - name: Fetch bundled fonts (graceful — app falls back to core fonts if a fetch fails)
+      - name: Install nfpm (Linux .deb/.rpm)
+        if: runner.os == 'Linux'
+        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+
+      - name: Install create-dmg (macOS)
+        if: runner.os == 'macOS'
+        run: brew install create-dmg
+
+      - name: Install NSIS (Windows installer)
+        if: runner.os == 'Windows'
+        run: choco install nsis -y --no-progress
+
+      - name: Fetch bundled fonts (graceful — app falls back to core fonts)
         continue-on-error: true
         run: bash scripts/fetch-fonts.sh
 
-      - name: Wails build
+      - name: Wails build (Linux / macOS)
+        if: runner.os != 'Windows'
         run: wails build -platform ${{ matrix.platform }}
 
-      - name: Package (Linux)
-        if: runner.os == 'Linux'
-        run: tar -czf "pmforge-${GITHUB_REF_NAME}-linux-amd64.tar.gz" -C build/bin pmforge
-
-      - name: Package (macOS)
-        if: runner.os == 'macOS'
-        run: (cd build/bin && zip -r "../../pmforge-${GITHUB_REF_NAME}-darwin-universal.zip" PMForge.app)
-
-      - name: Package (Windows)
+      - name: Wails build + NSIS installer (Windows)
         if: runner.os == 'Windows'
-        run: 7z a "pmforge-${GITHUB_REF_NAME}-windows-amd64.zip" ./build/bin/pmforge.exe
+        run: wails build -platform windows/amd64 -nsis
 
-      - name: Upload archive artifact
+      - name: Package Linux (.deb / .rpm / AppImage)
+        if: runner.os == 'Linux'
+        run: VERSION="${GITHUB_REF_NAME#v}" bash scripts/package-linux.sh
+
+      - name: Package macOS (.dmg)
+        if: runner.os == 'macOS'
+        run: VERSION="${GITHUB_REF_NAME#v}" bash scripts/package-macos.sh
+
+      - name: Collect Windows installer
+        if: runner.os == 'Windows'
+        run: |
+          mkdir -p build/packages
+          # Wails writes the NSIS installer to build/bin/*-installer.exe.
+          cp build/bin/*installer*.exe "build/packages/PMForge-${GITHUB_REF_NAME#v}-amd64-setup.exe"
+
+      - name: Upload installers
         uses: actions/upload-artifact@v7
         with:
           name: pmforge-${{ matrix.os }}
-          path: |
-            pmforge-*.tar.gz
-            pmforge-*.zip
+          path: build/packages/*
           if-no-files-found: error
           retention-days: 7
 
@@ -109,7 +130,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download all build artifacts
+      - name: Download all installers
         uses: actions/download-artifact@v8
         with:
           path: dist

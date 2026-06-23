@@ -64,7 +64,14 @@ Some gates use optional or required tools outside Go/npm:
 - `openssl`: CMS ASN.1 and detached signature verification.
 - `dss-validation-tool`: DSS PAdES baseline classification when
   installed.
-- `wails`: development server and desktop packaging workflow.
+- `wails`: development server and desktop packaging workflow; also builds
+  the Windows NSIS installer (`wails build -nsis`).
+- `nfpm`: builds the Linux `.deb` and `.rpm` packages from
+  `build/linux/nfpm.yaml` (`go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest`).
+- `linuxdeploy` + `linuxdeploy-plugin-gtk`: build the portable Linux
+  `.AppImage` (downloaded on demand by `scripts/package-appimage.sh`).
+- `create-dmg`: builds the macOS `.dmg` (falls back to `hdiutil`).
+- NSIS (`makensis`): the toolchain behind `wails build -nsis` on Windows.
 
 `make check-release` is strict where release correctness requires proof.
 If a required validator is missing, install the tool rather than
