@@ -123,12 +123,11 @@ jobs:
           retention-days: 7
 
   lint:
-    name: Lint (non-blocking)
+    name: Lint
     runs-on: ubuntu-22.04
-    # Mirrors GitLab `allow_failure: true`: surfaces lint findings without blocking merges.
-    # Expected to pass now that wails v2.12.0 raises the project's x/tools floor to a
-    # Go 1.26-compatible release; kept non-blocking for parity. Flip to false to gate on it.
-    continue-on-error: true
+    # Required gate: golangci-lint (v2.12.2) + npm run lint. wails v2.12.0 raised the
+    # project's x/tools floor to a Go 1.26-compatible release, so this passes cleanly;
+    # a lint regression now fails the workflow.
     steps:
       - uses: actions/checkout@v7
 
