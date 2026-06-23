@@ -31,6 +31,10 @@ posture, and validator coverage, so keep them intentional and verified.
 - `github.com/rickar/cal/v2`: Country holiday calendars.
 - `github.com/gorules/zen-go`: JDM launchpad template-seeding rules.
 - `gonum.org/v1/gonum`: Numerical/statistical support.
+- `github.com/duckdb/duckdb-go/v2`: in-memory DuckDB analytics engine
+  (ADR-002 Option B), compiled **only** under the `duckdb` build tag
+  (`internal/analytics`); default builds link none of it. See
+  `docs/design/duckdb-analytics-engine.md`.
 
 Check `go.mod` for the authoritative version list.
 
@@ -39,7 +43,8 @@ Check `go.mod` for the authoritative version list.
 Runtime:
 
 - `chart.js`: Chart rendering in the frontend.
-- `xlsx`: Spreadsheet handling on the frontend side.
+- `read-excel-file`: `.xlsx` parsing for the Sigma data import (replaced
+  the dead-ended SheetJS `xlsx`; see ADR-002 file-import notes).
 
 Development:
 
