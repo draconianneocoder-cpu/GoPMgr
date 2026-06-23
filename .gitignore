@@ -11,6 +11,10 @@
 /build/darwin/*
 !/build/darwin/Info.plist
 !/build/darwin/Info.dev.plist
+!/build/linux/
+/build/linux/*
+!/build/linux/pmforge.desktop
+!/build/linux/nfpm.yaml
 /bin/
 *.exe
 *.dll
