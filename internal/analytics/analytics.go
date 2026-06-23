@@ -55,8 +55,8 @@ type PortfolioSummary struct {
 // (CSV / Parquet / JSON). Rows are row-major; cell types follow the
 // engine's inference.
 type Dataset struct {
-	Columns []string
-	Rows    [][]any
+	Columns []string `json:"columns"`
+	Rows    [][]any  `json:"rows"`
 }
 
 // Engine is PMForge's optional analytical backend. Implementations are
