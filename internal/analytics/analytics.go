@@ -42,13 +42,13 @@ type ProjectMetrics struct {
 // many projects. Index fields use 0 to mean "n/a" (undefined), matching
 // the kernel's EVM convention.
 type PortfolioSummary struct {
-	ProjectCount             int
-	TotalBudgetedCost        float64
-	TotalActualCost          float64
-	TotalEarnedValue         float64
-	TotalPlannedValue        float64
-	SchedulePerformanceIndex float64 // SPI = EV/PV (0 = n/a)
-	CostPerformanceIndex     float64 // CPI = EV/AC (0 = n/a)
+	ProjectCount             int     `json:"project_count"`
+	TotalBudgetedCost        float64 `json:"total_budgeted_cost"`
+	TotalActualCost          float64 `json:"total_actual_cost"`
+	TotalEarnedValue         float64 `json:"total_earned_value"`
+	TotalPlannedValue        float64 `json:"total_planned_value"`
+	SchedulePerformanceIndex float64 `json:"schedule_performance_index"` // SPI = EV/PV (0 = n/a)
+	CostPerformanceIndex     float64 `json:"cost_performance_index"`      // CPI = EV/AC (0 = n/a)
 }
 
 // Dataset is a generic tabular result from a local-file import

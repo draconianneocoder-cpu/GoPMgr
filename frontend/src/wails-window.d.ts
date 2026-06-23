@@ -142,6 +142,7 @@ declare global {
           ) => Promise<TimelineEntry[]>;
           ListHolidays: (fromISO: string, toISO: string) => Promise<HolidayEvent[]>;
           ComputeBudget: () => Promise<BudgetSummary>;
+          RunPortfolioAnalytics: () => Promise<PortfolioSummary>;
           ExportProjectICS: (includeHolidays: boolean) => Promise<string>;
 
           // ----- V2.x: Remaining-TODOs Slice -----
@@ -346,6 +347,16 @@ declare global {
     charts: number;
     documents: number;
     readable: boolean;
+  }
+
+  interface PortfolioSummary {
+    project_count: number;
+    total_budgeted_cost: number;
+    total_actual_cost: number;
+    total_earned_value: number;
+    total_planned_value: number;
+    schedule_performance_index: number;
+    cost_performance_index: number;
   }
 
   interface AppSettings {

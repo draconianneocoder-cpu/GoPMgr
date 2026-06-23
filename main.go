@@ -39,6 +39,7 @@ import (
 
 	"pmforge/internal/admin"
 	"pmforge/internal/agile"
+	"pmforge/internal/analytics"
 	"pmforge/internal/applog"
 	"pmforge/internal/auth"
 	"pmforge/internal/budget"
@@ -2942,6 +2943,76 @@ func (a *App) ComputeBudget() (budget.Summary, error) {
 		return budget.Summary{}, err
 	}
 	return budget.Compute(p, stakeholders, workItems), nil
+}
+
+// RunPortfolioAnalytics aggregates a cross-project cost rollup over every
+// readable project in the signed-in user's folder using the optional
+// DuckDB analytics engine (ADR-002 Option B). The engine is in-memory and
+// ephemeral and never opens the encrypted files: this method reads each
+// project with the session DEK, builds the per-project figures in Go, and
+// passes them in. In the default build (no `duckdb` tag) the engine is a
+// no-op and this returns analytics.ErrAnalyticsUnavailable, which the UI
+// renders as "analytics not included in this build".
+//
+// Per-project actual cost is the budget "committed" total (vendor
+// contracts + labour estimate); earned/planned value (EVM) aggregation is
+// a later enhancement, so SPI/CPI report 0 ("n/a") for now.
+func (a *App) RunPortfolioAnalytics() (analytics.PortfolioSummary, error) {
+	user := a.requireUser()
+	if user == nil {
+		return analytics.PortfolioSummary{}, errors.New("not signed in")
+	}
+
+	eng := analytics.New()
+	defer func() { _ = eng.Close() }()
+	if !eng.Available() {
+		// Default build: skip the (expensive) project scan entirely.
+		return analytics.PortfolioSummary{}, analytics.ErrAnalyticsUnavailable
+	}
+
+	a.mu.RLock()
+	dek, err := a.requireDEKLocked()
+	a.mu.RUnlock()
+	if err != nil {
+		return analytics.PortfolioSummary{}, err
+	}
+
+	dir := filepath.Join(user.DataDir, "projects")
+	entries, err := enumerateProjects(dir)
+	if err != nil {
+		return analytics.PortfolioSummary{}, err
+	}
+
+	metrics := make([]analytics.ProjectMetrics, 0, len(entries))
+	for _, e := range entries {
+		d, derr := db.InitEncryptedDB(e.Path, dek)
+		if derr != nil {
+			continue // unreadable project: skip, matching ProjectsOverview
+		}
+		p, perr := d.GetProject()
+		if perr != nil {
+			_ = d.Close()
+			continue
+		}
+		var committed float64
+		if sks, serr := d.ListStakeholders(p.ID, ""); serr == nil {
+			wis, _ := agile.NewStore(d.Conn, p.ID).ListWorkItems("", "", "")
+			committed = budget.Compute(p, sks, wis).Committed
+		}
+		name := strings.TrimSpace(p.Name)
+		if name == "" {
+			name = e.Name
+		}
+		metrics = append(metrics, analytics.ProjectMetrics{
+			ProjectID:    p.ID,
+			Name:         name,
+			BudgetedCost: p.Budget,
+			ActualCost:   committed,
+		})
+		_ = d.Close()
+	}
+
+	return eng.PortfolioRollup(a.ctx, metrics)
 }
 
 // ----- iCal export -----

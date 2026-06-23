@@ -80,6 +80,26 @@ SPDX-License-Identifier: GPL-3.0-or-later
       error = String(err?.message ?? err);
     }
   }
+
+  // ----- Portfolio analytics (DuckDB, optional build) -----
+  let rollup = $state<PortfolioSummary | null>(null);
+  let rollupErr = $state('');
+  let rollupLoading = $state(false);
+
+  async function runRollup() {
+    rollupLoading = true;
+    rollupErr = '';
+    try {
+      rollup = await window.go.main.App.RunPortfolioAnalytics();
+    } catch (err: any) {
+      rollup = null;
+      rollupErr = String(err?.message ?? err);
+    } finally {
+      rollupLoading = false;
+    }
+  }
+
+  const fmtNum = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">
@@ -104,6 +124,51 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {#if error}
       <p class="text-sm text-red-400 mb-4" role="alert">{error}</p>
     {/if}
+
+    <section class="mb-5 p-4 bg-slate-900 border border-slate-800 rounded-lg">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h3 class="text-sm font-bold text-slate-200">Portfolio analytics</h3>
+          <p class="text-xs text-slate-500">Cross-project cost rollup, aggregated with DuckDB.</p>
+        </div>
+        <button
+          onclick={runRollup}
+          disabled={rollupLoading}
+          class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
+        >
+          {rollupLoading ? 'Computing…' : 'Run rollup'}
+        </button>
+      </div>
+
+      {#if rollupErr}
+        <p class="mt-3 text-xs text-amber-400" role="status">
+          {rollupErr.includes('not built in')
+            ? 'The analytics engine is not included in this build.'
+            : `Analytics failed: ${rollupErr}`}
+        </p>
+      {:else if rollup}
+        <dl class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <dt class="text-[10px] uppercase tracking-wider text-slate-500">Projects</dt>
+            <dd class="text-slate-100 font-bold">{rollup.project_count}</dd>
+          </div>
+          <div>
+            <dt class="text-[10px] uppercase tracking-wider text-slate-500">Total budget</dt>
+            <dd class="text-slate-100 font-bold">{fmtNum(rollup.total_budgeted_cost)}</dd>
+          </div>
+          <div>
+            <dt class="text-[10px] uppercase tracking-wider text-slate-500">Committed</dt>
+            <dd class="text-slate-100 font-bold">{fmtNum(rollup.total_actual_cost)}</dd>
+          </div>
+          <div>
+            <dt class="text-[10px] uppercase tracking-wider text-slate-500">Remaining</dt>
+            <dd class="font-bold {rollup.total_budgeted_cost - rollup.total_actual_cost < 0 ? 'text-red-400' : 'text-emerald-300'}">
+              {fmtNum(rollup.total_budgeted_cost - rollup.total_actual_cost)}
+            </dd>
+          </div>
+        </dl>
+      {/if}
+    </section>
 
     {#if !loading && projects.length > 0}
       <div class="flex items-center gap-3 mb-4">
