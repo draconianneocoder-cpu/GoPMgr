@@ -45,16 +45,16 @@ jobs:
     name: Verify (Go tests + svelte-check + Vite build)
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -83,16 +83,16 @@ jobs:
     name: Build (Wails, linux/amd64)
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -104,13 +104,7 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config
 
       - name: Install Wails CLI
-        # wails v2.9.2 transitively pulls golang.org/x/tools@v0.17.0, which fails to
-        # compile under Go 1.26 ("invalid array length -delta * delta"). Build the CLI
-        # with Go 1.24 so its x/tools compiles. This only affects the CLI binary; the
-        # app itself is still built with the repo's Go 1.26.4 in the next step.
-        env:
-          GOTOOLCHAIN: go1.24.0
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.9.2
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 
       - name: Fetch bundled fonts (non-fatal — app falls back to core fonts if a CDN fails)
         continue-on-error: true
@@ -122,7 +116,7 @@ jobs:
         run: wails build -platform linux/amd64
 
       - name: Upload Linux build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pmforge-linux-amd64
           path: build/bin/
@@ -132,20 +126,20 @@ jobs:
     name: Lint (non-blocking)
     runs-on: ubuntu-22.04
     # Mirrors GitLab `allow_failure: true`: surfaces lint findings without blocking merges.
-    # NOTE: golangci-lint currently bundles an x/tools that cannot compile under Go 1.26
-    # (upstream). This job stays non-blocking until a Go 1.26-compatible release is pinned.
+    # Expected to pass now that wails v2.12.0 raises the project's x/tools floor to a
+    # Go 1.26-compatible release; kept non-blocking for parity. Flip to false to gate on it.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -162,8 +156,9 @@ jobs:
           printf '<!doctype html>\n' > frontend/dist/index.html
 
       - name: "golangci-lint (scope: . ./internal/...)"
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
+          version: v2.12.2
           args: . ./internal/...
 
       - name: Install frontend dependencies
@@ -180,10 +175,10 @@ jobs:
     # Mirrors GitLab `security` (allow_failure: true), upgraded from a placeholder to a real scan.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
