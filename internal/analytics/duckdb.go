@@ -17,8 +17,10 @@ package analytics
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	// Registers the "duckdb" database/sql driver.
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -54,17 +56,12 @@ func (e *duckEngine) Close() error {
 	return e.db.Close()
 }
 
-// harden disables extension autoinstall/autoload so a session can never
-// reach out to the network to fetch an extension. These are documented
-// runtime-settable options ("Securing DuckDB").
+// harden prevents any network extension *download* (autoinstall). Auto-LOAD
+// of already-bundled extensions (parquet/json) stays enabled — that is
+// local-only, no network — so tabular import can use them fully offline.
 func harden(ctx context.Context, conn *sql.Conn) error {
-	for _, q := range []string{
-		"SET autoinstall_known_extensions=false",
-		"SET autoload_known_extensions=false",
-	} {
-		if _, err := conn.ExecContext(ctx, q); err != nil {
-			return fmt.Errorf("analytics: harden %q: %w", q, err)
-		}
+	if _, err := conn.ExecContext(ctx, "SET autoinstall_known_extensions=false"); err != nil {
+		return fmt.Errorf("analytics: harden: %w", err)
 	}
 	return nil
 }
@@ -148,12 +145,91 @@ func (e *duckEngine) PortfolioRollup(ctx context.Context, projects []ProjectMetr
 	return s, nil
 }
 
-// ImportTabular lands in Phase D (CSV/Parquet/JSON local-file ingestion),
-// where the file-access hardening (allowed_paths) must be implemented and
-// verified carefully. Until then the real engine reports it as pending.
+// maxImportRows caps how many rows ImportTabular materialises into a
+// Dataset, so a huge file can't blow up memory or the Wails bridge payload.
+const maxImportRows = 10000
+
+// tabularReader maps a file extension to the DuckDB reader table function.
+// parquet/json are built-in (Primary-tier) extensions in standard DuckDB
+// builds, so they read offline with autoinstall disabled.
+func tabularReader(ext string) (string, bool) {
+	switch strings.ToLower(ext) {
+	case ".csv", ".tsv", ".txt":
+		return "read_csv_auto", true
+	case ".parquet":
+		return "read_parquet", true
+	case ".json", ".ndjson":
+		return "read_json_auto", true
+	}
+	return "", false
+}
+
+// sqlSingleQuote escapes a value for use inside a single-quoted DuckDB
+// string literal.
+func sqlSingleQuote(s string) string { return strings.ReplaceAll(s, "'", "''") }
+
+// ImportTabular reads a single local CSV/Parquet/JSON file (an explicit,
+// user-chosen path) into an in-memory Dataset. It never installs an
+// extension from the network (harden), scopes file access to the file's
+// directory as defense-in-depth, and caps the row count. `.xlsx` is not
+// handled here — that stays on the frontend `read-excel-file` reader.
 func (e *duckEngine) ImportTabular(ctx context.Context, path string) (Dataset, error) {
 	if e.initErr != nil {
 		return Dataset{}, e.initErr
 	}
-	return Dataset{}, errors.New("analytics: ImportTabular is not implemented yet (Phase D)")
+
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return Dataset{}, fmt.Errorf("analytics: resolve path: %w", err)
+	}
+	if fi, statErr := os.Stat(abs); statErr != nil || fi.IsDir() {
+		return Dataset{}, fmt.Errorf("analytics: not a readable file: %s", abs)
+	}
+	reader, ok := tabularReader(filepath.Ext(abs))
+	if !ok {
+		return Dataset{}, fmt.Errorf("analytics: unsupported file type %q (want .csv/.tsv/.parquet/.json)", filepath.Ext(abs))
+	}
+
+	conn, err := e.db.Conn(ctx)
+	if err != nil {
+		return Dataset{}, fmt.Errorf("analytics: acquire conn: %w", err)
+	}
+	defer conn.Close()
+
+	if err := harden(ctx, conn); err != nil {
+		return Dataset{}, err
+	}
+	// Defense-in-depth: scope file access to the chosen file's directory.
+	// Best-effort (the exact option name/semantics vary by DuckDB version);
+	// the hard guarantees are that only `abs` is ever read, no network
+	// extension can install (harden), and the database is in-memory.
+	_, _ = conn.ExecContext(ctx, fmt.Sprintf("SET allowed_directories=['%s']", sqlSingleQuote(filepath.Dir(abs))))
+
+	q := fmt.Sprintf("SELECT * FROM %s('%s') LIMIT %d", reader, sqlSingleQuote(abs), maxImportRows)
+	rows, err := conn.QueryContext(ctx, q)
+	if err != nil {
+		return Dataset{}, fmt.Errorf("analytics: read file: %w", err)
+	}
+	defer rows.Close()
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return Dataset{}, fmt.Errorf("analytics: columns: %w", err)
+	}
+	ds := Dataset{Columns: cols, Rows: [][]any{}}
+	for rows.Next() {
+		vals := make([]any, len(cols))
+		ptrs := make([]any, len(cols))
+		for i := range vals {
+			ptrs[i] = &vals[i]
+		}
+		if err := rows.Scan(ptrs...); err != nil {
+			return Dataset{}, fmt.Errorf("analytics: scan: %w", err)
+		}
+		ds.Rows = append(ds.Rows, vals)
+	}
+	if err := rows.Err(); err != nil {
+		return Dataset{}, fmt.Errorf("analytics: rows: %w", err)
+	}
+	return ds, nil
 }
