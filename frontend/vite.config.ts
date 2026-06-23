@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 // Vite config for the PMForge Svelte 5 frontend. Wails picks up the
-// `dist/` output via the //go:embed directive in cmd/pmforge/main.go.
+// `dist/` output via the //go:embed directive in the repo-root main.go.
 export default defineConfig({
   plugins: [svelte()],
   build: {
