@@ -9,6 +9,8 @@ package analytics
 import (
 	"context"
 	"math"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -92,5 +94,48 @@ func TestPortfolioRollupIsIdempotentPerCall(t *testing.T) {
 	}
 	if got.ProjectCount != 1 || got.TotalBudgetedCost != 100 {
 		t.Errorf("second rollup not fresh: %+v", got)
+	}
+}
+
+func TestImportTabularCSV(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "data.csv")
+	if err := os.WriteFile(p, []byte("a,b\n1,x\n2,y\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	e := New()
+	t.Cleanup(func() { _ = e.Close() })
+
+	ds, err := e.ImportTabular(context.Background(), p)
+	if err != nil {
+		t.Fatalf("ImportTabular: %v", err)
+	}
+	if len(ds.Columns) != 2 || ds.Columns[0] != "a" || ds.Columns[1] != "b" {
+		t.Errorf("Columns = %v, want [a b]", ds.Columns)
+	}
+	if len(ds.Rows) != 2 {
+		t.Errorf("Rows = %d, want 2", len(ds.Rows))
+	}
+}
+
+func TestImportTabularRejectsUnsupportedExtension(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "data.xlsx")
+	if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	e := New()
+	t.Cleanup(func() { _ = e.Close() })
+	if _, err := e.ImportTabular(context.Background(), p); err == nil {
+		t.Fatal("expected an error for unsupported .xlsx, got nil")
+	}
+}
+
+func TestImportTabularMissingFile(t *testing.T) {
+	e := New()
+	t.Cleanup(func() { _ = e.Close() })
+	if _, err := e.ImportTabular(context.Background(), filepath.Join(t.TempDir(), "nope.csv")); err == nil {
+		t.Fatal("expected an error for a missing file, got nil")
 	}
 }
