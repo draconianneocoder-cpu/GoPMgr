@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Dependabot configuration for PMForge.
+#
+# Strategy (learned the hard way this session): minor/patch updates are
+# grouped into a single low-noise PR per ecosystem and are usually safe.
+# MAJOR updates are intentionally NOT grouped — they arrive as individual
+# PRs so each one gets real review, because majors here are coordinated
+# migrations (e.g. Vite 5→8 pulls in Rolldown + a Svelte-plugin major;
+# Wails majors move the whole x/* floor). Security updates always open
+# regardless of schedule.
+
+version: 2
+updates:
+  # ---- Go modules (root module: pmforge) ----
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "go"
+    groups:
+      go-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # ---- npm (Svelte 5 frontend) ----
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "frontend"
+    groups:
+      npm-minor-patch:
+        update-types:
+          - minor
+          - patch
+    # Majors (e.g. vite, @sveltejs/vite-plugin-svelte) are deliberately NOT
+    # grouped, so they arrive as individual PRs for careful, separately
+    # verified review — and this keeps you notified the moment a new Vite
+    # major lands (e.g. once vite-plugin-svelte supports Vite 8's Rolldown).
+
+  # ---- GitHub Actions ----
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns:
+          - "*"
