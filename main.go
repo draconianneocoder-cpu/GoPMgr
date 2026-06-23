@@ -3015,6 +3015,45 @@ func (a *App) RunPortfolioAnalytics() (analytics.PortfolioSummary, error) {
 	return eng.PortfolioRollup(a.ctx, metrics)
 }
 
+// ImportDatasetForAnalysis opens a native file picker for a CSV/Parquet/JSON
+// file and reads it into an in-memory Dataset via the DuckDB analytics engine
+// (ADR-002 Option B). Returns an empty Dataset (no error) when the user
+// cancels. In the default build the engine is a no-op and this returns
+// analytics.ErrAnalyticsUnavailable. `.xlsx` is not handled here — the Sigma
+// import uses the frontend read-excel-file reader.
+func (a *App) ImportDatasetForAnalysis() (analytics.Dataset, error) {
+	if a.requireUser() == nil {
+		return analytics.Dataset{}, errors.New("not signed in")
+	}
+	if a.ctx == nil {
+		return analytics.Dataset{}, errors.New("no context (Wails not started)")
+	}
+
+	path, err := wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
+		Title:            "Select a data file to analyze",
+		DefaultDirectory: a.userDir(),
+		Filters: []wailsruntime.FileFilter{
+			{
+				DisplayName: "Data files (*.csv, *.tsv, *.parquet, *.json)",
+				Pattern:     "*.csv;*.tsv;*.parquet;*.json",
+			},
+		},
+	})
+	if err != nil {
+		return analytics.Dataset{}, err
+	}
+	if path == "" {
+		return analytics.Dataset{}, nil // user cancelled the picker
+	}
+
+	eng := analytics.New()
+	defer func() { _ = eng.Close() }()
+	if !eng.Available() {
+		return analytics.Dataset{}, analytics.ErrAnalyticsUnavailable
+	}
+	return eng.ImportTabular(a.ctx, path)
+}
+
 // ----- iCal export -----
 
 // CheckLatestVersion runs the signed-manifest update check. The

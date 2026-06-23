@@ -100,6 +100,26 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   const fmtNum = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+  // ----- Local data-file import (DuckDB) -----
+  let dataset = $state<Dataset | null>(null);
+  let importErr = $state('');
+  let importing = $state(false);
+
+  async function importDataset() {
+    importing = true;
+    importErr = '';
+    try {
+      const ds = await window.go.main.App.ImportDatasetForAnalysis();
+      // An empty result means the user cancelled the file picker.
+      dataset = ds && ds.columns && ds.columns.length ? ds : null;
+    } catch (err: any) {
+      dataset = null;
+      importErr = String(err?.message ?? err);
+    } finally {
+      importing = false;
+    }
+  }
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">
@@ -131,13 +151,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <h3 class="text-sm font-bold text-slate-200">Portfolio analytics</h3>
           <p class="text-xs text-slate-500">Cross-project cost rollup, aggregated with DuckDB.</p>
         </div>
-        <button
-          onclick={runRollup}
-          disabled={rollupLoading}
-          class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
-        >
-          {rollupLoading ? 'Computing…' : 'Run rollup'}
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            onclick={runRollup}
+            disabled={rollupLoading}
+            class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
+          >
+            {rollupLoading ? 'Computing…' : 'Run rollup'}
+          </button>
+          <button
+            onclick={importDataset}
+            disabled={importing}
+            class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
+          >
+            {importing ? 'Importing…' : 'Import data file'}
+          </button>
+        </div>
       </div>
 
       {#if rollupErr}
@@ -167,6 +196,40 @@ SPDX-License-Identifier: GPL-3.0-or-later
             </dd>
           </div>
         </dl>
+      {/if}
+
+      {#if importErr}
+        <p class="mt-3 text-xs text-amber-400" role="status">
+          {importErr.includes('not built in')
+            ? 'The analytics engine is not included in this build.'
+            : `Import failed: ${importErr}`}
+        </p>
+      {:else if dataset}
+        <div class="mt-3">
+          <p class="text-xs text-slate-500 mb-2">
+            {dataset.columns.length} columns × {dataset.rows.length} rows{dataset.rows.length > 50 ? ' (first 50 shown)' : ''}
+          </p>
+          <div class="overflow-auto max-h-72 border border-slate-800 rounded">
+            <table class="w-full text-xs text-slate-300">
+              <thead class="sticky top-0 bg-slate-800/70">
+                <tr>
+                  {#each dataset.columns as c (c)}
+                    <th class="text-left font-semibold px-2 py-1 whitespace-nowrap">{c}</th>
+                  {/each}
+                </tr>
+              </thead>
+              <tbody>
+                {#each dataset.rows.slice(0, 50) as row, i (i)}
+                  <tr class="border-t border-slate-800/60">
+                    {#each row as cell, j (j)}
+                      <td class="px-2 py-1 whitespace-nowrap">{cell === null || cell === undefined ? '' : String(cell)}</td>
+                    {/each}
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </div>
       {/if}
     </section>
 

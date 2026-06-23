@@ -143,6 +143,7 @@ declare global {
           ListHolidays: (fromISO: string, toISO: string) => Promise<HolidayEvent[]>;
           ComputeBudget: () => Promise<BudgetSummary>;
           RunPortfolioAnalytics: () => Promise<PortfolioSummary>;
+          ImportDatasetForAnalysis: () => Promise<Dataset>;
           ExportProjectICS: (includeHolidays: boolean) => Promise<string>;
 
           // ----- V2.x: Remaining-TODOs Slice -----
@@ -357,6 +358,11 @@ declare global {
     total_planned_value: number;
     schedule_performance_index: number;
     cost_performance_index: number;
+  }
+
+  interface Dataset {
+    columns: string[];
+    rows: unknown[][];
   }
 
   interface AppSettings {
