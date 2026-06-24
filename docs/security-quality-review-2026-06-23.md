@@ -18,7 +18,8 @@ unverified build-tool downloads and security scanners that are configured
 but never actually execute in CI — not flaws in the application logic.
 
 > **Status (updated): all findings resolved (2026-06-23).** F1 — AppImage
-> tools pinned + verified fail-closed (`e862c4e`); F2 — `govulncheck` is a
+> delivery removed entirely (supply-chain surface gone; was pinned in `e862c4e`
+> before removal); F2 — `govulncheck` is a
 > blocking CI gate (`e862c4e`), Windows installer collection hardened
 > (`9dfcd2f`); F3 — all three linters re-enabled and the first-party backlog
 > cleared in code (`63b664f`/`6079e90`/`b1030e6`), `make verify` + a clean
@@ -70,25 +71,18 @@ but never actually execute in CI — not flaws in the application logic.
 
 ## Findings
 
-### F1 — MEDIUM — AppImage build tools are unpinned and unverified (supply chain)
+### F1 — MEDIUM (resolved) — AppImage build tools were unpinned (supply chain)
 
-`scripts/package-appimage.sh:34-36` downloads `linuxdeploy` and
-`linuxdeploy-plugin-gtk` from the **rolling `continuous`** GitHub release,
-`chmod +x`, and executes them inside the release pipeline:
+Original finding: `scripts/package-appimage.sh` downloaded `linuxdeploy` and
+`linuxdeploy-plugin-gtk` from the rolling `continuous` GitHub release and
+executed them in the pipeline with no checksum — a compromised or re-pushed
+artifact could have tampered the build.
 
-```sh
-fetch() { curl -fsSL "$1" -o "$2"; chmod +x "$2"; }
-fetch ".../releases/download/continuous/linuxdeploy-x86_64.AppImage" ...
-```
-
-`continuous` is a moving target (non-reproducible), and there is no
-checksum check before execution. A compromised, MITM'd, or silently
-re-pushed artifact would run with the build and could tamper the published
-AppImage — the one format end users are told is "portable, just run it."
-
-**Fix:** pin a specific `linuxdeploy` release tag, record its SHA256, and
-verify (`sha256sum -c`) before `chmod +x`. Fail the build on mismatch.
-This is the highest-value item and is contained to one script.
+**Resolution.** First pinned + verified fail-closed by SHA-256 (`e862c4e`),
+then the **AppImage format was removed entirely** (2026-06-23): the script and
+its tool downloads no longer exist, so the supply-chain surface is gone. `.deb`
+and `.rpm` (built by `nfpm` from tracked config, no network tool downloads)
+cover Linux.
 
 ### F2 — MEDIUM — Security scanners are configured but never run in CI
 
@@ -168,7 +162,7 @@ as the schema evolves.
 
 ## Priority
 
-1. **F1** — pin + checksum the AppImage build tools.
+1. **F1** — done (AppImage delivery removed; no tool downloads remain).
 2. **F2** — make `govulncheck` (and gosec) a real CI gate.
 3. **F3** — re-enable `errcheck`/`staticcheck`/`unused` incrementally.
 4. **F4 / F5** — hardening notes; no urgent action.
