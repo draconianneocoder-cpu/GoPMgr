@@ -30,7 +30,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     | 'charts'
     | 'documents'
     | 'sigma-pack'
-    | 'glossary';
+    | 'glossary'
+    | 'install';
 
   let active = $state<SectionId>('getting-started');
 
@@ -78,6 +79,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         { id: 'documents', label: 'Documents' },
         { id: 'sigma-pack', label: 'DMAIC Pack' },
         { id: 'glossary', label: 'Glossary' },
+        { id: 'install', label: 'Installing & Running' },
       ],
     },
   ];
@@ -1285,6 +1287,64 @@ SPDX-License-Identifier: GPL-3.0-or-later
               </div>
             {/each}
           </div>
+
+        <!-- ── Installing & Running ───────────────────────────────── -->
+        {:else if active === 'install'}
+          <h2 class="text-xl font-bold text-slate-100 mb-2">Installing &amp; Running PMForge</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            PMForge ships as a native installer for each platform. Download the
+            file for your operating system from the project's Releases page and
+            follow the steps below. The same guide lives in
+            <code class="text-cyan-300">docs/INSTALL.md</code>.
+          </p>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Which file to download</h3>
+            <ul class="text-sm text-slate-300 space-y-1 list-disc pl-5">
+              <li><strong>Windows</strong> — <code>PMForge-…-amd64-setup.exe</code> (installer)</li>
+              <li><strong>macOS (Apple Silicon)</strong> — <code>PMForge-…-arm64.dmg</code></li>
+              <li><strong>Debian / Ubuntu</strong> — <code>pmforge-…-amd64.deb</code></li>
+              <li><strong>Fedora / RHEL / openSUSE</strong> — <code>pmforge-…-x86_64.rpm</code></li>
+              <li><strong>Any Linux</strong> — <code>PMForge-…-x86_64.AppImage</code> (portable, no install)</li>
+            </ul>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Install steps</h3>
+            <ul class="text-sm text-slate-300 space-y-2 list-disc pl-5">
+              <li><strong>Windows:</strong> double-click the <code>.exe</code> and follow the installer. Current builds are unsigned, so SmartScreen may warn — choose <em>More info → Run anyway</em>.</li>
+              <li><strong>macOS:</strong> open the <code>.dmg</code> and drag <strong>PMForge</strong> to Applications. Unsigned builds trigger Gatekeeper — right-click the app then <em>Open</em> (or System Settings → Privacy &amp; Security → <em>Open Anyway</em>).</li>
+              <li><strong>.deb:</strong> <code>sudo apt install ./pmforge-*.deb</code></li>
+              <li><strong>.rpm:</strong> <code>sudo dnf install ./pmforge-*.rpm</code></li>
+              <li><strong>AppImage:</strong> <code>chmod +x PMForge-*.AppImage</code> then run it — no installation needed.</li>
+            </ul>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Run from source</h3>
+            <p class="text-sm text-slate-300 mb-2">
+              Requires Go, Node, and the Wails CLI (plus GTK/WebKit dev packages
+              on Linux):
+            </p>
+            <ul class="text-sm text-slate-300 space-y-1 list-disc pl-5">
+              <li>In <code>frontend/</code>, run <code>npm ci</code> — use <code>npm ci</code>, <strong>not</strong> <code>npm install</code>.</li>
+              <li><code>make build</code> — produce the desktop binary/app.</li>
+              <li><code>make dev</code> — hot-reload development mode.</li>
+            </ul>
+            <p class="text-xs text-slate-500 mt-2">
+              Full prerequisites, the per-format packaging commands, and signing
+              notes are in <code class="text-cyan-300">docs/INSTALL.md</code>.
+            </p>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Your data stays local</h3>
+            <p class="text-sm text-slate-300">
+              However you install PMForge, every project lives in an encrypted
+              file on your own machine — no account, cloud, or network is
+              required. See <em>Database Encryption</em> for details.
+            </p>
+          </section>
 
         {/if}
 

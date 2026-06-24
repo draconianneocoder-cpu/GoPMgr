@@ -37,7 +37,7 @@ chart, export, and reporting tools without requiring a hosted service.
 
 ```sh
 go mod tidy
-(cd frontend && npm install)
+(cd frontend && npm ci)   # use npm ci, not npm install
 make fonts
 
 wails dev
@@ -158,8 +158,10 @@ workflow guide:
 - Schedule import/export.
 - PDF signing, fonts, logs, recovery codes, and auto-save.
 
-The in-app Help Guide contains the most detailed end-user reference and is
-available from the Help tab or the native Help menu.
+The in-app Help Guide contains the most detailed end-user reference —
+including an **Installing & Running** section — and is available from the
+Help tab or the native Help menu. For installer downloads and per-platform
+install steps, see [docs/INSTALL.md](docs/INSTALL.md).
 
 ## Developer Documentation
 
@@ -170,6 +172,8 @@ available from the Help tab or the native Help menu.
   PDF signing, and release-safety rules.
 - [DEPENDENCIES.md](DEPENDENCIES.md): Go, frontend, and external tool
   dependencies.
+- [docs/INSTALL.md](docs/INSTALL.md): end-user install guide
+  (`.deb`/`.rpm`/AppImage/`.exe`/`.dmg`) and run-from-source steps.
 - [STYLE.md](STYLE.md): repository, Go, frontend, and documentation style.
 - [AGENTS.md](AGENTS.md): current automated-agent operating guide.
 - [AGENT.md](AGENT.md): PMForge Developer Handbook with long-form
