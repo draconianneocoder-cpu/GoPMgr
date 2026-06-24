@@ -53,6 +53,11 @@ func IsEncryptedFile(path string) (bool, error) {
 // verify source, export to an encrypted sibling, verify destination,
 // then rename.
 func MigratePlaintextToEncrypted(path string, dek []byte) (backupPath string, err error) {
+	// Validate the DEK length up front (cheap, no key material derived) so a
+	// bad DEK is rejected before any filesystem work, matching InitEncryptedDB.
+	if len(dek) != crypto.DEKSize {
+		return "", crypto.ErrBadDEK
+	}
 	info, err := os.Stat(path)
 	if err != nil {
 		return "", err
