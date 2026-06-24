@@ -4,9 +4,12 @@
 version: "2"
 
 linters:
-  disable:
-    # These linters currently report legacy baseline findings. Keep CI lint
-    # deterministic while those findings are paid down in focused changes.
-    - errcheck
-    - staticcheck
-    - unused
+  # errcheck, staticcheck, and unused run as part of the golangci-lint v2
+  # default set. They were previously disabled for "legacy baseline
+  # findings" — but those came from a third-party Go source vendored inside
+  # an npm package (frontend/node_modules/flatted/golang/...), which a bare
+  # `golangci-lint run` (./...) descends into. Excluding node_modules below
+  # removes that noise so the linters apply only to PMForge's own code.
+  exclusions:
+    paths:
+      - node_modules
