@@ -17,13 +17,16 @@ critical issues found. The two actionable items are **operational** —
 unverified build-tool downloads and security scanners that are configured
 but never actually execute in CI — not flaws in the application logic.
 
-> **Status (updated):** F1 and F2 are resolved — AppImage tools are now
-> pinned + verified fail-closed (commit `e862c4e`) and `govulncheck` is a
-> blocking CI gate (commit `e862c4e`); the Windows installer collection was
-> hardened in `9dfcd2f`. A follow-up deep review (2026-06-23) of the DuckDB
-> engine, the Wails analytics bridge methods, concurrency, recovery-code
+> **Status (updated): all findings resolved (2026-06-23).** F1 — AppImage
+> tools pinned + verified fail-closed (`e862c4e`); F2 — `govulncheck` is a
+> blocking CI gate (`e862c4e`), Windows installer collection hardened
+> (`9dfcd2f`); F3 — all three linters re-enabled and the first-party backlog
+> cleared in code (`63b664f`/`6079e90`/`b1030e6`), `make verify` + a clean
+> `golangci-lint run` confirmed; F4 — raw-key string scope narrowed and the
+> SQLCipher keyspec constraint documented (`6575f69`, with the regression fix
+> `77e8aa8`); F5/F6 — confirmed, no action needed. A follow-up deep review of
+> the DuckDB engine, the Wails analytics bridge, concurrency, recovery-code
 > entropy, and resource handling found no further vulnerabilities or bugs.
-> F3–F6 below remain as written.
 
 ## What is already correct (grounded)
 
@@ -102,14 +105,24 @@ Given the recent Dependabot churn (xlsx, x/crypto, x/net), an automated
 **Fix:** add a CI step that installs and runs `govulncheck ./...`
 (fail on finding) and `gosec`. Treat them as a real gate, not best-effort.
 
-### F3 — LOW — Disabled linters reduce ongoing coverage
+### F3 — LOW (resolved) — Disabled linters reduce ongoing coverage
 
-`.golangci.yml` disables `errcheck`, `staticcheck`, and `unused` to keep CI
-deterministic against a legacy baseline. Reasonable as a temporary
-paydown, but new unchecked errors and dead code now land unflagged.
+`.golangci.yml` had disabled `errcheck`, `staticcheck`, and `unused`.
 
-**Fix:** re-enable incrementally with an exclude/baseline so only *new*
-findings fail, then burn down the baseline.
+**Resolution (2026-06-23).** Root-caused and fixed, not deferred. The
+"legacy baseline" was partly `node_modules` noise (a third-party Go file
+vendored in an npm package, now excluded) and partly a real ~43-issue
+first-party backlog that the disabled linters had been masking. All three
+linters are re-enabled (golangci-lint v2 default set) and the backlog is
+cleared **in code**: unchecked errors wrapped with explicit `_ =`, four dead
+functions removed, several `staticcheck` simplifications (`S1016`, `QF*`,
+`SA9009`), and one genuine latent test bug (`SA5011`: `t.Error` then deref →
+`t.Fatal`). Only two exclusions remain, both justified in the config:
+`errcheck` on `_test.go` (test cleanup conventionally ignores `Close`) and
+`ST1005` (user-facing error strings are intentionally capitalized; one is
+matched verbatim by the frontend, so the text is a contract).
+`issues.max-same-issues: 0` keeps the full count visible. Verified:
+`golangci-lint run` = 0 issues, `make verify` green.
 
 ### F4 — INFO (accepted risk, resolved) — DEK lives as an immutable hex string
 
