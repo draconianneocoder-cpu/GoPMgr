@@ -137,7 +137,7 @@ func LayoutWorkflow(doc WorkflowDocument, opt LayoutOptions) (Layout, error) {
 	// Pass edges through unchanged. The frontend draws them from each
 	// node's bottom-center to the next node's top-center.
 	for _, e := range doc.Edges {
-		out.Edges = append(out.Edges, EdgeLayout{From: e.From, To: e.To, Label: e.Label})
+		out.Edges = append(out.Edges, EdgeLayout(e))
 	}
 
 	out.Width = maxX

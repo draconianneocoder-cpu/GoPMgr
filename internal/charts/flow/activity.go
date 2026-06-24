@@ -159,7 +159,7 @@ func LayoutActivity(doc ActivityDocument, opt LayoutOptions) (Layout, error) {
 	}
 
 	for _, e := range doc.Edges {
-		out.Edges = append(out.Edges, EdgeLayout{From: e.From, To: e.To, Label: e.Label})
+		out.Edges = append(out.Edges, EdgeLayout(e))
 	}
 
 	// Patch swimlane heights.

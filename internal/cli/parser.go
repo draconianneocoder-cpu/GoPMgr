@@ -100,7 +100,7 @@ func ParseFlags() *Config {
 
 // PrintVersion writes the canonical GPL-style version banner to stdout.
 func PrintVersion() {
-	fmt.Fprintf(os.Stdout,
+	_, _ = fmt.Fprintf(os.Stdout,
 		"PMForge %s\nCopyright (C) 2026 James L. Burns and The PMForge Contributors\nLicense GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law.\n",
 		Version,
 	)

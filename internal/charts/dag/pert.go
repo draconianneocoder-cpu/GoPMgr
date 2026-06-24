@@ -33,7 +33,8 @@ func annotatePERT(n *LayeredNode) {
 		return // user hasn't filled the durations yet — leave alone
 	}
 	e := (o + 4*m + p) / 6
-	v := math.Pow((p-o)/6, 2)
+	d := (p - o) / 6
+	v := d * d
 	n.Expected = e
 	n.Variance = v
 	n.StdDev = math.Sqrt(v)

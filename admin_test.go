@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
@@ -17,7 +18,7 @@ func newAdminTestApp(t *testing.T) *App {
 		t.Fatalf("users.Open: %v", err)
 	}
 	app := &App{store: store}
-	t.Cleanup(func() { app.shutdown(nil) })
+	t.Cleanup(func() { app.shutdown(context.Background()) })
 	return app
 }
 

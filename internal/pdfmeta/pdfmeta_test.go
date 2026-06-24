@@ -85,9 +85,9 @@ func minimalPDFWithCatalog(catalogBody string, extraObjects ...testPDFObject) []
 	offsets[3] = b.Len()
 	gens[3] = 0
 	const fakeContent = "stream-data: looks like 1 0 obj but isn't\n"
-	b.WriteString(fmt.Sprintf(
+	fmt.Fprintf(&b,
 		"3 0 obj\n<< /Length %d >>\nstream\n%s\nendstream\nendobj\n",
-		len(fakeContent), fakeContent))
+		len(fakeContent), fakeContent)
 
 	maxID := 3
 	for _, obj := range extraObjects {

@@ -34,7 +34,7 @@ func IsEncryptedFile(path string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	header := make([]byte, len(sqliteHeader))
 	n, err := io.ReadFull(f, header)

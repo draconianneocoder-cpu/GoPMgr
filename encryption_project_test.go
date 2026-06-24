@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -20,7 +21,7 @@ func newEncryptionProjectTestApp(t *testing.T) *App {
 	}
 	app := &App{store: store}
 	t.Cleanup(func() {
-		app.shutdown(nil)
+		app.shutdown(context.Background())
 	})
 	return app
 }

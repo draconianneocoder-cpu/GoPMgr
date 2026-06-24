@@ -101,7 +101,7 @@ func CheckLatest(ctx context.Context) (Status, error) {
 		st.Error = "fetch: " + err.Error()
 		return st, nil
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		st.Error = fmt.Sprintf("fetch: HTTP %d", resp.StatusCode)
 		return st, nil

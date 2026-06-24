@@ -113,7 +113,7 @@ func (f FontFamily) File(style Style) (FontFile, bool) {
 // The actual .ttf binaries are NOT committed to the repository (they
 // are large binaries). scripts/fetch-fonts.sh downloads them from the
 // canonical sources below into internal/fonts/assets/, where the
-// go:embed directive in manager.go picks them up at build time. If a
+// embed directive in manager.go picks them up at build time. If a
 // family's files are absent at build time, the Manager simply omits
 // it and the renderers fall back to the next available family (and
 // ultimately to gofpdf's core Helvetica), so the app always works.

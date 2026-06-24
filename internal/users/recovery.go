@@ -105,7 +105,7 @@ func (s *Store) IssueRecoveryCodes(username string, dek []byte) ([]string, error
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if _, err := tx.Exec(`DELETE FROM recovery_codes WHERE username = ?`, username); err != nil {
 		return nil, err
@@ -151,7 +151,7 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	rows, err := tx.Query(
 		`SELECT id, code_hash, wrapped_dek FROM recovery_codes WHERE username = ? AND used = 0`,
@@ -168,7 +168,7 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 		var id int64
 		var hash, wrap string
 		if err := rows.Scan(&id, &hash, &wrap); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return err
 		}
 		if auth.VerifyPassword(canon, hash) == nil {

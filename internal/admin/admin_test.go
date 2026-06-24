@@ -30,7 +30,7 @@ func TestNewService_ReturnsNonNil(t *testing.T) {
 	d := newAdminTestDB(t)
 	s := NewService(d)
 	if s == nil {
-		t.Error("NewService returned nil")
+		t.Fatal("NewService returned nil")
 	}
 	if s.DB != d {
 		t.Error("NewService did not store the provided Database")

@@ -5,11 +5,23 @@ version: "2"
 
 linters:
   # errcheck, staticcheck, and unused run as part of the golangci-lint v2
-  # default set. They were previously disabled for "legacy baseline
-  # findings" — but those came from a third-party Go source vendored inside
-  # an npm package (frontend/node_modules/flatted/golang/...), which a bare
-  # `golangci-lint run` (./...) descends into. Excluding node_modules below
-  # removes that noise so the linters apply only to PMForge's own code.
+  # default set. First-party findings were fixed in code (2026-06-23). Two
+  # scoped exclusions remain, both deliberate:
+  #   - node_modules: a third-party Go source vendored inside an npm package
+  #     (frontend/node_modules/flatted/golang) that a bare `golangci-lint
+  #     run` (./...) would otherwise descend into.
+  #   - _test.go + errcheck: test cleanup conventionally ignores Close errors.
+  #   - ST1005: a few user-facing error strings are intentionally
+  #     capitalized / punctuated, and one is matched verbatim by the frontend
+  #     (ProjectSettings.svelte), so the message text is a contract — do not
+  #     lowercase it to satisfy the style check.
   exclusions:
     paths:
       - node_modules
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+      - linters:
+          - staticcheck
+        text: "ST1005"
