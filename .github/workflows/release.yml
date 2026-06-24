@@ -112,8 +112,16 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           mkdir -p build/packages
-          # Wails writes the NSIS installer to build/bin/*-installer.exe.
-          cp build/bin/*installer*.exe "build/packages/PMForge-${GITHUB_REF_NAME#v}-amd64-setup.exe"
+          # Wails writes the NSIS installer to build/bin/*-installer.exe. Pick the
+          # newest match explicitly so a missing or ambiguous glob fails loudly
+          # instead of producing a cryptic cp error or an empty artifact.
+          installer="$(ls -t build/bin/*installer*.exe 2>/dev/null | head -1 || true)"
+          if [ -z "$installer" ]; then
+            echo "release: no NSIS installer found in build/bin (did 'wails build -nsis' run?)." >&2
+            ls -la build/bin >&2 || true
+            exit 1
+          fi
+          cp "$installer" "build/packages/PMForge-${GITHUB_REF_NAME#v}-amd64-setup.exe"
 
       - name: Upload installers
         uses: actions/upload-artifact@v7
