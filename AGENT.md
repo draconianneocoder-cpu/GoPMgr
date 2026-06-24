@@ -985,6 +985,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Packaging assets are tracked** despite the broad `build/` ignore: `.gitignore` exempts `build/linux/pmforge.desktop` and `build/linux/nfpm.yaml` (same trick as the darwin Info.plist scaffold). The icon is `build/appicon.png` → `/usr/share/pixmaps/pmforge.png` and the AppImage hicolor path; the `.desktop` → `/usr/share/applications/`.
 - **Signing/notarization is OFF** (owner decision 2026-06-23 — unsigned now, sign later). Packages install/run but show Gatekeeper/SmartScreen "unidentified developer" warnings. Hook: `MACOS_SIGN_IDENTITY` env in `scripts/package-macos.sh` (codesign + a commented notarytool block); Windows signing is a TODO. Add certs as CI secrets to enable.
 - **Verify by tag.** None of this runs in the sandbox (no wails/nfpm/runners) — push a release-candidate tag (e.g. `v0.0.0-rc1`) and iterate. Likely first-iteration tuning points: AppImage GTK bundling (linuxdeploy continuous build + WebKit), the deb/rpm runtime `depends` names (webkit2gtk version drift across distros), and the Wails NSIS template scaffold on Windows.
+- **End-user docs:** `docs/INSTALL.md` covers per-format install + run-from-source; the in-app Help Guide gained an **Installing & Running** section (`HelpGuide.svelte`, Reference group). README's Quick Start now uses `npm ci` (not `npm install`).
 
 ---
 
