@@ -111,19 +111,32 @@ paydown, but new unchecked errors and dead code now land unflagged.
 **Fix:** re-enable incrementally with an exclude/baseline so only *new*
 findings fail, then burn down the baseline.
 
-### F4 — INFO (accepted risk) — DEK lives as an immutable hex string
+### F4 — INFO (accepted risk, resolved) — DEK lives as an immutable hex string
 
-`KeyspecHex` (`internal/crypto/keywrap.go:75-79`) renders the raw DEK as a
+`KeyspecHex` (`internal/crypto/keywrap.go`) renders the raw DEK as a
 64-char hex **string** for the SQLCipher `_pragma_key` DSN. Go strings are
 immutable and cannot be zeroed, so that copy of the key persists on the
-heap until GC, defeating `[]byte` wiping for that value. Inherent to the
-DSN keyspec approach and acknowledged by ADR-001; practical risk is low
-for a single-user local-desktop threat model (at-rest, not live-memory
-extraction).
+heap until GC, defeating `[]byte` wiping for that value.
 
-**Optional hardening:** keep the hex string's scope as narrow as possible;
-if the driver supports it, set the key as `[]byte` via `PRAGMA key` on the
-open connection rather than embedding it in the DSN.
+**Resolution (2026-06-23).** Investigated and accepted with a narrower
+scope. Two facts decided it:
+
+- **A `[]byte` key path does not exist.** SQLCipher's `PRAGMA key` takes a
+  string literal (`x'<hex>'`); SQLite cannot bind a PRAGMA value as a
+  parameter, so the hex *string* is intrinsic regardless of driver. The
+  `KeyspecHex` doc comment now records this so it is not re-chased.
+- **The exposure a connection-hook would remove is already closed.** The
+  DEK `[]byte` is zeroed at logout (ADR-001), and nothing in the codebase
+  logs or prints the DSN (verified by grep), so the key never reaches a
+  log or error string. Moving the key out of the DSN into a per-connection
+  `PRAGMA key` hook would *not* shorten its in-memory lifetime (a pooled
+  `*sql.DB` must retain it to re-key every new connection) and would add
+  real risk to the at-rest encryption path for no measurable benefit.
+
+**Action taken:** narrowed the hex string's scope at the one site where it
+was held longer than needed — `MigratePlaintextToEncrypted` now derives
+the keyspec immediately before use rather than across the pre-flight
+checks. The DSN keying path is unchanged by design.
 
 ### F5 — INFO (maintainer guard-rail) — keep DuckDB SQL parameter-safe
 

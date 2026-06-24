@@ -72,6 +72,12 @@ func UnwrapKey(wrapped, secret string) ([]byte, error) {
 // form `_pragma_key=x'<hex>'`). Raw keyspecs bypass SQLCipher's
 // internal KDF — correct here because Argon2id already strengthened
 // the wrapping secrets and the DEK itself is full-entropy random.
+//
+// The hex result is a Go string and therefore cannot be zeroed (unlike
+// the DEK []byte, which is wiped at logout). This is intrinsic to
+// SQLCipher raw keying: PRAGMA key takes a string literal and cannot be
+// bound as a []byte parameter, so there is no byte-slice key path. Keep
+// the returned string's scope as narrow as possible at each call site.
 func KeyspecHex(dek []byte) (string, error) {
 	if len(dek) != DEKSize {
 		return "", ErrBadDEK
