@@ -53,10 +53,6 @@ func IsEncryptedFile(path string) (bool, error) {
 // verify source, export to an encrypted sibling, verify destination,
 // then rename.
 func MigratePlaintextToEncrypted(path string, dek []byte) (backupPath string, err error) {
-	hexKey, err := crypto.KeyspecHex(dek)
-	if err != nil {
-		return "", err
-	}
 	info, err := os.Stat(path)
 	if err != nil {
 		return "", err
@@ -91,6 +87,14 @@ func MigratePlaintextToEncrypted(path string, dek []byte) (backupPath string, er
 
 	plain, err := InitDB(path)
 	if err != nil {
+		return "", err
+	}
+	// Derive the hex keyspec only here, immediately before it is used, so
+	// the raw-key string (which a Go string cannot zero) lives for the
+	// shortest possible window rather than across the pre-flight checks.
+	hexKey, err := crypto.KeyspecHex(dek)
+	if err != nil {
+		_ = plain.Close()
 		return "", err
 	}
 	if err := exportEncryptedCopy(plain.Conn, encryptedPath, hexKey); err != nil {

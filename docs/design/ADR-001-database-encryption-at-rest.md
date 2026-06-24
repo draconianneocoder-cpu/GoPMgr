@@ -313,6 +313,16 @@ are binding-independent and unaffected.
   `make check-encrypted-db`, and `scripts/check-release.sh` provide
   the encrypted database release gate. `.pmba` archives preserve the
   encrypted `project.pmforge` bytes.
+- **Raw-key string handling — reviewed 2026-06-23.** The DEK reaches
+  SQLCipher as a hex string (`KeyspecHex` → `x'<hex>'`), which a Go string
+  cannot zero. This is intrinsic: `PRAGMA key` takes a string literal and
+  cannot be bound as a `[]byte`, so there is no byte-slice key path. The
+  exposure is bounded — the DEK `[]byte` is zeroed at logout and the DSN
+  (which carries the keyspec) is never logged or surfaced in any error —
+  so moving the key into a per-connection `PRAGMA key` hook would not
+  shorten its lifetime (a pooled `*sql.DB` must retain it to re-key new
+  connections) and was declined as risk without benefit. The hex string's
+  scope is instead kept minimal at each call site.
 
 ## Appendix C: bbolt considered — not a value add
 
