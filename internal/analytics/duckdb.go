@@ -96,9 +96,10 @@ func (e *duckEngine) PortfolioRollup(ctx context.Context, projects []ProjectMetr
 		return PortfolioSummary{}, fmt.Errorf("analytics: create table: %w", err)
 	}
 
-	// NOTE (verify on Mac): duckdb-go is a database/sql driver and uses
-	// "?" positional placeholders. If a build ever reports a bind error,
-	// this is the one line to switch to "$1..$7".
+	// duckdb-go is a database/sql driver and uses "?" positional
+	// placeholders (verified with `go test -tags duckdb`). If a future
+	// driver version ever reports a bind error, this is the one line to
+	// switch to "$1..$7".
 	stmt, err := conn.PrepareContext(ctx,
 		`INSERT INTO portfolio VALUES (?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {

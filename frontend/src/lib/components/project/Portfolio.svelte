@@ -155,6 +155,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <button
             onclick={runRollup}
             disabled={rollupLoading}
+            aria-busy={rollupLoading}
             class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
           >
             {rollupLoading ? 'Computing…' : 'Run rollup'}
@@ -162,6 +163,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <button
             onclick={importDataset}
             disabled={importing}
+            aria-busy={importing}
             class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
           >
             {importing ? 'Importing…' : 'Import data file'}
@@ -210,11 +212,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
             {dataset.columns.length} columns × {dataset.rows.length} rows{dataset.rows.length > 50 ? ' (first 50 shown)' : ''}
           </p>
           <div class="overflow-auto max-h-72 border border-slate-800 rounded">
-            <table class="w-full text-xs text-slate-300">
+            <table class="w-full text-xs text-slate-300" aria-label="Imported data preview">
               <thead class="sticky top-0 bg-slate-800/70">
                 <tr>
                   {#each dataset.columns as c (c)}
-                    <th class="text-left font-semibold px-2 py-1 whitespace-nowrap">{c}</th>
+                    <th scope="col" class="text-left font-semibold px-2 py-1 whitespace-nowrap">{c}</th>
                   {/each}
                 </tr>
               </thead>
