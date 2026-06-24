@@ -88,6 +88,18 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install nsis -y --no-progress
 
+      - name: Stub libdl for mingw (zen-go links -ldl, which Windows lacks)
+        if: runner.os == 'Windows'
+        run: |
+          # The gorules/zen-go CGO dep adds `-ldl` to the link line. libdl is a
+          # POSIX library that does not exist on Windows/mingw (Windows uses
+          # LoadLibrary, not dlopen), so the link fails with "cannot find -ldl".
+          # Drop an empty libdl.a onto gcc's own library search dir so the
+          # spurious flag resolves to nothing.
+          libdir="$(dirname "$(gcc -print-libgcc-file-name)")"
+          ar rcs "$libdir/libdl.a"
+          echo "Created empty $libdir/libdl.a to satisfy -ldl"
+
       - name: Fetch bundled fonts (graceful — app falls back to core fonts)
         continue-on-error: true
         run: bash scripts/fetch-fonts.sh
