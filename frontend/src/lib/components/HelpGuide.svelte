@@ -1305,7 +1305,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li><strong>macOS (Apple Silicon)</strong> — <code>PMForge-…-arm64.dmg</code></li>
               <li><strong>Debian / Ubuntu</strong> — <code>pmforge-…-amd64.deb</code></li>
               <li><strong>Fedora / RHEL / openSUSE</strong> — <code>pmforge-…-x86_64.rpm</code></li>
-              <li><strong>Any Linux</strong> — <code>PMForge-…-x86_64.AppImage</code> (portable, no install)</li>
             </ul>
           </section>
 
@@ -1316,7 +1315,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li><strong>macOS:</strong> open the <code>.dmg</code> and drag <strong>PMForge</strong> to Applications. Unsigned builds trigger Gatekeeper — right-click the app then <em>Open</em> (or System Settings → Privacy &amp; Security → <em>Open Anyway</em>).</li>
               <li><strong>.deb:</strong> <code>sudo apt install ./pmforge-*.deb</code></li>
               <li><strong>.rpm:</strong> <code>sudo dnf install ./pmforge-*.rpm</code></li>
-              <li><strong>AppImage:</strong> <code>chmod +x PMForge-*.AppImage</code> then run it — no installation needed.</li>
             </ul>
           </section>
 

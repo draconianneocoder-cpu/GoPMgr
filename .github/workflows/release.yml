@@ -4,7 +4,7 @@
 # GitHub Actions release pipeline for PMForge — click-installable packages.
 #
 # Wails does not truly cross-compile, so each OS builds on its native runner:
-#   Linux (x86_64)        -> .deb + .rpm (nfpm) + .AppImage (linuxdeploy)
+#   Linux (x86_64)        -> .deb + .rpm (nfpm)
 #   Windows (x86_64)      -> NSIS .exe installer (wails build -nsis)
 #   macOS (Apple Silicon) -> .dmg (drag-to-Applications)
 # A final job attaches everything to a GitHub Release.
@@ -43,7 +43,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-22.04
-            label: linux/amd64 (.deb/.rpm/AppImage)
+            label: linux/amd64 (.deb/.rpm)
             platform: linux/amd64
           - os: macos-latest
             label: darwin/arm64 (.dmg)
@@ -100,7 +100,7 @@ jobs:
         if: runner.os == 'Windows'
         run: wails build -platform windows/amd64 -nsis
 
-      - name: Package Linux (.deb / .rpm / AppImage)
+      - name: Package Linux (.deb / .rpm)
         if: runner.os == 'Linux'
         run: VERSION="${GITHUB_REF_NAME#v}" bash scripts/package-linux.sh
 

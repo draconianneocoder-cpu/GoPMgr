@@ -4,7 +4,6 @@
 #
 # Build Linux installers from the Wails Linux binary at build/bin/pmforge:
 #   - .deb and .rpm via nfpm (build/linux/nfpm.yaml)
-#   - a portable .AppImage (scripts/package-appimage.sh)
 #
 # Run `wails build -platform linux/amd64` first. VERSION defaults to the
 # latest git tag with the leading "v" stripped (e.g. v1.2.0 -> 1.2.0).
@@ -30,9 +29,6 @@ mkdir -p build/packages
 echo "package-linux: building .deb and .rpm (version $VERSION) ..."
 nfpm package --config build/linux/nfpm.yaml --packager deb --target "build/packages/pmforge-${VERSION}-amd64.deb"
 nfpm package --config build/linux/nfpm.yaml --packager rpm --target "build/packages/pmforge-${VERSION}-x86_64.rpm"
-
-echo "package-linux: building AppImage ..."
-bash scripts/package-appimage.sh
 
 echo "package-linux: done. Artifacts in build/packages/:"
 ls -1 build/packages/ | sed 's/^/  /'

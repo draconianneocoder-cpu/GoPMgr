@@ -68,14 +68,6 @@ Some gates use optional or required tools outside Go/npm:
   the Windows NSIS installer (`wails build -nsis`).
 - `nfpm`: builds the Linux `.deb` and `.rpm` packages from
   `build/linux/nfpm.yaml` (`go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest`).
-- `linuxdeploy` + `linuxdeploy-plugin-gtk`: build the portable Linux
-  `.AppImage` (downloaded on demand by `scripts/package-appimage.sh`).
-  Upstream ships only a rolling `continuous` release, so the script pins
-  the exact tool bytes by SHA-256 in `build/linux/appimage-tools.sha256`
-  and verifies them fail-closed before executing them. Generate or refresh
-  those digests deliberately on a trusted network with
-  `APPIMAGE_TOOLS_REFRESH=1 bash scripts/package-appimage.sh`, then commit
-  the file.
 - `create-dmg`: builds the macOS `.dmg` (falls back to `hdiutil`).
 - NSIS (`makensis`): the toolchain behind `wails build -nsis` on Windows.
 
