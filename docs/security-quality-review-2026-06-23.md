@@ -17,6 +17,14 @@ critical issues found. The two actionable items are **operational** —
 unverified build-tool downloads and security scanners that are configured
 but never actually execute in CI — not flaws in the application logic.
 
+> **Status (updated):** F1 and F2 are resolved — AppImage tools are now
+> pinned + verified fail-closed (commit `e862c4e`) and `govulncheck` is a
+> blocking CI gate (commit `e862c4e`); the Windows installer collection was
+> hardened in `9dfcd2f`. A follow-up deep review (2026-06-23) of the DuckDB
+> engine, the Wails analytics bridge methods, concurrency, recovery-code
+> entropy, and resource handling found no further vulnerabilities or bugs.
+> F3–F6 below remain as written.
+
 ## What is already correct (grounded)
 
 - **Password hashing** — Argon2id at `t=3, m=64 MiB, p=4, keyLen=32,
