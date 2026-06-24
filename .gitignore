@@ -15,6 +15,7 @@
 /build/linux/*
 !/build/linux/pmforge.desktop
 !/build/linux/nfpm.yaml
+!/build/linux/appimage-tools.sha256
 /bin/
 *.exe
 *.dll
