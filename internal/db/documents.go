@@ -109,7 +109,7 @@ func (db *Database) ListDocuments(projectID, kind string) ([]Document, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []Document
 	for rows.Next() {

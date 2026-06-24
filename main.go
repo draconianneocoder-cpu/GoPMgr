@@ -2251,7 +2251,7 @@ func loadV1TasksAsKernel(d *db.Database) (map[string]*kernel.Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	tasks := make(map[string]*kernel.Task)
 	for rows.Next() {

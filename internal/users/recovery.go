@@ -178,10 +178,10 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 		}
 	}
 	if err := rows.Err(); err != nil {
-		rows.Close()
+		_ = rows.Close()
 		return err
 	}
-	rows.Close() // close before write ops to avoid cursor-across-write conflict
+	_ = rows.Close() // close before write ops to avoid cursor-across-write conflict
 
 	if matchID < 0 {
 		return ErrInvalidRecoveryCode
