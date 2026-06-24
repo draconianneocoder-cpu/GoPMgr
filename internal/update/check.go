@@ -162,10 +162,11 @@ func Check() {
 
 // isNewer compares two semver-ish strings "X.Y.Z[-suffix]" and
 // reports whether `latest` is strictly newer than `current`.
-// Non-numeric tails compare lexically — good enough for the
-// "1.2.0-V1-Expansion" style PMForge currently uses. Wrong answers
-// here only delay an update notification, never cause incorrect
-// behaviour, so the simplicity trade-off is fine.
+// PMForge versions are clean semver (e.g. "1.1.0", "1.2.0-rc.1"), but the
+// parser still tolerates a legacy "1.2.0-V1-Expansion" style suffix:
+// non-numeric tails compare lexically. Wrong answers here only delay an
+// update notification, never cause incorrect behaviour, so the simplicity
+// trade-off is fine.
 func isNewer(latest, current string) bool {
 	la := splitVer(latest)
 	cu := splitVer(current)

@@ -13,11 +13,17 @@ import (
 	"os"
 )
 
-// Version is the canonical PMForge version string.
+// Version is the canonical PMForge version string: clean semver
+// (MAJOR.MINOR.PATCH[-prerelease]) so it matches the macOS bundle version,
+// the nfpm package version, and the release git tag exactly. The marketing
+// codename for this line ("V1 Expansion") belongs in the release notes, not
+// in the version number.
 //
 // IMPORTANT: scripts/check-release.sh greps this constant and the
-// `productVersion` key in wails.json. Keep them in sync.
-const Version = "1.1.0-V1-Expansion"
+// `productVersion` key in wails.json. Keep them in sync, and keep the value
+// a valid package version (rpm forbids '-' in its Version field, so use a
+// semver prerelease like 1.1.0-rc.1 only via the release tag).
+const Version = "1.1.0"
 
 // Config holds every flag the CLI accepts. Keep field order grouped by
 // concern (info / packs / maintenance / export / debug / positional).

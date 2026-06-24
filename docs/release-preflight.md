@@ -64,14 +64,39 @@ has never executed end-to-end, so treat the first tag as the integration test.
   `MACOS_SIGN_IDENTITY` (and notarization creds) are set. Covered in
   `docs/INSTALL.md`.
 
+## Version channels — keep all three identical
+
+The version appears in three independent places. For them to read the same
+number, the **git tag must equal the version of record**:
+
+1. **Version of record** — `internal/cli/parser.go` `const Version` **and**
+   `wails.json` `productVersion`. These two must be equal (enforced by
+   `scripts/check-release.sh` step 1) and must be a valid package version
+   (clean semver; rpm forbids `-` in its `Version` field). Currently `1.1.0`.
+2. **macOS bundle** (`CFBundleVersion` / `CFBundleShortVersionString`) —
+   `build/darwin/Info.plist` uses `{{.Info.ProductVersion}}`, which Wails fills
+   from `wails.json` `productVersion` at build time. Tracks channel 1
+   automatically.
+3. **Package version + every artifact filename** (deb/rpm/dmg/exe/AppImage) —
+   derived from the git tag via `${GITHUB_REF_NAME#v}` → nfpm `version`.
+
+So tag `v1.1.0` for a GA release and all three read `1.1.0`. For a pipeline
+smoke-test, tag `v1.1.0-rc.1`: packages read `1.1.0-rc.1` while the app/bundle
+read `1.1.0` (cosmetic, fine for an rc — nfpm maps the `-rc.1` prerelease to a
+valid rpm version). Marketing codenames (e.g. "V1 Expansion") live in the
+GitHub release notes, never in the version number.
+
 ## Tag procedure
 
 1. Confirm `main` is green in CI (verify, lint, **vuln**, build, analytics-duckdb).
 2. Confirm `build/linux/appimage-tools.sha256` is committed (hard blocker above).
-3. Bump/confirm the app version where the project tracks it, then:
+3. Confirm the version of record (channel 1 above) is the semver you intend to
+   ship, then tag it exactly (prefixed with `v`):
 
    ```sh
-   git tag vX.Y.Z && git push origin vX.Y.Z
+   git tag v1.1.0 && git push origin v1.1.0          # GA
+   # or, to exercise the pipeline first:
+   git tag v1.1.0-rc.1 && git push origin v1.1.0-rc.1
    ```
 
 4. Watch the **Release** workflow. Expect first-run friction on the Windows NSIS
