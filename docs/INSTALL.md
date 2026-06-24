@@ -25,7 +25,6 @@ your OS from the project's **Releases** page and follow the steps below.
 | macOS (Apple Silicon) | `PMForge-<version>-arm64.dmg` | Drag to Applications |
 | Debian / Ubuntu (x86-64) | `pmforge-<version>-amd64.deb` | `apt` / `dpkg` |
 | Fedora / RHEL / openSUSE (x86-64) | `pmforge-<version>-x86_64.rpm` | `dnf` / `rpm` |
-| Any Linux (x86-64) | `PMForge-<version>-x86_64.AppImage` | Portable — no install |
 
 ## Install
 
@@ -55,16 +54,6 @@ sudo apt install ./pmforge-<version>-amd64.deb
 ```sh
 sudo dnf install ./pmforge-<version>-x86_64.rpm
 ```
-
-### AppImage (any Linux)
-
-```sh
-chmod +x PMForge-<version>-x86_64.AppImage
-./PMForge-<version>-x86_64.AppImage
-```
-
-No installation — the AppImage bundles its own runtime, so it runs on most
-distributions. Move it wherever you like.
 
 After installing, launch **PMForge** from your applications menu (or run
 `pmforge` in a terminal on Linux).
@@ -99,9 +88,8 @@ make dev
 
 On the matching OS, after `make build`:
 
-- **Linux** (`.deb` / `.rpm` / AppImage): `VERSION=<x.y.z> bash scripts/package-linux.sh`
-  (needs [`nfpm`](https://nfpm.goreleaser.com/); the AppImage step fetches
-  `linuxdeploy`).
+- **Linux** (`.deb` / `.rpm`): `VERSION=<x.y.z> bash scripts/package-linux.sh`
+  (needs [`nfpm`](https://nfpm.goreleaser.com/)).
 - **macOS** (`.dmg`): `VERSION=<x.y.z> bash scripts/package-macos.sh`
   (uses `create-dmg`, falls back to `hdiutil`).
 - **Windows** (`.exe`): `wails build -platform windows/amd64 -nsis` (needs NSIS).

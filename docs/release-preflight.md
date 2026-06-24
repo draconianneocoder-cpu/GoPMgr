@@ -5,32 +5,21 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # Release pre-flight checklist
 
-Run through this before pushing the first `v*` tag. It captures the static
-pre-flight audit of `release.yml` and the packaging scripts (2026-06-23) so the
-first release has the best chance of going green on the first try. The pipeline
-has never executed end-to-end, so treat the first tag as the integration test.
+Run through this before pushing a `v*` tag. It captures the static pre-flight
+audit of `release.yml` and the packaging scripts (2026-06-23). The first
+release candidate exercised the pipeline and the `.deb` and `.rpm` build
+cleanly; treat each new tag's run as the integration test.
 
-## Hard blocker — do this first
+## No pre-generation blockers
 
-- [ ] **Generate the pinned AppImage tool digests.** `scripts/package-appimage.sh`
-      verifies `linuxdeploy` against `build/linux/appimage-tools.sha256` and
-      **fails closed** if it is missing. Because `package-linux.sh` builds the
-      `.deb` and `.rpm` *before* the AppImage, a missing digest file fails the
-      whole Linux job and you get **no Linux artifacts at all** (deb/rpm
-      included). Generate and commit it once, on a trusted network:
-
-      ```sh
-      # Runs natively on macOS or Linux (no built binary required); needs curl
-      # + sha256sum/shasum, both of which ship on macOS and Linux.
-      APPIMAGE_TOOLS_REFRESH=1 bash scripts/package-appimage.sh
-      git add build/linux/appimage-tools.sha256 && git commit -m "build: pin AppImage tool digests"
-      ```
+The Linux (`.deb` / `.rpm`), macOS (`.dmg`), and Windows (`.exe`) legs build
+straight from the tag — there is no file to generate beforehand. (The portable
+AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
 
 ## Verified correct by the audit (no action)
 
 - **Filename contract is consistent** across scripts and `docs/INSTALL.md`:
-  `pmforge-<v>-amd64.deb`, `pmforge-<v>-x86_64.rpm`,
-  `PMForge-<v>-x86_64.AppImage`, `PMForge-<v>-arm64.dmg`,
+  `pmforge-<v>-amd64.deb`, `pmforge-<v>-x86_64.rpm`, `PMForge-<v>-arm64.dmg`,
   `PMForge-<v>-amd64-setup.exe`.
 - **Binary name** `pmforge` matches `wails.json` (`outputfilename`) and every
   script + `nfpm.yaml` path.
@@ -39,7 +28,7 @@ has never executed end-to-end, so treat the first tag as the integration test.
   `build/darwin/Info.plist`.
 - **macOS** `.app` discovery is glob-based (`build/bin/*.app`) with a
   `create-dmg → hdiutil` fallback, so it survives create-dmg flaking in CI.
-- **Windows** installer collection now picks the newest `*installer*.exe`
+- **Windows** installer collection picks the newest `*installer*.exe`
   explicitly and fails loudly if none is found (hardened 2026-06-23).
 - `package-macos-installer.sh` is a separate **local `.pkg`** path
   (`make package-macos-installer`), intentionally not used by the release `.dmg`.
@@ -76,8 +65,8 @@ number, the **git tag must equal the version of record**:
    `build/darwin/Info.plist` uses `{{.Info.ProductVersion}}`, which Wails fills
    from `wails.json` `productVersion` at build time. Tracks channel 1
    automatically.
-3. **Package version + every artifact filename** (deb/rpm/dmg/exe/AppImage) —
-   derived from the git tag via `${GITHUB_REF_NAME#v}` → nfpm `version`.
+3. **Package version + every artifact filename** (deb/rpm/dmg/exe) — derived
+   from the git tag via `${GITHUB_REF_NAME#v}` → nfpm `version`.
 
 So tag `v1.1.0` for a GA release and all three read `1.1.0`. For a pipeline
 smoke-test, tag `v1.1.0-rc.1`: packages read `1.1.0-rc.1` while the app/bundle
@@ -88,8 +77,7 @@ GitHub release notes, never in the version number.
 ## Tag procedure
 
 1. Confirm `main` is green in CI (verify, lint, **vuln**, build, analytics-duckdb).
-2. Confirm `build/linux/appimage-tools.sha256` is committed (hard blocker above).
-3. Confirm the version of record (channel 1 above) is the semver you intend to
+2. Confirm the version of record (channel 1 above) is the semver you intend to
    ship, then tag it exactly (prefixed with `v`):
 
    ```sh
@@ -98,8 +86,8 @@ GitHub release notes, never in the version number.
    git tag v1.1.0-rc.1 && git push origin v1.1.0-rc.1
    ```
 
-4. Watch the **Release** workflow. Expect first-run friction on the Windows NSIS
-   step (scaffold) and AppImage GTK bundling; both are isolated per-OS matrix
-   legs (`fail-fast: false`), so one failing leg still lets the others publish.
-5. After a green run, download each artifact and smoke-test install on a real
+3. Watch the **Release** workflow. Expect first-run friction on the Windows NSIS
+   step (scaffold); the per-OS matrix legs are isolated (`fail-fast: false`), so
+   one failing leg still lets the others publish.
+4. After a green run, download each artifact and smoke-test install on a real
    machine per platform before announcing.

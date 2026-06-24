@@ -173,7 +173,7 @@ install steps, see [docs/INSTALL.md](docs/INSTALL.md).
 - [DEPENDENCIES.md](DEPENDENCIES.md): Go, frontend, and external tool
   dependencies.
 - [docs/INSTALL.md](docs/INSTALL.md): end-user install guide
-  (`.deb`/`.rpm`/AppImage/`.exe`/`.dmg`) and run-from-source steps.
+  (`.deb`/`.rpm`/`.exe`/`.dmg`) and run-from-source steps.
 - [docs/release-preflight.md](docs/release-preflight.md): go/no-go
   checklist before pushing a `v*` release tag.
 - [STYLE.md](STYLE.md): repository, Go, frontend, and documentation style.
