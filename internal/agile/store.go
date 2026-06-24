@@ -116,7 +116,7 @@ func (s *Store) ListColumns(boardID string) ([]Column, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []Column
 	for rows.Next() {
@@ -260,7 +260,7 @@ func (s *Store) ListWorkItems(sprintID, state, assignee string) ([]WorkItem, err
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []WorkItem
 	for rows.Next() {
@@ -307,7 +307,7 @@ func (s *Store) WIPCountByColumn() (map[string]int, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := make(map[string]int)
 	for rows.Next() {
@@ -412,7 +412,7 @@ func (s *Store) ListSprints() ([]Sprint, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []Sprint
 	for rows.Next() {
@@ -539,7 +539,7 @@ func (s *Store) ListDeployments(since time.Time) ([]Deployment, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []Deployment
 	for rows.Next() {

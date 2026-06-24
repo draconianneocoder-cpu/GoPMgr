@@ -100,7 +100,7 @@ func (db *Database) ListCharts(projectID, kind string) ([]Chart, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []Chart
 	for rows.Next() {

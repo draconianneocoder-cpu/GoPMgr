@@ -53,7 +53,7 @@ func (d *Database) SigmaListProjects() ([]domain.Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []domain.Project
 	for rows.Next() {

@@ -142,7 +142,7 @@ func readManifestBody(r io.Reader) ([]byte, error) {
 func Check() {
 	st, err := CheckLatest(context.Background())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "PMForge update check failed: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "PMForge update check failed: %v\n", err)
 		os.Exit(1)
 	}
 	switch {

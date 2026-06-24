@@ -148,7 +148,7 @@ func (s *Store) migrateAdminColumn() error {
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var cid int
 		var name, typ, notnull string
@@ -381,7 +381,7 @@ func (s *Store) List() ([]Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []Account
 	for rows.Next() {

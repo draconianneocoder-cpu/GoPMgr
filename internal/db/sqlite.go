@@ -498,7 +498,7 @@ func (db *Database) columnSet(table string) (map[string]struct{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := make(map[string]struct{})
 	for rows.Next() {
 		var (

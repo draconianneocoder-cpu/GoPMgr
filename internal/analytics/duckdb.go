@@ -78,7 +78,7 @@ func (e *duckEngine) PortfolioRollup(ctx context.Context, projects []ProjectMetr
 	if err != nil {
 		return PortfolioSummary{}, fmt.Errorf("analytics: acquire conn: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	if err := harden(ctx, conn); err != nil {
 		return PortfolioSummary{}, err
@@ -105,7 +105,7 @@ func (e *duckEngine) PortfolioRollup(ctx context.Context, projects []ProjectMetr
 	if err != nil {
 		return PortfolioSummary{}, fmt.Errorf("analytics: prepare insert: %w", err)
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for _, p := range projects {
 		if _, err := stmt.ExecContext(ctx,
@@ -195,7 +195,7 @@ func (e *duckEngine) ImportTabular(ctx context.Context, path string) (Dataset, e
 	if err != nil {
 		return Dataset{}, fmt.Errorf("analytics: acquire conn: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	if err := harden(ctx, conn); err != nil {
 		return Dataset{}, err
@@ -211,7 +211,7 @@ func (e *duckEngine) ImportTabular(ctx context.Context, path string) (Dataset, e
 	if err != nil {
 		return Dataset{}, fmt.Errorf("analytics: read file: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	cols, err := rows.Columns()
 	if err != nil {

@@ -206,7 +206,7 @@ func requireEncryptedIntegrity(conn *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("db: cipher_integrity_check: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	if rows.Next() {
 		return errors.New("db: cipher_integrity_check reported failures")
 	}

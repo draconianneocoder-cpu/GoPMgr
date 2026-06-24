@@ -25,3 +25,9 @@ linters:
       - linters:
           - staticcheck
         text: "ST1005"
+
+issues:
+  # Show every finding. The defaults cap duplicates of the same message at 3,
+  # which hides the true remaining count while a backlog is being cleared.
+  max-same-issues: 0
+  max-issues-per-linter: 0
