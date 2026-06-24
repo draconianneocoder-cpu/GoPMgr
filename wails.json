@@ -13,7 +13,7 @@
   "info": {
     "companyName": "The PMForge Contributors",
     "productName": "PMForge",
-    "productVersion": "1.1.0-V1-Expansion",
+    "productVersion": "1.1.0",
     "copyright": "Copyright (C) 2026 James L. Burns and The PMForge Contributors. Licensed under GPL-3.0-or-later.",
     "comments": "Local-first project controls desktop application."
   }
