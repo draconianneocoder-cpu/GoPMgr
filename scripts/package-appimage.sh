@@ -14,8 +14,63 @@ cd "$(dirname "$0")/.."
 VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')}"
 VERSION="${VERSION:-0.0.0}"
 
+# --- Build-tool pinning (supply-chain hardening) ---------------------------
+# linuxdeploy publishes only a rolling "continuous" release, so a plain
+# download is an unpinned, unverified moving target that executes inside the
+# release pipeline. We pin the exact artifact bytes by SHA-256
+# (build/linux/appimage-tools.sha256) and verify on every build, fail-closed:
+# the tools are NOT chmod +x'd or run until their bytes match the committed
+# digests.
+#
+# To create or refresh the digests, run this on a trusted network and commit
+# the result (no built binary required):
+#     APPIMAGE_TOOLS_REFRESH=1 bash scripts/package-appimage.sh
+LINUXDEPLOY_URL="https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+LINUXDEPLOY_GTK_URL="https://github.com/linuxdeploy/linuxdeploy-plugin-gtk/releases/download/continuous/linuxdeploy-plugin-gtk.sh"
+sums="build/linux/appimage-tools.sha256"
+
+# Portable SHA-256 (Linux `sha256sum`, macOS `shasum -a 256`) so the refresh
+# can run on a maintainer's machine as well as the Linux CI runner.
+sha256() {
+	if command -v sha256sum >/dev/null 2>&1; then
+		sha256sum "$1" | cut -d' ' -f1
+	else
+		shasum -a 256 "$1" | cut -d' ' -f1
+	fi
+}
+
+# --- Refresh mode: download tools, write pinned digests, exit --------------
+# Standalone and side-effect-free apart from writing $sums. Does not touch
+# build/bin or build an AppImage.
+if [ "${APPIMAGE_TOOLS_REFRESH:-0}" = "1" ]; then
+	rwork="$(mktemp -d)"
+	trap 'rm -rf "$rwork"' EXIT
+	curl --fail --silent --show-error --location "$LINUXDEPLOY_URL" -o "$rwork/linuxdeploy"
+	curl --fail --silent --show-error --location "$LINUXDEPLOY_GTK_URL" -o "$rwork/linuxdeploy-plugin-gtk.sh"
+	mkdir -p "$(dirname "$sums")"
+	{
+		echo "# Pinned SHA-256 digests for the AppImage build tools."
+		echo "# Upstream ships only a rolling 'continuous' release, so these bytes are"
+		echo "# pinned here and verified fail-closed by scripts/package-appimage.sh."
+		echo "# Regenerate deliberately on a trusted network with:"
+		echo "#   APPIMAGE_TOOLS_REFRESH=1 bash scripts/package-appimage.sh"
+		printf '%s  linuxdeploy\n' "$(sha256 "$rwork/linuxdeploy")"
+		printf '%s  linuxdeploy-plugin-gtk.sh\n' "$(sha256 "$rwork/linuxdeploy-plugin-gtk.sh")"
+	} >"$sums"
+	echo "package-appimage: wrote pinned digests to $sums — review and commit them." >&2
+	exit 0
+fi
+
+# --- Build mode ------------------------------------------------------------
 if [ ! -x build/bin/pmforge ]; then
 	echo "package-appimage: build/bin/pmforge missing — run wails build first." >&2
+	exit 1
+fi
+
+if [ ! -f "$sums" ]; then
+	echo "package-appimage: missing pinned tool digests ($sums)." >&2
+	echo "  Run once on a trusted network, then commit the file:" >&2
+	echo "    APPIMAGE_TOOLS_REFRESH=1 bash scripts/package-appimage.sh" >&2
 	exit 1
 fi
 
@@ -31,47 +86,11 @@ cp build/appicon.png "$appdir/usr/share/icons/hicolor/256x256/apps/pmforge.png"
 
 tools="$work/tools"
 mkdir -p "$tools"
-
-# Supply-chain hardening. linuxdeploy publishes only a rolling "continuous"
-# release, so a plain download is an unpinned, unverified moving target that
-# executes inside the release pipeline. We instead pin the exact artifact
-# bytes by SHA-256 (build/linux/appimage-tools.sha256) and verify on every
-# build, fail-closed. The build tools are NOT chmod +x'd or run until their
-# bytes match the committed digests.
-#
-# To adopt new upstream tool builds, refresh the digests deliberately on a
-# trusted network and commit the result:
-#     APPIMAGE_TOOLS_REFRESH=1 bash scripts/package-appimage.sh
-LINUXDEPLOY_URL="https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
-LINUXDEPLOY_GTK_URL="https://github.com/linuxdeploy/linuxdeploy-plugin-gtk/releases/download/continuous/linuxdeploy-plugin-gtk.sh"
-sums="build/linux/appimage-tools.sha256"
-
 ld="$tools/linuxdeploy"
 gtk="$tools/linuxdeploy-plugin-gtk.sh"
-# Download bytes only; do not chmod/execute until verified.
+# Download bytes only; do not chmod/execute until verified against $sums.
 curl --fail --silent --show-error --location "$LINUXDEPLOY_URL" -o "$ld"
 curl --fail --silent --show-error --location "$LINUXDEPLOY_GTK_URL" -o "$gtk"
-
-if [ "${APPIMAGE_TOOLS_REFRESH:-0}" = "1" ]; then
-	{
-		echo "# Pinned SHA-256 digests for the AppImage build tools."
-		echo "# Upstream ships only a rolling 'continuous' release, so these bytes are"
-		echo "# pinned here and verified fail-closed by scripts/package-appimage.sh."
-		echo "# Regenerate deliberately on a trusted network with:"
-		echo "#   APPIMAGE_TOOLS_REFRESH=1 bash scripts/package-appimage.sh"
-		printf '%s  linuxdeploy\n' "$(sha256sum "$ld" | cut -d' ' -f1)"
-		printf '%s  linuxdeploy-plugin-gtk.sh\n' "$(sha256sum "$gtk" | cut -d' ' -f1)"
-	} >"$sums"
-	echo "package-appimage: wrote pinned digests to $sums — review and commit them." >&2
-	exit 0
-fi
-
-if [ ! -f "$sums" ]; then
-	echo "package-appimage: missing pinned tool digests ($sums)." >&2
-	echo "  Run once on a trusted network, then commit the file:" >&2
-	echo "    APPIMAGE_TOOLS_REFRESH=1 bash scripts/package-appimage.sh" >&2
-	exit 1
-fi
 
 verify_tool() {
 	# verify_tool <file> <name-in-sums>
@@ -81,7 +100,7 @@ verify_tool() {
 		echo "package-appimage: no pinned digest for '$name' in $sums." >&2
 		exit 1
 	fi
-	got="$(sha256sum "$file" | cut -d' ' -f1)"
+	got="$(sha256 "$file")"
 	if [ "$want" != "$got" ]; then
 		echo "package-appimage: SHA-256 mismatch for '$name' — refusing to run untrusted build tooling." >&2
 		echo "  expected: $want" >&2

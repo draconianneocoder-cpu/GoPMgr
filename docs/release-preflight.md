@@ -20,10 +20,9 @@ has never executed end-to-end, so treat the first tag as the integration test.
       included). Generate and commit it once, on a trusted network:
 
       ```sh
-      # Linux box / CI, or via Docker on macOS:
-      docker run --rm -v "$PWD":/w -w /w ubuntu:22.04 bash -c \
-        "apt-get update && apt-get install -y curl && \
-         APPIMAGE_TOOLS_REFRESH=1 bash scripts/package-appimage.sh"
+      # Runs natively on macOS or Linux (no built binary required); needs curl
+      # + sha256sum/shasum, both of which ship on macOS and Linux.
+      APPIMAGE_TOOLS_REFRESH=1 bash scripts/package-appimage.sh
       git add build/linux/appimage-tools.sha256 && git commit -m "build: pin AppImage tool digests"
       ```
 
