@@ -74,14 +74,3 @@ func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, erro
 	return pdfmeta.InjectPAdESSignature(pdfBytes, signRanges)
 }
 
-// strJoin avoids dragging in strings just for the single Join call.
-func strJoin(xs []string, sep string) string {
-	if len(xs) == 0 {
-		return ""
-	}
-	out := xs[0]
-	for _, x := range xs[1:] {
-		out += sep + x
-	}
-	return out
-}

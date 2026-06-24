@@ -78,8 +78,8 @@ func TestToMSPDIDeterministicOrder(t *testing.T) {
 
 	// ES order: A before B and C; tie (B, C) broken by ID.
 	s := string(first)
-	if !(strings.Index(s, "<Name>A</Name>") < strings.Index(s, "<Name>B</Name>") &&
-		strings.Index(s, "<Name>B</Name>") < strings.Index(s, "<Name>C</Name>")) {
+	if strings.Index(s, "<Name>A</Name>") >= strings.Index(s, "<Name>B</Name>") ||
+		strings.Index(s, "<Name>B</Name>") >= strings.Index(s, "<Name>C</Name>") {
 		t.Errorf("tasks not in (ES, ID) order:\n%s", s)
 	}
 }

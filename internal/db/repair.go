@@ -216,7 +216,7 @@ func CheckEncryptedSnapshotIntegrity(path string, dek []byte) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	return requireEncryptedIntegrity(conn)
 }

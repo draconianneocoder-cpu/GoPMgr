@@ -42,14 +42,14 @@ func (s *Store) migrateDEKColumns() error {
 				dflt        interface{}
 			)
 			if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
-				rows.Close()
+				_ = rows.Close()
 				return err
 			}
 			if name == m.column {
 				present = true
 			}
 		}
-		rows.Close()
+		_ = rows.Close()
 		if !present {
 			if _, err := s.conn.Exec(m.ddl); err != nil {
 				return fmt.Errorf("add column %s.%s: %w", m.table, m.column, err)

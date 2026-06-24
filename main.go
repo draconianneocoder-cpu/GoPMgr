@@ -385,7 +385,7 @@ func (a *App) ListProjects() ([]ProjectFile, error) {
 	}
 	out := make([]ProjectFile, 0, len(entries))
 	for _, e := range entries {
-		out = append(out, ProjectFile{Path: e.Path, Name: e.Name, Modified: e.Modified})
+		out = append(out, ProjectFile(e))
 	}
 	return out, nil
 }
@@ -3351,14 +3351,6 @@ func (a *App) requireSigmaSvc() *service.ProjectService {
 	return a.sigmaSvc
 }
 
-// requireDBAndPath is the read-lock helper for callers that need
-// both the db handle and its file path. Holding RLock once for both
-// fields keeps them consistent across concurrent Logout.
-func (a *App) requireDBAndPath() (*db.Database, string) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	return a.db, a.dbPath
-}
 
 func samePath(a, b string) bool {
 	if a == "" || b == "" {
@@ -3861,7 +3853,7 @@ func openHeadlessDB(cfg *cli.Config) (*db.Database, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open system database: %w", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	if _, err := store.Authenticate(cfg.Username, password); err != nil {
 		return nil, fmt.Errorf("authenticate headless user: %w", err)
 	}
@@ -3896,7 +3888,7 @@ func runHeadless(cfg *cli.Config) {
 	if err != nil {
 		log.Fatalf("init db: %v", err)
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 
 	switch {
 	case cfg.CheckOnly:

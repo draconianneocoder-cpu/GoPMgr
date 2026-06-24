@@ -99,7 +99,7 @@ func ganttFromDoc(doc LayeredDocument, anchored bool) GanttLayout {
 		return layout.Rows[i].ID < layout.Rows[j].ID
 	})
 	for _, e := range doc.Edges {
-		layout.Deps = append(layout.Deps, GanttDep{From: e.From, To: e.To, Label: e.Label})
+		layout.Deps = append(layout.Deps, GanttDep(e))
 	}
 	return layout
 }

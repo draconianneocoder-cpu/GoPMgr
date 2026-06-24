@@ -69,7 +69,7 @@ func (s *Store) EnsureDefaultBoard() (Board, error) {
 	if err != nil {
 		return Board{}, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if _, err := tx.Exec(
 		`INSERT INTO agile_boards (id, project_id, name, is_default)
@@ -433,7 +433,7 @@ func (s *Store) DeleteSprint(id string) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback() // no-op if Commit succeeds
+	defer func() { _ = tx.Rollback() }() // no-op if Commit succeeds
 
 	if _, err := tx.Exec(
 		`UPDATE agile_work_items SET sprint_id = '' WHERE sprint_id = ?`, id,
@@ -567,12 +567,3 @@ func (s *Store) DeleteDeployment(id string) error {
 	return err
 }
 
-// ensureProject is a small guard the public methods could call when
-// ProjectID looks empty. Kept private so the contract is "construct
-// with NewStore(_, projectID) or pay the consequences".
-func (s *Store) ensureProject() error {
-	if s.ProjectID == "" {
-		return fmt.Errorf("agile: store has no project id")
-	}
-	return nil
-}

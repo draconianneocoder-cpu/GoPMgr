@@ -161,22 +161,6 @@ func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 	return out, nil
 }
 
-// appendSignatureMarker writes the raw RSA signature blob to the
-// end of the PDF inside a PDF comment so naive readers ignore it
-// but verifiers can extract it.
-//
-// Used as the fallback when CMS/PKCS#7 signing isn't available
-// (e.g. a P12 bundle without a chain). New code SHOULD prefer
-// appendCMSSignatureMarker.
-func appendSignatureMarker(pdfBytes, sig []byte) []byte {
-	const tag = "\n%%PMForgeSignature:"
-	out := make([]byte, 0, len(pdfBytes)+len(sig)+len(tag)+8)
-	out = append(out, pdfBytes...)
-	out = append(out, []byte(tag)...)
-	out = append(out, []byte(hexEncode(sig))...)
-	out = append(out, '\n')
-	return out
-}
 
 // appendCMSSignatureMarker writes a CMS/PKCS#7 detached signature
 // (built by crypto.Signer.SignPDFCMS) to the end of the PDF inside
