@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // RenderStakeholderAnalysisPDF is the bespoke renderer for the
@@ -171,7 +171,7 @@ func quadKey(power, interest string) string {
 
 // drawQuadrantLegend renders the 4-strategy reference chips at the
 // top of the document.
-func drawQuadrantLegend(pdf *gofpdf.Fpdf) {
+func drawQuadrantLegend(pdf *fpdf.Fpdf) {
 	pdf.SetFont("Helvetica", "B", 8)
 	x := pdf.GetX()
 	y := pdf.GetY()
@@ -194,7 +194,7 @@ func drawQuadrantLegend(pdf *gofpdf.Fpdf) {
 	pdf.SetDrawColor(0, 0, 0)
 }
 
-func drawQuadrantHeader(pdf *gofpdf.Fpdf, q quadrant) {
+func drawQuadrantHeader(pdf *fpdf.Fpdf, q quadrant) {
 	pdf.Ln(2)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(q.r, q.g, q.b)
@@ -205,8 +205,8 @@ func drawQuadrantHeader(pdf *gofpdf.Fpdf, q quadrant) {
 
 // drawStakeholderCard renders one stakeholder as a bordered card.
 // Auto-page-break handles tall cards; the card itself is plain
-// rectangles + text so gofpdf wraps cleanly across page boundaries.
-func drawStakeholderCard(pdf *gofpdf.Fpdf, s stakeholderRow, q quadrant) {
+// rectangles + text so fpdf wraps cleanly across page boundaries.
+func drawStakeholderCard(pdf *fpdf.Fpdf, s stakeholderRow, q quadrant) {
 	x := pdf.GetX()
 	y := pdf.GetY()
 	const w = 170.0
@@ -214,7 +214,7 @@ func drawStakeholderCard(pdf *gofpdf.Fpdf, s stakeholderRow, q quadrant) {
 	// Determine card height based on note length (rough estimate).
 	noteLines := 0
 	if s.Note != "" {
-		// gofpdf wraps at the cell width; 78 chars/line is the
+		// fpdf wraps at the cell width; 78 chars/line is the
 		// typical Helvetica-10 wrap at 165mm body width.
 		noteLines = len(s.Note)/78 + 1
 	}

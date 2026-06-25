@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"math"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // Local mirrors of stats.StatsLayout so the PDF renderer doesn't
@@ -59,7 +59,7 @@ type statsLayout struct {
 	Flags       []pointFlag   `json:"flags,omitempty"`
 }
 
-func renderStats(pdf *gofpdf.Fpdf, kind string, body json.RawMessage, frame Frame) error {
+func renderStats(pdf *fpdf.Fpdf, kind string, body json.RawMessage, frame Frame) error {
 	var l statsLayout
 	if err := parseBody(body, &l); err != nil {
 		return err
@@ -72,7 +72,7 @@ func renderStats(pdf *gofpdf.Fpdf, kind string, body json.RawMessage, frame Fram
 
 // ---------- Pie ----------
 
-func renderPie(pdf *gofpdf.Fpdf, l statsLayout, frame Frame) error {
+func renderPie(pdf *fpdf.Fpdf, l statsLayout, frame Frame) error {
 	if len(l.Slices) == 0 {
 		drawEmptyChartPlaceholder(pdf, frame, "(empty)")
 		return nil
@@ -138,13 +138,13 @@ func renderPie(pdf *gofpdf.Fpdf, l statsLayout, frame Frame) error {
 
 // drawPieWedge draws a single pie wedge as a many-sided polygon
 // going from `start` to `end` (radians, 0 = 3 o'clock).
-func drawPieWedge(pdf *gofpdf.Fpdf, cx, cy, r, start, end float64) {
+func drawPieWedge(pdf *fpdf.Fpdf, cx, cy, r, start, end float64) {
 	const segs = 48
-	pts := []gofpdf.PointType{{X: cx, Y: cy}}
+	pts := []fpdf.PointType{{X: cx, Y: cy}}
 	step := (end - start) / segs
 	for i := 0; i <= segs; i++ {
 		a := start + step*float64(i)
-		pts = append(pts, gofpdf.PointType{
+		pts = append(pts, fpdf.PointType{
 			X: cx + math.Cos(a)*r,
 			Y: cy + math.Sin(a)*r,
 		})
@@ -155,7 +155,7 @@ func drawPieWedge(pdf *gofpdf.Fpdf, cx, cy, r, start, end float64) {
 // ---------- Cartesian (line / bar / pareto / burnup / burndown /
 // cumulative_flow / control) ----------
 
-func renderCartesian(pdf *gofpdf.Fpdf, l statsLayout, frame Frame) error {
+func renderCartesian(pdf *fpdf.Fpdf, l statsLayout, frame Frame) error {
 	if len(l.Series) == 0 || len(l.Categories) == 0 {
 		drawEmptyChartPlaceholder(pdf, frame, "(empty)")
 		return nil
@@ -288,7 +288,7 @@ func renderCartesian(pdf *gofpdf.Fpdf, l statsLayout, frame Frame) error {
 
 // ---------- Series drawing helpers ----------
 
-func drawBars(pdf *gofpdf.Fpdf, l statsLayout, plot Frame, yMin, yMax float64) {
+func drawBars(pdf *fpdf.Fpdf, l statsLayout, plot Frame, yMin, yMax float64) {
 	n := len(l.Categories)
 	if n == 0 {
 		return
@@ -332,7 +332,7 @@ func drawBars(pdf *gofpdf.Fpdf, l statsLayout, plot Frame, yMin, yMax float64) {
 	}
 }
 
-func drawStackedAreas(pdf *gofpdf.Fpdf, l statsLayout, plot Frame, yMin, yMax float64) {
+func drawStackedAreas(pdf *fpdf.Fpdf, l statsLayout, plot Frame, yMin, yMax float64) {
 	n := len(l.Categories)
 	if n == 0 {
 		return
@@ -346,11 +346,11 @@ func drawStackedAreas(pdf *gofpdf.Fpdf, l statsLayout, plot Frame, yMin, yMax fl
 	for si, s := range l.Series {
 		fr, fg, fb := paletteRGB(si, s.Color)
 		// Build polygon: bottom of stack, then top.
-		var pts []gofpdf.PointType
+		var pts []fpdf.PointType
 		for i := 0; i < n && i < len(s.Values); i++ {
 			x := plot.X + (float64(i)+0.5)*colW
 			y := plot.Y + plot.H - (stack[i]-yMin)/(yMax-yMin)*plot.H
-			pts = append(pts, gofpdf.PointType{X: x, Y: y})
+			pts = append(pts, fpdf.PointType{X: x, Y: y})
 		}
 		for i := n - 1; i >= 0; i-- {
 			if i >= len(s.Values) {
@@ -359,7 +359,7 @@ func drawStackedAreas(pdf *gofpdf.Fpdf, l statsLayout, plot Frame, yMin, yMax fl
 			top := stack[i] + s.Values[i]
 			x := plot.X + (float64(i)+0.5)*colW
 			y := plot.Y + plot.H - (top-yMin)/(yMax-yMin)*plot.H
-			pts = append(pts, gofpdf.PointType{X: x, Y: y})
+			pts = append(pts, fpdf.PointType{X: x, Y: y})
 		}
 		pdf.SetFillColor(fr, fg, fb)
 		pdf.SetDrawColor(fr, fg, fb)
@@ -373,7 +373,7 @@ func drawStackedAreas(pdf *gofpdf.Fpdf, l statsLayout, plot Frame, yMin, yMax fl
 	}
 }
 
-func drawLineSeries(pdf *gofpdf.Fpdf, s statsSeries, idx int, flags []pointFlag, plot Frame, yMin, yMax float64, nCats int) {
+func drawLineSeries(pdf *fpdf.Fpdf, s statsSeries, idx int, flags []pointFlag, plot Frame, yMin, yMax float64, nCats int) {
 	fr, fg, fb := paletteRGB(idx, s.Color)
 	pdf.SetDrawColor(fr, fg, fb)
 	pdf.SetLineWidth(0.5)
@@ -416,7 +416,7 @@ func drawLineSeries(pdf *gofpdf.Fpdf, s statsSeries, idx int, flags []pointFlag,
 
 // drawRightAxisLine draws a series mapped onto a 0..100 right axis
 // (Pareto cumulative percentage).
-func drawRightAxisLine(pdf *gofpdf.Fpdf, l statsLayout, s statsSeries, plot Frame) {
+func drawRightAxisLine(pdf *fpdf.Fpdf, l statsLayout, s statsSeries, plot Frame) {
 	rMin := 0.0
 	rMax := 100.0
 	if l.YAxisRight != nil {
@@ -455,7 +455,7 @@ func drawRightAxisLine(pdf *gofpdf.Fpdf, l statsLayout, s statsSeries, plot Fram
 	}
 }
 
-func drawRightAxisTicks(pdf *gofpdf.Fpdf, plot Frame, ax *axisConfig) {
+func drawRightAxisTicks(pdf *fpdf.Fpdf, plot Frame, ax *axisConfig) {
 	min := 0.0
 	max := 100.0
 	if ax.Min != nil {
@@ -474,7 +474,7 @@ func drawRightAxisTicks(pdf *gofpdf.Fpdf, plot Frame, ax *axisConfig) {
 	}
 }
 
-func drawStatsLegend(pdf *gofpdf.Fpdf, series []statsSeries, frame Frame) {
+func drawStatsLegend(pdf *fpdf.Fpdf, series []statsSeries, frame Frame) {
 	pdf.SetFont("Helvetica", "", 6)
 	cursor := frame.X + 2
 	yLegend := frame.Y + frame.H - 3.5
@@ -678,7 +678,7 @@ func fmtFloat1(v float64) string {
 	return itoa64(intPart) + "." + itoa64(frac)
 }
 
-func drawDashedLine(pdf *gofpdf.Fpdf, x1, y1, x2, y2, dash, gap float64) {
+func drawDashedLine(pdf *fpdf.Fpdf, x1, y1, x2, y2, dash, gap float64) {
 	dx := x2 - x1
 	dy := y2 - y1
 	length := math.Sqrt(dx*dx + dy*dy)

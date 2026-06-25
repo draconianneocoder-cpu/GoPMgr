@@ -18,14 +18,14 @@ import (
 // before scripts/fetch-fonts.sh has downloaded the binaries), and the
 // Manager filters to *.ttf at load time. If no .ttf files are present,
 // the Manager simply reports the bundled families as unavailable and
-// callers fall back to gofpdf core fonts.
+// callers fall back to fpdf core fonts.
 //
 //go:embed assets
 var assetsFS embed.FS
 
-// FontRegistrar is the slice of gofpdf's API the Manager needs. It is
-// satisfied by *gofpdf.Fpdf. Defining it as an interface keeps this
-// package free of a direct gofpdf import, so it builds and unit-tests
+// FontRegistrar is the slice of fpdf API the Manager needs. It is
+// satisfied by *fpdf.Fpdf. Defining it as an interface keeps this
+// package free of a direct fpdf import, so it builds and unit-tests
 // without resolving the wider module dependency graph.
 type FontRegistrar interface {
 	AddUTF8FontFromBytes(familyStr, styleStr string, utf8Bytes []byte)
@@ -56,7 +56,7 @@ type FamilyInfo struct {
 	Styles      []string `json:"styles"` // human-readable: "Regular", "Bold", ...
 }
 
-// Manager loads bundled + user fonts and registers them with a gofpdf
+// Manager loads bundled + user fonts and registers them with a fpdf
 // document on demand. It is safe to construct once and reuse; the
 // embedded-font lookups are read-only and the user directory is
 // re-scanned on each Available() / Register() call so freshly-imported
@@ -117,7 +117,7 @@ func (m *Manager) Available() []FamilyInfo {
 }
 
 // Register loads all available styles of the named family and registers
-// them with the gofpdf document via AddUTF8FontFromBytes. After a
+// them with the fpdf document via AddUTF8FontFromBytes. After a
 // successful call, the caller can SetFont(family, "B"/"I"/"BI"/"", size).
 //
 // Lookup order: bundled catalog first, then user fonts. Returns an
@@ -130,7 +130,7 @@ func (m *Manager) Register(r FontRegistrar, family string) error {
 // instead of its real family name. This is how PMForge swaps the
 // document font without touching renderer code: registering the chosen
 // family under "Helvetica" makes every existing SetFont("Helvetica",
-// ...) call use the embedded TrueType font, because gofpdf's
+// ...) call use the embedded TrueType font, because fpdf
 // AddUTF8FontFromBytes overrides a core-font family name when you pass
 // it one.
 //
@@ -159,7 +159,7 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 			if err := validateTrueType(b); err != nil {
 				continue
 			}
-			r.AddUTF8FontFromBytes(regName, style.GofpdfStyle(), b)
+			r.AddUTF8FontFromBytes(regName, style.FpdfStyle(), b)
 			registered++
 		}
 		if registered == 0 {
@@ -183,7 +183,7 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 			if err := validateTrueType(b); err != nil {
 				continue
 			}
-			r.AddUTF8FontFromBytes(regName, style.GofpdfStyle(), b)
+			r.AddUTF8FontFromBytes(regName, style.FpdfStyle(), b)
 			registered++
 		}
 		if registered == 0 {
@@ -200,7 +200,7 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 // calls. Returns the FamilyInfo for the imported font.
 //
 // Rejects non-TrueType files (OpenType/CFF .otf, WOFF, collections)
-// with a clear error, because gofpdf's UTF-8 font path parses
+// with a clear error, because fpdf UTF-8 font path parses
 // TrueType tables only.
 func (m *Manager) ImportFont(srcPath string) (FamilyInfo, error) {
 	if m.userDir == "" {
@@ -372,7 +372,7 @@ func styleNames(styles []Style) []string {
 	return out
 }
 
-// validateTrueType checks the font's signature. gofpdf's UTF-8 parser
+// validateTrueType checks the font's signature. fpdf UTF-8 parser
 // handles TrueType outlines only, so OpenType/CFF ("OTTO"), WOFF, and
 // TrueType Collections ("ttcf") are rejected with actionable errors.
 func validateTrueType(b []byte) error {

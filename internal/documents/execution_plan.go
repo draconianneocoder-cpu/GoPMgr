@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // RenderExecutionPlanPDF is the bespoke renderer for the Project
@@ -172,7 +172,7 @@ func parseDate(s string) time.Time {
 
 // drawExecutionTable renders the tasks with an inline timeline segment
 // in the rightmost column.
-func drawExecutionTable(pdf *gofpdf.Fpdf, tasks []executionTask, window projectWindow) {
+func drawExecutionTable(pdf *fpdf.Fpdf, tasks []executionTask, window projectWindow) {
 	cols := []struct {
 		header string
 		w      float64
@@ -242,7 +242,7 @@ func drawExecutionTable(pdf *gofpdf.Fpdf, tasks []executionTask, window projectW
 // horizontal bar positioned along the project's full timeline track.
 // Padding on either side of the cell so the segment doesn't touch the
 // cell border.
-func drawTimelineSegment(pdf *gofpdf.Fpdf, x, y, w, h float64, t executionTask, window projectWindow) {
+func drawTimelineSegment(pdf *fpdf.Fpdf, x, y, w, h float64, t executionTask, window projectWindow) {
 	const padX = 2.0
 	const padY = 2.0
 	trackX := x + padX

@@ -6,7 +6,7 @@ package pdfrender
 import (
 	"encoding/json"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // fishboneNode mirrors dag.FishboneNode. We re-declare locally so
@@ -34,7 +34,7 @@ type fishbonePayload struct {
 	Height float64        `json:"height"`
 }
 
-func renderFishbone(pdf *gofpdf.Fpdf, body json.RawMessage, frame Frame) error {
+func renderFishbone(pdf *fpdf.Fpdf, body json.RawMessage, frame Frame) error {
 	var layout fishbonePayload
 	if err := parseBody(body, &layout); err != nil {
 		return err

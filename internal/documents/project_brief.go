@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // RenderProjectBriefPDF is the bespoke renderer for the Project
@@ -82,7 +82,7 @@ func RenderProjectBriefPDF(content map[string]interface{}, projectName string) (
 	return buf.Bytes(), nil
 }
 
-func briefHeading(pdf *gofpdf.Fpdf, text string) {
+func briefHeading(pdf *fpdf.Fpdf, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -91,7 +91,7 @@ func briefHeading(pdf *gofpdf.Fpdf, text string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func drawBriefSummary(pdf *gofpdf.Fpdf, summary string) {
+func drawBriefSummary(pdf *fpdf.Fpdf, summary string) {
 	pdf.Ln(2)
 	startY := pdf.GetY()
 	pdf.SetFillColor(239, 246, 255)
@@ -120,7 +120,7 @@ func drawBriefSummary(pdf *gofpdf.Fpdf, summary string) {
 // dark KPI tiles. Reuses the budget-tile shape from Project Proposal
 // but pairs it with a sibling timeline tile so the two facts share
 // visual weight.
-func drawBriefKPIStrip(pdf *gofpdf.Fpdf, budget float64, timeline string) {
+func drawBriefKPIStrip(pdf *fpdf.Fpdf, budget float64, timeline string) {
 	startY := pdf.GetY()
 	const gap = 4.0
 	tileW := (170.0 - gap) / 2
@@ -142,7 +142,7 @@ func drawBriefKPIStrip(pdf *gofpdf.Fpdf, budget float64, timeline string) {
 }
 
 // drawBriefKPITile draws one dark-filled KPI tile.
-func drawBriefKPITile(pdf *gofpdf.Fpdf, x, y, w, h float64, label, value string, valueFontSize float64) {
+func drawBriefKPITile(pdf *fpdf.Fpdf, x, y, w, h float64, label, value string, valueFontSize float64) {
 	pdf.SetFillColor(30, 41, 59)
 	pdf.SetDrawColor(30, 41, 59)
 	pdf.Rect(x, y, w, h, "F")
@@ -162,7 +162,7 @@ func drawBriefKPITile(pdf *gofpdf.Fpdf, x, y, w, h float64, label, value string,
 	pdf.SetFillColor(255, 255, 255)
 }
 
-func drawBriefNumberedList(pdf *gofpdf.Fpdf, items []string) {
+func drawBriefNumberedList(pdf *fpdf.Fpdf, items []string) {
 	pdf.SetFont("Helvetica", "", 10)
 	for i, item := range items {
 		pdf.SetX(20)
@@ -176,7 +176,7 @@ func drawBriefNumberedList(pdf *gofpdf.Fpdf, items []string) {
 	pdf.Ln(2)
 }
 
-func drawBriefChips(pdf *gofpdf.Fpdf, items []string) {
+func drawBriefChips(pdf *fpdf.Fpdf, items []string) {
 	pdf.SetFont("Helvetica", "", 9)
 	x := 20.0
 	y := pdf.GetY()

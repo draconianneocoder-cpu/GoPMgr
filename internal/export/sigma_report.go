@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 
 	"pmforge/internal/pdfmeta"
 	"pmforge/internal/sigma/domain"
@@ -25,7 +25,7 @@ func GenerateSigmaReport(
 	solutions []domain.Solution,
 	controlPlan []domain.ControlPlanItem,
 ) (string, error) {
-	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetTitle("Six Sigma Project Report: "+project.Title, true)
 	pdf.SetAuthor("PMForge", true)
 	pdf.SetCreator("PMForge Sigma Report Generator", true)
@@ -71,7 +71,7 @@ func GenerateSigmaReport(
 	return outputPath, nil
 }
 
-func generateReportCover(pdf *gofpdf.Fpdf, project domain.Project) {
+func generateReportCover(pdf *fpdf.Fpdf, project domain.Project) {
 	pdf.AddPage()
 	pdf.SetFont("Helvetica", "B", 24)
 	pdf.Ln(40)
@@ -100,7 +100,7 @@ func generateReportCover(pdf *gofpdf.Fpdf, project domain.Project) {
 	}
 }
 
-func generateCharterSection(pdf *gofpdf.Fpdf, charter *domain.Charter) {
+func generateCharterSection(pdf *fpdf.Fpdf, charter *domain.Charter) {
 	if charter == nil || charter.ProblemStatement == "" {
 		return
 	}
@@ -156,7 +156,7 @@ func generateCharterSection(pdf *gofpdf.Fpdf, charter *domain.Charter) {
 	}
 }
 
-func generateSIPOCSection(pdf *gofpdf.Fpdf, sipoc *domain.SIPOCData) {
+func generateSIPOCSection(pdf *fpdf.Fpdf, sipoc *domain.SIPOCData) {
 	if sipoc == nil || len(sipoc.Elements) == 0 {
 		return
 	}
@@ -209,7 +209,7 @@ func generateSIPOCSection(pdf *gofpdf.Fpdf, sipoc *domain.SIPOCData) {
 	}
 }
 
-func generateFishboneSection(pdf *gofpdf.Fpdf, fishbone *domain.FishboneData) {
+func generateFishboneSection(pdf *fpdf.Fpdf, fishbone *domain.FishboneData) {
 	if fishbone == nil || len(fishbone.Branches) == 0 {
 		return
 	}
@@ -272,7 +272,7 @@ func generateFishboneSection(pdf *gofpdf.Fpdf, fishbone *domain.FishboneData) {
 	}
 }
 
-func generateSolutionSection(pdf *gofpdf.Fpdf, solutions []domain.Solution) {
+func generateSolutionSection(pdf *fpdf.Fpdf, solutions []domain.Solution) {
 	if len(solutions) == 0 {
 		return
 	}
@@ -316,7 +316,7 @@ func generateSolutionSection(pdf *gofpdf.Fpdf, solutions []domain.Solution) {
 	}
 }
 
-func generateControlPlanSection(pdf *gofpdf.Fpdf, controlPlan []domain.ControlPlanItem) {
+func generateControlPlanSection(pdf *fpdf.Fpdf, controlPlan []domain.ControlPlanItem) {
 	if len(controlPlan) == 0 {
 		return
 	}

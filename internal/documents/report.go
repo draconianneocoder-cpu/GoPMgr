@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 
 	"pmforge/internal/charts/pdfrender"
 	"pmforge/internal/pdfmeta"
@@ -150,7 +150,7 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 		}
 
 		// Render the document body inline by reusing the per-kind
-		// PDF renderer's logic. Rather than nest PDFs (gofpdf has
+		// PDF renderer's logic. Rather than nest PDFs (fpdf has
 		// no embed-PDF support), we replay the generic field-walking
 		// directly here, with reduced heading sizes so it nests
 		// visually inside the report's outer structure.
@@ -168,7 +168,7 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 				continue // chart not resolvable; the inline KV line already noted the ID
 			}
 			pdf.AddPage()
-			// gofpdf v1.16.2 has no GetPageHeight; GetPageSize returns
+			// fpdf v0.9.0 has no GetPageHeight; GetPageSize returns
 			// (width, height).
 			_, pageH := pdf.GetPageSize()
 			frame := pdfrender.Frame{
@@ -230,7 +230,7 @@ type chartRefMention struct {
 // Returns the list of chart_ref field values encountered, in walk
 // order, so the caller can embed the corresponding chart
 // visualisations on their own pages.
-func renderSectionBody(pdf *gofpdf.Fpdf, s ResolvedSection) ([]chartRefMention, error) {
+func renderSectionBody(pdf *fpdf.Fpdf, s ResolvedSection) ([]chartRefMention, error) {
 	def, ok := Get(s.Kind)
 	if !ok {
 		return nil, fmt.Errorf("unknown kind %q", s.Kind)
@@ -313,7 +313,7 @@ func renderSectionBody(pdf *gofpdf.Fpdf, s ResolvedSection) ([]chartRefMention, 
 
 // drawChartFallback paints a "chart not available" placeholder when
 // pdfrender returns an error or the resolved chart is missing.
-func drawChartFallback(pdf *gofpdf.Fpdf, frame pdfrender.Frame, rc ResolvedChart, reason string) {
+func drawChartFallback(pdf *fpdf.Fpdf, frame pdfrender.Frame, rc ResolvedChart, reason string) {
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetTextColor(0, 80, 130)
 	pdf.SetXY(frame.X, frame.Y)
@@ -325,7 +325,7 @@ func drawChartFallback(pdf *gofpdf.Fpdf, frame pdfrender.Frame, rc ResolvedChart
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func writeSubHeading(pdf *gofpdf.Fpdf, label string) {
+func writeSubHeading(pdf *fpdf.Fpdf, label string) {
 	pdf.Ln(2)
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetTextColor(0, 80, 130)
@@ -334,7 +334,7 @@ func writeSubHeading(pdf *gofpdf.Fpdf, label string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func writeKVCompact(pdf *gofpdf.Fpdf, k, v string) {
+func writeKVCompact(pdf *fpdf.Fpdf, k, v string) {
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.CellFormat(36, 4.5, k+":", "", 0, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 9)

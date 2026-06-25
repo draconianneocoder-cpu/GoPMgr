@@ -6,7 +6,7 @@ package pdfrender
 import (
 	"encoding/json"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // nodeLayout mirrors dag.NodeLayout / flow.NodeLayout. We redeclare
@@ -50,7 +50,7 @@ type layoutPayload struct {
 //
 // We attempt to unmarshal as the wrapped form first; if that fails
 // or yields no nodes we fall back to the plain form.
-func renderDAG(pdf *gofpdf.Fpdf, kind string, body json.RawMessage, frame Frame) error {
+func renderDAG(pdf *fpdf.Fpdf, kind string, body json.RawMessage, frame Frame) error {
 	layout, err := unwrapLayout(body)
 	if err != nil {
 		return err
@@ -118,7 +118,7 @@ func indexNodes(ns []nodeLayout) map[string]nodeLayout {
 // drawDAGNode renders one node box with its title. WBS-family
 // (and Network/CPM/PERT) all use the same box-with-text style; the
 // kind argument is reserved for future per-kind styling.
-func drawDAGNode(pdf *gofpdf.Fpdf, kind string, n nodeLayout, frame Frame, scale, ox, oy float64) {
+func drawDAGNode(pdf *fpdf.Fpdf, kind string, n nodeLayout, frame Frame, scale, ox, oy float64) {
 	x := frame.X + ox + n.X*scale
 	y := frame.Y + oy + n.Y*scale
 	w := n.Width * scale
@@ -159,7 +159,7 @@ func truncatePDF(s string, maxChars int) string {
 	return s[:maxChars-1] + "…"
 }
 
-func drawEmptyChartPlaceholder(pdf *gofpdf.Fpdf, frame Frame, label string) {
+func drawEmptyChartPlaceholder(pdf *fpdf.Fpdf, frame Frame, label string) {
 	pdf.SetFont("Helvetica", "I", 9)
 	pdf.SetTextColor(120, 120, 120)
 	pdf.SetXY(frame.X, frame.Y+frame.H/2-3)

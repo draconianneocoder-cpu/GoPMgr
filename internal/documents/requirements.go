@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // RenderRequirementsPDF is the bespoke renderer for the Requirements
@@ -137,7 +137,7 @@ func reqPriorityOrder(p string) int {
 }
 
 // drawReqLegend renders priority-band chips.
-func drawReqLegend(pdf *gofpdf.Fpdf) {
+func drawReqLegend(pdf *fpdf.Fpdf) {
 	pdf.SetFont("Helvetica", "B", 8)
 	bands := []struct {
 		label   string
@@ -167,7 +167,7 @@ func drawReqLegend(pdf *gofpdf.Fpdf) {
 
 // drawReqTable emits requirements as a table with priority-coloured ID
 // cells and type-group header rows.
-func drawReqTable(pdf *gofpdf.Fpdf, reqs []req) {
+func drawReqTable(pdf *fpdf.Fpdf, reqs []req) {
 	// Column widths (mm) — landscape A4 body ≈ 267mm.
 	cols := []struct {
 		header string

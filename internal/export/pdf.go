@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 
 	"pmforge/internal/crypto"
 	"pmforge/internal/fonts"
@@ -35,7 +35,7 @@ import (
 // available the renderer will use MakePDFA3 for the strongest claim
 // possible.
 func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
-	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf := fpdf.New("P", "mm", "A4", "")
 	_ = fonts.NewManager("").RegisterAs(pdf, "Source Sans 3", "Helvetica")
 	pdf.SetTitle(opts.Title, true)
 	pdf.SetAuthor("PMForge", true)
@@ -172,7 +172,7 @@ func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 // This is interim. Full PAdES B-B compliance requires embedding the
 // CMS blob inside an incremental update with a /Sig dictionary and
 // a properly-sized /Contents slot referenced by /ByteRange. That
-// rewrites the PDF's xref table and is non-trivial with gofpdf;
+// rewrites the PDF's xref table and is non-trivial with fpdf;
 // tracked in AGENT.md §8 as "real PDF signing widget".
 func appendCMSSignatureMarker(pdfBytes, cmsBlob []byte) []byte {
 	const tag = "\n%%PMForgeCMSSignature:"

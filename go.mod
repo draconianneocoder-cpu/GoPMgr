@@ -7,6 +7,7 @@ go 1.26.4
 
 require (
 	github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c
+	github.com/go-pdf/fpdf v0.9.0
 	github.com/gomutex/godocx v0.1.5
 	// V2.x — Foundation Slice additions:
 	// github.com/gorules/zen (via its Go binding zen-go) drives the
@@ -14,7 +15,6 @@ require (
 	// data rather than a Go switch. New industry/methodology combos
 	// are one row in launchpad_seeds.json. Used in internal/templates.
 	github.com/gorules/zen-go v0.20.0
-	github.com/jung-kurt/gofpdf v1.16.2
 
 	// rickar/cal/v2 supplies maintained holiday datasets for ~40
 	// countries. Used by internal/calendar and internal/export/ical.go

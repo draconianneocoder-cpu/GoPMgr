@@ -25,7 +25,8 @@ posture, and validator coverage, so keep them intentional and verified.
 - `golang.org/x/crypto`: Argon2id and related cryptographic support.
 - `github.com/digitorus/pkcs7`: CMS/PKCS#7 parsing and OID support for
   PAdES-related code.
-- `github.com/jung-kurt/gofpdf`: PDF generation.
+- `github.com/go-pdf/fpdf`: PDF generation (community-maintained continuation
+  of the archived jung-kurt/gofpdf; see ADR-003).
 - `github.com/gomutex/godocx`: DOCX generation.
 - `github.com/xuri/excelize/v2`: XLSX generation.
 - `github.com/rickar/cal/v2`: Country holiday calendars.

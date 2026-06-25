@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestStyleGofpdfStyle(t *testing.T) {
+func TestStyleFpdfStyle(t *testing.T) {
 	cases := map[Style]string{
 		Regular:    "",
 		Bold:       "B",
@@ -17,8 +17,8 @@ func TestStyleGofpdfStyle(t *testing.T) {
 		BoldItalic: "BI",
 	}
 	for style, want := range cases {
-		if got := style.GofpdfStyle(); got != want {
-			t.Errorf("Style(%d).GofpdfStyle() = %q, want %q", style, got, want)
+		if got := style.FpdfStyle(); got != want {
+			t.Errorf("Style(%d).FpdfStyle() = %q, want %q", style, got, want)
 		}
 	}
 }
@@ -116,7 +116,7 @@ func TestValidateTrueType(t *testing.T) {
 // fakeTTF returns a byte slice with a valid TrueType signature padded
 // to a usable length. It is NOT a parseable font — only validateTrueType
 // and the byte-handling paths accept it; never pass it to a real
-// gofpdf registrar.
+// fpdf registrar.
 func fakeTTF() []byte {
 	b := make([]byte, 64)
 	b[0], b[1], b[2], b[3] = 0x00, 0x01, 0x00, 0x00
