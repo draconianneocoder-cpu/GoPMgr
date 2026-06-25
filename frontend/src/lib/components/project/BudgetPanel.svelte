@@ -24,9 +24,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   });
 
-  function fmt(n: number): string {
+  function formatCompactCurrency(n: number, options: { compact?: boolean } = {}): string {
     if (n === 0) return '0';
-    return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    const compact = options.compact === true;
+    return n.toLocaleString(undefined, {
+      maximumFractionDigits: compact ? 1 : 0,
+      notation: compact ? 'compact' : 'standard',
+    });
+  }
+
+  function fmt(n: number): string {
+    return formatCompactCurrency(n);
   }
 
   // Progress: committed as % of budget. >100% turns red.
@@ -59,21 +67,29 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </p>
   {:else}
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-      <div>
+      <div class="min-w-0">
         <div class="text-[10px] uppercase tracking-widest text-slate-500">Budget</div>
-        <div class="text-lg font-bold text-slate-50">{fmt(summary.budget)}</div>
+        <div class="text-base font-bold text-slate-50 tabular-nums truncate" title={fmt(summary.budget)}>
+          {formatCompactCurrency(summary.budget, { compact: true })}
+        </div>
       </div>
-      <div>
+      <div class="min-w-0">
         <div class="text-[10px] uppercase tracking-widest text-slate-500">Committed</div>
-        <div class="text-lg font-bold text-amber-300">{fmt(summary.committed)}</div>
+        <div class="text-base font-bold text-amber-300 tabular-nums truncate" title={fmt(summary.committed)}>
+          {formatCompactCurrency(summary.committed, { compact: true })}
+        </div>
       </div>
-      <div>
+      <div class="min-w-0">
         <div class="text-[10px] uppercase tracking-widest text-slate-500">Contracts</div>
-        <div class="text-lg font-bold text-cyan-300">{fmt(summary.contract_value)}</div>
+        <div class="text-base font-bold text-cyan-300 tabular-nums truncate" title={fmt(summary.contract_value)}>
+          {formatCompactCurrency(summary.contract_value, { compact: true })}
+        </div>
       </div>
-      <div>
+      <div class="min-w-0">
         <div class="text-[10px] uppercase tracking-widest text-slate-500">Labour est.</div>
-        <div class="text-lg font-bold text-cyan-300">{fmt(summary.labour_estimate)}</div>
+        <div class="text-base font-bold text-cyan-300 tabular-nums truncate" title={fmt(summary.labour_estimate)}>
+          {formatCompactCurrency(summary.labour_estimate, { compact: true })}
+        </div>
       </div>
     </div>
 
@@ -90,7 +106,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <span class="{overBudget ? 'text-red-300' : 'text-slate-400'}">
           Remaining: {fmt(summary.remaining)}
         </span>
-        <span class="text-slate-500">{fmt(summary.budget)}</span>
+        <span class="text-slate-500 tabular-nums truncate text-right" title={fmt(summary.budget)}>
+          {formatCompactCurrency(summary.budget, { compact: true })}
+        </span>
       </div>
     {/if}
 
@@ -100,7 +118,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {#each Object.entries(summary.by_category) as [cat, val] (cat)}
           <div class="bg-slate-950 rounded p-2">
             <div class="uppercase tracking-widest text-slate-500">{cat}</div>
-            <div class="font-bold text-slate-200">{fmt(val as number)}</div>
+            <div class="font-bold text-slate-200 tabular-nums truncate" title={fmt(val as number)}>
+              {formatCompactCurrency(val as number, { compact: true })}
+            </div>
           </div>
         {/each}
       </div>

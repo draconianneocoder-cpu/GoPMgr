@@ -27,10 +27,15 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
   (valid `Office;ProjectManagement;` categories), `build/linux/nfpm.yaml`,
   `build/darwin/Info.plist`.
 - **macOS** `.app` discovery is glob-based (`build/bin/*.app`) with a
-  `create-dmg → hdiutil` fallback, so it survives create-dmg flaking in CI.
+  `create-dmg → staged hdiutil` fallback. Both DMG paths expose
+  `PMForge.app` beside an `Applications` shortcut.
+- **DuckDB analytics ships in installer builds.** `make build` passes the
+  `duckdb` tag to Wails, and `scripts/verify-duckdb-linked.sh` checks the
+  built binary metadata before release/package claims.
 - **Windows** installer collection picks the newest `*installer*.exe`
   explicitly and fails loudly if none is found (hardened 2026-06-23).
-- `package-macos-installer.sh` is a separate **local `.pkg`** path
+- `make package-macos` builds the shareable drag-to-Applications `.dmg`.
+  `package-macos-installer.sh` remains a separate **local `.pkg`** path
   (`make package-macos-installer`), intentionally not used by the release `.dmg`.
 
 ## Known caveats to verify on real targets (not pipeline failures)
@@ -77,6 +82,8 @@ GitHub release notes, never in the version number.
 ## Tag procedure
 
 1. Confirm `main` is green in CI (verify, lint, **vuln**, build, analytics-duckdb).
+   For local release builds, also confirm `bash scripts/verify-duckdb-linked.sh`
+   passes after `make build`.
 2. Confirm the version of record (channel 1 above) is the semver you intend to
    ship, then tag it exactly (prefixed with `v`):
 

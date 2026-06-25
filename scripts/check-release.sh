@@ -108,6 +108,12 @@ if ! make build >/dev/null; then
     echo "Final build failed (is the 'wails' CLI installed? See 'go install github.com/wailsapp/wails/v2/cmd/wails@latest')."
     exit 1
 fi
+if [ -f scripts/verify-duckdb-linked.sh ]; then
+    if ! bash scripts/verify-duckdb-linked.sh >/dev/null; then
+        echo "DuckDB linkage check failed. Run 'bash scripts/verify-duckdb-linked.sh' for details."
+        exit 1
+    fi
+fi
 echo "Build verified."
 
 # --- 8. Encrypted database validation gate ----------------------------

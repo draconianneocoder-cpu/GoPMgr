@@ -15,7 +15,8 @@ posture, and validator coverage, so keep them intentional and verified.
 - Wails: v2.12.0.
 - Node frontend: Vite, Svelte 5, TypeScript, and npm scripts in
   `frontend/package.json`.
-- CGO: required for the SQLite/SQLCipher driver path.
+- CGO: required for the SQLite/SQLCipher driver path and the shipped DuckDB
+  analytics build.
 
 ## Core Go Dependencies
 
@@ -33,9 +34,10 @@ posture, and validator coverage, so keep them intentional and verified.
 - `github.com/gorules/zen-go`: JDM launchpad template-seeding rules.
 - `gonum.org/v1/gonum`: Numerical/statistical support.
 - `github.com/duckdb/duckdb-go/v2`: in-memory DuckDB analytics engine
-  (ADR-002 Option B), compiled **only** under the `duckdb` build tag
-  (`internal/analytics`); default builds link none of it. See
-  `docs/design/duckdb-analytics-engine.md`.
+  (ADR-002 Option B), compiled under the `duckdb` build tag
+  (`internal/analytics`). Production/package builds enable that tag so
+  installers include the analytics engine; untagged developer builds link the
+  stub. See `docs/design/duckdb-analytics-engine.md`.
 
 Check `go.mod` for the authoritative version list.
 

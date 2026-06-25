@@ -3,15 +3,14 @@
 
 //go:build !duckdb
 
-// This file is compiled into the DEFAULT build (no `duckdb` tag). It
-// links zero DuckDB code, so the standard desktop download carries no
-// extra binary weight. The DuckDB-backed New() lives in duckdb.go under
-// `//go:build duckdb` (Phase B) and replaces this one when the tag is set.
+// This file is compiled when the `duckdb` tag is absent. Production/package
+// builds set that tag and use duckdb.go; this stub remains for explicit
+// no-DuckDB developer builds and tests.
 package analytics
 
 import "context"
 
-// New returns the no-op analytics engine used in default builds.
+// New returns the no-op analytics engine used in untagged builds.
 func New() Engine { return stubEngine{} }
 
 // stubEngine satisfies Engine but reports unavailability for every

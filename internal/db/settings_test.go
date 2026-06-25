@@ -23,6 +23,18 @@ func TestGetSettingsDefaults(t *testing.T) {
 	}
 }
 
+func TestDefaultUserSettingsMatchesEmptyProjectDefaults(t *testing.T) {
+	d := newBackupTestDB(t)
+
+	got, err := d.GetSettings()
+	if err != nil {
+		t.Fatalf("GetSettings: %v", err)
+	}
+	if want := DefaultUserSettings(); got != want {
+		t.Fatalf("GetSettings defaults = %+v, want %+v", got, want)
+	}
+}
+
 func TestSaveSettingsAgileEnabledRoundtrip(t *testing.T) {
 	d := newBackupTestDB(t)
 
@@ -78,7 +90,7 @@ func TestSaveSettingsPreservesAllFields(t *testing.T) {
 		ExportTheme:      "archival",
 		AutoRepair:       false,
 		CertPath:         "/some/cert.p12",
-		SignatureEnabled:  true,
+		SignatureEnabled: true,
 		DefaultFont:      "Helvetica",
 		AgileEnabled:     true,
 	}
