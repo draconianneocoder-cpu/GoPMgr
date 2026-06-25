@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // RenderProjectSchedulePDF is the bespoke renderer for the Project
@@ -83,7 +83,7 @@ func RenderProjectSchedulePDF(content map[string]interface{}, projectName string
 	return buf.Bytes(), nil
 }
 
-func scheduleHeading(pdf *gofpdf.Fpdf, text string) {
+func scheduleHeading(pdf *fpdf.Fpdf, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -94,7 +94,7 @@ func scheduleHeading(pdf *gofpdf.Fpdf, text string) {
 
 // drawScheduleChartBanner is the chart-companion banner adapted for
 // CPM-chart linkage. Same shape as WBS Document and RACI Document.
-func drawScheduleChartBanner(pdf *gofpdf.Fpdf, chartRef string) {
+func drawScheduleChartBanner(pdf *fpdf.Fpdf, chartRef string) {
 	startY := pdf.GetY()
 	pdf.SetFillColor(239, 246, 255)
 	pdf.SetDrawColor(59, 130, 246)
@@ -121,7 +121,7 @@ func drawScheduleChartBanner(pdf *gofpdf.Fpdf, chartRef string) {
 // the date and the elapsed-since-baseline count when the baseline is
 // in the past (an "age" indicator for whether the baseline is fresh
 // or stale).
-func drawScheduleBaselineStamp(pdf *gofpdf.Fpdf, baselineStr string) {
+func drawScheduleBaselineStamp(pdf *fpdf.Fpdf, baselineStr string) {
 	startY := pdf.GetY()
 	stampW := 90.0
 	stampH := 26.0
@@ -184,7 +184,7 @@ func drawScheduleBaselineStamp(pdf *gofpdf.Fpdf, baselineStr string) {
 // drawScheduleNoBaseline renders a placeholder tile when no baseline
 // date is set. Slate fill (not green) so the reader knows the
 // schedule isn't yet locked in.
-func drawScheduleNoBaseline(pdf *gofpdf.Fpdf) {
+func drawScheduleNoBaseline(pdf *fpdf.Fpdf) {
 	startY := pdf.GetY()
 	tileW := 90.0
 	tileH := 18.0

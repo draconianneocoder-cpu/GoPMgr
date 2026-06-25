@@ -6,11 +6,11 @@ package pdfrender
 import (
 	"testing"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 func TestRenderChartToPDF_Gantt(t *testing.T) {
-	pdf := gofpdf.New("L", "mm", "A4", "")
+	pdf := fpdf.New("L", "mm", "A4", "")
 	pdf.AddPage()
 
 	data := `{
@@ -30,12 +30,12 @@ func TestRenderChartToPDF_Gantt(t *testing.T) {
 		t.Fatalf("RenderChartToPDF(gantt): %v", err)
 	}
 	if pdf.Err() {
-		t.Fatalf("gofpdf error state: %v", pdf.Error())
+		t.Fatalf("fpdf error state: %v", pdf.Error())
 	}
 }
 
 func TestRenderChartToPDF_GanttEmpty(t *testing.T) {
-	pdf := gofpdf.New("L", "mm", "A4", "")
+	pdf := fpdf.New("L", "mm", "A4", "")
 	pdf.AddPage()
 	frame := Frame{X: 10, Y: 10, W: 260, H: 180}
 

@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 
 	"pmforge/internal/charts"
 )
@@ -15,7 +15,7 @@ import (
 // renderMatrix dispatches on kind because each matrix kind has its
 // own layout payload shape (RACI cells, SWOT quadrants, Stakeholder
 // plot points, generic m×n grid).
-func renderMatrix(pdf *gofpdf.Fpdf, kind string, body json.RawMessage, frame Frame) error {
+func renderMatrix(pdf *fpdf.Fpdf, kind string, body json.RawMessage, frame Frame) error {
 	switch charts.Kind(kind) {
 	case charts.KindRACI:
 		return renderRACI(pdf, body, frame)
@@ -46,7 +46,7 @@ type raciLayoutBody struct {
 	Cells []raciCell `json:"cells"`
 }
 
-func renderRACI(pdf *gofpdf.Fpdf, body json.RawMessage, frame Frame) error {
+func renderRACI(pdf *fpdf.Fpdf, body json.RawMessage, frame Frame) error {
 	var layout raciLayoutBody
 	if err := parseBody(body, &layout); err != nil {
 		return err
@@ -120,7 +120,7 @@ func renderRACI(pdf *gofpdf.Fpdf, body json.RawMessage, frame Frame) error {
 
 // fillRACICell sets the cell fill colour based on the assignment
 // letter so the printed matrix matches the on-screen tint scheme.
-func fillRACICell(pdf *gofpdf.Fpdf, v string) {
+func fillRACICell(pdf *fpdf.Fpdf, v string) {
 	switch v {
 	case "R":
 		pdf.SetFillColor(22, 78, 99) // cyan-900
@@ -149,7 +149,7 @@ type swotLayoutBody struct {
 	Quadrants []swotQuadrant `json:"quadrants"`
 }
 
-func renderSWOT(pdf *gofpdf.Fpdf, body json.RawMessage, frame Frame) error {
+func renderSWOT(pdf *fpdf.Fpdf, body json.RawMessage, frame Frame) error {
 	var layout swotLayoutBody
 	if err := parseBody(body, &layout); err != nil {
 		return err
@@ -236,7 +236,7 @@ type stakeLayoutBody struct {
 	Quadrants []quadrantLabel `json:"quadrants"`
 }
 
-func renderStakeholder(pdf *gofpdf.Fpdf, body json.RawMessage, frame Frame) error {
+func renderStakeholder(pdf *fpdf.Fpdf, body json.RawMessage, frame Frame) error {
 	var layout stakeLayoutBody
 	if err := parseBody(body, &layout); err != nil {
 		return err
@@ -319,7 +319,7 @@ type genericMatrixBody struct {
 	Cells     [][]string `json:"cells"`
 }
 
-func renderGenericMatrix(pdf *gofpdf.Fpdf, body json.RawMessage, frame Frame) error {
+func renderGenericMatrix(pdf *fpdf.Fpdf, body json.RawMessage, frame Frame) error {
 	var layout genericMatrixBody
 	if err := parseBody(body, &layout); err != nil {
 		return err

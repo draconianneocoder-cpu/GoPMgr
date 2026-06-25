@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // RenderIssueLogPDF is the bespoke renderer for the Issue Log. The
@@ -187,7 +187,7 @@ func issueSeverityColor(sev string) (int, int, int) {
 	}
 }
 
-func drawIssueLegend(pdf *gofpdf.Fpdf) {
+func drawIssueLegend(pdf *fpdf.Fpdf) {
 	pdf.SetFont("Helvetica", "B", 8)
 	bands := []struct {
 		label   string
@@ -216,7 +216,7 @@ func drawIssueLegend(pdf *gofpdf.Fpdf) {
 	pdf.SetDrawColor(0, 0, 0)
 }
 
-func drawIssueBandHeader(pdf *gofpdf.Fpdf, label string, r, g, b int) {
+func drawIssueBandHeader(pdf *fpdf.Fpdf, label string, r, g, b int) {
 	pdf.SetFont("Helvetica", "B", 11)
 	pdf.SetFillColor(r, g, b)
 	pdf.SetTextColor(255, 255, 255)
@@ -229,7 +229,7 @@ func drawIssueBandHeader(pdf *gofpdf.Fpdf, label string, r, g, b int) {
 // drawIssueTable emits issues as a 7-column landscape table.
 // If muted is true, the body uses softer text + fill colours so the
 // resolved band visually recedes behind the open band.
-func drawIssueTable(pdf *gofpdf.Fpdf, issues []issue, muted bool) {
+func drawIssueTable(pdf *fpdf.Fpdf, issues []issue, muted bool) {
 	cols := []struct {
 		header string
 		w      float64

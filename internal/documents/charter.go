@@ -11,7 +11,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 
 	"pmforge/internal/crypto"
 	"pmforge/internal/pdfmeta"
@@ -180,7 +180,7 @@ func RenderCharterPDF(content map[string]interface{}, projectName string) ([]byt
 
 // ----- small helpers -----
 
-func writeHeading(pdf *gofpdf.Fpdf, text string) {
+func writeHeading(pdf *fpdf.Fpdf, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -189,7 +189,7 @@ func writeHeading(pdf *gofpdf.Fpdf, text string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func writeSection(pdf *gofpdf.Fpdf, heading, body string) {
+func writeSection(pdf *fpdf.Fpdf, heading, body string) {
 	if body == "" {
 		return
 	}
@@ -199,7 +199,7 @@ func writeSection(pdf *gofpdf.Fpdf, heading, body string) {
 	pdf.Ln(2)
 }
 
-func writeBulletSection(pdf *gofpdf.Fpdf, heading string, items []string) {
+func writeBulletSection(pdf *fpdf.Fpdf, heading string, items []string) {
 	if len(items) == 0 {
 		return
 	}
@@ -212,14 +212,14 @@ func writeBulletSection(pdf *gofpdf.Fpdf, heading string, items []string) {
 	pdf.Ln(2)
 }
 
-func writeKV(pdf *gofpdf.Fpdf, k, v string) {
+func writeKV(pdf *fpdf.Fpdf, k, v string) {
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.CellFormat(40, 5, k+":", "", 0, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 10)
 	pdf.MultiCell(0, 5, v, "", "L", false)
 }
 
-func writeTable(pdf *gofpdf.Fpdf, headers []string, widths []float64, rows []map[string]interface{}, keys []string) {
+func writeTable(pdf *fpdf.Fpdf, headers []string, widths []float64, rows []map[string]interface{}, keys []string) {
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.SetFillColor(235, 240, 245)
 	for i, h := range headers {
@@ -503,7 +503,7 @@ func renderGenericPDF(kind Kind, content map[string]interface{}, projectName str
 	return buf.Bytes(), nil
 }
 
-func renderObjectArray(pdf *gofpdf.Fpdf, f Field, objs []map[string]interface{}) {
+func renderObjectArray(pdf *fpdf.Fpdf, f Field, objs []map[string]interface{}) {
 	if len(f.ObjectShape) == 0 || len(objs) == 0 {
 		return
 	}

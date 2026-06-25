@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // RenderStatementOfWorkPDF is the bespoke renderer for the Statement
@@ -79,7 +79,7 @@ func RenderStatementOfWorkPDF(content map[string]interface{}, projectName string
 	return buf.Bytes(), nil
 }
 
-func sowHeading(pdf *gofpdf.Fpdf, text string) {
+func sowHeading(pdf *fpdf.Fpdf, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -88,7 +88,7 @@ func sowHeading(pdf *gofpdf.Fpdf, text string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func sowSection(pdf *gofpdf.Fpdf, heading, body string) {
+func sowSection(pdf *fpdf.Fpdf, heading, body string) {
 	if body == "" {
 		return
 	}
@@ -98,7 +98,7 @@ func sowSection(pdf *gofpdf.Fpdf, heading, body string) {
 	pdf.Ln(2)
 }
 
-func sowBullets(pdf *gofpdf.Fpdf, heading string, items []string) {
+func sowBullets(pdf *fpdf.Fpdf, heading string, items []string) {
 	if len(items) == 0 {
 		return
 	}
@@ -114,7 +114,7 @@ func sowBullets(pdf *gofpdf.Fpdf, heading string, items []string) {
 // drawSOWSignOff renders two signature lines at the bottom of the
 // last page. The user fills in names + dates by hand or via the
 // digital-signature flow in `internal/crypto`.
-func drawSOWSignOff(pdf *gofpdf.Fpdf) {
+func drawSOWSignOff(pdf *fpdf.Fpdf) {
 	pdf.Ln(10)
 	pdf.SetFont("Helvetica", "B", 11)
 	pdf.SetTextColor(0, 80, 130)

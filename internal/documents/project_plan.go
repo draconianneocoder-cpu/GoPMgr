@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // RenderProjectPlanPDF is the bespoke renderer for the Project Plan
@@ -56,7 +56,7 @@ func RenderProjectPlanPDF(content map[string]interface{}, projectName string) ([
 	return buf.Bytes(), nil
 }
 
-func drawProjectPlanCover(pdf *gofpdf.Fpdf, content map[string]interface{}, projectName string) {
+func drawProjectPlanCover(pdf *fpdf.Fpdf, content map[string]interface{}, projectName string) {
 	pdf.AddPage()
 
 	pdf.SetY(60)
@@ -84,7 +84,7 @@ func drawProjectPlanCover(pdf *gofpdf.Fpdf, content map[string]interface{}, proj
 	plannedFooter(pdf)
 }
 
-func drawProjectPlanLinks(pdf *gofpdf.Fpdf, content map[string]interface{}) {
+func drawProjectPlanLinks(pdf *fpdf.Fpdf, content map[string]interface{}) {
 	pdf.AddPage()
 	pdf.SetFont("Helvetica", "B", 18)
 	pdf.Cell(0, 10, "Linked artifacts")
@@ -128,7 +128,7 @@ func drawProjectPlanLinks(pdf *gofpdf.Fpdf, content map[string]interface{}) {
 	plannedFooter(pdf)
 }
 
-func drawProjectPlanNarratives(pdf *gofpdf.Fpdf, content map[string]interface{}) {
+func drawProjectPlanNarratives(pdf *fpdf.Fpdf, content map[string]interface{}) {
 	sections := getObjectSliceP(content, "narrative_sections")
 	if len(sections) == 0 {
 		return
@@ -162,7 +162,7 @@ func drawProjectPlanNarratives(pdf *gofpdf.Fpdf, content map[string]interface{})
 // drawRefCard renders a bordered card with the referenced artifact's
 // label, the ID (or "(not linked)" when blank), and a small hint
 // caption. Used in the Linked Artifacts panel.
-func drawRefCard(pdf *gofpdf.Fpdf, label, id, hint string) {
+func drawRefCard(pdf *fpdf.Fpdf, label, id, hint string) {
 	x := pdf.GetX()
 	y := pdf.GetY()
 	const w = 170.0
@@ -204,7 +204,7 @@ func drawRefCard(pdf *gofpdf.Fpdf, label, id, hint string) {
 	pdf.SetXY(x, y+h+2)
 }
 
-func plannedFooter(pdf *gofpdf.Fpdf) {
+func plannedFooter(pdf *fpdf.Fpdf) {
 	pdf.SetY(-15)
 	pdf.SetFont("Helvetica", "I", 8)
 	pdf.SetTextColor(120, 120, 120)

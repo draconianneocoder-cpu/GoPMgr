@@ -8,14 +8,14 @@
 //
 // # Why fonts matter for PMForge
 //
-// gofpdf's built-in core fonts (Helvetica, Times, Courier) are NOT
+// fpdf's built-in core fonts (Helvetica, Times, Courier) are NOT
 // embedded in the PDF and are NOT permitted by strict PDF/A. To move
 // toward PDF/A-3 conformance — and to give users real typographic
-// choice — PMForge embeds TrueType fonts via gofpdf's
+// choice — PMForge embeds TrueType fonts via fpdf's
 // AddUTF8FontFromBytes. This package owns the catalog of bundled
 // fonts, the runtime registration, and user-supplied font import.
 //
-// Important constraint: gofpdf's UTF-8 font path parses TrueType
+// Important constraint: fpdf's UTF-8 font path parses TrueType
 // tables only. OpenType/CFF fonts (.otf with "OTTO" signature) are
 // NOT supported and are rejected at import time with a clear error.
 package fonts
@@ -32,9 +32,9 @@ const (
 	BoldItalic
 )
 
-// GofpdfStyle returns the style string gofpdf's SetFont /
+// FpdfStyle returns the style string fpdf's SetFont /
 // AddUTF8FontFromBytes expect: "" / "B" / "I" / "BI".
-func (s Style) GofpdfStyle() string {
+func (s Style) FpdfStyle() string {
 	switch s {
 	case Bold:
 		return "B"
@@ -116,7 +116,7 @@ func (f FontFamily) File(style Style) (FontFile, bool) {
 // embed directive in manager.go picks them up at build time. If a
 // family's files are absent at build time, the Manager simply omits
 // it and the renderers fall back to the next available family (and
-// ultimately to gofpdf's core Helvetica), so the app always works.
+// ultimately to fpdf's core Helvetica), so the app always works.
 var Catalog = []FontFamily{
 	{
 		Name:        "Liberation Sans",
@@ -160,7 +160,7 @@ var Catalog = []FontFamily{
 	{
 		Name:        "DejaVu Sans",
 		Category:    "sans",
-		Description: "Widest glyph coverage. Conventional gofpdf pick.",
+		Description: "Widest glyph coverage. Conventional fpdf pick.",
 		License:     "Bitstream-Vera",
 		Source:      "https://github.com/dejavu-fonts/dejavu-fonts",
 		Files: []FontFile{

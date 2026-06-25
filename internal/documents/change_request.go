@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // RenderChangeRequestPDF is the bespoke renderer for the Change
@@ -102,7 +102,7 @@ func RenderChangeRequestPDF(content map[string]interface{}, projectName string) 
 // drawCRHeaderStrip renders the request ID on the left and a coloured
 // decision badge on the right. If decision is empty/pending, the badge
 // reads "Pending" in slate.
-func drawCRHeaderStrip(pdf *gofpdf.Fpdf, requestID, decision string) {
+func drawCRHeaderStrip(pdf *fpdf.Fpdf, requestID, decision string) {
 	startY := pdf.GetY()
 	bodyW := 170.0 // portrait A4 body width
 
@@ -157,7 +157,7 @@ func crDecisionBadge(decision string) (string, int, int, int) {
 	}
 }
 
-func drawCRRequesterBlock(pdf *gofpdf.Fpdf, requestedBy, requestedAt string) {
+func drawCRRequesterBlock(pdf *fpdf.Fpdf, requestedBy, requestedAt string) {
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.CellFormat(40, 6, "Requested by:", "", 0, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 10)
@@ -172,7 +172,7 @@ func drawCRRequesterBlock(pdf *gofpdf.Fpdf, requestedBy, requestedAt string) {
 	}
 }
 
-func crHeading(pdf *gofpdf.Fpdf, text string) {
+func crHeading(pdf *fpdf.Fpdf, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -181,7 +181,7 @@ func crHeading(pdf *gofpdf.Fpdf, text string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func crSection(pdf *gofpdf.Fpdf, heading, body string) {
+func crSection(pdf *fpdf.Fpdf, heading, body string) {
 	if body == "" {
 		return
 	}
@@ -194,7 +194,7 @@ func crSection(pdf *gofpdf.Fpdf, heading, body string) {
 // drawCRImpactGrid renders the four impact dimensions in a 2x2 grid.
 // Each cell shows a small heading + body text; the cost cell uses a
 // formatted money value instead of free text.
-func drawCRImpactGrid(pdf *gofpdf.Fpdf, scope, schedule string, cost float64, risk string) {
+func drawCRImpactGrid(pdf *fpdf.Fpdf, scope, schedule string, cost float64, risk string) {
 	cellW := 85.0
 	cellH := 24.0
 	startX := 20.0
@@ -243,7 +243,7 @@ func crFallback(s string) string {
 // drawCRDecisionBlock renders the rationale + approver lines and an
 // explicit signature line. Shown regardless of decision so the form
 // always has a sign-off slot.
-func drawCRDecisionBlock(pdf *gofpdf.Fpdf, decision, rationale, approver string) {
+func drawCRDecisionBlock(pdf *fpdf.Fpdf, decision, rationale, approver string) {
 	crHeading(pdf, "Decision")
 	if rationale != "" {
 		pdf.SetFont("Helvetica", "B", 10)

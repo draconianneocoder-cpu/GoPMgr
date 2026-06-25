@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // RenderBusinessCasePDF is the bespoke renderer for the Business Case.
@@ -110,7 +110,7 @@ func RenderBusinessCasePDF(content map[string]interface{}, projectName string) (
 	return buf.Bytes(), nil
 }
 
-func bcHeading(pdf *gofpdf.Fpdf, text string) {
+func bcHeading(pdf *fpdf.Fpdf, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -119,7 +119,7 @@ func bcHeading(pdf *gofpdf.Fpdf, text string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func bcSection(pdf *gofpdf.Fpdf, heading, body string) {
+func bcSection(pdf *fpdf.Fpdf, heading, body string) {
 	if body == "" {
 		return
 	}
@@ -132,7 +132,7 @@ func bcSection(pdf *gofpdf.Fpdf, heading, body string) {
 // bcAccentSection renders body text with a teal left rule to visually
 // elevate it. Used for the Proposed Solution — the centrepiece of the
 // document.
-func bcAccentSection(pdf *gofpdf.Fpdf, heading, body string) {
+func bcAccentSection(pdf *fpdf.Fpdf, heading, body string) {
 	if body == "" {
 		return
 	}
@@ -154,7 +154,7 @@ func bcAccentSection(pdf *gofpdf.Fpdf, heading, body string) {
 // drawBCAlternative renders one alternative as a bordered card with a
 // header (the alternative's name) and two columns underneath (pros |
 // cons).
-func drawBCAlternative(pdf *gofpdf.Fpdf, name, pros, cons string) {
+func drawBCAlternative(pdf *fpdf.Fpdf, name, pros, cons string) {
 	if name == "" && pros == "" && cons == "" {
 		return
 	}
@@ -198,7 +198,7 @@ func drawBCAlternative(pdf *gofpdf.Fpdf, name, pros, cons string) {
 // drawBCColumn writes a small heading + body inside one card column
 // and returns the ending Y so the caller can compute the outer card
 // height.
-func drawBCColumn(pdf *gofpdf.Fpdf, x, y, w float64, title, body string, tr, tg, tb int) float64 {
+func drawBCColumn(pdf *fpdf.Fpdf, x, y, w float64, title, body string, tr, tg, tb int) float64 {
 	pdf.SetXY(x+2, y)
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.SetTextColor(tr, tg, tb)
@@ -215,7 +215,7 @@ func drawBCColumn(pdf *gofpdf.Fpdf, x, y, w float64, title, body string, tr, tg,
 
 // drawBCTwoColumn renders two bulleted lists side-by-side under their
 // own coloured headings. Used for Benefits vs Risks.
-func drawBCTwoColumn(pdf *gofpdf.Fpdf, leftTitle string, left []string, rightTitle string, right []string) {
+func drawBCTwoColumn(pdf *fpdf.Fpdf, leftTitle string, left []string, rightTitle string, right []string) {
 	startY := pdf.GetY()
 	colW := 85.0
 
@@ -262,7 +262,7 @@ func drawBCTwoColumn(pdf *gofpdf.Fpdf, leftTitle string, left []string, rightTit
 
 // drawBCRecommendation renders the recommendation as an accent-boxed
 // callout so the executive reader's eye lands on it.
-func drawBCRecommendation(pdf *gofpdf.Fpdf, body string) {
+func drawBCRecommendation(pdf *fpdf.Fpdf, body string) {
 	startY := pdf.GetY()
 	pdf.SetFillColor(239, 246, 255)
 	pdf.SetDrawColor(59, 130, 246)

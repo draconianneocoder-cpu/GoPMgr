@@ -19,7 +19,7 @@ import (
 // RenderDocumentDOCX produces a Microsoft Word file for the given
 // document. It walks the kind's Field definitions exactly like the
 // generic PDF renderer in documents/charter.go, but emits headings,
-// paragraphs, and tables via gomutex/godocx instead of gofpdf.
+// paragraphs, and tables via gomutex/godocx instead of fpdf.
 //
 // Architecture:
 //

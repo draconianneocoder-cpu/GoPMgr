@@ -6,7 +6,7 @@ package pdfrender
 import (
 	"encoding/json"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // ganttRow / ganttLayout mirror dag.GanttRow / dag.GanttLayout (wire
@@ -32,7 +32,7 @@ type ganttLayout struct {
 // renderGantt draws schedule bars over a day-scaled axis: label
 // column, critical bars in red, progress as a darker inner bar,
 // milestones as diamonds, anchored dates beside the bars.
-func renderGantt(pdf *gofpdf.Fpdf, body json.RawMessage, frame Frame) error {
+func renderGantt(pdf *fpdf.Fpdf, body json.RawMessage, frame Frame) error {
 	// The body is the wrapped {layout, doc} form.
 	var wrapped struct {
 		Layout ganttLayout `json:"layout"`
@@ -88,7 +88,7 @@ func renderGantt(pdf *gofpdf.Fpdf, body json.RawMessage, frame Frame) error {
 			cy := barY + barH/2
 			s := barH / 2
 			pdf.SetFillColor(8, 145, 178)
-			pdf.Polygon([]gofpdf.PointType{
+			pdf.Polygon([]fpdf.PointType{
 				{X: cx, Y: cy - s}, {X: cx + s, Y: cy},
 				{X: cx, Y: cy + s}, {X: cx - s, Y: cy},
 			}, "F")

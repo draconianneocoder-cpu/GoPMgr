@@ -6,7 +6,7 @@ package pdfrender
 import (
 	"encoding/json"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // flowNode mirrors flow.NodeLayout.
@@ -45,7 +45,7 @@ type flowPayload struct {
 	Height    float64        `json:"height"`
 }
 
-func renderFlow(pdf *gofpdf.Fpdf, kind string, body json.RawMessage, frame Frame) error {
+func renderFlow(pdf *fpdf.Fpdf, kind string, body json.RawMessage, frame Frame) error {
 	var layout flowPayload
 	if err := parseBody(body, &layout); err != nil {
 		return err
@@ -122,7 +122,7 @@ func renderFlow(pdf *gofpdf.Fpdf, kind string, body json.RawMessage, frame Frame
 // drawFlowNode renders one node using the appropriate shape for
 // its `shape` field. This is the PDF equivalent of the SVG
 // shapePath() function used by the frontend editors.
-func drawFlowNode(pdf *gofpdf.Fpdf, n flowNode, frame Frame, scale, ox, oy float64) {
+func drawFlowNode(pdf *fpdf.Fpdf, n flowNode, frame Frame, scale, ox, oy float64) {
 	x := frame.X + ox + n.X*scale
 	y := frame.Y + oy + n.Y*scale
 	w := n.Width * scale
@@ -156,7 +156,7 @@ func drawFlowNode(pdf *gofpdf.Fpdf, n flowNode, frame Frame, scale, ox, oy float
 		pdf.RoundedRect(x, y, w, h, h/2, "1234", "FD")
 	case "decision", "a_decision":
 		// Diamond
-		pts := []gofpdf.PointType{
+		pts := []fpdf.PointType{
 			{X: x + w/2, Y: y},
 			{X: x + w, Y: y + h/2},
 			{X: x + w/2, Y: y + h},
@@ -166,7 +166,7 @@ func drawFlowNode(pdf *gofpdf.Fpdf, n flowNode, frame Frame, scale, ox, oy float
 	case "io":
 		// Parallelogram (slant = h/3)
 		s := h / 3
-		pts := []gofpdf.PointType{
+		pts := []fpdf.PointType{
 			{X: x + s, Y: y},
 			{X: x + w, Y: y},
 			{X: x + w - s, Y: y + h},
@@ -204,16 +204,16 @@ func drawFlowNode(pdf *gofpdf.Fpdf, n flowNode, frame Frame, scale, ox, oy float
 	}
 }
 
-// drawPolygon draws a closed filled+stroked polygon. gofpdf has
-// gofpdf.PolyLine for open polylines but not a one-call polygon
+// drawPolygon draws a closed filled+stroked polygon. fpdf has
+// fpdf.PolyLine for open polylines but not a one-call polygon
 // helper, so we trace it manually with Line() and rely on the
 // caller's SetFillColor / SetDrawColor.
-func drawPolygon(pdf *gofpdf.Fpdf, pts []gofpdf.PointType, _ string) {
+func drawPolygon(pdf *fpdf.Fpdf, pts []fpdf.PointType, _ string) {
 	if len(pts) < 3 {
 		return
 	}
-	// Use the built-in Polygon helper from gofpdf when available
-	// (it is, via gofpdf.Polygon).
+	// Use the built-in Polygon helper from fpdf when available
+	// (it is, via fpdf.Polygon).
 	pdf.Polygon(pts, "FD")
 }
 

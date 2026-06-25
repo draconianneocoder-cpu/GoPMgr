@@ -4,19 +4,19 @@
 package export
 
 import (
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 
 	"pmforge/internal/pdfmeta"
 )
 
-// PDF/A-3 metadata helpers (gofpdf-side adapter).
+// PDF/A-3 metadata helpers (fpdf-side adapter).
 //
 // The byte-level XMP work (BuildXMPPacket, InjectXMPStream, the
 // incremental-update machinery) now lives in the dependency-free
 // internal/pdfmeta package so it can be shared by both this package
 // and internal/documents without an import cycle. This file keeps the
-// thin gofpdf-specific glue: ApplyPDFAMetadata sets the library's
-// documented metadata setters on a *gofpdf.Fpdf.
+// thin fpdf-specific glue: ApplyPDFAMetadata sets the library's
+// documented metadata setters on a *fpdf.Fpdf.
 //
 // Still NOT provided (V3 milestones, AGENT.md §8):
 //   - Font embedding (ship a TTF; switch SetFont calls to it).
@@ -31,7 +31,7 @@ type XMPSpec = pdfmeta.XMPSpec
 
 // ApplyPDFAMetadata delegates to the canonical implementation in pdfmeta
 // and then overrides the Creator with the live application version.
-func ApplyPDFAMetadata(pdf *gofpdf.Fpdf, spec XMPSpec) {
+func ApplyPDFAMetadata(pdf *fpdf.Fpdf, spec XMPSpec) {
 	pdfmeta.ApplyPDFAMetadata(pdf, spec)
 	if pdf != nil {
 		pdf.SetCreator("PMForge "+exportVersion(), true)

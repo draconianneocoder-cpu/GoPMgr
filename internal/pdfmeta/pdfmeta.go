@@ -6,7 +6,7 @@
 // generated PDFs, and injecting that packet into an existing PDF via
 // a spec-conformant incremental update.
 //
-// This package is deliberately gofpdf-free so it can be imported from
+// This package is deliberately fpdf-free so it can be imported from
 // both internal/documents (where the renderers live) and
 // internal/export (where the file-format writers live) without
 // creating a cycle. The Catalog rewrite is performed via low-level
@@ -35,7 +35,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // XMPSpec describes the metadata we'll claim on a generated PDF.
@@ -1282,13 +1282,13 @@ func findArrayEnd(b []byte, start int) (int, error) {
 	return 0, fmt.Errorf("unterminated array")
 }
 
-// ApplyPDFAMetadata sets the standard PDF metadata fields on a gofpdf
+// ApplyPDFAMetadata sets the standard PDF metadata fields on a fpdf
 // instance in a way that is friendly to PDF/A-3 (Title, Author, Subject,
 // Creator, Keywords). It is safe to call with a nil pdf.
 //
 // This is the canonical home for the helper so both document renderers
 // and export renderers can use it without duplication.
-func ApplyPDFAMetadata(pdf *gofpdf.Fpdf, spec XMPSpec) {
+func ApplyPDFAMetadata(pdf *fpdf.Fpdf, spec XMPSpec) {
 	if pdf == nil {
 		return
 	}

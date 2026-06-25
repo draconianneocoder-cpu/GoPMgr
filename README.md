@@ -5,6 +5,17 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # PMForge
 
+**Latest release: [v1.1.0-rc.1](docs/release-notes/v1.1.0-rc.1.md)** — first
+click-installable native packages for Windows, macOS (Apple Silicon), and
+Linux. Includes CPM scheduling, 21 chart types, 25 document kinds, Agile and
+Six Sigma methodology packs, SQLCipher encryption, Argon2id auth, PDF/A-3
+validation, and PAdES digital signing.
+
+See [ROADMAP.md](ROADMAP.md) for what comes next and [VISION.md](VISION.md)
+for design principles.
+
+---
+
 PMForge is a local-first desktop project-controls application for
 technical, engineering, IT, construction, and administrative work. It is
 built with a Go backend, Wails v2, and a Svelte 5 frontend.

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/go-pdf/fpdf"
 )
 
 // RenderRACIDocumentPDF is the bespoke renderer for the RACI Chart
@@ -82,7 +82,7 @@ func RenderRACIDocumentPDF(content map[string]interface{}, projectName string) (
 	return buf.Bytes(), nil
 }
 
-func raciHeading(pdf *gofpdf.Fpdf, text string) {
+func raciHeading(pdf *fpdf.Fpdf, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -94,7 +94,7 @@ func raciHeading(pdf *gofpdf.Fpdf, text string) {
 // drawRACIBanner is the chart-companion banner adapted from WBS
 // Document, with a second row for effective date. Tinted strip,
 // label-and-value layout.
-func drawRACIBanner(pdf *gofpdf.Fpdf, chartRef, effectiveDate string) {
+func drawRACIBanner(pdf *fpdf.Fpdf, chartRef, effectiveDate string) {
 	height := 10.0
 	if effectiveDate != "" && chartRef != "" {
 		height = 14.0
@@ -137,7 +137,7 @@ func drawRACIBanner(pdf *gofpdf.Fpdf, chartRef, effectiveDate string) {
 // with their full meanings. Colour vocabulary mirrors the RACI matrix
 // chart's own legend so the doc and the chart use the same visual
 // language.
-func drawRACILegend(pdf *gofpdf.Fpdf) {
+func drawRACILegend(pdf *fpdf.Fpdf) {
 	letters := []struct {
 		letter, label string
 		r, g, b       int
@@ -179,7 +179,7 @@ func drawRACILegend(pdf *gofpdf.Fpdf) {
 // drawRACIRoleTable renders the role-definitions table. Two columns
 // (Role | Definition) so the heading bar and body have a clean
 // alignment with the rest of the page.
-func drawRACIRoleTable(pdf *gofpdf.Fpdf, roles []map[string]interface{}) {
+func drawRACIRoleTable(pdf *fpdf.Fpdf, roles []map[string]interface{}) {
 	cols := []struct {
 		header string
 		w      float64
@@ -236,11 +236,11 @@ func drawRACIRoleTable(pdf *gofpdf.Fpdf, roles []map[string]interface{}) {
 // inside a cell `w` wide at 9pt, with 4.5mm line height. The 0.5
 // minimum char width is a coarse approximation that errs on the side
 // of more height (avoiding text clipping at row borders).
-func raciRowHeight(pdf *gofpdf.Fpdf, text string, w float64) float64 {
+func raciRowHeight(pdf *fpdf.Fpdf, text string, w float64) float64 {
 	if text == "" {
 		return 6
 	}
-	// Use gofpdf's own string-width to estimate wrapped lines.
+	// Use fpdf's own string-width to estimate wrapped lines.
 	pdf.SetFont("Helvetica", "", 9)
 	textW := pdf.GetStringWidth(text)
 	lines := int(textW/w) + 1

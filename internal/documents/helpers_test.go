@@ -10,7 +10,7 @@ import (
 
 // These tests pin the pure computational helpers shared by the document
 // PDF renderers (date-window math, cost aggregation, issue
-// classification). The gofpdf draw calls in each Render*PDF are glue and
+// classification). The fpdf draw calls in each Render*PDF are glue and
 // intentionally left to the Render smoke test in documents_test.go.
 
 // ----- parseDate (execution_plan.go) -----

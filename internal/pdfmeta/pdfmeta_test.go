@@ -25,7 +25,7 @@ import (
 )
 
 // minimalPDF returns a syntactically-valid 3-object PDF byte stream
-// that exercises the same shape as gofpdf output: header marker,
+// that exercises the same shape as fpdf output: header marker,
 // Catalog object, Pages object, content object, xref, trailer,
 // startxref, EOF.
 //

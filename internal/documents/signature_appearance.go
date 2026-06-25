@@ -3,13 +3,13 @@
 
 package documents
 
-import "github.com/jung-kurt/gofpdf"
+import "github.com/go-pdf/fpdf"
 
 // DrawCompactSignatureBox draws a small, professional signature verification
 // block at the current position on the PDF. Intended to be called at the end
 // of the last content page for a more integrated "inline" look on key
 // documents (SOW, Closure, Change Request, Combined Reports, etc.).
-func DrawCompactSignatureBox(pdf *gofpdf.Fpdf, signerName, date string) {
+func DrawCompactSignatureBox(pdf *fpdf.Fpdf, signerName, date string) {
 	pdf.Ln(8)
 	pdf.SetDrawColor(25, 55, 95)
 	pdf.SetFillColor(248, 250, 253)
