@@ -26,6 +26,11 @@ type UserSettings struct {
 	AgileEnabled bool `json:"agile_enabled"`
 }
 
+// DefaultUserSettings is the canonical project-settings reset target.
+func DefaultUserSettings() UserSettings {
+	return UserSettings{ExportTheme: "modern", AutoRepair: true}
+}
+
 // SaveSettings upserts the singleton settings row. The id is hard-coded
 // to 1 (the CHECK constraint on the settings table enforces this).
 func (db *Database) SaveSettings(s UserSettings) error {
@@ -70,7 +75,7 @@ func (db *Database) GetSettings() (UserSettings, error) {
 	).Scan(&s.DefaultPassword, &s.ExportTheme, &autoRepair, &s.CertPath, &signatureOn, &s.DefaultFont, &agileEnabled)
 
 	if err == sql.ErrNoRows {
-		return UserSettings{ExportTheme: "modern", AutoRepair: true}, nil
+		return DefaultUserSettings(), nil
 	}
 	if err != nil {
 		return UserSettings{}, err

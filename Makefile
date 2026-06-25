@@ -8,12 +8,14 @@ CC      := gcc
 GO      := go
 WAILS   := wails
 NPM     := npm
-# Flags passed to `wails build`. Bindings ARE generated (no -skipbindings):
+# Tags and flags passed to `wails build`. Bindings ARE generated (no -skipbindings):
 # Wails needs them so multi-value method results marshal correctly to the
 # frontend. The codesign "detritus" problem that -skipbindings previously
 # worked around is handled instead by scripts/wails-build.sh, which strips
-# extended attributes and ad-hoc signs the .app after the build. Override on
-# the command line, e.g. `make build WAILS_BUILD_FLAGS="-clean"`.
+# extended attributes and ad-hoc signs the .app after the build. Production
+# builds include DuckDB analytics by default; override WAILS_BUILD_TAGS only
+# for explicit no-DuckDB development checks.
+WAILS_BUILD_TAGS ?= duckdb
 WAILS_BUILD_FLAGS ?=
 # The main package now lives at the repo root (canonical Wails layout), so
 # Go quality gates scope to the root package plus internal/... . Avoid the
@@ -24,7 +26,7 @@ export CGO_ENABLED := 1
 export CC
 
 .PHONY: help build dev tidy test race verify lint lint-go lint-frontend lint-all \
-        license-check memory-scan package-linux package-windows package-darwin package-macos-installer \
+        license-check memory-scan package-linux package-windows package-darwin package-macos package-macos-installer \
         check-release clean fonts icc check-pdfa frontend-stability \
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-encrypted-db
@@ -33,14 +35,14 @@ help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-build: ## Build a production .app/binary via the Wails CLI (handles tags + frameworks).
+build: ## Build a production app via Wails with embedded DuckDB analytics.
 	# scripts/wails-build.sh wraps `wails build`: the CLI injects the required
 	# desktop,production tags, links the macOS frameworks (UniformTypeIdentifiers
 	# / UTType), builds the frontend, and embeds it; the wrapper then strips
 	# extended-attribute detritus and ad-hoc signs the macOS .app (Wails' own
 	# self-sign fails on iCloud-synced trees - see the script header).
 	# Output: build/bin/<ProductName>.app on macOS, build/bin/pmforge elsewhere.
-	@bash scripts/wails-build.sh $(WAILS_BUILD_FLAGS)
+	@bash scripts/wails-build.sh -tags "$(WAILS_BUILD_TAGS)" $(WAILS_BUILD_FLAGS)
 
 dev: ## Run Wails in development mode (hot-reload Svelte + Go).
 	$(WAILS) dev
@@ -115,6 +117,10 @@ package-windows: ## Build a Windows tarball on a Windows host.
 
 package-darwin: ## Build a macOS tarball on a macOS host.
 	@bash scripts/package.sh darwin
+
+package-macos: ## Build a macOS drag-to-Applications .dmg installer.
+	@$(MAKE) build
+	@bash scripts/package-macos.sh
 
 package-macos-installer: ## Build a local macOS .pkg installer for /Applications.
 	@bash scripts/package-macos-installer.sh

@@ -83,6 +83,10 @@ make dev
 > **Important:** always install the frontend with `npm ci`. A fresh
 > `npm install` resolves a newer Svelte that breaks the pinned Vite plugin and
 > fails the build (`svelte-check` still passes, which hides it).
+>
+> `make build` is the production path and includes the embedded DuckDB
+> analytics engine. Explicit untagged developer builds are possible, but those
+> builds show the analytics-unavailable fallback and are not release artifacts.
 
 ## Build the installers yourself
 
@@ -90,8 +94,9 @@ On the matching OS, after `make build`:
 
 - **Linux** (`.deb` / `.rpm`): `VERSION=<x.y.z> bash scripts/package-linux.sh`
   (needs [`nfpm`](https://nfpm.goreleaser.com/)).
-- **macOS** (`.dmg`): `VERSION=<x.y.z> bash scripts/package-macos.sh`
-  (uses `create-dmg`, falls back to `hdiutil`).
+- **macOS** (`.dmg`): `VERSION=<x.y.z> make package-macos`
+  (uses `create-dmg`, falls back to a staged `hdiutil` image with an
+  Applications shortcut).
 - **Windows** (`.exe`): `wails build -platform windows/amd64 -nsis` (needs NSIS).
 
 The release workflow (`.github/workflows/release.yml`) runs all of these on

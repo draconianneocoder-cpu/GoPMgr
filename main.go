@@ -813,6 +813,19 @@ func (a *App) SaveAppSettings(s AppSettings) error {
 	return os.WriteFile(path, data, 0o600)
 }
 
+// ResetAppSettings removes the signed-in user's app-level preferences so the
+// next load uses the built-in defaults.
+func (a *App) ResetAppSettings() (AppSettings, error) {
+	path, err := a.appSettingsPath()
+	if err != nil {
+		return AppSettings{}, err
+	}
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return AppSettings{}, err
+	}
+	return defaultAppSettings(), nil
+}
+
 // OpenLogsFolder opens the PMForge log directory in the system file manager
 // so the user can inspect or attach log files to a bug report manually.
 func (a *App) OpenLogsFolder() error {
@@ -2359,6 +2372,20 @@ func (a *App) SaveSettings(s db.UserSettings) error {
 	return d.SaveSettings(s)
 }
 
+func (a *App) ResetProjectSettings() (db.UserSettings, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.UserSettings{}, errors.New("no project open")
+	}
+	defaults := db.DefaultUserSettings()
+	if err := d.SaveSettings(defaults); err != nil {
+		return db.UserSettings{}, err
+	}
+	agile.PackEnabled.Store(defaults.AgileEnabled)
+	documents.UseFont(nil, "")
+	return defaults, nil
+}
+
 func (a *App) SecureArchive(projectPath string) (string, error) {
 	a.mu.RLock()
 	svc := a.adminSvc
@@ -2946,13 +2973,12 @@ func (a *App) ComputeBudget() (budget.Summary, error) {
 }
 
 // RunPortfolioAnalytics aggregates a cross-project cost rollup over every
-// readable project in the signed-in user's folder using the optional
+// readable project in the signed-in user's folder using the embedded
 // DuckDB analytics engine (ADR-002 Option B). The engine is in-memory and
 // ephemeral and never opens the encrypted files: this method reads each
 // project with the session DEK, builds the per-project figures in Go, and
-// passes them in. In the default build (no `duckdb` tag) the engine is a
-// no-op and this returns analytics.ErrAnalyticsUnavailable, which the UI
-// renders as "analytics not included in this build".
+// passes them in. Production/package builds include the `duckdb` tag; an
+// untagged developer build still returns analytics.ErrAnalyticsUnavailable.
 //
 // Per-project actual cost is the budget "committed" total (vendor
 // contracts + labour estimate); earned/planned value (EVM) aggregation is
@@ -3018,9 +3044,9 @@ func (a *App) RunPortfolioAnalytics() (analytics.PortfolioSummary, error) {
 // ImportDatasetForAnalysis opens a native file picker for a CSV/Parquet/JSON
 // file and reads it into an in-memory Dataset via the DuckDB analytics engine
 // (ADR-002 Option B). Returns an empty Dataset (no error) when the user
-// cancels. In the default build the engine is a no-op and this returns
-// analytics.ErrAnalyticsUnavailable. `.xlsx` is not handled here — the Sigma
-// import uses the frontend read-excel-file reader.
+// cancels. Production/package builds include DuckDB; untagged developer builds
+// return analytics.ErrAnalyticsUnavailable. `.xlsx` is not handled here — the
+// Sigma import uses the frontend read-excel-file reader.
 func (a *App) ImportDatasetForAnalysis() (analytics.Dataset, error) {
 	if a.requireUser() == nil {
 		return analytics.Dataset{}, errors.New("not signed in")
@@ -3350,7 +3376,6 @@ func (a *App) requireSigmaSvc() *service.ProjectService {
 	defer a.mu.RUnlock()
 	return a.sigmaSvc
 }
-
 
 func samePath(a, b string) bool {
 	if a == "" || b == "" {

@@ -33,6 +33,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let certPath = $state('');
   let signatureEnabled = $state(false);
   let settingsBusy = $state(false);
+  let settingsResetting = $state(false);
   let settingsStatus = $state('');
   let settingsError = $state('');
 
@@ -132,6 +133,26 @@ SPDX-License-Identifier: GPL-3.0-or-later
       settingsError = `Save failed: ${err}`;
     } finally {
       settingsBusy = false;
+    }
+  }
+
+  async function resetProjectSettings() {
+    settingsResetting = true;
+    settingsStatus = '';
+    settingsError = '';
+    try {
+      const defaults = await window.go.main.App.ResetProjectSettings();
+      exportTheme = (defaults.export_theme || 'modern') as 'modern' | 'classic' | 'archival';
+      autoRepair = defaults.auto_repair;
+      certPath = defaults.cert_path ?? '';
+      signatureEnabled = defaults.signature_enabled;
+      defaultFont = defaults.default_font ?? '';
+      fontStatus = '';
+      settingsStatus = 'Defaults restored.';
+    } catch (err: any) {
+      settingsError = `Reset failed: ${err}`;
+    } finally {
+      settingsResetting = false;
     }
   }
 
@@ -637,10 +658,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
            <button
              onclick={saveExportSettings}
-             disabled={settingsBusy}
+             disabled={settingsBusy || settingsResetting}
              class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-1.5 rounded"
            >
              {settingsBusy ? 'Saving…' : 'Save export settings'}
+           </button>
+           <button
+             onclick={resetProjectSettings}
+             disabled={settingsBusy || settingsResetting}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-bold uppercase px-4 py-1.5 rounded"
+           >
+             {settingsResetting ? 'Resetting…' : 'Reset defaults'}
            </button>
 
            {#if settingsStatus}

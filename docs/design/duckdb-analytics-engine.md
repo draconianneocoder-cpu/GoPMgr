@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # Design: DuckDB as a complementary analytics engine
 
-**Status:** Accepted, not yet implemented
+**Status:** Implemented for production/package builds
 **Date:** 2026-06-23
 **Decision record:** [ADR-002](ADR-002-duckdb-vs-sqlcipher-evaluation.md) (Option B)
 **Owner:** James L. Burns
@@ -15,8 +15,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 Add DuckDB's analytical horsepower (rich aggregates, window functions,
 native file readers) to PMForge **without** touching the SQLCipher
 system-of-record or the ADR-001 at-rest security model. SQLCipher stays
-the transactional store; DuckDB is an **optional, in-memory, ephemeral**
-engine used only for read-side analytics and data import.
+the transactional store; DuckDB is an **embedded, in-memory, ephemeral**
+engine in production/package builds, used only for read-side analytics and
+data import.
 
 ## Core principles (what makes this near-zero-risk)
 
@@ -31,11 +32,11 @@ engine used only for read-side analytics and data import.
    into DuckDB in memory** via the bulk Appender API. Sensitive data
    stays in process memory — the same exposure the app already has while
    running; no new on-disk plaintext.
-3. **Opt-in via build tag.** DuckDB (`github.com/duckdb/duckdb-go/v2`) is
-   a heavy CGO dependency that inflates binary size. All DuckDB code sits
-   behind `//go:build duckdb`. Default builds compile a no-op stub and
-   link nothing DuckDB-related; only the explicitly tagged "analytics"
-   build links the engine. The standard desktop download stays lean.
+3. **Build-tag gated, enabled for shipped builds.** DuckDB
+   (`github.com/duckdb/duckdb-go/v2`) is a heavy CGO dependency, so the
+   implementation stays behind `//go:build duckdb`. `make build` and package
+   builds enable that tag so installers include analytics; explicit untagged
+   developer builds still compile the no-op stub.
 4. **The pure-Go kernel stays the source of truth for scheduling math.**
    CPM/EVM/MSPDI computations remain in `internal/kernel` (deterministic,
    testable, no I/O). DuckDB does **cross-cutting aggregation** over many
@@ -54,8 +55,8 @@ engine used only for read-side analytics and data import.
                                   │  app reads decrypted rows (in process)
                                   ▼
    internal/analytics  ──Engine interface──┐
-        ├─ stub.go        (default build; ErrAnalyticsUnavailable)
-        └─ duckdb.go      (//go:build duckdb)
+        ├─ stub.go        (untagged developer build; ErrAnalyticsUnavailable)
+        └─ duckdb.go      (//go:build duckdb; production/package build)
                                   │  Appender bulk-load rows  →  in-memory DuckDB
                                   │  run aggregation / window queries
                                   ▼
@@ -66,9 +67,9 @@ engine used only for read-side analytics and data import.
   (e.g. `RunPortfolioRollup(ctx, snapshot) (Result, error)`,
   `ImportTabularFile(ctx, path) (Dataset, error)`), plus the sentinel
   `ErrAnalyticsUnavailable`.
-- **`stub.go`** (no build tag) returns `ErrAnalyticsUnavailable`. This is
-  what default builds use, so the UI degrades gracefully ("Analytics
-  build not installed").
+- **`stub.go`** (no `duckdb` tag) returns `ErrAnalyticsUnavailable`. This is
+  retained for explicit no-DuckDB developer builds, so the UI still degrades
+  gracefully ("Analytics build not installed").
 - **`duckdb.go`** (`//go:build duckdb`) is the real implementation:
   open `:memory:`, apply hardening pragmas, bulk-load via Appender, query.
 - `main.go` wires whichever implementation is compiled in; App methods
@@ -79,9 +80,9 @@ engine used only for read-side analytics and data import.
 
 A file guarded by `//go:build duckdb` still causes `go mod tidy` to
 record `duckdb-go/v2` in `go.mod`/`go.sum` (tidy considers all build
-tags). That is expected and fine: **the dependency is declared, but
-default `go build` does not compile or link it**, so untagged binaries
-carry zero DuckDB code or size. Only `go build -tags duckdb` links it.
+tags). That is expected and fine: **the dependency is declared, and production
+builds link it through `make build` / Wails `-tags duckdb`**. Direct untagged
+`go build` still compiles the stub and carries zero DuckDB code.
 
 ## Security posture (must hold)
 
@@ -140,13 +141,11 @@ PMForge cannot read Parquet at all today.
    offline/local-first it must be pre-bundled with `autoinstall`/
    `autoload` disabled — the same packaging burden that counted against a
    full migration (cf. `httpfs` for encryption in ADR-002).
-2. **It would force "DuckDB always-on."** The Sigma `.xlsx` import is a
-   *frontend* path; `read-excel-file` is in every build, DuckDB (build-tag
-   gated) is not. Retiring `read-excel-file` would either break `.xlsx`
-   import in default builds or require shipping the heavy DuckDB engine in
-   *every* build. We just deliberately migrated to `read-excel-file`
-   (small, maintained, npm-native, zero CVEs); swapping it for the one
-   format DuckDB makes *harder* is churn, not progress.
+2. **It would require bundling the Secondary-tier `excel` extension
+   offline.** The Sigma `.xlsx` import is a frontend path and
+   `read-excel-file` is already small, maintained, npm-native, and shipped
+   in every build. Swapping it for the one format DuckDB makes harder is
+   churn unless PMForge also solves local extension bundling.
 3. **`.xls` parity is no longer a factor.** Legacy `.xls` support was
    deprioritized by the owner (2026-06-23), so it is neither a blocker nor
    a reason to switch — it simply drops out of the comparison.
@@ -203,15 +202,17 @@ implications:
   see *File-import evaluation*.)
 - **Phase E — CI, docs, budgets.** Add a `-tags duckdb` build+test CI job
   (at least Linux) so it can't bitrot; record the dependency in
-  `DEPENDENCIES.md` with justification; note the analytics build in
-  `AGENT.md`/`README.md`; add a binary-size budget check for the tagged
+  `DEPENDENCIES.md` with justification; note the production analytics build
+  in `AGENT.md`/`README.md`; add a binary-size budget check for the tagged
   build.
 
 ## Testing & verification
 
-- Default build: stub path unit-tested; existing `make verify` / `make
-  race` unaffected (no DuckDB linked).
-- Tagged build: `go test -tags duckdb ./internal/analytics/...` with
+- Untagged build: stub path unit-tested; direct `go test` can still run
+  without DuckDB linked.
+- Production/package build: `make build` passes `-tags duckdb`, and
+  `scripts/verify-duckdb-linked.sh` checks the built binary metadata.
+- Tagged tests: `go test -tags duckdb ./internal/analytics/...` with
   golden-result assertions on representative aggregations; an
   in-memory-only invariant test (no files created); a hardening test
   (external access denied).
@@ -220,11 +221,9 @@ implications:
 
 ## Open decisions (recommended defaults in **bold**)
 
-- Packaging — the pivotal decision: **build-tag gated, shipped as a
-  separate "PMForge (Analytics)" artifact** vs. always-on (simpler, but
-  every download pays the size cost). *Recommend build-tag.* Note:
-  owning `.xlsx` import / retiring `read-excel-file` is only possible
-  under *always-on*.
+- Packaging: **build-tag gated implementation, enabled in the standard
+  production/package build**. Direct untagged developer builds remain possible
+  for stub coverage.
 - First feature: **Portfolio cross-project rollup** vs. statistical
   reporting first. *Recommend Portfolio.*
 - Excel-via-DuckDB / retiring `read-excel-file`: **no for now** — keep

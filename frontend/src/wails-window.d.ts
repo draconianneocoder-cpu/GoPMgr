@@ -17,6 +17,7 @@ declare global {
           Greet: () => Promise<string>;
           GetSettings: () => Promise<UserSettings>;
           SaveSettings: (s: UserSettings) => Promise<void>;
+          ResetProjectSettings: () => Promise<UserSettings>;
           SecureArchive: (projectPath: string) => Promise<string>;
 
           // ----- V2: accounts & session -----
@@ -44,6 +45,7 @@ declare global {
           ProjectsOverview: () => Promise<ProjectSummary[]>;
           GetAppInfo: () => Promise<AppInfo>;
           SaveAppSettings: (s: AppSettings) => Promise<void>;
+          ResetAppSettings: () => Promise<AppSettings>;
           OpenProject: (path: string) => Promise<ProjectMeta>;
           IsProjectEncrypted: (path: string) => Promise<boolean>;
           EncryptProjectAtRest: (path: string) => Promise<string>;

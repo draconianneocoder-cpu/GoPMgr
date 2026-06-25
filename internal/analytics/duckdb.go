@@ -3,10 +3,9 @@
 
 //go:build duckdb
 
-// This file is compiled ONLY under `-tags duckdb`. It links the DuckDB
-// engine (CGO) and provides the real New(). The default build uses the
-// no-op New() in stub.go (//go:build !duckdb), so a standard PMForge
-// download carries no DuckDB weight.
+// This file is compiled under `-tags duckdb`. It links the DuckDB engine
+// (CGO) and provides the real New(). Production/package builds include this
+// tag; untagged developer builds use the no-op New() in stub.go.
 //
 // Design: docs/design/duckdb-analytics-engine.md. Invariants honored:
 //   - in-memory only (DSN ""), nothing persisted to disk;

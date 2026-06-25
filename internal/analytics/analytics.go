@@ -11,8 +11,9 @@
 // the encrypted .pmforge file: callers read rows from SQLCipher (already
 // decrypted in process) and hand them to the Engine, which aggregates
 // them in memory. The real implementation is DuckDB-backed and compiled
-// in only under the `duckdb` build tag (Phase B); the default build links
-// the no-op stub in stub.go, so analytics features degrade gracefully.
+// in under the `duckdb` build tag. Production/package builds set that tag;
+// untagged developer builds link the no-op stub in stub.go so analytics
+// features degrade gracefully during local experiments.
 package analytics
 
 import (
@@ -21,7 +22,7 @@ import (
 )
 
 // ErrAnalyticsUnavailable is returned by every Engine method when PMForge
-// was built without the DuckDB analytics engine (the default build).
+// was built without the DuckDB analytics engine.
 // Callers should treat it as "feature not installed", not as a failure.
 var ErrAnalyticsUnavailable = errors.New("analytics: engine not built in (rebuild with -tags duckdb)")
 

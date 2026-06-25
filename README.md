@@ -7,9 +7,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 **Latest release: [v1.1.0-rc.1](docs/release-notes/v1.1.0-rc.1.md)** — first
 click-installable native packages for Windows, macOS (Apple Silicon), and
-Linux. Includes CPM scheduling, 21 chart types, 25 document kinds, Agile and
-Six Sigma methodology packs, SQLCipher encryption, Argon2id auth, PDF/A-3
-validation, and PAdES digital signing.
+Linux. Includes CPM scheduling, DuckDB-backed portfolio analytics, 21 chart
+types, 25 document kinds, Agile and Six Sigma methodology packs, SQLCipher
+encryption, Argon2id auth, PDF/A-3 validation, and PAdES digital signing.
 
 See [ROADMAP.md](ROADMAP.md) for what comes next and [VISION.md](VISION.md)
 for design principles.
@@ -40,6 +40,8 @@ chart, export, and reporting tools without requiring a hosted service.
 - **Methodology packs:** Agile/Software-Dev views for Kanban, Backlog,
   Sprints, and DORA metrics; Process Excellence views for Six Sigma/DMAIC
   work.
+- **Analytics:** DuckDB-backed in-memory portfolio rollups and CSV/TSV,
+  Parquet, and JSON data import in production/package builds.
 - **Security and compliance:** local Argon2id accounts, one-time recovery
   codes, SQLCipher-encrypted per-user `.pmforge` project databases, PDF/A
   validation, and PAdES signing support.
@@ -96,9 +98,10 @@ go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 ```
 
 - Node dependencies live under `frontend/`.
-- CGO is required for the SQLite/SQLCipher driver path.
+- CGO is required for the SQLite/SQLCipher driver path and production DuckDB
+  analytics builds.
 - `make build` is the supported production build path. It runs the Wails
-  build through `scripts/wails-build.sh`.
+  build through `scripts/wails-build.sh` with the `duckdb` tag enabled.
 
 See [DEPENDENCIES.md](DEPENDENCIES.md) for dependency policy and external
 validator tools.
