@@ -23,17 +23,17 @@ import (
 // Keeping one struct (rather than three) lets the frontend reuse a
 // single LayeredDiagram.svelte component with kind-specific overlays.
 type LayeredNode struct {
-	ID         string  `json:"id"`
-	Label      string  `json:"label"`
-	Note       string  `json:"note,omitempty"`
-	Owner      string  `json:"owner,omitempty"`
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Note  string `json:"note,omitempty"`
+	Owner string `json:"owner,omitempty"`
 
 	// Network / CPM input
-	Duration   float64 `json:"duration,omitempty"`
+	Duration float64 `json:"duration,omitempty"`
 
 	// PERT input
-	Optimistic float64 `json:"o,omitempty"`
-	MostLikely float64 `json:"m,omitempty"`
+	Optimistic  float64 `json:"o,omitempty"`
+	MostLikely  float64 `json:"m,omitempty"`
 	Pessimistic float64 `json:"p,omitempty"`
 
 	// PERT computed (filled by LayoutPERT)
@@ -71,9 +71,12 @@ type LayeredNode struct {
 	ActualFinish    string  `json:"actual_finish,omitempty"`
 
 	// Cost tracking for EVM (input): task budget at completion and
-	// actual cost to date.
-	BudgetedCost float64 `json:"budgeted_cost,omitempty"`
-	ActualCost   float64 `json:"actual_cost,omitempty"`
+	// actual cost to date. MinorUnits fields are canonical when
+	// present; float fields remain for UI compatibility.
+	BudgetedCost           float64 `json:"budgeted_cost,omitempty"`
+	BudgetedCostMinorUnits int64   `json:"budgeted_cost_minor_units,omitempty"`
+	ActualCost             float64 `json:"actual_cost,omitempty"`
+	ActualCostMinorUnits   int64   `json:"actual_cost_minor_units,omitempty"`
 
 	// Resource assignments (input) and the computed overallocation
 	// flag (set by the CPM layout paths via DetectOverallocations).
@@ -125,11 +128,11 @@ func EncodeLayered(doc LayeredDocument) (string, error) {
 
 // LayeredLayoutOptions controls visual spacing.
 type LayeredLayoutOptions struct {
-	NodeWidth         float64 `json:"node_width"`
-	NodeHeight        float64 `json:"node_height"`
-	ColumnGap         float64 `json:"column_gap"`
-	RowGap            float64 `json:"row_gap"`
-	BarycenterPasses  int     `json:"barycenter_passes"`
+	NodeWidth        float64 `json:"node_width"`
+	NodeHeight       float64 `json:"node_height"`
+	ColumnGap        float64 `json:"column_gap"`
+	RowGap           float64 `json:"row_gap"`
+	BarycenterPasses int     `json:"barycenter_passes"`
 }
 
 // DefaultLayeredOptions returns the spacing the GUI uses by default.
@@ -276,9 +279,9 @@ func LayoutLayered(doc LayeredDocument, opt LayeredLayoutOptions) (Layout, error
 	rowStride := opt.NodeHeight + opt.RowGap
 
 	var (
-		out   Layout
-		maxY  float64
-		maxX  float64
+		out  Layout
+		maxY float64
+		maxX float64
 	)
 	for li, layerNodes := range layers {
 		x := float64(li) * colStride

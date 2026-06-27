@@ -111,9 +111,12 @@ type Task struct {
 
 	// Cost tracking for Earned Value Management (see ComputeEVM).
 	// BudgetedCost is the task's budget at completion; ActualCost is
-	// the cost incurred to date.
-	BudgetedCost float64 `json:"budgeted_cost,omitempty"`
-	ActualCost   float64 `json:"actual_cost,omitempty"`
+	// the cost incurred to date. The MinorUnits fields are canonical
+	// when present; float fields remain for UI compatibility.
+	BudgetedCost           float64 `json:"budgeted_cost,omitempty"`
+	BudgetedCostMinorUnits int64   `json:"budgeted_cost_minor_units,omitempty"`
+	ActualCost             float64 `json:"actual_cost,omitempty"`
+	ActualCostMinorUnits   int64   `json:"actual_cost_minor_units,omitempty"`
 
 	// Resource assignments (see resources.go). Overallocated is
 	// computed by DetectOverallocations: true when any of this task's

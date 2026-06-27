@@ -59,6 +59,15 @@ if [ -f scripts/release-gate-scope-check.sh ]; then
     echo "Release gate scope verified."
 fi
 
+# --- 3b. Linux runtime target ----------------------------------------
+if [ -f scripts/check-linux-runtime-target.sh ]; then
+    if ! bash scripts/check-linux-runtime-target.sh >/dev/null; then
+        echo "Linux runtime target check failed. Run 'make linux-runtime-target' for details."
+        exit 1
+    fi
+    echo "Linux runtime target verified."
+fi
+
 # --- 4. Frontend stability gate --------------------------------------
 if [ -f scripts/frontend-stability-check.sh ]; then
     if ! bash scripts/frontend-stability-check.sh >/dev/null; then
@@ -93,7 +102,7 @@ fi
 
 # --- 6. Race detector ------------------------------------------------
 if command -v go >/dev/null 2>&1; then
-    if ! go test -race $GO_PACKAGES >/dev/null 2>&1; then
+    if ! go test -race -tags webkit2_41 $GO_PACKAGES >/dev/null 2>&1; then
         echo "Race detector flagged tests. Run 'make race' for details."
         exit 1
     fi

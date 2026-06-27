@@ -88,3 +88,81 @@ func TestLogSignatureEvent_NilError_WithSuccessFalse_NoPanic(t *testing.T) {
 	// success=false, err=nil edge case (avoids a format-string nil panic)
 	s.LogSignatureEvent("doc-xyz", false, nil)
 }
+
+func TestLogSignatureEvent_WritesTamperEvidentCheckpoint(t *testing.T) {
+	d := newAdminTestDB(t)
+	project, err := d.UpsertProject(db.Project{Name: "Signature Audit"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	doc, err := d.SaveDocument(db.Document{
+		ProjectID: project.ID,
+		Kind:      "charter",
+		Title:     "Signed Charter",
+		Content:   `{"summary":"ready"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveDocument: %v", err)
+	}
+
+	NewService(d).LogSignatureEvent(doc.ID, true, nil)
+
+	var eventType, entityType, entityID, signatureStatus string
+	if err := d.Conn.QueryRow(
+		`SELECT event_type, entity_type, entity_id, signature_status
+		 FROM audit_events
+		 WHERE project_id = ? AND entity_type = 'document' AND entity_id = ? AND event_type = 'document.signature'
+		 ORDER BY sequence_number DESC
+		 LIMIT 1`,
+		project.ID,
+		doc.ID,
+	).Scan(&eventType, &entityType, &entityID, &signatureStatus); err != nil {
+		t.Fatalf("query signature audit event: %v", err)
+	}
+	if eventType != "document.signature" || entityType != "document" || entityID != doc.ID || signatureStatus != "signed" {
+		t.Fatalf("signature audit event = type:%q entity:%q id:%q status:%q",
+			eventType, entityType, entityID, signatureStatus)
+	}
+	report, err := d.VerifyAuditChain(project.ID)
+	if err != nil {
+		t.Fatalf("VerifyAuditChain: %v", err)
+	}
+	if !report.Valid {
+		t.Fatalf("verification = %+v, want valid", report)
+	}
+}
+
+func TestLogSignatureEvent_FailureCheckpointUsesFailedStatus(t *testing.T) {
+	d := newAdminTestDB(t)
+	project, err := d.UpsertProject(db.Project{Name: "Signature Failure Audit"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	doc, err := d.SaveDocument(db.Document{
+		ProjectID: project.ID,
+		Kind:      "charter",
+		Title:     "Unsigned Charter",
+		Content:   `{"summary":"not ready"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveDocument: %v", err)
+	}
+
+	NewService(d).LogSignatureEvent(doc.ID, false, errors.New("certificate rejected"))
+
+	var signatureStatus string
+	if err := d.Conn.QueryRow(
+		`SELECT signature_status
+		 FROM audit_events
+		 WHERE project_id = ? AND entity_type = 'document' AND entity_id = ? AND event_type = 'document.signature'
+		 ORDER BY sequence_number DESC
+		 LIMIT 1`,
+		project.ID,
+		doc.ID,
+	).Scan(&signatureStatus); err != nil {
+		t.Fatalf("query signature audit event: %v", err)
+	}
+	if signatureStatus != "failed" {
+		t.Fatalf("signature_status = %q, want failed", signatureStatus)
+	}
+}

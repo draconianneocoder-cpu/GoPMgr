@@ -20,6 +20,7 @@ const launchpad = readFileSync(
   'utf8',
 );
 const app = readFileSync(new URL('../src/App.svelte', import.meta.url), 'utf8');
+const wailsWindowTypes = readFileSync(new URL('../src/wails-window.d.ts', import.meta.url), 'utf8');
 
 const checks = [
   [
@@ -32,7 +33,7 @@ const checks = [
   ],
   [
     'launchpad forwards the created project path',
-    launchpad.includes('onCreated(project, projectPath)'),
+    launchpad.includes('onCreated(res.project, res.path)'),
   ],
   [
     'app stores launchpad-created project path',
@@ -58,6 +59,39 @@ const checks = [
     'settings handles legacy recovery-code reissue',
     component.includes('IssueRecoveryCodes()') &&
       component.includes('Reissue recovery codes'),
+  ],
+  [
+    'settings exposes compliance-mode audit verification toggle',
+    component.includes('let complianceMode = $state(false)') &&
+      component.includes('Verify tamper-evident audit trail on open'),
+  ],
+  [
+    'settings exposes audit verification report export action',
+    component.includes('exportAuditVerificationReport') &&
+      component.includes('Export audit verification report'),
+  ],
+  [
+    'settings exposes audit repair evidence export action',
+    component.includes('exportAuditRepairEvidence') &&
+      component.includes('Export audit repair evidence'),
+  ],
+  [
+    'settings loads and saves compliance_mode through Wails settings',
+    component.includes('complianceMode = s.compliance_mode ?? false') &&
+      component.includes('compliance_mode: complianceMode') &&
+      component.includes('complianceMode = defaults.compliance_mode ?? false'),
+  ],
+  [
+    'tracked Wails UserSettings shim includes compliance_mode',
+    wailsWindowTypes.includes('compliance_mode?: boolean'),
+  ],
+  [
+    'tracked Wails App shim includes audit verification report export',
+    wailsWindowTypes.includes('ExportAuditVerificationReport: () => Promise<string>'),
+  ],
+  [
+    'tracked Wails App shim includes audit repair evidence export',
+    wailsWindowTypes.includes('ExportAuditRepairEvidence: () => Promise<string>'),
   ],
 ];
 

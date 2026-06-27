@@ -58,6 +58,14 @@ Every open project has a Project Settings view. Use it to edit:
 - Project name, description, owner, industry, sub-category, methodology,
   country code, lifecycle status, phase, dates, and budget.
 - Export and signature settings.
+- Compliance mode, which verifies the tamper-evident audit chain before a
+  project opens and blocks the open if the chain has been altered. Project,
+  chart, document, and schedule-baseline lifecycle actions are included in the
+  chain, along with document signature success and failure checkpoints. Use
+  **Export audit verification report** to write a private JSON verification
+  artifact to the user exports folder for compliance review. Use **Export audit
+  repair evidence** before manual repair work to preserve the raw audit events
+  and verification failure details separately.
 - Document font selection and per-project imported fonts.
 - Schedule reports and project interchange exports.
 - Database encryption migration for eligible plaintext project databases.
@@ -86,7 +94,12 @@ The Dashboard exposes:
 - **Timeline:** a chronological project strip with project dates, sprint
   ranges, milestones, deployments, and country-aware holidays.
 - **Budget:** a live rollup of project budget against vendor contracts
-  and work-item estimates.
+  and work-item estimates. Currency calculations are kept at cent precision,
+  so fractional labour estimates round once at the money boundary.
+- **Resource assignments:** CPM tasks can carry resource units, optional
+  calendar labels, max-unit caps, and skill tags. Project Settings stores named
+  resource calendars with weekly capacity and day overrides; leveling uses
+  those calendars to delay contended tasks.
 
 ## Charts
 
@@ -100,6 +113,12 @@ PMForge supports 21 chart kinds across four engine families:
 
 Charts are edited in the app and can be embedded into PDF reports as
 vector drawings rather than screenshots.
+
+CPM charts can generate a Resource Histogram. The generated histogram shows
+resource demand as bars and overlays dashed capacity lines from stakeholder
+availability and Project Settings Resource Capacity calendars.
+CPM and Gantt task over-allocation badges use the same Resource Capacity
+calendars when a project has a start date.
 
 ## Documents and Combined Reports
 
@@ -115,6 +134,10 @@ PDF. From the Dashboard, choose **New document -> Combined Report**, add
 documents, order sections, optionally add section introductions, then
 export the report. Chart references inside included documents render as
 dedicated vector chart pages.
+
+Status Reports can link a CPM schedule chart. When that linked schedule has
+cost and progress data, combined reports include an Earned Value summary under
+the Status Report section.
 
 ## Schedule Import and Export
 

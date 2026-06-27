@@ -586,6 +586,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li><span class="font-medium text-slate-100">Open Network Diagram.</span> Add each activity as a node. Define predecessor relationships.</li>
               <li><span class="font-medium text-slate-100">Enter durations.</span> The chart displays ES/EF/LS/LF values and highlights the critical path.</li>
               <li><span class="font-medium text-slate-100">Open Gantt Chart</span> to view activities on a time axis with dependency arrows.</li>
+              <li><span class="font-medium text-slate-100">Generate Resource Histogram</span> to compare resource demand bars with dashed capacity lines from stakeholder availability and Resource Capacity calendars.</li>
               <li><span class="font-medium text-slate-100">Update actuals</span> as work progresses. Track completion percentages.</li>
               <li><span class="font-medium text-slate-100">Link a Project Schedule document</span> as the official schedule reference.</li>
             </ol>
@@ -661,6 +662,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
             </ul>
           </section>
 
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Portfolio Analytics</h3>
+            <p class="text-sm text-slate-300">
+              Production and installer builds include DuckDB-backed in-memory portfolio
+              analytics for cross-project cost rollups and local CSV/TSV, Parquet, and
+              JSON data import. Money totals are staged as integer minor units and
+              converted to display values only after aggregation.
+            </p>
+          </section>
+
           <section>
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Creating Projects</h3>
             <p class="text-sm text-slate-300">Click "New Project" (top right) to launch the
@@ -715,7 +726,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li><span class="font-medium text-slate-100">Timeline</span> — chronological event strip. See <button onclick={() => nav('timeline')} class="text-cyan-400 underline hover:text-cyan-300">Timeline</button>.</li>
               <li><span class="font-medium text-slate-100">Stakeholders</span> — project stakeholder registry. See <button onclick={() => nav('stakeholders')} class="text-cyan-400 underline hover:text-cyan-300">Stakeholder Manager</button>.</li>
               <li><span class="font-medium text-slate-100">Report Composer</span> — assemble multi-document reports. See <button onclick={() => nav('report-composer')} class="text-cyan-400 underline hover:text-cyan-300">Report Composer</button>.</li>
-              <li><span class="font-medium text-slate-100">Project Settings</span> — edit project metadata, export settings, encryption. See <button onclick={() => nav('encryption')} class="text-cyan-400 underline hover:text-cyan-300">Database Encryption</button> and <button onclick={() => nav('export-signing')} class="text-cyan-400 underline hover:text-cyan-300">Export &amp; Signing</button>.</li>
+              <li><span class="font-medium text-slate-100">Project Settings</span> — edit project metadata, export settings, compliance-mode audit verification, database encryption, document fonts, and Resource Capacity calendars. See <button onclick={() => nav('encryption')} class="text-cyan-400 underline hover:text-cyan-300">Database Encryption</button> and <button onclick={() => nav('export-signing')} class="text-cyan-400 underline hover:text-cyan-300">Export &amp; Signing</button>.</li>
             </ul>
           </section>
 
@@ -755,7 +766,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <!-- ── Stakeholder Manager ─────────────────────────────────── -->
         {:else if active === 'stakeholders'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Stakeholder Manager</h2>
-          <p class="text-sm text-slate-400 mb-5">The project-level stakeholder address book. Stores contact details, role, category, financial rates, and notes per stakeholder. Budget rollup reads hourly rates and contract values from this register.</p>
+          <p class="text-sm text-slate-400 mb-5">The project-level stakeholder address book. Stores contact details, role, category, financial rates, availability, and notes per stakeholder. Budget rollup reads hourly rates and contract values from this register, while resource leveling reads stakeholder availability.</p>
 
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Accessing</h3>
@@ -770,11 +781,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Organisation</dt><dd class="text-slate-400">Company or department.</dd></div>
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Email / Phone</dt><dd class="text-slate-400">Contact details.</dd></div>
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Category</dt><dd class="text-slate-400">Team, Vendor, Sponsor, or External.</dd></div>
-              <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Hourly Rate</dt><dd class="text-slate-400">Used in budget cost rollup calculations.</dd></div>
-              <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Contract Value</dt><dd class="text-slate-400">For Vendor entries; summed in budget rollup.</dd></div>
-              <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Availability</dt><dd class="text-slate-400">Fraction of time available to the project (0–1).</dd></div>
+              <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Hourly Rate</dt><dd class="text-slate-400">Used in budget cost rollup calculations. PMForge stores money internally as integer minor units and rounds once at the money boundary.</dd></div>
+              <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Contract Value</dt><dd class="text-slate-400">For Vendor entries; summed in budget rollup using exact-cent minor-unit totals.</dd></div>
+              <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Availability</dt><dd class="text-slate-400">Resource capacity in units (1.0 = full time). Named Resource Capacity calendars in Project Settings can add weekly capacity and day overrides.</dd></div>
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Notes</dt><dd class="text-slate-400">Engagement strategy, concerns, communication preferences.</dd></div>
             </dl>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Resource Capacity</h3>
+            <p class="text-sm text-slate-300">
+              Open Project Settings to add named resource calendars. Each calendar can
+              set a default capacity, weekly capacity and day overrides, optional skill
+              tags, and notes. CPM resource leveling and over-allocation warnings use
+              stakeholder availability plus these calendars.
+            </p>
           </section>
 
           <section>
@@ -798,7 +819,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li><span class="font-medium text-slate-100">Set the report title and subtitle</span> — these appear on the cover page of the exported PDF.</li>
               <li><span class="font-medium text-slate-100">Pick documents.</span> All documents in the project are listed. Click a document to add it to the report.</li>
               <li><span class="font-medium text-slate-100">Reorder sections.</span> Drag documents up or down in the included list, or use the arrow buttons, to set the desired output order.</li>
-              <li><span class="font-medium text-slate-100">Export.</span> Click Export PDF to generate the composite document. Each included document becomes a section in the output.</li>
+              <li><span class="font-medium text-slate-100">Export.</span> Click Export PDF to generate the composite document. Each included document becomes a section in the output, and Status Reports with a linked CPM schedule include Earned Value when cost and progress data are available.</li>
               <li><span class="font-medium text-slate-100">Sign &amp; Export.</span> Optionally apply a PAdES digital signature to the entire composite PDF.</li>
             </ol>
           </section>
@@ -865,6 +886,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li>Enter the certificate password (used only for this operation — never stored).</li>
               <li>Click "Sign &amp; Export." The signed PAdES PDF is written to your exports directory.</li>
             </ol>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Audit Verification Reports</h3>
+            <p class="text-sm text-slate-300">
+              Project Settings can export a JSON audit verification report for
+              the open project. The report records whether the tamper-evident
+              audit chain is valid, how many events were checked, the terminal
+              event hash, and first-invalid-event details if verification fails.
+              If a chain is damaged, export audit repair evidence before manual
+              repair work; that artifact preserves the raw audit events and the
+              verification result separately.
+            </p>
           </section>
 
           <section>
@@ -1124,7 +1158,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               { name: 'Project Overview', desc: '1-page snapshot: timeline, milestones, budget status, and key roles. Use at reviews and steering committee meetings.' },
             ]},
             { phase: 'Monitoring', count: 3, docs: [
-              { name: 'Status Report', desc: 'Periodic check-in: work completed, upcoming work, schedule and budget variance, open risks, and blockers.' },
+              { name: 'Status Report', desc: 'Periodic check-in: work completed, upcoming work, schedule and budget variance, open risks, blockers, and optional linked CPM schedule for Earned Value in combined reports.' },
               { name: 'Issue Log', desc: 'Tracks problems that have occurred (vs. risks, which are potential). Each issue has owner, priority, and resolution plan.' },
               { name: 'Change Request Form', desc: 'Formally proposes a change to a project baseline. Includes impact analysis and approval fields.' },
             ]},
@@ -1326,7 +1360,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
             </p>
             <ul class="text-sm text-slate-300 space-y-1 list-disc pl-5">
               <li>In <code>frontend/</code>, run <code>npm ci</code> — use <code>npm ci</code>, <strong>not</strong> <code>npm install</code>.</li>
-              <li><code>make build</code> — produce the desktop binary/app.</li>
+              <li>On Ubuntu 24.04+ Linux hosts, install <code>libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config</code>. PMForge builds with the Wails <code>webkit2_41</code> tag; GTK4/WebKitGTK 6.0 support requires a future Wails migration.</li>
+              <li><code>make build</code> — produce the desktop binary/app with DuckDB analytics and the current Linux WebKit tag.</li>
               <li><code>make dev</code> — hot-reload development mode.</li>
             </ul>
             <p class="text-xs text-slate-500 mt-2">

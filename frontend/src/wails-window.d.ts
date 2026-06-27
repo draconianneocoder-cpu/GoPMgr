@@ -136,6 +136,9 @@ declare global {
           ListStakeholders: (category: string) => Promise<Stakeholder[]>;
           SaveStakeholder: (s: Stakeholder) => Promise<Stakeholder>;
           DeleteStakeholder: (id: string) => Promise<void>;
+          ListResourceCalendars: () => Promise<ResourceCalendar[]>;
+          SaveResourceCalendar: (c: ResourceCalendar) => Promise<ResourceCalendar>;
+          DeleteResourceCalendar: (id: string) => Promise<void>;
           BuildTimeline: () => Promise<TimelineEntry[]>;
           MoveTimelineEntry: (
             kind: TimelineKind,
@@ -167,6 +170,8 @@ declare global {
           ExportScheduleReportCSV: () => Promise<string>;
           ExportScheduleReportHTML: () => Promise<string>;
           ExportScheduleReportMSPDI: () => Promise<string>;
+          ExportAuditVerificationReport: () => Promise<string>;
+          ExportAuditRepairEvidence: () => Promise<string>;
 
           // ----- Process Excellence Suite (Six Sigma) -----
           SigmaCreateProject: (
@@ -264,8 +269,24 @@ declare global {
     category: StakeholderCategory;
     availability: number;
     hourly_rate: number;
+    hourly_rate_minor_units?: number;
     contract_value: number;
+    contract_value_minor_units?: number;
     notes: string;
+    created_at: string;
+    updated_at: string;
+  }
+
+  interface ResourceCalendar {
+    id: string;
+    project_id: string;
+    resource: string;
+    name: string;
+    default_capacity: number;
+    weekly_capacity: Record<number, number>;
+    overrides: Record<number, number>;
+    skill_tags: string[];
+    notes: Record<number, string>;
     created_at: string;
     updated_at: string;
   }
@@ -300,7 +321,13 @@ declare global {
     labour_estimate: number;
     committed: number;
     remaining: number;
+    budget_minor_units: number;
+    contract_value_minor_units: number;
+    labour_estimate_minor_units: number;
+    committed_minor_units: number;
+    remaining_minor_units: number;
     by_category: Record<string, number>;
+    by_category_minor_units: Record<string, number>;
   }
 
   interface ReportSection {
@@ -322,6 +349,7 @@ declare global {
     signature_enabled: boolean;
     default_font?: string;
     agile_enabled?: boolean;
+    compliance_mode?: boolean;
   }
 
   interface Account {
@@ -358,6 +386,10 @@ declare global {
     total_actual_cost: number;
     total_earned_value: number;
     total_planned_value: number;
+    total_budgeted_cost_minor_units: number;
+    total_actual_cost_minor_units: number;
+    total_earned_value_minor_units: number;
+    total_planned_value_minor_units: number;
     schedule_performance_index: number;
     cost_performance_index: number;
   }
@@ -392,6 +424,7 @@ declare global {
     start_date: string;
     end_date: string;
     budget: number;
+    budget_minor_units?: number;
     owner: string;
     industry: string;
     sub_category: string;
@@ -582,7 +615,9 @@ declare global {
     actual_start?: string;
     actual_finish?: string;
     budgeted_cost?: number;
+    budgeted_cost_minor_units?: number;
     actual_cost?: number;
+    actual_cost_minor_units?: number;
     assignments?: ResourceAssignment[];
     overallocated?: boolean;
   }
@@ -590,6 +625,9 @@ declare global {
   interface ResourceAssignment {
     resource: string;
     units?: number;
+    calendar_id?: string;
+    skill_tags?: string[];
+    max_units?: number;
   }
 
   interface BaselineRecord {
@@ -616,6 +654,10 @@ declare global {
     pv: number;
     ev: number;
     ac: number;
+    bac_minor_units: number;
+    pv_minor_units: number;
+    ev_minor_units: number;
+    ac_minor_units: number;
   }
 
   interface EVMetrics {
@@ -624,6 +666,10 @@ declare global {
     pv: number;
     ev: number;
     ac: number;
+    bac_minor_units: number;
+    pv_minor_units: number;
+    ev_minor_units: number;
+    ac_minor_units: number;
     sv: number;
     cv: number;
     spi: number;
@@ -631,6 +677,11 @@ declare global {
     eac: number;
     etc: number;
     vac: number;
+    sv_minor_units: number;
+    cv_minor_units: number;
+    eac_minor_units: number;
+    etc_minor_units: number;
+    vac_minor_units: number;
     tasks: TaskEV[];
   }
 

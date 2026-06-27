@@ -13,10 +13,12 @@ NPM     := npm
 # frontend. The codesign "detritus" problem that -skipbindings previously
 # worked around is handled instead by scripts/wails-build.sh, which strips
 # extended attributes and ad-hoc signs the .app after the build. Production
-# builds include DuckDB analytics by default; override WAILS_BUILD_TAGS only
-# for explicit no-DuckDB development checks.
-WAILS_BUILD_TAGS ?= duckdb
+# builds include DuckDB analytics by default and target Ubuntu 24.04+
+# WebKit2GTK 4.1 on Linux. Override WAILS_BUILD_TAGS only for explicit
+# no-DuckDB / legacy-WebKit development checks.
+WAILS_BUILD_TAGS ?= duckdb,webkit2_41
 WAILS_BUILD_FLAGS ?=
+GO_TEST_TAGS ?= webkit2_41
 # The main package now lives at the repo root (canonical Wails layout), so
 # Go quality gates scope to the root package plus internal/... . Avoid the
 # bare ./... form: the release-scope gate forbids it.
@@ -29,7 +31,7 @@ export CC
         license-check memory-scan package-linux package-windows package-darwin package-macos package-macos-installer \
         check-release clean fonts icc check-pdfa frontend-stability \
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
-        check-encrypted-db
+        check-encrypted-db linux-runtime-target help-guide-current
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -70,10 +72,10 @@ check-encrypted-db: ## Validate SQLCipher encrypted project DB create/open/migra
 	@bash scripts/validate-encrypted-db.sh
 
 test: ## Run Go unit tests.
-	$(GO) test $(GO_PACKAGES)
+	$(GO) test -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
 race: ## Run Go tests with the race detector (concurrency gate).
-	$(GO) test -race $(GO_PACKAGES)
+	$(GO) test -race -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
 verify: test frontend-stability frontend-build-budget ## Fast pre-commit gate: Go tests + svelte-check + frontend (Vite) build.
 	@echo "verify: Go tests, svelte-check, and frontend build all passed."
@@ -89,6 +91,12 @@ frontend-smoke: ## Load + render App.svelte via Vite SSR to catch runtime mount 
 
 release-scope: ## Verify release gates target PMForge-owned source only.
 	@bash scripts/release-gate-scope-check.sh
+
+linux-runtime-target: ## Verify Linux CI/packages target Ubuntu 24.04+ WebKit2GTK 4.1.
+	@bash scripts/check-linux-runtime-target.sh
+
+help-guide-current: ## Verify in-app Help Guide covers recent release corrections.
+	@bash scripts/check-help-guide-current.sh
 
 memory-scan: ## Run the memory-safety hardening gate.
 	@bash scripts/memory-safety-scan.sh

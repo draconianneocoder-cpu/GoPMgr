@@ -45,8 +45,16 @@ not routed directly.
     actual_start?: string;
     actual_finish?: string;
     budgeted_cost?: number;
+    budgeted_cost_minor_units?: number;
     actual_cost?: number;
-    assignments?: { resource: string; units?: number }[];
+    actual_cost_minor_units?: number;
+    assignments?: {
+      resource: string;
+      units?: number;
+      calendar_id?: string;
+      skill_tags?: string[];
+      max_units?: number;
+    }[];
     overallocated?: boolean;
   }
   interface LayeredEdge {

@@ -5,6 +5,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -17,14 +18,14 @@ import (
 // application layer; the database accepts any string so callers can
 // add custom states without a migration.
 type Document struct {
-	ID         string    `json:"id"`
-	ProjectID  string    `json:"project_id"`
-	Kind       string    `json:"kind"`
-	Title      string    `json:"title"`
-	Content    string    `json:"content"` // JSON string
-	TemplateID string    `json:"template_id"`
-	Version    int       `json:"version"`
-	Status     string    `json:"status"`
+	ID         string `json:"id"`
+	ProjectID  string `json:"project_id"`
+	Kind       string `json:"kind"`
+	Title      string `json:"title"`
+	Content    string `json:"content"` // JSON string
+	TemplateID string `json:"template_id"`
+	Version    int    `json:"version"`
+	Status     string `json:"status"`
 	// RFC3339Nano strings (server-managed); see the note on db.Chart for why
 	// these are strings rather than time.Time (Wails empty-string round-trip).
 	CreatedAt string `json:"created_at"`
@@ -58,7 +59,26 @@ func (db *Database) SaveDocument(d Document) (Document, error) {
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 
-	_, err := db.Conn.Exec(`
+	tx, err := db.Conn.Begin()
+	if err != nil {
+		return Document{}, err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	before, err := getDocumentTx(tx, d.ID)
+	isCreate := false
+	if err == ErrNoDocument {
+		isCreate = true
+		err = nil
+	} else if err != nil {
+		return Document{}, err
+	}
+
+	_, err = tx.Exec(`
 		INSERT INTO documents (id, project_id, kind, title, content, template_id, version, status, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
@@ -76,7 +96,37 @@ func (db *Database) SaveDocument(d Document) (Document, error) {
 	if err != nil {
 		return Document{}, err
 	}
-	return db.GetDocument(d.ID)
+	after, err := getDocumentTx(tx, d.ID)
+	if err != nil {
+		return Document{}, err
+	}
+	beforeJSON := ""
+	eventType := "document.create"
+	if !isCreate {
+		beforeJSON, err = documentAuditJSON(before)
+		if err != nil {
+			return Document{}, err
+		}
+		eventType = "document.update"
+	}
+	afterJSON, err := documentAuditJSON(after)
+	if err != nil {
+		return Document{}, err
+	}
+	if _, err = appendAuditEventTx(tx, AuditEventInput{
+		ProjectID:  after.ProjectID,
+		EventType:  eventType,
+		EntityType: "document",
+		EntityID:   after.ID,
+		BeforeJSON: beforeJSON,
+		AfterJSON:  afterJSON,
+	}); err != nil {
+		return Document{}, err
+	}
+	if err = tx.Commit(); err != nil {
+		return Document{}, err
+	}
+	return after, nil
 }
 
 // GetDocument fetches one document by ID.
@@ -124,8 +174,57 @@ func (db *Database) ListDocuments(projectID, kind string) ([]Document, error) {
 
 // DeleteDocument removes a document by ID.
 func (db *Database) DeleteDocument(id string) error {
-	_, err := db.Conn.Exec(`DELETE FROM documents WHERE id = ?`, id)
-	return err
+	tx, err := db.Conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	before, err := getDocumentTx(tx, id)
+	if err == ErrNoDocument {
+		err = nil
+		return tx.Commit()
+	}
+	if err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`DELETE FROM documents WHERE id = ?`, id); err != nil {
+		return err
+	}
+	beforeJSON, err := documentAuditJSON(before)
+	if err != nil {
+		return err
+	}
+	if _, err = appendAuditEventTx(tx, AuditEventInput{
+		ProjectID:  before.ProjectID,
+		EventType:  "document.delete",
+		EntityType: "document",
+		EntityID:   before.ID,
+		BeforeJSON: beforeJSON,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func getDocumentTx(tx *sql.Tx, id string) (Document, error) {
+	row := tx.QueryRow(`
+		SELECT id, project_id, kind, title, content, template_id, version, status, created_at, updated_at
+		FROM documents WHERE id = ?
+	`, id)
+	return scanDocument(row)
+}
+
+func documentAuditJSON(d Document) (string, error) {
+	data, err := json.Marshal(d)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func scanDocument(row interface {

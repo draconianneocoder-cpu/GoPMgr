@@ -32,10 +32,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let autoRepair = $state(true);
   let certPath = $state('');
   let signatureEnabled = $state(false);
+  let complianceMode = $state(false);
   let settingsBusy = $state(false);
   let settingsResetting = $state(false);
   let settingsStatus = $state('');
   let settingsError = $state('');
+  let auditReportBusy = $state(false);
+  let auditReportStatus = $state('');
+  let auditReportError = $state('');
+  let auditRepairBusy = $state(false);
+  let auditRepairStatus = $state('');
+  let auditRepairError = $state('');
 
   // Database encryption state
   let encryptionState = $state<'unknown' | 'plaintext' | 'encrypted'>('unknown');
@@ -51,6 +58,34 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let fontBusy = $state(false);
   let fontStatus = $state('');
 
+  type ResourceCalendarDraft = {
+    id: string;
+    name: string;
+    resource: string;
+    default_capacity: number;
+    weekly_capacity: string;
+    overrides: string;
+    skill_tags: string;
+    notes: string;
+  };
+
+  const emptyResourceCalendarDraft = (): ResourceCalendarDraft => ({
+    id: '',
+    name: '',
+    resource: '',
+    default_capacity: 1,
+    weekly_capacity: '',
+    overrides: '',
+    skill_tags: '',
+    notes: '',
+  });
+
+  let resourceCalendars = $state<ResourceCalendar[]>([]);
+  let resourceCalendarDraft = $state<ResourceCalendarDraft>(emptyResourceCalendarDraft());
+  let resourceCalendarBusy = $state(false);
+  let resourceCalendarStatus = $state('');
+  let resourceCalendarError = $state('');
+
   onMount(async () => {
     try {
       const p = await window.go.main.App.GetProjectMeta();
@@ -65,6 +100,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       autoRepair = s.auto_repair;
       certPath = s.cert_path ?? '';
       signatureEnabled = s.signature_enabled;
+      complianceMode = s.compliance_mode ?? false;
     } catch {
       // non-fatal; leave defaults
     }
@@ -74,6 +110,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } catch {
       // non-fatal
     }
+    await loadResourceCalendars();
     await loadEncryptionState();
   });
 
@@ -127,6 +164,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         auto_repair: autoRepair,
         cert_path: certPath,
         signature_enabled: signatureEnabled,
+        compliance_mode: complianceMode,
       });
       settingsStatus = 'Saved.';
     } catch (err: any) {
@@ -146,6 +184,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       autoRepair = defaults.auto_repair;
       certPath = defaults.cert_path ?? '';
       signatureEnabled = defaults.signature_enabled;
+      complianceMode = defaults.compliance_mode ?? false;
       defaultFont = defaults.default_font ?? '';
       fontStatus = '';
       settingsStatus = 'Defaults restored.';
@@ -153,6 +192,34 @@ SPDX-License-Identifier: GPL-3.0-or-later
       settingsError = `Reset failed: ${err}`;
     } finally {
       settingsResetting = false;
+    }
+  }
+
+  async function exportAuditVerificationReport() {
+    auditReportBusy = true;
+    auditReportStatus = '';
+    auditReportError = '';
+    try {
+      const path = await window.go.main.App.ExportAuditVerificationReport();
+      auditReportStatus = `Audit verification report exported to: ${path}`;
+    } catch (err: any) {
+      auditReportError = `Audit verification report failed: ${err}`;
+    } finally {
+      auditReportBusy = false;
+    }
+  }
+
+  async function exportAuditRepairEvidence() {
+    auditRepairBusy = true;
+    auditRepairStatus = '';
+    auditRepairError = '';
+    try {
+      const path = await window.go.main.App.ExportAuditRepairEvidence();
+      auditRepairStatus = `Audit repair evidence exported to: ${path}`;
+    } catch (err: any) {
+      auditRepairError = `Audit repair evidence failed: ${err}`;
+    } finally {
+      auditRepairBusy = false;
     }
   }
 
@@ -281,6 +348,148 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } finally {
       exporting = false;
       exportFormat = null;
+    }
+  }
+
+  function parseCapacityPairs(raw: string, field: string, weekly = false): Record<number, number> {
+    const out: Record<number, number> = {};
+    const trimmed = raw.trim();
+    if (!trimmed) return out;
+    for (const token of trimmed.split(/[,\n]+/)) {
+      const part = token.trim();
+      if (!part) continue;
+      const match = part.match(/^(-?\d+)\s*[:=]\s*(-?\d+(?:\.\d+)?)$/);
+      if (!match) throw new Error(`${field} entry "${part}" must be day:capacity`);
+      const day = Number(match[1]);
+      const capacity = Number(match[2]);
+      if (!Number.isInteger(day) || day < 0 || (weekly && day > 6)) {
+        throw new Error(`${field} day ${day} is out of range`);
+      }
+      if (!Number.isFinite(capacity) || capacity < 0) {
+        throw new Error(`${field} capacity for day ${day} must be zero or greater`);
+      }
+      out[day] = capacity;
+    }
+    return out;
+  }
+
+  function parseNotePairs(raw: string): Record<number, string> {
+    const out: Record<number, string> = {};
+    const trimmed = raw.trim();
+    if (!trimmed) return out;
+    for (const token of trimmed.split(/\n+/)) {
+      const part = token.trim();
+      if (!part) continue;
+      const match = part.match(/^(-?\d+)\s*[:=]\s*(.+)$/);
+      if (!match) throw new Error(`Note entry "${part}" must be day:note`);
+      const day = Number(match[1]);
+      if (!Number.isInteger(day) || day < 0) throw new Error(`Note day ${day} is out of range`);
+      out[day] = match[2].trim();
+    }
+    return out;
+  }
+
+  function formatCapacityPairs(values: Record<number, number> | undefined): string {
+    if (!values) return '';
+    return Object.entries(values)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([day, capacity]) => `${day}:${capacity}`)
+      .join(', ');
+  }
+
+  function formatNotePairs(values: Record<number, string> | undefined): string {
+    if (!values) return '';
+    return Object.entries(values)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([day, note]) => `${day}: ${note}`)
+      .join('\n');
+  }
+
+  async function loadResourceCalendars() {
+    resourceCalendarError = '';
+    try {
+      resourceCalendars = (await window.go.main.App.ListResourceCalendars()) ?? [];
+    } catch (err: any) {
+      resourceCalendarError = `Could not load resource calendars: ${err}`;
+    }
+  }
+
+  function editResourceCalendar(c: ResourceCalendar) {
+    resourceCalendarDraft = {
+      id: c.id,
+      name: c.name,
+      resource: c.resource,
+      default_capacity: c.default_capacity || 1,
+      weekly_capacity: formatCapacityPairs(c.weekly_capacity),
+      overrides: formatCapacityPairs(c.overrides),
+      skill_tags: (c.skill_tags ?? []).join(', '),
+      notes: formatNotePairs(c.notes),
+    };
+    resourceCalendarStatus = '';
+    resourceCalendarError = '';
+  }
+
+  function resetResourceCalendarDraft() {
+    resourceCalendarDraft = emptyResourceCalendarDraft();
+    resourceCalendarStatus = '';
+    resourceCalendarError = '';
+  }
+
+  async function saveResourceCalendar() {
+    resourceCalendarBusy = true;
+    resourceCalendarStatus = '';
+    resourceCalendarError = '';
+    try {
+      const defaultCapacity = Number(resourceCalendarDraft.default_capacity);
+      if (!Number.isFinite(defaultCapacity) || defaultCapacity <= 0) {
+        throw new Error('Default capacity must be greater than zero');
+      }
+      const saved = await window.go.main.App.SaveResourceCalendar({
+        id: resourceCalendarDraft.id,
+        project_id: '',
+        name: resourceCalendarDraft.name.trim(),
+        resource: resourceCalendarDraft.resource.trim(),
+        default_capacity: defaultCapacity,
+        weekly_capacity: parseCapacityPairs(
+          resourceCalendarDraft.weekly_capacity,
+          'Weekly capacity',
+          true,
+        ),
+        overrides: parseCapacityPairs(resourceCalendarDraft.overrides, 'Override capacity'),
+        skill_tags: resourceCalendarDraft.skill_tags
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+        notes: parseNotePairs(resourceCalendarDraft.notes),
+        created_at: '',
+        updated_at: '',
+      });
+      resourceCalendars = [
+        ...resourceCalendars.filter((c) => c.id !== saved.id),
+        saved,
+      ].sort((a, b) => `${a.resource}${a.name}`.localeCompare(`${b.resource}${b.name}`));
+      resourceCalendarDraft = emptyResourceCalendarDraft();
+      resourceCalendarStatus = 'Saved.';
+    } catch (err: any) {
+      resourceCalendarError = `Save failed: ${err?.message ?? err}`;
+    } finally {
+      resourceCalendarBusy = false;
+    }
+  }
+
+  async function deleteResourceCalendar(id: string) {
+    resourceCalendarBusy = true;
+    resourceCalendarStatus = '';
+    resourceCalendarError = '';
+    try {
+      await window.go.main.App.DeleteResourceCalendar(id);
+      resourceCalendars = resourceCalendars.filter((c) => c.id !== id);
+      if (resourceCalendarDraft.id === id) resourceCalendarDraft = emptyResourceCalendarDraft();
+      resourceCalendarStatus = 'Deleted.';
+    } catch (err: any) {
+      resourceCalendarError = `Delete failed: ${err}`;
+    } finally {
+      resourceCalendarBusy = false;
     }
   }
 
@@ -467,6 +676,138 @@ SPDX-License-Identifier: GPL-3.0-or-later
          </div>
        </section>
 
+       <!-- Resource Capacity -->
+       <section>
+         <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+           Resource Capacity
+         </h2>
+         <div class="space-y-3">
+           {#if resourceCalendars.length > 0}
+             <div class="divide-y divide-slate-800 border border-slate-800 rounded overflow-hidden">
+               {#each resourceCalendars as calendar (calendar.id)}
+                 <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 p-3 bg-slate-900/40">
+                   <div>
+                     <p class="text-sm font-semibold text-slate-100">{calendar.name || calendar.resource}</p>
+                     <p class="text-xs text-slate-400">
+                       {calendar.resource || 'Unassigned resource'} · default {calendar.default_capacity || 1}
+                     </p>
+                     {#if calendar.skill_tags?.length}
+                       <p class="text-[10px] text-slate-500 uppercase mt-1">
+                         {calendar.skill_tags.join(', ')}
+                       </p>
+                     {/if}
+                   </div>
+                   <div class="flex gap-2 md:justify-end">
+                     <button
+                       onclick={() => editResourceCalendar(calendar)}
+                       disabled={resourceCalendarBusy}
+                       class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded"
+                     >
+                       Edit
+                     </button>
+                     <button
+                       onclick={() => deleteResourceCalendar(calendar.id)}
+                       disabled={resourceCalendarBusy}
+                       class="text-xs bg-red-950/60 hover:bg-red-900/70 disabled:opacity-50 text-red-100 px-3 py-1 rounded border border-red-900/70"
+                     >
+                       Delete
+                     </button>
+                   </div>
+                 </div>
+               {/each}
+             </div>
+           {/if}
+
+           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+             <label class="block">
+               <span class="text-xs text-slate-500 uppercase">Calendar name</span>
+               <input
+                 bind:value={resourceCalendarDraft.name}
+                 class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+               />
+             </label>
+             <label class="block">
+               <span class="text-xs text-slate-500 uppercase">Resource</span>
+               <input
+                 bind:value={resourceCalendarDraft.resource}
+                 class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+               />
+             </label>
+             <label class="block">
+               <span class="text-xs text-slate-500 uppercase">Default capacity</span>
+               <input
+                 type="number"
+                 min="0.01"
+                 step="0.25"
+                 bind:value={resourceCalendarDraft.default_capacity}
+                 class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+               />
+             </label>
+             <label class="block">
+               <span class="text-xs text-slate-500 uppercase">Skill tags</span>
+               <input
+                 bind:value={resourceCalendarDraft.skill_tags}
+                 placeholder="piping, qa"
+                 class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+               />
+             </label>
+             <label class="block">
+               <span class="text-xs text-slate-500 uppercase">Weekly capacity</span>
+               <input
+                 bind:value={resourceCalendarDraft.weekly_capacity}
+                 placeholder="0:1, 4:0.5"
+                 class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+               />
+             </label>
+             <label class="block">
+               <span class="text-xs text-slate-500 uppercase">Day overrides</span>
+               <input
+                 bind:value={resourceCalendarDraft.overrides}
+                 placeholder="12:0, 18:0.5"
+                 class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+               />
+             </label>
+             <label class="block md:col-span-2">
+               <span class="text-xs text-slate-500 uppercase">Notes</span>
+               <textarea
+                 bind:value={resourceCalendarDraft.notes}
+                 rows="2"
+                 placeholder="12: Medical leave"
+                 class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+               ></textarea>
+             </label>
+           </div>
+
+           <div class="flex flex-wrap gap-2">
+             <button
+               onclick={saveResourceCalendar}
+               disabled={resourceCalendarBusy}
+               class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+             >
+               {resourceCalendarBusy
+                 ? 'Saving…'
+                 : resourceCalendarDraft.id
+                   ? 'Update calendar'
+                   : 'Add calendar'}
+             </button>
+             <button
+               onclick={resetResourceCalendarDraft}
+               disabled={resourceCalendarBusy}
+               class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded"
+             >
+               Clear
+             </button>
+           </div>
+
+           {#if resourceCalendarStatus}
+             <p class="text-xs text-cyan-400">{resourceCalendarStatus}</p>
+           {/if}
+           {#if resourceCalendarError}
+             <p class="text-xs text-red-400" role="alert">{resourceCalendarError}</p>
+           {/if}
+         </div>
+       </section>
+
        <!-- Schedule Reports (CPM) -->
        <section>
          <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
@@ -638,6 +979,42 @@ SPDX-License-Identifier: GPL-3.0-or-later
              <input type="checkbox" bind:checked={signatureEnabled} class="accent-cyan-500" />
              <span class="text-sm text-slate-300">Enable PDF digital signatures</span>
            </label>
+
+           <label class="flex items-center gap-3 cursor-pointer">
+             <input type="checkbox" bind:checked={complianceMode} class="accent-cyan-500" />
+             <span class="text-sm text-slate-300">Verify tamper-evident audit trail on open</span>
+           </label>
+
+           <div class="space-y-2">
+             <div class="flex flex-wrap gap-2">
+               <button
+                 onclick={exportAuditVerificationReport}
+                 disabled={auditReportBusy}
+                 class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-bold uppercase px-4 py-1.5 rounded"
+               >
+                 {auditReportBusy ? 'Exporting…' : 'Export audit verification report'}
+               </button>
+               <button
+                 onclick={exportAuditRepairEvidence}
+                 disabled={auditRepairBusy}
+                 class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-bold uppercase px-4 py-1.5 rounded"
+               >
+                 {auditRepairBusy ? 'Exporting…' : 'Export audit repair evidence'}
+               </button>
+             </div>
+             {#if auditReportStatus}
+               <p class="text-xs text-cyan-400">{auditReportStatus}</p>
+             {/if}
+             {#if auditReportError}
+               <p class="text-xs text-red-400" role="alert">{auditReportError}</p>
+             {/if}
+             {#if auditRepairStatus}
+               <p class="text-xs text-cyan-400">{auditRepairStatus}</p>
+             {/if}
+             {#if auditRepairError}
+               <p class="text-xs text-red-400" role="alert">{auditRepairError}</p>
+             {/if}
+           </div>
 
            <div>
              <span class="text-xs text-slate-500 uppercase">Certificate path</span>

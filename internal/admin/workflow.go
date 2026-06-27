@@ -6,6 +6,7 @@
 package admin
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -68,4 +69,40 @@ func (s *Service) LogSignatureEvent(docID string, success bool, err error) {
 		debug.Wrap(err, "PDF_SIGNATURE_ERROR") // logs to the persistent log file as a side effect
 	}
 	_ = s.DB.LogAction("System", "SIGNATURE_EVENT", docID, fmt.Sprintf("[%s] %s", status, details))
+	s.logSignatureCheckpoint(docID, status, details)
+}
+
+func (s *Service) logSignatureCheckpoint(docID, status, details string) {
+	doc, err := s.DB.GetDocument(docID)
+	if err != nil {
+		debug.Wrap(err, "SIGNATURE_AUDIT_DOCUMENT_LOOKUP_FAILED")
+		return
+	}
+	signatureStatus := "signed"
+	if status != "SUCCESS" {
+		signatureStatus = "failed"
+	}
+	payload, err := json.Marshal(struct {
+		DocumentID string `json:"document_id"`
+		Status     string `json:"status"`
+		Details    string `json:"details"`
+	}{
+		DocumentID: docID,
+		Status:     status,
+		Details:    details,
+	})
+	if err != nil {
+		debug.Wrap(err, "SIGNATURE_AUDIT_PAYLOAD_FAILED")
+		return
+	}
+	if _, err := s.DB.AppendAuditEvent(db.AuditEventInput{
+		ProjectID:       doc.ProjectID,
+		EventType:       "document.signature",
+		EntityType:      "document",
+		EntityID:        doc.ID,
+		AfterJSON:       string(payload),
+		SignatureStatus: signatureStatus,
+	}); err != nil {
+		debug.Wrap(err, "SIGNATURE_AUDIT_EVENT_FAILED")
+	}
 }

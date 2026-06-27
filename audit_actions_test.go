@@ -4,6 +4,9 @@
 package main
 
 import (
+	"encoding/json"
+	"os"
+	"strings"
 	"testing"
 
 	"pmforge/internal/agile"
@@ -39,6 +42,26 @@ func auditCount(t *testing.T, app *App, action, targetID string) int {
 		t.Fatalf("audit_log query: %v", err)
 	}
 	return n
+}
+
+func auditEventSignatureStatus(t *testing.T, app *App, projectID, docID string) string {
+	t.Helper()
+	app.mu.RLock()
+	conn := app.db.Conn
+	app.mu.RUnlock()
+	var status string
+	if err := conn.QueryRow(
+		`SELECT signature_status
+		 FROM audit_events
+		 WHERE project_id = ? AND entity_type = 'document' AND entity_id = ? AND event_type = 'document.signature'
+		 ORDER BY sequence_number DESC
+		 LIMIT 1`,
+		projectID,
+		docID,
+	).Scan(&status); err != nil {
+		t.Fatalf("signature audit event query: %v", err)
+	}
+	return status
 }
 
 // TestCloneOpenProject_DataSurvivesSnapshot verifies that data committed to
@@ -138,6 +161,172 @@ func TestDeleteDocument_WritesAuditLog(t *testing.T) {
 
 	if n := auditCount(t, app, "delete_document", doc.ID); n != 1 {
 		t.Fatalf("audit_log delete_document count = %d, want 1", n)
+	}
+}
+
+func TestExportDocumentPDFSignedFailureWritesAuditEvent(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Signature Audit Plan")
+	project, err := app.GetProjectMeta()
+	if err != nil {
+		t.Fatalf("GetProjectMeta: %v", err)
+	}
+	doc, err := app.NewDocument("charter_word", "Signature Audit Charter")
+	if err != nil {
+		t.Fatalf("NewDocument: %v", err)
+	}
+
+	if _, err := app.ExportDocumentPDFSigned(doc.ID, "/missing/certificate.p12", "bad-password"); err == nil {
+		t.Fatal("ExportDocumentPDFSigned unexpectedly succeeded with a missing certificate")
+	}
+
+	if got := auditEventSignatureStatus(t, app, project.ID, doc.ID); got != "failed" {
+		t.Fatalf("signature_status = %q, want failed", got)
+	}
+}
+
+func TestExportAuditVerificationReportWritesPrivateJSONArtifact(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Verification Report Plan")
+	project, err := app.GetProjectMeta()
+	if err != nil {
+		t.Fatalf("GetProjectMeta: %v", err)
+	}
+	if _, err := app.SaveChart(db.Chart{Kind: "wbs", Title: "Verification WBS"}); err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+
+	outPath, err := app.ExportAuditVerificationReport()
+	if err != nil {
+		t.Fatalf("ExportAuditVerificationReport: %v", err)
+	}
+	if !strings.Contains(outPath, "exports") || !strings.HasSuffix(outPath, ".json") {
+		t.Fatalf("report path = %q, want JSON under exports", outPath)
+	}
+	info, err := os.Stat(outPath)
+	if err != nil {
+		t.Fatalf("stat report: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("report permissions = %v, want 0600", got)
+	}
+	var report struct {
+		ProjectID         string `json:"project_id"`
+		Valid             bool   `json:"valid"`
+		CheckedEvents     int    `json:"checked_events"`
+		TerminalEventHash string `json:"terminal_event_hash"`
+		GeneratedAtUTC    string `json:"generated_at_utc"`
+	}
+	bytes, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("read report: %v", err)
+	}
+	if err := json.Unmarshal(bytes, &report); err != nil {
+		t.Fatalf("unmarshal report: %v", err)
+	}
+	if report.ProjectID != project.ID {
+		t.Fatalf("project_id = %q, want %q", report.ProjectID, project.ID)
+	}
+	if !report.Valid {
+		t.Fatal("valid = false, want true")
+	}
+	if report.CheckedEvents < 2 {
+		t.Fatalf("checked_events = %d, want at least 2", report.CheckedEvents)
+	}
+	if report.TerminalEventHash == "" {
+		t.Fatal("terminal_event_hash is empty")
+	}
+	if report.GeneratedAtUTC == "" {
+		t.Fatal("generated_at_utc is empty")
+	}
+}
+
+func TestExportAuditRepairEvidencePreservesInvalidChain(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Repair Evidence Plan")
+	project, err := app.GetProjectMeta()
+	if err != nil {
+		t.Fatalf("GetProjectMeta: %v", err)
+	}
+	if _, err := app.SaveChart(db.Chart{Kind: "wbs", Title: "Evidence WBS"}); err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	app.mu.RLock()
+	conn := app.db.Conn
+	app.mu.RUnlock()
+	if _, err := conn.Exec(
+		`UPDATE audit_events
+		 SET after_canonical_json = ?
+		 WHERE project_id = ? AND sequence_number = (
+		   SELECT MAX(sequence_number) FROM audit_events WHERE project_id = ?
+		 )`,
+		`{"tampered":true}`, project.ID, project.ID,
+	); err != nil {
+		t.Fatalf("tamper audit event: %v", err)
+	}
+
+	outPath, err := app.ExportAuditRepairEvidence()
+	if err != nil {
+		t.Fatalf("ExportAuditRepairEvidence: %v", err)
+	}
+	if !strings.Contains(outPath, "exports") || !strings.HasSuffix(outPath, ".json") {
+		t.Fatalf("evidence path = %q, want JSON under exports", outPath)
+	}
+	info, err := os.Stat(outPath)
+	if err != nil {
+		t.Fatalf("stat evidence: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("evidence permissions = %v, want 0600", got)
+	}
+	var evidence struct {
+		ProjectID    string `json:"project_id"`
+		GeneratedAt  string `json:"generated_at_utc"`
+		Verification struct {
+			Valid              bool   `json:"valid"`
+			CheckedEvents      int    `json:"checked_events"`
+			FirstInvalidReason string `json:"first_invalid_reason"`
+		} `json:"verification"`
+		Events []struct {
+			SequenceNumber      int64  `json:"sequence_number"`
+			AfterCanonicalJSON  string `json:"after_canonical_json"`
+			SignatureStatus     string `json:"signature_status"`
+			SignatureBlobLength int    `json:"signature_blob_length"`
+		} `json:"events"`
+	}
+	bytes, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("read evidence: %v", err)
+	}
+	if err := json.Unmarshal(bytes, &evidence); err != nil {
+		t.Fatalf("unmarshal evidence: %v", err)
+	}
+	if evidence.ProjectID != project.ID {
+		t.Fatalf("project_id = %q, want %q", evidence.ProjectID, project.ID)
+	}
+	if evidence.GeneratedAt == "" {
+		t.Fatal("generated_at_utc is empty")
+	}
+	if evidence.Verification.Valid {
+		t.Fatal("verification.valid = true, want false")
+	}
+	if evidence.Verification.FirstInvalidReason != "event hash mismatch" {
+		t.Fatalf("first_invalid_reason = %q, want event hash mismatch", evidence.Verification.FirstInvalidReason)
+	}
+	if len(evidence.Events) < 2 {
+		t.Fatalf("events length = %d, want at least 2", len(evidence.Events))
+	}
+	if got := evidence.Events[len(evidence.Events)-1].AfterCanonicalJSON; got != `{"tampered":true}` {
+		t.Fatalf("last after_canonical_json = %q, want tampered JSON", got)
 	}
 }
 

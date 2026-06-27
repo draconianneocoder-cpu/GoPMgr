@@ -16,8 +16,10 @@
 #      gitignored, so it does NOT exist on a fresh checkout — the root package will not
 #      compile (test/vet/lint) until the frontend is built. Jobs that compile the root
 #      package therefore build the frontend (or stub the embed dir for vet/lint) first.
-#   2. The root package links the Wails v2 library (GTK3 + WebKit2GTK). `make` uses no
-#      `webkit2_41` tag, so we pin ubuntu-22.04, which still ships libwebkit2gtk-4.0-dev.
+#   2. The root package links the Wails v2 Linux library. Ubuntu 24.04+ ships
+#      WebKit2GTK 4.1, so Linux compile paths use the `webkit2_41` build tag and
+#      install libwebkit2gtk-4.1-dev. Wails v2 still links GTK3; GTK4/WebKitGTK
+#      6.0 requires a later Wails migration.
 #
 # Bundled fonts are fetched over the network and degrade gracefully (the app falls back to
 # core fonts), so font fetching is never a hard gate here — only release embeds them.
@@ -43,7 +45,7 @@ env:
 jobs:
   verify:
     name: Verify (Go tests + svelte-check + Vite build)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -63,7 +65,7 @@ jobs:
       - name: Install Wails system dependencies (root package links GTK/WebKit)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
 
       - name: Download Go modules
         run: go mod download
@@ -81,7 +83,7 @@ jobs:
 
   build:
     name: Build (Wails, linux/amd64)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -101,7 +103,7 @@ jobs:
       - name: Install Wails system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
@@ -113,7 +115,7 @@ jobs:
       # Wails runs `npm install` + `npm run build` itself, creating frontend/dist before
       # compiling Go, so no separate frontend build step is needed here.
       - name: Wails build
-        run: wails build -platform linux/amd64
+        run: wails build -platform linux/amd64 -tags duckdb,webkit2_41
 
       - name: Upload Linux build
         uses: actions/upload-artifact@v7
@@ -124,7 +126,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     # Required gate: golangci-lint (v2.12.2) + npm run lint. wails v2.12.0 raised the
     # project's x/tools floor to a Go 1.26-compatible release, so this passes cleanly;
     # a lint regression now fails the workflow.
@@ -147,7 +149,7 @@ jobs:
       - name: Install Wails system dependencies (golangci-lint type-checks the root package)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
 
       - name: Stub embedded frontend (satisfies //go:embed for type-check; real assets not needed)
         run: |
@@ -158,7 +160,7 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.2
-          args: . ./internal/...
+          args: --build-tags=webkit2_41 . ./internal/...
 
       - name: Install frontend dependencies
         working-directory: frontend
@@ -170,7 +172,7 @@ jobs:
 
   security:
     name: Security scan (non-blocking)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     # Mirrors GitLab `security` (allow_failure: true), upgraded from a placeholder to a real scan.
     continue-on-error: true
     steps:
@@ -185,7 +187,7 @@ jobs:
       - name: Install Wails system dependencies (vet compiles the root package)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
 
       - name: Stub embedded frontend (satisfies //go:embed for go vet; real assets not needed)
         run: |
@@ -197,7 +199,7 @@ jobs:
 
   vuln:
     name: Vulnerability scan (govulncheck)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     # Real, blocking dependency-vulnerability gate. `make memory-scan` only runs
     # govulncheck when it happens to be installed and skips silently otherwise, so
     # nothing actually scanned dependencies in CI before this job. govulncheck does
@@ -216,7 +218,7 @@ jobs:
       - name: Install Wails system dependencies (govulncheck compiles the root package)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
 
       - name: Stub embedded frontend (satisfies //go:embed for the build-time analysis)
         run: |
@@ -227,10 +229,10 @@ jobs:
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
 
       - name: Scan default build (govulncheck ./...)
-        run: govulncheck ./...
+        run: govulncheck -tags webkit2_41 ./...
 
       - name: Scan DuckDB analytics engine (-tags duckdb)
-        run: govulncheck -tags duckdb ./internal/analytics/...
+        run: govulncheck -tags duckdb,webkit2_41 ./internal/analytics/...
 
   analytics-duckdb:
     name: Analytics engine (-tags duckdb)

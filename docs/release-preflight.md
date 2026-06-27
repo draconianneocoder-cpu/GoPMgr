@@ -30,7 +30,8 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
   `create-dmg → staged hdiutil` fallback. Both DMG paths expose
   `PMForge.app` beside an `Applications` shortcut.
 - **DuckDB analytics ships in installer builds.** `make build` passes the
-  `duckdb` tag to Wails, and `scripts/verify-duckdb-linked.sh` checks the
+  `duckdb` tag to Wails, and Linux release builds also pass `webkit2_41` for
+  Ubuntu 24.04+ WebKit2GTK 4.1. `scripts/verify-duckdb-linked.sh` checks the
   built binary metadata before release/package claims.
 - **Windows** installer collection picks the newest `*installer*.exe`
   explicitly and fails loudly if none is found (hardened 2026-06-23).
@@ -40,13 +41,12 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
 
 ## Known caveats to verify on real targets (not pipeline failures)
 
-- **`.deb` WebKit version.** Built on `ubuntu-22.04`, the binary links
-  `libwebkit2gtk-4.0-37`, which is **absent on Ubuntu 24.04+** (moved to 4.1).
-  The `.deb` installs cleanly on 22.04/Debian 11/12 era; 24.04 users need the
-  4.0 compat lib. Documented in `nfpm.yaml`. Revisit when moving to a
-  `webkit2_41`-tagged build.
+- **`.deb` WebKit version.** Built on `ubuntu-24.04` with the Wails
+  `webkit2_41` tag, the binary links the Ubuntu 24.04+ WebKit2GTK 4.1 runtime.
+  This fixes the earlier WebKit runtime dependency gap on newer Ubuntu. Wails v2
+  still links GTK3; GTK4/WebKitGTK 6.0 remains a future framework migration.
 - **`.rpm` cross-distro.** The rpm wraps an Ubuntu-built dynamically-linked
-  binary; `gtk3`/`webkit2gtk3` names are correct for Fedora, but **runtime on
+  binary; `gtk3`/`webkit2gtk4.1` names are expected for Fedora, but **runtime on
   Fedora is unverified**. Test on a real Fedora box before claiming rpm support.
 - **Windows NSIS scaffold.** `build/windows/` is not committed; `wails build
   -nsis` auto-generates default templates, so the first build produces a

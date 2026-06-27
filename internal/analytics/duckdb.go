@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"pmforge/internal/money"
+
 	// Registers the "duckdb" database/sql driver.
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -86,10 +88,10 @@ func (e *duckEngine) PortfolioRollup(ctx context.Context, projects []ProjectMetr
 	if _, err := conn.ExecContext(ctx, `CREATE OR REPLACE TEMP TABLE portfolio (
 		project_id       VARCHAR,
 		name             VARCHAR,
-		budgeted_cost    DOUBLE,
-		actual_cost      DOUBLE,
-		earned_value     DOUBLE,
-		planned_value    DOUBLE,
+		budgeted_cost_minor_units BIGINT,
+		actual_cost_minor_units BIGINT,
+		earned_value_minor_units BIGINT,
+		planned_value_minor_units BIGINT,
 		percent_complete DOUBLE
 	)`); err != nil {
 		return PortfolioSummary{}, fmt.Errorf("analytics: create table: %w", err)
@@ -107,9 +109,12 @@ func (e *duckEngine) PortfolioRollup(ctx context.Context, projects []ProjectMetr
 	defer func() { _ = stmt.Close() }()
 
 	for _, p := range projects {
+		p = normaliseProjectMetricsMoney(p)
 		if _, err := stmt.ExecContext(ctx,
-			p.ProjectID, p.Name, p.BudgetedCost, p.ActualCost,
-			p.EarnedValue, p.PlannedValue, p.PercentComplete,
+			p.ProjectID, p.Name,
+			p.BudgetedCostMinorUnits, p.ActualCostMinorUnits,
+			p.EarnedValueMinorUnits, p.PlannedValueMinorUnits,
+			p.PercentComplete,
 		); err != nil {
 			return PortfolioSummary{}, fmt.Errorf("analytics: insert %q: %w", p.ProjectID, err)
 		}
@@ -118,20 +123,24 @@ func (e *duckEngine) PortfolioRollup(ctx context.Context, projects []ProjectMetr
 	var s PortfolioSummary
 	row := conn.QueryRowContext(ctx, `SELECT
 		count(*),
-		coalesce(sum(budgeted_cost), 0),
-		coalesce(sum(actual_cost), 0),
-		coalesce(sum(earned_value), 0),
-		coalesce(sum(planned_value), 0)
+		coalesce(sum(budgeted_cost_minor_units), 0),
+		coalesce(sum(actual_cost_minor_units), 0),
+		coalesce(sum(earned_value_minor_units), 0),
+		coalesce(sum(planned_value_minor_units), 0)
 	FROM portfolio`)
 	if err := row.Scan(
 		&s.ProjectCount,
-		&s.TotalBudgetedCost,
-		&s.TotalActualCost,
-		&s.TotalEarnedValue,
-		&s.TotalPlannedValue,
+		&s.TotalBudgetedCostMinorUnits,
+		&s.TotalActualCostMinorUnits,
+		&s.TotalEarnedValueMinorUnits,
+		&s.TotalPlannedValueMinorUnits,
 	); err != nil {
 		return PortfolioSummary{}, fmt.Errorf("analytics: aggregate: %w", err)
 	}
+	s.TotalBudgetedCost = money.Amount{MinorUnits: s.TotalBudgetedCostMinorUnits}.MajorFloat()
+	s.TotalActualCost = money.Amount{MinorUnits: s.TotalActualCostMinorUnits}.MajorFloat()
+	s.TotalEarnedValue = money.Amount{MinorUnits: s.TotalEarnedValueMinorUnits}.MajorFloat()
+	s.TotalPlannedValue = money.Amount{MinorUnits: s.TotalPlannedValueMinorUnits}.MajorFloat()
 
 	// Portfolio-level EVM indices; 0 means "n/a" (undefined), matching the
 	// kernel's convention. The kernel stays the source of truth for
@@ -143,6 +152,22 @@ func (e *duckEngine) PortfolioRollup(ctx context.Context, projects []ProjectMetr
 		s.CostPerformanceIndex = s.TotalEarnedValue / s.TotalActualCost
 	}
 	return s, nil
+}
+
+func normaliseProjectMetricsMoney(p ProjectMetrics) ProjectMetrics {
+	if p.BudgetedCostMinorUnits == 0 && p.BudgetedCost != 0 {
+		p.BudgetedCostMinorUnits = money.FromMajorFloat(p.BudgetedCost).MinorUnits
+	}
+	if p.ActualCostMinorUnits == 0 && p.ActualCost != 0 {
+		p.ActualCostMinorUnits = money.FromMajorFloat(p.ActualCost).MinorUnits
+	}
+	if p.EarnedValueMinorUnits == 0 && p.EarnedValue != 0 {
+		p.EarnedValueMinorUnits = money.FromMajorFloat(p.EarnedValue).MinorUnits
+	}
+	if p.PlannedValueMinorUnits == 0 && p.PlannedValue != 0 {
+		p.PlannedValueMinorUnits = money.FromMajorFloat(p.PlannedValue).MinorUnits
+	}
+	return p
 }
 
 // maxImportRows caps how many rows ImportTabular materialises into a
