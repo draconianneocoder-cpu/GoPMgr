@@ -128,3 +128,149 @@ func TestScenarioChartAppMethodsCopyScheduleData(t *testing.T) {
 		t.Fatalf("ListScenarioCharts = %+v, want copied chart", list)
 	}
 }
+
+func TestScenarioChartAppMethodsPromoteToBaseline(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Scenario Promotion Bridge Plan")
+
+	chart, err := app.SaveChart(db.Chart{
+		Kind:   "cpm",
+		Title:  "Scenario Promotion Source CPM",
+		Data:   `{"nodes":[{"id":"a","label":"A"}],"edges":[]}`,
+		Config: `{"view":"network"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	scenario, err := app.SaveScenario(db.Scenario{
+		Name:     "Scenario promotion",
+		IsActive: true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario: %v", err)
+	}
+	copied, err := app.BranchScenarioChart(scenario.ID, chart.ID, "")
+	if err != nil {
+		t.Fatalf("BranchScenarioChart: %v", err)
+	}
+
+	promoted, err := app.PromoteScenarioChartToBaseline(copied.ID, "Approved scenario")
+	if err != nil {
+		t.Fatalf("PromoteScenarioChartToBaseline: %v", err)
+	}
+	if promoted.ChartID != chart.ID || promoted.Name != "Approved scenario" {
+		t.Fatalf("promoted baseline mismatch: %+v", promoted)
+	}
+	if promoted.Data != copied.Data {
+		t.Fatalf("promoted data = %q, want %q", promoted.Data, copied.Data)
+	}
+
+	list, err := app.ListScheduleBaselines(chart.ID)
+	if err != nil {
+		t.Fatalf("ListScheduleBaselines: %v", err)
+	}
+	if len(list) != 1 || list[0].ID != promoted.ID {
+		t.Fatalf("ListScheduleBaselines = %+v, want promoted baseline", list)
+	}
+}
+
+func TestScenarioChartAppMethodsCompareToCopiedBaseline(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Scenario Comparison Bridge Plan")
+
+	chart, err := app.SaveChart(db.Chart{
+		Kind:   "cpm",
+		Title:  "Scenario Comparison Source CPM",
+		Data:   `{"nodes":[{"id":"a","label":"A","duration":2}],"edges":[]}`,
+		Config: `{"view":"network"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart initial: %v", err)
+	}
+	baseline, err := app.SetScheduleBaseline(chart.ID, "Approved")
+	if err != nil {
+		t.Fatalf("SetScheduleBaseline: %v", err)
+	}
+	chart.Data = `{"nodes":[{"id":"a","label":"A","duration":4}],"edges":[]}`
+	if _, err := app.SaveChart(chart); err != nil {
+		t.Fatalf("SaveChart changed: %v", err)
+	}
+	scenario, err := app.SaveScenario(db.Scenario{
+		Name:             "Scenario comparison",
+		SourceBaselineID: baseline.ID,
+		IsActive:         true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario: %v", err)
+	}
+	copied, err := app.BranchScenarioChart(scenario.ID, chart.ID, "")
+	if err != nil {
+		t.Fatalf("BranchScenarioChart: %v", err)
+	}
+
+	variances, err := app.CompareScenarioChart(copied.ID)
+	if err != nil {
+		t.Fatalf("CompareScenarioChart: %v", err)
+	}
+	a, ok := variances["a"]
+	if !ok {
+		t.Fatalf("variance for task a missing: %+v", variances)
+	}
+	if a.FinishVarDays != 2 {
+		t.Fatalf("FinishVarDays = %v, want 2", a.FinishVarDays)
+	}
+}
+
+func TestScenarioChartAppMethodsSaveIsolatedCopy(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Scenario Editing Bridge Plan")
+
+	chart, err := app.SaveChart(db.Chart{
+		Kind:   "cpm",
+		Title:  "Live Editing Source CPM",
+		Data:   `{"nodes":[{"id":"a","label":"Live","duration":2}],"edges":[]}`,
+		Config: `{"view":"live"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	scenario, err := app.SaveScenario(db.Scenario{
+		Name:     "Scenario editing",
+		IsActive: true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario: %v", err)
+	}
+	copied, err := app.BranchScenarioChart(scenario.ID, chart.ID, "")
+	if err != nil {
+		t.Fatalf("BranchScenarioChart: %v", err)
+	}
+	copied.Title = "Scenario edited CPM"
+	copied.Data = `{"nodes":[{"id":"a","label":"Scenario","duration":5}],"edges":[]}`
+	copied.Config = `{"view":"scenario"}`
+
+	saved, err := app.SaveScenarioChart(copied)
+	if err != nil {
+		t.Fatalf("SaveScenarioChart: %v", err)
+	}
+	if saved.Title != copied.Title || saved.Data != copied.Data || saved.Config != copied.Config {
+		t.Fatalf("saved scenario chart mismatch: %+v", saved)
+	}
+
+	live, err := app.GetChart(chart.ID)
+	if err != nil {
+		t.Fatalf("GetChart live: %v", err)
+	}
+	if live.Data == saved.Data || live.Config == saved.Config || live.Title == saved.Title {
+		t.Fatalf("scenario edit mutated live chart: live=%+v scenario=%+v", live, saved)
+	}
+}

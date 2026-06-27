@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -241,6 +242,65 @@ func (db *Database) ListScenarioCharts(scenarioID string) ([]ScenarioChart, erro
 		out = append(out, c)
 	}
 	return out, rows.Err()
+}
+
+// SaveScenarioChart updates the editable fields of an isolated scenario
+// chart copy. Project/source/baseline/kind fields remain immutable.
+func (db *Database) SaveScenarioChart(c ScenarioChart) (ScenarioChart, error) {
+	if c.ID == "" {
+		return ScenarioChart{}, errors.New("scenario chart: id is required")
+	}
+	existing, err := db.GetScenarioChart(c.ID)
+	if err != nil {
+		return ScenarioChart{}, err
+	}
+	title := strings.TrimSpace(c.Title)
+	if title == "" {
+		title = existing.Title
+	}
+	data := strings.TrimSpace(c.Data)
+	if data == "" {
+		data = "{}"
+	}
+	config := strings.TrimSpace(c.Config)
+	if config == "" {
+		config = "{}"
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := db.Conn.Exec(`
+		UPDATE scenario_charts
+		SET title = ?, data = ?, config = ?, updated_at = ?
+		WHERE id = ?
+	`, title, data, config, now, c.ID); err != nil {
+		return ScenarioChart{}, err
+	}
+	return db.GetScenarioChart(c.ID)
+}
+
+// PromoteScenarioChartToBaseline writes a scenario chart's current data
+// back as a named immutable baseline for its source chart.
+func (db *Database) PromoteScenarioChartToBaseline(scenarioChartID, name string) (Baseline, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return Baseline{}, errors.New("scenario promotion: baseline name is required")
+	}
+	scenarioChart, err := db.GetScenarioChart(scenarioChartID)
+	if err != nil {
+		return Baseline{}, err
+	}
+	sourceChart, err := db.GetChart(scenarioChart.SourceChartID)
+	if err != nil {
+		return Baseline{}, err
+	}
+	if sourceChart.ProjectID != scenarioChart.ProjectID {
+		return Baseline{}, errors.New("scenario promotion: source chart is outside scenario project")
+	}
+	return db.SaveBaseline(Baseline{
+		ProjectID: scenarioChart.ProjectID,
+		ChartID:   scenarioChart.SourceChartID,
+		Name:      name,
+		Data:      scenarioChart.Data,
+	})
 }
 
 func scanScenario(row interface {

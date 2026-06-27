@@ -3230,6 +3230,81 @@ func (a *App) ListScenarioCharts(scenarioID string) ([]db.ScenarioChart, error) 
 	return d.ListScenarioCharts(scenarioID)
 }
 
+// SaveScenarioChart updates the editable fields of an isolated scenario
+// chart copy in the open project.
+func (a *App) SaveScenarioChart(c db.ScenarioChart) (db.ScenarioChart, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.ScenarioChart{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.ScenarioChart{}, err
+	}
+	existing, err := d.GetScenarioChart(c.ID)
+	if err != nil {
+		return db.ScenarioChart{}, err
+	}
+	if existing.ProjectID != p.ID {
+		return db.ScenarioChart{}, db.ErrNoScenarioChart
+	}
+	return d.SaveScenarioChart(c)
+}
+
+// PromoteScenarioChartToBaseline approves an isolated scenario chart copy
+// by saving its current data as a named baseline on the source chart.
+func (a *App) PromoteScenarioChartToBaseline(scenarioChartID, name string) (db.Baseline, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Baseline{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Baseline{}, err
+	}
+	scenarioChart, err := d.GetScenarioChart(scenarioChartID)
+	if err != nil {
+		return db.Baseline{}, err
+	}
+	if scenarioChart.ProjectID != p.ID {
+		return db.Baseline{}, db.ErrNoScenarioChart
+	}
+	return d.PromoteScenarioChartToBaseline(scenarioChartID, name)
+}
+
+// CompareScenarioChart diffs an isolated scenario chart copy against the
+// baseline snapshot captured with that copy.
+func (a *App) CompareScenarioChart(scenarioChartID string) (map[string]kernel.ScheduleVariance, error) {
+	d := a.requireDB()
+	if d == nil {
+		return nil, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	scenarioChart, err := d.GetScenarioChart(scenarioChartID)
+	if err != nil {
+		return nil, err
+	}
+	if scenarioChart.ProjectID != p.ID {
+		return nil, db.ErrNoScenarioChart
+	}
+	if scenarioChart.BaselineData == "" || scenarioChart.BaselineData == "{}" {
+		return map[string]kernel.ScheduleVariance{}, nil
+	}
+	baseline := make(map[string]*kernel.Task)
+	if err := json.Unmarshal([]byte(scenarioChart.BaselineData), &baseline); err != nil {
+		return nil, fmt.Errorf("scenario baseline %s is corrupt: %w", scenarioChart.ID, err)
+	}
+	current, err := cpmChartDataToKernelTasks(scenarioChart.Data)
+	if err != nil {
+		return nil, err
+	}
+	scheduleProjectTasks(p, current)
+	return kernel.CompareSchedules(current, baseline), nil
+}
+
 // ----- Timeline + Budget -----
 
 var errTimelineSourceMismatch = errors.New("timeline: source id does not match open project")
