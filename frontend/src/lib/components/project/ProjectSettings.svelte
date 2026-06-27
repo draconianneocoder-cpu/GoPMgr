@@ -114,18 +114,43 @@ SPDX-License-Identifier: GPL-3.0-or-later
     baseline_id: '',
   });
 
+  type ScenarioChartDraft = {
+    id: string;
+    title: string;
+    data: string;
+    config: string;
+  };
+
+  const emptyScenarioChartDraft = (): ScenarioChartDraft => ({
+    id: '',
+    title: '',
+    data: '',
+    config: '',
+  });
+
   let scenarios = $state<Scenario[]>([]);
   let scenarioDraft = $state<ScenarioDraft>(emptyScenarioDraft());
   let scenarioSourceCharts = $state<ChartRecord[]>([]);
   let scenarioBaselines = $state<BaselineRecord[]>([]);
   let scenarioChartCopies = $state<Record<string, ScenarioChart[]>>({});
   let scenarioCopyDraft = $state<ScenarioCopyDraft>(emptyScenarioCopyDraft());
+  let scenarioChartDraft = $state<ScenarioChartDraft>(emptyScenarioChartDraft());
   let scenarioBusy = $state(false);
   let scenarioStatus = $state('');
   let scenarioError = $state('');
   let scenarioCopyBusy = $state(false);
   let scenarioCopyStatus = $state('');
   let scenarioCopyError = $state('');
+  let scenarioChartEditBusy = $state(false);
+  let scenarioChartEditStatus = $state('');
+  let scenarioChartEditError = $state('');
+  let scenarioPromotionBusy = $state('');
+  let scenarioPromotionName = $state('');
+  let scenarioPromotionStatus = $state('');
+  let scenarioPromotionError = $state('');
+  let scenarioCompareBusy = $state('');
+  let scenarioComparisons = $state<Record<string, Record<string, ScheduleVariance>>>({});
+  let scenarioCompareError = $state('');
 
   onMount(async () => {
     try {
@@ -718,6 +743,102 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  function editScenarioChart(chart: ScenarioChart) {
+    scenarioChartDraft = {
+      id: chart.id,
+      title: chart.title,
+      data: chart.data,
+      config: chart.config,
+    };
+    scenarioChartEditStatus = '';
+    scenarioChartEditError = '';
+  }
+
+  function cancelScenarioChartEdit() {
+    scenarioChartDraft = emptyScenarioChartDraft();
+    scenarioChartEditStatus = '';
+    scenarioChartEditError = '';
+  }
+
+  async function saveScenarioChart() {
+    if (!scenarioChartDraft.id) return;
+    scenarioChartEditBusy = true;
+    scenarioChartEditStatus = '';
+    scenarioChartEditError = '';
+    try {
+      const current = Object.values(scenarioChartCopies)
+        .flat()
+        .find((chart) => chart.id === scenarioChartDraft.id);
+      if (!current) throw new Error('Scenario chart copy is no longer loaded');
+      const saved = await window.go.main.App.SaveScenarioChart({
+        ...current,
+        title: scenarioChartDraft.title.trim() || current.title,
+        data: scenarioChartDraft.data.trim() || '{}',
+        config: scenarioChartDraft.config.trim() || '{}',
+      });
+      scenarioChartCopies = {
+        ...scenarioChartCopies,
+        [saved.scenario_id]: [
+          saved,
+          ...scenarioCopiesFor(saved.scenario_id).filter((chart) => chart.id !== saved.id),
+        ],
+      };
+      const remainingComparisons = { ...scenarioComparisons };
+      delete remainingComparisons[saved.id];
+      scenarioComparisons = remainingComparisons;
+      scenarioChartDraft = emptyScenarioChartDraft();
+      scenarioChartEditStatus = 'Scenario edits saved.';
+    } catch (err: any) {
+      scenarioChartEditError = `Save failed: ${err?.message ?? err}`;
+    } finally {
+      scenarioChartEditBusy = false;
+    }
+  }
+
+  async function promoteScenarioChart(chart: ScenarioChart) {
+    scenarioPromotionBusy = chart.id;
+    scenarioPromotionStatus = '';
+    scenarioPromotionError = '';
+    try {
+      const name = scenarioPromotionName.trim();
+      if (!name) throw new Error('Baseline name is required');
+      const promoted = await window.go.main.App.PromoteScenarioChartToBaseline(chart.id, name);
+      scenarioPromotionName = '';
+      scenarioPromotionStatus = `Promoted ${promoted.name}.`;
+      if (scenarioCopyDraft.chart_id === promoted.chart_id) {
+        await loadScenarioBaselines(promoted.chart_id);
+      }
+    } catch (err: any) {
+      scenarioPromotionError = `Promotion failed: ${err?.message ?? err}`;
+    } finally {
+      scenarioPromotionBusy = '';
+    }
+  }
+
+  function scenarioVarianceRows(chartID: string): ScheduleVariance[] {
+    return Object.values(scenarioComparisons[chartID] ?? {}).sort((a, b) =>
+      a.task_id.localeCompare(b.task_id),
+    );
+  }
+
+  function formatScenarioVariance(days: number): string {
+    if (Math.abs(days) < 1e-9) return '0.0d';
+    return `${days > 0 ? '+' : ''}${days.toFixed(1)}d`;
+  }
+
+  async function compareScenarioChart(chart: ScenarioChart) {
+    scenarioCompareBusy = chart.id;
+    scenarioCompareError = '';
+    try {
+      const variances = await window.go.main.App.CompareScenarioChart(chart.id);
+      scenarioComparisons = { ...scenarioComparisons, [chart.id]: variances ?? {} };
+    } catch (err: any) {
+      scenarioCompareError = `Comparison failed: ${err?.message ?? err}`;
+    } finally {
+      scenarioCompareBusy = '';
+    }
+  }
+
   onDestroy(() => {});
 </script>
 
@@ -1082,13 +1203,135 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <p class="text-[10px] uppercase tracking-widest text-slate-500 mb-2">
                   Copied scenario charts
                 </p>
+                <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 mb-2">
+                  <label class="block">
+                    <span class="text-xs text-slate-500 uppercase">Promoted baseline name</span>
+                    <input
+                      bind:value={scenarioPromotionName}
+                      disabled={scenarioPromotionBusy !== ''}
+                      class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none disabled:opacity-50"
+                    />
+                  </label>
+                  <div class="flex items-end">
+                    {#if scenarioPromotionStatus}
+                      <span class="text-xs text-cyan-400 pb-2">{scenarioPromotionStatus}</span>
+                    {/if}
+                    {#if scenarioChartEditStatus}
+                      <span class="text-xs text-cyan-400 pb-2">{scenarioChartEditStatus}</span>
+                    {/if}
+                    {#if scenarioPromotionError}
+                      <span class="text-xs text-red-400 pb-2" role="alert">{scenarioPromotionError}</span>
+                    {/if}
+                    {#if scenarioChartEditError}
+                      <span class="text-xs text-red-400 pb-2" role="alert">{scenarioChartEditError}</span>
+                    {/if}
+                    {#if scenarioCompareError}
+                      <span class="text-xs text-red-400 pb-2" role="alert">{scenarioCompareError}</span>
+                    {/if}
+                  </div>
+                </div>
                 <div class="divide-y divide-slate-800 border border-slate-800 rounded overflow-hidden">
                   {#each scenarioCopiesFor(scenarioCopyDraft.scenario_id) as chart (chart.id)}
-                    <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-slate-950/60">
-                      <span class="text-xs text-slate-200">{chart.title || chart.kind}</span>
-                      <span class="text-[10px] uppercase tracking-widest text-slate-500">
-                        {chart.kind}{chart.source_baseline_id ? ` · baseline ${chart.source_baseline_id}` : ''}
-                      </span>
+                    <div class="px-3 py-2 bg-slate-950/60">
+                      <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+                        <div>
+                          <span class="text-xs text-slate-200">{chart.title || chart.kind}</span>
+                          <span class="block text-[10px] uppercase tracking-widest text-slate-500">
+                            {chart.kind}{chart.source_baseline_id ? ` · baseline ${chart.source_baseline_id}` : ''}
+                          </span>
+                        </div>
+                        <div class="flex flex-wrap gap-2 md:justify-end">
+                          <button
+                            onclick={() => editScenarioChart(chart)}
+                            disabled={scenarioChartEditBusy}
+                            class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onclick={() => compareScenarioChart(chart)}
+                            disabled={scenarioCompareBusy !== ''}
+                            class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded"
+                          >
+                            {scenarioCompareBusy === chart.id ? 'Comparing…' : 'Compare to baseline'}
+                          </button>
+                          <button
+                            onclick={() => promoteScenarioChart(chart)}
+                            disabled={scenarioPromotionBusy !== '' || scenarioPromotionName.trim() === ''}
+                            class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded"
+                          >
+                            {scenarioPromotionBusy === chart.id ? 'Promoting…' : 'Promote to baseline'}
+                          </button>
+                        </div>
+                      </div>
+                      {#if scenarioChartDraft.id === chart.id}
+                        <div class="mt-3 border border-slate-800 rounded bg-slate-900/60 p-3 space-y-3">
+                          <label class="block">
+                            <span class="text-xs text-slate-500 uppercase">Scenario chart title</span>
+                            <input
+                              bind:value={scenarioChartDraft.title}
+                              disabled={scenarioChartEditBusy}
+                              class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none disabled:opacity-50"
+                            />
+                          </label>
+                          <label class="block">
+                            <span class="text-xs text-slate-500 uppercase">Scenario chart data JSON</span>
+                            <textarea
+                              bind:value={scenarioChartDraft.data}
+                              disabled={scenarioChartEditBusy}
+                              rows="5"
+                              class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none disabled:opacity-50 font-mono text-[11px]"
+                            ></textarea>
+                          </label>
+                          <label class="block">
+                            <span class="text-xs text-slate-500 uppercase">Scenario chart config JSON</span>
+                            <textarea
+                              bind:value={scenarioChartDraft.config}
+                              disabled={scenarioChartEditBusy}
+                              rows="3"
+                              class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none disabled:opacity-50 font-mono text-[11px]"
+                            ></textarea>
+                          </label>
+                          <div class="flex flex-wrap gap-2">
+                            <button
+                              onclick={saveScenarioChart}
+                              disabled={scenarioChartEditBusy}
+                              class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+                            >
+                              {scenarioChartEditBusy ? 'Saving…' : 'Save scenario edits'}
+                            </button>
+                            <button
+                              onclick={cancelScenarioChartEdit}
+                              disabled={scenarioChartEditBusy}
+                              class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      {/if}
+                      {#if scenarioComparisons[chart.id]}
+                        {#if scenarioVarianceRows(chart.id).length > 0}
+                          <div class="mt-2 grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-1 text-[10px] text-slate-400">
+                            <span class="uppercase tracking-widest text-slate-500">Task</span>
+                            <span class="uppercase tracking-widest text-slate-500">Start</span>
+                            <span class="uppercase tracking-widest text-slate-500">Finish</span>
+                            {#each scenarioVarianceRows(chart.id) as variance (variance.task_id)}
+                              <span class="text-slate-300">{variance.task_id}</span>
+                              <span class={variance.start_var_days > 0 ? 'text-amber-300' : variance.start_var_days < 0 ? 'text-cyan-300' : 'text-slate-400'}>
+                                {formatScenarioVariance(variance.start_var_days)}
+                              </span>
+                              <span class={variance.finish_var_days > 0 ? 'text-amber-300' : variance.finish_var_days < 0 ? 'text-cyan-300' : 'text-slate-400'}>
+                                {formatScenarioVariance(variance.finish_var_days)}
+                              </span>
+                            {/each}
+                          </div>
+                        {:else}
+                          <p class="mt-2 text-[10px] text-slate-500 uppercase tracking-widest">
+                            No baseline variance
+                          </p>
+                        {/if}
+                      {/if}
                     </div>
                   {/each}
                 </div>

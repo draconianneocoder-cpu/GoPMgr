@@ -149,6 +149,14 @@ declare global {
             baselineID: string,
           ) => Promise<ScenarioChart>;
           ListScenarioCharts: (scenarioID: string) => Promise<ScenarioChart[]>;
+          SaveScenarioChart: (c: ScenarioChart) => Promise<ScenarioChart>;
+          PromoteScenarioChartToBaseline: (
+            scenarioChartID: string,
+            name: string,
+          ) => Promise<BaselineRecord>;
+          CompareScenarioChart: (
+            scenarioChartID: string,
+          ) => Promise<Record<string, ScheduleVariance>>;
           BuildTimeline: () => Promise<TimelineEntry[]>;
           MoveTimelineEntry: (
             kind: TimelineKind,

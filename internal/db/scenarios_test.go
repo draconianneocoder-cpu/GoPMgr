@@ -195,3 +195,111 @@ func TestBranchScenarioChartCopiesChartAndBaselineData(t *testing.T) {
 		t.Fatalf("ListScenarioCharts = %+v, want branched chart", list)
 	}
 }
+
+func TestPromoteScenarioChartToBaselineCreatesNamedBaseline(t *testing.T) {
+	d := newBackupTestDB(t)
+	p, err := d.UpsertProject(Project{Name: "Scenario Promotion Plan"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	chart, err := d.SaveChart(Chart{
+		ProjectID: p.ID,
+		Kind:      "cpm",
+		Title:     "Promotion CPM",
+		Data:      `{"tasks":{"a":{"title":"A","duration":4}}}`,
+		Config:    `{"scale":"workday"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	scenario, err := d.SaveScenario(Scenario{
+		ProjectID: p.ID,
+		Name:      "Approved acceleration",
+		IsActive:  true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario: %v", err)
+	}
+	branched, err := d.BranchScenarioChart(scenario.ID, chart.ID, "")
+	if err != nil {
+		t.Fatalf("BranchScenarioChart: %v", err)
+	}
+
+	promoted, err := d.PromoteScenarioChartToBaseline(branched.ID, "Approved scenario baseline")
+	if err != nil {
+		t.Fatalf("PromoteScenarioChartToBaseline: %v", err)
+	}
+	if promoted.ProjectID != p.ID || promoted.ChartID != chart.ID {
+		t.Fatalf("promoted baseline scope mismatch: %+v", promoted)
+	}
+	if promoted.Name != "Approved scenario baseline" {
+		t.Fatalf("promoted baseline name = %q", promoted.Name)
+	}
+	if promoted.Data != branched.Data {
+		t.Fatalf("promoted baseline data = %q, want scenario data %q", promoted.Data, branched.Data)
+	}
+
+	got, err := d.GetBaseline(promoted.ID)
+	if err != nil {
+		t.Fatalf("GetBaseline promoted: %v", err)
+	}
+	if got.ID != promoted.ID || got.Data != branched.Data {
+		t.Fatalf("stored promoted baseline mismatch: %+v", got)
+	}
+
+	if _, err := d.PromoteScenarioChartToBaseline(branched.ID, " "); err == nil {
+		t.Fatal("PromoteScenarioChartToBaseline accepted a blank name")
+	}
+}
+
+func TestSaveScenarioChartUpdatesIsolatedCopyOnly(t *testing.T) {
+	d := newBackupTestDB(t)
+	p, err := d.UpsertProject(Project{Name: "Scenario Editing Plan"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	chart, err := d.SaveChart(Chart{
+		ProjectID: p.ID,
+		Kind:      "cpm",
+		Title:     "Live CPM",
+		Data:      `{"nodes":[{"id":"a","label":"Live","duration":2}],"edges":[]}`,
+		Config:    `{"view":"live"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	scenario, err := d.SaveScenario(Scenario{
+		ProjectID: p.ID,
+		Name:      "Edited scenario",
+		IsActive:  true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario: %v", err)
+	}
+	branched, err := d.BranchScenarioChart(scenario.ID, chart.ID, "")
+	if err != nil {
+		t.Fatalf("BranchScenarioChart: %v", err)
+	}
+
+	branched.Title = "Edited scenario CPM"
+	branched.Data = `{"nodes":[{"id":"a","label":"Scenario","duration":5}],"edges":[]}`
+	branched.Config = `{"view":"scenario"}`
+	saved, err := d.SaveScenarioChart(branched)
+	if err != nil {
+		t.Fatalf("SaveScenarioChart: %v", err)
+	}
+	if saved.Title != branched.Title || saved.Data != branched.Data || saved.Config != branched.Config {
+		t.Fatalf("saved scenario chart mismatch: %+v", saved)
+	}
+	if saved.ProjectID != p.ID || saved.SourceChartID != chart.ID || saved.Kind != chart.Kind {
+		t.Fatalf("save changed immutable scenario chart fields: %+v", saved)
+	}
+
+	live, err := d.GetChart(chart.ID)
+	if err != nil {
+		t.Fatalf("GetChart live: %v", err)
+	}
+	if live.Data == saved.Data || live.Config == saved.Config || live.Title == saved.Title {
+		t.Fatalf("scenario edit mutated live chart: live=%+v scenario=%+v", live, saved)
+	}
+}

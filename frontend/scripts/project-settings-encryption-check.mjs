@@ -104,6 +104,42 @@ const checks = [
       component.includes('App.ListScenarioCharts'),
   ],
   [
+    'settings exposes scenario promotion controls',
+    component.includes('promoteScenarioChart') &&
+      component.includes('Promote to baseline') &&
+      component.includes('scenarioPromotionName'),
+  ],
+  [
+    'settings uses Wails scenario promotion method',
+    component.includes('App.PromoteScenarioChartToBaseline') &&
+      wailsWindowTypes.includes('PromoteScenarioChartToBaseline: ('),
+  ],
+  [
+    'settings exposes scenario comparison controls',
+    component.includes('compareScenarioChart') &&
+      component.includes('Compare to baseline') &&
+      component.includes('scenarioComparisons'),
+  ],
+  [
+    'settings uses Wails scenario comparison method',
+    component.includes('App.CompareScenarioChart') &&
+      wailsWindowTypes.includes('CompareScenarioChart: (') &&
+      wailsWindowTypes.includes('scenarioChartID: string') &&
+      wailsWindowTypes.includes('Promise<Record<string, ScheduleVariance>>'),
+  ],
+  [
+    'settings exposes scenario chart edit controls',
+    component.includes('editScenarioChart') &&
+      component.includes('saveScenarioChart') &&
+      component.includes('Save scenario edits') &&
+      component.includes('scenarioChartDraft'),
+  ],
+  [
+    'settings uses Wails scenario chart save method',
+    component.includes('App.SaveScenarioChart') &&
+      wailsWindowTypes.includes('SaveScenarioChart: (c: ScenarioChart) => Promise<ScenarioChart>'),
+  ],
+  [
     'settings loads and saves compliance_mode through Wails settings',
     component.includes('complianceMode = s.compliance_mode ?? false') &&
       component.includes('compliance_mode: complianceMode') &&
