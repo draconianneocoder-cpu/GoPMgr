@@ -139,6 +139,16 @@ declare global {
           ListResourceCalendars: () => Promise<ResourceCalendar[]>;
           SaveResourceCalendar: (c: ResourceCalendar) => Promise<ResourceCalendar>;
           DeleteResourceCalendar: (id: string) => Promise<void>;
+          ListScenarios: () => Promise<Scenario[]>;
+          GetScenario: (id: string) => Promise<Scenario>;
+          SaveScenario: (s: Scenario) => Promise<Scenario>;
+          DeleteScenario: (id: string) => Promise<void>;
+          BranchScenarioChart: (
+            scenarioID: string,
+            chartID: string,
+            baselineID: string,
+          ) => Promise<ScenarioChart>;
+          ListScenarioCharts: (scenarioID: string) => Promise<ScenarioChart[]>;
           BuildTimeline: () => Promise<TimelineEntry[]>;
           MoveTimelineEntry: (
             kind: TimelineKind,
@@ -637,6 +647,32 @@ declare global {
     name: string;
     data: string;
     created_at: string;
+  }
+
+  interface Scenario {
+    id: string;
+    project_id: string;
+    name: string;
+    source_baseline_id: string;
+    description: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+  }
+
+  interface ScenarioChart {
+    id: string;
+    scenario_id: string;
+    project_id: string;
+    source_chart_id: string;
+    source_baseline_id: string;
+    kind: string;
+    title: string;
+    data: string;
+    config: string;
+    baseline_data: string;
+    created_at: string;
+    updated_at: string;
   }
 
   interface ScheduleVariance {

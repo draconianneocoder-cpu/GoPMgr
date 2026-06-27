@@ -58,6 +58,9 @@ Every open project has a Project Settings view. Use it to edit:
 - Project name, description, owner, industry, sub-category, methodology,
   country code, lifecycle status, phase, dates, and budget.
 - Export and signature settings.
+- What-if scenarios: create, edit, delete, select the active scenario, and
+  copy a source chart with current data or a saved schedule baseline into an
+  isolated scenario partition for later schedule comparison work.
 - Compliance mode, which verifies the tamper-evident audit chain before a
   project opens and blocks the open if the chain has been altered. Project,
   chart, document, and schedule-baseline lifecycle actions are included in the

@@ -224,6 +224,44 @@ func (db *Database) Migrate() error {
 
 	CREATE INDEX IF NOT EXISTS idx_baselines_chart ON baselines(chart_id);
 
+	-- What-if scenario metadata. Scenario task/baseline branching is
+	-- introduced in later slices; this table establishes the stable
+	-- project-local identity and active-scenario contract.
+	CREATE TABLE IF NOT EXISTS scenarios (
+		id                 TEXT PRIMARY KEY,
+		project_id         TEXT NOT NULL,
+		name               TEXT NOT NULL,
+		source_baseline_id TEXT NOT NULL DEFAULT '',
+		description        TEXT NOT NULL DEFAULT '',
+		is_active          INTEGER NOT NULL DEFAULT 0,
+		created_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		updated_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_scenarios_project ON scenarios(project_id, created_at);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_scenarios_one_active ON scenarios(project_id) WHERE is_active = 1;
+
+	CREATE TABLE IF NOT EXISTS scenario_charts (
+		id                 TEXT PRIMARY KEY,
+		scenario_id        TEXT NOT NULL,
+		project_id         TEXT NOT NULL,
+		source_chart_id    TEXT NOT NULL DEFAULT '',
+		source_baseline_id TEXT NOT NULL DEFAULT '',
+		kind               TEXT NOT NULL DEFAULT '',
+		title              TEXT NOT NULL DEFAULT '',
+		data               TEXT NOT NULL DEFAULT '{}',
+		config             TEXT NOT NULL DEFAULT '{}',
+		baseline_data      TEXT NOT NULL DEFAULT '{}',
+		created_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		updated_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		FOREIGN KEY (scenario_id) REFERENCES scenarios(id) ON DELETE CASCADE,
+		FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_scenario_charts_scenario ON scenario_charts(scenario_id, updated_at);
+	CREATE INDEX IF NOT EXISTS idx_scenario_charts_source ON scenario_charts(project_id, source_chart_id);
+
 	-- Documents table. ` + "`kind`" + ` is one of the 25 document types defined
 	-- in internal/documents/registry.go. ` + "`content`" + ` is JSON keyed by the
 	-- kind's schema.

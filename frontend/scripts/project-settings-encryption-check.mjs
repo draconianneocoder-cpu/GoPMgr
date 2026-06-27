@@ -76,6 +76,34 @@ const checks = [
       component.includes('Export audit repair evidence'),
   ],
   [
+    'settings exposes scenario metadata panel actions',
+    component.includes('loadScenarios') &&
+      component.includes('saveScenario') &&
+      component.includes('deleteScenario') &&
+      component.includes('What-if Scenarios') &&
+      component.includes('Add scenario'),
+  ],
+  [
+    'settings uses Wails scenario metadata methods',
+    component.includes('App.ListScenarios()') &&
+      component.includes('App.SaveScenario') &&
+      component.includes('App.DeleteScenario'),
+  ],
+  [
+    'settings exposes scenario chart copy controls',
+    component.includes('loadScenarioSources') &&
+      component.includes('branchScenarioChart') &&
+      component.includes('Copy chart into scenario') &&
+      component.includes('Copied scenario charts'),
+  ],
+  [
+    'settings uses Wails scenario chart copy methods',
+    component.includes('App.ListCharts') &&
+      component.includes('App.ListScheduleBaselines') &&
+      component.includes('App.BranchScenarioChart') &&
+      component.includes('App.ListScenarioCharts'),
+  ],
+  [
     'settings loads and saves compliance_mode through Wails settings',
     component.includes('complianceMode = s.compliance_mode ?? false') &&
       component.includes('compliance_mode: complianceMode') &&
@@ -92,6 +120,34 @@ const checks = [
   [
     'tracked Wails App shim includes audit repair evidence export',
     wailsWindowTypes.includes('ExportAuditRepairEvidence: () => Promise<string>'),
+  ],
+  [
+    'tracked Wails App shim includes scenario metadata methods',
+    wailsWindowTypes.includes('ListScenarios: () => Promise<Scenario[]>') &&
+      wailsWindowTypes.includes('GetScenario: (id: string) => Promise<Scenario>') &&
+      wailsWindowTypes.includes('SaveScenario: (s: Scenario) => Promise<Scenario>') &&
+      wailsWindowTypes.includes('DeleteScenario: (id: string) => Promise<void>'),
+  ],
+  [
+    'tracked Wails App shim includes scenario chart partition methods',
+    wailsWindowTypes.includes('BranchScenarioChart: (') &&
+      wailsWindowTypes.includes('scenarioID: string') &&
+      wailsWindowTypes.includes('chartID: string') &&
+      wailsWindowTypes.includes('baselineID: string') &&
+      wailsWindowTypes.includes('Promise<ScenarioChart>') &&
+      wailsWindowTypes.includes('ListScenarioCharts: (scenarioID: string) => Promise<ScenarioChart[]>'),
+  ],
+  [
+    'tracked Wails shim includes Scenario type',
+    wailsWindowTypes.includes('interface Scenario') &&
+      wailsWindowTypes.includes('source_baseline_id: string') &&
+      wailsWindowTypes.includes('is_active: boolean'),
+  ],
+  [
+    'tracked Wails shim includes ScenarioChart type',
+    wailsWindowTypes.includes('interface ScenarioChart') &&
+      wailsWindowTypes.includes('source_chart_id: string') &&
+      wailsWindowTypes.includes('baseline_data: string'),
   ],
 ];
 
