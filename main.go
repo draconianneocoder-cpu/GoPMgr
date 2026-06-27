@@ -3117,6 +3117,119 @@ func (a *App) DeleteResourceCalendar(id string) error {
 	return d.DeleteResourceCalendar(id)
 }
 
+// ----- Scenarios / what-if analysis -----
+
+// ListScenarios returns what-if scenario metadata for the open project.
+func (a *App) ListScenarios() ([]db.Scenario, error) {
+	d := a.requireDB()
+	if d == nil {
+		return nil, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	return d.ListScenarios(p.ID)
+}
+
+// GetScenario fetches one scenario by ID for the open project.
+func (a *App) GetScenario(id string) (db.Scenario, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Scenario{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Scenario{}, err
+	}
+	s, err := d.GetScenario(id)
+	if err != nil {
+		return db.Scenario{}, err
+	}
+	if s.ProjectID != p.ID {
+		return db.Scenario{}, db.ErrNoScenario
+	}
+	return s, nil
+}
+
+// SaveScenario upserts scenario metadata for the open project. The
+// frontend-supplied project ID is ignored so scenarios cannot be
+// written across project boundaries.
+func (a *App) SaveScenario(s db.Scenario) (db.Scenario, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Scenario{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Scenario{}, err
+	}
+	s.ProjectID = p.ID
+	return d.SaveScenario(s)
+}
+
+// DeleteScenario removes one scenario from the open project.
+func (a *App) DeleteScenario(id string) error {
+	d := a.requireDB()
+	if d == nil {
+		return errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return err
+	}
+	s, err := d.GetScenario(id)
+	if err != nil {
+		return err
+	}
+	if s.ProjectID != p.ID {
+		return db.ErrNoScenario
+	}
+	return d.DeleteScenario(id)
+}
+
+// BranchScenarioChart copies a live chart and optional baseline into an
+// isolated scenario partition for the open project.
+func (a *App) BranchScenarioChart(scenarioID, chartID, baselineID string) (db.ScenarioChart, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.ScenarioChart{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.ScenarioChart{}, err
+	}
+	s, err := d.GetScenario(scenarioID)
+	if err != nil {
+		return db.ScenarioChart{}, err
+	}
+	if s.ProjectID != p.ID {
+		return db.ScenarioChart{}, db.ErrNoScenario
+	}
+	return d.BranchScenarioChart(scenarioID, chartID, baselineID)
+}
+
+// ListScenarioCharts returns isolated chart copies for a scenario in the
+// open project.
+func (a *App) ListScenarioCharts(scenarioID string) ([]db.ScenarioChart, error) {
+	d := a.requireDB()
+	if d == nil {
+		return nil, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	s, err := d.GetScenario(scenarioID)
+	if err != nil {
+		return nil, err
+	}
+	if s.ProjectID != p.ID {
+		return nil, db.ErrNoScenario
+	}
+	return d.ListScenarioCharts(scenarioID)
+}
+
 // ----- Timeline + Budget -----
 
 var errTimelineSourceMismatch = errors.New("timeline: source id does not match open project")

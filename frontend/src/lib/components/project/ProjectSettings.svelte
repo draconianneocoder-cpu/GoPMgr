@@ -86,6 +86,47 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let resourceCalendarStatus = $state('');
   let resourceCalendarError = $state('');
 
+  type ScenarioDraft = {
+    id: string;
+    name: string;
+    source_baseline_id: string;
+    description: string;
+    is_active: boolean;
+  };
+
+  const emptyScenarioDraft = (): ScenarioDraft => ({
+    id: '',
+    name: '',
+    source_baseline_id: '',
+    description: '',
+    is_active: false,
+  });
+
+  type ScenarioCopyDraft = {
+    scenario_id: string;
+    chart_id: string;
+    baseline_id: string;
+  };
+
+  const emptyScenarioCopyDraft = (): ScenarioCopyDraft => ({
+    scenario_id: '',
+    chart_id: '',
+    baseline_id: '',
+  });
+
+  let scenarios = $state<Scenario[]>([]);
+  let scenarioDraft = $state<ScenarioDraft>(emptyScenarioDraft());
+  let scenarioSourceCharts = $state<ChartRecord[]>([]);
+  let scenarioBaselines = $state<BaselineRecord[]>([]);
+  let scenarioChartCopies = $state<Record<string, ScenarioChart[]>>({});
+  let scenarioCopyDraft = $state<ScenarioCopyDraft>(emptyScenarioCopyDraft());
+  let scenarioBusy = $state(false);
+  let scenarioStatus = $state('');
+  let scenarioError = $state('');
+  let scenarioCopyBusy = $state(false);
+  let scenarioCopyStatus = $state('');
+  let scenarioCopyError = $state('');
+
   onMount(async () => {
     try {
       const p = await window.go.main.App.GetProjectMeta();
@@ -111,6 +152,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // non-fatal
     }
     await loadResourceCalendars();
+    await loadScenarioSources();
+    await loadScenarios();
     await loadEncryptionState();
   });
 
@@ -493,6 +536,188 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  async function loadScenarios() {
+    scenarioError = '';
+    try {
+      const loaded = (await window.go.main.App.ListScenarios()) ?? [];
+      scenarios = loaded;
+      normalizeScenarioCopyDraft(loaded, scenarioSourceCharts);
+      await loadScenarioChartCopies(loaded);
+    } catch (err: any) {
+      scenarioError = `Could not load scenarios: ${err}`;
+    }
+  }
+
+  async function loadScenarioSources() {
+    scenarioCopyError = '';
+    try {
+      const loaded = (await window.go.main.App.ListCharts('')) ?? [];
+      scenarioSourceCharts = loaded;
+      normalizeScenarioCopyDraft(scenarios, loaded);
+      await loadScenarioBaselines(scenarioCopyDraft.chart_id);
+    } catch (err: any) {
+      scenarioCopyError = `Could not load source charts: ${err}`;
+    }
+  }
+
+  async function loadScenarioBaselines(chartID: string) {
+    if (!chartID) {
+      scenarioBaselines = [];
+      scenarioCopyDraft = { ...scenarioCopyDraft, baseline_id: '' };
+      return;
+    }
+    try {
+      const loaded = (await window.go.main.App.ListScheduleBaselines(chartID)) ?? [];
+      scenarioBaselines = loaded;
+      if (scenarioCopyDraft.baseline_id && !loaded.some((b) => b.id === scenarioCopyDraft.baseline_id)) {
+        scenarioCopyDraft = { ...scenarioCopyDraft, baseline_id: '' };
+      }
+    } catch (err: any) {
+      scenarioBaselines = [];
+      scenarioCopyDraft = { ...scenarioCopyDraft, baseline_id: '' };
+      scenarioCopyError = `Could not load baselines: ${err}`;
+    }
+  }
+
+  async function loadScenarioChartCopies(items: Scenario[] = scenarios) {
+    const next: Record<string, ScenarioChart[]> = {};
+    for (const scenario of items) {
+      next[scenario.id] = (await window.go.main.App.ListScenarioCharts(scenario.id)) ?? [];
+    }
+    scenarioChartCopies = next;
+  }
+
+  function normalizeScenarioCopyDraft(
+    nextScenarios: Scenario[] = scenarios,
+    nextCharts: ChartRecord[] = scenarioSourceCharts,
+  ) {
+    const scenarioID = nextScenarios.some((s) => s.id === scenarioCopyDraft.scenario_id)
+      ? scenarioCopyDraft.scenario_id
+      : nextScenarios[0]?.id ?? '';
+    const chartID = nextCharts.some((c) => c.id === scenarioCopyDraft.chart_id)
+      ? scenarioCopyDraft.chart_id
+      : nextCharts[0]?.id ?? '';
+    scenarioCopyDraft = {
+      scenario_id: scenarioID,
+      chart_id: chartID,
+      baseline_id: chartID === scenarioCopyDraft.chart_id ? scenarioCopyDraft.baseline_id : '',
+    };
+  }
+
+  function scenarioCopiesFor(id: string): ScenarioChart[] {
+    return scenarioChartCopies[id] ?? [];
+  }
+
+  async function handleScenarioSourceChartChange() {
+    scenarioCopyDraft = { ...scenarioCopyDraft, baseline_id: '' };
+    scenarioCopyStatus = '';
+    scenarioCopyError = '';
+    await loadScenarioBaselines(scenarioCopyDraft.chart_id);
+  }
+
+  function editScenario(s: Scenario) {
+    scenarioDraft = {
+      id: s.id,
+      name: s.name,
+      source_baseline_id: s.source_baseline_id ?? '',
+      description: s.description ?? '',
+      is_active: s.is_active,
+    };
+    scenarioStatus = '';
+    scenarioError = '';
+  }
+
+  function resetScenarioDraft() {
+    scenarioDraft = emptyScenarioDraft();
+    scenarioStatus = '';
+    scenarioError = '';
+  }
+
+  async function saveScenario() {
+    scenarioBusy = true;
+    scenarioStatus = '';
+    scenarioError = '';
+    try {
+      const name = scenarioDraft.name.trim();
+      if (!name) throw new Error('Scenario name is required');
+      const saved = await window.go.main.App.SaveScenario({
+        id: scenarioDraft.id,
+        project_id: '',
+        name,
+        source_baseline_id: scenarioDraft.source_baseline_id.trim(),
+        description: scenarioDraft.description.trim(),
+        is_active: scenarioDraft.is_active,
+        created_at: '',
+        updated_at: '',
+      });
+      const next = [
+        saved,
+        ...scenarios.filter((s) => s.id !== saved.id).map((s) => ({
+          ...s,
+          is_active: saved.is_active ? false : s.is_active,
+        })),
+      ].sort((a, b) => Number(b.is_active) - Number(a.is_active) || a.name.localeCompare(b.name));
+      scenarios = next;
+      if (!scenarioCopyDraft.scenario_id) {
+        scenarioCopyDraft = { ...scenarioCopyDraft, scenario_id: saved.id };
+      }
+      await loadScenarioChartCopies(next);
+      scenarioDraft = emptyScenarioDraft();
+      scenarioStatus = 'Saved.';
+    } catch (err: any) {
+      scenarioError = `Save failed: ${err?.message ?? err}`;
+    } finally {
+      scenarioBusy = false;
+    }
+  }
+
+  async function deleteScenario(id: string) {
+    scenarioBusy = true;
+    scenarioStatus = '';
+    scenarioError = '';
+    try {
+      await window.go.main.App.DeleteScenario(id);
+      scenarios = scenarios.filter((s) => s.id !== id);
+      const remainingCopies = { ...scenarioChartCopies };
+      delete remainingCopies[id];
+      scenarioChartCopies = remainingCopies;
+      if (scenarioDraft.id === id) scenarioDraft = emptyScenarioDraft();
+      normalizeScenarioCopyDraft(scenarios, scenarioSourceCharts);
+      scenarioStatus = 'Deleted.';
+    } catch (err: any) {
+      scenarioError = `Delete failed: ${err}`;
+    } finally {
+      scenarioBusy = false;
+    }
+  }
+
+  async function branchScenarioChart() {
+    scenarioCopyBusy = true;
+    scenarioCopyStatus = '';
+    scenarioCopyError = '';
+    try {
+      if (!scenarioCopyDraft.scenario_id) throw new Error('Select a scenario');
+      if (!scenarioCopyDraft.chart_id) throw new Error('Select a source chart');
+      const copied = await window.go.main.App.BranchScenarioChart(
+        scenarioCopyDraft.scenario_id,
+        scenarioCopyDraft.chart_id,
+        scenarioCopyDraft.baseline_id,
+      );
+      scenarioChartCopies = {
+        ...scenarioChartCopies,
+        [copied.scenario_id]: [
+          copied,
+          ...scenarioCopiesFor(copied.scenario_id).filter((chart) => chart.id !== copied.id),
+        ],
+      };
+      scenarioCopyStatus = 'Copied chart into scenario.';
+    } catch (err: any) {
+      scenarioCopyError = `Copy failed: ${err?.message ?? err}`;
+    } finally {
+      scenarioCopyBusy = false;
+    }
+  }
+
   onDestroy(() => {});
 </script>
 
@@ -673,12 +898,209 @@ SPDX-License-Identifier: GPL-3.0-or-later
               Feeds the Dashboard Budget panel via stakeholder rates × work-item points.
             </span>
            </label>
-         </div>
-       </section>
+       </div>
+     </section>
 
-       <!-- Resource Capacity -->
-       <section>
-         <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+      <!-- What-if Scenarios -->
+      <section>
+        <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+          What-if Scenarios
+        </h2>
+        <div class="space-y-3">
+          {#if scenarios.length > 0}
+            <div class="divide-y divide-slate-800 border border-slate-800 rounded overflow-hidden">
+              {#each scenarios as scenario (scenario.id)}
+                <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 p-3 bg-slate-900/40">
+                  <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <p class="text-sm font-semibold text-slate-100">{scenario.name}</p>
+                      {#if scenario.is_active}
+                        <span class="text-[10px] uppercase tracking-widest text-cyan-200 border border-cyan-900/70 bg-cyan-950/40 px-2 py-0.5 rounded">
+                          Active
+                        </span>
+                      {/if}
+                    </div>
+                    {#if scenario.description}
+                      <p class="text-xs text-slate-400 mt-1">{scenario.description}</p>
+                    {/if}
+                    {#if scenario.source_baseline_id}
+                      <p class="text-[10px] text-slate-500 uppercase mt-1">
+                        Source baseline: {scenario.source_baseline_id}
+                      </p>
+                    {/if}
+                    {#if scenarioCopiesFor(scenario.id).length > 0}
+                      <p class="text-[10px] text-cyan-300 uppercase mt-1">
+                        {scenarioCopiesFor(scenario.id).length} copied chart{scenarioCopiesFor(scenario.id).length === 1 ? '' : 's'}
+                      </p>
+                    {/if}
+                  </div>
+                  <div class="flex gap-2 md:justify-end">
+                    <button
+                      onclick={() => editScenario(scenario)}
+                      disabled={scenarioBusy}
+                      class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onclick={() => deleteScenario(scenario.id)}
+                      disabled={scenarioBusy}
+                      class="text-xs bg-red-950/60 hover:bg-red-900/70 disabled:opacity-50 text-red-100 px-3 py-1 rounded border border-red-900/70"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {:else}
+            <p class="text-xs text-slate-500 border border-slate-800 rounded bg-slate-900/40 p-3">
+              No what-if scenarios yet.
+            </p>
+          {/if}
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label class="block">
+              <span class="text-xs text-slate-500 uppercase">Scenario name</span>
+              <input
+                bind:value={scenarioDraft.name}
+                class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+              />
+            </label>
+            <label class="block">
+              <span class="text-xs text-slate-500 uppercase">Source baseline ID</span>
+              <input
+                bind:value={scenarioDraft.source_baseline_id}
+                placeholder="optional"
+                class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+              />
+            </label>
+            <label class="block md:col-span-2">
+              <span class="text-xs text-slate-500 uppercase">Description</span>
+              <textarea
+                bind:value={scenarioDraft.description}
+                rows="2"
+                class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+              ></textarea>
+            </label>
+            <label class="flex items-center gap-3 cursor-pointer md:col-span-2">
+              <input type="checkbox" bind:checked={scenarioDraft.is_active} class="accent-cyan-500" />
+              <span class="text-sm text-slate-300">Set as active scenario</span>
+            </label>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button
+              onclick={saveScenario}
+              disabled={scenarioBusy}
+              class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+            >
+              {scenarioBusy ? 'Saving…' : scenarioDraft.id ? 'Update scenario' : 'Add scenario'}
+            </button>
+            <button
+              onclick={resetScenarioDraft}
+              disabled={scenarioBusy}
+              class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded"
+            >
+              Clear
+            </button>
+          </div>
+
+          {#if scenarioStatus}
+            <p class="text-xs text-cyan-400">{scenarioStatus}</p>
+          {/if}
+          {#if scenarioError}
+            <p class="text-xs text-red-400" role="alert">{scenarioError}</p>
+          {/if}
+
+          <div class="border border-slate-800 rounded bg-slate-900/40 p-3 space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label class="block">
+                <span class="text-xs text-slate-500 uppercase">Scenario</span>
+                <select
+                  bind:value={scenarioCopyDraft.scenario_id}
+                  disabled={scenarioCopyBusy || scenarios.length === 0}
+                  class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none disabled:opacity-50"
+                >
+                  {#if scenarios.length === 0}
+                    <option value="">No scenarios</option>
+                  {/if}
+                  {#each scenarios as scenario (scenario.id)}
+                    <option value={scenario.id}>{scenario.name}</option>
+                  {/each}
+                </select>
+              </label>
+              <label class="block">
+                <span class="text-xs text-slate-500 uppercase">Source chart</span>
+                <select
+                  bind:value={scenarioCopyDraft.chart_id}
+                  onchange={handleScenarioSourceChartChange}
+                  disabled={scenarioCopyBusy || scenarioSourceCharts.length === 0}
+                  class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none disabled:opacity-50"
+                >
+                  {#if scenarioSourceCharts.length === 0}
+                    <option value="">No charts</option>
+                  {/if}
+                  {#each scenarioSourceCharts as chart (chart.id)}
+                    <option value={chart.id}>{chart.title || chart.kind} ({chart.kind})</option>
+                  {/each}
+                </select>
+              </label>
+              <label class="block">
+                <span class="text-xs text-slate-500 uppercase">Baseline</span>
+                <select
+                  bind:value={scenarioCopyDraft.baseline_id}
+                  disabled={scenarioCopyBusy || !scenarioCopyDraft.chart_id}
+                  class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none disabled:opacity-50"
+                >
+                  <option value="">Current chart data</option>
+                  {#each scenarioBaselines as baseline (baseline.id)}
+                    <option value={baseline.id}>{baseline.name}</option>
+                  {/each}
+                </select>
+              </label>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                onclick={branchScenarioChart}
+                disabled={scenarioCopyBusy || !scenarioCopyDraft.scenario_id || !scenarioCopyDraft.chart_id}
+                class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+              >
+                {scenarioCopyBusy ? 'Copying…' : 'Copy chart into scenario'}
+              </button>
+              {#if scenarioCopyStatus}
+                <span class="text-xs text-cyan-400">{scenarioCopyStatus}</span>
+              {/if}
+              {#if scenarioCopyError}
+                <span class="text-xs text-red-400" role="alert">{scenarioCopyError}</span>
+              {/if}
+            </div>
+
+            {#if scenarioCopyDraft.scenario_id && scenarioCopiesFor(scenarioCopyDraft.scenario_id).length > 0}
+              <div>
+                <p class="text-[10px] uppercase tracking-widest text-slate-500 mb-2">
+                  Copied scenario charts
+                </p>
+                <div class="divide-y divide-slate-800 border border-slate-800 rounded overflow-hidden">
+                  {#each scenarioCopiesFor(scenarioCopyDraft.scenario_id) as chart (chart.id)}
+                    <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-slate-950/60">
+                      <span class="text-xs text-slate-200">{chart.title || chart.kind}</span>
+                      <span class="text-[10px] uppercase tracking-widest text-slate-500">
+                        {chart.kind}{chart.source_baseline_id ? ` · baseline ${chart.source_baseline_id}` : ''}
+                      </span>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+          </div>
+        </div>
+      </section>
+
+      <!-- Resource Capacity -->
+      <section>
+        <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
            Resource Capacity
          </h2>
          <div class="space-y-3">
