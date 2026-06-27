@@ -12,15 +12,101 @@ import (
 // (1.0 = full-time). Zero or negative units are treated as 1.0 so a
 // bare {"resource":"alice"} assignment behaves sensibly.
 type Assignment struct {
-	Resource string  `json:"resource"`
-	Units    float64 `json:"units,omitempty"`
+	Resource   string   `json:"resource"`
+	Units      float64  `json:"units,omitempty"`
+	CalendarID string   `json:"calendar_id,omitempty"`
+	SkillTags  []string `json:"skill_tags,omitempty"`
+	MaxUnits   float64  `json:"max_units,omitempty"`
 }
 
 func (a Assignment) effectiveUnits() float64 {
+	units := a.Units
 	if a.Units <= 0 {
-		return 1
+		units = 1
 	}
-	return a.Units
+	if a.MaxUnits > 0 && units > a.MaxUnits {
+		return a.MaxUnits
+	}
+	return units
+}
+
+// ResourceCalendar describes one resource's capacity exceptions by
+// integer project day. It intentionally stays in working-day offsets
+// so the pure kernel remains independent of wall-clock calendars.
+type ResourceCalendar struct {
+	ID              string            `json:"id,omitempty"`
+	Resource        string            `json:"resource,omitempty"`
+	DefaultCapacity float64           `json:"default_capacity,omitempty"`
+	Overrides       map[int]float64   `json:"overrides,omitempty"`
+	WeeklyCapacity  map[int]float64   `json:"weekly_capacity,omitempty"`
+	Notes           map[int]string    `json:"notes,omitempty"`
+	SkillTags       []string          `json:"skill_tags,omitempty"`
+	Metadata        map[string]string `json:"metadata,omitempty"`
+}
+
+// ResourceCapacityPlan resolves per-resource capacity at a project day.
+// Capacities preserves the old API's static resource capacities;
+// Calendars adds named per-resource overrides for availability changes.
+type ResourceCapacityPlan struct {
+	DefaultCapacity float64                     `json:"default_capacity,omitempty"`
+	Capacities      map[string]float64          `json:"capacities,omitempty"`
+	Calendars       map[string]ResourceCalendar `json:"calendars,omitempty"`
+}
+
+func capacityPlanFromMap(capacities map[string]float64) ResourceCapacityPlan {
+	return ResourceCapacityPlan{DefaultCapacity: 1, Capacities: capacities}
+}
+
+func (p ResourceCapacityPlan) baseCapacity(resource string) float64 {
+	defaultCapacity := p.DefaultCapacity
+	if defaultCapacity <= 0 {
+		defaultCapacity = 1
+	}
+	capacity := defaultCapacity
+	if c, ok := p.Capacities[resource]; ok && c > 0 {
+		capacity = c
+	}
+	return capacity
+}
+
+func (p ResourceCapacityPlan) capacityFor(resource string, day int) float64 {
+	capacity := p.baseCapacity(resource)
+	if cal, ok := p.Calendars[resource]; ok {
+		capacity = p.capacityFromCalendar(cal, capacity, day)
+	}
+	return capacity
+}
+
+func (p ResourceCapacityPlan) capacityForAssignment(a Assignment, day int) float64 {
+	capacity := p.baseCapacity(a.Resource)
+	if a.CalendarID != "" {
+		if cal, ok := p.Calendars[a.CalendarID]; ok {
+			return p.capacityFromCalendar(cal, capacity, day)
+		}
+	}
+	return p.capacityFor(a.Resource, day)
+}
+
+func (p ResourceCapacityPlan) capacityFromCalendar(cal ResourceCalendar, fallback float64, day int) float64 {
+	capacity := fallback
+	if cal.DefaultCapacity > 0 {
+		capacity = cal.DefaultCapacity
+	}
+	if cal.WeeklyCapacity != nil {
+		weekday := day % 7
+		if weekday < 0 {
+			weekday += 7
+		}
+		if c, ok := cal.WeeklyCapacity[weekday]; ok && c >= 0 {
+			capacity = c
+		}
+	}
+	if cal.Overrides != nil {
+		if c, ok := cal.Overrides[day]; ok && c >= 0 {
+			capacity = c
+		}
+	}
+	return capacity
 }
 
 // levelingHorizon caps how far LevelResources will push a task while
@@ -79,6 +165,36 @@ func ResourceUsage(tasks map[string]*Task) map[string][]float64 {
 	return usage
 }
 
+// ResourceCapacityProfiles builds calendar-aware per-day capacity
+// profiles for the requested resources. Every returned slice has
+// length horizon, with index d matching project working-day offset d.
+func ResourceCapacityProfiles(plan ResourceCapacityPlan, resources []string, horizon int) map[string][]float64 {
+	if horizon <= 0 || len(resources) == 0 {
+		return map[string][]float64{}
+	}
+
+	seen := make(map[string]bool, len(resources))
+	ordered := make([]string, 0, len(resources))
+	for _, r := range resources {
+		if r == "" || seen[r] {
+			continue
+		}
+		seen[r] = true
+		ordered = append(ordered, r)
+	}
+	sort.Strings(ordered)
+
+	profiles := make(map[string][]float64, len(ordered))
+	for _, r := range ordered {
+		values := make([]float64, horizon)
+		for day := range values {
+			values[day] = plan.capacityFor(r, day)
+		}
+		profiles[r] = values
+	}
+	return profiles
+}
+
 // Overallocation reports one resource exceeding capacity on one day.
 type Overallocation struct {
 	Resource string   `json:"resource"`
@@ -95,6 +211,12 @@ type Overallocation struct {
 // breached day with the breached resource (clearing the flag on all
 // other tasks first), so editors can mark the offenders directly.
 func DetectOverallocations(tasks map[string]*Task, capacities map[string]float64) []Overallocation {
+	return DetectOverallocationsWithPlan(tasks, capacityPlanFromMap(capacities))
+}
+
+// DetectOverallocationsWithPlan compares each resource's usage profile
+// to calendar-aware capacity and returns every breach.
+func DetectOverallocationsWithPlan(tasks map[string]*Task, plan ResourceCapacityPlan) []Overallocation {
 	for _, t := range tasks {
 		t.Overallocated = false
 	}
@@ -109,11 +231,8 @@ func DetectOverallocations(tasks map[string]*Task, capacities map[string]float64
 
 	var out []Overallocation
 	for _, r := range resources {
-		capacity := 1.0
-		if c, ok := capacities[r]; ok && c > 0 {
-			capacity = c
-		}
 		for day, demand := range usage[r] {
+			capacity := plan.capacityFor(r, day)
 			if demand <= capacity+1e-9 {
 				continue
 			}
@@ -176,6 +295,12 @@ func tasksOnDay(tasks map[string]*Task, r string, day int) []*Task {
 //     the initial CalculateCPM pass (the levelled start never moves
 //     earlier than the constrained ES).
 func LevelResources(tasks map[string]*Task, capacities map[string]float64) bool {
+	return LevelResourcesWithPlan(tasks, capacityPlanFromMap(capacities))
+}
+
+// LevelResourcesWithPlan reschedules ES/EF using calendar-aware resource
+// capacities. See LevelResources for the serial leveling semantics.
+func LevelResourcesWithPlan(tasks map[string]*Task, plan ResourceCapacityPlan) bool {
 	if !CalculateCPM(tasks) {
 		return false
 	}
@@ -189,13 +314,6 @@ func LevelResources(tasks map[string]*Task, capacities map[string]float64) bool 
 
 	pending := make([]string, len(order))
 	copy(pending, order)
-
-	capacityFor := func(r string) float64 {
-		if c, ok := capacities[r]; ok && c > 0 {
-			return c
-		}
-		return 1.0
-	}
 
 	demand := func(profile []float64, day int) float64 {
 		if day < len(profile) {
@@ -211,8 +329,8 @@ func LevelResources(tasks map[string]*Task, capacities map[string]float64) bool 
 				continue
 			}
 			profile := booked[a.Resource]
-			capacity := capacityFor(a.Resource)
 			for d := start; d < start+days; d++ {
+				capacity := plan.capacityForAssignment(a, d)
 				if demand(profile, d)+a.effectiveUnits() > capacity+1e-9 {
 					return false
 				}

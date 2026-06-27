@@ -5,6 +5,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -14,13 +15,13 @@ import (
 // validity of (Kind, Data, Config) is the caller's responsibility —
 // the database treats Data and Config as opaque JSON text.
 type Chart struct {
-	ID         string    `json:"id"`
-	ProjectID  string    `json:"project_id"`
-	Kind       string    `json:"kind"`
-	Title      string    `json:"title"`
-	Data       string    `json:"data"`   // JSON string
-	Config     string    `json:"config"` // JSON string
-	TemplateID string    `json:"template_id"`
+	ID         string `json:"id"`
+	ProjectID  string `json:"project_id"`
+	Kind       string `json:"kind"`
+	Title      string `json:"title"`
+	Data       string `json:"data"`   // JSON string
+	Config     string `json:"config"` // JSON string
+	TemplateID string `json:"template_id"`
 	// CreatedAt/UpdatedAt are RFC3339Nano strings (server-managed). They
 	// are strings rather than time.Time so the Wails bridge can round-trip
 	// records whose timestamps are empty (new records) without failing to
@@ -51,7 +52,26 @@ func (db *Database) SaveChart(c Chart) (Chart, error) {
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 
-	_, err := db.Conn.Exec(`
+	tx, err := db.Conn.Begin()
+	if err != nil {
+		return Chart{}, err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	before, err := getChartTx(tx, c.ID)
+	isCreate := false
+	if err == ErrNoChart {
+		isCreate = true
+		err = nil
+	} else if err != nil {
+		return Chart{}, err
+	}
+
+	_, err = tx.Exec(`
 		INSERT INTO charts (id, project_id, kind, title, data, config, template_id, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
@@ -67,7 +87,37 @@ func (db *Database) SaveChart(c Chart) (Chart, error) {
 	if err != nil {
 		return Chart{}, err
 	}
-	return db.GetChart(c.ID)
+	after, err := getChartTx(tx, c.ID)
+	if err != nil {
+		return Chart{}, err
+	}
+	beforeJSON := ""
+	eventType := "chart.create"
+	if !isCreate {
+		beforeJSON, err = chartAuditJSON(before)
+		if err != nil {
+			return Chart{}, err
+		}
+		eventType = "chart.update"
+	}
+	afterJSON, err := chartAuditJSON(after)
+	if err != nil {
+		return Chart{}, err
+	}
+	if _, err = appendAuditEventTx(tx, AuditEventInput{
+		ProjectID:  after.ProjectID,
+		EventType:  eventType,
+		EntityType: "chart",
+		EntityID:   after.ID,
+		BeforeJSON: beforeJSON,
+		AfterJSON:  afterJSON,
+	}); err != nil {
+		return Chart{}, err
+	}
+	if err = tx.Commit(); err != nil {
+		return Chart{}, err
+	}
+	return after, nil
 }
 
 // GetChart fetches a chart by ID.
@@ -115,8 +165,57 @@ func (db *Database) ListCharts(projectID, kind string) ([]Chart, error) {
 
 // DeleteChart removes a chart by ID.
 func (db *Database) DeleteChart(id string) error {
-	_, err := db.Conn.Exec(`DELETE FROM charts WHERE id = ?`, id)
-	return err
+	tx, err := db.Conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	before, err := getChartTx(tx, id)
+	if err == ErrNoChart {
+		err = nil
+		return tx.Commit()
+	}
+	if err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`DELETE FROM charts WHERE id = ?`, id); err != nil {
+		return err
+	}
+	beforeJSON, err := chartAuditJSON(before)
+	if err != nil {
+		return err
+	}
+	if _, err = appendAuditEventTx(tx, AuditEventInput{
+		ProjectID:  before.ProjectID,
+		EventType:  "chart.delete",
+		EntityType: "chart",
+		EntityID:   before.ID,
+		BeforeJSON: beforeJSON,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func getChartTx(tx *sql.Tx, id string) (Chart, error) {
+	row := tx.QueryRow(`
+		SELECT id, project_id, kind, title, data, config, template_id, created_at, updated_at
+		FROM charts WHERE id = ?
+	`, id)
+	return scanChart(row)
+}
+
+func chartAuditJSON(c Chart) (string, error) {
+	data, err := json.Marshal(c)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func scanChart(row interface {

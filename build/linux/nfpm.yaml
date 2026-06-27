@@ -8,10 +8,9 @@
 # or the release workflow — the git tag without the leading "v"). nfpm
 # expands ${VERSION} from the environment.
 #
-# Runtime deps are the GTK3 + WebKit2GTK shared libraries the Wails binary
-# links. The deb names below match Ubuntu 22.04 (built against
-# libwebkit2gtk-4.0-dev); newer Debian/Ubuntu use 4.1 and Fedora uses
-# different names — tune `overrides.*.depends` if a target distro differs.
+# Runtime deps are the GTK3 + WebKit2GTK shared libraries the Wails v2 binary
+# links when built on Ubuntu 24.04+ with the `webkit2_41` build tag.
+# GTK4/WebKitGTK 6.0 is a later Wails migration, not a Wails v2 package tweak.
 name: pmforge
 arch: amd64
 platform: linux
@@ -40,8 +39,8 @@ overrides:
   deb:
     depends:
       - libgtk-3-0
-      - libwebkit2gtk-4.0-37
+      - libwebkit2gtk-4.1-0
   rpm:
     depends:
       - gtk3
-      - webkit2gtk3
+      - webkit2gtk4.1

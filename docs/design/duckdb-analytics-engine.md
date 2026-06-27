@@ -89,6 +89,8 @@ builds link it through `make build` / Wails `-tags duckdb`**. Direct untagged
 - No persistent DuckDB file (`:memory:` only); verified in tests.
 - DuckDB is never handed the encrypted file path; it only receives rows
   the app already decrypted in memory.
+- Currency values enter DuckDB as integer minor units (`BIGINT`), not
+  floating-point columns. Display values are derived only after aggregation.
 - Session hardening on every connection:
   `SET autoinstall_known_extensions=false; SET autoload_known_extensions=false;`
   `SET enable_external_access=false;` (relaxed to a single `allowed_paths`

@@ -24,6 +24,9 @@ type UserSettings struct {
 	// AgileEnabled persists the Software-Dev Pack toggle so the pack
 	// state survives project close/reopen without a CLI flag.
 	AgileEnabled bool `json:"agile_enabled"`
+	// ComplianceMode enables fail-closed checks such as audit hash-chain
+	// verification when the project file is opened.
+	ComplianceMode bool `json:"compliance_mode"`
 }
 
 // DefaultUserSettings is the canonical project-settings reset target.
@@ -36,9 +39,9 @@ func DefaultUserSettings() UserSettings {
 func (db *Database) SaveSettings(s UserSettings) error {
 	const q = `
 		INSERT INTO settings
-			(id, default_password, export_theme, auto_repair, cert_path, signature_enabled, default_font, agile_enabled)
+			(id, default_password, export_theme, auto_repair, cert_path, signature_enabled, default_font, agile_enabled, compliance_mode)
 		VALUES
-			(1, ?, ?, ?, ?, ?, ?, ?)
+			(1, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			default_password  = excluded.default_password,
 			export_theme      = excluded.export_theme,
@@ -46,7 +49,8 @@ func (db *Database) SaveSettings(s UserSettings) error {
 			cert_path         = excluded.cert_path,
 			signature_enabled = excluded.signature_enabled,
 			default_font      = excluded.default_font,
-			agile_enabled     = excluded.agile_enabled
+			agile_enabled     = excluded.agile_enabled,
+			compliance_mode   = excluded.compliance_mode
 	`
 	_, err := db.Conn.Exec(q,
 		s.DefaultPassword,
@@ -56,6 +60,7 @@ func (db *Database) SaveSettings(s UserSettings) error {
 		boolToInt(s.SignatureEnabled),
 		s.DefaultFont,
 		boolToInt(s.AgileEnabled),
+		boolToInt(s.ComplianceMode),
 	)
 	return err
 }
@@ -68,11 +73,12 @@ func (db *Database) GetSettings() (UserSettings, error) {
 		autoRepair   int
 		signatureOn  int
 		agileEnabled int
+		compliance   int
 	)
 	err := db.Conn.QueryRow(
-		`SELECT default_password, export_theme, auto_repair, cert_path, signature_enabled, default_font, agile_enabled
+		`SELECT default_password, export_theme, auto_repair, cert_path, signature_enabled, default_font, agile_enabled, compliance_mode
 		 FROM settings WHERE id = 1`,
-	).Scan(&s.DefaultPassword, &s.ExportTheme, &autoRepair, &s.CertPath, &signatureOn, &s.DefaultFont, &agileEnabled)
+	).Scan(&s.DefaultPassword, &s.ExportTheme, &autoRepair, &s.CertPath, &signatureOn, &s.DefaultFont, &agileEnabled, &compliance)
 
 	if err == sql.ErrNoRows {
 		return DefaultUserSettings(), nil
@@ -83,6 +89,7 @@ func (db *Database) GetSettings() (UserSettings, error) {
 	s.AutoRepair = autoRepair != 0
 	s.SignatureEnabled = signatureOn != 0
 	s.AgileEnabled = agileEnabled != 0
+	s.ComplianceMode = compliance != 0
 	return s, nil
 }
 

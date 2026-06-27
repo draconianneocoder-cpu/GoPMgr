@@ -85,6 +85,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     return n > 0 ? n.toFixed(2) : 'n/a';
   }
 
+  function syncMinorUnits(node: any, valueKey: 'budgeted_cost' | 'actual_cost', raw: string) {
+    const minorKey = valueKey === 'budgeted_cost'
+      ? 'budgeted_cost_minor_units'
+      : 'actual_cost_minor_units';
+    const value = Number(raw || 0);
+    node[minorKey] = Number.isFinite(value) ? Math.round(value * 100) : 0;
+  }
+
   // ----- Resource assignments (roadmap item 19) -----
   let stakeholders = $state<Stakeholder[]>([]);
   let resourceBusy = $state(false);
@@ -101,6 +109,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function flashResourceMsg(msg: string) {
     resourceMsg = msg;
     setTimeout(() => (resourceMsg = ''), 4000);
+  }
+
+  function skillTagsText(assignment: { skill_tags?: string[] }): string {
+    return (assignment.skill_tags ?? []).join(', ');
+  }
+
+  function setSkillTags(assignment: { skill_tags?: string[] }, raw: string) {
+    assignment.skill_tags = raw
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
   }
 
   let shellRef = $state<{ reloadFromDB: () => Promise<void> } | null>(null);
@@ -280,6 +299,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           type="number"
           min="0"
           bind:value={node.budgeted_cost}
+          oninput={(e) => syncMinorUnits(node, 'budgeted_cost', (e.target as HTMLInputElement).value)}
           class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
         />
       </label>
@@ -289,6 +309,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           type="number"
           min="0"
           bind:value={node.actual_cost}
+          oninput={(e) => syncMinorUnits(node, 'actual_cost', (e.target as HTMLInputElement).value)}
           class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
         />
       </label>
@@ -314,28 +335,54 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <div class="mt-3">
       <span class="text-xs text-slate-500 uppercase">Assignments</span>
       {#each node.assignments ?? [] as assignment, i (i)}
-        <div class="flex items-center gap-2 mt-1">
-          <input
-            bind:value={assignment.resource}
-            list="cpm-stakeholders"
-            placeholder="Resource"
-            class="flex-1 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
-          />
-          <input
-            type="number"
-            min="0.1"
-            step="0.1"
-            bind:value={assignment.units}
-            title="Units (1 = full-time)"
-            class="w-16 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-cyan-500 outline-none"
-          />
-          <button
-            onclick={() => {
-              node.assignments = (node.assignments ?? []).filter((_, j) => j !== i);
-            }}
-            class="text-xs text-slate-500 hover:text-red-400 px-1"
-            title="Remove assignment"
-          >✕</button>
+        <div class="mt-1 rounded border border-slate-800 bg-slate-950/40 p-2">
+          <div class="flex items-center gap-2">
+            <input
+              bind:value={assignment.resource}
+              list="cpm-stakeholders"
+              placeholder="Resource"
+              class="flex-1 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
+            />
+            <input
+              type="number"
+              min="0.1"
+              step="0.1"
+              bind:value={assignment.units}
+              title="Units (1 = full-time)"
+              class="w-16 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-cyan-500 outline-none"
+            />
+            <button
+              onclick={() => {
+                node.assignments = (node.assignments ?? []).filter((_, j) => j !== i);
+              }}
+              class="text-xs text-slate-500 hover:text-red-400 px-1"
+              title="Remove assignment"
+            >✕</button>
+          </div>
+          <div class="mt-2 grid grid-cols-3 gap-2">
+            <input
+              bind:value={assignment.calendar_id}
+              placeholder="Calendar"
+              title="Optional named resource calendar"
+              class="bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
+            />
+            <input
+              type="number"
+              min="0"
+              step="0.1"
+              bind:value={assignment.max_units}
+              placeholder="Max"
+              title="Optional max units for this assignment"
+              class="bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-cyan-500 outline-none"
+            />
+            <input
+              value={skillTagsText(assignment)}
+              oninput={(e) => setSkillTags(assignment, (e.target as HTMLInputElement).value)}
+              placeholder="Skills"
+              title="Comma-separated skill tags"
+              class="bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
+            />
+          </div>
         </div>
       {/each}
       <button
@@ -355,8 +402,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {#if node.overallocated}
       <p class="mt-2 p-2 bg-orange-950 border border-orange-600 rounded text-xs text-orange-300">
         Overallocated: a resource on this task exceeds its capacity on
-        at least one scheduled day. Reduce units, move the task, or
-        add capacity.
+        at least one scheduled day, including Resource Capacity calendar
+        overrides. Reduce units, move the task, or add capacity.
       </p>
     {/if}
     <label class="block mt-3">

@@ -37,12 +37,21 @@ func LayoutCPM(doc LayeredDocument) (Layout, error) {
 // (every day working); capacities follows DetectOverallocations'
 // convention (nil / missing entries = 1.0 per resource).
 func LayoutCPMScheduled(doc LayeredDocument, projectStart time.Time, isWorkday kernel.WorkdayFunc, capacities map[string]float64) (Layout, error) {
+	return LayoutCPMScheduledWithPlan(doc, projectStart, isWorkday, kernel.ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Capacities:      capacities,
+	})
+}
+
+// LayoutCPMScheduledWithPlan is LayoutCPMScheduled with named
+// resource calendars and per-day capacity overrides.
+func LayoutCPMScheduledWithPlan(doc LayeredDocument, projectStart time.Time, isWorkday kernel.WorkdayFunc, plan kernel.ResourceCapacityPlan) (Layout, error) {
 	tasks := cpmTasksFromDoc(doc)
 	kernel.ApplyConstraintDates(tasks, projectStart, isWorkday)
 	if ok := kernel.CalculateCPM(tasks); !ok {
 		return Layout{}, ErrCycle
 	}
-	kernel.DetectOverallocations(tasks, capacities)
+	kernel.DetectOverallocationsWithPlan(tasks, plan)
 	kernel.AnchorSchedule(tasks, projectStart, isWorkday)
 	copyCPMResults(doc, tasks)
 	return LayoutLayered(doc, DefaultLayeredOptions())
@@ -55,16 +64,18 @@ func cpmTasksFromDoc(doc LayeredDocument) map[string]*kernel.Task {
 	tasks := make(map[string]*kernel.Task, len(doc.Nodes))
 	for _, n := range doc.Nodes {
 		t := &kernel.Task{
-			ID:              n.ID,
-			Title:           n.Label,
-			Duration:        n.Duration,
-			PercentComplete: n.PercentComplete,
-			Milestone:       n.Milestone,
-			ActualStart:     n.ActualStart,
-			ActualFinish:    n.ActualFinish,
-			BudgetedCost:    n.BudgetedCost,
-			ActualCost:      n.ActualCost,
-			Assignments:     n.Assignments,
+			ID:                     n.ID,
+			Title:                  n.Label,
+			Duration:               n.Duration,
+			PercentComplete:        n.PercentComplete,
+			Milestone:              n.Milestone,
+			ActualStart:            n.ActualStart,
+			ActualFinish:           n.ActualFinish,
+			BudgetedCost:           n.BudgetedCost,
+			BudgetedCostMinorUnits: n.BudgetedCostMinorUnits,
+			ActualCost:             n.ActualCost,
+			ActualCostMinorUnits:   n.ActualCostMinorUnits,
+			Assignments:            n.Assignments,
 		}
 		switch kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(n.Constraint))) {
 		case kernel.AsLateAsPossible:

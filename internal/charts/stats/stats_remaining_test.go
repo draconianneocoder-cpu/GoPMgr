@@ -116,11 +116,7 @@ func TestParseBar_InvalidJSON(t *testing.T) {
 func TestLayoutBar_KindCategoriesSeriesType(t *testing.T) {
 	doc := BarDocument{
 		Categories: []string{"Q1", "Q2"},
-		Series: []struct {
-			Name   string    `json:"name"`
-			Values []float64 `json:"values"`
-			Color  string    `json:"color,omitempty"`
-		}{{Name: "Revenue", Values: []float64{100, 200}}},
+		Series:     []BarSeries{{Name: "Revenue", Values: []float64{100, 200}}},
 	}
 	layout := LayoutBar(doc)
 	if layout.Kind != "bar" {
@@ -131,6 +127,29 @@ func TestLayoutBar_KindCategoriesSeriesType(t *testing.T) {
 	}
 	if len(layout.Series) != 1 || layout.Series[0].Type != "bar" {
 		t.Errorf("Series[0].Type: got %q, want %q", layout.Series[0].Type, "bar")
+	}
+}
+
+func TestLayoutBar_PreservesMixedOverlaySeries(t *testing.T) {
+	doc := BarDocument{
+		Categories: []string{"Day 1", "Day 2"},
+		Series: []BarSeries{
+			{Name: "alice", Values: []float64{1.5, 0.5}},
+			{Name: "alice capacity", Values: []float64{1, 1}, Type: "line", Color: "#f59e0b", Dashed: true},
+		},
+	}
+
+	layout := LayoutBar(doc)
+
+	if len(layout.Series) != 2 {
+		t.Fatalf("Series = %d, want 2", len(layout.Series))
+	}
+	if layout.Series[0].Type != "bar" {
+		t.Errorf("demand Type = %q, want bar", layout.Series[0].Type)
+	}
+	capacity := layout.Series[1]
+	if capacity.Type != "line" || !capacity.Dashed || capacity.Color != "#f59e0b" {
+		t.Errorf("capacity series = %+v, want dashed amber line", capacity)
 	}
 }
 

@@ -106,6 +106,34 @@ func TestLayoutCPM_FlagsOverallocatedNodes(t *testing.T) {
 	}
 }
 
+func TestLayoutCPMScheduledWithPlan_FlagsCalendarUnavailableDay(t *testing.T) {
+	nodes := []LayeredNode{
+		{ID: "A", Label: "A", Duration: 1,
+			Assignments: []kernel.Assignment{{Resource: "alice"}}},
+	}
+	doc := LayeredDocument{Nodes: nodes}
+	plan := kernel.ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Calendars: map[string]kernel.ResourceCalendar{
+			"alice": {
+				Resource: "alice",
+				Overrides: map[int]float64{
+					0: 0,
+				},
+			},
+		},
+	}
+
+	start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	if _, err := LayoutCPMScheduledWithPlan(doc, start, weekdaysOnly, plan); err != nil {
+		t.Fatalf("LayoutCPMScheduledWithPlan: %v", err)
+	}
+
+	if !nodes[0].Overallocated {
+		t.Fatal("task on a zero-capacity resource-calendar day must be flagged")
+	}
+}
+
 func TestLayoutCPM_PlainPathIgnoresDateConstraints(t *testing.T) {
 	nodes := []LayeredNode{
 		{ID: "A", Label: "A", Duration: 1,

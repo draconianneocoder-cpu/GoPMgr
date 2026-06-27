@@ -21,6 +21,9 @@ func TestGetSettingsDefaults(t *testing.T) {
 	if s.AgileEnabled {
 		t.Error("AgileEnabled default: want false, got true")
 	}
+	if s.ComplianceMode {
+		t.Error("ComplianceMode default: want false, got true")
+	}
 }
 
 func TestDefaultUserSettingsMatchesEmptyProjectDefaults(t *testing.T) {
@@ -93,6 +96,7 @@ func TestSaveSettingsPreservesAllFields(t *testing.T) {
 		SignatureEnabled: true,
 		DefaultFont:      "Helvetica",
 		AgileEnabled:     true,
+		ComplianceMode:   true,
 	}
 	if err := d.SaveSettings(in); err != nil {
 		t.Fatalf("SaveSettings: %v", err)
@@ -120,5 +124,20 @@ func TestSaveSettingsPreservesAllFields(t *testing.T) {
 	}
 	if out.AgileEnabled != in.AgileEnabled {
 		t.Errorf("AgileEnabled: got %v, want %v", out.AgileEnabled, in.AgileEnabled)
+	}
+	if out.ComplianceMode != in.ComplianceMode {
+		t.Errorf("ComplianceMode: got %v, want %v", out.ComplianceMode, in.ComplianceMode)
+	}
+}
+
+func TestSettingsComplianceModeColumnExists(t *testing.T) {
+	d := newBackupTestDB(t)
+
+	cols, err := d.columnSet("settings")
+	if err != nil {
+		t.Fatalf("columnSet: %v", err)
+	}
+	if _, ok := cols["compliance_mode"]; !ok {
+		t.Error("compliance_mode column not found in settings table after migration")
 	}
 }
