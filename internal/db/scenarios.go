@@ -5,6 +5,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -82,9 +83,24 @@ func (db *Database) SaveScenario(s Scenario) (Scenario, error) {
 			_ = tx.Rollback()
 		}
 	}()
+
+	before, err := getScenarioTx(tx, s.ID)
+	isCreate := false
+	if err == ErrNoScenario {
+		isCreate = true
+		err = nil
+	} else if err != nil {
+		return Scenario{}, err
+	}
+
+	var deactivated []Scenario
 	if s.IsActive {
+		deactivated, err = listActiveScenariosExceptTx(tx, s.ProjectID, s.ID)
+		if err != nil {
+			return Scenario{}, err
+		}
 		if _, err = tx.Exec(
-			`UPDATE scenarios SET is_active = 0, updated_at = ? WHERE project_id = ? AND id <> ?`,
+			`UPDATE scenarios SET is_active = 0, updated_at = ? WHERE project_id = ? AND id <> ? AND is_active <> 0`,
 			now, s.ProjectID, s.ID,
 		); err != nil {
 			return Scenario{}, err
@@ -107,10 +123,61 @@ func (db *Database) SaveScenario(s Scenario) (Scenario, error) {
 	if err != nil {
 		return Scenario{}, err
 	}
+	after, err := getScenarioTx(tx, s.ID)
+	if err != nil {
+		return Scenario{}, err
+	}
+	for _, changed := range deactivated {
+		deactivatedAfter, err := getScenarioTx(tx, changed.ID)
+		if err != nil {
+			return Scenario{}, err
+		}
+		beforeJSON, err := scenarioAuditJSON(changed)
+		if err != nil {
+			return Scenario{}, err
+		}
+		afterJSON, err := scenarioAuditJSON(deactivatedAfter)
+		if err != nil {
+			return Scenario{}, err
+		}
+		if _, err = appendAuditEventTx(tx, AuditEventInput{
+			ProjectID:  deactivatedAfter.ProjectID,
+			EventType:  "scenario.update",
+			EntityType: "scenario",
+			EntityID:   deactivatedAfter.ID,
+			BeforeJSON: beforeJSON,
+			AfterJSON:  afterJSON,
+		}); err != nil {
+			return Scenario{}, err
+		}
+	}
+	beforeJSON := ""
+	eventType := "scenario.create"
+	if !isCreate {
+		beforeJSON, err = scenarioAuditJSON(before)
+		if err != nil {
+			return Scenario{}, err
+		}
+		eventType = "scenario.update"
+	}
+	afterJSON, err := scenarioAuditJSON(after)
+	if err != nil {
+		return Scenario{}, err
+	}
+	if _, err = appendAuditEventTx(tx, AuditEventInput{
+		ProjectID:  after.ProjectID,
+		EventType:  eventType,
+		EntityType: "scenario",
+		EntityID:   after.ID,
+		BeforeJSON: beforeJSON,
+		AfterJSON:  afterJSON,
+	}); err != nil {
+		return Scenario{}, err
+	}
 	if err = tx.Commit(); err != nil {
 		return Scenario{}, err
 	}
-	return db.GetScenario(s.ID)
+	return after, nil
 }
 
 // GetScenario fetches one scenario by ID.
@@ -153,8 +220,41 @@ func (db *Database) ListScenarios(projectID string) ([]Scenario, error) {
 // DeleteScenario removes scenario metadata. Later scenario-partitioned
 // rows should reference scenarios with ON DELETE CASCADE.
 func (db *Database) DeleteScenario(id string) error {
-	_, err := db.Conn.Exec(`DELETE FROM scenarios WHERE id = ?`, id)
-	return err
+	tx, err := db.Conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	before, err := getScenarioTx(tx, id)
+	if err == ErrNoScenario {
+		err = nil
+		return tx.Commit()
+	}
+	if err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`DELETE FROM scenarios WHERE id = ?`, id); err != nil {
+		return err
+	}
+	beforeJSON, err := scenarioAuditJSON(before)
+	if err != nil {
+		return err
+	}
+	if _, err = appendAuditEventTx(tx, AuditEventInput{
+		ProjectID:  before.ProjectID,
+		EventType:  "scenario.delete",
+		EntityType: "scenario",
+		EntityID:   before.ID,
+		BeforeJSON: beforeJSON,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // BranchScenarioChart copies a live chart and optional baseline into an
@@ -194,7 +294,17 @@ func (db *Database) BranchScenarioChart(scenarioID, chartID, baselineID string) 
 		return ScenarioChart{}, fmt.Errorf("generate scenario chart id: %w", err)
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	_, err = db.Conn.Exec(`
+	tx, err := db.Conn.Begin()
+	if err != nil {
+		return ScenarioChart{}, err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	_, err = tx.Exec(`
 		INSERT INTO scenario_charts (
 			id, scenario_id, project_id, source_chart_id, source_baseline_id,
 			kind, title, data, config, baseline_data, created_at, updated_at
@@ -205,7 +315,27 @@ func (db *Database) BranchScenarioChart(scenarioID, chartID, baselineID string) 
 	if err != nil {
 		return ScenarioChart{}, err
 	}
-	return db.GetScenarioChart(id)
+	branched, err := getScenarioChartTx(tx, id)
+	if err != nil {
+		return ScenarioChart{}, err
+	}
+	afterJSON, err := scenarioChartAuditJSON(branched)
+	if err != nil {
+		return ScenarioChart{}, err
+	}
+	if _, err = appendAuditEventTx(tx, AuditEventInput{
+		ProjectID:  branched.ProjectID,
+		EventType:  "scenario_chart.create",
+		EntityType: "scenario_chart",
+		EntityID:   branched.ID,
+		AfterJSON:  afterJSON,
+	}); err != nil {
+		return ScenarioChart{}, err
+	}
+	if err = tx.Commit(); err != nil {
+		return ScenarioChart{}, err
+	}
+	return branched, nil
 }
 
 // GetScenarioChart fetches one isolated scenario chart by ID.
@@ -250,7 +380,17 @@ func (db *Database) SaveScenarioChart(c ScenarioChart) (ScenarioChart, error) {
 	if c.ID == "" {
 		return ScenarioChart{}, errors.New("scenario chart: id is required")
 	}
-	existing, err := db.GetScenarioChart(c.ID)
+	tx, err := db.Conn.Begin()
+	if err != nil {
+		return ScenarioChart{}, err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	existing, err := getScenarioChartTx(tx, c.ID)
 	if err != nil {
 		return ScenarioChart{}, err
 	}
@@ -267,14 +407,39 @@ func (db *Database) SaveScenarioChart(c ScenarioChart) (ScenarioChart, error) {
 		config = "{}"
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := db.Conn.Exec(`
+	if _, err = tx.Exec(`
 		UPDATE scenario_charts
 		SET title = ?, data = ?, config = ?, updated_at = ?
 		WHERE id = ?
 	`, title, data, config, now, c.ID); err != nil {
 		return ScenarioChart{}, err
 	}
-	return db.GetScenarioChart(c.ID)
+	saved, err := getScenarioChartTx(tx, c.ID)
+	if err != nil {
+		return ScenarioChart{}, err
+	}
+	beforeJSON, err := scenarioChartAuditJSON(existing)
+	if err != nil {
+		return ScenarioChart{}, err
+	}
+	afterJSON, err := scenarioChartAuditJSON(saved)
+	if err != nil {
+		return ScenarioChart{}, err
+	}
+	if _, err = appendAuditEventTx(tx, AuditEventInput{
+		ProjectID:  saved.ProjectID,
+		EventType:  "scenario_chart.update",
+		EntityType: "scenario_chart",
+		EntityID:   saved.ID,
+		BeforeJSON: beforeJSON,
+		AfterJSON:  afterJSON,
+	}); err != nil {
+		return ScenarioChart{}, err
+	}
+	if err = tx.Commit(); err != nil {
+		return ScenarioChart{}, err
+	}
+	return saved, nil
 }
 
 // PromoteScenarioChartToBaseline writes a scenario chart's current data
@@ -324,6 +489,47 @@ func scanScenario(row interface {
 	return s, nil
 }
 
+func getScenarioTx(tx *sql.Tx, id string) (Scenario, error) {
+	return scanScenario(tx.QueryRow(`
+		SELECT id, project_id, name, source_baseline_id, description,
+		       is_active, created_at, updated_at
+		FROM scenarios
+		WHERE id = ?
+	`, id))
+}
+
+func listActiveScenariosExceptTx(tx *sql.Tx, projectID, exceptID string) ([]Scenario, error) {
+	rows, err := tx.Query(`
+		SELECT id, project_id, name, source_baseline_id, description,
+		       is_active, created_at, updated_at
+		FROM scenarios
+		WHERE project_id = ? AND id <> ? AND is_active <> 0
+		ORDER BY created_at ASC
+	`, projectID, exceptID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var out []Scenario
+	for rows.Next() {
+		s, err := scanScenario(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+func scenarioAuditJSON(s Scenario) (string, error) {
+	data, err := json.Marshal(s)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
 func scanScenarioChart(row interface {
 	Scan(...interface{}) error
 }) (ScenarioChart, error) {
@@ -339,4 +545,21 @@ func scanScenarioChart(row interface {
 		return ScenarioChart{}, err
 	}
 	return c, nil
+}
+
+func getScenarioChartTx(tx *sql.Tx, id string) (ScenarioChart, error) {
+	return scanScenarioChart(tx.QueryRow(`
+		SELECT id, scenario_id, project_id, source_chart_id, source_baseline_id,
+		       kind, title, data, config, baseline_data, created_at, updated_at
+		FROM scenario_charts
+		WHERE id = ?
+	`, id))
+}
+
+func scenarioChartAuditJSON(c ScenarioChart) (string, error) {
+	data, err := json.Marshal(c)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
