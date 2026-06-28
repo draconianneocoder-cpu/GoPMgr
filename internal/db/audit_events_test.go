@@ -3,7 +3,10 @@
 
 package db
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestAuditEventsSchemaHasTamperEvidentColumns(t *testing.T) {
 	d := newBackupTestDB(t)
@@ -288,6 +291,126 @@ func TestSaveBaselineAppendsCreateAndDeleteAuditEvents(t *testing.T) {
 	}
 }
 
+func TestSaveScenarioAppendsCreateUpdateAndDeleteAuditEvents(t *testing.T) {
+	d := newBackupTestDB(t)
+	project, err := d.UpsertProject(Project{Name: "Scenario Audit"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+
+	scenario, err := d.SaveScenario(Scenario{
+		ProjectID:   project.ID,
+		Name:        "Accelerated delivery",
+		Description: "Pull procurement earlier.",
+		IsActive:    true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario create: %v", err)
+	}
+	scenario.Description = "Pull procurement and commissioning earlier."
+	if _, err := d.SaveScenario(scenario); err != nil {
+		t.Fatalf("SaveScenario update: %v", err)
+	}
+	if err := d.DeleteScenario(scenario.ID); err != nil {
+		t.Fatalf("DeleteScenario: %v", err)
+	}
+
+	assertAuditEventTypes(t, d, project.ID, "scenario", []string{
+		"scenario.create",
+		"scenario.update",
+		"scenario.delete",
+	})
+	report, err := d.VerifyAuditChain(project.ID)
+	if err != nil {
+		t.Fatalf("VerifyAuditChain: %v", err)
+	}
+	if !report.Valid || report.CheckedEvents != 4 {
+		t.Fatalf("verification = %+v, want valid with 4 checked events", report)
+	}
+}
+
+func TestScenarioActiveSelectionAuditsSiblingDeactivation(t *testing.T) {
+	d := newBackupTestDB(t)
+	project, err := d.UpsertProject(Project{Name: "Active Scenario Audit"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+
+	first, err := d.SaveScenario(Scenario{
+		ProjectID: project.ID,
+		Name:      "First active scenario",
+		IsActive:  true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario first: %v", err)
+	}
+	if _, err := d.SaveScenario(Scenario{
+		ProjectID: project.ID,
+		Name:      "Second active scenario",
+		IsActive:  true,
+	}); err != nil {
+		t.Fatalf("SaveScenario second: %v", err)
+	}
+
+	var deactivationJSON string
+	if err := d.Conn.QueryRow(
+		`SELECT after_canonical_json
+		 FROM audit_events
+		 WHERE project_id = ? AND entity_type = ? AND entity_id = ? AND event_type = ?
+		 ORDER BY sequence_number DESC
+		 LIMIT 1`,
+		project.ID, "scenario", first.ID, "scenario.update",
+	).Scan(&deactivationJSON); err != nil {
+		t.Fatalf("query deactivation audit event: %v", err)
+	}
+	if want := `"is_active":false`; !containsAuditJSON(deactivationJSON, want) {
+		t.Fatalf("deactivation audit JSON = %s, want it to contain %s", deactivationJSON, want)
+	}
+
+	report, err := d.VerifyAuditChain(project.ID)
+	if err != nil {
+		t.Fatalf("VerifyAuditChain: %v", err)
+	}
+	if !report.Valid || report.CheckedEvents != 4 {
+		t.Fatalf("verification = %+v, want valid with 4 checked events", report)
+	}
+}
+
+func TestScenarioChartWorkflowAppendsCreateAndUpdateAuditEvents(t *testing.T) {
+	d := newBackupTestDB(t)
+	projectID, chartID := newBaselineFixture(t, d)
+	scenario, err := d.SaveScenario(Scenario{
+		ProjectID: projectID,
+		Name:      "Scenario chart audit",
+		IsActive:  true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario: %v", err)
+	}
+
+	branched, err := d.BranchScenarioChart(scenario.ID, chartID, "")
+	if err != nil {
+		t.Fatalf("BranchScenarioChart: %v", err)
+	}
+	branched.Title = "Edited scenario copy"
+	branched.Data = `{"edited":true}`
+	if _, err := d.SaveScenarioChart(branched); err != nil {
+		t.Fatalf("SaveScenarioChart: %v", err)
+	}
+
+	assertAuditEventTypes(t, d, projectID, "scenario_chart", []string{
+		"scenario_chart.create",
+		"scenario_chart.update",
+	})
+	report, err := d.VerifyAuditChain(projectID)
+	if err != nil {
+		t.Fatalf("VerifyAuditChain: %v", err)
+	}
+	if !report.Valid || report.CheckedEvents != 5 {
+		t.Fatalf("verification = %+v, want valid with 5 checked events", report)
+	}
+}
+
 func assertAuditEventTypes(t *testing.T, d *Database, projectID, entityType string, want []string) {
 	t.Helper()
 	rows, err := d.Conn.Query(
@@ -322,4 +445,8 @@ func assertAuditEventTypes(t *testing.T, d *Database, projectID, entityType stri
 			t.Fatalf("%s audit event types = %#v, want %#v", entityType, got, want)
 		}
 	}
+}
+
+func containsAuditJSON(raw, needle string) bool {
+	return strings.Contains(raw, needle)
 }
