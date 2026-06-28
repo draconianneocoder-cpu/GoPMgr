@@ -3230,6 +3230,27 @@ func (a *App) ListScenarioCharts(scenarioID string) ([]db.ScenarioChart, error) 
 	return d.ListScenarioCharts(scenarioID)
 }
 
+// GetScenarioChart fetches one isolated scenario chart copy in the open
+// project.
+func (a *App) GetScenarioChart(id string) (db.ScenarioChart, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.ScenarioChart{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.ScenarioChart{}, err
+	}
+	c, err := d.GetScenarioChart(id)
+	if err != nil {
+		return db.ScenarioChart{}, err
+	}
+	if c.ProjectID != p.ID {
+		return db.ScenarioChart{}, db.ErrNoScenarioChart
+	}
+	return c, nil
+}
+
 // SaveScenarioChart updates the editable fields of an isolated scenario
 // chart copy in the open project.
 func (a *App) SaveScenarioChart(c db.ScenarioChart) (db.ScenarioChart, error) {

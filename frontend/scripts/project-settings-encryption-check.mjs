@@ -21,6 +21,10 @@ const launchpad = readFileSync(
 );
 const app = readFileSync(new URL('../src/App.svelte', import.meta.url), 'utf8');
 const wailsWindowTypes = readFileSync(new URL('../src/wails-window.d.ts', import.meta.url), 'utf8');
+const scenarioChartEditor = readFileSync(
+  new URL('../src/lib/components/project/ScenarioChartEditor.svelte', import.meta.url),
+  'utf8',
+);
 
 const checks = [
   [
@@ -138,6 +142,38 @@ const checks = [
     'settings uses Wails scenario chart save method',
     component.includes('App.SaveScenarioChart') &&
       wailsWindowTypes.includes('SaveScenarioChart: (c: ScenarioChart) => Promise<ScenarioChart>'),
+  ],
+  [
+    'session includes scenario chart editor route',
+    sessionStore.includes("| 'scenario_chart'"),
+  ],
+  [
+    'app lazy-loads scenario chart editor route',
+    app.includes("scenario_chart: () => import('./lib/components/project/ScenarioChartEditor.svelte')"),
+  ],
+  [
+    'settings opens copied scenario charts in the scenario editor',
+    component.includes("goto('scenario_chart', chart.id)") &&
+      component.includes('Open editor'),
+  ],
+  [
+    'scenario chart editor uses scoped scenario APIs',
+    scenarioChartEditor.includes('App.GetScenarioChart') &&
+      scenarioChartEditor.includes('App.SaveScenarioChart') &&
+      scenarioChartEditor.includes('App.CompareScenarioChart') &&
+      scenarioChartEditor.includes('App.PromoteScenarioChartToBaseline') &&
+      !scenarioChartEditor.includes('App.SaveChart') &&
+      scenarioChartEditor.includes('Scenario chart editor'),
+  ],
+  [
+    'scenario chart editor exposes review actions',
+    scenarioChartEditor.includes('Compare to baseline') &&
+      scenarioChartEditor.includes('Promote to baseline') &&
+      scenarioChartEditor.includes('varianceRows'),
+  ],
+  [
+    'tracked Wails App shim includes scenario chart get method',
+    wailsWindowTypes.includes('GetScenarioChart: (id: string) => Promise<ScenarioChart>'),
   ],
   [
     'settings loads and saves compliance_mode through Wails settings',

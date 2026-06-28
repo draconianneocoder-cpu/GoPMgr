@@ -1242,6 +1242,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
                         </div>
                         <div class="flex flex-wrap gap-2 md:justify-end">
                           <button
+                            onclick={() => goto('scenario_chart', chart.id)}
+                            class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded"
+                          >
+                            Open editor
+                          </button>
+                          <button
                             onclick={() => editScenarioChart(chart)}
                             disabled={scenarioChartEditBusy}
                             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded"

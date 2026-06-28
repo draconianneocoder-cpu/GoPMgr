@@ -60,9 +60,9 @@ Every open project has a Project Settings view. Use it to edit:
 - Export and signature settings.
 - What-if scenarios: create, edit, delete, select the active scenario, and
   copy a source chart with current data or a saved schedule baseline into an
-  isolated scenario partition. Copied scenario charts can be edited, compared
-  against their captured baseline data, and promoted back to named schedule
-  baselines.
+  isolated scenario partition. Copied scenario charts can be opened in a
+  dedicated scenario editor, edited, compared against their captured baseline
+  data, and promoted back to named schedule baselines from the editor.
 - Compliance mode, which verifies the tamper-evident audit chain before a
   project opens and blocks the open if the chain has been altered. Project,
   chart, document, and schedule-baseline lifecycle actions are included in the
