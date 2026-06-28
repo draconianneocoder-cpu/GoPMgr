@@ -11,6 +11,7 @@ import (
 
 	"pmforge/internal/agile"
 	"pmforge/internal/db"
+	"pmforge/internal/documents"
 )
 
 // mustOpenProject is a test helper that creates a project and opens it so
@@ -62,6 +63,47 @@ func auditEventSignatureStatus(t *testing.T, app *App, projectID, docID string) 
 		t.Fatalf("signature audit event query: %v", err)
 	}
 	return status
+}
+
+func combinedReportSignatureEvent(t *testing.T, app *App, projectID, reportID string) (string, string) {
+	t.Helper()
+	app.mu.RLock()
+	conn := app.db.Conn
+	app.mu.RUnlock()
+	var status, payload string
+	if err := conn.QueryRow(
+		`SELECT signature_status, after_canonical_json
+		 FROM audit_events
+		 WHERE project_id = ? AND entity_type = 'combined_report' AND entity_id = ? AND event_type = 'combined_report.signature'
+		 ORDER BY sequence_number DESC
+		 LIMIT 1`,
+		projectID,
+		reportID,
+	).Scan(&status, &payload); err != nil {
+		t.Fatalf("combined report signature audit event query: %v", err)
+	}
+	return status, payload
+}
+
+func TestCombinedReportCheckpointIDIsStableAndOrderSensitive(t *testing.T) {
+	sections := []documents.ReportSection{
+		{DocumentID: "doc-a", Title: "A", Description: "First"},
+		{DocumentID: "doc-b", Title: "B", Description: "Second"},
+	}
+
+	first := combinedReportCheckpointID("project-1", "Monthly Pack", "June", sections)
+	second := combinedReportCheckpointID("project-1", "Monthly Pack", "June", append([]documents.ReportSection(nil), sections...))
+	if first == "" || first != second {
+		t.Fatalf("stable ID mismatch: first=%q second=%q", first, second)
+	}
+
+	reordered := []documents.ReportSection{sections[1], sections[0]}
+	if got := combinedReportCheckpointID("project-1", "Monthly Pack", "June", reordered); got == first {
+		t.Fatalf("reordered sections produced same checkpoint ID %q", got)
+	}
+	if got := combinedReportCheckpointID("project-2", "Monthly Pack", "June", sections); got == first {
+		t.Fatalf("different project produced same checkpoint ID %q", got)
+	}
 }
 
 // TestCloneOpenProject_DataSurvivesSnapshot verifies that data committed to
@@ -185,6 +227,47 @@ func TestExportDocumentPDFSignedFailureWritesAuditEvent(t *testing.T) {
 
 	if got := auditEventSignatureStatus(t, app, project.ID, doc.ID); got != "failed" {
 		t.Fatalf("signature_status = %q, want failed", got)
+	}
+}
+
+func TestExportCombinedReportSignedFailureWritesAuditEvent(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Combined Signature Audit Plan")
+	project, err := app.GetProjectMeta()
+	if err != nil {
+		t.Fatalf("GetProjectMeta: %v", err)
+	}
+	doc, err := app.NewDocument("charter_word", "Combined Signature Charter")
+	if err != nil {
+		t.Fatalf("NewDocument: %v", err)
+	}
+	sections := []documents.ReportSection{{
+		DocumentID:  doc.ID,
+		Title:       doc.Title,
+		Description: "Executive approval section",
+	}}
+	reportID := combinedReportCheckpointID(project.ID, "Signed Governance Pack", "June", sections)
+
+	if _, err := app.ExportCombinedReportSigned("Signed Governance Pack", "June", sections, "/missing/report-certificate.p12", "bad-password"); err == nil {
+		t.Fatal("ExportCombinedReportSigned unexpectedly succeeded with a missing certificate")
+	}
+
+	status, payload := combinedReportSignatureEvent(t, app, project.ID, reportID)
+	if status != "failed" {
+		t.Fatalf("signature_status = %q, want failed", status)
+	}
+	if !strings.Contains(payload, `"report_id":"`+reportID+`"`) || !strings.Contains(payload, `"status":"failed"`) {
+		t.Fatalf("combined report signature payload = %s, want report id and failed status", payload)
+	}
+	report, err := app.requireDB().VerifyAuditChain(project.ID)
+	if err != nil {
+		t.Fatalf("VerifyAuditChain: %v", err)
+	}
+	if !report.Valid {
+		t.Fatalf("verification = %+v, want valid", report)
 	}
 }
 

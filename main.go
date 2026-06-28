@@ -15,7 +15,9 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1887,6 +1889,7 @@ func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections 
 	if err != nil {
 		return "", err
 	}
+	reportID := combinedReportCheckpointID(proj.ID, reportTitle, subtitle, sections)
 
 	// Resolve sections + charts (same logic as unsigned version)
 	resolved := make([]documents.ResolvedSection, 0, len(sections))
@@ -1894,6 +1897,7 @@ func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections 
 	for _, s := range sections {
 		doc, err := d.GetDocument(s.DocumentID)
 		if err != nil {
+			logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("section %s: %v", s.DocumentID, err), "")
 			return "", fmt.Errorf("section %s: %w", s.DocumentID, err)
 		}
 		if s.Title == "" {
@@ -1931,29 +1935,35 @@ func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections 
 		AddSignatureBlock: true,
 	}, resolved)
 	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("build report: %v", err), "")
 		return "", err
 	}
 
 	// Apply real PAdES B-B signature
 	signer, err := crypto.LoadCertificate(certPath, certPassword)
 	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("load certificate: %v", err), "")
 		return "", fmt.Errorf("load certificate: %w", err)
 	}
 
 	signedBytes, err := pdfmeta.InjectPAdESSignature(bytes, signer.SignPDFCMS)
 	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("pades embedding: %v", err), "")
 		return "", fmt.Errorf("pades embedding: %w", err)
 	}
 
 	outDir := filepath.Join(u.DataDir, "exports")
 	if err := os.MkdirAll(outDir, 0o700); err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("create exports dir: %v", err), "")
 		return "", err
 	}
 	stamp := time.Now().UTC().Format("20060102-150405")
 	outPath := filepath.Join(outDir, fmt.Sprintf("%s-%s-signed.pdf", sanitizeFilename(reportTitle), stamp))
 	if err := os.WriteFile(outPath, signedBytes, 0o600); err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("write signed report: %v", err), "")
 		return "", err
 	}
+	logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, true, "Combined report signed successfully.", outPath)
 	return outPath, nil
 }
 
@@ -4196,6 +4206,68 @@ func collectChartRefs(contentJSON string, fields []documents.Field) []string {
 		}
 	}
 	return out
+}
+
+func combinedReportCheckpointID(projectID, reportTitle, subtitle string, sections []documents.ReportSection) string {
+	payload := struct {
+		ProjectID   string                    `json:"project_id"`
+		ReportTitle string                    `json:"report_title"`
+		Subtitle    string                    `json:"subtitle"`
+		Sections    []documents.ReportSection `json:"sections"`
+	}{
+		ProjectID:   projectID,
+		ReportTitle: reportTitle,
+		Subtitle:    subtitle,
+		Sections:    append([]documents.ReportSection(nil), sections...),
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return "report_invalid"
+	}
+	sum := sha256.Sum256(data)
+	return "report_" + hex.EncodeToString(sum[:])
+}
+
+func logCombinedReportSignatureEvent(d *db.Database, projectID, reportID, reportTitle, subtitle string, sections []documents.ReportSection, signed bool, details, outputPath string) {
+	status := "failed"
+	signatureStatus := "failed"
+	if signed {
+		status = "signed"
+		signatureStatus = "signed"
+	}
+	payload, err := json.Marshal(struct {
+		ReportID     string                    `json:"report_id"`
+		ReportTitle  string                    `json:"report_title"`
+		Subtitle     string                    `json:"subtitle"`
+		SectionCount int                       `json:"section_count"`
+		Sections     []documents.ReportSection `json:"sections"`
+		Status       string                    `json:"status"`
+		Details      string                    `json:"details,omitempty"`
+		OutputPath   string                    `json:"output_path,omitempty"`
+	}{
+		ReportID:     reportID,
+		ReportTitle:  reportTitle,
+		Subtitle:     subtitle,
+		SectionCount: len(sections),
+		Sections:     append([]documents.ReportSection(nil), sections...),
+		Status:       status,
+		Details:      details,
+		OutputPath:   outputPath,
+	})
+	if err != nil {
+		log.Printf("combined report signature audit payload failed: %v", err)
+		return
+	}
+	if _, err := d.AppendAuditEvent(db.AuditEventInput{
+		ProjectID:       projectID,
+		EventType:       "combined_report.signature",
+		EntityType:      "combined_report",
+		EntityID:        reportID,
+		AfterJSON:       string(payload),
+		SignatureStatus: signatureStatus,
+	}); err != nil {
+		log.Printf("combined report signature audit event failed: %v", err)
+	}
 }
 
 func resolvedEVMForCharts(proj db.Project, resolvedCharts map[string]documents.ResolvedChart, asOf time.Time) map[string]*kernel.EVMetrics {
