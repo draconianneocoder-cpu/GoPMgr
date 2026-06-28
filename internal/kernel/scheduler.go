@@ -85,6 +85,11 @@ type Task struct {
 	Precedents []string `json:"precedents"`
 	Links      []Link   `json:"links,omitempty"`
 
+	// DurationEstimate carries optional three-point schedule-risk
+	// inputs for Monte Carlo simulation. When empty, Duration is used
+	// as a deterministic sample.
+	DurationEstimate DurationEstimate `json:"duration_estimate,omitempty"`
+
 	// Scheduling constraint (see ConstraintType). Empty = ASAP.
 	Constraint     ConstraintType `json:"constraint,omitempty"`
 	ConstraintDate string         `json:"constraint_date,omitempty"`
