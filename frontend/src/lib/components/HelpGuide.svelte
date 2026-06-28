@@ -896,8 +896,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
               audit chain is valid, how many events were checked, the terminal
               event hash, and first-invalid-event details if verification fails.
               Project, chart, document, schedule-baseline, scenario,
-              scenario-chart copy, and document signature actions are included
-              in the chain.
+              scenario-chart copy, document approval, scenario-promotion
+              approval, and document signature actions are included in the
+              chain.
               If a chain is damaged, export audit repair evidence before manual
               repair work; that artifact preserves the raw audit events and the
               verification result separately.

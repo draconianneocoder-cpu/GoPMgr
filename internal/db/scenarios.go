@@ -449,23 +449,44 @@ func (db *Database) PromoteScenarioChartToBaseline(scenarioChartID, name string)
 	if name == "" {
 		return Baseline{}, errors.New("scenario promotion: baseline name is required")
 	}
-	scenarioChart, err := db.GetScenarioChart(scenarioChartID)
+
+	tx, err := db.Conn.Begin()
 	if err != nil {
 		return Baseline{}, err
 	}
-	sourceChart, err := db.GetChart(scenarioChart.SourceChartID)
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	scenarioChart, err := getScenarioChartTx(tx, scenarioChartID)
+	if err != nil {
+		return Baseline{}, err
+	}
+	sourceChart, err := getChartTx(tx, scenarioChart.SourceChartID)
 	if err != nil {
 		return Baseline{}, err
 	}
 	if sourceChart.ProjectID != scenarioChart.ProjectID {
 		return Baseline{}, errors.New("scenario promotion: source chart is outside scenario project")
 	}
-	return db.SaveBaseline(Baseline{
+	baseline, baselineJSON, err := saveBaselineTx(tx, Baseline{
 		ProjectID: scenarioChart.ProjectID,
 		ChartID:   scenarioChart.SourceChartID,
 		Name:      name,
 		Data:      scenarioChart.Data,
 	})
+	if err != nil {
+		return Baseline{}, err
+	}
+	if _, err = appendApprovalCheckpointTx(tx, baseline.ProjectID, "baseline", baseline.ID, "scenario_promoted_to_baseline", baselineJSON); err != nil {
+		return Baseline{}, err
+	}
+	if err = tx.Commit(); err != nil {
+		return Baseline{}, err
+	}
+	return baseline, nil
 }
 
 func scanScenario(row interface {
