@@ -123,6 +123,11 @@ func (db *Database) SaveDocument(d Document) (Document, error) {
 	}); err != nil {
 		return Document{}, err
 	}
+	if after.Status == "approved" && (isCreate || before.Status != "approved") {
+		if _, err = appendApprovalCheckpointTx(tx, after.ProjectID, "document", after.ID, "document_status_approved", afterJSON); err != nil {
+			return Document{}, err
+		}
+	}
 	if err = tx.Commit(); err != nil {
 		return Document{}, err
 	}

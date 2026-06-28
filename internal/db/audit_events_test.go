@@ -261,6 +261,73 @@ func TestSaveDocumentAppendsCreateUpdateAndDeleteAuditEvents(t *testing.T) {
 	}
 }
 
+func TestSaveDocumentApprovedStatusAppendsSignedCheckpoint(t *testing.T) {
+	d := newBackupTestDB(t)
+	project, err := d.UpsertProject(Project{Name: "Document Approval Audit"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	doc, err := d.SaveDocument(Document{
+		ProjectID: project.ID,
+		Kind:      "charter",
+		Title:     "Approval Charter",
+		Content:   `{"summary":"ready for approval"}`,
+		Status:    "review",
+	})
+	if err != nil {
+		t.Fatalf("SaveDocument create: %v", err)
+	}
+
+	doc.Status = "approved"
+	approved, err := d.SaveDocument(doc)
+	if err != nil {
+		t.Fatalf("SaveDocument approve: %v", err)
+	}
+	approved.Title = "Approved Charter"
+	if _, err := d.SaveDocument(approved); err != nil {
+		t.Fatalf("SaveDocument approved update: %v", err)
+	}
+
+	var checkpointCount int
+	if err := d.Conn.QueryRow(
+		`SELECT COUNT(*)
+		 FROM audit_events
+		 WHERE project_id = ? AND entity_type = 'document' AND entity_id = ? AND event_type = 'document.approval_checkpoint'`,
+		project.ID,
+		doc.ID,
+	).Scan(&checkpointCount); err != nil {
+		t.Fatalf("query document approval checkpoint: %v", err)
+	}
+	if checkpointCount != 1 {
+		t.Fatalf("approval checkpoint count = %d, want 1", checkpointCount)
+	}
+	var signatureStatus, signatureBlob, payload string
+	if err := d.Conn.QueryRow(
+		`SELECT signature_status, signature_blob_optional, after_canonical_json
+		 FROM audit_events
+		 WHERE project_id = ? AND entity_type = 'document' AND entity_id = ? AND event_type = 'document.approval_checkpoint'
+		 ORDER BY sequence_number DESC
+		 LIMIT 1`,
+		project.ID,
+		doc.ID,
+	).Scan(&signatureStatus, &signatureBlob, &payload); err != nil {
+		t.Fatalf("load document approval checkpoint: %v", err)
+	}
+	if signatureStatus != "signed" {
+		t.Fatalf("signature_status = %q, want signed", signatureStatus)
+	}
+	if !containsAuditJSON(signatureBlob, `"payload_hash"`) || !containsAuditJSON(payload, `"approval_type":"document_status_approved"`) {
+		t.Fatalf("approval checkpoint blob=%s payload=%s, want signed payload hash and approval type", signatureBlob, payload)
+	}
+	report, err := d.VerifyAuditChain(project.ID)
+	if err != nil {
+		t.Fatalf("VerifyAuditChain: %v", err)
+	}
+	if !report.Valid || report.CheckedEvents != 5 {
+		t.Fatalf("verification = %+v, want valid with 5 checked events", report)
+	}
+}
+
 func TestSaveBaselineAppendsCreateAndDeleteAuditEvents(t *testing.T) {
 	d := newBackupTestDB(t)
 	projectID, chartID := newBaselineFixture(t, d)
@@ -288,6 +355,54 @@ func TestSaveBaselineAppendsCreateAndDeleteAuditEvents(t *testing.T) {
 	}
 	if !report.Valid || report.CheckedEvents != 4 {
 		t.Fatalf("verification = %+v, want valid with 4 checked events", report)
+	}
+}
+
+func TestPromoteScenarioChartToBaselineAppendsSignedApprovalCheckpoint(t *testing.T) {
+	d := newBackupTestDB(t)
+	projectID, chartID := newBaselineFixture(t, d)
+	scenario, err := d.SaveScenario(Scenario{
+		ProjectID: projectID,
+		Name:      "Approved acceleration",
+		IsActive:  true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario: %v", err)
+	}
+	branched, err := d.BranchScenarioChart(scenario.ID, chartID, "")
+	if err != nil {
+		t.Fatalf("BranchScenarioChart: %v", err)
+	}
+
+	promoted, err := d.PromoteScenarioChartToBaseline(branched.ID, "Approved scenario baseline")
+	if err != nil {
+		t.Fatalf("PromoteScenarioChartToBaseline: %v", err)
+	}
+
+	var signatureStatus, signatureBlob, payload string
+	if err := d.Conn.QueryRow(
+		`SELECT signature_status, signature_blob_optional, after_canonical_json
+		 FROM audit_events
+		 WHERE project_id = ? AND entity_type = 'baseline' AND entity_id = ? AND event_type = 'baseline.approval_checkpoint'
+		 ORDER BY sequence_number DESC
+		 LIMIT 1`,
+		projectID,
+		promoted.ID,
+	).Scan(&signatureStatus, &signatureBlob, &payload); err != nil {
+		t.Fatalf("query baseline approval checkpoint: %v", err)
+	}
+	if signatureStatus != "signed" {
+		t.Fatalf("signature_status = %q, want signed", signatureStatus)
+	}
+	if !containsAuditJSON(signatureBlob, `"payload_hash"`) || !containsAuditJSON(payload, `"approval_type":"scenario_promoted_to_baseline"`) {
+		t.Fatalf("approval checkpoint blob=%s payload=%s, want signed payload hash and promotion approval type", signatureBlob, payload)
+	}
+	report, err := d.VerifyAuditChain(projectID)
+	if err != nil {
+		t.Fatalf("VerifyAuditChain: %v", err)
+	}
+	if !report.Valid || report.CheckedEvents != 6 {
+		t.Fatalf("verification = %+v, want valid with 6 checked events", report)
 	}
 }
 

@@ -65,13 +65,13 @@ Every open project has a Project Settings view. Use it to edit:
   data, and promoted back to named schedule baselines from the editor.
 - Compliance mode, which verifies the tamper-evident audit chain before a
   project opens and blocks the open if the chain has been altered. Project,
-  chart, document, schedule-baseline, scenario, and scenario-chart copy
-  lifecycle actions are included in the chain, along with document signature
-  success and failure checkpoints. Use **Export audit verification report** to
-  write a private JSON verification artifact to the user exports folder for
-  compliance review. Use **Export audit repair evidence** before manual repair
-  work to preserve the raw audit events and verification failure details
-  separately.
+  chart, document, schedule-baseline, scenario, scenario-chart copy, document
+  approval, and scenario-promotion approval lifecycle actions are included in
+  the chain, along with document signature success and failure checkpoints. Use
+  **Export audit verification report** to write a private JSON verification
+  artifact to the user exports folder for compliance review. Use **Export audit
+  repair evidence** before manual repair work to preserve the raw audit events
+  and verification failure details separately.
 - Document font selection and per-project imported fonts.
 - Schedule reports and project interchange exports.
 - Database encryption migration for eligible plaintext project databases.
