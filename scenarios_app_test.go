@@ -274,3 +274,40 @@ func TestScenarioChartAppMethodsSaveIsolatedCopy(t *testing.T) {
 		t.Fatalf("scenario edit mutated live chart: live=%+v scenario=%+v", live, saved)
 	}
 }
+
+func TestScenarioChartAppMethodsGetScenarioChartScopesToOpenProject(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Scenario Editor Scope A")
+	chart, err := app.SaveChart(db.Chart{
+		Kind:   "cpm",
+		Title:  "Scenario Editor Source A",
+		Data:   `{"nodes":[{"id":"a","label":"A","duration":2}],"edges":[]}`,
+		Config: `{"view":"a"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart A: %v", err)
+	}
+	scenario, err := app.SaveScenario(db.Scenario{Name: "Scenario A", IsActive: true})
+	if err != nil {
+		t.Fatalf("SaveScenario A: %v", err)
+	}
+	copied, err := app.BranchScenarioChart(scenario.ID, chart.ID, "")
+	if err != nil {
+		t.Fatalf("BranchScenarioChart A: %v", err)
+	}
+	got, err := app.GetScenarioChart(copied.ID)
+	if err != nil {
+		t.Fatalf("GetScenarioChart A: %v", err)
+	}
+	if got.ID != copied.ID || got.ProjectID != copied.ProjectID {
+		t.Fatalf("GetScenarioChart returned wrong copy: %+v", got)
+	}
+
+	mustOpenProject(t, app, "Scenario Editor Scope B")
+	if _, err := app.GetScenarioChart(copied.ID); err == nil {
+		t.Fatal("GetScenarioChart returned a scenario chart outside the open project")
+	}
+}

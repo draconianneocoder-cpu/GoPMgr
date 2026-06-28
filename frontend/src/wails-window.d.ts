@@ -149,6 +149,7 @@ declare global {
             baselineID: string,
           ) => Promise<ScenarioChart>;
           ListScenarioCharts: (scenarioID: string) => Promise<ScenarioChart[]>;
+          GetScenarioChart: (id: string) => Promise<ScenarioChart>;
           SaveScenarioChart: (c: ScenarioChart) => Promise<ScenarioChart>;
           PromoteScenarioChartToBaseline: (
             scenarioChartID: string,
