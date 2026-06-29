@@ -28,17 +28,17 @@ const (
 // its numeric value, its classification band, and a one-line caption
 // the GUI shows under the KPI tile.
 type DORAResult struct {
-	WindowDays int       `json:"window_days"`
-	From       time.Time `json:"from"`
-	To         time.Time `json:"to"`
-	TotalDeploys int     `json:"total_deploys"`
-	Successful   int     `json:"successful_deploys"`
-	Failed       int     `json:"failed_deploys"`
+	WindowDays   int       `json:"window_days"`
+	From         time.Time `json:"from"`
+	To           time.Time `json:"to"`
+	TotalDeploys int       `json:"total_deploys"`
+	Successful   int       `json:"successful_deploys"`
+	Failed       int       `json:"failed_deploys"`
 
-	DeployFrequency DORAMetric `json:"deploy_frequency"` // per day
-	LeadTime        DORAMetric `json:"lead_time"`        // hours (median)
+	DeployFrequency   DORAMetric `json:"deploy_frequency"`    // per day
+	LeadTime          DORAMetric `json:"lead_time"`           // hours (median)
 	ChangeFailureRate DORAMetric `json:"change_failure_rate"` // 0..1
-	MTTR            DORAMetric `json:"mttr"`             // hours (median)
+	MTTR              DORAMetric `json:"mttr"`                // hours (median)
 
 	// Trend series for line-chart rendering: deploys per day across
 	// the window. The GUI overlays a target line at the elite
@@ -56,7 +56,7 @@ type DORAMetric struct {
 
 // DailyPoint is one bucket in the trend timeline.
 type DailyPoint struct {
-	Date  string `json:"date"`  // YYYY-MM-DD
+	Date  string `json:"date"` // YYYY-MM-DD
 	Count int    `json:"count"`
 }
 

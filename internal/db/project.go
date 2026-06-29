@@ -23,19 +23,19 @@ import (
 // features. All four are optional; legacy .pmforge files default to
 // empty strings (and "US" for CountryCode).
 type Project struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Status      string    `json:"status"`
-	Phase       string    `json:"phase"`
-	StartDate   string    `json:"start_date"`
-	EndDate     string    `json:"end_date"`
-	Budget      float64   `json:"budget"`
-	Owner       string    `json:"owner"`
-	Industry    string    `json:"industry"`
-	SubCategory string    `json:"sub_category"`
-	Methodology string    `json:"methodology"`
-	CountryCode string    `json:"country_code"`
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Status      string  `json:"status"`
+	Phase       string  `json:"phase"`
+	StartDate   string  `json:"start_date"`
+	EndDate     string  `json:"end_date"`
+	Budget      float64 `json:"budget"`
+	Owner       string  `json:"owner"`
+	Industry    string  `json:"industry"`
+	SubCategory string  `json:"sub_category"`
+	Methodology string  `json:"methodology"`
+	CountryCode string  `json:"country_code"`
 	// RFC3339Nano strings (server-managed); see the note on db.Chart for why
 	// these are strings rather than time.Time (Wails empty-string round-trip).
 	CreatedAt string `json:"created_at"`

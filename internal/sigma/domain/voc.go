@@ -19,6 +19,6 @@ type VoCEntry struct {
 
 // VoCData holds the complete Voice of Customer dataset for a project.
 type VoCData struct {
-	ProjectID string    `json:"project_id"`
+	ProjectID string     `json:"project_id"`
 	Entries   []VoCEntry `json:"entries"`
 }

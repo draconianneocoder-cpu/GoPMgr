@@ -8,11 +8,11 @@ import "time"
 type Phase string
 
 const (
-	PhaseDefine   Phase = "define"
-	PhaseMeasure  Phase = "measure"
-	PhaseAnalyze  Phase = "analyze"
-	PhaseImprove  Phase = "improve"
-	PhaseControl  Phase = "control"
+	PhaseDefine  Phase = "define"
+	PhaseMeasure Phase = "measure"
+	PhaseAnalyze Phase = "analyze"
+	PhaseImprove Phase = "improve"
+	PhaseControl Phase = "control"
 )
 
 type ProjectStatus string
@@ -33,17 +33,17 @@ const (
 
 // Project represents a Six Sigma improvement project.
 type Project struct {
-	ID            string        `json:"id"`
-	Title         string        `json:"title"`
-	Description   string        `json:"description"`
-	BeltLevel     BeltLevel     `json:"belt_level"`
-	Phase         Phase         `json:"phase"`
-	Status        ProjectStatus `json:"status"`
-	Sponsor       string        `json:"sponsor"`
-	ProcessOwner  string        `json:"process_owner"`
-	BeltLead      string        `json:"belt_lead"`
-	CreatedAt     time.Time     `json:"created_at"`
-	UpdatedAt     time.Time     `json:"updated_at"`
+	ID           string        `json:"id"`
+	Title        string        `json:"title"`
+	Description  string        `json:"description"`
+	BeltLevel    BeltLevel     `json:"belt_level"`
+	Phase        Phase         `json:"phase"`
+	Status       ProjectStatus `json:"status"`
+	Sponsor      string        `json:"sponsor"`
+	ProcessOwner string        `json:"process_owner"`
+	BeltLead     string        `json:"belt_lead"`
+	CreatedAt    time.Time     `json:"created_at"`
+	UpdatedAt    time.Time     `json:"updated_at"`
 }
 
 // Charter represents the Define phase deliverable.

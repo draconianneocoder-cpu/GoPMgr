@@ -78,7 +78,7 @@ func TestSaveSettingsPreservesAllFields(t *testing.T) {
 		ExportTheme:      "archival",
 		AutoRepair:       false,
 		CertPath:         "/some/cert.p12",
-		SignatureEnabled:  true,
+		SignatureEnabled: true,
 		DefaultFont:      "Helvetica",
 		AgileEnabled:     true,
 	}

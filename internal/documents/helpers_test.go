@@ -152,7 +152,7 @@ func TestIssueSeverityOrder(t *testing.T) {
 		want int
 	}{
 		{"critical", 0},
-		{"High", 1}, // case-insensitive
+		{"High", 1},     // case-insensitive
 		{" medium ", 2}, // trimmed
 		{"low", 3},
 		{"unknown", 4}, // default
@@ -168,10 +168,10 @@ func TestIssueSeverityOrder(t *testing.T) {
 func TestPartitionIssues_SplitAndSort(t *testing.T) {
 	issues := []issue{
 		{ID: "1", Severity: "medium", Status: "open"},
-		{ID: "2", Severity: "critical", Status: ""},       // empty status -> open
-		{ID: "3", Severity: "high", Status: "Closed"},     // resolved
+		{ID: "2", Severity: "critical", Status: ""},   // empty status -> open
+		{ID: "3", Severity: "high", Status: "Closed"}, // resolved
 		{ID: "4", Severity: "low", Status: "open"},
-		{ID: "5", Severity: "critical", Status: "done"},   // resolved
+		{ID: "5", Severity: "critical", Status: "done"}, // resolved
 	}
 	open, resolved := partitionIssues(issues)
 
@@ -206,7 +206,7 @@ func TestNormaliseExecutionTasks_DefaultsOnBadInput(t *testing.T) {
 	raw := []map[string]interface{}{
 		{"name": "Design", "owner": "Ana", "cost": 500.0},
 		{"name": 123, "cost": "not a number"}, // wrong types -> zero values
-		{}, // missing keys -> zero values
+		{},                                    // missing keys -> zero values
 	}
 	got := normaliseExecutionTasks(raw)
 	if len(got) != 3 {

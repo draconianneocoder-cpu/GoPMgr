@@ -3375,7 +3375,6 @@ func (a *App) requireSigmaSvc() *service.ProjectService {
 	return a.sigmaSvc
 }
 
-
 func samePath(a, b string) bool {
 	if a == "" || b == "" {
 		return false

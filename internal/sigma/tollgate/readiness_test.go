@@ -34,10 +34,10 @@ func TestCheckDefineReadiness_EmptyCharter(t *testing.T) {
 func TestCheckDefineReadiness_ShortTexts(t *testing.T) {
 	// Texts that are too short should fail even when non-empty.
 	c := domain.Charter{
-		ProblemStatement: "Too short.",  // 10 chars < 20 minimum
-		BusinessCase:     "Short.",      // 6 chars < 10 minimum
-		GoalStatement:    "Short.",      // 6 chars < 10 minimum
-		Sponsor:          "AB",          // 2 chars < 3 minimum
+		ProblemStatement: "Too short.", // 10 chars < 20 minimum
+		BusinessCase:     "Short.",     // 6 chars < 10 minimum
+		GoalStatement:    "Short.",     // 6 chars < 10 minimum
+		Sponsor:          "AB",         // 2 chars < 3 minimum
 		ScopeIn:          []string{},   // empty
 	}
 	res := CheckDefineReadiness(c, nil, nil)

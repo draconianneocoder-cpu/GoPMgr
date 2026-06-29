@@ -14,13 +14,13 @@ import (
 // validity of (Kind, Data, Config) is the caller's responsibility —
 // the database treats Data and Config as opaque JSON text.
 type Chart struct {
-	ID         string    `json:"id"`
-	ProjectID  string    `json:"project_id"`
-	Kind       string    `json:"kind"`
-	Title      string    `json:"title"`
-	Data       string    `json:"data"`   // JSON string
-	Config     string    `json:"config"` // JSON string
-	TemplateID string    `json:"template_id"`
+	ID         string `json:"id"`
+	ProjectID  string `json:"project_id"`
+	Kind       string `json:"kind"`
+	Title      string `json:"title"`
+	Data       string `json:"data"`   // JSON string
+	Config     string `json:"config"` // JSON string
+	TemplateID string `json:"template_id"`
 	// CreatedAt/UpdatedAt are RFC3339Nano strings (server-managed). They
 	// are strings rather than time.Time so the Wails bridge can round-trip
 	// records whose timestamps are empty (new records) without failing to

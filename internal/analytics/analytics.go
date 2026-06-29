@@ -48,7 +48,7 @@ type PortfolioSummary struct {
 	TotalEarnedValue         float64 `json:"total_earned_value"`
 	TotalPlannedValue        float64 `json:"total_planned_value"`
 	SchedulePerformanceIndex float64 `json:"schedule_performance_index"` // SPI = EV/PV (0 = n/a)
-	CostPerformanceIndex     float64 `json:"cost_performance_index"`      // CPI = EV/AC (0 = n/a)
+	CostPerformanceIndex     float64 `json:"cost_performance_index"`     // CPI = EV/AC (0 = n/a)
 }
 
 // Dataset is a generic tabular result from a local-file import
