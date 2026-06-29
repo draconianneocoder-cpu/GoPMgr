@@ -9,18 +9,21 @@ Static review of the Go backend, with emphasis on the surfaces the
 2026-06-23 pass explicitly left out: the Wails binding / authorization
 layer, the filesystem trust boundary between local PMForge users, and the
 export sinks. Every finding cites `file:line` and was read directly from
-the tree. No dynamic scanners were run this pass.
+the tree. This pass also reconciles the 5 open GitHub Dependabot alerts
+against the frontend lockfile (F-5). No SAST scanners were run.
 
 ## Verdict
 
 Strong security posture overall — the cryptography, password handling,
 update channel, and admin authorization are correct and defensive. The new
-findings are not in those areas. The one item worth acting on is an
-**internal authorization-boundary gap**: a path-confinement control that
-already exists (`projectPathFor`) is applied to some filesystem-mutating
-IPC methods but not others. The remaining two are low-cost hardening items
-(DSN construction, spreadsheet formula injection). No critical or high
-issues found.
+findings are not in those areas. The one item worth acting on in
+application code is an **internal authorization-boundary gap**: a
+path-confinement control that already exists (`projectPathFor`) is applied
+to some filesystem-mutating IPC methods but not others. Two low-cost
+hardening items follow (DSN construction, spreadsheet formula injection).
+Separately, the 5 open Dependabot alerts all live in frontend **build/dev**
+tooling and do not reach the shipped desktop binary (F-5). No critical or
+high issues were found in application logic.
 
 > **Status: open.** No code changed in this pass. Corrective code is
 > deferred by decision — more application code is still landing, and a
@@ -143,18 +146,56 @@ making online brute force impractical, and the database requires local
 access anyway. **No change recommended** — recorded so the threat model
 stays explicit if PMForge ever grows a remote or sync surface.
 
+### F-5 — LOW (dependencies) — All 5 Dependabot alerts are in frontend build/dev tooling, not the shipped binary
+
+GitHub Dependabot reports 5 open alerts on `main` (1 high, 4 moderate).
+Reproduced locally with `npm audit` against `frontend/package-lock.json`;
+all five are in the Vite/esbuild build-and-dev-server chain, and **none
+ship in the packaged Wails desktop binary** (which embeds the *built* Vite
+output, not Vite itself):
+
+| Package | Sev | Advisory | Surface |
+| --- | --- | --- | --- |
+| `vite` (direct devDep, `^5.4.10`) | **High** | GHSA-4w7w-66w2-5vf9 (path traversal in optimized-deps `.map` handling), GHSA-fx2h-pf6j-xcff (`server.fs.deny` bypass on Windows), GHSA-v6wh-96g9-6wx3 (launch-editor NTLMv2 hash disclosure) | Dev server only |
+| `esbuild` (transitive via vite) | Moderate | GHSA-67mh-4wv8-2f99 (any website can send requests to the dev server and read responses) | Dev server only |
+| `@sveltejs/vite-plugin-svelte` + `-inspector` (direct devDep, `^4.0.0`) | Moderate | Flagged for depending on the vulnerable `vite` range | Build tooling |
+| `js-yaml` (nested transitive) | Moderate | GHSA-h67p-54hq-rp68 (quadratic-complexity DoS via repeated merge-key aliases) | Build/lint config parsing |
+
+**Real-world exposure.** The dev-server advisories require a developer to
+run `vite dev` with a malicious website open in the same browser; the
+`js-yaml` DoS is a build-host concern. End users of the released binary are
+unaffected. The value of fixing is (a) protecting the developer/CI host and
+(b) keeping Dependabot — and the project's clean-posture goal — green.
+
+**Corrective action**
+
+1. Bump `vite` to `^8` and `@sveltejs/vite-plugin-svelte` to `^7` (both
+   semver-major; the plugin major is the one built for Vite 8). This clears
+   the `vite`, `esbuild`, and both `@sveltejs/*` alerts in one step.
+2. Run `npm audit fix` to resolve the nested `js-yaml` (non-major).
+3. Verify the upgrade through the existing gates: `svelte-check`, the Vite
+   production build, and `frontend/scripts/smoke-mount.mjs` — Vite 8 is a
+   major bump, so confirm the build output and a smoke mount before merge.
+4. Effort: ~1-2 hrs including upgrade verification. Treat separately from
+   the application-code findings — it touches only `frontend/`.
+
 ## Priority
 
 1. **F-1** — apply `projectPathFor` confinement to the four IPC methods
    that mutate or open files by path; add isolation tests. (Medium)
 2. **F-3** — neutralize spreadsheet cells in CSV + XLSX exports. (Low/Med)
-3. **F-2** — build the DSN via `url.Values`/reject `?`; pin the hex
+3. **F-5** — bump `vite`→^8 / `vite-plugin-svelte`→^7 and
+   `npm audit fix` js-yaml; verify via svelte-check + build + smoke mount.
+   Frontend-only; clears all 5 Dependabot alerts. (Low)
+4. **F-2** — build the DSN via `url.Values`/reject `?`; pin the hex
    contract. (Low)
-4. **F-4** — document as accepted; revisit only if a sync surface is added.
+5. **F-4** — document as accepted; revisit only if a sync surface is added.
 
 ## Scope / limits
 
-Static read only. Not run this pass: `govulncheck`/`gosec`/`staticcheck`
+Static read only. The 5 Dependabot alerts were reconciled with
+`npm audit` against the frontend lockfile (F-5); the Go side stays clean
+under the CI `govulncheck` gate. Not run this pass: `gosec`/`staticcheck`
 (already gated in CI per the 2026-06-23 resolution), dynamic/runtime
 testing, and a line-by-line audit of every chart/document renderer. The
 XLSX exporter is flagged but was not read in full — confirm its cell
