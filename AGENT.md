@@ -981,12 +981,13 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Remaining Phase 1 sequencing:** resource-calendar/capacity planning built on the existing resource layer; tamper-evident audit now has an additive schema/API foundation; scenario analysis has metadata/schema, isolated chart/baseline partitions, Wails bridges, Project Settings metadata, chart-copy, dedicated editor routing, comparison, and promotion UI. Avoid reintroducing floating-point currency in SQL or Go.
 - **Tamper-evident audit foundation landed 2026-06-26.** `audit_events` stores per-project sequence numbers, `previous_event_hash`, `event_hash`, canonical before/after JSON, actor/session fields, UTC timestamp, signature status, and optional signature blob. `AppendAuditEvent` computes the SHA-256 chain and `VerifyAuditChain` detects sequence, previous-hash, and event-hash tampering. Project, chart, document, baseline, scenario, scenario-chart copy, document approval checkpoint, scenario-promotion approval checkpoint, document-signature, and signed combined-report mutations now write this table, project open runs verification when `settings.compliance_mode` is enabled, and Project Settings exports private JSON audit verification and raw repair-evidence artifacts.
 
-### 2026-06-28 — Monte Carlo scheduling kernel foundation
+### 2026-06-28 — Monte Carlo scheduling foundation and CPMEditor workflow
 
 - **Monte Carlo backend contract landed in `internal/kernel`.** `kernel.Task` now carries optional `DurationEstimate` values (`optimistic`, `most_likely`, `pessimistic`, `distribution`) and `RunMonteCarlo(tasks, iterations, workers)` returns deterministic P50/P80/P90 finish percentiles, per-task P50/P80/P90 sampled duration percentiles, and critical-path frequency.
 - **Supported distributions:** triangular (default), beta-PERT, and normal. Sampling uses Gonum `distuv`, deterministic per-iteration PCG sources, and copy-on-write task maps so simulations do not mutate the live schedule.
 - **Failure behavior:** invalid iteration counts, nil tasks, map-key/task-ID mismatches, negative durations, invalid estimate ordering, unsupported distribution names, and cyclic schedules return `SimResult{Valid:false, Error:...}` rather than panicking.
-- **Remaining Monte Carlo work:** Wails bridge, CPMEditor controls, S-curve and tornado chart generation, PDF/A risk report, and user-guide/help documentation once the UI workflow exists.
+- **CPMEditor workflow landed.** `App.RunChartMonteCarlo` exposes the simulation for CPM charts, `wails-window.d.ts` declares the bridge/result types, and `CPMEditor.svelte` lets users seed per-task three-point estimates, choose a distribution, run 100-10,000 iterations, and review P50/P80/P90 plus critical-driver frequency.
+- **Remaining Monte Carlo work:** S-curve/probability-distribution chart, tornado risk-driver chart, and PDF/A Monte Carlo risk report.
 
 ### 2026-06-23 — DuckDB analytics engine (ADR-002 Option B, Phases A–E) + frontend npm-ci lesson
 

@@ -1368,6 +1368,35 @@ func (a *App) ComputeScheduleEVM(chartID, asOfDate string) (kernel.EVMetrics, er
 	return kernel.ComputeEVM(tasks, asOfDay), nil
 }
 
+// RunChartMonteCarlo runs probabilistic scheduling for a CPM chart
+// using each task's optional DurationEstimate. Tasks without an
+// estimate use their deterministic Duration.
+func (a *App) RunChartMonteCarlo(chartID string, iterations int, workers int) (kernel.SimResult, error) {
+	d := a.requireDB()
+	if d == nil {
+		return kernel.SimResult{}, errors.New("no project open")
+	}
+	c, err := d.GetChart(chartID)
+	if err != nil {
+		return kernel.SimResult{}, err
+	}
+	if c.Kind != string(charts.KindCPM) {
+		return kernel.SimResult{}, fmt.Errorf("monte carlo requires a CPM chart, got %q", c.Kind)
+	}
+	tasks, err := cpmChartDataToKernelTasks(c.Data)
+	if err != nil {
+		return kernel.SimResult{}, err
+	}
+	if len(tasks) == 0 {
+		return kernel.SimResult{}, errors.New("chart has no tasks")
+	}
+	result := kernel.RunMonteCarlo(tasks, iterations, workers)
+	if !result.Valid {
+		return result, errors.New(result.Error)
+	}
+	return result, nil
+}
+
 // LevelChartResources runs the kernel's serial resource-levelling
 // pass on a CPM chart and PERSISTS the result: every task that
 // levelling delayed beyond its precedence-earliest start gets a SNET
@@ -2323,19 +2352,20 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 	}
 	var doc struct {
 		Nodes []struct {
-			ID                     string  `json:"id"`
-			Label                  string  `json:"label"`
-			Duration               float64 `json:"duration"`
-			Constraint             string  `json:"constraint"`
-			ConstraintDate         string  `json:"constraint_date"`
-			PercentComplete        float64 `json:"percent_complete"`
-			Milestone              bool    `json:"milestone"`
-			ActualStart            string  `json:"actual_start"`
-			ActualFinish           string  `json:"actual_finish"`
-			BudgetedCost           float64 `json:"budgeted_cost"`
-			BudgetedCostMinorUnits int64   `json:"budgeted_cost_minor_units"`
-			ActualCost             float64 `json:"actual_cost"`
-			ActualCostMinorUnits   int64   `json:"actual_cost_minor_units"`
+			ID                     string                  `json:"id"`
+			Label                  string                  `json:"label"`
+			Duration               float64                 `json:"duration"`
+			DurationEstimate       kernel.DurationEstimate `json:"duration_estimate"`
+			Constraint             string                  `json:"constraint"`
+			ConstraintDate         string                  `json:"constraint_date"`
+			PercentComplete        float64                 `json:"percent_complete"`
+			Milestone              bool                    `json:"milestone"`
+			ActualStart            string                  `json:"actual_start"`
+			ActualFinish           string                  `json:"actual_finish"`
+			BudgetedCost           float64                 `json:"budgeted_cost"`
+			BudgetedCostMinorUnits int64                   `json:"budgeted_cost_minor_units"`
+			ActualCost             float64                 `json:"actual_cost"`
+			ActualCostMinorUnits   int64                   `json:"actual_cost_minor_units"`
 			Assignments            []struct {
 				Resource   string   `json:"resource"`
 				Units      float64  `json:"units"`
@@ -2360,6 +2390,7 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 			ID:                     n.ID,
 			Title:                  n.Label,
 			Duration:               n.Duration,
+			DurationEstimate:       n.DurationEstimate,
 			Constraint:             kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(n.Constraint))),
 			ConstraintDate:         n.ConstraintDate,
 			PercentComplete:        n.PercentComplete,

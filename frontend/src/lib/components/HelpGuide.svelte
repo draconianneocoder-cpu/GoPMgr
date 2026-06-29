@@ -585,6 +585,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <ol class="space-y-2 text-sm text-slate-300 list-decimal list-inside">
               <li><span class="font-medium text-slate-100">Open Network Diagram.</span> Add each activity as a node. Define predecessor relationships.</li>
               <li><span class="font-medium text-slate-100">Enter durations.</span> The chart displays ES/EF/LS/LF values and highlights the critical path.</li>
+              <li><span class="font-medium text-slate-100">Add risk estimates.</span> For uncertain tasks, enter optimistic, likely, and pessimistic durations, then run Monte Carlo from the CPM editor aside to review P50/P80/P90 finish days and critical drivers.</li>
               <li><span class="font-medium text-slate-100">Open Gantt Chart</span> to view activities on a time axis with dependency arrows.</li>
               <li><span class="font-medium text-slate-100">Generate Resource Histogram</span> to compare resource demand bars with dashed capacity lines from stakeholder availability and Resource Capacity calendars.</li>
               <li><span class="font-medium text-slate-100">Update actuals</span> as work progresses. Track completion percentages.</li>
@@ -594,7 +595,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
           <section>
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">PERT vs CPM</h3>
-            <p class="text-sm text-slate-300">The PERT chart adds three-point duration estimation (Optimistic, Most Likely, Pessimistic) per activity. Use PERT when duration uncertainty is high. CPM assumes deterministic durations. Both use activity-on-node notation.</p>
+            <p class="text-sm text-slate-300">The PERT chart computes expected duration and variance from three-point estimates. CPM uses deterministic durations for the live schedule, with optional Monte Carlo estimates for probabilistic finish-date analysis. Both use activity-on-node notation.</p>
           </section>
 
         <!-- ── Six Sigma (Methodology) ─────────────────────────────── -->

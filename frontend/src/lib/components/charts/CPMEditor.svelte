@@ -85,6 +85,44 @@ SPDX-License-Identifier: GPL-3.0-or-later
     return n > 0 ? n.toFixed(2) : 'n/a';
   }
 
+  // ----- Monte Carlo schedule risk -----
+  let monteCarlo = $state<SimResult | null>(null);
+  let monteCarloIterations = $state(1000);
+  let monteCarloBusy = $state(false);
+  let monteCarloError = $state('');
+
+  function days(n: number): string {
+    return `${n.toFixed(1)}d`;
+  }
+
+  function pct(n: number): string {
+    return `${Math.round(n * 100)}%`;
+  }
+
+  function riskRows(): [string, number][] {
+    if (!monteCarlo) return [];
+    return Object.entries(monteCarlo.critical_path_frequency)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 6);
+  }
+
+  async function runMonteCarlo() {
+    if (!session.editingId || monteCarloBusy) return;
+    monteCarloBusy = true;
+    monteCarloError = '';
+    monteCarlo = null;
+    try {
+      await shellRef?.save();
+      const iterations = Math.max(100, Math.min(10000, Math.floor(Number(monteCarloIterations) || 1000)));
+      monteCarloIterations = iterations;
+      monteCarlo = await window.go.main.App.RunChartMonteCarlo(session.editingId, iterations, 0);
+    } catch (err: any) {
+      monteCarloError = String(err?.message ?? err);
+    } finally {
+      monteCarloBusy = false;
+    }
+  }
+
   function syncMinorUnits(node: any, valueKey: 'budgeted_cost' | 'actual_cost', raw: string) {
     const minorKey = valueKey === 'budgeted_cost'
       ? 'budgeted_cost_minor_units'
@@ -122,7 +160,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
       .filter(Boolean);
   }
 
-  let shellRef = $state<{ reloadFromDB: () => Promise<void> } | null>(null);
+  function seedDurationEstimate(node: any) {
+    const duration = Number(node.duration || 0);
+    const optimistic = duration > 0 ? Math.max(0, duration * 0.8) : 0;
+    const pessimistic = duration > 0 ? duration * 1.25 : 0;
+    node.duration_estimate = {
+      optimistic: Number(optimistic.toFixed(2)),
+      most_likely: Number(duration.toFixed(2)),
+      pessimistic: Number(pessimistic.toFixed(2)),
+      distribution: 'triangular',
+    };
+  }
+
+  function clearDurationEstimate(node: any) {
+    delete node.duration_estimate;
+  }
+
+  let shellRef = $state<{ reloadFromDB: () => Promise<void>; save: () => Promise<void> } | null>(null);
 
   async function levelResources() {
     if (!session.editingId || resourceBusy) return;
@@ -276,6 +330,75 @@ SPDX-License-Identifier: GPL-3.0-or-later
         class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
       />
     </label>
+    <div class="mt-3 rounded border border-slate-800 bg-slate-950/40 p-2">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-xs text-slate-500 uppercase">Monte Carlo estimate</span>
+        {#if node.duration_estimate}
+          <button
+            onclick={() => clearDurationEstimate(node)}
+            class="text-[10px] text-slate-500 hover:text-red-300"
+          >
+            Clear
+          </button>
+        {:else}
+          <button
+            onclick={() => seedDurationEstimate(node)}
+            class="text-[10px] bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded"
+          >
+            Use estimate
+          </button>
+        {/if}
+      </div>
+      {#if node.duration_estimate}
+        <div class="mt-2 grid grid-cols-3 gap-2">
+          <label class="block">
+            <span class="text-[10px] text-slate-500 uppercase">Optimistic</span>
+            <input
+              type="number"
+              min="0"
+              step="0.25"
+              bind:value={node.duration_estimate.optimistic}
+              class="w-full mt-1 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-cyan-500 outline-none"
+            />
+          </label>
+          <label class="block">
+            <span class="text-[10px] text-slate-500 uppercase">Likely</span>
+            <input
+              type="number"
+              min="0"
+              step="0.25"
+              bind:value={node.duration_estimate.most_likely}
+              class="w-full mt-1 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-cyan-500 outline-none"
+            />
+          </label>
+          <label class="block">
+            <span class="text-[10px] text-slate-500 uppercase">Pessimistic</span>
+            <input
+              type="number"
+              min="0"
+              step="0.25"
+              bind:value={node.duration_estimate.pessimistic}
+              class="w-full mt-1 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-cyan-500 outline-none"
+            />
+          </label>
+        </div>
+        <label class="block mt-2">
+          <span class="text-[10px] text-slate-500 uppercase">Distribution</span>
+          <select
+            bind:value={node.duration_estimate.distribution}
+            class="w-full mt-1 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
+          >
+            <option value="triangular">Triangular</option>
+            <option value="beta-pert">Beta-PERT</option>
+            <option value="normal">Normal</option>
+          </select>
+        </label>
+      {:else}
+        <p class="mt-2 text-[10px] text-slate-500">
+          Leave blank for deterministic duration. Add a three-point estimate for schedule-risk simulation.
+        </p>
+      {/if}
+    </div>
     <div class="flex gap-2 mt-2">
       <label class="block flex-1">
         <span class="text-xs text-slate-500 uppercase">% Complete</span>
@@ -595,5 +718,103 @@ SPDX-License-Identifier: GPL-3.0-or-later
         cost; n/a until work is planned or cost incurred.
       </p>
     {/if}
+
+    <div class="border-t border-slate-800 mt-4 pt-4">
+      <h2 class="text-xs font-bold tracking-widest uppercase text-slate-500 mb-2">
+        Monte Carlo risk
+      </h2>
+      <div class="flex items-center gap-2">
+        <label class="flex-1">
+          <span class="sr-only">Iterations</span>
+          <input
+            type="number"
+            min="100"
+            max="10000"
+            step="100"
+            bind:value={monteCarloIterations}
+            class="w-full bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-cyan-500 outline-none"
+            title="Simulation iterations"
+          />
+        </label>
+        <button
+          onclick={runMonteCarlo}
+          disabled={monteCarloBusy}
+          class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1.5 rounded"
+        >
+          {monteCarloBusy ? 'Running…' : 'Run'}
+        </button>
+      </div>
+      <div class="mt-2 h-1.5 overflow-hidden rounded bg-slate-950">
+        <div
+          class="h-full rounded bg-cyan-500 transition-all"
+          style:width={monteCarloBusy || monteCarlo ? '100%' : '0%'}
+          class:animate-pulse={monteCarloBusy}
+        ></div>
+      </div>
+      {#if monteCarloError}
+        <p class="mt-2 text-xs text-amber-300">{monteCarloError}</p>
+      {/if}
+      {#if monteCarlo}
+        <div class="mt-2 p-2 bg-slate-950 rounded text-xs space-y-2">
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <div class="text-[10px] uppercase text-slate-500">P50</div>
+              <div class="font-mono text-cyan-300">{days(monteCarlo.p50)}</div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase text-slate-500">P80</div>
+              <div class="font-mono text-amber-300">{days(monteCarlo.p80)}</div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase text-slate-500">P90</div>
+              <div class="font-mono text-red-300">{days(monteCarlo.p90)}</div>
+            </div>
+          </div>
+          <div class="border-t border-slate-800 pt-2">
+            <div class="flex justify-between text-[10px] uppercase text-slate-500">
+              <span>Critical drivers</span>
+              <span>{monteCarlo.iterations.toLocaleString()} runs</span>
+            </div>
+            <div class="mt-1 space-y-1">
+              {#each riskRows() as [taskId, frequency] (taskId)}
+                <div class="grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-2">
+                  <div class="min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="truncate font-mono text-slate-300">{taskId}</span>
+                      <span class="font-mono text-slate-400">{pct(frequency)}</span>
+                    </div>
+                    <div class="mt-1 h-1 rounded bg-slate-800">
+                      <div
+                        class="h-full rounded bg-cyan-500"
+                        style:width={`${Math.max(2, Math.min(100, frequency * 100))}%`}
+                      ></div>
+                    </div>
+                  </div>
+                  <span
+                    class="justify-self-end rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                    class:bg-red-950={frequency >= 0.8}
+                    class:text-red-300={frequency >= 0.8}
+                    class:bg-amber-950={frequency < 0.8 && frequency >= 0.4}
+                    class:text-amber-300={frequency < 0.8 && frequency >= 0.4}
+                    class:bg-slate-800={frequency < 0.4}
+                    class:text-slate-300={frequency < 0.4}
+                  >
+                    {frequency >= 0.8 ? 'High' : frequency >= 0.4 ? 'Med' : 'Low'}
+                  </span>
+                </div>
+              {/each}
+            </div>
+          </div>
+        </div>
+        <p class="text-[10px] text-slate-500 mt-1">
+          P50/P80/P90 are finish-day confidence points. Critical drivers show
+          how often a task lands on the sampled critical path.
+        </p>
+      {:else if !monteCarloError}
+        <p class="mt-2 text-[10px] text-slate-500">
+          Add optional task estimates, then run a simulation. Tasks without estimates use their fixed duration.
+        </p>
+      {/if}
+    </div>
   {/snippet}
 </LayeredEditorShell>
