@@ -25,12 +25,11 @@ Separately, the 5 open Dependabot alerts all live in frontend **build/dev**
 tooling and do not reach the shipped desktop binary (F-5). No critical or
 high issues were found in application logic.
 
-> **Status: F-1, F-2, F-3 resolved (2026-06-29); F-5 open, F-4 accepted.**
-> The path-handling findings (F-1, F-2) and the CSV formula-injection
-> finding (F-3) were implemented and tested in this pass (see their
-> resolution notes). F-5 (frontend dependency bumps) remains queued for the
-> combined corrective pass once the pending application code lands. The
-> application has no users yet, so there is no live exposure.
+> **Status: F-1, F-2, F-3, F-5 resolved (2026-06-29); F-4 accepted.** All
+> four actionable findings were implemented and verified in this pass (see
+> their resolution notes). F-4 (login throttling) is documented as accepted
+> with no change. The application has no users yet, so there is no live
+> exposure.
 
 ## What is already correct (grounded)
 
@@ -215,15 +214,32 @@ unaffected. The value of fixing is (a) protecting the developer/CI host and
 4. Effort: ~1-2 hrs including upgrade verification. Treat separately from
    the application-code findings — it touches only `frontend/`.
 
+**Resolution (2026-06-29).** Bumped `vite` `^5.4.10`→`^8.1.0` and
+`@sveltejs/vite-plugin-svelte` `^4.0.0`→`^7.1.2` and regenerated
+`frontend/package-lock.json` from clean (the stale lock otherwise pinned
+the old plugin's `vite-plugin-svelte-inspector@^3`, which conflicts with
+Vite 8). The minimal `vite.config.ts` (only the `svelte()` plugin plus
+`outDir`/`emptyOutDir`/`target`) needed no migration. `svelte` already
+resolved to 5.55.9, satisfying the plugin-7 peer (`^5.46.4`); Node 22.22
+satisfies Vite 8's engine. Verified: `npm audit` → **0 vulnerabilities**
+(all five Dependabot alerts cleared), `npm run build` (Vite 8/rolldown),
+`svelte-check` (0 errors), `eslint`, and `smoke-mount.mjs` all green.
+
+> Note (out of scope, pre-existing): `npm run
+> test:project-settings-encryption` fails on `HEAD` independent of this
+> upgrade — its hardcoded assertion `onCreated(project, projectPath)` no
+> longer matches the source, which calls `onCreated(res.project,
+> res.path)`. The encryption wiring it checks is intact; only the literal
+> string in the check script drifted. Flagged for a separate fix.
+
 ## Priority
 
 1. **F-1** — ~~apply `projectPathFor` confinement to the four IPC methods~~
    **Done (2026-06-29).** (Medium)
 2. **F-3** — ~~neutralize spreadsheet cells in CSV exports~~ **Done
    (2026-06-29).** (XLSX confirmed not vulnerable.) (Low/Med)
-3. **F-5** — bump `vite`→^8 / `vite-plugin-svelte`→^7 and
-   `npm audit fix` js-yaml; verify via svelte-check + build + smoke mount.
-   Frontend-only; clears all 5 Dependabot alerts. (Low)
+3. **F-5** — ~~bump `vite`→^8 / `vite-plugin-svelte`→^7; clears all 5
+   Dependabot alerts~~ **Done (2026-06-29).** (Low)
 4. **F-2** — ~~build the DSN safely / reject `?`~~ **Done (2026-06-29).**
    (Low)
 5. **F-4** — document as accepted; revisit only if a sync surface is added.
