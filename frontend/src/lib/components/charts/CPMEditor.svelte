@@ -141,11 +141,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
     ];
   }
 
-  function riskRows(): [string, number][] {
-    if (!monteCarlo) return [];
-    return Object.entries(monteCarlo.critical_path_frequency)
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .slice(0, 6);
+  function tornadoRows(): TornadoDriver[] {
+    return monteCarlo?.tornado_drivers ?? [];
+  }
+
+  function tornadoMaxScore(): number {
+    return tornadoRows().reduce((max, driver) => Math.max(max, driver.score), 0);
+  }
+
+  function tornadoBarWidth(driver: TornadoDriver): string {
+    const maxScore = tornadoMaxScore();
+    const value = maxScore > 0 ? (driver.score / maxScore) * 100 : driver.critical_frequency * 100;
+    return `${Math.max(2, Math.min(100, value))}%`;
   }
 
   async function runMonteCarlo() {
@@ -868,43 +875,42 @@ SPDX-License-Identifier: GPL-3.0-or-later
           {/if}
           <div class="border-t border-slate-800 pt-2">
             <div class="flex justify-between text-[10px] uppercase text-slate-500">
-              <span>Critical drivers</span>
+              <span>Tornado drivers</span>
               <span>{monteCarlo.iterations.toLocaleString()} runs</span>
             </div>
             <div class="mt-1 space-y-1">
-              {#each riskRows() as [taskId, frequency] (taskId)}
-                <div class="grid grid-cols-[minmax(0,1fr)_3rem] items-center gap-2">
-                  <div class="min-w-0">
-                    <div class="flex items-center justify-between gap-2">
-                      <span class="truncate font-mono text-slate-300">{taskId}</span>
-                      <span class="font-mono text-slate-400">{pct(frequency)}</span>
+              {#if tornadoRows().length}
+                {#each tornadoRows() as driver (driver.task_id)}
+                  <div class="grid grid-cols-[minmax(0,1fr)_4.25rem] items-center gap-2">
+                    <div class="min-w-0">
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="truncate font-mono text-slate-300">{driver.task_id}</span>
+                        <span class="font-mono text-slate-400">{driver.score.toFixed(2)}</span>
+                      </div>
+                      <div class="mt-1 h-1.5 rounded bg-slate-800">
+                        <div
+                          class="h-full rounded bg-cyan-500"
+                          style:width={tornadoBarWidth(driver)}
+                        ></div>
+                      </div>
                     </div>
-                    <div class="mt-1 h-1 rounded bg-slate-800">
-                      <div
-                        class="h-full rounded bg-cyan-500"
-                        style:width={`${Math.max(2, Math.min(100, frequency * 100))}%`}
-                      ></div>
+                    <div class="justify-self-end text-right leading-tight">
+                      <div class="font-mono text-[10px] text-slate-300">{pct(driver.critical_frequency)}</div>
+                      <div class="font-mono text-[10px] text-slate-500">{days(driver.duration_spread)}</div>
                     </div>
                   </div>
-                  <span
-                    class="justify-self-end rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                    class:bg-red-950={frequency >= 0.8}
-                    class:text-red-300={frequency >= 0.8}
-                    class:bg-amber-950={frequency < 0.8 && frequency >= 0.4}
-                    class:text-amber-300={frequency < 0.8 && frequency >= 0.4}
-                    class:bg-slate-800={frequency < 0.4}
-                    class:text-slate-300={frequency < 0.4}
-                  >
-                    {frequency >= 0.8 ? 'High' : frequency >= 0.4 ? 'Med' : 'Low'}
-                  </span>
+                {/each}
+              {:else}
+                <div class="min-w-0">
+                  <p class="text-[10px] text-slate-500">No variable risk drivers detected.</p>
                 </div>
-              {/each}
+              {/if}
             </div>
           </div>
         </div>
         <p class="text-[10px] text-slate-500 mt-1">
-          P50/P80/P90 are finish-day confidence points. Critical drivers show
-          how often a task lands on the sampled critical path.
+          P50/P80/P90 are finish-day confidence points. Tornado drivers rank
+          critical-path frequency multiplied by P90-P50 duration spread.
         </p>
       {:else if !monteCarloError}
         <p class="mt-2 text-[10px] text-slate-500">

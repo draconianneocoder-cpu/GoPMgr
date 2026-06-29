@@ -114,6 +114,81 @@ func TestRunMonteCarloFinishCDFIsMonotonic(t *testing.T) {
 	}
 }
 
+func TestRunMonteCarloRanksTornadoDriversByCriticalDurationSpread(t *testing.T) {
+	tasks := map[string]*Task{
+		"A": {
+			ID: "A",
+			DurationEstimate: DurationEstimate{
+				Optimistic:   2,
+				MostLikely:   2,
+				Pessimistic:  2,
+				Distribution: "triangular",
+			},
+		},
+		"B": {
+			ID:         "B",
+			Precedents: []string{"A"},
+			DurationEstimate: DurationEstimate{
+				Optimistic:   1,
+				MostLikely:   5,
+				Pessimistic:  10,
+				Distribution: "triangular",
+			},
+		},
+	}
+
+	result := RunMonteCarlo(tasks, 500, 4)
+
+	if !result.Valid {
+		t.Fatalf("RunMonteCarlo returned invalid result: %s", result.Error)
+	}
+	if len(result.TornadoDrivers) == 0 {
+		t.Fatal("RunMonteCarlo did not return tornado drivers")
+	}
+	driver := result.TornadoDrivers[0]
+	if driver.TaskID != "B" {
+		t.Fatalf("top tornado driver = %q, want B", driver.TaskID)
+	}
+	near(t, "B critical frequency", driver.CriticalFrequency, 1)
+	if driver.DurationSpread <= 0 {
+		t.Fatalf("B duration spread = %v, want positive", driver.DurationSpread)
+	}
+	near(t, "B spread", driver.DurationSpread, driver.P90Duration-driver.P50Duration)
+	near(t, "B score", driver.Score, driver.CriticalFrequency*driver.DurationSpread)
+}
+
+func TestRunMonteCarloTornadoDriversAreLimitedAndSorted(t *testing.T) {
+	tasks := make(map[string]*Task)
+	for i := 0; i < 12; i++ {
+		id := string(rune('A' + i))
+		tasks[id] = &Task{
+			ID: id,
+			DurationEstimate: DurationEstimate{
+				Optimistic:   1,
+				MostLikely:   2 + float64(i),
+				Pessimistic:  4 + float64(i*2),
+				Distribution: "triangular",
+			},
+		}
+	}
+
+	result := RunMonteCarlo(tasks, 300, 3)
+
+	if !result.Valid {
+		t.Fatalf("RunMonteCarlo returned invalid result: %s", result.Error)
+	}
+	if len(result.TornadoDrivers) != 10 {
+		t.Fatalf("tornado drivers = %d, want top 10", len(result.TornadoDrivers))
+	}
+	for i := 1; i < len(result.TornadoDrivers); i++ {
+		previous := result.TornadoDrivers[i-1]
+		current := result.TornadoDrivers[i]
+		if current.Score > previous.Score {
+			t.Fatalf("tornado drivers not sorted by score at %d: %v > %v", i, current.Score, previous.Score)
+		}
+	}
+}
+
 func TestRunMonteCarloReportsBranchCriticalPathFrequency(t *testing.T) {
 	tasks := map[string]*Task{
 		"A": {ID: "A", Duration: 4},
