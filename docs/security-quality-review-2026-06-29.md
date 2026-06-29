@@ -232,6 +232,49 @@ satisfies Vite 8's engine. Verified: `npm audit` → **0 vulnerabilities**
 > res.path)`. The encryption wiring it checks is intact; only the literal
 > string in the check script drifted. Flagged for a separate fix.
 
+## Quality & tooling findings (fix sweep 2026-06-29)
+
+Surfaced while running the full gate suite to verify the security fixes.
+Non-security, but corrected in the same pass and recorded here for the
+trail.
+
+### Q-1 — LOW — 34 first-party Go files were not gofmt-clean, and gofmt is not enforced
+
+`gofmt -l` against the go1.26.4 toolchain flagged 34 first-party files
+(struct-tag alignment, a stray double blank line in `main.go:3375`, etc.).
+The root cause is that **golangci-lint v2 handles formatting in a separate
+`formatters:` block, which `.golangci.yml` did not have** — so `gofmt`
+drift passed CI silently. None of the security-fix files were among the 34
+(verified); this is pre-existing drift.
+
+**Resolution.** Ran `gofmt -w` over the 34 first-party files (vendored
+`frontend/node_modules/.../flatted/golang` left untouched) and added a
+`formatters: { enable: [gofmt], exclusions: { paths: [node_modules] } }`
+block to `.golangci.yml` so the drift cannot recur. `gofmt -l` now clean;
+`go vet ./...` and `go test ./...` green (gofmt is whitespace-only).
+
+### Q-2 — LOW — Frontend encryption-wiring check asserted a verbatim string that had drifted
+
+`frontend/scripts/project-settings-encryption-check.mjs` asserted the
+literal `onCreated(project, projectPath)`, but the source had been
+refactored to `onCreated(res.project, res.path)`. The encryption wiring was
+intact; only the hard-coded string broke, so the gate failed on a false
+negative.
+
+**Resolution.** Replaced the literal with a regex that matches the call
+*shape* — `onCreated(<arg>, <…path…>)` — so it asserts intent (the launchpad
+forwards a project path) and survives identifier renames. The script passes
+again.
+
+### Environment note (not a code issue)
+
+`golangci-lint` (built with go1.25) and a freshly `go install`ed
+`govulncheck` both refuse to analyze this go1.26.4 tree (`package requires
+newer Go version go1.26`). They could not be run locally this pass; CI runs
+both with a matching toolchain (`govulncheck` is a blocking job). The
+frontend `npm audit` (0 vulnerabilities) and `go vet`/`go test`/`gofmt`
+were all runnable and clean.
+
 ## Priority
 
 1. **F-1** — ~~apply `projectPathFor` confinement to the four IPC methods~~
@@ -243,14 +286,18 @@ satisfies Vite 8's engine. Verified: `npm audit` → **0 vulnerabilities**
 4. **F-2** — ~~build the DSN safely / reject `?`~~ **Done (2026-06-29).**
    (Low)
 5. **F-4** — document as accepted; revisit only if a sync surface is added.
+6. **Q-1 / Q-2** — ~~gofmt drift + un-enforced formatter; brittle frontend
+   check~~ **Done (2026-06-29).**
 
 ## Scope / limits
 
-Static read only. The 5 Dependabot alerts were reconciled with
-`npm audit` against the frontend lockfile (F-5); the Go side stays clean
-under the CI `govulncheck` gate. Not run this pass: `gosec`/`staticcheck`
-(already gated in CI per the 2026-06-23 resolution), dynamic/runtime
-testing, and a line-by-line audit of every chart/document renderer. The
-XLSX exporter is flagged but was not read in full — confirm its cell
-handling when F-3 is implemented. Re-run this review against the tree after
-the pending application code lands, before corrective code is written.
+The 5 Dependabot alerts were reconciled with `npm audit` against the
+frontend lockfile and cleared (F-5). Verification this pass that **was**
+runnable and clean: `go vet ./...`, `go test ./...` (incl. `-race` on the
+core packages), `gofmt`, the frontend `svelte-check`/`eslint`/build-budget/
+smoke gates, and `npm audit`. **Not** runnable locally: `golangci-lint` and
+`govulncheck` (both reject the go1.26.4 tree from a go1.25-built binary —
+see the environment note above); these remain CI's responsibility. Still
+out of scope: dynamic/runtime testing and a line-by-line audit of every
+chart/document renderer. Re-run this review against the tree after the
+pending application code lands.

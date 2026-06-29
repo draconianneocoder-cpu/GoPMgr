@@ -32,7 +32,12 @@ const checks = [
   ],
   [
     'launchpad forwards the created project path',
-    launchpad.includes('onCreated(project, projectPath)'),
+    // Match the call shape, not exact identifier names: onCreated(...) whose
+    // second argument references a "path". This previously hard-coded
+    // `onCreated(project, projectPath)` and silently broke when the source was
+    // refactored to `onCreated(res.project, res.path)` — the wiring was intact
+    // but the literal drifted. Assert intent instead of a verbatim string.
+    /onCreated\(\s*[\w.]+\s*,\s*[\w.]*path[\w.]*\s*\)/i.test(launchpad),
   ],
   [
     'app stores launchpad-created project path',
