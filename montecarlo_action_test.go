@@ -94,6 +94,12 @@ func TestRunChartMonteCarloReturnsRiskMetrics(t *testing.T) {
 	if result.P90 <= 5 {
 		t.Fatalf("P90 = %v, want estimate-driven finish above deterministic 5d", result.P90)
 	}
+	if len(result.FinishCDF) != 21 {
+		t.Fatalf("FinishCDF points = %d, want 21", len(result.FinishCDF))
+	}
+	if result.FinishCDF[0].Probability != 0 || result.FinishCDF[len(result.FinishCDF)-1].Probability != 1 {
+		t.Fatalf("FinishCDF endpoints = %+v / %+v, want probability 0 / 1", result.FinishCDF[0], result.FinishCDF[len(result.FinishCDF)-1])
+	}
 	if got := result.CriticalPathFrequency["A"]; got != 1 {
 		t.Fatalf("A critical frequency = %v, want 1", got)
 	}

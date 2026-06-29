@@ -42,8 +42,16 @@ func (e DurationEstimate) Empty() bool {
 	return e.Optimistic == 0 && e.MostLikely == 0 && e.Pessimistic == 0 && e.Distribution == ""
 }
 
+// ProbabilityPoint is one cumulative probability point for a sampled
+// finish-day curve.
+type ProbabilityPoint struct {
+	Day         float64 `json:"day"`
+	Probability float64 `json:"probability"`
+}
+
 // SimResult is the output of a Monte Carlo schedule simulation. P50,
-// P80, and P90 are finish-day percentiles. DurationPercentiles stores
+// P80, and P90 are finish-day percentiles. FinishCDF stores a compact
+// cumulative finish-day curve for S-curve rendering. DurationPercentiles stores
 // each task's sampled P50/P80/P90 durations in that order.
 type SimResult struct {
 	Valid                 bool                  `json:"valid"`
@@ -53,6 +61,7 @@ type SimResult struct {
 	P50                   float64               `json:"p50"`
 	P80                   float64               `json:"p80"`
 	P90                   float64               `json:"p90"`
+	FinishCDF             []ProbabilityPoint    `json:"finish_cdf"`
 	CriticalPathFrequency map[string]float64    `json:"critical_path_frequency"`
 	DurationPercentiles   map[string][3]float64 `json:"duration_percentiles"`
 }
@@ -135,6 +144,7 @@ func RunMonteCarlo(tasks map[string]*Task, iterations int, workers int) SimResul
 	result.P50 = percentile(finishes, 0.50)
 	result.P80 = percentile(finishes, 0.80)
 	result.P90 = percentile(finishes, 0.90)
+	result.FinishCDF = finishCDF(finishes)
 	for _, id := range taskIDs {
 		result.CriticalPathFrequency[id] = float64(criticalCounts[id]) / float64(iterations)
 		samples := durationSamples[id]
@@ -286,6 +296,22 @@ func percentile(values []float64, q float64) float64 {
 	}
 	weight := position - float64(lower)
 	return sorted[lower]*(1-weight) + sorted[upper]*weight
+}
+
+func finishCDF(finishes []float64) []ProbabilityPoint {
+	const points = 21
+	if len(finishes) == 0 {
+		return nil
+	}
+	curve := make([]ProbabilityPoint, 0, points)
+	for i := 0; i < points; i++ {
+		probability := float64(i) / float64(points-1)
+		curve = append(curve, ProbabilityPoint{
+			Day:         percentile(finishes, probability),
+			Probability: probability,
+		})
+	}
+	return curve
 }
 
 func clamp(value, low, high float64) float64 {

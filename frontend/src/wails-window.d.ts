@@ -668,8 +668,14 @@ declare global {
     p50: number;
     p80: number;
     p90: number;
+    finish_cdf: ProbabilityPoint[];
     critical_path_frequency: Record<string, number>;
     duration_percentiles: Record<string, [number, number, number]>;
+  }
+
+  interface ProbabilityPoint {
+    day: number;
+    probability: number;
   }
 
   interface BaselineRecord {
