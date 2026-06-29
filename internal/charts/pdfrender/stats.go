@@ -552,14 +552,14 @@ func paletteRGB(idx int, hex string) (int, int, int) {
 		return hexRGB(hex, 34, 211, 238)
 	}
 	pal := [][3]int{
-		{34, 211, 238},   // cyan
-		{245, 158, 11},   // amber
-		{34, 197, 94},    // green
-		{168, 85, 247},   // purple
-		{239, 68, 68},    // red
-		{14, 165, 233},   // sky
-		{234, 179, 8},    // yellow
-		{148, 163, 184},  // slate
+		{34, 211, 238},  // cyan
+		{245, 158, 11},  // amber
+		{34, 197, 94},   // green
+		{168, 85, 247},  // purple
+		{239, 68, 68},   // red
+		{14, 165, 233},  // sky
+		{234, 179, 8},   // yellow
+		{148, 163, 184}, // slate
 	}
 	c := pal[idx%len(pal)]
 	return c[0], c[1], c[2]

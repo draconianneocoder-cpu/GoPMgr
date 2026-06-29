@@ -21,12 +21,12 @@ import (
 
 // Summary is the panel-ready cost rollup.
 type Summary struct {
-	Budget         float64 `json:"budget"`           // project.budget — the cap
-	ContractValue  float64 `json:"contract_value"`   // Σ stakeholder.contract_value for vendors
-	LabourEstimate float64 `json:"labour_estimate"`  // Σ work-item-points × assignee.hourly_rate
-	Committed      float64 `json:"committed"`        // contract_value + labour_estimate
-	Remaining      float64 `json:"remaining"`        // budget - committed (negative if over)
-	ByCategory     map[string]float64 `json:"by_category"` // breakdown by stakeholder category
+	Budget         float64            `json:"budget"`          // project.budget — the cap
+	ContractValue  float64            `json:"contract_value"`  // Σ stakeholder.contract_value for vendors
+	LabourEstimate float64            `json:"labour_estimate"` // Σ work-item-points × assignee.hourly_rate
+	Committed      float64            `json:"committed"`       // contract_value + labour_estimate
+	Remaining      float64            `json:"remaining"`       // budget - committed (negative if over)
+	ByCategory     map[string]float64 `json:"by_category"`     // breakdown by stakeholder category
 }
 
 // Compute walks the inputs and produces a Summary. Stakeholder is

@@ -17,7 +17,7 @@ func buildTestLog(t *testing.T, path string, n int) []string {
 	t.Helper()
 	lines := make([]string, n)
 	for i := range lines {
-		lines[i] = strings.Repeat("x", 60) // ~60 chars per line; realistic log width
+		lines[i] = strings.Repeat("x", 60)         // ~60 chars per line; realistic log width
 		lines[i] = strings.TrimRight(lines[i], "") // keep linter happy
 	}
 	// Use distinguishable first / last markers so truncation tests are unambiguous.

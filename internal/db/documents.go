@@ -17,14 +17,14 @@ import (
 // application layer; the database accepts any string so callers can
 // add custom states without a migration.
 type Document struct {
-	ID         string    `json:"id"`
-	ProjectID  string    `json:"project_id"`
-	Kind       string    `json:"kind"`
-	Title      string    `json:"title"`
-	Content    string    `json:"content"` // JSON string
-	TemplateID string    `json:"template_id"`
-	Version    int       `json:"version"`
-	Status     string    `json:"status"`
+	ID         string `json:"id"`
+	ProjectID  string `json:"project_id"`
+	Kind       string `json:"kind"`
+	Title      string `json:"title"`
+	Content    string `json:"content"` // JSON string
+	TemplateID string `json:"template_id"`
+	Version    int    `json:"version"`
+	Status     string `json:"status"`
 	// RFC3339Nano strings (server-managed); see the note on db.Chart for why
 	// these are strings rather than time.Time (Wails empty-string round-trip).
 	CreatedAt string `json:"created_at"`

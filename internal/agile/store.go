@@ -566,4 +566,3 @@ func (s *Store) DeleteDeployment(id string) error {
 	_, err := s.Conn.Exec(`DELETE FROM agile_deployments WHERE id = ?`, id)
 	return err
 }
-

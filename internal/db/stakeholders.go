@@ -43,8 +43,8 @@ type Stakeholder struct {
 	// (1.0 = full-time, 0.5 = half-time). It feeds the scheduling
 	// kernel's overallocation detection and resource levelling as the
 	// capacity for assignments naming this stakeholder.
-	Availability float64   `json:"availability"`
-	Notes        string    `json:"notes"`
+	Availability float64 `json:"availability"`
+	Notes        string  `json:"notes"`
 	// RFC3339Nano strings (server-managed); see the note on db.Chart for why
 	// these are strings rather than time.Time (Wails empty-string round-trip).
 	CreatedAt string `json:"created_at"`

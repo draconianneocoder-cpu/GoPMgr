@@ -32,7 +32,7 @@ func NewSeeder(d *db.Database, projectID string) *Seeder {
 // the user a "we set this up for you" toast.
 type SeedReceipt struct {
 	Seed string `json:"seed"`
-	Kind string `json:"kind"`  // "chart" | "document" | "board" | "sprint"
+	Kind string `json:"kind"` // "chart" | "document" | "board" | "sprint"
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }

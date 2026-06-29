@@ -12,12 +12,12 @@ import (
 
 // DescriptiveResult holds basic statistics for a dataset.
 type DescriptiveResult struct {
-	Mean    float64 `json:"mean"`
-	Median  float64 `json:"median"`
-	StdDev  float64 `json:"std_dev"`
-	Min     float64 `json:"min"`
-	Max     float64 `json:"max"`
-	Count   int     `json:"count"`
+	Mean   float64 `json:"mean"`
+	Median float64 `json:"median"`
+	StdDev float64 `json:"std_dev"`
+	Min    float64 `json:"min"`
+	Max    float64 `json:"max"`
+	Count  int     `json:"count"`
 }
 
 // CalculateDescriptive computes mean, median, std dev, min, max.
@@ -62,12 +62,12 @@ func CalculateDescriptive(values []float64) (DescriptiveResult, error) {
 
 // CapabilityResult holds process capability indices.
 type CapabilityResult struct {
-	Cp   float64 `json:"cp"`
-	Cpk  float64 `json:"cpk"`
-	Pp   float64 `json:"pp"`
-	Ppk  float64 `json:"ppk"`
+	Cp         float64 `json:"cp"`
+	Cpk        float64 `json:"cpk"`
+	Pp         float64 `json:"pp"`
+	Ppk        float64 `json:"ppk"`
 	SigmaLevel float64 `json:"sigma_level"`
-	DPMO float64 `json:"dpmo"`
+	DPMO       float64 `json:"dpmo"`
 }
 
 // CalculateCapability computes Cp, Cpk, Pp, Ppk, Sigma Level, and DPMO.
@@ -118,11 +118,11 @@ func CalculateCapability(values []float64, usl, lsl float64) (CapabilityResult, 
 	}
 
 	return CapabilityResult{
-		Cp:   cp,
-		Cpk:  cpk,
-		Pp:   pp,
-		Ppk:  ppk,
+		Cp:         cp,
+		Cpk:        cpk,
+		Pp:         pp,
+		Ppk:        ppk,
 		SigmaLevel: sigmaLevel,
-		DPMO: dpmo,
+		DPMO:       dpmo,
 	}, nil
 }

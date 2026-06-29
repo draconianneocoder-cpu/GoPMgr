@@ -23,17 +23,17 @@ import (
 // Keeping one struct (rather than three) lets the frontend reuse a
 // single LayeredDiagram.svelte component with kind-specific overlays.
 type LayeredNode struct {
-	ID         string  `json:"id"`
-	Label      string  `json:"label"`
-	Note       string  `json:"note,omitempty"`
-	Owner      string  `json:"owner,omitempty"`
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Note  string `json:"note,omitempty"`
+	Owner string `json:"owner,omitempty"`
 
 	// Network / CPM input
-	Duration   float64 `json:"duration,omitempty"`
+	Duration float64 `json:"duration,omitempty"`
 
 	// PERT input
-	Optimistic float64 `json:"o,omitempty"`
-	MostLikely float64 `json:"m,omitempty"`
+	Optimistic  float64 `json:"o,omitempty"`
+	MostLikely  float64 `json:"m,omitempty"`
 	Pessimistic float64 `json:"p,omitempty"`
 
 	// PERT computed (filled by LayoutPERT)
@@ -125,11 +125,11 @@ func EncodeLayered(doc LayeredDocument) (string, error) {
 
 // LayeredLayoutOptions controls visual spacing.
 type LayeredLayoutOptions struct {
-	NodeWidth         float64 `json:"node_width"`
-	NodeHeight        float64 `json:"node_height"`
-	ColumnGap         float64 `json:"column_gap"`
-	RowGap            float64 `json:"row_gap"`
-	BarycenterPasses  int     `json:"barycenter_passes"`
+	NodeWidth        float64 `json:"node_width"`
+	NodeHeight       float64 `json:"node_height"`
+	ColumnGap        float64 `json:"column_gap"`
+	RowGap           float64 `json:"row_gap"`
+	BarycenterPasses int     `json:"barycenter_passes"`
 }
 
 // DefaultLayeredOptions returns the spacing the GUI uses by default.
@@ -276,9 +276,9 @@ func LayoutLayered(doc LayeredDocument, opt LayeredLayoutOptions) (Layout, error
 	rowStride := opt.NodeHeight + opt.RowGap
 
 	var (
-		out   Layout
-		maxY  float64
-		maxX  float64
+		out  Layout
+		maxY float64
+		maxX float64
 	)
 	for li, layerNodes := range layers {
 		x := float64(li) * colStride
