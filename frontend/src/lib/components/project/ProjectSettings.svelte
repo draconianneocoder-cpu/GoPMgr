@@ -31,7 +31,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let exportTheme = $state<'modern' | 'classic' | 'archival'>('modern');
   let autoRepair = $state(true);
   let certPath = $state('');
-  let signatureEnabled = $state(false);
+  let signatureMethod = $state<SignatureMethod>('none');
+  let gpgKeyID = $state('');
   let complianceMode = $state(false);
   let settingsBusy = $state(false);
   let settingsResetting = $state(false);
@@ -165,7 +166,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       exportTheme = s.export_theme;
       autoRepair = s.auto_repair;
       certPath = s.cert_path ?? '';
-      signatureEnabled = s.signature_enabled;
+      signatureMethod = s.signature_method ?? (s.signature_enabled ? 'pades' : 'none');
+      gpgKeyID = s.gpg_key_id ?? '';
       complianceMode = s.compliance_mode ?? false;
     } catch {
       // non-fatal; leave defaults
@@ -231,7 +233,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
         export_theme: exportTheme,
         auto_repair: autoRepair,
         cert_path: certPath,
-        signature_enabled: signatureEnabled,
+        signature_enabled: signatureMethod !== 'none',
+        signature_method: signatureMethod,
+        gpg_key_id: gpgKeyID,
         compliance_mode: complianceMode,
       });
       settingsStatus = 'Saved.';
@@ -251,7 +255,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       exportTheme = (defaults.export_theme || 'modern') as 'modern' | 'classic' | 'archival';
       autoRepair = defaults.auto_repair;
       certPath = defaults.cert_path ?? '';
-      signatureEnabled = defaults.signature_enabled;
+      signatureMethod = defaults.signature_method ?? (defaults.signature_enabled ? 'pades' : 'none');
+      gpgKeyID = defaults.gpg_key_id ?? '';
       complianceMode = defaults.compliance_mode ?? false;
       defaultFont = defaults.default_font ?? '';
       fontStatus = '';
@@ -1646,9 +1651,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
              <span class="text-sm text-slate-300">Enable background self-healing</span>
            </label>
 
-           <label class="flex items-center gap-3 cursor-pointer">
-             <input type="checkbox" bind:checked={signatureEnabled} class="accent-cyan-500" />
-             <span class="text-sm text-slate-300">Enable PDF digital signatures</span>
+           <label class="block">
+             <span class="text-xs text-slate-500 uppercase">Document signing method</span>
+             <select
+               bind:value={signatureMethod}
+               class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded"
+             >
+               <option value="none">No digital signature; print and physically sign</option>
+               <option value="pades">PAdES embedded PDF signature</option>
+               <option value="gpg">GnuPG detached signature sidecar</option>
+             </select>
            </label>
 
            <label class="flex items-center gap-3 cursor-pointer">
@@ -1687,6 +1699,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
              {/if}
            </div>
 
+           {#if signatureMethod === 'pades'}
            <div>
              <span class="text-xs text-slate-500 uppercase">Certificate path</span>
              <div class="flex gap-2 mt-1">
@@ -1703,6 +1716,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
                </button>
              </div>
            </div>
+           {:else if signatureMethod === 'gpg'}
+           <label class="block">
+             <span class="text-xs text-slate-500 uppercase">GnuPG key ID</span>
+             <input
+               bind:value={gpgKeyID}
+               placeholder="Optional; blank uses the default GnuPG key"
+               class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none text-sm"
+             />
+             <span class="block mt-1 text-[11px] text-slate-500">
+               PMForge writes an ASCII-armored .asc sidecar and does not mutate the PDF after export.
+             </span>
+           </label>
+           {:else}
+           <p class="text-xs text-slate-500">
+             Exports remain unsigned for print, wet-signature, or external signing workflows.
+           </p>
+           {/if}
 
            <button
              onclick={saveExportSettings}

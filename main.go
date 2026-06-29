@@ -62,6 +62,7 @@ import (
 	"pmforge/internal/sigma/service"
 	"pmforge/internal/sigma/stats"
 	"pmforge/internal/sigma/tollgate"
+	"pmforge/internal/signing"
 	"pmforge/internal/templates"
 	"pmforge/internal/timeline"
 	"pmforge/internal/update"
@@ -2042,6 +2043,33 @@ func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections 
 	return outPath, nil
 }
 
+// ExportCombinedReportGnuPG writes an unsigned combined PDF plus a detached
+// ASCII-armored GnuPG signature sidecar.
+func (a *App) ExportCombinedReportGnuPG(reportTitle, subtitle string, sections []documents.ReportSection, keyID string) (GnuPGExportResult, error) {
+	d := a.requireDB()
+	if d == nil {
+		return GnuPGExportResult{}, errors.New("no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return GnuPGExportResult{}, err
+	}
+	reportID := combinedReportCheckpointID(proj.ID, reportTitle, subtitle, sections)
+
+	pdfPath, err := a.ExportCombinedReport(reportTitle, subtitle, sections)
+	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("build report: %v", err), "")
+		return GnuPGExportResult{}, err
+	}
+	sigPath := pdfPath + ".asc"
+	if err := a.signFileWithGnuPG(pdfPath, sigPath, keyID); err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("gpg detached signature: %v", err), "")
+		return GnuPGExportResult{}, err
+	}
+	logCombinedReportSignatureEventWithStatus(d, proj.ID, reportID, reportTitle, subtitle, sections, "gpg_signed", "Detached GnuPG signature written.", sigPath)
+	return GnuPGExportResult{PDFPath: pdfPath, SignaturePath: sigPath, Method: db.SignatureMethodGnuPG}, nil
+}
+
 // RepairAndSwap runs InformativeSelfHeal and, on success, calls
 // SwapInSnapshot to atomically replace the live file. The handle on
 // `a.db` is refreshed in place.
@@ -2527,6 +2555,33 @@ func (a *App) ExportDocumentPDF(id string) (string, error) {
 	return outPath, nil
 }
 
+type GnuPGExportResult struct {
+	PDFPath       string `json:"pdf_path"`
+	SignaturePath string `json:"signature_path"`
+	Method        string `json:"method"`
+}
+
+// ExportDocumentPDFGnuPG renders the document as a plain PDF and writes a
+// detached ASCII-armored GnuPG signature sidecar. The PDF bytes are not
+// modified, so PDF/A validation and print-and-wet-sign workflows remain intact.
+func (a *App) ExportDocumentPDFGnuPG(id, keyID string) (GnuPGExportResult, error) {
+	d := a.requireDB()
+	if d == nil {
+		return GnuPGExportResult{}, errors.New("no project open")
+	}
+	pdfPath, err := a.ExportDocumentPDF(id)
+	if err != nil {
+		return GnuPGExportResult{}, err
+	}
+	sigPath := pdfPath + ".asc"
+	if err := a.signFileWithGnuPG(pdfPath, sigPath, keyID); err != nil {
+		admin.NewService(d).LogSignatureEvent(id, false, err)
+		return GnuPGExportResult{}, err
+	}
+	admin.NewService(d).LogDocumentSignatureOutcome(id, "gpg_signed", "Detached GnuPG signature written.", sigPath)
+	return GnuPGExportResult{PDFPath: pdfPath, SignaturePath: sigPath, Method: db.SignatureMethodGnuPG}, nil
+}
+
 // ExportDocumentPDFSigned is like ExportDocumentPDF but applies a real
 // PAdES B-B digital signature using the provided certificate.
 func (a *App) ExportDocumentPDFSigned(id, certPath, certPassword string) (string, error) {
@@ -2562,6 +2617,16 @@ func (a *App) ExportDocumentPDFSigned(id, certPath, certPassword string) (string
 	}
 	admin.NewService(d).LogSignatureEvent(doc.ID, true, nil)
 	return outPath, nil
+}
+
+func (a *App) signFileWithGnuPG(inputPath, signaturePath, keyID string) error {
+	base := a.ctx
+	if base == nil {
+		base = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(base, 2*time.Minute)
+	defer cancel()
+	return signing.SignDetachedASCIIArmored(ctx, signing.ExecCommandRunner, inputPath, signaturePath, strings.TrimSpace(keyID))
 }
 
 // =========================================================
@@ -4306,11 +4371,16 @@ func combinedReportCheckpointID(projectID, reportTitle, subtitle string, section
 }
 
 func logCombinedReportSignatureEvent(d *db.Database, projectID, reportID, reportTitle, subtitle string, sections []documents.ReportSection, signed bool, details, outputPath string) {
-	status := "failed"
 	signatureStatus := "failed"
 	if signed {
-		status = "signed"
 		signatureStatus = "signed"
+	}
+	logCombinedReportSignatureEventWithStatus(d, projectID, reportID, reportTitle, subtitle, sections, signatureStatus, details, outputPath)
+}
+
+func logCombinedReportSignatureEventWithStatus(d *db.Database, projectID, reportID, reportTitle, subtitle string, sections []documents.ReportSection, signatureStatus, details, outputPath string) {
+	if signatureStatus == "" {
+		signatureStatus = "unsigned"
 	}
 	payload, err := json.Marshal(struct {
 		ReportID     string                    `json:"report_id"`
@@ -4327,7 +4397,7 @@ func logCombinedReportSignatureEvent(d *db.Database, projectID, reportID, report
 		Subtitle:     subtitle,
 		SectionCount: len(sections),
 		Sections:     append([]documents.ReportSection(nil), sections...),
-		Status:       status,
+		Status:       signatureStatus,
 		Details:      details,
 		OutputPath:   outputPath,
 	})

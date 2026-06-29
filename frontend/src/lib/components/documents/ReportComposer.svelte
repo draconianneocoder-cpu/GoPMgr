@@ -27,6 +27,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let dragIndex = $state<number | null>(null);
   let showSignModal = $state(false);
   let pendingSignCertPath = $state('');
+  let pendingGPGKeyID = $state('');
+  let pendingSignatureMethod = $state<SignatureMethod>('pades');
 
   onMount(async () => {
     try {
@@ -111,39 +113,61 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return;
     }
     let certPath = '';
+    let gpgKeyID = '';
+    let method: SignatureMethod = 'pades';
     try {
       const s = await window.go.main.App.GetSettings();
       if (s?.cert_path) certPath = s.cert_path;
+      if (s?.gpg_key_id) gpgKeyID = s.gpg_key_id;
+      if (s?.signature_method) method = s.signature_method;
     } catch {}
     pendingSignCertPath = certPath;
+    pendingGPGKeyID = gpgKeyID;
+    pendingSignatureMethod = method;
     showSignModal = true;
   }
 
-  async function handleSignedConfirm(pwd: string, certPath: string) {
+  async function handleSignedConfirm(options: SignatureExportOptions) {
     showSignModal = false;
-    if (!certPath || !pwd) {
-      status = 'Certificate path and password are required for signed export.';
-      return;
-    }
 
     exporting = true;
     status = '';
     try {
-      const path = await window.go.main.App.ExportCombinedReportSigned(
-        reportTitle,
-        subtitle,
-        buildSections(),
-        certPath,
-        pwd,
-      );
-      status = `Signed report exported to ${path}`;
-      showToast('Signed combined report exported successfully', 'success');
+      if (options.method === 'pades') {
+        const path = await window.go.main.App.ExportCombinedReportSigned(
+          reportTitle,
+          subtitle,
+          buildSections(),
+          options.cert_path,
+          options.cert_password,
+        );
+        status = `PAdES signed report exported to ${path}`;
+        showToast('PAdES signed combined report exported successfully', 'success');
+      } else if (options.method === 'gpg') {
+        const result = await window.go.main.App.ExportCombinedReportGnuPG(
+          reportTitle,
+          subtitle,
+          buildSections(),
+          options.gpg_key_id,
+        );
+        status = `Report exported to ${result.pdf_path}; GnuPG signature exported to ${result.signature_path}`;
+        showToast('GnuPG detached report signature exported successfully', 'success');
+      } else {
+        const path = await window.go.main.App.ExportCombinedReport(
+          reportTitle,
+          subtitle,
+          buildSections(),
+        );
+        status = `Report exported without digital signature to ${path}`;
+        showToast('Combined report exported without digital signature', 'success');
+      }
     } catch (err: any) {
-      status = `Signed export failed: ${err}`;
-      showToast(`Signed export failed: ${err}`, 'error');
+      status = `Export failed: ${err}`;
+      showToast(`Export failed: ${err}`, 'error');
     } finally {
       exporting = false;
       pendingSignCertPath = '';
+      pendingGPGKeyID = '';
     }
   }
 
@@ -172,9 +196,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       onclick={exportSignedReport}
       disabled={exporting || showSignModal || included.length === 0}
       class="text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
-      title="Export with an embedded PAdES B-B digital signature"
+      title="Choose PAdES, GnuPG, or no digital signature"
     >
-      {exporting ? 'Signing...' : 'Sign & Export'}
+      {exporting ? 'Exporting...' : 'Signature Options'}
     </button>
   </header>
 
@@ -282,6 +306,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <SignCertificateModal
     bind:open={showSignModal}
     certPath={pendingSignCertPath}
+    method={pendingSignatureMethod}
+    gpgKeyID={pendingGPGKeyID}
     onConfirm={handleSignedConfirm}
   />
 </div>

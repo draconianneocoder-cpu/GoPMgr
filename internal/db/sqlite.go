@@ -97,6 +97,8 @@ func (db *Database) Migrate() error {
 		auto_repair       INTEGER NOT NULL DEFAULT 1,
 		cert_path         TEXT NOT NULL DEFAULT '',
 		signature_enabled INTEGER NOT NULL DEFAULT 0,
+		signature_method  TEXT NOT NULL DEFAULT '',
+		gpg_key_id        TEXT NOT NULL DEFAULT '',
 		default_font      TEXT NOT NULL DEFAULT '',
 		compliance_mode   INTEGER NOT NULL DEFAULT 0
 	);
@@ -561,6 +563,8 @@ func (db *Database) migrateLegacyColumns() error {
 		{"default_font", "ALTER TABLE settings ADD COLUMN default_font TEXT NOT NULL DEFAULT ''"},
 		{"agile_enabled", "ALTER TABLE settings ADD COLUMN agile_enabled INTEGER NOT NULL DEFAULT 0"},
 		{"compliance_mode", "ALTER TABLE settings ADD COLUMN compliance_mode INTEGER NOT NULL DEFAULT 0"},
+		{"signature_method", "ALTER TABLE settings ADD COLUMN signature_method TEXT NOT NULL DEFAULT ''"},
+		{"gpg_key_id", "ALTER TABLE settings ADD COLUMN gpg_key_id TEXT NOT NULL DEFAULT ''"},
 	}
 	for _, m := range settingsMigrations {
 		if _, ok := settingsCols[m.name]; ok {

@@ -121,9 +121,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   let certPathForSign = $state('');
+  let gpgKeyIDForSign = $state('');
+  let preferredSignatureMethod = $state<SignatureMethod>('pades');
   let signing = $state(false);
   let showSignModal = $state(false);
   let pendingCertPath = $state('');
+  let pendingGPGKeyID = $state('');
+  let pendingSignatureMethod = $state<SignatureMethod>('pades');
+  let signatureSettingsLoaded = $state(false);
 
   async function exportSignedPDF() {
     if (!doc) return;
@@ -132,16 +137,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       await save();
 
-      if (!certPathForSign) {
+      if (!signatureSettingsLoaded) {
         try {
           const s = await window.go.main.App.GetSettings();
           if (s?.cert_path) certPathForSign = s.cert_path;
+          if (s?.signature_method) preferredSignatureMethod = s.signature_method;
+          if (s?.gpg_key_id) gpgKeyIDForSign = s.gpg_key_id;
+          signatureSettingsLoaded = true;
         } catch {
           /* ignore */
         }
       }
 
       pendingCertPath = certPathForSign;
+      pendingGPGKeyID = gpgKeyIDForSign;
+      pendingSignatureMethod = preferredSignatureMethod;
       showSignModal = true;
       signing = false; // modal will handle the actual signing
     } catch (err: any) {
@@ -150,25 +160,39 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  function handleSignedConfirm(pwd: string, certPath: string) {
+  function handleSignedConfirm(options: SignatureExportOptions) {
     showSignModal = false;
-    if (!certPath || !pwd || !doc) return;
+    if (!doc) return;
 
     signing = true;
     (async () => {
       try {
-        const path = await window.go.main.App.ExportDocumentPDFSigned(
-          doc.id,
-          certPath,
-          pwd,
-        );
-        status = `Signed PDF exported to ${path}`;
-        showToast(`Signed PDF exported successfully`, 'success');
+        if (options.method === 'pades') {
+          const path = await window.go.main.App.ExportDocumentPDFSigned(
+            doc.id,
+            options.cert_path,
+            options.cert_password,
+          );
+          status = `PAdES signed PDF exported to ${path}`;
+          showToast(`PAdES signed PDF exported successfully`, 'success');
+        } else if (options.method === 'gpg') {
+          const result = await window.go.main.App.ExportDocumentPDFGnuPG(
+            doc.id,
+            options.gpg_key_id,
+          );
+          status = `PDF exported to ${result.pdf_path}; GnuPG signature exported to ${result.signature_path}`;
+          showToast(`GnuPG detached signature exported successfully`, 'success');
+        } else {
+          const path = await window.go.main.App.ExportDocumentPDF(doc.id);
+          status = `PDF exported without digital signature to ${path}`;
+          showToast(`PDF exported without digital signature`, 'success');
+        }
       } catch (err: any) {
-        status = `Signed export failed: ${err}`;
+        status = `Export failed: ${err}`;
       } finally {
         signing = false;
         pendingCertPath = '';
+        pendingGPGKeyID = '';
       }
     })();
   }
@@ -213,9 +237,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
         onclick={exportSignedPDF}
         disabled={signing}
         class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 px-3 py-1 rounded"
-        title="Export with an embedded PAdES B-B digital signature"
+        title="Choose PAdES, GnuPG, or no digital signature"
       >
-        {signing ? 'Signing…' : 'Export Signed PDF'}
+        {signing ? 'Exporting…' : 'Signature Options'}
       </button>
       <button
         onclick={save}
@@ -251,14 +275,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="mt-6 p-4 border border-emerald-800 bg-emerald-950/30 rounded">
         <div class="text-xs uppercase tracking-widest text-emerald-400 mb-2">Digital Signature</div>
         <p class="text-xs text-slate-400 mb-3">
-          Apply an embedded PAdES B-B digital signature with a tamper-evident ByteRange.
+          Export with an embedded PAdES signature, a detached GnuPG signature, or no digital signature for physical sign-off.
         </p>
         <button
           onclick={exportSignedPDF}
           disabled={signing}
           class="text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-1.5 rounded"
         >
-          {signing ? 'Signing…' : 'Sign & Export PDF'}
+          {signing ? 'Exporting…' : 'Choose Signature & Export'}
         </button>
       </div>
     {:else}
@@ -269,6 +293,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <SignCertificateModal
     bind:open={showSignModal}
     certPath={pendingCertPath}
+    method={pendingSignatureMethod}
+    gpgKeyID={pendingGPGKeyID}
     onConfirm={handleSignedConfirm}
   />
 </div>

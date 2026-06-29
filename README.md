@@ -153,14 +153,18 @@ strict by default: missing
 validator tooling, a missing ICC profile, or an empty sample set fails the
 gate unless `PMFORGE_PDFA_STRICT=0` is set for local convenience.
 
-PAdES signing is applied as the final PDF mutation. `make check-pades`
-generates a deterministic signed sample and verifies the embedded CMS
-against the declared `/ByteRange`. `make check-pades-external` adds
-external checks when tools are installed: OpenSSL, `qpdf`, `pdfsig`,
+PAdES signing is applied as the final PDF mutation. Users can also export
+without a digital signature for print-and-wet-sign workflows, or create an
+ASCII-armored detached GnuPG `.asc` sidecar without mutating the PDF bytes.
+`make check-pades` generates a deterministic signed sample and verifies the
+embedded CMS against the declared `/ByteRange`. `make check-pades-external`
+adds external checks when tools are installed: OpenSSL, `qpdf`, `pdfsig`,
 veraPDF signature feature extraction, and DSS. Current DSS coverage
 classifies the deterministic self-signed sample as `PAdES-BASELINE-B`;
 trusted-chain validation and Acrobat coverage still require a real trusted
-signing source.
+signing source. `make check-pades-trusted` records that manual evidence when
+`PMFORGE_TRUSTED_SIGNED_PDF` points at a trusted-certificate sample, and
+otherwise writes a clear not-configured report.
 
 Public release claims are guarded by `make release-scope`.
 

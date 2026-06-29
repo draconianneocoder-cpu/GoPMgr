@@ -166,3 +166,41 @@ func TestLogSignatureEvent_FailureCheckpointUsesFailedStatus(t *testing.T) {
 		t.Fatalf("signature_status = %q, want failed", signatureStatus)
 	}
 }
+
+func TestLogDocumentSignatureOutcomeRecordsGnuPGStatus(t *testing.T) {
+	d := newAdminTestDB(t)
+	project, err := d.UpsertProject(db.Project{Name: "GnuPG Signature Audit"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	doc, err := d.SaveDocument(db.Document{
+		ProjectID: project.ID,
+		Kind:      "charter",
+		Title:     "Detached Signature Charter",
+		Content:   `{"summary":"ready"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveDocument: %v", err)
+	}
+
+	NewService(d).LogDocumentSignatureOutcome(doc.ID, "gpg_signed", "Detached GnuPG signature written.", "signature.asc")
+
+	var signatureStatus, signatureBlob string
+	if err := d.Conn.QueryRow(
+		`SELECT signature_status, signature_blob_optional
+		 FROM audit_events
+		 WHERE project_id = ? AND entity_type = 'document' AND entity_id = ? AND event_type = 'document.signature'
+		 ORDER BY sequence_number DESC
+		 LIMIT 1`,
+		project.ID,
+		doc.ID,
+	).Scan(&signatureStatus, &signatureBlob); err != nil {
+		t.Fatalf("query signature audit event: %v", err)
+	}
+	if signatureStatus != "gpg_signed" {
+		t.Fatalf("signature_status = %q, want gpg_signed", signatureStatus)
+	}
+	if signatureBlob != "signature.asc" {
+		t.Fatalf("signature_blob_optional = %q, want signature.asc", signatureBlob)
+	}
+}
