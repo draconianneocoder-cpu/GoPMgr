@@ -25,10 +25,10 @@ Separately, the 5 open Dependabot alerts all live in frontend **build/dev**
 tooling and do not reach the shipped desktop binary (F-5). No critical or
 high issues were found in application logic.
 
-> **Status: F-1 and F-2 resolved (2026-06-29); F-3/F-5 open, F-4
-> accepted.** The two path-handling findings were implemented and tested
-> in this pass (see their resolution notes). F-3 (spreadsheet formula
-> injection) and F-5 (frontend dependency bumps) remain queued for the
+> **Status: F-1, F-2, F-3 resolved (2026-06-29); F-5 open, F-4 accepted.**
+> The path-handling findings (F-1, F-2) and the CSV formula-injection
+> finding (F-3) were implemented and tested in this pass (see their
+> resolution notes). F-5 (frontend dependency bumps) remains queued for the
 > combined corrective pass once the pending application code lands. The
 > application has no users yet, so there is no live exposure.
 
@@ -158,6 +158,22 @@ XLSX path (`internal/export/xlsx.go`) should be audited the same way.
 2. Add a unit test covering each dangerous prefix.
 3. Effort: ~1 hr.
 
+**Resolution (2026-06-29).** Added a shared leaf package
+`internal/exportsafe` with `Cell(s)`, which prepends a single quote when a
+value begins with `= + - @` or a leading tab/CR/LF. Applied it to the two
+CSV sinks that emit user-controlled text: the schedule exporter's task
+`Title` (`internal/export/csv.go`) and the audit-log exporter's
+`actor`/`action`/`target`/`details` columns (`internal/db/audit.go`). The
+leaf package exists because `internal/db` cannot import `internal/export`
+(cycle). **XLSX was deliberately not changed:** excelize stores Go strings
+as string-typed cells, which Excel/LibreOffice never evaluate as formulas —
+verified empirically against excelize v2.8.1 (a string `"=1+1"` is stored
+with no `<f>` element and an empty `GetCellFormula`). Neutralizing XLSX
+would corrupt legitimate values like `"-5%"` for no security benefit;
+`internal/export/xlsx.go` now carries a comment recording this. Tests:
+`exportsafe_test.go` (helper) and `csv_test.go` (exporter). `go test ./...`
+green.
+
 ### F-4 — INFO (accepted) — No login throttling / lockout
 
 `Login` (`main.go:269`) has no attempt counter or backoff. Acceptable for
@@ -203,7 +219,8 @@ unaffected. The value of fixing is (a) protecting the developer/CI host and
 
 1. **F-1** — ~~apply `projectPathFor` confinement to the four IPC methods~~
    **Done (2026-06-29).** (Medium)
-2. **F-3** — neutralize spreadsheet cells in CSV + XLSX exports. (Low/Med)
+2. **F-3** — ~~neutralize spreadsheet cells in CSV exports~~ **Done
+   (2026-06-29).** (XLSX confirmed not vulnerable.) (Low/Med)
 3. **F-5** — bump `vite`→^8 / `vite-plugin-svelte`→^7 and
    `npm audit fix` js-yaml; verify via svelte-check + build + smoke mount.
    Frontend-only; clears all 5 Dependabot alerts. (Low)
