@@ -312,6 +312,61 @@ func main() {
 }
 EOF
 
+# Representative Monte Carlo risk report PDF using the public export API.
+cat > "$SAMPLE_DIR/gen_montecarlo.go" << 'EOF'
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"pmforge/internal/export"
+	"pmforge/internal/kernel"
+)
+
+func main() {
+	result := kernel.SimResult{
+		Valid:      true,
+		Iterations: 500,
+		Workers:    4,
+		P50:        12.4,
+		P80:        15.2,
+		P90:        18.7,
+		FinishCDF: []kernel.ProbabilityPoint{
+			{Day: 10, Probability: 0},
+			{Day: 14, Probability: 0.5},
+			{Day: 19, Probability: 1},
+		},
+		TornadoDrivers: []kernel.TornadoDriver{
+			{
+				TaskID:            "Build",
+				CriticalFrequency: 0.92,
+				P50Duration:       5.1,
+				P80Duration:       7.3,
+				P90Duration:       9.4,
+				DurationSpread:    4.3,
+				Score:             3.956,
+			},
+		},
+	}
+
+	data, err := export.GenerateMonteCarloRiskReport(export.MonteCarloRiskReportSpec{
+		ProjectName: "PDF/A Validation Project",
+		ChartTitle:  "Monte Carlo Validation Schedule",
+		Result:      result,
+	})
+	if err != nil {
+		fmt.Println("ERROR generating Monte Carlo risk report PDF:", err)
+		os.Exit(1)
+	}
+	if err := os.WriteFile(".tmp/pmforge-pdfa-test/monte-carlo-risk-report.pdf", data, 0o644); err != nil {
+		fmt.Println("ERROR writing Monte Carlo risk report PDF:", err)
+		os.Exit(1)
+	}
+	fmt.Println("Generated monte-carlo-risk-report.pdf")
+}
+EOF
+
 # Compile and run the generators.
 if go run "$SAMPLE_DIR/gen_schedule.go" 2>/dev/null; then
     echo "Sample schedule report generated."
@@ -325,6 +380,13 @@ if go run "$SAMPLE_DIR/gen_documents.go" 2>/dev/null; then
 else
     echo "Could not generate document PDF samples (missing dependencies or build issue)."
     echo "PDF/A validation cannot run without representative document samples."
+    exit 1
+fi
+if go run "$SAMPLE_DIR/gen_montecarlo.go" 2>/dev/null; then
+    echo "Sample Monte Carlo risk report generated."
+else
+    echo "Could not generate Monte Carlo risk report PDF sample (missing dependencies or build issue)."
+    echo "PDF/A validation cannot run without the Monte Carlo risk report sample."
     exit 1
 fi
 

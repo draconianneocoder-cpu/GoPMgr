@@ -147,8 +147,9 @@ full security architecture.
 ## PDF, Signing, and Release Claims
 
 PMForge generates PDF/A-3b representative samples during release
-validation. `make check-pdfa` validates schedule-report, document, and
-combined-report samples with veraPDF and is strict by default: missing
+validation. `make check-pdfa` validates schedule-report, document,
+combined-report, and Monte Carlo risk-report samples with veraPDF and is
+strict by default: missing
 validator tooling, a missing ICC profile, or an empty sample set fails the
 gate unless `PMFORGE_PDFA_STRICT=0` is set for local convenience.
 
