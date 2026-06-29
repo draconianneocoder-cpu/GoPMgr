@@ -23,6 +23,13 @@ func TestRunMonteCarloUsesDeterministicDurations(t *testing.T) {
 	if got := result.DurationPercentiles["A"]; got != [3]float64{2, 2, 2} {
 		t.Fatalf("A duration percentiles = %v, want [2 2 2]", got)
 	}
+	if len(result.FinishCDF) != 21 {
+		t.Fatalf("FinishCDF points = %d, want 21", len(result.FinishCDF))
+	}
+	for i, point := range result.FinishCDF {
+		near(t, "FinishCDF day", point.Day, 5)
+		near(t, "FinishCDF probability", point.Probability, float64(i)/20)
+	}
 	if tasks["A"].EF != 0 || tasks["B"].EF != 0 {
 		t.Fatal("RunMonteCarlo mutated the source task schedule")
 	}
@@ -65,6 +72,46 @@ func TestRunMonteCarloIsStableAcrossWorkerCounts(t *testing.T) {
 	near(t, "P90", parallel.P90, serial.P90)
 	near(t, "A P90 duration", parallel.DurationPercentiles["A"][2], serial.DurationPercentiles["A"][2])
 	near(t, "B P90 duration", parallel.DurationPercentiles["B"][2], serial.DurationPercentiles["B"][2])
+	if len(parallel.FinishCDF) != len(serial.FinishCDF) {
+		t.Fatalf("FinishCDF lengths differ: %d != %d", len(parallel.FinishCDF), len(serial.FinishCDF))
+	}
+	for i := range parallel.FinishCDF {
+		near(t, "FinishCDF day", parallel.FinishCDF[i].Day, serial.FinishCDF[i].Day)
+		near(t, "FinishCDF probability", parallel.FinishCDF[i].Probability, serial.FinishCDF[i].Probability)
+	}
+}
+
+func TestRunMonteCarloFinishCDFIsMonotonic(t *testing.T) {
+	tasks := map[string]*Task{
+		"A": {
+			ID: "A",
+			DurationEstimate: DurationEstimate{
+				Optimistic:   1,
+				MostLikely:   3,
+				Pessimistic:  7,
+				Distribution: "triangular",
+			},
+		},
+	}
+
+	result := RunMonteCarlo(tasks, 200, 3)
+
+	if !result.Valid {
+		t.Fatalf("RunMonteCarlo returned invalid result: %s", result.Error)
+	}
+	if len(result.FinishCDF) != 21 {
+		t.Fatalf("FinishCDF points = %d, want 21", len(result.FinishCDF))
+	}
+	near(t, "first probability", result.FinishCDF[0].Probability, 0)
+	near(t, "last probability", result.FinishCDF[len(result.FinishCDF)-1].Probability, 1)
+	for i := 1; i < len(result.FinishCDF); i++ {
+		if result.FinishCDF[i].Day < result.FinishCDF[i-1].Day {
+			t.Fatalf("FinishCDF day decreased at %d: %v < %v", i, result.FinishCDF[i].Day, result.FinishCDF[i-1].Day)
+		}
+		if result.FinishCDF[i].Probability < result.FinishCDF[i-1].Probability {
+			t.Fatalf("FinishCDF probability decreased at %d: %v < %v", i, result.FinishCDF[i].Probability, result.FinishCDF[i-1].Probability)
+		}
+	}
 }
 
 func TestRunMonteCarloReportsBranchCriticalPathFrequency(t *testing.T) {

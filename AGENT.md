@@ -986,8 +986,8 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Monte Carlo backend contract landed in `internal/kernel`.** `kernel.Task` now carries optional `DurationEstimate` values (`optimistic`, `most_likely`, `pessimistic`, `distribution`) and `RunMonteCarlo(tasks, iterations, workers)` returns deterministic P50/P80/P90 finish percentiles, per-task P50/P80/P90 sampled duration percentiles, and critical-path frequency.
 - **Supported distributions:** triangular (default), beta-PERT, and normal. Sampling uses Gonum `distuv`, deterministic per-iteration PCG sources, and copy-on-write task maps so simulations do not mutate the live schedule.
 - **Failure behavior:** invalid iteration counts, nil tasks, map-key/task-ID mismatches, negative durations, invalid estimate ordering, unsupported distribution names, and cyclic schedules return `SimResult{Valid:false, Error:...}` rather than panicking.
-- **CPMEditor workflow landed.** `App.RunChartMonteCarlo` exposes the simulation for CPM charts, `wails-window.d.ts` declares the bridge/result types, and `CPMEditor.svelte` lets users seed per-task three-point estimates, choose a distribution, run 100-10,000 iterations, and review P50/P80/P90 plus critical-driver frequency.
-- **Remaining Monte Carlo work:** S-curve/probability-distribution chart, tornado risk-driver chart, and PDF/A Monte Carlo risk report.
+- **CPMEditor workflow landed.** `App.RunChartMonteCarlo` exposes the simulation for CPM charts, `wails-window.d.ts` declares the bridge/result types, and `CPMEditor.svelte` lets users seed per-task three-point estimates, choose a distribution, run 100-10,000 iterations, and review P50/P80/P90, a cumulative finish-probability S-curve, and critical-driver frequency.
+- **Remaining Monte Carlo work:** tornado risk-driver chart and PDF/A Monte Carlo risk report.
 
 ### 2026-06-23 — DuckDB analytics engine (ADR-002 Option B, Phases A–E) + frontend npm-ci lesson
 

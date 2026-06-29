@@ -99,6 +99,48 @@ SPDX-License-Identifier: GPL-3.0-or-later
     return `${Math.round(n * 100)}%`;
   }
 
+  function cdfDomain(result: SimResult): [number, number] {
+    const days = [
+      ...(result.finish_cdf ?? []).map((point) => point.day),
+      result.p50,
+      result.p80,
+      result.p90,
+    ].filter((value) => Number.isFinite(value));
+    if (days.length === 0) return [0, 1];
+    let min = Math.min(...days);
+    let max = Math.max(...days);
+    if (Math.abs(max - min) < 1e-9) {
+      min -= 0.5;
+      max += 0.5;
+    }
+    return [min, max];
+  }
+
+  function cdfX(result: SimResult, day: number): number {
+    const [min, max] = cdfDomain(result);
+    return 14 + ((day - min) / (max - min)) * 214;
+  }
+
+  function cdfY(probability: number): number {
+    return 82 - Math.max(0, Math.min(1, probability)) * 64;
+  }
+
+  function cdfPath(result: SimResult): string {
+    const points = result.finish_cdf ?? [];
+    if (points.length === 0) return '';
+    return points
+      .map((point, i) => `${i === 0 ? 'M' : 'L'} ${cdfX(result, point.day).toFixed(1)} ${cdfY(point.probability).toFixed(1)}`)
+      .join(' ');
+  }
+
+  function confidenceMarkers(result: SimResult) {
+    return [
+      { label: 'P50', day: result.p50, probability: 0.5, color: '#67e8f9' },
+      { label: 'P80', day: result.p80, probability: 0.8, color: '#fbbf24' },
+      { label: 'P90', day: result.p90, probability: 0.9, color: '#fca5a5' },
+    ];
+  }
+
   function riskRows(): [string, number][] {
     if (!monteCarlo) return [];
     return Object.entries(monteCarlo.critical_path_frequency)
@@ -770,6 +812,60 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <div class="font-mono text-red-300">{days(monteCarlo.p90)}</div>
             </div>
           </div>
+          {#if monteCarlo.finish_cdf?.length}
+            <div class="rounded border border-slate-800 bg-slate-900/50 p-2">
+              <div class="flex justify-between text-[10px] uppercase text-slate-500">
+                <span>Finish probability</span>
+                <span>S-curve</span>
+              </div>
+              <svg
+                class="mt-1 h-28 w-full"
+                viewBox="0 0 242 100"
+                role="img"
+                aria-label={`Monte Carlo finish probability S-curve from ${days(cdfDomain(monteCarlo)[0])} to ${days(cdfDomain(monteCarlo)[1])}`}
+              >
+                <line x1="14" y1="82" x2="228" y2="82" stroke="#334155" stroke-width="1" />
+                <line x1="14" y1="18" x2="14" y2="82" stroke="#334155" stroke-width="1" />
+                <line x1="14" y1="50" x2="228" y2="50" stroke="#1e293b" stroke-width="1" stroke-dasharray="3 3" />
+                <text x="14" y="95" font-size="8" fill="#64748b">{days(cdfDomain(monteCarlo)[0])}</text>
+                <text x="228" y="95" font-size="8" fill="#64748b" text-anchor="end">{days(cdfDomain(monteCarlo)[1])}</text>
+                <text x="5" y="84" font-size="8" fill="#64748b" text-anchor="end">0</text>
+                <text x="5" y="21" font-size="8" fill="#64748b" text-anchor="end">1</text>
+                <path
+                  d={cdfPath(monteCarlo)}
+                  fill="none"
+                  stroke="#22d3ee"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                {#each confidenceMarkers(monteCarlo) as marker (marker.label)}
+                  <line
+                    x1={cdfX(monteCarlo, marker.day)}
+                    y1={cdfY(marker.probability)}
+                    x2={cdfX(monteCarlo, marker.day)}
+                    y2="82"
+                    stroke={marker.color}
+                    stroke-width="1"
+                    stroke-dasharray="3 2"
+                  />
+                  <circle
+                    cx={cdfX(monteCarlo, marker.day)}
+                    cy={cdfY(marker.probability)}
+                    r="2.5"
+                    fill={marker.color}
+                  />
+                  <text
+                    x={cdfX(monteCarlo, marker.day)}
+                    y={Math.max(10, cdfY(marker.probability) - 5)}
+                    font-size="8"
+                    text-anchor="middle"
+                    fill={marker.color}
+                  >{marker.label}</text>
+                {/each}
+              </svg>
+            </div>
+          {/if}
           <div class="border-t border-slate-800 pt-2">
             <div class="flex justify-between text-[10px] uppercase text-slate-500">
               <span>Critical drivers</span>
