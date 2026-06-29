@@ -671,11 +671,22 @@ declare global {
     finish_cdf: ProbabilityPoint[];
     critical_path_frequency: Record<string, number>;
     duration_percentiles: Record<string, [number, number, number]>;
+    tornado_drivers: TornadoDriver[];
   }
 
   interface ProbabilityPoint {
     day: number;
     probability: number;
+  }
+
+  interface TornadoDriver {
+    task_id: string;
+    critical_frequency: number;
+    p50_duration: number;
+    p80_duration: number;
+    p90_duration: number;
+    duration_spread: number;
+    score: number;
   }
 
   interface BaselineRecord {

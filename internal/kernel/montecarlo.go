@@ -49,10 +49,24 @@ type ProbabilityPoint struct {
 	Probability float64 `json:"probability"`
 }
 
+// TornadoDriver ranks a task's schedule-risk contribution for compact
+// tornado chart rendering.
+type TornadoDriver struct {
+	TaskID            string  `json:"task_id"`
+	CriticalFrequency float64 `json:"critical_frequency"`
+	P50Duration       float64 `json:"p50_duration"`
+	P80Duration       float64 `json:"p80_duration"`
+	P90Duration       float64 `json:"p90_duration"`
+	DurationSpread    float64 `json:"duration_spread"`
+	Score             float64 `json:"score"`
+}
+
 // SimResult is the output of a Monte Carlo schedule simulation. P50,
 // P80, and P90 are finish-day percentiles. FinishCDF stores a compact
 // cumulative finish-day curve for S-curve rendering. DurationPercentiles stores
-// each task's sampled P50/P80/P90 durations in that order.
+// each task's sampled P50/P80/P90 durations in that order. TornadoDrivers ranks
+// the top schedule-risk drivers by critical-path frequency multiplied by
+// P90-P50 duration spread.
 type SimResult struct {
 	Valid                 bool                  `json:"valid"`
 	Error                 string                `json:"error,omitempty"`
@@ -64,6 +78,7 @@ type SimResult struct {
 	FinishCDF             []ProbabilityPoint    `json:"finish_cdf"`
 	CriticalPathFrequency map[string]float64    `json:"critical_path_frequency"`
 	DurationPercentiles   map[string][3]float64 `json:"duration_percentiles"`
+	TornadoDrivers        []TornadoDriver       `json:"tornado_drivers"`
 }
 
 type monteCarloIteration struct {
@@ -154,6 +169,7 @@ func RunMonteCarlo(tasks map[string]*Task, iterations int, workers int) SimResul
 			percentile(samples, 0.90),
 		}
 	}
+	result.TornadoDrivers = tornadoDrivers(taskIDs, result.CriticalPathFrequency, result.DurationPercentiles)
 	result.Valid = true
 	return result
 }
@@ -312,6 +328,42 @@ func finishCDF(finishes []float64) []ProbabilityPoint {
 		})
 	}
 	return curve
+}
+
+func tornadoDrivers(taskIDs []string, frequencies map[string]float64, durations map[string][3]float64) []TornadoDriver {
+	const maxDrivers = 10
+
+	drivers := make([]TornadoDriver, 0, len(taskIDs))
+	for _, id := range taskIDs {
+		duration := durations[id]
+		spread := duration[2] - duration[0]
+		frequency := frequencies[id]
+		drivers = append(drivers, TornadoDriver{
+			TaskID:            id,
+			CriticalFrequency: frequency,
+			P50Duration:       duration[0],
+			P80Duration:       duration[1],
+			P90Duration:       duration[2],
+			DurationSpread:    spread,
+			Score:             frequency * spread,
+		})
+	}
+	sort.SliceStable(drivers, func(i, j int) bool {
+		if drivers[i].Score != drivers[j].Score {
+			return drivers[i].Score > drivers[j].Score
+		}
+		if drivers[i].CriticalFrequency != drivers[j].CriticalFrequency {
+			return drivers[i].CriticalFrequency > drivers[j].CriticalFrequency
+		}
+		if drivers[i].DurationSpread != drivers[j].DurationSpread {
+			return drivers[i].DurationSpread > drivers[j].DurationSpread
+		}
+		return drivers[i].TaskID < drivers[j].TaskID
+	})
+	if len(drivers) > maxDrivers {
+		return drivers[:maxDrivers]
+	}
+	return drivers
 }
 
 func clamp(value, low, high float64) float64 {
