@@ -71,6 +71,7 @@ declare global {
           ) => Promise<Record<string, ScheduleVariance>>;
           ComputeScheduleEVM: (chartId: string, asOfDate: string) => Promise<EVMetrics>;
           RunChartMonteCarlo: (chartId: string, iterations: number, workers: number) => Promise<SimResult>;
+          ExportChartMonteCarloRiskReport: (chartId: string, iterations: number, workers: number) => Promise<string>;
           LevelChartResources: (chartId: string) => Promise<number>;
           GenerateResourceHistogram: (chartId: string) => Promise<ChartRecord>;
           ImportMSPDIChart: () => Promise<ChartRecord>;

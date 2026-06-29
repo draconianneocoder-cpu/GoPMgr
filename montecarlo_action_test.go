@@ -4,11 +4,15 @@
 package main
 
 import (
+	"bytes"
 	"math"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"pmforge/internal/db"
+	"pmforge/internal/users"
 )
 
 func nearMonteCarlo(t *testing.T, label string, got, want float64) {
@@ -72,7 +76,11 @@ func newMonteCarloTestApp(t *testing.T) (*App, *db.Database, db.Chart) {
 		t.Fatalf("SaveChart: %v", err)
 	}
 
-	return &App{db: d}, d, chart
+	dataDir := t.TempDir()
+	return &App{
+		db:   d,
+		user: &users.Account{Username: "alice", DataDir: dataDir},
+	}, d, chart
 }
 
 func TestRunChartMonteCarloReturnsRiskMetrics(t *testing.T) {
@@ -144,5 +152,37 @@ func TestRunChartMonteCarloRejectsNonCPMChart(t *testing.T) {
 
 	if _, err := app.RunChartMonteCarlo(chart.ID, 50, 1); err == nil {
 		t.Fatal("RunChartMonteCarlo accepted a non-CPM chart")
+	}
+}
+
+func TestExportChartMonteCarloRiskReportWritesPrivatePDF(t *testing.T) {
+	app, _, chart := newMonteCarloTestApp(t)
+
+	outPath, err := app.ExportChartMonteCarloRiskReport(chart.ID, 200, 3)
+	if err != nil {
+		t.Fatalf("ExportChartMonteCarloRiskReport: %v", err)
+	}
+	if !strings.HasSuffix(outPath, ".pdf") {
+		t.Fatalf("report path = %q, want .pdf", outPath)
+	}
+	if filepath.Base(outPath) == ".pdf" {
+		t.Fatalf("report path has no filename: %q", outPath)
+	}
+	info, err := os.Stat(outPath)
+	if err != nil {
+		t.Fatalf("stat report: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("report mode = %v, want 0600", got)
+	}
+	raw, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("read report: %v", err)
+	}
+	if !bytes.HasPrefix(raw, []byte("%PDF-")) {
+		t.Fatalf("exported report is not PDF")
+	}
+	if !bytes.Contains(raw, []byte("<pdfaid:part>3</pdfaid:part>")) {
+		t.Fatalf("exported report missing PDF/A metadata")
 	}
 }
