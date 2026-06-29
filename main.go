@@ -1397,6 +1397,52 @@ func (a *App) RunChartMonteCarlo(chartID string, iterations int, workers int) (k
 	return result, nil
 }
 
+// ExportChartMonteCarloRiskReport runs probabilistic scheduling for a CPM
+// chart and writes a PDF/A-tagged Monte Carlo risk report to the user's
+// private exports folder.
+func (a *App) ExportChartMonteCarloRiskReport(chartID string, iterations int, workers int) (string, error) {
+	u := a.requireUser()
+	d := a.requireDB()
+	if u == nil || d == nil {
+		return "", errors.New("not signed in or no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return "", err
+	}
+	c, err := d.GetChart(chartID)
+	if err != nil {
+		return "", err
+	}
+	if c.Kind != string(charts.KindCPM) {
+		return "", fmt.Errorf("monte carlo risk report requires a CPM chart, got %q", c.Kind)
+	}
+	result, err := a.RunChartMonteCarlo(chartID, iterations, workers)
+	if err != nil {
+		return "", err
+	}
+	raw, err := export.GenerateMonteCarloRiskReport(export.MonteCarloRiskReportSpec{
+		ProjectName: proj.Name,
+		ChartTitle:  c.Title,
+		Result:      result,
+	})
+	if err != nil {
+		return "", err
+	}
+	outDir := filepath.Join(u.DataDir, "exports")
+	if err := os.MkdirAll(outDir, 0o700); err != nil {
+		return "", err
+	}
+	outPath := filepath.Join(outDir, fmt.Sprintf("Monte-Carlo-Risk-Report-%s-%s.pdf",
+		sanitizeFilename(c.Title),
+		time.Now().UTC().Format("20060102-150405"),
+	))
+	if err := os.WriteFile(outPath, raw, 0o600); err != nil {
+		return "", err
+	}
+	return outPath, nil
+}
+
 // LevelChartResources runs the kernel's serial resource-levelling
 // pass on a CPM chart and PERSISTS the result: every task that
 // levelling delayed beyond its precedence-earliest start gets a SNET

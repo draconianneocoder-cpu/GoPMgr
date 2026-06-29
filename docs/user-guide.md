@@ -132,7 +132,9 @@ uncertainty, choose triangular, beta-PERT, or normal sampling, then run the
 simulation from the CPM editor aside. The result shows P50/P80/P90 finish-day
 confidence points, a cumulative finish-probability S-curve, and a tornado
 driver ranking that combines critical-path frequency with P90-P50 duration
-spread. Tasks without estimates use their fixed CPM duration.
+spread. After a simulation runs, use **Export PDF/A** to save a Monte Carlo
+risk report with the confidence summary, S-curve, tornado drivers, and narrative
+summary. Tasks without estimates use their fixed CPM duration.
 
 ## Documents and Combined Reports
 

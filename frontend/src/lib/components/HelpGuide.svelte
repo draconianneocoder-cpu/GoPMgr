@@ -585,7 +585,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <ol class="space-y-2 text-sm text-slate-300 list-decimal list-inside">
               <li><span class="font-medium text-slate-100">Open Network Diagram.</span> Add each activity as a node. Define predecessor relationships.</li>
               <li><span class="font-medium text-slate-100">Enter durations.</span> The chart displays ES/EF/LS/LF values and highlights the critical path.</li>
-              <li><span class="font-medium text-slate-100">Add risk estimates.</span> For uncertain tasks, enter optimistic, likely, and pessimistic durations, then run Monte Carlo from the CPM editor aside to review P50/P80/P90 finish days, the finish-probability S-curve, and tornado risk drivers.</li>
+              <li><span class="font-medium text-slate-100">Add risk estimates.</span> For uncertain tasks, enter optimistic, likely, and pessimistic durations, then run Monte Carlo from the CPM editor aside to review P50/P80/P90 finish days, the finish-probability S-curve, and tornado risk drivers. Export PDF/A saves the same risk evidence as a shareable report.</li>
               <li><span class="font-medium text-slate-100">Open Gantt Chart</span> to view activities on a time axis with dependency arrows.</li>
               <li><span class="font-medium text-slate-100">Generate Resource Histogram</span> to compare resource demand bars with dashed capacity lines from stakeholder availability and Resource Capacity calendars.</li>
               <li><span class="font-medium text-slate-100">Update actuals</span> as work progresses. Track completion percentages.</li>

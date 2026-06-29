@@ -90,6 +90,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let monteCarloIterations = $state(1000);
   let monteCarloBusy = $state(false);
   let monteCarloError = $state('');
+  let monteCarloReportBusy = $state(false);
+  let monteCarloReportStatus = $state('');
+  let monteCarloReportError = $state('');
 
   function days(n: number): string {
     return `${n.toFixed(1)}d`;
@@ -159,6 +162,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!session.editingId || monteCarloBusy) return;
     monteCarloBusy = true;
     monteCarloError = '';
+    monteCarloReportStatus = '';
+    monteCarloReportError = '';
     monteCarlo = null;
     try {
       await shellRef?.save();
@@ -169,6 +174,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
       monteCarloError = String(err?.message ?? err);
     } finally {
       monteCarloBusy = false;
+    }
+  }
+
+  async function exportMonteCarloReport() {
+    if (!session.editingId || monteCarloReportBusy) return;
+    monteCarloReportBusy = true;
+    monteCarloReportStatus = '';
+    monteCarloReportError = '';
+    try {
+      await shellRef?.save();
+      const iterations = Math.max(100, Math.min(10000, Math.floor(Number(monteCarloIterations) || 1000)));
+      monteCarloIterations = iterations;
+      const path = await window.go.main.App.ExportChartMonteCarloRiskReport(session.editingId, iterations, 0);
+      monteCarloReportStatus = `Exported to: ${path}`;
+    } catch (err: any) {
+      monteCarloReportError = `Export failed: ${String(err?.message ?? err)}`;
+    } finally {
+      monteCarloReportBusy = false;
     }
   }
 
@@ -908,6 +931,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
             </div>
           </div>
         </div>
+        <div class="mt-2 flex items-center justify-between gap-2">
+          <button
+            onclick={exportMonteCarloReport}
+            disabled={monteCarloReportBusy}
+            class="rounded bg-slate-800 px-2.5 py-1.5 text-xs text-slate-100 hover:bg-slate-700 disabled:opacity-50"
+          >
+            {monteCarloReportBusy ? 'Exporting…' : 'Export PDF/A'}
+          </button>
+          <span class="text-[10px] text-slate-500">Risk report</span>
+        </div>
+        {#if monteCarloReportStatus}
+          <p class="mt-1 break-words text-[10px] text-cyan-300">{monteCarloReportStatus}</p>
+        {/if}
+        {#if monteCarloReportError}
+          <p class="mt-1 break-words text-[10px] text-amber-300" role="alert">{monteCarloReportError}</p>
+        {/if}
         <p class="text-[10px] text-slate-500 mt-1">
           P50/P80/P90 are finish-day confidence points. Tornado drivers rank
           critical-path frequency multiplied by P90-P50 duration spread.
