@@ -149,6 +149,14 @@ func MigratePlaintextToEncrypted(path string, dek []byte) (backupPath string, er
 }
 
 func encryptedDSN(path string, dek []byte) (string, error) {
+	// go-sqlcipher treats everything after the first '?' as DSN query options
+	// and does not URL-decode the path, so a '?' (or fragment '#') in the path
+	// would let the path inject or override _pragma_* options — including the
+	// key. Confined PMForge project paths never contain these characters;
+	// reject rather than emit an ambiguous DSN.
+	if strings.ContainsAny(path, "?#") {
+		return "", fmt.Errorf("db: project path contains an illegal character: %q", path)
+	}
 	hexKey, err := crypto.KeyspecHex(dek)
 	if err != nil {
 		return "", err

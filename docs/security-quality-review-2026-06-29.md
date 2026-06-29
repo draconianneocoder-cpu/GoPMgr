@@ -25,11 +25,12 @@ Separately, the 5 open Dependabot alerts all live in frontend **build/dev**
 tooling and do not reach the shipped desktop binary (F-5). No critical or
 high issues were found in application logic.
 
-> **Status: open.** No code changed in this pass. Corrective code is
-> deferred by decision — more application code is still landing, and a
-> follow-up review will run against the updated tree before fixes are
-> implemented together. The application has no users yet, so there is no
-> live exposure to remediate under time pressure.
+> **Status: F-1 and F-2 resolved (2026-06-29); F-3/F-5 open, F-4
+> accepted.** The two path-handling findings were implemented and tested
+> in this pass (see their resolution notes). F-3 (spreadsheet formula
+> injection) and F-5 (frontend dependency bumps) remain queued for the
+> combined corrective pass once the pending application code lands. The
+> application has no users yet, so there is no live exposure.
 
 ## What is already correct (grounded)
 
@@ -95,6 +96,17 @@ is simply applied inconsistently.
    of these methods rejects a path outside `DataDir/projects`.
 3. Effort: ~1-2 hrs. Validation-only; low blast radius.
 
+**Resolution (2026-06-29).** All four methods now route through
+`projectPathFor` before any filesystem work — `OpenProject` and
+`EncryptProjectAtRest` validate *before* taking the write lock (the
+validator read-locks `a.mu` via `requireUser`, so validating under the
+write lock would deadlock), and both now operate on the cleaned, confined
+path. New test `TestPathTakingIPCMethodsConfineToOwnProjectsDir`
+(`project_path_confinement_test.go`) asserts each method rejects a path
+outside the user's projects dir; two pre-existing migration tests that had
+seeded the project in a bare `TempDir` were corrected to use the user's own
+`projects/` dir. `go test ./...` green.
+
 ### F-2 — LOW — Encrypted DSN built by string concatenation; a `?` in the path injects `_pragma_*` options
 
 `encryptedDSN` (`internal/db/encryption.go:156`) returns
@@ -118,6 +130,14 @@ function ever changes.
 2. Add a comment at `exportEncryptedCopy` pinning the hex-only invariant of
    `KeyspecHex` as a contract.
 3. Effort: ~30 min.
+
+**Resolution (2026-06-29).** `encryptedDSN` (`internal/db/encryption.go`)
+now rejects any path containing `?` or `#` before constructing the DSN,
+with a comment explaining the go-sqlcipher parsing behaviour that makes
+those characters unsafe. This is defence-in-depth behind F-1's confinement
+(confined project paths never contain them). New test
+`TestEncryptedDSNRejectsAmbiguousPath` covers it. The `hexKey` interpolation
+in `exportEncryptedCopy` remains hex-only by `KeyspecHex`'s contract.
 
 ### F-3 — LOW/MEDIUM — CSV (and likely XLSX) export has no formula-injection neutralization (CWE-1236)
 
@@ -181,14 +201,14 @@ unaffected. The value of fixing is (a) protecting the developer/CI host and
 
 ## Priority
 
-1. **F-1** — apply `projectPathFor` confinement to the four IPC methods
-   that mutate or open files by path; add isolation tests. (Medium)
+1. **F-1** — ~~apply `projectPathFor` confinement to the four IPC methods~~
+   **Done (2026-06-29).** (Medium)
 2. **F-3** — neutralize spreadsheet cells in CSV + XLSX exports. (Low/Med)
 3. **F-5** — bump `vite`→^8 / `vite-plugin-svelte`→^7 and
    `npm audit fix` js-yaml; verify via svelte-check + build + smoke mount.
    Frontend-only; clears all 5 Dependabot alerts. (Low)
-4. **F-2** — build the DSN via `url.Values`/reject `?`; pin the hex
-   contract. (Low)
+4. **F-2** — ~~build the DSN safely / reject `?`~~ **Done (2026-06-29).**
+   (Low)
 5. **F-4** — document as accepted; revisit only if a sync surface is added.
 
 ## Scope / limits
