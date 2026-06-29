@@ -172,12 +172,19 @@ Microsoft Project XML from the source application before import.
 
 ## PDF Signing
 
-PDF signing uses a `.p12` or `.pfx` certificate. Users can configure a
-certificate in Project Settings or choose one directly from the Digital
-Signature dialog during a signing export.
+Project Settings lets users choose a default document signing method:
 
-Signing is applied after rendering and PDF/A metadata injection. This order
-is required because the signature covers byte ranges in the final PDF.
+- **PAdES digital signature** embeds a PDF signature using a `.p12` or
+  `.pfx` certificate. Users can configure a certificate in Project Settings
+  or choose one directly from the Signature Options dialog during export.
+- **GnuPG detached signature** exports the PDF and writes an ASCII-armored
+  `.asc` sidecar. The PDF bytes are not modified after export; verify with
+  `gpg --verify document.pdf.asc document.pdf`.
+- **No digital signature** exports a plain PDF for print-and-wet-sign or
+  external signing workflows.
+
+PAdES signing is applied after rendering and PDF/A metadata injection. This
+order is required because the signature covers byte ranges in the final PDF.
 
 ## Recovery Codes and Encryption
 

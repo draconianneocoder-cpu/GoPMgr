@@ -5,18 +5,26 @@ package db
 
 import "database/sql"
 
+const (
+	SignatureMethodNone  = "none"
+	SignatureMethodPAdES = "pades"
+	SignatureMethodGnuPG = "gpg"
+)
+
 // UserSettings is the persisted state of PMForge's global preferences.
 // It is keyed at id=1 (singleton row) so SaveSettings can use UPSERT.
 //
 // CertPath and SignatureEnabled were added when the Digital Signatures
-// feature landed; older databases will read defaults because Migrate()
-// is additive.
+// feature landed. SignatureMethod/GPGKeyID extend that boolean into an
+// explicit signing-policy choice while preserving older databases.
 type UserSettings struct {
 	DefaultPassword  string `json:"default_password"`
 	ExportTheme      string `json:"export_theme"` // "modern" | "classic" | "archival"
 	AutoRepair       bool   `json:"auto_repair"`
 	CertPath         string `json:"cert_path"`
 	SignatureEnabled bool   `json:"signature_enabled"`
+	SignatureMethod  string `json:"signature_method"`
+	GPGKeyID         string `json:"gpg_key_id"`
 	// DefaultFont is the document-export font family (a name from the
 	// fonts catalog or a user-imported family). Empty means "use the
 	// catalog default".
@@ -31,23 +39,26 @@ type UserSettings struct {
 
 // DefaultUserSettings is the canonical project-settings reset target.
 func DefaultUserSettings() UserSettings {
-	return UserSettings{ExportTheme: "modern", AutoRepair: true}
+	return UserSettings{ExportTheme: "modern", AutoRepair: true, SignatureMethod: SignatureMethodNone}
 }
 
 // SaveSettings upserts the singleton settings row. The id is hard-coded
 // to 1 (the CHECK constraint on the settings table enforces this).
 func (db *Database) SaveSettings(s UserSettings) error {
+	s = normalizeUserSettings(s)
 	const q = `
 		INSERT INTO settings
-			(id, default_password, export_theme, auto_repair, cert_path, signature_enabled, default_font, agile_enabled, compliance_mode)
+			(id, default_password, export_theme, auto_repair, cert_path, signature_enabled, signature_method, gpg_key_id, default_font, agile_enabled, compliance_mode)
 		VALUES
-			(1, ?, ?, ?, ?, ?, ?, ?, ?)
+			(1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			default_password  = excluded.default_password,
 			export_theme      = excluded.export_theme,
 			auto_repair       = excluded.auto_repair,
 			cert_path         = excluded.cert_path,
 			signature_enabled = excluded.signature_enabled,
+			signature_method  = excluded.signature_method,
+			gpg_key_id        = excluded.gpg_key_id,
 			default_font      = excluded.default_font,
 			agile_enabled     = excluded.agile_enabled,
 			compliance_mode   = excluded.compliance_mode
@@ -58,6 +69,8 @@ func (db *Database) SaveSettings(s UserSettings) error {
 		boolToInt(s.AutoRepair),
 		s.CertPath,
 		boolToInt(s.SignatureEnabled),
+		s.SignatureMethod,
+		s.GPGKeyID,
 		s.DefaultFont,
 		boolToInt(s.AgileEnabled),
 		boolToInt(s.ComplianceMode),
@@ -76,9 +89,9 @@ func (db *Database) GetSettings() (UserSettings, error) {
 		compliance   int
 	)
 	err := db.Conn.QueryRow(
-		`SELECT default_password, export_theme, auto_repair, cert_path, signature_enabled, default_font, agile_enabled, compliance_mode
+		`SELECT default_password, export_theme, auto_repair, cert_path, signature_enabled, signature_method, gpg_key_id, default_font, agile_enabled, compliance_mode
 		 FROM settings WHERE id = 1`,
-	).Scan(&s.DefaultPassword, &s.ExportTheme, &autoRepair, &s.CertPath, &signatureOn, &s.DefaultFont, &agileEnabled, &compliance)
+	).Scan(&s.DefaultPassword, &s.ExportTheme, &autoRepair, &s.CertPath, &signatureOn, &s.SignatureMethod, &s.GPGKeyID, &s.DefaultFont, &agileEnabled, &compliance)
 
 	if err == sql.ErrNoRows {
 		return DefaultUserSettings(), nil
@@ -90,7 +103,23 @@ func (db *Database) GetSettings() (UserSettings, error) {
 	s.SignatureEnabled = signatureOn != 0
 	s.AgileEnabled = agileEnabled != 0
 	s.ComplianceMode = compliance != 0
-	return s, nil
+	return normalizeUserSettings(s), nil
+}
+
+func normalizeUserSettings(s UserSettings) UserSettings {
+	switch s.SignatureMethod {
+	case SignatureMethodNone, SignatureMethodPAdES, SignatureMethodGnuPG:
+	case "":
+		if s.SignatureEnabled {
+			s.SignatureMethod = SignatureMethodPAdES
+		} else {
+			s.SignatureMethod = SignatureMethodNone
+		}
+	default:
+		s.SignatureMethod = SignatureMethodNone
+	}
+	s.SignatureEnabled = s.SignatureMethod != SignatureMethodNone
+	return s
 }
 
 func boolToInt(b bool) int {

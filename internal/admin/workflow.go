@@ -72,15 +72,33 @@ func (s *Service) LogSignatureEvent(docID string, success bool, err error) {
 	s.logSignatureCheckpoint(docID, status, details)
 }
 
+// LogDocumentSignatureOutcome records a concrete signature status in the
+// tamper-evident audit trail. It is used for non-PAdES signature modes such as
+// detached GnuPG signatures where the signature artifact is a sidecar file.
+func (s *Service) LogDocumentSignatureOutcome(docID, signatureStatus, details, signatureBlob string) {
+	if signatureStatus == "" {
+		signatureStatus = "unsigned"
+	}
+	if details == "" {
+		details = "Document signature outcome recorded."
+	}
+	_ = s.DB.LogAction("System", "SIGNATURE_EVENT", docID, fmt.Sprintf("[%s] %s", signatureStatus, details))
+	s.logSignatureCheckpointWithStatus(docID, signatureStatus, details, signatureBlob)
+}
+
 func (s *Service) logSignatureCheckpoint(docID, status, details string) {
+	signatureStatus := "signed"
+	if status != "SUCCESS" {
+		signatureStatus = "failed"
+	}
+	s.logSignatureCheckpointWithStatus(docID, signatureStatus, details, "")
+}
+
+func (s *Service) logSignatureCheckpointWithStatus(docID, signatureStatus, details, signatureBlob string) {
 	doc, err := s.DB.GetDocument(docID)
 	if err != nil {
 		debug.Wrap(err, "SIGNATURE_AUDIT_DOCUMENT_LOOKUP_FAILED")
 		return
-	}
-	signatureStatus := "signed"
-	if status != "SUCCESS" {
-		signatureStatus = "failed"
 	}
 	payload, err := json.Marshal(struct {
 		DocumentID string `json:"document_id"`
@@ -88,7 +106,7 @@ func (s *Service) logSignatureCheckpoint(docID, status, details string) {
 		Details    string `json:"details"`
 	}{
 		DocumentID: docID,
-		Status:     status,
+		Status:     signatureStatus,
 		Details:    details,
 	})
 	if err != nil {
@@ -96,12 +114,13 @@ func (s *Service) logSignatureCheckpoint(docID, status, details string) {
 		return
 	}
 	if _, err := s.DB.AppendAuditEvent(db.AuditEventInput{
-		ProjectID:       doc.ProjectID,
-		EventType:       "document.signature",
-		EntityType:      "document",
-		EntityID:        doc.ID,
-		AfterJSON:       string(payload),
-		SignatureStatus: signatureStatus,
+		ProjectID:             doc.ProjectID,
+		EventType:             "document.signature",
+		EntityType:            "document",
+		EntityID:              doc.ID,
+		AfterJSON:             string(payload),
+		SignatureStatus:       signatureStatus,
+		SignatureBlobOptional: signatureBlob,
 	}); err != nil {
 		debug.Wrap(err, "SIGNATURE_AUDIT_EVENT_FAILED")
 	}

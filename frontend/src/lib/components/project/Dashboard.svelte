@@ -21,6 +21,9 @@ import BudgetPanel from './BudgetPanel.svelte';
 
   // Signed export state (shared for all documents in the list)
   let signCertPath = $state('');
+  let signGPGKeyID = $state('');
+  let preferredSignatureMethod = $state<SignatureMethod>('pades');
+  let signatureSettingsLoaded = $state(false);
   let signingDocId = $state<string | null>(null);
 
   onMount(async () => {
@@ -38,43 +41,62 @@ import BudgetPanel from './BudgetPanel.svelte';
 
   let showSignModal = $state(false);
   let pendingCertPathForDash = $state('');
+  let pendingGPGKeyIDForDash = $state('');
+  let pendingSignatureMethodForDash = $state<SignatureMethod>('pades');
   let pendingDocForSign: DocumentRecord | null = $state(null);
 
   async function exportSignedDocument(d: DocumentRecord) {
     signingDocId = d.id;
     pendingDocForSign = d;
 
-    if (!signCertPath) {
+    if (!signatureSettingsLoaded) {
       try {
         const s = await window.go.main.App.GetSettings();
         if (s?.cert_path) signCertPath = s.cert_path;
+        if (s?.signature_method) preferredSignatureMethod = s.signature_method;
+        if (s?.gpg_key_id) signGPGKeyID = s.gpg_key_id;
+        signatureSettingsLoaded = true;
       } catch {}
     }
 
     pendingCertPathForDash = signCertPath;
+    pendingGPGKeyIDForDash = signGPGKeyID;
+    pendingSignatureMethodForDash = preferredSignatureMethod;
     showSignModal = true;
     signingDocId = null; // modal will control final state
   }
 
-  function handleDashboardSignedConfirm(pwd: string, certPath: string) {
+  function handleDashboardSignedConfirm(options: SignatureExportOptions) {
     showSignModal = false;
-    if (!certPath || !pwd || !pendingDocForSign) return;
+    if (!pendingDocForSign) return;
 
     signingDocId = pendingDocForSign.id;
     (async () => {
       try {
-        const path = await window.go.main.App.ExportDocumentPDFSigned(
-          pendingDocForSign!.id,
-          certPath,
-          pwd,
-        );
-        showToast(`Signed PDF exported to: ${path}`, 'success');
+        if (options.method === 'pades') {
+          const path = await window.go.main.App.ExportDocumentPDFSigned(
+            pendingDocForSign!.id,
+            options.cert_path,
+            options.cert_password,
+          );
+          showToast(`PAdES signed PDF exported to: ${path}`, 'success');
+        } else if (options.method === 'gpg') {
+          const result = await window.go.main.App.ExportDocumentPDFGnuPG(
+            pendingDocForSign!.id,
+            options.gpg_key_id,
+          );
+          showToast(`PDF exported to: ${result.pdf_path}; GnuPG signature: ${result.signature_path}`, 'success');
+        } else {
+          const path = await window.go.main.App.ExportDocumentPDF(pendingDocForSign!.id);
+          showToast(`PDF exported without digital signature to: ${path}`, 'success');
+        }
       } catch (e: any) {
-        showToast(`Signed export failed: ${e}`, 'error');
+        showToast(`Export failed: ${e}`, 'error');
       } finally {
         signingDocId = null;
         pendingDocForSign = null;
         pendingCertPathForDash = '';
+        pendingGPGKeyIDForDash = '';
       }
     })();
   }
@@ -324,6 +346,8 @@ import BudgetPanel from './BudgetPanel.svelte';
   <SignCertificateModal
     bind:open={showSignModal}
     certPath={pendingCertPathForDash}
+    method={pendingSignatureMethodForDash}
+    gpgKeyID={pendingGPGKeyIDForDash}
     onConfirm={handleDashboardSignedConfirm}
   />
 
@@ -447,9 +471,9 @@ import BudgetPanel from './BudgetPanel.svelte';
               onclick={() => exportSignedDocument(d)}
               disabled={signingDocId === d.id}
               class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 px-2 py-1 rounded self-center"
-              title="Export with PAdES B-B digital signature"
+              title="Choose PAdES, GnuPG, or no digital signature"
             >
-              {signingDocId === d.id ? '…' : 'Sign & Export'}
+              {signingDocId === d.id ? '…' : 'Signature'}
             </button>
             {#if deletingDocId === d.id}
               <span class="text-xs text-slate-400 shrink-0">Delete?</span>

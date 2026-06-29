@@ -185,6 +185,16 @@ declare global {
             certPath: string,
             certPassword: string,
           ) => Promise<string>;
+          ExportDocumentPDFGnuPG: (
+            id: string,
+            keyID: string,
+          ) => Promise<GnuPGExportResult>;
+          ExportCombinedReportGnuPG: (
+            reportTitle: string,
+            subtitle: string,
+            sections: ReportSection[],
+            keyID: string,
+          ) => Promise<GnuPGExportResult>;
           ExportScheduleReportDOCX: () => Promise<string>;
           ExportScheduleReportODT: () => Promise<string>;
           ExportScheduleReportPDF: () => Promise<string>;
@@ -368,9 +378,26 @@ declare global {
     auto_repair: boolean;
     cert_path: string;
     signature_enabled: boolean;
+    signature_method?: SignatureMethod;
+    gpg_key_id?: string;
     default_font?: string;
     agile_enabled?: boolean;
     compliance_mode?: boolean;
+  }
+
+  type SignatureMethod = 'none' | 'pades' | 'gpg';
+
+  interface SignatureExportOptions {
+    method: SignatureMethod;
+    cert_path: string;
+    cert_password: string;
+    gpg_key_id: string;
+  }
+
+  interface GnuPGExportResult {
+    pdf_path: string;
+    signature_path: string;
+    method: string;
   }
 
   interface Account {
