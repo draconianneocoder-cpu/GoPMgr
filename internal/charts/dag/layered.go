@@ -31,6 +31,9 @@ type LayeredNode struct {
 	// Network / CPM input
 	Duration float64 `json:"duration,omitempty"`
 
+	// CPM Monte Carlo input: optional three-point duration estimate.
+	DurationEstimate kernel.DurationEstimate `json:"duration_estimate,omitempty"`
+
 	// PERT input
 	Optimistic  float64 `json:"o,omitempty"`
 	MostLikely  float64 `json:"m,omitempty"`

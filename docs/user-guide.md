@@ -126,6 +126,13 @@ availability and Project Settings Resource Capacity calendars.
 CPM and Gantt task over-allocation badges use the same Resource Capacity
 calendars when a project has a start date.
 
+CPM charts also include a Monte Carlo risk panel. Add optional optimistic,
+most-likely, and pessimistic duration estimates to tasks that carry schedule
+uncertainty, choose triangular, beta-PERT, or normal sampling, then run the
+simulation from the CPM editor aside. The result shows P50/P80/P90 finish-day
+confidence points and the tasks that most often land on the sampled critical
+path. Tasks without estimates use their fixed CPM duration.
+
 ## Documents and Combined Reports
 
 PMForge supports 25 document kinds across the project lifecycle, including

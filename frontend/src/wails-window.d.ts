@@ -70,6 +70,7 @@ declare global {
             baselineId: string
           ) => Promise<Record<string, ScheduleVariance>>;
           ComputeScheduleEVM: (chartId: string, asOfDate: string) => Promise<EVMetrics>;
+          RunChartMonteCarlo: (chartId: string, iterations: number, workers: number) => Promise<SimResult>;
           LevelChartResources: (chartId: string) => Promise<number>;
           GenerateResourceHistogram: (chartId: string) => Promise<ChartRecord>;
           ImportMSPDIChart: () => Promise<ChartRecord>;
@@ -615,6 +616,7 @@ declare global {
     id: string;
     title: string;
     duration: number;
+    duration_estimate?: DurationEstimate;
     precedents: string[];
     es: number;
     ef: number;
@@ -647,6 +649,27 @@ declare global {
     calendar_id?: string;
     skill_tags?: string[];
     max_units?: number;
+  }
+
+  type MonteCarloDistribution = 'triangular' | 'beta-pert' | 'normal';
+
+  interface DurationEstimate {
+    optimistic?: number;
+    most_likely?: number;
+    pessimistic?: number;
+    distribution?: MonteCarloDistribution | string;
+  }
+
+  interface SimResult {
+    valid: boolean;
+    error?: string;
+    iterations: number;
+    workers: number;
+    p50: number;
+    p80: number;
+    p90: number;
+    critical_path_frequency: Record<string, number>;
+    duration_percentiles: Record<string, [number, number, number]>;
   }
 
   interface BaselineRecord {

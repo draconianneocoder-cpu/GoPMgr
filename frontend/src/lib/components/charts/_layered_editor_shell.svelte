@@ -23,6 +23,7 @@ not routed directly.
     note?: string;
     owner?: string;
     duration?: number;
+    duration_estimate?: DurationEstimate;
     o?: number;
     m?: number;
     p?: number;
@@ -222,7 +223,7 @@ not routed directly.
     void refreshLayout();
   }
 
-  async function save() {
+  export async function save() {
     if (!chart) return;
     saving = true;
     status = '';
@@ -251,6 +252,10 @@ not routed directly.
     if (!selectedNode) return;
     selectedNode.label;
     selectedNode.duration;
+    selectedNode.duration_estimate?.optimistic;
+    selectedNode.duration_estimate?.most_likely;
+    selectedNode.duration_estimate?.pessimistic;
+    selectedNode.duration_estimate?.distribution;
     selectedNode.o;
     selectedNode.m;
     selectedNode.p;

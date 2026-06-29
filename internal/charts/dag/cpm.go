@@ -67,6 +67,7 @@ func cpmTasksFromDoc(doc LayeredDocument) map[string]*kernel.Task {
 			ID:                     n.ID,
 			Title:                  n.Label,
 			Duration:               n.Duration,
+			DurationEstimate:       n.DurationEstimate,
 			PercentComplete:        n.PercentComplete,
 			Milestone:              n.Milestone,
 			ActualStart:            n.ActualStart,
