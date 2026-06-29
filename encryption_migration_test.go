@@ -12,9 +12,20 @@ import (
 	"pmforge/internal/db"
 )
 
-func createPlaintextProjectForMigration(t *testing.T) string {
+// createPlaintextProjectForMigration writes a legacy plaintext project into
+// the signed-in user's own projects dir (flat layout). It must live there
+// because EncryptProjectAtRest/IsProjectEncrypted now confine to that dir.
+func createPlaintextProjectForMigration(t *testing.T, app *App) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "legacy.pmforge")
+	user := app.requireUser()
+	if user == nil {
+		t.Fatal("createPlaintextProjectForMigration: no signed-in user")
+	}
+	projectsDir := filepath.Join(user.DataDir, "projects")
+	if err := os.MkdirAll(projectsDir, 0o700); err != nil {
+		t.Fatalf("mkdir projects: %v", err)
+	}
+	path := filepath.Join(projectsDir, "legacy.pmforge")
 	legacy, err := db.InitDB(path)
 	if err != nil {
 		t.Fatalf("InitDB legacy: %v", err)
@@ -53,7 +64,7 @@ func TestEncryptProjectAtRestRequiresWrappedRecoveryCodes(t *testing.T) {
 	if _, err := app.CreateAccount("alice", "Alice", "alice-password", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	path := createPlaintextProjectForMigration(t)
+	path := createPlaintextProjectForMigration(t, app)
 	if _, err := app.store.IssueRecoveryCodes("alice", nil); err != nil {
 		t.Fatalf("IssueRecoveryCodes legacy: %v", err)
 	}
@@ -79,7 +90,7 @@ func TestEncryptProjectAtRestMigratesAfterRecoveryCodeReissue(t *testing.T) {
 	if _, err := app.CreateAccount("alice", "Alice", "alice-password", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	path := createPlaintextProjectForMigration(t)
+	path := createPlaintextProjectForMigration(t, app)
 	if encrypted, err := app.IsProjectEncrypted(path); err != nil || encrypted {
 		t.Fatalf("IsProjectEncrypted before = %v, %v; want false, nil", encrypted, err)
 	}
