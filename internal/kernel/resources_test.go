@@ -25,6 +25,52 @@ func TestResourceUsageProfile(t *testing.T) {
 	approx(t, "alice[2]", alice[2], 0.5)
 }
 
+func TestResourceUsageCapsAssignmentAtMaxUnits(t *testing.T) {
+	tasks := map[string]*Task{
+		"A": {ID: "A", Duration: 1,
+			Assignments: []Assignment{{Resource: "alice", Units: 1.5, MaxUnits: 0.75}}},
+	}
+	mustCPM(t, tasks)
+
+	usage := ResourceUsage(tasks)
+	approx(t, "alice[0]", usage["alice"][0], 0.75)
+}
+
+func TestResourceCapacityProfilesUsesCalendarResolution(t *testing.T) {
+	plan := ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Capacities: map[string]float64{
+			"alice": 0.75,
+		},
+		Calendars: map[string]ResourceCalendar{
+			"alice": {
+				Resource: "alice",
+				WeeklyCapacity: map[int]float64{
+					1: 0.5,
+				},
+				Overrides: map[int]float64{
+					2: 0,
+				},
+			},
+		},
+	}
+
+	profiles := ResourceCapacityProfiles(plan, []string{"bob", "alice", "alice"}, 4)
+
+	if len(profiles) != 2 {
+		t.Fatalf("profiles = %d, want 2: %+v", len(profiles), profiles)
+	}
+	alice := profiles["alice"]
+	if len(alice) != 4 {
+		t.Fatalf("alice profile length = %d, want 4", len(alice))
+	}
+	approx(t, "alice[0]", alice[0], 0.75)
+	approx(t, "alice[1]", alice[1], 0.5)
+	approx(t, "alice[2]", alice[2], 0)
+	approx(t, "alice[3]", alice[3], 0.75)
+	approx(t, "bob[0]", profiles["bob"][0], 1)
+}
+
 func TestDetectOverallocations(t *testing.T) {
 	tasks := map[string]*Task{
 		"A": {ID: "A", Duration: 2,
@@ -72,6 +118,38 @@ func TestDetectOverallocationsHonoursCapacity(t *testing.T) {
 	}
 	if tasks["A"].Overallocated || tasks["B"].Overallocated {
 		t.Error("no task should stay flagged after a clean detection run")
+	}
+}
+
+func TestDetectOverallocationsWithResourceCalendarOverrides(t *testing.T) {
+	tasks := map[string]*Task{
+		"A": {ID: "A", Duration: 2,
+			Assignments: []Assignment{{Resource: "alice"}}},
+	}
+	mustCPM(t, tasks)
+
+	plan := ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Calendars: map[string]ResourceCalendar{
+			"alice": {
+				Resource: "alice",
+				Overrides: map[int]float64{
+					1: 0, // sick leave / unavailable
+				},
+			},
+		},
+	}
+	breaches := DetectOverallocationsWithPlan(tasks, plan)
+
+	if len(breaches) != 1 {
+		t.Fatalf("breaches = %d, want 1: %+v", len(breaches), breaches)
+	}
+	if breaches[0].Resource != "alice" || breaches[0].Day != 1 {
+		t.Fatalf("breach = %+v, want alice day 1", breaches[0])
+	}
+	approx(t, "capacity", breaches[0].Capacity, 0)
+	if !tasks["A"].Overallocated {
+		t.Fatal("task occupying zero-capacity day must be flagged")
 	}
 }
 
@@ -127,6 +205,58 @@ func TestLevelResourcesRespectsLinksAndLag(t *testing.T) {
 		t.Fatal("LevelResources reported a cycle")
 	}
 	approx(t, "B.ES", tasks["B"].ES, 3) // A finishes day 2 + lag 1
+}
+
+func TestLevelResourcesWithCalendarsSkipsUnavailableDays(t *testing.T) {
+	tasks := map[string]*Task{
+		"A": {ID: "A", Duration: 1,
+			Assignments: []Assignment{{Resource: "alice"}}},
+	}
+	plan := ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Calendars: map[string]ResourceCalendar{
+			"alice": {
+				Resource: "alice",
+				Overrides: map[int]float64{
+					0: 0, // unavailable on the earliest day
+				},
+			},
+		},
+	}
+
+	if !LevelResourcesWithPlan(tasks, plan) {
+		t.Fatal("LevelResourcesWithPlan reported a cycle")
+	}
+	approx(t, "A.ES", tasks["A"].ES, 1)
+	approx(t, "A.EF", tasks["A"].EF, 2)
+	if breaches := DetectOverallocationsWithPlan(tasks, plan); len(breaches) != 0 {
+		t.Fatalf("levelled plan still overallocated: %+v", breaches)
+	}
+}
+
+func TestLevelResourcesWithAssignmentCalendarID(t *testing.T) {
+	tasks := map[string]*Task{
+		"A": {ID: "A", Duration: 1,
+			Assignments: []Assignment{{Resource: "crew", CalendarID: "winter"}}},
+	}
+	plan := ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Calendars: map[string]ResourceCalendar{
+			"winter": {
+				ID:              "winter",
+				DefaultCapacity: 1,
+				Overrides: map[int]float64{
+					0: 0,
+				},
+			},
+		},
+	}
+
+	if !LevelResourcesWithPlan(tasks, plan) {
+		t.Fatal("LevelResourcesWithPlan reported a cycle")
+	}
+	approx(t, "A.ES", tasks["A"].ES, 1)
+	approx(t, "A.EF", tasks["A"].EF, 2)
 }
 
 func TestLevelResourcesFractionalUnitsShare(t *testing.T) {

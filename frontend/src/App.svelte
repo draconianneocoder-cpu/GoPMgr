@@ -75,6 +75,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     stakeholders: () => import('./lib/components/project/StakeholderManager.svelte'),
     timeline: () => import('./lib/components/project/TimelineView.svelte'),
     project_settings: () => import('./lib/components/project/ProjectSettings.svelte'),
+    scenario_chart: () => import('./lib/components/project/ScenarioChartEditor.svelte'),
   };
 
   let RouteComponent = $state<any>(null);

@@ -111,6 +111,13 @@ case "$gate_output" in
 		;;
 esac
 case "$gate_output" in
+	*"Checking monte-carlo-risk-report.pdf"* ) ;;
+	*)
+		printf '%s\n' "$gate_output" >&2
+		fail "validate-pdfa gate did not generate and validate monte-carlo-risk-report.pdf"
+		;;
+esac
+case "$gate_output" in
 	*"Gate passed (nothing to check)"* )
 		printf '%s\n' "$gate_output" >&2
 		fail "validate-pdfa gate silently passed without samples"

@@ -108,6 +108,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     return 'n_' + Math.random().toString(36).slice(2, 9);
   }
 
+  function normalizeEffort(value: number | undefined): number | undefined {
+    if (value === undefined || value === null || Number.isNaN(value)) return undefined;
+    return Math.max(0, value);
+  }
+
+  function selectNode(id: string) {
+    selectedId = id;
+    const node = findById(doc.root, id);
+    if (node) node.effort = normalizeEffort(node.effort);
+  }
+
   function addChild() {
     const id = selectedId ?? doc.root.id;
     const parent = findById(doc.root, id);
@@ -255,8 +266,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {#each layout.nodes as n (n.id)}
           <g
             transform={`translate(${n.x},${n.y})`}
-            onclick={() => (selectedId = n.id)}
-            onkeydown={(e) => e.key === 'Enter' && (selectedId = n.id)}
+            onclick={() => selectNode(n.id)}
+            onkeydown={(e) => e.key === 'Enter' && selectNode(n.id)}
             role="button"
             tabindex="0"
             class="cursor-pointer"
@@ -310,7 +321,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="text-xs text-slate-500 uppercase">Effort (units)</span>
             <input
               type="number"
+              min="0"
+              step="0.25"
               bind:value={selectedNode.effort}
+              oninput={() => (selectedNode!.effort = normalizeEffort(selectedNode!.effort))}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             />
           </label>

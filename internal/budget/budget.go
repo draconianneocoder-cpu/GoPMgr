@@ -17,45 +17,55 @@ package budget
 import (
 	"pmforge/internal/agile"
 	"pmforge/internal/db"
+	"pmforge/internal/money"
 )
 
 // Summary is the panel-ready cost rollup.
 type Summary struct {
-	Budget         float64            `json:"budget"`          // project.budget — the cap
-	ContractValue  float64            `json:"contract_value"`  // Σ stakeholder.contract_value for vendors
-	LabourEstimate float64            `json:"labour_estimate"` // Σ work-item-points × assignee.hourly_rate
-	Committed      float64            `json:"committed"`       // contract_value + labour_estimate
-	Remaining      float64            `json:"remaining"`       // budget - committed (negative if over)
-	ByCategory     map[string]float64 `json:"by_category"`     // breakdown by stakeholder category
+	Budget         float64 `json:"budget"`          // project.budget — the cap
+	ContractValue  float64 `json:"contract_value"`  // Σ stakeholder.contract_value for vendors
+	LabourEstimate float64 `json:"labour_estimate"` // Σ work-item-points × assignee.hourly_rate
+	Committed      float64 `json:"committed"`       // contract_value + labour_estimate
+	Remaining      float64 `json:"remaining"`       // budget - committed (negative if over)
+
+	BudgetMinorUnits         int64              `json:"budget_minor_units"`
+	ContractValueMinorUnits  int64              `json:"contract_value_minor_units"`
+	LabourEstimateMinorUnits int64              `json:"labour_estimate_minor_units"`
+	CommittedMinorUnits      int64              `json:"committed_minor_units"`
+	RemainingMinorUnits      int64              `json:"remaining_minor_units"`
+	ByCategoryMinorUnits     map[string]int64   `json:"by_category_minor_units"`
+	ByCategory               map[string]float64 `json:"by_category"` // breakdown by stakeholder category
 }
 
 // Compute walks the inputs and produces a Summary. Stakeholder is
 // the lookup table; we index it by ID before scanning work items so
 // the rollup is O(workItems + stakeholders).
 func Compute(project db.Project, stakeholders []db.Stakeholder, workItems []agile.WorkItem) Summary {
+	budget := amountFromProject(project)
 	sum := Summary{
-		Budget:     project.Budget,
-		ByCategory: map[string]float64{},
+		BudgetMinorUnits:     budget.MinorUnits,
+		ByCategory:           map[string]float64{},
+		ByCategoryMinorUnits: map[string]int64{},
 	}
 
-	byID := make(map[string]db.Stakeholder, len(stakeholders))
 	for _, s := range stakeholders {
-		byID[s.ID] = s
 		// Vendor / contract values roll up directly.
-		if s.ContractValue > 0 {
-			sum.ContractValue += s.ContractValue
-			sum.ByCategory[string(s.Category)] += s.ContractValue
+		contract := amountFromContractValue(s)
+		if contract.Positive() {
+			sum.ContractValueMinorUnits += contract.MinorUnits
+			addCategory(&sum, string(s.Category), contract)
 		}
 	}
 
 	// Labour estimate: points × rate. Work items are matched to
 	// stakeholders by Assignee field; if the assignee string equals
 	// a stakeholder's name (case-insensitive), apply that rate.
-	rateByName := make(map[string]float64, len(stakeholders))
+	rateByName := make(map[string]money.Amount, len(stakeholders))
 	catByName := make(map[string]string, len(stakeholders))
 	for _, s := range stakeholders {
-		if s.HourlyRate > 0 {
-			rateByName[lower(s.Name)] = s.HourlyRate
+		rate := amountFromHourlyRate(s)
+		if rate.Positive() {
+			rateByName[lower(s.Name)] = rate
 			catByName[lower(s.Name)] = string(s.Category)
 		}
 	}
@@ -67,16 +77,49 @@ func Compute(project db.Project, stakeholders []db.Stakeholder, workItems []agil
 		if !ok {
 			continue
 		}
-		cost := wi.Points * rate
-		sum.LabourEstimate += cost
+		cost := money.RateTimesQuantity(rate, wi.Points)
+		sum.LabourEstimateMinorUnits += cost.MinorUnits
 		if cat := catByName[lower(wi.Assignee)]; cat != "" {
-			sum.ByCategory[cat] += cost
+			addCategory(&sum, cat, cost)
 		}
 	}
 
-	sum.Committed = sum.ContractValue + sum.LabourEstimate
-	sum.Remaining = sum.Budget - sum.Committed
+	sum.CommittedMinorUnits = sum.ContractValueMinorUnits + sum.LabourEstimateMinorUnits
+	sum.RemainingMinorUnits = sum.BudgetMinorUnits - sum.CommittedMinorUnits
+	sum.Budget = money.Amount{MinorUnits: sum.BudgetMinorUnits}.MajorFloat()
+	sum.ContractValue = money.Amount{MinorUnits: sum.ContractValueMinorUnits}.MajorFloat()
+	sum.LabourEstimate = money.Amount{MinorUnits: sum.LabourEstimateMinorUnits}.MajorFloat()
+	sum.Committed = money.Amount{MinorUnits: sum.CommittedMinorUnits}.MajorFloat()
+	sum.Remaining = money.Amount{MinorUnits: sum.RemainingMinorUnits}.MajorFloat()
+	for cat, minor := range sum.ByCategoryMinorUnits {
+		sum.ByCategory[cat] = money.Amount{MinorUnits: minor}.MajorFloat()
+	}
 	return sum
+}
+
+func amountFromProject(p db.Project) money.Amount {
+	if p.BudgetMinorUnits != 0 || p.Budget == 0 {
+		return money.Amount{MinorUnits: p.BudgetMinorUnits}
+	}
+	return money.FromMajorFloat(p.Budget)
+}
+
+func amountFromHourlyRate(s db.Stakeholder) money.Amount {
+	if s.HourlyRateMinorUnits != 0 || s.HourlyRate == 0 {
+		return money.Amount{MinorUnits: s.HourlyRateMinorUnits}
+	}
+	return money.FromMajorFloat(s.HourlyRate)
+}
+
+func amountFromContractValue(s db.Stakeholder) money.Amount {
+	if s.ContractValueMinorUnits != 0 || s.ContractValue == 0 {
+		return money.Amount{MinorUnits: s.ContractValueMinorUnits}
+	}
+	return money.FromMajorFloat(s.ContractValue)
+}
+
+func addCategory(sum *Summary, cat string, amount money.Amount) {
+	sum.ByCategoryMinorUnits[cat] += amount.MinorUnits
 }
 
 // lower is a cheap ASCII-lowercase fold used for case-insensitive

@@ -60,12 +60,21 @@ func LayoutGantt(doc LayeredDocument) (GanttLayout, error) {
 // constraints armed, real dates on every row, and overallocation
 // checked against the given capacities (nil = 1.0 per resource).
 func LayoutGanttScheduled(doc LayeredDocument, projectStart time.Time, isWorkday kernel.WorkdayFunc, capacities map[string]float64) (GanttLayout, error) {
+	return LayoutGanttScheduledWithPlan(doc, projectStart, isWorkday, kernel.ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Capacities:      capacities,
+	})
+}
+
+// LayoutGanttScheduledWithPlan is LayoutGanttScheduled with named
+// resource calendars and per-day capacity overrides.
+func LayoutGanttScheduledWithPlan(doc LayeredDocument, projectStart time.Time, isWorkday kernel.WorkdayFunc, plan kernel.ResourceCapacityPlan) (GanttLayout, error) {
 	tasks := cpmTasksFromDoc(doc)
 	kernel.ApplyConstraintDates(tasks, projectStart, isWorkday)
 	if ok := kernel.CalculateCPM(tasks); !ok {
 		return GanttLayout{}, ErrCycle
 	}
-	kernel.DetectOverallocations(tasks, capacities)
+	kernel.DetectOverallocationsWithPlan(tasks, plan)
 	kernel.AnchorSchedule(tasks, projectStart, isWorkday)
 	copyCPMResults(doc, tasks)
 	return ganttFromDoc(doc, true), nil

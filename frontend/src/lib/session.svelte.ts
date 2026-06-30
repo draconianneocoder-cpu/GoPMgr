@@ -52,6 +52,7 @@ export const session = $state<{
     | 'stakeholders'
     | 'timeline'
     | 'project_settings'
+    | 'scenario_chart'
     | 'documents'
     | 'charts'
     | 'admin_panel'

@@ -81,7 +81,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  // ----- Portfolio analytics (DuckDB, optional build) -----
+  // ----- Portfolio analytics (DuckDB in production/package builds) -----
   let rollup = $state<PortfolioSummary | null>(null);
   let rollupErr = $state('');
   let rollupLoading = $state(false);
@@ -97,6 +97,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } finally {
       rollupLoading = false;
     }
+  }
+
+  function analyticsUnavailableMessage(kind: 'analytics' | 'import'): string {
+    return `DuckDB ${kind} is unavailable in this direct developer build. Use make build for release-like testing.`;
   }
 
   const fmtNum = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -146,25 +150,25 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {/if}
 
     <section class="mb-5 p-4 bg-slate-900 border border-slate-800 rounded-lg">
-      <div class="flex items-center justify-between gap-3">
-        <div>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="min-w-0">
           <h3 class="text-sm font-bold text-slate-200">Portfolio analytics</h3>
           <p class="text-xs text-slate-500">Cross-project cost rollup, aggregated with DuckDB.</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
           <button
             onclick={runRollup}
-            disabled={rollupLoading}
+            disabled={rollupLoading || importing}
             aria-busy={rollupLoading}
-            class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
+            class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
           >
             {rollupLoading ? 'Computing…' : 'Run rollup'}
           </button>
           <button
             onclick={importDataset}
-            disabled={importing}
+            disabled={rollupLoading || importing}
             aria-busy={importing}
-            class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
+            class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
           >
             {importing ? 'Importing…' : 'Import data file'}
           </button>
@@ -174,26 +178,33 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {#if rollupErr}
         <p class="mt-3 text-xs text-amber-400" role="status">
           {rollupErr.includes('not built in')
-            ? 'The analytics engine is not included in this build.'
+            ? analyticsUnavailableMessage('analytics')
             : `Analytics failed: ${rollupErr}`}
         </p>
       {:else if rollup}
         <dl class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div>
+          <div class="min-w-0">
             <dt class="text-[10px] uppercase tracking-wider text-slate-500">Projects</dt>
-            <dd class="text-slate-100 font-bold">{rollup.project_count}</dd>
+            <dd class="text-slate-100 font-bold tabular-nums">{rollup.project_count}</dd>
           </div>
-          <div>
+          <div class="min-w-0">
             <dt class="text-[10px] uppercase tracking-wider text-slate-500">Total budget</dt>
-            <dd class="text-slate-100 font-bold">{fmtNum(rollup.total_budgeted_cost)}</dd>
+            <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtNum(rollup.total_budgeted_cost)}>
+              {fmtNum(rollup.total_budgeted_cost)}
+            </dd>
           </div>
-          <div>
+          <div class="min-w-0">
             <dt class="text-[10px] uppercase tracking-wider text-slate-500">Committed</dt>
-            <dd class="text-slate-100 font-bold">{fmtNum(rollup.total_actual_cost)}</dd>
+            <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtNum(rollup.total_actual_cost)}>
+              {fmtNum(rollup.total_actual_cost)}
+            </dd>
           </div>
-          <div>
+          <div class="min-w-0">
             <dt class="text-[10px] uppercase tracking-wider text-slate-500">Remaining</dt>
-            <dd class="font-bold {rollup.total_budgeted_cost - rollup.total_actual_cost < 0 ? 'text-red-400' : 'text-emerald-300'}">
+            <dd
+              class="font-bold tabular-nums truncate {rollup.total_budgeted_cost - rollup.total_actual_cost < 0 ? 'text-red-400' : 'text-emerald-300'}"
+              title={fmtNum(rollup.total_budgeted_cost - rollup.total_actual_cost)}
+            >
               {fmtNum(rollup.total_budgeted_cost - rollup.total_actual_cost)}
             </dd>
           </div>
@@ -203,7 +214,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {#if importErr}
         <p class="mt-3 text-xs text-amber-400" role="status">
           {importErr.includes('not built in')
-            ? 'The analytics engine is not included in this build.'
+            ? analyticsUnavailableMessage('import')
             : `Import failed: ${importErr}`}
         </p>
       {:else if dataset}

@@ -85,6 +85,7 @@ temp_snapshot.db
 # OS / editor
 .DS_Store
 Thumbs.db
+~$*.docx
 .idea/
 .vscode/
 *.swp

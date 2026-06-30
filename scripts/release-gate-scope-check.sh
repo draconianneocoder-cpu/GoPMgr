@@ -28,6 +28,16 @@ if ! rg -q 'frontend-build-budget\.sh' scripts/check-release.sh; then
 	fail=1
 fi
 
+if [ -f scripts/check-help-guide-current.sh ]; then
+	if ! bash scripts/check-help-guide-current.sh >/dev/null; then
+		echo "release-scope: Help Guide is missing recent release corrections. Run 'make help-guide-current' for details." >&2
+		fail=1
+	fi
+else
+	echo "release-scope: scripts/check-help-guide-current.sh is missing." >&2
+	fail=1
+fi
+
 if ! printf '%s\n' "$readme_text" | rg -q 'FileVault.*BitLocker.*LUKS|BitLocker.*FileVault.*LUKS|LUKS.*FileVault.*BitLocker'; then
 	echo "release-scope: README.md must document OS-level disk encryption as whole-device protection." >&2
 	fail=1

@@ -17,6 +17,7 @@ declare global {
           Greet: () => Promise<string>;
           GetSettings: () => Promise<UserSettings>;
           SaveSettings: (s: UserSettings) => Promise<void>;
+          ResetProjectSettings: () => Promise<UserSettings>;
           SecureArchive: (projectPath: string) => Promise<string>;
 
           // ----- V2: accounts & session -----
@@ -44,6 +45,7 @@ declare global {
           ProjectsOverview: () => Promise<ProjectSummary[]>;
           GetAppInfo: () => Promise<AppInfo>;
           SaveAppSettings: (s: AppSettings) => Promise<void>;
+          ResetAppSettings: () => Promise<AppSettings>;
           OpenProject: (path: string) => Promise<ProjectMeta>;
           IsProjectEncrypted: (path: string) => Promise<boolean>;
           EncryptProjectAtRest: (path: string) => Promise<string>;
@@ -68,6 +70,8 @@ declare global {
             baselineId: string
           ) => Promise<Record<string, ScheduleVariance>>;
           ComputeScheduleEVM: (chartId: string, asOfDate: string) => Promise<EVMetrics>;
+          RunChartMonteCarlo: (chartId: string, iterations: number, workers: number) => Promise<SimResult>;
+          ExportChartMonteCarloRiskReport: (chartId: string, iterations: number, workers: number) => Promise<string>;
           LevelChartResources: (chartId: string) => Promise<number>;
           GenerateResourceHistogram: (chartId: string) => Promise<ChartRecord>;
           ImportMSPDIChart: () => Promise<ChartRecord>;
@@ -134,6 +138,28 @@ declare global {
           ListStakeholders: (category: string) => Promise<Stakeholder[]>;
           SaveStakeholder: (s: Stakeholder) => Promise<Stakeholder>;
           DeleteStakeholder: (id: string) => Promise<void>;
+          ListResourceCalendars: () => Promise<ResourceCalendar[]>;
+          SaveResourceCalendar: (c: ResourceCalendar) => Promise<ResourceCalendar>;
+          DeleteResourceCalendar: (id: string) => Promise<void>;
+          ListScenarios: () => Promise<Scenario[]>;
+          GetScenario: (id: string) => Promise<Scenario>;
+          SaveScenario: (s: Scenario) => Promise<Scenario>;
+          DeleteScenario: (id: string) => Promise<void>;
+          BranchScenarioChart: (
+            scenarioID: string,
+            chartID: string,
+            baselineID: string,
+          ) => Promise<ScenarioChart>;
+          ListScenarioCharts: (scenarioID: string) => Promise<ScenarioChart[]>;
+          GetScenarioChart: (id: string) => Promise<ScenarioChart>;
+          SaveScenarioChart: (c: ScenarioChart) => Promise<ScenarioChart>;
+          PromoteScenarioChartToBaseline: (
+            scenarioChartID: string,
+            name: string,
+          ) => Promise<BaselineRecord>;
+          CompareScenarioChart: (
+            scenarioChartID: string,
+          ) => Promise<Record<string, ScheduleVariance>>;
           BuildTimeline: () => Promise<TimelineEntry[]>;
           MoveTimelineEntry: (
             kind: TimelineKind,
@@ -165,6 +191,8 @@ declare global {
           ExportScheduleReportCSV: () => Promise<string>;
           ExportScheduleReportHTML: () => Promise<string>;
           ExportScheduleReportMSPDI: () => Promise<string>;
+          ExportAuditVerificationReport: () => Promise<string>;
+          ExportAuditRepairEvidence: () => Promise<string>;
 
           // ----- Process Excellence Suite (Six Sigma) -----
           SigmaCreateProject: (
@@ -262,8 +290,24 @@ declare global {
     category: StakeholderCategory;
     availability: number;
     hourly_rate: number;
+    hourly_rate_minor_units?: number;
     contract_value: number;
+    contract_value_minor_units?: number;
     notes: string;
+    created_at: string;
+    updated_at: string;
+  }
+
+  interface ResourceCalendar {
+    id: string;
+    project_id: string;
+    resource: string;
+    name: string;
+    default_capacity: number;
+    weekly_capacity: Record<number, number>;
+    overrides: Record<number, number>;
+    skill_tags: string[];
+    notes: Record<number, string>;
     created_at: string;
     updated_at: string;
   }
@@ -298,7 +342,13 @@ declare global {
     labour_estimate: number;
     committed: number;
     remaining: number;
+    budget_minor_units: number;
+    contract_value_minor_units: number;
+    labour_estimate_minor_units: number;
+    committed_minor_units: number;
+    remaining_minor_units: number;
     by_category: Record<string, number>;
+    by_category_minor_units: Record<string, number>;
   }
 
   interface ReportSection {
@@ -320,6 +370,7 @@ declare global {
     signature_enabled: boolean;
     default_font?: string;
     agile_enabled?: boolean;
+    compliance_mode?: boolean;
   }
 
   interface Account {
@@ -356,6 +407,10 @@ declare global {
     total_actual_cost: number;
     total_earned_value: number;
     total_planned_value: number;
+    total_budgeted_cost_minor_units: number;
+    total_actual_cost_minor_units: number;
+    total_earned_value_minor_units: number;
+    total_planned_value_minor_units: number;
     schedule_performance_index: number;
     cost_performance_index: number;
   }
@@ -390,6 +445,7 @@ declare global {
     start_date: string;
     end_date: string;
     budget: number;
+    budget_minor_units?: number;
     owner: string;
     industry: string;
     sub_category: string;
@@ -561,6 +617,7 @@ declare global {
     id: string;
     title: string;
     duration: number;
+    duration_estimate?: DurationEstimate;
     precedents: string[];
     es: number;
     ef: number;
@@ -580,7 +637,9 @@ declare global {
     actual_start?: string;
     actual_finish?: string;
     budgeted_cost?: number;
+    budgeted_cost_minor_units?: number;
     actual_cost?: number;
+    actual_cost_minor_units?: number;
     assignments?: ResourceAssignment[];
     overallocated?: boolean;
   }
@@ -588,6 +647,47 @@ declare global {
   interface ResourceAssignment {
     resource: string;
     units?: number;
+    calendar_id?: string;
+    skill_tags?: string[];
+    max_units?: number;
+  }
+
+  type MonteCarloDistribution = 'triangular' | 'beta-pert' | 'normal';
+
+  interface DurationEstimate {
+    optimistic?: number;
+    most_likely?: number;
+    pessimistic?: number;
+    distribution?: MonteCarloDistribution | string;
+  }
+
+  interface SimResult {
+    valid: boolean;
+    error?: string;
+    iterations: number;
+    workers: number;
+    p50: number;
+    p80: number;
+    p90: number;
+    finish_cdf: ProbabilityPoint[];
+    critical_path_frequency: Record<string, number>;
+    duration_percentiles: Record<string, [number, number, number]>;
+    tornado_drivers: TornadoDriver[];
+  }
+
+  interface ProbabilityPoint {
+    day: number;
+    probability: number;
+  }
+
+  interface TornadoDriver {
+    task_id: string;
+    critical_frequency: number;
+    p50_duration: number;
+    p80_duration: number;
+    p90_duration: number;
+    duration_spread: number;
+    score: number;
   }
 
   interface BaselineRecord {
@@ -597,6 +697,32 @@ declare global {
     name: string;
     data: string;
     created_at: string;
+  }
+
+  interface Scenario {
+    id: string;
+    project_id: string;
+    name: string;
+    source_baseline_id: string;
+    description: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+  }
+
+  interface ScenarioChart {
+    id: string;
+    scenario_id: string;
+    project_id: string;
+    source_chart_id: string;
+    source_baseline_id: string;
+    kind: string;
+    title: string;
+    data: string;
+    config: string;
+    baseline_data: string;
+    created_at: string;
+    updated_at: string;
   }
 
   interface ScheduleVariance {
@@ -614,6 +740,10 @@ declare global {
     pv: number;
     ev: number;
     ac: number;
+    bac_minor_units: number;
+    pv_minor_units: number;
+    ev_minor_units: number;
+    ac_minor_units: number;
   }
 
   interface EVMetrics {
@@ -622,6 +752,10 @@ declare global {
     pv: number;
     ev: number;
     ac: number;
+    bac_minor_units: number;
+    pv_minor_units: number;
+    ev_minor_units: number;
+    ac_minor_units: number;
     sv: number;
     cv: number;
     spi: number;
@@ -629,6 +763,11 @@ declare global {
     eac: number;
     etc: number;
     vac: number;
+    sv_minor_units: number;
+    cv_minor_units: number;
+    eac_minor_units: number;
+    etc_minor_units: number;
+    vac_minor_units: number;
     tasks: TaskEV[];
   }
 

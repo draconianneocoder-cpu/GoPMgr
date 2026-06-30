@@ -367,6 +367,7 @@ var registry = []Definition{
 		Description: "Periodic check-in: progress, risks, blockers, and upcoming work.",
 		Fields: []Field{
 			{Key: "report_date", Label: "Report Date", Type: FieldDate, Required: true},
+			{Key: "schedule_ref", Label: "Linked Schedule Chart", Type: FieldChartRef, ChartKind: "cpm"},
 			{Key: "overall_status", Label: "Overall Status", Type: FieldString, Help: "green / yellow / red"},
 			{Key: "accomplishments", Label: "Accomplishments", Type: FieldStringArr},
 			{Key: "in_progress", Label: "In Progress", Type: FieldStringArr},

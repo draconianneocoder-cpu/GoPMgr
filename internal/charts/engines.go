@@ -42,6 +42,15 @@ var ErrEngineNotImplemented = errors.New("charts: engine renderer not yet implem
 // Layout, so callers without project context lose nothing by not
 // using this entry point.
 func LayoutWithSchedule(kind Kind, rawData string, projectStart time.Time, isWorkday kernel.WorkdayFunc, capacities map[string]float64) (LayoutResult, error) {
+	return LayoutWithSchedulePlan(kind, rawData, projectStart, isWorkday, kernel.ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Capacities:      capacities,
+	})
+}
+
+// LayoutWithSchedulePlan is LayoutWithSchedule with full resource
+// capacity context, including named resource calendars.
+func LayoutWithSchedulePlan(kind Kind, rawData string, projectStart time.Time, isWorkday kernel.WorkdayFunc, plan kernel.ResourceCapacityPlan) (LayoutResult, error) {
 	if (kind != KindCPM && kind != KindGantt) || projectStart.IsZero() {
 		return Layout(kind, rawData)
 	}
@@ -55,9 +64,9 @@ func LayoutWithSchedule(kind Kind, rawData string, projectStart time.Time, isWor
 	}
 	var layout interface{}
 	if kind == KindGantt {
-		layout, err = dag.LayoutGanttScheduled(doc, projectStart, isWorkday, capacities)
+		layout, err = dag.LayoutGanttScheduledWithPlan(doc, projectStart, isWorkday, plan)
 	} else {
-		layout, err = dag.LayoutCPMScheduled(doc, projectStart, isWorkday, capacities)
+		layout, err = dag.LayoutCPMScheduledWithPlan(doc, projectStart, isWorkday, plan)
 	}
 	if err != nil {
 		return LayoutResult{}, err

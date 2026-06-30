@@ -23,6 +23,7 @@ not routed directly.
     note?: string;
     owner?: string;
     duration?: number;
+    duration_estimate?: DurationEstimate;
     o?: number;
     m?: number;
     p?: number;
@@ -45,8 +46,16 @@ not routed directly.
     actual_start?: string;
     actual_finish?: string;
     budgeted_cost?: number;
+    budgeted_cost_minor_units?: number;
     actual_cost?: number;
-    assignments?: { resource: string; units?: number }[];
+    actual_cost_minor_units?: number;
+    assignments?: {
+      resource: string;
+      units?: number;
+      calendar_id?: string;
+      skill_tags?: string[];
+      max_units?: number;
+    }[];
     overallocated?: boolean;
   }
   interface LayeredEdge {
@@ -214,7 +223,7 @@ not routed directly.
     void refreshLayout();
   }
 
-  async function save() {
+  export async function save() {
     if (!chart) return;
     saving = true;
     status = '';
@@ -243,6 +252,10 @@ not routed directly.
     if (!selectedNode) return;
     selectedNode.label;
     selectedNode.duration;
+    selectedNode.duration_estimate?.optimistic;
+    selectedNode.duration_estimate?.most_likely;
+    selectedNode.duration_estimate?.pessimistic;
+    selectedNode.duration_estimate?.distribution;
     selectedNode.o;
     selectedNode.m;
     selectedNode.p;

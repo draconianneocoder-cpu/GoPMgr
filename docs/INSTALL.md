@@ -46,8 +46,10 @@ choose **More info → Run anyway**.
 sudo apt install ./pmforge-<version>-amd64.deb
 ```
 
-`apt` pulls in the GTK3/WebKit runtime automatically. On older systems use
-`sudo dpkg -i …` followed by `sudo apt -f install` to resolve dependencies.
+`apt` pulls in the GTK/WebKit runtime automatically. Linux packages target
+Ubuntu 24.04+ (`libwebkit2gtk-4.1-0`). On older systems use `sudo dpkg -i …`
+followed by `sudo apt -f install` to resolve dependencies; older WebKit2GTK
+runtimes are no longer the release target.
 
 ### Fedora / RHEL / openSUSE (`.rpm`)
 
@@ -64,8 +66,11 @@ Prerequisites:
 
 - **Go** (version in `go.mod`) and **Node** with `npm`.
 - The **Wails CLI**: `go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0`.
-- **Linux only:** GTK3 + WebKit dev packages, e.g. on Debian/Ubuntu:
-  `sudo apt install libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config`.
+- **Linux only:** Wails v2 GTK/WebKit dev packages for Ubuntu 24.04+, e.g. on
+  Debian/Ubuntu:
+  `sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config`.
+  PMForge builds with the Wails `webkit2_41` tag. Wails v2 still links GTK3;
+  true GTK4/WebKitGTK 6.0 support requires a future Wails migration.
 
 Then:
 
@@ -83,6 +88,10 @@ make dev
 > **Important:** always install the frontend with `npm ci`. A fresh
 > `npm install` resolves a newer Svelte that breaks the pinned Vite plugin and
 > fails the build (`svelte-check` still passes, which hides it).
+>
+> `make build` is the production path and includes the embedded DuckDB
+> analytics engine. Explicit untagged developer builds are possible, but those
+> builds show the analytics-unavailable fallback and are not release artifacts.
 
 ## Build the installers yourself
 
@@ -90,8 +99,9 @@ On the matching OS, after `make build`:
 
 - **Linux** (`.deb` / `.rpm`): `VERSION=<x.y.z> bash scripts/package-linux.sh`
   (needs [`nfpm`](https://nfpm.goreleaser.com/)).
-- **macOS** (`.dmg`): `VERSION=<x.y.z> bash scripts/package-macos.sh`
-  (uses `create-dmg`, falls back to `hdiutil`).
+- **macOS** (`.dmg`): `VERSION=<x.y.z> make package-macos`
+  (uses `create-dmg`, falls back to a staged `hdiutil` image with an
+  Applications shortcut).
 - **Windows** (`.exe`): `wails build -platform windows/amd64 -nsis` (needs NSIS).
 
 The release workflow (`.github/workflows/release.yml`) runs all of these on

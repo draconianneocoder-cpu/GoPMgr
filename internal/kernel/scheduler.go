@@ -85,6 +85,11 @@ type Task struct {
 	Precedents []string `json:"precedents"`
 	Links      []Link   `json:"links,omitempty"`
 
+	// DurationEstimate carries optional three-point schedule-risk
+	// inputs for Monte Carlo simulation. When empty, Duration is used
+	// as a deterministic sample.
+	DurationEstimate DurationEstimate `json:"duration_estimate,omitempty"`
+
 	// Scheduling constraint (see ConstraintType). Empty = ASAP.
 	Constraint     ConstraintType `json:"constraint,omitempty"`
 	ConstraintDate string         `json:"constraint_date,omitempty"`
@@ -111,9 +116,12 @@ type Task struct {
 
 	// Cost tracking for Earned Value Management (see ComputeEVM).
 	// BudgetedCost is the task's budget at completion; ActualCost is
-	// the cost incurred to date.
-	BudgetedCost float64 `json:"budgeted_cost,omitempty"`
-	ActualCost   float64 `json:"actual_cost,omitempty"`
+	// the cost incurred to date. The MinorUnits fields are canonical
+	// when present; float fields remain for UI compatibility.
+	BudgetedCost           float64 `json:"budgeted_cost,omitempty"`
+	BudgetedCostMinorUnits int64   `json:"budgeted_cost_minor_units,omitempty"`
+	ActualCost             float64 `json:"actual_cost,omitempty"`
+	ActualCostMinorUnits   int64   `json:"actual_cost_minor_units,omitempty"`
 
 	// Resource assignments (see resources.go). Overallocated is
 	// computed by DetectOverallocations: true when any of this task's
