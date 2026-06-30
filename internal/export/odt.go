@@ -23,11 +23,11 @@ import (
 //
 // The package layout we emit is the OpenDocument minimum:
 //
-//   mimetype                  (STORED, first entry, no compression)
-//   META-INF/manifest.xml     (manifest listing every member)
-//   meta.xml                  (generator + timestamp metadata)
-//   styles.xml                (heading + paragraph + table styles)
-//   content.xml               (the actual document body)
+//	mimetype                  (STORED, first entry, no compression)
+//	META-INF/manifest.xml     (manifest listing every member)
+//	meta.xml                  (generator + timestamp metadata)
+//	styles.xml                (heading + paragraph + table styles)
+//	content.xml               (the actual document body)
 //
 // LibreOffice, Microsoft Word 2007+, Apple Pages, and Google Docs
 // all open files with this exact layout. Field-walking matches

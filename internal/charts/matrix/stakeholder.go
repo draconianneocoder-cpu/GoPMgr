@@ -44,7 +44,7 @@ type PlotPoint struct {
 
 // QuadrantLabel describes one of the four engagement strategies.
 type QuadrantLabel struct {
-	Power    string `json:"power"`    // "low" | "high"
+	Power    string `json:"power"` // "low" | "high"
 	Interest string `json:"interest"`
 	Title    string `json:"title"`
 	Strategy string `json:"strategy"`

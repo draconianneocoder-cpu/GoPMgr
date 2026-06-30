@@ -178,7 +178,7 @@ func TestLayoutWBS_SingleNode(t *testing.T) {
 func TestLayoutWBS_ParentChildEdge(t *testing.T) {
 	doc := WBSDocument{
 		Root: &WBSNode{
-			ID: "r",
+			ID:       "r",
 			Children: []*WBSNode{{ID: "c1"}, {ID: "c2"}},
 		},
 	}
