@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"pmforge/internal/db"
@@ -161,5 +162,71 @@ func TestOpenProjectPlaintextRequiresMigration(t *testing.T) {
 
 	if _, err := app.OpenProject(path); !errors.Is(err, ErrProjectRequiresEncryptionMigration) {
 		t.Fatalf("OpenProject plaintext err = %v, want ErrProjectRequiresEncryptionMigration", err)
+	}
+}
+
+func TestOpenProjectComplianceModeRejectsTamperedAuditChain(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "alice-password", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	file, err := app.CreateProject("Compliance Project", "")
+	if err != nil {
+		t.Fatalf("CreateProject: %v", err)
+	}
+	project, err := app.OpenProject(file.Path)
+	if err != nil {
+		t.Fatalf("OpenProject initial: %v", err)
+	}
+	settings, err := app.GetSettings()
+	if err != nil {
+		t.Fatalf("GetSettings: %v", err)
+	}
+	settings.ComplianceMode = true
+	if err := app.SaveSettings(settings); err != nil {
+		t.Fatalf("SaveSettings compliance mode: %v", err)
+	}
+	if _, err := app.db.Conn.Exec(
+		`UPDATE audit_events SET after_canonical_json = ? WHERE project_id = ? AND sequence_number = 1`,
+		`{"name":"tampered"}`,
+		project.ID,
+	); err != nil {
+		t.Fatalf("tamper audit chain: %v", err)
+	}
+	if err := app.CloseProject(); err != nil {
+		t.Fatalf("CloseProject: %v", err)
+	}
+
+	if _, err := app.OpenProject(file.Path); err == nil || !strings.Contains(err.Error(), "audit verification failed") {
+		t.Fatalf("OpenProject tampered err = %v, want audit verification failure", err)
+	}
+}
+
+func TestAppendProjectDeleteAuditWritesDeleteEvent(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "alice-password", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	file, err := app.CreateProject("Delete Audit", "")
+	if err != nil {
+		t.Fatalf("CreateProject: %v", err)
+	}
+
+	if err := app.appendProjectDeleteAudit(file.Path, "alice"); err != nil {
+		t.Fatalf("appendProjectDeleteAudit: %v", err)
+	}
+	project, err := app.OpenProject(file.Path)
+	if err != nil {
+		t.Fatalf("OpenProject after delete audit: %v", err)
+	}
+	var count int
+	if err := app.db.Conn.QueryRow(
+		`SELECT COUNT(*) FROM audit_events WHERE project_id = ? AND event_type = 'project.delete'`,
+		project.ID,
+	).Scan(&count); err != nil {
+		t.Fatalf("count delete audit events: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("delete audit events = %d, want 1", count)
 	}
 }

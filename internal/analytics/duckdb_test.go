@@ -42,6 +42,9 @@ func TestPortfolioRollupAggregates(t *testing.T) {
 	if got.TotalBudgetedCost != 300 {
 		t.Errorf("TotalBudgetedCost = %v, want 300", got.TotalBudgetedCost)
 	}
+	if got.TotalBudgetedCostMinorUnits != 30000 {
+		t.Errorf("TotalBudgetedCostMinorUnits = %d, want 30000", got.TotalBudgetedCostMinorUnits)
+	}
 	if got.TotalActualCost != 230 {
 		t.Errorf("TotalActualCost = %v, want 230", got.TotalActualCost)
 	}
@@ -51,6 +54,9 @@ func TestPortfolioRollupAggregates(t *testing.T) {
 	if got.TotalPlannedValue != 200 {
 		t.Errorf("TotalPlannedValue = %v, want 200", got.TotalPlannedValue)
 	}
+	if got.TotalPlannedValueMinorUnits != 20000 {
+		t.Errorf("TotalPlannedValueMinorUnits = %d, want 20000", got.TotalPlannedValueMinorUnits)
+	}
 	// SPI = EV/PV = 210/200 = 1.05
 	if math.Abs(got.SchedulePerformanceIndex-1.05) > 1e-9 {
 		t.Errorf("SPI = %v, want ~1.05", got.SchedulePerformanceIndex)
@@ -58,6 +64,30 @@ func TestPortfolioRollupAggregates(t *testing.T) {
 	// CPI = EV/AC = 210/230 ≈ 0.913043
 	if math.Abs(got.CostPerformanceIndex-(210.0/230.0)) > 1e-9 {
 		t.Errorf("CPI = %v, want ~0.913", got.CostPerformanceIndex)
+	}
+}
+
+func TestPortfolioRollupPrefersMinorUnits(t *testing.T) {
+	e := New()
+	t.Cleanup(func() { _ = e.Close() })
+
+	got, err := e.PortfolioRollup(context.Background(), []ProjectMetrics{{
+		ProjectID:              "exact",
+		BudgetedCost:           999,
+		BudgetedCostMinorUnits: 12345,
+		ActualCost:             999,
+		ActualCostMinorUnits:   2345,
+		EarnedValueMinorUnits:  3456,
+		PlannedValueMinorUnits: 4567,
+	}})
+	if err != nil {
+		t.Fatalf("PortfolioRollup: %v", err)
+	}
+	if got.TotalBudgetedCostMinorUnits != 12345 || got.TotalBudgetedCost != 123.45 {
+		t.Fatalf("budgeted total = %d / %v, want 12345 / 123.45", got.TotalBudgetedCostMinorUnits, got.TotalBudgetedCost)
+	}
+	if got.TotalActualCostMinorUnits != 2345 || got.TotalActualCost != 23.45 {
+		t.Fatalf("actual total = %d / %v, want 2345 / 23.45", got.TotalActualCostMinorUnits, got.TotalActualCost)
 	}
 }
 

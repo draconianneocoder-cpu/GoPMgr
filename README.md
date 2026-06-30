@@ -7,9 +7,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 **Latest release: [v1.1.0-rc.1](docs/release-notes/v1.1.0-rc.1.md)** — first
 click-installable native packages for Windows, macOS (Apple Silicon), and
-Linux. Includes CPM scheduling, 21 chart types, 25 document kinds, Agile and
-Six Sigma methodology packs, SQLCipher encryption, Argon2id auth, PDF/A-3
-validation, and PAdES digital signing.
+Linux. Includes CPM scheduling, DuckDB-backed portfolio analytics, 21 chart
+types, 25 document kinds, Agile and Six Sigma methodology packs, SQLCipher
+encryption, Argon2id auth, PDF/A-3 validation, and PAdES digital signing.
 
 See [ROADMAP.md](ROADMAP.md) for what comes next and [VISION.md](VISION.md)
 for design principles.
@@ -26,12 +26,13 @@ chart, export, and reporting tools without requiring a hosted service.
 
 ## Current Capability
 
-- **Project controls:** lifecycle status, budgets, stakeholders, timeline
-  events, project settings, audit records, repair, backup, and local
+- **Project controls:** lifecycle status, exact-cent budgets, stakeholders,
+  timeline events, project settings, audit records, repair, backup, and local
   project files.
 - **Scheduling:** CPM schedules with typed dependencies, lag,
-  constraints, baselines, progress, Earned Value Management, resources,
-  Gantt charts, MSPDI import/export, CSV, HTML, and report exports.
+  constraints, baselines, progress, Earned Value Management,
+  named resource calendars, calendar-aware leveling, Gantt charts, MSPDI
+  import/export, CSV, HTML, and report exports.
 - **Charts:** 21 chart kinds across DAG, flow, matrix, and statistical
   engines, with frontend editing and vector PDF rendering.
 - **Documents:** 25 project document kinds with schema-driven editing,
@@ -40,6 +41,9 @@ chart, export, and reporting tools without requiring a hosted service.
 - **Methodology packs:** Agile/Software-Dev views for Kanban, Backlog,
   Sprints, and DORA metrics; Process Excellence views for Six Sigma/DMAIC
   work.
+- **Analytics:** DuckDB-backed in-memory portfolio rollups using integer
+  minor-unit money totals, plus CSV/TSV, Parquet, and JSON data import in
+  production/package builds.
 - **Security and compliance:** local Argon2id accounts, one-time recovery
   codes, SQLCipher-encrypted per-user `.pmforge` project databases, PDF/A
   validation, and PAdES signing support.
@@ -96,9 +100,10 @@ go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 ```
 
 - Node dependencies live under `frontend/`.
-- CGO is required for the SQLite/SQLCipher driver path.
+- CGO is required for the SQLite/SQLCipher driver path and production DuckDB
+  analytics builds.
 - `make build` is the supported production build path. It runs the Wails
-  build through `scripts/wails-build.sh`.
+  build through `scripts/wails-build.sh` with the `duckdb` tag enabled.
 
 See [DEPENDENCIES.md](DEPENDENCIES.md) for dependency policy and external
 validator tools.

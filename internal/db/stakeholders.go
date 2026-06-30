@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"pmforge/internal/money"
 	"time"
 )
 
@@ -29,16 +30,18 @@ const (
 // to a shared project resource in V2.x so RACI rows, document fields,
 // and the budget rollup can all reference the same record.
 type Stakeholder struct {
-	ID            string              `json:"id"`
-	ProjectID     string              `json:"project_id"`
-	Name          string              `json:"name"`
-	Role          string              `json:"role"`
-	Organisation  string              `json:"organisation"`
-	Email         string              `json:"email"`
-	Phone         string              `json:"phone"`
-	Category      StakeholderCategory `json:"category"`
-	HourlyRate    float64             `json:"hourly_rate"`
-	ContractValue float64             `json:"contract_value"`
+	ID                      string              `json:"id"`
+	ProjectID               string              `json:"project_id"`
+	Name                    string              `json:"name"`
+	Role                    string              `json:"role"`
+	Organisation            string              `json:"organisation"`
+	Email                   string              `json:"email"`
+	Phone                   string              `json:"phone"`
+	Category                StakeholderCategory `json:"category"`
+	HourlyRate              float64             `json:"hourly_rate"`
+	HourlyRateMinorUnits    int64               `json:"hourly_rate_minor_units,omitempty"`
+	ContractValue           float64             `json:"contract_value"`
+	ContractValueMinorUnits int64               `json:"contract_value_minor_units,omitempty"`
 	// Availability is the stakeholder's resource capacity in units
 	// (1.0 = full-time, 0.5 = half-time). It feeds the scheduling
 	// kernel's overallocation detection and resource levelling as the
@@ -70,13 +73,22 @@ func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 	if s.Availability <= 0 {
 		s.Availability = 1
 	}
+	if s.HourlyRateMinorUnits == 0 && s.HourlyRate != 0 {
+		s.HourlyRateMinorUnits = money.FromMajorFloat(s.HourlyRate).MinorUnits
+	}
+	if s.ContractValueMinorUnits == 0 && s.ContractValue != 0 {
+		s.ContractValueMinorUnits = money.FromMajorFloat(s.ContractValue).MinorUnits
+	}
+	s.HourlyRate = money.Amount{MinorUnits: s.HourlyRateMinorUnits}.MajorFloat()
+	s.ContractValue = money.Amount{MinorUnits: s.ContractValueMinorUnits}.MajorFloat()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	_, err := db.Conn.Exec(`
 		INSERT INTO stakeholders (id, project_id, name, role, organisation,
-			email, phone, category, hourly_rate, contract_value, availability,
+			email, phone, category, hourly_rate, hourly_rate_minor_units,
+			contract_value, contract_value_minor_units, availability,
 			notes, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			name           = excluded.name,
 			role           = excluded.role,
@@ -85,13 +97,16 @@ func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 			phone          = excluded.phone,
 			category       = excluded.category,
 			hourly_rate    = excluded.hourly_rate,
+			hourly_rate_minor_units = excluded.hourly_rate_minor_units,
 			contract_value = excluded.contract_value,
+			contract_value_minor_units = excluded.contract_value_minor_units,
 			availability   = excluded.availability,
 			notes          = excluded.notes,
 			updated_at     = excluded.updated_at
 	`,
 		s.ID, s.ProjectID, s.Name, s.Role, s.Organisation,
-		s.Email, s.Phone, string(s.Category), s.HourlyRate, s.ContractValue,
+		s.Email, s.Phone, string(s.Category), s.HourlyRate, s.HourlyRateMinorUnits,
+		s.ContractValue, s.ContractValueMinorUnits,
 		s.Availability, s.Notes,
 		now, now,
 	)
@@ -105,7 +120,9 @@ func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 func (db *Database) GetStakeholder(id string) (Stakeholder, error) {
 	row := db.Conn.QueryRow(`
 		SELECT id, project_id, name, role, organisation, email, phone,
-		       category, hourly_rate, contract_value, availability, notes, created_at, updated_at
+		       category, hourly_rate, hourly_rate_minor_units,
+		       contract_value, contract_value_minor_units,
+		       availability, notes, created_at, updated_at
 		FROM stakeholders WHERE id = ?
 	`, id)
 	return scanStakeholder(row)
@@ -121,13 +138,17 @@ func (db *Database) ListStakeholders(projectID, category string) ([]Stakeholder,
 	if category == "" {
 		rows, err = db.Conn.Query(`
 			SELECT id, project_id, name, role, organisation, email, phone,
-			       category, hourly_rate, contract_value, availability, notes, created_at, updated_at
+			       category, hourly_rate, hourly_rate_minor_units,
+			       contract_value, contract_value_minor_units,
+			       availability, notes, created_at, updated_at
 			FROM stakeholders WHERE project_id = ? ORDER BY name ASC
 		`, projectID)
 	} else {
 		rows, err = db.Conn.Query(`
 			SELECT id, project_id, name, role, organisation, email, phone,
-			       category, hourly_rate, contract_value, availability, notes, created_at, updated_at
+			       category, hourly_rate, hourly_rate_minor_units,
+			       contract_value, contract_value_minor_units,
+			       availability, notes, created_at, updated_at
 			FROM stakeholders WHERE project_id = ? AND category = ? ORDER BY name ASC
 		`, projectID, category)
 	}
@@ -165,7 +186,8 @@ func scanStakeholder(row interface {
 	)
 	err := row.Scan(
 		&s.ID, &s.ProjectID, &s.Name, &s.Role, &s.Organisation,
-		&s.Email, &s.Phone, &category, &s.HourlyRate, &s.ContractValue, &s.Availability, &s.Notes,
+		&s.Email, &s.Phone, &category, &s.HourlyRate, &s.HourlyRateMinorUnits,
+		&s.ContractValue, &s.ContractValueMinorUnits, &s.Availability, &s.Notes,
 		&created, &updated,
 	)
 	if err == sql.ErrNoRows {
@@ -177,5 +199,15 @@ func scanStakeholder(row interface {
 	s.Category = StakeholderCategory(category)
 	s.CreatedAt = created
 	s.UpdatedAt = updated
+	if s.HourlyRateMinorUnits == 0 && s.HourlyRate != 0 {
+		s.HourlyRateMinorUnits = money.FromMajorFloat(s.HourlyRate).MinorUnits
+	} else {
+		s.HourlyRate = money.Amount{MinorUnits: s.HourlyRateMinorUnits}.MajorFloat()
+	}
+	if s.ContractValueMinorUnits == 0 && s.ContractValue != 0 {
+		s.ContractValueMinorUnits = money.FromMajorFloat(s.ContractValue).MinorUnits
+	} else {
+		s.ContractValue = money.Amount{MinorUnits: s.ContractValueMinorUnits}.MajorFloat()
+	}
 	return s, nil
 }

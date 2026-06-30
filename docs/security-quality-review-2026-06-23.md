@@ -67,7 +67,8 @@ but never actually execute in CI — not flaws in the application logic.
   user DEK. Documented and coherent (F6).
 - **Dependencies** — `x/crypto v0.47.0`, `x/net v0.49.0` (`go.mod`) are
   current post-DuckDB tidy; the earlier Dependabot Go advisories are
-  addressed. DuckDB is `duckdb`-tag-gated and absent from default builds.
+  addressed. DuckDB is still `duckdb`-tag-gated, and production/package builds
+  now enable that tag so installers include analytics.
 
 ## Findings
 

@@ -97,7 +97,8 @@ func (db *Database) Migrate() error {
 		auto_repair       INTEGER NOT NULL DEFAULT 1,
 		cert_path         TEXT NOT NULL DEFAULT '',
 		signature_enabled INTEGER NOT NULL DEFAULT 0,
-		default_font      TEXT NOT NULL DEFAULT ''
+		default_font      TEXT NOT NULL DEFAULT '',
+		compliance_mode   INTEGER NOT NULL DEFAULT 0
 	);
 
 	CREATE TABLE IF NOT EXISTS tasks (
@@ -129,6 +130,28 @@ func (db *Database) Migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_log(target_id);
 	CREATE INDEX IF NOT EXISTS idx_audit_ts     ON audit_log(ts);
 
+	CREATE TABLE IF NOT EXISTS audit_events (
+		id                       TEXT PRIMARY KEY,
+		project_id               TEXT NOT NULL,
+		sequence_number          INTEGER NOT NULL,
+		previous_event_hash      TEXT NOT NULL DEFAULT '',
+		event_hash               TEXT NOT NULL,
+		event_type               TEXT NOT NULL,
+		entity_type              TEXT NOT NULL,
+		entity_id                TEXT NOT NULL DEFAULT '',
+		before_canonical_json    TEXT NOT NULL DEFAULT 'null',
+		after_canonical_json     TEXT NOT NULL DEFAULT 'null',
+		user_id                  TEXT NOT NULL DEFAULT '',
+		session_id               TEXT NOT NULL DEFAULT '',
+		timestamp_utc            TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		signature_status         TEXT NOT NULL DEFAULT 'unsigned',
+		signature_blob_optional  TEXT NOT NULL DEFAULT '',
+		UNIQUE(project_id, sequence_number)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_audit_events_project_seq ON audit_events(project_id, sequence_number);
+	CREATE INDEX IF NOT EXISTS idx_audit_events_hash ON audit_events(project_id, event_hash);
+
 	-- ===========================================================
 	-- V2 tables: project lifecycle, charts, documents, templates
 	-- ===========================================================
@@ -149,7 +172,8 @@ func (db *Database) Migrate() error {
 		phase         TEXT NOT NULL DEFAULT 'initiation',
 		start_date    TEXT NOT NULL DEFAULT '',
 		end_date      TEXT NOT NULL DEFAULT '',
-		budget        REAL NOT NULL DEFAULT 0,
+		budget        NUMERIC NOT NULL DEFAULT 0,
+		budget_minor_units INTEGER NOT NULL DEFAULT 0,
 		owner         TEXT NOT NULL DEFAULT '',
 		industry      TEXT NOT NULL DEFAULT '',
 		sub_category  TEXT NOT NULL DEFAULT '',
@@ -199,6 +223,44 @@ func (db *Database) Migrate() error {
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_baselines_chart ON baselines(chart_id);
+
+	-- What-if scenario metadata. Scenario task/baseline branching is
+	-- introduced in later slices; this table establishes the stable
+	-- project-local identity and active-scenario contract.
+	CREATE TABLE IF NOT EXISTS scenarios (
+		id                 TEXT PRIMARY KEY,
+		project_id         TEXT NOT NULL,
+		name               TEXT NOT NULL,
+		source_baseline_id TEXT NOT NULL DEFAULT '',
+		description        TEXT NOT NULL DEFAULT '',
+		is_active          INTEGER NOT NULL DEFAULT 0,
+		created_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		updated_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_scenarios_project ON scenarios(project_id, created_at);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_scenarios_one_active ON scenarios(project_id) WHERE is_active = 1;
+
+	CREATE TABLE IF NOT EXISTS scenario_charts (
+		id                 TEXT PRIMARY KEY,
+		scenario_id        TEXT NOT NULL,
+		project_id         TEXT NOT NULL,
+		source_chart_id    TEXT NOT NULL DEFAULT '',
+		source_baseline_id TEXT NOT NULL DEFAULT '',
+		kind               TEXT NOT NULL DEFAULT '',
+		title              TEXT NOT NULL DEFAULT '',
+		data               TEXT NOT NULL DEFAULT '{}',
+		config             TEXT NOT NULL DEFAULT '{}',
+		baseline_data      TEXT NOT NULL DEFAULT '{}',
+		created_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		updated_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		FOREIGN KEY (scenario_id) REFERENCES scenarios(id) ON DELETE CASCADE,
+		FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_scenario_charts_scenario ON scenario_charts(scenario_id, updated_at);
+	CREATE INDEX IF NOT EXISTS idx_scenario_charts_source ON scenario_charts(project_id, source_chart_id);
 
 	-- Documents table. ` + "`kind`" + ` is one of the 25 document types defined
 	-- in internal/documents/registry.go. ` + "`content`" + ` is JSON keyed by the
@@ -330,8 +392,10 @@ func (db *Database) Migrate() error {
 		email           TEXT NOT NULL DEFAULT '',
 		phone           TEXT NOT NULL DEFAULT '',
 		category        TEXT NOT NULL DEFAULT 'team',  -- team | vendor | sponsor | external
-		hourly_rate     REAL NOT NULL DEFAULT 0,
-		contract_value  REAL NOT NULL DEFAULT 0,
+		hourly_rate     NUMERIC NOT NULL DEFAULT 0,
+		hourly_rate_minor_units INTEGER NOT NULL DEFAULT 0,
+		contract_value  NUMERIC NOT NULL DEFAULT 0,
+		contract_value_minor_units INTEGER NOT NULL DEFAULT 0,
 		availability    REAL NOT NULL DEFAULT 1, -- resource capacity in units (1 = full-time)
 		notes           TEXT NOT NULL DEFAULT '',
 		created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -341,6 +405,27 @@ func (db *Database) Migrate() error {
 
 	CREATE INDEX IF NOT EXISTS idx_stakeholders_project ON stakeholders(project_id);
 	CREATE INDEX IF NOT EXISTS idx_stakeholders_cat     ON stakeholders(project_id, category);
+
+	-- Named resource calendars hold per-resource capacity overrides
+	-- for resource levelling and over-allocation checks. Capacity is
+	-- stored in units (1.0 = full-time), not money.
+	CREATE TABLE IF NOT EXISTS resource_calendars (
+		id               TEXT PRIMARY KEY,
+		project_id       TEXT NOT NULL,
+		resource         TEXT NOT NULL DEFAULT '',
+		name             TEXT NOT NULL DEFAULT '',
+		default_capacity REAL NOT NULL DEFAULT 1,
+		weekly_capacity  TEXT NOT NULL DEFAULT '{}',
+		overrides        TEXT NOT NULL DEFAULT '{}',
+		skill_tags       TEXT NOT NULL DEFAULT '[]',
+		notes            TEXT NOT NULL DEFAULT '{}',
+		created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+		FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_resource_calendars_project ON resource_calendars(project_id);
+	CREATE INDEX IF NOT EXISTS idx_resource_calendars_resource ON resource_calendars(project_id, resource);
 
 	-- Process Excellence Suite (Six Sigma) — MVP 1
 	CREATE TABLE IF NOT EXISTS sigma_projects (
@@ -440,6 +525,7 @@ func (db *Database) migrateLegacyColumns() error {
 		{"sub_category", "ALTER TABLE project ADD COLUMN sub_category TEXT NOT NULL DEFAULT ''"},
 		{"methodology", "ALTER TABLE project ADD COLUMN methodology TEXT NOT NULL DEFAULT ''"},
 		{"country_code", "ALTER TABLE project ADD COLUMN country_code TEXT NOT NULL DEFAULT 'US'"},
+		{"budget_minor_units", "ALTER TABLE project ADD COLUMN budget_minor_units INTEGER NOT NULL DEFAULT 0"},
 	}
 	existing, err := db.columnSet("project")
 	if err != nil {
@@ -451,6 +537,15 @@ func (db *Database) migrateLegacyColumns() error {
 		}
 		if _, err := db.Conn.Exec(c.ddl); err != nil {
 			return fmt.Errorf("add column %s: %w", c.name, err)
+		}
+		if c.name == "budget_minor_units" {
+			if _, err := db.Conn.Exec(
+				`UPDATE project
+				 SET budget_minor_units = CAST(ROUND(budget * 100) AS INTEGER)
+				 WHERE budget_minor_units = 0 AND budget != 0`,
+			); err != nil {
+				return fmt.Errorf("backfill budget_minor_units: %w", err)
+			}
 		}
 	}
 
@@ -465,6 +560,7 @@ func (db *Database) migrateLegacyColumns() error {
 	}{
 		{"default_font", "ALTER TABLE settings ADD COLUMN default_font TEXT NOT NULL DEFAULT ''"},
 		{"agile_enabled", "ALTER TABLE settings ADD COLUMN agile_enabled INTEGER NOT NULL DEFAULT 0"},
+		{"compliance_mode", "ALTER TABLE settings ADD COLUMN compliance_mode INTEGER NOT NULL DEFAULT 0"},
 	}
 	for _, m := range settingsMigrations {
 		if _, ok := settingsCols[m.name]; ok {
@@ -486,6 +582,33 @@ func (db *Database) migrateLegacyColumns() error {
 			"ALTER TABLE stakeholders ADD COLUMN availability REAL NOT NULL DEFAULT 1",
 		); err != nil {
 			return fmt.Errorf("add column availability: %w", err)
+		}
+	}
+	stakeholderMoneyMigrations := []struct {
+		name     string
+		ddl      string
+		backfill string
+	}{
+		{
+			name:     "hourly_rate_minor_units",
+			ddl:      "ALTER TABLE stakeholders ADD COLUMN hourly_rate_minor_units INTEGER NOT NULL DEFAULT 0",
+			backfill: `UPDATE stakeholders SET hourly_rate_minor_units = CAST(ROUND(hourly_rate * 100) AS INTEGER) WHERE hourly_rate_minor_units = 0 AND hourly_rate != 0`,
+		},
+		{
+			name:     "contract_value_minor_units",
+			ddl:      "ALTER TABLE stakeholders ADD COLUMN contract_value_minor_units INTEGER NOT NULL DEFAULT 0",
+			backfill: `UPDATE stakeholders SET contract_value_minor_units = CAST(ROUND(contract_value * 100) AS INTEGER) WHERE contract_value_minor_units = 0 AND contract_value != 0`,
+		},
+	}
+	for _, m := range stakeholderMoneyMigrations {
+		if _, ok := stakeholderCols[m.name]; ok {
+			continue
+		}
+		if _, err := db.Conn.Exec(m.ddl); err != nil {
+			return fmt.Errorf("add column %s: %w", m.name, err)
+		}
+		if _, err := db.Conn.Exec(m.backfill); err != nil {
+			return fmt.Errorf("backfill %s: %w", m.name, err)
 		}
 	}
 	return nil

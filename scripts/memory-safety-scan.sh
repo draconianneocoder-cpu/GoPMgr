@@ -44,6 +44,7 @@ fi
 # are explicitly excluded so the scan stays focused.
 PMF_DIRS="./main.go ./internal ./scripts"
 GO_PACKAGES=". ./internal/..."
+GO_TAGS="${PMFORGE_GO_TAGS:-webkit2_41}"
 
 fail=0
 section () {
@@ -67,9 +68,9 @@ optional_fail_msg () {
 # -------------------------------------------------------------------
 # 1. go vet
 # -------------------------------------------------------------------
-section "go vet $GO_PACKAGES"
+section "go vet -tags $GO_TAGS $GO_PACKAGES"
 if command -v go >/dev/null 2>&1; then
-    if go vet $GO_PACKAGES 2>&1; then
+    if go vet -tags "$GO_TAGS" $GO_PACKAGES 2>&1; then
         ok "go vet clean"
     else
         fail_msg "go vet reported issues (see above)"

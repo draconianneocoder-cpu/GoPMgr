@@ -15,7 +15,9 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -46,6 +48,7 @@ import (
 	"pmforge/internal/calendar"
 	"pmforge/internal/charts"
 	"pmforge/internal/charts/dag"
+	chartstats "pmforge/internal/charts/stats"
 	"pmforge/internal/cli"
 	"pmforge/internal/crypto"
 	"pmforge/internal/db"
@@ -485,6 +488,9 @@ func (a *App) DeleteProject(path string) error {
 			return err
 		}
 	}
+	if err := a.appendProjectDeleteAudit(clean, user.Username); err != nil {
+		return err
+	}
 	projectsDir := filepath.Clean(filepath.Join(user.DataDir, "projects"))
 	parent := filepath.Dir(clean)
 	if parent != projectsDir {
@@ -498,6 +504,40 @@ func (a *App) DeleteProject(path string) error {
 		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
 			return err
 		}
+	}
+	return nil
+}
+
+func (a *App) appendProjectDeleteAudit(path, actor string) error {
+	a.mu.RLock()
+	dek, err := a.requireDEKLocked()
+	a.mu.RUnlock()
+	if err != nil {
+		return err
+	}
+	d, err := db.InitEncryptedDB(path, dek)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = d.Close() }()
+
+	project, err := d.GetProject()
+	if err != nil {
+		return err
+	}
+	before, err := json.Marshal(project)
+	if err != nil {
+		return err
+	}
+	if _, err := d.AppendAuditEvent(db.AuditEventInput{
+		ProjectID:  project.ID,
+		EventType:  "project.delete",
+		EntityType: "project",
+		EntityID:   project.ID,
+		BeforeJSON: string(before),
+		UserID:     actor,
+	}); err != nil {
+		return err
 	}
 	return nil
 }
@@ -813,6 +853,19 @@ func (a *App) SaveAppSettings(s AppSettings) error {
 	return os.WriteFile(path, data, 0o600)
 }
 
+// ResetAppSettings removes the signed-in user's app-level preferences so the
+// next load uses the built-in defaults.
+func (a *App) ResetAppSettings() (AppSettings, error) {
+	path, err := a.appSettingsPath()
+	if err != nil {
+		return AppSettings{}, err
+	}
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return AppSettings{}, err
+	}
+	return defaultAppSettings(), nil
+}
+
 // OpenLogsFolder opens the PMForge log directory in the system file manager
 // so the user can inspect or attach log files to a bug report manually.
 func (a *App) OpenLogsFolder() error {
@@ -933,16 +986,47 @@ func (a *App) OpenProject(path string) (db.Project, error) {
 		}
 		return db.Project{}, err
 	}
-	a.db = d
-	a.dbPath = clean
-	a.adminSvc = admin.NewService(d)
-	a.sigmaSvc = service.NewProjectService(d)
 	proj, projErr := d.GetProject()
+	if projErr != nil {
+		_ = d.Close()
+		return db.Project{}, projErr
+	}
+	if err := verifyProjectAuditForOpen(d, proj); err != nil {
+		_ = d.Close()
+		return db.Project{}, err
+	}
 	// Apply the project's saved document font (no-op if unset). Done
 	// while we still hold the lock since it only reads d + the user's
 	// font dir; configureFonts must not re-acquire a.mu.
 	a.configureFontsLocked(d)
-	return proj, projErr
+	a.db = d
+	a.dbPath = clean
+	a.adminSvc = admin.NewService(d)
+	a.sigmaSvc = service.NewProjectService(d)
+	return proj, nil
+}
+
+func verifyProjectAuditForOpen(d *db.Database, project db.Project) error {
+	settings, err := d.GetSettings()
+	if err != nil {
+		return fmt.Errorf("load compliance settings: %w", err)
+	}
+	if !settings.ComplianceMode {
+		return nil
+	}
+	report, err := d.VerifyAuditChain(project.ID)
+	if err != nil {
+		return fmt.Errorf("audit verification failed: %w", err)
+	}
+	if report.Valid {
+		return nil
+	}
+	return fmt.Errorf(
+		"audit verification failed at sequence %d for event %s: %s",
+		report.FirstInvalidSequence,
+		report.FirstInvalidEventID,
+		report.FirstInvalidReason,
+	)
 }
 
 // IsProjectEncrypted reports whether a .pmforge file is already
@@ -1124,17 +1208,17 @@ func (a *App) LayoutChart(id string) (charts.LayoutResult, error) {
 	var (
 		projectStart time.Time
 		isWorkday    kernel.WorkdayFunc
-		capacities   map[string]float64
+		capacityPlan kernel.ResourceCapacityPlan
 	)
 	if proj, perr := d.GetProject(); perr == nil {
 		if start, ok := parseProjectDate(proj.StartDate); ok {
 			projectStart = start
 			isWorkday = calendar.For(proj.CountryCode).IsWorkday
-			capacities = stakeholderCapacities(d, proj.ID)
+			capacityPlan = resourceCapacityPlan(d, proj.ID)
 		}
 	}
 
-	res, err := charts.LayoutWithSchedule(charts.Kind(c.Kind), c.Data, projectStart, isWorkday, capacities)
+	res, err := charts.LayoutWithSchedulePlan(charts.Kind(c.Kind), c.Data, projectStart, isWorkday, capacityPlan)
 	if err != nil && !errors.Is(err, charts.ErrEngineNotImplemented) {
 		return charts.LayoutResult{}, err
 	}
@@ -1302,6 +1386,81 @@ func (a *App) ComputeScheduleEVM(chartID, asOfDate string) (kernel.EVMetrics, er
 	return kernel.ComputeEVM(tasks, asOfDay), nil
 }
 
+// RunChartMonteCarlo runs probabilistic scheduling for a CPM chart
+// using each task's optional DurationEstimate. Tasks without an
+// estimate use their deterministic Duration.
+func (a *App) RunChartMonteCarlo(chartID string, iterations int, workers int) (kernel.SimResult, error) {
+	d := a.requireDB()
+	if d == nil {
+		return kernel.SimResult{}, errors.New("no project open")
+	}
+	c, err := d.GetChart(chartID)
+	if err != nil {
+		return kernel.SimResult{}, err
+	}
+	if c.Kind != string(charts.KindCPM) {
+		return kernel.SimResult{}, fmt.Errorf("monte carlo requires a CPM chart, got %q", c.Kind)
+	}
+	tasks, err := cpmChartDataToKernelTasks(c.Data)
+	if err != nil {
+		return kernel.SimResult{}, err
+	}
+	if len(tasks) == 0 {
+		return kernel.SimResult{}, errors.New("chart has no tasks")
+	}
+	result := kernel.RunMonteCarlo(tasks, iterations, workers)
+	if !result.Valid {
+		return result, errors.New(result.Error)
+	}
+	return result, nil
+}
+
+// ExportChartMonteCarloRiskReport runs probabilistic scheduling for a CPM
+// chart and writes a PDF/A-tagged Monte Carlo risk report to the user's
+// private exports folder.
+func (a *App) ExportChartMonteCarloRiskReport(chartID string, iterations int, workers int) (string, error) {
+	u := a.requireUser()
+	d := a.requireDB()
+	if u == nil || d == nil {
+		return "", errors.New("not signed in or no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return "", err
+	}
+	c, err := d.GetChart(chartID)
+	if err != nil {
+		return "", err
+	}
+	if c.Kind != string(charts.KindCPM) {
+		return "", fmt.Errorf("monte carlo risk report requires a CPM chart, got %q", c.Kind)
+	}
+	result, err := a.RunChartMonteCarlo(chartID, iterations, workers)
+	if err != nil {
+		return "", err
+	}
+	raw, err := export.GenerateMonteCarloRiskReport(export.MonteCarloRiskReportSpec{
+		ProjectName: proj.Name,
+		ChartTitle:  c.Title,
+		Result:      result,
+	})
+	if err != nil {
+		return "", err
+	}
+	outDir := filepath.Join(u.DataDir, "exports")
+	if err := os.MkdirAll(outDir, 0o700); err != nil {
+		return "", err
+	}
+	outPath := filepath.Join(outDir, fmt.Sprintf("Monte-Carlo-Risk-Report-%s-%s.pdf",
+		sanitizeFilename(c.Title),
+		time.Now().UTC().Format("20060102-150405"),
+	))
+	if err := os.WriteFile(outPath, raw, 0o600); err != nil {
+		return "", err
+	}
+	return outPath, nil
+}
+
 // LevelChartResources runs the kernel's serial resource-levelling
 // pass on a CPM chart and PERSISTS the result: every task that
 // levelling delayed beyond its precedence-earliest start gets a SNET
@@ -1355,7 +1514,7 @@ func (a *App) LevelChartResources(chartID string) (int, error) {
 		return 0, err
 	}
 	kernel.ApplyConstraintDates(levelled, start, cal.IsWorkday)
-	if !kernel.LevelResources(levelled, stakeholderCapacities(d, proj.ID)) {
+	if !kernel.LevelResourcesWithPlan(levelled, resourceCapacityPlan(d, proj.ID)) {
 		return 0, errors.New("chart contains a dependency cycle")
 	}
 	kernel.AnchorSchedule(levelled, start, cal.IsWorkday)
@@ -1458,16 +1617,13 @@ func (a *App) GenerateResourceHistogram(chartID string) (db.Chart, error) {
 	}
 	sort.Strings(resources)
 
-	type barSeries struct {
-		Name   string    `json:"name"`
-		Values []float64 `json:"values"`
-	}
+	capacityProfiles := kernel.ResourceCapacityProfiles(resourceCapacityPlan(d, proj.ID), resources, horizon)
 	barDoc := struct {
-		Title      string      `json:"title"`
-		XLabel     string      `json:"x_label"`
-		YLabel     string      `json:"y_label"`
-		Categories []string    `json:"categories"`
-		Series     []barSeries `json:"series"`
+		Title      string                 `json:"title"`
+		XLabel     string                 `json:"x_label"`
+		YLabel     string                 `json:"y_label"`
+		Categories []string               `json:"categories"`
+		Series     []chartstats.BarSeries `json:"series"`
 	}{
 		Title:      "Resource usage — " + c.Title,
 		XLabel:     "Day",
@@ -1477,7 +1633,18 @@ func (a *App) GenerateResourceHistogram(chartID string) (db.Chart, error) {
 	for _, r := range resources {
 		values := make([]float64, horizon)
 		copy(values, usage[r])
-		barDoc.Series = append(barDoc.Series, barSeries{Name: r, Values: values})
+		barDoc.Series = append(barDoc.Series, chartstats.BarSeries{Name: r, Values: values})
+	}
+	for _, r := range resources {
+		values := make([]float64, horizon)
+		copy(values, capacityProfiles[r])
+		barDoc.Series = append(barDoc.Series, chartstats.BarSeries{
+			Name:   r + " capacity",
+			Values: values,
+			Type:   "line",
+			Color:  "#f59e0b",
+			Dashed: true,
+		})
 	}
 
 	blob, err := json.Marshal(barDoc)
@@ -1780,6 +1947,7 @@ func (a *App) ExportCombinedReport(reportTitle, subtitle string, sections []docu
 		ProjectName:    proj.Name,
 		Sections:       sections,
 		ResolvedCharts: resolvedCharts,
+		ResolvedEVM:    resolvedEVMForCharts(proj, resolvedCharts, time.Now().UTC()),
 	}, resolved)
 	if err != nil {
 		return "", err
@@ -1814,6 +1982,7 @@ func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections 
 	if err != nil {
 		return "", err
 	}
+	reportID := combinedReportCheckpointID(proj.ID, reportTitle, subtitle, sections)
 
 	// Resolve sections + charts (same logic as unsigned version)
 	resolved := make([]documents.ResolvedSection, 0, len(sections))
@@ -1821,6 +1990,7 @@ func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections 
 	for _, s := range sections {
 		doc, err := d.GetDocument(s.DocumentID)
 		if err != nil {
+			logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("section %s: %v", s.DocumentID, err), "")
 			return "", fmt.Errorf("section %s: %w", s.DocumentID, err)
 		}
 		if s.Title == "" {
@@ -1854,32 +2024,39 @@ func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections 
 		ProjectName:       proj.Name,
 		Sections:          sections,
 		ResolvedCharts:    resolvedCharts,
+		ResolvedEVM:       resolvedEVMForCharts(proj, resolvedCharts, time.Now().UTC()),
 		AddSignatureBlock: true,
 	}, resolved)
 	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("build report: %v", err), "")
 		return "", err
 	}
 
 	// Apply real PAdES B-B signature
 	signer, err := crypto.LoadCertificate(certPath, certPassword)
 	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("load certificate: %v", err), "")
 		return "", fmt.Errorf("load certificate: %w", err)
 	}
 
 	signedBytes, err := pdfmeta.InjectPAdESSignature(bytes, signer.SignPDFCMS)
 	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("pades embedding: %v", err), "")
 		return "", fmt.Errorf("pades embedding: %w", err)
 	}
 
 	outDir := filepath.Join(u.DataDir, "exports")
 	if err := os.MkdirAll(outDir, 0o700); err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("create exports dir: %v", err), "")
 		return "", err
 	}
 	stamp := time.Now().UTC().Format("20060102-150405")
 	outPath := filepath.Join(outDir, fmt.Sprintf("%s-%s-signed.pdf", sanitizeFilename(reportTitle), stamp))
 	if err := os.WriteFile(outPath, signedBytes, 0o600); err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("write signed report: %v", err), "")
 		return "", err
 	}
+	logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, true, "Combined report signed successfully.", outPath)
 	return outPath, nil
 }
 
@@ -2142,6 +2319,39 @@ func stakeholderCapacities(d *db.Database, projectID string) map[string]float64 
 	return out
 }
 
+func resourceCapacityPlan(d *db.Database, projectID string) kernel.ResourceCapacityPlan {
+	plan := kernel.ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Capacities:      stakeholderCapacities(d, projectID),
+	}
+	calendars, err := d.ListResourceCalendars(projectID)
+	if err != nil || len(calendars) == 0 {
+		return plan
+	}
+	plan.Calendars = make(map[string]kernel.ResourceCalendar, len(calendars))
+	for _, c := range calendars {
+		cal := kernel.ResourceCalendar{
+			ID:              c.ID,
+			Resource:        c.Resource,
+			DefaultCapacity: c.DefaultCapacity,
+			Overrides:       c.Overrides,
+			WeeklyCapacity:  c.WeeklyCapacity,
+			Notes:           c.Notes,
+			SkillTags:       c.SkillTags,
+		}
+		if c.Resource != "" {
+			plan.Calendars[c.Resource] = cal
+		}
+		if c.ID != "" {
+			plan.Calendars[c.ID] = cal
+		}
+		if c.Name != "" {
+			plan.Calendars[c.Name] = cal
+		}
+	}
+	return plan
+}
+
 // scheduleProjectTasks runs the full scheduling pipeline on a kernel
 // task map: date constraints are armed against the project start date
 // and country work calendar, CPM computes the schedule, and the
@@ -2206,20 +2416,26 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 	}
 	var doc struct {
 		Nodes []struct {
-			ID              string  `json:"id"`
-			Label           string  `json:"label"`
-			Duration        float64 `json:"duration"`
-			Constraint      string  `json:"constraint"`
-			ConstraintDate  string  `json:"constraint_date"`
-			PercentComplete float64 `json:"percent_complete"`
-			Milestone       bool    `json:"milestone"`
-			ActualStart     string  `json:"actual_start"`
-			ActualFinish    string  `json:"actual_finish"`
-			BudgetedCost    float64 `json:"budgeted_cost"`
-			ActualCost      float64 `json:"actual_cost"`
-			Assignments     []struct {
-				Resource string  `json:"resource"`
-				Units    float64 `json:"units"`
+			ID                     string                  `json:"id"`
+			Label                  string                  `json:"label"`
+			Duration               float64                 `json:"duration"`
+			DurationEstimate       kernel.DurationEstimate `json:"duration_estimate"`
+			Constraint             string                  `json:"constraint"`
+			ConstraintDate         string                  `json:"constraint_date"`
+			PercentComplete        float64                 `json:"percent_complete"`
+			Milestone              bool                    `json:"milestone"`
+			ActualStart            string                  `json:"actual_start"`
+			ActualFinish           string                  `json:"actual_finish"`
+			BudgetedCost           float64                 `json:"budgeted_cost"`
+			BudgetedCostMinorUnits int64                   `json:"budgeted_cost_minor_units"`
+			ActualCost             float64                 `json:"actual_cost"`
+			ActualCostMinorUnits   int64                   `json:"actual_cost_minor_units"`
+			Assignments            []struct {
+				Resource   string   `json:"resource"`
+				Units      float64  `json:"units"`
+				CalendarID string   `json:"calendar_id"`
+				SkillTags  []string `json:"skill_tags"`
+				MaxUnits   float64  `json:"max_units"`
 			} `json:"assignments"`
 		} `json:"nodes"`
 		Edges []struct {
@@ -2235,22 +2451,28 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 	tasks := make(map[string]*kernel.Task, len(doc.Nodes))
 	for _, n := range doc.Nodes {
 		t := &kernel.Task{
-			ID:              n.ID,
-			Title:           n.Label,
-			Duration:        n.Duration,
-			Constraint:      kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(n.Constraint))),
-			ConstraintDate:  n.ConstraintDate,
-			PercentComplete: n.PercentComplete,
-			Milestone:       n.Milestone,
-			ActualStart:     n.ActualStart,
-			ActualFinish:    n.ActualFinish,
-			BudgetedCost:    n.BudgetedCost,
-			ActualCost:      n.ActualCost,
+			ID:                     n.ID,
+			Title:                  n.Label,
+			Duration:               n.Duration,
+			DurationEstimate:       n.DurationEstimate,
+			Constraint:             kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(n.Constraint))),
+			ConstraintDate:         n.ConstraintDate,
+			PercentComplete:        n.PercentComplete,
+			Milestone:              n.Milestone,
+			ActualStart:            n.ActualStart,
+			ActualFinish:           n.ActualFinish,
+			BudgetedCost:           n.BudgetedCost,
+			BudgetedCostMinorUnits: n.BudgetedCostMinorUnits,
+			ActualCost:             n.ActualCost,
+			ActualCostMinorUnits:   n.ActualCostMinorUnits,
 		}
 		for _, a := range n.Assignments {
 			t.Assignments = append(t.Assignments, kernel.Assignment{
-				Resource: a.Resource,
-				Units:    a.Units,
+				Resource:   a.Resource,
+				Units:      a.Units,
+				CalendarID: a.CalendarID,
+				SkillTags:  a.SkillTags,
+				MaxUnits:   a.MaxUnits,
 			})
 		}
 		tasks[n.ID] = t
@@ -2342,6 +2564,7 @@ func (a *App) ExportDocumentPDFSigned(id, certPath, certPassword string) (string
 
 	bytes, err := documents.RenderSigned(documents.Kind(doc.Kind), doc.Content, proj.Name, certPath, certPassword)
 	if err != nil {
+		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
 		return "", err
 	}
 
@@ -2352,8 +2575,10 @@ func (a *App) ExportDocumentPDFSigned(id, certPath, certPassword string) (string
 	outPath := filepath.Join(outDir, fmt.Sprintf("%s-%s-signed.pdf",
 		sanitizeFilename(doc.Title), time.Now().UTC().Format("20060102-150405")))
 	if err := os.WriteFile(outPath, bytes, 0o600); err != nil {
+		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
 		return "", err
 	}
+	admin.NewService(d).LogSignatureEvent(doc.ID, true, nil)
 	return outPath, nil
 }
 
@@ -2375,6 +2600,172 @@ func (a *App) SaveSettings(s db.UserSettings) error {
 		return errors.New("no project open")
 	}
 	return d.SaveSettings(s)
+}
+
+func (a *App) ResetProjectSettings() (db.UserSettings, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.UserSettings{}, errors.New("no project open")
+	}
+	defaults := db.DefaultUserSettings()
+	if err := d.SaveSettings(defaults); err != nil {
+		return db.UserSettings{}, err
+	}
+	agile.PackEnabled.Store(defaults.AgileEnabled)
+	documents.UseFont(nil, "")
+	return defaults, nil
+}
+
+type auditVerificationReportFile struct {
+	ProjectID            string `json:"project_id"`
+	GeneratedAtUTC       string `json:"generated_at_utc"`
+	CheckedEvents        int    `json:"checked_events"`
+	Valid                bool   `json:"valid"`
+	FirstInvalidSequence int64  `json:"first_invalid_sequence,omitempty"`
+	FirstInvalidEventID  string `json:"first_invalid_event_id,omitempty"`
+	FirstInvalidReason   string `json:"first_invalid_reason,omitempty"`
+	TerminalEventHash    string `json:"terminal_event_hash,omitempty"`
+}
+
+type auditRepairEvidenceEventFile struct {
+	ID                    string `json:"id"`
+	ProjectID             string `json:"project_id"`
+	SequenceNumber        int64  `json:"sequence_number"`
+	PreviousEventHash     string `json:"previous_event_hash"`
+	EventHash             string `json:"event_hash"`
+	EventType             string `json:"event_type"`
+	EntityType            string `json:"entity_type"`
+	EntityID              string `json:"entity_id"`
+	BeforeCanonicalJSON   string `json:"before_canonical_json"`
+	AfterCanonicalJSON    string `json:"after_canonical_json"`
+	UserID                string `json:"user_id"`
+	SessionID             string `json:"session_id"`
+	TimestampUTC          string `json:"timestamp_utc"`
+	SignatureStatus       string `json:"signature_status"`
+	SignatureBlobOptional string `json:"signature_blob_optional,omitempty"`
+	SignatureBlobLength   int    `json:"signature_blob_length"`
+}
+
+type auditRepairEvidenceFile struct {
+	ProjectID      string                         `json:"project_id"`
+	GeneratedAtUTC string                         `json:"generated_at_utc"`
+	Verification   auditVerificationReportFile    `json:"verification"`
+	Events         []auditRepairEvidenceEventFile `json:"events"`
+}
+
+// ExportAuditVerificationReport writes a private JSON artifact describing
+// the current project's tamper-evident audit-chain verification result.
+func (a *App) ExportAuditVerificationReport() (string, error) {
+	d := a.requireDB()
+	u := a.requireUser()
+	if d == nil || u == nil {
+		return "", errors.New("not signed in or no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return "", err
+	}
+	verification, err := d.VerifyAuditChain(proj.ID)
+	if err != nil {
+		return "", err
+	}
+	report := auditVerificationReportFile{
+		ProjectID:            verification.ProjectID,
+		GeneratedAtUTC:       time.Now().UTC().Format(time.RFC3339Nano),
+		CheckedEvents:        verification.CheckedEvents,
+		Valid:                verification.Valid,
+		FirstInvalidSequence: verification.FirstInvalidSequence,
+		FirstInvalidEventID:  verification.FirstInvalidEventID,
+		FirstInvalidReason:   verification.FirstInvalidReason,
+		TerminalEventHash:    verification.TerminalEventHash,
+	}
+	bytes, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	outDir := filepath.Join(u.DataDir, "exports")
+	if err := os.MkdirAll(outDir, 0o700); err != nil {
+		return "", err
+	}
+	outPath := filepath.Join(outDir, fmt.Sprintf("%s-audit-verification-%s.json",
+		sanitizeFilename(proj.Name), time.Now().UTC().Format("20060102-150405")))
+	if err := os.WriteFile(outPath, bytes, 0o600); err != nil {
+		return "", err
+	}
+	return outPath, nil
+}
+
+// ExportAuditRepairEvidence preserves the current raw audit_events rows
+// beside their verification result. It intentionally does not mutate or
+// repair the project database.
+func (a *App) ExportAuditRepairEvidence() (string, error) {
+	d := a.requireDB()
+	u := a.requireUser()
+	if d == nil || u == nil {
+		return "", errors.New("not signed in or no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return "", err
+	}
+	verification, err := d.VerifyAuditChain(proj.ID)
+	if err != nil {
+		return "", err
+	}
+	events, err := d.ListAuditEvents(proj.ID)
+	if err != nil {
+		return "", err
+	}
+	generatedAt := time.Now().UTC()
+	evidence := auditRepairEvidenceFile{
+		ProjectID:      proj.ID,
+		GeneratedAtUTC: generatedAt.Format(time.RFC3339Nano),
+		Verification: auditVerificationReportFile{
+			ProjectID:            verification.ProjectID,
+			GeneratedAtUTC:       generatedAt.Format(time.RFC3339Nano),
+			CheckedEvents:        verification.CheckedEvents,
+			Valid:                verification.Valid,
+			FirstInvalidSequence: verification.FirstInvalidSequence,
+			FirstInvalidEventID:  verification.FirstInvalidEventID,
+			FirstInvalidReason:   verification.FirstInvalidReason,
+			TerminalEventHash:    verification.TerminalEventHash,
+		},
+		Events: make([]auditRepairEvidenceEventFile, 0, len(events)),
+	}
+	for _, event := range events {
+		evidence.Events = append(evidence.Events, auditRepairEvidenceEventFile{
+			ID:                    event.ID,
+			ProjectID:             event.ProjectID,
+			SequenceNumber:        event.SequenceNumber,
+			PreviousEventHash:     event.PreviousEventHash,
+			EventHash:             event.EventHash,
+			EventType:             event.EventType,
+			EntityType:            event.EntityType,
+			EntityID:              event.EntityID,
+			BeforeCanonicalJSON:   event.BeforeCanonicalJSON,
+			AfterCanonicalJSON:    event.AfterCanonicalJSON,
+			UserID:                event.UserID,
+			SessionID:             event.SessionID,
+			TimestampUTC:          event.TimestampUTC,
+			SignatureStatus:       event.SignatureStatus,
+			SignatureBlobOptional: event.SignatureBlobOptional,
+			SignatureBlobLength:   len(event.SignatureBlobOptional),
+		})
+	}
+	bytes, err := json.MarshalIndent(evidence, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	outDir := filepath.Join(u.DataDir, "exports")
+	if err := os.MkdirAll(outDir, 0o700); err != nil {
+		return "", err
+	}
+	outPath := filepath.Join(outDir, fmt.Sprintf("%s-audit-repair-evidence-%s.json",
+		sanitizeFilename(proj.Name), generatedAt.Format("20060102-150405")))
+	if err := os.WriteFile(outPath, bytes, 0o600); err != nil {
+		return "", err
+	}
+	return outPath, nil
 }
 
 func (a *App) SecureArchive(projectPath string) (string, error) {
@@ -2797,6 +3188,255 @@ func (a *App) DeleteStakeholder(id string) error {
 	return d.DeleteStakeholder(id)
 }
 
+// ----- Resource calendars -----
+
+// ListResourceCalendars returns every named resource-capacity calendar
+// for the open project.
+func (a *App) ListResourceCalendars() ([]db.ResourceCalendar, error) {
+	d := a.requireDB()
+	if d == nil {
+		return nil, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	return d.ListResourceCalendars(p.ID)
+}
+
+// SaveResourceCalendar upserts a resource-capacity calendar for the
+// open project. The current project ID always wins over frontend input.
+func (a *App) SaveResourceCalendar(c db.ResourceCalendar) (db.ResourceCalendar, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.ResourceCalendar{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.ResourceCalendar{}, err
+	}
+	c.ProjectID = p.ID
+	return d.SaveResourceCalendar(c)
+}
+
+// DeleteResourceCalendar removes a named resource-capacity calendar.
+func (a *App) DeleteResourceCalendar(id string) error {
+	d := a.requireDB()
+	if d == nil {
+		return errors.New("no project open")
+	}
+	return d.DeleteResourceCalendar(id)
+}
+
+// ----- Scenarios / what-if analysis -----
+
+// ListScenarios returns what-if scenario metadata for the open project.
+func (a *App) ListScenarios() ([]db.Scenario, error) {
+	d := a.requireDB()
+	if d == nil {
+		return nil, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	return d.ListScenarios(p.ID)
+}
+
+// GetScenario fetches one scenario by ID for the open project.
+func (a *App) GetScenario(id string) (db.Scenario, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Scenario{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Scenario{}, err
+	}
+	s, err := d.GetScenario(id)
+	if err != nil {
+		return db.Scenario{}, err
+	}
+	if s.ProjectID != p.ID {
+		return db.Scenario{}, db.ErrNoScenario
+	}
+	return s, nil
+}
+
+// SaveScenario upserts scenario metadata for the open project. The
+// frontend-supplied project ID is ignored so scenarios cannot be
+// written across project boundaries.
+func (a *App) SaveScenario(s db.Scenario) (db.Scenario, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Scenario{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Scenario{}, err
+	}
+	s.ProjectID = p.ID
+	return d.SaveScenario(s)
+}
+
+// DeleteScenario removes one scenario from the open project.
+func (a *App) DeleteScenario(id string) error {
+	d := a.requireDB()
+	if d == nil {
+		return errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return err
+	}
+	s, err := d.GetScenario(id)
+	if err != nil {
+		return err
+	}
+	if s.ProjectID != p.ID {
+		return db.ErrNoScenario
+	}
+	return d.DeleteScenario(id)
+}
+
+// BranchScenarioChart copies a live chart and optional baseline into an
+// isolated scenario partition for the open project.
+func (a *App) BranchScenarioChart(scenarioID, chartID, baselineID string) (db.ScenarioChart, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.ScenarioChart{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.ScenarioChart{}, err
+	}
+	s, err := d.GetScenario(scenarioID)
+	if err != nil {
+		return db.ScenarioChart{}, err
+	}
+	if s.ProjectID != p.ID {
+		return db.ScenarioChart{}, db.ErrNoScenario
+	}
+	return d.BranchScenarioChart(scenarioID, chartID, baselineID)
+}
+
+// ListScenarioCharts returns isolated chart copies for a scenario in the
+// open project.
+func (a *App) ListScenarioCharts(scenarioID string) ([]db.ScenarioChart, error) {
+	d := a.requireDB()
+	if d == nil {
+		return nil, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	s, err := d.GetScenario(scenarioID)
+	if err != nil {
+		return nil, err
+	}
+	if s.ProjectID != p.ID {
+		return nil, db.ErrNoScenario
+	}
+	return d.ListScenarioCharts(scenarioID)
+}
+
+// GetScenarioChart fetches one isolated scenario chart copy in the open
+// project.
+func (a *App) GetScenarioChart(id string) (db.ScenarioChart, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.ScenarioChart{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.ScenarioChart{}, err
+	}
+	c, err := d.GetScenarioChart(id)
+	if err != nil {
+		return db.ScenarioChart{}, err
+	}
+	if c.ProjectID != p.ID {
+		return db.ScenarioChart{}, db.ErrNoScenarioChart
+	}
+	return c, nil
+}
+
+// SaveScenarioChart updates the editable fields of an isolated scenario
+// chart copy in the open project.
+func (a *App) SaveScenarioChart(c db.ScenarioChart) (db.ScenarioChart, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.ScenarioChart{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.ScenarioChart{}, err
+	}
+	existing, err := d.GetScenarioChart(c.ID)
+	if err != nil {
+		return db.ScenarioChart{}, err
+	}
+	if existing.ProjectID != p.ID {
+		return db.ScenarioChart{}, db.ErrNoScenarioChart
+	}
+	return d.SaveScenarioChart(c)
+}
+
+// PromoteScenarioChartToBaseline approves an isolated scenario chart copy
+// by saving its current data as a named baseline on the source chart.
+func (a *App) PromoteScenarioChartToBaseline(scenarioChartID, name string) (db.Baseline, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Baseline{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Baseline{}, err
+	}
+	scenarioChart, err := d.GetScenarioChart(scenarioChartID)
+	if err != nil {
+		return db.Baseline{}, err
+	}
+	if scenarioChart.ProjectID != p.ID {
+		return db.Baseline{}, db.ErrNoScenarioChart
+	}
+	return d.PromoteScenarioChartToBaseline(scenarioChartID, name)
+}
+
+// CompareScenarioChart diffs an isolated scenario chart copy against the
+// baseline snapshot captured with that copy.
+func (a *App) CompareScenarioChart(scenarioChartID string) (map[string]kernel.ScheduleVariance, error) {
+	d := a.requireDB()
+	if d == nil {
+		return nil, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	scenarioChart, err := d.GetScenarioChart(scenarioChartID)
+	if err != nil {
+		return nil, err
+	}
+	if scenarioChart.ProjectID != p.ID {
+		return nil, db.ErrNoScenarioChart
+	}
+	if scenarioChart.BaselineData == "" || scenarioChart.BaselineData == "{}" {
+		return map[string]kernel.ScheduleVariance{}, nil
+	}
+	baseline := make(map[string]*kernel.Task)
+	if err := json.Unmarshal([]byte(scenarioChart.BaselineData), &baseline); err != nil {
+		return nil, fmt.Errorf("scenario baseline %s is corrupt: %w", scenarioChart.ID, err)
+	}
+	current, err := cpmChartDataToKernelTasks(scenarioChart.Data)
+	if err != nil {
+		return nil, err
+	}
+	scheduleProjectTasks(p, current)
+	return kernel.CompareSchedules(current, baseline), nil
+}
+
 // ----- Timeline + Budget -----
 
 var errTimelineSourceMismatch = errors.New("timeline: source id does not match open project")
@@ -2970,13 +3610,12 @@ func (a *App) ComputeBudget() (budget.Summary, error) {
 }
 
 // RunPortfolioAnalytics aggregates a cross-project cost rollup over every
-// readable project in the signed-in user's folder using the optional
+// readable project in the signed-in user's folder using the embedded
 // DuckDB analytics engine (ADR-002 Option B). The engine is in-memory and
 // ephemeral and never opens the encrypted files: this method reads each
 // project with the session DEK, builds the per-project figures in Go, and
-// passes them in. In the default build (no `duckdb` tag) the engine is a
-// no-op and this returns analytics.ErrAnalyticsUnavailable, which the UI
-// renders as "analytics not included in this build".
+// passes them in. Production/package builds include the `duckdb` tag; an
+// untagged developer build still returns analytics.ErrAnalyticsUnavailable.
 //
 // Per-project actual cost is the budget "committed" total (vendor
 // contracts + labour estimate); earned/planned value (EVM) aggregation is
@@ -3019,19 +3658,24 @@ func (a *App) RunPortfolioAnalytics() (analytics.PortfolioSummary, error) {
 			continue
 		}
 		var committed float64
+		var committedMinorUnits int64
 		if sks, serr := d.ListStakeholders(p.ID, ""); serr == nil {
 			wis, _ := agile.NewStore(d.Conn, p.ID).ListWorkItems("", "", "")
-			committed = budget.Compute(p, sks, wis).Committed
+			summary := budget.Compute(p, sks, wis)
+			committed = summary.Committed
+			committedMinorUnits = summary.CommittedMinorUnits
 		}
 		name := strings.TrimSpace(p.Name)
 		if name == "" {
 			name = e.Name
 		}
 		metrics = append(metrics, analytics.ProjectMetrics{
-			ProjectID:    p.ID,
-			Name:         name,
-			BudgetedCost: p.Budget,
-			ActualCost:   committed,
+			ProjectID:              p.ID,
+			Name:                   name,
+			BudgetedCost:           p.Budget,
+			ActualCost:             committed,
+			BudgetedCostMinorUnits: p.BudgetMinorUnits,
+			ActualCostMinorUnits:   committedMinorUnits,
 		})
 		_ = d.Close()
 	}
@@ -3042,9 +3686,9 @@ func (a *App) RunPortfolioAnalytics() (analytics.PortfolioSummary, error) {
 // ImportDatasetForAnalysis opens a native file picker for a CSV/Parquet/JSON
 // file and reads it into an in-memory Dataset via the DuckDB analytics engine
 // (ADR-002 Option B). Returns an empty Dataset (no error) when the user
-// cancels. In the default build the engine is a no-op and this returns
-// analytics.ErrAnalyticsUnavailable. `.xlsx` is not handled here — the Sigma
-// import uses the frontend read-excel-file reader.
+// cancels. Production/package builds include DuckDB; untagged developer builds
+// return analytics.ErrAnalyticsUnavailable. `.xlsx` is not handled here — the
+// Sigma import uses the frontend read-excel-file reader.
 func (a *App) ImportDatasetForAnalysis() (analytics.Dataset, error) {
 	if a.requireUser() == nil {
 		return analytics.Dataset{}, errors.New("not signed in")
@@ -3661,6 +4305,106 @@ func collectChartRefs(contentJSON string, fields []documents.Field) []string {
 		if id, ok := m[f.Key].(string); ok && id != "" {
 			out = append(out, id)
 		}
+	}
+	return out
+}
+
+func combinedReportCheckpointID(projectID, reportTitle, subtitle string, sections []documents.ReportSection) string {
+	payload := struct {
+		ProjectID   string                    `json:"project_id"`
+		ReportTitle string                    `json:"report_title"`
+		Subtitle    string                    `json:"subtitle"`
+		Sections    []documents.ReportSection `json:"sections"`
+	}{
+		ProjectID:   projectID,
+		ReportTitle: reportTitle,
+		Subtitle:    subtitle,
+		Sections:    append([]documents.ReportSection(nil), sections...),
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return "report_invalid"
+	}
+	sum := sha256.Sum256(data)
+	return "report_" + hex.EncodeToString(sum[:])
+}
+
+func logCombinedReportSignatureEvent(d *db.Database, projectID, reportID, reportTitle, subtitle string, sections []documents.ReportSection, signed bool, details, outputPath string) {
+	status := "failed"
+	signatureStatus := "failed"
+	if signed {
+		status = "signed"
+		signatureStatus = "signed"
+	}
+	payload, err := json.Marshal(struct {
+		ReportID     string                    `json:"report_id"`
+		ReportTitle  string                    `json:"report_title"`
+		Subtitle     string                    `json:"subtitle"`
+		SectionCount int                       `json:"section_count"`
+		Sections     []documents.ReportSection `json:"sections"`
+		Status       string                    `json:"status"`
+		Details      string                    `json:"details,omitempty"`
+		OutputPath   string                    `json:"output_path,omitempty"`
+	}{
+		ReportID:     reportID,
+		ReportTitle:  reportTitle,
+		Subtitle:     subtitle,
+		SectionCount: len(sections),
+		Sections:     append([]documents.ReportSection(nil), sections...),
+		Status:       status,
+		Details:      details,
+		OutputPath:   outputPath,
+	})
+	if err != nil {
+		log.Printf("combined report signature audit payload failed: %v", err)
+		return
+	}
+	if _, err := d.AppendAuditEvent(db.AuditEventInput{
+		ProjectID:       projectID,
+		EventType:       "combined_report.signature",
+		EntityType:      "combined_report",
+		EntityID:        reportID,
+		AfterJSON:       string(payload),
+		SignatureStatus: signatureStatus,
+	}); err != nil {
+		log.Printf("combined report signature audit event failed: %v", err)
+	}
+}
+
+func resolvedEVMForCharts(proj db.Project, resolvedCharts map[string]documents.ResolvedChart, asOf time.Time) map[string]*kernel.EVMetrics {
+	if len(resolvedCharts) == 0 {
+		return nil
+	}
+	start, ok := parseProjectDate(proj.StartDate)
+	if !ok {
+		return nil
+	}
+	cal := calendar.For(proj.CountryCode)
+	day, ok := kernel.DayOffset(start, asOf, cal.IsWorkday)
+	if !ok {
+		return nil
+	}
+
+	out := make(map[string]*kernel.EVMetrics)
+	for id, c := range resolvedCharts {
+		kind := charts.Kind(c.Kind)
+		if kind != charts.KindCPM && kind != charts.KindGantt {
+			continue
+		}
+		tasks, err := cpmChartDataToKernelTasks(c.Data)
+		if err != nil || len(tasks) == 0 {
+			continue
+		}
+		scheduleProjectTasks(proj, tasks)
+		metrics := kernel.ComputeEVM(tasks, day)
+		if metrics.BAC <= 0 {
+			continue
+		}
+		m := metrics
+		out[id] = &m
+	}
+	if len(out) == 0 {
+		return nil
 	}
 	return out
 }

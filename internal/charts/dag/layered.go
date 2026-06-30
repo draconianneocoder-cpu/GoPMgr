@@ -31,6 +31,9 @@ type LayeredNode struct {
 	// Network / CPM input
 	Duration float64 `json:"duration,omitempty"`
 
+	// CPM Monte Carlo input: optional three-point duration estimate.
+	DurationEstimate kernel.DurationEstimate `json:"duration_estimate,omitempty"`
+
 	// PERT input
 	Optimistic  float64 `json:"o,omitempty"`
 	MostLikely  float64 `json:"m,omitempty"`
@@ -71,9 +74,12 @@ type LayeredNode struct {
 	ActualFinish    string  `json:"actual_finish,omitempty"`
 
 	// Cost tracking for EVM (input): task budget at completion and
-	// actual cost to date.
-	BudgetedCost float64 `json:"budgeted_cost,omitempty"`
-	ActualCost   float64 `json:"actual_cost,omitempty"`
+	// actual cost to date. MinorUnits fields are canonical when
+	// present; float fields remain for UI compatibility.
+	BudgetedCost           float64 `json:"budgeted_cost,omitempty"`
+	BudgetedCostMinorUnits int64   `json:"budgeted_cost_minor_units,omitempty"`
+	ActualCost             float64 `json:"actual_cost,omitempty"`
+	ActualCostMinorUnits   int64   `json:"actual_cost_minor_units,omitempty"`
 
 	// Resource assignments (input) and the computed overallocation
 	// flag (set by the CPM layout paths via DetectOverallocations).

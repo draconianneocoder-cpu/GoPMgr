@@ -12,6 +12,7 @@ import (
 	"github.com/go-pdf/fpdf"
 
 	"pmforge/internal/charts/pdfrender"
+	"pmforge/internal/kernel"
 	"pmforge/internal/pdfmeta"
 )
 
@@ -30,12 +31,13 @@ type ReportSection struct {
 // keyed by chart ID; missing entries fall back to a text line.
 // Pre-resolution keeps this package free of database dependencies.
 type ReportSpec struct {
-	ReportTitle    string                   `json:"report_title"`
-	Subtitle       string                   `json:"subtitle"`
-	Author         string                   `json:"author"`
-	ProjectName    string                   `json:"project_name"`
-	Sections       []ReportSection          `json:"sections"`
-	ResolvedCharts map[string]ResolvedChart `json:"-"`
+	ReportTitle    string                       `json:"report_title"`
+	Subtitle       string                       `json:"subtitle"`
+	Author         string                       `json:"author"`
+	ProjectName    string                       `json:"project_name"`
+	Sections       []ReportSection              `json:"sections"`
+	ResolvedCharts map[string]ResolvedChart     `json:"-"`
+	ResolvedEVM    map[string]*kernel.EVMetrics `json:"-"`
 	// AddSignatureBlock causes a compact PAdES signature box to be drawn
 	// at the bottom of the last content page (instead of always appending
 	// a full separate page).
@@ -158,6 +160,11 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 		if err != nil {
 			return nil, fmt.Errorf("render section %s: %w", s.Section.DocumentID, err)
 		}
+		for _, ref := range chartRefs {
+			if metrics := spec.ResolvedEVM[ref.chartID]; metrics != nil {
+				renderEVMSection(pdf, metrics)
+			}
+		}
 
 		// Embed any referenced charts on their own pages so they get
 		// the full body width. Each chart gets a heading describing
@@ -211,6 +218,48 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 		}
 	}
 	return raw, nil
+}
+
+// evmSummaryLines renders the earned-value block shared by document
+// report paths. Returns nil when cost data is absent, matching the
+// schedule-report suppression rule.
+func evmSummaryLines(m *kernel.EVMetrics) []string {
+	if m == nil || m.BAC <= 0 {
+		return nil
+	}
+	idx := func(v float64) string {
+		if v <= 0 {
+			return "n/a"
+		}
+		return fmt.Sprintf("%.2f", v)
+	}
+	return []string{
+		fmt.Sprintf("Budget at completion (BAC): %.2f", m.BAC),
+		fmt.Sprintf("Planned value (PV): %.2f", m.PV),
+		fmt.Sprintf("Earned value (EV): %.2f", m.EV),
+		fmt.Sprintf("Actual cost (AC): %.2f", m.AC),
+		fmt.Sprintf("Schedule variance (SV): %.2f", m.SV),
+		fmt.Sprintf("Cost variance (CV): %.2f", m.CV),
+		"Schedule performance index (SPI): " + idx(m.SPI),
+		"Cost performance index (CPI): " + idx(m.CPI),
+		fmt.Sprintf("Estimate at completion (EAC): %.2f", m.EAC),
+		fmt.Sprintf("Estimate to complete (ETC): %.2f", m.ETC),
+		fmt.Sprintf("Variance at completion (VAC): %.2f", m.VAC),
+	}
+}
+
+func renderEVMSection(pdf *fpdf.Fpdf, m *kernel.EVMetrics) {
+	lines := evmSummaryLines(m)
+	if len(lines) == 0 {
+		return
+	}
+	writeSubHeading(pdf, "Earned Value")
+	pdf.SetFont("Helvetica", "", 9)
+	for _, line := range lines {
+		pdf.Cell(0, 4.8, line)
+		pdf.Ln(4.8)
+	}
+	pdf.Ln(1)
 }
 
 // chartRefMention is one chart_ref field BuildCombinedReport

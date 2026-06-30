@@ -1,0 +1,313 @@
+// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package main
+
+import (
+	"testing"
+
+	"pmforge/internal/db"
+)
+
+func TestScenarioAppMethodsScopeToOpenProject(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Scenario Bridge Plan")
+	project, err := app.GetProjectMeta()
+	if err != nil {
+		t.Fatalf("GetProjectMeta: %v", err)
+	}
+
+	saved, err := app.SaveScenario(db.Scenario{
+		ProjectID:        "wrong-project",
+		Name:             "Accelerate vendor award",
+		SourceBaselineID: "baseline_123",
+		Description:      "Pull procurement into the first month.",
+		IsActive:         true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario: %v", err)
+	}
+	if saved.ProjectID != project.ID {
+		t.Fatalf("SaveScenario project_id = %q, want open project %q", saved.ProjectID, project.ID)
+	}
+	if !saved.IsActive {
+		t.Fatal("saved scenario is not active")
+	}
+
+	second, err := app.SaveScenario(db.Scenario{
+		Name:        "Delay mobilization",
+		Description: "Field start slips by two weeks.",
+		IsActive:    true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario second: %v", err)
+	}
+	if second.ProjectID != project.ID {
+		t.Fatalf("second scenario project_id = %q, want open project %q", second.ProjectID, project.ID)
+	}
+
+	got, err := app.GetScenario(saved.ID)
+	if err != nil {
+		t.Fatalf("GetScenario: %v", err)
+	}
+	if got.IsActive {
+		t.Fatalf("first scenario remained active after activating second: %+v", got)
+	}
+
+	list, err := app.ListScenarios()
+	if err != nil {
+		t.Fatalf("ListScenarios: %v", err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("ListScenarios length = %d, want 2", len(list))
+	}
+	if !list[0].IsActive || list[0].ID != second.ID {
+		t.Fatalf("active scenario not first: %+v", list)
+	}
+
+	if err := app.DeleteScenario(saved.ID); err != nil {
+		t.Fatalf("DeleteScenario: %v", err)
+	}
+	list, err = app.ListScenarios()
+	if err != nil {
+		t.Fatalf("ListScenarios after delete: %v", err)
+	}
+	if len(list) != 1 || list[0].ID != second.ID {
+		t.Fatalf("after delete list = %+v, want second scenario only", list)
+	}
+}
+
+func TestScenarioChartAppMethodsCopyScheduleData(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Scenario Chart Bridge Plan")
+
+	chart, err := app.SaveChart(db.Chart{
+		Kind:   "cpm",
+		Title:  "Scenario Source CPM",
+		Data:   `{"nodes":[{"id":"a","label":"A"}],"edges":[]}`,
+		Config: `{"view":"network"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	baseline, err := app.SetScheduleBaseline(chart.ID, "Approved")
+	if err != nil {
+		t.Fatalf("SetScheduleBaseline: %v", err)
+	}
+	scenario, err := app.SaveScenario(db.Scenario{
+		Name:             "Scenario copy",
+		SourceBaselineID: baseline.ID,
+		IsActive:         true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario: %v", err)
+	}
+
+	copied, err := app.BranchScenarioChart(scenario.ID, chart.ID, "")
+	if err != nil {
+		t.Fatalf("BranchScenarioChart: %v", err)
+	}
+	if copied.ScenarioID != scenario.ID || copied.SourceChartID != chart.ID {
+		t.Fatalf("copied scenario chart references mismatch: %+v", copied)
+	}
+	if copied.BaselineData == "" || copied.BaselineData == "{}" {
+		t.Fatalf("baseline_data was not copied: %+v", copied)
+	}
+
+	list, err := app.ListScenarioCharts(scenario.ID)
+	if err != nil {
+		t.Fatalf("ListScenarioCharts: %v", err)
+	}
+	if len(list) != 1 || list[0].ID != copied.ID {
+		t.Fatalf("ListScenarioCharts = %+v, want copied chart", list)
+	}
+}
+
+func TestScenarioChartAppMethodsPromoteToBaseline(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Scenario Promotion Bridge Plan")
+
+	chart, err := app.SaveChart(db.Chart{
+		Kind:   "cpm",
+		Title:  "Scenario Promotion Source CPM",
+		Data:   `{"nodes":[{"id":"a","label":"A"}],"edges":[]}`,
+		Config: `{"view":"network"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	scenario, err := app.SaveScenario(db.Scenario{
+		Name:     "Scenario promotion",
+		IsActive: true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario: %v", err)
+	}
+	copied, err := app.BranchScenarioChart(scenario.ID, chart.ID, "")
+	if err != nil {
+		t.Fatalf("BranchScenarioChart: %v", err)
+	}
+
+	promoted, err := app.PromoteScenarioChartToBaseline(copied.ID, "Approved scenario")
+	if err != nil {
+		t.Fatalf("PromoteScenarioChartToBaseline: %v", err)
+	}
+	if promoted.ChartID != chart.ID || promoted.Name != "Approved scenario" {
+		t.Fatalf("promoted baseline mismatch: %+v", promoted)
+	}
+	if promoted.Data != copied.Data {
+		t.Fatalf("promoted data = %q, want %q", promoted.Data, copied.Data)
+	}
+
+	list, err := app.ListScheduleBaselines(chart.ID)
+	if err != nil {
+		t.Fatalf("ListScheduleBaselines: %v", err)
+	}
+	if len(list) != 1 || list[0].ID != promoted.ID {
+		t.Fatalf("ListScheduleBaselines = %+v, want promoted baseline", list)
+	}
+}
+
+func TestScenarioChartAppMethodsCompareToCopiedBaseline(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Scenario Comparison Bridge Plan")
+
+	chart, err := app.SaveChart(db.Chart{
+		Kind:   "cpm",
+		Title:  "Scenario Comparison Source CPM",
+		Data:   `{"nodes":[{"id":"a","label":"A","duration":2}],"edges":[]}`,
+		Config: `{"view":"network"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart initial: %v", err)
+	}
+	baseline, err := app.SetScheduleBaseline(chart.ID, "Approved")
+	if err != nil {
+		t.Fatalf("SetScheduleBaseline: %v", err)
+	}
+	chart.Data = `{"nodes":[{"id":"a","label":"A","duration":4}],"edges":[]}`
+	if _, err := app.SaveChart(chart); err != nil {
+		t.Fatalf("SaveChart changed: %v", err)
+	}
+	scenario, err := app.SaveScenario(db.Scenario{
+		Name:             "Scenario comparison",
+		SourceBaselineID: baseline.ID,
+		IsActive:         true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario: %v", err)
+	}
+	copied, err := app.BranchScenarioChart(scenario.ID, chart.ID, "")
+	if err != nil {
+		t.Fatalf("BranchScenarioChart: %v", err)
+	}
+
+	variances, err := app.CompareScenarioChart(copied.ID)
+	if err != nil {
+		t.Fatalf("CompareScenarioChart: %v", err)
+	}
+	a, ok := variances["a"]
+	if !ok {
+		t.Fatalf("variance for task a missing: %+v", variances)
+	}
+	if a.FinishVarDays != 2 {
+		t.Fatalf("FinishVarDays = %v, want 2", a.FinishVarDays)
+	}
+}
+
+func TestScenarioChartAppMethodsSaveIsolatedCopy(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Scenario Editing Bridge Plan")
+
+	chart, err := app.SaveChart(db.Chart{
+		Kind:   "cpm",
+		Title:  "Live Editing Source CPM",
+		Data:   `{"nodes":[{"id":"a","label":"Live","duration":2}],"edges":[]}`,
+		Config: `{"view":"live"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	scenario, err := app.SaveScenario(db.Scenario{
+		Name:     "Scenario editing",
+		IsActive: true,
+	})
+	if err != nil {
+		t.Fatalf("SaveScenario: %v", err)
+	}
+	copied, err := app.BranchScenarioChart(scenario.ID, chart.ID, "")
+	if err != nil {
+		t.Fatalf("BranchScenarioChart: %v", err)
+	}
+	copied.Title = "Scenario edited CPM"
+	copied.Data = `{"nodes":[{"id":"a","label":"Scenario","duration":5}],"edges":[]}`
+	copied.Config = `{"view":"scenario"}`
+
+	saved, err := app.SaveScenarioChart(copied)
+	if err != nil {
+		t.Fatalf("SaveScenarioChart: %v", err)
+	}
+	if saved.Title != copied.Title || saved.Data != copied.Data || saved.Config != copied.Config {
+		t.Fatalf("saved scenario chart mismatch: %+v", saved)
+	}
+
+	live, err := app.GetChart(chart.ID)
+	if err != nil {
+		t.Fatalf("GetChart live: %v", err)
+	}
+	if live.Data == saved.Data || live.Config == saved.Config || live.Title == saved.Title {
+		t.Fatalf("scenario edit mutated live chart: live=%+v scenario=%+v", live, saved)
+	}
+}
+
+func TestScenarioChartAppMethodsGetScenarioChartScopesToOpenProject(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Scenario Editor Scope A")
+	chart, err := app.SaveChart(db.Chart{
+		Kind:   "cpm",
+		Title:  "Scenario Editor Source A",
+		Data:   `{"nodes":[{"id":"a","label":"A","duration":2}],"edges":[]}`,
+		Config: `{"view":"a"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart A: %v", err)
+	}
+	scenario, err := app.SaveScenario(db.Scenario{Name: "Scenario A", IsActive: true})
+	if err != nil {
+		t.Fatalf("SaveScenario A: %v", err)
+	}
+	copied, err := app.BranchScenarioChart(scenario.ID, chart.ID, "")
+	if err != nil {
+		t.Fatalf("BranchScenarioChart A: %v", err)
+	}
+	got, err := app.GetScenarioChart(copied.ID)
+	if err != nil {
+		t.Fatalf("GetScenarioChart A: %v", err)
+	}
+	if got.ID != copied.ID || got.ProjectID != copied.ProjectID {
+		t.Fatalf("GetScenarioChart returned wrong copy: %+v", got)
+	}
+
+	mustOpenProject(t, app, "Scenario Editor Scope B")
+	if _, err := app.GetScenarioChart(copied.ID); err == nil {
+		t.Fatal("GetScenarioChart returned a scenario chart outside the open project")
+	}
+}

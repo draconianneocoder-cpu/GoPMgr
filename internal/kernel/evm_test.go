@@ -31,9 +31,17 @@ func TestComputeEVM_Totals(t *testing.T) {
 	approx(t, "CV", m.CV, -200) // over cost
 	approx(t, "SPI", m.SPI, 0.75)
 	approx(t, "CPI", m.CPI, 0.6)
-	approx(t, "EAC", m.EAC, 800/0.6)
-	approx(t, "ETC", m.ETC, 800/0.6-500)
-	approx(t, "VAC", m.VAC, 800-800/0.6)
+	approx(t, "EAC", m.EAC, 1333.33)
+	approx(t, "ETC", m.ETC, 833.33)
+	approx(t, "VAC", m.VAC, -533.33)
+	if m.BACMinorUnits != 80000 || m.PVMinorUnits != 40000 || m.EVMinorUnits != 30000 || m.ACMinorUnits != 50000 {
+		t.Fatalf("EVM minor units = BAC:%d PV:%d EV:%d AC:%d, want 80000/40000/30000/50000",
+			m.BACMinorUnits, m.PVMinorUnits, m.EVMinorUnits, m.ACMinorUnits)
+	}
+	if m.EACMinorUnits != 133333 || m.ETCMinorUnits != 83333 || m.VACMinorUnits != -53333 {
+		t.Fatalf("EAC/ETC/VAC minor units = %d/%d/%d, want 133333/83333/-53333",
+			m.EACMinorUnits, m.ETCMinorUnits, m.VACMinorUnits)
+	}
 }
 
 func TestComputeEVM_MidTaskPVIsLinear(t *testing.T) {
@@ -76,4 +84,46 @@ func TestComputeEVM_DeterministicTaskOrder(t *testing.T) {
 		t.Errorf("per-task breakdown not ID-ordered: %+v", m.Tasks)
 	}
 	approx(t, "Tasks[0].EV", m.Tasks[0].EV, 300)
+}
+
+func TestComputeEVM_UsesMinorUnitsForMoney(t *testing.T) {
+	tasks := map[string]*Task{
+		"A": {
+			ID:                     "A",
+			Title:                  "Fractional",
+			Duration:               3,
+			BudgetedCost:           999,
+			BudgetedCostMinorUnits: 3333,
+			ActualCost:             999,
+			ActualCostMinorUnits:   2000,
+			PercentComplete:        33.333333333333336,
+		},
+	}
+	mustCPM(t, tasks)
+
+	m := ComputeEVM(tasks, 1)
+
+	if m.BACMinorUnits != 3333 {
+		t.Fatalf("BACMinorUnits = %d, want 3333", m.BACMinorUnits)
+	}
+	if m.PVMinorUnits != 1111 {
+		t.Fatalf("PVMinorUnits = %d, want 1111", m.PVMinorUnits)
+	}
+	if m.EVMinorUnits != 1111 {
+		t.Fatalf("EVMinorUnits = %d, want 1111", m.EVMinorUnits)
+	}
+	if m.ACMinorUnits != 2000 {
+		t.Fatalf("ACMinorUnits = %d, want 2000", m.ACMinorUnits)
+	}
+	if m.EACMinorUnits != 6000 {
+		t.Fatalf("EACMinorUnits = %d, want 6000", m.EACMinorUnits)
+	}
+	if len(m.Tasks) != 1 || m.Tasks[0].BACMinorUnits != 3333 || m.Tasks[0].PVMinorUnits != 1111 {
+		t.Fatalf("task minor unit breakdown = %+v", m.Tasks)
+	}
+	approx(t, "BAC display", m.BAC, 33.33)
+	approx(t, "PV display", m.PV, 11.11)
+	approx(t, "EV display", m.EV, 11.11)
+	approx(t, "AC display", m.AC, 20)
+	approx(t, "EAC display", m.EAC, 60)
 }

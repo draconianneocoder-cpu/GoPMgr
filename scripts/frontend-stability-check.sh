@@ -12,6 +12,11 @@ if ! (cd frontend && npx svelte-check --tsconfig ./tsconfig.json --fail-on-warni
 	fail=1
 fi
 
+if ! (cd frontend && npm run test:bug-report-regressions); then
+	echo "frontend-stability: bug report regression checks must pass." >&2
+	fail=1
+fi
+
 if rg -n "^import \\* as XLSX from ['\"]xlsx['\"];" frontend/src/lib/components/sigma >/dev/null; then
 	echo "frontend-stability: Sigma views must lazy-load xlsx instead of statically importing it." >&2
 	rg -n "^import \\* as XLSX from ['\"]xlsx['\"];" frontend/src/lib/components/sigma >&2

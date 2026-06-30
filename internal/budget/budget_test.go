@@ -66,8 +66,34 @@ func TestLabourEstimateNameMatch(t *testing.T) {
 	if int(got.LabourEstimate) != want {
 		t.Errorf("LabourEstimate: want %d, got %v", want, got.LabourEstimate)
 	}
+	if got.LabourEstimateMinorUnits != int64(want*100) {
+		t.Errorf("LabourEstimateMinorUnits: want %d, got %d", want*100, got.LabourEstimateMinorUnits)
+	}
 	if int(got.Committed) != want {
 		t.Errorf("Committed: want %d, got %v", want, got.Committed)
+	}
+}
+
+func TestLabourEstimateFractionalPointsUsesMinorUnits(t *testing.T) {
+	stake := []db.Stakeholder{
+		{Name: "Alice", Category: db.StakeholderTeam, HourlyRateMinorUnits: 3333},
+	}
+	items := []agile.WorkItem{
+		{Assignee: "Alice", Points: 1.5},
+	}
+
+	got := Compute(db.Project{BudgetMinorUnits: 10_000}, stake, items)
+	if got.LabourEstimateMinorUnits != 5000 {
+		t.Fatalf("LabourEstimateMinorUnits = %d, want 5000", got.LabourEstimateMinorUnits)
+	}
+	if got.LabourEstimate != 50 {
+		t.Fatalf("LabourEstimate = %v, want 50.00", got.LabourEstimate)
+	}
+	if got.RemainingMinorUnits != 5000 {
+		t.Fatalf("RemainingMinorUnits = %d, want 5000", got.RemainingMinorUnits)
+	}
+	if got.ByCategoryMinorUnits["team"] != 5000 {
+		t.Fatalf("ByCategoryMinorUnits[team] = %d, want 5000", got.ByCategoryMinorUnits["team"])
 	}
 }
 

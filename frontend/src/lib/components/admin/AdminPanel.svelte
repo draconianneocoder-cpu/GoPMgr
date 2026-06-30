@@ -106,6 +106,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (pendingRoleChange === username) pendingRoleChange = null;
   }
 
+  function formatLastLogin(value: string): string {
+    if (!value) return 'Never';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime()) || date.getFullYear() <= 1) return 'Never';
+    return date.toLocaleDateString();
+  }
+
   const isSelf = (u: Account) => u.username === session.user?.username;
 </script>
 
@@ -220,7 +227,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   {/if}
                 </td>
                 <td class="px-4 py-3 text-[11px] text-slate-500 font-mono">
-                  {user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}
+                  {formatLastLogin(user.last_login)}
                 </td>
                 <td class="px-4 py-3">
                   {#if !isSelf(user)}

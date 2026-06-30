@@ -21,6 +21,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let autoSaveSeconds = $state(60);
   let loading = $state(true);
   let saving = $state(false);
+  let resetting = $state(false);
   let status = $state('');
   let error = $state('');
   let openingLogs = $state(false);
@@ -133,6 +134,33 @@ SPDX-License-Identifier: GPL-3.0-or-later
       saving = false;
     }
   }
+
+  function applySettings(settings: AppSettings) {
+    font = settings.default_font ?? '';
+    theme = settings.default_theme ?? '';
+    appTheme = settings.app_theme || 'dark';
+    const secs = settings.auto_save_seconds ?? 0;
+    autoSaveOn = secs > 0;
+    autoSaveSeconds = secs > 0 ? secs : 60;
+    applyTheme(appTheme);
+    autosave.setInterval(secs);
+  }
+
+  async function resetDefaults() {
+    resetting = true;
+    status = '';
+    error = '';
+    try {
+      const defaults = await window.go.main.App.ResetAppSettings();
+      if (info) info = { ...info, settings: defaults };
+      applySettings(defaults);
+      status = 'Defaults restored.';
+    } catch (err: any) {
+      error = `Reset failed: ${err}`;
+    } finally {
+      resetting = false;
+    }
+  }
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">
@@ -225,13 +253,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </label>
         </section>
 
-        <div class="flex items-center gap-3 pt-2">
+        <div class="flex flex-wrap items-center gap-3 pt-2">
           <button
             onclick={save}
-            disabled={saving}
+            disabled={saving || resetting}
             class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
           >
             {saving ? 'Saving…' : 'Save settings'}
+          </button>
+          <button
+            onclick={resetDefaults}
+            disabled={saving || resetting}
+            class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
+          >
+            {resetting ? 'Resetting…' : 'Reset defaults'}
           </button>
           {#if status}<span class="text-xs text-emerald-400">{status}</span>{/if}
         </div>
