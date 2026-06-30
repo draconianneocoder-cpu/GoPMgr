@@ -18,13 +18,13 @@ import (
 // ErrorReport is the canonical PMForge error envelope. JSON tags allow
 // the Wails bridge to serialize it directly to the Svelte frontend.
 type ErrorReport struct {
-	Timestamp time.Time `json:"timestamp"`         // RFC3339Nano on the wire
-	Context   string    `json:"context"`           // short tag, e.g. SNAPSHOT_FAILED
-	Message   string    `json:"message"`           // human-readable
-	File      string    `json:"file"`              // source file of the call site
-	Line      int       `json:"line"`              // line number of the call site
-	Stack     string    `json:"stack"`             // captured stack trace
-	Cause     string    `json:"cause,omitempty"`   // original error string, if any
+	Timestamp time.Time `json:"timestamp"`       // RFC3339Nano on the wire
+	Context   string    `json:"context"`         // short tag, e.g. SNAPSHOT_FAILED
+	Message   string    `json:"message"`         // human-readable
+	File      string    `json:"file"`            // source file of the call site
+	Line      int       `json:"line"`            // line number of the call site
+	Stack     string    `json:"stack"`           // captured stack trace
+	Cause     string    `json:"cause,omitempty"` // original error string, if any
 }
 
 // reportError is an error that wraps an ErrorReport. Returned by

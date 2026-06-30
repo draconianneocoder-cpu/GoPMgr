@@ -23,11 +23,11 @@ import (
 // ("1", "1.1", "1.1.2") is enforced by the engine via Renumber().
 type WBSNode struct {
 	ID       string     `json:"id"`
-	Number   string     `json:"number,omitempty"`  // dotted WBS code, e.g. "1.2.3"
+	Number   string     `json:"number,omitempty"` // dotted WBS code, e.g. "1.2.3"
 	Title    string     `json:"title"`
 	Note     string     `json:"note,omitempty"`
 	Owner    string     `json:"owner,omitempty"`
-	Effort   float64    `json:"effort,omitempty"`   // person-days or generic units
+	Effort   float64    `json:"effort,omitempty"` // person-days or generic units
 	Children []*WBSNode `json:"children,omitempty"`
 }
 

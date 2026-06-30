@@ -26,6 +26,18 @@ linters:
           - staticcheck
         text: "ST1005"
 
+# Formatting is a separate concern from linting in golangci-lint v2. Without
+# this block, gofmt drift (struct-tag alignment, stray blank lines) passes CI
+# silently — which is exactly what had happened: 34 first-party files were not
+# gofmt-clean under the go1.26.4 toolchain. `golangci-lint fmt` applies these;
+# `golangci-lint run` reports them as findings.
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    paths:
+      - node_modules
+
 issues:
   # Show every finding. The defaults cap duplicates of the same message at 3,
   # which hides the true remaining count while a backlog is being cleared.

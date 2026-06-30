@@ -958,6 +958,16 @@ func (a *App) applyGlobalDefaults(d *db.Database) {
 
 // OpenProject loads a .pmforge file as the current project.
 func (a *App) OpenProject(path string) (db.Project, error) {
+	// Confine to the signed-in user's own projects folder before doing any
+	// work (and before taking the write lock, since projectPathFor read-locks
+	// a.mu via requireUser). This is the same boundary DeleteProject/
+	// CloneProject enforce; opening is no less sensitive — the path also feeds
+	// the SQLCipher DSN.
+	clean, _, err := a.projectPathFor(path)
+	if err != nil {
+		return db.Project{}, err
+	}
+
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -969,9 +979,9 @@ func (a *App) OpenProject(path string) (db.Project, error) {
 		_ = a.db.Close()
 		a.db = nil
 	}
-	d, err := db.InitEncryptedDB(path, dek)
+	d, err := db.InitEncryptedDB(clean, dek)
 	if err != nil {
-		if encrypted, encErr := db.IsEncryptedFile(path); encErr == nil && !encrypted {
+		if encrypted, encErr := db.IsEncryptedFile(clean); encErr == nil && !encrypted {
 			return db.Project{}, ErrProjectRequiresEncryptionMigration
 		}
 		return db.Project{}, err
@@ -990,7 +1000,7 @@ func (a *App) OpenProject(path string) (db.Project, error) {
 	// font dir; configureFonts must not re-acquire a.mu.
 	a.configureFontsLocked(d)
 	a.db = d
-	a.dbPath = path
+	a.dbPath = clean
 	a.adminSvc = admin.NewService(d)
 	a.sigmaSvc = service.NewProjectService(d)
 	return proj, nil
@@ -1023,7 +1033,11 @@ func verifyProjectAuditForOpen(d *db.Database, project db.Project) error {
 // SQLCipher-encrypted. Used by the Settings migration flow before
 // presenting the opt-in action.
 func (a *App) IsProjectEncrypted(path string) (bool, error) {
-	return db.IsEncryptedFile(path)
+	clean, _, err := a.projectPathFor(path)
+	if err != nil {
+		return false, err
+	}
+	return db.IsEncryptedFile(clean)
 }
 
 // EncryptProjectAtRest migrates a legacy plaintext .pmforge file to
@@ -1031,9 +1045,13 @@ func (a *App) IsProjectEncrypted(path string) (bool, error) {
 // must already carry DEK wraps; otherwise a future recovery reset
 // would orphan encrypted projects.
 func (a *App) EncryptProjectAtRest(path string) (string, error) {
-	user := a.requireUser()
-	if user == nil {
-		return "", errors.New("not signed in")
+	// Confine to the user's own projects folder before any filesystem work:
+	// MigratePlaintextToEncrypted renames the source to a .bak, writes a new
+	// file at this path, and chmods it, so an unconfined path would be a
+	// rename/overwrite primitive outside the user's sandbox.
+	clean, user, err := a.projectPathFor(path)
+	if err != nil {
+		return "", err
 	}
 	needsReissue, err := a.store.HasLegacyRecoveryCodeWraps(user.Username)
 	if err != nil {
@@ -1049,7 +1067,7 @@ func (a *App) EncryptProjectAtRest(path string) (string, error) {
 		a.mu.Unlock()
 		return "", err
 	}
-	if a.db != nil && samePath(a.dbPath, path) {
+	if a.db != nil && samePath(a.dbPath, clean) {
 		_ = a.db.Close()
 		a.db = nil
 		a.dbPath = ""
@@ -1058,7 +1076,7 @@ func (a *App) EncryptProjectAtRest(path string) (string, error) {
 	}
 	a.mu.Unlock()
 
-	return db.MigratePlaintextToEncrypted(path, dek)
+	return db.MigratePlaintextToEncrypted(clean, dek)
 }
 
 // CloseProject closes the currently-open .pmforge.
@@ -2751,13 +2769,19 @@ func (a *App) ExportAuditRepairEvidence() (string, error) {
 }
 
 func (a *App) SecureArchive(projectPath string) (string, error) {
+	// Confine to the user's own projects folder before archiving, so the
+	// backup is always written next to a project the caller actually owns.
+	clean, _, err := a.projectPathFor(projectPath)
+	if err != nil {
+		return "", err
+	}
 	a.mu.RLock()
 	svc := a.adminSvc
 	a.mu.RUnlock()
 	if svc == nil {
 		return "", errors.New("no project open")
 	}
-	return svc.SecureArchive(projectPath)
+	return svc.SecureArchive(clean)
 }
 
 // =========================================================

@@ -10,12 +10,12 @@ import (
 
 // Activity Diagram shapes — UML 2.5 vocabulary.
 const (
-	ShapeInitial  = "initial"  // filled black circle
-	ShapeFinal    = "final"    // bullseye (circle within circle)
-	ShapeActivity = "activity" // rounded rectangle
+	ShapeInitial   = "initial"    // filled black circle
+	ShapeFinal     = "final"      // bullseye (circle within circle)
+	ShapeActivity  = "activity"   // rounded rectangle
 	ShapeADecision = "a_decision" // diamond (renamed to avoid clash with workflow)
-	ShapeFork     = "fork"     // horizontal bar (also used for join)
-	ShapeJoin     = "join"     // horizontal bar
+	ShapeFork      = "fork"       // horizontal bar (also used for join)
+	ShapeJoin      = "join"       // horizontal bar
 )
 
 // Swimlane is one horizontal partition in the diagram. Activities are

@@ -11,8 +11,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"pmforge/internal/debug"
 	"time"
+
+	"pmforge/internal/debug"
+	"pmforge/internal/exportsafe"
 )
 
 // LogAction writes a row to audit_log using SQLite's strftime() default
@@ -376,7 +378,14 @@ func (db *Database) ExportAuditCSV(path string) (err error) {
 		if err := rows.Scan(&id, &ts, &actor, &action, &target, &details); err != nil {
 			return err
 		}
-		if err := w.Write([]string{fmt.Sprintf("%d", id), ts, actor, action, target, details}); err != nil {
+		// actor/action/target/details carry user-controlled text (usernames,
+		// project and document names), so neutralize them against formula
+		// injection (CWE-1236). id and ts are app-generated.
+		if err := w.Write([]string{
+			fmt.Sprintf("%d", id), ts,
+			exportsafe.Cell(actor), exportsafe.Cell(action),
+			exportsafe.Cell(target), exportsafe.Cell(details),
+		}); err != nil {
 			return err
 		}
 	}
