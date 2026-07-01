@@ -161,7 +161,6 @@ func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 	return out, nil
 }
 
-
 // appendCMSSignatureMarker writes a CMS/PKCS#7 detached signature
 // (built by crypto.Signer.SignPDFCMS) to the end of the PDF inside
 // a PDF comment. The marker uses a distinct prefix so consumers can

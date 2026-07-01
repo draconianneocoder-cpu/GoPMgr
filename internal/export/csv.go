@@ -8,6 +8,8 @@ import (
 	"encoding/csv"
 	"fmt"
 	"sort"
+
+	"pmforge/internal/exportsafe"
 )
 
 // renderCSV produces a UTF-8 CSV with one row per task. Useful both as
@@ -29,9 +31,12 @@ func renderCSV(payload ReportPayload, _ ExportOptions) ([]byte, error) {
 
 	for _, id := range ids {
 		t := payload.Tasks[id]
+		// Title is free-text and user-controlled, so neutralize it against
+		// formula injection (CWE-1236). The remaining columns are
+		// app-generated IDs and formatted numerics/bools, not attacker text.
 		err := w.Write([]string{
 			t.ID,
-			t.Title,
+			exportsafe.Cell(t.Title),
 			fmt.Sprintf("%.4f", t.Duration),
 			fmt.Sprintf("%.4f", t.ES),
 			fmt.Sprintf("%.4f", t.EF),

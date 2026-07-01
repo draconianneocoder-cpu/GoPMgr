@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -136,10 +137,18 @@ func TestOpenProjectRejectsDifferentUsersDEK(t *testing.T) {
 
 func TestOpenProjectPlaintextRequiresMigration(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
-	if _, err := app.CreateAccount("alice", "Alice", "alice-password", false); err != nil {
+	acc, err := app.CreateAccount("alice", "Alice", "alice-password", false)
+	if err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	path := filepath.Join(t.TempDir(), "legacy.pmforge")
+	// A legacy plaintext project lives in the user's own projects dir (flat
+	// layout). OpenProject confines to that dir, so the file must be there for
+	// the migration-required path to be exercised rather than rejected.
+	projectsDir := filepath.Join(acc.DataDir, "projects")
+	if err := os.MkdirAll(projectsDir, 0o700); err != nil {
+		t.Fatalf("mkdir projects: %v", err)
+	}
+	path := filepath.Join(projectsDir, "legacy.pmforge")
 	legacy, err := db.InitDB(path)
 	if err != nil {
 		t.Fatalf("InitDB legacy: %v", err)

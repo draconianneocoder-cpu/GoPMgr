@@ -5,7 +5,7 @@ package domain
 
 // FishboneData represents the full Cause & Effect diagram for a project.
 type FishboneData struct {
-	ProblemStatement string         `json:"problem_statement"`
+	ProblemStatement string           `json:"problem_statement"`
 	Branches         []FishboneBranch `json:"branches"`
 }
 

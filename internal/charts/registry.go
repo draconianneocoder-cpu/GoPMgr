@@ -4,7 +4,7 @@
 // Package charts is the taxonomy and dispatch layer for PMForge's 20
 // chart and diagram types.
 //
-// Architectural overview
+// # Architectural overview
 //
 // Rather than 20 separate packages, all chart types share four
 // engines. Each engine knows how to take a JSON `data` blob and a
@@ -12,9 +12,9 @@
 // the Svelte frontend, and (b) a rendering to PDF/PNG/SVG for export:
 //
 //   - dag     Hierarchical / directed-acyclic-graph layouts: WBS,
-//             Network Diagram, PERT, CPM, Fishbone, Cause-and-Effect.
+//     Network Diagram, PERT, CPM, Fishbone, Cause-and-Effect.
 //   - stats   Quantitative data series: Line, Bar, Pareto, Pie,
-//             Burn-Up, Burn-Down, Cumulative Flow, Control.
+//     Burn-Up, Burn-Down, Cumulative Flow, Control.
 //   - matrix  Grid-based: RACI, SWOT, Stakeholder Analysis, Matrix Diagram.
 //   - flow    Process flowcharts: Workflow, Activity.
 //
@@ -26,33 +26,33 @@ type Kind string
 
 const (
 	// DAG family
-	KindWBS              Kind = "wbs"
-	KindNetworkDiagram   Kind = "network"
-	KindPERT             Kind = "pert"
-	KindCPM              Kind = "cpm"
-	KindGantt            Kind = "gantt"
-	KindFishbone         Kind = "fishbone"
-	KindCauseAndEffect   Kind = "cause_effect"
+	KindWBS            Kind = "wbs"
+	KindNetworkDiagram Kind = "network"
+	KindPERT           Kind = "pert"
+	KindCPM            Kind = "cpm"
+	KindGantt          Kind = "gantt"
+	KindFishbone       Kind = "fishbone"
+	KindCauseAndEffect Kind = "cause_effect"
 
 	// Statistical family
-	KindLine             Kind = "line"
-	KindBar              Kind = "bar"
-	KindPareto           Kind = "pareto"
-	KindPie              Kind = "pie"
-	KindBurnUp           Kind = "burnup"
-	KindBurnDown         Kind = "burndown"
-	KindCumulativeFlow   Kind = "cumulative_flow"
-	KindControl          Kind = "control"
+	KindLine           Kind = "line"
+	KindBar            Kind = "bar"
+	KindPareto         Kind = "pareto"
+	KindPie            Kind = "pie"
+	KindBurnUp         Kind = "burnup"
+	KindBurnDown       Kind = "burndown"
+	KindCumulativeFlow Kind = "cumulative_flow"
+	KindControl        Kind = "control"
 
 	// Matrix family
-	KindRACI             Kind = "raci"
-	KindSWOT             Kind = "swot"
-	KindStakeholder      Kind = "stakeholder_analysis"
-	KindMatrixDiagram    Kind = "matrix"
+	KindRACI          Kind = "raci"
+	KindSWOT          Kind = "swot"
+	KindStakeholder   Kind = "stakeholder_analysis"
+	KindMatrixDiagram Kind = "matrix"
 
 	// Flow family
-	KindWorkflow         Kind = "workflow"
-	KindActivity         Kind = "activity"
+	KindWorkflow Kind = "workflow"
+	KindActivity Kind = "activity"
 )
 
 // Engine is the family a Kind belongs to.

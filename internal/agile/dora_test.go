@@ -13,16 +13,16 @@ import (
 
 func TestClassifyDeployFrequency(t *testing.T) {
 	tests := []struct {
-		name     string
-		perDay   float64
-		n        int
+		name      string
+		perDay    float64
+		n         int
 		wantClass DORAClass
 	}{
 		{"no deployments", 0, 0, DORAClassUnknown},
 		{"elite: multiple per day", 2.0, 60, DORAClassElite},
 		{"elite: exactly 1/day", 1.0, 30, DORAClassElite},
 		{"high: weekly boundary (1/7)", 1.0 / 7.0, 4, DORAClassHigh},
-		{"high: twice a week", 0.3, 9, DORAClassHigh},  // 0.3/day = ~2/wk, < 1/day
+		{"high: twice a week", 0.3, 9, DORAClassHigh}, // 0.3/day = ~2/wk, < 1/day
 		{"medium: monthly boundary (1/30)", 1.0 / 30.0, 1, DORAClassMedium},
 		{"medium: bi-weekly (1/14)", 1.0 / 14.0, 2, DORAClassMedium}, // 1/14 < 1/7
 		{"low: below monthly", 0.01, 1, DORAClassLow},
@@ -51,7 +51,7 @@ func TestClassifyLeadTime(t *testing.T) {
 		{"high: exactly 1 week", 24 * 7, 5, DORAClassHigh},
 		{"medium: just over 1 week", 24*7 + 1, 5, DORAClassMedium},
 		{"medium: exactly 30 days", 24 * 30, 5, DORAClassMedium},
-		{"low: 31 days", 24*31, 5, DORAClassLow},
+		{"low: 31 days", 24 * 31, 5, DORAClassLow},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -142,7 +142,10 @@ func TestMedian(t *testing.T) {
 // ----- formatFloat1 helper tests -----
 
 func TestFormatFloat1(t *testing.T) {
-	tests := []struct{ in float64; want string }{
+	tests := []struct {
+		in   float64
+		want string
+	}{
 		{0, "0"},
 		{1, "1"},
 		{1.5, "1.5"},
