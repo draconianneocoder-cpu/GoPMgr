@@ -170,10 +170,10 @@ func TestCalculateCapability_DPMOBands(t *testing.T) {
 	// rounding cannot flip a band boundary.
 	values := []float64{-1, 1}
 	tests := []struct {
-		name       string
-		k          float64 // sigmaLevel = k + 1.5
-		wantSigma  float64
-		wantDPMO   float64
+		name      string
+		k         float64 // sigmaLevel = k + 1.5
+		wantSigma float64
+		wantDPMO  float64
 	}{
 		{"sigma>=6", 5.5, 7.0, 3.4},
 		{"sigma>=5", 4.0, 5.5, 233},

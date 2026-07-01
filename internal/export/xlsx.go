@@ -46,6 +46,10 @@ func renderXLSX(payload ReportPayload, opts ExportOptions) (out []byte, err erro
 
 	for i, id := range ids {
 		t := payload.Tasks[id]
+		// No formula-injection neutralization is needed here (unlike the CSV
+		// exporter): excelize stores Go strings as string-typed cells, which
+		// Excel/LibreOffice never evaluate as formulas — only an explicit
+		// SetCellFormula produces a formula. Verified against excelize v2.8.1.
 		row := []interface{}{
 			t.ID, t.Title, t.Duration, t.ES, t.EF, t.LS, t.LF, t.Float, t.IsCritical,
 		}

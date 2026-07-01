@@ -73,4 +73,3 @@ func HasDefaultICC() bool {
 func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, error)) ([]byte, error) {
 	return pdfmeta.InjectPAdESSignature(pdfBytes, signRanges)
 }
-

@@ -32,11 +32,11 @@ type Manifest struct {
 
 // Payload is what's inside Manifest.PayloadB64 once decoded.
 type Payload struct {
-	LatestVersion string `json:"latest_version"`  // e.g. "1.2.0"
-	ReleaseNotes  string `json:"release_notes"`   // human-readable, markdown
-	DownloadURL   string `json:"download_url"`    // optional; GUI shows a "Download" button
+	LatestVersion string `json:"latest_version"`   // e.g. "1.2.0"
+	ReleaseNotes  string `json:"release_notes"`    // human-readable, markdown
+	DownloadURL   string `json:"download_url"`     // optional; GUI shows a "Download" button
 	SHA256        string `json:"sha256,omitempty"` // optional digest of the download artifact
-	PublishedAt   string `json:"published_at"`    // RFC3339
+	PublishedAt   string `json:"published_at"`     // RFC3339
 }
 
 // ErrInvalidSignature is returned by VerifyManifest when the

@@ -8,9 +8,9 @@ type Solution struct {
 	ID          string  `json:"id"`
 	Title       string  `json:"title"`
 	Description string  `json:"description"`
-	Impact      int     `json:"impact"`      // 1-10
-	Effort      int     `json:"effort"`      // 1-10
-	Risk        int     `json:"risk"`        // 1-10
+	Impact      int     `json:"impact"` // 1-10
+	Effort      int     `json:"effort"` // 1-10
+	Risk        int     `json:"risk"`   // 1-10
 	Cost        float64 `json:"cost"`
 	Selected    bool    `json:"selected"`
 	Status      string  `json:"status"` // proposed, pilot, implemented
