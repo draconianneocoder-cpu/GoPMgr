@@ -19,8 +19,9 @@ identifiers used in this project are:
 | `GPL-3.0-or-later`   | Source code (Go, Svelte, TS, Makefile)    | https://www.gnu.org/licenses/gpl-3.0.txt                                                            |
 | `GFDL-1.3-or-later`  | User-facing documentation (`docs/`)       | https://www.gnu.org/licenses/fdl-1.3.txt                                                            |
 | `CC0-1.0`            | Tiny config files, license notes, and compact ICC profile | https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt                  |
-| `OFL-1.1`            | Bundled fonts (Liberation, Noto, Source Sans 3, JetBrains Mono) | https://openfontlicense.org/documents/OFL.txt                                  |
+| `OFL-1.1`            | Bundled fonts (Liberation, Noto, Source Sans 3, JetBrains Mono, Ledger) | https://openfontlicense.org/documents/OFL.txt                          |
 | `LicenseRef-Bitstream-Vera` | Bundled DejaVu Sans font           | https://dejavu-fonts.github.io/License.html                                                         |
+| `Apache-2.0`         | Bundled fonts (Roboto, Arimo, Cousine)    | https://www.apache.org/licenses/LICENSE-2.0.txt                                                     |
 
 The font binaries themselves are fetched by `scripts/fetch-fonts.sh`
 (not committed) and ignored as local downloads. Their upstream licenses are
@@ -36,6 +37,7 @@ curl -L -o GFDL-1.3-or-later.txt  https://www.gnu.org/licenses/fdl-1.3.txt
 curl -L -o CC0-1.0.txt            https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt
 curl -L -o OFL-1.1.txt            https://openfontlicense.org/documents/OFL.txt
 curl -L -o LicenseRef-Bitstream-Vera.txt https://dejavu-fonts.github.io/License.html
+curl -L -o Apache-2.0.txt         https://www.apache.org/licenses/LICENSE-2.0.txt
 ```
 
 Or, if you have the `reuse` tool installed:

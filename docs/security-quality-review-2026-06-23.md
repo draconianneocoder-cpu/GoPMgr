@@ -164,9 +164,9 @@ as the schema evolves.
 ## Priority
 
 1. **F1** — done (AppImage delivery removed; no tool downloads remain).
-2. **F2** — make `govulncheck` (and gosec) a real CI gate.
-3. **F3** — re-enable `errcheck`/`staticcheck`/`unused` incrementally.
-4. **F4 / F5** — hardening notes; no urgent action.
+2. **F2** — done (`govulncheck` is a blocking CI gate; Windows installer collection hardened).
+3. **F3** — done (`errcheck`/`staticcheck`/`unused` re-enabled; first-party backlog cleared).
+4. **F4 / F5 / F6** — hardening notes; no urgent action.
 
 ## Scope / limits
 

@@ -28,7 +28,7 @@ type LayoutResult struct {
 
 // ErrEngineNotImplemented is the defensive default returned by Layout
 // when a kind is in the registry (Get succeeds) but has no switch arm
-// below. All 20 shipped kinds have arms, so this is unreachable for
+// below. All 21 shipped kinds have arms, so this is unreachable for
 // them; it guards against a new registry entry added without a matching
 // renderer. main.go treats it as a non-fatal "skip this chart" signal.
 var ErrEngineNotImplemented = errors.New("charts: engine renderer not yet implemented")
