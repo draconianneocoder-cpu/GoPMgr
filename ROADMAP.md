@@ -42,12 +42,26 @@ days). Both gates must pass. This is the mandatory convergence gate before the
 feature ships.
 
 **Advanced Resource Levelling** (RICE 144)
-Enhance `internal/kernel/resources.go` with Earliest-Deadline-First (EDF)
-and Least-Total-Float (LTF) heuristics, priority-override for critical tasks,
-and partial-assignment splitting (split a task across days when resource
-demand exceeds supply). The `levelingHorizon = 10000` constant must become a
-named sentinel (`ErrLevelingHorizonExceeded`) returned to callers rather than
-a silent cap. The cap must be configurable per-schedule.
+Enhance `internal/kernel/resources.go` with priority-override for critical
+tasks and partial-assignment splitting (split a task across days when
+resource demand exceeds supply).
+
+_Done:_ the `levelingHorizon = 10000` constant is now the exported
+`DefaultLevelingHorizon`, overridable per schedule via
+`LevelResourcesWithOptions(tasks, plan, LevelingOptions{Horizon})`, which
+returns `ErrLevelingHorizonExceeded` (with the unplaceable task IDs in
+`LevelingResult`) instead of silently capping. The pre-existing
+`LevelResources`/`LevelResourcesWithPlan` wrappers keep their original
+`bool` signature for backward compatibility. The production path is wired
+end-to-end: `App.LevelChartResources` now returns a `LevelResult` (pinned
+count plus unplaceable task IDs/labels) and the CPM editor shows a
+dismissible “N task(s) still overallocated” warning instead of silently
+capping. The Earliest-Deadline (EDF) and Least-Total-Float (LTF) heuristics
+are implemented as a `LevelingOptions.Strategy` selector, wired through
+`App.LevelChartResources(chartID, strategy)` and exposed as a heuristic
+dropdown in the CPM editor (LTF is the default and preserves prior
+behaviour). _Remaining:_ priority-override for critical tasks and
+partial-assignment splitting.
 
 **What-If / Scenario Analysis** (RICE 144)
 Fork a named scenario from the current plan, apply changes, and compute the

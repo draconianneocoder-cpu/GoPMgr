@@ -55,12 +55,15 @@ func newResourceTestApp(t *testing.T) (*App, *db.Database, db.Chart) {
 func TestLevelChartResourcesPinsDelayedTask(t *testing.T) {
 	app, d, c := newResourceTestApp(t)
 
-	pinned, err := app.LevelChartResources(c.ID)
+	res, err := app.LevelChartResources(c.ID, "")
 	if err != nil {
 		t.Fatalf("LevelChartResources: %v", err)
 	}
-	if pinned != 1 {
-		t.Fatalf("pinned = %d, want 1 (only the delayed task)", pinned)
+	if res.Pinned != 1 {
+		t.Fatalf("pinned = %d, want 1 (only the delayed task)", res.Pinned)
+	}
+	if len(res.UnplacedTaskIDs) != 0 {
+		t.Fatalf("UnplacedTaskIDs = %v, want none (both tasks fit)", res.UnplacedTaskIDs)
 	}
 
 	got, err := d.GetChart(c.ID)
@@ -108,12 +111,49 @@ func TestLevelChartResourcesHonoursStakeholderAvailability(t *testing.T) {
 		t.Fatalf("SaveStakeholder: %v", err)
 	}
 
-	pinned, err := app.LevelChartResources(c.ID)
+	res, err := app.LevelChartResources(c.ID, "")
 	if err != nil {
 		t.Fatalf("LevelChartResources: %v", err)
 	}
-	if pinned != 0 {
-		t.Errorf("pinned = %d, want 0 (capacity 2 absorbs both tasks)", pinned)
+	if res.Pinned != 0 {
+		t.Errorf("pinned = %d, want 0 (capacity 2 absorbs both tasks)", res.Pinned)
+	}
+}
+
+// TestLevelChartResourcesReportsUnplaceableTasks proves that when a task's
+// demand can never fit capacity (units 2 against a one-person resource), the
+// action still succeeds and persists the placeable pins, but reports the
+// unplaceable task by ID and label so the UI can warn the user. This is the
+// production-path counterpart to the kernel's ErrLevelingHorizonExceeded.
+func TestLevelChartResourcesReportsUnplaceableTasks(t *testing.T) {
+	app, d, _ := newResourceTestApp(t)
+
+	// C demands 2 units of alice (a one-person default resource): it can
+	// never be levelled into capacity and must surface as unplaceable.
+	c, err := d.SaveChart(db.Chart{
+		ProjectID: "project-1",
+		Kind:      "cpm",
+		Title:     "Overloaded",
+		Data: `{
+			"nodes": [
+				{"id":"C","label":"Impossible task","duration":1,"assignments":[{"resource":"alice","units":2}]}
+			],
+			"edges": []
+		}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+
+	res, err := app.LevelChartResources(c.ID, "")
+	if err != nil {
+		t.Fatalf("LevelChartResources should not hard-fail on an over-constrained schedule: %v", err)
+	}
+	if len(res.UnplacedTaskIDs) != 1 || res.UnplacedTaskIDs[0] != "C" {
+		t.Fatalf("UnplacedTaskIDs = %v, want [C]", res.UnplacedTaskIDs)
+	}
+	if len(res.UnplacedLabels) != 1 || res.UnplacedLabels[0] != "Impossible task" {
+		t.Fatalf("UnplacedLabels = %v, want [Impossible task]", res.UnplacedLabels)
 	}
 }
 
@@ -145,8 +185,74 @@ func TestLevelChartResourcesNeedsStartDate(t *testing.T) {
 	if _, err := d.UpsertProject(db.Project{ID: "project-1", Name: "Resource Test", StartDate: ""}); err != nil {
 		t.Fatalf("clear start date: %v", err)
 	}
-	if _, err := app.LevelChartResources(c.ID); err == nil {
+	if _, err := app.LevelChartResources(c.ID, ""); err == nil {
 		t.Error("levelling without a project start date must error")
+	}
+}
+
+// TestLevelChartResourcesStrategyDivergence proves the strategy argument
+// reaches the kernel: the same over-subscribed schedule pins a different
+// task under EDF than under the default LTF. A depends on P (early
+// deadline); B is a long low-slack task; both need alice.
+func TestLevelChartResourcesStrategyDivergence(t *testing.T) {
+	data := `{
+		"nodes": [
+			{"id":"A","label":"A","duration":1,"assignments":[{"resource":"alice"}]},
+			{"id":"P","label":"P","duration":1,"precedents":["A"]},
+			{"id":"B","label":"B","duration":5,"assignments":[{"resource":"alice"}]},
+			{"id":"LP","label":"LP","duration":6}
+		],
+		"edges": []
+	}`
+
+	constraintByID := func(app *App, d *db.Database, chartID string) map[string]string {
+		t.Helper()
+		got, err := d.GetChart(chartID)
+		if err != nil {
+			t.Fatalf("GetChart: %v", err)
+		}
+		var doc struct {
+			Nodes []struct {
+				ID         string `json:"id"`
+				Constraint string `json:"constraint"`
+			} `json:"nodes"`
+		}
+		if err := json.Unmarshal([]byte(got.Data), &doc); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		out := map[string]string{}
+		for _, n := range doc.Nodes {
+			out[n.ID] = n.Constraint
+		}
+		return out
+	}
+
+	// Default LTF: B (least float) keeps day 0, A is delayed and pinned.
+	appLTF, dLTF, _ := newResourceTestApp(t)
+	cLTF, err := dLTF.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "LTF", Data: data})
+	if err != nil {
+		t.Fatalf("SaveChart LTF: %v", err)
+	}
+	if _, err := appLTF.LevelChartResources(cLTF.ID, "ltf"); err != nil {
+		t.Fatalf("LevelChartResources LTF: %v", err)
+	}
+	ltf := constraintByID(appLTF, dLTF, cLTF.ID)
+	if ltf["A"] != "SNET" || ltf["B"] != "" {
+		t.Errorf("LTF: A=%q B=%q, want A pinned (SNET), B free", ltf["A"], ltf["B"])
+	}
+
+	// EDF: A (earliest deadline) keeps day 0, B is delayed and pinned.
+	appEDF, dEDF, _ := newResourceTestApp(t)
+	cEDF, err := dEDF.SaveChart(db.Chart{ProjectID: "project-1", Kind: "cpm", Title: "EDF", Data: data})
+	if err != nil {
+		t.Fatalf("SaveChart EDF: %v", err)
+	}
+	if _, err := appEDF.LevelChartResources(cEDF.ID, "edf"); err != nil {
+		t.Fatalf("LevelChartResources EDF: %v", err)
+	}
+	edf := constraintByID(appEDF, dEDF, cEDF.ID)
+	if edf["B"] != "SNET" || edf["A"] != "" {
+		t.Errorf("EDF: A=%q B=%q, want B pinned (SNET), A free", edf["A"], edf["B"])
 	}
 }
 

@@ -1462,6 +1462,29 @@ func (a *App) ExportChartMonteCarloRiskReport(chartID string, iterations int, wo
 	return outPath, nil
 }
 
+// LevelResult is the outcome of LevelChartResources: how many tasks were
+// pinned to a levelled SNET start, plus any tasks whose demand could not be
+// fit within resource capacity. Unplaceable tasks are returned by ID and by
+// human-readable label so the UI can warn that the schedule stays
+// overallocated for them.
+type LevelResult struct {
+	Pinned          int      `json:"pinned"`
+	UnplacedTaskIDs []string `json:"unplaced_task_ids,omitempty"`
+	UnplacedLabels  []string `json:"unplaced_labels,omitempty"`
+}
+
+// levelingStrategyFor maps a frontend strategy string to the kernel enum,
+// defaulting to least-total-float for empty or unrecognised values so a
+// stale or malformed request can never fail the level action.
+func levelingStrategyFor(s string) kernel.LevelingStrategy {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case string(kernel.EarliestDeadline):
+		return kernel.EarliestDeadline
+	default:
+		return kernel.LeastTotalFloat
+	}
+}
+
 // LevelChartResources runs the kernel's serial resource-levelling
 // pass on a CPM chart and PERSISTS the result: every task that
 // levelling delayed beyond its precedence-earliest start gets a SNET
@@ -1470,28 +1493,36 @@ func (a *App) ExportChartMonteCarloRiskReport(chartID string, iterations int, wo
 // win); previously levelled SNET pins are recomputed. Requires a
 // project start date to express levelled offsets as dates.
 //
-// Returns the number of tasks pinned.
-func (a *App) LevelChartResources(chartID string) (int, error) {
+// Returns a LevelResult with the number of tasks pinned and any tasks
+// whose demand could not be fit within capacity (still overallocated).
+// A dependency cycle is a hard error; an over-constrained schedule is
+// not — the placeable tasks are still pinned and saved, and the
+// unplaceable ones are reported for the UI to warn about.
+//
+// strategy selects the leveling heuristic: "edf" (earliest deadline) or
+// "ltf"/"" (least total float, the default). Any other value falls back
+// to the default.
+func (a *App) LevelChartResources(chartID string, strategy string) (LevelResult, error) {
 	d := a.requireDB()
 	if d == nil {
-		return 0, errors.New("no project open")
+		return LevelResult{}, errors.New("no project open")
 	}
 	proj, err := d.GetProject()
 	if err != nil {
-		return 0, err
+		return LevelResult{}, err
 	}
 	start, ok := parseProjectDate(proj.StartDate)
 	if !ok {
-		return 0, errors.New("resource levelling needs a project start date (Project Settings)")
+		return LevelResult{}, errors.New("resource levelling needs a project start date (Project Settings)")
 	}
 	c, err := d.GetChart(chartID)
 	if err != nil {
-		return 0, err
+		return LevelResult{}, err
 	}
 
 	var doc dagDoc
 	if err := json.Unmarshal([]byte(c.Data), &doc); err != nil {
-		return 0, err
+		return LevelResult{}, err
 	}
 
 	cal := calendar.For(proj.CountryCode)
@@ -1499,24 +1530,34 @@ func (a *App) LevelChartResources(chartID string) (int, error) {
 	// Baseline pass: precedence-only ES per task.
 	plain, err := cpmChartDataToKernelTasks(c.Data)
 	if err != nil {
-		return 0, err
+		return LevelResult{}, err
 	}
 	if len(plain) == 0 {
-		return 0, errors.New("chart has no tasks")
+		return LevelResult{}, errors.New("chart has no tasks")
 	}
 	kernel.ApplyConstraintDates(plain, start, cal.IsWorkday)
 	if !kernel.CalculateCPM(plain) {
-		return 0, errors.New("chart contains a dependency cycle")
+		return LevelResult{}, errors.New("chart contains a dependency cycle")
 	}
 
 	// Levelling pass on a fresh copy.
 	levelled, err := cpmChartDataToKernelTasks(c.Data)
 	if err != nil {
-		return 0, err
+		return LevelResult{}, err
 	}
 	kernel.ApplyConstraintDates(levelled, start, cal.IsWorkday)
-	if !kernel.LevelResourcesWithPlan(levelled, resourceCapacityPlan(d, proj.ID)) {
-		return 0, errors.New("chart contains a dependency cycle")
+	levelOutcome, levelErr := kernel.LevelResourcesWithOptions(
+		levelled, resourceCapacityPlan(d, proj.ID),
+		kernel.LevelingOptions{Strategy: levelingStrategyFor(strategy)})
+	if errors.Is(levelErr, kernel.ErrSchedulingCycle) {
+		return LevelResult{}, errors.New("chart contains a dependency cycle")
+	}
+	// ErrLevelingHorizonExceeded is non-fatal: the schedule is levelled as
+	// far as capacity allows; the unplaceable tasks are reported below and
+	// stay visible to the overallocation badges. Any other unexpected error
+	// is surfaced.
+	if levelErr != nil && !errors.Is(levelErr, kernel.ErrLevelingHorizonExceeded) {
+		return LevelResult{}, levelErr
 	}
 	kernel.AnchorSchedule(levelled, start, cal.IsWorkday)
 
@@ -1545,13 +1586,30 @@ func (a *App) LevelChartResources(chartID string) (int, error) {
 
 	blob, err := json.Marshal(doc)
 	if err != nil {
-		return 0, err
+		return LevelResult{}, err
 	}
 	c.Data = string(blob)
 	if _, err := d.SaveChart(c); err != nil {
-		return 0, err
+		return LevelResult{}, err
 	}
-	return pinned, nil
+
+	out := LevelResult{Pinned: pinned}
+	if len(levelOutcome.UnplacedTaskIDs) > 0 {
+		labelByID := make(map[string]string, len(doc.Nodes))
+		for _, n := range doc.Nodes {
+			labelByID[n.ID] = strings.TrimSpace(n.Label)
+		}
+		out.UnplacedTaskIDs = levelOutcome.UnplacedTaskIDs
+		out.UnplacedLabels = make([]string, 0, len(levelOutcome.UnplacedTaskIDs))
+		for _, id := range levelOutcome.UnplacedTaskIDs {
+			if lbl := labelByID[id]; lbl != "" {
+				out.UnplacedLabels = append(out.UnplacedLabels, lbl)
+			} else {
+				out.UnplacedLabels = append(out.UnplacedLabels, id)
+			}
+		}
+	}
+	return out, nil
 }
 
 // GenerateResourceHistogram builds (or refreshes) a Bar chart showing
