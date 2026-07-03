@@ -207,6 +207,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let stakeholders = $state<Stakeholder[]>([]);
   let resourceBusy = $state(false);
   let resourceMsg = $state('');
+  // Persistent (not auto-cleared) warning for tasks the leveller could not
+  // fit within capacity. resourceWarnTitle holds the full task list for the
+  // tooltip when the inline text is truncated.
+  let resourceWarn = $state('');
+  let resourceWarnTitle = $state('');
+  // Leveling heuristic: 'ltf' (least total float, default) or 'edf'
+  // (earliest deadline). Passed through to App.LevelChartResources.
+  let levelStrategy = $state('ltf');
 
   async function loadStakeholders() {
     try {
@@ -253,14 +261,35 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function levelResources() {
     if (!session.editingId || resourceBusy) return;
     resourceBusy = true;
+    resourceWarn = '';
+    resourceWarnTitle = '';
     try {
-      const pinned = await window.go.main.App.LevelChartResources(session.editingId);
+      const res = await window.go.main.App.LevelChartResources(session.editingId, levelStrategy);
       // Reload the shell's doc from the DB so the editor shows the
       // new SNET pins and a later save can't clobber them.
       await shellRef?.reloadFromDB();
-      flashResourceMsg(
-        pinned > 0 ? `Levelled: ${pinned} task(s) pinned (SNET)` : 'Already level: nothing moved'
-      );
+      // Tasks whose demand exceeds capacity can't be levelled into a
+      // conflict-free slot; surface them so the user knows the schedule
+      // is still overallocated for those tasks (the badges also show it).
+      const unplaced = res.unplaced_labels ?? [];
+      // Keep the success line consistent with the warning: don't claim
+      // "already level" when tasks are actually still overallocated.
+      if (res.pinned > 0) {
+        flashResourceMsg(`Levelled: ${res.pinned} task(s) pinned (SNET)`);
+      } else if (unplaced.length > 0) {
+        flashResourceMsg('No tasks could be shifted into free capacity');
+      } else {
+        flashResourceMsg('Already level: nothing moved');
+      }
+      if (unplaced.length > 0) {
+        const shown = unplaced.slice(0, 3).join(', ');
+        const more = unplaced.length > 3 ? ` +${unplaced.length - 3} more` : '';
+        resourceWarn = `${unplaced.length} task(s) still overallocated: ${shown}${more}`;
+        resourceWarnTitle =
+          'Demand exceeds available capacity for: ' +
+          unplaced.join(', ') +
+          '. Reduce assigned units, add resource capacity, or split the work across days.';
+      }
     } catch (err: any) {
       flashResourceMsg(String(err?.message ?? err));
     } finally {
@@ -285,6 +314,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
     void refreshBaseline();
     void loadStakeholders();
   });
+
+  // The router can reuse this editor instance across chart IDs (same "cpm"
+  // view, different session.editingId), so onMount won't re-run. Clear the
+  // persistent leveling warning when the edited chart changes so a warning
+  // from one schedule never bleeds into another.
+  $effect(() => {
+    session.editingId;
+    resourceWarn = '';
+    resourceWarnTitle = '';
+  });
 </script>
 
 <LayeredEditorShell bind:this={shellRef} chartKind="cpm" headingLabel="CPM Chart">
@@ -295,6 +334,26 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {#if resourceMsg}
       <span class="text-[10px] text-orange-300">{resourceMsg}</span>
     {/if}
+    {#if resourceWarn}
+      <button
+        type="button"
+        class="text-[10px] text-amber-400 hover:text-amber-300"
+        title={resourceWarnTitle}
+        onclick={() => {
+          resourceWarn = '';
+          resourceWarnTitle = '';
+        }}
+      >⚠ {resourceWarn} (dismiss)</button>
+    {/if}
+    <select
+      bind:value={levelStrategy}
+      disabled={resourceBusy}
+      title="Leveling heuristic: least total float protects the project finish; earliest deadline favours per-task due dates."
+      class="text-[10px] bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-slate-200"
+    >
+      <option value="ltf">Least float</option>
+      <option value="edf">Earliest deadline</option>
+    </select>
     <button
       onclick={levelResources}
       disabled={resourceBusy}
