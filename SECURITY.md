@@ -20,6 +20,11 @@ for a legitimate local user.
   created with restrictive POSIX permissions where supported.
 - `system.db` file permissions are tightened to owner-only access where
   supported.
+- Every IPC method that opens, mutates, or archives a project by a
+  frontend-supplied path (`OpenProject`, `DeleteProject`, `CloneProject`,
+  `EncryptProjectAtRest`, `SecureArchive`, etc.) is confined to the
+  signed-in user's own `projects/` directory via `projectPathFor` in
+  `main.go`, rejecting anything outside it before touching disk.
 
 ## Encryption At Rest
 
