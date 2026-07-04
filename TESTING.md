@@ -41,12 +41,21 @@ it catches module-load and SSR-render failures that `svelte-check` and
 
 ```sh
 npm --prefix frontend run check
+npm --prefix frontend run test   # Vitest component + unit tests (jsdom)
 npm --prefix frontend run build
 npm --prefix frontend run lint
-make frontend-stability
+make frontend-stability          # svelte-check + regressions + Vitest
 make frontend-build-budget
 make frontend-smoke
 ```
+
+Component behaviour that `svelte-check` can only type-check is covered by
+Vitest + `@testing-library/svelte` (jsdom). Presentational components (e.g.
+`GanttBars.svelte`) render from props with no Wails bridge, so they mount
+directly in tests; pure geometry lives in sibling `*_geometry.ts` modules
+with fast unit tests. `make frontend-stability` runs the Vitest suite, so it
+is part of `make verify` and `make check-release`. Test files
+(`*.test.ts` / `*.spec.ts`) are excluded from the app `svelte-check`.
 
 `make build` runs `wails build`, which builds the frontend into
 `frontend/dist` and embeds it via the root `main.go` `go:embed` directive.
