@@ -15,6 +15,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { autosave } from '../../autosave.svelte';
   import GanttBars from './GanttBars.svelte';
   import { GANTT_ROW_H as rowH, type GanttLayout } from './gantt_geometry';
+  import { splitLevelStatus, splitPreviewMessage, clearWorkSegments } from './leveling_messages';
 
   interface GNode {
     id: string;
@@ -111,15 +112,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     status = '';
     try {
       const p = await window.go.main.App.PreviewSplitLeveling(session.editingId);
-      const labels = p.split_task_labels ?? [];
-      if (labels.length === 0) {
-        status = 'No tasks need splitting at current capacity';
-      } else if (p.resolves_overallocation) {
-        status = `Splitting ${labels.length} task(s) would clear overallocation: ${labels.slice(0, 3).join(', ')}`;
-      } else {
-        const stuck = p.remaining_overallocated_resources ?? [];
-        status = `Even with splitting, ${stuck.length} resource(s) stay over capacity`;
-      }
+      status = splitPreviewMessage(p).msg;
       setTimeout(() => (status = ''), 4000);
     } catch (err: any) {
       status = String(err?.message ?? err);
@@ -145,10 +138,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       chart = await window.go.main.App.GetChart(session.editingId);
       doc = JSON.parse(chart.data) as GDoc;
       await refreshLayout();
-      const split = res.split_labels ?? [];
-      status = split.length
-        ? `Levelled; split ${split.length} task(s): ${split.slice(0, 3).join(', ')}`
-        : 'Levelled; no tasks needed splitting';
+      status = splitLevelStatus(res);
       setTimeout(() => (status = ''), 4000);
     } catch (err: any) {
       status = String(err?.message ?? err);
@@ -162,7 +152,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // work_segments before re-laying-out; stale interrupted bars can't render
   // until the user re-runs "Level (split)".
   function onEdit() {
-    for (const n of doc.nodes) n.work_segments = undefined;
+    clearWorkSegments(doc.nodes);
     void refreshLayout();
   }
 

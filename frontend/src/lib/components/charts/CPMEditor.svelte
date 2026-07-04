@@ -10,6 +10,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount } from 'svelte';
   import { session } from '../../session.svelte';
   import LayeredEditorShell from './_layered_editor_shell.svelte';
+  import { levelResourcesMessages, splitPreviewMessage } from './leveling_messages';
 
   function fmt(n: unknown, digits = 1): string {
     return typeof n === 'number' ? n.toFixed(digits) : '—';
@@ -280,28 +281,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // Reload the shell's doc from the DB so the editor shows the
       // new SNET pins and a later save can't clobber them.
       await shellRef?.reloadFromDB();
-      // Tasks whose demand exceeds capacity can't be levelled into a
-      // conflict-free slot; surface them so the user knows the schedule
-      // is still overallocated for those tasks (the badges also show it).
-      const unplaced = res.unplaced_labels ?? [];
-      // Keep the success line consistent with the warning: don't claim
-      // "already level" when tasks are actually still overallocated.
-      if (res.pinned > 0) {
-        flashResourceMsg(`Levelled: ${res.pinned} task(s) pinned (SNET)`);
-      } else if (unplaced.length > 0) {
-        flashResourceMsg('No tasks could be shifted into free capacity');
-      } else {
-        flashResourceMsg('Already level: nothing moved');
-      }
-      if (unplaced.length > 0) {
-        const shown = unplaced.slice(0, 3).join(', ');
-        const more = unplaced.length > 3 ? ` +${unplaced.length - 3} more` : '';
-        resourceWarn = `${unplaced.length} task(s) still overallocated: ${shown}${more}`;
-        resourceWarnTitle =
-          'Demand exceeds available capacity for: ' +
-          unplaced.join(', ') +
-          '. Reduce assigned units, add resource capacity, or split the work across days.';
-      }
+      // Success flash plus a persistent warning for tasks whose demand
+      // exceeds capacity (still overallocated; badges also show it).
+      const m = levelResourcesMessages(res);
+      flashResourceMsg(m.flash);
+      resourceWarn = m.warn;
+      resourceWarnTitle = m.warnTitle;
     } catch (err: any) {
       flashResourceMsg(String(err?.message ?? err));
     } finally {
@@ -320,25 +305,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     splitPreviewTitle = '';
     try {
       const p = await window.go.main.App.PreviewSplitLeveling(session.editingId);
-      const labels = p.split_task_labels ?? [];
-      if (labels.length === 0) {
-        splitPreviewMsg = 'No tasks need splitting at current capacity';
-      } else if (p.resolves_overallocation) {
-        const shown = labels.slice(0, 3).join(', ');
-        const more = labels.length > 3 ? ` +${labels.length - 3} more` : '';
-        splitPreviewMsg = `Splitting ${labels.length} task(s) would clear overallocation: ${shown}${more}`;
-        splitPreviewTitle =
-          'Interrupting these tasks across non-contiguous days resolves all resource conflicts: ' +
-          labels.join(', ') +
-          '. Splitting is analysis-only and is not saved.';
-      } else {
-        const stuck = p.remaining_overallocated_resources ?? [];
-        splitPreviewMsg = `Even with splitting, ${stuck.length} resource(s) stay over capacity`;
-        splitPreviewTitle =
-          'These resources have single-day demand above supply, which splitting cannot fix: ' +
-          stuck.join(', ') +
-          '. Reduce assigned units or add capacity.';
-      }
+      const m = splitPreviewMessage(p);
+      splitPreviewMsg = m.msg;
+      splitPreviewTitle = m.title;
     } catch (err: any) {
       splitPreviewMsg = String(err?.message ?? err);
     } finally {

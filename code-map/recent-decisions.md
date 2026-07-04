@@ -41,6 +41,7 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
 - Added **Vitest + `@testing-library/svelte` + jsdom** for behaviour-level frontend tests (the app previously had only `svelte-check` + node grep-scripts). Toolchain stayed on Vite 8 / Svelte 5, 0 npm vulnerabilities.
 - Pattern: pure rendering geometry lives in sibling `*_geometry.ts` modules (fast unit tests); presentational components render from props with no Wails bridge so they mount directly. The Gantt bar canvas was extracted from `GanttEditor.svelte` into a testable `GanttBars.svelte` + `gantt_geometry.ts` — the extraction makes the tests cover the production render path, not a copy.
 - `make frontend-stability` now runs `npm test` (Vitest), so it is enforced by `make verify` / `make check-release`. Test files are excluded from the app `svelte-check`.
+- The leveling/preview **action decision-logic** was extracted the same way: `leveling_messages.ts` (pure status/warning/preview builders + `clearWorkSegments`) is unit-tested and consumed by both the CPM and Gantt editors. This verifies the *logic* of the leveling actions; the thin async handler orchestration in the editors (bridge call → await → `$state` assignment → timeout/busy-flag) remains compile-verified only (would need a mounted-component + mocked-bridge test). Unifying the two editors' preview builders made the Gantt preview/level messages gain the CPM's `“+N more”` truncation — a small consistency improvement.
 
 ## Other notable decisions (from `session-notes.md`)
 
