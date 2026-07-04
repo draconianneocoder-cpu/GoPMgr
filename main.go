@@ -1501,8 +1501,9 @@ func levelingStrategyFor(s string) kernel.LevelingStrategy {
 //
 // strategy selects the leveling heuristic: "edf" (earliest deadline) or
 // "ltf"/"" (least total float, the default). Any other value falls back
-// to the default.
-func (a *App) LevelChartResources(chartID string, strategy string) (LevelResult, error) {
+// to the default. When priorityCritical is true, critical-path tasks win
+// resource contention ahead of floating tasks.
+func (a *App) LevelChartResources(chartID string, strategy string, priorityCritical bool) (LevelResult, error) {
 	d := a.requireDB()
 	if d == nil {
 		return LevelResult{}, errors.New("no project open")
@@ -1548,7 +1549,10 @@ func (a *App) LevelChartResources(chartID string, strategy string) (LevelResult,
 	kernel.ApplyConstraintDates(levelled, start, cal.IsWorkday)
 	levelOutcome, levelErr := kernel.LevelResourcesWithOptions(
 		levelled, resourceCapacityPlan(d, proj.ID),
-		kernel.LevelingOptions{Strategy: levelingStrategyFor(strategy)})
+		kernel.LevelingOptions{
+			Strategy:         levelingStrategyFor(strategy),
+			PriorityCritical: priorityCritical,
+		})
 	if errors.Is(levelErr, kernel.ErrSchedulingCycle) {
 		return LevelResult{}, errors.New("chart contains a dependency cycle")
 	}
@@ -1610,6 +1614,99 @@ func (a *App) LevelChartResources(chartID string, strategy string) (LevelResult,
 		}
 	}
 	return out, nil
+}
+
+// SplitLevelingPreview is a read-only projection of what activity splitting
+// would achieve on a CPM chart, computed WITHOUT persisting anything.
+// Splitting interrupts a task across non-contiguous days; the current
+// single-start node model cannot store that, so this preview only reports
+// the outcome (which tasks would be split, and whether the result is
+// conflict-free) for the user to act on.
+type SplitLevelingPreview struct {
+	// SplitTaskLabels names the tasks that splitting would interrupt.
+	SplitTaskLabels []string `json:"split_task_labels,omitempty"`
+	// ResolvesOverallocation is true when the split-levelled schedule has no
+	// remaining resource breach.
+	ResolvesOverallocation bool `json:"resolves_overallocation"`
+	// RemainingOverallocatedResources lists resources still over capacity
+	// even with splitting (their single-day demand exceeds supply).
+	RemainingOverallocatedResources []string `json:"remaining_overallocated_resources,omitempty"`
+}
+
+// PreviewSplitLeveling reports what activity splitting would do to a CPM
+// chart's schedule without changing anything on disk. It is the read-only
+// counterpart to LevelChartResources: because a split (interrupted) task
+// can't be expressed as the single SNET start pin the chart model persists,
+// splitting is surfaced as guidance rather than applied.
+func (a *App) PreviewSplitLeveling(chartID string) (SplitLevelingPreview, error) {
+	d := a.requireDB()
+	if d == nil {
+		return SplitLevelingPreview{}, errors.New("no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return SplitLevelingPreview{}, err
+	}
+	start, ok := parseProjectDate(proj.StartDate)
+	if !ok {
+		return SplitLevelingPreview{}, errors.New("resource levelling needs a project start date (Project Settings)")
+	}
+	c, err := d.GetChart(chartID)
+	if err != nil {
+		return SplitLevelingPreview{}, err
+	}
+
+	var doc dagDoc
+	if err := json.Unmarshal([]byte(c.Data), &doc); err != nil {
+		return SplitLevelingPreview{}, err
+	}
+
+	cal := calendar.For(proj.CountryCode)
+	tasks, err := cpmChartDataToKernelTasks(c.Data)
+	if err != nil {
+		return SplitLevelingPreview{}, err
+	}
+	if len(tasks) == 0 {
+		return SplitLevelingPreview{}, errors.New("chart has no tasks")
+	}
+	kernel.ApplyConstraintDates(tasks, start, cal.IsWorkday)
+	plan := resourceCapacityPlan(d, proj.ID)
+	outcome, err := kernel.LevelResourcesWithOptions(tasks, plan, kernel.LevelingOptions{AllowSplitting: true})
+	if errors.Is(err, kernel.ErrSchedulingCycle) {
+		return SplitLevelingPreview{}, errors.New("chart contains a dependency cycle")
+	}
+	// ErrLevelingHorizonExceeded is expected when demand is truly infeasible;
+	// the remaining breaches are reported below. Any other error is fatal.
+	if err != nil && !errors.Is(err, kernel.ErrLevelingHorizonExceeded) {
+		return SplitLevelingPreview{}, err
+	}
+
+	labelByID := make(map[string]string, len(doc.Nodes))
+	for _, n := range doc.Nodes {
+		labelByID[n.ID] = strings.TrimSpace(n.Label)
+	}
+	preview := SplitLevelingPreview{}
+	for _, id := range outcome.SplitTaskIDs {
+		if lbl := labelByID[id]; lbl != "" {
+			preview.SplitTaskLabels = append(preview.SplitTaskLabels, lbl)
+		} else {
+			preview.SplitTaskLabels = append(preview.SplitTaskLabels, id)
+		}
+	}
+
+	// Any resource still over capacity in the split-levelled schedule
+	// (DetectOverallocations honours the split WorkDays, so idle days are
+	// not counted).
+	breaches := kernel.DetectOverallocationsWithPlan(tasks, plan)
+	seen := map[string]bool{}
+	for _, b := range breaches {
+		if !seen[b.Resource] {
+			seen[b.Resource] = true
+			preview.RemainingOverallocatedResources = append(preview.RemainingOverallocatedResources, b.Resource)
+		}
+	}
+	preview.ResolvesOverallocation = len(preview.RemainingOverallocatedResources) == 0
+	return preview, nil
 }
 
 // GenerateResourceHistogram builds (or refreshes) a Bar chart showing

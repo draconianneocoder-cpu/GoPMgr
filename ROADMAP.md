@@ -41,10 +41,10 @@ and (b) a simulated median (P50) within ±2% of the analytical median (≈4.51
 days). Both gates must pass. This is the mandatory convergence gate before the
 feature ships.
 
-**Advanced Resource Levelling** (RICE 144)
-Enhance `internal/kernel/resources.go` with priority-override for critical
-tasks and partial-assignment splitting (split a task across days when
-resource demand exceeds supply).
+**Advanced Resource Levelling** (RICE 144) — **done.**
+`internal/kernel/resources.go` now supports the full set: a configurable
+leveling horizon, the EDF/LTF heuristics, priority-override for critical
+tasks, and partial-assignment splitting.
 
 _Done:_ the `levelingHorizon = 10000` constant is now the exported
 `DefaultLevelingHorizon`, overridable per schedule via
@@ -60,8 +60,15 @@ capping. The Earliest-Deadline (EDF) and Least-Total-Float (LTF) heuristics
 are implemented as a `LevelingOptions.Strategy` selector, wired through
 `App.LevelChartResources(chartID, strategy)` and exposed as a heuristic
 dropdown in the CPM editor (LTF is the default and preserves prior
-behaviour). _Remaining:_ priority-override for critical tasks and
-partial-assignment splitting.
+behaviour). Priority-override (`LevelingOptions.PriorityCritical`) protects
+the critical path from being delayed by floating tasks and is exposed as a
+“Protect critical” checkbox. Partial-assignment splitting
+(`LevelingOptions.AllowSplitting` + `Task.WorkDays`) interrupts a task
+across non-contiguous days when contiguous placement would finish later;
+because a split task can't be stored as a single start pin, it is surfaced
+read-only via `App.PreviewSplitLeveling` and a “Preview splitting” button
+rather than persisted. _Future foundation:_ a task-segments model would let
+split schedules be saved and rendered (Gantt/EVM) directly.
 
 **What-If / Scenario Analysis** (RICE 144)
 Fork a named scenario from the current plan, apply changes, and compute the

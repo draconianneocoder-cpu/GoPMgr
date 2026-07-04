@@ -215,6 +215,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // Leveling heuristic: 'ltf' (least total float, default) or 'edf'
   // (earliest deadline). Passed through to App.LevelChartResources.
   let levelStrategy = $state('ltf');
+  // When on, critical-path tasks win resource contention ahead of floating
+  // tasks so leveling never delays the critical path.
+  let priorityCritical = $state(false);
+  // Read-only splitting preview message (activity splitting is analysis-only
+  // because a split task can't be stored as a single start pin).
+  let splitPreviewMsg = $state('');
+  let splitPreviewTitle = $state('');
 
   async function loadStakeholders() {
     try {
@@ -264,7 +271,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
     resourceWarn = '';
     resourceWarnTitle = '';
     try {
-      const res = await window.go.main.App.LevelChartResources(session.editingId, levelStrategy);
+      const res = await window.go.main.App.LevelChartResources(
+        session.editingId,
+        levelStrategy,
+        priorityCritical
+      );
       // Reload the shell's doc from the DB so the editor shows the
       // new SNET pins and a later save can't clobber them.
       await shellRef?.reloadFromDB();
@@ -297,6 +308,43 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  // previewSplitting reports (read-only) whether interrupting tasks across
+  // non-contiguous days would resolve overallocation, without changing the
+  // saved schedule. Splitting isn't persisted: a split task can't be stored
+  // as the single SNET start pin the chart model uses.
+  async function previewSplitting() {
+    if (!session.editingId || resourceBusy) return;
+    resourceBusy = true;
+    splitPreviewMsg = '';
+    splitPreviewTitle = '';
+    try {
+      const p = await window.go.main.App.PreviewSplitLeveling(session.editingId);
+      const labels = p.split_task_labels ?? [];
+      if (labels.length === 0) {
+        splitPreviewMsg = 'No tasks need splitting at current capacity';
+      } else if (p.resolves_overallocation) {
+        const shown = labels.slice(0, 3).join(', ');
+        const more = labels.length > 3 ? ` +${labels.length - 3} more` : '';
+        splitPreviewMsg = `Splitting ${labels.length} task(s) would clear overallocation: ${shown}${more}`;
+        splitPreviewTitle =
+          'Interrupting these tasks across non-contiguous days resolves all resource conflicts: ' +
+          labels.join(', ') +
+          '. Splitting is analysis-only and is not saved.';
+      } else {
+        const stuck = p.remaining_overallocated_resources ?? [];
+        splitPreviewMsg = `Even with splitting, ${stuck.length} resource(s) stay over capacity`;
+        splitPreviewTitle =
+          'These resources have single-day demand above supply, which splitting cannot fix: ' +
+          stuck.join(', ') +
+          '. Reduce assigned units or add capacity.';
+      }
+    } catch (err: any) {
+      splitPreviewMsg = String(err?.message ?? err);
+    } finally {
+      resourceBusy = false;
+    }
+  }
+
   async function generateHistogram() {
     if (!session.editingId || resourceBusy) return;
     resourceBusy = true;
@@ -323,6 +371,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     session.editingId;
     resourceWarn = '';
     resourceWarnTitle = '';
+    splitPreviewMsg = '';
+    splitPreviewTitle = '';
   });
 </script>
 
@@ -354,6 +404,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <option value="ltf">Least float</option>
       <option value="edf">Earliest deadline</option>
     </select>
+    <label
+      class="text-[10px] text-slate-300 flex items-center gap-1"
+      title="Protect the critical path: critical tasks win resource contention ahead of floating tasks."
+    >
+      <input type="checkbox" bind:checked={priorityCritical} disabled={resourceBusy} />
+      Protect critical
+    </label>
     <button
       onclick={levelResources}
       disabled={resourceBusy}
@@ -362,6 +419,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     >
       Level
     </button>
+    <button
+      onclick={previewSplitting}
+      disabled={resourceBusy}
+      class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded"
+      title="Preview (read-only) whether interrupting tasks across non-contiguous days would clear overallocation. Not saved."
+    >
+      Preview splitting
+    </button>
+    {#if splitPreviewMsg}
+      <span class="text-[10px] text-sky-300" title={splitPreviewTitle}>{splitPreviewMsg}</span>
+    {/if}
     <button
       onclick={generateHistogram}
       disabled={resourceBusy}

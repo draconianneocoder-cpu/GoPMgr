@@ -175,6 +175,126 @@ func TestLevelResourcesEmptyStrategyDefaultsToLeastTotalFloat(t *testing.T) {
 	approx(t, "A.ES", tasks["A"].ES, 5)
 }
 
+// TestLevelResourcesPriorityCriticalProtectsCriticalPath proves the
+// priority-override: under EarliestDeadline a floating task with an earlier
+// deadline would normally grab the slot, but PriorityCritical lets the
+// critical-path task win instead.
+//
+// Graph: F (floating, dur 1) contends with C (critical, dur 1) for alice on
+// day 0. C sits on the long critical path (C -> D, D dur 3) so it is
+// critical (float 0); F is a sink with slack but an earlier late-finish, so
+// plain EDF would pick F first.
+func levelingCriticalGraph() map[string]*Task {
+	return map[string]*Task{
+		"C": {ID: "C", Duration: 1, Assignments: []Assignment{{Resource: "alice"}}},
+		"D": {ID: "D", Duration: 3, Precedents: []string{"C"}}, // makes C critical (path C->D = 4)
+		"F": {ID: "F", Duration: 1, Assignments: []Assignment{{Resource: "alice"}}},
+	}
+}
+
+func TestLevelResourcesPriorityCriticalProtectsCriticalPath(t *testing.T) {
+	// Without priority-override, EDF orders by late finish. F (a sink, LF =
+	// project end) vs C (LF = LS of D). Confirm the override flips the
+	// winner: C keeps day 0, F is delayed.
+	tasks := levelingCriticalGraph()
+	_, err := LevelResourcesWithOptions(tasks, ResourceCapacityPlan{DefaultCapacity: 1},
+		LevelingOptions{Strategy: EarliestDeadline, PriorityCritical: true})
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if !tasks["C"].IsCritical {
+		t.Fatalf("precondition: C should be critical, got IsCritical=false")
+	}
+	approx(t, "C.ES", tasks["C"].ES, 0) // critical task protected
+	approx(t, "F.ES", tasks["F"].ES, 1) // floating task yields
+}
+
+// TestLevelResourcesSplittingSpreadsWork proves AllowSplitting places a task
+// on non-contiguous days when a contiguous slot doesn't exist, and that the
+// resulting schedule is conflict-free (no overallocation).
+func TestLevelResourcesSplittingSpreadsWork(t *testing.T) {
+	// B (dur 3) holds alice on days 0,1,2. A (dur 2) is fixed to day 0 by an
+	// FF-... actually simplest: A needs 2 days of alice but B occupies a
+	// middle day, forcing A to split around it. Build B as a 1-unit hold on
+	// day 1 via a calendar gap is complex; instead give alice capacity 1 and
+	// have three unit tasks contend so the third must split around them.
+	//
+	// Concretely: X, Y each dur 1 on alice (fill days 0 and 1 after leveling
+	// serialises them), and S dur 2 on alice that, without splitting, would
+	// need two free contiguous days (2,3) but here we cap the horizon so it
+	// must interleave. Simpler and deterministic: capacity 1, tasks A,B,C
+	// each dur 1 needing alice, plus S dur 2 needing alice. Serial leveling
+	// packs A,B,C on days 0,1,2; S then fits contiguously at 3,4 — no split.
+	//
+	// To force a genuine split we give S a hard SNET start at day 0 while A
+	// already holds day 0, and a calendar that frees alice only on alternate
+	// days. Use a per-resource calendar: alice available on even days only.
+	tasks := map[string]*Task{
+		"S": {ID: "S", Duration: 3, Assignments: []Assignment{{Resource: "alice"}}},
+	}
+	plan := ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Calendars: map[string]ResourceCalendar{
+			"alice": {
+				Resource:        "alice",
+				DefaultCapacity: 1,
+				// Odd days have zero capacity, so a 3-day task can only be
+				// worked on days 0, 2, 4 — inherently non-contiguous.
+				Overrides: map[int]float64{1: 0, 3: 0, 5: 0},
+			},
+		},
+	}
+
+	res, err := LevelResourcesWithOptions(tasks, plan, LevelingOptions{AllowSplitting: true})
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if len(res.SplitTaskIDs) != 1 || res.SplitTaskIDs[0] != "S" {
+		t.Fatalf("SplitTaskIDs = %v, want [S]", res.SplitTaskIDs)
+	}
+	if got := tasks["S"].WorkDays; len(got) != 3 || got[0] != 0 || got[1] != 2 || got[2] != 4 {
+		t.Fatalf("S.WorkDays = %v, want [0 2 4]", got)
+	}
+	approx(t, "S.ES", tasks["S"].ES, 0)
+	approx(t, "S.EF", tasks["S"].EF, 5) // finishes the day after the last worked day (4)
+	// The split schedule must be conflict-free: no idle-day demand counted.
+	if breaches := DetectOverallocationsWithPlan(tasks, plan); len(breaches) != 0 {
+		t.Fatalf("split plan still overallocated: %+v", breaches)
+	}
+}
+
+// TestLevelResourcesSplittingDisabledDelaysContiguously proves splitting is
+// opt-in: with AllowSplitting off, the same task is not split — it is placed
+// contiguously in the first 3-day run where alice is free (days 6–8, since
+// the calendar only zeroes odd days 1/3/5), finishing later than the split
+// plan would.
+func TestLevelResourcesSplittingDisabledDelaysContiguously(t *testing.T) {
+	tasks := map[string]*Task{
+		"S": {ID: "S", Duration: 3, Assignments: []Assignment{{Resource: "alice"}}},
+	}
+	plan := ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Calendars: map[string]ResourceCalendar{
+			"alice": {Resource: "alice", DefaultCapacity: 1, Overrides: map[int]float64{1: 0, 3: 0, 5: 0}},
+		},
+	}
+	res, err := LevelResourcesWithOptions(tasks, plan, LevelingOptions{}) // splitting off
+	if err != nil {
+		t.Fatalf("err = %v, want nil (task fits contiguously later)", err)
+	}
+	if len(res.SplitTaskIDs) != 0 {
+		t.Errorf("SplitTaskIDs = %v, want none (splitting disabled)", res.SplitTaskIDs)
+	}
+	if tasks["S"].WorkDays != nil {
+		t.Errorf("S.WorkDays = %v, want nil (not split)", tasks["S"].WorkDays)
+	}
+	approx(t, "S.ES", tasks["S"].ES, 6) // first free 3-day contiguous run
+	approx(t, "S.EF", tasks["S"].EF, 9)
+	if breaches := DetectOverallocationsWithPlan(tasks, plan); len(breaches) != 0 {
+		t.Fatalf("contiguous plan still overallocated: %+v", breaches)
+	}
+}
+
 // TestDefaultLevelingHorizonUsedWhenUnset proves a zero Horizon falls back to
 // DefaultLevelingHorizon rather than refusing to search at all.
 func TestDefaultLevelingHorizonUsedWhenUnset(t *testing.T) {

@@ -159,6 +159,19 @@ type LevelingOptions struct {
 	Horizon int `json:"horizon,omitempty"`
 	// Strategy is the ready-queue priority rule. Empty means LeastTotalFloat.
 	Strategy LevelingStrategy `json:"strategy,omitempty"`
+	// PriorityCritical, when true, makes critical-path tasks win ready-queue
+	// contention ahead of any non-critical task, before the base Strategy
+	// tie-break is applied. This protects the critical path from being
+	// delayed by a floating task — most visible under EarliestDeadline and
+	// on strategy ties.
+	PriorityCritical bool `json:"priority_critical,omitempty"`
+	// AllowSplitting, when true, lets a task that cannot fit its whole
+	// duration in contiguous days be worked on non-contiguous days where
+	// capacity exists (activity splitting / interruption). Split tasks
+	// record their working days in Task.WorkDays and are reported in
+	// LevelingResult.SplitTaskIDs. A task whose single-day demand exceeds
+	// capacity still cannot be placed and is reported unplaced.
+	AllowSplitting bool `json:"allow_splitting,omitempty"`
 }
 
 // LevelingResult reports the outcome of a resource-leveling pass.
@@ -168,6 +181,42 @@ type LevelingResult struct {
 	// flagged for the caller. Sorted for deterministic output. Empty on a
 	// fully levelled schedule.
 	UnplacedTaskIDs []string `json:"unplaced_task_ids,omitempty"`
+	// SplitTaskIDs lists tasks that AllowSplitting placed on non-contiguous
+	// working days (sorted). Empty when splitting was off or unnecessary.
+	SplitTaskIDs []string `json:"split_task_ids,omitempty"`
+}
+
+// occupiedDays returns the working-day offsets a task consumes its
+// resources on. For a split task (WorkDays set by leveling) that is the
+// explicit non-contiguous list; otherwise it is the contiguous taskSpan.
+func occupiedDays(t *Task) []int {
+	if len(t.WorkDays) > 0 {
+		return t.WorkDays
+	}
+	first, last, ok := taskSpan(t)
+	if !ok {
+		return nil
+	}
+	out := make([]int, 0, last-first+1)
+	for d := first; d <= last; d++ {
+		out = append(out, d)
+	}
+	return out
+}
+
+// occupiesDay reports whether a task consumes resources on the given day,
+// honouring an explicit split (WorkDays) when present.
+func occupiesDay(t *Task, day int) bool {
+	if len(t.WorkDays) > 0 {
+		for _, d := range t.WorkDays {
+			if d == day {
+				return true
+			}
+		}
+		return false
+	}
+	first, last, ok := taskSpan(t)
+	return ok && day >= first && day <= last
 }
 
 // taskSpan is the inclusive integer day range a task occupies, using
@@ -200,8 +249,8 @@ func ResourceUsage(tasks map[string]*Task) map[string][]float64 {
 
 	usage := make(map[string][]float64)
 	for _, t := range tasks {
-		first, last, ok := taskSpan(t)
-		if !ok {
+		od := occupiedDays(t)
+		if len(od) == 0 {
 			continue
 		}
 		for _, a := range t.Assignments {
@@ -213,8 +262,10 @@ func ResourceUsage(tasks map[string]*Task) map[string][]float64 {
 				profile = make([]float64, horizon)
 				usage[a.Resource] = profile
 			}
-			for d := first; d <= last && d < len(profile); d++ {
-				profile[d] += a.effectiveUnits()
+			for _, d := range od {
+				if d >= 0 && d < len(profile) {
+					profile[d] += a.effectiveUnits()
+				}
 			}
 		}
 	}
@@ -313,8 +364,7 @@ func DetectOverallocationsWithPlan(tasks map[string]*Task, plan ResourceCapacity
 func tasksOnDay(tasks map[string]*Task, r string, day int) []*Task {
 	var out []*Task
 	for _, t := range tasks {
-		first, last, ok := taskSpan(t)
-		if !ok || day < first || day > last {
+		if !occupiesDay(t, day) {
 			continue
 		}
 		for _, a := range t.Assignments {
@@ -396,6 +446,12 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 	// ahead of task b under the active strategy (ties broken by ID for
 	// determinism).
 	higherPriority := func(a, b *Task) bool {
+		// Priority-override: a critical-path task always outranks a
+		// non-critical one, regardless of the base strategy, so leveling
+		// never delays the critical path in favour of a floating task.
+		if opts.PriorityCritical && a.IsCritical != b.IsCritical {
+			return a.IsCritical
+		}
 		switch strategy {
 		case EarliestDeadline:
 			if a.LF != b.LF {
@@ -417,6 +473,7 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 	levelled := make(map[string]bool, len(tasks))
 	booked := make(map[string][]float64)
 	var unplaced []string
+	var splitIDs []string
 
 	pending := make([]string, len(order))
 	copy(pending, order)
@@ -428,40 +485,77 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 		return 0
 	}
 
-	fits := func(t *Task, start int) bool {
-		days := int(math.Ceil(t.Duration))
+	// dayHasCapacity reports whether every assignment of t has room on a
+	// single day d.
+	dayHasCapacity := func(t *Task, d int) bool {
 		for _, a := range t.Assignments {
 			if a.Resource == "" {
 				continue
 			}
-			profile := booked[a.Resource]
-			for d := start; d < start+days; d++ {
-				capacity := plan.capacityForAssignment(a, d)
-				if demand(profile, d)+a.effectiveUnits() > capacity+1e-9 {
-					return false
-				}
+			if demand(booked[a.Resource], d)+a.effectiveUnits() > plan.capacityForAssignment(a, d)+1e-9 {
+				return false
 			}
 		}
 		return true
 	}
 
-	book := func(t *Task, start int) {
+	// fits reports whether t can occupy `days` contiguous days from start.
+	fits := func(t *Task, start int) bool {
 		days := int(math.Ceil(t.Duration))
+		for d := start; d < start+days; d++ {
+			if !dayHasCapacity(t, d) {
+				return false
+			}
+		}
+		return true
+	}
+
+	// splitDays scans forward from `from`, collecting `need` non-contiguous
+	// days (within the horizon) where every assignment has capacity. Returns
+	// (days, true) only if it found enough.
+	splitDays := func(t *Task, from, need int) ([]int, bool) {
+		out := make([]int, 0, need)
+		for d := from; d <= from+horizon && len(out) < need; d++ {
+			if dayHasCapacity(t, d) {
+				out = append(out, d)
+			}
+		}
+		if len(out) < need {
+			return nil, false
+		}
+		return out, true
+	}
+
+	// bookProfileDays adds t's demand on each of the given working days.
+	bookProfileDays := func(t *Task, workDays []int) {
+		if len(workDays) == 0 {
+			return
+		}
+		maxDay := workDays[len(workDays)-1] + 1
 		for _, a := range t.Assignments {
 			if a.Resource == "" {
 				continue
 			}
 			profile := booked[a.Resource]
-			if len(profile) < start+days {
-				grown := make([]float64, start+days)
+			if len(profile) < maxDay {
+				grown := make([]float64, maxDay)
 				copy(grown, profile)
 				profile = grown
 			}
-			for d := start; d < start+days; d++ {
+			for _, d := range workDays {
 				profile[d] += a.effectiveUnits()
 			}
 			booked[a.Resource] = profile
 		}
+	}
+
+	// contiguousDays is the day list start..start+days-1.
+	contiguousDays := func(start, days int) []int {
+		out := make([]int, days)
+		for i := range out {
+			out[i] = start + i
+		}
+		return out
 	}
 
 	for len(pending) > 0 {
@@ -519,36 +613,78 @@ func LevelResourcesWithOptions(tasks map[string]*Task, plan ResourceCapacityPlan
 			earliest = 0
 		}
 
-		start := int(math.Ceil(earliest - 1e-9))
+		startFloor := int(math.Ceil(earliest - 1e-9))
+		start := startFloor
+		t.WorkDays = nil
 		if t.Duration > 0 && len(t.Assignments) > 0 {
-			placed := false
+			days := int(math.Ceil(t.Duration))
+
+			// Earliest contiguous placement (if any within the horizon).
+			contigStart, contigOK := 0, false
 			for offset := 0; offset <= horizon; offset++ {
-				if fits(t, start+offset) {
-					start += offset
-					placed = true
+				if fits(t, startFloor+offset) {
+					contigStart, contigOK = startFloor+offset, true
 					break
 				}
 			}
-			if !placed {
-				// Demand never fit within the horizon (e.g. units >
-				// capacity): leave the task at its earliest start. The
-				// overallocation stays visible to DetectOverallocations
-				// and the task is reported in UnplacedTaskIDs.
+			// Earliest split placement (greedy earliest capacity days). Its
+			// finish is always <= any contiguous finish, so it only wins when
+			// it is genuinely non-contiguous and therefore finishes sooner.
+			var splitWD []int
+			splitOK := false
+			if opts.AllowSplitting {
+				splitWD, splitOK = splitDays(t, startFloor, days)
+			}
+
+			contigFinish := math.MaxInt
+			if contigOK {
+				contigFinish = contigStart + days
+			}
+			splitFinish := math.MaxInt
+			if splitOK {
+				splitFinish = splitWD[len(splitWD)-1] + 1
+			}
+
+			switch {
+			case splitOK && splitFinish < contigFinish:
+				// Splitting finishes strictly sooner => the days are
+				// non-contiguous; interrupt the task around the busy days.
+				start = splitWD[0]
+				bookProfileDays(t, splitWD)
+				t.WorkDays = append([]int(nil), splitWD...)
+				t.EF = float64(splitWD[len(splitWD)-1] + 1)
+				splitIDs = append(splitIDs, id)
+			case contigOK:
+				start = contigStart
+				bookProfileDays(t, contiguousDays(start, days))
+				t.EF = float64(start) + t.Duration
+			default:
+				// Nothing fit within the horizon (e.g. single-day demand >
+				// capacity): leave the task at its earliest start, booked so
+				// the overallocation stays visible to DetectOverallocations,
+				// and report it unplaced.
+				start = startFloor
+				bookProfileDays(t, contiguousDays(start, days))
+				t.EF = float64(start) + t.Duration
 				unplaced = append(unplaced, id)
 			}
-		}
-
-		t.ES = float64(start)
-		t.EF = t.ES + t.Duration
-		if t.Duration > 0 && len(t.Assignments) > 0 {
-			book(t, start)
+			t.ES = float64(start)
+		} else {
+			t.ES = float64(start)
+			t.EF = t.ES + t.Duration
 		}
 		levelled[id] = true
 	}
 
+	res := LevelingResult{}
+	if len(splitIDs) > 0 {
+		sort.Strings(splitIDs)
+		res.SplitTaskIDs = splitIDs
+	}
 	if len(unplaced) > 0 {
 		sort.Strings(unplaced)
-		return LevelingResult{UnplacedTaskIDs: unplaced}, ErrLevelingHorizonExceeded
+		res.UnplacedTaskIDs = unplaced
+		return res, ErrLevelingHorizonExceeded
 	}
-	return LevelingResult{}, nil
+	return res, nil
 }
