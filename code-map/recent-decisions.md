@@ -36,6 +36,12 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
 | 2026-06-29 | F-4 — no login throttling/lockout | Accepted — Argon2id cost (64 MiB, t=3) makes brute force impractical for a local-first app with no live users yet | Accepted, no action |
 | 2026-06-29 | F-5 — 5 Dependabot alerts, all in frontend build/dev tooling | Bumped `vite` 5→8, `@sveltejs/vite-plugin-svelte` 4→7; 0 vulnerabilities after | Resolved |
 
+## Frontend test infrastructure (2026-07-04)
+
+- Added **Vitest + `@testing-library/svelte` + jsdom** for behaviour-level frontend tests (the app previously had only `svelte-check` + node grep-scripts). Toolchain stayed on Vite 8 / Svelte 5, 0 npm vulnerabilities.
+- Pattern: pure rendering geometry lives in sibling `*_geometry.ts` modules (fast unit tests); presentational components render from props with no Wails bridge so they mount directly. The Gantt bar canvas was extracted from `GanttEditor.svelte` into a testable `GanttBars.svelte` + `gantt_geometry.ts` — the extraction makes the tests cover the production render path, not a copy.
+- `make frontend-stability` now runs `npm test` (Vitest), so it is enforced by `make verify` / `make check-release`. Test files are excluded from the app `svelte-check`.
+
 ## Other notable decisions (from `session-notes.md`)
 
 - **2026-06-15** — Wails main package moved to the repo root (required by `wails build`); `cmd/` directory retired.
