@@ -124,6 +124,32 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  // previewSplit reports (read-only) whether interrupting tasks across
+  // non-contiguous days would resolve overallocation, without changing the
+  // saved schedule — the non-destructive counterpart to levelSplit.
+  async function previewSplit() {
+    if (!session.editingId || saving) return;
+    saving = true;
+    status = '';
+    try {
+      const p = await window.go.main.App.PreviewSplitLeveling(session.editingId);
+      const labels = p.split_task_labels ?? [];
+      if (labels.length === 0) {
+        status = 'No tasks need splitting at current capacity';
+      } else if (p.resolves_overallocation) {
+        status = `Splitting ${labels.length} task(s) would clear overallocation: ${labels.slice(0, 3).join(', ')}`;
+      } else {
+        const stuck = p.remaining_overallocated_resources ?? [];
+        status = `Even with splitting, ${stuck.length} resource(s) stay over capacity`;
+      }
+      setTimeout(() => (status = ''), 4000);
+    } catch (err: any) {
+      status = String(err?.message ?? err);
+    } finally {
+      saving = false;
+    }
+  }
+
   // levelSplit runs resource leveling with activity splitting on this chart
   // and reloads the layout so split tasks render as interrupted bars. The
   // split working-day runs are persisted on each node as work_segments.
@@ -213,13 +239,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
     return { x: bes * pxPerDay, w: (bef - bes) * pxPerDay };
   }
 
+  // rowEnd is a row's rightmost occupied offset: EF, or the last split
+  // segment's end when the task is interrupted past its contiguous finish.
+  function rowEnd(r: GanttRow): number {
+    let end = r.ef;
+    const segs = r.work_segments;
+    if (segs && segs.length) end = Math.max(end, segs[segs.length - 1].end);
+    return end;
+  }
+
   function depPath(d: { from: string; to: string }): string | null {
     const fi = rowIndex.get(d.from);
     const ti = rowIndex.get(d.to);
     const fr = layout.rows[fi ?? -1];
     const tr = layout.rows[ti ?? -1];
     if (fi === undefined || ti === undefined || !fr || !tr) return null;
-    const x1 = fr.ef * pxPerDay;
+    // Arrows leave the predecessor at its real finish (last split segment
+    // end for an interrupted task, else EF).
+    const x1 = rowEnd(fr) * pxPerDay;
     const y1 = fi * rowH + rowH / 2;
     const x2 = tr.es * pxPerDay;
     const y2 = ti * rowH + rowH / 2;
@@ -266,6 +303,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => (pxPerDay = Math.max(8, pxPerDay - 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title="Zoom out">−</button>
       <button onclick={() => (pxPerDay = Math.min(80, pxPerDay + 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title="Zoom in">+</button>
       <button onclick={setBaseline} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded" title="Snapshot for baseline ghost bars">Set baseline</button>
+      <button onclick={previewSplit} disabled={saving} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded" title="Check (read-only) whether splitting tasks across non-contiguous days would clear overallocation. Nothing is saved.">Preview splitting</button>
       <button onclick={levelSplit} disabled={saving} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded" title="Level resources allowing tasks to be split across non-contiguous days; split tasks render as interrupted bars">Level (split)</button>
       <button onclick={addTask} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">+ Task</button>
       <button onclick={save} disabled={saving} class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded">
