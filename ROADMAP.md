@@ -65,10 +65,18 @@ the critical path from being delayed by floating tasks and is exposed as a
 “Protect critical” checkbox. Partial-assignment splitting
 (`LevelingOptions.AllowSplitting` + `Task.WorkDays`) interrupts a task
 across non-contiguous days when contiguous placement would finish later;
-because a split task can't be stored as a single start pin, it is surfaced
-read-only via `App.PreviewSplitLeveling` and a “Preview splitting” button
-rather than persisted. _Future foundation:_ a task-segments model would let
-split schedules be saved and rendered (Gantt/EVM) directly.
+splitting is surfaced read-only via `App.PreviewSplitLeveling` and a
+“Preview splitting” button in the CPM editor. Split schedules can also be
+**persisted and rendered**: `App.LevelChartResources(..., allowSplitting)`
+stores each split task's working-day runs as node `WorkSegments`, the Gantt
+layout emits them as absolute bar pieces, and the Gantt editor draws split
+(interrupted) bars via a “Level (split)” action; the persisted segments are
+a snapshot that the Gantt editor clears on any manual schedule edit so stale
+interrupted bars can't render until the schedule is re-leveled. _Remaining
+refinements:_ the
+PDF Gantt renderer still draws split tasks as a single contiguous bar, and
+EVM treats a split task's span as contiguous (work content and cost are
+unaffected) — both are follow-ups on the same `WorkSegments` foundation.
 
 **What-If / Scenario Analysis** (RICE 144)
 Fork a named scenario from the current plan, apply changes, and compute the

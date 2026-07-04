@@ -1471,6 +1471,38 @@ type LevelResult struct {
 	Pinned          int      `json:"pinned"`
 	UnplacedTaskIDs []string `json:"unplaced_task_ids,omitempty"`
 	UnplacedLabels  []string `json:"unplaced_labels,omitempty"`
+	// SplitLabels names tasks that allowSplitting placed on non-contiguous
+	// days (persisted as node WorkSegments and rendered as split Gantt bars).
+	SplitLabels []string `json:"split_labels,omitempty"`
+}
+
+// relativeWorkSegments collapses a split task's absolute working-day offsets
+// (kernel WorkDays) into contiguous runs expressed RELATIVE to the task's
+// first working day, for persistence on a LayeredNode. Returns nil for a
+// non-split task so ordinary contiguous tasks carry no segments.
+func relativeWorkSegments(workDays []int) []dag.WorkSegment {
+	if len(workDays) == 0 {
+		return nil
+	}
+	base := workDays[0]
+	var segs []dag.WorkSegment
+	runStart := 0
+	prev := 0
+	for idx, w := range workDays {
+		rel := w - base
+		if idx == 0 {
+			runStart, prev = rel, rel
+			continue
+		}
+		if rel == prev+1 {
+			prev = rel
+			continue
+		}
+		segs = append(segs, dag.WorkSegment{Start: float64(runStart), End: float64(prev + 1)})
+		runStart, prev = rel, rel
+	}
+	segs = append(segs, dag.WorkSegment{Start: float64(runStart), End: float64(prev + 1)})
+	return segs
 }
 
 // levelingStrategyFor maps a frontend strategy string to the kernel enum,
@@ -1502,8 +1534,11 @@ func levelingStrategyFor(s string) kernel.LevelingStrategy {
 // strategy selects the leveling heuristic: "edf" (earliest deadline) or
 // "ltf"/"" (least total float, the default). Any other value falls back
 // to the default. When priorityCritical is true, critical-path tasks win
-// resource contention ahead of floating tasks.
-func (a *App) LevelChartResources(chartID string, strategy string, priorityCritical bool) (LevelResult, error) {
+// resource contention ahead of floating tasks. When allowSplitting is true,
+// a task that can't fit contiguously is interrupted across non-contiguous
+// days and its working-day runs are persisted as node WorkSegments (which
+// the Gantt renders as split bars).
+func (a *App) LevelChartResources(chartID string, strategy string, priorityCritical, allowSplitting bool) (LevelResult, error) {
 	d := a.requireDB()
 	if d == nil {
 		return LevelResult{}, errors.New("no project open")
@@ -1552,6 +1587,7 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 		kernel.LevelingOptions{
 			Strategy:         levelingStrategyFor(strategy),
 			PriorityCritical: priorityCritical,
+			AllowSplitting:   allowSplitting,
 		})
 	if errors.Is(levelErr, kernel.ErrSchedulingCycle) {
 		return LevelResult{}, errors.New("chart contains a dependency cycle")
@@ -1573,6 +1609,9 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 		if !lok || !pok {
 			continue
 		}
+		// Persist (or clear) the split working-day runs regardless of the
+		// start-pin logic below, so the Gantt can draw split bars.
+		n.WorkSegments = relativeWorkSegments(lt.WorkDays)
 		existing := strings.ToUpper(strings.TrimSpace(n.Constraint))
 		if existing != "" && existing != string(kernel.StartNoEarlierThan) {
 			continue // never override a user-set non-SNET constraint
@@ -1597,22 +1636,31 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 		return LevelResult{}, err
 	}
 
-	out := LevelResult{Pinned: pinned}
-	if len(levelOutcome.UnplacedTaskIDs) > 0 {
-		labelByID := make(map[string]string, len(doc.Nodes))
-		for _, n := range doc.Nodes {
-			labelByID[n.ID] = strings.TrimSpace(n.Label)
+	labelByID := make(map[string]string, len(doc.Nodes))
+	for _, n := range doc.Nodes {
+		labelByID[n.ID] = strings.TrimSpace(n.Label)
+	}
+	labelsFor := func(ids []string) []string {
+		if len(ids) == 0 {
+			return nil
 		}
-		out.UnplacedTaskIDs = levelOutcome.UnplacedTaskIDs
-		out.UnplacedLabels = make([]string, 0, len(levelOutcome.UnplacedTaskIDs))
-		for _, id := range levelOutcome.UnplacedTaskIDs {
+		out := make([]string, 0, len(ids))
+		for _, id := range ids {
 			if lbl := labelByID[id]; lbl != "" {
-				out.UnplacedLabels = append(out.UnplacedLabels, lbl)
+				out = append(out, lbl)
 			} else {
-				out.UnplacedLabels = append(out.UnplacedLabels, id)
+				out = append(out, id)
 			}
 		}
+		return out
 	}
+
+	out := LevelResult{Pinned: pinned}
+	if len(levelOutcome.UnplacedTaskIDs) > 0 {
+		out.UnplacedTaskIDs = levelOutcome.UnplacedTaskIDs
+		out.UnplacedLabels = labelsFor(levelOutcome.UnplacedTaskIDs)
+	}
+	out.SplitLabels = labelsFor(levelOutcome.SplitTaskIDs)
 	return out, nil
 }
 

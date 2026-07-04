@@ -261,621 +261,621 @@
     },
     {
       "method": "LevelChartResources",
-      "params": "chartID string, strategy string, priorityCritical bool",
+      "params": "chartID string, strategy string, priorityCritical, allowSplitting bool",
       "returns": "(LevelResult, error)",
-      "main_go_line": 1506
+      "main_go_line": 1541
     },
     {
       "method": "PreviewSplitLeveling",
       "params": "chartID string",
       "returns": "(SplitLevelingPreview, error)",
-      "main_go_line": 1641
+      "main_go_line": 1689
     },
     {
       "method": "GenerateResourceHistogram",
       "params": "chartID string",
       "returns": "(db.Chart, error)",
-      "main_go_line": 1717
+      "main_go_line": 1765
     },
     {
       "method": "ImportMSPDIChart",
       "params": "",
       "returns": "(db.Chart, error)",
-      "main_go_line": 1844
+      "main_go_line": 1892
     },
     {
       "method": "ListDocumentKinds",
       "params": "",
       "returns": "[]documents.Definition",
-      "main_go_line": 1964
+      "main_go_line": 2012
     },
     {
       "method": "ListDocuments",
       "params": "kind string",
       "returns": "([]db.Document, error)",
-      "main_go_line": 1966
+      "main_go_line": 2014
     },
     {
       "method": "GetDocument",
       "params": "id string",
       "returns": "(db.Document, error)",
-      "main_go_line": 1978
+      "main_go_line": 2026
     },
     {
       "method": "NewDocument",
       "params": "kind, title string",
       "returns": "(db.Document, error)",
-      "main_go_line": 1988
+      "main_go_line": 2036
     },
     {
       "method": "SaveDocument",
       "params": "doc db.Document",
       "returns": "(db.Document, error)",
-      "main_go_line": 2014
+      "main_go_line": 2062
     },
     {
       "method": "DeleteDocument",
       "params": "id string",
       "returns": "error",
-      "main_go_line": 2022
+      "main_go_line": 2070
     },
     {
       "method": "ExportCombinedReport",
       "params": "reportTitle, subtitle string, sections []documents.ReportSection",
       "returns": "(string, error)",
-      "main_go_line": 2039
+      "main_go_line": 2087
     },
     {
       "method": "ExportCombinedReportSigned",
       "params": "reportTitle, subtitle string, sections []documents.ReportSection, certPath, certPassword string",
       "returns": "(string, error)",
-      "main_go_line": 2127
+      "main_go_line": 2175
     },
     {
       "method": "ExportCombinedReportGnuPG",
       "params": "reportTitle, subtitle string, sections []documents.ReportSection, keyID string",
       "returns": "(GnuPGExportResult, error)",
-      "main_go_line": 2221
+      "main_go_line": 2269
     },
     {
       "method": "RepairAndSwap",
       "params": "",
       "returns": "(db.RepairResult, error)",
-      "main_go_line": 2249
+      "main_go_line": 2297
     },
     {
       "method": "ExportDocumentDOCX",
       "params": "id string",
       "returns": "(string, error)",
-      "main_go_line": 2303
+      "main_go_line": 2351
     },
     {
       "method": "ExportDocumentODT",
       "params": "id string",
       "returns": "(string, error)",
-      "main_go_line": 2312
+      "main_go_line": 2360
     },
     {
       "method": "ExportScheduleReportDOCX",
       "params": "",
       "returns": "(string, error)",
-      "main_go_line": 2321
+      "main_go_line": 2369
     },
     {
       "method": "ExportScheduleReportODT",
       "params": "",
       "returns": "(string, error)",
-      "main_go_line": 2327
+      "main_go_line": 2375
     },
     {
       "method": "ExportScheduleReportPDF",
       "params": "",
       "returns": "(string, error)",
-      "main_go_line": 2333
+      "main_go_line": 2381
     },
     {
       "method": "ExportScheduleReportCSV",
       "params": "",
       "returns": "(string, error)",
-      "main_go_line": 2339
+      "main_go_line": 2387
     },
     {
       "method": "ExportScheduleReportHTML",
       "params": "",
       "returns": "(string, error)",
-      "main_go_line": 2345
+      "main_go_line": 2393
     },
     {
       "method": "ExportScheduleReportMSPDI",
       "params": "",
       "returns": "(string, error)",
-      "main_go_line": 2352
+      "main_go_line": 2400
     },
     {
       "method": "ExportDocumentPDF",
       "params": "id string",
       "returns": "(string, error)",
-      "main_go_line": 2701
+      "main_go_line": 2749
     },
     {
       "method": "ExportDocumentPDFGnuPG",
       "params": "id, keyID string",
       "returns": "(GnuPGExportResult, error)",
-      "main_go_line": 2740
+      "main_go_line": 2788
     },
     {
       "method": "ExportDocumentPDFSigned",
       "params": "id, certPath, certPassword string",
       "returns": "(string, error)",
-      "main_go_line": 2760
+      "main_go_line": 2808
     },
     {
       "method": "GetSettings",
       "params": "",
       "returns": "(db.UserSettings, error)",
-      "main_go_line": 2809
+      "main_go_line": 2857
     },
     {
       "method": "SaveSettings",
       "params": "s db.UserSettings",
       "returns": "error",
-      "main_go_line": 2817
+      "main_go_line": 2865
     },
     {
       "method": "ResetProjectSettings",
       "params": "",
       "returns": "(db.UserSettings, error)",
-      "main_go_line": 2825
+      "main_go_line": 2873
     },
     {
       "method": "ExportAuditVerificationReport",
       "params": "",
       "returns": "(string, error)",
-      "main_go_line": 2878
+      "main_go_line": 2926
     },
     {
       "method": "ExportAuditRepairEvidence",
       "params": "",
       "returns": "(string, error)",
-      "main_go_line": 2921
+      "main_go_line": 2969
     },
     {
       "method": "SecureArchive",
       "params": "projectPath string",
       "returns": "(string, error)",
-      "main_go_line": 2991
+      "main_go_line": 3039
     },
     {
       "method": "AgileEnabled",
       "params": "",
       "returns": "(bool, error)",
-      "main_go_line": 3030
+      "main_go_line": 3078
     },
     {
       "method": "SetAgileEnabled",
       "params": "enabled bool",
       "returns": "error",
-      "main_go_line": 3045
+      "main_go_line": 3093
     },
     {
       "method": "EnsureDefaultBoard",
       "params": "",
       "returns": "(BoardWithColumns, error)",
-      "main_go_line": 3070
+      "main_go_line": 3118
     },
     {
       "method": "SaveColumn",
       "params": "c agile.Column",
       "returns": "error",
-      "main_go_line": 3087
+      "main_go_line": 3135
     },
     {
       "method": "DeleteColumn",
       "params": "id string",
       "returns": "error",
-      "main_go_line": 3097
+      "main_go_line": 3145
     },
     {
       "method": "SaveWorkItem",
       "params": "wi agile.WorkItem",
       "returns": "(agile.WorkItem, error)",
-      "main_go_line": 3106
+      "main_go_line": 3154
     },
     {
       "method": "GetWorkItem",
       "params": "id string",
       "returns": "(agile.WorkItem, error)",
-      "main_go_line": 3115
+      "main_go_line": 3163
     },
     {
       "method": "ListWorkItems",
       "params": "sprintID, state, assignee string",
       "returns": "([]agile.WorkItem, error)",
-      "main_go_line": 3126
+      "main_go_line": 3174
     },
     {
       "method": "DeleteWorkItem",
       "params": "id string",
       "returns": "error",
-      "main_go_line": 3135
+      "main_go_line": 3183
     },
     {
       "method": "MoveWorkItem",
       "params": "id, newState string, newOrder int",
       "returns": "error",
-      "main_go_line": 3155
+      "main_go_line": 3203
     },
     {
       "method": "WIPCounts",
       "params": "",
       "returns": "(map[string]int, error)",
-      "main_go_line": 3165
+      "main_go_line": 3213
     },
     {
       "method": "SaveSprint",
       "params": "sp agile.Sprint",
       "returns": "(agile.Sprint, error)",
-      "main_go_line": 3174
+      "main_go_line": 3222
     },
     {
       "method": "ListSprints",
       "params": "",
       "returns": "([]agile.Sprint, error)",
-      "main_go_line": 3183
+      "main_go_line": 3231
     },
     {
       "method": "DeleteSprint",
       "params": "id string",
       "returns": "error",
-      "main_go_line": 3193
+      "main_go_line": 3241
     },
     {
       "method": "SaveDeployment",
       "params": "d agile.Deployment",
       "returns": "(agile.Deployment, error)",
-      "main_go_line": 3202
+      "main_go_line": 3250
     },
     {
       "method": "ListDeployments",
       "params": "sinceISO string",
       "returns": "([]agile.Deployment, error)",
-      "main_go_line": 3212
+      "main_go_line": 3260
     },
     {
       "method": "DeleteDeployment",
       "params": "id string",
       "returns": "error",
-      "main_go_line": 3227
+      "main_go_line": 3275
     },
     {
       "method": "LaunchpadEvaluate",
       "params": "industry, methodology string",
       "returns": "([]string, error)",
-      "main_go_line": 3244
+      "main_go_line": 3292
     },
     {
       "method": "CreateProjectFromLaunchpad",
       "params": "name, description, industry, subCategory, methodology, countryCode string, seeds []string,",
       "returns": "(LaunchpadResult, error)",
-      "main_go_line": 3273
+      "main_go_line": 3321
     },
     {
       "method": "UpdateProjectIndustry",
       "params": "industry, subCategory, methodology, countryCode string",
       "returns": "(db.Project, error)",
-      "main_go_line": 3353
+      "main_go_line": 3401
     },
     {
       "method": "ListStakeholders",
       "params": "category string",
       "returns": "([]db.Stakeholder, error)",
-      "main_go_line": 3374
+      "main_go_line": 3422
     },
     {
       "method": "SaveStakeholder",
       "params": "s db.Stakeholder",
       "returns": "(db.Stakeholder, error)",
-      "main_go_line": 3387
+      "main_go_line": 3435
     },
     {
       "method": "DeleteStakeholder",
       "params": "id string",
       "returns": "error",
-      "main_go_line": 3403
+      "main_go_line": 3451
     },
     {
       "method": "ListResourceCalendars",
       "params": "",
       "returns": "([]db.ResourceCalendar, error)",
-      "main_go_line": 3415
+      "main_go_line": 3463
     },
     {
       "method": "SaveResourceCalendar",
       "params": "c db.ResourceCalendar",
       "returns": "(db.ResourceCalendar, error)",
-      "main_go_line": 3429
+      "main_go_line": 3477
     },
     {
       "method": "DeleteResourceCalendar",
       "params": "id string",
       "returns": "error",
-      "main_go_line": 3443
+      "main_go_line": 3491
     },
     {
       "method": "ListScenarios",
       "params": "",
       "returns": "([]db.Scenario, error)",
-      "main_go_line": 3454
+      "main_go_line": 3502
     },
     {
       "method": "GetScenario",
       "params": "id string",
       "returns": "(db.Scenario, error)",
-      "main_go_line": 3467
+      "main_go_line": 3515
     },
     {
       "method": "SaveScenario",
       "params": "s db.Scenario",
       "returns": "(db.Scenario, error)",
-      "main_go_line": 3489
+      "main_go_line": 3537
     },
     {
       "method": "DeleteScenario",
       "params": "id string",
       "returns": "error",
-      "main_go_line": 3503
+      "main_go_line": 3551
     },
     {
       "method": "BranchScenarioChart",
       "params": "scenarioID, chartID, baselineID string",
       "returns": "(db.ScenarioChart, error)",
-      "main_go_line": 3524
+      "main_go_line": 3572
     },
     {
       "method": "ListScenarioCharts",
       "params": "scenarioID string",
       "returns": "([]db.ScenarioChart, error)",
-      "main_go_line": 3545
+      "main_go_line": 3593
     },
     {
       "method": "GetScenarioChart",
       "params": "id string",
       "returns": "(db.ScenarioChart, error)",
-      "main_go_line": 3566
+      "main_go_line": 3614
     },
     {
       "method": "SaveScenarioChart",
       "params": "c db.ScenarioChart",
       "returns": "(db.ScenarioChart, error)",
-      "main_go_line": 3587
+      "main_go_line": 3635
     },
     {
       "method": "PromoteScenarioChartToBaseline",
       "params": "scenarioChartID, name string",
       "returns": "(db.Baseline, error)",
-      "main_go_line": 3608
+      "main_go_line": 3656
     },
     {
       "method": "CompareScenarioChart",
       "params": "scenarioChartID string",
       "returns": "(map[string]kernel.ScheduleVariance, error)",
-      "main_go_line": 3629
+      "main_go_line": 3677
     },
     {
       "method": "BuildTimeline",
       "params": "",
       "returns": "([]timeline.Entry, error)",
-      "main_go_line": 3666
+      "main_go_line": 3714
     },
     {
       "method": "MoveTimelineEntry",
       "params": "kind, sourceID, dateISO string",
       "returns": "([]timeline.Entry, error)",
-      "main_go_line": 3678
+      "main_go_line": 3726
     },
     {
       "method": "ListHolidays",
       "params": "fromISO, toISO string",
       "returns": "([]calendar.HolidayEvent, error)",
-      "main_go_line": 3788
+      "main_go_line": 3836
     },
     {
       "method": "ComputeBudget",
       "params": "",
       "returns": "(budget.Summary, error)",
-      "main_go_line": 3811
+      "main_go_line": 3859
     },
     {
       "method": "RunPortfolioAnalytics",
       "params": "",
       "returns": "(analytics.PortfolioSummary, error)",
-      "main_go_line": 3843
+      "main_go_line": 3891
     },
     {
       "method": "ImportDatasetForAnalysis",
       "params": "",
       "returns": "(analytics.Dataset, error)",
-      "main_go_line": 3912
+      "main_go_line": 3960
     },
     {
       "method": "CheckLatestVersion",
       "params": "",
       "returns": "(update.Status, error)",
-      "main_go_line": 3950
+      "main_go_line": 3998
     },
     {
       "method": "ChooseCertFile",
       "params": "",
       "returns": "(string, error)",
-      "main_go_line": 3957
+      "main_go_line": 4005
     },
     {
       "method": "ListFonts",
       "params": "",
       "returns": "[]fonts.FamilyInfo",
-      "main_go_line": 3994
+      "main_go_line": 4042
     },
     {
       "method": "ImportFont",
       "params": "",
       "returns": "(fonts.FamilyInfo, error)",
-      "main_go_line": 4004
+      "main_go_line": 4052
     },
     {
       "method": "GetDefaultFont",
       "params": "",
       "returns": "(string, error)",
-      "main_go_line": 4029
+      "main_go_line": 4077
     },
     {
       "method": "SetDefaultFont",
       "params": "family string",
       "returns": "error",
-      "main_go_line": 4046
+      "main_go_line": 4094
     },
     {
       "method": "ExportProjectICS",
       "params": "includeHolidays bool",
       "returns": "(string, error)",
-      "main_go_line": 4078
+      "main_go_line": 4126
     },
     {
       "method": "ComputeDORA",
       "params": "windowDays int",
       "returns": "(agile.DORAResult, error)",
-      "main_go_line": 4172
+      "main_go_line": 4220
     },
     {
       "method": "SigmaCreateProject",
       "params": "title, description string, beltLevel string",
       "returns": "(domain.Project, error)",
-      "main_go_line": 4258
+      "main_go_line": 4306
     },
     {
       "method": "SigmaListProjects",
       "params": "",
       "returns": "([]domain.Project, error)",
-      "main_go_line": 4275
+      "main_go_line": 4323
     },
     {
       "method": "SigmaGetProject",
       "params": "id string",
       "returns": "(domain.Project, error)",
-      "main_go_line": 4283
+      "main_go_line": 4331
     },
     {
       "method": "SigmaSaveCharter",
       "params": "c domain.Charter",
       "returns": "error",
-      "main_go_line": 4295
+      "main_go_line": 4343
     },
     {
       "method": "SigmaGetCharter",
       "params": "projectID string",
       "returns": "(domain.Charter, error)",
-      "main_go_line": 4303
+      "main_go_line": 4351
     },
     {
       "method": "SigmaAdvancePhase",
       "params": "projectID, phase string",
       "returns": "error",
-      "main_go_line": 4315
+      "main_go_line": 4363
     },
     {
       "method": "SigmaCalculateDescriptive",
       "params": "values []float64",
       "returns": "(stats.DescriptiveResult, error)",
-      "main_go_line": 4345
+      "main_go_line": 4393
     },
     {
       "method": "SigmaCalculateCapability",
       "params": "values []float64, usl, lsl float64",
       "returns": "(stats.CapabilityResult, error)",
-      "main_go_line": 4350
+      "main_go_line": 4398
     },
     {
       "method": "SigmaCalculatePareto",
       "params": "categories []string, counts []int",
       "returns": "([]sigmacharts.ParetoItem, error)",
-      "main_go_line": 4355
+      "main_go_line": 4403
     },
     {
       "method": "SigmaCheckReadiness",
       "params": "projectID, phase string",
       "returns": "(tollgate.Result, error)",
-      "main_go_line": 4360
+      "main_go_line": 4408
     },
     {
       "method": "SigmaSaveFishbone",
       "params": "projectID string, fb domain.FishboneData",
       "returns": "error",
-      "main_go_line": 4378
+      "main_go_line": 4426
     },
     {
       "method": "SigmaGetFishbone",
       "params": "projectID string",
       "returns": "(domain.FishboneData, error)",
-      "main_go_line": 4387
+      "main_go_line": 4435
     },
     {
       "method": "SigmaSaveSolutions",
       "params": "projectID string, solutions []domain.Solution",
       "returns": "error",
-      "main_go_line": 4400
+      "main_go_line": 4448
     },
     {
       "method": "SigmaGetSolutions",
       "params": "projectID string",
       "returns": "([]domain.Solution, error)",
-      "main_go_line": 4409
+      "main_go_line": 4457
     },
     {
       "method": "SigmaSaveControlPlan",
       "params": "projectID string, items []domain.ControlPlanItem",
       "returns": "error",
-      "main_go_line": 4418
+      "main_go_line": 4466
     },
     {
       "method": "SigmaGetControlPlan",
       "params": "projectID string",
       "returns": "([]domain.ControlPlanItem, error)",
-      "main_go_line": 4427
+      "main_go_line": 4475
     },
     {
       "method": "SigmaSaveSIPOC",
       "params": "projectID string, data domain.SIPOCData",
       "returns": "error",
-      "main_go_line": 4436
+      "main_go_line": 4484
     },
     {
       "method": "SigmaGetSIPOC",
       "params": "projectID string",
       "returns": "(domain.SIPOCData, error)",
-      "main_go_line": 4445
+      "main_go_line": 4493
     },
     {
       "method": "SigmaSaveVoC",
       "params": "projectID string, data domain.VoCData",
       "returns": "error",
-      "main_go_line": 4458
+      "main_go_line": 4506
     },
     {
       "method": "SigmaGetVoC",
       "params": "projectID string",
       "returns": "(domain.VoCData, error)",
-      "main_go_line": 4467
+      "main_go_line": 4515
     },
     {
       "method": "SigmaGetToolStatus",
       "params": "projectID, phase string",
       "returns": "(service.PhaseTools, error)",
-      "main_go_line": 4480
+      "main_go_line": 4528
     },
     {
       "method": "SigmaExportProjectReport",
       "params": "projectID string",
       "returns": "(string, error)",
-      "main_go_line": 4489
+      "main_go_line": 4537
     }
   ]
 }

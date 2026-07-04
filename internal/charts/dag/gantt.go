@@ -26,6 +26,10 @@ type GanttRow struct {
 	FinishDate         string  `json:"finish_date,omitempty"`
 	Overallocated      bool    `json:"overallocated,omitempty"`
 	ConstraintViolated bool    `json:"constraint_violated,omitempty"`
+	// WorkSegments, when present, are the ABSOLUTE working-day runs of a
+	// split task (offsets on the same axis as ES/EF). The renderer draws a
+	// bar piece per segment instead of a single ES..EF bar.
+	WorkSegments []WorkSegment `json:"work_segments,omitempty"`
 }
 
 // GanttDep is one dependency arrow between two rows.
@@ -80,6 +84,20 @@ func LayoutGanttScheduledWithPlan(doc LayeredDocument, projectStart time.Time, i
 	return ganttFromDoc(doc, true), nil
 }
 
+// absoluteWorkSegments converts a node's task-relative WorkSegments into
+// absolute project offsets (ES + segment). Returns nil for a task with no
+// split segments so ordinary bars render unchanged.
+func absoluteWorkSegments(n LayeredNode) []WorkSegment {
+	if len(n.WorkSegments) == 0 {
+		return nil
+	}
+	out := make([]WorkSegment, len(n.WorkSegments))
+	for i, s := range n.WorkSegments {
+		out[i] = WorkSegment{Start: n.ES + s.Start, End: n.ES + s.End}
+	}
+	return out
+}
+
 func ganttFromDoc(doc LayeredDocument, anchored bool) GanttLayout {
 	layout := GanttLayout{Anchored: anchored}
 	for _, n := range doc.Nodes {
@@ -96,9 +114,16 @@ func ganttFromDoc(doc LayeredDocument, anchored bool) GanttLayout {
 			FinishDate:         n.FinishDate,
 			Overallocated:      n.Overallocated,
 			ConstraintViolated: n.ConstraintViolated,
+			WorkSegments:       absoluteWorkSegments(n),
 		})
-		if n.EF > layout.Horizon {
-			layout.Horizon = n.EF
+		rowEnd := n.EF
+		for _, s := range n.WorkSegments {
+			if end := n.ES + s.End; end > rowEnd {
+				rowEnd = end
+			}
+		}
+		if rowEnd > layout.Horizon {
+			layout.Horizon = rowEnd
 		}
 	}
 	sort.Slice(layout.Rows, func(i, j int) bool {

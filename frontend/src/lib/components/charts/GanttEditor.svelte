@@ -27,6 +27,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     finish_date?: string;
     overallocated?: boolean;
     constraint_violated?: boolean;
+    work_segments?: { start: number; end: number }[];
   }
   interface GanttLayout {
     rows: GanttRow[];
@@ -123,16 +124,54 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  // levelSplit runs resource leveling with activity splitting on this chart
+  // and reloads the layout so split tasks render as interrupted bars. The
+  // split working-day runs are persisted on each node as work_segments.
+  async function levelSplit() {
+    if (!session.editingId || saving) return;
+    saving = true;
+    status = '';
+    try {
+      const res = await window.go.main.App.LevelChartResources(
+        session.editingId,
+        'ltf',
+        false,
+        true // allow splitting
+      );
+      chart = await window.go.main.App.GetChart(session.editingId);
+      doc = JSON.parse(chart.data) as GDoc;
+      await refreshLayout();
+      const split = res.split_labels ?? [];
+      status = split.length
+        ? `Levelled; split ${split.length} task(s): ${split.slice(0, 3).join(', ')}`
+        : 'Levelled; no tasks needed splitting';
+      setTimeout(() => (status = ''), 4000);
+    } catch (err: any) {
+      status = String(err?.message ?? err);
+    } finally {
+      saving = false;
+    }
+  }
+
+  // onEdit handles any manual change to the schedule. A manual edit
+  // invalidates the leveled split snapshot, so it drops persisted
+  // work_segments before re-laying-out; stale interrupted bars can't render
+  // until the user re-runs "Level (split)".
+  function onEdit() {
+    for (const n of doc.nodes) n.work_segments = undefined;
+    void refreshLayout();
+  }
+
   function addTask() {
     const id = 't' + (Date.now() % 1e7).toString(36);
     doc.nodes.push({ id, label: 'New task', duration: 1, percent_complete: 0 });
-    void refreshLayout();
+    onEdit();
   }
 
   function deleteTask(id: string) {
     doc.nodes = doc.nodes.filter((n) => n.id !== id);
     doc.edges = doc.edges.filter((e) => e.from !== id && e.to !== id);
-    void refreshLayout();
+    onEdit();
   }
 
   // Link editing
@@ -145,12 +184,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (doc.edges.some((e) => e.from === linkFrom && e.to === linkTo)) return;
     doc.edges.push({ from: linkFrom, to: linkTo, label: linkLabel || undefined });
     linkLabel = '';
-    void refreshLayout();
+    onEdit();
   }
 
   function deleteLink(i: number) {
     doc.edges = doc.edges.filter((_, j) => j !== i);
-    void refreshLayout();
+    onEdit();
   }
 
   function nodeFor(id: string): GNode | undefined {
@@ -227,6 +266,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => (pxPerDay = Math.max(8, pxPerDay - 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title="Zoom out">−</button>
       <button onclick={() => (pxPerDay = Math.min(80, pxPerDay + 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title="Zoom in">+</button>
       <button onclick={setBaseline} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded" title="Snapshot for baseline ghost bars">Set baseline</button>
+      <button onclick={levelSplit} disabled={saving} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded" title="Level resources allowing tasks to be split across non-contiguous days; split tasks render as interrupted bars">Level (split)</button>
       <button onclick={addTask} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">+ Task</button>
       <button onclick={save} disabled={saving} class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded">
         {saving ? 'Saving...' : 'Save'}
@@ -255,7 +295,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <td class="px-2">
                   <input
                     bind:value={n.label}
-                    onchange={refreshLayout}
+                    onchange={onEdit}
                     class="w-full bg-transparent border border-transparent hover:border-slate-800 focus:border-cyan-500 rounded p-1 outline-none"
                   />
                 </td>
@@ -264,7 +304,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     type="number"
                     min="0"
                     bind:value={n.duration}
-                    onchange={refreshLayout}
+                    onchange={onEdit}
                     class="w-full bg-slate-900 border border-slate-800 rounded p-1 font-mono text-right outline-none focus:border-cyan-500"
                   />
                 </td>
@@ -274,12 +314,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     min="0"
                     max="100"
                     bind:value={n.percent_complete}
-                    onchange={refreshLayout}
+                    onchange={onEdit}
                     class="w-full bg-slate-900 border border-slate-800 rounded p-1 font-mono text-right outline-none focus:border-cyan-500"
                   />
                 </td>
                 <td class="text-center">
-                  <input type="checkbox" bind:checked={n.milestone} onchange={refreshLayout} class="accent-cyan-500" />
+                  <input type="checkbox" bind:checked={n.milestone} onchange={onEdit} class="accent-cyan-500" />
                 </td>
                 <td class="text-center">
                   <button onclick={() => deleteTask(r.id)} class="text-slate-600 hover:text-red-400" title="Delete task">✕</button>
@@ -297,7 +337,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="flex-1 truncate text-slate-400">{labelFor(e.from)} → {labelFor(e.to)}</span>
             <input
               bind:value={e.label}
-              onchange={refreshLayout}
+              onchange={onEdit}
               placeholder="FS"
               class="w-16 bg-slate-900 border border-slate-800 rounded p-1 font-mono outline-none focus:border-cyan-500"
             />
@@ -357,6 +397,31 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 transform="rotate(45 {r.es * pxPerDay} {y + 9})"
                 fill="#22d3ee"
               />
+            {:else if r.work_segments && r.work_segments.length}
+              <!-- split (interrupted) task: one bar piece per working-day
+                   run, joined by a dashed connector across the gaps. -->
+              <line
+                x1={r.work_segments[0].start * pxPerDay}
+                y1={y + 7}
+                x2={r.work_segments[r.work_segments.length - 1].end * pxPerDay}
+                y2={y + 7}
+                stroke={r.is_critical ? '#ef4444' : '#0ea5e9'}
+                stroke-width="1"
+                stroke-dasharray="2 2"
+                opacity="0.5"
+              />
+              {#each r.work_segments as seg (seg.start)}
+                <rect
+                  x={seg.start * pxPerDay}
+                  y={y}
+                  width={Math.max(2, (seg.end - seg.start) * pxPerDay)}
+                  height="14"
+                  rx="3"
+                  fill={r.is_critical ? '#ef4444' : '#0ea5e9'}
+                  stroke={r.overallocated ? '#fb923c' : 'none'}
+                  stroke-width={r.overallocated ? 2 : 0}
+                />
+              {/each}
             {:else}
               <rect
                 x={r.es * pxPerDay}
