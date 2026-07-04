@@ -72,7 +72,12 @@ declare global {
           ComputeScheduleEVM: (chartId: string, asOfDate: string) => Promise<EVMetrics>;
           RunChartMonteCarlo: (chartId: string, iterations: number, workers: number) => Promise<SimResult>;
           ExportChartMonteCarloRiskReport: (chartId: string, iterations: number, workers: number) => Promise<string>;
-          LevelChartResources: (chartId: string, strategy: string) => Promise<LevelResult>;
+          LevelChartResources: (
+            chartId: string,
+            strategy: string,
+            priorityCritical: boolean
+          ) => Promise<LevelResult>;
+          PreviewSplitLeveling: (chartId: string) => Promise<SplitLevelingPreview>;
           GenerateResourceHistogram: (chartId: string) => Promise<ChartRecord>;
           ImportMSPDIChart: () => Promise<ChartRecord>;
 
@@ -692,6 +697,12 @@ declare global {
     pinned: number;
     unplaced_task_ids?: string[];
     unplaced_labels?: string[];
+  }
+
+  interface SplitLevelingPreview {
+    split_task_labels?: string[];
+    resolves_overallocation: boolean;
+    remaining_overallocated_resources?: string[];
   }
 
   interface SimResult {
