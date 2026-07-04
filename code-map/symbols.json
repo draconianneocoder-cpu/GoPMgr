@@ -142,7 +142,8 @@
       "type WBSDocument struct{ ... }",
       "    func Parse(raw string) (WBSDocument, error)",
       "type WBSNode struct{ ... }",
-      "    func FlattenLeaves(doc WBSDocument) []*WBSNode"
+      "    func FlattenLeaves(doc WBSDocument) []*WBSNode",
+      "type WorkSegment struct{ ... }"
     ],
     "pmforge/internal/charts/flow": [
       "const ShapeInitial = \"initial\" ...",

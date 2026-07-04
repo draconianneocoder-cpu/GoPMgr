@@ -274,7 +274,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const res = await window.go.main.App.LevelChartResources(
         session.editingId,
         levelStrategy,
-        priorityCritical
+        priorityCritical,
+        false // CPM editor applies pins only; splitting is applied from the Gantt view
       );
       // Reload the shell's doc from the DB so the editor shows the
       // new SNET pins and a later save can't clobber them.

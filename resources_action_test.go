@@ -55,7 +55,7 @@ func newResourceTestApp(t *testing.T) (*App, *db.Database, db.Chart) {
 func TestLevelChartResourcesPinsDelayedTask(t *testing.T) {
 	app, d, c := newResourceTestApp(t)
 
-	res, err := app.LevelChartResources(c.ID, "", false)
+	res, err := app.LevelChartResources(c.ID, "", false, false)
 	if err != nil {
 		t.Fatalf("LevelChartResources: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestLevelChartResourcesHonoursStakeholderAvailability(t *testing.T) {
 		t.Fatalf("SaveStakeholder: %v", err)
 	}
 
-	res, err := app.LevelChartResources(c.ID, "", false)
+	res, err := app.LevelChartResources(c.ID, "", false, false)
 	if err != nil {
 		t.Fatalf("LevelChartResources: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestLevelChartResourcesReportsUnplaceableTasks(t *testing.T) {
 		t.Fatalf("SaveChart: %v", err)
 	}
 
-	res, err := app.LevelChartResources(c.ID, "", false)
+	res, err := app.LevelChartResources(c.ID, "", false, false)
 	if err != nil {
 		t.Fatalf("LevelChartResources should not hard-fail on an over-constrained schedule: %v", err)
 	}
@@ -185,7 +185,7 @@ func TestLevelChartResourcesNeedsStartDate(t *testing.T) {
 	if _, err := d.UpsertProject(db.Project{ID: "project-1", Name: "Resource Test", StartDate: ""}); err != nil {
 		t.Fatalf("clear start date: %v", err)
 	}
-	if _, err := app.LevelChartResources(c.ID, "", false); err == nil {
+	if _, err := app.LevelChartResources(c.ID, "", false, false); err == nil {
 		t.Error("levelling without a project start date must error")
 	}
 }
@@ -236,7 +236,7 @@ func TestLevelChartResourcesStrategyDivergence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SaveChart LTF: %v", err)
 	}
-	if _, err := appLTF.LevelChartResources(cLTF.ID, "ltf", false); err != nil {
+	if _, err := appLTF.LevelChartResources(cLTF.ID, "ltf", false, false); err != nil {
 		t.Fatalf("LevelChartResources LTF: %v", err)
 	}
 	ltf := constraintByID(appLTF, dLTF, cLTF.ID)
@@ -250,7 +250,7 @@ func TestLevelChartResourcesStrategyDivergence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SaveChart EDF: %v", err)
 	}
-	if _, err := appEDF.LevelChartResources(cEDF.ID, "edf", false); err != nil {
+	if _, err := appEDF.LevelChartResources(cEDF.ID, "edf", false, false); err != nil {
 		t.Fatalf("LevelChartResources EDF: %v", err)
 	}
 	edf := constraintByID(appEDF, dEDF, cEDF.ID)
@@ -308,7 +308,7 @@ func TestLevelChartResourcesPriorityCriticalFlipsPersistedOutcome(t *testing.T) 
 	if err != nil {
 		t.Fatalf("SaveChart off: %v", err)
 	}
-	if _, err := appOff.LevelChartResources(cOff.ID, "edf", false); err != nil {
+	if _, err := appOff.LevelChartResources(cOff.ID, "edf", false, false); err != nil {
 		t.Fatalf("LevelChartResources off: %v", err)
 	}
 	if off := constraintByID(appOff, dOff, cOff.ID); off["C"] != "SNET" {
@@ -321,7 +321,7 @@ func TestLevelChartResourcesPriorityCriticalFlipsPersistedOutcome(t *testing.T) 
 	if err != nil {
 		t.Fatalf("SaveChart on: %v", err)
 	}
-	if _, err := appOn.LevelChartResources(cOn.ID, "edf", true); err != nil {
+	if _, err := appOn.LevelChartResources(cOn.ID, "edf", true, false); err != nil {
 		t.Fatalf("LevelChartResources on: %v", err)
 	}
 	on := constraintByID(appOn, dOn, cOn.ID)
@@ -392,6 +392,133 @@ func TestPreviewSplitLevelingReportsSplitTasks(t *testing.T) {
 	}
 	if doc.Nodes[0].Constraint != "" {
 		t.Errorf("preview persisted a constraint %q, want none", doc.Nodes[0].Constraint)
+	}
+}
+
+// TestLevelChartResourcesAppliesAndPersistsSplitSegments proves that
+// applying leveling with allowSplitting=true persists relative WorkSegments
+// on split nodes and reports them, and that they survive reload into the
+// Gantt layout as absolute bar pieces.
+func TestLevelChartResourcesAppliesAndPersistsSplitSegments(t *testing.T) {
+	app, d, _ := newResourceTestApp(t)
+
+	// alice unavailable on odd days: a 3-day task must split to 0,2,4.
+	if _, err := d.SaveResourceCalendar(db.ResourceCalendar{
+		ProjectID:       "project-1",
+		Resource:        "alice",
+		DefaultCapacity: 1,
+		Overrides:       map[int]float64{1: 0, 3: 0},
+	}); err != nil {
+		t.Skipf("resource calendar API unavailable: %v", err)
+	}
+	c, err := d.SaveChart(db.Chart{
+		ProjectID: "project-1",
+		Kind:      "cpm",
+		Title:     "Splittable",
+		Data:      `{"nodes":[{"id":"S","label":"Long task","duration":3,"assignments":[{"resource":"alice"}]}],"edges":[]}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+
+	res, err := app.LevelChartResources(c.ID, "", false, true) // allowSplitting
+	if err != nil {
+		t.Fatalf("LevelChartResources: %v", err)
+	}
+	if len(res.SplitLabels) != 1 || res.SplitLabels[0] != "Long task" {
+		t.Fatalf("SplitLabels = %v, want [Long task]", res.SplitLabels)
+	}
+
+	// Persisted node carries relative WorkSegments [0,1),[2,3),[4,5).
+	got, err := d.GetChart(c.ID)
+	if err != nil {
+		t.Fatalf("GetChart: %v", err)
+	}
+	var doc struct {
+		Nodes []struct {
+			ID           string `json:"id"`
+			WorkSegments []struct {
+				Start float64 `json:"start"`
+				End   float64 `json:"end"`
+			} `json:"work_segments"`
+		} `json:"nodes"`
+	}
+	if err := json.Unmarshal([]byte(got.Data), &doc); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(doc.Nodes) != 1 || len(doc.Nodes[0].WorkSegments) != 3 {
+		t.Fatalf("persisted WorkSegments = %+v, want 3 relative pieces", doc.Nodes)
+	}
+	want := [][2]float64{{0, 1}, {2, 3}, {4, 5}}
+	for i, s := range doc.Nodes[0].WorkSegments {
+		if s.Start != want[i][0] || s.End != want[i][1] {
+			t.Errorf("segment %d = {%.0f,%.0f}, want {%.0f,%.0f}", i, s.Start, s.End, want[i][0], want[i][1])
+		}
+	}
+}
+
+// TestLayoutChartExposesSplitSegmentsEndToEnd exercises the exact backend
+// path the Gantt editor uses: apply split-leveling to a gantt-kind chart,
+// then call LayoutChart and assert the returned layout's rows carry the
+// absolute work_segments the SVG draws. Guards the persist -> LayoutChart
+// -> body.layout join, not just the two halves in isolation.
+func TestLayoutChartExposesSplitSegmentsEndToEnd(t *testing.T) {
+	app, d, _ := newResourceTestApp(t)
+	if _, err := d.SaveResourceCalendar(db.ResourceCalendar{
+		ProjectID: "project-1", Resource: "alice", DefaultCapacity: 1,
+		Overrides: map[int]float64{1: 0, 3: 0},
+	}); err != nil {
+		t.Skipf("resource calendar API unavailable: %v", err)
+	}
+	c, err := d.SaveChart(db.Chart{
+		ProjectID: "project-1",
+		Kind:      "gantt",
+		Title:     "Gantt",
+		Data:      `{"nodes":[{"id":"S","label":"Long task","duration":3,"assignments":[{"resource":"alice"}]}],"edges":[]}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	if _, err := app.LevelChartResources(c.ID, "", false, true); err != nil {
+		t.Fatalf("LevelChartResources: %v", err)
+	}
+
+	res, err := app.LayoutChart(c.ID)
+	if err != nil {
+		t.Fatalf("LayoutChart: %v", err)
+	}
+	// Round-trip the LayoutResult through JSON exactly as the Wails bridge
+	// does, then read rows[].work_segments from the body the frontend sees.
+	raw, err := json.Marshal(res)
+	if err != nil {
+		t.Fatalf("marshal LayoutResult: %v", err)
+	}
+	var shape struct {
+		Body struct {
+			Layout struct {
+				Rows []struct {
+					ID           string `json:"id"`
+					WorkSegments []struct {
+						Start float64 `json:"start"`
+						End   float64 `json:"end"`
+					} `json:"work_segments"`
+				} `json:"rows"`
+			} `json:"layout"`
+		} `json:"body"`
+	}
+	if err := json.Unmarshal(raw, &shape); err != nil {
+		t.Fatalf("unmarshal layout: %v", err)
+	}
+	if len(shape.Body.Layout.Rows) != 1 {
+		t.Fatalf("rows = %d, want 1", len(shape.Body.Layout.Rows))
+	}
+	segs := shape.Body.Layout.Rows[0].WorkSegments
+	if len(segs) != 3 {
+		t.Fatalf("LayoutChart rows[0].work_segments = %+v, want 3 absolute pieces", segs)
+	}
+	// Absolute segments must be strictly increasing and non-contiguous.
+	if !(segs[0].End < segs[1].Start && segs[1].End < segs[2].Start) {
+		t.Errorf("segments not a non-contiguous split: %+v", segs)
 	}
 }
 

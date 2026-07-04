@@ -75,7 +75,8 @@ declare global {
           LevelChartResources: (
             chartId: string,
             strategy: string,
-            priorityCritical: boolean
+            priorityCritical: boolean,
+            allowSplitting: boolean
           ) => Promise<LevelResult>;
           PreviewSplitLeveling: (chartId: string) => Promise<SplitLevelingPreview>;
           GenerateResourceHistogram: (chartId: string) => Promise<ChartRecord>;
@@ -697,6 +698,7 @@ declare global {
     pinned: number;
     unplaced_task_ids?: string[];
     unplaced_labels?: string[];
+    split_labels?: string[];
   }
 
   interface SplitLevelingPreview {
