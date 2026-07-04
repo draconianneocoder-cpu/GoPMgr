@@ -72,11 +72,11 @@ stores each split task's working-day runs as node `WorkSegments`, the Gantt
 layout emits them as absolute bar pieces, and the Gantt editor draws split
 (interrupted) bars via a “Level (split)” action; the persisted segments are
 a snapshot that the Gantt editor clears on any manual schedule edit so stale
-interrupted bars can't render until the schedule is re-leveled. _Remaining
-refinements:_ the
-PDF Gantt renderer still draws split tasks as a single contiguous bar, and
-EVM treats a split task's span as contiguous (work content and cost are
-unaffected) — both are follow-ups on the same `WorkSegments` foundation.
+interrupted bars can't render until the schedule is re-leveled. The PDF
+Gantt renderer draws the same interrupted bars, so exports match the
+on-screen view. _Remaining refinement:_ EVM treats a split task's span as
+contiguous (work content and cost are unaffected) — a follow-up on the same
+`WorkSegments` foundation.
 
 **What-If / Scenario Analysis** (RICE 144)
 Fork a named scenario from the current plan, apply changes, and compute the
