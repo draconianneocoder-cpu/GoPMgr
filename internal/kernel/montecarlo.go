@@ -21,6 +21,20 @@ const (
 
 	monteCarloSeedA uint64 = 0x504d466f72676531
 	monteCarloSeedB uint64 = 0x6b65726e656c4d43
+
+	// maxMonteCarloIterations bounds a single simulation. Memory is
+	// O(iterations x tasks) — finishes plus per-task duration samples are
+	// preallocated with `iterations` capacity — so an unbounded value from a
+	// caller would OOM or panic in makeslice. The GUI already clamps to
+	// 10,000; this backend ceiling is the real guard for any caller (CLI, a
+	// compromised webview) that does not.
+	maxMonteCarloIterations = 100_000
+
+	// maxMonteCarloWorkers caps the goroutine fan-out. Results are
+	// deterministic per iteration index regardless of worker count, so
+	// clamping is invisible; it only prevents a huge `workers` argument from
+	// spawning that many goroutines.
+	maxMonteCarloWorkers = 128
 )
 
 // DistributionName names a supported Monte Carlo duration
@@ -106,6 +120,9 @@ func RunMonteCarlo(tasks map[string]*Task, iterations int, workers int) SimResul
 	if workers > iterations && iterations > 0 {
 		workers = iterations
 	}
+	if workers > maxMonteCarloWorkers {
+		workers = maxMonteCarloWorkers
+	}
 	result.Workers = workers
 
 	taskIDs, err := validateMonteCarloInputs(tasks, iterations)
@@ -177,6 +194,9 @@ func RunMonteCarlo(tasks map[string]*Task, iterations int, workers int) SimResul
 func validateMonteCarloInputs(tasks map[string]*Task, iterations int) ([]string, error) {
 	if iterations <= 0 {
 		return nil, fmt.Errorf("monte carlo: iterations must be positive")
+	}
+	if iterations > maxMonteCarloIterations {
+		return nil, fmt.Errorf("monte carlo: iterations %d exceeds maximum %d", iterations, maxMonteCarloIterations)
 	}
 	ids := make([]string, 0, len(tasks))
 	for id, task := range tasks {
