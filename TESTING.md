@@ -52,8 +52,11 @@ make frontend-smoke
 Component behaviour that `svelte-check` can only type-check is covered by
 Vitest + `@testing-library/svelte` (jsdom). Presentational components (e.g.
 `GanttBars.svelte`) render from props with no Wails bridge, so they mount
-directly in tests; pure geometry lives in sibling `*_geometry.ts` modules
-with fast unit tests. `make frontend-stability` runs the Vitest suite, so it
+directly in tests; pure geometry and action message-builders live in sibling
+modules (`*_geometry.ts`, `leveling_messages.ts`) with fast unit tests. Async
+handler glue is covered by mounting the real editor against a mocked
+`window.go.main.App` (see `GanttEditor.test.ts`): click an action, assert the
+bridge result reaches the status DOM. `make frontend-stability` runs the Vitest suite, so it
 is part of `make verify` and `make check-release`. Test files
 (`*.test.ts` / `*.spec.ts`) are excluded from the app `svelte-check`.
 
