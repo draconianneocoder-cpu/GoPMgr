@@ -230,6 +230,13 @@ func TestRunMonteCarloRejectsInvalidInputs(t *testing.T) {
 			iterations: 0,
 		},
 		{
+			// A caller bypassing the GUI clamp must not be able to request an
+			// unbounded number of iterations (O(iterations x tasks) memory).
+			name:       "iterations over maximum",
+			tasks:      map[string]*Task{"A": {ID: "A", Duration: 1}},
+			iterations: maxMonteCarloIterations + 1,
+		},
+		{
 			name: "invalid estimate ordering",
 			tasks: map[string]*Task{
 				"A": {
@@ -270,5 +277,22 @@ func TestRunMonteCarloRejectsInvalidInputs(t *testing.T) {
 				t.Fatal("RunMonteCarlo did not include an error message")
 			}
 		})
+	}
+}
+
+// TestRunMonteCarloClampsWorkers verifies that an oversized worker count is
+// clamped rather than spawning that many goroutines. Results stay valid and
+// the reported worker count never exceeds the cap.
+func TestRunMonteCarloClampsWorkers(t *testing.T) {
+	tasks := map[string]*Task{
+		"A": {ID: "A", Duration: 2},
+		"B": {ID: "B", Duration: 3, Precedents: []string{"A"}},
+	}
+	result := RunMonteCarlo(tasks, 500, 1_000_000)
+	if !result.Valid {
+		t.Fatalf("RunMonteCarlo failed: %s", result.Error)
+	}
+	if result.Workers > maxMonteCarloWorkers {
+		t.Fatalf("workers = %d, want <= %d", result.Workers, maxMonteCarloWorkers)
 	}
 }
