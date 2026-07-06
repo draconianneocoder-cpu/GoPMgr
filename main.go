@@ -4661,7 +4661,8 @@ func main() {
 }
 
 func headlessProjectMode(cfg *cli.Config) bool {
-	return cfg.CheckOnly || cfg.Repair || cfg.Vacuum || cfg.ExportAuditPath != ""
+	return cfg.CheckOnly || cfg.Repair || cfg.Vacuum || cfg.ExportAuditPath != "" ||
+		cfg.ShowStats || cfg.SchemaDump || cfg.ExportPath != ""
 }
 
 func openHeadlessDB(cfg *cli.Config) (*db.Database, error) {
@@ -4756,5 +4757,138 @@ func runHeadless(cfg *cli.Config) {
 			log.Fatalf("export audit: %v", err)
 		}
 		fmt.Printf("audit log written to %s\n", cfg.ExportAuditPath)
+	case cfg.ShowStats:
+		if err := printHeadlessStats(d); err != nil {
+			log.Fatalf("stats: %v", err)
+		}
+	case cfg.SchemaDump:
+		schema, err := d.DumpSchema()
+		if err != nil {
+			log.Fatalf("schema dump: %v", err)
+		}
+		fmt.Print(schema)
+	case cfg.ExportPath != "":
+		if err := runHeadlessExport(cfg, d); err != nil {
+			log.Fatalf("export: %v", err)
+		}
 	}
+}
+
+// printHeadlessStats writes a compact project summary to stdout for the
+// `--stats` flag.
+func printHeadlessStats(d *db.Database) error {
+	proj, err := d.GetProject()
+	if err != nil {
+		return err
+	}
+	charts, err := d.ListCharts(proj.ID, "")
+	if err != nil {
+		return err
+	}
+	docs, err := d.ListDocuments(proj.ID, "")
+	if err != nil {
+		return err
+	}
+	stakeholders, err := d.ListStakeholders(proj.ID, "")
+	if err != nil {
+		return err
+	}
+	auditEvents, err := d.ListAuditEvents(proj.ID)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Project:      %s\n", proj.Name)
+	fmt.Printf("ID:           %s\n", proj.ID)
+	fmt.Printf("Status:       %s\n", proj.Status)
+	fmt.Printf("Phase:        %s\n", proj.Phase)
+	fmt.Printf("Methodology:  %s\n", proj.Methodology)
+	fmt.Printf("Charts:       %d\n", len(charts))
+	fmt.Printf("Documents:    %d\n", len(docs))
+	fmt.Printf("Stakeholders: %d\n", len(stakeholders))
+	fmt.Printf("Audit events: %d\n", len(auditEvents))
+	return nil
+}
+
+// runHeadlessExport renders the project's schedule report in the requested
+// format and writes it to cfg.ExportPath for the `--export` flag. With
+// --encrypt, the bytes are AES-GCM encrypted with the password named by
+// --password-env (the same wrapping the GUI export uses).
+func runHeadlessExport(cfg *cli.Config, d *db.Database) error {
+	format, err := parseHeadlessFormat(cfg.ExportFormat)
+	if err != nil {
+		return err
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return err
+	}
+	tasks, err := loadCurrentProjectSchedule(d, proj.ID)
+	if err != nil {
+		tasks = make(map[string]*kernel.Task)
+	}
+	if len(tasks) > 0 {
+		scheduleProjectTasks(proj, tasks)
+	}
+	payload := export.ReportPayload{Tasks: tasks}
+	if start, ok := parseProjectDate(proj.StartDate); ok && len(tasks) > 0 {
+		cal := calendar.For(proj.CountryCode)
+		if day, dok := kernel.DayOffset(start, time.Now().UTC(), cal.IsWorkday); dok {
+			m := kernel.ComputeEVM(tasks, day)
+			payload.EVM = &m
+		}
+	}
+	opts := export.ExportOptions{Format: format, Title: proj.Name}
+	if cfg.EncryptExport {
+		pw, err := headlessExportPassword(cfg)
+		if err != nil {
+			return err
+		}
+		opts.Encrypted = true
+		opts.Password = pw
+	}
+	raw, err := export.GenerateArchivalReport(payload, opts)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(cfg.ExportPath, raw, 0o600); err != nil { // #nosec G306 -- exports are owner-private.
+		return err
+	}
+	fmt.Printf("export written to %s\n", cfg.ExportPath)
+	return nil
+}
+
+// parseHeadlessFormat maps the --format string to an export.ExportFormat.
+// An empty value defaults to PDF, matching the flag default.
+func parseHeadlessFormat(s string) (export.ExportFormat, error) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "", "pdf":
+		return export.FormatPDF, nil
+	case "docx":
+		return export.FormatDOCX, nil
+	case "odt":
+		return export.FormatODT, nil
+	case "xlsx":
+		return export.FormatXLSX, nil
+	case "csv":
+		return export.FormatCSV, nil
+	case "html":
+		return export.FormatHTML, nil
+	case "mspdi", "xml":
+		return export.FormatMSPDI, nil
+	default:
+		return "", fmt.Errorf("unsupported export format %q (want pdf, docx, odt, xlsx, csv, html, or mspdi)", s)
+	}
+}
+
+// headlessExportPassword resolves the export-encryption password from the
+// environment variable named by --password-env.
+func headlessExportPassword(cfg *cli.Config) (string, error) {
+	if strings.TrimSpace(cfg.PasswordEnv) == "" {
+		return "", errors.New("--encrypt requires --password-env naming the environment variable that holds the export password")
+	}
+	pw, ok := os.LookupEnv(cfg.PasswordEnv)
+	if !ok || pw == "" {
+		return "", fmt.Errorf("password environment variable %q is not set", cfg.PasswordEnv)
+	}
+	return pw, nil
 }
