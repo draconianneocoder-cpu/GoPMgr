@@ -226,15 +226,28 @@ argument:
 - `--repair` runs the self-healing repair workflow.
 - `--vacuum` compacts the database (`VACUUM`).
 - `--export-audit <path>` writes the audit log to CSV at `<path>`.
+- `--stats` prints a compact project summary (status, phase, methodology,
+  and chart/document/stakeholder/audit counts).
+- `--schema-dump` prints the database's SQL schema to stdout.
+- `--export <path>` renders the project's schedule report and writes it to
+  `<path>`. `--format <fmt>` selects the format (`pdf` default, plus
+  `docx`, `odt`, `xlsx`, `csv`, `html`, `mspdi`). Add `--encrypt` to write
+  the bytes AES-256-GCM encrypted with the `--password-env` password.
 
 For an **encrypted** project, pass credentials so the database can be
 unlocked: `--username <name>` and `--password-env <ENVVAR>`, where the
 named environment variable holds that account's password (the password is
-never passed on the command line). Plaintext projects open without
-credentials. For example:
+never passed on the command line). `--encrypt` also uses `--password-env`
+as the export password. Plaintext projects open without credentials. For
+example:
 
 ```sh
 PMF_PW='…' pmforge --check \
+  --username alice --password-env PMF_PW \
+  ~/Documents/PMForge/alice/projects/<id>/project.pmforge
+
+# Headless schedule export to encrypted XLSX:
+PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \
   --username alice --password-env PMF_PW \
   ~/Documents/PMForge/alice/projects/<id>/project.pmforge
 ```
