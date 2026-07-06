@@ -73,6 +73,29 @@ The deterministic local PAdES sample is self-signed. Validator output can
 prove structural correctness and tamper evidence, but trusted-chain
 validity requires a trusted signing source in the release environment.
 
+## Audit Integrity
+
+Each project database keeps a tamper-evident `audit_events` hash chain.
+Every event stores `event_hash = sha256(previous_event_hash ||
+canonicalJSON(payload))`, chaining it to the prior event. Project, chart,
+document, schedule-baseline, scenario, scenario-chart-copy, approval,
+signature, and signed combined-report lifecycle actions append to the
+chain. Canonical JSON (marshal, unmarshal, re-marshal) makes each digest
+independent of key order.
+
+`VerifyAuditChain` recomputes every hash and checks sequence continuity and
+the previous-hash links. When a project has **Compliance Mode** enabled,
+`OpenProject` runs this verification first (`verifyProjectAuditForOpen`) and
+refuses to open a project whose chain has been altered. Compliance Mode is
+opt-in per project; with it off, tampering is not detected on open. The
+`Export audit verification report` and `Export audit repair evidence`
+actions write JSON evidence to the user's private exports folder without
+mutating the project database.
+
+Audit integrity detects tampering; it does not by itself prevent it — a
+holder of the DEK can rewrite the database. It complements, and does not
+replace, encryption at rest and OS-level disk encryption.
+
 ## Release Safety
 
 Run the relevant gates before release claims:

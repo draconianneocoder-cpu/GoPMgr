@@ -33,6 +33,10 @@ chart, export, and reporting tools without requiring a hosted service.
   constraints, baselines, progress, Earned Value Management,
   named resource calendars, calendar-aware leveling, Gantt charts, MSPDI
   import/export, CSV, HTML, and report exports.
+- **Risk and what-if:** Monte Carlo schedule-risk simulation
+  (triangular/beta-PERT/normal sampling, P50/P80/P90 finish curves,
+  tornado drivers, PDF/A risk report) and isolated what-if scenarios that
+  copy a chart or baseline into a partition for comparison and promotion.
 - **Charts:** 21 chart kinds across DAG, flow, matrix, and statistical
   engines, with frontend editing and vector PDF rendering.
 - **Documents:** 25 project document kinds with schema-driven editing,
