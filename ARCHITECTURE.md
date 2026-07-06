@@ -66,9 +66,18 @@ families.
 - `internal/charts`: Chart taxonomy, layout engines, and vector PDF
   renderers.
 - `internal/kernel`: CPM scheduling, dependencies, constraints,
-  baselines, EVM, and resource calculations.
-- `internal/export`: PDF, PDF/A, DOCX, ODT, XLSX, iCal, and MSPDI export
-  paths.
+  baselines, EVM, resource calculations, and Monte Carlo schedule-risk
+  simulation.
+- `internal/calendar`: named resource calendars (weekly capacity and day
+  overrides) used for calendar-aware leveling and over-allocation checks.
+- `internal/money`: exact monetary arithmetic in integer minor units
+  (`math/big.Rat` for rate x quantity, rounded once at the boundary).
+- `internal/analytics`: DuckDB-backed in-memory portfolio rollups and
+  CSV/TSV/Parquet/JSON data import (behind the `duckdb` build tag).
+- `internal/export`: PDF, PDF/A, DOCX, ODT, XLSX, iCal, MSPDI, and Monte
+  Carlo risk-report export paths.
+- `internal/exportsafe`: neutralizes user-controlled values written to
+  CSV/TSV exports against spreadsheet formula injection.
 - `internal/templates`: Launchpad seeding rules embedded from JDM data.
 - `internal/agile` and `internal/sigma`: Agile/software development and
   process excellence feature packs.
