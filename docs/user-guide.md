@@ -210,6 +210,35 @@ Users can also import a `.ttf` font from Project Settings. Imported fonts
 are stored in the user's PMForge data area and can be selected for document
 exports.
 
+## Command-Line Maintenance
+
+PMForge also runs headless for scriptable maintenance. Two flags are
+global:
+
+- `--version` prints the version banner and exits.
+- `--update` checks the signed update channel (a no-op when the build has
+  no update channel configured).
+
+The maintenance operations take a `.pmforge` file path as the final
+argument:
+
+- `--check` runs an integrity check and exits.
+- `--repair` runs the self-healing repair workflow.
+- `--vacuum` compacts the database (`VACUUM`).
+- `--export-audit <path>` writes the audit log to CSV at `<path>`.
+
+For an **encrypted** project, pass credentials so the database can be
+unlocked: `--username <name>` and `--password-env <ENVVAR>`, where the
+named environment variable holds that account's password (the password is
+never passed on the command line). Plaintext projects open without
+credentials. For example:
+
+```sh
+PMF_PW='…' pmforge --check \
+  --username alice --password-env PMF_PW \
+  ~/Documents/PMForge/alice/projects/<id>/project.pmforge
+```
+
 ## Logs and Startup Diagnostics
 
 PMForge writes dated diagnostic logs under the PMForge logs directory. If
