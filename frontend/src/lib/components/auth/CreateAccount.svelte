@@ -19,6 +19,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let showConfirm = $state(false);
   let usernameEl = $state<HTMLInputElement>();
 
+  // After the account is created we issue one-time recovery codes and show
+  // them once, before entering the app. They are the only way back in if the
+  // password is forgotten, so the user must acknowledge saving them.
+  let step = $state<'form' | 'codes'>('form');
+  let codes = $state<string[]>([]);
+  let codesError = $state('');
+  let acknowledged = $state(false);
+  let copied = $state(false);
+
   const usernameRule = /^[A-Za-z0-9_-]{3,32}$/;
 
   // Live, non-blocking validation cues so a new user gets affirmative
@@ -60,20 +69,53 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       const acc = await window.go.main.App.CreateAccount(username, displayName || username, password, isAdmin);
       session.user = acc;
-      goto('portfolio');
+      // Issue and show recovery codes before entering the app. A failure here
+      // is non-fatal — the account exists and is signed in — so surface it and
+      // let the user continue and generate codes later from Project Settings.
+      try {
+        codes = (await window.go.main.App.IssueRecoveryCodes()) ?? [];
+      } catch (err: any) {
+        codesError = String(err?.message ?? err);
+      }
+      step = 'codes';
     } catch (err: any) {
       error = String(err?.message ?? err);
     } finally {
       busy = false;
     }
   }
+
+  async function copyCodes() {
+    try {
+      await navigator.clipboard.writeText(codes.join('\n'));
+      copied = true;
+      setTimeout(() => (copied = false), 2000);
+    } catch {
+      // Clipboard may be unavailable; the codes stay visible for manual copy.
+    }
+  }
+
+  function downloadCodes() {
+    const body = `PMForge recovery codes for ${username}\n\n${codes.join('\n')}\n`;
+    const url = URL.createObjectURL(new Blob([body], { type: 'text/plain' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pmforge-recovery-codes-${username}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function finish() {
+    goto('portfolio');
+  }
 </script>
 
 <div class="min-h-screen flex items-center justify-center bg-slate-950 p-4">
-  <form
-    class="w-full max-w-sm p-8 bg-slate-900 border border-slate-800 rounded-xl shadow-xl space-y-4"
-    onsubmit={submit}
-  >
+  <div class="w-full {step === 'codes' ? 'max-w-md' : 'max-w-sm'} p-8 bg-slate-900 border border-slate-800 rounded-xl shadow-xl">
+  {#if step === 'form'}
+  <form class="space-y-4" onsubmit={submit}>
     <div class="space-y-2 text-center">
       <Logo class="h-9 w-auto mx-auto text-slate-50" />
       <h1 class="text-sm font-bold text-slate-300 tracking-widest uppercase">Create your account</h1>
@@ -230,4 +272,78 @@ SPDX-License-Identifier: GPL-3.0-or-later
       Back to sign in
     </button>
   </form>
+  {:else}
+  <div class="space-y-5">
+    <div class="space-y-2 text-center">
+      <Logo class="h-9 w-auto mx-auto text-slate-50" />
+      <h1 class="text-sm font-bold text-slate-300 tracking-widest uppercase">Save your recovery codes</h1>
+    </div>
+
+    {#if codesError}
+      <div class="bg-amber-950/40 border border-amber-700/50 rounded-lg p-3 text-xs text-amber-300 space-y-1" role="alert">
+        <p class="font-semibold">Recovery codes could not be generated</p>
+        <p class="text-amber-400/80">
+          Your account was created and you're signed in. You can generate recovery codes
+          later from Project Settings. ({codesError})
+        </p>
+      </div>
+      <button
+        type="button"
+        onclick={finish}
+        class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded transition-colors"
+      >
+        CONTINUE TO PMFORGE
+      </button>
+    {:else}
+      <div class="bg-cyan-950/20 border border-cyan-900/60 rounded-lg p-3 text-xs space-y-1">
+        <p class="font-semibold text-cyan-100">These are the only way back into your account</p>
+        <p class="text-cyan-300/80">
+          If you forget your password, a recovery code is the only way to reset it and keep your
+          encrypted projects. Save them somewhere safe — you won't be shown them again.
+        </p>
+      </div>
+
+      <ul class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 font-mono text-sm text-slate-100 bg-slate-950 border border-slate-800 rounded-lg p-4">
+        {#each codes as code (code)}
+          <li>{code}</li>
+        {/each}
+      </ul>
+
+      <div class="flex gap-2">
+        <button
+          type="button"
+          onclick={copyCodes}
+          class="flex-1 text-xs font-semibold uppercase tracking-wide bg-slate-800 hover:bg-slate-700 text-slate-100 py-2 rounded transition-colors"
+        >
+          {copied ? 'Copied ✓' : 'Copy'}
+        </button>
+        <button
+          type="button"
+          onclick={downloadCodes}
+          class="flex-1 text-xs font-semibold uppercase tracking-wide bg-slate-800 hover:bg-slate-700 text-slate-100 py-2 rounded transition-colors"
+        >
+          Download .txt
+        </button>
+      </div>
+      <p class="text-[10px] text-slate-500 text-center min-h-[1rem]" aria-live="polite">
+        {copied ? 'Recovery codes copied to the clipboard.' : ''}
+      </p>
+
+      <label class="flex items-start gap-3 cursor-pointer select-none">
+        <input type="checkbox" bind:checked={acknowledged} class="mt-0.5 accent-cyan-500" />
+        <span class="text-xs text-slate-300">I have saved my recovery codes somewhere safe.</span>
+      </label>
+
+      <button
+        type="button"
+        disabled={!acknowledged}
+        onclick={finish}
+        class="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
+      >
+        CONTINUE TO PMFORGE
+      </button>
+    {/if}
+  </div>
+  {/if}
+  </div>
 </div>
