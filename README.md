@@ -96,7 +96,7 @@ make license-check
 
 ## Toolchain
 
-- Go: `go.mod` pins Go 1.26.4.
+- Go: `go.mod` pins Go 1.26.5.
 - Wails: the project uses Wails v2.12.0. Install the matching CLI with:
 
 ```sh

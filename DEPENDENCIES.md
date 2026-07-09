@@ -11,7 +11,7 @@ posture, and validator coverage, so keep them intentional and verified.
 
 ## Toolchain
 
-- Go: 1.26.4 from `go.mod`.
+- Go: 1.26.5 from `go.mod`.
 - Wails: v2.12.0.
 - Node frontend: Vite, Svelte 5, TypeScript, and npm scripts in
   `frontend/package.json`.
