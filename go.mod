@@ -3,7 +3,7 @@
 
 module pmforge
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c
