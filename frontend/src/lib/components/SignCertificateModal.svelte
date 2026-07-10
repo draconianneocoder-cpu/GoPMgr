@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { tick } from 'svelte';
+
   // Reusable modal for choosing document export signing behavior.
   // Usage:
   // <SignCertificateModal
@@ -31,6 +33,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let chosenPath = $state('');
   let selectedGPGKeyID = $state('');
   let chooseError = $state('');
+  // Focus management: the dialog element and the control that was focused
+  // before the modal opened (so we can restore focus on close).
+  let dialogEl = $state<HTMLElement>();
+  let previouslyFocused: HTMLElement | null = null;
   const effectivePath = $derived(chosenPath || certPath);
   const canConfirm = $derived(
     selectedMethod === 'none' ||
@@ -46,6 +52,62 @@ SPDX-License-Identifier: GPL-3.0-or-later
       chooseError = '';
     }
   });
+
+  // Move focus into the dialog when it opens and restore it to the trigger
+  // when it closes, so keyboard and screen-reader users are not stranded.
+  $effect(() => {
+    if (open) {
+      previouslyFocused = document.activeElement as HTMLElement | null;
+      tick().then(focusFirst);
+    } else if (previouslyFocused) {
+      previouslyFocused.focus?.();
+      previouslyFocused = null;
+    }
+  });
+
+  const FOCUSABLE =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  function getFocusable(): HTMLElement[] {
+    if (!dialogEl) return [];
+    return Array.from(dialogEl.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+      (el) => el.offsetParent !== null || el === document.activeElement,
+    );
+  }
+
+  function focusFirst() {
+    const focusable = getFocusable();
+    (focusable[0] ?? dialogEl)?.focus();
+  }
+
+  // Dialog-wide keyboard handling: Escape closes from anywhere in the dialog,
+  // and Tab is trapped so focus cycles within the modal instead of escaping
+  // to the (inert) page behind it.
+  function onDialogKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      cancel();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const focusable = getFocusable();
+    if (focusable.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey) {
+      if (active === first || active === dialogEl) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else if (active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 
   async function chooseCert() {
     chooseError = '';
@@ -77,12 +139,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
     open = false;
   }
 
-  // Allow Enter key to confirm
+  // Allow Enter key to confirm from a text input. Escape is handled at the
+  // dialog level (onDialogKeydown) so it works regardless of focus.
   function handleKey(e: KeyboardEvent) {
     if (e.key === 'Enter' && canConfirm) {
       confirm();
-    } else if (e.key === 'Escape') {
-      cancel();
     }
   }
 </script>
@@ -91,15 +152,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <div class="fixed inset-0 flex items-center justify-center z-50">
     <button
       type="button"
+      tabindex="-1"
       class="absolute inset-0 bg-black/60"
       aria-label="Cancel digital signature"
       onclick={cancel}
     ></button>
     <div
+      bind:this={dialogEl}
       class="relative bg-slate-900 border border-slate-700 rounded-lg p-6 w-full max-w-md mx-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="signature-modal-title"
+      tabindex="-1"
+      onkeydown={onDialogKeydown}
     >
       <h3 id="signature-modal-title" class="text-sm font-bold uppercase tracking-widest text-cyan-400 mb-4">
         Signature Options
