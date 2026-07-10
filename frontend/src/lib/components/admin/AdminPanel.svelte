@@ -20,6 +20,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let newIsAdmin = $state(false);
   let creating = $state(false);
 
+  // Recovery codes for the just-created account, shown once for the admin to
+  // hand to the user (an admin-created account otherwise gets none).
+  let createdCodes = $state<string[]>([]);
+  let createdFor = $state('');
+  let copied = $state(false);
+
   // Per-row action state
   let pendingDelete = $state<string | null>(null);
   let pendingRoleChange = $state<string | null>(null);
@@ -51,9 +57,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return;
     }
     creating = true;
+    const uname = newUsername;
+    const pw = newPassword;
     try {
-      await window.go.main.App.CreateAccount(newUsername, newDisplayName || newUsername, newPassword, newIsAdmin);
-      showToast(`Account "${newUsername}" created.`, 'success');
+      await window.go.main.App.CreateAccount(uname, newDisplayName || uname, pw, newIsAdmin);
+      // Issue recovery codes for the new account (same footing as a
+      // self-registered user). Non-fatal: the account exists even if this
+      // fails, and the user can generate codes later from Project Settings.
+      try {
+        createdCodes = (await window.go.main.App.AdminIssueRecoveryCodes(uname, pw)) ?? [];
+        createdFor = uname;
+      } catch (err: any) {
+        showToast(`Account created, but recovery codes could not be generated: ${err}. The user can create them from Project Settings.`, 'error');
+      }
+      showToast(`Account "${uname}" created.`, 'success');
       newUsername = '';
       newDisplayName = '';
       newPassword = '';
@@ -65,6 +82,34 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } finally {
       creating = false;
     }
+  }
+
+  async function copyCodes() {
+    try {
+      await navigator.clipboard.writeText(createdCodes.join('\n'));
+      copied = true;
+      setTimeout(() => (copied = false), 2000);
+    } catch {
+      // Clipboard may be unavailable; the codes stay visible for manual copy.
+    }
+  }
+
+  function downloadCodes() {
+    const body = `PMForge recovery codes for ${createdFor}\n\n${createdCodes.join('\n')}\n`;
+    const url = URL.createObjectURL(new Blob([body], { type: 'text/plain' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pmforge-recovery-codes-${createdFor}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function dismissCodes() {
+    createdCodes = [];
+    createdFor = '';
+    copied = false;
   }
 
   async function confirmDelete(username: string) {
@@ -191,6 +236,51 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </button>
         </div>
       </form>
+    {/if}
+
+    {#if createdCodes.length > 0}
+      <div class="p-4 bg-cyan-950/20 border border-cyan-900/60 rounded-lg space-y-3">
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-widest text-cyan-300">
+            Recovery codes for {createdFor}
+          </h3>
+          <p class="text-xs text-cyan-300/80 mt-1">
+            Give these to {createdFor} to store somewhere safe. They are the only way to recover the
+            account if the password is lost, and they won't be shown again.
+          </p>
+        </div>
+        <ul class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 font-mono text-xs text-slate-100 bg-slate-950 border border-slate-800 rounded p-3">
+          {#each createdCodes as code (code)}
+            <li>{code}</li>
+          {/each}
+        </ul>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            onclick={copyCodes}
+            class="text-xs font-semibold uppercase tracking-wide bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-1.5 rounded transition-colors"
+          >
+            {copied ? 'Copied ✓' : 'Copy'}
+          </button>
+          <button
+            type="button"
+            onclick={downloadCodes}
+            class="text-xs font-semibold uppercase tracking-wide bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-1.5 rounded transition-colors"
+          >
+            Download .txt
+          </button>
+          <button
+            type="button"
+            onclick={dismissCodes}
+            class="ml-auto text-xs font-semibold uppercase tracking-wide bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded transition-colors"
+          >
+            Done
+          </button>
+        </div>
+        <p class="text-[10px] text-slate-500" aria-live="polite">
+          {copied ? 'Recovery codes copied to the clipboard.' : ''}
+        </p>
+      </div>
     {/if}
 
     {#if loading}
