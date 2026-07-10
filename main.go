@@ -266,6 +266,26 @@ func (a *App) AdminSetUserRole(username string, isAdmin bool) error {
 	return a.store.SetAdmin(username, isAdmin)
 }
 
+// AdminIssueRecoveryCodes issues one-time recovery codes for the named
+// account and returns them for the administrator to hand to the user.
+// Requires the caller to be an administrator and the account's current
+// password (the one the admin set at creation) so the codes wrap the user's
+// data-encryption key — giving an admin-created account the same recovery
+// footing as a self-registered one. This adds no new password oracle: Login
+// already verifies passwords for any username at the same Argon2id cost.
+func (a *App) AdminIssueRecoveryCodes(username, password string) ([]string, error) {
+	caller := a.requireUser()
+	if caller == nil || !caller.IsAdmin {
+		return nil, errors.New("administrator privileges required")
+	}
+	// Unlock (here: unwrap the just-created) DEK so the codes can wrap it.
+	dek, err := a.store.UnlockDEK(username, password)
+	if err != nil {
+		return nil, errors.New("could not unlock the account's key (wrong password?)")
+	}
+	return a.store.IssueRecoveryCodes(username, dek)
+}
+
 // Login authenticates and stores the user as the active session.
 // Returns a generic error on bad credentials — the message is shaped
 // by the frontend so usernames cannot be enumerated by error
