@@ -8,12 +8,15 @@ import { session, goto } from '../../session.svelte';
 import { showToast } from '../../toast.svelte';
 import SignCertificateModal from '../SignCertificateModal.svelte';
 import BudgetPanel from './BudgetPanel.svelte';
+import Spinner from '../Spinner.svelte';
 
   let chartKinds = $state<ChartDefinition[]>([]);
   let docKinds = $state<DocumentDefinition[]>([]);
   let charts = $state<ChartRecord[]>([]);
   let docs = $state<DocumentRecord[]>([]);
   let agileEnabled = $state(false);
+  let loading = $state(true);
+  let loadError = $state('');
 
   // Delete confirmation: holds the id of the item awaiting confirmation.
   let deletingChartId = $state<string | null>(null);
@@ -26,18 +29,28 @@ import BudgetPanel from './BudgetPanel.svelte';
   let signatureSettingsLoaded = $state(false);
   let signingDocId = $state<string | null>(null);
 
-  onMount(async () => {
-    chartKinds = (await window.go.main.App.ListChartKinds()) ?? [];
-    docKinds = (await window.go.main.App.ListDocumentKinds()) ?? [];
-    charts = (await window.go.main.App.ListCharts('')) ?? [];
-    docs = (await window.go.main.App.ListDocuments('')) ?? [];
+  async function load() {
+    loading = true;
+    loadError = '';
     try {
-      agileEnabled = await window.go.main.App.AgileEnabled();
-    } catch {
-      // Older binary without the Agile bindings — feature stays hidden.
-      agileEnabled = false;
+      chartKinds = (await window.go.main.App.ListChartKinds()) ?? [];
+      docKinds = (await window.go.main.App.ListDocumentKinds()) ?? [];
+      charts = (await window.go.main.App.ListCharts('')) ?? [];
+      docs = (await window.go.main.App.ListDocuments('')) ?? [];
+      try {
+        agileEnabled = await window.go.main.App.AgileEnabled();
+      } catch {
+        // Older binary without the Agile bindings — feature stays hidden.
+        agileEnabled = false;
+      }
+    } catch (err: any) {
+      loadError = `Could not load this project's charts and documents: ${err}`;
+    } finally {
+      loading = false;
     }
-  });
+  }
+
+  onMount(load);
 
   let showSignModal = $state(false);
   let pendingCertPathForDash = $state('');
@@ -401,6 +414,21 @@ import BudgetPanel from './BudgetPanel.svelte';
             </p>
           </button>
         </div>
+      </section>
+    {/if}
+
+    <!-- Loading / error state for the project's existing charts & documents. -->
+    {#if loading}
+      <Spinner label="Loading charts &amp; documents…" />
+    {:else if loadError}
+      <section class="text-center py-8 space-y-3" role="alert">
+        <p class="text-sm text-red-400">{loadError}</p>
+        <button
+          onclick={load}
+          class="text-xs font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded transition-colors"
+        >
+          Retry
+        </button>
       </section>
     {/if}
 
