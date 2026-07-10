@@ -12,6 +12,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // assignee hourly_rate (labour estimate).
 
   import { onMount, onDestroy } from 'svelte';
+  import Spinner from '../Spinner.svelte';
 
   let summary = $state<BudgetSummary | null>(null);
   let error = $state('');
@@ -60,7 +61,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   {#if error}
     <p class="text-xs text-red-400">{error}</p>
   {:else if !summary}
-    <p class="text-xs text-slate-500">Loading…</p>
+    <Spinner label="Loading budget…" class="py-2" />
   {:else if summary.budget === 0 && summary.committed === 0}
     <p class="text-xs text-slate-500">
       Set a budget on the project metadata and add stakeholder rates / contracts to see this panel populate.
