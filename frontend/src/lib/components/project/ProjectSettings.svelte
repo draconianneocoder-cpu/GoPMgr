@@ -1544,7 +1544,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
          </div>
 
          {#if exportStatus}
-           <p class="text-xs mt-2 {exportError ? 'text-red-400' : 'text-cyan-400'}">
+           <p class="text-xs mt-2 break-words {exportError ? 'text-red-400' : 'text-cyan-400'}">
              {exportStatus}
            </p>
          {/if}
@@ -1753,7 +1753,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
              <p class="text-xs text-cyan-400">{settingsStatus}</p>
            {/if}
            {#if settingsError}
-             <p class="text-xs text-red-400">{settingsError}</p>
+             <p class="text-xs text-red-400 break-words" role="alert">{settingsError}</p>
            {/if}
          </div>
        </section>
@@ -1796,7 +1796,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
            </button>
          </div>
          {#if fontStatus}
-           <p class="text-xs mt-2 text-cyan-400">{fontStatus}</p>
+           <p class="text-xs mt-2 text-cyan-400 break-words">{fontStatus}</p>
          {/if}
        </section>
      {/if}

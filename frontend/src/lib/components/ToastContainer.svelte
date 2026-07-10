@@ -43,7 +43,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </div>
 
       <div class="flex-1 min-w-0">
-        <div class="pr-1 leading-snug">{toast.message}</div>
+        <div class="pr-1 leading-snug break-words">{toast.message}</div>
 
         {#if toast.undo}
           <button
