@@ -16,7 +16,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // a new industry/methodology row to the JDM auto-extends the GUI
   // suggestions.
 
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { session, goto } from '../../session.svelte';
 
   // Props — Launchpad can be opened from ProjectPicker; on close we
@@ -31,6 +31,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   type Step = 1 | 2 | 3 | 4;
   let step = $state<Step>(1);
+
+  // Focus management: each step swaps out its content, which would otherwise
+  // strand keyboard / screen-reader focus on <body>. On every step change we
+  // move focus to the new step's heading so the change is announced and Tab
+  // resumes from a sensible place. Skip the very first render so opening the
+  // wizard does not yank focus unexpectedly.
+  let headingEl = $state<HTMLElement>();
+  let stepInitialised = false;
+  $effect(() => {
+    void step;
+    if (!stepInitialised) {
+      stepInitialised = true;
+      return;
+    }
+    tick().then(() => headingEl?.focus());
+  });
 
   // Selections
   let industry = $state('');
@@ -202,7 +218,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {/if}
 
     {#if step === 1}
-      <h2 class="text-lg font-bold mb-6">What kind of project is this?</h2>
+      <h2 bind:this={headingEl} tabindex="-1" class="text-lg font-bold mb-6 outline-none">What kind of project is this?</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {#each INDUSTRIES as ind (ind.id)}
           <button
@@ -215,7 +231,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {/each}
       </div>
     {:else if step === 2}
-      <h2 class="text-lg font-bold mb-6">
+      <h2 bind:this={headingEl} tabindex="-1" class="text-lg font-bold mb-6 outline-none">
         Narrow it down (<span class="text-cyan-400">{industry}</span>)
       </h2>
       <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -232,7 +248,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <button onclick={prev} class="text-xs text-slate-400 hover:text-cyan-400">← Back</button>
       </div>
     {:else if step === 3}
-      <h2 class="text-lg font-bold mb-6">
+      <h2 bind:this={headingEl} tabindex="-1" class="text-lg font-bold mb-6 outline-none">
         Which methodology fits best?
       </h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -250,7 +266,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <button onclick={prev} class="text-xs text-slate-400 hover:text-cyan-400">← Back</button>
       </div>
     {:else}
-      <h2 class="text-lg font-bold mb-6">Project details &amp; starter artifacts</h2>
+      <h2 bind:this={headingEl} tabindex="-1" class="text-lg font-bold mb-6 outline-none">Project details &amp; starter artifacts</h2>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <label class="block">
@@ -291,7 +307,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           Starter artifacts (suggested for {industry} + {methodology})
         </h3>
         {#if busy && suggestedSeeds.length === 0}
-          <p class="text-xs text-slate-500">Loading recommendations…</p>
+          <p class="text-xs text-slate-500" role="status" aria-live="polite">Loading recommendations…</p>
         {:else if suggestedSeeds.length === 0}
           <p class="text-xs text-slate-500">
             No suggestions for this combination — you'll start with an empty project.
