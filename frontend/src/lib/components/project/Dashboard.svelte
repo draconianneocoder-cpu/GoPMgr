@@ -422,7 +422,7 @@ import Spinner from '../Spinner.svelte';
       <Spinner label="Loading charts &amp; documents…" />
     {:else if loadError}
       <section class="text-center py-8 space-y-3" role="alert">
-        <p class="text-sm text-red-400">{loadError}</p>
+        <p class="text-sm text-red-400 break-words">{loadError}</p>
         <button
           onclick={load}
           class="text-xs font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded transition-colors"
@@ -535,7 +535,7 @@ import Spinner from '../Spinner.svelte';
         </h2>
         <div class="flex items-center gap-2">
           {#if importMsg}
-            <span class="text-xs text-amber-300">{importMsg}</span>
+            <span class="text-xs text-amber-300 break-words min-w-0">{importMsg}</span>
           {/if}
           <button
             onclick={importMSPDI}
