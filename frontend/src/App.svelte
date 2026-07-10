@@ -178,7 +178,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 {#if routeError}
   <div class="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center">
     <div class="text-center space-y-4">
-      <p class="text-sm text-red-400">Failed to load view: {routeError}</p>
+      <p class="text-sm text-red-400 break-words" role="alert">Failed to load view: {routeError}</p>
       <button
         onclick={() => goto('dashboard')}
         class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase px-3 py-2 rounded"

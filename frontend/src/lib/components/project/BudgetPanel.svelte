@@ -59,7 +59,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   </div>
 
   {#if error}
-    <p class="text-xs text-red-400">{error}</p>
+    <p class="text-xs text-red-400 break-words" role="alert">{error}</p>
   {:else if !summary}
     <Spinner label="Loading budget…" class="py-2" />
   {:else if summary.budget === 0 && summary.committed === 0}
