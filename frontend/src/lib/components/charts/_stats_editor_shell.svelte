@@ -161,10 +161,10 @@ JSON.stringified back to db.charts.data.
 
   <main class="p-6 space-y-6">
     {#if status}
-      <p class="text-xs text-cyan-400">{status}</p>
+      <p class="text-xs text-cyan-400" role="status" aria-live="polite">{status}</p>
     {/if}
     {#if layoutError}
-      <p class="text-xs text-red-400">Layout error: {layoutError}</p>
+      <p class="text-xs text-red-400" role="alert">Layout error: {layoutError}</p>
     {/if}
 
     <!-- Chart preview -->
@@ -172,7 +172,7 @@ JSON.stringified back to db.charts.data.
       {#if layout}
         <StatsChart {layout} height={380} />
       {:else}
-        <p class="text-sm text-slate-500 text-center py-12">Loading chart...</p>
+        <p class="text-sm text-slate-500 text-center py-12" role="status" aria-live="polite">Loading chart...</p>
       {/if}
     </section>
 
