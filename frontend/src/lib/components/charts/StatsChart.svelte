@@ -57,6 +57,35 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let canvas = $state<HTMLCanvasElement | null>(null);
   let chart: Chart | null = null;
 
+  // Chart.js paints to a <canvas>, which is opaque to screen readers.
+  // Derive a concise text description so assistive tech can announce what
+  // the chart shows (kind, title, and the series / slice labels).
+  const KIND_LABELS: Record<string, string> = {
+    line: 'Line chart',
+    bar: 'Bar chart',
+    pie: 'Pie chart',
+    pareto: 'Pareto chart',
+    burnup: 'Burn-up chart',
+    burndown: 'Burn-down chart',
+    cumulative_flow: 'Cumulative flow diagram',
+    control: 'Control chart',
+  };
+  const chartLabel = $derived.by(() => {
+    const kind = KIND_LABELS[layout.kind] ?? 'Chart';
+    const parts = [kind];
+    if (layout.title) parts.push(layout.title);
+    if (layout.kind === 'pie') {
+      const names = (layout.slices ?? []).map((s) => s.label).filter(Boolean);
+      if (names.length) parts.push(`Segments: ${names.join(', ')}`);
+    } else {
+      const names = (layout.series ?? []).map((s) => s.name).filter(Boolean);
+      if (names.length) parts.push(`Series: ${names.join(', ')}`);
+      const cats = layout.categories ?? [];
+      if (cats.length) parts.push(`${cats.length} categories`);
+    }
+    return parts.join('. ') + '.';
+  });
+
   onMount(() => {
     rebuild();
   });
@@ -300,6 +329,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
   Chart.register(annotationPlugin);
 </script>
 
-<div style={`height: ${height}px;`} class="w-full">
+<div style={`height: ${height}px;`} class="w-full" role="img" aria-label={chartLabel}>
   <canvas bind:this={canvas}></canvas>
 </div>
