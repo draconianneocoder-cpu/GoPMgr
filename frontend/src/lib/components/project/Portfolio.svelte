@@ -148,7 +148,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </div>
 
     {#if error}
-      <p class="text-sm text-red-400 mb-4" role="alert">{error}</p>
+      <p class="text-sm text-red-400 mb-4 break-words" role="alert">{error}</p>
     {/if}
 
     <section class="mb-5 p-4 bg-slate-900 border border-slate-800 rounded-lg">
@@ -178,7 +178,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </div>
 
       {#if rollupErr}
-        <p class="mt-3 text-xs text-amber-400" role="status">
+        <p class="mt-3 text-xs text-amber-400 break-words" role="status">
           {rollupErr.includes('not built in')
             ? analyticsUnavailableMessage('analytics')
             : `Analytics failed: ${rollupErr}`}
@@ -214,7 +214,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {/if}
 
       {#if importErr}
-        <p class="mt-3 text-xs text-amber-400" role="status">
+        <p class="mt-3 text-xs text-amber-400 break-words" role="status">
           {importErr.includes('not built in')
             ? analyticsUnavailableMessage('import')
             : `Import failed: ${importErr}`}
@@ -278,7 +278,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <Spinner label="Loading projects…" />
     {:else if loadError}
       <div class="text-center py-12 space-y-3" role="alert">
-        <p class="text-sm text-red-400">{loadError}</p>
+        <p class="text-sm text-red-400 break-words">{loadError}</p>
         <button
           onclick={load}
           class="text-xs font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded transition-colors"
