@@ -5,6 +5,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <script lang="ts">
   import { onMount } from 'svelte';
   import AppHeader from '../AppHeader.svelte';
+  import Spinner from '../Spinner.svelte';
   import { session } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
 
@@ -284,7 +285,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {/if}
 
     {#if loading}
-      <p class="text-sm text-slate-500 py-8 text-center" role="status" aria-live="polite">Loading…</p>
+      <Spinner label="Loading users…" class="py-8" />
     {:else}
       <div class="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
         <table class="w-full text-sm">
