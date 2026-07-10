@@ -10,10 +10,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import AppHeader from '../AppHeader.svelte';
+  import Spinner from '../Spinner.svelte';
 
   let projects = $state<ProjectSummary[]>([]);
   let loading = $state(true);
-  let error = $state('');
+  let loadError = $state(''); // failure loading the portfolio (retryable)
+  let error = $state(''); // transient failure opening a specific project
   let query = $state('');
   let tab = $state<'all' | 'active' | 'done'>('all');
 
@@ -21,11 +23,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function load() {
     loading = true;
-    error = '';
+    loadError = '';
     try {
       projects = (await window.go.main.App.ProjectsOverview()) ?? [];
     } catch (err: any) {
-      error = `Could not load projects: ${err}`;
+      loadError = `Could not load projects: ${err}`;
     } finally {
       loading = false;
     }
@@ -273,7 +275,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {/if}
 
     {#if loading}
-      <p class="text-sm text-slate-500 text-center py-12" role="status" aria-live="polite">Loading…</p>
+      <Spinner label="Loading projects…" />
+    {:else if loadError}
+      <div class="text-center py-12 space-y-3" role="alert">
+        <p class="text-sm text-red-400">{loadError}</p>
+        <button
+          onclick={load}
+          class="text-xs font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded transition-colors"
+        >
+          Retry
+        </button>
+      </div>
     {:else if projects.length === 0}
       <p class="text-sm text-slate-500 text-center py-12">
         No projects yet. Click <strong>+ New Project</strong> to get started.
