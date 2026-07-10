@@ -33,6 +33,7 @@ declare global {
           AdminListUsers: () => Promise<Account[]>;
           AdminDeleteUser: (username: string) => Promise<void>;
           AdminSetUserRole: (username: string, isAdmin: boolean) => Promise<void>;
+          AdminIssueRecoveryCodes: (username: string, password: string) => Promise<string[]>;
           Login: (username: string, password: string) => Promise<Account>;
           Logout: () => Promise<void>;
           CurrentUser: () => Promise<Account | null>;
