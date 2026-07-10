@@ -178,6 +178,16 @@ summary:focus-visible,
   }
 }
 
+/* Long unbroken tokens in error/status messages (e.g. a file path with no
+   spaces) must wrap instead of forcing the whole page to scroll horizontally.
+   Applying this to the alert/status roles hardens every current and future
+   message region in one place; components that render dynamic errors without
+   a role (toasts, a few inline panels) also add the `break-words` utility. */
+[role='alert'],
+[role='status'] {
+  overflow-wrap: break-word;
+}
+
 /* Screen-reader-only helper — used by GanttChart for a11y labels. */
 .sr-only {
   position: absolute;
