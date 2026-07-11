@@ -350,7 +350,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
               onclick={() => (selectedId = p.id)}
               role="button"
               tabindex="0"
-              onkeydown={(e) => e.key === 'Enter' && (selectedId = p.id)}
+              aria-label={p.name}
+              aria-pressed={selectedId === p.id}
+              onkeydown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  selectedId = p.id;
+                }
+              }}
               class="cursor-pointer"
             >
               <circle
