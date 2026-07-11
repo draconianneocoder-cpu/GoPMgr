@@ -186,7 +186,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   <main class="p-6 space-y-6">
     {#if status}
-      <p class="text-xs text-cyan-400">{status}</p>
+      <p class="text-xs text-cyan-400" role="status" aria-live="polite">{status}</p>
     {/if}
 
     <label class="block max-w-md">
@@ -226,6 +226,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   value={listFor(q.key)[i]}
                   oninput={(e) => updateItem(q.key, i, (e.target as HTMLTextAreaElement).value)}
                   onblur={refreshLayout}
+                  aria-label={`${q.title} item ${i + 1}`}
                   class="flex-1 bg-transparent border-b border-slate-800 text-sm py-1 focus:border-cyan-500 outline-none resize-none"
                 ></textarea>
                 <button
@@ -266,6 +267,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   value={listFor(q.key)[i]}
                   oninput={(e) => updateItem(q.key, i, (e.target as HTMLTextAreaElement).value)}
                   onblur={refreshLayout}
+                  aria-label={`${q.title} item ${i + 1}`}
                   class="flex-1 bg-transparent border-b border-slate-800 text-sm py-1 focus:border-cyan-500 outline-none resize-none"
                 ></textarea>
                 <button

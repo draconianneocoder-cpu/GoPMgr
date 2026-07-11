@@ -221,7 +221,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         &larr; Dashboard
       </button>
       <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Gantt Chart</h1>
-      {#if status}<span class="text-xs text-cyan-300">{status}</span>{/if}
+      {#if status}<span class="text-xs text-cyan-300" role="status" aria-live="polite">{status}</span>{/if}
     </div>
     <div class="flex items-center gap-2">
       <button onclick={() => (pxPerDay = Math.max(8, pxPerDay - 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title="Zoom out">−</button>

@@ -191,7 +191,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <!-- Diagram -->
     <main class="flex-1 overflow-auto p-6">
       {#if status}
-        <p class="text-xs text-cyan-400 mb-2">{status}</p>
+        <p class="text-xs text-cyan-400 mb-2" role="status" aria-live="polite">{status}</p>
       {/if}
       {#if doc.categories.length === 0}
         <p class="text-sm text-slate-500 text-center mt-12">
