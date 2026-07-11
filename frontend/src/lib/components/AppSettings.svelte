@@ -167,7 +167,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <AppHeader active="settings" />
 
   <main class="max-w-2xl mx-auto p-8">
-    <h2 class="text-xl font-bold mb-1">Application settings</h2>
+    <h1 class="text-xl font-bold mb-1">Application settings</h1>
     <p class="text-xs text-slate-500 mb-6">
       App-level preferences for your account. New projects inherit these defaults.
     </p>
@@ -181,7 +181,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {:else if info}
       <div class="space-y-6">
         <section class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-4">
-          <h3 class="text-xs font-bold uppercase tracking-widest text-cyan-400">Appearance</h3>
+          <h2 class="text-xs font-bold uppercase tracking-widest text-cyan-400">Appearance</h2>
           <label class="block">
             <span class="text-xs font-semibold text-slate-500 uppercase">Application theme</span>
             <select
@@ -199,7 +199,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </section>
 
         <section class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-4">
-          <h3 class="text-xs font-bold uppercase tracking-widest text-cyan-400">Saving</h3>
+          <h2 class="text-xs font-bold uppercase tracking-widest text-cyan-400">Saving</h2>
           <label class="flex items-center gap-2">
             <input type="checkbox" bind:checked={autoSaveOn} />
             <span class="text-xs font-semibold text-slate-300">Auto-save open editors</span>
@@ -223,9 +223,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </section>
 
         <section class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-4">
-          <h3 class="text-xs font-bold uppercase tracking-widest text-cyan-400">
+          <h2 class="text-xs font-bold uppercase tracking-widest text-cyan-400">
             Defaults for new projects
-          </h3>
+          </h2>
 
           <label class="block">
             <span class="text-xs font-semibold text-slate-500 uppercase">Default document font</span>
@@ -273,7 +273,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
         {#if !hasAdmin && !session.user?.is_admin}
           <section class="p-4 bg-amber-950/30 border border-amber-700/50 rounded-lg space-y-3 text-xs">
-            <h3 class="text-xs font-bold uppercase tracking-widest text-amber-400">No administrator configured</h3>
+            <h2 class="text-xs font-bold uppercase tracking-widest text-amber-400">No administrator configured</h2>
             <p class="text-amber-300/80">
               This machine has no PMForge administrator. An administrator can create and delete accounts
               and manage roles. Claim this role to take responsibility for managing users on this machine.
@@ -289,7 +289,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {/if}
 
         <section class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-2 text-xs">
-          <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">About</h3>
+          <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500">About</h2>
           <div class="flex justify-between gap-4">
             <span class="text-slate-500">Version</span><span class="font-mono">{info.version}</span>
           </div>
@@ -304,7 +304,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </section>
 
         <section class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-3 text-xs">
-          <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">Diagnostics</h3>
+          <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500">Diagnostics</h2>
           {#if info.logs_dir}
             <div class="flex justify-between gap-4">
               <span class="text-slate-500 shrink-0">Log files</span>
