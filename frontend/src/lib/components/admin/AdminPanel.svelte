@@ -168,7 +168,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <main class="max-w-3xl mx-auto p-8 space-y-6">
     <div class="flex items-center justify-between gap-4">
       <div>
-        <h2 class="text-xl font-bold">User management</h2>
+        <h1 class="text-xl font-bold">User management</h1>
         <p class="text-xs text-slate-500 mt-0.5">
           Administrators can create and delete accounts and manage roles on this machine.
         </p>
@@ -190,7 +190,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         onsubmit={createUser}
         class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-4"
       >
-        <h3 class="text-xs font-bold uppercase tracking-widest text-cyan-400">New account</h3>
+        <h2 class="text-xs font-bold uppercase tracking-widest text-cyan-400">New account</h2>
         <div class="grid grid-cols-2 gap-4">
           <label class="block">
             <span class="text-xs font-semibold text-slate-500 uppercase">Username</span>
@@ -242,9 +242,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {#if createdCodes.length > 0}
       <div class="p-4 bg-cyan-950/20 border border-cyan-900/60 rounded-lg space-y-3">
         <div>
-          <h3 class="text-xs font-bold uppercase tracking-widest text-cyan-300">
+          <h2 class="text-xs font-bold uppercase tracking-widest text-cyan-300">
             Recovery codes for {createdFor}
-          </h3>
+          </h2>
           <p class="text-xs text-cyan-300/80 mt-1">
             Give these to {createdFor} to store somewhere safe. They are the only way to recover the
             account if the password is lost, and they won't be shown again.

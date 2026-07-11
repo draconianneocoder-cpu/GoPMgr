@@ -265,7 +265,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
        string, which should not happen in normal operation. -->
   <div class="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center">
     <div class="text-center space-y-4">
-      <p class="text-sm text-slate-500">
+      <p class="text-sm text-slate-500" role="alert">
         Unknown view. Please navigate back to the dashboard.
       </p>
       <button
