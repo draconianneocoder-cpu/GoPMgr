@@ -83,6 +83,66 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let routeError = $state('');
   let routeToken = 0;
 
+  // Human-readable names for each view, used by the screen-reader route
+  // announcer below. Navigation swaps the whole screen with no page reload,
+  // so without this a screen-reader user gets no signal that the view changed.
+  const VIEW_LABELS: Record<string, string> = {
+    login: 'Sign in',
+    create_account: 'Create account',
+    recovery_reset: 'Recovery reset',
+    project_picker: 'Open project',
+    portfolio: 'Portfolio',
+    app_settings: 'App settings',
+    admin_panel: 'Admin panel',
+    help: 'Help',
+    dashboard: 'Project dashboard',
+    launchpad: 'New project',
+    wbs: 'Work breakdown structure',
+    network: 'Network diagram',
+    pert: 'PERT chart',
+    cpm: 'Critical path',
+    gantt: 'Gantt chart',
+    fishbone: 'Fishbone diagram',
+    cause_effect: 'Cause and effect diagram',
+    workflow: 'Workflow diagram',
+    activity: 'Activity diagram',
+    raci: 'RACI matrix',
+    swot: 'SWOT matrix',
+    stakeholder: 'Stakeholder chart',
+    matrix: 'Matrix diagram',
+    line: 'Line chart',
+    bar: 'Bar chart',
+    pareto: 'Pareto chart',
+    pie: 'Pie chart',
+    burnup: 'Burn-up chart',
+    burndown: 'Burn-down chart',
+    cumulative_flow: 'Cumulative flow diagram',
+    control: 'Control chart',
+    charter: 'Project charter',
+    documents: 'Documents',
+    report_composer: 'Report composer',
+    kanban: 'Kanban board',
+    backlog: 'Backlog',
+    sprints: 'Sprints',
+    dora: 'DORA metrics',
+    sigma_dashboard: 'Six Sigma workspace',
+    sigma_project: 'Six Sigma project',
+    stakeholders: 'Stakeholder manager',
+    timeline: 'Timeline',
+    project_settings: 'Project settings',
+    scenario_chart: 'Scenario chart',
+  };
+
+  function viewLabel(view: string): string {
+    return VIEW_LABELS[view] ?? view.replace(/_/g, ' ');
+  }
+
+  // An aria-live region only announces *subsequent* mutations, not its
+  // initial content, so this stays silent on first paint and speaks the
+  // destination on every navigation — without stealing focus from views
+  // that autofocus their own first field (Login, Create account).
+  const routeAnnouncement = $derived(viewLabel(session.view));
+
   function propsForView(view: string): Record<string, unknown> {
     if (view === 'launchpad') {
       return {
@@ -218,4 +278,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   </div>
   {/if}
 
-  <ToastContainer />
+<!-- Screen-reader route announcer: names the current view on navigation. -->
+<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+  {routeAnnouncement}
+</div>
+
+<ToastContainer />
