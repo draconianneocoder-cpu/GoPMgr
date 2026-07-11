@@ -239,7 +239,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <!-- Canvas -->
     <main class="flex-1 overflow-auto p-6">
       {#if status}
-        <p class="text-xs text-cyan-400 mb-2">{status}</p>
+        <p class="text-xs text-cyan-400 mb-2" role="status" aria-live="polite">{status}</p>
       {/if}
       <svg
         role="application"

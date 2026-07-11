@@ -186,7 +186,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   <main class="p-6 space-y-6">
     {#if status}
-      <p class="text-xs text-cyan-400">{status}</p>
+      <p class="text-xs text-cyan-400" role="status" aria-live="polite">{status}</p>
     {/if}
 
     <!-- Meta fields -->
@@ -262,6 +262,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                       value={col}
                       oninput={(e) => renameCol(ci, (e.target as HTMLInputElement).value)}
                       onblur={refreshLayout}
+                      aria-label="Column name"
                       class="flex-1 bg-transparent text-xs px-2 py-1 rounded focus:bg-slate-800 focus:outline focus:outline-cyan-500"
                     />
                     <button
@@ -285,6 +286,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                       value={row}
                       oninput={(e) => renameRow(ri, (e.target as HTMLInputElement).value)}
                       onblur={refreshLayout}
+                      aria-label="Row name"
                       class="flex-1 bg-transparent text-xs px-2 py-1 rounded focus:bg-slate-800 focus:outline focus:outline-cyan-500"
                     />
                     <button
@@ -302,6 +304,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                       value={doc.cells[ri]?.[ci] ?? ''}
                       oninput={(e) => updateCell(ri, ci, (e.target as HTMLInputElement).value)}
                       onblur={refreshLayout}
+                      aria-label={`${doc.rows[ri] || 'Row ' + (ri + 1)} by ${doc.cols[ci] || 'Column ' + (ci + 1)}`}
                       class="w-full bg-transparent text-xs px-2 py-1 rounded focus:bg-slate-900 focus:outline focus:outline-cyan-500"
                     />
                   </td>
