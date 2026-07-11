@@ -213,7 +213,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   <main class="p-6 space-y-6">
     {#if status}
-      <p class="text-xs text-cyan-400">{status}</p>
+      <p class="text-xs text-cyan-400" role="status" aria-live="polite">{status}</p>
     {/if}
 
     <!-- Add controls -->
@@ -296,6 +296,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     value={task.title}
                     oninput={(e) => renameTask(task.id, (e.target as HTMLInputElement).value)}
                     onblur={refreshLayout}
+                    aria-label="Task name"
                     class="w-full bg-transparent focus:bg-slate-900 px-2 py-1 rounded focus:outline focus:outline-cyan-500"
                   />
                 </td>
@@ -305,6 +306,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     <select
                       value={v}
                       onchange={(e) => setCell(task.id, role, (e.target as HTMLSelectElement).value)}
+                      aria-label={`${task.title || 'Task'} — ${role} responsibility`}
                       class="w-full text-center font-bold rounded p-1 cursor-pointer border-none {valueTone(v)}"
                     >
                       {#each VALUES as opt (opt.value)}
