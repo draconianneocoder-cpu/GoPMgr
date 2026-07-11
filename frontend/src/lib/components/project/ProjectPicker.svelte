@@ -93,7 +93,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   <main class="max-w-3xl mx-auto p-8">
     <div class="flex items-center justify-between mb-6">
-      <h2 class="text-xl font-bold">Your projects</h2>
+      <h1 class="text-xl font-bold">Your projects</h1>
       <button
         onclick={() => goto('launchpad')}
         class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"

@@ -134,7 +134,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <main class="max-w-5xl mx-auto p-8">
     <div class="flex items-center justify-between mb-5">
       <div>
-        <h2 class="text-xl font-bold">Portfolio dashboard</h2>
+        <h1 class="text-xl font-bold">Portfolio dashboard</h1>
         <p class="text-xs text-slate-500 mt-1">
           {counts.active} active · {counts.all} total
         </p>
@@ -154,7 +154,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <section class="mb-5 p-4 bg-slate-900 border border-slate-800 rounded-lg">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="min-w-0">
-          <h3 class="text-sm font-bold text-slate-200">Portfolio analytics</h3>
+          <h2 class="text-sm font-bold text-slate-200">Portfolio analytics</h2>
           <p class="text-xs text-slate-500">Cross-project cost rollup, aggregated with DuckDB.</p>
         </div>
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
