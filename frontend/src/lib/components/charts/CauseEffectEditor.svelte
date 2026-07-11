@@ -264,9 +264,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <g
               transform={`translate(${n.x},${n.y})`}
               onclick={() => (selectedId = n.id)}
-              onkeydown={(e) => e.key === 'Enter' && (selectedId = n.id)}
+              onkeydown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  selectedId = n.id;
+                }
+              }}
               role="button"
               tabindex="0"
+              aria-label={n.title}
+              aria-pressed={selectedId === n.id}
               class="cursor-pointer"
             >
               <rect
