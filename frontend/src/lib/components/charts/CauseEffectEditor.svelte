@@ -228,7 +228,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <div class="flex-1 flex">
     <main class="flex-1 overflow-auto p-6">
       {#if status}
-        <p class="text-xs text-cyan-400 mb-2">{status}</p>
+        <p class="text-xs text-cyan-400 mb-2" role="status" aria-live="polite">{status}</p>
       {/if}
       <label class="block mb-4 max-w-md">
         <span class="text-xs text-slate-500 uppercase">Effect (final outcome)</span>
