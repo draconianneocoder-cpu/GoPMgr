@@ -122,6 +122,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <!-- Content -->
     <main class="flex-1 overflow-y-auto">
       <div class="max-w-3xl mx-auto px-8 py-6">
+        <h1 class="sr-only">Help</h1>
 
         <!-- ── Getting Started ─────────────────────────────────────── -->
         {#if active === 'getting-started'}
