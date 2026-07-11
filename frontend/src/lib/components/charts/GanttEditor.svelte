@@ -188,6 +188,34 @@ SPDX-License-Identifier: GPL-3.0-or-later
     return `M ${x1} ${y1} L ${elbow} ${y1} L ${elbow} ${y2} L ${x2} ${y2}`;
   }
 
+  // The bar canvas is a visual view of data that is fully editable in the
+  // task grid on the left, so it stays a labelled image rather than a second
+  // set of tab stops. Give it a description that summarises the schedule, and
+  // a per-bar <title> so pointer users get a tooltip identifying each bar.
+  const ganttSummary = $derived.by(() => {
+    const n = layout.rows.length;
+    const critical = layout.rows.filter((r) => r.is_critical).length;
+    const days = Math.max(0, Math.ceil(layout.horizon));
+    let s = `Gantt chart: ${n} task${n === 1 ? '' : 's'} across ${days} day${days === 1 ? '' : 's'}`;
+    if (critical > 0) s += `, ${critical} on the critical path`;
+    return s + '.';
+  });
+
+  function barTitle(r: GanttRow): string {
+    const parts = [r.label || '(untitled task)'];
+    if (r.milestone) {
+      parts.push(`milestone at day ${r.es}`);
+    } else {
+      parts.push(`day ${r.es} to ${r.ef}`);
+      if (r.percent_complete > 0) parts.push(`${Math.min(100, r.percent_complete)}% complete`);
+    }
+    if (r.is_critical) parts.push('critical path');
+    if (r.overallocated) parts.push('resource overallocated');
+    if (r.constraint_violated) parts.push('constraint violated');
+    if (r.start_date && r.finish_date) parts.push(`${r.start_date} to ${r.finish_date}`);
+    return parts.join(', ') + '.';
+  }
+
   function handleKeyDown(e: KeyboardEvent) {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
@@ -324,7 +352,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {#if layout.rows.length === 0}
         <p class="text-slate-500 text-sm">No tasks yet. Click <strong>+ Task</strong> to add one.</p>
       {:else}
-        <svg width={canvasW} height={canvasH} role="img" aria-label="Gantt schedule bars">
+        <svg width={canvasW} height={canvasH} role="img" aria-label={ganttSummary}>
           <!-- day grid -->
           {#each Array(Math.ceil(layout.horizon) + 1) as _, d (d)}
             <line x1={d * pxPerDay} y1="0" x2={d * pxPerDay} y2={layout.rows.length * rowH} stroke="#1e293b" stroke-width="1" />
@@ -344,6 +372,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
           {#each layout.rows as r, i (r.id)}
             {@const y = i * rowH + 6}
             {@const bb = baselineBar(r)}
+            <g>
+              <title>{barTitle(r)}</title>
             <!-- baseline ghost -->
             {#if bb}
               <rect x={bb.x} y={y + rowH - 16} width={bb.w} height="5" rx="2" fill="#475569" opacity="0.6" />
@@ -387,6 +417,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 {r.start_date} → {r.finish_date}
               </text>
             {/if}
+            </g>
           {/each}
         </svg>
         <p class="text-[10px] text-slate-500 mt-2 max-w-xl">

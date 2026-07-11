@@ -272,7 +272,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <p class="text-xs text-cyan-400 mb-2" role="status" aria-live="polite">{status}</p>
       {/if}
       {#if layoutError}
-        <p class="text-xs text-red-400 mb-2">Layout error: {layoutError}</p>
+        <p class="text-xs text-red-400 mb-2" role="alert">Layout error: {layoutError}</p>
       {/if}
       {#if doc.nodes.length === 0}
         <p class="text-sm text-slate-500 text-center mt-12">
@@ -319,9 +319,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <g
                 transform={`translate(${n.x},${n.y})`}
                 onclick={() => handleNodeClick(n.id)}
-                onkeydown={(e) => e.key === 'Enter' && handleNodeClick(n.id)}
+                onkeydown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleNodeClick(n.id);
+                  }
+                }}
                 role="button"
                 tabindex="0"
+                aria-label={n.label || n.shape}
+                aria-pressed={selectedId === n.id}
                 class="cursor-pointer"
               >
                 <path
