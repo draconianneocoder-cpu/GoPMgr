@@ -7,6 +7,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   type SectionId =
     | 'getting-started'
+    | 'quick-start'
     | 'industry-matrix'
     | 'scrum'
     | 'kanban'
@@ -30,6 +31,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     | 'charts'
     | 'documents'
     | 'sigma-pack'
+    | 'shortcuts'
     | 'glossary'
     | 'install';
 
@@ -42,6 +44,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
         { id: 'getting-started', label: 'Getting Started' },
         { id: 'industry-matrix', label: 'Industry & Methodology Matrix' },
       ],
+    },
+    {
+      group: 'Tutorials',
+      items: [{ id: 'quick-start', label: 'Quick Start: Your First Project' }],
     },
     {
       group: 'Methodologies',
@@ -78,6 +84,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         { id: 'charts', label: 'Charts' },
         { id: 'documents', label: 'Documents' },
         { id: 'sigma-pack', label: 'DMAIC Pack' },
+        { id: 'shortcuts', label: 'Keyboard Shortcuts & Accessibility' },
         { id: 'glossary', label: 'Glossary' },
         { id: 'install', label: 'Installing & Running' },
       ],
@@ -87,6 +94,71 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function nav(id: SectionId) {
     active = id;
   }
+
+  // ── Search ────────────────────────────────────────────────────────
+  // Only the active section's body is rendered, so the sidebar search
+  // matches against this hand-curated keyword index plus the section
+  // labels/groups. Keep entries lowercase; extend when adding sections.
+  const KEYWORDS: Record<SectionId, string> = {
+    'getting-started':
+      'first launch create account admin administrator passphrase password login sign in users data directory navigation menu recovery codes new project launchpad',
+    'quick-start':
+      'tutorial beginner walkthrough first project step by step example schedule task dependency export pdf report onboarding start here how to begin',
+    'industry-matrix':
+      'seeded artifacts starter templates software construction engineering business administration custom combination launchpad',
+    scrum: 'sprint backlog product owner scrum master velocity retrospective standup agile ceremonies story points',
+    kanban: 'board columns wip limit work in progress flow pull continuous cards lanes cycle time',
+    scrumban: 'hybrid sprint flow wip planning trigger bucket agile mix',
+    lean: 'waste value stream pull kaizen continuous improvement muda flow efficiency',
+    okrs: 'objectives key results goals alignment scoring quarterly cadence outcomes',
+    waterfall: 'phases sequential requirements design implementation verification maintenance gantt milestones',
+    prince2: 'stages governance business case project board tolerance exception work packages themes processes',
+    pmbok: 'pmi process groups knowledge areas initiating planning executing monitoring closing pmp',
+    cpm: 'critical path float slack forward pass backward pass network dependencies es ef ls lf duration schedule',
+    'six-sigma-method': 'dmaic define measure analyze improve control defects variation belts quality spc',
+    portfolio: 'dashboard all projects overview rollup analytics duckdb import csv xlsx status filter search cost',
+    'project-dashboard':
+      'open project charts documents budget committed contracts labour earned value evm spi cpi new chart export delete',
+    timeline: 'calendar holidays country milestones dates schedule view months workdays',
+    stakeholders: 'stakeholder manager power interest grid raci contacts influence engagement contract rates',
+    'report-composer': 'combined report multiple documents charts assemble pdf export sections cover page',
+    'export-signing':
+      'pdf export sign pades digital signature certificate p12 pfx password gpg gnupg detached asc encrypt aes verify docx odt xlsx csv html mspdi xml formats',
+    encryption:
+      'sqlcipher database encryption at rest dek key passphrase lock secure recovery codes migrate plaintext',
+    'admin-panel': 'user management create accounts admin recovery codes provision reset',
+    'app-settings':
+      'theme light dark auto save interval become administrator logs folder diagnostics preferences application settings',
+    charts:
+      'chart types catalog wbs network pert cpm gantt fishbone cause effect workflow activity raci swot stakeholder matrix line bar pareto pie burn up down cumulative flow control engines editors connect nodes dependencies baseline monte carlo histogram',
+    documents:
+      'charter scope statement risk register communication plan status report statement of work project plan word templates edit export',
+    'sigma-pack': 'dmaic pack six sigma tollgate ctq sipoc capability control charts project view',
+    shortcuts:
+      'keyboard shortcuts hotkeys ctrl cmd save accessibility screen reader focus escape tab enter space navigate a11y announce reduced motion',
+    glossary: 'terms definitions vocabulary jargon meaning dictionary',
+    install: 'install run linux windows macos webkit dependencies build wails cli headless requirements',
+  };
+
+  let query = $state('');
+
+  const filteredSidebar = $derived.by(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return sidebar;
+    return sidebar
+      .map((group) => ({
+        group: group.group,
+        items: group.items.filter(
+          (item) =>
+            item.label.toLowerCase().includes(q) ||
+            group.group.toLowerCase().includes(q) ||
+            KEYWORDS[item.id].includes(q),
+        ),
+      }))
+      .filter((g) => g.items.length > 0);
+  });
+
+  const matchCount = $derived(filteredSidebar.reduce((n, g) => n + g.items.length, 0));
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
@@ -98,7 +170,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
       class="w-52 shrink-0 border-r border-slate-800 overflow-y-auto py-4 px-2"
       aria-label="Help sections"
     >
-      {#each sidebar as group}
+      <div class="px-2 mb-4">
+        <input
+          type="search"
+          bind:value={query}
+          placeholder="Search help…"
+          aria-label="Search help sections"
+          class="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:border-cyan-500 outline-none"
+        />
+        {#if query.trim()}
+          <p class="mt-1.5 text-[10px] text-slate-500" role="status">
+            {matchCount === 0
+              ? 'No sections match.'
+              : `${matchCount} section${matchCount === 1 ? '' : 's'} match.`}
+          </p>
+        {/if}
+      </div>
+      {#each filteredSidebar as group}
         <div class="mb-5">
           <p class="px-2 mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
             {group.group}
@@ -159,15 +247,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
               walks through four steps:
             </p>
             <ol class="space-y-2 text-sm text-slate-300 list-decimal list-inside">
-              <li><span class="font-medium text-slate-100">Name</span> — project name and optional description.</li>
               <li><span class="font-medium text-slate-100">Industry</span> — Software, Construction, Engineering, Business, Administration, or Custom.</li>
+              <li><span class="font-medium text-slate-100">Focus area</span> — narrows the industry (for example Web Dev, Civil, or Marketing).</li>
               <li>
                 <span class="font-medium text-slate-100">Methodology</span> — delivery approach.
-                Each combination shows which artifacts will be seeded automatically. See the
+                Each combination seeds different starter artifacts. See the
                 <button onclick={() => nav('industry-matrix')} class="text-cyan-400 underline hover:text-cyan-300">Industry &amp; Methodology Matrix</button>.
               </li>
-              <li><span class="font-medium text-slate-100">Review &amp; Create</span> — confirm selections and create the project.</li>
+              <li><span class="font-medium text-slate-100">Details &amp; starter artifacts</span> — project name, optional description, country (drives holiday calendars), and checkboxes for the suggested starter artifacts. Click Create Project to finish.</li>
             </ol>
+            <p class="text-sm text-slate-300 mt-3">
+              New to PMForge? The
+              <button onclick={() => nav('quick-start')} class="text-cyan-400 underline hover:text-cyan-300">Quick Start tutorial</button>
+              walks the whole journey — account to exported report — in about ten minutes.
+            </p>
           </section>
 
           <section class="mb-6">
@@ -188,6 +281,89 @@ SPDX-License-Identifier: GPL-3.0-or-later
               Store them securely. Recovery codes let you reset your passphrase from the login screen.
               Recovery codes must be current before enabling database encryption.
             </p>
+          </section>
+
+        <!-- ── Quick Start tutorial ───────────────────────────────── -->
+        {:else if active === 'quick-start'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Quick Start: Your First Project</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            A ten-minute walkthrough from a fresh install to an exported PDF report. Every step
+            names exactly what to click; no project-management experience is assumed.
+          </p>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">1 · Create your account</h3>
+            <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
+              <li>Launch PMForge. With no accounts yet, the Create Account screen appears.</li>
+              <li>Enter a username, display name, and a passphrase you can remember — it also protects your encrypted projects.</li>
+              <li>As the first user you are offered the administrator role; accept it.</li>
+              <li>
+                PMForge shows your <span class="font-medium text-slate-100">eight recovery codes once</span>.
+                Store them somewhere safe (password manager, printed copy) before continuing —
+                they are the only way back in if you forget your passphrase. There is no cloud reset.
+              </li>
+            </ol>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">2 · Create a project</h3>
+            <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
+              <li>From the Portfolio screen click <span class="font-medium text-slate-100">+ New Project</span> (or press Ctrl/⌘+N).</li>
+              <li>Pick an industry tile — choose <span class="font-medium text-slate-100">Software</span> for this tutorial.</li>
+              <li>Pick a focus area (any), then the <span class="font-medium text-slate-100">Scrum</span> methodology.</li>
+              <li>Name the project, leave the suggested starter artifacts checked, and click <span class="font-medium text-slate-100">Create Project</span>.</li>
+            </ol>
+            <p class="text-sm text-slate-400 mt-2">
+              You land on the Project Dashboard: charts on top, documents below, budget at the side.
+              The starter artifacts from the
+              <button onclick={() => nav('industry-matrix')} class="text-cyan-400 underline hover:text-cyan-300">matrix</button>
+              are already there.
+            </p>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">3 · Build a small schedule</h3>
+            <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
+              <li>On the Dashboard choose <span class="font-medium text-slate-100">New Chart</span> and pick <span class="font-medium text-slate-100">Critical Path (CPM)</span>.</li>
+              <li>Click <span class="font-medium text-slate-100">+ Node</span> three times to add three activities.</li>
+              <li>Click a node, then rename it and set a duration (days) in the side panel.</li>
+              <li>To add a dependency: select the first node, click <span class="font-medium text-slate-100">Connect…</span>, then click the node that must follow it.</li>
+              <li>Repeat until the three activities form a chain. The longest chain turns <span class="text-red-400 font-medium">red</span> — that is your critical path.</li>
+              <li>Press <span class="font-medium text-slate-100">Ctrl/⌘+S</span> to save (or rely on auto-save if enabled in App Settings).</li>
+            </ol>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">4 · Fill in your first document</h3>
+            <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
+              <li>Back on the Dashboard, open the seeded <span class="font-medium text-slate-100">Project Charter</span> under Documents.</li>
+              <li>Fill in the purpose and objectives fields — a sentence each is enough for now.</li>
+              <li>Save with Ctrl/⌘+S. The save time appears near the header, so you always know your work is on disk.</li>
+            </ol>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">5 · Export a PDF report</h3>
+            <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
+              <li>On the Dashboard, use the export action next to the Project Charter.</li>
+              <li>In the Signature Options dialog choose <span class="font-medium text-slate-100">No digital signature</span> for now and click Export.</li>
+              <li>The PDF is written to your private exports folder — the toast tells you where.</li>
+            </ol>
+            <p class="text-sm text-slate-400 mt-2">
+              When you need tamper-evident output, come back to
+              <button onclick={() => nav('export-signing')} class="text-cyan-400 underline hover:text-cyan-300">Export &amp; Digital Signing</button>
+              for PAdES certificates and GnuPG signatures.
+            </p>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Where to go next</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li><button onclick={() => nav('scrum')} class="text-cyan-400 underline hover:text-cyan-300">Your methodology's guide</button> — boards, sprints, and the cadence PMForge sets up for you.</li>
+              <li><button onclick={() => nav('charts')} class="text-cyan-400 underline hover:text-cyan-300">Charts reference</button> — all 21 chart types and when to reach for each.</li>
+              <li><button onclick={() => nav('shortcuts')} class="text-cyan-400 underline hover:text-cyan-300">Keyboard Shortcuts &amp; Accessibility</button> — work faster, mouse optional.</li>
+              <li><button onclick={() => nav('encryption')} class="text-cyan-400 underline hover:text-cyan-300">Database Encryption</button> — protect project files at rest.</li>
+            </ul>
           </section>
 
         <!-- ── Industry & Methodology Matrix ──────────────────────── -->
@@ -1247,6 +1423,88 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
         <!-- ── Glossary ────────────────────────────────────────────── -->
+        {:else if active === 'shortcuts'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Keyboard Shortcuts &amp; Accessibility</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            PMForge is fully operable from the keyboard. Shortcuts use Ctrl on Windows/Linux and ⌘ on macOS.
+          </p>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Application (File menu)</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-700">
+                    <th class="text-left py-1.5 pr-4 font-semibold text-slate-300 w-40">Shortcut</th>
+                    <th class="text-left py-1.5 font-semibold text-slate-300">Action</th>
+                  </tr>
+                </thead>
+                <tbody class="text-slate-300">
+                  {#each [
+                    ['Ctrl/⌘ + N', 'New project (opens the Launchpad)'],
+                    ['Ctrl/⌘ + O', 'Open project (project picker)'],
+                    ['Ctrl/⌘ + D', 'Portfolio dashboard'],
+                    ['Ctrl/⌘ + ,', 'Application settings'],
+                    ['Ctrl/⌘ + W', 'Close the current project'],
+                    ['Ctrl/⌘ + Q', 'Quit PMForge'],
+                    ['F11', 'Maximize / restore the window (Window menu)'],
+                  ] as [keys, action]}
+                    <tr class="border-b border-slate-800">
+                      <td class="py-1.5 pr-4 font-mono text-xs text-cyan-300 whitespace-nowrap">{keys}</td>
+                      <td class="py-1.5">{action}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Editors &amp; diagrams</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-700">
+                    <th class="text-left py-1.5 pr-4 font-semibold text-slate-300 w-40">Shortcut</th>
+                    <th class="text-left py-1.5 font-semibold text-slate-300">Action</th>
+                  </tr>
+                </thead>
+                <tbody class="text-slate-300">
+                  {#each [
+                    ['Ctrl/⌘ + S', 'Save the open chart or document editor. Auto-save (App Settings) also saves on an interval.'],
+                    ['Tab / Shift+Tab', 'Move between nodes in a diagram (WBS, Network, PERT, CPM, Workflow, Activity, Stakeholder, Cause-and-Effect).'],
+                    ['Enter or Space', 'Select the focused diagram node; edit its fields in the side panel.'],
+                    ['Enter', 'In the signature dialog password field: confirm the export.'],
+                  ] as [keys, action]}
+                    <tr class="border-b border-slate-800">
+                      <td class="py-1.5 pr-4 font-mono text-xs text-cyan-300 whitespace-nowrap">{keys}</td>
+                      <td class="py-1.5">{action}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Dialogs &amp; wizards</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li><span class="font-mono text-xs text-cyan-300">Esc</span> closes any dialog from anywhere inside it (for example the export Signature Options), cancelling the action.</li>
+              <li><span class="font-mono text-xs text-cyan-300">Tab</span> cycles only through the dialog's own controls while it is open, and focus returns to the control that opened it when it closes.</li>
+              <li>The New Project wizard moves focus to each step's heading as you advance, so keyboard and screen-reader users always know where they are.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Assistive technology</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li>Every navigation announces the destination view ("Gantt chart", "Portfolio") to screen readers.</li>
+              <li>Save confirmations, loading states, and errors are announced as they happen via live regions.</li>
+              <li>Rendered charts expose text descriptions (kind, title, series); Gantt bars have hover tooltips with day ranges, % complete, and critical-path status.</li>
+              <li>Animations are disabled automatically when your OS requests reduced motion; a light theme is available in <button onclick={() => nav('app-settings')} class="text-cyan-400 underline hover:text-cyan-300">App Settings</button>.</li>
+            </ul>
+          </section>
+
         {:else if active === 'glossary'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Glossary</h2>
           <p class="text-sm text-slate-400 mb-5">Definitions for project management terms, methodology-specific vocabulary, and PMForge-specific concepts.</p>
