@@ -119,3 +119,118 @@ func TestPrintHeadlessStatsSucceeds(t *testing.T) {
 		t.Fatalf("printHeadlessStats: %v", err)
 	}
 }
+
+// TestRunHeadlessExportFormats runs the export through every format the CLI
+// accepts and asserts each renderer writes a non-empty file, exercising the
+// full render path (the 2026-07-05/07-11 reviews flagged the renderers as
+// not dynamically covered).
+func TestRunHeadlessExportFormats(t *testing.T) {
+	for _, format := range []string{"pdf", "docx", "odt", "xlsx", "csv", "html", "mspdi"} {
+		t.Run(format, func(t *testing.T) {
+			d := seedHeadlessProject(t)
+			out := filepath.Join(t.TempDir(), "schedule."+format)
+			cfg := &cli.Config{ExportPath: out, ExportFormat: format}
+			if err := runHeadlessExport(cfg, d); err != nil {
+				t.Fatalf("runHeadlessExport(%s): %v", format, err)
+			}
+			info, err := os.Stat(out)
+			if err != nil {
+				t.Fatalf("stat %s export: %v", format, err)
+			}
+			if info.Size() == 0 {
+				t.Fatalf("%s export is empty", format)
+			}
+		})
+	}
+}
+
+// TestRunHeadlessExportRejectsBadFormat confirms an unsupported --format is
+// rejected before anything is written.
+func TestRunHeadlessExportRejectsBadFormat(t *testing.T) {
+	d := seedHeadlessProject(t)
+	out := filepath.Join(t.TempDir(), "schedule.bogus")
+	cfg := &cli.Config{ExportPath: out, ExportFormat: "bogus"}
+	if err := runHeadlessExport(cfg, d); err == nil {
+		t.Fatal("runHeadlessExport accepted an unsupported format")
+	}
+	if _, err := os.Stat(out); !os.IsNotExist(err) {
+		t.Fatalf("a file was written for a rejected format: %v", err)
+	}
+}
+
+// TestHeadlessExportPassword covers every branch of the env-var password
+// resolver: a missing --password-env, a named-but-unset variable, and the
+// happy path. The password must come from the environment, never a flag.
+func TestHeadlessExportPassword(t *testing.T) {
+	t.Run("missing password-env", func(t *testing.T) {
+		if _, err := headlessExportPassword(&cli.Config{PasswordEnv: "   "}); err == nil {
+			t.Fatal("blank --password-env should error")
+		}
+	})
+	t.Run("named variable unset", func(t *testing.T) {
+		if _, err := headlessExportPassword(&cli.Config{PasswordEnv: "PMF_DEFINITELY_UNSET"}); err == nil {
+			t.Fatal("unset password variable should error")
+		}
+	})
+	t.Run("empty variable", func(t *testing.T) {
+		t.Setenv("PMF_EMPTY_PW", "")
+		if _, err := headlessExportPassword(&cli.Config{PasswordEnv: "PMF_EMPTY_PW"}); err == nil {
+			t.Fatal("empty password variable should error")
+		}
+	})
+	t.Run("resolves from environment", func(t *testing.T) {
+		const pw = "correct horse battery staple"
+		t.Setenv("PMF_SET_PW", pw)
+		got, err := headlessExportPassword(&cli.Config{PasswordEnv: "PMF_SET_PW"})
+		if err != nil {
+			t.Fatalf("headlessExportPassword: %v", err)
+		}
+		if got != pw {
+			t.Fatalf("password = %q, want %q", got, pw)
+		}
+	})
+}
+
+// TestOpenHeadlessDBUnencrypted confirms a plaintext project opens directly,
+// with no --username/--password-env required. (The encrypted happy path and
+// the missing-username case are covered in headless_encryption_test.go; this
+// adds the plaintext branch and the remaining credential-failure modes.)
+func TestOpenHeadlessDBUnencrypted(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "project.pmforge")
+	d, err := db.InitDB(path)
+	if err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+	_ = d.Close()
+
+	got, err := openHeadlessDB(&cli.Config{ProjectPath: path})
+	if err != nil {
+		t.Fatalf("openHeadlessDB(unencrypted): %v", err)
+	}
+	_ = got.Close()
+}
+
+// TestOpenHeadlessDBEncryptedCredentialFailures locks in that an encrypted
+// project fails closed when the password cannot be resolved or is wrong:
+// a missing --password-env, a named-but-unset variable, and the wrong
+// password. Filesystem access alone must not decrypt a project.
+func TestOpenHeadlessDBEncryptedCredentialFailures(t *testing.T) {
+	path, _ := createHeadlessEncryptedProject(t) // helper uses username "alice"
+
+	t.Run("missing password-env", func(t *testing.T) {
+		if _, err := openHeadlessDB(&cli.Config{ProjectPath: path, Username: "alice"}); err == nil {
+			t.Fatal("opened encrypted project without --password-env")
+		}
+	})
+	t.Run("password variable unset", func(t *testing.T) {
+		if _, err := openHeadlessDB(&cli.Config{ProjectPath: path, Username: "alice", PasswordEnv: "PMF_HL_UNSET"}); err == nil {
+			t.Fatal("opened encrypted project with an unset password variable")
+		}
+	})
+	t.Run("wrong password", func(t *testing.T) {
+		t.Setenv("PMF_HL_BAD", "not the password")
+		if _, err := openHeadlessDB(&cli.Config{ProjectPath: path, Username: "alice", PasswordEnv: "PMF_HL_BAD"}); err == nil {
+			t.Fatal("opened encrypted project with the wrong password")
+		}
+	})
+}
