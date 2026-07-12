@@ -15,6 +15,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
 
   interface SWOTDoc {
@@ -118,8 +119,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
     void refreshLayout();
   }
   function removeItem(key: string, idx: number) {
+    const before = JSON.parse(JSON.stringify(doc)) as SWOTDoc;
     setList(key, listFor(key).filter((_, i) => i !== idx));
     void refreshLayout();
+    showToast('Item deleted', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
   function updateItem(key: string, idx: number, value: string) {
     const list = listFor(key);

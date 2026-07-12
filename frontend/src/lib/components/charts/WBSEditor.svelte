@@ -5,6 +5,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
 
   // ---------- types & state ----------
@@ -144,9 +145,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!selectedId || selectedId === doc.root.id) return;
     const parent = findParent(doc.root, selectedId);
     if (!parent) return;
+    // Removing a WBS node deletes its whole subtree — snapshot for undo.
+    const before = JSON.parse(JSON.stringify(doc)) as typeof doc;
     parent.children = parent.children!.filter((c) => c.id !== selectedId);
     selectedId = null;
     void refreshLayout();
+    showToast('Node deleted', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
 
   async function save() {

@@ -20,6 +20,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
 
   interface RACITask {
@@ -125,12 +126,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
     void refreshLayout();
   }
   function removeRole(name: string) {
+    // Removing a role also deletes its column of assignments — snapshot for undo.
+    const before = JSON.parse(JSON.stringify(doc)) as RACIDoc;
     doc.roles = doc.roles.filter((r) => r !== name);
     for (const task of doc.tasks) {
       const row = doc.assignments[task.id];
       if (row) delete row[name];
     }
     void refreshLayout();
+    showToast(`Role "${name}" deleted`, {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
 
   function addTask() {
@@ -142,9 +152,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     void refreshLayout();
   }
   function removeTask(id: string) {
+    const before = JSON.parse(JSON.stringify(doc)) as RACIDoc;
     doc.tasks = doc.tasks.filter((t) => t.id !== id);
     delete doc.assignments[id];
     void refreshLayout();
+    showToast('Task deleted', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
   function renameTask(id: string, title: string) {
     const t = doc.tasks.find((x) => x.id === id);

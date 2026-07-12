@@ -13,6 +13,7 @@ not routed directly.
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import { autosave } from '../../autosave.svelte';
+  import { showToast } from '../../toast.svelte';
   import LayeredDiagram from './LayeredDiagram.svelte';
   import type { Snippet } from 'svelte';
 
@@ -188,12 +189,25 @@ not routed directly.
     selectedId = id;
     void refreshLayout();
   }
+  // Destructive edits persist immediately (refreshLayout saves), so each
+  // offers an undo toast holding a pre-delete snapshot of the whole doc.
+  // Undo restores that snapshot; edits made in the few seconds between
+  // delete and undo are rolled back with it — an acceptable trade for a
+  // single-user editor with a short toast window.
   function deleteNode() {
     if (!selectedId) return;
+    const before = JSON.parse(JSON.stringify(doc)) as LayeredDoc;
     doc.nodes = doc.nodes.filter((n) => n.id !== selectedId);
     doc.edges = doc.edges.filter((e) => e.from !== selectedId && e.to !== selectedId);
     selectedId = null;
     void refreshLayout();
+    showToast('Node deleted', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
 
   // Edge CRUD via two-click "connect" mode
@@ -219,8 +233,16 @@ not routed directly.
   }
   function clearEdgesFromSelected() {
     if (!selectedId) return;
+    const before = JSON.parse(JSON.stringify(doc)) as LayeredDoc;
     doc.edges = doc.edges.filter((e) => e.from !== selectedId && e.to !== selectedId);
     void refreshLayout();
+    showToast('Edges cleared', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
 
   export async function save() {
