@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import AppHeader from '../AppHeader.svelte';
   import Spinner from '../Spinner.svelte';
   import { session } from '../../session.svelte';
@@ -26,6 +26,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let createdCodes = $state<string[]>([]);
   let createdFor = $state('');
   let copied = $state(false);
+  // AGENT.md §6: every timer must be cleared on destroy.
+  let copiedTimer: ReturnType<typeof setTimeout> | null = null;
+  onDestroy(() => {
+    if (copiedTimer) clearTimeout(copiedTimer);
+  });
 
   // Per-row action state
   let pendingDelete = $state<string | null>(null);
@@ -89,7 +94,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       await navigator.clipboard.writeText(createdCodes.join('\n'));
       copied = true;
-      setTimeout(() => (copied = false), 2000);
+      if (copiedTimer) clearTimeout(copiedTimer);
+      copiedTimer = setTimeout(() => (copied = false), 2000);
     } catch {
       // Clipboard may be unavailable; the codes stay visible for manual copy.
     }

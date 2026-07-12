@@ -18,6 +18,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
 
   interface Stakeholder {
@@ -116,9 +117,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     void refreshLayout();
   }
   function removeStakeholder(id: string) {
+    const before = JSON.parse(JSON.stringify(doc)) as typeof doc;
     doc.stakeholders = doc.stakeholders.filter((s) => s.id !== id);
     if (selectedId === id) selectedId = null;
     void refreshLayout();
+    showToast('Stakeholder deleted', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
 
   let selected = $derived(
