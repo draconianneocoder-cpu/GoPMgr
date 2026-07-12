@@ -62,6 +62,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let layout = $state<RACILayout>({ roles: [], tasks: [], cells: [], validation: { error_count: 0 } });
   let status = $state('');
   let saving = $state(false);
+  // Set on every successful SaveChart (auto-persist and manual save alike).
+  let lastSavedAt = $state<Date | null>(null);
 
   // Form state for new-role / new-task quick-add inputs.
   let newRole = $state('');
@@ -102,6 +104,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         data: JSON.stringify(doc),
       });
       chart = updated;
+      lastSavedAt = new Date();
       const res = await window.go.main.App.LayoutChart(updated.id);
       layout = res.body as RACILayout;
     } catch (err: any) {
@@ -198,6 +201,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         data: JSON.stringify(doc),
       });
       chart = updated;
+      lastSavedAt = new Date();
       status = `Saved at ${new Date().toLocaleTimeString()}.`;
     } catch (err: any) {
       status = `Save failed: ${err}`;
@@ -220,13 +224,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </span>
       {/if}
     </div>
-    <button
-      onclick={save}
-      disabled={saving}
-      class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
-    >
-      {saving ? 'Saving...' : 'Save'}
-    </button>
+    <div class="flex items-center gap-3">
+      {#if lastSavedAt}
+        <span class="text-[10px] text-slate-500 tabular-nums" title="Charts save automatically as you edit">
+          Saved {lastSavedAt.toLocaleTimeString()}
+        </span>
+      {/if}
+      <button
+        onclick={save}
+        disabled={saving}
+        class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
+      >
+        {saving ? 'Saving...' : 'Save'}
+      </button>
+    </div>
   </header>
 
   <main class="p-6 space-y-6">
@@ -296,7 +307,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     <button
                       onclick={() => removeRole(role)}
                       class="text-[10px] text-slate-500 hover:text-red-400"
-                      aria-label="Remove role {role}"
+                      aria-label="Remove role {role}" title="Remove role {role}"
                     >
                       remove
                     </button>
@@ -337,7 +348,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   <button
                     onclick={() => removeTask(task.id)}
                     class="text-slate-500 hover:text-red-400 text-xs"
-                    aria-label="Remove task"
+                    aria-label="Remove task" title="Remove task"
                   >
                     ×
                   </button>

@@ -54,6 +54,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let variances = $state<Record<string, ScheduleVariance>>({});
   let status = $state('');
   let saving = $state(false);
+  // Set on every successful SaveChart (auto-persist and manual save alike).
+  let lastSavedAt = $state<Date | null>(null);
   let pxPerDay = $state(28);
   // AGENT.md §6: every timer must be cleared on destroy.
   let statusTimer: ReturnType<typeof setTimeout> | null = null;
@@ -84,6 +86,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         data: JSON.stringify(doc),
       });
       chart = updated;
+      lastSavedAt = new Date();
       const res = await window.go.main.App.LayoutChart(updated.id);
       const body = res.body as { layout?: GanttLayout } | GanttLayout;
       layout = (body as any).layout ?? (body as GanttLayout);
@@ -266,6 +269,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {#if status}<span class="text-xs text-cyan-300" role="status" aria-live="polite">{status}</span>{/if}
     </div>
     <div class="flex items-center gap-2">
+      {#if lastSavedAt}
+        <span class="text-[10px] text-slate-500 tabular-nums" title="Charts save automatically as you edit">
+          Saved {lastSavedAt.toLocaleTimeString()}
+        </span>
+      {/if}
       <button onclick={() => (pxPerDay = Math.max(8, pxPerDay - 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title="Zoom out">−</button>
       <button onclick={() => (pxPerDay = Math.min(80, pxPerDay + 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title="Zoom in">+</button>
       <button onclick={setBaseline} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded" title="Snapshot for baseline ghost bars">Set baseline</button>

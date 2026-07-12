@@ -60,7 +60,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <input bind:value={doc.slices[i].color} placeholder="#22d3ee" class="w-full bg-transparent text-xs px-2 py-1 focus:bg-slate-950 rounded font-mono" />
             </td>
             <td class="p-1 border-b border-l border-slate-800 text-center">
-              <button onclick={() => removeSlice(i)} class="text-slate-500 hover:text-red-400 text-xs" aria-label="Remove slice">×</button>
+              <button onclick={() => removeSlice(i)} class="text-slate-500 hover:text-red-400 text-xs" aria-label="Remove slice" title="Remove slice">×</button>
             </td>
           </tr>
         {/each}

@@ -71,6 +71,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let status = $state('');
   let layoutError = $state('');
   let saving = $state(false);
+  // Set on every successful SaveChart (auto-persist and manual save alike).
+  let lastSavedAt = $state<Date | null>(null);
 
   let stopAutosave: (() => void) | null = null;
 
@@ -101,6 +103,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         data: JSON.stringify(doc),
       });
       chart = updated;
+      lastSavedAt = new Date();
       const res = await window.go.main.App.LayoutChart(updated.id);
       layout = res.body as Layout;
     } catch (err: any) {
@@ -186,6 +189,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         data: JSON.stringify(doc),
       });
       chart = updated;
+      lastSavedAt = new Date();
       status = `Saved at ${new Date().toLocaleTimeString()}.`;
     } catch (err: any) {
       status = `Save failed: ${err}`;
@@ -236,6 +240,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Workflow Diagram</h1>
     </div>
     <div class="flex items-center gap-2">
+      {#if lastSavedAt}
+        <span class="text-[10px] text-slate-500 tabular-nums" title="Charts save automatically as you edit">
+          Saved {lastSavedAt.toLocaleTimeString()}
+        </span>
+      {/if}
       <details class="relative">
         <summary class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded cursor-pointer list-none">
           + Node
@@ -407,7 +416,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                       <button
                         onclick={() => deleteEdge(e.idx)}
                         class="text-slate-500 hover:text-red-400"
-                        aria-label="Delete edge"
+                        aria-label="Delete edge" title="Delete edge"
                       >
                         ×
                       </button>
