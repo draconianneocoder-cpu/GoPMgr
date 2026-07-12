@@ -7,7 +7,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 This guide summarizes the main user workflows that were previously mixed
 into the root README. The in-app Help Guide remains the most detailed
-end-user reference.
+end-user reference: it is searchable from the sidebar, opens with a
+ten-minute "Quick Start: Your First Project" tutorial, and ends with a
+Troubleshooting & FAQ and a keyboard-shortcuts reference.
 
 ## First Run
 
@@ -107,6 +109,25 @@ The Dashboard exposes:
   resource calendars with weekly capacity and day overrides; leveling uses
   those calendars to delay contended tasks.
 
+## Kanban, Sprints, and DORA
+
+Projects whose methodology enables the agile pack (Scrum, Kanban,
+Scrumban) get four extra views:
+
+- **Kanban board:** cards drag between columns and the move persists
+  immediately. Column headers show a WIP indicator (count / limit) that
+  changes tone when the limit is exceeded.
+- **Backlog:** drag items to reorder priority, assign items to a sprint,
+  and start work to move an item onto the board.
+- **Sprints:** each sprint has a name, goal, start/end dates, and a
+  story-point capacity. Sprints move planning -> active -> complete, and
+  only one sprint is active at a time — starting a new one completes the
+  previous active sprint.
+- **DORA dashboard:** Deployment Frequency, Lead Time for Changes, Change
+  Failure Rate, and MTTR, computed from deployments recorded with the
+  inline "+ Record deployment" form (date, lead-time hours, failure flag,
+  restore hours).
+
 ## Charts
 
 PMForge supports 21 chart kinds across four engine families:
@@ -119,6 +140,14 @@ PMForge supports 21 chart kinds across four engine families:
 
 Charts are edited in the app and can be embedded into PDF reports as
 vector drawings rather than screenshots.
+
+In the schedule editors, dependencies are created with the Connect
+action (select the source node, click Connect, click the destination).
+CPM and Gantt link labels set the dependency type and lag in days: `FS`,
+`SS`, `FF`, or `SF` with optional `+n`/`-n` — for example `SS+2` or
+`FS-1`; blank means `FS`. These labels drive the computed schedule. The
+Gantt editor can also snapshot a baseline (**Set baseline**); grey ghost
+bars then show drift against that snapshot as the plan changes.
 
 CPM charts can generate a Resource Histogram. The generated histogram shows
 resource demand as bars and overlays dashed capacity lines from stakeholder
@@ -260,6 +289,33 @@ dialog that names the log path.
 
 The CLI maintenance paths continue to log to stderr, which is visible in
 the terminal.
+
+For common problems — forgotten passphrase, no-administrator lockout,
+suspected corruption, unsigned exports, missing glyphs — see the
+Troubleshooting & FAQ section of the in-app Help Guide.
+
+## Keyboard Shortcuts and Accessibility
+
+Shortcuts use Ctrl on Windows/Linux and Cmd on macOS:
+
+| Shortcut | Action |
+| --- | --- |
+| Ctrl/Cmd+N | New project (Launchpad) |
+| Ctrl/Cmd+O | Open project |
+| Ctrl/Cmd+D | Portfolio dashboard |
+| Ctrl/Cmd+, | Application settings |
+| Ctrl/Cmd+W | Close the current project |
+| Ctrl/Cmd+Q | Quit |
+| Ctrl/Cmd+S | Save the open chart or document editor |
+| Tab / Shift+Tab | Move between diagram nodes; cycle inside dialogs |
+| Enter or Space | Select the focused diagram node |
+| Esc | Close/cancel the open dialog from anywhere inside it |
+
+PMForge is operable without a mouse and announces state to assistive
+technology: every navigation announces the destination view, save
+status and errors are live regions, rendered charts expose text
+descriptions, Gantt bars have descriptive hover tooltips, dialogs trap
+and restore focus, and animations honor the OS reduced-motion setting.
 
 ## Editor Save Behavior
 
