@@ -39,7 +39,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     | 'sigma-pack'
     | 'shortcuts'
     | 'glossary'
-    | 'install';
+    | 'install'
+    | 'troubleshooting'
+    | 'cli';
 
   let active = $state<SectionId>('getting-started');
 
@@ -99,6 +101,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
         { id: 'shortcuts', label: 'Keyboard Shortcuts & Accessibility' },
         { id: 'glossary', label: 'Glossary' },
         { id: 'install', label: 'Installing & Running' },
+      ],
+    },
+    {
+      group: 'Help & Troubleshooting',
+      items: [
+        { id: 'troubleshooting', label: 'Troubleshooting & FAQ' },
+        { id: 'cli', label: 'Command-Line Maintenance' },
       ],
     },
   ];
@@ -162,6 +171,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       'keyboard shortcuts hotkeys ctrl cmd save accessibility screen reader focus escape tab enter space navigate a11y announce reduced motion',
     glossary: 'terms definitions vocabulary jargon meaning dictionary',
     install: 'install run linux windows macos webkit dependencies build wails cli headless requirements',
+    troubleshooting:
+      'troubleshoot faq problem help forgot password passphrase locked out reset recovery code admin lockout corrupt database repair check crash startup logs diagnostics font missing glyph webkit blank window signature unsigned agile views missing compliance blocked audit',
+    cli: 'command line cli headless terminal maintenance check repair vacuum export audit stats schema dump format encrypt password env username scripts automation batch',
   };
 
   let query = $state('');
@@ -1853,6 +1865,181 @@ SPDX-License-Identifier: GPL-3.0-or-later
             </ul>
           </section>
 
+        {:else if active === 'troubleshooting'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Troubleshooting &amp; FAQ</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            The most common problems and their fixes. If your issue isn't here, the search box
+            above the sidebar covers every section of this guide.
+          </p>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">I forgot my passphrase</h3>
+            <p class="text-sm text-slate-300">
+              On the login screen choose <span class="font-medium text-slate-100">"Forgot password? Use a recovery code"</span>,
+              then enter your username, one unused recovery code, and a new passphrase. Each code
+              works once; reissue a fresh set afterwards from App Settings. If the passphrase
+              <span class="font-medium text-slate-100">and</span> all recovery codes are lost,
+              encrypted project databases are unrecoverable by design — there is no back door.
+            </p>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">There is no administrator</h3>
+            <p class="text-sm text-slate-300">
+              If the first account skipped the admin claim, open
+              <button onclick={() => nav('app-settings')} class="text-cyan-400 underline hover:text-cyan-300">App Settings</button>
+              and use <span class="font-medium text-slate-100">Become administrator</span> — available
+              while no other admin exists on the machine.
+            </p>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">PMForge won't start</h3>
+            <p class="text-sm text-slate-300">
+              Startup failures are written to a dated log and a native error dialog names the log
+              path. When the app does run, App Settings &rarr;
+              <span class="font-medium text-slate-100">Open Logs Folder</span> takes you to the same
+              directory. On Linux, a blank or missing window usually means the WebKit runtime is
+              absent — see <button onclick={() => nav('install')} class="text-cyan-400 underline hover:text-cyan-300">Installing &amp; Running</button>
+              for the required packages.
+            </p>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">A project may be corrupt</h3>
+            <p class="text-sm text-slate-300">
+              Run the built-in maintenance from a terminal:
+              <span class="font-mono text-xs">--check</span> reports integrity,
+              <span class="font-mono text-xs">--repair</span> runs the self-healing workflow and
+              prints what it did, and <span class="font-mono text-xs">--vacuum</span> compacts the
+              file. See <button onclick={() => nav('cli')} class="text-cyan-400 underline hover:text-cyan-300">Command-Line Maintenance</button>
+              for exact invocations (encrypted projects also need
+              <span class="font-mono text-xs">--username</span> / <span class="font-mono text-xs">--password-env</span>).
+            </p>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">My exported PDF isn't signed</h3>
+            <p class="text-sm text-slate-300">
+              The Signature Options dialog at export decides: PAdES needs a
+              <span class="font-mono text-xs">.p12</span>/<span class="font-mono text-xs">.pfx</span>
+              certificate and its password; GnuPG writes a detached
+              <span class="font-mono text-xs">.asc</span> sidecar next to the PDF (verify with
+              <span class="font-mono text-xs">gpg --verify file.pdf.asc file.pdf</span>); "No digital
+              signature" produces a plain PDF. Set the project default in
+              <button onclick={() => nav('project-settings')} class="text-cyan-400 underline hover:text-cyan-300">Project Settings</button>;
+              details in <button onclick={() => nav('export-signing')} class="text-cyan-400 underline hover:text-cyan-300">Export &amp; Digital Signing</button>.
+            </p>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Exports have missing or wrong-looking text</h3>
+            <p class="text-sm text-slate-300">
+              PDF output embeds TrueType fonts. If glyphs are missing, fetch the bundled catalog
+              (<span class="font-mono text-xs">make fonts</span> in a source checkout) or import a
+              <span class="font-mono text-xs">.ttf</span> of your choice from Project Settings and
+              select it for documents.
+            </p>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">The Kanban / Sprint views are missing</h3>
+            <p class="text-sm text-slate-300">
+              The agile pack appears when the project's methodology enables it (Scrum, Kanban,
+              Scrumban). Change the methodology in
+              <button onclick={() => nav('project-settings')} class="text-cyan-400 underline hover:text-cyan-300">Project Settings</button>
+              if you need the boards elsewhere.
+            </p>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Compliance mode blocked my project</h3>
+            <p class="text-sm text-slate-300">
+              That is compliance mode working: the tamper-evident audit chain failed verification,
+              so the open was refused. Use
+              <span class="font-medium text-slate-100">Export audit repair evidence</span> in Project
+              Settings first — it preserves the raw events and failure details — then investigate
+              or run the repair workflow. Turning compliance mode off skips the gate but does not
+              erase the discrepancy.
+            </p>
+          </section>
+
+        {:else if active === 'cli'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Command-Line Maintenance</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            The PMForge binary doubles as a headless maintenance tool for scripts, cron jobs, and
+            recovery — no GUI session required. Maintenance operations take a
+            <span class="font-mono text-xs">.pmforge</span> file path as the final argument.
+          </p>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Operations</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-700">
+                    <th class="text-left py-1.5 pr-4 font-semibold text-slate-300 w-52">Flag</th>
+                    <th class="text-left py-1.5 font-semibold text-slate-300">What it does</th>
+                  </tr>
+                </thead>
+                <tbody class="text-slate-300">
+                  {#each [
+                    ['--version', 'Print the version banner and exit'],
+                    ['--update', 'Check the signed update channel (no-op if none configured)'],
+                    ['--check', 'Integrity check; prints ok or CORRUPT'],
+                    ['--repair', 'Self-healing repair workflow with a printed action log'],
+                    ['--vacuum', 'Compact the database (VACUUM)'],
+                    ['--export-audit <path>', 'Write the audit log to CSV'],
+                    ['--stats', 'Compact project summary: status, phase, counts'],
+                    ['--schema-dump', 'Print the SQL schema (structure only, no data)'],
+                    ['--export <path>', 'Render the schedule report to <path>'],
+                    ['--format <fmt>', 'Export format: pdf (default), docx, odt, xlsx, csv, html, mspdi'],
+                    ['--encrypt', 'AES-256-GCM encrypt the export with the --password-env password'],
+                  ] as [flag, what]}
+                    <tr class="border-b border-slate-800">
+                      <td class="py-1.5 pr-4 font-mono text-xs text-cyan-300 whitespace-nowrap">{flag}</td>
+                      <td class="py-1.5">{what}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Encrypted projects</h3>
+            <p class="text-sm text-slate-300">
+              Pass <span class="font-mono text-xs">--username &lt;name&gt;</span> and
+              <span class="font-mono text-xs">--password-env &lt;ENVVAR&gt;</span>, where the named
+              environment variable holds that account's password. The password is
+              <span class="font-medium text-slate-100">never given on the command line</span>, so it
+              cannot leak through the process table or shell history. Plaintext projects open
+              without credentials. <span class="font-mono text-xs">--encrypt</span> reuses the same
+              variable as the export password.
+            </p>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Examples</h3>
+            <pre class="text-xs font-mono text-slate-300 bg-slate-900 border border-slate-800 rounded p-3 overflow-x-auto mb-3">{`# Integrity-check an encrypted project
+PMF_PW='…' pmforge --check \\
+  --username alice --password-env PMF_PW \\
+  ~/Documents/PMForge/alice/projects/<id>/project.pmforge`}</pre>
+            <pre class="text-xs font-mono text-slate-300 bg-slate-900 border border-slate-800 rounded p-3 overflow-x-auto">{`# Headless schedule export to encrypted XLSX
+PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \\
+  --username alice --password-env PMF_PW \\
+  ~/Documents/PMForge/alice/projects/<id>/project.pmforge`}</pre>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Logging</h3>
+            <p class="text-sm text-slate-300">
+              CLI paths log to stderr in the terminal; the GUI writes dated logs to the PMForge
+              logs directory (App Settings &rarr; Open Logs Folder). See also
+              <button onclick={() => nav('backups')} class="text-cyan-400 underline hover:text-cyan-300">Backups &amp; Data Safety</button>.
+            </p>
+          </section>
+
         {:else if active === 'glossary'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Glossary</h2>
           <p class="text-sm text-slate-400 mb-5">Definitions for project management terms, methodology-specific vocabulary, and PMForge-specific concepts.</p>
@@ -1868,7 +2055,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
               { term: 'Burn-Up Chart', def: 'Cumulative scope completed vs. total scope. Distinguishes scope growth from delivery progress.' },
               { term: 'Business Case', def: 'Document justifying the project investment: costs, benefits, risks, NPV/ROI. Primary go/no-go input.' },
               { term: 'Card / Task (Kanban)', def: 'A single unit of work on the Kanban Board.' },
+              { term: 'Change Failure Rate', def: 'DORA metric: the share of deployments that cause a failure in production. Computed on the DORA dashboard from the deployments you record.' },
               { term: 'Change Request', def: 'Formal proposal to modify a project baseline (scope, schedule, cost, quality). Requires review and approval.' },
+              { term: 'Compliance Mode', def: 'Project Settings option that verifies the tamper-evident audit chain before a project opens and blocks the open if the chain has been altered.' },
               { term: 'Control Chart', def: 'Time series with UCL and LCL. Points outside limits or non-random patterns indicate special-cause variation.' },
               { term: 'Control Limits', def: 'Statistical boundaries on a Control Chart (±3σ from the process mean). Not the same as specification limits.' },
               { term: 'CPM', def: 'Critical Path Method. Network scheduling identifying the longest dependency chain. Critical path tasks have zero float.' },
@@ -1876,8 +2065,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
               { term: 'CTQ', def: 'Critical to Quality. Measurable characteristic directly affecting customer perception of quality. Derived from VoC in Six Sigma.' },
               { term: 'Cumulative Flow Diagram', def: 'Stacked area chart of work items in each workflow state over time. Primary Kanban health indicator.' },
               { term: 'Cycle Time', def: 'Time from when a work item starts to when it is completed. Key delivery predictability metric in Kanban.' },
+              { term: 'DEK', def: 'Data Encryption Key. The per-user key that encrypts project databases. It is stored only in wrapped (encrypted) form — unlocked by your passphrase or a recovery code, never persisted raw.' },
+              { term: 'Deployment Frequency', def: 'DORA metric: how often the team ships to production. Recorded per deployment on the DORA dashboard.' },
               { term: 'DMAIC', def: 'Six Sigma improvement cycle: Define → Measure → Analyze → Improve → Control. For improving existing processes.' },
               { term: 'DORA Metrics', def: 'Four DevOps metrics: Deployment Frequency, Lead Time for Changes, Change Failure Rate, Mean Time to Restore. Available in PMForge\'s DORA dashboard.' },
+              { term: 'Earned Value (EVM)', def: 'Progress accounting that compares work performed against plan and cost. SPI (Schedule Performance Index) and CPI (Cost Performance Index) read 1.0 as on-plan; below 1.0 means behind schedule / over cost. Surfaces on the Dashboard and in combined reports with a linked CPM schedule.' },
               { term: 'Epic', def: 'A large user story spanning multiple sprints, broken down into smaller stories before entering a sprint.' },
               { term: 'ES / EF', def: 'Earliest Start / Earliest Finish. Calculated during the forward pass through a CPM network.' },
               { term: 'Estimate (methodology-specific)', def: 'Scrum: Story Points. Kanban: Time Estimate. CPM: Duration. Waterfall: Duration. Lean: Effort. PRINCE2: Work Package Estimate. Six Sigma: Resource Plan.' },
@@ -1893,8 +2085,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
               { term: 'Lead Time', def: 'Total time from request to delivery. Includes queue time + cycle time.' },
               { term: 'LS / LF', def: 'Latest Start / Latest Finish. Calculated during the backward pass through a CPM network.' },
               { term: 'Milestone', def: 'Significant project event with no duration. Scrum: Definition of Done. Kanban: Throughput Target. CPM: Schedule Milestone.' },
+              { term: 'Monte Carlo Simulation', def: 'Schedule-risk technique that samples uncertain task durations thousands of times to estimate finish-date probabilities. Run from the CPM editor; results include P50/P80/P90 dates, an S-curve, and a tornado driver ranking.' },
+              { term: 'MSPDI', def: 'Microsoft Project Data Interchange — the .xml schedule format PMForge imports and exports. Resave .mpp/.pod/.mpx files as MS Project XML before importing.' },
+              { term: 'MTTR', def: 'Mean Time to Restore. DORA metric: average hours to recover from a failed deployment.' },
               { term: 'Objective', def: 'OKRs: qualitative, inspiring goal statement answering "where do we want to go?" Supported by measurable Key Results.' },
               { term: 'OKRs', def: 'Objectives and Key Results. Goal-setting framework aligning teams to strategic outcomes through measurable, time-bound Key Results.' },
+              { term: 'P50 / P80 / P90', def: 'Confidence points from a Monte Carlo run: the finish day the project beats in 50%, 80%, or 90% of simulations. Commit to P80/P90 dates when the cost of being late is high.' },
               { term: 'PAdES', def: 'PDF Advanced Electronic Signatures. Standard for embedding cryptographic signatures into PDF files. PMForge generates PAdES-compliant signed exports.' },
               { term: 'Pareto Chart', def: 'Bar chart sorted descending with a cumulative-percentage line. Based on the 80/20 principle: ~80% of effects come from ~20% of causes.' },
               { term: 'PERT', def: 'Program Evaluation and Review Technique. Network scheduling with three-point duration estimates per activity.' },
@@ -1906,8 +2102,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
               { term: 'Pull System', def: 'Work produced when downstream capacity exists, not pushed by a schedule. Core Lean and Kanban principle.' },
               { term: 'RACI Matrix', def: 'Responsibility assignment: Responsible (does work), Accountable (owns outcome), Consulted (input needed), Informed (kept updated). One A per task.' },
               { term: 'Recovery Codes', def: 'PMForge one-time codes that allow passphrase reset from the login screen without the current passphrase. Generate from App Settings. Required before enabling database encryption.' },
+              { term: 'Resource Leveling', def: 'Delaying contended tasks so resource demand fits capacity. Uses the named resource calendars (weekly capacity + day overrides) from Project Settings.' },
               { term: 'Retrospective', def: 'Process improvement ceremony. Scrum: Sprint Retrospective. Kanban: Retrospective. PRINCE2: End-Stage Assessment lessons.' },
               { term: 'Risk Register', def: 'Catalogue of potential future risks with probability, impact, owner, mitigation strategy, and contingency plan.' },
+              { term: 'Scenario', def: 'An isolated what-if partition. Charts copied into a scenario can be edited and compared against their captured baseline without touching the live plan, then promoted to a named schedule baseline or discarded.' },
               { term: 'Scrum', def: 'Agile framework with time-boxed sprints, Product Backlog, and three roles. Four ceremonies: Sprint Planning, Daily Scrum, Sprint Review, Retrospective.' },
               { term: 'Scrumban', def: 'Hybrid of Scrum\'s prioritized backlog and Kanban\'s continuous pull flow. No fixed sprint cadence.' },
               { term: 'Sigma Level', def: 'Process quality metric. 6 sigma = 3.4 DPMO. Use Control Charts and Pareto Charts to track improvement.' },
@@ -1921,6 +2119,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               { term: 'SWOT Matrix', def: '2x2 strategic analysis: Strengths, Weaknesses (internal) vs. Opportunities, Threats (external).' },
               { term: 'Throughput', def: 'Work items completed per unit time. Primary Kanban flow metric alongside cycle time.' },
               { term: 'Timeline', def: 'PMForge view showing the project\'s chronological event stream as an SVG strip: sprint bands, milestones, and holiday markers.' },
+              { term: 'Tornado Ranking', def: 'Monte Carlo output ranking which tasks drive schedule risk, combining how often each lands on the critical path with its P90−P50 duration spread. Fix the top bars first.' },
               { term: 'User Story', def: 'See Story (Scrum).' },
               { term: 'Velocity', def: 'Average story points completed per sprint. Used for capacity planning and release forecasting.' },
               { term: 'VoC', def: 'Voice of Customer. Customer needs captured via surveys, interviews, or complaints. Input to CTQ derivation in Six Sigma.' },
