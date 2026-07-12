@@ -7,6 +7,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   type SectionId =
     | 'getting-started'
+    | 'quick-start'
     | 'industry-matrix'
     | 'scrum'
     | 'kanban'
@@ -20,18 +21,27 @@ SPDX-License-Identifier: GPL-3.0-or-later
     | 'six-sigma-method'
     | 'portfolio'
     | 'project-dashboard'
+    | 'agile-boards'
+    | 'budget'
     | 'timeline'
     | 'stakeholders'
+    | 'project-settings'
+    | 'scenarios'
+    | 'import-export'
     | 'report-composer'
     | 'export-signing'
     | 'encryption'
+    | 'backups'
     | 'admin-panel'
     | 'app-settings'
     | 'charts'
     | 'documents'
     | 'sigma-pack'
+    | 'shortcuts'
     | 'glossary'
-    | 'install';
+    | 'install'
+    | 'troubleshooting'
+    | 'cli';
 
   let active = $state<SectionId>('getting-started');
 
@@ -42,6 +52,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
         { id: 'getting-started', label: 'Getting Started' },
         { id: 'industry-matrix', label: 'Industry & Methodology Matrix' },
       ],
+    },
+    {
+      group: 'Tutorials',
+      items: [{ id: 'quick-start', label: 'Quick Start: Your First Project' }],
     },
     {
       group: 'Methodologies',
@@ -63,11 +77,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
       items: [
         { id: 'portfolio', label: 'Portfolio' },
         { id: 'project-dashboard', label: 'Project Dashboard' },
+        { id: 'agile-boards', label: 'Kanban, Sprints & DORA' },
+        { id: 'budget', label: 'Budget' },
         { id: 'timeline', label: 'Timeline' },
         { id: 'stakeholders', label: 'Stakeholder Manager' },
+        { id: 'project-settings', label: 'Project Settings' },
+        { id: 'scenarios', label: 'Scenarios & What-If' },
+        { id: 'import-export', label: 'Schedule Import & Export' },
         { id: 'report-composer', label: 'Report Composer' },
         { id: 'export-signing', label: 'Export & Digital Signing' },
         { id: 'encryption', label: 'Database Encryption' },
+        { id: 'backups', label: 'Backups & Data Safety' },
         { id: 'admin-panel', label: 'Admin Panel' },
         { id: 'app-settings', label: 'App Settings' },
       ],
@@ -78,8 +98,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
         { id: 'charts', label: 'Charts' },
         { id: 'documents', label: 'Documents' },
         { id: 'sigma-pack', label: 'DMAIC Pack' },
+        { id: 'shortcuts', label: 'Keyboard Shortcuts & Accessibility' },
         { id: 'glossary', label: 'Glossary' },
         { id: 'install', label: 'Installing & Running' },
+      ],
+    },
+    {
+      group: 'Help & Troubleshooting',
+      items: [
+        { id: 'troubleshooting', label: 'Troubleshooting & FAQ' },
+        { id: 'cli', label: 'Command-Line Maintenance' },
       ],
     },
   ];
@@ -87,6 +115,86 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function nav(id: SectionId) {
     active = id;
   }
+
+  // ── Search ────────────────────────────────────────────────────────
+  // Only the active section's body is rendered, so the sidebar search
+  // matches against this hand-curated keyword index plus the section
+  // labels/groups. Keep entries lowercase; extend when adding sections.
+  const KEYWORDS: Record<SectionId, string> = {
+    'getting-started':
+      'first launch create account admin administrator passphrase password login sign in users data directory navigation menu recovery codes new project launchpad',
+    'quick-start':
+      'tutorial beginner walkthrough first project step by step example schedule task dependency export pdf report onboarding start here how to begin',
+    'industry-matrix':
+      'seeded artifacts starter templates software construction engineering business administration custom combination launchpad',
+    scrum: 'sprint backlog product owner scrum master velocity retrospective standup agile ceremonies story points',
+    kanban: 'board columns wip limit work in progress flow pull continuous cards lanes cycle time',
+    scrumban: 'hybrid sprint flow wip planning trigger bucket agile mix',
+    lean: 'waste value stream pull kaizen continuous improvement muda flow efficiency',
+    okrs: 'objectives key results goals alignment scoring quarterly cadence outcomes',
+    waterfall: 'phases sequential requirements design implementation verification maintenance gantt milestones',
+    prince2: 'stages governance business case project board tolerance exception work packages themes processes',
+    pmbok: 'pmi process groups knowledge areas initiating planning executing monitoring closing pmp',
+    cpm: 'critical path float slack forward pass backward pass network dependencies es ef ls lf duration schedule',
+    'six-sigma-method': 'dmaic define measure analyze improve control defects variation belts quality spc',
+    portfolio: 'dashboard all projects overview rollup analytics duckdb import csv xlsx status filter search cost',
+    'project-dashboard':
+      'open project charts documents budget committed contracts labour earned value evm spi cpi new chart export delete',
+    'agile-boards':
+      'kanban board columns cards drag drop wip limit work items backlog reorder priority story points sprints start complete active capacity goal dora deployment frequency lead time change failure rate mttr restore trend record deployment',
+    budget:
+      'budget panel committed remaining contracts labour estimate rollup cost money cents category breakdown over budget stakeholder rates hourly',
+    'project-settings':
+      'project settings name description owner industry methodology country status phase dates budget signing defaults certificate resource capacity calendars weekly overrides fonts import ttf compliance mode audit chain scenarios encryption migration schedule reports',
+    scenarios:
+      'scenario what if what-if copy chart baseline partition compare promote schedule baselines isolated experiment planning alternatives',
+    'import-export':
+      'import export ms project xml mspdi mpp interchange schedule report pdf docx odt csv html spreadsheet round trip',
+    backups:
+      'backup data safety copy project files pmforge folder pre-encryption backup retained restore integrity check repair vacuum maintenance cli recovery',
+    timeline: 'calendar holidays country milestones dates schedule view months workdays',
+    stakeholders: 'stakeholder manager power interest grid raci contacts influence engagement contract rates',
+    'report-composer': 'combined report multiple documents charts assemble pdf export sections cover page',
+    'export-signing':
+      'pdf export sign pades digital signature certificate p12 pfx password gpg gnupg detached asc encrypt aes verify docx odt xlsx csv html mspdi xml formats',
+    encryption:
+      'sqlcipher database encryption at rest dek key passphrase lock secure recovery codes migrate plaintext',
+    'admin-panel': 'user management create accounts admin recovery codes provision reset',
+    'app-settings':
+      'theme light dark auto save interval become administrator logs folder diagnostics preferences application settings',
+    charts:
+      'chart types catalog wbs network pert cpm gantt fishbone cause effect workflow activity raci swot stakeholder matrix line bar pareto pie burn up down cumulative flow control engines editors connect nodes dependencies baseline monte carlo histogram',
+    documents:
+      'charter scope statement risk register communication plan status report statement of work project plan word templates edit export',
+    'sigma-pack': 'dmaic pack six sigma tollgate ctq sipoc capability control charts project view',
+    shortcuts:
+      'keyboard shortcuts hotkeys ctrl cmd save accessibility screen reader focus escape tab enter space navigate a11y announce reduced motion',
+    glossary: 'terms definitions vocabulary jargon meaning dictionary',
+    install: 'install run linux windows macos webkit dependencies build wails cli headless requirements',
+    troubleshooting:
+      'troubleshoot faq problem help forgot password passphrase locked out reset recovery code admin lockout corrupt database repair check crash startup logs diagnostics font missing glyph webkit blank window signature unsigned agile views missing compliance blocked audit',
+    cli: 'command line cli headless terminal maintenance check repair vacuum export audit stats schema dump format encrypt password env username scripts automation batch',
+  };
+
+  let query = $state('');
+
+  const filteredSidebar = $derived.by(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return sidebar;
+    return sidebar
+      .map((group) => ({
+        group: group.group,
+        items: group.items.filter(
+          (item) =>
+            item.label.toLowerCase().includes(q) ||
+            group.group.toLowerCase().includes(q) ||
+            KEYWORDS[item.id].includes(q),
+        ),
+      }))
+      .filter((g) => g.items.length > 0);
+  });
+
+  const matchCount = $derived(filteredSidebar.reduce((n, g) => n + g.items.length, 0));
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
@@ -98,7 +206,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
       class="w-52 shrink-0 border-r border-slate-800 overflow-y-auto py-4 px-2"
       aria-label="Help sections"
     >
-      {#each sidebar as group}
+      <div class="px-2 mb-4">
+        <input
+          type="search"
+          bind:value={query}
+          placeholder="Search help…"
+          aria-label="Search help sections"
+          class="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:border-cyan-500 outline-none"
+        />
+        {#if query.trim()}
+          <p class="mt-1.5 text-[10px] text-slate-500" role="status">
+            {matchCount === 0
+              ? 'No sections match.'
+              : `${matchCount} section${matchCount === 1 ? '' : 's'} match.`}
+          </p>
+        {/if}
+      </div>
+      {#each filteredSidebar as group}
         <div class="mb-5">
           <p class="px-2 mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
             {group.group}
@@ -159,15 +283,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
               walks through four steps:
             </p>
             <ol class="space-y-2 text-sm text-slate-300 list-decimal list-inside">
-              <li><span class="font-medium text-slate-100">Name</span> — project name and optional description.</li>
               <li><span class="font-medium text-slate-100">Industry</span> — Software, Construction, Engineering, Business, Administration, or Custom.</li>
+              <li><span class="font-medium text-slate-100">Focus area</span> — narrows the industry (for example Web Dev, Civil, or Marketing).</li>
               <li>
                 <span class="font-medium text-slate-100">Methodology</span> — delivery approach.
-                Each combination shows which artifacts will be seeded automatically. See the
+                Each combination seeds different starter artifacts. See the
                 <button onclick={() => nav('industry-matrix')} class="text-cyan-400 underline hover:text-cyan-300">Industry &amp; Methodology Matrix</button>.
               </li>
-              <li><span class="font-medium text-slate-100">Review &amp; Create</span> — confirm selections and create the project.</li>
+              <li><span class="font-medium text-slate-100">Details &amp; starter artifacts</span> — project name, optional description, country (drives holiday calendars), and checkboxes for the suggested starter artifacts. Click Create Project to finish.</li>
             </ol>
+            <p class="text-sm text-slate-300 mt-3">
+              New to PMForge? The
+              <button onclick={() => nav('quick-start')} class="text-cyan-400 underline hover:text-cyan-300">Quick Start tutorial</button>
+              walks the whole journey — account to exported report — in about ten minutes.
+            </p>
           </section>
 
           <section class="mb-6">
@@ -188,6 +317,89 @@ SPDX-License-Identifier: GPL-3.0-or-later
               Store them securely. Recovery codes let you reset your passphrase from the login screen.
               Recovery codes must be current before enabling database encryption.
             </p>
+          </section>
+
+        <!-- ── Quick Start tutorial ───────────────────────────────── -->
+        {:else if active === 'quick-start'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Quick Start: Your First Project</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            A ten-minute walkthrough from a fresh install to an exported PDF report. Every step
+            names exactly what to click; no project-management experience is assumed.
+          </p>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">1 · Create your account</h3>
+            <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
+              <li>Launch PMForge. With no accounts yet, the Create Account screen appears.</li>
+              <li>Enter a username, display name, and a passphrase you can remember — it also protects your encrypted projects.</li>
+              <li>As the first user you are offered the administrator role; accept it.</li>
+              <li>
+                PMForge shows your <span class="font-medium text-slate-100">eight recovery codes once</span>.
+                Store them somewhere safe (password manager, printed copy) before continuing —
+                they are the only way back in if you forget your passphrase. There is no cloud reset.
+              </li>
+            </ol>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">2 · Create a project</h3>
+            <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
+              <li>From the Portfolio screen click <span class="font-medium text-slate-100">+ New Project</span> (or press Ctrl/⌘+N).</li>
+              <li>Pick an industry tile — choose <span class="font-medium text-slate-100">Software</span> for this tutorial.</li>
+              <li>Pick a focus area (any), then the <span class="font-medium text-slate-100">Scrum</span> methodology.</li>
+              <li>Name the project, leave the suggested starter artifacts checked, and click <span class="font-medium text-slate-100">Create Project</span>.</li>
+            </ol>
+            <p class="text-sm text-slate-400 mt-2">
+              You land on the Project Dashboard: charts on top, documents below, budget at the side.
+              The starter artifacts from the
+              <button onclick={() => nav('industry-matrix')} class="text-cyan-400 underline hover:text-cyan-300">matrix</button>
+              are already there.
+            </p>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">3 · Build a small schedule</h3>
+            <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
+              <li>On the Dashboard choose <span class="font-medium text-slate-100">New Chart</span> and pick <span class="font-medium text-slate-100">Critical Path (CPM)</span>.</li>
+              <li>Click <span class="font-medium text-slate-100">+ Node</span> three times to add three activities.</li>
+              <li>Click a node, then rename it and set a duration (days) in the side panel.</li>
+              <li>To add a dependency: select the first node, click <span class="font-medium text-slate-100">Connect…</span>, then click the node that must follow it.</li>
+              <li>Repeat until the three activities form a chain. The longest chain turns <span class="text-red-400 font-medium">red</span> — that is your critical path.</li>
+              <li>Press <span class="font-medium text-slate-100">Ctrl/⌘+S</span> to save (or rely on auto-save if enabled in App Settings).</li>
+            </ol>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">4 · Fill in your first document</h3>
+            <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
+              <li>Back on the Dashboard, open the seeded <span class="font-medium text-slate-100">Project Charter</span> under Documents.</li>
+              <li>Fill in the purpose and objectives fields — a sentence each is enough for now.</li>
+              <li>Save with Ctrl/⌘+S. The save time appears near the header, so you always know your work is on disk.</li>
+            </ol>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">5 · Export a PDF report</h3>
+            <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
+              <li>On the Dashboard, use the export action next to the Project Charter.</li>
+              <li>In the Signature Options dialog choose <span class="font-medium text-slate-100">No digital signature</span> for now and click Export.</li>
+              <li>The PDF is written to your private exports folder — the toast tells you where.</li>
+            </ol>
+            <p class="text-sm text-slate-400 mt-2">
+              When you need tamper-evident output, come back to
+              <button onclick={() => nav('export-signing')} class="text-cyan-400 underline hover:text-cyan-300">Export &amp; Digital Signing</button>
+              for PAdES certificates and GnuPG signatures.
+            </p>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Where to go next</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li><button onclick={() => nav('scrum')} class="text-cyan-400 underline hover:text-cyan-300">Your methodology's guide</button> — boards, sprints, and the cadence PMForge sets up for you.</li>
+              <li><button onclick={() => nav('charts')} class="text-cyan-400 underline hover:text-cyan-300">Charts reference</button> — all 21 chart types and when to reach for each.</li>
+              <li><button onclick={() => nav('shortcuts')} class="text-cyan-400 underline hover:text-cyan-300">Keyboard Shortcuts &amp; Accessibility</button> — work faster, mouse optional.</li>
+              <li><button onclick={() => nav('encryption')} class="text-cyan-400 underline hover:text-cyan-300">Database Encryption</button> — protect project files at rest.</li>
+            </ul>
           </section>
 
         <!-- ── Industry & Methodology Matrix ──────────────────────── -->
@@ -733,6 +945,108 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
         <!-- ── Timeline ────────────────────────────────────────────── -->
+        {:else if active === 'agile-boards'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Kanban, Sprints &amp; DORA</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            The agile workspace: a drag-and-drop Kanban board, a prioritised backlog, sprint
+            management, and a DORA delivery-metrics dashboard. All four appear in the project
+            sidebar when your methodology enables the agile pack (Scrum, Kanban, Scrumban).
+          </p>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Kanban board</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li>Columns run left to right; each card is a work item. <span class="font-medium text-slate-100">Drag a card between columns</span> to change its state — the move is saved immediately.</li>
+              <li>Each column header shows a <span class="font-medium text-slate-100">WIP indicator</span> (count / limit). When a column exceeds its work-in-progress limit the badge changes tone — your cue to finish before starting.</li>
+              <li>Click a card to edit its title, description, points, priority, and assignee; use the add button to create a card in the first column.</li>
+              <li>Card edges are tinted by priority so the board reads at a glance.</li>
+            </ul>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Backlog</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li><span class="font-medium text-slate-100">Drag items up or down</span> to reorder priority; the order persists.</li>
+              <li>Assign an item to a sprint from its row — it stays in the backlog until you <span class="font-medium text-slate-100">start work</span>, which moves it onto the board.</li>
+              <li>Story points and priority are edited in the same work-item editor the board uses.</li>
+            </ul>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Sprints</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li>Create a sprint with a name, goal, start/end dates, and a capacity in story points.</li>
+              <li>Sprints move <span class="font-medium text-slate-100">planning → active → complete</span>. Only one sprint is active at a time: clicking Start on a planning sprint automatically completes any other active sprint.</li>
+              <li>Burn-Up and Burn-Down charts (created from the Dashboard) visualise sprint progress against capacity.</li>
+            </ul>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">DORA dashboard</h3>
+            <p class="text-sm text-slate-300 mb-2">
+              Four delivery KPIs with industry classification badges, a daily-deploy trend line,
+              and a deployment log (most recent 50):
+            </p>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li><span class="font-medium text-slate-100">Deployment Frequency</span> — how often you ship.</li>
+              <li><span class="font-medium text-slate-100">Lead Time for Changes</span> — commit-to-production hours.</li>
+              <li><span class="font-medium text-slate-100">Change Failure Rate</span> — share of deployments causing a failure.</li>
+              <li><span class="font-medium text-slate-100">Time to Restore (MTTR)</span> — hours to recover when one does.</li>
+            </ul>
+            <p class="text-sm text-slate-400 mt-2">
+              Record each release with <span class="font-medium text-slate-100">+ Record deployment</span> —
+              date, lead-time hours, whether it failed, and restore hours. The KPIs and badges
+              recompute from what you log; there is no external integration to configure.
+            </p>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Related</h3>
+            <p class="text-sm text-slate-300">
+              Methodology guidance:
+              <button onclick={() => nav('scrum')} class="text-cyan-400 underline hover:text-cyan-300">Scrum</button>,
+              <button onclick={() => nav('kanban')} class="text-cyan-400 underline hover:text-cyan-300">Kanban</button>,
+              <button onclick={() => nav('scrumban')} class="text-cyan-400 underline hover:text-cyan-300">Scrumban</button>.
+              Progress charts: see the
+              <button onclick={() => nav('charts')} class="text-cyan-400 underline hover:text-cyan-300">Charts reference</button>.
+            </p>
+          </section>
+
+        {:else if active === 'budget'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Budget</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            A live rollup on the Project Dashboard comparing your budget cap against money you
+            have effectively committed. No spreadsheet upkeep — it recomputes from data you
+            already maintain.
+          </p>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">How the numbers are built</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li><span class="font-medium text-slate-100">Budget</span> — the cap you set in <button onclick={() => nav('project-settings')} class="text-cyan-400 underline hover:text-cyan-300">Project Settings</button>.</li>
+              <li><span class="font-medium text-slate-100">Contracts</span> — the sum of contract values on vendor stakeholders.</li>
+              <li><span class="font-medium text-slate-100">Labour estimate</span> — work-item points × the assignee's hourly rate from the <button onclick={() => nav('stakeholders')} class="text-cyan-400 underline hover:text-cyan-300">Stakeholder Manager</button>.</li>
+              <li><span class="font-medium text-slate-100">Committed</span> = contracts + labour estimate; <span class="font-medium text-slate-100">Remaining</span> = budget − committed.</li>
+            </ul>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Reading the panel</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li>The progress bar shows committed as a share of budget and turns <span class="text-red-400 font-medium">red past 100%</span>.</li>
+              <li>A per-category breakdown appears when stakeholders carry categories, so you can see where the money concentrates.</li>
+              <li>All arithmetic is integer cents — fractional labour estimates round exactly once, at the money boundary, so totals never drift.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Getting started</h3>
+            <p class="text-sm text-slate-300">
+              If the panel shows its empty state, set a budget in Project Settings and add
+              stakeholder rates or contract values — it populates as soon as either side has data.
+            </p>
+          </section>
+
         {:else if active === 'timeline'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Timeline</h2>
           <p class="text-sm text-slate-400 mb-5">A horizontal SVG strip showing the project's chronological event stream — sprints, milestones, charter dates, and public holidays — auto-scaled to the project's date range.</p>
@@ -806,6 +1120,137 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
         <!-- ── Report Composer ─────────────────────────────────────── -->
+        {:else if active === 'project-settings'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Project Settings</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            Everything that belongs to one project (File &rarr; Project Settings while a project
+            is open). Not to be confused with
+            <button onclick={() => nav('app-settings')} class="text-cyan-400 underline hover:text-cyan-300">App Settings</button>,
+            which holds your personal, cross-project preferences.
+          </p>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Classification &amp; basics</h3>
+            <p class="text-sm text-slate-300">
+              Name, description, owner, industry, sub-category, methodology, country code,
+              lifecycle status, phase, start/end dates, and the budget cap. The classification
+              fields drive terminology, Launchpad rules, and the country's holiday calendar on the
+              <button onclick={() => nav('timeline')} class="text-cyan-400 underline hover:text-cyan-300">Timeline</button>.
+            </p>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Resource capacity calendars</h3>
+            <p class="text-sm text-slate-300">
+              Named calendars with weekly capacity and per-day overrides. CPM tasks reference them
+              via resource assignments (units, optional calendar label, max-unit caps, skill tags);
+              resource leveling uses the calendars to delay contended tasks, and CPM/Gantt show
+              over-allocation badges against them once the project has a start date.
+            </p>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Export, signing &amp; fonts</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li>Default document signing method and certificate — see <button onclick={() => nav('export-signing')} class="text-cyan-400 underline hover:text-cyan-300">Export &amp; Digital Signing</button>.</li>
+              <li>Schedule report exports and MS Project interchange — see <button onclick={() => nav('import-export')} class="text-cyan-400 underline hover:text-cyan-300">Schedule Import &amp; Export</button>.</li>
+              <li>Document font selection, including importing a .ttf for this project's PDFs.</li>
+            </ul>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Scenarios, compliance &amp; encryption</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li>What-if scenarios are created and managed here — see <button onclick={() => nav('scenarios')} class="text-cyan-400 underline hover:text-cyan-300">Scenarios &amp; What-If</button>.</li>
+              <li><span class="font-medium text-slate-100">Compliance mode</span> verifies the tamper-evident audit chain before the project opens and blocks it if the chain was altered. Export a JSON verification report — or repair evidence before any manual fix — from this panel.</li>
+              <li>Eligible plaintext project databases can be migrated to encrypted storage — see <button onclick={() => nav('encryption')} class="text-cyan-400 underline hover:text-cyan-300">Database Encryption</button>.</li>
+            </ul>
+          </section>
+
+        {:else if active === 'scenarios'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Scenarios &amp; What-If</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            Test schedule alternatives without touching the real plan. A scenario is an isolated
+            partition: charts copied into it can be edited freely and thrown away — or promoted
+            if the experiment wins.
+          </p>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Workflow</h3>
+            <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
+              <li>In <button onclick={() => nav('project-settings')} class="text-cyan-400 underline hover:text-cyan-300">Project Settings</button>, create a scenario and select it as active.</li>
+              <li>Copy a source chart into it — either with its <span class="font-medium text-slate-100">current data</span> or from a <span class="font-medium text-slate-100">saved schedule baseline</span>.</li>
+              <li>Open the copy in the dedicated scenario editor and experiment: change durations, dependencies, whatever the question needs.</li>
+              <li>Compare the edited scenario against its captured baseline data side by side.</li>
+              <li>If the alternative is better, <span class="font-medium text-slate-100">promote it back to a named schedule baseline</span> from the editor; otherwise delete the scenario and nothing else changed.</li>
+            </ol>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Good to know</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li>Scenario copies never overwrite the source chart — promotion creates a baseline; it does not silently replace your working schedule.</li>
+              <li>Scenario lifecycle actions are recorded in the tamper-evident audit chain, so compliance mode can account for them.</li>
+              <li>For probabilistic (rather than structural) what-ifs, the CPM editor's Monte Carlo panel answers "how likely is this date" — see the <button onclick={() => nav('charts')} class="text-cyan-400 underline hover:text-cyan-300">Charts reference</button>.</li>
+            </ul>
+          </section>
+
+        {:else if active === 'import-export'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Schedule Import &amp; Export</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            Move schedules between PMForge and other tools — Microsoft Project in, reports and
+            interchange formats out.
+          </p>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Importing from Microsoft Project</h3>
+            <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
+              <li>On the Project Dashboard, choose the <span class="font-medium text-slate-100">Import MS Project XML</span> action.</li>
+              <li>Pick an MSPDI <span class="font-mono text-xs">.xml</span> file; PMForge creates a schedule chart from its tasks and dependencies.</li>
+            </ol>
+            <p class="text-sm text-slate-400 mt-2">
+              Binary or legacy formats (<span class="font-mono text-xs">.mpp</span>,
+              <span class="font-mono text-xs">.pod</span>, <span class="font-mono text-xs">.mpx</span>)
+              are not read directly — resave them as Microsoft Project XML in the source
+              application first.
+            </p>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Exporting the schedule</h3>
+            <p class="text-sm text-slate-300 mb-3">
+              From <button onclick={() => nav('project-settings')} class="text-cyan-400 underline hover:text-cyan-300">Project Settings</button>, export the current schedule report as:
+            </p>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-700">
+                    <th class="text-left py-1.5 pr-4 font-semibold text-slate-300">Format</th>
+                    <th class="text-left py-1.5 font-semibold text-slate-300">Use</th>
+                  </tr>
+                </thead>
+                <tbody class="text-slate-300">
+                  {#each [
+                    ['PDF / DOCX / ODT', 'Reports for reading and sign-off'],
+                    ['MS Project XML (.xml)', 'Round-trip interchange with MS Project and compatible tools'],
+                    ['CSV', 'Spreadsheet task lists'],
+                    ['HTML', 'Browser viewing or publishing'],
+                  ] as [fmt, use]}
+                    <tr class="border-b border-slate-800">
+                      <td class="py-1.5 pr-4 whitespace-nowrap font-medium text-slate-100">{fmt}</td>
+                      <td class="py-1.5">{use}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+            <p class="text-sm text-slate-400 mt-3">
+              Individual documents and charts export from the Dashboard with optional
+              <button onclick={() => nav('export-signing')} class="text-cyan-400 underline hover:text-cyan-300">digital signing</button>;
+              the same schedule report is also available headless via the command line.
+            </p>
+          </section>
+
         {:else if active === 'report-composer'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Report Composer</h2>
           <p class="text-sm text-slate-400 mb-5">Assemble multiple project documents into a single composite PDF — a "Project Plan pack," "Status pack," executive briefing, or any other multi-document report.</p>
@@ -952,6 +1397,49 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
         <!-- ── Admin Panel ─────────────────────────────────────────── -->
+        {:else if active === 'backups'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Backups &amp; Data Safety</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            PMForge is local-first: your data lives in ordinary files you can copy, so backup is
+            simple — but it is <span class="font-medium text-slate-100">your</span> job. There is
+            no cloud copy.
+          </p>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">What to back up</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li>Everything lives under <span class="font-mono text-xs">~/Documents/PMForge/</span> by default: <span class="font-mono text-xs">system.db</span> (accounts) plus a private per-user folder with <span class="font-mono text-xs">projects</span>, <span class="font-mono text-xs">certs</span>, <span class="font-mono text-xs">exports</span>, and <span class="font-mono text-xs">logs</span>.</li>
+              <li>Copying that folder while PMForge is closed is a complete backup. Encrypted projects stay encrypted in the copy — safe to store anywhere you trust with ciphertext.</li>
+              <li>Keep your <span class="font-medium text-slate-100">recovery codes</span> with the backup: for encrypted projects, a restored file is only usable with your passphrase or a valid recovery code. Without both, it is unrecoverable by design.</li>
+            </ul>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Automatic safety nets</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li>When you migrate a plaintext project to encrypted storage, PMForge <span class="font-medium text-slate-100">retains a pre-migration backup</span> and shows you its path — keep it until you have verified the encrypted project opens.</li>
+              <li>Editors auto-save on an interval (App Settings) and show the last save time, so a crash costs at most the interval.</li>
+              <li>Every export is written to your private <span class="font-mono text-xs">exports</span> folder with owner-only permissions.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Health checks &amp; repair</h3>
+            <p class="text-sm text-slate-300">
+              The PMForge binary doubles as a maintenance CLI for any
+              <span class="font-mono text-xs">.pmforge</span> file:
+              <span class="font-mono text-xs">--check</span> (integrity),
+              <span class="font-mono text-xs">--repair</span> (self-healing),
+              <span class="font-mono text-xs">--vacuum</span> (compaction), and
+              <span class="font-mono text-xs">--export-audit</span> (audit log to CSV).
+              For encrypted projects add <span class="font-mono text-xs">--username</span> and
+              <span class="font-mono text-xs">--password-env</span> — the password comes from an
+              environment variable, never the command line. See
+              <button onclick={() => nav('install')} class="text-cyan-400 underline hover:text-cyan-300">Installing &amp; Running</button>
+              for where the binary lives.
+            </p>
+          </section>
+
         {:else if active === 'admin-panel'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Admin Panel</h2>
           <p class="text-sm text-slate-400 mb-5">Administrator-only view for managing all PMForge user accounts on this machine. Accessible to accounts with the Admin role.</p>
@@ -1130,6 +1618,54 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
         <!-- ── Documents Reference ─────────────────────────────────── -->
+          <section class="mb-6 border-t border-slate-800 pt-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Editing schedule diagrams (WBS, Network, PERT, CPM, Workflow, Activity)</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li><span class="font-medium text-slate-100">+ Node</span> adds an activity; click a node (or Tab to it and press Enter/Space) and edit its fields in the side panel.</li>
+              <li>To add a dependency: select the source node, click <span class="font-medium text-slate-100">Connect…</span>, then click the destination node. <span class="font-medium text-slate-100">Clear edges</span> removes a node's links; <span class="font-medium text-slate-100">Delete node</span> removes it and its edges.</li>
+              <li>In CPM (and Gantt links), the edge label sets the <span class="font-medium text-slate-100">dependency type and lag</span>: <span class="font-mono text-xs">FS</span>, <span class="font-mono text-xs">SS</span>, <span class="font-mono text-xs">FF</span>, or <span class="font-mono text-xs">SF</span> with optional <span class="font-mono text-xs">+n</span>/<span class="font-mono text-xs">-n</span> days — e.g. <span class="font-mono text-xs">SS+2</span> (start 2 days after the predecessor starts) or <span class="font-mono text-xs">FS-1</span> (overlap by a day). Blank means FS. This drives the computed schedule.</li>
+              <li>Activity diagrams add <span class="font-medium text-slate-100">swimlanes</span> (one per role) and UML node shapes — initial, activity, decision, fork/join, final — chosen when adding the node.</li>
+            </ul>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Gantt editor specifics</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li>The left grid edits tasks (name, duration in days, % complete, milestone ◆, delete); the right canvas draws the bars. <span class="font-medium text-slate-100">− / +</span> zoom the day scale.</li>
+              <li>Bar colours carry meaning: <span class="text-red-400 font-medium">red</span> = critical path, teal strip = % complete, grey ghost = baseline, orange outline = over-allocated resource, amber ! = violated constraint. Hover any bar for its full story.</li>
+              <li><span class="font-medium text-slate-100">Set baseline</span> snapshots today's schedule; ghost bars then show drift against it as the plan changes.</li>
+              <li>Links are managed in the panel below the grid — pick from/to tasks and an optional type/lag label (same <span class="font-mono text-xs">FS/SS/FF/SF±n</span> syntax as CPM).</li>
+              <li>Real calendar dates appear on bars once the project has a start date in <button onclick={() => nav('project-settings')} class="text-cyan-400 underline hover:text-cyan-300">Project Settings</button>.</li>
+            </ul>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Monte Carlo schedule risk (CPM)</h3>
+            <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
+              <li>In the CPM editor, give uncertain tasks optimistic / most-likely / pessimistic duration estimates (tasks without estimates keep their fixed duration).</li>
+              <li>Choose a sampling distribution — triangular, beta-PERT, or normal — and run the simulation from the editor's side panel.</li>
+              <li>Read the results: <span class="font-medium text-slate-100">P50 / P80 / P90</span> finish-day confidence points, a cumulative finish-probability S-curve, and a <span class="font-medium text-slate-100">tornado ranking</span> of which tasks drive the risk (critical-path frequency × P90−P50 spread).</li>
+              <li>Use <span class="font-medium text-slate-100">Export PDF/A</span> to save a signed-off-ready risk report with the summary, S-curve, tornado drivers, and narrative.</li>
+            </ol>
+            <p class="text-sm text-slate-400 mt-2">
+              CPM can also generate a <span class="font-medium text-slate-100">Resource Histogram</span> —
+              demand bars with dashed capacity lines from stakeholder availability and Project
+              Settings resource calendars.
+            </p>
+          </section>
+
+          <section class="mb-4">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Grid &amp; data-series editors</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li><span class="font-medium text-slate-100">Stats charts</span> (Line, Bar, Pie, Pareto, Burn-Up/Down, Cumulative Flow, Control): enter series and values in the form under the live preview — it re-renders as you type. Control charts flag out-of-control points in red with the rule in the tooltip.</li>
+              <li><span class="font-medium text-slate-100">RACI</span>: add roles and tasks, then set each cell to R/A/C/I from its dropdown. The validation tray warns when a task lacks exactly one Accountable.</li>
+              <li><span class="font-medium text-slate-100">Matrix</span>: add rows and columns, type in any cell; row/column headers rename inline.</li>
+              <li><span class="font-medium text-slate-100">SWOT</span>: four fixed quadrants; add/remove bullet items per quadrant.</li>
+              <li><span class="font-medium text-slate-100">Fishbone / Cause-and-Effect</span>: manage categories and causes in the side panel (Fishbone can seed the classic six Ms); the diagram lays itself out.</li>
+              <li>All editors save with <span class="font-mono text-xs">Ctrl/⌘+S</span> and participate in auto-save — see <button onclick={() => nav('shortcuts')} class="text-cyan-400 underline hover:text-cyan-300">Keyboard Shortcuts</button>.</li>
+            </ul>
+          </section>
+
         {:else if active === 'documents'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Documents Reference</h2>
           <p class="text-sm text-slate-400 mb-2">25 structured document types organized by PMBOK process group. Each has a structured editor with typed fields. Chart references can be embedded in documents. Export formats depend on document type.</p>
@@ -1247,6 +1783,263 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
         <!-- ── Glossary ────────────────────────────────────────────── -->
+        {:else if active === 'shortcuts'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Keyboard Shortcuts &amp; Accessibility</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            PMForge is fully operable from the keyboard. Shortcuts use Ctrl on Windows/Linux and ⌘ on macOS.
+          </p>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Application (File menu)</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-700">
+                    <th class="text-left py-1.5 pr-4 font-semibold text-slate-300 w-40">Shortcut</th>
+                    <th class="text-left py-1.5 font-semibold text-slate-300">Action</th>
+                  </tr>
+                </thead>
+                <tbody class="text-slate-300">
+                  {#each [
+                    ['Ctrl/⌘ + N', 'New project (opens the Launchpad)'],
+                    ['Ctrl/⌘ + O', 'Open project (project picker)'],
+                    ['Ctrl/⌘ + D', 'Portfolio dashboard'],
+                    ['Ctrl/⌘ + ,', 'Application settings'],
+                    ['Ctrl/⌘ + W', 'Close the current project'],
+                    ['Ctrl/⌘ + Q', 'Quit PMForge'],
+                    ['F11', 'Maximize / restore the window (Window menu)'],
+                  ] as [keys, action]}
+                    <tr class="border-b border-slate-800">
+                      <td class="py-1.5 pr-4 font-mono text-xs text-cyan-300 whitespace-nowrap">{keys}</td>
+                      <td class="py-1.5">{action}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Editors &amp; diagrams</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-700">
+                    <th class="text-left py-1.5 pr-4 font-semibold text-slate-300 w-40">Shortcut</th>
+                    <th class="text-left py-1.5 font-semibold text-slate-300">Action</th>
+                  </tr>
+                </thead>
+                <tbody class="text-slate-300">
+                  {#each [
+                    ['Ctrl/⌘ + S', 'Save the open chart or document editor. Auto-save (App Settings) also saves on an interval.'],
+                    ['Tab / Shift+Tab', 'Move between nodes in a diagram (WBS, Network, PERT, CPM, Workflow, Activity, Stakeholder, Cause-and-Effect).'],
+                    ['Enter or Space', 'Select the focused diagram node; edit its fields in the side panel.'],
+                    ['Enter', 'In the signature dialog password field: confirm the export.'],
+                  ] as [keys, action]}
+                    <tr class="border-b border-slate-800">
+                      <td class="py-1.5 pr-4 font-mono text-xs text-cyan-300 whitespace-nowrap">{keys}</td>
+                      <td class="py-1.5">{action}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Dialogs &amp; wizards</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li><span class="font-mono text-xs text-cyan-300">Esc</span> closes any dialog from anywhere inside it (for example the export Signature Options), cancelling the action.</li>
+              <li><span class="font-mono text-xs text-cyan-300">Tab</span> cycles only through the dialog's own controls while it is open, and focus returns to the control that opened it when it closes.</li>
+              <li>The New Project wizard moves focus to each step's heading as you advance, so keyboard and screen-reader users always know where they are.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Assistive technology</h3>
+            <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
+              <li>Every navigation announces the destination view ("Gantt chart", "Portfolio") to screen readers.</li>
+              <li>Save confirmations, loading states, and errors are announced as they happen via live regions.</li>
+              <li>Rendered charts expose text descriptions (kind, title, series); Gantt bars have hover tooltips with day ranges, % complete, and critical-path status.</li>
+              <li>Animations are disabled automatically when your OS requests reduced motion; a light theme is available in <button onclick={() => nav('app-settings')} class="text-cyan-400 underline hover:text-cyan-300">App Settings</button>.</li>
+            </ul>
+          </section>
+
+        {:else if active === 'troubleshooting'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Troubleshooting &amp; FAQ</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            The most common problems and their fixes. If your issue isn't here, the search box
+            above the sidebar covers every section of this guide.
+          </p>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">I forgot my passphrase</h3>
+            <p class="text-sm text-slate-300">
+              On the login screen choose <span class="font-medium text-slate-100">"Forgot password? Use a recovery code"</span>,
+              then enter your username, one unused recovery code, and a new passphrase. Each code
+              works once; reissue a fresh set afterwards from App Settings. If the passphrase
+              <span class="font-medium text-slate-100">and</span> all recovery codes are lost,
+              encrypted project databases are unrecoverable by design — there is no back door.
+            </p>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">There is no administrator</h3>
+            <p class="text-sm text-slate-300">
+              If the first account skipped the admin claim, open
+              <button onclick={() => nav('app-settings')} class="text-cyan-400 underline hover:text-cyan-300">App Settings</button>
+              and use <span class="font-medium text-slate-100">Become administrator</span> — available
+              while no other admin exists on the machine.
+            </p>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">PMForge won't start</h3>
+            <p class="text-sm text-slate-300">
+              Startup failures are written to a dated log and a native error dialog names the log
+              path. When the app does run, App Settings &rarr;
+              <span class="font-medium text-slate-100">Open Logs Folder</span> takes you to the same
+              directory. On Linux, a blank or missing window usually means the WebKit runtime is
+              absent — see <button onclick={() => nav('install')} class="text-cyan-400 underline hover:text-cyan-300">Installing &amp; Running</button>
+              for the required packages.
+            </p>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">A project may be corrupt</h3>
+            <p class="text-sm text-slate-300">
+              Run the built-in maintenance from a terminal:
+              <span class="font-mono text-xs">--check</span> reports integrity,
+              <span class="font-mono text-xs">--repair</span> runs the self-healing workflow and
+              prints what it did, and <span class="font-mono text-xs">--vacuum</span> compacts the
+              file. See <button onclick={() => nav('cli')} class="text-cyan-400 underline hover:text-cyan-300">Command-Line Maintenance</button>
+              for exact invocations (encrypted projects also need
+              <span class="font-mono text-xs">--username</span> / <span class="font-mono text-xs">--password-env</span>).
+            </p>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">My exported PDF isn't signed</h3>
+            <p class="text-sm text-slate-300">
+              The Signature Options dialog at export decides: PAdES needs a
+              <span class="font-mono text-xs">.p12</span>/<span class="font-mono text-xs">.pfx</span>
+              certificate and its password; GnuPG writes a detached
+              <span class="font-mono text-xs">.asc</span> sidecar next to the PDF (verify with
+              <span class="font-mono text-xs">gpg --verify file.pdf.asc file.pdf</span>); "No digital
+              signature" produces a plain PDF. Set the project default in
+              <button onclick={() => nav('project-settings')} class="text-cyan-400 underline hover:text-cyan-300">Project Settings</button>;
+              details in <button onclick={() => nav('export-signing')} class="text-cyan-400 underline hover:text-cyan-300">Export &amp; Digital Signing</button>.
+            </p>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Exports have missing or wrong-looking text</h3>
+            <p class="text-sm text-slate-300">
+              PDF output embeds TrueType fonts. If glyphs are missing, fetch the bundled catalog
+              (<span class="font-mono text-xs">make fonts</span> in a source checkout) or import a
+              <span class="font-mono text-xs">.ttf</span> of your choice from Project Settings and
+              select it for documents.
+            </p>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">The Kanban / Sprint views are missing</h3>
+            <p class="text-sm text-slate-300">
+              The agile pack appears when the project's methodology enables it (Scrum, Kanban,
+              Scrumban). Change the methodology in
+              <button onclick={() => nav('project-settings')} class="text-cyan-400 underline hover:text-cyan-300">Project Settings</button>
+              if you need the boards elsewhere.
+            </p>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Compliance mode blocked my project</h3>
+            <p class="text-sm text-slate-300">
+              That is compliance mode working: the tamper-evident audit chain failed verification,
+              so the open was refused. Use
+              <span class="font-medium text-slate-100">Export audit repair evidence</span> in Project
+              Settings first — it preserves the raw events and failure details — then investigate
+              or run the repair workflow. Turning compliance mode off skips the gate but does not
+              erase the discrepancy.
+            </p>
+          </section>
+
+        {:else if active === 'cli'}
+          <h2 class="text-xl font-bold text-slate-100 mb-1">Command-Line Maintenance</h2>
+          <p class="text-sm text-slate-400 mb-5">
+            The PMForge binary doubles as a headless maintenance tool for scripts, cron jobs, and
+            recovery — no GUI session required. Maintenance operations take a
+            <span class="font-mono text-xs">.pmforge</span> file path as the final argument.
+          </p>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Operations</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-700">
+                    <th class="text-left py-1.5 pr-4 font-semibold text-slate-300 w-52">Flag</th>
+                    <th class="text-left py-1.5 font-semibold text-slate-300">What it does</th>
+                  </tr>
+                </thead>
+                <tbody class="text-slate-300">
+                  {#each [
+                    ['--version', 'Print the version banner and exit'],
+                    ['--update', 'Check the signed update channel (no-op if none configured)'],
+                    ['--check', 'Integrity check; prints ok or CORRUPT'],
+                    ['--repair', 'Self-healing repair workflow with a printed action log'],
+                    ['--vacuum', 'Compact the database (VACUUM)'],
+                    ['--export-audit <path>', 'Write the audit log to CSV'],
+                    ['--stats', 'Compact project summary: status, phase, counts'],
+                    ['--schema-dump', 'Print the SQL schema (structure only, no data)'],
+                    ['--export <path>', 'Render the schedule report to <path>'],
+                    ['--format <fmt>', 'Export format: pdf (default), docx, odt, xlsx, csv, html, mspdi'],
+                    ['--encrypt', 'AES-256-GCM encrypt the export with the --password-env password'],
+                  ] as [flag, what]}
+                    <tr class="border-b border-slate-800">
+                      <td class="py-1.5 pr-4 font-mono text-xs text-cyan-300 whitespace-nowrap">{flag}</td>
+                      <td class="py-1.5">{what}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Encrypted projects</h3>
+            <p class="text-sm text-slate-300">
+              Pass <span class="font-mono text-xs">--username &lt;name&gt;</span> and
+              <span class="font-mono text-xs">--password-env &lt;ENVVAR&gt;</span>, where the named
+              environment variable holds that account's password. The password is
+              <span class="font-medium text-slate-100">never given on the command line</span>, so it
+              cannot leak through the process table or shell history. Plaintext projects open
+              without credentials. <span class="font-mono text-xs">--encrypt</span> reuses the same
+              variable as the export password.
+            </p>
+          </section>
+
+          <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Examples</h3>
+            <pre class="text-xs font-mono text-slate-300 bg-slate-900 border border-slate-800 rounded p-3 overflow-x-auto mb-3">{`# Integrity-check an encrypted project
+PMF_PW='…' pmforge --check \\
+  --username alice --password-env PMF_PW \\
+  ~/Documents/PMForge/alice/projects/<id>/project.pmforge`}</pre>
+            <pre class="text-xs font-mono text-slate-300 bg-slate-900 border border-slate-800 rounded p-3 overflow-x-auto">{`# Headless schedule export to encrypted XLSX
+PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \\
+  --username alice --password-env PMF_PW \\
+  ~/Documents/PMForge/alice/projects/<id>/project.pmforge`}</pre>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Logging</h3>
+            <p class="text-sm text-slate-300">
+              CLI paths log to stderr in the terminal; the GUI writes dated logs to the PMForge
+              logs directory (App Settings &rarr; Open Logs Folder). See also
+              <button onclick={() => nav('backups')} class="text-cyan-400 underline hover:text-cyan-300">Backups &amp; Data Safety</button>.
+            </p>
+          </section>
+
         {:else if active === 'glossary'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Glossary</h2>
           <p class="text-sm text-slate-400 mb-5">Definitions for project management terms, methodology-specific vocabulary, and PMForge-specific concepts.</p>
@@ -1262,7 +2055,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
               { term: 'Burn-Up Chart', def: 'Cumulative scope completed vs. total scope. Distinguishes scope growth from delivery progress.' },
               { term: 'Business Case', def: 'Document justifying the project investment: costs, benefits, risks, NPV/ROI. Primary go/no-go input.' },
               { term: 'Card / Task (Kanban)', def: 'A single unit of work on the Kanban Board.' },
+              { term: 'Change Failure Rate', def: 'DORA metric: the share of deployments that cause a failure in production. Computed on the DORA dashboard from the deployments you record.' },
               { term: 'Change Request', def: 'Formal proposal to modify a project baseline (scope, schedule, cost, quality). Requires review and approval.' },
+              { term: 'Compliance Mode', def: 'Project Settings option that verifies the tamper-evident audit chain before a project opens and blocks the open if the chain has been altered.' },
               { term: 'Control Chart', def: 'Time series with UCL and LCL. Points outside limits or non-random patterns indicate special-cause variation.' },
               { term: 'Control Limits', def: 'Statistical boundaries on a Control Chart (±3σ from the process mean). Not the same as specification limits.' },
               { term: 'CPM', def: 'Critical Path Method. Network scheduling identifying the longest dependency chain. Critical path tasks have zero float.' },
@@ -1270,8 +2065,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
               { term: 'CTQ', def: 'Critical to Quality. Measurable characteristic directly affecting customer perception of quality. Derived from VoC in Six Sigma.' },
               { term: 'Cumulative Flow Diagram', def: 'Stacked area chart of work items in each workflow state over time. Primary Kanban health indicator.' },
               { term: 'Cycle Time', def: 'Time from when a work item starts to when it is completed. Key delivery predictability metric in Kanban.' },
+              { term: 'DEK', def: 'Data Encryption Key. The per-user key that encrypts project databases. It is stored only in wrapped (encrypted) form — unlocked by your passphrase or a recovery code, never persisted raw.' },
+              { term: 'Deployment Frequency', def: 'DORA metric: how often the team ships to production. Recorded per deployment on the DORA dashboard.' },
               { term: 'DMAIC', def: 'Six Sigma improvement cycle: Define → Measure → Analyze → Improve → Control. For improving existing processes.' },
               { term: 'DORA Metrics', def: 'Four DevOps metrics: Deployment Frequency, Lead Time for Changes, Change Failure Rate, Mean Time to Restore. Available in PMForge\'s DORA dashboard.' },
+              { term: 'Earned Value (EVM)', def: 'Progress accounting that compares work performed against plan and cost. SPI (Schedule Performance Index) and CPI (Cost Performance Index) read 1.0 as on-plan; below 1.0 means behind schedule / over cost. Surfaces on the Dashboard and in combined reports with a linked CPM schedule.' },
               { term: 'Epic', def: 'A large user story spanning multiple sprints, broken down into smaller stories before entering a sprint.' },
               { term: 'ES / EF', def: 'Earliest Start / Earliest Finish. Calculated during the forward pass through a CPM network.' },
               { term: 'Estimate (methodology-specific)', def: 'Scrum: Story Points. Kanban: Time Estimate. CPM: Duration. Waterfall: Duration. Lean: Effort. PRINCE2: Work Package Estimate. Six Sigma: Resource Plan.' },
@@ -1287,8 +2085,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
               { term: 'Lead Time', def: 'Total time from request to delivery. Includes queue time + cycle time.' },
               { term: 'LS / LF', def: 'Latest Start / Latest Finish. Calculated during the backward pass through a CPM network.' },
               { term: 'Milestone', def: 'Significant project event with no duration. Scrum: Definition of Done. Kanban: Throughput Target. CPM: Schedule Milestone.' },
+              { term: 'Monte Carlo Simulation', def: 'Schedule-risk technique that samples uncertain task durations thousands of times to estimate finish-date probabilities. Run from the CPM editor; results include P50/P80/P90 dates, an S-curve, and a tornado driver ranking.' },
+              { term: 'MSPDI', def: 'Microsoft Project Data Interchange — the .xml schedule format PMForge imports and exports. Resave .mpp/.pod/.mpx files as MS Project XML before importing.' },
+              { term: 'MTTR', def: 'Mean Time to Restore. DORA metric: average hours to recover from a failed deployment.' },
               { term: 'Objective', def: 'OKRs: qualitative, inspiring goal statement answering "where do we want to go?" Supported by measurable Key Results.' },
               { term: 'OKRs', def: 'Objectives and Key Results. Goal-setting framework aligning teams to strategic outcomes through measurable, time-bound Key Results.' },
+              { term: 'P50 / P80 / P90', def: 'Confidence points from a Monte Carlo run: the finish day the project beats in 50%, 80%, or 90% of simulations. Commit to P80/P90 dates when the cost of being late is high.' },
               { term: 'PAdES', def: 'PDF Advanced Electronic Signatures. Standard for embedding cryptographic signatures into PDF files. PMForge generates PAdES-compliant signed exports.' },
               { term: 'Pareto Chart', def: 'Bar chart sorted descending with a cumulative-percentage line. Based on the 80/20 principle: ~80% of effects come from ~20% of causes.' },
               { term: 'PERT', def: 'Program Evaluation and Review Technique. Network scheduling with three-point duration estimates per activity.' },
@@ -1300,8 +2102,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
               { term: 'Pull System', def: 'Work produced when downstream capacity exists, not pushed by a schedule. Core Lean and Kanban principle.' },
               { term: 'RACI Matrix', def: 'Responsibility assignment: Responsible (does work), Accountable (owns outcome), Consulted (input needed), Informed (kept updated). One A per task.' },
               { term: 'Recovery Codes', def: 'PMForge one-time codes that allow passphrase reset from the login screen without the current passphrase. Generate from App Settings. Required before enabling database encryption.' },
+              { term: 'Resource Leveling', def: 'Delaying contended tasks so resource demand fits capacity. Uses the named resource calendars (weekly capacity + day overrides) from Project Settings.' },
               { term: 'Retrospective', def: 'Process improvement ceremony. Scrum: Sprint Retrospective. Kanban: Retrospective. PRINCE2: End-Stage Assessment lessons.' },
               { term: 'Risk Register', def: 'Catalogue of potential future risks with probability, impact, owner, mitigation strategy, and contingency plan.' },
+              { term: 'Scenario', def: 'An isolated what-if partition. Charts copied into a scenario can be edited and compared against their captured baseline without touching the live plan, then promoted to a named schedule baseline or discarded.' },
               { term: 'Scrum', def: 'Agile framework with time-boxed sprints, Product Backlog, and three roles. Four ceremonies: Sprint Planning, Daily Scrum, Sprint Review, Retrospective.' },
               { term: 'Scrumban', def: 'Hybrid of Scrum\'s prioritized backlog and Kanban\'s continuous pull flow. No fixed sprint cadence.' },
               { term: 'Sigma Level', def: 'Process quality metric. 6 sigma = 3.4 DPMO. Use Control Charts and Pareto Charts to track improvement.' },
@@ -1315,6 +2119,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               { term: 'SWOT Matrix', def: '2x2 strategic analysis: Strengths, Weaknesses (internal) vs. Opportunities, Threats (external).' },
               { term: 'Throughput', def: 'Work items completed per unit time. Primary Kanban flow metric alongside cycle time.' },
               { term: 'Timeline', def: 'PMForge view showing the project\'s chronological event stream as an SVG strip: sprint bands, milestones, and holiday markers.' },
+              { term: 'Tornado Ranking', def: 'Monte Carlo output ranking which tasks drive schedule risk, combining how often each lands on the critical path with its P90−P50 duration spread. Fix the top bars first.' },
               { term: 'User Story', def: 'See Story (Scrum).' },
               { term: 'Velocity', def: 'Average story points completed per sprint. Used for capacity planning and release forecasting.' },
               { term: 'VoC', def: 'Voice of Customer. Customer needs captured via surveys, interviews, or complaints. Input to CTQ derivation in Six Sigma.' },
