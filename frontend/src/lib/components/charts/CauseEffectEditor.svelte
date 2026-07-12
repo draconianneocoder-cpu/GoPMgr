@@ -15,6 +15,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onMount, onDestroy, untrack } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
 
   interface CauseNode {
@@ -142,9 +143,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!doc.root || !selectedId || selectedId === doc.root.id) return;
     const parent = findParent(doc.root, selectedId);
     if (!parent || !parent.children) return;
+    const before = JSON.parse(JSON.stringify(doc)) as typeof doc;
     parent.children = parent.children.filter((c) => c.id !== selectedId);
     selectedId = null;
     void refreshLayout();
+    showToast('Cause deleted', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
 
   async function save() {

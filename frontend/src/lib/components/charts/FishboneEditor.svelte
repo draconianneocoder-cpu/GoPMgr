@@ -14,6 +14,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
 
   interface FishboneCategory {
@@ -106,17 +107,34 @@ SPDX-License-Identifier: GPL-3.0-or-later
     void refreshLayout();
   }
   function removeCategory(i: number) {
+    // Removing a category deletes all its causes — snapshot for undo.
+    const before = JSON.parse(JSON.stringify(doc)) as FishboneDoc;
     doc.categories = doc.categories.filter((_, idx) => idx !== i);
     void refreshLayout();
+    showToast('Category deleted', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
   function addCause(catIdx: number) {
     doc.categories[catIdx].causes.push('');
     doc.categories = [...doc.categories];
   }
   function removeCause(catIdx: number, cIdx: number) {
+    const before = JSON.parse(JSON.stringify(doc)) as FishboneDoc;
     doc.categories[catIdx].causes = doc.categories[catIdx].causes.filter((_, idx) => idx !== cIdx);
     doc.categories = [...doc.categories];
     void refreshLayout();
+    showToast('Cause deleted', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
 
   async function save() {

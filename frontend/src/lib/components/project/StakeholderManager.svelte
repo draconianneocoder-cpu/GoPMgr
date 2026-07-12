@@ -11,12 +11,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import Spinner from '../Spinner.svelte';
 
   let list = $state<Stakeholder[]>([]);
   let filter = $state<'' | StakeholderCategory>('');
   let editing = $state<Stakeholder | null>(null);
   let busy = $state(false);
   let error = $state('');
+  // True only until the first load resolves, so the "no stakeholders"
+  // empty state cannot flash while the list is still being fetched.
+  let loading = $state(true);
 
   onMount(async () => {
     await refresh();
@@ -27,6 +31,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       list = (await window.go.main.App.ListStakeholders(filter)) ?? [];
     } catch (err: any) {
       error = `Could not load stakeholders: ${err}`;
+    } finally {
+      loading = false;
     }
   }
 
@@ -133,7 +139,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <p class="text-xs text-red-400 mb-3" role="alert">{error}</p>
     {/if}
 
-    {#if list.length === 0}
+    {#if loading}
+      <Spinner label="Loading stakeholders…" />
+    {:else if list.length === 0}
       <p class="text-sm text-slate-500 text-center py-12">
         No stakeholders {filter ? `with category "${filter}"` : 'yet'}.
         Click <strong>+ Stakeholder</strong>.

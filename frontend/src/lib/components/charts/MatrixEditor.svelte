@@ -19,6 +19,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
 
   interface MatrixDoc {
@@ -118,9 +119,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
     void refreshLayout();
   }
   function removeRow(idx: number) {
+    // Removing a row/column deletes its cells too — snapshot for undo.
+    const before = JSON.parse(JSON.stringify(doc)) as MatrixDoc;
     doc.rows = doc.rows.filter((_, i) => i !== idx);
     doc.cells = doc.cells.filter((_, i) => i !== idx);
     void refreshLayout();
+    showToast('Row deleted', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
   function addCol() {
     const c = newCol.trim();
@@ -133,12 +143,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
     void refreshLayout();
   }
   function removeCol(idx: number) {
+    const before = JSON.parse(JSON.stringify(doc)) as MatrixDoc;
     doc.cols = doc.cols.filter((_, i) => i !== idx);
     for (let i = 0; i < doc.cells.length; i++) {
       doc.cells[i] = doc.cells[i].filter((_, c) => c !== idx);
     }
     doc.cells = [...doc.cells];
     void refreshLayout();
+    showToast('Column deleted', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
 
   function updateCell(r: number, c: number, value: string) {
