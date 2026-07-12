@@ -50,10 +50,16 @@ pdfa_precondition_unmet() {
 
 ICC_PROFILE="${PMFORGE_ICC_PROFILE:-internal/pdfmeta/assets/sRGB.icc}"
 VERAPDF_VERSION="1.28.1"
-VERAPDF_DIR="/tmp/verapdf-${VERAPDF_VERSION}"
+# Cache and execute veraPDF from a user-owned, repo-local directory rather
+# than world-writable /tmp. Downloading and then running `java -jar` from a
+# predictable /tmp path let a co-tenant pre-plant /tmp/verapdf-app.jar (a
+# symlink or a malicious jar) that this gate would execute. $ROOT/.tmp is the
+# same gitignored, user-owned scratch dir SAMPLE_DIR already uses.
+VERAPDF_CACHE="$ROOT/.tmp/verapdf"
+VERAPDF_DIR="${VERAPDF_CACHE}/verapdf-${VERAPDF_VERSION}"
 VERAPDF_CLI="${VERAPDF_DIR}/verapdf"
-VERAPDF_ZIP="/tmp/verapdf.zip"
-VERAPDF_JAR="/tmp/verapdf-app.jar"
+VERAPDF_ZIP="${VERAPDF_CACHE}/verapdf.zip"
+VERAPDF_JAR="${VERAPDF_CACHE}/verapdf-app.jar"
 SAMPLE_DIR="$ROOT/.tmp/pmforge-pdfa-test"
 
 echo "=== PDF/A-3 Validation Gate ==="
@@ -143,9 +149,9 @@ else
         # If we have a JAR file, create a wrapper script
         if [ -f "$VERAPDF_JAR" ] && [ ! -x "$VERAPDF_CLI" ]; then
             mkdir -p "$(dirname "$VERAPDF_CLI")"
-            cat > "$VERAPDF_CLI" << 'EOF'
+            cat > "$VERAPDF_CLI" << EOF
 #!/bin/bash
-java -jar "/tmp/verapdf-app.jar" "$@"
+java -jar "$VERAPDF_JAR" "\$@"
 EOF
             chmod +x "$VERAPDF_CLI"
         fi
