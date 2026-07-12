@@ -18,6 +18,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
   import {
     shapePath,
@@ -133,6 +134,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     void refreshLayout();
   }
   function removeSwimlane(id: string) {
+    const before = JSON.parse(JSON.stringify(doc)) as AcDoc;
     doc.swimlanes = doc.swimlanes.filter((s) => s.id !== id);
     // Re-home any node previously in that lane.
     for (const n of doc.nodes) {
@@ -140,6 +142,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
     doc.nodes = [...doc.nodes];
     void refreshLayout();
+    showToast('Swimlane deleted', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
 
   // Node CRUD
@@ -171,10 +180,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   function deleteNode() {
     if (!selectedId) return;
+    const before = JSON.parse(JSON.stringify(doc)) as AcDoc;
     doc.nodes = doc.nodes.filter((n) => n.id !== selectedId);
     doc.edges = doc.edges.filter((e) => e.from !== selectedId && e.to !== selectedId);
     selectedId = null;
     void refreshLayout();
+    showToast('Node deleted', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
 
   function startConnect() {

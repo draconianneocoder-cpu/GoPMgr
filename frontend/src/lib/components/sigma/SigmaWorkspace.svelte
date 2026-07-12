@@ -12,6 +12,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let creating = $state(false);
   let newTitle = $state('');
   let newBelt = $state('green');
+  // Load failures render inline with a Retry button (a toast expires and
+  // would leave a blank workspace with no recovery affordance).
+  let loadError = $state('');
 
   onMount(async () => {
     await loadProjects();
@@ -19,10 +22,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function loadProjects() {
     loading = true;
+    loadError = '';
     try {
       projects = await window.go.main.App.SigmaListProjects();
     } catch (err: any) {
-      showToast(`Failed to load projects: ${err}`, 'error');
+      loadError = `Could not load projects: ${err}`;
     } finally {
       loading = false;
     }
@@ -83,7 +87,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <section>
       <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-4">Active Projects</h2>
       {#if loading}
-        <p class="text-sm text-slate-500">Loading projects...</p>
+        <p class="text-sm text-slate-500" role="status" aria-live="polite">Loading projects...</p>
+      {:else if loadError}
+        <div class="space-y-3">
+          <p class="text-sm text-red-400 break-words" role="alert">{loadError}</p>
+          <button
+            onclick={loadProjects}
+            class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold uppercase px-3 py-2 rounded"
+          >
+            Retry
+          </button>
+        </div>
       {:else if projects.length === 0}
         <p class="text-sm text-slate-500">No active Six Sigma projects yet. Create one above to get started.</p>
       {:else}

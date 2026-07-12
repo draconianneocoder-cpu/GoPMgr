@@ -7,7 +7,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // full CPM forward/backward pass (kernel.CalculateCPM) and writes
   // ES/EF/LS/LF/Float plus IsCritical back per node. Critical-path
   // activities are tinted red on the canvas.
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { session } from '../../session.svelte';
   import LayeredEditorShell from './_layered_editor_shell.svelte';
 
@@ -20,6 +20,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let variances = $state<Record<string, ScheduleVariance>>({});
   let baselineBusy = $state(false);
   let baselineMsg = $state('');
+  // AGENT.md §6: every timer must be cleared on destroy.
+  let baselineMsgTimer: ReturnType<typeof setTimeout> | null = null;
+  let resourceMsgTimer: ReturnType<typeof setTimeout> | null = null;
+  onDestroy(() => {
+    if (baselineMsgTimer) clearTimeout(baselineMsgTimer);
+    if (resourceMsgTimer) clearTimeout(resourceMsgTimer);
+  });
 
   async function refreshBaseline() {
     if (!session.editingId) return;
@@ -44,7 +51,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       await window.go.main.App.SetScheduleBaseline(session.editingId, '');
       await refreshBaseline();
       baselineMsg = 'Baseline set';
-      setTimeout(() => (baselineMsg = ''), 2500);
+      if (baselineMsgTimer) clearTimeout(baselineMsgTimer);
+      baselineMsgTimer = setTimeout(() => (baselineMsg = ''), 2500);
     } catch (err: any) {
       baselineMsg = String(err?.message ?? err);
     } finally {
@@ -218,7 +226,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   function flashResourceMsg(msg: string) {
     resourceMsg = msg;
-    setTimeout(() => (resourceMsg = ''), 4000);
+    if (resourceMsgTimer) clearTimeout(resourceMsgTimer);
+    resourceMsgTimer = setTimeout(() => (resourceMsg = ''), 4000);
   }
 
   function skillTagsText(assignment: { skill_tags?: string[] }): string {

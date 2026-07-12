@@ -13,6 +13,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import { autosave } from '../../autosave.svelte';
+  import { showToast } from '../../toast.svelte';
 
   interface GanttRow {
     id: string;
@@ -54,6 +55,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let status = $state('');
   let saving = $state(false);
   let pxPerDay = $state(28);
+  // AGENT.md §6: every timer must be cleared on destroy.
+  let statusTimer: ReturnType<typeof setTimeout> | null = null;
 
   const rowH = 30;
   const labelW = 0; // labels live in the grid; canvas is bars only
@@ -107,7 +110,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = false;
     if (!status) {
       status = 'Saved';
-      setTimeout(() => (status = ''), 2000);
+      if (statusTimer) clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => (status = ''), 2000);
     }
   }
 
@@ -117,7 +121,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       await window.go.main.App.SetScheduleBaseline(session.editingId, '');
       await refreshBaseline();
       status = 'Baseline set';
-      setTimeout(() => (status = ''), 2000);
+      if (statusTimer) clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => (status = ''), 2000);
     } catch (err: any) {
       status = String(err?.message ?? err);
     }
@@ -130,9 +135,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   function deleteTask(id: string) {
+    const before = JSON.parse(JSON.stringify(doc)) as typeof doc;
     doc.nodes = doc.nodes.filter((n) => n.id !== id);
     doc.edges = doc.edges.filter((e) => e.from !== id && e.to !== id);
     void refreshLayout();
+    showToast('Task deleted', {
+      type: 'info',
+      undo: () => {
+        doc = before;
+        void refreshLayout();
+      },
+    });
   }
 
   // Link editing
@@ -239,6 +252,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onDestroy(() => {
     window.removeEventListener('keydown', handleKeyDown);
     stopAutosave?.();
+    if (statusTimer) clearTimeout(statusTimer);
   });
 </script>
 
