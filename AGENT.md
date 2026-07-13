@@ -247,7 +247,7 @@ make package-linux / package-windows / package-darwin
 ### App locking rules
 - `App.mu` is a `sync.RWMutex` (V2.x hardening).
 - **Mutable fields** under the lock: `user`, `db`, `dbPath`, `adminSvc`.
-- **Read-only fields** (set once in NewApp): `store`. May be read without the lock.
+- **Read-only fields** (set once in NewApp): `store`. May be read without the lock. `shutdown()` closes the store but **never reassigns the pointer** — nilling it would be a write racing the lock-free reads this invariant permits.
 - **Helper methods** `requireUser()` and `requireDB()` take an RLock, copy the pointer, RUnlock, return. The returned pointer remains valid for the caller's lifetime because the underlying structs are not freed (Go GC).
 - **Logout / CloseProject** take a Write lock for the entire operation including the inner `db.Close()`.
 
