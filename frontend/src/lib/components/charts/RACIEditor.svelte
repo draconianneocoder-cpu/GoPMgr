@@ -64,6 +64,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let saving = $state(false);
   // Set on every successful SaveChart (auto-persist and manual save alike).
   let lastSavedAt = $state<Date | null>(null);
+  // Set when the initial GetChart fails: renders a full-screen error with
+  // a way back instead of a stuck editor + unhandled promise rejection.
+  let loadError = $state('');
 
   // Form state for new-role / new-task quick-add inputs.
   let newRole = $state('');
@@ -73,7 +76,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     if (!session.editingId) return;
-    chart = await window.go.main.App.GetChart(session.editingId);
+    try {
+      chart = await window.go.main.App.GetChart(session.editingId);
+    } catch (err: any) {
+      loadError = `Could not load this chart: ${err?.message ?? err}`;
+      return;
+    }
     try {
       const parsed = JSON.parse(chart.data) as RACIDoc;
       doc = {
@@ -211,6 +219,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 </script>
 
+{#if loadError}
+  <div class="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center">
+    <div class="text-center space-y-4 px-6">
+      <p class="text-sm text-red-400 break-words" role="alert">{loadError}</p>
+      <button
+        onclick={() => goto('dashboard')}
+        class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase px-3 py-2 rounded"
+      >
+        Back to dashboard
+      </button>
+    </div>
+  </div>
+{:else}
 <div class="min-h-screen bg-slate-950 text-slate-200">
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-4">
@@ -383,3 +404,4 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {/if}
   </main>
 </div>
+{/if}
