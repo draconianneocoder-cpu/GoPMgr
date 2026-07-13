@@ -66,6 +66,11 @@ func (d *Database) SigmaListProjects() ([]domain.Project, error) {
 		p.UpdatedAt, _ = time.Parse(time.RFC3339, updated)
 		out = append(out, p)
 	}
+	// A mid-iteration error ends the loop silently; without this check a
+	// truncated project list would be returned as if complete.
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 

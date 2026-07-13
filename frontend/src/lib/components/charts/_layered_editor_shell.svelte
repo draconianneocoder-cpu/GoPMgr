@@ -113,6 +113,9 @@ not routed directly.
   let saving = $state(false);
   // Set on every successful SaveChart (auto-persist and manual save alike).
   let lastSavedAt = $state<Date | null>(null);
+  // Set when the initial GetChart fails: renders a full-screen error with
+  // a way back instead of a stuck editor + unhandled promise rejection.
+  let loadError = $state('');
   let layoutError = $state('');
   let pendingEdge = $state<string | null>(null); // ID of from-node when picking the to-node
 
@@ -126,7 +129,12 @@ not routed directly.
   // Load
   async function loadChart() {
     if (!session.editingId) return;
-    chart = await window.go.main.App.GetChart(session.editingId);
+    try {
+      chart = await window.go.main.App.GetChart(session.editingId);
+    } catch (err: any) {
+      loadError = `Could not load this chart: ${err?.message ?? err}`;
+      return;
+    }
     try {
       doc = JSON.parse(chart.data) as LayeredDoc;
       doc.nodes ??= [];
@@ -142,6 +150,7 @@ not routed directly.
   onMount(async () => {
     window.addEventListener('keydown', handleKeyDown);
     await loadChart();
+    if (loadError) return; // failed load: no editor to auto-save
     // Register after load so the baseline snapshot is the saved doc and
     // auto-save only fires on real edits.
     stopAutosave = autosave.register(
@@ -312,6 +321,19 @@ not routed directly.
   });
 </script>
 
+{#if loadError}
+  <div class="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center">
+    <div class="text-center space-y-4 px-6">
+      <p class="text-sm text-red-400 break-words" role="alert">{loadError}</p>
+      <button
+        onclick={() => goto('dashboard')}
+        class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase px-3 py-2 rounded"
+      >
+        Back to dashboard
+      </button>
+    </div>
+  </div>
+{:else}
 <div class="min-h-screen bg-slate-950 text-slate-200 flex flex-col">
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-4">
@@ -460,3 +482,4 @@ not routed directly.
     </aside>
   </div>
 </div>
+{/if}

@@ -49,6 +49,12 @@ func (s *Store) migrateDEKColumns() error {
 				present = true
 			}
 		}
+		// Without this, a mid-iteration error could truncate the probe
+		// and falsely conclude the column is missing.
+		if err := rows.Err(); err != nil {
+			_ = rows.Close()
+			return err
+		}
 		_ = rows.Close()
 		if !present {
 			if _, err := s.conn.Exec(m.ddl); err != nil {
