@@ -111,6 +111,8 @@ not routed directly.
   let selectedId = $state<string | null>(null);
   let status = $state('');
   let saving = $state(false);
+  // Set on every successful SaveChart (auto-persist and manual save alike).
+  let lastSavedAt = $state<Date | null>(null);
   let layoutError = $state('');
   let pendingEdge = $state<string | null>(null); // ID of from-node when picking the to-node
 
@@ -164,6 +166,7 @@ not routed directly.
         data: JSON.stringify(doc),
       });
       chart = updated;
+      lastSavedAt = new Date();
       const res = await window.go.main.App.LayoutChart(updated.id);
       // For layered kinds the body shape is {layout, doc}.
       const body = res.body as { layout?: any; doc?: LayeredDoc } | any;
@@ -255,6 +258,7 @@ not routed directly.
         data: JSON.stringify(doc),
       });
       chart = updated;
+      lastSavedAt = new Date();
       status = `Saved at ${new Date().toLocaleTimeString()}.`;
     } catch (err: any) {
       status = `Save failed: ${err}`;
@@ -317,6 +321,11 @@ not routed directly.
       <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">{headingLabel}</h1>
     </div>
     <div class="flex items-center gap-2">
+      {#if lastSavedAt}
+        <span class="text-[10px] text-slate-500 tabular-nums" title="Charts save automatically as you edit">
+          Saved {lastSavedAt.toLocaleTimeString()}
+        </span>
+      {/if}
       {#if toolbarExtra}
         {@render toolbarExtra()}
       {/if}

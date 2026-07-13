@@ -49,6 +49,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let layout = $state<Layout>({ nodes: [], edges: [], width: 0, height: 0 });
   let selectedId = $state<string | null>(null);
   let saving = $state(false);
+  // Set on every successful SaveChart (auto-persist and manual save alike).
+  let lastSavedAt = $state<Date | null>(null);
   let status = $state('');
 
   // ---------- load ----------
@@ -79,6 +81,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         data: JSON.stringify(doc),
       });
       chart = updated;
+      lastSavedAt = new Date();
       const res = await window.go.main.App.LayoutChart(updated.id);
       layout = (res.body as unknown) as Layout;
     } catch (err: any) {
@@ -169,6 +172,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         data: JSON.stringify(doc),
       });
       chart = updated;
+      lastSavedAt = new Date();
       status = `Saved. Version updated at ${new Date().toLocaleTimeString()}.`;
     } catch (err: any) {
       status = `Save failed: ${err}`;
@@ -222,6 +226,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </h1>
     </div>
     <div class="flex items-center gap-2">
+      {#if lastSavedAt}
+        <span class="text-[10px] text-slate-500 tabular-nums" title="Charts save automatically as you edit">
+          Saved {lastSavedAt.toLocaleTimeString()}
+        </span>
+      {/if}
       <button onclick={addChild} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
         + Child
       </button>

@@ -43,6 +43,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   });
   let status = $state('');
   let saving = $state(false);
+  // Set on every successful SaveChart (auto-persist and manual save alike).
+  let lastSavedAt = $state<Date | null>(null);
 
   // Form inputs for add-row / add-col quick-add.
   let newRow = $state('');
@@ -101,6 +103,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         data: JSON.stringify(doc),
       });
       chart = updated;
+      lastSavedAt = new Date();
       // Layout response is just the normalised shape; we already
       // hold an equivalent, so no need to re-bind.
     } catch (err: any) {
@@ -176,6 +179,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         data: JSON.stringify(doc),
       });
       chart = updated;
+      lastSavedAt = new Date();
       status = `Saved at ${new Date().toLocaleTimeString()}.`;
     } catch (err: any) {
       status = `Save failed: ${err}`;
@@ -193,13 +197,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </button>
       <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Matrix Diagram</h1>
     </div>
-    <button
-      onclick={save}
-      disabled={saving}
-      class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
-    >
-      {saving ? 'Saving...' : 'Save'}
-    </button>
+    <div class="flex items-center gap-3">
+      {#if lastSavedAt}
+        <span class="text-[10px] text-slate-500 tabular-nums" title="Charts save automatically as you edit">
+          Saved {lastSavedAt.toLocaleTimeString()}
+        </span>
+      {/if}
+      <button
+        onclick={save}
+        disabled={saving}
+        class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
+      >
+        {saving ? 'Saving...' : 'Save'}
+      </button>
+    </div>
   </header>
 
   <main class="p-6 space-y-6">
@@ -286,7 +297,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     <button
                       onclick={() => removeCol(ci)}
                       class="text-slate-500 hover:text-red-400 text-xs"
-                      aria-label="Remove column"
+                      aria-label="Remove column" title="Remove column"
                     >
                       ×
                     </button>
@@ -310,7 +321,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     <button
                       onclick={() => removeRow(ri)}
                       class="text-slate-500 hover:text-red-400 text-xs"
-                      aria-label="Remove row"
+                      aria-label="Remove row" title="Remove row"
                     >
                       ×
                     </button>
