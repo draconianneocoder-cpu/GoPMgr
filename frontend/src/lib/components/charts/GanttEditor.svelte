@@ -56,6 +56,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let saving = $state(false);
   // Set on every successful SaveChart (auto-persist and manual save alike).
   let lastSavedAt = $state<Date | null>(null);
+  // Set when the initial GetChart fails: renders a full-screen error with
+  // a way back instead of a stuck editor + unhandled promise rejection.
+  let loadError = $state('');
   let pxPerDay = $state(28);
   // AGENT.md §6: every timer must be cleared on destroy.
   let statusTimer: ReturnType<typeof setTimeout> | null = null;
@@ -65,7 +68,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function loadChart() {
     if (!session.editingId) return;
-    chart = await window.go.main.App.GetChart(session.editingId);
+    try {
+      chart = await window.go.main.App.GetChart(session.editingId);
+    } catch (err: any) {
+      loadError = `Could not load this chart: ${err?.message ?? err}`;
+      return;
+    }
     try {
       doc = JSON.parse(chart.data) as GDoc;
       doc.nodes ??= [];
@@ -241,16 +249,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   let stopAutosave: (() => void) | null = null;
 
-  onMount(() => {
+  onMount(async () => {
     window.addEventListener('keydown', handleKeyDown);
-    // Register after the chart loads so the baseline snapshot is the saved
-    // doc and auto-save only fires on real edits.
-    void loadChart().then(() => {
-      stopAutosave = autosave.register(
-        () => JSON.stringify(doc),
-        () => save(),
-      );
-    });
+    // Await (rather than a floating .then chain) so a load failure can't
+    // become an unhandled rejection, and register auto-save only after a
+    // successful load so the baseline snapshot is the saved doc.
+    await loadChart();
+    if (loadError) return; // failed load: no editor to auto-save
+    stopAutosave = autosave.register(
+      () => JSON.stringify(doc),
+      () => save(),
+    );
   });
   onDestroy(() => {
     window.removeEventListener('keydown', handleKeyDown);
@@ -259,6 +268,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
   });
 </script>
 
+{#if loadError}
+  <div class="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center">
+    <div class="text-center space-y-4 px-6">
+      <p class="text-sm text-red-400 break-words" role="alert">{loadError}</p>
+      <button
+        onclick={() => goto('dashboard')}
+        class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase px-3 py-2 rounded"
+      >
+        Back to dashboard
+      </button>
+    </div>
+  </div>
+{:else}
 <div class="min-h-screen bg-slate-950 text-slate-200 flex flex-col">
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-4">
@@ -452,3 +474,4 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </main>
   </div>
 </div>
+{/if}
