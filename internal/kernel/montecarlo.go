@@ -245,6 +245,9 @@ func validateDurationEstimate(task *Task) error {
 }
 
 func runMonteCarloIteration(tasks map[string]*Task, taskIDs []string, iteration int) monteCarloIteration {
+	// #nosec G115 -- iteration is bounded [0, maxMonteCarloIterations] by
+	// validateMonteCarloInputs, so the int->uint64 conversion cannot
+	// overflow; and this seeds a statistical PRNG, not a security boundary.
 	src := rand.NewPCG(monteCarloSeedA+uint64(iteration)*0x9e3779b97f4a7c15, monteCarloSeedB^uint64(iteration))
 	sampled := make(map[string]*Task, len(tasks))
 	durations := make(map[string]float64, len(taskIDs))

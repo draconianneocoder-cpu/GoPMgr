@@ -2557,7 +2557,9 @@ func loadV1TasksAsKernel(d *db.Database) (map[string]*kernel.Task, error) {
 		var id, title, precJSON string
 		var duration float64
 		if err := rows.Scan(&id, &title, &duration, &precJSON); err != nil {
-			continue
+			// A Scan failure is data corruption, not a row to skip:
+			// silently dropping tasks would corrupt CPM/EVM results.
+			return nil, fmt.Errorf("scan v1 task: %w", err)
 		}
 		var precedents []string
 		_ = json.Unmarshal([]byte(precJSON), &precedents)
@@ -2568,6 +2570,11 @@ func loadV1TasksAsKernel(d *db.Database) (map[string]*kernel.Task, error) {
 			Duration:   duration,
 			Precedents: precedents,
 		}
+	}
+	// A mid-iteration error ends the loop silently; without this check a
+	// partial task map would be treated as the complete schedule.
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return tasks, nil
 }
