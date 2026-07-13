@@ -12,7 +12,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // App.UpdateProjectMeta and App.UpdateProjectIndustry — no new
   // backend code.
 
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
 
   let draft = $state<ProjectMeta | null>(null);
@@ -844,7 +844,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  onDestroy(() => {});
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">

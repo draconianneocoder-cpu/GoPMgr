@@ -9,7 +9,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // hourly_rate × work-item assignee matches, and contract_value sums
   // for vendor rows.
 
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import Spinner from '../Spinner.svelte';
 
@@ -99,7 +99,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  onDestroy(() => {});
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">

@@ -11,7 +11,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // contract_values (vendors), and matched work-item points ×
   // assignee hourly_rate (labour estimate).
 
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import Spinner from '../Spinner.svelte';
 
   let summary = $state<BudgetSummary | null>(null);
@@ -45,7 +45,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let pctClamped = $derived(Math.min(100, pct));
   let overBudget = $derived(pct > 100);
 
-  onDestroy(() => {});
 </script>
 
 <section class="bg-slate-900 border border-slate-800 rounded-lg p-4">
