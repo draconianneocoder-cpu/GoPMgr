@@ -12,7 +12,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // with a label above/below the strip (alternating to reduce
   // overlap).
 
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
 
   let entries = $state<TimelineEntry[]>([]);
@@ -239,7 +239,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  onDestroy(() => {});
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">
