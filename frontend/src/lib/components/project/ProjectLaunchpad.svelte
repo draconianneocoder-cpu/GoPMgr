@@ -16,7 +16,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // a new industry/methodology row to the JDM auto-extends the GUI
   // suggestions.
 
-  import { onDestroy, tick } from 'svelte';
+  import { tick } from 'svelte';
   import { session, goto } from '../../session.svelte';
 
   // Props — Launchpad can be opened from ProjectPicker; on close we
@@ -190,7 +190,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
     return SEED_LABELS[s] ?? s;
   }
 
-  onDestroy(() => {});
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200 flex flex-col">

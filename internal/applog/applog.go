@@ -75,8 +75,38 @@ func Init(preferredDir string) (logPath string, cleanup func()) {
 	// Tighten perms in case the process umask loosened them at create.
 	_ = f.Chmod(filePerm)
 
+	// Best-effort retention sweep so the dated logs cannot grow without
+	// bound on a user's disk. Runs after the new file opened successfully;
+	// failures are ignored (logging must never break the app).
+	pruneOldLogs(logDir, time.Now())
+
 	log.SetOutput(io.MultiWriter(os.Stderr, f))
 	return path, func() { _ = f.Close() }
+}
+
+// retentionDays bounds how long dated diagnostic logs are kept.
+const retentionDays = 30
+
+// pruneOldLogs removes pmforge-*.log files in logDir whose modification
+// time is older than retentionDays. Matching is deliberately narrow so
+// nothing a user placed in the directory is ever touched.
+func pruneOldLogs(logDir string, now time.Time) {
+	entries, err := os.ReadDir(logDir)
+	if err != nil {
+		return
+	}
+	cutoff := now.AddDate(0, 0, -retentionDays)
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasPrefix(name, "pmforge-") || !strings.HasSuffix(name, ".log") {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil || !info.ModTime().Before(cutoff) {
+			continue
+		}
+		_ = os.Remove(filepath.Join(logDir, name))
+	}
 }
 
 // LogDir returns the directory where PMForge writes diagnostic logs for the

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // restoreLogger snapshots and restores the global logger so an Init call
@@ -126,5 +127,47 @@ func TestDialogMessage(t *testing.T) {
 
 	if got := dialogMessage("", "", nil); strings.TrimSpace(got) == "" {
 		t.Fatal("dialogMessage with no detail returned empty; expected a default sentence")
+	}
+}
+
+// TestInitPrunesOldLogs locks in the retention sweep: dated logs older
+// than retentionDays are removed on Init, recent logs and non-PMForge
+// files are left alone.
+func TestInitPrunesOldLogs(t *testing.T) {
+	restoreLogger(t)
+	root := t.TempDir()
+	logDir := filepath.Join(root, "logs")
+	if err := os.MkdirAll(logDir, 0o700); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	old := filepath.Join(logDir, "pmforge-2020-01-01.log")
+	recent := filepath.Join(logDir, "pmforge-recent.log")
+	foreign := filepath.Join(logDir, "keepme.txt")
+	for _, p := range []string{old, recent, foreign} {
+		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
+			t.Fatalf("seed %s: %v", p, err)
+		}
+	}
+	ancient := time.Now().AddDate(0, 0, -(retentionDays + 10))
+	if err := os.Chtimes(old, ancient, ancient); err != nil {
+		t.Fatalf("chtimes: %v", err)
+	}
+	// The foreign file is also ancient — it must survive on name alone.
+	if err := os.Chtimes(foreign, ancient, ancient); err != nil {
+		t.Fatalf("chtimes foreign: %v", err)
+	}
+
+	_, cleanup := Init(root)
+	defer cleanup()
+
+	if _, err := os.Stat(old); !os.IsNotExist(err) {
+		t.Fatalf("old log was not pruned (err=%v)", err)
+	}
+	if _, err := os.Stat(recent); err != nil {
+		t.Fatalf("recent log was pruned: %v", err)
+	}
+	if _, err := os.Stat(foreign); err != nil {
+		t.Fatalf("non-PMForge file was pruned: %v", err)
 	}
 }
