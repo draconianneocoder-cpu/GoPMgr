@@ -136,9 +136,20 @@ func (a *App) shutdown(_ context.Context) {
 		_ = a.db.Close()
 		a.db = nil
 	}
+	// ADR-001: zero the session DEK on exit too, not only on Logout, so
+	// quitting with a session open does not leave key bytes in the heap
+	// (swap / core-dump hygiene).
+	for i := range a.dek {
+		a.dek[i] = 0
+	}
+	a.dek = nil
+	// Close the store but keep the pointer: `store` is documented as
+	// set-once and readable without the lock (AGENT.md §6), so nilling it
+	// here would be the one write that violates that invariant. A closed
+	// store safely returns errors to any late caller (unreachable in
+	// practice — Wails stops dispatching before shutdown runs).
 	if a.store != nil {
 		_ = a.store.Close()
-		a.store = nil
 	}
 }
 

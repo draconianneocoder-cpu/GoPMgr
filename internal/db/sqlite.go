@@ -13,6 +13,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strings"
 
 	"pmforge/internal/sqlitedriver"
 )
@@ -34,7 +35,7 @@ func InitDB(path string) (*Database, error) {
 }
 
 func initDBWithDSN(path, dsn string) (*Database, error) {
-	conn, err := sql.Open(sqlitedriver.Name, dsn)
+	conn, err := sql.Open(sqlitedriver.Name, withConnPragmas(dsn))
 	if err != nil {
 		return nil, fmt.Errorf("sql.Open: %w", err)
 	}
@@ -56,17 +57,30 @@ func initDBWithDSN(path, dsn string) (*Database, error) {
 	return db, nil
 }
 
-func applyStandardPragmas(conn *sql.DB) error {
-	pragmas := []string{
-		"PRAGMA journal_mode = WAL;",
-		"PRAGMA synchronous = NORMAL;",
-		"PRAGMA foreign_keys = ON;",
-		"PRAGMA temp_store = MEMORY;",
+// withConnPragmas appends the per-connection pragmas as DSN options so
+// EVERY connection the *sql.DB pool opens gets them. A plain
+// conn.Exec("PRAGMA foreign_keys = ON") binds only to the one physical
+// connection that happens to serve that Exec; with the default unbounded
+// pool, a second connection opened under concurrent Wails calls would
+// silently run with foreign keys OFF. journal_mode is also included even
+// though WAL persists in the file, so brand-new files are WAL from the
+// first connection regardless of which one touches them first.
+func withConnPragmas(dsn string) string {
+	sep := "?"
+	if strings.Contains(dsn, "?") {
+		sep = "&"
 	}
-	for _, p := range pragmas {
-		if _, err := conn.Exec(p); err != nil {
-			return fmt.Errorf("pragma %q: %w", p, err)
-		}
+	return dsn + sep + "_foreign_keys=on&_journal_mode=WAL&_synchronous=NORMAL&_busy_timeout=5000"
+}
+
+// applyStandardPragmas applies the pragmas that have no DSN form.
+// temp_store is a per-connection performance hint only — correctness
+// never depends on it — so best-effort application to the first pooled
+// connection is acceptable. It also serves as an early connectivity
+// probe (a bad key or unreadable file fails here, before Migrate).
+func applyStandardPragmas(conn *sql.DB) error {
+	if _, err := conn.Exec("PRAGMA temp_store = MEMORY;"); err != nil {
+		return fmt.Errorf("pragma temp_store: %w", err)
 	}
 	return nil
 }
