@@ -43,6 +43,8 @@ JSON.stringified back to db.charts.data.
   let chart = $state<ChartRecord | null>(null);
   let layout = $state<StatsLayout | null>(null);
   let saving = $state(false);
+  // Set on every successful SaveChart (auto-persist and manual save alike).
+  let lastSavedAt = $state<Date | null>(null);
   let status = $state('');
   let layoutError = $state('');
 
@@ -93,6 +95,7 @@ JSON.stringified back to db.charts.data.
         data: JSON.stringify(doc),
       });
       chart = updated;
+      lastSavedAt = new Date();
       const res = await window.go.main.App.LayoutChart(updated.id);
       layout = res.body as StatsLayout;
     } catch (err: any) {
@@ -110,6 +113,7 @@ JSON.stringified back to db.charts.data.
         data: JSON.stringify(doc),
       });
       chart = updated;
+      lastSavedAt = new Date();
       status = `Saved at ${new Date().toLocaleTimeString()}.`;
     } catch (err: any) {
       status = `Save failed: ${err}`;
@@ -150,13 +154,20 @@ JSON.stringified back to db.charts.data.
       </button>
       <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">{headingLabel}</h1>
     </div>
-    <button
-      onclick={save}
-      disabled={saving}
-      class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
-    >
-      {saving ? 'Saving...' : 'Save'}
-    </button>
+    <div class="flex items-center gap-3">
+      {#if lastSavedAt}
+        <span class="text-[10px] text-slate-500 tabular-nums" title="Charts save automatically as you edit">
+          Saved {lastSavedAt.toLocaleTimeString()}
+        </span>
+      {/if}
+      <button
+        onclick={save}
+        disabled={saving}
+        class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
+      >
+        {saving ? 'Saving...' : 'Save'}
+      </button>
+    </div>
   </header>
 
   <main class="p-6 space-y-6">
