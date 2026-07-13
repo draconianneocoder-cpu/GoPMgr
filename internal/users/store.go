@@ -77,15 +77,12 @@ func Open(rootDir string) (*Store, error) {
 	}
 
 	dbPath := filepath.Join(rootDir, "system.db")
-	conn, err := sql.Open(sqlitedriver.Name, dbPath)
+	// Per-connection pragmas ride in the DSN so every connection the
+	// *sql.DB pool opens gets them — a one-off conn.Exec would bind
+	// foreign_keys=ON to a single physical connection only.
+	conn, err := sql.Open(sqlitedriver.Name, dbPath+"?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000")
 	if err != nil {
 		return nil, err
-	}
-	if _, err := conn.Exec(`PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;`); err != nil {
-		if closeErr := conn.Close(); closeErr != nil {
-			return nil, fmt.Errorf("users: enable pragmas: %w; close: %v", err, closeErr)
-		}
-		return nil, fmt.Errorf("users: enable pragmas: %w", err)
 	}
 
 	s := &Store{conn: conn, rootDir: rootDir}

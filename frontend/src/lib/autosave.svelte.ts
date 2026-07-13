@@ -15,6 +15,10 @@ interface Entry {
   snapshot: () => string;
   save: () => unknown;
   last: string;
+  // True while a save is in flight, so a slow save can never overlap the
+  // next interval's save for the same editor (overlapping whole-doc writes
+  // could land out of order and persist the older snapshot last).
+  saving?: boolean;
 }
 
 let intervalSeconds = $state(0); // 0 = auto-save off
@@ -39,16 +43,21 @@ function tick(): void {
   if (elapsed < intervalSeconds) return;
   elapsed = 0;
   for (const e of entries) {
+    if (e.saving) continue; // previous save still in flight
     const snap = safeSnapshot(e.snapshot);
     if (snap === e.last) continue; // no changes since last save
     try {
+      e.saving = true;
       Promise.resolve(e.save())
         .then(() => {
           e.last = safeSnapshot(e.snapshot);
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => {
+          e.saving = false;
+        });
     } catch {
-      /* ignore */
+      e.saving = false;
     }
   }
 }
