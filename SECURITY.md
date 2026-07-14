@@ -113,6 +113,14 @@ make check-release
 `make release-scope` protects important public claims such as PDF/A,
 PAdES, and encryption status from drifting away from supported behavior.
 
+### Known upstream advisories
+
+- [GO-2026-5932](https://pkg.go.dev/vuln/GO-2026-5932)
+  (`golang.org/x/crypto`): affects a code path PMForge does not call
+  (`govulncheck` reports 0 reachable symbols). No fixed upstream release
+  exists yet; the dependency is at the latest version and will be bumped
+  when a fix ships.
+
 ## Reporting
 
 This repository does not currently publish a public vulnerability intake
