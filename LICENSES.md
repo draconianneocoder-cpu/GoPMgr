@@ -5,6 +5,11 @@ SPDX-License-Identifier: CC0-1.0
 
 # License Notes
 
+> For the project's headline license statement — what GPL-3.0-or-later grants
+> you and how the repository's mixed licensing fits together — see
+> [LICENSE.md](LICENSE.md). This file documents how the `LICENSES/` directory
+> is populated and maintained.
+
 The `LICENSES/` directory holds the full text of every license that applies to
 files in this repository, in the format required by the [REUSE
 specification](https://reuse.software/spec/).
