@@ -17,7 +17,9 @@ import (
 	sqlite3 "github.com/mutecomm/go-sqlcipher/v4"
 )
 
-const key = "2DD29CA851E7B56E4697B0E1F08507293D761A05CE4D1B628663F411A8086D99"
+// Deliberately fake spike key (repeating pattern): this scratch benchmark
+// only needs 32 key bytes, never a secret one.
+const key = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
 
 const schema = `
 CREATE TABLE IF NOT EXISTS charts (
