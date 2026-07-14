@@ -226,7 +226,16 @@ ignored by `.gitignore`.
 
 ## License
 
-Source code is licensed under GPL-3.0-or-later. Documentation, including
-this README, is licensed under GFDL-1.3-or-later. Small configuration files
-may use CC0-1.0. See [LICENSES.md](LICENSES.md) and the SPDX headers in
-individual files.
+PMForge is free software: its source code is licensed under
+**GPL-3.0-or-later**. User-facing documentation, including this README, is
+licensed under **GFDL-1.3-or-later**; small configuration files and license
+notes use **CC0-1.0**; bundled fonts carry their own OFL-1.1, Apache-2.0, or
+Bitstream-Vera terms.
+
+The project follows the [REUSE](https://reuse.software/) specification, so the
+authoritative license of any file is the `SPDX-License-Identifier` in that
+file (or in [REUSE.toml](REUSE.toml)). Run `make license-check` to verify.
+
+See [LICENSE.md](LICENSE.md) for the full license statement and a summary of
+what GPL-3.0-or-later means for you, and [LICENSES.md](LICENSES.md) for the
+per-identifier rationale.
