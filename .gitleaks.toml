@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-License-Identifier: CC0-1.0
+
+# Gitleaks configuration for PMForge.
+#
+# PMForge ships no credentials; the only allowlist entry is the design-spike
+# scratch file, whose hardcoded SQLCipher key is a deliberately fake example
+# (see the comment at its definition). The path allowlist also silences the
+# pre-neutralization value that remains in git history.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Design-spike scratch code with a deliberately fake example key"
+paths = ['''docs/design/spike-sqlcipher/.*''']
