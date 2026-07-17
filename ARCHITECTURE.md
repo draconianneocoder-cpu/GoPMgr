@@ -26,16 +26,21 @@ local machine.
 
 ## Data Layout
 
-On first run PMForge creates a local root under `~/Documents/PMForge`:
+On first run PMForge creates a local root in the platform data directory
+(`~/Library/Application Support/PMForge` on macOS, `~/Documents/PMForge`
+on Linux and Windows; `$XDG_DATA_HOME/PMForge` overrides both):
 
 ```text
-~/Documents/PMForge/
+<data-root>/
   system.db
   <username>/
     projects/
     certs/
     exports/
 ```
+
+On macOS an existing `~/Documents/PMForge` install is copied into the new
+Application Support root on first launch after upgrade (`users.MigrateLegacyRoot`).
 
 `system.db` stores local users, Argon2id password hashes, recovery-code
 metadata, and wrapped data-encryption keys. Per-project `.pmforge`

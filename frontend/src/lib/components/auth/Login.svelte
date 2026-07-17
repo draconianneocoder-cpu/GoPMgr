@@ -13,7 +13,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let busy = $state(false);
   let showPassword = $state(false);
   let usernameEl = $state<HTMLInputElement>();
-  let hasAdmin = $state(true); // optimistic default
+  // Fail OPEN: assume account creation is allowed until we positively learn
+  // that an administrator already exists. Defaulting to "an admin exists"
+  // (and swallowing a HasAnyAdmin() failure into that state) would hide the
+  // only route to the create-account screen — stranding the very first user
+  // on a fresh machine with "contact your administrator" and no admin to
+  // contact. The backend still enforces the real gate: CreateAccount rejects
+  // non-admin callers once any admin exists, so showing the link when the
+  // state is unknown is safe.
+  let hasAdmin = $state(false);
+  let adminChecked = $state(false); // suppress the admin/create hint until resolved
 
   // Focus the first field on load so the user can type immediately.
   onMount(async () => {
@@ -21,7 +30,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       hasAdmin = await window.go.main.App.HasAnyAdmin();
     } catch {
-      hasAdmin = true;
+      hasAdmin = false; // unknown → keep the create path open
+    } finally {
+      adminChecked = true;
     }
   });
 
@@ -52,7 +63,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <p class="text-xs text-slate-500">Local-first project controls</p>
     </div>
 
-    {#if !hasAdmin}
+    {#if adminChecked && !hasAdmin}
       <div class="bg-amber-950/40 border border-amber-700/50 rounded-lg p-2.5 text-xs text-amber-300">
         No administrator is configured. The first user to create an account can claim the administrator role.
       </div>
@@ -114,18 +125,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {busy ? 'Signing in…' : 'SIGN IN'}
     </button>
 
-    {#if !hasAdmin}
-      <button
-        type="button"
-        onclick={() => goto('create_account')}
-        class="w-full text-xs text-cyan-400 hover:text-cyan-300 underline"
-      >
-        Create a new account
-      </button>
-    {:else}
-      <p class="text-center text-xs text-slate-500">
-        Contact your administrator to create an account on this machine.
-      </p>
+    {#if adminChecked}
+      {#if !hasAdmin}
+        <button
+          type="button"
+          onclick={() => goto('create_account')}
+          class="w-full text-xs text-cyan-400 hover:text-cyan-300 underline"
+        >
+          Create a new account
+        </button>
+      {:else}
+        <p class="text-center text-xs text-slate-500">
+          Contact your administrator to create an account on this machine.
+        </p>
+      {/if}
     {/if}
 
     <button

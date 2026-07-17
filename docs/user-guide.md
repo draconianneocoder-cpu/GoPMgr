@@ -13,8 +13,11 @@ Troubleshooting & FAQ and a keyboard-shortcuts reference.
 
 ## First Run
 
-PMForge stores local data under `~/Documents/PMForge/` by default. The
-first launch creates:
+PMForge stores local data in your platform's per-user data folder:
+`~/Library/Application Support/PMForge/` on macOS and `~/Documents/PMForge/`
+on Linux and Windows (`$XDG_DATA_HOME/PMForge/` overrides both). On macOS,
+an existing `~/Documents/PMForge/` folder from an earlier version is migrated
+automatically on first launch. The first launch creates:
 
 - `system.db` for local account metadata.
 - A private per-user directory with `projects`, `certs`, and `exports`
