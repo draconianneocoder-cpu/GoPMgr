@@ -83,6 +83,40 @@ func TestLayoutGanttScheduled(t *testing.T) {
 	}
 }
 
+// TestLayoutGanttEmitsAbsoluteWorkSegments proves a node's task-relative
+// WorkSegments become absolute (ES + offset) Gantt bar pieces, and that the
+// horizon stretches to cover a split that finishes past EF.
+func TestLayoutGanttEmitsAbsoluteWorkSegments(t *testing.T) {
+	doc := LayeredDocument{
+		Nodes: []LayeredNode{
+			// Duration 3 but split across relative days 0,2,4 (finish day 5).
+			{ID: "S", Label: "S", Duration: 3,
+				Constraint: "SNET", ConstraintDate: "2026-06-02",
+				WorkSegments: []WorkSegment{{Start: 0, End: 1}, {Start: 2, End: 3}, {Start: 4, End: 5}}},
+		},
+	}
+	start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC) // Monday
+	layout, err := LayoutGanttScheduled(doc, start, weekdaysOnly, nil)
+	if err != nil {
+		t.Fatalf("LayoutGanttScheduled: %v", err)
+	}
+	row := layout.Rows[0]
+	// SNET 2026-06-02 (Tue) is offset 1, so absolute segments are ES+rel.
+	wantStarts := []float64{row.ES + 0, row.ES + 2, row.ES + 4}
+	if len(row.WorkSegments) != 3 {
+		t.Fatalf("WorkSegments = %+v, want 3 pieces", row.WorkSegments)
+	}
+	for i, s := range row.WorkSegments {
+		if s.Start != wantStarts[i] || s.End != wantStarts[i]+1 {
+			t.Errorf("segment %d = {%.0f,%.0f}, want {%.0f,%.0f}", i, s.Start, s.End, wantStarts[i], wantStarts[i]+1)
+		}
+	}
+	// Horizon must cover the last segment end (ES+5), not just EF (ES+3).
+	if layout.Horizon < row.ES+5 {
+		t.Errorf("Horizon = %.0f, want >= %.0f (last split day)", layout.Horizon, row.ES+5)
+	}
+}
+
 func TestLayoutGanttCycle(t *testing.T) {
 	doc := LayeredDocument{
 		Nodes: []LayeredNode{{ID: "A", Duration: 1}, {ID: "B", Duration: 1}},

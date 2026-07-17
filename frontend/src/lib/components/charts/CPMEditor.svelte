@@ -10,6 +10,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount, onDestroy } from 'svelte';
   import { session } from '../../session.svelte';
   import LayeredEditorShell from './_layered_editor_shell.svelte';
+  import { levelResourcesMessages, splitPreviewMessage } from './leveling_messages';
 
   function fmt(n: unknown, digits = 1): string {
     return typeof n === 'number' ? n.toFixed(digits) : '—';
@@ -215,6 +216,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let stakeholders = $state<Stakeholder[]>([]);
   let resourceBusy = $state(false);
   let resourceMsg = $state('');
+  // Persistent (not auto-cleared) warning for tasks the leveller could not
+  // fit within capacity. resourceWarnTitle holds the full task list for the
+  // tooltip when the inline text is truncated.
+  let resourceWarn = $state('');
+  let resourceWarnTitle = $state('');
+  // Leveling heuristic: 'ltf' (least total float, default) or 'edf'
+  // (earliest deadline). Passed through to App.LevelChartResources.
+  let levelStrategy = $state('ltf');
+  // When on, critical-path tasks win resource contention ahead of floating
+  // tasks so leveling never delays the critical path.
+  let priorityCritical = $state(false);
+  // Read-only splitting preview message (activity splitting is analysis-only
+  // because a split task can't be stored as a single start pin).
+  let splitPreviewMsg = $state('');
+  let splitPreviewTitle = $state('');
 
   async function loadStakeholders() {
     try {
@@ -262,16 +278,47 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function levelResources() {
     if (!session.editingId || resourceBusy) return;
     resourceBusy = true;
+    resourceWarn = '';
+    resourceWarnTitle = '';
     try {
-      const pinned = await window.go.main.App.LevelChartResources(session.editingId);
+      const res = await window.go.main.App.LevelChartResources(
+        session.editingId,
+        levelStrategy,
+        priorityCritical,
+        false // CPM editor applies pins only; splitting is applied from the Gantt view
+      );
       // Reload the shell's doc from the DB so the editor shows the
       // new SNET pins and a later save can't clobber them.
       await shellRef?.reloadFromDB();
-      flashResourceMsg(
-        pinned > 0 ? `Levelled: ${pinned} task(s) pinned (SNET)` : 'Already level: nothing moved'
-      );
+      // Success flash plus a persistent warning for tasks whose demand
+      // exceeds capacity (still overallocated; badges also show it).
+      const m = levelResourcesMessages(res);
+      flashResourceMsg(m.flash);
+      resourceWarn = m.warn;
+      resourceWarnTitle = m.warnTitle;
     } catch (err: any) {
       flashResourceMsg(String(err?.message ?? err));
+    } finally {
+      resourceBusy = false;
+    }
+  }
+
+  // previewSplitting reports (read-only) whether interrupting tasks across
+  // non-contiguous days would resolve overallocation, without changing the
+  // saved schedule. Splitting isn't persisted: a split task can't be stored
+  // as the single SNET start pin the chart model uses.
+  async function previewSplitting() {
+    if (!session.editingId || resourceBusy) return;
+    resourceBusy = true;
+    splitPreviewMsg = '';
+    splitPreviewTitle = '';
+    try {
+      const p = await window.go.main.App.PreviewSplitLeveling(session.editingId);
+      const m = splitPreviewMessage(p);
+      splitPreviewMsg = m.msg;
+      splitPreviewTitle = m.title;
+    } catch (err: any) {
+      splitPreviewMsg = String(err?.message ?? err);
     } finally {
       resourceBusy = false;
     }
@@ -294,6 +341,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
     void refreshBaseline();
     void loadStakeholders();
   });
+
+  // The router can reuse this editor instance across chart IDs (same "cpm"
+  // view, different session.editingId), so onMount won't re-run. Clear the
+  // persistent leveling warning when the edited chart changes so a warning
+  // from one schedule never bleeds into another.
+  $effect(() => {
+    session.editingId;
+    resourceWarn = '';
+    resourceWarnTitle = '';
+    splitPreviewMsg = '';
+    splitPreviewTitle = '';
+  });
 </script>
 
 <LayeredEditorShell bind:this={shellRef} chartKind="cpm" headingLabel="CPM Chart">
@@ -304,6 +363,33 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {#if resourceMsg}
       <span class="text-[10px] text-orange-300">{resourceMsg}</span>
     {/if}
+    {#if resourceWarn}
+      <button
+        type="button"
+        class="text-[10px] text-amber-400 hover:text-amber-300"
+        title={resourceWarnTitle}
+        onclick={() => {
+          resourceWarn = '';
+          resourceWarnTitle = '';
+        }}
+      >⚠ {resourceWarn} (dismiss)</button>
+    {/if}
+    <select
+      bind:value={levelStrategy}
+      disabled={resourceBusy}
+      title="Leveling heuristic: least total float protects the project finish; earliest deadline favours per-task due dates."
+      class="text-[10px] bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-slate-200"
+    >
+      <option value="ltf">Least float</option>
+      <option value="edf">Earliest deadline</option>
+    </select>
+    <label
+      class="text-[10px] text-slate-300 flex items-center gap-1"
+      title="Protect the critical path: critical tasks win resource contention ahead of floating tasks."
+    >
+      <input type="checkbox" bind:checked={priorityCritical} disabled={resourceBusy} />
+      Protect critical
+    </label>
     <button
       onclick={levelResources}
       disabled={resourceBusy}
@@ -312,6 +398,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     >
       Level
     </button>
+    <button
+      onclick={previewSplitting}
+      disabled={resourceBusy}
+      class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded"
+      title="Preview (read-only) whether interrupting tasks across non-contiguous days would clear overallocation. Not saved."
+    >
+      Preview splitting
+    </button>
+    {#if splitPreviewMsg}
+      <span class="text-[10px] text-sky-300" title={splitPreviewTitle}>{splitPreviewMsg}</span>
+    {/if}
     <button
       onclick={generateHistogram}
       disabled={resourceBusy}

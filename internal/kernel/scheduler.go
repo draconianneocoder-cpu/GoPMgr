@@ -129,6 +129,14 @@ type Task struct {
 	Assignments   []Assignment `json:"assignments,omitempty"`
 	Overallocated bool         `json:"overallocated,omitempty"`
 
+	// WorkDays, when non-empty, lists the exact working-day offsets a task
+	// occupies its resources on. It is set only by resource leveling with
+	// AllowSplitting (activity splitting); an empty slice means the task
+	// occupies its contiguous ES..EF span. ResourceUsage and
+	// DetectOverallocations consult it so a split task's idle days are not
+	// counted as resource demand.
+	WorkDays []int `json:"work_days,omitempty"`
+
 	// CPM outputs — populated by CalculateCPM.
 	ES         float64 `json:"es"`
 	EF         float64 `json:"ef"`
