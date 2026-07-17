@@ -114,14 +114,26 @@ validator tools.
 
 ## Runtime Data
 
-On first launch, PMForge creates a local data area under
-`~/Documents/PMForge/` by default:
+On first launch, PMForge creates a local data area in the platform's
+per-user data location:
+
+- **macOS:** `~/Library/Application Support/PMForge/`
+- **Linux / Windows:** `~/Documents/PMForge/`
+- `$XDG_DATA_HOME/PMForge/` overrides the default on any platform.
+
+It contains:
 
 - `system.db`: local account metadata, password hashes, and wrapped DEKs.
 - `<username>/projects/`: per-user project folders and `.pmforge` files.
 - `<username>/certs/`: user certificate files.
 - `<username>/exports/`: generated exports.
 - `logs/`: dated startup and runtime diagnostics.
+
+On macOS, this data lives in `Application Support` rather than `Documents`
+so it is not iCloud-synced between machines and does not trigger the
+Documents-folder privacy prompt. An existing `~/Documents/PMForge/` install
+is migrated automatically on first launch after upgrading (the original is
+left in place and can be deleted once you've confirmed the move).
 
 Per-user folders are created with private POSIX permissions where the
 platform supports them. Project databases are stored as one `.pmforge`
