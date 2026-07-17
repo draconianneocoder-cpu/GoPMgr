@@ -1,0 +1,1282 @@
+{
+  "description": "Every *_test.go file paired with the other .go source files in its package (package-scoped candidates). Derived from 'go list -json ./...'.",
+  "mappings": [
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/admin_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_settings_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/audit_actions_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/encryption_migration_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/encryption_project_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/headless_encryption_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/import_formats_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/montecarlo_action_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/mspdi_import_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/project_path_confinement_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/project_storage_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/report_evm_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/resources_action_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/scenarios_app_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/timeline_move_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/user_isolation_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+      ]
+    },
+    {
+      "test_file": "internal/admin/admin_test.go",
+      "package": "pmforge/internal/admin",
+      "candidate_source_files": [
+        "internal/admin/workflow.go"
+      ]
+    },
+    {
+      "test_file": "internal/agile/dora_test.go",
+      "package": "pmforge/internal/agile",
+      "candidate_source_files": [
+        "internal/agile/agile.go",
+        "internal/agile/doc.go",
+        "internal/agile/dora.go",
+        "internal/agile/store.go"
+      ]
+    },
+    {
+      "test_file": "internal/agile/ids_test.go",
+      "package": "pmforge/internal/agile",
+      "candidate_source_files": [
+        "internal/agile/agile.go",
+        "internal/agile/doc.go",
+        "internal/agile/dora.go",
+        "internal/agile/store.go"
+      ]
+    },
+    {
+      "test_file": "internal/agile/store_test.go",
+      "package": "pmforge/internal/agile",
+      "candidate_source_files": [
+        "internal/agile/agile.go",
+        "internal/agile/doc.go",
+        "internal/agile/dora.go",
+        "internal/agile/store.go"
+      ]
+    },
+    {
+      "test_file": "internal/analytics/stub_test.go",
+      "package": "pmforge/internal/analytics",
+      "candidate_source_files": [
+        "internal/analytics/analytics.go",
+        "internal/analytics/stub.go"
+      ]
+    },
+    {
+      "test_file": "internal/applog/applog_test.go",
+      "package": "pmforge/internal/applog",
+      "candidate_source_files": [
+        "internal/applog/applog.go",
+        "internal/applog/dialog_darwin.go",
+        "internal/applog/opendir_darwin.go"
+      ]
+    },
+    {
+      "test_file": "internal/auth/password_test.go",
+      "package": "pmforge/internal/auth",
+      "candidate_source_files": [
+        "internal/auth/password.go"
+      ]
+    },
+    {
+      "test_file": "internal/budget/budget_test.go",
+      "package": "pmforge/internal/budget",
+      "candidate_source_files": [
+        "internal/budget/budget.go"
+      ]
+    },
+    {
+      "test_file": "internal/calendar/calendar_test.go",
+      "package": "pmforge/internal/calendar",
+      "candidate_source_files": [
+        "internal/calendar/calendar.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/charts_test.go",
+      "package": "pmforge/internal/charts",
+      "candidate_source_files": [
+        "internal/charts/engines.go",
+        "internal/charts/registry.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/engines_schedule_test.go",
+      "package": "pmforge/internal/charts",
+      "candidate_source_files": [
+        "internal/charts/engines.go",
+        "internal/charts/registry.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/dag/cpm_anchor_test.go",
+      "package": "pmforge/internal/charts/dag",
+      "candidate_source_files": [
+        "internal/charts/dag/causal_tree.go",
+        "internal/charts/dag/cpm.go",
+        "internal/charts/dag/fishbone.go",
+        "internal/charts/dag/gantt.go",
+        "internal/charts/dag/layered.go",
+        "internal/charts/dag/network.go",
+        "internal/charts/dag/pert.go",
+        "internal/charts/dag/wbs.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/dag/dag_test.go",
+      "package": "pmforge/internal/charts/dag",
+      "candidate_source_files": [
+        "internal/charts/dag/causal_tree.go",
+        "internal/charts/dag/cpm.go",
+        "internal/charts/dag/fishbone.go",
+        "internal/charts/dag/gantt.go",
+        "internal/charts/dag/layered.go",
+        "internal/charts/dag/network.go",
+        "internal/charts/dag/pert.go",
+        "internal/charts/dag/wbs.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/dag/gantt_test.go",
+      "package": "pmforge/internal/charts/dag",
+      "candidate_source_files": [
+        "internal/charts/dag/causal_tree.go",
+        "internal/charts/dag/cpm.go",
+        "internal/charts/dag/fishbone.go",
+        "internal/charts/dag/gantt.go",
+        "internal/charts/dag/layered.go",
+        "internal/charts/dag/network.go",
+        "internal/charts/dag/pert.go",
+        "internal/charts/dag/wbs.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/dag/link_label_test.go",
+      "package": "pmforge/internal/charts/dag",
+      "candidate_source_files": [
+        "internal/charts/dag/causal_tree.go",
+        "internal/charts/dag/cpm.go",
+        "internal/charts/dag/fishbone.go",
+        "internal/charts/dag/gantt.go",
+        "internal/charts/dag/layered.go",
+        "internal/charts/dag/network.go",
+        "internal/charts/dag/pert.go",
+        "internal/charts/dag/wbs.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/dag/pert_test.go",
+      "package": "pmforge/internal/charts/dag",
+      "candidate_source_files": [
+        "internal/charts/dag/causal_tree.go",
+        "internal/charts/dag/cpm.go",
+        "internal/charts/dag/fishbone.go",
+        "internal/charts/dag/gantt.go",
+        "internal/charts/dag/layered.go",
+        "internal/charts/dag/network.go",
+        "internal/charts/dag/pert.go",
+        "internal/charts/dag/wbs.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/flow/flow_test.go",
+      "package": "pmforge/internal/charts/flow",
+      "candidate_source_files": [
+        "internal/charts/flow/activity.go",
+        "internal/charts/flow/common.go",
+        "internal/charts/flow/workflow.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/matrix/generic_test.go",
+      "package": "pmforge/internal/charts/matrix",
+      "candidate_source_files": [
+        "internal/charts/matrix/common.go",
+        "internal/charts/matrix/generic.go",
+        "internal/charts/matrix/raci.go",
+        "internal/charts/matrix/stakeholder.go",
+        "internal/charts/matrix/swot.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/matrix/raci_test.go",
+      "package": "pmforge/internal/charts/matrix",
+      "candidate_source_files": [
+        "internal/charts/matrix/common.go",
+        "internal/charts/matrix/generic.go",
+        "internal/charts/matrix/raci.go",
+        "internal/charts/matrix/stakeholder.go",
+        "internal/charts/matrix/swot.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/matrix/stakeholder_test.go",
+      "package": "pmforge/internal/charts/matrix",
+      "candidate_source_files": [
+        "internal/charts/matrix/common.go",
+        "internal/charts/matrix/generic.go",
+        "internal/charts/matrix/raci.go",
+        "internal/charts/matrix/stakeholder.go",
+        "internal/charts/matrix/swot.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/matrix/swot_test.go",
+      "package": "pmforge/internal/charts/matrix",
+      "candidate_source_files": [
+        "internal/charts/matrix/common.go",
+        "internal/charts/matrix/generic.go",
+        "internal/charts/matrix/raci.go",
+        "internal/charts/matrix/stakeholder.go",
+        "internal/charts/matrix/swot.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/pdfrender/gantt_test.go",
+      "package": "pmforge/internal/charts/pdfrender",
+      "candidate_source_files": [
+        "internal/charts/pdfrender/dag.go",
+        "internal/charts/pdfrender/dispatcher.go",
+        "internal/charts/pdfrender/fishbone.go",
+        "internal/charts/pdfrender/flow.go",
+        "internal/charts/pdfrender/gantt.go",
+        "internal/charts/pdfrender/matrix.go",
+        "internal/charts/pdfrender/stats.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/pdfrender/pdfrender_test.go",
+      "package": "pmforge/internal/charts/pdfrender",
+      "candidate_source_files": [
+        "internal/charts/pdfrender/dag.go",
+        "internal/charts/pdfrender/dispatcher.go",
+        "internal/charts/pdfrender/fishbone.go",
+        "internal/charts/pdfrender/flow.go",
+        "internal/charts/pdfrender/gantt.go",
+        "internal/charts/pdfrender/matrix.go",
+        "internal/charts/pdfrender/stats.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/stats/stats_remaining_test.go",
+      "package": "pmforge/internal/charts/stats",
+      "candidate_source_files": [
+        "internal/charts/stats/bar.go",
+        "internal/charts/stats/burndown.go",
+        "internal/charts/stats/burnup.go",
+        "internal/charts/stats/common.go",
+        "internal/charts/stats/control.go",
+        "internal/charts/stats/cumflow.go",
+        "internal/charts/stats/line.go",
+        "internal/charts/stats/pareto.go",
+        "internal/charts/stats/pie.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/stats/stats_test.go",
+      "package": "pmforge/internal/charts/stats",
+      "candidate_source_files": [
+        "internal/charts/stats/bar.go",
+        "internal/charts/stats/burndown.go",
+        "internal/charts/stats/burnup.go",
+        "internal/charts/stats/common.go",
+        "internal/charts/stats/control.go",
+        "internal/charts/stats/cumflow.go",
+        "internal/charts/stats/line.go",
+        "internal/charts/stats/pareto.go",
+        "internal/charts/stats/pie.go"
+      ]
+    },
+    {
+      "test_file": "internal/cli/parser_test.go",
+      "package": "pmforge/internal/cli",
+      "candidate_source_files": [
+        "internal/cli/parser.go"
+      ]
+    },
+    {
+      "test_file": "internal/crypto/encrypt_test.go",
+      "package": "pmforge/internal/crypto",
+      "candidate_source_files": [
+        "internal/crypto/encrypt.go",
+        "internal/crypto/keywrap.go",
+        "internal/crypto/pdf_cms.go",
+        "internal/crypto/pdf_sign.go"
+      ]
+    },
+    {
+      "test_file": "internal/crypto/keywrap_test.go",
+      "package": "pmforge/internal/crypto",
+      "candidate_source_files": [
+        "internal/crypto/encrypt.go",
+        "internal/crypto/keywrap.go",
+        "internal/crypto/pdf_cms.go",
+        "internal/crypto/pdf_sign.go"
+      ]
+    },
+    {
+      "test_file": "internal/crypto/pdf_sign_test.go",
+      "package": "pmforge/internal/crypto",
+      "candidate_source_files": [
+        "internal/crypto/encrypt.go",
+        "internal/crypto/keywrap.go",
+        "internal/crypto/pdf_cms.go",
+        "internal/crypto/pdf_sign.go"
+      ]
+    },
+    {
+      "test_file": "internal/db/audit_events_test.go",
+      "package": "pmforge/internal/db",
+      "candidate_source_files": [
+        "internal/db/audit.go",
+        "internal/db/audit_checkpoints.go",
+        "internal/db/backup.go",
+        "internal/db/baselines.go",
+        "internal/db/charts.go",
+        "internal/db/documents.go",
+        "internal/db/encryption.go",
+        "internal/db/ids.go",
+        "internal/db/project.go",
+        "internal/db/repair.go",
+        "internal/db/resource_calendars.go",
+        "internal/db/scenarios.go",
+        "internal/db/settings.go",
+        "internal/db/sigma.go",
+        "internal/db/sqlite.go",
+        "internal/db/stakeholders.go"
+      ]
+    },
+    {
+      "test_file": "internal/db/audit_test.go",
+      "package": "pmforge/internal/db",
+      "candidate_source_files": [
+        "internal/db/audit.go",
+        "internal/db/audit_checkpoints.go",
+        "internal/db/backup.go",
+        "internal/db/baselines.go",
+        "internal/db/charts.go",
+        "internal/db/documents.go",
+        "internal/db/encryption.go",
+        "internal/db/ids.go",
+        "internal/db/project.go",
+        "internal/db/repair.go",
+        "internal/db/resource_calendars.go",
+        "internal/db/scenarios.go",
+        "internal/db/settings.go",
+        "internal/db/sigma.go",
+        "internal/db/sqlite.go",
+        "internal/db/stakeholders.go"
+      ]
+    },
+    {
+      "test_file": "internal/db/backup_test.go",
+      "package": "pmforge/internal/db",
+      "candidate_source_files": [
+        "internal/db/audit.go",
+        "internal/db/audit_checkpoints.go",
+        "internal/db/backup.go",
+        "internal/db/baselines.go",
+        "internal/db/charts.go",
+        "internal/db/documents.go",
+        "internal/db/encryption.go",
+        "internal/db/ids.go",
+        "internal/db/project.go",
+        "internal/db/repair.go",
+        "internal/db/resource_calendars.go",
+        "internal/db/scenarios.go",
+        "internal/db/settings.go",
+        "internal/db/sigma.go",
+        "internal/db/sqlite.go",
+        "internal/db/stakeholders.go"
+      ]
+    },
+    {
+      "test_file": "internal/db/baselines_test.go",
+      "package": "pmforge/internal/db",
+      "candidate_source_files": [
+        "internal/db/audit.go",
+        "internal/db/audit_checkpoints.go",
+        "internal/db/backup.go",
+        "internal/db/baselines.go",
+        "internal/db/charts.go",
+        "internal/db/documents.go",
+        "internal/db/encryption.go",
+        "internal/db/ids.go",
+        "internal/db/project.go",
+        "internal/db/repair.go",
+        "internal/db/resource_calendars.go",
+        "internal/db/scenarios.go",
+        "internal/db/settings.go",
+        "internal/db/sigma.go",
+        "internal/db/sqlite.go",
+        "internal/db/stakeholders.go"
+      ]
+    },
+    {
+      "test_file": "internal/db/encryption_test.go",
+      "package": "pmforge/internal/db",
+      "candidate_source_files": [
+        "internal/db/audit.go",
+        "internal/db/audit_checkpoints.go",
+        "internal/db/backup.go",
+        "internal/db/baselines.go",
+        "internal/db/charts.go",
+        "internal/db/documents.go",
+        "internal/db/encryption.go",
+        "internal/db/ids.go",
+        "internal/db/project.go",
+        "internal/db/repair.go",
+        "internal/db/resource_calendars.go",
+        "internal/db/scenarios.go",
+        "internal/db/settings.go",
+        "internal/db/sigma.go",
+        "internal/db/sqlite.go",
+        "internal/db/stakeholders.go"
+      ]
+    },
+    {
+      "test_file": "internal/db/ids_test.go",
+      "package": "pmforge/internal/db",
+      "candidate_source_files": [
+        "internal/db/audit.go",
+        "internal/db/audit_checkpoints.go",
+        "internal/db/backup.go",
+        "internal/db/baselines.go",
+        "internal/db/charts.go",
+        "internal/db/documents.go",
+        "internal/db/encryption.go",
+        "internal/db/ids.go",
+        "internal/db/project.go",
+        "internal/db/repair.go",
+        "internal/db/resource_calendars.go",
+        "internal/db/scenarios.go",
+        "internal/db/settings.go",
+        "internal/db/sigma.go",
+        "internal/db/sqlite.go",
+        "internal/db/stakeholders.go"
+      ]
+    },
+    {
+      "test_file": "internal/db/money_columns_test.go",
+      "package": "pmforge/internal/db",
+      "candidate_source_files": [
+        "internal/db/audit.go",
+        "internal/db/audit_checkpoints.go",
+        "internal/db/backup.go",
+        "internal/db/baselines.go",
+        "internal/db/charts.go",
+        "internal/db/documents.go",
+        "internal/db/encryption.go",
+        "internal/db/ids.go",
+        "internal/db/project.go",
+        "internal/db/repair.go",
+        "internal/db/resource_calendars.go",
+        "internal/db/scenarios.go",
+        "internal/db/settings.go",
+        "internal/db/sigma.go",
+        "internal/db/sqlite.go",
+        "internal/db/stakeholders.go"
+      ]
+    },
+    {
+      "test_file": "internal/db/repair_encryption_test.go",
+      "package": "pmforge/internal/db",
+      "candidate_source_files": [
+        "internal/db/audit.go",
+        "internal/db/audit_checkpoints.go",
+        "internal/db/backup.go",
+        "internal/db/baselines.go",
+        "internal/db/charts.go",
+        "internal/db/documents.go",
+        "internal/db/encryption.go",
+        "internal/db/ids.go",
+        "internal/db/project.go",
+        "internal/db/repair.go",
+        "internal/db/resource_calendars.go",
+        "internal/db/scenarios.go",
+        "internal/db/settings.go",
+        "internal/db/sigma.go",
+        "internal/db/sqlite.go",
+        "internal/db/stakeholders.go"
+      ]
+    },
+    {
+      "test_file": "internal/db/repair_test.go",
+      "package": "pmforge/internal/db",
+      "candidate_source_files": [
+        "internal/db/audit.go",
+        "internal/db/audit_checkpoints.go",
+        "internal/db/backup.go",
+        "internal/db/baselines.go",
+        "internal/db/charts.go",
+        "internal/db/documents.go",
+        "internal/db/encryption.go",
+        "internal/db/ids.go",
+        "internal/db/project.go",
+        "internal/db/repair.go",
+        "internal/db/resource_calendars.go",
+        "internal/db/scenarios.go",
+        "internal/db/settings.go",
+        "internal/db/sigma.go",
+        "internal/db/sqlite.go",
+        "internal/db/stakeholders.go"
+      ]
+    },
+    {
+      "test_file": "internal/db/resource_calendars_test.go",
+      "package": "pmforge/internal/db",
+      "candidate_source_files": [
+        "internal/db/audit.go",
+        "internal/db/audit_checkpoints.go",
+        "internal/db/backup.go",
+        "internal/db/baselines.go",
+        "internal/db/charts.go",
+        "internal/db/documents.go",
+        "internal/db/encryption.go",
+        "internal/db/ids.go",
+        "internal/db/project.go",
+        "internal/db/repair.go",
+        "internal/db/resource_calendars.go",
+        "internal/db/scenarios.go",
+        "internal/db/settings.go",
+        "internal/db/sigma.go",
+        "internal/db/sqlite.go",
+        "internal/db/stakeholders.go"
+      ]
+    },
+    {
+      "test_file": "internal/db/scenarios_test.go",
+      "package": "pmforge/internal/db",
+      "candidate_source_files": [
+        "internal/db/audit.go",
+        "internal/db/audit_checkpoints.go",
+        "internal/db/backup.go",
+        "internal/db/baselines.go",
+        "internal/db/charts.go",
+        "internal/db/documents.go",
+        "internal/db/encryption.go",
+        "internal/db/ids.go",
+        "internal/db/project.go",
+        "internal/db/repair.go",
+        "internal/db/resource_calendars.go",
+        "internal/db/scenarios.go",
+        "internal/db/settings.go",
+        "internal/db/sigma.go",
+        "internal/db/sqlite.go",
+        "internal/db/stakeholders.go"
+      ]
+    },
+    {
+      "test_file": "internal/db/settings_test.go",
+      "package": "pmforge/internal/db",
+      "candidate_source_files": [
+        "internal/db/audit.go",
+        "internal/db/audit_checkpoints.go",
+        "internal/db/backup.go",
+        "internal/db/baselines.go",
+        "internal/db/charts.go",
+        "internal/db/documents.go",
+        "internal/db/encryption.go",
+        "internal/db/ids.go",
+        "internal/db/project.go",
+        "internal/db/repair.go",
+        "internal/db/resource_calendars.go",
+        "internal/db/scenarios.go",
+        "internal/db/settings.go",
+        "internal/db/sigma.go",
+        "internal/db/sqlite.go",
+        "internal/db/stakeholders.go"
+      ]
+    },
+    {
+      "test_file": "internal/db/sigma_test.go",
+      "package": "pmforge/internal/db",
+      "candidate_source_files": [
+        "internal/db/audit.go",
+        "internal/db/audit_checkpoints.go",
+        "internal/db/backup.go",
+        "internal/db/baselines.go",
+        "internal/db/charts.go",
+        "internal/db/documents.go",
+        "internal/db/encryption.go",
+        "internal/db/ids.go",
+        "internal/db/project.go",
+        "internal/db/repair.go",
+        "internal/db/resource_calendars.go",
+        "internal/db/scenarios.go",
+        "internal/db/settings.go",
+        "internal/db/sigma.go",
+        "internal/db/sqlite.go",
+        "internal/db/stakeholders.go"
+      ]
+    },
+    {
+      "test_file": "internal/debug/report_test.go",
+      "package": "pmforge/internal/debug",
+      "candidate_source_files": [
+        "internal/debug/report.go"
+      ]
+    },
+    {
+      "test_file": "internal/documents/documents_test.go",
+      "package": "pmforge/internal/documents",
+      "candidate_source_files": [
+        "internal/documents/business_case.go",
+        "internal/documents/change_request.go",
+        "internal/documents/charter.go",
+        "internal/documents/closure.go",
+        "internal/documents/communication_plan.go",
+        "internal/documents/defaults.go",
+        "internal/documents/execution_plan.go",
+        "internal/documents/fonts.go",
+        "internal/documents/issue_log.go",
+        "internal/documents/procurement_plan.go",
+        "internal/documents/project_brief.go",
+        "internal/documents/project_budget.go",
+        "internal/documents/project_overview.go",
+        "internal/documents/project_plan.go",
+        "internal/documents/project_proposal.go",
+        "internal/documents/project_schedule.go",
+        "internal/documents/raci_document.go",
+        "internal/documents/registry.go",
+        "internal/documents/report.go",
+        "internal/documents/requirements.go",
+        "internal/documents/risk_register.go",
+        "internal/documents/scope_statement.go",
+        "internal/documents/signature_appearance.go",
+        "internal/documents/stakeholder_analysis.go",
+        "internal/documents/statement_of_work.go",
+        "internal/documents/status_report.go",
+        "internal/documents/team_charter.go",
+        "internal/documents/templates.go",
+        "internal/documents/wbs_document.go"
+      ]
+    },
+    {
+      "test_file": "internal/documents/helpers_test.go",
+      "package": "pmforge/internal/documents",
+      "candidate_source_files": [
+        "internal/documents/business_case.go",
+        "internal/documents/change_request.go",
+        "internal/documents/charter.go",
+        "internal/documents/closure.go",
+        "internal/documents/communication_plan.go",
+        "internal/documents/defaults.go",
+        "internal/documents/execution_plan.go",
+        "internal/documents/fonts.go",
+        "internal/documents/issue_log.go",
+        "internal/documents/procurement_plan.go",
+        "internal/documents/project_brief.go",
+        "internal/documents/project_budget.go",
+        "internal/documents/project_overview.go",
+        "internal/documents/project_plan.go",
+        "internal/documents/project_proposal.go",
+        "internal/documents/project_schedule.go",
+        "internal/documents/raci_document.go",
+        "internal/documents/registry.go",
+        "internal/documents/report.go",
+        "internal/documents/requirements.go",
+        "internal/documents/risk_register.go",
+        "internal/documents/scope_statement.go",
+        "internal/documents/signature_appearance.go",
+        "internal/documents/stakeholder_analysis.go",
+        "internal/documents/statement_of_work.go",
+        "internal/documents/status_report.go",
+        "internal/documents/team_charter.go",
+        "internal/documents/templates.go",
+        "internal/documents/wbs_document.go"
+      ]
+    },
+    {
+      "test_file": "internal/documents/project_budget_test.go",
+      "package": "pmforge/internal/documents",
+      "candidate_source_files": [
+        "internal/documents/business_case.go",
+        "internal/documents/change_request.go",
+        "internal/documents/charter.go",
+        "internal/documents/closure.go",
+        "internal/documents/communication_plan.go",
+        "internal/documents/defaults.go",
+        "internal/documents/execution_plan.go",
+        "internal/documents/fonts.go",
+        "internal/documents/issue_log.go",
+        "internal/documents/procurement_plan.go",
+        "internal/documents/project_brief.go",
+        "internal/documents/project_budget.go",
+        "internal/documents/project_overview.go",
+        "internal/documents/project_plan.go",
+        "internal/documents/project_proposal.go",
+        "internal/documents/project_schedule.go",
+        "internal/documents/raci_document.go",
+        "internal/documents/registry.go",
+        "internal/documents/report.go",
+        "internal/documents/requirements.go",
+        "internal/documents/risk_register.go",
+        "internal/documents/scope_statement.go",
+        "internal/documents/signature_appearance.go",
+        "internal/documents/stakeholder_analysis.go",
+        "internal/documents/statement_of_work.go",
+        "internal/documents/status_report.go",
+        "internal/documents/team_charter.go",
+        "internal/documents/templates.go",
+        "internal/documents/wbs_document.go"
+      ]
+    },
+    {
+      "test_file": "internal/documents/report_evm_test.go",
+      "package": "pmforge/internal/documents",
+      "candidate_source_files": [
+        "internal/documents/business_case.go",
+        "internal/documents/change_request.go",
+        "internal/documents/charter.go",
+        "internal/documents/closure.go",
+        "internal/documents/communication_plan.go",
+        "internal/documents/defaults.go",
+        "internal/documents/execution_plan.go",
+        "internal/documents/fonts.go",
+        "internal/documents/issue_log.go",
+        "internal/documents/procurement_plan.go",
+        "internal/documents/project_brief.go",
+        "internal/documents/project_budget.go",
+        "internal/documents/project_overview.go",
+        "internal/documents/project_plan.go",
+        "internal/documents/project_proposal.go",
+        "internal/documents/project_schedule.go",
+        "internal/documents/raci_document.go",
+        "internal/documents/registry.go",
+        "internal/documents/report.go",
+        "internal/documents/requirements.go",
+        "internal/documents/risk_register.go",
+        "internal/documents/scope_statement.go",
+        "internal/documents/signature_appearance.go",
+        "internal/documents/stakeholder_analysis.go",
+        "internal/documents/statement_of_work.go",
+        "internal/documents/status_report.go",
+        "internal/documents/team_charter.go",
+        "internal/documents/templates.go",
+        "internal/documents/wbs_document.go"
+      ]
+    },
+    {
+      "test_file": "internal/export/csv_test.go",
+      "package": "pmforge/internal/export",
+      "candidate_source_files": [
+        "internal/export/csv.go",
+        "internal/export/docx.go",
+        "internal/export/docx_report.go",
+        "internal/export/engine.go",
+        "internal/export/html.go",
+        "internal/export/ical.go",
+        "internal/export/montecarlo_report.go",
+        "internal/export/mspdi.go",
+        "internal/export/mspdi_import.go",
+        "internal/export/odt.go",
+        "internal/export/odt_report.go",
+        "internal/export/pdf.go",
+        "internal/export/pdfa.go",
+        "internal/export/sigma_report.go",
+        "internal/export/xlsx.go"
+      ]
+    },
+    {
+      "test_file": "internal/export/evm_section_test.go",
+      "package": "pmforge/internal/export",
+      "candidate_source_files": [
+        "internal/export/csv.go",
+        "internal/export/docx.go",
+        "internal/export/docx_report.go",
+        "internal/export/engine.go",
+        "internal/export/html.go",
+        "internal/export/ical.go",
+        "internal/export/montecarlo_report.go",
+        "internal/export/mspdi.go",
+        "internal/export/mspdi_import.go",
+        "internal/export/odt.go",
+        "internal/export/odt_report.go",
+        "internal/export/pdf.go",
+        "internal/export/pdfa.go",
+        "internal/export/sigma_report.go",
+        "internal/export/xlsx.go"
+      ]
+    },
+    {
+      "test_file": "internal/export/html_test.go",
+      "package": "pmforge/internal/export",
+      "candidate_source_files": [
+        "internal/export/csv.go",
+        "internal/export/docx.go",
+        "internal/export/docx_report.go",
+        "internal/export/engine.go",
+        "internal/export/html.go",
+        "internal/export/ical.go",
+        "internal/export/montecarlo_report.go",
+        "internal/export/mspdi.go",
+        "internal/export/mspdi_import.go",
+        "internal/export/odt.go",
+        "internal/export/odt_report.go",
+        "internal/export/pdf.go",
+        "internal/export/pdfa.go",
+        "internal/export/sigma_report.go",
+        "internal/export/xlsx.go"
+      ]
+    },
+    {
+      "test_file": "internal/export/montecarlo_report_test.go",
+      "package": "pmforge/internal/export",
+      "candidate_source_files": [
+        "internal/export/csv.go",
+        "internal/export/docx.go",
+        "internal/export/docx_report.go",
+        "internal/export/engine.go",
+        "internal/export/html.go",
+        "internal/export/ical.go",
+        "internal/export/montecarlo_report.go",
+        "internal/export/mspdi.go",
+        "internal/export/mspdi_import.go",
+        "internal/export/odt.go",
+        "internal/export/odt_report.go",
+        "internal/export/pdf.go",
+        "internal/export/pdfa.go",
+        "internal/export/sigma_report.go",
+        "internal/export/xlsx.go"
+      ]
+    },
+    {
+      "test_file": "internal/export/mspdi_import_test.go",
+      "package": "pmforge/internal/export",
+      "candidate_source_files": [
+        "internal/export/csv.go",
+        "internal/export/docx.go",
+        "internal/export/docx_report.go",
+        "internal/export/engine.go",
+        "internal/export/html.go",
+        "internal/export/ical.go",
+        "internal/export/montecarlo_report.go",
+        "internal/export/mspdi.go",
+        "internal/export/mspdi_import.go",
+        "internal/export/odt.go",
+        "internal/export/odt_report.go",
+        "internal/export/pdf.go",
+        "internal/export/pdfa.go",
+        "internal/export/sigma_report.go",
+        "internal/export/xlsx.go"
+      ]
+    },
+    {
+      "test_file": "internal/export/mspdi_test.go",
+      "package": "pmforge/internal/export",
+      "candidate_source_files": [
+        "internal/export/csv.go",
+        "internal/export/docx.go",
+        "internal/export/docx_report.go",
+        "internal/export/engine.go",
+        "internal/export/html.go",
+        "internal/export/ical.go",
+        "internal/export/montecarlo_report.go",
+        "internal/export/mspdi.go",
+        "internal/export/mspdi_import.go",
+        "internal/export/odt.go",
+        "internal/export/odt_report.go",
+        "internal/export/pdf.go",
+        "internal/export/pdfa.go",
+        "internal/export/sigma_report.go",
+        "internal/export/xlsx.go"
+      ]
+    },
+    {
+      "test_file": "internal/export/pdf_eof_test.go",
+      "package": "pmforge/internal/export",
+      "candidate_source_files": [
+        "internal/export/csv.go",
+        "internal/export/docx.go",
+        "internal/export/docx_report.go",
+        "internal/export/engine.go",
+        "internal/export/html.go",
+        "internal/export/ical.go",
+        "internal/export/montecarlo_report.go",
+        "internal/export/mspdi.go",
+        "internal/export/mspdi_import.go",
+        "internal/export/odt.go",
+        "internal/export/odt_report.go",
+        "internal/export/pdf.go",
+        "internal/export/pdfa.go",
+        "internal/export/sigma_report.go",
+        "internal/export/xlsx.go"
+      ]
+    },
+    {
+      "test_file": "internal/export/sigma_report_test.go",
+      "package": "pmforge/internal/export",
+      "candidate_source_files": [
+        "internal/export/csv.go",
+        "internal/export/docx.go",
+        "internal/export/docx_report.go",
+        "internal/export/engine.go",
+        "internal/export/html.go",
+        "internal/export/ical.go",
+        "internal/export/montecarlo_report.go",
+        "internal/export/mspdi.go",
+        "internal/export/mspdi_import.go",
+        "internal/export/odt.go",
+        "internal/export/odt_report.go",
+        "internal/export/pdf.go",
+        "internal/export/pdfa.go",
+        "internal/export/sigma_report.go",
+        "internal/export/xlsx.go"
+      ]
+    },
+    {
+      "test_file": "internal/exportsafe/exportsafe_test.go",
+      "package": "pmforge/internal/exportsafe",
+      "candidate_source_files": [
+        "internal/exportsafe/exportsafe.go"
+      ]
+    },
+    {
+      "test_file": "internal/fonts/fonts_test.go",
+      "package": "pmforge/internal/fonts",
+      "candidate_source_files": [
+        "internal/fonts/catalog.go",
+        "internal/fonts/manager.go"
+      ]
+    },
+    {
+      "test_file": "internal/kernel/anchor_test.go",
+      "package": "pmforge/internal/kernel",
+      "candidate_source_files": [
+        "internal/kernel/anchor.go",
+        "internal/kernel/baseline.go",
+        "internal/kernel/evm.go",
+        "internal/kernel/montecarlo.go",
+        "internal/kernel/resources.go",
+        "internal/kernel/scheduler.go"
+      ]
+    },
+    {
+      "test_file": "internal/kernel/baseline_test.go",
+      "package": "pmforge/internal/kernel",
+      "candidate_source_files": [
+        "internal/kernel/anchor.go",
+        "internal/kernel/baseline.go",
+        "internal/kernel/evm.go",
+        "internal/kernel/montecarlo.go",
+        "internal/kernel/resources.go",
+        "internal/kernel/scheduler.go"
+      ]
+    },
+    {
+      "test_file": "internal/kernel/constraints_test.go",
+      "package": "pmforge/internal/kernel",
+      "candidate_source_files": [
+        "internal/kernel/anchor.go",
+        "internal/kernel/baseline.go",
+        "internal/kernel/evm.go",
+        "internal/kernel/montecarlo.go",
+        "internal/kernel/resources.go",
+        "internal/kernel/scheduler.go"
+      ]
+    },
+    {
+      "test_file": "internal/kernel/evm_test.go",
+      "package": "pmforge/internal/kernel",
+      "candidate_source_files": [
+        "internal/kernel/anchor.go",
+        "internal/kernel/baseline.go",
+        "internal/kernel/evm.go",
+        "internal/kernel/montecarlo.go",
+        "internal/kernel/resources.go",
+        "internal/kernel/scheduler.go"
+      ]
+    },
+    {
+      "test_file": "internal/kernel/leveling_options_test.go",
+      "package": "pmforge/internal/kernel",
+      "candidate_source_files": [
+        "internal/kernel/anchor.go",
+        "internal/kernel/baseline.go",
+        "internal/kernel/evm.go",
+        "internal/kernel/montecarlo.go",
+        "internal/kernel/resources.go",
+        "internal/kernel/scheduler.go"
+      ]
+    },
+    {
+      "test_file": "internal/kernel/links_test.go",
+      "package": "pmforge/internal/kernel",
+      "candidate_source_files": [
+        "internal/kernel/anchor.go",
+        "internal/kernel/baseline.go",
+        "internal/kernel/evm.go",
+        "internal/kernel/montecarlo.go",
+        "internal/kernel/resources.go",
+        "internal/kernel/scheduler.go"
+      ]
+    },
+    {
+      "test_file": "internal/kernel/montecarlo_test.go",
+      "package": "pmforge/internal/kernel",
+      "candidate_source_files": [
+        "internal/kernel/anchor.go",
+        "internal/kernel/baseline.go",
+        "internal/kernel/evm.go",
+        "internal/kernel/montecarlo.go",
+        "internal/kernel/resources.go",
+        "internal/kernel/scheduler.go"
+      ]
+    },
+    {
+      "test_file": "internal/kernel/resources_test.go",
+      "package": "pmforge/internal/kernel",
+      "candidate_source_files": [
+        "internal/kernel/anchor.go",
+        "internal/kernel/baseline.go",
+        "internal/kernel/evm.go",
+        "internal/kernel/montecarlo.go",
+        "internal/kernel/resources.go",
+        "internal/kernel/scheduler.go"
+      ]
+    },
+    {
+      "test_file": "internal/kernel/scheduler_test.go",
+      "package": "pmforge/internal/kernel",
+      "candidate_source_files": [
+        "internal/kernel/anchor.go",
+        "internal/kernel/baseline.go",
+        "internal/kernel/evm.go",
+        "internal/kernel/montecarlo.go",
+        "internal/kernel/resources.go",
+        "internal/kernel/scheduler.go"
+      ]
+    },
+    {
+      "test_file": "internal/money/money_test.go",
+      "package": "pmforge/internal/money",
+      "candidate_source_files": [
+        "internal/money/money.go"
+      ]
+    },
+    {
+      "test_file": "internal/pdfmeta/pdfmeta_test.go",
+      "package": "pmforge/internal/pdfmeta",
+      "candidate_source_files": [
+        "internal/pdfmeta/icc.go",
+        "internal/pdfmeta/pdfmeta.go"
+      ]
+    },
+    {
+      "test_file": "internal/sigma/charts/pareto_test.go",
+      "package": "pmforge/internal/sigma/charts",
+      "candidate_source_files": [
+        "internal/sigma/charts/pareto.go"
+      ]
+    },
+    {
+      "test_file": "internal/sigma/domain/enums_test.go",
+      "package": "pmforge/internal/sigma/domain",
+      "candidate_source_files": [
+        "internal/sigma/domain/fishbone.go",
+        "internal/sigma/domain/project.go",
+        "internal/sigma/domain/sipoc.go",
+        "internal/sigma/domain/solution.go",
+        "internal/sigma/domain/voc.go"
+      ]
+    },
+    {
+      "test_file": "internal/sigma/service/service_test.go",
+      "package": "pmforge/internal/sigma/service",
+      "candidate_source_files": [
+        "internal/sigma/service/project.go",
+        "internal/sigma/service/status.go"
+      ]
+    },
+    {
+      "test_file": "internal/sigma/service/status_test.go",
+      "package": "pmforge/internal/sigma/service",
+      "candidate_source_files": [
+        "internal/sigma/service/project.go",
+        "internal/sigma/service/status.go"
+      ]
+    },
+    {
+      "test_file": "internal/sigma/stats/basic_test.go",
+      "package": "pmforge/internal/sigma/stats",
+      "candidate_source_files": [
+        "internal/sigma/stats/basic.go"
+      ]
+    },
+    {
+      "test_file": "internal/sigma/tollgate/readiness_test.go",
+      "package": "pmforge/internal/sigma/tollgate",
+      "candidate_source_files": [
+        "internal/sigma/tollgate/readiness.go"
+      ]
+    },
+    {
+      "test_file": "internal/signing/gnupg_test.go",
+      "package": "pmforge/internal/signing",
+      "candidate_source_files": [
+        "internal/signing/gnupg.go"
+      ]
+    },
+    {
+      "test_file": "internal/sqlitedriver/driver_test.go",
+      "package": "pmforge/internal/sqlitedriver",
+      "candidate_source_files": [
+        "internal/sqlitedriver/driver.go"
+      ]
+    },
+    {
+      "test_file": "internal/templates/jdm_test.go",
+      "package": "pmforge/internal/templates",
+      "candidate_source_files": [
+        "internal/templates/jdm.go",
+        "internal/templates/seeds.go"
+      ]
+    },
+    {
+      "test_file": "internal/timeline/timeline_test.go",
+      "package": "pmforge/internal/timeline",
+      "candidate_source_files": [
+        "internal/timeline/timeline.go"
+      ]
+    },
+    {
+      "test_file": "internal/update/check_test.go",
+      "package": "pmforge/internal/update",
+      "candidate_source_files": [
+        "internal/update/check.go",
+        "internal/update/manifest.go"
+      ]
+    },
+    {
+      "test_file": "internal/users/dek_test.go",
+      "package": "pmforge/internal/users",
+      "candidate_source_files": [
+        "internal/users/dek.go",
+        "internal/users/recovery.go",
+        "internal/users/store.go"
+      ]
+    },
+    {
+      "test_file": "internal/users/recovery_test.go",
+      "package": "pmforge/internal/users",
+      "candidate_source_files": [
+        "internal/users/dek.go",
+        "internal/users/recovery.go",
+        "internal/users/store.go"
+      ]
+    },
+    {
+      "test_file": "internal/users/store_test.go",
+      "package": "pmforge/internal/users",
+      "candidate_source_files": [
+        "internal/users/dek.go",
+        "internal/users/recovery.go",
+        "internal/users/store.go"
+      ]
+    }
+  ]
+}

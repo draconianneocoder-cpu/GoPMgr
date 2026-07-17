@@ -34,6 +34,29 @@ func TestRenderChartToPDF_Gantt(t *testing.T) {
 	}
 }
 
+// TestRenderChartToPDF_GanttSplit renders a task carrying split work_segments
+// and confirms the interrupted-bar path draws without error.
+func TestRenderChartToPDF_GanttSplit(t *testing.T) {
+	pdf := fpdf.New("L", "mm", "A4", "")
+	pdf.AddPage()
+
+	// S is a 3-day task interrupted across relative days 0,2,4.
+	data := `{
+		"nodes": [
+			{"id":"S","label":"Long task","duration":3,
+			 "work_segments":[{"start":0,"end":1},{"start":2,"end":3},{"start":4,"end":5}]}
+		],
+		"edges": []
+	}`
+	frame := Frame{X: 10, Y: 10, W: 260, H: 180}
+	if err := RenderChartToPDF(pdf, "gantt", data, "Schedule", frame); err != nil {
+		t.Fatalf("RenderChartToPDF(gantt split): %v", err)
+	}
+	if pdf.Err() {
+		t.Fatalf("fpdf error state: %v", pdf.Error())
+	}
+}
+
 func TestRenderChartToPDF_GanttEmpty(t *testing.T) {
 	pdf := fpdf.New("L", "mm", "A4", "")
 	pdf.AddPage()

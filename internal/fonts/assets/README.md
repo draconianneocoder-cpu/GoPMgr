@@ -29,7 +29,7 @@ rebuild with `make build` and the fonts are embedded.
 
 If a family's `.ttf` files are absent at build time, the font Manager
 omits that family from `Available()` and renderers fall back to the
-next available family (ultimately to gofpdf's built-in Helvetica). The
+next available family (ultimately to fpdf's built-in Helvetica). The
 application always builds and runs, fonts or no fonts.
 
 ## Licenses
@@ -44,5 +44,11 @@ GPL-3.0-compatible:
 | Noto Sans         | OFL-1.1        |
 | Source Sans 3     | OFL-1.1        |
 | JetBrains Mono    | OFL-1.1        |
+| Roboto            | Apache-2.0     |
+| Arimo             | Apache-2.0     |
+| Cousine           | Apache-2.0     |
+| Ledger            | OFL-1.1        |
 
-See `LICENSES/OFL-1.1.txt` for the SIL Open Font License text.
+License texts are not committed here; see `LICENSES.md` for how to fetch
+`OFL-1.1.txt`, `Apache-2.0.txt`, and `LicenseRef-Bitstream-Vera.txt` into
+`LICENSES/`.

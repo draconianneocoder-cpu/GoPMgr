@@ -1,18 +1,18 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package charts is the taxonomy and dispatch layer for PMForge's 20
+// Package charts is the taxonomy and dispatch layer for PMForge's 21
 // chart and diagram types.
 //
 // # Architectural overview
 //
-// Rather than 20 separate packages, all chart types share four
+// Rather than 21 separate packages, all chart types share four
 // engines. Each engine knows how to take a JSON `data` blob and a
 // JSON `config` blob and produce (a) an internal layout suitable for
 // the Svelte frontend, and (b) a rendering to PDF/PNG/SVG for export:
 //
 //   - dag     Hierarchical / directed-acyclic-graph layouts: WBS,
-//     Network Diagram, PERT, CPM, Fishbone, Cause-and-Effect.
+//     Network Diagram, PERT, CPM, Gantt, Fishbone, Cause-and-Effect.
 //   - stats   Quantitative data series: Line, Bar, Pareto, Pie,
 //     Burn-Up, Burn-Down, Cumulative Flow, Control.
 //   - matrix  Grid-based: RACI, SWOT, Stakeholder Analysis, Matrix Diagram.

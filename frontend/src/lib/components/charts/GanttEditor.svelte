@@ -14,27 +14,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../../session.svelte';
   import { autosave } from '../../autosave.svelte';
   import { showToast } from '../../toast.svelte';
+  import GanttBars from './GanttBars.svelte';
+  import { GANTT_ROW_H as rowH, type GanttLayout, type GanttRow } from './gantt_geometry';
+  import { splitLevelStatus, splitPreviewMessage, clearWorkSegments } from './leveling_messages';
 
-  interface GanttRow {
-    id: string;
-    label: string;
-    es: number;
-    ef: number;
-    float: number;
-    is_critical: boolean;
-    milestone: boolean;
-    percent_complete: number;
-    start_date?: string;
-    finish_date?: string;
-    overallocated?: boolean;
-    constraint_violated?: boolean;
-  }
-  interface GanttLayout {
-    rows: GanttRow[];
-    deps: { from: string; to: string; label?: string }[];
-    horizon: number;
-    anchored: boolean;
-  }
   interface GNode {
     id: string;
     label: string;
@@ -62,9 +45,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let pxPerDay = $state(28);
   // AGENT.md §6: every timer must be cleared on destroy.
   let statusTimer: ReturnType<typeof setTimeout> | null = null;
-
-  const rowH = 30;
-  const labelW = 0; // labels live in the grid; canvas is bars only
 
   async function loadChart() {
     if (!session.editingId) return;
@@ -139,17 +119,70 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  // previewSplit reports (read-only) whether interrupting tasks across
+  // non-contiguous days would resolve overallocation, without changing the
+  // saved schedule — the non-destructive counterpart to levelSplit.
+  async function previewSplit() {
+    if (!session.editingId || saving) return;
+    saving = true;
+    status = '';
+    try {
+      const p = await window.go.main.App.PreviewSplitLeveling(session.editingId);
+      status = splitPreviewMessage(p).msg;
+      setTimeout(() => (status = ''), 4000);
+    } catch (err: any) {
+      status = String(err?.message ?? err);
+    } finally {
+      saving = false;
+    }
+  }
+
+  // levelSplit runs resource leveling with activity splitting on this chart
+  // and reloads the layout so split tasks render as interrupted bars. The
+  // split working-day runs are persisted on each node as work_segments.
+  async function levelSplit() {
+    if (!session.editingId || saving) return;
+    saving = true;
+    status = '';
+    try {
+      const res = await window.go.main.App.LevelChartResources(
+        session.editingId,
+        'ltf',
+        false,
+        true // allow splitting
+      );
+      chart = await window.go.main.App.GetChart(session.editingId);
+      doc = JSON.parse(chart.data) as GDoc;
+      await refreshLayout();
+      status = splitLevelStatus(res);
+      setTimeout(() => (status = ''), 4000);
+    } catch (err: any) {
+      status = String(err?.message ?? err);
+    } finally {
+      saving = false;
+    }
+  }
+
+  // onEdit handles any manual change to the schedule. A manual edit
+  // invalidates the leveled split snapshot, so it drops persisted
+  // work_segments before re-laying-out; stale interrupted bars can't render
+  // until the user re-runs "Level (split)".
+  function onEdit() {
+    clearWorkSegments(doc.nodes);
+    void refreshLayout();
+  }
+
   function addTask() {
     const id = 't' + (Date.now() % 1e7).toString(36);
     doc.nodes.push({ id, label: 'New task', duration: 1, percent_complete: 0 });
-    void refreshLayout();
+    onEdit();
   }
 
   function deleteTask(id: string) {
     const before = JSON.parse(JSON.stringify(doc)) as typeof doc;
     doc.nodes = doc.nodes.filter((n) => n.id !== id);
     doc.edges = doc.edges.filter((e) => e.from !== id && e.to !== id);
-    void refreshLayout();
+    onEdit();
     showToast('Task deleted', {
       type: 'info',
       undo: () => {
@@ -169,12 +202,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (doc.edges.some((e) => e.from === linkFrom && e.to === linkTo)) return;
     doc.edges.push({ from: linkFrom, to: linkTo, label: linkLabel || undefined });
     linkLabel = '';
-    void refreshLayout();
+    onEdit();
   }
 
   function deleteLink(i: number) {
     doc.edges = doc.edges.filter((_, j) => j !== i);
-    void refreshLayout();
+    onEdit();
   }
 
   function nodeFor(id: string): GNode | undefined {
@@ -185,32 +218,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
     return nodeFor(id)?.label ?? id;
   }
 
-  const rowIndex = $derived(new Map(layout.rows.map((r, i) => [r.id, i])));
-  const canvasW = $derived(Math.max(300, layout.horizon * pxPerDay + 60));
-  const canvasH = $derived(Math.max(60, layout.rows.length * rowH + 24));
-
-  function baselineBar(r: GanttRow): { x: number; w: number } | null {
-    const v = variances[r.id];
-    if (!v) return null;
-    const bes = r.es - v.start_var_days;
-    const bef = r.ef - v.finish_var_days;
-    if (bef <= bes) return null;
-    return { x: bes * pxPerDay, w: (bef - bes) * pxPerDay };
-  }
-
-  function depPath(d: { from: string; to: string }): string | null {
-    const fi = rowIndex.get(d.from);
-    const ti = rowIndex.get(d.to);
-    const fr = layout.rows[fi ?? -1];
-    const tr = layout.rows[ti ?? -1];
-    if (fi === undefined || ti === undefined || !fr || !tr) return null;
-    const x1 = fr.ef * pxPerDay;
-    const y1 = fi * rowH + rowH / 2;
-    const x2 = tr.es * pxPerDay;
-    const y2 = ti * rowH + rowH / 2;
-    const elbow = Math.max(x1 + 8, x2 - 8);
-    return `M ${x1} ${y1} L ${elbow} ${y1} L ${elbow} ${y2} L ${x2} ${y2}`;
-  }
 
   // The bar canvas is a visual view of data that is fully editable in the
   // task grid on the left, so it stays a labelled image rather than a second
@@ -299,6 +306,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => (pxPerDay = Math.max(8, pxPerDay - 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title="Zoom out">−</button>
       <button onclick={() => (pxPerDay = Math.min(80, pxPerDay + 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title="Zoom in">+</button>
       <button onclick={setBaseline} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded" title="Snapshot for baseline ghost bars">Set baseline</button>
+      <button onclick={previewSplit} disabled={saving} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded" title="Check (read-only) whether splitting tasks across non-contiguous days would clear overallocation. Nothing is saved.">Preview splitting</button>
+      <button onclick={levelSplit} disabled={saving} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded" title="Level resources allowing tasks to be split across non-contiguous days; split tasks render as interrupted bars">Level (split)</button>
       <button onclick={addTask} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">+ Task</button>
       <button onclick={save} disabled={saving} class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded">
         {saving ? 'Saving...' : 'Save'}
@@ -327,7 +336,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <td class="px-2">
                   <input
                     bind:value={n.label}
-                    onchange={refreshLayout}
+                    onchange={onEdit}
                     class="w-full bg-transparent border border-transparent hover:border-slate-800 focus:border-cyan-500 rounded p-1 outline-none"
                   />
                 </td>
@@ -336,7 +345,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     type="number"
                     min="0"
                     bind:value={n.duration}
-                    onchange={refreshLayout}
+                    onchange={onEdit}
                     class="w-full bg-slate-900 border border-slate-800 rounded p-1 font-mono text-right outline-none focus:border-cyan-500"
                   />
                 </td>
@@ -346,12 +355,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     min="0"
                     max="100"
                     bind:value={n.percent_complete}
-                    onchange={refreshLayout}
+                    onchange={onEdit}
                     class="w-full bg-slate-900 border border-slate-800 rounded p-1 font-mono text-right outline-none focus:border-cyan-500"
                   />
                 </td>
                 <td class="text-center">
-                  <input type="checkbox" bind:checked={n.milestone} onchange={refreshLayout} class="accent-cyan-500" />
+                  <input type="checkbox" bind:checked={n.milestone} onchange={onEdit} class="accent-cyan-500" />
                 </td>
                 <td class="text-center">
                   <button onclick={() => deleteTask(r.id)} class="text-slate-600 hover:text-red-400" title="Delete task">✕</button>
@@ -369,7 +378,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="flex-1 truncate text-slate-400">{labelFor(e.from)} → {labelFor(e.to)}</span>
             <input
               bind:value={e.label}
-              onchange={refreshLayout}
+              onchange={onEdit}
               placeholder="FS"
               class="w-16 bg-slate-900 border border-slate-800 rounded p-1 font-mono outline-none focus:border-cyan-500"
             />
@@ -393,82 +402,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
     <!-- Bar canvas -->
     <main class="flex-1 overflow-auto p-4">
-      {#if layout.rows.length === 0}
-        <p class="text-slate-500 text-sm">No tasks yet. Click <strong>+ Task</strong> to add one.</p>
-      {:else}
-        <svg width={canvasW} height={canvasH} role="img" aria-label={ganttSummary}>
-          <!-- day grid -->
-          {#each Array(Math.ceil(layout.horizon) + 1) as _, d (d)}
-            <line x1={d * pxPerDay} y1="0" x2={d * pxPerDay} y2={layout.rows.length * rowH} stroke="#1e293b" stroke-width="1" />
-            {#if pxPerDay >= 20 || d % 5 === 0}
-              <text x={d * pxPerDay + 2} y={layout.rows.length * rowH + 14} font-size="9" fill="#475569">{d}</text>
-            {/if}
-          {/each}
-
-          <!-- dependency arrows under the bars -->
-          {#each layout.deps as dep (dep.from + '>' + dep.to)}
-            {@const p = depPath(dep)}
-            {#if p}
-              <path d={p} fill="none" stroke="#475569" stroke-width="1.2" />
-            {/if}
-          {/each}
-
-          {#each layout.rows as r, i (r.id)}
-            {@const y = i * rowH + 6}
-            {@const bb = baselineBar(r)}
-            <g>
-              <title>{barTitle(r)}</title>
-            <!-- baseline ghost -->
-            {#if bb}
-              <rect x={bb.x} y={y + rowH - 16} width={bb.w} height="5" rx="2" fill="#475569" opacity="0.6" />
-            {/if}
-            {#if r.milestone}
-              <rect
-                x={r.es * pxPerDay - 7}
-                y={y + 2}
-                width="14"
-                height="14"
-                transform="rotate(45 {r.es * pxPerDay} {y + 9})"
-                fill="#22d3ee"
-              />
-            {:else}
-              <rect
-                x={r.es * pxPerDay}
-                y={y}
-                width={Math.max(2, (r.ef - r.es) * pxPerDay)}
-                height="14"
-                rx="3"
-                fill={r.is_critical ? '#ef4444' : '#0ea5e9'}
-                stroke={r.overallocated ? '#fb923c' : 'none'}
-                stroke-width={r.overallocated ? 2 : 0}
-              />
-              {#if r.percent_complete > 0}
-                <rect
-                  x={r.es * pxPerDay}
-                  y={y + 10}
-                  width={Math.max(0, (r.ef - r.es) * pxPerDay * Math.min(100, r.percent_complete) / 100)}
-                  height="4"
-                  rx="2"
-                  fill="#0f766e"
-                />
-              {/if}
-            {/if}
-            {#if r.constraint_violated}
-              <text x={r.ef * pxPerDay + 4} y={y + 12} font-size="11" font-weight="bold" fill="#f59e0b">!</text>
-            {/if}
-            {#if layout.anchored && r.start_date}
-              <text x={r.ef * pxPerDay + (r.constraint_violated ? 14 : 4)} y={y + 12} font-size="9" fill="#64748b">
-                {r.start_date} → {r.finish_date}
-              </text>
-            {/if}
-            </g>
-          {/each}
-        </svg>
+      <GanttBars {layout} {pxPerDay} {variances} ariaLabel={ganttSummary} {barTitle} />
+      {#if layout.rows.length > 0}
         <p class="text-[10px] text-slate-500 mt-2 max-w-xl">
           Red bars are critical; teal strip = % complete; grey ghost =
           baseline; orange outline = overallocated resource; amber ! =
-          constraint violated. Real dates appear when the project has a
-          start date. Link labels accept FS/SS/FF/SF with ±lag days.
+          constraint violated. Split tasks show interrupted bars. Real dates
+          appear when the project has a start date. Link labels accept
+          FS/SS/FF/SF with ±lag days.
         </p>
       {/if}
     </main>

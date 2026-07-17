@@ -25,7 +25,7 @@ PMForge is a **local-first project controls desktop application** for technical,
 - **Backend**: Go 1.26.4, acts as a high-performance kernel for data integrity, scheduling math (CPM/EVM/MSPDI), authentication, document rendering, and PDF generation.
 - **Frontend**: Svelte 5 (runes mode) + Vite 5 + Tailwind 3, mounted in a desktop window via **Wails v2.12.0**.
 - **Storage**: SQLite with WAL journaling. Per-user folder isolation; one `.pmforge` file per project.
-- **Charting library**: Chart.js v4.4.6 on the frontend; gofpdf for server-side PDF chart rendering.
+- **Charting library**: Chart.js v4.4.6 on the frontend; `go-pdf/fpdf` for server-side PDF chart rendering (migrated from the archived `jung-kurt/gofpdf`, see ADR-003).
 - **Crypto**: `golang.org/x/crypto/argon2` for password hashing (PHC string format), AES-256-GCM for encryption, X.509/RSA for digital signatures.
 - **Rules engine**: `github.com/gorules/zen` (MIT) via its official Go binding (zen-go) — Launchpad seeding rules expressed as JDM data, not Go switch. Used by `internal/templates`.
 - **Holiday data**: `rickar/cal/v2` (BSD-2-Clause) — country holiday datasets. Wrapped by `internal/calendar`.
@@ -203,7 +203,7 @@ HTML-style comment for Svelte / HTML / Markdown files. Documentation files use `
 - **Registry + Definition** pattern (charts.registry.go, documents.registry.go): one taxonomy file with constants and a slice of Definition structs. Iteration is by `All()`; lookup by `Get(kind)`. Adding a new kind = one slice append.
 - **Engine + Dispatcher** pattern (charts.engines.go, pdfrender.dispatcher.go): a `Layout(kind, data) (LayoutResult, error)` switch that delegates to per-engine layout functions. The LayoutResult carries `Engine`, `Kind`, `Title`, `Body json.RawMessage`. Frontend dispatches on `result.engine`.
 - **Shared editor shells**: `_layered_editor_shell.svelte` and `_stats_editor_shell.svelte` use Svelte 5 generics + snippets to provide the chrome (load/save/refresh/header) and let kind-specific editors fill in the data form.
-- **Layout-only renderers**: backend chart layout (`charts.Layout()`) emits JSON. Frontend renders SVG/Chart.js. For PDF embed, `pdfrender.RenderChartToPDF()` draws the same layout with gofpdf primitives — vector, not PNG.
+- **Layout-only renderers**: backend chart layout (`charts.Layout()`) emits JSON. Frontend renders SVG/Chart.js. For PDF embed, `pdfrender.RenderChartToPDF()` draws the same layout with fpdf primitives — vector, not PNG.
 
 ---
 
@@ -212,7 +212,7 @@ HTML-style comment for Svelte / HTML / Markdown files. Documentation files use `
 ```sh
 # First-time setup
 go mod tidy
-(cd frontend && npm install)
+(cd frontend && npm ci)                  # use npm ci, not npm install (see npm-ci lesson below)
 make fonts                               # download bundled TTFs into internal/fonts/assets
 (cd LICENSES && reuse download --all)   # optional, for `make license-check`
 
