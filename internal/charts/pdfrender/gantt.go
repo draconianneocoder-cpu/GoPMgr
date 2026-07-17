@@ -13,15 +13,35 @@ import (
 // format is stable; redeclared to keep the parser dependency-light,
 // matching nodeLayout's precedent).
 type ganttRow struct {
-	ID              string  `json:"id"`
-	Label           string  `json:"label"`
-	ES              float64 `json:"es"`
-	EF              float64 `json:"ef"`
-	IsCritical      bool    `json:"is_critical"`
-	Milestone       bool    `json:"milestone"`
-	PercentComplete float64 `json:"percent_complete"`
-	StartDate       string  `json:"start_date,omitempty"`
-	FinishDate      string  `json:"finish_date,omitempty"`
+	ID              string         `json:"id"`
+	Label           string         `json:"label"`
+	ES              float64        `json:"es"`
+	EF              float64        `json:"ef"`
+	IsCritical      bool           `json:"is_critical"`
+	Milestone       bool           `json:"milestone"`
+	PercentComplete float64        `json:"percent_complete"`
+	StartDate       string         `json:"start_date,omitempty"`
+	FinishDate      string         `json:"finish_date,omitempty"`
+	WorkSegments    []ganttSegment `json:"work_segments,omitempty"`
+}
+
+// ganttSegment is one absolute working-day run of a split task (same axis
+// as ES/EF).
+type ganttSegment struct {
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
+}
+
+// rightEdge is the row's rightmost occupied offset: EF, or the last split
+// segment end when the task is interrupted past its contiguous finish.
+func (r ganttRow) rightEdge() float64 {
+	edge := r.EF
+	for _, s := range r.WorkSegments {
+		if s.End > edge {
+			edge = s.End
+		}
+	}
+	return edge
 }
 
 type ganttLayout struct {
@@ -92,6 +112,30 @@ func renderGantt(pdf *fpdf.Fpdf, body json.RawMessage, frame Frame) error {
 				{X: cx, Y: cy - s}, {X: cx + s, Y: cy},
 				{X: cx, Y: cy + s}, {X: cx - s, Y: cy},
 			}, "F")
+		} else if len(r.WorkSegments) > 0 {
+			// Split (interrupted) task: one bar per working-day run, joined
+			// by a dashed connector across the gaps.
+			if r.IsCritical {
+				pdf.SetFillColor(239, 68, 68)
+				pdf.SetDrawColor(239, 68, 68)
+			} else {
+				pdf.SetFillColor(34, 211, 238)
+				pdf.SetDrawColor(34, 211, 238)
+			}
+			connY := barY + barH/2
+			pdf.SetDashPattern([]float64{0.6, 0.6}, 0)
+			pdf.SetLineWidth(0.2)
+			pdf.Line(chartX+r.WorkSegments[0].Start*scale, connY,
+				chartX+r.WorkSegments[len(r.WorkSegments)-1].End*scale, connY)
+			pdf.SetDashPattern([]float64{}, 0)
+			for _, s := range r.WorkSegments {
+				x := chartX + s.Start*scale
+				w := (s.End - s.Start) * scale
+				if w < 0.8 {
+					w = 0.8
+				}
+				pdf.Rect(x, barY, w, barH, "F")
+			}
 		} else {
 			x := chartX + r.ES*scale
 			w := (r.EF - r.ES) * scale
@@ -117,7 +161,7 @@ func renderGantt(pdf *fpdf.Fpdf, body json.RawMessage, frame Frame) error {
 		if r.StartDate != "" {
 			pdf.SetFont("Helvetica", "", 6)
 			pdf.SetTextColor(100, 116, 139)
-			pdf.Text(chartX+r.EF*scale+1.5, y+rowH-2.5, r.StartDate+" → "+r.FinishDate)
+			pdf.Text(chartX+r.rightEdge()*scale+1.5, y+rowH-2.5, r.StartDate+" → "+r.FinishDate)
 		}
 	}
 

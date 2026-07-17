@@ -41,13 +41,42 @@ and (b) a simulated median (P50) within ±2% of the analytical median (≈4.51
 days). Both gates must pass. This is the mandatory convergence gate before the
 feature ships.
 
-**Advanced Resource Levelling** (RICE 144)
-Enhance `internal/kernel/resources.go` with Earliest-Deadline-First (EDF)
-and Least-Total-Float (LTF) heuristics, priority-override for critical tasks,
-and partial-assignment splitting (split a task across days when resource
-demand exceeds supply). The `levelingHorizon = 10000` constant must become a
-named sentinel (`ErrLevelingHorizonExceeded`) returned to callers rather than
-a silent cap. The cap must be configurable per-schedule.
+**Advanced Resource Levelling** (RICE 144) — **done.**
+`internal/kernel/resources.go` now supports the full set: a configurable
+leveling horizon, the EDF/LTF heuristics, priority-override for critical
+tasks, and partial-assignment splitting.
+
+_Done:_ the `levelingHorizon = 10000` constant is now the exported
+`DefaultLevelingHorizon`, overridable per schedule via
+`LevelResourcesWithOptions(tasks, plan, LevelingOptions{Horizon})`, which
+returns `ErrLevelingHorizonExceeded` (with the unplaceable task IDs in
+`LevelingResult`) instead of silently capping. The pre-existing
+`LevelResources`/`LevelResourcesWithPlan` wrappers keep their original
+`bool` signature for backward compatibility. The production path is wired
+end-to-end: `App.LevelChartResources` now returns a `LevelResult` (pinned
+count plus unplaceable task IDs/labels) and the CPM editor shows a
+dismissible “N task(s) still overallocated” warning instead of silently
+capping. The Earliest-Deadline (EDF) and Least-Total-Float (LTF) heuristics
+are implemented as a `LevelingOptions.Strategy` selector, wired through
+`App.LevelChartResources(chartID, strategy)` and exposed as a heuristic
+dropdown in the CPM editor (LTF is the default and preserves prior
+behaviour). Priority-override (`LevelingOptions.PriorityCritical`) protects
+the critical path from being delayed by floating tasks and is exposed as a
+“Protect critical” checkbox. Partial-assignment splitting
+(`LevelingOptions.AllowSplitting` + `Task.WorkDays`) interrupts a task
+across non-contiguous days when contiguous placement would finish later;
+splitting is surfaced read-only via `App.PreviewSplitLeveling` and a
+“Preview splitting” button in the CPM editor. Split schedules can also be
+**persisted and rendered**: `App.LevelChartResources(..., allowSplitting)`
+stores each split task's working-day runs as node `WorkSegments`, the Gantt
+layout emits them as absolute bar pieces, and the Gantt editor draws split
+(interrupted) bars via a “Level (split)” action; the persisted segments are
+a snapshot that the Gantt editor clears on any manual schedule edit so stale
+interrupted bars can't render until the schedule is re-leveled. The PDF
+Gantt renderer draws the same interrupted bars, so exports match the
+on-screen view. _Remaining refinement:_ EVM treats a split task's span as
+contiguous (work content and cost are unaffected) — a follow-up on the same
+`WorkSegments` foundation.
 
 **What-If / Scenario Analysis** (RICE 144)
 Fork a named scenario from the current plan, apply changes, and compute the

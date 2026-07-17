@@ -1,0 +1,1010 @@
+{
+  "description": "Entry-point fan-out graph: for each Wails-exposed App.<Method> (the frontend-callable public API), which internal/ packages its body references. Derived mechanically from main.go by brace-depth body extraction + package-selector matching; not a full function-level call graph.",
+  "entry_points": [
+    {
+      "entry_point": "App.Greet",
+      "main_go_line": 149,
+      "touches_internal_packages": [
+        "pmforge/internal/cli"
+      ]
+    },
+    {
+      "entry_point": "App.ListUsers",
+      "main_go_line": 159,
+      "touches_internal_packages": [
+        "pmforge/internal/users"
+      ]
+    },
+    {
+      "entry_point": "App.HasAnyAdmin",
+      "main_go_line": 166,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.CreateAccount",
+      "main_go_line": 179,
+      "touches_internal_packages": [
+        "pmforge/internal/users"
+      ]
+    },
+    {
+      "entry_point": "App.BecomeAdmin",
+      "main_go_line": 217,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.AdminListUsers",
+      "main_go_line": 234,
+      "touches_internal_packages": [
+        "pmforge/internal/users"
+      ]
+    },
+    {
+      "entry_point": "App.AdminDeleteUser",
+      "main_go_line": 244,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.AdminSetUserRole",
+      "main_go_line": 258,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.Login",
+      "main_go_line": 273,
+      "touches_internal_packages": [
+        "pmforge/internal/auth",
+        "pmforge/internal/users"
+      ]
+    },
+    {
+      "entry_point": "App.IssueRecoveryCodes",
+      "main_go_line": 303,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.RemainingRecoveryCodes",
+      "main_go_line": 320,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.ResetWithRecoveryCode",
+      "main_go_line": 332,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.Logout",
+      "main_go_line": 337,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.CurrentUser",
+      "main_go_line": 357,
+      "touches_internal_packages": [
+        "pmforge/internal/users"
+      ]
+    },
+    {
+      "entry_point": "App.ListProjects",
+      "main_go_line": 380,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.CreateProject",
+      "main_go_line": 400,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.DeleteProject",
+      "main_go_line": 479,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.CloneProject",
+      "main_go_line": 551,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.ProjectsOverview",
+      "main_go_line": 728,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.GetAppInfo",
+      "main_go_line": 829,
+      "touches_internal_packages": [
+        "pmforge/internal/cli"
+      ]
+    },
+    {
+      "entry_point": "App.SaveAppSettings",
+      "main_go_line": 845,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.ResetAppSettings",
+      "main_go_line": 859,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.OpenLogsFolder",
+      "main_go_line": 872,
+      "touches_internal_packages": [
+        "pmforge/internal/applog"
+      ]
+    },
+    {
+      "entry_point": "App.GenerateBugReport",
+      "main_go_line": 882,
+      "touches_internal_packages": [
+        "pmforge/internal/cli"
+      ]
+    },
+    {
+      "entry_point": "App.OpenProject",
+      "main_go_line": 961,
+      "touches_internal_packages": [
+        "pmforge/internal/admin",
+        "pmforge/internal/db",
+        "pmforge/internal/sigma/service"
+      ]
+    },
+    {
+      "entry_point": "App.IsProjectEncrypted",
+      "main_go_line": 1036,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.EncryptProjectAtRest",
+      "main_go_line": 1048,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.CloseProject",
+      "main_go_line": 1084,
+      "touches_internal_packages": [
+        "pmforge/internal/db",
+        "pmforge/internal/documents"
+      ]
+    },
+    {
+      "entry_point": "App.GetProjectMeta",
+      "main_go_line": 1121,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.UpdateProjectMeta",
+      "main_go_line": 1130,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.ListChartKinds",
+      "main_go_line": 1142,
+      "touches_internal_packages": [
+        "pmforge/internal/charts",
+        "pmforge/internal/sigma/charts"
+      ]
+    },
+    {
+      "entry_point": "App.ListCharts",
+      "main_go_line": 1144,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.GetChart",
+      "main_go_line": 1156,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.SaveChart",
+      "main_go_line": 1164,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.DeleteChart",
+      "main_go_line": 1179,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.LayoutChart",
+      "main_go_line": 1199,
+      "touches_internal_packages": [
+        "pmforge/internal/calendar",
+        "pmforge/internal/charts",
+        "pmforge/internal/kernel",
+        "pmforge/internal/sigma/charts"
+      ]
+    },
+    {
+      "entry_point": "App.SetScheduleBaseline",
+      "main_go_line": 1238,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.ListScheduleBaselines",
+      "main_go_line": 1272,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.DeleteScheduleBaseline",
+      "main_go_line": 1281,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.CompareScheduleBaseline",
+      "main_go_line": 1293,
+      "touches_internal_packages": [
+        "pmforge/internal/db",
+        "pmforge/internal/kernel"
+      ]
+    },
+    {
+      "entry_point": "App.ComputeScheduleEVM",
+      "main_go_line": 1346,
+      "touches_internal_packages": [
+        "pmforge/internal/calendar",
+        "pmforge/internal/kernel"
+      ]
+    },
+    {
+      "entry_point": "App.RunChartMonteCarlo",
+      "main_go_line": 1393,
+      "touches_internal_packages": [
+        "pmforge/internal/charts",
+        "pmforge/internal/kernel",
+        "pmforge/internal/sigma/charts"
+      ]
+    },
+    {
+      "entry_point": "App.ExportChartMonteCarloRiskReport",
+      "main_go_line": 1422,
+      "touches_internal_packages": [
+        "pmforge/internal/charts",
+        "pmforge/internal/export",
+        "pmforge/internal/sigma/charts"
+      ]
+    },
+    {
+      "entry_point": "App.LevelChartResources",
+      "main_go_line": 1474,
+      "touches_internal_packages": [
+        "pmforge/internal/calendar",
+        "pmforge/internal/kernel"
+      ]
+    },
+    {
+      "entry_point": "App.GenerateResourceHistogram",
+      "main_go_line": 1562,
+      "touches_internal_packages": [
+        "pmforge/internal/calendar",
+        "pmforge/internal/charts",
+        "pmforge/internal/db",
+        "pmforge/internal/kernel",
+        "pmforge/internal/sigma/charts"
+      ]
+    },
+    {
+      "entry_point": "App.ImportMSPDIChart",
+      "main_go_line": 1689,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.ListDocumentKinds",
+      "main_go_line": 1809,
+      "touches_internal_packages": [
+        "pmforge/internal/documents"
+      ]
+    },
+    {
+      "entry_point": "App.ListDocuments",
+      "main_go_line": 1811,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.GetDocument",
+      "main_go_line": 1823,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.NewDocument",
+      "main_go_line": 1833,
+      "touches_internal_packages": [
+        "pmforge/internal/db",
+        "pmforge/internal/documents"
+      ]
+    },
+    {
+      "entry_point": "App.SaveDocument",
+      "main_go_line": 1859,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.DeleteDocument",
+      "main_go_line": 1867,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.ExportCombinedReport",
+      "main_go_line": 1884,
+      "touches_internal_packages": [
+        "pmforge/internal/charts",
+        "pmforge/internal/documents",
+        "pmforge/internal/sigma/charts"
+      ]
+    },
+    {
+      "entry_point": "App.ExportCombinedReportSigned",
+      "main_go_line": 1972,
+      "touches_internal_packages": [
+        "pmforge/internal/crypto",
+        "pmforge/internal/documents",
+        "pmforge/internal/pdfmeta"
+      ]
+    },
+    {
+      "entry_point": "App.ExportCombinedReportGnuPG",
+      "main_go_line": 2066,
+      "touches_internal_packages": [
+        "pmforge/internal/db",
+        "pmforge/internal/documents"
+      ]
+    },
+    {
+      "entry_point": "App.RepairAndSwap",
+      "main_go_line": 2094,
+      "touches_internal_packages": [
+        "pmforge/internal/admin",
+        "pmforge/internal/crypto",
+        "pmforge/internal/db",
+        "pmforge/internal/sigma/service"
+      ]
+    },
+    {
+      "entry_point": "App.ExportDocumentDOCX",
+      "main_go_line": 2148,
+      "touches_internal_packages": [
+        "pmforge/internal/documents",
+        "pmforge/internal/export"
+      ]
+    },
+    {
+      "entry_point": "App.ExportDocumentODT",
+      "main_go_line": 2157,
+      "touches_internal_packages": [
+        "pmforge/internal/documents",
+        "pmforge/internal/export"
+      ]
+    },
+    {
+      "entry_point": "App.ExportScheduleReportDOCX",
+      "main_go_line": 2166,
+      "touches_internal_packages": [
+        "pmforge/internal/export"
+      ]
+    },
+    {
+      "entry_point": "App.ExportScheduleReportODT",
+      "main_go_line": 2172,
+      "touches_internal_packages": [
+        "pmforge/internal/export"
+      ]
+    },
+    {
+      "entry_point": "App.ExportScheduleReportPDF",
+      "main_go_line": 2178,
+      "touches_internal_packages": [
+        "pmforge/internal/export"
+      ]
+    },
+    {
+      "entry_point": "App.ExportScheduleReportCSV",
+      "main_go_line": 2184,
+      "touches_internal_packages": [
+        "pmforge/internal/export"
+      ]
+    },
+    {
+      "entry_point": "App.ExportScheduleReportHTML",
+      "main_go_line": 2190,
+      "touches_internal_packages": [
+        "pmforge/internal/export"
+      ]
+    },
+    {
+      "entry_point": "App.ExportScheduleReportMSPDI",
+      "main_go_line": 2197,
+      "touches_internal_packages": [
+        "pmforge/internal/export"
+      ]
+    },
+    {
+      "entry_point": "App.ExportDocumentPDF",
+      "main_go_line": 2546,
+      "touches_internal_packages": [
+        "pmforge/internal/documents"
+      ]
+    },
+    {
+      "entry_point": "App.ExportDocumentPDFGnuPG",
+      "main_go_line": 2585,
+      "touches_internal_packages": [
+        "pmforge/internal/admin",
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.ExportDocumentPDFSigned",
+      "main_go_line": 2605,
+      "touches_internal_packages": [
+        "pmforge/internal/admin",
+        "pmforge/internal/documents"
+      ]
+    },
+    {
+      "entry_point": "App.GetSettings",
+      "main_go_line": 2654,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.SaveSettings",
+      "main_go_line": 2662,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.ResetProjectSettings",
+      "main_go_line": 2670,
+      "touches_internal_packages": [
+        "pmforge/internal/agile",
+        "pmforge/internal/db",
+        "pmforge/internal/documents"
+      ]
+    },
+    {
+      "entry_point": "App.ExportAuditVerificationReport",
+      "main_go_line": 2723,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.ExportAuditRepairEvidence",
+      "main_go_line": 2766,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.SecureArchive",
+      "main_go_line": 2836,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.AgileEnabled",
+      "main_go_line": 2875,
+      "touches_internal_packages": [
+        "pmforge/internal/agile"
+      ]
+    },
+    {
+      "entry_point": "App.SetAgileEnabled",
+      "main_go_line": 2890,
+      "touches_internal_packages": [
+        "pmforge/internal/agile"
+      ]
+    },
+    {
+      "entry_point": "App.EnsureDefaultBoard",
+      "main_go_line": 2915,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.SaveColumn",
+      "main_go_line": 2932,
+      "touches_internal_packages": [
+        "pmforge/internal/agile"
+      ]
+    },
+    {
+      "entry_point": "App.DeleteColumn",
+      "main_go_line": 2942,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.SaveWorkItem",
+      "main_go_line": 2951,
+      "touches_internal_packages": [
+        "pmforge/internal/agile"
+      ]
+    },
+    {
+      "entry_point": "App.GetWorkItem",
+      "main_go_line": 2960,
+      "touches_internal_packages": [
+        "pmforge/internal/agile"
+      ]
+    },
+    {
+      "entry_point": "App.ListWorkItems",
+      "main_go_line": 2971,
+      "touches_internal_packages": [
+        "pmforge/internal/agile"
+      ]
+    },
+    {
+      "entry_point": "App.DeleteWorkItem",
+      "main_go_line": 2980,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.MoveWorkItem",
+      "main_go_line": 3000,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.WIPCounts",
+      "main_go_line": 3010,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.SaveSprint",
+      "main_go_line": 3019,
+      "touches_internal_packages": [
+        "pmforge/internal/agile"
+      ]
+    },
+    {
+      "entry_point": "App.ListSprints",
+      "main_go_line": 3028,
+      "touches_internal_packages": [
+        "pmforge/internal/agile"
+      ]
+    },
+    {
+      "entry_point": "App.DeleteSprint",
+      "main_go_line": 3038,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.SaveDeployment",
+      "main_go_line": 3047,
+      "touches_internal_packages": [
+        "pmforge/internal/agile"
+      ]
+    },
+    {
+      "entry_point": "App.ListDeployments",
+      "main_go_line": 3057,
+      "touches_internal_packages": [
+        "pmforge/internal/agile"
+      ]
+    },
+    {
+      "entry_point": "App.DeleteDeployment",
+      "main_go_line": 3072,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.LaunchpadEvaluate",
+      "main_go_line": 3089,
+      "touches_internal_packages": [
+        "pmforge/internal/templates"
+      ]
+    },
+    {
+      "entry_point": "App.CreateProjectFromLaunchpad",
+      "main_go_line": 3118,
+      "touches_internal_packages": [
+        "pmforge/internal/db",
+        "pmforge/internal/templates"
+      ]
+    },
+    {
+      "entry_point": "App.UpdateProjectIndustry",
+      "main_go_line": 3198,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.ListStakeholders",
+      "main_go_line": 3219,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.SaveStakeholder",
+      "main_go_line": 3232,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.DeleteStakeholder",
+      "main_go_line": 3248,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.ListResourceCalendars",
+      "main_go_line": 3260,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.SaveResourceCalendar",
+      "main_go_line": 3274,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.DeleteResourceCalendar",
+      "main_go_line": 3288,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.ListScenarios",
+      "main_go_line": 3299,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.GetScenario",
+      "main_go_line": 3312,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.SaveScenario",
+      "main_go_line": 3334,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.DeleteScenario",
+      "main_go_line": 3348,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.BranchScenarioChart",
+      "main_go_line": 3369,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.ListScenarioCharts",
+      "main_go_line": 3390,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.GetScenarioChart",
+      "main_go_line": 3411,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.SaveScenarioChart",
+      "main_go_line": 3432,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.PromoteScenarioChartToBaseline",
+      "main_go_line": 3453,
+      "touches_internal_packages": [
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.CompareScenarioChart",
+      "main_go_line": 3474,
+      "touches_internal_packages": [
+        "pmforge/internal/db",
+        "pmforge/internal/kernel"
+      ]
+    },
+    {
+      "entry_point": "App.BuildTimeline",
+      "main_go_line": 3511,
+      "touches_internal_packages": [
+        "pmforge/internal/timeline"
+      ]
+    },
+    {
+      "entry_point": "App.MoveTimelineEntry",
+      "main_go_line": 3523,
+      "touches_internal_packages": [
+        "pmforge/internal/agile",
+        "pmforge/internal/timeline"
+      ]
+    },
+    {
+      "entry_point": "App.ListHolidays",
+      "main_go_line": 3633,
+      "touches_internal_packages": [
+        "pmforge/internal/calendar"
+      ]
+    },
+    {
+      "entry_point": "App.ComputeBudget",
+      "main_go_line": 3656,
+      "touches_internal_packages": [
+        "pmforge/internal/agile",
+        "pmforge/internal/budget"
+      ]
+    },
+    {
+      "entry_point": "App.RunPortfolioAnalytics",
+      "main_go_line": 3688,
+      "touches_internal_packages": [
+        "pmforge/internal/agile",
+        "pmforge/internal/analytics",
+        "pmforge/internal/budget",
+        "pmforge/internal/db"
+      ]
+    },
+    {
+      "entry_point": "App.ImportDatasetForAnalysis",
+      "main_go_line": 3757,
+      "touches_internal_packages": [
+        "pmforge/internal/analytics"
+      ]
+    },
+    {
+      "entry_point": "App.CheckLatestVersion",
+      "main_go_line": 3795,
+      "touches_internal_packages": [
+        "pmforge/internal/update"
+      ]
+    },
+    {
+      "entry_point": "App.ChooseCertFile",
+      "main_go_line": 3802,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.ListFonts",
+      "main_go_line": 3839,
+      "touches_internal_packages": [
+        "pmforge/internal/fonts"
+      ]
+    },
+    {
+      "entry_point": "App.ImportFont",
+      "main_go_line": 3849,
+      "touches_internal_packages": [
+        "pmforge/internal/fonts"
+      ]
+    },
+    {
+      "entry_point": "App.GetDefaultFont",
+      "main_go_line": 3874,
+      "touches_internal_packages": [
+        "pmforge/internal/fonts"
+      ]
+    },
+    {
+      "entry_point": "App.SetDefaultFont",
+      "main_go_line": 3891,
+      "touches_internal_packages": [
+        "pmforge/internal/documents"
+      ]
+    },
+    {
+      "entry_point": "App.ExportProjectICS",
+      "main_go_line": 3923,
+      "touches_internal_packages": [
+        "pmforge/internal/agile",
+        "pmforge/internal/calendar",
+        "pmforge/internal/export",
+        "pmforge/internal/timeline"
+      ]
+    },
+    {
+      "entry_point": "App.ComputeDORA",
+      "main_go_line": 4017,
+      "touches_internal_packages": [
+        "pmforge/internal/agile"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaCreateProject",
+      "main_go_line": 4103,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaListProjects",
+      "main_go_line": 4120,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaGetProject",
+      "main_go_line": 4128,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaSaveCharter",
+      "main_go_line": 4140,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaGetCharter",
+      "main_go_line": 4148,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaAdvancePhase",
+      "main_go_line": 4160,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain",
+        "pmforge/internal/sigma/tollgate"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaCalculateDescriptive",
+      "main_go_line": 4190,
+      "touches_internal_packages": [
+        "pmforge/internal/charts/stats",
+        "pmforge/internal/sigma/stats"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaCalculateCapability",
+      "main_go_line": 4195,
+      "touches_internal_packages": [
+        "pmforge/internal/charts/stats",
+        "pmforge/internal/sigma/stats"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaCalculatePareto",
+      "main_go_line": 4200,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.SigmaCheckReadiness",
+      "main_go_line": 4205,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain",
+        "pmforge/internal/sigma/tollgate"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaSaveFishbone",
+      "main_go_line": 4223,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaGetFishbone",
+      "main_go_line": 4232,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaSaveSolutions",
+      "main_go_line": 4245,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaGetSolutions",
+      "main_go_line": 4254,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaSaveControlPlan",
+      "main_go_line": 4263,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaGetControlPlan",
+      "main_go_line": 4272,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaSaveSIPOC",
+      "main_go_line": 4281,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaGetSIPOC",
+      "main_go_line": 4290,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaSaveVoC",
+      "main_go_line": 4303,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaGetVoC",
+      "main_go_line": 4312,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/domain"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaGetToolStatus",
+      "main_go_line": 4325,
+      "touches_internal_packages": [
+        "pmforge/internal/sigma/service"
+      ]
+    },
+    {
+      "entry_point": "App.SigmaExportProjectReport",
+      "main_go_line": 4334,
+      "touches_internal_packages": [
+        "pmforge/internal/export"
+      ]
+    }
+  ]
+}

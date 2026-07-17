@@ -16,7 +16,7 @@ accepted).
 Set REPO to your checkout first (paste-safe; no placeholders):
 
 ```sh
-REPO="$HOME/Documents/GitLab/PMForge - Go + Typescript"
+REPO="$HOME/Documents/GitHub/PMForge - Go + Typescript"
 
 # Encrypted candidate
 mkdir -p /tmp/spike/sqlcipher && cd /tmp/spike/sqlcipher
