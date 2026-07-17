@@ -11,6 +11,15 @@ import (
 	"pmforge/internal/kernel"
 )
 
+// WorkSegment is one contiguous run of working days. Start/End are
+// half-open working-day offsets (End is the day after the last worked day,
+// so the run's width is End-Start). In a LayeredNode they are RELATIVE to
+// the task's start; in a GanttRow they are ABSOLUTE project offsets.
+type WorkSegment struct {
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
+}
+
 // LayeredNode is the unified node shape used by Network Diagram,
 // PERT Chart, and CPM Chart. Fields that aren't relevant to a given
 // kind are simply ignored:
@@ -56,6 +65,14 @@ type LayeredNode struct {
 	// project has a start date). YYYY-MM-DD; empty when un-anchored.
 	StartDate  string `json:"start_date,omitempty"`
 	FinishDate string `json:"finish_date,omitempty"`
+
+	// WorkSegments records a split (interrupted) task's working-day runs
+	// as offsets RELATIVE to the task's start, persisted by an
+	// apply-splitting resource-leveling run. Empty for an ordinary
+	// contiguous task. The Gantt layout turns these into absolute bar
+	// pieces (ES + offset); they are display metadata and do not feed the
+	// CPM passes.
+	WorkSegments []WorkSegment `json:"work_segments,omitempty"`
 
 	// CPM scheduling constraint (input): ASAP (default), ALAP, SNET,
 	// FNLT, MFO; SNET/FNLT/MFO carry ConstraintDate (YYYY-MM-DD) and

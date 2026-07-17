@@ -1,0 +1,467 @@
+{
+  "description": "First-party package import graph (who imports whom) plus notable external deps, derived from 'go list -json ./...'. Regenerate with: go list -json ./...",
+  "packages": {
+    "pmforge": {
+      "dir": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript",
+      "imported_by_internal": [],
+      "imports_internal": [
+        "pmforge/internal/admin",
+        "pmforge/internal/agile",
+        "pmforge/internal/analytics",
+        "pmforge/internal/applog",
+        "pmforge/internal/auth",
+        "pmforge/internal/budget",
+        "pmforge/internal/calendar",
+        "pmforge/internal/charts",
+        "pmforge/internal/charts/dag",
+        "pmforge/internal/charts/stats",
+        "pmforge/internal/cli",
+        "pmforge/internal/crypto",
+        "pmforge/internal/db",
+        "pmforge/internal/documents",
+        "pmforge/internal/export",
+        "pmforge/internal/fonts",
+        "pmforge/internal/kernel",
+        "pmforge/internal/pdfmeta",
+        "pmforge/internal/sigma/charts",
+        "pmforge/internal/sigma/domain",
+        "pmforge/internal/sigma/service",
+        "pmforge/internal/sigma/stats",
+        "pmforge/internal/sigma/tollgate",
+        "pmforge/internal/signing",
+        "pmforge/internal/templates",
+        "pmforge/internal/timeline",
+        "pmforge/internal/update",
+        "pmforge/internal/users"
+      ],
+      "notable_external_deps": [
+        "github.com/wailsapp/wails/v2",
+        "github.com/wailsapp/wails/v2/pkg/menu",
+        "github.com/wailsapp/wails/v2/pkg/menu/keys",
+        "github.com/wailsapp/wails/v2/pkg/options",
+        "github.com/wailsapp/wails/v2/pkg/options/assetserver",
+        "github.com/wailsapp/wails/v2/pkg/runtime"
+      ]
+    },
+    "pmforge/frontend/node_modules/flatted/golang/pkg/flatted": {
+      "dir": "frontend/node_modules/flatted/golang/pkg/flatted",
+      "imported_by_internal": [],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/admin": {
+      "dir": "internal/admin",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [
+        "pmforge/internal/db",
+        "pmforge/internal/debug"
+      ],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/agile": {
+      "dir": "internal/agile",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/budget",
+        "pmforge/internal/templates",
+        "pmforge/internal/timeline"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/analytics": {
+      "dir": "internal/analytics",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/applog": {
+      "dir": "internal/applog",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/auth": {
+      "dir": "internal/auth",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/users"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": [
+        "golang.org/x/crypto/argon2"
+      ]
+    },
+    "pmforge/internal/budget": {
+      "dir": "internal/budget",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [
+        "pmforge/internal/agile",
+        "pmforge/internal/db",
+        "pmforge/internal/money"
+      ],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/calendar": {
+      "dir": "internal/calendar",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/export"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": [
+        "github.com/rickar/cal/v2",
+        "github.com/rickar/cal/v2/aa",
+        "github.com/rickar/cal/v2/au",
+        "github.com/rickar/cal/v2/ca",
+        "github.com/rickar/cal/v2/de",
+        "github.com/rickar/cal/v2/fr",
+        "github.com/rickar/cal/v2/gb",
+        "github.com/rickar/cal/v2/us"
+      ]
+    },
+    "pmforge/internal/charts": {
+      "dir": "internal/charts",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/charts/pdfrender"
+      ],
+      "imports_internal": [
+        "pmforge/internal/charts/dag",
+        "pmforge/internal/charts/flow",
+        "pmforge/internal/charts/matrix",
+        "pmforge/internal/charts/stats",
+        "pmforge/internal/kernel"
+      ],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/charts/dag": {
+      "dir": "internal/charts/dag",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/charts"
+      ],
+      "imports_internal": [
+        "pmforge/internal/kernel"
+      ],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/charts/flow": {
+      "dir": "internal/charts/flow",
+      "imported_by_internal": [
+        "pmforge/internal/charts"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/charts/matrix": {
+      "dir": "internal/charts/matrix",
+      "imported_by_internal": [
+        "pmforge/internal/charts"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/charts/pdfrender": {
+      "dir": "internal/charts/pdfrender",
+      "imported_by_internal": [
+        "pmforge/internal/documents"
+      ],
+      "imports_internal": [
+        "pmforge/internal/charts"
+      ],
+      "notable_external_deps": [
+        "github.com/go-pdf/fpdf"
+      ]
+    },
+    "pmforge/internal/charts/stats": {
+      "dir": "internal/charts/stats",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/charts"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/cli": {
+      "dir": "internal/cli",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/db",
+        "pmforge/internal/update"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/crypto": {
+      "dir": "internal/crypto",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/db",
+        "pmforge/internal/documents",
+        "pmforge/internal/export",
+        "pmforge/internal/users"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": [
+        "github.com/digitorus/pkcs7",
+        "golang.org/x/crypto/argon2",
+        "golang.org/x/crypto/pkcs12"
+      ]
+    },
+    "pmforge/internal/db": {
+      "dir": "internal/db",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/admin",
+        "pmforge/internal/budget",
+        "pmforge/internal/sigma/service",
+        "pmforge/internal/templates",
+        "pmforge/internal/timeline"
+      ],
+      "imports_internal": [
+        "pmforge/internal/cli",
+        "pmforge/internal/crypto",
+        "pmforge/internal/debug",
+        "pmforge/internal/exportsafe",
+        "pmforge/internal/money",
+        "pmforge/internal/sigma/domain",
+        "pmforge/internal/sqlitedriver"
+      ],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/debug": {
+      "dir": "internal/debug",
+      "imported_by_internal": [
+        "pmforge/internal/admin",
+        "pmforge/internal/db",
+        "pmforge/internal/export"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/documents": {
+      "dir": "internal/documents",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/export",
+        "pmforge/internal/templates"
+      ],
+      "imports_internal": [
+        "pmforge/internal/charts/pdfrender",
+        "pmforge/internal/crypto",
+        "pmforge/internal/fonts",
+        "pmforge/internal/kernel",
+        "pmforge/internal/pdfmeta"
+      ],
+      "notable_external_deps": [
+        "github.com/go-pdf/fpdf"
+      ]
+    },
+    "pmforge/internal/export": {
+      "dir": "internal/export",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [
+        "pmforge/internal/calendar",
+        "pmforge/internal/crypto",
+        "pmforge/internal/debug",
+        "pmforge/internal/documents",
+        "pmforge/internal/exportsafe",
+        "pmforge/internal/fonts",
+        "pmforge/internal/kernel",
+        "pmforge/internal/pdfmeta",
+        "pmforge/internal/sigma/domain"
+      ],
+      "notable_external_deps": [
+        "github.com/go-pdf/fpdf",
+        "github.com/gomutex/godocx",
+        "github.com/gomutex/godocx/docx",
+        "github.com/xuri/excelize/v2"
+      ]
+    },
+    "pmforge/internal/exportsafe": {
+      "dir": "internal/exportsafe",
+      "imported_by_internal": [
+        "pmforge/internal/db",
+        "pmforge/internal/export"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/fonts": {
+      "dir": "internal/fonts",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/documents",
+        "pmforge/internal/export"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/kernel": {
+      "dir": "internal/kernel",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/charts",
+        "pmforge/internal/charts/dag",
+        "pmforge/internal/documents",
+        "pmforge/internal/export"
+      ],
+      "imports_internal": [
+        "pmforge/internal/money"
+      ],
+      "notable_external_deps": [
+        "gonum.org/v1/gonum/stat/distuv"
+      ]
+    },
+    "pmforge/internal/money": {
+      "dir": "internal/money",
+      "imported_by_internal": [
+        "pmforge/internal/budget",
+        "pmforge/internal/db",
+        "pmforge/internal/kernel"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/pdfmeta": {
+      "dir": "internal/pdfmeta",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/documents",
+        "pmforge/internal/export"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": [
+        "github.com/go-pdf/fpdf"
+      ]
+    },
+    "pmforge/internal/sigma/charts": {
+      "dir": "internal/sigma/charts",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/sigma/domain": {
+      "dir": "internal/sigma/domain",
+      "imported_by_internal": [
+        "pmforge",
+        "pmforge/internal/db",
+        "pmforge/internal/export",
+        "pmforge/internal/sigma/service",
+        "pmforge/internal/sigma/tollgate"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/sigma/service": {
+      "dir": "internal/sigma/service",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [
+        "pmforge/internal/db",
+        "pmforge/internal/sigma/domain"
+      ],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/sigma/stats": {
+      "dir": "internal/sigma/stats",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": [
+        "gonum.org/v1/gonum/stat"
+      ]
+    },
+    "pmforge/internal/sigma/tollgate": {
+      "dir": "internal/sigma/tollgate",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [
+        "pmforge/internal/sigma/domain"
+      ],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/signing": {
+      "dir": "internal/signing",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/sqlitedriver": {
+      "dir": "internal/sqlitedriver",
+      "imported_by_internal": [
+        "pmforge/internal/db",
+        "pmforge/internal/users"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": [
+        "github.com/mutecomm/go-sqlcipher/v4"
+      ]
+    },
+    "pmforge/internal/templates": {
+      "dir": "internal/templates",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [
+        "pmforge/internal/agile",
+        "pmforge/internal/db",
+        "pmforge/internal/documents"
+      ],
+      "notable_external_deps": [
+        "github.com/gorules/zen-go"
+      ]
+    },
+    "pmforge/internal/timeline": {
+      "dir": "internal/timeline",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [
+        "pmforge/internal/agile",
+        "pmforge/internal/db"
+      ],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/update": {
+      "dir": "internal/update",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [
+        "pmforge/internal/cli"
+      ],
+      "notable_external_deps": []
+    },
+    "pmforge/internal/users": {
+      "dir": "internal/users",
+      "imported_by_internal": [
+        "pmforge"
+      ],
+      "imports_internal": [
+        "pmforge/internal/auth",
+        "pmforge/internal/crypto",
+        "pmforge/internal/sqlitedriver"
+      ],
+      "notable_external_deps": []
+    }
+  }
+}
