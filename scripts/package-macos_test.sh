@@ -57,6 +57,8 @@ PLIST
 cat > "$stub_bin/create-dmg" << 'STUB'
 #!/bin/bash
 set -euo pipefail
+# Record that create-dmg was invoked so tests can assert it is opt-in.
+: > "${CREATE_DMG_SENTINEL:-/dev/null}"
 previous=""
 current=""
 for arg in "$@"; do
@@ -128,11 +130,35 @@ printf 'stub dmg\n' > "$outfile"
 STUB
 chmod +x "$stub_bin/hdiutil"
 
-output="$(PATH="$stub_bin:$PATH" PMFORGE_PACKAGE_LAYOUT_TEST=1 VERSION=test-create-dmg bash scripts/package-macos.sh 2>&1)" || {
+sentinel="$backup_root/create-dmg-called"
+
+# Case 1: default (no PMFORGE_FANCY_DMG). hdiutil is used even though a working
+# create-dmg is on PATH; create-dmg must NOT be invoked.
+rm -f "$sentinel"
+output="$(PATH="$stub_bin:$PATH" CREATE_DMG_SENTINEL="$sentinel" PMFORGE_PACKAGE_LAYOUT_TEST=1 VERSION=test-default bash scripts/package-macos.sh 2>&1)" || {
+	printf '%s\n' "$output" >&2
+	fail "package-macos default (hdiutil) layout failed"
+}
+case "$output" in
+	*"build/packages/PMForge-test-default-arm64.dmg"*) ;;
+	*)
+		printf '%s\n' "$output" >&2
+		fail "package-macos did not report the expected default DMG path"
+		;;
+esac
+if [ ! -f build/packages/PMForge-test-default-arm64.dmg ]; then
+	fail "package-macos did not create the expected default DMG artifact"
+fi
+if [ -f "$sentinel" ]; then
+	fail "package-macos invoked create-dmg by default; it must be opt-in (PMFORGE_FANCY_DMG=1)"
+fi
+
+# Case 2: opt-in fancy layout uses create-dmg when it succeeds.
+rm -f "$sentinel"
+output="$(PATH="$stub_bin:$PATH" CREATE_DMG_SENTINEL="$sentinel" PMFORGE_FANCY_DMG=1 PMFORGE_PACKAGE_LAYOUT_TEST=1 VERSION=test-create-dmg bash scripts/package-macos.sh 2>&1)" || {
 	printf '%s\n' "$output" >&2
 	fail "package-macos create-dmg layout failed"
 }
-
 case "$output" in
 	*"build/packages/PMForge-test-create-dmg-arm64.dmg"*) ;;
 	*)
@@ -140,18 +166,21 @@ case "$output" in
 		fail "package-macos did not report the expected create-dmg artifact path"
 		;;
 esac
-
 if [ ! -f build/packages/PMForge-test-create-dmg-arm64.dmg ]; then
 	fail "package-macos did not create the expected create-dmg artifact"
 fi
+if [ ! -f "$sentinel" ]; then
+	fail "package-macos did not invoke create-dmg under PMFORGE_FANCY_DMG=1"
+fi
 
+# Case 3: opt-in fancy layout falls back to hdiutil when create-dmg fails.
 cat > "$stub_bin/create-dmg" << 'STUB'
 #!/bin/bash
 exit 127
 STUB
 chmod +x "$stub_bin/create-dmg"
 
-output="$(PATH="$stub_bin:$PATH" PMFORGE_PACKAGE_LAYOUT_TEST=1 VERSION=test-fallback bash scripts/package-macos.sh 2>&1)" || {
+output="$(PATH="$stub_bin:$PATH" PMFORGE_FANCY_DMG=1 PMFORGE_PACKAGE_LAYOUT_TEST=1 VERSION=test-fallback bash scripts/package-macos.sh 2>&1)" || {
 	printf '%s\n' "$output" >&2
 	fail "package-macos fallback layout failed"
 }

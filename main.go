@@ -90,6 +90,17 @@ func NewApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	// One-time relocation: older macOS installs kept their data under the
+	// iCloud-synced, TCC-protected ~/Documents/PMForge. Copy it into the new
+	// Application Support root before opening the store so an existing user's
+	// accounts and projects survive the move. A failure here is non-fatal —
+	// we log it and fall through to a clean new-location install rather than
+	// blocking startup.
+	if migrated, mErr := users.MigrateLegacyRoot(root); mErr != nil {
+		log.Printf("users: legacy data migration failed: %v (continuing with a fresh %s)", mErr, root)
+	} else if migrated {
+		log.Printf("users: migrated legacy ~/Documents/PMForge data into %s", root)
+	}
 	store, err := users.Open(root)
 	if err != nil {
 		return nil, err

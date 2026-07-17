@@ -3,12 +3,14 @@
 
 // Package users owns PMForge's local-multi-user system. It provides:
 //
-//   - A "system database" at ~/Documents/PMForge/system.db that lists
-//     every PMForge account on this machine (username, display name,
-//     password hash, data directory).
-//   - Per-user folders at ~/Documents/PMForge/<username>/ that hold
-//     each user's projects, certificates, and export output. Folders
-//     are chmod'd to 0700 on POSIX so other OS accounts cannot read.
+//   - A "system database" at <data-root>/system.db that lists every
+//     PMForge account on this machine (username, display name, password
+//     hash, data directory). The data root is ~/Library/Application
+//     Support/PMForge on macOS and ~/Documents/PMForge elsewhere; see
+//     DefaultRootDir.
+//   - Per-user folders at <data-root>/<username>/ that hold each user's
+//     projects, certificates, and export output. Folders are chmod'd to
+//     0700 on POSIX so other OS accounts cannot read.
 //   - A login flow (Authenticate) and an account-creation flow
 //     (CreateAccount) that the GUI and CLI both call.
 //
@@ -20,9 +22,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -404,9 +409,17 @@ func (s *Store) List() ([]Account, error) {
 	return out, rows.Err()
 }
 
-// DefaultRootDir returns the canonical PMForge data root on the
-// current platform. It prefers $XDG_DATA_HOME on Linux but falls back
-// to ~/Documents/PMForge everywhere.
+// DefaultRootDir returns the canonical PMForge data root on the current
+// platform. $XDG_DATA_HOME overrides everywhere (Linux convention and a
+// test hook). Otherwise:
+//
+//   - macOS: ~/Library/Application Support/PMForge. The old default,
+//     ~/Documents/PMForge, is both iCloud-synced (so system.db can sync
+//     between Macs or be evicted to a dataless placeholder) and TCC-
+//     protected, which broke first-run account creation and code-signing.
+//     Application Support is the Apple-sanctioned location for app data and
+//     is neither synced nor privacy-gated.
+//   - Linux / Windows: ~/Documents/PMForge (unchanged).
 func DefaultRootDir() (string, error) {
 	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
 		return filepath.Join(xdg, "PMForge"), nil
@@ -415,7 +428,104 @@ func DefaultRootDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if runtime.GOOS == "darwin" {
+		return filepath.Join(home, "Library", "Application Support", "PMForge"), nil
+	}
 	return filepath.Join(home, "Documents", "PMForge"), nil
+}
+
+// legacyMacRootDir returns the pre-relocation macOS data directory
+// (~/Documents/PMForge). It returns "" on non-macOS hosts, when an explicit
+// $XDG_DATA_HOME override is in effect, or when the home directory cannot be
+// resolved — i.e. whenever there is nothing to migrate from.
+func legacyMacRootDir() string {
+	if runtime.GOOS != "darwin" || os.Getenv("XDG_DATA_HOME") != "" {
+		return ""
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, "Documents", "PMForge")
+}
+
+// MigrateLegacyRoot moves a pre-relocation macOS install into newRoot. It is
+// a no-op unless the host is macOS, newRoot has no system.db yet, and the
+// legacy ~/Documents/PMForge location does have one. When it runs it copies
+// the legacy tree into newRoot (leaving the original untouched, so an
+// iCloud-evicted or half-synced source can never cause data loss and the
+// user can delete the old copy at leisure) and reports whether a migration
+// happened. Safe to call on every startup: once newRoot has a system.db it
+// returns (false, nil) immediately.
+func MigrateLegacyRoot(newRoot string) (bool, error) {
+	return migrateLegacyRoot(legacyMacRootDir(), newRoot)
+}
+
+func migrateLegacyRoot(legacy, newRoot string) (bool, error) {
+	if legacy == "" || legacy == newRoot {
+		return false, nil
+	}
+	if _, err := os.Stat(filepath.Join(newRoot, "system.db")); err == nil {
+		return false, nil // new location already initialised — nothing to do
+	}
+	if _, err := os.Stat(filepath.Join(legacy, "system.db")); err != nil {
+		return false, nil // no legacy install to migrate
+	}
+	if err := copyTree(legacy, newRoot); err != nil {
+		return false, fmt.Errorf("users: migrate legacy data root: %w", err)
+	}
+	return true, nil
+}
+
+// copyTree recursively copies the regular files and directories under src
+// into dst, preserving permission bits. Symlinks are skipped (PMForge's data
+// tree contains none). Reading each source file materialises any iCloud
+// dataless placeholder, so the copy always contains real bytes.
+func copyTree(src, dst string) error {
+	return filepath.WalkDir(src, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		switch {
+		case d.IsDir():
+			return os.MkdirAll(target, info.Mode().Perm())
+		case info.Mode()&fs.ModeSymlink != 0:
+			return nil // skip symlinks
+		case info.Mode().IsRegular():
+			return copyFile(path, target, info.Mode().Perm())
+		default:
+			return nil // skip sockets, devices, and other irregular files
+		}
+	})
+}
+
+func copyFile(src, dst string, perm fs.FileMode) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
+		return err
+	}
+	in, err := os.Open(src) // #nosec G304 -- src is under the user's own legacy data root.
+	if err != nil {
+		return err
+	}
+	defer func() { _ = in.Close() }()
+	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm) // #nosec G304 -- dst is under the user's own data root.
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		_ = out.Close()
+		return err
+	}
+	return out.Close()
 }
 
 func ensurePrivateDir(path string) error {

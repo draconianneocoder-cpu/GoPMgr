@@ -162,7 +162,7 @@ All tables created idempotently in `db.Database.Migrate()` (internal/db/sqlite.g
 - **`agile_deployments`** — `id`, `project_id`, `ts`, `version`, `successful`, `lead_time_hours`, `restore_time_hours`, `notes`.
 
 ### System database (top-level, NOT per-project)
-- **`~/Documents/PMForge/system.db`** holds account credentials:
+- **`<data-root>/system.db`** (macOS `~/Library/Application Support/PMForge`, else `~/Documents/PMForge`; see `users.DefaultRootDir`) holds account credentials:
 - **`users`** — `username` (PK), `display_name`, `password_hash` (PHC Argon2id), `data_dir`, `created_at`, `last_login`.
 
 ---
@@ -236,7 +236,7 @@ make check-release     # version consistency + REUSE + build
 make package-linux / package-windows / package-darwin
 ```
 
-**First-launch behaviour**: creates `~/Documents/PMForge/system.db` (account list) and provisions `~/Documents/PMForge/<username>/{projects,certs,exports}/` for each user (chmod 0700 on POSIX).
+**First-launch behaviour**: creates `<data-root>/system.db` (account list) and provisions `<data-root>/<username>/{projects,certs,exports}/` for each user (chmod 0700 on POSIX). The data root is `~/Library/Application Support/PMForge` on macOS (off iCloud and outside the TCC-protected Documents folder) and `~/Documents/PMForge` elsewhere; on macOS an existing `~/Documents/PMForge` install is copied into the new root on first launch via `users.MigrateLegacyRoot` (`NewApp` calls it before `users.Open`).
 
 ---
 

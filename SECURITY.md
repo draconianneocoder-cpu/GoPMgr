@@ -16,8 +16,10 @@ for a legitimate local user.
 - User credentials are stored in `system.db` as Argon2id PHC strings.
 - Login errors should remain generic so unknown users and wrong
   passwords are not distinguishable.
-- Per-user directories under `~/Documents/PMForge/<username>/` are
-  created with restrictive POSIX permissions where supported.
+- Per-user directories under the PMForge data root
+  (`~/Library/Application Support/PMForge/` on macOS,
+  `~/Documents/PMForge/` elsewhere) `/<username>/` are created with
+  restrictive POSIX permissions where supported.
 - `system.db` file permissions are tightened to owner-only access where
   supported.
 
