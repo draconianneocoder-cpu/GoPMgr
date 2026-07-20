@@ -30,7 +30,7 @@ import (
 // This renderer is what RACI, Risk Register, Project Plan, etc.
 // should look like once they get their own bespoke layouts.
 //
-// Recipe (see AGENT.md §10):
+// Recipe (see DEVELOPER_HANDBOOK.md §10):
 //
 //  1. Create internal/documents/<kind>.go with a Render<Kind>PDF
 //     func of the same signature.

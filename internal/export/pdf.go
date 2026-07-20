@@ -172,7 +172,7 @@ func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 // CMS blob inside an incremental update with a /Sig dictionary and
 // a properly-sized /Contents slot referenced by /ByteRange. That
 // rewrites the PDF's xref table and is non-trivial with fpdf;
-// tracked in AGENT.md §8 as "real PDF signing widget".
+// tracked in DEVELOPER_HANDBOOK.md §8 as "real PDF signing widget".
 func appendCMSSignatureMarker(pdfBytes, cmsBlob []byte) []byte {
 	const tag = "\n%%PMForgeCMSSignature:"
 	out := make([]byte, 0, len(pdfBytes)+len(cmsBlob)*2+len(tag)+8)

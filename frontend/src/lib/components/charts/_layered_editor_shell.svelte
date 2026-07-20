@@ -300,7 +300,7 @@ not routed directly.
 
   // Concurrency hardening: cancel pending debounce on unmount so
   // navigation away from a half-edited chart doesn't fire a save
-  // call on an unmounted component. (AGENT.md §6.)
+  // call on an unmounted component. (DEVELOPER_HANDBOOK.md §6.)
   onDestroy(() => {
     window.removeEventListener('keydown', handleKeyDown);
     stopAutosave?.();

@@ -218,7 +218,7 @@ escape hatch during the opt-in phase.
 6. [x] Extend `check-release` with an encrypted-db round-trip gate;
    REUSE entries for the new dependency.
 7. [x] Docs: README TODO #8 closure, recovery-code warning copy,
-   AGENT.md §8 status.
+   DEVELOPER_HANDBOOK.md §8 status.
 
 ## Appendix A: Phase 0 spike results (linux/arm64, 2026-06-12)
 

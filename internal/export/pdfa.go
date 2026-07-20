@@ -18,7 +18,7 @@ import (
 // thin fpdf-specific glue: ApplyPDFAMetadata sets the library's
 // documented metadata setters on a *fpdf.Fpdf.
 //
-// Still NOT provided (V3 milestones, AGENT.md §8):
+// Still NOT provided (V3 milestones, DEVELOPER_HANDBOOK.md §8):
 //   - Font embedding (ship a TTF; switch SetFont calls to it).
 //   - OutputIntent / ICC profile embedding — the injection code
 //     (InjectOutputIntent + MakePDFA3) is complete. Run `make icc` to

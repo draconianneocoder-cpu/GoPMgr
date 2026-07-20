@@ -152,7 +152,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  // Concurrency hardening (AGENT.md §6): cancel pending reorder save.
+  // Concurrency hardening (DEVELOPER_HANDBOOK.md §6): cancel pending reorder save.
   onDestroy(() => {
     if (reorderTimer) {
       clearTimeout(reorderTimer);

@@ -155,7 +155,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   // No timers in this component, but follow the pattern documented
-  // in AGENT.md §6 for consistency.
+  // in DEVELOPER_HANDBOOK.md §6 for consistency.
   onDestroy(() => {});
 </script>
 

@@ -85,7 +85,7 @@ fi
 section "unsafe.Pointer ban"
 matches=$(grep -rn 'unsafe\.Pointer' --include='*.go' $PMF_DIRS 2>/dev/null \
     | grep -v '^\./vendor/' \
-    | grep -v 'AGENT.md' \
+    | grep -v 'DEVELOPER_HANDBOOK.md' \
     | grep -v 'scripts/memory-safety-scan.sh' \
     || true)
 if [ -n "$matches" ]; then

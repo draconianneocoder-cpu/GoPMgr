@@ -205,7 +205,7 @@ implications:
 - **Phase E — CI, docs, budgets.** Add a `-tags duckdb` build+test CI job
   (at least Linux) so it can't bitrot; record the dependency in
   `DEPENDENCIES.md` with justification; note the production analytics build
-  in `AGENT.md`/`README.md`; add a binary-size budget check for the tagged
+  in `DEVELOPER_HANDBOOK.md`/`README.md`; add a binary-size budget check for the tagged
   build.
 
 ## Testing & verification

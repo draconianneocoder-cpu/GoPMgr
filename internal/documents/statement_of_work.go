@@ -33,7 +33,7 @@ import (
 //
 // Shared helpers from the Charter file (writeSection, writeHeading,
 // writeBulletSection) are NOT used here intentionally — each
-// bespoke renderer is self-contained per the AGENT.md §10 recipe so
+// bespoke renderer is self-contained per the DEVELOPER_HANDBOOK.md §10 recipe so
 // changing Charter's layout doesn't ripple into every other
 // document.
 func RenderStatementOfWorkPDF(content map[string]interface{}, projectName string) ([]byte, error) {

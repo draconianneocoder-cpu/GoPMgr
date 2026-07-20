@@ -17,7 +17,7 @@ automated engineering work.
    release or build commands.
 2. When present, read local `session-notes.md` and the relevant files in
    `.agent_memory/` before choosing backlog work or changing behavior.
-3. Inspect existing source before editing. Do not read `AGENT.md` in
+3. Inspect existing source before editing. Do not read `DEVELOPER_HANDBOOK.md` in
    full unless required; it is a large developer handbook. Prefer targeted
    `rg` searches and small snippets.
 4. Assume the worktree can contain unrelated user or agent changes. Do

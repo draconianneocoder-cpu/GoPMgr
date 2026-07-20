@@ -15,7 +15,7 @@ import (
 // The document is a hybrid: prose-heavy in places (problem, solution,
 // recommendation), table-heavy in others (alternatives with pros/cons,
 // benefits vs risks side-by-side). Layout follows pattern 4 (hybrid
-// card list) from the AGENT.md taxonomy.
+// card list) from the DEVELOPER_HANDBOOK.md taxonomy.
 //
 // Layout:
 //

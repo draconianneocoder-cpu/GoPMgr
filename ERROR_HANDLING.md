@@ -132,7 +132,7 @@ relies on. Two patterns, chosen by whether the failure is expected:
 
 User-facing errors accumulated during a form/editor session are held in
 `let error = $state('')` and rendered inline, per the Svelte conventions in
-[AGENT.md](AGENT.md) §4.
+[DEVELOPER_HANDBOOK.md](DEVELOPER_HANDBOOK.md) §4.
 
 ## Testing error paths
 

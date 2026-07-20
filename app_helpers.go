@@ -53,7 +53,7 @@ func (a *App) requireDEKLocked() ([]byte, error) {
 // concurrent Logout/CloseProject may Close the returned handle
 // before the caller's query runs; the caller receives "sql:
 // database is closed" rather than a crash. Acceptable for a
-// single-user desktop app; see AGENT.md §6.
+// single-user desktop app; see DEVELOPER_HANDBOOK.md §6.
 func (a *App) requireDB() *db.Database {
 	a.mu.RLock()
 	defer a.mu.RUnlock()

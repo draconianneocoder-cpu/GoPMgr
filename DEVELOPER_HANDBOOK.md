@@ -41,7 +41,7 @@ The app has reached **V2.x** maturity: all 21 chart kinds and all 25 document te
 ```
 pmforge/
 ├── AGENTS.md                    # current agent operating guide
-├── AGENT.md                     # this developer handbook
+├── DEVELOPER_HANDBOOK.md        # this developer handbook
 ├── README.md                    # user/contributor documentation (GFDL)
 ├── LICENSES/                    # REUSE-compliant license texts
 ├── Makefile                     # build/lint/test/package targets
@@ -359,7 +359,7 @@ This section is the running log of non-obvious discoveries. Every session that l
   2. **Status snapshot** (Status Report) — portrait, traffic-light badges at the top, bulleted sections.
   3. **Sorted table** (Risk Register, Communication Plan) — landscape, color-banded first column, sorted/grouped rows.
   4. **Hybrid card list** (Project Plan, Project Closure, Stakeholder Analysis) — portrait, mix of prose sections + bordered cards.
-  Future bespoke renderers should pick the closest match and copy the helpers from that file (per AGENT.md §10's "each renderer self-contained" rule).
+  Future bespoke renderers should pick the closest match and copy the helpers from that file (per DEVELOPER_HANDBOOK.md §10's "each renderer self-contained" rule).
 - **First targeted unit tests landed.** `internal/budget/budget_test.go`, `internal/timeline/timeline_test.go`, and `internal/calendar/calendar_test.go` test the pure-data helpers that are most likely to drift under refactor. The budget tests exercise empty / contracts / labour-match / overspend cases; timeline tests cover empty + project dates + sprint ranges + RFC3339 vs date-only + zero-TS skip; calendar tests cover unknown-country fallback + weekend / US New Year / workdays-from / window-symmetry. These run via `make test` on the user's Mac; the sandbox can't.
 - **Future-test priorities** when more coverage is wanted: pdfrender layout math (fit + scale), agile.DORA classification thresholds (the elite/high/medium/low band boundaries), auth.HashPassword/VerifyPassword round-trip, recovery-code canonicalisation. These are all pure-data and won't need Wails or SQLite.
 - **Stakeholder Analysis Document uses `power_level`/`interest_level` field keys** to match the document schema in templates.go (registry-defined). The chart kind uses `power`/`interest`. Both forms ultimately resolve to the same Power × Interest classification; the doc kind's "stakeholders" object-array has its own keys because PMI's classic Stakeholder Analysis Template uses those longer names.
@@ -406,7 +406,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **DORADashboard reuses `StatsChart.svelte`** for the deploy-trend mini-chart by constructing a `StatsLayout` inline. Cross-feature reuse: the stats engine wasn't meant for agile, but it just works because the layout types are public. Confirms the registry+layout architecture pays off.
 - **Single-active-sprint is GUI-enforced**, not schema-enforced. When the user clicks "Start" on a planning sprint, `SprintList.activate()` first sweeps any other `active` sprint to `complete` then activates the target. Keeping this in the frontend means the backend stays simple and the rule is visible/testable in one place.
 - **WorkItemEditor uses a `lastItemID` sentinel** to decide when to re-seed the local `draft` from the `item` prop. Without this, parent-side optimistic updates would clobber unsaved edits every time the parent re-renders. The sentinel pattern is reusable for any "edit a record in a modal" component.
-- **AgileEnabled is in-memory only** (per AGENT.md §8). The Dashboard's toggle calls `SetAgileEnabled` which flips `agile.PackEnabled` in process. Persisting this across restarts is a one-line addition to `settings` later if needed.
+- **AgileEnabled is in-memory only** (per DEVELOPER_HANDBOOK.md §8). The Dashboard's toggle calls `SetAgileEnabled` which flips `agile.PackEnabled` in process. Persisting this across restarts is a one-line addition to `settings` later if needed.
 - **WIP-limit breach indicator** is computed server-side via `WIPCountByColumn()` and rendered client-side as a red badge — the badge tints red when `count > limit > 0`, stays slate when unlimited (`limit == 0`).
 - **The Dashboard's `agileEnabled` check is wrapped in try/catch** so an older binary without the Agile bindings just hides the section instead of crashing. Cheap forward/backward compatibility for a desktop app where the user may not have updated yet.
 
@@ -431,7 +431,7 @@ This section is the running log of non-obvious discoveries. Every session that l
   11. **Persuasive CTA layout** — Project Proposal (the ASK).
   12. **Baseline stamp** — Project Schedule (green when set, slate when unset).
   13. **Audience-friendly summary** — Project Brief.
-- **What's next.** Bespoke coverage saturated. The next investment areas per AGENT.md §8 are: (a) PDF/A-3 strict conformance validation (veraPDF gate hardening now that font embedding, Catalog XMP, and OutputIntent/ICC code exist), (b) external PAdES validator hardening for signed sample PDFs, (c) per-user encryption at rest (SQLCipher), (d) PDM date-dragging on the Timeline. All four are V3 milestones requiring significantly larger slices.
+- **What's next.** Bespoke coverage saturated. The next investment areas per DEVELOPER_HANDBOOK.md §8 are: (a) PDF/A-3 strict conformance validation (veraPDF gate hardening now that font embedding, Catalog XMP, and OutputIntent/ICC code exist), (b) external PAdES validator hardening for signed sample PDFs, (c) per-user encryption at rest (SQLCipher), (d) PDM date-dragging on the Timeline. All four are V3 milestones requiring significantly larger slices.
 
 ### 2026-05-19 — Project Schedule bespoke renderer (planning phase ~complete)
 - **Bespoke coverage 21/25; planning 13/14 (Plan Excel aliased → 14/14 effectively).** Only execution (Project Brief + Project Overview) remains.
@@ -465,7 +465,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Bespoke coverage 17/25; planning 10/14.** First doc with **inline mini-Gantt segments** in a table row. Each task row's Timeline column shows a grey track with a blue-800 filled segment positioned according to that task's [start, end] window relative to the project's overall min-start → max-end span. A reader sees who-overlaps-who without leaving the table.
 - **`computeProjectWindow`** scans the tasks once and picks the earliest start + latest end across all rows. Tasks with only a start OR only an end still extend the window (single-endpoint segments render at the relevant pole instead of being dropped).
 - **Single-day tasks get a minimum bar width** (0.8mm) so they remain visible even when the project window is hundreds of days. Right edge is clamped to the cell's right padding so the segment doesn't draw outside the track.
-- **`parseDate` accepts both YYYY-MM-DD and RFC3339** so the same helper works whether the date came from a Wails form (typically RFC3339Nano) or from the user typing into a string field in the JSON. Pull this into a shared `internal/documents/dates.go` if a fourth renderer needs it — for now it's local-to-file per AGENT.md §10's self-contained rule.
+- **`parseDate` accepts both YYYY-MM-DD and RFC3339** so the same helper works whether the date came from a Wails form (typically RFC3339Nano) or from the user typing into a string field in the JSON. Pull this into a shared `internal/documents/dates.go` if a fourth renderer needs it — for now it's local-to-file per DEVELOPER_HANDBOOK.md §10's self-contained rule.
 - **`shortExecDate` accepts either `time.Time` or `string`.** Lets the renderer pass parsed times for the table cells (clean YYYY-MM-DD format) while still handling the raw string when called from the summary banner.
 - **Same cell-overlay recipe as Team Charter**: capture (x, y) before the empty CellFormat, then call the overlay function. Pattern is now used twice, validating it as the shared idiom for graphic-inside-cell.
 
@@ -508,7 +508,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 
 ### 2026-05-19 — Scope Statement, Project Budget, Requirements bespoke renderers
 - **Bespoke coverage 11/25.** Three new renderers land today: Scope Statement, Project Budget, Requirements Document. Together they introduce two new layout variants that complement the four established patterns:
-  - **Scope Statement** follows the Charter/SOW prose pattern (portrait A4, section headings, bulleted lists) but adds a teal left-rule accent on the Acceptance Criteria block to visually mark the formal verification gate. Shares `getString` / `getStringSlice` from charter.go because it also lives in package documents, but all drawing helpers are local per AGENT.md §10.
+  - **Scope Statement** follows the Charter/SOW prose pattern (portrait A4, section headings, bulleted lists) but adds a teal left-rule accent on the Acceptance Criteria block to visually mark the formal verification gate. Shares `getString` / `getStringSlice` from charter.go because it also lives in package documents, but all drawing helpers are local per DEVELOPER_HANDBOOK.md §10.
   - **Project Budget** is portrait (not landscape) despite being table-heavy, because three columns fit comfortably on portrait A4 and the financial summary block (subtotal / contingency / grand total) benefits from the extra vertical space. Uses alternating row fills + a dark-header row. The `formatMoney` helper does manual comma-insertion because Go's `fmt.Sprintf` does not support `%,` format; tested against 0 / 3-digit / 6-digit / 7-digit cases.
   - **Requirements Document** follows the landscape table pattern (like Risk Register) with priority-coloured Req ID cells and type-group divider rows (business → functional → non-functional → technical → other). Sorted by type first, then priority descending within each group.
 - **`fmt.Sprintf("%,.2f", v)` is NOT valid Go.** Comma is not a supported flag in the Go fmt package. Always use a manual formatter or `golang.org/x/text/message` for locale-aware number formatting. Written and verified as `/tmp/moneycheck.go` before committing.
@@ -579,7 +579,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 <!-- - one-line takeaway -->
 
 ### 2026-06-04 — Chart count audit: 19 → 20 everywhere; race + memory-scan clean
-- **Registry has 20 chart kinds, not 19.** 6 DAG + 8 Stats + 4 Matrix + 2 Flow = 20. The off-by-one originated in the initial project scaffold comment before the 20th kind was wired up. All references to "19 chart kinds" in README.md (7 sites), AGENT.md (3 sites), and `internal/charts/registry.go` package comment are now corrected to 20.
+- **Registry has 20 chart kinds, not 19.** 6 DAG + 8 Stats + 4 Matrix + 2 Flow = 20. The off-by-one originated in the initial project scaffold comment before the 20th kind was wired up. All references to "19 chart kinds" in README.md (7 sites), DEVELOPER_HANDBOOK.md (3 sites), and `internal/charts/registry.go` package comment are now corrected to 20.
 - **"Five engines" corrected to "four engines" in two places.** `registry.go` package comment and README.md both said "five engines"; only four Engine constants exist (DAG, Stats, Matrix, Flow). The five *renderer files* in `pdfrender/` (dag, fishbone, flow, matrix, stats) are correctly five because Fishbone has its own renderer file, but the taxonomy engine count is four.
 - **`make race` passes clean** across all 28 packages — no data races detected.
 - **`make memory-scan` passes clean** — `go vet` clean, goroutine inventory zero PMForge spawns, gosec clean, govulncheck reports zero vulnerabilities in PMForge's own code.
@@ -905,7 +905,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Two-step confirm for destructive admin actions.** First click on "Delete" or "Grant/Remove admin" sets a `pendingDelete`/`pendingRoleChange` state string. A second click on the same action (now showing "Confirm") executes it. No time-delay required; the visual change between the two clicks is sufficient. Cancel link clears the pending state.
 - **In-memory `a.user.IsAdmin` can go stale** if another admin demotes the current user while they are signed in. Acceptable trade-off for a local single-machine app — the session is refreshed at the next sign-in. Document in the source, do not add a re-fetch loop.
 - **Authorization tests belong to the feature, not to an afterthought.** The advisor caught that 8 files of call-site updates (adding the `isAdmin bool` arg) produced zero new tests for the privilege logic itself. Added 8 store-level tests (`TestHasAnyAdmin_*`, `TestSetAdmin_*`, `TestDeleteAccount_*`) and 7 app-level tests (`TestCreateAccount_*`, `TestBecomeAdmin_*`, `TestAdminDeleteUser_*`, `TestAdminSetUserRole_*`). These are all pure-data, no Wails needed.
-- **`AdminPanel.svelte` and `AppHeader.svelte` verified by svelte-check only** (no admin session available in the Vite dev preview without the Go backend). Confidence level is stated explicitly: type-correct, not runtime-verified. This caveat lives in the commit message, not the AGENT.md.
+- **`AdminPanel.svelte` and `AppHeader.svelte` verified by svelte-check only** (no admin session available in the Vite dev preview without the Go backend). Confidence level is stated explicitly: type-correct, not runtime-verified. This caveat lives in the commit message, not the DEVELOPER_HANDBOOK.md.
 
 ### 2026-06-20 — In-app Help Guide
 
@@ -952,7 +952,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 ### 2026-06-22 — Recent-changes review + roadmap/doc reconciliation
 
 - **Reviewed the last ~20 commits** (Six Sigma Dashboard wire-up, the 2026-06-21 concurrency/correctness sweep, the SPDX + V2.x QA sweep, the admin-role and Help-Guide work). No correctness regressions found; the concurrency fixes (requireSigmaSvc nil-guard, DEK deep-copy in IssueRecoveryCodes, RepairAndSwap sigma-service reassignment, recovery TOCTOU tightening, PackEnabled→atomic.Bool) are coherent and self-consistent with the shipped code.
-- **Corrected a stale roadmap status in README.md.** Scheduling roadmap **item 19** still carried the header `*Kernel core landed 2026-06-10; UI layer remaining.*`, which contradicted its own body and AGENT.md: the assignment UI, Level, and Histogram actions all shipped 2026-06-10 (confirmed in `CPMEditor.svelte` — Assignments section, `LevelChartResources`, `GenerateResourceHistogram`). Header updated to "Done 2026-06-10" so the canonical status doc no longer self-contradicts.
+- **Corrected a stale roadmap status in README.md.** Scheduling roadmap **item 19** still carried the header `*Kernel core landed 2026-06-10; UI layer remaining.*`, which contradicted its own body and DEVELOPER_HANDBOOK.md: the assignment UI, Level, and Histogram actions all shipped 2026-06-10 (confirmed in `CPMEditor.svelte` — Assignments section, `LevelChartResources`, `GenerateResourceHistogram`). Header updated to "Done 2026-06-10" so the canonical status doc no longer self-contradicts.
 - **Superseded the 2026-05-20 note "Remaining for the frontend: a Settings-panel font picker."** Shipped: `ProjectSettings.svelte` has the `ListFonts()` dropdown, the "Import font…" button calling `ImportFont()`, and persistence via `SetDefaultFont` (verified in source). The font subsystem is complete end-to-end, backend and frontend.
 
 ### 2026-06-22 — README public rewrite and user-guide split
