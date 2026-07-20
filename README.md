@@ -5,11 +5,20 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # PMForge
 
-**Latest release: [v1.1.0-rc.1](docs/release-notes/v1.1.0-rc.1.md)** — first
-click-installable native packages for Windows, macOS (Apple Silicon), and
-Linux. Includes CPM scheduling, DuckDB-backed portfolio analytics, 21 chart
-types, 25 document kinds, Agile and Six Sigma methodology packs, SQLCipher
-encryption, Argon2id auth, PDF/A-3 validation, and PAdES digital signing.
+**Latest published release:**
+[v0.9.0-alpha](https://github.com/draconianneocoder-cpu/PMForge/releases/tag/v0.9.0-alpha)
+(prerelease, published July 20, 2026). This first public alpha is intended for
+early testing and feedback. Its GitHub release currently has no uploaded native
+installer assets, so testers must build it from source until packages are
+attached to the release.
+
+The `main` branch is ahead of the alpha and includes unreleased candidate work
+documented in [the v1.1.0-rc.1 release notes](docs/release-notes/v1.1.0-rc.1.md),
+including CPM scheduling, DuckDB-backed portfolio analytics, 21 chart types,
+25 document kinds, Agile and Six Sigma methodology packs, SQLCipher encryption,
+Argon2id authentication, PDF/A-3 validation, and PAdES digital signing. These
+capabilities should not be read as a promise that `v0.9.0-alpha` has packaged
+installers or matches the current `main` branch.
 
 See [ROADMAP.md](ROADMAP.md) for what comes next and [VISION.md](VISION.md)
 for design principles.
@@ -197,8 +206,9 @@ workflow guide:
 
 The in-app Help Guide contains the most detailed end-user reference —
 including an **Installing & Running** section — and is available from the
-Help tab or the native Help menu. For installer downloads and per-platform
-install steps, see [docs/INSTALL.md](docs/INSTALL.md).
+Help tab or the native Help menu. For per-platform install steps and package
+names to use when release assets are available, see
+[docs/INSTALL.md](docs/INSTALL.md).
 
 ## Developer Documentation
 
