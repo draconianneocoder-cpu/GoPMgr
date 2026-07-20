@@ -18,26 +18,26 @@
   },
   "dependencies": {
     "chart.js": "^4.4.6",
-    "read-excel-file": "^9.2.0"
+    "read-excel-file": "^9.3.3"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^7.1.2",
+    "@sveltejs/vite-plugin-svelte": "^7.2.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/svelte": "^5.4.2",
     "@tsconfig/svelte": "^5.0.4",
-    "@typescript-eslint/eslint-plugin": "^8.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.64.0",
     "@typescript-eslint/parser": "^8.10.0",
-    "autoprefixer": "^10.4.20",
+    "autoprefixer": "^10.5.4",
     "eslint": "^9.13.0",
     "eslint-plugin-svelte": "^2.46.0",
     "jsdom": "^29.1.1",
-    "postcss": "^8.4.47",
-    "svelte": "^5.0.0",
-    "svelte-check": "^4.0.5",
+    "postcss": "^8.5.20",
+    "svelte": "^5.56.6",
+    "svelte-check": "^4.7.3",
     "tailwindcss": "^3.4.14",
     "tslib": "^2.8.0",
     "typescript": "^5.6.3",
-    "vite": "^8.1.0",
-    "vitest": "^4.1.9"
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
   }
 }
