@@ -23,7 +23,7 @@ local-only `session-notes.md` or `.agent_memory/`.
 PMForge is a **local-first project controls desktop application** for technical, engineering, IT, construction, and administrative organizations. License: **GPL-3.0-or-later**. The user described it as a GPL-licensed alternative to centralized SaaS PM tools.
 
 - **Backend**: Go 1.26.5, acts as a high-performance kernel for data integrity, scheduling math (CPM/EVM/MSPDI), authentication, document rendering, and PDF generation.
-- **Frontend**: Svelte 5 (runes mode) + Vite 5 + Tailwind 3, mounted in a desktop window via **Wails v2.12.0**.
+- **Frontend**: Svelte 5 (runes mode) + Vite 8 + TypeScript 6 + Tailwind 4 + ESLint 10, mounted in a desktop window via **Wails v2.12.0**.
 - **Storage**: SQLite with WAL journaling. Per-user folder isolation; one `.pmforge` file per project.
 - **Charting library**: Chart.js v4.4.6 on the frontend; `go-pdf/fpdf` for server-side PDF chart rendering (migrated from the archived `jung-kurt/gofpdf`, see ADR-003).
 - **Crypto**: `golang.org/x/crypto/argon2` for password hashing (PHC string format), AES-256-GCM for encryption, X.509/RSA for digital signatures.
@@ -99,7 +99,7 @@ pmforge/
 │   ├── update/check.go          # update-check stub
 │   └── users/store.go           # system.db + per-user folders
 │
-└── frontend/                    # Svelte 5 + Vite 5
+└── frontend/                    # Svelte 5 + Vite 8 + TypeScript 6
     ├── package.json / vite.config.ts / svelte.config.js
     ├── tailwind.config.js / postcss.config.js / tsconfig.json
     ├── index.html
@@ -995,7 +995,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **`internal/analytics` is build-tag gated, but installer builds now enable the tag.** `analytics.go` (Engine interface + types + `ErrAnalyticsUnavailable`), `stub.go` (`//go:build !duckdb`, explicit no-DuckDB developer fallback), `duckdb.go` (`//go:build duckdb`, in-memory DuckDB over a single pinned `database/sql` connection, extension autoinstall/autoload disabled). `make build` passes `-tags duckdb`, and `scripts/verify-duckdb-linked.sh` checks the built binary metadata so package builds cannot silently ship the stub.
 - **`App.RunPortfolioAnalytics`** (main.go, near `ComputeBudget`) enumerates readable projects with the session DEK, builds per-project cost metrics (`project.BudgetMinorUnits` + `budget.Compute(...).CommittedMinorUnits`), and aggregates via the engine as integer minor units. Untagged developer builds still short-circuit to `ErrAnalyticsUnavailable` before any scan. EV/PV aggregation deferred (SPI/CPI report 0 = n/a). `analytics` imports duckdb-go but NOT Wails, so the `-tags duckdb` CI job needs no GTK/WebKit.
 - **Bonus:** the duckdb-go dependency tree lifted `golang.org/x/crypto` → 0.47 and `x/net` → 0.49 (from 0.33/0.35), clearing the remaining Go Dependabot alerts.
-- **CRITICAL frontend lesson — install with `npm ci`, NEVER `rm package-lock.json && npm install`.** A fresh resolve pulls `svelte@5.56`, which breaks `vite-plugin-svelte@4.0.4` (the only plugin major for Vite 5): `svelte-check` stays 0/0 but `vite build` dies with `App.svelte: Expression expected (Note that you need plugins to import files that are not JavaScript)` — the Svelte plugin silently stops transforming `.svelte`. `pnpm install` fails identically, proving it's the fresh resolve, not npm. **Recovery:** `git checkout -- frontend/package-lock.json && cd frontend && rm -rf node_modules && npm ci`. The committed lockfile pins the working set (svelte 5.55.9, vite 5.4.21, plugin 4.0.4, rollup 4.60.4, esbuild 0.21.5) plus the platform native binaries. Reaching the latest Svelte/Vite is the parked migration (Vite 8 = Rolldown, not yet plugin-ready; Vite 6/7 need the plugin-5 preprocess work — let Dependabot propose those majors individually).
+- **Historical frontend install lesson, superseded by the testing-branch major migration.** The former Vite 5/Svelte plugin 4 lockfile could not be freshly resolved safely, so `npm ci` was mandatory. The frontend now uses the compatible Vite 8/Svelte plugin 7 stack, but the reproducibility rule remains: use `npm ci` for clean builds and change `package.json` plus `package-lock.json` together through an intentional `npm install` only when upgrading dependencies.
 
 ### 2026-06-23 — Click-installable release packaging (.deb/.rpm/.exe/.dmg)
 

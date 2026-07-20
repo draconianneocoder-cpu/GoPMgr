@@ -13,7 +13,7 @@ posture, and validator coverage, so keep them intentional and verified.
 
 - Go: 1.26.5 from `go.mod`.
 - Wails: v2.12.0.
-- Node frontend: Vite, Svelte 5, TypeScript, and npm scripts in
+- Node frontend: Vite 8, Svelte 5, TypeScript 6, and npm scripts in
   `frontend/package.json`.
 - CGO: required for the SQLite/SQLCipher driver path and the shipped DuckDB
   analytics build.
@@ -51,8 +51,9 @@ Runtime:
 
 Development:
 
-- Svelte 5, Vite, TypeScript, svelte-check, ESLint, Tailwind CSS,
-  PostCSS, and Autoprefixer.
+- Svelte 5, Vite 8, TypeScript 6, svelte-check, ESLint 10,
+  eslint-plugin-svelte 3, Tailwind CSS 4, PostCSS, and
+  `@tailwindcss/postcss`.
 
 Check `frontend/package.json` for the authoritative version list.
 
