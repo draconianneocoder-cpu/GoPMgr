@@ -18,15 +18,15 @@ if [ -z "$binary" ] || [ ! -f "$binary" ]; then
 fi
 
 metadata="$(go version -m "$binary" 2>/dev/null || true)"
-if ! printf '%s\n' "$metadata" | rg -q $'\tbuild\t-tags=.*duckdb'; then
+if ! printf '%s\n' "$metadata" | grep -Eq $'\tbuild\t-tags=.*duckdb'; then
 	echo "verify-duckdb-linked: $binary was not built with the duckdb tag." >&2
 	exit 1
 fi
-if ! printf '%s\n' "$metadata" | rg -q $'\tdep\tgithub.com/duckdb/duckdb-go/v2\t'; then
+if ! printf '%s\n' "$metadata" | grep -Fq $'\tdep\tgithub.com/duckdb/duckdb-go/v2\t'; then
 	echo "verify-duckdb-linked: $binary does not link github.com/duckdb/duckdb-go/v2." >&2
 	exit 1
 fi
-if ! printf '%s\n' "$metadata" | rg -q $'\tdep\tgithub.com/duckdb/duckdb-go-bindings/lib/'; then
+if ! printf '%s\n' "$metadata" | grep -Fq $'\tdep\tgithub.com/duckdb/duckdb-go-bindings/lib/'; then
 	echo "verify-duckdb-linked: $binary does not link a platform DuckDB binding library." >&2
 	exit 1
 fi
