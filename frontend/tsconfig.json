@@ -15,7 +15,7 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "types": ["svelte"]
+    "types": ["svelte", "vite/client"]
   },
   "include": ["src/**/*.ts", "src/**/*.svelte"],
   "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts"]
