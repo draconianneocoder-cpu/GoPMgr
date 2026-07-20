@@ -118,10 +118,14 @@ jobs:
         run: wails build -platform linux/amd64 -tags duckdb,webkit2_41
 
       - name: Upload Linux build
+        # The build itself is the required signal. Artifact storage is a convenience
+        # and can be unavailable when the account-level Actions quota is exhausted.
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: pmforge-linux-amd64
           path: build/bin/
+          if-no-files-found: error
           retention-days: 7
 
   lint:
