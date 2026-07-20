@@ -26,7 +26,7 @@
 //   - OutputIntent / ICC profile. Code is complete (InjectOutputIntent,
 //     MakePDFA3). Only the actual profile bytes (fetched via `make icc`)
 //     are required at build time.
-//   - veraPDF validation. Tracked as a V3 milestone in AGENT.md §8.
+//   - veraPDF validation. Tracked as a V3 milestone in DEVELOPER_HANDBOOK.md §8.
 package pdfmeta
 
 import (

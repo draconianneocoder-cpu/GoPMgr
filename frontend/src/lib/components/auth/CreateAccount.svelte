@@ -27,7 +27,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let codesError = $state('');
   let acknowledged = $state(false);
   let copied = $state(false);
-  // AGENT.md §6: every timer must be cleared on destroy.
+  // DEVELOPER_HANDBOOK.md §6: every timer must be cleared on destroy.
   let copiedTimer: ReturnType<typeof setTimeout> | null = null;
   onDestroy(() => {
     if (copiedTimer) clearTimeout(copiedTimer);

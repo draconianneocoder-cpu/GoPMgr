@@ -431,7 +431,7 @@ func renderRaw(kind Kind, contentJSON, projectName string) ([]byte, error) {
 	// does not yet have a bespoke renderer — useful so the user can
 	// always export what they typed even if the layout is plain.
 	//
-	// Adding a new bespoke renderer is documented in AGENT.md §10.
+	// Adding a new bespoke renderer is documented in DEVELOPER_HANDBOOK.md §10.
 	return renderGenericPDF(kind, content, projectName)
 }
 

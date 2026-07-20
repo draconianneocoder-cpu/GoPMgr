@@ -52,7 +52,7 @@ var assets embed.FS
 // App is the Wails-exposed object. Every exported method becomes
 // callable from the Svelte frontend via window.go.main.App.<Method>.
 //
-// Concurrency model (see AGENT.md §6 for the full invariants):
+// Concurrency model (see DEVELOPER_HANDBOOK.md §6 for the full invariants):
 //
 //   - The Wails runtime dispatches each frontend call on a fresh
 //     goroutine, so every field below is shared mutable state.
@@ -132,7 +132,7 @@ func (a *App) shutdown(_ context.Context) {
 	}
 	a.dek = nil
 	// Close the store but keep the pointer: `store` is documented as
-	// set-once and readable without the lock (AGENT.md §6), so nilling it
+	// set-once and readable without the lock (DEVELOPER_HANDBOOK.md §6), so nilling it
 	// here would be the one write that violates that invariant. A closed
 	// store safely returns errors to any late caller (unreachable in
 	// practice — Wails stops dispatching before shutdown runs).

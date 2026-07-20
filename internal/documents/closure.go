@@ -194,7 +194,7 @@ func drawClosureSignatureLine(pdf *fpdf.Fpdf) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-// Local helpers — kept per-renderer per AGENT.md §10.
+// Local helpers — kept per-renderer per DEVELOPER_HANDBOOK.md §10.
 func getStringClo(m map[string]interface{}, key string) string {
 	if v, ok := m[key].(string); ok {
 		return v

@@ -43,7 +43,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // a way back instead of a stuck editor + unhandled promise rejection.
   let loadError = $state('');
   let pxPerDay = $state(28);
-  // AGENT.md §6: every timer must be cleared on destroy.
+  // DEVELOPER_HANDBOOK.md §6: every timer must be cleared on destroy.
   let statusTimer: ReturnType<typeof setTimeout> | null = null;
 
   async function loadChart() {

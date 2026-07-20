@@ -15,7 +15,7 @@
 // PackEnabled is false. The underlying tables are still created
 // at migrate time so re-enabling is lossless.
 //
-// See AGENT.md §8 ("Feature coverage") for the active checklist.
+// See DEVELOPER_HANDBOOK.md §8 ("Feature coverage") for the active checklist.
 package agile
 
 // (Intentionally no declarations — agile.go owns the symbols.)

@@ -21,7 +21,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let variances = $state<Record<string, ScheduleVariance>>({});
   let baselineBusy = $state(false);
   let baselineMsg = $state('');
-  // AGENT.md §6: every timer must be cleared on destroy.
+  // DEVELOPER_HANDBOOK.md §6: every timer must be cleared on destroy.
   let baselineMsgTimer: ReturnType<typeof setTimeout> | null = null;
   let resourceMsgTimer: ReturnType<typeof setTimeout> | null = null;
   onDestroy(() => {

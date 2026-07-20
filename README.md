@@ -215,7 +215,7 @@ install steps, see [docs/INSTALL.md](docs/INSTALL.md).
   checklist before pushing a `v*` release tag.
 - [STYLE.md](STYLE.md): repository, Go, frontend, and documentation style.
 - [AGENTS.md](AGENTS.md): current automated-agent operating guide.
-- [AGENT.md](AGENT.md): PMForge Developer Handbook with long-form
+- [DEVELOPER_HANDBOOK.md](DEVELOPER_HANDBOOK.md): PMForge Developer Handbook with long-form
   implementation history, release-gate status, and lessons learned.
 
 ## Repository Layout
@@ -229,7 +229,7 @@ pmforge/
 ├── scripts/             # release, validation, and packaging scripts
 ├── build/darwin/        # tracked Wails macOS plist scaffold
 ├── AGENTS.md            # current agent operating guide
-└── AGENT.md             # PMForge Developer Handbook
+└── DEVELOPER_HANDBOOK.md             # PMForge Developer Handbook
 ```
 
 Generated outputs, local handoff notes, validation scratch space, bundled
