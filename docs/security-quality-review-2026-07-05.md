@@ -102,6 +102,6 @@ Tests: an "iterations over maximum" case added to
 
 Static read plus `go test ./...`, `go vet`, and `gofmt` (all clean on the
 patched tree). Not run locally: `golangci-lint` / `govulncheck` (built
-against go1.25, cannot analyze this go1.26.4 tree — CI runs both). Not
+against go1.25, cannot analyze this go1.26.5 tree — CI runs both). Not
 covered: dynamic/runtime testing, the new shell validation scripts under
 `scripts/`, and a line-by-line audit of every new chart/document renderer.

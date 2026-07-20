@@ -29,7 +29,7 @@ linters:
 # Formatting is a separate concern from linting in golangci-lint v2. Without
 # this block, gofmt drift (struct-tag alignment, stray blank lines) passes CI
 # silently — which is exactly what had happened: 34 first-party files were not
-# gofmt-clean under the go1.26.4 toolchain. `golangci-lint fmt` applies these;
+# gofmt-clean under the go1.26.5 toolchain. `golangci-lint fmt` applies these;
 # `golangci-lint run` reports them as findings.
 formatters:
   enable:

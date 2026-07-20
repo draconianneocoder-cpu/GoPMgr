@@ -69,7 +69,7 @@ automated engineering work.
 
 ## Project Invariants
 
-- `go.mod` pins Go 1.26.4 and Wails v2.12.0. CGO is required.
+- `go.mod` pins Go 1.26.5 and Wails v2.12.0. CGO is required.
 - The main package is the root `main.go` (required by `wails build`). The
   production build embeds the repo-root `frontend/dist` through `go:embed`.
   `make build` runs `wails build`, which builds `frontend/dist`, injects the

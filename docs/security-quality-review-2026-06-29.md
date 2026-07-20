@@ -240,7 +240,7 @@ trail.
 
 ### Q-1 — LOW — 34 first-party Go files were not gofmt-clean, and gofmt is not enforced
 
-`gofmt -l` against the go1.26.4 toolchain flagged 34 first-party files
+`gofmt -l` against the go1.26.5 toolchain flagged 34 first-party files
 (struct-tag alignment, a stray double blank line in `main.go:3375`, etc.).
 The root cause is that **golangci-lint v2 handles formatting in a separate
 `formatters:` block, which `.golangci.yml` did not have** — so `gofmt`
@@ -269,7 +269,7 @@ again.
 ### Environment note (not a code issue)
 
 `golangci-lint` (built with go1.25) and a freshly `go install`ed
-`govulncheck` both refuse to analyze this go1.26.4 tree (`package requires
+`govulncheck` both refuse to analyze this go1.26.5 tree (`package requires
 newer Go version go1.26`). They could not be run locally this pass; CI runs
 both with a matching toolchain (`govulncheck` is a blocking job). The
 frontend `npm audit` (0 vulnerabilities) and `go vet`/`go test`/`gofmt`
@@ -296,7 +296,7 @@ frontend lockfile and cleared (F-5). Verification this pass that **was**
 runnable and clean: `go vet ./...`, `go test ./...` (incl. `-race` on the
 core packages), `gofmt`, the frontend `svelte-check`/`eslint`/build-budget/
 smoke gates, and `npm audit`. **Not** runnable locally: `golangci-lint` and
-`govulncheck` (both reject the go1.26.4 tree from a go1.25-built binary —
+`govulncheck` (both reject the go1.26.5 tree from a go1.25-built binary —
 see the environment note above); these remain CI's responsibility. Still
 out of scope: dynamic/runtime testing and a line-by-line audit of every
 chart/document renderer. Re-run this review against the tree after the
