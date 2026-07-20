@@ -58,12 +58,15 @@ require_not_contains "WebKit2GTK 4.0"
 # points at the wording the guide actually uses.
 app_file="frontend/src/App.svelte"
 
-declare -A route_phrase=(
-	[recovery_reset]="recovery code"
-	[burnup]="burn-up"
-	[burndown]="burn-down"
-	[sigma_dashboard]="DMAIC Pack"
-)
+route_phrase() {
+	case "$1" in
+		recovery_reset) printf '%s\n' "recovery code" ;;
+		burnup) printf '%s\n' "burn-up" ;;
+		burndown) printf '%s\n' "burn-down" ;;
+		sigma_dashboard) printf '%s\n' "DMAIC Pack" ;;
+		*) printf '%s\n' "${1//_/ }" ;;
+	esac
+}
 
 routes="$(sed -n '/const routeLoaders/,/^  };/p' "$app_file" | { grep -oE '^    [a-z_]+:' || true; } | tr -d ' :')"
 route_count="$(printf '%s\n' "$routes" | { grep -c . || true; })"
@@ -72,7 +75,7 @@ if [ "$route_count" -lt 30 ]; then
 fi
 
 for route in $routes; do
-	phrase="${route_phrase[$route]:-${route//_/ }}"
+	phrase="$(route_phrase "$route")"
 	if ! rg -qi --fixed-strings "$phrase" "$help_file"; then
 		fail "route '$route' is not documented: $help_file has no mention of '$phrase' (document the view or map it in route_phrase)"
 	fi
