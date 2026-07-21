@@ -46,6 +46,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // DEVELOPER_HANDBOOK.md §6: every timer must be cleared on destroy.
   let statusTimer: ReturnType<typeof setTimeout> | null = null;
 
+  function clearStatusAfter(delayMs: number) {
+    if (statusTimer) clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => {
+      status = '';
+      statusTimer = null;
+    }, delayMs);
+  }
+
   async function loadChart() {
     if (!session.editingId) return;
     try {
@@ -101,8 +109,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = false;
     if (!status) {
       status = 'Saved';
-      if (statusTimer) clearTimeout(statusTimer);
-      statusTimer = setTimeout(() => (status = ''), 2000);
+      clearStatusAfter(2000);
     }
   }
 
@@ -112,8 +119,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       await window.go.main.App.SetScheduleBaseline(session.editingId, '');
       await refreshBaseline();
       status = 'Baseline set';
-      if (statusTimer) clearTimeout(statusTimer);
-      statusTimer = setTimeout(() => (status = ''), 2000);
+      clearStatusAfter(2000);
     } catch (err: any) {
       status = String(err?.message ?? err);
     }
@@ -129,7 +135,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       const p = await window.go.main.App.PreviewSplitLeveling(session.editingId);
       status = splitPreviewMessage(p).msg;
-      setTimeout(() => (status = ''), 4000);
+      clearStatusAfter(4000);
     } catch (err: any) {
       status = String(err?.message ?? err);
     } finally {
@@ -155,7 +161,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       doc = JSON.parse(chart.data) as GDoc;
       await refreshLayout();
       status = splitLevelStatus(res);
-      setTimeout(() => (status = ''), 4000);
+      clearStatusAfter(4000);
     } catch (err: any) {
       status = String(err?.message ?? err);
     } finally {
@@ -173,7 +179,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   function addTask() {
-    const id = 't' + (Date.now() % 1e7).toString(36);
+    const usedIDs = new Set(doc.nodes.map((node) => node.id));
+    let suffix = doc.nodes.length + 1;
+    while (usedIDs.has(`task-${suffix}`)) suffix += 1;
+    const id = `task-${suffix}`;
     doc.nodes.push({ id, label: 'New task', duration: 1, percent_complete: 0 });
     onEdit();
   }

@@ -57,6 +57,21 @@ func TestProjectBudgetMinorUnitsRoundTrip(t *testing.T) {
 	}
 }
 
+func TestProjectTimeZoneRoundTrip(t *testing.T) {
+	d := newBackupTestDB(t)
+	p, err := d.UpsertProject(Project{Name: "Tokyo", CountryCode: "JP", TimeZone: "Asia/Tokyo"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	got, err := d.GetProject()
+	if err != nil {
+		t.Fatalf("GetProject: %v", err)
+	}
+	if p.TimeZone != "Asia/Tokyo" || got.TimeZone != "Asia/Tokyo" {
+		t.Fatalf("time zone round trip = %q / %q", p.TimeZone, got.TimeZone)
+	}
+}
+
 func TestStakeholderMoneyMinorUnitsRoundTrip(t *testing.T) {
 	d := newBackupTestDB(t)
 	p, err := d.UpsertProject(Project{Name: "Stakeholder Money"})

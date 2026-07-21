@@ -234,11 +234,18 @@ import Spinner from '../Spinner.svelte';
   }
 
   let importMsg = $state('');
+  let importDependencies = $state(true);
+  let importProgress = $state(true);
+  let importAssignments = $state(true);
 
   async function importMSPDI() {
     importMsg = '';
     try {
-      const c = await window.go.main.App.ImportMSPDIChart();
+      const c = await window.go.main.App.ImportMSPDIChartWithOptions({
+        include_dependencies: importDependencies,
+        include_progress: importProgress,
+        include_assignments: importAssignments,
+      });
       goto(chartRoutes['cpm'] ?? 'charts', c.id);
     } catch (err: any) {
       const msg = String(err?.message ?? err);
@@ -546,6 +553,12 @@ import Spinner from '../Spinner.svelte';
           </button>
         </div>
       </div>
+	  <div class="flex flex-wrap gap-3 mb-3 text-xs text-slate-400" aria-label="MSPDI import fields">
+		<label class="flex items-center gap-1"><input type="checkbox" bind:checked={importDependencies} /> Dependencies</label>
+		<label class="flex items-center gap-1"><input type="checkbox" bind:checked={importProgress} /> Progress</label>
+		<label class="flex items-center gap-1"><input type="checkbox" bind:checked={importAssignments} /> Resource assignments</label>
+		<span class="text-slate-500">A mapping receipt is retained with the imported chart.</span>
+	  </div>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {#each newChartCards as card (card.kind)}
           <button

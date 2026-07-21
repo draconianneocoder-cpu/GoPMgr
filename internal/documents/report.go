@@ -38,6 +38,9 @@ type ReportSpec struct {
 	Sections       []ReportSection              `json:"sections"`
 	ResolvedCharts map[string]ResolvedChart     `json:"-"`
 	ResolvedEVM    map[string]*kernel.EVMetrics `json:"-"`
+	Profile        ReportProfile                `json:"profile"`
+	Mode           ReportMode                   `json:"mode"`
+	QualityIssues  []ReportIssue                `json:"quality_issues"`
 	// AddSignatureBlock causes a compact PAdES signature box to be drawn
 	// at the bottom of the last content page (instead of always appending
 	// a full separate page).
@@ -131,6 +134,41 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 		pdf.CellFormat(10, 7, itoa(i+1)+".", "", 0, "L", false, 0, "")
 		pdf.CellFormat(0, 7, title, "", 1, "L", false, 0, "")
 	}
+
+	// Quality findings are deliberately part of the exported document rather
+	// than a transient toast. This makes missing linked charts, draft content,
+	// and profile gaps reviewable by every recipient of the PDF.
+	pdf.AddPage()
+	pdf.SetFont("Helvetica", "B", 18)
+	pdf.Cell(0, 10, "Report quality and provenance")
+	pdf.Ln(12)
+	pdf.SetFont("Helvetica", "", 10)
+	if spec.Profile.Name != "" {
+		pdf.MultiCell(0, 5, "Profile: "+spec.Profile.Name+" ("+string(spec.Mode)+")", "", "L", false)
+		if spec.Profile.Reference != "" {
+			pdf.MultiCell(0, 5, "Reference: "+spec.Profile.Reference, "", "L", false)
+		}
+		pdf.Ln(3)
+	}
+	if len(spec.QualityIssues) == 0 {
+		pdf.MultiCell(0, 5, "Preflight completed without quality findings.", "", "L", false)
+	} else {
+		for _, issue := range spec.QualityIssues {
+			pdf.SetFont("Helvetica", "B", 9)
+			pdf.Cell(24, 5, issue.Severity)
+			pdf.SetFont("Helvetica", "", 9)
+			message := issue.Message
+			if issue.EntityID != "" {
+				message += " [" + issue.EntityID + "]"
+			}
+			pdf.MultiCell(0, 5, message, "", "L", false)
+		}
+	}
+	pdf.Ln(4)
+	pdf.SetFont("Helvetica", "I", 8)
+	pdf.SetTextColor(110, 110, 110)
+	pdf.MultiCell(0, 4, "A machine-readable provenance manifest is written beside this report. Profile references are guidance; they do not certify compliance.", "", "L", false)
+	pdf.SetTextColor(0, 0, 0)
 
 	// --- Sections ---
 	for i, s := range sections {

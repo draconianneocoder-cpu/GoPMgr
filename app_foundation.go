@@ -109,6 +109,7 @@ func (a *App) CreateProjectFromLaunchpad(
 		SubCategory: subCategory,
 		Methodology: methodology,
 		CountryCode: countryCodeOrDefault(countryCode),
+		TimeZone:    calendar.DefaultTimeZone(countryCodeOrDefault(countryCode)),
 	})
 	if err != nil {
 		_ = d.Close()
@@ -155,6 +156,9 @@ func (a *App) UpdateProjectIndustry(industry, subCategory, methodology, countryC
 	p.SubCategory = subCategory
 	p.Methodology = methodology
 	p.CountryCode = countryCodeOrDefault(countryCode)
+	if !calendar.ValidTimeZone(p.CountryCode, p.TimeZone) {
+		p.TimeZone = calendar.DefaultTimeZone(p.CountryCode)
+	}
 	return d.UpsertProject(p)
 }
 

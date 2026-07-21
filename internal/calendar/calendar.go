@@ -23,10 +23,13 @@ import (
 	"github.com/rickar/cal/v2"
 	"github.com/rickar/cal/v2/aa" // generic / business-day defaults
 	"github.com/rickar/cal/v2/au"
+	"github.com/rickar/cal/v2/be"
 	"github.com/rickar/cal/v2/ca"
 	"github.com/rickar/cal/v2/de"
 	"github.com/rickar/cal/v2/fr"
 	"github.com/rickar/cal/v2/gb"
+	"github.com/rickar/cal/v2/jp"
+	"github.com/rickar/cal/v2/nl"
 	"github.com/rickar/cal/v2/us"
 )
 
@@ -36,6 +39,63 @@ import (
 type Calendar struct {
 	bc          *cal.BusinessCalendar
 	CountryCode string
+}
+
+// Policy is a supported jurisdictional business-calendar policy and its
+// selectable IANA time zones. These initial policies cover the United States,
+// Western European countries, and Japan requested for schedule and time-series
+// reporting. CountryCode remains the calendar key stored on a project.
+type Policy struct {
+	CountryCode string   `json:"country_code"`
+	Name        string   `json:"name"`
+	TimeZones   []string `json:"time_zones"`
+}
+
+var supportedPolicies = []Policy{
+	{CountryCode: "US", Name: "United States", TimeZones: []string{"America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles"}},
+	{CountryCode: "CA", Name: "Canada", TimeZones: []string{"America/Toronto", "America/Vancouver"}},
+	{CountryCode: "GB", Name: "United Kingdom", TimeZones: []string{"Europe/London"}},
+	{CountryCode: "FR", Name: "France", TimeZones: []string{"Europe/Paris"}},
+	{CountryCode: "DE", Name: "Germany", TimeZones: []string{"Europe/Berlin"}},
+	{CountryCode: "BE", Name: "Belgium", TimeZones: []string{"Europe/Brussels"}},
+	{CountryCode: "NL", Name: "Netherlands", TimeZones: []string{"Europe/Amsterdam"}},
+	{CountryCode: "JP", Name: "Japan", TimeZones: []string{"Asia/Tokyo"}},
+	{CountryCode: "AU", Name: "Australia", TimeZones: []string{"Australia/Sydney"}},
+}
+
+func SupportedPolicies() []Policy {
+	out := make([]Policy, len(supportedPolicies))
+	copy(out, supportedPolicies)
+	return out
+}
+
+func DefaultTimeZone(countryCode string) string {
+	for _, policy := range supportedPolicies {
+		if policy.CountryCode == strings.ToUpper(strings.TrimSpace(countryCode)) {
+			return policy.TimeZones[0]
+		}
+	}
+	return "UTC"
+}
+
+func ValidTimeZone(countryCode, timeZone string) bool {
+	if timeZone == "" {
+		return true
+	}
+	if strings.TrimSpace(countryCode) == "" {
+		return timeZone == "UTC"
+	}
+	for _, policy := range supportedPolicies {
+		if policy.CountryCode != strings.ToUpper(strings.TrimSpace(countryCode)) {
+			continue
+		}
+		for _, candidate := range policy.TimeZones {
+			if candidate == timeZone {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // For returns a Calendar populated with the holiday list for the
@@ -61,6 +121,12 @@ func For(countryCode string) *Calendar {
 		bc.AddHoliday(fr.Holidays...)
 	case "AU":
 		bc.AddHoliday(au.HolidaysNSW...)
+	case "BE":
+		bc.AddHoliday(be.Holidays...)
+	case "NL":
+		bc.AddHoliday(nl.Holidays...)
+	case "JP":
+		bc.AddHoliday(jp.Holidays...)
 	default:
 		bc.AddHoliday(
 			aa.NewYear,

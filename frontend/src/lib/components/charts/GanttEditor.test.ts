@@ -58,6 +58,7 @@ beforeEach(() => {
 // it can't fire against an unmounted component in a later test.
 afterEach(() => {
   vi.clearAllTimers();
+  vi.useRealTimers();
 });
 
 describe('GanttEditor split actions (handler glue)', () => {
@@ -93,5 +94,36 @@ describe('GanttEditor split actions (handler glue)', () => {
     await fireEvent.click(getByText('Preview splitting'));
 
     expect(await findByText(/needs a project start date/)).toBeInTheDocument();
+  });
+
+  it('cancels the split-status timeout when the editor is unmounted', async () => {
+    const app = installApp();
+    const { getByText, unmount } = await mountLoaded(app);
+    vi.useFakeTimers();
+
+    await fireEvent.click(getByText('Preview splitting'));
+
+    expect(app.PreviewSplitLeveling).toHaveBeenCalledWith('chart-1');
+    expect(vi.getTimerCount()).toBe(1);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('assigns distinct task IDs when additions share a clock tick', async () => {
+    const app = installApp();
+    const { getByRole } = await mountLoaded(app);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-21T00:00:00Z'));
+
+    const addTask = getByRole('button', { name: '+ Task' });
+    await fireEvent.click(addTask);
+    await fireEvent.click(addTask);
+
+    const savedDocs = app.SaveChart.mock.calls.slice(-2).map(([record]) =>
+      JSON.parse((record as { data: string }).data) as { nodes: Array<{ id: string }> },
+    );
+    const addedIDs = savedDocs.map((saved) => saved.nodes.at(-1)?.id);
+    expect(addedIDs[0]).toBeDefined();
+    expect(addedIDs[0]).not.toBe(addedIDs[1]);
   });
 });

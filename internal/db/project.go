@@ -39,6 +39,7 @@ type Project struct {
 	SubCategory      string  `json:"sub_category"`
 	Methodology      string  `json:"methodology"`
 	CountryCode      string  `json:"country_code"`
+	TimeZone         string  `json:"time_zone"`
 	// RFC3339Nano strings (server-managed); see the note on db.Chart for why
 	// these are strings rather than time.Time (Wails empty-string round-trip).
 	CreatedAt string `json:"created_at"`
@@ -59,7 +60,7 @@ var ErrNoProject = errors.New("db: no project initialised in this file")
 func (db *Database) GetProject() (Project, error) {
 	row := db.Conn.QueryRow(
 		`SELECT id, name, description, status, phase, start_date, end_date,
-		        budget, budget_minor_units, owner, industry, sub_category, methodology, country_code,
+		        budget, budget_minor_units, owner, industry, sub_category, methodology, country_code, time_zone,
 		        created_at, updated_at
 		 FROM project LIMIT 1`,
 	)
@@ -78,6 +79,9 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 	}
 	if p.CountryCode == "" {
 		p.CountryCode = "US"
+	}
+	if p.TimeZone == "" {
+		p.TimeZone = "America/New_York"
 	}
 	if p.BudgetMinorUnits == 0 && p.Budget != 0 {
 		p.BudgetMinorUnits = money.FromMajorFloat(p.Budget).MinorUnits
@@ -107,9 +111,9 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 	_, err = tx.Exec(`
 		INSERT INTO project (id, name, description, status, phase,
 			start_date, end_date, budget, budget_minor_units, owner,
-			industry, sub_category, methodology, country_code,
+			industry, sub_category, methodology, country_code, time_zone,
 			created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			name         = excluded.name,
 			description  = excluded.description,
@@ -124,11 +128,12 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 			sub_category = excluded.sub_category,
 			methodology  = excluded.methodology,
 			country_code = excluded.country_code,
+			time_zone    = excluded.time_zone,
 			updated_at   = excluded.updated_at
 	`,
 		p.ID, p.Name, p.Description, p.Status, p.Phase,
 		p.StartDate, p.EndDate, p.Budget, p.BudgetMinorUnits, p.Owner,
-		p.Industry, p.SubCategory, p.Methodology, p.CountryCode,
+		p.Industry, p.SubCategory, p.Methodology, p.CountryCode, p.TimeZone,
 		now, now,
 	)
 	if err != nil {
@@ -170,7 +175,7 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 func getProjectByIDTx(tx *sql.Tx, id string) (Project, error) {
 	row := tx.QueryRow(
 		`SELECT id, name, description, status, phase, start_date, end_date,
-		        budget, budget_minor_units, owner, industry, sub_category, methodology, country_code,
+		        budget, budget_minor_units, owner, industry, sub_category, methodology, country_code, time_zone,
 		        created_at, updated_at
 		 FROM project WHERE id = ? LIMIT 1`,
 		id,
@@ -196,7 +201,7 @@ func scanProject(row interface {
 	err := row.Scan(
 		&p.ID, &p.Name, &p.Description, &p.Status, &p.Phase,
 		&p.StartDate, &p.EndDate, &p.Budget, &p.BudgetMinorUnits, &p.Owner,
-		&p.Industry, &p.SubCategory, &p.Methodology, &p.CountryCode,
+		&p.Industry, &p.SubCategory, &p.Methodology, &p.CountryCode, &p.TimeZone,
 		&created, &updated,
 	)
 	if err == sql.ErrNoRows {
@@ -209,6 +214,9 @@ func scanProject(row interface {
 	p.UpdatedAt = updated
 	if p.CountryCode == "" {
 		p.CountryCode = "US"
+	}
+	if p.TimeZone == "" {
+		p.TimeZone = "America/New_York"
 	}
 	if p.BudgetMinorUnits == 0 && p.Budget != 0 {
 		p.BudgetMinorUnits = money.FromMajorFloat(p.Budget).MinorUnits

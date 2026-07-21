@@ -56,9 +56,9 @@ func TestWorkdaysFromSkipsWeekend(t *testing.T) {
 }
 
 // TestFor_AllSupportedCountries exercises every country switch case and
-// confirms Christmas Day (2026-12-25) is recognised as a holiday in each.
+// confirms New Year's Day (2026-01-01) is recognised as a holiday in each.
 func TestFor_AllSupportedCountries(t *testing.T) {
-	christmas := time.Date(2026, 12, 25, 0, 0, 0, 0, time.UTC)
+	newYear := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	tests := []struct{ code string }{
 		{"GB"},
 		{"UK"}, // alias — same holiday pack as GB, distinct CountryCode
@@ -66,6 +66,9 @@ func TestFor_AllSupportedCountries(t *testing.T) {
 		{"DE"},
 		{"FR"},
 		{"AU"},
+		{"BE"},
+		{"NL"},
+		{"JP"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.code, func(t *testing.T) {
@@ -76,10 +79,25 @@ func TestFor_AllSupportedCountries(t *testing.T) {
 			if c.CountryCode != tt.code {
 				t.Errorf("CountryCode: got %q, want %q", c.CountryCode, tt.code)
 			}
-			if !c.IsHoliday(christmas) {
-				t.Errorf("For(%q): Christmas 2026-12-25 should be a holiday", tt.code)
+			if !c.IsHoliday(newYear) {
+				t.Errorf("For(%q): New Year's Day 2026-01-01 should be a holiday", tt.code)
 			}
 		})
+	}
+}
+
+func TestSupportedPoliciesValidateRequestedRegions(t *testing.T) {
+	tests := []struct{ country, timeZone string }{
+		{"US", "America/Chicago"},
+		{"GB", "Europe/London"},
+		{"FR", "Europe/Paris"},
+		{"DE", "Europe/Berlin"},
+		{"JP", "Asia/Tokyo"},
+	}
+	for _, tt := range tests {
+		if !ValidTimeZone(tt.country, tt.timeZone) {
+			t.Errorf("%s/%s should be selectable", tt.country, tt.timeZone)
+		}
 	}
 }
 

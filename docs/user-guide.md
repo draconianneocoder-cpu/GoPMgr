@@ -183,6 +183,17 @@ documents, order sections, optionally add section introductions, then
 export the report. Chart references inside included documents render as
 dedicated vector chart pages.
 
+Before export, select a project-controls, construction, software-delivery, or
+custom report profile and run **Preflight**. The built-in profiles provide
+practical baselines informed by ISO 21502, ISO 19650, and ISO/IEC/IEEE 12207;
+they are guidance, not a compliance certification. Custom selection keeps the
+document and chart mix entirely under the user's control. Draft reports retain
+findings in a visible quality page, while certified reports block unresolved
+errors. Every combined-report PDF has a nearby `.manifest.json` provenance
+sidecar containing the selected profile, source versions, timestamps, content
+hashes, chart data/configuration for machine-readable parity, and preflight
+findings.
+
 Status Reports can link a CPM schedule chart. When that linked schedule has
 cost and progress data, combined reports include an Earned Value summary under
 the Status Report section.
@@ -201,6 +212,18 @@ From Project Settings, PMForge exports the current schedule to:
 PMForge imports Microsoft Project XML (MSPDI, `.xml`) directly. Binary or
 serialized formats such as `.mpp`, `.pod`, and `.mpx` should be resaved as
 Microsoft Project XML from the source application before import.
+
+Before selecting a file, choose whether to import dependencies, percent
+complete, and resource assignments. PMForge always preserves task identities,
+names, durations, milestones, and the project start date it supports; its
+stored mapping receipt records selected fields, intentional transformations,
+and skipped summary or null rows. This makes the MSPDI round-trip boundary
+auditable rather than silently lossy.
+
+In Project Settings, schedule and time-series context can use the United
+States, supported Western European country, or Japan holiday policy together
+with the corresponding selectable IANA time zone. The selected context is
+retained with the project and returned with chart layouts.
 
 ## PDF Signing
 

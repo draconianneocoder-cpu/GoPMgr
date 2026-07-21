@@ -23,6 +23,7 @@ type LayoutResult struct {
 	Engine Engine          `json:"engine"`
 	Kind   Kind            `json:"kind"`
 	Title  string          `json:"title"`
+	TimeZone string         `json:"time_zone,omitempty"`
 	Body   json.RawMessage `json:"body"`
 }
 

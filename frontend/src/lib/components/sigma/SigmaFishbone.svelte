@@ -26,11 +26,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   });
 
+  function nextCauseID(): string {
+    const usedIDs = new Set(data.branches.flatMap((branch) => branch.causes.map((cause) => cause.id)));
+    let suffix = 1;
+    while (usedIDs.has(`cause-${suffix}`)) suffix += 1;
+    return `cause-${suffix}`;
+  }
+
   function addCause(branchIdx: number) {
     const desc = prompt('Enter cause description:');
     if (desc) {
       data.branches[branchIdx].causes.push({
-        id: `cause-${Date.now()}`,
+        id: nextCauseID(),
         description: desc,
         is_root_cause: false,
         five_whys: [],
