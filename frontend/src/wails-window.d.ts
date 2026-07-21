@@ -82,6 +82,7 @@ declare global {
           PreviewSplitLeveling: (chartId: string) => Promise<SplitLevelingPreview>;
           GenerateResourceHistogram: (chartId: string) => Promise<ChartRecord>;
           ImportMSPDIChart: () => Promise<ChartRecord>;
+          ImportMSPDIChartWithOptions: (options: MSPDIImportOptions) => Promise<ChartRecord>;
 
           // ----- V2: documents -----
           ListDocumentKinds: () => Promise<DocumentDefinition[]>;
@@ -96,6 +97,17 @@ declare global {
             subtitle: string,
             sections: ReportSection[],
           ) => Promise<string>;
+          ExportCombinedReportWithOptions: (
+            reportTitle: string,
+            subtitle: string,
+            sections: ReportSection[],
+            options: CombinedReportOptions,
+          ) => Promise<string>;
+          ListReportProfiles: () => Promise<ReportProfile[]>;
+          PreflightCombinedReport: (
+            sections: ReportSection[],
+            options: CombinedReportOptions,
+          ) => Promise<ReportPreflight>;
           ExportCombinedReportSigned: (
             reportTitle: string,
             subtitle: string,
@@ -374,6 +386,44 @@ declare global {
     description: string;
   }
 
+  type ReportMode = 'draft' | 'management' | 'certified';
+
+  interface CombinedReportOptions {
+    profile_id: string;
+    mode: ReportMode;
+  }
+
+  interface ReportProfile {
+    id: string;
+    name: string;
+    industry: string;
+    reference?: string;
+    required_document_kinds: string[];
+    recommended_document_kinds: string[];
+    recommended_chart_kinds: string[];
+    customizable: boolean;
+  }
+
+  interface ReportIssue {
+    severity: 'error' | 'warning' | 'information';
+    code: string;
+    message: string;
+    entity_id?: string;
+  }
+
+  interface ReportPreflight {
+    profile: ReportProfile;
+    mode: ReportMode;
+    issues: ReportIssue[];
+    ready: boolean;
+  }
+
+  interface MSPDIImportOptions {
+    include_dependencies: boolean;
+    include_progress: boolean;
+    include_assignments: boolean;
+  }
+
   interface RepairResult {
     success: boolean;
     log: string[];
@@ -485,6 +535,7 @@ declare global {
     sub_category: string;
     methodology: string;
     country_code: string;
+    time_zone: string;
     created_at: string;
     updated_at: string;
   }
@@ -513,6 +564,7 @@ declare global {
     engine: string;
     kind: string;
     title: string;
+	  time_zone?: string;
     body: unknown;
   }
 

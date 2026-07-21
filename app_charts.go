@@ -61,6 +61,23 @@ func (a *App) SaveChart(c db.Chart) (db.Chart, error) {
 		}
 		c.ProjectID = p.ID
 	}
+	if _, ok := charts.Get(charts.Kind(c.Kind)); !ok {
+		return db.Chart{}, fmt.Errorf("unknown chart kind %q", c.Kind)
+	}
+	if c.Data == "" {
+		c.Data = "{}"
+	}
+	if c.Config == "" {
+		c.Config = "{}"
+	}
+	if !json.Valid([]byte(c.Data)) || !json.Valid([]byte(c.Config)) {
+		return db.Chart{}, errors.New("chart data and configuration must be valid JSON")
+	}
+	if c.Data != "{}" {
+		if _, err := charts.Layout(charts.Kind(c.Kind), c.Data); err != nil {
+			return db.Chart{}, fmt.Errorf("chart data does not satisfy the %s schema: %w", c.Kind, err)
+		}
+	}
 	return d.SaveChart(c)
 }
 
@@ -95,11 +112,13 @@ func (a *App) LayoutChart(id string) (charts.LayoutResult, error) {
 	}
 
 	var (
-		projectStart time.Time
-		isWorkday    kernel.WorkdayFunc
-		capacityPlan kernel.ResourceCapacityPlan
+		projectStart    time.Time
+		isWorkday       kernel.WorkdayFunc
+		capacityPlan    kernel.ResourceCapacityPlan
+		projectTimeZone string
 	)
 	if proj, perr := d.GetProject(); perr == nil {
+		projectTimeZone = proj.TimeZone
 		if start, ok := parseProjectDate(proj.StartDate); ok {
 			projectStart = start
 			isWorkday = calendar.For(proj.CountryCode).IsWorkday
@@ -112,6 +131,7 @@ func (a *App) LayoutChart(id string) (charts.LayoutResult, error) {
 		return charts.LayoutResult{}, err
 	}
 	res.Title = c.Title
+	res.TimeZone = projectTimeZone
 	return res, nil
 }
 
@@ -778,6 +798,13 @@ type dagDoc struct {
 // one, the project start date is adopted so the imported schedule
 // anchors immediately.
 func (a *App) ImportMSPDIChart() (db.Chart, error) {
+	return a.ImportMSPDIChartWithOptions(export.DefaultMSPDIImportOptions())
+}
+
+// ImportMSPDIChartWithOptions opens the importer after the user has selected
+// the schedule fields to preserve. The resulting chart config contains a
+// durable mapping receipt for later audit and re-import decisions.
+func (a *App) ImportMSPDIChartWithOptions(options export.MSPDIImportOptions) (db.Chart, error) {
 	if a.ctx == nil {
 		return db.Chart{}, errors.New("no context (Wails not started)")
 	}
@@ -796,7 +823,7 @@ func (a *App) ImportMSPDIChart() (db.Chart, error) {
 	if path == "" {
 		return db.Chart{}, errors.New("import cancelled")
 	}
-	return a.importScheduleFile(path)
+	return a.importScheduleFileWithOptions(path, options)
 }
 
 // importScheduleFile routes an imported project file by extension. MS Project
@@ -805,6 +832,10 @@ func (a *App) ImportMSPDIChart() (db.Chart, error) {
 // return a precise, actionable message pointing at the universally-supported
 // MS Project XML interchange path rather than failing opaquely.
 func (a *App) importScheduleFile(path string) (db.Chart, error) {
+	return a.importScheduleFileWithOptions(path, export.DefaultMSPDIImportOptions())
+}
+
+func (a *App) importScheduleFileWithOptions(path string, options export.MSPDIImportOptions) (db.Chart, error) {
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".mpp":
 		return db.Chart{}, errors.New(
@@ -827,13 +858,17 @@ func (a *App) importScheduleFile(path string) (db.Chart, error) {
 		if err != nil {
 			return db.Chart{}, err
 		}
-		return a.importMSPDIFromBytes(data)
+		return a.importMSPDIFromBytesWithOptions(data, options)
 	}
 }
 
 // importMSPDIFromBytes is ImportMSPDIChart minus the file dialog so
 // the conversion is unit-testable.
 func (a *App) importMSPDIFromBytes(data []byte) (db.Chart, error) {
+	return a.importMSPDIFromBytesWithOptions(data, export.DefaultMSPDIImportOptions())
+}
+
+func (a *App) importMSPDIFromBytesWithOptions(data []byte, options export.MSPDIImportOptions) (db.Chart, error) {
 	d := a.requireDB()
 	if d == nil {
 		return db.Chart{}, errors.New("no project open")
@@ -843,7 +878,7 @@ func (a *App) importMSPDIFromBytes(data []byte) (db.Chart, error) {
 		return db.Chart{}, err
 	}
 
-	imported, err := export.FromMSPDI(data)
+	imported, err := export.FromMSPDIWithOptions(data, options)
 	if err != nil {
 		return db.Chart{}, err
 	}
@@ -885,10 +920,15 @@ func (a *App) importMSPDIFromBytes(data []byte) (db.Chart, error) {
 		}
 	}
 
+	receipt, err := json.Marshal(map[string]interface{}{"mspdi_import_receipt": imported.Receipt})
+	if err != nil {
+		return db.Chart{}, fmt.Errorf("encode MSPDI import receipt: %w", err)
+	}
 	return d.SaveChart(db.Chart{
 		ProjectID: proj.ID,
 		Kind:      string(charts.KindCPM),
 		Title:     title,
 		Data:      string(blob),
+		Config:    string(receipt),
 	})
 }

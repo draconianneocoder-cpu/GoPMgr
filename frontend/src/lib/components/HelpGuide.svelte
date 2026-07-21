@@ -1206,7 +1206,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Importing from Microsoft Project</h3>
             <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
               <li>On the Project Dashboard, choose the <span class="font-medium text-slate-100">Import MS Project XML</span> action.</li>
-              <li>Pick an MSPDI <span class="font-mono text-xs">.xml</span> file; PMForge creates a schedule chart from its tasks and dependencies.</li>
+			  <li>Choose which dependencies, progress, and resource assignments to retain, then pick an MSPDI <span class="font-mono text-xs">.xml</span> file. PMForge stores a mapping receipt with the imported schedule chart.</li>
             </ol>
             <p class="text-sm text-slate-400 mt-2">
               Binary or legacy formats (<span class="font-mono text-xs">.mpp</span>,

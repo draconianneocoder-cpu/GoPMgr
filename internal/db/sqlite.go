@@ -195,6 +195,7 @@ func (db *Database) Migrate() error {
 		sub_category  TEXT NOT NULL DEFAULT '',
 		methodology   TEXT NOT NULL DEFAULT '',
 		country_code  TEXT NOT NULL DEFAULT 'US',  -- ISO 3166-1 alpha-2 for rickar/cal holidays
+		time_zone     TEXT NOT NULL DEFAULT 'America/New_York', -- IANA display/series context
 		created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
 		updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 	);
@@ -541,6 +542,7 @@ func (db *Database) migrateLegacyColumns() error {
 		{"sub_category", "ALTER TABLE project ADD COLUMN sub_category TEXT NOT NULL DEFAULT ''"},
 		{"methodology", "ALTER TABLE project ADD COLUMN methodology TEXT NOT NULL DEFAULT ''"},
 		{"country_code", "ALTER TABLE project ADD COLUMN country_code TEXT NOT NULL DEFAULT 'US'"},
+		{"time_zone", "ALTER TABLE project ADD COLUMN time_zone TEXT NOT NULL DEFAULT 'America/New_York'"},
 		{"budget_minor_units", "ALTER TABLE project ADD COLUMN budget_minor_units INTEGER NOT NULL DEFAULT 0"},
 	}
 	existing, err := db.columnSet("project")

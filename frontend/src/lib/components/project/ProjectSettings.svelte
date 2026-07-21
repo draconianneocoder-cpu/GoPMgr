@@ -21,6 +21,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let status = $state('');
   let error = $state('');
 
+  const calendarTimeZones: Record<string, string[]> = {
+    US: ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles'],
+	CA: ['America/Toronto', 'America/Vancouver'], AU: ['Australia/Sydney'],
+    GB: ['Europe/London'], FR: ['Europe/Paris'], DE: ['Europe/Berlin'],
+    BE: ['Europe/Brussels'], NL: ['Europe/Amsterdam'], JP: ['Asia/Tokyo'],
+  };
+
+  function timeZonesFor(countryCode: string) {
+    return calendarTimeZones[countryCode] ?? ['UTC'];
+  }
+
+  function resetTimeZoneForCountry() {
+    if (!draft) return;
+    const allowed = timeZonesFor(draft.country_code);
+    if (!allowed.includes(draft.time_zone)) draft.time_zone = allowed[0];
+  }
+
   // Schedule report export state
   let exporting = $state(false);
   let exportFormat = $state<'pdf' | 'docx' | 'odt' | 'csv' | 'html' | 'mspdi' | null>(null);
@@ -949,17 +966,29 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="text-xs text-slate-500 uppercase">Country (for holidays)</span>
             <select
               bind:value={draft.country_code}
+			  onchange={resetTimeZoneForCountry}
               class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded"
             >
               <option value="US">United States</option>
               <option value="GB">United Kingdom</option>
+			  <option value="BE">Belgium</option>
               <option value="CA">Canada</option>
               <option value="DE">Germany</option>
               <option value="FR">France</option>
+			  <option value="NL">Netherlands</option>
+			  <option value="JP">Japan</option>
               <option value="AU">Australia</option>
               <option value="">Other / generic</option>
             </select>
           </label>
+		  <label class="block">
+			<span class="text-xs text-slate-500 uppercase">Schedule and time-series time zone</span>
+			<select bind:value={draft.time_zone} class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded">
+			  {#each timeZonesFor(draft.country_code) as timeZone}
+				<option value={timeZone}>{timeZone}</option>
+			  {/each}
+			</select>
+		  </label>
         </div>
       </section>
 

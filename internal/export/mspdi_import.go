@@ -30,6 +30,30 @@ type ImportedProject struct {
 	Title     string
 	StartDate string // YYYY-MM-DD, or "" when the file has none
 	Tasks     []ImportedTask
+	Receipt   MSPDIImportReceipt
+}
+
+// MSPDIImportOptions lets a user decide which logical schedule fields become
+// editable PMForge data before the file picker is opened.
+type MSPDIImportOptions struct {
+	IncludeDependencies bool `json:"include_dependencies"`
+	IncludeProgress     bool `json:"include_progress"`
+	IncludeAssignments  bool `json:"include_assignments"`
+}
+
+func DefaultMSPDIImportOptions() MSPDIImportOptions {
+	return MSPDIImportOptions{IncludeDependencies: true, IncludeProgress: true, IncludeAssignments: true}
+}
+
+// MSPDIImportReceipt records exactly which source fields were preserved,
+// intentionally transformed, or excluded, so an import can be reviewed and
+// repeated without guessing at data loss.
+type MSPDIImportReceipt struct {
+	ImportedFields     []string `json:"imported_fields"`
+	ExcludedFields     []string `json:"excluded_fields"`
+	Transformations    []string `json:"transformations"`
+	SkippedSummaryRows int      `json:"skipped_summary_rows"`
+	SkippedNullRows    int      `json:"skipped_null_rows"`
 }
 
 // mspdiImport mirrors the subset of the MSPDI schema PMForge reads.
@@ -84,12 +108,37 @@ const mspdiHoursPerDay = 8.0
 //   - The project StartDate is reduced to YYYY-MM-DD for
 //     project.start_date compatibility.
 func FromMSPDI(data []byte) (ImportedProject, error) {
+	return FromMSPDIWithOptions(data, DefaultMSPDIImportOptions())
+}
+
+// FromMSPDIWithOptions parses MSPDI using an explicit field-selection policy.
+func FromMSPDIWithOptions(data []byte, options MSPDIImportOptions) (ImportedProject, error) {
 	var raw mspdiImport
 	if err := xml.Unmarshal(data, &raw); err != nil {
 		return ImportedProject{}, err
 	}
 
-	out := ImportedProject{Title: raw.Title}
+	out := ImportedProject{Title: raw.Title, Receipt: MSPDIImportReceipt{
+		ImportedFields:  []string{"project.title", "project.start_date", "task.uid", "task.name", "task.duration", "task.milestone"},
+		Transformations: []string{"project.start_date converted to YYYY-MM-DD", "task.duration converted from ISO 8601 hours to 8-hour working days"},
+	}}
+	if !options.IncludeDependencies {
+		out.Receipt.ExcludedFields = append(out.Receipt.ExcludedFields, "task.predecessor_links (user selection)")
+	} else {
+		out.Receipt.ImportedFields = append(out.Receipt.ImportedFields, "task.predecessor_links")
+		out.Receipt.Transformations = append(out.Receipt.Transformations, "predecessor lag converted from tenths of minutes to working days")
+	}
+	if !options.IncludeProgress {
+		out.Receipt.ExcludedFields = append(out.Receipt.ExcludedFields, "task.percent_complete (user selection)")
+	} else {
+		out.Receipt.ImportedFields = append(out.Receipt.ImportedFields, "task.percent_complete")
+	}
+	if !options.IncludeAssignments {
+		out.Receipt.ExcludedFields = append(out.Receipt.ExcludedFields, "resource.assignments (user selection)")
+	} else {
+		out.Receipt.ImportedFields = append(out.Receipt.ImportedFields, "resource.assignments")
+		out.Receipt.Transformations = append(out.Receipt.Transformations, "resource UID converted to resource name for PMForge assignments")
+	}
 	if out.Title == "" {
 		out.Title = raw.Name
 	}
@@ -106,6 +155,9 @@ func FromMSPDI(data []byte) (ImportedProject, error) {
 
 	assignmentsByTask := make(map[string][]kernel.Assignment)
 	for _, a := range raw.Assignments {
+		if !options.IncludeAssignments {
+			break
+		}
 		name, ok := resourceNames[a.ResourceUID]
 		if !ok {
 			continue
@@ -118,16 +170,34 @@ func FromMSPDI(data []byte) (ImportedProject, error) {
 
 	imported := make(map[string]bool)
 	for _, t := range raw.Tasks {
-		if t.UID == "" || t.IsNull == "1" || t.Summary == "1" {
+		if t.IsNull == "1" {
+			out.Receipt.SkippedNullRows++
+			continue
+		}
+		if t.Summary == "1" {
+			out.Receipt.SkippedSummaryRows++
+			continue
+		}
+		if t.UID == "" {
 			continue
 		}
 		task := ImportedTask{
-			UID:             t.UID,
-			Name:            t.Name,
-			DurationDays:    isoHoursToDays(t.Duration),
-			Milestone:       t.Milestone == "1",
-			PercentComplete: t.PercentComplete,
-			Assignments:     assignmentsByTask[t.UID],
+			UID:          t.UID,
+			Name:         t.Name,
+			DurationDays: isoHoursToDays(t.Duration),
+			Milestone:    t.Milestone == "1",
+			Assignments:  assignmentsByTask[t.UID],
+		}
+		if options.IncludeProgress {
+			task.PercentComplete = t.PercentComplete
+		}
+		if !options.IncludeAssignments {
+			task.Assignments = nil
+		}
+		if !options.IncludeDependencies {
+			out.Tasks = append(out.Tasks, task)
+			imported[t.UID] = true
+			continue
 		}
 		for _, p := range t.Predecessors {
 			if p.PredecessorUID == "" {

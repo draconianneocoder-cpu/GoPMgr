@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"pmforge/internal/admin"
 	"pmforge/internal/applog"
+	"pmforge/internal/calendar"
 	"pmforge/internal/cli"
 	"pmforge/internal/db"
 	"pmforge/internal/documents"
@@ -796,6 +797,12 @@ func (a *App) UpdateProjectMeta(p db.Project) (db.Project, error) {
 	d := a.requireDB()
 	if d == nil {
 		return db.Project{}, errors.New("no project open")
+	}
+	if p.TimeZone == "" {
+		p.TimeZone = calendar.DefaultTimeZone(p.CountryCode)
+	}
+	if !calendar.ValidTimeZone(p.CountryCode, p.TimeZone) {
+		return db.Project{}, fmt.Errorf("time zone %q is not supported by the %s business-calendar policy", p.TimeZone, p.CountryCode)
 	}
 	return d.UpsertProject(p)
 }

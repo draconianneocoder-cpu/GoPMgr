@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"pmforge/internal/db"
+	"pmforge/internal/export"
 )
 
 const sampleImportXML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -84,6 +85,33 @@ func TestImportMSPDIFromBytes(t *testing.T) {
 	}
 	if tasks["2"].StartDate != "2026-07-07" {
 		t.Errorf("Move StartDate = %q, want 2026-07-07", tasks["2"].StartDate)
+	}
+}
+
+func TestImportMSPDIWithOptionsPersistsMappingReceipt(t *testing.T) {
+	d, err := db.InitDB(filepath.Join(t.TempDir(), "mspdi-import-options.pmforge"))
+	if err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	if _, err := d.UpsertProject(db.Project{ID: "project-1", Name: "Import Target"}); err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	app := &App{db: d}
+	c, err := app.importMSPDIFromBytesWithOptions([]byte(sampleImportXML), export.MSPDIImportOptions{
+		IncludeDependencies: false, IncludeProgress: false, IncludeAssignments: false,
+	})
+	if err != nil {
+		t.Fatalf("importMSPDIFromBytesWithOptions: %v", err)
+	}
+	var config struct {
+		Receipt export.MSPDIImportReceipt `json:"mspdi_import_receipt"`
+	}
+	if err := json.Unmarshal([]byte(c.Config), &config); err != nil {
+		t.Fatalf("decode import receipt: %v", err)
+	}
+	if len(config.Receipt.ExcludedFields) != 3 {
+		t.Fatalf("receipt exclusions = %#v, want three", config.Receipt.ExcludedFields)
 	}
 }
 

@@ -92,6 +92,26 @@ func TestFromMSPDIEmptyErrors(t *testing.T) {
 	}
 }
 
+func TestFromMSPDIWithOptionsRecordsSelectedFields(t *testing.T) {
+	p, err := FromMSPDIWithOptions([]byte(sampleMSPDI), MSPDIImportOptions{
+		IncludeDependencies: false,
+		IncludeProgress:     false,
+		IncludeAssignments:  false,
+	})
+	if err != nil {
+		t.Fatalf("FromMSPDIWithOptions: %v", err)
+	}
+	if len(p.Tasks) == 0 || len(p.Tasks[0].Links) != 0 || p.Tasks[0].PercentComplete != 0 || len(p.Tasks[0].Assignments) != 0 {
+		t.Fatalf("field options were not applied: %+v", p.Tasks[0])
+	}
+	if len(p.Receipt.ExcludedFields) != 3 {
+		t.Fatalf("receipt exclusions = %#v, want 3 selected exclusions", p.Receipt.ExcludedFields)
+	}
+	if p.Receipt.SkippedSummaryRows != 1 {
+		t.Fatalf("summary receipt = %+v, want one skipped summary", p.Receipt)
+	}
+}
+
 func TestMSPDIRoundTrip(t *testing.T) {
 	tasks := map[string]*kernel.Task{
 		"A": {ID: "A", Title: "Design", Duration: 2, PercentComplete: 25,

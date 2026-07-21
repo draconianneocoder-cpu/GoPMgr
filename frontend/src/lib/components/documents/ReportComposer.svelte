@@ -29,11 +29,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let pendingSignCertPath = $state('');
   let pendingGPGKeyID = $state('');
   let pendingSignatureMethod = $state<SignatureMethod>('pades');
+  let profiles = $state<ReportProfile[]>([]);
+  let profileID = $state('');
+  let reportMode = $state<ReportMode>('draft');
+  let preflight = $state<ReportPreflight | null>(null);
 
   onMount(async () => {
     try {
       const all = (await window.go.main.App.ListDocuments('')) ?? [];
       available = all;
+	  profiles = (await window.go.main.App.ListReportProfiles()) ?? [];
     } catch (err: any) {
       status = `Could not load documents: ${err}`;
     }
@@ -86,6 +91,25 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }));
   }
 
+  function reportOptions(): CombinedReportOptions {
+    return { profile_id: profileID, mode: reportMode };
+  }
+
+  async function runPreflight() {
+    if (included.length === 0) {
+      status = 'Add at least one section before preflight.';
+      return;
+    }
+    try {
+      preflight = await window.go.main.App.PreflightCombinedReport(buildSections(), reportOptions());
+      status = preflight.ready
+        ? 'Preflight complete. No blocking findings for this report mode.'
+        : 'Preflight found blocking findings. Review them before a certified export.';
+    } catch (err: any) {
+      status = `Preflight failed: ${err}`;
+    }
+  }
+
   async function exportReport() {
     if (included.length === 0) {
       status = 'Add at least one section before exporting.';
@@ -94,10 +118,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
     exporting = true;
     status = '';
     try {
-      const path = await window.go.main.App.ExportCombinedReport(
+      const path = await window.go.main.App.ExportCombinedReportWithOptions(
         reportTitle,
         subtitle,
         buildSections(),
+		reportOptions(),
       );
       status = `Report exported to ${path}`;
     } catch (err: any) {
@@ -223,7 +248,43 @@ SPDX-License-Identifier: GPL-3.0-or-later
           class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
         />
       </label>
+	  <label class="block">
+		<span class="text-xs font-semibold text-slate-500 uppercase">Report profile</span>
+		<select bind:value={profileID} class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded">
+		  <option value="">Use project industry baseline</option>
+		  {#each profiles as profile (profile.id)}
+			<option value={profile.id}>{profile.name}</option>
+		  {/each}
+		</select>
+	  </label>
+	  <label class="block">
+		<span class="text-xs font-semibold text-slate-500 uppercase">Release readiness</span>
+		<select bind:value={reportMode} class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded">
+		  <option value="draft">Draft (findings retained in report)</option>
+		  <option value="management">Management review</option>
+		  <option value="certified">Certified (block errors)</option>
+		</select>
+	  </label>
     </section>
+
+	<div class="max-w-3xl flex items-center gap-3">
+	  <button onclick={runPreflight} disabled={exporting || included.length === 0} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-2 rounded">Run preflight</button>
+	  <p class="text-xs text-slate-500">Profiles are editable through the Custom selection option: include the documents and charts appropriate to your organization.</p>
+	</div>
+	{#if preflight}
+	  <section class="max-w-3xl border border-slate-800 bg-slate-900 rounded p-3">
+		<div class="text-xs font-bold text-slate-200">{preflight.profile.name} preflight</div>
+		{#if preflight.issues.length === 0}
+		  <p class="text-xs text-emerald-300 mt-2">No findings.</p>
+		{:else}
+		  <ul class="mt-2 space-y-1 text-xs">
+			{#each preflight.issues as issue (`${issue.code}-${issue.entity_id ?? ''}`)}
+			  <li class={issue.severity === 'error' ? 'text-red-300' : 'text-amber-300'}>{issue.severity}: {issue.message}{issue.entity_id ? ` (${issue.entity_id})` : ''}</li>
+			{/each}
+		  </ul>
+		{/if}
+	  </section>
+	{/if}
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Picker -->
