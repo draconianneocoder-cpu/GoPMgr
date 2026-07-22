@@ -130,13 +130,14 @@ func Preflight(profile ReportProfile, mode ReportMode, inputs []ReportInput) Rep
 			issues = append(issues, ReportIssue{Severity: "warning", Code: "recommended_document_missing", Message: "Recommended profile document is not included: " + string(kind)})
 		}
 	}
-	if mode == ReportModeCertified {
+	switch mode {
+	case ReportModeCertified:
 		for _, input := range inputs {
 			if input.Status != "approved" {
 				issues = append(issues, ReportIssue{Severity: "error", Code: "document_not_approved", Message: "Certified reports require approved document versions.", EntityID: input.ID})
 			}
 		}
-	} else if mode == ReportModeManagement {
+	case ReportModeManagement:
 		for _, input := range inputs {
 			if input.Status == "draft" {
 				issues = append(issues, ReportIssue{Severity: "warning", Code: "draft_document", Message: "Management report includes a draft document.", EntityID: input.ID})
