@@ -20,11 +20,11 @@ import (
 // to the Svelte frontend. The frontend reads `Engine` and dispatches
 // to the appropriate renderer.
 type LayoutResult struct {
-	Engine Engine          `json:"engine"`
-	Kind   Kind            `json:"kind"`
-	Title  string          `json:"title"`
-	TimeZone string         `json:"time_zone,omitempty"`
-	Body   json.RawMessage `json:"body"`
+	Engine   Engine          `json:"engine"`
+	Kind     Kind            `json:"kind"`
+	Title    string          `json:"title"`
+	TimeZone string          `json:"time_zone,omitempty"`
+	Body     json.RawMessage `json:"body"`
 }
 
 // ErrEngineNotImplemented is the defensive default returned by Layout
