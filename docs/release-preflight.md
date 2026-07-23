@@ -52,6 +52,10 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
   -nsis` auto-generates default templates, so the first build produces a
   **default-branded** installer. After the first successful Windows build,
   commit `build/windows/` for deterministic, customizable branding.
+- **Windows decision engine.** The Launchpad uses the same embedded JDM rule
+  table on every platform. On Windows it evaluates its exact-match and
+  fallback rows in Go because the Zen FFI archive targets MSVC while the
+  SQLCipher driver requires MinGW. This keeps the NSIS build on one C toolchain.
 - **Unsigned everywhere.** macOS Gatekeeper / Windows SmartScreen warnings are
   expected; the signing hooks in `package-macos.sh` activate when
   `MACOS_SIGN_IDENTITY` (and notarization creds) are set. Covered in

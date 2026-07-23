@@ -20,6 +20,7 @@ func createPlaintextProjectForMigration(t *testing.T, app *App) string {
 	user := app.requireUser()
 	if user == nil {
 		t.Fatal("createPlaintextProjectForMigration: no signed-in user")
+		return ""
 	}
 	projectsDir := filepath.Join(user.DataDir, "projects")
 	if err := os.MkdirAll(projectsDir, 0o700); err != nil {

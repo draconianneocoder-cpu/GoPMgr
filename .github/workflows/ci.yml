@@ -106,7 +106,7 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
 
       - name: Fetch bundled fonts (non-fatal — app falls back to core fonts if a CDN fails)
         continue-on-error: true
@@ -131,7 +131,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-24.04
-    # Required gate: golangci-lint (v2.12.2) + npm run lint. wails v2.12.0 raised the
+    # Required gate: golangci-lint (v2.12.2) + npm run lint. Wails v2.13.0 raised the
     # project's x/tools floor to a Go 1.26-compatible release, so this passes cleanly;
     # a lint regression now fails the workflow.
     steps:

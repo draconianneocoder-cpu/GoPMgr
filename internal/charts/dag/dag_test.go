@@ -383,6 +383,7 @@ func TestLayoutFishbone_WithCategory_EffectPresent(t *testing.T) {
 	}
 	if effectNode == nil {
 		t.Fatal("effect node not found in layout")
+		return
 	}
 	if effectNode.Label != "Defect" {
 		t.Errorf("effect label: got %q", effectNode.Label)
