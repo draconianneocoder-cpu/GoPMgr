@@ -29,6 +29,7 @@ func TestResolvedEVMForChartsComputesCPMReferences(t *testing.T) {
 	metrics := resolved["chart-1"]
 	if metrics == nil {
 		t.Fatal("expected EVM metrics for CPM chart reference")
+		return
 	}
 	if metrics.BAC != 800 || metrics.PV != 500 || metrics.EV != 300 || metrics.AC != 500 {
 		t.Fatalf("metrics = %+v, want BAC=800 PV=500 EV=300 AC=500", metrics)

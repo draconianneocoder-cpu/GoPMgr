@@ -14,6 +14,7 @@ func TestForDefaultsToFallback(t *testing.T) {
 	c := For("XX") // not a real ISO code
 	if c == nil {
 		t.Fatal("For('XX') returned nil; should fall back to generic")
+		return
 	}
 	if c.CountryCode != "XX" {
 		t.Errorf("CountryCode: want XX, got %q", c.CountryCode)
@@ -75,6 +76,7 @@ func TestFor_AllSupportedCountries(t *testing.T) {
 			c := For(tt.code)
 			if c == nil {
 				t.Fatalf("For(%q) returned nil", tt.code)
+				return
 			}
 			if c.CountryCode != tt.code {
 				t.Errorf("CountryCode: got %q, want %q", c.CountryCode, tt.code)

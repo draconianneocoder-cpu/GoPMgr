@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+//go:build !windows
+
 // Package templates drives the Project Launchpad's "seed me some
 // starter artifacts" behaviour. The rules — which industry +
 // methodology combination produces which seed actions — are
@@ -74,20 +76,6 @@ func NewEngine() (*Engine, error) {
 	}
 	z := zen.NewEngine(zen.EngineConfig{Loader: loader})
 	return &Engine{z: z}, nil
-}
-
-// SeedRequest is the input the Launchpad sends to the engine.
-type SeedRequest struct {
-	Industry    string `json:"industry"`
-	Methodology string `json:"methodology"`
-}
-
-// SeedResponse is what the engine returns. The order of `Seeds`
-// follows the JDM rules; callers should apply them in that order
-// because some seeds (sprints, work items) depend on prior ones
-// (boards) existing.
-type SeedResponse struct {
-	Seeds []string `json:"seeds"`
 }
 
 // Evaluate runs the Launchpad decision against the given request and
