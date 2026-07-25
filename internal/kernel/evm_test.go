@@ -50,6 +50,42 @@ func TestComputeEVM_MidTaskPVIsLinear(t *testing.T) {
 	approx(t, "PV", m.PV, 600)
 }
 
+func TestComputeEVM_SplitTaskPVPausesDuringGaps(t *testing.T) {
+	tasks := map[string]*Task{
+		"A": {
+			ID:                     "A",
+			Duration:               3,
+			BudgetedCostMinorUnits: 30000,
+			PlannedWorkSegments: []WorkSegment{
+				{Start: 0, End: 1},
+				{Start: 2, End: 3},
+				{Start: 4, End: 5},
+			},
+		},
+	}
+	mustCPM(t, tasks)
+
+	tests := []struct {
+		name        string
+		asOfDay     float64
+		wantPVMinor int64
+	}{
+		{name: "mid first segment", asOfDay: 0.5, wantPVMinor: 5000},
+		{name: "first gap plateau", asOfDay: 1.5, wantPVMinor: 10000},
+		{name: "mid second segment", asOfDay: 2.5, wantPVMinor: 15000},
+		{name: "second gap plateau", asOfDay: 3.5, wantPVMinor: 20000},
+		{name: "complete", asOfDay: 5, wantPVMinor: 30000},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ComputeEVM(tasks, tt.asOfDay)
+			if got.PVMinorUnits != tt.wantPVMinor {
+				t.Fatalf("PVMinorUnits = %d, want %d", got.PVMinorUnits, tt.wantPVMinor)
+			}
+		})
+	}
+}
+
 func TestComputeEVM_ZeroDenominators(t *testing.T) {
 	tasks := map[string]*Task{
 		"A": {ID: "A", Duration: 2, BudgetedCost: 100},

@@ -74,9 +74,9 @@ layout emits them as absolute bar pieces, and the Gantt editor draws split
 a snapshot that the Gantt editor clears on any manual schedule edit so stale
 interrupted bars can't render until the schedule is re-leveled. The PDF
 Gantt renderer draws the same interrupted bars, so exports match the
-on-screen view. _Remaining refinement:_ EVM treats a split task's span as
-contiguous (work content and cost are unaffected) — a follow-up on the same
-`WorkSegments` foundation.
+on-screen view. EVM now consumes that same persisted `WorkSegments` snapshot:
+planned value accrues only inside worked segments and remains flat through
+idle gaps, while ordinary tasks retain linear ES-to-EF accrual.
 
 **What-If / Scenario Analysis** (RICE 144)
 Fork a named scenario from the current plan, apply changes, and compute the

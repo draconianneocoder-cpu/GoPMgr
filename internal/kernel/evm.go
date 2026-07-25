@@ -4,6 +4,7 @@
 package kernel
 
 import (
+	"math"
 	"sort"
 
 	"pmforge/internal/money"
@@ -64,11 +65,13 @@ type EVMetrics struct {
 // at a status date expressed as a working-day offset (same indexing
 // as ES/EF; convert a calendar date with DayOffset).
 //
-// Per task: PV = BudgetedCost × planned-fraction-complete at asOfDay
-// (linear across the task's ES..EF window; a zero-duration milestone
-// is fully planned once asOfDay reaches its ES). EV = BudgetedCost ×
-// PercentComplete/100. AC = ActualCost. CalculateCPM must have run
-// first so ES/EF are populated; PercentComplete is assumed clamped.
+// Per task: PV = BudgetedCost × planned-fraction-complete at asOfDay.
+// Ordinary tasks accrue linearly across ES..EF; split tasks accrue only
+// inside their persisted PlannedWorkSegments, so planned value pauses
+// during idle gaps. A zero-duration milestone is fully planned once
+// asOfDay reaches its ES. EV = BudgetedCost × PercentComplete/100.
+// AC = ActualCost. CalculateCPM must have run first so ES/EF are
+// populated; PercentComplete is assumed clamped.
 func ComputeEVM(tasks map[string]*Task, asOfDay float64) EVMetrics {
 	m := EVMetrics{AsOfDay: asOfDay}
 
@@ -146,14 +149,19 @@ func taskActualAmount(t *Task) money.Amount {
 	return money.FromMajorFloat(t.ActualCost)
 }
 
-// plannedFraction is the share of a task's budget planned to be
-// complete at the status day, linear across its ES..EF window.
+// plannedFraction is the share of a task's budget planned to be complete at
+// the status day. Persisted split segments are authoritative when valid;
+// otherwise the contiguous duration remains the defensive fallback for
+// callers that construct kernel tasks without passing through an adapter.
 func plannedFraction(t *Task, asOfDay float64) float64 {
 	if t.Duration <= 0 {
 		if asOfDay >= t.ES {
 			return 1
 		}
 		return 0
+	}
+	if f, ok := splitPlannedFraction(t.PlannedWorkSegments, asOfDay-t.ES); ok {
+		return f
 	}
 	f := (asOfDay - t.ES) / t.Duration
 	if f < 0 {
@@ -163,4 +171,41 @@ func plannedFraction(t *Task, asOfDay float64) float64 {
 		return 1
 	}
 	return f
+}
+
+// splitPlannedFraction integrates elapsed work across ordered, non-overlapping
+// half-open segments. Returning ok=false keeps invalid in-memory data from
+// producing double-counted EVM; persistence adapters reject that data with a
+// task-specific error before it reaches reporting paths.
+func splitPlannedFraction(segments []WorkSegment, elapsed float64) (fraction float64, ok bool) {
+	if len(segments) == 0 {
+		return 0, false
+	}
+
+	var completed, total, previousEnd float64
+	for i, segment := range segments {
+		if math.IsNaN(segment.Start) || math.IsInf(segment.Start, 0) ||
+			math.IsNaN(segment.End) || math.IsInf(segment.End, 0) ||
+			segment.Start < 0 || segment.End <= segment.Start ||
+			(i > 0 && segment.Start < previousEnd) {
+			return 0, false
+		}
+
+		width := segment.End - segment.Start
+		total += width
+		if elapsed > segment.Start {
+			completed += math.Min(elapsed, segment.End) - segment.Start
+		}
+		previousEnd = segment.End
+	}
+	if total <= 0 {
+		return 0, false
+	}
+	if completed <= 0 {
+		return 0, true
+	}
+	if completed >= total {
+		return 1, true
+	}
+	return completed / total, true
 }

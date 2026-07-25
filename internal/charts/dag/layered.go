@@ -70,8 +70,9 @@ type LayeredNode struct {
 	// as offsets RELATIVE to the task's start, persisted by an
 	// apply-splitting resource-leveling run. Empty for an ordinary
 	// contiguous task. The Gantt layout turns these into absolute bar
-	// pieces (ES + offset); they are display metadata and do not feed the
-	// CPM passes.
+	// pieces (ES + offset), while the EVM adapter uses the same snapshot
+	// to pause planned-value accrual during idle gaps. They do not alter
+	// CPM precedence passes.
 	WorkSegments []WorkSegment `json:"work_segments,omitempty"`
 
 	// CPM scheduling constraint (input): ASAP (default), ALAP, SNET,
