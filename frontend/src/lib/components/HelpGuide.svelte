@@ -401,7 +401,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Where to go next</h3>
             <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
               <li><button onclick={() => nav('scrum')} class="text-cyan-400 underline hover:text-cyan-300">Your methodology's guide</button> — boards, sprints, and the cadence PMForge sets up for you.</li>
-              <li><button onclick={() => nav('charts')} class="text-cyan-400 underline hover:text-cyan-300">Charts reference</button> — all 21 chart types and when to reach for each.</li>
+              <li><button onclick={() => nav('charts')} class="text-cyan-400 underline hover:text-cyan-300">Charts reference</button> — all 22 chart types and when to reach for each.</li>
               <li><button onclick={() => nav('shortcuts')} class="text-cyan-400 underline hover:text-cyan-300">Keyboard Shortcuts &amp; Accessibility</button> — work faster, mouse optional.</li>
               <li><button onclick={() => nav('encryption')} class="text-cyan-400 underline hover:text-cyan-300">Database Encryption</button> — protect project files at rest.</li>
             </ul>
@@ -909,7 +909,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <ul class="text-sm text-slate-300 space-y-1 ml-3">
               <li>Lists all charts in the current project with kind badge and creation date.</li>
               <li>Click a chart name to open its editor.</li>
-              <li>The chart-tool catalog searches all 21 types by name and use, and filters them by rendering engine. It opens automatically when the project has no charts and stays compact for returning users.</li>
+              <li>The chart-tool catalog searches all 22 types by name and use, and filters them by rendering engine. It opens automatically when the project has no charts and stays compact for returning users.</li>
               <li>Delete (two-click confirm) removes the chart permanently.</li>
             </ul>
           </section>
@@ -1545,7 +1545,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <!-- ── Charts Reference ────────────────────────────────────── -->
         {:else if active === 'charts'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Charts Reference</h2>
-          <p class="text-sm text-slate-400 mb-5">PMForge includes 21 chart types organized across four rendering engines. Create them from the Project Dashboard's searchable chart-tool catalog; filter by engine when you already know the visual family you need.</p>
+          <p class="text-sm text-slate-400 mb-5">PMForge includes 22 chart types organized across four rendering engines. Create them from the Project Dashboard's searchable chart-tool catalog; filter by engine when you already know the visual family you need.</p>
 
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-3">DAG Engine — Schedule &amp; Hierarchy (7 charts)</h3>
@@ -1591,7 +1591,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
           <section class="mb-6">
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-3">Matrix Engine — Grid Diagrams (4 charts)</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-3">Matrix Engine — Grid Diagrams (5 charts)</h3>
             <p class="text-xs text-slate-500 mb-3">Two-dimensional grids relating two sets of items or dimensions.</p>
             <div class="space-y-3">
               {#each [
@@ -1599,6 +1599,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 { name: 'SWOT Matrix', desc: '2x2 grid: Strengths / Weaknesses (internal) vs. Opportunities / Threats (external). Favorable vs. unfavorable.' },
                 { name: 'Stakeholder Analysis Matrix', desc: 'Stakeholders plotted on a Power vs. Interest grid. Position drives engagement strategy: high power/high interest = manage closely.' },
                 { name: 'Matrix Diagram', desc: 'Generic m×n grid for relating any two dimensions — requirements traceability, quality function deployment, or any custom comparison.' },
+                { name: 'Risk Matrix', desc: '5×5 probability and impact heat map for risks, active issues, and opportunities. Records include owner, status, response, and an optional linked task.' },
               ] as chart}
                 <div>
                   <p class="text-sm font-medium text-slate-100">{chart.name}</p>

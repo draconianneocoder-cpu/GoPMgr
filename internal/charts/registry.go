@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package charts is the taxonomy and dispatch layer for PMForge's 21
+// Package charts is the taxonomy and dispatch layer for PMForge's 22
 // chart and diagram types.
 //
 // # Architectural overview
 //
-// Rather than 21 separate packages, all chart types share four
+// Rather than 22 separate packages, all chart types share four
 // engines. Each engine knows how to take a JSON `data` blob and a
 // JSON `config` blob and produce (a) an internal layout suitable for
 // the Svelte frontend, and (b) a rendering to PDF/PNG/SVG for export:
@@ -49,6 +49,7 @@ const (
 	KindSWOT          Kind = "swot"
 	KindStakeholder   Kind = "stakeholder_analysis"
 	KindMatrixDiagram Kind = "matrix"
+	KindRiskMatrix    Kind = "risk_matrix"
 
 	// Flow family
 	KindWorkflow Kind = "workflow"
@@ -218,6 +219,13 @@ var registry = []Definition{
 		Engine:      EngineMatrix,
 		Description: "Generic m×n grid for relating any two dimensions (used for requirements traceability, etc.).",
 		DataExample: `{"rows":["R1"],"cols":["C1"],"cells":[[""]]}`,
+	},
+	{
+		Kind:        KindRiskMatrix,
+		Name:        "Risk Matrix",
+		Engine:      EngineMatrix,
+		Description: "5x5 probability and impact heat map for risks, active issues, and opportunities.",
+		DataExample: `{"items":[{"id":"R-1","title":"Supplier delay","kind":"risk","probability":3,"impact":4,"status":"open"}]}`,
 	},
 
 	// -------- Flow family --------

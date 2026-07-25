@@ -3,8 +3,8 @@
 
 // Package matrix implements PMForge's Matrix-family chart engine.
 //
-// The family covers four kinds — RACI, SWOT, Stakeholder Analysis, and
-// Generic Matrix Diagram — that share a grid layout but have very
+// The family covers five kinds — RACI, SWOT, Stakeholder Analysis,
+// Generic Matrix Diagram, and Risk Matrix — that share a grid layout but have
 // different content models:
 //
 //   - RACI is a Roles × Tasks grid whose cells take values
@@ -14,6 +14,7 @@
 //     placed in one of four canonical engagement quadrants.
 //   - Generic Matrix is an m×n grid with arbitrary cell text — used
 //     for traceability matrices, prioritization, etc.
+//   - Risk Matrix is a fixed 5×5 probability × impact heat map.
 //
 // Because the four kinds are structurally different, each gets its
 // own *Layout type. The frontend dispatches on `engine == "matrix"`

@@ -29,7 +29,7 @@ type LayoutResult struct {
 
 // ErrEngineNotImplemented is the defensive default returned by Layout
 // when a kind is in the registry (Get succeeds) but has no switch arm
-// below. All 21 shipped kinds have arms, so this is unreachable for
+// below. All 22 shipped kinds have arms, so this is unreachable for
 // them; it guards against a new registry entry added without a matching
 // renderer. main.go treats it as a non-fatal "skip this chart" signal.
 var ErrEngineNotImplemented = errors.New("charts: engine renderer not yet implemented")
@@ -82,7 +82,7 @@ func LayoutWithSchedulePlan(kind Kind, rawData string, projectStart time.Time, i
 //
 //	DAG:    WBS, Network Diagram, PERT, CPM, Fishbone, Cause-and-Effect
 //	Flow:   Workflow, Activity
-//	Matrix: RACI, SWOT, Stakeholder, Generic
+//	Matrix: RACI, SWOT, Stakeholder, Generic, Risk
 //	Stats:  Line, Bar, Pareto, Pie, BurnUp, BurnDown, CumulativeFlow, Control
 //
 // Adding a kind is a self-contained change: add a function next to the
@@ -226,6 +226,13 @@ func Layout(kind Kind, rawData string) (LayoutResult, error) {
 			return LayoutResult{}, err
 		}
 		return wrap(def, kind, matrix.LayoutGenericMatrix(doc))
+
+	case KindRiskMatrix:
+		doc, err := matrix.ParseRiskMatrix(rawData)
+		if err != nil {
+			return LayoutResult{}, err
+		}
+		return wrap(def, kind, matrix.LayoutRiskMatrix(doc))
 
 	// --- Stats family ---
 	case KindLine:

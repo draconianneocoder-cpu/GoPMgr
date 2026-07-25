@@ -297,6 +297,7 @@
         "internal/charts/matrix/common.go",
         "internal/charts/matrix/generic.go",
         "internal/charts/matrix/raci.go",
+        "internal/charts/matrix/risk.go",
         "internal/charts/matrix/stakeholder.go",
         "internal/charts/matrix/swot.go"
       ]
@@ -308,6 +309,7 @@
         "internal/charts/matrix/common.go",
         "internal/charts/matrix/generic.go",
         "internal/charts/matrix/raci.go",
+        "internal/charts/matrix/risk.go",
         "internal/charts/matrix/stakeholder.go",
         "internal/charts/matrix/swot.go"
       ]
@@ -319,6 +321,7 @@
         "internal/charts/matrix/common.go",
         "internal/charts/matrix/generic.go",
         "internal/charts/matrix/raci.go",
+        "internal/charts/matrix/risk.go",
         "internal/charts/matrix/stakeholder.go",
         "internal/charts/matrix/swot.go"
       ]
@@ -330,8 +333,17 @@
         "internal/charts/matrix/common.go",
         "internal/charts/matrix/generic.go",
         "internal/charts/matrix/raci.go",
+        "internal/charts/matrix/risk.go",
         "internal/charts/matrix/stakeholder.go",
         "internal/charts/matrix/swot.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/matrix/risk_test.go",
+      "package": "pmforge/internal/charts/matrix",
+      "candidate_source_files": [
+        "internal/charts/matrix/common.go",
+        "internal/charts/matrix/risk.go"
       ]
     },
     {
@@ -358,6 +370,14 @@
         "internal/charts/pdfrender/gantt.go",
         "internal/charts/pdfrender/matrix.go",
         "internal/charts/pdfrender/stats.go"
+      ]
+    },
+    {
+      "test_file": "internal/charts/pdfrender/risk_test.go",
+      "package": "pmforge/internal/charts/pdfrender",
+      "candidate_source_files": [
+        "internal/charts/pdfrender/dispatcher.go",
+        "internal/charts/pdfrender/matrix.go"
       ]
     },
     {
@@ -858,6 +878,14 @@
         "internal/documents/team_charter.go",
         "internal/documents/templates.go",
         "internal/documents/wbs_document.go"
+      ]
+    },
+    {
+      "test_file": "internal/documents/risk_matrix_ref_test.go",
+      "package": "pmforge/internal/documents",
+      "candidate_source_files": [
+        "internal/documents/registry.go",
+        "internal/documents/templates.go"
       ]
     },
     {

@@ -15,7 +15,7 @@ decisions are in `docs/design/ADR-*.md`.
 PMForge ships with a kernel that performs CPM scheduling, Earned Value
 Management (BAC/PV/EV/AC/SV/CV/SPI/CPI/EAC/ETC/VAC), baselines, anchor
 scheduling, basic resource levelling, and typed dependency links. The
-frontend covers 21 chart types, 25 document kinds, Agile and Six Sigma
+frontend covers 22 chart types, 25 document kinds, Agile and Six Sigma
 methodology packs, MSPDI import/export, PDF/A-3, PAdES digital signing,
 SQLCipher encryption at rest, and Argon2id authentication.
 
@@ -92,6 +92,13 @@ for PAdES signatures. PDF/A-3 embedded audit attachment support.
 Structured risk register (ID, title, probability, impact, score, mitigation,
 owner, status, linked task). A 22nd chart type: 5×5 probability/impact heat
 map rendered via the existing pdfrender pipeline.
+
+_Foundation complete:_ `risk_matrix` is registered as the fifth Matrix-engine
+kind with a typed backend layout, deterministic 5×5 scoring bands, validation,
+vector PDF rendering, dashboard creation, and a dedicated editor for risks,
+active issues, and opportunities. Risk Register documents can optionally link
+the chart for combined-report embedding. A future slice can synchronize chart
+items with document rows instead of requiring the user to maintain both.
 
 **Portfolio Roll-ups** (RICE 90)
 Aggregate EV/AC/PV/SPI/CPI across the projects the user has open or has
