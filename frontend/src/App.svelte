@@ -5,7 +5,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <script lang="ts">
   import { onMount } from 'svelte';
   import { session, goto } from './lib/session.svelte';
-  import { applyTheme } from './lib/theme';
+  import { applyTheme, readCachedTheme, rememberTheme } from './lib/theme';
   import { autosave } from './lib/autosave.svelte';
 
   import ToastContainer from './lib/components/ToastContainer.svelte';
@@ -15,10 +15,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // auto-save (the login screen is always dark with no editors open).
   $effect(() => {
     if (session.user) {
+      const cachedTheme = readCachedTheme(session.user.username);
+      if (cachedTheme) applyTheme(cachedTheme);
+
       const p = window.go?.main?.App?.GetAppInfo?.();
       if (p) {
         p.then((info) => {
-          applyTheme(info?.settings?.app_theme);
+          const theme = applyTheme(info?.settings?.app_theme);
+          rememberTheme(theme, session.user?.username);
           autosave.setInterval(info?.settings?.auto_save_seconds ?? 0);
         }).catch(() => {});
       }
