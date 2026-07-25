@@ -351,6 +351,16 @@
       ]
     },
     {
+      "entry_point": "App.SyncRiskRegisterToMatrix",
+      "main_go_line": 117,
+      "touches_internal_packages": [
+        "pmforge/internal/charts",
+        "pmforge/internal/charts/matrix",
+        "pmforge/internal/db",
+        "pmforge/internal/documents"
+      ]
+    },
+    {
       "entry_point": "App.DeleteDocument",
       "main_go_line": 1867,
       "touches_internal_packages": []

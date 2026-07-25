@@ -1599,7 +1599,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 { name: 'SWOT Matrix', desc: '2x2 grid: Strengths / Weaknesses (internal) vs. Opportunities / Threats (external). Favorable vs. unfavorable.' },
                 { name: 'Stakeholder Analysis Matrix', desc: 'Stakeholders plotted on a Power vs. Interest grid. Position drives engagement strategy: high power/high interest = manage closely.' },
                 { name: 'Matrix Diagram', desc: 'Generic m×n grid for relating any two dimensions — requirements traceability, quality function deployment, or any custom comparison.' },
-                { name: 'Risk Matrix', desc: '5×5 probability and impact heat map for risks, active issues, and opportunities. Records include owner, status, response, and an optional linked task.' },
+                { name: 'Risk Matrix', desc: '5×5 probability and impact heat map for risks, active issues, and opportunities. Records include owner, status, response, and an optional linked task. A Risk Register document can explicitly refresh its linked matrix after validation.' },
               ] as chart}
                 <div>
                   <p class="text-sm font-medium text-slate-100">{chart.name}</p>
