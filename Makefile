@@ -31,7 +31,7 @@ export CC
         license-check memory-scan package-linux package-windows package-darwin package-macos package-macos-installer \
         check-release clean fonts icc check-pdfa frontend-stability \
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
-        check-encrypted-db linux-runtime-target help-guide-current
+        check-encrypted-db linux-runtime-target help-guide-current wails-version wails-cli-version wails-version-test
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -80,8 +80,8 @@ test: ## Run Go unit tests.
 race: ## Run Go tests with the race detector (concurrency gate).
 	$(GO) test -race -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: test frontend-stability frontend-build-budget ## Fast pre-commit gate: Go tests + svelte-check + frontend (Vite) build.
-	@echo "verify: Go tests, svelte-check, and frontend build all passed."
+verify: wails-version test frontend-stability frontend-build-budget ## Fast pre-commit gate: toolchain pin + Go tests + svelte-check + frontend build.
+	@echo "verify: Wails pin, Go tests, svelte-check, and frontend build all passed."
 
 frontend-stability: ## Run Svelte warning-clean and Sigma regression gates.
 	@bash scripts/frontend-stability-check.sh
@@ -97,6 +97,15 @@ release-scope: ## Verify release gates target PMForge-owned source only.
 
 linux-runtime-target: ## Verify Linux CI/packages target Ubuntu 24.04+ WebKit2GTK 4.1.
 	@bash scripts/check-linux-runtime-target.sh
+
+wails-version: ## Verify Wails runtime, CLI, and current documentation pins match go.mod.
+	@bash scripts/check-wails-version.sh
+
+wails-cli-version: ## Verify the installed Wails CLI also matches the go.mod pin.
+	@PMFORGE_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh
+
+wails-version-test: ## Run isolated regression cases for the Wails version gate.
+	@bash scripts/check-wails-version_test.sh
 
 help-guide-current: ## Verify in-app Help Guide covers recent release corrections.
 	@bash scripts/check-help-guide-current.sh

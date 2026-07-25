@@ -73,8 +73,9 @@ make build
 make verify
 ```
 
-`make verify` is the fast local and CI gate: Go tests, frontend stability,
-and frontend build-budget checks. Run it before ordinary commits.
+`make verify` is the fast local and CI gate: the Wails runtime/CLI/documentation
+pin, Go tests, frontend stability, and frontend build-budget checks. Run it
+before ordinary commits.
 
 The full release gate is:
 
@@ -106,10 +107,10 @@ make license-check
 ## Toolchain
 
 - Go: `go.mod` pins Go 1.26.5.
-- Wails: the project uses Wails v2.12.0. Install the matching CLI with:
+- Wails: the project uses Wails v2.13.0. Install the matching CLI with:
 
 ```sh
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
 ```
 
 - Node dependencies live under `frontend/`.
