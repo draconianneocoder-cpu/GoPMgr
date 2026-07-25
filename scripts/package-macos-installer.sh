@@ -31,7 +31,12 @@ fi
 
 if ! command -v wails >/dev/null 2>&1; then
 	echo "package-macos-installer: the 'wails' CLI is required. Install with:" >&2
-	echo "  go install github.com/wailsapp/wails/v2/cmd/wails@latest" >&2
+	echo "  go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0" >&2
+	exit 2
+fi
+
+if ! PMFORGE_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh >/dev/null; then
+	echo "package-macos-installer: the installed Wails CLI does not match go.mod." >&2
 	exit 2
 fi
 

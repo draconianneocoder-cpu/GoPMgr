@@ -22,6 +22,15 @@ if [ "$APP_VERSION" != "$WAILS_VERSION" ]; then
 fi
 echo "Versions match: $APP_VERSION"
 
+# Keep the Wails runtime, build CLI, and current documentation on one pinned
+# version. This is separate from the product-version check above because both
+# values live in go.mod/workflows rather than wails.json.
+if ! PMFORGE_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh >/dev/null; then
+    echo "Wails version consistency failed. Run 'make wails-cli-version' for details."
+    exit 1
+fi
+echo "Wails toolchain version verified."
+
 # --- 2. REUSE / SPDX licensing ---------------------------------------
 # The embedded frontend now lives at the repo-root frontend/dist (the real
 # Vite output, gitignored), so there is no separate copy to clean. reuse
@@ -114,7 +123,7 @@ fi
 # the desktop,production tags, links the macOS frameworks, and produces the
 # packaged app under build/bin. Requires the `wails` CLI on PATH.
 if ! make build >/dev/null; then
-    echo "Final build failed (is the 'wails' CLI installed? See 'go install github.com/wailsapp/wails/v2/cmd/wails@latest')."
+    echo "Final build failed (is the pinned 'wails' CLI installed? See 'go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0')."
     exit 1
 fi
 if [ -f scripts/verify-duckdb-linked.sh ]; then
