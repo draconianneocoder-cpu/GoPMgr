@@ -62,8 +62,16 @@ type LaunchpadResult struct {
 	Path    string                  `json:"path"`
 }
 
+// ListCalendarPolicies exposes the calendar package's authoritative policy
+// catalogue to Wails clients. Keeping the jurisdiction and IANA time-zone
+// pairs in Go prevents onboarding and settings screens from drifting apart.
+func (a *App) ListCalendarPolicies() []calendar.Policy {
+	return calendar.SupportedPolicies()
+}
+
 func (a *App) CreateProjectFromLaunchpad(
 	name, description, industry, subCategory, methodology, countryCode string,
+	timeZone string,
 	seeds []string,
 ) (LaunchpadResult, error) {
 	user := a.requireUser()
@@ -73,6 +81,21 @@ func (a *App) CreateProjectFromLaunchpad(
 	safe := sanitizeFilename(name)
 	if safe == "" {
 		return LaunchpadResult{}, errors.New("invalid project name")
+	}
+	countryCode = countryCodeOrDefault(strings.ToUpper(strings.TrimSpace(countryCode)))
+	timeZone = strings.TrimSpace(timeZone)
+	if timeZone == "" {
+		timeZone = calendar.DefaultTimeZone(countryCode)
+	}
+	// The Wails boundary is intentionally validated even though the Launchpad
+	// presents constrained selects. This prevents stale or hand-crafted clients
+	// from persisting a time zone that contradicts the business-calendar policy.
+	if !calendar.ValidTimeZone(countryCode, timeZone) {
+		return LaunchpadResult{}, fmt.Errorf(
+			"time zone %q is not supported by the %s business-calendar policy",
+			timeZone,
+			countryCode,
+		)
 	}
 	dir := filepath.Join(user.DataDir, "projects")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -108,8 +131,8 @@ func (a *App) CreateProjectFromLaunchpad(
 		Industry:    industry,
 		SubCategory: subCategory,
 		Methodology: methodology,
-		CountryCode: countryCodeOrDefault(countryCode),
-		TimeZone:    calendar.DefaultTimeZone(countryCodeOrDefault(countryCode)),
+		CountryCode: countryCode,
+		TimeZone:    timeZone,
 	})
 	if err != nil {
 		_ = d.Close()

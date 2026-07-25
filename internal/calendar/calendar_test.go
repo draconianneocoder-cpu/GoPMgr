@@ -103,6 +103,18 @@ func TestSupportedPoliciesValidateRequestedRegions(t *testing.T) {
 	}
 }
 
+func TestSupportedPoliciesReturnsIndependentTimeZoneSlices(t *testing.T) {
+	policies := SupportedPolicies()
+	if len(policies) == 0 || len(policies[0].TimeZones) == 0 {
+		t.Fatal("SupportedPolicies returned no time zones")
+	}
+
+	policies[0].TimeZones[0] = "Etc/Unexpected"
+	if got := DefaultTimeZone(policies[0].CountryCode); got == "Etc/Unexpected" {
+		t.Fatal("mutating a returned policy changed the package catalogue")
+	}
+}
+
 // TestWorkdaysFrom_BackwardWalk confirms the negative-days path counts
 // backward correctly. One workday before Monday 2026-01-05 is Friday 2026-01-02.
 func TestWorkdaysFrom_BackwardWalk(t *testing.T) {

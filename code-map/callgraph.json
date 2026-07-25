@@ -1,5 +1,5 @@
 {
-  "description": "Entry-point fan-out graph: for each Wails-exposed App.<Method> (the frontend-callable public API), which internal/ packages its body references. Derived mechanically from main.go by brace-depth body extraction + package-selector matching; not a full function-level call graph.",
+  "description": "Entry-point fan-out graph: for each Wails-exposed App.<Method> (the frontend-callable public API), which internal/ packages its body references. Derived from root Go files by brace-depth body extraction and package-selector matching; not a full function-level call graph.",
   "entry_points": [
     {
       "entry_point": "App.Greet",
@@ -617,15 +617,26 @@
     },
     {
       "entry_point": "App.LaunchpadEvaluate",
-      "main_go_line": 3089,
+      "source_file": "app_foundation.go",
+      "source_line": 36,
       "touches_internal_packages": [
         "pmforge/internal/templates"
       ]
     },
     {
-      "entry_point": "App.CreateProjectFromLaunchpad",
-      "main_go_line": 3118,
+      "entry_point": "App.ListCalendarPolicies",
+      "source_file": "app_foundation.go",
+      "source_line": 68,
       "touches_internal_packages": [
+        "pmforge/internal/calendar"
+      ]
+    },
+    {
+      "entry_point": "App.CreateProjectFromLaunchpad",
+      "source_file": "app_foundation.go",
+      "source_line": 72,
+      "touches_internal_packages": [
+        "pmforge/internal/calendar",
         "pmforge/internal/db",
         "pmforge/internal/templates"
       ]

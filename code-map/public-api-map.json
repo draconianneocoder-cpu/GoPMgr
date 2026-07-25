@@ -1,5 +1,5 @@
 {
-  "description": "The public API surface: every exported method on the Wails App struct (main.go), callable from the frontend via window.go.main.App.*. Regenerate: grep -n '^func (a \\*App) [A-Z]' main.go",
+  "description": "The public API surface: every exported method on the Wails App struct across the root Go files, callable from the frontend via window.go.main.App.*. Regenerate candidates with: rg -n '^func \\(a \\*App\\) [A-Z]' --glob '*.go'",
   "app_methods": [
     {
       "method": "Greet",
@@ -551,13 +551,22 @@
       "method": "LaunchpadEvaluate",
       "params": "industry, methodology string",
       "returns": "([]string, error)",
-      "main_go_line": 3292
+      "source_file": "app_foundation.go",
+      "source_line": 36
+    },
+    {
+      "method": "ListCalendarPolicies",
+      "params": "",
+      "returns": "[]calendar.Policy",
+      "source_file": "app_foundation.go",
+      "source_line": 68
     },
     {
       "method": "CreateProjectFromLaunchpad",
-      "params": "name, description, industry, subCategory, methodology, countryCode string, seeds []string,",
+      "params": "name, description, industry, subCategory, methodology, countryCode string, timeZone string, seeds []string,",
       "returns": "(LaunchpadResult, error)",
-      "main_go_line": 3321
+      "source_file": "app_foundation.go",
+      "source_line": 72
     },
     {
       "method": "UpdateProjectIndustry",

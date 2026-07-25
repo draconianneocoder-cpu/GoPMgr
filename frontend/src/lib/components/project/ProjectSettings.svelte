@@ -9,8 +9,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   //
   // The Launchpad sets these at creation time; this panel is the
   // canonical "go back and reclassify" entry point. Reuses existing
-  // App.UpdateProjectMeta and App.UpdateProjectIndustry — no new
-  // backend code.
+  // App.UpdateProjectMeta and App.UpdateProjectIndustry. Calendar choices come
+  // from the same Go catalogue used by the Launchpad so both surfaces stay in
+  // lockstep as jurisdictions are added.
 
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
@@ -20,16 +21,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let busy = $state(false);
   let status = $state('');
   let error = $state('');
-
-  const calendarTimeZones: Record<string, string[]> = {
-    US: ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles'],
-	CA: ['America/Toronto', 'America/Vancouver'], AU: ['Australia/Sydney'],
-    GB: ['Europe/London'], FR: ['Europe/Paris'], DE: ['Europe/Berlin'],
-    BE: ['Europe/Brussels'], NL: ['Europe/Amsterdam'], JP: ['Asia/Tokyo'],
-  };
+  let calendarPolicies = $state<CalendarPolicy[]>([]);
+  let calendarPolicyError = $state('');
 
   function timeZonesFor(countryCode: string) {
-    return calendarTimeZones[countryCode] ?? ['UTC'];
+    return calendarPolicies.find((policy) => policy.country_code === countryCode)?.time_zones ?? ['UTC'];
   }
 
   function resetTimeZoneForCountry() {
@@ -171,6 +167,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let scenarioCompareError = $state('');
 
   onMount(async () => {
+    try {
+      calendarPolicies = (await window.go.main.App.ListCalendarPolicies()) ?? [];
+      if (calendarPolicies.length === 0) {
+        calendarPolicyError = 'No business-calendar policies are available.';
+      }
+    } catch (err: any) {
+      calendarPolicyError = `Could not load business-calendar policies: ${err}`;
+    }
     try {
       const p = await window.go.main.App.GetProjectMeta();
       draft = { ...p };
@@ -893,6 +897,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {#if error}
       <p class="text-xs text-red-400" role="alert">{error}</p>
     {/if}
+    {#if calendarPolicyError}
+      <p class="text-xs text-red-400" role="alert">{calendarPolicyError}</p>
+    {/if}
     {#if status}
       <p class="text-xs text-cyan-400">{status}</p>
     {/if}
@@ -963,32 +970,25 @@ SPDX-License-Identifier: GPL-3.0-or-later
             />
           </label>
           <label class="block">
-            <span class="text-xs text-slate-500 uppercase">Country (for holidays)</span>
+            <span class="text-xs text-slate-500 uppercase">Business calendar policy</span>
             <select
               bind:value={draft.country_code}
-			  onchange={resetTimeZoneForCountry}
+              onchange={resetTimeZoneForCountry}
               class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded"
             >
-              <option value="US">United States</option>
-              <option value="GB">United Kingdom</option>
-			  <option value="BE">Belgium</option>
-              <option value="CA">Canada</option>
-              <option value="DE">Germany</option>
-              <option value="FR">France</option>
-			  <option value="NL">Netherlands</option>
-			  <option value="JP">Japan</option>
-              <option value="AU">Australia</option>
-              <option value="">Other / generic</option>
+              {#each calendarPolicies as policy (policy.country_code)}
+                <option value={policy.country_code}>{policy.name}</option>
+              {/each}
             </select>
           </label>
-		  <label class="block">
-			<span class="text-xs text-slate-500 uppercase">Schedule and time-series time zone</span>
-			<select bind:value={draft.time_zone} class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded">
-			  {#each timeZonesFor(draft.country_code) as timeZone}
-				<option value={timeZone}>{timeZone}</option>
-			  {/each}
-			</select>
-		  </label>
+          <label class="block">
+            <span class="text-xs text-slate-500 uppercase">Schedule and time-series time zone</span>
+            <select bind:value={draft.time_zone} class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded">
+              {#each timeZonesFor(draft.country_code) as timeZone}
+                <option value={timeZone}>{timeZone}</option>
+              {/each}
+            </select>
+          </label>
         </div>
       </section>
 

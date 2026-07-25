@@ -39,6 +39,13 @@ Launchpad asks for:
    OKRs, PRINCE2, or PMBOK.
 4. Project details and starter artifacts.
 
+Each selection is retained on its step until **Continue** is chosen, so it can
+be reviewed before advancing. The final step summarizes the project blueprint
+and asks for a business-calendar policy plus an IANA time zone. The policy
+controls holidays and working days; the time zone controls schedule boundaries
+and time-series chart dates. Initial policies cover the United States, Canada,
+Western Europe, Japan, and Australia.
+
 The suggested starter artifacts come from the embedded Launchpad rule set.
 The user can deselect any suggestion before creating the project.
 

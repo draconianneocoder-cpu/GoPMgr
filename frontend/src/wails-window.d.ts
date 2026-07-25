@@ -139,6 +139,7 @@ declare global {
 
           // ----- V2.x: Foundation Slice -----
           LaunchpadEvaluate: (industry: string, methodology: string) => Promise<string[]>;
+          ListCalendarPolicies: () => Promise<CalendarPolicy[]>;
           CreateProjectFromLaunchpad: (
             name: string,
             description: string,
@@ -146,6 +147,7 @@ declare global {
             subCategory: string,
             methodology: string,
             countryCode: string,
+            timeZone: string,
             seeds: string[],
           ) => Promise<{ project: ProjectMeta; seeds: SeedReceipt[]; path: string }>;
           UpdateProjectIndustry: (
@@ -538,6 +540,12 @@ declare global {
     time_zone: string;
     created_at: string;
     updated_at: string;
+  }
+
+  interface CalendarPolicy {
+    country_code: string;
+    name: string;
+    time_zones: string[];
   }
 
   interface ChartDefinition {
