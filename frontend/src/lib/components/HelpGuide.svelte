@@ -365,7 +365,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">3 · Build a small schedule</h3>
             <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
-              <li>On the Dashboard choose <span class="font-medium text-slate-100">New Chart</span> and pick <span class="font-medium text-slate-100">Critical Path (CPM)</span>.</li>
+              <li>On the Dashboard open the <span class="font-medium text-slate-100">chart-tool catalog</span>, search for CPM, and choose <span class="font-medium text-slate-100">Critical Path Method Chart</span>.</li>
               <li>Click <span class="font-medium text-slate-100">+ Node</span> three times to add three activities.</li>
               <li>Click a node, then rename it and set a duration (days) in the side panel.</li>
               <li>To add a dependency: select the first node, click <span class="font-medium text-slate-100">Connect…</span>, then click the node that must follow it.</li>
@@ -909,7 +909,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <ul class="text-sm text-slate-300 space-y-1 ml-3">
               <li>Lists all charts in the current project with kind badge and creation date.</li>
               <li>Click a chart name to open its editor.</li>
-              <li>"New Chart" opens the chart kind picker (all 21 types available).</li>
+              <li>The chart-tool catalog searches all 21 types by name and use, and filters them by rendering engine. It opens automatically when the project has no charts and stays compact for returning users.</li>
               <li>Delete (two-click confirm) removes the chart permanently.</li>
             </ul>
           </section>
@@ -1544,7 +1544,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <!-- ── Charts Reference ────────────────────────────────────── -->
         {:else if active === 'charts'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Charts Reference</h2>
-          <p class="text-sm text-slate-400 mb-5">PMForge includes 21 chart types organized across four rendering engines. Charts are created from the project's Charts panel or via New Chart on the Project Dashboard.</p>
+          <p class="text-sm text-slate-400 mb-5">PMForge includes 21 chart types organized across four rendering engines. Create them from the Project Dashboard's searchable chart-tool catalog; filter by engine when you already know the visual family you need.</p>
 
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-3">DAG Engine — Schedule &amp; Hierarchy (7 charts)</h3>
