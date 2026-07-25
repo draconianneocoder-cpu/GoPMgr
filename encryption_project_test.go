@@ -68,6 +68,7 @@ func TestCreateProjectFromLaunchpadEncryptsProject(t *testing.T) {
 		"saas",
 		"agile",
 		"US",
+		"America/New_York",
 		nil,
 	)
 	if err != nil {
@@ -103,6 +104,7 @@ func TestCreateProjectFromLaunchpadActivatesProject(t *testing.T) {
 		"web",
 		"agile",
 		"US",
+		"America/New_York",
 		nil,
 	); err != nil {
 		t.Fatalf("CreateProjectFromLaunchpad: %v", err)
@@ -111,6 +113,55 @@ func TestCreateProjectFromLaunchpadActivatesProject(t *testing.T) {
 	// Call a method that requires requireDB() without calling OpenProject first.
 	if _, err := app.ListCharts(""); err != nil {
 		t.Fatalf("ListCharts immediately after launchpad creation (without OpenProject): %v", err)
+	}
+}
+
+func TestCreateProjectFromLaunchpadPreservesCalendarPolicyAndTimeZone(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+
+	res, err := app.CreateProjectFromLaunchpad(
+		"Tokyo Delivery",
+		"schedule in local business time",
+		"software",
+		"web",
+		"scrum",
+		"JP",
+		"Asia/Tokyo",
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("CreateProjectFromLaunchpad: %v", err)
+	}
+	if res.Project.CountryCode != "JP" || res.Project.TimeZone != "Asia/Tokyo" {
+		t.Fatalf(
+			"calendar policy = %s/%s, want JP/Asia/Tokyo",
+			res.Project.CountryCode,
+			res.Project.TimeZone,
+		)
+	}
+}
+
+func TestCreateProjectFromLaunchpadRejectsMismatchedTimeZone(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+
+	_, err := app.CreateProjectFromLaunchpad(
+		"Invalid Calendar",
+		"",
+		"software",
+		"web",
+		"scrum",
+		"US",
+		"Asia/Tokyo",
+		nil,
+	)
+	if err == nil || !strings.Contains(err.Error(), "time zone") {
+		t.Fatalf("CreateProjectFromLaunchpad error = %v, want invalid time zone error", err)
 	}
 }
 

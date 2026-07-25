@@ -49,6 +49,10 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
 - **2026-06-15** — Per-project unique-ID subfolders adopted, with legacy flat-file layout preserved for backward compatibility (`projectPathFor` accepts both).
 - **2026-06-20** — `CreateAccount` duplicate check changed from case-sensitive to `lower(username) = lower(?)` after an APFS case-insensitive collision let two accounts share one data directory.
 - **2026-06-22** — Wails v2.9.2 → v2.12.0 upgrade, pulling `golang.org/x/crypto`/`x/net`/`x/sys` security-hygiene bumps via `go mod tidy`.
+- **2026-07-24** — The Go `internal/calendar` policy catalogue became the
+  authoritative Launchpad source for business-calendar jurisdictions and IANA
+  time zones. Project creation validates the pair at the Wails boundary so
+  schedules and time-series charts cannot start with contradictory settings.
 
 ## Open / deferred (not yet decided or implemented)
 
