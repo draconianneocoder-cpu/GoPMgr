@@ -187,11 +187,16 @@ PMForge supports 25 document kinds across the project lifecycle, including
 charters, plans, schedules, budgets, risk registers, requirements, reports,
 issue logs, change requests, and closure documents.
 
+The Dashboard's controlled-document index searches template names, purposes,
+and kind identifiers, with filters for initiation, planning, execution,
+monitoring, and closing. It opens automatically for a project without
+documents and stays collapsed once document work exists.
+
 Every document kind can export to PDF, DOCX, and ODT. XLSX is available
 where the document kind benefits from spreadsheet output.
 
 Combined reports let users assemble several project documents into one
-PDF. From the Dashboard, choose **New document -> Combined Report**, add
+PDF. From the Dashboard, choose **Build combined report**, add
 documents, order sections, optionally add section introductions, then
 export the report. Chart references inside included documents render as
 dedicated vector chart pages.
