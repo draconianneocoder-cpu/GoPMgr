@@ -160,7 +160,10 @@ vector drawings rather than screenshots.
 The Risk Matrix keeps risks, active issues, and opportunities on a 5×5
 probability/impact grid. Each record can carry an owner, status, response,
 and linked task. Optionally select that chart from a Risk Register document
-so combined reports include the same vector heat map.
+so combined reports include the same vector heat map. After editing register
+rows, save and choose **Refresh Risk Matrix** to replace the linked chart's
+items. PMForge validates every row first and leaves the existing chart
+unchanged if IDs or probability/impact values are invalid.
 
 In the schedule editors, dependencies are created with the Connect
 action (select the source node, click Connect, click the destination).

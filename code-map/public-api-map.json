@@ -314,6 +314,12 @@
       "main_go_line": 2062
     },
     {
+      "method": "SyncRiskRegisterToMatrix",
+      "params": "documentID string",
+      "returns": "(db.Chart, error)",
+      "main_go_line": 117
+    },
+    {
       "method": "DeleteDocument",
       "params": "id string",
       "returns": "error",

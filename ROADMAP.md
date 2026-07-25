@@ -97,8 +97,11 @@ _Foundation complete:_ `risk_matrix` is registered as the fifth Matrix-engine
 kind with a typed backend layout, deterministic 5×5 scoring bands, validation,
 vector PDF rendering, dashboard creation, and a dedicated editor for risks,
 active issues, and opportunities. Risk Register documents can optionally link
-the chart for combined-report embedding. A future slice can synchronize chart
-items with document rows instead of requiring the user to maintain both.
+the chart for combined-report embedding. The document editor now provides an
+explicit **Refresh Risk Matrix** action that validates saved register rows and
+then replaces the linked chart items, preserving chart metadata and audit
+history. The write is deliberately one-way and user-invoked so chart-only
+changes are never overwritten without a visible action.
 
 **Portfolio Roll-ups** (RICE 90)
 Aggregate EV/AC/PV/SPI/CPI across the projects the user has open or has

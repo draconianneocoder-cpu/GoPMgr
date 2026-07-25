@@ -93,6 +93,14 @@
       ]
     },
     {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/risk_sync_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_charts.go",
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_documents.go"
+      ]
+    },
+    {
       "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/resources_action_test.go",
       "package": "pmforge",
       "candidate_source_files": [

@@ -20,6 +20,7 @@ import (
 	"pmforge/internal/calendar"
 	"pmforge/internal/charts"
 	"pmforge/internal/charts/dag"
+	"pmforge/internal/charts/matrix"
 	"pmforge/internal/crypto"
 	"pmforge/internal/db"
 	"pmforge/internal/documents"
@@ -106,6 +107,89 @@ func (a *App) SaveDocument(doc db.Document) (db.Document, error) {
 		}
 	}
 	return d.SaveDocument(doc)
+}
+
+// SyncRiskRegisterToMatrix explicitly replaces the linked Risk Matrix's items
+// with rows from a persisted Risk Register document. Synchronization is
+// intentionally user-invoked and one-way: automatic cross-artifact writes
+// would make it unclear whether the document editor or chart editor owns a
+// conflicting change.
+func (a *App) SyncRiskRegisterToMatrix(documentID string) (db.Chart, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Chart{}, errors.New("no project open")
+	}
+	doc, err := d.GetDocument(documentID)
+	if err != nil {
+		return db.Chart{}, err
+	}
+	if doc.Kind != string(documents.KindRiskRegister) {
+		return db.Chart{}, fmt.Errorf("document %q is not a risk register", documentID)
+	}
+
+	var content struct {
+		RiskMatrixRef string `json:"risk_matrix_ref"`
+		Risks         []struct {
+			ID          string `json:"id"`
+			Description string `json:"description"`
+			Kind        string `json:"kind"`
+			Probability int    `json:"probability"`
+			Impact      int    `json:"impact"`
+			Owner       string `json:"owner"`
+			Status      string `json:"status"`
+			Mitigation  string `json:"mitigation"`
+			LinkedTask  string `json:"linked_task"`
+		} `json:"risks"`
+	}
+	if err := json.Unmarshal([]byte(doc.Content), &content); err != nil {
+		return db.Chart{}, fmt.Errorf("decode risk register: %w", err)
+	}
+	chartID := strings.TrimSpace(content.RiskMatrixRef)
+	if chartID == "" {
+		return db.Chart{}, errors.New("risk register has no linked Risk Matrix")
+	}
+	chart, err := d.GetChart(chartID)
+	if err != nil {
+		return db.Chart{}, fmt.Errorf("load linked Risk Matrix: %w", err)
+	}
+	if chart.ProjectID != doc.ProjectID {
+		return db.Chart{}, errors.New("linked Risk Matrix belongs to another project")
+	}
+	if chart.Kind != string(charts.KindRiskMatrix) {
+		return db.Chart{}, fmt.Errorf("linked chart %q has kind %q, want %q", chart.ID, chart.Kind, charts.KindRiskMatrix)
+	}
+
+	mapped := matrix.RiskMatrixDocument{Items: make([]matrix.RiskItem, 0, len(content.Risks))}
+	for _, row := range content.Risks {
+		kind := strings.ToLower(strings.TrimSpace(row.Kind))
+		if kind == "" {
+			kind = "risk"
+		}
+		mapped.Items = append(mapped.Items, matrix.RiskItem{
+			ID:          row.ID,
+			Title:       row.Description,
+			Kind:        kind,
+			Probability: row.Probability,
+			Impact:      row.Impact,
+			Owner:       row.Owner,
+			Status:      row.Status,
+			Mitigation:  row.Mitigation,
+			LinkedTask:  row.LinkedTask,
+		})
+	}
+	layout := matrix.LayoutRiskMatrix(mapped)
+	if layout.Validation.ErrorCount > 0 {
+		return db.Chart{}, fmt.Errorf("risk register cannot be synchronized: %s", strings.Join(layout.Validation.Issues, " "))
+	}
+	data, err := json.Marshal(mapped)
+	if err != nil {
+		return db.Chart{}, fmt.Errorf("encode Risk Matrix: %w", err)
+	}
+	chart.Data = string(data)
+
+	// Database SaveChart appends the same tamper-evident chart.update event as
+	// an ordinary editor save, preserving provenance for the derived write.
+	return d.SaveChart(chart)
 }
 
 // CombinedReportOptions makes profile intent explicit without breaking the
