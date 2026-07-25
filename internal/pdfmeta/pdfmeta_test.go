@@ -415,6 +415,37 @@ func TestInjectPAdESSignature_SignsDeclaredByteRange(t *testing.T) {
 	}
 }
 
+func TestInjectPAdESSignature_ReservesRoomForTimestampedCMS(t *testing.T) {
+	t.Parallel()
+
+	const representativeTimestampedCMSBytes = 24 * 1024
+	out, err := InjectPAdESSignature(minimalPDF(), func([]byte) ([]byte, error) {
+		// Real TSA chains vary substantially in size. This regression is larger
+		// than the former 8 KiB slot and proves the reserved PAdES-T capacity is
+		// available before the ByteRange is signed.
+		return bytes.Repeat([]byte{0xa5}, representativeTimestampedCMSBytes), nil
+	})
+	if err != nil {
+		t.Fatalf("InjectPAdESSignature() error = %v", err)
+	}
+
+	byteRange := parseByteRangeForTest(t, out)
+	if got := byteRange[2] - byteRange[1] - 2; got < representativeTimestampedCMSBytes*2 {
+		t.Fatalf("hex Contents capacity = %d, want at least %d", got, representativeTimestampedCMSBytes*2)
+	}
+}
+
+func TestInjectPAdESSignature_RejectsCMSLargerThanReservedCapacity(t *testing.T) {
+	t.Parallel()
+
+	_, err := InjectPAdESSignature(minimalPDF(), func([]byte) ([]byte, error) {
+		return make([]byte, 32*1024+1), nil
+	})
+	if err == nil || !strings.Contains(err.Error(), "too large for placeholder") {
+		t.Fatalf("InjectPAdESSignature() error = %v, want capacity rejection", err)
+	}
+}
+
 func TestInjectPAdESSignature_IncludesSignedModificationTime(t *testing.T) {
 	out, err := InjectPAdESSignature(minimalPDF(), func([]byte) ([]byte, error) {
 		return []byte{0xca, 0xfe}, nil

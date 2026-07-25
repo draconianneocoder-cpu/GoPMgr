@@ -67,7 +67,7 @@ if [ ! -s "$2" ]; then
 fi
 echo "DSS 6.4 local validation wrapper"
 echo "signatures=1"
-echo "signature.format=PAdES-BASELINE-B"
+echo "signature.format=PAdES-BASELINE-T"
 echo "signature.indication=INDETERMINATE"
 echo "signature.sub_indication=NO_CERTIFICATE_CHAIN_FOUND"
 EOF
@@ -103,6 +103,11 @@ fi
 if ! grep -q "DSS PAdES baseline format: PASS" "$report"; then
 	cat "$report" >&2
 	fail "DSS baseline format was not enforced"
+fi
+
+if ! grep -q "signature.format=PAdES-BASELINE-T" "$report"; then
+	cat "$report" >&2
+	fail "DSS did not classify the timestamped fixture as PAdES Baseline T"
 fi
 
 if grep -q "DSS PAdES interoperability: TODO" "$report"; then

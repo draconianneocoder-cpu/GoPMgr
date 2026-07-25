@@ -152,6 +152,36 @@ func TestClientTimestampVerifiesConfiguredTrustRoots(t *testing.T) {
 	}
 }
 
+func TestValidateTokenVerifiesSignatureImprintWithoutRequestState(t *testing.T) {
+	t.Parallel()
+
+	digest := sha256.Sum256([]byte("detached signature value"))
+	responseDER, _ := createTimestampResponse(
+		t,
+		digest[:],
+		big.NewInt(7),
+		time.Date(2026, time.July, 25, 15, 0, 0, 0, time.UTC),
+	)
+	_, tokenDER, err := parseResponseEnvelope(responseDER)
+	if err != nil {
+		t.Fatalf("parse timestamp response envelope: %v", err)
+	}
+
+	token, err := ValidateToken(tokenDER, digest[:])
+	if err != nil {
+		t.Fatalf("ValidateToken() error = %v", err)
+	}
+	if token.TrustStatus != TrustNotEvaluated {
+		t.Errorf("TrustStatus = %q, want %q", token.TrustStatus, TrustNotEvaluated)
+	}
+
+	otherDigest := sha256.Sum256([]byte("other signature value"))
+	if _, err := ValidateToken(tokenDER, otherDigest[:]); err == nil ||
+		!strings.Contains(err.Error(), "message imprint") {
+		t.Fatalf("ValidateToken() mismatch error = %v, want message-imprint rejection", err)
+	}
+}
+
 func TestClientTimestampAcceptsGrantedWithModifications(t *testing.T) {
 	t.Parallel()
 
