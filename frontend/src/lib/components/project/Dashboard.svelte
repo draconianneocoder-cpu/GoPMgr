@@ -9,6 +9,7 @@ import { showToast } from '../../toast.svelte';
 import SignCertificateModal from '../SignCertificateModal.svelte';
 import BudgetPanel from './BudgetPanel.svelte';
 import ChartCatalog from './ChartCatalog.svelte';
+import DocumentCatalog from './DocumentCatalog.svelte';
 import Spinner from '../Spinner.svelte';
 
   let chartKinds = $state<ChartDefinition[]>([]);
@@ -225,15 +226,6 @@ import Spinner from '../Spinner.svelte';
     }
   }
 
-  async function newCharter() {
-    try {
-      const d = await window.go.main.App.NewDocument('charter_word', 'Project Charter');
-      goto('charter', d.id);
-    } catch (err: any) {
-      showToast(`Could not create charter: ${err}`, 'error');
-    }
-  }
-
   let importMsg = $state('');
   let importDependencies = $state(true);
   let importProgress = $state(true);
@@ -257,7 +249,9 @@ import Spinner from '../Spinner.svelte';
   async function newDocument(kind: string, defaultTitle: string) {
     try {
       const d = await window.go.main.App.NewDocument(kind, defaultTitle);
-      goto('documents', d.id);
+      // Both routes use the structured document editor today, but retaining
+      // the charter route preserves its specific screen-reader route label.
+      goto(kind.startsWith('charter') ? 'charter' : 'documents', d.id);
     } catch (err: any) {
       showToast(`Could not create document: ${err}`, 'error');
     }
@@ -275,16 +269,6 @@ import Spinner from '../Spinner.svelte';
   // use the same name.
   const chartKindLabel = $derived(new Map(chartKinds.map(c => [c.kind, c.name])));
   const docKindLabel   = $derived(new Map(docKinds.map(d => [d.kind, d.name])));
-
-  const phasesOrder = ['initiation', 'planning', 'execution', 'monitoring', 'closing'];
-  const docsByPhase = $derived(() => {
-    const map = new Map<string, DocumentDefinition[]>();
-    for (const d of docKinds) {
-      if (!map.has(d.phase)) map.set(d.phase, []);
-      map.get(d.phase)!.push(d);
-    }
-    return map;
-  });
 
   const statusStyles: Record<string, string> = {
     active:    'bg-emerald-900 text-emerald-300 border-emerald-700/40',
@@ -549,34 +533,34 @@ import Spinner from '../Spinner.svelte';
       {/if}
     </section>
 
-    <!-- New document / report actions -->
+    <!-- Registry-backed document discovery mirrors the compact chart catalog.
+         Combined Report remains a separate composition action because it
+         assembles existing documents rather than creating a registry kind. -->
     <section>
-      <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">
-        New document
-      </h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <button
-          onclick={newCharter}
-          class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
-        >
-          <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Charter</div>
-          <div class="text-base font-bold text-slate-50 mt-1">Project Charter</div>
-          <p class="text-xs text-slate-500 mt-1">
-            Foundational document that authorises the project.
+      <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500">
+            Create document
+          </h2>
+          <p class="mt-1 text-xs text-slate-500">
+            Start from a controlled template aligned to the project lifecycle.
           </p>
-        </button>
-
+        </div>
         <button
           onclick={() => goto('report_composer')}
-          class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
+          class="rounded border border-slate-700 bg-slate-900 px-3 py-2 text-left hover:border-slate-600 hover:bg-slate-800"
         >
-          <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Report</div>
-          <div class="text-base font-bold text-slate-50 mt-1">Combined Report</div>
-          <p class="text-xs text-slate-500 mt-1">
-            Bundle multiple documents into one PDF with cover and TOC.
-          </p>
+          <span class="block text-[10px] font-bold uppercase tracking-widest text-cyan-300">Report assembly</span>
+          <span class="mt-0.5 block text-xs font-semibold text-slate-100">Build combined report →</span>
         </button>
       </div>
+      {#if !loading && !loadError}
+        <DocumentCatalog
+          definitions={docKinds}
+          initiallyExpanded={docs.length === 0}
+          onCreate={(definition) => newDocument(definition.kind, definition.name)}
+        />
+      {/if}
     </section>
 
     <!-- Agile Pack — opt-in via toggle -->
@@ -642,37 +626,6 @@ import Spinner from '../Spinner.svelte';
           file; disabling hides it without deleting anything.
         </p>
       {/if}
-    </section>
-
-    <!-- Available document templates by phase (reference section) -->
-    <section>
-      <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">
-        Document templates ({docKinds.length})
-      </h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {#each phasesOrder as phase}
-          {@const list = docsByPhase().get(phase) ?? []}
-          {#if list.length > 0}
-            <div class="bg-slate-900 border border-slate-800 rounded p-3">
-              <div class="text-xs font-bold uppercase tracking-widest text-cyan-400 mb-2">
-                {phase}
-              </div>
-              <ul class="space-y-1 text-xs">
-                {#each list as d (d.kind)}
-                  <li>
-                    <button
-                      onclick={() => newDocument(d.kind, d.name)}
-                      class="text-left text-slate-400 hover:text-cyan-400 w-full"
-                    >
-                      {d.name}
-                    </button>
-                  </li>
-                {/each}
-              </ul>
-            </div>
-          {/if}
-        {/each}
-      </div>
     </section>
 
   </main>

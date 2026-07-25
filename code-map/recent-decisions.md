@@ -57,6 +57,10 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   engine-filtered catalog sourced from the Go chart registry. It replaces the
   duplicated full card grid and chart-template reference grid; empty projects
   open the catalog automatically while established workspaces keep it compact.
+- **2026-07-24** — Dashboard document creation now uses the same registry-first
+  discovery pattern: one searchable, lifecycle-filtered controlled-document
+  index replaces the duplicated Charter card and 25-template grid. Combined
+  Report remains separate because it composes existing documents.
 
 ## Open / deferred (not yet decided or implemented)
 

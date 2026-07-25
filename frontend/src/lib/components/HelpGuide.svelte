@@ -919,7 +919,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <ul class="text-sm text-slate-300 space-y-1 ml-3">
               <li>Lists all documents with kind badge, phase badge, and last-modified date.</li>
               <li>Click a document to open its structured editor.</li>
-              <li>"New Document" shows all 25 document types organized by phase.</li>
+              <li>The controlled-document index searches all 25 templates by name and purpose, with lifecycle-phase filters. It opens automatically when the project has no documents and stays compact for returning users.</li>
+              <li><span class="font-medium text-slate-100">Build combined report</span> opens report assembly separately because it combines existing documents rather than creating a document template.</li>
               <li><span class="font-medium text-slate-100">Export</span> — export the document in the configured format (PDF, DOCX, ODT, etc.). See
                 <button onclick={() => nav('export-signing')} class="text-cyan-400 underline hover:text-cyan-300">Export &amp; Digital Signing</button>.
               </li>
@@ -1674,7 +1675,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {:else if active === 'documents'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Documents Reference</h2>
           <p class="text-sm text-slate-400 mb-2">25 structured document types organized by PMBOK process group. Each has a structured editor with typed fields. Chart references can be embedded in documents. Export formats depend on document type.</p>
-          <p class="text-xs text-slate-500 mb-5">Access documents from the project's Documents panel or Project Dashboard.</p>
+          <p class="text-xs text-slate-500 mb-5">Create documents from the Project Dashboard's searchable controlled-document index; filter by lifecycle phase when you know where the artifact belongs.</p>
 
           {#each [
             { phase: 'Initiation', count: 5, docs: [
