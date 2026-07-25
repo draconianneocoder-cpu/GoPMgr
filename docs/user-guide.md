@@ -148,6 +148,12 @@ PMForge supports 21 chart kinds across four engine families:
 - Stats: Line, Bar, Pareto, Pie, Burn-Up, Burn-Down, Cumulative Flow,
   Control.
 
+The Dashboard presents these in one searchable chart-tool catalog. Filter by
+engine family when the required visual is known, or search names and use-case
+descriptions when it is not. The catalog opens automatically for a project
+without charts and stays collapsed by default once the workspace contains
+chart work, keeping existing artifacts ahead of creation controls.
+
 Charts are edited in the app and can be embedded into PDF reports as
 vector drawings rather than screenshots.
 

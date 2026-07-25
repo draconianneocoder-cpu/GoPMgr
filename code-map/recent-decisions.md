@@ -53,6 +53,10 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   authoritative Launchpad source for business-calendar jurisdictions and IANA
   time zones. Project creation validates the pair at the Wails boundary so
   schedules and time-series charts cannot start with contradictory settings.
+- **2026-07-24** — Dashboard chart creation now uses one searchable,
+  engine-filtered catalog sourced from the Go chart registry. It replaces the
+  duplicated full card grid and chart-template reference grid; empty projects
+  open the catalog automatically while established workspaces keep it compact.
 
 ## Open / deferred (not yet decided or implemented)
 

@@ -8,6 +8,7 @@ import { session, goto } from '../../session.svelte';
 import { showToast } from '../../toast.svelte';
 import SignCertificateModal from '../SignCertificateModal.svelte';
 import BudgetPanel from './BudgetPanel.svelte';
+import ChartCatalog from './ChartCatalog.svelte';
 import Spinner from '../Spinner.svelte';
 
   let chartKinds = $state<ChartDefinition[]>([]);
@@ -262,32 +263,6 @@ import Spinner from '../Spinner.svelte';
     }
   }
 
-  // Cards for the "New chart" grid. Order intentionally puts the
-  // most commonly-used PM charts first.
-  const newChartCards: { kind: string; title: string; description: string }[] = [
-    { kind: 'wbs', title: 'Work Breakdown Structure', description: 'Decompose scope into work packages.' },
-    { kind: 'cpm', title: 'CPM Chart', description: 'Activities with ES/EF/LS/LF and critical-path highlighting.' },
-    { kind: 'gantt', title: 'Gantt Chart', description: 'Schedule bars with dependencies, critical path, progress, and baseline overlay.' },
-    { kind: 'pert', title: 'PERT Chart', description: 'Three-point estimates with expected duration and variance.' },
-    { kind: 'network', title: 'Network Diagram', description: 'Activity-on-node precedence diagram.' },
-    { kind: 'fishbone', title: 'Fishbone (Ishikawa)', description: 'Root-cause analysis around a central effect.' },
-    { kind: 'cause_effect', title: 'Cause-and-Effect', description: 'Generic causal tree (e.g. 5-Whys).' },
-    { kind: 'workflow', title: 'Workflow Diagram', description: 'Process flow with start/end/decision/io shapes.' },
-    { kind: 'activity', title: 'Activity Diagram', description: 'UML activity with swimlanes, forks and joins.' },
-    { kind: 'raci', title: 'RACI Matrix', description: 'Responsibility assignment with R/A/C/I validation.' },
-    { kind: 'swot', title: 'SWOT Matrix', description: 'Strengths · Weaknesses · Opportunities · Threats.' },
-    { kind: 'stakeholder_analysis', title: 'Stakeholder Analysis', description: 'Power × Interest 2x2 with engagement strategies.' },
-    { kind: 'matrix', title: 'Matrix Diagram', description: 'Generic m×n grid for traceability or prioritization.' },
-    { kind: 'line', title: 'Line Chart', description: 'One or more series over a continuous x-axis.' },
-    { kind: 'bar', title: 'Bar Chart', description: 'Categorical comparison with bars per category.' },
-    { kind: 'pareto', title: 'Pareto Chart', description: 'Bars sorted descending with cumulative % overlay.' },
-    { kind: 'pie', title: 'Pie Chart', description: 'Part-to-whole composition with computed percentages.' },
-    { kind: 'burnup', title: 'Burn-Up Chart', description: 'Completed work vs total scope over time.' },
-    { kind: 'burndown', title: 'Burn-Down Chart', description: 'Remaining work over time with ideal trajectory.' },
-    { kind: 'cumulative_flow', title: 'Cumulative Flow', description: 'Stacked WIP by state over time.' },
-    { kind: 'control', title: 'Control Chart', description: 'Time series with UCL/LCL and outlier highlighting.' },
-  ];
-
   async function close() {
     await window.go.main.App.CloseProject();
     session.project = null;
@@ -295,9 +270,10 @@ import Spinner from '../Spinner.svelte';
     goto('portfolio');
   }
 
-  // Human-readable label lookups — built once from the static lists so
-  // the chart/document rows in the existing-items sections stay clean.
-  const chartKindLabel = new Map(newChartCards.map(c => [c.kind, c.title]));
+  // Human-readable labels come from the backend registries used by the
+  // creation catalogs, so an existing artifact and its creation tool always
+  // use the same name.
+  const chartKindLabel = $derived(new Map(chartKinds.map(c => [c.kind, c.name])));
   const docKindLabel   = $derived(new Map(docKinds.map(d => [d.kind, d.name])));
 
   const phasesOrder = ['initiation', 'planning', 'execution', 'monitoring', 'closing'];
@@ -534,12 +510,17 @@ import Spinner from '../Spinner.svelte';
     </section>
     {/if}
 
-    <!-- New chart actions -->
+    <!-- One registry-backed chart catalog replaces the former duplicated
+         full card grid + engine reference grid. Empty projects open it
+         automatically; established projects keep it compact. -->
     <section>
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500">
-          New chart
-        </h2>
+        <div>
+          <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500">
+            Create chart
+          </h2>
+          <p class="mt-1 text-xs text-slate-500">Choose the right visual instrument for the decision at hand.</p>
+        </div>
         <div class="flex items-center gap-2">
           {#if importMsg}
             <span class="text-xs text-amber-300 break-words min-w-0">{importMsg}</span>
@@ -553,26 +534,19 @@ import Spinner from '../Spinner.svelte';
           </button>
         </div>
       </div>
-	  <div class="flex flex-wrap gap-3 mb-3 text-xs text-slate-400" aria-label="MSPDI import fields">
-		<label class="flex items-center gap-1"><input type="checkbox" bind:checked={importDependencies} /> Dependencies</label>
-		<label class="flex items-center gap-1"><input type="checkbox" bind:checked={importProgress} /> Progress</label>
-		<label class="flex items-center gap-1"><input type="checkbox" bind:checked={importAssignments} /> Resource assignments</label>
-		<span class="text-slate-500">A mapping receipt is retained with the imported chart.</span>
-	  </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {#each newChartCards as card (card.kind)}
-          <button
-            onclick={() => newChart(card.kind, card.title)}
-            class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
-          >
-            <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">
-              {card.kind.replace('_', '-')}
-            </div>
-            <div class="text-base font-bold text-slate-50 mt-1">{card.title}</div>
-            <p class="text-xs text-slate-500 mt-1">{card.description}</p>
-          </button>
-        {/each}
+      <div class="flex flex-wrap gap-3 mb-3 text-xs text-slate-400" aria-label="MSPDI import fields">
+        <label class="flex items-center gap-1"><input type="checkbox" bind:checked={importDependencies} /> Dependencies</label>
+        <label class="flex items-center gap-1"><input type="checkbox" bind:checked={importProgress} /> Progress</label>
+        <label class="flex items-center gap-1"><input type="checkbox" bind:checked={importAssignments} /> Resource assignments</label>
+        <span class="text-slate-500">A mapping receipt is retained with the imported chart.</span>
       </div>
+      {#if !loading && !loadError}
+        <ChartCatalog
+          definitions={chartKinds}
+          initiallyExpanded={charts.length === 0}
+          onCreate={(definition) => newChart(definition.kind, definition.name)}
+        />
+      {/if}
     </section>
 
     <!-- New document / report actions -->
@@ -701,37 +675,5 @@ import Spinner from '../Spinner.svelte';
       </div>
     </section>
 
-    <!-- Available chart templates by engine (reference section) -->
-    <section>
-      <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-1">
-        Chart templates ({chartKinds.length})
-      </h2>
-      <p class="text-xs text-slate-500 mb-3">Click a template to create that chart.</p>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-        {#each ['dag', 'stats', 'matrix', 'flow'] as engine}
-          {@const list = chartKinds.filter((k) => k.engine === engine)}
-          {#if list.length > 0}
-            <div class="bg-slate-900 border border-slate-800 rounded p-3">
-              <div class="text-xs font-bold uppercase tracking-widest text-cyan-400 mb-2">
-                {engine}
-              </div>
-              <ul class="space-y-0.5 text-xs">
-                {#each list as c (c.kind)}
-                  <li>
-                    <button
-                      onclick={() => newChart(c.kind, c.name)}
-                      class="w-full text-left text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 rounded px-2 py-1 -mx-2 transition-colors"
-                      title={`Create a ${c.name}`}
-                    >
-                      {c.name}
-                    </button>
-                  </li>
-                {/each}
-              </ul>
-            </div>
-          {/if}
-        {/each}
-      </div>
-    </section>
   </main>
 </div>
