@@ -9,15 +9,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   //   1. Industry tile selection      (Business / Admin / Engineering / Software / Construction / Custom)
   //   2. Sub-category (industry-aware list)
   //   3. Methodology (recommended set for the industry; user can override)
-  //   4. Name + description + country + seed-artifact checkboxes
+  //   4. Name + description + calendar policy + seed-artifact checkboxes
   //
   // On submit calls CreateProjectFromLaunchpad. The seed list shown
   // in step 4 comes from the backend's zen-go evaluation, so adding
   // a new industry/methodology row to the JDM auto-extends the GUI
   // suggestions.
 
-  import { tick } from 'svelte';
-  import { session, goto } from '../../session.svelte';
+  import { onMount, tick } from 'svelte';
 
   // Props — Launchpad can be opened from ProjectPicker; on close we
   // notify the parent so it can refresh its list.
@@ -30,6 +29,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   } = $props();
 
   type Step = 1 | 2 | 3 | 4;
+  const STEPS: { id: Step; label: string }[] = [
+    { id: 1, label: 'Industry' },
+    { id: 2, label: 'Focus' },
+    { id: 3, label: 'Method' },
+    { id: 4, label: 'Setup' },
+  ];
   let step = $state<Step>(1);
 
   // Focus management: each step swaps out its content, which would otherwise
@@ -55,6 +60,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let name = $state('');
   let description = $state('');
   let countryCode = $state('US');
+  let timeZone = $state('America/New_York');
+  let calendarPolicies = $state<CalendarPolicy[]>([]);
 
   // Seed picker state
   let suggestedSeeds = $state<string[]>([]);
@@ -62,6 +69,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   let busy = $state(false);
   let error = $state('');
+  let calendarError = $state('');
+
+  let canContinue = $derived(
+    (step === 1 && industry !== '') ||
+      (step === 2 && subCategory !== '') ||
+      (step === 3 && methodology !== ''),
+  );
 
   const INDUSTRIES = [
     { id: 'business',       label: 'Business',       blurb: 'Marketing, sales, finance, HR, operations.' },
@@ -114,6 +128,34 @@ SPDX-License-Identifier: GPL-3.0-or-later
     ],
   };
 
+  onMount(async () => {
+    try {
+      calendarPolicies = (await window.go.main.App.ListCalendarPolicies()) ?? [];
+      const current = calendarPolicies.find((policy) => policy.country_code === countryCode);
+      if (current) {
+        timeZone = current.time_zones[0] ?? 'UTC';
+      } else if (calendarPolicies.length > 0) {
+        countryCode = calendarPolicies[0].country_code;
+        timeZone = calendarPolicies[0].time_zones[0] ?? 'UTC';
+      } else {
+        calendarError = 'No business-calendar policies are available.';
+      }
+    } catch (err: any) {
+      calendarError = `Could not load business-calendar policies: ${err}`;
+    }
+  });
+
+  function timeZonesFor(country: string): string[] {
+    return calendarPolicies.find((policy) => policy.country_code === country)?.time_zones ?? [];
+  }
+
+  function updateCalendarPolicy() {
+    const allowed = timeZonesFor(countryCode);
+    // Preserve an explicit choice when it remains valid; otherwise use the
+    // backend policy's first zone, which is also its documented default.
+    if (!allowed.includes(timeZone)) timeZone = allowed[0] ?? '';
+  }
+
   // When the user finishes step 3, ask the backend (zen-go) for the
   // recommended seed list and check them all by default.
   async function loadSeeds() {
@@ -145,6 +187,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         subCategory,
         methodology,
         countryCode,
+        timeZone,
         seeds,
       );
       onCreated(res.project, res.path);
@@ -163,6 +206,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
   function prev() {
     if (step > 1) step = (step - 1) as Step;
+  }
+
+  function selectIndustry(id: string) {
+    if (industry === id) return;
+    industry = id;
+    subCategory = '';
+    methodology = '';
+  }
+
+  function methodologyLabel(): string {
+    return METHODOLOGIES[industry]?.find((item) => item.id === methodology)?.label ?? methodology;
+  }
+
+  function industryLabel(): string {
+    return INDUSTRIES.find((item) => item.id === industry)?.label ?? industry;
   }
 
   // Pretty labels for seed strings the backend returns.
@@ -202,18 +260,27 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </button>
   </header>
 
-  <!-- Progress strip -->
-  <div class="flex">
-    {#each [1, 2, 3, 4] as i}
-      <div
-        class="flex-1 h-1 {i <= step ? 'bg-cyan-500' : 'bg-slate-800'}"
-      ></div>
+  <ol
+    aria-label="Project creation progress"
+    class="grid grid-cols-4 border-b border-slate-800 bg-slate-950"
+  >
+    {#each STEPS as item}
+      <li
+        aria-current={item.id === step ? 'step' : undefined}
+        class="border-t-2 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider
+          {item.id <= step ? 'border-cyan-500 text-slate-200' : 'border-slate-800 text-slate-600'}"
+      >
+        <span class="mr-1 text-slate-500">{item.id}.</span>{item.label}
+      </li>
     {/each}
-  </div>
+  </ol>
 
   <main class="flex-1 p-8 max-w-5xl mx-auto w-full">
     {#if error}
       <p class="text-xs text-red-400 mb-3" role="alert">{error}</p>
+    {/if}
+    {#if calendarError}
+      <p class="text-xs text-red-400 mb-3" role="alert">{calendarError}</p>
     {/if}
 
     {#if step === 1}
@@ -221,8 +288,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {#each INDUSTRIES as ind (ind.id)}
           <button
-            onclick={() => { industry = ind.id; subCategory = ''; methodology = ''; next(); }}
-            class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
+            onclick={() => selectIndustry(ind.id)}
+            aria-pressed={industry === ind.id}
+            class="p-5 bg-slate-900 hover:bg-slate-800 border rounded-lg text-left
+              {industry === ind.id ? 'border-cyan-500 ring-1 ring-cyan-500/30' : 'border-slate-800'}"
           >
             <div class="text-base font-bold text-slate-50">{ind.label}</div>
             <p class="text-xs text-slate-500 mt-1">{ind.blurb}</p>
@@ -236,15 +305,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
         {#each SUB_CATEGORIES[industry] ?? [] as sub (sub)}
           <button
-            onclick={() => { subCategory = sub; next(); }}
-            class="p-4 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-left text-sm"
+            onclick={() => { subCategory = sub; }}
+            aria-pressed={subCategory === sub}
+            class="p-4 bg-slate-900 hover:bg-slate-800 border rounded text-left text-sm
+              {subCategory === sub ? 'border-cyan-500 ring-1 ring-cyan-500/30' : 'border-slate-800'}"
           >
             {sub}
           </button>
         {/each}
-      </div>
-      <div class="mt-6 flex">
-        <button onclick={prev} class="text-xs text-slate-400 hover:text-cyan-400">← Back</button>
       </div>
     {:else if step === 3}
       <h2 bind:this={headingEl} tabindex="-1" class="text-lg font-bold mb-6 outline-none">
@@ -253,21 +321,40 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         {#each METHODOLOGIES[industry] ?? [] as m (m.id)}
           <button
-            onclick={() => { methodology = m.id; next(); }}
-            class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
+            onclick={() => { methodology = m.id; }}
+            aria-pressed={methodology === m.id}
+            class="p-5 bg-slate-900 hover:bg-slate-800 border rounded-lg text-left
+              {methodology === m.id ? 'border-cyan-500 ring-1 ring-cyan-500/30' : 'border-slate-800'}"
           >
             <div class="text-base font-bold text-slate-50">{m.label}</div>
             <p class="text-xs text-slate-500 mt-1">{m.blurb}</p>
           </button>
         {/each}
       </div>
-      <div class="mt-6 flex">
-        <button onclick={prev} class="text-xs text-slate-400 hover:text-cyan-400">← Back</button>
-      </div>
     {:else}
       <h2 bind:this={headingEl} tabindex="-1" class="text-lg font-bold mb-6 outline-none">Project details &amp; starter artifacts</h2>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <section class="mb-6 rounded-lg border border-slate-800 bg-slate-900/60 p-4" aria-labelledby="blueprint-heading">
+        <h3 id="blueprint-heading" class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">
+          Project blueprint
+        </h3>
+        <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+          <div>
+            <dt class="text-[11px] uppercase text-slate-500">Industry</dt>
+            <dd class="mt-1 text-slate-100">{industryLabel()}</dd>
+          </div>
+          <div>
+            <dt class="text-[11px] uppercase text-slate-500">Focus</dt>
+            <dd class="mt-1 text-slate-100">{subCategory}</dd>
+          </div>
+          <div>
+            <dt class="text-[11px] uppercase text-slate-500">Method</dt>
+            <dd class="mt-1 text-slate-100">{methodologyLabel()}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <label class="block">
           <span class="text-xs text-slate-500 uppercase">Project name</span>
           <input
@@ -277,18 +364,26 @@ SPDX-License-Identifier: GPL-3.0-or-later
           />
         </label>
         <label class="block">
-          <span class="text-xs text-slate-500 uppercase">Country (for holidays)</span>
+          <span class="text-xs text-slate-500 uppercase">Business calendar policy</span>
           <select
             bind:value={countryCode}
+            onchange={updateCalendarPolicy}
             class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded"
           >
-            <option value="US">United States</option>
-            <option value="GB">United Kingdom</option>
-            <option value="CA">Canada</option>
-            <option value="DE">Germany</option>
-            <option value="FR">France</option>
-            <option value="AU">Australia</option>
-            <option value="">Other / generic</option>
+            {#each calendarPolicies as policy (policy.country_code)}
+              <option value={policy.country_code}>{policy.name}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="block">
+          <span class="text-xs text-slate-500 uppercase">Schedule and chart time zone</span>
+          <select
+            bind:value={timeZone}
+            class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded"
+          >
+            {#each timeZonesFor(countryCode) as zone (zone)}
+              <option value={zone}>{zone}</option>
+            {/each}
           </select>
         </label>
       </div>
@@ -335,10 +430,30 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </button>
         <button
           onclick={create}
-          disabled={busy || !name}
+          disabled={busy || !name || !countryCode || !timeZone}
           class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
         >
           {busy ? 'Creating…' : 'Create project'}
+        </button>
+      </div>
+    {/if}
+
+    {#if step < 4}
+      <div class="mt-8 flex items-center justify-between border-t border-slate-800 pt-5">
+        {#if step > 1}
+          <button onclick={prev} class="text-xs text-slate-400 hover:text-cyan-400">
+            ← Back
+          </button>
+        {:else}
+          <span></span>
+        {/if}
+        <button
+          onclick={next}
+          disabled={!canContinue || busy}
+          class="rounded bg-cyan-600 px-4 py-2 text-xs font-bold uppercase text-white
+            hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {step === 3 && busy ? 'Loading…' : 'Continue'}
         </button>
       </div>
     {/if}

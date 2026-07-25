@@ -65,7 +65,12 @@ var supportedPolicies = []Policy{
 
 func SupportedPolicies() []Policy {
 	out := make([]Policy, len(supportedPolicies))
-	copy(out, supportedPolicies)
+	for i, policy := range supportedPolicies {
+		out[i] = policy
+		// Callers receive an ownership-safe catalogue. A shallow struct copy
+		// would still expose the package-level TimeZones backing arrays.
+		out[i].TimeZones = append([]string(nil), policy.TimeZones...)
+	}
 	return out
 }
 

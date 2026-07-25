@@ -290,8 +290,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 Each combination seeds different starter artifacts. See the
                 <button onclick={() => nav('industry-matrix')} class="text-cyan-400 underline hover:text-cyan-300">Industry &amp; Methodology Matrix</button>.
               </li>
-              <li><span class="font-medium text-slate-100">Details &amp; starter artifacts</span> — project name, optional description, country (drives holiday calendars), and checkboxes for the suggested starter artifacts. Click Create Project to finish.</li>
+              <li><span class="font-medium text-slate-100">Details &amp; starter artifacts</span> — review the blueprint, enter the project name and optional description, choose a business-calendar policy and schedule/chart time zone, then review the suggested starter artifacts. Click Create Project to finish.</li>
             </ol>
+            <p class="text-sm text-slate-300 mt-3">
+              A selection stays on each step until you click Continue. Business-calendar policies
+              determine holidays and working days; the selected IANA time zone determines schedule
+              boundaries and time-series chart dates.
+            </p>
             <p class="text-sm text-slate-300 mt-3">
               New to PMForge? The
               <button onclick={() => nav('quick-start')} class="text-cyan-400 underline hover:text-cyan-300">Quick Start tutorial</button>
