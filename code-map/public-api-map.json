@@ -704,7 +704,8 @@
       "method": "RunPortfolioAnalytics",
       "params": "",
       "returns": "(analytics.PortfolioSummary, error)",
-      "main_go_line": 3891
+      "source_file": "app_foundation.go",
+      "source_line": 663
     },
     {
       "method": "ImportDatasetForAnalysis",

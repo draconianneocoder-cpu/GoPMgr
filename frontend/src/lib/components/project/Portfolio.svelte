@@ -106,6 +106,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   const fmtNum = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  // A zero index is only "n/a" when its denominator is zero. Zero earned
+  // value against a non-zero plan/cost is a real 0.00 performance result.
+  const fmtIndex = (index: number, denominator: number) => denominator === 0 ? 'n/a' : index.toFixed(2);
 
   // ----- Local data-file import (DuckDB) -----
   let dataset = $state<Dataset | null>(null);
@@ -197,20 +200,82 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </div>
           <div class="min-w-0">
             <dt class="text-[10px] uppercase tracking-wider text-slate-500">Committed</dt>
-            <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtNum(rollup.total_actual_cost)}>
-              {fmtNum(rollup.total_actual_cost)}
+            <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtNum(rollup.total_committed_cost)}>
+              {fmtNum(rollup.total_committed_cost)}
             </dd>
           </div>
           <div class="min-w-0">
             <dt class="text-[10px] uppercase tracking-wider text-slate-500">Remaining</dt>
             <dd
-              class="font-bold tabular-nums truncate {rollup.total_budgeted_cost - rollup.total_actual_cost < 0 ? 'text-red-400' : 'text-emerald-300'}"
-              title={fmtNum(rollup.total_budgeted_cost - rollup.total_actual_cost)}
+              class="font-bold tabular-nums truncate {rollup.total_budgeted_cost - rollup.total_committed_cost < 0 ? 'text-red-400' : 'text-emerald-300'}"
+              title={fmtNum(rollup.total_budgeted_cost - rollup.total_committed_cost)}
             >
-              {fmtNum(rollup.total_budgeted_cost - rollup.total_actual_cost)}
+              {fmtNum(rollup.total_budgeted_cost - rollup.total_committed_cost)}
             </dd>
           </div>
         </dl>
+
+        <div class="mt-4 pt-4 border-t border-slate-800">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 class="text-xs font-semibold text-slate-300">Earned value</h3>
+            <p class="text-[10px] text-slate-500">
+              As of {rollup.as_of_date} UTC · {rollup.evm_project_count}/{rollup.project_count} projects included
+            </p>
+          </div>
+
+          {#if rollup.evm_project_count > 0}
+            <dl class="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div class="min-w-0">
+                <dt class="text-[10px] uppercase tracking-wider text-slate-500">Planned value</dt>
+                <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtNum(rollup.total_planned_value)}>
+                  {fmtNum(rollup.total_planned_value)}
+                </dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-[10px] uppercase tracking-wider text-slate-500">Earned value</dt>
+                <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtNum(rollup.total_earned_value)}>
+                  {fmtNum(rollup.total_earned_value)}
+                </dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-[10px] uppercase tracking-wider text-slate-500">Actual cost</dt>
+                <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtNum(rollup.total_actual_cost)}>
+                  {fmtNum(rollup.total_actual_cost)}
+                </dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-[10px] uppercase tracking-wider text-slate-500">SPI</dt>
+                <dd class="text-slate-100 font-bold tabular-nums">
+                  {fmtIndex(rollup.schedule_performance_index, rollup.total_planned_value)}
+                </dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-[10px] uppercase tracking-wider text-slate-500">CPI</dt>
+                <dd class="text-slate-100 font-bold tabular-nums">
+                  {fmtIndex(rollup.cost_performance_index, rollup.total_actual_cost)}
+                </dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-[10px] uppercase tracking-wider text-slate-500">Coverage</dt>
+                <dd class="text-slate-100 font-bold tabular-nums">
+                  {Math.round((rollup.evm_project_count / rollup.project_count) * 100)}%
+                </dd>
+              </div>
+            </dl>
+          {:else}
+            <p class="mt-3 text-xs text-slate-500">
+              No project has an anchored, valid, costed schedule available for EVM.
+            </p>
+          {/if}
+
+          {#if rollup.evm_unavailable_project_count > 0}
+            <p class="mt-3 text-xs text-amber-400" role="status">
+              {rollup.evm_unavailable_project_count}
+              {rollup.evm_unavailable_project_count === 1 ? ' project was' : ' projects were'}
+              excluded from EVM because schedule dates, cost data, or valid task relationships were unavailable.
+            </p>
+          {/if}
+        </div>
       {/if}
 
       {#if importErr}

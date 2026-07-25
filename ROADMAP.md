@@ -107,6 +107,15 @@ changes are never overwritten without a visible action.
 Aggregate EV/AC/PV/SPI/CPI across the projects the user has open or has
 recently opened. Roll-up dashboard in `frontend/src/lib/components/project/Portfolio.svelte`.
 
+_Complete 2026-07-25:_ `RunPortfolioAnalytics` reads each available project's
+authoritative current schedule, computes EVM in the Go kernel at one UTC status
+date, and sends exact minor-unit EV/PV/AC rows to the in-memory DuckDB
+aggregator. Portfolio SPI and CPI are weighted ratios (`ΣEV/ΣPV` and
+`ΣEV/ΣAC`), never averages of project ratios. Committed estimates remain
+separate from actual cost, and the dashboard reports included/excluded project
+counts so missing dates, malformed or cyclic schedules, and absent cost data
+cannot silently appear as zero performance.
+
 ## Phase 2 — Professional Controls (2027)
 
 Contract and Procurement module, Advanced Cost Forecasting (ETC/EAC

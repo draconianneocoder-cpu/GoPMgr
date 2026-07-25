@@ -55,8 +55,9 @@ chart, export, and reporting tools without requiring a hosted service.
 - **Methodology packs:** Agile/Software-Dev views for Kanban, Backlog,
   Sprints, and DORA metrics; Process Excellence views for Six Sigma/DMAIC
   work.
-- **Analytics:** DuckDB-backed in-memory portfolio rollups using integer
-  minor-unit money totals, plus CSV/TSV, Parquet, and JSON data import in
+- **Analytics:** DuckDB-backed in-memory portfolio budget, committed-cost, and
+  weighted EVM rollups using integer minor-unit money totals with explicit
+  schedule-data coverage, plus CSV/TSV, Parquet, and JSON data import in
   production/package builds.
 - **Security and compliance:** local Argon2id accounts, one-time recovery
   codes, SQLCipher-encrypted per-user `.pmforge` project databases, PDF/A
