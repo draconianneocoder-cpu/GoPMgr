@@ -32,6 +32,7 @@ export const session = $state<{
     | 'swot'
     | 'stakeholder'
     | 'matrix'
+    | 'risk_matrix'
     | 'line'
     | 'bar'
     | 'pareto'

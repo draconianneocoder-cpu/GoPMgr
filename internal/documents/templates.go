@@ -192,14 +192,17 @@ var registry = []Definition{
 		Phase:       PhasePlanning,
 		Description: "Catalogue of potential risks with probability, impact, owner, and mitigation strategy.",
 		Fields: []Field{
+			{Key: "risk_matrix_ref", Label: "Linked Risk Matrix", Type: FieldChartRef, ChartKind: "risk_matrix", Help: "Optional 5x5 visual summary included with combined reports."},
 			{Key: "risks", Label: "Risks", Type: FieldObjectArr, ObjectShape: []Field{
 				{Key: "id", Label: "Risk ID", Type: FieldString},
 				{Key: "description", Label: "Description", Type: FieldText},
+				{Key: "kind", Label: "Type (risk, issue, opportunity)", Type: FieldString},
 				{Key: "probability", Label: "Probability (1-5)", Type: FieldNumber},
 				{Key: "impact", Label: "Impact (1-5)", Type: FieldNumber},
 				{Key: "owner", Label: "Owner", Type: FieldString},
 				{Key: "mitigation", Label: "Mitigation", Type: FieldText},
 				{Key: "status", Label: "Status", Type: FieldString},
+				{Key: "linked_task", Label: "Linked Task ID", Type: FieldString},
 			}},
 		},
 	},

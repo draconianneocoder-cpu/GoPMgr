@@ -14,10 +14,10 @@ import (
 
 // --- registry ---
 
-func TestAll_Returns21Definitions(t *testing.T) {
+func TestAll_Returns22Definitions(t *testing.T) {
 	all := All()
-	if len(all) != 21 {
-		t.Errorf("All() = %d definitions, want 21", len(all))
+	if len(all) != 22 {
+		t.Errorf("All() = %d definitions, want 22", len(all))
 	}
 }
 
@@ -81,10 +81,10 @@ func TestByEngine_Stats_Returns8Kinds(t *testing.T) {
 	}
 }
 
-func TestByEngine_Matrix_Returns4Kinds(t *testing.T) {
+func TestByEngine_Matrix_Returns5Kinds(t *testing.T) {
 	defs := ByEngine(EngineMatrix)
-	if len(defs) != 4 {
-		t.Errorf("ByEngine(EngineMatrix) = %d, want 4", len(defs))
+	if len(defs) != 5 {
+		t.Errorf("ByEngine(EngineMatrix) = %d, want 5", len(defs))
 	}
 }
 
@@ -163,6 +163,19 @@ func TestLayout_RACI_ReturnsLayoutResult(t *testing.T) {
 	}
 	if result.Kind != KindRACI {
 		t.Errorf("Kind = %q, want %q", result.Kind, KindRACI)
+	}
+	if !json.Valid(result.Body) {
+		t.Error("Body is not valid JSON")
+	}
+}
+
+func TestLayout_RiskMatrix_ReturnsLayoutResult(t *testing.T) {
+	result, err := Layout(KindRiskMatrix, `{"items":[{"id":"R-1","title":"Delay","probability":4,"impact":5}]}`)
+	if err != nil {
+		t.Fatalf("Layout(KindRiskMatrix) error: %v", err)
+	}
+	if result.Engine != EngineMatrix || result.Kind != KindRiskMatrix {
+		t.Fatalf("result = engine %q kind %q, want matrix/risk_matrix", result.Engine, result.Kind)
 	}
 	if !json.Valid(result.Body) {
 		t.Error("Body is not valid JSON")

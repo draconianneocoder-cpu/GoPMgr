@@ -140,11 +140,11 @@ Scrumban) get four extra views:
 
 ## Charts
 
-PMForge supports 21 chart kinds across four engine families:
+PMForge supports 22 chart kinds across four engine families:
 
 - DAG: WBS, Network, PERT, CPM, Gantt, Fishbone, Cause-and-Effect.
 - Flow: Workflow, Activity.
-- Matrix: RACI, SWOT, Stakeholder Analysis, Matrix Diagram.
+- Matrix: RACI, SWOT, Stakeholder Analysis, Matrix Diagram, Risk Matrix.
 - Stats: Line, Bar, Pareto, Pie, Burn-Up, Burn-Down, Cumulative Flow,
   Control.
 
@@ -156,6 +156,11 @@ chart work, keeping existing artifacts ahead of creation controls.
 
 Charts are edited in the app and can be embedded into PDF reports as
 vector drawings rather than screenshots.
+
+The Risk Matrix keeps risks, active issues, and opportunities on a 5×5
+probability/impact grid. Each record can carry an owner, status, response,
+and linked task. Optionally select that chart from a Risk Register document
+so combined reports include the same vector heat map.
 
 In the schedule editors, dependencies are created with the Connect
 action (select the source node, click Connect, click the destination).
