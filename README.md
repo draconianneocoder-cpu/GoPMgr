@@ -14,7 +14,7 @@ attached to the release.
 
 The `main` branch is ahead of the alpha and includes unreleased candidate work
 documented in [the v1.1.0-rc.1 release notes](docs/release-notes/v1.1.0-rc.1.md),
-including CPM scheduling, DuckDB-backed portfolio analytics, 21 chart types,
+including CPM scheduling, DuckDB-backed portfolio analytics, 22 chart types,
 25 document kinds, Agile and Six Sigma methodology packs, SQLCipher encryption,
 Argon2id authentication, PDF/A-3 validation, and PAdES digital signing. These
 capabilities should not be read as a promise that `v0.9.1-alpha` has packaged
@@ -44,9 +44,10 @@ chart, export, and reporting tools without requiring a hosted service.
   import/export, CSV, HTML, and report exports.
 - **Risk and what-if:** Monte Carlo schedule-risk simulation
   (triangular/beta-PERT/normal sampling, P50/P80/P90 finish curves,
-  tornado drivers, PDF/A risk report) and isolated what-if scenarios that
-  copy a chart or baseline into a partition for comparison and promotion.
-- **Charts:** 21 chart kinds across DAG, flow, matrix, and statistical
+  tornado drivers, PDF/A risk report), a 5x5 risk/issue/opportunity matrix,
+  and isolated what-if scenarios that copy a chart or baseline into a
+  partition for comparison and promotion.
+- **Charts:** 22 chart kinds across DAG, flow, matrix, and statistical
   engines, with frontend editing and vector PDF rendering.
 - **Documents:** 25 project document kinds with schema-driven editing,
   bespoke PDF renderers, DOCX/ODT export, and combined reports with

@@ -32,7 +32,7 @@ PMForge is a **local-first project controls desktop application** for technical,
 - **CMS/PKCS#7**: PMForge builds the PAdES detached CMS structure in `internal/crypto/pdf_cms.go`, using `digitorus/pkcs7` OIDs/parsing helpers where useful. The PDF embedding path lives in `internal/pdfmeta/pdfmeta.go`.
 - **DOCX writer**: `gomutex/godocx` (MIT, pure Go) — picked from pkg.go.dev after a survey. Used by `internal/export/docx.go`. ODT export (`internal/export/odt.go`) is hand-built because no equivalently-maintained pure-Go ODT generator exists (kpmy/odf hasn't been touched since 2014).
 
-The app has reached **V2.x** maturity: all 21 chart kinds and all 25 document templates implemented end-to-end, combined report builder with embedded vector chart visualisations, self-heal with atomic database swap, multi-user accounts. The Agile Pack is the current frontier.
+The app has reached **V2.x** maturity: all 22 chart kinds and all 25 document templates implemented end-to-end, combined report builder with embedded vector chart visualisations, self-heal with atomic database swap, multi-user accounts. The Agile Pack is the current frontier.
 
 ---
 
@@ -149,7 +149,7 @@ All tables created idempotently in `db.Database.Migrate()` (internal/db/sqlite.g
 
 ### V2 tables (multi-entity model)
 - **`project`** — one row per .pmforge: `id`, `name`, `description`, `status`, `phase`, `start_date`, `end_date`, `budget`, `budget_minor_units`, `owner`, timestamps. `budget_minor_units` is canonical for money; `budget` remains a compatibility/display value. Status ∈ {planning, active, on_hold, complete, cancelled}. Phase ∈ {initiation, planning, execution, monitoring, closing}.
-- **`charts`** — unified table for all 21 chart kinds: `id`, `project_id`, `kind`, `title`, `data` (JSON), `config` (JSON), `template_id`, timestamps. FK ON DELETE CASCADE.
+- **`charts`** — unified table for all 22 chart kinds: `id`, `project_id`, `kind`, `title`, `data` (JSON), `config` (JSON), `template_id`, timestamps. FK ON DELETE CASCADE.
 - **`scenarios` / `scenario_charts`** — Phase 1 what-if foundation. `scenarios` stores `id`, `project_id`, `name`, optional `source_baseline_id`, `description`, `is_active`, timestamps, and a partial unique index enforcing one active scenario per project. `scenario_charts` stores isolated chart/config/baseline-data copies keyed to a scenario so later what-if edits do not mutate the live chart. Project Settings can create/edit/delete scenarios, copy live chart or saved-baseline data into a selected scenario, and open an isolated copy in the dedicated scenario chart editor. The scenario editor edits, compares against captured baseline data, and promotes copied scenario chart data back to a named baseline.
 - **`documents`** — unified for all 25 doc kinds: `id`, `project_id`, `kind`, `title`, `content` (JSON), `template_id`, `version` (monotonic), `status` (draft|review|approved|archived), timestamps.
 - **`templates`** — user-saved templates: `id`, `scope` ('chart' or 'document'), `kind`, `name`, `description`, `defaults` (JSON), `is_builtin`, `created_at`.

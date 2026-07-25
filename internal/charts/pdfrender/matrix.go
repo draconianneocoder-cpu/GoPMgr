@@ -6,6 +6,7 @@ package pdfrender
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/go-pdf/fpdf"
 
@@ -25,8 +26,98 @@ func renderMatrix(pdf *fpdf.Fpdf, kind string, body json.RawMessage, frame Frame
 		return renderStakeholder(pdf, body, frame)
 	case charts.KindMatrixDiagram:
 		return renderGenericMatrix(pdf, body, frame)
+	case charts.KindRiskMatrix:
+		return renderRiskMatrix(pdf, body, frame)
 	}
 	return ErrUnsupportedKind
+}
+
+// ---------- Risk Matrix ----------
+
+type riskMatrixItem struct {
+	ID   string `json:"id"`
+	Kind string `json:"kind"`
+}
+type riskMatrixCell struct {
+	Probability int              `json:"probability"`
+	Impact      int              `json:"impact"`
+	Band        string           `json:"band"`
+	Items       []riskMatrixItem `json:"items"`
+}
+type riskMatrixBody struct {
+	Cells []riskMatrixCell `json:"cells"`
+}
+
+func renderRiskMatrix(pdf *fpdf.Fpdf, body json.RawMessage, frame Frame) error {
+	var layout riskMatrixBody
+	if err := parseBody(body, &layout); err != nil {
+		return err
+	}
+	if len(layout.Cells) == 0 {
+		drawEmptyChartPlaceholder(pdf, frame, "(empty)")
+		return nil
+	}
+
+	const axis = 9.0
+	cellW := (frame.W - axis) / 5
+	cellH := (frame.H - axis) / 5
+	pdf.SetFont("Helvetica", "B", 7)
+	pdf.SetDrawColor(226, 232, 240)
+	pdf.SetLineWidth(0.25)
+
+	for _, cell := range layout.Cells {
+		col := cell.Impact - 1
+		row := 5 - cell.Probability
+		x := frame.X + axis + float64(col)*cellW
+		y := frame.Y + float64(row)*cellH
+		setRiskBandFill(pdf, cell.Band)
+		pdf.Rect(x, y, cellW, cellH, "FD")
+
+		pdf.SetTextColor(255, 255, 255)
+		pdf.SetXY(x+1, y+1)
+		pdf.CellFormat(cellW-2, 3, fmt.Sprintf("%d", cell.Probability*cell.Impact), "", 0, "R", false, 0, "")
+		if len(cell.Items) > 0 {
+			labels := make([]string, 0, len(cell.Items))
+			for _, item := range cell.Items {
+				prefix := ""
+				switch item.Kind {
+				case "opportunity":
+					prefix = "+"
+				case "issue":
+					prefix = "!"
+				}
+				labels = append(labels, prefix+item.ID)
+			}
+			pdf.SetXY(x+1, y+cellH/2-2)
+			pdf.CellFormat(cellW-2, 4, truncatePDF(strings.Join(labels, ", "), int(cellW*0.65)), "", 0, "C", false, 0, "")
+		}
+	}
+
+	pdf.SetTextColor(71, 85, 105)
+	for i := 1; i <= 5; i++ {
+		pdf.SetXY(frame.X+axis+float64(i-1)*cellW, frame.Y+5*cellH)
+		pdf.CellFormat(cellW, axis, fmt.Sprintf("I%d", i), "", 0, "C", false, 0, "")
+		pdf.SetXY(frame.X, frame.Y+float64(5-i)*cellH)
+		pdf.CellFormat(axis-1, cellH, fmt.Sprintf("P%d", i), "", 0, "C", false, 0, "")
+	}
+	pdf.SetTextColor(0, 0, 0)
+	pdf.SetFillColor(255, 255, 255)
+	return nil
+}
+
+func setRiskBandFill(pdf *fpdf.Fpdf, band string) {
+	switch band {
+	case "extreme":
+		pdf.SetFillColor(127, 29, 29)
+	case "severe":
+		pdf.SetFillColor(185, 28, 28)
+	case "high":
+		pdf.SetFillColor(180, 83, 9)
+	case "medium":
+		pdf.SetFillColor(14, 116, 144)
+	default:
+		pdf.SetFillColor(71, 85, 105)
+	}
 }
 
 // ---------- RACI ----------
