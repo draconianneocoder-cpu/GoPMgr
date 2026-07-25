@@ -28,6 +28,11 @@ if ! rg -q 'frontend-build-budget\.sh' scripts/check-release.sh; then
 	fail=1
 fi
 
+if ! rg -q 'check-wails-version\.sh' scripts/check-release.sh; then
+	echo "release-scope: check-release.sh must run scripts/check-wails-version.sh." >&2
+	fail=1
+fi
+
 if [ -f scripts/check-help-guide-current.sh ]; then
 	if ! bash scripts/check-help-guide-current.sh >/dev/null; then
 		echo "release-scope: Help Guide is missing recent release corrections. Run 'make help-guide-current' for details." >&2

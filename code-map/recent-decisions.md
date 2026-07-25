@@ -61,6 +61,12 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   discovery pattern: one searchable, lifecycle-filtered controlled-document
   index replaces the duplicated Charter card and 25-template grid. Combined
   Report remains separate because it composes existing documents.
+- **2026-07-25** — `go.mod` is the source of truth for the Wails runtime and
+  CLI version. `make wails-version` now rejects drift in CI/release workflows,
+  installation guidance, developer instructions, and build-failure recovery
+  hints while allowing dated upgrade history to retain earlier versions.
+  Release and macOS package gates additionally require the installed CLI to
+  match through `make wails-cli-version`.
 
 ## Open / deferred (not yet decided or implemented)
 

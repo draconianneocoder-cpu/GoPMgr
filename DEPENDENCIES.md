@@ -12,7 +12,7 @@ posture, and validator coverage, so keep them intentional and verified.
 ## Toolchain
 
 - Go: 1.26.5 from `go.mod`.
-- Wails: v2.12.0.
+- Wails: v2.13.0.
 - Node frontend: Vite 8, Svelte 5, TypeScript 6, and npm scripts in
   `frontend/package.json`.
 - CGO: required for the SQLite/SQLCipher driver path and the shipped DuckDB
