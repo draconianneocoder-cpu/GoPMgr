@@ -9,8 +9,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
 	"pmforge/internal/admin"
 	"pmforge/internal/calendar"
 	"pmforge/internal/charts"
@@ -23,9 +28,6 @@ import (
 	"pmforge/internal/pdfmeta"
 	"pmforge/internal/sigma/service"
 	"pmforge/internal/signing"
-	"sort"
-	"strings"
-	"time"
 )
 
 // =========================================================
@@ -785,12 +787,23 @@ func parseProjectDate(s string) (time.Time, bool) {
 // V1 fallback: legacy tasks table.
 func loadCurrentProjectSchedule(d *db.Database, projectID string) (map[string]*kernel.Task, error) {
 	// 1. Try current V2 CPM chart (preferred)
-	if chs, err := d.ListCharts(projectID, string(charts.KindCPM)); err == nil && len(chs) > 0 {
+	chs, err := d.ListCharts(projectID, string(charts.KindCPM))
+	if err != nil {
+		return nil, fmt.Errorf("list current CPM charts: %w", err)
+	}
+	if len(chs) > 0 {
 		// Most recently updated
 		// UpdatedAt is an RFC3339Nano string; lexicographic order matches
 		// chronological order, so ">" yields most-recent-first.
 		sort.Slice(chs, func(i, j int) bool { return chs[i].UpdatedAt > chs[j].UpdatedAt })
-		if tasks, err := cpmChartDataToKernelTasks(chs[0].Data); err == nil && len(tasks) > 0 {
+		tasks, err := cpmChartDataToKernelTasks(chs[0].Data)
+		if err != nil {
+			// A malformed current chart must not silently fall back to a
+			// potentially stale V1 schedule: reports should fail explicitly
+			// rather than present internally consistent but incorrect metrics.
+			return nil, fmt.Errorf("parse current CPM chart %q: %w", chs[0].Title, err)
+		}
+		if len(tasks) > 0 {
 			return tasks, nil
 		}
 	}
@@ -819,6 +832,7 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 			BudgetedCostMinorUnits int64                   `json:"budgeted_cost_minor_units"`
 			ActualCost             float64                 `json:"actual_cost"`
 			ActualCostMinorUnits   int64                   `json:"actual_cost_minor_units"`
+			WorkSegments           []kernel.WorkSegment    `json:"work_segments"`
 			Assignments            []struct {
 				Resource   string   `json:"resource"`
 				Units      float64  `json:"units"`
@@ -854,6 +868,10 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 			BudgetedCostMinorUnits: n.BudgetedCostMinorUnits,
 			ActualCost:             n.ActualCost,
 			ActualCostMinorUnits:   n.ActualCostMinorUnits,
+			PlannedWorkSegments:    n.WorkSegments,
+		}
+		if err := validatePlannedWorkSegments(n.ID, n.WorkSegments); err != nil {
+			return nil, err
 		}
 		for _, a := range n.Assignments {
 			t.Assignments = append(t.Assignments, kernel.Assignment{
@@ -873,6 +891,29 @@ func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error)
 		}
 	}
 	return tasks, nil
+}
+
+// validatePlannedWorkSegments protects every schedule/report adapter that
+// shares cpmChartDataToKernelTasks. Silently accepting a malformed persisted
+// split would double-count or reverse planned work and make EVM reports look
+// precise while being wrong.
+func validatePlannedWorkSegments(taskID string, segments []kernel.WorkSegment) error {
+	var previousEnd float64
+	for i, segment := range segments {
+		switch {
+		case math.IsNaN(segment.Start) || math.IsInf(segment.Start, 0) ||
+			math.IsNaN(segment.End) || math.IsInf(segment.End, 0):
+			return fmt.Errorf("task %q work_segments[%d] must contain finite offsets", taskID, i)
+		case segment.Start < 0:
+			return fmt.Errorf("task %q work_segments[%d] starts before the task", taskID, i)
+		case segment.End <= segment.Start:
+			return fmt.Errorf("task %q work_segments[%d] must end after it starts", taskID, i)
+		case i > 0 && segment.Start < previousEnd:
+			return fmt.Errorf("task %q work_segments[%d] overlaps the preceding segment", taskID, i)
+		}
+		previousEnd = segment.End
+	}
+	return nil
 }
 
 func loadV1TasksAsKernel(d *db.Database) (map[string]*kernel.Task, error) {

@@ -62,6 +62,15 @@ const (
 	MustFinishOn ConstraintType = "MFO"
 )
 
+// WorkSegment is one half-open run of planned work, expressed as offsets
+// relative to a task's scheduled start. Resource leveling persists these
+// segments when a task is interrupted; EVM uses them to avoid accruing
+// planned value during the intervening idle periods.
+type WorkSegment struct {
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
+}
+
 // Task is the scheduling-side view of an activity. The persistence
 // layer (db.tasks) is a near-mirror, but kernel.Task carries the
 // computed CPM fields (ES/EF/LS/LF/Float and IsCritical) that the GUI
@@ -136,6 +145,12 @@ type Task struct {
 	// DetectOverallocations consult it so a split task's idle days are not
 	// counted as resource demand.
 	WorkDays []int `json:"work_days,omitempty"`
+
+	// PlannedWorkSegments preserves a persisted split plan as offsets
+	// relative to ES. Unlike WorkDays, these segments are reporting input:
+	// they remain stable when CPM moves the task and let EVM pause planned
+	// value accrual during a split task's idle gaps.
+	PlannedWorkSegments []WorkSegment `json:"work_segments,omitempty"`
 
 	// CPM outputs — populated by CalculateCPM.
 	ES         float64 `json:"es"`
