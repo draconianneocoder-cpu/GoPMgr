@@ -90,6 +90,7 @@ declare global {
           GetDocument: (id: string) => Promise<DocumentRecord>;
           NewDocument: (kind: string, title: string) => Promise<DocumentRecord>;
           SaveDocument: (d: DocumentRecord) => Promise<DocumentRecord>;
+          SyncRiskRegisterToMatrix: (documentId: string) => Promise<ChartRecord>;
           DeleteDocument: (id: string) => Promise<void>;
           ExportDocumentPDF: (id: string) => Promise<string>; // returns path written
           ExportCombinedReport: (

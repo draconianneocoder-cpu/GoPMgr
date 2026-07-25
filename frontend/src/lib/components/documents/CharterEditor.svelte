@@ -15,6 +15,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let content = $state<Record<string, unknown>>({});
   let status = $state('');
   let saving = $state(false);
+  let syncingRiskMatrix = $state(false);
 
   let lastSavedContent = $state<string | null>(null);
   let lastSavedTitle = $state<string | null>(null);
@@ -24,6 +25,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   );
 
   const docStatuses = ['draft', 'review', 'approved', 'archived'] as const;
+  const linkedRiskMatrixId = $derived(
+    doc?.kind === 'risk_register' && typeof content.risk_matrix_ref === 'string'
+      ? content.risk_matrix_ref.trim()
+      : '',
+  );
 
   function handleKeyDown(e: KeyboardEvent) {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -64,8 +70,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
     stopAutosave?.();
   });
 
-  async function save() {
-    if (!doc) return;
+  // Returning success lets export and synchronization actions stop instead of
+  // operating on the previous persisted version after a validation failure.
+  async function save(): Promise<boolean> {
+    if (!doc) return false;
     saving = true;
     status = '';
     try {
@@ -77,10 +85,27 @@ SPDX-License-Identifier: GPL-3.0-or-later
       lastSavedContent = JSON.stringify(content);
       lastSavedTitle = updated.title;
       status = `Saved. Version ${updated.version} at ${new Date().toLocaleTimeString()}.`;
+      return true;
     } catch (err: any) {
       status = `Save failed: ${err}`;
+      return false;
     } finally {
       saving = false;
+    }
+  }
+
+  async function syncRiskMatrix() {
+    if (!doc || !linkedRiskMatrixId) return;
+    if (!(await save())) return;
+    syncingRiskMatrix = true;
+    try {
+      const chart = await window.go.main.App.SyncRiskRegisterToMatrix(doc.id);
+      status = `Risk Matrix “${chart.title}” refreshed from this register.`;
+      showToast('Linked Risk Matrix refreshed', 'success');
+    } catch (err: any) {
+      status = `Risk Matrix sync failed: ${err?.message ?? err}`;
+    } finally {
+      syncingRiskMatrix = false;
     }
   }
 
@@ -88,7 +113,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!doc) return;
     status = '';
     try {
-      await save();
+      if (!(await save())) return;
       const path = await window.go.main.App.ExportDocumentPDF(doc.id);
       status = `Exported to ${path}`;
     } catch (err: any) {
@@ -100,7 +125,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!doc) return;
     status = '';
     try {
-      await save();
+      if (!(await save())) return;
       const path = await window.go.main.App.ExportDocumentDOCX(doc.id);
       status = `Exported to ${path}`;
     } catch (err: any) {
@@ -112,7 +137,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!doc) return;
     status = '';
     try {
-      await save();
+      if (!(await save())) return;
       const path = await window.go.main.App.ExportDocumentODT(doc.id);
       status = `Exported to ${path}`;
     } catch (err: any) {
@@ -135,7 +160,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
     status = '';
     signing = true;
     try {
-      await save();
+      if (!(await save())) {
+        signing = false;
+        return;
+      }
 
       if (!signatureSettingsLoaded) {
         try {
@@ -224,6 +252,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {/if}
     </div>
     <div class="flex items-center gap-2">
+      {#if doc?.kind === 'risk_register'}
+        <button
+          onclick={syncRiskMatrix}
+          disabled={!linkedRiskMatrixId || syncingRiskMatrix || saving}
+          title={linkedRiskMatrixId ? 'Replace the linked matrix items with this saved register' : 'Select a Linked Risk Matrix in the document first'}
+          class="text-xs bg-amber-800 hover:bg-amber-700 disabled:opacity-40 px-3 py-1 rounded"
+        >
+          {syncingRiskMatrix ? 'Syncing...' : 'Refresh Risk Matrix'}
+        </button>
+      {/if}
       <button onclick={exportDOCX} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
         Export DOCX
       </button>
