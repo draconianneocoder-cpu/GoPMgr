@@ -214,7 +214,9 @@ findings.
 
 Status Reports can link a CPM schedule chart. When that linked schedule has
 cost and progress data, combined reports include an Earned Value summary under
-the Status Report section.
+the Status Report section. If resource leveling split a task into interrupted
+work periods, its planned value remains flat during the intervening idle days
+instead of being spread across the whole bar span.
 
 ## Schedule Import and Export
 
