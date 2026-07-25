@@ -26,6 +26,9 @@ posture, and validator coverage, so keep them intentional and verified.
 - `golang.org/x/crypto`: Argon2id and related cryptographic support.
 - `github.com/digitorus/pkcs7`: CMS/PKCS#7 parsing and OID support for
   PAdES-related code.
+- `github.com/digitorus/timestamp`: BSD-2-Clause RFC 3161 request, token, and
+  test-fixture primitives. `internal/rfc3161` adds PMForge's HTTPS, response
+  binding, TSA certificate, size, redirect, and optional trust-root policy.
 - `github.com/go-pdf/fpdf`: PDF generation (community-maintained continuation
   of the archived jung-kurt/gofpdf; see ADR-003).
 - `github.com/gomutex/godocx`: DOCX generation.
