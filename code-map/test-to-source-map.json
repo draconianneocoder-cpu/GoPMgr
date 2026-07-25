@@ -440,6 +440,7 @@
         "internal/crypto/encrypt.go",
         "internal/crypto/keywrap.go",
         "internal/crypto/pdf_cms.go",
+        "internal/crypto/pdf_cms_timestamp.go",
         "internal/crypto/pdf_sign.go"
       ]
     },
@@ -450,6 +451,18 @@
         "internal/crypto/encrypt.go",
         "internal/crypto/keywrap.go",
         "internal/crypto/pdf_cms.go",
+        "internal/crypto/pdf_cms_timestamp.go",
+        "internal/crypto/pdf_sign.go"
+      ]
+    },
+    {
+      "test_file": "internal/crypto/pdf_cms_timestamp_test.go",
+      "package": "pmforge/internal/crypto",
+      "candidate_source_files": [
+        "internal/crypto/encrypt.go",
+        "internal/crypto/keywrap.go",
+        "internal/crypto/pdf_cms.go",
+        "internal/crypto/pdf_cms_timestamp.go",
         "internal/crypto/pdf_sign.go"
       ]
     },
@@ -460,6 +473,7 @@
         "internal/crypto/encrypt.go",
         "internal/crypto/keywrap.go",
         "internal/crypto/pdf_cms.go",
+        "internal/crypto/pdf_cms_timestamp.go",
         "internal/crypto/pdf_sign.go"
       ]
     },

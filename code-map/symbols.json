@@ -248,10 +248,12 @@
     "pmforge/internal/crypto": [
       "const DEKSize = 32",
       "var ErrBadDEK = errors.New(\"crypto: DEK must be exactly 32 bytes\")",
+      "func AddSignatureTimestamp(cmsDER, tokenDER []byte) ([]byte, error)",
       "func DecryptBuffer(blob []byte, password string) ([]byte, error)",
       "func EncryptBuffer(data []byte, password string) ([]byte, error)",
       "func GenerateDEK() ([]byte, error)",
       "func KeyspecHex(dek []byte) (string, error)",
+      "func SignatureTimestampImprint(cmsDER []byte) ([]byte, error)",
       "func UnwrapKey(wrapped, secret string) ([]byte, error)",
       "func WrapKey(dek []byte, secret string) (string, error)",
       "type Signer struct{ ... }",
@@ -466,6 +468,7 @@
       "const QueryMediaType = \"application/timestamp-query\" ...",
       "type Client struct{ ... }",
       "type Token struct{ ... }",
+      "    func ValidateToken(tokenDER, imprint []byte) (Token, error)",
       "type TrustStatus string",
       "    const TrustNotEvaluated TrustStatus = \"not_evaluated\" ..."
     ],

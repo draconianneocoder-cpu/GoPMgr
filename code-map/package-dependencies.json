@@ -210,7 +210,9 @@
         "pmforge/internal/export",
         "pmforge/internal/users"
       ],
-      "imports_internal": [],
+      "imports_internal": [
+        "pmforge/internal/rfc3161"
+      ],
       "notable_external_deps": [
         "github.com/digitorus/pkcs7",
         "golang.org/x/crypto/argon2",
@@ -348,7 +350,9 @@
     },
     "pmforge/internal/rfc3161": {
       "dir": "internal/rfc3161",
-      "imported_by_internal": [],
+      "imported_by_internal": [
+        "pmforge/internal/crypto"
+      ],
       "imports_internal": [],
       "notable_external_deps": [
         "github.com/digitorus/pkcs7",

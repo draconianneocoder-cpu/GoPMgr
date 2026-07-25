@@ -111,7 +111,7 @@ func signDetachedPAdESCMS(content []byte, cert *x509.Certificate, key *rsa.Priva
 }
 
 func cmsSignedAttributes(attrs []pkcs7.Attribute) ([]cmsAttribute, error) {
-	sortables := make([]cmsSortableAttribute, len(attrs))
+	marshaled := make([]cmsAttribute, len(attrs))
 	for i, attr := range attrs {
 		asn1Value, err := asn1.Marshal(attr.Value)
 		if err != nil {
@@ -121,24 +121,35 @@ func cmsSignedAttributes(attrs []pkcs7.Attribute) ([]cmsAttribute, error) {
 			Type:  attr.Type,
 			Value: asn1.RawValue{Tag: 17, IsCompound: true, Bytes: asn1Value},
 		}
-		encoded, err := asn1.Marshal(cmsAttr)
+		marshaled[i] = cmsAttr
+	}
+	return sortCMSAttributes(marshaled)
+}
+
+// sortCMSAttributes returns a DER SET-compatible ordering without mutating the
+// caller's slice. Signed and unsigned CMS attributes use the same canonical
+// ordering rule, so timestamp insertion must share this path with signing.
+func sortCMSAttributes(attrs []cmsAttribute) ([]cmsAttribute, error) {
+	sortables := make([]cmsSortableAttribute, len(attrs))
+	for i, attr := range attrs {
+		encoded, err := asn1.Marshal(attr)
 		if err != nil {
 			return nil, err
 		}
 		sortables[i] = cmsSortableAttribute{
 			sortKey:   encoded,
-			attribute: cmsAttr,
+			attribute: attr,
 		}
 	}
 	sort.Slice(sortables, func(i, j int) bool {
 		return bytes.Compare(sortables[i].sortKey, sortables[j].sortKey) < 0
 	})
 
-	marshaled := make([]cmsAttribute, len(sortables))
-	for i, attr := range sortables {
-		marshaled[i] = attr.attribute
+	sorted := make([]cmsAttribute, len(sortables))
+	for i, sortable := range sortables {
+		sorted[i] = sortable.attribute
 	}
-	return marshaled, nil
+	return sorted, nil
 }
 
 func signCMSSignedAttributes(attrs []cmsAttribute, key *rsa.PrivateKey) ([]byte, error) {

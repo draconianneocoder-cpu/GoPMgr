@@ -312,15 +312,17 @@ A new contribution should land **with `make memory-scan` passing**. Optional sca
 ### Remaining V2 TODOs (status snapshot)
 1. ~~DOCX / ODT export.~~ **Done.** `internal/export/docx.go` uses `gomutex/godocx`; `internal/export/odt.go` is hand-built (no maintained ODT library exists). App methods `ExportDocumentDOCX` / `ExportDocumentODT`.
 2. **PDF/A-3 strict conformance** — partial, advanced 2026-05-20, 2026-05-25, and 2026-06-06. (i) The dependency-free `internal/pdfmeta` package builds the canonical XMP packet AND injects it into the PDF Catalog via a spec-conformant **incremental update** (`InjectXMPStream`); `documents.Render()` tags every generated PDF (fail-soft). (ii) **Font embedding is now available** via `internal/fonts` — bundled TrueType families (fetched by `make fonts`) embed into PDFs through the "register under Helvetica" trick, replacing the non-embeddable core fonts. (iii) OutputIntent + ICC profile injection is implemented (`InjectOutputIntent`, `MakePDFA3`, `make icc`) and used when an ICC profile is embedded. (iv) The schedule-report, document, combined-report, and Monte Carlo risk-report samples now pass `make check-pdfa` with veraPDF's PDF/A-3b profile after adding binary header comments, trailer IDs, stream-length correctness, latest-incremental Catalog rewrites, and embedded Source Sans 3 for representative exports. The gate is now a **hard release blocker**: `check-release.sh` exits non-zero if any representative sample fails PDF/A-3b validation (2026-06-08).
-3. ~~CMS/PKCS#7 + PAdES signature widget embedding.~~ **Done** via PMForge's detached CMS encoder plus `pdfmeta.InjectPAdESSignature`. The PAdES path appends a `/Sig` dictionary, invisible `/Widget` field, `/AcroForm`, fixed-width `/ByteRange`, signed `/M` timestamp, and padded `/Contents` in the final incremental update. `make check-pades` verifies the local invariant, and `make check-pades-external` extracts the embedded CMS for OpenSSL detached verification, checks `qpdf --check`, requires `pdfsig` to report a valid signature, verifies veraPDF signature metadata, and requires DSS to classify the deterministic self-signed sample as `PAdES-BASELINE-B` when those tools are installed. Release-certificate trust-chain validation remains indeterminate until a trusted signing source is configured; `make check-pades-trusted` now writes an explicit not-configured report unless `PMFORGE_TRUSTED_SIGNED_PDF` points at a trusted-certificate sample. Users can choose PAdES, detached GnuPG sidecar signing, or no digital signature for print-and-wet-sign exports.
-   **RFC 3161 foundation added 2026-07-25.** `internal/rfc3161.Client`
+3. ~~CMS/PKCS#7 + PAdES signature widget embedding.~~ **Done** via PMForge's detached CMS encoder plus `pdfmeta.InjectPAdESSignature`. The PAdES path appends a `/Sig` dictionary, invisible `/Widget` field, `/AcroForm`, fixed-width `/ByteRange`, signed `/M` timestamp, and padded `/Contents` in the final incremental update. `make check-pades` verifies a timestamped local fixture, and `make check-pades-external` extracts the embedded CMS for OpenSSL detached verification, checks `qpdf --check`, requires `pdfsig` to report a valid signature, verifies veraPDF signature metadata, and requires DSS to classify the self-signed fixture as `PAdES-BASELINE-T` when those tools are installed. Release-certificate and TSA trust-chain validation remain indeterminate until trusted sources are configured; `make check-pades-trusted` writes an explicit not-configured report unless `PMFORGE_TRUSTED_SIGNED_PDF` points at a trusted-certificate sample. Users can choose PAdES Baseline B, detached GnuPG sidecar signing, or no digital signature for print-and-wet-sign exports.
+   **RFC 3161/PAdES-T foundation added 2026-07-25.** `internal/rfc3161.Client`
    creates nonce-bound SHA-256 requests and validates the HTTP response,
    CMS/TSTInfo content type, token signature, imprint, nonce, requested
    policy, generation time, timestamping-only critical EKU, and optional
    caller-provided trust roots. It requires HTTPS, rejects redirects, and
-   bounds response size. This is protocol infrastructure only: current exports
-   remain PAdES Baseline B until TSA settings and the unsigned
-   `signatureTimeStampToken` CMS attribute are integrated.
+   bounds response size. `crypto.SignatureTimestampImprint` hashes the existing
+   signer signature value, and `crypto.AddSignatureTimestamp` revalidates and
+   inserts the token as the DER `signatureTimeStampToken` unsigned attribute
+   without modifying signed attributes or signature bytes. Current exports
+   remain PAdES Baseline B until TSA settings and export wiring are integrated.
 4. ~~Wails file-picker for certs.~~ **Done.** `App.ChooseCertFile` calls `wailsruntime.OpenFileDialog`.
 5. ~~HTTPS update channel with signed release manifest.~~ **Done.** `internal/update` fetches a signed JSON manifest, verifies Ed25519, returns `Status`. `ManifestURL` and `UpdateChannelPublicKey` set at build time via `-ldflags`.
 8. ~~Per-user database encryption-at-rest decision.~~ **Implemented 2026-06-13.** New per-user `.pmforge` project databases are SQLCipher-encrypted with the user's DEK; existing plaintext project databases can be migrated from Project Settings after recovery codes are reissued. `system.db` remains plaintext by design and stores password hashes plus wrapped DEKs, not project records. `.pmba` bundles preserve encrypted `project.pmforge` bytes. OS-level encryption (FileVault / BitLocker / LUKS) remains recommended whole-device defence in depth.
@@ -330,7 +332,7 @@ A new contribution should land **with `make memory-scan` passing**. Optional sca
 
 ### Still deferred to V3
 - ~~Strict PDF/A-3 release claim~~ **Done (2026-06-08, expanded 2026-06-29).** The representative schedule-report, document, combined-report, and Monte Carlo risk-report samples pass veraPDF PDF/A-3b; `make check-pdfa` is a hard gate in `check-release.sh`. V3 remainder: Acrobat coverage and trusted signing chain.
-- External PAdES validation hardening — the widget is embedded and locally sample-verified by `make check-pades`; OpenSSL detached CMS verification, local `qpdf`/`pdfsig` checks, veraPDF signature feature extraction, and DSS `PAdES-BASELINE-B` classification are covered by `make check-pades-external`. The RFC 3161 client foundation is tested independently, but PAdES-T embedding is not wired. Sample signed PDFs still need Acrobat and trusted-chain validation before treating the implementation as fully battle-tested.
+- External PAdES validation hardening — the widget and PAdES-T mutator are exercised by `make check-pades`; OpenSSL detached CMS verification, local `qpdf`/`pdfsig` checks, veraPDF signature feature extraction, and DSS `PAdES-BASELINE-T` fixture classification are covered by `make check-pades-external`. Application export wiring is still Baseline B. Sample signed PDFs still need Acrobat and trusted signer/TSA chain validation before treating the implementation as fully battle-tested.
 - CPM/PDM dependency-lag editor design if task-level precedence relationships need visual lag editing beyond the shipped Timeline project/sprint date dragging.
 
 ### Scheduling core roadmap (V3) — added 2026-06-10
@@ -747,9 +749,9 @@ This section is the running log of non-obvious discoveries. Every session that l
 
 ### 2026-06-07 — DSS PAdES baseline-B validation
 - **PAdES baseline-B forbids CMS `signing-time`.** `internal/crypto/pdf_cms.go` now builds PMForge's detached CMS directly so the signed attributes include `contentType`, `messageDigest`, and `SigningCertificateV2`, but omit CMS `signing-time`.
-- **The PDF signature dictionary still needs `/M`.** `pdfmeta.InjectPAdESSignature` writes `/M (D:YYYYMMDDHHmmSSZ)` into the signed byte range; DSS then classifies the deterministic gate sample as `PAdES-BASELINE-B` instead of warning about missing `/M`.
-- **DSS is now an executed external validator when installed.** `scripts/validate-pades-external.sh` runs `dss-validation-tool validate`, records `.tmp/pmforge-pades-test/dss-validation-output.txt`, fails on DSS PAdES baseline warnings, and requires `signature.format=PAdES-BASELINE-B` when the wrapper emits that field. `NO_CERTIFICATE_CHAIN_FOUND` remains expected for the self-signed gate sample.
-- **Release docs should not regress to stale DSS TODOs.** `scripts/release-gate-scope-check.sh` now requires README/AGENT to mention the DSS `PAdES-BASELINE-B` result and rejects old wording that treats DSS as unrun.
+- **The PDF signature dictionary still needs `/M`.** `pdfmeta.InjectPAdESSignature` writes `/M (D:YYYYMMDDHHmmSSZ)` into the signed byte range. This first allowed DSS to classify the fixture as Baseline B; the timestamped fixture is now classified as Baseline T.
+- **DSS is an executed external validator when installed.** `scripts/validate-pades-external.sh` runs `dss-validation-tool validate`, records `.tmp/pmforge-pades-test/dss-validation-output.txt`, fails on DSS PAdES baseline warnings, and now requires `signature.format=PAdES-BASELINE-T` when the wrapper emits that field. `NO_CERTIFICATE_CHAIN_FOUND` remains expected for the self-signed signer and TSA.
+- **Release docs should not regress to stale DSS TODOs.** `scripts/release-gate-scope-check.sh` requires README and this handbook to mention the current DSS `PAdES-BASELINE-T` fixture result and rejects old wording that treats DSS as unrun.
 
 ### 2026-07-25 — RFC 3161 timestamp client foundation
 
@@ -769,6 +771,25 @@ This section is the running log of non-obvious discoveries. Every session that l
   oversized replies, protocol rejection, trailing ASN.1 data, and tampering.
   Tests inject the transport and entropy source, so CI never depends on a live
   TSA.
+
+### 2026-07-25 — PAdES-T CMS timestamp embedding
+
+- **Hash the signature OCTET STRING, not the PDF or complete CMS.**
+  `crypto.SignatureTimestampImprint` parses PMForge's detached, single-signer
+  CMS and returns SHA-256 over `SignerInfo.signature`, matching RFC 5126.
+- **Timestamping must not invalidate the original signature.**
+  `crypto.AddSignatureTimestamp` revalidates the returned token, appends the
+  DER `id-aa-signatureTimeStampToken` unsigned attribute, sorts unsigned
+  attributes canonically, and preserves signed attributes, signature bytes,
+  certificates, and detached content. Multiple independent TSA tokens remain
+  supported.
+- **Reserve the PDF signature slot before signing.**
+  `pdfmeta.InjectPAdESSignature` now reserves 32 KiB rather than 8 KiB because
+  an RFC 3161 token and TSA chain are inserted only after the ByteRange layout
+  is fixed. The local fixture passes OpenSSL, qpdf, pdfsig, and veraPDF; DSS
+  classifies it as `PAdES-BASELINE-T`. The self-signed fixture remains
+  indeterminate for trust, which is expected and must not be presented as a
+  trusted timestamp.
 
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
@@ -984,7 +1005,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 
 ### 2026-06-22 — README public rewrite and user-guide split
 
-- **README.md is now the public overview and documentation index.** It no longer carries the completed V2 TODO ledger, coverage tables, directory deep dive, or dated implementation history. Keep release-scope strings there for SQLCipher, FileVault/BitLocker/LUKS, PDF/A, and DSS `PAdES-BASELINE-B`; put detailed implementation status in this Developer Handbook or focused docs.
+- **README.md is now the public overview and documentation index.** It no longer carries the completed V2 TODO ledger, coverage tables, directory deep dive, or dated implementation history. Keep release-scope strings there for SQLCipher, FileVault/BitLocker/LUKS, PDF/A, and the current DSS PAdES fixture classification; put detailed implementation status in this Developer Handbook or focused docs.
 - **User workflow material moved to `docs/user-guide.md`.** The new guide covers Launchpad, Portfolio/Dashboard, Project Settings, Application Settings, Stakeholders/Timeline/Budget, charts, documents, combined reports, schedule interchange, PDF signing, recovery codes, fonts, logs, and save behavior.
 - **The scheduling roadmap canonical record now lives in this Developer Handbook.** Do not point future agents to README for detailed roadmap/status history.
 - **Superseded the 2026-05-25 note "svelte-check still reports accessibility/deprecated-event warnings."** `npm run check` now reports **0 errors and 0 warnings** across 210 files (the earlier Sigma-helper / signature-modal warnings were cleaned up during the 2026-06 UI-polish work). The large-chunk production-build warning is the only remaining advisory and is benign.

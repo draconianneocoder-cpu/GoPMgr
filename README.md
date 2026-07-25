@@ -184,21 +184,22 @@ gate unless `PMFORGE_PDFA_STRICT=0` is set for local convenience.
 PAdES signing is applied as the final PDF mutation. Users can also export
 without a digital signature for print-and-wet-sign workflows, or create an
 ASCII-armored detached GnuPG `.asc` sidecar without mutating the PDF bytes.
-`make check-pades` generates a deterministic signed sample and verifies the
-embedded CMS against the declared `/ByteRange`. `make check-pades-external`
-adds external checks when tools are installed: OpenSSL, `qpdf`, `pdfsig`,
-veraPDF signature feature extraction, and DSS. Current DSS coverage
-classifies the deterministic self-signed sample as `PAdES-BASELINE-B`;
-trusted-chain validation and Acrobat coverage still require a real trusted
-signing source. `make check-pades-trusted` records that manual evidence when
+`make check-pades` generates a self-contained timestamped sample and verifies
+the embedded CMS against the declared `/ByteRange`.
+`make check-pades-external` adds OpenSSL, `qpdf`, `pdfsig`, veraPDF signature
+feature extraction, and DSS checks. DSS classifies the self-signed fixture as
+`PAdES-BASELINE-T`; trusted-chain validation and Acrobat coverage still
+require a real trusted signing source. `make check-pades-trusted` records that
+manual evidence when
 `PMFORGE_TRUSTED_SIGNED_PDF` points at a trusted-certificate sample, and
 otherwise writes a clear not-configured report.
 
-The backend also contains a tested RFC 3161 client foundation for future
-PAdES-T exports. It creates nonce-bound SHA-256 requests, validates TSA
-responses and certificates, and can verify a caller-supplied trust store.
-Timestamp-server configuration and token embedding are not yet exposed in the
-application, so current signed-PDF exports remain PAdES Baseline B.
+The backend PAdES-T foundation creates nonce-bound RFC 3161 requests, validates
+TSA responses and certificates, computes the required signature-value imprint,
+and embeds the token as a DER unsigned CMS attribute without changing the
+original signature. Timestamp-server configuration and export-flow wiring are
+not yet exposed in the application, so current user-created signed PDFs remain
+PAdES Baseline B.
 
 Public release claims are guarded by `make release-scope`.
 
