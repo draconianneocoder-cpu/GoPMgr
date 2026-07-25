@@ -832,20 +832,24 @@ func resourceCapacityPlan(d *db.Database, projectID string) kernel.ResourceCapac
 // and country work calendar, CPM computes the schedule, and the
 // offsets are anchored onto real dates. Projects without a parseable
 // start date still get plain CPM (date constraints stay dormant and
-// no calendar dates are emitted), preserving legacy behaviour.
-func scheduleProjectTasks(proj db.Project, tasks map[string]*kernel.Task) {
+// no calendar dates are emitted), preserving legacy behaviour. The
+// boolean reports whether CPM completed; callers producing analytical
+// evidence can refuse cyclic graphs while display-only callers may ignore it.
+func scheduleProjectTasks(proj db.Project, tasks map[string]*kernel.Task) bool {
 	if len(tasks) == 0 {
-		return
+		return false
 	}
 	start, ok := parseProjectDate(proj.StartDate)
 	if !ok {
-		kernel.CalculateCPM(tasks)
-		return
+		return kernel.CalculateCPM(tasks)
 	}
 	c := calendar.For(proj.CountryCode)
 	kernel.ApplyConstraintDates(tasks, start, c.IsWorkday)
-	kernel.CalculateCPM(tasks)
+	if !kernel.CalculateCPM(tasks) {
+		return false
+	}
 	kernel.AnchorSchedule(tasks, start, c.IsWorkday)
+	return true
 }
 
 // parseProjectDate accepts the two date shapes stored in

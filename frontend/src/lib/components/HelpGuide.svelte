@@ -883,12 +883,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Portfolio Analytics</h3>
-            <p class="text-sm text-slate-300">
+            <p class="text-sm text-slate-300 mb-2">
               Production and installer builds include DuckDB-backed in-memory portfolio
-              analytics for cross-project cost rollups and local CSV/TSV, Parquet, and
-              JSON data import. Money totals are staged as integer minor units and
-              converted to display values only after aggregation.
+              analytics. Choose <span class="font-medium text-slate-100">Run rollup</span>
+              for budget, committed cost, Planned Value, Earned Value, Actual Cost, SPI,
+              and CPI as of the displayed UTC reporting date.
             </p>
+            <ul class="text-sm text-slate-300 space-y-1 ml-3">
+              <li>Committed cost is contracts + labour estimate; EVM Actual Cost comes from schedule tasks.</li>
+              <li>Only anchored, valid, acyclic, costed current CPM schedules contribute to EVM. The coverage count and warning make exclusions visible.</li>
+              <li>Portfolio SPI = ΣEV/ΣPV and CPI = ΣEV/ΣAC. PMForge sums exact minor units before dividing; it never averages project ratios.</li>
+              <li>The adjacent import action previews local CSV/TSV, Parquet, and JSON data in memory.</li>
+            </ul>
           </section>
 
           <section>

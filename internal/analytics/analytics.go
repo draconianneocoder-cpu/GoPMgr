@@ -30,34 +30,45 @@ var ErrAnalyticsUnavailable = errors.New("analytics: engine not built in (rebuil
 // caller. The engine never reads these from disk — the app loads them
 // from SQLCipher and passes them in.
 type ProjectMetrics struct {
-	ProjectID              string
-	Name                   string
-	BudgetedCost           float64 // BAC
-	ActualCost             float64 // AC
-	EarnedValue            float64 // EV
-	PlannedValue           float64 // PV
-	BudgetedCostMinorUnits int64
-	ActualCostMinorUnits   int64
-	EarnedValueMinorUnits  int64
-	PlannedValueMinorUnits int64
-	PercentComplete        float64 // 0..100
+	ProjectID               string
+	Name                    string
+	BudgetedCost            float64 // approved project budget
+	CommittedCost           float64 // contracts + estimated labour
+	ActualCost              float64 // EVM AC from the authoritative schedule
+	EarnedValue             float64 // EVM EV
+	PlannedValue            float64 // EVM PV
+	BudgetedCostMinorUnits  int64
+	CommittedCostMinorUnits int64
+	ActualCostMinorUnits    int64
+	EarnedValueMinorUnits   int64
+	PlannedValueMinorUnits  int64
+	PercentComplete         float64 // EV/BAC, 0..100
+	// EVMAvailable distinguishes a valid zero-valued status date from a
+	// project whose schedule cannot support EVM. The engine must exclude
+	// unavailable rows rather than making missing evidence look like zero.
+	EVMAvailable bool
 }
 
 // PortfolioSummary is the aggregated result of a portfolio rollup across
-// many projects. Index fields use 0 to mean "n/a" (undefined), matching
-// the kernel's EVM convention.
+// many projects. EVMProjectCount makes partial coverage visible; index fields
+// use 0 to mean "n/a" (undefined), matching the kernel's EVM convention.
 type PortfolioSummary struct {
-	ProjectCount                int     `json:"project_count"`
-	TotalBudgetedCost           float64 `json:"total_budgeted_cost"`
-	TotalActualCost             float64 `json:"total_actual_cost"`
-	TotalEarnedValue            float64 `json:"total_earned_value"`
-	TotalPlannedValue           float64 `json:"total_planned_value"`
-	TotalBudgetedCostMinorUnits int64   `json:"total_budgeted_cost_minor_units"`
-	TotalActualCostMinorUnits   int64   `json:"total_actual_cost_minor_units"`
-	TotalEarnedValueMinorUnits  int64   `json:"total_earned_value_minor_units"`
-	TotalPlannedValueMinorUnits int64   `json:"total_planned_value_minor_units"`
-	SchedulePerformanceIndex    float64 `json:"schedule_performance_index"` // SPI = EV/PV (0 = n/a)
-	CostPerformanceIndex        float64 `json:"cost_performance_index"`     // CPI = EV/AC (0 = n/a)
+	ProjectCount                 int     `json:"project_count"`
+	EVMProjectCount              int     `json:"evm_project_count"`
+	EVMUnavailableProjectCount   int     `json:"evm_unavailable_project_count"`
+	AsOfDate                     string  `json:"as_of_date"`
+	TotalBudgetedCost            float64 `json:"total_budgeted_cost"`
+	TotalCommittedCost           float64 `json:"total_committed_cost"`
+	TotalActualCost              float64 `json:"total_actual_cost"`
+	TotalEarnedValue             float64 `json:"total_earned_value"`
+	TotalPlannedValue            float64 `json:"total_planned_value"`
+	TotalBudgetedCostMinorUnits  int64   `json:"total_budgeted_cost_minor_units"`
+	TotalCommittedCostMinorUnits int64   `json:"total_committed_cost_minor_units"`
+	TotalActualCostMinorUnits    int64   `json:"total_actual_cost_minor_units"`
+	TotalEarnedValueMinorUnits   int64   `json:"total_earned_value_minor_units"`
+	TotalPlannedValueMinorUnits  int64   `json:"total_planned_value_minor_units"`
+	SchedulePerformanceIndex     float64 `json:"schedule_performance_index"` // SPI = ΣEV/ΣPV (0 = n/a)
+	CostPerformanceIndex         float64 `json:"cost_performance_index"`     // CPI = ΣEV/ΣAC (0 = n/a)
 }
 
 // Dataset is a generic tabular result from a local-file import

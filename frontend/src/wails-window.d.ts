@@ -490,11 +490,16 @@ declare global {
 
   interface PortfolioSummary {
     project_count: number;
+    evm_project_count: number;
+    evm_unavailable_project_count: number;
+    as_of_date: string;
     total_budgeted_cost: number;
+    total_committed_cost: number;
     total_actual_cost: number;
     total_earned_value: number;
     total_planned_value: number;
     total_budgeted_cost_minor_units: number;
+    total_committed_cost_minor_units: number;
     total_actual_cost_minor_units: number;
     total_earned_value_minor_units: number;
     total_planned_value_minor_units: number;

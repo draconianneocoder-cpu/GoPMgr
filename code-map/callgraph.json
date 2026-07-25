@@ -799,12 +799,15 @@
     },
     {
       "entry_point": "App.RunPortfolioAnalytics",
-      "main_go_line": 3688,
+      "source_file": "app_foundation.go",
+      "source_line": 663,
       "touches_internal_packages": [
         "pmforge/internal/agile",
         "pmforge/internal/analytics",
         "pmforge/internal/budget",
-        "pmforge/internal/db"
+        "pmforge/internal/calendar",
+        "pmforge/internal/db",
+        "pmforge/internal/kernel"
       ]
     },
     {

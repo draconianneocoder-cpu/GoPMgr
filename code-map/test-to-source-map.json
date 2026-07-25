@@ -72,6 +72,14 @@
       ]
     },
     {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/portfolio_evm_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_documents.go",
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_foundation.go"
+      ]
+    },
+    {
       "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/project_path_confinement_test.go",
       "package": "pmforge",
       "candidate_source_files": [

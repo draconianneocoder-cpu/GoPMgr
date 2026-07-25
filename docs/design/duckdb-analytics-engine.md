@@ -29,7 +29,7 @@ data import.
    in ADR-002.
 2. **DuckDB never touches the encrypted `.pmforge` file.** The app reads
    rows from SQLCipher (already decrypted in-process) and **feeds them
-   into DuckDB in memory** via the bulk Appender API. Sensitive data
+   into DuckDB in memory** via prepared parameterized inserts. Sensitive data
    stays in process memory — the same exposure the app already has while
    running; no new on-disk plaintext.
 3. **Build-tag gated, enabled for shipped builds.** DuckDB
@@ -42,11 +42,12 @@ data import.
    testable, no I/O). DuckDB does **cross-cutting aggregation** over many
    rows/projects and **file ingestion** — it does not reimplement or
    replace the kernel.
-5. **Hardened DuckDB configuration.** Every DuckDB session disables
-   extension autoinstall/autoload, disables external file access by
-   default, and locks configuration — applying the DuckDB "Securing
-   DuckDB" guidance. File access is opened only for an explicit,
-   user-chosen path during import (`allowed_paths`).
+5. **Network extension installation disabled.** Every DuckDB connection sets
+   `autoinstall_known_extensions=false`, preventing runtime extension
+   downloads. Autoload remains enabled for readers bundled with the linked
+   DuckDB build. Tabular import accepts only an explicit user-chosen local
+   path and applies `allowed_directories` as version-dependent,
+   defense-in-depth scoping.
 
 ## Architecture
 
@@ -57,7 +58,7 @@ data import.
    internal/analytics  ──Engine interface──┐
         ├─ stub.go        (untagged developer build; ErrAnalyticsUnavailable)
         └─ duckdb.go      (//go:build duckdb; production/package build)
-                                  │  Appender bulk-load rows  →  in-memory DuckDB
+                                  │  prepared inserts         →  in-memory DuckDB
                                   │  run aggregation / window queries
                                   ▼
                           results structs  →  App methods  →  Svelte UI
@@ -71,7 +72,8 @@ data import.
   retained for explicit no-DuckDB developer builds, so the UI still degrades
   gracefully ("Analytics build not installed").
 - **`duckdb.go`** (`//go:build duckdb`) is the real implementation:
-  open `:memory:`, apply hardening pragmas, bulk-load via Appender, query.
+  open `:memory:`, disable network extension autoinstall, insert rows through
+  parameterized statements, and query.
 - `main.go` wires whichever implementation is compiled in; App methods
   surface analytics to the frontend and always handle
   `ErrAnalyticsUnavailable`.
@@ -91,10 +93,17 @@ builds link it through `make build` / Wails `-tags duckdb`**. Direct untagged
   the app already decrypted in memory.
 - Currency values enter DuckDB as integer minor units (`BIGINT`), not
   floating-point columns. Display values are derived only after aggregation.
-- Session hardening on every connection:
-  `SET autoinstall_known_extensions=false; SET autoload_known_extensions=false;`
-  `SET enable_external_access=false;` (relaxed to a single `allowed_paths`
-  entry only for an explicit user import), then `SET lock_configuration=true`.
+- Portfolio committed estimates and EVM actual cost are separate fields.
+  `EVMAvailable` prevents projects missing an anchored, valid, costed current
+  schedule from contributing placeholder zeroes. The result reports coverage,
+  and SPI/CPI are calculated from summed minor units (`ΣEV/ΣPV`, `ΣEV/ΣAC`),
+  not by averaging per-project ratios.
+- Every connection sets `autoinstall_known_extensions=false`, so missing
+  extensions cannot be downloaded. Explicit local-file import additionally
+  attempts to scope DuckDB to the selected file's directory with
+  `allowed_directories`; because option support varies by DuckDB version, the
+  application-selected absolute path and supported-reader allowlist remain the
+  primary boundary.
 - No network, no telemetry, no community extensions.
 - ADR-001 and the SQLCipher release gates are unchanged and stay green.
 
@@ -130,12 +139,12 @@ DuckDB's readers split into two tiers for an offline, local-first app:
 | Excel `.xlsx` | `read_xlsx` / `FROM 'f.xlsx'` | **No** — the `excel` extension is *Secondary* tier and **auto-downloads from the official extension repository on first use** |
 
 **CSV / Parquet / JSON — strong fit.** Use DuckDB to add a new "import
-any data" feature for these. They are bundled, offline, extension-free,
-and exactly DuckDB-shaped. The backend takes a user-chosen path (native
+any data" feature for these. Their readers are present in the standard linked
+build and work without a runtime download. The backend takes a user-chosen path (native
 dialog, like the existing `ImportMSPDIChart`), reads it into in-memory
-DuckDB under a single `allowed_paths` grant, then the app persists
-results into SQLCipher as needed. This is genuinely new capability —
-PMForge cannot read Parquet at all today.
+DuckDB, and returns a bounded in-memory preview to the frontend. The import
+does not persist the dataset. This is genuinely new capability — PMForge
+cannot otherwise read Parquet.
 
 **Excel / retiring `read-excel-file` — not worth it now.** Three reasons:
 
@@ -191,14 +200,15 @@ implications:
   stay green. *No `go.mod` change yet.*
 - **Phase B — DuckDB engine behind `//go:build duckdb`.** Add
   `duckdb-go/v2`; implement `duckdb.go`: in-memory open, hardening
-  pragmas, Appender bulk-load, query execution, result mapping. Unit
+  pragma, prepared inserts, query execution, result mapping. Unit
   tests under the tag.
 - **Phase C — First feature end-to-end: Portfolio rollup.** Backend
   `App.RunPortfolioAnalytics()` (DuckDB-backed, stub fallback) + wire
   into `Portfolio.svelte`. Proves the whole path with a real, visible
   benefit.
 - **Phase D — Local-file ingestion (CSV / Parquet / JSON)** with the
-  `allowed_paths` hardening; expose an "import dataset for analysis"
+  explicit-path allowlist and best-effort `allowed_directories` scoping; expose
+  an "import dataset for analysis"
   surface. (`.xlsx` stays on `read-excel-file`; Excel-via-DuckDB only if
   DuckDB goes always-on and the `excel` extension is bundled offline —
   see *File-import evaluation*.)
@@ -236,5 +246,4 @@ implications:
 
 - [ADR-002 — DuckDB vs SQLCipher evaluation](ADR-002-duckdb-vs-sqlcipher-evaluation.md)
 - [ADR-001 — Per-user database encryption at rest](ADR-001-database-encryption-at-rest.md)
-- [DuckDB Appender](https://duckdb.org/docs/current/data/appender)
 - [Securing DuckDB](https://duckdb.org/docs/current/operations_manual/securing_duckdb/overview)

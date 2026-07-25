@@ -55,6 +55,16 @@ After sign-in, PMForge opens the Portfolio dashboard. It lists projects
 with status, phase, dates, and chart/document counts. Open a project card
 to enter its Dashboard.
 
+Choose **Run rollup** to calculate portfolio budget and committed-cost totals
+plus Earned Value metrics as of one displayed UTC reporting date. EVM includes
+only projects with a start date and a valid, acyclic, costed current CPM
+schedule. The panel shows coverage and warns when projects are excluded rather
+than treating missing evidence as zero. Planned Value, Earned Value, Actual
+Cost, SPI, and CPI use exact minor-unit totals; portfolio SPI is `ΣEV/ΣPV` and
+portfolio CPI is `ΣEV/ΣAC`. They are not averages of individual project ratios.
+Committed cost remains the separate contracts-plus-labour estimate used for
+budget remaining.
+
 The Dashboard is the main project workspace:
 
 - Charts and documents are listed as editable project artifacts.

@@ -10,7 +10,7 @@
 // Design: docs/design/duckdb-analytics-engine.md. Invariants honored:
 //   - in-memory only (DSN ""), nothing persisted to disk;
 //   - never opens the encrypted .pmforge file — callers pass rows in;
-//   - extension autoinstall/autoload disabled (no network fetch).
+//   - extension autoinstall disabled (bundled reader autoload stays available).
 package analytics
 
 import (
@@ -89,10 +89,12 @@ func (e *duckEngine) PortfolioRollup(ctx context.Context, projects []ProjectMetr
 		project_id       VARCHAR,
 		name             VARCHAR,
 		budgeted_cost_minor_units BIGINT,
+		committed_cost_minor_units BIGINT,
 		actual_cost_minor_units BIGINT,
 		earned_value_minor_units BIGINT,
 		planned_value_minor_units BIGINT,
-		percent_complete DOUBLE
+		percent_complete DOUBLE,
+		evm_available BOOLEAN
 	)`); err != nil {
 		return PortfolioSummary{}, fmt.Errorf("analytics: create table: %w", err)
 	}
@@ -100,9 +102,9 @@ func (e *duckEngine) PortfolioRollup(ctx context.Context, projects []ProjectMetr
 	// duckdb-go is a database/sql driver and uses "?" positional
 	// placeholders (verified with `go test -tags duckdb`). If a future
 	// driver version ever reports a bind error, this is the one line to
-	// switch to "$1..$7".
+	// switch to "$1..$9".
 	stmt, err := conn.PrepareContext(ctx,
-		`INSERT INTO portfolio VALUES (?, ?, ?, ?, ?, ?, ?)`)
+		`INSERT INTO portfolio VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return PortfolioSummary{}, fmt.Errorf("analytics: prepare insert: %w", err)
 	}
@@ -112,9 +114,10 @@ func (e *duckEngine) PortfolioRollup(ctx context.Context, projects []ProjectMetr
 		p = normaliseProjectMetricsMoney(p)
 		if _, err := stmt.ExecContext(ctx,
 			p.ProjectID, p.Name,
-			p.BudgetedCostMinorUnits, p.ActualCostMinorUnits,
+			p.BudgetedCostMinorUnits, p.CommittedCostMinorUnits,
+			p.ActualCostMinorUnits,
 			p.EarnedValueMinorUnits, p.PlannedValueMinorUnits,
-			p.PercentComplete,
+			p.PercentComplete, p.EVMAvailable,
 		); err != nil {
 			return PortfolioSummary{}, fmt.Errorf("analytics: insert %q: %w", p.ProjectID, err)
 		}
@@ -123,21 +126,27 @@ func (e *duckEngine) PortfolioRollup(ctx context.Context, projects []ProjectMetr
 	var s PortfolioSummary
 	row := conn.QueryRowContext(ctx, `SELECT
 		count(*),
+		coalesce(sum(CASE WHEN evm_available THEN 1 ELSE 0 END), 0),
 		coalesce(sum(budgeted_cost_minor_units), 0),
-		coalesce(sum(actual_cost_minor_units), 0),
-		coalesce(sum(earned_value_minor_units), 0),
-		coalesce(sum(planned_value_minor_units), 0)
+		coalesce(sum(committed_cost_minor_units), 0),
+		coalesce(sum(CASE WHEN evm_available THEN actual_cost_minor_units ELSE 0 END), 0),
+		coalesce(sum(CASE WHEN evm_available THEN earned_value_minor_units ELSE 0 END), 0),
+		coalesce(sum(CASE WHEN evm_available THEN planned_value_minor_units ELSE 0 END), 0)
 	FROM portfolio`)
 	if err := row.Scan(
 		&s.ProjectCount,
+		&s.EVMProjectCount,
 		&s.TotalBudgetedCostMinorUnits,
+		&s.TotalCommittedCostMinorUnits,
 		&s.TotalActualCostMinorUnits,
 		&s.TotalEarnedValueMinorUnits,
 		&s.TotalPlannedValueMinorUnits,
 	); err != nil {
 		return PortfolioSummary{}, fmt.Errorf("analytics: aggregate: %w", err)
 	}
+	s.EVMUnavailableProjectCount = s.ProjectCount - s.EVMProjectCount
 	s.TotalBudgetedCost = money.Amount{MinorUnits: s.TotalBudgetedCostMinorUnits}.MajorFloat()
+	s.TotalCommittedCost = money.Amount{MinorUnits: s.TotalCommittedCostMinorUnits}.MajorFloat()
 	s.TotalActualCost = money.Amount{MinorUnits: s.TotalActualCostMinorUnits}.MajorFloat()
 	s.TotalEarnedValue = money.Amount{MinorUnits: s.TotalEarnedValueMinorUnits}.MajorFloat()
 	s.TotalPlannedValue = money.Amount{MinorUnits: s.TotalPlannedValueMinorUnits}.MajorFloat()
@@ -157,6 +166,9 @@ func (e *duckEngine) PortfolioRollup(ctx context.Context, projects []ProjectMetr
 func normaliseProjectMetricsMoney(p ProjectMetrics) ProjectMetrics {
 	if p.BudgetedCostMinorUnits == 0 && p.BudgetedCost != 0 {
 		p.BudgetedCostMinorUnits = money.FromMajorFloat(p.BudgetedCost).MinorUnits
+	}
+	if p.CommittedCostMinorUnits == 0 && p.CommittedCost != 0 {
+		p.CommittedCostMinorUnits = money.FromMajorFloat(p.CommittedCost).MinorUnits
 	}
 	if p.ActualCostMinorUnits == 0 && p.ActualCost != 0 {
 		p.ActualCostMinorUnits = money.FromMajorFloat(p.ActualCost).MinorUnits
