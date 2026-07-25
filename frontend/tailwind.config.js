@@ -78,7 +78,7 @@ export default {
         },
         // PMForge palette — slate base + cyan accent (matches GanttChart).
         accent: {
-          DEFAULT: '#00D4FF',
+          DEFAULT: 'rgb(var(--brand-accent) / <alpha-value>)',
           dim: '#0891b2',
         },
         critical: '#ef4444',
