@@ -19,7 +19,9 @@
    <html>; with no attribute set, these dark defaults apply. */
 :root {
   color-scheme: dark;
-  accent-color: #00d4ff;
+  --brand-accent: 0 212 255;
+  --focus-ring: 34 211 238;
+  accent-color: rgb(var(--brand-accent));
 
   --slate-50: 248 250 252;
   --slate-100: 241 245 249;
@@ -78,7 +80,9 @@
 
 :root[data-theme='light'] {
   color-scheme: light;
-  accent-color: #0891b2;
+  --brand-accent: 14 116 144;
+  --focus-ring: 14 116 144;
+  accent-color: rgb(var(--brand-accent));
 
   /* Slate inverted: 950 becomes the lightest (page background), 50 the
      darkest (primary text); 500 is the symmetric mid-point. */
@@ -143,6 +147,7 @@
 }
 
 html {
+  background-color: rgb(var(--slate-950));
   /* Crisper text on the dark background. */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -161,7 +166,7 @@ select:focus-visible,
 textarea:focus-visible,
 summary:focus-visible,
 [tabindex]:not([tabindex='-1']):focus-visible {
-  outline: 2px solid #00d4ff;
+  outline: 2px solid rgb(var(--focus-ring));
   outline-offset: 2px;
 }
 

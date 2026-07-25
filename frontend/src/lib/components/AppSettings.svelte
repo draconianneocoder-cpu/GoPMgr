@@ -6,9 +6,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // Global, per-user application settings (distinct from per-project
   // settings). Edits the default font/theme applied to newly created
   // projects, and shows read-only environment info.
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import AppHeader from './AppHeader.svelte';
-  import { applyTheme } from '../theme';
+  import { applyTheme, rememberTheme, type AppTheme } from '../theme';
   import { autosave } from '../autosave.svelte';
   import { session } from '../session.svelte';
   import { showToast } from '../toast.svelte';
@@ -16,7 +16,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let info = $state<AppInfo | null>(null);
   let font = $state('');
   let theme = $state('');
-  let appTheme = $state('dark');
+  let appTheme = $state<AppTheme>('dark');
+  let committedAppTheme = $state<AppTheme>('dark');
   let autoSaveOn = $state(true);
   let autoSaveSeconds = $state(60);
   let loading = $state(true);
@@ -37,6 +38,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
     { value: 'archival', label: 'Archival' },
   ];
 
+  const appearanceChoices: Array<{
+    value: AppTheme;
+    label: string;
+    description: string;
+  }> = [
+    {
+      value: 'dark',
+      label: 'Dark workshop',
+      description: 'Graphite surfaces with a bright blueprint accent.',
+    },
+    {
+      value: 'light',
+      label: 'Light fieldbook',
+      description: 'Paper-light surfaces with an ink-blue accent.',
+    },
+  ];
+
   const autoSaveChoices = [
     { value: 15, label: 'Every 15 seconds' },
     { value: 30, label: 'Every 30 seconds' },
@@ -50,6 +68,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try { hasAdmin = await window.go.main.App.HasAnyAdmin(); } catch { hasAdmin = true; }
   });
 
+  onDestroy(() => {
+    applyTheme(committedAppTheme);
+  });
+
   async function load() {
     loading = true;
     error = '';
@@ -58,7 +80,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       info = i;
       font = i.settings.default_font ?? '';
       theme = i.settings.default_theme ?? '';
-      appTheme = i.settings.app_theme || 'dark';
+      appTheme = i.settings.app_theme === 'light' ? 'light' : 'dark';
+      committedAppTheme = appTheme;
       const secs = i.settings.auto_save_seconds ?? 0;
       autoSaveOn = secs > 0;
       autoSaveSeconds = secs > 0 ? secs : 60;
@@ -126,6 +149,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
         auto_save_seconds: autoVal,
       });
       applyTheme(appTheme);
+      rememberTheme(appTheme, session.user?.username);
+      committedAppTheme = appTheme;
       autosave.setInterval(autoVal);
       status = 'Saved.';
     } catch (err: any) {
@@ -138,11 +163,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function applySettings(settings: AppSettings) {
     font = settings.default_font ?? '';
     theme = settings.default_theme ?? '';
-    appTheme = settings.app_theme || 'dark';
+    appTheme = settings.app_theme === 'light' ? 'light' : 'dark';
+    committedAppTheme = appTheme;
     const secs = settings.auto_save_seconds ?? 0;
     autoSaveOn = secs > 0;
     autoSaveSeconds = secs > 0 ? secs : 60;
     applyTheme(appTheme);
+    rememberTheme(appTheme, session.user?.username);
     autosave.setInterval(secs);
   }
 
@@ -166,7 +193,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <div class="min-h-screen bg-slate-950 text-slate-200">
   <AppHeader active="settings" />
 
-  <main class="max-w-2xl mx-auto p-8">
+  <main class="max-w-3xl mx-auto p-8">
     <h1 class="text-xl font-bold mb-1">Application settings</h1>
     <p class="text-xs text-slate-500 mb-6">
       App-level preferences for your account. New projects inherit these defaults.
@@ -182,20 +209,70 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="space-y-6">
         <section class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-4">
           <h2 class="text-xs font-bold uppercase tracking-widest text-cyan-400">Appearance</h2>
-          <label class="block">
-            <span class="text-xs font-semibold text-slate-500 uppercase">Application theme</span>
-            <select
-              bind:value={appTheme}
-              onchange={previewTheme}
-              class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-            >
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-            </select>
-            <span class="mt-1 block text-[11px] text-slate-500">
+          <fieldset>
+            <legend class="text-sm font-semibold text-slate-200">Application appearance</legend>
+            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {#each appearanceChoices as choice (choice.value)}
+                <label
+                  class={`cursor-pointer rounded-lg border p-3 transition-colors ${
+                    appTheme === choice.value
+                      ? 'border-cyan-500 bg-cyan-950/20'
+                      : 'border-slate-800 bg-slate-950 hover:border-slate-700'
+                  }`}
+                >
+                  <span
+                    class={`mb-3 block h-16 overflow-hidden rounded-md border ${
+                      choice.value === 'dark'
+                        ? 'border-[#334155] bg-[#020617]'
+                        : 'border-[#cbd5e1] bg-[#f8fafc]'
+                    }`}
+                    aria-hidden="true"
+                  >
+                    <span
+                      class={`flex h-5 items-center gap-1 border-b px-2 ${
+                        choice.value === 'dark'
+                          ? 'border-[#1e293b] bg-[#0f172a]'
+                          : 'border-[#e2e8f0] bg-[#f1f5f9]'
+                      }`}
+                    >
+                      <span class={`h-1.5 w-7 rounded-full ${choice.value === 'dark' ? 'bg-[#00d4ff]' : 'bg-[#0e7490]'}`}></span>
+                      <span class={`h-1.5 w-3 rounded-full ${choice.value === 'dark' ? 'bg-[#334155]' : 'bg-[#cbd5e1]'}`}></span>
+                    </span>
+                    <span class="grid grid-cols-3 gap-1.5 p-2">
+                      {#each [1, 2, 3] as item}
+                        <span
+                          class={`h-7 rounded border ${
+                            choice.value === 'dark'
+                              ? 'border-[#1e293b] bg-[#0f172a]'
+                              : 'border-[#e2e8f0] bg-white'
+                          }`}
+                        ></span>
+                      {/each}
+                    </span>
+                  </span>
+                  <span class="flex items-start gap-2.5">
+                    <input
+                      type="radio"
+                      name="app-theme"
+                      value={choice.value}
+                      bind:group={appTheme}
+                      onchange={previewTheme}
+                      class="mt-0.5 shrink-0"
+                    />
+                    <span>
+                      <span class="block text-sm font-semibold text-slate-100">{choice.label}</span>
+                      <span class="mt-0.5 block text-xs leading-relaxed text-slate-500">
+                        {choice.description}
+                      </span>
+                    </span>
+                  </span>
+                </label>
+              {/each}
+            </div>
+            <span class="mt-2 block text-xs text-slate-500">
               Applies immediately as a preview; click Save to keep it.
             </span>
-          </label>
+          </fieldset>
         </section>
 
         <section class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-4">
@@ -241,7 +318,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </label>
 
           <label class="block">
-            <span class="text-xs font-semibold text-slate-500 uppercase">Default export theme</span>
+            <span class="text-xs font-semibold text-slate-500 uppercase">Default report/PDF theme</span>
             <select
               bind:value={theme}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
@@ -250,6 +327,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <option value={t.value}>{t.label}</option>
               {/each}
             </select>
+            <span class="mt-1 block text-[11px] text-slate-500">
+              Controls exported documents only; it does not change the application appearance.
+            </span>
           </label>
         </section>
 
