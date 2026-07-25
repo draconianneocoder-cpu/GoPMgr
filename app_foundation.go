@@ -648,7 +648,7 @@ func (a *App) ComputeBudget() (budget.Summary, error) {
 	return budget.Compute(p, stakeholders, workItems), nil
 }
 
-// RunPortfolioAnalytics aggregates a cross-project cost rollup over every
+// RunPortfolioAnalytics aggregates a cross-project cost and EVM rollup over every
 // readable project in the signed-in user's folder using the embedded
 // DuckDB analytics engine (ADR-002 Option B). The engine is in-memory and
 // ephemeral and never opens the encrypted files: this method reads each
@@ -656,9 +656,10 @@ func (a *App) ComputeBudget() (budget.Summary, error) {
 // passes them in. Production/package builds include the `duckdb` tag; an
 // untagged developer build still returns analytics.ErrAnalyticsUnavailable.
 //
-// Per-project actual cost is the budget "committed" total (vendor
-// contracts + labour estimate); earned/planned value (EVM) aggregation is
-// a later enhancement, so SPI/CPI report 0 ("n/a") for now.
+// Committed cost (vendor contracts + estimated labour) remains separate from
+// EVM actual cost. EV/PV/AC are included only when the current schedule has a
+// project start date, valid acyclic tasks, and cost data. The summary exposes
+// coverage counts so a partial rollup cannot masquerade as complete evidence.
 func (a *App) RunPortfolioAnalytics() (analytics.PortfolioSummary, error) {
 	user := a.requireUser()
 	if user == nil {
@@ -685,6 +686,7 @@ func (a *App) RunPortfolioAnalytics() (analytics.PortfolioSummary, error) {
 		return analytics.PortfolioSummary{}, err
 	}
 
+	asOf := time.Now().UTC()
 	metrics := make([]analytics.ProjectMetrics, 0, len(entries))
 	for _, e := range entries {
 		d, derr := db.InitEncryptedDB(e.Path, dek)
@@ -696,30 +698,108 @@ func (a *App) RunPortfolioAnalytics() (analytics.PortfolioSummary, error) {
 			_ = d.Close()
 			continue
 		}
-		var committed float64
-		var committedMinorUnits int64
-		if sks, serr := d.ListStakeholders(p.ID, ""); serr == nil {
-			wis, _ := agile.NewStore(d.Conn, p.ID).ListWorkItems("", "", "")
-			summary := budget.Compute(p, sks, wis)
-			committed = summary.Committed
-			committedMinorUnits = summary.CommittedMinorUnits
-		}
-		name := strings.TrimSpace(p.Name)
-		if name == "" {
-			name = e.Name
-		}
-		metrics = append(metrics, analytics.ProjectMetrics{
-			ProjectID:              p.ID,
-			Name:                   name,
-			BudgetedCost:           p.Budget,
-			ActualCost:             committed,
-			BudgetedCostMinorUnits: p.BudgetMinorUnits,
-			ActualCostMinorUnits:   committedMinorUnits,
-		})
+		projectMetrics, metricsErr := portfolioProjectMetrics(d, p, e.Name, asOf)
 		_ = d.Close()
+		if metricsErr != nil {
+			return analytics.PortfolioSummary{}, fmt.Errorf("portfolio project %q: %w", e.Name, metricsErr)
+		}
+		metrics = append(metrics, projectMetrics)
 	}
 
-	return eng.PortfolioRollup(a.ctx, metrics)
+	summary, err := eng.PortfolioRollup(a.ctx, metrics)
+	if err != nil {
+		return analytics.PortfolioSummary{}, err
+	}
+	// Every project is evaluated against the same UTC reporting date. Using
+	// one date avoids cross-region portfolios changing meaning at midnight
+	// in different project time zones; country calendars still define which
+	// dates count as working days for each schedule.
+	summary.AsOfDate = asOf.Format(kernel.DateLayout)
+	return summary, nil
+}
+
+// portfolioProjectMetrics builds the trusted hand-off row passed to DuckDB.
+// It deliberately performs all SQLCipher reads and scheduling in Go so the
+// analytics engine remains an ephemeral aggregator, never a second system of
+// record. Missing EVM prerequisites leave EVMAvailable false while preserving
+// budget and committed-cost totals.
+func portfolioProjectMetrics(
+	d *db.Database,
+	p db.Project,
+	fallbackName string,
+	asOf time.Time,
+) (analytics.ProjectMetrics, error) {
+	name := strings.TrimSpace(p.Name)
+	if name == "" {
+		name = fallbackName
+	}
+	out := analytics.ProjectMetrics{
+		ProjectID:              p.ID,
+		Name:                   name,
+		BudgetedCost:           p.Budget,
+		BudgetedCostMinorUnits: p.BudgetMinorUnits,
+	}
+
+	stakeholders, err := d.ListStakeholders(p.ID, "")
+	if err != nil {
+		return analytics.ProjectMetrics{}, fmt.Errorf("list stakeholders for committed cost: %w", err)
+	}
+	workItems, err := agile.NewStore(d.Conn, p.ID).ListWorkItems("", "", "")
+	if err != nil {
+		return analytics.ProjectMetrics{}, fmt.Errorf("list work items for committed cost: %w", err)
+	}
+	committed := budget.Compute(p, stakeholders, workItems)
+	out.CommittedCost = committed.Committed
+	out.CommittedCostMinorUnits = committed.CommittedMinorUnits
+
+	evm, ok := portfolioScheduleEVM(d, p, asOf)
+	if !ok {
+		return out, nil
+	}
+	out.ActualCost = evm.AC
+	out.EarnedValue = evm.EV
+	out.PlannedValue = evm.PV
+	out.ActualCostMinorUnits = evm.ACMinorUnits
+	out.EarnedValueMinorUnits = evm.EVMinorUnits
+	out.PlannedValueMinorUnits = evm.PVMinorUnits
+	out.PercentComplete = float64(evm.EVMinorUnits) / float64(evm.BACMinorUnits) * 100
+	out.EVMAvailable = true
+	return out, nil
+}
+
+// portfolioScheduleEVM returns false for any prerequisite that would make the
+// figures incomparable or misleading. The caller records that as unavailable
+// coverage instead of silently substituting zero or a stale legacy schedule.
+func portfolioScheduleEVM(
+	d *db.Database,
+	p db.Project,
+	asOf time.Time,
+) (kernel.EVMetrics, bool) {
+	start, ok := parseProjectDate(p.StartDate)
+	if !ok {
+		return kernel.EVMetrics{}, false
+	}
+	tasks, err := loadCurrentProjectSchedule(d, p.ID)
+	if err != nil || len(tasks) == 0 {
+		return kernel.EVMetrics{}, false
+	}
+	if !scheduleProjectTasks(p, tasks) {
+		return kernel.EVMetrics{}, false
+	}
+	// DayOffset compares timestamps, while portfolio EVM is a date-based
+	// snapshot. Strip the clock so a midday run does not count tomorrow as
+	// another completed planning day and overstate PV.
+	asOfUTC := asOf.UTC()
+	reportingDate := time.Date(asOfUTC.Year(), asOfUTC.Month(), asOfUTC.Day(), 0, 0, 0, 0, time.UTC)
+	day, ok := kernel.DayOffset(start, reportingDate, calendar.For(p.CountryCode).IsWorkday)
+	if !ok {
+		return kernel.EVMetrics{}, false
+	}
+	evm := kernel.ComputeEVM(tasks, day)
+	if evm.BACMinorUnits <= 0 {
+		return kernel.EVMetrics{}, false
+	}
+	return evm, true
 }
 
 // ImportDatasetForAnalysis opens a native file picker for a CSV/Parquet/JSON

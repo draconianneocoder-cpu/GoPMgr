@@ -27,8 +27,20 @@ func TestPortfolioRollupAggregates(t *testing.T) {
 	t.Cleanup(func() { _ = e.Close() })
 
 	in := []ProjectMetrics{
-		{ProjectID: "a", Name: "Alpha", BudgetedCost: 100, ActualCost: 80, EarnedValue: 90, PlannedValue: 100, PercentComplete: 90},
-		{ProjectID: "b", Name: "Beta", BudgetedCost: 200, ActualCost: 150, EarnedValue: 120, PlannedValue: 100, PercentComplete: 60},
+		{
+			ProjectID: "a", Name: "Alpha", BudgetedCost: 100,
+			CommittedCost: 70, ActualCost: 80, EarnedValue: 90, PlannedValue: 100,
+			PercentComplete: 90, EVMAvailable: true,
+		},
+		{
+			ProjectID: "b", Name: "Beta", BudgetedCost: 200,
+			CommittedCost: 140, ActualCost: 150, EarnedValue: 120, PlannedValue: 100,
+			PercentComplete: 60, EVMAvailable: true,
+		},
+		{
+			ProjectID: "c", Name: "No schedule", BudgetedCost: 50,
+			CommittedCost: 30, ActualCost: 999, EarnedValue: 999, PlannedValue: 999,
+		},
 	}
 
 	got, err := e.PortfolioRollup(context.Background(), in)
@@ -36,14 +48,28 @@ func TestPortfolioRollupAggregates(t *testing.T) {
 		t.Fatalf("PortfolioRollup: %v", err)
 	}
 
-	if got.ProjectCount != 2 {
-		t.Errorf("ProjectCount = %d, want 2", got.ProjectCount)
+	if got.ProjectCount != 3 {
+		t.Errorf("ProjectCount = %d, want 3", got.ProjectCount)
 	}
-	if got.TotalBudgetedCost != 300 {
-		t.Errorf("TotalBudgetedCost = %v, want 300", got.TotalBudgetedCost)
+	if got.EVMProjectCount != 2 || got.EVMUnavailableProjectCount != 1 {
+		t.Errorf(
+			"EVM coverage = %d available / %d unavailable, want 2 / 1",
+			got.EVMProjectCount,
+			got.EVMUnavailableProjectCount,
+		)
 	}
-	if got.TotalBudgetedCostMinorUnits != 30000 {
-		t.Errorf("TotalBudgetedCostMinorUnits = %d, want 30000", got.TotalBudgetedCostMinorUnits)
+	if got.TotalBudgetedCost != 350 {
+		t.Errorf("TotalBudgetedCost = %v, want 350", got.TotalBudgetedCost)
+	}
+	if got.TotalBudgetedCostMinorUnits != 35000 {
+		t.Errorf("TotalBudgetedCostMinorUnits = %d, want 35000", got.TotalBudgetedCostMinorUnits)
+	}
+	if got.TotalCommittedCost != 240 || got.TotalCommittedCostMinorUnits != 24000 {
+		t.Errorf(
+			"TotalCommittedCost = %v / %d, want 240 / 24000",
+			got.TotalCommittedCost,
+			got.TotalCommittedCostMinorUnits,
+		)
 	}
 	if got.TotalActualCost != 230 {
 		t.Errorf("TotalActualCost = %v, want 230", got.TotalActualCost)
@@ -72,19 +98,29 @@ func TestPortfolioRollupPrefersMinorUnits(t *testing.T) {
 	t.Cleanup(func() { _ = e.Close() })
 
 	got, err := e.PortfolioRollup(context.Background(), []ProjectMetrics{{
-		ProjectID:              "exact",
-		BudgetedCost:           999,
-		BudgetedCostMinorUnits: 12345,
-		ActualCost:             999,
-		ActualCostMinorUnits:   2345,
-		EarnedValueMinorUnits:  3456,
-		PlannedValueMinorUnits: 4567,
+		ProjectID:               "exact",
+		BudgetedCost:            999,
+		BudgetedCostMinorUnits:  12345,
+		CommittedCost:           999,
+		CommittedCostMinorUnits: 1500,
+		ActualCost:              999,
+		ActualCostMinorUnits:    2345,
+		EarnedValueMinorUnits:   3456,
+		PlannedValueMinorUnits:  4567,
+		EVMAvailable:            true,
 	}})
 	if err != nil {
 		t.Fatalf("PortfolioRollup: %v", err)
 	}
 	if got.TotalBudgetedCostMinorUnits != 12345 || got.TotalBudgetedCost != 123.45 {
 		t.Fatalf("budgeted total = %d / %v, want 12345 / 123.45", got.TotalBudgetedCostMinorUnits, got.TotalBudgetedCost)
+	}
+	if got.TotalCommittedCostMinorUnits != 1500 || got.TotalCommittedCost != 15 {
+		t.Fatalf(
+			"committed total = %d / %v, want 1500 / 15",
+			got.TotalCommittedCostMinorUnits,
+			got.TotalCommittedCost,
+		)
 	}
 	if got.TotalActualCostMinorUnits != 2345 || got.TotalActualCost != 23.45 {
 		t.Fatalf("actual total = %d / %v, want 2345 / 23.45", got.TotalActualCostMinorUnits, got.TotalActualCost)
