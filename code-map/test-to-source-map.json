@@ -1211,6 +1211,13 @@
       ]
     },
     {
+      "test_file": "internal/rfc3161/client_test.go",
+      "package": "pmforge/internal/rfc3161",
+      "candidate_source_files": [
+        "internal/rfc3161/client.go"
+      ]
+    },
+    {
       "test_file": "internal/sigma/charts/pareto_test.go",
       "package": "pmforge/internal/sigma/charts",
       "candidate_source_files": [

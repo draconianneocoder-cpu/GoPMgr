@@ -462,6 +462,13 @@
       "func MakePDFA3(pdfBytes []byte, spec XMPSpec, iccProfile []byte) ([]byte, error)",
       "type XMPSpec struct{ ... }"
     ],
+    "pmforge/internal/rfc3161": [
+      "const QueryMediaType = \"application/timestamp-query\" ...",
+      "type Client struct{ ... }",
+      "type Token struct{ ... }",
+      "type TrustStatus string",
+      "    const TrustNotEvaluated TrustStatus = \"not_evaluated\" ..."
+    ],
     "pmforge/internal/sigma/charts": [
       "type ParetoItem struct{ ... }",
       "    func CalculatePareto(categories []string, counts []int) ([]ParetoItem, error)"
