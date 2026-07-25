@@ -27,6 +27,7 @@ require (
 )
 
 require (
+	github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea
 	github.com/duckdb/duckdb-go/v2 v2.10504.0
 	github.com/mutecomm/go-sqlcipher/v4 v4.4.2
 	gonum.org/v1/gonum v0.17.0

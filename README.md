@@ -194,6 +194,12 @@ signing source. `make check-pades-trusted` records that manual evidence when
 `PMFORGE_TRUSTED_SIGNED_PDF` points at a trusted-certificate sample, and
 otherwise writes a clear not-configured report.
 
+The backend also contains a tested RFC 3161 client foundation for future
+PAdES-T exports. It creates nonce-bound SHA-256 requests, validates TSA
+responses and certificates, and can verify a caller-supplied trust store.
+Timestamp-server configuration and token embedding are not yet exposed in the
+application, so current signed-PDF exports remain PAdES Baseline B.
+
 Public release claims are guarded by `make release-scope`.
 
 ## User Workflows

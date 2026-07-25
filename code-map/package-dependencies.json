@@ -346,6 +346,15 @@
         "github.com/go-pdf/fpdf"
       ]
     },
+    "pmforge/internal/rfc3161": {
+      "dir": "internal/rfc3161",
+      "imported_by_internal": [],
+      "imports_internal": [],
+      "notable_external_deps": [
+        "github.com/digitorus/pkcs7",
+        "github.com/digitorus/timestamp"
+      ]
+    },
     "pmforge/internal/sigma/charts": {
       "dir": "internal/sigma/charts",
       "imported_by_internal": [
