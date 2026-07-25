@@ -65,8 +65,8 @@ if ! printf '%s\n' "$readme_text" | rg -q 'SQLCipher.*encrypted.*\.pmforge|\.pmf
 	fail=1
 fi
 
-if ! printf '%s\n' "$readme_text $agent_text" | rg -q 'DSS.*PAdES-BASELINE-B|PAdES-BASELINE-B.*DSS'; then
-	echo "release-scope: README.md/DEVELOPER_HANDBOOK.md must document the current DSS PAdES-BASELINE-B validation result." >&2
+if ! printf '%s\n' "$readme_text $agent_text" | rg -q 'DSS.*PAdES-BASELINE-T|PAdES-BASELINE-T.*DSS'; then
+	echo "release-scope: README.md/DEVELOPER_HANDBOOK.md must document the current DSS PAdES-BASELINE-T fixture result." >&2
 	fail=1
 fi
 

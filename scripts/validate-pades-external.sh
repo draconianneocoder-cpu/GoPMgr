@@ -4,11 +4,11 @@
 #
 # External PAdES validation harness.
 #
-# This script complements validate-pades.sh. It generates the PMForge signed
-# sample, extracts the CMS DER and signed ByteRange bytes, verifies the detached
-# CMS with OpenSSL, and runs locally installed PDF/PAdES validators where their
-# command-line checks are deterministic. Acrobat and DSS validation still need a
-# machine with those validators installed.
+# This script complements validate-pades.sh. It generates the PMForge
+# timestamped sample, extracts the CMS DER and signed ByteRange bytes, verifies
+# the detached CMS with OpenSSL, and runs locally installed PDF/PAdES validators
+# where their command-line checks are deterministic. Acrobat still requires a
+# separate manual validation environment.
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -259,7 +259,7 @@ PY
 				exit 1
 			fi
 			if grep -q "^signature.format=" "$DSS_OUTPUT"; then
-				if grep -q "^signature.format=PAdES-BASELINE-B$" "$DSS_OUTPUT"; then
+				if grep -q "^signature.format=PAdES-BASELINE-T$" "$DSS_OUTPUT"; then
 					echo "DSS PAdES baseline format: PASS"
 				else
 					echo "DSS PAdES baseline format: FAIL"

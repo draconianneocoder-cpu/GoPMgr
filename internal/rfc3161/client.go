@@ -197,6 +197,36 @@ func (c Client) validateResponse(responseDER, imprint []byte, nonce *big.Int) (T
 		return Token{}, errors.New("RFC 3161 success response contained no timestamp token")
 	}
 
+	return validateToken(tokenDER, imprint, tokenValidation{
+		nonce:        nonce,
+		requireNonce: true,
+		policyOID:    c.PolicyOID,
+		trustRoots:   c.TrustRoots,
+	})
+}
+
+// ValidateToken verifies a standalone RFC 3161 token against a SHA-256
+// message imprint. It performs the same CMS, TSTInfo, and TSA-certificate
+// checks as Client.Timestamp, but cannot verify request-only state such as the
+// nonce or a requested policy. TrustStatus is therefore TrustNotEvaluated.
+//
+// This entry point exists for consumers such as the PAdES-T CMS mutator that
+// must revalidate a token before embedding it.
+func ValidateToken(tokenDER, imprint []byte) (Token, error) {
+	if len(imprint) != sha256.Size {
+		return Token{}, fmt.Errorf("RFC 3161 SHA-256 message imprint must be %d bytes", sha256.Size)
+	}
+	return validateToken(tokenDER, imprint, tokenValidation{})
+}
+
+type tokenValidation struct {
+	nonce        *big.Int
+	requireNonce bool
+	policyOID    asn1.ObjectIdentifier
+	trustRoots   *x509.CertPool
+}
+
+func validateToken(tokenDER, imprint []byte, validation tokenValidation) (Token, error) {
 	signedData, err := pkcs7.Parse(tokenDER)
 	if err != nil {
 		return Token{}, fmt.Errorf("parse RFC 3161 CMS token: %w", err)
@@ -215,10 +245,10 @@ func (c Client) validateResponse(responseDER, imprint []byte, nonce *big.Int) (T
 		subtle.ConstantTimeCompare(parsed.HashedMessage, imprint) != 1 {
 		return Token{}, errors.New("RFC 3161 token message imprint does not match the request")
 	}
-	if parsed.Nonce == nil || parsed.Nonce.Cmp(nonce) != 0 {
+	if validation.requireNonce && (parsed.Nonce == nil || parsed.Nonce.Cmp(validation.nonce) != 0) {
 		return Token{}, errors.New("RFC 3161 token nonce does not match the request")
 	}
-	if len(c.PolicyOID) > 0 && !parsed.Policy.Equal(c.PolicyOID) {
+	if len(validation.policyOID) > 0 && !parsed.Policy.Equal(validation.policyOID) {
 		return Token{}, errors.New("RFC 3161 token policy does not match the requested policy")
 	}
 	if parsed.Time.IsZero() {
@@ -239,7 +269,7 @@ func (c Client) validateResponse(responseDER, imprint []byte, nonce *big.Int) (T
 	}
 
 	trustStatus := TrustNotEvaluated
-	if c.TrustRoots != nil {
+	if validation.trustRoots != nil {
 		intermediates := x509.NewCertPool()
 		for _, certificate := range signedData.Certificates {
 			if !certificate.Equal(signer) {
@@ -247,7 +277,7 @@ func (c Client) validateResponse(responseDER, imprint []byte, nonce *big.Int) (T
 			}
 		}
 		if err := signedData.VerifyWithOpts(x509.VerifyOptions{
-			Roots:         c.TrustRoots,
+			Roots:         validation.trustRoots,
 			Intermediates: intermediates,
 			CurrentTime:   parsed.Time,
 			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageTimeStamping},

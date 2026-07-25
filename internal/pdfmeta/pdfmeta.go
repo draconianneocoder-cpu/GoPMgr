@@ -835,10 +835,10 @@ func replaceStartxrefValue(pdfBytes []byte, xrefOffset int) ([]byte, error) {
 }
 
 // =============================================================================
-// Real PAdES B-B signature embedding
+// Real PAdES signature embedding
 // =============================================================================
 
-// InjectPAdESSignature builds a proper PAdES B-B signature structure
+// InjectPAdESSignature builds a proper PAdES signature structure
 // (incremental update with /Sig dictionary, /ByteRange, and /Contents)
 // and signs the *exact* byte ranges.
 //
@@ -855,7 +855,11 @@ func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, erro
 		return nil, fmt.Errorf("pdfmeta: signRanges callback required")
 	}
 
-	const placeholderHexLen = 16384 // 8KB capacity
+	// PAdES-T adds a TSA token and usually its certificate chain to the CMS
+	// unsigned attributes. Reserve 32 KiB so the timestamped form fits without
+	// changing the already-signed ByteRange layout.
+	const padesContentsCapacityBytes = 32 * 1024
+	const placeholderHexLen = padesContentsCapacityBytes * 2
 	const byteRangePlaceholderLen = 96
 
 	// Locate trailer and Catalog of the *original* PDF

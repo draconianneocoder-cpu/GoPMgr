@@ -2,13 +2,13 @@
 # SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Local PAdES validation gate.
+# Local PAdES-T validation gate.
 #
 # This does not replace Acrobat/DSS/veraPDF interoperability testing. It
-# generates a deterministic signed PDF sample with PMForge's real CMS signer and
-# PDF incremental-update code, then verifies the embedded PKCS#7 signature
-# against the declared /ByteRange. The sample remains under .tmp so external
-# validators can be pointed at it manually.
+# generates a signed PDF sample with PMForge's real CMS signer, RFC 3161
+# timestamp mutator, and PDF incremental-update code, then verifies the
+# embedded PKCS#7 signature against the declared /ByteRange. The sample remains
+# under .tmp so external validators can be pointed at it manually.
 
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -43,6 +43,9 @@ package main
 
 import (
 	"bytes"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -58,6 +61,7 @@ import (
 	"time"
 
 	"github.com/digitorus/pkcs7"
+	"github.com/digitorus/timestamp"
 
 	pmcrypto "pmforge/internal/crypto"
 	"pmforge/internal/pdfmeta"
@@ -69,7 +73,21 @@ func main() {
 		fatal(err)
 	}
 
-	out, err := pdfmeta.InjectPAdESSignature(minimalPDF(), signer.SignPDFCMS)
+	out, err := pdfmeta.InjectPAdESSignature(minimalPDF(), func(signedBytes []byte) ([]byte, error) {
+		baselineCMS, err := signer.SignPDFCMS(signedBytes)
+		if err != nil {
+			return nil, fmt.Errorf("create baseline CMS: %w", err)
+		}
+		imprint, err := pmcrypto.SignatureTimestampImprint(baselineCMS)
+		if err != nil {
+			return nil, fmt.Errorf("compute signature timestamp imprint: %w", err)
+		}
+		tokenDER, err := newTimestampToken(imprint)
+		if err != nil {
+			return nil, fmt.Errorf("create RFC 3161 token: %w", err)
+		}
+		return pmcrypto.AddSignatureTimestamp(baselineCMS, tokenDER)
+	})
 	if err != nil {
 		fatal(fmt.Errorf("inject PAdES signature: %w", err))
 	}
@@ -101,9 +119,18 @@ func main() {
 		fatal(fmt.Errorf("invalid ByteRange %v over %d-byte PDF", br, len(out)))
 	}
 
-	p7, err := parseEmbeddedCMS(out, br)
+	p7, cmsDER, err := parseEmbeddedCMS(out, br)
 	if err != nil {
 		fatal(err)
+	}
+	signatureTimestampOIDDER, err := asn1.Marshal(asn1.ObjectIdentifier{
+		1, 2, 840, 113549, 1, 9, 16, 2, 14,
+	})
+	if err != nil {
+		fatal(fmt.Errorf("marshal signature timestamp OID: %w", err))
+	}
+	if !bytes.Contains(cmsDER, signatureTimestampOIDDER) {
+		fatal(fmt.Errorf("embedded CMS has no signature-time-stamp unsigned attribute"))
 	}
 	p7.Content = byteRangeBytes(out, br)
 	if err := p7.Verify(); err != nil {
@@ -123,7 +150,7 @@ func main() {
 	}
 
 	fmt.Printf("Generated %s\n", samplePath)
-	fmt.Println("PAdES local validation gate PASSED.")
+	fmt.Println("PAdES-T local validation gate PASSED.")
 }
 
 func fatal(err error) {
@@ -189,6 +216,64 @@ func newSigner(commonName string) (*pmcrypto.Signer, error) {
 	}, nil
 }
 
+func newTimestampToken(imprint []byte) ([]byte, error) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("generate TSA key: %w", err)
+	}
+	ekuValue, err := asn1.Marshal([]asn1.ObjectIdentifier{
+		{1, 3, 6, 1, 5, 5, 7, 3, 8},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal TSA extended key usage: %w", err)
+	}
+
+	now := time.Now().UTC()
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(now.UnixNano()),
+		Subject:      pkix.Name{CommonName: "PMForge PAdES Gate TSA"},
+		NotBefore:    now.Add(-time.Hour),
+		NotAfter:     now.Add(time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtraExtensions: []pkix.Extension{{
+			Id:       asn1.ObjectIdentifier{2, 5, 29, 37},
+			Critical: true,
+			Value:    ekuValue,
+		}},
+	}
+	certificateDER, err := x509.CreateCertificate(
+		rand.Reader,
+		template,
+		template,
+		&key.PublicKey,
+		key,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create TSA certificate: %w", err)
+	}
+	certificate, err := x509.ParseCertificate(certificateDER)
+	if err != nil {
+		return nil, fmt.Errorf("parse TSA certificate: %w", err)
+	}
+
+	responseDER, err := (&timestamp.Timestamp{
+		HashAlgorithm:     crypto.SHA256,
+		HashedMessage:     append([]byte(nil), imprint...),
+		Time:              now,
+		Policy:            asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 55555, 3},
+		Nonce:             big.NewInt(now.UnixNano()),
+		AddTSACertificate: true,
+	}).CreateResponseWithOpts(certificate, key, crypto.SHA256)
+	if err != nil {
+		return nil, fmt.Errorf("create timestamp response: %w", err)
+	}
+	parsed, err := timestamp.ParseResponse(responseDER)
+	if err != nil {
+		return nil, fmt.Errorf("parse timestamp response: %w", err)
+	}
+	return append([]byte(nil), parsed.RawToken...), nil
+}
+
 func parseByteRange(pdf []byte) ([4]int, error) {
 	const marker = "/ByteRange ["
 	idx := bytes.LastIndex(pdf, []byte(marker))
@@ -217,47 +302,47 @@ func parseByteRange(pdf []byte) ([4]int, error) {
 	return out, nil
 }
 
-func parseEmbeddedCMS(pdf []byte, br [4]int) (*pkcs7.PKCS7, error) {
+func parseEmbeddedCMS(pdf []byte, br [4]int) (*pkcs7.PKCS7, []byte, error) {
 	if br[1] >= br[2] || br[1] < 0 || br[2] > len(pdf) {
-		return nil, fmt.Errorf("ByteRange does not enclose /Contents: %v over %d-byte PDF", br, len(pdf))
+		return nil, nil, fmt.Errorf("ByteRange does not enclose /Contents: %v over %d-byte PDF", br, len(pdf))
 	}
 	if pdf[br[1]] != '<' || pdf[br[2]-1] != '>' {
-		return nil, fmt.Errorf("ByteRange gap is not a PDF hex string")
+		return nil, nil, fmt.Errorf("ByteRange gap is not a PDF hex string")
 	}
 
 	contentsHex := pdf[br[1]+1 : br[2]-1]
 	contents := make([]byte, hex.DecodedLen(len(contentsHex)))
 	n, err := hex.Decode(contents, contentsHex)
 	if err != nil {
-		return nil, fmt.Errorf("decode /Contents hex: %w", err)
+		return nil, nil, fmt.Errorf("decode /Contents hex: %w", err)
 	}
 	contents = contents[:n]
 
 	var raw asn1.RawValue
 	rest, err := asn1.Unmarshal(contents, &raw)
 	if err != nil {
-		return nil, fmt.Errorf("decode CMS DER from padded /Contents: %w", err)
+		return nil, nil, fmt.Errorf("decode CMS DER from padded /Contents: %w", err)
 	}
 	for _, b := range rest {
 		if b != 0 {
-			return nil, fmt.Errorf("non-zero data after CMS DER in padded /Contents")
+			return nil, nil, fmt.Errorf("non-zero data after CMS DER in padded /Contents")
 		}
 	}
 
 	p7, err := pkcs7.Parse(raw.FullBytes)
 	if err != nil {
-		return nil, fmt.Errorf("parse embedded CMS: %w", err)
+		return nil, nil, fmt.Errorf("parse embedded CMS: %w", err)
 	}
 	if len(p7.Content) != 0 {
-		return nil, fmt.Errorf("embedded CMS is not detached; content length = %d", len(p7.Content))
+		return nil, nil, fmt.Errorf("embedded CMS is not detached; content length = %d", len(p7.Content))
 	}
 	if len(p7.Signers) != 1 {
-		return nil, fmt.Errorf("embedded CMS signer count = %d, want 1", len(p7.Signers))
+		return nil, nil, fmt.Errorf("embedded CMS signer count = %d, want 1", len(p7.Signers))
 	}
 	if got := p7.Signers[0].DigestAlgorithm.Algorithm; !got.Equal(pkcs7.OIDDigestAlgorithmSHA256) {
-		return nil, fmt.Errorf("embedded CMS digest = %v, want %v", got, pkcs7.OIDDigestAlgorithmSHA256)
+		return nil, nil, fmt.Errorf("embedded CMS digest = %v, want %v", got, pkcs7.OIDDigestAlgorithmSHA256)
 	}
-	return p7, nil
+	return p7, append([]byte(nil), raw.FullBytes...), nil
 }
 
 func byteRangeBytes(pdf []byte, br [4]int) []byte {
