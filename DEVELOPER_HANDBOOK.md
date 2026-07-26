@@ -854,6 +854,28 @@ This section is the running log of non-obvious discoveries. Every session that l
   clock. This prevents calendar-driven expiry from masking the validation
   branch each test intends to exercise.
 
+### 2026-07-26 — Fresh external PAdES evidence provenance
+
+- **Default validation must regenerate, not merely find, its fixture.**
+  `make check-pades-external` now regenerates the timestamped PDF inside the
+  existing PAdES lock on every run. A non-empty artifact from an earlier
+  checkout can no longer be reported as current-build evidence.
+- **Explicit input is a separate, non-mutating mode.**
+  `validate-pades-external.sh /path/to/file.pdf` resolves and validates the
+  supplied PDF without invoking the local generator. The harness clears only
+  its known derived artifacts first, preventing stale validator output while
+  preserving the input. Reports distinguish `generated_current_checkout` from
+  `supplied_pdf`.
+- **Bind evidence to bytes and implementation state.** Reports include the
+  validation UTC time, repository revision and dirty state, SHA-256 hashes for
+  the validator and generator scripts, and hashes for the PDF, extracted CMS,
+  and signed ByteRange content.
+- **Keep assertions inside the same critical section.** The shell regression
+  test owns the shared lock across stale-fixture setup, generated and supplied
+  validation, and report assertions. Child scripts inherit the lock marker,
+  preventing a waiting generator from deleting evidence between execution and
+  inspection.
+
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
 - **Remove "soft gate" wording when the gate passes reliably.** The `validate-pdfa.sh` header comment and the "soft for now" check-release comment both said "warn, don't fail" -- these were vestigial once all samples passed. Gate promotion requires two things: (1) all representative samples pass, (2) the release script actually exits on failure.

@@ -193,6 +193,12 @@ require a real trusted signing source. `make check-pades-trusted` records that
 manual evidence when
 `PMFORGE_TRUSTED_SIGNED_PDF` points at a trusted-certificate sample, and
 otherwise writes a clear not-configured report.
+The external gate regenerates its default sample on every run and records the
+source mode, checkout revision and dirty state, UTC validation time, and
+SHA-256 hashes for the scripts, PDF, CMS, and signed ByteRange bytes. To inspect
+an existing artifact without replacing it, run
+`bash scripts/validate-pades-external.sh /absolute/path/to/signed.pdf`; supplied
+PDFs are validated in place and identified as such in the report.
 
 Project Settings can opt PAdES exports into RFC 3161 timestamping. PMForge
 accepts a credential-free HTTPS TSA endpoint, optional policy OID, and optional

@@ -65,7 +65,7 @@ check-pdfa: ## Validate generated PDFs for PDF/A-3 conformance using veraPDF (ha
 check-pades: ## Generate and locally verify an embedded PAdES signed PDF sample.
 	@bash scripts/validate-pades.sh
 
-check-pades-external: ## Run available external validators against the signed PAdES sample.
+check-pades-external: ## Generate a fresh PAdES sample and run available external validators.
 	@bash scripts/validate-pades-external.sh
 
 check-pades-trusted: ## Record trusted-source PAdES evidence when PMFORGE_TRUSTED_SIGNED_PDF is configured.

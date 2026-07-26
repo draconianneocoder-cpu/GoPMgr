@@ -6,22 +6,38 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SAMPLE_DIR="$ROOT/.tmp/pmforge-pades-test"
+PADES_LOCK="$ROOT/.tmp/pmforge-pades-test.lock"
 FAKE_BIN="$ROOT/.tmp/pades-external-bin-test"
 FAKE_LOG="$FAKE_BIN/verapdf.args"
 DSS_LOG="$FAKE_BIN/dss-validation-tool.args"
+LOCK_OWNED="false"
 
 fail() {
 	echo "FAIL: $*" >&2
 	exit 1
 }
 
-rm -rf "$FAKE_BIN"
-mkdir -p "$FAKE_BIN"
 cleanup() {
 	rm -rf "$FAKE_BIN"
+	if [ "$LOCK_OWNED" = "true" ]; then
+		rm -rf "$PADES_LOCK"
+	fi
 }
 trap cleanup EXIT
 
+# Keep setup, both child validations, and report assertions in one critical
+# section. Otherwise another test can replace the fake tools, or a waiting
+# generator can remove SAMPLE_DIR before this test reads its evidence report.
+mkdir -p "$ROOT/.tmp"
+while ! mkdir "$PADES_LOCK" 2>/dev/null; do
+	sleep 0.1
+done
+LOCK_OWNED="true"
+echo "$$" >"$PADES_LOCK/pid"
+export PMFORGE_PADES_LOCK_HELD=1
+
+rm -rf "$FAKE_BIN"
+mkdir -p "$FAKE_BIN"
 cat > "$FAKE_BIN/verapdf" <<'EOF'
 #!/bin/bash
 printf '%s\n' "$*" >> "$PMFORGE_FAKE_VERAPDF_LOG"
@@ -74,11 +90,36 @@ EOF
 chmod +x "$FAKE_BIN/dss-validation-tool"
 
 mkdir -p "$SAMPLE_DIR"
+printf 'stale default artifact\n' >"$SAMPLE_DIR/signed-sample.pdf"
 PMFORGE_FAKE_VERAPDF_LOG="$FAKE_LOG" PMFORGE_FAKE_DSS_LOG="$DSS_LOG" PATH="$FAKE_BIN:$PATH" \
-	bash "$ROOT/scripts/validate-pades-external.sh" >/tmp/pmforge-pades-external-test.out
+	bash "$ROOT/scripts/validate-pades-external.sh" >"$FAKE_BIN/default.out"
 
 report="$SAMPLE_DIR/external-validation-report.txt"
 [ -s "$report" ] || fail "external validation report was not written"
+
+if grep -q "stale default artifact" "$SAMPLE_DIR/signed-sample.pdf"; then
+	fail "default external validation reused a stale signed sample"
+fi
+if ! grep -q "^evidence_source=generated_current_checkout$" "$report"; then
+	cat "$report" >&2
+	fail "default external validation did not identify generated evidence"
+fi
+if ! grep -Eq "^pdf_sha256=[0-9a-f]{64}$" "$report"; then
+	cat "$report" >&2
+	fail "external validation report did not bind the generated PDF hash"
+fi
+if ! grep -Eq "^validator_revision=[0-9a-f]+$" "$report"; then
+	cat "$report" >&2
+	fail "external validation report did not identify the validator revision"
+fi
+if ! grep -Eq "^validator_script_sha256=[0-9a-f]{64}$" "$report"; then
+	cat "$report" >&2
+	fail "external validation report did not bind the validator script hash"
+fi
+if ! grep -Eq "^generator_script_sha256=[0-9a-f]{64}$" "$report"; then
+	cat "$report" >&2
+	fail "external validation report did not bind the generator script hash"
+fi
 
 if ! grep -q "veraPDF signature feature extraction: PASS" "$report"; then
 	cat "$report" >&2
@@ -115,9 +156,36 @@ if grep -q "DSS PAdES interoperability: TODO" "$report"; then
 	fail "DSS branch still reports a manual TODO"
 fi
 
-if ! grep -q "^validate .*/signed-sample.pdf$" "$DSS_LOG"; then
+if ! grep -Fqx "validate $SAMPLE_DIR/signed-sample.pdf" "$DSS_LOG"; then
 	cat "$DSS_LOG" >&2
 	fail "DSS validation tool was not invoked against the signed sample"
+fi
+
+explicit_pdf="$FAKE_BIN/explicit-sample.pdf"
+explicit_before="$FAKE_BIN/explicit-sample.before.pdf"
+cp "$SAMPLE_DIR/signed-sample.pdf" "$explicit_pdf"
+cp "$explicit_pdf" "$explicit_before"
+PMFORGE_FAKE_VERAPDF_LOG="$FAKE_LOG" PMFORGE_FAKE_DSS_LOG="$DSS_LOG" PATH="$FAKE_BIN:$PATH" \
+	bash "$ROOT/scripts/validate-pades-external.sh" "$explicit_pdf" >"$FAKE_BIN/explicit.out"
+
+if ! cmp -s "$explicit_before" "$explicit_pdf"; then
+	fail "external validation modified the explicitly supplied PDF"
+fi
+if ! grep -q "^evidence_source=supplied_pdf$" "$report"; then
+	cat "$report" >&2
+	fail "explicit external validation did not identify supplied evidence"
+fi
+if ! grep -q "^generator_script_sha256=not_applicable$" "$report"; then
+	cat "$report" >&2
+	fail "explicit external validation incorrectly attributed a local generator"
+fi
+if ! grep -Fqx "pdf=$explicit_pdf" "$report"; then
+	cat "$report" >&2
+	fail "explicit external validation did not record the supplied PDF path"
+fi
+if ! grep -Fqx "validate $explicit_pdf" "$DSS_LOG"; then
+	cat "$DSS_LOG" >&2
+	fail "DSS validation tool was not invoked against the supplied PDF"
 fi
 
 echo "validate-pades-external tests passed."

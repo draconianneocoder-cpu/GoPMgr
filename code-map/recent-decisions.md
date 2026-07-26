@@ -91,6 +91,11 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   contacting a live service. RFC 3161 fixture certificates cover both their
   deterministic TSTInfo instant and the current CMS signing clock so the suite
   cannot expire as wall time advances.
+- **2026-07-26** — Default external PAdES validation always regenerates its
+  sample under the shared lock; explicit PDF arguments remain non-mutating.
+  Evidence reports identify generated versus supplied input and bind the
+  checkout, scripts, PDF, CMS, and signed ByteRange bytes with provenance and
+  SHA-256 hashes.
 
 ## Open / deferred (not yet decided or implemented)
 
