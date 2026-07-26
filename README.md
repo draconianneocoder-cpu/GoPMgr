@@ -88,7 +88,7 @@ make check-release
 It includes version consistency, REUSE/SPDX compliance, frontend runtime
 checks, release-scope guards, memory-safety scanning, race tests,
 production build, encrypted database validation, strict PDF/A-3
-validation, and local PAdES validation.
+validation, and deterministic PAdES harness regressions.
 
 Useful focused gates:
 
@@ -102,6 +102,7 @@ make check-encrypted-db
 make check-pdfa
 make check-pades
 make check-pades-external
+make pades-harness-tests
 make release-scope
 make license-check
 ```
@@ -206,6 +207,11 @@ SHA-256 hashes for the scripts, PDF, CMS, and signed ByteRange bytes. To inspect
 an existing artifact without replacing it, run
 `bash scripts/validate-pades-external.sh /absolute/path/to/signed.pdf`; supplied
 PDFs are validated in place and identified as such in the report.
+`make pades-harness-tests` runs the real local generator plus the external,
+parallel-locking, and trusted-source regression matrices. It runs in pre-merge
+CI and the full release gate. Its trusted-source cases use controlled
+validator output to test classification behavior; they do not replace the real
+release-certificate and Acrobat evidence described above.
 
 Project Settings can opt PAdES exports into RFC 3161 timestamping. PMForge
 accepts a credential-free HTTPS TSA endpoint, optional policy OID, and optional

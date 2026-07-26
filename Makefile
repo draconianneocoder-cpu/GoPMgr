@@ -31,7 +31,8 @@ export CC
         license-check memory-scan package-linux package-windows package-darwin package-macos package-macos-installer \
         check-release clean fonts icc check-pdfa frontend-stability \
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
-        check-encrypted-db linux-runtime-target help-guide-current wails-version wails-cli-version wails-version-test
+        check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
+        help-guide-current wails-version wails-cli-version wails-version-test
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -70,6 +71,15 @@ check-pades-external: ## Generate a fresh PAdES sample and run available externa
 
 check-pades-trusted: ## Classify trusted-source PAdES evidence; set PMFORGE_PADES_TRUSTED_REQUIRED=1 to require verified CLI trust.
 	@bash scripts/validate-pades-trusted-source.sh
+
+pades-harness-tests: ## Run deterministic local, external, locking, and trusted-source PAdES shell regressions.
+	# Keep the real local generator alongside the fake-validator matrices: the
+	# matrices isolate error branches, while generation exercises PMForge's
+	# current CMS, RFC 3161, and PDF incremental-update implementation.
+	@bash scripts/validate-pades.sh
+	@bash scripts/validate-pades-external_test.sh
+	@bash scripts/validate-pades-trusted-source_test.sh
+	@bash scripts/validate-pades-parallel_test.sh
 
 check-encrypted-db: ## Validate SQLCipher encrypted project DB create/open/migration/backup.
 	@bash scripts/validate-encrypted-db.sh

@@ -897,6 +897,26 @@ This section is the running log of non-obvious discoveries. Every session that l
   require a separately archived Acrobat trust-panel capture for release
   interoperability evidence.
 
+### 2026-07-26 — Automatic PAdES harness regressions
+
+- **Run the evidence harnesses automatically, not only during manual
+  hardening.** `make pades-harness-tests` combines the real local
+  CMS/RFC-3161/PDF generator with the external-validator, parallel-locking, and
+  trusted-source shell regression matrices.
+- **Keep CI deterministic without weakening real validation.** The dedicated
+  Ubuntu CI job installs `qpdf` and `pdfsig` for the generated sample. The
+  regressions provide controlled veraPDF and DSS command output so parser and
+  classification branches do not depend on network downloads or public trust
+  stores.
+- **Guard every integration point.** `make check-release` now runs the
+  aggregate target, while `make release-scope` requires the Make target plus
+  both release and CI invocations. `check-pades-trusted` and the aggregate
+  target are explicitly phony so same-named filesystem entries cannot suppress
+  execution.
+- **Do not turn a hermetic test into a trust claim.** The trusted-source matrix
+  proves status handling only. A public trust claim still requires a real
+  release-certificate sample and separately archived Acrobat evidence.
+
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
 - **Remove "soft gate" wording when the gate passes reliably.** The `validate-pdfa.sh` header comment and the "soft for now" check-release comment both said "warn, don't fail" -- these were vestigial once all samples passed. Gate promotion requires two things: (1) all representative samples pass, (2) the release script actually exits on failure.
