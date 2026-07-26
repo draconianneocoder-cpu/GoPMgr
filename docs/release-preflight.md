@@ -83,6 +83,32 @@ read `1.1.0` (cosmetic, fine for an rc — nfpm maps the `-rc.1` prerelease to a
 valid rpm version). Marketing codenames (e.g. "V1 Expansion") live in the
 GitHub release notes, never in the version number.
 
+## PAdES evidence before public trust claims
+
+`make check-pades` proves PMForge's deterministic local signature structure;
+`make check-pades-external` adds the installed external validators and records
+fresh fixture provenance. Neither command proves a public certificate chain
+because the fixture signer and TSA are intentionally self-signed.
+
+For a release-certificate sample, run:
+
+```sh
+PMFORGE_TRUSTED_SIGNED_PDF=/absolute/path/to/trusted-signed.pdf \
+PMFORGE_PADES_TRUSTED_REQUIRED=1 make check-pades-trusted
+```
+
+Required mode succeeds only when the report ends in `status=TRUST_VERIFIED`.
+The harness validates the supplied PDF without modifying it, clears stale
+derived evidence, and writes hashes plus checkout and UTC provenance to
+`.tmp/pmforge-pades-trusted-source/trusted-source-validation-report.txt`.
+`STRUCTURE_VALID_TRUST_INDETERMINATE` means the signature structure is valid
+but the local CLI certificate store did not prove trust; it is not a passing
+required-mode result. `NOT_CONFIGURED`, `INPUT_INVALID`,
+`VALIDATION_INCOMPLETE`, and `VALIDATION_FAILED` are likewise non-passing in
+required mode. Archive an Acrobat signature-panel screenshot or validation
+report separately; CLI verification does not substitute for Acrobat's trust
+policy and interoperability evidence.
+
 ## Tag procedure
 
 1. Confirm `main` is green in CI (verify, lint, **vuln**, build, analytics-duckdb).

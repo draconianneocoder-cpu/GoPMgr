@@ -68,7 +68,7 @@ check-pades: ## Generate and locally verify an embedded PAdES signed PDF sample.
 check-pades-external: ## Generate a fresh PAdES sample and run available external validators.
 	@bash scripts/validate-pades-external.sh
 
-check-pades-trusted: ## Record trusted-source PAdES evidence when PMFORGE_TRUSTED_SIGNED_PDF is configured.
+check-pades-trusted: ## Classify trusted-source PAdES evidence; set PMFORGE_PADES_TRUSTED_REQUIRED=1 to require verified CLI trust.
 	@bash scripts/validate-pades-trusted-source.sh
 
 check-encrypted-db: ## Validate SQLCipher encrypted project DB create/open/migration/backup.
