@@ -12,11 +12,11 @@ early testing and feedback. Its GitHub release currently has no uploaded native
 installer assets, so testers must build it from source until packages are
 attached to the release.
 
-The `main` branch is ahead of the alpha and includes unreleased candidate work
-documented in [the v1.1.0-rc.1 release notes](docs/release-notes/v1.1.0-rc.1.md),
-including CPM scheduling, DuckDB-backed portfolio analytics, 22 chart types,
-25 document kinds, Agile and Six Sigma methodology packs, SQLCipher encryption,
-Argon2id authentication, PDF/A-3 validation, and PAdES digital signing. These
+The `main` branch is ahead of the alpha and contains unreleased development
+work for the 1.1.0 line, including CPM scheduling, DuckDB-backed portfolio
+analytics, 22 chart types, 25 document kinds, Agile and Six Sigma methodology
+packs, SQLCipher encryption, Argon2id authentication, PDF/A-3 validation, and
+PAdES digital signing. No 1.1.0 release candidate has been published. These
 capabilities should not be read as a promise that `v0.9.1-alpha` has packaged
 installers or matches the current `main` branch.
 

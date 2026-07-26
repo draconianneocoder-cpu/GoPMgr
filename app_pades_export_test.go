@@ -96,7 +96,7 @@ func TestExportCombinedReportSignedWithRuntimeWritesUnevaluatedPAdEST(t *testing
 		Description: "Executive approval section",
 	}}
 	reportTitle := "Timestamped Governance Pack"
-	subtitle := "Release Candidate"
+	subtitle := "Prerelease Fixture"
 	reportID := combinedReportCheckpointID(project.ID, reportTitle, subtitle, sections)
 
 	generatedAt := time.Date(2026, time.July, 26, 14, 45, 0, 0, time.UTC)
