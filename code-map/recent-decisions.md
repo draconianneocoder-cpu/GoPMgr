@@ -80,6 +80,10 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   signing pipeline. Enabled timestamping is fail-closed, and audit statuses
   distinguish Baseline B, Baseline T with unevaluated trust, and Baseline T
   verified against the configured root.
+- **2026-07-25** — Retired the legacy `%%PMForgeCMSSignature` PDF-comment
+  fallback. Archive PDF signing and `documents.RenderSigned` now delegate to
+  `signing.ApplyPAdES`; every successful PAdES path must contain a real `/Sig`
+  dictionary and `/ByteRange`, while failures return no PDF bytes.
 
 ## Open / deferred (not yet decided or implemented)
 

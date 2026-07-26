@@ -922,6 +922,14 @@
       ]
     },
     {
+      "test_file": "internal/documents/signed_pipeline_test.go",
+      "package": "pmforge/internal/documents",
+      "candidate_source_files": [
+        "internal/documents/charter.go",
+        "internal/documents/signature_appearance.go"
+      ]
+    },
+    {
       "test_file": "internal/export/csv_test.go",
       "package": "pmforge/internal/export",
       "candidate_source_files": [
@@ -1066,6 +1074,15 @@
         "internal/export/pdfa.go",
         "internal/export/sigma_report.go",
         "internal/export/xlsx.go"
+      ]
+    },
+    {
+      "test_file": "internal/export/pdf_signing_test.go",
+      "package": "pmforge/internal/export",
+      "candidate_source_files": [
+        "internal/export/engine.go",
+        "internal/export/pdf.go",
+        "internal/export/pdfa.go"
       ]
     },
     {

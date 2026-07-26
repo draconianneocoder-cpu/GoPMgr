@@ -5,6 +5,8 @@ package export
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -13,7 +15,7 @@ import (
 
 	"pmforge/internal/crypto"
 	"pmforge/internal/fonts"
-	"pmforge/internal/pdfmeta"
+	"pmforge/internal/signing"
 )
 
 // renderPDF produces an archival-quality PDF report of the CPM schedule.
@@ -23,10 +25,10 @@ import (
 //	        followed by a tabular task list with ES/EF/LS/LF/Float and a
 //	        critical-path marker.
 //
-// If opts.DigitalSignature is set, the function embeds a real PAdES B-B
-// signature using pdfmeta.InjectPAdESSignature (proper /Sig dictionary,
-// /ByteRange, and /Contents via incremental update). This is the
-// production path. Falls back to a comment marker only if embedding fails.
+// If opts.DigitalSignature is set, the function embeds a real PAdES Baseline B
+// signature through the shared signing pipeline. A certificate or embedding
+// failure returns an error and no bytes; nonstandard comment-marker signatures
+// are deliberately unsupported.
 //
 // The generated PDF receives PDF/A-3 XMP metadata (pdfaid:part=3,
 // conformance=B) via the shared pdfmeta package. Full strict PDF/A-3
@@ -35,6 +37,18 @@ import (
 // available the renderer will use MakePDFA3 for the strongest claim
 // possible.
 func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
+	return renderPDFWithSignerLoader(payload, opts, crypto.LoadCertificate)
+}
+
+// renderPDFWithSignerLoader keeps certificate loading injectable for isolated
+// tests. Production always passes crypto.LoadCertificate through renderPDF;
+// the seam exists solely to prove that signing failures cannot publish a
+// superficially "signed" fallback document.
+func renderPDFWithSignerLoader(
+	payload ReportPayload,
+	opts ExportOptions,
+	loadSigner func(path, password string) (*crypto.Signer, error),
+) ([]byte, error) {
 	pdf := fpdf.New("P", "mm", "A4", "")
 	_ = fonts.NewManager("").RegisterAs(pdf, "Source Sans 3", "Helvetica")
 	pdf.SetTitle(opts.Title, true)
@@ -135,62 +149,26 @@ func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 		}
 	}
 
-	// Optional digital signature.
-	// Preferred path: real PAdES B-B embedding via incremental update
-	// (creates a proper /Sig dictionary + /ByteRange + /Contents).
-	// Falls back to the old comment marker if embedding fails.
+	// Optional Baseline B signature. The archive export API predates project
+	// TSA settings, so it deliberately requests no timestamp here; application
+	// document/report exports use the same pipeline with prepared PAdES-T
+	// configuration.
 	if opts.DigitalSignature {
-		signer, err := crypto.LoadCertificate(opts.CertPath, opts.CertPassword)
+		if loadSigner == nil {
+			return nil, errors.New("export: PAdES certificate loader is required")
+		}
+		signer, err := loadSigner(opts.CertPath, opts.CertPassword)
 		if err != nil {
 			return nil, err
 		}
-
-		// Real PAdES B-B path: we let InjectPAdESSignature build the
-		// structure + exact ByteRange first, then it calls us back to
-		// sign the precise concatenated ranges.
-		signedPDF, padesErr := pdfmeta.InjectPAdESSignature(out, signer.SignPDFCMS)
-		if padesErr == nil {
-			out = signedPDF
-		} else {
-			// Fallback to the older comment-based marker
-			cmsBlob, _ := signer.SignPDFCMS(out)
-			out = appendCMSSignatureMarker(out, cmsBlob)
+		signedPDF, _, err := signing.ApplyPAdES(context.Background(), out, signer, nil)
+		if err != nil {
+			return nil, fmt.Errorf("export: apply PAdES Baseline B signature: %w", err)
 		}
+		out = signedPDF
 	}
 
 	return out, nil
-}
-
-// appendCMSSignatureMarker writes a CMS/PKCS#7 detached signature
-// (built by crypto.Signer.SignPDFCMS) to the end of the PDF inside
-// a PDF comment. The marker uses a distinct prefix so consumers can
-// distinguish CMS blobs from the older raw-RSA marker:
-//
-//	%%PMForgeCMSSignature:<hex CMS blob>
-//
-// This is interim. Full PAdES B-B compliance requires embedding the
-// CMS blob inside an incremental update with a /Sig dictionary and
-// a properly-sized /Contents slot referenced by /ByteRange. That
-// rewrites the PDF's xref table and is non-trivial with fpdf;
-// tracked in DEVELOPER_HANDBOOK.md §8 as "real PDF signing widget".
-func appendCMSSignatureMarker(pdfBytes, cmsBlob []byte) []byte {
-	const tag = "\n%%PMForgeCMSSignature:"
-	out := make([]byte, 0, len(pdfBytes)+len(cmsBlob)*2+len(tag)+8)
-	out = append(out, pdfBytes...)
-	out = append(out, []byte(tag)...)
-	out = append(out, []byte(hexEncode(cmsBlob))...)
-	out = append(out, '\n')
-	return out
-}
-
-func hexEncode(b []byte) string {
-	const hex = "0123456789abcdef"
-	out := make([]byte, len(b)*2)
-	for i, v := range b {
-		out[i*2] = hex[v>>4]
-		out[i*2+1] = hex[v&0x0f]
-	}
-	return string(out)
 }
 
 func truncate(s string, n int) string {
