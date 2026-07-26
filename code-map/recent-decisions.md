@@ -84,6 +84,13 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   fallback. Archive PDF signing and `documents.RenderSigned` now delegate to
   `signing.ApplyPAdES`; every successful PAdES path must contain a real `/Sig`
   dictionary and `/ByteRange`, while failures return no PDF bytes.
+- **2026-07-26** — Application PAdES-T export tests use a private, per-call
+  `padesExportRuntime` instead of mutable `App` fields or package globals.
+  Document and combined-report tests now verify timestamped CMS structure,
+  0600 file output, and verified versus unevaluated TSA audit statuses without
+  contacting a live service. RFC 3161 fixture certificates cover both their
+  deterministic TSTInfo instant and the current CMS signing clock so the suite
+  cannot expire as wall time advances.
 
 ## Open / deferred (not yet decided or implemented)
 

@@ -9,6 +9,14 @@
       ]
     },
     {
+      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_pades_export_test.go",
+      "package": "pmforge",
+      "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_documents.go",
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_sigma.go"
+      ]
+    },
+    {
       "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_settings_test.go",
       "package": "pmforge",
       "candidate_source_files": [
