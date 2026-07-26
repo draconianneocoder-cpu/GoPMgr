@@ -194,12 +194,15 @@ manual evidence when
 `PMFORGE_TRUSTED_SIGNED_PDF` points at a trusted-certificate sample, and
 otherwise writes a clear not-configured report.
 
-The backend PAdES-T foundation creates nonce-bound RFC 3161 requests, validates
-TSA responses and certificates, computes the required signature-value imprint,
-and embeds the token as a DER unsigned CMS attribute without changing the
-original signature. Timestamp-server configuration and export-flow wiring are
-not yet exposed in the application, so current user-created signed PDFs remain
-PAdES Baseline B.
+Project Settings can opt PAdES exports into RFC 3161 timestamping. PMForge
+accepts a credential-free HTTPS TSA endpoint, optional policy OID, and optional
+PEM trust root. It creates nonce-bound requests, validates TSA responses and
+certificates, computes the required signature-value imprint, and embeds the
+token as a DER unsigned CMS attribute without changing the original signature.
+Timestamping is fail-closed: when enabled, an unavailable or invalid TSA
+produces no signed export instead of silently falling back to Baseline B.
+Audit events distinguish Baseline B, Baseline T with unevaluated TSA trust, and
+Baseline T chained to the configured root.
 
 Public release claims are guarded by `make release-scope`.
 

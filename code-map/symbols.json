@@ -518,9 +518,16 @@
       "    func CheckPhase(phase domain.Phase, charter domain.Charter, sipoc *domain.SIPOCData, ...) Result"
     ],
     "pmforge/internal/signing": [
+      "const PAdESBaselineB = \"PAdES-BASELINE-B\" ...",
       "func ExecCommandRunner(ctx context.Context, name string, args ...string) ([]byte, error)",
       "func SignDetachedASCIIArmored(ctx context.Context, runner CommandRunner, inputPath, outputPath, keyID string) error",
-      "type CommandRunner func(ctx context.Context, name string, args ...string) ([]byte, error)"
+      "type CommandRunner func(ctx context.Context, name string, args ...string) ([]byte, error)",
+      "type PAdESResult struct{ ... }",
+      "    func ApplyPAdES(ctx context.Context, pdfBytes []byte, signer *pmcrypto.Signer, ...) ([]byte, PAdESResult, error)",
+      "type PreparedTimestamp struct{ ... }",
+      "    func PrepareTimestamp(config TimestampConfig) (*PreparedTimestamp, error)",
+      "type TimestampConfig struct{ ... }",
+      "type TimestampRequester interface{ ... }"
     ],
     "pmforge/internal/sqlitedriver": [
       "const Name = \"sqlite3\""

@@ -726,6 +726,12 @@
       "main_go_line": 4005
     },
     {
+      "method": "ChooseTSARootCertFile",
+      "params": "",
+      "returns": "(string, error)",
+      "main_go_line": 876
+    },
+    {
       "method": "ListFonts",
       "params": "",
       "returns": "[]fonts.FamilyInfo",
