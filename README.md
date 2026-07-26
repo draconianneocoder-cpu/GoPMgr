@@ -189,10 +189,17 @@ the embedded CMS against the declared `/ByteRange`.
 `make check-pades-external` adds OpenSSL, `qpdf`, `pdfsig`, veraPDF signature
 feature extraction, and DSS checks. DSS classifies the self-signed fixture as
 `PAdES-BASELINE-T`; trusted-chain validation and Acrobat coverage still
-require a real trusted signing source. `make check-pades-trusted` records that
-manual evidence when
-`PMFORGE_TRUSTED_SIGNED_PDF` points at a trusted-certificate sample, and
-otherwise writes a clear not-configured report.
+require a real trusted signing source. When `PMFORGE_TRUSTED_SIGNED_PDF`
+points at a trusted-certificate sample, `make check-pades-trusted` validates
+the unchanged source and classifies the result as `TRUST_VERIFIED`,
+`STRUCTURE_VALID_TRUST_INDETERMINATE`, `VALIDATION_INCOMPLETE`, or
+`VALIDATION_FAILED`; a missing or empty configured path is `INPUT_INVALID`.
+Without a source it records `NOT_CONFIGURED`; set
+`PMFORGE_PADES_TRUSTED_REQUIRED=1` to fail unless the local CLI certificate
+store produces `TRUST_VERIFIED`. The report records the normalized PDF path,
+PDF and validator hashes, checkout revision and dirty state, and UTC validation
+time. Acrobat trust-panel evidence remains a separate manual release artifact
+because Acrobat and command-line validators can use different trust policies.
 The external gate regenerates its default sample on every run and records the
 source mode, checkout revision and dirty state, UTC validation time, and
 SHA-256 hashes for the scripts, PDF, CMS, and signed ByteRange bytes. To inspect
