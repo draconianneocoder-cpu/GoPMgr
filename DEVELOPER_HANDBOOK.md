@@ -321,8 +321,11 @@ A new contribution should land **with `make memory-scan` passing**. Optional sca
    bounds response size. `crypto.SignatureTimestampImprint` hashes the existing
    signer signature value, and `crypto.AddSignatureTimestamp` revalidates and
    inserts the token as the DER `signatureTimeStampToken` unsigned attribute
-   without modifying signed attributes or signature bytes. Current exports
-   remain PAdES Baseline B until TSA settings and export wiring are integrated.
+   without modifying signed attributes or signature bytes. Project settings
+   now persist an opt-in credential-free HTTPS endpoint, optional policy OID,
+   and optional PEM root. `signing.ApplyPAdES` wires both signed export paths
+   through one fail-closed Baseline B/T pipeline and records the actual
+   baseline and TSA trust outcome in the audit chain.
 4. ~~Wails file-picker for certs.~~ **Done.** `App.ChooseCertFile` calls `wailsruntime.OpenFileDialog`.
 5. ~~HTTPS update channel with signed release manifest.~~ **Done.** `internal/update` fetches a signed JSON manifest, verifies Ed25519, returns `Status`. `ManifestURL` and `UpdateChannelPublicKey` set at build time via `-ldflags`.
 8. ~~Per-user database encryption-at-rest decision.~~ **Implemented 2026-06-13.** New per-user `.pmforge` project databases are SQLCipher-encrypted with the user's DEK; existing plaintext project databases can be migrated from Project Settings after recovery codes are reissued. `system.db` remains plaintext by design and stores password hashes plus wrapped DEKs, not project records. `.pmba` bundles preserve encrypted `project.pmforge` bytes. OS-level encryption (FileVault / BitLocker / LUKS) remains recommended whole-device defence in depth.
@@ -332,7 +335,7 @@ A new contribution should land **with `make memory-scan` passing**. Optional sca
 
 ### Still deferred to V3
 - ~~Strict PDF/A-3 release claim~~ **Done (2026-06-08, expanded 2026-06-29).** The representative schedule-report, document, combined-report, and Monte Carlo risk-report samples pass veraPDF PDF/A-3b; `make check-pdfa` is a hard gate in `check-release.sh`. V3 remainder: Acrobat coverage and trusted signing chain.
-- External PAdES validation hardening — the widget and PAdES-T mutator are exercised by `make check-pades`; OpenSSL detached CMS verification, local `qpdf`/`pdfsig` checks, veraPDF signature feature extraction, and DSS `PAdES-BASELINE-T` fixture classification are covered by `make check-pades-external`. Application export wiring is still Baseline B. Sample signed PDFs still need Acrobat and trusted signer/TSA chain validation before treating the implementation as fully battle-tested.
+- External PAdES validation hardening — the widget, application signing pipeline, and PAdES-T mutator are exercised by deterministic tests and `make check-pades`; OpenSSL detached CMS verification, local `qpdf`/`pdfsig` checks, veraPDF signature feature extraction, and DSS `PAdES-BASELINE-T` fixture classification are covered by `make check-pades-external`. Sample signed PDFs still need Acrobat and a real trusted signer/TSA chain before treating interoperability as fully battle-tested.
 - CPM/PDM dependency-lag editor design if task-level precedence relationships need visual lag editing beyond the shipped Timeline project/sprint date dragging.
 
 ### Scheduling core roadmap (V3) — added 2026-06-10
@@ -790,6 +793,24 @@ This section is the running log of non-obvious discoveries. Every session that l
   classifies it as `PAdES-BASELINE-T`. The self-signed fixture remains
   indeterminate for trust, which is expected and must not be presented as a
   trusted timestamp.
+
+### 2026-07-25 — Fail-closed application PAdES-T integration
+
+- **Treat timestamp settings as non-secret trust policy.** Project settings
+  persist only the opt-in flag, credential-free HTTPS endpoint, optional policy
+  OID, and optional PEM trust-root path. User-info, query strings, and fragments
+  are rejected so API keys cannot leak into project databases or logs.
+- **Use one PAdES pipeline for every application export.**
+  `signing.ApplyPAdES` signs Baseline B when timestamping is disabled and
+  requests, validates, and embeds the RFC 3161 token when enabled. Document and
+  combined-report exports both use it after PDF/A rendering.
+- **Never downgrade an explicit timestamp request.** A TSA transport, policy,
+  trust, token, or embedding failure returns no PDF bytes. Audit checkpoints
+  record `pades_b_signed`, `pades_t_not_evaluated`, or `pades_t_verified` so
+  cryptographic validity is not confused with configured chain trust.
+- **Keep CI independent of public TSAs.** The signing pipeline uses the narrow
+  `TimestampRequester` interface. Tests inject a deterministic token producer
+  and cover successful Baseline B/T results plus the fail-closed error path.
 
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.

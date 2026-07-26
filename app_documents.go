@@ -26,7 +26,7 @@ import (
 	"pmforge/internal/documents"
 	"pmforge/internal/export"
 	"pmforge/internal/kernel"
-	"pmforge/internal/pdfmeta"
+	"pmforge/internal/rfc3161"
 	"pmforge/internal/sigma/service"
 	"pmforge/internal/signing"
 )
@@ -413,9 +413,10 @@ func (a *App) ExportCombinedReportWithOptions(reportTitle, subtitle string, sect
 	return outPath, nil
 }
 
-// ExportCombinedReportSigned is like ExportCombinedReport but applies a
-// real PAdES B-B digital signature (with visual appearance page) using
-// the supplied certificate.
+// ExportCombinedReportSigned is like ExportCombinedReport but applies the
+// configured PAdES signature level using the supplied certificate. RFC 3161
+// timestamping is fail-closed: when enabled, a TSA failure produces no export
+// instead of silently returning a Baseline B document.
 func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections []documents.ReportSection, certPath, certPassword string) (string, error) {
 	d := a.requireDB()
 	u := a.requireUser()
@@ -431,6 +432,11 @@ func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections 
 		return "", err
 	}
 	reportID := combinedReportCheckpointID(proj.ID, reportTitle, subtitle, sections)
+	timestampConfig, err := prepareProjectTimestamp(d)
+	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("timestamp settings: %v", err), "")
+		return "", fmt.Errorf("timestamp settings: %w", err)
+	}
 
 	// Resolve sections + charts (same logic as unsigned version)
 	resolved := make([]documents.ResolvedSection, 0, len(sections))
@@ -480,14 +486,16 @@ func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections 
 		return "", err
 	}
 
-	// Apply real PAdES B-B signature
+	// The timestamp-aware signing pipeline is the final PDF mutation. Keeping
+	// the TSA request inside InjectPAdESSignature's callback ensures the token
+	// binds the exact CMS signature that covers the declared PDF ByteRange.
 	signer, err := crypto.LoadCertificate(certPath, certPassword)
 	if err != nil {
 		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("load certificate: %v", err), "")
 		return "", fmt.Errorf("load certificate: %w", err)
 	}
 
-	signedBytes, err := pdfmeta.InjectPAdESSignature(bytes, signer.SignPDFCMS)
+	signedBytes, padesResult, err := signing.ApplyPAdES(a.signingContext(), bytes, signer, timestampConfig)
 	if err != nil {
 		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("pades embedding: %v", err), "")
 		return "", fmt.Errorf("pades embedding: %w", err)
@@ -504,7 +512,18 @@ func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections 
 		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("write signed report: %v", err), "")
 		return "", err
 	}
-	logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, true, "Combined report signed successfully.", outPath)
+	signatureStatus, details := padesAuditOutcome(padesResult)
+	logCombinedReportSignatureEventWithStatus(
+		d,
+		proj.ID,
+		reportID,
+		reportTitle,
+		subtitle,
+		sections,
+		signatureStatus,
+		details,
+		outPath,
+	)
 	return outPath, nil
 }
 
@@ -1076,6 +1095,40 @@ type GnuPGExportResult struct {
 	Method        string `json:"method"`
 }
 
+func prepareProjectTimestamp(d *db.Database) (*signing.PreparedTimestamp, error) {
+	settings, err := d.GetSettings()
+	if err != nil {
+		return nil, fmt.Errorf("load project signing settings: %w", err)
+	}
+	return signing.PrepareTimestamp(timestampConfigForSettings(settings))
+}
+
+func (a *App) signingContext() context.Context {
+	if a.ctx != nil {
+		return a.ctx
+	}
+	// Headless commands and unit tests do not start Wails, but signing still
+	// needs a non-nil context for cancellation-aware TSA transports.
+	return context.Background()
+}
+
+func padesAuditOutcome(result signing.PAdESResult) (string, string) {
+	if result.Format == signing.PAdESBaselineT {
+		generatedAt := result.TimestampGeneratedAt.UTC().Format(time.RFC3339Nano)
+		if result.TrustStatus == rfc3161.TrustVerified {
+			return "pades_t_verified", fmt.Sprintf(
+				"PAdES Baseline T signature applied; timestamp trust verified at %s.",
+				generatedAt,
+			)
+		}
+		return "pades_t_not_evaluated", fmt.Sprintf(
+			"PAdES Baseline T signature applied at %s; no TSA trust root was configured.",
+			generatedAt,
+		)
+	}
+	return "pades_b_signed", "PAdES Baseline B signature applied without RFC 3161 timestamping."
+}
+
 // ExportDocumentPDFGnuPG renders the document as a plain PDF and writes a
 // detached ASCII-armored GnuPG signature sidecar. The PDF bytes are not
 // modified, so PDF/A validation and print-and-wet-sign workflows remain intact.
@@ -1097,8 +1150,8 @@ func (a *App) ExportDocumentPDFGnuPG(id, keyID string) (GnuPGExportResult, error
 	return GnuPGExportResult{PDFPath: pdfPath, SignaturePath: sigPath, Method: db.SignatureMethodGnuPG}, nil
 }
 
-// ExportDocumentPDFSigned is like ExportDocumentPDF but applies a real
-// PAdES B-B digital signature using the provided certificate.
+// ExportDocumentPDFSigned is like ExportDocumentPDF but applies the configured
+// PAdES Baseline B or Baseline T signature using the provided certificate.
 func (a *App) ExportDocumentPDFSigned(id, certPath, certPassword string) (string, error) {
 	d := a.requireDB()
 	u := a.requireUser()
@@ -1114,7 +1167,28 @@ func (a *App) ExportDocumentPDFSigned(id, certPath, certPassword string) (string
 		return "", err
 	}
 
-	bytes, err := documents.RenderSigned(documents.Kind(doc.Kind), doc.Content, proj.Name, certPath, certPassword)
+	timestampConfig, err := prepareProjectTimestamp(d)
+	if err != nil {
+		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
+		return "", fmt.Errorf("timestamp settings: %w", err)
+	}
+	bytes, err := documents.Render(documents.Kind(doc.Kind), doc.Content, proj.Name)
+	if err != nil {
+		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
+		return "", err
+	}
+	signer, err := crypto.LoadCertificate(certPath, certPassword)
+	if err != nil {
+		err = fmt.Errorf("documents: load certificate for signing: %w", err)
+		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
+		return "", err
+	}
+	signedBytes, padesResult, err := signing.ApplyPAdES(
+		a.signingContext(),
+		bytes,
+		signer,
+		timestampConfig,
+	)
 	if err != nil {
 		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
 		return "", err
@@ -1126,11 +1200,12 @@ func (a *App) ExportDocumentPDFSigned(id, certPath, certPassword string) (string
 	}
 	outPath := filepath.Join(outDir, fmt.Sprintf("%s-%s-signed.pdf",
 		sanitizeFilename(doc.Title), time.Now().UTC().Format("20060102-150405")))
-	if err := os.WriteFile(outPath, bytes, 0o600); err != nil {
+	if err := os.WriteFile(outPath, signedBytes, 0o600); err != nil {
 		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
 		return "", err
 	}
-	admin.NewService(d).LogSignatureEvent(doc.ID, true, nil)
+	signatureStatus, details := padesAuditOutcome(padesResult)
+	admin.NewService(d).LogDocumentSignatureOutcome(doc.ID, signatureStatus, details, outPath)
 	return outPath, nil
 }
 

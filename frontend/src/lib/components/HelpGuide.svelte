@@ -1335,7 +1335,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <p class="text-sm font-medium text-slate-200 mb-2">Configure a certificate:</p>
             <ol class="space-y-2 text-sm text-slate-300 list-decimal list-inside mb-3">
               <li>Open Project Settings (File &rarr; Project Settings or the gear icon in the project sidebar).</li>
-              <li>In the "Digital Signatures (PDF/A)" section, enable signatures and browse to your .p12 or .pfx certificate file.</li>
+              <li>In "Export &amp; Signature Settings," select PAdES and browse to your .p12 or .pfx certificate file.</li>
+              <li>To create PAdES-T exports, enable RFC 3161 timestamping and enter a credential-free HTTPS timestamp-authority endpoint. An optional policy OID and PEM trust root narrow the TSA policy and enable chain-trust verification.</li>
               <li>Save settings. The certificate path is stored; the password is never persisted.</li>
             </ol>
             <p class="text-sm font-medium text-slate-200 mb-2">Sign a document:</p>
@@ -1345,6 +1346,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li>Enter the certificate password (used only for this operation — never stored).</li>
               <li>Click "Sign &amp; Export." The signed PAdES PDF is written to your exports directory.</li>
             </ol>
+            <p class="text-xs text-slate-400 mt-3">
+              Timestamping is fail-closed. If the configured authority is
+              unavailable or returns an invalid token, PMForge writes no signed
+              PDF and does not silently fall back to Baseline B. Without a TSA
+              trust root, token integrity is validated while chain trust is
+              reported as not evaluated.
+            </p>
           </section>
 
           <section class="mb-5">

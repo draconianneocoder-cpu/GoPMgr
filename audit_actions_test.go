@@ -8,10 +8,13 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"pmforge/internal/agile"
 	"pmforge/internal/db"
 	"pmforge/internal/documents"
+	"pmforge/internal/rfc3161"
+	"pmforge/internal/signing"
 )
 
 // mustOpenProject is a test helper that creates a project and opens it so
@@ -103,6 +106,62 @@ func TestCombinedReportCheckpointIDIsStableAndOrderSensitive(t *testing.T) {
 	}
 	if got := combinedReportCheckpointID("project-2", "Monthly Pack", "June", sections); got == first {
 		t.Fatalf("different project produced same checkpoint ID %q", got)
+	}
+}
+
+func TestPAdESAuditOutcomeDistinguishesBaselineAndTimestampTrust(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		result     signing.PAdESResult
+		wantStatus string
+		wantDetail string
+	}{
+		{
+			name:       "baseline B",
+			result:     signing.PAdESResult{Format: signing.PAdESBaselineB},
+			wantStatus: "pades_b_signed",
+			wantDetail: "without RFC 3161",
+		},
+		{
+			name: "baseline T without configured root",
+			result: signing.PAdESResult{
+				Format:               signing.PAdESBaselineT,
+				TrustStatus:          rfc3161.TrustNotEvaluated,
+				TimestampGeneratedAt: time.Date(2026, time.July, 25, 18, 0, 0, 0, time.UTC),
+			},
+			wantStatus: "pades_t_not_evaluated",
+			wantDetail: "no TSA trust root",
+		},
+		{
+			name: "baseline T with verified root",
+			result: signing.PAdESResult{
+				Format:               signing.PAdESBaselineT,
+				TrustStatus:          rfc3161.TrustVerified,
+				TimestampGeneratedAt: time.Date(2026, time.July, 25, 18, 0, 0, 0, time.UTC),
+			},
+			wantStatus: "pades_t_verified",
+			wantDetail: "trust verified",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			status, detail := padesAuditOutcome(tt.result)
+			if status != tt.wantStatus || !strings.Contains(detail, tt.wantDetail) {
+				t.Fatalf(
+					"padesAuditOutcome() = (%q, %q), want status %q and detail containing %q",
+					status,
+					detail,
+					tt.wantStatus,
+					tt.wantDetail,
+				)
+			}
+		})
 	}
 }
 

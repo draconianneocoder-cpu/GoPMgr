@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
+
 	"pmforge/internal/agile"
 	"pmforge/internal/db"
 	"pmforge/internal/documents"
-	"time"
+	"pmforge/internal/signing"
 )
 
 // =========================================================
@@ -32,7 +34,25 @@ func (a *App) SaveSettings(s db.UserSettings) error {
 	if d == nil {
 		return errors.New("no project open")
 	}
+	if s.TimestampEnabled && s.SignatureMethod != db.SignatureMethodPAdES {
+		return errors.New("RFC 3161 timestamping is available only for PAdES signatures")
+	}
+	if _, err := signing.PrepareTimestamp(timestampConfigForSettings(s)); err != nil {
+		return fmt.Errorf("validate PAdES timestamp settings: %w", err)
+	}
 	return d.SaveSettings(s)
+}
+
+// timestampConfigForSettings is the single mapping from the persisted project
+// model into the signing domain. Keeping it here prevents UI, validation, and
+// export code from gradually assigning different meanings to the same fields.
+func timestampConfigForSettings(s db.UserSettings) signing.TimestampConfig {
+	return signing.TimestampConfig{
+		Enabled:           s.TimestampEnabled,
+		Endpoint:          s.TSAEndpoint,
+		PolicyOID:         s.TSAPolicyOID,
+		TrustRootCertPath: s.TSARootCertPath,
+	}
 }
 
 func (a *App) ResetProjectSettings() (db.UserSettings, error) {

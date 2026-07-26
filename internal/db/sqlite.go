@@ -113,6 +113,10 @@ func (db *Database) Migrate() error {
 		signature_enabled INTEGER NOT NULL DEFAULT 0,
 		signature_method  TEXT NOT NULL DEFAULT '',
 		gpg_key_id        TEXT NOT NULL DEFAULT '',
+		timestamp_enabled INTEGER NOT NULL DEFAULT 0,
+		tsa_endpoint      TEXT NOT NULL DEFAULT '',
+		tsa_policy_oid    TEXT NOT NULL DEFAULT '',
+		tsa_root_cert_path TEXT NOT NULL DEFAULT '',
 		default_font      TEXT NOT NULL DEFAULT '',
 		compliance_mode   INTEGER NOT NULL DEFAULT 0
 	);
@@ -581,6 +585,10 @@ func (db *Database) migrateLegacyColumns() error {
 		{"compliance_mode", "ALTER TABLE settings ADD COLUMN compliance_mode INTEGER NOT NULL DEFAULT 0"},
 		{"signature_method", "ALTER TABLE settings ADD COLUMN signature_method TEXT NOT NULL DEFAULT ''"},
 		{"gpg_key_id", "ALTER TABLE settings ADD COLUMN gpg_key_id TEXT NOT NULL DEFAULT ''"},
+		{"timestamp_enabled", "ALTER TABLE settings ADD COLUMN timestamp_enabled INTEGER NOT NULL DEFAULT 0"},
+		{"tsa_endpoint", "ALTER TABLE settings ADD COLUMN tsa_endpoint TEXT NOT NULL DEFAULT ''"},
+		{"tsa_policy_oid", "ALTER TABLE settings ADD COLUMN tsa_policy_oid TEXT NOT NULL DEFAULT ''"},
+		{"tsa_root_cert_path", "ALTER TABLE settings ADD COLUMN tsa_root_cert_path TEXT NOT NULL DEFAULT ''"},
 	}
 	for _, m := range settingsMigrations {
 		if _, ok := settingsCols[m.name]; ok {

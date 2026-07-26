@@ -869,3 +869,23 @@ func (a *App) ChooseCertFile() (string, error) {
 		},
 	})
 }
+
+// ChooseTSARootCertFile opens a native file picker for PEM-encoded TSA trust
+// roots. This is intentionally separate from ChooseCertFile: a signing identity
+// contains private key material, while a TSA root is public trust policy.
+func (a *App) ChooseTSARootCertFile() (string, error) {
+	if a.ctx == nil {
+		return "", errors.New("no context (Wails not started)")
+	}
+	return wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
+		Title:            "Select timestamp authority trust root",
+		DefaultDirectory: a.userDir(),
+		Filters: []wailsruntime.FileFilter{
+			{
+				DisplayName: "PEM certificates (*.pem, *.crt, *.cer)",
+				Pattern:     "*.pem;*.crt;*.cer",
+			},
+			{DisplayName: "All files", Pattern: "*.*"},
+		},
+	})
+}

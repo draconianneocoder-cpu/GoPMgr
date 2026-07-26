@@ -46,6 +46,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let certPath = $state('');
   let signatureMethod = $state<SignatureMethod>('none');
   let gpgKeyID = $state('');
+  let timestampEnabled = $state(false);
+  let tsaEndpoint = $state('');
+  let tsaPolicyOID = $state('');
+  let tsaRootCertPath = $state('');
   let complianceMode = $state(false);
   let settingsBusy = $state(false);
   let settingsResetting = $state(false);
@@ -189,6 +193,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       certPath = s.cert_path ?? '';
       signatureMethod = s.signature_method ?? (s.signature_enabled ? 'pades' : 'none');
       gpgKeyID = s.gpg_key_id ?? '';
+      timestampEnabled = s.timestamp_enabled ?? false;
+      tsaEndpoint = s.tsa_endpoint ?? '';
+      tsaPolicyOID = s.tsa_policy_oid ?? '';
+      tsaRootCertPath = s.tsa_root_cert_path ?? '';
       complianceMode = s.compliance_mode ?? false;
     } catch {
       // non-fatal; leave defaults
@@ -257,6 +265,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
         signature_enabled: signatureMethod !== 'none',
         signature_method: signatureMethod,
         gpg_key_id: gpgKeyID,
+        // A hidden PAdES option must never remain active after the user
+        // switches to another signing method.
+        timestamp_enabled: signatureMethod === 'pades' && timestampEnabled,
+        tsa_endpoint: tsaEndpoint,
+        tsa_policy_oid: tsaPolicyOID,
+        tsa_root_cert_path: tsaRootCertPath,
         compliance_mode: complianceMode,
       });
       settingsStatus = 'Saved.';
@@ -278,6 +292,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       certPath = defaults.cert_path ?? '';
       signatureMethod = defaults.signature_method ?? (defaults.signature_enabled ? 'pades' : 'none');
       gpgKeyID = defaults.gpg_key_id ?? '';
+      timestampEnabled = defaults.timestamp_enabled ?? false;
+      tsaEndpoint = defaults.tsa_endpoint ?? '';
+      tsaPolicyOID = defaults.tsa_policy_oid ?? '';
+      tsaRootCertPath = defaults.tsa_root_cert_path ?? '';
       complianceMode = defaults.compliance_mode ?? false;
       defaultFont = defaults.default_font ?? '';
       fontStatus = '';
@@ -384,6 +402,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
       if (p) certPath = p;
     } catch {
       // user cancelled
+    }
+  }
+
+  async function chooseTSARootCert() {
+    try {
+      const path = await window.go.main.App.ChooseTSARootCertFile();
+      if (path) tsaRootCertPath = path;
+    } catch {
+      // Closing a native file picker is not an actionable settings error.
     }
   }
 
@@ -1728,20 +1755,98 @@ SPDX-License-Identifier: GPL-3.0-or-later
            </div>
 
            {#if signatureMethod === 'pades'}
-           <div>
-             <span class="text-xs text-slate-500 uppercase">Certificate path</span>
-             <div class="flex gap-2 mt-1">
-               <input
-                 bind:value={certPath}
-                 placeholder="Path to .p12 / .pfx certificate"
-                 class="flex-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none text-sm"
-               />
-               <button
-                 onclick={chooseCert}
-                 class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded"
-               >
-                 Browse…
-               </button>
+           <div class="space-y-3">
+             <div>
+               <span class="text-xs text-slate-500 uppercase">Certificate path</span>
+               <div class="flex gap-2 mt-1">
+                 <input
+                   bind:value={certPath}
+                   placeholder="Path to .p12 / .pfx certificate"
+                   class="flex-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none text-sm"
+                 />
+                 <button
+                   onclick={chooseCert}
+                   class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded"
+                 >
+                   Browse…
+                 </button>
+               </div>
+             </div>
+
+             <div class="border border-slate-800 bg-slate-900/60 rounded p-3 space-y-3">
+               <label class="flex items-start gap-3 cursor-pointer">
+                 <input
+                   type="checkbox"
+                   bind:checked={timestampEnabled}
+                   class="accent-cyan-500 mt-0.5"
+                 />
+                 <span>
+                   <span class="block text-sm text-slate-200">
+                     Add an RFC 3161 timestamp (PAdES-T)
+                   </span>
+                   <span class="block mt-1 text-[11px] text-slate-500">
+                     Enabled exports fail if the timestamp authority is unavailable or returns an
+                     invalid token. PMForge never silently falls back to Baseline B.
+                   </span>
+                 </span>
+               </label>
+
+               {#if timestampEnabled}
+                 <label class="block">
+                   <span class="text-xs text-slate-500 uppercase">
+                     Timestamp authority HTTPS endpoint
+                   </span>
+                   <input
+                     bind:value={tsaEndpoint}
+                     required
+                     autocomplete="off"
+                     spellcheck="false"
+                     placeholder="https://tsa.example.com/timestamp"
+                     class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none text-sm"
+                   />
+                   <span class="block mt-1 text-[11px] text-slate-500">
+                     URLs containing credentials, query strings, or fragments are rejected.
+                   </span>
+                 </label>
+
+                 <label class="block">
+                   <span class="text-xs text-slate-500 uppercase">
+                     TSA policy OID (optional)
+                   </span>
+                   <input
+                     bind:value={tsaPolicyOID}
+                     autocomplete="off"
+                     spellcheck="false"
+                     placeholder="1.3.6.1.4.1…"
+                     class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none text-sm"
+                   />
+                 </label>
+
+                 <div>
+                   <span class="text-xs text-slate-500 uppercase">
+                     TSA trust root certificate (optional PEM)
+                   </span>
+                   <div class="flex gap-2 mt-1">
+                     <input
+                       bind:value={tsaRootCertPath}
+                       autocomplete="off"
+                       spellcheck="false"
+                       placeholder="Path to TSA root .pem / .crt"
+                       class="flex-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none text-sm"
+                     />
+                     <button
+                       onclick={chooseTSARootCert}
+                       class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded"
+                     >
+                       Browse…
+                     </button>
+                   </div>
+                   <span class="block mt-1 text-[11px] text-slate-500">
+                     Without an explicit root, the token signature is validated but TSA chain trust
+                     is reported as not evaluated.
+                   </span>
+                 </div>
+               {/if}
              </div>
            </div>
            {:else if signatureMethod === 'gpg'}

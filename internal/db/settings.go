@@ -3,7 +3,10 @@
 
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+	"strings"
+)
 
 const (
 	SignatureMethodNone  = "none"
@@ -25,6 +28,13 @@ type UserSettings struct {
 	SignatureEnabled bool   `json:"signature_enabled"`
 	SignatureMethod  string `json:"signature_method"`
 	GPGKeyID         string `json:"gpg_key_id"`
+	// TimestampEnabled opts PAdES exports into fail-closed RFC 3161
+	// timestamping. The remaining fields are deliberately non-secret; TSA
+	// credentials are never persisted in a project database.
+	TimestampEnabled bool   `json:"timestamp_enabled"`
+	TSAEndpoint      string `json:"tsa_endpoint"`
+	TSAPolicyOID     string `json:"tsa_policy_oid"`
+	TSARootCertPath  string `json:"tsa_root_cert_path"`
 	// DefaultFont is the document-export font family (a name from the
 	// fonts catalog or a user-imported family). Empty means "use the
 	// catalog default".
@@ -48,9 +58,11 @@ func (db *Database) SaveSettings(s UserSettings) error {
 	s = normalizeUserSettings(s)
 	const q = `
 		INSERT INTO settings
-			(id, default_password, export_theme, auto_repair, cert_path, signature_enabled, signature_method, gpg_key_id, default_font, agile_enabled, compliance_mode)
+			(id, default_password, export_theme, auto_repair, cert_path, signature_enabled, signature_method, gpg_key_id,
+			 timestamp_enabled, tsa_endpoint, tsa_policy_oid, tsa_root_cert_path,
+			 default_font, agile_enabled, compliance_mode)
 		VALUES
-			(1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			(1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			default_password  = excluded.default_password,
 			export_theme      = excluded.export_theme,
@@ -59,6 +71,10 @@ func (db *Database) SaveSettings(s UserSettings) error {
 			signature_enabled = excluded.signature_enabled,
 			signature_method  = excluded.signature_method,
 			gpg_key_id        = excluded.gpg_key_id,
+			timestamp_enabled = excluded.timestamp_enabled,
+			tsa_endpoint      = excluded.tsa_endpoint,
+			tsa_policy_oid    = excluded.tsa_policy_oid,
+			tsa_root_cert_path = excluded.tsa_root_cert_path,
 			default_font      = excluded.default_font,
 			agile_enabled     = excluded.agile_enabled,
 			compliance_mode   = excluded.compliance_mode
@@ -71,6 +87,10 @@ func (db *Database) SaveSettings(s UserSettings) error {
 		boolToInt(s.SignatureEnabled),
 		s.SignatureMethod,
 		s.GPGKeyID,
+		boolToInt(s.TimestampEnabled),
+		s.TSAEndpoint,
+		s.TSAPolicyOID,
+		s.TSARootCertPath,
 		s.DefaultFont,
 		boolToInt(s.AgileEnabled),
 		boolToInt(s.ComplianceMode),
@@ -85,13 +105,31 @@ func (db *Database) GetSettings() (UserSettings, error) {
 		s            UserSettings
 		autoRepair   int
 		signatureOn  int
+		timestampOn  int
 		agileEnabled int
 		compliance   int
 	)
 	err := db.Conn.QueryRow(
-		`SELECT default_password, export_theme, auto_repair, cert_path, signature_enabled, signature_method, gpg_key_id, default_font, agile_enabled, compliance_mode
+		`SELECT default_password, export_theme, auto_repair, cert_path, signature_enabled, signature_method, gpg_key_id,
+		        timestamp_enabled, tsa_endpoint, tsa_policy_oid, tsa_root_cert_path,
+		        default_font, agile_enabled, compliance_mode
 		 FROM settings WHERE id = 1`,
-	).Scan(&s.DefaultPassword, &s.ExportTheme, &autoRepair, &s.CertPath, &signatureOn, &s.SignatureMethod, &s.GPGKeyID, &s.DefaultFont, &agileEnabled, &compliance)
+	).Scan(
+		&s.DefaultPassword,
+		&s.ExportTheme,
+		&autoRepair,
+		&s.CertPath,
+		&signatureOn,
+		&s.SignatureMethod,
+		&s.GPGKeyID,
+		&timestampOn,
+		&s.TSAEndpoint,
+		&s.TSAPolicyOID,
+		&s.TSARootCertPath,
+		&s.DefaultFont,
+		&agileEnabled,
+		&compliance,
+	)
 
 	if err == sql.ErrNoRows {
 		return DefaultUserSettings(), nil
@@ -101,12 +139,16 @@ func (db *Database) GetSettings() (UserSettings, error) {
 	}
 	s.AutoRepair = autoRepair != 0
 	s.SignatureEnabled = signatureOn != 0
+	s.TimestampEnabled = timestampOn != 0
 	s.AgileEnabled = agileEnabled != 0
 	s.ComplianceMode = compliance != 0
 	return normalizeUserSettings(s), nil
 }
 
 func normalizeUserSettings(s UserSettings) UserSettings {
+	s.TSAEndpoint = strings.TrimSpace(s.TSAEndpoint)
+	s.TSAPolicyOID = strings.TrimSpace(s.TSAPolicyOID)
+	s.TSARootCertPath = strings.TrimSpace(s.TSARootCertPath)
 	switch s.SignatureMethod {
 	case SignatureMethodNone, SignatureMethodPAdES, SignatureMethodGnuPG:
 	case "":
@@ -119,6 +161,9 @@ func normalizeUserSettings(s UserSettings) UserSettings {
 		s.SignatureMethod = SignatureMethodNone
 	}
 	s.SignatureEnabled = s.SignatureMethod != SignatureMethodNone
+	if s.SignatureMethod != SignatureMethodPAdES {
+		s.TimestampEnabled = false
+	}
 	return s
 }
 

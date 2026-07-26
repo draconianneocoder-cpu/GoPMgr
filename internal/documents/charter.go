@@ -313,8 +313,11 @@ func Render(kind Kind, contentJSON, projectName string) ([]byte, error) {
 	return raw, nil
 }
 
-// RenderSigned renders the document and applies a real PAdES B-B digital
-// signature using the provided certificate. It performs the full pipeline:
+// RenderSigned renders the document and applies a PAdES Baseline B digital
+// signature using the provided certificate. Application exports use
+// signing.ApplyPAdES instead so project-level RFC 3161 settings can upgrade
+// this same final mutation to Baseline T. This compatibility entry point
+// remains useful to callers that explicitly require Baseline B.
 //
 //  1. Raw content rendering
 //  2. PDF/A-3 metadata + OutputIntent (if ICC available)

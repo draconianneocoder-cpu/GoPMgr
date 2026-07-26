@@ -12,6 +12,7 @@
       "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_settings_test.go",
       "package": "pmforge",
       "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_settings.go",
         "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
       ]
     },
@@ -19,6 +20,8 @@
       "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/audit_actions_test.go",
       "package": "pmforge",
       "candidate_source_files": [
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_documents.go",
+        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_sigma.go",
         "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
       ]
     },
@@ -1284,6 +1287,14 @@
       "package": "pmforge/internal/signing",
       "candidate_source_files": [
         "internal/signing/gnupg.go"
+      ]
+    },
+    {
+      "test_file": "internal/signing/pades_test.go",
+      "package": "pmforge/internal/signing",
+      "candidate_source_files": [
+        "internal/signing/gnupg.go",
+        "internal/signing/pades.go"
       ]
     },
     {

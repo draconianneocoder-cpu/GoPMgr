@@ -30,6 +30,13 @@ func TestGetSettingsDefaults(t *testing.T) {
 	if s.GPGKeyID != "" {
 		t.Errorf("GPGKeyID default: got %q, want empty", s.GPGKeyID)
 	}
+	if s.TimestampEnabled {
+		t.Error("TimestampEnabled default: want false, got true")
+	}
+	if s.TSAEndpoint != "" || s.TSAPolicyOID != "" || s.TSARootCertPath != "" {
+		t.Fatalf("timestamp defaults = endpoint %q, policy %q, root %q; want empty",
+			s.TSAEndpoint, s.TSAPolicyOID, s.TSARootCertPath)
+	}
 }
 
 func TestDefaultUserSettingsMatchesEmptyProjectDefaults(t *testing.T) {
@@ -100,8 +107,12 @@ func TestSaveSettingsPreservesAllFields(t *testing.T) {
 		AutoRepair:       false,
 		CertPath:         "/some/cert.p12",
 		SignatureEnabled: true,
-		SignatureMethod:  SignatureMethodGnuPG,
+		SignatureMethod:  SignatureMethodPAdES,
 		GPGKeyID:         "pmforge@example.test",
+		TimestampEnabled: true,
+		TSAEndpoint:      "https://tsa.example.test/timestamp",
+		TSAPolicyOID:     "1.3.6.1.4.1.55555.7",
+		TSARootCertPath:  "/some/tsa-root.pem",
 		DefaultFont:      "Helvetica",
 		AgileEnabled:     true,
 		ComplianceMode:   true,
@@ -132,6 +143,18 @@ func TestSaveSettingsPreservesAllFields(t *testing.T) {
 	}
 	if out.GPGKeyID != in.GPGKeyID {
 		t.Errorf("GPGKeyID: got %q, want %q", out.GPGKeyID, in.GPGKeyID)
+	}
+	if out.TimestampEnabled != in.TimestampEnabled {
+		t.Errorf("TimestampEnabled: got %v, want %v", out.TimestampEnabled, in.TimestampEnabled)
+	}
+	if out.TSAEndpoint != in.TSAEndpoint {
+		t.Errorf("TSAEndpoint: got %q, want %q", out.TSAEndpoint, in.TSAEndpoint)
+	}
+	if out.TSAPolicyOID != in.TSAPolicyOID {
+		t.Errorf("TSAPolicyOID: got %q, want %q", out.TSAPolicyOID, in.TSAPolicyOID)
+	}
+	if out.TSARootCertPath != in.TSARootCertPath {
+		t.Errorf("TSARootCertPath: got %q, want %q", out.TSARootCertPath, in.TSARootCertPath)
 	}
 	if out.DefaultFont != in.DefaultFont {
 		t.Errorf("DefaultFont: got %q, want %q", out.DefaultFont, in.DefaultFont)
@@ -164,6 +187,25 @@ func TestSettingsSignatureMethodColumnsExist(t *testing.T) {
 		t.Fatalf("columnSet: %v", err)
 	}
 	for _, name := range []string{"signature_method", "gpg_key_id"} {
+		if _, ok := cols[name]; !ok {
+			t.Errorf("%s column not found in settings table after migration", name)
+		}
+	}
+}
+
+func TestSettingsTimestampColumnsExist(t *testing.T) {
+	d := newBackupTestDB(t)
+
+	cols, err := d.columnSet("settings")
+	if err != nil {
+		t.Fatalf("columnSet: %v", err)
+	}
+	for _, name := range []string{
+		"timestamp_enabled",
+		"tsa_endpoint",
+		"tsa_policy_oid",
+		"tsa_root_cert_path",
+	} {
 		if _, ok := cols[name]; !ok {
 			t.Errorf("%s column not found in settings table after migration", name)
 		}
