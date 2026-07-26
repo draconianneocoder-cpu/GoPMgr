@@ -94,6 +94,7 @@ trust.
 ## Release Gates
 
 ```sh
+make config-check
 make license-check
 make release-scope
 make memory-scan
@@ -101,12 +102,19 @@ make check-release
 PMFORGE_RELEASE_TAG=v1.1.0-rc.1 make tag-preflight
 ```
 
+`make config-check` runs table-driven malformed-input regressions, parses every
+tracked YAML and TOML file, rejects duplicate YAML keys, checks required
+top-level structures, and fails if a new configuration has not been explicitly
+classified. GitHub Actions is the CI authority; the retired `.gitlab-ci.yml`
+must not be reintroduced accidentally.
+
 `make check-release` is the final gate. It currently covers version
-consistency, REUSE/SPDX, frontend build budget, release-scope guards,
-frontend stability, frontend runtime smoke, memory-safety scan, Go race
-tests, production build, PDF/A-3 validation, and the PAdES harness regression
-target. Pre-merge GitHub CI also runs `make pades-harness-tests` in a dedicated
-job with `qpdf` and `pdfsig` installed.
+consistency, configuration format policy, REUSE/SPDX, frontend build budget,
+release-scope guards, frontend stability, frontend runtime smoke, memory-safety
+scan, Go race tests, production build, PDF/A-3 validation, and the PAdES
+harness regression target. Pre-merge GitHub CI also runs
+`make pades-harness-tests` in a dedicated job with `qpdf` and `pdfsig`
+installed.
 
 `make tag-preflight` first tests and applies the publication-tag contract, then
 runs the full release gate. The Release workflow supplies `GITHUB_REF_NAME` as

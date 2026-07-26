@@ -31,7 +31,17 @@ if ! PMFORGE_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh >/dev/null;
 fi
 echo "Wails toolchain version verified."
 
-# --- 2. REUSE / SPDX licensing ---------------------------------------
+# --- 2. Configuration formats and required structure -----------------
+# Hosted automation reads these files before PMForge can run any recovery
+# code. Validate the complete tracked inventory early so malformed YAML/TOML
+# or an unsupported format conversion cannot make later gates disappear.
+if ! make config-check >/dev/null; then
+    echo "Configuration validation failed. Run 'make config-check' for details."
+    exit 1
+fi
+echo "Tracked configuration files verified."
+
+# --- 2b. REUSE / SPDX licensing --------------------------------------
 # The embedded frontend now lives at the repo-root frontend/dist (the real
 # Vite output, gitignored), so there is no separate copy to clean. reuse
 # lint skips gitignored paths, so frontend/dist is not linted.

@@ -1378,6 +1378,13 @@
         "internal/users/recovery.go",
         "internal/users/store.go"
       ]
+    },
+    {
+      "test_file": "scripts/config_check_test.go",
+      "package": "pmforge/scripts",
+      "candidate_source_files": [
+        "scripts/config_check.go"
+      ]
     }
   ]
 }

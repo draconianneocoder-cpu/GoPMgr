@@ -943,6 +943,25 @@ This section is the running log of non-obvious discoveries. Every session that l
   package matrix declares `needs: preflight`; leaving an unused preflight job
   in the workflow cannot satisfy the release guard.
 
+### 2026-07-26 — Configuration format and parsing gate
+
+- **Use the consumer's native format rather than a repository-wide
+  preference.** GitHub Actions, Dependabot, and nFPM remain YAML; Gitleaks and
+  REUSE remain TOML. Golangci-lint supports both, but its established YAML
+  file stays aligned with the tool's primary examples.
+- **Parse what release automation will consume.** `make config-check` tests
+  malformed and duplicate-key cases, parses the seven tracked configuration
+  files, validates their essential top-level contracts, and rejects
+  unclassified YAML/TOML additions. `make verify` and `make check-release`
+  both run the gate.
+- **Keep one CI authority.** The stale `.gitlab-ci.yml` was removed after the
+  repository and handbook had already moved to GitHub Actions. The inventory
+  guard rejects its accidental reintroduction instead of leaving an
+  unmaintained pipeline that can diverge from release behavior.
+- **Keep configuration parsers out of the product binary.** The YAML and TOML
+  packages are used by the standalone `scripts` command only; PMForge project
+  data and report inputs/outputs do not gain a new serialization format.
+
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
 - **Remove "soft gate" wording when the gate passes reliably.** The `validate-pdfa.sh` header comment and the "soft for now" check-release comment both said "warn, don't fail" -- these were vestigial once all samples passed. Gate promotion requires two things: (1) all representative samples pass, (2) the release script actually exits on failure.

@@ -33,6 +33,19 @@ if ! rg -q 'check-wails-version\.sh' scripts/check-release.sh; then
 	fail=1
 fi
 
+# Configuration files control CI and packaging before application code runs.
+# Guard both the public target and its release invocation so the parser cannot
+# remain available but silently fall out of the publication path.
+if ! rg -q '^config-check:' Makefile; then
+	echo "release-scope: Makefile must define the config-check target." >&2
+	fail=1
+fi
+
+if ! rg -q '^[[:space:]]*if ! make config-check([[:space:]]|>)' scripts/check-release.sh; then
+	echo "release-scope: check-release.sh must run make config-check." >&2
+	fail=1
+fi
+
 # The PAdES shell regressions cover generated artifacts, external-validator
 # parsing, shared-directory locking, and trusted-source result classification.
 # Guard all three entry points so a future refactor cannot leave the target

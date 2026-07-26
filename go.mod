@@ -30,7 +30,9 @@ require (
 	github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea
 	github.com/duckdb/duckdb-go/v2 v2.10504.0
 	github.com/mutecomm/go-sqlcipher/v4 v4.4.2
+	github.com/pelletier/go-toml/v2 v2.4.3
 	gonum.org/v1/gonum v0.17.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

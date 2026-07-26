@@ -36,6 +36,9 @@ posture, and validator coverage, so keep them intentional and verified.
 - `github.com/rickar/cal/v2`: Country holiday calendars.
 - `github.com/gorules/zen-go`: JDM launchpad template-seeding rules.
 - `gonum.org/v1/gonum`: Numerical/statistical support.
+- `gopkg.in/yaml.v3` and `github.com/pelletier/go-toml/v2`: build-time
+  configuration parsing for `make config-check`. They are imported only by
+  the `scripts` command and are not linked into the PMForge desktop binary.
 - `github.com/duckdb/duckdb-go/v2`: in-memory DuckDB analytics engine
   (ADR-002 Option B), compiled under the `duckdb` build tag
   (`internal/analytics`). Production/package builds enable that tag so
