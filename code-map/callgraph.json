@@ -380,7 +380,7 @@
       "touches_internal_packages": [
         "pmforge/internal/crypto",
         "pmforge/internal/documents",
-        "pmforge/internal/pdfmeta"
+        "pmforge/internal/signing"
       ]
     },
     {
@@ -479,14 +479,17 @@
       "main_go_line": 2605,
       "touches_internal_packages": [
         "pmforge/internal/admin",
-        "pmforge/internal/documents"
+        "pmforge/internal/crypto",
+        "pmforge/internal/documents",
+        "pmforge/internal/signing"
       ]
     },
     {
       "entry_point": "App.GetSettings",
       "main_go_line": 2654,
       "touches_internal_packages": [
-        "pmforge/internal/db"
+        "pmforge/internal/db",
+        "pmforge/internal/signing"
       ]
     },
     {
@@ -827,6 +830,11 @@
     {
       "entry_point": "App.ChooseCertFile",
       "main_go_line": 3802,
+      "touches_internal_packages": []
+    },
+    {
+      "entry_point": "App.ChooseTSARootCertFile",
+      "main_go_line": 876,
       "touches_internal_packages": []
     },
     {

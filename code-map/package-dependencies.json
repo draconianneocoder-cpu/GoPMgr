@@ -208,6 +208,7 @@
         "pmforge/internal/db",
         "pmforge/internal/documents",
         "pmforge/internal/export",
+        "pmforge/internal/signing",
         "pmforge/internal/users"
       ],
       "imports_internal": [
@@ -305,7 +306,8 @@
       "imported_by_internal": [
         "pmforge",
         "pmforge/internal/documents",
-        "pmforge/internal/export"
+        "pmforge/internal/export",
+        "pmforge/internal/signing"
       ],
       "imports_internal": [],
       "notable_external_deps": []
@@ -341,7 +343,8 @@
       "imported_by_internal": [
         "pmforge",
         "pmforge/internal/documents",
-        "pmforge/internal/export"
+        "pmforge/internal/export",
+        "pmforge/internal/signing"
       ],
       "imports_internal": [],
       "notable_external_deps": [
@@ -351,7 +354,8 @@
     "pmforge/internal/rfc3161": {
       "dir": "internal/rfc3161",
       "imported_by_internal": [
-        "pmforge/internal/crypto"
+        "pmforge/internal/crypto",
+        "pmforge/internal/signing"
       ],
       "imports_internal": [],
       "notable_external_deps": [
@@ -415,7 +419,11 @@
       "imported_by_internal": [
         "pmforge"
       ],
-      "imports_internal": [],
+      "imports_internal": [
+        "pmforge/internal/crypto",
+        "pmforge/internal/pdfmeta",
+        "pmforge/internal/rfc3161"
+      ],
       "notable_external_deps": []
     },
     "pmforge/internal/sqlitedriver": {

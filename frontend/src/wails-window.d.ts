@@ -18,6 +18,7 @@ declare global {
           GetSettings: () => Promise<UserSettings>;
           SaveSettings: (s: UserSettings) => Promise<void>;
           ResetProjectSettings: () => Promise<UserSettings>;
+          ChooseTSARootCertFile: () => Promise<string>;
           SecureArchive: (projectPath: string) => Promise<string>;
 
           // ----- V2: accounts & session -----
@@ -440,6 +441,10 @@ declare global {
     signature_enabled: boolean;
     signature_method?: SignatureMethod;
     gpg_key_id?: string;
+    timestamp_enabled?: boolean;
+    tsa_endpoint?: string;
+    tsa_policy_oid?: string;
+    tsa_root_cert_path?: string;
     default_font?: string;
     agile_enabled?: boolean;
     compliance_mode?: boolean;

@@ -6,6 +6,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"pmforge/internal/agile"
@@ -19,6 +20,56 @@ import (
 func TestDefaultAppSettingsEnablesAutoSave(t *testing.T) {
 	if got := defaultAppSettings().AutoSaveSeconds; got != 60 {
 		t.Fatalf("default AutoSaveSeconds = %d, want 60", got)
+	}
+}
+
+func TestSaveSettingsRejectsEnabledTimestampingOutsidePAdES(t *testing.T) {
+	d, err := db.InitDB(filepath.Join(t.TempDir(), "project.pmforge"))
+	if err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	app := &App{db: d}
+
+	settings := db.DefaultUserSettings()
+	settings.SignatureMethod = db.SignatureMethodGnuPG
+	settings.TimestampEnabled = true
+	settings.TSAEndpoint = "https://tsa.example.test/timestamp"
+	err = app.SaveSettings(settings)
+	if err == nil || !strings.Contains(err.Error(), "PAdES") {
+		t.Fatalf("SaveSettings() error = %v, want PAdES-only rejection", err)
+	}
+}
+
+func TestSaveSettingsPersistsValidatedTimestampConfiguration(t *testing.T) {
+	d, err := db.InitDB(filepath.Join(t.TempDir(), "project.pmforge"))
+	if err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	app := &App{db: d}
+
+	settings := db.DefaultUserSettings()
+	settings.SignatureMethod = db.SignatureMethodPAdES
+	settings.TimestampEnabled = true
+	settings.TSAEndpoint = " https://tsa.example.test/timestamp "
+	settings.TSAPolicyOID = " 1.3.6.1.4.1.55555.7 "
+	if err := app.SaveSettings(settings); err != nil {
+		t.Fatalf("SaveSettings() error = %v", err)
+	}
+
+	persisted, err := d.GetSettings()
+	if err != nil {
+		t.Fatalf("GetSettings() error = %v", err)
+	}
+	if !persisted.TimestampEnabled {
+		t.Fatal("TimestampEnabled = false, want true")
+	}
+	if persisted.TSAEndpoint != "https://tsa.example.test/timestamp" {
+		t.Fatalf("TSAEndpoint = %q, want trimmed endpoint", persisted.TSAEndpoint)
+	}
+	if persisted.TSAPolicyOID != "1.3.6.1.4.1.55555.7" {
+		t.Fatalf("TSAPolicyOID = %q, want trimmed policy", persisted.TSAPolicyOID)
 	}
 }
 

@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package rfc3161 provides the fail-closed timestamp-authority client used by
-// PMForge's signing pipeline. It validates timestamp tokens but does not embed
-// them into PAdES signatures; that integration is intentionally a separate
-// release slice.
+// PMForge's signing pipeline. It owns request/response validation but does not
+// mutate CMS or PDF bytes; internal/crypto and internal/signing compose those
+// separate responsibilities into PAdES-T exports.
 package rfc3161
 
 import (

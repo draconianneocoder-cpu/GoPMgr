@@ -270,6 +270,10 @@ Project Settings lets users choose a default document signing method:
 - **PAdES digital signature** embeds a PDF signature using a `.p12` or
   `.pfx` certificate. Users can configure a certificate in Project Settings
   or choose one directly from the Signature Options dialog during export.
+  Project Settings can additionally enable RFC 3161 timestamping for
+  PAdES Baseline T. Configure a credential-free HTTPS TSA endpoint, optional
+  policy OID, and optional PEM trust root. Without a root, PMForge validates
+  token integrity but records TSA chain trust as not evaluated.
 - **GnuPG detached signature** exports the PDF and writes an ASCII-armored
   `.asc` sidecar. The PDF bytes are not modified after export; verify with
   `gpg --verify document.pdf.asc document.pdf`.
@@ -278,6 +282,10 @@ Project Settings lets users choose a default document signing method:
 
 PAdES signing is applied after rendering and PDF/A metadata injection. This
 order is required because the signature covers byte ranges in the final PDF.
+When timestamping is enabled, PMForge fails the export if the TSA request or
+token validation fails; it never silently emits a Baseline B signature.
+Endpoint URLs containing credentials, query strings, or fragments are rejected
+so project databases do not become a credential store.
 
 ## Recovery Codes and Encryption
 
