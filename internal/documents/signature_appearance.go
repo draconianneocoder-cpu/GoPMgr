@@ -34,5 +34,8 @@ func DrawCompactSignatureBox(pdf *fpdf.Fpdf, signerName, date string) {
 	pdf.SetY(startY + 14)
 	pdf.SetFont("Helvetica", "I", 7)
 	pdf.SetTextColor(100, 100, 100)
-	pdf.CellFormat(170, 5, "PAdES B-B signature — content is tamper-evident", "", 1, "L", false, 0, "")
+	// The visible approval block intentionally avoids claiming a baseline
+	// level: project settings may upgrade the final CMS from Baseline B to T
+	// after this page is rendered.
+	pdf.CellFormat(170, 5, "PAdES digital signature — content is tamper-evident", "", 1, "L", false, 0, "")
 }

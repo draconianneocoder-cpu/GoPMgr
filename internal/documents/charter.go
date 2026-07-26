@@ -5,6 +5,7 @@ package documents
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 
 	"pmforge/internal/crypto"
 	"pmforge/internal/pdfmeta"
+	"pmforge/internal/signing"
 )
 
 // ErrMissingRequired is returned by Validate when a required field is
@@ -319,55 +321,37 @@ func Render(kind Kind, contentJSON, projectName string) ([]byte, error) {
 // this same final mutation to Baseline T. This compatibility entry point
 // remains useful to callers that explicitly require Baseline B.
 //
-//  1. Raw content rendering
-//  2. PDF/A-3 metadata + OutputIntent (if ICC available)
-//  3. Real embedded PAdES B-B signature via pdfmeta.InjectPAdESSignature
+//  1. Standard document rendering, including PDF/A-3 metadata.
+//  2. Shared PAdES Baseline B signing pipeline.
 //
 // Callers that need a visible signature appearance must render it before
 // this function signs the PDF. Appending another PDF after signing would
 // leave those bytes outside the declared /ByteRange.
 func RenderSigned(kind Kind, contentJSON, projectName, certPath, certPassword string) ([]byte, error) {
-	raw, err := renderRaw(kind, contentJSON, projectName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Step 1: PDF/A-3 post-processing (same as normal Render)
-	def, ok := Get(kind)
-	name := projectName
-	if ok {
-		name = projectName + ": " + def.Name
-	}
-
-	spec := pdfmeta.XMPSpec{
-		Title:       name,
-		Author:      "PMForge",
-		Subject:     string(kind),
-		CreatorTool: "PMForge",
-	}
-
-	pdfBytes := raw
-	if icc := pdfmeta.DefaultICCProfile(); len(icc) > 0 {
-		if tagged, err := pdfmeta.MakePDFA3(raw, spec, icc); err == nil {
-			pdfBytes = tagged
-		}
-	} else if xmp := pdfmeta.BuildXMPPacket(spec); len(xmp) > 0 {
-		if tagged, err := pdfmeta.InjectXMPStream(raw, xmp); err == nil {
-			pdfBytes = tagged
-		}
-	}
-
-	// Step 2: Real PAdES B-B digital signature
 	signer, err := crypto.LoadCertificate(certPath, certPassword)
 	if err != nil {
 		return nil, fmt.Errorf("documents: load certificate for signing: %w", err)
 	}
+	return renderSignedWithSigner(kind, contentJSON, projectName, signer)
+}
 
-	signed, err := pdfmeta.InjectPAdESSignature(pdfBytes, signer.SignPDFCMS)
+// renderSignedWithSigner is the testable compatibility seam behind
+// RenderSigned. It intentionally passes nil timestamp configuration because
+// this API promises Baseline B; application exports prepare project-level
+// PAdES-T settings before calling the same signing pipeline.
+func renderSignedWithSigner(
+	kind Kind,
+	contentJSON, projectName string,
+	signer *crypto.Signer,
+) ([]byte, error) {
+	pdfBytes, err := Render(kind, contentJSON, projectName)
 	if err != nil {
-		return nil, fmt.Errorf("documents: PAdES embedding failed: %w", err)
+		return nil, err
 	}
-
+	signed, _, err := signing.ApplyPAdES(context.Background(), pdfBytes, signer, nil)
+	if err != nil {
+		return nil, fmt.Errorf("documents: apply PAdES Baseline B signature: %w", err)
+	}
 	return signed, nil
 }
 

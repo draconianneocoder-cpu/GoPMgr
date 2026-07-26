@@ -67,7 +67,10 @@ func HasDefaultICC() bool {
 	return pdfmeta.HasDefaultICC()
 }
 
-// InjectPAdESSignature re-exports the real PAdES B-B embedding function.
+// InjectPAdESSignature re-exports the real PAdES Baseline B embedding
+// primitive for compatibility. New export workflows should use
+// signing.ApplyPAdES so Baseline B/T policy and fail-closed behavior stay
+// consistent.
 // The signRanges callback will be invoked with the exact byte ranges
 // that must be signed for a correct /ByteRange.
 func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, error)) ([]byte, error) {

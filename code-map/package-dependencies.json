@@ -263,7 +263,8 @@
         "pmforge/internal/crypto",
         "pmforge/internal/fonts",
         "pmforge/internal/kernel",
-        "pmforge/internal/pdfmeta"
+        "pmforge/internal/pdfmeta",
+        "pmforge/internal/signing"
       ],
       "notable_external_deps": [
         "github.com/go-pdf/fpdf"
@@ -283,6 +284,7 @@
         "pmforge/internal/fonts",
         "pmforge/internal/kernel",
         "pmforge/internal/pdfmeta",
+        "pmforge/internal/signing",
         "pmforge/internal/sigma/domain"
       ],
       "notable_external_deps": [
@@ -417,7 +419,9 @@
     "pmforge/internal/signing": {
       "dir": "internal/signing",
       "imported_by_internal": [
-        "pmforge"
+        "pmforge",
+        "pmforge/internal/documents",
+        "pmforge/internal/export"
       ],
       "imports_internal": [
         "pmforge/internal/crypto",
