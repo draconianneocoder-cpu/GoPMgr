@@ -46,6 +46,19 @@ if ! rg -q '^[[:space:]]*if ! make config-check([[:space:]]|>)' scripts/check-re
 	fail=1
 fi
 
+# Installer tools execute after the source preflight on separate native
+# runners. Preserve both the public target and its full-gate invocation so
+# version drift cannot bypass the local/tag source checks.
+if ! rg -q '^installer-tool-pins:' Makefile; then
+	echo "release-scope: Makefile must define the installer-tool-pins target." >&2
+	fail=1
+fi
+
+if ! rg -q '^[[:space:]]*if ! make installer-tool-pins([[:space:]]|>)' scripts/check-release.sh; then
+	echo "release-scope: check-release.sh must run make installer-tool-pins." >&2
+	fail=1
+fi
+
 # The PAdES shell regressions cover generated artifacts, external-validator
 # parsing, shared-directory locking, and trusted-source result classification.
 # Guard all three entry points so a future refactor cannot leave the target

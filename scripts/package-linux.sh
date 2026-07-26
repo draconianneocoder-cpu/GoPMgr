@@ -10,6 +10,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+NFPM_VERSION="$(sed -n 's/^NFPM_VERSION=//p' scripts/release-tool-versions.env)"
+if [[ ! "$NFPM_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+	echo "package-linux: scripts/release-tool-versions.env has an invalid NFPM_VERSION." >&2
+	exit 1
+fi
+
 VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')}"
 VERSION="${VERSION:-0.0.0}"
 export VERSION
@@ -20,7 +26,16 @@ if [ ! -x build/bin/pmforge ]; then
 fi
 if ! command -v nfpm >/dev/null 2>&1; then
 	echo "package-linux: nfpm not found. Install with:" >&2
-	echo "  go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest" >&2
+	echo "  go install github.com/goreleaser/nfpm/v2/cmd/nfpm@$NFPM_VERSION" >&2
+	exit 1
+fi
+# A source-built nFPM reports a development CLI version, so Go's embedded
+# module metadata is the stable way to prove the binary matches the release pin.
+nfpm_binary="$(command -v nfpm)"
+actual_nfpm_version="$(go version -m "$nfpm_binary" 2>/dev/null | awk '$1 == "mod" && $2 == "github.com/goreleaser/nfpm/v2" { print $3 }')"
+if [ "$actual_nfpm_version" != "$NFPM_VERSION" ]; then
+	echo "package-linux: nfpm $NFPM_VERSION is required; found ${actual_nfpm_version:-unknown} at $nfpm_binary." >&2
+	echo "  go install github.com/goreleaser/nfpm/v2/cmd/nfpm@$NFPM_VERSION" >&2
 	exit 1
 fi
 

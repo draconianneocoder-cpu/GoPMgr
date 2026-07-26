@@ -101,6 +101,11 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   validates the tracked YAML/TOML inventory, rejects ambiguous YAML and
   unclassified additions, and prevents the retired GitLab pipeline from
   returning alongside the authoritative GitHub Actions workflows.
+- **2026-07-26** — Native tag packaging uses one immutable installer-tool
+  record: nFPM v2.47.0 and Chocolatey NSIS 3.12.0. The workflow verifies the
+  installed tool provenance, while macOS stays on its built-in `hdiutil`
+  release path instead of installing the optional `create-dmg`. Isolated drift
+  fixtures and release-scope wiring guard the contract.
 
 ## Open / deferred (not yet decided or implemented)
 

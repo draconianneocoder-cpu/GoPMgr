@@ -962,6 +962,29 @@ This section is the running log of non-obvious discoveries. Every session that l
   packages are used by the standalone `scripts` command only; PMForge project
   data and report inputs/outputs do not gain a new serialization format.
 
+### 2026-07-26 — Reproducible native installer tools
+
+- **Pin fetched packaging tools in one reviewable record.**
+  `scripts/release-tool-versions.env` binds nFPM v2.47.0 and the Chocolatey
+  NSIS package at 3.12.0. The release workflow loads that record instead of
+  selecting `@latest` or an unversioned package.
+- **Verify the binary/package that actually reached the runner.** A binary
+  built by `go install` reports `dev` through `nfpm --version`, so Linux checks
+  Go's embedded module metadata instead. Windows checks Chocolatey's exact
+  installed package record and confirms `makensis` is discoverable before
+  Wails starts.
+- **Do not install an unused macOS dependency.** PMForge's dependable tag path
+  is the staged `hdiutil` image. `create-dmg` drives Finder through AppleScript
+  and remains an explicit `PMFORGE_FANCY_DMG=1` local option; removing its
+  unconditional Homebrew install reduces release network and UI-automation
+  inputs.
+- **Test the failure classes, then guard the integration points.**
+  `make installer-tool-pins` mutates isolated workflow fixtures for mutable,
+  missing, invalid, and bypassed pins, then checks the live files.
+  `make verify`, `make check-release`, and `make release-scope` keep the
+  contract in ordinary commits and tag preflight. Native RC installation is
+  still required because a source guard cannot prove hosted-runner packaging.
+
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
 - **Remove "soft gate" wording when the gate passes reliably.** The `validate-pdfa.sh` header comment and the "soft for now" check-release comment both said "warn, don't fail" -- these were vestigial once all samples passed. Gate promotion requires two things: (1) all representative samples pass, (2) the release script actually exits on failure.

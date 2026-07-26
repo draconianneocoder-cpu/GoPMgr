@@ -98,11 +98,14 @@ make dev
 On the matching OS, after `make build`:
 
 - **Linux** (`.deb` / `.rpm`): `VERSION=<x.y.z> bash scripts/package-linux.sh`
-  (needs [`nfpm`](https://nfpm.goreleaser.com/)).
+  (requires the nFPM version recorded in
+  `scripts/release-tool-versions.env`; the script prints exact installation
+  guidance when it is missing or mismatched).
 - **macOS** (`.dmg`): `VERSION=<x.y.z> make package-macos`
-  (uses `create-dmg`, falls back to a staged `hdiutil` image with an
-  Applications shortcut).
-- **Windows** (`.exe`): `wails build -platform windows/amd64 -nsis` (needs NSIS).
+  (uses the built-in `hdiutil` image path with an Applications shortcut;
+  `PMFORGE_FANCY_DMG=1` opts into a locally installed `create-dmg`).
+- **Windows** (`.exe`): `wails build -platform windows/amd64 -nsis` (requires
+  NSIS 3.12.0 for parity with the release workflow).
 
 The release workflow (`.github/workflows/release.yml`) runs all of these on
 native runners automatically when you push a `v*` tag.
