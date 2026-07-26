@@ -35,6 +35,35 @@ import (
 // Documents
 // =========================================================
 
+// padesExportRuntime contains only the environment-bound operations needed by
+// application-level PAdES exports. It is passed per call instead of stored on
+// App so concurrent Wails requests cannot mutate or observe test hooks.
+type padesExportRuntime struct {
+	loadCertificate  func(path, password string) (*crypto.Signer, error)
+	prepareTimestamp func(*db.Database) (*signing.PreparedTimestamp, error)
+}
+
+func productionPAdESExportRuntime() padesExportRuntime {
+	return padesExportRuntime{
+		loadCertificate:  crypto.LoadCertificate,
+		prepareTimestamp: prepareProjectTimestamp,
+	}
+}
+
+func (runtime padesExportRuntime) signer(path, password string) (*crypto.Signer, error) {
+	if runtime.loadCertificate == nil {
+		return nil, errors.New("PAdES export certificate loader is required")
+	}
+	return runtime.loadCertificate(path, password)
+}
+
+func (runtime padesExportRuntime) timestamp(database *db.Database) (*signing.PreparedTimestamp, error) {
+	if runtime.prepareTimestamp == nil {
+		return nil, errors.New("PAdES export timestamp preparer is required")
+	}
+	return runtime.prepareTimestamp(database)
+}
+
 func (a *App) ListDocumentKinds() []documents.Definition { return documents.All() }
 
 func (a *App) ListDocuments(kind string) ([]db.Document, error) {
@@ -418,6 +447,26 @@ func (a *App) ExportCombinedReportWithOptions(reportTitle, subtitle string, sect
 // timestamping is fail-closed: when enabled, a TSA failure produces no export
 // instead of silently returning a Baseline B document.
 func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections []documents.ReportSection, certPath, certPassword string) (string, error) {
+	return a.exportCombinedReportSignedWithRuntime(
+		reportTitle,
+		subtitle,
+		sections,
+		certPath,
+		certPassword,
+		productionPAdESExportRuntime(),
+	)
+}
+
+// exportCombinedReportSignedWithRuntime is the deterministic orchestration
+// seam behind ExportCombinedReportSigned. Tests replace only certificate and
+// TSA setup; report rendering, PAdES mutation, file permissions, and audit
+// writes remain the same production path.
+func (a *App) exportCombinedReportSignedWithRuntime(
+	reportTitle, subtitle string,
+	sections []documents.ReportSection,
+	certPath, certPassword string,
+	runtime padesExportRuntime,
+) (string, error) {
 	d := a.requireDB()
 	u := a.requireUser()
 	if d == nil || u == nil {
@@ -432,7 +481,7 @@ func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections 
 		return "", err
 	}
 	reportID := combinedReportCheckpointID(proj.ID, reportTitle, subtitle, sections)
-	timestampConfig, err := prepareProjectTimestamp(d)
+	timestampConfig, err := runtime.timestamp(d)
 	if err != nil {
 		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("timestamp settings: %v", err), "")
 		return "", fmt.Errorf("timestamp settings: %w", err)
@@ -489,7 +538,7 @@ func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections 
 	// The timestamp-aware signing pipeline is the final PDF mutation. Keeping
 	// the TSA request inside InjectPAdESSignature's callback ensures the token
 	// binds the exact CMS signature that covers the declared PDF ByteRange.
-	signer, err := crypto.LoadCertificate(certPath, certPassword)
+	signer, err := runtime.signer(certPath, certPassword)
 	if err != nil {
 		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("load certificate: %v", err), "")
 		return "", fmt.Errorf("load certificate: %w", err)
@@ -1153,6 +1202,22 @@ func (a *App) ExportDocumentPDFGnuPG(id, keyID string) (GnuPGExportResult, error
 // ExportDocumentPDFSigned is like ExportDocumentPDF but applies the configured
 // PAdES Baseline B or Baseline T signature using the provided certificate.
 func (a *App) ExportDocumentPDFSigned(id, certPath, certPassword string) (string, error) {
+	return a.exportDocumentPDFSignedWithRuntime(
+		id,
+		certPath,
+		certPassword,
+		productionPAdESExportRuntime(),
+	)
+}
+
+// exportDocumentPDFSignedWithRuntime mirrors the combined-report seam above.
+// Keeping the runtime argument private prevents the Wails API from exposing
+// dependency injection while allowing tests to exercise the full file and
+// audit orchestration without a live certificate store or TSA.
+func (a *App) exportDocumentPDFSignedWithRuntime(
+	id, certPath, certPassword string,
+	runtime padesExportRuntime,
+) (string, error) {
 	d := a.requireDB()
 	u := a.requireUser()
 	if d == nil || u == nil {
@@ -1167,7 +1232,7 @@ func (a *App) ExportDocumentPDFSigned(id, certPath, certPassword string) (string
 		return "", err
 	}
 
-	timestampConfig, err := prepareProjectTimestamp(d)
+	timestampConfig, err := runtime.timestamp(d)
 	if err != nil {
 		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
 		return "", fmt.Errorf("timestamp settings: %w", err)
@@ -1177,7 +1242,7 @@ func (a *App) ExportDocumentPDFSigned(id, certPath, certPassword string) (string
 		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
 		return "", err
 	}
-	signer, err := crypto.LoadCertificate(certPath, certPassword)
+	signer, err := runtime.signer(certPath, certPassword)
 	if err != nil {
 		err = fmt.Errorf("documents: load certificate for signing: %w", err)
 		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)

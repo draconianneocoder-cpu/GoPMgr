@@ -205,6 +205,8 @@ Audit events distinguish Baseline B, Baseline T with unevaluated TSA trust, and
 Baseline T chained to the configured root. Legacy PDF-comment signature
 markers are not emitted: every successful PAdES export contains a real `/Sig`
 dictionary and `/ByteRange`, and signing failures return no PDF bytes.
+Deterministic application tests exercise both document and combined-report
+PAdES-T exports without depending on a public timestamp service.
 
 Public release claims are guarded by `make release-scope`.
 
