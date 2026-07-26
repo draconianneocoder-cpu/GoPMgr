@@ -78,6 +78,9 @@ make pades-harness-tests
 
 `make check-pdfa` is strict by default. It needs veraPDF available
 directly or through Docker and fails if conformance cannot be verified.
+`scripts/validate-pdfa-lib_test.sh` hermetically checks output parsing,
+mounted-path translation, and the pinned Docker image contract; the full
+release gate runs it before strict conformance validation.
 `make check-pades` is the deterministic local PAdES invariant gate.
 `make check-pades-external` uses installed external validators such as
 OpenSSL, qpdf, pdfsig, veraPDF, and DSS when present.
@@ -95,6 +98,7 @@ make license-check
 make release-scope
 make memory-scan
 make check-release
+PMFORGE_RELEASE_TAG=v1.1.0-rc.1 make tag-preflight
 ```
 
 `make check-release` is the final gate. It currently covers version
@@ -103,6 +107,14 @@ frontend stability, frontend runtime smoke, memory-safety scan, Go race
 tests, production build, PDF/A-3 validation, and the PAdES harness regression
 target. Pre-merge GitHub CI also runs `make pades-harness-tests` in a dedicated
 job with `qpdf` and `pdfsig` installed.
+
+`make tag-preflight` first tests and applies the publication-tag contract, then
+runs the full release gate. The Release workflow supplies `GITHUB_REF_NAME` as
+`PMFORGE_RELEASE_TAG` and blocks its Linux, macOS, and Windows package matrix on
+this job. Accepted tags are `v<product-version>` and SemVer prereleases such as
+`v<product-version>-rc.1`; mismatched versions, build metadata, empty
+identifiers, and numeric prerelease identifiers with leading zeroes fail before
+packaging.
 
 Run `make license-check` after adding files or generated assets. Run
 `make release-scope` after documentation changes that touch release

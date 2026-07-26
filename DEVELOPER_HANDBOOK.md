@@ -230,7 +230,7 @@ make memory-scan       # scripts/memory-safety-scan.sh (V2.x)
 make frontend-stability # svelte-check --fail-on-warnings + Sigma regression gates
 make frontend-build-budget # Vite build without large main bundle regressions
 make license-check     # reuse lint
-make check-release     # version consistency + REUSE + build
+make check-release     # full release gate, including build, PDF/A, and PAdES
 
 # Packaging (host-local deterministic tarballs; cross-platform targets require matching runners)
 make package-linux / package-windows / package-darwin
@@ -917,6 +917,32 @@ This section is the running log of non-obvious discoveries. Every session that l
   proves status handling only. A public trust claim still requires a real
   release-certificate sample and separately archived Acrobat evidence.
 
+### 2026-07-26 — Tag-triggered release preflight
+
+- **A green branch run is not a tag gate.** The Release workflow is triggered
+  independently by `v*` tags, so its package matrix now depends on a blocking
+  `preflight` job that checks out the tagged commit and runs the full
+  `make check-release` gate before any installer is built or uploaded.
+- **Bind package versions to the embedded application version.**
+  `check-release-tag.sh` accepts the exact GA tag or a valid SemVer prerelease
+  of the CLI/`wails.json` version. It rejects mismatched bases, build metadata,
+  empty identifiers, and numeric prerelease identifiers with leading zeroes.
+- **Pin tools and fail closed.** The Ubuntu preflight installs Wails v2.13.0,
+  REUSE 6.2.0, `qpdf`, and `pdfsig`, then places the pipx user bin directory on
+  the following steps' path. The full gate therefore cannot silently skip
+  licensing because `reuse` was installed but undiscoverable.
+- **Pin the PDF/A container to the official CLI distribution.** The inherited
+  gate previously referenced the mutable and noncanonical
+  `verapdf/verapdf:latest`. It now binds `verapdf/cli:v1.30.2` to the same
+  `VERAPDF_VERSION` used by the direct-download fallback, and the helper
+  regression rejects future `latest` drift. `make check-release` runs that
+  hermetic Docker/output-parser regression before strict conformance validation
+  so the contract is exercised even on hosts that use a local veraPDF CLI.
+- **Guard the workflow dependency, not just the job's presence.**
+  `make release-scope` requires the tag-aware command and verifies that the
+  package matrix declares `needs: preflight`; leaving an unused preflight job
+  in the workflow cannot satisfy the release guard.
+
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
 - **Remove "soft gate" wording when the gate passes reliably.** The `validate-pdfa.sh` header comment and the "soft for now" check-release comment both said "warn, don't fail" -- these were vestigial once all samples passed. Gate promotion requires two things: (1) all representative samples pass, (2) the release script actually exits on failure.
@@ -1180,8 +1206,8 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Packaging assets are tracked** despite the broad `build/` ignore: `.gitignore` exempts `build/linux/pmforge.desktop` and `build/linux/nfpm.yaml` (same trick as the darwin Info.plist scaffold). The icon is `build/appicon.png` → `/usr/share/pixmaps/pmforge.png`; the `.desktop` → `/usr/share/applications/`.
 - **Linux release target moved to Ubuntu 24.04+ WebKit2GTK 4.1** (2026-06-26). CI/release Linux runners now use `ubuntu-24.04`, install `libwebkit2gtk-4.1-dev`, and pass Wails' `webkit2_41` tag. Wails v2 still links GTK3 (`gtk+-3.0` in the upstream cgo files); true GTK4/WebKitGTK 6.0 requires a future Wails migration rather than a package-name change. `make linux-runtime-target` guards this target.
 - **Signing/notarization is OFF** (owner decision 2026-06-23 — unsigned now, sign later). Packages install/run but show Gatekeeper/SmartScreen "unidentified developer" warnings. Hook: `MACOS_SIGN_IDENTITY` env in `scripts/package-macos.sh` (codesign + a commented notarytool block); Windows signing is a TODO. Add certs as CI secrets to enable.
-- **Verify by tag.** None of this runs in the sandbox (no wails/nfpm/runners) — push a release-candidate tag (e.g. `v1.1.0-rc.1`) and iterate. Likely first-iteration tuning points: the deb/rpm runtime `depends` names (webkit2gtk version drift across distros), and the Wails NSIS template scaffold on Windows. Pre-flight checklist: `docs/release-preflight.md`.
-- **Version of record is clean semver `1.1.0`** (2026-06-23 normalization). `internal/cli/parser.go` `Version` and `wails.json` `productVersion` must be equal (gated by `check-release.sh`) and a valid package version; `Info.plist` fills `CFBundleVersion` from `productVersion`, and the deb/rpm/dmg/exe version comes from the git tag (`${GITHUB_REF_NAME#v}`). Tag `v1.1.0` and all three channels read identically. The old `1.1.0-V1-Expansion` codename moved to release notes (rpm forbids `-` in Version; the codename was not valid semver). The updater (`internal/update/check.go`) still tolerates suffixed remote versions.
+- **Verify by tag.** The tag workflow now runs a full Ubuntu preflight before the native package matrix, but the Linux deb/rpm dependency names, Windows NSIS output, and macOS DMG remain native-runner integration evidence. Use a release-candidate tag such as `v1.1.0-rc.1`, then inspect and install every artifact. Pre-flight checklist: `docs/release-preflight.md`.
+- **Version of record is clean semver `1.1.0`** (2026-06-23 normalization). `internal/cli/parser.go` `Version` and `wails.json` `productVersion` must be equal (gated by `check-release.sh`) and a valid package version; `Info.plist` fills `CFBundleVersion` from `productVersion`, and the deb/rpm/dmg/exe version comes from the git tag (`${GITHUB_REF_NAME#v}`). `check-release-tag.sh` now requires the GA tag or a SemVer prerelease of that exact base version. Tag `v1.1.0` and all three channels read identically. The old `1.1.0-V1-Expansion` codename moved to release notes (rpm forbids `-` in Version; the codename was not valid semver). The updater (`internal/update/check.go`) still tolerates suffixed remote versions.
 - **Supply-chain gates (2026-06-23).** CI gained a blocking `govulncheck` job (`vuln` in `ci.yml`). Static review: `docs/security-quality-review-2026-06-23.md`.
 - **End-user docs:** `docs/INSTALL.md` covers per-format install + run-from-source; the in-app Help Guide gained an **Installing & Running** section (`HelpGuide.svelte`, Reference group). README's Quick Start now uses `npm ci` (not `npm install`).
 

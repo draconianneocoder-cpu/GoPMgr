@@ -49,7 +49,8 @@ pdfa_precondition_unmet() {
 }
 
 ICC_PROFILE="${PMFORGE_ICC_PROFILE:-internal/pdfmeta/assets/sRGB.icc}"
-VERAPDF_VERSION="1.28.1"
+VERAPDF_VERSION="1.30.2"
+VERAPDF_IMAGE="verapdf/cli:v${VERAPDF_VERSION}"
 # Cache and execute veraPDF from a user-owned, repo-local directory rather
 # than world-writable /tmp. Downloading and then running `java -jar` from a
 # predictable /tmp path let a co-tenant pre-plant /tmp/verapdf-app.jar (a
@@ -70,9 +71,12 @@ fi
 
 # --- 1. Try Docker first (most reliable) --------------------------------
 if command -v docker >/dev/null 2>&1; then
-    echo "Using veraPDF via Docker..."
+    echo "Using veraPDF via Docker ($VERAPDF_IMAGE)..."
     VERAPDF_MODE="docker"
-    VERAPDF_CMD=(docker run --rm -v "$ROOT:/work" verapdf/verapdf:latest)
+    # Use veraPDF's official self-contained CLI image and bind it to the same
+    # version as the direct-download fallback. A mutable `latest` tag would let
+    # identical source tags produce different conformance results over time.
+    VERAPDF_CMD=(docker run --rm -v "$ROOT:/work" "$VERAPDF_IMAGE")
 else
 	echo "Docker not found, falling back to veraPDF CLI..."
 	# --- 2. Ensure veraPDF CLI is available -----------------------------

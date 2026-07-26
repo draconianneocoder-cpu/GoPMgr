@@ -35,8 +35,52 @@ defaults:
     shell: bash
 
 jobs:
+  preflight:
+    name: Tag preflight
+    runs-on: ubuntu-24.04
+    # Installer jobs must consume only a checkout that passed the complete
+    # release gate. This job builds an unshipped Linux smoke artifact; no
+    # installer is created or uploaded until the dependent matrix starts.
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install release-gate system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config qpdf poppler-utils pipx
+
+      - name: Install pinned release tools
+        # Keep the CLI and licensing tool aligned with the versions used by
+        # PMForge maintainers; unpinned installers would make a tag's outcome
+        # depend on whichever release happened to be newest that day.
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+          pipx install reuse==6.2.0
+          echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Validate tag and run full release gate
+        run: PMFORGE_RELEASE_TAG="$GITHUB_REF_NAME" make tag-preflight
+
   build:
     name: Package ${{ matrix.label }}
+    needs: preflight
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

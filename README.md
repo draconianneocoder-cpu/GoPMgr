@@ -89,6 +89,9 @@ It includes version consistency, REUSE/SPDX compliance, frontend runtime
 checks, release-scope guards, memory-safety scanning, race tests,
 production build, encrypted database validation, strict PDF/A-3
 validation, and deterministic PAdES harness regressions.
+The tag-triggered Release workflow reruns this gate in a blocking preflight
+before any installer is built or uploaded. It also rejects a GA or prerelease
+tag whose base version does not match PMForge's version of record.
 
 Useful focused gates:
 
