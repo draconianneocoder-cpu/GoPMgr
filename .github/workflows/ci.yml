@@ -9,7 +9,11 @@
 #   lint     -> golangci-lint + `npm run lint`, non-blocking (GitLab allow_failure: true).
 #   security -> `make memory-scan` (go vet + safety scans), non-blocking (GitLab placeholder stage).
 #
-# The full release gate (`make check-release`) and packaging live in release.yml (on tags).
+# PMForge also runs a blocking PAdES generator/evidence-harness regression job
+# so release-script failures are caught before a tag invokes release.yml.
+#
+# `make check-release` is the full local release gate. Tag-triggered packaging
+# lives in release.yml; its preflight automation is tracked separately.
 #
 # Two clean-checkout facts shape this file:
 #   1. The root `pmforge` package has `//go:embed all:frontend/dist`. `frontend/dist` is
@@ -80,6 +84,36 @@ jobs:
 
       - name: Pre-merge gate (make verify)
         run: make verify
+
+  pades-harnesses:
+    name: PAdES harness regressions
+    runs-on: ubuntu-24.04
+    # This job is intentionally independent of the Wails/frontend jobs. The
+    # generator imports only PMForge's signing and PDF packages, while fake
+    # veraPDF/DSS tools exercise deterministic parser branches without network
+    # downloads or external trust stores.
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install local PDF validators
+        # qpdf and pdfsig execute against the real generated sample. The
+        # regression scripts provide hermetic veraPDF and DSS substitutes for
+        # their command/output contracts.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qpdf poppler-utils
+
+      - name: Download Go modules
+        run: go mod download
+
+      - name: Run deterministic PAdES harness tests
+        run: make pades-harness-tests
 
   build:
     name: Build (Wails, linux/amd64)

@@ -154,13 +154,14 @@ if [ -f scripts/validate-pdfa.sh ]; then
     echo "PDF/A-3 validation gate passed."
 fi
 
-# --- 10. PAdES local validation gate ----------------------------------
-if [ -f scripts/validate-pades.sh ]; then
-    if ! bash scripts/validate-pades.sh >/dev/null 2>&1; then
-        echo "PAdES local validation gate failed. Run 'make check-pades' for details."
-        exit 1
-    fi
-    echo "PAdES local validation gate passed."
+# --- 10. PAdES harness regression gate -------------------------------
+# This includes the real local generator plus hermetic external, locking, and
+# trusted-source matrices. Running only validate-pades.sh would miss failures
+# in the release-evidence harnesses that wrap the generated signature.
+if ! make pades-harness-tests >/dev/null; then
+    echo "PAdES harness regression gate failed. Run 'make pades-harness-tests' for details."
+    exit 1
 fi
+echo "PAdES harness regression gate passed."
 
 echo "PMForge is ready for release."

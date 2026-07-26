@@ -72,6 +72,8 @@ so `frontend/dist` exists for the embed to compile.
 make check-pdfa
 make check-pades
 make check-pades-external
+make check-pades-trusted
+make pades-harness-tests
 ```
 
 `make check-pdfa` is strict by default. It needs veraPDF available
@@ -79,6 +81,12 @@ directly or through Docker and fails if conformance cannot be verified.
 `make check-pades` is the deterministic local PAdES invariant gate.
 `make check-pades-external` uses installed external validators such as
 OpenSSL, qpdf, pdfsig, veraPDF, and DSS when present.
+`make check-pades-trusted` classifies a separately supplied release-certificate
+sample. `make pades-harness-tests` is the automatic regression target: it runs
+the real local generator and isolated external-validator, shared-lock, and
+trusted-source behavior matrices. The trusted-source matrix uses controlled
+tool output and therefore proves result classification, not real certificate
+trust.
 
 ## Release Gates
 
@@ -92,7 +100,9 @@ make check-release
 `make check-release` is the final gate. It currently covers version
 consistency, REUSE/SPDX, frontend build budget, release-scope guards,
 frontend stability, frontend runtime smoke, memory-safety scan, Go race
-tests, production build, PDF/A-3 validation, and PAdES local validation.
+tests, production build, PDF/A-3 validation, and the PAdES harness regression
+target. Pre-merge GitHub CI also runs `make pades-harness-tests` in a dedicated
+job with `qpdf` and `pdfsig` installed.
 
 Run `make license-check` after adding files or generated assets. Run
 `make release-scope` after documentation changes that touch release

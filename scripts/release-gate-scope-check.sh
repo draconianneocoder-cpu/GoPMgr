@@ -33,6 +33,25 @@ if ! rg -q 'check-wails-version\.sh' scripts/check-release.sh; then
 	fail=1
 fi
 
+# The PAdES shell regressions cover generated artifacts, external-validator
+# parsing, shared-directory locking, and trusted-source result classification.
+# Guard all three entry points so a future refactor cannot leave the target
+# available locally while silently removing it from release or pre-merge CI.
+if ! rg -q '^pades-harness-tests:' Makefile; then
+	echo "release-scope: Makefile must define the pades-harness-tests target." >&2
+	fail=1
+fi
+
+if ! rg -q '^[[:space:]]*if ! make pades-harness-tests([[:space:]]|>)' scripts/check-release.sh; then
+	echo "release-scope: check-release.sh must run make pades-harness-tests." >&2
+	fail=1
+fi
+
+if ! rg -q '^[[:space:]]*run: make pades-harness-tests[[:space:]]*$' .github/workflows/ci.yml; then
+	echo "release-scope: CI must run make pades-harness-tests." >&2
+	fail=1
+fi
+
 if [ -f scripts/check-help-guide-current.sh ]; then
 	if ! bash scripts/check-help-guide-current.sh >/dev/null; then
 		echo "release-scope: Help Guide is missing recent release corrections. Run 'make help-guide-current' for details." >&2
