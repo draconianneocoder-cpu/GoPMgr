@@ -81,7 +81,9 @@ So tag `v1.1.0` for a GA release and all three read `1.1.0`. For a pipeline
 smoke-test, tag `v1.1.0-rc.1`: packages read `1.1.0-rc.1` while the app/bundle
 read `1.1.0` (cosmetic, fine for an rc — nfpm maps the `-rc.1` prerelease to a
 valid rpm version). Marketing codenames (e.g. "V1 Expansion") live in the
-GitHub release notes, never in the version number.
+GitHub release notes, never in the version number. The tag preflight enforces
+that the tag is either `v<version-of-record>` or a SemVer prerelease of that
+exact base version; build metadata is intentionally rejected.
 
 ## PAdES evidence before public trust claims
 
@@ -117,8 +119,10 @@ policy and interoperability evidence.
 
 1. Confirm `main` is green in CI (verify, PAdES harnesses, lint, **vuln**,
    build, analytics-duckdb). From the exact commit being tagged, run
-   `make check-release`; this is currently a required local preflight rather
-   than a job in the tag-triggered Release workflow. Also confirm
+   `make check-release` locally as an early signal. The tag-triggered workflow
+   reruns that full gate on Ubuntu and blocks all installer jobs until it
+   passes. Its strict PDF/A check uses the pinned official
+   `verapdf/cli:v1.30.2` image when Docker is available. Also confirm
    `bash scripts/verify-duckdb-linked.sh` passes after `make build`.
 2. Confirm the version of record (channel 1 above) is the semver you intend to
    ship, then tag it exactly (prefixed with `v`):
@@ -129,8 +133,10 @@ policy and interoperability evidence.
    git tag v1.1.0-rc.1 && git push origin v1.1.0-rc.1
    ```
 
-3. Watch the **Release** workflow. Expect first-run friction on the Windows NSIS
+3. Watch the **Release** workflow. Its **Tag preflight** job must pass before
+   the package matrix starts. Expect first-run friction on the Windows NSIS
    step (scaffold); the per-OS matrix legs are isolated (`fail-fast: false`), so
-   one failing leg still lets the others publish.
+   one failing leg still lets the others build, but publication waits for the
+   entire matrix.
 4. After a green run, download each artifact and smoke-test install on a real
    machine per platform before announcing.

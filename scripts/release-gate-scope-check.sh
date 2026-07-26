@@ -52,6 +52,33 @@ if ! rg -q '^[[:space:]]*run: make pades-harness-tests[[:space:]]*$' .github/wor
 	fail=1
 fi
 
+# A version tag starts installer publication directly, so it needs its own
+# fail-closed preflight rather than relying on a previous branch workflow.
+if ! rg -q '^tag-preflight:' Makefile; then
+	echo "release-scope: Makefile must define the tag-preflight target." >&2
+	fail=1
+fi
+
+if ! rg -q '^  preflight:$' .github/workflows/release.yml; then
+	echo "release-scope: Release workflow must define the preflight job." >&2
+	fail=1
+fi
+
+if ! rg -Fq 'run: PMFORGE_RELEASE_TAG="$GITHUB_REF_NAME" make tag-preflight' .github/workflows/release.yml; then
+	echo "release-scope: Release workflow must run the tag-aware preflight target." >&2
+	fail=1
+fi
+
+if ! awk '
+	$0 == "  build:" { in_build = 1; next }
+	in_build && /^  [A-Za-z0-9_-]+:/ { in_build = 0 }
+	in_build && $0 == "    needs: preflight" { found = 1 }
+	END { exit !found }
+' .github/workflows/release.yml; then
+	echo "release-scope: Release package matrix must depend on the preflight job." >&2
+	fail=1
+fi
+
 if [ -f scripts/check-help-guide-current.sh ]; then
 	if ! bash scripts/check-help-guide-current.sh >/dev/null; then
 		echo "release-scope: Help Guide is missing recent release corrections. Run 'make help-guide-current' for details." >&2
