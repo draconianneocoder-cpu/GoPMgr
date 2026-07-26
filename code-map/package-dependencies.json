@@ -487,6 +487,15 @@
         "pmforge/internal/sqlitedriver"
       ],
       "notable_external_deps": []
+    },
+    "pmforge/scripts": {
+      "dir": "scripts",
+      "imported_by_internal": [],
+      "imports_internal": [],
+      "notable_external_deps": [
+        "github.com/pelletier/go-toml/v2",
+        "gopkg.in/yaml.v3"
+      ]
     }
   }
 }
