@@ -12,8 +12,8 @@
 # PMForge also runs a blocking PAdES generator/evidence-harness regression job
 # so release-script failures are caught before a tag invokes release.yml.
 #
-# `make check-release` is the full local release gate. Tag-triggered packaging
-# lives in release.yml; its preflight automation is tracked separately.
+# `make check-release` is the full local release gate. release.yml reruns it in
+# a tag-aware preflight before any tag-triggered installer job can start.
 #
 # Two clean-checkout facts shape this file:
 #   1. The root `pmforge` package has `//go:embed all:frontend/dist`. `frontend/dist` is

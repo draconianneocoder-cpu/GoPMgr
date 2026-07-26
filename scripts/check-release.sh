@@ -147,11 +147,18 @@ fi
 # Strict: a missing validator/ICC/sample set fails the release rather than
 # certifying PDF/A-3 conformance we could not actually verify.
 if [ -f scripts/validate-pdfa.sh ]; then
+    # Run the hermetic helper/container-contract regression before invoking the
+    # installed validator. This catches mutable image tags and output-parser
+    # regressions even when the current machine takes only the CLI branch.
+    if ! bash scripts/validate-pdfa-lib_test.sh >/dev/null 2>&1; then
+        echo "PDF/A-3 harness regression failed. Run 'bash scripts/validate-pdfa-lib_test.sh' for details."
+        exit 1
+    fi
     if ! PMFORGE_PDFA_STRICT=1 bash scripts/validate-pdfa.sh >/dev/null 2>&1; then
         echo "PDF/A-3 validation gate failed. Run 'make check-pdfa' for details."
         exit 1
     fi
-    echo "PDF/A-3 validation gate passed."
+    echo "PDF/A-3 harness and validation gates passed."
 fi
 
 # --- 10. PAdES harness regression gate -------------------------------

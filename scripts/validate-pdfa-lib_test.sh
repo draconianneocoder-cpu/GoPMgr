@@ -12,6 +12,15 @@ fail() {
 	exit 1
 }
 
+# Release validation must not drift with a mutable container tag, and the image
+# repository must remain the official self-contained veraPDF CLI distribution.
+if rg -q 'verapdf/[^[:space:]]*:latest' "$ROOT/scripts/validate-pdfa.sh"; then
+	fail "validate-pdfa uses a mutable latest container tag"
+fi
+if ! grep -Fq 'VERAPDF_IMAGE="verapdf/cli:v${VERAPDF_VERSION}"' "$ROOT/scripts/validate-pdfa.sh"; then
+	fail "validate-pdfa does not bind the official CLI image to VERAPDF_VERSION"
+fi
+
 assert_compliant() {
 	if ! printf '%s\n' "$1" | verapdf_output_is_compliant; then
 		fail "expected veraPDF output to be compliant: $2"
@@ -123,5 +132,31 @@ case "$gate_output" in
 		fail "validate-pdfa gate silently passed without samples"
 		;;
 esac
+
+# Exercise the Docker branch without contacting a registry. The fake records
+# the exact invocation and returns compliant XML, proving the gate selects the
+# pinned official image and translates repo-local samples to /work paths.
+fake_docker="$fake_verapdf_dir/docker"
+fake_docker_log="$fake_verapdf_dir/docker.args"
+cat > "$fake_docker" <<'EOF'
+#!/bin/bash
+printf '%s\n' "$*" >> "$PMFORGE_FAKE_DOCKER_LOG"
+printf '%s\n' '<report><jobs><job><validationReport><isCompliant>true</isCompliant></validationReport></job></jobs></report>'
+EOF
+chmod +x "$fake_docker"
+PMFORGE_FAKE_DOCKER_LOG="$fake_docker_log" PATH="$fake_verapdf_dir:$PATH" \
+	bash "$ROOT/scripts/validate-pdfa.sh" >/dev/null
+if ! grep -Fq "verapdf/cli:v1.30.2" "$fake_docker_log"; then
+	cat "$fake_docker_log" >&2
+	fail "Docker validation did not invoke the pinned official veraPDF CLI image"
+fi
+if grep -q ":latest" "$fake_docker_log"; then
+	cat "$fake_docker_log" >&2
+	fail "Docker validation invoked a mutable latest tag"
+fi
+if ! grep -Fq "/work/.tmp/pmforge-pdfa-test/schedule.pdf" "$fake_docker_log"; then
+	cat "$fake_docker_log" >&2
+	fail "Docker validation did not translate the schedule sample to its mounted path"
+fi
 
 echo "validate-pdfa-lib tests passed."

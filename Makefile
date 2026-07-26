@@ -32,7 +32,7 @@ export CC
         check-release clean fonts icc check-pdfa frontend-stability \
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
-        help-guide-current wails-version wails-cli-version wails-version-test
+        help-guide-current wails-version wails-cli-version wails-version-test tag-preflight
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -157,6 +157,14 @@ package-macos-installer: ## Build a local macOS .pkg installer for /Applications
 
 check-release: ## Run the full release gate (versions, REUSE, memory-safety, race, frontend, build, encrypted DB, PDF/A, PAdES).
 	@bash scripts/check-release.sh
+
+tag-preflight: ## Validate PMFORGE_RELEASE_TAG and run the full gate before tag-triggered packaging.
+	# Test the tag contract before applying it to the real tag, then run the
+	# complete gate in the same checkout that the package matrix will consume.
+	@command -v reuse >/dev/null 2>&1 || { echo "tag-preflight: reuse is required; install the pinned release tool first." >&2; exit 1; }
+	@bash scripts/check-release-tag_test.sh
+	@bash scripts/check-release-tag.sh
+	@$(MAKE) check-release
 
 clean: ## Remove build artifacts (keeps the tracked build/darwin scaffold).
 	rm -rf build/bin/ build/packages/ build/macos/ build/appicon.png bin/ frontend/dist/ frontend/wailsjs/
