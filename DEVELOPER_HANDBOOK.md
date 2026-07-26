@@ -312,7 +312,7 @@ A new contribution should land **with `make memory-scan` passing**. Optional sca
 ### Remaining V2 TODOs (status snapshot)
 1. ~~DOCX / ODT export.~~ **Done.** `internal/export/docx.go` uses `gomutex/godocx`; `internal/export/odt.go` is hand-built (no maintained ODT library exists). App methods `ExportDocumentDOCX` / `ExportDocumentODT`.
 2. **PDF/A-3 strict conformance** — partial, advanced 2026-05-20, 2026-05-25, and 2026-06-06. (i) The dependency-free `internal/pdfmeta` package builds the canonical XMP packet AND injects it into the PDF Catalog via a spec-conformant **incremental update** (`InjectXMPStream`); `documents.Render()` tags every generated PDF (fail-soft). (ii) **Font embedding is now available** via `internal/fonts` — bundled TrueType families (fetched by `make fonts`) embed into PDFs through the "register under Helvetica" trick, replacing the non-embeddable core fonts. (iii) OutputIntent + ICC profile injection is implemented (`InjectOutputIntent`, `MakePDFA3`, `make icc`) and used when an ICC profile is embedded. (iv) The schedule-report, document, combined-report, and Monte Carlo risk-report samples now pass `make check-pdfa` with veraPDF's PDF/A-3b profile after adding binary header comments, trailer IDs, stream-length correctness, latest-incremental Catalog rewrites, and embedded Source Sans 3 for representative exports. The gate is now a **hard release blocker**: `check-release.sh` exits non-zero if any representative sample fails PDF/A-3b validation (2026-06-08).
-3. ~~CMS/PKCS#7 + PAdES signature widget embedding.~~ **Done** via PMForge's detached CMS encoder plus `pdfmeta.InjectPAdESSignature`. The PAdES path appends a `/Sig` dictionary, invisible `/Widget` field, `/AcroForm`, fixed-width `/ByteRange`, signed `/M` timestamp, and padded `/Contents` in the final incremental update. `make check-pades` verifies a timestamped local fixture, and `make check-pades-external` extracts the embedded CMS for OpenSSL detached verification, checks `qpdf --check`, requires `pdfsig` to report a valid signature, verifies veraPDF signature metadata, and requires DSS to classify the self-signed fixture as `PAdES-BASELINE-T` when those tools are installed. Release-certificate and TSA trust-chain validation remain indeterminate until trusted sources are configured; `make check-pades-trusted` writes an explicit not-configured report unless `PMFORGE_TRUSTED_SIGNED_PDF` points at a trusted-certificate sample. Users can choose PAdES Baseline B, detached GnuPG sidecar signing, or no digital signature for print-and-wet-sign exports.
+3. ~~CMS/PKCS#7 + PAdES signature widget embedding.~~ **Done** via PMForge's detached CMS encoder plus `pdfmeta.InjectPAdESSignature`. The PAdES path appends a `/Sig` dictionary, invisible `/Widget` field, `/AcroForm`, fixed-width `/ByteRange`, signed `/M` timestamp, and padded `/Contents` in the final incremental update. `make check-pades` verifies a timestamped local fixture, and `make check-pades-external` extracts the embedded CMS for OpenSSL detached verification, checks `qpdf --check`, requires `pdfsig` to report a valid signature, verifies veraPDF signature metadata, and requires DSS to classify the self-signed fixture as `PAdES-BASELINE-T` when those tools are installed. Release-certificate and TSA trust-chain validation remain indeterminate until trusted sources are configured; `make check-pades-trusted` records `NOT_CONFIGURED` without a source and otherwise distinguishes locally verified CLI trust from structurally valid but indeterminate trust. Set `PMFORGE_PADES_TRUSTED_REQUIRED=1` when a release process must reject anything except `TRUST_VERIFIED`. Acrobat trust-panel evidence remains separately manual. Users can choose PAdES Baseline B, detached GnuPG sidecar signing, or no digital signature for print-and-wet-sign exports.
    **RFC 3161/PAdES-T foundation added 2026-07-25.** `internal/rfc3161.Client`
    creates nonce-bound SHA-256 requests and validates the HTTP response,
    CMS/TSTInfo content type, token signature, imprint, nonce, requested
@@ -335,7 +335,7 @@ A new contribution should land **with `make memory-scan` passing**. Optional sca
 
 ### Still deferred to V3
 - ~~Strict PDF/A-3 release claim~~ **Done (2026-06-08, expanded 2026-06-29).** The representative schedule-report, document, combined-report, and Monte Carlo risk-report samples pass veraPDF PDF/A-3b; `make check-pdfa` is a hard gate in `check-release.sh`. V3 remainder: Acrobat coverage and trusted signing chain.
-- External PAdES validation hardening — the widget, application signing pipeline, and PAdES-T mutator are exercised by deterministic tests and `make check-pades`; OpenSSL detached CMS verification, local `qpdf`/`pdfsig` checks, veraPDF signature feature extraction, and DSS `PAdES-BASELINE-T` fixture classification are covered by `make check-pades-external`. Sample signed PDFs still need Acrobat and a real trusted signer/TSA chain before treating interoperability as fully battle-tested.
+- External PAdES validation hardening — the widget, application signing pipeline, and PAdES-T mutator are exercised by deterministic tests and `make check-pades`; OpenSSL detached CMS verification, local `qpdf`/`pdfsig` checks, veraPDF signature feature extraction, and DSS `PAdES-BASELINE-T` fixture classification are covered by `make check-pades-external`. `make check-pades-trusted` can verify a separately supplied sample against the local CLI trust store, but sample signed PDFs still need Acrobat evidence and a real trusted signer/TSA chain before treating interoperability as fully battle-tested.
 - CPM/PDM dependency-lag editor design if task-level precedence relationships need visual lag editing beyond the shipped Timeline project/sprint date dragging.
 
 ### Scheduling core roadmap (V3) — added 2026-06-10
@@ -875,6 +875,27 @@ This section is the running log of non-obvious discoveries. Every session that l
   validation, and report assertions. Child scripts inherit the lock marker,
   preventing a waiting generator from deleting evidence between execution and
   inspection.
+
+### 2026-07-26 — Trusted-source PAdES outcome hardening
+
+- **Never collapse unknown trust into `PASS`.** The trusted-source report now
+  uses `TRUST_VERIFIED` only when `pdfsig` explicitly confirms certificate
+  trust. A valid signature without that proof is
+  `STRUCTURE_VALID_TRUST_INDETERMINATE`; missing required `qpdf`/`pdfsig`
+  validators and failed validators have separate `VALIDATION_INCOMPLETE` and
+  `VALIDATION_FAILED` outcomes.
+- **Required mode means verified trust, not merely configured input.**
+  `PMFORGE_PADES_TRUSTED_REQUIRED=1` fails for `NOT_CONFIGURED`, indeterminate
+  trust, incomplete validation, invalid input, and validation failure.
+- **Treat trusted evidence as one locked, reproducible snapshot.** The harness
+  resolves the supplied path, hashes the unchanged PDF and validator, records
+  checkout/UTC provenance, clears known derived artifacts under a dedicated
+  lock, and atomically publishes the report. The regression test holds that
+  lock through its fake-validator matrix and evidence assertions.
+- **Keep Acrobat evidence independent.** Local CLI trust reflects the
+  certificate store and policy available to `pdfsig`; the report continues to
+  require a separately archived Acrobat trust-panel capture for release
+  interoperability evidence.
 
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
