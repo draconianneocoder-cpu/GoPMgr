@@ -96,6 +96,11 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   Evidence reports identify generated versus supplied input and bind the
   checkout, scripts, PDF, CMS, and signed ByteRange bytes with provenance and
   SHA-256 hashes.
+- **2026-07-26** — Configuration formats follow their consumers rather than a
+  repository-wide preference. `make config-check` parses and structurally
+  validates the tracked YAML/TOML inventory, rejects ambiguous YAML and
+  unclassified additions, and prevents the retired GitLab pipeline from
+  returning alongside the authoritative GitHub Actions workflows.
 
 ## Open / deferred (not yet decided or implemented)
 

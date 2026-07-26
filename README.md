@@ -75,9 +75,9 @@ make build
 make verify
 ```
 
-`make verify` is the fast local and CI gate: the Wails runtime/CLI/documentation
-pin, Go tests, frontend stability, and frontend build-budget checks. Run it
-before ordinary commits.
+`make verify` is the fast local and CI gate: tracked YAML/TOML configuration,
+the Wails runtime/CLI/documentation pin, Go tests, frontend stability, and
+frontend build-budget checks. Run it before ordinary commits.
 
 The full release gate is:
 
@@ -85,10 +85,11 @@ The full release gate is:
 make check-release
 ```
 
-It includes version consistency, REUSE/SPDX compliance, frontend runtime
-checks, release-scope guards, memory-safety scanning, race tests,
-production build, encrypted database validation, strict PDF/A-3
-validation, and deterministic PAdES harness regressions.
+It includes version consistency, configuration parsing and format policy,
+REUSE/SPDX compliance, frontend runtime checks, release-scope guards,
+memory-safety scanning, race tests, production build, encrypted database
+validation, strict PDF/A-3 validation, and deterministic PAdES harness
+regressions.
 The tag-triggered Release workflow reruns this gate in a blocking preflight
 before any installer is built or uploaded. It also rejects a GA or prerelease
 tag whose base version does not match PMForge's version of record.
@@ -101,6 +102,7 @@ go test -race . ./internal/...
 npm --prefix frontend run check
 npm --prefix frontend run build
 make frontend-smoke
+make config-check
 make check-encrypted-db
 make check-pdfa
 make check-pades

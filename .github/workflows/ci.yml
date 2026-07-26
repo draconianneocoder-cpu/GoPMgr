@@ -3,8 +3,8 @@
 
 # GitHub Actions CI for PMForge — Go + Svelte (Wails) desktop application.
 #
-# Faithful translation of the former .gitlab-ci.yml gates:
-#   verify   -> `make verify` (Wails pin + Go tests + svelte-check + Vite build): pre-merge gate.
+# Successor to the retired GitLab pipeline:
+#   verify   -> `make verify` (config + Wails pin + Go tests + frontend checks): pre-merge gate.
 #   build    -> `wails build -platform linux/amd64` smoke build + artifact (GitLab "build" stage).
 #   lint     -> golangci-lint + `npm run lint`, non-blocking (GitLab allow_failure: true).
 #   security -> `make memory-scan` (go vet + safety scans), non-blocking (GitLab placeholder stage).
@@ -48,7 +48,7 @@ env:
 
 jobs:
   verify:
-    name: Verify (Wails pin + Go tests + svelte-check + Vite build)
+    name: Verify (config + Wails pin + Go tests + frontend checks)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
