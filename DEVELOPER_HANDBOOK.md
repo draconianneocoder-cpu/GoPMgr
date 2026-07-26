@@ -812,6 +812,22 @@ This section is the running log of non-obvious discoveries. Every session that l
   `TimestampRequester` interface. Tests inject a deterministic token producer
   and cover successful Baseline B/T results plus the fail-closed error path.
 
+### 2026-07-25 — Legacy PDF signature fallback retirement
+
+- **A CMS blob in a PDF comment is not a PAdES signature.**
+  `internal/export` no longer appends `%%PMForgeCMSSignature` when real
+  `/Sig` embedding fails. Certificate, CMS, or PDF mutation failures return an
+  error and no bytes.
+- **Compatibility helpers still use the canonical pipeline.**
+  `documents.RenderSigned` retains its Baseline B contract but delegates to
+  `signing.ApplyPAdES` after the normal `documents.Render` PDF/A pass. This
+  removes duplicated metadata/signature sequencing without changing the public
+  function signature.
+- **Test structure, not a success flag.** Regression tests inject in-memory
+  signers and require `/Type /Sig`, `/ByteRange`, and
+  `/SubFilter /ETSI.CAdES.detached`. Separate missing-key tests prove both
+  compatibility paths return no bytes instead of producing a marker fallback.
+
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
 - **Remove "soft gate" wording when the gate passes reliably.** The `validate-pdfa.sh` header comment and the "soft for now" check-release comment both said "warn, don't fail" -- these were vestigial once all samples passed. Gate promotion requires two things: (1) all representative samples pass, (2) the release script actually exits on failure.
