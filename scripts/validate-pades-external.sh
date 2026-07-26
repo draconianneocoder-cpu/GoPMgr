@@ -4,11 +4,12 @@
 #
 # External PAdES validation harness.
 #
-# This script complements validate-pades.sh. It generates the PMForge
-# timestamped sample, extracts the CMS DER and signed ByteRange bytes, verifies
-# the detached CMS with OpenSSL, and runs locally installed PDF/PAdES validators
-# where their command-line checks are deterministic. Acrobat still requires a
-# separate manual validation environment.
+# This script complements validate-pades.sh. With no argument it regenerates a
+# fresh PMForge timestamped sample; with an explicit PDF it validates that file
+# without modification. It extracts the CMS DER and signed ByteRange bytes,
+# records provenance and hashes, verifies detached CMS with OpenSSL, and runs
+# locally installed deterministic PDF/PAdES validators. Acrobat still requires
+# a separate manual validation environment.
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -16,7 +17,27 @@ cd "$ROOT"
 
 SAMPLE_DIR="$ROOT/.tmp/pmforge-pades-test"
 PADES_LOCK="$ROOT/.tmp/pmforge-pades-test.lock"
-PDF_PATH="${1:-$SAMPLE_DIR/signed-sample.pdf}"
+if [ "$#" -gt 1 ]; then
+	echo "usage: $0 [signed-pdf]" >&2
+	exit 64
+fi
+if [ "$#" -eq 0 ]; then
+	PDF_PATH="$SAMPLE_DIR/signed-sample.pdf"
+	EVIDENCE_SOURCE="generated_current_checkout"
+	EVIDENCE_GENERATOR="scripts/validate-pades.sh"
+else
+	# Resolve explicit input once so every validator and provenance record refers
+	# to the same artifact even when the caller used a relative path.
+	PDF_PATH="$(python3 - "$1" <<'PY'
+import sys
+from pathlib import Path
+
+print(Path(sys.argv[1]).expanduser().resolve())
+PY
+)"
+	EVIDENCE_SOURCE="supplied_pdf"
+	EVIDENCE_GENERATOR="not_applicable"
+fi
 CMS_DER="$SAMPLE_DIR/signed-sample.cms.der"
 SIGNED_BYTES="$SAMPLE_DIR/signed-sample.byterange.bin"
 EXTRACT_INFO="$SAMPLE_DIR/signed-sample.extract.txt"
@@ -42,13 +63,31 @@ acquire_pades_lock() {
 
 acquire_pades_lock
 
-if [ ! -s "$PDF_PATH" ]; then
-	echo "Generating local PAdES sample first..."
+# Default validation is build evidence, so it must never inherit a non-empty
+# artifact from a previous checkout or run. The external harness already owns
+# the shared lock; validate-pades.sh observes PMFORGE_PADES_LOCK_HELD and
+# regenerates the sample without attempting to acquire the lock recursively.
+if [ "$EVIDENCE_SOURCE" = "generated_current_checkout" ]; then
+	echo "Generating fresh local PAdES sample..."
 	bash "$ROOT/scripts/validate-pades.sh" >/dev/null
+elif [ ! -s "$PDF_PATH" ]; then
+	echo "supplied PAdES PDF is missing or empty: $PDF_PATH" >&2
+	exit 66
 fi
+
+# Explicit-PDF mode preserves its input but must not inherit derived evidence
+# from an earlier validation. Remove only the harness-owned files while the
+# lock is held, guarding the unlikely case that a caller supplied one of those
+# exact paths as input.
+for artifact in "$CMS_DER" "$SIGNED_BYTES" "$EXTRACT_INFO" "$VERAPDF_XML" "$VERAPDF_ERR" "$DSS_OUTPUT" "$REPORT"; do
+	if [ "$artifact" != "$PDF_PATH" ]; then
+		rm -f "$artifact"
+	fi
+done
 
 python3 - "$PDF_PATH" "$CMS_DER" "$SIGNED_BYTES" "$EXTRACT_INFO" <<'PY'
 import binascii
+import hashlib
 import re
 import sys
 from pathlib import Path
@@ -122,16 +161,54 @@ info_path.write_text(
     "\n".join([
         f"pdf={pdf_path}",
         f"pdf_bytes={len(pdf)}",
+        f"pdf_sha256={hashlib.sha256(pdf).hexdigest()}",
         f"byte_range={br}",
         f"cms_der_bytes={len(cms_der)}",
+        f"cms_der_sha256={hashlib.sha256(cms_der).hexdigest()}",
         f"signed_bytes={len(signed)}",
+        f"signed_bytes_sha256={hashlib.sha256(signed).hexdigest()}",
     ]) + "\n",
     encoding="utf-8",
 )
 PY
 
+VALIDATED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+VALIDATOR_REVISION="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
+VALIDATOR_SCRIPT_SHA256="$(python3 - "$ROOT/scripts/validate-pades-external.sh" <<'PY'
+import hashlib
+import sys
+from pathlib import Path
+
+print(hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest())
+PY
+)"
+GENERATOR_SCRIPT_SHA256="not_applicable"
+if [ "$EVIDENCE_SOURCE" = "generated_current_checkout" ]; then
+	GENERATOR_SCRIPT_SHA256="$(python3 - "$ROOT/scripts/validate-pades.sh" <<'PY'
+import hashlib
+import sys
+from pathlib import Path
+
+print(hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest())
+PY
+)"
+fi
+VALIDATOR_WORKTREE_DIRTY="false"
+if ! git diff --quiet --ignore-submodules -- 2>/dev/null ||
+	! git diff --cached --quiet --ignore-submodules -- 2>/dev/null ||
+	[ -n "$(git ls-files --others --exclude-standard 2>/dev/null)" ]; then
+	VALIDATOR_WORKTREE_DIRTY="true"
+fi
+
 {
 	echo "PDF: $PDF_PATH"
+	echo "evidence_source=$EVIDENCE_SOURCE"
+	echo "evidence_generator=$EVIDENCE_GENERATOR"
+	echo "validator_revision=$VALIDATOR_REVISION"
+	echo "validator_script_sha256=$VALIDATOR_SCRIPT_SHA256"
+	echo "generator_script_sha256=$GENERATOR_SCRIPT_SHA256"
+	echo "validator_worktree_dirty=$VALIDATOR_WORKTREE_DIRTY"
+	echo "validated_at_utc=$VALIDATED_AT_UTC"
 	cat "$EXTRACT_INFO"
 	echo
 
@@ -282,7 +359,9 @@ PY
 	echo "  $PDF_PATH"
 	echo "  $CMS_DER"
 	echo "  $SIGNED_BYTES"
-	echo "  $DSS_OUTPUT"
+	if [ -s "$DSS_OUTPUT" ]; then
+		echo "  $DSS_OUTPUT"
+	fi
 	echo "  $REPORT"
 } | tee "$REPORT"
 
