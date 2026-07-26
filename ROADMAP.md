@@ -10,7 +10,7 @@ RICE scores, dependency evaluations, and implementation detail are in
 `PMForge-Strategic-Roadmap-2026.docx` at the repository root. Architecture
 decisions are in `docs/design/ADR-*.md`.
 
-## Current State (v1.1.0-rc.1)
+## Current Development State (1.1.0 line)
 
 PMForge ships with a kernel that performs CPM scheduling, Earned Value
 Management (BAC/PV/EV/AC/SV/CV/SPI/CPI/EAC/ETC/VAC), baselines, anchor
@@ -19,7 +19,7 @@ frontend covers 22 chart types, 25 document kinds, Agile and Six Sigma
 methodology packs, MSPDI import/export, PDF/A-3, PAdES digital signing,
 SQLCipher encryption at rest, and Argon2id authentication.
 
-The PDF rendering layer was migrated (post-rc.1) from the archived
+Since the public alpha, the PDF rendering layer was migrated from the archived
 `jung-kurt/gofpdf` to the maintained `go-pdf/fpdf` community fork
 (ADR-003). All downstream PDF generation is now on the maintained path.
 

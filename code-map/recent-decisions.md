@@ -106,6 +106,10 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   installed tool provenance, while macOS stays on its built-in `hdiutil`
   release path instead of installing the optional `create-dmg`. Isolated drift
   fixtures and release-scope wiring guard the contract.
+- **2026-07-26** — Published release history follows live GitHub evidence:
+  `v0.9.1-alpha` is the only published release. Concrete candidate tags and
+  candidate release-note files must match `docs/published-release-tags.txt`;
+  isolated regressions and the release-scope gate reject unverified claims.
 
 ## Open / deferred (not yet decided or implemented)
 

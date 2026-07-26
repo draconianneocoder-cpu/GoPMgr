@@ -28,14 +28,14 @@ expect_fail() {
 }
 
 expect_pass "v$VERSION"
-expect_pass "v$VERSION-rc.1"
+expect_pass "v$VERSION-preview.1"
 expect_pass "v$VERSION-preview-feature.2"
 
 expect_fail "$VERSION"
 expect_fail "v${VERSION}.1"
 expect_fail "v$VERSION-"
-expect_fail "v$VERSION-rc..1"
-expect_fail "v$VERSION-rc.01"
+expect_fail "v$VERSION-preview..1"
+expect_fail "v$VERSION-preview.01"
 expect_fail "v$VERSION+build.1"
 
 if env -u PMFORGE_RELEASE_TAG bash "$CHECK" >/dev/null 2>&1; then

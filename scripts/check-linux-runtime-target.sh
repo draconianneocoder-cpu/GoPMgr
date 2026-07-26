@@ -41,8 +41,9 @@ require_not_contains build/linux/nfpm.yaml "libwebkit2gtk-4.0-37"
 require_not_contains build/linux/nfpm.yaml "webkit2gtk3"
 
 release_docs=(
+	README.md
+	ROADMAP.md
 	docs/INSTALL.md
-	docs/release-notes/v1.1.0-rc.1.md
 	docs/release-preflight.md
 )
 for file in "${release_docs[@]}"; do

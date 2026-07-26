@@ -6,9 +6,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # Release pre-flight checklist
 
 Run through this before pushing a `v*` tag. It captures the static pre-flight
-audit of `release.yml` and the packaging scripts (2026-06-23). The first
-release candidate exercised the pipeline and the `.deb` and `.rpm` build
-cleanly; treat each new tag's run as the integration test.
+audit of `release.yml` and the packaging scripts (2026-06-23). No 1.1.0
+prerelease has been published, so treat the next tag's native matrix and
+artifact installation as the first integration evidence for this release line.
 
 ## No pre-generation blockers
 
@@ -83,12 +83,13 @@ number, the **git tag must equal the version of record**:
 3. **Package version + every artifact filename** (deb/rpm/dmg/exe) — derived
    from the git tag via `${GITHUB_REF_NAME#v}` → nfpm `version`.
 
-So tag `v1.1.0` for a GA release and all three read `1.1.0`. For a pipeline
-smoke-test, tag `v1.1.0-rc.1`: packages read `1.1.0-rc.1` while the app/bundle
-read `1.1.0` (cosmetic, fine for an rc — nfpm maps the `-rc.1` prerelease to a
-valid rpm version). Marketing codenames (e.g. "V1 Expansion") live in the
-GitHub release notes, never in the version number. The tag preflight enforces
-that the tag is either `v<version-of-record>` or a SemVer prerelease of that
+For a GA tag, all three channels read the same version. For a pipeline
+smoke-test, use a tag shaped like `v<version-of-record>-<prerelease>`; packages
+include the prerelease suffix while the app/bundle retain the clean version of
+record. This cosmetic difference is acceptable for prerelease testing, and
+nFPM maps a valid SemVer suffix to an RPM-safe version. Marketing codenames live
+in published GitHub release notes, never in the version number. The tag
+preflight enforces either `v<version-of-record>` or a SemVer prerelease of that
 exact base version; build metadata is intentionally rejected.
 
 ## PAdES evidence before public trust claims
@@ -134,9 +135,9 @@ policy and interoperability evidence.
    ship, then tag it exactly (prefixed with `v`):
 
    ```sh
-   git tag v1.1.0 && git push origin v1.1.0          # GA
-   # or, to exercise the pipeline first:
-   git tag v1.1.0-rc.1 && git push origin v1.1.0-rc.1
+   git tag "v<version-of-record>"                    # GA
+   git push origin "v<version-of-record>"
+   # Or use "v<version-of-record>-<prerelease>" to exercise the pipeline.
    ```
 
 3. Watch the **Release** workflow. Its **Tag preflight** job must pass before
