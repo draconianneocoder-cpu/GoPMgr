@@ -120,17 +120,29 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
 
+      - name: Load pinned installer tool versions
+        # Only import declared version assignments; SPDX comments remain valid
+        # in the source file without becoming malformed GITHUB_ENV entries.
+        run: grep -E '^(NFPM_VERSION|NSIS_VERSION)=' scripts/release-tool-versions.env >> "$GITHUB_ENV"
+
       - name: Install nfpm (Linux .deb/.rpm)
         if: runner.os == 'Linux'
-        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
-
-      - name: Install create-dmg (macOS)
-        if: runner.os == 'macOS'
-        run: brew install create-dmg
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@"${NFPM_VERSION}"
+          # `nfpm --version` reports "dev" for go-install builds. Go's embedded
+          # module metadata is the authoritative proof of the selected tag.
+          actual_nfpm_version="$(go version -m "$(command -v nfpm)" | awk '$1 == "mod" && $2 == "github.com/goreleaser/nfpm/v2" { print $3 }')"
+          test "$actual_nfpm_version" = "$NFPM_VERSION"
 
       - name: Install NSIS (Windows installer)
         if: runner.os == 'Windows'
-        run: choco install nsis -y --no-progress
+        run: |
+          choco install nsis --version="${NSIS_VERSION}" -y --no-progress
+          # Chocolatey's package record validates the exact moderated package;
+          # command discovery additionally proves Wails can reach makensis.
+          installed_nsis_version="$(choco list --exact nsis --limit-output | tr -d '\r' | awk -F'|' '$1 == "nsis" { print $2 }')"
+          test "$installed_nsis_version" = "$NSIS_VERSION"
+          command -v makensis >/dev/null
 
       - name: Fetch bundled fonts (graceful — app falls back to core fonts)
         continue-on-error: true
@@ -154,6 +166,8 @@ jobs:
 
       - name: Package macOS (.dmg)
         if: runner.os == 'macOS'
+        # package-macos.sh intentionally takes its non-interactive hdiutil path.
+        # create-dmg is a local opt-in and is not installed on the release runner.
         run: VERSION="${GITHUB_REF_NAME#v}" bash scripts/package-macos.sh
 
       - name: Collect Windows installer
