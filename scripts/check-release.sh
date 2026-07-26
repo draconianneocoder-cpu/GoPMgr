@@ -41,6 +41,15 @@ if ! make config-check >/dev/null; then
 fi
 echo "Tracked configuration files verified."
 
+# --- 2a. Native installer tool versions ------------------------------
+# Tag builds run on three hosted operating systems, so fail locally if a
+# workflow edit reintroduces @latest, unversioned NSIS, or unused create-dmg.
+if ! make installer-tool-pins >/dev/null; then
+    echo "Installer tool pin validation failed. Run 'make installer-tool-pins' for details."
+    exit 1
+fi
+echo "Native installer tool versions verified."
+
 # --- 2b. REUSE / SPDX licensing --------------------------------------
 # The embedded frontend now lives at the repo-root frontend/dist (the real
 # Vite output, gitignored), so there is no separate copy to clean. reuse

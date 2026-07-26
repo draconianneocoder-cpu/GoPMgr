@@ -26,9 +26,10 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
 - **Tracked build assets exist**: `build/appicon.png`, `build/linux/pmforge.desktop`
   (valid `Office;ProjectManagement;` categories), `build/linux/nfpm.yaml`,
   `build/darwin/Info.plist`.
-- **macOS** `.app` discovery is glob-based (`build/bin/*.app`) with a
-  `create-dmg → staged hdiutil` fallback. Both DMG paths expose
-  `PMForge.app` beside an `Applications` shortcut.
+- **macOS** `.app` discovery is glob-based (`build/bin/*.app`). Tag builds use
+  the built-in staged `hdiutil` path and expose `PMForge.app` beside an
+  `Applications` shortcut. `create-dmg` remains an explicit local opt-in, not a
+  release-workflow dependency.
 - **DuckDB analytics ships in installer builds.** `make build` passes the
   `duckdb` tag to Wails, and Linux release builds also pass `webkit2_41` for
   Ubuntu 24.04+ WebKit2GTK 4.1. `scripts/verify-duckdb-linked.sh` checks the
@@ -38,6 +39,11 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
 - `make package-macos` builds the shareable drag-to-Applications `.dmg`.
   `package-macos-installer.sh` remains a separate **local `.pkg`** path
   (`make package-macos-installer`), intentionally not used by the release `.dmg`.
+- **Installer tool selection is immutable.**
+  `scripts/release-tool-versions.env` pins nFPM v2.47.0 and the Chocolatey NSIS
+  package at 3.12.0. The workflow verifies the installed nFPM module metadata
+  and Chocolatey package record before packaging; `make installer-tool-pins`
+  rejects mutable or bypassed installs before a tag build starts.
 
 ## Known caveats to verify on real targets (not pipeline failures)
 

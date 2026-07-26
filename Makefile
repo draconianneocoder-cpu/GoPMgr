@@ -32,7 +32,8 @@ export CC
         check-release clean fonts icc check-pdfa frontend-stability \
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
-        help-guide-current wails-version wails-cli-version wails-version-test tag-preflight config-check
+        help-guide-current wails-version wails-cli-version wails-version-test tag-preflight config-check \
+        installer-tool-pins
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -90,8 +91,8 @@ test: ## Run Go unit tests.
 race: ## Run Go tests with the race detector (concurrency gate).
 	$(GO) test -race -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check wails-version test frontend-stability frontend-build-budget ## Fast pre-commit gate: config + toolchain pin + Go tests + frontend checks.
-	@echo "verify: configuration, Wails pin, Go tests, svelte-check, and frontend build all passed."
+verify: config-check installer-tool-pins wails-version test frontend-stability frontend-build-budget ## Fast pre-commit gate: config + toolchain pins + Go tests + frontend checks.
+	@echo "verify: configuration, installer/Wails pins, Go tests, svelte-check, and frontend build all passed."
 
 frontend-stability: ## Run Svelte warning-clean and Sigma regression gates.
 	@bash scripts/frontend-stability-check.sh
@@ -110,6 +111,12 @@ config-check: ## Parse tracked YAML/TOML and enforce each tool's supported forma
 	# repository result; both commands use the same parser implementation.
 	@$(GO) test ./scripts
 	@$(GO) run ./scripts
+
+installer-tool-pins: ## Reject mutable or mismatched native installer tool selections.
+	# Exercise drift cases in isolated fixtures before checking the live release
+	# workflow, version record, and Linux packaging guidance.
+	@bash scripts/check-installer-tool-pins_test.sh
+	@bash scripts/check-installer-tool-pins.sh
 
 linux-runtime-target: ## Verify Linux CI/packages target Ubuntu 24.04+ WebKit2GTK 4.1.
 	@bash scripts/check-linux-runtime-target.sh

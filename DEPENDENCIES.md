@@ -76,10 +76,17 @@ Some gates use optional or required tools outside Go/npm:
   installed.
 - `wails`: development server and desktop packaging workflow; also builds
   the Windows NSIS installer (`wails build -nsis`).
-- `nfpm`: builds the Linux `.deb` and `.rpm` packages from
-  `build/linux/nfpm.yaml` (`go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest`).
-- `create-dmg`: builds the macOS `.dmg` (falls back to `hdiutil`).
-- NSIS (`makensis`): the toolchain behind `wails build -nsis` on Windows.
+- `nfpm` v2.47.0: builds the Linux `.deb` and `.rpm` packages from
+  `build/linux/nfpm.yaml`.
+- `hdiutil`: the built-in macOS release path for the `.dmg`. `create-dmg`
+  remains an optional local-only presentation path when
+  `PMFORGE_FANCY_DMG=1`; the tag workflow does not install or enable it.
+- NSIS (`makensis`) 3.12.0: the Chocolatey-pinned toolchain behind
+  `wails build -nsis` on Windows.
+
+`scripts/release-tool-versions.env` is the version record for installer tools
+that are fetched by the tag workflow. `make installer-tool-pins` verifies the
+workflow, the record, and local Linux packaging guidance as one contract.
 
 `make check-release` is strict where release correctness requires proof.
 If a required validator is missing, install the tool rather than
