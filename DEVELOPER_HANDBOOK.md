@@ -988,11 +988,11 @@ This section is the running log of non-obvious discoveries. Every session that l
 ### 2026-07-26 — Published release history correction
 
 - **GitHub is the authority for published releases.** Live tag and release
-  inspection found only `v0.9.1-alpha`; two local 1.1.0 candidate refs were
-  unpublished and both pointed to commits already reachable from `main`, so
-  the stale local refs were removed without losing history.
-- **Draft notes are not release evidence.** The nonexistent 1.1.0 candidate
-  release note and public claims that its native pipeline passed were removed.
+  inspection found only `v0.9.1-alpha`; two unpublished local tags both pointed
+  to commits already reachable from `main`, so the stale refs were removed
+  without losing history.
+- **Draft notes are not release evidence.** The unpublished draft release note
+  and public claims that its native pipeline passed were removed.
   README and ROADMAP now distinguish the published alpha from unreleased 1.1.0
   development.
 - **Keep prerelease instructions symbolic until publication.**
@@ -1002,6 +1002,28 @@ This section is the running log of non-obvious discoveries. Every session that l
   verification. Its isolated Git fixtures prove symbolic guidance passes, both
   false-reference classes fail, and a recorded publication is allowed; `make
   release-scope` runs the test and live check.
+
+### 2026-07-26 — Deterministic Windows NSIS scaffold
+
+- **Track authored inputs, not generated payloads.** PMForge now owns
+  `build/windows/installer/project.nsi`, `build/windows/info.json`, and
+  `build/windows/wails.exe.manifest`. `.gitignore` continues to exclude the
+  derived icon, WebView2 bootstrapper, binaries, and `wails_tools.nsh`; the
+  pinned Wails v2.13.0 CLI regenerates that macro file for current project
+  metadata.
+- **Preserve user data on uninstall.** The branded NSIS flow displays the GPL,
+  installs shortcuts and Wails associations, and removes only the installed
+  program plus disposable WebView cache. Inline comments and a regression
+  reject removal of the user's Documents/PMForge tree or `.pmforge` files.
+- **Windows had silently omitted embedded analytics.** Unlike the Linux and
+  macOS legs, its Wails command lacked `-tags duckdb`. The workflow now embeds
+  DuckDB and runs `verify-duckdb-linked.sh` against `pmforge.exe` before
+  collecting the installer.
+- **Separate syntax evidence from native evidence.**
+  `make windows-installer-scaffold` runs isolated mutation fixtures and, when
+  NSIS is installed, compiles a harmless installer against the pinned Wails
+  macros. This proves template compatibility but not MinGW/CGO linkage,
+  installation, first-run account creation, or uninstall behavior on Windows.
 
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.

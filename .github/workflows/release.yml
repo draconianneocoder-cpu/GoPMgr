@@ -158,7 +158,15 @@ jobs:
 
       - name: Wails build + NSIS installer (Windows)
         if: runner.os == 'Windows'
-        run: wails build -platform windows/amd64 -nsis
+        run: |
+          # Fail before compilation if source-owned installer branding or its
+          # user-data preservation boundary has drifted.
+          bash scripts/check-windows-installer-scaffold.sh
+          bash scripts/validate-windows-nsis-template.sh
+          wails build -platform windows/amd64 -tags duckdb -nsis
+          # The Windows command previously omitted duckdb while other package
+          # legs embedded it. Verify metadata before publishing the installer.
+          bash scripts/verify-duckdb-linked.sh build/bin/pmforge.exe
 
       - name: Package Linux (.deb / .rpm)
         if: runner.os == 'Linux'

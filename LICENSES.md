@@ -27,6 +27,7 @@ identifiers used in this project are:
 | `OFL-1.1`            | Bundled fonts (Liberation, Noto, Source Sans 3, JetBrains Mono, Ledger) | https://openfontlicense.org/documents/OFL.txt                          |
 | `LicenseRef-Bitstream-Vera` | Bundled DejaVu Sans font           | https://dejavu-fonts.github.io/License.html                                                         |
 | `Apache-2.0`         | Bundled fonts (Roboto, Arimo, Cousine)    | https://www.apache.org/licenses/LICENSE-2.0.txt                                                     |
+| `MIT`                | Wails-derived Windows installer templates | https://github.com/wailsapp/wails/blob/v2.13.0/LICENSE                                             |
 
 The font binaries themselves are fetched by `scripts/fetch-fonts.sh`
 (not committed) and ignored as local downloads. Their upstream licenses are
@@ -43,6 +44,7 @@ curl -L -o CC0-1.0.txt            https://creativecommons.org/publicdomain/zero/
 curl -L -o OFL-1.1.txt            https://openfontlicense.org/documents/OFL.txt
 curl -L -o LicenseRef-Bitstream-Vera.txt https://dejavu-fonts.github.io/License.html
 curl -L -o Apache-2.0.txt         https://www.apache.org/licenses/LICENSE-2.0.txt
+curl -L -o MIT.txt                https://raw.githubusercontent.com/wailsapp/wails/v2.13.0/LICENSE
 ```
 
 Or, if you have the `reuse` tool installed:

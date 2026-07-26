@@ -87,6 +87,10 @@ Some gates use optional or required tools outside Go/npm:
 `scripts/release-tool-versions.env` is the version record for installer tools
 that are fetched by the tag workflow. `make installer-tool-pins` verifies the
 workflow, the record, and local Linux packaging guidance as one contract.
+PMForge tracks `build/windows/installer/project.nsi`, `info.json`, and the
+application manifest. The pinned Wails CLI regenerates `wails_tools.nsh`, the
+WebView2 bootstrapper, and platform icon during native builds; those derived
+files remain ignored.
 
 `make check-release` is strict where release correctness requires proof.
 If a required validator is missing, install the tool rather than

@@ -96,6 +96,7 @@ trust.
 ```sh
 make config-check
 make installer-tool-pins
+make windows-installer-scaffold
 make license-check
 make release-scope
 make memory-scan
@@ -116,6 +117,14 @@ guidance are rejected. It then checks the live workflow against
 `scripts/release-tool-versions.env`. This is a deterministic source guard;
 installing the resulting packages on Linux, macOS, and Windows remains required
 prerelease evidence.
+
+`make windows-installer-scaffold` verifies the PMForge-owned NSIS entrypoint,
+Windows version resources, DPI manifest, generated-file ignore boundary,
+workflow ordering, DuckDB build tag, and post-build linkage check. Isolated
+fixtures cover missing branding, destructive uninstall behavior, analytics
+stub drift, and bypassed checks. When `makensis` is installed, the target also
+compiles a harmless fixture installer against the pinned Wails macro template.
+This proves NSIS syntax, not Windows binary linkage or installed-app behavior.
 
 `make check-release` is the final gate. It currently covers version
 consistency, configuration format policy, native installer tool pins,

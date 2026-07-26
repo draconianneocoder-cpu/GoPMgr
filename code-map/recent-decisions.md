@@ -110,6 +110,11 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   `v0.9.1-alpha` is the only published release. Concrete candidate tags and
   candidate release-note files must match `docs/published-release-tags.txt`;
   isolated regressions and the release-scope gate reject unverified claims.
+- **2026-07-26** — Windows packaging now consumes PMForge-owned NSIS/resource
+  templates while Wails regenerates only derived macros and assets. The native
+  command enables DuckDB and verifies binary linkage before upload; isolated
+  mutations plus an NSIS 3 fixture compile guard branding, uninstall safety,
+  and workflow ordering.
 
 ## Open / deferred (not yet decided or implemented)
 
@@ -122,5 +127,7 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   validation.
 - **Portfolio rollup SPI/CPI** — _complete 2026-07-25._ `RunPortfolioAnalytics` separates committed estimates from schedule AC, computes eligible project EVM in the Go kernel at a normalized UTC status date, and lets in-memory DuckDB aggregate exact minor units. Portfolio SPI/CPI are weighted (`ΣEV/ΣPV`, `ΣEV/ΣAC`), and included/excluded counts expose incomplete schedule evidence instead of substituting zero.
 - **RPM Fedora runtime** — built on Ubuntu, cross-distro behavior unverified on a real Fedora box.
-- **Windows NSIS scaffold** — `build/windows/` not committed; first Windows release build will ship a default-branded installer until it's run once and the generated scaffold is committed.
+- **Windows native installer execution** — source templates and NSIS syntax are
+  verified, but Wails/CGO compilation, install/launch, first-run account
+  creation, and data-preserving uninstall still require a Windows runner.
 - **PAdES trusted-chain / Acrobat validation** — blocked on a real trusted signing source; `make check-pades-trusted` reports "not configured" in the interim.
