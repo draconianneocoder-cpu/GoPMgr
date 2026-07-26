@@ -491,14 +491,24 @@ func createTimestampResponseWithEKU(
 	if err != nil {
 		t.Fatalf("marshal TSA extended key usage: %v", err)
 	}
+	wallClock := time.Now().UTC()
+	notBefore := generatedAt
+	notAfter := generatedAt
+	if wallClock.Before(notBefore) {
+		notBefore = wallClock
+	}
+	if wallClock.After(notAfter) {
+		notAfter = wallClock
+	}
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(42),
 		Subject:      pkix.Name{CommonName: "PMForge Test TSA"},
 		// The timestamp package signs its CMS attributes at wall-clock time,
-		// while TSTInfo uses generatedAt. Cover both instants without coupling
-		// this deterministic protocol fixture to the exact test start time.
-		NotBefore: generatedAt.Add(-24 * time.Hour),
-		NotAfter:  generatedAt.Add(24 * time.Hour),
+		// while TSTInfo uses generatedAt. Deriving the validity window from both
+		// prevents a fixed protocol timestamp from becoming an expiring test
+		// fixture as the real calendar advances.
+		NotBefore: notBefore.Add(-24 * time.Hour),
+		NotAfter:  notAfter.Add(24 * time.Hour),
 		KeyUsage:  x509.KeyUsageDigitalSignature,
 		ExtraExtensions: []pkix.Extension{{
 			Id:       extKeyUsageOID,

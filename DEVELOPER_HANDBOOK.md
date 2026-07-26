@@ -828,6 +828,32 @@ This section is the running log of non-obvious discoveries. Every session that l
   `/SubFilter /ETSI.CAdES.detached`. Separate missing-key tests prove both
   compatibility paths return no bytes instead of producing a marker fallback.
 
+### 2026-07-26 — Application-level PAdES-T export contract tests
+
+- **Test the application orchestration, not only the signing primitive.**
+  `app_pades_export_test.go` drives both signed document and combined-report
+  exports through rendering, Baseline T mutation, private file creation, and
+  audit checkpoint writes.
+- **Keep test substitution local to one export call.** The private
+  `padesExportRuntime` replaces only certificate loading and timestamp
+  preparation. It is passed to private worker methods rather than stored on
+  `App` or in mutable package globals, so concurrent Wails requests cannot
+  observe a test hook.
+- **Require cryptographic structure and business evidence together.** Tests
+  require `/Sig`, `/ByteRange`, the ETSI CAdES subfilter, and the CMS
+  `id-aa-signatureTimeStampToken` attribute in the written 0600 file. They
+  separately require `pades_t_verified` for configured trust and
+  `pades_t_not_evaluated` when no TSA root is configured.
+- **Keep CI offline and deterministic.** In-memory signing and TSA
+  certificates produce a token bound to the actual CMS signature imprint.
+  No certificate store, network timestamp authority, or shared test state is
+  required.
+- **Do not give fixed protocol instants fixed certificate lifetimes.** The
+  RFC 3161 fixtures keep deterministic TSTInfo timestamps, but derive test
+  certificate validity from both that instant and the current CMS signing
+  clock. This prevents calendar-driven expiry from masking the validation
+  branch each test intends to exercise.
+
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
 - **Remove "soft gate" wording when the gate passes reliably.** The `validate-pdfa.sh` header comment and the "soft for now" check-release comment both said "warn, don't fail" -- these were vestigial once all samples passed. Gate promotion requires two things: (1) all representative samples pass, (2) the release script actually exits on failure.
