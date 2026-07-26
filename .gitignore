@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
 # SPDX-License-Identifier: CC0-1.0
 
-# Build artifacts. The Wails build scaffold is tracked: build/appicon.png
-# (master app icon, wails derives the platform .icns/.ico from it) and the
-# build/darwin Info plists. Everything else under build/ is generated output
-# (compiled .app/binaries, packages, generated icons).
+# Build artifacts. Source-owned Wails inputs are explicitly exposed below:
+# the master icon, macOS plists, Linux package metadata, and Windows
+# resource/NSIS templates. Compiled binaries, packages, derived icons,
+# wails_tools.nsh, and the WebView bootstrapper remain generated output.
 /build/*
 !/build/appicon.png
 !/build/darwin/
@@ -15,6 +15,13 @@
 /build/linux/*
 !/build/linux/pmforge.desktop
 !/build/linux/nfpm.yaml
+!/build/windows/
+/build/windows/*
+!/build/windows/info.json
+!/build/windows/wails.exe.manifest
+!/build/windows/installer/
+/build/windows/installer/*
+!/build/windows/installer/project.nsi
 /bin/
 *.exe
 *.dll

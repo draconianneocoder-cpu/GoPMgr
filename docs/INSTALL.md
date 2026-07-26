@@ -104,8 +104,9 @@ On the matching OS, after `make build`:
 - **macOS** (`.dmg`): `VERSION=<x.y.z> make package-macos`
   (uses the built-in `hdiutil` image path with an Applications shortcut;
   `PMFORGE_FANCY_DMG=1` opts into a locally installed `create-dmg`).
-- **Windows** (`.exe`): `wails build -platform windows/amd64 -nsis` (requires
-  NSIS 3.12.0 for parity with the release workflow).
+- **Windows** (`.exe`): run `make windows-installer-scaffold`, then
+  `wails build -platform windows/amd64 -tags duckdb -nsis` (requires NSIS
+  3.12.0 for parity with the release workflow).
 
 The release workflow (`.github/workflows/release.yml`) runs all of these on
 native runners automatically when you push a `v*` tag.
