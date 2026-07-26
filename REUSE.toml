@@ -54,6 +54,15 @@ SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
+path = "build/windows/info.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = [
+    "2018-Present Lea Anthony and the Wails contributors",
+    "2026 James L. Burns and The PMForge Contributors",
+]
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
 path = "frontend/package-lock.json"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"

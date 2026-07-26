@@ -36,6 +36,13 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
   built binary metadata before release/package claims.
 - **Windows** installer collection picks the newest `*installer*.exe`
   explicitly and fails loudly if none is found (hardened 2026-06-23).
+- **Windows installer inputs are source-owned.**
+  `build/windows/installer/project.nsi`, `build/windows/info.json`, and
+  `build/windows/wails.exe.manifest` provide PMForge branding, version
+  metadata, DPI behavior, GPL display, and a data-preserving uninstall path.
+  Wails regenerates only its pinned macro file, WebView bootstrapper, and icon.
+  `make windows-installer-scaffold` exercises isolated drift cases and compiles
+  a harmless NSIS fixture when `makensis` is available.
 - `make package-macos` builds the shareable drag-to-Applications `.dmg`.
   `package-macos-installer.sh` remains a separate **local `.pkg`** path
   (`make package-macos-installer`), intentionally not used by the release `.dmg`.
@@ -54,10 +61,10 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
 - **`.rpm` cross-distro.** The rpm wraps an Ubuntu-built dynamically-linked
   binary; `gtk3`/`webkit2gtk4.1` names are expected for Fedora, but **runtime on
   Fedora is unverified**. Test on a real Fedora box before claiming rpm support.
-- **Windows NSIS scaffold.** `build/windows/` is not committed; `wails build
-  -nsis` auto-generates default templates, so the first build produces a
-  **default-branded** installer. After the first successful Windows build,
-  commit `build/windows/` for deterministic, customizable branding.
+- **Windows native execution.** The source-owned NSIS template compiles with
+  NSIS 3.12 on macOS, but the Wails/CGO application build and resulting
+  installer launch remain unverified on a Windows runner. The workflow now
+  enables the `duckdb` tag and checks the built `.exe` metadata before upload.
 - **Windows decision engine.** The Launchpad uses the same embedded JDM rule
   table on every platform. On Windows it evaluates its exact-match and
   fallback rows in Go because the Zen FFI archive targets MSVC while the
@@ -141,9 +148,9 @@ policy and interoperability evidence.
    ```
 
 3. Watch the **Release** workflow. Its **Tag preflight** job must pass before
-   the package matrix starts. Expect first-run friction on the Windows NSIS
-   step (scaffold); the per-OS matrix legs are isolated (`fail-fast: false`), so
-   one failing leg still lets the others build, but publication waits for the
-   entire matrix.
+   the package matrix starts. The per-OS matrix legs are isolated
+   (`fail-fast: false`), so one failing leg still lets the others build, but
+   publication waits for the entire matrix. Treat the first Windows run as
+   native evidence for the new scaffold and DuckDB linkage check.
 4. After a green run, download each artifact and smoke-test install on a real
    machine per platform before announcing.

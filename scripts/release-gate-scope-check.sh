@@ -68,6 +68,18 @@ if ! rg -q '^[[:space:]]*if ! make installer-tool-pins([[:space:]]|>)' scripts/c
 	fail=1
 fi
 
+# Windows packaging must not fall back to an auto-generated default NSIS
+# entrypoint or silently ship the analytics stub.
+if ! rg -q '^windows-installer-scaffold:' Makefile; then
+	echo "release-scope: Makefile must define the windows-installer-scaffold target." >&2
+	fail=1
+fi
+
+if ! rg -q '^[[:space:]]*if ! make windows-installer-scaffold([[:space:]]|>)' scripts/check-release.sh; then
+	echo "release-scope: check-release.sh must run make windows-installer-scaffold." >&2
+	fail=1
+fi
+
 # The PAdES shell regressions cover generated artifacts, external-validator
 # parsing, shared-directory locking, and trusted-source result classification.
 # Guard all three entry points so a future refactor cannot leave the target

@@ -33,7 +33,7 @@ export CC
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
         help-guide-current wails-version wails-cli-version wails-version-test tag-preflight config-check \
-        installer-tool-pins
+        installer-tool-pins windows-installer-scaffold
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -91,8 +91,8 @@ test: ## Run Go unit tests.
 race: ## Run Go tests with the race detector (concurrency gate).
 	$(GO) test -race -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check installer-tool-pins wails-version test frontend-stability frontend-build-budget ## Fast pre-commit gate: config + toolchain pins + Go tests + frontend checks.
-	@echo "verify: configuration, installer/Wails pins, Go tests, svelte-check, and frontend build all passed."
+verify: config-check installer-tool-pins windows-installer-scaffold wails-version test frontend-stability frontend-build-budget ## Fast pre-commit gate: config + packaging/toolchain contracts + Go tests + frontend checks.
+	@echo "verify: configuration, packaging/Wails contracts, Go tests, svelte-check, and frontend build all passed."
 
 frontend-stability: ## Run Svelte warning-clean and Sigma regression gates.
 	@bash scripts/frontend-stability-check.sh
@@ -117,6 +117,11 @@ installer-tool-pins: ## Reject mutable or mismatched native installer tool selec
 	# workflow, version record, and Linux packaging guidance.
 	@bash scripts/check-installer-tool-pins_test.sh
 	@bash scripts/check-installer-tool-pins.sh
+
+windows-installer-scaffold: ## Validate PMForge-owned NSIS templates and Windows release wiring.
+	@bash scripts/check-windows-installer-scaffold_test.sh
+	@bash scripts/check-windows-installer-scaffold.sh
+	@bash scripts/validate-windows-nsis-template.sh
 
 linux-runtime-target: ## Verify Linux CI/packages target Ubuntu 24.04+ WebKit2GTK 4.1.
 	@bash scripts/check-linux-runtime-target.sh

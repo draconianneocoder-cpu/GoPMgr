@@ -16,9 +16,8 @@ The `main` branch is ahead of the alpha and contains unreleased development
 work for the 1.1.0 line, including CPM scheduling, DuckDB-backed portfolio
 analytics, 22 chart types, 25 document kinds, Agile and Six Sigma methodology
 packs, SQLCipher encryption, Argon2id authentication, PDF/A-3 validation, and
-PAdES digital signing. No 1.1.0 release candidate has been published. These
-capabilities should not be read as a promise that `v0.9.1-alpha` has packaged
-installers or matches the current `main` branch.
+PAdES digital signing. These capabilities should not be read as a promise that
+`v0.9.1-alpha` has packaged installers or matches the current `main` branch.
 
 See [ROADMAP.md](ROADMAP.md) for what comes next and [VISION.md](VISION.md)
 for design principles.
@@ -104,6 +103,7 @@ npm --prefix frontend run build
 make frontend-smoke
 make config-check
 make installer-tool-pins
+make windows-installer-scaffold
 make check-encrypted-db
 make check-pdfa
 make check-pades
