@@ -100,7 +100,7 @@ make license-check
 make release-scope
 make memory-scan
 make check-release
-PMFORGE_RELEASE_TAG=v1.1.0-rc.1 make tag-preflight
+PMFORGE_RELEASE_TAG=v1.1.0 make tag-preflight
 ```
 
 `make config-check` runs table-driven malformed-input regressions, parses every
@@ -115,7 +115,7 @@ prove that mutable nFPM installs, unversioned NSIS installs, unused
 guidance are rejected. It then checks the live workflow against
 `scripts/release-tool-versions.env`. This is a deterministic source guard;
 installing the resulting packages on Linux, macOS, and Windows remains required
-release-candidate evidence.
+prerelease evidence.
 
 `make check-release` is the final gate. It currently covers version
 consistency, configuration format policy, native installer tool pins,
@@ -136,6 +136,11 @@ packaging.
 Run `make license-check` after adding files or generated assets. Run
 `make release-scope` after documentation changes that touch release
 claims, especially PDF/A, PAdES, encryption, or public-repo hygiene.
+The release-scope gate also runs isolated release-reference regressions and
+rejects concrete candidate tags or candidate release-note files while no such
+release is listed in `docs/published-release-tags.txt`. Keep future prerelease
+examples symbolic until the tag and GitHub release exist; update that snapshot
+only after verifying the live release.
 
 ## Test Style
 

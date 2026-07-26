@@ -12,6 +12,15 @@ readme_text="$(tr '\n' ' ' < README.md)"
 agent_text="$(tr '\n' ' ' < DEVELOPER_HANDBOOK.md)"
 trap 'rm -f "$go_scope_matches" "$go_list_scope"' EXIT
 
+# Concrete release-candidate names are publication claims, not harmless
+# examples. Exercise the isolated fixtures before checking the live tree so
+# future draft notes cannot silently recreate the false release history.
+if ! bash scripts/check-release-reference-truth_test.sh >/dev/null ||
+	! bash scripts/check-release-reference-truth.sh >/dev/null; then
+	echo "release-scope: unpublished release-candidate reference check failed." >&2
+	fail=1
+fi
+
 if rg -n '((go|\$\(GO\)) (test|vet)( -race)?|staticcheck|gosec -quiet|govulncheck) \./\.\.\.' Makefile scripts DEVELOPER_HANDBOOK.md >"$go_scope_matches"; then
 	echo "release-scope: Go quality gates must target . ./internal/... instead of ./..." >&2
 	cat "$go_scope_matches" >&2
