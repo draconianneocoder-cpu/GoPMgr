@@ -89,6 +89,10 @@ GitHub release notes, never in the version number.
 `make check-pades-external` adds the installed external validators and records
 fresh fixture provenance. Neither command proves a public certificate chain
 because the fixture signer and TSA are intentionally self-signed.
+`make pades-harness-tests` runs the local generator and the deterministic
+external, parallel-locking, and trusted-source regression matrices. It is
+required by both pre-merge CI and `make check-release`; its controlled
+trusted-source output tests classification behavior, not a real trust chain.
 
 For a release-certificate sample, run:
 
@@ -111,9 +115,11 @@ policy and interoperability evidence.
 
 ## Tag procedure
 
-1. Confirm `main` is green in CI (verify, lint, **vuln**, build, analytics-duckdb).
-   For local release builds, also confirm `bash scripts/verify-duckdb-linked.sh`
-   passes after `make build`.
+1. Confirm `main` is green in CI (verify, PAdES harnesses, lint, **vuln**,
+   build, analytics-duckdb). From the exact commit being tagged, run
+   `make check-release`; this is currently a required local preflight rather
+   than a job in the tag-triggered Release workflow. Also confirm
+   `bash scripts/verify-duckdb-linked.sh` passes after `make build`.
 2. Confirm the version of record (channel 1 above) is the semver you intend to
    ship, then tag it exactly (prefixed with `v`):
 
