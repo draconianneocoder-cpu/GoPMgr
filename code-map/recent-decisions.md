@@ -118,7 +118,8 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
 - **2026-07-27** — GitHub publication classification is explicit: a validated
   tag with a SemVer suffix supplies `--prerelease`, while the clean product
   version does not. Isolated helper and workflow mutations prevent an alpha or
-  RC from being presented as GA.
+  RC from being presented as GA. Release preflight also installs and discovers
+  `ripgrep` explicitly before source contracts that depend on it.
 
 ## Open / deferred (not yet decided or implemented)
 
