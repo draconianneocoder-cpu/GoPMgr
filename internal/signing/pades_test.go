@@ -316,14 +316,24 @@ func newPAdESTestTimestampToken(t *testing.T, imprint []byte, generatedAt time.T
 	if err != nil {
 		t.Fatalf("marshal TSA EKU: %v", err)
 	}
+	wallClock := time.Now().UTC()
+	notBefore := generatedAt
+	notAfter := generatedAt
+	if wallClock.Before(notBefore) {
+		notBefore = wallClock
+	}
+	if wallClock.After(notAfter) {
+		notAfter = wallClock
+	}
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(generatedAt.UnixNano()),
 		Subject:      pkix.Name{CommonName: "PMForge Pipeline Test TSA"},
 		// digitorus includes a CMS signing-time attribute using the wall clock,
-		// while TSTInfo carries generatedAt. A broad test-only validity window
-		// keeps both independently meaningful timestamps inside the certificate.
-		NotBefore: time.Now().UTC().Add(-24 * time.Hour),
-		NotAfter:  time.Now().UTC().Add(24 * time.Hour),
+		// while TSTInfo carries generatedAt. Deriving the test-only certificate
+		// window from both prevents deterministic protocol timestamps from
+		// expiring as the real calendar advances.
+		NotBefore: notBefore.Add(-24 * time.Hour),
+		NotAfter:  notAfter.Add(24 * time.Hour),
 		KeyUsage:  x509.KeyUsageDigitalSignature,
 		ExtraExtensions: []pkix.Extension{{
 			Id:       testTSExtendedKeyOID,
