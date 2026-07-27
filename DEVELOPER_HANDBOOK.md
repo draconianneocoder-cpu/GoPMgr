@@ -1025,6 +1025,21 @@ This section is the running log of non-obvious discoveries. Every session that l
   macros. This proves template compatibility but not MinGW/CGO linkage,
   installation, first-run account creation, or uninstall behavior on Windows.
 
+### 2026-07-27 — GitHub prerelease classification
+
+- **SemVer suffixes do not classify GitHub Releases automatically.** The
+  publish job previously passed no `--prerelease` flag to `gh release create`,
+  so an alpha or RC tag could be displayed as a normal release despite passing
+  tag preflight.
+- **Keep classification executable and tested.**
+  `release-publication-flag.sh` translates a validated suffix-bearing tag into
+  one optional CLI argument. The workflow preserves that output as one array
+  element, and isolated regressions cover GA, alpha, RC, invalid input, missing
+  classification, and a dropped publication argument.
+- **Check before creating a tag.** The defect was found after the exact
+  `v1.1.0-alpha.1` local preflight passed but before the tag existed locally or
+  remotely, so no incorrectly classified GitHub Release required deletion.
+
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
 - **Remove "soft gate" wording when the gate passes reliably.** The `validate-pdfa.sh` header comment and the "soft for now" check-release comment both said "warn, don't fail" -- these were vestigial once all samples passed. Gate promotion requires two things: (1) all representative samples pass, (2) the release script actually exits on failure.

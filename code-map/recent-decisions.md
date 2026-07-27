@@ -115,6 +115,10 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   command enables DuckDB and verifies binary linkage before upload; isolated
   mutations plus an NSIS 3 fixture compile guard branding, uninstall safety,
   and workflow ordering.
+- **2026-07-27** — GitHub publication classification is explicit: a validated
+  tag with a SemVer suffix supplies `--prerelease`, while the clean product
+  version does not. Isolated helper and workflow mutations prevent an alpha or
+  RC from being presented as GA.
 
 ## Open / deferred (not yet decided or implemented)
 

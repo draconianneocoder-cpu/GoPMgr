@@ -140,7 +140,10 @@ runs the full release gate. The Release workflow supplies `GITHUB_REF_NAME` as
 this job. Accepted tags are `v<product-version>` and SemVer prereleases such as
 `v<product-version>-rc.1`; mismatched versions, build metadata, empty
 identifiers, and numeric prerelease identifiers with leading zeroes fail before
-packaging.
+packaging. The release-scope gate also exercises
+`release-publication-flag.sh`: suffix-bearing tags must supply GitHub CLI's
+`--prerelease` flag, while a clean version tag must not. This distinction is
+explicit because GitHub does not infer release classification from SemVer.
 
 Run `make license-check` after adding files or generated assets. Run
 `make release-scope` after documentation changes that touch release
