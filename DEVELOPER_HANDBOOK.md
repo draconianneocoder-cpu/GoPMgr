@@ -1096,6 +1096,12 @@ This section is the running log of non-obvious discoveries. Every session that l
   `docs/published-release-tags.txt`, README, installation guidance, release
   preflight, and the code map were updated only after GitHub reported a
   non-draft prerelease with all four expected assets.
+- **Isolate first-launch tests from developer data.** The published DMG was
+  mounted read-only and launched on an M4 Mac with a temporary
+  `XDG_DATA_HOME`. PMForge created private `PMForge`, log, and `system.db`
+  paths, reported that no administrator existed, and exposed the first-user
+  administrator checkbox. The app then exited cleanly without submitting an
+  account, leaving the developer's normal Application Support data untouched.
 
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
