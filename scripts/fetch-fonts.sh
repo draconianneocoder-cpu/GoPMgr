@@ -4,10 +4,9 @@
 #
 # Downloads the bundled TrueType fonts into internal/fonts/assets/.
 #
-# The fonts are NOT committed to the repository (they are large
-# binaries with their own upstream licenses). This script fetches them
-# from their canonical release URLs so the go:embed directive in
-# internal/fonts/manager.go can bundle them into the build.
+# Source Sans 3 is committed as the release-critical PDF/A baseline. This
+# script fetches the remaining optional families and can refresh the baseline
+# from its pinned upstream commit when --force is used.
 #
 # Every font fetched here is free for commercial AND personal use and
 # GPL-3.0-compatible (SIL OFL 1.1 or the Bitstream Vera license).
@@ -131,7 +130,8 @@ fetch "NotoSans-Italic.ttf"     "$NOTO/NotoSans-Italic.ttf"
 fetch "NotoSans-BoldItalic.ttf" "$NOTO/NotoSans-BoldItalic.ttf"
 
 # --- Source Sans 3, SIL OFL 1.1 --------------------------------------
-SSP="https://raw.githubusercontent.com/adobe-fonts/source-sans/release/TTF"
+# Pin the reviewed upstream commit used by check-required-font-assets.sh.
+SSP="https://raw.githubusercontent.com/adobe-fonts/source-sans/87b37a2daaed80fcb8e8ccb0085c4d72ddade12e/TTF"
 fetch "SourceSans3-Regular.ttf" "$SSP/SourceSans3-Regular.ttf"
 fetch "SourceSans3-Bold.ttf"    "$SSP/SourceSans3-Bold.ttf"
 fetch "SourceSans3-It.ttf"      "$SSP/SourceSans3-It.ttf"

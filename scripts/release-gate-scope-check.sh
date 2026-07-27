@@ -68,6 +68,19 @@ if ! rg -q '^[[:space:]]*if ! make installer-tool-pins([[:space:]]|>)' scripts/c
 	fail=1
 fi
 
+# Strict PDF/A output cannot depend on ignored files left by a developer's
+# previous `make fonts` run. Preserve both the public integrity target and its
+# early release invocation.
+if ! rg -q '^required-font-assets:' Makefile; then
+	echo "release-scope: Makefile must define the required-font-assets target." >&2
+	fail=1
+fi
+
+if ! rg -q '^[[:space:]]*if ! make required-font-assets([[:space:]]|>)' scripts/check-release.sh; then
+	echo "release-scope: check-release.sh must run make required-font-assets." >&2
+	fail=1
+fi
+
 # Windows packaging must not fall back to an auto-generated default NSIS
 # entrypoint or silently ship the analytics stub.
 if ! rg -q '^windows-installer-scaffold:' Makefile; then

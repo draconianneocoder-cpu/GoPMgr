@@ -50,7 +50,17 @@ if ! make installer-tool-pins >/dev/null; then
 fi
 echo "Native installer tool versions verified."
 
-# --- 2b. Windows installer source contract ---------------------------
+# --- 2b. Required embedded font assets -------------------------------
+# PDF/A forbids unembedded core fonts. Validate the tracked Source Sans 3
+# baseline before the expensive build and veraPDF gates so a clean-checkout
+# omission produces a direct, actionable failure.
+if ! make required-font-assets >/dev/null; then
+    echo "Required font asset validation failed. Run 'make required-font-assets' for details."
+    exit 1
+fi
+echo "Required embedded font assets verified."
+
+# --- 2c. Windows installer source contract ---------------------------
 # Any host can prove that the Windows job will consume reviewed templates,
 # embed DuckDB, and verify the built binary. When makensis is available, the
 # target also compiles a harmless NSIS fixture without claiming a native build.
@@ -60,7 +70,7 @@ if ! make windows-installer-scaffold >/dev/null; then
 fi
 echo "Windows installer source contract verified."
 
-# --- 2c. REUSE / SPDX licensing --------------------------------------
+# --- 2d. REUSE / SPDX licensing --------------------------------------
 # The embedded frontend now lives at the repo-root frontend/dist (the real
 # Vite output, gitignored), so there is no separate copy to clean. reuse
 # lint skips gitignored paths, so frontend/dist is not linted.
