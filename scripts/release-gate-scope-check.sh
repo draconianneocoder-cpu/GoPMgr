@@ -137,6 +137,14 @@ if ! awk '
 fi
 
 if ! awk '
+	/node-version:/ && $0 !~ /"26"/ { bad = 1 }
+	END { exit bad }
+' .github/workflows/ci.yml .github/workflows/release.yml; then
+	echo "release-scope: GitHub workflows must run frontend jobs on Node.js 26." >&2
+	fail=1
+fi
+
+if ! awk '
 	$0 == "  build:" { in_build = 1; next }
 	in_build && /^  [A-Za-z0-9_-]+:/ { in_build = 0 }
 	in_build && $0 == "    needs: preflight" { found = 1 }

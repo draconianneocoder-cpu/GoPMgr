@@ -60,7 +60,7 @@ func TestExportDocumentPDFSignedWithRuntimeWritesVerifiedPAdEST(t *testing.T) {
 		t.Fatalf("NewDocument: %v", err)
 	}
 
-	generatedAt := time.Date(2026, time.July, 26, 14, 30, 0, 0, time.UTC)
+	generatedAt := time.Now().UTC().Truncate(time.Second)
 	outputPath, err := app.exportDocumentPDFSignedWithRuntime(
 		doc.ID,
 		"test-signer.p12",
@@ -99,7 +99,7 @@ func TestExportCombinedReportSignedWithRuntimeWritesUnevaluatedPAdEST(t *testing
 	subtitle := "Prerelease Fixture"
 	reportID := combinedReportCheckpointID(project.ID, reportTitle, subtitle, sections)
 
-	generatedAt := time.Date(2026, time.July, 26, 14, 45, 0, 0, time.UTC)
+	generatedAt := time.Now().UTC().Truncate(time.Second)
 	outputPath, err := app.exportCombinedReportSignedWithRuntime(
 		reportTitle,
 		subtitle,
@@ -237,14 +237,24 @@ func newAppPAdESTestTimestampToken(t *testing.T, imprint []byte, generatedAt tim
 	if err != nil {
 		t.Fatalf("marshal TSA EKU: %v", err)
 	}
-	now := time.Now().UTC()
+	wallClock := time.Now().UTC()
+	notBefore := generatedAt
+	notAfter := generatedAt
+	if wallClock.Before(notBefore) {
+		notBefore = wallClock
+	}
+	if wallClock.After(notAfter) {
+		notAfter = wallClock
+	}
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(generatedAt.UnixNano()),
 		Subject:      pkix.Name{CommonName: "PMForge Application Export Test TSA"},
 		// The timestamp library records the wall clock in a CMS attribute while
-		// TSTInfo carries generatedAt, so both must fit this test-only window.
-		NotBefore: now.Add(-24 * time.Hour),
-		NotAfter:  now.Add(24 * time.Hour),
+		// TSTInfo carries generatedAt. Deriving the test-only certificate window
+		// from both prevents deterministic protocol timestamps from expiring as
+		// the real calendar advances.
+		NotBefore: notBefore.Add(-24 * time.Hour),
+		NotAfter:  notAfter.Add(24 * time.Hour),
 		KeyUsage:  x509.KeyUsageDigitalSignature,
 		ExtraExtensions: []pkix.Extension{{
 			Id:       appTestTSExtendedKeyOID,
