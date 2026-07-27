@@ -169,7 +169,7 @@ func TestApplyPAdESAddsTimestampAndReportsTrust(t *testing.T) {
 	t.Parallel()
 
 	signer, _ := newPAdESTestSigner(t)
-	generatedAt := time.Date(2026, time.July, 25, 18, 0, 0, 0, time.UTC)
+	generatedAt := time.Now().UTC().Truncate(time.Second)
 	requester := timestampRequesterFunc(func(_ context.Context, endpoint string, imprint []byte) (rfc3161.Token, error) {
 		if endpoint != "https://tsa.example.test/timestamp" {
 			t.Fatalf("endpoint = %q", endpoint)
