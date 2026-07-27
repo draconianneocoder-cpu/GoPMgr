@@ -152,6 +152,11 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   Google Chrome apt mirror mismatch was cleared by rerunning only the failed
   Linux leg. GitHub published four assets for `v1.1.0-alpha.1`; real-machine
   install and lifecycle testing remain separate evidence.
+- **2026-07-27** — The published alpha DMG passed checksum, `hdiutil`, strict
+  ad-hoc `codesign`, architecture, and clean first-launch checks on an M4 Mac.
+  With an isolated empty data root, the UI reported no configured
+  administrator and exposed the first-user administrator checkbox. No account
+  was submitted and existing PMForge data was not touched.
 
 ## Open / deferred (not yet decided or implemented)
 
