@@ -119,7 +119,9 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   tag with a SemVer suffix supplies `--prerelease`, while the clean product
   version does not. Isolated helper and workflow mutations prevent an alpha or
   RC from being presented as GA. Release preflight also installs and discovers
-  `ripgrep` explicitly before source contracts that depend on it.
+  `ripgrep` explicitly before source contracts that depend on it, and blocking
+  race-test output remains visible in hosted logs. The post-Dependabot
+  lockfile pins `brace-expansion` 5.0.8 after a clean high-severity npm audit.
 
 ## Open / deferred (not yet decided or implemented)
 
