@@ -9,8 +9,9 @@ Run through this before pushing a `v*` tag. It captures the static pre-flight
 audit of `release.yml` and the packaging scripts (2026-06-23), plus the native
 runner evidence from the published `v1.1.0-alpha.1` workflow on 2026-07-27.
 That workflow built and published all four expected assets. Installation,
-first-launch, and uninstall behavior still require tests on real target
-machines.
+first-launch, and uninstall behavior remain platform-specific evidence. The
+published DMG's clean first-launch account flow has now passed on an M4 Mac;
+the remaining lifecycle checks are listed below.
 
 ## No pre-generation blockers
 
@@ -69,6 +70,14 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
 
 ## Known caveats to verify on real targets (not pipeline failures)
 
+- **macOS install lifecycle.** The published DMG passed `hdiutil verify`, its
+  ad-hoc signature passed strict `codesign` verification, and its arm64 app
+  launched from the mounted image on an M4 Mac with an isolated empty
+  `XDG_DATA_HOME`. The sign-in screen reported that no administrator existed,
+  and the account-creation screen exposed the first-user administrator option.
+  A drag-to-Applications install, account submission, upgrade, and uninstall
+  preservation test remain outstanding. Gatekeeper warnings are expected
+  because this alpha is not Developer ID signed or notarized.
 - **`.deb` WebKit version.** Built on `ubuntu-24.04` with the Wails
   `webkit2_41` tag, the binary links the Ubuntu 24.04+ WebKit2GTK 4.1 runtime.
   This fixes the earlier WebKit runtime dependency gap on newer Ubuntu. Wails v2
