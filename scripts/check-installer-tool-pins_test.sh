@@ -50,6 +50,10 @@ unversioned_nsis="$(new_fixture unversioned-nsis)"
 perl -0pi -e 's/ --version="\$\{NSIS_VERSION\}"//' "$unversioned_nsis/.github/workflows/release.yml"
 expect_failure "$unversioned_nsis" "NSIS install must use the declared NSIS_VERSION"
 
+missing_nsis_path="$(new_fixture missing-nsis-path)"
+perl -0pi -e 's#echo '\''C:\\Program Files \(x86\)\\NSIS'\'' >> "\$GITHUB_PATH"#echo '\''broken path'\''#' "$missing_nsis_path/.github/workflows/release.yml"
+expect_failure "$missing_nsis_path" "workflow must publish Chocolatey's NSIS directory"
+
 unused_create_dmg="$(new_fixture unused-create-dmg)"
 printf '\n      - name: Unpinned create-dmg\n        run: brew install create-dmg\n' >>"$unused_create_dmg/.github/workflows/release.yml"
 expect_failure "$unused_create_dmg" "release workflow must not install create-dmg"

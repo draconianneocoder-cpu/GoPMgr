@@ -30,10 +30,14 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
   replace the non-embeddable PDF core fonts in clean builds.
   `make required-font-assets` checks tracking, TrueType signatures, and
   reviewed upstream checksums before the release spends time compiling.
+  Native workflows do not fetch optional font families, so packages cannot
+  vary with CDN availability.
 - **macOS** `.app` discovery is glob-based (`build/bin/*.app`). Tag builds use
   the built-in staged `hdiutil` path and expose `PMForge.app` beside an
   `Applications` shortcut. `create-dmg` remains an explicit local opt-in, not a
-  release-workflow dependency.
+  release-workflow dependency. After the DuckDB app build, the hosted workflow
+  clears disposable Go/npm caches to leave `hdiutil` enough staging space; the
+  local packaging script does not alter developer caches.
 - **DuckDB analytics ships in installer builds.** `make build` passes the
   `duckdb` tag to Wails, and Linux release builds also pass `webkit2_41` for
   Ubuntu 24.04+ WebKit2GTK 4.1. `scripts/verify-duckdb-linked.sh` checks the
@@ -53,8 +57,11 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
 - **Installer tool selection is immutable.**
   `scripts/release-tool-versions.env` pins nFPM v2.47.0 and the Chocolatey NSIS
   package at 3.12.0. The workflow verifies the installed nFPM module metadata
-  and Chocolatey package record before packaging; `make installer-tool-pins`
-  rejects mutable or bypassed installs before a tag build starts.
+  and Chocolatey package record before packaging. On Windows it also verifies
+  `makensis.exe` at Chocolatey's explicit installation directory and exports
+  that directory through `GITHUB_PATH`; the installation process cannot rely
+  on an in-process PATH refresh. `make installer-tool-pins` rejects mutable or
+  bypassed installs before a tag build starts.
 
 ## Known caveats to verify on real targets (not pipeline failures)
 
