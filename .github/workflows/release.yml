@@ -208,6 +208,10 @@ jobs:
     permissions:
       contents: write
     steps:
+      # The publish job checks out the reviewed tag so release classification
+      # uses the same tested helper that the source preflight validates.
+      - uses: actions/checkout@v7
+
       - name: Download all installers
         uses: actions/download-artifact@v8
         with:
@@ -218,8 +222,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          publication_flag="$(bash scripts/release-publication-flag.sh "$GITHUB_REF_NAME")"
+          publication_args=()
+          if [ -n "$publication_flag" ]; then
+            publication_args+=("$publication_flag")
+          fi
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
             --title "PMForge $GITHUB_REF_NAME" \
             --generate-notes \
+            "${publication_args[@]}" \
             dist/*

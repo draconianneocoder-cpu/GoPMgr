@@ -151,6 +151,8 @@ policy and interoperability evidence.
    the package matrix starts. The per-OS matrix legs are isolated
    (`fail-fast: false`), so one failing leg still lets the others build, but
    publication waits for the entire matrix. Treat the first Windows run as
-   native evidence for the new scaffold and DuckDB linkage check.
+   native evidence for the new scaffold and DuckDB linkage check. Tags with a
+   SemVer suffix are explicitly published with GitHub's prerelease
+   classification; only a clean `v<product-version>` tag is eligible for GA.
 4. After a green run, download each artifact and smoke-test install on a real
    machine per platform before announcing.
