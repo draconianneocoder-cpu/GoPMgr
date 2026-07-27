@@ -29,11 +29,13 @@ identifiers used in this project are:
 | `Apache-2.0`         | Bundled fonts (Roboto, Arimo, Cousine)    | https://www.apache.org/licenses/LICENSE-2.0.txt                                                     |
 | `MIT`                | Wails-derived Windows installer templates | https://github.com/wailsapp/wails/blob/v2.13.0/LICENSE                                             |
 
-The font binaries themselves are fetched by `scripts/fetch-fonts.sh`
-(not committed) and ignored as local downloads. Their upstream licenses are
-documented here and in `internal/fonts/assets/README.md`. The compact sRGB ICC
-profile used for PDF/A-3 OutputIntent embedding is committed because it is a
-small build input and the Go embed directive needs it in clean checkouts.
+The Source Sans 3 PDF/A baseline and its `OFL-1.1` license text are committed
+because clean release builds must embed those fonts without a network fetch.
+Other font binaries are fetched by `scripts/fetch-fonts.sh` and ignored as
+optional local downloads. Their upstream licenses are documented here and in
+`internal/fonts/assets/README.md`. The compact sRGB ICC profile used for
+PDF/A-3 OutputIntent embedding is likewise committed because the Go embed
+directive needs it in clean checkouts.
 
 Run the following after adding a new SPDX identifier:
 

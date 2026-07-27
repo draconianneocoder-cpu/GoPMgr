@@ -13,12 +13,11 @@ import (
 	"strings"
 )
 
-// assetsFS embeds the bundled TrueType fonts. The directory always
-// contains at least README.md (so the embed pattern matches even
-// before scripts/fetch-fonts.sh has downloaded the binaries), and the
-// Manager filters to *.ttf at load time. If no .ttf files are present,
-// the Manager simply reports the bundled families as unavailable and
-// callers fall back to fpdf core fonts.
+// assetsFS embeds the tracked Source Sans 3 PDF/A baseline plus any optional
+// families downloaded before compilation. The Manager filters to *.ttf at
+// load time and reports only families whose files are available. Supported
+// release builds always include Source Sans 3; optional families may still
+// fall back to that baseline when their downloaded files are absent.
 //
 //go:embed assets
 var assetsFS embed.FS

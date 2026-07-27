@@ -110,13 +110,12 @@ func (f FontFamily) File(style Style) (FontFile, bool) {
 // Catalog is the curated set of bundled font families. Every family is
 // free for commercial AND personal use and GPL-3.0-compatible.
 //
-// The actual .ttf binaries are NOT committed to the repository (they
-// are large binaries). scripts/fetch-fonts.sh downloads them from the
-// canonical sources below into internal/fonts/assets/, where the
-// embed directive in manager.go picks them up at build time. If a
-// family's files are absent at build time, the Manager simply omits
-// it and the renderers fall back to the next available family (and
-// ultimately to fpdf's core Helvetica), so the app always works.
+// Source Sans 3 is committed as the deterministic PDF/A baseline.
+// scripts/fetch-fonts.sh downloads the other optional families from the
+// canonical sources below into internal/fonts/assets/, where manager.go's
+// embed directive picks them up at build time. If an optional family's files
+// are absent, the Manager omits it and renderers can fall back to the tracked
+// baseline.
 var Catalog = []FontFamily{
 	{
 		Name:        "Liberation Sans",

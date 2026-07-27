@@ -26,6 +26,10 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
 - **Tracked build assets exist**: `build/appicon.png`, `build/linux/pmforge.desktop`
   (valid `Office;ProjectManagement;` categories), `build/linux/nfpm.yaml`,
   `build/darwin/Info.plist`.
+- **PDF/A font baseline is deterministic.** Four tracked Source Sans 3 faces
+  replace the non-embeddable PDF core fonts in clean builds.
+  `make required-font-assets` checks tracking, TrueType signatures, and
+  reviewed upstream checksums before the release spends time compiling.
 - **macOS** `.app` discovery is glob-based (`build/bin/*.app`). Tag builds use
   the built-in staged `hdiutil` path and expose `PMForge.app` beside an
   `Applications` shortcut. `create-dmg` remains an explicit local opt-in, not a
@@ -136,7 +140,9 @@ policy and interoperability evidence.
    `make check-release` locally as an early signal. The tag-triggered workflow
    reruns that full gate on Ubuntu and blocks all installer jobs until it
    passes. Its strict PDF/A check uses the pinned official
-   `verapdf/cli:v1.30.2` image when Docker is available. Also confirm
+   `verapdf/cli:v1.30.2` image when Docker is available. It also verifies the
+   tracked Source Sans 3 baseline, so ignored optional font downloads cannot
+   influence conformance. Also confirm
    `bash scripts/verify-duckdb-linked.sh` passes after `make build`.
 2. Confirm the version of record (channel 1 above) is the semver you intend to
    ship, then tag it exactly (prefixed with `v`):

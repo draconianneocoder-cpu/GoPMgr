@@ -300,8 +300,9 @@ encrypted project databases are unrecoverable by design.
 
 ## Fonts
 
-PMForge embeds TrueType fonts in generated PDFs. The bundled font catalog
-is downloaded with:
+PMForge embeds TrueType fonts in generated PDFs. Source Sans 3 ships with
+every supported build so PDF/A reports do not depend on a network download.
+Developers can download the additional optional font catalog with:
 
 ```sh
 make fonts

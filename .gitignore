@@ -72,6 +72,10 @@ temp_snapshot.db
 
 # Downloaded/generated binary inputs
 /internal/fonts/assets/*.ttf
+!/internal/fonts/assets/SourceSans3-Regular.ttf
+!/internal/fonts/assets/SourceSans3-Bold.ttf
+!/internal/fonts/assets/SourceSans3-It.ttf
+!/internal/fonts/assets/SourceSans3-BoldIt.ttf
 /PMForge Icon Image *.png
 /PMForge Logo Image *.png
 
@@ -81,7 +85,6 @@ temp_snapshot.db
 *.key
 *.pem
 !LICENSES/*.txt
-/LICENSES/OFL-1.1.txt
 
 # Agent memory (local-only; not for public consumption)
 /.agent_memory/
