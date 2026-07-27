@@ -22,6 +22,7 @@
 # Usage:
 #   make check-pdfa                       # strict by default
 #   PMFORGE_PDFA_STRICT=0 make check-pdfa # degrade missing tooling to a skip
+#   PMFORGE_VERAPDF_FORCE_CLI=1 make check-pdfa # bypass Docker for CLI diagnostics
 
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -70,7 +71,11 @@ if [ ! -s "$ICC_PROFILE" ]; then
 fi
 
 # --- 1. Try Docker first (most reliable) --------------------------------
-if command -v docker >/dev/null 2>&1; then
+# The explicit CLI override keeps the helper regression hermetic on hosts such
+# as GitHub runners that happen to provide Docker. It is also useful when
+# diagnosing a local veraPDF installation without removing Docker from PATH.
+if [ "${PMFORGE_VERAPDF_FORCE_CLI:-0}" != "1" ] &&
+	command -v docker >/dev/null 2>&1; then
     echo "Using veraPDF via Docker ($VERAPDF_IMAGE)..."
     VERAPDF_MODE="docker"
     # Use veraPDF's official self-contained CLI image and bind it to the same

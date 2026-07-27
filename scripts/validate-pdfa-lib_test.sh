@@ -97,7 +97,13 @@ printf '%s\n' '<report><jobs><job><validationReport><isCompliant>true</isComplia
 EOF
 chmod +x "$fake_verapdf"
 
-gate_output="$(PATH="$fake_verapdf_dir:$PATH" bash "$ROOT/scripts/validate-pdfa.sh" 2>&1)"
+# Force the intended CLI branch. GitHub's Ubuntu runners provide Docker, which
+# previously made this supposedly hermetic fixture pull and execute a real
+# container instead of the fake veraPDF binary.
+gate_output="$(
+	PMFORGE_VERAPDF_FORCE_CLI=1 PATH="$fake_verapdf_dir:$PATH" \
+		bash "$ROOT/scripts/validate-pdfa.sh" 2>&1
+)"
 case "$gate_output" in
 	*"Checking schedule.pdf"* ) ;;
 	*)

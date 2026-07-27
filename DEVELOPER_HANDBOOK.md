@@ -1067,10 +1067,18 @@ This section is the running log of non-obvious discoveries. Every session that l
   release workflow pin was adopted.
 - **Node Web Storage is not jsdom Web Storage.** Node 26 enables a process-wide
   `localStorage` global, but without `--localstorage-file` it shadows jsdom with
-  an unusable value on Linux workers. Frontend storage code and tests use
-  `window.localStorage` so jsdom remains the browser-storage provider; the
-  frontend stability gate rejects bare `localStorage` references in production
+  an unusable value on Linux workers. Frontend code uses `window.localStorage`
+  at the browser boundary, and Vitest passes `--no-experimental-webstorage` to
+  its workers so jsdom remains the browser-storage provider. The stability gate
+  deliberately enables Node Web Storage in its parent process, reproducing the
+  collision on Node 24 while rejecting bare storage references in production
   source.
+- **A hermetic validator test must select its fake backend explicitly.** The
+  PDF/A helper test injected fake `verapdf` and `docker` binaries but its CLI
+  phase still preferred a host-installed Docker. GitHub therefore ran a real
+  container inside an allegedly isolated regression. The CLI phase now sets
+  `PMFORGE_VERAPDF_FORCE_CLI=1`, while the Docker phase keeps its fake first on
+  `PATH`; release-gate output is streamed so future failures retain evidence.
 
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
