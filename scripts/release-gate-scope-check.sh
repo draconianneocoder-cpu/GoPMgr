@@ -126,6 +126,17 @@ if ! grep -Eq 'sudo apt-get install -y .*ripgrep' .github/workflows/release.yml 
 fi
 
 if ! awk '
+	$0 == "  verify:" { in_verify = 1; next }
+	in_verify && /^  [A-Za-z0-9_-]+:/ { in_verify = 0 }
+	in_verify && /sudo apt-get install -y/ && /ripgrep/ { installed = 1 }
+	in_verify && /command -v rg >\/dev\/null/ { discovered = 1 }
+	END { exit !(installed && discovered) }
+' .github/workflows/ci.yml; then
+	echo "release-scope: CI verify job must install and discover ripgrep before make verify." >&2
+	fail=1
+fi
+
+if ! awk '
 	$0 == "  build:" { in_build = 1; next }
 	in_build && /^  [A-Za-z0-9_-]+:/ { in_build = 0 }
 	in_build && $0 == "    needs: preflight" { found = 1 }
