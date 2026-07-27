@@ -140,7 +140,10 @@ fi
 
 # --- 6. Race detector ------------------------------------------------
 if command -v go >/dev/null 2>&1; then
-    if ! go test -race -tags webkit2_41 $GO_PACKAGES >/dev/null 2>&1; then
+    # Keep race output visible in hosted logs. Suppressing it reduced a
+    # Linux-only failure to an unactionable exit code and forced another tag
+    # run merely to identify the failing package.
+    if ! go test -race -tags webkit2_41 $GO_PACKAGES; then
         echo "Race detector flagged tests. Run 'make race' for details."
         exit 1
     fi

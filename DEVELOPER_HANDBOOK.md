@@ -1044,6 +1044,17 @@ This section is the running log of non-obvious discoveries. Every session that l
   installer-pin contracts require. The workflow now installs `ripgrep`, checks
   command discovery before the gate, and guards both requirements in source so
   runner-image drift reports one actionable dependency failure.
+- **Never suppress blocking-gate diagnostics.** After the dependency repair,
+  Linux reached the race detector but `check-release.sh` redirected its output
+  to `/dev/null`, leaving only an exit code. Race output now streams to hosted
+  logs, and ordinary CI installs the same `ripgrep` dependency before
+  `make verify`; the gate remains blocking and unchanged in scope.
+- **Audit an auto-merged dependency batch before retagging.** Two Dependabot
+  frontend updates landed while the release run was active. Their build and
+  lint jobs passed, but `npm audit` found transitive development dependency
+  `brace-expansion` 5.0.7 through ESLint/minimatch. Regenerating the lockfile
+  selected 5.0.8, clearing the high-severity unbounded-expansion advisory
+  without changing a direct dependency.
 
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
