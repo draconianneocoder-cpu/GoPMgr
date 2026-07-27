@@ -141,6 +141,10 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   depend on transient CDN success. The macOS job reclaims disposable Go module,
   build, and npm caches after its DuckDB app build because the hosted runner
   otherwise leaves too little scratch space for `hdiutil`.
+- **2026-07-27** — The hermetic NSIS template compile uses non-empty fixture
+  inputs and translates the dummy application to an absolute Windows path with
+  `cygpath` when native `makensis.exe` runs under Git Bash. Homebrew NSIS keeps
+  the script-relative POSIX path.
 
 ## Open / deferred (not yet decided or implemented)
 

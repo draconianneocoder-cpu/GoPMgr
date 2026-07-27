@@ -47,12 +47,23 @@ sed \
 	' >"$INSTALLER_DIR/wails_tools.nsh"
 
 # NSIS only embeds these fixtures; they are never executed during compilation.
-: >"$INSTALLER_DIR/tmp/MicrosoftEdgeWebview2Setup.exe"
-: >"$TEST_ROOT/build/bin/pmforge.exe"
+# Keep them non-empty because native Windows makensis rejects an empty File
+# input differently from Homebrew NSIS.
+printf 'PMForge WebView bootstrap fixture\n' >"$INSTALLER_DIR/tmp/MicrosoftEdgeWebview2Setup.exe"
+fixture_binary="$TEST_ROOT/build/bin/pmforge.exe"
+printf 'PMForge application fixture\n' >"$fixture_binary"
+
+# Homebrew NSIS accepts the script-relative POSIX path. Native makensis.exe
+# launched from Git Bash needs an absolute Windows path; cygpath also preserves
+# spaces in the hosted runner's temporary directory.
+nsis_binary_arg="../../bin/pmforge.exe"
+if command -v cygpath >/dev/null 2>&1; then
+	nsis_binary_arg="$(cygpath -w "$fixture_binary")"
+fi
 
 (
 	cd "$INSTALLER_DIR"
-	makensis -V2 -DARG_WAILS_AMD64_BINARY=../../bin/pmforge.exe project.nsi
+	makensis -V2 "-DARG_WAILS_AMD64_BINARY=$nsis_binary_arg" project.nsi
 )
 
 output="$TEST_ROOT/build/bin/pmforge-amd64-installer.exe"
