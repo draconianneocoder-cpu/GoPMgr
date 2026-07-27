@@ -116,6 +116,15 @@ if ! rg -Fq 'run: PMFORGE_RELEASE_TAG="$GITHUB_REF_NAME" make tag-preflight' .gi
 	fail=1
 fi
 
+# The hosted Ubuntu image is not the dependency contract. Keep ripgrep
+# explicit because this script and packaging guards execute before application
+# compilation and otherwise emit misleading missing-literal errors.
+if ! grep -Eq 'sudo apt-get install -y .*ripgrep' .github/workflows/release.yml ||
+	! grep -Fq 'command -v rg >/dev/null' .github/workflows/release.yml; then
+	echo "release-scope: Release preflight must install and discover ripgrep before source gates." >&2
+	fail=1
+fi
+
 if ! awk '
 	$0 == "  build:" { in_build = 1; next }
 	in_build && /^  [A-Za-z0-9_-]+:/ { in_build = 0 }

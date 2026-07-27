@@ -1039,6 +1039,11 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Check before creating a tag.** The defect was found after the exact
   `v1.1.0-alpha.1` local preflight passed but before the tag existed locally or
   remotely, so no incorrectly classified GitHub Release required deletion.
+- **Hosted runner tools must be explicit.** The first tagged preflight then
+  exposed that Ubuntu did not provide `rg`, which the release-scope and
+  installer-pin contracts require. The workflow now installs `ripgrep`, checks
+  command discovery before the gate, and guards both requirements in source so
+  runner-image drift reports one actionable dependency failure.
 
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
