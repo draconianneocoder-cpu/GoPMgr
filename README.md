@@ -6,18 +6,20 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # PMForge
 
 **Latest published release:**
-[v0.9.1-alpha](https://github.com/draconianneocoder-cpu/PMForge/releases/tag/v0.9.1-alpha)
-(prerelease, published July 24, 2026). This first public alpha is intended for
-early testing and feedback. Its GitHub release currently has no uploaded native
-installer assets, so testers must build it from source until packages are
-attached to the release.
+[v1.1.0-alpha.1](https://github.com/draconianneocoder-cpu/PMForge/releases/tag/v1.1.0-alpha.1)
+(prerelease, published July 27, 2026). This packaged alpha is intended for
+early compatibility, installation, and workflow testing. Its GitHub release
+provides native installers for Windows x86-64, macOS Apple Silicon, and Linux
+x86-64 (`.deb` and `.rpm`). The packages are not code-signed or notarized, so
+follow the platform-specific warning guidance in
+[docs/INSTALL.md](docs/INSTALL.md) and verify the release asset digest before
+installing.
 
-The `main` branch is ahead of the alpha and contains unreleased development
-work for the 1.1.0 line, including CPM scheduling, DuckDB-backed portfolio
-analytics, 22 chart types, 25 document kinds, Agile and Six Sigma methodology
-packs, SQLCipher encryption, Argon2id authentication, PDF/A-3 validation, and
-PAdES digital signing. These capabilities should not be read as a promise that
-`v0.9.1-alpha` has packaged installers or matches the current `main` branch.
+This alpha is the first packaged 1.1.0 snapshot and includes the capabilities
+listed below: CPM scheduling, DuckDB-backed portfolio analytics, 22 chart
+types, 25 document kinds, Agile and Six Sigma methodology packs, SQLCipher
+encryption, Argon2id authentication, PDF/A-3 validation, and PAdES digital
+signing. The `main` branch may advance beyond the release snapshot.
 
 See [ROADMAP.md](ROADMAP.md) for what comes next and [VISION.md](VISION.md)
 for design principles.

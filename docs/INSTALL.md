@@ -8,14 +8,17 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 PMForge is a local-first desktop app: your projects live in encrypted files on
 your own machine — no account, cloud, or network is required.
 
-Each release publishes a native installer per platform. Download the file for
-your OS from the project's **Releases** page and follow the steps below.
+Packaged releases publish a native installer per platform. The current
+[v1.1.0-alpha.1 prerelease](https://github.com/draconianneocoder-cpu/PMForge/releases/tag/v1.1.0-alpha.1)
+contains all four files listed below. Download the file for your OS and follow
+the platform steps.
 
 > **Heads-up — unsigned builds.** Current packages are not code-signed, so
 > Windows SmartScreen and macOS Gatekeeper show an "unidentified developer"
-> warning the first time you run the app. The packages are safe to install; the
-> warning just reflects the absence of a paid signing certificate. Signing is
-> planned.
+> warning the first time you run the app. The warning reflects the absence of
+> an Apple Developer ID or Windows Authenticode signature; signing is planned.
+> Confirm that the downloaded file's SHA-256 digest matches the digest GitHub
+> displays for that release asset before bypassing the platform warning.
 
 ## Which file do I download?
 
