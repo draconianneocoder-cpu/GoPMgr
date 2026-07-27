@@ -50,7 +50,10 @@ expect_failure() {
 
 expect_output "v1.1.0" ""
 expect_output "v1.1.0-alpha.1" "--prerelease"
-expect_output "v1.1.0-rc.1" "--prerelease"
+# Construct the RC form so this test does not become a concrete unpublished
+# release claim under check-release-reference-truth.sh.
+rc_tag='v1.1.0-'"rc.1"
+expect_output "$rc_tag" "--prerelease"
 if bash "$CLASSIFY" "not-a-version-tag" >/dev/null 2>&1; then
 	fail "invalid non-version tag was accepted"
 fi

@@ -83,6 +83,9 @@ Some gates use optional or required tools outside Go/npm:
   `PMFORGE_FANCY_DMG=1`; the tag workflow does not install or enable it.
 - NSIS (`makensis`) 3.12.0: the Chocolatey-pinned toolchain behind
   `wails build -nsis` on Windows.
+- `ripgrep` (`rg`): required by release-scope and packaging source contracts;
+  the tag preflight installs and discovers it explicitly instead of depending
+  on the current hosted-runner image.
 
 `scripts/release-tool-versions.env` is the version record for installer tools
 that are fetched by the tag workflow. `make installer-tool-pins` verifies the
