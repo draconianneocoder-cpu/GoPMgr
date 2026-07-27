@@ -144,10 +144,6 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
 
-      - name: Fetch bundled fonts (non-fatal — app falls back to core fonts if a CDN fails)
-        continue-on-error: true
-        run: make fonts
-
       # Wails runs `npm install` + `npm run build` itself, creating frontend/dist before
       # compiling Go, so no separate frontend build step is needed here.
       - name: Wails build

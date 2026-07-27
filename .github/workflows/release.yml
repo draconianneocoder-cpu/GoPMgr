@@ -143,14 +143,16 @@ jobs:
         run: |
           choco install nsis --version="${NSIS_VERSION}" -y --no-progress
           # Chocolatey's package record validates the exact moderated package;
-          # command discovery additionally proves Wails can reach makensis.
+          # Git Bash does not inherit Chocolatey's in-process PATH update. Check
+          # the explicit installation path, expose it to this shell, and persist
+          # the native path for the later Wails step.
           installed_nsis_version="$(choco list --exact nsis --limit-output | tr -d '\r' | awk -F'|' '$1 == "nsis" { print $2 }')"
           test "$installed_nsis_version" = "$NSIS_VERSION"
+          nsis_dir="/c/Program Files (x86)/NSIS"
+          test -x "$nsis_dir/makensis.exe"
+          echo 'C:\Program Files (x86)\NSIS' >> "$GITHUB_PATH"
+          export PATH="$nsis_dir:$PATH"
           command -v makensis >/dev/null
-
-      - name: Fetch bundled fonts (graceful — app falls back to core fonts)
-        continue-on-error: true
-        run: bash scripts/fetch-fonts.sh
 
       - name: Wails build (Linux)
         if: runner.os == 'Linux'
@@ -171,6 +173,17 @@ jobs:
           # The Windows command previously omitted duckdb while other package
           # legs embedded it. Verify metadata before publishing the installer.
           bash scripts/verify-duckdb-linked.sh build/bin/pmforge.exe
+
+      - name: Reclaim macOS packaging space
+        if: runner.os == 'macOS'
+        run: |
+          # DuckDB's CGO build leaves multi-gigabyte Go caches on a hosted
+          # runner. The compiled .app no longer needs them, and hdiutil needs
+          # free scratch space to copy and compress the staged application.
+          df -h /
+          go clean -cache -modcache
+          npm cache clean --force
+          df -h /
 
       - name: Package Linux (.deb / .rpm)
         if: runner.os == 'Linux'

@@ -1340,6 +1340,17 @@ This section is the running log of non-obvious discoveries. Every session that l
 ### 2026-06-23 — Click-installable release packaging (.deb/.rpm/.exe/.dmg)
 
 - **release.yml now builds native installers per OS** (was tar.gz/zip): Linux x86_64 → `.deb`+`.rpm` (nfpm, `build/linux/nfpm.yaml`); Windows x86_64 → NSIS `.exe` (`wails build -nsis`, runner installs NSIS via choco); macOS **arm64 / Apple Silicon** → `.dmg` (`scripts/package-macos.sh`, create-dmg with hdiutil fallback). The macOS matrix switched from `darwin/universal` to `darwin/arm64`.
+- **Hosted Windows PATH refreshes are not implicit.** Chocolatey can install
+  NSIS 3.12.0 successfully while the active Git Bash process still cannot find
+  `makensis`. The workflow verifies the executable at
+  `C:\Program Files (x86)\NSIS`, prepends its POSIX path for the current shell,
+  and writes the native path to `GITHUB_PATH` for the later Wails step.
+- **Native package inputs and macOS scratch space are explicit.** Release/CI
+  builds use only the tracked Source Sans 3 baseline instead of opportunistic
+  optional-font downloads, keeping platform packages reproducible. The hosted
+  macOS job clears disposable Go module/build and npm caches after compiling
+  DuckDB; `hdiutil` otherwise runs out of scratch space while staging the DMG.
+  This cleanup stays in the ephemeral workflow, not the local packaging script.
 - **Packaging assets are tracked** despite the broad `build/` ignore: `.gitignore` exempts `build/linux/pmforge.desktop` and `build/linux/nfpm.yaml` (same trick as the darwin Info.plist scaffold). The icon is `build/appicon.png` → `/usr/share/pixmaps/pmforge.png`; the `.desktop` → `/usr/share/applications/`.
 - **Linux release target moved to Ubuntu 24.04+ WebKit2GTK 4.1** (2026-06-26). CI/release Linux runners now use `ubuntu-24.04`, install `libwebkit2gtk-4.1-dev`, and pass Wails' `webkit2_41` tag. Wails v2 still links GTK3 (`gtk+-3.0` in the upstream cgo files); true GTK4/WebKitGTK 6.0 requires a future Wails migration rather than a package-name change. `make linux-runtime-target` guards this target.
 - **Signing/notarization is OFF** (owner decision 2026-06-23 — unsigned now, sign later). Packages install/run but show Gatekeeper/SmartScreen "unidentified developer" warnings. Hook: `MACOS_SIGN_IDENTITY` env in `scripts/package-macos.sh` (codesign + a commented notarytool block); Windows signing is a TODO. Add certs as CI secrets to enable.

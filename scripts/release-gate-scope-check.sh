@@ -175,6 +175,24 @@ if ! awk '
 	fail=1
 fi
 
+# Native packages must embed the same reviewed font bytes on every platform.
+# Optional CDN downloads made the catalog depend on transient URL success and
+# previously hid the clean-checkout PDF/A failure.
+if rg -q '(fetch-fonts\.sh|make fonts)' .github/workflows; then
+	echo "release-scope: CI/release packages must use the tracked font baseline, not optional downloads." >&2
+	fail=1
+fi
+
+# The macOS DuckDB build can fill the hosted runner with disposable Go caches
+# before hdiutil stages the app. Preserve the post-build reclamation contract;
+# it is runner-only and must not be moved into the developer packaging script.
+if ! rg -Fq 'name: Reclaim macOS packaging space' .github/workflows/release.yml ||
+	! rg -Fq 'go clean -cache -modcache' .github/workflows/release.yml ||
+	! rg -Fq 'npm cache clean --force' .github/workflows/release.yml; then
+	echo "release-scope: macOS release packaging must reclaim hosted build caches before hdiutil." >&2
+	fail=1
+fi
+
 # GitHub does not infer its prerelease flag from a SemVer suffix. Exercise the
 # classification helper and a mutated workflow fixture before trusting the
 # live publish job, otherwise an alpha or RC tag could be marked as GA.
