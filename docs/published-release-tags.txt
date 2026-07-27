@@ -5,3 +5,4 @@
 # before adding an entry; draft releases and local-only tags do not qualify.
 
 v0.9.1-alpha
+v1.1.0-alpha.1

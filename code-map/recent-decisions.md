@@ -106,10 +106,11 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   installed tool provenance, while macOS stays on its built-in `hdiutil`
   release path instead of installing the optional `create-dmg`. Isolated drift
   fixtures and release-scope wiring guard the contract.
-- **2026-07-26** — Published release history follows live GitHub evidence:
-  `v0.9.1-alpha` is the only published release. Concrete candidate tags and
-  candidate release-note files must match `docs/published-release-tags.txt`;
-  isolated regressions and the release-scope gate reject unverified claims.
+- **2026-07-26** — Published release history follows live GitHub evidence.
+  Concrete candidate tags and candidate release-note files must match
+  `docs/published-release-tags.txt`; isolated regressions and the release-scope
+  gate reject unverified claims. The record now contains `v0.9.1-alpha` and
+  the packaged `v1.1.0-alpha.1` prerelease published on 2026-07-27.
 - **2026-07-26** — Windows packaging now consumes PMForge-owned NSIS/resource
   templates while Wails regenerates only derived macros and assets. The native
   command enables DuckDB and verifies binary linkage before upload; isolated
@@ -145,6 +146,12 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   inputs and translates the dummy application to an absolute Windows path with
   `cygpath` when native `makensis.exe` runs under Git Bash. Homebrew NSIS keeps
   the script-relative POSIX path.
+- **2026-07-27** — Release workflow run `30302650798` passed its full preflight,
+  native Windows Wails/CGO plus NSIS build, macOS arm64 DMG build, Linux
+  `.deb`/`.rpm` build, artifact upload, and prerelease publication. A transient
+  Google Chrome apt mirror mismatch was cleared by rerunning only the failed
+  Linux leg. GitHub published four assets for `v1.1.0-alpha.1`; real-machine
+  install and lifecycle testing remain separate evidence.
 
 ## Open / deferred (not yet decided or implemented)
 
@@ -157,7 +164,8 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   validation.
 - **Portfolio rollup SPI/CPI** — _complete 2026-07-25._ `RunPortfolioAnalytics` separates committed estimates from schedule AC, computes eligible project EVM in the Go kernel at a normalized UTC status date, and lets in-memory DuckDB aggregate exact minor units. Portfolio SPI/CPI are weighted (`ΣEV/ΣPV`, `ΣEV/ΣAC`), and included/excluded counts expose incomplete schedule evidence instead of substituting zero.
 - **RPM Fedora runtime** — built on Ubuntu, cross-distro behavior unverified on a real Fedora box.
-- **Windows native installer execution** — source templates and NSIS syntax are
-  verified, but Wails/CGO compilation, install/launch, first-run account
-  creation, and data-preserving uninstall still require a Windows runner.
+- **Windows native installer execution** — source templates, native
+  Wails/CGO compilation, embedded DuckDB verification, and NSIS packaging pass
+  on GitHub's Windows runner. Install/launch, first-run account creation, and
+  data-preserving uninstall still require a Windows test machine.
 - **PAdES trusted-chain / Acrobat validation** — blocked on a real trusted signing source; `make check-pades-trusted` reports "not configured" in the interim.
