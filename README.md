@@ -67,7 +67,7 @@ chart, export, and reporting tools without requiring a hosted service.
 ```sh
 go mod tidy
 (cd frontend && npm ci)   # use npm ci, not npm install
-make fonts
+make fonts                # optional catalog families; Source Sans 3 is tracked
 
 wails dev
 make build
@@ -284,9 +284,10 @@ pmforge/
 └── DEVELOPER_HANDBOOK.md             # PMForge Developer Handbook
 ```
 
-Generated outputs, local handoff notes, validation scratch space, bundled
+Generated outputs, local handoff notes, validation scratch space, optional
 font downloads, project databases, certificates, and package artifacts are
-ignored by `.gitignore`.
+ignored by `.gitignore`. The Source Sans 3 PDF/A baseline is tracked and
+verified by `make required-font-assets`.
 
 ## License
 

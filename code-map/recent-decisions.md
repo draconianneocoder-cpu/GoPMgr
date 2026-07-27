@@ -127,6 +127,11 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   that conflict on older runtimes. PDF/A helper tests explicitly force their
   fake CLI phase so a host-installed Docker cannot escape the hermetic fixture;
   blocking PDF/A diagnostics remain visible in release logs.
+- **2026-07-27** — Strict PDF/A builds carry a deterministic Source Sans 3
+  baseline instead of relying on ignored output from `make fonts`. The four
+  regular/bold/italic/bold-italic faces are tracked under OFL-1.1 and bound to
+  reviewed Adobe upstream bytes by `make required-font-assets`; the rest of
+  the font catalog remains optional and fetch-on-demand.
 
 ## Open / deferred (not yet decided or implemented)
 
