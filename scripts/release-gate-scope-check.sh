@@ -126,6 +126,15 @@ if ! awk '
 	fail=1
 fi
 
+# GitHub does not infer its prerelease flag from a SemVer suffix. Exercise the
+# classification helper and a mutated workflow fixture before trusting the
+# live publish job, otherwise an alpha or RC tag could be marked as GA.
+if ! bash scripts/check-release-publication-mode_test.sh >/dev/null ||
+	! bash scripts/check-release-publication-mode.sh >/dev/null; then
+	echo "release-scope: GitHub release publication-mode check failed." >&2
+	fail=1
+fi
+
 if [ -f scripts/check-help-guide-current.sh ]; then
 	if ! bash scripts/check-help-guide-current.sh >/dev/null; then
 		echo "release-scope: Help Guide is missing recent release corrections. Run 'make help-guide-current' for details." >&2
