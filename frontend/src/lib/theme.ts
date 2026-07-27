@@ -16,6 +16,17 @@ function storageKey(username?: string | null): string {
   return account ? `${THEME_STORAGE_KEY}:${encodeURIComponent(account)}` : THEME_STORAGE_KEY;
 }
 
+function browserStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage;
+  } catch {
+    // Harden the getter as well as individual operations for restricted
+    // WebViews that expose Storage but deny access to the backing store.
+    return null;
+  }
+}
+
 // applyTheme updates both the CSS theme and the browser/native color-scheme
 // hint. Keeping these together prevents form controls and window chrome from
 // disagreeing with the application surface.
@@ -40,18 +51,20 @@ export function applyTheme(theme: string | null | undefined): AppTheme {
 // source of truth; this local value simply avoids a dark frame while the
 // signed-in user's settings are loading.
 export function rememberTheme(theme: string | null | undefined, username?: string | null): void {
-  if (typeof localStorage === 'undefined') return;
+  const storage = browserStorage();
+  if (!storage) return;
   try {
-    localStorage.setItem(storageKey(username), normaliseTheme(theme));
+    storage.setItem(storageKey(username), normaliseTheme(theme));
   } catch {
     // A restricted webview can deny storage. Theme application still works.
   }
 }
 
 export function readCachedTheme(username?: string | null): AppTheme | null {
-  if (typeof localStorage === 'undefined') return null;
+  const storage = browserStorage();
+  if (!storage) return null;
   try {
-    const cached = localStorage.getItem(storageKey(username));
+    const cached = storage.getItem(storageKey(username));
     return cached === 'dark' || cached === 'light' ? cached : null;
   } catch {
     return null;

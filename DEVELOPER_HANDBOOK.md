@@ -1065,6 +1065,12 @@ This section is the running log of non-obvious discoveries. Every session that l
   frontend jobs now use Node.js 26, and `make release-scope` rejects workflow
   drift. Local Node 26 checks and hosted setup/build/lint jobs passed before the
   release workflow pin was adopted.
+- **Node Web Storage is not jsdom Web Storage.** Node 26 enables a process-wide
+  `localStorage` global, but without `--localstorage-file` it shadows jsdom with
+  an unusable value on Linux workers. Frontend storage code and tests use
+  `window.localStorage` so jsdom remains the browser-storage provider; the
+  frontend stability gate rejects bare `localStorage` references in production
+  source.
 
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
