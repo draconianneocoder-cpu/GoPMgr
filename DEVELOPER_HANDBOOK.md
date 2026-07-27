@@ -1055,6 +1055,16 @@ This section is the running log of non-obvious discoveries. Every session that l
   `brace-expansion` 5.0.7 through ESLint/minimatch. Regenerating the lockfile
   selected 5.0.8, clearing the high-severity unbounded-expansion advisory
   without changing a direct dependency.
+- **Time-based protocol fixtures must cover every clock they encode.** Hosted
+  CI exposed fixed RFC 3161 `TSTInfo` timestamps that had aged beyond TSA
+  certificates based only on `time.Now() +/- 24h`. PAdES test certificates now
+  derive their bounds from both the deterministic token time and digitorus's
+  wall-clock CMS signing attribute, with a safety margin. This preserves exact
+  timestamp assertions while preventing a date-dependent expiry.
+- **Keep frontend runtime floors identical across CI and release.** All GitHub
+  frontend jobs now use Node.js 26, and `make release-scope` rejects workflow
+  drift. Local Node 26 checks and hosted setup/build/lint jobs passed before the
+  release workflow pin was adopted.
 
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
