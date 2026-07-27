@@ -144,6 +144,14 @@ if ! awk '
 	fail=1
 fi
 
+if ! grep -Fq -- "window.localStorage" frontend/src/lib/theme.ts ||
+	! grep -Fq -- "frontend browser storage must use window.localStorage" scripts/frontend-stability-check.sh ||
+	! grep -Fq -- "--experimental-webstorage" scripts/frontend-stability-check.sh ||
+	! grep -Fq -- "execArgv: ['--no-experimental-webstorage']" frontend/vitest.config.ts; then
+	echo "release-scope: frontend storage must avoid Node.js 26's process-wide localStorage." >&2
+	fail=1
+fi
+
 if ! awk '
 	$0 == "  build:" { in_build = 1; next }
 	in_build && /^  [A-Za-z0-9_-]+:/ { in_build = 0 }

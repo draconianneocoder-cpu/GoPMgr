@@ -14,7 +14,9 @@ posture, and validator coverage, so keep them intentional and verified.
 - Go: 1.26.5 from `go.mod`.
 - Wails: v2.13.0.
 - Node frontend: Node.js 26 in CI/release workflows, with Vite 8, Svelte 5,
-  TypeScript 6, and npm scripts in `frontend/package.json`.
+  TypeScript 6, and npm scripts in `frontend/package.json`. Browser storage
+  code uses `window.localStorage` so Node's process-wide Web Storage global
+  cannot shadow jsdom's per-test storage in Vitest.
 - CGO: required for the SQLite/SQLCipher driver path and the shipped DuckDB
   analytics build.
 

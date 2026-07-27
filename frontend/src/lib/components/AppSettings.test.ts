@@ -30,12 +30,12 @@ beforeEach(() => {
     SaveAppSettings: vi.fn(async () => undefined),
   };
   (window as unknown as { go: unknown }).go = { main: { App: app } };
-  localStorage.clear();
+  window.localStorage.clear();
   document.documentElement.dataset.theme = 'dark';
 });
 
 afterEach(() => {
-  localStorage.clear();
+  window.localStorage.clear();
   document.documentElement.dataset.theme = 'dark';
 });
 
@@ -52,12 +52,12 @@ describe('application appearance settings', () => {
   it('remembers the appearance only after save succeeds', async () => {
     const { findByRole, getByRole } = render(AppSettings);
     await fireEvent.click(await findByRole('radio', { name: /light fieldbook/i }));
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
 
     await fireEvent.click(getByRole('button', { name: /save settings/i }));
 
     await waitFor(() => expect(app.SaveAppSettings).toHaveBeenCalled());
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
   });
 
   it('restores the committed appearance when an unsaved preview is closed', async () => {
