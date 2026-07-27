@@ -1080,6 +1080,23 @@ This section is the running log of non-obvious discoveries. Every session that l
   `PMFORGE_VERAPDF_FORCE_CLI=1`, while the Docker phase keeps its fake first on
   `PATH`; release-gate output is streamed so future failures retain evidence.
 
+### 2026-07-27 — First packaged 1.1.0 alpha
+
+- **Published evidence is narrower than installation evidence.** Release run
+  `30302650798` passed the full tag preflight and native build matrix, then
+  published `v1.1.0-alpha.1` as a GitHub prerelease with Windows x86-64,
+  macOS arm64, Debian/Ubuntu x86-64, and RPM x86-64 assets. This proves native
+  compilation and packaging, not first-launch or uninstall behavior.
+- **Rerun transient infrastructure at its smallest boundary.** The initial
+  Linux leg encountered a one-byte size mismatch while Google's Chrome apt
+  mirror was synchronizing. Windows and macOS completed successfully, so only
+  the failed Linux job was rerun. Its package build passed and the retained
+  matrix artifacts flowed into the publication job.
+- **Keep published-release records synchronized after live verification.**
+  `docs/published-release-tags.txt`, README, installation guidance, release
+  preflight, and the code map were updated only after GitHub reported a
+  non-draft prerelease with all four expected assets.
+
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
 - **Remove "soft gate" wording when the gate passes reliably.** The `validate-pdfa.sh` header comment and the "soft for now" check-release comment both said "warn, don't fail" -- these were vestigial once all samples passed. Gate promotion requires two things: (1) all representative samples pass, (2) the release script actually exits on failure.

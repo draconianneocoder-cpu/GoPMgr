@@ -6,9 +6,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # Release pre-flight checklist
 
 Run through this before pushing a `v*` tag. It captures the static pre-flight
-audit of `release.yml` and the packaging scripts (2026-06-23). No 1.1.0
-prerelease has been published, so treat the next tag's native matrix and
-artifact installation as the first integration evidence for this release line.
+audit of `release.yml` and the packaging scripts (2026-06-23), plus the native
+runner evidence from the published `v1.1.0-alpha.1` workflow on 2026-07-27.
+That workflow built and published all four expected assets. Installation,
+first-launch, and uninstall behavior still require tests on real target
+machines.
 
 ## No pre-generation blockers
 
@@ -74,10 +76,12 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
 - **`.rpm` cross-distro.** The rpm wraps an Ubuntu-built dynamically-linked
   binary; `gtk3`/`webkit2gtk4.1` names are expected for Fedora, but **runtime on
   Fedora is unverified**. Test on a real Fedora box before claiming rpm support.
-- **Windows native execution.** The source-owned NSIS template compiles with
-  NSIS 3.12 on macOS, but the Wails/CGO application build and resulting
-  installer launch remain unverified on a Windows runner. The workflow now
-  enables the `duckdb` tag and checks the built `.exe` metadata before upload.
+- **Windows native execution.** The published alpha's Windows runner completed
+  the real Wails/CGO build, verified embedded DuckDB metadata, compiled the
+  source-owned template with NSIS 3.12, and uploaded the installer. The
+  installer has not yet been launched on a Windows test machine, so
+  installation, first-run account creation, and data-preserving uninstall
+  remain unverified.
 - **Windows decision engine.** The Launchpad uses the same embedded JDM rule
   table on every platform. On Windows it evaluates its exact-match and
   fallback rows in Go because the Zen FFI archive targets MSVC while the
@@ -165,9 +169,9 @@ policy and interoperability evidence.
 3. Watch the **Release** workflow. Its **Tag preflight** job must pass before
    the package matrix starts. The per-OS matrix legs are isolated
    (`fail-fast: false`), so one failing leg still lets the others build, but
-   publication waits for the entire matrix. Treat the first Windows run as
-   native evidence for the new scaffold and DuckDB linkage check. Tags with a
-   SemVer suffix are explicitly published with GitHub's prerelease
+   publication waits for the entire matrix. Preserve the Windows Wails/CGO,
+   scaffold, and DuckDB linkage checks that passed for `v1.1.0-alpha.1`. Tags
+   with a SemVer suffix are explicitly published with GitHub's prerelease
    classification; only a clean `v<product-version>` tag is eligible for GA.
 4. After a green run, download each artifact and smoke-test install on a real
    machine per platform before announcing.
