@@ -70,6 +70,12 @@ require_literal "$WORKFLOW" \
 require_literal "$WORKFLOW" \
 	'installed_nsis_version="$(choco list --exact nsis --limit-output' \
 	"workflow must verify the installed Chocolatey NSIS version."
+require_literal "$WORKFLOW" \
+	'test -x "$nsis_dir/makensis.exe"' \
+	"workflow must verify makensis at Chocolatey's explicit installation path."
+require_literal "$WORKFLOW" \
+	"echo 'C:\\Program Files (x86)\\NSIS' >> \"\$GITHUB_PATH\"" \
+	"workflow must publish Chocolatey's NSIS directory to later build steps."
 require_literal "$PACKAGE_LINUX" \
 	'echo "  go install github.com/goreleaser/nfpm/v2/cmd/nfpm@$NFPM_VERSION"' \
 	"package-linux must recommend the declared nFPM version."

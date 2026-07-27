@@ -132,6 +132,15 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   regular/bold/italic/bold-italic faces are tracked under OFL-1.1 and bound to
   reviewed Adobe upstream bytes by `make required-font-assets`; the rest of
   the font catalog remains optional and fetch-on-demand.
+- **2026-07-27** — Windows release setup verifies pinned NSIS at Chocolatey's
+  explicit installation path and publishes that path through `GITHUB_PATH`.
+  This avoids assuming an already-running Git Bash process sees Chocolatey's
+  PATH update while retaining the exact 3.12.0 package-record check.
+- **2026-07-27** — Native package workflows consume only the tracked Source
+  Sans 3 baseline; optional font downloads no longer make packaged features
+  depend on transient CDN success. The macOS job reclaims disposable Go module,
+  build, and npm caches after its DuckDB app build because the hosted runner
+  otherwise leaves too little scratch space for `hdiutil`.
 
 ## Open / deferred (not yet decided or implemented)
 
