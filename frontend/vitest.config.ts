@@ -14,10 +14,6 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    // Node 26 enables its process-wide Web Storage global by default. Disable
-    // it in Vitest workers so jsdom remains the sole browser storage provider;
-    // otherwise Node's unconfigured localStorage shadows jsdom and throws.
-    execArgv: ['--no-experimental-webstorage'],
     setupFiles: ['./vitest.setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,js}'],
   },
