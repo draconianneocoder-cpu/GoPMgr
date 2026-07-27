@@ -1351,6 +1351,11 @@ This section is the running log of non-obvious discoveries. Every session that l
   macOS job clears disposable Go module/build and npm caches after compiling
   DuckDB; `hdiutil` otherwise runs out of scratch space while staging the DMG.
   This cleanup stays in the ephemeral workflow, not the local packaging script.
+- **NSIS fixture paths cross a shell boundary on Windows.** Homebrew NSIS
+  accepts the fixture's script-relative POSIX path, but native `makensis.exe`
+  launched from Git Bash needs an absolute Windows path. The validation script
+  uses `cygpath` on Windows and non-empty dummy inputs so the same template
+  compile is meaningful on both hosts.
 - **Packaging assets are tracked** despite the broad `build/` ignore: `.gitignore` exempts `build/linux/pmforge.desktop` and `build/linux/nfpm.yaml` (same trick as the darwin Info.plist scaffold). The icon is `build/appicon.png` → `/usr/share/pixmaps/pmforge.png`; the `.desktop` → `/usr/share/applications/`.
 - **Linux release target moved to Ubuntu 24.04+ WebKit2GTK 4.1** (2026-06-26). CI/release Linux runners now use `ubuntu-24.04`, install `libwebkit2gtk-4.1-dev`, and pass Wails' `webkit2_41` tag. Wails v2 still links GTK3 (`gtk+-3.0` in the upstream cgo files); true GTK4/WebKitGTK 6.0 requires a future Wails migration rather than a package-name change. `make linux-runtime-target` guards this target.
 - **Signing/notarization is OFF** (owner decision 2026-06-23 — unsigned now, sign later). Packages install/run but show Gatekeeper/SmartScreen "unidentified developer" warnings. Hook: `MACOS_SIGN_IDENTITY` env in `scripts/package-macos.sh` (codesign + a commented notarytool block); Windows signing is a TODO. Add certs as CI secrets to enable.

@@ -50,7 +50,9 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
   metadata, DPI behavior, GPL display, and a data-preserving uninstall path.
   Wails regenerates only its pinned macro file, WebView bootstrapper, and icon.
   `make windows-installer-scaffold` exercises isolated drift cases and compiles
-  a harmless NSIS fixture when `makensis` is available.
+  a harmless NSIS fixture when `makensis` is available. The fixture translates
+  its dummy executable to an absolute Windows path under Git Bash so the
+  pre-build check exercises native `makensis.exe`, not only Homebrew NSIS.
 - `make package-macos` builds the shareable drag-to-Applications `.dmg`.
   `package-macos-installer.sh` remains a separate **local `.pkg`** path
   (`make package-macos-installer`), intentionally not used by the release `.dmg`.
