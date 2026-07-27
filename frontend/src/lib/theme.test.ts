@@ -13,7 +13,7 @@ import {
 afterEach(() => {
   document.documentElement.dataset.theme = 'dark';
   document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', 'dark');
-  localStorage.clear();
+  window.localStorage.clear();
 });
 
 describe('application theme state', () => {
@@ -37,7 +37,7 @@ describe('application theme state', () => {
   });
 
   it('ignores an invalid cached theme', () => {
-    localStorage.setItem(THEME_STORAGE_KEY, 'sepia');
+    window.localStorage.setItem(THEME_STORAGE_KEY, 'sepia');
 
     expect(readCachedTheme()).toBeNull();
   });
@@ -47,5 +47,24 @@ describe('application theme state', () => {
     rememberTheme('dark', 'bob');
 
     expect([readCachedTheme('alice'), readCachedTheme('bob')]).toEqual(['light', 'dark']);
+  });
+
+  it('degrades safely when a restricted WebView denies storage access', () => {
+    const storageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    if (!storageDescriptor) throw new Error('jsdom localStorage descriptor is missing');
+
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get: () => {
+        throw new DOMException('Storage is unavailable', 'SecurityError');
+      },
+    });
+    try {
+      expect(() => rememberTheme('light')).not.toThrow();
+      expect(readCachedTheme()).toBeNull();
+    } finally {
+      // Restore jsdom before the shared afterEach hook clears storage.
+      Object.defineProperty(window, 'localStorage', storageDescriptor);
+    }
   });
 });

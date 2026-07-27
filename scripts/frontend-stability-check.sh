@@ -17,8 +17,22 @@ if ! (cd frontend && npm run test:bug-report-regressions); then
 	fail=1
 fi
 
-if ! (cd frontend && npm test); then
+# Node 26 exposes a process-wide Web Storage implementation that can shadow
+# jsdom's per-test localStorage. Enable the Node behavior even on older
+# developer runtimes; Vitest must explicitly disable it for worker processes.
+if ! (
+	cd frontend
+	NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--experimental-webstorage" npm test
+); then
 	echo "frontend-stability: component/unit tests (vitest) must pass." >&2
+	fail=1
+fi
+
+if rg -n --glob '!*.test.ts' --glob '!*.spec.ts' \
+	"(^|[^.A-Za-z0-9_$])localStorage(\\.|\\[)" frontend/src >/dev/null; then
+	echo "frontend-stability: frontend browser storage must use window.localStorage, not Node's process global." >&2
+	rg -n --glob '!*.test.ts' --glob '!*.spec.ts' \
+		"(^|[^.A-Za-z0-9_$])localStorage(\\.|\\[)" frontend/src >&2
 	fail=1
 fi
 

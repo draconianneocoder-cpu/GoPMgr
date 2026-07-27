@@ -122,6 +122,9 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   `ripgrep` explicitly before source contracts that depend on it, and blocking
   race-test output remains visible in hosted logs. The post-Dependabot
   lockfile pins `brace-expansion` 5.0.8 after a clean high-severity npm audit.
+  Browser storage code now uses `window.localStorage` so Node 26's process-wide
+  Web Storage global cannot shadow jsdom's per-test storage; the stability gate
+  rejects bare `localStorage` references under `frontend/src`.
 
 ## Open / deferred (not yet decided or implemented)
 
