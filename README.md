@@ -271,6 +271,8 @@ names to use when release assets are available, see
   (`.deb`/`.rpm`/`.exe`/`.dmg`) and run-from-source steps.
 - [docs/release-preflight.md](docs/release-preflight.md): go/no-go
   checklist before pushing a `v*` release tag.
+- [docs/beta-release-backlog.md](docs/beta-release-backlog.md): running
+  stabilization, native validation, and release-trust work for the next Beta.
 - [STYLE.md](STYLE.md): repository, Go, frontend, and documentation style.
 - [AGENTS.md](AGENTS.md): current automated-agent operating guide.
 - [DEVELOPER_HANDBOOK.md](DEVELOPER_HANDBOOK.md): PMForge Developer Handbook with long-form

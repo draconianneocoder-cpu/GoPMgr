@@ -171,6 +171,13 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   remained intact through every transition, while checksums confirmed both
   the binary replacement and the byte-for-byte preservation of `system.db`.
   The final installed bundle is the current `main` arm64 build.
+- **2026-07-28:** Beta planning classifies the disabled macOS green window
+  control as a native Wails configuration defect, not a frontend component
+  gap. PMForge leaves `options.App.Mac` nil; Wails 2.13.0 consequently passes
+  `zoomable=false` and disables `NSWindowZoomButton`. The planned Beta fix
+  supplies explicit macOS options and verifies Cocoa maximize/restore against
+  the packaged app without introducing custom Svelte window chrome. The
+  maintained execution list is `docs/beta-release-backlog.md`.
 
 ## Open / deferred (not yet decided or implemented)
 

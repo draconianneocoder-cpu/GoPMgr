@@ -10,8 +10,9 @@ audit of `release.yml` and the packaging scripts (2026-06-23), plus the native
 runner evidence from the published `v1.1.0-alpha.1` workflow on 2026-07-27.
 That workflow built and published all four expected assets. Installation,
 first-launch, and uninstall behavior remain platform-specific evidence. The
-published DMG's clean first-launch account flow has now passed on an M4 Mac;
-the remaining lifecycle checks are listed below.
+published DMG's administrator, installation, upgrade, removal, and reinstall
+lifecycle has now passed on an M4 Mac; the remaining platform checks are
+listed below.
 
 ## No pre-generation blockers
 
@@ -70,14 +71,16 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
 
 ## Known caveats to verify on real targets (not pipeline failures)
 
-- **macOS install lifecycle.** The published DMG passed `hdiutil verify`, its
-  ad-hoc signature passed strict `codesign` verification, and its arm64 app
-  launched from the mounted image on an M4 Mac with an isolated empty
-  `XDG_DATA_HOME`. The sign-in screen reported that no administrator existed,
-  and the account-creation screen exposed the first-user administrator option.
-  A drag-to-Applications install, account submission, upgrade, and uninstall
-  preservation test remain outstanding. Gatekeeper warnings are expected
-  because this alpha is not Developer ID signed or notarized.
+- **macOS native window zoom.** The published and current-main arm64 apps
+  expose a disabled green zoom/full-screen control. PMForge does not yet
+  supply Wails' macOS options block, so Wails 2.13.0 disables the native
+  `NSWindowZoomButton`. This is planned as Beta blocker
+  `BETA-FIX-001` in `docs/beta-release-backlog.md`.
+- **macOS package trust.** The published DMG passed `hdiutil verify`, its
+  ad-hoc signature passed strict `codesign` verification, and its complete
+  administrator/install/upgrade/removal/reinstall lifecycle passed on an M4
+  Mac with isolated data. Gatekeeper warnings remain expected because the app
+  is not Developer ID signed or notarized.
 - **`.deb` WebKit version.** Built on `ubuntu-24.04` with the Wails
   `webkit2_41` tag, the binary links the Ubuntu 24.04+ WebKit2GTK 4.1 runtime.
   This fixes the earlier WebKit runtime dependency gap on newer Ubuntu. Wails v2
