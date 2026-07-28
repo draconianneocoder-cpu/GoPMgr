@@ -27,6 +27,14 @@ automatically on first launch. The first launch creates:
 Create the first account, save the one-time recovery codes, then create or
 open a project.
 
+For repeatable first-launch testing, quit PMForge and run
+`make reset-clean-test` from the source checkout. The command moves the entire
+data directory to a timestamped sibling backup instead of deleting it. Reopen
+PMForge to exercise administrator creation against a fresh `system.db`; use
+`scripts/reset-clean-test.sh --restore <backup>` after moving aside the
+temporary test state. See `docs/INSTALL.md` for the complete guarded reset and
+restore procedure.
+
 ## Project Launchpad
 
 `New Project` opens the Launchpad instead of a blank one-field form. The

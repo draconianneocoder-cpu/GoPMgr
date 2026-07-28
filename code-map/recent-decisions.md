@@ -157,6 +157,13 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   With an isolated empty data root, the UI reported no configured
   administrator and exposed the first-user administrator checkbox. No account
   was submitted and existing PMForge data was not touched.
+- **2026-07-28:** The published DMG completed the isolated administrator
+  lifecycle on an M4 Mac: account creation, eight recovery codes, Admin
+  navigation, process restart, and authenticated login passed. A recoverable
+  data-root move returned the same installation to first-launch state while
+  preserving the populated database. `scripts/reset-clean-test.sh` now makes
+  that reset and restore procedure repeatable without deleting data; isolated
+  shell fixtures guard path scope, symlinks, preservation, and restoration.
 
 ## Open / deferred (not yet decided or implemented)
 

@@ -33,7 +33,7 @@ export CC
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
         help-guide-current wails-version wails-cli-version wails-version-test tag-preflight config-check \
-        installer-tool-pins windows-installer-scaffold required-font-assets
+        installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -61,6 +61,12 @@ fonts: ## Download the bundled TrueType fonts into internal/fonts/assets.
 required-font-assets: ## Verify the tracked Source Sans 3 PDF/A baseline and its provenance.
 	@bash scripts/check-required-font-assets_test.sh
 	@bash scripts/check-required-font-assets.sh
+
+reset-clean-test: ## Move PMForge data to a recoverable backup for first-launch testing (quit PMForge first).
+	@bash scripts/reset-clean-test.sh
+
+clean-test-reset-tests: ## Verify clean-test reset/restore safety in isolated fixtures.
+	@bash scripts/reset-clean-test_test.sh
 
 icc: ## Download the sRGB ICC profile for PDF/A-3 OutputIntent embedding.
 	@bash scripts/fetch-icc.sh
@@ -95,8 +101,8 @@ test: ## Run Go unit tests.
 race: ## Run Go tests with the race detector (concurrency gate).
 	$(GO) test -race -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets wails-version test frontend-stability frontend-build-budget ## Fast pre-commit gate: config + packaging/toolchain/font contracts + Go tests + frontend checks.
-	@echo "verify: configuration, packaging/Wails/font contracts, Go tests, svelte-check, and frontend build all passed."
+verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests wails-version test frontend-stability frontend-build-budget ## Fast pre-commit gate: config + packaging/toolchain/font/reset contracts + Go tests + frontend checks.
+	@echo "verify: configuration, packaging/Wails/font/reset contracts, Go tests, svelte-check, and frontend build all passed."
 
 frontend-stability: ## Run Svelte warning-clean and Sigma regression gates.
 	@bash scripts/frontend-stability-check.sh
