@@ -1145,6 +1145,28 @@ This section is the running log of non-obvious discoveries. Every session that l
   and `system.db` SHA-256 checksum. All application launches used an isolated
   `XDG_DATA_HOME`.
 
+### 2026-07-28: Beta backlog and macOS green window control evaluation
+
+- **The disabled green control is not a Svelte defect.** PMForge's
+  `options.App` is resizable and has no maximum dimensions, but leaves
+  `Mac` nil. Wails 2.13.0 initializes its Darwin `zoomable` flag only inside
+  the non-nil macOS options branch; its Cocoa bridge then disables
+  `NSWindowZoomButton`. The installed app's Accessibility tree independently
+  reports the full-screen/zoom control as disabled.
+- **Prefer the narrow native fix.** The Beta implementation should supply
+  explicit `mac.Options` with zoom enabled and retain the standard title bar,
+  native Window menu, minimum size, and Cocoa ownership of restoring the
+  previous frame. A custom Svelte traffic-light control would duplicate native
+  accessibility and window-state behavior.
+- **Separate two restoration promises.** The P0 fix is in-session restoration
+  to the pre-zoom frame. Remembering a normal frame across application
+  relaunches is a P2 improvement because it also needs display-topology
+  validation and off-screen clamping.
+- **Keep Beta work operationally bounded.**
+  `docs/beta-release-backlog.md` is the running list for fixes, features,
+  improvements, and native release evidence. The first Beta stabilizes the
+  existing 1.1.0 feature set rather than adding scheduling or report scope.
+
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
 - **Remove "soft gate" wording when the gate passes reliably.** The `validate-pdfa.sh` header comment and the "soft for now" check-release comment both said "warn, don't fail" -- these were vestigial once all samples passed. Gate promotion requires two things: (1) all representative samples pass, (2) the release script actually exits on failure.
