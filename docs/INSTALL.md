@@ -43,6 +43,13 @@ choose **More info → Run anyway**.
 3. First launch only: right-click **PMForge** in Applications → **Open** →
    **Open** (or System Settings → Privacy & Security → **Open Anyway**).
 
+To upgrade a DMG installation, quit PMForge and drag the newer app onto
+Applications, replacing the existing bundle when Finder asks. Removing or
+replacing `PMForge.app` does not remove accounts or projects because they live
+under `~/Library/Application Support/PMForge/`. To uninstall both the
+application and its data, back up any project files you need before separately
+removing that data directory.
+
 ### Debian / Ubuntu (`.deb`)
 
 ```sh

@@ -1122,6 +1122,29 @@ This section is the running log of non-obvious discoveries. Every session that l
   and exercises invalid-name and symlink refusals. `make verify` runs this
   fixture test, never the real reset target.
 
+### 2026-07-28: Installed macOS upgrade and reinstall lifecycle
+
+- **Test the installed bundle, not only the mounted image.** Published Alpha 1
+  was copied to `/Applications` and launched from that exact path on an M4
+  Mac. A current-`main` DMG was then built from synchronized commit `8643943`,
+  validated with `hdiutil`, architecture inspection, DuckDB linkage, and
+  strict ad-hoc signature verification, and copied over the Alpha bundle.
+- **Separate application replacement from data preservation.** The installed
+  bundle was removed to a recoverable temporary backup and reinstalled from
+  the current-`main` DMG. The isolated `system.db` checksum remained identical
+  across upgrade, removal, and reinstall; SQLite still reported one
+  administrator and eight recovery codes. Each installed build opened the
+  existing-administrator sign-in screen.
+- **Prerelease package and bundle versions intentionally differ.** The Alpha 1
+  package name carries `v1.1.0-alpha.1`, while macOS metadata keeps the clean
+  `1.1.0` version of record as required by the release contract. Binary
+  checksums, rather than Finder's version display, proved that the current
+  `main` build replaced the published Alpha binary.
+- **Keep real developer data outside lifecycle tests.** Both normal PMForge
+  data roots retained their original inode, modification time, permissions,
+  and `system.db` SHA-256 checksum. All application launches used an isolated
+  `XDG_DATA_HOME`.
+
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
 - **Remove "soft gate" wording when the gate passes reliably.** The `validate-pdfa.sh` header comment and the "soft for now" check-release comment both said "warn, don't fail" -- these were vestigial once all samples passed. Gate promotion requires two things: (1) all representative samples pass, (2) the release script actually exits on failure.
