@@ -156,6 +156,10 @@ Documents-folder privacy prompt. An existing `~/Documents/PMForge/` install
 is migrated automatically on first launch after upgrading (the original is
 left in place and can be deleted once you've confirmed the move).
 
+For repeatable first-launch testing, `make reset-clean-test` moves the active
+data directory to a timestamped, restorable backup instead of deleting it.
+See [docs/INSTALL.md](docs/INSTALL.md) for the guarded reset and restore flow.
+
 Per-user folders are created with private POSIX permissions where the
 platform supports them. Project databases are stored as one `.pmforge`
 file per project, with WAL/SHM sidecars when SQLite needs them.

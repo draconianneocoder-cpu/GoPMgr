@@ -1103,6 +1103,25 @@ This section is the running log of non-obvious discoveries. Every session that l
   administrator checkbox. The app then exited cleanly without submitting an
   account, leaving the developer's normal Application Support data untouched.
 
+### 2026-07-28: Recoverable clean-test reset
+
+- **A reset for testers must not be a delete command.** The published DMG's
+  isolated administrator lifecycle proved that moving the complete PMForge
+  data root aside is sufficient to restore first-launch onboarding.
+  `scripts/reset-clean-test.sh` therefore renames the active root to a
+  timestamped sibling and prints the restorable path; it never removes project
+  or account data.
+- **Guard the path and the database lifecycle.** The helper accepts only an
+  absolute directory named `PMForge`, rejects symlinked roots and backups,
+  refuses to run while a packaged or development PMForge process is active,
+  and never overwrites an existing root or backup. Restore accepts only a
+  sibling backup created by the clean-test naming contract.
+- **Test destructive-adjacent tooling entirely in fixtures.**
+  `scripts/reset-clean-test_test.sh` creates sentinel account and project
+  files under a temporary parent, verifies reset preservation and restoration,
+  and exercises invalid-name and symlink refusals. `make verify` runs this
+  fixture test, never the real reset target.
+
 ### 2026-06-08 — PDF/A-3 gate promoted to hard
 - **`make check-pdfa` is now a hard release blocker.** Representative samples (schedule report, document charter, combined report, and Monte Carlo risk report) pass veraPDF PDF/A-3b. `scripts/check-release.sh` now exits non-zero when any sample fails instead of printing a warning and continuing.
 - **Remove "soft gate" wording when the gate passes reliably.** The `validate-pdfa.sh` header comment and the "soft for now" check-release comment both said "warn, don't fail" -- these were vestigial once all samples passed. Gate promotion requires two things: (1) all representative samples pass, (2) the release script actually exits on failure.
