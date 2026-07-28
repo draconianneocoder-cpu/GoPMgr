@@ -164,6 +164,13 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   preserving the populated database. `scripts/reset-clean-test.sh` now makes
   that reset and restore procedure repeatable without deleting data; isolated
   shell fixtures guard path scope, symlinks, preservation, and restoration.
+- **2026-07-28:** The macOS installed-app lifecycle passed on an M4 Mac.
+  Published Alpha 1 was copied to `/Applications`, launched against an
+  isolated populated data root, replaced by a current-`main` build, removed,
+  reinstalled, and launched again. The administrator and eight recovery codes
+  remained intact through every transition, while checksums confirmed both
+  the binary replacement and the byte-for-byte preservation of `system.db`.
+  The final installed bundle is the current `main` arm64 build.
 
 ## Open / deferred (not yet decided or implemented)
 
