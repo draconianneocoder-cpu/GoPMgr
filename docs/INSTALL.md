@@ -63,6 +63,34 @@ sudo dnf install ./pmforge-<version>-x86_64.rpm
 After installing, launch **PMForge** from your applications menu (or run
 `pmforge` in a terminal on Linux).
 
+## Clean-test reset
+
+To repeat first-launch and administrator-creation testing, quit PMForge and run
+the repository helper:
+
+```sh
+make reset-clean-test
+```
+
+The command does not delete projects or accounts. It atomically moves the
+active `PMForge` data directory to a timestamped sibling such as
+`PMForge.clean-test-backup-20260728T120000Z` and prints the exact backup path.
+The next launch creates a fresh `system.db` and offers first-user
+administrator creation.
+
+To return to the saved state, quit PMForge, reset the temporary clean-test
+state if one was created, then restore the original backup:
+
+```sh
+make reset-clean-test
+bash scripts/reset-clean-test.sh --restore "/absolute/path/to/PMForge.clean-test-backup-<timestamp>"
+```
+
+The helper refuses to move data while PMForge is running, refuses broad or
+symlinked targets, and will not overwrite an existing active data directory or
+backup. Use `--data-root "/absolute/path/to/PMForge"` to exercise an isolated
+test root instead of the platform default.
+
 ## Run / build from source
 
 Prerequisites:
