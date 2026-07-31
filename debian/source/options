@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# The Linux build does not use the vendored Windows-only WebView bootstrap
+# executables. Exclude them from the PPA source archive.
+tar-ignore = vendor/github.com/wailsapp/go-webview2/webviewloader/*/WebView2Loader.dll
+tar-ignore = vendor/github.com/wailsapp/wails/v2/internal/webview2runtime/MicrosoftEdgeWebview2Setup.exe

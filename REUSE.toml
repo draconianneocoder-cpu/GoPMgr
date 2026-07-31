@@ -111,6 +111,12 @@ SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
+path = ["debian/changelog", "debian/control", "debian/copyright", "debian/pmforge.1", "debian/pmforge.manpages", "debian/source/format", "debian/source/options"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
 path = "internal/fonts/assets/Liberation*.ttf"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Red Hat, Inc. and the Liberation Fonts contributors"

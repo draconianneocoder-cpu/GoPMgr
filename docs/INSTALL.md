@@ -61,6 +61,20 @@ Ubuntu 24.04+ (`libwebkit2gtk-4.1-0`). On older systems use `sudo dpkg -i …`
 followed by `sudo apt -f install` to resolve dependencies; older WebKit2GTK
 runtimes are no longer the release target.
 
+#### Launchpad PPA source builds
+
+The tracked `debian/` metadata builds from a source archive that contains the
+generated `frontend/dist` bundle and a vendored Go dependency graph. These
+inputs keep Launchpad's isolated builders off the public npm and Go module
+networks. The initial PPA upload targets Ubuntu 26.10 (`stonking`), whose
+archive provides the exact Go 1.26.5 compiler required by `go.mod`; the
+runtime package itself continues to require Ubuntu 24.04+ WebKit2GTK 4.1.
+
+Build and upload the signed source archive from an Ubuntu environment with
+`debuild -S`, then use `dput ppa:usmc.jlburns/pmforge <source.changes>`.
+Do not upload a prebuilt `.deb`: Launchpad builds binary packages from the
+signed source package.
+
 ### Fedora / RHEL / openSUSE (`.rpm`)
 
 ```sh
