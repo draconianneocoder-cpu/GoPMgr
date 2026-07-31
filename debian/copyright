@@ -1,0 +1,17 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: PMForge
+Source: https://github.com/draconianneocoder-cpu/PMForge
+
+Files: *
+Copyright: 2026 James L. Burns and The PMForge Contributors
+License: GPL-3.0-or-later
+
+License: GPL-3.0-or-later
+ This package is licensed under the GNU General Public License, version 3 or
+ later. The complete license text is available in /usr/share/common-licenses/GPL-3.
+
+Files: vendor/**
+Copyright: individual upstream contributors
+License: see individual files
+ The vendored dependency graph retains each upstream component's licensing and
+ copyright notices in its source tree.

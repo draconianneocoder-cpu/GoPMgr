@@ -1,0 +1,6 @@
+pmforge (1.1.0+git20260730.f6eb77b~ppa1~ubuntu26.10.1) stonking; urgency=medium
+
+  * Initial Launchpad PPA source package for the verified PMForge main revision.
+  * Build with the vendored Go dependency graph and generated frontend bundle.
+
+ -- James Burns <draconian.neocoder@gmail.com>  Thu, 30 Jul 2026 16:40:00 -0500
