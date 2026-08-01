@@ -20,6 +20,8 @@ declare global {
           ResetProjectSettings: () => Promise<UserSettings>;
           ChooseTSARootCertFile: () => Promise<string>;
           SecureArchive: (projectPath: string) => Promise<string>;
+          RestoreProjectArchive: () => Promise<ProjectFile>;
+          SetUnsavedChanges: (dirty: boolean) => Promise<void>;
 
           // ----- V2: accounts & session -----
           ListUsers: () => Promise<Account[]>;
@@ -298,6 +300,8 @@ declare global {
     update_available: boolean;
     release_notes?: string;
     download_url?: string;
+    sha256?: string;
+    channel: string;
     error?: string;
   }
 

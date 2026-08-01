@@ -149,7 +149,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   async function save() {
-    if (!chart) return;
+    if (!chart) return false;
     saving = true;
     status = '';
     try {
@@ -160,8 +160,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       chart = updated;
       lastSavedAt = new Date();
       status = `Saved at ${new Date().toLocaleTimeString()}.`;
+      return true;
     } catch (err: any) {
       status = `Save failed: ${err}`;
+      return false;
     } finally {
       saving = false;
     }

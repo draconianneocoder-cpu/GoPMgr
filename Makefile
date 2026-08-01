@@ -20,9 +20,10 @@ WAILS_BUILD_TAGS ?= duckdb,webkit2_41
 WAILS_BUILD_FLAGS ?=
 GO_TEST_TAGS ?= webkit2_41
 # The main package now lives at the repo root (canonical Wails layout), so
-# Go quality gates scope to the root package plus internal/... . Avoid the
-# bare ./... form: the release-scope gate forbids it.
-GO_PACKAGES := . ./internal/...
+# Go quality gates scope to the root package, internal packages, and the
+# tracked update-manifest release tool. Avoid bare ./... because generated
+# frontend dependencies may expose unrelated Go packages.
+GO_PACKAGES := . ./internal/... ./tools/update-manifest
 
 export CGO_ENABLED := 1
 export CC
@@ -153,7 +154,7 @@ memory-scan: ## Run the memory-safety hardening gate.
 
 lint-go: ## Lint Go packages with golangci-lint.
 	@echo "Linting Go code..."
-	golangci-lint run . ./internal/...
+	golangci-lint run $(GO_PACKAGES)
 
 lint-frontend: ## Lint Svelte + TS with the npm lint script.
 	@echo "Linting Frontend code..."

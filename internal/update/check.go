@@ -24,7 +24,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
+	"strings"
 	"time"
+
+	"golang.org/x/mod/semver"
 
 	"pmforge/internal/cli"
 )
@@ -43,6 +47,11 @@ var ManifestURL = ""
 // AND the update check, fail-closed.
 var UpdateChannelPublicKey = ""
 
+// CurrentVersion and UpdateChannel are separate from the package-manager-safe
+// cli.Version. Release builds inject the exact tag and channel with -ldflags.
+var CurrentVersion = cli.Version
+var UpdateChannel = "stable"
+
 const maxManifestBytes int64 = 64 * 1024
 
 // Status is the result returned to the GUI / CLI.
@@ -53,6 +62,8 @@ type Status struct {
 	UpdateAvailable bool   `json:"update_available"`
 	ReleaseNotes    string `json:"release_notes,omitempty"`
 	DownloadURL     string `json:"download_url,omitempty"`
+	SHA256          string `json:"sha256,omitempty"`
+	Channel         string `json:"channel"`
 	Error           string `json:"error,omitempty"`
 }
 
@@ -66,7 +77,7 @@ type Status struct {
 // returned error means we couldn't even start the check (no URL or
 // bad public key).
 func CheckLatest(ctx context.Context) (Status, error) {
-	st := Status{Current: cli.Version}
+	st := Status{Current: CurrentVersion, Channel: UpdateChannel}
 	if ManifestURL == "" || UpdateChannelPublicKey == "" {
 		// Not a misconfiguration — the build chose not to wire an
 		// update channel. The GUI shows "automatic updates not
@@ -118,12 +129,49 @@ func CheckLatest(ctx context.Context) (Status, error) {
 		st.Error = err.Error()
 		return st, nil
 	}
+	if err := validatePayload(payload); err != nil {
+		st.Error = err.Error()
+		return st, nil
+	}
+	if isNewer(CurrentVersion, payload.LatestVersion) {
+		st.Error = fmt.Sprintf("update: refusing downgrade from %s to %s", CurrentVersion, payload.LatestVersion)
+		return st, nil
+	}
 
 	st.Latest = payload.LatestVersion
 	st.ReleaseNotes = payload.ReleaseNotes
 	st.DownloadURL = payload.DownloadURL
-	st.UpdateAvailable = isNewer(payload.LatestVersion, cli.Version)
+	st.SHA256 = payload.SHA256
+	st.UpdateAvailable = isNewer(payload.LatestVersion, CurrentVersion)
 	return st, nil
+}
+
+func validatePayload(p Payload) error {
+	if p.Channel != UpdateChannel {
+		return fmt.Errorf("update: channel mismatch: manifest %q, binary %q", p.Channel, UpdateChannel)
+	}
+	if p.Platform != runtime.GOOS || p.Architecture != runtime.GOARCH {
+		return fmt.Errorf("update: artifact target mismatch: %s/%s", p.Platform, p.Architecture)
+	}
+	if !semver.IsValid("v" + p.LatestVersion) {
+		return fmt.Errorf("update: invalid semantic version %q", p.LatestVersion)
+	}
+	download, err := url.Parse(p.DownloadURL)
+	if err != nil || download.Scheme != "https" || download.Host == "" {
+		return fmt.Errorf("update: download URL must be HTTPS")
+	}
+	if len(p.SHA256) != 64 {
+		return fmt.Errorf("update: artifact SHA-256 must contain 64 hexadecimal characters")
+	}
+	for _, c := range strings.ToLower(p.SHA256) {
+		if !strings.ContainsRune("0123456789abcdef", c) {
+			return fmt.Errorf("update: artifact SHA-256 must contain 64 hexadecimal characters")
+		}
+	}
+	if _, err := time.Parse(time.RFC3339, p.PublishedAt); err != nil {
+		return fmt.Errorf("update: invalid publication time: %w", err)
+	}
+	return nil
 }
 
 func readManifestBody(r io.Reader) ([]byte, error) {
@@ -168,46 +216,15 @@ func Check() {
 // update notification, never cause incorrect behaviour, so the simplicity
 // trade-off is fine.
 func isNewer(latest, current string) bool {
-	la := splitVer(latest)
-	cu := splitVer(current)
-	for i := 0; i < len(la) || i < len(cu); i++ {
-		var a, b string
-		if i < len(la) {
-			a = la[i]
-		}
-		if i < len(cu) {
-			b = cu[i]
-		}
-		if a == b {
-			continue
-		}
-		ai, aOK := atoi(a)
-		bi, bOK := atoi(b)
-		if aOK && bOK {
-			return ai > bi
-		}
-		return a > b
-	}
-	return false
+	latest = "v" + strings.TrimPrefix(latest, "v")
+	current = "v" + strings.TrimPrefix(current, "v")
+	return semver.IsValid(latest) && semver.IsValid(current) && semver.Compare(latest, current) > 0
 }
 
+// splitVer and atoi remain narrow helpers for legacy-version diagnostics and
+// their regression tests. Update decisions use strict SemVer above.
 func splitVer(s string) []string {
-	out := []string{}
-	cur := ""
-	for _, r := range s {
-		if r == '.' || r == '-' {
-			if cur != "" {
-				out = append(out, cur)
-				cur = ""
-			}
-		} else {
-			cur += string(r)
-		}
-	}
-	if cur != "" {
-		out = append(out, cur)
-	}
-	return out
+	return strings.FieldsFunc(s, func(r rune) bool { return r == '.' || r == '-' })
 }
 
 func atoi(s string) (int, bool) {

@@ -258,7 +258,7 @@ not routed directly.
   }
 
   export async function save() {
-    if (!chart) return;
+    if (!chart) return false;
     saving = true;
     status = '';
     try {
@@ -269,8 +269,10 @@ not routed directly.
       chart = updated;
       lastSavedAt = new Date();
       status = `Saved at ${new Date().toLocaleTimeString()}.`;
+      return true;
     } catch (err: any) {
       status = `Save failed: ${err}`;
+      return false;
     } finally {
       saving = false;
     }

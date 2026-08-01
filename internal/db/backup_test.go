@@ -5,6 +5,7 @@ package db
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -121,6 +122,76 @@ func TestCreateArchivalBundleAcceptsQuotedDestination(t *testing.T) {
 			t.Fatalf("archive missing %s", name)
 		}
 	}
+}
+
+func TestRestoreArchivalBundleValidatesAndPublishesProjectOnly(t *testing.T) {
+	d := newBackupTestDB(t)
+	project, err := d.UpsertProject(Project{Name: "Restore Source"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	archivePath := filepath.Join(t.TempDir(), "source.pmba")
+	if err := d.CreateArchivalBundle(archivePath, nil); err != nil {
+		t.Fatalf("CreateArchivalBundle: %v", err)
+	}
+	destPath := filepath.Join(t.TempDir(), "restored.pmforge")
+	manifest, err := RestoreArchivalBundle(archivePath, destPath)
+	if err != nil {
+		t.Fatalf("RestoreArchivalBundle: %v", err)
+	}
+	if manifest.SchemaVersion != 1 || manifest.DatabaseID != project.ID {
+		t.Fatalf("manifest = %#v, want schema 1 and database %q", manifest, project.ID)
+	}
+	restored, err := InitDB(destPath)
+	if err != nil {
+		t.Fatalf("InitDB restored project: %v", err)
+	}
+	defer restored.Close()
+	got, err := restored.GetProject()
+	if err != nil || got.ID != project.ID {
+		t.Fatalf("restored project = %#v, err %v", got, err)
+	}
+}
+
+func TestRestoreArchivalBundleRejectsTraversalEntry(t *testing.T) {
+	archivePath := filepath.Join(t.TempDir(), "unsafe.pmba")
+	f, err := os.Create(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zw := zip.NewWriter(f)
+	for name, body := range map[string]string{
+		"../outside":      "bad",
+		"project.pmforge": "db",
+		"manifest.json":   string(mustJSON(t, BackupManifest{SchemaVersion: 1})),
+	} {
+		w, createErr := zw.Create(name)
+		if createErr != nil {
+			t.Fatal(createErr)
+		}
+		if _, writeErr := w.Write([]byte(body)); writeErr != nil {
+			t.Fatal(writeErr)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	_, err = RestoreArchivalBundle(archivePath, filepath.Join(t.TempDir(), "restored.pmforge"))
+	if err == nil || !strings.Contains(err.Error(), "unsafe entry") {
+		t.Fatalf("RestoreArchivalBundle error = %v, want unsafe entry", err)
+	}
+}
+
+func mustJSON(t *testing.T, value any) []byte {
+	t.Helper()
+	b, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }
 
 func TestCreateArchivalBundlePreservesEncryptedProjectBytes(t *testing.T) {

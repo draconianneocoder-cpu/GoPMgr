@@ -112,7 +112,7 @@ JSON.stringified back to db.charts.data.
   }
 
   async function save() {
-    if (!chart) return;
+    if (!chart) return false;
     saving = true;
     status = '';
     try {
@@ -123,8 +123,10 @@ JSON.stringified back to db.charts.data.
       chart = updated;
       lastSavedAt = new Date();
       status = `Saved at ${new Date().toLocaleTimeString()}.`;
+      return true;
     } catch (err: any) {
       status = `Save failed: ${err}`;
+      return false;
     } finally {
       saving = false;
     }

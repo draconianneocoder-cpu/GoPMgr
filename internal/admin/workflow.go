@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"pmforge/internal/db"
@@ -34,7 +35,7 @@ func (s *Service) SecureArchive(projectPath string) (string, error) {
 	}
 
 	timestamp := time.Now().UTC().Format("20060102-150405")
-	backupName := fmt.Sprintf("PMForge_Archive_%s.pmba", timestamp)
+	backupName := filepath.Join(filepath.Dir(projectPath), fmt.Sprintf("PMForge_Archive_%s.pmba", timestamp))
 
 	certs := []string{}
 	if settings.CertPath != "" {

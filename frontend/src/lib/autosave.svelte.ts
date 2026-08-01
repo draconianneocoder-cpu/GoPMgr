@@ -13,8 +13,9 @@
 
 interface Entry {
   snapshot: () => string;
-  save: () => unknown;
+  save: () => unknown | Promise<unknown>;
   last: string;
+  automatic: boolean;
   // True while a save is in flight, so a slow save can never overlap the
   // next interval's save for the same editor (overlapping whole-doc writes
   // could land out of order and persist the older snapshot last).
@@ -25,6 +26,8 @@ let intervalSeconds = $state(0); // 0 = auto-save off
 let elapsed = 0;
 const entries = new Set<Entry>();
 let heartbeat: ReturnType<typeof setInterval> | null = null;
+let lastError = $state('');
+let lastReportedDirty: boolean | null = null;
 
 function safeSnapshot(fn: () => string): string {
   try {
@@ -34,7 +37,33 @@ function safeSnapshot(fn: () => string): string {
   }
 }
 
+function syncNativeDirtyState(): void {
+  const dirty = [...entries].some((e) => safeSnapshot(e.snapshot) !== e.last);
+  if (dirty === lastReportedDirty) return;
+  lastReportedDirty = dirty;
+  void window.go?.main?.App?.SetUnsavedChanges?.(dirty)?.catch?.(() => {});
+}
+
+async function saveEntry(e: Entry): Promise<boolean> {
+  if (e.saving) return false;
+  e.saving = true;
+  try {
+    const result = await e.save();
+    if (result === false) throw new Error('The editor reported that the save failed.');
+    e.last = safeSnapshot(e.snapshot);
+    lastError = '';
+    syncNativeDirtyState();
+    return true;
+  } catch (err: unknown) {
+    lastError = err instanceof Error ? err.message : String(err ?? 'Save failed.');
+    return false;
+  } finally {
+    e.saving = false;
+  }
+}
+
 function tick(): void {
+  syncNativeDirtyState();
   if (intervalSeconds <= 0 || entries.size === 0) {
     elapsed = 0;
     return;
@@ -43,22 +72,11 @@ function tick(): void {
   if (elapsed < intervalSeconds) return;
   elapsed = 0;
   for (const e of entries) {
+    if (!e.automatic) continue;
     if (e.saving) continue; // previous save still in flight
     const snap = safeSnapshot(e.snapshot);
     if (snap === e.last) continue; // no changes since last save
-    try {
-      e.saving = true;
-      Promise.resolve(e.save())
-        .then(() => {
-          e.last = safeSnapshot(e.snapshot);
-        })
-        .catch(() => {})
-        .finally(() => {
-          e.saving = false;
-        });
-    } catch {
-      e.saving = false;
-    }
+    void saveEntry(e);
   }
 }
 
@@ -71,6 +89,22 @@ export const autosave = {
   get intervalSeconds(): number {
     return intervalSeconds;
   },
+  get lastError(): string {
+    return lastError;
+  },
+  hasDirty(): boolean {
+    return [...entries].some((e) => safeSnapshot(e.snapshot) !== e.last);
+  },
+  async saveAll(): Promise<boolean> {
+    const dirty = [...entries].filter((e) => safeSnapshot(e.snapshot) !== e.last);
+    const results = await Promise.all(dirty.map(saveEntry));
+    return results.every(Boolean);
+  },
+  discardAll(): void {
+    for (const e of entries) e.last = safeSnapshot(e.snapshot);
+    lastError = '';
+    syncNativeDirtyState();
+  },
   /** Set the interval (seconds); 0 disables auto-save. */
   setInterval(seconds: number): void {
     intervalSeconds = Math.max(0, Math.floor(seconds || 0));
@@ -81,12 +115,18 @@ export const autosave = {
    * changes when the editor's working content changes; `save` persists it.
    * Returns an unregister function — call it in onDestroy.
    */
-  register(snapshot: () => string, save: () => unknown): () => void {
-    const entry: Entry = { snapshot, save, last: safeSnapshot(snapshot) };
+  register(
+    snapshot: () => string,
+    save: () => unknown | Promise<unknown>,
+    automatic = true,
+  ): () => void {
+    const entry: Entry = { snapshot, save, last: safeSnapshot(snapshot), automatic };
     entries.add(entry);
     ensureHeartbeat();
+    syncNativeDirtyState();
     return () => {
       entries.delete(entry);
+      syncNativeDirtyState();
     };
   },
 };

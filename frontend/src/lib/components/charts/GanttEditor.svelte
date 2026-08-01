@@ -73,8 +73,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     void refreshBaseline();
   }
 
-  async function refreshLayout() {
-    if (!chart) return;
+  async function refreshLayout(): Promise<boolean> {
+    if (!chart) return false;
     status = '';
     try {
       const updated = await window.go.main.App.SaveChart({
@@ -86,8 +86,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const res = await window.go.main.App.LayoutChart(updated.id);
       const body = res.body as { layout?: GanttLayout } | GanttLayout;
       layout = (body as any).layout ?? (body as GanttLayout);
+      return true;
     } catch (err: any) {
       status = String(err?.message ?? err);
+      return false;
     }
   }
 
@@ -105,12 +107,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function save() {
     saving = true;
-    await refreshLayout();
+    const saved = await refreshLayout();
     saving = false;
     if (!status) {
       status = 'Saved';
       clearStatusAfter(2000);
     }
+    return saved;
   }
 
   async function setBaseline() {

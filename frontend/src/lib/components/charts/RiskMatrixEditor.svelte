@@ -85,13 +85,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   async function save() {
-    if (!chart) return;
+    if (!chart) return false;
     saving = true;
     status = '';
     try {
       await persistAndLayout(true);
+      return true;
     } catch (err: any) {
       status = `Save failed: ${err?.message ?? err}`;
+      return false;
     } finally {
       saving = false;
     }

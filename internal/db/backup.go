@@ -5,7 +5,10 @@ package db
 
 import (
 	"archive/zip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -20,10 +23,12 @@ import (
 // at /manifest.json. It records exactly when and how the bundle was
 // produced so auditors can verify provenance years later.
 type BackupManifest struct {
-	CreatedAt     time.Time `json:"created_at"`
-	AppVersion    string    `json:"app_version"`
-	DatabaseID    string    `json:"database_id"`
-	IncludedCerts []string  `json:"included_certificates"`
+	SchemaVersion int               `json:"schema_version"`
+	CreatedAt     time.Time         `json:"created_at"`
+	AppVersion    string            `json:"app_version"`
+	DatabaseID    string            `json:"database_id"`
+	IncludedCerts []string          `json:"included_certificates"`
+	EntrySHA256   map[string]string `json:"entry_sha256"`
 }
 
 // CreateArchivalBundle produces a single .pmba file containing:
@@ -114,10 +119,32 @@ func (db *Database) CreateArchivalBundle(destPath string, certPaths []string) (e
 	}
 
 	// 5. Manifest.
+	databaseID := ""
+	if project, projectErr := db.GetProject(); projectErr == nil {
+		databaseID = project.ID
+	} else if !errors.Is(projectErr, ErrNoProject) {
+		return debug.Wrap(projectErr, "BACKUP_PROJECT_ID_FAILED").ToError()
+	}
+	projectHash, err := fileSHA256(tempDB)
+	if err != nil {
+		return debug.Wrap(err, "BACKUP_PROJECT_HASH_FAILED").ToError()
+	}
+	entryHashes := map[string]string{"project.pmforge": projectHash}
+	for _, certPath := range certPaths {
+		if certPath == "" {
+			continue
+		}
+		if hash, hashErr := fileSHA256(certPath); hashErr == nil {
+			entryHashes["certs/"+filepath.Base(certPath)] = hash
+		}
+	}
 	manifest := BackupManifest{
+		SchemaVersion: 1,
 		CreatedAt:     time.Now().UTC(),
 		AppVersion:    cli.Version,
+		DatabaseID:    databaseID,
 		IncludedCerts: backedUpCerts,
+		EntrySHA256:   entryHashes,
 	}
 	manifestData, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
@@ -140,6 +167,23 @@ func (db *Database) CreateArchivalBundle(destPath string, certPaths []string) (e
 	}
 
 	return nil
+}
+
+func fileSHA256(path string) (digest string, err error) {
+	f, err := os.Open(path) // #nosec G304 -- caller supplies an already validated project snapshot or certificate path.
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		if closeErr := f.Close(); err == nil && closeErr != nil {
+			err = closeErr
+		}
+	}()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func closeZipArchive(zw *zip.Writer, file *os.File) error {

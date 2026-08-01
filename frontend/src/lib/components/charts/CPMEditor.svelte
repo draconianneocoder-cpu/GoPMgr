@@ -273,7 +273,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     delete node.duration_estimate;
   }
 
-  let shellRef = $state<{ reloadFromDB: () => Promise<void>; save: () => Promise<void> } | null>(null);
+  let shellRef = $state<{ reloadFromDB: () => Promise<void>; save: () => Promise<boolean> } | null>(null);
 
   async function levelResources() {
     if (!session.editingId || resourceBusy) return;

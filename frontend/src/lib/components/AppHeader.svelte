@@ -7,7 +7,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // (Portfolio dashboard, Projects list, Application settings). Centralises
   // primary navigation and the sign-out control so the screens stay
   // consistent.
-  import { session, goto } from '../session.svelte';
+  import { session, goto, requestNavigation } from '../session.svelte';
   import Logo from './Logo.svelte';
 
   let { active = 'portfolio' }: { active?: 'portfolio' | 'projects' | 'settings' | 'admin' | 'help' } = $props();
@@ -26,15 +26,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
   );
 
   async function logout() {
-    try {
-      await window.go.main.App.Logout();
-    } catch {
-      /* ignore */
-    }
-    session.user = null;
-    session.project = null;
-    session.projectPath = null;
-    goto('login');
+    requestNavigation('login', null, async () => {
+      try {
+        await window.go.main.App.Logout();
+      } catch {
+        return false;
+      }
+      session.user = null;
+      session.project = null;
+      session.projectPath = null;
+      return true;
+    });
   }
 </script>
 

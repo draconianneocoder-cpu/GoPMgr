@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -90,12 +91,25 @@ func signedManifest(t *testing.T, priv ed25519.PrivateKey, p Payload) []byte {
 	return raw
 }
 
+func validPayload(version string) Payload {
+	return Payload{
+		LatestVersion: version,
+		Channel:       "stable",
+		Platform:      runtime.GOOS,
+		Architecture:  runtime.GOARCH,
+		ReleaseNotes:  "Bug fixes",
+		DownloadURL:   "https://updates.example.test/pmforge.pkg",
+		SHA256:        strings.Repeat("a", 64),
+		PublishedAt:   "2026-06-01T00:00:00Z",
+	}
+}
+
 func TestVerifyManifest_HappyPath(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		t.Fatalf("GenerateKey: %v", err)
 	}
-	want := Payload{LatestVersion: "1.3.0", ReleaseNotes: "Bug fixes", PublishedAt: "2026-06-01T00:00:00Z"}
+	want := validPayload("1.3.0")
 	got, err := VerifyManifest(signedManifest(t, priv, want), pub)
 	if err != nil {
 		t.Fatalf("VerifyManifest: %v", err)
@@ -210,8 +224,31 @@ func TestIsNewer_NumericBeatsLexical(t *testing.T) {
 }
 
 func TestIsNewer_SuffixUpgrade(t *testing.T) {
-	if !isNewer("1.2.0-V2-Expansion", "1.2.0-V1-Expansion") {
-		t.Error("V2 suffix should be newer than V1 suffix")
+	if !isNewer("1.2.0-beta.2", "1.2.0-beta.1") {
+		t.Error("beta.2 should be newer than beta.1")
+	}
+}
+
+func TestIsNewer_StableBeatsPrerelease(t *testing.T) {
+	if !isNewer("1.2.0", "1.2.0-rc.1") {
+		t.Error("stable release should be newer than its release candidate")
+	}
+	if isNewer("1.2.0-beta.1", "1.2.0") {
+		t.Error("prerelease must not be newer than the stable release")
+	}
+}
+
+func TestIsNewerRejectsInvalidLegacyVersion(t *testing.T) {
+	if isNewer("1.2.0-V2-Expansion", "1.2.0") {
+		t.Error("non-SemVer release identity must not participate in update ordering")
+	}
+}
+
+func TestValidatePayloadRejectsChannelMismatch(t *testing.T) {
+	p := validPayload("1.2.0")
+	p.Channel = "beta"
+	if err := validatePayload(p); err == nil || !strings.Contains(err.Error(), "channel mismatch") {
+		t.Fatalf("validatePayload error = %v, want channel mismatch", err)
 	}
 }
 
