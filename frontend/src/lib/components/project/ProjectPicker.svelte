@@ -12,6 +12,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let newName = $state('');
   let newDesc = $state('');
   let error = $state('');
+  let query = $state('');
+  let restoring = $state(false);
+  let filteredProjects = $derived(
+    projects.filter((p) => `${p.name} ${p.path}`.toLowerCase().includes(query.trim().toLowerCase())),
+  );
   // Path of the project whose Delete button is awaiting a confirming second
   // click (two-step delete so a destructive action can't fire by accident).
   let confirmingDelete = $state<string | null>(null);
@@ -86,20 +91,39 @@ SPDX-License-Identifier: GPL-3.0-or-later
       busyPath = null;
     }
   }
+
+  async function restoreBackup() {
+    error = '';
+    restoring = true;
+    try {
+      await window.go.main.App.RestoreProjectArchive();
+      await refresh();
+    } catch (err: any) {
+      const message = String(err?.message ?? err);
+      if (!message.toLowerCase().includes('cancelled')) error = `Restore failed: ${message}`;
+    } finally {
+      restoring = false;
+    }
+  }
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">
   <AppHeader active="projects" />
 
   <main class="max-w-3xl mx-auto p-8">
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between gap-3 mb-6">
       <h1 class="text-xl font-bold">Your projects</h1>
-      <button
-        onclick={() => goto('launchpad')}
-        class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
-      >
-        + New Project
-      </button>
+      <div class="flex gap-2">
+        <button onclick={restoreBackup} disabled={restoring} class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded">
+          {restoring ? 'Restoring…' : 'Restore backup'}
+        </button>
+        <button
+          onclick={() => goto('launchpad')}
+          class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
+        >
+          + New Project
+        </button>
+      </div>
     </div>
 
     {#if error}
@@ -138,13 +162,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </form>
     {/if}
 
+    {#if projects.length > 0}
+      <label class="mb-4 block">
+        <span class="sr-only">Search projects</span>
+        <input bind:value={query} type="search" placeholder="Search projects" class="w-full rounded border border-slate-800 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-500" />
+      </label>
+    {/if}
+
     {#if projects.length === 0}
       <p class="text-sm text-slate-500 text-center py-12">
         No projects yet. Click <strong>+ New Project</strong> to get started.
       </p>
+    {:else if filteredProjects.length === 0}
+      <p class="text-sm text-slate-500 text-center py-12">No projects match this search.</p>
     {:else}
       <ul class="space-y-2">
-        {#each projects as p (p.path)}
+        {#each filteredProjects as p (p.path)}
           <li class="flex items-stretch gap-2" class:opacity-50={busyPath === p.path}>
             <button
               onclick={() => open(p)}

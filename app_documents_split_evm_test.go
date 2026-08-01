@@ -37,6 +37,7 @@ func TestCpmChartDataToKernelTasksPreservesSplitPlanForEVM(t *testing.T) {
 	task := tasks["A"]
 	if task == nil {
 		t.Fatal("task A was not mapped")
+		return
 	}
 	if len(task.PlannedWorkSegments) != 3 {
 		t.Fatalf("PlannedWorkSegments = %+v, want 3 persisted segments", task.PlannedWorkSegments)

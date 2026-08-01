@@ -44,7 +44,17 @@ Beta testing.
 
 - Type: Fix
 - Priority: P0
-- Status: Planned
+- Status: Done
+- Implemented: centralized Wails options now provide explicit macOS options
+  with native zoom enabled; focused Go tests preserve the window contract.
+- Build evidence: `make package-macos` produced the Apple Silicon DMG; DuckDB
+  linkage, strict ad-hoc `codesign`, arm64 inspection, and `hdiutil verify`
+  passed in the implementation checkout.
+- Native evidence: the packaged app exposed Cocoa's `zoom the window`
+  accessibility action and `Window > Zoom`. Both paths enlarged and restored
+  the prior frame on each of two active 1920 by 1080 displays. Relaunch from a
+  zoomed state was clean; retaining that frame remains the separate
+  BETA-IMP-003 behavior decision.
 - Scope: macOS main application window
 
 Evaluation found that this is native Wails window configuration, not a missing
@@ -103,13 +113,27 @@ Release-facing checklists must not continue describing completed native tests
 as outstanding. Future lifecycle work updates this backlog, release preflight,
 and `code-map/recent-decisions.md` in the same change.
 
+### BETA-FIX-003: Prevent silent editor data loss
+
+- Type: Fix
+- Priority: P0
+- Status: In progress
+
+Registered editors now route navigation, project close, sign-out, and native
+window close through Save, Discard, and Cancel choices. Failed saves remain
+dirty and block continuation; auto-save no longer treats a resolved `false`
+result as success, and close-project errors are no longer ignored. Focused Go,
+Svelte, and Vitest coverage passes. Packaged native close behavior and the
+remaining stateful editors still require smoke coverage before this item is
+`Done`.
+
 ## Features
 
 ### BETA-FEAT-001: Configure the signed Beta update channel
 
 - Type: Feature
 - Priority: P1
-- Status: Planned
+- Status: In progress
 
 The application already verifies an Ed25519-signed manifest over HTTPS, but
 release builds currently embed neither a manifest URL nor a public key. Plan a
@@ -129,6 +153,39 @@ Acceptance criteria:
   update-available, and verification-failed states.
 - An installed Beta detects a controlled newer Beta while offline use remains
   fully supported.
+
+Implementation now uses strict SemVer prerelease ordering, signed channel and
+target metadata, HTTPS artifact URLs, SHA-256 digests, and exact tag identity
+in macOS and Windows release builds. The release workflow can generate signed
+manifests without placing the private key on a command line. Configure the
+public/private key variables and validate a controlled Beta-to-Beta update
+before marking this item `Done`. Linux remains unconfigured until one signed
+manifest can represent both `.deb` and `.rpm` choices safely.
+
+### BETA-FEAT-002: Safe project backup and restore
+
+- Type: Feature
+- Priority: P1
+- Status: Done
+- Evidence: focused archive, restore, hostile-entry, encryption, Go, Svelte,
+  and frontend tests pass; `make verify`, `make check-release`, release scope,
+  lint, and REUSE 523/523 pass in the implementation checkout.
+
+Project Settings exposes integrity-checked `.pmba` creation. The project
+picker restores an archive as a new project after schema, entry count, size,
+path, type, digest, database integrity, identity, and current-account unlock
+validation. Restore never overwrites data and does not automatically import
+certificates.
+
+### BETA-FEAT-003: Beta Center and project discovery
+
+- Type: Feature
+- Priority: P2
+- Status: Done
+
+Application Settings now shows exact build identity, update-channel state,
+known Beta limitations, digest evidence, and existing diagnostic actions.
+The project picker adds local name/path search without changing persistence.
 
 ## Improvements
 
@@ -216,3 +273,16 @@ Run `make check-pades-trusted` against a release-certificate sample and archive
 Acrobat trust-panel evidence. Until then, keep the current explicit limitation:
 deterministic structure, CMS, veraPDF, pdfsig, DSS, and self-signed
 PAdES-BASELINE-T evidence do not establish a publicly trusted chain.
+
+### BETA-QA-005: Ubuntu DEB lifecycle
+
+- Type: Validation
+- Priority: P0
+- Status: Done
+- Evidence: On Ubuntu 26.04 LTS x86-64, `make verify`, the Wails production
+  build, tarball packaging, and nFPM `.deb` and `.rpm` creation passed. The
+  generated `1.1.0-alpha.1` DEB installed to `/usr/bin/pmforge`, launched with
+  isolated data under GTK3/WebKitGTK 4.1, and handled `SIGINT` with a clean
+  shutdown. The package and temporary test dependencies were removed after
+  verification. The host's NVIDIA EGL configuration required selecting Mesa
+  for Xvfb; this was a virtual-display host quirk, not an application change.

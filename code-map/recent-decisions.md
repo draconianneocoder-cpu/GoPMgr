@@ -178,6 +178,16 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   supplies explicit macOS options and verifies Cocoa maximize/restore against
   the packaged app without introducing custom Svelte window chrome. The
   maintained execution list is `docs/beta-release-backlog.md`.
+- **2026-08-01:** Beta implementation centralizes native Wails options and
+  enables Cocoa zoom, adds guarded editor navigation with fail-visible
+  auto-save, and introduces integrity-checked `.pmba` restore as a new project.
+  Signed update manifests now bind channel, target, exact prerelease identity,
+  HTTPS artifact URL, and SHA-256 digest. The packaged arm64 app's native zoom
+  action and Window menu restored frames on both attached displays, and an
+  Ubuntu 26.04 host passed the Go/frontend gates, Linux Wails build, tar/DEB/RPM
+  packaging, DEB install, isolated launch, clean shutdown, and removal.
+  Windows, Fedora, and credential-backed update evidence remain separate
+  release gates.
 
 ## Open / deferred (not yet decided or implemented)
 

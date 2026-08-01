@@ -29,6 +29,7 @@ env:
   GOFLAGS: -mod=readonly
   GOPROXY: https://proxy.golang.org,direct
   CGO_ENABLED: "1"
+  PMFORGE_UPDATE_PUBLIC_KEY: ${{ vars.PMFORGE_UPDATE_PUBLIC_KEY }}
 
 defaults:
   run:
@@ -124,6 +125,23 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
 
+      - name: Define signed update-channel build identity
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          case "$version" in
+            *-alpha.*) channel="alpha" ;;
+            *-beta.*) channel="beta" ;;
+            *-rc.*) channel="rc" ;;
+            *) channel="stable" ;;
+          esac
+          ldflags="-X pmforge/internal/update.CurrentVersion=$version -X pmforge/internal/update.UpdateChannel=$channel"
+          if [ -n "$PMFORGE_UPDATE_PUBLIC_KEY" ] && [ "${{ matrix.platform }}" != "linux/amd64" ]; then
+            target="${{ matrix.platform }}"
+            manifest_url="https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/update-$channel-${target//\//-}.json"
+            ldflags="$ldflags -X pmforge/internal/update.ManifestURL=$manifest_url -X pmforge/internal/update.UpdateChannelPublicKey=$PMFORGE_UPDATE_PUBLIC_KEY"
+          fi
+          echo "PMFORGE_RELEASE_LDFLAGS=$ldflags" >> "$GITHUB_ENV"
+
       - name: Load pinned installer tool versions
         # Only import declared version assignments; SPDX comments remain valid
         # in the source file without becoming malformed GITHUB_ENV entries.
@@ -156,11 +174,11 @@ jobs:
 
       - name: Wails build (Linux)
         if: runner.os == 'Linux'
-        run: wails build -platform ${{ matrix.platform }} -tags duckdb,webkit2_41
+        run: wails build -platform ${{ matrix.platform }} -tags duckdb,webkit2_41 -ldflags "$PMFORGE_RELEASE_LDFLAGS"
 
       - name: Wails build (macOS)
         if: runner.os == 'macOS'
-        run: wails build -platform ${{ matrix.platform }} -tags duckdb
+        run: wails build -platform ${{ matrix.platform }} -tags duckdb -ldflags "$PMFORGE_RELEASE_LDFLAGS"
 
       - name: Wails build + NSIS installer (Windows)
         if: runner.os == 'Windows'
@@ -169,7 +187,7 @@ jobs:
           # user-data preservation boundary has drifted.
           bash scripts/check-windows-installer-scaffold.sh
           bash scripts/validate-windows-nsis-template.sh
-          wails build -platform windows/amd64 -tags duckdb -nsis
+          wails build -platform windows/amd64 -tags duckdb -ldflags "$PMFORGE_RELEASE_LDFLAGS" -nsis
           # The Windows command previously omitted duckdb while other package
           # legs embedded it. Verify metadata before publishing the installer.
           bash scripts/verify-duckdb-linked.sh build/bin/pmforge.exe
@@ -229,6 +247,12 @@ jobs:
       # uses the same tested helper that the source preflight validates.
       - uses: actions/checkout@v7
 
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
       - name: Download all installers
         uses: actions/download-artifact@v8
         with:
@@ -238,7 +262,33 @@ jobs:
       - name: Create / update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          PMFORGE_UPDATE_PRIVATE_KEY: ${{ secrets.PMFORGE_UPDATE_PRIVATE_KEY }}
         run: |
+          version="${GITHUB_REF_NAME#v}"
+          case "$version" in
+            *-alpha.*) channel="alpha" ;;
+            *-beta.*) channel="beta" ;;
+            *-rc.*) channel="rc" ;;
+            *) channel="stable" ;;
+          esac
+          if [ -n "$PMFORGE_UPDATE_PUBLIC_KEY" ]; then
+            test -n "$PMFORGE_UPDATE_PRIVATE_KEY"
+            for target in darwin-arm64 windows-amd64; do
+              case "$target" in
+                darwin-arm64) pattern='*.dmg'; platform=darwin; architecture=arm64 ;;
+                windows-amd64) pattern='*.exe'; platform=windows; architecture=amd64 ;;
+              esac
+              artifact="$(find dist -type f -name "$pattern" -print -quit)"
+              test -n "$artifact"
+              filename="$(basename "$artifact")"
+              go run ./tools/update-manifest \
+                -version "$version" -channel "$channel" \
+                -platform "$platform" -architecture "$architecture" \
+                -artifact "$artifact" \
+                -download-url "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$filename" \
+                -output "dist/update-$channel-$target.json"
+            done
+          fi
           publication_flag="$(bash scripts/release-publication-flag.sh "$GITHUB_REF_NAME")"
           publication_args=()
           if [ -n "$publication_flag" ]; then

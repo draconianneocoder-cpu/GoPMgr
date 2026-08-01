@@ -43,7 +43,7 @@ fi
 # (vendored libraries, sibling repos accidentally cloned at the root)
 # are explicitly excluded so the scan stays focused.
 PMF_DIRS="./main.go ./internal ./scripts"
-GO_PACKAGES=". ./internal/..."
+GO_PACKAGES=". ./internal/... ./tools/update-manifest"
 GO_TAGS="${PMFORGE_GO_TAGS:-webkit2_41}"
 
 fail=0

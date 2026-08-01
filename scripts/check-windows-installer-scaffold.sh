@@ -27,7 +27,7 @@ require_literal() {
 	local file="$1"
 	local literal="$2"
 	local message="$3"
-	if ! grep -Fq "$literal" "$file"; then
+	if ! grep -Fq -- "$literal" "$file"; then
 		echo "windows-installer-scaffold: $message" >&2
 		fail=1
 	fi
@@ -84,8 +84,10 @@ require_literal "$WORKFLOW" 'bash scripts/check-windows-installer-scaffold.sh' \
 	"Windows release job must validate the scaffold before Wails packaging."
 require_literal "$WORKFLOW" 'bash scripts/validate-windows-nsis-template.sh' \
 	"Windows release job must compile the NSIS template fixture before Wails packaging."
-require_literal "$WORKFLOW" 'wails build -platform windows/amd64 -tags duckdb -nsis' \
+require_literal "$WORKFLOW" 'wails build -platform windows/amd64 -tags duckdb' \
 	"Windows installer must embed DuckDB analytics."
+require_literal "$WORKFLOW" '-ldflags "$PMFORGE_RELEASE_LDFLAGS" -nsis' \
+	"Windows installer must embed the reviewed release identity before NSIS packaging."
 require_literal "$WORKFLOW" 'bash scripts/verify-duckdb-linked.sh build/bin/pmforge.exe' \
 	"Windows release job must verify DuckDB linkage before upload."
 
@@ -93,7 +95,7 @@ require_literal "$WORKFLOW" 'bash scripts/verify-duckdb-linked.sh build/bin/pmfo
 # a future edit cannot leave validation present but move it after packaging.
 check_line="$(awk '/bash scripts\/check-windows-installer-scaffold\.sh/ { print NR; exit }' "$WORKFLOW")"
 validate_line="$(awk '/bash scripts\/validate-windows-nsis-template\.sh/ { print NR; exit }' "$WORKFLOW")"
-build_line="$(awk '/wails build -platform windows\/amd64 -tags duckdb -nsis/ { print NR; exit }' "$WORKFLOW")"
+build_line="$(awk '/wails build -platform windows\/amd64 -tags duckdb/ { print NR; exit }' "$WORKFLOW")"
 link_line="$(awk '/bash scripts\/verify-duckdb-linked\.sh build\/bin\/pmforge\.exe/ { print NR; exit }' "$WORKFLOW")"
 if [ -n "$check_line" ] && [ -n "$validate_line" ] && [ -n "$build_line" ] && [ -n "$link_line" ] &&
 	{

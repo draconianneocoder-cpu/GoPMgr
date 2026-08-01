@@ -13,8 +13,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // from the same Go catalogue used by the Launchpad so both surfaces stay in
   // lockstep as jurisdictions are added.
 
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import { autosave } from '../../autosave.svelte';
 
   let draft = $state<ProjectMeta | null>(null);
   let original = $state<ProjectMeta | null>(null);
@@ -23,6 +24,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let error = $state('');
   let calendarPolicies = $state<CalendarPolicy[]>([]);
   let calendarPolicyError = $state('');
+  let stopDirtyGuard: (() => void) | null = null;
 
   function timeZonesFor(countryCode: string) {
     return calendarPolicies.find((policy) => policy.country_code === countryCode)?.time_zones ?? ['UTC'];
@@ -68,6 +70,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let encryptionStatus = $state('');
   let encryptionError = $state('');
   let encryptionBackupPath = $state('');
+  let archiveBusy = $state(false);
+  let archiveStatus = $state('');
+  let archiveError = $state('');
   let recoveryCodes = $state<string[]>([]);
 
   // Font settings
@@ -211,14 +216,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     await loadScenarioSources();
     await loadScenarios();
     await loadEncryptionState();
+    stopDirtyGuard = autosave.register(() => JSON.stringify(draft), () => save(), false);
   });
+
+  onDestroy(() => stopDirtyGuard?.());
 
   let dirty = $derived(
     draft !== null && original !== null && JSON.stringify(draft) !== JSON.stringify(original),
   );
 
   async function save() {
-    if (!draft) return;
+    if (!draft) return false;
     busy = true;
     error = '';
     status = '';
@@ -240,8 +248,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // Suppress unused-variable warning while keeping the explicit
       // call so the metadata path is always exercised.
       void meta;
+      return true;
     } catch (err: any) {
       error = `Save failed: ${err}`;
+      return false;
     } finally {
       busy = false;
     }
@@ -378,6 +388,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
       encryptionError = message;
     } finally {
       encryptionBusy = false;
+    }
+  }
+
+  async function createBackup() {
+    if (!session.projectPath) return;
+    archiveBusy = true;
+    archiveStatus = '';
+    archiveError = '';
+    try {
+      archiveStatus = await window.go.main.App.SecureArchive(session.projectPath);
+    } catch (err: any) {
+      archiveError = `Backup failed: ${err?.message ?? err}`;
+    } finally {
+      archiveBusy = false;
     }
   }
 
@@ -1603,6 +1627,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
              {exportStatus}
            </p>
          {/if}
+       </section>
+
+       <section>
+         <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Project Backup</h2>
+         <div class="border border-slate-800 bg-slate-900/60 rounded p-4 space-y-3">
+           <p class="text-xs text-slate-400">
+             Create an integrity-checked PMForge archive. Restore imports the database as a new project and does not automatically import certificates.
+           </p>
+           <button onclick={createBackup} disabled={archiveBusy} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700">
+             {archiveBusy ? 'Creating…' : 'Create backup'}
+           </button>
+           {#if archiveStatus}<p class="text-xs text-cyan-400 break-all">Backup created: {archiveStatus}</p>{/if}
+           {#if archiveError}<p class="text-xs text-red-400" role="alert">{archiveError}</p>{/if}
+         </div>
        </section>
 
        <!-- Database Encryption -->

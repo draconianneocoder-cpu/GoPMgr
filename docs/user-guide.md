@@ -119,6 +119,8 @@ per-project settings:
 - Default export theme for new projects.
 - Auto-save on/off and interval.
 - Version and data-location information.
+- The Beta Center, signed-update status, current release limitations, logs,
+  and privacy-safe bug-report generation.
 
 ## Stakeholders, Timeline, and Budget
 
@@ -404,5 +406,18 @@ All document and chart editors support Ctrl+S / Cmd+S. Auto-save is also
 available from Application Settings. Auto-save is snapshot-based, so idle
 editors do not rewrite unchanged data or churn `updated_at`.
 
+Navigation, project close, sign-out, and native window close protect registered
+editor changes with Save, Discard, and Cancel choices. A failed automatic or
+manual save remains dirty and must be retried or explicitly discarded.
+
 Document editors show an unsaved-changes indicator and a status dropdown
 for `draft`, `review`, `approved`, and `archived`.
+
+## Project Backups
+
+Project Settings can create an integrity-checked `.pmba` backup containing a
+database snapshot, a versioned manifest, and SHA-256 entry digests. Restore is
+available from the project picker and always creates a new project instead of
+overwriting existing data. Bundled certificates are checked but are not
+automatically imported. An encrypted archive can be restored only by an
+account that can unlock its project database.

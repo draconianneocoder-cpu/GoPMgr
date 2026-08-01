@@ -1828,7 +1828,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     ['Ctrl/⌘ + ,', 'Application settings'],
                     ['Ctrl/⌘ + W', 'Close the current project'],
                     ['Ctrl/⌘ + Q', 'Quit PMForge'],
-                    ['F11', 'Maximize / restore the window (Window menu)'],
+                    ['F11', 'Maximize / restore on Windows and Linux'],
+                    ['macOS green control', 'Native Zoom / restore; also available from Window > Zoom'],
                   ] as [keys, action]}
                     <tr class="border-b border-slate-800">
                       <td class="py-1.5 pr-4 font-mono text-xs text-cyan-300 whitespace-nowrap">{keys}</td>

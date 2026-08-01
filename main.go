@@ -31,6 +31,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"pmforge/internal/admin"
@@ -80,6 +81,8 @@ type App struct {
 	// Diagnostic logging — set in main() after applog.Init; never reassigned.
 	logPath string // dated log file path, e.g. .../logs/pmforge-2026-06-20.log
 	logDir  string // parent of logPath, e.g. .../logs
+
+	unsavedChanges bool
 }
 
 // NewApp constructs an App at process start. It opens the system DB
@@ -147,6 +150,24 @@ func (a *App) shutdown(_ context.Context) {
 
 func (a *App) Greet() string {
 	return "PMForge " + cli.Version + " ready."
+}
+
+// SetUnsavedChanges mirrors the frontend editor guard into the native window
+// lifecycle so closing the title-bar window cannot silently bypass it.
+func (a *App) SetUnsavedChanges(dirty bool) {
+	a.mu.Lock()
+	a.unsavedChanges = dirty
+	a.mu.Unlock()
+}
+
+func (a *App) beforeClose(ctx context.Context) bool {
+	a.mu.RLock()
+	dirty := a.unsavedChanges
+	a.mu.RUnlock()
+	if dirty {
+		wailsruntime.EventsEmit(ctx, "app:before-close")
+	}
+	return dirty
 }
 
 // =========================================================
@@ -234,6 +255,30 @@ func buildAppMenu(app *App) *menu.Menu {
 	return m
 }
 
+// buildAppOptions keeps the native window contract testable without starting
+// the Wails runtime. A non-nil Mac options block is significant: Wails treats
+// a nil block as not zoomable and disables Cocoa's green NSWindowZoomButton.
+func buildAppOptions(app *App) *options.App {
+	return &options.App{
+		Title:     "PMForge",
+		Width:     1280,
+		Height:    800,
+		MinWidth:  800,
+		MinHeight: 600,
+		Mac: &mac.Options{
+			DisableZoom: false,
+		},
+		AssetServer: &assetserver.Options{Assets: assets},
+		Menu:        buildAppMenu(app),
+		OnStartup: func(ctx context.Context) {
+			app.ctx = ctx
+		},
+		OnShutdown:    app.shutdown,
+		OnBeforeClose: app.beforeClose,
+		Bind:          []interface{}{app},
+	}
+}
+
 func main() {
 	cfg := cli.ParseFlags()
 	export.SetVersion(cli.Version)
@@ -282,22 +327,7 @@ func main() {
 	app.logPath = logPath
 	app.logDir = applog.LogDir(root)
 
-	err = wails.Run(&options.App{
-		Title:     "PMForge",
-		Width:     1280,
-		Height:    800,
-		MinWidth:  800,
-		MinHeight: 600,
-		AssetServer: &assetserver.Options{
-			Assets: assets,
-		},
-		Menu: buildAppMenu(app),
-		OnStartup: func(ctx context.Context) {
-			app.ctx = ctx
-		},
-		OnShutdown: app.shutdown,
-		Bind:       []interface{}{app},
-	})
+	err = wails.Run(buildAppOptions(app))
 	if err != nil {
 		applog.Fatal("PMForge could not start",
 			"PMForge failed to start its application window.", logPath, err)

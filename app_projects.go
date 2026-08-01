@@ -19,11 +19,14 @@ import (
 	"pmforge/internal/documents"
 	"pmforge/internal/fonts"
 	"pmforge/internal/sigma/service"
+	"pmforge/internal/update"
 	"pmforge/internal/users"
 	"regexp"
 	"runtime"
 	"strings"
 	"time"
+
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // =========================================================
@@ -109,6 +112,102 @@ func (a *App) CreateProject(name, description string) (ProjectFile, error) {
 	return ProjectFile{
 		Path:     path,
 		Name:     name,
+		Modified: time.Now().UTC().Format(time.RFC3339),
+	}, nil
+}
+
+// RestoreProjectArchive imports a validated .pmba archive as a new project.
+// It never overwrites an existing project and never imports bundled
+// certificates automatically.
+func (a *App) RestoreProjectArchive() (ProjectFile, error) {
+	user := a.requireUser()
+	if user == nil {
+		return ProjectFile{}, errors.New("not signed in")
+	}
+	if a.ctx == nil {
+		return ProjectFile{}, errors.New("no context (Wails not started)")
+	}
+	archivePath, err := wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
+		Title:            "Restore PMForge project backup",
+		DefaultDirectory: user.DataDir,
+		Filters: []wailsruntime.FileFilter{
+			{DisplayName: "PMForge backup (*.pmba)", Pattern: "*.pmba"},
+		},
+	})
+	if err != nil {
+		return ProjectFile{}, err
+	}
+	if archivePath == "" {
+		return ProjectFile{}, errors.New("restore cancelled")
+	}
+	return a.restoreProjectArchiveFrom(archivePath, user)
+}
+
+func (a *App) restoreProjectArchiveFrom(archivePath string, user *users.Account) (result ProjectFile, err error) {
+	projectsDir := filepath.Join(user.DataDir, "projects")
+	if err := os.MkdirAll(projectsDir, 0o700); err != nil {
+		return result, err
+	}
+	destPath, err := newProjectPath(projectsDir, "restored-project")
+	if err != nil {
+		return result, err
+	}
+	destDir := filepath.Dir(destPath)
+	published := false
+	defer func() {
+		if !published {
+			_ = os.RemoveAll(destDir)
+		}
+	}()
+	manifest, err := db.RestoreArchivalBundle(archivePath, destPath)
+	if err != nil {
+		return result, err
+	}
+
+	a.mu.RLock()
+	dek, dekErr := a.requireDEKLocked()
+	a.mu.RUnlock()
+	if dekErr != nil {
+		return result, dekErr
+	}
+	var restored *db.Database
+	if encrypted, inspectErr := db.IsEncryptedFile(destPath); inspectErr != nil {
+		return result, inspectErr
+	} else if encrypted {
+		restored, err = db.InitEncryptedDB(destPath, dek)
+	} else {
+		restored, err = db.InitDB(destPath)
+	}
+	if err != nil {
+		return result, fmt.Errorf("open restored project for this account: %w", err)
+	}
+	defer func() {
+		if closeErr := restored.Close(); err == nil && closeErr != nil {
+			err = closeErr
+		}
+	}()
+	if ok, integrityErr := restored.CheckIntegrity(); integrityErr != nil || !ok {
+		if integrityErr != nil {
+			return result, fmt.Errorf("check restored project integrity: %w", integrityErr)
+		}
+		return result, errors.New("restored project failed its database integrity check")
+	}
+	project, err := restored.GetProject()
+	if err != nil {
+		return result, fmt.Errorf("read restored project metadata: %w", err)
+	}
+	if manifest.DatabaseID != "" && manifest.DatabaseID != project.ID {
+		return result, errors.New("backup manifest database ID does not match the restored project")
+	}
+	project.Name = strings.TrimSpace(project.Name) + " (restored)"
+	project, err = restored.UpsertProject(project)
+	if err != nil {
+		return result, fmt.Errorf("rename restored project: %w", err)
+	}
+	published = true
+	return ProjectFile{
+		Path:     destPath,
+		Name:     project.Name,
 		Modified: time.Now().UTC().Format(time.RFC3339),
 	}, nil
 }
@@ -498,7 +597,7 @@ func (a *App) GetAppInfo() (AppInfo, error) {
 		return AppInfo{}, errors.New("not signed in")
 	}
 	return AppInfo{
-		Version:      cli.Version,
+		Version:      update.CurrentVersion,
 		DataLocation: user.DataDir,
 		Username:     user.Username,
 		Settings:     a.loadGlobalAppSettings(),

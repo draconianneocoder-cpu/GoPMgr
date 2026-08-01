@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -131,5 +132,32 @@ func TestGenerateBugReport_NoLogDir(t *testing.T) {
 	_, err := app.GenerateBugReport()
 	if err == nil {
 		t.Fatal("GenerateBugReport with empty logDir should return an error")
+	}
+}
+
+func TestBuildAppOptionsPreservesNativeWindowContract(t *testing.T) {
+	app := &App{}
+	opts := buildAppOptions(app)
+	if opts.Title != "PMForge" || opts.Width != 1280 || opts.Height != 800 {
+		t.Fatalf("unexpected main window options: %#v", opts)
+	}
+	if opts.MinWidth != 800 || opts.MinHeight != 600 {
+		t.Fatalf("minimum window size = %dx%d, want 800x600", opts.MinWidth, opts.MinHeight)
+	}
+	if opts.Mac == nil {
+		t.Fatal("macOS options are nil; Wails will disable the native zoom control")
+	}
+	if opts.Mac.DisableZoom {
+		t.Fatal("native macOS zoom control is disabled")
+	}
+	if opts.Menu == nil || opts.AssetServer == nil || len(opts.Bind) != 1 {
+		t.Fatal("centralized options dropped menu, assets, or App binding")
+	}
+}
+
+func TestBeforeCloseAllowsCleanWindow(t *testing.T) {
+	app := &App{}
+	if app.beforeClose(context.Background()) {
+		t.Fatal("clean window close was prevented")
 	}
 }

@@ -31,6 +31,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let diagError = $state('');
   let hasAdmin = $state(true);
   let claimingAdmin = $state(false);
+  let updateStatus = $state<UpdateStatus | null>(null);
+  let checkingUpdate = $state(false);
 
   const themes = [
     { value: '', label: 'Modern (default)' },
@@ -133,6 +135,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
       diagError = `Could not generate report: ${err}`;
     } finally {
       generatingReport = false;
+    }
+  }
+
+  async function checkForUpdates() {
+    checkingUpdate = true;
+    try {
+      updateStatus = await window.go.main.App.CheckLatestVersion();
+    } catch (err: any) {
+      updateStatus = {
+        configured: true,
+        current: info?.version ?? '',
+        channel: 'unknown',
+        update_available: false,
+        error: String(err?.message ?? err),
+      };
+    } finally {
+      checkingUpdate = false;
     }
   }
 
@@ -369,7 +388,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {/if}
 
         <section class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-2 text-xs">
-          <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500">About</h2>
+          <h2 class="text-xs font-bold uppercase tracking-widest text-cyan-400">Beta Center</h2>
           <div class="flex justify-between gap-4">
             <span class="text-slate-500">Version</span><span class="font-mono">{info.version}</span>
           </div>
@@ -381,6 +400,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="text-slate-500">Data location</span>
             <span class="font-mono break-all text-right">{info.data_location}</span>
           </div>
+          <p class="pt-2 text-[11px] leading-relaxed text-amber-300/80">
+            Beta packages may be unsigned. Windows and Fedora lifecycle validation and publicly trusted PAdES evidence remain release limitations until their native evidence is recorded.
+          </p>
+          <button onclick={checkForUpdates} disabled={checkingUpdate} class="mt-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded">
+            {checkingUpdate ? 'Checking…' : 'Check for updates'}
+          </button>
+          {#if updateStatus}
+            <div class="mt-2 rounded border border-slate-800 bg-slate-950 p-3 space-y-1">
+              <p>Channel: <span class="font-mono">{updateStatus.channel || 'unconfigured'}</span></p>
+              {#if !updateStatus.configured}<p class="text-slate-400">This build has no automatic update channel configured.</p>
+              {:else if updateStatus.error}<p class="text-red-400" role="alert">Verification failed: {updateStatus.error}</p>
+              {:else if updateStatus.update_available}<p class="text-cyan-300">Update available: {updateStatus.latest}</p>
+              {:else}<p class="text-emerald-400">This build is current.</p>{/if}
+              {#if updateStatus.sha256}<p class="break-all font-mono text-[10px] text-slate-500">SHA-256: {updateStatus.sha256}</p>{/if}
+            </div>
+          {/if}
         </section>
 
         <section class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-3 text-xs">

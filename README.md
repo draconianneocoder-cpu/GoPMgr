@@ -38,7 +38,8 @@ chart, export, and reporting tools without requiring a hosted service.
 
 - **Project controls:** lifecycle status, exact-cent budgets, stakeholders,
   timeline events, project settings, audit records, repair, backup, and local
-  project files.
+  project files, including integrity-checked `.pmba` backup and same-account
+  restore as a non-overwriting project copy.
 - **Scheduling:** CPM schedules with typed dependencies, lag,
   constraints, baselines, progress, Earned Value Management,
   named resource calendars, calendar-aware leveling, Gantt charts, MSPDI

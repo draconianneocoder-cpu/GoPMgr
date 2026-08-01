@@ -58,7 +58,7 @@ printf '\n  RMDir /r "$DOCUMENTS\\PMForge"\n' >>"$destructive_uninstall/build/wi
 expect_failure "$destructive_uninstall" "uninstaller must not delete PMForge project data"
 
 stub_analytics="$(new_fixture stub-analytics)"
-perl -0pi -e 's#wails build -platform windows/amd64 -tags duckdb -nsis#wails build -platform windows/amd64 -nsis#' "$stub_analytics/.github/workflows/release.yml"
+perl -0pi -e 's#wails build -platform windows/amd64 -tags duckdb#wails build -platform windows/amd64#' "$stub_analytics/.github/workflows/release.yml"
 expect_failure "$stub_analytics" "Windows installer must embed DuckDB analytics"
 
 missing_link_check="$(new_fixture missing-link-check)"

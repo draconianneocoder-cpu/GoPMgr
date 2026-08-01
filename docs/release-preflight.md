@@ -72,10 +72,12 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
 ## Known caveats to verify on real targets (not pipeline failures)
 
 - **macOS native window zoom.** The published and current-main arm64 apps
-  expose a disabled green zoom/full-screen control. PMForge does not yet
-  supply Wails' macOS options block, so Wails 2.13.0 disables the native
-  `NSWindowZoomButton`. This is planned as Beta blocker
-  `BETA-FIX-001` in `docs/beta-release-backlog.md`.
+  previously exposed a disabled green zoom/full-screen control. Current source
+  now supplies the explicit Wails macOS options block with zoom enabled and a
+  focused options-contract test. The packaged app's native Accessibility zoom
+  action and `Window > Zoom` enlarged and restored the window on both attached
+  displays; clean relaunch from the zoomed state also passed. `BETA-FIX-001` is
+  complete.
 - **macOS package trust.** The published DMG passed `hdiutil verify`, its
   ad-hoc signature passed strict `codesign` verification, and its complete
   administrator/install/upgrade/removal/reinstall lifecycle passed on an M4
@@ -85,6 +87,8 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
   `webkit2_41` tag, the binary links the Ubuntu 24.04+ WebKit2GTK 4.1 runtime.
   This fixes the earlier WebKit runtime dependency gap on newer Ubuntu. Wails v2
   still links GTK3; GTK4/WebKitGTK 6.0 remains a future framework migration.
+  A current-source `1.1.0-alpha.1` DEB completed install, isolated launch,
+  clean shutdown, and removal on Ubuntu 26.04 LTS x86-64.
 - **`.rpm` cross-distro.** The rpm wraps an Ubuntu-built dynamically-linked
   binary; `gtk3`/`webkit2gtk4.1` names are expected for Fedora, but **runtime on
   Fedora is unverified**. Test on a real Fedora box before claiming rpm support.

@@ -8,7 +8,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-GO_PACKAGES=". ./internal/..."
+GO_PACKAGES=". ./internal/... ./tools/update-manifest"
 
 echo "Running Final Release Gates for PMForge..."
 
