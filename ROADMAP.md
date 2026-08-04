@@ -189,15 +189,42 @@ items outside git's reach:
 
 ## Next Recommended Audit
 
+**Frontend↔backend path-string consistency (recommended next).** The
+Go side's data-root and `.pmforge`-extension literals are now
+test-enforced (see below), but the frontend copy naming those same
+real-world paths is not pinned to anything and was only hand-reverted
+during the rename: `frontend/src/lib/components/HelpGuide.svelte`,
+`frontend/src/lib/components/project/Dashboard.svelte`, and the
+`ProjectLaunchpad.test.ts` fixture all contain `.pmforge`,
+`Application Support/PMForge`, and `Documents/PMForge` strings that
+users read to find their own data on disk. If any of these ever drift
+from what `users.DefaultRootDir()` actually returns, a user gets sent
+to a directory that doesn't exist, and nothing today would catch it.
+Before adding assertions, check whether the app already exposes the
+resolved root over the Wails bindings (`main.go` already computes it
+via `users.DefaultRootDir()` for `applog`) — if so, the better fix is
+having the frontend render that value instead of hardcoding a second
+copy, which removes the drift class rather than pinning two copies of
+it. If no such binding exists, pin the strings with a vitest test or
+extend `release-gate-scope-check.sh`'s existing textual assertions.
+
+Secondary and lower-confidence, worth naming rather than starting now:
+57 vitest tests against 233 Svelte files is thin coverage, and
+`make frontend-stability` (svelte-check + vitest) is the entire
+frontend gate today.
+
 **Persistence-boundary invariant tests — done (2026-08-04).** The
 August 2026 PMForge → GoPMgr rename relied on a rule that previously
 lived only in prose comments and one README-text assertion in
 `scripts/release-gate-scope-check.sh`. Table-driven tests now pin all
 four frozen literals (`internal/users/root_dir_test.go`,
 `project_path_confinement_test.go`, `internal/db/backup_test.go`), each
-verified to fail under a deliberate break of the literal it pins before
-being committed. See `DEVELOPER_HANDBOOK.md` §9 (2026-08-04 entry) for
-the full rationale and which test covers which literal.
+verified to fail under a deliberate break of the literal it pins,
+including a follow-up fix once it was noticed the first version of the
+`DefaultRootDir` full-path assertion only ran on darwin — CI runs on
+Linux, so that gap would have shipped green. See
+`DEVELOPER_HANDBOOK.md` §9 (2026-08-04 entry) for the full rationale
+and which test covers which literal.
 
 **Update-path audit for existing installs — blocked, not yet
 exercisable.** The rename changed `CFBundleIdentifier`, packaged
