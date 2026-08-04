@@ -108,6 +108,13 @@ func TestCreateArchivalBundleAcceptsQuotedDestination(t *testing.T) {
 	}
 	defer zr.Close()
 
+	// "project.pmforge" is asserted as a literal, not derived from a
+	// constant, because it is a persistence boundary: every .pmba archive
+	// already produced by a shipped release has an entry with exactly this
+	// name, and RestoreArchivalBundle (backup_restore.go) looks it up by
+	// this same literal. If a future rebrand or refactor renamed it in
+	// lockstep on both sides, a round-trip create+restore test would still
+	// pass — only pinning the on-disk name here catches that.
 	wantEntries := map[string]bool{
 		"project.pmforge": false,
 		"manifest.json":   false,
