@@ -78,6 +78,11 @@ temp_snapshot.db
 !/internal/fonts/assets/SourceSans3-BoldIt.ttf
 /GoPMgr Icon Image *.png
 /GoPMgr Logo Image *.png
+/GoPMgr App Icon (square-style, no text).png
+/Full GoPMgr Dark Logo (gopher + text).png
+/Full GoPMgr Light Logo (gopher + text).png
+/bobby-beaver-*.svg
+*.zip
 
 # Certificates (NEVER commit private keys)
 *.p12

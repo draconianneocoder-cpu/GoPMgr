@@ -171,6 +171,50 @@ Advisories. This cannot be automated. Without it, Dependabot and the
 GitHub security advisory feed will not surface CVEs against GoPMgr's
 dependency tree in the repository UI.
 
+**Post-rename cleanup (August 2026 PMForge → GoPMgr rename)** — a few
+items outside git's reach:
+- Launchpad-hosted `launchpad` and `launchpad-project` remotes still
+  point at the pre-rename Launchpad repos; renaming them requires
+  Launchpad-side action, not just a local `git remote set-url`.
+- `origin/testing` and `origin/session/docs-review-and-resource-leveling`
+  still carry the `pmforge` Go module path — rebase or reapply the
+  rename before merging either into `main`.
+- `GOPMGR_UPDATE_PUBLIC_KEY` / `GOPMGR_UPDATE_PRIVATE_KEY` need to
+  exist as real GitHub Actions secrets before release signing works;
+  no `PMFORGE_*`-named secrets existed to migrate, so this is net-new
+  setup, not a rename.
+- Existing macOS installs will see a one-time TCC (privacy/permissions)
+  re-prompt after upgrading, since `CFBundleIdentifier` changed from
+  `dev.pmforge.PMForge` to `dev.gopmgr.GoPMgr`. Expected, not a bug.
+
+## Next Recommended Audit
+
+**Persistence-boundary invariant tests (highest priority).** The
+August 2026 PMForge → GoPMgr rename relies on a rule that currently
+lives only in prose comments and one README-text assertion in
+`scripts/release-gate-scope-check.sh`: the `.pmforge` file extension,
+the `~/Documents/PMForge` / `~/Library/Application Support/PMForge`
+data-root directory names, and the `PMForge_Archive_*` backup prefix
+must never be renamed, because they name state that already exists on
+real users' disks. A blanket find-and-replace during the rename
+briefly did rename all of these before a manual revert pass caught it.
+Nothing currently fails the build if a future change reintroduces that
+mistake. Add table-driven tests in `internal/users` and `internal/db`
+asserting `DefaultRootDir()` still ends in `PMForge`, the project file
+extension constant is still `.pmforge`, and the backup archive's zip
+entry name is still `project.pmforge` — turning the convention into an
+enforced invariant instead of something only caught by manual review.
+
+**Update-path audit for existing installs (secondary).** The rename
+changed `CFBundleIdentifier`, packaged artifact names, and the update
+signing key names. This session verified that a renamed GoPMgr binary
+can still open a pre-existing `~/Library/Application Support/PMForge`
+install's encrypted `.pmforge` project file untouched — but did not
+verify that an *installed pre-rename PMForge build* can successfully
+discover and apply a post-rename GoPMgr release through
+`internal/update`. GitHub's repo-rename redirect likely covers this,
+but it hasn't been exercised end-to-end.
+
 ## What Is Not on the Roadmap
 
 Anything that violates the principles in `VISION.md`. Specifically: mandatory
