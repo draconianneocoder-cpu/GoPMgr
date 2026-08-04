@@ -3,89 +3,87 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 
 GoPMgr Full Logo - Light Mode
+Bobby Beaver mascot inspired by the Go gopher created by Renee French (CC BY 4.0).
 -->
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200" viewBox="0 0 800 200" aria-labelledby="title desc">
-  <title id="title">GoPMgr Logo - Light Mode</title>
-  <desc id="desc">GoPMgr local-first project manager logo: beaver-analyst mascot with a magnifying glass over a rising bar chart, beside dark text on a mint background.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 280" width="800" height="280" role="img" aria-label="GoPMgr Logo Light - Bobby Beaver">
+  <title>GoPMgr Logo - Light Mode</title>
+  <desc>Bobby Beaver examining a rising project chart with magnifying glass, light theme</desc>
 
-  <rect width="800" height="200" fill="#DCEEE6"/>
+  <!-- Soft background -->
+  <rect width="800" height="280" rx="24" fill="#F8FAFC"/>
 
-  <!-- Network-node decoration, upper right of mark -->
-  <g stroke="#8FCBAE" stroke-width="1.6" opacity="0.75" transform="translate(15,8)">
-    <line x1="150" y1="26" x2="168" y2="14"/>
-    <line x1="150" y1="26" x2="150" y2="46"/>
-    <line x1="150" y1="46" x2="172" y2="52"/>
-  </g>
-  <g fill="#8FCBAE" transform="translate(15,8)">
-    <circle cx="150" cy="26" r="4"/>
-    <circle cx="168" cy="14" r="3"/>
-    <circle cx="150" cy="46" r="3"/>
-    <circle cx="172" cy="52" r="3"/>
+  <!-- Decorative nodes -->
+  <g stroke="#86EFAC" stroke-width="2" fill="#86EFAC" opacity="0.7">
+    <circle cx="195" cy="48" r="5"/>
+    <circle cx="220" cy="32" r="4"/>
+    <circle cx="210" cy="70" r="4"/>
+    <line x1="195" y1="48" x2="220" y2="32"/>
+    <line x1="195" y1="48" x2="210" y2="70"/>
   </g>
 
-  <!-- Mascot mark -->
-  <g transform="translate(4,0)">
-    <!-- Tail -->
-    <path d="M 44 138 C 24 134 16 118 24 104 C 34 112 44 120 54 130 Z" fill="#3E4A5E"/>
-    <g stroke="#2E3849" stroke-width="1.4" opacity="0.6">
-      <line x1="30" y1="112" x2="42" y2="122"/>
-      <line x1="26" y1="120" x2="40" y2="130"/>
-    </g>
+  <!-- Beaver body -->
+  <ellipse cx="140" cy="195" rx="70" ry="58" fill="#5B7C99"/>
+  <ellipse cx="140" cy="208" rx="48" ry="38" fill="#7BA3C4"/>
 
-    <!-- Body -->
-    <ellipse cx="98" cy="150" rx="46" ry="38" fill="#5B6B85"/>
-    <ellipse cx="98" cy="158" rx="30" ry="24" fill="#8FB9AC"/>
+  <!-- Feet -->
+  <ellipse cx="110" cy="250" rx="18" ry="10" fill="#334155"/>
+  <ellipse cx="170" cy="250" rx="18" ry="10" fill="#334155"/>
 
-    <!-- Feet -->
-    <ellipse cx="76" cy="186" rx="12" ry="7" fill="#2E3849"/>
-    <ellipse cx="118" cy="186" rx="12" ry="7" fill="#2E3849"/>
+  <!-- Tail -->
+  <path d="M75 200 Q40 190 45 160 Q70 175 85 195 Z" fill="#475569"/>
+  <path d="M55 175 L70 190 M50 185 L68 200" stroke="#334155" stroke-width="2.5" fill="none"/>
 
-    <!-- Left arm -->
-    <path d="M 58 140 C 48 148 46 160 54 168 C 60 162 64 152 66 144 Z" fill="#5B6B85"/>
+  <!-- Left arm -->
+  <path d="M80 175 Q60 190 70 215 Q90 200 95 180 Z" fill="#5B7C99"/>
 
-    <!-- Head -->
-    <circle cx="100" cy="98" r="42" fill="#697A96"/>
+  <!-- Head -->
+  <circle cx="145" cy="115" r="62" fill="#5B7C99"/>
 
-    <!-- Ears -->
-    <circle cx="66" cy="66" r="12" fill="#3E4A5E"/>
-    <circle cx="134" cy="66" r="12" fill="#3E4A5E"/>
-    <circle cx="66" cy="66" r="6" fill="#5B6B85"/>
-    <circle cx="134" cy="66" r="6" fill="#5B6B85"/>
+  <!-- Ears -->
+  <ellipse cx="100" cy="70" rx="18" ry="22" fill="#5B7C99"/>
+  <ellipse cx="100" cy="70" rx="10" ry="12" fill="#FDA4AF"/>
+  <ellipse cx="190" cy="70" rx="18" ry="22" fill="#5B7C99"/>
+  <ellipse cx="190" cy="70" rx="10" ry="12" fill="#FDA4AF"/>
 
-    <!-- Cheeks -->
-    <circle cx="70" cy="108" r="11" fill="#F3AFB6" opacity="0.85"/>
-    <circle cx="130" cy="108" r="11" fill="#F3AFB6" opacity="0.85"/>
+  <!-- Snout -->
+  <ellipse cx="145" cy="135" rx="32" ry="24" fill="#E7D5B8"/>
 
-    <!-- Eyes -->
-    <ellipse cx="82" cy="90" rx="10" ry="12" fill="#FFFFFF"/>
-    <ellipse cx="118" cy="90" rx="10" ry="12" fill="#FFFFFF"/>
-    <circle cx="83" cy="93" r="5.5" fill="#1B2430"/>
-    <circle cx="119" cy="93" r="5.5" fill="#1B2430"/>
-    <circle cx="85" cy="90" r="1.8" fill="#FFFFFF"/>
-    <circle cx="121" cy="90" r="1.8" fill="#FFFFFF"/>
+  <!-- Cheeks -->
+  <circle cx="108" cy="125" r="14" fill="#FDA4AF" opacity="0.85"/>
+  <circle cx="182" cy="125" r="14" fill="#FDA4AF" opacity="0.85"/>
 
-    <!-- Nose + teeth -->
-    <ellipse cx="100" cy="108" rx="6" ry="4.5" fill="#2E3849"/>
-    <rect x="94" y="114" width="12" height="10" rx="2" fill="#FFFFFF"/>
-    <line x1="100" y1="114" x2="100" y2="124" stroke="#D8DCE2" stroke-width="1"/>
+  <!-- Eyes -->
+  <ellipse cx="125" cy="105" rx="13" ry="15" fill="#FFFFFF"/>
+  <ellipse cx="165" cy="105" rx="13" ry="15" fill="#FFFFFF"/>
+  <circle cx="127" cy="108" r="7" fill="#1E293B"/>
+  <circle cx="167" cy="108" r="7" fill="#1E293B"/>
+  <circle cx="124" cy="104" r="2.5" fill="#FFFFFF"/>
+  <circle cx="164" cy="104" r="2.5" fill="#FFFFFF"/>
 
-    <!-- Chart card -->
-    <rect x="118" y="118" width="58" height="52" rx="6" fill="#FFFFFF" stroke="#1B2430" stroke-width="2.5"/>
-    <line x1="127" y1="130" x2="151" y2="130" stroke="#B7BFCB" stroke-width="3" stroke-linecap="round"/>
-    <line x1="127" y1="138" x2="145" y2="138" stroke="#B7BFCB" stroke-width="3" stroke-linecap="round"/>
-    <rect x="127" y="150" width="8" height="12" fill="#4CAF6B"/>
-    <rect x="139" y="144" width="8" height="18" fill="#E8792E"/>
-    <rect x="151" y="136" width="8" height="26" fill="#4CAF6B"/>
-    <polyline points="127,148 139,140 151,132 163,116" fill="none" stroke="#E8792E" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <polygon points="163,116 156,120 166,124" fill="#E8792E"/>
+  <!-- Nose + teeth -->
+  <ellipse cx="145" cy="130" rx="8" ry="6" fill="#1E293B"/>
+  <rect x="137" y="138" width="7" height="12" rx="1.5" fill="#FFFFFF"/>
+  <rect x="146" y="138" width="7" height="12" rx="1.5" fill="#FFFFFF"/>
 
-    <!-- Right arm + magnifying glass -->
-    <path d="M 116 138 C 128 132 138 130 146 132 C 140 140 132 146 122 150 Z" fill="#697A96"/>
-    <circle cx="150" cy="126" r="15" fill="#B9E7EA" stroke="#1B2430" stroke-width="3.5"/>
-    <path d="M 144 120 A 9 9 0 0 1 156 120" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
-    <rect x="158" y="136" width="7" height="20" rx="3" fill="#1B2430" transform="rotate(38 161.5 146)"/>
-  </g>
+  <!-- Chart card -->
+  <rect x="185" y="145" width="95" height="85" rx="10" fill="#FFFFFF" stroke="#1E293B" stroke-width="4"/>
+  <!-- chart lines -->
+  <line x1="200" y1="162" x2="250" y2="162" stroke="#94A3B8" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="200" y1="175" x2="240" y2="175" stroke="#94A3B8" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- bars -->
+  <rect x="200" y="200" width="12" height="18" fill="#22C55E"/>
+  <rect x="218" y="190" width="12" height="28" fill="#F97316"/>
+  <rect x="236" y="178" width="12" height="40" fill="#22C55E"/>
+  <!-- trend -->
+  <path d="M200 195 L220 182 L240 168 L265 148" fill="none" stroke="#F97316" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <polygon points="265,148 255,152 268,160" fill="#F97316"/>
 
-  <!-- GoPMgr text -->
-  <text x="225" y="142" font-family="'Arial Black', system-ui, sans-serif" font-size="98" font-weight="900" fill="#1B2430" letter-spacing="-3.5px">GoPMgr</text>
+  <!-- Right arm + magnifying glass -->
+  <path d="M175 165 Q205 155 220 160 Q205 175 185 185 Z" fill="#5B7C99"/>
+  <circle cx="225" cy="150" r="22" fill="#BAE6FD" stroke="#1E293B" stroke-width="5"/>
+  <path d="M215 140 A 12 12 0 0 1 235 140" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+  <rect x="238" y="165" width="9" height="28" rx="4" fill="#1E293B" transform="rotate(35 242 179)"/>
+
+  <!-- Wordmark -->
+  <text x="310" y="175" font-family="Arial Black, system-ui, sans-serif" font-size="92" font-weight="900" fill="#1E293B" letter-spacing="-4">GoPMgr</text>
 </svg>

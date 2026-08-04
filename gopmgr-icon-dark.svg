@@ -2,18 +2,19 @@
 SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 
-GoPMgr App Icon - Dark Mode (1024x1024)
+GoPMgr App Icon - Dark Mode (512x512)
+Bobby Beaver mascot inspired by the Go gopher created by Renee French (CC BY 4.0).
 -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 200 200" aria-labelledby="title desc">
-  <title id="title">GoPMgr App Icon - Dark Mode</title>
-  <desc id="desc">GoPMgr beaver-analyst mascot with a magnifying glass over a rising bar chart, glowing cyan on a deep navy rounded-square background.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="GoPMgr Icon Dark - Bobby Beaver">
+  <title>GoPMgr App Icon - Dark</title>
+  <desc>Bobby Beaver looking through magnifying glass at rising chart, dark theme</desc>
 
   <defs>
-    <clipPath id="rounded-dark">
-      <rect x="0" y="0" width="200" height="200" rx="36"/>
+    <clipPath id="rounded">
+      <rect width="512" height="512" rx="96"/>
     </clipPath>
-    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur stdDeviation="2.2" result="blur"/>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
@@ -21,81 +22,72 @@ GoPMgr App Icon - Dark Mode (1024x1024)
     </filter>
   </defs>
 
-  <g clip-path="url(#rounded-dark)">
-    <rect width="200" height="200" fill="#0A2540"/>
-    <rect width="200" height="200" fill="none" stroke="#00D4FF" stroke-width="6" opacity="0.55"/>
+  <g clip-path="url(#rounded)">
+    <rect width="512" height="512" fill="#0F172A"/>
+    <rect width="512" height="512" fill="none" stroke="#22D3EE" stroke-width="10" opacity="0.5"/>
 
-    <!-- Network-node decoration, upper right (glowing) -->
-    <g filter="url(#glow)">
-      <g stroke="#3FE0E8" stroke-width="1.6" opacity="0.85">
-        <line x1="150" y1="26" x2="168" y2="14"/>
-        <line x1="150" y1="26" x2="150" y2="46"/>
-        <line x1="150" y1="46" x2="172" y2="52"/>
-      </g>
-      <circle cx="150" cy="26" r="4" fill="#3FE0E8"/>
-      <circle cx="168" cy="14" r="3" fill="#3FE0E8"/>
-      <circle cx="150" cy="46" r="3" fill="#3FE0E8"/>
-      <circle cx="172" cy="52" r="3" fill="#3FE0E8"/>
-    </g>
-
-    <!-- Tail -->
-    <path d="M 44 138 C 24 134 16 118 24 104 C 34 112 44 120 54 130 Z" fill="#232C3D"/>
-    <g stroke="#141B27" stroke-width="1.4" opacity="0.7">
-      <line x1="30" y1="112" x2="42" y2="122"/>
-      <line x1="26" y1="120" x2="40" y2="130"/>
+    <!-- Network nodes -->
+    <g filter="url(#glow)" stroke="#22D3EE" stroke-width="3" fill="#22D3EE" opacity="0.85">
+      <circle cx="380" cy="90" r="8"/>
+      <circle cx="430" cy="60" r="6"/>
+      <circle cx="420" cy="130" r="6"/>
+      <circle cx="460" cy="110" r="5"/>
+      <line x1="380" y1="90" x2="430" y2="60"/>
+      <line x1="380" y1="90" x2="420" y2="130"/>
+      <line x1="420" y1="130" x2="460" y2="110"/>
     </g>
 
     <!-- Body -->
-    <ellipse cx="98" cy="150" rx="46" ry="38" fill="#3E4A5E"/>
-    <ellipse cx="98" cy="158" rx="30" ry="24" fill="#4E7B76"/>
+    <ellipse cx="256" cy="340" rx="140" ry="120" fill="#475569"/>
+    <ellipse cx="256" cy="365" rx="95" ry="75" fill="#64748B"/>
 
     <!-- Feet -->
-    <ellipse cx="76" cy="186" rx="12" ry="7" fill="#141B27"/>
-    <ellipse cx="118" cy="186" rx="12" ry="7" fill="#141B27"/>
+    <ellipse cx="190" cy="455" rx="35" ry="18" fill="#1E293B"/>
+    <ellipse cx="322" cy="455" rx="35" ry="18" fill="#1E293B"/>
 
-    <!-- Left arm resting on body -->
-    <path d="M 58 140 C 48 148 46 160 54 168 C 60 162 64 152 66 144 Z" fill="#3E4A5E"/>
+    <!-- Tail -->
+    <path d="M130 360 Q60 340 70 280 Q120 310 150 350 Z" fill="#334155"/>
 
     <!-- Head -->
-    <circle cx="100" cy="98" r="42" fill="#4B5A72"/>
+    <circle cx="256" cy="200" r="125" fill="#64748B"/>
 
     <!-- Ears -->
-    <circle cx="66" cy="66" r="12" fill="#232C3D"/>
-    <circle cx="134" cy="66" r="12" fill="#232C3D"/>
-    <circle cx="66" cy="66" r="6" fill="#3E4A5E"/>
-    <circle cx="134" cy="66" r="6" fill="#3E4A5E"/>
+    <ellipse cx="160" cy="110" rx="35" ry="42" fill="#475569"/>
+    <ellipse cx="160" cy="110" rx="18" ry="22" fill="#FB7185"/>
+    <ellipse cx="352" cy="110" rx="35" ry="42" fill="#475569"/>
+    <ellipse cx="352" cy="110" rx="18" ry="22" fill="#FB7185"/>
 
     <!-- Cheeks -->
-    <circle cx="70" cy="108" r="11" fill="#D98A93" opacity="0.8"/>
-    <circle cx="130" cy="108" r="11" fill="#D98A93" opacity="0.8"/>
+    <circle cx="175" cy="220" r="28" fill="#FB7185" opacity="0.8"/>
+    <circle cx="337" cy="220" r="28" fill="#FB7185" opacity="0.8"/>
+
+    <!-- Snout -->
+    <ellipse cx="256" cy="245" rx="55" ry="40" fill="#D6BC9A"/>
 
     <!-- Eyes -->
-    <ellipse cx="82" cy="90" rx="10" ry="12" fill="#F2F6FA"/>
-    <ellipse cx="118" cy="90" rx="10" ry="12" fill="#F2F6FA"/>
-    <circle cx="83" cy="93" r="5.5" fill="#0A0F16"/>
-    <circle cx="119" cy="93" r="5.5" fill="#0A0F16"/>
-    <circle cx="85" cy="90" r="1.8" fill="#FFFFFF"/>
-    <circle cx="121" cy="90" r="1.8" fill="#FFFFFF"/>
+    <ellipse cx="215" cy="185" rx="28" ry="32" fill="#F1F5F9"/>
+    <ellipse cx="297" cy="185" rx="28" ry="32" fill="#F1F5F9"/>
+    <circle cx="218" cy="190" r="15" fill="#0F172A"/>
+    <circle cx="300" cy="190" r="15" fill="#0F172A"/>
+    <circle cx="212" cy="182" r="5" fill="#FFFFFF"/>
+    <circle cx="294" cy="182" r="5" fill="#FFFFFF"/>
 
     <!-- Nose + teeth -->
-    <ellipse cx="100" cy="108" rx="6" ry="4.5" fill="#141B27"/>
-    <rect x="94" y="114" width="12" height="10" rx="2" fill="#F2F6FA"/>
-    <line x1="100" y1="114" x2="100" y2="124" stroke="#B7BFCB" stroke-width="1"/>
+    <ellipse cx="256" cy="235" rx="14" ry="10" fill="#0F172A"/>
+    <rect x="242" y="250" width="12" height="20" rx="3" fill="#F1F5F9"/>
+    <rect x="258" y="250" width="12" height="20" rx="3" fill="#F1F5F9"/>
 
-    <!-- Chart card -->
-    <rect x="118" y="118" width="58" height="52" rx="6" fill="#0F1826" stroke="#3FE0E8" stroke-width="2.5" filter="url(#glow)"/>
-    <line x1="127" y1="130" x2="151" y2="130" stroke="#5B6B85" stroke-width="3" stroke-linecap="round"/>
-    <line x1="127" y1="138" x2="145" y2="138" stroke="#5B6B85" stroke-width="3" stroke-linecap="round"/>
-    <rect x="127" y="150" width="8" height="12" fill="#4CD97D"/>
-    <rect x="139" y="144" width="8" height="18" fill="#FF9142"/>
-    <rect x="151" y="136" width="8" height="26" fill="#4CD97D"/>
-    <polyline points="127,148 139,140 151,132 163,116" fill="none" stroke="#FF9142" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <polygon points="163,116 156,120 166,124" fill="#FF9142"/>
+    <!-- Chart -->
+    <rect x="185" y="320" width="140" height="100" rx="12" fill="#1E293B" stroke="#22D3EE" stroke-width="5" filter="url(#glow)"/>
+    <rect x="205" y="380" width="20" height="30" fill="#34D399"/>
+    <rect x="235" y="360" width="20" height="50" fill="#FB923C"/>
+    <rect x="265" y="345" width="20" height="65" fill="#34D399"/>
+    <path d="M210 375 L240 350 L270 335 L300 310" fill="none" stroke="#FB923C" stroke-width="6" stroke-linecap="round"/>
+    <polygon points="300,310 288,315 305,325" fill="#FB923C"/>
 
-    <!-- Right arm + magnifying glass, drawn over the chart card -->
-    <path d="M 116 138 C 128 132 138 130 146 132 C 140 140 132 146 122 150 Z" fill="#4B5A72"/>
-    <circle cx="150" cy="126" r="15" fill="#0F1826" stroke="#3FE0E8" stroke-width="3.5" filter="url(#glow)"/>
-    <path d="M 144 120 A 9 9 0 0 1 156 120" fill="none" stroke="#8FF3F7" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
-    <rect x="158" y="136" width="7" height="20" rx="3" fill="#0A0F16" transform="rotate(38 161.5 146)"/>
+    <!-- Magnifying glass -->
+    <circle cx="256" cy="200" r="70" fill="none" stroke="#22D3EE" stroke-width="14" filter="url(#glow)"/>
+    <circle cx="256" cy="200" r="55" fill="#22D3EE" fill-opacity="0.15"/>
+    <path d="M300 245 L340 300" stroke="#22D3EE" stroke-width="16" stroke-linecap="round"/>
   </g>
 </svg>
