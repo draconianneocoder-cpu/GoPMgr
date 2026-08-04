@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Build a macOS .dmg (drag-to-Applications) from the Wails .app under
@@ -26,7 +26,7 @@ if [ -z "$app_binary" ] || [ ! -f "$app_binary" ]; then
 	echo "package-macos: no executable found in $app/Contents/MacOS." >&2
 	exit 1
 fi
-if [ "${PMFORGE_PACKAGE_LAYOUT_TEST:-0}" != "1" ]; then
+if [ "${GOPMGR_PACKAGE_LAYOUT_TEST:-0}" != "1" ]; then
 	scripts/verify-duckdb-linked.sh "$app_binary"
 fi
 product_name="$(grep -oE '"productName" *: *"[^"]+"' wails.json | sed -E 's/.*"([^"]+)"$/\1/' || true)"
@@ -34,10 +34,10 @@ product_name="${product_name:-$(basename "$app" .app)}"
 visible_app="${product_name}.app"
 
 mkdir -p build/packages
-dmg="build/packages/PMForge-${VERSION}-arm64.dmg"
+dmg="build/packages/GoPMgr-${VERSION}-arm64.dmg"
 rm -f "$dmg"
 
-staging="$(mktemp -d "${TMPDIR:-/tmp}/pmforge-dmg.XXXXXX")"
+staging="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-dmg.XXXXXX")"
 trap 'rm -rf "$staging"' EXIT
 staged_app="$staging/$visible_app"
 cp -R "$app" "$staged_app"
@@ -63,17 +63,17 @@ create_hdiutil_dmg() {
 	stage_dmg_root "$dmg_root" yes
 	# Detach a stale volume left mounted by an interrupted earlier run so
 	# hdiutil can't fail with "Resource busy".
-	local mounted="/Volumes/PMForge ${VERSION}"
+	local mounted="/Volumes/GoPMgr ${VERSION}"
 	if [ -d "$mounted" ]; then
 		hdiutil detach "$mounted" -force >/dev/null 2>&1 || true
 	fi
-	COPYFILE_DISABLE=1 hdiutil create -volname "PMForge ${VERSION}" -srcfolder "$dmg_root" -ov -format UDZO "$dmg"
+	COPYFILE_DISABLE=1 hdiutil create -volname "GoPMgr ${VERSION}" -srcfolder "$dmg_root" -ov -format UDZO "$dmg"
 }
 
 # create_fancy_dmg lays out a Finder window (icon positions + Applications
 # drop target) via create-dmg. That tool drives Finder through AppleScript,
 # which is why it fails, hangs, or reports "Resource busy" on headless CI and
-# some interactive Macs. It is therefore OPT-IN (PMFORGE_FANCY_DMG=1) and
+# some interactive Macs. It is therefore OPT-IN (GOPMGR_FANCY_DMG=1) and
 # never the default; a hang is bounded by gtimeout when coreutils is present.
 create_fancy_dmg() {
 	local create_dmg_root="$staging/create-dmg-root"
@@ -83,7 +83,7 @@ create_fancy_dmg() {
 		runner=(gtimeout 180 create-dmg)
 	fi
 	"${runner[@]}" \
-		--volname "PMForge ${VERSION}" \
+		--volname "GoPMgr ${VERSION}" \
 		--window-size 640 360 \
 		--icon-size 110 \
 		--icon "$visible_app" 165 190 \
@@ -96,16 +96,16 @@ if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
 	echo "package-macos: codesigning $staged_app ..."
 	codesign --deep --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "$staged_app"
 	# Notarize + staple once credentials are configured:
-	#   xcrun notarytool submit "$dmg" --keychain-profile "PMFORGE_NOTARY" --wait
+	#   xcrun notarytool submit "$dmg" --keychain-profile "GOPMGR_NOTARY" --wait
 	#   xcrun stapler staple "$dmg"
 fi
 
 # Reliable by default: hdiutil is built in, non-interactive, and always
 # produces a drag-to-Applications .dmg (the staged root already carries the
 # /Applications symlink). Opt into the prettier create-dmg Finder layout with
-# PMFORGE_FANCY_DMG=1; if that flaky path fails or times out, fall back to
+# GOPMGR_FANCY_DMG=1; if that flaky path fails or times out, fall back to
 # hdiutil so packaging still succeeds.
-if [ "${PMFORGE_FANCY_DMG:-0}" = "1" ] && command -v create-dmg >/dev/null 2>&1; then
+if [ "${GOPMGR_FANCY_DMG:-0}" = "1" ] && command -v create-dmg >/dev/null 2>&1; then
 	if ! create_fancy_dmg; then
 		echo "package-macos: create-dmg failed or timed out; using hdiutil." >&2
 		create_hdiutil_dmg

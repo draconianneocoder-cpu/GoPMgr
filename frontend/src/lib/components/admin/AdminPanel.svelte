@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -102,11 +102,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   function downloadCodes() {
-    const body = `PMForge recovery codes for ${createdFor}\n\n${createdCodes.join('\n')}\n`;
+    const body = `GoPMgr recovery codes for ${createdFor}\n\n${createdCodes.join('\n')}\n`;
     const url = URL.createObjectURL(new Blob([body], { type: 'text/plain' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pmforge-recovery-codes-${createdFor}.txt`;
+    a.download = `gopmgr-recovery-codes-${createdFor}.txt`;
     document.body.appendChild(a);
     a.click();
     a.remove();

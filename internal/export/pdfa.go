@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package export
@@ -6,7 +6,7 @@ package export
 import (
 	"github.com/go-pdf/fpdf"
 
-	"pmforge/internal/pdfmeta"
+	"gopmgr/internal/pdfmeta"
 )
 
 // PDF/A-3 metadata helpers (fpdf-side adapter).
@@ -34,7 +34,7 @@ type XMPSpec = pdfmeta.XMPSpec
 func ApplyPDFAMetadata(pdf *fpdf.Fpdf, spec XMPSpec) {
 	pdfmeta.ApplyPDFAMetadata(pdf, spec)
 	if pdf != nil {
-		pdf.SetCreator("PMForge "+exportVersion(), true)
+		pdf.SetCreator("GoPMgr "+exportVersion(), true)
 	}
 }
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Validate the source-owned Windows packaging inputs without pretending a
@@ -43,7 +43,7 @@ fi
 require_literal "$PROJECT_NSI" '!include "wails_tools.nsh"' \
 	"project.nsi must consume Wails' pinned generated macro file."
 require_literal "$PROJECT_NSI" '!define MUI_WELCOMEPAGE_TITLE "Install ${INFO_PRODUCTNAME}"' \
-	"project.nsi must retain PMForge-owned welcome branding."
+	"project.nsi must retain GoPMgr-owned welcome branding."
 require_literal "$PROJECT_NSI" '!insertmacro MUI_PAGE_LICENSE "..\..\..\LICENSES\GPL-3.0-or-later.txt"' \
 	"project.nsi must display the shipped GPL license."
 require_literal "$PROJECT_NSI" '!insertmacro wails.files' \
@@ -67,8 +67,8 @@ require_literal "$INFO_JSON" '"ProductName": "{{.Info.ProductName}}"' \
 node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$INFO_JSON" ||
 	{ echo "windows-installer-scaffold: info.json is not valid JSON." >&2; fail=1; }
 
-require_literal "$MANIFEST" 'name="dev.pmforge.{{.Name}}"' \
-	"Windows manifest must use PMForge's stable identity namespace."
+require_literal "$MANIFEST" 'name="dev.gopmgr.{{.Name}}"' \
+	"Windows manifest must use GoPMgr's stable identity namespace."
 require_literal "$MANIFEST" 'permonitorv2,permonitor' \
 	"Windows manifest must retain per-monitor DPI awareness."
 
@@ -86,9 +86,9 @@ require_literal "$WORKFLOW" 'bash scripts/validate-windows-nsis-template.sh' \
 	"Windows release job must compile the NSIS template fixture before Wails packaging."
 require_literal "$WORKFLOW" 'wails build -platform windows/amd64 -tags duckdb' \
 	"Windows installer must embed DuckDB analytics."
-require_literal "$WORKFLOW" '-ldflags "$PMFORGE_RELEASE_LDFLAGS" -nsis' \
+require_literal "$WORKFLOW" '-ldflags "$GOPMGR_RELEASE_LDFLAGS" -nsis' \
 	"Windows installer must embed the reviewed release identity before NSIS packaging."
-require_literal "$WORKFLOW" 'bash scripts/verify-duckdb-linked.sh build/bin/pmforge.exe' \
+require_literal "$WORKFLOW" 'bash scripts/verify-duckdb-linked.sh build/bin/gopmgr.exe' \
 	"Windows release job must verify DuckDB linkage before upload."
 
 # GITHUB Actions executes the run block in source order. Guard that ordering so
@@ -96,7 +96,7 @@ require_literal "$WORKFLOW" 'bash scripts/verify-duckdb-linked.sh build/bin/pmfo
 check_line="$(awk '/bash scripts\/check-windows-installer-scaffold\.sh/ { print NR; exit }' "$WORKFLOW")"
 validate_line="$(awk '/bash scripts\/validate-windows-nsis-template\.sh/ { print NR; exit }' "$WORKFLOW")"
 build_line="$(awk '/wails build -platform windows\/amd64 -tags duckdb/ { print NR; exit }' "$WORKFLOW")"
-link_line="$(awk '/bash scripts\/verify-duckdb-linked\.sh build\/bin\/pmforge\.exe/ { print NR; exit }' "$WORKFLOW")"
+link_line="$(awk '/bash scripts\/verify-duckdb-linked\.sh build\/bin\/gopmgr\.exe/ { print NR; exit }' "$WORKFLOW")"
 if [ -n "$check_line" ] && [ -n "$validate_line" ] && [ -n "$build_line" ] && [ -n "$link_line" ] &&
 	{
 		[ "$check_line" -ge "$validate_line" ] ||

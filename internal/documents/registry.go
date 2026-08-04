@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package documents owns the 25 PMForge document types: their
+// Package documents owns the 25 GoPMgr document types: their
 // taxonomy, JSON schemas, default content templates, and the
 // validation / rendering plumbing that turns a row in db.documents
 // into a polished PDF/DOCX/ODT.

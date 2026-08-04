@@ -1,10 +1,12 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Prepare a recoverable first-launch test without deleting PMForge data. The
 # active PMForge directory is renamed beside itself, so reopening the app
 # creates a fresh system.db while the complete prior state remains restorable.
+# The data directory itself is still named "PMForge" — GoPMgr's previous
+# name — for compatibility with existing installs; see users.DefaultRootDir.
 
 set -euo pipefail
 
@@ -14,7 +16,7 @@ Usage:
   scripts/reset-clean-test.sh [--data-root /absolute/path/to/PMForge]
   scripts/reset-clean-test.sh [--data-root /absolute/path/to/PMForge] --restore BACKUP
 
-Quit PMForge before running this command.
+Quit GoPMgr before running this command.
 
 Reset moves the active PMForge data directory to a timestamped sibling backup.
 Restore requires the active directory to be absent and moves the selected
@@ -27,7 +29,7 @@ fail() {
 	exit 1
 }
 
-data_root="${PMFORGE_DATA_ROOT:-}"
+data_root="${GOPMGR_DATA_ROOT:-}"
 restore_path=""
 
 while (($# > 0)); do
@@ -78,14 +80,14 @@ data_root="$data_parent/PMForge"
 
 # Moving a live WAL-mode database risks an inconsistent backup. Exact process
 # names cover the packaged binary and development builds without matching this
-# script or unrelated paths containing the word "pmforge".
+# script or unrelated paths containing the word "gopmgr".
 if command -v pgrep >/dev/null 2>&1 &&
-	{ pgrep -x pmforge >/dev/null 2>&1 || pgrep -x PMForge >/dev/null 2>&1; }; then
-	fail "PMForge is running; quit it before resetting or restoring data"
+	{ pgrep -x gopmgr >/dev/null 2>&1 || pgrep -x GoPMgr >/dev/null 2>&1; }; then
+	fail "GoPMgr is running; quit it before resetting or restoring data"
 fi
 if [[ -e "$data_root/system.db" ]] && command -v lsof >/dev/null 2>&1 &&
 	lsof "$data_root/system.db" >/dev/null 2>&1; then
-	fail "system.db is open; quit PMForge before resetting or restoring data"
+	fail "system.db is open; quit GoPMgr before resetting or restoring data"
 fi
 
 if [[ -n "$restore_path" ]]; then
@@ -115,7 +117,7 @@ fi
 
 # The override makes the shell regression deterministic. Validate it as
 # strictly as a generated timestamp so it cannot add path separators.
-timestamp="${PMFORGE_RESET_TIMESTAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"
+timestamp="${GOPMGR_RESET_TIMESTAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"
 [[ "$timestamp" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] ||
 	fail "invalid reset timestamp: $timestamp"
 
@@ -125,4 +127,4 @@ backup="$data_root.clean-test-backup-$timestamp"
 mv "$data_root" "$backup"
 echo "reset-clean-test: clean first-launch state is ready"
 echo "reset-clean-test: backup=$backup"
-echo "reset-clean-test: reopen PMForge to create a fresh administrator"
+echo "reset-clean-test: reopen GoPMgr to create a fresh administrator"

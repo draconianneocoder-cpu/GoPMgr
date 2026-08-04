@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Final release gate. Exits non-zero on any failure so it can be
@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."
 
 GO_PACKAGES=". ./internal/... ./tools/update-manifest"
 
-echo "Running Final Release Gates for PMForge..."
+echo "Running Final Release Gates for GoPMgr..."
 
 # --- 1. Version consistency ------------------------------------------
 APP_VERSION=$(grep -oE 'Version *= *"[^"]+"' internal/cli/parser.go | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
@@ -25,14 +25,14 @@ echo "Versions match: $APP_VERSION"
 # Keep the Wails runtime, build CLI, and current documentation on one pinned
 # version. This is separate from the product-version check above because both
 # values live in go.mod/workflows rather than wails.json.
-if ! PMFORGE_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh >/dev/null; then
+if ! GOPMGR_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh >/dev/null; then
     echo "Wails version consistency failed. Run 'make wails-cli-version' for details."
     exit 1
 fi
 echo "Wails toolchain version verified."
 
 # --- 2. Configuration formats and required structure -----------------
-# Hosted automation reads these files before PMForge can run any recovery
+# Hosted automation reads these files before GoPMgr can run any recovery
 # code. Validate the complete tracked inventory early so malformed YAML/TOML
 # or an unsupported format conversion cannot make later gates disappear.
 if ! make config-check >/dev/null; then
@@ -196,7 +196,7 @@ if [ -f scripts/validate-pdfa.sh ]; then
         echo "PDF/A-3 harness regression failed. Run 'bash scripts/validate-pdfa-lib_test.sh' for details."
         exit 1
     fi
-    if ! PMFORGE_PDFA_STRICT=1 bash scripts/validate-pdfa.sh; then
+    if ! GOPMGR_PDFA_STRICT=1 bash scripts/validate-pdfa.sh; then
         echo "PDF/A-3 validation gate failed. Run 'make check-pdfa' for details."
         exit 1
     fi
@@ -213,4 +213,4 @@ if ! make pades-harness-tests >/dev/null; then
 fi
 echo "PAdES harness regression gate passed."
 
-echo "PMForge is ready for release."
+echo "GoPMgr is ready for release."

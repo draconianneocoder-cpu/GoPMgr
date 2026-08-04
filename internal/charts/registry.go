@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package charts is the taxonomy and dispatch layer for PMForge's 22
+// Package charts is the taxonomy and dispatch layer for GoPMgr's 22
 // chart and diagram types.
 //
 // # Architectural overview

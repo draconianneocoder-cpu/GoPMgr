@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package signing
@@ -24,8 +24,8 @@ import (
 
 	"github.com/digitorus/timestamp"
 
-	pmcrypto "pmforge/internal/crypto"
-	"pmforge/internal/rfc3161"
+	pmcrypto "gopmgr/internal/crypto"
+	"gopmgr/internal/rfc3161"
 )
 
 var (
@@ -283,7 +283,7 @@ func newPAdESTestSigner(t *testing.T) (*pmcrypto.Signer, *x509.Certificate) {
 	now := time.Now().UTC()
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(now.UnixNano()),
-		Subject:      pkix.Name{CommonName: "PMForge PAdES Pipeline Test"},
+		Subject:      pkix.Name{CommonName: "GoPMgr PAdES Pipeline Test"},
 		NotBefore:    now.Add(-time.Hour),
 		NotAfter:     now.Add(time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
@@ -327,7 +327,7 @@ func newPAdESTestTimestampToken(t *testing.T, imprint []byte, generatedAt time.T
 	}
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(generatedAt.UnixNano()),
-		Subject:      pkix.Name{CommonName: "PMForge Pipeline Test TSA"},
+		Subject:      pkix.Name{CommonName: "GoPMgr Pipeline Test TSA"},
 		// digitorus includes a CMS signing-time attribute using the wall clock,
 		// while TSTInfo carries generatedAt. Deriving the test-only certificate
 		// window from both prevents deterministic protocol timestamps from

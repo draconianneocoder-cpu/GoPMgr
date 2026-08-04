@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -16,19 +16,19 @@ import (
 	"strings"
 	"time"
 
-	"pmforge/internal/admin"
-	"pmforge/internal/calendar"
-	"pmforge/internal/charts"
-	"pmforge/internal/charts/dag"
-	"pmforge/internal/charts/matrix"
-	"pmforge/internal/crypto"
-	"pmforge/internal/db"
-	"pmforge/internal/documents"
-	"pmforge/internal/export"
-	"pmforge/internal/kernel"
-	"pmforge/internal/rfc3161"
-	"pmforge/internal/sigma/service"
-	"pmforge/internal/signing"
+	"gopmgr/internal/admin"
+	"gopmgr/internal/calendar"
+	"gopmgr/internal/charts"
+	"gopmgr/internal/charts/dag"
+	"gopmgr/internal/charts/matrix"
+	"gopmgr/internal/crypto"
+	"gopmgr/internal/db"
+	"gopmgr/internal/documents"
+	"gopmgr/internal/export"
+	"gopmgr/internal/kernel"
+	"gopmgr/internal/rfc3161"
+	"gopmgr/internal/sigma/service"
+	"gopmgr/internal/signing"
 )
 
 // =========================================================
@@ -428,7 +428,7 @@ func (a *App) ExportCombinedReportWithOptions(reportTitle, subtitle string, sect
 		return "", err
 	}
 	manifest := reportProvenanceManifest{
-		Format: "pmforge-report-provenance/v1", GeneratedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		Format: "gopmgr-report-provenance/v1", GeneratedAt: time.Now().UTC().Format(time.RFC3339Nano),
 		ReportTitle: reportTitle, Profile: preflight.Profile, Mode: preflight.Mode,
 		Issues: preflight.Issues, Documents: manifestDocs, Charts: manifestCharts,
 	}

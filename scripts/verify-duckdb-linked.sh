@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set -euo pipefail
@@ -9,11 +9,11 @@ binary="${1:-}"
 if [ -z "$binary" ]; then
 	binary="$(find build/bin -path '*.app/Contents/MacOS/*' -type f -perm -111 2>/dev/null | head -1 || true)"
 fi
-if [ -z "$binary" ] && [ -f build/bin/pmforge ]; then
-	binary="build/bin/pmforge"
+if [ -z "$binary" ] && [ -f build/bin/gopmgr ]; then
+	binary="build/bin/gopmgr"
 fi
 if [ -z "$binary" ] || [ ! -f "$binary" ]; then
-	echo "verify-duckdb-linked: PMForge binary not found under build/bin." >&2
+	echo "verify-duckdb-linked: GoPMgr binary not found under build/bin." >&2
 	exit 1
 fi
 

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import tsPlugin from '@typescript-eslint/eslint-plugin';
@@ -19,7 +19,7 @@ export default [
     },
     rules: {
       // These rules became recommended in eslint-plugin-svelte 3. Keep the
-      // established PMForge policy during the toolchain migration; enable and
+      // established GoPMgr policy during the toolchain migration; enable and
       // remediate them in focused follow-up changes instead of rewriting many
       // unrelated components as part of a dependency bump.
       'svelte/no-useless-mustaches': 'off',
@@ -29,7 +29,7 @@ export default [
   },
   {
     // Keep this after the Svelte preset because v3 also matches .svelte.ts
-    // modules; PMForge's rune helper modules are ordinary TypeScript and need
+    // modules; GoPMgr's rune helper modules are ordinary TypeScript and need
     // the TypeScript parser rather than Espree.
     files: ['**/*.ts'],
     languageOptions: {

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package dag
@@ -22,7 +22,7 @@ import (
 //   - Each category contains a list of "Causes" that attach
 //     perpendicularly to its bone.
 //
-// PMForge's representation is intentionally narrative: causes are
+// GoPMgr's representation is intentionally narrative: causes are
 // short text strings rather than nodes of their own, because Ishikawa
 // diagrams are read top-to-bottom, not traversed like a graph.
 

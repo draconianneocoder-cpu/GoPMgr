@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Compile project.nsi with harmless fixture binaries. This proves NSIS syntax
@@ -22,7 +22,7 @@ if [ ! -f "$WAILS_WINDOWS/installer/wails_tools.nsh" ] ||
 	exit 1
 fi
 
-TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/pmforge-nsis-template.XXXXXX")"
+TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-nsis-template.XXXXXX")"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 INSTALLER_DIR="$TEST_ROOT/build/windows/installer"
 mkdir -p "$INSTALLER_DIR/tmp" "$TEST_ROOT/build/bin" "$TEST_ROOT/LICENSES"
@@ -32,13 +32,13 @@ cp "$WAILS_WINDOWS/icon.ico" "$TEST_ROOT/build/windows/icon.ico"
 cp "$ROOT/LICENSES/GPL-3.0-or-later.txt" "$TEST_ROOT/LICENSES/GPL-3.0-or-later.txt"
 
 # Resolve the same Wails project fields used by the real build. Range blocks
-# are empty because PMForge currently declares no file associations/protocols.
+# are empty because GoPMgr currently declares no file associations/protocols.
 sed \
-	-e 's|{{.Name}}|pmforge|g' \
-	-e 's|{{.Info.CompanyName}}|The PMForge Contributors|g' \
-	-e 's|{{.Info.ProductName}}|PMForge|g' \
+	-e 's|{{.Name}}|gopmgr|g' \
+	-e 's|{{.Info.CompanyName}}|The GoPMgr Contributors|g' \
+	-e 's|{{.Info.ProductName}}|GoPMgr|g' \
 	-e 's|{{.Info.ProductVersion}}|1.1.0|g' \
-	-e 's|{{.Info.Copyright}}|Copyright (C) 2026 The PMForge Contributors|g' \
+	-e 's|{{.Info.Copyright}}|Copyright (C) 2026 The GoPMgr Contributors|g' \
 	"$WAILS_WINDOWS/installer/wails_tools.nsh" |
 	awk '
 		/{{range[[:space:]]/ { in_range = 1; next }
@@ -49,14 +49,14 @@ sed \
 # NSIS only embeds these fixtures; they are never executed during compilation.
 # Keep them non-empty because native Windows makensis rejects an empty File
 # input differently from Homebrew NSIS.
-printf 'PMForge WebView bootstrap fixture\n' >"$INSTALLER_DIR/tmp/MicrosoftEdgeWebview2Setup.exe"
-fixture_binary="$TEST_ROOT/build/bin/pmforge.exe"
-printf 'PMForge application fixture\n' >"$fixture_binary"
+printf 'GoPMgr WebView bootstrap fixture\n' >"$INSTALLER_DIR/tmp/MicrosoftEdgeWebview2Setup.exe"
+fixture_binary="$TEST_ROOT/build/bin/gopmgr.exe"
+printf 'GoPMgr application fixture\n' >"$fixture_binary"
 
 # Homebrew NSIS accepts the script-relative POSIX path. Native makensis.exe
 # launched from Git Bash needs an absolute Windows path; cygpath also preserves
 # spaces in the hosted runner's temporary directory.
-nsis_binary_arg="../../bin/pmforge.exe"
+nsis_binary_arg="../../bin/gopmgr.exe"
 if command -v cygpath >/dev/null 2>&1; then
 	nsis_binary_arg="$(cygpath -w "$fixture_binary")"
 fi
@@ -66,7 +66,7 @@ fi
 	makensis -V2 "-DARG_WAILS_AMD64_BINARY=$nsis_binary_arg" project.nsi
 )
 
-output="$TEST_ROOT/build/bin/pmforge-amd64-installer.exe"
+output="$TEST_ROOT/build/bin/gopmgr-amd64-installer.exe"
 if [ ! -s "$output" ]; then
 	echo "validate-windows-nsis-template: makensis did not produce the expected fixture installer." >&2
 	exit 1

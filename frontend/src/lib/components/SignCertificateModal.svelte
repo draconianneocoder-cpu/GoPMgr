@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -230,7 +230,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             placeholder="Optional; blank uses your default GnuPG key"
           />
           <p class="mt-2 text-[11px] text-slate-500">
-            PMForge writes an ASCII-armored detached .asc signature next to the PDF.
+            GoPMgr writes an ASCII-armored detached .asc signature next to the PDF.
           </p>
         </div>
         {:else}

@@ -1,7 +1,7 @@
 {
-  "name": "pmforge-frontend",
+  "name": "gopmgr-frontend",
   "version": "1.1.0",
-  "description": "PMForge Svelte 5 frontend.",
+  "description": "GoPMgr Svelte 5 frontend.",
   "license": "GPL-3.0-or-later",
   "private": true,
   "type": "module",

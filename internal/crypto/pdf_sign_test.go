@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package crypto
@@ -19,7 +19,7 @@ import (
 )
 
 func TestSignPDFCMSRequiresKeyAndCert(t *testing.T) {
-	signer := newTestCMSSigner(t, "PMForge Missing Field Signer")
+	signer := newTestCMSSigner(t, "GoPMgr Missing Field Signer")
 	content := []byte("%PDF-1.7\n% test content\n")
 
 	if _, err := (&Signer{Cert: signer.Cert}).SignPDFCMS(content); err == nil {
@@ -31,8 +31,8 @@ func TestSignPDFCMSRequiresKeyAndCert(t *testing.T) {
 }
 
 func TestSignPDFCMSProducesDetachedVerifiableSignedData(t *testing.T) {
-	signer := newTestCMSSigner(t, "PMForge Test Signer")
-	extraCert := newTestCMSCertificate(t, "PMForge Test Intermediate")
+	signer := newTestCMSSigner(t, "GoPMgr Test Signer")
+	extraCert := newTestCMSCertificate(t, "GoPMgr Test Intermediate")
 	signer.ExtraCerts = []*x509.Certificate{extraCert}
 
 	content := []byte("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n")
@@ -79,7 +79,7 @@ func TestSignPDFCMSProducesDetachedVerifiableSignedData(t *testing.T) {
 }
 
 func TestSignPDFCMSOmitsPAdESBaselineBSigningTime(t *testing.T) {
-	signer := newTestCMSSigner(t, "PMForge PAdES Baseline B Signer")
+	signer := newTestCMSSigner(t, "GoPMgr PAdES Baseline B Signer")
 	content := []byte("%PDF-1.7\n% PAdES baseline-B signed sample\n")
 
 	cms, err := signer.SignPDFCMS(content)

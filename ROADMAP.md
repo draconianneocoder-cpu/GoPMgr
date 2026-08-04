@@ -1,18 +1,18 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
-# PMForge Roadmap
+# GoPMgr Roadmap
 
 This document is the public-facing roadmap summary. The full strategic plan,
 RICE scores, dependency evaluations, and implementation detail are in
-`PMForge-Strategic-Roadmap-2026.docx` at the repository root. Architecture
+`GoPMgr-Strategic-Roadmap-2026.docx` at the repository root. Architecture
 decisions are in `docs/design/ADR-*.md`.
 
 ## Current Development State (1.1.0 line)
 
-PMForge ships with a kernel that performs CPM scheduling, Earned Value
+GoPMgr ships with a kernel that performs CPM scheduling, Earned Value
 Management (BAC/PV/EV/AC/SV/CV/SPI/CPI/EAC/ETC/VAC), baselines, anchor
 scheduling, basic resource levelling, and typed dependency links. The
 frontend covers 22 chart types, 25 document kinds, Agile and Six Sigma
@@ -81,7 +81,7 @@ idle gaps, while ordinary tasks retain linear ES-to-EF accrual.
 **What-If / Scenario Analysis** (RICE 144)
 Fork a named scenario from the current plan, apply changes, and compute the
 resulting CPM/EVM deltas without modifying the live project. Scenarios live
-in the `.pmforge` SQLite file as first-class rows alongside baselines.
+in the `.gopmgr` SQLite file as first-class rows alongside baselines.
 
 **Richer Audit Trail + PAdES Timestamping** (RICE 120)
 Append-only event log in `internal/audit` with structured fields (actor,
@@ -132,11 +132,11 @@ target: 10 000+ tasks at 60 fps), Local AI via `github.com/ollama/ollama/api`
 Local Collaboration (read/write to a Syncthing-managed shared folder — see
 note below), and a Mobile Companion web view.
 
-**Local Collaboration note:** PMForge must acquire an exclusive SQLite lock
+**Local Collaboration note:** GoPMgr must acquire an exclusive SQLite lock
 before opening a project and must release it on close. The sync folder must
-not be transferred by Syncthing while PMForge holds the lock. The
-recommended user workflow is: close the project in PMForge, allow Syncthing
-to sync, reopen on the other machine. PMForge will detect and warn on
+not be transferred by Syncthing while GoPMgr holds the lock. The
+recommended user workflow is: close the project in GoPMgr, allow Syncthing
+to sync, reopen on the other machine. GoPMgr will detect and warn on
 concurrent-open conflicts detected via the WAL/SHM presence heuristic.
 Merge conflict resolution of concurrent edits is out of scope; the model is
 "one writer at a time."
@@ -168,7 +168,7 @@ without justification; no archived libraries.
 
 **GitHub Security Advisories** — enable via repo Settings → Security →
 Advisories. This cannot be automated. Without it, Dependabot and the
-GitHub security advisory feed will not surface CVEs against PMForge's
+GitHub security advisory feed will not surface CVEs against GoPMgr's
 dependency tree in the repository UI.
 
 ## What Is Not on the Roadmap

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package rfc3161
@@ -502,7 +502,7 @@ func createTimestampResponseWithEKU(
 	}
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(42),
-		Subject:      pkix.Name{CommonName: "PMForge Test TSA"},
+		Subject:      pkix.Name{CommonName: "GoPMgr Test TSA"},
 		// The timestamp package signs its CMS attributes at wall-clock time,
 		// while TSTInfo uses generatedAt. Deriving the validity window from both
 		// prevents a fixed protocol timestamp from becoming an expiring test

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -11,16 +11,16 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"pmforge/internal/admin"
-	"pmforge/internal/applog"
-	"pmforge/internal/calendar"
-	"pmforge/internal/cli"
-	"pmforge/internal/db"
-	"pmforge/internal/documents"
-	"pmforge/internal/fonts"
-	"pmforge/internal/sigma/service"
-	"pmforge/internal/update"
-	"pmforge/internal/users"
+	"gopmgr/internal/admin"
+	"gopmgr/internal/applog"
+	"gopmgr/internal/calendar"
+	"gopmgr/internal/cli"
+	"gopmgr/internal/db"
+	"gopmgr/internal/documents"
+	"gopmgr/internal/fonts"
+	"gopmgr/internal/sigma/service"
+	"gopmgr/internal/update"
+	"gopmgr/internal/users"
 	"regexp"
 	"runtime"
 	"strings"
@@ -128,10 +128,10 @@ func (a *App) RestoreProjectArchive() (ProjectFile, error) {
 		return ProjectFile{}, errors.New("no context (Wails not started)")
 	}
 	archivePath, err := wailsruntime.OpenFileDialog(a.ctx, wailsruntime.OpenDialogOptions{
-		Title:            "Restore PMForge project backup",
+		Title:            "Restore GoPMgr project backup",
 		DefaultDirectory: user.DataDir,
 		Filters: []wailsruntime.FileFilter{
-			{DisplayName: "PMForge backup (*.pmba)", Pattern: "*.pmba"},
+			{DisplayName: "GoPMgr backup (*.pmba)", Pattern: "*.pmba"},
 		},
 	})
 	if err != nil {
@@ -632,7 +632,7 @@ func (a *App) ResetAppSettings() (AppSettings, error) {
 	return defaultAppSettings(), nil
 }
 
-// OpenLogsFolder opens the PMForge log directory in the system file manager
+// OpenLogsFolder opens the GoPMgr log directory in the system file manager
 // so the user can inspect or attach log files to a bug report manually.
 func (a *App) OpenLogsFolder() error {
 	if a.logDir == "" {
@@ -655,10 +655,10 @@ func (a *App) GenerateBugReport() (string, error) {
 	reportPath := filepath.Join(a.logDir, fmt.Sprintf("bug-report-%s.txt", ts.Format("20060102-150405")))
 
 	var buf strings.Builder
-	fmt.Fprintf(&buf, "PMForge Diagnostic Report\n")
+	fmt.Fprintf(&buf, "GoPMgr Diagnostic Report\n")
 	fmt.Fprintf(&buf, "Generated: %s\n\n", ts.Format(time.RFC3339Nano))
 	fmt.Fprintf(&buf, "=== Environment ===\n")
-	fmt.Fprintf(&buf, "PMForge version: %s\n", cli.Version)
+	fmt.Fprintf(&buf, "GoPMgr version: %s\n", cli.Version)
 	fmt.Fprintf(&buf, "OS:              %s/%s\n", runtime.GOOS, runtime.GOARCH)
 	fmt.Fprintf(&buf, "Go runtime:      %s\n", runtime.Version())
 	fmt.Fprintf(&buf, "PID:             %d\n", os.Getpid())
@@ -690,7 +690,7 @@ func (a *App) GenerateBugReport() (string, error) {
 
 // logTail returns up to maxLines lines from the end of the file at path.
 func logTail(path string, maxLines int) (string, error) {
-	data, err := os.ReadFile(path) // #nosec G304 -- path is the PMForge log file, resolved at startup.
+	data, err := os.ReadFile(path) // #nosec G304 -- path is the GoPMgr log file, resolved at startup.
 	if err != nil {
 		return "", err
 	}

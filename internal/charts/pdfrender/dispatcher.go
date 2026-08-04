@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package pdfrender renders PMForge charts directly into a fpdf
+// Package pdfrender renders GoPMgr charts directly into a fpdf
 // document using fpdf's vector primitives (no PNG intermediate, no
 // headless browser).
 //
@@ -23,11 +23,11 @@ import (
 
 	"github.com/go-pdf/fpdf"
 
-	"pmforge/internal/charts"
+	"gopmgr/internal/charts"
 )
 
 // Frame is the bounding box a renderer paints into. Coordinates are
-// in millimetres (fpdf's default unit in PMForge).
+// in millimetres (fpdf's default unit in GoPMgr).
 type Frame struct {
 	X, Y, W, H float64
 }

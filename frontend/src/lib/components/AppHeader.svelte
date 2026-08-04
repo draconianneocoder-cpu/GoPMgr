@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -49,7 +49,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         goto('portfolio');
       }}
       class="shrink-0 text-slate-100"
-      aria-label="PMForge home"
+      aria-label="GoPMgr home"
     >
       <Logo class="h-6 text-slate-100" />
     </a>

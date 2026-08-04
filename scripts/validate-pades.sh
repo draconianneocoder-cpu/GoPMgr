@@ -1,11 +1,11 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Local PAdES-T validation gate.
 #
 # This does not replace Acrobat/DSS/veraPDF interoperability testing. It
-# generates a signed PDF sample with PMForge's real CMS signer, RFC 3161
+# generates a signed PDF sample with GoPMgr's real CMS signer, RFC 3161
 # timestamp mutator, and PDF incremental-update code, then verifies the
 # embedded PKCS#7 signature against the declared /ByteRange. The sample remains
 # under .tmp so external validators can be pointed at it manually.
@@ -14,14 +14,14 @@ set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-SAMPLE_DIR="$ROOT/.tmp/pmforge-pades-test"
-PADES_LOCK="$ROOT/.tmp/pmforge-pades-test.lock"
+SAMPLE_DIR="$ROOT/.tmp/gopmgr-pades-test"
+PADES_LOCK="$ROOT/.tmp/gopmgr-pades-test.lock"
 GENERATOR="$SAMPLE_DIR/validate_pades.go"
 
 echo "=== PAdES Local Validation Gate ==="
 
 acquire_pades_lock() {
-	if [ "${PMFORGE_PADES_LOCK_HELD:-0}" = "1" ]; then
+	if [ "${GOPMGR_PADES_LOCK_HELD:-0}" = "1" ]; then
 		return
 	fi
 	mkdir -p "$ROOT/.tmp"
@@ -30,7 +30,7 @@ acquire_pades_lock() {
 	done
 	echo "$$" > "$PADES_LOCK/pid"
 	trap 'rm -rf "$PADES_LOCK"' EXIT INT TERM
-	export PMFORGE_PADES_LOCK_HELD=1
+	export GOPMGR_PADES_LOCK_HELD=1
 }
 
 acquire_pades_lock
@@ -63,12 +63,12 @@ import (
 	"github.com/digitorus/pkcs7"
 	"github.com/digitorus/timestamp"
 
-	pmcrypto "pmforge/internal/crypto"
-	"pmforge/internal/pdfmeta"
+	pmcrypto "gopmgr/internal/crypto"
+	"gopmgr/internal/pdfmeta"
 )
 
 func main() {
-	signer, err := newSigner("PMForge PAdES Gate Signer")
+	signer, err := newSigner("GoPMgr PAdES Gate Signer")
 	if err != nil {
 		fatal(err)
 	}
@@ -107,7 +107,7 @@ func main() {
 			fatal(fmt.Errorf("signed PDF missing marker %q", marker))
 		}
 	}
-	if bytes.Contains(out, []byte("%%PMForgeCMSSignature:")) {
+	if bytes.Contains(out, []byte("%%GoPMgrCMSSignature:")) {
 		fatal(fmt.Errorf("signed PDF used fallback CMS comment marker instead of embedded PAdES"))
 	}
 
@@ -144,7 +144,7 @@ func main() {
 		fatal(fmt.Errorf("CMS verification unexpectedly passed after tampering with signed bytes"))
 	}
 
-	samplePath := filepath.Join(".tmp", "pmforge-pades-test", "signed-sample.pdf")
+	samplePath := filepath.Join(".tmp", "gopmgr-pades-test", "signed-sample.pdf")
 	if err := os.WriteFile(samplePath, out, 0o644); err != nil {
 		fatal(fmt.Errorf("write signed sample: %w", err))
 	}
@@ -231,7 +231,7 @@ func newTimestampToken(imprint []byte) ([]byte, error) {
 	now := time.Now().UTC()
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(now.UnixNano()),
-		Subject:      pkix.Name{CommonName: "PMForge PAdES Gate TSA"},
+		Subject:      pkix.Name{CommonName: "GoPMgr PAdES Gate TSA"},
 		NotBefore:    now.Add(-time.Hour),
 		NotAfter:     now.Add(time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,

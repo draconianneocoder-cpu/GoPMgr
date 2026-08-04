@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -11,10 +11,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"pmforge/internal/agile"
-	"pmforge/internal/db"
-	"pmforge/internal/documents"
-	"pmforge/internal/signing"
+	"gopmgr/internal/agile"
+	"gopmgr/internal/db"
+	"gopmgr/internal/documents"
+	"gopmgr/internal/signing"
 )
 
 // =========================================================

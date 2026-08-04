@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package users
@@ -25,8 +25,8 @@ func seedLegacyRoot(t *testing.T, legacy string) {
 }
 
 func TestMigrateLegacyRootCopiesTree(t *testing.T) {
-	legacy := filepath.Join(t.TempDir(), "Documents", "PMForge")
-	newRoot := filepath.Join(t.TempDir(), "Application Support", "PMForge")
+	legacy := filepath.Join(t.TempDir(), "Documents", "GoPMgr")
+	newRoot := filepath.Join(t.TempDir(), "Application Support", "GoPMgr")
 	seedLegacyRoot(t, legacy)
 
 	migrated, err := migrateLegacyRoot(legacy, newRoot)
@@ -60,8 +60,8 @@ func TestMigrateLegacyRootCopiesTree(t *testing.T) {
 }
 
 func TestMigrateLegacyRootIdempotent(t *testing.T) {
-	legacy := filepath.Join(t.TempDir(), "Documents", "PMForge")
-	newRoot := filepath.Join(t.TempDir(), "Application Support", "PMForge")
+	legacy := filepath.Join(t.TempDir(), "Documents", "GoPMgr")
+	newRoot := filepath.Join(t.TempDir(), "Application Support", "GoPMgr")
 	seedLegacyRoot(t, legacy)
 
 	if migrated, err := migrateLegacyRoot(legacy, newRoot); err != nil || !migrated {
@@ -75,8 +75,8 @@ func TestMigrateLegacyRootIdempotent(t *testing.T) {
 
 func TestMigrateLegacyRootSkips(t *testing.T) {
 	t.Run("no legacy install", func(t *testing.T) {
-		legacy := filepath.Join(t.TempDir(), "Documents", "PMForge") // never created
-		newRoot := filepath.Join(t.TempDir(), "Application Support", "PMForge")
+		legacy := filepath.Join(t.TempDir(), "Documents", "GoPMgr") // never created
+		newRoot := filepath.Join(t.TempDir(), "Application Support", "GoPMgr")
 		if migrated, err := migrateLegacyRoot(legacy, newRoot); err != nil || migrated {
 			t.Fatalf("expected skip: migrated=%v err=%v", migrated, err)
 		}
@@ -86,8 +86,8 @@ func TestMigrateLegacyRootSkips(t *testing.T) {
 	})
 
 	t.Run("new root already initialised", func(t *testing.T) {
-		legacy := filepath.Join(t.TempDir(), "Documents", "PMForge")
-		newRoot := filepath.Join(t.TempDir(), "Application Support", "PMForge")
+		legacy := filepath.Join(t.TempDir(), "Documents", "GoPMgr")
+		newRoot := filepath.Join(t.TempDir(), "Application Support", "GoPMgr")
 		seedLegacyRoot(t, legacy)
 		if err := os.MkdirAll(newRoot, 0o700); err != nil {
 			t.Fatal(err)
@@ -105,7 +105,7 @@ func TestMigrateLegacyRootSkips(t *testing.T) {
 	})
 
 	t.Run("empty legacy path", func(t *testing.T) {
-		newRoot := filepath.Join(t.TempDir(), "Application Support", "PMForge")
+		newRoot := filepath.Join(t.TempDir(), "Application Support", "GoPMgr")
 		if migrated, err := migrateLegacyRoot("", newRoot); err != nil || migrated {
 			t.Fatalf("empty legacy path should skip: migrated=%v err=%v", migrated, err)
 		}

@@ -1,11 +1,11 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package update fetches a signed release manifest over HTTPS and
-// reports whether a newer PMForge version is available.
+// reports whether a newer GoPMgr version is available.
 //
 // Threat model: a malicious upstream or compromised TLS endpoint
-// must NOT be able to convince PMForge that a downgrade or fake
+// must NOT be able to convince GoPMgr that a downgrade or fake
 // release exists. We pin a single Ed25519 public key
 // (UpdateChannelPublicKey, set by the release pipeline at build
 // time) and reject any manifest whose signature doesn't verify.
@@ -30,12 +30,12 @@ import (
 
 	"golang.org/x/mod/semver"
 
-	"pmforge/internal/cli"
+	"gopmgr/internal/cli"
 )
 
 // ManifestURL is the URL the binary fetches. Override at build time:
 //
-//	go build -ldflags "-X pmforge/internal/update.ManifestURL=https://pmforge.example/updates.json"
+//	go build -ldflags "-X gopmgr/internal/update.ManifestURL=https://gopmgr.example/updates.json"
 //
 // Empty string disables the update check (useful for offline /
 // distribution-managed builds).
@@ -106,7 +106,7 @@ func CheckLatest(ctx context.Context) (Status, error) {
 		st.Error = err.Error()
 		return st, nil
 	}
-	req.Header.Set("User-Agent", "PMForge/"+cli.Version)
+	req.Header.Set("User-Agent", "GoPMgr/"+cli.Version)
 	resp, err := client.Do(req)
 	if err != nil {
 		st.Error = "fetch: " + err.Error()
@@ -190,27 +190,27 @@ func readManifestBody(r io.Reader) ([]byte, error) {
 func Check() {
 	st, err := CheckLatest(context.Background())
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "PMForge update check failed: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "GoPMgr update check failed: %v\n", err)
 		os.Exit(1)
 	}
 	switch {
 	case !st.Configured:
-		fmt.Printf("PMForge %s — automatic update channel not configured.\n", st.Current)
+		fmt.Printf("GoPMgr %s — automatic update channel not configured.\n", st.Current)
 	case st.Error != "":
-		fmt.Printf("PMForge %s — update check failed: %s\n", st.Current, st.Error)
+		fmt.Printf("GoPMgr %s — update check failed: %s\n", st.Current, st.Error)
 	case st.UpdateAvailable:
-		fmt.Printf("PMForge %s — update available: %s\n", st.Current, st.Latest)
+		fmt.Printf("GoPMgr %s — update available: %s\n", st.Current, st.Latest)
 		if st.DownloadURL != "" {
 			fmt.Printf("  download: %s\n", st.DownloadURL)
 		}
 	default:
-		fmt.Printf("PMForge %s — up to date.\n", st.Current)
+		fmt.Printf("GoPMgr %s — up to date.\n", st.Current)
 	}
 }
 
 // isNewer compares two semver-ish strings "X.Y.Z[-suffix]" and
 // reports whether `latest` is strictly newer than `current`.
-// PMForge versions are clean semver (e.g. "1.1.0", "1.2.0-rc.1"), but the
+// GoPMgr versions are clean semver (e.g. "1.1.0", "1.2.0-rc.1"), but the
 // parser still tolerates a legacy "1.2.0-V1-Expansion" style suffix:
 // non-numeric tails compare lexically. Wrong answers here only delay an
 // update notification, never cause incorrect behaviour, so the simplicity

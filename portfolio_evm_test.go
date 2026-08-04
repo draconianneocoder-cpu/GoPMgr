@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"pmforge/internal/analytics"
-	"pmforge/internal/db"
+	"gopmgr/internal/analytics"
+	"gopmgr/internal/db"
 )
 
 func newPortfolioEVMTestProject(t *testing.T, startDate string) (*db.Database, db.Project) {

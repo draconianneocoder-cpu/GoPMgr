@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package db
@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"os"
 
-	"pmforge/internal/sqlitedriver"
+	"gopmgr/internal/sqlitedriver"
 
-	"pmforge/internal/debug"
+	"gopmgr/internal/debug"
 )
 
 // RepairResult is what the UI receives from a self-heal attempt. The
@@ -22,7 +22,7 @@ type RepairResult struct {
 	Log     []string          `json:"log"`
 }
 
-// InformativeSelfHeal runs PMForge's diagnostic + repair flow:
+// InformativeSelfHeal runs GoPMgr's diagnostic + repair flow:
 //
 //  1. PRAGMA integrity_check; on the live database.
 //  2. If clean, return success immediately.

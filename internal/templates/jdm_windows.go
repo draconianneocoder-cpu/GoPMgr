@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //go:build windows
@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// Zen-go distributes its Windows FFI archive for the MSVC ABI, while PMForge's
+// Zen-go distributes its Windows FFI archive for the MSVC ABI, while GoPMgr's
 // SQLCipher driver requires MinGW. Keep the embedded JDM table authoritative,
 // but evaluate its exact-match rows in Go on Windows so these toolchains do not
 // meet in one linker invocation.

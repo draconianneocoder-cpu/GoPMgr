@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package documents
@@ -8,15 +8,15 @@ import (
 
 	"github.com/go-pdf/fpdf"
 
-	"pmforge/internal/fonts"
-	"pmforge/internal/pdfmeta"
+	"gopmgr/internal/fonts"
+	"gopmgr/internal/pdfmeta"
 )
 
 // Font integration.
 //
 // Every document renderer draws text with SetFont("Helvetica", ...).
 // fpdf's AddUTF8FontFromBytes overrides a core-font family name when
-// you register an embedded TrueType font under that name, so PMForge
+// you register an embedded TrueType font under that name, so GoPMgr
 // can swap the document font for ALL renderers at once by registering
 // the user's chosen family under "Helvetica" on each new PDF — no
 // per-renderer changes beyond using newDocPDF instead of fpdf.New.
@@ -78,8 +78,8 @@ func newDocPDF(orientation string) *fpdf.Fpdf {
 	// Apply PDF/A-3 metadata setters early. Individual renderers can
 	// still override Title/Author/Subject with more specific values.
 	pdfmeta.ApplyPDFAMetadata(pdf, pdfmeta.XMPSpec{
-		Author:      "PMForge",
-		CreatorTool: "PMForge",
+		Author:      "GoPMgr",
+		CreatorTool: "GoPMgr",
 	})
 
 	return pdf

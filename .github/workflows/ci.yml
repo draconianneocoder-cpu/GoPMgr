@@ -1,7 +1,7 @@
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# GitHub Actions CI for PMForge — Go + Svelte (Wails) desktop application.
+# GitHub Actions CI for GoPMgr — Go + Svelte (Wails) desktop application.
 #
 # Successor to the retired GitLab pipeline:
 #   verify   -> `make verify` (config + Wails pin + Go tests + frontend checks): pre-merge gate.
@@ -9,14 +9,14 @@
 #   lint     -> golangci-lint + `npm run lint`, non-blocking (GitLab allow_failure: true).
 #   security -> `make memory-scan` (go vet + safety scans), non-blocking (GitLab placeholder stage).
 #
-# PMForge also runs a blocking PAdES generator/evidence-harness regression job
+# GoPMgr also runs a blocking PAdES generator/evidence-harness regression job
 # so release-script failures are caught before a tag invokes release.yml.
 #
 # `make check-release` is the full local release gate. release.yml reruns it in
 # a tag-aware preflight before any tag-triggered installer job can start.
 #
 # Two clean-checkout facts shape this file:
-#   1. The root `pmforge` package has `//go:embed all:frontend/dist`. `frontend/dist` is
+#   1. The root `gopmgr` package has `//go:embed all:frontend/dist`. `frontend/dist` is
 #      gitignored, so it does NOT exist on a fresh checkout — the root package will not
 #      compile (test/vet/lint) until the frontend is built. Jobs that compile the root
 #      package therefore build the frontend (or stub the embed dir for vet/lint) first.
@@ -91,7 +91,7 @@ jobs:
     name: PAdES harness regressions
     runs-on: ubuntu-24.04
     # This job is intentionally independent of the Wails/frontend jobs. The
-    # generator imports only PMForge's signing and PDF packages, while fake
+    # generator imports only GoPMgr's signing and PDF packages, while fake
     # veraPDF/DSS tools exercise deterministic parser branches without network
     # downloads or external trust stores.
     steps:
@@ -155,7 +155,7 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
-          name: pmforge-linux-amd64
+          name: gopmgr-linux-amd64
           path: build/bin/
           if-no-files-found: error
           retention-days: 7

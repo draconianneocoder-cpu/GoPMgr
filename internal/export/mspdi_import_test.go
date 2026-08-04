@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package export
@@ -6,7 +6,7 @@ package export
 import (
 	"testing"
 
-	"pmforge/internal/kernel"
+	"gopmgr/internal/kernel"
 )
 
 const sampleMSPDI = `<?xml version="1.0" encoding="UTF-8"?>

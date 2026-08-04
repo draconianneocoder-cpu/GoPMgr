@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package db
@@ -108,7 +108,7 @@ func TestSaveSettingsPreservesAllFields(t *testing.T) {
 		CertPath:         "/some/cert.p12",
 		SignatureEnabled: true,
 		SignatureMethod:  SignatureMethodPAdES,
-		GPGKeyID:         "pmforge@example.test",
+		GPGKeyID:         "gopmgr@example.test",
 		TimestampEnabled: true,
 		TSAEndpoint:      "https://tsa.example.test/timestamp",
 		TSAPolicyOID:     "1.3.6.1.4.1.55555.7",

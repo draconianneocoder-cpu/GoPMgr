@@ -1,11 +1,11 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
-# PMForge Beta Release Backlog
+# GoPMgr Beta Release Backlog
 
-This is the running execution list for the next PMForge 1.1.0 Beta
+This is the running execution list for the next GoPMgr 1.1.0 Beta
 prerelease. The exact `v1.1.0-beta.<n>` tag is selected during release
 preflight. `ROADMAP.md` remains the strategic product roadmap; this file is
 limited to work needed to make the existing 1.1.0 feature set ready for wider
@@ -58,10 +58,10 @@ Beta testing.
 - Scope: macOS main application window
 
 Evaluation found that this is native Wails window configuration, not a missing
-Svelte control. PMForge's `options.App` leaves `Mac` nil. In Wails 2.13.0,
+Svelte control. GoPMgr's `options.App` leaves `Mac` nil. In Wails 2.13.0,
 `internal/frontend/desktop/darwin/window.go` initializes `zoomable` only when
 `options.App.Mac` exists; the Cocoa bridge then disables
-`NSWindowZoomButton` when `zoomable` is false. PMForge already keeps the window
+`NSWindowZoomButton` when `zoomable` is false. GoPMgr already keeps the window
 resizable, defines useful minimum dimensions, installs the native macOS Window
 menu, and uses Wails' native `zoom:` implementation for maximize and restore.
 
@@ -149,7 +149,7 @@ Acceptance criteria:
   prerelease identity.
 - Invalid signatures, non-HTTPS URLs, oversized responses, downgrades, and
   channel mismatches fail closed.
-- App Settings and `pmforge --update` distinguish unconfigured, current,
+- App Settings and `gopmgr --update` distinguish unconfigured, current,
   update-available, and verification-failed states.
 - An installed Beta detects a controlled newer Beta while offline use remains
   fully supported.
@@ -236,7 +236,7 @@ rearranged monitors.
 - Evidence: Published Alpha 1 was installed to `/Applications`, upgraded to a
   current-main arm64 build, removed, reinstalled, and relaunched on an M4 Mac.
   The isolated administrator and eight recovery codes survived every
-  transition; normal PMForge data was unchanged. Lifecycle evidence commit:
+  transition; normal GoPMgr data was unchanged. Lifecycle evidence commit:
   `268da8b`.
 
 ### BETA-QA-002: Windows NSIS lifecycle
@@ -281,7 +281,7 @@ PAdES-BASELINE-T evidence do not establish a publicly trusted chain.
 - Status: Done
 - Evidence: On Ubuntu 26.04 LTS x86-64, `make verify`, the Wails production
   build, tarball packaging, and nFPM `.deb` and `.rpm` creation passed. The
-  generated `1.1.0-alpha.1` DEB installed to `/usr/bin/pmforge`, launched with
+  generated `1.1.0-alpha.1` DEB installed to `/usr/bin/gopmgr`, launched with
   isolated data under GTK3/WebKitGTK 4.1, and handled `SIGINT` with a clean
   shutdown. The package and temporary test dependencies were removed after
   verification. The host's NVIDIA EGL configuration required selecting Mesa

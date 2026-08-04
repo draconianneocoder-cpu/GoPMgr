@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package users
@@ -6,7 +6,7 @@ package users
 import (
 	"fmt"
 
-	"pmforge/internal/crypto"
+	"gopmgr/internal/crypto"
 )
 
 // Per-user Data Encryption Key plumbing (ADR-001). The DEK is the

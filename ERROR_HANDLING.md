@@ -1,11 +1,11 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
 # Error Handling
 
-How PMForge represents, wraps, surfaces, and tests errors across the Go
+How GoPMgr represents, wraps, surfaces, and tests errors across the Go
 backend and the Svelte frontend. See [STYLE.md](STYLE.md) for general code
 style and [TESTING.md](TESTING.md) for verification gates.
 
@@ -70,7 +70,7 @@ everything else — most of the codebase.
 
 ## Go: fail-soft vs fail-hard
 
-PMForge distinguishes operations where a failure should degrade gracefully
+GoPMgr distinguishes operations where a failure should degrade gracefully
 from operations where it must abort:
 
 - **Fail-soft** (log and continue): PDF XMP-metadata tagging. If

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { mount } from 'svelte';
@@ -7,7 +7,7 @@ import './app.css';
 
 const target = document.getElementById('app');
 if (!target) {
-  throw new Error('PMForge: #app mount point missing in index.html');
+  throw new Error('GoPMgr: #app mount point missing in index.html');
 }
 
 const app = mount(App, { target });

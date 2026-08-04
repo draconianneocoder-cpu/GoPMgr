@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package kernel
@@ -7,7 +7,7 @@ import (
 	"math"
 	"sort"
 
-	"pmforge/internal/money"
+	"gopmgr/internal/money"
 )
 
 // TaskEV is one task's earned-value breakdown at the status date.

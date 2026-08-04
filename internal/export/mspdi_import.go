@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package export
@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"strings"
 
-	"pmforge/internal/kernel"
+	"gopmgr/internal/kernel"
 )
 
 // ImportedTask is one schedulable activity read from an MSPDI file,
-// already converted to PMForge conventions (durations in working
+// already converted to GoPMgr conventions (durations in working
 // days, link lag in days).
 type ImportedTask struct {
 	UID             string
@@ -34,7 +34,7 @@ type ImportedProject struct {
 }
 
 // MSPDIImportOptions lets a user decide which logical schedule fields become
-// editable PMForge data before the file picker is opened.
+// editable GoPMgr data before the file picker is opened.
 type MSPDIImportOptions struct {
 	IncludeDependencies bool `json:"include_dependencies"`
 	IncludeProgress     bool `json:"include_progress"`
@@ -56,7 +56,7 @@ type MSPDIImportReceipt struct {
 	SkippedNullRows    int      `json:"skipped_null_rows"`
 }
 
-// mspdiImport mirrors the subset of the MSPDI schema PMForge reads.
+// mspdiImport mirrors the subset of the MSPDI schema GoPMgr reads.
 // Field names follow the Microsoft Project Data Interchange spec.
 type mspdiImport struct {
 	XMLName   xml.Name `xml:"Project"`
@@ -93,18 +93,18 @@ type mspdiImport struct {
 const mspdiHoursPerDay = 8.0
 
 // FromMSPDI parses a Microsoft Project Data Interchange XML document
-// into PMForge's import shape.
+// into GoPMgr's import shape.
 //
 // Conversions and conventions:
 //
 //   - Durations: ISO 8601 PT<h>H<m>M<s>S → working days at 8 h/day.
 //   - PredecessorLink Type: 0=FF, 1=FS (default when absent),
 //     2=SF, 3=SS. LinkLag is in tenths of a minute → days.
-//   - Summary tasks (containers) and null rows are skipped — PMForge
+//   - Summary tasks (containers) and null rows are skipped — GoPMgr
 //     CPM charts are flat activity graphs.
-//   - Resource assignments are flattened to resource NAMES (PMForge's
+//   - Resource assignments are flattened to resource NAMES (GoPMgr's
 //     assignment key); Units pass through (MSPDI uses 1.0 =
-//     full-time, same as PMForge).
+//     full-time, same as GoPMgr).
 //   - The project StartDate is reduced to YYYY-MM-DD for
 //     project.start_date compatibility.
 func FromMSPDI(data []byte) (ImportedProject, error) {
@@ -137,7 +137,7 @@ func FromMSPDIWithOptions(data []byte, options MSPDIImportOptions) (ImportedProj
 		out.Receipt.ExcludedFields = append(out.Receipt.ExcludedFields, "resource.assignments (user selection)")
 	} else {
 		out.Receipt.ImportedFields = append(out.Receipt.ImportedFields, "resource.assignments")
-		out.Receipt.Transformations = append(out.Receipt.Transformations, "resource UID converted to resource name for PMForge assignments")
+		out.Receipt.Transformations = append(out.Receipt.Transformations, "resource UID converted to resource name for GoPMgr assignments")
 	}
 	if out.Title == "" {
 		out.Title = raw.Name

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,8 +10,8 @@ import { THEME_STORAGE_KEY } from '../theme';
 const appInfo = {
   version: '1.1.0',
   username: 'tester',
-  data_location: '/tmp/pmforge',
-  logs_dir: '/tmp/pmforge/logs',
+  data_location: '/tmp/gopmgr',
+  logs_dir: '/tmp/gopmgr/logs',
   fonts: [],
   settings: {
     default_font: '',

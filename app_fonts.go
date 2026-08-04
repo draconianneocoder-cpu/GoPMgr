@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"pmforge/internal/agile"
-	"pmforge/internal/calendar"
-	"pmforge/internal/documents"
-	"pmforge/internal/export"
-	"pmforge/internal/fonts"
-	"pmforge/internal/timeline"
+	"gopmgr/internal/agile"
+	"gopmgr/internal/calendar"
+	"gopmgr/internal/documents"
+	"gopmgr/internal/export"
+	"gopmgr/internal/fonts"
+	"gopmgr/internal/timeline"
 	"time"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"

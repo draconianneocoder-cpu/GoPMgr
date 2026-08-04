@@ -1,8 +1,8 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package rfc3161 provides the fail-closed timestamp-authority client used by
-// PMForge's signing pipeline. It owns request/response validation but does not
+// GoPMgr's signing pipeline. It owns request/response validation but does not
 // mutate CMS or PDF bytes; internal/crypto and internal/signing compose those
 // separate responsibilities into PAdES-T exports.
 package rfc3161

@@ -1,18 +1,18 @@
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-Source: pmforge
+Source: gopmgr
 Section: utils
 Priority: optional
 Maintainer: James Burns <draconian.neocoder@gmail.com>
 Build-Depends: debhelper-compat (= 13), golang-1.26-go (>= 1.26.5), pkgconf, libgtk-3-dev, libwebkit2gtk-4.1-dev
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
-Homepage: https://github.com/draconianneocoder-cpu/PMForge
+Homepage: https://github.com/draconianneocoder-cpu/GoPMgr
 
-Package: pmforge
+Package: gopmgr
 Architecture: amd64
 Depends: ${misc:Depends}, ${shlibs:Depends}, libgtk-3-0, libwebkit2gtk-4.1-0
 Description: local-first project controls desktop application
- PMForge provides CPM scheduling, project controls, charting, document
+ GoPMgr provides CPM scheduling, project controls, charting, document
  export, and encrypted per-project storage in a local desktop application.

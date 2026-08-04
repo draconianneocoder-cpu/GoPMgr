@@ -1,5 +1,5 @@
 {
-  "$comment": "PMForge Launchpad seeding rules. Evaluated by gorules/zen-go. Edit and rebuild — the JDM is embedded via //go:embed. Input shape: {industry, methodology}. Output shape: {seeds: [string]}.",
+  "$comment": "GoPMgr Launchpad seeding rules. Evaluated by gorules/zen-go. Edit and rebuild — the JDM is embedded via //go:embed. Input shape: {industry, methodology}. Output shape: {seeds: [string]}.",
   "contentType": "application/vnd.gorules.decision",
   "nodes": [
     {

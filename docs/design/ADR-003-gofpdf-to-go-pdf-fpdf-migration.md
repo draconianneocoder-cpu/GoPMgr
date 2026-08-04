@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
@@ -11,7 +11,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 ## Context
 
-PMForge uses a PDF generation library for 25 document kinds, all chart PDF
+GoPMgr uses a PDF generation library for 25 document kinds, all chart PDF
 renderers, the PDF/A-3 export pipeline, and the PAdES signing adapter. As of
 2026-06-25, the dependency was `github.com/jung-kurt/gofpdf v1.16.2`.
 
@@ -24,7 +24,7 @@ no bug fixes. Continuing to depend on an archived library:
 - creates a maintenance cliff when a future Go toolchain version changes
   behaviour in code the archived library relies on
 - sends a misleading signal to contributors and users about the health of
-  PMForge's dependency tree
+  GoPMgr's dependency tree
 
 ## Decision
 
@@ -45,7 +45,7 @@ Archived, no maintenance path. Rejected outright.
 The `go-pdf/fpdf` project is the direct continuation of `jung-kurt/gofpdf`.
 It is referenced in the archived repo's own README as the recommended migration
 target. Active commit history, community maintainership, MIT licence
-(compatible with PMForge's GPL-3.0-or-later), no CGO dependency.
+(compatible with GoPMgr's GPL-3.0-or-later), no CGO dependency.
 
 **Trade-offs:**
 - Breaking change in package name: `gofpdf` → `fpdf`. All import paths and
@@ -71,7 +71,7 @@ go-pdf/fpdf maintenance lapses.
 
 ### Positive
 
-- PMForge's dependency tree no longer contains an archived library.
+- GoPMgr's dependency tree no longer contains an archived library.
 - `govulncheck` can now detect and surface CVEs in the library's transitive
   dependencies.
 - The `vuln` CI job (blocking govulncheck gate) is meaningful end-to-end.
@@ -84,7 +84,7 @@ go-pdf/fpdf maintenance lapses.
    added. Run `go mod tidy` once after pulling this commit. CI will fail on
    missing sum entries until this is done.
 
-2. **API surface check:** the full API used by PMForge was verified against the
+2. **API surface check:** the full API used by GoPMgr was verified against the
    v0.9.0 source (`SetFont`, `Cell`, `MultiCell`, `Rect`, `Line`, `Polygon`,
    `Image`, `AddUTF8FontFromBytes`, `SetXY`, `GetStringWidth`, `TransformBegin`,
    `TransformEnd`, `TransformRotate`, `InitType`, `Fpdf`). All methods are

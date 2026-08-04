@@ -1,7 +1,7 @@
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# Dependabot configuration for PMForge.
+# Dependabot configuration for GoPMgr.
 #
 # Strategy (learned the hard way this session): minor/patch updates are
 # grouped into a single low-noise PR per ecosystem and are usually safe.
@@ -13,7 +13,7 @@
 
 version: 2
 updates:
-  # ---- Go modules (root module: pmforge) ----
+  # ---- Go modules (root module: gopmgr) ----
   - package-ecosystem: gomod
     directory: "/"
     schedule:

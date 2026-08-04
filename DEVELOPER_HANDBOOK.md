@@ -1,11 +1,11 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
-# PMForge Developer Handbook
+# GoPMgr Developer Handbook
 
-This is the long-form developer handbook for PMForge. It preserves detailed
+This is the long-form developer handbook for GoPMgr. It preserves detailed
 implementation history, release-gate status, and lessons learned for
 engineers and automated agents. For day-to-day agent operating rules, start
 with `AGENTS.md`; use this handbook for deeper project background and
@@ -18,9 +18,9 @@ local-only `session-notes.md` or `.agent_memory/`.
 
 ---
 
-## 1. What PMForge is
+## 1. What GoPMgr is
 
-PMForge is a **local-first project controls desktop application** for technical, engineering, IT, construction, and administrative organizations. License: **GPL-3.0-or-later**. The user described it as a GPL-licensed alternative to centralized SaaS PM tools.
+GoPMgr is a **local-first project controls desktop application** for technical, engineering, IT, construction, and administrative organizations. License: **GPL-3.0-or-later**. The user described it as a GPL-licensed alternative to centralized SaaS PM tools.
 
 - **Backend**: Go 1.26.5, acts as a high-performance kernel for data integrity, scheduling math (CPM/EVM/MSPDI), authentication, document rendering, and PDF generation.
 - **Frontend**: Svelte 5 (runes mode) + Vite 8 + TypeScript 6 + Tailwind 4 + ESLint 10, mounted in a desktop window via **Wails v2.13.0**.
@@ -29,7 +29,7 @@ PMForge is a **local-first project controls desktop application** for technical,
 - **Crypto**: `golang.org/x/crypto/argon2` for password hashing (PHC string format), AES-256-GCM for encryption, X.509/RSA for digital signatures.
 - **Rules engine**: `github.com/gorules/zen` (MIT) via its official Go binding (zen-go) — Launchpad seeding rules expressed as JDM data, not Go switch. Used by `internal/templates`.
 - **Holiday data**: `rickar/cal/v2` (BSD-2-Clause) — country holiday datasets. Wrapped by `internal/calendar`.
-- **CMS/PKCS#7**: PMForge builds the PAdES detached CMS structure in `internal/crypto/pdf_cms.go`, using `digitorus/pkcs7` OIDs/parsing helpers where useful. The PDF embedding path lives in `internal/pdfmeta/pdfmeta.go`.
+- **CMS/PKCS#7**: GoPMgr builds the PAdES detached CMS structure in `internal/crypto/pdf_cms.go`, using `digitorus/pkcs7` OIDs/parsing helpers where useful. The PDF embedding path lives in `internal/pdfmeta/pdfmeta.go`.
 - **DOCX writer**: `gomutex/godocx` (MIT, pure Go) — picked from pkg.go.dev after a survey. Used by `internal/export/docx.go`. ODT export (`internal/export/odt.go`) is hand-built because no equivalently-maintained pure-Go ODT generator exists (kpmy/odf hasn't been touched since 2014).
 
 The app has reached **V2.x** maturity: all 22 chart kinds and all 25 document templates implemented end-to-end, combined report builder with embedded vector chart visualisations, self-heal with atomic database swap, multi-user accounts. The Agile Pack is the current frontier.
@@ -39,7 +39,7 @@ The app has reached **V2.x** maturity: all 22 chart kinds and all 25 document te
 ## 2. Directory layout
 
 ```
-pmforge/
+gopmgr/
 ├── AGENTS.md                    # current agent operating guide
 ├── DEVELOPER_HANDBOOK.md        # this developer handbook
 ├── README.md                    # user/contributor documentation (GFDL)
@@ -172,7 +172,7 @@ All tables created idempotently in `db.Database.Migrate()` (internal/db/sqlite.g
 ### SPDX headers — REQUIRED on every source file
 
 ```go
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 ```
 
@@ -182,7 +182,7 @@ HTML-style comment for Svelte / HTML / Markdown files. Documentation files use `
 
 - **Package-level doc comment** on every package's primary file. Comments are `//`-style, full sentences, end with period.
 - **Error wrapping**: use `fmt.Errorf("context: %w", err)`. For recoverable paths that the UI needs to introspect, use `debug.Wrap(err, "TAG").ToError()`.
-- **No goroutines** in PMForge's own code today — the Wails runtime is the only goroutine spawner.
+- **No goroutines** in GoPMgr's own code today — the Wails runtime is the only goroutine spawner.
 - **Database access**: always through `*db.Database`. The `*sql.DB` it wraps is a connection pool, safe for concurrent use.
 - **IDs**: prefixed short hex via `db.newID("prefix")` or `agile.NewBoardID()` etc. Format: `<prefix>_<8hex>`.
 - **Timestamps**: store as RFC3339Nano UTC strings via `strftime('%Y-%m-%dT%H:%M:%fZ','now')` or `time.Now().UTC().Format(time.RFC3339Nano)`. Surface as `time.Time` in Go structs with `json` tags.
@@ -224,7 +224,7 @@ make build
 
 # Quality gates
 make lint              # golangci-lint + npm run lint
-make test              # go test . ./internal/... (PMForge-owned Go packages)
+make test              # go test . ./internal/... (GoPMgr-owned Go packages)
 make race              # go test -race . ./internal/... (V2.x concurrency hardening gate)
 make memory-scan       # scripts/memory-safety-scan.sh (V2.x)
 make frontend-stability # svelte-check --fail-on-warnings + Sigma regression gates
@@ -272,7 +272,7 @@ make package-linux / package-windows / package-darwin
 3. (When installed) advisory `staticcheck . ./internal/...` for deeper analysis.
 4. (When installed) advisory `gosec . ./internal/...` for security-flavoured patterns.
 
-A new contribution should land **with `make memory-scan` passing**. Optional scanners report findings without failing by default so the release gate is not dependent on locally installed tools; set `PMFORGE_STRICT_OPTIONAL_SCANS=1` when you want optional staticcheck/gosec/govulncheck findings to fail the gate. The gate is wired into `make check-release`.
+A new contribution should land **with `make memory-scan` passing**. Optional scanners report findings without failing by default so the release gate is not dependent on locally installed tools; set `GOPMGR_STRICT_OPTIONAL_SCANS=1` when you want optional staticcheck/gosec/govulncheck findings to fail the gate. The gate is wired into `make check-release`.
 
 ---
 
@@ -312,7 +312,7 @@ A new contribution should land **with `make memory-scan` passing**. Optional sca
 ### Remaining V2 TODOs (status snapshot)
 1. ~~DOCX / ODT export.~~ **Done.** `internal/export/docx.go` uses `gomutex/godocx`; `internal/export/odt.go` is hand-built (no maintained ODT library exists). App methods `ExportDocumentDOCX` / `ExportDocumentODT`.
 2. **PDF/A-3 strict conformance** — partial, advanced 2026-05-20, 2026-05-25, 2026-06-06, and 2026-07-27. (i) The dependency-free `internal/pdfmeta` package builds the canonical XMP packet AND injects it into the PDF Catalog via a spec-conformant **incremental update** (`InjectXMPStream`); `documents.Render()` tags every generated PDF (fail-soft). (ii) **Font embedding is now available** via `internal/fonts` — Source Sans 3 is tracked as the deterministic baseline, while optional families are fetched by `make fonts`; the "register under Helvetica" trick replaces the non-embeddable core fonts. (iii) OutputIntent + ICC profile injection is implemented (`InjectOutputIntent`, `MakePDFA3`, `make icc`) and used when an ICC profile is embedded. (iv) The schedule-report, document, combined-report, and Monte Carlo risk-report samples now pass `make check-pdfa` with veraPDF's PDF/A-3b profile after adding binary header comments, trailer IDs, stream-length correctness, latest-incremental Catalog rewrites, and embedded Source Sans 3 for representative exports. The gate is now a **hard release blocker**: `check-release.sh` exits non-zero if any representative sample fails PDF/A-3b validation (2026-06-08).
-3. ~~CMS/PKCS#7 + PAdES signature widget embedding.~~ **Done** via PMForge's detached CMS encoder plus `pdfmeta.InjectPAdESSignature`. The PAdES path appends a `/Sig` dictionary, invisible `/Widget` field, `/AcroForm`, fixed-width `/ByteRange`, signed `/M` timestamp, and padded `/Contents` in the final incremental update. `make check-pades` verifies a timestamped local fixture, and `make check-pades-external` extracts the embedded CMS for OpenSSL detached verification, checks `qpdf --check`, requires `pdfsig` to report a valid signature, verifies veraPDF signature metadata, and requires DSS to classify the self-signed fixture as `PAdES-BASELINE-T` when those tools are installed. Release-certificate and TSA trust-chain validation remain indeterminate until trusted sources are configured; `make check-pades-trusted` records `NOT_CONFIGURED` without a source and otherwise distinguishes locally verified CLI trust from structurally valid but indeterminate trust. Set `PMFORGE_PADES_TRUSTED_REQUIRED=1` when a release process must reject anything except `TRUST_VERIFIED`. Acrobat trust-panel evidence remains separately manual. Users can choose PAdES Baseline B, detached GnuPG sidecar signing, or no digital signature for print-and-wet-sign exports.
+3. ~~CMS/PKCS#7 + PAdES signature widget embedding.~~ **Done** via GoPMgr's detached CMS encoder plus `pdfmeta.InjectPAdESSignature`. The PAdES path appends a `/Sig` dictionary, invisible `/Widget` field, `/AcroForm`, fixed-width `/ByteRange`, signed `/M` timestamp, and padded `/Contents` in the final incremental update. `make check-pades` verifies a timestamped local fixture, and `make check-pades-external` extracts the embedded CMS for OpenSSL detached verification, checks `qpdf --check`, requires `pdfsig` to report a valid signature, verifies veraPDF signature metadata, and requires DSS to classify the self-signed fixture as `PAdES-BASELINE-T` when those tools are installed. Release-certificate and TSA trust-chain validation remain indeterminate until trusted sources are configured; `make check-pades-trusted` records `NOT_CONFIGURED` without a source and otherwise distinguishes locally verified CLI trust from structurally valid but indeterminate trust. Set `GOPMGR_PADES_TRUSTED_REQUIRED=1` when a release process must reject anything except `TRUST_VERIFIED`. Acrobat trust-panel evidence remains separately manual. Users can choose PAdES Baseline B, detached GnuPG sidecar signing, or no digital signature for print-and-wet-sign exports.
    **RFC 3161/PAdES-T foundation added 2026-07-25.** `internal/rfc3161.Client`
    creates nonce-bound SHA-256 requests and validates the HTTP response,
    CMS/TSTInfo content type, token signature, imprint, nonce, requested
@@ -340,7 +340,7 @@ A new contribution should land **with `make memory-scan` passing**. Optional sca
 
 ### Scheduling core roadmap (V3) — added 2026-06-10
 
-Canonical list lives in this Developer Handbook. README.md is now the public overview and documentation index. PMForge stays local-first; the roadmap deepens the scheduling kernel in dependency order: (14) date-anchored calendar-aware CPM — **done 2026-06-10** (`kernel.AnchorSchedule`; anchored MSPDI/schedule-report exports; CPM editor shows real dates via `charts.LayoutWithSchedule`; date-axis Gantt strip deferred to item 20), (15) dependency types FS/SS/FF/SF + lag — **done 2026-06-10** (`kernel.Link` + PDM passes with projectEF-bounded LF; `dag.ParseLinkLabel`; "Incoming links" edge-label editor in the layered shell; legacy Precedents preserved), (16) task constraints — **done 2026-06-10** (`kernel.ConstraintType` ASAP/ALAP/SNET/FNLT/MFO; `ApplyConstraintDates` arming; links-win-with-violation-flag semantics; negative float = super-critical; CPM editor dropdown/date/amber marker; `dag.LayoutCPMScheduled`), (17) progress/milestones/baselines — **done 2026-06-10** (`Task.PercentComplete/Milestone/ActualStart/ActualFinish`; `baselines` table + CRUD; `kernel.CompareSchedules`; Set-baseline button + variance rows in CPMEditor; actual-date entry UI deferred to item 18 where AC matters), (18) Earned Value Management — **done 2026-06-10** (`kernel.ComputeEVM` PV/EV/AC + SV/CV/SPI/CPI/EAC/ETC/VAC at a status day; Task.BudgetedCost/ActualCost; `App.ComputeScheduleEVM` requires a project start date; EVM panel in CPMEditor via new asideExtra shell slot; the docs-must-not-claim-EVM rule is retired — the claim is now true; report-renderer EVM sections remain an optional follow-up), (19) resource layer — **kernel core + assignment UI + Level/Histogram actions done 2026-06-10; named calendar persistence/UI advanced 2026-06-26** (`Assignment`/`ResourceUsage`/`DetectOverallocations`/`LevelResources`; CPMEditor Assignments section with stakeholder datalist; overallocation flags with orange edge strip; `App.LevelChartResources` persists delays as SNET pins + shell `reloadFromDB` guards against stale-doc clobber; `App.GenerateResourceHistogram` snapshots demand into a Bar chart keyed by `source_chart_id`; availability column on stakeholders feeds capacity maps; `ResourceCapacityPlan`/`ResourceCalendar` support day overrides, weekly capacity, max-unit caps, calendar IDs, and skill tags; `resource_calendars` persists named calendars and Project Settings exposes weekly/day capacity inputs; `LevelChartResources` now uses persisted calendars), (20) schedule interchange + first-class Gantt — **done 2026-06-10** (`export.FromMSPDI` import with typed links/lag/milestones/percent/assignments and summary-row skipping; `ToMSPDI` enriched for round-trip with PredecessorLink/Milestone/PercentComplete/Resources/Assignments; `App.ImportMSPDIChart` + Dashboard button; file start date adopted when project lacks one; .mpp binary out of scope; Gantt is the 21st chart kind: dag.LayoutGantt[Scheduled], pdfrender renderer, GanttEditor.svelte with grid/links/bars/deps/baseline ghosts; registry tests updated 20→21 and README chart counts swept). Items 14–18 are kernel-pure. This supersedes the older "CPM/PDM dependency-lag editor design" bullet above (now roadmap item 15).
+Canonical list lives in this Developer Handbook. README.md is now the public overview and documentation index. GoPMgr stays local-first; the roadmap deepens the scheduling kernel in dependency order: (14) date-anchored calendar-aware CPM — **done 2026-06-10** (`kernel.AnchorSchedule`; anchored MSPDI/schedule-report exports; CPM editor shows real dates via `charts.LayoutWithSchedule`; date-axis Gantt strip deferred to item 20), (15) dependency types FS/SS/FF/SF + lag — **done 2026-06-10** (`kernel.Link` + PDM passes with projectEF-bounded LF; `dag.ParseLinkLabel`; "Incoming links" edge-label editor in the layered shell; legacy Precedents preserved), (16) task constraints — **done 2026-06-10** (`kernel.ConstraintType` ASAP/ALAP/SNET/FNLT/MFO; `ApplyConstraintDates` arming; links-win-with-violation-flag semantics; negative float = super-critical; CPM editor dropdown/date/amber marker; `dag.LayoutCPMScheduled`), (17) progress/milestones/baselines — **done 2026-06-10** (`Task.PercentComplete/Milestone/ActualStart/ActualFinish`; `baselines` table + CRUD; `kernel.CompareSchedules`; Set-baseline button + variance rows in CPMEditor; actual-date entry UI deferred to item 18 where AC matters), (18) Earned Value Management — **done 2026-06-10** (`kernel.ComputeEVM` PV/EV/AC + SV/CV/SPI/CPI/EAC/ETC/VAC at a status day; Task.BudgetedCost/ActualCost; `App.ComputeScheduleEVM` requires a project start date; EVM panel in CPMEditor via new asideExtra shell slot; the docs-must-not-claim-EVM rule is retired — the claim is now true; report-renderer EVM sections remain an optional follow-up), (19) resource layer — **kernel core + assignment UI + Level/Histogram actions done 2026-06-10; named calendar persistence/UI advanced 2026-06-26** (`Assignment`/`ResourceUsage`/`DetectOverallocations`/`LevelResources`; CPMEditor Assignments section with stakeholder datalist; overallocation flags with orange edge strip; `App.LevelChartResources` persists delays as SNET pins + shell `reloadFromDB` guards against stale-doc clobber; `App.GenerateResourceHistogram` snapshots demand into a Bar chart keyed by `source_chart_id`; availability column on stakeholders feeds capacity maps; `ResourceCapacityPlan`/`ResourceCalendar` support day overrides, weekly capacity, max-unit caps, calendar IDs, and skill tags; `resource_calendars` persists named calendars and Project Settings exposes weekly/day capacity inputs; `LevelChartResources` now uses persisted calendars), (20) schedule interchange + first-class Gantt — **done 2026-06-10** (`export.FromMSPDI` import with typed links/lag/milestones/percent/assignments and summary-row skipping; `ToMSPDI` enriched for round-trip with PredecessorLink/Milestone/PercentComplete/Resources/Assignments; `App.ImportMSPDIChart` + Dashboard button; file start date adopted when project lacks one; .mpp binary out of scope; Gantt is the 21st chart kind: dag.LayoutGantt[Scheduled], pdfrender renderer, GanttEditor.svelte with grid/links/bars/deps/baseline ghosts; registry tests updated 20→21 and README chart counts swept). Items 14–18 are kernel-pure. This supersedes the older "CPM/PDM dependency-lag editor design" bullet above (now roadmap item 15).
 
 ---
 
@@ -364,7 +364,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Every Svelte editor with a debounce timer now has `onDestroy` cleanup.** That's: WBSEditor, CauseEffectEditor, FishboneEditor, WorkflowEditor, ActivityEditor, StakeholderEditor, plus both shared shells (`_layered_editor_shell.svelte`, `_stats_editor_shell.svelte`). Without this, navigating away from a half-edited chart leaves a pending `setTimeout(refreshLayout)` that fires on an unmounted component.
 - **Memory-safety scan caught two real bugs** on first run: (a) the duplicate `PackEnabled`, (b) an over-loose goroutine regex that matched substrings like `gofpdf`. Tightened to `(^|[[:space:]{(;])go (func|ident()` and skip lines whose first non-whitespace chars are `//`.
 - **Sandbox limitation**: `go run -` inside the script requires Go in PATH; added an explicit `command -v go` skip so the gate is portable to CI environments without a Go toolchain.
-- **The Wails runtime spawns goroutines per call.** The hardening pass confirmed PMForge itself spawns zero — the goroutine grep returns empty after the regex tightening. All concurrent state is the App struct, fully guarded.
+- **The Wails runtime spawns goroutines per call.** The hardening pass confirmed GoPMgr itself spawns zero — the goroutine grep returns empty after the regex tightening. All concurrent state is the App struct, fully guarded.
 
 ### 2026-05-19 — SOW + Closure + Stakeholder Analysis renderers + pure-data unit tests
 - **Bespoke coverage 8/25.** Statement of Work (prose + sign-off), Project Closure (mixed prose + lessons-learned table + sign-off line), Stakeholder Analysis (per-stakeholder cards grouped by quadrant). The three together demonstrate the FOUR distinct shape patterns we've now established:
@@ -412,7 +412,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Country-aware features should default sensibly.** New projects get `country_code = "US"` because that's the most common dataset and our default workweek matches. The Launchpad lets the user override. Legacy `.pmforge` files also get "US" via the migration helper.
 - **Budget rollup is name-matched, not ID-matched.** Work item `assignee` is a free-text string (so a placeholder name is fine before a stakeholder exists). The `budget.Compute` rollup case-insensitively matches `wi.assignee` against `stakeholder.name`. Trade-off: typos break the link. Future hardening: a stakeholder-picker dropdown for assignee.
 - **Timeline assembly stays database-free.** `timeline.Build()` takes the project + sprints + deployments as values; main.go fetches them once and passes them in. Same pattern as `documents.BuildCombinedReport`. The point is the package is unit-testable without spinning up SQLite.
-- **App.templates is intentionally non-fatal.** If zen-go fails to initialise the JDM engine at startup, we log and continue — the Launchpad falls back to "no auto-seed" and the rest of the app keeps working. A misconfigured rule should never brick PMForge.
+- **App.templates is intentionally non-fatal.** If zen-go fails to initialise the JDM engine at startup, we log and continue — the Launchpad falls back to "no auto-seed" and the rest of the app keeps working. A misconfigured rule should never brick GoPMgr.
 
 ### 2026-05-14 — Agile Pack frontend
 - **Native HTML5 drag-and-drop is sufficient** for the Kanban board and Backlog reorder. No external DnD library needed; `draggable="true"` + `ondragstart` / `ondragover` / `ondrop` covers it. The reorder pattern (drag a list item, push positions through `order_idx`) matches what `ReportComposer.svelte` already does — two cases now, established pattern.
@@ -544,7 +544,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **REUSE.toml added** (first one in the repo) to declare licenses for fetched `.ttf` binaries, embedded ICC profiles, generated lockfiles, and other files that cannot carry inline SPDX headers. OFL-1.1 + LicenseRef-Bitstream-Vera are documented in LICENSES.md.
 - **FOUND + FIXED a latent compile error**: `internal/documents/report.go` called `pdf.GetPageHeight()`, which does NOT exist in the pinned gofpdf v1.16.2 (it has `GetPageSize() (w, h)`). The `documents` package had therefore never compiled — masked in the sandbox because `export` always failed first on godocx/pkcs7 resolution. Fixed to `_, pageH := pd.GetPageSize()`. **Lesson: the combined-report chart-embed path (report.go) was shipped untested against the pinned gofpdf version. Worth a smoke test on the user's machine.** When verifying, build `./internal/documents/` in isolation — it has no godocx/pkcs7 deps and now compiles cleanly in the sandbox.
 - **Remaining for the frontend**: a Settings-panel font picker (dropdown over `ListFonts()`, an "Import font…" button calling `ImportFont()`, persisted via `SetDefaultFont`). The backend is complete; this is Svelte work.
-- **Sandbox build note**: `go build ./internal/documents/ ./internal/fonts/ ./internal/pdfmeta/ ./internal/charts/... ./internal/db/` all succeed. `export` and `cmd/pmforge` still can't build in the sandbox (godocx v0.1.16 + pkcs7 pinned revisions don't resolve) — a pre-existing limitation, not introduced here.
+- **Sandbox build note**: `go build ./internal/documents/ ./internal/fonts/ ./internal/pdfmeta/ ./internal/charts/... ./internal/db/` all succeed. `export` and `cmd/gopmgr` still can't build in the sandbox (godocx v0.1.16 + pkcs7 pinned revisions don't resolve) — a pre-existing limitation, not introduced here.
 
 ### 2026-06-04 — CPM kernel + DORA classification tests
 - **`internal/kernel` now has 10 unit tests covering every branch of CalculateCPM and topoSort.** Cases: empty map, single task, linear chain (A→B→C), diamond network (A→B/C→D with longer branch on critical path), parallel equal-length paths (both critical), zero-duration milestones, cycle detection (mutual reference + self-loop). `topoSort` tests cover dependency ordering and alphabetical determinism. The package doc comment explicitly noted isolation testing was intended — this was pure overdue work.
@@ -572,7 +572,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 ### 2026-06-04 — debug error envelope, sigma/charts Pareto, cli version tests
 - **`internal/debug` now has 9 unit tests in `report_test.go`.** Covers `Wrap` with a non-nil error (Context/Message/Cause fields), `Wrap` with nil (Message==context, Cause==""), file:line capture (File ends with `_test.go` — Wrap records the immediate caller), non-empty Stack, nanosecond-resolution Timestamp within ±1s, `ToError()` returning a non-nil error whose string equals Message, round-trip through `ToError`/`Report` recovering the original ErrorReport, and `Report` returning false for plain `errors.New` and for nil.
 - **`internal/sigma/charts` now has 10 unit tests in `pareto_test.go`.** Covers `CalculatePareto` error paths (empty input, length mismatch, zero total), single-item edge case (pct=100, cum=100), descending sort by count, exact percentage values, exact cumulative percentage values (50/80/100 for input 50/30/20), structural invariant (last CumulativePercentage == 100.0), stable sort for equal counts, and output-length matches input.
-- **`internal/cli` now has 3 unit tests in `parser_test.go`.** Covers `Version` non-empty, `PrintVersion` stdout output containing "PMForge", `Version`, and "GPL" (via `os.Pipe` capture), and `Config` zero-value coherence (bool fields default false, string fields default empty). `ParseFlags()` is not unit-tested because it calls `flag.Parse()` against the global `flag.CommandLine` and `os.Args` — the safe test boundary is the banner and the type structure.
+- **`internal/cli` now has 3 unit tests in `parser_test.go`.** Covers `Version` non-empty, `PrintVersion` stdout output containing "GoPMgr", `Version`, and "GPL" (via `os.Pipe` capture), and `Config` zero-value coherence (bool fields default false, string fields default empty). `ParseFlags()` is not unit-tested because it calls `flag.Parse()` against the global `flag.CommandLine` and `os.Args` — the safe test boundary is the banner and the type structure.
 - **23 packages now have test coverage.** Remaining `[no test files]` packages: `admin`, `charts/flow`, `charts/pdfrender`, `sigma/domain`, `sigma/service`. All pure-function leaf packages are now covered; remaining gaps require SQLite or are type-only definitions with no logic.
 
 ### 2026-06-04 — Flow chart layout tests (charts/flow)
@@ -595,7 +595,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Registry has 20 chart kinds, not 19.** 6 DAG + 8 Stats + 4 Matrix + 2 Flow = 20. The off-by-one originated in the initial project scaffold comment before the 20th kind was wired up. All references to "19 chart kinds" in README.md (7 sites), DEVELOPER_HANDBOOK.md (3 sites), and `internal/charts/registry.go` package comment are now corrected to 20.
 - **"Five engines" corrected to "four engines" in two places.** `registry.go` package comment and README.md both said "five engines"; only four Engine constants exist (DAG, Stats, Matrix, Flow). The five *renderer files* in `pdfrender/` (dag, fishbone, flow, matrix, stats) are correctly five because Fishbone has its own renderer file, but the taxonomy engine count is four.
 - **`make race` passes clean** across all 28 packages — no data races detected.
-- **`make memory-scan` passes clean** — `go vet` clean, goroutine inventory zero PMForge spawns, gosec clean, govulncheck reports zero vulnerabilities in PMForge's own code.
+- **`make memory-scan` passes clean** — `go vet` clean, goroutine inventory zero GoPMgr spawns, gosec clean, govulncheck reports zero vulnerabilities in GoPMgr's own code.
 - **28 packages have test coverage; `sigma/domain` is intentionally excluded** (pure type constants and struct definitions — no logic to test).
 
 ### 2026-06-04 — Settings tests + UX hardening (Ctrl+S, dirty indicator, status dropdown, delete buttons, font/export settings)
@@ -622,12 +622,12 @@ This section is the running log of non-obvious discoveries. Every session that l
 ### 2026-05-25 — veraPDF gate hardening
 - **`scripts/validate-pdfa.sh` now has a testable helper layer.** `scripts/validate-pdfa-lib.sh` owns compliance-output parsing, Docker path mapping, portable veraPDF executable lookup, archive validation, and stale-wrapper detection; `scripts/validate-pdfa-lib_test.sh` covers those behaviors plus an integration path with a fake veraPDF CLI.
 - **Do not grep text output for `compliant`.** That false-positives on "not compliant". The gate now requests XML and accepts only explicit `<isCompliant>true</isCompliant>` (or JSON `isCompliant: true` if a future runner emits JSON).
-- **Generate validation samples inside the repo, not `/tmp`.** Docker receives `/work/...` paths for samples under `.tmp/pmforge-pdfa-test`; CLI mode receives host paths. This matters because the PMForge workspace path contains spaces and Docker cannot see host-only `/tmp` paths unless mounted.
+- **Generate validation samples inside the repo, not `/tmp`.** Docker receives `/work/...` paths for samples under `.tmp/gopmgr-pdfa-test`; CLI mode receives host paths. This matters because the GoPMgr workspace path contains spaces and Docker cannot see host-only `/tmp` paths unless mounted.
 - **The sample generator must set `ExportOptions.Format`.** Missing `FormatPDF` made the old gate "pass" with no samples after `[EXPORT_FORMAT_UNKNOWN] unknown format ""`. Sample-generation failure is now a real gate failure; missing veraPDF tooling remains a soft skip.
 - **Stale/corrupt veraPDF downloads are ignored.** The installer validates downloaded zip/jar files before accepting them and refreshes wrapper scripts that point at invalid jars. On this machine, Docker is absent and auto-install still cannot fetch a valid veraPDF artifact, so `make check-pdfa` skips cleanly rather than validating.
 
 ### 2026-05-25 — Frontend stability/performance hardening
-- **Keep `xlsx` lazy-loaded in the Sigma import flow.** `SigmaProjectView.svelte` now imports `xlsx` only inside the spreadsheet-import path, so Vite splits it into `dist/assets/xlsx-*.js` instead of forcing every PMForge launch to parse the spreadsheet engine.
+- **Keep `xlsx` lazy-loaded in the Sigma import flow.** `SigmaProjectView.svelte` now imports `xlsx` only inside the spreadsheet-import path, so Vite splits it into `dist/assets/xlsx-*.js` instead of forcing every GoPMgr launch to parse the spreadsheet engine.
 - **`scripts/frontend-stability-check.sh` protects this boundary.** The guard fails on static Sigma `xlsx` imports, deprecated Svelte 4 `on:*=` directives in Sigma components, `createEventDispatcher` usage in Sigma components, and SVG text actions without keyboard handlers in `SigmaFishbone.svelte`.
 - **Sigma save notifications use Svelte 5 callback props.** `SigmaVoCCTQ`, `SigmaSIPOC`, `SigmaSolutionMatrix`, and `SigmaControlPlan` expose optional `onSaved` callbacks instead of dispatching legacy component events; parent calls should pass function props such as `onSaved={loadCharter}`.
 - **Frontend warnings are now a hard gate.** `scripts/frontend-stability-check.sh` runs `svelte-check --fail-on-warnings`; future Svelte diagnostics must be fixed rather than tolerated. Current `npm run check` from `frontend/` reports 0 errors and 0 warnings.
@@ -635,23 +635,23 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **`scripts/frontend-build-budget.sh` protects the split.** It runs the production build and fails if Vite emits a large-chunk warning or if the main `index-*.js` chunk exceeds 500,000 bytes. Prefer lazy route/component splits over raising the Vite warning limit.
 
 ### 2026-05-25 — Release gate scope and deterministic build hardening
-- **Do not use the unscoped all-packages pattern for Go quality gates in this repo.** With `frontend/node_modules` installed, it discovers npm dependency packages such as `frontend/node_modules/flatted/golang/pkg/flatted`. Use `. ./internal/...` for PMForge-owned Go gates.
+- **Do not use the unscoped all-packages pattern for Go quality gates in this repo.** With `frontend/node_modules` installed, it discovers npm dependency packages such as `frontend/node_modules/flatted/golang/pkg/flatted`. Use `. ./internal/...` for GoPMgr-owned Go gates.
 - **`scripts/release-gate-scope-check.sh` protects release wiring.** It fails on unscoped Go quality commands and requires `check-release.sh` to include the frontend stability and bundle-budget gates.
-- **Optional scanners are advisory by default.** `memory-safety-scan.sh` still runs detected `staticcheck`, `gosec`, and `govulncheck`, but only mandatory checks fail by default. Set `PMFORGE_STRICT_OPTIONAL_SCANS=1` for security-focused strict runs. This avoids release-gate behavior changing just because one developer has `gosec` installed.
-- **Wails CLI builds require the main package at the repo root.** PMForge's entrypoint was moved from `cmd/pmforge/main.go` to `./main.go` (with its `*_test.go` files) so `make build` can run `wails build` directly. `wails build` builds the frontend into the repo-root `frontend/dist`, embeds it via the root `go:embed`, generates the Wails bindings, injects the `desktop,production` tags, and links the platform frameworks (on macOS, `UniformTypeIdentifiers` for `UTType`) - the work the old hand-rolled `go build ./cmd/pmforge` had to replicate (and which failed at runtime without the tags and at link without the framework). Install the CLI with `go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0` to match the pinned project version. `scripts/wails-build.sh` removes extended attributes from the completed bundle and ad-hoc signs it after Wails returns; this keeps binding generation enabled while preventing macOS provenance/resource-fork metadata from breaking bundle verification.
+- **Optional scanners are advisory by default.** `memory-safety-scan.sh` still runs detected `staticcheck`, `gosec`, and `govulncheck`, but only mandatory checks fail by default. Set `GOPMGR_STRICT_OPTIONAL_SCANS=1` for security-focused strict runs. This avoids release-gate behavior changing just because one developer has `gosec` installed.
+- **Wails CLI builds require the main package at the repo root.** GoPMgr's entrypoint was moved from `cmd/gopmgr/main.go` to `./main.go` (with its `*_test.go` files) so `make build` can run `wails build` directly. `wails build` builds the frontend into the repo-root `frontend/dist`, embeds it via the root `go:embed`, generates the Wails bindings, injects the `desktop,production` tags, and links the platform frameworks (on macOS, `UniformTypeIdentifiers` for `UTType`) - the work the old hand-rolled `go build ./cmd/gopmgr` had to replicate (and which failed at runtime without the tags and at link without the framework). Install the CLI with `go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0` to match the pinned project version. `scripts/wails-build.sh` removes extended attributes from the completed bundle and ad-hoc signs it after Wails returns; this keeps binding generation enabled while preventing macOS provenance/resource-fork metadata from breaking bundle verification.
 - **`check-release.sh` now runs the complete local release gate successfully on this machine.** It verifies scope, memory safety, frontend warning-clean state, frontend bundle budget, race detector, deterministic build, and the PDF/A soft gate. `reuse` still skips if the tool is not installed.
 
 ### 2026-05-26 — Deterministic package targets
-- **Package targets now use `scripts/package.sh`, not Wails CLI packaging.** The script calls the proven `make build` path, stages `pmforge` with `README.md` plus `LICENSES/`, and writes `build/packages/pmforge-<goos>-<goarch>.tar.gz`.
+- **Package targets now use `scripts/package.sh`, not Wails CLI packaging.** The script calls the proven `make build` path, stages `gopmgr` with `README.md` plus `LICENSES/`, and writes `build/packages/gopmgr-<goos>-<goarch>.tar.gz`.
 - **Packaging is host-local by design.** `package-darwin` runs on macOS; `package-linux` and `package-windows` fail fast with a clear message unless run on matching hosts/CI runners. This avoids pretending that CGO/Wails cross-packaging is portable from one desktop machine.
 - **`scripts/release-gate-scope-check.sh` also rejects Wails CLI package invocations.** Future package target edits should keep using the deterministic script unless the repo intentionally reintroduces app-bundle packaging with a verified root-main Wails layout.
 
 ### 2026-05-26 — Strict gosec and Sigma persistence hardening
-- **Strict optional scanners are now clean on this machine.** `PMFORGE_STRICT_OPTIONAL_SCANS=1 make memory-scan` passes with gosec installed; normal `make memory-scan` remains clean. Keep any future `#nosec G304` comments narrow and tied to a real product boundary, such as user-selected certificate/export/font paths or `os.CreateTemp` paths created by PMForge itself.
+- **Strict optional scanners are now clean on this machine.** `GOPMGR_STRICT_OPTIONAL_SCANS=1 make memory-scan` passes with gosec installed; normal `make memory-scan` remains clean. Keep any future `#nosec G304` comments narrow and tied to a real product boundary, such as user-selected certificate/export/font paths or `os.CreateTemp` paths created by GoPMgr itself.
 - **Sigma persisted JSON must fail loudly when corrupt.** `SigmaGetCharter`, `SigmaGetFishbone`, `SigmaGetSolutions`, `SigmaGetControlPlan`, `SigmaGetSIPOC`, and `SigmaGetVoC` now return contextual decode errors instead of silently treating malformed JSON as empty domain data. The regression tests insert corrupt JSON directly into SQLite so the failure mode stays covered.
 - **Fishbone storage shape is full `FishboneData`, not bare branches.** `SigmaSaveFishbone` writes the full object; `SigmaGetFishbone` now reads that shape and preserves the legacy bare-`[]FishboneBranch` fallback. Without this, saved causes could disappear on reload because the previous getter ignored the unmarshal error.
 - **Argon2 PHC parsing must validate bounds before calling `argon2.IDKey`.** Malformed hashes with `p=256`, zero parameters, empty salt, or empty key material can otherwise panic or truncate during conversion. Keep these checks before the `uint8` / `uint32` conversions.
-- **Export and account artifacts should default private.** Sigma reports, audit CSV exports, backup bundles, the Sigma export directory, and the PMForge system root now use `0600`/`0700` permissions where PMForge owns the write path. Per-user subdirectories already used `0700`; the root now matches the isolation claim in §5.
+- **Export and account artifacts should default private.** Sigma reports, audit CSV exports, backup bundles, the Sigma export directory, and the GoPMgr system root now use `0600`/`0700` permissions where GoPMgr owns the write path. Per-user subdirectories already used `0700`; the root now matches the isolation claim in §5.
 
 ### 2026-05-26 — Backup and audit artifact durability
 - **Never string-interpolate `VACUUM INTO` paths.** A backup/snapshot destination containing a single quote used to fail with a SQLite syntax error. `CreateSnapshot` now binds the target path as a SQLite parameter, and regression tests cover both direct snapshots and `.pmba` archival bundles with quoted destination names.
@@ -663,7 +663,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Manifest bodies are bounded explicitly.** `readManifestBody` reads at most `maxManifestBytes + 1` and returns a clear "manifest too large" error if the server exceeds 64 KiB, rather than passing a silently truncated body into signature verification. Keep this limit check before `VerifyManifest`.
 
 ### 2026-05-26 — Existing directory permission repair
-- **`MkdirAll(path, 0700)` is not enough for privacy.** It applies the mode only when the directory is newly created; existing `0755` PMForge roots or per-user folders stayed too broad. `users.ensurePrivateDir` now runs `MkdirAll` and then `Chmod(0700)` for the system root plus each account's `projects`, `certs`, and `exports` directories.
+- **`MkdirAll(path, 0700)` is not enough for privacy.** It applies the mode only when the directory is newly created; existing `0755` GoPMgr roots or per-user folders stayed too broad. `users.ensurePrivateDir` now runs `MkdirAll` and then `Chmod(0700)` for the system root plus each account's `projects`, `certs`, and `exports` directories.
 - **Directory-mode gosec suppressions must explain directory semantics.** `#nosec G302` is acceptable on `Chmod(..., 0700)` only where the target is a private directory; files should remain `0600` or stricter.
 
 ### 2026-05-26 — Recovery-code paste tolerance
@@ -679,7 +679,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Rollback failures need to be visible.** If the snapshot rename fails after the live DB has moved to `.corrupt`, the rollback attempt is still made and any rollback error is included in the returned error instead of being discarded.
 
 ### 2026-05-26 — ID entropy failure hardening
-- **Do not use `crypto/rand.Read` in recoverable code paths on Go 1.26.** In this toolchain it fatals the process if the reader fails. PMForge's DB and Agile ID generators now use `io.ReadFull(rand.Reader, ...)` and return contextual errors instead of crashing or emitting zero IDs.
+- **Do not use `crypto/rand.Read` in recoverable code paths on Go 1.26.** In this toolchain it fatals the process if the reader fails. GoPMgr's DB and Agile ID generators now use `io.ReadFull(rand.Reader, ...)` and return contextual errors instead of crashing or emitting zero IDs.
 - **Generated IDs are part of persistence correctness.** `UpsertProject`, chart/document/stakeholder saves, and Agile board/column/work-item/sprint/deployment saves now abort when entropy is unavailable, so a failed CSPRNG cannot create predictable or colliding primary keys.
 - **Tests should force entropy failure through `crypto/rand.Reader`.** The regression tests replace the reader with an erroring source and assert that persistence APIs fail before any write that would rely on a generated ID.
 
@@ -714,7 +714,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Test existing directories, not only fresh installs.** The font regression creates a broad directory first, imports a `.ttf`, and verifies the directory mode is repaired. Keep this pattern for privacy-sensitive local storage paths where `MkdirAll(..., 0700)` alone does not upgrade old installs.
 
 ### 2026-06-05 — Sigma report export directory privacy repair
-- **Sigma report exports must repair existing export directory modes.** `GenerateSigmaReport` writes PDFs as `0600`, but `getExportDir` previously left a pre-existing broad `$HOME/PMForge/exports` directory untouched. It now chmods the directory back to `0700` after `MkdirAll`.
+- **Sigma report exports must repair existing export directory modes.** `GenerateSigmaReport` writes PDFs as `0600`, but `getExportDir` previously left a pre-existing broad `$HOME/GoPMgr/exports` directory untouched. It now chmods the directory back to `0700` after `MkdirAll`.
 - **Keep gosec suppressions directory-specific.** `#nosec G302` is acceptable on the Sigma export directory chmod because the target is a private directory. The report file itself remains `0600`, and the regression covers the upgrade path from an existing `0755` directory.
 
 ### 2026-06-05 — Secure archive audit fail-closed
@@ -735,25 +735,25 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Representative PDF/A samples should use public export APIs.** `scripts/validate-pdfa.sh` now generates a schedule report through `export.GenerateArchivalReport`, a standalone charter through `documents.Render`, a combined report through `documents.BuildCombinedReport`, and a Monte Carlo risk report through `export.GenerateMonteCarloRiskReport`, all with Source Sans 3 registered where needed.
 
 ### 2026-06-06 — V2 encryption-at-rest stopgap
-- **Historical note, superseded 2026-06-13.** This stopgap said not to imply PMForge encrypted `.pmforge` databases at rest. That was correct before SQLCipher landed; current release docs now state the implemented behavior: new project DBs are SQLCipher-encrypted, Settings can migrate existing plaintext DBs after recovery-code reissue, and OS-level disk encryption remains whole-device defence in depth.
+- **Historical note, superseded 2026-06-13.** This stopgap said not to imply GoPMgr encrypted `.pmforge` databases at rest. That was correct before SQLCipher landed; current release docs now state the implemented behavior: new project DBs are SQLCipher-encrypted, Settings can migrate existing plaintext DBs after recovery-code reissue, and OS-level disk encryption remains whole-device defence in depth.
 - **Guard release security claims with a cheap textual gate.** `scripts/release-gate-scope-check.sh` now fails if README says SQLCipher/native database encryption is still deferred, if `go.mod` lacks `github.com/mutecomm/go-sqlcipher/v4`, or if README stops documenting SQLCipher-encrypted per-user `.pmforge` project databases.
 
 ### 2026-06-06 — Timeline date-dragging
 - **Keep timeline editing scoped to real timeline boundaries.** `MoveTimelineEntry` updates project start/end and sprint start/end dates, returns a rebuilt timeline, and rejects deployment moves because deployments are DORA history.
 - **Expose editability from the backend.** `timeline.Entry` now carries `editable` and `edit_field`; the Svelte view does not infer write permissions from labels or colors.
-- **The build/ ignore must keep the Wails scaffold trackable.** `.gitignore` ignores everything under `build/` except `build/darwin/Info.plist` and `build/darwin/Info.dev.plist` (the Wails macOS bundle scaffold, which sets `CFBundleIdentifier dev.pmforge.PMForge`). Compiled output (`build/bin`, `build/packages`) stays ignored. `make clean` therefore deletes `build/bin`/`build/packages` but never the tracked scaffold.
+- **The build/ ignore must keep the Wails scaffold trackable.** `.gitignore` ignores everything under `build/` except `build/darwin/Info.plist` and `build/darwin/Info.dev.plist` (the Wails macOS bundle scaffold, which sets `CFBundleIdentifier dev.gopmgr.GoPMgr`). Compiled output (`build/bin`, `build/packages`) stays ignored. `make clean` therefore deletes `build/bin`/`build/packages` but never the tracked scaffold.
 - **Generated embed output needs no special handling now.** The root `main.go` embeds the repo-root `frontend/dist`, which is gitignored; `reuse lint` skips gitignored paths, so no pre-clean is required. `wails build` regenerates `frontend/dist` on each build.
 
 ### 2026-06-07 — veraPDF PAdES feature extraction
 - **veraPDF is a useful PAdES feature extractor, not the primary signature-validity oracle.** `scripts/validate-pades-external.sh` now runs `verapdf --off --extract signature --format xml` and checks for `Adobe.PPKLite` plus `ETSI.CAdES.detached`; `pdfsig` remains the local validity gate for `Signature Validation: Signature is Valid`.
-- **Keep verbose validator artifacts out of the report body.** veraPDF includes the padded CMS contents in feature output, so the harness writes the XML to `.tmp/pmforge-pades-test/verapdf-signature-features.xml` and records only the pass/fail line plus artifact path in the human report.
+- **Keep verbose validator artifacts out of the report body.** veraPDF includes the padded CMS contents in feature output, so the harness writes the XML to `.tmp/gopmgr-pades-test/verapdf-signature-features.xml` and records only the pass/fail line plus artifact path in the human report.
 - **Use fake-validator tests for optional external tools.** `scripts/validate-pades-external_test.sh` injects a fake `verapdf` through `PATH`, proving the branch runs deterministically even on machines without the real CLI.
-- **PAdES validation scripts share generated state and need coordination.** `validate-pades.sh` recreates `.tmp/pmforge-pades-test`; external validators read from that same directory. Both scripts now use `.tmp/pmforge-pades-test.lock`, and `scripts/validate-pades-parallel_test.sh` guards concurrent local/external runs.
+- **PAdES validation scripts share generated state and need coordination.** `validate-pades.sh` recreates `.tmp/gopmgr-pades-test`; external validators read from that same directory. Both scripts now use `.tmp/gopmgr-pades-test.lock`, and `scripts/validate-pades-parallel_test.sh` guards concurrent local/external runs.
 
 ### 2026-06-07 — DSS PAdES baseline-B validation
-- **PAdES baseline-B forbids CMS `signing-time`.** `internal/crypto/pdf_cms.go` now builds PMForge's detached CMS directly so the signed attributes include `contentType`, `messageDigest`, and `SigningCertificateV2`, but omit CMS `signing-time`.
+- **PAdES baseline-B forbids CMS `signing-time`.** `internal/crypto/pdf_cms.go` now builds GoPMgr's detached CMS directly so the signed attributes include `contentType`, `messageDigest`, and `SigningCertificateV2`, but omit CMS `signing-time`.
 - **The PDF signature dictionary still needs `/M`.** `pdfmeta.InjectPAdESSignature` writes `/M (D:YYYYMMDDHHmmSSZ)` into the signed byte range. This first allowed DSS to classify the fixture as Baseline B; the timestamped fixture is now classified as Baseline T.
-- **DSS is an executed external validator when installed.** `scripts/validate-pades-external.sh` runs `dss-validation-tool validate`, records `.tmp/pmforge-pades-test/dss-validation-output.txt`, fails on DSS PAdES baseline warnings, and now requires `signature.format=PAdES-BASELINE-T` when the wrapper emits that field. `NO_CERTIFICATE_CHAIN_FOUND` remains expected for the self-signed signer and TSA.
+- **DSS is an executed external validator when installed.** `scripts/validate-pades-external.sh` runs `dss-validation-tool validate`, records `.tmp/gopmgr-pades-test/dss-validation-output.txt`, fails on DSS PAdES baseline warnings, and now requires `signature.format=PAdES-BASELINE-T` when the wrapper emits that field. `NO_CERTIFICATE_CHAIN_FOUND` remains expected for the self-signed signer and TSA.
 - **Release docs should not regress to stale DSS TODOs.** `scripts/release-gate-scope-check.sh` requires README and this handbook to mention the current DSS `PAdES-BASELINE-T` fixture result and rejects old wording that treats DSS as unrun.
 
 ### 2026-07-25 — RFC 3161 timestamp client foundation
@@ -778,7 +778,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 ### 2026-07-25 — PAdES-T CMS timestamp embedding
 
 - **Hash the signature OCTET STRING, not the PDF or complete CMS.**
-  `crypto.SignatureTimestampImprint` parses PMForge's detached, single-signer
+  `crypto.SignatureTimestampImprint` parses GoPMgr's detached, single-signer
   CMS and returns SHA-256 over `SignerInfo.signature`, matching RFC 5126.
 - **Timestamping must not invalidate the original signature.**
   `crypto.AddSignatureTimestamp` revalidates the returned token, appends the
@@ -815,7 +815,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 ### 2026-07-25 — Legacy PDF signature fallback retirement
 
 - **A CMS blob in a PDF comment is not a PAdES signature.**
-  `internal/export` no longer appends `%%PMForgeCMSSignature` when real
+  `internal/export` no longer appends `%%GoPMgrCMSSignature` when real
   `/Sig` embedding fails. Certificate, CMS, or PDF mutation failures return an
   error and no bytes.
 - **Compatibility helpers still use the canonical pipeline.**
@@ -885,7 +885,7 @@ This section is the running log of non-obvious discoveries. Every session that l
   validators and failed validators have separate `VALIDATION_INCOMPLETE` and
   `VALIDATION_FAILED` outcomes.
 - **Required mode means verified trust, not merely configured input.**
-  `PMFORGE_PADES_TRUSTED_REQUIRED=1` fails for `NOT_CONFIGURED`, indeterminate
+  `GOPMGR_PADES_TRUSTED_REQUIRED=1` fails for `NOT_CONFIGURED`, indeterminate
   trust, incomplete validation, invalid input, and validation failure.
 - **Treat trusted evidence as one locked, reproducible snapshot.** The harness
   resolves the supplied path, hashes the unchanged PDF and validator, records
@@ -959,7 +959,7 @@ This section is the running log of non-obvious discoveries. Every session that l
   guard rejects its accidental reintroduction instead of leaving an
   unmaintained pipeline that can diverge from release behavior.
 - **Keep configuration parsers out of the product binary.** The YAML and TOML
-  packages are used by the standalone `scripts` command only; PMForge project
+  packages are used by the standalone `scripts` command only; GoPMgr project
   data and report inputs/outputs do not gain a new serialization format.
 
 ### 2026-07-26 — Reproducible native installer tools
@@ -973,9 +973,9 @@ This section is the running log of non-obvious discoveries. Every session that l
   Go's embedded module metadata instead. Windows checks Chocolatey's exact
   installed package record and confirms `makensis` is discoverable before
   Wails starts.
-- **Do not install an unused macOS dependency.** PMForge's dependable tag path
+- **Do not install an unused macOS dependency.** GoPMgr's dependable tag path
   is the staged `hdiutil` image. `create-dmg` drives Finder through AppleScript
-  and remains an explicit `PMFORGE_FANCY_DMG=1` local option; removing its
+  and remains an explicit `GOPMGR_FANCY_DMG=1` local option; removing its
   unconditional Homebrew install reduces release network and UI-automation
   inputs.
 - **Test the failure classes, then guard the integration points.**
@@ -1005,7 +1005,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 
 ### 2026-07-26 — Deterministic Windows NSIS scaffold
 
-- **Track authored inputs, not generated payloads.** PMForge now owns
+- **Track authored inputs, not generated payloads.** GoPMgr now owns
   `build/windows/installer/project.nsi`, `build/windows/info.json`, and
   `build/windows/wails.exe.manifest`. `.gitignore` continues to exclude the
   derived icon, WebView2 bootstrapper, binaries, and `wails_tools.nsh`; the
@@ -1017,7 +1017,7 @@ This section is the running log of non-obvious discoveries. Every session that l
   reject removal of the user's Documents/PMForge tree or `.pmforge` files.
 - **Windows had silently omitted embedded analytics.** Unlike the Linux and
   macOS legs, its Wails command lacked `-tags duckdb`. The workflow now embeds
-  DuckDB and runs `verify-duckdb-linked.sh` against `pmforge.exe` before
+  DuckDB and runs `verify-duckdb-linked.sh` against `gopmgr.exe` before
   collecting the installer.
 - **Separate syntax evidence from native evidence.**
   `make windows-installer-scaffold` runs isolated mutation fixtures and, when
@@ -1077,7 +1077,7 @@ This section is the running log of non-obvious discoveries. Every session that l
   PDF/A helper test injected fake `verapdf` and `docker` binaries but its CLI
   phase still preferred a host-installed Docker. GitHub therefore ran a real
   container inside an allegedly isolated regression. The CLI phase now sets
-  `PMFORGE_VERAPDF_FORCE_CLI=1`, while the Docker phase keeps its fake first on
+  `GOPMGR_VERAPDF_FORCE_CLI=1`, while the Docker phase keeps its fake first on
   `PATH`; release-gate output is streamed so future failures retain evidence.
 
 ### 2026-07-27 — First packaged 1.1.0 alpha
@@ -1098,7 +1098,7 @@ This section is the running log of non-obvious discoveries. Every session that l
   non-draft prerelease with all four expected assets.
 - **Isolate first-launch tests from developer data.** The published DMG was
   mounted read-only and launched on an M4 Mac with a temporary
-  `XDG_DATA_HOME`. PMForge created private `PMForge`, log, and `system.db`
+  `XDG_DATA_HOME`. GoPMgr created private `GoPMgr`, log, and `system.db`
   paths, reported that no administrator existed, and exposed the first-user
   administrator checkbox. The app then exited cleanly without submitting an
   account, leaving the developer's normal Application Support data untouched.
@@ -1106,14 +1106,14 @@ This section is the running log of non-obvious discoveries. Every session that l
 ### 2026-07-28: Recoverable clean-test reset
 
 - **A reset for testers must not be a delete command.** The published DMG's
-  isolated administrator lifecycle proved that moving the complete PMForge
+  isolated administrator lifecycle proved that moving the complete GoPMgr
   data root aside is sufficient to restore first-launch onboarding.
   `scripts/reset-clean-test.sh` therefore renames the active root to a
   timestamped sibling and prints the restorable path; it never removes project
   or account data.
 - **Guard the path and the database lifecycle.** The helper accepts only an
-  absolute directory named `PMForge`, rejects symlinked roots and backups,
-  refuses to run while a packaged or development PMForge process is active,
+  absolute directory named `GoPMgr`, rejects symlinked roots and backups,
+  refuses to run while a packaged or development GoPMgr process is active,
   and never overwrites an existing root or backup. Restore accepts only a
   sibling backup created by the clean-test naming contract.
 - **Test destructive-adjacent tooling entirely in fixtures.**
@@ -1140,14 +1140,14 @@ This section is the running log of non-obvious discoveries. Every session that l
   `1.1.0` version of record as required by the release contract. Binary
   checksums, rather than Finder's version display, proved that the current
   `main` build replaced the published Alpha binary.
-- **Keep real developer data outside lifecycle tests.** Both normal PMForge
+- **Keep real developer data outside lifecycle tests.** Both normal GoPMgr
   data roots retained their original inode, modification time, permissions,
   and `system.db` SHA-256 checksum. All application launches used an isolated
   `XDG_DATA_HOME`.
 
 ### 2026-07-28: Beta backlog and macOS green window control evaluation
 
-- **The disabled green control is not a Svelte defect.** PMForge's
+- **The disabled green control is not a Svelte defect.** GoPMgr's
   `options.App` is resizable and has no maximum dimensions, but leaves
   `Mac` nil. Wails 2.13.0 initializes its Darwin `zoomable` flag only inside
   the non-nil macOS options branch; its Cocoa bridge then disables
@@ -1174,7 +1174,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 
 ### 2026-06-08 — Matrix engine layout tests (swot, stakeholder, generic)
 - **Coverage asymmetry is a reliable "untested real logic" signal.** `charts/matrix` sat at 29.5% while sibling engines (dag 83.7%, flow 94.9%, stats 86.0%) were high. Cause: only `raci.go` had a test; `swot.go`, `stakeholder.go`, and `generic.go` Parse/Layout functions were 0%. Added `swot_test.go`, `stakeholder_test.go`, `generic_test.go` → package now 95.8%, race-clean.
-- **Apply the glue-vs-logic discriminator before chasing a low number.** Low coverage in `cli` (5%), `cmd/pmforge`, `pdfrender`, and `export` is structural — `flag` registration, Wails App methods, gofpdf draw calls. Those are uncoverable-by-nature and refactoring a launch entry point to test stdlib boilerplate is risk without reward. The matrix functions, by contrast, are pure parse + layout math (quadrant classification, sqrt(n) micro-grid placement, ragged-array normalisation) — real behaviour worth pinning.
+- **Apply the glue-vs-logic discriminator before chasing a low number.** Low coverage in `cli` (5%), `cmd/gopmgr`, `pdfrender`, and `export` is structural — `flag` registration, Wails App methods, gofpdf draw calls. Those are uncoverable-by-nature and refactoring a launch entry point to test stdlib boilerplate is risk without reward. The matrix functions, by contrast, are pure parse + layout math (quadrant classification, sqrt(n) micro-grid placement, ragged-array normalisation) — real behaviour worth pinning.
 - **`LayoutStakeholder` single-point invariant makes a clean assertion.** With n=1 in a bucket, the micro-grid formula collapses to exactly the quadrant centre, so each of the four Power×Interest combinations maps to a known (x,y). Used that to verify quadrant routing without reverse-engineering the grid spread.
 - **Remaining matrix gaps are defensive guards, not logic.** The uncovered `n==0`/`cols<1` branches in `LayoutStakeholder` are unreachable (a bucket only exists with ≥1 member; `ceil(sqrt(n≥1))≥1`). Left untested deliberately rather than contorting tests to hit dead guards.
 
@@ -1186,8 +1186,8 @@ This section is the running log of non-obvious discoveries. Every session that l
 
 ### 2026-06-08 (later) — PDF/A-3 gate: closed the "missing tooling = silent pass" hole
 - **A "hard" gate that skips when the validator is absent is still soft.** The earlier promotion made `check-release.sh` exit on *sample* failure, but `validate-pdfa.sh` still `exit 0`d ("SKIP") whenever veraPDF could not be obtained, the ICC profile was missing, or no samples were found. In any environment without Docker/veraPDF (the common CI default), the "hard" wrapper therefore passed **vacuously** — certifying PDF/A-3 it never checked. A release gate must fail when it *cannot* verify, not only when verification fails.
-- **Strictness is now an explicit switch, strict by default.** `validate-pdfa.sh` reads `PMFORGE_PDFA_STRICT` (default `1`). Unmet preconditions route through `pdfa_precondition_unmet`: strict → print `FAIL` and `exit 1`; non-strict → print `SKIP` and `exit 0`. `check-release.sh` invokes the script with `PMFORGE_PDFA_STRICT=1` explicitly so the release path is immune to a future default change; `PMFORGE_PDFA_STRICT=0 make check-pdfa` preserves local ergonomics on machines without Docker/veraPDF. An actually non-compliant sample fails in **either** mode — strictness only governs the can't-even-run preconditions.
-- **`ICC_PROFILE` and the strict flag are env-overridable for hermetic testing.** Added `PMFORGE_ICC_PROFILE` so the precondition branches can be exercised (point it at a nonexistent path) without deleting the tracked sRGB profile. Verified all four matrix cells: {ICC-missing, veraPDF-missing} × {strict→exit 1, non-strict→exit 0}, plus the happy path (real veraPDF 1.30.2, strict default) which still reports all three samples `isCompliant="true"` (146 passed / 0 failed rules) and the existing `validate-pdfa-lib_test.sh` integration test.
+- **Strictness is now an explicit switch, strict by default.** `validate-pdfa.sh` reads `GOPMGR_PDFA_STRICT` (default `1`). Unmet preconditions route through `pdfa_precondition_unmet`: strict → print `FAIL` and `exit 1`; non-strict → print `SKIP` and `exit 0`. `check-release.sh` invokes the script with `GOPMGR_PDFA_STRICT=1` explicitly so the release path is immune to a future default change; `GOPMGR_PDFA_STRICT=0 make check-pdfa` preserves local ergonomics on machines without Docker/veraPDF. An actually non-compliant sample fails in **either** mode — strictness only governs the can't-even-run preconditions.
+- **`ICC_PROFILE` and the strict flag are env-overridable for hermetic testing.** Added `GOPMGR_ICC_PROFILE` so the precondition branches can be exercised (point it at a nonexistent path) without deleting the tracked sRGB profile. Verified all four matrix cells: {ICC-missing, veraPDF-missing} × {strict→exit 1, non-strict→exit 0}, plus the happy path (real veraPDF 1.30.2, strict default) which still reports all three samples `isCompliant="true"` (146 passed / 0 failed rules) and the existing `validate-pdfa-lib_test.sh` integration test.
 - **veraPDF has no GitHub releases — the script's GitHub auto-download path is dead (404s).** Acquisition order that actually works: Docker image, then a `verapdf` already on `PATH`. The izpack installer from `software.verapdf.org/releases/verapdf-installer.zip` can be driven unattended via the console installer (`-console`, answer `1` / target path / `O` / per-pack `Y`·`N`), but CI should just provide Docker or a preinstalled CLI. Left the best-effort downloader in place (it's hermetically tested and harmless), but strict mode now turns its failure into a real gate failure instead of a skip.
 - **Sandbox note for future sessions:** the mounted working copy disallows `unlink`/`rm` (EPERM) even for files this user owns, while *create* and *overwrite* succeed. `validate-pdfa.sh` does `rm -rf "$SAMPLE_DIR"`, so it can't run in place here; exercise it against a `cp -a`'d copy of `internal/ cmd/ scripts/ go.mod go.sum` under `/tmp` (tmpfs) instead. Go is not preinstalled in the sandbox; fetch `go1.26.x.linux-arm64` to `/tmp`.
 
@@ -1198,7 +1198,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Minimize argon2 round-trips in tests.** Argon2id is intentionally slow (64 MiB, 3 iterations, 4 threads). Cover `HashPassword` happy path + `VerifyPassword` happy path + `ErrMismatch` in one `TestHashVerifyPassword_RoundTrip` test. All other `VerifyPassword` error paths are tested with hand-crafted PHC strings that are rejected before `argon2.IDKey` is called.
 - **Test counts from `grep -c "^func Test"` before writing notes.** The prior session had a 48-vs-40 discrepancy because the count was written from memory. Always run the grep and state: new tests added vs. file totals separately.
 - **`VerifyManifest`'s post-verify payload parse error is reachable without compromising a key.** Sign raw non-JSON bytes (`[]byte("not-json")`) with the real private key; the signature verifies, then `json.Unmarshal(payloadBytes, &p)` fails. This hits the final uncovered branch for 100% on `VerifyManifest` at essentially zero cost.
-- **`cmd/pmforge` does not build without a pre-built `frontend/dist`.** `go test ./internal/... ./cmd/...` exits 1 on `pattern all:frontend/dist: no matching files found` even when all internal packages pass. The correct wording is "all internal packages pass race-clean; `cmd/pmforge` not tested (requires built `frontend/dist`)."
+- **`cmd/gopmgr` does not build without a pre-built `frontend/dist`.** `go test ./internal/... ./cmd/...` exits 1 on `pattern all:frontend/dist: no matching files found` even when all internal packages pass. The correct wording is "all internal packages pass race-clean; `cmd/gopmgr` not tested (requires built `frontend/dist`)."
 
 ### 2026-06-09 — stats package: six remaining stat engine tests
 - **Coverage asymmetry applies within a package too.** `charts/stats` sat at 42% after the 2026-06-04 session that only added Pareto and Control tests. The six remaining engines (Line, Bar, Pie, BurnUp, BurnDown, CumulativeFlow) were all at 0% despite being pure parse+layout math. Added `stats_remaining_test.go` → package now 95.3%, race-clean.
@@ -1310,7 +1310,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 
 ### 2026-06-20 — REUSE compliance + WAL/audit test coverage
 
-- **REUSE gate restored.** Three root causes: (1) stale `cmd/pmforge/frontend/dist/` from the 2026-06-15 main-package relocation — not gitignored at that path, deleted via `rm -rf cmd`, `/cmd/` added to `.gitignore`; (2) `frontend/package.json.md5` not gitignored — added; (3) `build/bin/**` + `build/packages/**` are gitignored but `reuse` 6.x scans them anyway — added REUSE.toml glob annotations. All 11 `make check-release` gates pass.
+- **REUSE gate restored.** Three root causes: (1) stale `cmd/gopmgr/frontend/dist/` from the 2026-06-15 main-package relocation — not gitignored at that path, deleted via `rm -rf cmd`, `/cmd/` added to `.gitignore`; (2) `frontend/package.json.md5` not gitignored — added; (3) `build/bin/**` + `build/packages/**` are gitignored but `reuse` 6.x scans them anyway — added REUSE.toml glob annotations. All 11 `make check-release` gates pass.
 - **`audit_actions_test.go` (4 tests, race-clean).** `TestCloneOpenProject_DataSurvivesSnapshot` saves a chart to the open project before cloning, then opens the clone and asserts the chart is present — the actual VACUUM INTO invariant (a raw `copyFile` can miss data still in the WAL). `TestDeleteChart/Document/WorkItem_WritesAuditLog` each save an entity, delete it, and query `app.db.Conn` directly to confirm one `audit_log` row with the correct action and target_id. All 11 `make check-release` gates pass on the final tree.
 
 ### 2026-06-20 — Error reporting system + code quality audit
@@ -1335,7 +1335,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 
 - **Route wiring pattern for a new top-level view.** Four files, one change each: (1) `session.svelte.ts` — add the view name to the `view` union type; (2) `App.svelte` — add a `routeLoaders` entry mapping the name to a lazy `import()`; (3) `AppHeader.svelte` — add to `baseNav` and extend the `active` prop union; (4) `main.go` — add a menu item in `buildAppMenu()` that calls `emit("menu:<name>")` and add a matching `rt.EventsOn("menu:<name>")` handler in App.svelte's `onMount`. The guide's nav item appears in the Help menu and as the fourth top-bar tab.
 - **Launchpad seeds must be verified against `launchpad_seeds.json`.** The actual seed combinations and their artifacts do not match any reasonable intuition based on industry convention. For example, Construction + Waterfall seeds `['wbs','statement_of_work','risk_register','cpm']` — not Charter + Gantt. Business + OKRs seeds `['plan_word','stakeholder_analysis_doc','status_report']` — not Charter + Stakeholder Matrix. Never guess; always read the JDM file at `internal/templates/launchpad_seeds.json`.
-- **The Fishbone's default categories are People, Process, Equipment, Materials, Environment, Measurement** — confirmed in `FishboneEditor.svelte` as the `SIX_MS` constant. "Methods" is a common textbook variant but is NOT what PMForge seeds. The sixth M is "Measurement."
+- **The Fishbone's default categories are People, Process, Equipment, Materials, Environment, Measurement** — confirmed in `FishboneEditor.svelte` as the `SIX_MS` constant. "Methods" is a common textbook variant but is NOT what GoPMgr seeds. The sixth M is "Measurement."
 - **The VoC/CTQ component is a direct Need → CTQ mapping**, not a three-tier Need → Driver → CTQ tree. Each entry has: customer_need, ctq, lower_spec, upper_spec, measurement, data_collection, priority, source. The "CTQ tree" label in the component's heading is a summary, not an accurate description of the data model.
 - **The DEK (Data Encryption Key) is wrapped separately by the password AND by each recovery code.** `internal/users/dek.go` stores `wrapped_dek_pw` in `users` and `wrapped_dek` in `recovery_codes`. A passphrase reset via `ResetWithRecoveryCode` unwraps the DEK from the matching code and re-wraps it under the new password in a single transaction. Legacy codes issued before encryption was enabled have an empty `wrapped_dek` — the `HasLegacyRecoveryCodeWraps` guard blocks encryption enablement until codes are reissued and carry a DEK wrap.
 - **`OpenLogsFolder` opens the LOG directory, not the data directory.** The data directory path is exposed separately via `GetAppInfo().DataLocation`. These are two different paths. When documenting what "Open Logs Folder" does, say "log directory" only.
@@ -1351,7 +1351,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 - **Multi-return Go functions serialize as `null` in WebKit Wails.** Both `EnsureDefaultBoard` and `CreateProjectFromLaunchpad` returned tuples (`board, columns, nil`). WebKit serializes multi-return as `null` on the frontend. Both migrated to named single-return structs: `BoardWithColumns{Board: board, Columns: columns}` and `LaunchpadResult{Project: p, Path: path}`. Frontend callers migrated from `const [a,b] = await ...` to `const res = await ...; res.board; res.project`.
 - **ProjectPicker two-step delete confirm.** `confirmingDelete` / `busyPath` state pair: first click sets the pending item, second click executes. Same pattern used in AdminPanel. `CloneProject` uses `CreateSnapshot` (WAL-safe `VACUUM INTO`) for the open project and raw copy for external project paths.
 - **`git rm --cached` is the correct tool to untrack a committed file without deleting it.** `git rm -r --cached .agent_memory/` and `git rm --cached .claude/settings.local.json` removed those paths from git tracking while preserving local files. After adding them to `.gitignore`, `git add .` correctly skips both. This is the pattern for "was committed, should be local-only going forward."
-- **SPDX copyright attribution sweep: "James L. Burns and The PMForge Contributors".** All file headers and `REUSE.toml` updated from "The PMForge Contributors". This was a deliberate attribution decision by the project owner; future files must use the updated form. Such a sweep belongs in its own commit (or led prominently in a combined commit message) so a future `git log --all-match` of "SPDX" or "attribution" finds it without noise.
+- **SPDX copyright attribution sweep: "James L. Burns and The GoPMgr Contributors".** All file headers and `REUSE.toml` updated from "The GoPMgr Contributors". This was a deliberate attribution decision by the project owner; future files must use the updated form. Such a sweep belongs in its own commit (or led prominently in a combined commit message) so a future `git log --all-match` of "SPDX" or "attribution" finds it without noise.
 - **Verify cross-platform builds for new platform-guarded files before committing.** The dialog files introduce the first platform split under `internal/applog/`. Run `GOOS=windows go build ./internal/...` and `GOOS=linux go build ./internal/...` before every commit that adds or modifies `_darwin.go` / `_other.go` / `_windows.go` platform files.
 
 ### 2026-06-21 — Concurrency and correctness audit (full backend + frontend review)
@@ -1370,7 +1370,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 
 - **Methodology-gated sections use `{#if session.project?.methodology === 'six_sigma'}`.** The optional chain is required: `session.project` is null before a project is open, so a bare `session.project.methodology` would throw. Gate is placed after the nav row and before the charts section so sigma-methodology projects get the Process Excellence card at the top of the content area. Non-sigma projects are completely unaffected.
 - **Verify the methodology string traces through the creation path before relying on it in a gate.** `ProjectLaunchpad.svelte` uses `let methodology = $state('')`; the selector sets `methodology = m.id` (line 241, where `m.id` is `'six_sigma'` verbatim); `CreateProjectFromLaunchpad` receives and stores it directly. Confirmed by reading the component — no label transform, no enum mapping.
-- **`SigmaWorkspace` is a global sigma-project list, not scoped to the current `.pmforge` project.** `SigmaListProjects()` returns all sigma projects regardless of which PMForge project is open. The Dashboard card is a navigation entry to that global workspace, not a scoped view. Card copy should reflect this (e.g., "DMAIC project tracking", not "this project's DMAIC"). The design is intentional — confirmed before wiring.
+- **`SigmaWorkspace` is a global sigma-project list, not scoped to the current `.pmforge` project.** `SigmaListProjects()` returns all sigma projects regardless of which GoPMgr project is open. The Dashboard card is a navigation entry to that global workspace, not a scoped view. Card copy should reflect this (e.g., "DMAIC project tracking", not "this project's DMAIC"). The design is intentional — confirmed before wiring.
 - **One entry point unlocks the full reachability chain.** Before this change, `sigma_dashboard` / `sigma_project` / TollgateChecklist were all unreachable. Adding the single Dashboard card restores the chain: Dashboard → SigmaWorkspace → SigmaProjectView → TollgateChecklist. No additional wiring is needed.
 
 ### 2026-06-22 — Recent-changes review + roadmap/doc reconciliation
@@ -1395,7 +1395,7 @@ This section is the running log of non-obvious discoveries. Every session that l
 
 - **CI/CD moved from GitLab to GitHub Actions.** `.github/workflows/ci.yml` (verify / build / lint / security) + `release.yml` (native multi-OS Wails builds → GitHub Release) replace `.gitlab-ci.yml`. Three clean-checkout gotchas are baked in: (a) the root package's `//go:embed all:frontend/dist` needs the frontend built before any Go compile, so CI builds it (or stubs the dir for vet/lint); (b) Wails was bumped 2.9.2 → **v2.13.0** and the runtime/workflow CLI pins stay aligned; (c) strict PDF/A requires embedded fonts, so the four Source Sans 3 faces are tracked and checksum-verified while `make fonts` remains optional for the larger catalog. The app builds under the repo's Go 1.26.5. golangci-lint is pinned to v2.12.2 (action `golangci/golangci-lint-action@v9`); all workflow actions use node24-era major versions (checkout@v7, setup-go@v7, setup-node@v7, upload-artifact@v7, download-artifact@v8).
 - **Migrated off the SheetJS `xlsx` npm package** (James's decision, 2026-06-22). npm's `xlsx` is frozen at 0.18.5 with unpatched prototype-pollution + ReDoS CVEs (SheetJS publishes fixes only via their own CDN now), so it was a permanent Dependabot dead-end. Replaced with **`read-excel-file`** (maintained, npm-native) in `SigmaProjectView.svelte` — the only consumer. **API note for v9:** the default export returns *all* sheets (`[{ sheet, data }]`); use the named `readSheet` export from `read-excel-file/browser` to get the first sheet's rows directly. Import the `/browser` subpath — the bare `read-excel-file` specifier has no `.` export and fails both Vite resolve and `svelte-check`. **Capability change:** legacy binary `.xls` is no longer parseable (read-excel-file is `.xlsx`-only); the import handler now shows a "re-save as .xlsx or CSV" message and the file picker drops `.xls`. Verified: `svelte-check` 0/0, Vite build + bundle-budget gate pass, Sigma stability gate pass.
-- **Still open (James to run on his Mac, where Go + native npm live):** bump `golang.org/x/crypto` + `golang.org/x/net` (`go get ...@latest && go mod tidy`) to clear the remaining Go alerts — none are reachable (PMForge uses only `x/crypto/argon2` + `pkcs12`; every CVE is in `x/crypto/ssh`), but the bump is cheap hygiene. The remaining npm advisories are all **dev-only** (vite/esbuild/js-yaml/launch-editor — dev-server/build, never shipped); `cd frontend && npm i -D vite@latest && npm i` clears most.
+- **Still open (James to run on his Mac, where Go + native npm live):** bump `golang.org/x/crypto` + `golang.org/x/net` (`go get ...@latest && go mod tidy`) to clear the remaining Go alerts — none are reachable (GoPMgr uses only `x/crypto/argon2` + `pkcs12`; every CVE is in `x/crypto/ssh`), but the bump is cheap hygiene. The remaining npm advisories are all **dev-only** (vite/esbuild/js-yaml/launch-editor — dev-server/build, never shipped); `cd frontend && npm i -D vite@latest && npm i` clears most.
 
 ### 2026-06-26 — Phase 1 money foundation and EVM exact cents
 
@@ -1443,7 +1443,7 @@ This section is the running log of non-obvious discoveries. Every session that l
   launched from Git Bash needs an absolute Windows path. The validation script
   uses `cygpath` on Windows and non-empty dummy inputs so the same template
   compile is meaningful on both hosts.
-- **Packaging assets are tracked** despite the broad `build/` ignore: `.gitignore` exempts `build/linux/pmforge.desktop` and `build/linux/nfpm.yaml` (same trick as the darwin Info.plist scaffold). The icon is `build/appicon.png` → `/usr/share/pixmaps/pmforge.png`; the `.desktop` → `/usr/share/applications/`.
+- **Packaging assets are tracked** despite the broad `build/` ignore: `.gitignore` exempts `build/linux/gopmgr.desktop` and `build/linux/nfpm.yaml` (same trick as the darwin Info.plist scaffold). The icon is `build/appicon.png` → `/usr/share/pixmaps/gopmgr.png`; the `.desktop` → `/usr/share/applications/`.
 - **Linux release target moved to Ubuntu 24.04+ WebKit2GTK 4.1** (2026-06-26). CI/release Linux runners now use `ubuntu-24.04`, install `libwebkit2gtk-4.1-dev`, and pass Wails' `webkit2_41` tag. Wails v2 still links GTK3 (`gtk+-3.0` in the upstream cgo files); true GTK4/WebKitGTK 6.0 requires a future Wails migration rather than a package-name change. `make linux-runtime-target` guards this target.
 - **Signing/notarization is OFF** (owner decision 2026-06-23 — unsigned now, sign later). Packages install/run but show Gatekeeper/SmartScreen "unidentified developer" warnings. Hook: `MACOS_SIGN_IDENTITY` env in `scripts/package-macos.sh` (codesign + a commented notarytool block); Windows signing is a TODO. Add certs as CI secrets to enable.
 - **Verify by tag.** The tag workflow now runs a full Ubuntu preflight before

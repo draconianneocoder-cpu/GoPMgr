@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"pmforge/internal/db"
+	"gopmgr/internal/db"
 )
 
 // TestPathTakingIPCMethodsConfineToOwnProjectsDir locks in F-1 from the
@@ -15,7 +15,7 @@ import (
 // archives a project by a frontend-supplied path must reject paths outside
 // the signed-in user's own projects folder, exactly as DeleteProject and
 // CloneProject already do via projectPathFor. A regression here would hand a
-// logged-in PMForge user a filesystem primitive over another user's files
+// logged-in GoPMgr user a filesystem primitive over another user's files
 // within the same OS account.
 func TestPathTakingIPCMethodsConfineToOwnProjectsDir(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)

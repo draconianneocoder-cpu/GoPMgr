@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package db is PMForge's persistence kernel. It wraps a single SQLite
+// Package db is GoPMgr's persistence kernel. It wraps a single SQLite
 // file (a ".pmforge" project) with WAL journaling, foreign-key
 // enforcement, and self-healing helpers.
 //
@@ -15,7 +15,7 @@ import (
 	"os"
 	"strings"
 
-	"pmforge/internal/sqlitedriver"
+	"gopmgr/internal/sqlitedriver"
 )
 
 // Database is the canonical handle passed to every service. Keep it
@@ -27,7 +27,7 @@ type Database struct {
 }
 
 // InitDB opens (or creates) a SQLite file at `path`, applies the
-// PMForge-standard pragmas, and runs Migrate. The returned Database is
+// GoPMgr-standard pragmas, and runs Migrate. The returned Database is
 // safe for concurrent use by multiple goroutines because *sql.DB is
 // already a connection pool.
 func InitDB(path string) (*Database, error) {
@@ -85,7 +85,7 @@ func applyStandardPragmas(conn *sql.DB) error {
 	return nil
 }
 
-// Migrate creates every table PMForge needs if it does not already exist.
+// Migrate creates every table GoPMgr needs if it does not already exist.
 // The schema is intentionally additive: never DROP or ALTER a column in a
 // migration that ships to users; introduce a new column with a default.
 //

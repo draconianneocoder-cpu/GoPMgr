@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"pmforge/internal/db"
-	"pmforge/internal/documents"
+	"gopmgr/internal/db"
+	"gopmgr/internal/documents"
 )
 
 func TestResolvedEVMForChartsComputesCPMReferences(t *testing.T) {

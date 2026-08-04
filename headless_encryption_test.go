@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"pmforge/internal/cli"
-	"pmforge/internal/db"
-	"pmforge/internal/users"
+	"gopmgr/internal/cli"
+	"gopmgr/internal/db"
+	"gopmgr/internal/users"
 )
 
 func createHeadlessEncryptedProject(t *testing.T) (projectPath, password string) {
@@ -50,13 +50,13 @@ func createHeadlessEncryptedProject(t *testing.T) (projectPath, password string)
 
 func TestOpenHeadlessDBUnlocksEncryptedProjectWithPasswordEnv(t *testing.T) {
 	projectPath, password := createHeadlessEncryptedProject(t)
-	t.Setenv("PMFORGE_HEADLESS_PASSWORD", password)
+	t.Setenv("GOPMGR_HEADLESS_PASSWORD", password)
 
 	d, err := openHeadlessDB(&cli.Config{
 		CheckOnly:   true,
 		ProjectPath: projectPath,
 		Username:    "alice",
-		PasswordEnv: "PMFORGE_HEADLESS_PASSWORD",
+		PasswordEnv: "GOPMGR_HEADLESS_PASSWORD",
 	})
 	if err != nil {
 		t.Fatalf("openHeadlessDB: %v", err)

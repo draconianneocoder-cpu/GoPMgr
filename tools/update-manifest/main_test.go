@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"pmforge/internal/update"
+	"gopmgr/internal/update"
 )
 
 func TestRunCreatesVerifiableManifest(t *testing.T) {
@@ -20,13 +20,13 @@ func TestRunCreatesVerifiableManifest(t *testing.T) {
 	}
 	t.Setenv("TEST_UPDATE_PRIVATE_KEY", base64.StdEncoding.EncodeToString(priv))
 	dir := t.TempDir()
-	artifact := filepath.Join(dir, "pmforge.pkg")
+	artifact := filepath.Join(dir, "gopmgr.pkg")
 	if err := os.WriteFile(artifact, []byte("installer"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	output := filepath.Join(dir, "manifest.json")
 	if err := run("1.1.0-beta.1", "beta", "darwin", "arm64", artifact,
-		"https://example.test/pmforge.pkg", output, "TEST_UPDATE_PRIVATE_KEY"); err != nil {
+		"https://example.test/gopmgr.pkg", output, "TEST_UPDATE_PRIVATE_KEY"); err != nil {
 		t.Fatalf("run: %v", err)
 	}
 	raw, err := os.ReadFile(output)

@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Runtime smoke check for the PMForge frontend.
+// Runtime smoke check for the GoPMgr frontend.
 //
 // svelte-check and `vite build` both pass on a whole class of bug that
 // still leaves the app dead in the browser: a module that throws at

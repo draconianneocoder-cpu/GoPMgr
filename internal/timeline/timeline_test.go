@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package timeline
@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"pmforge/internal/agile"
-	"pmforge/internal/db"
+	"gopmgr/internal/agile"
+	"gopmgr/internal/db"
 )
 
 // TestBuildEmpty: a project with no dates and no sprints/deploys

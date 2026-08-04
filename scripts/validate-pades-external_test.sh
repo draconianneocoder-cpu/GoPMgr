@@ -1,12 +1,12 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SAMPLE_DIR="$ROOT/.tmp/pmforge-pades-test"
-PADES_LOCK="$ROOT/.tmp/pmforge-pades-test.lock"
+SAMPLE_DIR="$ROOT/.tmp/gopmgr-pades-test"
+PADES_LOCK="$ROOT/.tmp/gopmgr-pades-test.lock"
 FAKE_BIN="$ROOT/.tmp/pades-external-bin-test"
 FAKE_LOG="$FAKE_BIN/verapdf.args"
 DSS_LOG="$FAKE_BIN/dss-validation-tool.args"
@@ -34,13 +34,13 @@ while ! mkdir "$PADES_LOCK" 2>/dev/null; do
 done
 LOCK_OWNED="true"
 echo "$$" >"$PADES_LOCK/pid"
-export PMFORGE_PADES_LOCK_HELD=1
+export GOPMGR_PADES_LOCK_HELD=1
 
 rm -rf "$FAKE_BIN"
 mkdir -p "$FAKE_BIN"
 cat > "$FAKE_BIN/verapdf" <<'EOF'
 #!/bin/bash
-printf '%s\n' "$*" >> "$PMFORGE_FAKE_VERAPDF_LOG"
+printf '%s\n' "$*" >> "$GOPMGR_FAKE_VERAPDF_LOG"
 case "$1" in
 	--version)
 		echo "veraPDF fake 1.0.0"
@@ -72,7 +72,7 @@ chmod +x "$FAKE_BIN/verapdf"
 
 cat > "$FAKE_BIN/dss-validation-tool" <<'EOF'
 #!/bin/bash
-printf '%s\n' "$*" >> "$PMFORGE_FAKE_DSS_LOG"
+printf '%s\n' "$*" >> "$GOPMGR_FAKE_DSS_LOG"
 if [ "$1" != "validate" ]; then
 	echo "unexpected dss command: $*" >&2
 	exit 64
@@ -91,7 +91,7 @@ chmod +x "$FAKE_BIN/dss-validation-tool"
 
 mkdir -p "$SAMPLE_DIR"
 printf 'stale default artifact\n' >"$SAMPLE_DIR/signed-sample.pdf"
-PMFORGE_FAKE_VERAPDF_LOG="$FAKE_LOG" PMFORGE_FAKE_DSS_LOG="$DSS_LOG" PATH="$FAKE_BIN:$PATH" \
+GOPMGR_FAKE_VERAPDF_LOG="$FAKE_LOG" GOPMGR_FAKE_DSS_LOG="$DSS_LOG" PATH="$FAKE_BIN:$PATH" \
 	bash "$ROOT/scripts/validate-pades-external.sh" >"$FAKE_BIN/default.out"
 
 report="$SAMPLE_DIR/external-validation-report.txt"
@@ -165,7 +165,7 @@ explicit_pdf="$FAKE_BIN/explicit-sample.pdf"
 explicit_before="$FAKE_BIN/explicit-sample.before.pdf"
 cp "$SAMPLE_DIR/signed-sample.pdf" "$explicit_pdf"
 cp "$explicit_pdf" "$explicit_before"
-PMFORGE_FAKE_VERAPDF_LOG="$FAKE_LOG" PMFORGE_FAKE_DSS_LOG="$DSS_LOG" PATH="$FAKE_BIN:$PATH" \
+GOPMGR_FAKE_VERAPDF_LOG="$FAKE_LOG" GOPMGR_FAKE_DSS_LOG="$DSS_LOG" PATH="$FAKE_BIN:$PATH" \
 	bash "$ROOT/scripts/validate-pades-external.sh" "$explicit_pdf" >"$FAKE_BIN/explicit.out"
 
 if ! cmp -s "$explicit_before" "$explicit_pdf"; then

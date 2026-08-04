@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Hermetic mutations for the Windows installer source contract. These tests do
@@ -9,7 +9,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CHECK="$ROOT/scripts/check-windows-installer-scaffold.sh"
-TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/pmforge-windows-scaffold-test.XXXXXX")"
+TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-windows-scaffold-test.XXXXXX")"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 
 fail() {
@@ -51,7 +51,7 @@ expect_failure "$missing_project" "required file missing: build/windows/installe
 
 generic_branding="$(new_fixture generic-branding)"
 perl -0pi -e 's/!define MUI_WELCOMEPAGE_TITLE .*/!define MUI_WELCOMEPAGE_TITLE "Install Application"/' "$generic_branding/build/windows/installer/project.nsi"
-expect_failure "$generic_branding" "project.nsi must retain PMForge-owned welcome branding"
+expect_failure "$generic_branding" "project.nsi must retain GoPMgr-owned welcome branding"
 
 destructive_uninstall="$(new_fixture destructive-uninstall)"
 printf '\n  RMDir /r "$DOCUMENTS\\PMForge"\n' >>"$destructive_uninstall/build/windows/installer/project.nsi"
@@ -62,7 +62,7 @@ perl -0pi -e 's#wails build -platform windows/amd64 -tags duckdb#wails build -pl
 expect_failure "$stub_analytics" "Windows installer must embed DuckDB analytics"
 
 missing_link_check="$(new_fixture missing-link-check)"
-perl -0pi -e 's#\Qbash scripts/verify-duckdb-linked.sh build/bin/pmforge.exe\E#echo "link check removed"#' "$missing_link_check/.github/workflows/release.yml"
+perl -0pi -e 's#\Qbash scripts/verify-duckdb-linked.sh build/bin/gopmgr.exe\E#echo "link check removed"#' "$missing_link_check/.github/workflows/release.yml"
 expect_failure "$missing_link_check" "Windows release job must verify DuckDB linkage"
 
 missing_fixture_compile="$(new_fixture missing-fixture-compile)"

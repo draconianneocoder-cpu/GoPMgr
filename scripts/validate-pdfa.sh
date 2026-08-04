@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # PDF/A-3 validation gate using veraPDF.
@@ -8,10 +8,10 @@
 # It generates representative samples from the live renderers and validates
 # each with veraPDF (3b profile). Exit 1 on any non-compliant PDF.
 #
-# Hard gate. By default (PMFORGE_PDFA_STRICT=1) a missing validator, a missing
+# Hard gate. By default (GOPMGR_PDFA_STRICT=1) a missing validator, a missing
 # ICC profile, or a missing sample set is a FAILURE, not a silent skip: the
 # release gate must never certify PDF/A-3 conformance it could not actually
-# check. Run with PMFORGE_PDFA_STRICT=0 for local convenience on machines
+# check. Run with GOPMGR_PDFA_STRICT=0 for local convenience on machines
 # without Docker/veraPDF, where those preconditions degrade to a warned skip.
 # `scripts/check-release.sh` always invokes this script strict.
 #
@@ -21,8 +21,8 @@
 #
 # Usage:
 #   make check-pdfa                       # strict by default
-#   PMFORGE_PDFA_STRICT=0 make check-pdfa # degrade missing tooling to a skip
-#   PMFORGE_VERAPDF_FORCE_CLI=1 make check-pdfa # bypass Docker for CLI diagnostics
+#   GOPMGR_PDFA_STRICT=0 make check-pdfa # degrade missing tooling to a skip
+#   GOPMGR_VERAPDF_FORCE_CLI=1 make check-pdfa # bypass Docker for CLI diagnostics
 
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -33,7 +33,7 @@ cd "$ROOT"
 # Strictness. When strict (the default, and always under the release gate),
 # unmet preconditions fail the gate. When non-strict, they degrade to a warned
 # skip so developers without Docker/veraPDF are not blocked locally.
-PDFA_STRICT="${PMFORGE_PDFA_STRICT:-1}"
+PDFA_STRICT="${GOPMGR_PDFA_STRICT:-1}"
 
 # pdfa_precondition_unmet <human-readable reason>
 # Fails under strict mode, skips (exit 0) otherwise.
@@ -41,15 +41,15 @@ pdfa_precondition_unmet() {
     if [ "$PDFA_STRICT" = "1" ]; then
         echo "FAIL: $1"
         echo "The PDF/A-3 gate is strict: install Docker or a veraPDF CLI and run 'make icc'."
-        echo "Set PMFORGE_PDFA_STRICT=0 to downgrade this to a local skip."
+        echo "Set GOPMGR_PDFA_STRICT=0 to downgrade this to a local skip."
         exit 1
     fi
     echo "SKIP: $1"
-    echo "(non-strict) Set PMFORGE_PDFA_STRICT=1 to make this a hard failure; the release gate does."
+    echo "(non-strict) Set GOPMGR_PDFA_STRICT=1 to make this a hard failure; the release gate does."
     exit 0
 }
 
-ICC_PROFILE="${PMFORGE_ICC_PROFILE:-internal/pdfmeta/assets/sRGB.icc}"
+ICC_PROFILE="${GOPMGR_ICC_PROFILE:-internal/pdfmeta/assets/sRGB.icc}"
 VERAPDF_VERSION="1.30.2"
 VERAPDF_IMAGE="verapdf/cli:v${VERAPDF_VERSION}"
 # Cache and execute veraPDF from a user-owned, repo-local directory rather
@@ -62,7 +62,7 @@ VERAPDF_DIR="${VERAPDF_CACHE}/verapdf-${VERAPDF_VERSION}"
 VERAPDF_CLI="${VERAPDF_DIR}/verapdf"
 VERAPDF_ZIP="${VERAPDF_CACHE}/verapdf.zip"
 VERAPDF_JAR="${VERAPDF_CACHE}/verapdf-app.jar"
-SAMPLE_DIR="$ROOT/.tmp/pmforge-pdfa-test"
+SAMPLE_DIR="$ROOT/.tmp/gopmgr-pdfa-test"
 
 echo "=== PDF/A-3 Validation Gate ==="
 
@@ -74,7 +74,7 @@ fi
 # The explicit CLI override keeps the helper regression hermetic on hosts such
 # as GitHub runners that happen to provide Docker. It is also useful when
 # diagnosing a local veraPDF installation without removing Docker from PATH.
-if [ "${PMFORGE_VERAPDF_FORCE_CLI:-0}" != "1" ] &&
+if [ "${GOPMGR_VERAPDF_FORCE_CLI:-0}" != "1" ] &&
 	command -v docker >/dev/null 2>&1; then
     echo "Using veraPDF via Docker ($VERAPDF_IMAGE)..."
     VERAPDF_MODE="docker"
@@ -189,8 +189,8 @@ package main
 import (
 	"fmt"
 	"os"
-	"pmforge/internal/export"
-	"pmforge/internal/kernel"
+	"gopmgr/internal/export"
+	"gopmgr/internal/kernel"
 )
 
 func main() {
@@ -206,7 +206,7 @@ func main() {
 		fmt.Println("ERROR generating schedule PDF:", err)
 		os.Exit(1)
 	}
-	_ = os.WriteFile(".tmp/pmforge-pdfa-test/schedule.pdf", data, 0o644)
+	_ = os.WriteFile(".tmp/gopmgr-pdfa-test/schedule.pdf", data, 0o644)
 	fmt.Println("Generated schedule.pdf")
 }
 EOF
@@ -220,8 +220,8 @@ import (
 	"fmt"
 	"os"
 
-	"pmforge/internal/documents"
-	"pmforge/internal/fonts"
+	"gopmgr/internal/documents"
+	"gopmgr/internal/fonts"
 )
 
 func main() {
@@ -258,7 +258,7 @@ func main() {
 		fmt.Println("ERROR generating document PDF:", err)
 		os.Exit(1)
 	}
-	if err := os.WriteFile(".tmp/pmforge-pdfa-test/document-charter.pdf", documentPDF, 0o644); err != nil {
+	if err := os.WriteFile(".tmp/gopmgr-pdfa-test/document-charter.pdf", documentPDF, 0o644); err != nil {
 		fmt.Println("ERROR writing document PDF:", err)
 		os.Exit(1)
 	}
@@ -282,7 +282,7 @@ func main() {
 	spec := documents.ReportSpec{
 		ReportTitle: "PDF/A Validation Combined Report",
 		Subtitle:    "Release gate representative sample",
-		Author:      "PMForge",
+		Author:      "GoPMgr",
 		ProjectName: "PDF/A Validation Project",
 		Sections: []documents.ReportSection{
 			{
@@ -319,7 +319,7 @@ func main() {
 		fmt.Println("ERROR generating combined report PDF:", err)
 		os.Exit(1)
 	}
-	if err := os.WriteFile(".tmp/pmforge-pdfa-test/combined-report.pdf", combinedPDF, 0o644); err != nil {
+	if err := os.WriteFile(".tmp/gopmgr-pdfa-test/combined-report.pdf", combinedPDF, 0o644); err != nil {
 		fmt.Println("ERROR writing combined report PDF:", err)
 		os.Exit(1)
 	}
@@ -335,8 +335,8 @@ import (
 	"fmt"
 	"os"
 
-	"pmforge/internal/export"
-	"pmforge/internal/kernel"
+	"gopmgr/internal/export"
+	"gopmgr/internal/kernel"
 )
 
 func main() {
@@ -374,7 +374,7 @@ func main() {
 		fmt.Println("ERROR generating Monte Carlo risk report PDF:", err)
 		os.Exit(1)
 	}
-	if err := os.WriteFile(".tmp/pmforge-pdfa-test/monte-carlo-risk-report.pdf", data, 0o644); err != nil {
+	if err := os.WriteFile(".tmp/gopmgr-pdfa-test/monte-carlo-risk-report.pdf", data, 0o644); err != nil {
 		fmt.Println("ERROR writing Monte Carlo risk report PDF:", err)
 		os.Exit(1)
 	}

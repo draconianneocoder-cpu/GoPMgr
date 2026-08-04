@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -1633,7 +1633,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
          <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Project Backup</h2>
          <div class="border border-slate-800 bg-slate-900/60 rounded p-4 space-y-3">
            <p class="text-xs text-slate-400">
-             Create an integrity-checked PMForge archive. Restore imports the database as a new project and does not automatically import certificates.
+             Create an integrity-checked GoPMgr archive. Restore imports the database as a new project and does not automatically import certificates.
            </p>
            <button onclick={createBackup} disabled={archiveBusy} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700">
              {archiveBusy ? 'Creating…' : 'Create backup'}
@@ -1824,7 +1824,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                    </span>
                    <span class="block mt-1 text-[11px] text-slate-500">
                      Enabled exports fail if the timestamp authority is unavailable or returns an
-                     invalid token. PMForge never silently falls back to Baseline B.
+                     invalid token. GoPMgr never silently falls back to Baseline B.
                    </span>
                  </span>
                </label>
@@ -1896,7 +1896,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none text-sm"
              />
              <span class="block mt-1 text-[11px] text-slate-500">
-               PMForge writes an ASCII-armored .asc sidecar and does not mutate the PDF after export.
+               GoPMgr writes an ASCII-armored .asc sidecar and does not mutate the PDF after export.
              </span>
            </label>
            {:else}

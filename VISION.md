@@ -1,17 +1,17 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
-# PMForge Vision
+# GoPMgr Vision
 
 ## Mission
 
-PMForge is a local-first desktop application that gives individual project
+GoPMgr is a local-first desktop application that gives individual project
 managers and small teams professional-grade project controls without
 requiring a cloud account, a subscription, or network connectivity.
 
-Your projects live in encrypted files on your own machine. PMForge processes
+Your projects live in encrypted files on your own machine. GoPMgr processes
 them there and nowhere else.
 
 ## Design Principles
@@ -28,14 +28,14 @@ validated against PDF/A-3. Digital signatures follow PAdES. None of these
 require the user to opt in.
 
 **Professional tools, not enterprise complexity.**
-PMForge targets project managers, engineers, and technical leads who need
+GoPMgr targets project managers, engineers, and technical leads who need
 CPM scheduling, EVM, risk registers, and document generation — not IT
 departments managing a SaaS rollout. The UI must be learnable without a
 training programme.
 
 **The kernel is the product.**
 CPM, EVM, baselines, resource levelling, and Monte Carlo simulation are the
-core of PMForge's value. Every UI feature, export, and document must be
+core of GoPMgr's value. Every UI feature, export, and document must be
 grounded in correct kernel behaviour. Kernel correctness takes precedence
 over feature breadth.
 
@@ -57,7 +57,7 @@ security model is documented, not implied. No security-by-obscurity.
 
 ## Anti-Features
 
-The following will never be required features of PMForge:
+The following will never be required features of GoPMgr:
 
 - A cloud account or user registration to open, save, or export a project.
 - Remote telemetry, usage analytics, or crash reporting sent without

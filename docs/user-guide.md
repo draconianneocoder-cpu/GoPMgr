@@ -1,9 +1,9 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
-# PMForge User Guide
+# GoPMgr User Guide
 
 This guide summarizes the main user workflows that were previously mixed
 into the root README. The in-app Help Guide remains the most detailed
@@ -13,9 +13,9 @@ Troubleshooting & FAQ and a keyboard-shortcuts reference.
 
 ## First Run
 
-PMForge stores local data in your platform's per-user data folder:
+GoPMgr stores local data in your platform's per-user data folder:
 `~/Library/Application Support/PMForge/` on macOS and `~/Documents/PMForge/`
-on Linux and Windows (`$XDG_DATA_HOME/PMForge/` overrides both). On macOS,
+on Linux and Windows (`$XDG_DATA_HOME/GoPMgr/` overrides both). On macOS,
 an existing `~/Documents/PMForge/` folder from an earlier version is migrated
 automatically on first launch. The first launch creates:
 
@@ -27,10 +27,10 @@ automatically on first launch. The first launch creates:
 Create the first account, save the one-time recovery codes, then create or
 open a project.
 
-For repeatable first-launch testing, quit PMForge and run
+For repeatable first-launch testing, quit GoPMgr and run
 `make reset-clean-test` from the source checkout. The command moves the entire
 data directory to a timestamped sibling backup instead of deleting it. Reopen
-PMForge to exercise administrator creation against a fresh `system.db`; use
+GoPMgr to exercise administrator creation against a fresh `system.db`; use
 `scripts/reset-clean-test.sh --restore <backup>` after moving aside the
 temporary test state. See `docs/INSTALL.md` for the complete guarded reset and
 restore procedure.
@@ -59,7 +59,7 @@ The user can deselect any suggestion before creating the project.
 
 ## Portfolio and Dashboard
 
-After sign-in, PMForge opens the Portfolio dashboard. It lists projects
+After sign-in, GoPMgr opens the Portfolio dashboard. It lists projects
 with status, phase, dates, and chart/document counts. Open a project card
 to enter its Dashboard.
 
@@ -160,7 +160,7 @@ Scrumban) get four extra views:
 
 ## Charts
 
-PMForge supports 22 chart kinds across four engine families:
+GoPMgr supports 22 chart kinds across four engine families:
 
 - DAG: WBS, Network, PERT, CPM, Gantt, Fishbone, Cause-and-Effect.
 - Flow: Workflow, Activity.
@@ -182,7 +182,7 @@ probability/impact grid. Each record can carry an owner, status, response,
 and linked task. Optionally select that chart from a Risk Register document
 so combined reports include the same vector heat map. After editing register
 rows, save and choose **Refresh Risk Matrix** to replace the linked chart's
-items. PMForge validates every row first and leaves the existing chart
+items. GoPMgr validates every row first and leaves the existing chart
 unchanged if IDs or probability/impact values are invalid.
 
 In the schedule editors, dependencies are created with the Connect
@@ -211,7 +211,7 @@ summary. Tasks without estimates use their fixed CPM duration.
 
 ## Documents and Combined Reports
 
-PMForge supports 25 document kinds across the project lifecycle, including
+GoPMgr supports 25 document kinds across the project lifecycle, including
 charters, plans, schedules, budgets, risk registers, requirements, reports,
 issue logs, change requests, and closure documents.
 
@@ -248,7 +248,7 @@ instead of being spread across the whole bar span.
 
 ## Schedule Import and Export
 
-From Project Settings, PMForge exports the current schedule to:
+From Project Settings, GoPMgr exports the current schedule to:
 
 | Format | Extension | Use |
 | --- | --- | --- |
@@ -257,12 +257,12 @@ From Project Settings, PMForge exports the current schedule to:
 | CSV | `.csv` | Spreadsheet task lists |
 | HTML | `.html` | Browser viewing or publishing |
 
-PMForge imports Microsoft Project XML (MSPDI, `.xml`) directly. Binary or
+GoPMgr imports Microsoft Project XML (MSPDI, `.xml`) directly. Binary or
 serialized formats such as `.mpp`, `.pod`, and `.mpx` should be resaved as
 Microsoft Project XML from the source application before import.
 
 Before selecting a file, choose whether to import dependencies, percent
-complete, and resource assignments. PMForge always preserves task identities,
+complete, and resource assignments. GoPMgr always preserves task identities,
 names, durations, milestones, and the project start date it supports; its
 stored mapping receipt records selected fields, intentional transformations,
 and skipped summary or null rows. This makes the MSPDI round-trip boundary
@@ -282,7 +282,7 @@ Project Settings lets users choose a default document signing method:
   or choose one directly from the Signature Options dialog during export.
   Project Settings can additionally enable RFC 3161 timestamping for
   PAdES Baseline T. Configure a credential-free HTTPS TSA endpoint, optional
-  policy OID, and optional PEM trust root. Without a root, PMForge validates
+  policy OID, and optional PEM trust root. Without a root, GoPMgr validates
   token integrity but records TSA chain trust as not evaluated.
 - **GnuPG detached signature** exports the PDF and writes an ASCII-armored
   `.asc` sidecar. The PDF bytes are not modified after export; verify with
@@ -292,14 +292,14 @@ Project Settings lets users choose a default document signing method:
 
 PAdES signing is applied after rendering and PDF/A metadata injection. This
 order is required because the signature covers byte ranges in the final PDF.
-When timestamping is enabled, PMForge fails the export if the TSA request or
+When timestamping is enabled, GoPMgr fails the export if the TSA request or
 token validation fails; it never silently emits a Baseline B signature.
 Endpoint URLs containing credentials, query strings, or fragments are rejected
 so project databases do not become a credential store.
 
 ## Recovery Codes and Encryption
 
-PMForge issues one-time recovery codes at account creation. Recovery codes
+GoPMgr issues one-time recovery codes at account creation. Recovery codes
 can reset an account password once and, for encrypted project databases,
 also unlock the user's wrapped DEK.
 
@@ -310,7 +310,7 @@ encrypted project databases are unrecoverable by design.
 
 ## Fonts
 
-PMForge embeds TrueType fonts in generated PDFs. Source Sans 3 ships with
+GoPMgr embeds TrueType fonts in generated PDFs. Source Sans 3 ships with
 every supported build so PDF/A reports do not depend on a network download.
 Developers can download the additional optional font catalog with:
 
@@ -319,12 +319,12 @@ make fonts
 ```
 
 Users can also import a `.ttf` font from Project Settings. Imported fonts
-are stored in the user's PMForge data area and can be selected for document
+are stored in the user's GoPMgr data area and can be selected for document
 exports.
 
 ## Command-Line Maintenance
 
-PMForge also runs headless for scriptable maintenance. Two flags are
+GoPMgr also runs headless for scriptable maintenance. Two flags are
 global:
 
 - `--version` prints the version banner and exits.
@@ -354,19 +354,19 @@ as the export password. Plaintext projects open without credentials. For
 example:
 
 ```sh
-PMF_PW='…' pmforge --check \
+PMF_PW='…' gopmgr --check \
   --username alice --password-env PMF_PW \
   ~/Documents/PMForge/alice/projects/<id>/project.pmforge
 
 # Headless schedule export to encrypted XLSX:
-PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \
+PMF_PW='…' gopmgr --export schedule.xlsx --format xlsx --encrypt \
   --username alice --password-env PMF_PW \
   ~/Documents/PMForge/alice/projects/<id>/project.pmforge
 ```
 
 ## Logs and Startup Diagnostics
 
-PMForge writes dated diagnostic logs under the PMForge logs directory. If
+GoPMgr writes dated diagnostic logs under the GoPMgr logs directory. If
 startup fails, the app records the failure and shows a native OS error
 dialog that names the log path.
 
@@ -394,7 +394,7 @@ Shortcuts use Ctrl on Windows/Linux and Cmd on macOS:
 | Enter or Space | Select the focused diagram node |
 | Esc | Close/cancel the open dialog from anywhere inside it |
 
-PMForge is operable without a mouse and announces state to assistive
+GoPMgr is operable without a mouse and announces state to assistive
 technology: every navigation announces the destination view, save
 status and errors are live regions, rendered charts expose text
 descriptions, Gantt bars have descriptive hover tooltips, dialogs trap

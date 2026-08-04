@@ -1,11 +1,11 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-log_file="$(mktemp "${TMPDIR:-/tmp}/pmforge-vite-build.XXXXXX")"
+log_file="$(mktemp "${TMPDIR:-/tmp}/gopmgr-vite-build.XXXXXX")"
 trap 'rm -f "$log_file"' EXIT
 
 (cd frontend && npm run build) 2>&1 | tee "$log_file"

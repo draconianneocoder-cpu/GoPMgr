@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
@@ -13,7 +13,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 ## Goal
 
 Add DuckDB's analytical horsepower (rich aggregates, window functions,
-native file readers) to PMForge **without** touching the SQLCipher
+native file readers) to GoPMgr **without** touching the SQLCipher
 system-of-record or the ADR-001 at-rest security model. SQLCipher stays
 the transactional store; DuckDB is an **embedded, in-memory, ephemeral**
 engine in production/package builds, used only for read-side analytics and
@@ -143,7 +143,7 @@ any data" feature for these. Their readers are present in the standard linked
 build and work without a runtime download. The backend takes a user-chosen path (native
 dialog, like the existing `ImportMSPDIChart`), reads it into in-memory
 DuckDB, and returns a bounded in-memory preview to the frontend. The import
-does not persist the dataset. This is genuinely new capability — PMForge
+does not persist the dataset. This is genuinely new capability — GoPMgr
 cannot otherwise read Parquet.
 
 **Excel / retiring `read-excel-file` — not worth it now.** Three reasons:
@@ -156,14 +156,14 @@ cannot otherwise read Parquet.
    offline.** The Sigma `.xlsx` import is a frontend path and
    `read-excel-file` is already small, maintained, npm-native, and shipped
    in every build. Swapping it for the one format DuckDB makes harder is
-   churn unless PMForge also solves local extension bundling.
+   churn unless GoPMgr also solves local extension bundling.
 3. **`.xls` parity is no longer a factor.** Legacy `.xls` support was
    deprioritized by the owner (2026-06-23), so it is neither a blocker nor
    a reason to switch — it simply drops out of the comparison.
 
 **Recommendation:** keep `read-excel-file` as the universal `.xlsx` path
 **for now**; position DuckDB as the engine that *adds* CSV/Parquet/JSON
-import plus the analytics over it. **Future consolidation:** PMForge plans
+import plus the analytics over it. **Future consolidation:** GoPMgr plans
 external-database access via a plugin/extension mechanism (see *Future
 direction*). The offline, controlled extension-loading capability that
 requires is the *same* capability the `excel` extension needs — so once
@@ -173,7 +173,7 @@ then, `read-excel-file` stays and Phase D ships CSV/Parquet/JSON only.
 
 ## Future direction: external databases
 
-PMForge plans to access external databases via a plugin/extension
+GoPMgr plans to access external databases via a plugin/extension
 mechanism (owner direction, 2026-06-23). This is squarely DuckDB
 territory and reinforces Option B: DuckDB ships connector extensions —
 `postgres` (postgres_scanner), `mysql` (mysql_scanner), `sqlite`

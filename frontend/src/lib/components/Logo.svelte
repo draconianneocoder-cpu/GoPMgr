@@ -1,11 +1,11 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
-  // Theme-aware PMForge wordmark + Gantt/anvil mark, rendered inline so it
+  // Theme-aware GoPMgr wordmark + Gantt/anvil mark, rendered inline so it
   // adapts to the light/dark theme with no file swapping: the timeline
-  // gridlines and the "PMForge" wordmark use `currentColor`, while the mark
+  // gridlines and the "GoPMgr" wordmark use `currentColor`, while the mark
   // uses --brand-accent so it remains legible in both the
   // dark workshop and light fieldbook appearances. Background is transparent.
   //
@@ -19,7 +19,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   class={klass}
   viewBox="0 0 800 200"
   role="img"
-  aria-label="PMForge"
+  aria-label="GoPMgr"
   xmlns="http://www.w3.org/2000/svg"
 >
   <g transform="translate(45,38)">
@@ -40,6 +40,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
     font-size="98"
     font-weight="900"
     letter-spacing="-3.5"
-    fill="currentColor">PMForge</text
+    fill="currentColor">GoPMgr</text
   >
 </svg>

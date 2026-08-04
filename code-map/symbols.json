@@ -1,18 +1,18 @@
 {
-  "description": "Exported symbols (funcs/types/consts) per first-party pmforge/... package, one-line signatures from 'go doc -short'. Regenerate: for p in $(go list ./...); do go doc -short $p; done",
+  "description": "Exported symbols (funcs/types/consts) per first-party gopmgr/... package, one-line signatures from 'go doc -short'. Regenerate: for p in $(go list ./...); do go doc -short $p; done",
   "packages": {
-    "pmforge": [],
-    "pmforge/frontend/node_modules/flatted/golang/pkg/flatted": [
+    "gopmgr": [],
+    "gopmgr/frontend/node_modules/flatted/golang/pkg/flatted": [
       "func FromJSON(value any) (any, error)",
       "func Parse(text string, reviver func(key string, value any) any) (any, error)",
       "func Stringify(value any, replacer any, space any) (string, error)",
       "func ToJSON(value any) (any, error)"
     ],
-    "pmforge/internal/admin": [
+    "gopmgr/internal/admin": [
       "type Service struct{ ... }",
       "    func NewService(d *db.Database) *Service"
     ],
-    "pmforge/internal/agile": [
+    "gopmgr/internal/agile": [
       "var ErrNoSprint = errors.New(\"agile: sprint not found\")",
       "var ErrNoWorkItem = errors.New(\"agile: work item not found\")",
       "var PackEnabled atomic.Bool",
@@ -42,7 +42,7 @@
       "type WorkItemType string",
       "    const WorkItemStory WorkItemType = \"story\" ..."
     ],
-    "pmforge/internal/analytics": [
+    "gopmgr/internal/analytics": [
       "var ErrAnalyticsUnavailable = errors.New(\"analytics: engine not built in (rebuild with -tags duckdb)\")",
       "type Dataset struct{ ... }",
       "type Engine interface{ ... }",
@@ -50,30 +50,30 @@
       "type PortfolioSummary struct{ ... }",
       "type ProjectMetrics struct{ ... }"
     ],
-    "pmforge/internal/applog": [
+    "gopmgr/internal/applog": [
       "func Fatal(title, userMessage, logPath string, err error)",
       "func Init(preferredDir string) (logPath string, cleanup func())",
       "func LogDir(preferredDir string) string",
       "func OpenFolder(path string) error",
       "func ShowError(title, message string)"
     ],
-    "pmforge/internal/auth": [
+    "gopmgr/internal/auth": [
       "var ErrInvalidHash = errors.New(\"auth: invalid password hash format\")",
       "var ErrMismatch = errors.New(\"auth: password mismatch\")",
       "func HashPassword(password string) (string, error)",
       "func NeedsRehash(encoded string) bool",
       "func VerifyPassword(password, encoded string) error"
     ],
-    "pmforge/internal/budget": [
+    "gopmgr/internal/budget": [
       "type Summary struct{ ... }",
       "    func Compute(project db.Project, stakeholders []db.Stakeholder, workItems []agile.WorkItem) Summary"
     ],
-    "pmforge/internal/calendar": [
+    "gopmgr/internal/calendar": [
       "type Calendar struct{ ... }",
       "    func For(countryCode string) *Calendar",
       "type HolidayEvent struct{ ... }"
     ],
-    "pmforge/internal/charts": [
+    "gopmgr/internal/charts": [
       "var ErrEngineNotImplemented = errors.New(\"charts: engine renderer not yet implemented\")",
       "type Definition struct{ ... }",
       "    func All() []Definition",
@@ -88,7 +88,7 @@
       "    func LayoutWithSchedule(kind Kind, rawData string, projectStart time.Time, ...) (LayoutResult, error)",
       "    func LayoutWithSchedulePlan(kind Kind, rawData string, projectStart time.Time, ...) (LayoutResult, error)"
     ],
-    "pmforge/internal/charts/dag": [
+    "gopmgr/internal/charts/dag": [
       "var ErrCycle = errors.New(\"dag: graph contains a cycle\")",
       "var ErrEmptyTree = errors.New(\"dag: WBS document has no root node\")",
       "var ErrNoRoot = errors.New(\"dag: causal tree has no root\")",
@@ -145,7 +145,7 @@
       "    func FlattenLeaves(doc WBSDocument) []*WBSNode",
       "type WorkSegment struct{ ... }"
     ],
-    "pmforge/internal/charts/flow": [
+    "gopmgr/internal/charts/flow": [
       "const ShapeInitial = \"initial\" ...",
       "const ShapeStart = \"start\" ...",
       "var ErrCycle = errors.New(\"flow: workflow contains a cycle\")",
@@ -168,7 +168,7 @@
       "type WorkflowDocument struct{ ... }",
       "    func ParseWorkflow(raw string) (WorkflowDocument, error)"
     ],
-    "pmforge/internal/charts/matrix": [
+    "gopmgr/internal/charts/matrix": [
       "const AssignResponsible = \"R\" ...",
       "type GenericMatrixDocument struct{ ... }",
       "    func ParseGenericMatrix(raw string) (GenericMatrixDocument, error)",
@@ -200,12 +200,12 @@
       "    func LayoutStakeholder(doc StakeholderDocument) StakeholderLayout",
       "type Validation struct{ ... }"
     ],
-    "pmforge/internal/charts/pdfrender": [
+    "gopmgr/internal/charts/pdfrender": [
       "var ErrUnsupportedKind = fmt.Errorf(\"pdfrender: unsupported chart kind\")",
       "func RenderChartToPDF(pdf *fpdf.Fpdf, kind string, data string, title string, frame Frame) error",
       "type Frame struct{ ... }"
     ],
-    "pmforge/internal/charts/stats": [
+    "gopmgr/internal/charts/stats": [
       "type Annotation struct{ ... }",
       "type AxisConfig struct{ ... }",
       "type BarDocument struct{ ... }",
@@ -239,13 +239,13 @@
       "    func LayoutPareto(doc ParetoDocument) StatsLayout",
       "    func LayoutPie(doc PieDocument) StatsLayout"
     ],
-    "pmforge/internal/cli": [
+    "gopmgr/internal/cli": [
       "const Version = \"1.1.0\"",
       "func PrintVersion()",
       "type Config struct{ ... }",
       "    func ParseFlags() *Config"
     ],
-    "pmforge/internal/crypto": [
+    "gopmgr/internal/crypto": [
       "const DEKSize = 32",
       "var ErrBadDEK = errors.New(\"crypto: DEK must be exactly 32 bytes\")",
       "func AddSignatureTimestamp(cmsDER, tokenDER []byte) ([]byte, error)",
@@ -259,7 +259,7 @@
       "type Signer struct{ ... }",
       "    func LoadCertificate(path, password string) (*Signer, error)"
     ],
-    "pmforge/internal/db": [
+    "gopmgr/internal/db": [
       "const SignatureMethodNone = \"none\" ...",
       "var ErrNoBaseline = errors.New(\"db: baseline not found\")",
       "var ErrNoChart = errors.New(\"db: chart not found\")",
@@ -296,12 +296,12 @@
       "type UserSettings struct{ ... }",
       "    func DefaultUserSettings() UserSettings"
     ],
-    "pmforge/internal/debug": [
+    "gopmgr/internal/debug": [
       "type ErrorReport struct{ ... }",
       "    func Report(err error) (ErrorReport, bool)",
       "    func Wrap(err error, context string) ErrorReport"
     ],
-    "pmforge/internal/documents": [
+    "gopmgr/internal/documents": [
       "var ErrMissingRequired = errors.New(\"documents: required field is empty\")",
       "func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, error)",
       "func DefaultContent(k Kind) string",
@@ -352,7 +352,7 @@
       "type ResolvedChart struct{ ... }",
       "type ResolvedSection struct{ ... }"
     ],
-    "pmforge/internal/export": [
+    "gopmgr/internal/export": [
       "func ApplyPDFAMetadata(pdf *fpdf.Fpdf, spec XMPSpec)",
       "func BuildXMPPacket(spec XMPSpec) []byte",
       "func DefaultICCProfile() []byte",
@@ -381,10 +381,10 @@
       "type ReportPayload struct{ ... }",
       "type XMPSpec = pdfmeta.XMPSpec"
     ],
-    "pmforge/internal/exportsafe": [
+    "gopmgr/internal/exportsafe": [
       "func Cell(s string) string"
     ],
-    "pmforge/internal/fonts": [
+    "gopmgr/internal/fonts": [
       "const DefaultFamily = \"Liberation Sans\"",
       "var AllStyles = []Style{ ... }",
       "var Catalog = []FontFamily{ ... }",
@@ -401,7 +401,7 @@
       "type Style int",
       "    const Regular Style = iota ..."
     ],
-    "pmforge/internal/kernel": [
+    "gopmgr/internal/kernel": [
       "const MonteCarloTriangular DistributionName = \"triangular\" ...",
       "const DateLayout = \"2006-01-02\"",
       "const DefaultLevelingHorizon = 10000",
@@ -446,14 +446,14 @@
       "type TornadoDriver struct{ ... }",
       "type WorkdayFunc func(t time.Time) bool"
     ],
-    "pmforge/internal/money": [
+    "gopmgr/internal/money": [
       "const MinorUnitsPerMajor int64 = 100",
       "type Amount struct{ ... }",
       "    func FromMajorFloat(v float64) Amount",
       "    func RateTimesQuantity(rate Amount, quantity float64) Amount",
       "    func ScaleByRatio(amount Amount, numerator, denominator int64) Amount"
     ],
-    "pmforge/internal/pdfmeta": [
+    "gopmgr/internal/pdfmeta": [
       "func ApplyPDFAMetadata(pdf *fpdf.Fpdf, spec XMPSpec)",
       "func BuildXMPPacket(spec XMPSpec) []byte",
       "func DefaultICCProfile() []byte",
@@ -464,7 +464,7 @@
       "func MakePDFA3(pdfBytes []byte, spec XMPSpec, iccProfile []byte) ([]byte, error)",
       "type XMPSpec struct{ ... }"
     ],
-    "pmforge/internal/rfc3161": [
+    "gopmgr/internal/rfc3161": [
       "const QueryMediaType = \"application/timestamp-query\" ...",
       "type Client struct{ ... }",
       "type Token struct{ ... }",
@@ -472,11 +472,11 @@
       "type TrustStatus string",
       "    const TrustNotEvaluated TrustStatus = \"not_evaluated\" ..."
     ],
-    "pmforge/internal/sigma/charts": [
+    "gopmgr/internal/sigma/charts": [
       "type ParetoItem struct{ ... }",
       "    func CalculatePareto(categories []string, counts []int) ([]ParetoItem, error)"
     ],
-    "pmforge/internal/sigma/domain": [
+    "gopmgr/internal/sigma/domain": [
       "type BeltLevel string",
       "    const BeltGreen BeltLevel = \"green\" ...",
       "type CTQ struct{ ... }",
@@ -496,19 +496,19 @@
       "type VoCData struct{ ... }",
       "type VoCEntry struct{ ... }"
     ],
-    "pmforge/internal/sigma/service": [
+    "gopmgr/internal/sigma/service": [
       "type PhaseTools struct{ ... }",
       "type ProjectService struct{ ... }",
       "    func NewProjectService(d *db.Database) *ProjectService",
       "type ToolStatus struct{ ... }"
     ],
-    "pmforge/internal/sigma/stats": [
+    "gopmgr/internal/sigma/stats": [
       "type CapabilityResult struct{ ... }",
       "    func CalculateCapability(values []float64, usl, lsl float64) (CapabilityResult, error)",
       "type DescriptiveResult struct{ ... }",
       "    func CalculateDescriptive(values []float64) (DescriptiveResult, error)"
     ],
-    "pmforge/internal/sigma/tollgate": [
+    "gopmgr/internal/sigma/tollgate": [
       "type Check struct{ ... }",
       "type Result struct{ ... }",
       "    func CheckAnalyzeReadiness(fb *domain.FishboneData) Result",
@@ -517,7 +517,7 @@
       "    func CheckImproveReadiness(solutions []domain.Solution) Result",
       "    func CheckPhase(phase domain.Phase, charter domain.Charter, sipoc *domain.SIPOCData, ...) Result"
     ],
-    "pmforge/internal/signing": [
+    "gopmgr/internal/signing": [
       "const PAdESBaselineB = \"PAdES-BASELINE-B\" ...",
       "func ExecCommandRunner(ctx context.Context, name string, args ...string) ([]byte, error)",
       "func SignDetachedASCIIArmored(ctx context.Context, runner CommandRunner, inputPath, outputPath, keyID string) error",
@@ -529,10 +529,10 @@
       "type TimestampConfig struct{ ... }",
       "type TimestampRequester interface{ ... }"
     ],
-    "pmforge/internal/sqlitedriver": [
+    "gopmgr/internal/sqlitedriver": [
       "const Name = \"sqlite3\""
     ],
-    "pmforge/internal/templates": [
+    "gopmgr/internal/templates": [
       "type Engine struct{ ... }",
       "    func NewEngine() (*Engine, error)",
       "type SeedReceipt struct{ ... }",
@@ -541,13 +541,13 @@
       "type Seeder struct{ ... }",
       "    func NewSeeder(d *db.Database, projectID string) *Seeder"
     ],
-    "pmforge/internal/timeline": [
+    "gopmgr/internal/timeline": [
       "type Entry struct{ ... }",
       "    func Build(project db.Project, sprints []agile.Sprint, deploys []agile.Deployment) []Entry",
       "type EntryKind string",
       "    const KindSprintStart EntryKind = \"sprint_start\" ..."
     ],
-    "pmforge/internal/update": [
+    "gopmgr/internal/update": [
       "var ErrInvalidSignature = errors.New(\"update: manifest signature invalid\")",
       "var ManifestURL = \"\"",
       "var UpdateChannelPublicKey = \"\"",
@@ -558,7 +558,7 @@
       "type Status struct{ ... }",
       "    func CheckLatest(ctx context.Context) (Status, error)"
     ],
-    "pmforge/internal/users": [
+    "gopmgr/internal/users": [
       "const RecoveryCodeCount = 8",
       "var ErrInvalidRecoveryCode = errors.New(\"users: invalid or used recovery code\")",
       "var ErrInvalidUsername = errors.New(\"users: invalid username\")",

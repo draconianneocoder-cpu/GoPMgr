@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set -eu
@@ -45,8 +45,8 @@ assert_not_compliant '<report><jobs><job><validationReport><isCompliant>false</i
 assert_not_compliant '<report><jobs><job><validationReport isCompliant="false"></validationReport></job></jobs></report>' "xml attribute false"
 assert_not_compliant 'The file is not compliant with PDF/A-3B.' "text false positive guard"
 
-sample="$ROOT/.tmp/pmforge-pdfa-test/schedule.pdf"
-assert_eq "$(verapdf_sample_arg docker "$ROOT" "$sample")" "/work/.tmp/pmforge-pdfa-test/schedule.pdf" "docker sample path"
+sample="$ROOT/.tmp/gopmgr-pdfa-test/schedule.pdf"
+assert_eq "$(verapdf_sample_arg docker "$ROOT" "$sample")" "/work/.tmp/gopmgr-pdfa-test/schedule.pdf" "docker sample path"
 assert_eq "$(verapdf_sample_arg cli "$ROOT" "$sample")" "$sample" "cli sample path"
 
 probe_dir="$ROOT/.tmp/verapdf-find-test"
@@ -101,7 +101,7 @@ chmod +x "$fake_verapdf"
 # previously made this supposedly hermetic fixture pull and execute a real
 # container instead of the fake veraPDF binary.
 gate_output="$(
-	PMFORGE_VERAPDF_FORCE_CLI=1 PATH="$fake_verapdf_dir:$PATH" \
+	GOPMGR_VERAPDF_FORCE_CLI=1 PATH="$fake_verapdf_dir:$PATH" \
 		bash "$ROOT/scripts/validate-pdfa.sh" 2>&1
 )"
 case "$gate_output" in
@@ -146,11 +146,11 @@ fake_docker="$fake_verapdf_dir/docker"
 fake_docker_log="$fake_verapdf_dir/docker.args"
 cat > "$fake_docker" <<'EOF'
 #!/bin/bash
-printf '%s\n' "$*" >> "$PMFORGE_FAKE_DOCKER_LOG"
+printf '%s\n' "$*" >> "$GOPMGR_FAKE_DOCKER_LOG"
 printf '%s\n' '<report><jobs><job><validationReport><isCompliant>true</isCompliant></validationReport></job></jobs></report>'
 EOF
 chmod +x "$fake_docker"
-PMFORGE_FAKE_DOCKER_LOG="$fake_docker_log" PATH="$fake_verapdf_dir:$PATH" \
+GOPMGR_FAKE_DOCKER_LOG="$fake_docker_log" PATH="$fake_verapdf_dir:$PATH" \
 	bash "$ROOT/scripts/validate-pdfa.sh" >/dev/null
 if ! grep -Fq "verapdf/cli:v1.30.2" "$fake_docker_log"; then
 	cat "$fake_docker_log" >&2
@@ -160,7 +160,7 @@ if grep -q ":latest" "$fake_docker_log"; then
 	cat "$fake_docker_log" >&2
 	fail "Docker validation invoked a mutable latest tag"
 fi
-if ! grep -Fq "/work/.tmp/pmforge-pdfa-test/schedule.pdf" "$fake_docker_log"; then
+if ! grep -Fq "/work/.tmp/gopmgr-pdfa-test/schedule.pdf" "$fake_docker_log"; then
 	cat "$fake_docker_log" >&2
 	fail "Docker validation did not translate the schedule sample to its mounted path"
 fi

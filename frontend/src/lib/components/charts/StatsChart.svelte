@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -265,7 +265,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // because Chart.js's annotation plugin is a separate package.
       // For zero-dependency simplicity, ControlChart's mean/UCL/LCL
       // are layered via an inline plugin below.
-      pmforgeAnnotations: { annotations },
+      gopmgrAnnotations: { annotations },
     } as any;
   }
 
@@ -297,9 +297,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // Inline plugin: render any horizontal_line annotations on top of
   // the chart. Registered globally so every Chart instance picks it up.
   const annotationPlugin = {
-    id: 'pmforgeAnnotations',
+    id: 'gopmgrAnnotations',
     afterDatasetsDraw(c: Chart) {
-      const opts = (c.config.options?.plugins as any)?.pmforgeAnnotations;
+      const opts = (c.config.options?.plugins as any)?.gopmgrAnnotations;
       const annotations = opts?.annotations as Annotation[] | undefined;
       if (!annotations || annotations.length === 0) return;
       const yScale: any = c.scales['y'];

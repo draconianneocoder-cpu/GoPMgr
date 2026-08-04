@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package export
@@ -13,7 +13,7 @@ import (
 	"github.com/gomutex/godocx"
 	"github.com/gomutex/godocx/docx"
 
-	"pmforge/internal/documents"
+	"gopmgr/internal/documents"
 )
 
 // RenderDocumentDOCX produces a Microsoft Word file for the given
@@ -25,7 +25,7 @@ import (
 //
 //   - We chose gomutex/godocx after surveying pkg.go.dev: it's MIT,
 //     pure Go, currently maintained, and has the high-level API the
-//     PMForge field-walker needs (AddHeading / AddParagraph /
+//     GoPMgr field-walker needs (AddHeading / AddParagraph /
 //     AddTable). No hand-rolled OOXML here.
 //   - The function is field-driven, so any document kind that
 //     populates its content JSON correctly produces a usable DOCX
@@ -122,7 +122,7 @@ func RenderDocumentDOCX(kind documents.Kind, contentJSON, projectName string) ([
 		}
 	}
 
-	return renderDOCXToBytes(doc, "pmforge-docx")
+	return renderDOCXToBytes(doc, "gopmgr-docx")
 }
 
 func addHeadingDOCX(doc *docx.RootDoc, text string, level uint) error {
@@ -134,7 +134,7 @@ func addHeadingDOCX(doc *docx.RootDoc, text string, level uint) error {
 
 func renderDOCXToBytes(doc *docx.RootDoc, tempPrefix string) (out []byte, err error) {
 	// gomutex/godocx writes via a path; serialise to a temp file and read it
-	// back so PMForge's export pipeline can continue returning []byte.
+	// back so GoPMgr's export pipeline can continue returning []byte.
 	tmp, err := os.CreateTemp("", tempPrefix+"-*.docx")
 	if err != nil {
 		return nil, err

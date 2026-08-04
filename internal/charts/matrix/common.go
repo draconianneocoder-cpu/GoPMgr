@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package matrix implements PMForge's Matrix-family chart engine.
+// Package matrix implements GoPMgr's Matrix-family chart engine.
 //
 // The family covers five kinds — RACI, SWOT, Stakeholder Analysis,
 // Generic Matrix Diagram, and Risk Matrix — that share a grid layout but have

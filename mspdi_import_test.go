@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"pmforge/internal/db"
-	"pmforge/internal/export"
+	"gopmgr/internal/db"
+	"gopmgr/internal/export"
 )
 
 const sampleImportXML = `<?xml version="1.0" encoding="UTF-8"?>

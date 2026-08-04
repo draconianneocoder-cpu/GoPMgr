@@ -1,11 +1,11 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
 # Agent Operating Guide
 
-This repository is PMForge, a local-first desktop project controls
+This repository is GoPMgr, a local-first desktop project controls
 application built with a Go backend, Wails v2, and a Svelte 5 frontend.
 Treat this file as the first project-local instruction source for
 automated engineering work.
@@ -74,7 +74,7 @@ automated engineering work.
   production build embeds the repo-root `frontend/dist` through `go:embed`.
   `make build` runs `wails build`, which builds `frontend/dist`, injects the
   `desktop,production` tags, and links the platform frameworks.
-- `system.db` stores local account metadata. Per-project `.pmforge`
+- `system.db` stores local account metadata. Per-project `.gopmgr`
   databases hold project data and are SQLCipher-capable through
   `internal/sqlitedriver`.
 - PDF/A and PAdES are release-critical features. Preserve the order:

@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package kernel implements PMForge's scheduling math: Critical Path
+// Package kernel implements GoPMgr's scheduling math: Critical Path
 // Method (CPM) with typed links, lag, and constraints; calendar
 // anchoring of CPM offsets onto real dates (AnchorSchedule); baseline
 // comparison (CompareSchedules); Earned Value Management (ComputeEVM);

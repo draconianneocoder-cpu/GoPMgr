@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package export
@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	pmcrypto "pmforge/internal/crypto"
-	"pmforge/internal/kernel"
+	pmcrypto "gopmgr/internal/crypto"
+	"gopmgr/internal/kernel"
 )
 
 func TestRenderPDFWithSignerLoaderEmbedsRealPAdESStructure(t *testing.T) {
@@ -46,7 +46,7 @@ func TestRenderPDFWithSignerLoaderEmbedsRealPAdESStructure(t *testing.T) {
 			t.Fatalf("signed PDF does not contain %q", marker)
 		}
 	}
-	if bytes.Contains(out, []byte("%%PMForgeCMSSignature:")) {
+	if bytes.Contains(out, []byte("%%GoPMgrCMSSignature:")) {
 		t.Fatal("signed PDF contains the retired comment-marker signature")
 	}
 }
@@ -108,7 +108,7 @@ func newExportTestSigner(t *testing.T) *pmcrypto.Signer {
 	now := time.Now().UTC()
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(now.UnixNano()),
-		Subject:      pkix.Name{CommonName: "PMForge Export Test Signer"},
+		Subject:      pkix.Name{CommonName: "GoPMgr Export Test Signer"},
 		NotBefore:    now.Add(-time.Hour),
 		NotAfter:     now.Add(time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,

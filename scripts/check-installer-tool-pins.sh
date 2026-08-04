@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Validate that every release-installer tool is immutable at tag build time.
@@ -104,7 +104,7 @@ if rg -q '^[[:space:]]*(run:[[:space:]]*)?brew install create-dmg([[:space:]]|$)
 	echo "installer-tool-pins: release workflow must not install create-dmg; hdiutil is the release path." >&2
 	fail=1
 fi
-if rg -q 'PMFORGE_FANCY_DMG[=:][[:space:]]*["'\'']?1' "$WORKFLOW"; then
+if rg -q 'GOPMGR_FANCY_DMG[=:][[:space:]]*["'\'']?1' "$WORKFLOW"; then
 	echo "installer-tool-pins: release workflow must not enable the optional create-dmg path." >&2
 	fail=1
 fi

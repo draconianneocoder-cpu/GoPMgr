@@ -1,20 +1,20 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "pmforge",
-  "outputfilename": "pmforge",
+  "name": "gopmgr",
+  "outputfilename": "gopmgr",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
-    "name": "The PMForge Contributors",
-    "email": "contributors@pmforge.invalid"
+    "name": "The GoPMgr Contributors",
+    "email": "contributors@gopmgr.invalid"
   },
   "info": {
-    "companyName": "The PMForge Contributors",
-    "productName": "PMForge",
+    "companyName": "The GoPMgr Contributors",
+    "productName": "GoPMgr",
     "productVersion": "1.1.0",
-    "copyright": "Copyright (C) 2026 James L. Burns and The PMForge Contributors. Licensed under GPL-3.0-or-later.",
+    "copyright": "Copyright (C) 2026 James L. Burns and The GoPMgr Contributors. Licensed under GPL-3.0-or-later.",
     "comments": "Local-first project controls desktop application."
   }
 }

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package dag
@@ -8,7 +8,7 @@ import (
 	"errors"
 	"sort"
 
-	"pmforge/internal/kernel"
+	"gopmgr/internal/kernel"
 )
 
 // WorkSegment is one contiguous run of working days. Start/End are

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package export
@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"pmforge/internal/calendar"
+	"gopmgr/internal/calendar"
 )
 
 // ICalEvent is one timeline entry that ICalRender turns into a
@@ -44,7 +44,7 @@ func ICalRender(spec ICalSpec) []byte {
 
 	w.line("BEGIN:VCALENDAR")
 	w.line("VERSION:2.0")
-	w.line("PRODID:-//PMForge//" + exportVersion() + "//EN")
+	w.line("PRODID:-//GoPMgr//" + exportVersion() + "//EN")
 	w.line("CALSCALE:GREGORIAN")
 	w.line("METHOD:PUBLISH")
 	if spec.CalendarName != "" {
@@ -56,7 +56,7 @@ func ICalRender(spec ICalSpec) []byte {
 
 	for _, ev := range spec.Events {
 		w.line("BEGIN:VEVENT")
-		w.kv("UID", ev.UID+"@pmforge.local")
+		w.kv("UID", ev.UID+"@gopmgr.local")
 		w.kv("DTSTAMP", iCalDateTime(time.Now().UTC()))
 		if ev.End.IsZero() {
 			// All-day event: DTSTART;VALUE=DATE with no time.

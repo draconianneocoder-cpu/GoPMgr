@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package applog
@@ -41,8 +41,8 @@ func TestInitWritesDatedLogFile(t *testing.T) {
 		t.Fatalf("log directory = %q, want %q", got, wantDir)
 	}
 	base := filepath.Base(logPath)
-	if !strings.HasPrefix(base, "pmforge-") || !strings.HasSuffix(base, ".log") {
-		t.Fatalf("log filename %q does not match pmforge-<date>.log", base)
+	if !strings.HasPrefix(base, "gopmgr-") || !strings.HasSuffix(base, ".log") {
+		t.Fatalf("log filename %q does not match gopmgr-<date>.log", base)
 	}
 
 	log.Print("canary-marker-12345")
@@ -83,7 +83,7 @@ func TestInitAppendsAcrossCalls(t *testing.T) {
 }
 
 func TestLogDir(t *testing.T) {
-	preferred := filepath.Join(t.TempDir(), "PMForge")
+	preferred := filepath.Join(t.TempDir(), "GoPMgr")
 	want := filepath.Join(preferred, "logs")
 	if got := LogDir(preferred); got != want {
 		t.Fatalf("LogDir(%q) = %q, want %q", preferred, got, want)
@@ -94,7 +94,7 @@ func TestLogDir(t *testing.T) {
 }
 
 func TestResolveLogDir(t *testing.T) {
-	preferred := filepath.Join("data", "PMForge")
+	preferred := filepath.Join("data", "GoPMgr")
 	if got, want := resolveLogDir(preferred), filepath.Join(preferred, "logs"); got != want {
 		t.Fatalf("resolveLogDir(%q) = %q, want %q", preferred, got, want)
 	}
@@ -109,8 +109,8 @@ func TestResolveLogDir(t *testing.T) {
 }
 
 func TestFormatFatalIncludesContext(t *testing.T) {
-	s := formatFatal("TITLE-TAG", "user-facing message", "/tmp/pmforge.log", errors.New("boom-cause"))
-	for _, want := range []string{"TITLE-TAG", "user-facing message", "boom-cause", "/tmp/pmforge.log", "stack:"} {
+	s := formatFatal("TITLE-TAG", "user-facing message", "/tmp/gopmgr.log", errors.New("boom-cause"))
+	for _, want := range []string{"TITLE-TAG", "user-facing message", "boom-cause", "/tmp/gopmgr.log", "stack:"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("formatFatal output missing %q; full output:\n%s", want, s)
 		}
@@ -118,8 +118,8 @@ func TestFormatFatalIncludesContext(t *testing.T) {
 }
 
 func TestDialogMessage(t *testing.T) {
-	m := dialogMessage("hello", "/tmp/pmforge.log", errors.New("boom-cause"))
-	for _, want := range []string{"hello", "boom-cause", "/tmp/pmforge.log"} {
+	m := dialogMessage("hello", "/tmp/gopmgr.log", errors.New("boom-cause"))
+	for _, want := range []string{"hello", "boom-cause", "/tmp/gopmgr.log"} {
 		if !strings.Contains(m, want) {
 			t.Errorf("dialogMessage missing %q; got:\n%s", want, m)
 		}
@@ -131,7 +131,7 @@ func TestDialogMessage(t *testing.T) {
 }
 
 // TestInitPrunesOldLogs locks in the retention sweep: dated logs older
-// than retentionDays are removed on Init, recent logs and non-PMForge
+// than retentionDays are removed on Init, recent logs and non-GoPMgr
 // files are left alone.
 func TestInitPrunesOldLogs(t *testing.T) {
 	restoreLogger(t)
@@ -141,8 +141,8 @@ func TestInitPrunesOldLogs(t *testing.T) {
 		t.Fatalf("mkdir: %v", err)
 	}
 
-	old := filepath.Join(logDir, "pmforge-2020-01-01.log")
-	recent := filepath.Join(logDir, "pmforge-recent.log")
+	old := filepath.Join(logDir, "gopmgr-2020-01-01.log")
+	recent := filepath.Join(logDir, "gopmgr-recent.log")
 	foreign := filepath.Join(logDir, "keepme.txt")
 	for _, p := range []string{old, recent, foreign} {
 		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
@@ -168,6 +168,6 @@ func TestInitPrunesOldLogs(t *testing.T) {
 		t.Fatalf("recent log was pruned: %v", err)
 	}
 	if _, err := os.Stat(foreign); err != nil {
-		t.Fatalf("non-PMForge file was pruned: %v", err)
+		t.Fatalf("non-GoPMgr file was pruned: %v", err)
 	}
 }

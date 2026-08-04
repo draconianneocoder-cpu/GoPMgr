@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
@@ -22,7 +22,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 ## Context
 
-PMForge is local-first: every user's project data lives in
+GoPMgr is local-first: every user's project data lives in
 `~/Documents/PMForge/<username>/projects/*.pmforge` (SQLite, WAL mode,
 foreign keys) plus a shared `~/Documents/PMForge/system.db` holding
 the account list. The V2 protections are per-user directory isolation
@@ -62,7 +62,7 @@ backups, support bundles); reads by other OS accounts with elevation;
 disposal/resale of drives.
 
 Out of scope (unchanged by this design): malware running AS the
-logged-in user while PMForge is unlocked; memory scraping of a
+logged-in user while GoPMgr is unlocked; memory scraping of a
 running process; a hostile OS administrator with a keylogger.
 
 ## Decision
@@ -228,7 +228,7 @@ maintained-ish self-contained binding found; registers the
 build — both cannot coexist in one binary). Spike sources:
 `docs/design/spike-sqlcipher/` (run on macOS to extend this table).
 
-**Functional results — all PASS** against PMForge's usage profile
+**Functional results — all PASS** against GoPMgr's usage profile
 (WAL + foreign keys + charts-like schema):
 
 | Check | Result |
@@ -261,7 +261,7 @@ PASS ×3, identical to linux):*
 | full scan | 439–792 µs | 349–673 µs | within noise |
 | spike binary size | 6.84 MB | 6.70 MB | comparable |
 
-Absolute costs are negligible for PMForge's single-user, KB-scale
+Absolute costs are negligible for GoPMgr's single-user, KB-scale
 documents; the relative write overhead is page encryption doing its
 job, and on macOS encrypted reads were indistinguishable from
 plaintext.
@@ -269,8 +269,8 @@ plaintext.
 **The principal finding against adopting v4.4.2 as-is — staleness.**
 The binding's MAINTENANCE file pins mattn `v1.14.5`, SQLCipher
 `4.4.2`, and libtomcrypt from 2020-08-29; the bundled engine reports
-`sqlite_version() = 3.33.0` (2020) vs `3.45.1` in PMForge's current
-driver. PMForge's SQL uses nothing newer than 3.33 (no STRICT,
+`sqlite_version() = 3.33.0` (2020) vs `3.45.1` in GoPMgr's current
+driver. GoPMgr's SQL uses nothing newer than 3.33 (no STRICT,
 RETURNING, or JSONB), so compatibility risk is low — but an
 *encryption* feature built on a crypto stack frozen in 2020 misses
 five-plus years of upstream SQLite/SQLCipher fixes. Before
@@ -329,7 +329,7 @@ are binding-independent and unaffected.
 Question raised at A3 acceptance: would `go.etcd.io/bbolt` (pure-Go
 B+tree key-value store) add value alongside or instead of SQLite?
 
-- **As the main store:** no. PMForge's model is relational — 15+
+- **As the main store:** no. GoPMgr's model is relational — 15+
   tables, foreign keys with CASCADE, secondary indexes, ad-hoc SQL
   (filters, ordering, aggregation), and an additive
   `CREATE TABLE IF NOT EXISTS` migration story. bbolt offers none of
@@ -350,7 +350,7 @@ B+tree key-value store) add value alongside or instead of SQLite?
   candidate is a CGO-free SQLite port (e.g. `modnc`-style drivers),
   which keeps the SQL surface — not a KV store.
 
-**Verdict: bbolt is not a value add for PMForge; rejected.**
+**Verdict: bbolt is not a value add for GoPMgr; rejected.**
 
 **A1 fork survey (2026-06-12):** a web survey found no fork that
 demonstrably tracks CURRENT SQLCipher. The most notable

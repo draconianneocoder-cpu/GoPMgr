@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -76,7 +76,7 @@ func TestLogTail_MissingFile(t *testing.T) {
 
 func TestGenerateBugReport_WritesReport(t *testing.T) {
 	dir := t.TempDir()
-	logPath := filepath.Join(dir, "pmforge-x.log")
+	logPath := filepath.Join(dir, "gopmgr-x.log")
 	// Write a small log file so the tail section is non-empty.
 	if err := os.WriteFile(logPath, []byte("line1\nline2\nline3\n"), 0o600); err != nil {
 		t.Fatalf("write log: %v", err)
@@ -95,7 +95,7 @@ func TestGenerateBugReport_WritesReport(t *testing.T) {
 	content := string(data)
 
 	for _, want := range []string{
-		"PMForge Diagnostic Report",
+		"GoPMgr Diagnostic Report",
 		runtime.GOOS,
 		"=== Recent Log",
 		"line3",
@@ -108,7 +108,7 @@ func TestGenerateBugReport_WritesReport(t *testing.T) {
 
 func TestGenerateBugReport_TailIsLast200Lines(t *testing.T) {
 	dir := t.TempDir()
-	logPath := filepath.Join(dir, "pmforge-x.log")
+	logPath := filepath.Join(dir, "gopmgr-x.log")
 	buildTestLog(t, logPath, 300)
 
 	app := &App{logDir: dir, logPath: logPath}
@@ -138,7 +138,7 @@ func TestGenerateBugReport_NoLogDir(t *testing.T) {
 func TestBuildAppOptionsPreservesNativeWindowContract(t *testing.T) {
 	app := &App{}
 	opts := buildAppOptions(app)
-	if opts.Title != "PMForge" || opts.Width != 1280 || opts.Height != 800 {
+	if opts.Title != "GoPMgr" || opts.Width != 1280 || opts.Height != 800 {
 		t.Fatalf("unexpected main window options: %#v", opts)
 	}
 	if opts.MinWidth != 800 || opts.MinHeight != 600 {

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"pmforge/internal/cli"
-	"pmforge/internal/crypto"
-	"pmforge/internal/db"
-	"pmforge/internal/export"
+	"gopmgr/internal/cli"
+	"gopmgr/internal/crypto"
+	"gopmgr/internal/db"
+	"gopmgr/internal/export"
 )
 
 // seedHeadlessProject creates a plaintext project DB with one project row

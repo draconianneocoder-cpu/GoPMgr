@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package crypto provides PMForge's symmetric-encryption and digital-
+// Package crypto provides GoPMgr's symmetric-encryption and digital-
 // signature primitives. The file is intentionally narrow:
 //
 //   - encrypt.go    AES-256-GCM with Argon2id key derivation

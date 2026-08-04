@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -169,13 +169,13 @@ linters: {}
 formatters: {}
 `),
 		"build/linux/nfpm.yaml": []byte(`
-name: pmforge
+name: gopmgr
 arch: amd64
 platform: linux
 version: ${VERSION}
 contents:
-  - src: ./build/bin/pmforge
-    dst: /usr/bin/pmforge
+  - src: ./build/bin/gopmgr
+    dst: /usr/bin/gopmgr
 overrides:
   deb: {}
   rpm: {}
@@ -193,7 +193,7 @@ version = 1
 [[annotations]]
 path = "frontend/package.json"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "The PMForge Contributors"
+SPDX-FileCopyrightText = "The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 `),
 	}

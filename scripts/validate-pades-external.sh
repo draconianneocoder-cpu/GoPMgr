@@ -1,11 +1,11 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # External PAdES validation harness.
 #
 # This script complements validate-pades.sh. With no argument it regenerates a
-# fresh PMForge timestamped sample; with an explicit PDF it validates that file
+# fresh GoPMgr timestamped sample; with an explicit PDF it validates that file
 # without modification. It extracts the CMS DER and signed ByteRange bytes,
 # records provenance and hashes, verifies detached CMS with OpenSSL, and runs
 # locally installed deterministic PDF/PAdES validators. Acrobat still requires
@@ -15,8 +15,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-SAMPLE_DIR="$ROOT/.tmp/pmforge-pades-test"
-PADES_LOCK="$ROOT/.tmp/pmforge-pades-test.lock"
+SAMPLE_DIR="$ROOT/.tmp/gopmgr-pades-test"
+PADES_LOCK="$ROOT/.tmp/gopmgr-pades-test.lock"
 if [ "$#" -gt 1 ]; then
 	echo "usage: $0 [signed-pdf]" >&2
 	exit 64
@@ -49,7 +49,7 @@ REPORT="$SAMPLE_DIR/external-validation-report.txt"
 echo "=== PAdES External Validation Harness ==="
 
 acquire_pades_lock() {
-	if [ "${PMFORGE_PADES_LOCK_HELD:-0}" = "1" ]; then
+	if [ "${GOPMGR_PADES_LOCK_HELD:-0}" = "1" ]; then
 		return
 	fi
 	mkdir -p "$ROOT/.tmp"
@@ -58,14 +58,14 @@ acquire_pades_lock() {
 	done
 	echo "$$" > "$PADES_LOCK/pid"
 	trap 'rm -rf "$PADES_LOCK"' EXIT INT TERM
-	export PMFORGE_PADES_LOCK_HELD=1
+	export GOPMGR_PADES_LOCK_HELD=1
 }
 
 acquire_pades_lock
 
 # Default validation is build evidence, so it must never inherit a non-empty
 # artifact from a previous checkout or run. The external harness already owns
-# the shared lock; validate-pades.sh observes PMFORGE_PADES_LOCK_HELD and
+# the shared lock; validate-pades.sh observes GOPMGR_PADES_LOCK_HELD and
 # regenerates the sample without attempting to acquire the lock recursively.
 if [ "$EVIDENCE_SOURCE" = "generated_current_checkout" ]; then
 	echo "Generating fresh local PAdES sample..."

@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Fast, isolated coverage for GitHub release classification and workflow drift.
@@ -9,7 +9,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CHECK="$ROOT/scripts/check-release-publication-mode.sh"
 CLASSIFY="$ROOT/scripts/release-publication-flag.sh"
-TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/pmforge-publication-mode-test.XXXXXX")"
+TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-publication-mode-test.XXXXXX")"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 
 fail() {

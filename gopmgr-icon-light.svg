@@ -1,0 +1,91 @@
+<!--
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: GPL-3.0-or-later
+
+GoPMgr App Icon - Light Mode (1024x1024)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 200 200" aria-labelledby="title desc">
+  <title id="title">GoPMgr App Icon - Light Mode</title>
+  <desc id="desc">GoPMgr beaver-analyst mascot with a magnifying glass over a rising bar chart, on a mint rounded-square background.</desc>
+
+  <defs>
+    <clipPath id="rounded-light">
+      <rect x="0" y="0" width="200" height="200" rx="36"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#rounded-light)">
+    <rect width="200" height="200" fill="#DCEEE6"/>
+
+    <!-- Network-node decoration, upper right -->
+    <g stroke="#8FCBAE" stroke-width="1.6" opacity="0.75">
+      <line x1="150" y1="26" x2="168" y2="14"/>
+      <line x1="150" y1="26" x2="150" y2="46"/>
+      <line x1="150" y1="46" x2="172" y2="52"/>
+    </g>
+    <circle cx="150" cy="26" r="4" fill="#8FCBAE"/>
+    <circle cx="168" cy="14" r="3" fill="#8FCBAE"/>
+    <circle cx="150" cy="46" r="3" fill="#8FCBAE"/>
+    <circle cx="172" cy="52" r="3" fill="#8FCBAE"/>
+
+    <!-- Tail -->
+    <path d="M 44 138 C 24 134 16 118 24 104 C 34 112 44 120 54 130 Z" fill="#3E4A5E"/>
+    <g stroke="#2E3849" stroke-width="1.4" opacity="0.6">
+      <line x1="30" y1="112" x2="42" y2="122"/>
+      <line x1="26" y1="120" x2="40" y2="130"/>
+    </g>
+
+    <!-- Body -->
+    <ellipse cx="98" cy="150" rx="46" ry="38" fill="#5B6B85"/>
+    <ellipse cx="98" cy="158" rx="30" ry="24" fill="#8FB9AC"/>
+
+    <!-- Feet -->
+    <ellipse cx="76" cy="186" rx="12" ry="7" fill="#2E3849"/>
+    <ellipse cx="118" cy="186" rx="12" ry="7" fill="#2E3849"/>
+
+    <!-- Left arm resting on body -->
+    <path d="M 58 140 C 48 148 46 160 54 168 C 60 162 64 152 66 144 Z" fill="#5B6B85"/>
+
+    <!-- Head -->
+    <circle cx="100" cy="98" r="42" fill="#697A96"/>
+
+    <!-- Ears -->
+    <circle cx="66" cy="66" r="12" fill="#3E4A5E"/>
+    <circle cx="134" cy="66" r="12" fill="#3E4A5E"/>
+    <circle cx="66" cy="66" r="6" fill="#5B6B85"/>
+    <circle cx="134" cy="66" r="6" fill="#5B6B85"/>
+
+    <!-- Cheeks -->
+    <circle cx="70" cy="108" r="11" fill="#F3AFB6" opacity="0.85"/>
+    <circle cx="130" cy="108" r="11" fill="#F3AFB6" opacity="0.85"/>
+
+    <!-- Eyes -->
+    <ellipse cx="82" cy="90" rx="10" ry="12" fill="#FFFFFF"/>
+    <ellipse cx="118" cy="90" rx="10" ry="12" fill="#FFFFFF"/>
+    <circle cx="83" cy="93" r="5.5" fill="#1B2430"/>
+    <circle cx="119" cy="93" r="5.5" fill="#1B2430"/>
+    <circle cx="85" cy="90" r="1.8" fill="#FFFFFF"/>
+    <circle cx="121" cy="90" r="1.8" fill="#FFFFFF"/>
+
+    <!-- Nose + teeth -->
+    <ellipse cx="100" cy="108" rx="6" ry="4.5" fill="#2E3849"/>
+    <rect x="94" y="114" width="12" height="10" rx="2" fill="#FFFFFF"/>
+    <line x1="100" y1="114" x2="100" y2="124" stroke="#D8DCE2" stroke-width="1"/>
+
+    <!-- Chart card -->
+    <rect x="118" y="118" width="58" height="52" rx="6" fill="#FFFFFF" stroke="#1B2430" stroke-width="2.5"/>
+    <line x1="127" y1="130" x2="151" y2="130" stroke="#B7BFCB" stroke-width="3" stroke-linecap="round"/>
+    <line x1="127" y1="138" x2="145" y2="138" stroke="#B7BFCB" stroke-width="3" stroke-linecap="round"/>
+    <rect x="127" y="150" width="8" height="12" fill="#4CAF6B"/>
+    <rect x="139" y="144" width="8" height="18" fill="#E8792E"/>
+    <rect x="151" y="136" width="8" height="26" fill="#4CAF6B"/>
+    <polyline points="127,148 139,140 151,132 163,116" fill="none" stroke="#E8792E" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="163,116 156,120 166,124" fill="#E8792E"/>
+
+    <!-- Right arm + magnifying glass, drawn over the chart card -->
+    <path d="M 116 138 C 128 132 138 130 146 132 C 140 140 132 146 122 150 Z" fill="#697A96"/>
+    <circle cx="150" cy="126" r="15" fill="#B9E7EA" stroke="#1B2430" stroke-width="3.5"/>
+    <path d="M 144 120 A 9 9 0 0 1 156 120" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+    <rect x="158" y="136" width="7" height="20" rx="3" fill="#1B2430" transform="rotate(38 161.5 146)"/>
+  </g>
+</svg>
