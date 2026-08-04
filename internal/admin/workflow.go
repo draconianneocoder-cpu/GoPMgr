@@ -35,6 +35,12 @@ func (s *Service) SecureArchive(projectPath string) (string, error) {
 	}
 
 	timestamp := time.Now().UTC().Format("20060102-150405")
+	// "PMForge_Archive_" is generated fresh on every call and nothing reads
+	// it back (unlike .pmforge/PMForge-the-directory/project.pmforge, which
+	// name state that already exists on disk), so keeping it isn't a
+	// compatibility requirement — it's kept so a user's backups folder
+	// doesn't end up with both "PMForge_Archive_*" and "GoPMgr_Archive_*"
+	// files with no visible reason they differ.
 	backupName := filepath.Join(filepath.Dir(projectPath), fmt.Sprintf("PMForge_Archive_%s.pmba", timestamp))
 
 	certs := []string{}

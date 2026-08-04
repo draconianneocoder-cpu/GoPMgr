@@ -69,3 +69,52 @@ func TestEncryptedDSNRejectsAmbiguousPath(t *testing.T) {
 		}
 	}
 }
+
+// TestProjectPathForRejectsWrongExtension pins the ".pmforge" check in
+// projectPathFor. The extension is a persistence boundary, not a validation
+// nicety: every project file already on a user's disk ends in ".pmforge", so
+// if this check's literal were ever renamed alongside the rest of the
+// PMForge -> GoPMgr rebrand, DeleteProject/CloneProject/OpenProject would
+// either reject every existing project outright or (worse) silently accept
+// unrelated files that happen to sit beside one. A regression here fails
+// this test instead of surfacing as "my projects disappeared" after upgrade.
+//
+// This calls projectPathFor directly rather than going through DeleteProject:
+// DeleteProject also opens the target as an encrypted SQLite database for
+// its audit-log entry, so a fake (non-database) file fails there regardless
+// of extension, which would make the assertion pass for the wrong reason
+// even if the extension check itself were broken or renamed.
+func TestProjectPathForRejectsWrongExtension(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "alice-strong-password", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	user := app.CurrentUser()
+	if user == nil {
+		t.Fatal("CurrentUser is nil after CreateAccount")
+	}
+
+	// projectPathFor is pure path validation (no filesystem access), so
+	// these paths don't need to exist on disk. They live inside the user's
+	// own projects directory so the test isolates the extension check from
+	// the directory-confinement check covered above. ".gopmgr" specifically
+	// covers the adjacent-rename risk: if a future PMForge -> GoPMgr-style
+	// rebrand changed this check's literal to match the new product name,
+	// a generic wrong-extension case like ".txt" would still pass while
+	// missing that exact regression.
+	projectsDir := filepath.Join(user.DataDir, "projects")
+	for _, ext := range []string{".txt", ".gopmgr"} {
+		wrongExt := filepath.Join(projectsDir, "not-a-project"+ext)
+		if _, _, err := app.projectPathFor(wrongExt); err == nil {
+			t.Fatalf("projectPathFor accepted a path with extension %q, want only .pmforge accepted", ext)
+		}
+	}
+
+	// Positive control: the same directory, the correct extension, must be
+	// accepted. Without this, a check that rejected every path (not just
+	// wrong extensions) would also pass the loop above.
+	rightExt := filepath.Join(projectsDir, "real-project.pmforge")
+	if _, _, err := app.projectPathFor(rightExt); err != nil {
+		t.Fatalf("projectPathFor rejected a .pmforge path: %v", err)
+	}
+}

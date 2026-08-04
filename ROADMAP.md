@@ -189,31 +189,33 @@ items outside git's reach:
 
 ## Next Recommended Audit
 
-**Persistence-boundary invariant tests (highest priority).** The
-August 2026 PMForge → GoPMgr rename relies on a rule that currently
-lives only in prose comments and one README-text assertion in
-`scripts/release-gate-scope-check.sh`: the `.pmforge` file extension,
-the `~/Documents/PMForge` / `~/Library/Application Support/PMForge`
-data-root directory names, and the `PMForge_Archive_*` backup prefix
-must never be renamed, because they name state that already exists on
-real users' disks. A blanket find-and-replace during the rename
-briefly did rename all of these before a manual revert pass caught it.
-Nothing currently fails the build if a future change reintroduces that
-mistake. Add table-driven tests in `internal/users` and `internal/db`
-asserting `DefaultRootDir()` still ends in `PMForge`, the project file
-extension constant is still `.pmforge`, and the backup archive's zip
-entry name is still `project.pmforge` — turning the convention into an
-enforced invariant instead of something only caught by manual review.
+**Persistence-boundary invariant tests — done (2026-08-04).** The
+August 2026 PMForge → GoPMgr rename relied on a rule that previously
+lived only in prose comments and one README-text assertion in
+`scripts/release-gate-scope-check.sh`. Table-driven tests now pin all
+four frozen literals (`internal/users/root_dir_test.go`,
+`project_path_confinement_test.go`, `internal/db/backup_test.go`), each
+verified to fail under a deliberate break of the literal it pins before
+being committed. See `DEVELOPER_HANDBOOK.md` §9 (2026-08-04 entry) for
+the full rationale and which test covers which literal.
 
-**Update-path audit for existing installs (secondary).** The rename
-changed `CFBundleIdentifier`, packaged artifact names, and the update
-signing key names. This session verified that a renamed GoPMgr binary
-can still open a pre-existing `~/Library/Application Support/PMForge`
-install's encrypted `.pmforge` project file untouched — but did not
-verify that an *installed pre-rename PMForge build* can successfully
-discover and apply a post-rename GoPMgr release through
-`internal/update`. GitHub's repo-rename redirect likely covers this,
-but it hasn't been exercised end-to-end.
+**Update-path audit for existing installs — blocked, not yet
+exercisable.** The rename changed `CFBundleIdentifier`, packaged
+artifact names, and the update signing key names. This session
+verified that a renamed GoPMgr binary can still open a pre-existing
+`~/Library/Application Support/PMForge` install's encrypted `.pmforge`
+project file untouched. Separately, `internal/update.ManifestURL` and
+`UpdateChannelPublicKey` both default to empty and are only wired via
+`-ldflags` in `release.yml` when `GOPMGR_UPDATE_PUBLIC_KEY` is set —
+and per Manual Action Required above, that secret does not exist yet.
+So no shipped GoPMgr (or PMForge) release has ever had automatic
+update-checking active, and there is no "installed pre-rename build
+polling a now-broken endpoint" scenario to worry about today. Once
+`GOPMGR_UPDATE_PUBLIC_KEY`/`GOPMGR_UPDATE_PRIVATE_KEY` are created and
+the channel is first enabled, verify end-to-end before relying on it:
+confirm `internal/update.CheckLatest` can fetch and verify a real
+signed manifest and that the packaged artifact names it points to
+match what `release.yml` actually produces.
 
 ## What Is Not on the Roadmap
 
