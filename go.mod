@@ -31,7 +31,7 @@ require (
 	github.com/duckdb/duckdb-go/v2 v2.10505.0
 	github.com/mutecomm/go-sqlcipher/v4 v4.4.2
 	github.com/pelletier/go-toml/v2 v2.4.3
-	golang.org/x/mod v0.37.0
+	golang.org/x/mod v0.38.0
 	gonum.org/v1/gonum v0.17.0
 	gopkg.in/yaml.v3 v3.0.1
 )
