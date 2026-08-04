@@ -1,11 +1,11 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
 # Testing
 
-PMForge uses focused package tests during development and broader gates
+GoPMgr uses focused package tests during development and broader gates
 before release or handoff. Do not claim a command passes unless it was
 run in the current session.
 
@@ -118,7 +118,7 @@ guidance are rejected. It then checks the live workflow against
 installing the resulting packages on Linux, macOS, and Windows remains required
 prerelease evidence.
 
-`make windows-installer-scaffold` verifies the PMForge-owned NSIS entrypoint,
+`make windows-installer-scaffold` verifies the GoPMgr-owned NSIS entrypoint,
 Windows version resources, DPI manifest, generated-file ignore boundary,
 workflow ordering, DuckDB build tag, and post-build linkage check. Isolated
 fixtures cover missing branding, destructive uninstall behavior, analytics

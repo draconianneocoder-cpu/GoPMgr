@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -102,11 +102,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   function downloadCodes() {
-    const body = `PMForge recovery codes for ${username}\n\n${codes.join('\n')}\n`;
+    const body = `GoPMgr recovery codes for ${username}\n\n${codes.join('\n')}\n`;
     const url = URL.createObjectURL(new Blob([body], { type: 'text/plain' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pmforge-recovery-codes-${username}.txt`;
+    a.download = `gopmgr-recovery-codes-${username}.txt`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -134,7 +134,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="bg-amber-950/40 border border-amber-700/50 rounded-lg p-3 text-xs text-amber-300 space-y-1">
         <p class="font-semibold">You're the first user on this computer</p>
         <p class="text-amber-400/80">
-          No PMForge administrator exists yet. You can make this account the administrator below —
+          No GoPMgr administrator exists yet. You can make this account the administrator below —
           administrators can create and remove other accounts.
         </p>
       </div>
@@ -251,7 +251,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <span class="text-xs text-slate-300">
           <span class="font-semibold text-slate-100">Make this account an administrator</span><br />
           <span class="text-slate-500">
-            Grants the ability to create and delete PMForge accounts on this machine.
+            Grants the ability to create and delete GoPMgr accounts on this machine.
             This option is only available while no administrator exists.
           </span>
         </span>
@@ -298,7 +298,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         onclick={finish}
         class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded transition-colors"
       >
-        CONTINUE TO PMFORGE
+        CONTINUE TO GOPMGR
       </button>
     {:else}
       <div class="bg-cyan-950/20 border border-cyan-900/60 rounded-lg p-3 text-xs space-y-1">
@@ -346,7 +346,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         onclick={finish}
         class="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
       >
-        CONTINUE TO PMFORGE
+        CONTINUE TO GOPMGR
       </button>
     {/if}
   </div>

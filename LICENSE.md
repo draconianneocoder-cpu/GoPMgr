@@ -1,19 +1,19 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: CC0-1.0
 -->
 
-# PMForge License
+# GoPMgr License
 
-Copyright (C) 2026 James L. Burns and The PMForge Contributors.
+Copyright (C) 2026 James L. Burns and The GoPMgr Contributors.
 
-PMForge is **free software**. Its source code is licensed under the **GNU
+GoPMgr is **free software**. Its source code is licensed under the **GNU
 General Public License, version 3 or (at your option) any later version**
 (`GPL-3.0-or-later`).
 
 ```
-PMForge — a local-first desktop project-controls application.
-Copyright (C) 2026 James L. Burns and The PMForge Contributors.
+GoPMgr — a local-first desktop project-controls application.
+Copyright (C) 2026 James L. Burns and The GoPMgr Contributors.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -34,15 +34,15 @@ The complete text of the GPL version 3 is in
 
 ## What GPL-3.0-or-later means for you
 
-- **Use.** You may run PMForge for any purpose, including commercial use.
+- **Use.** You may run GoPMgr for any purpose, including commercial use.
 - **Study and modify.** The complete corresponding source is this repository.
 - **Share.** You may redistribute copies, modified or not.
-- **Copyleft.** If you distribute PMForge or a derivative — including as a
+- **Copyleft.** If you distribute GoPMgr or a derivative — including as a
   binary — you must do so under GPL-3.0-or-later (or a compatible later GPL
   version) and make the corresponding source available to your recipients.
 - **No added restrictions.** You may not impose further legal terms that
   restrict the freedoms this license grants.
-- **No warranty.** PMForge is provided without warranty of any kind, to the
+- **No warranty.** GoPMgr is provided without warranty of any kind, to the
   extent permitted by law.
 
 This summary is for convenience only; the governing terms are those in
@@ -50,7 +50,7 @@ This summary is for convenience only; the governing terms are those in
 
 ## This repository is not entirely GPL
 
-PMForge follows the [REUSE](https://reuse.software/) specification: **every
+GoPMgr follows the [REUSE](https://reuse.software/) specification: **every
 file carries its own `SPDX-License-Identifier`**, and the authoritative
 license of any file is the identifier in that file (or in
 [`REUSE.toml`](REUSE.toml) for files that cannot hold an inline header).
@@ -79,9 +79,9 @@ texts, see [`LICENSES.md`](LICENSES.md).
 
 ## Third-party dependencies
 
-PMForge links Go modules and npm packages that carry their own permissive or
+GoPMgr links Go modules and npm packages that carry their own permissive or
 copyleft licenses (for example MIT, BSD-3-Clause, Apache-2.0, and MPL-2.0).
-Those licenses are compatible with distributing PMForge under
+Those licenses are compatible with distributing GoPMgr under
 GPL-3.0-or-later. See [`DEPENDENCIES.md`](DEPENDENCIES.md) for the dependency
 policy and the tools used to audit license compatibility.
 

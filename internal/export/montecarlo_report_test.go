@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package export
@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"pmforge/internal/kernel"
+	"gopmgr/internal/kernel"
 )
 
 func TestGenerateMonteCarloRiskReportProducesPDFAReport(t *testing.T) {
@@ -48,7 +48,7 @@ func TestGenerateMonteCarloRiskReportProducesPDFAReport(t *testing.T) {
 	if !bytes.HasPrefix(out, []byte("%PDF-")) {
 		t.Fatalf("report is not a PDF, first bytes: %q", out[:min(len(out), 8)])
 	}
-	if samplePath := os.Getenv("PMFORGE_MONTECARLO_REPORT_SAMPLE"); samplePath != "" {
+	if samplePath := os.Getenv("GOPMGR_MONTECARLO_REPORT_SAMPLE"); samplePath != "" {
 		if err := os.WriteFile(samplePath, out, 0o600); err != nil {
 			t.Fatalf("write report sample: %v", err)
 		}

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package db
@@ -15,8 +15,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"pmforge/internal/cli"
-	"pmforge/internal/debug"
+	"gopmgr/internal/cli"
+	"gopmgr/internal/debug"
 )
 
 // BackupManifest is the JSON document placed inside every .pmba archive
@@ -197,7 +197,7 @@ func closeZipArchive(zw *zip.Writer, file *os.File) error {
 }
 
 func addFileToZip(zw *zip.Writer, srcPath, destName string) (err error) {
-	src, err := os.Open(srcPath) // #nosec G304 -- backup sources are PMForge snapshots or user-selected certificate files.
+	src, err := os.Open(srcPath) // #nosec G304 -- backup sources are GoPMgr snapshots or user-selected certificate files.
 	if err != nil {
 		return err
 	}

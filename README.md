@@ -1,12 +1,15 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
-# PMForge
+# GoPMgr
+
+> Renamed August 2026 from PMForge to GoPMgr to avoid confusion with the
+> unrelated online PM simulation platform at getpmforge.com.
 
 **Latest published release:**
-[v1.1.0-alpha.1](https://github.com/draconianneocoder-cpu/PMForge/releases/tag/v1.1.0-alpha.1)
+[v1.1.0-alpha.1](https://github.com/draconianneocoder-cpu/GoPMgr/releases/tag/v1.1.0-alpha.1)
 (prerelease, published July 27, 2026). This packaged alpha is intended for
 early compatibility, installation, and workflow testing. Its GitHub release
 provides native installers for Windows x86-64, macOS Apple Silicon, and Linux
@@ -26,7 +29,7 @@ for design principles.
 
 ---
 
-PMForge is a local-first desktop project-controls application for
+GoPMgr is a local-first desktop project-controls application for
 technical, engineering, IT, construction, and administrative work. It is
 built with a Go backend, Wails v2, and a Svelte 5 frontend.
 
@@ -94,7 +97,7 @@ production build, encrypted database validation, strict PDF/A-3 validation,
 and deterministic PAdES harness regressions.
 The tag-triggered Release workflow reruns this gate in a blocking preflight
 before any installer is built or uploaded. It also rejects a GA or prerelease
-tag whose base version does not match PMForge's version of record.
+tag whose base version does not match GoPMgr's version of record.
 
 Useful focused gates:
 
@@ -136,12 +139,12 @@ validator tools.
 
 ## Runtime Data
 
-On first launch, PMForge creates a local data area in the platform's
+On first launch, GoPMgr creates a local data area in the platform's
 per-user data location:
 
 - **macOS:** `~/Library/Application Support/PMForge/`
 - **Linux / Windows:** `~/Documents/PMForge/`
-- `$XDG_DATA_HOME/PMForge/` overrides the default on any platform.
+- `$XDG_DATA_HOME/GoPMgr/` overrides the default on any platform.
 
 It contains:
 
@@ -177,7 +180,7 @@ OS-level disk encryption is still recommended as whole-device protection
 for raw-disk theft or administrator-level host access: FileVault on macOS,
 BitLocker on Windows, and LUKS on Linux.
 
-At account creation, PMForge issues one-time recovery codes. For encrypted
+At account creation, GoPMgr issues one-time recovery codes. For encrypted
 project databases, valid recovery codes also wrap the user's DEK. If the
 password and all valid wrapped recovery codes are lost, encrypted project
 databases are unrecoverable by design.
@@ -188,12 +191,12 @@ full security architecture.
 
 ## PDF, Signing, and Release Claims
 
-PMForge generates PDF/A-3b representative samples during release
+GoPMgr generates PDF/A-3b representative samples during release
 validation. `make check-pdfa` validates schedule-report, document,
 combined-report, and Monte Carlo risk-report samples with veraPDF and is
 strict by default: missing
 validator tooling, a missing ICC profile, or an empty sample set fails the
-gate unless `PMFORGE_PDFA_STRICT=0` is set for local convenience.
+gate unless `GOPMGR_PDFA_STRICT=0` is set for local convenience.
 
 PAdES signing is applied as the final PDF mutation. Users can also export
 without a digital signature for print-and-wet-sign workflows, or create an
@@ -203,13 +206,13 @@ the embedded CMS against the declared `/ByteRange`.
 `make check-pades-external` adds OpenSSL, `qpdf`, `pdfsig`, veraPDF signature
 feature extraction, and DSS checks. DSS classifies the self-signed fixture as
 `PAdES-BASELINE-T`; trusted-chain validation and Acrobat coverage still
-require a real trusted signing source. When `PMFORGE_TRUSTED_SIGNED_PDF`
+require a real trusted signing source. When `GOPMGR_TRUSTED_SIGNED_PDF`
 points at a trusted-certificate sample, `make check-pades-trusted` validates
 the unchanged source and classifies the result as `TRUST_VERIFIED`,
 `STRUCTURE_VALID_TRUST_INDETERMINATE`, `VALIDATION_INCOMPLETE`, or
 `VALIDATION_FAILED`; a missing or empty configured path is `INPUT_INVALID`.
 Without a source it records `NOT_CONFIGURED`; set
-`PMFORGE_PADES_TRUSTED_REQUIRED=1` to fail unless the local CLI certificate
+`GOPMGR_PADES_TRUSTED_REQUIRED=1` to fail unless the local CLI certificate
 store produces `TRUST_VERIFIED`. The report records the normalized PDF path,
 PDF and validator hashes, checkout revision and dirty state, and UTC validation
 time. Acrobat trust-panel evidence remains a separate manual release artifact
@@ -226,7 +229,7 @@ CI and the full release gate. Its trusted-source cases use controlled
 validator output to test classification behavior; they do not replace the real
 release-certificate and Acrobat evidence described above.
 
-Project Settings can opt PAdES exports into RFC 3161 timestamping. PMForge
+Project Settings can opt PAdES exports into RFC 3161 timestamping. GoPMgr
 accepts a credential-free HTTPS TSA endpoint, optional policy OID, and optional
 PEM trust root. It creates nonce-bound requests, validates TSA responses and
 certificates, computes the required signature-value imprint, and embeds the
@@ -276,13 +279,13 @@ names to use when release assets are available, see
   stabilization, native validation, and release-trust work for the next Beta.
 - [STYLE.md](STYLE.md): repository, Go, frontend, and documentation style.
 - [AGENTS.md](AGENTS.md): current automated-agent operating guide.
-- [DEVELOPER_HANDBOOK.md](DEVELOPER_HANDBOOK.md): PMForge Developer Handbook with long-form
+- [DEVELOPER_HANDBOOK.md](DEVELOPER_HANDBOOK.md): GoPMgr Developer Handbook with long-form
   implementation history, release-gate status, and lessons learned.
 
 ## Repository Layout
 
 ```text
-pmforge/
+gopmgr/
 ├── main.go              # Wails entry point and App surface
 ├── internal/            # Go backend packages
 ├── frontend/            # Svelte frontend
@@ -290,7 +293,7 @@ pmforge/
 ├── scripts/             # release, validation, and packaging scripts
 ├── build/darwin/        # tracked Wails macOS plist scaffold
 ├── AGENTS.md            # current agent operating guide
-└── DEVELOPER_HANDBOOK.md             # PMForge Developer Handbook
+└── DEVELOPER_HANDBOOK.md             # GoPMgr Developer Handbook
 ```
 
 Generated outputs, local handoff notes, validation scratch space, optional
@@ -300,7 +303,7 @@ verified by `make required-font-assets`.
 
 ## License
 
-PMForge is free software: its source code is licensed under
+GoPMgr is free software: its source code is licensed under
 **GPL-3.0-or-later**. User-facing documentation, including this README, is
 licensed under **GFDL-1.3-or-later**; small configuration files and license
 notes use **CC0-1.0**; bundled fonts carry their own OFL-1.1, Apache-2.0, or

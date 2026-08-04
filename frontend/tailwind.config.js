@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /** @type {import('tailwindcss').Config} */
@@ -76,7 +76,7 @@ export default {
           300: 'rgb(var(--sky-300) / <alpha-value>)',
           950: 'rgb(var(--sky-950) / <alpha-value>)',
         },
-        // PMForge palette — slate base + cyan accent (matches GanttChart).
+        // GoPMgr palette — slate base + cyan accent (matches GanttChart).
         accent: {
           DEFAULT: 'rgb(var(--brand-accent) / <alpha-value>)',
           dim: '#0891b2',

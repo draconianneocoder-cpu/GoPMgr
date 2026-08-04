@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package update
@@ -98,7 +98,7 @@ func validPayload(version string) Payload {
 		Platform:      runtime.GOOS,
 		Architecture:  runtime.GOARCH,
 		ReleaseNotes:  "Bug fixes",
-		DownloadURL:   "https://updates.example.test/pmforge.pkg",
+		DownloadURL:   "https://updates.example.test/gopmgr.pkg",
 		SHA256:        strings.Repeat("a", 64),
 		PublishedAt:   "2026-06-01T00:00:00Z",
 	}

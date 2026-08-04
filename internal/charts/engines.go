@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package charts
@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"time"
 
-	"pmforge/internal/charts/dag"
-	"pmforge/internal/charts/flow"
-	"pmforge/internal/charts/matrix"
-	"pmforge/internal/charts/stats"
-	"pmforge/internal/kernel"
+	"gopmgr/internal/charts/dag"
+	"gopmgr/internal/charts/flow"
+	"gopmgr/internal/charts/matrix"
+	"gopmgr/internal/charts/stats"
+	"gopmgr/internal/kernel"
 )
 
 // LayoutResult is the engine-agnostic shape the Wails bridge passes

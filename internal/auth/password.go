@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package auth handles PMForge's local authentication: password
+// Package auth handles GoPMgr's local authentication: password
 // hashing with Argon2id and constant-time verification.
 //
 // Password hashes are stored in the PHC string format:

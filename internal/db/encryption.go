@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package db
@@ -11,12 +11,12 @@ import (
 	"os"
 	"strings"
 
-	"pmforge/internal/crypto"
+	"gopmgr/internal/crypto"
 )
 
 const sqliteHeader = "SQLite format 3\x00"
 
-// InitEncryptedDB opens (or creates) a SQLCipher-encrypted PMForge
+// InitEncryptedDB opens (or creates) a SQLCipher-encrypted GoPMgr
 // project database with the user's 32-byte DEK as a raw keyspec.
 func InitEncryptedDB(path string, dek []byte) (*Database, error) {
 	dsn, err := encryptedDSN(path, dek)
@@ -30,7 +30,7 @@ func InitEncryptedDB(path string, dek []byte) (*Database, error) {
 // plaintext file header. Missing files and stat/read failures are
 // returned to the caller.
 func IsEncryptedFile(path string) (bool, error) {
-	f, err := os.Open(path) // #nosec G304 -- caller supplies a PMForge database path.
+	f, err := os.Open(path) // #nosec G304 -- caller supplies a GoPMgr database path.
 	if err != nil {
 		return false, err
 	}
@@ -152,7 +152,7 @@ func encryptedDSN(path string, dek []byte) (string, error) {
 	// go-sqlcipher treats everything after the first '?' as DSN query options
 	// and does not URL-decode the path, so a '?' (or fragment '#') in the path
 	// would let the path inject or override _pragma_* options — including the
-	// key. Confined PMForge project paths never contain these characters;
+	// key. Confined GoPMgr project paths never contain these characters;
 	// reject rather than emit an ambiguous DSN.
 	if strings.ContainsAny(path, "?#") {
 		return "", fmt.Errorf("db: project path contains an illegal character: %q", path)

@@ -1,15 +1,15 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
-# Installing & running PMForge
+# Installing & running GoPMgr
 
-PMForge is a local-first desktop app: your projects live in encrypted files on
+GoPMgr is a local-first desktop app: your projects live in encrypted files on
 your own machine — no account, cloud, or network is required.
 
 Packaged releases publish a native installer per platform. The current
-[v1.1.0-alpha.1 prerelease](https://github.com/draconianneocoder-cpu/PMForge/releases/tag/v1.1.0-alpha.1)
+[v1.1.0-alpha.1 prerelease](https://github.com/draconianneocoder-cpu/GoPMgr/releases/tag/v1.1.0-alpha.1)
 contains all four files listed below. Download the file for your OS and follow
 the platform steps.
 
@@ -24,10 +24,10 @@ the platform steps.
 
 | Platform | File | How you install it |
 |---|---|---|
-| Windows 10/11 (x86-64) | `PMForge-<version>-amd64-setup.exe` | Guided installer |
-| macOS (Apple Silicon) | `PMForge-<version>-arm64.dmg` | Drag to Applications |
-| Debian / Ubuntu (x86-64) | `pmforge-<version>-amd64.deb` | `apt` / `dpkg` |
-| Fedora / RHEL / openSUSE (x86-64) | `pmforge-<version>-x86_64.rpm` | `dnf` / `rpm` |
+| Windows 10/11 (x86-64) | `GoPMgr-<version>-amd64-setup.exe` | Guided installer |
+| macOS (Apple Silicon) | `GoPMgr-<version>-arm64.dmg` | Drag to Applications |
+| Debian / Ubuntu (x86-64) | `gopmgr-<version>-amd64.deb` | `apt` / `dpkg` |
+| Fedora / RHEL / openSUSE (x86-64) | `gopmgr-<version>-x86_64.rpm` | `dnf` / `rpm` |
 
 ## Install
 
@@ -39,13 +39,13 @@ choose **More info → Run anyway**.
 ### macOS Apple Silicon (`.dmg`)
 
 1. Open the `.dmg`.
-2. Drag **PMForge** onto the **Applications** shortcut.
-3. First launch only: right-click **PMForge** in Applications → **Open** →
+2. Drag **GoPMgr** onto the **Applications** shortcut.
+3. First launch only: right-click **GoPMgr** in Applications → **Open** →
    **Open** (or System Settings → Privacy & Security → **Open Anyway**).
 
-To upgrade a DMG installation, quit PMForge and drag the newer app onto
+To upgrade a DMG installation, quit GoPMgr and drag the newer app onto
 Applications, replacing the existing bundle when Finder asks. Removing or
-replacing `PMForge.app` does not remove accounts or projects because they live
+replacing `GoPMgr.app` does not remove accounts or projects because they live
 under `~/Library/Application Support/PMForge/`. To uninstall both the
 application and its data, back up any project files you need before separately
 removing that data directory.
@@ -53,7 +53,7 @@ removing that data directory.
 ### Debian / Ubuntu (`.deb`)
 
 ```sh
-sudo apt install ./pmforge-<version>-amd64.deb
+sudo apt install ./gopmgr-<version>-amd64.deb
 ```
 
 `apt` pulls in the GTK/WebKit runtime automatically. Linux packages target
@@ -71,22 +71,22 @@ archive provides the exact Go 1.26.5 compiler required by `go.mod`; the
 runtime package itself continues to require Ubuntu 24.04+ WebKit2GTK 4.1.
 
 Build and upload the signed source archive from an Ubuntu environment with
-`debuild -S`, then use `dput ppa:usmc.jlburns/pmforge <source.changes>`.
+`debuild -S`, then use `dput ppa:usmc.jlburns/gopmgr <source.changes>`.
 Do not upload a prebuilt `.deb`: Launchpad builds binary packages from the
 signed source package.
 
 ### Fedora / RHEL / openSUSE (`.rpm`)
 
 ```sh
-sudo dnf install ./pmforge-<version>-x86_64.rpm
+sudo dnf install ./gopmgr-<version>-x86_64.rpm
 ```
 
-After installing, launch **PMForge** from your applications menu (or run
-`pmforge` in a terminal on Linux).
+After installing, launch **GoPMgr** from your applications menu (or run
+`gopmgr` in a terminal on Linux).
 
 ## Clean-test reset
 
-To repeat first-launch and administrator-creation testing, quit PMForge and run
+To repeat first-launch and administrator-creation testing, quit GoPMgr and run
 the repository helper:
 
 ```sh
@@ -94,22 +94,22 @@ make reset-clean-test
 ```
 
 The command does not delete projects or accounts. It atomically moves the
-active `PMForge` data directory to a timestamped sibling such as
-`PMForge.clean-test-backup-20260728T120000Z` and prints the exact backup path.
+active `GoPMgr` data directory to a timestamped sibling such as
+`GoPMgr.clean-test-backup-20260728T120000Z` and prints the exact backup path.
 The next launch creates a fresh `system.db` and offers first-user
 administrator creation.
 
-To return to the saved state, quit PMForge, reset the temporary clean-test
+To return to the saved state, quit GoPMgr, reset the temporary clean-test
 state if one was created, then restore the original backup:
 
 ```sh
 make reset-clean-test
-bash scripts/reset-clean-test.sh --restore "/absolute/path/to/PMForge.clean-test-backup-<timestamp>"
+bash scripts/reset-clean-test.sh --restore "/absolute/path/to/GoPMgr.clean-test-backup-<timestamp>"
 ```
 
-The helper refuses to move data while PMForge is running, refuses broad or
+The helper refuses to move data while GoPMgr is running, refuses broad or
 symlinked targets, and will not overwrite an existing active data directory or
-backup. Use `--data-root "/absolute/path/to/PMForge"` to exercise an isolated
+backup. Use `--data-root "/absolute/path/to/GoPMgr"` to exercise an isolated
 test root instead of the platform default.
 
 ## Run / build from source
@@ -121,7 +121,7 @@ Prerequisites:
 - **Linux only:** Wails v2 GTK/WebKit dev packages for Ubuntu 24.04+, e.g. on
   Debian/Ubuntu:
   `sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config`.
-  PMForge builds with the Wails `webkit2_41` tag. Wails v2 still links GTK3;
+  GoPMgr builds with the Wails `webkit2_41` tag. Wails v2 still links GTK3;
   true GTK4/WebKitGTK 6.0 support requires a future Wails migration.
 
 Then:
@@ -155,7 +155,7 @@ On the matching OS, after `make build`:
   guidance when it is missing or mismatched).
 - **macOS** (`.dmg`): `VERSION=<x.y.z> make package-macos`
   (uses the built-in `hdiutil` image path with an Applications shortcut;
-  `PMFORGE_FANCY_DMG=1` opts into a locally installed `create-dmg`).
+  `GOPMGR_FANCY_DMG=1` opts into a locally installed `create-dmg`).
 - **Windows** (`.exe`): run `make windows-installer-scaffold`, then
   `wails build -platform windows/amd64 -tags duckdb -nsis` (requires NSIS
   3.12.0 for parity with the release workflow).
@@ -165,6 +165,6 @@ native runners automatically when you push a `v*` tag.
 
 ## Where your data lives
 
-PMForge stores each project as an encrypted database under your user data
+GoPMgr stores each project as an encrypted database under your user data
 folder. Uninstalling the app does **not** delete your projects. See the in-app
 **Help → Installing & Running** and **Database Encryption** sections for more.

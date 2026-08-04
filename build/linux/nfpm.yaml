@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # nfpm config — builds .deb and .rpm from the Wails Linux binary.
@@ -11,29 +11,29 @@
 # Runtime deps are the GTK3 + WebKit2GTK shared libraries the Wails v2 binary
 # links when built on Ubuntu 24.04+ with the `webkit2_41` build tag.
 # GTK4/WebKitGTK 6.0 is a later Wails migration, not a Wails v2 package tweak.
-name: pmforge
+name: gopmgr
 arch: amd64
 platform: linux
 version: ${VERSION}
 section: utils
 priority: optional
-maintainer: The PMForge Contributors <contributors@pmforge.invalid>
-vendor: The PMForge Contributors
-homepage: https://github.com/draconianneocoder-cpu/PMForge
+maintainer: The GoPMgr Contributors <contributors@gopmgr.invalid>
+vendor: The GoPMgr Contributors
+homepage: https://github.com/draconianneocoder-cpu/GoPMgr
 license: GPL-3.0-or-later
 description: |
-  PMForge — local-first project controls desktop application.
+  GoPMgr — local-first project controls desktop application.
   Gantt/CPM/EVM scheduling, Six Sigma tools, and encrypted per-project storage.
 
 contents:
-  - src: ./build/bin/pmforge
-    dst: /usr/bin/pmforge
+  - src: ./build/bin/gopmgr
+    dst: /usr/bin/gopmgr
     file_info:
       mode: 0755
-  - src: ./build/linux/pmforge.desktop
-    dst: /usr/share/applications/pmforge.desktop
+  - src: ./build/linux/gopmgr.desktop
+    dst: /usr/share/applications/gopmgr.desktop
   - src: ./build/appicon.png
-    dst: /usr/share/pixmaps/pmforge.png
+    dst: /usr/share/pixmaps/gopmgr.png
 
 overrides:
   deb:

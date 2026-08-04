@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package timeline assembles every dated entity in a project —
@@ -17,11 +17,11 @@ import (
 	"sort"
 	"time"
 
-	"pmforge/internal/agile"
-	"pmforge/internal/db"
+	"gopmgr/internal/agile"
+	"gopmgr/internal/db"
 )
 
-// EntryKind enumerates the kinds of timeline events PMForge knows
+// EntryKind enumerates the kinds of timeline events GoPMgr knows
 // about. The GUI uses this to colour-code the strip.
 type EntryKind string
 

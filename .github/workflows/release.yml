@@ -1,7 +1,7 @@
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# GitHub Actions release pipeline for PMForge — click-installable packages.
+# GitHub Actions release pipeline for GoPMgr — click-installable packages.
 #
 # Wails does not truly cross-compile, so each OS builds on its native runner:
 #   Linux (x86_64)        -> .deb + .rpm (nfpm)
@@ -29,7 +29,7 @@ env:
   GOFLAGS: -mod=readonly
   GOPROXY: https://proxy.golang.org,direct
   CGO_ENABLED: "1"
-  PMFORGE_UPDATE_PUBLIC_KEY: ${{ vars.PMFORGE_UPDATE_PUBLIC_KEY }}
+  GOPMGR_UPDATE_PUBLIC_KEY: ${{ vars.GOPMGR_UPDATE_PUBLIC_KEY }}
 
 defaults:
   run:
@@ -69,7 +69,7 @@ jobs:
 
       - name: Install pinned release tools
         # Keep the CLI and licensing tool aligned with the versions used by
-        # PMForge maintainers; unpinned installers would make a tag's outcome
+        # GoPMgr maintainers; unpinned installers would make a tag's outcome
         # depend on whichever release happened to be newest that day.
         run: |
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
@@ -134,13 +134,13 @@ jobs:
             *-rc.*) channel="rc" ;;
             *) channel="stable" ;;
           esac
-          ldflags="-X pmforge/internal/update.CurrentVersion=$version -X pmforge/internal/update.UpdateChannel=$channel"
-          if [ -n "$PMFORGE_UPDATE_PUBLIC_KEY" ] && [ "${{ matrix.platform }}" != "linux/amd64" ]; then
+          ldflags="-X gopmgr/internal/update.CurrentVersion=$version -X gopmgr/internal/update.UpdateChannel=$channel"
+          if [ -n "$GOPMGR_UPDATE_PUBLIC_KEY" ] && [ "${{ matrix.platform }}" != "linux/amd64" ]; then
             target="${{ matrix.platform }}"
             manifest_url="https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/update-$channel-${target//\//-}.json"
-            ldflags="$ldflags -X pmforge/internal/update.ManifestURL=$manifest_url -X pmforge/internal/update.UpdateChannelPublicKey=$PMFORGE_UPDATE_PUBLIC_KEY"
+            ldflags="$ldflags -X gopmgr/internal/update.ManifestURL=$manifest_url -X gopmgr/internal/update.UpdateChannelPublicKey=$GOPMGR_UPDATE_PUBLIC_KEY"
           fi
-          echo "PMFORGE_RELEASE_LDFLAGS=$ldflags" >> "$GITHUB_ENV"
+          echo "GOPMGR_RELEASE_LDFLAGS=$ldflags" >> "$GITHUB_ENV"
 
       - name: Load pinned installer tool versions
         # Only import declared version assignments; SPDX comments remain valid
@@ -174,11 +174,11 @@ jobs:
 
       - name: Wails build (Linux)
         if: runner.os == 'Linux'
-        run: wails build -platform ${{ matrix.platform }} -tags duckdb,webkit2_41 -ldflags "$PMFORGE_RELEASE_LDFLAGS"
+        run: wails build -platform ${{ matrix.platform }} -tags duckdb,webkit2_41 -ldflags "$GOPMGR_RELEASE_LDFLAGS"
 
       - name: Wails build (macOS)
         if: runner.os == 'macOS'
-        run: wails build -platform ${{ matrix.platform }} -tags duckdb -ldflags "$PMFORGE_RELEASE_LDFLAGS"
+        run: wails build -platform ${{ matrix.platform }} -tags duckdb -ldflags "$GOPMGR_RELEASE_LDFLAGS"
 
       - name: Wails build + NSIS installer (Windows)
         if: runner.os == 'Windows'
@@ -187,10 +187,10 @@ jobs:
           # user-data preservation boundary has drifted.
           bash scripts/check-windows-installer-scaffold.sh
           bash scripts/validate-windows-nsis-template.sh
-          wails build -platform windows/amd64 -tags duckdb -ldflags "$PMFORGE_RELEASE_LDFLAGS" -nsis
+          wails build -platform windows/amd64 -tags duckdb -ldflags "$GOPMGR_RELEASE_LDFLAGS" -nsis
           # The Windows command previously omitted duckdb while other package
           # legs embedded it. Verify metadata before publishing the installer.
-          bash scripts/verify-duckdb-linked.sh build/bin/pmforge.exe
+          bash scripts/verify-duckdb-linked.sh build/bin/gopmgr.exe
 
       - name: Reclaim macOS packaging space
         if: runner.os == 'macOS'
@@ -226,12 +226,12 @@ jobs:
             ls -la build/bin >&2 || true
             exit 1
           fi
-          cp "$installer" "build/packages/PMForge-${GITHUB_REF_NAME#v}-amd64-setup.exe"
+          cp "$installer" "build/packages/GoPMgr-${GITHUB_REF_NAME#v}-amd64-setup.exe"
 
       - name: Upload installers
         uses: actions/upload-artifact@v7
         with:
-          name: pmforge-${{ matrix.os }}
+          name: gopmgr-${{ matrix.os }}
           path: build/packages/*
           if-no-files-found: error
           retention-days: 7
@@ -262,7 +262,7 @@ jobs:
       - name: Create / update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          PMFORGE_UPDATE_PRIVATE_KEY: ${{ secrets.PMFORGE_UPDATE_PRIVATE_KEY }}
+          GOPMGR_UPDATE_PRIVATE_KEY: ${{ secrets.GOPMGR_UPDATE_PRIVATE_KEY }}
         run: |
           version="${GITHUB_REF_NAME#v}"
           case "$version" in
@@ -271,8 +271,8 @@ jobs:
             *-rc.*) channel="rc" ;;
             *) channel="stable" ;;
           esac
-          if [ -n "$PMFORGE_UPDATE_PUBLIC_KEY" ]; then
-            test -n "$PMFORGE_UPDATE_PRIVATE_KEY"
+          if [ -n "$GOPMGR_UPDATE_PUBLIC_KEY" ]; then
+            test -n "$GOPMGR_UPDATE_PRIVATE_KEY"
             for target in darwin-arm64 windows-amd64; do
               case "$target" in
                 darwin-arm64) pattern='*.dmg'; platform=darwin; architecture=arm64 ;;
@@ -296,7 +296,7 @@ jobs:
           fi
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
-            --title "PMForge $GITHUB_REF_NAME" \
+            --title "GoPMgr $GITHUB_REF_NAME" \
             --generate-notes \
             "${publication_args[@]}" \
             dist/*

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package users
@@ -14,8 +14,8 @@ import (
 	"time"
 	"unicode"
 
-	"pmforge/internal/auth"
-	"pmforge/internal/crypto"
+	"gopmgr/internal/auth"
+	"gopmgr/internal/crypto"
 )
 
 // RecoveryCodeCount is the number of one-time codes generated at

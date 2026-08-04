@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package cli
@@ -35,8 +35,8 @@ func TestPrintVersion_ContainsBanner(t *testing.T) {
 	}
 	out := buf.String()
 
-	if !strings.Contains(out, "PMForge") {
-		t.Errorf("output %q does not contain 'PMForge'", out)
+	if !strings.Contains(out, "GoPMgr") {
+		t.Errorf("output %q does not contain 'GoPMgr'", out)
 	}
 	if !strings.Contains(out, Version) {
 		t.Errorf("output %q does not contain Version %q", out, Version)

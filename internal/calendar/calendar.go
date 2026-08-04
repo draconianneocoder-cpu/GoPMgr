@@ -1,8 +1,8 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package calendar is a thin wrapper around github.com/rickar/cal/v2
-// that exposes the holiday lookup PMForge needs (timeline markers,
+// that exposes the holiday lookup GoPMgr needs (timeline markers,
 // working-day skipping in iCal export) without leaking the rickar
 // API surface into other packages.
 //
@@ -10,7 +10,7 @@
 //
 //   - rickar/cal needs per-country imports (cal/v2/us, cal/v2/gb, ...)
 //     that resolve to its various holiday packs. Funneling them
-//     through one factory lets PMForge map ISO country codes to
+//     through one factory lets GoPMgr map ISO country codes to
 //     rickar packs in one place.
 //   - The wrapper API is stdlib-time-only, so callers don't import
 //     rickar transitively.
@@ -33,7 +33,7 @@ import (
 	"github.com/rickar/cal/v2/us"
 )
 
-// Calendar is the PMForge-facing handle. Construct one per project
+// Calendar is the GoPMgr-facing handle. Construct one per project
 // via For(countryCode); reuse it for as many queries as needed —
 // rickar/cal is safe for read-only reuse.
 type Calendar struct {
@@ -105,7 +105,7 @@ func ValidTimeZone(countryCode, timeZone string) bool {
 
 // For returns a Calendar populated with the holiday list for the
 // given ISO 3166-1 alpha-2 country code. Unknown codes fall back to
-// the generic / weekend-only calendar so the rest of PMForge keeps
+// the generic / weekend-only calendar so the rest of GoPMgr keeps
 // working in an unsupported region.
 func For(countryCode string) *Calendar {
 	bc := cal.NewBusinessCalendar()

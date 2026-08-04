@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Memory-safety hardening gate.
@@ -26,7 +26,7 @@
 #
 # Optional tools are advisory by default because not every developer
 # or CI image has the same optional scanner set installed. Set
-# PMFORGE_STRICT_OPTIONAL_SCANS=1 to make optional scanner findings
+# GOPMGR_STRICT_OPTIONAL_SCANS=1 to make optional scanner findings
 # fail this gate.
 
 set -eu
@@ -39,12 +39,12 @@ else
     RED=''; YELLOW=''; GREEN=''; NC=''
 fi
 
-# Scope: only scan PMForge's own source tree. Other directories
+# Scope: only scan GoPMgr's own source tree. Other directories
 # (vendored libraries, sibling repos accidentally cloned at the root)
 # are explicitly excluded so the scan stays focused.
 PMF_DIRS="./main.go ./internal ./scripts"
 GO_PACKAGES=". ./internal/... ./tools/update-manifest"
-GO_TAGS="${PMFORGE_GO_TAGS:-webkit2_41}"
+GO_TAGS="${GOPMGR_GO_TAGS:-webkit2_41}"
 
 fail=0
 section () {
@@ -58,10 +58,10 @@ fail_msg () {
     fail=1
 }
 optional_fail_msg () {
-    if [ "${PMFORGE_STRICT_OPTIONAL_SCANS:-0}" = "1" ]; then
+    if [ "${GOPMGR_STRICT_OPTIONAL_SCANS:-0}" = "1" ]; then
         fail_msg "$1"
     else
-        printf "${YELLOW}warn${NC}: %s (set PMFORGE_STRICT_OPTIONAL_SCANS=1 to fail on optional scanner findings)\n" "$1"
+        printf "${YELLOW}warn${NC}: %s (set GOPMGR_STRICT_OPTIONAL_SCANS=1 to fail on optional scanner findings)\n" "$1"
     fi
 }
 
@@ -106,7 +106,7 @@ if ! command -v go >/dev/null 2>&1; then
     printf "${YELLOW}skip${NC}: go not in PATH (cannot run helper)\n"
     problems=""
 else
-helper_dir=$(mktemp -d "${TMPDIR:-/tmp}/pmforge-os-open-scan.XXXXXX")
+helper_dir=$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-os-open-scan.XXXXXX")
 helper_file="$helper_dir/main.go"
 cat > "$helper_file" <<'EOF'
 package main

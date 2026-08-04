@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"pmforge/internal/agile"
-	"pmforge/internal/db"
-	"pmforge/internal/documents"
-	"pmforge/internal/rfc3161"
-	"pmforge/internal/signing"
+	"gopmgr/internal/agile"
+	"gopmgr/internal/db"
+	"gopmgr/internal/documents"
+	"gopmgr/internal/rfc3161"
+	"gopmgr/internal/signing"
 )
 
 // mustOpenProject is a test helper that creates a project and opens it so

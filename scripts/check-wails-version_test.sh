@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 checker="$repo_root/scripts/check-wails-version.sh"
-test_root="$(mktemp -d "${TMPDIR:-/tmp}/pmforge-wails-version-test.XXXXXX")"
+test_root="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-wails-version-test.XXXXXX")"
 trap 'rm -rf "$test_root"' EXIT
 
 fail() {
@@ -19,7 +19,7 @@ make_fixture() {
 	mkdir -p "$root/.github/workflows" "$root/docs" "$root/scripts"
 
 	cat >"$root/go.mod" <<'EOF'
-module example.test/pmforge
+module example.test/gopmgr
 
 require github.com/wailsapp/wails/v2 v2.13.0
 EOF
@@ -48,7 +48,7 @@ EOF
 Current runtime: **Wails v2.13.0**.
 Install with go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0.
 
-Historical note: PMForge previously upgraded from Wails v2.9.2 to v2.12.0.
+Historical note: GoPMgr previously upgraded from Wails v2.9.2 to v2.12.0.
 EOF
 	for script in check-release.sh package-macos-installer.sh; do
 		cat >"$root/scripts/$script" <<'EOF'
@@ -72,7 +72,7 @@ expect_failure() {
 	local fixture=$1
 	local expected=$2
 	local output
-	if output="$(PMFORGE_REPO_ROOT="$fixture" bash "$checker" 2>&1)"; then
+	if output="$(GOPMGR_REPO_ROOT="$fixture" bash "$checker" 2>&1)"; then
 		fail "expected failure containing: $expected"
 	fi
 	if [[ "$output" != *"$expected"* ]]; then
@@ -82,17 +82,17 @@ expect_failure() {
 
 happy="$test_root/happy"
 make_fixture "$happy"
-PMFORGE_REPO_ROOT="$happy" bash "$checker" >/dev/null
+GOPMGR_REPO_ROOT="$happy" bash "$checker" >/dev/null
 
 matching_cli="$test_root/matching-cli"
 make_wails_stub "$matching_cli" "v2.13.0"
-PMFORGE_REPO_ROOT="$happy" PMFORGE_REQUIRE_WAILS_CLI=1 \
+GOPMGR_REPO_ROOT="$happy" GOPMGR_REQUIRE_WAILS_CLI=1 \
 	PATH="$matching_cli:$PATH" bash "$checker" >/dev/null
 
 stale_cli="$test_root/stale-cli"
 make_wails_stub "$stale_cli" "v2.12.0"
 if output="$(
-	PMFORGE_REPO_ROOT="$happy" PMFORGE_REQUIRE_WAILS_CLI=1 \
+	GOPMGR_REPO_ROOT="$happy" GOPMGR_REQUIRE_WAILS_CLI=1 \
 		PATH="$stale_cli:$PATH" bash "$checker" 2>&1
 )"; then
 	fail "expected installed CLI mismatch"

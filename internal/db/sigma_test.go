@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package db
@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"pmforge/internal/sigma/domain"
+	"gopmgr/internal/sigma/domain"
 )
 
 func newSigmaTestDB(t *testing.T) *Database {

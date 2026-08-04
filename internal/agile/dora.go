@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package agile
@@ -11,7 +11,7 @@ import (
 // DORA metric classifications, per the Google/DORA "State of DevOps"
 // report. Ranges are evaluated as <= the upper bound of each band.
 //
-// (The classification is intentionally generous: PMForge's audience
+// (The classification is intentionally generous: GoPMgr's audience
 // is not just SaaS teams; on-prem and regulated industries should
 // not be shamed by "low".)
 type DORAClass string

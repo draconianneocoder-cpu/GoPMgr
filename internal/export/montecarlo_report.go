@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package export
@@ -12,8 +12,8 @@ import (
 
 	"github.com/go-pdf/fpdf"
 
-	"pmforge/internal/fonts"
-	"pmforge/internal/kernel"
+	"gopmgr/internal/fonts"
+	"gopmgr/internal/kernel"
 )
 
 // MonteCarloRiskReportSpec describes the static Monte Carlo schedule-risk
@@ -38,7 +38,7 @@ func GenerateMonteCarloRiskReport(spec MonteCarloRiskReportSpec) ([]byte, error)
 		return nil, errors.New("monte carlo risk report: iterations must be positive")
 	}
 	if spec.ProjectName == "" {
-		spec.ProjectName = "PMForge Project"
+		spec.ProjectName = "GoPMgr Project"
 	}
 	if spec.ChartTitle == "" {
 		spec.ChartTitle = "CPM Schedule"
@@ -52,8 +52,8 @@ func GenerateMonteCarloRiskReport(spec MonteCarloRiskReportSpec) ([]byte, error)
 	_ = fonts.NewManager("").RegisterAs(pdf, "Source Sans 3", "Helvetica")
 	reportTitle := "Monte Carlo Risk Report - " + spec.ProjectName + " - " + spec.ChartTitle
 	pdf.SetTitle(reportTitle, true)
-	pdf.SetAuthor("PMForge", true)
-	pdf.SetCreator("PMForge "+exportVersion(), true)
+	pdf.SetAuthor("GoPMgr", true)
+	pdf.SetCreator("GoPMgr "+exportVersion(), true)
 	pdf.SetMargins(18, 16, 18)
 	pdf.SetAutoPageBreak(true, 16)
 	pdf.AddPage()
@@ -71,9 +71,9 @@ func GenerateMonteCarloRiskReport(spec MonteCarloRiskReportSpec) ([]byte, error)
 	out := buf.Bytes()
 	xmp := XMPSpec{
 		Title:       reportTitle,
-		Author:      "PMForge",
+		Author:      "GoPMgr",
 		Subject:     fmt.Sprintf("Monte Carlo schedule risk report with P50 %s, P80 %s, P90 %s, Finish Probability S-curve, and Tornado Risk Drivers", daysLabel(spec.Result.P50), daysLabel(spec.Result.P80), daysLabel(spec.Result.P90)),
-		CreatorTool: "PMForge " + exportVersion(),
+		CreatorTool: "GoPMgr " + exportVersion(),
 	}
 	if icc := defaultICCProfile(); len(icc) > 0 {
 		if tagged, err := MakePDFA3(out, xmp, icc); err == nil {

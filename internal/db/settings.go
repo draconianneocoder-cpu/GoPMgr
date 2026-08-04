@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package db
@@ -14,7 +14,7 @@ const (
 	SignatureMethodGnuPG = "gpg"
 )
 
-// UserSettings is the persisted state of PMForge's global preferences.
+// UserSettings is the persisted state of GoPMgr's global preferences.
 // It is keyed at id=1 (singleton row) so SaveSettings can use UPSERT.
 //
 // CertPath and SignatureEnabled were added when the Digital Signatures

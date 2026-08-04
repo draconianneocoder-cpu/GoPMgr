@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package documents
@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"pmforge/internal/kernel"
+	"gopmgr/internal/kernel"
 )
 
 func reportEVMFixture(t *testing.T) *kernel.EVMetrics {

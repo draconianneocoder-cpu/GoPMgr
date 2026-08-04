@@ -1,9 +1,9 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 export type AppTheme = 'dark' | 'light';
 
-export const THEME_STORAGE_KEY = 'pmforge.app-theme';
+export const THEME_STORAGE_KEY = 'gopmgr.app-theme';
 
 function normaliseTheme(theme: string | null | undefined): AppTheme {
   return theme === 'light' ? 'light' : 'dark';

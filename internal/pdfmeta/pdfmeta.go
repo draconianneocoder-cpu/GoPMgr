@@ -1,8 +1,8 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package pdfmeta provides byte-level PDF metadata operations:
-// building the canonical XMP RDF/XML packet PMForge claims for its
+// building the canonical XMP RDF/XML packet GoPMgr claims for its
 // generated PDFs, and injecting that packet into an existing PDF via
 // a spec-conformant incremental update.
 //
@@ -15,7 +15,7 @@
 // What this package provides
 //
 //   - BuildXMPPacket constructs the XMP RDF/XML packet identifying a
-//     PDF as PMForge-generated PDF/A-3 level B.
+//     PDF as GoPMgr-generated PDF/A-3 level B.
 //   - InjectXMPStream appends the packet as an incremental update,
 //     adding a /Metadata reference to the Catalog dictionary.
 //
@@ -39,7 +39,7 @@ import (
 )
 
 // XMPSpec describes the metadata we'll claim on a generated PDF.
-// Fields default to PMForge / pmforge.local if left blank.
+// Fields default to GoPMgr / gopmgr.local if left blank.
 type XMPSpec struct {
 	Title       string
 	Subject     string
@@ -47,13 +47,13 @@ type XMPSpec struct {
 	Author      string
 	Keywords    []string
 	CreateDate  time.Time
-	// CreatorTool overrides the default "PMForge" creator label if set.
+	// CreatorTool overrides the default "GoPMgr" creator label if set.
 	CreatorTool string
 }
 
-// BuildXMPPacket returns the canonical XMP RDF/XML PMForge embeds in
+// BuildXMPPacket returns the canonical XMP RDF/XML GoPMgr embeds in
 // generated PDFs. The packet declares PDF/A-3 level B conformance and
-// tags PMForge as the producer.
+// tags GoPMgr as the producer.
 //
 // The output is wrapped in the standard XMP packet markers so
 // downstream tooling (pdfcpu, ExifTool, veraPDF) can parse it.
@@ -62,18 +62,18 @@ func BuildXMPPacket(spec XMPSpec) []byte {
 		spec.CreateDate = time.Now().UTC()
 	}
 	if spec.Title == "" {
-		spec.Title = "PMForge document"
+		spec.Title = "GoPMgr document"
 	}
 	if spec.Author == "" {
-		spec.Author = "PMForge"
+		spec.Author = "GoPMgr"
 	}
 	if spec.CreatorTool == "" {
-		spec.CreatorTool = "PMForge"
+		spec.CreatorTool = "GoPMgr"
 	}
 
 	var buf bytes.Buffer
 	fmt.Fprintln(&buf, `<?xpacket begin="`+"\xef\xbb\xbf"+`" id="W5M0MpCehiHzreSzNTczkc9d"?>`)
-	fmt.Fprintln(&buf, `<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="PMForge">`)
+	fmt.Fprintln(&buf, `<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="GoPMgr">`)
 	fmt.Fprintln(&buf, `  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">`)
 	fmt.Fprintln(&buf, `    <rdf:Description rdf:about=""`)
 	fmt.Fprintln(&buf, `        xmlns:dc="http://purl.org/dc/elements/1.1/"`)
@@ -90,7 +90,7 @@ func BuildXMPPacket(spec XMPSpec) []byte {
 	}
 	fmt.Fprintf(&buf, "      <xmp:CreateDate>%s</xmp:CreateDate>\n", spec.CreateDate.Format(time.RFC3339))
 	fmt.Fprintf(&buf, "      <xmp:CreatorTool>%s</xmp:CreatorTool>\n", xmlEscape(spec.CreatorTool))
-	fmt.Fprintln(&buf, `      <pdf:Producer>PMForge</pdf:Producer>`)
+	fmt.Fprintln(&buf, `      <pdf:Producer>GoPMgr</pdf:Producer>`)
 	fmt.Fprintln(&buf, `      <pdfaid:part>3</pdfaid:part>`)
 	fmt.Fprintln(&buf, `      <pdfaid:conformance>B</pdfaid:conformance>`)
 	fmt.Fprintln(&buf, `    </rdf:Description>`)
@@ -895,7 +895,7 @@ func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, erro
 	// Large zero placeholder for Contents
 	fmt.Fprintf(&appended, "  /Contents <%s>\n", bytes.Repeat([]byte("00"), placeholderHexLen/2))
 	fmt.Fprintf(&appended, "  /ByteRange [%s]\n", bytes.Repeat([]byte(" "), byteRangePlaceholderLen))
-	appended.WriteString("  /Name (PMForge Digital Signature)\n")
+	appended.WriteString("  /Name (GoPMgr Digital Signature)\n")
 	appended.WriteString(">>\nendobj\n")
 
 	// === Signature Field ===
@@ -1300,7 +1300,7 @@ func ApplyPDFAMetadata(pdf *fpdf.Fpdf, spec XMPSpec) {
 		pdf.SetTitle(spec.Title, true)
 	}
 	if spec.Author == "" {
-		spec.Author = "PMForge"
+		spec.Author = "GoPMgr"
 	}
 	pdf.SetAuthor(spec.Author, true)
 	if spec.Subject != "" {
@@ -1308,7 +1308,7 @@ func ApplyPDFAMetadata(pdf *fpdf.Fpdf, spec XMPSpec) {
 	}
 	// Creator is set without the live version here; the export package
 	// overrides with the real version string when it re-exports.
-	pdf.SetCreator("PMForge", true)
+	pdf.SetCreator("GoPMgr", true)
 	if len(spec.Keywords) > 0 {
 		// simple join without pulling in strings
 		kw := spec.Keywords[0]

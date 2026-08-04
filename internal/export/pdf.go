@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package export
@@ -13,9 +13,9 @@ import (
 
 	"github.com/go-pdf/fpdf"
 
-	"pmforge/internal/crypto"
-	"pmforge/internal/fonts"
-	"pmforge/internal/signing"
+	"gopmgr/internal/crypto"
+	"gopmgr/internal/fonts"
+	"gopmgr/internal/signing"
 )
 
 // renderPDF produces an archival-quality PDF report of the CPM schedule.
@@ -52,8 +52,8 @@ func renderPDFWithSignerLoader(
 	pdf := fpdf.New("P", "mm", "A4", "")
 	_ = fonts.NewManager("").RegisterAs(pdf, "Source Sans 3", "Helvetica")
 	pdf.SetTitle(opts.Title, true)
-	pdf.SetAuthor("PMForge", true)
-	pdf.SetCreator("PMForge "+exportVersion(), true)
+	pdf.SetAuthor("GoPMgr", true)
+	pdf.SetCreator("GoPMgr "+exportVersion(), true)
 	pdf.AddPage()
 
 	// Title
@@ -134,7 +134,7 @@ func renderPDFWithSignerLoader(
 	// so signing must be the final incremental update.
 	spec := XMPSpec{
 		Title:   opts.Title,
-		Author:  "PMForge",
+		Author:  "GoPMgr",
 		Subject: "Critical Path Method Schedule Report",
 	}
 	// First try the full MakePDFA3 path (XMP + OutputIntent) if we have an ICC.

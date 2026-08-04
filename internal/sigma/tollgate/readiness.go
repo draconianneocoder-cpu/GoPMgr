@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package tollgate
@@ -6,7 +6,7 @@ package tollgate
 import (
 	"strings"
 
-	"pmforge/internal/sigma/domain"
+	"gopmgr/internal/sigma/domain"
 )
 
 // Check represents a single tollgate requirement.

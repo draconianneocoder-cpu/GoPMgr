@@ -1,3 +1,14 @@
+gopmgr (1.1.0+git20260804~ppa1~ubuntu26.10.1) stonking; urgency=medium
+
+  * Renamed the source and binary package from pmforge to gopmgr — the
+    project itself was renamed from PMForge to GoPMgr to avoid confusion
+    with the unrelated online PM simulation platform at getpmforge.com.
+  * No functional change: the on-disk data directory, project file
+    extension (.pmforge), and backup archive entry names are unchanged
+    for compatibility with existing installs.
+
+ -- James Burns <draconian.neocoder@gmail.com>  Tue, 04 Aug 2026 12:00:00 -0500
+
 pmforge (1.1.0+git20260730.f6eb77b~ppa1~ubuntu26.10.1) stonking; urgency=medium
 
   * Initial Launchpad PPA source package for the verified PMForge main revision.

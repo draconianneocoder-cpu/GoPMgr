@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// config_check validates PMForge's tracked YAML/TOML tool configuration.
+// config_check validates GoPMgr's tracked YAML/TOML tool configuration.
 //
 // Hosted services such as GitHub Actions and Dependabot require YAML, while
 // Gitleaks and REUSE use TOML. Keeping the supported inventory here prevents a

@@ -1,8 +1,8 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package debug provides structured, high-precision error reports for
-// PMForge's self-healing diagnostics. Every recoverable error path SHOULD
+// GoPMgr's self-healing diagnostics. Every recoverable error path SHOULD
 // wrap the underlying error with debug.Wrap so the UI can surface a
 // full report (timestamp, file:line, stack) instead of an opaque string.
 package debug
@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-// ErrorReport is the canonical PMForge error envelope. JSON tags allow
+// ErrorReport is the canonical GoPMgr error envelope. JSON tags allow
 // the Wails bridge to serialize it directly to the Svelte frontend.
 type ErrorReport struct {
 	Timestamp time.Time `json:"timestamp"`       // RFC3339Nano on the wire

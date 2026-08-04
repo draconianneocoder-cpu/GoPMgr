@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package db
@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"pmforge/internal/crypto"
+	"gopmgr/internal/crypto"
 )
 
 func testDEK(t *testing.T, fill byte) []byte {

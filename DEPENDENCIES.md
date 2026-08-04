@@ -1,11 +1,11 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
 # Dependencies
 
-PMForge is a CGO-enabled Go and Svelte desktop application. Dependency
+GoPMgr is a CGO-enabled Go and Svelte desktop application. Dependency
 changes affect build reproducibility, release packaging, security
 posture, and validator coverage, so keep them intentional and verified.
 
@@ -30,7 +30,7 @@ posture, and validator coverage, so keep them intentional and verified.
 - `github.com/digitorus/pkcs7`: CMS/PKCS#7 parsing and OID support for
   PAdES-related code.
 - `github.com/digitorus/timestamp`: BSD-2-Clause RFC 3161 request, token, and
-  test-fixture primitives. `internal/rfc3161` adds PMForge's HTTPS, response
+  test-fixture primitives. `internal/rfc3161` adds GoPMgr's HTTPS, response
   binding, TSA certificate, size, redirect, and optional trust-root policy.
 - `github.com/go-pdf/fpdf`: PDF generation (community-maintained continuation
   of the archived jung-kurt/gofpdf; see ADR-003).
@@ -41,7 +41,7 @@ posture, and validator coverage, so keep them intentional and verified.
 - `gonum.org/v1/gonum`: Numerical/statistical support.
 - `gopkg.in/yaml.v3` and `github.com/pelletier/go-toml/v2`: build-time
   configuration parsing for `make config-check`. They are imported only by
-  the `scripts` command and are not linked into the PMForge desktop binary.
+  the `scripts` command and are not linked into the GoPMgr desktop binary.
 - `github.com/duckdb/duckdb-go/v2`: in-memory DuckDB analytics engine
   (ADR-002 Option B), compiled under the `duckdb` build tag
   (`internal/analytics`). Production/package builds enable that tag so
@@ -83,7 +83,7 @@ Some gates use optional or required tools outside Go/npm:
   `build/linux/nfpm.yaml`.
 - `hdiutil`: the built-in macOS release path for the `.dmg`. `create-dmg`
   remains an optional local-only presentation path when
-  `PMFORGE_FANCY_DMG=1`; the tag workflow does not install or enable it.
+  `GOPMGR_FANCY_DMG=1`; the tag workflow does not install or enable it.
 - NSIS (`makensis`) 3.12.0: the Chocolatey-pinned toolchain behind
   `wails build -nsis` on Windows.
 - `ripgrep` (`rg`): required by release-scope and packaging source contracts;
@@ -93,7 +93,7 @@ Some gates use optional or required tools outside Go/npm:
 `scripts/release-tool-versions.env` is the version record for installer tools
 that are fetched by the tag workflow. `make installer-tool-pins` verifies the
 workflow, the record, and local Linux packaging guidance as one contract.
-PMForge tracks `build/windows/installer/project.nsi`, `info.json`, and the
+GoPMgr tracks `build/windows/installer/project.nsi`, `info.json`, and the
 application manifest. The pinned Wails CLI regenerates `wails_tools.nsh`, the
 WebView2 bootstrapper, and platform icon during native builds; those derived
 files remain ignored.

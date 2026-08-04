@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// terminology.ts maps generic PMForge nouns to methodology-specific
+// terminology.ts maps generic GoPMgr nouns to methodology-specific
 // vocabulary so the GUI can speak the user's own language. Lookup
 // table; no runtime cleverness.
 //

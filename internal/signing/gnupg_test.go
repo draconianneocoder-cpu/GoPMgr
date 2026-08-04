@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package signing
@@ -18,7 +18,7 @@ func TestSignDetachedASCIIArmoredBuildsGnuPGCommandWithKey(t *testing.T) {
 		return []byte("ok"), nil
 	}
 
-	if err := SignDetachedASCIIArmored(context.Background(), runner, "/tmp/document.pdf", "/tmp/document.pdf.asc", "pmforge@example.test"); err != nil {
+	if err := SignDetachedASCIIArmored(context.Background(), runner, "/tmp/document.pdf", "/tmp/document.pdf.asc", "gopmgr@example.test"); err != nil {
 		t.Fatalf("SignDetachedASCIIArmored: %v", err)
 	}
 
@@ -31,7 +31,7 @@ func TestSignDetachedASCIIArmoredBuildsGnuPGCommandWithKey(t *testing.T) {
 		"--armor",
 		"--detach-sign",
 		"--local-user",
-		"pmforge@example.test",
+		"gopmgr@example.test",
 		"--output",
 		"/tmp/document.pdf.asc",
 		"/tmp/document.pdf",

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package dag
@@ -6,7 +6,7 @@ package dag
 import (
 	"testing"
 
-	"pmforge/internal/kernel"
+	"gopmgr/internal/kernel"
 )
 
 func TestParseLinkLabel(t *testing.T) {

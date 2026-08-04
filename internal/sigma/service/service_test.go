@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package service
@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"pmforge/internal/sigma/domain"
+	"gopmgr/internal/sigma/domain"
 )
 
 // nil DB is safe for all tests below because the early-return

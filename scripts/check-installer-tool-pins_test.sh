@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Hermetic regressions for the release installer-tool pin contract. Each case
@@ -8,7 +8,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CHECK="$ROOT/scripts/check-installer-tool-pins.sh"
-TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/pmforge-installer-pins-test.XXXXXX")"
+TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-installer-pins-test.XXXXXX")"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 
 fail() {

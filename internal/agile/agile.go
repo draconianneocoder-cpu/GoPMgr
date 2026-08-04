@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package agile implements PMForge's Agile / Software-Dev Pack:
+// Package agile implements GoPMgr's Agile / Software-Dev Pack:
 // Kanban boards, sprints, work items, and DORA metrics.
 //
 // The pack is opt-in via the --software-dev-pack CLI flag (and the
@@ -140,7 +140,7 @@ func NewWorkItemID() (string, error)   { return newID("wi") }
 func NewSprintID() (string, error)     { return newID("sprint") }
 func NewDeploymentID() (string, error) { return newID("deploy") }
 
-// DefaultColumns returns the columns PMForge seeds a brand-new
+// DefaultColumns returns the columns GoPMgr seeds a brand-new
 // board with. The IDs are stable strings (rather than newID() calls)
 // so saved work-item states render correctly even before the user
 // has a board open.

@@ -1,5 +1,5 @@
 #!/usr/bin/make -f
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 export CGO_ENABLED := 1
@@ -8,12 +8,12 @@ export CGO_ENABLED := 1
 	dh $@
 
 override_dh_auto_build:
-	go build -buildmode=pie -buildvcs=false -mod=vendor -trimpath -tags "desktop,production,duckdb,webkit2_41" -ldflags "-s -w" -o build/ppa/pmforge .
+	go build -buildmode=pie -buildvcs=false -mod=vendor -trimpath -tags "desktop,production,duckdb,webkit2_41" -ldflags "-s -w" -o build/ppa/gopmgr .
 
 override_dh_auto_install:
-	install -D -m 0755 build/ppa/pmforge debian/pmforge/usr/bin/pmforge
-	install -D -m 0644 build/linux/pmforge.desktop debian/pmforge/usr/share/applications/pmforge.desktop
-	install -D -m 0644 build/appicon.png debian/pmforge/usr/share/pixmaps/pmforge.png
+	install -D -m 0755 build/ppa/gopmgr debian/gopmgr/usr/bin/gopmgr
+	install -D -m 0644 build/linux/gopmgr.desktop debian/gopmgr/usr/share/applications/gopmgr.desktop
+	install -D -m 0644 build/appicon.png debian/gopmgr/usr/share/pixmaps/gopmgr.png
 
 override_dh_auto_clean:
 	rm -rf build/ppa

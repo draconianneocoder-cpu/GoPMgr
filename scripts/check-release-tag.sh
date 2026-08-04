@@ -1,8 +1,8 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Verify that a publication tag belongs to the version embedded in PMForge.
+# Verify that a publication tag belongs to the version embedded in GoPMgr.
 # GA uses v<version>; prereleases may append SemVer prerelease identifiers.
 # Build metadata is intentionally excluded because package filenames and the
 # GitHub Release title should have one canonical version string.

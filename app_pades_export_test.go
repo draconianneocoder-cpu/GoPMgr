@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -22,11 +22,11 @@ import (
 
 	"github.com/digitorus/timestamp"
 
-	pmcrypto "pmforge/internal/crypto"
-	"pmforge/internal/db"
-	"pmforge/internal/documents"
-	"pmforge/internal/rfc3161"
-	"pmforge/internal/signing"
+	pmcrypto "gopmgr/internal/crypto"
+	"gopmgr/internal/db"
+	"gopmgr/internal/documents"
+	"gopmgr/internal/rfc3161"
+	"gopmgr/internal/signing"
 )
 
 var (
@@ -182,7 +182,7 @@ func assertAppPAdESTPDF(t *testing.T, outputPath string) {
 			t.Fatalf("signed PDF does not contain %q", marker)
 		}
 	}
-	if bytes.Contains(pdfBytes, []byte("%%PMForgeCMSSignature:")) {
+	if bytes.Contains(pdfBytes, []byte("%%GoPMgrCMSSignature:")) {
 		t.Fatal("signed PDF contains the retired comment-marker signature")
 	}
 	info, err := os.Stat(outputPath)
@@ -204,7 +204,7 @@ func newAppPAdESTestSigner(t *testing.T) *pmcrypto.Signer {
 	now := time.Now().UTC()
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(now.UnixNano()),
-		Subject:      pkix.Name{CommonName: "PMForge Application Export Test"},
+		Subject:      pkix.Name{CommonName: "GoPMgr Application Export Test"},
 		NotBefore:    now.Add(-time.Hour),
 		NotAfter:     now.Add(time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
@@ -248,7 +248,7 @@ func newAppPAdESTestTimestampToken(t *testing.T, imprint []byte, generatedAt tim
 	}
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(generatedAt.UnixNano()),
-		Subject:      pkix.Name{CommonName: "PMForge Application Export Test TSA"},
+		Subject:      pkix.Name{CommonName: "GoPMgr Application Export Test TSA"},
 		// The timestamp library records the wall clock in a CMS attribute while
 		// TSTInfo carries generatedAt. Deriving the test-only certificate window
 		// from both prevents deterministic protocol timestamps from expiring as

@@ -1,13 +1,13 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT_DIR="$ROOT/.tmp/pmforge-pades-trusted-source"
+OUT_DIR="$ROOT/.tmp/gopmgr-pades-trusted-source"
 REPORT="$OUT_DIR/trusted-source-validation-report.txt"
-TRUSTED_LOCK="$ROOT/.tmp/pmforge-pades-trusted-source.lock"
+TRUSTED_LOCK="$ROOT/.tmp/gopmgr-pades-trusted-source.lock"
 FAKE_BIN="$ROOT/.tmp/pades-trusted-source-bin-test"
 PDF_PATH="$FAKE_BIN/trusted-input.pdf"
 PDF_BEFORE="$FAKE_BIN/trusted-input.before.pdf"
@@ -34,7 +34,7 @@ while ! mkdir "$TRUSTED_LOCK" 2>/dev/null; do
 done
 LOCK_OWNED="true"
 echo "$$" >"$TRUSTED_LOCK/pid"
-export PMFORGE_PADES_TRUSTED_LOCK_HELD=1
+export GOPMGR_PADES_TRUSTED_LOCK_HELD=1
 
 rm -rf "$OUT_DIR" "$FAKE_BIN"
 mkdir -p "$OUT_DIR" "$FAKE_BIN"
@@ -46,7 +46,7 @@ cat >"$FAKE_BIN/qpdf" <<'EOF'
 if [ "$1" != "--check" ] || [ ! -s "$2" ]; then
 	exit 64
 fi
-if [ "${PMFORGE_FAKE_QPDF_MODE:-valid}" = "invalid" ]; then
+if [ "${GOPMGR_FAKE_QPDF_MODE:-valid}" = "invalid" ]; then
 	exit 1
 fi
 EOF
@@ -54,7 +54,7 @@ chmod +x "$FAKE_BIN/qpdf"
 
 cat >"$FAKE_BIN/pdfsig" <<'EOF'
 #!/bin/bash
-case "${PMFORGE_FAKE_PDFSIG_MODE:-trusted}" in
+case "${GOPMGR_FAKE_PDFSIG_MODE:-trusted}" in
 	trusted)
 		echo "Signature Validation: Signature is Valid."
 		echo "Certificate Validation: Certificate is Trusted"
@@ -73,7 +73,7 @@ chmod +x "$FAKE_BIN/pdfsig"
 
 cat >"$FAKE_BIN/verapdf" <<'EOF'
 #!/bin/bash
-if [ "${PMFORGE_FAKE_VERAPDF_MODE:-valid}" = "invalid" ]; then
+if [ "${GOPMGR_FAKE_VERAPDF_MODE:-valid}" = "invalid" ]; then
 	echo "<report><featureReports failedJobs=\"1\"/></report>"
 	exit 0
 fi
@@ -100,7 +100,7 @@ XML
 EOF
 chmod +x "$FAKE_BIN/verapdf"
 
-unset PMFORGE_TRUSTED_SIGNED_PDF PMFORGE_PADES_TRUSTED_REQUIRED
+unset GOPMGR_TRUSTED_SIGNED_PDF GOPMGR_PADES_TRUSTED_REQUIRED
 bash "$ROOT/scripts/validate-pades-trusted-source.sh" >"$FAKE_BIN/not-configured.out"
 
 [ -s "$REPORT" ] || fail "trusted-source report was not written"
@@ -116,7 +116,7 @@ if [ -e "$OUT_DIR/pdfsig-output.txt" ] || [ -e "$OUT_DIR/verapdf-signature-featu
 	fail "not-configured validation retained stale derived evidence"
 fi
 
-if PMFORGE_PADES_TRUSTED_REQUIRED=1 bash "$ROOT/scripts/validate-pades-trusted-source.sh" >"$FAKE_BIN/required-not-configured.out" 2>&1; then
+if GOPMGR_PADES_TRUSTED_REQUIRED=1 bash "$ROOT/scripts/validate-pades-trusted-source.sh" >"$FAKE_BIN/required-not-configured.out" 2>&1; then
 	fail "required trusted-source validation passed without a configured PDF"
 fi
 if ! grep -q "^status=NOT_CONFIGURED$" "$REPORT"; then
@@ -126,7 +126,7 @@ fi
 
 printf 'deterministic signed PDF fixture\n' >"$PDF_PATH"
 cp "$PDF_PATH" "$PDF_BEFORE"
-PATH="$FAKE_BIN:$PATH" PMFORGE_FAKE_PDFSIG_MODE=trusted \
+PATH="$FAKE_BIN:$PATH" GOPMGR_FAKE_PDFSIG_MODE=trusted \
 	bash "$ROOT/scripts/validate-pades-trusted-source.sh" "$PDF_PATH" >"$FAKE_BIN/trusted.out"
 
 if ! grep -q "^status=TRUST_VERIFIED$" "$REPORT"; then
@@ -147,7 +147,7 @@ if ! cmp -s "$PDF_BEFORE" "$PDF_PATH"; then
 	fail "trusted-source validation modified the supplied PDF"
 fi
 
-PATH="$FAKE_BIN:$PATH" PMFORGE_FAKE_PDFSIG_MODE=indeterminate \
+PATH="$FAKE_BIN:$PATH" GOPMGR_FAKE_PDFSIG_MODE=indeterminate \
 	bash "$ROOT/scripts/validate-pades-trusted-source.sh" "$PDF_PATH" >"$FAKE_BIN/indeterminate.out"
 if ! grep -q "^status=STRUCTURE_VALID_TRUST_INDETERMINATE$" "$REPORT"; then
 	cat "$REPORT" >&2
@@ -158,7 +158,7 @@ if grep -q "^status=PASS$" "$REPORT"; then
 	fail "indeterminate trust retained the ambiguous PASS status"
 fi
 
-if PATH="$FAKE_BIN:$PATH" PMFORGE_FAKE_PDFSIG_MODE=indeterminate PMFORGE_PADES_TRUSTED_REQUIRED=1 \
+if PATH="$FAKE_BIN:$PATH" GOPMGR_FAKE_PDFSIG_MODE=indeterminate GOPMGR_PADES_TRUSTED_REQUIRED=1 \
 	bash "$ROOT/scripts/validate-pades-trusted-source.sh" "$PDF_PATH" >"$FAKE_BIN/required-indeterminate.out" 2>&1; then
 	fail "required trusted-source validation passed with indeterminate trust"
 fi
@@ -167,7 +167,7 @@ if ! grep -q "^status=STRUCTURE_VALID_TRUST_INDETERMINATE$" "$REPORT"; then
 	fail "required indeterminate report lost its explicit outcome"
 fi
 
-if PATH="$FAKE_BIN:$PATH" PMFORGE_FAKE_PDFSIG_MODE=invalid \
+if PATH="$FAKE_BIN:$PATH" GOPMGR_FAKE_PDFSIG_MODE=invalid \
 	bash "$ROOT/scripts/validate-pades-trusted-source.sh" "$PDF_PATH" >"$FAKE_BIN/invalid.out" 2>&1; then
 	fail "trusted-source validation passed an invalid signature"
 fi

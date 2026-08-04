@@ -1,11 +1,11 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: CC0-1.0
 -->
 
 # Recent decisions
 
-A short, chronological index of PMForge's significant technical decisions and
+A short, chronological index of GoPMgr's significant technical decisions and
 their current status — the "why" behind the code, not the "what" (the code
 is the source of truth for that). Full detail lives in the linked ADRs,
 review docs, and `session-notes.md`. This file is generated/maintained
@@ -80,7 +80,7 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   signing pipeline. Enabled timestamping is fail-closed, and audit statuses
   distinguish Baseline B, Baseline T with unevaluated trust, and Baseline T
   verified against the configured root.
-- **2026-07-25** — Retired the legacy `%%PMForgeCMSSignature` PDF-comment
+- **2026-07-25** — Retired the legacy `%%GoPMgrCMSSignature` PDF-comment
   fallback. Archive PDF signing and `documents.RenderSigned` now delegate to
   `signing.ApplyPAdES`; every successful PAdES path must contain a real `/Sig`
   dictionary and `/ByteRange`, while failures return no PDF bytes.
@@ -111,7 +111,7 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   `docs/published-release-tags.txt`; isolated regressions and the release-scope
   gate reject unverified claims. The record now contains `v0.9.1-alpha` and
   the packaged `v1.1.0-alpha.1` prerelease published on 2026-07-27.
-- **2026-07-26** — Windows packaging now consumes PMForge-owned NSIS/resource
+- **2026-07-26** — Windows packaging now consumes GoPMgr-owned NSIS/resource
   templates while Wails regenerates only derived macros and assets. The native
   command enables DuckDB and verifies binary linkage before upload; isolated
   mutations plus an NSIS 3 fixture compile guard branding, uninstall safety,
@@ -156,7 +156,7 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   ad-hoc `codesign`, architecture, and clean first-launch checks on an M4 Mac.
   With an isolated empty data root, the UI reported no configured
   administrator and exposed the first-user administrator checkbox. No account
-  was submitted and existing PMForge data was not touched.
+  was submitted and existing GoPMgr data was not touched.
 - **2026-07-28:** The published DMG completed the isolated administrator
   lifecycle on an M4 Mac: account creation, eight recovery codes, Admin
   navigation, process restart, and authenticated login passed. A recoverable
@@ -173,7 +173,7 @@ Design doc (not a formal ADR but decision-bearing): [duckdb-analytics-engine.md]
   The final installed bundle is the current `main` arm64 build.
 - **2026-07-28:** Beta planning classifies the disabled macOS green window
   control as a native Wails configuration defect, not a frontend component
-  gap. PMForge leaves `options.App.Mac` nil; Wails 2.13.0 consequently passes
+  gap. GoPMgr leaves `options.App.Mac` nil; Wails 2.13.0 consequently passes
   `zoomable=false` and disables `NSWindowZoomButton`. The planned Beta fix
   supplies explicit macOS options and verifies Cocoa maximize/restore against
   the packaged app without introducing custom Svelte window chrome. The

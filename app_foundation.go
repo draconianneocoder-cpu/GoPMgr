@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -9,15 +9,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"pmforge/internal/agile"
-	"pmforge/internal/analytics"
-	"pmforge/internal/budget"
-	"pmforge/internal/calendar"
-	"pmforge/internal/db"
-	"pmforge/internal/kernel"
-	"pmforge/internal/templates"
-	"pmforge/internal/timeline"
-	"pmforge/internal/update"
+	"gopmgr/internal/agile"
+	"gopmgr/internal/analytics"
+	"gopmgr/internal/budget"
+	"gopmgr/internal/calendar"
+	"gopmgr/internal/db"
+	"gopmgr/internal/kernel"
+	"gopmgr/internal/templates"
+	"gopmgr/internal/timeline"
+	"gopmgr/internal/update"
 	"strings"
 	"time"
 

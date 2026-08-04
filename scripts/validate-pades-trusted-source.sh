@@ -1,11 +1,11 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Trusted-source PAdES validation harness.
 #
 # The deterministic release gate uses a self-signed sample, so it can prove
-# PMForge's PAdES structure but not release-certificate trust. This script
+# GoPMgr's PAdES structure but not release-certificate trust. This script
 # records evidence for a separately supplied signed PDF created with a trusted
 # certificate. When no trusted source is configured it writes an explicit
 # NOT_CONFIGURED report instead of implying validation passed. Acrobat evidence
@@ -17,15 +17,15 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-OUT_DIR="$ROOT/.tmp/pmforge-pades-trusted-source"
+OUT_DIR="$ROOT/.tmp/gopmgr-pades-trusted-source"
 REPORT="$OUT_DIR/trusted-source-validation-report.txt"
 REPORT_TMP="$OUT_DIR/trusted-source-validation-report.tmp"
 PDFSIG_OUTPUT="$OUT_DIR/pdfsig-output.txt"
 VERAPDF_XML="$OUT_DIR/verapdf-signature-features.xml"
 VERAPDF_ERR="$OUT_DIR/verapdf.stderr"
-TRUSTED_LOCK="$ROOT/.tmp/pmforge-pades-trusted-source.lock"
-PDF_PATH="${PMFORGE_TRUSTED_SIGNED_PDF:-${1:-}}"
-REQUIRED="${PMFORGE_PADES_TRUSTED_REQUIRED:-0}"
+TRUSTED_LOCK="$ROOT/.tmp/gopmgr-pades-trusted-source.lock"
+PDF_PATH="${GOPMGR_TRUSTED_SIGNED_PDF:-${1:-}}"
+REQUIRED="${GOPMGR_PADES_TRUSTED_REQUIRED:-0}"
 LOCK_OWNED=false
 
 if [ "$#" -gt 1 ]; then
@@ -36,7 +36,7 @@ fi
 case "$REQUIRED" in
 0 | 1) ;;
 *)
-	echo "PMFORGE_PADES_TRUSTED_REQUIRED must be 0 or 1." >&2
+	echo "GOPMGR_PADES_TRUSTED_REQUIRED must be 0 or 1." >&2
 	exit 64
 	;;
 esac
@@ -54,7 +54,7 @@ trap 'exit 143' TERM
 acquire_trusted_lock() {
 	# The test harness deliberately holds this lock across multiple child
 	# invocations so every assertion observes one uninterrupted evidence set.
-	if [ "${PMFORGE_PADES_TRUSTED_LOCK_HELD:-0}" = "1" ]; then
+	if [ "${GOPMGR_PADES_TRUSTED_LOCK_HELD:-0}" = "1" ]; then
 		return
 	fi
 
@@ -64,7 +64,7 @@ acquire_trusted_lock() {
 	done
 	echo "$$" >"$TRUSTED_LOCK/pid"
 	LOCK_OWNED=true
-	export PMFORGE_PADES_TRUSTED_LOCK_HELD=1
+	export GOPMGR_PADES_TRUSTED_LOCK_HELD=1
 }
 
 file_sha256() {
@@ -139,9 +139,9 @@ not_configured() {
 		echo "status=NOT_CONFIGURED"
 		echo "required_trust=$REQUIRED"
 		write_validator_provenance
-		echo "reason=PMFORGE_TRUSTED_SIGNED_PDF is not set and no PDF path argument was supplied."
+		echo "reason=GOPMGR_TRUSTED_SIGNED_PDF is not set and no PDF path argument was supplied."
 		echo "next_step=Export a PDF signed with a trusted certificate, then run:"
-		echo "next_step_command=PMFORGE_TRUSTED_SIGNED_PDF=/path/to/trusted-signed.pdf make check-pades-trusted"
+		echo "next_step_command=GOPMGR_TRUSTED_SIGNED_PDF=/path/to/trusted-signed.pdf make check-pades-trusted"
 		echo "note=This is not a passing trust-chain validation result."
 	} >"$REPORT_TMP"
 	publish_report

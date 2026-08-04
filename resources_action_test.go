@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"pmforge/internal/db"
+	"gopmgr/internal/db"
 )
 
 func newResourceTestApp(t *testing.T) (*App, *db.Database, db.Chart) {

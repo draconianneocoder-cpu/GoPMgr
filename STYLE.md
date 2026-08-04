@@ -1,11 +1,11 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
 # Style
 
-PMForge favors conservative, explicit, locally testable code. Match the
+GoPMgr favors conservative, explicit, locally testable code. Match the
 existing package patterns and keep edits scoped to the behavior being
 changed.
 

@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
@@ -10,16 +10,16 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 **Deciders:** James L. Burns (project owner)
 **Supersedes / relates to:** [ADR-001 — Per-user database encryption at rest](ADR-001-database-encryption-at-rest.md)
 
-> This ADR evaluates migrating PMForge's persistence layer from
+> This ADR evaluates migrating GoPMgr's persistence layer from
 > SQLite (`mattn`-style driver) + SQLCipher (`mutecomm/go-sqlcipher/v4`)
 > to DuckDB via the official Go client (`github.com/duckdb/duckdb-go/v2`).
 > The evaluation is grounded in the DuckDB 1.5 documentation and the
 > 2025-11-19 "Data-at-Rest Encryption in DuckDB" engineering blog, and
-> in a footprint audit of PMForge's current DB layer.
+> in a footprint audit of GoPMgr's current DB layer.
 
 ## Context
 
-PMForge is a **local-first, single-machine, single-user desktop app**
+GoPMgr is a **local-first, single-machine, single-user desktop app**
 (Wails). Its persistence layer is the product's backbone *and* a core
 security selling point:
 
@@ -56,10 +56,10 @@ and ADR-001.
 | Transactions | A single transaction may write to **only one** attached database | docs/sql/statements/attach |
 | SQLite interop | Can `ATTACH … (TYPE sqlite)` to read/write **plaintext** SQLite files (not SQLCipher-encrypted ones) | docs/core_extensions/sqlite |
 
-### The encryption maturity picture (decisive for PMForge)
+### The encryption maturity picture (decisive for GoPMgr)
 
 DuckDB's encryption is real and reasonably designed, but it is **new and
-carries caveats that directly conflict with PMForge's security posture**:
+carries caveats that directly conflict with GoPMgr's security posture**:
 
 1. **Not NIST-compliant yet.** DuckDB's own docs: *"DuckDB's encryption
    does not yet meet the official NIST requirements"* (tracking issue
@@ -83,7 +83,7 @@ By contrast, SQLCipher is a 15+ year, widely-deployed, offline,
 self-contained, FIPS-capable engine with no extension/network
 dependency for crypto. Trading it for a seven-month-old, non-NIST,
 extension-dependent encryption path is a **maturity regression** for the
-exact feature PMForge advertises.
+exact feature GoPMgr advertises.
 
 **Two further points worth recording, because popular tutorials gloss
 over them:**
@@ -92,8 +92,8 @@ over them:**
   SQLCipher's) protects data *at rest* — against file theft, storage
   access, and VM compromise — but **not** against memory dumps or
   inspection of the running process. So switching engines yields **no
-  security gain** on the axis PMForge cares about; it only changes
-  *which* implementation (and maturity level) PMForge depends on.
+  security gain** on the axis GoPMgr cares about; it only changes
+  *which* implementation (and maturity level) GoPMgr depends on.
 - **Third-party "it just works" write-ups are out of date.** Tutorials
   published right after the 1.4.0 launch (e.g. byteiota, 2025-11-21)
   describe MbedTLS-by-default with "no external dependencies." That was
@@ -121,7 +121,7 @@ would emphasize:
   file import/export.
 - **External-database connectors.** `postgres` / `mysql` / `sqlite` /
   `odbc` scanners `ATTACH` and query external databases — directly
-  relevant to PMForge's planned external-DB-via-plugin requirement
+  relevant to GoPMgr's planned external-DB-via-plugin requirement
   (owner direction, 2026-06-23). This is a genuine point in DuckDB's
   favor for the **Option B** analytics/connector role (not for replacing
   the encrypted transactional store).
@@ -129,7 +129,7 @@ would emphasize:
 These are real, but they are overwhelmingly **analytical/read-side**
 benefits — DuckDB's home turf — not transactional-store benefits.
 
-## Evaluation against PMForge's needs
+## Evaluation against GoPMgr's needs
 
 | Concern | SQLite + SQLCipher (today) | DuckDB | Verdict |
 |---|---|---|---|
@@ -147,7 +147,7 @@ benefits — DuckDB's home turf — not transactional-store benefits.
 
 ## Decision / Recommendation
 
-**Do not replace SQLite + SQLCipher as PMForge's primary transactional
+**Do not replace SQLite + SQLCipher as GoPMgr's primary transactional
 store.** The migration is high-cost (schema + encryption + self-heal +
 backup + gates + ADR rewrite), high-risk (seven-month-old, non-NIST,
 extension-dependent encryption replacing a hardened one; loss of
@@ -155,7 +155,7 @@ extension-dependent encryption replacing a hardened one; loss of
 exposure), and the upside is almost entirely **analytical**, which does
 not require replacing the transactional core.
 
-This preserves the ADR-001 decision and PMForge's local-first,
+This preserves the ADR-001 decision and GoPMgr's local-first,
 mature-encryption posture.
 
 ### Recommended alternative — DuckDB as a complementary analytical engine (Option B)
@@ -209,7 +209,7 @@ Do **not** do a big-bang swap. Mirror ADR-001's spike-gated approach:
 - **Encryption posture is the gating risk.** Until #20162 closes
   (NIST/canary tag) and the MbedTLS write path is restored — or `httpfs`
   is comfortably pre-bundled offline — DuckDB encryption is weaker, in
-  maturity terms, than what PMForge ships today.
+  maturity terms, than what GoPMgr ships today.
 - **No `integrity_check` analogue** undermines the self-heal feature
   that is currently a differentiator.
 - **Single-writer-DB-per-transaction** and optimistic-conflict retries
@@ -228,4 +228,4 @@ Do **not** do a big-bang swap. Mirror ADR-001's spike-gated approach:
 - [DuckDB ATTACH / Database Encryption](https://duckdb.org/docs/current/sql/statements/attach)
 - [Data-at-Rest Encryption in DuckDB (2025-11-19)](https://duckdb.org/2025/11/19/encryption-in-duckdb)
 - [Securing DuckDB](https://duckdb.org/docs/current/operations_manual/securing_duckdb/overview)
-- PMForge: `internal/db/`, `internal/sqlitedriver/`, `internal/crypto/keywrap.go`, `docs/design/ADR-001-database-encryption-at-rest.md`
+- GoPMgr: `internal/db/`, `internal/sqlitedriver/`, `internal/crypto/keywrap.go`, `docs/design/ADR-001-database-encryption-at-rest.md`

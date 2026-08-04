@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package charts
@@ -8,8 +8,8 @@ import (
 	"errors"
 	"testing"
 
-	"pmforge/internal/charts/dag"
-	"pmforge/internal/charts/flow"
+	"gopmgr/internal/charts/dag"
+	"gopmgr/internal/charts/flow"
 )
 
 // --- registry ---

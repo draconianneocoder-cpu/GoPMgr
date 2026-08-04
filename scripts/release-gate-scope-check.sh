@@ -1,13 +1,13 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 fail=0
-go_scope_matches="$(mktemp "${TMPDIR:-/tmp}/pmforge-go-scope-matches.XXXXXX")"
-go_list_scope="$(mktemp "${TMPDIR:-/tmp}/pmforge-go-list-scope.XXXXXX")"
+go_scope_matches="$(mktemp "${TMPDIR:-/tmp}/gopmgr-go-scope-matches.XXXXXX")"
+go_list_scope="$(mktemp "${TMPDIR:-/tmp}/gopmgr-go-list-scope.XXXXXX")"
 readme_text="$(tr '\n' ' ' < README.md)"
 agent_text="$(tr '\n' ' ' < DEVELOPER_HANDBOOK.md)"
 trap 'rm -f "$go_scope_matches" "$go_list_scope"' EXIT

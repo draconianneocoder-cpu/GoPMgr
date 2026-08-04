@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package agile
@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"pmforge/internal/db"
+	"gopmgr/internal/db"
 )
 
 func newAgileTestStore(t *testing.T) (*db.Database, *Store, db.Project) {

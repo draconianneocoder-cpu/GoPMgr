@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Command update-manifest creates an Ed25519-signed PMForge update manifest.
+// Command update-manifest creates an Ed25519-signed GoPMgr update manifest.
 // The private key is read only from a named environment variable and is never
 // accepted on the command line, written to disk, or printed.
 package main
@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"pmforge/internal/update"
+	"gopmgr/internal/update"
 )
 
 func main() {
@@ -30,7 +30,7 @@ func main() {
 	flag.StringVar(&artifact, "artifact", "", "installer artifact path")
 	flag.StringVar(&downloadURL, "download-url", "", "HTTPS artifact URL")
 	flag.StringVar(&output, "output", "", "manifest output path")
-	flag.StringVar(&keyEnv, "private-key-env", "PMFORGE_UPDATE_PRIVATE_KEY", "environment variable containing the base64 Ed25519 private key")
+	flag.StringVar(&keyEnv, "private-key-env", "GOPMGR_UPDATE_PRIVATE_KEY", "environment variable containing the base64 Ed25519 private key")
 	flag.Parse()
 	if err := run(version, channel, platform, architecture, artifact, downloadURL, output, keyEnv); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "update-manifest: %v\n", err)
@@ -56,7 +56,7 @@ func run(version, channel, platform, architecture, artifact, downloadURL, output
 		Channel:       channel,
 		Platform:      platform,
 		Architecture:  architecture,
-		ReleaseNotes:  "See the PMForge release page for this version.",
+		ReleaseNotes:  "See the GoPMgr release page for this version.",
 		DownloadURL:   downloadURL,
 		SHA256:        hex.EncodeToString(digest[:]),
 		PublishedAt:   time.Now().UTC().Format(time.RFC3339),

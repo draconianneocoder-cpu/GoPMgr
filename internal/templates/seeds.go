@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package templates
@@ -6,9 +6,9 @@ package templates
 import (
 	"fmt"
 
-	"pmforge/internal/agile"
-	"pmforge/internal/db"
-	"pmforge/internal/documents"
+	"gopmgr/internal/agile"
+	"gopmgr/internal/db"
+	"gopmgr/internal/documents"
 )
 
 // Seeder applies seed actions to a freshly-created project. It wraps

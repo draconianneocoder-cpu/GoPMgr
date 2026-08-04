@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //go:build duckdb
@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"pmforge/internal/money"
+	"gopmgr/internal/money"
 
 	// Registers the "duckdb" database/sql driver.
 	_ "github.com/duckdb/duckdb-go/v2"

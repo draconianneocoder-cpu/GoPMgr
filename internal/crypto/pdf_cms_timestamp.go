@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package crypto
@@ -11,7 +11,7 @@ import (
 
 	"github.com/digitorus/pkcs7"
 
-	"pmforge/internal/rfc3161"
+	"gopmgr/internal/rfc3161"
 )
 
 var oidAttributeSignatureTimestampToken = asn1.ObjectIdentifier{
@@ -19,7 +19,7 @@ var oidAttributeSignatureTimestampToken = asn1.ObjectIdentifier{
 }
 
 // SignatureTimestampImprint returns the SHA-256 digest that an RFC 3161
-// signature-time-stamp token must bind for a detached, single-signer PMForge
+// signature-time-stamp token must bind for a detached, single-signer GoPMgr
 // CMS value. RFC 5126 hashes the SignerInfo signature OCTET STRING bytes, not
 // the PDF content or the complete CMS encoding.
 func SignatureTimestampImprint(cmsDER []byte) ([]byte, error) {

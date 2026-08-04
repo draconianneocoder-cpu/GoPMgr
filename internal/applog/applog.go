@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package applog wires PMForge's process-level diagnostic logging and
+// Package applog wires GoPMgr's process-level diagnostic logging and
 // fatal-startup handling.
 //
 // Motivation: a Wails GUI binary launched from Finder/Explorer/.desktop
@@ -12,7 +12,7 @@
 //
 //   - Init tees the standard logger to BOTH stderr (so `wails dev` and
 //     terminal launches still show output) AND a dated file under the
-//     PMForge data tree, so maintainers always have a log to read.
+//     GoPMgr data tree, so maintainers always have a log to read.
 //   - Fatal records the error (with a stack trace) to that log, shows a
 //     native OS error dialog so a GUI launch can never fail silently,
 //     then exits non-zero.
@@ -39,7 +39,7 @@ const (
 )
 
 // Init configures the standard logger to write to stderr and to a dated
-// log file under <preferredDir>/logs (e.g. pmforge-2026-06-15.log).
+// log file under <preferredDir>/logs (e.g. gopmgr-2026-06-15.log).
 //
 // It never fails: if the directory or file cannot be created, logging
 // falls back to stderr only, a warning is logged, and the returned
@@ -65,8 +65,8 @@ func Init(preferredDir string) (logPath string, cleanup func()) {
 		return "", func() {}
 	}
 
-	path := filepath.Join(logDir, fmt.Sprintf("pmforge-%s.log", time.Now().Format("2006-01-02")))
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, filePerm) // #nosec G304 -- path is composed internally from the PMForge data root, not user input.
+	path := filepath.Join(logDir, fmt.Sprintf("gopmgr-%s.log", time.Now().Format("2006-01-02")))
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, filePerm) // #nosec G304 -- path is composed internally from the GoPMgr data root, not user input.
 	if err != nil {
 		log.SetOutput(os.Stderr)
 		log.Printf("applog: cannot open log file %q: %v (logging to stderr only)", path, err)
@@ -87,7 +87,7 @@ func Init(preferredDir string) (logPath string, cleanup func()) {
 // retentionDays bounds how long dated diagnostic logs are kept.
 const retentionDays = 30
 
-// pruneOldLogs removes pmforge-*.log files in logDir whose modification
+// pruneOldLogs removes gopmgr-*.log files in logDir whose modification
 // time is older than retentionDays. Matching is deliberately narrow so
 // nothing a user placed in the directory is ever touched.
 func pruneOldLogs(logDir string, now time.Time) {
@@ -98,7 +98,7 @@ func pruneOldLogs(logDir string, now time.Time) {
 	cutoff := now.AddDate(0, 0, -retentionDays)
 	for _, e := range entries {
 		name := e.Name()
-		if e.IsDir() || !strings.HasPrefix(name, "pmforge-") || !strings.HasSuffix(name, ".log") {
+		if e.IsDir() || !strings.HasPrefix(name, "gopmgr-") || !strings.HasSuffix(name, ".log") {
 			continue
 		}
 		info, err := e.Info()
@@ -109,7 +109,7 @@ func pruneOldLogs(logDir string, now time.Time) {
 	}
 }
 
-// LogDir returns the directory where PMForge writes diagnostic logs for the
+// LogDir returns the directory where GoPMgr writes diagnostic logs for the
 // given data root. Uses the same resolution as Init: <preferredDir>/logs,
 // with home/temp fallbacks when preferredDir is empty or whitespace. The
 // directory is not guaranteed to exist; callers should check or create it.
@@ -118,7 +118,7 @@ func LogDir(preferredDir string) string {
 }
 
 // resolveLogDir picks the logs directory. The caller normally passes the
-// resolved PMForge data root so logs sit beside system.db; the home/temp
+// resolved GoPMgr data root so logs sit beside system.db; the home/temp
 // fallbacks only matter if that resolution failed upstream.
 func resolveLogDir(preferredDir string) string {
 	if strings.TrimSpace(preferredDir) != "" {
@@ -179,7 +179,7 @@ func dialogMessage(userMessage, logPath string, err error) string {
 		parts = append(parts, "A detailed log was saved to:\n"+logPath)
 	}
 	if len(parts) == 0 {
-		return "PMForge encountered a fatal startup error."
+		return "GoPMgr encountered a fatal startup error."
 	}
 	return strings.Join(parts, "\n\n")
 }

@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -151,7 +151,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     'import-export':
       'import export ms project xml mspdi mpp interchange schedule report pdf docx odt csv html spreadsheet round trip',
     backups:
-      'backup data safety copy project files pmforge folder pre-encryption backup retained restore integrity check repair vacuum maintenance cli recovery',
+      'backup data safety copy project files gopmgr folder pre-encryption backup retained restore integrity check repair vacuum maintenance cli recovery',
     timeline: 'calendar holidays country milestones dates schedule view months workdays',
     stakeholders: 'stakeholder manager power interest grid raci contacts influence engagement contract rates',
     'report-composer': 'combined report multiple documents charts assemble pdf export sections cover page',
@@ -255,7 +255,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">First Launch</h3>
             <p class="text-sm text-slate-300 mb-2">
-              On first launch PMForge has no accounts. Enter a username, display name, and
+              On first launch GoPMgr has no accounts. Enter a username, display name, and
               passphrase on the Create Account screen. The first account is prompted to become
               the administrator. At least one admin must exist before additional users can be added.
             </p>
@@ -270,7 +270,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <p class="text-sm text-slate-300">
               Administrators create additional accounts from the
               <button onclick={() => nav('admin-panel')} class="text-cyan-400 underline hover:text-cyan-300">Admin Panel</button>.
-              Each PMForge user gets their own isolated data directory. Multiple PMForge users
+              Each GoPMgr user gets their own isolated data directory. Multiple GoPMgr users
               can share a single OS account; project files are stored per-user and are not
               cross-accessible through the app.
             </p>
@@ -298,7 +298,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               boundaries and time-series chart dates.
             </p>
             <p class="text-sm text-slate-300 mt-3">
-              New to PMForge? The
+              New to GoPMgr? The
               <button onclick={() => nav('quick-start')} class="text-cyan-400 underline hover:text-cyan-300">Quick Start tutorial</button>
               walks the whole journey — account to exported report — in about ten minutes.
             </p>
@@ -317,7 +317,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section>
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Account Recovery</h3>
             <p class="text-sm text-slate-300">
-              PMForge is a local-first application with no cloud backup. Generate recovery codes
+              GoPMgr is a local-first application with no cloud backup. Generate recovery codes
               immediately after creating your account (App Settings &rarr; Recovery Codes section).
               Store them securely. Recovery codes let you reset your passphrase from the login screen.
               Recovery codes must be current before enabling database encryption.
@@ -335,11 +335,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">1 · Create your account</h3>
             <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
-              <li>Launch PMForge. With no accounts yet, the Create Account screen appears.</li>
+              <li>Launch GoPMgr. With no accounts yet, the Create Account screen appears.</li>
               <li>Enter a username, display name, and a passphrase you can remember — it also protects your encrypted projects.</li>
               <li>As the first user you are offered the administrator role; accept it.</li>
               <li>
-                PMForge shows your <span class="font-medium text-slate-100">eight recovery codes once</span>.
+                GoPMgr shows your <span class="font-medium text-slate-100">eight recovery codes once</span>.
                 Store them somewhere safe (password manager, printed copy) before continuing —
                 they are the only way back in if you forget your passphrase. There is no cloud reset.
               </li>
@@ -400,7 +400,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section>
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Where to go next</h3>
             <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
-              <li><button onclick={() => nav('scrum')} class="text-cyan-400 underline hover:text-cyan-300">Your methodology's guide</button> — boards, sprints, and the cadence PMForge sets up for you.</li>
+              <li><button onclick={() => nav('scrum')} class="text-cyan-400 underline hover:text-cyan-300">Your methodology's guide</button> — boards, sprints, and the cadence GoPMgr sets up for you.</li>
               <li><button onclick={() => nav('charts')} class="text-cyan-400 underline hover:text-cyan-300">Charts reference</button> — all 22 chart types and when to reach for each.</li>
               <li><button onclick={() => nav('shortcuts')} class="text-cyan-400 underline hover:text-cyan-300">Keyboard Shortcuts &amp; Accessibility</button> — work faster, mouse optional.</li>
               <li><button onclick={() => nav('encryption')} class="text-cyan-400 underline hover:text-cyan-300">Database Encryption</button> — protect project files at rest.</li>
@@ -467,7 +467,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
           <section class="mb-5">
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">PMForge Setup</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">GoPMgr Setup</h3>
             <p class="text-sm text-slate-300">Launchpad: Software &rarr; Scrum. Seeds: Kanban Board, Project Charter, Agile Backlog, Sprint 1. The Kanban Board is the daily tracking surface. The Backlog holds the ordered list of user stories. Sprint 1 is a pre-created sprint container ready for backlog items.</p>
           </section>
 
@@ -514,7 +514,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
           <section class="mb-5">
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">PMForge Setup</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">GoPMgr Setup</h3>
             <p class="text-sm text-slate-300">Launchpad: Software &rarr; Kanban. Seeds: Kanban Board, Project Charter, Agile Backlog. Columns represent workflow states (e.g., Backlog, In Progress, Review, Done).</p>
           </section>
 
@@ -558,7 +558,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
           <section class="mb-5">
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">PMForge Setup</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">GoPMgr Setup</h3>
             <p class="text-sm text-slate-300">Launchpad: Software &rarr; Scrumban. Seeds: Kanban Board, Project Charter, Agile Backlog. The Backlog provides priority ordering; the Kanban Board drives daily flow. No sprint containers — work is pulled continuously.</p>
           </section>
 
@@ -591,7 +591,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
           <section class="mb-5">
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">PMForge Setup</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">GoPMgr Setup</h3>
             <p class="text-sm text-slate-300">Construction &rarr; Lean seeds: WBS, Cumulative Flow Diagram, Risk Register. Business &rarr; Lean seeds: Pareto Chart, Cumulative Flow Diagram, SWOT Matrix. The Pareto Chart identifies the vital few waste sources (80/20 rule); the Cumulative Flow Diagram tracks process throughput.</p>
           </section>
 
@@ -627,7 +627,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
           <section class="mb-5">
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">PMForge Setup</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">GoPMgr Setup</h3>
             <p class="text-sm text-slate-300">Launchpad: Business &rarr; OKRs. Seeds: Project Plan (Word), Stakeholder Analysis Document, Status Report. The Stakeholder Analysis Document maps who influences which Objectives; the Status Report provides the check-in template for KR progress updates.</p>
           </section>
 
@@ -674,7 +674,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
           <section class="mb-5">
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">PMForge Setup</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">GoPMgr Setup</h3>
             <p class="text-sm text-slate-300">Construction &rarr; Waterfall seeds: WBS, Statement of Work, Risk Register, CPM Chart. Administration &rarr; Waterfall seeds: Project Charter, Scope Statement, Risk Register, Communication Plan. Extend with Budget, Team Charter, and RACI Matrix as planning matures.</p>
           </section>
 
@@ -710,12 +710,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
           <section class="mb-5">
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">PMForge Setup</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">GoPMgr Setup</h3>
             <p class="text-sm text-slate-300">Launchpad: Administration &rarr; PRINCE2. Seeds: Project Charter (approximates PID), Project Plan (Word), Risk Register. Extend with Communication Plan and Team Charter.</p>
           </section>
 
           <section class="mb-5">
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Processes in PMForge</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Processes in GoPMgr</h3>
             <div class="space-y-2 text-sm text-slate-300">
               <div class="flex gap-3"><span class="w-44 shrink-0 font-medium text-slate-100">Starting Up (SU)</span><span>Project Brief — use Charter. Appoint Project Board and PM roles.</span></div>
               <div class="flex gap-3"><span class="w-44 shrink-0 font-medium text-slate-100">Initiating (IP)</span><span>PID = Charter + Project Plan + Risk Register + Communication Plan.</span></div>
@@ -742,11 +742,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Five Process Groups</h3>
-            <p class="text-sm text-slate-300 mb-3">PMBOK's five process groups correspond directly to PMForge's document Phase categories. Browsing documents by phase is browsing by PMBOK process group.</p>
+            <p class="text-sm text-slate-300 mb-3">PMBOK's five process groups correspond directly to GoPMgr's document Phase categories. Browsing documents by phase is browsing by PMBOK process group.</p>
             <div class="space-y-2 text-sm">
-              <div class="flex gap-3"><span class="w-36 shrink-0 font-medium text-slate-100">Initiating</span><span class="text-slate-300">Charter, Business Case, Stakeholder Analysis. 5 PMForge documents.</span></div>
-              <div class="flex gap-3"><span class="w-36 shrink-0 font-medium text-slate-100">Planning</span><span class="text-slate-300">Define scope, schedule, cost, quality, risk, comms, procurement. 14 PMForge documents.</span></div>
-              <div class="flex gap-3"><span class="w-36 shrink-0 font-medium text-slate-100">Executing</span><span class="text-slate-300">Carry out the plan. Project Brief, Project Overview. 2 PMForge documents.</span></div>
+              <div class="flex gap-3"><span class="w-36 shrink-0 font-medium text-slate-100">Initiating</span><span class="text-slate-300">Charter, Business Case, Stakeholder Analysis. 5 GoPMgr documents.</span></div>
+              <div class="flex gap-3"><span class="w-36 shrink-0 font-medium text-slate-100">Planning</span><span class="text-slate-300">Define scope, schedule, cost, quality, risk, comms, procurement. 14 GoPMgr documents.</span></div>
+              <div class="flex gap-3"><span class="w-36 shrink-0 font-medium text-slate-100">Executing</span><span class="text-slate-300">Carry out the plan. Project Brief, Project Overview. 2 GoPMgr documents.</span></div>
               <div class="flex gap-3"><span class="w-36 shrink-0 font-medium text-slate-100">Monitoring</span><span class="text-slate-300">Track and regulate performance. Status Report, Issue Log, Change Request Form. 3 documents.</span></div>
               <div class="flex gap-3"><span class="w-36 shrink-0 font-medium text-slate-100">Closing</span><span class="text-slate-300">Formally close the project. Project Closure. 1 document.</span></div>
             </div>
@@ -769,7 +769,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
           <section>
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Using PMBOK in PMForge</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Using PMBOK in GoPMgr</h3>
             <p class="text-sm text-slate-300">PMBOK does not have a dedicated Launchpad option. Use it as vocabulary and process reference while running a Waterfall, CPM, or PRINCE2 project. The Documents view's phase-based organization mirrors PMBOK's process group structure.</p>
           </section>
 
@@ -784,7 +784,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
           <section class="mb-5">
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">PMForge Setup</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">GoPMgr Setup</h3>
             <p class="text-sm text-slate-300">Launchpad: Engineering &rarr; CPM. Seeds: CPM Chart, WBS, Risk Register, Project Charter. The CPM Chart displays activity nodes with ES/EF/LS/LF and critical-path highlighting; the WBS structures the deliverable hierarchy; the Risk Register surfaces schedule threats early.</p>
           </section>
 
@@ -822,13 +822,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <p class="text-sm text-slate-400 mb-5">Data-driven quality improvement targeting 3.4 defects per million opportunities (6&sigma; from the mean). Uses DMAIC for existing processes.</p>
 
           <p class="text-xs bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-400 mb-5">
-            Six Sigma exists in PMForge in two forms: as a Launchpad methodology (described here, seeds initial charts) and as a dedicated
+            Six Sigma exists in GoPMgr in two forms: as a Launchpad methodology (described here, seeds initial charts) and as a dedicated
             <button onclick={() => nav('sigma-pack')} class="text-cyan-400 underline hover:text-cyan-300">DMAIC Pack</button>
             with structured project and dashboard views for the full 5-phase workflow.
           </p>
 
           <section class="mb-5">
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">PMForge Launchpad Setup</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">GoPMgr Launchpad Setup</h3>
             <p class="text-sm text-slate-300">Launchpad: Engineering &rarr; Six Sigma. Seeds: Control Chart, Pareto Chart, Fishbone Diagram. Control Chart establishes the baseline process signature (Measure phase); Pareto ranks defect categories (Analyze phase); Fishbone begins root-cause analysis (Analyze phase). Add a Project Charter manually to complete the Define phase, or use the full <button onclick={() => nav('sigma-pack')} class="text-cyan-400 underline hover:text-cyan-300">DMAIC Pack</button>.</p>
           </section>
 
@@ -892,7 +892,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <ul class="text-sm text-slate-300 space-y-1 ml-3">
               <li>Committed cost is contracts + labour estimate; EVM Actual Cost comes from schedule tasks.</li>
               <li>Only anchored, valid, acyclic, costed current CPM schedules contribute to EVM. The coverage count and warning make exclusions visible.</li>
-              <li>Portfolio SPI = ΣEV/ΣPV and CPI = ΣEV/ΣAC. PMForge sums exact minor units before dividing; it never averages project ratios.</li>
+              <li>Portfolio SPI = ΣEV/ΣPV and CPI = ΣEV/ΣAC. GoPMgr sums exact minor units before dividing; it never averages project ratios.</li>
               <li>The adjacent import action previews local CSV/TSV, Parquet, and JSON data in memory.</li>
             </ul>
           </section>
@@ -1109,7 +1109,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Organisation</dt><dd class="text-slate-400">Company or department.</dd></div>
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Email / Phone</dt><dd class="text-slate-400">Contact details.</dd></div>
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Category</dt><dd class="text-slate-400">Team, Vendor, Sponsor, or External.</dd></div>
-              <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Hourly Rate</dt><dd class="text-slate-400">Used in budget cost rollup calculations. PMForge stores money internally as integer minor units and rounds once at the money boundary.</dd></div>
+              <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Hourly Rate</dt><dd class="text-slate-400">Used in budget cost rollup calculations. GoPMgr stores money internally as integer minor units and rounds once at the money boundary.</dd></div>
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Contract Value</dt><dd class="text-slate-400">For Vendor entries; summed in budget rollup using exact-cent minor-unit totals.</dd></div>
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Availability</dt><dd class="text-slate-400">Resource capacity in units (1.0 = full time). Named Resource Capacity calendars in Project Settings can add weekly capacity and day overrides.</dd></div>
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-28 shrink-0">Notes</dt><dd class="text-slate-400">Engagement strategy, concerns, communication preferences.</dd></div>
@@ -1210,7 +1210,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {:else if active === 'import-export'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Schedule Import &amp; Export</h2>
           <p class="text-sm text-slate-400 mb-5">
-            Move schedules between PMForge and other tools — Microsoft Project in, reports and
+            Move schedules between GoPMgr and other tools — Microsoft Project in, reports and
             interchange formats out.
           </p>
 
@@ -1218,7 +1218,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Importing from Microsoft Project</h3>
             <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
               <li>On the Project Dashboard, choose the <span class="font-medium text-slate-100">Import MS Project XML</span> action.</li>
-			  <li>Choose which dependencies, progress, and resource assignments to retain, then pick an MSPDI <span class="font-mono text-xs">.xml</span> file. PMForge stores a mapping receipt with the imported schedule chart.</li>
+			  <li>Choose which dependencies, progress, and resource assignments to retain, then pick an MSPDI <span class="font-mono text-xs">.xml</span> file. GoPMgr stores a mapping receipt with the imported schedule chart.</li>
             </ol>
             <p class="text-sm text-slate-400 mt-2">
               Binary or legacy formats (<span class="font-mono text-xs">.mpp</span>,
@@ -1295,7 +1295,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <!-- ── Export & Digital Signing ───────────────────────────── -->
         {:else if active === 'export-signing'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Export &amp; Digital Signing</h2>
-          <p class="text-sm text-slate-400 mb-5">PMForge exports documents in multiple formats and supports PAdES-compliant digital signatures using a personal certificate (.p12/.pfx).</p>
+          <p class="text-sm text-slate-400 mb-5">GoPMgr exports documents in multiple formats and supports PAdES-compliant digital signatures using a personal certificate (.p12/.pfx).</p>
 
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Export Formats</h3>
@@ -1348,7 +1348,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             </ol>
             <p class="text-xs text-slate-400 mt-3">
               Timestamping is fail-closed. If the configured authority is
-              unavailable or returns an invalid token, PMForge writes no signed
+              unavailable or returns an invalid token, GoPMgr writes no signed
               PDF and does not silently fall back to Baseline B. Without a TSA
               trust root, token integrity is validated while chain trust is
               reported as not evaluated.
@@ -1380,7 +1380,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <!-- ── Database Encryption ─────────────────────────────────── -->
         {:else if active === 'encryption'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Database Encryption</h2>
-          <p class="text-sm text-slate-400 mb-5">Each project stores its data in a SQLite database. PMForge can encrypt this database at rest using SQLCipher, which applies AES-256 encryption to the entire database file. This protects project data if the machine is lost or the filesystem is accessed directly.</p>
+          <p class="text-sm text-slate-400 mb-5">Each project stores its data in a SQLite database. GoPMgr can encrypt this database at rest using SQLCipher, which applies AES-256 encryption to the entire database file. This protects project data if the machine is lost or the filesystem is accessed directly.</p>
 
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Prerequisites</h3>
@@ -1388,7 +1388,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <ol class="space-y-1 text-sm text-slate-300 list-decimal list-inside">
               <li>Go to App Settings (top nav) and find the Recovery Codes section.</li>
               <li>Generate a new set of recovery codes. Store them securely (password manager, safe, printed).</li>
-              <li>Recovery codes must be current — if you have old codes from before, reissue them. PMForge enforces this before allowing encryption to proceed.</li>
+              <li>Recovery codes must be current — if you have old codes from before, reissue them. GoPMgr enforces this before allowing encryption to proceed.</li>
             </ol>
           </section>
 
@@ -1398,7 +1398,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li>Open the project you want to encrypt. The project must be opened from the project list (not just selected).</li>
               <li>Go to Project Settings (File &rarr; Project Settings, or the gear icon).</li>
               <li>Find the "Database Encryption" section. It shows the current state: Plaintext or Encrypted.</li>
-              <li>Click "Encrypt Database." PMForge creates a backup of the plaintext database first and shows the backup path.</li>
+              <li>Click "Encrypt Database." GoPMgr creates a backup of the plaintext database first and shows the backup path.</li>
               <li>After encryption completes, the state badge changes to "Encrypted."</li>
             </ol>
           </section>
@@ -1420,7 +1420,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {:else if active === 'backups'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Backups &amp; Data Safety</h2>
           <p class="text-sm text-slate-400 mb-5">
-            PMForge is local-first: your data lives in ordinary files you can copy, so backup is
+            GoPMgr is local-first: your data lives in ordinary files you can copy, so backup is
             simple — but it is <span class="font-medium text-slate-100">your</span> job. There is
             no cloud copy.
           </p>
@@ -1429,7 +1429,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">What to back up</h3>
             <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
               <li>Everything lives under your PMForge data folder — <span class="font-mono text-xs">~/Library/Application Support/PMForge/</span> on macOS, <span class="font-mono text-xs">~/Documents/PMForge/</span> on Linux and Windows: <span class="font-mono text-xs">system.db</span> (accounts) plus a private per-user folder with <span class="font-mono text-xs">projects</span>, <span class="font-mono text-xs">certs</span>, <span class="font-mono text-xs">exports</span>, and <span class="font-mono text-xs">logs</span>.</li>
-              <li>Copying that folder while PMForge is closed is a complete backup. Encrypted projects stay encrypted in the copy — safe to store anywhere you trust with ciphertext.</li>
+              <li>Copying that folder while GoPMgr is closed is a complete backup. Encrypted projects stay encrypted in the copy — safe to store anywhere you trust with ciphertext.</li>
               <li>Keep your <span class="font-medium text-slate-100">recovery codes</span> with the backup: for encrypted projects, a restored file is only usable with your passphrase or a valid recovery code. Without both, it is unrecoverable by design.</li>
             </ul>
           </section>
@@ -1437,7 +1437,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Automatic safety nets</h3>
             <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
-              <li>When you migrate a plaintext project to encrypted storage, PMForge <span class="font-medium text-slate-100">retains a pre-migration backup</span> and shows you its path — keep it until you have verified the encrypted project opens.</li>
+              <li>When you migrate a plaintext project to encrypted storage, GoPMgr <span class="font-medium text-slate-100">retains a pre-migration backup</span> and shows you its path — keep it until you have verified the encrypted project opens.</li>
               <li>Editors auto-save on an interval (App Settings) and show the last save time, so a crash costs at most the interval.</li>
               <li>Every export is written to your private <span class="font-mono text-xs">exports</span> folder with owner-only permissions.</li>
             </ul>
@@ -1446,7 +1446,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section>
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Health checks &amp; repair</h3>
             <p class="text-sm text-slate-300">
-              The PMForge binary doubles as a maintenance CLI for any
+              The GoPMgr binary doubles as a maintenance CLI for any
               <span class="font-mono text-xs">.pmforge</span> file:
               <span class="font-mono text-xs">--check</span> (integrity),
               <span class="font-mono text-xs">--repair</span> (self-healing),
@@ -1462,7 +1462,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
         {:else if active === 'admin-panel'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Admin Panel</h2>
-          <p class="text-sm text-slate-400 mb-5">Administrator-only view for managing all PMForge user accounts on this machine. Accessible to accounts with the Admin role.</p>
+          <p class="text-sm text-slate-400 mb-5">Administrator-only view for managing all GoPMgr user accounts on this machine. Accessible to accounts with the Admin role.</p>
 
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Accessing</h3>
@@ -1546,7 +1546,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Diagnostics</h3>
             <dl class="text-sm space-y-1">
-              <div class="flex gap-2"><dt class="font-medium text-slate-200 w-36 shrink-0">Open Logs Folder</dt><dd class="text-slate-400">Opens the PMForge log directory in Finder/Explorer for troubleshooting.</dd></div>
+              <div class="flex gap-2"><dt class="font-medium text-slate-200 w-36 shrink-0">Open Logs Folder</dt><dd class="text-slate-400">Opens the GoPMgr log directory in Finder/Explorer for troubleshooting.</dd></div>
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-36 shrink-0">Generate Bug Report</dt><dd class="text-slate-400">Creates a diagnostic report file in your data directory. Include this when reporting issues.</dd></div>
             </dl>
           </section>
@@ -1559,7 +1559,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <!-- ── Charts Reference ────────────────────────────────────── -->
         {:else if active === 'charts'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Charts Reference</h2>
-          <p class="text-sm text-slate-400 mb-5">PMForge includes 22 chart types organized across four rendering engines. Create them from the Project Dashboard's searchable chart-tool catalog; filter by engine when you already know the visual family you need.</p>
+          <p class="text-sm text-slate-400 mb-5">GoPMgr includes 22 chart types organized across four rendering engines. Create them from the Project Dashboard's searchable chart-tool catalog; filter by engine when you already know the visual family you need.</p>
 
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-3">DAG Engine — Schedule &amp; Hierarchy (7 charts)</h3>
@@ -1807,7 +1807,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {:else if active === 'shortcuts'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Keyboard Shortcuts &amp; Accessibility</h2>
           <p class="text-sm text-slate-400 mb-5">
-            PMForge is fully operable from the keyboard. Shortcuts use Ctrl on Windows/Linux and ⌘ on macOS.
+            GoPMgr is fully operable from the keyboard. Shortcuts use Ctrl on Windows/Linux and ⌘ on macOS.
           </p>
 
           <section class="mb-6">
@@ -1827,7 +1827,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     ['Ctrl/⌘ + D', 'Portfolio dashboard'],
                     ['Ctrl/⌘ + ,', 'Application settings'],
                     ['Ctrl/⌘ + W', 'Close the current project'],
-                    ['Ctrl/⌘ + Q', 'Quit PMForge'],
+                    ['Ctrl/⌘ + Q', 'Quit GoPMgr'],
                     ['F11', 'Maximize / restore on Windows and Linux'],
                     ['macOS green control', 'Native Zoom / restore; also available from Window > Zoom'],
                   ] as [keys, action]}
@@ -1916,7 +1916,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
           <section class="mb-5">
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">PMForge won't start</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">GoPMgr won't start</h3>
             <p class="text-sm text-slate-300">
               Startup failures are written to a dated log and a native error dialog names the log
               path. When the app does run, App Settings &rarr;
@@ -1989,7 +1989,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {:else if active === 'cli'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Command-Line Maintenance</h2>
           <p class="text-sm text-slate-400 mb-5">
-            The PMForge binary doubles as a headless maintenance tool for scripts, cron jobs, and
+            The GoPMgr binary doubles as a headless maintenance tool for scripts, cron jobs, and
             recovery — no GUI session required. Maintenance operations take a
             <span class="font-mono text-xs">.pmforge</span> file path as the final argument.
           </p>
@@ -2044,11 +2044,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Examples</h3>
             <pre class="text-xs font-mono text-slate-300 bg-slate-900 border border-slate-800 rounded p-3 overflow-x-auto mb-3">{`# Integrity-check an encrypted project
-PMF_PW='…' pmforge --check \\
+PMF_PW='…' gopmgr --check \\
   --username alice --password-env PMF_PW \\
   ~/Documents/PMForge/alice/projects/<id>/project.pmforge`}</pre>
             <pre class="text-xs font-mono text-slate-300 bg-slate-900 border border-slate-800 rounded p-3 overflow-x-auto">{`# Headless schedule export to encrypted XLSX
-PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \\
+PMF_PW='…' gopmgr --export schedule.xlsx --format xlsx --encrypt \\
   --username alice --password-env PMF_PW \\
   ~/Documents/PMForge/alice/projects/<id>/project.pmforge`}</pre>
           </section>
@@ -2056,7 +2056,7 @@ PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \\
           <section>
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Logging</h3>
             <p class="text-sm text-slate-300">
-              CLI paths log to stderr in the terminal; the GUI writes dated logs to the PMForge
+              CLI paths log to stderr in the terminal; the GUI writes dated logs to the GoPMgr
               logs directory (App Settings &rarr; Open Logs Folder). See also
               <button onclick={() => nav('backups')} class="text-cyan-400 underline hover:text-cyan-300">Backups &amp; Data Safety</button>.
             </p>
@@ -2064,7 +2064,7 @@ PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \\
 
         {:else if active === 'glossary'}
           <h2 class="text-xl font-bold text-slate-100 mb-1">Glossary</h2>
-          <p class="text-sm text-slate-400 mb-5">Definitions for project management terms, methodology-specific vocabulary, and PMForge-specific concepts.</p>
+          <p class="text-sm text-slate-400 mb-5">Definitions for project management terms, methodology-specific vocabulary, and GoPMgr-specific concepts.</p>
 
           <div class="space-y-3 text-sm">
             {#each [
@@ -2090,40 +2090,40 @@ PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \\
               { term: 'DEK', def: 'Data Encryption Key. The per-user key that encrypts project databases. It is stored only in wrapped (encrypted) form — unlocked by your passphrase or a recovery code, never persisted raw.' },
               { term: 'Deployment Frequency', def: 'DORA metric: how often the team ships to production. Recorded per deployment on the DORA dashboard.' },
               { term: 'DMAIC', def: 'Six Sigma improvement cycle: Define → Measure → Analyze → Improve → Control. For improving existing processes.' },
-              { term: 'DORA Metrics', def: 'Four DevOps metrics: Deployment Frequency, Lead Time for Changes, Change Failure Rate, Mean Time to Restore. Available in PMForge\'s DORA dashboard.' },
+              { term: 'DORA Metrics', def: 'Four DevOps metrics: Deployment Frequency, Lead Time for Changes, Change Failure Rate, Mean Time to Restore. Available in GoPMgr\'s DORA dashboard.' },
               { term: 'Earned Value (EVM)', def: 'Progress accounting that compares work performed against plan and cost. SPI (Schedule Performance Index) and CPI (Cost Performance Index) read 1.0 as on-plan; below 1.0 means behind schedule / over cost. Surfaces on the Dashboard and in combined reports with a linked CPM schedule.' },
               { term: 'Epic', def: 'A large user story spanning multiple sprints, broken down into smaller stories before entering a sprint.' },
               { term: 'ES / EF', def: 'Earliest Start / Earliest Finish. Calculated during the forward pass through a CPM network.' },
               { term: 'Estimate (methodology-specific)', def: 'Scrum: Story Points. Kanban: Time Estimate. CPM: Duration. Waterfall: Duration. Lean: Effort. PRINCE2: Work Package Estimate. Six Sigma: Resource Plan.' },
               { term: 'Fishbone Diagram', def: 'Also Ishikawa Diagram. Root-cause analysis: effect at the "head"; default cause categories (People, Process, Equipment, Materials, Environment, Measurement) are the "bones." Categories are editable.' },
               { term: 'Float (Slack)', def: 'Amount of time a task can be delayed without delaying the project end date (total float) or a successor\'s start (free float).' },
-              { term: 'Gantt Chart', def: 'Schedule bars on a time axis with dependency arrows, critical-path highlighting, and progress bars. Shares data with CPM in PMForge.' },
+              { term: 'Gantt Chart', def: 'Schedule bars on a time axis with dependency arrows, critical-path highlighting, and progress bars. Shares data with CPM in GoPMgr.' },
               { term: 'Issue Log', def: 'Tracks problems that have already occurred, with owner, priority, and resolution plan. Distinct from Risk Register (potential future events).' },
               { term: 'Iteration', def: 'Time-boxed work cycle. Scrum: Sprint. PRINCE2: Management Stage. Lean: Flow Cycle. Scrumban: continuous (no fixed iteration).' },
               { term: 'Kaizen', def: 'Lean concept of continuous, incremental improvement made frequently by everyone involved in the process.' },
               { term: 'Kanban Board', def: 'Visual work management: columns = workflow states; cards = work items. WIP limits cap items per column.' },
               { term: 'Key Result (KR)', def: 'OKRs: measurable, time-bound outcome tracking progress toward an Objective. Graded 0.0–1.0 at period close.' },
-              { term: 'Launchpad', def: 'PMForge\'s project creation wizard. Guides through industry, methodology, and project name selection; seeds starter artifacts.' },
+              { term: 'Launchpad', def: 'GoPMgr\'s project creation wizard. Guides through industry, methodology, and project name selection; seeds starter artifacts.' },
               { term: 'Lead Time', def: 'Total time from request to delivery. Includes queue time + cycle time.' },
               { term: 'LS / LF', def: 'Latest Start / Latest Finish. Calculated during the backward pass through a CPM network.' },
               { term: 'Milestone', def: 'Significant project event with no duration. Scrum: Definition of Done. Kanban: Throughput Target. CPM: Schedule Milestone.' },
               { term: 'Monte Carlo Simulation', def: 'Schedule-risk technique that samples uncertain task durations thousands of times to estimate finish-date probabilities. Run from the CPM editor; results include P50/P80/P90 dates, an S-curve, and a tornado driver ranking.' },
-              { term: 'MSPDI', def: 'Microsoft Project Data Interchange — the .xml schedule format PMForge imports and exports. Resave .mpp/.pod/.mpx files as MS Project XML before importing.' },
+              { term: 'MSPDI', def: 'Microsoft Project Data Interchange — the .xml schedule format GoPMgr imports and exports. Resave .mpp/.pod/.mpx files as MS Project XML before importing.' },
               { term: 'MTTR', def: 'Mean Time to Restore. DORA metric: average hours to recover from a failed deployment.' },
               { term: 'Objective', def: 'OKRs: qualitative, inspiring goal statement answering "where do we want to go?" Supported by measurable Key Results.' },
               { term: 'OKRs', def: 'Objectives and Key Results. Goal-setting framework aligning teams to strategic outcomes through measurable, time-bound Key Results.' },
               { term: 'P50 / P80 / P90', def: 'Confidence points from a Monte Carlo run: the finish day the project beats in 50%, 80%, or 90% of simulations. Commit to P80/P90 dates when the cost of being late is high.' },
-              { term: 'PAdES', def: 'PDF Advanced Electronic Signatures. Standard for embedding cryptographic signatures into PDF files. PMForge generates PAdES-compliant signed exports.' },
+              { term: 'PAdES', def: 'PDF Advanced Electronic Signatures. Standard for embedding cryptographic signatures into PDF files. GoPMgr generates PAdES-compliant signed exports.' },
               { term: 'Pareto Chart', def: 'Bar chart sorted descending with a cumulative-percentage line. Based on the 80/20 principle: ~80% of effects come from ~20% of causes.' },
               { term: 'PERT', def: 'Program Evaluation and Review Technique. Network scheduling with three-point duration estimates per activity.' },
               { term: 'Planning Meeting', def: 'Scrum: Sprint Planning. Kanban: Replenishment Meeting. Lean: Plan-Do-Check-Act review. PRINCE2: Stage Planning Meeting.' },
               { term: 'PMBOK', def: 'Project Management Body of Knowledge. PMI\'s comprehensive PM framework. A knowledge standard, not a delivery methodology.' },
               { term: 'PRINCE2', def: 'Projects In Controlled Environments. Process-based framework with seven principles, themes, and processes. Strong governance and stage-gate controls.' },
-              { term: 'Process Group', def: 'PMBOK grouping of related PM processes: Initiating, Planning, Executing, Monitoring & Controlling, Closing. Corresponds to PMForge\'s document Phase categories.' },
+              { term: 'Process Group', def: 'PMBOK grouping of related PM processes: Initiating, Planning, Executing, Monitoring & Controlling, Closing. Corresponds to GoPMgr\'s document Phase categories.' },
               { term: 'Project Charter', def: 'Foundational document formally authorizing a project. Captures purpose, objectives, scope, sponsor, high-level schedule and budget.' },
               { term: 'Pull System', def: 'Work produced when downstream capacity exists, not pushed by a schedule. Core Lean and Kanban principle.' },
               { term: 'RACI Matrix', def: 'Responsibility assignment: Responsible (does work), Accountable (owns outcome), Consulted (input needed), Informed (kept updated). One A per task.' },
-              { term: 'Recovery Codes', def: 'PMForge one-time codes that allow passphrase reset from the login screen without the current passphrase. Generate from App Settings. Required before enabling database encryption.' },
+              { term: 'Recovery Codes', def: 'GoPMgr one-time codes that allow passphrase reset from the login screen without the current passphrase. Generate from App Settings. Required before enabling database encryption.' },
               { term: 'Resource Leveling', def: 'Delaying contended tasks so resource demand fits capacity. Uses the named resource calendars (weekly capacity + day overrides) from Project Settings.' },
               { term: 'Retrospective', def: 'Process improvement ceremony. Scrum: Sprint Retrospective. Kanban: Retrospective. PRINCE2: End-Stage Assessment lessons.' },
               { term: 'Risk Register', def: 'Catalogue of potential future risks with probability, impact, owner, mitigation strategy, and contingency plan.' },
@@ -2134,13 +2134,13 @@ PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \\
               { term: 'SIPOC', def: 'High-level process map: Suppliers → Inputs → Process → Outputs → Customers. Defines process boundaries in DMAIC Define phase.' },
               { term: 'Solution Matrix', def: 'Six Sigma Improve tool. Evaluates solutions on Impact, Effort, Risk, and Cost. Statuses: Proposed, Pilot, Implemented.' },
               { term: 'Sprint', def: 'Scrum time-boxed iteration (typically 2 weeks). Contains a Sprint Goal, committed backlog items, Review, and Retrospective.' },
-              { term: 'SQLCipher', def: 'Open-source encrypted SQLite extension used by PMForge for database encryption at rest. Applies AES-256 to the entire project database file.' },
+              { term: 'SQLCipher', def: 'Open-source encrypted SQLite extension used by GoPMgr for database encryption at rest. Applies AES-256 to the entire project database file.' },
               { term: 'Stakeholder', def: 'Individual or group with an interest in or influence over the project. Mapped by power/interest in the Stakeholder Analysis Matrix.' },
               { term: 'Story (Scrum)', def: 'User-facing work item: "As a [role], I want [feature] so that [benefit]." Equivalent to a Task in most other methodologies.' },
               { term: 'Story Points', def: 'Relative effort estimate in Scrum. Team-defined scale (typically Fibonacci). Not correlated to hours.' },
               { term: 'SWOT Matrix', def: '2x2 strategic analysis: Strengths, Weaknesses (internal) vs. Opportunities, Threats (external).' },
               { term: 'Throughput', def: 'Work items completed per unit time. Primary Kanban flow metric alongside cycle time.' },
-              { term: 'Timeline', def: 'PMForge view showing the project\'s chronological event stream as an SVG strip: sprint bands, milestones, and holiday markers.' },
+              { term: 'Timeline', def: 'GoPMgr view showing the project\'s chronological event stream as an SVG strip: sprint bands, milestones, and holiday markers.' },
               { term: 'Tornado Ranking', def: 'Monte Carlo output ranking which tasks drive schedule risk, combining how often each lands on the critical path with its P90−P50 duration spread. Fix the top bars first.' },
               { term: 'User Story', def: 'See Story (Scrum).' },
               { term: 'Velocity', def: 'Average story points completed per sprint. Used for capacity planning and release forecasting.' },
@@ -2157,9 +2157,9 @@ PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \\
 
         <!-- ── Installing & Running ───────────────────────────────── -->
         {:else if active === 'install'}
-          <h2 class="text-xl font-bold text-slate-100 mb-2">Installing &amp; Running PMForge</h2>
+          <h2 class="text-xl font-bold text-slate-100 mb-2">Installing &amp; Running GoPMgr</h2>
           <p class="text-sm text-slate-400 mb-5">
-            PMForge ships as a native installer for each platform. Download the
+            GoPMgr ships as a native installer for each platform. Download the
             file for your operating system from the project's Releases page and
             follow the steps below. The same guide lives in
             <code class="text-cyan-300">docs/INSTALL.md</code>.
@@ -2168,10 +2168,10 @@ PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \\
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Which file to download</h3>
             <ul class="text-sm text-slate-300 space-y-1 list-disc pl-5">
-              <li><strong>Windows</strong> — <code>PMForge-…-amd64-setup.exe</code> (installer)</li>
-              <li><strong>macOS (Apple Silicon)</strong> — <code>PMForge-…-arm64.dmg</code></li>
-              <li><strong>Debian / Ubuntu</strong> — <code>pmforge-…-amd64.deb</code></li>
-              <li><strong>Fedora / RHEL / openSUSE</strong> — <code>pmforge-…-x86_64.rpm</code></li>
+              <li><strong>Windows</strong> — <code>GoPMgr-…-amd64-setup.exe</code> (installer)</li>
+              <li><strong>macOS (Apple Silicon)</strong> — <code>GoPMgr-…-arm64.dmg</code></li>
+              <li><strong>Debian / Ubuntu</strong> — <code>gopmgr-…-amd64.deb</code></li>
+              <li><strong>Fedora / RHEL / openSUSE</strong> — <code>gopmgr-…-x86_64.rpm</code></li>
             </ul>
           </section>
 
@@ -2179,9 +2179,9 @@ PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \\
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Install steps</h3>
             <ul class="text-sm text-slate-300 space-y-2 list-disc pl-5">
               <li><strong>Windows:</strong> double-click the <code>.exe</code> and follow the installer. Current builds are unsigned, so SmartScreen may warn — choose <em>More info → Run anyway</em>.</li>
-              <li><strong>macOS:</strong> open the <code>.dmg</code> and drag <strong>PMForge</strong> to Applications. Unsigned builds trigger Gatekeeper — right-click the app then <em>Open</em> (or System Settings → Privacy &amp; Security → <em>Open Anyway</em>).</li>
-              <li><strong>.deb:</strong> <code>sudo apt install ./pmforge-*.deb</code></li>
-              <li><strong>.rpm:</strong> <code>sudo dnf install ./pmforge-*.rpm</code></li>
+              <li><strong>macOS:</strong> open the <code>.dmg</code> and drag <strong>GoPMgr</strong> to Applications. Unsigned builds trigger Gatekeeper — right-click the app then <em>Open</em> (or System Settings → Privacy &amp; Security → <em>Open Anyway</em>).</li>
+              <li><strong>.deb:</strong> <code>sudo apt install ./gopmgr-*.deb</code></li>
+              <li><strong>.rpm:</strong> <code>sudo dnf install ./gopmgr-*.rpm</code></li>
             </ul>
           </section>
 
@@ -2193,7 +2193,7 @@ PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \\
             </p>
             <ul class="text-sm text-slate-300 space-y-1 list-disc pl-5">
               <li>In <code>frontend/</code>, run <code>npm ci</code> — use <code>npm ci</code>, <strong>not</strong> <code>npm install</code>.</li>
-              <li>On Ubuntu 24.04+ Linux hosts, install <code>libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config</code>. PMForge builds with the Wails <code>webkit2_41</code> tag; GTK4/WebKitGTK 6.0 support requires a future Wails migration.</li>
+              <li>On Ubuntu 24.04+ Linux hosts, install <code>libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config</code>. GoPMgr builds with the Wails <code>webkit2_41</code> tag; GTK4/WebKitGTK 6.0 support requires a future Wails migration.</li>
               <li><code>make build</code> — produce the desktop binary/app with DuckDB analytics and the current Linux WebKit tag.</li>
               <li><code>make dev</code> — hot-reload development mode.</li>
             </ul>
@@ -2206,7 +2206,7 @@ PMF_PW='…' pmforge --export schedule.xlsx --format xlsx --encrypt \\
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Your data stays local</h3>
             <p class="text-sm text-slate-300">
-              However you install PMForge, every project lives in an encrypted
+              However you install GoPMgr, every project lives in an encrypted
               file on your own machine — no account, cloud, or network is
               required. See <em>Database Encryption</em> for details.
             </p>

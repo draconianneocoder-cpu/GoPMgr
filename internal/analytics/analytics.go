@@ -1,13 +1,13 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package analytics is PMForge's optional, in-memory analytical engine.
+// Package analytics is GoPMgr's optional, in-memory analytical engine.
 //
 // Design and decision record:
 //   - docs/design/duckdb-analytics-engine.md
 //   - docs/design/ADR-002-duckdb-vs-sqlcipher-evaluation.md
 //
-// SQLCipher remains PMForge's system of record. This package never opens
+// SQLCipher remains GoPMgr's system of record. This package never opens
 // the encrypted .pmforge file: callers read rows from SQLCipher (already
 // decrypted in process) and hand them to the Engine, which aggregates
 // them in memory. The real implementation is DuckDB-backed and compiled
@@ -21,7 +21,7 @@ import (
 	"errors"
 )
 
-// ErrAnalyticsUnavailable is returned by every Engine method when PMForge
+// ErrAnalyticsUnavailable is returned by every Engine method when GoPMgr
 // was built without the DuckDB analytics engine.
 // Callers should treat it as "feature not installed", not as a failure.
 var ErrAnalyticsUnavailable = errors.New("analytics: engine not built in (rebuild with -tags duckdb)")
@@ -79,7 +79,7 @@ type Dataset struct {
 	Rows    [][]any  `json:"rows"`
 }
 
-// Engine is PMForge's optional analytical backend. Implementations are
+// Engine is GoPMgr's optional analytical backend. Implementations are
 // in-memory and ephemeral; they receive data the app already decrypted
 // and must never open the encrypted .pmforge file. Implementations must
 // be safe to Close once and tolerate Close being called on a stub.

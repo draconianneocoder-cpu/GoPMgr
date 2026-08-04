@@ -1,11 +1,11 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
 # Architecture
 
-PMForge is a local-first project controls desktop application for
+GoPMgr is a local-first project controls desktop application for
 technical, engineering, IT, construction, and administrative teams. The
 application is intentionally offline-capable: project data, generated
 documents, certificates, exports, and user account metadata live on the
@@ -16,7 +16,7 @@ local machine.
 - Backend: Go, exposed to the desktop UI through Wails v2.
 - Frontend: Svelte 5 and TypeScript, bundled by Vite.
 - Persistence: SQLite-compatible databases, with SQLCipher support for
-  encrypted per-project `.pmforge` files.
+  encrypted per-project `.gopmgr` files.
 - Documents: Go PDF/DOCX/ODT/XLSX/iCal renderers. PDF/A-3 and PAdES
   support are implemented in Go.
 - Build: `make build` runs `wails build`, which builds the frontend into
@@ -26,9 +26,9 @@ local machine.
 
 ## Data Layout
 
-On first run PMForge creates a local root in the platform data directory
-(`~/Library/Application Support/PMForge` on macOS, `~/Documents/PMForge`
-on Linux and Windows; `$XDG_DATA_HOME/PMForge` overrides both):
+On first run GoPMgr creates a local root in the platform data directory
+(`~/Library/Application Support/GoPMgr` on macOS, `~/Documents/GoPMgr`
+on Linux and Windows; `$XDG_DATA_HOME/GoPMgr` overrides both):
 
 ```text
 <data-root>/
@@ -39,11 +39,11 @@ on Linux and Windows; `$XDG_DATA_HOME/PMForge` overrides both):
     exports/
 ```
 
-On macOS an existing `~/Documents/PMForge` install is copied into the new
+On macOS an existing `~/Documents/GoPMgr` install is copied into the new
 Application Support root on first launch after upgrade (`users.MigrateLegacyRoot`).
 
 `system.db` stores local users, Argon2id password hashes, recovery-code
-metadata, and wrapped data-encryption keys. Per-project `.pmforge`
+metadata, and wrapped data-encryption keys. Per-project `.gopmgr`
 databases store the actual project records, charts, documents,
 stakeholders, agile data, timeline data, and audit material.
 

@@ -1,10 +1,10 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Build a local Apple Silicon .pkg installer for PMForge by wrapping the
+# Build a local Apple Silicon .pkg installer for GoPMgr by wrapping the
 # .app produced by `wails build` (via `make build`). The .app's bundle
-# metadata (CFBundleIdentifier dev.pmforge.PMForge, name, version) comes
+# metadata (CFBundleIdentifier dev.gopmgr.GoPMgr, name, version) comes
 # from build/darwin/Info.plist, so this script no longer hand-assembles a
 # bundle - it ad-hoc signs the Wails output and packages it for
 # /Applications. The package is local-test only: it is not signed with a
@@ -35,7 +35,7 @@ if ! command -v wails >/dev/null 2>&1; then
 	exit 2
 fi
 
-if ! PMFORGE_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh >/dev/null; then
+if ! GOPMGR_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh >/dev/null; then
 	echo "package-macos-installer: the installed Wails CLI does not match go.mod." >&2
 	exit 2
 fi
@@ -69,7 +69,7 @@ mkdir -p "$pkg_dir"
 
 # Stage a clean copy so we strip extended attributes / resource forks
 # without mutating the build/bin output.
-staging="$(mktemp -d "${TMPDIR:-/tmp}/pmforge-macos.XXXXXX")"
+staging="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-macos.XXXXXX")"
 trap 'rm -rf "$staging"' EXIT
 staged_app="$staging/${app_name}.app"
 cp -R "$app_dir" "$staged_app"

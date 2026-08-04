@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package users
@@ -16,7 +16,7 @@ import (
 )
 
 func TestOpenCreatesPrivateRootDirectory(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "PMForge")
+	root := filepath.Join(t.TempDir(), "GoPMgr")
 	store, err := Open(root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -37,7 +37,7 @@ func TestOpenCreatesPrivateRootDirectory(t *testing.T) {
 }
 
 func TestOpenTightensExistingRootDirectory(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "PMForge")
+	root := filepath.Join(t.TempDir(), "GoPMgr")
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatalf("mkdir root: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestOpenTightensExistingRootDirectory(t *testing.T) {
 }
 
 func TestOpenCreatesPrivateSystemDatabaseFile(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "PMForge")
+	root := filepath.Join(t.TempDir(), "GoPMgr")
 	store, err := Open(root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -83,7 +83,7 @@ func TestOpenCreatesPrivateSystemDatabaseFile(t *testing.T) {
 }
 
 func TestOpenTightensExistingSystemDatabaseFile(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "PMForge")
+	root := filepath.Join(t.TempDir(), "GoPMgr")
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		t.Fatalf("mkdir root: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestOpenTightensExistingSystemDatabaseFile(t *testing.T) {
 }
 
 func TestCreateAccountTightensExistingUserDirectories(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "PMForge")
+	root := filepath.Join(t.TempDir(), "GoPMgr")
 	for _, sub := range []string{
 		"alice",
 		filepath.Join("alice", "projects"),
@@ -149,7 +149,7 @@ func TestCreateAccountTightensExistingUserDirectories(t *testing.T) {
 }
 
 func TestAuthenticateReturnsLastLoginUpdateError(t *testing.T) {
-	store, err := Open(filepath.Join(t.TempDir(), "PMForge"))
+	store, err := Open(filepath.Join(t.TempDir(), "GoPMgr"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -178,7 +178,7 @@ func TestAuthenticateReturnsLastLoginUpdateError(t *testing.T) {
 }
 
 func TestAuthenticateReturnsPasswordRehashUpdateError(t *testing.T) {
-	store, err := Open(filepath.Join(t.TempDir(), "PMForge"))
+	store, err := Open(filepath.Join(t.TempDir(), "GoPMgr"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestAuthenticateReturnsPasswordRehashUpdateError(t *testing.T) {
 // the same directory on macOS, leaking project names across accounts.
 // The fix uses lower(username) = lower(?) in the duplicate check.
 func TestCreateAccount_RejectsCaseVariantUsername(t *testing.T) {
-	store, err := Open(filepath.Join(t.TempDir(), "PMForge"))
+	store, err := Open(filepath.Join(t.TempDir(), "GoPMgr"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -261,7 +261,7 @@ func weakPasswordHash(password string) string {
 
 func openTestStore(t *testing.T) *Store {
 	t.Helper()
-	store, err := Open(filepath.Join(t.TempDir(), "PMForge"))
+	store, err := Open(filepath.Join(t.TempDir(), "GoPMgr"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package cli parses GNU-style command-line flags for PMForge.
+// Package cli parses GNU-style command-line flags for GoPMgr.
 //
 // Every flag corresponds to a workflow described in the V1 blueprint.
 // New flags MUST be added to Config so headless modes remain scriptable.
@@ -13,7 +13,7 @@ import (
 	"os"
 )
 
-// Version is the canonical PMForge version string: clean semver
+// Version is the canonical GoPMgr version string: clean semver
 // (MAJOR.MINOR.PATCH[-prerelease]) so it matches the macOS bundle version,
 // the nfpm package version, and the release git tag exactly. The marketing
 // codename for this line ("V1 Expansion") belongs in the release notes, not
@@ -101,7 +101,7 @@ func ParseFlags() *Config {
 // PrintVersion writes the canonical GPL-style version banner to stdout.
 func PrintVersion() {
 	_, _ = fmt.Fprintf(os.Stdout,
-		"PMForge %s\nCopyright (C) 2026 James L. Burns and The PMForge Contributors\nLicense GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law.\n",
+		"GoPMgr %s\nCopyright (C) 2026 James L. Burns and The GoPMgr Contributors\nLicense GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law.\n",
 		Version,
 	)
 }

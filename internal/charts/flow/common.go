@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package flow implements PMForge's Flow-family chart engine.
+// Package flow implements GoPMgr's Flow-family chart engine.
 //
 // The family currently covers two kinds:
 //

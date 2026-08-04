@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package admin implements the Administrative Pack workflows: document
@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"pmforge/internal/db"
-	"pmforge/internal/debug"
+	"gopmgr/internal/db"
+	"gopmgr/internal/debug"
 )
 
 // Service is the entry point for admin-pack workflows. Construct one

@@ -1,7 +1,7 @@
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# PMForge build automation. All targets are .PHONY because they
+# GoPMgr build automation. All targets are .PHONY because they
 # represent actions, not files.
 
 CC      := gcc
@@ -46,7 +46,7 @@ build: ## Build a production app via Wails with embedded DuckDB analytics.
 	# / UTType), builds the frontend, and embeds it; the wrapper then strips
 	# extended-attribute detritus and ad-hoc signs the macOS .app (Wails' own
 	# self-sign fails on iCloud-synced trees - see the script header).
-	# Output: build/bin/<ProductName>.app on macOS, build/bin/pmforge elsewhere.
+	# Output: build/bin/<ProductName>.app on macOS, build/bin/gopmgr elsewhere.
 	@bash scripts/wails-build.sh -tags "$(WAILS_BUILD_TAGS)" $(WAILS_BUILD_FLAGS)
 
 dev: ## Run Wails in development mode (hot-reload Svelte + Go).
@@ -63,7 +63,7 @@ required-font-assets: ## Verify the tracked Source Sans 3 PDF/A baseline and its
 	@bash scripts/check-required-font-assets_test.sh
 	@bash scripts/check-required-font-assets.sh
 
-reset-clean-test: ## Move PMForge data to a recoverable backup for first-launch testing (quit PMForge first).
+reset-clean-test: ## Move PMForge data to a recoverable backup for first-launch testing (quit GoPMgr first).
 	@bash scripts/reset-clean-test.sh
 
 clean-test-reset-tests: ## Verify clean-test reset/restore safety in isolated fixtures.
@@ -72,7 +72,7 @@ clean-test-reset-tests: ## Verify clean-test reset/restore safety in isolated fi
 icc: ## Download the sRGB ICC profile for PDF/A-3 OutputIntent embedding.
 	@bash scripts/fetch-icc.sh
 
-check-pdfa: ## Validate generated PDFs for PDF/A-3 conformance using veraPDF (hard gate; PMFORGE_PDFA_STRICT=0 to skip locally).
+check-pdfa: ## Validate generated PDFs for PDF/A-3 conformance using veraPDF (hard gate; GOPMGR_PDFA_STRICT=0 to skip locally).
 	@bash scripts/validate-pdfa.sh
 
 check-pades: ## Generate and locally verify an embedded PAdES signed PDF sample.
@@ -81,12 +81,12 @@ check-pades: ## Generate and locally verify an embedded PAdES signed PDF sample.
 check-pades-external: ## Generate a fresh PAdES sample and run available external validators.
 	@bash scripts/validate-pades-external.sh
 
-check-pades-trusted: ## Classify trusted-source PAdES evidence; set PMFORGE_PADES_TRUSTED_REQUIRED=1 to require verified CLI trust.
+check-pades-trusted: ## Classify trusted-source PAdES evidence; set GOPMGR_PADES_TRUSTED_REQUIRED=1 to require verified CLI trust.
 	@bash scripts/validate-pades-trusted-source.sh
 
 pades-harness-tests: ## Run deterministic local, external, locking, and trusted-source PAdES shell regressions.
 	# Keep the real local generator alongside the fake-validator matrices: the
-	# matrices isolate error branches, while generation exercises PMForge's
+	# matrices isolate error branches, while generation exercises GoPMgr's
 	# current CMS, RFC 3161, and PDF incremental-update implementation.
 	@bash scripts/validate-pades.sh
 	@bash scripts/validate-pades-external_test.sh
@@ -114,7 +114,7 @@ frontend-build-budget: ## Build frontend and enforce route-split bundle budgets.
 frontend-smoke: ## Load + render App.svelte via Vite SSR to catch runtime mount crashes.
 	@bash scripts/frontend-smoke-check.sh
 
-release-scope: ## Verify release gates target PMForge-owned source only.
+release-scope: ## Verify release gates target GoPMgr-owned source only.
 	@bash scripts/release-gate-scope-check.sh
 
 config-check: ## Parse tracked YAML/TOML and enforce each tool's supported format.
@@ -129,7 +129,7 @@ installer-tool-pins: ## Reject mutable or mismatched native installer tool selec
 	@bash scripts/check-installer-tool-pins_test.sh
 	@bash scripts/check-installer-tool-pins.sh
 
-windows-installer-scaffold: ## Validate PMForge-owned NSIS templates and Windows release wiring.
+windows-installer-scaffold: ## Validate GoPMgr-owned NSIS templates and Windows release wiring.
 	@bash scripts/check-windows-installer-scaffold_test.sh
 	@bash scripts/check-windows-installer-scaffold.sh
 	@bash scripts/validate-windows-nsis-template.sh
@@ -141,7 +141,7 @@ wails-version: ## Verify Wails runtime, CLI, and current documentation pins matc
 	@bash scripts/check-wails-version.sh
 
 wails-cli-version: ## Verify the installed Wails CLI also matches the go.mod pin.
-	@PMFORGE_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh
+	@GOPMGR_REQUIRE_WAILS_CLI=1 bash scripts/check-wails-version.sh
 
 wails-version-test: ## Run isolated regression cases for the Wails version gate.
 	@bash scripts/check-wails-version_test.sh

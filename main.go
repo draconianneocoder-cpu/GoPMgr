@@ -1,11 +1,15 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Command pmforge is the entry point for the PMForge desktop
+// Command gopmgr is the entry point for the GoPMgr desktop
 // application. V2 expands V1 in three ways:
 //
 //   - Local multi-user accounts (Argon2id) backed by a system DB at
-//     ~/Documents/PMForge/system.db
+//     ~/Library/Application Support/PMForge/system.db on macOS
+//     (~/Documents/PMForge/system.db on Linux/Windows); see
+//     users.DefaultRootDir. The data root keeps the pre-rename
+//     "PMForge" directory name for compatibility with existing
+//     installs — see the note on users.DefaultRootDir.
 //   - Per-user folders for project files and exports
 //   - Unified charts/documents data model (19 + 25 kinds)
 //
@@ -34,17 +38,17 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"pmforge/internal/admin"
-	"pmforge/internal/applog"
-	"pmforge/internal/calendar"
-	"pmforge/internal/cli"
-	"pmforge/internal/db"
-	"pmforge/internal/export"
-	"pmforge/internal/kernel"
-	"pmforge/internal/sigma/service"
-	"pmforge/internal/templates"
-	"pmforge/internal/update"
-	"pmforge/internal/users"
+	"gopmgr/internal/admin"
+	"gopmgr/internal/applog"
+	"gopmgr/internal/calendar"
+	"gopmgr/internal/cli"
+	"gopmgr/internal/db"
+	"gopmgr/internal/export"
+	"gopmgr/internal/kernel"
+	"gopmgr/internal/sigma/service"
+	"gopmgr/internal/templates"
+	"gopmgr/internal/update"
+	"gopmgr/internal/users"
 )
 
 //go:embed all:frontend/dist
@@ -79,7 +83,7 @@ type App struct {
 	sigmaSvc  *service.ProjectService // initialized when a project is open
 
 	// Diagnostic logging — set in main() after applog.Init; never reassigned.
-	logPath string // dated log file path, e.g. .../logs/pmforge-2026-06-20.log
+	logPath string // dated log file path, e.g. .../logs/gopmgr-2026-06-20.log
 	logDir  string // parent of logPath, e.g. .../logs
 
 	unsavedChanges bool
@@ -149,7 +153,7 @@ func (a *App) shutdown(_ context.Context) {
 // =========================================================
 
 func (a *App) Greet() string {
-	return "PMForge " + cli.Version + " ready."
+	return "GoPMgr " + cli.Version + " ready."
 }
 
 // SetUnsavedChanges mirrors the frontend editor guard into the native window
@@ -238,15 +242,15 @@ func buildAppMenu(app *App) *menu.Menu {
 
 	helpMenu := m.AddSubmenu("Help")
 	helpMenu.AddText("User Guide", nil, emit("menu:help"))
-	helpMenu.AddText("About PMForge", nil, func(_ *menu.CallbackData) {
+	helpMenu.AddText("About GoPMgr", nil, func(_ *menu.CallbackData) {
 		if app.ctx == nil {
 			return
 		}
 		_, _ = wailsruntime.MessageDialog(app.ctx, wailsruntime.MessageDialogOptions{
 			Type:  wailsruntime.InfoDialog,
-			Title: "About PMForge",
+			Title: "About GoPMgr",
 			Message: fmt.Sprintf(
-				"PMForge %s\n\nLocal-first project controls.\nCopyright (C) 2026 James L. Burns and The PMForge Contributors.\nLicensed under GPL-3.0-or-later.",
+				"GoPMgr %s\n\nLocal-first project controls.\nCopyright (C) 2026 James L. Burns and The GoPMgr Contributors.\nLicensed under GPL-3.0-or-later.",
 				cli.Version,
 			),
 		})
@@ -260,7 +264,7 @@ func buildAppMenu(app *App) *menu.Menu {
 // a nil block as not zoomable and disables Cocoa's green NSWindowZoomButton.
 func buildAppOptions(app *App) *options.App {
 	return &options.App{
-		Title:     "PMForge",
+		Title:     "GoPMgr",
 		Width:     1280,
 		Height:    800,
 		MinWidth:  800,
@@ -307,7 +311,7 @@ func main() {
 	// Wails binary launched from Finder/Explorer/.desktop has its stderr
 	// routed to a null sink, so a bare log.Fatalf here would make the app
 	// die with no window and no trace. applog tees the log to stderr AND a
-	// dated file under the PMForge data tree, and applog.Fatal additionally
+	// dated file under the GoPMgr data tree, and applog.Fatal additionally
 	// shows a native error dialog so a startup failure is never silent.
 	root, rootErr := users.DefaultRootDir()
 	if rootErr != nil {
@@ -316,23 +320,23 @@ func main() {
 	}
 	logPath, closeLog := applog.Init(root)
 	defer closeLog()
-	log.Printf("PMForge %s starting (pid=%d, %s/%s, %s)",
+	log.Printf("GoPMgr %s starting (pid=%d, %s/%s, %s)",
 		cli.Version, os.Getpid(), runtime.GOOS, runtime.GOARCH, runtime.Version())
 
 	app, err := NewApp()
 	if err != nil {
-		applog.Fatal("PMForge could not start",
-			"PMForge failed to initialise its local data store.", logPath, err)
+		applog.Fatal("GoPMgr could not start",
+			"GoPMgr failed to initialise its local data store.", logPath, err)
 	}
 	app.logPath = logPath
 	app.logDir = applog.LogDir(root)
 
 	err = wails.Run(buildAppOptions(app))
 	if err != nil {
-		applog.Fatal("PMForge could not start",
-			"PMForge failed to start its application window.", logPath, err)
+		applog.Fatal("GoPMgr could not start",
+			"GoPMgr failed to start its application window.", logPath, err)
 	}
-	log.Print("PMForge exited cleanly")
+	log.Print("GoPMgr exited cleanly")
 }
 
 func headlessProjectMode(cfg *cli.Config) bool {
@@ -391,7 +395,7 @@ func inferHeadlessRootDir(projectPath, username string) (string, error) {
 	}
 	userDir := filepath.Dir(projectsDir)
 	if filepath.Base(projectsDir) != "projects" || filepath.Base(userDir) != username {
-		return "", fmt.Errorf("encrypted headless project must be under <pmforge-root>/%s/projects", username)
+		return "", fmt.Errorf("encrypted headless project must be under <gopmgr-root>/%s/projects", username)
 	}
 	return filepath.Dir(userDir), nil
 }

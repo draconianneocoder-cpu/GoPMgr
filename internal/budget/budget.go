@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package budget is the cost-rollup engine. It folds two sources
@@ -15,9 +15,9 @@
 package budget
 
 import (
-	"pmforge/internal/agile"
-	"pmforge/internal/db"
-	"pmforge/internal/money"
+	"gopmgr/internal/agile"
+	"gopmgr/internal/db"
+	"gopmgr/internal/money"
 )
 
 // Summary is the panel-ready cost rollup.

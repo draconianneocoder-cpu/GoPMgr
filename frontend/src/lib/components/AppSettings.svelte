@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
@@ -374,7 +374,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="p-4 bg-amber-950/30 border border-amber-700/50 rounded-lg space-y-3 text-xs">
             <h2 class="text-xs font-bold uppercase tracking-widest text-amber-400">No administrator configured</h2>
             <p class="text-amber-300/80">
-              This machine has no PMForge administrator. An administrator can create and delete accounts
+              This machine has no GoPMgr administrator. An administrator can create and delete accounts
               and manage roles. Claim this role to take responsibility for managing users on this machine.
             </p>
             <button

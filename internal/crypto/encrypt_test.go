@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package crypto
@@ -38,7 +38,7 @@ func TestEncryptDecryptRoundtrip(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping Argon2id-heavy crypto roundtrip in short mode")
 	}
-	plaintext := []byte("PMForge confidential project data — encrypt me.")
+	plaintext := []byte("GoPMgr confidential project data — encrypt me.")
 	password := "correct-horse-battery-staple"
 
 	blob, err := EncryptBuffer(plaintext, password)

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package crypto
@@ -33,7 +33,7 @@ func TestAddSignatureTimestampEmbedsUnsignedTokenWithoutChangingSignature(t *tes
 	t.Parallel()
 
 	content := []byte("%PDF-1.7\n% timestamped detached signature\n")
-	signer := newTestCMSSigner(t, "PMForge PAdES-T Signer")
+	signer := newTestCMSSigner(t, "GoPMgr PAdES-T Signer")
 	baselineCMS, err := signer.SignPDFCMS(content)
 	if err != nil {
 		t.Fatalf("SignPDFCMS() error = %v", err)
@@ -100,7 +100,7 @@ func TestAddSignatureTimestampAcceptsMultipleIndependentTokens(t *testing.T) {
 	t.Parallel()
 
 	content := []byte("%PDF-1.7\n% multiple timestamp authorities\n")
-	baselineCMS, err := newTestCMSSigner(t, "PMForge Multi-TSA Signer").SignPDFCMS(content)
+	baselineCMS, err := newTestCMSSigner(t, "GoPMgr Multi-TSA Signer").SignPDFCMS(content)
 	if err != nil {
 		t.Fatalf("SignPDFCMS() error = %v", err)
 	}
@@ -138,7 +138,7 @@ func TestAddSignatureTimestampRejectsInvalidCMSOrToken(t *testing.T) {
 	t.Parallel()
 
 	content := []byte("%PDF-1.7\n% timestamp validation failures\n")
-	baselineCMS, err := newTestCMSSigner(t, "PMForge Timestamp Validation Signer").SignPDFCMS(content)
+	baselineCMS, err := newTestCMSSigner(t, "GoPMgr Timestamp Validation Signer").SignPDFCMS(content)
 	if err != nil {
 		t.Fatalf("SignPDFCMS() error = %v", err)
 	}
@@ -199,7 +199,7 @@ func TestAddSignatureTimestampRejectsInvalidCMSOrToken(t *testing.T) {
 func TestSignatureTimestampImprintRejectsMultipleSigners(t *testing.T) {
 	t.Parallel()
 
-	baselineCMS, err := newTestCMSSigner(t, "PMForge Imprint Signer").SignPDFCMS([]byte("content"))
+	baselineCMS, err := newTestCMSSigner(t, "GoPMgr Imprint Signer").SignPDFCMS([]byte("content"))
 	if err != nil {
 		t.Fatalf("SignPDFCMS() error = %v", err)
 	}
@@ -223,7 +223,7 @@ func newTestSignatureTimestampToken(t *testing.T, imprint []byte, generatedAt ti
 	}
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(generatedAt.UnixNano()),
-		Subject:      pkix.Name{CommonName: "PMForge Test Timestamp Authority"},
+		Subject:      pkix.Name{CommonName: "GoPMgr Test Timestamp Authority"},
 		NotBefore:    generatedAt.Add(-time.Hour),
 		NotAfter:     generatedAt.Add(time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,

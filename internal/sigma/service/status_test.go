@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package service
@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"pmforge/internal/db"
-	"pmforge/internal/sigma/domain"
+	"gopmgr/internal/db"
+	"gopmgr/internal/sigma/domain"
 )
 
 // newStatusTestSvc returns a ProjectService backed by a real temp database

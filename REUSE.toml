@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: CC0-1.0
 #
 # REUSE 3.x annotations for files that cannot carry an inline SPDX header.
@@ -8,49 +8,49 @@ version = 1
 [[annotations]]
 path = ".claude/settings.local.json"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
 path = ".claude/launch.json"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
 path = ".tmp/**"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
-path = "PMForge * Image *.png"
+path = "GoPMgr * Image *.png"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
 path = ["build/bin/**", "build/packages/**"]
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
 path = "build/appicon.png"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
 path = "build/darwin/Info.plist"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
 path = "build/darwin/Info.dev.plist"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
@@ -58,32 +58,32 @@ path = "build/windows/info.json"
 precedence = "aggregate"
 SPDX-FileCopyrightText = [
     "2018-Present Lea Anthony and the Wails contributors",
-    "2026 James L. Burns and The PMForge Contributors",
+    "2026 James L. Burns and The GoPMgr Contributors",
 ]
 SPDX-License-Identifier = "MIT"
 
 [[annotations]]
 path = "frontend/package-lock.json"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
 path = "frontend/package.json"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
 path = "frontend/tsconfig.json"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
 path = "go.sum"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
@@ -95,25 +95,25 @@ SPDX-License-Identifier = "CC0-1.0"
 [[annotations]]
 path = "internal/templates/launchpad_seeds.json"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
 path = "code-map/*.json"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
 path = "wails.json"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
-path = ["debian/changelog", "debian/control", "debian/copyright", "debian/pmforge.1", "debian/pmforge.manpages", "debian/source/format", "debian/source/options"]
+path = ["debian/changelog", "debian/control", "debian/copyright", "debian/gopmgr.1", "debian/gopmgr.manpages", "debian/source/format", "debian/source/options"]
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 James L. Burns and The PMForge Contributors"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]

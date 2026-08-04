@@ -1,11 +1,11 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
 # Security
 
-PMForge is a local-first desktop application. Its primary security
+GoPMgr is a local-first desktop application. Its primary security
 boundary is the local machine and OS account. The app must protect
 project data against casual local disclosure, accidental release drift,
 and tampering of exported signed documents while remaining recoverable
@@ -16,9 +16,9 @@ for a legitimate local user.
 - User credentials are stored in `system.db` as Argon2id PHC strings.
 - Login errors should remain generic so unknown users and wrong
   passwords are not distinguishable.
-- Per-user directories under the PMForge data root
-  (`~/Library/Application Support/PMForge/` on macOS,
-  `~/Documents/PMForge/` elsewhere) `/<username>/` are created with
+- Per-user directories under the GoPMgr data root
+  (`~/Library/Application Support/GoPMgr/` on macOS,
+  `~/Documents/GoPMgr/` elsewhere) `/<username>/` are created with
   restrictive POSIX permissions where supported.
 - `system.db` file permissions are tightened to owner-only access where
   supported.
@@ -34,7 +34,7 @@ Project databases are SQLCipher-capable. The intended key hierarchy is:
 
 1. Generate one per-user 32-byte data-encryption key.
 2. Use that DEK as the SQLCipher raw key for the user's encrypted
-   `.pmforge` databases.
+   `.gopmgr` databases.
 3. Store the DEK only in wrapped form.
 4. Wrap the DEK with the login password and with each valid recovery
    code.
@@ -123,7 +123,7 @@ PAdES, and encryption status from drifting away from supported behavior.
 ### Known upstream advisories
 
 - [GO-2026-5932](https://pkg.go.dev/vuln/GO-2026-5932)
-  (`golang.org/x/crypto`): affects a code path PMForge does not call
+  (`golang.org/x/crypto`): affects a code path GoPMgr does not call
   (`govulncheck` reports 0 reachable symbols). No fixed upstream release
   exists yet; the dependency is at the latest version and will be bumped
   when a fix ships.

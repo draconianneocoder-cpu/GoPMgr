@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package pdfmeta
@@ -21,7 +21,7 @@ import (
 
 	"github.com/digitorus/pkcs7"
 
-	pmcrypto "pmforge/internal/crypto"
+	pmcrypto "gopmgr/internal/crypto"
 )
 
 // minimalPDF returns a syntactically-valid 3-object PDF byte stream
@@ -230,7 +230,7 @@ func TestInjectXMPStream_EndToEnd(t *testing.T) {
 	pdf := minimalPDF()
 	xmp := BuildXMPPacket(XMPSpec{
 		Title:    "Test Doc",
-		Author:   "PMForge Tests",
+		Author:   "GoPMgr Tests",
 		Subject:  "unit test fixture",
 		Keywords: []string{"alpha", "beta"},
 	})
@@ -313,7 +313,7 @@ func TestInjectXMPStream_RejectsEmpty(t *testing.T) {
 
 func TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog(t *testing.T) {
 	pdf := minimalPDFWithoutBinaryComment()
-	out, err := MakePDFA3(pdf, XMPSpec{Title: "PDF/A sample", Author: "PMForge"}, []byte("fake-icc-profile"))
+	out, err := MakePDFA3(pdf, XMPSpec{Title: "PDF/A sample", Author: "GoPMgr"}, []byte("fake-icc-profile"))
 	if err != nil {
 		t.Fatalf("MakePDFA3: %v", err)
 	}
@@ -470,7 +470,7 @@ func TestInjectPAdESSignature_EmbeddedCMSVerifiesDeclaredByteRange(t *testing.T)
 		"<< /Type /Catalog /Pages 2 0 R >>",
 		testPDFObject{id: 4, body: "<< /Type /Example /Contents <00112233> /ByteRange [1 2 3 4] >>"},
 	)
-	signer := newTestPAdESSigner(t, "PMForge PAdES Integration Signer")
+	signer := newTestPAdESSigner(t, "GoPMgr PAdES Integration Signer")
 
 	out, err := InjectPAdESSignature(pdf, signer.SignPDFCMS)
 	if err != nil {
@@ -508,7 +508,7 @@ func TestInjectPAdESSignature_EmbedsInvisibleSignatureWidget(t *testing.T) {
 		[]byte("/Rect [0 0 0 0]"),
 		[]byte("/V 4 0 R"),
 		[]byte("/AcroForm << /Fields [ 5 0 R ] /SigFlags 3 >>"),
-		[]byte("/Name (PMForge Digital Signature)"),
+		[]byte("/Name (GoPMgr Digital Signature)"),
 	} {
 		if !bytes.Contains(out, want) {
 			t.Fatalf("signed PDF missing %q", string(want))

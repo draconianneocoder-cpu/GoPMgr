@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -6,7 +6,7 @@ package main
 import (
 	"testing"
 
-	"pmforge/internal/users"
+	"gopmgr/internal/users"
 )
 
 // TestAdminIssueRecoveryCodesForCreatedUser locks in the admin-created-account

@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
@@ -23,11 +23,11 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
 ## Verified correct by the audit (no action)
 
 - **Filename contract is consistent** across scripts and `docs/INSTALL.md`:
-  `pmforge-<v>-amd64.deb`, `pmforge-<v>-x86_64.rpm`, `PMForge-<v>-arm64.dmg`,
-  `PMForge-<v>-amd64-setup.exe`.
-- **Binary name** `pmforge` matches `wails.json` (`outputfilename`) and every
+  `gopmgr-<v>-amd64.deb`, `gopmgr-<v>-x86_64.rpm`, `GoPMgr-<v>-arm64.dmg`,
+  `GoPMgr-<v>-amd64-setup.exe`.
+- **Binary name** `gopmgr` matches `wails.json` (`outputfilename`) and every
   script + `nfpm.yaml` path.
-- **Tracked build assets exist**: `build/appicon.png`, `build/linux/pmforge.desktop`
+- **Tracked build assets exist**: `build/appicon.png`, `build/linux/gopmgr.desktop`
   (valid `Office;ProjectManagement;` categories), `build/linux/nfpm.yaml`,
   `build/darwin/Info.plist`.
 - **PDF/A font baseline is deterministic.** Four tracked Source Sans 3 faces
@@ -37,7 +37,7 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
   Native workflows do not fetch optional font families, so packages cannot
   vary with CDN availability.
 - **macOS** `.app` discovery is glob-based (`build/bin/*.app`). Tag builds use
-  the built-in staged `hdiutil` path and expose `PMForge.app` beside an
+  the built-in staged `hdiutil` path and expose `GoPMgr.app` beside an
   `Applications` shortcut. `create-dmg` remains an explicit local opt-in, not a
   release-workflow dependency. After the DuckDB app build, the hosted workflow
   clears disposable Go/npm caches to leave `hdiutil` enough staging space; the
@@ -50,7 +50,7 @@ AppImage format was dropped; `.deb` and `.rpm` cover Linux.)
   explicitly and fails loudly if none is found (hardened 2026-06-23).
 - **Windows installer inputs are source-owned.**
   `build/windows/installer/project.nsi`, `build/windows/info.json`, and
-  `build/windows/wails.exe.manifest` provide PMForge branding, version
+  `build/windows/wails.exe.manifest` provide GoPMgr branding, version
   metadata, DPI behavior, GPL display, and a data-preserving uninstall path.
   Wails regenerates only its pinned macro file, WebView bootstrapper, and icon.
   `make windows-installer-scaffold` exercises isolated drift cases and compiles
@@ -134,7 +134,7 @@ exact base version; build metadata is intentionally rejected.
 
 ## PAdES evidence before public trust claims
 
-`make check-pades` proves PMForge's deterministic local signature structure;
+`make check-pades` proves GoPMgr's deterministic local signature structure;
 `make check-pades-external` adds the installed external validators and records
 fresh fixture provenance. Neither command proves a public certificate chain
 because the fixture signer and TSA are intentionally self-signed.
@@ -146,14 +146,14 @@ trusted-source output tests classification behavior, not a real trust chain.
 For a release-certificate sample, run:
 
 ```sh
-PMFORGE_TRUSTED_SIGNED_PDF=/absolute/path/to/trusted-signed.pdf \
-PMFORGE_PADES_TRUSTED_REQUIRED=1 make check-pades-trusted
+GOPMGR_TRUSTED_SIGNED_PDF=/absolute/path/to/trusted-signed.pdf \
+GOPMGR_PADES_TRUSTED_REQUIRED=1 make check-pades-trusted
 ```
 
 Required mode succeeds only when the report ends in `status=TRUST_VERIFIED`.
 The harness validates the supplied PDF without modifying it, clears stale
 derived evidence, and writes hashes plus checkout and UTC provenance to
-`.tmp/pmforge-pades-trusted-source/trusted-source-validation-report.txt`.
+`.tmp/gopmgr-pades-trusted-source/trusted-source-validation-report.txt`.
 `STRUCTURE_VALID_TRUST_INDETERMINATE` means the signature structure is valid
 but the local CLI certificate store did not prove trust; it is not a passing
 required-mode result. `NOT_CONFIGURED`, `INPUT_INVALID`,

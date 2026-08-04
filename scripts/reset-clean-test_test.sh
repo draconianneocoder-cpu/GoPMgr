@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Exercise reset and restore behavior entirely under a temporary parent. These
@@ -9,7 +9,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 RESET="$ROOT/scripts/reset-clean-test.sh"
-FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/pmforge-clean-test-reset.XXXXXX")"
+FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-clean-test-reset.XXXXXX")"
 FIXTURE="$(cd "$FIXTURE" && pwd -P)"
 trap 'rm -rf "$FIXTURE"' EXIT
 
@@ -36,7 +36,7 @@ printf '%s\n' "test database sentinel" >"$data_root/system.db"
 printf '%s\n' "test project sentinel" >"$data_root/clean_admin/projects/example.pmforge"
 
 output="$(
-	PMFORGE_RESET_TIMESTAMP=20260728T120000Z \
+	GOPMGR_RESET_TIMESTAMP=20260728T120000Z \
 		bash "$RESET" --data-root "$data_root"
 )"
 [[ ! -e "$data_root" ]] || fail "reset left the active data root in place"
@@ -58,7 +58,7 @@ bash "$RESET" --data-root "$data_root" --restore "$backup" >/dev/null
 
 mkdir "$backup"
 assert_fails_with "backup already exists" \
-	env PMFORGE_RESET_TIMESTAMP=20260728T120000Z \
+	env GOPMGR_RESET_TIMESTAMP=20260728T120000Z \
 	bash "$RESET" --data-root "$data_root"
 rmdir "$backup"
 
@@ -68,7 +68,7 @@ assert_fails_with "active data root exists" \
 rmdir "$backup"
 
 assert_fails_with "invalid reset timestamp" \
-	env PMFORGE_RESET_TIMESTAMP='../unsafe' \
+	env GOPMGR_RESET_TIMESTAMP='../unsafe' \
 	bash "$RESET" --data-root "$data_root"
 
 assert_fails_with "must be an absolute path" \

@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set -euo pipefail
@@ -14,8 +14,8 @@ fail() {
 
 run_pair() {
 	local iter="$1"
-	local log_dir="$ROOT/.tmp/pmforge-pades-parallel-test-$iter"
-	rm -rf "$ROOT/.tmp/pmforge-pades-test" "$log_dir"
+	local log_dir="$ROOT/.tmp/gopmgr-pades-parallel-test-$iter"
+	rm -rf "$ROOT/.tmp/gopmgr-pades-test" "$log_dir"
 	mkdir -p "$log_dir"
 
 	set +e
@@ -40,8 +40,8 @@ run_pair() {
 
 run_trio() {
 	local iter="$1"
-	local log_dir="$ROOT/.tmp/pmforge-pades-parallel-test-trio-$iter"
-	rm -rf "$ROOT/.tmp/pmforge-pades-test" "$log_dir"
+	local log_dir="$ROOT/.tmp/gopmgr-pades-parallel-test-trio-$iter"
+	rm -rf "$ROOT/.tmp/gopmgr-pades-test" "$log_dir"
 	mkdir -p "$log_dir"
 
 	set +e

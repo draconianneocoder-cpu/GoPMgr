@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: CC0-1.0
 
 # Build artifacts. Source-owned Wails inputs are explicitly exposed below:
@@ -13,7 +13,7 @@
 !/build/darwin/Info.dev.plist
 !/build/linux/
 /build/linux/*
-!/build/linux/pmforge.desktop
+!/build/linux/gopmgr.desktop
 !/build/linux/nfpm.yaml
 !/build/windows/
 /build/windows/*
@@ -27,11 +27,11 @@
 *.dll
 *.so
 *.dylib
-/pmforge
-/pmforge-*
-/PMForge/
-!pmforge-icon-*.svg
-!pmforge-logo-*.svg
+/gopmgr
+/gopmgr-*
+/GoPMgr/
+!gopmgr-icon-*.svg
+!gopmgr-logo-*.svg
 
 # Wails generated bindings
 /frontend/wailsjs/
@@ -76,8 +76,8 @@ temp_snapshot.db
 !/internal/fonts/assets/SourceSans3-Bold.ttf
 !/internal/fonts/assets/SourceSans3-It.ttf
 !/internal/fonts/assets/SourceSans3-BoldIt.ttf
-/PMForge Icon Image *.png
-/PMForge Logo Image *.png
+/GoPMgr Icon Image *.png
+/GoPMgr Logo Image *.png
 
 # Certificates (NEVER commit private keys)
 *.p12

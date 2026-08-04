@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set -euo pipefail
@@ -29,8 +29,8 @@ if [ "$target" != "$host_os" ]; then
 	exit 2
 fi
 
-if [ "${PMFORGE_FRONTEND_BUILT:-0}" = "1" ]; then
-	PMFORGE_FRONTEND_BUILT=1 make build
+if [ "${GOPMGR_FRONTEND_BUILT:-0}" = "1" ]; then
+	GOPMGR_FRONTEND_BUILT=1 make build
 else
 	make build
 fi
@@ -38,8 +38,8 @@ fi
 pkg_dir="build/packages"
 mkdir -p "$pkg_dir"
 
-binary="build/bin/pmforge"
-archive_base="pmforge-${target}-${host_arch}"
+binary="build/bin/gopmgr"
+archive_base="gopmgr-${target}-${host_arch}"
 archive="$pkg_dir/${archive_base}.tar.gz"
 
 if [ ! -f "$binary" ]; then
@@ -47,7 +47,7 @@ if [ ! -f "$binary" ]; then
 	exit 1
 fi
 
-staging="$(mktemp -d "${TMPDIR:-/tmp}/pmforge-package.XXXXXX")"
+staging="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-package.XXXXXX")"
 trap 'rm -rf "$staging"' EXIT
 mkdir -p "$staging/$archive_base"
 cp "$binary" "$staging/$archive_base/"

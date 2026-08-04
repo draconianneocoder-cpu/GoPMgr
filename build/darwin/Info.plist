@@ -9,7 +9,7 @@
 	<key>CFBundleExecutable</key>
 	<string>{{.Name}}</string>
 	<key>CFBundleIdentifier</key>
-	<string>dev.pmforge.PMForge</string>
+	<string>dev.gopmgr.GoPMgr</string>
 	<key>CFBundleVersion</key>
 	<string>{{.Info.ProductVersion}}</string>
 	<key>CFBundleGetInfoString</key>

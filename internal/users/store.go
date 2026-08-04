@@ -1,12 +1,14 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package users owns PMForge's local-multi-user system. It provides:
+// Package users owns GoPMgr's local-multi-user system. It provides:
 //
 //   - A "system database" at <data-root>/system.db that lists every
-//     PMForge account on this machine (username, display name, password
+//     GoPMgr account on this machine (username, display name, password
 //     hash, data directory). The data root is ~/Library/Application
-//     Support/PMForge on macOS and ~/Documents/PMForge elsewhere; see
+//     Support/PMForge on macOS and ~/Documents/PMForge elsewhere; the
+//     directory name is kept from the pre-rename "PMForge" name so
+//     existing installs' accounts and projects are still found; see
 //     DefaultRootDir.
 //   - Per-user folders at <data-root>/<username>/ that hold each user's
 //     projects, certificates, and export output. Folders are chmod'd to
@@ -14,7 +16,7 @@
 //   - A login flow (Authenticate) and an account-creation flow
 //     (CreateAccount) that the GUI and CLI both call.
 //
-// PMForge does NOT use OS user accounts. Multiple PMForge users on the
+// GoPMgr does NOT use OS user accounts. Multiple GoPMgr users on the
 // same OS account is the supported model.
 package users
 
@@ -31,8 +33,8 @@ import (
 	"strings"
 	"time"
 
-	"pmforge/internal/auth"
-	"pmforge/internal/sqlitedriver"
+	"gopmgr/internal/auth"
+	"gopmgr/internal/sqlitedriver"
 )
 
 // ErrUserExists is returned by CreateAccount when the username is taken.
@@ -114,7 +116,7 @@ func (s *Store) Close() error {
 	return s.conn.Close()
 }
 
-// RootDir returns the configured PMForge root (~/Documents/PMForge).
+// RootDir returns the configured GoPMgr root (~/Documents/PMForge).
 func (s *Store) RootDir() string { return s.rootDir }
 
 func (s *Store) migrate() error {
@@ -409,9 +411,13 @@ func (s *Store) List() ([]Account, error) {
 	return out, rows.Err()
 }
 
-// DefaultRootDir returns the canonical PMForge data root on the current
-// platform. $XDG_DATA_HOME overrides everywhere (Linux convention and a
-// test hook). Otherwise:
+// DefaultRootDir returns the canonical GoPMgr data root on the current
+// platform. The directory itself is still named "PMForge" — GoPMgr's
+// previous name — so existing installs' accounts, projects, and settings
+// keep resolving after the rename; only a dedicated migration (tracked
+// separately, not part of the rename) should ever move it to "GoPMgr".
+// $XDG_DATA_HOME overrides everywhere (Linux convention and a test hook).
+// Otherwise:
 //
 //   - macOS: ~/Library/Application Support/PMForge. The old default,
 //     ~/Documents/PMForge, is both iCloud-synced (so system.db can sync
@@ -478,7 +484,7 @@ func migrateLegacyRoot(legacy, newRoot string) (bool, error) {
 }
 
 // copyTree recursively copies the regular files and directories under src
-// into dst, preserving permission bits. Symlinks are skipped (PMForge's data
+// into dst, preserving permission bits. Symlinks are skipped (GoPMgr's data
 // tree contains none). Reading each source file materialises any iCloud
 // dataless placeholder, so the copy always contains real bytes.
 func copyTree(src, dst string) error {

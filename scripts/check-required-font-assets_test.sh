@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Exercise the font gate in an isolated repository so both clean-checkout and
@@ -7,7 +7,7 @@
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/pmforge-required-fonts.XXXXXX")"
+FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-required-fonts.XXXXXX")"
 trap 'rm -rf "$FIXTURE"' EXIT
 
 fail() {

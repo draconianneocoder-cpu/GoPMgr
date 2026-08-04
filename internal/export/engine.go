@@ -1,7 +1,7 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package export converts PMForge's internal data models into the
+// Package export converts GoPMgr's internal data models into the
 // archival document formats required by the Administrative Pack:
 // PDF/A, ODT, DOCX, XLSX, CSV, and MSPDI XML (Microsoft Project).
 //
@@ -15,9 +15,9 @@ import (
 	"log"
 	"time"
 
-	"pmforge/internal/crypto"
-	"pmforge/internal/debug"
-	"pmforge/internal/kernel"
+	"gopmgr/internal/crypto"
+	"gopmgr/internal/debug"
+	"gopmgr/internal/kernel"
 )
 
 // ExportFormat is the on-disk format selector.

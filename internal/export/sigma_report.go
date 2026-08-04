@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package export
@@ -12,8 +12,8 @@ import (
 
 	"github.com/go-pdf/fpdf"
 
-	"pmforge/internal/pdfmeta"
-	"pmforge/internal/sigma/domain"
+	"gopmgr/internal/pdfmeta"
+	"gopmgr/internal/sigma/domain"
 )
 
 // GenerateSigmaReport produces a PDF report of all Six Sigma phase deliverables.
@@ -27,8 +27,8 @@ func GenerateSigmaReport(
 ) (string, error) {
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetTitle("Six Sigma Project Report: "+project.Title, true)
-	pdf.SetAuthor("PMForge", true)
-	pdf.SetCreator("PMForge Sigma Report Generator", true)
+	pdf.SetAuthor("GoPMgr", true)
+	pdf.SetCreator("GoPMgr Sigma Report Generator", true)
 
 	generateReportCover(pdf, project)
 	generateCharterSection(pdf, charter)
@@ -47,8 +47,8 @@ func GenerateSigmaReport(
 		icc := pdfmeta.DefaultICCProfile()
 		spec := pdfmeta.XMPSpec{
 			Title:       "Six Sigma Project Report: " + project.Title,
-			Author:      "PMForge",
-			CreatorTool: "PMForge Sigma Report Generator",
+			Author:      "GoPMgr",
+			CreatorTool: "GoPMgr Sigma Report Generator",
 		}
 		pdfaBytes, err := pdfmeta.MakePDFA3(pdfBytes, spec, icc)
 		if err == nil {

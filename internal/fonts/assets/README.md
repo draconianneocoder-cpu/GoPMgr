@@ -1,16 +1,16 @@
 <!--
-SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: CC0-1.0
 -->
 
 # Bundled font binaries
 
-This directory holds the TrueType (`.ttf`) font files that PMForge
+This directory holds the TrueType (`.ttf`) font files that GoPMgr
 embeds in generated PDFs. The `go:embed assets` directive in
 `../manager.go` bundles whatever `.ttf` files are present here into the
 compiled binary.
 
-The four Source Sans 3 faces are committed as PMForge's release-critical
+The four Source Sans 3 faces are committed as GoPMgr's release-critical
 PDF/A baseline. Strict archival exports require an embedded TrueType font;
 without these files, a clean build falls back to PDF core Helvetica and fails
 veraPDF. `make required-font-assets` verifies that the baseline is tracked,

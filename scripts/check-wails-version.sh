@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set -euo pipefail
 
-# PMFORGE_REPO_ROOT makes the check testable against isolated fixtures. Normal
+# GOPMGR_REPO_ROOT makes the check testable against isolated fixtures. Normal
 # callers intentionally resolve from this script so the result is independent
 # of the shell's current working directory.
-repo_root="${PMFORGE_REPO_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+repo_root="${GOPMGR_REPO_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 fail=0
 
 report_missing() {
@@ -66,7 +66,7 @@ require_contains AGENTS.md "Wails ${module_version}."
 require_contains DEPENDENCIES.md "Wails: ${module_version}."
 require_contains DEVELOPER_HANDBOOK.md "**Wails ${module_version}**"
 
-if [[ "${PMFORGE_REQUIRE_WAILS_CLI:-0}" == "1" ]]; then
+if [[ "${GOPMGR_REQUIRE_WAILS_CLI:-0}" == "1" ]]; then
 	if ! command -v wails >/dev/null 2>&1; then
 		echo "check-wails-version: installed Wails CLI is required; install with: $install_command" >&2
 		fail=1
@@ -84,7 +84,7 @@ if (( fail != 0 )); then
 	exit "$fail"
 fi
 
-if [[ "${PMFORGE_REQUIRE_WAILS_CLI:-0}" == "1" ]]; then
+if [[ "${GOPMGR_REQUIRE_WAILS_CLI:-0}" == "1" ]]; then
 	echo "check-wails-version: runtime, installed CLI, and current documentation use ${module_version}."
 else
 	echo "check-wails-version: runtime, declared CLI pins, and current documentation use ${module_version}."

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package update
@@ -23,7 +23,7 @@ import (
 //
 // Reasoning: Ed25519 is fast, fixed-size, and entirely stdlib.
 // RSA would require shipping a CA bundle or hard-coding a key; the
-// public-key-only model fits PMForge's local-first ethos.
+// public-key-only model fits GoPMgr's local-first ethos.
 type Manifest struct {
 	// Wire form: {"payload": "<base64-json>", "signature": "<base64-sig>"}
 	PayloadB64   string `json:"payload"`

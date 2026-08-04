@@ -2,161 +2,161 @@
   "description": "Every *_test.go file paired with the other .go source files in its package (package-scoped candidates). Derived from 'go list -json ./...'.",
   "mappings": [
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/admin_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/admin_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_pades_export_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/app_pades_export_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_documents.go",
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_sigma.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/app_documents.go",
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/app_sigma.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_settings_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/app_settings_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_settings.go",
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/app_settings.go",
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/audit_actions_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/audit_actions_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_documents.go",
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_sigma.go",
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/app_documents.go",
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/app_sigma.go",
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/encryption_migration_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/encryption_migration_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/encryption_project_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/encryption_project_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/headless_encryption_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/headless_encryption_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/import_formats_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/import_formats_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/montecarlo_action_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/montecarlo_action_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/mspdi_import_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/mspdi_import_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/portfolio_evm_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/portfolio_evm_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_documents.go",
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_foundation.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/app_documents.go",
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/app_foundation.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/project_path_confinement_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/project_path_confinement_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/project_storage_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/project_storage_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/report_evm_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/report_evm_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/risk_sync_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/risk_sync_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_charts.go",
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/app_documents.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/app_charts.go",
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/app_documents.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/resources_action_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/resources_action_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/scenarios_app_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/scenarios_app_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/timeline_move_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/timeline_move_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
-      "test_file": "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/user_isolation_test.go",
-      "package": "pmforge",
+      "test_file": "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/user_isolation_test.go",
+      "package": "gopmgr",
       "candidate_source_files": [
-        "/Users/jamesburns/Developer/GitHub/PMForge - Go + Typescript/main.go"
+        "/Users/jamesburns/Developer/GitHub/GoPMgr - Go + Typescript/main.go"
       ]
     },
     {
       "test_file": "internal/admin/admin_test.go",
-      "package": "pmforge/internal/admin",
+      "package": "gopmgr/internal/admin",
       "candidate_source_files": [
         "internal/admin/workflow.go"
       ]
     },
     {
       "test_file": "internal/agile/dora_test.go",
-      "package": "pmforge/internal/agile",
+      "package": "gopmgr/internal/agile",
       "candidate_source_files": [
         "internal/agile/agile.go",
         "internal/agile/doc.go",
@@ -166,7 +166,7 @@
     },
     {
       "test_file": "internal/agile/ids_test.go",
-      "package": "pmforge/internal/agile",
+      "package": "gopmgr/internal/agile",
       "candidate_source_files": [
         "internal/agile/agile.go",
         "internal/agile/doc.go",
@@ -176,7 +176,7 @@
     },
     {
       "test_file": "internal/agile/store_test.go",
-      "package": "pmforge/internal/agile",
+      "package": "gopmgr/internal/agile",
       "candidate_source_files": [
         "internal/agile/agile.go",
         "internal/agile/doc.go",
@@ -186,7 +186,7 @@
     },
     {
       "test_file": "internal/analytics/stub_test.go",
-      "package": "pmforge/internal/analytics",
+      "package": "gopmgr/internal/analytics",
       "candidate_source_files": [
         "internal/analytics/analytics.go",
         "internal/analytics/stub.go"
@@ -194,7 +194,7 @@
     },
     {
       "test_file": "internal/applog/applog_test.go",
-      "package": "pmforge/internal/applog",
+      "package": "gopmgr/internal/applog",
       "candidate_source_files": [
         "internal/applog/applog.go",
         "internal/applog/dialog_darwin.go",
@@ -203,28 +203,28 @@
     },
     {
       "test_file": "internal/auth/password_test.go",
-      "package": "pmforge/internal/auth",
+      "package": "gopmgr/internal/auth",
       "candidate_source_files": [
         "internal/auth/password.go"
       ]
     },
     {
       "test_file": "internal/budget/budget_test.go",
-      "package": "pmforge/internal/budget",
+      "package": "gopmgr/internal/budget",
       "candidate_source_files": [
         "internal/budget/budget.go"
       ]
     },
     {
       "test_file": "internal/calendar/calendar_test.go",
-      "package": "pmforge/internal/calendar",
+      "package": "gopmgr/internal/calendar",
       "candidate_source_files": [
         "internal/calendar/calendar.go"
       ]
     },
     {
       "test_file": "internal/charts/charts_test.go",
-      "package": "pmforge/internal/charts",
+      "package": "gopmgr/internal/charts",
       "candidate_source_files": [
         "internal/charts/engines.go",
         "internal/charts/registry.go"
@@ -232,7 +232,7 @@
     },
     {
       "test_file": "internal/charts/engines_schedule_test.go",
-      "package": "pmforge/internal/charts",
+      "package": "gopmgr/internal/charts",
       "candidate_source_files": [
         "internal/charts/engines.go",
         "internal/charts/registry.go"
@@ -240,7 +240,7 @@
     },
     {
       "test_file": "internal/charts/dag/cpm_anchor_test.go",
-      "package": "pmforge/internal/charts/dag",
+      "package": "gopmgr/internal/charts/dag",
       "candidate_source_files": [
         "internal/charts/dag/causal_tree.go",
         "internal/charts/dag/cpm.go",
@@ -254,7 +254,7 @@
     },
     {
       "test_file": "internal/charts/dag/dag_test.go",
-      "package": "pmforge/internal/charts/dag",
+      "package": "gopmgr/internal/charts/dag",
       "candidate_source_files": [
         "internal/charts/dag/causal_tree.go",
         "internal/charts/dag/cpm.go",
@@ -268,7 +268,7 @@
     },
     {
       "test_file": "internal/charts/dag/gantt_test.go",
-      "package": "pmforge/internal/charts/dag",
+      "package": "gopmgr/internal/charts/dag",
       "candidate_source_files": [
         "internal/charts/dag/causal_tree.go",
         "internal/charts/dag/cpm.go",
@@ -282,7 +282,7 @@
     },
     {
       "test_file": "internal/charts/dag/link_label_test.go",
-      "package": "pmforge/internal/charts/dag",
+      "package": "gopmgr/internal/charts/dag",
       "candidate_source_files": [
         "internal/charts/dag/causal_tree.go",
         "internal/charts/dag/cpm.go",
@@ -296,7 +296,7 @@
     },
     {
       "test_file": "internal/charts/dag/pert_test.go",
-      "package": "pmforge/internal/charts/dag",
+      "package": "gopmgr/internal/charts/dag",
       "candidate_source_files": [
         "internal/charts/dag/causal_tree.go",
         "internal/charts/dag/cpm.go",
@@ -310,7 +310,7 @@
     },
     {
       "test_file": "internal/charts/flow/flow_test.go",
-      "package": "pmforge/internal/charts/flow",
+      "package": "gopmgr/internal/charts/flow",
       "candidate_source_files": [
         "internal/charts/flow/activity.go",
         "internal/charts/flow/common.go",
@@ -319,7 +319,7 @@
     },
     {
       "test_file": "internal/charts/matrix/generic_test.go",
-      "package": "pmforge/internal/charts/matrix",
+      "package": "gopmgr/internal/charts/matrix",
       "candidate_source_files": [
         "internal/charts/matrix/common.go",
         "internal/charts/matrix/generic.go",
@@ -331,7 +331,7 @@
     },
     {
       "test_file": "internal/charts/matrix/raci_test.go",
-      "package": "pmforge/internal/charts/matrix",
+      "package": "gopmgr/internal/charts/matrix",
       "candidate_source_files": [
         "internal/charts/matrix/common.go",
         "internal/charts/matrix/generic.go",
@@ -343,7 +343,7 @@
     },
     {
       "test_file": "internal/charts/matrix/stakeholder_test.go",
-      "package": "pmforge/internal/charts/matrix",
+      "package": "gopmgr/internal/charts/matrix",
       "candidate_source_files": [
         "internal/charts/matrix/common.go",
         "internal/charts/matrix/generic.go",
@@ -355,7 +355,7 @@
     },
     {
       "test_file": "internal/charts/matrix/swot_test.go",
-      "package": "pmforge/internal/charts/matrix",
+      "package": "gopmgr/internal/charts/matrix",
       "candidate_source_files": [
         "internal/charts/matrix/common.go",
         "internal/charts/matrix/generic.go",
@@ -367,7 +367,7 @@
     },
     {
       "test_file": "internal/charts/matrix/risk_test.go",
-      "package": "pmforge/internal/charts/matrix",
+      "package": "gopmgr/internal/charts/matrix",
       "candidate_source_files": [
         "internal/charts/matrix/common.go",
         "internal/charts/matrix/risk.go"
@@ -375,7 +375,7 @@
     },
     {
       "test_file": "internal/charts/pdfrender/gantt_test.go",
-      "package": "pmforge/internal/charts/pdfrender",
+      "package": "gopmgr/internal/charts/pdfrender",
       "candidate_source_files": [
         "internal/charts/pdfrender/dag.go",
         "internal/charts/pdfrender/dispatcher.go",
@@ -388,7 +388,7 @@
     },
     {
       "test_file": "internal/charts/pdfrender/pdfrender_test.go",
-      "package": "pmforge/internal/charts/pdfrender",
+      "package": "gopmgr/internal/charts/pdfrender",
       "candidate_source_files": [
         "internal/charts/pdfrender/dag.go",
         "internal/charts/pdfrender/dispatcher.go",
@@ -401,7 +401,7 @@
     },
     {
       "test_file": "internal/charts/pdfrender/risk_test.go",
-      "package": "pmforge/internal/charts/pdfrender",
+      "package": "gopmgr/internal/charts/pdfrender",
       "candidate_source_files": [
         "internal/charts/pdfrender/dispatcher.go",
         "internal/charts/pdfrender/matrix.go"
@@ -409,7 +409,7 @@
     },
     {
       "test_file": "internal/charts/stats/stats_remaining_test.go",
-      "package": "pmforge/internal/charts/stats",
+      "package": "gopmgr/internal/charts/stats",
       "candidate_source_files": [
         "internal/charts/stats/bar.go",
         "internal/charts/stats/burndown.go",
@@ -424,7 +424,7 @@
     },
     {
       "test_file": "internal/charts/stats/stats_test.go",
-      "package": "pmforge/internal/charts/stats",
+      "package": "gopmgr/internal/charts/stats",
       "candidate_source_files": [
         "internal/charts/stats/bar.go",
         "internal/charts/stats/burndown.go",
@@ -439,14 +439,14 @@
     },
     {
       "test_file": "internal/cli/parser_test.go",
-      "package": "pmforge/internal/cli",
+      "package": "gopmgr/internal/cli",
       "candidate_source_files": [
         "internal/cli/parser.go"
       ]
     },
     {
       "test_file": "internal/crypto/encrypt_test.go",
-      "package": "pmforge/internal/crypto",
+      "package": "gopmgr/internal/crypto",
       "candidate_source_files": [
         "internal/crypto/encrypt.go",
         "internal/crypto/keywrap.go",
@@ -457,7 +457,7 @@
     },
     {
       "test_file": "internal/crypto/keywrap_test.go",
-      "package": "pmforge/internal/crypto",
+      "package": "gopmgr/internal/crypto",
       "candidate_source_files": [
         "internal/crypto/encrypt.go",
         "internal/crypto/keywrap.go",
@@ -468,7 +468,7 @@
     },
     {
       "test_file": "internal/crypto/pdf_cms_timestamp_test.go",
-      "package": "pmforge/internal/crypto",
+      "package": "gopmgr/internal/crypto",
       "candidate_source_files": [
         "internal/crypto/encrypt.go",
         "internal/crypto/keywrap.go",
@@ -479,7 +479,7 @@
     },
     {
       "test_file": "internal/crypto/pdf_sign_test.go",
-      "package": "pmforge/internal/crypto",
+      "package": "gopmgr/internal/crypto",
       "candidate_source_files": [
         "internal/crypto/encrypt.go",
         "internal/crypto/keywrap.go",
@@ -490,7 +490,7 @@
     },
     {
       "test_file": "internal/db/audit_events_test.go",
-      "package": "pmforge/internal/db",
+      "package": "gopmgr/internal/db",
       "candidate_source_files": [
         "internal/db/audit.go",
         "internal/db/audit_checkpoints.go",
@@ -512,7 +512,7 @@
     },
     {
       "test_file": "internal/db/audit_test.go",
-      "package": "pmforge/internal/db",
+      "package": "gopmgr/internal/db",
       "candidate_source_files": [
         "internal/db/audit.go",
         "internal/db/audit_checkpoints.go",
@@ -534,7 +534,7 @@
     },
     {
       "test_file": "internal/db/backup_test.go",
-      "package": "pmforge/internal/db",
+      "package": "gopmgr/internal/db",
       "candidate_source_files": [
         "internal/db/audit.go",
         "internal/db/audit_checkpoints.go",
@@ -556,7 +556,7 @@
     },
     {
       "test_file": "internal/db/baselines_test.go",
-      "package": "pmforge/internal/db",
+      "package": "gopmgr/internal/db",
       "candidate_source_files": [
         "internal/db/audit.go",
         "internal/db/audit_checkpoints.go",
@@ -578,7 +578,7 @@
     },
     {
       "test_file": "internal/db/encryption_test.go",
-      "package": "pmforge/internal/db",
+      "package": "gopmgr/internal/db",
       "candidate_source_files": [
         "internal/db/audit.go",
         "internal/db/audit_checkpoints.go",
@@ -600,7 +600,7 @@
     },
     {
       "test_file": "internal/db/ids_test.go",
-      "package": "pmforge/internal/db",
+      "package": "gopmgr/internal/db",
       "candidate_source_files": [
         "internal/db/audit.go",
         "internal/db/audit_checkpoints.go",
@@ -622,7 +622,7 @@
     },
     {
       "test_file": "internal/db/money_columns_test.go",
-      "package": "pmforge/internal/db",
+      "package": "gopmgr/internal/db",
       "candidate_source_files": [
         "internal/db/audit.go",
         "internal/db/audit_checkpoints.go",
@@ -644,7 +644,7 @@
     },
     {
       "test_file": "internal/db/repair_encryption_test.go",
-      "package": "pmforge/internal/db",
+      "package": "gopmgr/internal/db",
       "candidate_source_files": [
         "internal/db/audit.go",
         "internal/db/audit_checkpoints.go",
@@ -666,7 +666,7 @@
     },
     {
       "test_file": "internal/db/repair_test.go",
-      "package": "pmforge/internal/db",
+      "package": "gopmgr/internal/db",
       "candidate_source_files": [
         "internal/db/audit.go",
         "internal/db/audit_checkpoints.go",
@@ -688,7 +688,7 @@
     },
     {
       "test_file": "internal/db/resource_calendars_test.go",
-      "package": "pmforge/internal/db",
+      "package": "gopmgr/internal/db",
       "candidate_source_files": [
         "internal/db/audit.go",
         "internal/db/audit_checkpoints.go",
@@ -710,7 +710,7 @@
     },
     {
       "test_file": "internal/db/scenarios_test.go",
-      "package": "pmforge/internal/db",
+      "package": "gopmgr/internal/db",
       "candidate_source_files": [
         "internal/db/audit.go",
         "internal/db/audit_checkpoints.go",
@@ -732,7 +732,7 @@
     },
     {
       "test_file": "internal/db/settings_test.go",
-      "package": "pmforge/internal/db",
+      "package": "gopmgr/internal/db",
       "candidate_source_files": [
         "internal/db/audit.go",
         "internal/db/audit_checkpoints.go",
@@ -754,7 +754,7 @@
     },
     {
       "test_file": "internal/db/sigma_test.go",
-      "package": "pmforge/internal/db",
+      "package": "gopmgr/internal/db",
       "candidate_source_files": [
         "internal/db/audit.go",
         "internal/db/audit_checkpoints.go",
@@ -776,14 +776,14 @@
     },
     {
       "test_file": "internal/debug/report_test.go",
-      "package": "pmforge/internal/debug",
+      "package": "gopmgr/internal/debug",
       "candidate_source_files": [
         "internal/debug/report.go"
       ]
     },
     {
       "test_file": "internal/documents/documents_test.go",
-      "package": "pmforge/internal/documents",
+      "package": "gopmgr/internal/documents",
       "candidate_source_files": [
         "internal/documents/business_case.go",
         "internal/documents/change_request.go",
@@ -818,7 +818,7 @@
     },
     {
       "test_file": "internal/documents/helpers_test.go",
-      "package": "pmforge/internal/documents",
+      "package": "gopmgr/internal/documents",
       "candidate_source_files": [
         "internal/documents/business_case.go",
         "internal/documents/change_request.go",
@@ -853,7 +853,7 @@
     },
     {
       "test_file": "internal/documents/project_budget_test.go",
-      "package": "pmforge/internal/documents",
+      "package": "gopmgr/internal/documents",
       "candidate_source_files": [
         "internal/documents/business_case.go",
         "internal/documents/change_request.go",
@@ -888,7 +888,7 @@
     },
     {
       "test_file": "internal/documents/report_evm_test.go",
-      "package": "pmforge/internal/documents",
+      "package": "gopmgr/internal/documents",
       "candidate_source_files": [
         "internal/documents/business_case.go",
         "internal/documents/change_request.go",
@@ -923,7 +923,7 @@
     },
     {
       "test_file": "internal/documents/risk_matrix_ref_test.go",
-      "package": "pmforge/internal/documents",
+      "package": "gopmgr/internal/documents",
       "candidate_source_files": [
         "internal/documents/registry.go",
         "internal/documents/templates.go"
@@ -931,7 +931,7 @@
     },
     {
       "test_file": "internal/documents/signed_pipeline_test.go",
-      "package": "pmforge/internal/documents",
+      "package": "gopmgr/internal/documents",
       "candidate_source_files": [
         "internal/documents/charter.go",
         "internal/documents/signature_appearance.go"
@@ -939,7 +939,7 @@
     },
     {
       "test_file": "internal/export/csv_test.go",
-      "package": "pmforge/internal/export",
+      "package": "gopmgr/internal/export",
       "candidate_source_files": [
         "internal/export/csv.go",
         "internal/export/docx.go",
@@ -960,7 +960,7 @@
     },
     {
       "test_file": "internal/export/evm_section_test.go",
-      "package": "pmforge/internal/export",
+      "package": "gopmgr/internal/export",
       "candidate_source_files": [
         "internal/export/csv.go",
         "internal/export/docx.go",
@@ -981,7 +981,7 @@
     },
     {
       "test_file": "internal/export/html_test.go",
-      "package": "pmforge/internal/export",
+      "package": "gopmgr/internal/export",
       "candidate_source_files": [
         "internal/export/csv.go",
         "internal/export/docx.go",
@@ -1002,7 +1002,7 @@
     },
     {
       "test_file": "internal/export/montecarlo_report_test.go",
-      "package": "pmforge/internal/export",
+      "package": "gopmgr/internal/export",
       "candidate_source_files": [
         "internal/export/csv.go",
         "internal/export/docx.go",
@@ -1023,7 +1023,7 @@
     },
     {
       "test_file": "internal/export/mspdi_import_test.go",
-      "package": "pmforge/internal/export",
+      "package": "gopmgr/internal/export",
       "candidate_source_files": [
         "internal/export/csv.go",
         "internal/export/docx.go",
@@ -1044,7 +1044,7 @@
     },
     {
       "test_file": "internal/export/mspdi_test.go",
-      "package": "pmforge/internal/export",
+      "package": "gopmgr/internal/export",
       "candidate_source_files": [
         "internal/export/csv.go",
         "internal/export/docx.go",
@@ -1065,7 +1065,7 @@
     },
     {
       "test_file": "internal/export/pdf_eof_test.go",
-      "package": "pmforge/internal/export",
+      "package": "gopmgr/internal/export",
       "candidate_source_files": [
         "internal/export/csv.go",
         "internal/export/docx.go",
@@ -1086,7 +1086,7 @@
     },
     {
       "test_file": "internal/export/pdf_signing_test.go",
-      "package": "pmforge/internal/export",
+      "package": "gopmgr/internal/export",
       "candidate_source_files": [
         "internal/export/engine.go",
         "internal/export/pdf.go",
@@ -1095,7 +1095,7 @@
     },
     {
       "test_file": "internal/export/sigma_report_test.go",
-      "package": "pmforge/internal/export",
+      "package": "gopmgr/internal/export",
       "candidate_source_files": [
         "internal/export/csv.go",
         "internal/export/docx.go",
@@ -1116,14 +1116,14 @@
     },
     {
       "test_file": "internal/exportsafe/exportsafe_test.go",
-      "package": "pmforge/internal/exportsafe",
+      "package": "gopmgr/internal/exportsafe",
       "candidate_source_files": [
         "internal/exportsafe/exportsafe.go"
       ]
     },
     {
       "test_file": "internal/fonts/fonts_test.go",
-      "package": "pmforge/internal/fonts",
+      "package": "gopmgr/internal/fonts",
       "candidate_source_files": [
         "internal/fonts/catalog.go",
         "internal/fonts/manager.go"
@@ -1131,7 +1131,7 @@
     },
     {
       "test_file": "internal/kernel/anchor_test.go",
-      "package": "pmforge/internal/kernel",
+      "package": "gopmgr/internal/kernel",
       "candidate_source_files": [
         "internal/kernel/anchor.go",
         "internal/kernel/baseline.go",
@@ -1143,7 +1143,7 @@
     },
     {
       "test_file": "internal/kernel/baseline_test.go",
-      "package": "pmforge/internal/kernel",
+      "package": "gopmgr/internal/kernel",
       "candidate_source_files": [
         "internal/kernel/anchor.go",
         "internal/kernel/baseline.go",
@@ -1155,7 +1155,7 @@
     },
     {
       "test_file": "internal/kernel/constraints_test.go",
-      "package": "pmforge/internal/kernel",
+      "package": "gopmgr/internal/kernel",
       "candidate_source_files": [
         "internal/kernel/anchor.go",
         "internal/kernel/baseline.go",
@@ -1167,7 +1167,7 @@
     },
     {
       "test_file": "internal/kernel/evm_test.go",
-      "package": "pmforge/internal/kernel",
+      "package": "gopmgr/internal/kernel",
       "candidate_source_files": [
         "internal/kernel/anchor.go",
         "internal/kernel/baseline.go",
@@ -1179,7 +1179,7 @@
     },
     {
       "test_file": "internal/kernel/leveling_options_test.go",
-      "package": "pmforge/internal/kernel",
+      "package": "gopmgr/internal/kernel",
       "candidate_source_files": [
         "internal/kernel/anchor.go",
         "internal/kernel/baseline.go",
@@ -1191,7 +1191,7 @@
     },
     {
       "test_file": "internal/kernel/links_test.go",
-      "package": "pmforge/internal/kernel",
+      "package": "gopmgr/internal/kernel",
       "candidate_source_files": [
         "internal/kernel/anchor.go",
         "internal/kernel/baseline.go",
@@ -1203,7 +1203,7 @@
     },
     {
       "test_file": "internal/kernel/montecarlo_test.go",
-      "package": "pmforge/internal/kernel",
+      "package": "gopmgr/internal/kernel",
       "candidate_source_files": [
         "internal/kernel/anchor.go",
         "internal/kernel/baseline.go",
@@ -1215,7 +1215,7 @@
     },
     {
       "test_file": "internal/kernel/resources_test.go",
-      "package": "pmforge/internal/kernel",
+      "package": "gopmgr/internal/kernel",
       "candidate_source_files": [
         "internal/kernel/anchor.go",
         "internal/kernel/baseline.go",
@@ -1227,7 +1227,7 @@
     },
     {
       "test_file": "internal/kernel/scheduler_test.go",
-      "package": "pmforge/internal/kernel",
+      "package": "gopmgr/internal/kernel",
       "candidate_source_files": [
         "internal/kernel/anchor.go",
         "internal/kernel/baseline.go",
@@ -1239,14 +1239,14 @@
     },
     {
       "test_file": "internal/money/money_test.go",
-      "package": "pmforge/internal/money",
+      "package": "gopmgr/internal/money",
       "candidate_source_files": [
         "internal/money/money.go"
       ]
     },
     {
       "test_file": "internal/pdfmeta/pdfmeta_test.go",
-      "package": "pmforge/internal/pdfmeta",
+      "package": "gopmgr/internal/pdfmeta",
       "candidate_source_files": [
         "internal/pdfmeta/icc.go",
         "internal/pdfmeta/pdfmeta.go"
@@ -1254,21 +1254,21 @@
     },
     {
       "test_file": "internal/rfc3161/client_test.go",
-      "package": "pmforge/internal/rfc3161",
+      "package": "gopmgr/internal/rfc3161",
       "candidate_source_files": [
         "internal/rfc3161/client.go"
       ]
     },
     {
       "test_file": "internal/sigma/charts/pareto_test.go",
-      "package": "pmforge/internal/sigma/charts",
+      "package": "gopmgr/internal/sigma/charts",
       "candidate_source_files": [
         "internal/sigma/charts/pareto.go"
       ]
     },
     {
       "test_file": "internal/sigma/domain/enums_test.go",
-      "package": "pmforge/internal/sigma/domain",
+      "package": "gopmgr/internal/sigma/domain",
       "candidate_source_files": [
         "internal/sigma/domain/fishbone.go",
         "internal/sigma/domain/project.go",
@@ -1279,7 +1279,7 @@
     },
     {
       "test_file": "internal/sigma/service/service_test.go",
-      "package": "pmforge/internal/sigma/service",
+      "package": "gopmgr/internal/sigma/service",
       "candidate_source_files": [
         "internal/sigma/service/project.go",
         "internal/sigma/service/status.go"
@@ -1287,7 +1287,7 @@
     },
     {
       "test_file": "internal/sigma/service/status_test.go",
-      "package": "pmforge/internal/sigma/service",
+      "package": "gopmgr/internal/sigma/service",
       "candidate_source_files": [
         "internal/sigma/service/project.go",
         "internal/sigma/service/status.go"
@@ -1295,28 +1295,28 @@
     },
     {
       "test_file": "internal/sigma/stats/basic_test.go",
-      "package": "pmforge/internal/sigma/stats",
+      "package": "gopmgr/internal/sigma/stats",
       "candidate_source_files": [
         "internal/sigma/stats/basic.go"
       ]
     },
     {
       "test_file": "internal/sigma/tollgate/readiness_test.go",
-      "package": "pmforge/internal/sigma/tollgate",
+      "package": "gopmgr/internal/sigma/tollgate",
       "candidate_source_files": [
         "internal/sigma/tollgate/readiness.go"
       ]
     },
     {
       "test_file": "internal/signing/gnupg_test.go",
-      "package": "pmforge/internal/signing",
+      "package": "gopmgr/internal/signing",
       "candidate_source_files": [
         "internal/signing/gnupg.go"
       ]
     },
     {
       "test_file": "internal/signing/pades_test.go",
-      "package": "pmforge/internal/signing",
+      "package": "gopmgr/internal/signing",
       "candidate_source_files": [
         "internal/signing/gnupg.go",
         "internal/signing/pades.go"
@@ -1324,14 +1324,14 @@
     },
     {
       "test_file": "internal/sqlitedriver/driver_test.go",
-      "package": "pmforge/internal/sqlitedriver",
+      "package": "gopmgr/internal/sqlitedriver",
       "candidate_source_files": [
         "internal/sqlitedriver/driver.go"
       ]
     },
     {
       "test_file": "internal/templates/jdm_test.go",
-      "package": "pmforge/internal/templates",
+      "package": "gopmgr/internal/templates",
       "candidate_source_files": [
         "internal/templates/jdm.go",
         "internal/templates/seeds.go"
@@ -1339,14 +1339,14 @@
     },
     {
       "test_file": "internal/timeline/timeline_test.go",
-      "package": "pmforge/internal/timeline",
+      "package": "gopmgr/internal/timeline",
       "candidate_source_files": [
         "internal/timeline/timeline.go"
       ]
     },
     {
       "test_file": "internal/update/check_test.go",
-      "package": "pmforge/internal/update",
+      "package": "gopmgr/internal/update",
       "candidate_source_files": [
         "internal/update/check.go",
         "internal/update/manifest.go"
@@ -1354,7 +1354,7 @@
     },
     {
       "test_file": "internal/users/dek_test.go",
-      "package": "pmforge/internal/users",
+      "package": "gopmgr/internal/users",
       "candidate_source_files": [
         "internal/users/dek.go",
         "internal/users/recovery.go",
@@ -1363,7 +1363,7 @@
     },
     {
       "test_file": "internal/users/recovery_test.go",
-      "package": "pmforge/internal/users",
+      "package": "gopmgr/internal/users",
       "candidate_source_files": [
         "internal/users/dek.go",
         "internal/users/recovery.go",
@@ -1372,7 +1372,7 @@
     },
     {
       "test_file": "internal/users/store_test.go",
-      "package": "pmforge/internal/users",
+      "package": "gopmgr/internal/users",
       "candidate_source_files": [
         "internal/users/dek.go",
         "internal/users/recovery.go",
@@ -1381,7 +1381,7 @@
     },
     {
       "test_file": "scripts/config_check_test.go",
-      "package": "pmforge/scripts",
+      "package": "gopmgr/scripts",
       "candidate_source_files": [
         "scripts/config_check.go"
       ]

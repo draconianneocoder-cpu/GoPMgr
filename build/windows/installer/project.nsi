@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2018-Present Lea Anthony and the Wails contributors
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: MIT
 #
-# PMForge-owned Wails v2.13 NSIS entrypoint. Wails regenerates
+# GoPMgr-owned Wails v2.13 NSIS entrypoint. Wails regenerates
 # wails_tools.nsh from its pinned embedded template on every build; keeping
 # project.nsi here prevents fallback to Wails' generic installer entrypoint.
 
@@ -11,7 +11,7 @@ SetCompressor /SOLID lzma
 
 !include "wails_tools.nsh"
 
-# Windows version resources require four numeric components. PMForge's version
+# Windows version resources require four numeric components. GoPMgr's version
 # of record is clean three-part SemVer, so the build component remains zero.
 VIProductVersion "${INFO_PRODUCTVERSION}.0"
 VIFileVersion "${INFO_PRODUCTVERSION}.0"
@@ -23,7 +23,7 @@ VIAddVersionKey "LegalCopyright" "${INFO_COPYRIGHT}"
 VIAddVersionKey "ProductName" "${INFO_PRODUCTNAME}"
 
 ManifestDPIAware true
-BrandingText "PMForge"
+BrandingText "GoPMgr"
 
 !include "MUI.nsh"
 
@@ -72,7 +72,7 @@ Function .onInit
   !insertmacro wails.checkArchitecture
 FunctionEnd
 
-Section "PMForge" SEC_PMFORGE
+Section "GoPMgr" SEC_GOPMGR
   !insertmacro wails.setShellContext
   !insertmacro wails.webview2runtime
 
@@ -90,7 +90,7 @@ SectionEnd
 Section "Uninstall"
   !insertmacro wails.setShellContext
 
-  # Remove only the Wails WebView2 cache and installed program files. PMForge
+  # Remove only the Wails WebView2 cache and installed program files. GoPMgr
   # project databases live in the user's Documents\PMForge tree and must
   # survive uninstall so an application upgrade cannot destroy user work.
   RMDir /r "$AppData\${PRODUCT_EXECUTABLE}"

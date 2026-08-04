@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package fonts
@@ -126,7 +126,7 @@ func (m *Manager) Register(r FontRegistrar, family string) error {
 }
 
 // RegisterAs is like Register but registers the font under aliasName
-// instead of its real family name. This is how PMForge swaps the
+// instead of its real family name. This is how GoPMgr swaps the
 // document font without touching renderer code: registering the chosen
 // family under "Helvetica" makes every existing SetFont("Helvetica",
 // ...) call use the embedded TrueType font, because fpdf
@@ -399,7 +399,7 @@ func validateTrueType(b []byte) error {
 // partial write never leaves a corrupt font in place.
 func writeFileAtomic(path string, b []byte) error {
 	tmp := path + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) // #nosec G304 -- tmp is derived from PMForge's configured user font destination.
+	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) // #nosec G304 -- tmp is derived from GoPMgr's configured user font destination.
 	if err != nil {
 		return err
 	}

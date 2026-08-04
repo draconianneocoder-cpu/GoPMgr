@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"pmforge/internal/calendar"
-	"pmforge/internal/charts"
-	"pmforge/internal/charts/dag"
-	chartstats "pmforge/internal/charts/stats"
-	"pmforge/internal/db"
-	"pmforge/internal/export"
-	"pmforge/internal/kernel"
+	"gopmgr/internal/calendar"
+	"gopmgr/internal/charts"
+	"gopmgr/internal/charts/dag"
+	chartstats "gopmgr/internal/charts/stats"
+	"gopmgr/internal/db"
+	"gopmgr/internal/export"
+	"gopmgr/internal/kernel"
 	"sort"
 	"strings"
 	"time"
@@ -839,7 +839,7 @@ func (a *App) importScheduleFileWithOptions(path string, options export.MSPDIImp
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".mpp":
 		return db.Chart{}, errors.New(
-			"Microsoft Project .mpp is a binary format PMForge cannot read directly. " +
+			"Microsoft Project .mpp is a binary format GoPMgr cannot read directly. " +
 				"In Microsoft Project choose File → Save As → \"Microsoft Project XML (*.xml)\", " +
 				"then import that .xml here.")
 	case ".mpx":
@@ -848,7 +848,7 @@ func (a *App) importScheduleFileWithOptions(path string, options export.MSPDIImp
 				"\"Microsoft Project XML (*.xml)\" from Microsoft Project and import the .xml here.")
 	case ".pod":
 		return db.Chart{}, errors.New(
-			"ProjectLibre .pod is a native binary format PMForge cannot read directly. " +
+			"ProjectLibre .pod is a native binary format GoPMgr cannot read directly. " +
 				"In ProjectLibre choose File → Save As / Export → \"Microsoft Project XML (*.xml)\", " +
 				"then import that .xml here.")
 	default:

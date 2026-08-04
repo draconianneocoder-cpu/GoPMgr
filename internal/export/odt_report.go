@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package export
@@ -47,7 +47,7 @@ func renderDocumentODT(payload ReportPayload, opts ExportOptions) ([]byte, error
 		body string
 	}{
 		{"META-INF/manifest.xml", odtManifest()},
-		{"meta.xml", odtMeta("PMForge CPM Report", opts.Title, now)},
+		{"meta.xml", odtMeta("GoPMgr CPM Report", opts.Title, now)},
 		{"styles.xml", odtStyles()},
 		{"content.xml", body},
 	}

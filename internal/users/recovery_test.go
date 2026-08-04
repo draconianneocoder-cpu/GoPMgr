@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package users
@@ -20,7 +20,7 @@ func (failingRecoveryReader) Read([]byte) (int, error) {
 
 func newRecoveryTestStore(t *testing.T) *Store {
 	t.Helper()
-	store, err := Open(filepath.Join(t.TempDir(), "PMForge"))
+	store, err := Open(filepath.Join(t.TempDir(), "GoPMgr"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

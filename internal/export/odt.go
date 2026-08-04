@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package export
@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"time"
 
-	"pmforge/internal/documents"
+	"gopmgr/internal/documents"
 )
 
 // RenderDocumentODT produces an OpenDocument Text (.odt) file for
@@ -124,7 +124,7 @@ func odtMeta(projectName, kindName, isoNow string) string {
                       xmlns:dc="http://purl.org/dc/elements/1.1/"
                       office:version="1.2">
   <office:meta>
-    <meta:generator>PMForge</meta:generator>
+    <meta:generator>GoPMgr</meta:generator>
     <dc:title>%s — %s</dc:title>
     <meta:creation-date>%s</meta:creation-date>
     <dc:date>%s</dc:date>

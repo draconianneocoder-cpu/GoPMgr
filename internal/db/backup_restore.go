@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package db
@@ -24,7 +24,7 @@ const (
 	maxBackupTotalSize   = maxBackupProjectSize + 32*maxBackupCertSize + maxBackupManifest
 )
 
-// RestoreArchivalBundle validates a PMForge archive and publishes only its
+// RestoreArchivalBundle validates a GoPMgr archive and publishes only its
 // project database at destPath. Certificates are integrity-checked but never
 // imported automatically because an archive may contain private key material.
 func RestoreArchivalBundle(archivePath, destPath string) (manifest BackupManifest, err error) {

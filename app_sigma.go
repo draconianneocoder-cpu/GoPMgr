@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package main
@@ -10,17 +10,17 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
-	"pmforge/internal/calendar"
-	"pmforge/internal/charts"
-	"pmforge/internal/db"
-	"pmforge/internal/documents"
-	"pmforge/internal/export"
-	"pmforge/internal/kernel"
-	sigmacharts "pmforge/internal/sigma/charts"
-	"pmforge/internal/sigma/domain"
-	"pmforge/internal/sigma/service"
-	"pmforge/internal/sigma/stats"
-	"pmforge/internal/sigma/tollgate"
+	"gopmgr/internal/calendar"
+	"gopmgr/internal/charts"
+	"gopmgr/internal/db"
+	"gopmgr/internal/documents"
+	"gopmgr/internal/export"
+	"gopmgr/internal/kernel"
+	sigmacharts "gopmgr/internal/sigma/charts"
+	"gopmgr/internal/sigma/domain"
+	"gopmgr/internal/sigma/service"
+	"gopmgr/internal/sigma/stats"
+	"gopmgr/internal/sigma/tollgate"
 	"time"
 )
 

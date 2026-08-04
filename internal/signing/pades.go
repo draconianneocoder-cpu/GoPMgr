@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 package signing
@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	pmcrypto "pmforge/internal/crypto"
-	"pmforge/internal/pdfmeta"
-	"pmforge/internal/rfc3161"
+	pmcrypto "gopmgr/internal/crypto"
+	"gopmgr/internal/pdfmeta"
+	"gopmgr/internal/rfc3161"
 )
 
 const maxTSATrustRootBytes = 1 << 20
@@ -30,7 +30,7 @@ const (
 
 // TimestampConfig is the persisted, non-secret configuration needed to
 // upgrade a PAdES Baseline B signature to Baseline T. Authentication material
-// is deliberately excluded: PMForge never persists TSA credentials or accepts
+// is deliberately excluded: GoPMgr never persists TSA credentials or accepts
 // credentials embedded in the endpoint URL.
 type TimestampConfig struct {
 	Enabled           bool
