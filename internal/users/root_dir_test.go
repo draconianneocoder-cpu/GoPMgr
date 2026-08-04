@@ -40,21 +40,26 @@ func TestDefaultRootDirPlatformDefault_UsesPMForgeLeaf(t *testing.T) {
 		t.Fatalf("DefaultRootDir leaf directory = %q, want %q (renaming this orphans every existing install)", got, "PMForge")
 	}
 
-	// The leaf name alone isn't enough on macOS: swapping the parent from
-	// "Library/Application Support" to "Documents" (or back) would keep the
-	// leaf identical while pointing at a location no existing install has
-	// ever written to, AND silently defeat MigrateLegacyRoot (it treats
+	// The leaf name alone isn't enough: swapping macOS's parent from
+	// "Library/Application Support" to "Documents" (or back), or swapping
+	// Linux/Windows's "Documents" for something else, would keep the leaf
+	// identical while pointing at a location no existing install has ever
+	// written to, AND silently defeat MigrateLegacyRoot (it treats
 	// legacy == newRoot as "nothing to migrate" and no-ops). Pin the full
-	// resolved path on the platform this actually runs on.
+	// resolved path on both branches so CI (which runs on Linux) actually
+	// exercises the non-darwin case instead of only the leaf check above.
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("UserHomeDir: %v", err)
+	}
+	var want string
 	if runtime.GOOS == "darwin" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			t.Fatalf("UserHomeDir: %v", err)
-		}
-		want := filepath.Join(home, "Library", "Application Support", "PMForge")
-		if root != want {
-			t.Fatalf("DefaultRootDir on darwin = %q, want %q (existing installs are at this exact path)", root, want)
-		}
+		want = filepath.Join(home, "Library", "Application Support", "PMForge")
+	} else {
+		want = filepath.Join(home, "Documents", "PMForge")
+	}
+	if root != want {
+		t.Fatalf("DefaultRootDir on %s = %q, want %q (existing installs are at this exact path)", runtime.GOOS, root, want)
 	}
 }
 
