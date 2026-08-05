@@ -353,6 +353,57 @@ One data point, one function; doesn't move the frontend estimate.
 Break-verified two independent mutations (a flag default, the `NArg()`
 positional-arg guard), both caught.
 
+`internal/templates`: done, 20.7% → 97.3% under both build configs. Not
+100% — see the DEVELOPER_HANDBOOK.md "First wall: the exclusion mechanism
+is file-granular" entry for why, and why that's being left as a recorded
+gap rather than forced or worked around on a sample of one. `seeds.go`
+(0% → 100%): built `db.InitDB`-backed tests exercising every seed kind
+(7 charts, 8 documents, kanban/backlog/sprint1, the unknown-seed no-op),
+plus 4 SQLite-trigger fault-injection tests (same technique as
+`internal/users`'s `TestAuthenticateReturnsLastLoginUpdateError`) pinning
+each seed handler's error-propagation path, plus a direct call to the
+unexported `seedDocument` helper with an invalid kind (a different
+technique — no DB fault injection needed, since the kind string isn't
+type-constrained to the 8 real values), plus `Apply`'s
+partial-success-on-failure contract — the one genuinely non-obvious
+behavior in the file, previously unpinned.
+`jdm.go` (83.3%/66.7% → 83.3%/90.9%): deleted 3 branches proven dead by
+type (`SeedRequest` marshal, its map unmarshal, and `json.RawMessage`
+marshal all cannot fail — see handbook), and replaced the marshal/
+unmarshal round-trip building the zen input map with a direct map
+literal, removing the round-trip's own uncovered lines along with it.
+Part of `Evaluate`'s percentage gain is from tests (the nil-`*Engine`
+guard, `e.z.Evaluate`'s error path via the same error-returning-loader
+fixture zen-go's own test suite uses, and a known-decision-table-row test
+proving the map's `"industry"`/`"methodology"` keys are spelled right --
+added after adversarial review found `TestEngineEvaluatesFallback` alone
+would stay green even if both keys were misspelled, since an unknown pair
+and a misspelled-key lookup hit the same fallback row) and part is simply
+from a smaller denominator after deletion — both are named so a reader
+doesn't credit the whole gain to new tests. Left untested and undeleted:
+the loader-miss branch (defensive code for the package doc's stated
+future of sibling JDM files, not reachable via any node type in zen-go's
+own fixtures — searched, didn't force it) and the final `SeedResponse`
+unmarshal error (reachable only via a malformed-shape JDM response,
+judged not worth hand-crafting).
+
+Also fixed during this pass: `scripts/coverage-ratchet.sh` compared
+statement-coverage *percentage*, which has a false-positive trap this
+pass hit directly — deleting `jdm.go`'s 3 dead-by-type branches removed
+statements that were already 100% covered, which mathematically lowers
+the repo-wide percentage (removing above-average-coverage code from a
+below-100%-average repo always does). The ratchet now compares
+*uncovered statement count* instead: deleting fully-covered code leaves
+it unchanged, only adding untested code or removing tests increases it.
+Break-verified with the synthetic-inflated-baseline case used for the
+original ratchet, plus confirming this session's real deletion now holds
+cleanly with no override needed.
+
+Noted, not changed: `Evaluate(ctx context.Context, ...)`'s `ctx` parameter
+is never read in the function body. Left as-is rather than removed —
+dropping it changes an exported package signature, a separate decision
+from coverage work, not something to fold into this pass.
+
 Still not started in Phase 1: `internal/templates` (20.7%), and
 refactoring the 6 `runtime.GOOS ==` conditionals in
 `main.go`/`internal/users/store.go` behind an injectable seam (its own
