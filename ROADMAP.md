@@ -630,8 +630,60 @@ Coverage ratchet updated: go_default 8687/14630 (5943 uncovered) →
 8694/14627 (5933 uncovered); go_duckdb 8765/14728 (5963 uncovered) →
 8772/14725 (5953 uncovered).
 
+**`internal/users` (`dek.go` increment): 73.2% → 90.2% of `dek.go`
+(73.5% → 75.6% of the package).** `internal/users` is the largest
+completion-tier package (`dek.go` + `recovery.go` + `store.go`,
+~30 total forceable branches across all three), so per the
+`internal/crypto` split precedent this is deliberately the first of
+several increments, scoped to `dek.go` alone —
+`migrateDEKColumns`/`UnlockDEK`/`HasLegacyRecoveryCodeWraps`, the
+package's security-critical DEK-unwrap logic. `recovery.go` and
+`store.go` remain for follow-up increments.
+
+Three forcing techniques, reused from `internal/admin`'s pattern
+where they applied: the closed-DB technique (`migrateDEKColumns`'s
+`PRAGMA table_info` query failure), a SQLite trigger blocking
+`UPDATE OF wrapped_dek_pw ON users` (matching `store_test.go`'s
+existing `block_last_login`/`block_password_rehash` triggers), and
+one new technique validated by direct probe before use: dropping the
+`users` table after `Open()` succeeds, then calling
+`migrateDEKColumns()` directly — the column-presence probe correctly
+reports the column absent (zero rows from a dropped table), so the
+function proceeds to `ALTER TABLE users ...`, which then fails with
+"no such table" — forcing the ALTER branch specifically, distinct
+from the earlier PRAGMA-query-failure branch. `UnlockDEK`'s
+`WrapKey` error branch was forced with an empty password rather than
+a broken entropy source: `EncryptBuffer` rejects an empty password
+before ever touching `rand.Reader`, so no fake reader was needed —
+but this requires a *fresh* account (`wrapped_dek_pw == ""`), since
+any account with a real DEK already routes to `UnwrapKey` instead,
+which never calls `WrapKey`.
+
+One masked mutation, caught by break-verifying before commit, not
+after: the first draft of `TestUnlockDEK_GenerateDEKEntropyFailure`
+asserted only `err != nil`. Deleting `UnlockDEK`'s
+`GenerateDEK`-error check still produced a non-nil error — `WrapKey`
+independently rejects the resulting nil/wrong-length key with
+`ErrBadDEK` — so the test stayed green under a deleted guard. Fixed
+by asserting the specific "generate DEK" error text instead; see
+`DEVELOPER_HANDBOOK.md`'s matching entry. Two branches
+(`migrateDEKColumns`'s `rows.Scan` and `rows.Err()` on the `PRAGMA
+table_info` cursor) stay disclosed-untested: SQLite's fixed six-
+column pragma output makes `Scan` unable to fail under normal
+operation, and no portable way exists to inject a mid-iteration
+cursor I/O error.
+
+Also fixed in passing: `dek.go`'s pre-existing `interface{}` →
+`any` linter hint in the function this change already touched
+(mechanical, behavior-identical).
+
+Coverage ratchet updated: go_default 8694/14627 (5933 uncovered) →
+8702/14627 (5925 uncovered); go_duckdb 8772/14725 (5953 uncovered) →
+8780/14725 (5945 uncovered).
+
 **Not started:** the rest of Phase 2 (remaining Go completion-tier
-packages at 70–99%, next candidate `internal/users`),
+packages at 70–99%; `internal/users`' `recovery.go` and `store.go`
+increments are next, then the other completion-tier packages),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
 `db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
 Phase 4 (root/App layer, 48.2%), Phase 5 (remaining frontend pure-logic
