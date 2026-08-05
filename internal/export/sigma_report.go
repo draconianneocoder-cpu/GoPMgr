@@ -16,7 +16,12 @@ import (
 	"gopmgr/internal/sigma/domain"
 )
 
-// GenerateSigmaReport produces a PDF report of all Six Sigma phase deliverables.
+// GenerateSigmaReport produces a PDF report of all Six Sigma phase
+// deliverables and writes it into outDir (created with private 0700
+// permissions if missing, tightened to 0700 if it already exists more
+// permissively). The caller owns choosing outDir — every other exporter in
+// this codebase writes to the signed-in user's own <DataDir>/exports, and
+// this function has no user context of its own to derive that path from.
 func GenerateSigmaReport(
 	project domain.Project,
 	charter *domain.Charter,
@@ -24,6 +29,7 @@ func GenerateSigmaReport(
 	fishbone *domain.FishboneData,
 	solutions []domain.Solution,
 	controlPlan []domain.ControlPlanItem,
+	outDir string,
 ) (string, error) {
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetTitle("Six Sigma Project Report: "+project.Title, true)
@@ -56,13 +62,15 @@ func GenerateSigmaReport(
 		}
 	}
 
-	outputDir, err := getExportDir()
-	if err != nil {
-		return "", err
+	if err := os.MkdirAll(outDir, 0o700); err != nil {
+		return "", fmt.Errorf("sigma report mkdir: %w", err)
+	}
+	if err := os.Chmod(outDir, 0o700); err != nil { // #nosec G302 -- this is a private directory mode, not a file mode.
+		return "", fmt.Errorf("sigma report chmod export dir: %w", err)
 	}
 
 	filename := fmt.Sprintf("sigma_report_%s_%s.pdf", sanitizeFilename(project.Title), time.Now().UTC().Format("20060102_150405"))
-	outputPath := filepath.Join(outputDir, filename)
+	outputPath := filepath.Join(outDir, filename)
 
 	if err := os.WriteFile(outputPath, pdfBytes, 0o600); err != nil {
 		return "", fmt.Errorf("sigma report write: %w", err)
@@ -378,17 +386,3 @@ func sanitizeFilename(name string) string {
 	return result
 }
 
-func getExportDir() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("sigma report: %w", err)
-	}
-	dir := filepath.Join(home, "GoPMgr", "exports")
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return "", fmt.Errorf("sigma report mkdir: %w", err)
-	}
-	if err := os.Chmod(dir, 0o700); err != nil { // #nosec G302 -- this is a private directory mode, not a file mode.
-		return "", fmt.Errorf("sigma report chmod export dir: %w", err)
-	}
-	return dir, nil
-}
