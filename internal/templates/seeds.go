@@ -24,12 +24,8 @@ func NewSeeder(d *db.Database, projectID string) *Seeder {
 	return &Seeder{DB: d, ProjectID: projectID}
 }
 
-// Apply dispatches each seed string to its handler. Unknown seeds
-// are silently skipped (so adding a JDM row that names a yet-to-be-
-// implemented seed doesn't crash the project-creation flow).
-//
-// Returns a slice describing what was created so the GUI can show
-// the user a "we set this up for you" toast.
+// SeedReceipt describes one artifact a seed action created, so the GUI
+// can show the user a "we set this up for you" toast.
 type SeedReceipt struct {
 	Seed string `json:"seed"`
 	Kind string `json:"kind"` // "chart" | "document" | "board" | "sprint"
@@ -37,9 +33,12 @@ type SeedReceipt struct {
 	Name string `json:"name"`
 }
 
-// Apply runs every seed in order. The first error short-circuits;
-// receipts of seeds that succeeded BEFORE the failure are returned
-// alongside it so the caller can decide whether to keep or undo.
+// Apply dispatches each seed string to its handler and runs every seed in
+// order. Unknown seeds are silently skipped (so adding a JDM row that names
+// a yet-to-be-implemented seed doesn't crash the project-creation flow).
+// The first error short-circuits; receipts of seeds that succeeded BEFORE
+// the failure are returned alongside it so the caller can decide whether to
+// keep or undo.
 func (s *Seeder) Apply(seeds []string) ([]SeedReceipt, error) {
 	out := make([]SeedReceipt, 0, len(seeds))
 	for _, seed := range seeds {

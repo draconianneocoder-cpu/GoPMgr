@@ -84,22 +84,23 @@ func NewEngine() (*Engine, error) {
 // an error — the GUI treats that as "no auto-seed, user starts
 // blank".
 //
-// The zen (Go binding) Evaluate takes the decision key and an input map. We
-// build the map by marshalling SeedRequest to JSON and back into a
-// map[string]any — slower than constructing the map directly but
-// keeps SeedRequest as the single source of truth for the input
-// schema. The cost is negligible at one call per project creation.
+// The zen (Go binding) Evaluate takes the decision key and an input map;
+// SeedRequest's two fields are built into the map directly (their JSON
+// tags in jdm_types.go are the schema, so there is nothing a
+// marshal/unmarshal round-trip would add).
+//
+// result.Result is a json.RawMessage, whose MarshalJSON always succeeds
+// (it returns its own bytes, or "null" if nil), so re-marshalling it can't
+// fail. Only e.z.Evaluate (crossing into the zen engine) and the final
+// Unmarshal into SeedResponse (if the JDM's output shape doesn't match)
+// can actually fail.
 func (e *Engine) Evaluate(ctx context.Context, req SeedRequest) (SeedResponse, error) {
 	if e == nil {
 		return SeedResponse{}, fmt.Errorf("templates: engine not initialised")
 	}
-	raw, err := json.Marshal(req)
-	if err != nil {
-		return SeedResponse{}, err
-	}
-	var input map[string]any
-	if err := json.Unmarshal(raw, &input); err != nil {
-		return SeedResponse{}, err
+	input := map[string]any{
+		"industry":    req.Industry,
+		"methodology": req.Methodology,
 	}
 
 	result, err := e.z.Evaluate(decisionKey, input)
@@ -109,10 +110,7 @@ func (e *Engine) Evaluate(ctx context.Context, req SeedRequest) (SeedResponse, e
 
 	// The zen (Go binding) EvaluationResult.Result is a JSON-encoded map; marshal
 	// back into our typed shape.
-	resultRaw, err := json.Marshal(result.Result)
-	if err != nil {
-		return SeedResponse{Seeds: nil}, nil
-	}
+	resultRaw, _ := json.Marshal(result.Result)
 	var resp SeedResponse
 	if err := json.Unmarshal(resultRaw, &resp); err != nil {
 		return SeedResponse{Seeds: nil}, nil

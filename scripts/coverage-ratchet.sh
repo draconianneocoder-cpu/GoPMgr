@@ -2,20 +2,29 @@
 # SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Coverage ratchet: fails only if statement coverage drops below the last
-# recorded high-water mark, for any of the three independently-tracked
-# targets (Go default build, Go -tags duckdb build, frontend). It never
-# requires 100% today -- it requires "not worse than the best we've ever
-# measured." See DEVELOPER_HANDBOOK.md's "100% coverage: scope and
+# Coverage ratchet: fails only if the UNCOVERED statement count rises above
+# the last recorded high-water mark, for any of the three independently-
+# tracked targets (Go default build, Go -tags duckdb build, frontend). It
+# never requires 100% today -- it requires "not worse than the best we've
+# ever measured." See DEVELOPER_HANDBOOK.md's "100% coverage: scope and
 # exclusions" entry for why three separate marks are needed instead of one:
 # the default and duckdb Go builds compile different files (stub.go vs
 # duckdb.go), so a single merged percentage can't represent either
 # faithfully and would let one config's regression hide behind the other's
 # improvement.
 #
+# Compares uncovered COUNT, not percentage: deleting statements that were
+# already 100% covered (e.g. removing dead code) shrinks covered and total
+# by the same amount, which mathematically lowers the percentage whenever
+# the deleted code's local coverage was above the repo-wide average --
+# uncovered count is unaffected by that, since it only tracks statements
+# that still exist and still lack a test. See the "100% coverage" handbook
+# entry for the real case (deleting jdm.go's dead branches) that surfaced
+# this and is why the comparison isn't a percentage.
+#
 # coverage-baseline.json (checked into the repo) holds the three marks as
-# exact "<covered> <total>" statement counts, not percentages -- percentages
-# round, and a rounded ratchet can't catch a one-statement regression.
+# exact "<covered> <total>" statement counts (uncovered is covered/total's
+# difference, computed at comparison time, not stored separately).
 #
 # GOPMGR_ALLOW_COVERAGE_REGRESSION is an explicit, developer-set escape
 # hatch, the same shape as GOPMGR_SKIP_NSIS_COMPILE: while 100% coverage is
@@ -81,19 +90,28 @@ for key, (covered, total) in current.items():
         continue
     prev_covered, prev_total = prev["covered"], prev["total"]
     prev_pct = 100.0 * prev_covered / prev_total if prev_total else 0.0
-    # Compare by percentage, since `total` legitimately shifts as code is
-    # added/removed; only a statement-count regression relative to the same
-    # denominator would be a false negative here, and that's covered by
-    # comparing pct rather than raw covered count.
-    if pct + 1e-9 < prev_pct:
+    uncovered = total - covered
+    prev_uncovered = prev_total - prev_covered
+    # Compare by UNCOVERED COUNT, not percentage. Percentage has a false-
+    # positive trap: deleting statements that were already 100% covered
+    # (e.g. removing dead code) shrinks covered and total by the same
+    # amount, which mathematically LOWERS the ratio whenever the deleted
+    # code's local coverage was above the repo-wide average -- a real
+    # session hit this exact case deleting jdm.go's dead marshal/unmarshal
+    # branches. Uncovered count isn't fooled by that: deleting fully-covered
+    # code leaves it unchanged, adding untested code increases it, and
+    # adding tests decreases it -- which is what a coverage ratchet should
+    # actually be watching. It also gives an exact terminal condition:
+    # uncovered == 0 is 100%, no float comparison needed.
+    if uncovered > prev_uncovered:
         suffix = " (GOPMGR_ALLOW_COVERAGE_REGRESSION set -- not failing, but NOT recording this as the new baseline)" if allow_regression else ""
-        print(f"{key}: {covered}/{total} ({pct:.2f}%) REGRESSED below baseline {prev_covered}/{prev_total} ({prev_pct:.2f}%){suffix}")
+        print(f"{key}: {covered}/{total} ({pct:.2f}%, {uncovered} uncovered) REGRESSED above baseline's {prev_uncovered} uncovered ({prev_covered}/{prev_total}, {prev_pct:.2f}%){suffix}")
         if not allow_regression:
             failed = True
     else:
-        verdict = "IMPROVED" if pct > prev_pct + 1e-9 else "held"
-        print(f"{key}: {covered}/{total} ({pct:.2f}%) {verdict}, baseline {prev_pct:.2f}%")
-        if pct > prev_pct + 1e-9:
+        verdict = "IMPROVED" if uncovered < prev_uncovered else "held"
+        print(f"{key}: {covered}/{total} ({pct:.2f}%, {uncovered} uncovered) {verdict}, baseline {prev_uncovered} uncovered ({prev_pct:.2f}%)")
+        if uncovered < prev_uncovered:
             next_baseline[key] = {"covered": covered, "total": total}
 
 if update:
