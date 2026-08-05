@@ -61,6 +61,20 @@ if command -v cygpath >/dev/null 2>&1; then
 	nsis_binary_arg="$(cygpath -w "$fixture_binary")"
 fi
 
+# GOPMGR_SKIP_NSIS_COMPILE is an explicit, developer-set local escape hatch
+# for a broken Homebrew `makensis` (observed: NSIS 3.12, arm64_tahoe bottle,
+# macOS 26.6 — aborts with std::bad_alloc compiling even a trivial 3-line
+# .nsi, reproducing outside this repo and surviving `brew reinstall nsis`;
+# an upstream Homebrew/NSIS build defect, not a GoPMgr defect). It is never
+# set in CI: release.yml only reaches this script on `runner.os == 'Windows'`,
+# where NSIS comes from Chocolatey, not Homebrew, so CI exercises the real
+# compile unconditionally. Everything above this point — Wails asset
+# presence, template field resolution — still runs either way.
+if [ -n "${GOPMGR_SKIP_NSIS_COMPILE:-}" ]; then
+	echo "validate-windows-nsis-template: SKIPPED actual makensis compile (GOPMGR_SKIP_NSIS_COMPILE set) — this is NOT a pass, template syntax was not verified." >&2
+	exit 0
+fi
+
 (
 	cd "$INSTALLER_DIR"
 	makensis -V2 "-DARG_WAILS_AMD64_BINARY=$nsis_binary_arg" project.nsi
