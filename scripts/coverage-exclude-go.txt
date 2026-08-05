@@ -1,0 +1,35 @@
+# Files excluded from the Go coverage ratchet's numerator/denominator.
+# This is the authoritative exclusion list -- scripts/coverage-go.sh reads it
+# directly, so "what's excluded and why" has one place that can't drift from
+# what's enforced. See DEVELOPER_HANDBOOK.md's "100% coverage: scope and
+# exclusions" entry for the full rationale.
+#
+# One Go regexp fragment per line (matched with `grep -E -f` against
+# coverage-profile path fields, e.g. "gopmgr/internal/applog/opendir_darwin.go").
+# Blank lines and lines starting with # are ignored.
+
+# Platform-suffixed files: each only compiles under its own GOOS, so a
+# single-host (this repo's CI has no macOS+Windows+Linux one Go coverage run)
+# can never execute more than one arm. Genuine cross-platform-CI territory,
+# not an injectable-seam case -- unlike the runtime.GOOS conditionals in
+# main.go and internal/users/store.go, which DO get covered (see the seam
+# refactor, not an exclusion).
+#
+# internal/applog's dialog/opendir split is 3-way (darwin/windows/other via
+# "!darwin && !windows"), and CI (.github/workflows/ci.yml) runs `make
+# verify` on ubuntu-24.04, where the *_other.go arm compiles instead of the
+# *_darwin.go arm this list was first written against on a macOS dev
+# machine. All three arms are excluded so the denominator -- and therefore
+# the coverage-ratchet baseline -- is the same on every host that runs this,
+# not just the one it happened to be authored on.
+internal/applog/opendir_darwin\.go
+internal/applog/opendir_windows\.go
+internal/applog/opendir_other\.go
+internal/applog/dialog_darwin\.go
+internal/applog/dialog_windows\.go
+internal/applog/dialog_other\.go
+# internal/templates/jdm.go ("!windows") is NOT excluded: it compiles on
+# both this macOS dev machine and CI's ubuntu-24.04, so it's covered
+# normally like any other cross-platform file. Only its windows-only sibling
+# is platform-narrow.
+internal/templates/jdm_windows\.go

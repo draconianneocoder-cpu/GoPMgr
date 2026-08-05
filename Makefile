@@ -105,6 +105,12 @@ race: ## Run Go tests with the race detector (concurrency gate).
 verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests wails-version test frontend-stability frontend-build-budget ## Fast pre-commit gate: config + packaging/toolchain/font/reset contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/reset contracts, Go tests, svelte-check, and frontend build all passed."
 
+coverage-ratchet: ## Fail only if statement coverage drops below its recorded high-water mark (Go default, Go duckdb, frontend -- tracked independently). NOT in `verify`: CI's verify job builds with GO_TEST_TAGS=webkit2_41 only and installs no DuckDB CGO toolchain, so a duckdb-tagged coverage run would hard-fail there today. Run manually; wire into verify once CI installs the duckdb toolchain, or in Phase 7 when this converts to a hard 100% floor.
+	@bash scripts/coverage-ratchet.sh
+
+coverage-ratchet-update: ## Re-run the ratchet and record any improved marks in coverage-baseline.json. Run this after adding tests; never after a real regression.
+	@bash scripts/coverage-ratchet.sh --update
+
 frontend-stability: ## Run Svelte warning-clean and Sigma regression gates.
 	@bash scripts/frontend-stability-check.sh
 

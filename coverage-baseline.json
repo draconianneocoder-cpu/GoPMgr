@@ -1,0 +1,14 @@
+{
+  "frontend": {
+    "covered": 1939,
+    "total": 13195
+  },
+  "go_default": {
+    "covered": 8525,
+    "total": 14611
+  },
+  "go_duckdb": {
+    "covered": 8603,
+    "total": 14709
+  }
+}
