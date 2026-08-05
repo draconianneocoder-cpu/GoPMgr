@@ -38,6 +38,30 @@ func TestNewService_ReturnsNonNil(t *testing.T) {
 	}
 }
 
+// The absence-check in TestSecureArchiveRemovesArchiveWhenCreatedAuditLogFails
+// below globs for "PMForge_Archive_*.pmba" but only ever asserts zero
+// matches, on a path where SecureArchive is expected to fail and clean up
+// after itself. It never exercises the success path, so nothing today
+// positively pins the "PMForge_Archive_" prefix the way root_dir_test.go,
+// project_path_confinement_test.go, and backup_test.go pin the other three
+// frozen literals in DEVELOPER_HANDBOOK.md §9. This test closes that gap by
+// asserting the literal against a real archive SecureArchive wrote.
+func TestSecureArchiveUsesPMForgeArchivePrefix(t *testing.T) {
+	d := newAdminTestDB(t)
+	workDir := t.TempDir()
+	t.Chdir(workDir)
+
+	s := NewService(d)
+	backupPath, err := s.SecureArchive(d.Path)
+	if err != nil {
+		t.Fatalf("SecureArchive: %v", err)
+	}
+
+	if got := filepath.Base(backupPath); !strings.HasPrefix(got, "PMForge_Archive_") {
+		t.Fatalf("archive filename = %q, want prefix %q", got, "PMForge_Archive_")
+	}
+}
+
 func TestSecureArchiveRemovesArchiveWhenCreatedAuditLogFails(t *testing.T) {
 	d := newAdminTestDB(t)
 	workDir := t.TempDir()
