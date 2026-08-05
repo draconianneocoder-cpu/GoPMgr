@@ -87,6 +87,12 @@ func Open(rootDir string) (*Store, error) {
 	// Per-connection pragmas ride in the DSN so every connection the
 	// *sql.DB pool opens gets them — a one-off conn.Exec would bind
 	// foreign_keys=ON to a single physical connection only.
+	//
+	// sql.Open's own error return is not tested: the driver connects
+	// lazily, so this only fails on a malformed DSN, and there is no
+	// portable way to make dbPath+the fixed query string malformed
+	// without corrupting rootDir itself — which instead trips the
+	// ensurePrivateDir guard above.
 	conn, err := sql.Open(sqlitedriver.Name, dbPath+"?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000")
 	if err != nil {
 		return nil, err
@@ -94,11 +100,21 @@ func Open(rootDir string) (*Store, error) {
 
 	s := &Store{conn: conn, rootDir: rootDir}
 	if err := s.migrate(); err != nil {
+		// closeErr is not tested: forcing conn.Close() itself to fail here
+		// would require corrupting the driver's internal fd state after a
+		// failed Exec on the same connection, which has no portable,
+		// non-flaky trigger.
 		if closeErr := conn.Close(); closeErr != nil {
 			return nil, fmt.Errorf("users: migrate: %w; close: %v", err, closeErr)
 		}
 		return nil, fmt.Errorf("users: migrate: %w", err)
 	}
+	// ensurePrivateSQLiteFiles's own "main path missing" branch is directly
+	// forceable (see TestEnsurePrivateSQLiteFiles_MainPathMissing), but not
+	// reachable from here: by this point s.migrate() has already written to
+	// dbPath, so it necessarily exists. Both this err branch and its
+	// closeErr cascade are consequently untested for the same reasons as
+	// the migrate error branch above.
 	if err := ensurePrivateSQLiteFiles(dbPath); err != nil {
 		if closeErr := conn.Close(); closeErr != nil {
 			return nil, fmt.Errorf("users: private database file: %w; close: %v", err, closeErr)
@@ -134,6 +150,13 @@ func (s *Store) migrate() error {
 		return err
 	}
 	// V2.x — recovery codes table (recovery.go).
+	//
+	// This propagation check and migrateDEKColumns's below are not
+	// independently forceable: both run as later statements on the same
+	// already-open connection with no intervening hook a test can break,
+	// and SQLite triggers only fire on DML, not the CREATE TABLE/ALTER TABLE
+	// DDL these functions issue. A closed connection trips the schema Exec
+	// above first, every time (see TestMigrate_FailsOnClosedStore).
 	if err := s.migrateRecoveryTable(); err != nil {
 		return err
 	}
@@ -158,6 +181,10 @@ func (s *Store) migrateAdminColumn() error {
 		var name, typ, notnull string
 		var dflt sql.NullString
 		var pk int
+		// Scan and rows.Err() below are not tested: PRAGMA table_info's
+		// fixed six-column shape (int, text, text, text, nullable text, int)
+		// always matches these Scan targets under normal SQLite operation,
+		// the same reasoning already applied to dek.go's migrateDEKColumns.
 		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
 			return err
 		}
@@ -204,6 +231,12 @@ func (s *Store) SetAdmin(username string, isAdmin bool) error {
 		}
 		if targetIsAdmin == 1 {
 			var n int
+			// This COUNT query's own error is not tested: it and the
+			// targetIsAdmin query above both read the `users` table on the
+			// same live connection with no intervening hook a test can
+			// break, and a SELECT can't be sabotaged with a trigger the way
+			// an INSERT/UPDATE/DELETE can (same reasoning as
+			// DeleteAccount's equivalent COUNT query below).
 			if err := s.conn.QueryRow(`SELECT COUNT(*) FROM users WHERE is_admin = 1`).Scan(&n); err != nil {
 				return err
 			}
@@ -231,6 +264,8 @@ func (s *Store) DeleteAccount(username string) error {
 	}
 	if isAdmin == 1 {
 		var n int
+		// This COUNT query's own error is not tested: see SetAdmin's
+		// identical query above for why.
 		if err := s.conn.QueryRow(`SELECT COUNT(*) FROM users WHERE is_admin = 1`).Scan(&n); err != nil {
 			return err
 		}

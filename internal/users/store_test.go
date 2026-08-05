@@ -239,6 +239,394 @@ func TestCreateAccount_RejectsCaseVariantUsername(t *testing.T) {
 	}
 }
 
+// TestOpen_RootDirIsFile forces ensurePrivateDir's os.MkdirAll(rootDir, ...)
+// to fail by pre-occupying rootDir with a plain file. It asserts the
+// specific "mkdir root" wrapper text rather than a bare err != nil check:
+// deleting Open's ensurePrivateDir guard doesn't make Open succeed, since
+// sql.Open never touches the filesystem (the driver connects lazily) and
+// execution falls through to s.migrate()'s first Exec, which fails against
+// "<rootDir>/system.db" with an unrelated "unable to open database file"
+// error — the same cascading-fallible-path shape as this session's other
+// masked-mutation findings, just surfaced by probing before writing the
+// assertion instead of by a failed break-verify run.
+func TestOpen_RootDirIsFile(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "GoPMgr")
+	if err := os.WriteFile(root, []byte("not a directory"), 0o644); err != nil {
+		t.Fatalf("write root as file: %v", err)
+	}
+
+	_, err := Open(root)
+	if err == nil || !strings.Contains(err.Error(), "mkdir root") {
+		t.Fatalf("Open with rootDir-as-file error = %v, want \"mkdir root\"", err)
+	}
+	if strings.Contains(err.Error(), "migrate") {
+		t.Fatalf("Open error = %v, want the ensurePrivateDir failure, not the migrate cascade", err)
+	}
+}
+
+// TestOpen_DBPathIsDirectory forces s.migrate()'s first Exec to fail by
+// pre-occupying <rootDir>/system.db with a directory, so sqlite's "unable to
+// open database file" surfaces through Open's migrate error wrapper.
+func TestOpen_DBPathIsDirectory(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "GoPMgr")
+	if err := os.MkdirAll(filepath.Join(root, "system.db"), 0o700); err != nil {
+		t.Fatalf("mkdir system.db: %v", err)
+	}
+
+	_, err := Open(root)
+	if err == nil || !strings.Contains(err.Error(), "migrate") {
+		t.Fatalf("Open with system.db-as-directory error = %v, want a migrate error", err)
+	}
+}
+
+// TestClose_NilStoreAndNilConnAreNoops covers Close's s == nil || s.conn ==
+// nil guard, both ways it can be true: a nil *Store (e.g. a caller that
+// never checked Open's error) and a zero-value &Store{} (conn never set).
+func TestClose_NilStoreAndNilConnAreNoops(t *testing.T) {
+	var nilStore *Store
+	if err := nilStore.Close(); err != nil {
+		t.Fatalf("(*Store)(nil).Close() = %v, want nil", err)
+	}
+	if err := (&Store{}).Close(); err != nil {
+		t.Fatalf("(&Store{}).Close() = %v, want nil", err)
+	}
+}
+
+// TestStore_RootDirReturnsConfiguredRoot covers RootDir, a trivial getter
+// that no other test happens to call.
+func TestStore_RootDirReturnsConfiguredRoot(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "GoPMgr")
+	store, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if got := store.RootDir(); got != root {
+		t.Fatalf("RootDir() = %q, want %q", got, root)
+	}
+}
+
+// TestMigrate_FailsOnClosedStore forces migrate's own first Exec (the users
+// table CREATE) to fail. migrate's two downstream propagation checks
+// (migrateRecoveryTable's and migrateDEKColumns's own "if err != nil"
+// wrappers) are NOT independently forceable: both run as later statements
+// on the same already-open connection with no intervening hook a test can
+// break, and SQLite triggers only fire on DML, not the CREATE TABLE DDL
+// those functions issue — closing the store trips this first Exec instead,
+// every time. Kept as documented, uncovered lines rather than deleted.
+func TestMigrate_FailsOnClosedStore(t *testing.T) {
+	store := openTestStore(t)
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if err := store.migrate(); err == nil || !strings.Contains(err.Error(), "database is closed") {
+		t.Fatalf("migrate on closed store = %v, want \"database is closed\"", err)
+	}
+}
+
+// TestMigrateAdminColumn_QueryFailsOnClosedStore forces the PRAGMA
+// table_info query itself to fail. The Scan and rows.Err() checks that
+// follow it read PRAGMA table_info's fixed six-column shape, which cannot
+// be forced to fail without a corrupted SQLite build — the same reasoning
+// already applied to dek.go's migrateDEKColumns; kept as documented,
+// uncovered lines.
+func TestMigrateAdminColumn_QueryFailsOnClosedStore(t *testing.T) {
+	store := openTestStore(t)
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if err := store.migrateAdminColumn(); err == nil || !strings.Contains(err.Error(), "database is closed") {
+		t.Fatalf("migrateAdminColumn on closed store = %v, want \"database is closed\"", err)
+	}
+}
+
+// TestMigrateAdminColumn_AlreadyPresentIsNoop covers the "is_admin already
+// exists" short-circuit by opening the same rootDir a second time — the
+// first Open's migration already added the column, so the second Open's
+// migrateAdminColumn call must take the already-present branch instead of
+// re-running the ALTER TABLE (which would error on a duplicate column).
+func TestMigrateAdminColumn_AlreadyPresentIsNoop(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "GoPMgr")
+	s1, err := Open(root)
+	if err != nil {
+		t.Fatalf("first Open: %v", err)
+	}
+	if err := s1.Close(); err != nil {
+		t.Fatalf("close first store: %v", err)
+	}
+
+	s2, err := Open(root)
+	if err != nil {
+		t.Fatalf("second Open (should hit the already-present branch, not error): %v", err)
+	}
+	t.Cleanup(func() { _ = s2.Close() })
+}
+
+// TestSetAdmin_NoSuchUserReturnsError covers SetAdmin's first QueryRow
+// (reading the target's current admin status) failing with sql.ErrNoRows
+// for a username that was never created. The second QueryRow (the admin
+// COUNT) is only reached when the first found an existing admin row, so it
+// has no independent failure trigger on the same live connection — same
+// reasoning as DeleteAccount's equivalent COUNT query below; kept as a
+// documented, uncovered line.
+func TestSetAdmin_NoSuchUserReturnsError(t *testing.T) {
+	store := openTestStore(t)
+	if err := store.SetAdmin("nobody", false); err == nil {
+		t.Fatal("SetAdmin(nonexistent user) = nil, want an error")
+	}
+}
+
+// TestDeleteAccount_NoSuchUserReturnsError is DeleteAccount's analogue of
+// TestSetAdmin_NoSuchUserReturnsError above.
+func TestDeleteAccount_NoSuchUserReturnsError(t *testing.T) {
+	store := openTestStore(t)
+	if err := store.DeleteAccount("nobody"); err == nil {
+		t.Fatal("DeleteAccount(nonexistent user) = nil, want an error")
+	}
+}
+
+// TestCreateAccount_RejectsInvalidUsername covers CreateAccount's
+// ValidateUsername guard. Unlike Authenticate's same guard (see
+// TestAuthenticate_ValidateUsernameShortCircuitsBeforeDBAccess below),
+// CreateAccount returns the distinct ErrInvalidUsername sentinel with no
+// downstream code path that could produce the same value, so a plain
+// equality check already break-verifies it — no closed-store trick needed.
+func TestCreateAccount_RejectsInvalidUsername(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("!!", "Bad Name", "passphrase-long", false); err != ErrInvalidUsername {
+		t.Fatalf("CreateAccount with invalid username error = %v, want ErrInvalidUsername", err)
+	}
+}
+
+// TestCreateAccount_DuplicateCheckFailsOnClosedStore forces the
+// case-insensitive duplicate-username SELECT to fail.
+func TestCreateAccount_DuplicateCheckFailsOnClosedStore(t *testing.T) {
+	store := openTestStore(t)
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	_, err := store.CreateAccount("alice", "Alice", "passphrase-long", false)
+	if err == nil || !strings.Contains(err.Error(), "database is closed") {
+		t.Fatalf("CreateAccount on closed store = %v, want \"database is closed\"", err)
+	}
+}
+
+// TestCreateAccount_HashPasswordEntropyFailure forces auth.HashPassword's
+// salt read to fail by swapping crypto/rand.Reader for an always-failing
+// reader (the same package-level swap recovery_test.go already validates).
+func TestCreateAccount_HashPasswordEntropyFailure(t *testing.T) {
+	store := openTestStore(t)
+	restore := replaceRecoveryRandReader(t, failingRecoveryReader{})
+	defer restore()
+
+	_, err := store.CreateAccount("alice", "Alice", "passphrase-long", false)
+	if err == nil || !strings.Contains(err.Error(), "read salt") {
+		t.Fatalf("CreateAccount with failing entropy source = %v, want a \"read salt\" error", err)
+	}
+}
+
+// TestCreateAccount_ProvisioningFailsWhenDataDirIsFile forces
+// ensurePrivateDir's os.MkdirAll to fail while provisioning the new
+// account's data directory, by pre-occupying that path with a plain file.
+func TestCreateAccount_ProvisioningFailsWhenDataDirIsFile(t *testing.T) {
+	store := openTestStore(t)
+	dataDir := filepath.Join(store.RootDir(), "alice")
+	if err := os.WriteFile(dataDir, []byte("collide"), 0o644); err != nil {
+		t.Fatalf("write colliding file: %v", err)
+	}
+
+	_, err := store.CreateAccount("alice", "Alice", "passphrase-long", false)
+	if err == nil || !strings.Contains(err.Error(), "provision") {
+		t.Fatalf("CreateAccount with blocked data dir = %v, want a \"provision\" error", err)
+	}
+}
+
+// TestCreateAccount_InsertFailsOnBlockedTrigger forces the final INSERT
+// with a SQLite trigger, distinct message from every other trigger in this
+// package's test files.
+func TestCreateAccount_InsertFailsOnBlockedTrigger(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.conn.Exec(`
+		CREATE TRIGGER block_account_insert
+		BEFORE INSERT ON users
+		BEGIN
+			SELECT RAISE(ABORT, 'account insert blocked');
+		END;
+	`); err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+
+	_, err := store.CreateAccount("alice", "Alice", "passphrase-long", false)
+	if err == nil || !strings.Contains(err.Error(), "account insert blocked") {
+		t.Fatalf("CreateAccount with blocked insert = %v, want the trigger error", err)
+	}
+}
+
+// TestAuthenticate_ValidateUsernameShortCircuitsBeforeDBAccess distinguishes
+// Authenticate's ValidateUsername guard from a deleted one, even though
+// both a present and an absent guard can return the identical ErrNoSuchUser
+// value for an invalid-format username (present: the guard itself; absent:
+// zero rows from the following SELECT, per ErrNoSuchUser's own merge-in-UI
+// doc comment) — so an open-store equality check alone cannot break-verify
+// this guard, the same shape as recovery.go's anti-enumeration finding.
+// The discriminator is instead WHEN the DB gets touched: closing the store
+// first means a present guard still returns ErrNoSuchUser untouched, while
+// a deleted guard would reach the closed connection and surface
+// "database is closed" instead — a value ErrNoSuchUser can never equal.
+func TestAuthenticate_ValidateUsernameShortCircuitsBeforeDBAccess(t *testing.T) {
+	store := openTestStore(t)
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if _, err := store.Authenticate("!!", "whatever"); err != ErrNoSuchUser {
+		t.Fatalf("Authenticate(invalid username, closed store) = %v, want ErrNoSuchUser (guard must run before any DB access)", err)
+	}
+}
+
+// TestAuthenticate_NoSuchUser covers the real sql.ErrNoRows branch: a
+// well-formed username that simply has no matching row, as opposed to the
+// ValidateUsername short-circuit above.
+func TestAuthenticate_NoSuchUser(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.Authenticate("nosuchuser", "whatever"); err != ErrNoSuchUser {
+		t.Fatalf("Authenticate(unknown username) = %v, want ErrNoSuchUser", err)
+	}
+}
+
+// TestAuthenticate_ScanFailsOnCorruptedIsAdminColumn forces the query's
+// Scan to fail by writing a non-integer value into is_admin directly —
+// SQLite's type affinity stores it as TEXT rather than rejecting the
+// UPDATE, and Scan into *int then fails to convert it.
+func TestAuthenticate_ScanFailsOnCorruptedIsAdminColumn(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if _, err := store.conn.Exec(`UPDATE users SET is_admin = 'not-an-int' WHERE username = 'alice'`); err != nil {
+		t.Fatalf("corrupt is_admin: %v", err)
+	}
+
+	if _, err := store.Authenticate("alice", "passphrase-long"); err == nil {
+		t.Fatal("Authenticate with corrupted is_admin column = nil, want a Scan error")
+	}
+}
+
+// TestAuthenticate_WrongPasswordReturnsMismatch covers the
+// auth.VerifyPassword failure branch.
+func TestAuthenticate_WrongPasswordReturnsMismatch(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if _, err := store.Authenticate("alice", "wrong password entirely"); err == nil {
+		t.Fatal("Authenticate with wrong password = nil, want an error")
+	}
+}
+
+// TestAuthenticate_ParsesExistingLastLogin covers the lastLogin != ""
+// branch and its successful time.Parse: the first Authenticate call always
+// finds last_login empty (fresh account), so a second call is needed to
+// exercise the non-empty, successfully-parsed path.
+func TestAuthenticate_ParsesExistingLastLogin(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if _, err := store.Authenticate("alice", "passphrase-long"); err != nil {
+		t.Fatalf("first Authenticate: %v", err)
+	}
+
+	acc, err := store.Authenticate("alice", "passphrase-long")
+	if err != nil {
+		t.Fatalf("second Authenticate: %v", err)
+	}
+	if acc.LastLogin.IsZero() {
+		t.Fatal("LastLogin is zero after a prior successful Authenticate, want a parsed timestamp")
+	}
+}
+
+// TestAuthenticate_RehashEntropyFailure forces auth.HashPassword's salt
+// read to fail during the transparent-rehash path: seed a weak hash (so
+// NeedsRehash reports true after VerifyPassword succeeds), then fail
+// crypto/rand.Reader before the rehash's own HashPassword call.
+func TestAuthenticate_RehashEntropyFailure(t *testing.T) {
+	store := openTestStore(t)
+	const password = "correct horse battery staple"
+	if _, err := store.CreateAccount("alice", "Alice", password, false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if _, err := store.conn.Exec(
+		`UPDATE users SET password_hash = ? WHERE username = ?`,
+		weakPasswordHash(password), "alice",
+	); err != nil {
+		t.Fatalf("seed weak hash: %v", err)
+	}
+
+	restore := replaceRecoveryRandReader(t, failingRecoveryReader{})
+	defer restore()
+
+	_, err := store.Authenticate("alice", password)
+	if err == nil || !strings.Contains(err.Error(), "rehash password") {
+		t.Fatalf("Authenticate with failing rehash entropy = %v, want a \"rehash password\" error", err)
+	}
+}
+
+// TestList_QueryFailsOnClosedStore forces List's top-level Query to fail.
+func TestList_QueryFailsOnClosedStore(t *testing.T) {
+	store := openTestStore(t)
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if _, err := store.List(); err == nil || !strings.Contains(err.Error(), "database is closed") {
+		t.Fatalf("List on closed store = %v, want \"database is closed\"", err)
+	}
+}
+
+// TestList_ScanFailsOnCorruptedIsAdminColumn is List's analogue of
+// TestAuthenticate_ScanFailsOnCorruptedIsAdminColumn above.
+func TestList_ScanFailsOnCorruptedIsAdminColumn(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if _, err := store.conn.Exec(`UPDATE users SET is_admin = 'not-an-int' WHERE username = 'alice'`); err != nil {
+		t.Fatalf("corrupt is_admin: %v", err)
+	}
+
+	if _, err := store.List(); err == nil {
+		t.Fatal("List with corrupted is_admin column = nil, want a Scan error")
+	}
+}
+
+// TestList_ParsesExistingLastLogin is List's analogue of
+// TestAuthenticate_ParsesExistingLastLogin above.
+func TestList_ParsesExistingLastLogin(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	if _, err := store.Authenticate("alice", "passphrase-long"); err != nil {
+		t.Fatalf("Authenticate: %v", err)
+	}
+
+	accs, err := store.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	found := false
+	for _, a := range accs {
+		if a.Username == "alice" {
+			found = true
+			if a.LastLogin.IsZero() {
+				t.Error("alice's LastLogin is zero after a prior successful Authenticate, want a parsed timestamp")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("alice missing from List() results")
+	}
+}
+
 func weakPasswordHash(password string) string {
 	const (
 		memory  = 8 * 1024
