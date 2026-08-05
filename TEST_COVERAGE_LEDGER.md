@@ -234,7 +234,7 @@ GNU-style CLI flag parsing (`--version`, `--export`, `--repair`, etc.).
 | --- | --- | --- | --- | --- |
 | `parser_test.go` | 9 | `ParseFlags` (all 18 flags + positional project-path arg), `PrintVersion` | table-driven | Added 2026-08-04 (`dd9bf01`) — `ParseFlags` itself had zero tests despite `Config`/`PrintVersion` being tested in the same file. Uses the standard `flag.CommandLine`-reset technique to test code built on Go's package-level `flag` state without any production code changes. |
 
-## `internal/crypto` — 72.9%
+## `internal/crypto` — 85.7% (up from 72.9%; `LoadCertificate`/`SignPDFHash` closed in Phase 2, see `DEVELOPER_HANDBOOK.md`'s dated entry — `encrypt.go`/`keywrap.go`/`pdf_cms*.go`'s scattered 71–92% gaps are the remaining follow-up)
 
 Symmetric encryption (project-at-rest), key wrapping (ADR-001 DEK hierarchy), PDF/CMS digital signing.
 
@@ -243,7 +243,7 @@ Symmetric encryption (project-at-rest), key wrapping (ADR-001 DEK hierarchy), PD
 | `encrypt_test.go` | 6 | `EncryptBuffer`/`DecryptBuffer` | round-trip, table-driven | A fresh nonce must be used per call (reused nonces break AEAD security entirely) — explicitly asserted, not just assumed. |
 | `keywrap_test.go` | 5 | DEK wrap/unwrap (ADR-001) | round-trip | Wrapping with the wrong secret must fail, and each wrap must produce fresh ciphertext (no nonce reuse), same rationale as `encrypt_test.go`. |
 | `pdf_cms_timestamp_test.go` | 4 | RFC 3161 timestamp token embedding into CMS | fixture/golden | Embedding an unsigned timestamp token must NOT change the already-computed signature bytes (it would invalidate the signature it's supposed to timestamp) — and multiple independent tokens must coexist. |
-| `pdf_sign_test.go` | 3 | `SignPDFCMS` | fixture/golden | A PAdES Baseline-B signature must specifically omit the CMS `signing-time` attribute (required by the PAdES spec, easy to get wrong by reusing generic CMS code). |
+| `pdf_sign_test.go` | 16 | `SignPDFCMS`; `LoadCertificate` (chain-bundled P12 — the bug fix's own regression test, plain 2-bag P12, file-not-found, wrong password, non-RSA key rejection); `parseP12Blocks`/`splitLeafCertificate` (multi-key, unparseable key/cert, missing key/cert, non-RSA-cert skip, no-match-found, all as direct pure-function tests needing no P12 fixture); `SignPDFHash` (no-key error, sign+verify round-trip) | fixture/golden, real PKCS#12 fixtures (`testdata/`, see its `README.md` for provenance and regeneration), direct pure-function unit tests | A PAdES Baseline-B signature must specifically omit the CMS `signing-time` attribute (required by the PAdES spec, easy to get wrong by reusing generic CMS code). Separately: `LoadCertificate` previously called `pkcs12.Decode`, which hard-requires exactly one key and one certificate bag and errors on anything else — meaning any commercially-issued signing certificate exported with its issuing chain bundled in (the normal case) failed to load at all with a confusing "expected exactly two safe bags" error. Fixed by switching to `pkcs12.ToPEM` (no such limit) and classifying blocks explicitly, matching the signer's certificate to its key by public-key identity rather than trusting the P12's optional (and sometimes-omitted) `localKeyId` attribute. |
 
 ## `internal/db` — 65.4%
 

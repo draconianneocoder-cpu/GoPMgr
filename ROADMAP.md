@@ -492,11 +492,66 @@ Baseline updated: go_default 8612/14605 (5993 uncovered) → 8628/14605
 (5977 uncovered); go_duckdb 8690/14703 (6013 uncovered) → 8706/14703
 (5997 uncovered).
 
+**`internal/crypto`: 72.9% → 85.7%. Found and fixed a real production bug while covering `LoadCertificate`, not just closed a coverage gap.**
+`LoadCertificate` called `pkcs12.Decode`, which hard-requires exactly one
+private-key bag and one certificate bag and errors on anything else — its
+own doc comment says "if there are more use ToPEM instead." Any
+commercially-issued signing certificate exported with its issuing chain
+bundled in (the normal, expected shape for a real cert, not an edge
+case) made `LoadCertificate` fail outright with "expected exactly two
+safe bags in the PFX PDU" instead of loading and populating
+`Signer.ExtraCerts`. Confirmed live and user-facing before fixing:
+`LoadCertificate` is called from `internal/documents/charter.go` (document
+signing) and `internal/export/pdf.go` (PDF export), wired through
+`app_documents.go` — not dead code reached only by tests.
+
+Fixed by switching to `pkcs12.ToPEM` (no 2-bag limit) and adding
+`parseP12Blocks`/`splitLeafCertificate` to do the classification `Decode`
+used to do internally: collect every PRIVATE KEY/CERTIFICATE block, then
+identify the signer's own certificate by matching its public key against
+the loaded private key (not the P12's optional `localKeyId` attribute,
+which some exporters omit — a metadata-based match could silently put an
+intermediate in `Cert` and the real leaf in `ExtraCerts`, producing a CMS
+signature real-world validators would reject). Reproduced first as a
+failing test against a hand-built 3-bag P12 fixture (`testdata/testonly-
+rsa-3bag.p12`) before writing the fix, so the red test doubled as the bug
+report and the fix's own break-verification — no synthetic mutation
+needed, the mutation was the pre-existing code. Regression-tested against
+the 2-bag shape every previously-working certificate has
+(`testdata/testonly-rsa-2bag.p12`) to confirm nothing that worked before
+stopped working. Test fixtures generated with `openssl -legacy`
+specifically (see `testdata/README.md`): `golang.org/x/crypto/pkcs12` is
+a frozen, decode-only package that can't read OpenSSL 3.x's default
+AES-256-CBC/PBKDF2 P12 encryption, only the older schemes `-legacy`
+selects.
+
+Also closed: `SignPDFHash` (0% → 100%, no fixture needed — reuses the
+in-memory key/cert generator already in the test file, since the
+function only needs a `*rsa.PrivateKey`). `LoadCertificate` itself sits
+at 92.3%, not 100%: the one remaining line is `LoadCertificate`'s
+propagation of `splitLeafCertificate`'s "no certificate matches this
+key" error, which real `.p12` tooling won't produce — OpenSSL refuses to
+export a P12 whose bundled certificate doesn't match the given key
+("No cert in -in file matches private key"), and the underlying logic is
+already proven correct by a direct unit test on `splitLeafCertificate`
+itself. Left undocumented-and-forced would be worse than left disclosed;
+recorded here per the `internal/templates` "first wall" precedent rather
+than hand-crafting a mismatched P12 to force one line.
+
+Break-verified 3 targeted mutations against the fix's actual logic (the
+leaf/extra-cert public-key match condition, the non-RSA rejection, the
+multiple-private-key rejection) — all caught, on top of the red-test-
+first reproduction above.
+
+Baseline updated: go_default 8628/14605 (5977 uncovered) → 8674/14630
+(5956 uncovered); go_duckdb 8706/14703 (5997 uncovered) → 8752/14728
+(5976 uncovered).
+
 **Not started:** the rest of Phase 2 (remaining Go completion-tier
-packages at 70–99%, e.g. `internal/crypto` at 72.8% — its gap is spread
-across PDF/CMS signing fixture construction, materially more expensive
-per statement than `applog`'s error-path gaps, per the advisor's
-guidance to finish one package before estimating the tier's total cost),
+packages at 70–99% — `internal/crypto`'s own remaining scattered 71–92%
+gaps in `encrypt.go`/`keywrap.go`/`pdf_cms.go`/`pdf_cms_timestamp.go`
+were intentionally left out of this increment, per the advisor's scope
+instruction to keep the bug-fix commit reviewable on its own),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
 `db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
 Phase 4 (root/App layer, 48.2%), Phase 5 (remaining frontend pure-logic
