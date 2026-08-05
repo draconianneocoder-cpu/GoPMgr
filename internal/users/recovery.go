@@ -119,6 +119,10 @@ func (s *Store) IssueRecoveryCodes(username string, dek []byte) ([]string, error
 			return nil, err
 		}
 	}
+	// Not tested: no portable way to force a COMMIT failure against
+	// SQLite short of a deferred-constraint or disk-level fault this
+	// package has no injection point for. Same class as
+	// ResetWithRecoveryCode's own tx.Commit() check below.
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -167,6 +171,13 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 	for rows.Next() {
 		var id int64
 		var hash, wrap string
+		// Not tested: id/code_hash/wrapped_dek are all columns this
+		// same package writes with matching Go types (int64, string,
+		// string), so Scan has no realistic way to encounter a
+		// type mismatch under normal operation -- unlike
+		// migrateDEKColumns' PRAGMA table_info scan (see dek.go),
+		// this isn't even a fixed system-table shape, it's simply
+		// that every writer of this table is this file.
 		if err := rows.Scan(&id, &hash, &wrap); err != nil {
 			_ = rows.Close()
 			return err
@@ -177,6 +188,9 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 			break
 		}
 	}
+	// Not tested: fires only on a mid-iteration cursor I/O error, the
+	// same class of failure as migrateDEKColumns' rows.Err() check
+	// (see dek.go) -- no portable way to inject one against SQLite.
 	if err := rows.Err(); err != nil {
 		_ = rows.Close()
 		return err
@@ -229,6 +243,10 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 	); err != nil {
 		return err
 	}
+	// Not tested: same class as IssueRecoveryCodes' tx.Commit() check
+	// above -- no portable way to force a COMMIT failure against
+	// SQLite short of a deferred-constraint or disk-level fault this
+	// package has no injection point for.
 	return tx.Commit()
 }
 
