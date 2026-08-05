@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/wailsapp/wails/v2/pkg/menu"
 )
 
 // buildTestLog constructs a slice of n lines, each "line NNN", and writes
@@ -132,6 +134,101 @@ func TestGenerateBugReport_NoLogDir(t *testing.T) {
 	_, err := app.GenerateBugReport()
 	if err == nil {
 		t.Fatal("GenerateBugReport with empty logDir should return an error")
+	}
+}
+
+// findMenuItem returns the first top-level item in m with the given label,
+// or nil. Used to inspect buildAppMenu's output structurally instead of
+// re-deriving it via runtime.GOOS, which is fixed for the whole test binary
+// and can't exercise both platform branches in one run.
+func findMenuItem(m *menu.Menu, label string) *menu.MenuItem {
+	if m == nil {
+		return nil
+	}
+	for _, item := range m.Items {
+		if item.Label == label {
+			return item
+		}
+	}
+	return nil
+}
+
+// TestBuildAppMenu_Darwin pins the macOS branch: the native App menu is
+// prepended (About/Hide/Quit come from there, so Quit must NOT also appear
+// in the File menu), and Edit/Window are the OS-provided role menus rather
+// than GoPMgr's own hand-built Window submenu.
+func TestBuildAppMenu_Darwin(t *testing.T) {
+	m := buildAppMenu(&App{}, "darwin")
+
+	if len(m.Items) == 0 || m.Items[0].Role != menu.AppMenuRole {
+		t.Fatalf("first top-level item = %+v, want the AppMenuRole item first", m.Items)
+	}
+
+	file := findMenuItem(m, "File")
+	if file == nil || file.SubMenu == nil {
+		t.Fatal("File submenu missing")
+	}
+	if findMenuItem(file.SubMenu, "Quit") != nil {
+		t.Error("File submenu contains Quit on darwin; macOS gets Quit from the App menu, so this would show it twice")
+	}
+
+	var sawEditRole, sawWindowRole bool
+	for _, item := range m.Items {
+		switch item.Role {
+		case menu.EditMenuRole:
+			sawEditRole = true
+		case menu.WindowMenuRole:
+			sawWindowRole = true
+		}
+	}
+	if !sawEditRole {
+		t.Error("Edit role menu missing on darwin")
+	}
+	if !sawWindowRole {
+		t.Error("Window role menu missing on darwin")
+	}
+	if findMenuItem(m, "Window") != nil {
+		t.Error("a hand-built \"Window\" submenu is present on darwin; darwin should use the OS role menu instead")
+	}
+}
+
+// TestBuildAppMenu_NonDarwin pins the everyone-else branch: no native App
+// menu, so File must carry its own Quit item, and Window is GoPMgr's own
+// submenu (Maximize/Minimize) rather than the macOS role menu.
+func TestBuildAppMenu_NonDarwin(t *testing.T) {
+	for _, goos := range []string{"windows", "linux"} {
+		t.Run(goos, func(t *testing.T) {
+			m := buildAppMenu(&App{}, goos)
+
+			if len(m.Items) > 0 && m.Items[0].Role == menu.AppMenuRole {
+				t.Error("AppMenuRole item present on non-darwin; that role is macOS-only")
+			}
+
+			file := findMenuItem(m, "File")
+			if file == nil || file.SubMenu == nil {
+				t.Fatal("File submenu missing")
+			}
+			quit := findMenuItem(file.SubMenu, "Quit")
+			if quit == nil {
+				t.Fatal("File submenu missing Quit on non-darwin; there is no App menu to provide it")
+			}
+
+			window := findMenuItem(m, "Window")
+			if window == nil || window.SubMenu == nil {
+				t.Fatal("hand-built Window submenu missing on non-darwin")
+			}
+			if findMenuItem(window.SubMenu, "Maximize / Restore") == nil {
+				t.Error("Window submenu missing \"Maximize / Restore\"")
+			}
+			if findMenuItem(window.SubMenu, "Minimize") == nil {
+				t.Error("Window submenu missing \"Minimize\"")
+			}
+			for _, item := range m.Items {
+				if item.Role == menu.WindowMenuRole {
+					t.Error("WindowMenuRole (macOS role menu) present on non-darwin; should use the hand-built submenu instead")
+				}
+			}
+		})
 	}
 }
 

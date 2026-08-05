@@ -186,7 +186,13 @@ func (a *App) beforeClose(ctx context.Context) bool {
 // navigation, so the menu triggers the same flows as the in-app buttons. On
 // macOS the standard App and Edit menus are included so Quit/Hide and
 // copy/paste/select-all keep working when a custom menu is set.
-func buildAppMenu(app *App) *menu.Menu {
+//
+// goos selects the macOS-vs-everyone-else branches (App/Edit/Window menu
+// roles, where Quit lives) — callers pass runtime.GOOS in production; tests
+// pass a literal "darwin"/"windows"/"linux" so both branches run in a
+// single `go test` invocation instead of needing a real macOS host and a
+// real non-macOS host.
+func buildAppMenu(app *App, goos string) *menu.Menu {
 	// emit returns a menu callback that fires a frontend event. app.ctx is nil
 	// until OnStartup runs, but menu clicks only happen after the window is up,
 	// so the guard is belt-and-suspenders.
@@ -199,7 +205,7 @@ func buildAppMenu(app *App) *menu.Menu {
 	}
 
 	m := menu.NewMenu()
-	if runtime.GOOS == "darwin" {
+	if goos == "darwin" {
 		m.Append(menu.AppMenu()) // standard macOS app menu: About/Hide/Quit
 	}
 
@@ -212,7 +218,7 @@ func buildAppMenu(app *App) *menu.Menu {
 	fileMenu.AddText("Project Settings…", nil, emit("menu:settings"))
 	fileMenu.AddSeparator()
 	fileMenu.AddText("Close Project", keys.CmdOrCtrl("w"), emit("menu:close-project"))
-	if runtime.GOOS != "darwin" {
+	if goos != "darwin" {
 		// macOS gets Quit from the App menu; other platforms need it here.
 		fileMenu.AddSeparator()
 		fileMenu.AddText("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
@@ -222,7 +228,7 @@ func buildAppMenu(app *App) *menu.Menu {
 		})
 	}
 
-	if runtime.GOOS == "darwin" {
+	if goos == "darwin" {
 		m.Append(menu.EditMenu())   // undo/redo/cut/copy/paste/select-all
 		m.Append(menu.WindowMenu()) // Minimize (Cmd+M), Zoom, Bring All to Front
 	} else {
@@ -275,13 +281,13 @@ func buildAppOptions(app *App) *options.App {
 			DisableZoom: false,
 		},
 		AssetServer: &assetserver.Options{Assets: assets},
-		Menu:        buildAppMenu(app),
+		Menu:        buildAppMenu(app, runtime.GOOS),
 		OnStartup: func(ctx context.Context) {
 			app.ctx = ctx
 		},
 		OnShutdown:    app.shutdown,
 		OnBeforeClose: app.beforeClose,
-		Bind:          []interface{}{app},
+		Bind:          []any{app},
 	}
 }
 

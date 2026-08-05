@@ -404,11 +404,49 @@ is never read in the function body. Left as-is rather than removed —
 dropping it changes an exported package signature, a separate decision
 from coverage work, not something to fold into this pass.
 
-Still not started in Phase 1: `internal/templates` (20.7%), and
-refactoring the 6 `runtime.GOOS ==` conditionals in
-`main.go`/`internal/users/store.go` behind an injectable seam (its own
-commit — `store.go` is where `f1a5501`'s migration fix landed, so
-`internal/users`'s existing suite must pass unchanged around it).
+**Phase 1 — complete (2026-08-05).** The last remaining item, refactoring
+the 6 `runtime.GOOS ==` conditionals in `main.go`/`internal/users/store.go`
+behind an injectable seam, is done. `internal/users/store.go`'s two
+conditionals (`DefaultRootDir`, `legacyRootCandidates`) were split into
+pure `defaultRootDirForGOOS(goos, home string)` /
+`legacyRootCandidatesForGOOS(goos, home string)` helpers that the public,
+runtime.GOOS-reading functions delegate to; tests call the pure helpers
+directly with both `"darwin"` and a non-darwin value in one run.
+`main.go`'s `buildAppMenu` gained a `goos string` parameter (its one real
+call site in `buildAppOptions` passes `runtime.GOOS`); new tests build the
+menu with `"darwin"` and with `"windows"`/`"linux"` and assert on the
+returned `*menu.Menu`'s structure (role menus vs. hand-built Window
+submenu, where Quit lives). `internal/users/store.go` was the file
+`f1a5501`'s migration data-loss fix landed in — every existing test in
+that package (including `TestPreRenameInstallIsUsableAfterMigration`)
+passes unchanged, confirmed before and after.
+
+Also closed: the `os.UserHomeDir()` error branch shared by
+`DefaultRootDir`/`legacyRootCandidates` (unrelated to GOOS, but adjacent
+and cheap — `t.Setenv("HOME", "")` triggers it hermetically on POSIX).
+
+Break-verified 4 independent mutations across this change (a resolved
+path on each pure helper, the darwin/non-darwin File-menu Quit
+conditional) — all caught, confirmed by the existing
+`runtime.GOOS`-dependent tests staying GREEN under the very mutation
+the new pure-helper tests caught, demonstrating exactly why the seam
+was needed: this machine is macOS, so the old tests could never have
+caught a non-darwin regression.
+
+`internal/users` coverage: `DefaultRootDir`/`legacyRootCandidates`/
+`defaultRootDirForGOOS`/`legacyRootCandidatesForGOOS` all now 100%.
+`main.go`'s `buildAppMenu` 57.9% → 71.1% — the remaining gap is menu
+*callback bodies* (the closures that fire `wailsruntime.EventsEmit`,
+`Quit`, `WindowToggleMaximise`, etc.), which need a live Wails runtime
+context to exercise meaningfully and are explicitly left for Phase 4
+(root/App layer), not folded into this seam-focused change.
+
+Also fixed, two pre-existing linter hints on files this change already
+touched (`main.go`'s `Bind: []any{app}` instead of `[]interface{}{app}`;
+`internal/users/store.go`'s `migrateAdminColumn` now uses
+`slices.Contains` instead of a manual loop) — both mechanical,
+behavior-identical simplifications, confirmed via `go build`/`go vet`/the
+full test suite passing unchanged before and after.
 
 **Not started:** Phase 2 (Go completion tier, packages already 70–99%),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
