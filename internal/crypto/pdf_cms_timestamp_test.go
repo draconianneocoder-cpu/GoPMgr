@@ -184,7 +184,6 @@ func TestAddSignatureTimestampRejectsInvalidCMSOrToken(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -194,6 +193,152 @@ func TestAddSignatureTimestampRejectsInvalidCMSOrToken(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestParseDetachedPAdESCMS_RejectsMalformedStructure covers
+// parseDetachedPAdESCMS's structural-validation branches that
+// AddSignatureTimestamp's own malformed-input table doesn't reach --
+// "not DER" and "multiple signers" are already covered there, but
+// trailing data, a ContentInfo that isn't SignedData, non-detached
+// content, and an empty signature value are not. Each case starts from
+// a real, valid CMS and mutates exactly one structural property before
+// re-encoding, following the same decode/mutate/re-marshal pattern as
+// appendSecondSignerForTest above.
+func TestParseDetachedPAdESCMS_RejectsMalformedStructure(t *testing.T) {
+	t.Parallel()
+
+	baselineCMS, err := newTestCMSSigner(t, "GoPMgr Parse Validation Signer").SignPDFCMS([]byte("content"))
+	if err != nil {
+		t.Fatalf("SignPDFCMS() error = %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		cms       []byte
+		wantError string
+	}{
+		{
+			name:      "trailing data after ContentInfo",
+			cms:       append(append([]byte(nil), baselineCMS...), 0x00),
+			wantError: "trailing data",
+		},
+		{
+			name:      "ContentInfo is not SignedData",
+			cms:       mutateOuterContentTypeForTest(t, baselineCMS, pkcs7.OIDData),
+			wantError: "not SignedData",
+		},
+		{
+			name:      "trailing data after SignedData",
+			cms:       mutateSignedDataTrailingBytesForTest(t, baselineCMS),
+			wantError: "trailing data",
+		},
+		{
+			name:      "SignedData content is not detached id-data",
+			cms:       mutateContentInfoTypeForTest(t, baselineCMS, pkcs7.OIDSignedData),
+			wantError: "detached id-data",
+		},
+		{
+			name:      "signer has no signature value",
+			cms:       mutateEncryptedDigestForTest(t, baselineCMS, nil),
+			wantError: "no signature value",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, _, err := parseDetachedPAdESCMS(tt.cms)
+			if err == nil || !strings.Contains(err.Error(), tt.wantError) {
+				t.Fatalf("parseDetachedPAdESCMS() error = %v, want substring %q", err, tt.wantError)
+			}
+		})
+	}
+}
+
+// mutateOuterContentTypeForTest rewrites the outer ContentInfo's
+// ContentType OID, e.g. to id-data so the CMS no longer claims to be
+// SignedData.
+func mutateOuterContentTypeForTest(t *testing.T, cmsDER []byte, newType asn1.ObjectIdentifier) []byte {
+	t.Helper()
+
+	var outer cmsContentInfo
+	if _, err := asn1.Unmarshal(cmsDER, &outer); err != nil {
+		t.Fatalf("parse CMS ContentInfo: %v", err)
+	}
+	outer.ContentType = newType
+	out, err := asn1.Marshal(outer)
+	if err != nil {
+		t.Fatalf("marshal mutated CMS ContentInfo: %v", err)
+	}
+	return out
+}
+
+// mutateSignedDataTrailingBytesForTest appends a byte after the encoded
+// SignedData inside the outer ContentInfo's Content, so the SignedData
+// parse succeeds but leaves trailing data.
+func mutateSignedDataTrailingBytesForTest(t *testing.T, cmsDER []byte) []byte {
+	t.Helper()
+
+	var outer cmsContentInfo
+	if _, err := asn1.Unmarshal(cmsDER, &outer); err != nil {
+		t.Fatalf("parse CMS ContentInfo: %v", err)
+	}
+	outer.Content.Bytes = append(append([]byte(nil), outer.Content.Bytes...), 0x00)
+	// asn1.Marshal echoes RawValue.FullBytes verbatim when it's set
+	// (populated by the Unmarshal above) and ignores Bytes entirely --
+	// clear it so the mutated Bytes actually reaches the output.
+	outer.Content.FullBytes = nil
+	out, err := asn1.Marshal(outer)
+	if err != nil {
+		t.Fatalf("marshal mutated CMS ContentInfo: %v", err)
+	}
+	return out
+}
+
+// mutateContentInfoTypeForTest rewrites the inner SignedData's own
+// ContentInfo.ContentType (the detached-content declaration, not the
+// outer SignedData/id-data wrapper), so it no longer claims id-data.
+func mutateContentInfoTypeForTest(t *testing.T, cmsDER []byte, newType asn1.ObjectIdentifier) []byte {
+	t.Helper()
+
+	signedData := decodeTimestampedCMSForTest(t, cmsDER)
+	signedData.ContentInfo.ContentType = newType
+	return reencodeSignedDataForTest(t, signedData)
+}
+
+// mutateEncryptedDigestForTest overwrites SignerInfos[0].EncryptedDigest.
+func mutateEncryptedDigestForTest(t *testing.T, cmsDER []byte, digest []byte) []byte {
+	t.Helper()
+
+	signedData := decodeTimestampedCMSForTest(t, cmsDER)
+	signedData.SignerInfos[0].EncryptedDigest = digest
+	return reencodeSignedDataForTest(t, signedData)
+}
+
+// reencodeSignedDataForTest wraps a mutated cmsSignedData back into a
+// full CMS ContentInfo DER encoding, mirroring
+// appendSecondSignerForTest's own re-marshal step.
+func reencodeSignedDataForTest(t *testing.T, signedData cmsSignedData) []byte {
+	t.Helper()
+
+	innerDER, err := asn1.Marshal(signedData)
+	if err != nil {
+		t.Fatalf("marshal mutated CMS SignedData: %v", err)
+	}
+	out, err := asn1.Marshal(cmsContentInfo{
+		ContentType: pkcs7.OIDSignedData,
+		Content: asn1.RawValue{
+			Class:      asn1.ClassContextSpecific,
+			Tag:        0,
+			IsCompound: true,
+			Bytes:      innerDER,
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal mutated CMS ContentInfo: %v", err)
+	}
+	return out
 }
 
 func TestSignatureTimestampImprintRejectsMultipleSigners(t *testing.T) {
