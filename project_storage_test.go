@@ -19,19 +19,33 @@ func TestProjectDisplayNameStripsTimestamp(t *testing.T) {
 }
 
 // TestEnumerateProjectsSupportsBothLayouts proves the listing helper finds
-// both legacy flat ".pmforge" files and the current "<id>/project.pmforge"
-// subfolders, and ignores unrelated subfolders.
+// projects across BOTH axes it must stay backward compatible on: the flat
+// vs. subfolder layout (pre- vs. post- the per-project-subfolder change),
+// and the ".pmforge" vs. ".gopmgr" extension (pre- vs. post- the 2026-08-04
+// PMForge -> GoPMgr rename) — all four combinations, since a real disk can
+// contain projects from any point in the app's history. Also verifies
+// unrelated subfolders are ignored.
 func TestEnumerateProjectsSupportsBothLayouts(t *testing.T) {
 	dir := t.TempDir()
 
-	if err := os.WriteFile(filepath.Join(dir, "Legacy Project.pmforge"), []byte("x"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "Legacy Flat Project.pmforge"), []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	sub := filepath.Join(dir, "20260615-153000-New Project")
-	if err := os.MkdirAll(sub, 0o700); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "Renamed Flat Project.gopmgr"), []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(sub, "project.pmforge"), []byte("y"), 0o600); err != nil {
+	legacySub := filepath.Join(dir, "20260615-153000-Legacy Subfolder Project")
+	if err := os.MkdirAll(legacySub, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(legacySub, "project.pmforge"), []byte("y"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	newSub := filepath.Join(dir, "20260805-090000-New Subfolder Project")
+	if err := os.MkdirAll(newSub, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(newSub, "project.gopmgr"), []byte("y"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(dir, "not-a-project"), 0o700); err != nil {
@@ -42,18 +56,17 @@ func TestEnumerateProjectsSupportsBothLayouts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("enumerateProjects: %v", err)
 	}
-	if len(got) != 2 {
-		t.Fatalf("expected 2 projects, got %d: %#v", len(got), got)
+	if len(got) != 4 {
+		t.Fatalf("expected 4 projects, got %d: %#v", len(got), got)
 	}
 	names := map[string]bool{}
 	for _, e := range got {
 		names[e.Name] = true
 	}
-	if !names["Legacy Project"] {
-		t.Errorf("legacy flat project missing; names=%v", names)
-	}
-	if !names["New Project"] {
-		t.Errorf("subfolder project name not de-prefixed; names=%v", names)
+	for _, want := range []string{"Legacy Flat Project", "Renamed Flat Project", "Legacy Subfolder Project", "New Subfolder Project"} {
+		if !names[want] {
+			t.Errorf("%q missing; names=%v", want, names)
+		}
 	}
 }
 
@@ -69,8 +82,8 @@ func TestCreateProjectUsesUniqueSubfolder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
 	}
-	if filepath.Base(pf.Path) != "project.pmforge" {
-		t.Fatalf("expected project.pmforge inside a subfolder, got %s", pf.Path)
+	if filepath.Base(pf.Path) != "project.gopmgr" {
+		t.Fatalf("expected project.gopmgr inside a subfolder, got %s", pf.Path)
 	}
 	folder := filepath.Base(filepath.Dir(pf.Path))
 	if !projectFolderRe.MatchString(folder) {

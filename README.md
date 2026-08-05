@@ -65,7 +65,7 @@ chart, export, and reporting tools without requiring a hosted service.
   schedule-data coverage, plus CSV/TSV, Parquet, and JSON data import in
   production/package builds.
 - **Security and compliance:** local Argon2id accounts, one-time recovery
-  codes, SQLCipher-encrypted per-user `.pmforge` project databases, PDF/A
+  codes, SQLCipher-encrypted per-user `.gopmgr` project databases, PDF/A
   validation, and PAdES signing support.
 
 ## Quick Start
@@ -142,35 +142,39 @@ validator tools.
 On first launch, GoPMgr creates a local data area in the platform's
 per-user data location:
 
-- **macOS:** `~/Library/Application Support/PMForge/`
-- **Linux / Windows:** `~/Documents/PMForge/`
+- **macOS:** `~/Library/Application Support/GoPMgr/`
+- **Linux / Windows:** `~/Documents/GoPMgr/`
 - `$XDG_DATA_HOME/GoPMgr/` overrides the default on any platform.
 
 It contains:
 
 - `system.db`: local account metadata, password hashes, and wrapped DEKs.
-- `<username>/projects/`: per-user project folders and `.pmforge` files.
+- `<username>/projects/`: per-user project folders and `.gopmgr` files
+  (or `.pmforge`, for projects created before the 2026-08-04 rename —
+  both extensions keep working indefinitely).
 - `<username>/certs/`: user certificate files.
 - `<username>/exports/`: generated exports.
 - `logs/`: dated startup and runtime diagnostics.
 
 On macOS, this data lives in `Application Support` rather than `Documents`
 so it is not iCloud-synced between machines and does not trigger the
-Documents-folder privacy prompt. An existing `~/Documents/PMForge/` install
-is migrated automatically on first launch after upgrading (the original is
-left in place and can be deleted once you've confirmed the move).
+Documents-folder privacy prompt. An existing `PMForge`-named install (from
+before the 2026-08-04 GoPMgr rename, at either `Application Support/PMForge`
+or the older pre-2026-06 `~/Documents/PMForge/`) is migrated automatically
+on first launch after upgrading (the original is left in place and can be
+deleted once you've confirmed the move).
 
 For repeatable first-launch testing, `make reset-clean-test` moves the active
 data directory to a timestamped, restorable backup instead of deleting it.
 See [docs/INSTALL.md](docs/INSTALL.md) for the guarded reset and restore flow.
 
 Per-user folders are created with private POSIX permissions where the
-platform supports them. Project databases are stored as one `.pmforge`
+platform supports them. Project databases are stored as one `.gopmgr`
 file per project, with WAL/SHM sidecars when SQLite needs them.
 
 ## Security Model
 
-New per-user `.pmforge` project databases are SQLCipher-encrypted with the
+New per-user `.gopmgr` project databases are SQLCipher-encrypted with the
 user's DEK. Existing plaintext project databases can be migrated from
 Project Settings after recovery codes are reissued. `system.db` remains
 plaintext by design and stores password hashes plus wrapped DEKs, not

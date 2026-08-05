@@ -125,10 +125,10 @@ func resolveLogDir(preferredDir string) string {
 		return filepath.Join(preferredDir, "logs")
 	}
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		return filepath.Join(home, "Documents", "PMForge", "logs")
+		return filepath.Join(home, "Documents", "GoPMgr", "logs")
 	}
 	if tmp := os.TempDir(); tmp != "" {
-		return filepath.Join(tmp, "PMForge", "logs")
+		return filepath.Join(tmp, "GoPMgr", "logs")
 	}
 	return ""
 }

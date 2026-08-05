@@ -5,6 +5,8 @@ package db
 
 import (
 	"archive/zip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"os"
@@ -108,16 +110,19 @@ func TestCreateArchivalBundleAcceptsQuotedDestination(t *testing.T) {
 	}
 	defer zr.Close()
 
-	// "project.pmforge" is asserted as a literal, not derived from a
+	// "project.gopmgr" is asserted as a literal, not derived from a
 	// constant, because it is a persistence boundary: every .pmba archive
-	// already produced by a shipped release has an entry with exactly this
-	// name, and RestoreArchivalBundle (backup_restore.go) looks it up by
-	// this same literal. If a future rebrand or refactor renamed it in
-	// lockstep on both sides, a round-trip create+restore test would still
-	// pass — only pinning the on-disk name here catches that.
+	// this build produces has an entry with exactly this name, and
+	// RestoreArchivalBundle (backup_restore.go) looks it up by this same
+	// literal for schema_version 2. If a future rebrand or refactor renamed
+	// it in lockstep on both sides, a round-trip create+restore test would
+	// still pass — only pinning the on-disk name here catches that. Renamed
+	// 2026-08-04 from "project.pmforge" (schema_version 1); see
+	// TestRestoreArchivalBundleReadsSchemaVersion1Archive below for proof
+	// that old-format archives still restore.
 	wantEntries := map[string]bool{
-		"project.pmforge": false,
-		"manifest.json":   false,
+		"project.gopmgr": false,
+		"manifest.json":  false,
 	}
 	for _, f := range zr.File {
 		if _, ok := wantEntries[f.Name]; ok {
@@ -146,8 +151,8 @@ func TestRestoreArchivalBundleValidatesAndPublishesProjectOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RestoreArchivalBundle: %v", err)
 	}
-	if manifest.SchemaVersion != 1 || manifest.DatabaseID != project.ID {
-		t.Fatalf("manifest = %#v, want schema 1 and database %q", manifest, project.ID)
+	if manifest.SchemaVersion != 2 || manifest.DatabaseID != project.ID {
+		t.Fatalf("manifest = %#v, want schema 2 and database %q", manifest, project.ID)
 	}
 	restored, err := InitDB(destPath)
 	if err != nil {
@@ -192,6 +197,66 @@ func TestRestoreArchivalBundleRejectsTraversalEntry(t *testing.T) {
 	}
 }
 
+// TestRestoreArchivalBundleReadsSchemaVersion1Archive proves the dual-read
+// compatibility RestoreArchivalBundle claims for pre-2026-08-04 archives.
+// CreateArchivalBundle only ever writes the current (schema_version 2,
+// "project.gopmgr") format now, so a round-trip create+restore test can
+// never exercise the schema_version 1 ("project.pmforge") path — this hand-
+// builds a v1 archive byte-for-byte the way a pre-rename release did, using
+// the same zip-plus-manifest shape TestRestoreArchivalBundleRejectsTraversalEntry
+// uses, but with a correct SHA-256 digest so it passes the integrity check
+// and actually restores. If the v1 compatibility branch in
+// RestoreArchivalBundle/schemaProjectEntry were ever deleted, this test
+// fails — verified by temporarily deleting it and confirming the failure.
+func TestRestoreArchivalBundleReadsSchemaVersion1Archive(t *testing.T) {
+	const projectBytes = "legacy pre-rename project bytes"
+	sum := sha256.Sum256([]byte(projectBytes))
+	digest := hex.EncodeToString(sum[:])
+
+	archivePath := filepath.Join(t.TempDir(), "legacy.pmba")
+	f, err := os.Create(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zw := zip.NewWriter(f)
+	entries := map[string]string{
+		"project.pmforge": projectBytes,
+		"manifest.json": string(mustJSON(t, BackupManifest{
+			SchemaVersion: 1,
+			DatabaseID:    "prj_legacy",
+			EntrySHA256:   map[string]string{"project.pmforge": digest},
+		})),
+	}
+	for name, body := range entries {
+		w, createErr := zw.Create(name)
+		if createErr != nil {
+			t.Fatal(createErr)
+		}
+		if _, writeErr := w.Write([]byte(body)); writeErr != nil {
+			t.Fatal(writeErr)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	destPath := filepath.Join(t.TempDir(), "restored-legacy.pmforge")
+	manifest, err := RestoreArchivalBundle(archivePath, destPath)
+	if err != nil {
+		t.Fatalf("RestoreArchivalBundle on a v1 archive: %v", err)
+	}
+	if manifest.SchemaVersion != 1 || manifest.DatabaseID != "prj_legacy" {
+		t.Fatalf("manifest = %#v, want schema 1 and database %q", manifest, "prj_legacy")
+	}
+	got, err := os.ReadFile(destPath)
+	if err != nil || string(got) != projectBytes {
+		t.Fatalf("restored project bytes = %q err %v, want %q", got, err, projectBytes)
+	}
+}
+
 func mustJSON(t *testing.T, value any) []byte {
 	t.Helper()
 	b, err := json.Marshal(value)
@@ -229,12 +294,12 @@ func TestCreateArchivalBundlePreservesEncryptedProjectBytes(t *testing.T) {
 	defer zr.Close()
 
 	for _, f := range zr.File {
-		if f.Name != "project.pmforge" {
+		if f.Name != "project.gopmgr" {
 			continue
 		}
 		rc, err := f.Open()
 		if err != nil {
-			t.Fatalf("open project.pmforge entry: %v", err)
+			t.Fatalf("open project.gopmgr entry: %v", err)
 		}
 		defer rc.Close()
 		header := make([]byte, len(sqliteHeader))
@@ -242,11 +307,11 @@ func TestCreateArchivalBundlePreservesEncryptedProjectBytes(t *testing.T) {
 			t.Fatalf("read archived project header: %v", err)
 		}
 		if string(header) == sqliteHeader {
-			t.Fatal("archived project.pmforge exposes a plaintext SQLite header")
+			t.Fatal("archived project.gopmgr exposes a plaintext SQLite header")
 		}
 		return
 	}
-	t.Fatal("archive missing project.pmforge")
+	t.Fatal("archive missing project.gopmgr")
 }
 
 func TestCreateArchivalBundleRejectsBlockedStaleTempBeforeCreatingArchive(t *testing.T) {

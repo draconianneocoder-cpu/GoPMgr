@@ -14,10 +14,12 @@ Troubleshooting & FAQ and a keyboard-shortcuts reference.
 ## First Run
 
 GoPMgr stores local data in your platform's per-user data folder:
-`~/Library/Application Support/PMForge/` on macOS and `~/Documents/PMForge/`
-on Linux and Windows (`$XDG_DATA_HOME/GoPMgr/` overrides both). On macOS,
-an existing `~/Documents/PMForge/` folder from an earlier version is migrated
-automatically on first launch. The first launch creates:
+`~/Library/Application Support/GoPMgr/` on macOS and `~/Documents/GoPMgr/`
+on Linux and Windows (`$XDG_DATA_HOME/GoPMgr/` overrides both). An existing
+`PMForge`-named folder from before the August 2026 GoPMgr rename — at either
+of those same platform-appropriate locations, or the older pre-2026-06
+`~/Documents/PMForge/` on macOS — is migrated automatically on first launch.
+The first launch creates:
 
 - `system.db` for local account metadata.
 - A private per-user directory with `projects`, `certs`, and `exports`
@@ -331,8 +333,8 @@ global:
 - `--update` checks the signed update channel (a no-op when the build has
   no update channel configured).
 
-The maintenance operations take a `.pmforge` file path as the final
-argument:
+The maintenance operations take a project file path — `.gopmgr`, or `.pmforge`
+for a project created before the August 2026 rename — as the final argument:
 
 - `--check` runs an integrity check and exits.
 - `--repair` runs the self-healing repair workflow.
@@ -356,12 +358,12 @@ example:
 ```sh
 PMF_PW='…' gopmgr --check \
   --username alice --password-env PMF_PW \
-  ~/Documents/PMForge/alice/projects/<id>/project.pmforge
+  ~/Documents/GoPMgr/alice/projects/<id>/project.gopmgr
 
 # Headless schedule export to encrypted XLSX:
 PMF_PW='…' gopmgr --export schedule.xlsx --format xlsx --encrypt \
   --username alice --password-env PMF_PW \
-  ~/Documents/PMForge/alice/projects/<id>/project.pmforge
+  ~/Documents/GoPMgr/alice/projects/<id>/project.gopmgr
 ```
 
 ## Logs and Startup Diagnostics

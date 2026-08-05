@@ -6,6 +6,7 @@ package users
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -110,4 +111,120 @@ func TestMigrateLegacyRootSkips(t *testing.T) {
 			t.Fatalf("empty legacy path should skip: migrated=%v err=%v", migrated, err)
 		}
 	})
+}
+
+// The tests above exercise migrateLegacyRoot directly with hand-picked
+// paths; they never call the public MigrateLegacyRoot / DefaultRootDir /
+// legacyRootCandidates path a real 2026-08-04-rename upgrade actually goes
+// through, so a bug in how those wire together (wrong candidate order,
+// wrong newRoot) would slip past them. These two lay out a real "PMForge"
+// install under a fake $HOME the way an actual pre-rename user's disk would
+// look, then call the public entry points exactly as main.go's NewApp does.
+
+// TestMigrateLegacyRoot_FindsCurrentPMForgeInstall covers the common
+// upgrade case: a user who was already on the most recent pre-rename
+// default location (Application Support/PMForge on macOS, Documents/
+// PMForge elsewhere — legacyRootCandidates()[0] on every platform).
+func TestMigrateLegacyRoot_FindsCurrentPMForgeInstall(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_DATA_HOME", "")
+
+	var legacy string
+	if runtime.GOOS == "darwin" {
+		legacy = filepath.Join(home, "Library", "Application Support", "PMForge")
+	} else {
+		legacy = filepath.Join(home, "Documents", "PMForge")
+	}
+	seedLegacyRoot(t, legacy)
+
+	newRoot, err := DefaultRootDir()
+	if err != nil {
+		t.Fatalf("DefaultRootDir: %v", err)
+	}
+	migrated, err := MigrateLegacyRoot(newRoot)
+	if err != nil {
+		t.Fatalf("MigrateLegacyRoot: %v", err)
+	}
+	if !migrated {
+		t.Fatal("expected migration from the current pre-rename PMForge install")
+	}
+	if got, err := os.ReadFile(filepath.Join(newRoot, "system.db")); err != nil || string(got) != "SYSTEM" {
+		t.Fatalf("system.db not migrated into %s: got %q err %v", newRoot, got, err)
+	}
+}
+
+// TestMigrateLegacyRoot_FallsBackToPreRelocationInstall covers a macOS user
+// who upgrades straight from a very old install that predates the 2026-06
+// Application Support relocation and never had a Application Support/
+// PMForge directory at all — only the original ~/Documents/PMForge.
+func TestMigrateLegacyRoot_FallsBackToPreRelocationInstall(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("only macOS has a second, older legacy candidate to fall back to")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_DATA_HOME", "")
+
+	legacy := filepath.Join(home, "Documents", "PMForge")
+	seedLegacyRoot(t, legacy)
+	// Deliberately do NOT create Application Support/PMForge, so the first
+	// candidate is absent and MigrateLegacyRoot must fall through to it.
+
+	newRoot, err := DefaultRootDir()
+	if err != nil {
+		t.Fatalf("DefaultRootDir: %v", err)
+	}
+	migrated, err := MigrateLegacyRoot(newRoot)
+	if err != nil {
+		t.Fatalf("MigrateLegacyRoot: %v", err)
+	}
+	if !migrated {
+		t.Fatal("expected migration to fall back to the pre-relocation Documents/PMForge install")
+	}
+	if got, err := os.ReadFile(filepath.Join(newRoot, "system.db")); err != nil || string(got) != "SYSTEM" {
+		t.Fatalf("system.db not migrated into %s: got %q err %v", newRoot, got, err)
+	}
+}
+
+// TestMigrateLegacyRoot_FindsXDGInstall covers a Linux user with
+// $XDG_DATA_HOME set — a routine desktop-environment configuration, not
+// just a test knob (see the comment on DefaultRootDir). Before this rename,
+// DefaultRootDir under an XDG override resolved to $XDG_DATA_HOME/PMForge
+// both "before" and "after" (there was only ever one XDG-scoped location),
+// so legacyRootCandidates correctly returned nil: nothing to migrate from.
+// The rename gave XDG installs a real move too — DefaultRootDir now
+// resolves to $XDG_DATA_HOME/GoPMgr under the same override — and an
+// earlier version of legacyRootCandidates still returned nil here, which
+// would have silently orphaned every XDG-configured install's accounts and
+// projects on upgrade: MigrateLegacyRoot loops over an empty candidate list
+// and reports (false, nil), so NewApp proceeds with a brand-new empty root
+// and never surfaces an error. This test calls the exact same public
+// entry points (DefaultRootDir, MigrateLegacyRoot) main.go's NewApp does,
+// under a real XDG_DATA_HOME override, so a regression of that bug fails
+// here loudly instead of shipping silently.
+func TestMigrateLegacyRoot_FindsXDGInstall(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", xdg)
+
+	legacy := filepath.Join(xdg, "PMForge")
+	seedLegacyRoot(t, legacy)
+
+	newRoot, err := DefaultRootDir()
+	if err != nil {
+		t.Fatalf("DefaultRootDir: %v", err)
+	}
+	if newRoot != filepath.Join(xdg, "GoPMgr") {
+		t.Fatalf("DefaultRootDir under XDG_DATA_HOME = %q, want %q", newRoot, filepath.Join(xdg, "GoPMgr"))
+	}
+	migrated, err := MigrateLegacyRoot(newRoot)
+	if err != nil {
+		t.Fatalf("MigrateLegacyRoot: %v", err)
+	}
+	if !migrated {
+		t.Fatal("expected migration from the XDG_DATA_HOME/PMForge install")
+	}
+	if got, err := os.ReadFile(filepath.Join(newRoot, "system.db")); err != nil || string(got) != "SYSTEM" {
+		t.Fatalf("system.db not migrated into %s: got %q err %v", newRoot, got, err)
+	}
 }

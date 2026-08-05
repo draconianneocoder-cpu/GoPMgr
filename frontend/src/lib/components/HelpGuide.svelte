@@ -1374,7 +1374,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
           <section>
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Export File Location</h3>
-            <p class="text-sm text-slate-300">Exported files are saved under your PMForge data folder in <span class="font-mono text-xs bg-slate-900 px-1 rounded">&lt;username&gt;/exports/</span> (the data folder is <span class="font-mono text-xs bg-slate-900 px-1 rounded">~/Library/Application Support/PMForge/</span> on macOS and <span class="font-mono text-xs bg-slate-900 px-1 rounded">~/Documents/PMForge/</span> on Linux and Windows). The full path is shown in a success toast after every export. App Settings also shows your data directory location (the parent of exports/). Use App Settings &rarr; Open Logs Folder to open the log directory in Finder/Explorer if you need diagnostic files.</p>
+            <p class="text-sm text-slate-300">Exported files are saved under your GoPMgr data folder in <span class="font-mono text-xs bg-slate-900 px-1 rounded">&lt;username&gt;/exports/</span> (the data folder is <span class="font-mono text-xs bg-slate-900 px-1 rounded">~/Library/Application Support/GoPMgr/</span> on macOS and <span class="font-mono text-xs bg-slate-900 px-1 rounded">~/Documents/GoPMgr/</span> on Linux and Windows — if you're upgrading from PMForge, your existing data folder was copied here automatically the first time you opened GoPMgr). The full path is shown in a success toast after every export. App Settings also shows your data directory location (the parent of exports/). Use App Settings &rarr; Open Logs Folder to open the log directory in Finder/Explorer if you need diagnostic files.</p>
           </section>
 
         <!-- ── Database Encryption ─────────────────────────────────── -->
@@ -1428,7 +1428,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">What to back up</h3>
             <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
-              <li>Everything lives under your PMForge data folder — <span class="font-mono text-xs">~/Library/Application Support/PMForge/</span> on macOS, <span class="font-mono text-xs">~/Documents/PMForge/</span> on Linux and Windows: <span class="font-mono text-xs">system.db</span> (accounts) plus a private per-user folder with <span class="font-mono text-xs">projects</span>, <span class="font-mono text-xs">certs</span>, <span class="font-mono text-xs">exports</span>, and <span class="font-mono text-xs">logs</span>.</li>
+              <li>Everything lives under your GoPMgr data folder — <span class="font-mono text-xs">~/Library/Application Support/GoPMgr/</span> on macOS, <span class="font-mono text-xs">~/Documents/GoPMgr/</span> on Linux and Windows: <span class="font-mono text-xs">system.db</span> (accounts) plus a private per-user folder with <span class="font-mono text-xs">projects</span>, <span class="font-mono text-xs">certs</span>, <span class="font-mono text-xs">exports</span>, and <span class="font-mono text-xs">logs</span>.</li>
               <li>Copying that folder while GoPMgr is closed is a complete backup. Encrypted projects stay encrypted in the copy — safe to store anywhere you trust with ciphertext.</li>
               <li>Keep your <span class="font-medium text-slate-100">recovery codes</span> with the backup: for encrypted projects, a restored file is only usable with your passphrase or a valid recovery code. Without both, it is unrecoverable by design.</li>
             </ul>
@@ -1446,8 +1446,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section>
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Health checks &amp; repair</h3>
             <p class="text-sm text-slate-300">
-              The GoPMgr binary doubles as a maintenance CLI for any
-              <span class="font-mono text-xs">.pmforge</span> file:
+              The GoPMgr binary doubles as a maintenance CLI for any project
+              file (<span class="font-mono text-xs">.gopmgr</span>, or an
+              older <span class="font-mono text-xs">.pmforge</span> project you haven't reopened yet):
               <span class="font-mono text-xs">--check</span> (integrity),
               <span class="font-mono text-xs">--repair</span> (self-healing),
               <span class="font-mono text-xs">--vacuum</span> (compaction), and
@@ -1540,7 +1541,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Account Info</h3>
-            <p class="text-sm text-slate-300">Shows your current version, signed-in username, and the data directory location on disk (e.g., ~/Library/Application Support/PMForge/username/ on macOS, ~/Documents/PMForge/username/ on Linux and Windows).</p>
+            <p class="text-sm text-slate-300">Shows your current version, signed-in username, and the data directory location on disk (e.g., ~/Library/Application Support/GoPMgr/username/ on macOS, ~/Documents/GoPMgr/username/ on Linux and Windows).</p>
           </section>
 
           <section class="mb-5">
@@ -1991,7 +1992,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <p class="text-sm text-slate-400 mb-5">
             The GoPMgr binary doubles as a headless maintenance tool for scripts, cron jobs, and
             recovery — no GUI session required. Maintenance operations take a
-            <span class="font-mono text-xs">.pmforge</span> file path as the final argument.
+            project file path (<span class="font-mono text-xs">.gopmgr</span> or
+            <span class="font-mono text-xs">.pmforge</span>) as the final argument.
           </p>
 
           <section class="mb-6">
@@ -2046,11 +2048,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <pre class="text-xs font-mono text-slate-300 bg-slate-900 border border-slate-800 rounded p-3 overflow-x-auto mb-3">{`# Integrity-check an encrypted project
 PMF_PW='…' gopmgr --check \\
   --username alice --password-env PMF_PW \\
-  ~/Documents/PMForge/alice/projects/<id>/project.pmforge`}</pre>
+  ~/Documents/GoPMgr/alice/projects/<id>/project.gopmgr`}</pre>
             <pre class="text-xs font-mono text-slate-300 bg-slate-900 border border-slate-800 rounded p-3 overflow-x-auto">{`# Headless schedule export to encrypted XLSX
 PMF_PW='…' gopmgr --export schedule.xlsx --format xlsx --encrypt \\
   --username alice --password-env PMF_PW \\
-  ~/Documents/PMForge/alice/projects/<id>/project.pmforge`}</pre>
+  ~/Documents/GoPMgr/alice/projects/<id>/project.gopmgr`}</pre>
           </section>
 
           <section>

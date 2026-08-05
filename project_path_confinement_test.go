@@ -70,21 +70,26 @@ func TestEncryptedDSNRejectsAmbiguousPath(t *testing.T) {
 	}
 }
 
-// TestProjectPathForRejectsWrongExtension pins the ".pmforge" check in
-// projectPathFor. The extension is a persistence boundary, not a validation
-// nicety: every project file already on a user's disk ends in ".pmforge", so
-// if this check's literal were ever renamed alongside the rest of the
-// PMForge -> GoPMgr rebrand, DeleteProject/CloneProject/OpenProject would
-// either reject every existing project outright or (worse) silently accept
-// unrelated files that happen to sit beside one. A regression here fails
-// this test instead of surfacing as "my projects disappeared" after upgrade.
+// TestProjectPathForAcceptsCurrentAndLegacyExtension pins the extension
+// check in projectPathFor to accept BOTH ".gopmgr" (written by this build)
+// and ".pmforge" (written before the 2026-08-04 PMForge -> GoPMgr rename,
+// and never rewritten — nothing migrates existing project files). The
+// extension is a persistence boundary, not a validation nicety: every
+// project file already on a user's disk ends in one of these two, so if
+// support for either were ever dropped, DeleteProject/CloneProject/
+// OpenProject would reject real existing projects outright.
+//
+// This test replaces TestProjectPathForRejectsWrongExtension, which
+// asserted ".gopmgr" was *rejected* — correct before this rename, inverted
+// deliberately here now that ".gopmgr" is the current extension. See
+// DEVELOPER_HANDBOOK.md §9 for the rename this inversion is part of.
 //
 // This calls projectPathFor directly rather than going through DeleteProject:
 // DeleteProject also opens the target as an encrypted SQLite database for
 // its audit-log entry, so a fake (non-database) file fails there regardless
 // of extension, which would make the assertion pass for the wrong reason
 // even if the extension check itself were broken or renamed.
-func TestProjectPathForRejectsWrongExtension(t *testing.T) {
+func TestProjectPathForAcceptsCurrentAndLegacyExtension(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
 	if _, err := app.CreateAccount("alice", "Alice", "alice-strong-password", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -97,24 +102,26 @@ func TestProjectPathForRejectsWrongExtension(t *testing.T) {
 	// projectPathFor is pure path validation (no filesystem access), so
 	// these paths don't need to exist on disk. They live inside the user's
 	// own projects directory so the test isolates the extension check from
-	// the directory-confinement check covered above. ".gopmgr" specifically
-	// covers the adjacent-rename risk: if a future PMForge -> GoPMgr-style
-	// rebrand changed this check's literal to match the new product name,
-	// a generic wrong-extension case like ".txt" would still pass while
-	// missing that exact regression.
+	// the directory-confinement check covered above. ".pmforg"/".gopmg" are
+	// deliberate one-character-off typos of the two valid extensions, not
+	// an arbitrary wrong extension like ".txt": they catch a check that was
+	// narrowed or corrupted by one character, which a generic case would
+	// miss.
 	projectsDir := filepath.Join(user.DataDir, "projects")
-	for _, ext := range []string{".txt", ".gopmgr"} {
+	for _, ext := range []string{".txt", ".pmforg", ".gopmg"} {
 		wrongExt := filepath.Join(projectsDir, "not-a-project"+ext)
 		if _, _, err := app.projectPathFor(wrongExt); err == nil {
-			t.Fatalf("projectPathFor accepted a path with extension %q, want only .pmforge accepted", ext)
+			t.Fatalf("projectPathFor accepted a path with extension %q, want only .gopmgr/.pmforge accepted", ext)
 		}
 	}
 
-	// Positive control: the same directory, the correct extension, must be
-	// accepted. Without this, a check that rejected every path (not just
-	// wrong extensions) would also pass the loop above.
-	rightExt := filepath.Join(projectsDir, "real-project.pmforge")
-	if _, _, err := app.projectPathFor(rightExt); err != nil {
-		t.Fatalf("projectPathFor rejected a .pmforge path: %v", err)
+	// Positive controls: both the current and legacy extension, in the same
+	// directory, must be accepted. Without these, a check that rejected
+	// every path (not just wrong extensions) would also pass the loop above.
+	for _, ext := range []string{".gopmgr", ".pmforge"} {
+		rightExt := filepath.Join(projectsDir, "real-project"+ext)
+		if _, _, err := app.projectPathFor(rightExt); err != nil {
+			t.Fatalf("projectPathFor rejected a %s path: %v", ext, err)
+		}
 	}
 }

@@ -91,8 +91,9 @@ Section "Uninstall"
   !insertmacro wails.setShellContext
 
   # Remove only the Wails WebView2 cache and installed program files. GoPMgr
-  # project databases live in the user's Documents\PMForge tree and must
-  # survive uninstall so an application upgrade cannot destroy user work.
+  # project databases live in the user's Documents\GoPMgr tree (or the older
+  # Documents\PMForge, for an install not yet migrated) and must survive
+  # uninstall so an application upgrade cannot destroy user work.
   RMDir /r "$AppData\${PRODUCT_EXECUTABLE}"
   RMDir /r "$INSTDIR"
 

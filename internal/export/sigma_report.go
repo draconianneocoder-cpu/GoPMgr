@@ -383,7 +383,7 @@ func getExportDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("sigma report: %w", err)
 	}
-	dir := filepath.Join(home, "PMForge", "exports")
+	dir := filepath.Join(home, "GoPMgr", "exports")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", fmt.Errorf("sigma report mkdir: %w", err)
 	}

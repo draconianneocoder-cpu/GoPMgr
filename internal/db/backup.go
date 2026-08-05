@@ -23,6 +23,10 @@ import (
 // at /manifest.json. It records exactly when and how the bundle was
 // produced so auditors can verify provenance years later.
 type BackupManifest struct {
+	// SchemaVersion is 1 for archives written before the 2026-08-04
+	// PMForge -> GoPMgr rename (project entry named "project.pmforge") and
+	// 2 for archives written after it (entry named "project.gopmgr").
+	// RestoreArchivalBundle accepts both; see its schemaProjectEntry.
 	SchemaVersion int               `json:"schema_version"`
 	CreatedAt     time.Time         `json:"created_at"`
 	AppVersion    string            `json:"app_version"`
@@ -32,7 +36,10 @@ type BackupManifest struct {
 }
 
 // CreateArchivalBundle produces a single .pmba file containing:
-//   - project.pmforge  (a fresh snapshot of the live database)
+//   - project.gopmgr   (a fresh snapshot of the live database; named
+//     "project.pmforge" and schema_version 1 in archives written before
+//     the 2026-08-04 PMForge -> GoPMgr rename — see RestoreArchivalBundle,
+//     which still reads both)
 //   - certs/*          (every certificate file in certPaths that exists)
 //   - manifest.json    (BackupManifest with nanosecond-precision UTC ts)
 //
@@ -97,7 +104,7 @@ func (db *Database) CreateArchivalBundle(destPath string, certPaths []string) (e
 		}
 	}()
 
-	if err := addFileToZip(zipWriter, tempDB, "project.pmforge"); err != nil {
+	if err := addFileToZip(zipWriter, tempDB, "project.gopmgr"); err != nil {
 		return debug.Wrap(err, "BACKUP_SNAPSHOT_BUNDLE_FAILED").ToError()
 	}
 
@@ -129,7 +136,7 @@ func (db *Database) CreateArchivalBundle(destPath string, certPaths []string) (e
 	if err != nil {
 		return debug.Wrap(err, "BACKUP_PROJECT_HASH_FAILED").ToError()
 	}
-	entryHashes := map[string]string{"project.pmforge": projectHash}
+	entryHashes := map[string]string{"project.gopmgr": projectHash}
 	for _, certPath := range certPaths {
 		if certPath == "" {
 			continue
@@ -139,7 +146,7 @@ func (db *Database) CreateArchivalBundle(destPath string, certPaths []string) (e
 		}
 	}
 	manifest := BackupManifest{
-		SchemaVersion: 1,
+		SchemaVersion: 2,
 		CreatedAt:     time.Now().UTC(),
 		AppVersion:    cli.Version,
 		DatabaseID:    databaseID,

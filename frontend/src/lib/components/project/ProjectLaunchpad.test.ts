@@ -28,7 +28,7 @@ beforeEach(() => {
     CreateProjectFromLaunchpad: vi.fn(async () => ({
       project: { id: 'project-1', name: 'Tokyo Delivery' },
       seeds: [],
-      path: '/tmp/Tokyo Delivery.pmforge',
+      path: '/tmp/Tokyo Delivery.gopmgr',
     })),
   };
   (window as unknown as { go: unknown }).go = { main: { App: app } };
@@ -100,7 +100,7 @@ describe('project launchpad', () => {
     );
     expect(onCreated).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'project-1', name: 'Tokyo Delivery' }),
-      '/tmp/Tokyo Delivery.pmforge',
+      '/tmp/Tokyo Delivery.gopmgr',
     );
   });
 });
