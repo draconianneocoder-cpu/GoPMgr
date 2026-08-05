@@ -189,29 +189,50 @@ items outside git's reach:
 
 ## Next Recommended Audit
 
-**Frontend↔backend path-string consistency (recommended next).** The
-Go side's data-root and `.pmforge`-extension literals are now
-test-enforced (see below), but the frontend copy naming those same
-real-world paths is not pinned to anything and was only hand-reverted
-during the rename: `frontend/src/lib/components/HelpGuide.svelte`,
-`frontend/src/lib/components/project/Dashboard.svelte`, and the
-`ProjectLaunchpad.test.ts` fixture all contain `.pmforge`,
-`Application Support/PMForge`, and `Documents/PMForge` strings that
-users read to find their own data on disk. If any of these ever drift
-from what `users.DefaultRootDir()` actually returns, a user gets sent
-to a directory that doesn't exist, and nothing today would catch it.
-Before adding assertions, check whether the app already exposes the
-resolved root over the Wails bindings (`main.go` already computes it
-via `users.DefaultRootDir()` for `applog`) — if so, the better fix is
-having the frontend render that value instead of hardcoding a second
-copy, which removes the drift class rather than pinning two copies of
-it. If no such binding exists, pin the strings with a vitest test or
-extend `release-gate-scope-check.sh`'s existing textual assertions.
+**Frontend↔backend path-string consistency — done (2026-08-04).**
+Confirmed first that no Wails binding exposes `users.DefaultRootDir()`'s
+resolved value to the frontend (`main.go`'s `App` type binds no
+root/log-path getter — `Greet`, `SetUnsavedChanges`, and lifecycle
+hooks only), so the "render the real value instead of a second copy"
+fix wasn't available; pinned the strings instead.
+`frontend/src/lib/persistence-boundary-strings.test.ts` now asserts
+`HelpGuide.svelte` contains the exact macOS
+(`~/Library/Application Support/PMForge/`) and Linux/Windows
+(`~/Documents/PMForge/`) data-root strings, and that `HelpGuide.svelte`,
+`Dashboard.svelte`, and the `ProjectLaunchpad.test.ts` fixture all
+contain the `.pmforge` extension — each assertion verified to fail
+under a deliberate rename of the string it pins. Also found and closed
+an adjacent gap while in this code: the fourth frozen literal,
+`PMForge_Archive_` (`internal/admin/workflow.go`), had no positive test
+at all — the only existing reference to it,
+`TestSecureArchiveRemovesArchiveWhenCreatedAuditLogFails`, globs for it
+but only asserts *zero* matches on a failure path, so it would keep
+passing even if the prefix were renamed. Added
+`TestSecureArchiveUsesPMForgeArchivePrefix` (`internal/admin/admin_test.go`),
+which exercises the success path and asserts the literal against a real
+archive filename; also break-verified. All four frozen literals from
+`DEVELOPER_HANDBOOK.md` §9 are now positively pinned somewhere. See the
+2026-08-04 (second) entry there for the full rationale.
 
-Secondary and lower-confidence, worth naming rather than starting now:
-57 vitest tests against 233 Svelte files is thin coverage, and
-`make frontend-stability` (svelte-check + vitest) is the entire
-frontend gate today.
+**Note:** a same-day follow-up conversation proposed renaming these
+frozen literals (`PMForge` directory name, `.pmforge` extension,
+`project.pmforge` archive entry, `PMForge_Archive_` prefix) to
+`GoPMgr`/`gopmgr` as part of finishing the rebrand. That is explicitly
+**not** a find/replace: `.pmforge` files and `.pmba` archives already
+exist in user-chosen locations (Downloads, external drives, their own
+cron jobs — see `HelpGuide.svelte`'s own CLI examples) that no
+migration code can reach, so two of the four literals can only move via
+a permanent dual-read compatibility layer, not a one-time migration.
+Scope was not settled as of this writing; see
+`docs/security-quality-review-2026-08-04.md`, "Scope decision explicitly
+deferred," for the per-literal decomposition. Do not treat "rename to GoPMgr" as approved for the
+data-root directory, `.pmforge` extension, or `project.pmforge` archive
+entry without a specific per-literal decision — only `PMForge_Archive_`
+(cosmetic, nothing reads it back) is safe to rename outright.
+
+Next candidate after that: 57 vitest tests against 233 Svelte files is
+thin coverage, and `make frontend-stability` (svelte-check + vitest) is
+the entire frontend gate today. Worth naming rather than starting now.
 
 **Persistence-boundary invariant tests — done (2026-08-04).** The
 August 2026 PMForge → GoPMgr rename relied on a rule that previously
