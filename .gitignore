@@ -90,6 +90,9 @@ temp_snapshot.db
 *.pfx
 *.key
 *.pem
+# Exception: test-only, self-signed PKCS#12 fixtures for internal/crypto's
+# LoadCertificate tests. These sign nothing real -- see the testdata README.
+!internal/crypto/testdata/testonly-*.p12
 !LICENSES/*.txt
 
 # Agent memory (local-only; not for public consumption)

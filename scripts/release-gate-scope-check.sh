@@ -259,4 +259,21 @@ if command -v go >/dev/null 2>&1; then
 	fi
 fi
 
+# .gitignore blanket-ignores *.p12/*.pfx ("NEVER commit private keys") with
+# one narrow negation for internal/crypto's test-only PKCS#12 fixtures. Any
+# tracked .p12/.pfx outside that exact allowlisted shape means either the
+# negation pattern widened unnoticed or a real certificate slipped past the
+# gitignore entirely -- both are exactly what the blanket rule exists to
+# prevent, so this is a hard fail, not a warning.
+if git ls-files -z -- '*.p12' '*.pfx' | while IFS= read -r -d '' f; do
+	case "$f" in
+	internal/crypto/testdata/testonly-*.p12) ;;
+	*) echo "$f" ;;
+	esac
+done | grep -q .; then
+	echo "release-scope: a tracked .p12/.pfx file is outside the allowlisted internal/crypto/testdata/testonly-*.p12 fixtures." >&2
+	git ls-files -- '*.p12' '*.pfx' >&2
+	fail=1
+fi
+
 exit "$fail"

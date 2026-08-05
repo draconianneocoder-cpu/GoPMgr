@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"math/big"
@@ -54,41 +55,117 @@ type Signer struct {
 
 // LoadCertificate reads a PKCS#12 (.p12 / .pfx) bundle and returns a
 // Signer ready to sign. Only RSA keys are accepted; if you need EC
-// support, branch on the type assertion below.
+// support, branch on the type assertion in parseP12PrivateKey below.
+//
+// Uses pkcs12.ToPEM, not pkcs12.Decode. Decode's own doc comment says it
+// "assumes there is only one certificate and only one private key ...
+// if there are more use ToPEM instead" -- and a real commercially-issued
+// signing certificate is routinely exported with its issuing chain
+// bundled into the same file, which Decode rejects outright with
+// "expected exactly two safe bags in the PFX PDU". That made every such
+// certificate fail to load here at all, not just lose its chain -- see
+// DEVELOPER_HANDBOOK.md's dated entry for the reproduction. ToPEM has no
+// such 2-bag limit; parseP12PrivateKey/splitLeafCertificate below do the
+// classification pkcs12.Decode used to do internally.
 func LoadCertificate(path, password string) (*Signer, error) {
 	p12Data, err := os.ReadFile(path) // #nosec G304 -- user-selected PKCS#12 certificate bundle path.
 	if err != nil {
 		return nil, err
 	}
 
-	privateKey, certificate, err := pkcs12.Decode(p12Data, password)
+	blocks, err := pkcs12.ToPEM(p12Data, password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode P12: %w", err)
 	}
 
-	rsaKey, ok := privateKey.(*rsa.PrivateKey)
-	if !ok {
-		return nil, errors.New("crypto: private key is not RSA")
+	rsaKey, certs, err := parseP12Blocks(blocks)
+	if err != nil {
+		return nil, err
 	}
 
-	var extraCerts []*x509.Certificate
-	blocks, err := pkcs12.ToPEM(p12Data, password)
-	if err == nil {
-		for _, block := range blocks {
-			if block.Type == "CERTIFICATE" {
-				cert, err := x509.ParseCertificate(block.Bytes)
-				if err == nil && !cert.Equal(certificate) {
-					extraCerts = append(extraCerts, cert)
-				}
-			}
-		}
+	leaf, extraCerts, err := splitLeafCertificate(rsaKey, certs)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Signer{
-		Cert:       certificate,
+		Cert:       leaf,
 		PrivateKey: rsaKey,
 		ExtraCerts: extraCerts,
 	}, nil
+}
+
+// parseP12Blocks scans the PEM blocks pkcs12.ToPEM produces for exactly
+// one private key and every certificate present. Per ToPEM's own doc
+// comment, "PRIVATE KEY" block bytes are PKCS#1-encoded for RSA keys and
+// SEC 1-encoded for EC keys -- the block Type alone can't tell them
+// apart, so both parsers are tried, RSA first: RSA is this package's
+// only supported case, so it's checked first, and the EC attempt exists
+// solely so a non-RSA key gets the specific "not RSA" error below
+// instead of a generic "could not parse" one that would leave a caller
+// guessing why a key that opened fine in every other tool is rejected
+// here. Only RSA keys are accepted, matching this package's existing
+// contract.
+func parseP12Blocks(blocks []*pem.Block) (*rsa.PrivateKey, []*x509.Certificate, error) {
+	var (
+		rsaKey *rsa.PrivateKey
+		certs  []*x509.Certificate
+	)
+
+	for _, block := range blocks {
+		switch block.Type {
+		case "PRIVATE KEY":
+			if rsaKey != nil {
+				return nil, nil, errors.New("crypto: P12 contains more than one private key")
+			}
+			if key, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
+				rsaKey = key
+				continue
+			}
+			if _, err := x509.ParseECPrivateKey(block.Bytes); err == nil {
+				return nil, nil, errors.New("crypto: private key is not RSA")
+			}
+			return nil, nil, errors.New("crypto: could not parse private key")
+		case "CERTIFICATE":
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				return nil, nil, fmt.Errorf("crypto: parse certificate: %w", err)
+			}
+			certs = append(certs, cert)
+		}
+	}
+
+	if rsaKey == nil {
+		return nil, nil, errors.New("crypto: P12 contains no private key")
+	}
+	if len(certs) == 0 {
+		return nil, nil, errors.New("crypto: P12 contains no certificate")
+	}
+	return rsaKey, certs, nil
+}
+
+// splitLeafCertificate picks the signer's own certificate out of certs --
+// the one whose public key matches key -- and returns the rest as the
+// issuing chain (ExtraCerts). Matching is by public-key identity, not by
+// the P12's optional localKeyId attribute: some exporters omit it, and a
+// wrong guess here would silently put an intermediate in Cert and the
+// real leaf in ExtraCerts, producing a CMS signature validators reject.
+// Public-key identity can't be fooled by missing metadata; it can only
+// fail closed if genuinely no certificate in the bundle belongs to key.
+func splitLeafCertificate(key *rsa.PrivateKey, certs []*x509.Certificate) (*x509.Certificate, []*x509.Certificate, error) {
+	for i, cert := range certs {
+		certKey, ok := cert.PublicKey.(*rsa.PublicKey)
+		if !ok {
+			continue
+		}
+		if certKey.E == key.PublicKey.E && certKey.N.Cmp(key.PublicKey.N) == 0 {
+			extraCerts := make([]*x509.Certificate, 0, len(certs)-1)
+			extraCerts = append(extraCerts, certs[:i]...)
+			extraCerts = append(extraCerts, certs[i+1:]...)
+			return cert, extraCerts, nil
+		}
+	}
+	return nil, nil, errors.New("crypto: no certificate in the P12 matches the private key")
 }
 
 // SignPDFHash returns an RSA-PKCS#1-v1.5 raw signature over the
