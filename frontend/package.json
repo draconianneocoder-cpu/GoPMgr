@@ -13,6 +13,7 @@
     "lint": "eslint --ext .ts,.svelte src",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage --coverage.all --coverage.include='src/**/*.{ts,svelte}'",
     "test:bug-report-regressions": "node scripts/bug-report-regression-check.mjs",
     "test:project-settings-encryption": "node scripts/project-settings-encryption-check.mjs"
   },
@@ -28,6 +29,7 @@
     "@tsconfig/svelte": "^5.0.4",
     "@typescript-eslint/eslint-plugin": "^8.65.0",
     "@typescript-eslint/parser": "^8.64.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.8.0",
     "eslint-plugin-svelte": "^3.22.0",
     "jsdom": "^30.0.1",
