@@ -585,8 +585,53 @@ uncovered) → 8765/14728 (5963 uncovered).
 **`internal/crypto` complete for Phase 2 purposes.** No package-specific
 work remains queued for this package short of a hard-100% push (Phase 7).
 
+**`internal/admin`: 76.1% → 97.7%.** Closed all four gaps identified in
+`workflow.go`'s `SecureArchive`, `LogDocumentSignatureOutcome`, and
+`logSignatureCheckpointWithStatus`. `SecureArchive`'s settings-load
+failure was forced by closing the `*db.Database` before calling it (a
+throwaway probe confirmed `Close` is idempotent and any subsequent
+method returns `sql: database is closed` — a simpler alternative to
+the SQLite-trigger technique for DB-unavailable branches, used
+alongside it here). Its cert-bundling failure and the
+`settings.CertPath != ""` branch were covered together by one test
+(pointing `CertPath` at a directory, same technique as
+`internal/db/backup_test.go`'s existing bundle-failure test).
+`LogDocumentSignatureOutcome`'s two empty-string defaulting branches
+were covered directly. `logSignatureCheckpointWithStatus`'s dead
+`json.Marshal` error check was deleted, not tested — the struct being
+marshaled has three plain `string` fields, and `json.Marshal` cannot
+fail on a plain-string struct (invalid UTF-8 is replaced, not
+rejected), the same class of guarantee as the `internal/templates`
+`jdm.go` deletions but sharper: safe only as long as every field
+stays a `string`, noted in the code so a future `any`/map-typed field
+doesn't silently reopen a real error path.
+
+One break-verification catch during this pass: the first draft of the
+defaulting test asserted against `audit_events.signature_status`, but
+`internal/db/audit.go`'s `appendAuditEventTx` already re-defaults
+`SignatureStatus == ""` to `"unsigned"` downstream — so deleting
+`workflow.go`'s own default didn't turn that assertion red. Fixed by
+asserting against `audit_log.details` instead (`LogAction`'s
+plain-text trail, written from this package's local variables with no
+downstream re-defaulting) — the only place this package's own
+defaulting is actually observable. See `DEVELOPER_HANDBOOK.md`'s
+matching dated entry.
+
+One line is knowingly left uncovered and disclosed rather than forced:
+`SecureArchive`'s `os.Remove` double-fault branch (removing an
+already-unaudited archive itself fails). Unlink permission is governed
+by the parent directory, and making that directory non-writable would
+also block `CreateArchivalBundle` from creating the archive in the
+first place — so no single directory permission reaches this line
+without also short-circuiting the test before it gets here. Documented
+in-place in `workflow.go` and in the ledger.
+
+Coverage ratchet updated: go_default 8687/14630 (5943 uncovered) →
+8694/14627 (5933 uncovered); go_duckdb 8765/14728 (5963 uncovered) →
+8772/14725 (5953 uncovered).
+
 **Not started:** the rest of Phase 2 (remaining Go completion-tier
-packages at 70–99%),
+packages at 70–99%, next candidate `internal/users`),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
 `db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
 Phase 4 (root/App layer, 48.2%), Phase 5 (remaining frontend pure-logic
