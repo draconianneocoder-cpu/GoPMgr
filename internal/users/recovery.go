@@ -243,6 +243,14 @@ func (s *Store) RemainingRecoveryCodes(username string) (int, error) {
 		`SELECT COUNT(*) FROM recovery_codes WHERE username = ? AND used = 0`,
 		username,
 	).Scan(&n)
+	// Not tested: a bare COUNT(*) with no GROUP BY always returns
+	// exactly one row, even when zero rows match, so err == sql.ErrNoRows
+	// can never happen for this specific query -- unreachable given this
+	// query shape, not given the int return type (contrast the
+	// internal/templates/jdm.go deletions, which are dead by type).
+	// Changing the query to select a specific row instead of an
+	// aggregate would make this branch live again, so it stays,
+	// documented, rather than deleted.
 	if err == sql.ErrNoRows {
 		return 0, nil
 	}
@@ -257,6 +265,14 @@ func generateCode() (string, error) {
 		return "", fmt.Errorf("recovery: read entropy: %w", err)
 	}
 	enc := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(buf[:])
+	// Not tested: rawCodeBytes (10) is currently a multiple of 5, so
+	// base32-encoding it always yields exactly 16 chars with no padding
+	// (10 bytes = 80 bits = 80/5 base32 chars) -- unreachable given
+	// rawCodeBytes's current value, not given any type-level guarantee.
+	// Editing rawCodeBytes to a non-multiple-of-5 value would make this
+	// branch live again, so it stays, documented, rather than deleted
+	// (same category as internal/crypto/encrypt.go's argonKeyLen-
+	// dependent aes.NewCipher check).
 	if len(enc) < 16 {
 		return enc, nil
 	}
