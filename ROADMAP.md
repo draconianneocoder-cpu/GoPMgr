@@ -789,9 +789,92 @@ Coverage ratchet updated: go_default 8716/14627 (5911 uncovered) →
 8727/14627 (5900 uncovered); go_duckdb 8794/14725 (5931 uncovered) →
 8805/14725 (5920 uncovered).
 
-**Not started:** the rest of Phase 2 (remaining Go completion-tier
-packages at 70–99%; `internal/users`' `store.go` increment is next,
-then the other completion-tier packages),
+**`internal/users` (`store.go` increment, sub-increment 1 of 2 —
+DB-backed functions): 75.5% → 87.7% of `store.go` (82.3% → 89.5% of
+the package).** `/advisor` recommended splitting `store.go` into two
+sub-increments from the start rather than discovering the split
+mid-implementation, since it mixes two forcing-technique families:
+DB-backed functions (`Open`, `Close`, `RootDir`, `migrate`,
+`migrateAdminColumn`, `SetAdmin`, `DeleteAccount`, `CreateAccount`,
+`Authenticate`, `List` — all closed here) and filesystem-backed
+functions (`MigrateLegacyRoot`/`migrateLegacyRoot`/`copyTree`/
+`copyFile`/`ensurePrivateDir`/`ensurePrivateSQLiteFiles`, unstarted).
+`CreateAccount`, `Authenticate`, and `List` reach 100%; the other seven
+functions have documented, disclosed-untested remainders. Every forcing
+technique was empirically probed (a throwaway probe file, deleted
+after use) before being written into a real test, per this session's
+established discipline — probing surfaced two techniques new to this
+package: writing a non-integer string into the `is_admin` column
+(`UPDATE users SET is_admin = 'not-an-int'`) exploits SQLite's type
+affinity to force a `Scan` conversion failure without a closed
+connection or a trigger, used for both `Authenticate`'s and `List`'s
+row-scan branches; and `t.Setenv("XDG_DATA_HOME", ...)` makes
+`MigrateLegacyRoot`'s otherwise-unexported `legacyRootCandidates()`
+path fully test-controllable for a later sub-increment, since it reads
+the env var fresh on every call rather than caching it.
+
+Break-verification (mutate the guard, confirm the test goes red,
+restore, diff against a backup to confirm a clean restore) surfaced two
+real findings, both anticipated by `/advisor`'s plan review before any
+code was written and confirmed empirically rather than assumed:
+
+- `TestOpen_RootDirIsFile` (root pre-occupied by a file, forcing
+  `ensurePrivateDir`'s `MkdirAll` to fail) asserts the specific
+  "mkdir root" wrapper text, not a bare error check. Deleting `Open`'s
+  guard doesn't make `Open` fail differently: `sql.Open` connects
+  lazily and never touches the filesystem, so execution falls through
+  to `s.migrate()`'s first `Exec`, which fails against the same broken
+  path with an unrelated "unable to open database file" error — the
+  same cascading-fallible-path shape as this session's other
+  masked-mutation findings, this time caught by probing the mutation
+  before writing the assertion instead of by a failed break-verify run.
+- `TestAuthenticate_ValidateUsernameShortCircuitsBeforeDBAccess` is a
+  second instance of `recovery.go`'s anti-enumeration-unification
+  shape: on an open store, a present `ValidateUsername` guard and a
+  deleted one both return the identical `ErrNoSuchUser` value (present:
+  the guard itself; deleted: `sql.ErrNoRows` from the fallthrough
+  SELECT, per `ErrNoSuchUser`'s own merge-in-UI doc comment), so no
+  equality check on an open store can break-verify it — confirmed by
+  probe before writing the test, not assumed. Unlike `recovery.go`'s
+  version, this one IS break-verifiable: closing the store first makes
+  the two paths diverge on *when* the DB gets touched. A present guard
+  still returns `ErrNoSuchUser` without touching the closed connection;
+  a deleted one reaches it and surfaces "database is closed" instead, a
+  value `ErrNoSuchUser` can never equal. Confirmed empirically both
+  ways: the mutation goes red under the closed-store test, and a
+  separate probe confirmed an open-store equality check alone would
+  have stayed green under the same mutation.
+
+Ten branches stay disclosed-untested in `store.go`, each with an
+in-code comment at the point of the check: `Open`'s own `sql.Open`
+error and both migrate/private-file close-error cascades (no portable
+way to fail `conn.Close()` itself after an already-failed statement);
+`migrate`'s `migrateRecoveryTable`/`migrateDEKColumns` propagation
+checks (no hook between them and the prior successful `Exec` on the
+same live connection, and SQLite triggers don't fire on the CREATE
+TABLE/ALTER TABLE DDL those functions issue); `migrateAdminColumn`'s
+PRAGMA-cursor `Scan`/`rows.Err()` (same class as `dek.go`'s
+`migrateDEKColumns` disclosure — the six-column shape is fixed by
+SQLite); `SetAdmin`'s and `DeleteAccount`'s admin-COUNT query errors
+(same live-connection, no-DML-trigger-possible reasoning as `migrate`'s
+propagation checks).
+
+Coverage ratchet updated: go_default 8727/14627 (5900 uncovered) →
+8754/14627 (5873 uncovered); go_duckdb 8805/14725 (5920 uncovered) →
+8832/14725 (5893 uncovered).
+
+**Not started:** `internal/users` (`store.go` increment, sub-increment
+2 of 2 — filesystem-backed functions: `MigrateLegacyRoot`/
+`migrateLegacyRoot`/`copyTree`/`copyFile`/`ensurePrivateDir`/
+`ensurePrivateSQLiteFiles`), the final increment for the package, is
+next. Every forcing technique for it was already probe-confirmed during
+this increment's planning (symlink/named-pipe skip in `copyTree` via
+`syscall.Mkfifo` — not a Unix socket, since that path length flirts
+with macOS's ~104-byte `sun_path` limit; file/directory collisions for
+every `copyFile`/`ensurePrivateDir` branch; `XDG_DATA_HOME` env-var
+control for `MigrateLegacyRoot`'s real candidate-resolution path), so
+it should be close to mechanical. After that, the rest of Phase 2
+(remaining Go completion-tier packages at 70–99%),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
 `db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
 Phase 4 (root/App layer, 48.2%), Phase 5 (remaining frontend pure-logic
