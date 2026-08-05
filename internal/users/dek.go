@@ -39,8 +39,14 @@ func (s *Store) migrateDEKColumns() error {
 				cid         int
 				name, typ   string
 				notnull, pk int
-				dflt        interface{}
+				dflt        any
 			)
+			// Real error-handling code, not tested: PRAGMA table_info's six
+			// output columns (int, text, text, int, any, int) always match
+			// these Scan targets' types under normal SQLite operation, so
+			// this can't be forced without a corrupted SQLite build --
+			// unlike the ALTER failure below, which a dropped table forces
+			// cleanly.
 			if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
 				_ = rows.Close()
 				return err
@@ -50,7 +56,10 @@ func (s *Store) migrateDEKColumns() error {
 			}
 		}
 		// Without this, a mid-iteration error could truncate the probe
-		// and falsely conclude the column is missing.
+		// and falsely conclude the column is missing. Not tested: this
+		// fires only on a mid-iteration I/O error against the PRAGMA
+		// cursor, which has no portable forcing method (unlike the
+		// ALTER failure below).
 		if err := rows.Err(); err != nil {
 			_ = rows.Close()
 			return err
