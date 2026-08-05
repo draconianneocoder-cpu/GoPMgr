@@ -627,6 +627,18 @@ func TestList_ParsesExistingLastLogin(t *testing.T) {
 	}
 }
 
+// TestEnsurePrivateSQLiteFiles_MainPathMissing forces the main os.Chmod call
+// to fail directly, by pointing it at a path that was never created. Not
+// reachable through Open (see the disclosure comment on Open's own
+// ensurePrivateSQLiteFiles call): by the time Open reaches that call,
+// s.migrate() has already written to dbPath, so it necessarily exists.
+func TestEnsurePrivateSQLiteFiles_MainPathMissing(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "does-not-exist.db")
+	if err := ensurePrivateSQLiteFiles(path); err == nil {
+		t.Fatal("ensurePrivateSQLiteFiles on a missing path = nil, want an error")
+	}
+}
+
 func weakPasswordHash(password string) string {
 	const (
 		memory  = 8 * 1024

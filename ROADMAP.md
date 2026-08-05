@@ -863,18 +863,32 @@ Coverage ratchet updated: go_default 8727/14627 (5900 uncovered) →
 8754/14627 (5873 uncovered); go_duckdb 8805/14725 (5920 uncovered) →
 8832/14725 (5893 uncovered).
 
+A same-day follow-up correction closed one more branch:
+`ensurePrivateSQLiteFiles`'s own "main path missing" `os.Chmod` failure,
+directly forceable by pointing it at a path that was never created —
+`TestEnsurePrivateSQLiteFiles_MainPathMissing` in `store_test.go`,
+break-verified the same way as every other test this increment.
+`ensurePrivateDir` was already at 100% as a side effect of
+`TestOpen_RootDirIsFile`'s root-as-file collision (it's the function
+that test forces to fail). `store.go`: 87.7% → 88.2%; package: 89.5% →
+89.8%.
+
 **Not started:** `internal/users` (`store.go` increment, sub-increment
 2 of 2 — filesystem-backed functions: `MigrateLegacyRoot`/
-`migrateLegacyRoot`/`copyTree`/`copyFile`/`ensurePrivateDir`/
-`ensurePrivateSQLiteFiles`), the final increment for the package, is
-next. Every forcing technique for it was already probe-confirmed during
-this increment's planning (symlink/named-pipe skip in `copyTree` via
-`syscall.Mkfifo` — not a Unix socket, since that path length flirts
-with macOS's ~104-byte `sun_path` limit; file/directory collisions for
-every `copyFile`/`ensurePrivateDir` branch; `XDG_DATA_HOME` env-var
-control for `MigrateLegacyRoot`'s real candidate-resolution path), so
-it should be close to mechanical. After that, the rest of Phase 2
-(remaining Go completion-tier packages at 70–99%),
+`migrateLegacyRoot`/`copyTree`/`copyFile`), the final increment for the
+package, is next (`ensurePrivateDir` and `ensurePrivateSQLiteFiles` no
+longer need dedicated attention — the former is already 100%, and the
+latter's only remaining branch, a non-ENOENT sidecar chmod failure, is
+disclosed-untested rather than forceable, per the probe in this
+increment). Every forcing technique for the remaining functions was
+already probe-confirmed during this increment's planning, including
+`syscall.Mkfifo` itself (not just predicted from `sun_path` reasoning —
+actually run and confirmed to land in `copyTree`'s `default:` skip
+branch): symlink/named-pipe skip in `copyTree`; file/directory
+collisions for every `copyFile` branch; `XDG_DATA_HOME` env-var control
+for `MigrateLegacyRoot`'s real candidate-resolution path. It should be
+close to mechanical. After that, the rest of Phase 2 (remaining Go
+completion-tier packages at 70–99%),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
 `db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
 Phase 4 (root/App layer, 48.2%), Phase 5 (remaining frontend pure-logic
