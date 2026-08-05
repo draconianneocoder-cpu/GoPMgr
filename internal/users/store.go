@@ -320,17 +320,18 @@ func (s *Store) Authenticate(username, password string) (Account, error) {
 	}
 
 	var (
-		acc       Account
-		hash      string
-		createdAt string
-		lastLogin string
-		isAdmin   int
+		acc           Account
+		hash          string
+		storedDataDir string
+		createdAt     string
+		lastLogin     string
+		isAdmin       int
 	)
 	err := s.conn.QueryRow(
 		`SELECT username, display_name, password_hash, data_dir, created_at, last_login, is_admin
 		 FROM users WHERE username = ?`,
 		username,
-	).Scan(&acc.Username, &acc.DisplayName, &hash, &acc.DataDir, &createdAt, &lastLogin, &isAdmin)
+	).Scan(&acc.Username, &acc.DisplayName, &hash, &storedDataDir, &createdAt, &lastLogin, &isAdmin)
 	if err == sql.ErrNoRows {
 		return Account{}, ErrNoSuchUser
 	}
@@ -342,6 +343,14 @@ func (s *Store) Authenticate(username, password string) (Account, error) {
 		return Account{}, err
 	}
 
+	// data_dir is recomputed from the scanned username and the store's
+	// current rootDir rather than trusted from the column: it is written
+	// once at CreateAccount time, so a stale column would silently point
+	// every account at a pre-migration/pre-relocation root once
+	// DefaultRootDir's leaf name or location changes (see
+	// legacyRootCandidates). The column is still written for
+	// debuggability but is not authoritative.
+	acc.DataDir = filepath.Join(s.rootDir, acc.Username)
 	acc.IsAdmin = isAdmin == 1
 
 	// Parse timestamps (silently ignore parse errors — they're cosmetic).
@@ -390,12 +399,15 @@ func (s *Store) List() ([]Account, error) {
 	for rows.Next() {
 		var (
 			a                    Account
+			storedDataDir        string
 			createdAt, lastLogin string
 			isAdmin              int
 		)
-		if err := rows.Scan(&a.Username, &a.DisplayName, &a.DataDir, &createdAt, &lastLogin, &isAdmin); err != nil {
+		if err := rows.Scan(&a.Username, &a.DisplayName, &storedDataDir, &createdAt, &lastLogin, &isAdmin); err != nil {
 			return nil, err
 		}
+		// See the comment in Authenticate: data_dir is recomputed, not trusted.
+		a.DataDir = filepath.Join(s.rootDir, a.Username)
 		if t, err := time.Parse(time.RFC3339Nano, createdAt); err == nil {
 			a.CreatedAt = t
 		}
