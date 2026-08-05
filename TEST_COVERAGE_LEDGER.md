@@ -89,14 +89,14 @@ on real outcomes rather than mocking collaborators.
 
 ---
 
-## `internal/admin` — 76.1%
+## `internal/admin` — 97.7%
 
 Administrative Pack: secure archive creation and tamper-evident signature
 event logging.
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
-| `admin_test.go` | 9 | `NewService`, `SecureArchive` (incl. the `GoPMgr_Archive_` prefix — renamed from `PMForge_Archive_`, see `b1c8336`), `LogSignatureEvent` | fault-injection, fixture | `SecureArchive` must fail closed: if the success audit row can't be written, the just-created archive file must be deleted rather than left as an unaudited artifact (fault-injected via a blocked audit insert). Signature-event logging must never panic regardless of success/failure/nil-error combinations, since it runs on the signing hot path. |
+| `admin_test.go` | 13 | `NewService`, `SecureArchive` (incl. the `GoPMgr_Archive_` prefix — renamed from `PMForge_Archive_`, see `b1c8336`; settings-load failure; `CertPath`-bundling failure), `LogSignatureEvent`, `LogDocumentSignatureOutcome` (incl. empty-string defaulting) | fault-injection, fixture, closed-DB | `SecureArchive` must fail closed on every stage that can fail: if settings can't be loaded, if the saved certificate can't be bundled, or if the success audit row can't be written (in which case the just-created archive file must be deleted rather than left as an unaudited artifact). Signature-event logging must never panic regardless of success/failure/nil-error combinations, since it runs on the signing hot path, and a blocked tamper-evident audit write must leave no partial row behind (this last assertion proves the write was reached and failed, not that the surrounding `if err != nil` guard specifically ran — that guard is log-only with no propagation, so no assertion can tell it apart from being deleted, the same disclosed limit as `applog`'s `pruneOldLogs` test). One `os.Remove` double-fault line (removing an unaudited archive fails too) is knowingly untested: forcing it needs a directory permission that would also block archive creation itself, so no portable test reaches it — see the in-code comment at `workflow.go`'s `SecureArchive`. |
 
 ## `internal/agile` — 50.3%
 

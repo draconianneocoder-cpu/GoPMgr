@@ -58,6 +58,13 @@ func (s *Service) SecureArchive(projectPath string) (string, error) {
 	}
 
 	if err := s.DB.LogAction("System", "ARCHIVE_CREATED", projectPath, backupName); err != nil {
+		// removeErr's branch is accepted as untested, not merely
+		// uncovered: unlink permission is governed by the parent
+		// directory, and making that directory non-writable would also
+		// block CreateArchivalBundle above from creating backupName in
+		// the first place, so no single directory permission reaches
+		// this line without also short-circuiting the test before it
+		// gets here.
 		if removeErr := os.Remove(backupName); removeErr != nil && !os.IsNotExist(removeErr) {
 			return "", fmt.Errorf("archive audit failed: %w; remove unaudited archive: %v", err, removeErr)
 		}
@@ -110,7 +117,12 @@ func (s *Service) logSignatureCheckpointWithStatus(docID, signatureStatus, detai
 		debug.Wrap(err, "SIGNATURE_AUDIT_DOCUMENT_LOOKUP_FAILED")
 		return
 	}
-	payload, err := json.Marshal(struct {
+	// All three fields are plain strings, and json.Marshal on a struct of
+	// only string fields cannot fail (invalid UTF-8 is replaced, not
+	// rejected) — this is safe to leave unchecked only as long as every
+	// field stays a string; a future field of type any/map[string]any
+	// would reintroduce a real error path here.
+	payload, _ := json.Marshal(struct {
 		DocumentID string `json:"document_id"`
 		Status     string `json:"status"`
 		Details    string `json:"details"`
@@ -119,10 +131,6 @@ func (s *Service) logSignatureCheckpointWithStatus(docID, signatureStatus, detai
 		Status:     signatureStatus,
 		Details:    details,
 	})
-	if err != nil {
-		debug.Wrap(err, "SIGNATURE_AUDIT_PAYLOAD_FAILED")
-		return
-	}
 	if _, err := s.DB.AppendAuditEvent(db.AuditEventInput{
 		ProjectID:             doc.ProjectID,
 		EventType:             "document.signature",

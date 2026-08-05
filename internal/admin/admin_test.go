@@ -5,6 +5,7 @@ package admin
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -64,6 +65,48 @@ func TestSecureArchiveUsesGoPMgrArchivePrefix(t *testing.T) {
 
 	if got := filepath.Base(backupPath); !strings.HasPrefix(got, "GoPMgr_Archive_") {
 		t.Fatalf("archive filename = %q, want prefix %q", got, "GoPMgr_Archive_")
+	}
+}
+
+// TestSecureArchive_PropagatesSettingsLoadError forces GetSettings to
+// fail by closing the DB first. db.Database.Close is safe to call
+// twice (confirmed directly: sql.DB.Close is idempotent), so this
+// doesn't conflict with newAdminTestDB's own t.Cleanup(d.Close).
+func TestSecureArchive_PropagatesSettingsLoadError(t *testing.T) {
+	d := newAdminTestDB(t)
+	if err := d.Close(); err != nil {
+		t.Fatalf("close db: %v", err)
+	}
+
+	s := NewService(d)
+	if _, err := s.SecureArchive(d.Path); err == nil || !strings.Contains(err.Error(), "ARCHIVE_SETTINGS_LOAD_FAILED") {
+		t.Fatalf("SecureArchive() error = %v, want ARCHIVE_SETTINGS_LOAD_FAILED", err)
+	}
+}
+
+// TestSecureArchive_PropagatesCertBundlingError covers two branches in
+// one test: settings.CertPath != "" (a saved cert path is included in
+// the archive) and CreateArchivalBundle's own error path, forced the
+// same way internal/db/backup_test.go's
+// TestCreateArchivalBundleDoesNotPublishPartialArchiveOnBundleFailure
+// does -- point CertPath at a directory, which os.ReadFile (used to
+// read the cert bytes) rejects.
+func TestSecureArchive_PropagatesCertBundlingError(t *testing.T) {
+	d := newAdminTestDB(t)
+	workDir := t.TempDir()
+	t.Chdir(workDir)
+
+	certDir := filepath.Join(workDir, "not-a-cert-file")
+	if err := os.Mkdir(certDir, 0o700); err != nil {
+		t.Fatalf("mkdir cert path: %v", err)
+	}
+	if err := d.SaveSettings(db.UserSettings{CertPath: certDir}); err != nil {
+		t.Fatalf("SaveSettings: %v", err)
+	}
+
+	s := NewService(d)
+	if _, err := s.SecureArchive(d.Path); err == nil || !strings.Contains(err.Error(), "security backup failed") {
+		t.Fatalf("SecureArchive() error = %v, want cert bundling failure", err)
 	}
 }
 
@@ -194,6 +237,116 @@ func TestLogSignatureEvent_FailureCheckpointUsesFailedStatus(t *testing.T) {
 	}
 	if signatureStatus != "failed" {
 		t.Fatalf("signature_status = %q, want failed", signatureStatus)
+	}
+}
+
+// TestLogDocumentSignatureOutcome_DefaultsEmptySignatureStatusAndDetails
+// covers the two zero-value defaulting branches: an empty
+// signatureStatus becomes "unsigned" and empty details becomes the
+// stock "Document signature outcome recorded." message.
+//
+// This asserts against audit_log.details (LogAction's plain-text
+// audit trail), not audit_events.signature_status: AppendAuditEvent
+// (internal/db/audit.go's appendAuditEventTx) applies its own
+// SignatureStatus=="" -> "unsigned" default downstream, which would
+// silently absorb a deleted default in this package and let a broken
+// mutation pass. audit_log.details is written directly from this
+// package's local signatureStatus/details variables with no
+// downstream re-defaulting, so it is the only observable proof this
+// package's own defaulting ran. (Caught by break-verification: an
+// earlier draft of this test asserted against audit_events and did
+// not go red when the defaulting branch was deleted.)
+func TestLogDocumentSignatureOutcome_DefaultsEmptySignatureStatusAndDetails(t *testing.T) {
+	d := newAdminTestDB(t)
+	project, err := d.UpsertProject(db.Project{Name: "Default Signature Audit"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	doc, err := d.SaveDocument(db.Document{
+		ProjectID: project.ID,
+		Kind:      "charter",
+		Title:     "Unsigned Charter",
+		Content:   `{"summary":"pending"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveDocument: %v", err)
+	}
+
+	NewService(d).LogDocumentSignatureOutcome(doc.ID, "", "", "")
+
+	var details string
+	if err := d.Conn.QueryRow(
+		`SELECT details FROM audit_log
+		 WHERE action = 'SIGNATURE_EVENT' AND target_id = ?
+		 ORDER BY id DESC LIMIT 1`,
+		doc.ID,
+	).Scan(&details); err != nil {
+		t.Fatalf("query audit_log: %v", err)
+	}
+	if want := "[unsigned] Document signature outcome recorded."; details != want {
+		t.Fatalf("audit_log.details = %q, want %q", details, want)
+	}
+}
+
+// TestLogSignatureCheckpoint_AppendAuditEventFailureLeavesNoRow forces
+// AppendAuditEvent to fail via a SQLite trigger (matching the
+// audit_log trigger technique used above for SecureArchive), driving
+// execution into the true branch of logSignatureCheckpointWithStatus's
+// `if err != nil { debug.Wrap(...) }` guard -- the coverage this test
+// closes. The row-count-0 assertion confirms AppendAuditEvent was
+// genuinely reached and failed (not reached-and-succeeded), by
+// checking a value the trigger controls directly rather than relying
+// on "no panic".
+//
+// It does NOT distinguish the guard's presence from its absence: the
+// guard is log-only with no propagation to the caller, so deleting it
+// entirely (`_, _ = s.DB.AppendAuditEvent(...)`) would still hit the
+// same blocked insert and leave the same zero rows -- structurally
+// identical to applog's TestPruneOldLogs_UnreadableDirIsANoOp
+// disclosure (see DEVELOPER_HANDBOOK.md): the branch's own contract
+// admits no assertion that can tell "the guard ran" from "the guard
+// is gone".
+func TestLogSignatureCheckpoint_AppendAuditEventFailureLeavesNoRow(t *testing.T) {
+	d := newAdminTestDB(t)
+	project, err := d.UpsertProject(db.Project{Name: "Blocked Signature Audit"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	doc, err := d.SaveDocument(db.Document{
+		ProjectID: project.ID,
+		Kind:      "charter",
+		Title:     "Blocked Charter",
+		Content:   `{"summary":"blocked"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveDocument: %v", err)
+	}
+
+	_, err = d.Conn.Exec(`
+		CREATE TRIGGER block_signature_audit_event
+		BEFORE INSERT ON audit_events
+		WHEN NEW.event_type = 'document.signature'
+		BEGIN
+			SELECT RAISE(ABORT, 'signature audit event unavailable');
+		END;
+	`)
+	if err != nil {
+		t.Fatalf("create audit_events trigger: %v", err)
+	}
+
+	NewService(d).LogSignatureEvent(doc.ID, true, nil)
+
+	var count int
+	if err := d.Conn.QueryRow(
+		`SELECT COUNT(*) FROM audit_events
+		 WHERE project_id = ? AND entity_type = 'document' AND entity_id = ? AND event_type = 'document.signature'`,
+		project.ID,
+		doc.ID,
+	).Scan(&count); err != nil {
+		t.Fatalf("count signature audit events: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("signature audit event count = %d, want 0 (blocked insert should leave no row)", count)
 	}
 }
 
