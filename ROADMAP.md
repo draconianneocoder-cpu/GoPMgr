@@ -448,7 +448,55 @@ touched (`main.go`'s `Bind: []any{app}` instead of `[]interface{}{app}`;
 behavior-identical simplifications, confirmed via `go build`/`go vet`/the
 full test suite passing unchanged before and after.
 
-**Not started:** Phase 2 (Go completion tier, packages already 70–99%),
+**Phase 2 (Go completion tier) — in progress.** `a0360b5` was
+adversarially reviewed (via `/advisor`, recovered from a session-long
+outage) before this phase began, per standing process; two non-blocking
+findings from that review (a `TEST_COVERAGE_LEDGER.md` row overstating
+what one test proves, and no drift enforcement on the ledger) were fixed
+in this pass alongside the code — see `DEVELOPER_HANDBOOK.md`'s matching
+dated entry for both.
+
+`internal/applog`: 72.5% → 100% of `applog.go` (95.7% of the package;
+`dialog_darwin.go`/`opendir_darwin.go` stay excluded as platform-narrow).
+`Init`'s three "never fail outright" fallback branches (unresolvable log
+dir, `MkdirAll` failure, `OpenFile` failure) and `Fatal`'s dialog/exit
+sequence were the entire gap. Closed via two techniques: real-but-
+controlled filesystem obstacles (a blocker file/directory placed exactly
+where `Init` needs to create its own — chosen over permission bits, which
+behave inconsistently when tests run as root in CI containers) for the
+`MkdirAll`/`OpenFile` branches, and the same injectable-seam pattern used
+for `runtime.GOOS` in Phase 1 (`userHomeDir`/`tempDir`/`showError`/
+`osExit` as package-level func vars) for the fully-unresolvable-dir
+branch and for `Fatal` — the latter needed it regardless of filesystem
+tricks, since it otherwise pops a real native OS dialog and calls
+`os.Exit`. Break-verified 5 distinct mutations (each of `Init`'s 3
+fallback branches, `Fatal`'s `showError` call, `resolveLogDir`'s temp-
+fallback branch) — all eventually caught, but 2 of the 5 (`Init`'s
+`MkdirAll`-fails and its `logDir == ""` branches) were **not** caught on
+the first attempt: the induced failure cascaded into a *different*
+fallback branch (`OpenFile`, or `MkdirAll("")`) and produced the same
+`logPath == ""` observable, which the test's original assertion couldn't
+tell apart from the branch actually under test. Both were fixed by
+asserting the specific log message each branch emits, via a real
+`os.Pipe()`-based stderr capture (`Init`'s failure branches call
+`log.SetOutput(os.Stderr)` themselves, which silently discards a
+`log.SetOutput(&buf)` done from the test side). One test remains
+disclosed as non-discriminating rather than fixed: `pruneOldLogs`'s
+`os.ReadDir`-error branch's entire contract is "return early, touch
+nothing," and deleting that early return still produces a clean,
+silent no-op (`range` over the resulting nil slice), so no assertion
+can distinguish the branch running from the branch being deleted — see
+`DEVELOPER_HANDBOOK.md`'s matching entry.
+
+Baseline updated: go_default 8612/14605 (5993 uncovered) → 8628/14605
+(5977 uncovered); go_duckdb 8690/14703 (6013 uncovered) → 8706/14703
+(5997 uncovered).
+
+**Not started:** the rest of Phase 2 (remaining Go completion-tier
+packages at 70–99%, e.g. `internal/crypto` at 72.8% — its gap is spread
+across PDF/CMS signing fixture construction, materially more expensive
+per statement than `applog`'s error-path gaps, per the advisor's
+guidance to finish one package before estimating the tier's total cost),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
 `db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
 Phase 4 (root/App layer, 48.2%), Phase 5 (remaining frontend pure-logic

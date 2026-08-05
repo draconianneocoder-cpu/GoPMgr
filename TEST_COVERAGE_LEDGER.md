@@ -23,6 +23,15 @@ section whenever a test file is added, removed, or its purpose changes
 materially. It is not auto-generated; treat stale entries as bugs the
 same way stale code comments are treated elsewhere in this repo.
 
+**Methodology and confidence**: entries were written from test function
+names, the production code each test file targets, and package doc
+comments — not from executing every test individually and diffing its
+assertions against this table row by row. A sample was verified directly
+against source during the `a0360b5` adversarial review and held up, but
+any single row is more likely to be stale or imprecise than the tests
+themselves; treat a row as correctable, not authoritative, if it
+disagrees with the code.
+
 **Numbers:** package percentages below are `go test -cover` statement
 coverage under the default build (no `-tags duckdb`), current as of the
 `coverage-baseline.json` this session ended with. Reproduce with
@@ -112,13 +121,26 @@ entry for why both build tags are measured independently.
 | `duckdb_test.go` | 8 | `PortfolioRollup` (aggregation, minor-units preference, idempotence), `ImportTabular` (CSV) | unit, table-driven, fixture | Portfolio rollups must aggregate correctly and be safe to call repeatedly (idempotent) since the GUI may re-trigger it; CSV import must reject unsupported extensions and missing files before touching DuckDB. |
 | `stub_test.go` | 1 | Stub engine's "unavailable" reporting | unit | The non-duckdb build must report unavailability cleanly, not panic or silently no-op. |
 
-## `internal/applog` — 72.5%
+## `internal/applog` — 100% of `applog.go` (95.7% of package; `dialog_darwin.go`/`opendir_darwin.go` are platform-narrow and excluded from the ratchet, see `coverage-exclude-go.txt`)
 
 Process-level diagnostic logging (dated log files, log pruning, fatal-error dialogs).
 
+`Init`'s three failure branches (unresolvable log dir, `MkdirAll` failure,
+`OpenFile` failure) and `Fatal`'s dialog/exit sequence were previously
+untested because they depend on filesystem failure conditions or on a
+real OS dialog + `os.Exit`. Phase 2 closed this by (a) forcing filesystem
+failures with real-but-controlled obstacles (a blocker file/directory
+sitting where `Init` needs to create one) instead of relying on
+permission bits, which behave inconsistently when tests run as root in
+CI containers, and (b) adding `userHomeDir`/`tempDir`/`showError`/`osExit`
+as package-level func vars — the same injectable-seam pattern used for
+`runtime.GOOS` in Phase 1 — so tests can force the "nothing is writable"
+path and observe `Fatal`'s behavior without touching the real filesystem,
+popping a native dialog, or terminating the test binary.
+
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
-| `applog_test.go` | 7 | `Init`, log-dir resolution, log pruning, fatal-error formatting | fixture | Logs must append across process restarts (not truncate), old logs must be pruned (unbounded disk growth otherwise), and a fatal error's dialog text must include enough context to be useful without a debugger. |
+| `applog_test.go` | 14 | `Init` (success, append-across-calls, unresolvable-dir, `MkdirAll`-fails, `OpenFile`-fails, prune-on-startup), `resolveLogDir`/`LogDir` (explicit dir, home fallback, temp fallback, fully-unresolvable), `pruneOldLogs` (normal sweep, unreadable-dir no-op — this one is coverage-only, see `DEVELOPER_HANDBOOK.md`), `Fatal`, `formatFatal`, `dialogMessage` | fixture, fault-injection (real filesystem obstacles), injectable-seam (`userHomeDir`/`tempDir`/`showError`/`osExit` func vars) | Logs must append across process restarts (not truncate), old logs must be pruned (unbounded disk growth otherwise), a fatal error's dialog text must include enough context to be useful without a debugger, and every one of `Init`'s "never fail outright" fallback paths must actually degrade to stderr-only logging rather than panicking or crashing a GUI launch with no window and no trace — the exact failure mode this package exists to prevent. |
 
 ## `internal/auth` — 97.7%
 
@@ -231,7 +253,7 @@ Persistence kernel: single SQLite file (optionally SQLCipher-encrypted) holding 
 | --- | --- | --- | --- | --- |
 | `audit_events_test.go` | 12 | Tamper-evident audit chain (hash-linked events) across every mutating operation | fault-injection, fixture | `VerifyAuditChain` must detect tampering (a modified historical row breaks the hash chain) — this is the compliance guarantee's actual enforcement mechanism, tested by deliberately corrupting a row and confirming detection. |
 | `audit_test.go` | 1 | CSV audit export | fixture | Exported audit CSV must be private (correct file permissions) and complete (no silently dropped rows). |
-| `backup_test.go` | 10 | `InitDB`, archival bundle create/restore, schema-version dispatch (v1 `.pmforge` vs. v2 `.gopmgr` entries) | fixture/golden, table-driven | Restoring a bundle must reject path-traversal entries in the zip and must not publish a partial archive if bundling fails partway — both are real safety properties, not incidental. See `41be798`-adjacent history for the schema-version dispatch rationale. |
+| `backup_test.go` | 10 | `InitDB`, archival bundle create (current/v2 `.gopmgr` format, exercised by every create test), restore (v2 round-trip via `TestRestoreArchivalBundleValidatesAndPublishesProjectOnly`; legacy v1 `.pmforge` read path specifically via `TestRestoreArchivalBundleReadsSchemaVersion1Archive`) | fixture/golden, table-driven | Restoring a bundle must reject path-traversal entries in the zip and must not publish a partial archive if bundling fails partway — both are real safety properties, not incidental. Legacy v1 archives (pre-rename) must still restore correctly since users may have old backups on disk. |
 | `baselines_test.go` | 2 | Baseline CRUD | fixture | Basic create/list roundtrip for schedule baselines. |
 | `conn_pragmas_test.go` | 2 | SQLite pragma consistency across the connection pool | fixture | `PRAGMA foreign_keys=ON` must apply to every pooled connection, not just the one that set it — a per-connection setting that silently doesn't propagate would let orphaned rows slip through undetected. |
 | `encryption_test.go` | 4 | `InitEncryptedDB`, plaintext→encrypted migration | fixture, fault-injection | Opening an encrypted DB with the wrong key must fail cleanly (not corrupt or silently open with garbage data). |
