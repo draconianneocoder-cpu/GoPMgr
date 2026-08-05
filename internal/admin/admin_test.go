@@ -39,14 +39,19 @@ func TestNewService_ReturnsNonNil(t *testing.T) {
 }
 
 // The absence-check in TestSecureArchiveRemovesArchiveWhenCreatedAuditLogFails
-// below globs for "PMForge_Archive_*.pmba" but only ever asserts zero
+// below globs for "GoPMgr_Archive_*.pmba" but only ever asserts zero
 // matches, on a path where SecureArchive is expected to fail and clean up
 // after itself. It never exercises the success path, so nothing today
-// positively pins the "PMForge_Archive_" prefix the way root_dir_test.go,
-// project_path_confinement_test.go, and backup_test.go pin the other three
-// frozen literals in DEVELOPER_HANDBOOK.md §9. This test closes that gap by
-// asserting the literal against a real archive SecureArchive wrote.
-func TestSecureArchiveUsesPMForgeArchivePrefix(t *testing.T) {
+// positively pins the "GoPMgr_Archive_" prefix the way root_dir_test.go,
+// project_path_confinement_test.go, and backup_test.go pin the other
+// persistence-boundary literals. This test closes that gap by asserting the
+// literal against a real archive SecureArchive wrote.
+//
+// Renamed 2026-08-04 from "PMForge_Archive_" to "GoPMgr_Archive_" alongside
+// workflow.go's SecureArchive: this prefix is generated fresh on every call
+// and nothing reads it back, so — unlike the other frozen literals — it was
+// a pure rename with no dual-read compatibility to preserve.
+func TestSecureArchiveUsesGoPMgrArchivePrefix(t *testing.T) {
 	d := newAdminTestDB(t)
 	workDir := t.TempDir()
 	t.Chdir(workDir)
@@ -57,8 +62,8 @@ func TestSecureArchiveUsesPMForgeArchivePrefix(t *testing.T) {
 		t.Fatalf("SecureArchive: %v", err)
 	}
 
-	if got := filepath.Base(backupPath); !strings.HasPrefix(got, "PMForge_Archive_") {
-		t.Fatalf("archive filename = %q, want prefix %q", got, "PMForge_Archive_")
+	if got := filepath.Base(backupPath); !strings.HasPrefix(got, "GoPMgr_Archive_") {
+		t.Fatalf("archive filename = %q, want prefix %q", got, "GoPMgr_Archive_")
 	}
 }
 
@@ -84,7 +89,7 @@ func TestSecureArchiveRemovesArchiveWhenCreatedAuditLogFails(t *testing.T) {
 		t.Fatalf("SecureArchive error = %v, want audit write failure", err)
 	}
 
-	matches, err := filepath.Glob(filepath.Join(workDir, "PMForge_Archive_*.pmba"))
+	matches, err := filepath.Glob(filepath.Join(workDir, "GoPMgr_Archive_*.pmba"))
 	if err != nil {
 		t.Fatalf("glob archive output: %v", err)
 	}

@@ -55,7 +55,15 @@ expect_failure "$generic_branding" "project.nsi must retain GoPMgr-owned welcome
 
 destructive_uninstall="$(new_fixture destructive-uninstall)"
 printf '\n  RMDir /r "$DOCUMENTS\\PMForge"\n' >>"$destructive_uninstall/build/windows/installer/project.nsi"
-expect_failure "$destructive_uninstall" "uninstaller must not delete PMForge project data"
+expect_failure "$destructive_uninstall" "uninstaller must not delete GoPMgr/PMForge project data"
+
+# The uninstall check must also catch the CURRENT (post-2026-08-04) tree
+# name, not just the pre-rename "PMForge" name proven above — an install
+# running today writes to Documents\GoPMgr, and that's the tree most users
+# would actually have on disk to lose.
+destructive_uninstall_current="$(new_fixture destructive-uninstall-current)"
+printf '\n  RMDir /r "$DOCUMENTS\\GoPMgr"\n' >>"$destructive_uninstall_current/build/windows/installer/project.nsi"
+expect_failure "$destructive_uninstall_current" "uninstaller must not delete GoPMgr/PMForge project data"
 
 stub_analytics="$(new_fixture stub-analytics)"
 perl -0pi -e 's#wails build -platform windows/amd64 -tags duckdb#wails build -platform windows/amd64#' "$stub_analytics/.github/workflows/release.yml"

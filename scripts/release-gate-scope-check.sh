@@ -229,8 +229,8 @@ if printf '%s\n' "$readme_text" | rg -q 'SQLCipher[^.]{0,160}deferred|deferred[^
 	fail=1
 fi
 
-if ! printf '%s\n' "$readme_text" | rg -q 'SQLCipher.*encrypted.*\.pmforge|\.pmforge.*SQLCipher.*encrypted'; then
-	echo "release-scope: README.md must document SQLCipher-encrypted per-user .pmforge project databases." >&2
+if ! printf '%s\n' "$readme_text" | rg -q 'SQLCipher.*encrypted.*\.gopmgr|\.gopmgr.*SQLCipher.*encrypted'; then
+	echo "release-scope: README.md must document SQLCipher-encrypted per-user .gopmgr project databases." >&2
 	fail=1
 fi
 

@@ -2,23 +2,25 @@
 # SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Prepare a recoverable first-launch test without deleting PMForge data. The
-# active PMForge directory is renamed beside itself, so reopening the app
+# Prepare a recoverable first-launch test without deleting GoPMgr data. The
+# active GoPMgr directory is renamed beside itself, so reopening the app
 # creates a fresh system.db while the complete prior state remains restorable.
-# The data directory itself is still named "PMForge" — GoPMgr's previous
-# name — for compatibility with existing installs; see users.DefaultRootDir.
+# The data-root leaf name here ("GoPMgr") matches users.DefaultRootDir; this
+# script does not handle a not-yet-migrated pre-2026-08-04 "PMForge"-named
+# install — see MigrateLegacyRoot for that one-time copy, which runs inside
+# the app itself on next launch, not via this script.
 
 set -euo pipefail
 
 usage() {
 	cat <<'EOF'
 Usage:
-  scripts/reset-clean-test.sh [--data-root /absolute/path/to/PMForge]
-  scripts/reset-clean-test.sh [--data-root /absolute/path/to/PMForge] --restore BACKUP
+  scripts/reset-clean-test.sh [--data-root /absolute/path/to/GoPMgr]
+  scripts/reset-clean-test.sh [--data-root /absolute/path/to/GoPMgr] --restore BACKUP
 
 Quit GoPMgr before running this command.
 
-Reset moves the active PMForge data directory to a timestamped sibling backup.
+Reset moves the active GoPMgr data directory to a timestamped sibling backup.
 Restore requires the active directory to be absent and moves the selected
 backup back into place.
 EOF
@@ -56,25 +58,25 @@ done
 
 if [[ -z "$data_root" ]]; then
 	if [[ -n "${XDG_DATA_HOME:-}" ]]; then
-		data_root="$XDG_DATA_HOME/PMForge"
+		data_root="$XDG_DATA_HOME/GoPMgr"
 	elif [[ "$(uname -s)" == "Darwin" ]]; then
-		data_root="${HOME:?HOME is required}/Library/Application Support/PMForge"
+		data_root="${HOME:?HOME is required}/Library/Application Support/GoPMgr"
 	else
-		data_root="${HOME:?HOME is required}/Documents/PMForge"
+		data_root="${HOME:?HOME is required}/Documents/GoPMgr"
 	fi
 fi
 
 [[ "$data_root" == /* ]] || fail "data root must be an absolute path"
-[[ "$(basename "$data_root")" == "PMForge" ]] ||
-	fail "data root must name the PMForge directory, got: $data_root"
+[[ "$(basename "$data_root")" == "GoPMgr" ]] ||
+	fail "data root must name the GoPMgr directory, got: $data_root"
 
 # Resolve the parent rather than the target so reset still works when the app
-# has never launched and the PMForge directory does not exist yet.
+# has never launched and the GoPMgr directory does not exist yet.
 data_parent="$(dirname "$data_root")"
 [[ -d "$data_parent" ]] || fail "data-root parent does not exist: $data_parent"
 data_parent="$(cd "$data_parent" && pwd -P)"
-[[ "$data_parent" != "/" ]] || fail "refusing a PMForge data root directly under /"
-data_root="$data_parent/PMForge"
+[[ "$data_parent" != "/" ]] || fail "refusing a GoPMgr data root directly under /"
+data_root="$data_parent/GoPMgr"
 
 [[ ! -L "$data_root" ]] || fail "refusing symlinked data root: $data_root"
 
@@ -98,9 +100,9 @@ if [[ -n "$restore_path" ]]; then
 	restore_parent="$(cd "$(dirname "$restore_path")" && pwd -P)"
 	restore_name="$(basename "$restore_path")"
 	[[ "$restore_parent" == "$data_parent" ]] ||
-		fail "backup must be beside the PMForge data root"
-	[[ "$restore_name" =~ ^PMForge\.clean-test-backup-[0-9]{8}T[0-9]{6}Z$ ]] ||
-		fail "backup name is not a PMForge clean-test backup: $restore_name"
+		fail "backup must be beside the GoPMgr data root"
+	[[ "$restore_name" =~ ^GoPMgr\.clean-test-backup-[0-9]{8}T[0-9]{6}Z$ ]] ||
+		fail "backup name is not a GoPMgr clean-test backup: $restore_name"
 	[[ ! -e "$data_root" ]] ||
 		fail "active data root exists; reset it first before restoring: $data_root"
 

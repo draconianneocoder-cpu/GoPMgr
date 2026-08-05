@@ -27,7 +27,7 @@ func TestGenerateSigmaReportWritesPrivateExportArtifacts(t *testing.T) {
 		t.Fatalf("GenerateSigmaReport: %v", err)
 	}
 
-	exportDir := filepath.Join(home, "PMForge", "exports")
+	exportDir := filepath.Join(home, "GoPMgr", "exports")
 	info, err := os.Stat(exportDir)
 	if err != nil {
 		t.Fatalf("stat export dir: %v", err)
@@ -49,7 +49,7 @@ func TestGenerateSigmaReportTightensExistingExportDirectory(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	exportDir := filepath.Join(home, "PMForge", "exports")
+	exportDir := filepath.Join(home, "GoPMgr", "exports")
 	if err := os.MkdirAll(exportDir, 0o700); err != nil {
 		t.Fatalf("mkdir export dir: %v", err)
 	}

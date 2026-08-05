@@ -5,11 +5,11 @@
 // application. V2 expands V1 in three ways:
 //
 //   - Local multi-user accounts (Argon2id) backed by a system DB at
-//     ~/Library/Application Support/PMForge/system.db on macOS
-//     (~/Documents/PMForge/system.db on Linux/Windows); see
-//     users.DefaultRootDir. The data root keeps the pre-rename
-//     "PMForge" directory name for compatibility with existing
-//     installs — see the note on users.DefaultRootDir.
+//     ~/Library/Application Support/GoPMgr/system.db on macOS
+//     (~/Documents/GoPMgr/system.db on Linux/Windows); see
+//     users.DefaultRootDir. A pre-rename "PMForge"-named install is
+//     copied forward into this location on first launch — see
+//     users.MigrateLegacyRoot.
 //   - Per-user folders for project files and exports
 //   - Unified charts/documents data model (19 + 25 kinds)
 //
@@ -77,7 +77,7 @@ type App struct {
 	user      *users.Account // nil unless logged in
 	dek       []byte         // ADR-001: session DEK, unlocked at login; nil when logged out
 	db        *db.Database   // nil unless a project is open
-	dbPath    string         // absolute path of the open .pmforge
+	dbPath    string         // absolute path of the open project file (.gopmgr, or legacy .pmforge)
 	adminSvc  *admin.Service
 	templates *templates.Engine       // immutable after NewApp; safe lock-free read
 	sigmaSvc  *service.ProjectService // initialized when a project is open
@@ -97,16 +97,18 @@ func NewApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	// One-time relocation: older macOS installs kept their data under the
-	// iCloud-synced, TCC-protected ~/Documents/PMForge. Copy it into the new
-	// Application Support root before opening the store so an existing user's
-	// accounts and projects survive the move. A failure here is non-fatal —
-	// we log it and fall through to a clean new-location install rather than
-	// blocking startup.
+	// One-time relocation, now covering two prior moves: older macOS
+	// installs kept their data under the iCloud-synced, TCC-protected
+	// ~/Documents/PMForge (pre-2026-06), and every platform's most recent
+	// pre-rename install used a "PMForge"-named root (pre-2026-08-04). Copy
+	// whichever of those still exists into the new root before opening the
+	// store so an existing user's accounts and projects survive both moves.
+	// A failure here is non-fatal — we log it and fall through to a clean
+	// new-location install rather than blocking startup.
 	if migrated, mErr := users.MigrateLegacyRoot(root); mErr != nil {
 		log.Printf("users: legacy data migration failed: %v (continuing with a fresh %s)", mErr, root)
 	} else if migrated {
-		log.Printf("users: migrated legacy ~/Documents/PMForge data into %s", root)
+		log.Printf("users: migrated legacy PMForge-named data into %s", root)
 	}
 	store, err := users.Open(root)
 	if err != nil {
@@ -296,7 +298,8 @@ func main() {
 		return
 	}
 
-	// CLI mode that operates on a single .pmforge file directly
+	// CLI mode that operates on a single project file directly (.gopmgr,
+	// or legacy .pmforge — this path doesn't check the extension)
 	// (--check / --repair / --vacuum / --export-audit). Plaintext files
 	// open directly; encrypted files require --username plus
 	// --password-env so the user's DEK can be unlocked from system.db.
@@ -388,7 +391,8 @@ func inferHeadlessRootDir(projectPath, username string) (string, error) {
 	}
 	projectsDir := filepath.Dir(absPath)
 	// Current layout nests each project in its own subfolder:
-	// <root>/<username>/projects/<id>/project.pmforge. Step up out of the
+	// <root>/<username>/projects/<id>/project.gopmgr (or, for a project
+	// created before the 2026-08-04 rename, project.pmforge). Step up out of the
 	// per-project subfolder so projectsDir points at ".../projects".
 	if filepath.Base(projectsDir) != "projects" {
 		projectsDir = filepath.Dir(projectsDir)

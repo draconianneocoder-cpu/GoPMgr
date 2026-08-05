@@ -44,7 +44,7 @@ var ErrProjectRequiresEncryptionMigration = errors.New("project requires encrypt
 
 var ErrRecoveryCodesRequireReissue = errors.New("Reissue recovery codes before enabling database encryption. Old recovery codes cannot preserve encrypted projects during password reset.")
 
-// ListProjects returns every .pmforge file under the current user's
+// ListProjects returns every project file (.gopmgr, or legacy .pmforge) under the current user's
 // projects/ folder.
 func (a *App) ListProjects() ([]ProjectFile, error) {
 	user := a.requireUser()
@@ -63,7 +63,7 @@ func (a *App) ListProjects() ([]ProjectFile, error) {
 	return out, nil
 }
 
-// CreateProject creates a new .pmforge file under the user's
+// CreateProject creates a new .gopmgr project file under the user's
 // projects/ folder, initialises the project row, and returns its
 // ProjectFile representation.
 func (a *App) CreateProject(name, description string) (ProjectFile, error) {
@@ -212,23 +212,49 @@ func (a *App) restoreProjectArchiveFrom(archivePath string, user *users.Account)
 	}, nil
 }
 
-// projectPathFor validates that path points at a .pmforge file inside the
-// signed-in user's own projects directory and returns the cleaned path plus
-// the account. It rejects anything outside that directory so DeleteProject
-// and CloneProject can never touch arbitrary files on disk.
+// projectFileExtension is the current project-file extension. Renamed
+// 2026-08-04 from ".pmforge" to ".gopmgr"; newProjectPath below only ever
+// writes this extension now, but isProjectExtension (and therefore every
+// reader of existing files: projectPathFor, enumerateProjects) still
+// accepts the old ".pmforge" extension too, because project files already
+// exist on disk under it and nothing migrates them.
+const projectFileExtension = ".gopmgr"
+
+// legacyProjectFileExtension is the pre-2026-08-04 project-file extension.
+// Read-only: still recognised so existing projects keep opening, but never
+// written by this build.
+const legacyProjectFileExtension = ".pmforge"
+
+// isProjectExtension reports whether ext (as returned by filepath.Ext) is a
+// project-file extension this build recognises for reading — current or
+// legacy. It intentionally does NOT distinguish which one for callers that
+// only need "is this a project file at all" (projectPathFor's confinement
+// check, enumerateProjects' directory scan); callers that need to tell them
+// apart use ext directly.
+func isProjectExtension(ext string) bool {
+	return ext == projectFileExtension || ext == legacyProjectFileExtension
+}
+
+// projectPathFor validates that path points at a project file (current
+// .gopmgr or legacy .pmforge extension) inside the signed-in user's own
+// projects directory and returns the cleaned path plus the account. It
+// rejects anything outside that directory so DeleteProject and CloneProject
+// can never touch arbitrary files on disk. Recognising both extensions
+// widens WHICH files pass the extension check; it does not touch the
+// containment check below, which is what actually stops path traversal.
 func (a *App) projectPathFor(path string) (string, *users.Account, error) {
 	user := a.requireUser()
 	if user == nil {
 		return "", nil, errors.New("not signed in")
 	}
 	clean := filepath.Clean(path)
-	if filepath.Ext(clean) != ".pmforge" {
+	if !isProjectExtension(filepath.Ext(clean)) {
 		return "", nil, errors.New("not a project file")
 	}
 	projectsDir := filepath.Clean(filepath.Join(user.DataDir, "projects"))
 	parent := filepath.Dir(clean)
-	// Allowed: legacy flat layout (<projects>/<name>.pmforge) where parent is
-	// the projects dir, OR the current layout (<projects>/<id>/project.pmforge)
+	// Allowed: legacy flat layout (<projects>/<name>.<ext>) where parent is
+	// the projects dir, OR the current layout (<projects>/<id>/project.<ext>)
 	// where the parent is an immediate subfolder of the projects dir. Anything
 	// deeper or outside is rejected.
 	if parent != projectsDir && filepath.Dir(parent) != projectsDir {
@@ -237,7 +263,7 @@ func (a *App) projectPathFor(path string) (string, *users.Account, error) {
 	return clean, user, nil
 }
 
-// DeleteProject permanently removes a project's .pmforge file and its
+// DeleteProject permanently removes a project file (.gopmgr, or legacy .pmforge) and its
 // WAL/SHM sidecars from the signed-in user's projects folder. If the project
 // is the one currently open it is closed first so we never unlink an in-use
 // database. The path must live inside the user's own projects directory.
@@ -406,7 +432,7 @@ func newProjectPath(dir, safe string) (string, error) {
 	if err := os.MkdirAll(folder, 0o700); err != nil {
 		return "", err
 	}
-	return filepath.Join(folder, "project.pmforge"), nil
+	return filepath.Join(folder, "project"+projectFileExtension), nil
 }
 
 // projectFolderRe matches the "<YYYYMMDD-HHMMSS>-" prefix newProjectPath puts
@@ -427,9 +453,12 @@ type projectEntry struct {
 }
 
 // enumerateProjects lists every project in projectsDir, supporting BOTH the
-// current layout (each project in its own "<id>/project.pmforge" subfolder)
-// and the legacy flat layout ("<name>.pmforge" directly in projectsDir), so
-// projects created before the subfolder change keep working.
+// current layout (each project in its own "<id>/project.<ext>" subfolder)
+// and the legacy flat layout ("<name>.<ext>" directly in projectsDir), so
+// projects created before the subfolder change keep working — and, as of
+// 2026-08-04, both the current ".gopmgr" and legacy ".pmforge" extension
+// within each layout, so projects created before that rename keep working
+// too.
 func enumerateProjects(projectsDir string) ([]projectEntry, error) {
 	entries, err := os.ReadDir(projectsDir)
 	if err != nil {
@@ -441,10 +470,18 @@ func enumerateProjects(projectsDir string) ([]projectEntry, error) {
 	var out []projectEntry
 	for _, e := range entries {
 		if e.IsDir() {
-			pf := filepath.Join(projectsDir, e.Name(), "project.pmforge")
+			// A subfolder written by this build has "project.gopmgr"; one
+			// written before the rename has "project.pmforge". Check the
+			// current extension first since it's the common case going
+			// forward.
+			pf := filepath.Join(projectsDir, e.Name(), "project"+projectFileExtension)
 			info, serr := os.Stat(pf)
 			if serr != nil {
-				continue // not a project subfolder
+				pf = filepath.Join(projectsDir, e.Name(), "project"+legacyProjectFileExtension)
+				info, serr = os.Stat(pf)
+				if serr != nil {
+					continue // not a project subfolder
+				}
 			}
 			out = append(out, projectEntry{
 				Path:     pf,
@@ -453,7 +490,7 @@ func enumerateProjects(projectsDir string) ([]projectEntry, error) {
 			})
 			continue
 		}
-		if filepath.Ext(e.Name()) != ".pmforge" {
+		if !isProjectExtension(filepath.Ext(e.Name())) {
 			continue
 		}
 		info, ierr := e.Info()
@@ -722,7 +759,7 @@ func (a *App) applyGlobalDefaults(d *db.Database) {
 	_ = d.SaveSettings(s)
 }
 
-// OpenProject loads a .pmforge file as the current project.
+// OpenProject loads a project file (.gopmgr, or legacy .pmforge) as the current project.
 func (a *App) OpenProject(path string) (db.Project, error) {
 	// Confine to the signed-in user's own projects folder before doing any
 	// work (and before taking the write lock, since projectPathFor read-locks
@@ -795,7 +832,7 @@ func verifyProjectAuditForOpen(d *db.Database, project db.Project) error {
 	)
 }
 
-// IsProjectEncrypted reports whether a .pmforge file is already
+// IsProjectEncrypted reports whether a project file is already
 // SQLCipher-encrypted. Used by the Settings migration flow before
 // presenting the opt-in action.
 func (a *App) IsProjectEncrypted(path string) (bool, error) {
@@ -806,7 +843,7 @@ func (a *App) IsProjectEncrypted(path string) (bool, error) {
 	return db.IsEncryptedFile(clean)
 }
 
-// EncryptProjectAtRest migrates a legacy plaintext .pmforge file to
+// EncryptProjectAtRest migrates a legacy plaintext project file to
 // SQLCipher with the active user's session DEK. Active recovery codes
 // must already carry DEK wraps; otherwise a future recovery reset
 // would orphan encrypted projects.
@@ -845,7 +882,7 @@ func (a *App) EncryptProjectAtRest(path string) (string, error) {
 	return db.MigratePlaintextToEncrypted(clean, dek)
 }
 
-// CloseProject closes the currently-open .pmforge.
+// CloseProject closes the currently-open project file.
 func (a *App) CloseProject() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()

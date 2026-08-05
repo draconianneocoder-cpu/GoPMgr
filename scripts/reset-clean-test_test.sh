@@ -29,11 +29,11 @@ assert_fails_with() {
 		fail "failure did not contain '$expected': $output"
 }
 
-data_root="$FIXTURE/PMForge"
-backup="$FIXTURE/PMForge.clean-test-backup-20260728T120000Z"
+data_root="$FIXTURE/GoPMgr"
+backup="$FIXTURE/GoPMgr.clean-test-backup-20260728T120000Z"
 mkdir -p "$data_root/clean_admin/projects"
 printf '%s\n' "test database sentinel" >"$data_root/system.db"
-printf '%s\n' "test project sentinel" >"$data_root/clean_admin/projects/example.pmforge"
+printf '%s\n' "test project sentinel" >"$data_root/clean_admin/projects/example.gopmgr"
 
 output="$(
 	GOPMGR_RESET_TIMESTAMP=20260728T120000Z \
@@ -41,7 +41,7 @@ output="$(
 )"
 [[ ! -e "$data_root" ]] || fail "reset left the active data root in place"
 [[ -f "$backup/system.db" ]] || fail "reset did not preserve system.db"
-[[ -f "$backup/clean_admin/projects/example.pmforge" ]] ||
+[[ -f "$backup/clean_admin/projects/example.gopmgr" ]] ||
 	fail "reset did not preserve user project data"
 grep -Fq "backup=$backup" <<<"$output" ||
 	fail "reset output did not report the recoverable backup path"
@@ -52,7 +52,7 @@ grep -Fq "already clean" <<<"$already_clean" ||
 
 bash "$RESET" --data-root "$data_root" --restore "$backup" >/dev/null
 [[ -f "$data_root/system.db" ]] || fail "restore did not recover system.db"
-[[ -f "$data_root/clean_admin/projects/example.pmforge" ]] ||
+[[ -f "$data_root/clean_admin/projects/example.gopmgr" ]] ||
 	fail "restore did not recover user project data"
 [[ ! -e "$backup" ]] || fail "restore left the backup in place"
 
@@ -72,13 +72,13 @@ assert_fails_with "invalid reset timestamp" \
 	bash "$RESET" --data-root "$data_root"
 
 assert_fails_with "must be an absolute path" \
-	bash "$RESET" --data-root "relative/PMForge"
+	bash "$RESET" --data-root "relative/GoPMgr"
 
 assert_fails_with "directly under /" \
-	bash "$RESET" --data-root "/PMForge"
+	bash "$RESET" --data-root "/GoPMgr"
 
-assert_fails_with "must name the PMForge directory" \
-	bash "$RESET" --data-root "$FIXTURE/not-pmforge"
+assert_fails_with "must name the GoPMgr directory" \
+	bash "$RESET" --data-root "$FIXTURE/not-gopmgr"
 
 mkdir -p "$FIXTURE/symlink-target"
 mv "$data_root" "$FIXTURE/restored-data"
@@ -88,12 +88,12 @@ assert_fails_with "refusing symlinked data root" \
 unlink "$data_root"
 
 mkdir "$FIXTURE/not-a-clean-test-backup"
-assert_fails_with "backup name is not a PMForge clean-test backup" \
+assert_fails_with "backup name is not a GoPMgr clean-test backup" \
 	bash "$RESET" --data-root "$data_root" --restore "$FIXTURE/not-a-clean-test-backup"
 
-ln -s "$FIXTURE/symlink-target" "$FIXTURE/PMForge.clean-test-backup-symlink"
+ln -s "$FIXTURE/symlink-target" "$FIXTURE/GoPMgr.clean-test-backup-symlink"
 assert_fails_with "refusing symlinked backup" \
 	bash "$RESET" --data-root "$data_root" \
-	--restore "$FIXTURE/PMForge.clean-test-backup-symlink"
+	--restore "$FIXTURE/GoPMgr.clean-test-backup-symlink"
 
 echo "reset-clean-test tests passed."

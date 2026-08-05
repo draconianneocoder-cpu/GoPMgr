@@ -50,13 +50,15 @@ require_literal "$PROJECT_NSI" '!insertmacro wails.files' \
 	"project.nsi must install the Wails-produced application binary."
 require_literal "$PROJECT_NSI" '!insertmacro wails.writeUninstaller' \
 	"project.nsi must register an uninstaller."
-require_literal "$PROJECT_NSI" "project databases live in the user's Documents\\PMForge tree" \
+require_literal "$PROJECT_NSI" "project databases live in the user's Documents\\GoPMgr tree" \
 	"project.nsi must explain the uninstall data-preservation boundary."
 
 # An uninstaller may remove its install directory and disposable WebView cache,
-# but never PMForge's user-owned project tree or project database files.
-if grep -Eiq 'RMDir[[:space:]]+/r.*Documents.*PMForge|Delete.*\.pmforge' "$PROJECT_NSI"; then
-	echo "windows-installer-scaffold: uninstaller must not delete PMForge project data." >&2
+# but never GoPMgr's user-owned project tree or project database files —
+# under either the current "GoPMgr"/.gopmgr naming or the pre-2026-08-04
+# "PMForge"/.pmforge naming an unmigrated install may still be using.
+if grep -Eiq 'RMDir[[:space:]]+/r.*Documents.*(GoPMgr|PMForge)|Delete.*\.(gopmgr|pmforge)' "$PROJECT_NSI"; then
+	echo "windows-installer-scaffold: uninstaller must not delete GoPMgr/PMForge project data." >&2
 	fail=1
 fi
 

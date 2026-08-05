@@ -46,7 +46,7 @@ choose **More info → Run anyway**.
 To upgrade a DMG installation, quit GoPMgr and drag the newer app onto
 Applications, replacing the existing bundle when Finder asks. Removing or
 replacing `GoPMgr.app` does not remove accounts or projects because they live
-under `~/Library/Application Support/PMForge/`. To uninstall both the
+under `~/Library/Application Support/GoPMgr/`. To uninstall both the
 application and its data, back up any project files you need before separately
 removing that data directory.
 

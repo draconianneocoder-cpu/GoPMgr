@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package db is GoPMgr's persistence kernel. It wraps a single SQLite
-// file (a ".pmforge" project) with WAL journaling, foreign-key
-// enforcement, and self-healing helpers.
+// file (a ".gopmgr" project, or ".pmforge" for one created before the
+// 2026-08-04 rename) with WAL journaling, foreign-key enforcement, and
+// self-healing helpers.
 //
 // All multi-statement migrations live in Migrate(); call it once after
 // InitDB to bring an existing file up to the current schema.

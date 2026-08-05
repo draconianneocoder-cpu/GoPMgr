@@ -35,13 +35,16 @@ func (s *Service) SecureArchive(projectPath string) (string, error) {
 	}
 
 	timestamp := time.Now().UTC().Format("20060102-150405")
-	// "PMForge_Archive_" is generated fresh on every call and nothing reads
-	// it back (unlike .pmforge/PMForge-the-directory/project.pmforge, which
-	// name state that already exists on disk), so keeping it isn't a
-	// compatibility requirement — it's kept so a user's backups folder
-	// doesn't end up with both "PMForge_Archive_*" and "GoPMgr_Archive_*"
-	// files with no visible reason they differ.
-	backupName := filepath.Join(filepath.Dir(projectPath), fmt.Sprintf("PMForge_Archive_%s.pmba", timestamp))
+	// "GoPMgr_Archive_" (renamed 2026-08-04 from "PMForge_Archive_") is
+	// generated fresh on every call and nothing reads it back — unlike
+	// .pmforge/the PMForge data-root directory/project.pmforge, which name
+	// state that already exists on disk and need compatibility handling,
+	// this prefix was a pure branding rename with no old files to keep
+	// opening. A user's backups folder may now contain both
+	// "PMForge_Archive_*" (pre-rename) and "GoPMgr_Archive_*" (post-rename)
+	// files; both are just archives named by creation time, so this is
+	// cosmetic, not a compatibility break.
+	backupName := filepath.Join(filepath.Dir(projectPath), fmt.Sprintf("GoPMgr_Archive_%s.pmba", timestamp))
 
 	certs := []string{}
 	if settings.CertPath != "" {

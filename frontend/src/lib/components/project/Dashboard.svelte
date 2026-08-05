@@ -624,7 +624,7 @@ import Spinner from '../Spinner.svelte';
       {:else}
         <p class="text-xs text-slate-500">
           Enable the Software-Dev Pack to add Kanban, Backlog, Sprints, and DORA metrics
-          to this project. The pack stores its data in this project's <code>.pmforge</code>
+          to this project. The pack stores its data in this project's <code>.gopmgr</code>
           file; disabling hides it without deleting anything.
         </p>
       {/if}

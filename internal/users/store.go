@@ -6,10 +6,9 @@
 //   - A "system database" at <data-root>/system.db that lists every
 //     GoPMgr account on this machine (username, display name, password
 //     hash, data directory). The data root is ~/Library/Application
-//     Support/PMForge on macOS and ~/Documents/PMForge elsewhere; the
-//     directory name is kept from the pre-rename "PMForge" name so
-//     existing installs' accounts and projects are still found; see
-//     DefaultRootDir.
+//     Support/GoPMgr on macOS and ~/Documents/GoPMgr elsewhere; see
+//     DefaultRootDir. A pre-rename "PMForge"-named install is copied
+//     forward into this location on first launch; see MigrateLegacyRoot.
 //   - Per-user folders at <data-root>/<username>/ that hold each user's
 //     projects, certificates, and export output. Folders are chmod'd to
 //     0700 on POSIX so other OS accounts cannot read.
@@ -73,7 +72,7 @@ type Account struct {
 // Open(rootDir) and call Close before exit.
 type Store struct {
 	conn    *sql.DB
-	rootDir string // ~/Documents/PMForge (absolute)
+	rootDir string // DefaultRootDir()'s resolved path (absolute)
 }
 
 // Open opens (or creates) the system database at rootDir/system.db and
@@ -116,7 +115,7 @@ func (s *Store) Close() error {
 	return s.conn.Close()
 }
 
-// RootDir returns the configured GoPMgr root (~/Documents/PMForge).
+// RootDir returns the configured GoPMgr data root (see DefaultRootDir).
 func (s *Store) RootDir() string { return s.rootDir }
 
 func (s *Store) migrate() error {
@@ -252,8 +251,8 @@ func boolToInt(b bool) int {
 }
 
 // CreateAccount provisions a new user: hashes the password, creates
-// ~/Documents/PMForge/<username>/{projects,certs,exports}/, and
-// records the account in system.db.
+// <data-root>/<username>/{projects,certs,exports}/ (see DefaultRootDir
+// for data-root), and records the account in system.db.
 //
 // isAdmin marks the new account as an administrator. If an
 // administrator already exists, callers MUST enforce that only an
@@ -412,62 +411,107 @@ func (s *Store) List() ([]Account, error) {
 }
 
 // DefaultRootDir returns the canonical GoPMgr data root on the current
-// platform. The directory itself is still named "PMForge" — GoPMgr's
-// previous name — so existing installs' accounts, projects, and settings
-// keep resolving after the rename; only a dedicated migration (tracked
-// separately, not part of the rename) should ever move it to "GoPMgr".
+// platform. Renamed 2026-08-04 from the "PMForge"-leaf directory GoPMgr's
+// previous name used; MigrateLegacyRoot below copies an existing PMForge
+// install into this new location so the rename doesn't orphan it.
 // $XDG_DATA_HOME overrides everywhere (Linux convention and a test hook).
 // Otherwise:
 //
-//   - macOS: ~/Library/Application Support/PMForge. The old default,
-//     ~/Documents/PMForge, is both iCloud-synced (so system.db can sync
-//     between Macs or be evicted to a dataless placeholder) and TCC-
-//     protected, which broke first-run account creation and code-signing.
-//     Application Support is the Apple-sanctioned location for app data and
-//     is neither synced nor privacy-gated.
-//   - Linux / Windows: ~/Documents/PMForge (unchanged).
+//   - macOS: ~/Library/Application Support/GoPMgr. The old default,
+//     ~/Documents/PMForge (pre-2026-06 installs) / ~/Documents/GoPMgr,
+//     is both iCloud-synced (so system.db can sync between Macs or be
+//     evicted to a dataless placeholder) and TCC-protected, which broke
+//     first-run account creation and code-signing. Application Support is
+//     the Apple-sanctioned location for app data and is neither synced
+//     nor privacy-gated.
+//   - Linux / Windows: ~/Documents/GoPMgr.
 func DefaultRootDir() (string, error) {
 	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
-		return filepath.Join(xdg, "PMForge"), nil
+		return filepath.Join(xdg, "GoPMgr"), nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
 	if runtime.GOOS == "darwin" {
-		return filepath.Join(home, "Library", "Application Support", "PMForge"), nil
+		return filepath.Join(home, "Library", "Application Support", "GoPMgr"), nil
 	}
-	return filepath.Join(home, "Documents", "PMForge"), nil
+	return filepath.Join(home, "Documents", "GoPMgr"), nil
 }
 
-// legacyMacRootDir returns the pre-relocation macOS data directory
-// (~/Documents/PMForge). It returns "" on non-macOS hosts, when an explicit
-// $XDG_DATA_HOME override is in effect, or when the home directory cannot be
-// resolved — i.e. whenever there is nothing to migrate from.
-func legacyMacRootDir() string {
-	if runtime.GOOS != "darwin" || os.Getenv("XDG_DATA_HOME") != "" {
-		return ""
+// legacyRootCandidates returns every pre-2026-08-04 data-root location that
+// might hold a real install, in the order MigrateLegacyRoot should prefer
+// them: most-recently-active layout first. Returns nil only when the home
+// directory cannot be resolved, since at that point no candidate path can
+// be built at all.
+//
+//   - Under an explicit $XDG_DATA_HOME override, there is exactly ONE
+//     candidate: $XDG_DATA_HOME/PMForge. Before this rename, DefaultRootDir
+//     under the same override also returned $XDG_DATA_HOME/PMForge, so
+//     there was genuinely nothing to migrate from — a nil return was
+//     correct then. The rename gave XDG_DATA_HOME installs a real
+//     PMForge -> GoPMgr move too (DefaultRootDir now resolves to
+//     $XDG_DATA_HOME/GoPMgr under the same override), so this candidate
+//     must be checked or an XDG-configured Linux install (a routine desktop
+//     environment setting, not just a test hook — see the comment on
+//     DefaultRootDir) silently loses its accounts and projects on upgrade.
+//   - macOS hosts with no override have up to two candidates, because the
+//     app's data root itself moved once already (2026-06, TCC/iCloud fix)
+//     before this rename: (1) ~/Library/Application Support/PMForge — the
+//     most recent pre-rename default, and thus the most likely to hold
+//     current data — checked first; (2) ~/Documents/PMForge — the original
+//     pre-relocation location, still checked in case a user upgraded
+//     straight from a very old install that never ran the 2026-06
+//     migration.
+//   - Linux/Windows with no override never had the extra relocation, so
+//     there is exactly one candidate: ~/Documents/PMForge.
+func legacyRootCandidates() []string {
+	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
+		return []string{filepath.Join(xdg, "PMForge")}
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return ""
+		return nil
 	}
-	return filepath.Join(home, "Documents", "PMForge")
+	if runtime.GOOS == "darwin" {
+		return []string{
+			filepath.Join(home, "Library", "Application Support", "PMForge"),
+			filepath.Join(home, "Documents", "PMForge"),
+		}
+	}
+	return []string{filepath.Join(home, "Documents", "PMForge")}
 }
 
-// MigrateLegacyRoot moves a pre-relocation macOS install into newRoot. It is
-// a no-op unless the host is macOS, newRoot has no system.db yet, and the
-// legacy ~/Documents/PMForge location does have one. When it runs it copies
-// the legacy tree into newRoot (leaving the original untouched, so an
-// iCloud-evicted or half-synced source can never cause data loss and the
-// user can delete the old copy at leisure) and reports whether a migration
-// happened. Safe to call on every startup: once newRoot has a system.db it
-// returns (false, nil) immediately.
+// MigrateLegacyRoot copies the first pre-2026-08-04 "PMForge"-named data
+// root that actually has a system.db (see legacyRootCandidates for the
+// precedence order) into newRoot. It is a no-op once newRoot already has a
+// system.db. When it runs it copies the legacy tree into newRoot (leaving
+// the original untouched, so an iCloud-evicted or half-synced source can
+// never cause data loss and the user can delete the old copy at leisure)
+// and reports whether a migration happened. Safe to call on every startup.
 func MigrateLegacyRoot(newRoot string) (bool, error) {
-	return migrateLegacyRoot(legacyMacRootDir(), newRoot)
+	if _, err := os.Stat(filepath.Join(newRoot, "system.db")); err == nil {
+		return false, nil // new location already initialised — nothing to do
+	}
+	for _, legacy := range legacyRootCandidates() {
+		migrated, err := migrateLegacyRoot(legacy, newRoot)
+		if err != nil {
+			return false, err
+		}
+		if migrated {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func migrateLegacyRoot(legacy, newRoot string) (bool, error) {
+	// legacy == newRoot is unreachable given the current leaf names (every
+	// candidate legacyRootCandidates returns is "PMForge"-suffixed;
+	// DefaultRootDir's newRoot is always "GoPMgr"-suffixed) but kept as a
+	// defensive no-op rather than removed: copyTree below would otherwise
+	// walk a directory into itself if a future leaf-name change ever made
+	// the two equal again.
 	if legacy == "" || legacy == newRoot {
 		return false, nil
 	}

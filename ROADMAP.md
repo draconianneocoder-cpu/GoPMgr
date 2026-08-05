@@ -211,28 +211,59 @@ passing even if the prefix were renamed. Added
 `TestSecureArchiveUsesPMForgeArchivePrefix` (`internal/admin/admin_test.go`),
 which exercises the success path and asserts the literal against a real
 archive filename; also break-verified. All four frozen literals from
-`DEVELOPER_HANDBOOK.md` §9 are now positively pinned somewhere. See the
-2026-08-04 (second) entry there for the full rationale.
+`DEVELOPER_HANDBOOK.md` §9 (first 2026-08-04 entry) were, at the time
+this paragraph was written, positively pinned somewhere for the first
+time. That "frozen" framing was superseded hours later the same day —
+see the next entry below, which is current.
 
-**Note:** a same-day follow-up conversation proposed renaming these
-frozen literals (`PMForge` directory name, `.pmforge` extension,
-`project.pmforge` archive entry, `PMForge_Archive_` prefix) to
-`GoPMgr`/`gopmgr` as part of finishing the rebrand. That is explicitly
-**not** a find/replace: `.pmforge` files and `.pmba` archives already
-exist in user-chosen locations (Downloads, external drives, their own
-cron jobs — see `HelpGuide.svelte`'s own CLI examples) that no
-migration code can reach, so two of the four literals can only move via
-a permanent dual-read compatibility layer, not a one-time migration.
-Scope was not settled as of this writing; see
-`docs/security-quality-review-2026-08-04.md`, "Scope decision explicitly
-deferred," for the per-literal decomposition. Do not treat "rename to GoPMgr" as approved for the
-data-root directory, `.pmforge` extension, or `project.pmforge` archive
-entry without a specific per-literal decision — only `PMForge_Archive_`
-(cosmetic, nothing reads it back) is safe to rename outright.
+**PMForge → GoPMgr persistence-literal rename — done (2026-08-04).**
+The four literals the entry above pinned as permanently frozen were
+renamed after all, once a same-day follow-up conversation confirmed the
+scope per literal (this paragraph replaces an earlier "declined pending
+scoping" note — see `docs/security-quality-review-2026-08-04.md` for
+the full decomposition and verification writeup):
 
-Next candidate after that: 57 vitest tests against 233 Svelte files is
-thin coverage, and `make frontend-stability` (svelte-check + vitest) is
-the entire frontend gate today. Worth naming rather than starting now.
+- **Data-root directory** `PMForge` → `GoPMgr`
+  (`internal/users/store.go`'s `DefaultRootDir`). `MigrateLegacyRoot`
+  now checks up to two legacy locations in precedence order (current
+  pre-rename default first, then the older pre-2026-06 Documents
+  location on macOS) and copies whichever has data into the new root,
+  non-destructively, exactly as it already did for the 2026-06
+  relocation.
+- **Project-file extension** `.pmforge` → `.gopmgr`
+  (`app_projects.go`). New projects only ever get `.gopmgr`; opening,
+  deleting, cloning, and listing projects (`projectPathFor`,
+  `enumerateProjects`) accept **both** extensions permanently — nothing
+  migrates an existing project's extension, since `.pmforge` files can
+  live anywhere a user put them (Downloads, external drives, their own
+  scripts), not just under the data root.
+- **Backup archive entry** `project.pmforge` → `project.gopmgr`
+  (`internal/db/backup.go`), keyed off a new `schema_version` 2 (was 1).
+  `RestoreArchivalBundle` looks up the project entry's name by the
+  archive's declared schema version rather than sniffing whichever name
+  is present, so a tampered archive can't swap in the wrong entry under
+  the wrong version's name. `.pmba` itself was **not** renamed — see
+  the review doc for why extending the dual-read list to a fifth entry
+  wasn't warranted.
+- **Backup filename prefix** `PMForge_Archive_` → `GoPMgr_Archive_`
+  (`internal/admin/workflow.go`). Pure rename, no compatibility branch:
+  nothing reads this prefix back.
+
+Every changed or newly-added assertion (frontend and backend) was
+break-verified the same way the tests above were. Frontend copy
+(`HelpGuide.svelte`) now documents the new data-root path and extension
+while still naming `.pmforge` as still-openable, and tells upgrading
+users their old data folder was copied forward automatically.
+
+Next candidate: 57 vitest tests against 233 Svelte files is thin
+coverage, and `make frontend-stability` (svelte-check + vitest) is the
+entire frontend gate today. Also worth a real end-to-end check rather
+than synthetic fixtures: point a renamed GoPMgr binary at an actual
+pre-rename `~/Library/Application Support/PMForge` install (as the
+2026-08-04 rename session did for the directory move alone) and confirm
+`.pmforge`-extension projects inside it still open, and that a `.pmba`
+backup produced by a pre-2026-08-04 release still restores. Worth
+naming rather than starting now.
 
 **Persistence-boundary invariant tests — done (2026-08-04).** The
 August 2026 PMForge → GoPMgr rename relied on a rule that previously

@@ -63,7 +63,7 @@ required-font-assets: ## Verify the tracked Source Sans 3 PDF/A baseline and its
 	@bash scripts/check-required-font-assets_test.sh
 	@bash scripts/check-required-font-assets.sh
 
-reset-clean-test: ## Move PMForge data to a recoverable backup for first-launch testing (quit GoPMgr first).
+reset-clean-test: ## Move GoPMgr data to a recoverable backup for first-launch testing (quit GoPMgr first).
 	@bash scripts/reset-clean-test.sh
 
 clean-test-reset-tests: ## Verify clean-test reset/restore safety in isolated fixtures.

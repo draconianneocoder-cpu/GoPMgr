@@ -94,7 +94,21 @@ anything"). No production code changed; `go build ./...`, `go test ./...`,
 and the full `npx vitest run` frontend suite are green (61/61 frontend
 tests, up from 57).
 
-## Scope decision explicitly deferred
+## Scope decision, initially deferred — resolved and implemented same day
+
+**Update:** the decomposition below was worked through with the user later
+the same session, who confirmed "include everything, add a migration"
+covers all four literals with per-literal compatibility handling. All four
+were renamed; see `DEVELOPER_HANDBOOK.md` §9's "PMForge → GoPMgr
+persistence-literal rename, implemented" entry for what shipped, how each
+literal's compatibility branch was verified (old-format fixtures, not
+round-trip tests), and ROADMAP's "Next Recommended Audit" for the
+user-facing summary. The original deferral reasoning is kept below
+unedited — it's the record of *why* a plain "rename them" instruction
+needed decomposing before acting on it, and every distinction it draws
+still describes what was actually built.
+
+---
 
 A same-day follow-up request proposed renaming all four frozen literals to
 `GoPMgr`/`gopmgr` outright as part of finishing the rebrand, which this
@@ -125,9 +139,10 @@ decision.
 ## Priority
 
 None blocking — all findings in this pass were coverage gaps, not active
-defects, and both are now closed. The rename-scope question above is a
-product/data-safety decision, not a code-quality finding, and is left open
-for the user.
+defects, and both were closed within this review. The rename-scope
+question was a product/data-safety decision, not a code-quality finding;
+it was resolved with the user and implemented the same day (see the
+addendum above).
 
 ## Scope / limits
 
@@ -135,6 +150,7 @@ Static review of the four frozen literals' non-Go-test references only
 (frontend help text/fixtures, one backend test file). Did not re-audit the
 Go-side pinning tests already covered by the prior 2026-08-04 entry, and
 did not review the "Next Recommended Audit" candidates further down that
-list (Wails root-dir binding, broader frontend test coverage). Did not
-implement any rename or migration — see "Scope decision explicitly
-deferred" above.
+list (Wails root-dir binding, broader frontend test coverage). The rename
+itself (all four literals, with compatibility handling) was implemented
+as a separate, later step the same day — see `DEVELOPER_HANDBOOK.md` §9
+rather than this document for that implementation's own scope and limits.
