@@ -259,10 +259,13 @@ func (a *App) SigmaGetToolStatus(projectID, phase string) (service.PhaseTools, e
 }
 
 // SigmaExportProjectReport generates a PDF report of all phase deliverables.
+// The report is written under the signed-in user's own exports/ folder, the
+// same location every other export in the app uses.
 func (a *App) SigmaExportProjectReport(projectID string) (string, error) {
 	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return "", fmt.Errorf("sigma: no project open")
+	u := a.requireUser()
+	if svc == nil || u == nil {
+		return "", fmt.Errorf("sigma: not signed in or no project open")
 	}
 
 	project, charter, sipoc, fishbone, solutions, controlPlan, err := svc.GetProjectReportData(projectID)
@@ -270,7 +273,8 @@ func (a *App) SigmaExportProjectReport(projectID string) (string, error) {
 		return "", err
 	}
 
-	return export.GenerateSigmaReport(project, charter, sipoc, fishbone, solutions, controlPlan)
+	outDir := filepath.Join(u.DataDir, "exports")
+	return export.GenerateSigmaReport(project, charter, sipoc, fishbone, solutions, controlPlan, outDir)
 }
 
 func trimExt(name string) string {
