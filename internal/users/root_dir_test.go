@@ -65,6 +65,45 @@ func TestDefaultRootDirPlatformDefault_UsesGoPMgrLeaf(t *testing.T) {
 	}
 }
 
+// TestDefaultRootDirForGOOS_BothBranches calls the pure per-GOOS helper
+// directly with both "darwin" and a representative non-darwin value in one
+// test run, so the platform branch TestDefaultRootDirPlatformDefault_UsesGoPMgrLeaf
+// can only ever exercise one side of (whichever OS actually runs the test)
+// gets full statement coverage on any single host, CI included.
+func TestDefaultRootDirForGOOS_BothBranches(t *testing.T) {
+	home := string(filepath.Separator) + "home" + string(filepath.Separator) + "alice"
+
+	if got, want := defaultRootDirForGOOS("darwin", home), filepath.Join(home, "Library", "Application Support", "GoPMgr"); got != want {
+		t.Errorf("defaultRootDirForGOOS(darwin) = %q, want %q", got, want)
+	}
+	for _, goos := range []string{"linux", "windows"} {
+		if got, want := defaultRootDirForGOOS(goos, home), filepath.Join(home, "Documents", "GoPMgr"); got != want {
+			t.Errorf("defaultRootDirForGOOS(%s) = %q, want %q", goos, got, want)
+		}
+	}
+}
+
+// TestDefaultRootDirAndLegacyRootCandidates_PropagateHomeDirError covers
+// the os.UserHomeDir() error branch shared by DefaultRootDir and
+// legacyRootCandidates (both fall back to it once $XDG_DATA_HOME is unset).
+// On POSIX, os.UserHomeDir reads $HOME directly, so clearing it is a
+// reliable, hermetic way to force the error without touching the real
+// account's home directory.
+func TestDefaultRootDirAndLegacyRootCandidates_PropagateHomeDirError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("os.UserHomeDir reads USERPROFILE (or HOMEDRIVE+HOMEPATH) on Windows, not $HOME")
+	}
+	t.Setenv("XDG_DATA_HOME", "")
+	t.Setenv("HOME", "")
+
+	if _, err := DefaultRootDir(); err == nil {
+		t.Fatal("DefaultRootDir with no $HOME should return an error, not silently resolve a path")
+	}
+	if got := legacyRootCandidates(); got != nil {
+		t.Fatalf("legacyRootCandidates with no $HOME = %v, want nil (no candidate path can be built)", got)
+	}
+}
+
 func TestLegacyRootCandidates_PrefersApplicationSupportOverDocuments(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", "")
 
@@ -98,6 +137,32 @@ func TestLegacyRootCandidates_PrefersApplicationSupportOverDocuments(t *testing.
 	}
 	if candidates[1] != wantSecond {
 		t.Fatalf("legacyRootCandidates[1] = %q, want %q", candidates[1], wantSecond)
+	}
+}
+
+// TestLegacyRootCandidatesForGOOS_BothBranches is the legacyRootCandidates
+// analogue of TestDefaultRootDirForGOOS_BothBranches: calls the pure
+// per-GOOS helper directly with "darwin" and a non-darwin value in one run,
+// covering both the two-candidate macOS branch and the one-candidate
+// everyone-else branch regardless of which OS actually runs `go test`.
+func TestLegacyRootCandidatesForGOOS_BothBranches(t *testing.T) {
+	home := string(filepath.Separator) + "home" + string(filepath.Separator) + "alice"
+
+	darwin := legacyRootCandidatesForGOOS("darwin", home)
+	wantDarwin := []string{
+		filepath.Join(home, "Library", "Application Support", "PMForge"),
+		filepath.Join(home, "Documents", "PMForge"),
+	}
+	if len(darwin) != len(wantDarwin) || darwin[0] != wantDarwin[0] || darwin[1] != wantDarwin[1] {
+		t.Errorf("legacyRootCandidatesForGOOS(darwin) = %v, want %v", darwin, wantDarwin)
+	}
+
+	for _, goos := range []string{"linux", "windows"} {
+		got := legacyRootCandidatesForGOOS(goos, home)
+		want := []string{filepath.Join(home, "Documents", "PMForge")}
+		if len(got) != 1 || got[0] != want[0] {
+			t.Errorf("legacyRootCandidatesForGOOS(%s) = %v, want %v", goos, got, want)
+		}
 	}
 }
 

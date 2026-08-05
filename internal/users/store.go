@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -165,10 +166,8 @@ func (s *Store) migrateAdminColumn() error {
 	if err := rows.Err(); err != nil {
 		return err
 	}
-	for _, c := range cols {
-		if c == "is_admin" {
-			return nil // already present
-		}
+	if slices.Contains(cols, "is_admin") {
+		return nil // already present
 	}
 	_, err = s.conn.Exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0`)
 	return err
@@ -445,10 +444,22 @@ func DefaultRootDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if runtime.GOOS == "darwin" {
-		return filepath.Join(home, "Library", "Application Support", "GoPMgr"), nil
+	return defaultRootDirForGOOS(runtime.GOOS, home), nil
+}
+
+// defaultRootDirForGOOS holds DefaultRootDir's platform branch as a pure
+// function of an explicit goos string, so both the "darwin" and
+// "everything else" arms run in a single `go test` invocation instead of
+// needing a real macOS host and a real non-macOS host — runtime.GOOS is
+// fixed for the lifetime of one compiled test binary, so a test can't flip
+// it, but it CAN call this helper directly with any goos string it likes.
+// DefaultRootDir is the only caller in production; it always passes the
+// real runtime.GOOS.
+func defaultRootDirForGOOS(goos, home string) string {
+	if goos == "darwin" {
+		return filepath.Join(home, "Library", "Application Support", "GoPMgr")
 	}
-	return filepath.Join(home, "Documents", "GoPMgr"), nil
+	return filepath.Join(home, "Documents", "GoPMgr")
 }
 
 // legacyRootCandidates returns every pre-2026-08-04 data-root location that
@@ -485,7 +496,15 @@ func legacyRootCandidates() []string {
 	if err != nil {
 		return nil
 	}
-	if runtime.GOOS == "darwin" {
+	return legacyRootCandidatesForGOOS(runtime.GOOS, home)
+}
+
+// legacyRootCandidatesForGOOS holds legacyRootCandidates' platform branch
+// as a pure function of an explicit goos string — see the identical
+// rationale on defaultRootDirForGOOS just above. legacyRootCandidates is
+// the only caller in production; it always passes the real runtime.GOOS.
+func legacyRootCandidatesForGOOS(goos, home string) []string {
+	if goos == "darwin" {
 		return []string{
 			filepath.Join(home, "Library", "Application Support", "PMForge"),
 			filepath.Join(home, "Documents", "PMForge"),
