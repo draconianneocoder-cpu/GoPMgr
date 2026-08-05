@@ -38,6 +38,19 @@ const (
 	filePerm os.FileMode = 0o600
 )
 
+// userHomeDir, tempDir, showError, and osExit are indirected through
+// package vars (rather than called directly as os.UserHomeDir, os.TempDir,
+// ShowError, and os.Exit) so tests can force the "nothing is writable"
+// fallback path and observe Fatal's behavior without touching the real
+// filesystem, popping a native OS dialog, or terminating the test binary.
+// Production code never reassigns them.
+var (
+	userHomeDir = os.UserHomeDir
+	tempDir     = os.TempDir
+	showError   = ShowError
+	osExit      = os.Exit
+)
+
 // Init configures the standard logger to write to stderr and to a dated
 // log file under <preferredDir>/logs (e.g. gopmgr-2026-06-15.log).
 //
@@ -124,10 +137,10 @@ func resolveLogDir(preferredDir string) string {
 	if strings.TrimSpace(preferredDir) != "" {
 		return filepath.Join(preferredDir, "logs")
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
+	if home, err := userHomeDir(); err == nil && home != "" {
 		return filepath.Join(home, "Documents", "GoPMgr", "logs")
 	}
-	if tmp := os.TempDir(); tmp != "" {
+	if tmp := tempDir(); tmp != "" {
 		return filepath.Join(tmp, "GoPMgr", "logs")
 	}
 	return ""
@@ -142,8 +155,8 @@ func resolveLogDir(preferredDir string) string {
 // user or a maintainer knows where the full details were written.
 func Fatal(title, userMessage, logPath string, err error) {
 	log.Print(formatFatal(title, userMessage, logPath, err))
-	ShowError(title, dialogMessage(userMessage, logPath, err))
-	os.Exit(1)
+	showError(title, dialogMessage(userMessage, logPath, err))
+	osExit(1)
 }
 
 // formatFatal builds the multi-line record written to the log file. Kept
