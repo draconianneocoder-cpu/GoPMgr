@@ -681,9 +681,66 @@ Coverage ratchet updated: go_default 8694/14627 (5933 uncovered) →
 8702/14627 (5925 uncovered); go_duckdb 8772/14725 (5953 uncovered) →
 8780/14725 (5945 uncovered).
 
+**`internal/users` (`recovery.go` increment 1 of 2): 70.5% → 83.0% of
+`recovery.go` (75.6% → 79.4% of the package).** Split along the
+function boundary per `/advisor`'s plan review, one level finer than
+the `dek.go`/`recovery.go`/`store.go` file-level split: this increment
+covers `migrateRecoveryTable`, `RemainingRecoveryCodes`, and
+`IssueRecoveryCodes` (9 forceable branches); `ResetWithRecoveryCode`'s
+twelve remain for increment 2. Reason for the finer split: a
+call-indexed `rand.Reader` fake gates one test in each function at a
+different call index, and its correctness rests on call counts
+derived by reading source — validate it on the simpler function
+first, with the index confirmed by a throwaway measuring probe rather
+than trusted from the read, before reusing it in the more complex one.
+
+Every forcing technique was probed directly before the real test was
+written, continuing this session's standing discipline: `s.conn.Begin()`
+on a closed store returns `sql: database is closed` (confirmed before
+building the `ResetWithRecoveryCode` `tx.Begin` test planned for
+increment 2); `DROP TABLE recovery_codes` cleanly yields `no such
+table` from a subsequent `tx.Query` (confirmed for the same
+increment); and a throwaway counting `rand.Reader` wrapper measured
+`IssueRecoveryCodes`' exact per-iteration call sequence
+(`generateCode` call 1 → `HashPassword` call 2 → `WrapKey` calls 3–4)
+before the call-indexed fake was built around it.
+
+One SQLite behavior found the hard way, not assumed: a `BEFORE
+DELETE` trigger never fires for a `DELETE` that matches zero rows, so
+`TestIssueRecoveryCodes_DeleteFailsOnBlockedTrigger`'s first draft
+(against a freshly-created, code-less account) silently passed through
+the trigger untouched and failed for the wrong reason. Fixed by
+issuing codes once before installing the trigger, so the second
+`IssueRecoveryCodes` call has a real row to delete.
+
+`RemainingRecoveryCodes`'s unreachable `sql.ErrNoRows` branch and
+`generateCode`'s `len(enc) < 16` branch were documented in-place as
+kept-not-deleted this pass (both dead only given an adjacent editable
+expression — a bare `COUNT(*)` and the `rawCodeBytes` constant,
+respectively — not dead by type), resolving the miscategorization
+`/advisor` flagged during the `dek.go` increment's planning.
+
+Two branches in `IssueRecoveryCodes` stay disclosed-untested:
+`tx.Begin()` is preceded by the user-existence `QueryRow`, so a
+closed-DB fault trips that earlier check first and can't isolate
+`Begin()` on its own; `tx.Commit()` has no portable forcing method in
+this package (no deferred-constraint or disk-level fault injection
+available).
+
+`internal/users`' full suite runtime grew from ~3.3s to ~4.5s across
+the `dek.go` and this increment combined (each `IssueRecoveryCodes`
+call runs 8 real Argon2id hashes at 64 MiB) — noted per `/advisor`'s
+flag, not yet a problem, but worth watching as `ResetWithRecoveryCode`
+and `store.go` add more.
+
+Coverage ratchet updated: go_default 8702/14627 (5925 uncovered) →
+8716/14627 (5911 uncovered); go_duckdb 8780/14725 (5945 uncovered) →
+8794/14725 (5931 uncovered).
+
 **Not started:** the rest of Phase 2 (remaining Go completion-tier
-packages at 70–99%; `internal/users`' `recovery.go` and `store.go`
-increments are next, then the other completion-tier packages),
+packages at 70–99%; `internal/users`' `ResetWithRecoveryCode`
+increment and `store.go` are next, then the other completion-tier
+packages),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
 `db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
 Phase 4 (root/App layer, 48.2%), Phase 5 (remaining frontend pure-logic
