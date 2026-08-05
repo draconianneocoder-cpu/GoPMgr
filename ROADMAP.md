@@ -737,10 +737,61 @@ Coverage ratchet updated: go_default 8702/14627 (5925 uncovered) →
 8716/14627 (5911 uncovered); go_duckdb 8780/14725 (5945 uncovered) →
 8794/14725 (5931 uncovered).
 
+**`internal/users` (`recovery.go` increment 2 of 2): 83.0% → 92.9% of
+`recovery.go` (79.4% → 82.3% of the package).** Closes
+`ResetWithRecoveryCode`'s eleven forceable branches, reusing every
+technique validated in increment 1: closed-DB for `tx.Begin()` (this
+function's genuine first DB call, unlike `IssueRecoveryCodes`'), a
+dropped `recovery_codes` table for the `SELECT` failure, the
+call-indexed `rand.Reader` fake at the index the prior increment's
+probe already confirmed (index 3, `HashPassword`'s salt read on the
+non-legacy path), and distinct `RAISE(ABORT, ...)` messages per
+trigger. New this increment: corrupting only the `wrapped_dek` column
+(leaving `code_hash` untouched, so `VerifyPassword` still matches) to
+force `UnwrapKey`'s "recovery wrap corrupt" branch — the most
+security-critical test in this file, confirmed by direct probe before
+writing it.
+
+Two real findings from break-verification, both corrected before
+commit, both the same species named in the `internal/admin` and
+`dek.go` entries but with new specifics:
+
+- `TestResetWithRecoveryCode_WrapKeyEntropyFailure`'s first draft
+  asserted only `err != nil`. Deleting `WrapKey`'s guard doesn't make
+  the function succeed — the very next call, `auth.HashPassword`,
+  independently reads `rand.Reader` for its own salt and fails on the
+  same broken reader, with a *different*, wrapped error text
+  (`"auth: read salt: ..."` vs `WrapKey`'s bare propagation). Fixed by
+  asserting the exact bare error string.
+- `TestResetWithRecoveryCode_RejectsInvalidUsername` turned out not to
+  be break-verifiable as a guard-presence test at all: deleting
+  `ValidateUsername`'s check inside this function still produces the
+  identical `ErrInvalidRecoveryCode`, because the malformed username
+  simply matches zero rows in the following `SELECT` and falls through
+  to the `matchID < 0` branch, which returns the same sentinel — by
+  design, the two paths are meant to be indistinguishable
+  (anti-enumeration). The test still pins a real behavioral guarantee;
+  its docstring and the ledger now say so precisely instead of
+  claiming it isolates the guard.
+
+Four branches stay disclosed-untested: `ResetWithRecoveryCode`'s own
+`rows.Scan`/`rows.Err()` (same PRAGMA-cursor-class reasoning as
+`dek.go`'s disclosures — this table has exactly one writer in the
+whole codebase) and `tx.Commit()`, alongside `IssueRecoveryCodes`'
+`tx.Begin()`/`tx.Commit()` disclosed in increment 1.
+
+`internal/users`' `dek.go` (90.2%) and `recovery.go` (92.9%) are
+complete for Phase 2 purposes — every remaining uncovered line is a
+named, disclosed reason, none left unexplained. `store.go` (75.5%,
+untouched this pass) is the final increment for this package.
+
+Coverage ratchet updated: go_default 8716/14627 (5911 uncovered) →
+8727/14627 (5900 uncovered); go_duckdb 8794/14725 (5931 uncovered) →
+8805/14725 (5920 uncovered).
+
 **Not started:** the rest of Phase 2 (remaining Go completion-tier
-packages at 70–99%; `internal/users`' `ResetWithRecoveryCode`
-increment and `store.go` are next, then the other completion-tier
-packages),
+packages at 70–99%; `internal/users`' `store.go` increment is next,
+then the other completion-tier packages),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
 `db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
 Phase 4 (root/App layer, 48.2%), Phase 5 (remaining frontend pure-logic
