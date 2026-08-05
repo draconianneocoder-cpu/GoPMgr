@@ -317,6 +317,43 @@ confirm `internal/update.CheckLatest` can fetch and verify a real
 signed manifest and that the packaged artifact names it points to
 match what `release.yml` actually produces.
 
+## In Progress: 100% Full-Repo Test Coverage
+
+**Started 2026-08-04.** Goal, scope, exclusions, and enforcement mechanism
+are fixed and documented in DEVELOPER_HANDBOOK.md's "100% coverage: scope
+and exclusions" entry — read that before touching this effort, it defines
+what "100%" means (both Go build configs independently, frontend with real
+interaction assertions, a named exclusion set) so the target doesn't drift.
+
+**Phase 0 (foundations) — done.** `scripts/coverage-go.sh`,
+`scripts/coverage-frontend.sh`, `scripts/coverage-ratchet.sh`, and
+`coverage-baseline.json` (checked in). `make coverage-ratchet` fails only
+on a regression below the last recorded high-water mark, not on being
+under 100% — a hard floor would block all unrelated work for this effort's
+full multi-session duration. **Deliberately not wired into `make verify`
+yet**: CI's `verify` job installs no DuckDB CGO toolchain, so a
+duckdb-tagged coverage run would hard-fail CI today; wire it in once CI
+gets that toolchain, or in Phase 7 when this becomes a hard floor.
+Baseline: go_default 8525/14611 (58.35%), go_duckdb 8603/14709 (58.49%),
+frontend 1939/13195 (14.69%), recorded on macOS with a platform-symmetric
+exclusion list so it reproduces identically on CI's ubuntu-24.04 runner.
+
+**Phase 1 (cheapest Go wins) — not started.** `internal/cli` (4.5%),
+`internal/templates` (20.7%), and refactoring the 6 `runtime.GOOS ==`
+conditionals in `main.go`/`internal/users/store.go` behind an injectable
+seam (its own commit — `store.go` is where `f1a5501`'s migration fix
+landed, so `internal/users`'s existing suite must pass unchanged around it).
+
+**Not started:** Phase 2 (Go completion tier, packages already 70–99%),
+Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
+`db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
+Phase 4 (root/App layer, 48.2%), Phase 5 (remaining frontend pure-logic
+modules), Phase 6 (frontend component coverage — the dominant cost,
+estimated 80–280 more interaction-tested component tests across ~233
+files from measured per-test statement rates, likely 100+ hours spanning
+many sessions), Phase 7 (convert the ratchet to a hard 100% floor once
+reached).
+
 ## What Is Not on the Roadmap
 
 Anything that violates the principles in `VISION.md`. Specifically: mandatory
