@@ -338,11 +338,26 @@ Baseline: go_default 8525/14611 (58.35%), go_duckdb 8603/14709 (58.49%),
 frontend 1939/13195 (14.69%), recorded on macOS with a platform-symmetric
 exclusion list so it reproduces identically on CI's ubuntu-24.04 runner.
 
-**Phase 1 (cheapest Go wins) — not started.** `internal/cli` (4.5%),
-`internal/templates` (20.7%), and refactoring the 6 `runtime.GOOS ==`
-conditionals in `main.go`/`internal/users/store.go` behind an injectable
-seam (its own commit — `store.go` is where `f1a5501`'s migration fix
-landed, so `internal/users`'s existing suite must pass unchanged around it).
+**Phase 1 (cheapest Go wins) — in progress.** `internal/cli`: done, 0% →
+100% under both build configs. `ParseFlags()` had zero tests despite
+existing `Config`/`PrintVersion` tests in the same file; added 7 tests
+covering every one of its 18 flags plus positional-arg handling, using
+the standard `flag.CommandLine`-reset technique (no production code
+changed). "21 statements / 7 tests" is not a meaningful cost figure to
+carry into the Phase 6 frontend extrapolation: `ParseFlags` is 21
+statements of flag registration effectively covered by a single call, so
+the ratio reflects how assertions were split across test functions, not
+real per-test cost — the effort here was near-trivial (a table entry
+against a pure function), which is the actual reason this was cheap.
+One data point, one function; doesn't move the frontend estimate.
+Break-verified two independent mutations (a flag default, the `NArg()`
+positional-arg guard), both caught.
+
+Still not started in Phase 1: `internal/templates` (20.7%), and
+refactoring the 6 `runtime.GOOS ==` conditionals in
+`main.go`/`internal/users/store.go` behind an injectable seam (its own
+commit — `store.go` is where `f1a5501`'s migration fix landed, so
+`internal/users`'s existing suite must pass unchanged around it).
 
 **Not started:** Phase 2 (Go completion tier, packages already 70–99%),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
