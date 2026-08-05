@@ -547,11 +547,46 @@ Baseline updated: go_default 8628/14605 (5977 uncovered) → 8674/14630
 (5956 uncovered); go_duckdb 8706/14703 (5997 uncovered) → 8752/14728
 (5976 uncovered).
 
+**`internal/crypto` follow-up complete: 85.7% → 91.7%.** Closed the
+scattered 71–92% gaps across `encrypt.go`, `keywrap.go`, `pdf_cms.go`,
+and `pdf_cms_timestamp.go` deliberately held out of the `LoadCertificate`
+bug-fix commit above. Reviewed GO-2026-5932
+(`golang.org/x/crypto/openpgp`, unmaintained/unsafe-by-design, no fixed
+version) first, per the user's mid-session flag — confirmed via
+`govulncheck`'s call-graph analysis (not just a version check) that this
+repository never imports `openpgp` (only `argon2` and `pkcs12`), so
+`govulncheck ./...` already exits 0 and no dependency or code change was
+possible or needed; see `DEVELOPER_HANDBOOK.md`'s dated entry for the
+full record and the forward-looking rule if OpenPGP is ever needed here.
+
+Two bugs surfaced and fixed in the test tooling itself, both found by
+break-verifying rather than trusting a passing first draft: a fake
+`rand.Reader` that delegated through the very global it had replaced
+(infinite recursion, crashed a test run with a real stack overflow —
+not merely a wrong assertion), and the same cascading-failure trap
+`applog`'s Phase 2 entry already named, recurring in a new package
+(a "fails after N successful calls, forever" reader design let a
+deleted salt-error-check pass by tripping the nonce check instead).
+Both fixed; see the handbook for the exact designs.
+
+`internal/crypto` is now at 91.7%, not 100% — every remaining line is
+one of: a value-relationship guard kept deliberately (not deleted, since
+the "can't fail" guarantee depends on an editable constant, not a Go
+type — a sharper version of the `internal/templates` dead-code-deletion
+rule), a process-global FIPS-140 branch with no per-test override, or an
+`asn1.Marshal`/`rsa.SignPKCS1v15` error-propagation line whose underlying
+failure is proven real by a direct test on the helper function but not
+reachable through this package's own well-formed production call sites.
+All individually named in the handbook, none left as an unexplained
+percentage. Coverage ratchet updated: go_default 8674/14630 (5956
+uncovered) → 8687/14630 (5943 uncovered); go_duckdb 8752/14728 (5976
+uncovered) → 8765/14728 (5963 uncovered).
+
+**`internal/crypto` complete for Phase 2 purposes.** No package-specific
+work remains queued for this package short of a hard-100% push (Phase 7).
+
 **Not started:** the rest of Phase 2 (remaining Go completion-tier
-packages at 70–99% — `internal/crypto`'s own remaining scattered 71–92%
-gaps in `encrypt.go`/`keywrap.go`/`pdf_cms.go`/`pdf_cms_timestamp.go`
-were intentionally left out of this increment, per the advisor's scope
-instruction to keep the bug-fix commit reviewable on its own),
+packages at 70–99%),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
 `db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
 Phase 4 (root/App layer, 48.2%), Phase 5 (remaining frontend pure-logic

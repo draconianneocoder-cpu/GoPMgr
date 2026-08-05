@@ -55,10 +55,24 @@ func EncryptBuffer(data []byte, password string) ([]byte, error) {
 	}
 	key := argon2.IDKey([]byte(password), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
 
+	// aes.NewCipher only errors on a key whose length isn't 16/24/32
+	// bytes. key is always exactly argonKeyLen (32) bytes here, so this
+	// can't fail today -- but that's a fact about the argonKeyLen
+	// constant's current value, not a type-level guarantee like the
+	// dead branches deleted from internal/templates/jdm.go. A future
+	// edit to argonKeyLen without updating this call would silently
+	// need this check, so it stays; not covered by a test, since
+	// forcing it would mean passing a deliberately-wrong-length key,
+	// which no real call site does.
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
+	// cipher.NewGCM errors only when the process runs under Go's FIPS
+	// 140-only enforcement mode (crypto/fips140.Enforced(), a
+	// process-global flag). Real, not dead code -- but not practically
+	// forceable per-test: it's read once at process/package init, not
+	// re-evaluated per call, so no test-local override reaches it.
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return nil, err
@@ -100,6 +114,15 @@ func DecryptBuffer(blob []byte, password string) ([]byte, error) {
 	}
 
 	nonceSize := gcm.NonceSize()
+	// Unreachable given the length check above: saltLen+12+16 (44) was
+	// chosen assuming nonceSize=12 (standard GCM, fixed by using NewGCM
+	// rather than NewGCMWithNonceSize), so len(blob) >= 44 always leaves
+	// len(rest) >= 28 >= nonceSize. Kept, not deleted -- like
+	// aes.NewCipher above, this guards a value relationship (the "12" in
+	// that check) rather than a type-level guarantee, and a future
+	// change to saltLen or the nonce size without updating both call
+	// sites would need it. Not forceable by a test: blob's length is
+	// already constrained past this point by the earlier check.
 	if len(rest) < nonceSize {
 		return nil, errors.New("crypto: ciphertext too short for nonce")
 	}

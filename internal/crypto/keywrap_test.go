@@ -5,6 +5,7 @@ package crypto
 
 import (
 	"bytes"
+	"encoding/base64"
 	"strings"
 	"testing"
 )
@@ -54,6 +55,52 @@ func TestKeyWrapRejectsBadDEK(t *testing.T) {
 	}
 	if _, err := KeyspecHex([]byte("short")); err != ErrBadDEK {
 		t.Errorf("KeyspecHex(short) err = %v, want ErrBadDEK", err)
+	}
+}
+
+// TestGenerateDEK_RandReaderFails uses the same call-indexed fake
+// rand.Reader as encrypt_test.go (shared within this package). Only one
+// io.ReadFull call happens here, so there's no cascading-failure risk
+// to isolate against, unlike EncryptBuffer's two-call case.
+func TestGenerateDEK_RandReaderFails(t *testing.T) {
+	withRandReaderFailingAtCall(t, 1)
+	if _, err := GenerateDEK(); err == nil {
+		t.Fatal("expected an error when rand.Reader fails generating the DEK")
+	}
+}
+
+func TestWrapKey_PropagatesEncryptBufferError(t *testing.T) {
+	dek := bytes.Repeat([]byte{0xCD}, DEKSize)
+	if _, err := WrapKey(dek, ""); err == nil {
+		t.Fatal("expected an error when the wrapping secret is empty")
+	}
+}
+
+func TestUnwrapKey_RejectsNonBase64(t *testing.T) {
+	if _, err := UnwrapKey("not valid base64!!!", "secret"); err == nil {
+		t.Fatal("expected an error for a non-base64 wrapped value")
+	}
+}
+
+// TestUnwrapKey_RejectsWrongLengthAfterDecrypt exercises UnwrapKey's own
+// post-decrypt length check. Deliberately does NOT go through WrapKey:
+// WrapKey rejects a wrong-length DEK before ever calling EncryptBuffer,
+// so a blob built via WrapKey could never reach this branch. Calling
+// EncryptBuffer directly on a wrong-length payload bypasses that guard,
+// producing a blob that decrypts successfully but to the wrong length --
+// the only way to reach UnwrapKey's own check rather than WrapKey's.
+func TestUnwrapKey_RejectsWrongLengthAfterDecrypt(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping Argon2id-heavy crypto test in short mode")
+	}
+	blob, err := EncryptBuffer([]byte("not 32 bytes"), "secret")
+	if err != nil {
+		t.Fatalf("EncryptBuffer: %v", err)
+	}
+	wrapped := base64.StdEncoding.EncodeToString(blob)
+
+	if _, err := UnwrapKey(wrapped, "secret"); err != ErrBadDEK {
+		t.Fatalf("UnwrapKey err = %v, want ErrBadDEK", err)
 	}
 }
 
