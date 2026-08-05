@@ -43,6 +43,7 @@
 /frontend/node_modules/
 /frontend/dist/
 /frontend/.svelte-kit/
+/frontend/coverage/
 frontend/package.json.md5
 
 # Local validation scratch space

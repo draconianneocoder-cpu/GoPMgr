@@ -255,15 +255,36 @@ break-verified the same way the tests above were. Frontend copy
 while still naming `.pmforge` as still-openable, and tells upgrading
 users their old data folder was copied forward automatically.
 
-Next candidate: 57 vitest tests against 233 Svelte files is thin
-coverage, and `make frontend-stability` (svelte-check + vitest) is the
-entire frontend gate today. Also worth a real end-to-end check rather
-than synthetic fixtures: point a renamed GoPMgr binary at an actual
-pre-rename `~/Library/Application Support/PMForge` install (as the
-2026-08-04 rename session did for the directory move alone) and confirm
-`.pmforge`-extension projects inside it still open, and that a `.pmba`
-backup produced by a pre-2026-08-04 release still restores. Worth
-naming rather than starting now.
+**Update (2026-08-04, later the same day):** an adversarial self-review
+pass fixed a real bug this section's e2e suggestion would have caught —
+`users.Account.DataDir` was trusted from a `data_dir` column written once
+at account-creation time, so a migrated account kept pointing at the
+deleted old PMForge root instead of the copied data. See the
+DEVELOPER_HANDBOOK.md entry "Migrated accounts silently kept
+reading/writing the deleted old root." `migration_e2e_test.go`'s
+`TestPreRenameInstallIsUsableAfterMigration` now builds a real pre-rename
+install through the App/users public API (not a synthetic tree-copy
+fixture), migrates it, deletes the old root, and proves login + project
+listing still work. It does not point at a literal pre-existing disk
+install (`~/Library/Application Support/PMForge`) or restore a `.pmba`
+backup produced by a pre-2026-08-04 release — those two checks are still
+worth naming rather than starting now.
+
+Frontend coverage was measured, not just counted: `vitest run --coverage
+--coverage.all --coverage.include='src/**/*.{ts,svelte}'` (script:
+`npm --prefix frontend run test:coverage`) puts true repo-wide statement
+coverage at 14.36% (1895/13195) before this pass, not the 61% the default
+(imported-files-only) report showed. Most of the gap is presentational
+`.svelte` components, which need component-mount tests, not plain unit
+tests — a materially different and larger effort than one tranche. Added
+two previously-0% pure-logic modules (`terminology.ts`,
+`charts/_flow_shapes.ts`) with break-verified tests, 61 → 81 vitest tests,
+coverage to 14.69%. `make frontend-stability` (svelte-check + vitest) is
+still the entire enforced frontend gate; `test:coverage` is a manual
+measurement command, not wired into any gate, and no coverage threshold
+is set. See the DEVELOPER_HANDBOOK.md entry "Frontend coverage: measured,
+not just counted" for what's still uncovered and the priority order to
+pick it back up by (regression cost, not file count).
 
 **Persistence-boundary invariant tests — done (2026-08-04).** The
 August 2026 PMForge → GoPMgr rename relied on a rule that previously
