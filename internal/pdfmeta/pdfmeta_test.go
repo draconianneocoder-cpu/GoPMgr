@@ -142,6 +142,25 @@ func TestFindLastStartxref_Empty(t *testing.T) {
 	}
 }
 
+// TestFindLastStartxref_OffsetOutOfRange covers the "offset <= 0 ||
+// offset >= len(b)" range check with both operands independently: a
+// parsed offset of 0 (the "<= 0" side) and a parsed offset past the end
+// of the buffer (the ">= len(b)" side). Verified independently, not
+// just predicted: mutating the guard to keep only "offset >= len(b)"
+// fails just the "zero offset" case; keeping only "offset <= 0" fails
+// just "offset too large" — each subcase discriminates its own operand.
+func TestFindLastStartxref_OffsetOutOfRange(t *testing.T) {
+	cases := map[string][]byte{
+		"zero offset":      []byte("startxref\n0\n%%EOF"),
+		"offset too large": []byte("startxref\n999999\n%%EOF"),
+	}
+	for name, input := range cases {
+		if _, err := findLastStartxref(input); err == nil {
+			t.Errorf("%s: expected an out-of-range error, got nil", name)
+		}
+	}
+}
+
 func TestParseTrailerSizeAndRoot(t *testing.T) {
 	pdf := minimalPDF()
 	xrefOff, err := findLastStartxref(pdf)
@@ -160,6 +179,87 @@ func TestParseTrailerSizeAndRoot(t *testing.T) {
 	}
 	if gen != 0 {
 		t.Errorf("/Root gen: got %d, want 0", gen)
+	}
+}
+
+// TestReadDictInt_KeyNotPresent covers readDictInt's "key not present"
+// guard. Asserts the guard's own error text ("not present"), not a bare
+// non-nil check: deleting the guard leaves idx == -1, and
+// i := idx + len(key) then lands on some byte a few positions into the
+// block by coincidence — for this fixture that byte happens to be
+// non-digit, so the *next* guard ("no integer value") fires instead and
+// a bare err == nil check would stay green under the mutation.
+// Confirmed by direct mutation before finalizing.
+func TestReadDictInt_KeyNotPresent(t *testing.T) {
+	_, err := readDictInt([]byte("<< /Foo 1 >>"), "/Size")
+	if err == nil {
+		t.Fatal("expected an error when the key is absent")
+	}
+	if !strings.Contains(err.Error(), "not present") {
+		t.Errorf("expected a \"not present\" error, got %q", err)
+	}
+}
+
+// TestReadDictInt_NoIntegerValue covers the "no digits after the key"
+// guard: the key is present but is followed by non-digit bytes.
+func TestReadDictInt_NoIntegerValue(t *testing.T) {
+	if _, err := readDictInt([]byte("/Size abc"), "/Size"); err == nil {
+		t.Fatal("expected an error when no digits follow the key")
+	}
+}
+
+// TestReadDictRef_KeyNotPresent covers readDictRef's "key not present"
+// guard. Asserts the guard's own error text, for the same reason as
+// TestReadDictInt_KeyNotPresent: idx == -1 can still land i on a
+// coincidentally non-digit byte, masking the guard's deletion behind
+// the "no id digit" guard's error instead. Confirmed by direct
+// mutation before finalizing.
+func TestReadDictRef_KeyNotPresent(t *testing.T) {
+	_, _, err := readDictRef([]byte("<< /Foo 1 0 R >>"), "/Root")
+	if err == nil {
+		t.Fatal("expected an error when the key is absent")
+	}
+	if !strings.Contains(err.Error(), "not present") {
+		t.Errorf("expected a \"not present\" error, got %q", err)
+	}
+}
+
+// TestReadDictRef_NoIdDigit covers the "no id digit" guard. Asserts the
+// guard's own error text: this guard is structurally masked by the
+// very next guard ("no gen digit") for every possible input, not just
+// this fixture — the leading-whitespace skip before the id-digit scan
+// has already consumed every space/tab/newline/CR, so whatever
+// non-digit byte blocks the id-digit scan is guaranteed to also be
+// non-whitespace, which means the second (space/tab-only) skip before
+// the gen-digit scan can't move past it either — the gen-digit scan
+// starts at the exact same blocking byte and fails the same way.
+// Deleting this guard therefore falls through to "no gen digit" firing
+// immediately after, not to success. Confirmed by direct mutation
+// before finalizing.
+func TestReadDictRef_NoIdDigit(t *testing.T) {
+	_, _, err := readDictRef([]byte("/Root R"), "/Root")
+	if err == nil {
+		t.Fatal("expected an error when no id digits follow the key")
+	}
+	if !strings.Contains(err.Error(), "no id digit") {
+		t.Errorf("expected a \"no id digit\" error, got %q", err)
+	}
+}
+
+// TestReadDictRef_NoGenDigit covers the "no gen digit" guard: the id
+// parses fine, but no digits follow it for the generation number.
+func TestReadDictRef_NoGenDigit(t *testing.T) {
+	if _, _, err := readDictRef([]byte("/Root 1 R"), "/Root"); err == nil {
+		t.Fatal("expected an error when no gen digits follow the id")
+	}
+}
+
+// TestReadDictRef_ExpectedRAfterGen covers the "expected R after gen"
+// guard: id and gen both parse fine, but the trailing "R" marker is
+// something else.
+func TestReadDictRef_ExpectedRAfterGen(t *testing.T) {
+	if _, _, err := readDictRef([]byte("/Root 1 0 X"), "/Root"); err == nil {
+		t.Fatal("expected an error when the R marker is missing")
 	}
 }
 
@@ -199,6 +299,78 @@ func TestFindObjectBody_ReturnsLatestIncrementalRevision(t *testing.T) {
 	}
 	if !bytes.Contains(body, []byte("/Metadata 4 0 R")) {
 		t.Fatalf("expected latest Catalog revision with /Metadata, got %q", string(body))
+	}
+}
+
+// TestFindObjectBody_ObjectNotFound covers the "object not found" guard:
+// the requested id/gen never appears as an "<id> <gen> obj" marker.
+func TestFindObjectBody_ObjectNotFound(t *testing.T) {
+	if _, err := findObjectBody(minimalPDF(), 99, 0); err == nil {
+		t.Fatal("expected an error for a nonexistent object id")
+	}
+}
+
+// TestFindObjectBody_EndobjNotFound covers the "endobj not found" guard:
+// the object marker is present but its matching "endobj" never appears.
+func TestFindObjectBody_EndobjNotFound(t *testing.T) {
+	if _, err := findObjectBody([]byte("1 0 obj\n<< /Type /Catalog >>\n"), 1, 0); err == nil {
+		t.Fatal("expected an error when endobj is missing")
+	}
+}
+
+// TestInsertMetadataReference_TrimsLeadingWhitespace covers the
+// leading-whitespace trim loop's body, mirroring
+// TestInsertOutputIntentsReference_TrimsLeadingWhitespace for the sibling
+// function: this package's other insertMetadataReference tests all pass
+// fixtures whose catalog body starts with "<<" directly, so without this
+// test the trim loop itself would never execute.
+func TestInsertMetadataReference_TrimsLeadingWhitespace(t *testing.T) {
+	orig := []byte("  \n\t<< /Type /Catalog /Pages 2 0 R >>")
+	got := insertMetadataReference(orig, 99)
+	if !bytes.Contains(got, []byte("/Metadata 99 0 R")) {
+		t.Fatalf("expected /Metadata insertion, got %q", string(got))
+	}
+	if !bytes.Contains(got, []byte("/Pages 2 0 R")) {
+		t.Errorf("lost /Pages entry: %q", string(got))
+	}
+	// Deleting the trim loop is masked by the "not a dict" guard below
+	// it: an untrimmed body starts with a whitespace byte instead of
+	// "<<", so the guard's own malformed-input check fires and the
+	// function falls back to wrapping the whole (still-untrimmed) body
+	// in a brand-new "<< ... >>" shell — which still contains both
+	// substrings above, so a bare Contains check would stay green under
+	// that mutation. The wrap fallback nests the original body's own
+	// "<<" inside the new wrapper's "<<", producing two occurrences
+	// instead of one; the correct in-place-edit path (trim loop intact)
+	// reuses the original dict's single "<<" as-is. Confirmed by direct
+	// mutation before finalizing.
+	if n := bytes.Count(got, []byte("<<")); n != 1 {
+		t.Errorf("expected the original dict to be edited in place (one \"<<\"), got %d in %q", n, string(got))
+	}
+}
+
+// TestInsertMetadataReference_WrapsNonDictBody covers the "malformed
+// input" branch. Uses the same HasPrefix("<<")/HasSuffix(">>") pattern as
+// TestInsertOutputIntentsReference_WrapsNonDictBody rather than a bare
+// bytes.Contains: deleting this guard falls through to the "already has
+// <<" insert-in-place logic, which for a non-"<<"-prefixed body like
+// "/Type /Catalog" splices "/Metadata 42 0 R" into the middle of the
+// literal bytes ("/T" + the insertion + "ype /Catalog") — a result that
+// still contains the "/Metadata 42 0 R" substring (so a bare Contains
+// check would stay green under that mutation) but does not start with
+// "<<" or end with ">>". Confirmed by direct mutation before finalizing:
+// deleting the guard produced exactly "/T\n/Metadata 42 0 Rype /Catalog".
+func TestInsertMetadataReference_WrapsNonDictBody(t *testing.T) {
+	orig := []byte("/Type /Catalog")
+	got := insertMetadataReference(orig, 42)
+	if !bytes.HasPrefix(got, []byte("<<")) || !bytes.HasSuffix(got, []byte(">>")) {
+		t.Fatalf("expected the result to be wrapped in a fresh dict, got %q", string(got))
+	}
+	if !bytes.Contains(got, []byte("/Metadata 42 0 R")) {
+		t.Errorf("expected /Metadata insertion, got %q", string(got))
+	}
+	if !bytes.Contains(got, orig) {
+		t.Errorf("original body should be preserved inside the wrapper, got %q", string(got))
 	}
 }
 

@@ -1072,13 +1072,84 @@ removed +2 added = −3 total) but not to the uncovered delta, since a
 newly-added *and* newly-covered statement was never counted as
 uncovered in the first place.
 
-**Not started:** `internal/pdfmeta` increment 2 (the byte-surgery
-function cluster: `parseTrailerSizeAndRoot`, `InjectPAdESSignature`,
-`readDictInt`/`readDictRef`, `findObjectBody`, `insertMetadataReference`,
-`InjectOutputIntent`, `MakePDFA3`, and others, all 70–95%, needing
-malformed-PDF byte fixtures rather than the pure-function techniques
-used here), then the rest of Phase 2 (remaining Go completion-tier
-packages at 70–99%),
+### 2026-08-05 — `internal/pdfmeta` increment 2a: 86.6% → 88.0%; the leaf parsers in the `InjectXMPStream` call chain, split from 2b per `/advisor`'s plan review
+
+`/advisor`'s plan review split the originally-scoped increment 2 (8
+functions, ~20 tests, mixing pure byte-literal unit tests with
+staged-fixture wrapping-chain tests) into 2a (leaf parsers, byte
+literals, no staging) and 2b (the call chain itself, needs staged
+fixtures and wrap-prefix discrimination) — same reasoning as the
+`internal/admin` review-load lesson: two techniques in one increment
+is two reviews' worth of risk in one pass. 2a covers
+`findLastStartxref`, `readDictInt`, `readDictRef`, `findObjectBody`,
+and `insertMetadataReference` (11 statements, all now 100%); test-only
+change, `pdfmeta.go`'s production code untouched (`git diff --stat`
+confirms only `pdfmeta_test.go` changed).
+
+Three masking risks found by actually running each mutation, not
+predicted — a discipline that paid off three separate times in one
+increment:
+
+1. `readDictInt`/`readDictRef`'s "key not present" guards are
+   fixture-dependent cascades: deleting the guard leaves `idx == -1`,
+   and the resulting index arithmetic can coincidentally land on a
+   non-digit byte, tripping the *next* guard's error instead of
+   returning cleanly — a bare `err == nil` check stays green under
+   that mutation. Fixed by asserting the guard's own error-text
+   substring.
+2. `readDictRef`'s "no id digit" guard is masked **unconditionally**,
+   not fixture-dependently — a new category, distinct from every
+   other cascade this session (all of which were fixture- or
+   context-dependent and could in principle be dodged by a different
+   input). The leading whitespace-skip before the id-digit scan has
+   already consumed every space/tab/newline/CR, so whatever non-digit
+   byte blocks the id-digit scan is guaranteed non-whitespace — which
+   means the second (space/tab-only) skip before the gen-digit scan
+   can't advance past it either, so the gen-digit scan fails at the
+   *identical* byte position for every possible input. No fixture
+   exists that avoids this; error-text assertion is the only
+   discriminator.
+3. `insertMetadataReference`'s leading-whitespace-trim test is masked
+   by its own next guard: an untrimmed body starts with a whitespace
+   byte instead of `<<`, so deleting the trim loop trips the
+   "malformed input" guard and falls back to wrapping the whole
+   (still-untrimmed) body in a fresh `<<...>>` shell, which still
+   contains both expected substrings — a bare `Contains` check stays
+   green. Discriminated via `bytes.Count(got, []byte("<<")) == 1`, the
+   same duplicate-key-counting technique as increment 1's
+   `insertOutputIntentsReference` fix.
+
+Two of the new tests' discriminating claims were independently
+re-verified via targeted half-mutations after `/advisor`'s adversarial
+pass flagged that the first draft asserted rather than demonstrated
+them: `TestFindLastStartxref_OffsetOutOfRange`'s "both operands
+independently" claim (confirmed: each half of the `||` condition,
+mutated alone, fails only its own subcase) and
+`TestInsertMetadataReference_WrapsNonDictBody`'s exact mutation
+output (a stale `42`-vs-`99` docstring literal was also caught and
+fixed in the same pass).
+
+Coverage ratchet updated: go_default 8807/14624 (5817 uncovered) →
+8818/14624 (5806 uncovered); go_duckdb 8885/14722 (5837 uncovered) →
+8896/14722 (5826 uncovered) — 11 statements newly covered, denominator
+flat on both tags (test-only change, matches the prediction exactly).
+The ratchet script's known exclude-filter flake (see
+`DEVELOPER_HANDBOOK.md`'s "coverage ratchet exclude-filter flake" entry; a background
+task is tracking the fix) reproduced once during this increment's
+`--update` run, reporting a spurious ~3× inflated REGRESSED before a
+clean re-run gave the correct numbers above — not accepted, re-run
+instead, per the established handling for that flake.
+
+**Not started:** `internal/pdfmeta` increment 2b (the call-chain
+functions themselves: `parseTrailerSizeAndRoot`, `InjectXMPStream`,
+`BuildXMPPacket` — 12 statements, needs staged fixtures built by
+corrupting a valid render/hand-rolled buffer and wrap-prefix
+discrimination on `InjectXMPStream`'s three error-propagation
+branches, per `/advisor`'s wrapping-chain-masking-risk warning from
+the original increment-2 plan review), then the remaining byte-surgery
+cluster (`InjectOutputIntent`, `MakePDFA3`, `InjectPAdESSignature`,
+the signature-field-rewriting functions, all 70–95%), then the rest of
+Phase 2 (remaining Go completion-tier packages at 70–99%),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
 `db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
 Phase 4 (root/App layer, 48.2%), Phase 5 (remaining frontend pure-logic
