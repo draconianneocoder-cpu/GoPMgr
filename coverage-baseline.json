@@ -4,11 +4,11 @@
     "total": 13195
   },
   "go_default": {
-    "covered": 8807,
+    "covered": 8818,
     "total": 14624
   },
   "go_duckdb": {
-    "covered": 8885,
+    "covered": 8896,
     "total": 14722
   }
 }
