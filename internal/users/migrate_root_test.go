@@ -203,6 +203,79 @@ func TestMigrateLegacyRoot_FallsBackToPreRelocationInstall(t *testing.T) {
 // entry points (DefaultRootDir, MigrateLegacyRoot) main.go's NewApp does,
 // under a real XDG_DATA_HOME override, so a regression of that bug fails
 // here loudly instead of shipping silently.
+// TestMigrateLegacyRoot_NewRootAlreadyInitialised covers MigrateLegacyRoot's
+// own early-return statement (as opposed to migrateLegacyRoot's identical
+// check, already covered by TestMigrateLegacyRootSkips's "new root already
+// initialised" subtest above). This is a coverage test, not a
+// guard-presence one: deleting MigrateLegacyRoot's own check produces the
+// exact same (false, nil) result, confirmed by direct mutation, because
+// migrateLegacyRoot repeats the identical os.Stat(newRoot/system.db) check
+// one call deeper (it needs its own copy regardless, since it's also
+// called per-candidate) and catches it there instead — the same
+// redundant-downstream-guard shape as internal/admin's
+// LogDocumentSignatureOutcome finding. The outer check is a pure
+// optimization (skips the legacyRootCandidates() call and one os.Stat per
+// candidate), not a second layer of correctness.
+func TestMigrateLegacyRoot_NewRootAlreadyInitialised(t *testing.T) {
+	newRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(newRoot, "system.db"), []byte("EXISTING"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	migrated, err := MigrateLegacyRoot(newRoot)
+	if err != nil || migrated {
+		t.Fatalf("MigrateLegacyRoot with an already-initialised newRoot: migrated=%v err=%v, want (false, nil)", migrated, err)
+	}
+}
+
+// TestMigrateLegacyRoot_NoLegacyInstallFound covers MigrateLegacyRoot's
+// final "no candidate matched" fallback after the loop over
+// legacyRootCandidates() exhausts without finding an installable legacy
+// root. This is a coverage test only, not break-verifiable: the statement
+// itself can't be deleted without a compile error (the function needs some
+// final return), so there is no mutation to run against it.
+func TestMigrateLegacyRoot_NoLegacyInstallFound(t *testing.T) {
+	xdg := t.TempDir() // no "PMForge" subdirectory created under it
+	t.Setenv("XDG_DATA_HOME", xdg)
+	newRoot := filepath.Join(xdg, "GoPMgr")
+
+	migrated, err := MigrateLegacyRoot(newRoot)
+	if err != nil || migrated {
+		t.Fatalf("MigrateLegacyRoot with no legacy install anywhere: migrated=%v err=%v, want (false, nil)", migrated, err)
+	}
+}
+
+// TestMigrateLegacyRoot_PropagatesCopyTreeError forces migrateLegacyRoot's
+// copyTree call to fail (a subdirectory the copy needs to create already
+// exists as a plain file under newRoot) and confirms MigrateLegacyRoot
+// propagates that error out through its own loop rather than swallowing it.
+// Uses $XDG_DATA_HOME to make legacyRootCandidates' real candidate-resolution
+// path test-controllable, since it re-reads the env var on every call.
+func TestMigrateLegacyRoot_PropagatesCopyTreeError(t *testing.T) {
+	xdgBase := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", xdgBase)
+
+	legacy := filepath.Join(xdgBase, "PMForge")
+	seedLegacyRoot(t, legacy) // writes legacy/system.db and legacy/alice/projects/p.pmforge
+
+	newRoot := filepath.Join(xdgBase, "GoPMgr")
+	if err := os.MkdirAll(newRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	// Collide: newRoot/alice exists as a plain file, so copyTree's
+	// os.MkdirAll for that directory fails.
+	if err := os.WriteFile(filepath.Join(newRoot, "alice"), []byte("collide"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	migrated, err := MigrateLegacyRoot(newRoot)
+	if err == nil {
+		t.Fatal("MigrateLegacyRoot with a blocked copyTree destination = nil error, want an error")
+	}
+	if migrated {
+		t.Fatal("MigrateLegacyRoot reported migrated=true despite a copyTree error")
+	}
+}
+
 func TestMigrateLegacyRoot_FindsXDGInstall(t *testing.T) {
 	xdg := t.TempDir()
 	t.Setenv("XDG_DATA_HOME", xdg)

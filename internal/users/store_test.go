@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 
 	"golang.org/x/crypto/argon2"
@@ -636,6 +637,152 @@ func TestEnsurePrivateSQLiteFiles_MainPathMissing(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "does-not-exist.db")
 	if err := ensurePrivateSQLiteFiles(path); err == nil {
 		t.Fatal("ensurePrivateSQLiteFiles on a missing path = nil, want an error")
+	}
+}
+
+// TestCopyTree_SkipsSymlinksAndIrregularFiles pins a real behavioral
+// contract — copyTree never copies symlinks or non-regular files, only
+// directories and regular files — but is NOT a guard-presence test for
+// either the symlink case (line ~617) or the default case (line ~621)
+// individually: deleting the symlink case's own body makes a symlink's
+// info.Mode().IsRegular() check (false, since Lstat-based mode carries
+// ModeSymlink) fall through to the identical default: nil return, so the
+// two arms are behaviorally indistinguishable from the caller's side, and
+// the default: case can't be deleted at all without leaving the switch
+// without a fallthrough return (a compile error). A named pipe
+// (syscall.Mkfifo, not a Unix socket: a socket's path here would be close
+// to macOS's ~104-byte sun_path limit, and Mkfifo has no such limit)
+// stands in for "some irregular file type," landing in the same default:
+// arm a real socket or device file would.
+//
+// syscall.Mkfifo is POSIX-only (absent on Windows), which is safe here:
+// this repository's CI never runs `go vet`/`go test` on a Windows runner
+// (release.yml's windows-latest job only runs `wails build`, which does
+// not compile _test.go files) — confirmed before writing this test, not
+// assumed. If a Windows test/vet job is ever added, this test will need a
+// `//go:build !windows` guard.
+func TestCopyTree_SkipsSymlinksAndIrregularFiles(t *testing.T) {
+	src := t.TempDir()
+	dst := filepath.Join(t.TempDir(), "dst")
+
+	if err := os.WriteFile(filepath.Join(src, "real.txt"), []byte("hi"), 0o644); err != nil {
+		t.Fatalf("write real.txt: %v", err)
+	}
+	if err := os.Symlink(filepath.Join(src, "real.txt"), filepath.Join(src, "link.txt")); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	fifoPath := filepath.Join(src, "myfifo")
+	if err := syscall.Mkfifo(fifoPath, 0o600); err != nil {
+		t.Fatalf("mkfifo: %v", err)
+	}
+
+	if err := copyTree(src, dst); err != nil {
+		t.Fatalf("copyTree: %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(dst, "link.txt")); !os.IsNotExist(err) {
+		t.Fatalf("link.txt should have been skipped, lstat err = %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(dst, "myfifo")); !os.IsNotExist(err) {
+		t.Fatalf("myfifo should have been skipped, lstat err = %v", err)
+	}
+	if got, err := os.ReadFile(filepath.Join(dst, "real.txt")); err != nil || string(got) != "hi" {
+		t.Fatalf("real.txt should have been copied: got %q err %v", got, err)
+	}
+}
+
+// TestCopyTree_PropagatesWalkError forces filepath.WalkDir's own walkErr
+// argument to be non-nil (src doesn't exist) and confirms copyTree
+// propagates it rather than swallowing it.
+func TestCopyTree_PropagatesWalkError(t *testing.T) {
+	src := filepath.Join(t.TempDir(), "does-not-exist")
+	if err := copyTree(src, filepath.Join(t.TempDir(), "dst")); err == nil {
+		t.Fatal("copyTree with a nonexistent src = nil, want an error")
+	}
+}
+
+// TestCopyFile_MkdirAllFails forces os.MkdirAll(filepath.Dir(dst), ...) to
+// fail by pre-occupying dst's parent directory with a plain file. Asserts
+// the substring "mkdir" rather than a bare non-nil check: deleting this
+// guard doesn't make copyFile fail differently, since os.Open(src) then
+// succeeds and os.OpenFile(dst) traverses the same colliding-file path,
+// producing a different but still non-nil "open ...: not a directory"
+// error (both real and cascaded errors happen to contain "not a
+// directory," which "mkdir" alone discriminates).
+func TestCopyFile_MkdirAllFails(t *testing.T) {
+	dir := t.TempDir()
+	collide := filepath.Join(dir, "collide")
+	if err := os.WriteFile(collide, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write collide: %v", err)
+	}
+	src := filepath.Join(dir, "src.txt")
+	if err := os.WriteFile(src, []byte("hi"), 0o644); err != nil {
+		t.Fatalf("write src: %v", err)
+	}
+	dst := filepath.Join(collide, "sub", "dst.txt")
+
+	err := copyFile(src, dst, 0o600)
+	if err == nil || !strings.Contains(err.Error(), "mkdir") {
+		t.Fatalf("copyFile with a blocked dst directory = %v, want a \"mkdir\" error", err)
+	}
+}
+
+// TestCopyFile_SourceOpenFails forces os.Open(src) to fail (nonexistent
+// src). Asserts "no such file or directory" rather than a bare non-nil
+// check: deleting this guard leaves `in` nil, and io.Copy(out, in) routes
+// through out.ReadFrom(in), whose read from a nil *os.File fails with the
+// unrelated "invalid argument" (os.ErrInvalid) instead — a value this
+// text can never match, discriminating the guard from its own deletion.
+func TestCopyFile_SourceOpenFails(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "does-not-exist.txt")
+	dst := filepath.Join(dir, "dst.txt")
+
+	err := copyFile(src, dst, 0o600)
+	if err == nil || !strings.Contains(err.Error(), "no such file or directory") {
+		t.Fatalf("copyFile with a missing src = %v, want \"no such file or directory\"", err)
+	}
+}
+
+// TestCopyFile_DestOpenFails forces os.OpenFile(dst, ...) to fail (dst is
+// an existing directory, not a file). Asserts "is a directory" rather than
+// a bare non-nil check: deleting this guard leaves `out` nil, and the same
+// nil-*os.File-Read cascade as TestCopyFile_SourceOpenFails above produces
+// "invalid argument" instead — this text discriminates the two.
+func TestCopyFile_DestOpenFails(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src.txt")
+	if err := os.WriteFile(src, []byte("hi"), 0o644); err != nil {
+		t.Fatalf("write src: %v", err)
+	}
+	dst := filepath.Join(dir, "dstdir")
+	if err := os.MkdirAll(dst, 0o700); err != nil {
+		t.Fatalf("mkdir dst: %v", err)
+	}
+
+	err := copyFile(src, dst, 0o600)
+	if err == nil || !strings.Contains(err.Error(), "is a directory") {
+		t.Fatalf("copyFile with dst as an existing directory = %v, want \"is a directory\"", err)
+	}
+}
+
+// TestCopyFile_IoCopyFails forces io.Copy(out, in) to fail (src is a
+// directory: os.Open succeeds on a directory, but reading from it fails).
+// Deliberately a bare non-nil check, not a pinned substring: deleting this
+// guard makes copyFile fall through to a valid `return out.Close()` on an
+// empty-but-successfully-created dst file, i.e. nil — genuinely
+// break-verifiable without pinning platform-specific wording, since on
+// Linux io.Copy may route a directory read through copy_file_range rather
+// than the "read ...: is a directory" text this produces on macOS.
+func TestCopyFile_IoCopyFails(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "srcdir")
+	if err := os.MkdirAll(src, 0o700); err != nil {
+		t.Fatalf("mkdir src: %v", err)
+	}
+	dst := filepath.Join(dir, "dst.txt")
+
+	if err := copyFile(src, dst, 0o600); err == nil {
+		t.Fatal("copyFile with src as a directory = nil, want an error")
 	}
 }
 

@@ -873,22 +873,80 @@ break-verified the same way as every other test this increment.
 that test forces to fail). `store.go`: 87.7% → 88.2%; package: 89.5% →
 89.8%.
 
-**Not started:** `internal/users` (`store.go` increment, sub-increment
-2 of 2 — filesystem-backed functions: `MigrateLegacyRoot`/
-`migrateLegacyRoot`/`copyTree`/`copyFile`), the final increment for the
-package, is next (`ensurePrivateDir` and `ensurePrivateSQLiteFiles` no
-longer need dedicated attention — the former is already 100%, and the
-latter's only remaining branch, a non-ENOENT sidecar chmod failure, is
-disclosed-untested rather than forceable, per the probe in this
-increment). Every forcing technique for the remaining functions was
-already probe-confirmed during this increment's planning, including
-`syscall.Mkfifo` itself (not just predicted from `sun_path` reasoning —
-actually run and confirmed to land in `copyTree`'s `default:` skip
-branch): symlink/named-pipe skip in `copyTree`; file/directory
-collisions for every `copyFile` branch; `XDG_DATA_HOME` env-var control
-for `MigrateLegacyRoot`'s real candidate-resolution path. It should be
-close to mechanical. After that, the rest of Phase 2 (remaining Go
-completion-tier packages at 70–99%),
+**`internal/users` (`store.go` increment, sub-increment 2 of 2 —
+filesystem-backed functions): 88.2% → 93.6% of `store.go` (89.8% →
+93.0% of the package). This closes out `internal/users` entirely** —
+every remaining uncovered line across `dek.go`, `recovery.go`, and
+`store.go` traces to a named, disclosed reason. 9 new tests close
+`MigrateLegacyRoot`, `migrateLegacyRoot`, `copyTree`, and `copyFile`;
+`MigrateLegacyRoot`, `migrateLegacyRoot`, and `copyFile` reach 100%.
+Every forcing technique was probe-confirmed before being written into
+a real test, including `syscall.Mkfifo` (not just predicted from
+`sun_path` reasoning — actually run and confirmed to land in
+`copyTree`'s `default:` skip branch, before the earlier same-day
+correction entry above finished writing that prediction down).
+
+`/advisor`'s plan review, conducted before any code was written,
+predicted four of the eleven tests' assertions would be masked as
+planned and specified the fix for each — all four confirmed exactly as
+predicted by direct mutation before finalizing:
+
+- **All four `copyFile` tests are cascade-prone by construction.**
+  Every guard in `copyFile` leaves a nil `*os.File` behind when
+  deleted, and nil-receiver `*os.File` methods return `os.ErrInvalid`
+  ("invalid argument") rather than panicking, so a downstream guard
+  always produces *some* non-nil error. `TestCopyFile_MkdirAllFails`
+  asserts "mkdir" (a deleted guard cascades into `os.OpenFile`'s "not a
+  directory," which happens to also contain that substring — probed
+  first, assertion written narrow enough to discriminate anyway).
+  `TestCopyFile_SourceOpenFails` asserts "no such file or directory"
+  (cascades to the disjoint "invalid argument" instead).
+  `TestCopyFile_DestOpenFails` asserts "is a directory" (same disjoint
+  cascade). `TestCopyFile_IoCopyFails` is deliberately a bare non-nil
+  check: deleting that guard falls through to a valid, empty-file
+  `out.Close()` — genuinely nil, not a cascade — and pinning
+  platform-specific wording would be unreliable, since Linux's
+  `io.Copy` may route a directory read through `copy_file_range`
+  rather than macOS's "read ...: is a directory" text.
+- **`copyTree`'s symlink and `default:` arms are behaviorally
+  identical, so neither is guard-verifiable individually.** Deleting
+  the symlink case's body makes a symlink fall through to
+  `default:`'s identical nil return (its `IsRegular()` check is false,
+  Lstat-based), and `default:` can't be deleted at all without a
+  "missing return" compile error. Kept the test — "symlinks and
+  irregular files are never copied" is a real contract — but disclosed
+  it as pinning behavior, not verifying either arm's presence: a
+  fourth distinct disclosed-limit shape this session, alongside
+  `recovery.go`'s error-unification and `internal/admin`'s
+  no-propagation disclosures.
+- **`MigrateLegacyRoot`'s own early-return guard is masked by
+  `migrateLegacyRoot`'s identical duplicate check one call deeper** —
+  the `internal/admin` redundant-downstream-guard shape recurring
+  again. Confirmed by direct mutation before writing the test: deleting
+  the outer check produces the exact same `(false, nil)`. Kept as a
+  documented pure-optimization comment rather than a guard-presence
+  test; `TestMigrateLegacyRoot_NoLegacyInstallFound` (the loop-exhausted
+  fallback) is coverage-only for the same underlying reason a different
+  branch can't be deleted at all — no mutation exists to run.
+
+The real break-verification test in that trio,
+`TestMigrateLegacyRoot_PropagatesCopyTreeError`, forces
+`migrateLegacyRoot`'s `copyTree` call to fail (a `newRoot` subdirectory
+pre-occupied by a file) and confirms `MigrateLegacyRoot` propagates the
+error out through its loop rather than swallowing it — genuinely
+break-verified, no cascade.
+
+Two branches stay disclosed-untested in `copyTree`: `filepath.Rel`'s
+error (unforceable — `WalkDir` always builds `path` from `src` via
+`Join`, so the two are always Rel-compatible) and `d.Info()`'s error (a
+mid-walk TOCTOU race with no deterministic, portable trigger).
+
+Coverage ratchet updated: go_default 8755/14627 (5872 uncovered) →
+8767/14627 (5860 uncovered); go_duckdb 8833/14725 (5892 uncovered) →
+8845/14725 (5880 uncovered).
+
+**Not started:** the rest of Phase 2 (remaining Go completion-tier
+packages at 70–99%),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
 `db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
 Phase 4 (root/App layer, 48.2%), Phase 5 (remaining frontend pure-logic
