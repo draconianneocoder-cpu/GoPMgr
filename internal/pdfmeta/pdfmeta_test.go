@@ -177,6 +177,149 @@ func TestParseDigits_BoundaryValues(t *testing.T) {
 	}
 }
 
+func TestWriteClassicXrefEntry_WritesFixedWidthEntry(t *testing.T) {
+	var buf bytes.Buffer
+	if err := writeClassicXrefEntry(&buf, 7, 1234, 5); err != nil {
+		t.Fatalf("writeClassicXrefEntry: %v", err)
+	}
+	want := "7 1\n0000001234 00005 n \n"
+	if buf.String() != want {
+		t.Fatalf("got %q, want %q", buf.String(), want)
+	}
+}
+
+// TestWriteClassicXrefEntry_AcceptsMaxWidthValues pins the guards' exact
+// off-by-one boundary: the largest offset/gen that still fit the 10- and
+// 5-digit fields (9999999999, 99999) must succeed, not just fail one past
+// it. Without this, the overflow tests alone (which fixture values far
+// past the limit) can't catch a `>` vs `>=` mistake in either guard — the
+// same gap TestParseDigits_BoundaryValues closed for parseDigits in
+// increment 4a. Confirmed by mutation: changing either guard to `>=`
+// leaves the whole suite green without this test.
+func TestWriteClassicXrefEntry_AcceptsMaxWidthValues(t *testing.T) {
+	var buf bytes.Buffer
+	if err := writeClassicXrefEntry(&buf, 1, 9999999999, 99999); err != nil {
+		t.Fatalf("writeClassicXrefEntry at the max field width: %v", err)
+	}
+	want := "1 1\n9999999999 99999 n \n"
+	if buf.String() != want {
+		t.Fatalf("got %q, want %q", buf.String(), want)
+	}
+}
+
+// TestWriteClassicXrefEntry_OffsetOverflowReturnsError covers the half of
+// the guard that is not reachable through the public Inject* functions with
+// a realistic fixture (it would take a ~9.3GB input PDF to produce an
+// offset this large), so it is exercised directly here instead. Confirmed
+// by mutation: removing the offset check lets this fixture through with
+// err == nil and a widened, mis-aligned entry.
+func TestWriteClassicXrefEntry_OffsetOverflowReturnsError(t *testing.T) {
+	var buf bytes.Buffer
+	err := writeClassicXrefEntry(&buf, 1, 10000000000, 0)
+	if err == nil {
+		t.Fatal("expected an error for an offset that overflows the 10-digit field")
+	}
+	if !strings.Contains(err.Error(), "10-digit field width") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestWriteClassicXrefEntry_GenOverflowReturnsError covers the guard half
+// that IS reachable through a realistic fixture — see
+// TestInjectXMPStream_RootGenOverflowReturnsError,
+// TestInjectOutputIntent_RootGenOverflowReturnsError, and
+// TestInjectPAdESSignature_RootGenOverflowReturnsError for the integration
+// paths that exercise this via a crafted /Root generation number. Confirmed
+// by mutation: removing the gen check lets this fixture through with
+// err == nil and a widened, mis-aligned entry.
+func TestWriteClassicXrefEntry_GenOverflowReturnsError(t *testing.T) {
+	var buf bytes.Buffer
+	err := writeClassicXrefEntry(&buf, 1, 0, 100000)
+	if err == nil {
+		t.Fatal("expected an error for a generation that overflows the 5-digit field")
+	}
+	if !strings.Contains(err.Error(), "5-digit field width") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// rootGenOverflowPDF returns a hand-built, single-object PDF whose Catalog
+// has generation number 100000 — over the classic xref format's 5-digit
+// field width. This is the only realistic (not multi-gigabyte) way to
+// reach writeClassicXrefEntry's generation-overflow guard through
+// InjectXMPStream/InjectOutputIntent/InjectPAdESSignature: catalogGen is
+// parsed straight out of the trailer's /Root entry by
+// parseTrailerSizeAndRoot and flows unchanged into every xref entry these
+// functions write for the rewritten Catalog. Modeled on swappedIDPDF
+// above. Note this fixture IS spec-invalid on its own terms (the PDF spec
+// caps generation numbers at 65535, matching the free-list entry's own
+// "65535 f" three lines above); writeClassicXrefEntry's guard is a
+// format-width check (99999), not a spec-conformance check, deliberately
+// looser than the spec so a spec-invalid-but-format-safe generation
+// (e.g. 70000) still formats correctly instead of being rejected here.
+func rootGenOverflowPDF() []byte {
+	var b bytes.Buffer
+	b.WriteString("%PDF-1.4\n")
+	b.WriteString("1 100000 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
+	xrefOff := b.Len()
+	b.WriteString("xref\n0 1\n0000000000 65535 f \n")
+	b.WriteString("trailer\n<<\n/Size 2\n/Root 1 100000 R\n>>\n")
+	fmt.Fprintf(&b, "startxref\n%d\n%%%%EOF\n", xrefOff)
+	return b.Bytes()
+}
+
+// TestInjectXMPStream_RootGenOverflowReturnsError covers the "xmp xref: %w"
+// wrap around writeClassicXrefEntry's generation guard. See
+// TestWriteClassicXrefEntry_GenOverflowReturnsError for the guard's own
+// direct test and rootGenOverflowPDF's docstring for why this fixture
+// reaches it without a multi-gigabyte input. Confirmed by mutation:
+// reverting the call site to the raw Fprintf lets this fixture through
+// with err == nil and a widened, mis-aligned xref entry.
+func TestInjectXMPStream_RootGenOverflowReturnsError(t *testing.T) {
+	_, err := InjectXMPStream(rootGenOverflowPDF(), []byte("<xmp/>"))
+	if err == nil {
+		t.Fatal("expected an error for a /Root generation that overflows the xref format's 5-digit field")
+	}
+	if !strings.Contains(err.Error(), "5-digit field width") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestInjectOutputIntent_RootGenOverflowReturnsError covers the
+// "output intent xref: %w" wrap around the Catalog re-write entry's
+// generation guard (the ICC-stream and OutputIntent-dict entries are
+// always written with gen 0, so only the Catalog entry can trigger this).
+// See TestInjectXMPStream_RootGenOverflowReturnsError above for the
+// fixture rationale. Confirmed by mutation: reverting the call site to
+// the raw Fprintf lets this fixture through with err == nil.
+func TestInjectOutputIntent_RootGenOverflowReturnsError(t *testing.T) {
+	_, err := InjectOutputIntent(rootGenOverflowPDF(), []byte("fake-icc-profile"))
+	if err == nil {
+		t.Fatal("expected an error for a /Root generation that overflows the xref format's 5-digit field")
+	}
+	if !strings.Contains(err.Error(), "5-digit field width") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestInjectPAdESSignature_RootGenOverflowReturnsError covers the
+// "signature xref: %w" wrap around the loop that writes one xref entry
+// per rewritten/new object — gens[0] is catalogGen, so it triggers on the
+// loop's first iteration. See TestInjectXMPStream_RootGenOverflowReturnsError
+// above for the fixture rationale. Confirmed by mutation: reverting the
+// call site to the raw Fprintf lets this fixture through with err == nil.
+func TestInjectPAdESSignature_RootGenOverflowReturnsError(t *testing.T) {
+	_, err := InjectPAdESSignature(rootGenOverflowPDF(), func(b []byte) ([]byte, error) {
+		return []byte{0xde, 0xad, 0xbe, 0xef}, nil
+	})
+	if err == nil {
+		t.Fatal("expected an error for a /Root generation that overflows the xref format's 5-digit field")
+	}
+	if !strings.Contains(err.Error(), "5-digit field width") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
 func TestFindLastStartxref(t *testing.T) {
 	pdf := minimalPDF()
 	off, err := findLastStartxref(pdf)
@@ -808,9 +951,21 @@ func TestInjectXMPStream_EndToEnd(t *testing.T) {
 	}
 }
 
+// TestInjectXMPStream_RejectsEmpty's first case asserts the guard's own
+// error text, not a bare err != nil: nil pdfBytes also fails
+// findLastStartxref a few lines later with a different, still-non-nil
+// error, so a bare check would pass even with this guard deleted
+// (found and confirmed by mutation while covering the analogous guard
+// in InjectPAdESSignature — see TestInjectPAdESSignature_RejectsEmpty).
+// The second case doesn't have this risk: minimalPDF() is valid, so
+// nothing else in the call chain can fail before the XMP-packet guard.
 func TestInjectXMPStream_RejectsEmpty(t *testing.T) {
-	if _, err := InjectXMPStream(nil, []byte("xmp")); err == nil {
-		t.Error("expected error on empty PDF")
+	_, err := InjectXMPStream(nil, []byte("xmp"))
+	if err == nil {
+		t.Fatal("expected error on empty PDF")
+	}
+	if !strings.Contains(err.Error(), "empty PDF input") {
+		t.Errorf("expected the guard's own error text, got %q", err)
 	}
 	if _, err := InjectXMPStream(minimalPDF(), nil); err == nil {
 		t.Error("expected error on empty XMP")
@@ -927,6 +1082,45 @@ func TestInjectXMPStream_SwapsXrefEntriesWhenCatalogIDGreaterThanMetaID(t *testi
 	}
 	if !bytes.HasPrefix(rest, []byte("4 1\n")) {
 		t.Errorf("expected the lower ID (metaID=4) listed first after the swap, got %q", rest[:min(len(rest), 20)])
+	}
+}
+
+// swappedIDGenOverflowPDF combines swappedIDPDF's ID-swap trick with a
+// generation number that overflows the xref format's 5-digit field: after
+// the "first > second" swap, the Catalog's huge generation lands in
+// secondGen, not firstGen — the only way to reach the *second*
+// writeClassicXrefEntry call's error-wrap in InjectXMPStream, since a
+// non-swapped fixture always fails on the first call already (see
+// rootGenOverflowPDF's docstring). Deliberately spec-violating on two
+// independent counts, neither of which this codebase's own guards reject:
+// the Catalog ID exceeding /Size (same as swappedIDPDF), and the
+// generation number exceeding the spec's 65535 cap (see
+// rootGenOverflowPDF's docstring for why writeClassicXrefEntry's guard is
+// a looser format-width check, not a spec-conformance check). Covers
+// defensive code, not realistic input.
+func swappedIDGenOverflowPDF() []byte {
+	var b bytes.Buffer
+	b.WriteString("%PDF-1.4\n")
+	b.WriteString("9 100000 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
+	xrefOff := b.Len()
+	b.WriteString("xref\n0 1\n0000000000 65535 f \n")
+	b.WriteString("trailer\n<<\n/Size 4\n/Root 9 100000 R\n>>\n")
+	fmt.Fprintf(&b, "startxref\n%d\n%%%%EOF\n", xrefOff)
+	return b.Bytes()
+}
+
+// TestInjectXMPStream_SecondEntryRootGenOverflowReturnsError covers the
+// second writeClassicXrefEntry call's error wrap — see
+// swappedIDGenOverflowPDF's docstring for why the first call alone can't
+// reach it. Confirmed by mutation: reverting the second call site to the
+// raw Fprintf lets this fixture through with err == nil.
+func TestInjectXMPStream_SecondEntryRootGenOverflowReturnsError(t *testing.T) {
+	_, err := InjectXMPStream(swappedIDGenOverflowPDF(), []byte("<xmp/>"))
+	if err == nil {
+		t.Fatal("expected an error for a /Root generation that overflows the xref format's 5-digit field")
+	}
+	if !strings.Contains(err.Error(), "5-digit field width") {
+		t.Errorf("expected the guard's own error text, got %q", err)
 	}
 }
 
@@ -1484,6 +1678,106 @@ func TestBuildXMPPacket_IncludesDescriptionWhenSet(t *testing.T) {
 	needle := []byte(`<dc:description><rdf:Alt><rdf:li xml:lang="x-default">a test description</rdf:li>`)
 	if !bytes.Contains(pkt, needle) {
 		t.Errorf("expected /Description to appear when set, got %q", string(pkt))
+	}
+}
+
+// TestInjectPAdESSignature_RejectsEmpty asserts the guard's own error
+// text, not a bare err != nil: a nil pdfBytes also fails findLastStartxref
+// a few lines later with a different, still-non-nil error, so a bare
+// check would pass even with this guard deleted (confirmed by mutation).
+func TestInjectPAdESSignature_RejectsEmpty(t *testing.T) {
+	_, err := InjectPAdESSignature(nil, func(b []byte) ([]byte, error) { return b, nil })
+	if err == nil {
+		t.Fatal("expected error on empty PDF")
+	}
+	if !strings.Contains(err.Error(), "empty PDF for signing") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// Break-verified with a mutation-testing note: with this guard disabled,
+// the fixture doesn't fail cleanly — it panics on the nil call a few
+// lines later (invalid memory address). That panic still fails the test
+// (Go's test runner reports it as a failure), so it's a valid red signal,
+// just not a clean error return.
+func TestInjectPAdESSignature_RejectsNilSignRanges(t *testing.T) {
+	_, err := InjectPAdESSignature(minimalPDF(), nil)
+	if err == nil {
+		t.Fatal("expected error on nil signRanges callback")
+	}
+	if !strings.Contains(err.Error(), "signRanges callback required") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestInjectPAdESSignature_PropagatesLocateStartxrefError covers the
+// "pdfmeta: locate startxref: %w" wrap — same fixture pattern as
+// TestInjectXMPStream_PropagatesLocateStartxrefError.
+func TestInjectPAdESSignature_PropagatesLocateStartxrefError(t *testing.T) {
+	_, err := InjectPAdESSignature([]byte("%PDF-1.4\nno relevant marker here\n"), func(b []byte) ([]byte, error) { return b, nil })
+	if err == nil {
+		t.Fatal("expected an error when startxref is absent")
+	}
+	if !strings.Contains(err.Error(), "pdfmeta: locate startxref:") {
+		t.Errorf("expected the locate-startxref wrap prefix, got %q", err)
+	}
+}
+
+// TestInjectPAdESSignature_PropagatesParseTrailerError covers the
+// "pdfmeta: parse trailer: %w" wrap — same fixture pattern as
+// TestInjectXMPStream_PropagatesParseTrailerError.
+func TestInjectPAdESSignature_PropagatesParseTrailerError(t *testing.T) {
+	_, err := InjectPAdESSignature([]byte("%PDF-1.4\nxxxx\nstartxref\n5\n%%EOF\n"), func(b []byte) ([]byte, error) { return b, nil })
+	if err == nil {
+		t.Fatal("expected an error when the trailer keyword is absent")
+	}
+	if !strings.Contains(err.Error(), "pdfmeta: parse trailer:") {
+		t.Errorf("expected the parse-trailer wrap prefix, got %q", err)
+	}
+}
+
+// TestInjectPAdESSignature_PropagatesLocateCatalogError covers the
+// "pdfmeta: locate Catalog: %w" wrap — same fixture pattern as
+// TestInjectXMPStream_PropagatesLocateCatalogError.
+func TestInjectPAdESSignature_PropagatesLocateCatalogError(t *testing.T) {
+	b := []byte("%PDF-1.4\ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n5\n%%EOF\n")
+	_, err := InjectPAdESSignature(b, func(b []byte) ([]byte, error) { return b, nil })
+	if err == nil {
+		t.Fatal("expected an error when the Catalog object is absent")
+	}
+	if !strings.Contains(err.Error(), "pdfmeta: locate Catalog:") {
+		t.Errorf("expected the locate-Catalog wrap prefix, got %q", err)
+	}
+}
+
+// TestInjectPAdESSignature_AddsTrailingNewlineWhenMissing covers the
+// "pdfBytes[base-1] != '\n'" guard. minimalPDF() already ends in '\n', so
+// the fixture trims it to force the guard to fire. Same discriminator
+// approach as TestInjectXMPStream_AddsTrailingNewlineWhenMissing: with the
+// guard deleted, the appended signature object's leading digit glues
+// directly onto the trimmed fixture's last byte with no separator.
+func TestInjectPAdESSignature_AddsTrailingNewlineWhenMissing(t *testing.T) {
+	pdfBytes := bytes.TrimRight(minimalPDF(), "\n")
+	out, err := InjectPAdESSignature(pdfBytes, func(b []byte) ([]byte, error) { return []byte{0xde, 0xad, 0xbe, 0xef}, nil })
+	if err != nil {
+		t.Fatalf("InjectPAdESSignature: %v", err)
+	}
+	if out[len(pdfBytes)] != '\n' {
+		t.Errorf("expected a newline inserted immediately after the original bytes, got %q", out[len(pdfBytes):min(len(out), len(pdfBytes)+20)])
+	}
+}
+
+// TestInjectPAdESSignature_PropagatesSignRangesError covers the
+// "pdfmeta: range signing failed: %w" wrap around the caller-supplied
+// signRanges callback.
+func TestInjectPAdESSignature_PropagatesSignRangesError(t *testing.T) {
+	wantErr := fmt.Errorf("boom")
+	_, err := InjectPAdESSignature(minimalPDF(), func(b []byte) ([]byte, error) { return nil, wantErr })
+	if err == nil {
+		t.Fatal("expected an error when signRanges fails")
+	}
+	if !strings.Contains(err.Error(), "pdfmeta: range signing failed:") {
+		t.Errorf("expected the range-signing wrap prefix, got %q", err)
 	}
 }
 

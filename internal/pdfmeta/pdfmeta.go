@@ -172,10 +172,12 @@ func InjectXMPStream(pdfBytes []byte, xmpPacket []byte) ([]byte, error) {
 		firstOff, secondOff = secondOff, firstOff
 		firstGen, secondGen = secondGen, firstGen
 	}
-	fmt.Fprintf(&appended, "%d 1\n", first)
-	fmt.Fprintf(&appended, "%010d %05d n \n", firstOff, firstGen)
-	fmt.Fprintf(&appended, "%d 1\n", second)
-	fmt.Fprintf(&appended, "%010d %05d n \n", secondOff, secondGen)
+	if err := writeClassicXrefEntry(&appended, first, firstOff, firstGen); err != nil {
+		return nil, fmt.Errorf("xmp xref: %w", err)
+	}
+	if err := writeClassicXrefEntry(&appended, second, secondOff, secondGen); err != nil {
+		return nil, fmt.Errorf("xmp xref: %w", err)
+	}
 
 	appended.WriteString("trailer\n<<\n")
 	fmt.Fprintf(&appended, "/Size %d\n", trailerSize+1)
@@ -213,6 +215,28 @@ func parseDigits(digits []byte) (int, error) {
 		n = n*10 + d
 	}
 	return n, nil
+}
+
+// writeClassicXrefEntry writes one classic-xref-table entry in the fixed
+// 20-byte form the PDF spec requires ("nnnnnnnnnn ggggg n \n": 10 digits for
+// the offset, 5 for the generation). Unlike shiftClassicXrefOffsets, which
+// overwrites an existing fixed-width field with copy() and so truncates a
+// too-large value, fmt.Fprintf's %010d/%05d verbs never truncate — an
+// overflowing value simply widens the field past its declared width,
+// shifting every entry after it and corrupting the table. The offset bound
+// (~9.3GB) is unreachable for this application's inputs; the generation
+// bound (99999) is reachable from a crafted /Root entry with an unusually
+// large generation number, so both are guarded rather than only the
+// practical one.
+func writeClassicXrefEntry(w *bytes.Buffer, id, offset, gen int) error {
+	if offset > 9999999999 {
+		return fmt.Errorf("xref entry offset %d exceeds the classic xref format's 10-digit field width", offset)
+	}
+	if gen > 99999 {
+		return fmt.Errorf("xref entry generation %d exceeds the classic xref format's 5-digit field width", gen)
+	}
+	fmt.Fprintf(w, "%d 1\n%010d %05d n \n", id, offset, gen)
+	return nil
 }
 
 // findLastStartxref scans backwards from the end for the literal
@@ -560,16 +584,19 @@ func InjectOutputIntent(pdfBytes []byte, iccProfile []byte) ([]byte, error) {
 		first, second = second, first
 		firstOff, secondOff = secondOff, firstOff
 	}
-	fmt.Fprintf(&appended, "%d 1\n", first)
-	fmt.Fprintf(&appended, "%010d %05d n \n", firstOff, firstGen)
-	fmt.Fprintf(&appended, "%d 1\n", second)
-	fmt.Fprintf(&appended, "%010d %05d n \n", secondOff, secondGen)
+	if err := writeClassicXrefEntry(&appended, first, firstOff, firstGen); err != nil {
+		return nil, fmt.Errorf("output intent xref: %w", err)
+	}
+	if err := writeClassicXrefEntry(&appended, second, secondOff, secondGen); err != nil {
+		return nil, fmt.Errorf("output intent xref: %w", err)
+	}
 
 	// Also rewrite the Catalog (it already existed, so we need an entry for it too)
 	// The Catalog is being overwritten in place in the incremental sense.
 	// We must include it in the xref as well.
-	fmt.Fprintf(&appended, "%d 1\n", catalogID)
-	fmt.Fprintf(&appended, "%010d %05d n \n", catalogObjOffset, catalogGen)
+	if err := writeClassicXrefEntry(&appended, catalogID, catalogObjOffset, catalogGen); err != nil {
+		return nil, fmt.Errorf("output intent xref: %w", err)
+	}
 
 	appended.WriteString("trailer\n<<\n")
 	fmt.Fprintf(&appended, "/Size %d\n", trailerSize+2) // we added two objects
@@ -1007,7 +1034,9 @@ func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, erro
 		}
 	}
 	for i := 0; i < len(ids); i++ {
-		fmt.Fprintf(&appended, "%d 1\n%010d %05d n \n", ids[i], offsets[i], gens[i])
+		if err := writeClassicXrefEntry(&appended, ids[i], offsets[i], gens[i]); err != nil {
+			return nil, fmt.Errorf("signature xref: %w", err)
+		}
 	}
 	appended.WriteString("trailer\n<<\n")
 	fmt.Fprintf(&appended, "/Size %d\n", trailerSize+2)
@@ -1022,14 +1051,30 @@ func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, erro
 	out = append(out, appended.Bytes()...)
 
 	// === Find exact position of the Contents hex value in the final file ===
+	//
+	// The five guards below (through the ByteRange-malformed check) are
+	// unreachable — and one is provably impossible — through any input to
+	// this function, not merely hard to construct a fixture for. They are
+	// kept anyway as defense-in-depth: each checks an invariant this same
+	// function establishes a few lines earlier, and a future edit to
+	// placeholderHexLen, byteRangePlaceholderLen, or the write order above
+	// could silently violate that invariant and corrupt a signed
+	// document's declared byte range without them. Coverage gap disclosed
+	// in TEST_COVERAGE_LEDGER.md rather than forced via an unrealistic
+	// fixture or removed as dead code.
 	contentsTag := []byte("/Contents <")
 	tagIdx := bytes.Index(out[sigObjOffset:], contentsTag)
 	if tagIdx < 0 {
+		// Unreachable: contentsTag is written unconditionally by the
+		// "/Contents <...>" Fprintf above, with no branch in between.
 		return nil, fmt.Errorf("pdfmeta: could not locate /Contents in signature dictionary")
 	}
 	contentsHexStart := sigObjOffset + tagIdx + len(contentsTag)
 	contentsHexEnd := contentsHexStart + placeholderHexLen
 	if contentsHexEnd >= len(out) || out[contentsHexEnd] != '>' {
+		// Unreachable (both the fallback lookup and its own error path):
+		// bytes.Repeat writes exactly placeholderHexLen bytes followed by
+		// '>', so contentsHexEnd always lands on the real '>' already.
 		closeRel := bytes.IndexByte(out[contentsHexStart:], '>')
 		if closeRel < 0 {
 			return nil, fmt.Errorf("pdfmeta: could not locate closing /Contents delimiter")
@@ -1044,6 +1089,9 @@ func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, erro
 	// Range 2: contentsEnd .. end of file (after the closing '>')
 	byteRange := fmt.Sprintf("0 %d %d %d", contentsStart, contentsEnd, len(out)-contentsEnd)
 	if len(byteRange) > byteRangePlaceholderLen {
+		// Provably impossible, not just unreachable: even three
+		// max-int64 (19-digit) offsets formatted into "0 %d %d %d" total
+		// at most 61 characters, under byteRangePlaceholderLen (96).
 		return nil, fmt.Errorf("pdfmeta: ByteRange too large for placeholder")
 	}
 
@@ -1051,11 +1099,15 @@ func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, erro
 	brTag := []byte("/ByteRange [")
 	brIdx := bytes.Index(out[sigObjOffset:], brTag)
 	if brIdx < 0 {
+		// Unreachable: brTag is written unconditionally by the
+		// "/ByteRange [...]" Fprintf above, with no branch in between.
 		return nil, fmt.Errorf("pdfmeta: could not locate /ByteRange in signature dictionary")
 	}
 	brValueStart := sigObjOffset + brIdx + len(brTag)
 	brValueEnd := brValueStart + byteRangePlaceholderLen
 	if brValueEnd >= len(out) || out[brValueEnd] != ']' {
+		// Unreachable: the placeholder is exactly byteRangePlaceholderLen
+		// spaces followed by ']', written unconditionally above.
 		return nil, fmt.Errorf("pdfmeta: ByteRange placeholder malformed")
 	}
 	copy(out[brValueStart:brValueEnd], bytes.Repeat([]byte(" "), byteRangePlaceholderLen))
