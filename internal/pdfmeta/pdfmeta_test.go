@@ -18,8 +18,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf16"
 
 	"github.com/digitorus/pkcs7"
+	"github.com/go-pdf/fpdf"
 
 	pmcrypto "gopmgr/internal/crypto"
 )
@@ -223,6 +225,128 @@ func TestInsertMetadataReference_ReplacesExisting(t *testing.T) {
 	}
 	if bytes.Contains(got, []byte("/Metadata 7 0 R")) {
 		t.Errorf("old /Metadata 7 0 R should have been replaced: %q", string(got))
+	}
+}
+
+// TestInsertOutputIntentsReference_TrimsLeadingWhitespace covers the
+// leading-whitespace trim loop's body, which the package's other tests
+// never exercise (their fixture catalogs start with "<<" directly, no
+// leading whitespace).
+func TestInsertOutputIntentsReference_TrimsLeadingWhitespace(t *testing.T) {
+	orig := []byte("  \n\t<< /Type /Catalog /Pages 2 0 R >>")
+	got := insertOutputIntentsReference(orig, 99)
+	if !bytes.Contains(got, []byte("/OutputIntents [ 99 0 R ]")) {
+		t.Fatalf("expected /OutputIntents insertion, got %q", string(got))
+	}
+	if !bytes.Contains(got, []byte("/Pages 2 0 R")) {
+		t.Errorf("lost /Pages entry: %q", string(got))
+	}
+}
+
+// TestInsertOutputIntentsReference_WrapsNonDictBody covers the "malformed
+// input" branch: catalogBody doesn't start with "<<", so the function
+// wraps it in a fresh dictionary rather than trying to edit it in place.
+func TestInsertOutputIntentsReference_WrapsNonDictBody(t *testing.T) {
+	orig := []byte("/Type /Catalog")
+	got := insertOutputIntentsReference(orig, 42)
+	if !bytes.HasPrefix(got, []byte("<<")) || !bytes.HasSuffix(got, []byte(">>")) {
+		t.Fatalf("expected the result to be wrapped in a fresh dict, got %q", string(got))
+	}
+	if !bytes.Contains(got, []byte("/OutputIntents [ 42 0 R ]")) {
+		t.Errorf("expected /OutputIntents insertion, got %q", string(got))
+	}
+	if !bytes.Contains(got, orig) {
+		t.Errorf("original body should be preserved inside the wrapper, got %q", string(got))
+	}
+}
+
+// TestInsertOutputIntentsReference_ReplacesExistingArrayValue covers the
+// "already has an /OutputIntents array" branch's array-skipping loop: it
+// must track bracket depth to find the array's closing "]", not just the
+// first one (real OutputIntents arrays are one level deep, but the depth
+// counter exists precisely so a "]" belonging to something else in a
+// deeper structure can't be mistaken for the end).
+func TestInsertOutputIntentsReference_ReplacesExistingArrayValue(t *testing.T) {
+	orig := []byte("<< /Type /Catalog /OutputIntents [ 3 0 R ] /Pages 2 0 R >>")
+	got := insertOutputIntentsReference(orig, 7)
+	if n := bytes.Count(got, []byte("/OutputIntents")); n != 1 {
+		t.Fatalf("expected exactly one /OutputIntents key, got %d in %q", n, string(got))
+	}
+	if !bytes.Contains(got, []byte("/OutputIntents [ 7 0 R ]")) {
+		t.Errorf("expected the new reference, got %q", string(got))
+	}
+	if bytes.Contains(got, []byte("[ 3 0 R ]")) {
+		t.Errorf("old array value should have been replaced, got %q", string(got))
+	}
+	if !bytes.Contains(got, []byte("/Pages 2 0 R")) {
+		t.Errorf("lost /Pages entry: %q", string(got))
+	}
+}
+
+// TestInsertOutputIntentsReference_ReplacesExistingIndirectRefValue covers
+// the array-skipping loop's OTHER exit: an /OutputIntents value that is a
+// bare indirect reference ("3 0 R"), not an array, so the loop never sees
+// a "[" and must instead stop at the next key's leading "/" — the
+// depth == 0 && trimmed[end] == '/' arm, distinct from the "]" arm above.
+func TestInsertOutputIntentsReference_ReplacesExistingIndirectRefValue(t *testing.T) {
+	orig := []byte("<< /Type /Catalog /OutputIntents 3 0 R /Pages 2 0 R >>")
+	got := insertOutputIntentsReference(orig, 11)
+	if n := bytes.Count(got, []byte("/OutputIntents")); n != 1 {
+		t.Fatalf("expected exactly one /OutputIntents key, got %d in %q", n, string(got))
+	}
+	if !bytes.Contains(got, []byte("/OutputIntents [ 11 0 R ]")) {
+		t.Errorf("expected the new reference, got %q", string(got))
+	}
+	if bytes.Contains(got, []byte("OutputIntents 3 0 R")) {
+		t.Errorf("old indirect-ref value should have been replaced, got %q", string(got))
+	}
+	if !bytes.Contains(got, []byte("/Pages 2 0 R")) {
+		t.Errorf("lost /Pages entry: %q", string(got))
+	}
+}
+
+// TestInsertOutputIntentsReference_ReplacesValueEndingAtDictClose covers
+// the array-skipping loop's third exit arm: an /OutputIntents value
+// immediately followed by the dict's closing ">>" with no further key —
+// depth == 0 && trimmed[end] == '>' && the next char is also '>'.
+func TestInsertOutputIntentsReference_ReplacesValueEndingAtDictClose(t *testing.T) {
+	orig := []byte("<< /Type /Catalog /OutputIntents 3 0 R>>")
+	got := insertOutputIntentsReference(orig, 5)
+	if !bytes.Contains(got, []byte("/OutputIntents [ 5 0 R ]")) {
+		t.Fatalf("expected the new reference, got %q", string(got))
+	}
+	if !bytes.HasSuffix(bytes.TrimSpace(got), []byte(">>")) {
+		t.Errorf("expected the dict to still close properly, got %q", string(got))
+	}
+}
+
+// TestInsertOutputIntentsReference_HandlesUnterminatedArray pins defined
+// behavior for a malformed catalog whose /OutputIntents array never
+// closes: the array-skipping loop must exit via its "end < len(trimmed)"
+// condition going false, not via any of its three break arms, and the
+// function must still return without panicking.
+func TestInsertOutputIntentsReference_HandlesUnterminatedArray(t *testing.T) {
+	orig := []byte("<< /Type /Catalog /OutputIntents [ 3 0 R")
+	got := insertOutputIntentsReference(orig, 13)
+	if !bytes.Contains(got, []byte("/OutputIntents [ 13 0 R ]")) {
+		t.Fatalf("expected the new reference even for malformed input, got %q", string(got))
+	}
+}
+
+// TestInsertOutputIntentsReference_InsertsFreshEntry covers the "no
+// existing /OutputIntents key" branch (the common case, already exercised
+// indirectly by TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog
+// below). This is a coverage test, not a guard-presence one: the branch is
+// this function's final statement with no following code, so deleting it
+// is a "missing return" compile error — there's no mutation to run.
+func TestInsertOutputIntentsReference_InsertsFreshEntry(t *testing.T) {
+	orig := []byte("<< /Type /Catalog /Pages 2 0 R >>")
+	got := insertOutputIntentsReference(orig, 9)
+	if !bytes.Contains(got, []byte("/OutputIntents [ 9 0 R ]")) {
+		t.Fatalf("expected /OutputIntents insertion, got %q", string(got))
+	}
+	if !bytes.Contains(got, []byte("/Pages 2 0 R")) {
+		t.Errorf("lost /Pages entry: %q", string(got))
 	}
 }
 
@@ -714,6 +838,134 @@ func TestDefaultICCProfile_ReturnsCopy(t *testing.T) {
 func TestHasDefaultICC_ReturnsTrue(t *testing.T) {
 	if !HasDefaultICC() {
 		t.Error("HasDefaultICC() = false, want true")
+	}
+}
+
+// utf16beString encodes s as UTF-16BE with a leading BOM (0xFEFF), the
+// exact form fpdf.SetTitle/SetAuthor/etc. store internally when called
+// with isUTF8=true (see go-pdf/fpdf's utf8toutf16). ApplyPDFAMetadata
+// always passes true, and fpdf's own putinfo() writes each field as
+// "/Key (<those bytes>)" with the value immediately adjacent to the key —
+// confirmed by direct inspection of fpdf@v0.9.0's putinfo/textstring
+// before relying on it — so "/Key (" + utf16beString(want) is a reliable,
+// specific discriminator: a bare bytes.Contains(output, utf16beString(x))
+// would also match if x appears as some OTHER field's value.
+func utf16beString(s string) []byte {
+	var buf bytes.Buffer
+	buf.Write([]byte{0xFE, 0xFF})
+	for _, r := range utf16.Encode([]rune(s)) {
+		buf.WriteByte(byte(r >> 8))
+		buf.WriteByte(byte(r))
+	}
+	return buf.Bytes()
+}
+
+// renderMinimalPDF applies fn to a fresh single-page fpdf document and
+// returns the rendered bytes, for tests that need to inspect what
+// ApplyPDFAMetadata actually wrote into the PDF's /Info dictionary.
+func renderMinimalPDF(t *testing.T, fn func(*fpdf.Fpdf)) []byte {
+	t.Helper()
+	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf.AddPage()
+	fn(pdf)
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
+		t.Fatalf("render PDF: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// TestApplyPDFAMetadata_NilPDFIsNoop covers the pdf == nil guard. Unlike
+// this package's error-returning functions, this guard break-verifies via
+// a PANIC (a nil-pointer method call), not differing error text: deleting
+// it and calling pdf.SetTitle on a nil *fpdf.Fpdf crashes the test.
+func TestApplyPDFAMetadata_NilPDFIsNoop(t *testing.T) {
+	ApplyPDFAMetadata(nil, XMPSpec{Title: "should not panic"})
+}
+
+// TestApplyPDFAMetadata_SetsAllFieldsWhenProvided pins that every
+// caller-supplied field lands in the PDF's /Info dictionary. Creator is
+// always "GoPMgr" regardless of spec — ApplyPDFAMetadata hardcodes it and
+// ignores XMPSpec.CreatorTool entirely, unlike BuildXMPPacket (see
+// pdfmeta.go), which does honor CreatorTool for the XMP packet's
+// <xmp:CreatorTool> element. This is an observed inconsistency between
+// the two metadata surfaces, not verified as intentional; flagged for a
+// follow-up rather than silently pinned as if it were the specified
+// contract.
+func TestApplyPDFAMetadata_SetsAllFieldsWhenProvided(t *testing.T) {
+	b := renderMinimalPDF(t, func(pdf *fpdf.Fpdf) {
+		ApplyPDFAMetadata(pdf, XMPSpec{
+			Title:    "My Title",
+			Subject:  "My Subject",
+			Author:   "Alice",
+			Keywords: []string{"one", "two", "three"},
+		})
+	})
+	for key, want := range map[string]string{
+		"/Title":    "My Title",
+		"/Subject":  "My Subject",
+		"/Author":   "Alice",
+		"/Creator":  "GoPMgr",
+		"/Keywords": "one, two, three",
+	} {
+		needle := append([]byte(key+" ("), utf16beString(want)...)
+		if !bytes.Contains(b, needle) {
+			t.Errorf("%s: want value %q adjacent to the key, not found", key, want)
+		}
+	}
+}
+
+// TestApplyPDFAMetadata_DefaultsAuthorWhenEmpty covers the
+// "spec.Author == ”" default branch. Asserting a bare
+// bytes.Contains(b, utf16beString("GoPMgr")) would be masked: Creator is
+// unconditionally set to "GoPMgr" a few lines later regardless of this
+// guard, so that substring is always present either way. The key-adjacent
+// needle ("/Author (" + the encoded bytes) discriminates: with the guard
+// present, /Author's value encodes "GoPMgr"; with it deleted, SetAuthor("")
+// still emits an /Author key (fpdf's UTF-16 encoding of "" is a 2-byte BOM,
+// which the field-non-empty check on the fpdf side still treats as
+// present) but with an empty value — confirmed by direct inspection of
+// fpdf's putinfo/SetAuthor before relying on it, not assumed.
+func TestApplyPDFAMetadata_DefaultsAuthorWhenEmpty(t *testing.T) {
+	b := renderMinimalPDF(t, func(pdf *fpdf.Fpdf) {
+		ApplyPDFAMetadata(pdf, XMPSpec{})
+	})
+	needle := append([]byte("/Author ("), utf16beString("GoPMgr")...)
+	if !bytes.Contains(b, needle) {
+		t.Error("expected /Author to default to \"GoPMgr\" when unset")
+	}
+}
+
+// TestApplyPDFAMetadata_OmitsTitleAndSubjectWhenEmpty covers the
+// "spec.Title/Subject != ”" guards. Both break-verify via key absence,
+// not value comparison: SetTitle("")/SetSubject("") would still each
+// leave a non-empty (2-byte BOM) internal string on the fpdf side, so
+// putinfo would still emit an empty "/Title ()"/"/Subject ()" key if these
+// guards were deleted — only the key's total absence distinguishes
+// "guard ran and skipped the call" from "guard was deleted."
+func TestApplyPDFAMetadata_OmitsTitleAndSubjectWhenEmpty(t *testing.T) {
+	b := renderMinimalPDF(t, func(pdf *fpdf.Fpdf) {
+		ApplyPDFAMetadata(pdf, XMPSpec{})
+	})
+	if bytes.Contains(b, []byte("/Title (")) {
+		t.Error("expected no /Title key when spec.Title is empty")
+	}
+	if bytes.Contains(b, []byte("/Subject (")) {
+		t.Error("expected no /Subject key when spec.Subject is empty")
+	}
+}
+
+// TestApplyPDFAMetadata_SingleKeywordSkipsJoinLoop pins that a
+// single-element Keywords slice doesn't pick up a spurious leading
+// separator from the join loop's zero-iteration case
+// (spec.Keywords[1:] on a 1-element slice is empty).
+func TestApplyPDFAMetadata_SingleKeywordSkipsJoinLoop(t *testing.T) {
+	b := renderMinimalPDF(t, func(pdf *fpdf.Fpdf) {
+		ApplyPDFAMetadata(pdf, XMPSpec{Keywords: []string{"only"}})
+	})
+	needle := append([]byte("/Keywords ("), utf16beString("only")...)
+	if !bytes.Contains(b, needle) {
+		t.Error("expected /Keywords to contain the single keyword unmodified")
 	}
 }
 

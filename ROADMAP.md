@@ -945,7 +945,82 @@ Coverage ratchet updated: go_default 8755/14627 (5872 uncovered) →
 8767/14627 (5860 uncovered); go_duckdb 8833/14725 (5892 uncovered) →
 8845/14725 (5880 uncovered).
 
-**Not started:** the rest of Phase 2 (remaining Go completion-tier
+**`internal/pdfmeta` (increment 1 of at least 2): 81.7% → 86.6% of the
+package.** Chosen as the next completion-tier target: 27 of its
+functions had some uncovered branch, the largest concentration among
+the 70–99% packages this session surveyed (`fonts`/`rfc3161`/`signing`
+all ~81.6%, `sigma/service` 85.0% — all smaller). Deliberately scoped
+to the file's two pure, fixture-free outliers first —
+`ApplyPDFAMetadata` (0% → 100%, a real production helper that sets
+fpdf `/Info` dict fields, called from `internal/documents` and
+`internal/export`, just never unit-tested directly) and
+`insertOutputIntentsReference` (30.3% → 100%, pure byte-manipulation
+with three branches and no error paths) — leaving the file's larger
+cluster of byte-surgery functions (`parseTrailerSizeAndRoot`,
+`InjectPAdESSignature`, etc., 70–95%, all needing malformed-PDF
+fixtures) for a later increment. 12 new tests.
+
+`/advisor`'s plan review, before any code was written, flagged one
+masking risk and pre-verified the plan's biggest unknown — fpdf has no
+exported getters for `/Info` dict fields, so testing
+`ApplyPDFAMetadata` means inspecting actual rendered PDF bytes, and the
+values are UTF-16BE-with-BOM encoded (confirmed by reading
+`go-pdf/fpdf@v0.9.0`'s source before relying on it, not assumed):
+
+- `TestApplyPDFAMetadata_DefaultsAuthorWhenEmpty`'s first draft would
+  have asserted a bare `bytes.Contains(output, utf16be("GoPMgr"))`.
+  Masked: `SetCreator("GoPMgr", true)` runs unconditionally a few
+  lines later regardless of whether the author-default guard ran, so
+  "GoPMgr" appears in the output either way. Fixed by asserting the
+  key-adjacent needle `"/Author (" + utf16be("GoPMgr")` instead — the
+  guard's own field, not just any occurrence of the string anywhere in
+  the PDF. Confirmed red under the targeted mutation.
+- `TestInsertOutputIntentsReference`'s three "value already exists"
+  tests (array, bare indirect-ref, value-ending-at-`>>`) exist because
+  deleting that entire branch doesn't produce an obviously-wrong
+  result: execution falls through to the "insert fresh" branch and
+  produces a **second** `/OutputIntents` key while the stale one
+  survives — confirmed by direct mutation before finalizing the
+  assertion. `bytes.Count(result, []byte("/OutputIntents")) == 1`, not
+  a bare presence check, is the discriminator in all three.
+
+A genuinely new break-verification mechanism for this package: both
+`ApplyPDFAMetadata`'s `pdf == nil` guard (behind
+`TestApplyPDFAMetadata_NilPDFIsNoop`) and its `len(spec.Keywords) > 0`
+guard (protecting `spec.Keywords[0]`, exercised by every
+`ApplyPDFAMetadata` test that passes an empty `Keywords` slice) are
+covered and break-verify via a **panic** — deleting either crashes the
+caller (nil-pointer method call; index-out-of-range on an empty slice)
+rather than returning a differing value — confirmed by mutation, not
+assumed. No prior `internal/pdfmeta` test needed this framing.
+`TestInsertOutputIntentsReference_InsertsFreshEntry` is covered but not
+break-verifiable: it's the function's final statement with nothing
+following it, so deleting it is a "missing return" compile error, not a
+behavior change — same category as `internal/users`' `MigrateLegacyRoot`
+loop-exhausted fallback. The one genuine disclosed-untested branch this
+increment leaves behind is `icc.go`'s `DefaultICCProfile` `len(sRGBICC)
+== 0` check: `sRGBICC` is populated by a `//go:embed` directive from a
+file checked into the repo, so the branch is unreachable in any build
+that actually compiles.
+
+Also surfaced, not fixed (out of scope for a coverage task):
+`ApplyPDFAMetadata` hardcodes `/Info` dict Creator to `"GoPMgr"` and
+ignores `XMPSpec.CreatorTool` entirely, while `BuildXMPPacket` DOES
+honor `CreatorTool` for the XMP packet's `<xmp:CreatorTool>` element —
+a caller setting `CreatorTool` gets inconsistent metadata between the
+two surfaces. Flagged as a follow-up, not silently pinned as if
+intentional.
+
+Coverage ratchet updated: go_default 8767/14627 (5860 uncovered) →
+8805/14627 (5822 uncovered); go_duckdb 8845/14725 (5880 uncovered) →
+8883/14725 (5842 uncovered).
+
+**Not started:** `internal/pdfmeta` increment 2 (the byte-surgery
+function cluster: `parseTrailerSizeAndRoot`, `InjectPAdESSignature`,
+`readDictInt`/`readDictRef`, `findObjectBody`, `insertMetadataReference`,
+`InjectOutputIntent`, `MakePDFA3`, and others, all 70–95%, needing
+malformed-PDF byte fixtures rather than the pure-function techniques
+used here), then the rest of Phase 2 (remaining Go completion-tier
 packages at 70–99%),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
 `db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
