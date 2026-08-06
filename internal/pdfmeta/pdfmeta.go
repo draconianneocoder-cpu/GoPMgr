@@ -1306,9 +1306,14 @@ func ApplyPDFAMetadata(pdf *fpdf.Fpdf, spec XMPSpec) {
 	if spec.Subject != "" {
 		pdf.SetSubject(spec.Subject, true)
 	}
-	// Creator is set without the live version here; the export package
-	// overrides with the real version string when it re-exports.
-	pdf.SetCreator("GoPMgr", true)
+	// Honor spec.CreatorTool the same way BuildXMPPacket does (default to
+	// "GoPMgr" when unset), so the /Info dict's Creator field and the XMP
+	// packet's <xmp:CreatorTool> element agree when both are built from the
+	// same spec.
+	if spec.CreatorTool == "" {
+		spec.CreatorTool = "GoPMgr"
+	}
+	pdf.SetCreator(spec.CreatorTool, true)
 	if len(spec.Keywords) > 0 {
 		// simple join without pulling in strings
 		kw := spec.Keywords[0]

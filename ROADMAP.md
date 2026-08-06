@@ -1003,17 +1003,74 @@ increment leaves behind is `icc.go`'s `DefaultICCProfile` `len(sRGBICC)
 file checked into the repo, so the branch is unreachable in any build
 that actually compiles.
 
-Also surfaced, not fixed (out of scope for a coverage task):
-`ApplyPDFAMetadata` hardcodes `/Info` dict Creator to `"GoPMgr"` and
-ignores `XMPSpec.CreatorTool` entirely, while `BuildXMPPacket` DOES
-honor `CreatorTool` for the XMP packet's `<xmp:CreatorTool>` element —
-a caller setting `CreatorTool` gets inconsistent metadata between the
-two surfaces. Flagged as a follow-up, not silently pinned as if
-intentional.
+Also surfaced: `ApplyPDFAMetadata` hardcoded `/Info` dict Creator to
+`"GoPMgr"` and ignored `XMPSpec.CreatorTool` entirely, while
+`BuildXMPPacket` honored `CreatorTool` for the XMP packet's
+`<xmp:CreatorTool>` element — a caller setting `CreatorTool` got
+inconsistent metadata between the two surfaces. Flagged as a
+follow-up at the time, not silently pinned as if intentional.
 
 Coverage ratchet updated: go_default 8767/14627 (5860 uncovered) →
 8805/14627 (5822 uncovered); go_duckdb 8845/14725 (5880 uncovered) →
 8883/14725 (5842 uncovered).
+
+### 2026-08-05 — resolved the `CreatorTool` inconsistency; removed three dead re-export shims
+
+Fixed same-day, before starting increment 2. Framing matters here:
+this is a **consistency alignment**, not a bug fix — `ApplyPDFAMetadata`
+now defaults `spec.CreatorTool` to `"GoPMgr"` and honors it, mirroring
+`BuildXMPPacket`'s exact pattern, but the change produces **zero
+observable difference for any current caller**, confirmed by grepping
+every call site before making it:
+- `internal/documents/fonts.go`'s only direct call already passes
+  `CreatorTool: "GoPMgr"`, identical to the prior hardcoded value.
+- `internal/export`'s `ApplyPDFAMetadata` wrapper used to override
+  Creator with a version-suffixed string immediately after delegating
+  here — but that wrapper turned out to be **dead code**: 0% coverage,
+  no tests, and unreachable from anywhere in the module (grepped every
+  `.ApplyPDFAMetadata(` call site; the only two are the definition
+  itself and its own internal delegate call). The real export-package
+  renderers (`pdf.go`, `sigma_report.go`, `montecarlo_report.go`) all
+  call `pdf.SetCreator` directly and never went through this wrapper.
+
+Removed the dead wrapper rather than leaving it to paper over. This is
+what resolves the "which surface stays divergent" question cleanly:
+after removal there is no live path left that sets Creator to anything
+other than what `spec.CreatorTool` (or its default) specifies, so
+there's nothing left to reconcile. The same grep-every-call-site check
+applied to the rest of `internal/export/pdfa.go` found two more dead
+shims with the identical profile (0% coverage, no tests, no unqualified
+callers): `InjectPAdESSignature` (the real caller,
+`internal/signing/pades.go:127`, calls `pdfmeta.InjectPAdESSignature`
+directly) and `HasDefaultICC` (the real caller,
+`internal/export/sigma_report.go:52`, calls `pdfmeta.HasDefaultICC()`
+directly, not the shim — found on `/advisor`'s second pass after the
+first draft of this entry incorrectly claimed all remaining shims were
+confirmed live). All three removed. The file's other shims
+(`BuildXMPPacket`, `InjectXMPStream`, `MakePDFA3`, `DefaultICCProfile`)
+each have a genuine unqualified caller inside the package and stay.
+
+Two new tests — `TestApplyPDFAMetadata_HonorsCreatorTool` and
+`TestApplyPDFAMetadata_DefaultsCreatorToolWhenEmpty` — cover the
+default-then-use logic and break-verify independently of each other
+(reverting to the hardcoded value fails the first but not the second;
+making `CreatorTool` unconditional fails the second but not the
+first).
+
+Coverage ratchet updated: go_default 8805/14627 (5822 uncovered) →
+8807/14624 (5817 uncovered); go_duckdb 8883/14725 (5842 uncovered) →
+8885/14722 (5837 uncovered). Decomposition: the three removed shims
+totaled 5 statements (`ApplyPDFAMetadata`'s body: the delegate call,
+the `if pdf != nil` guard, the `SetCreator` call — 3 statements;
+`InjectPAdESSignature` and `HasDefaultICC` — 1 each), all of them
+previously uncovered, so removing them alone accounts for the full −5
+uncovered delta. The `ApplyPDFAMetadata` fix in `pdfmeta.go` added 2
+new statements (the `if spec.CreatorTool == ""` guard and its
+assignment), both immediately covered by the two new tests — they
+contribute to the +2 covered delta and the denominator math (−5
+removed +2 added = −3 total) but not to the uncovered delta, since a
+newly-added *and* newly-covered statement was never counted as
+uncovered in the first place.
 
 **Not started:** `internal/pdfmeta` increment 2 (the byte-surgery
 function cluster: `parseTrailerSizeAndRoot`, `InjectPAdESSignature`,

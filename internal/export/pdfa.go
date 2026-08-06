@@ -4,19 +4,18 @@
 package export
 
 import (
-	"github.com/go-pdf/fpdf"
-
 	"gopmgr/internal/pdfmeta"
 )
 
 // PDF/A-3 metadata helpers (fpdf-side adapter).
 //
 // The byte-level XMP work (BuildXMPPacket, InjectXMPStream, the
-// incremental-update machinery) now lives in the dependency-free
+// incremental-update machinery) lives in the dependency-free
 // internal/pdfmeta package so it can be shared by both this package
-// and internal/documents without an import cycle. This file keeps the
-// thin fpdf-specific glue: ApplyPDFAMetadata sets the library's
-// documented metadata setters on a *fpdf.Fpdf.
+// and internal/documents without an import cycle. This file re-exports
+// the pieces export-package renderers (pdf.go, sigma_report.go,
+// montecarlo_report.go) actually call, so they don't need to import
+// pdfmeta directly.
 //
 // Still NOT provided (V3 milestones, DEVELOPER_HANDBOOK.md §8):
 //   - Font embedding (ship a TTF; switch SetFont calls to it).
@@ -28,15 +27,6 @@ import (
 // XMPSpec is re-exported from pdfmeta so existing export-package
 // callers keep their type reference without importing pdfmeta directly.
 type XMPSpec = pdfmeta.XMPSpec
-
-// ApplyPDFAMetadata delegates to the canonical implementation in pdfmeta
-// and then overrides the Creator with the live application version.
-func ApplyPDFAMetadata(pdf *fpdf.Fpdf, spec XMPSpec) {
-	pdfmeta.ApplyPDFAMetadata(pdf, spec)
-	if pdf != nil {
-		pdf.SetCreator("GoPMgr "+exportVersion(), true)
-	}
-}
 
 // BuildXMPPacket delegates to pdfmeta. Retained as a thin shim so the
 // existing export-package call sites (and tests) keep working.
@@ -60,19 +50,4 @@ func MakePDFA3(pdfBytes []byte, spec XMPSpec, iccProfile []byte) ([]byte, error)
 // DefaultICCProfile re-exports the embedded sRGB profile accessor.
 func DefaultICCProfile() []byte {
 	return pdfmeta.DefaultICCProfile()
-}
-
-// HasDefaultICC reports whether an ICC profile was embedded at build time.
-func HasDefaultICC() bool {
-	return pdfmeta.HasDefaultICC()
-}
-
-// InjectPAdESSignature re-exports the real PAdES Baseline B embedding
-// primitive for compatibility. New export workflows should use
-// signing.ApplyPAdES so Baseline B/T policy and fail-closed behavior stay
-// consistent.
-// The signRanges callback will be invoked with the exact byte ranges
-// that must be signed for a correct /ByteRange.
-func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, error)) ([]byte, error) {
-	return pdfmeta.InjectPAdESSignature(pdfBytes, signRanges)
 }

@@ -884,34 +884,71 @@ func TestApplyPDFAMetadata_NilPDFIsNoop(t *testing.T) {
 }
 
 // TestApplyPDFAMetadata_SetsAllFieldsWhenProvided pins that every
-// caller-supplied field lands in the PDF's /Info dictionary. Creator is
-// always "GoPMgr" regardless of spec — ApplyPDFAMetadata hardcodes it and
-// ignores XMPSpec.CreatorTool entirely, unlike BuildXMPPacket (see
-// pdfmeta.go), which does honor CreatorTool for the XMP packet's
-// <xmp:CreatorTool> element. This is an observed inconsistency between
-// the two metadata surfaces, not verified as intentional; flagged for a
-// follow-up rather than silently pinned as if it were the specified
-// contract.
+// caller-supplied field lands in the PDF's /Info dictionary, including a
+// caller-supplied CreatorTool (see TestApplyPDFAMetadata_HonorsCreatorTool
+// for the break-verified guard behind Creator specifically).
 func TestApplyPDFAMetadata_SetsAllFieldsWhenProvided(t *testing.T) {
 	b := renderMinimalPDF(t, func(pdf *fpdf.Fpdf) {
 		ApplyPDFAMetadata(pdf, XMPSpec{
-			Title:    "My Title",
-			Subject:  "My Subject",
-			Author:   "Alice",
-			Keywords: []string{"one", "two", "three"},
+			Title:       "My Title",
+			Subject:     "My Subject",
+			Author:      "Alice",
+			CreatorTool: "Custom Tool",
+			Keywords:    []string{"one", "two", "three"},
 		})
 	})
 	for key, want := range map[string]string{
 		"/Title":    "My Title",
 		"/Subject":  "My Subject",
 		"/Author":   "Alice",
-		"/Creator":  "GoPMgr",
+		"/Creator":  "Custom Tool",
 		"/Keywords": "one, two, three",
 	} {
 		needle := append([]byte(key+" ("), utf16beString(want)...)
 		if !bytes.Contains(b, needle) {
 			t.Errorf("%s: want value %q adjacent to the key, not found", key, want)
 		}
+	}
+}
+
+// TestApplyPDFAMetadata_HonorsCreatorTool covers spec.CreatorTool flowing
+// through to /Info's Creator field. Before this test existed,
+// ApplyPDFAMetadata hardcoded Creator to "GoPMgr" and ignored CreatorTool
+// entirely, unlike its sibling BuildXMPPacket (same file), which does
+// honor CreatorTool for the XMP packet's <xmp:CreatorTool> element — a
+// caller setting CreatorTool got inconsistent metadata between the two
+// surfaces. Fixed by mirroring BuildXMPPacket's default-then-use pattern.
+// This is a consistency alignment, not a behavior change for any current
+// caller: internal/documents/fonts.go's only direct call site already
+// passes CreatorTool: "GoPMgr", identical to the prior hardcoded value,
+// and internal/export's ApplyPDFAMetadata wrapper (which used to override
+// Creator with a version-suffixed string after delegating here) was dead
+// code — unreachable from anywhere in the module — and has been removed.
+func TestApplyPDFAMetadata_HonorsCreatorTool(t *testing.T) {
+	b := renderMinimalPDF(t, func(pdf *fpdf.Fpdf) {
+		ApplyPDFAMetadata(pdf, XMPSpec{CreatorTool: "Custom Tool"})
+	})
+	needle := append([]byte("/Creator ("), utf16beString("Custom Tool")...)
+	if !bytes.Contains(b, needle) {
+		t.Error("expected /Creator to reflect the caller-supplied CreatorTool")
+	}
+}
+
+// TestApplyPDFAMetadata_DefaultsCreatorToolWhenEmpty covers the
+// "spec.CreatorTool == ”" default branch, mirroring
+// TestApplyPDFAMetadata_DefaultsAuthorWhenEmpty's masking risk: a bare
+// bytes.Contains(b, utf16beString("GoPMgr")) would pass even if this
+// guard were deleted, since spec.Author also defaults to "GoPMgr" a few
+// lines earlier and would still contribute that substring to the output.
+// The key-adjacent needle ("/Creator (" + the encoded bytes) isolates
+// Creator's own value.
+func TestApplyPDFAMetadata_DefaultsCreatorToolWhenEmpty(t *testing.T) {
+	b := renderMinimalPDF(t, func(pdf *fpdf.Fpdf) {
+		ApplyPDFAMetadata(pdf, XMPSpec{})
+	})
+	needle := append([]byte("/Creator ("), utf16beString("GoPMgr")...)
+	if !bytes.Contains(b, needle) {
+		t.Error("expected /Creator to default to \"GoPMgr\" when CreatorTool is unset")
 	}
 }
 
