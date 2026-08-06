@@ -740,6 +740,12 @@ func hasBinaryHeaderComment(line []byte) bool {
 	return line[5] == '\n' || line[5] == '\r'
 }
 
+// shiftClassicXrefOffsets rewrites pdfBytes in place as it walks the
+// xref entries. On error the buffer may already be partially
+// rewritten (entries before the failure point shifted, entries at and
+// after it not) and must be discarded by the caller rather than
+// reused — ensureBinaryHeaderComment, its only caller, does this by
+// construction (it only returns `out` on the nil-error path).
 func shiftClassicXrefOffsets(pdfBytes []byte, xrefOffset, delta int) error {
 	if xrefOffset < 0 || xrefOffset >= len(pdfBytes) || !bytes.HasPrefix(pdfBytes[xrefOffset:], []byte("xref")) {
 		return fmt.Errorf("xref offset %d does not point to classic xref", xrefOffset)
@@ -779,7 +785,17 @@ func shiftClassicXrefOffsets(pdfBytes []byte, xrefOffset, delta int) error {
 				if err != nil {
 					return fmt.Errorf("xref entry offset: %w", err)
 				}
-				copy(pdfBytes[entryStart:entryStart+10], []byte(fmt.Sprintf("%010d", oldOff+delta)))
+				// Classic xref entries reserve exactly 10 decimal digits
+				// for the offset (PDF spec, 7.5.4). copy() into that
+				// fixed-width slice would silently truncate a wider
+				// %010d result, corrupting the offset instead of
+				// failing loudly, so the shifted value must be checked
+				// against the field's max representable value first.
+				newOff := oldOff + delta
+				if newOff > 9999999999 {
+					return fmt.Errorf("xref entry offset %d exceeds the classic xref format's 10-digit field width after shifting by %d", newOff, delta)
+				}
+				copy(pdfBytes[entryStart:entryStart+10], []byte(fmt.Sprintf("%010d", newOff)))
 			}
 			pos = entryEnd + 1
 		}
