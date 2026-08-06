@@ -577,6 +577,27 @@ func InjectOutputIntent(pdfBytes []byte, iccProfile []byte) ([]byte, error) {
 	appended.WriteString("0000000000 65535 f \n")
 
 	// Order the new objects for the xref table (smaller ID first)
+	//
+	// Reachable, but not through this app's own generation path today:
+	// iccID := trailerSize and oiID := trailerSize+1 mean first > second
+	// requires trailerSize+1 to overflow past math.MaxInt. parseDigits
+	// (via readDictInt's /Size parse in parseTrailerSizeAndRoot) already
+	// guards against overflow, but permits trailerSize == math.MaxInt
+	// itself through -- at that exact value, trailerSize+1 wraps to
+	// math.MinInt, making first > second true. Confirmed by direct
+	// execution, not just reasoning: a trailer with a literal
+	// "/Size 9223372036854775807" produces a silently corrupted PDF
+	// (negative object IDs in both the Catalog rewrite and the xref
+	// table) with err == nil -- the same silent-corruption shape as the
+	// bugs fixed in increments 3a and 4a, but downstream of an
+	// already-guarded parse rather than an unguarded accumulator, and
+	// gated behind an exact 19-digit magic literal rather than a large
+	// but ordinary input. Every InjectOutputIntent call site traced back
+	// to MakePDFA3, and every MakePDFA3 caller passes bytes this app
+	// generated with fpdf moments earlier (see internal/documents and
+	// internal/export), never a foreign or re-parsed trailer -- not
+	// reachable through this app's own generation path today. Flagged,
+	// not fixed: TEST_COVERAGE_LEDGER.md and ROADMAP.md, increment 5a.
 	first, second := iccID, oiID
 	firstOff, secondOff := iccObjOffset, oiObjOffset
 	firstGen, secondGen := 0, 0

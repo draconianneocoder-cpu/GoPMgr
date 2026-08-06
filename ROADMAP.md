@@ -1661,8 +1661,11 @@ and the full `go test ./...` module suite pass; `internal/pdfmeta` at
 Covers `InjectPAdESSignature` itself (88.4% → 93.8%) and the
 `%010d`/`%05d` fixed-width-xref-field-overflow guard 3a disclosed and
 deferred for `InjectXMPStream`, `InjectOutputIntent`, and
-`InjectPAdESSignature` (see the amendment above). 14 new tests
-(116 → 130). Selected as the natural close of the byte-surgery
+`InjectPAdESSignature` (see the amendment above). 15 new tests
+(116 → 131; a same-day increment-5a recount found this entry had
+originally miscounted itself as "14 new tests (116 → 130)" — the diff
+against the parent commit shows 15 `+func Test` lines and 0 removed).
+Selected as the natural close of the byte-surgery
 cluster 4a explicitly deferred, and because it was already opening
 the exact three functions the disclosed debt named.
 
@@ -1742,24 +1745,152 @@ numbers matched exactly on both build tags: go_default 8892/14639
 (5767 uncovered) → 8982/14744 (5762 uncovered). No flake this run.
 `go build ./...`, `gofmt -l`, `go vet`,
 `go test ./internal/pdfmeta/... -race`, and the full `go test ./...`
-module suite pass; `internal/pdfmeta` at 130 tests, confirmed via
-`grep -c "^func Test"`.
+module suite pass; `internal/pdfmeta` at 131 tests, confirmed via
+`grep -c "^func Test"` (this entry originally read "130"; corrected
+2026-08-06 during increment 5a — see that entry's own count-reconciliation
+note).
 
 `InjectOutputIntent` (86.3%, down from 89.0%) is now a disclosed
 permanent floor: the two new ICC-stream/OutputIntent-dict entry
 guards this increment added are offset-only (both entries always
 write generation 0) and unreachable without a ~9.3GB input, the same
 bound as `InjectXMPStream`'s and `InjectPAdESSignature`'s equivalent
-offset-only guards.
+offset-only guards. **Superseded by increment 5a below**: that
+increment's fuller enumeration of `InjectOutputIntent` found five more
+real, addable branches this entry didn't scope (an empty-input guard,
+an empty-ICC-profile guard, three error-wrap propagations) alongside
+the two offset-only guards disclosed here and one further
+unconditionally-unreachable ID-swap branch — this function was not, in
+fact, down to a two-guard floor at the end of 4b.
 
-**Not started:** `MakePDFA3`'s own 3 error-wrap guards,
-`streamPayload`'s empty-input guard, `readTrailerIDValue`'s 5 guards —
-all 70–90%, likely `internal/pdfmeta`'s final increment before the
-package reaches its practical ceiling (`InjectOutputIntent`'s two
-offset-only xref guards and `InjectPAdESSignature`'s five
-structurally-unreachable/impossible guards are now disclosed
-permanent floors, not targets — see the 2026-08-06 increment 4b entry
-below and `TEST_COVERAGE_LEDGER.md`). Then the rest of
+### 2026-08-06 — `internal/pdfmeta` increment 5a: 96.4% → 97.6%; `MakePDFA3`, `streamPayload`, `readTrailerIDValue` closed, plus a mispredicted-mutation correction and an `InjectOutputIntent` scope correction
+
+Covers `MakePDFA3`'s 3 error-wrap guards (binary-header-comment,
+xmp-injection, outputintent-injection propagation), `streamPayload`'s
+empty-input guard, and `readTrailerIDValue`'s 5 guards (xrefOffset
+out-of-range, 2 subcases; trailer-keyword-not-found;
+startxref-not-found-after-trailer; ID-not-followed-by-array;
+unterminated-ID-array). 9 new tests, package 131 → 140. All three
+functions now 100%; `pdfmeta.go` itself is untouched by this declared
+scope — the `InjectOutputIntent` disclosure below is the increment's
+one production-code edit, outside the three functions named above.
+
+**A docstring's panic prediction was written before running the
+mutation, then found wrong when actually run.**
+`readTrailerIDValue`'s guard 5 (`i >= len(block)`, no closing `]`
+before the block ends) was assumed, by analogy with the function's
+other four guards (three of which do panic on deletion — confirmed by
+mutation: `slice bounds out of range [-1:]` ×2, `[:-1]`), to panic the
+same way. It does not: `block[start:i+1]` with `i == len(block)` is
+legal because `block` is itself a sub-slice of the input `b`, and Go
+slice capacity extends to the parent's backing array, not just the
+sub-slice's own declared length — the expression reads one byte past
+`block`'s logical end without exceeding its *capacity*. Confirmed via
+a temporary debug test (`t.Logf`, deleted before finalizing): the
+mutated function returns `("[<abc><def>\ns", true)` — a wrong,
+non-empty value with `ok=true`, ending in the first byte of the
+following `startxref` keyword — not a panic. The real test's docstring
+was rewritten to describe this observed mechanism, with an explicit
+note that an earlier draft assumed the wrong one, rather than silently
+replacing it.
+
+**`streamPayload`'s untouched branches are copy-not-strip, not a
+bug — recorded because the new test's docstring points here.** Of its
+three branches (empty input; input already ending in `\n`/`\r`; input
+not ending in either), only the third defensively copies via
+`append([]byte(nil), data...)`. Both call sites (`InjectXMPStream`'s
+`xmpStream`, `InjectOutputIntent`'s `iccStream`) only read the result
+(`len()` for `/Length`, then `bytes.Buffer.Write`, which copies
+internally regardless), so the copy isn't load-bearing. Both call
+sites also write an unconditional `\n` immediately after the stream
+bytes and before `endstream` — the PDF-required EOL, computed and
+written *after* `/Length` was already set from `len(streamPayload(...))`,
+so it's correctly never counted. Nothing to fix.
+
+**`InjectOutputIntent`'s remaining scope is larger than increment 4b
+disclosed.** 4b described the function's remaining gap as "two
+disclosed offset-only guards." A full `go tool cover -func` /
+profile-span enumeration this cycle, done while checking what
+remained in the package after the three declared functions above,
+found five more real, addable branches 4b's framing didn't scope: an
+empty-`pdfBytes` guard, an empty-`iccProfile` guard, and three
+error-wrap propagations (`locate startxref`, `parse trailer`,
+`locate Catalog object`) — the same guard shape already covered in
+`InjectXMPStream` (2b) and `MakePDFA3` (this entry), just never
+written for this function.
+
+**A first-draft disclosure comment on the xref-entry-order swap guard
+claimed unconditional unreachability; an adversarial `/advisor` pass
+found the claim wrong before commit.** `iccID := trailerSize` and
+`oiID := trailerSize + 1` are assigned unconditionally, three lines
+apart, and the first draft reasoned that `if first > second` is
+therefore false for every possible input — stronger than any other
+disclosed guard in this package. `/advisor` asked whether
+`trailerSize + 1` can overflow. `trailerSize` comes from
+`readDictInt(block, "/Size")`, routed through `parseDigits`
+(increment 4a's overflow guard) — which rejects any digit string that
+would exceed `math.MaxInt`, but lets `math.MaxInt` itself through.
+Confirmed by direct execution, not reasoning: a fixture with a literal
+`/Size 9223372036854775807` parses to `trailerSize == math.MaxInt`,
+then `oiID := trailerSize + 1` overflows to `math.MinInt`, flipping
+`first > second` to true and producing a silently corrupted PDF
+(negative object IDs in both the rewritten Catalog and the xref
+table) with `err == nil` — the same silent-corruption shape as the
+bugs fixed in increments 3a and 4a, one step downstream of an
+already-guarded parse instead of an unguarded accumulator, gated
+behind an exact 19-digit magic literal instead of an ordinary large
+input. Traced every `InjectOutputIntent` call site to `MakePDFA3`,
+and every `MakePDFA3` caller (`internal/documents`, `internal/export`)
+passes bytes this app generated with fpdf moments earlier, never a
+foreign or re-parsed trailer — not reachable through this app's own
+generation path today, so the guard is disclosed inline in
+`pdfmeta.go` (corrected comment, not the original "unreachable" one)
+and flagged here, not fixed. Worth noting for whoever picks up the
+five real branches below: this is the second "provably unreachable"
+claim in this package's history to be wrong on a first pass (the
+first was 3a's now-superseded "~9.3GB bound applies to both offset
+and generation halves," corrected in 4b) — treat "unconditionally"/
+"provably impossible" claims in this file as something to actively
+try to break before committing them, not just state.
+
+**Not implemented this increment**: the five real branches, and a fix
+for the overflow above, remain "not started," scoped below as the
+next bounded task rather than folded in here, per this workflow's
+pre-implementation-review-before-scope-expansion rule.
+
+Coverage ratchet: predicted before running `--update` via a
+`git stash`-isolated clean before/after package comparison
+(8904/14646 → 8914/14646 default, 8982/14744 → 8992/14744 duckdb,
++10 covered/+0 total on both tags — total unchanged because the one
+production-code edit this increment makes is a comment, not a new
+statement) — the actual ratchet run matched exactly on both build
+tags: go_default 8904/14646 (5742 uncovered) → 8914/14646 (5732
+uncovered) IMPROVED; go_duckdb 8982/14744 (5762 uncovered) →
+8992/14744 (5752 uncovered) IMPROVED. No flake this run. `go build
+./...`, `gofmt -l`, `go vet`, `go test ./internal/pdfmeta/... -race`,
+and the full `go test ./...` module suite pass; `internal/pdfmeta` at
+140 tests, confirmed via `grep -c "^func Test"`.
+
+**Not started:** `InjectOutputIntent`'s five real branches enumerated
+above (empty-`pdfBytes`, empty-`iccProfile`, 3 error-wraps), and a
+decision on whether to fix the `math.MaxInt` overflow above (a cheap
+guard, same shape as `writeClassicXrefEntry`'s existing offset/gen
+checks, but gated behind an input this app's own generation path
+never produces) — the natural next bounded `internal/pdfmeta`
+increment. After that, `internal/pdfmeta` is down to
+disclosed-permanent-floor guards only (the two offset-only xref
+guards named above, the swap guard just disclosed, `InjectPAdESSignature`'s
+five from 4b, `ensureBinaryHeaderComment`'s single disclosed gap
+[`replaceStartxrefValue`'s error-propagation branch, unreachable
+because both it and `findLastStartxref` independently locate the same
+literal `startxref` text — confirmed as the *only* uncovered span in
+the function via the coverage profile, not just cited from 3a's
+prose], and `icc.go`'s single disclosed `//go:embed`-makes-it-always-
+populated gap, likewise confirmed as its only uncovered span) — that
+next increment is plausibly the package's actual practical ceiling, a
+claim this entry makes narrower than 4b's now-corrected one by naming
+the exact remaining branches rather than asserting "final." Then the
+rest of
 Phase 2 (remaining Go completion-tier packages at 70–99%: `fonts`
 81.6%, `rfc3161` 81.6%, `signing` 81.6%, `sigma/service` 85.0%, and
 others),
