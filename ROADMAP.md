@@ -1280,13 +1280,36 @@ raised. Only reachable on a PDF whose existing offset is within
 unlikely for this application's generated reports and charts — but
 the fix (check the shifted value against the field's max before
 writing, return an error instead of truncating) costs three lines and
-removes an entire class of "malformed offset should have been caught
-long before the file reaches 9GB" reasoning. `TestShiftClassicXrefOffsets_OffsetOverflowReturnsError`
+closes this specific silent-truncation path.
+`TestShiftClassicXrefOffsets_OffsetOverflowReturnsError`
 break-verifies the new guard directly, without needing an actual
 multi-gigabyte fixture: the function only parses and rewrites digit
 text, it never dereferences `pdfBytes` at the parsed offset, so a
 small buffer with a hand-written 10-digit offset field near the
 format's boundary exercises the exact arithmetic.
+
+**This fixes one instance, not the whole bug class — `/advisor`'s
+post-implementation review caught the docs (an earlier draft of this
+entry) overclaiming otherwise.** `shiftClassicXrefOffsets` is not the
+only place this package writes a fixed-width classic-xref offset
+field: `InjectXMPStream` (`pdfmeta.go:175,177`), `InjectOutputIntent`
+(`pdfmeta.go:537,539,545`), and `InjectPAdESSignature`
+(`pdfmeta.go:981`) all build new xref entries via
+`fmt.Fprintf(&appended, "%010d %05d n \n", off, gen)`. Those write
+into a growing `bytes.Buffer` rather than a fixed destination slice,
+so they don't truncate the way `copy()` did — but `Fprintf` doesn't
+truncate either; an offset `>= 10^10` would simply widen the field to
+11+ digits, producing a 21-byte (or longer) entry line where the
+classic xref format requires exactly 20, corrupting the fixed-width
+alignment of every subsequent entry for any reader that does offset
+arithmetic against table position rather than re-scanning line by
+line. Same root cause (unbounded value written into a spec-fixed-width
+field) and the same ~9.3GB reachability bound as the bug fixed above.
+Deliberately **not** fixed in this increment — these three functions
+are already in scope for the deferred byte-surgery cluster (see the
+"Not started" pointer below), and bundling this fix into that pass
+keeps the guard placement and error wording consistent across all four
+sites rather than adding a one-off now and three more later.
 
 **The direct positive-path test for `ensureBinaryHeaderComment`
 required a redesign after the first draft's round-trip assertion
@@ -1381,7 +1404,13 @@ cluster (`InjectOutputIntent`, `InjectPAdESSignature`, the
 signature-field-rewriting functions, `MakePDFA3`'s own 3 error-wrap
 guards, `streamPayload`'s empty-input guard, `readTrailerIDValue`'s 5
 guards — all 70–95%) — likely `internal/pdfmeta`'s final increment
-before the package reaches 100%, then the rest of
+before the package reaches 100%. This pass must also add the
+same fixed-width-offset overflow guard to `InjectXMPStream`
+(`pdfmeta.go:175,177`), `InjectOutputIntent` (`:537,539,545`), and
+`InjectPAdESSignature` (`:981`) — the disclosed, not-yet-fixed sibling
+instances of the increment-3a truncation bug (see above); this is a
+known correctness item for that increment, not merely a coverage gap.
+Then the rest of
 Phase 2 (remaining Go completion-tier packages at 70–99%: `fonts`
 81.6%, `rfc3161` 81.6%, `signing` 81.6%, `sigma/service` 85.0%, and
 others),
