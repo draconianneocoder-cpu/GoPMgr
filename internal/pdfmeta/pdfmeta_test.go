@@ -182,6 +182,105 @@ func TestParseTrailerSizeAndRoot(t *testing.T) {
 	}
 }
 
+// TestParseTrailerSizeAndRoot_XrefOffsetOutOfRange covers the
+// "xrefOffset < 0 || xrefOffset >= len(b)" guard with three subcases
+// covering both operands. The "exactly len(b)" case is deliberately
+// included because it's the boundary where a naive assumption fails:
+// b[len(b):] is a legal empty slice in Go, so if only the guard's "< 0"
+// half survived a mutation, this exact value wouldn't panic — it would
+// fall through and cascade into the next guard ("trailer keyword not
+// found"), a different but still non-nil error. All three subcases
+// therefore assert the guard's own "out of range" text rather than a
+// bare err != nil check, so a cascade would be caught rather than
+// masked.
+func TestParseTrailerSizeAndRoot_XrefOffsetOutOfRange(t *testing.T) {
+	b := minimalPDF()
+	// A slice, not a map: map iteration order is randomized per run, and
+	// the "negative" subcase panics under a mutation that strips only
+	// the "< 0" half of the guard (see the break-verification note
+	// below) — a randomized order would make which subcases actually
+	// execute before the panic non-deterministic across runs.
+	cases := []struct {
+		name   string
+		offset int
+	}{
+		{"negative", -1},
+		{"exactly len(b)", len(b)},
+		{"past len(b)", len(b) + 100},
+	}
+	for _, c := range cases {
+		_, _, _, err := parseTrailerSizeAndRoot(b, c.offset)
+		if err == nil {
+			t.Errorf("%s: expected an error", c.name)
+			continue
+		}
+		if !strings.Contains(err.Error(), "out of range") {
+			t.Errorf("%s: expected an \"out of range\" error, got %q", c.name, err)
+		}
+	}
+}
+
+// TestParseTrailerSizeAndRoot_TrailerKeywordNotFound covers the
+// "trailer keyword not found after xref" guard. Uses xrefOffset > 0
+// (not 0): deleting the guard leaves trailerIdx == -1, and
+// absTrailer := xrefOffset + trailerIdx becomes xrefOffset - 1 — a
+// valid non-negative index only when xrefOffset > 0. With this
+// fixture (no "/Size" text present either), a deleted guard cascades
+// into readDictInt's "/Size not present" error rather than panicking,
+// so the assertion checks the guard's own text, not just err != nil.
+func TestParseTrailerSizeAndRoot_TrailerKeywordNotFound(t *testing.T) {
+	b := []byte("%PDF-1.4\nnothing relevant appears in this buffer\n")
+	_, _, _, err := parseTrailerSizeAndRoot(b, 1)
+	if err == nil {
+		t.Fatal("expected an error when no trailer keyword follows xrefOffset")
+	}
+	if !strings.Contains(err.Error(), "trailer keyword not found") {
+		t.Errorf("expected a \"trailer keyword not found\" error, got %q", err)
+	}
+}
+
+// TestParseTrailerSizeAndRoot_StartxrefNotFoundAfterTrailer covers the
+// "startxref keyword not found after trailer" guard: the trailer
+// keyword is present, but nothing after it contains "startxref".
+func TestParseTrailerSizeAndRoot_StartxrefNotFoundAfterTrailer(t *testing.T) {
+	b := []byte("%PDF-1.4\ntrailer\n<< /Size 4 /Root 1 0 R >>\nnothing relevant follows\n")
+	_, _, _, err := parseTrailerSizeAndRoot(b, 0)
+	if err == nil {
+		t.Fatal("expected an error when no startxref follows trailer")
+	}
+	if !strings.Contains(err.Error(), "startxref keyword not found after trailer") {
+		t.Errorf("expected a \"startxref keyword not found after trailer\" error, got %q", err)
+	}
+}
+
+// TestParseTrailerSizeAndRoot_SizeReadError covers the "/Size: %w"
+// wrap: the trailer block is otherwise well-formed but has no /Size
+// key, so readDictInt's own error propagates wrapped.
+func TestParseTrailerSizeAndRoot_SizeReadError(t *testing.T) {
+	b := []byte("%PDF-1.4\ntrailer\n<< /Root 1 0 R >>\nstartxref\n5\n%%EOF\n")
+	_, _, _, err := parseTrailerSizeAndRoot(b, 0)
+	if err == nil {
+		t.Fatal("expected an error when /Size is absent")
+	}
+	if !strings.Contains(err.Error(), "/Size:") {
+		t.Errorf("expected the /Size wrap prefix, got %q", err)
+	}
+}
+
+// TestParseTrailerSizeAndRoot_RootReadError covers the "/Root: %w"
+// wrap: /Size parses fine but /Root is absent, so readDictRef's own
+// error propagates wrapped.
+func TestParseTrailerSizeAndRoot_RootReadError(t *testing.T) {
+	b := []byte("%PDF-1.4\ntrailer\n<< /Size 4 >>\nstartxref\n5\n%%EOF\n")
+	_, _, _, err := parseTrailerSizeAndRoot(b, 0)
+	if err == nil {
+		t.Fatal("expected an error when /Root is absent")
+	}
+	if !strings.Contains(err.Error(), "/Root:") {
+		t.Errorf("expected the /Root wrap prefix, got %q", err)
+	}
+}
+
 // TestReadDictInt_KeyNotPresent covers readDictInt's "key not present"
 // guard. Asserts the guard's own error text ("not present"), not a bare
 // non-nil check: deleting the guard leaves idx == -1, and
@@ -607,6 +706,120 @@ func TestInjectXMPStream_RejectsEmpty(t *testing.T) {
 	}
 }
 
+// TestInjectXMPStream_PropagatesLocateStartxrefError covers the
+// "pdfmeta: locate startxref: %w" wrap. Asserts the stage-specific
+// wrap prefix, not a bare err != nil: InjectXMPStream calls three
+// functions in sequence, each wrapped with its own distinct prefix, so
+// a fixture crafted to fail at the wrong stage would still produce a
+// non-nil error and a bare check wouldn't catch the mismatch.
+func TestInjectXMPStream_PropagatesLocateStartxrefError(t *testing.T) {
+	_, err := InjectXMPStream([]byte("%PDF-1.4\nno relevant marker here\n"), []byte("<xmp/>"))
+	if err == nil {
+		t.Fatal("expected an error when startxref is absent")
+	}
+	if !strings.Contains(err.Error(), "pdfmeta: locate startxref:") {
+		t.Errorf("expected the locate-startxref wrap prefix, got %q", err)
+	}
+}
+
+// TestInjectXMPStream_PropagatesParseTrailerError covers the
+// "pdfmeta: parse trailer: %w" wrap. The fixture has a valid, in-range
+// startxref (so stage 1 succeeds) but no trailer keyword anywhere, so
+// stage 2 fails specifically, not stage 1 or stage 3.
+func TestInjectXMPStream_PropagatesParseTrailerError(t *testing.T) {
+	_, err := InjectXMPStream([]byte("%PDF-1.4\nxxxx\nstartxref\n5\n%%EOF\n"), []byte("<xmp/>"))
+	if err == nil {
+		t.Fatal("expected an error when the trailer keyword is absent")
+	}
+	if !strings.Contains(err.Error(), "pdfmeta: parse trailer:") {
+		t.Errorf("expected the parse-trailer wrap prefix, got %q", err)
+	}
+}
+
+// TestInjectXMPStream_PropagatesLocateCatalogError covers the
+// "pdfmeta: locate Catalog object: %w" wrap. The fixture has a valid
+// startxref, trailer, /Size, and /Root (so stages 1 and 2 both
+// succeed), but the referenced Catalog object body is never actually
+// present in the byte stream, so only stage 3 fails.
+func TestInjectXMPStream_PropagatesLocateCatalogError(t *testing.T) {
+	b := []byte("%PDF-1.4\ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n5\n%%EOF\n")
+	_, err := InjectXMPStream(b, []byte("<xmp/>"))
+	if err == nil {
+		t.Fatal("expected an error when the Catalog object is absent")
+	}
+	if !strings.Contains(err.Error(), "pdfmeta: locate Catalog object:") {
+		t.Errorf("expected the locate-Catalog wrap prefix, got %q", err)
+	}
+}
+
+// TestInjectXMPStream_AddsTrailingNewlineWhenMissing covers the
+// "pdfBytes[len(pdfBytes)-1] != '\n'" guard. minimalPDF() already ends
+// in '\n', so the fixture trims it to force the guard to fire.
+// Discriminator: out[len(pdfBytes)] must be the inserted '\n' — with
+// the guard deleted (mutated to `if false`), the appended block's
+// first byte is instead the leading digit of the metadata object's
+// "<id> 0 obj" line, observed gluing directly onto the trimmed
+// fixture's last byte with no separator: out[len(pdfBytes):] reads
+// "4 0 obj\n<<\n/Type /Me" (confirmed by mutation).
+func TestInjectXMPStream_AddsTrailingNewlineWhenMissing(t *testing.T) {
+	pdfBytes := bytes.TrimRight(minimalPDF(), "\n")
+	out, err := InjectXMPStream(pdfBytes, []byte("<xmp/>"))
+	if err != nil {
+		t.Fatalf("InjectXMPStream: %v", err)
+	}
+	if out[len(pdfBytes)] != '\n' {
+		t.Errorf("expected a newline inserted immediately after the original bytes, got %q", out[len(pdfBytes):min(len(out), len(pdfBytes)+20)])
+	}
+}
+
+// swappedIDPDF returns a hand-built PDF whose /Root object ID (9) is
+// deliberately larger than its /Size (4) — a spec-violating structure
+// (PDF/Size is defined as one greater than the highest object number in
+// use), but the only way to reach InjectXMPStream's "first > second"
+// xref-entry-swap branch: metaID is derived from /Size, and for any
+// spec-valid PDF /Size is already larger than every existing object
+// ID, so metaID > catalogID always holds and the swap never triggers.
+// This exists to cover defensive code, not to model a realistic input.
+func swappedIDPDF() []byte {
+	var b bytes.Buffer
+	b.WriteString("%PDF-1.4\n")
+	b.WriteString("9 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
+	xrefOff := b.Len()
+	b.WriteString("xref\n0 1\n0000000000 65535 f \n")
+	b.WriteString("trailer\n<<\n/Size 4\n/Root 9 0 R\n>>\n")
+	fmt.Fprintf(&b, "startxref\n%d\n%%%%EOF\n", xrefOff)
+	return b.Bytes()
+}
+
+// TestInjectXMPStream_SwapsXrefEntriesWhenCatalogIDGreaterThanMetaID
+// covers the "first > second" branch using swappedIDPDF (see its
+// docstring for why the fixture is deliberately spec-violating).
+// Discriminator: the xref subsection immediately following the
+// appended incremental update's "0000000000 65535 f " free-list entry
+// must list the lower ID (metaID, 4) before the higher one (catalogID,
+// 9) — ascending order proves the swap ran. Searches only within
+// out[len(pdfBytes):] (the newly appended bytes), not the whole
+// output, because the fixture's own original xref table also contains
+// the literal "0000000000 65535 f " text and would otherwise match
+// the wrong occurrence.
+func TestInjectXMPStream_SwapsXrefEntriesWhenCatalogIDGreaterThanMetaID(t *testing.T) {
+	pdfBytes := swappedIDPDF()
+	out, err := InjectXMPStream(pdfBytes, []byte("<xmp/>"))
+	if err != nil {
+		t.Fatalf("InjectXMPStream: %v", err)
+	}
+	appended := out[len(pdfBytes):]
+	const freeEntry = "0000000000 65535 f \n"
+	idx := bytes.Index(appended, []byte(freeEntry))
+	if idx < 0 {
+		t.Fatalf("expected the appended xref's free-list entry, got %q", appended)
+	}
+	rest := appended[idx+len(freeEntry):]
+	if !bytes.HasPrefix(rest, []byte("4 1\n")) {
+		t.Errorf("expected the lower ID (metaID=4) listed first after the swap, got %q", rest[:min(len(rest), 20)])
+	}
+}
+
 func TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog(t *testing.T) {
 	pdf := minimalPDFWithoutBinaryComment()
 	out, err := MakePDFA3(pdf, XMPSpec{Title: "PDF/A sample", Author: "GoPMgr"}, []byte("fake-icc-profile"))
@@ -666,6 +879,58 @@ func TestBuildXMPPacket_ContainsRequiredFields(t *testing.T) {
 		if !strings.Contains(s, want) {
 			t.Errorf("BuildXMPPacket missing required substring %q", want)
 		}
+	}
+}
+
+// TestBuildXMPPacket_DefaultsTitleWhenEmpty covers the
+// "spec.Title == ”" default branch. Not masked: deleting the guard
+// leaves an empty <rdf:li></rdf:li> inside <dc:title>, so
+// "GoPMgr document" is genuinely absent from the output rather than
+// just relocated — a bare bytes.Contains would already catch this.
+// Uses the tag-adjacent needle anyway for symmetry with the Author
+// test below, which does need it. Confirmed by mutation.
+func TestBuildXMPPacket_DefaultsTitleWhenEmpty(t *testing.T) {
+	pkt := BuildXMPPacket(XMPSpec{})
+	needle := []byte(`<dc:title><rdf:Alt><rdf:li xml:lang="x-default">GoPMgr document</rdf:li>`)
+	if !bytes.Contains(pkt, needle) {
+		t.Errorf("expected /Title to default to \"GoPMgr document\" when unset, got %q", string(pkt))
+	}
+}
+
+// TestBuildXMPPacket_DefaultsAuthorWhenEmpty covers the
+// "spec.Author == ”" default branch. Masked three ways by a bare
+// bytes.Contains(pkt, []byte("GoPMgr")): the packet unconditionally
+// contains "GoPMgr" from x:xmptk="GoPMgr", <pdf:Producer>GoPMgr
+// </pdf:Producer>, and (when spec.CreatorTool is also unset, as here)
+// <xmp:CreatorTool>GoPMgr</xmp:CreatorTool> — none of which depend on
+// this guard. The tag-adjacent needle isolates <dc:creator>'s own
+// value. Confirmed by mutation: with the guard deleted, the observed
+// output was an empty <dc:creator><rdf:Seq><rdf:li></rdf:li> — the
+// three unconditional "GoPMgr" occurrences remained present elsewhere
+// in the packet exactly as predicted, and the needle caught the
+// difference where a bare bytes.Contains(pkt, []byte("GoPMgr")) would
+// not have.
+func TestBuildXMPPacket_DefaultsAuthorWhenEmpty(t *testing.T) {
+	pkt := BuildXMPPacket(XMPSpec{})
+	needle := []byte(`<dc:creator><rdf:Seq><rdf:li>GoPMgr</rdf:li>`)
+	if !bytes.Contains(pkt, needle) {
+		t.Errorf("expected /Author to default to \"GoPMgr\" when unset, got %q", string(pkt))
+	}
+}
+
+// TestBuildXMPPacket_IncludesDescriptionWhenSet covers the
+// "spec.Description != ”" guard — the one uncovered branch in this
+// function not accounted for in this increment's original plan (only
+// the Title and Author defaults were scoped in; this one surfaced
+// during the coverage check after those two landed). Break-verifies
+// via key absence: with the guard deleted, no <dc:description> element
+// is emitted at all regardless of spec.Description, so its presence in
+// the output is itself the guard-ran signal. Confirmed by mutation.
+func TestBuildXMPPacket_IncludesDescriptionWhenSet(t *testing.T) {
+	pkt := BuildXMPPacket(XMPSpec{Description: "a test description"})
+	needle := []byte(`<dc:description><rdf:Alt><rdf:li xml:lang="x-default">a test description</rdf:li>`)
+	if !bytes.Contains(pkt, needle) {
+		t.Errorf("expected /Description to appear when set, got %q", string(pkt))
 	}
 }
 

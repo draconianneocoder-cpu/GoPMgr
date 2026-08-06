@@ -1140,16 +1140,119 @@ task is tracking the fix) reproduced once during this increment's
 clean re-run gave the correct numbers above — not accepted, re-run
 instead, per the established handling for that flake.
 
-**Not started:** `internal/pdfmeta` increment 2b (the call-chain
-functions themselves: `parseTrailerSizeAndRoot`, `InjectXMPStream`,
-`BuildXMPPacket` — 12 statements, needs staged fixtures built by
-corrupting a valid render/hand-rolled buffer and wrap-prefix
-discrimination on `InjectXMPStream`'s three error-propagation
-branches, per `/advisor`'s wrapping-chain-masking-risk warning from
-the original increment-2 plan review), then the remaining byte-surgery
+### 2026-08-06 — `internal/pdfmeta` increment 2b: 88.0% → 89.9%; the `InjectXMPStream` call chain itself (`parseTrailerSizeAndRoot`, `InjectXMPStream`, `BuildXMPPacket`)
+
+Closes the three functions 2a deliberately deferred (see 2a's entry
+above): `parseTrailerSizeAndRoot`, `InjectXMPStream`, `BuildXMPPacket`
+— all now 100%; test-only change, `pdfmeta.go`'s production code
+untouched (`git diff --stat` confirms only `pdfmeta_test.go` changed).
+13 new tests, package total 53 → 66.
+
++15 covered statements (`BuildXMPPacket` +3, `InjectXMPStream` +7,
+`parseTrailerSizeAndRoot` +5) — not the "12 statements" this section
+previously estimated. The gap is a scoping lesson, not an error in the
+work itself: the original estimate eyeballed one statement per
+`@@UNCOV@@` HTML span, which undercounts any span containing multiple
+assignments — `InjectXMPStream`'s xref-entry-swap block
+(`first, second = second, first; firstOff, secondOff = ...; firstGen,
+secondGen = ...`) is one `if` but three statements, accounting for the
+extra 2. A fourth branch, `BuildXMPPacket`'s `spec.Description != ""`
+guard, wasn't in the original plan at all — it surfaced only after a
+coverage check following the Title/Author tests showed 97.0%, not the
+assumed 100%. Lesson for future increment scoping: verify statement
+counts from `go tool cover -func`'s numbers, not from counting
+`@@UNCOV@@` spans by eye. The +15 matches the coverage ratchet's
+observed uncovered-count improvement exactly on both build tags
+(5806 → 5791 on go_default, 5826 → 5811 on go_duckdb), confirming the
+denominator held flat as expected for a test-only change.
+
+`parseTrailerSizeAndRoot`'s five guards are structurally identical to
+2a's `readDictInt`/`readDictRef` cascade shape, so every test asserts
+the guard's own error text rather than a bare `err != nil` check —
+reusing rather than rediscovering that lesson:
+
+1. `TestParseTrailerSizeAndRoot_XrefOffsetOutOfRange` (3 subcases:
+   negative, exactly `len(b)`, past `len(b)`) is a slice of structs,
+   not a map — map iteration order is randomized, and the "negative"
+   subcase's mutated-guard behavior differs qualitatively from "past
+   len(b)"'s (see next point), so randomized order would make which
+   subcases actually execute before a panic non-deterministic across
+   runs. Confirmed by mutation (stripping only the guard's `>= len(b)`
+   half) that "exactly len(b)" cascades cleanly into the next guard's
+   "trailer keyword not found" text (`b[len(b):]` is a legal empty Go
+   slice — no panic, just a different wrong error), while "past
+   len(b)" panics on a genuine slice-bounds violation. Both observed
+   directly.
+2. `TestParseTrailerSizeAndRoot_SizeReadError`/`_RootReadError` assert
+   the `"/Size: %w"`/`"/Root: %w"` wrap prefixes. First-draft
+   break-verification mutation was invalid — it let a later assignment
+   silently overwrite `err`, so the test went red for the wrong reason
+   (`/advisor` caught this on review). Corrected mutation strips only
+   the wrap (`return 0, 0, 0, err` in place of
+   `return 0, 0, 0, fmt.Errorf("/Size: %w", err)`) while preserving
+   guard control flow; re-run confirmed red with the guard's own bare
+   `"not present"` text, no `/Size:`/`/Root:` prefix.
+
+`InjectXMPStream`'s three error-propagation tests each assert their
+own `"pdfmeta: <stage>: "` wrap prefix (locate startxref / parse
+trailer / locate Catalog object) rather than a bare non-nil check —
+the function wraps three sequential stage calls, and a fixture aimed
+at breaking stage N can accidentally also break stage N-1 while still
+returning non-nil, which wrap-prefix discrimination catches.
+`TestInjectXMPStream_AddsTrailingNewlineWhenMissing` break-verifies
+via the exact glued byte sequence observed under mutation
+(`out[len(pdfBytes):]` reads `"4 0 obj\n<<\n/Type /Me"` with the guard
+deleted — the metadata object's leading digit glues directly onto the
+trimmed fixture's last byte with no separator). The xref-entry-swap
+branch is unreachable for any spec-valid PDF (confirmed as scoped in
+2a's review: `/Size` is spec-defined as one greater than the highest
+object number, so `metaID` — derived from `/Size` — is always greater
+than any existing object ID); reached only via `swappedIDPDF()`, a
+hand-built, deliberately spec-violating fixture (`/Root 9 0 R` but
+`/Size 4`) — documented as covering defensive code, not modeling a
+realistic input.
+
+`BuildXMPPacket`'s Author-default guard is masked three ways exactly
+as 2a's review predicted (`x:xmptk="GoPMgr"`, `<pdf:Producer>GoPMgr
+</pdf:Producer>`, and — when CreatorTool is also unset —
+`<xmp:CreatorTool>GoPMgr</xmp:CreatorTool>`, none dependent on the
+guard); `TestBuildXMPPacket_DefaultsAuthorWhenEmpty` uses a
+tag-adjacent needle to isolate `<dc:creator>`'s own value, confirmed
+by mutation that the guard-deleted output leaves `<dc:creator>`
+genuinely empty while the three unconditional "GoPMgr" occurrences
+remain — a bare `bytes.Contains(pkt, []byte("GoPMgr"))` would have
+stayed green. All three `BuildXMPPacket` tests (Title default, Author
+default, Description-when-set) were mutation-tested in this pass; this
+closes a gap from the increment's first draft, where they were written
+and confirmed to pass but not yet put through the mutate/run/restore
+cycle before an earlier `/advisor` pass caught the omission.
+
+Two self-authored fixtures initially contained the literal keyword
+they were meant to test the *absence* of (`"no trailer keyword
+anywhere in this buffer"` contains "trailer"; `"no startxref marker
+here"` contains "startxref"), causing false failures on the first
+green-baseline run — not a mutation catching a masked guard, just a
+fixture-authoring mistake caught immediately by the test failing loud.
+Both reworded to neutral filler text before finalizing.
+
+Coverage ratchet: go_default 8818/14624 (5806 uncovered) → 8833/14624
+(5791 uncovered); go_duckdb 8896/14722 (5826 uncovered) → 8911/14722
+(5811 uncovered) — 15 statements newly covered on both tags, matching
+the per-function delta above exactly. The ratchet's known
+exclude-filter flake (see `DEVELOPER_HANDBOOK.md`) reproduced twice
+across this increment's work (once during the `--update` run itself,
+once on a later confirmation re-run), each resolved by an immediate
+clean re-run per the established handling rule — never accept a
+REGRESSED result without re-running once.
+
+**Not started:** the remaining byte-surgery
 cluster (`InjectOutputIntent`, `MakePDFA3`, `InjectPAdESSignature`,
-the signature-field-rewriting functions, all 70–95%), then the rest of
-Phase 2 (remaining Go completion-tier packages at 70–99%),
+the signature-field-rewriting functions, all 70–95%) — likely
+`internal/pdfmeta`'s final increment before the package reaches 100%,
+then the rest of
+Phase 2 (remaining Go completion-tier packages at 70–99%: `fonts`
+81.6%, `rfc3161` 81.6%, `signing` 81.6%, `sigma/service` 85.0%, and
+others),
 Phase 3 (Go construction tier: `charts/pdfrender`, `documents`, `update`,
 `db`, `agile`, `export`, `money`, `scripts`, `tools/update-manifest`),
 Phase 4 (root/App layer, 48.2%), Phase 5 (remaining frontend pure-logic
