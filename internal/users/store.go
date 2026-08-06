@@ -556,6 +556,13 @@ func legacyRootCandidatesForGOOS(goos, home string) []string {
 // never cause data loss and the user can delete the old copy at leisure)
 // and reports whether a migration happened. Safe to call on every startup.
 func MigrateLegacyRoot(newRoot string) (bool, error) {
+	// This check is a pure optimization, not a correctness guard: it can't
+	// be break-verified, because migrateLegacyRoot repeats the identical
+	// os.Stat check below (needed there too, since it's also called
+	// per-candidate) and returns the same (false, nil) either way. Deleting
+	// this one only costs an extra legacyRootCandidates() call plus one
+	// redundant os.Stat per candidate before the inner check catches it —
+	// same shape as the internal/admin redundant-downstream-guard finding.
 	if _, err := os.Stat(filepath.Join(newRoot, "system.db")); err == nil {
 		return false, nil // new location already initialised — nothing to do
 	}
@@ -602,11 +609,19 @@ func copyTree(src, dst string) error {
 		if walkErr != nil {
 			return walkErr
 		}
+		// filepath.Rel's error is not tested: WalkDir always constructs path
+		// from src via filepath.Join, so the two are always Rel-compatible
+		// by construction — there is no input that reaches this callback
+		// with a path Rel can't relate to src.
 		rel, err := filepath.Rel(src, path)
 		if err != nil {
 			return err
 		}
 		target := filepath.Join(dst, rel)
+		// d.Info()'s error is not tested: it would require the walked
+		// entry to be removed between WalkDir's directory listing and this
+		// stat call (a TOCTOU race), which has no deterministic, portable
+		// trigger.
 		info, err := d.Info()
 		if err != nil {
 			return err
