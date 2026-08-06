@@ -101,6 +101,11 @@ func (s *Store) IssueRecoveryCodes(username string, dek []byte) ([]string, error
 		}
 	}
 
+	// Not tested: this Begin's own error is not independently forceable.
+	// The closed-store technique used elsewhere in this package trips the
+	// user-existence QueryRow above first, since it's this function's
+	// genuine first DB call — unlike ResetWithRecoveryCode's tx.Begin(),
+	// which IS its first DB call and is forceable (see recovery_test.go).
 	tx, err := s.conn.Begin()
 	if err != nil {
 		return nil, err
