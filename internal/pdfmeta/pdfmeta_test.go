@@ -1162,6 +1162,191 @@ func TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog(t *testing.T) 
 	}
 }
 
+// TestMakePDFA3_PropagatesBinaryHeaderCommentError covers the
+// "pdfmeta: binary header comment: %w" wrap around the first stage.
+func TestMakePDFA3_PropagatesBinaryHeaderCommentError(t *testing.T) {
+	_, err := MakePDFA3([]byte("not a pdf"), XMPSpec{}, []byte("icc"))
+	if err == nil {
+		t.Fatal("expected an error when the input has no PDF header")
+	}
+	if !strings.Contains(err.Error(), "pdfmeta: binary header comment:") {
+		t.Errorf("expected the binary-header-comment wrap prefix, got %q", err)
+	}
+}
+
+// TestMakePDFA3_PropagatesXMPInjectionError covers the
+// "pdfmeta: xmp injection: %w" wrap around the second stage. The fixture
+// already carries a valid header and binary comment (so stage 1
+// succeeds via ensureBinaryHeaderComment's early-return path) but has no
+// "startxref" anywhere, so InjectXMPStream's own findLastStartxref call
+// fails. Filler text reused from
+// TestEnsureBinaryHeaderComment_PropagatesFindLastStartxrefError, not
+// invented fresh: an earlier draft of this fixture used filler
+// containing the literal word "startxref", which made findLastStartxref
+// succeed and the fixture fail for an unrelated reason (a parse error
+// downstream) while still passing this test's wrap-prefix assertion --
+// caught before finalizing by reusing the file's own known-safe filler
+// rather than writing new prose.
+func TestMakePDFA3_PropagatesXMPInjectionError(t *testing.T) {
+	pdf := []byte("%PDF-1.4\n%\xe2\xe3\xcf\xd3\nnothing relevant appears in this buffer\n")
+	_, err := MakePDFA3(pdf, XMPSpec{}, []byte("icc"))
+	if err == nil {
+		t.Fatal("expected an error when the input has no startxref")
+	}
+	if !strings.Contains(err.Error(), "pdfmeta: xmp injection:") {
+		t.Errorf("expected the xmp-injection wrap prefix, got %q", err)
+	}
+}
+
+// TestMakePDFA3_PropagatesOutputIntentInjectionError covers the
+// "pdfmeta: outputintent injection: %w" wrap around the third stage.
+// minimalPDF() lets stages 1 and 2 succeed; a nil iccProfile fails only
+// InjectOutputIntent's own "empty ICC profile" guard.
+func TestMakePDFA3_PropagatesOutputIntentInjectionError(t *testing.T) {
+	_, err := MakePDFA3(minimalPDF(), XMPSpec{}, nil)
+	if err == nil {
+		t.Fatal("expected an error for a nil ICC profile")
+	}
+	if !strings.Contains(err.Error(), "pdfmeta: outputintent injection:") {
+		t.Errorf("expected the outputintent-injection wrap prefix, got %q", err)
+	}
+}
+
+// TestStreamPayload_EmptyInputReturnsUnchanged covers the "len(data) ==
+// 0" guard. Without it, streamPayload panics on data[len(data)-1] since
+// len(data)-1 == -1 for an empty slice -- a real crash, not a value
+// mismatch, which is why this guard exists before the two newline-check
+// branches below it can index into data at all.
+//
+// NOTE ON THE OTHER TWO BRANCHES (not tested here, see
+// DEVELOPER_HANDBOOK.md's dated finding): streamPayload's third branch
+// (data ending in '\n' or '\r') returns a byte-for-byte copy of data,
+// not a trailing-EOL-stripped version despite the name and the
+// newline-conditioned structure suggesting that was the intent. Both
+// call sites (InjectXMPStream, InjectOutputIntent) write an unconditional
+// extra '\n' after the returned bytes regardless, and
+// BuildXMPPacket's real output always ends in '\n' (fmt.Fprintln's
+// trailing newline on `<?xpacket end="w"?>`), so this branch is the one
+// actually exercised by every real InjectXMPStream call today -- not a
+// rare edge case. Confirmed not a functional bug (PDF readers tolerate
+// extra whitespace before `endstream`, and the extra byte isn't counted
+// in /Length either way), but the copy is not load-bearing: it is
+// observably identical in content to the "return data" branch, and this
+// test does not assert otherwise.
+func TestStreamPayload_EmptyInputReturnsUnchanged(t *testing.T) {
+	if got := streamPayload(nil); len(got) != 0 {
+		t.Errorf("expected an empty result for nil input, got %q", got)
+	}
+	if got := streamPayload([]byte{}); len(got) != 0 {
+		t.Errorf("expected an empty result for empty input, got %q", got)
+	}
+}
+
+// readTrailerIDValue is tested directly rather than through
+// InjectXMPStream/trailerIDEntry: its happy path is already exercised
+// indirectly via TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog,
+// but its five failure guards need malformed trailer text no PDF this
+// app generates would ever produce -- the same rationale as
+// parseTrailerSizeAndRoot and replaceStartxrefValue's direct tests in
+// earlier increments.
+
+// TestReadTrailerIDValue_XrefOffsetOutOfRange covers both operands of
+// "xrefOffset < 0 || xrefOffset >= len(b)". Table is a slice, not a map,
+// for deterministic execution order -- same reasoning as
+// TestParseTrailerSizeAndRoot_XrefOffsetOutOfRange, whose precedent this
+// mirrors exactly: the "negative" subcase panics on b[xrefOffset:] with
+// a negative index when the guard is deleted; the "exactly len(b)"
+// subcase does not panic (b[len(b):] is a legal empty slice) and
+// cascades into the very next guard (trailerIdx < 0) with the identical
+// ("", false) result either way, so it does not independently
+// discriminate the mutation -- accepted as the same non-discriminating-
+// boundary-subcase shape already established for that precedent, not
+// treated as a masking bug to fix.
+func TestReadTrailerIDValue_XrefOffsetOutOfRange(t *testing.T) {
+	b := []byte("trailer\n<< /ID [<abc>] >>\nstartxref\n0\n%%EOF\n")
+	cases := []struct {
+		name   string
+		offset int
+	}{
+		{"negative", -1},
+		{"exactly len(b)", len(b)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if _, ok := readTrailerIDValue(b, c.offset); ok {
+				t.Errorf("expected ok=false for an out-of-range offset %d", c.offset)
+			}
+		})
+	}
+}
+
+// TestReadTrailerIDValue_TrailerKeywordNotFound covers the "trailerIdx <
+// 0" guard with xrefOffset == 0, chosen deliberately: with the guard
+// deleted, trailerIdx stays -1, absTrailer becomes 0 + (-1) == -1, and
+// the next line's b[absTrailer:] slices at a negative index and panics
+// -- confirmed by mutation, not just traced.
+func TestReadTrailerIDValue_TrailerKeywordNotFound(t *testing.T) {
+	b := []byte("xref\n0 1\n0000000000 65535 f \nno keyword\nstartxref\n0\n%%EOF\n")
+	if _, ok := readTrailerIDValue(b, 0); ok {
+		t.Error("expected ok=false when the trailer keyword is absent")
+	}
+}
+
+// TestReadTrailerIDValue_StartxrefNotFoundAfterTrailer covers the
+// "endIdx < 0" guard. With the guard deleted, endIdx stays -1 and
+// block := b[absTrailer : absTrailer+endIdx] becomes a high < low slice
+// expression, which panics -- confirmed by mutation.
+func TestReadTrailerIDValue_StartxrefNotFoundAfterTrailer(t *testing.T) {
+	b := []byte("trailer\n<< /Size 4 /Root 1 0 R >>\nno marker here\n")
+	if _, ok := readTrailerIDValue(b, 0); ok {
+		t.Error("expected ok=false when no startxref follows the trailer keyword")
+	}
+}
+
+// TestReadTrailerIDValue_IDNotFollowedByArray covers the "block[i] !=
+// '['" guard. A bare bytes.Contains/ok==false check on a fixture like
+// "/ID (not an array)" would NOT discriminate this guard from the very
+// next one (unterminated array): with this guard deleted, the scan
+// falls into the ']'-search loop, finds no ']', and the next guard
+// returns the identical ("", false) -- masked. This fixture instead
+// gives the fallthrough a ']' to find: "/ID (abc) /Other [1 2]" is not
+// a valid /ID array, but with the guard deleted the scan starts at '('
+// and the first ']' it finds is the one inside "[1 2]", returning
+// ("(abc) /Other [1 2]", true) -- a wrong, non-empty value with ok=true,
+// confirmed by mutation (not just traced) to be exactly that string, and
+// therefore genuinely distinguishable from the guard-present ("",
+// false) result.
+func TestReadTrailerIDValue_IDNotFollowedByArray(t *testing.T) {
+	b := []byte("trailer\n<< /ID (abc) /Other [1 2] >>\nstartxref\n0\n%%EOF\n")
+	id, ok := readTrailerIDValue(b, 0)
+	if ok {
+		t.Errorf("expected ok=false when /ID is not followed by '[', got %q", id)
+	}
+	if id != "" {
+		t.Errorf("expected an empty id, got %q", id)
+	}
+}
+
+// TestReadTrailerIDValue_UnterminatedIDArray covers the "i >=
+// len(block)" guard (no closing ']' before the block ends at
+// "startxref"). With the guard deleted, the loop exits at i ==
+// len(block), and block[start:i+1] does NOT panic -- Go's slice
+// capacity for `block` (itself a sub-slice of b) extends past its own
+// length to the end of b's backing array, so the expression legally
+// reads one byte beyond block's logical end. Confirmed by mutation, not
+// predicted: the result is ("[<abc><def>\ns", true) -- a wrong,
+// non-empty value with ok=true, ending in the first byte of the
+// following "startxref" keyword. An earlier draft of this docstring
+// assumed a panic by analogy with the other four guards in this
+// function before actually running the mutation; corrected to the
+// observed behavior.
+func TestReadTrailerIDValue_UnterminatedIDArray(t *testing.T) {
+	b := []byte("trailer\n<< /ID [<abc><def>\nstartxref\n0\n%%EOF\n")
+	if _, ok := readTrailerIDValue(b, 0); ok {
+		t.Error("expected ok=false for an unterminated /ID array")
+	}
+}
+
 // TestEnsureBinaryHeaderComment_MissingHeaderReturnsError covers the
 // "missing PDF header" guard: input that doesn't start with "%PDF-".
 // Confirmed by mutation: with the guard deleted, the fixture cascades
