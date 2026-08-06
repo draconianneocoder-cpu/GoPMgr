@@ -103,6 +103,59 @@ then replaces the linked chart items, preserving chart metadata and audit
 history. The write is deliberately one-way and user-invoked so chart-only
 changes are never overwritten without a visible action.
 
+**Agent Plugin Interface + Built-in MCP Server** (RICE 108)
+Almost all of GoPMgr's real capability lives in Go services behind the
+Wails `App` struct — CPM/PDM scheduling, constraints, baselines, EVM,
+resource levelling, calendars, scenarios, the Agile pack, and the
+hash-chained audit trail. An AI agent that is supposed to create, update,
+and manage projects needs controlled access to that kernel, not UI
+scraping or a generic REST surface, so the integration point is a plugin
+interface whose primary built-in consumer is a local MCP (Model Context
+Protocol) server. A new `internal/plugin` (or `internal/agent`) package
+defines a minimal contract (`Name`, `Init(host HostAPI) error`,
+`Shutdown`); `HostAPI` is obtained only through the existing locked `App`
+helpers (`requireUser`/`requireDB`, write lock for mutations) and exposes
+domain operations, never raw SQL or unconstrained file access, so every
+mutating call routes through the same services the UI already calls and
+keeps writing to the `audit_events` hash chain.
+
+The built-in MCP plugin runs a local, localhost-only server (stdio for
+local agent harnesses; SSE/HTTP only if a harness needs it), implemented
+directly against the MCP JSON-RPC 2.0 wire format with `encoding/json` and
+`bufio` — no new external dependency, consistent with the no-new-deps rule
+above. Tools are intent-oriented and deliberately few (project/schedule
+snapshot, critical path, task update, recompute, baseline set/compare, EVM
+at a status date, resource levelling, Agile board/sprint operations,
+chart/document listing, scenario activate/promote, and read access to
+recent audit events and the current permission scope) rather than a 1:1
+mirror of every table. Tool calls are scoped by permission level
+(read-only / schedule edit / structural / admin), destructive or
+high-impact actions require human confirmation, an agent session is bound
+to one explicitly-opened project, and per-user isolation plus private
+file modes (0600/0700) are not weakened. GoPMgr's own code currently
+spawns zero goroutines — the Wails runtime is the only spawner today — so
+the MCP server's accept/read loop is a deliberate, explicitly isolated
+exception to that invariant, not a precedent for goroutines elsewhere.
+New `App` methods enable/disable the server, report connection status,
+set the permission level, and copy a connection snippet for agent
+harnesses (Goose, Claude, etc.); a settings panel or status indicator is
+a later, secondary increment.
+
+Acceptance criterion: an integration test drives the MCP server as a real
+client would — `tools/list`, then `get_critical_path` and `update_task`
+against a fixture project — and asserts the resulting `audit_events` row
+is identical in shape to the same mutation performed through
+`App.UpdateTask`; a second test asserts any tool call made before a
+project is explicitly opened through the plugin session is rejected
+before it reaches `HostAPI`. Both gates must pass before the feature
+ships.
+
+A general third-party plugin loader (a WASM sandbox via
+`github.com/tetratelabs/wazero`, pure Go, zero-CGo, Apache-2.0) remains
+Phase 4 — Ecosystem material for community extensions, worth taking on
+only once this built-in MCP plugin has proven the `HostAPI` boundary in
+practice.
+
 **Portfolio Roll-ups** (RICE 90)
 Aggregate EV/AC/PV/SPI/CPI across the projects the user has open or has
 recently opened. Roll-up dashboard in `frontend/src/lib/components/project/Portfolio.svelte`.
@@ -130,7 +183,8 @@ target: 10 000+ tasks at 60 fps), Local AI via `github.com/ollama/ollama/api`
 (Go SDK, MIT, requires user-installed Ollama — never bundled), Accessibility
 (WCAG 2.1 AA audit pass), i18n (`go-i18n/v2` + `@inlang/paraglide-js`),
 Local Collaboration (read/write to a Syncthing-managed shared folder — see
-note below), and a Mobile Companion web view.
+note below), Nostr Presence, Signaling & Team Messaging (see note below),
+and a Mobile Companion web view.
 
 **Local Collaboration note:** GoPMgr must acquire an exclusive SQLite lock
 before opening a project and must release it on close. The sync folder must
@@ -138,15 +192,69 @@ not be transferred by Syncthing while GoPMgr holds the lock. The
 recommended user workflow is: close the project in GoPMgr, allow Syncthing
 to sync, reopen on the other machine. GoPMgr will detect and warn on
 concurrent-open conflicts detected via the WAL/SHM presence heuristic.
-Merge conflict resolution of concurrent edits is out of scope; the model is
-"one writer at a time."
+Merge conflict resolution of concurrent edits is out of scope for now; the
+model is "one writer at a time." CRDTs or operational transforms are a
+possible later direction *if and when* GoPMgr deliberately decides to
+support concurrent editing — no such decision has been made, and
+one-writer-at-a-time remains the model until it is.
+
+**Nostr Presence, Signaling & Team Messaging note:** Nostr (NIP-01) is a
+complementary comms layer, not a sync mechanism — GoPMgr never transmits
+project files, the SQLite database, or bulk project content over Nostr
+events; the sync mechanism stays whichever of Local Collaboration (above)
+or the Phase 4 self-hosted sync server (below) the user has configured.
+Scope is deliberately narrow:
+- **Presence/discovery** — which authorized teammates' GoPMgr instances
+  are currently online.
+- **Lightweight signaling** — e.g. "project X is closed, safe to pull"
+  hints that reduce the WAL/SHM concurrent-open collisions the Local
+  Collaboration note above already warns about.
+- **Optional identity layer** — a user's `npub` is an alternative or
+  complementary identifier to their local GoPMgr account, never a
+  replacement for Argon2id authentication.
+- **Short, in-app team messaging and public/semi-public project status
+  notes** — both scoped to explicitly authorized team members only, never
+  broadcast to the open Nostr network by default.
+
+This is not real-time collaborative editing: it carries no task data, and,
+per `VISION.md`'s "Out of scope (for now)" list, real-time collaborative
+editing over a network stays out of scope regardless. Per the local-first
+design principle, Nostr connectivity is strictly optional and
+user/team-initiated, never required for scheduling, EVM, document
+generation, or export. Relay configuration is user- or team-controlled — a
+private/self-hosted relay is supported for teams that want to keep
+presence and messages off public relays entirely, and public relays remain
+an option for teams that accept that tradeoff; GoPMgr never hard-codes a
+single relay dependency. Team membership and authorization (which `npub`s
+may see presence, receive signals, or send messages for a given
+project/team) are modeled explicitly, and relay traffic addressed to a
+project from an unauthorized key must be rejected, not merely ignored
+client-side. Requires a maintained Go Nostr client library (candidate:
+`github.com/nbd-wtf/go-nostr`, MIT) — subject to the Dependency Policy's
+evaluation (maintenance status, licence, CGO) before adoption, and its own
+ADR given the new external-service and identity-key surface it
+introduces. Persistent relay connections are, like the Phase 1 MCP
+server's accept/read loop, a deliberate, explicitly isolated exception to
+GoPMgr's current zero-goroutines-in-own-code invariant (see
+`DEVELOPER_HANDBOOK.md`).
 
 ## Phase 4 — Ecosystem (2028+)
 
 Self-hosted local sync server option (for teams that want shared access
-without Syncthing), Plugin architecture via `github.com/tetratelabs/wazero`
-(pure Go, zero-CGo WASM sandbox, Apache-2.0), Primavera XER/PMXML import,
+without Syncthing — a small Go service that mediates exclusive access and
+transfers project files only when no writer holds the lock, over a LAN or
+a user's own machine; deliberately not built on Nostr's public-relay/
+event-chunking model, though it may optionally consume the Phase 3 Nostr
+signaling layer's lock-release hints as a convenience, never a
+dependency), a general third-party plugin loader via
+`github.com/tetratelabs/wazero` (pure Go, zero-CGo WASM sandbox,
+Apache-2.0) for community extensions, Primavera XER/PMXML import,
 Certification packs (ISO 21502, PMBOK 7), and open data standard exports.
+The third-party loader is deliberately sequenced after Phase 1's Agent
+Plugin Interface + Built-in MCP Server, which lands the `Plugin`/`HostAPI`
+boundary first for a single trusted, in-process built-in plugin — the WASM
+sandbox is only worth building once that boundary has been proven in
+practice and untrusted third-party code needs isolating from it.
 
 ## Dependency Policy
 
