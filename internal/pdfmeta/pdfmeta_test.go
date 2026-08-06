@@ -121,6 +121,62 @@ func minimalPDFWithCatalog(catalogBody string, extraObjects ...testPDFObject) []
 	return b.Bytes()
 }
 
+// TestParseDigits_WithinRange covers the ordinary path: a digit run
+// well within int's range accumulates to the expected value.
+func TestParseDigits_WithinRange(t *testing.T) {
+	n, err := parseDigits([]byte("42"))
+	if err != nil {
+		t.Fatalf("parseDigits: %v", err)
+	}
+	if n != 42 {
+		t.Errorf("got %d, want 42", n)
+	}
+}
+
+// TestParseDigits_OverflowReturnsError covers parseDigits' only
+// failure mode. Every digit-run accumulator in this file used to be a
+// bare `n = n*10 + int(c-'0')` loop with no bounds check, so a long
+// enough digit run would silently wrap to a wrong (often negative)
+// value instead of erroring — found while covering
+// ensureSignatureFieldFlags's /SigFlags parsing (confirmed directly:
+// `ensureSignatureFieldFlags([]byte("<< /SigFlags
+// 99999999999999999999 >>"))` returned err=nil and wrote
+// "/SigFlags 7766279631452241919" before this fix) and swept to every
+// accumulation site in the file (findLastStartxref, readDictInt,
+// readDictRef, parsePositiveDecimal, ensureSignatureFieldFlags,
+// readRefAt), not just the one found first. Confirmed by mutation:
+// reverting to the raw loop makes this fixture return (n, nil) with a
+// wrapped value instead of an error.
+func TestParseDigits_OverflowReturnsError(t *testing.T) {
+	_, err := parseDigits([]byte("99999999999999999999"))
+	if err == nil {
+		t.Fatal("expected an error for a digit run that overflows int")
+	}
+	if !strings.Contains(err.Error(), "overflows") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestParseDigits_BoundaryValues pins the overflow guard's off-by-one
+// behavior at math.MaxInt (9223372036854775807 on a 64-bit build): the
+// guard's division-based check (`n > (math.MaxInt-d)/10`) is easy to
+// get wrong by one at exactly this boundary, and the other overflow
+// test's fixture (20 nines) overflows by orders of magnitude — it
+// would not catch an off-by-one here. MaxInt itself must parse
+// cleanly; MaxInt+1 must error.
+func TestParseDigits_BoundaryValues(t *testing.T) {
+	n, err := parseDigits([]byte("9223372036854775807"))
+	if err != nil {
+		t.Fatalf("parseDigits(MaxInt): %v", err)
+	}
+	if n != 9223372036854775807 {
+		t.Errorf("got %d, want math.MaxInt", n)
+	}
+	if _, err := parseDigits([]byte("9223372036854775808")); err == nil {
+		t.Fatal("expected an error for MaxInt+1")
+	}
+}
+
 func TestFindLastStartxref(t *testing.T) {
 	pdf := minimalPDF()
 	off, err := findLastStartxref(pdf)
@@ -158,6 +214,22 @@ func TestFindLastStartxref_OffsetOutOfRange(t *testing.T) {
 		if _, err := findLastStartxref(input); err == nil {
 			t.Errorf("%s: expected an out-of-range error, got nil", name)
 		}
+	}
+}
+
+// TestFindLastStartxref_OffsetOverflowReturnsError covers the new
+// "startxref offset: %w" wrap around parseDigits. Asserts the wrap
+// prefix specifically, not a bare err != nil: an overflowing offset
+// could in principle wrap to a value that also fails the very next
+// "out of range" guard, so a bare non-nil check wouldn't distinguish
+// this guard firing from that one.
+func TestFindLastStartxref_OffsetOverflowReturnsError(t *testing.T) {
+	_, err := findLastStartxref([]byte("startxref\n99999999999999999999\n%%EOF"))
+	if err == nil {
+		t.Fatal("expected an error for a startxref offset that overflows int")
+	}
+	if !strings.Contains(err.Error(), "startxref offset:") {
+		t.Errorf("expected the wrap prefix, got %q", err)
 	}
 }
 
@@ -307,6 +379,21 @@ func TestReadDictInt_NoIntegerValue(t *testing.T) {
 	}
 }
 
+// TestReadDictInt_ValueOverflowReturnsError covers the wrapped
+// parseDigits error: a /Size (or similar) value long enough to
+// overflow int. Confirmed by mutation: reverting to the pre-fix raw
+// accumulation loop returns a wrapped, silently-wrong value instead of
+// an error.
+func TestReadDictInt_ValueOverflowReturnsError(t *testing.T) {
+	_, err := readDictInt([]byte("/Size 99999999999999999999"), "/Size")
+	if err == nil {
+		t.Fatal("expected an error when the value overflows int")
+	}
+	if !strings.Contains(err.Error(), "overflows") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
 // TestReadDictRef_KeyNotPresent covers readDictRef's "key not present"
 // guard. Asserts the guard's own error text, for the same reason as
 // TestReadDictInt_KeyNotPresent: idx == -1 can still land i on a
@@ -359,6 +446,30 @@ func TestReadDictRef_NoGenDigit(t *testing.T) {
 func TestReadDictRef_ExpectedRAfterGen(t *testing.T) {
 	if _, _, err := readDictRef([]byte("/Root 1 0 X"), "/Root"); err == nil {
 		t.Fatal("expected an error when the R marker is missing")
+	}
+}
+
+// TestReadDictRef_IdOverflowReturnsError and
+// TestReadDictRef_GenOverflowReturnsError cover the wrapped
+// parseDigits errors for /Root's id and generation numbers
+// respectively. Confirmed by mutation.
+func TestReadDictRef_IdOverflowReturnsError(t *testing.T) {
+	_, _, err := readDictRef([]byte("/Root 99999999999999999999 0 R"), "/Root")
+	if err == nil {
+		t.Fatal("expected an error when the id overflows int")
+	}
+	if !strings.Contains(err.Error(), "id") || !strings.Contains(err.Error(), "overflows") {
+		t.Errorf("expected an id-overflow error, got %q", err)
+	}
+}
+
+func TestReadDictRef_GenOverflowReturnsError(t *testing.T) {
+	_, _, err := readDictRef([]byte("/Root 1 99999999999999999999 R"), "/Root")
+	if err == nil {
+		t.Fatal("expected an error when the gen overflows int")
+	}
+	if !strings.Contains(err.Error(), "gen") || !strings.Contains(err.Error(), "overflows") {
+		t.Errorf("expected a gen-overflow error, got %q", err)
 	}
 }
 
@@ -1239,6 +1350,22 @@ func TestParsePositiveDecimal_NonDigitReturnsError(t *testing.T) {
 	}
 }
 
+// TestParsePositiveDecimal_OverflowReturnsError covers the wrapped
+// parseDigits error. parsePositiveDecimal's only current caller
+// (shiftClassicXrefOffsets) always passes exactly 10 digits, so this
+// path isn't reachable through that call chain — parsePositiveDecimal
+// is a general-purpose helper tested directly, same rationale as its
+// other two guards. Confirmed by mutation.
+func TestParsePositiveDecimal_OverflowReturnsError(t *testing.T) {
+	_, err := parsePositiveDecimal([]byte("99999999999999999999"))
+	if err == nil {
+		t.Fatal("expected an error for a decimal that overflows int")
+	}
+	if !strings.Contains(err.Error(), "overflows") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
 // TestReplaceStartxrefValue_KeywordNotFoundReturnsError and
 // TestReplaceStartxrefValue_ValueMissingReturnsError cover
 // replaceStartxrefValue's two guards directly rather than through
@@ -1567,6 +1694,344 @@ func TestInjectPAdESSignature_RejectsUnsupportedIndirectFieldsArray(t *testing.T
 	}
 	if called {
 		t.Fatal("signing callback should not run after an unsupported AcroForm merge")
+	}
+}
+
+// --- readRefAt ---
+//
+// readRefAt's happy path is already exercised indirectly via
+// TestInjectPAdESSignature_AppendsExistingIndirectAcroFormFields; these
+// cover its own guards directly, the same rationale as readDictRef's
+// unit tests above.
+
+func TestReadRefAt_NoIdDigit(t *testing.T) {
+	_, _, err := readRefAt([]byte("R"), 0, "/AcroForm")
+	if err == nil {
+		t.Fatal("expected an error when no id digits are present")
+	}
+	if !strings.Contains(err.Error(), "no id digit") {
+		t.Errorf("expected a \"no id digit\" error, got %q", err)
+	}
+}
+
+func TestReadRefAt_NoGenDigit(t *testing.T) {
+	_, _, err := readRefAt([]byte("4 R"), 0, "/AcroForm")
+	if err == nil {
+		t.Fatal("expected an error when no gen digits follow the id")
+	}
+	if !strings.Contains(err.Error(), "no gen digit") {
+		t.Errorf("expected a \"no gen digit\" error, got %q", err)
+	}
+}
+
+func TestReadRefAt_ExpectedRAfterGen(t *testing.T) {
+	_, _, err := readRefAt([]byte("4 0 X"), 0, "/AcroForm")
+	if err == nil {
+		t.Fatal("expected an error when the R marker is missing")
+	}
+	if !strings.Contains(err.Error(), "expected R after gen") {
+		t.Errorf("expected an \"expected R after gen\" error, got %q", err)
+	}
+}
+
+// TestReadRefAt_IdOverflowReturnsError and
+// TestReadRefAt_GenOverflowReturnsError cover the wrapped parseDigits
+// errors. Confirmed by mutation.
+func TestReadRefAt_IdOverflowReturnsError(t *testing.T) {
+	_, _, err := readRefAt([]byte("99999999999999999999 0 R"), 0, "/AcroForm")
+	if err == nil {
+		t.Fatal("expected an error when the id overflows int")
+	}
+	if !strings.Contains(err.Error(), "id") || !strings.Contains(err.Error(), "overflows") {
+		t.Errorf("expected an id-overflow error, got %q", err)
+	}
+}
+
+func TestReadRefAt_GenOverflowReturnsError(t *testing.T) {
+	_, _, err := readRefAt([]byte("4 99999999999999999999 R"), 0, "/AcroForm")
+	if err == nil {
+		t.Fatal("expected an error when the gen overflows int")
+	}
+	if !strings.Contains(err.Error(), "gen") || !strings.Contains(err.Error(), "overflows") {
+		t.Errorf("expected a gen-overflow error, got %q", err)
+	}
+}
+
+// --- findDictionaryEnd / findArrayEnd ---
+
+func TestFindDictionaryEnd_DoesNotStartWithOpenDict(t *testing.T) {
+	_, err := findDictionaryEnd([]byte("not a dict"), 0)
+	if err == nil {
+		t.Fatal("expected an error when the input doesn't start with <<")
+	}
+	if !strings.Contains(err.Error(), "does not start with <<") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestFindDictionaryEnd_UnterminatedReturnsError covers the terminal
+// "unterminated dictionary" fallthrough. Coverage-only, not
+// break-verifiable via deletion: it's the function's last statement,
+// so removing it leaves a code path with no return — a "missing
+// return" compile error, not something a mutate/run/restore cycle can
+// verify. Same category as TestShiftClassicXrefOffsets_TrailerNotFoundReturnsError.
+func TestFindDictionaryEnd_UnterminatedReturnsError(t *testing.T) {
+	_, err := findDictionaryEnd([]byte("<< /Foo 1"), 0)
+	if err == nil {
+		t.Fatal("expected an error for an unterminated dictionary")
+	}
+	if !strings.Contains(err.Error(), "unterminated dictionary") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+func TestFindArrayEnd_DoesNotStartWithOpenBracket(t *testing.T) {
+	_, err := findArrayEnd([]byte("not an array"), 0)
+	if err == nil {
+		t.Fatal("expected an error when the input doesn't start with [")
+	}
+	if !strings.Contains(err.Error(), "does not start with [") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestFindArrayEnd_UnterminatedReturnsError is coverage-only, same
+// rationale as TestFindDictionaryEnd_UnterminatedReturnsError: the
+// terminal "unterminated array" return is the function's last
+// statement.
+func TestFindArrayEnd_UnterminatedReturnsError(t *testing.T) {
+	_, err := findArrayEnd([]byte("[ 1 2 3"), 0)
+	if err == nil {
+		t.Fatal("expected an error for an unterminated array")
+	}
+	if !strings.Contains(err.Error(), "unterminated array") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// --- signatureFieldReferenceRewrites ---
+//
+// Tested directly rather than only through InjectPAdESSignature: it's
+// a general-purpose helper, and most of these branches (a malformed or
+// unsupported /AcroForm entry, a dangling indirect reference) aren't
+// reachable through any fixture this app's own PDF generation would
+// produce — the same rationale used for replaceStartxrefValue and
+// parseTrailerSizeAndRoot's guards in earlier increments.
+
+// TestSignatureFieldReferenceRewrites_NonDictCatalogWrapsFresh covers
+// the fallback when catalogBody doesn't start with "<<" at all: the
+// entire body is wrapped in a fresh dict carrying a new /AcroForm.
+// Not reachable via InjectPAdESSignature today (its Catalog always
+// comes from findObjectBody on a real "<< ... >>" object body) but
+// this is a general-purpose helper, so the branch gets direct
+// coverage regardless.
+func TestSignatureFieldReferenceRewrites_NonDictCatalogWrapsFresh(t *testing.T) {
+	got, extra, err := signatureFieldReferenceRewrites(nil, []byte("not a dict"), 5)
+	if err != nil {
+		t.Fatalf("signatureFieldReferenceRewrites: %v", err)
+	}
+	if extra != nil {
+		t.Errorf("expected no extra object rewrites, got %v", extra)
+	}
+	want := "<<\n/AcroForm << /Fields [ 5 0 R ] /SigFlags 3 >>\nnot a dict\n>>"
+	if string(got) != want {
+		t.Fatalf("got %q, want %q", string(got), want)
+	}
+}
+
+// TestSignatureFieldReferenceRewrites_MalformedAcroFormEntryReturnsError
+// covers "malformed /AcroForm entry": the key is present but nothing
+// (not even whitespace) follows it before the catalog body ends.
+func TestSignatureFieldReferenceRewrites_MalformedAcroFormEntryReturnsError(t *testing.T) {
+	_, _, err := signatureFieldReferenceRewrites(nil, []byte("<< /AcroForm"), 5)
+	if err == nil {
+		t.Fatal("expected an error when /AcroForm has no value")
+	}
+	if !strings.Contains(err.Error(), "malformed /AcroForm entry") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestSignatureFieldReferenceRewrites_DirectAcroFormUnterminatedReturnsError
+// covers the "parse direct /AcroForm: %w" wrap around findDictionaryEnd's
+// error: the /AcroForm value is a direct dict ("<<...") but never closes.
+func TestSignatureFieldReferenceRewrites_DirectAcroFormUnterminatedReturnsError(t *testing.T) {
+	_, _, err := signatureFieldReferenceRewrites(nil, []byte("<< /AcroForm << /Fields [ 1 0 R ]"), 5)
+	if err == nil {
+		t.Fatal("expected an error for an unterminated direct /AcroForm dict")
+	}
+	if !strings.Contains(err.Error(), "parse direct /AcroForm:") {
+		t.Errorf("expected the wrap prefix, got %q", err)
+	}
+}
+
+// TestSignatureFieldReferenceRewrites_DirectAcroFormMergeErrorPropagates
+// covers the "merge direct /AcroForm: %w" wrap: the direct /AcroForm
+// dict parses fine (findDictionaryEnd succeeds) but its /Fields value
+// is an indirect reference rather than a direct array, which
+// appendSignatureFieldToFields (via mergeSignatureFieldIntoAcroForm)
+// rejects.
+func TestSignatureFieldReferenceRewrites_DirectAcroFormMergeErrorPropagates(t *testing.T) {
+	_, _, err := signatureFieldReferenceRewrites(nil, []byte("<< /AcroForm << /Fields 7 0 R /SigFlags 1 >> >>"), 5)
+	if err == nil {
+		t.Fatal("expected an error when the direct /AcroForm's /Fields is indirect")
+	}
+	if !strings.Contains(err.Error(), "merge direct /AcroForm:") {
+		t.Errorf("expected the wrap prefix, got %q", err)
+	}
+}
+
+// TestSignatureFieldReferenceRewrites_UnsupportedAcroFormEntryReturnsError
+// covers the "unsupported /AcroForm entry: %w" wrap: the value is
+// neither a direct dict nor a valid "<id> <gen> R" reference.
+func TestSignatureFieldReferenceRewrites_UnsupportedAcroFormEntryReturnsError(t *testing.T) {
+	_, _, err := signatureFieldReferenceRewrites(nil, []byte("<< /AcroForm true >>"), 5)
+	if err == nil {
+		t.Fatal("expected an error for an /AcroForm value that is neither a dict nor a reference")
+	}
+	if !strings.Contains(err.Error(), "unsupported /AcroForm entry:") {
+		t.Errorf("expected the wrap prefix, got %q", err)
+	}
+}
+
+// TestSignatureFieldReferenceRewrites_LocateAcroFormObjectErrorPropagates
+// covers the "locate AcroForm object: %w" wrap: the /AcroForm value is
+// a well-formed indirect reference, but the referenced object doesn't
+// exist in pdfBytes.
+func TestSignatureFieldReferenceRewrites_LocateAcroFormObjectErrorPropagates(t *testing.T) {
+	pdf := minimalPDF() // defines objects 1-3 only
+	_, _, err := signatureFieldReferenceRewrites(pdf, []byte("<< /AcroForm 99 0 R >>"), 5)
+	if err == nil {
+		t.Fatal("expected an error when the referenced AcroForm object doesn't exist")
+	}
+	if !strings.Contains(err.Error(), "locate AcroForm object:") {
+		t.Errorf("expected the wrap prefix, got %q", err)
+	}
+}
+
+// --- appendSignatureFieldToFields ---
+
+func TestAppendSignatureFieldToFields_NonDictReturnsError(t *testing.T) {
+	_, err := appendSignatureFieldToFields([]byte("not a dict"), 5)
+	if err == nil {
+		t.Fatal("expected an error when the input isn't a direct dictionary")
+	}
+	if !strings.Contains(err.Error(), "is not a direct dictionary") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestAppendSignatureFieldToFields_InsertsFreshFieldsArrayWhenAbsent
+// covers the "/Fields key not present" branch. Asserts the exact
+// output rather than a substring: a bare bytes.Contains(got,
+// []byte("5 0 R")) check would pass under a mutation that instead took
+// the (wrong) existing-array append path if one happened to exist, so
+// the discriminator needs to be the full rebuilt structure, not just
+// the presence of the field reference.
+func TestAppendSignatureFieldToFields_InsertsFreshFieldsArrayWhenAbsent(t *testing.T) {
+	got, err := appendSignatureFieldToFields([]byte("<< /SigFlags 1 >>"), 5)
+	if err != nil {
+		t.Fatalf("appendSignatureFieldToFields: %v", err)
+	}
+	want := "<<\n/Fields [ 5 0 R ] /SigFlags 1 >>"
+	if string(got) != want {
+		t.Fatalf("got %q, want %q", string(got), want)
+	}
+}
+
+// TestAppendSignatureFieldToFields_FindArrayEndErrorPropagates covers
+// the "parse AcroForm /Fields: %w" wrap: /Fields is present and is a
+// direct array, but it never closes.
+func TestAppendSignatureFieldToFields_FindArrayEndErrorPropagates(t *testing.T) {
+	_, err := appendSignatureFieldToFields([]byte("<< /Fields [ 1 0 R"), 5)
+	if err == nil {
+		t.Fatal("expected an error for an unterminated /Fields array")
+	}
+	if !strings.Contains(err.Error(), "parse AcroForm /Fields:") {
+		t.Errorf("expected the wrap prefix, got %q", err)
+	}
+}
+
+// --- ensureSignatureFieldFlags ---
+
+func TestEnsureSignatureFieldFlags_NonDictReturnsError(t *testing.T) {
+	_, err := ensureSignatureFieldFlags([]byte("not a dict"))
+	if err == nil {
+		t.Fatal("expected an error when the input isn't a direct dictionary")
+	}
+	if !strings.Contains(err.Error(), "is not a direct dictionary") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestEnsureSignatureFieldFlags_InsertsFreshSigFlagsWhenAbsent covers
+// the "/SigFlags key not present" branch. Exact-output assertion, same
+// masking rationale as TestAppendSignatureFieldToFields_InsertsFreshFieldsArrayWhenAbsent.
+func TestEnsureSignatureFieldFlags_InsertsFreshSigFlagsWhenAbsent(t *testing.T) {
+	got, err := ensureSignatureFieldFlags([]byte("<< /Fields [ 5 0 R ] >>"))
+	if err != nil {
+		t.Fatalf("ensureSignatureFieldFlags: %v", err)
+	}
+	want := "<<\n/SigFlags 3 /Fields [ 5 0 R ] >>"
+	if string(got) != want {
+		t.Fatalf("got %q, want %q", string(got), want)
+	}
+}
+
+func TestEnsureSignatureFieldFlags_NonIntegerReturnsError(t *testing.T) {
+	_, err := ensureSignatureFieldFlags([]byte("<< /SigFlags true >>"))
+	if err == nil {
+		t.Fatal("expected an error when /SigFlags isn't an integer")
+	}
+	if !strings.Contains(err.Error(), "is not an integer") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestEnsureSignatureFieldFlags_OverflowReturnsError covers the new
+// overflow guard on /SigFlags. This is the bug /advisor's
+// pre-implementation review flagged for this increment: with the raw
+// `flags = flags*10 + int(c-'0')` loop (no bounds check), this exact
+// fixture returned (nil error, "<< /SigFlags 7766279631452241919 >>")
+// — a silently wrong value written straight into the signed PDF's
+// AcroForm dict — confirmed directly before writing the fix. Reachable
+// severity is low today (every call site feeds this app's own
+// generated PDFs, whose /SigFlags is always 1 or 3), but the guard
+// costs three lines and the bug class is identical to the
+// shiftClassicXrefOffsets truncation fixed in the prior increment:
+// unbounded external value into an accumulator, silent wrong output
+// instead of an error.
+func TestEnsureSignatureFieldFlags_OverflowReturnsError(t *testing.T) {
+	_, err := ensureSignatureFieldFlags([]byte("<< /SigFlags 99999999999999999999 >>"))
+	if err == nil {
+		t.Fatal("expected an error when /SigFlags overflows int")
+	}
+	if !strings.Contains(err.Error(), "AcroForm /SigFlags:") {
+		t.Errorf("expected the wrap prefix, got %q", err)
+	}
+}
+
+// --- mergeSignatureFieldIntoAcroForm interaction ---
+
+// TestMergeSignatureFieldIntoAcroForm_InsertsBothWhenBothAbsent covers
+// the case where an AcroForm dict has neither /Fields nor /SigFlags —
+// the realistic "empty AcroForm" shape, not just the two fresh-insert
+// branches exercised in isolation above. This is the only test that
+// exercises their sequencing: appendSignatureFieldToFields runs first
+// and inserts "/Fields [ N 0 R ]" right after "<<"; ensureSignatureFieldFlags
+// then runs on that already-rebuilt body and inserts "/SigFlags 3"
+// right after the same "<<" — so /SigFlags ends up before /Fields in
+// the final output, not after. Asserting the exact byte sequence (not
+// just that both keys are present, e.g. via bytes.Count) is what
+// catches a mutation to that ordering.
+func TestMergeSignatureFieldIntoAcroForm_InsertsBothWhenBothAbsent(t *testing.T) {
+	got, err := mergeSignatureFieldIntoAcroForm([]byte("<< >>"), 9)
+	if err != nil {
+		t.Fatalf("mergeSignatureFieldIntoAcroForm: %v", err)
+	}
+	want := "<<\n/SigFlags 3\n/Fields [ 9 0 R ] >>"
+	if string(got) != want {
+		t.Fatalf("got %q, want %q", string(got), want)
 	}
 }
 

@@ -33,6 +33,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/go-pdf/fpdf"
@@ -190,6 +191,30 @@ func InjectXMPStream(pdfBytes []byte, xmpPacket []byte) ([]byte, error) {
 	return out, nil
 }
 
+// parseDigits accumulates a non-empty run of ASCII '0'-'9' bytes into a
+// non-negative int, erroring instead of silently wrapping if the value
+// would overflow Go's int. Every digit-run accumulator in this file
+// used to do the multiply/add itself with no overflow check; a PDF
+// field long enough to overflow (19-20+ digits, never seen in a
+// spec-conformant field but not rejected by these functions' own
+// digit-scanning loops either) would silently produce a wrong,
+// possibly negative value instead of an error. Callers are responsible
+// for confirming the run is non-empty first (and producing their own
+// "no digit"-style error) — this function's only failure mode is
+// overflow, so its error never needs translating back to a different
+// meaning at the call site.
+func parseDigits(digits []byte) (int, error) {
+	n := 0
+	for _, c := range digits {
+		d := int(c - '0')
+		if n > (math.MaxInt-d)/10 {
+			return 0, fmt.Errorf("value %q overflows", string(digits))
+		}
+		n = n*10 + d
+	}
+	return n, nil
+}
+
 // findLastStartxref scans backwards from the end for the literal
 // `startxref` keyword and parses the integer offset that follows.
 func findLastStartxref(b []byte) (int, error) {
@@ -209,9 +234,9 @@ func findLastStartxref(b []byte) (int, error) {
 	if i == start {
 		return 0, fmt.Errorf("no digits after startxref")
 	}
-	offset := 0
-	for _, c := range b[start:i] {
-		offset = offset*10 + int(c-'0')
+	offset, err := parseDigits(b[start:i])
+	if err != nil {
+		return 0, fmt.Errorf("startxref offset: %w", err)
 	}
 	if offset <= 0 || offset >= len(b) {
 		return 0, fmt.Errorf("startxref offset %d out of range", offset)
@@ -264,9 +289,9 @@ func readDictInt(block []byte, key string) (int, error) {
 	if i == start {
 		return 0, fmt.Errorf("%s: no integer value", key)
 	}
-	n := 0
-	for _, c := range block[start:i] {
-		n = n*10 + int(c-'0')
+	n, err := parseDigits(block[start:i])
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", key, err)
 	}
 	return n, nil
 }
@@ -288,8 +313,9 @@ func readDictRef(block []byte, key string) (id, gen int, err error) {
 	if i == start {
 		return 0, 0, fmt.Errorf("%s: no id digit", key)
 	}
-	for _, c := range block[start:i] {
-		id = id*10 + int(c-'0')
+	id, err = parseDigits(block[start:i])
+	if err != nil {
+		return 0, 0, fmt.Errorf("%s: id %w", key, err)
 	}
 	for i < len(block) && (block[i] == ' ' || block[i] == '\t') {
 		i++
@@ -301,8 +327,9 @@ func readDictRef(block []byte, key string) (id, gen int, err error) {
 	if i == start {
 		return 0, 0, fmt.Errorf("%s: no gen digit", key)
 	}
-	for _, c := range block[start:i] {
-		gen = gen*10 + int(c-'0')
+	gen, err = parseDigits(block[start:i])
+	if err != nil {
+		return 0, 0, fmt.Errorf("%s: gen %w", key, err)
 	}
 	for i < len(block) && (block[i] == ' ' || block[i] == '\t') {
 		i++
@@ -815,12 +842,14 @@ func parsePositiveDecimal(b []byte) (int, error) {
 	if len(b) == 0 {
 		return 0, fmt.Errorf("empty decimal")
 	}
-	n := 0
 	for _, c := range b {
 		if c < '0' || c > '9' {
 			return 0, fmt.Errorf("invalid decimal %q", string(b))
 		}
-		n = n*10 + int(c-'0')
+	}
+	n, err := parseDigits(b)
+	if err != nil {
+		return 0, fmt.Errorf("decimal %q: %w", string(b), err)
 	}
 	return n, nil
 }
@@ -1208,9 +1237,9 @@ func ensureSignatureFieldFlags(acroFormBody []byte) ([]byte, error) {
 	if valueEnd == valueStart {
 		return nil, fmt.Errorf("AcroForm /SigFlags is not an integer")
 	}
-	flags := 0
-	for _, c := range trimmed[valueStart:valueEnd] {
-		flags = flags*10 + int(c-'0')
+	flags, err := parseDigits(trimmed[valueStart:valueEnd])
+	if err != nil {
+		return nil, fmt.Errorf("AcroForm /SigFlags: %w", err)
 	}
 	flags |= 3
 
@@ -1240,8 +1269,9 @@ func readRefAt(block []byte, i int, key string) (id, gen int, err error) {
 	if i == start {
 		return 0, 0, fmt.Errorf("%s: no id digit", key)
 	}
-	for _, c := range block[start:i] {
-		id = id*10 + int(c-'0')
+	id, err = parseDigits(block[start:i])
+	if err != nil {
+		return 0, 0, fmt.Errorf("%s: id %w", key, err)
 	}
 	i = skipPDFWhitespace(block, i)
 	start = i
@@ -1251,8 +1281,9 @@ func readRefAt(block []byte, i int, key string) (id, gen int, err error) {
 	if i == start {
 		return 0, 0, fmt.Errorf("%s: no gen digit", key)
 	}
-	for _, c := range block[start:i] {
-		gen = gen*10 + int(c-'0')
+	gen, err = parseDigits(block[start:i])
+	if err != nil {
+		return 0, 0, fmt.Errorf("%s: gen %w", key, err)
 	}
 	i = skipPDFWhitespace(block, i)
 	if i >= len(block) || block[i] != 'R' {

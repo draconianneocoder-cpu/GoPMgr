@@ -1399,11 +1399,147 @@ build ./...`, `gofmt -l`, `go vet`, and the full `go test ./...`
 module suite pass; `internal/pdfmeta` at 85 tests, confirmed via
 `grep -c "^func Test"`.
 
-**Not started:** the remaining byte-surgery
-cluster (`InjectOutputIntent`, `InjectPAdESSignature`, the
-signature-field-rewriting functions, `MakePDFA3`'s own 3 error-wrap
+### 2026-08-06 — `internal/pdfmeta` increment 4a: 92.2% → 95.7%; the AcroForm signature-field-merging cluster, plus a second silent-corruption bug swept across the whole file, not just the one instance found
+
+Covers `signatureFieldReferenceRewrites`, `appendSignatureFieldToFields`,
+`ensureSignatureFieldFlags`, `readRefAt`, `findDictionaryEnd`,
+`findArrayEnd` — the cluster that rewrites a PDF's `/AcroForm`
+dictionary to register the new signature field, called from
+`InjectPAdESSignature`. Selected ahead of `InjectPAdESSignature`'s own
+15 uncovered blocks (deferred to increment 4b) because this cluster
+does the actual dictionary rewriting for signature registration — a
+bug here corrupts the signed PDF's form structure, not just misses a
+test; per the workflow's priority order this ranks with 3a's
+byte-offset arithmetic, not with ordinary missing coverage. All six
+target functions now 100%. 31 new tests, package 85 → 116.
+`pdfmeta.go` gained a net 12 statements (the `parseDigits` helper plus
+its 8 call-site integrations — a genuine production fix, not
+test-only; confirmed via `git diff` that nothing else in the file
+changed).
+
+**A second silent-corruption bug, same class as increment 3a's, found
+while covering `ensureSignatureFieldFlags`.** `/advisor`'s
+pre-implementation plan review flagged that
+`ensureSignatureFieldFlags` parsed `/SigFlags`'s digit run with a bare
+`flags = flags*10 + int(c-'0')` loop and no bounds check — the exact
+same shape as 3a's `copy()`-truncation bug, but with a far lower
+reachability bar: no 9.3GB file needed, just a 20-digit number in a
+dictionary. Confirmed directly, not just reasoned about:
+`ensureSignatureFieldFlags([]byte("<< /SigFlags
+99999999999999999999 >>"))` returned `err=nil` and
+`"<< /SigFlags 7766279631452241919 >>"` — a silently wrapped, wrong
+value that would be written straight into the signed PDF's AcroForm
+dict.
+
+**Fixed by sweeping the whole file, not just the two functions this
+increment's declared scope was already touching — because a follow-up
+`/advisor` consultation asked "is this the only instance?" before the
+plan was finalized, and the answer was no.** The first pass (by
+reading) found four call sites: `readRefAt` (id, gen — already in
+this increment's scope) and `readDictRef` (id, gen — an
+already-shipped, already-100%-covered function from increment 2a).
+`/advisor` pushed back: enumerate the class mechanically, not by
+reading. `grep -n "10 + int("` surfaced 8 accumulation sites across 6
+functions: `findLastStartxref`, `readDictInt`, `readDictRef` (×2),
+`parsePositiveDecimal`, `ensureSignatureFieldFlags`, `readRefAt` (×2)
+— four of six functions (`findLastStartxref`, `readDictInt`,
+`readDictRef`, `parsePositiveDecimal`) outside this increment's
+original declared scope, spanning increments 1, 2a, and 3a. Extracted a shared
+`parseDigits(digits []byte) (int, error)` helper (checks
+`n > (math.MaxInt-d)/10` before each multiply/add, the same overflow
+math as any base-10 accumulator needs) and routed every one of the 8
+sites through it. Each of the four already-100%-covered functions
+(`findLastStartxref`, `readDictInt`, `readDictRef`,
+`parsePositiveDecimal`) gained one new overflow test so the guard
+didn't silently regress their coverage.
+
+This is a deliberate departure from increment 3a's own precedent,
+where the sibling `%010d`-field-width sites were disclosed and
+deferred rather than fixed immediately (see that entry above) — worth
+being explicit about why the same reasoning didn't apply here: 3a's
+siblings needed a *different* guard (field-width overflow in an
+`Fprintf` into a growing buffer, not `copy()` truncation into a fixed
+slice), so fixing them wasn't free — each needed its own reasoning
+and its own test. Here, every one of the 8 sites needed the *identical*
+fix, and the shared helper was being written in this commit regardless
+of scope — leaving four raw `n = n*10 + int(c-'0')` loops sitting next
+to `parseDigits` in the same file would have been an invitation for a
+future reader (or a future `/advisor` review) to assume the file was
+now uniformly safe when it wasn't. Deferring here would have
+reproduced the exact incomplete-sweep mistake the 3a-follow-up commit
+(`02c797e`) had just finished correcting.
+
+**Test design.** `readRefAt`'s three pre-existing guards (no id digit,
+no gen digit, expected R after gen) had zero prior coverage —
+84.2%→100% — tested directly rather than only through
+`InjectPAdESSignature`, since its happy path is already exercised via
+`TestInjectPAdESSignature_AppendsExistingIndirectAcroFormFields`.
+`signatureFieldReferenceRewrites`'s six branches (non-dict-catalog
+fallback, malformed-/AcroForm-entry, and four wrap-propagation guards
+for `findDictionaryEnd`/`mergeSignatureFieldIntoAcroForm`/`readRefAt`/`findObjectBody`)
+are tested directly for the same reason `replaceStartxrefValue` and
+`parseTrailerSizeAndRoot`'s guards were in earlier increments: none of
+these branches are reachable through any fixture this app's own PDF
+generation would produce. `appendSignatureFieldToFields`'s and
+`ensureSignatureFieldFlags`'s "insert fresh key when absent" branches
+assert the exact rebuilt byte sequence, not `bytes.Contains`: a
+substring check would stay green under a mutation that instead
+(wrongly) took the existing-array/existing-flags append path, since
+the field reference text would still appear somewhere in the output
+either way.
+
+A dedicated interaction test,
+`TestMergeSignatureFieldIntoAcroForm_InsertsBothWhenBothAbsent`
+(`mergeSignatureFieldIntoAcroForm(<< >>, id)`, not the two fresh-insert
+branches exercised separately), exists because `/advisor`'s
+post-implementation review flagged that their *sequencing* was
+untested: `appendSignatureFieldToFields` runs first and inserts
+`/Fields` immediately after `<<`; `ensureSignatureFieldFlags` then runs
+on that already-rebuilt body and inserts `/SigFlags` immediately after
+the *same* `<<` — so the final output is
+`<<\n/SigFlags 3\n/Fields [ N 0 R ] >>`, `/SigFlags` before `/Fields`,
+not the reverse. Only an exact-byte-sequence assertion (not a
+`bytes.Count(...) == 1` presence check) catches a mutation to that
+ordering. `findDictionaryEnd`'s and `findArrayEnd`'s "unterminated"
+fallthroughs are each the function's final statement — coverage-only,
+not break-verifiable via deletion, same category as increment 2a's
+`TestInsertOutputIntentsReference_InsertsFreshEntry`.
+
+**A pre-existing, low-severity parsing limitation was documented, not
+fixed, this increment.** `signatureFieldReferenceRewrites` and its
+callees locate keys and dictionary/array boundaries via plain byte
+search, not a real PDF tokenizer — they don't skip string literals. A
+catalog whose `/Title` value happened to contain the literal text
+`/AcroForm` inside parentheses could in principle confuse the scan.
+Traced all four call sites of `InjectPAdESSignature`
+(`internal/signing/pades.go` → `app_documents.go`,
+`internal/documents/charter.go`, `internal/export/pdf.go`) and
+confirmed every one signs a PDF this app generated itself via
+`documents.BuildCombinedReport`/`fpdf`, never an externally-uploaded
+PDF; user-entered text (report titles, section content) lands inside
+content streams, not inside the Catalog/AcroForm structural
+dictionaries these functions scan — so the collision isn't reachable
+through this app's own generation path today. Recorded here as a known
+limitation, not fixed and not contrived into a misleading test.
+
+Coverage ratchet: predicted before running `--update` via a
+`git stash`-isolated clean before/after package comparison
+(718/779 → 757/791, +39 covered/+12 total) — the actual ratchet numbers
+matched that prediction exactly on both build tags: go_default
+8853/14627 (5774 uncovered) → 8892/14639 (5747 uncovered); go_duckdb
+8931/14725 (5794 uncovered) → 8970/14737 (5767 uncovered). The
+exclude-filter flake (`DEVELOPER_HANDBOOK.md`, now 6 occurrences)
+reproduced once during this increment's `--update` run; not accepted,
+re-run instead, which produced the matching numbers above. `go build
+./...`, `gofmt -l`, `go vet`, `go test ./internal/pdfmeta/... -race`,
+and the full `go test ./...` module suite pass; `internal/pdfmeta` at
+116 tests, confirmed via `grep -c "^func Test"`.
+
+**Not started:** `InjectPAdESSignature` itself (88.4%, 15 uncovered
+blocks — the placeholder/ByteRange/CMS byte-surgery, deferred to
+increment 4b), `InjectOutputIntent`, `MakePDFA3`'s own 3 error-wrap
 guards, `streamPayload`'s empty-input guard, `readTrailerIDValue`'s 5
-guards — all 70–95%) — likely `internal/pdfmeta`'s final increment
+guards — all 70–95%, likely `internal/pdfmeta`'s final increment
 before the package reaches 100%. This pass must also add the
 same fixed-width-offset overflow guard to `InjectXMPStream`
 (`pdfmeta.go:175,177`), `InjectOutputIntent` (`:537,539,545`), and
