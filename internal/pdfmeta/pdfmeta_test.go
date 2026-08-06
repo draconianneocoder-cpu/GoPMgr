@@ -810,11 +810,10 @@ func TestInjectXMPStream_SwapsXrefEntriesWhenCatalogIDGreaterThanMetaID(t *testi
 	}
 	appended := out[len(pdfBytes):]
 	const freeEntry = "0000000000 65535 f \n"
-	idx := bytes.Index(appended, []byte(freeEntry))
-	if idx < 0 {
+	_, rest, ok := bytes.Cut(appended, []byte(freeEntry))
+	if !ok {
 		t.Fatalf("expected the appended xref's free-list entry, got %q", appended)
 	}
-	rest := appended[idx+len(freeEntry):]
 	if !bytes.HasPrefix(rest, []byte("4 1\n")) {
 		t.Errorf("expected the lower ID (metaID=4) listed first after the swap, got %q", rest[:min(len(rest), 20)])
 	}

@@ -1225,7 +1225,10 @@ stayed green. All three `BuildXMPPacket` tests (Title default, Author
 default, Description-when-set) were mutation-tested in this pass; this
 closes a gap from the increment's first draft, where they were written
 and confirmed to pass but not yet put through the mutate/run/restore
-cycle before an earlier `/advisor` pass caught the omission.
+cycle. Self-identified from a pending-task recount, not from an
+`/advisor` review pass — the omission was closed before writing any
+documentation that would have claimed "confirmed by mutation" for
+these three without it being true yet.
 
 Two self-authored fixtures initially contained the literal keyword
 they were meant to test the *absence* of (`"no trailer keyword
@@ -1261,6 +1264,20 @@ estimated 80–280 more interaction-tested component tests across ~233
 files from measured per-test statement rates, likely 100+ hours spanning
 many sessions), Phase 7 (convert the ratchet to a hard 100% floor once
 reached).
+
+**Also flagged, not yet actioned:** a modernization/lint sweep of
+`internal/pdfmeta/pdfmeta.go` surfaced by editor diagnostics during
+increment 2b's mutation testing, unrelated to coverage and pre-existing
+(not introduced by 2b) — 10 `fmtappendf` findings (`[]byte(fmt.Sprintf(...))`
+sites that could use `fmt.Appendf` directly), 1 `rangeint` finding (a
+`for i := 0; i < n; i++` loop modernizable to `range n`), and 1
+`stringsbuilder` finding (a `string +=` in a loop). One `stringscut`
+finding in `pdfmeta_test.go` (`bytes.IndexByte` in
+`TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog`, also
+pre-existing) belongs with it. A second `stringscut` finding introduced
+by 2b itself was fixed immediately rather than deferred (see 2b's own
+entry above). Low priority — style-only, no behavior change — but
+worth a dedicated small pass rather than silent accumulation.
 
 ## What Is Not on the Roadmap
 
