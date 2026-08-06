@@ -18,6 +18,13 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# `go list ./...` and `go test` below resolve against the CALLER's working
+# directory, not $ROOT -- pin it explicitly so this script always measures
+# this repo's own module regardless of what CWD happened to be active when
+# it was invoked. See DEVELOPER_HANDBOOK.md's coverage-ratchet flake entry:
+# this was identified as a latent correctness gap during that
+# investigation, not a proven cause of the flake.
+cd "$ROOT"
 variant="${1:?usage: coverage-go.sh <default|duckdb> [profile-out-path]}"
 
 # Plain string, not an array: bash 3.2 (macOS's shipped /bin/bash) treats an
@@ -35,15 +42,42 @@ esac
 mkdir -p "$ROOT/.tmp"
 profile="${2:-$ROOT/.tmp/coverage-go-$variant.out}"
 
-pkgs="$(go list ./... | grep -v '/frontend/node_modules/')"
+# The .claude/worktrees/ exclusion guards a narrow case `go list`'s own
+# go.mod-boundary handling doesn't cover on its own: a nested checkout
+# under .claude/worktrees/ (left by a background agent session) that lacks
+# its own go.mod would otherwise be swept in as part of this module. Every
+# worktree observed in this repo so far has carried its own go.mod (it's a
+# full checkout of tracked files, and go.mod predates every worktree this
+# project has created), so this has not been confirmed to fire in practice
+# -- it is defense-in-depth, not a confirmed fix for anything.
+pkgs="$(go list ./... | grep -v '/frontend/node_modules/' | grep -v '/\.claude/worktrees/')"
+# Package count and the exact list are printed for diagnosability, not
+# correctness: an anomalous coverage-ratchet run (see the flake entry
+# above) is otherwise unreconstructable after the fact, since a background
+# session's stray worktree can be auto-cleaned before anyone investigates.
+pkg_count="$(echo "$pkgs" | wc -l | tr -d ' ')"
+echo "coverage-go ($variant): $pkg_count packages" >&2
+echo "$pkgs" >"$ROOT/.tmp/coverage-go-$variant.pkgs"
 # shellcheck disable=SC2086
 go test $tags_arg -coverprofile="$profile" $pkgs >/dev/null
 
 exclude_file="$ROOT/scripts/coverage-exclude-go.txt"
 filtered="$profile.filtered"
+# Patterns are written to a real temp file first, not read via
+# `grep -f <(...)` process substitution: under macOS's shipped bash 3.2,
+# `grep -f` opening a not-yet-fully-written pipe can read an empty pattern
+# file, silently letting every line through. This is hardening, not a
+# confirmed fix -- see the flake entry in DEVELOPER_HANDBOOK.md for why
+# this specific mechanism was ruled out as the actual cause (the exclude
+# list only ever touches ~3 statements, nowhere near the flake's observed
+# ~20,000+ statement inflations, and 5000 stress-test iterations of this
+# exact pipeline reproduced zero anomalies).
+tmp_patterns="$(mktemp)"
+trap 'rm -f "$tmp_patterns"' EXIT
+grep -Ev '^\s*(#|$)' "$exclude_file" >"$tmp_patterns"
 {
 	head -1 "$profile"
-	tail -n +2 "$profile" | grep -Ev -f <(grep -Ev '^\s*(#|$)' "$exclude_file") || true
+	tail -n +2 "$profile" | grep -Ev -f "$tmp_patterns" || true
 } >"$filtered"
 mv "$filtered" "$profile"
 
