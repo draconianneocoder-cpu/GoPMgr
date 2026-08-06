@@ -857,6 +857,433 @@ func TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog(t *testing.T) 
 	}
 }
 
+// TestEnsureBinaryHeaderComment_MissingHeaderReturnsError covers the
+// "missing PDF header" guard: input that doesn't start with "%PDF-".
+// Confirmed by mutation: with the guard deleted, the fixture cascades
+// into the next guard's "unterminated" text instead (this input has
+// no newline either), so the assertion on this guard's own text still
+// catches the mutation.
+func TestEnsureBinaryHeaderComment_MissingHeaderReturnsError(t *testing.T) {
+	_, err := ensureBinaryHeaderComment([]byte("not a pdf"))
+	if err == nil {
+		t.Fatal("expected an error for input missing the %PDF- header")
+	}
+	if !strings.Contains(err.Error(), "missing PDF header") {
+		t.Errorf("expected a \"missing PDF header\" error, got %q", err)
+	}
+}
+
+// TestEnsureBinaryHeaderComment_UnterminatedHeaderReturnsError covers
+// the "PDF header line is unterminated" guard: a header with no
+// newline anywhere in the buffer. Confirmed by mutation: with the
+// guard deleted, headerEnd stays -1 and nextLine becomes the whole
+// buffer via pdfBytes[0:], which cascades into
+// findLastStartxref's "startxref keyword not found" instead — a
+// different, non-"unterminated" error the assertion catches.
+func TestEnsureBinaryHeaderComment_UnterminatedHeaderReturnsError(t *testing.T) {
+	_, err := ensureBinaryHeaderComment([]byte("%PDF-1.4"))
+	if err == nil {
+		t.Fatal("expected an error for an unterminated header line")
+	}
+	if !strings.Contains(err.Error(), "unterminated") {
+		t.Errorf("expected an \"unterminated\" error, got %q", err)
+	}
+}
+
+// TestEnsureBinaryHeaderComment_AlreadyHasCommentReturnsInputUnchanged
+// covers the early-return success path when the binary header comment
+// is already present. minimalPDF() already carries the comment (see
+// minimalPDFWithCatalog). Asserts pointer identity, not just byte
+// equality: this path returns pdfBytes itself with no copy, and a
+// future "defensive copy" refactor changing that allocation behavior
+// should be a deliberate, reviewed decision rather than an invisible
+// side effect. Confirmed by mutation: with the early return deleted,
+// the output gains a second, duplicate binary-header comment.
+func TestEnsureBinaryHeaderComment_AlreadyHasCommentReturnsInputUnchanged(t *testing.T) {
+	pdf := minimalPDF()
+	out, err := ensureBinaryHeaderComment(pdf)
+	if err != nil {
+		t.Fatalf("ensureBinaryHeaderComment: %v", err)
+	}
+	if !bytes.Equal(out, pdf) {
+		t.Fatalf("expected the input returned unchanged, got %q", string(out))
+	}
+	if len(pdf) > 0 && &out[0] != &pdf[0] {
+		t.Error("expected the early-return path to return the input slice itself, not a copy")
+	}
+}
+
+// TestEnsureBinaryHeaderComment_PropagatesFindLastStartxrefError
+// covers the bare (unwrapped) propagation of findLastStartxref's own
+// error at the "xrefOffset, err := findLastStartxref(pdfBytes)" call.
+// The fixture's second line intentionally isn't a binary comment (so
+// the early-return guard above doesn't fire first) and the buffer has
+// no "startxref" anywhere. Confirmed by mutation: with the guard
+// neutralized, xrefOffset stays 0 and execution proceeds into
+// shiftClassicXrefOffsets, which fails with its own, different error
+// text — the assertion on findLastStartxref's exact text catches it.
+func TestEnsureBinaryHeaderComment_PropagatesFindLastStartxrefError(t *testing.T) {
+	_, err := ensureBinaryHeaderComment([]byte("%PDF-1.4\nnothing relevant appears in this buffer\n"))
+	if err == nil {
+		t.Fatal("expected findLastStartxref's error to propagate")
+	}
+	if !strings.Contains(err.Error(), "startxref keyword not found") {
+		t.Errorf("expected findLastStartxref's exact error text, got %q", err)
+	}
+}
+
+// TestEnsureBinaryHeaderComment_PropagatesShiftClassicXrefOffsetsError
+// covers the bare propagation of shiftClassicXrefOffsets's error. The
+// fixture's startxref points at plain text, not a "xref" keyword, so
+// shiftClassicXrefOffsets's own first guard fires. Confirmed by
+// mutation.
+func TestEnsureBinaryHeaderComment_PropagatesShiftClassicXrefOffsetsError(t *testing.T) {
+	_, err := ensureBinaryHeaderComment([]byte("%PDF-1.4\nsome content here\nstartxref\n9\n%%EOF\n"))
+	if err == nil {
+		t.Fatal("expected shiftClassicXrefOffsets's error to propagate")
+	}
+	if !strings.Contains(err.Error(), "does not point to classic xref") {
+		t.Errorf("expected shiftClassicXrefOffsets's exact error text, got %q", err)
+	}
+}
+
+// TestEnsureBinaryHeaderComment_InsertsCommentAndShiftsOffsets is the
+// direct positive-path test (the indirect happy path is already
+// exercised via TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog,
+// but that only proves the full MakePDFA3 chain works, not this
+// function in isolation).
+//
+// Deliberately does NOT rely on findObjectBody to validate the shift:
+// findObjectBody locates objects by a textual "<id> <gen> obj" scan,
+// never by dereferencing the xref table's recorded byte offsets — so
+// it would report success even if every offset in the table were
+// wrong, as long as the object text itself is still present somewhere
+// in the buffer. That would make an off-by-len(comment) arithmetic
+// bug in shiftClassicXrefOffsets invisible to a findObjectBody-based
+// round-trip (confirmed directly: mutating the shift by one byte still
+// passed a findObjectBody-based check, since a real xref-offset-aware
+// reader is the only thing that would notice). This test instead
+// parses minimalPDFWithoutBinaryComment()'s known xref structure
+// directly — subsection "0 4", four fixed-width 20-byte entries, one
+// per object in ID order — and reads the shifted offset for object 1
+// out of the table itself, then asserts pdfBytes at exactly that
+// offset starts with "1 0 obj". That is the assertion an actual
+// xref-offset-consuming PDF reader depends on, and the one that would
+// actually catch a wrong shift.
+func TestEnsureBinaryHeaderComment_InsertsCommentAndShiftsOffsets(t *testing.T) {
+	pdf := minimalPDFWithoutBinaryComment()
+	out, err := ensureBinaryHeaderComment(pdf)
+	if err != nil {
+		t.Fatalf("ensureBinaryHeaderComment: %v", err)
+	}
+	_, afterHeader, ok := bytes.Cut(out, []byte("\n"))
+	if !ok || !hasBinaryHeaderComment(afterHeader) {
+		t.Fatalf("output missing binary header comment: %q", out[:min(len(out), 32)])
+	}
+	xrefOff, err := findLastStartxref(out)
+	if err != nil {
+		t.Fatalf("findLastStartxref on shifted output: %v", err)
+	}
+	const subsectionHeader = "xref\n0 4\n"
+	if !bytes.HasPrefix(out[xrefOff:], []byte(subsectionHeader)) {
+		t.Fatalf("unexpected xref subsection shape: %q", out[xrefOff:min(xrefOff+len(subsectionHeader)+10, len(out))])
+	}
+	// Entry 0 is the free-list head; entry 1 is object 1 (Catalog).
+	entriesStart := xrefOff + len(subsectionHeader)
+	obj1Entry := out[entriesStart+20 : entriesStart+40]
+	obj1Off, err := parsePositiveDecimal(obj1Entry[:10])
+	if err != nil {
+		t.Fatalf("parsing object 1's shifted xref entry: %v", err)
+	}
+	if !bytes.HasPrefix(out[obj1Off:], []byte("1 0 obj")) {
+		t.Errorf("object 1's shifted xref entry points at %q, not \"1 0 obj\"", out[obj1Off:min(obj1Off+20, len(out))])
+	}
+
+	// Independently confirm the Catalog is also reachable via the
+	// textual path (parseTrailerSizeAndRoot + findObjectBody), the
+	// same shape TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog
+	// checks — this proves the trailer's /Root reference and the
+	// object body itself are intact, complementary to (not a
+	// substitute for) the offset check above.
+	_, root, gen, err := parseTrailerSizeAndRoot(out, xrefOff)
+	if err != nil {
+		t.Fatalf("parseTrailerSizeAndRoot on shifted output: %v", err)
+	}
+	catalog, err := findObjectBody(out, root, gen)
+	if err != nil {
+		t.Fatalf("findObjectBody(root) on shifted output: %v", err)
+	}
+	if !bytes.Contains(catalog, []byte("/Type /Catalog")) {
+		t.Fatalf("Root object is not a Catalog: %q", string(catalog))
+	}
+}
+
+// TestHasBinaryHeaderComment_NonBinaryCommentReturnsFalse covers the
+// "line[i] <= 127" loop body — a %-prefixed line that is NOT the
+// binary marker, e.g. an ordinary ASCII PDF comment. Deleting this
+// check would make the function return true for any 6+-byte line
+// starting with '%' whose 6th byte is a line terminator, regardless
+// of what's in between — the fixture below is chosen to pass the
+// preceding len/prefix guard cleanly (6 bytes, starts with '%') so a
+// mutation of *this* guard specifically is what the test would catch,
+// not an accidental trip of the guard before it. Confirmed by
+// mutation.
+func TestHasBinaryHeaderComment_NonBinaryCommentReturnsFalse(t *testing.T) {
+	if hasBinaryHeaderComment([]byte("%ABCD\n")) {
+		t.Error("expected an ordinary ASCII comment line to not be recognized as the binary marker")
+	}
+}
+
+// TestShiftClassicXrefOffsets_InvalidXrefOffsetReturnsError covers the
+// combined "xrefOffset < 0 || xrefOffset >= len(pdfBytes) ||
+// !bytes.HasPrefix(...)" guard across all three of its conditions. A
+// slice, not a map, for deterministic execution order (see the same
+// rationale in TestParseTrailerSizeAndRoot_XrefOffsetOutOfRange).
+// Confirmed by mutation: with the whole guard deleted, all four
+// subcases fail (none produce the guard's "does not point to classic
+// xref" text), each for a different downstream reason — "negative"
+// and "wrong prefix" both cascade into "malformed xref subsection
+// header" (parsing "f" or the entry line's leading digits as a
+// 1-field subsection header), "exactly len(buf)" and "past len(buf)"
+// both cascade into "xref trailer not found" (an empty post-offset
+// slice never contains a "trailer" line).
+//
+// Each subcase gets its own fresh buffer, not a buffer shared across
+// the loop: shiftClassicXrefOffsets mutates its input in place as it
+// rewrites xref entries, so a subcase that (under some other mutation)
+// reaches the entry-rewrite loop before erroring would otherwise leak
+// its partial rewrite into the next subcase's input — the same
+// order-dependence risk the map-to-slice conversion above addresses
+// for iteration order, but for shared mutable state instead.
+func TestShiftClassicXrefOffsets_InvalidXrefOffsetReturnsError(t *testing.T) {
+	const fixture = "xref\n0 1\n0000000000 65535 f \ntrailer\n"
+	cases := []struct {
+		name   string
+		offset int
+	}{
+		{"negative", -1},
+		{"exactly len(buf)", len(fixture)},
+		{"past len(buf)", len(fixture) + 100},
+		{"in range but wrong prefix", 5},
+	}
+	for _, c := range cases {
+		buf := []byte(fixture)
+		err := shiftClassicXrefOffsets(buf, c.offset, 6)
+		if err == nil {
+			t.Errorf("%s: expected an error", c.name)
+			continue
+		}
+		if !strings.Contains(err.Error(), "does not point to classic xref") {
+			t.Errorf("%s: expected the guard's own error text, got %q", c.name, err)
+		}
+	}
+}
+
+// TestShiftClassicXrefOffsets_UnterminatedXrefLineReturnsError covers
+// the first "unterminated xref line" guard: a subsection header line
+// with no trailing newline anywhere in the buffer. Break-verifies via
+// panic (deleting the guard leaves lineEnd == -1, and the subsequent
+// pdfBytes[lineStart:lineEnd] slice expression panics with a
+// slice-bounds-out-of-range error), the same category as increment
+// 2a's TestFindObjectBody_EndobjNotFound. Confirmed by direct mutation.
+func TestShiftClassicXrefOffsets_UnterminatedXrefLineReturnsError(t *testing.T) {
+	err := shiftClassicXrefOffsets([]byte("xref\n0 1"), 0, 6)
+	if err == nil {
+		t.Fatal("expected an error for an unterminated xref line")
+	}
+	if !strings.Contains(err.Error(), "unterminated xref line") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestShiftClassicXrefOffsets_MalformedSubsectionHeaderReturnsError
+// covers the "len(fields) != 2" guard: a subsection header line that
+// doesn't parse into exactly a start-ID and a count. Break-verifies
+// via panic: deleting the guard leaves fields with only 1 element
+// ("badheader" has no count field), and the subsequent fields[1]
+// access panics with an index-out-of-range error. Confirmed by direct
+// mutation.
+func TestShiftClassicXrefOffsets_MalformedSubsectionHeaderReturnsError(t *testing.T) {
+	err := shiftClassicXrefOffsets([]byte("xref\nbadheader\ntrailer\n"), 0, 6)
+	if err == nil {
+		t.Fatal("expected an error for a malformed subsection header")
+	}
+	if !strings.Contains(err.Error(), "malformed xref subsection header") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestShiftClassicXrefOffsets_InvalidSubsectionCountReturnsError
+// covers the "xref subsection count: %w" wrap around
+// parsePositiveDecimal's own error. Confirmed by mutation: with the
+// guard neutralized, count stays 0 (the zero value on parse failure),
+// so the entry loop never runs and control falls straight back to the
+// outer loop's next line — which is "trailer", so the mutated function
+// silently returns nil instead of erroring.
+func TestShiftClassicXrefOffsets_InvalidSubsectionCountReturnsError(t *testing.T) {
+	err := shiftClassicXrefOffsets([]byte("xref\n0 abc\ntrailer\n"), 0, 6)
+	if err == nil {
+		t.Fatal("expected an error for a non-numeric subsection count")
+	}
+	if !strings.Contains(err.Error(), "xref subsection count:") {
+		t.Errorf("expected the wrap prefix, got %q", err)
+	}
+}
+
+// TestShiftClassicXrefOffsets_UnterminatedEntryReturnsError covers the
+// second "unterminated xref entry" guard: the subsection header
+// promises one entry but the entry line has no trailing newline.
+// Break-verifies via panic, same shape as the xref-line guard above.
+// Confirmed by direct mutation.
+func TestShiftClassicXrefOffsets_UnterminatedEntryReturnsError(t *testing.T) {
+	err := shiftClassicXrefOffsets([]byte("xref\n0 1\n0000000000 65535 f "), 0, 6)
+	if err == nil {
+		t.Fatal("expected an error for an unterminated xref entry")
+	}
+	if !strings.Contains(err.Error(), "unterminated xref entry") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestShiftClassicXrefOffsets_InvalidEntryOffsetReturnsError covers
+// the "xref entry offset: %w" wrap around parsePositiveDecimal's own
+// error when the entry's 10-digit offset field isn't numeric.
+// Confirmed by mutation: with the guard neutralized, oldOff stays 0
+// (the zero value on parse failure) and the function silently writes
+// a corrupted-but-plausible-looking offset into the entry instead of
+// erroring.
+func TestShiftClassicXrefOffsets_InvalidEntryOffsetReturnsError(t *testing.T) {
+	err := shiftClassicXrefOffsets([]byte("xref\n0 1\nabcdefghij 65535 n \ntrailer\n"), 0, 6)
+	if err == nil {
+		t.Fatal("expected an error for a non-numeric entry offset")
+	}
+	if !strings.Contains(err.Error(), "xref entry offset:") {
+		t.Errorf("expected the wrap prefix, got %q", err)
+	}
+}
+
+// TestShiftClassicXrefOffsets_OffsetOverflowReturnsError covers a real
+// bug found and fixed during this increment's coverage work, not just
+// a pre-existing guard: copy(pdfBytes[entryStart:entryStart+10], ...)
+// into the fixed-width 10-digit offset field would silently truncate
+// (rather than error) if the shifted offset ever needed 11+ digits —
+// a source-slice-longer-than-destination copy() truncates instead of
+// panicking. Only reachable in practice on a PDF whose existing xref
+// offset is within `delta` of 9999999999 (~9.3GB), astronomically
+// unlikely for this application's generated PDFs, but the guard
+// prevents silent offset corruption rather than requiring that
+// unlikelihood to hold forever. Directly exercises the arithmetic
+// without needing an actual multi-gigabyte fixture: the function
+// never dereferences pdfBytes at the parsed offset, only parses and
+// rewrites the digit text. Confirmed by mutation: with the guard
+// deleted, this test correctly goes red. The exact corrupted value the
+// deleted guard would otherwise let through silently: copy() takes
+// only the first 10 bytes of the 11-digit %010d result, so a true
+// offset of 10000000004 gets written as 1000000000 — nearly 10x
+// smaller than correct, with no error raised.
+func TestShiftClassicXrefOffsets_OffsetOverflowReturnsError(t *testing.T) {
+	err := shiftClassicXrefOffsets([]byte("xref\n0 1\n9999999998 65535 n \ntrailer\n"), 0, 6)
+	if err == nil {
+		t.Fatal("expected an error when the shifted offset exceeds the 10-digit field width")
+	}
+	if !strings.Contains(err.Error(), "exceeds the classic xref format's 10-digit field width") {
+		t.Errorf("expected the overflow guard's own error text, got %q", err)
+	}
+}
+
+// TestShiftClassicXrefOffsets_TrailerNotFoundReturnsError covers the
+// terminal "xref trailer not found" fallthrough (only reachable if the
+// loop exits via reaching end-of-buffer, since every other exit is an
+// inner return). The fixture's one xref entry is engineered to consume
+// exactly to the end of the buffer with no following "trailer" line —
+// the entry's flag byte is 'f' (free), not 'n', to bypass the
+// offset-shift arithmetic entirely and isolate this guard. Coverage
+// gap here is only reachable via a compile error, not a behavior
+// mutation: this is the function's final statement, so deleting it
+// leaves a code path with no return — a "missing return" compile
+// error, not something a mutate/run/restore cycle can verify. Same
+// category as increment 2a's TestInsertOutputIntentsReference_InsertsFreshEntry.
+func TestShiftClassicXrefOffsets_TrailerNotFoundReturnsError(t *testing.T) {
+	err := shiftClassicXrefOffsets([]byte("xref\n0 1\n0000000000 65535 f \n"), 0, 6)
+	if err == nil {
+		t.Fatal("expected an error when no trailer line follows the xref subsections")
+	}
+	if !strings.Contains(err.Error(), "xref trailer not found") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestParsePositiveDecimal_EmptyReturnsError covers the
+// "len(b) == 0" guard (after TrimSpace, so whitespace-only input hits
+// it too). Confirmed by mutation: with the guard deleted, the empty
+// range loop below executes zero times and silently returns (0, nil).
+func TestParsePositiveDecimal_EmptyReturnsError(t *testing.T) {
+	_, err := parsePositiveDecimal([]byte("   "))
+	if err == nil {
+		t.Fatal("expected an error for empty/whitespace-only input")
+	}
+	if !strings.Contains(err.Error(), "empty decimal") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestParsePositiveDecimal_NonDigitReturnsError covers the
+// "c < '0' || c > '9'" guard. Confirmed by mutation.
+func TestParsePositiveDecimal_NonDigitReturnsError(t *testing.T) {
+	_, err := parsePositiveDecimal([]byte("12a3"))
+	if err == nil {
+		t.Fatal("expected an error for a non-digit byte")
+	}
+	if !strings.Contains(err.Error(), "invalid decimal") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestReplaceStartxrefValue_KeywordNotFoundReturnsError and
+// TestReplaceStartxrefValue_ValueMissingReturnsError cover
+// replaceStartxrefValue's two guards directly rather than through
+// ensureBinaryHeaderComment, its only caller: both guards are
+// structurally unreachable through that call chain. findLastStartxref
+// already validates that "startxref" followed by digits exists in the
+// original bytes before ensureBinaryHeaderComment ever calls
+// shiftClassicXrefOffsets or replaceStartxrefValue, the binary-comment
+// insertion happens only near the file's start and never touches the
+// trailer/startxref region, and both functions search for the literal
+// "startxref" text via bytes.LastIndex — so if findLastStartxref found
+// it, replaceStartxrefValue searching the (differently-offset but
+// content-identical-in-that-region) post-insertion buffer always finds
+// the same text. Verified by reasoning about the call sequence, not
+// assumed: no fixture reaching ensureBinaryHeaderComment can trip
+// either guard without also tripping findLastStartxref's identical
+// checks first. Tested directly since replaceStartxrefValue is a
+// general-purpose helper whose own guards deserve unit coverage
+// regardless of what its one current caller can reach. Both guards
+// confirmed by mutation: deleting the "keyword not found" guard
+// cascades into the "value missing" guard's text (idx stays -1, and
+// the subsequent skip/scan lands past the fixture's short buffer with
+// no digits found); deleting the "value missing" guard silently
+// splices the replacement offset into a zero-length gap instead of
+// erroring.
+func TestReplaceStartxrefValue_KeywordNotFoundReturnsError(t *testing.T) {
+	_, err := replaceStartxrefValue([]byte("no keyword here"), 5)
+	if err == nil {
+		t.Fatal("expected an error when \"startxref\" is absent")
+	}
+	if !strings.Contains(err.Error(), "startxref keyword not found") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+func TestReplaceStartxrefValue_ValueMissingReturnsError(t *testing.T) {
+	_, err := replaceStartxrefValue([]byte("startxref\nno digits\n"), 5)
+	if err == nil {
+		t.Fatal("expected an error when no digits follow \"startxref\"")
+	}
+	if !strings.Contains(err.Error(), "startxref value missing") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
 func TestBuildXMPPacket_ContainsRequiredFields(t *testing.T) {
 	pkt := BuildXMPPacket(XMPSpec{
 		Title:   "Sample",

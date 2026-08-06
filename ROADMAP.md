@@ -1248,11 +1248,140 @@ once on a later confirmation re-run), each resolved by an immediate
 clean re-run per the established handling rule — never accept a
 REGRESSED result without re-running once.
 
+### 2026-08-06 — `internal/pdfmeta` increment 3a: 89.9% → 92.2%; `MakePDFA3`'s binary-header-comment-insertion subsystem, plus a real silent-corruption bug found and fixed while covering it
+
+Covers `ensureBinaryHeaderComment`, `hasBinaryHeaderComment`,
+`shiftClassicXrefOffsets`, `parsePositiveDecimal`,
+`replaceStartxrefValue` — the subsystem `MakePDFA3` calls first, which
+inserts a 5-byte binary marker comment after the PDF header and
+rewrites every existing classic-xref-table offset plus the trailer's
+`startxref` pointer to account for the byte shift. Selected ahead of
+`MakePDFA3`'s own error wraps and `readTrailerIDValue` (both scoped
+out for later increments) because this cluster does the actual
+byte-offset arithmetic — a bug here causes silent PDF corruption
+(wrong offsets, no error), not just a missing test. All target
+functions now 100% except `ensureBinaryHeaderComment` (95.7%, one
+disclosed gap). 19 new tests, package 66 → 85. `pdfmeta.go` gained 17
+lines (a genuine production fix, not test-only — see below);
+confirmed via `git diff --stat` that nothing else in the file changed.
+
+**Found and fixed a real bug, not just written tests for existing
+code.** `/advisor`'s pre-implementation plan review flagged that
+`shiftClassicXrefOffsets`'s offset-rewrite line —
+`copy(pdfBytes[entryStart:entryStart+10], []byte(fmt.Sprintf("%010d",
+oldOff+delta)))` — silently truncates via Go's `copy()` semantics
+(copies `min(len(dst), len(src))` bytes from the start) if the shifted
+offset ever needs 11+ digits instead of the classic xref format's
+fixed 10. Confirmed directly, not just reasoned about: `copy()` of the
+11-digit string `"10000000004"` into a 10-byte destination yields
+`"1000000000"` — nearly 10x smaller than correct, with no error
+raised. Only reachable on a PDF whose existing offset is within
+`delta` (typically 6) of 9999999999 (~9.3GB) — astronomically
+unlikely for this application's generated reports and charts — but
+the fix (check the shifted value against the field's max before
+writing, return an error instead of truncating) costs three lines and
+removes an entire class of "malformed offset should have been caught
+long before the file reaches 9GB" reasoning. `TestShiftClassicXrefOffsets_OffsetOverflowReturnsError`
+break-verifies the new guard directly, without needing an actual
+multi-gigabyte fixture: the function only parses and rewrites digit
+text, it never dereferences `pdfBytes` at the parsed offset, so a
+small buffer with a hand-written 10-digit offset field near the
+format's boundary exercises the exact arithmetic.
+
+**The direct positive-path test for `ensureBinaryHeaderComment`
+required a redesign after the first draft's round-trip assertion
+turned out not to prove anything.** The original plan was to round-trip
+the shifted output through `findLastStartxref` /
+`parseTrailerSizeAndRoot` / `findObjectBody` (the same shape
+`TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog`
+already uses) and treat a successful Catalog lookup as proof the
+offset shift is correct. It isn't: `findObjectBody` locates objects
+via a textual `"<id> <gen> obj"` scan, never by dereferencing the
+xref table's recorded byte offsets — so it reports success even if
+every offset in the table is wrong, as long as the object text is
+still present somewhere in the buffer. Confirmed by deliberately
+mutating the shift's delta by one byte: the `findObjectBody`-based
+round-trip stayed silently green under that mutation. Fixed by adding
+a direct check that parses `minimalPDFWithoutBinaryComment()`'s known
+xref structure, reads the shifted offset for object 1 straight out of
+the table, and asserts `pdfBytes` at exactly that offset starts with
+`"1 0 obj"` — re-running the same one-byte-delta mutation against this
+stronger assertion correctly went red. The textual round-trip is kept
+as a secondary, complementary check (it does still prove the trailer's
+`/Root` reference and object body are intact), but it is documented as
+not sufficient on its own — future tests validating this package's
+offset arithmetic should default to reading the xref table directly,
+not just checking that *some* lookup path succeeds.
+
+`ensureBinaryHeaderComment`'s early-return path (already has the
+binary comment) is asserted via pointer identity
+(`&out[0] == &pdf[0]`), not just byte equality, since the function
+returns `pdfBytes` itself unaliased on that path and a future
+"defensive copy" refactor changing that allocation behavior should be
+a deliberate, reviewed decision. `hasBinaryHeaderComment`'s
+non-binary-comment guard uses a fixture chosen to pass the preceding
+length/prefix guard cleanly (`"%ABCD\n"`), so a mutation of that
+specific guard is what the test catches, not an accidental trip of an
+earlier one — confirmed by mutation. `shiftClassicXrefOffsets`
+contributes three panic-based catches (unterminated xref line,
+malformed subsection header, unterminated xref entry — all
+slice-bounds or index-out-of-range panics under mutation, same
+category as increment 2a's `TestFindObjectBody_EndobjNotFound`) and
+one coverage-only gap: the terminal `"xref trailer not found"`
+fallthrough is the function's last statement, so deleting it is a
+"missing return" compile error, not a testable mutation — same
+category as increment 2a's `TestInsertOutputIntentsReference_InsertsFreshEntry`.
+`ensureBinaryHeaderComment`'s own disclosed gap (95.7%, the propagation
+of `replaceStartxrefValue`'s error) is structurally unreachable
+through that call chain: `findLastStartxref` already validates a
+`"startxref"`-plus-digits pair exists in the original bytes before
+either downstream function runs, the comment insertion never touches
+the trailer/startxref region, and both functions independently
+`bytes.LastIndex` for the same literal text — so whatever
+`findLastStartxref` found, `replaceStartxrefValue` finds too. Same
+disclosed-gap framing as `icc.go`'s `DefaultICCProfile` from
+increment 1; not contrived into false coverage. `replaceStartxrefValue`'s
+own two guards are still covered directly (not only through
+`ensureBinaryHeaderComment`) since it's a general-purpose helper whose
+guards deserve unit-level coverage independent of what its one current
+caller can reach.
+
+Two findings from `/advisor`'s post-implementation review, both
+corrected before commit: (1) `TestShiftClassicXrefOffsets_InvalidXrefOffsetReturnsError`'s
+table-driven test originally shared one mutable buffer across all four
+subcases — `shiftClassicXrefOffsets` rewrites entries in place, so a
+subcase reaching the entry-rewrite loop under some future mutation
+could leak its partial rewrite into the next subcase's input, the
+same order-dependence class already fixed once this increment (map →
+slice for deterministic iteration) but only half-addressed; fixed by
+constructing a fresh buffer per subcase. (2) A third occurrence this
+session of the self-negating-fixture mistake — a filler-text fixture
+(`"no startxref here at all"`) accidentally containing the literal
+keyword it existed to test the absence of — happened in this
+increment's first draft, identical to two prior occurrences in
+increment 2b; see `DEVELOPER_HANDBOOK.md` for the mechanical-check
+note this recurrence earned.
+
+Coverage ratchet: go_default 8833/14624 (5791 uncovered) →
+8853/14627 (5774 uncovered); go_duckdb 8911/14722 (5811 uncovered) →
+8931/14725 (5794 uncovered) — +20 covered, +3 denominator (the
+overflow guard's three new statements: `newOff := oldOff + delta`,
+the `if` condition, and its `return`), net −17 uncovered on both
+tags, matching the test-coverage delta exactly (17 pre-existing
+statements newly covered, 3 new statements added by the fix and all
+covered by its own test). The exclude-filter flake (see
+`DEVELOPER_HANDBOOK.md`, now 5 occurrences) reproduced once during
+this increment's `--update` run; not accepted, re-run instead. `go
+build ./...`, `gofmt -l`, `go vet`, and the full `go test ./...`
+module suite pass; `internal/pdfmeta` at 85 tests, confirmed via
+`grep -c "^func Test"`.
+
 **Not started:** the remaining byte-surgery
-cluster (`InjectOutputIntent`, `MakePDFA3`, `InjectPAdESSignature`,
-the signature-field-rewriting functions, all 70–95%) — likely
-`internal/pdfmeta`'s final increment before the package reaches 100%,
-then the rest of
+cluster (`InjectOutputIntent`, `InjectPAdESSignature`, the
+signature-field-rewriting functions, `MakePDFA3`'s own 3 error-wrap
+guards, `streamPayload`'s empty-input guard, `readTrailerIDValue`'s 5
+guards — all 70–95%) — likely `internal/pdfmeta`'s final increment
+before the package reaches 100%, then the rest of
 Phase 2 (remaining Go completion-tier packages at 70–99%: `fonts`
 81.6%, `rfc3161` 81.6%, `signing` 81.6%, `sigma/service` 85.0%, and
 others),
