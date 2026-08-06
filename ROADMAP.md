@@ -1311,6 +1311,19 @@ are already in scope for the deferred byte-surgery cluster (see the
 keeps the guard placement and error wording consistent across all four
 sites rather than adding a one-off now and three more later.
 
+*Resolved 2026-08-06, increment 4b (see below) — and the "same
+~9.3GB reachability bound" claim above turned out to be only half
+true.* The generation half of the field is reachable with a small
+hand-built fixture, not a multi-gigabyte one: it's parsed straight out
+of the trailer's `/Root <id> <gen> R` entry and flows unchanged into
+the rewritten Catalog's own xref entry in all three functions. Only
+the offset half needs an impractically large input. The line numbers
+above (`:175,177` / `:537,539,545` / `:981`) had also drifted from
+intervening edits by the time 4b landed; see
+`TEST_COVERAGE_LEDGER.md`'s increment 4b entry for the fix itself
+rather than this historical entry, which is left as originally
+written aside from this note.
+
 **The direct positive-path test for `ensureBinaryHeaderComment`
 required a redesign after the first draft's round-trip assertion
 turned out not to prove anything.** The original plan was to round-trip
@@ -1535,18 +1548,110 @@ re-run instead, which produced the matching numbers above. `go build
 and the full `go test ./...` module suite pass; `internal/pdfmeta` at
 116 tests, confirmed via `grep -c "^func Test"`.
 
-**Not started:** `InjectPAdESSignature` itself (88.4%, 15 uncovered
-blocks — the placeholder/ByteRange/CMS byte-surgery, deferred to
-increment 4b), `InjectOutputIntent`, `MakePDFA3`'s own 3 error-wrap
-guards, `streamPayload`'s empty-input guard, `readTrailerIDValue`'s 5
-guards — all 70–95%, likely `internal/pdfmeta`'s final increment
-before the package reaches 100%. This pass must also add the
-same fixed-width-offset overflow guard to `InjectXMPStream`
-(`pdfmeta.go:175,177`), `InjectOutputIntent` (`:537,539,545`), and
-`InjectPAdESSignature` (`:981`) — the disclosed, not-yet-fixed sibling
-instances of the increment-3a truncation bug (see above); this is a
-known correctness item for that increment, not merely a coverage gap.
-Then the rest of
+### 2026-08-06 — `internal/pdfmeta` increment 4b: 95.7% → 96.4%; `InjectPAdESSignature`'s own coverage, plus closing the disclosed `%010d`/`%05d` xref-field-overflow debt across all three functions at once
+
+Covers `InjectPAdESSignature` itself (88.4% → 93.8%) and the
+`%010d`/`%05d` fixed-width-xref-field-overflow guard 3a disclosed and
+deferred for `InjectXMPStream`, `InjectOutputIntent`, and
+`InjectPAdESSignature` (see the amendment above). 14 new tests
+(116 → 130). Selected as the natural close of the byte-surgery
+cluster 4a explicitly deferred, and because it was already opening
+the exact three functions the disclosed debt named.
+
+Extracted one shared `writeClassicXrefEntry(w *bytes.Buffer, id,
+offset, gen int) error` helper and swept it across all 6 raw-`Fprintf`
+call sites rather than fixing only `InjectPAdESSignature`'s own —
+same sweep-when-cheap-and-identical reasoning as 4a's `parseDigits`
+sweep. Unlike `shiftClassicXrefOffsets`'s increment-3a bug (`copy()`
+truncates an overflowing value), `Fprintf`'s `%010d`/`%05d` verbs
+don't truncate — they silently widen the field past its declared
+width, corrupting the fixed 20-byte-per-entry alignment every
+subsequent xref entry depends on.
+
+**A pre-implementation `/advisor` review corrected a reachability
+assumption before any test was written.** The initial plan carried
+over 3a's framing that both the offset and generation halves need an
+impractical ~9.3GB input to trigger, and planned to disclose the
+generation half too. `/advisor` traced that `catalogGen` is parsed
+straight out of the trailer's `/Root <id> <gen> R` entry and flows
+unchanged into the rewritten Catalog's own xref entry in all three
+functions — a small, hand-built fixture with an oversized (but
+format-fitting) `/Root` generation reaches the guard directly. This
+is why the sweep didn't cost a net increase in uncovered statements
+the way a disclose-only plan would have. `rootGenOverflowPDF()` and
+`swappedIDGenOverflowPDF()` (modeled on 2b's `swappedIDPDF()`) are
+deliberately spec-invalid in a way this codebase's own guards don't
+check — the PDF spec caps generation numbers at 65535, so a fixture
+generation of 100000 is spec-invalid independent of whether it fits
+`writeClassicXrefEntry`'s looser 99999 format-width guard; documented
+in both fixtures' docstrings so a future reader doesn't mistake the
+guard for a spec-conformance check. `swappedIDGenOverflowPDF` reuses
+`swappedIDPDF`'s ID-swap trick because `InjectXMPStream`'s two
+xref-entry writes are sequential: a non-swapped fixture's oversized
+generation always lands on the first write and returns before the
+second write's error-wrap is reached — caught directly, not
+predicted, when the first version of this test alone left the
+package at 98.3%, a real regression on what was previously a 100%
+covered function.
+
+**A boundary gap was found and fixed via `/advisor`'s
+post-implementation review, the same category as 4a's
+`TestParseDigits_BoundaryValues`.** The original three
+`writeClassicXrefEntry` tests (a happy path at (1234, 5), and two
+overflow fixtures far past each limit) left a `>` vs `>=` off-by-one
+in either guard completely undetected — confirmed by mutation, the
+whole suite stayed green with both guards changed to `>=`. Fixed by
+asserting the exact largest legal entry (offset 9999999999, gen
+99999) still succeeds and produces the exact expected 20-byte output;
+re-verified by mutation that this test alone catches the off-by-one.
+
+`InjectPAdESSignature`'s own 7 newly-tested branches (empty-PDF
+guard, nil-`signRanges` guard, three error-wrap propagations, the
+trailing-newline-insertion branch, and the `signRanges` error wrap)
+reuse `InjectXMPStream`'s equivalent fixture patterns from increment
+2b. The trailing-newline fixture needed a fresh
+`bytes.TrimRight(minimalPDF(), "\n")` input — every existing fixture
+in the file already ends in `\n`, so this branch had never been
+exercised. **A masking gap found in the new empty-PDF test was traced
+to an identical, pre-existing gap in 2b's `InjectXMPStream` one and
+both were fixed together**: asserting only `err != nil` on nil input
+stays green even with the guard deleted, since nil bytes also fail
+`findLastStartxref` a few lines later with a different, still-non-nil
+error; fixed by asserting each guard's own error text.
+
+5 branches remain disclosed, confirmed by `/advisor` as genuinely
+unreachable (or, for one, provably impossible) rather than merely
+hard to fixture, and documented with an inline why-retained comment
+in `pdfmeta.go` itself, not only the ledger — see
+`TEST_COVERAGE_LEDGER.md`'s increment 4b entry for the full
+per-guard reachability trace.
+
+Coverage ratchet: predicted before running `--update` via a
+`git stash`-isolated clean before/after package comparison
+(757/791 → 769/798, +12 covered/+7 total) — the actual ratchet
+numbers matched exactly on both build tags: go_default 8892/14639
+(5747 uncovered) → 8904/14646 (5742 uncovered); go_duckdb 8970/14737
+(5767 uncovered) → 8982/14744 (5762 uncovered). No flake this run.
+`go build ./...`, `gofmt -l`, `go vet`,
+`go test ./internal/pdfmeta/... -race`, and the full `go test ./...`
+module suite pass; `internal/pdfmeta` at 130 tests, confirmed via
+`grep -c "^func Test"`.
+
+`InjectOutputIntent` (86.3%, down from 89.0%) is now a disclosed
+permanent floor: the two new ICC-stream/OutputIntent-dict entry
+guards this increment added are offset-only (both entries always
+write generation 0) and unreachable without a ~9.3GB input, the same
+bound as `InjectXMPStream`'s and `InjectPAdESSignature`'s equivalent
+offset-only guards.
+
+**Not started:** `MakePDFA3`'s own 3 error-wrap guards,
+`streamPayload`'s empty-input guard, `readTrailerIDValue`'s 5 guards —
+all 70–90%, likely `internal/pdfmeta`'s final increment before the
+package reaches its practical ceiling (`InjectOutputIntent`'s two
+offset-only xref guards and `InjectPAdESSignature`'s five
+structurally-unreachable/impossible guards are now disclosed
+permanent floors, not targets — see the 2026-08-06 increment 4b entry
+below and `TEST_COVERAGE_LEDGER.md`). Then the rest of
 Phase 2 (remaining Go completion-tier packages at 70–99%: `fonts`
 81.6%, `rfc3161` 81.6%, `signing` 81.6%, `sigma/service` 85.0%, and
 others),
