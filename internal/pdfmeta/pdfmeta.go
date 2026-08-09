@@ -597,7 +597,7 @@ func InjectOutputIntent(pdfBytes []byte, iccProfile []byte) ([]byte, error) {
 	// generated with fpdf moments earlier (see internal/documents and
 	// internal/export), never a foreign or re-parsed trailer -- not
 	// reachable through this app's own generation path today. Flagged,
-	// not fixed: TEST_COVERAGE_LEDGER.md and ROADMAP.md, increment 5a.
+	// The remaining gap is documented in TEST_COVERAGE_LEDGER.md.
 	first, second := iccID, oiID
 	firstOff, secondOff := iccObjOffset, oiObjOffset
 	firstGen, secondGen := 0, 0

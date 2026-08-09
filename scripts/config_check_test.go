@@ -185,7 +185,7 @@ overrides:
 useDefault = true
 
 [allowlist]
-paths = ["docs/design/spike-sqlcipher/.*"]
+paths = ["testdata/public-fixture/.*"]
 `),
 		"REUSE.toml": []byte(`
 version = 1

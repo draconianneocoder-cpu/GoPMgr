@@ -8,7 +8,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 These `.p12` files hold self-signed, non-production key material used only
 by `internal/crypto`'s tests. None of them sign anything real; each is a
 throwaway RSA or EC key generated for this repository and nothing else.
-Password for all three: `gopmgr-test-only`.
+All three use the public deterministic fixture passphrase
+`gopmgr-test-only`; it is not a production credential.
 
 - `testonly-rsa-2bag.p12` — one RSA key + its own self-signed certificate
   (the "2 safe bags" shape `golang.org/x/crypto/pkcs12`'s `Decode` requires).

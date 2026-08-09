@@ -81,8 +81,7 @@ func TestEncryptedDSNRejectsAmbiguousPath(t *testing.T) {
 //
 // This test replaces TestProjectPathForRejectsWrongExtension, which
 // asserted ".gopmgr" was *rejected* — correct before this rename, inverted
-// deliberately here now that ".gopmgr" is the current extension. See
-// DEVELOPER_HANDBOOK.md §9 for the rename this inversion is part of.
+// deliberately here now that ".gopmgr" is the current extension.
 //
 // This calls projectPathFor directly rather than going through DeleteProject:
 // DeleteProject also opens the target as an encrypted SQLite database for

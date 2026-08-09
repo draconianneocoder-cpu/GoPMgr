@@ -3,247 +3,39 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
-# Design: DuckDB as a complementary analytics engine
+# DuckDB analytics engine
 
-**Status:** Implemented for production/package builds
-**Date:** 2026-06-23
-**Decision record:** [ADR-002](ADR-002-duckdb-vs-sqlcipher-evaluation.md) (Option B)
-**Owner:** James L. Burns
+**Status:** Implemented for production and package builds
+**Decision record:** [ADR-002](ADR-002-duckdb-vs-sqlcipher-evaluation.md)
 
-## Goal
+## Boundary
 
-Add DuckDB's analytical horsepower (rich aggregates, window functions,
-native file readers) to GoPMgr **without** touching the SQLCipher
-system-of-record or the ADR-001 at-rest security model. SQLCipher stays
-the transactional store; DuckDB is an **embedded, in-memory, ephemeral**
-engine in production/package builds, used only for read-side analytics and
-data import.
+DuckDB is an in-memory analytical helper, not a project database. SQLCipher
+remains the persistent system of record. The application reads authorized rows
+from project databases and supplies them to `internal/analytics`; DuckDB does
+not access encrypted project files directly.
 
-## Core principles (what makes this near-zero-risk)
-
-1. **In-memory only — no persistent DuckDB file.** The engine opens
-   `:memory:`. Because nothing DuckDB writes ever lands on disk, there is
-   **no new at-rest encryption surface**, no `httpfs`/OpenSSL write
-   dependency, no storage-format-stability exposure, and no offline-write
-   problem — exactly the issues that made a full migration unattractive
-   in ADR-002.
-2. **DuckDB never touches the encrypted `.pmforge` file.** The app reads
-   rows from SQLCipher (already decrypted in-process) and **feeds them
-   into DuckDB in memory** via prepared parameterized inserts. Sensitive data
-   stays in process memory — the same exposure the app already has while
-   running; no new on-disk plaintext.
-3. **Build-tag gated, enabled for shipped builds.** DuckDB
-   (`github.com/duckdb/duckdb-go/v2`) is a heavy CGO dependency, so the
-   implementation stays behind `//go:build duckdb`. `make build` and package
-   builds enable that tag so installers include analytics; explicit untagged
-   developer builds still compile the no-op stub.
-4. **The pure-Go kernel stays the source of truth for scheduling math.**
-   CPM/EVM/MSPDI computations remain in `internal/kernel` (deterministic,
-   testable, no I/O). DuckDB does **cross-cutting aggregation** over many
-   rows/projects and **file ingestion** — it does not reimplement or
-   replace the kernel.
-5. **Network extension installation disabled.** Every DuckDB connection sets
-   `autoinstall_known_extensions=false`, preventing runtime extension
-   downloads. Autoload remains enabled for readers bundled with the linked
-   DuckDB build. Tabular import accepts only an explicit user-chosen local
-   path and applies `allowed_directories` as version-dependent,
-   defense-in-depth scoping.
-
-## Architecture
-
-```
-                SQLCipher .pmforge (system of record, encrypted at rest)
-                                  │  app reads decrypted rows (in process)
-                                  ▼
-   internal/analytics  ──Engine interface──┐
-        ├─ stub.go        (untagged developer build; ErrAnalyticsUnavailable)
-        └─ duckdb.go      (//go:build duckdb; production/package build)
-                                  │  prepared inserts         →  in-memory DuckDB
-                                  │  run aggregation / window queries
-                                  ▼
-                          results structs  →  App methods  →  Svelte UI
+```text
+SQLCipher project databases -> internal/analytics -> in-memory DuckDB -> result
 ```
 
-- New package **`internal/analytics`** exposes an `Engine` interface
-  (e.g. `RunPortfolioRollup(ctx, snapshot) (Result, error)`,
-  `ImportTabularFile(ctx, path) (Dataset, error)`), plus the sentinel
-  `ErrAnalyticsUnavailable`.
-- **`stub.go`** (no `duckdb` tag) returns `ErrAnalyticsUnavailable`. This is
-  retained for explicit no-DuckDB developer builds, so the UI still degrades
-  gracefully ("Analytics build not installed").
-- **`duckdb.go`** (`//go:build duckdb`) is the real implementation:
-  open `:memory:`, disable network extension autoinstall, insert rows through
-  parameterized statements, and query.
-- `main.go` wires whichever implementation is compiled in; App methods
-  surface analytics to the frontend and always handle
-  `ErrAnalyticsUnavailable`.
+## Build behavior
 
-### Dependency handling note
+`//go:build duckdb` selects the DuckDB implementation. Production and package
+builds enable the tag. Untagged development builds compile the unavailable stub
+so the rest of the application remains buildable without the analytical engine.
 
-A file guarded by `//go:build duckdb` still causes `go mod tidy` to
-record `duckdb-go/v2` in `go.mod`/`go.sum` (tidy considers all build
-tags). That is expected and fine: **the dependency is declared, and production
-builds link it through `make build` / Wails `-tags duckdb`**. Direct untagged
-`go build` still compiles the stub and carries zero DuckDB code.
+## Safety rules
 
-## Security posture (must hold)
+- Keep all project writes in the established SQLCipher-backed packages.
+- Use parameterized operations for data passed into DuckDB.
+- Do not enable runtime extension installation or network-backed readers.
+- Accept imports only from an explicit user-selected path and keep directory
+  confinement in the import boundary.
+- Keep kernel scheduling and earned-value calculations independent of DuckDB.
 
-- No persistent DuckDB file (`:memory:` only); verified in tests.
-- DuckDB is never handed the encrypted file path; it only receives rows
-  the app already decrypted in memory.
-- Currency values enter DuckDB as integer minor units (`BIGINT`), not
-  floating-point columns. Display values are derived only after aggregation.
-- Portfolio committed estimates and EVM actual cost are separate fields.
-  `EVMAvailable` prevents projects missing an anchored, valid, costed current
-  schedule from contributing placeholder zeroes. The result reports coverage,
-  and SPI/CPI are calculated from summed minor units (`ΣEV/ΣPV`, `ΣEV/ΣAC`),
-  not by averaging per-project ratios.
-- Every connection sets `autoinstall_known_extensions=false`, so missing
-  extensions cannot be downloaded. Explicit local-file import additionally
-  attempts to scope DuckDB to the selected file's directory with
-  `allowed_directories`; because option support varies by DuckDB version, the
-  application-selected absolute path and supported-reader allowlist remain the
-  primary boundary.
-- No network, no telemetry, no community extensions.
-- ADR-001 and the SQLCipher release gates are unchanged and stay green.
+## Verification
 
-## Scope
-
-**In scope (DuckDB's real value):**
-
-- **Portfolio / cross-project analytics** — rollups and comparisons
-  across many projects (the existing `Portfolio.svelte` is the natural
-  first surface).
-- **Aggregate/statistical reporting** — feeding Six Sigma stats and
-  EVM/portfolio summaries that benefit from set-based aggregation.
-- **Native local-file ingestion** — CSV, Parquet, and JSON are
-  *Primary*-tier readers bundled in standard DuckDB builds (offline, no
-  download); they power a new "import any tabular data" capability.
-  Excel (`.xlsx`) is a different case — see *File-import evaluation* below.
-
-**Out of scope (explicitly):**
-
-- Replacing the SQLCipher store or any transactional CRUD path.
-- Moving the CPM/EVM/MSPDI kernel math into SQL.
-- Any persistent DuckDB artifact on disk.
-
-## File-import evaluation (and the `read-excel-file` question)
-
-DuckDB's readers split into two tiers for an offline, local-first app:
-
-| Format | DuckDB reader | Bundled & offline? |
-|---|---|---|
-| CSV | `read_csv` / `FROM 'f.csv'` | **Yes** — core, always available |
-| Parquet | `read_parquet` | **Yes** — *Primary* tier, in standard builds |
-| JSON | `read_json` | **Yes** — *Primary* tier, in standard builds |
-| Excel `.xlsx` | `read_xlsx` / `FROM 'f.xlsx'` | **No** — the `excel` extension is *Secondary* tier and **auto-downloads from the official extension repository on first use** |
-
-**CSV / Parquet / JSON — strong fit.** Use DuckDB to add a new "import
-any data" feature for these. Their readers are present in the standard linked
-build and work without a runtime download. The backend takes a user-chosen path (native
-dialog, like the existing `ImportMSPDIChart`), reads it into in-memory
-DuckDB, and returns a bounded in-memory preview to the frontend. The import
-does not persist the dataset. This is genuinely new capability — GoPMgr
-cannot otherwise read Parquet.
-
-**Excel / retiring `read-excel-file` — not worth it now.** Three reasons:
-
-1. **The `excel` extension auto-downloads from the internet.** To stay
-   offline/local-first it must be pre-bundled with `autoinstall`/
-   `autoload` disabled — the same packaging burden that counted against a
-   full migration (cf. `httpfs` for encryption in ADR-002).
-2. **It would require bundling the Secondary-tier `excel` extension
-   offline.** The Sigma `.xlsx` import is a frontend path and
-   `read-excel-file` is already small, maintained, npm-native, and shipped
-   in every build. Swapping it for the one format DuckDB makes harder is
-   churn unless GoPMgr also solves local extension bundling.
-3. **`.xls` parity is no longer a factor.** Legacy `.xls` support was
-   deprioritized by the owner (2026-06-23), so it is neither a blocker nor
-   a reason to switch — it simply drops out of the comparison.
-
-**Recommendation:** keep `read-excel-file` as the universal `.xlsx` path
-**for now**; position DuckDB as the engine that *adds* CSV/Parquet/JSON
-import plus the analytics over it. **Future consolidation:** GoPMgr plans
-external-database access via a plugin/extension mechanism (see *Future
-direction*). The offline, controlled extension-loading capability that
-requires is the *same* capability the `excel` extension needs — so once
-it lands, retiring `read-excel-file` in favor of DuckDB's `read_xlsx`
-becomes a clean consolidation (with `.xls` no longer a concern). Until
-then, `read-excel-file` stays and Phase D ships CSV/Parquet/JSON only.
-
-## Future direction: external databases
-
-GoPMgr plans to access external databases via a plugin/extension
-mechanism (owner direction, 2026-06-23). This is squarely DuckDB
-territory and reinforces Option B: DuckDB ships connector extensions —
-`postgres` (postgres_scanner), `mysql` (mysql_scanner), `sqlite`
-(sqlite_scanner), and `odbc` — that `ATTACH` external databases and let
-you query and join across them and the in-memory analytics set. Two
-implications:
-
-- The build-tag-gated analytics engine is a natural home for (or sibling
-  of) that future "data/connectors plugin" — the optional-capability
-  packaging already matches a plugin model.
-- Those connectors are *Secondary*-tier extensions with the same offline
-  discipline as `excel`: pre-bundle the needed extensions, disable
-  internet autoinstall/autoload, and load locally. Solving that once for
-  the external-DB feature also unlocks `excel`/`read_xlsx`. Any network
-  egress for a connector must stay **explicit and user-initiated** to
-  preserve the local-first posture.
-
-## Phased task plan
-
-- **Phase A — Interface + stub (no new dependency).** Create
-  `internal/analytics` with the `Engine` interface, `stub.go`,
-  `ErrAnalyticsUnavailable`, and App-method wiring that degrades
-  gracefully. Fully testable in the default build; `make verify`/`race`
-  stay green. *No `go.mod` change yet.*
-- **Phase B — DuckDB engine behind `//go:build duckdb`.** Add
-  `duckdb-go/v2`; implement `duckdb.go`: in-memory open, hardening
-  pragma, prepared inserts, query execution, result mapping. Unit
-  tests under the tag.
-- **Phase C — First feature end-to-end: Portfolio rollup.** Backend
-  `App.RunPortfolioAnalytics()` (DuckDB-backed, stub fallback) + wire
-  into `Portfolio.svelte`. Proves the whole path with a real, visible
-  benefit.
-- **Phase D — Local-file ingestion (CSV / Parquet / JSON)** with the
-  explicit-path allowlist and best-effort `allowed_directories` scoping; expose
-  an "import dataset for analysis"
-  surface. (`.xlsx` stays on `read-excel-file`; Excel-via-DuckDB only if
-  DuckDB goes always-on and the `excel` extension is bundled offline —
-  see *File-import evaluation*.)
-- **Phase E — CI, docs, budgets.** Add a `-tags duckdb` build+test CI job
-  (at least Linux) so it can't bitrot; record the dependency in
-  `DEPENDENCIES.md` with justification; note the production analytics build
-  in `DEVELOPER_HANDBOOK.md`/`README.md`; add a binary-size budget check for the tagged
-  build.
-
-## Testing & verification
-
-- Untagged build: stub path unit-tested; direct `go test` can still run
-  without DuckDB linked.
-- Production/package build: `make build` passes `-tags duckdb`, and
-  `scripts/verify-duckdb-linked.sh` checks the built binary metadata.
-- Tagged tests: `go test -tags duckdb ./internal/analytics/...` with
-  golden-result assertions on representative aggregations; an
-  in-memory-only invariant test (no files created); a hardening test
-  (external access denied).
-- CI: a dedicated `-tags duckdb` job, kept separate from the default
-  gate.
-
-## Open decisions (recommended defaults in **bold**)
-
-- Packaging: **build-tag gated implementation, enabled in the standard
-  production/package build**. Direct untagged developer builds remain possible
-  for stub coverage.
-- First feature: **Portfolio cross-project rollup** vs. statistical
-  reporting first. *Recommend Portfolio.*
-- Excel-via-DuckDB / retiring `read-excel-file`: **no for now** — keep
-  `read-excel-file` (see *File-import evaluation*); the `excel` extension
-  auto-downloads and would force always-on with no capability gain.
-
-## Sources / related
-
-- [ADR-002 — DuckDB vs SQLCipher evaluation](ADR-002-duckdb-vs-sqlcipher-evaluation.md)
-- [ADR-001 — Per-user database encryption at rest](ADR-001-database-encryption-at-rest.md)
-- [Securing DuckDB](https://duckdb.org/docs/current/operations_manual/securing_duckdb/overview)
+Run the `internal/analytics` tests with the applicable build tags and verify a
+production build before shipping. Dependency and packaging requirements are in
+[DEPENDENCIES.md](../../DEPENDENCIES.md).
