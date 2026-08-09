@@ -1,0 +1,216 @@
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Command code-map generates the first-party Go package dependency map.
+// It deliberately lists only tracked Go source roots so ignored frontend
+// dependencies cannot leak host-specific packages into repository metadata.
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+const modulePath = "gopmgr"
+
+type listedPackage struct {
+	ImportPath string
+	Dir        string
+	Imports    []string
+}
+
+type packageDetails struct {
+	Dir                 string   `json:"dir"`
+	ImportedByInternal  []string `json:"imported_by_internal"`
+	ImportsInternal     []string `json:"imports_internal"`
+	NotableExternalDeps []string `json:"notable_external_deps"`
+}
+
+type packageMap struct {
+	Description string                    `json:"description"`
+	Packages    map[string]packageDetails `json:"packages"`
+}
+
+func main() {
+	var root, output string
+	var check bool
+	flag.StringVar(&root, "root", ".", "repository root")
+	flag.StringVar(&output, "output", "code-map/package-dependencies.json", "package map output path")
+	flag.BoolVar(&check, "check", false, "fail if the output is stale instead of writing it")
+	flag.Parse()
+
+	if err := run(root, output, check); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "code-map: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run(root, output string, check bool) error {
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return fmt.Errorf("resolve repository root: %w", err)
+	}
+	data, err := generate(absRoot)
+	if err != nil {
+		return err
+	}
+	if !filepath.IsAbs(output) {
+		output = filepath.Join(absRoot, output)
+	}
+	if check {
+		current, err := os.ReadFile(output)
+		if err != nil {
+			return fmt.Errorf("read generated map: %w", err)
+		}
+		if !bytes.Equal(current, data) {
+			return fmt.Errorf("%s is stale; run make code-map", filepath.ToSlash(output))
+		}
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(output), 0o755); err != nil {
+		return fmt.Errorf("create output directory: %w", err)
+	}
+	if err := os.WriteFile(output, data, 0o644); err != nil {
+		return fmt.Errorf("write package map: %w", err)
+	}
+	return nil
+}
+
+func generate(root string) ([]byte, error) {
+	packages, err := listPackages(root)
+	if err != nil {
+		return nil, err
+	}
+	result, err := buildPackageMap(root, packages)
+	if err != nil {
+		return nil, err
+	}
+	data, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("encode package map: %w", err)
+	}
+	return append(data, '\n'), nil
+}
+
+func listPackages(root string) ([]listedPackage, error) {
+	// Do not use ./... here: installed frontend dependencies occasionally
+	// contain Go examples, which are not part of this repository's product.
+	cmd := exec.Command("go", "list", "-json", ".", "./internal/...", "./scripts", "./tools/...")
+	cmd.Dir = root
+	data, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("list first-party packages: %w\n%s", err, data)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	var packages []listedPackage
+	for {
+		var pkg listedPackage
+		if err := decoder.Decode(&pkg); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return nil, fmt.Errorf("decode go list output: %w", err)
+		}
+		packages = append(packages, pkg)
+	}
+	return packages, nil
+}
+
+func buildPackageMap(root string, listed []listedPackage) (packageMap, error) {
+	packages := make(map[string]packageDetails, len(listed))
+	for _, pkg := range listed {
+		if !isFirstParty(pkg.ImportPath) {
+			continue
+		}
+		dir, ok, err := relativeDirectory(root, pkg.Dir)
+		if err != nil {
+			return packageMap{}, err
+		}
+		if !ok || isIgnoredGeneratedDirectory(dir) {
+			continue
+		}
+		packages[pkg.ImportPath] = packageDetails{Dir: dir}
+	}
+
+	for _, pkg := range listed {
+		details, ok := packages[pkg.ImportPath]
+		if !ok {
+			continue
+		}
+		for _, dependency := range pkg.Imports {
+			if _, isMapped := packages[dependency]; isMapped {
+				details.ImportsInternal = append(details.ImportsInternal, dependency)
+				dependencyDetails := packages[dependency]
+				dependencyDetails.ImportedByInternal = append(dependencyDetails.ImportedByInternal, pkg.ImportPath)
+				packages[dependency] = dependencyDetails
+				continue
+			}
+			if isExternalImport(dependency) {
+				details.NotableExternalDeps = append(details.NotableExternalDeps, dependency)
+			}
+		}
+		details.ImportsInternal = uniqueSorted(details.ImportsInternal)
+		details.NotableExternalDeps = uniqueSorted(details.NotableExternalDeps)
+		packages[pkg.ImportPath] = details
+	}
+	for importPath, details := range packages {
+		details.ImportedByInternal = uniqueSorted(details.ImportedByInternal)
+		packages[importPath] = details
+	}
+
+	return packageMap{
+		Description: "First-party package import graph (who imports whom) plus notable direct external dependencies. Generated by `make code-map`.",
+		Packages:    packages,
+	}, nil
+}
+
+func relativeDirectory(root, dir string) (string, bool, error) {
+	relative, err := filepath.Rel(root, dir)
+	if err != nil {
+		return "", false, fmt.Errorf("make package directory relative: %w", err)
+	}
+	if relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return "", false, nil
+	}
+	if relative == "." {
+		return ".", true, nil
+	}
+	return filepath.ToSlash(relative), true, nil
+}
+
+func isFirstParty(importPath string) bool {
+	return importPath == modulePath || strings.HasPrefix(importPath, modulePath+"/")
+}
+
+func isExternalImport(importPath string) bool {
+	first, _, _ := strings.Cut(importPath, "/")
+	return strings.Contains(first, ".")
+}
+
+func isIgnoredGeneratedDirectory(dir string) bool {
+	return strings.Contains("/"+dir+"/", "/node_modules/")
+}
+
+func uniqueSorted(values []string) []string {
+	if len(values) == 0 {
+		return []string{}
+	}
+	sort.Strings(values)
+	out := values[:0]
+	for _, value := range values {
+		if len(out) == 0 || out[len(out)-1] != value {
+			out = append(out, value)
+		}
+	}
+	return out
+}

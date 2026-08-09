@@ -20,10 +20,10 @@ WAILS_BUILD_TAGS ?= duckdb,webkit2_41
 WAILS_BUILD_FLAGS ?=
 GO_TEST_TAGS ?= webkit2_41
 # The main package now lives at the repo root (canonical Wails layout), so
-# Go quality gates scope to the root package, internal packages, and the
-# tracked update-manifest release tool. Avoid bare ./... because generated
+# Go quality gates scope to the root package, internal packages, and tracked
+# tools. Avoid bare ./... because generated
 # frontend dependencies may expose unrelated Go packages.
-GO_PACKAGES := . ./internal/... ./tools/update-manifest
+GO_PACKAGES := . ./internal/... ./tools/...
 
 export CGO_ENABLED := 1
 export CC
@@ -34,7 +34,8 @@ export CC
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
         help-guide-current wails-version wails-cli-version wails-version-test tag-preflight config-check \
-        installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests
+        installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests \
+        code-map code-map-current
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -102,8 +103,14 @@ test: ## Run Go unit tests.
 race: ## Run Go tests with the race detector (concurrency gate).
 	$(GO) test -race -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests wails-version test frontend-stability frontend-build-budget coverage-ledger-current ## Fast pre-commit gate: config + packaging/toolchain/font/reset contracts + Go tests + frontend checks.
-	@echo "verify: configuration, packaging/Wails/font/reset contracts, Go tests, svelte-check, and frontend build all passed."
+verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests wails-version test code-map-current frontend-stability frontend-build-budget coverage-ledger-current ## Fast pre-commit gate: config + packaging/toolchain/font/reset/code-map contracts + Go tests + frontend checks.
+	@echo "verify: configuration, packaging/Wails/font/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
+
+code-map: ## Regenerate the portable first-party Go package dependency map.
+	@$(GO) run ./tools/code-map
+
+code-map-current: ## Fail when the checked-in package dependency map is stale.
+	@$(GO) run ./tools/code-map -check
 
 coverage-ledger-current: ## Fail if a *_test.go/*.test.ts file exists that TEST_COVERAGE_LEDGER.md never mentions.
 	@bash scripts/check-coverage-ledger-current.sh

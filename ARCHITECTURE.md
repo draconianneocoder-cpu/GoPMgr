@@ -81,6 +81,8 @@ families.
   CSV/TSV/Parquet/JSON data import (behind the `duckdb` build tag).
 - `internal/export`: PDF, PDF/A, DOCX, ODT, XLSX, iCal, MSPDI, and Monte
   Carlo risk-report export paths.
+- `internal/reporting`: application-level combined-report preflight, PDF
+  assembly, and provenance-manifest output over an already-open project DB.
 - `internal/exportsafe`: neutralizes user-controlled values written to
   CSV/TSV exports against spreadsheet formula injection.
 - `internal/templates`: Launchpad seeding rules embedded from JDM data.

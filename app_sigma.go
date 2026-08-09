@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"time"
+
 	"gopmgr/internal/calendar"
 	"gopmgr/internal/charts"
 	"gopmgr/internal/db"
@@ -21,7 +23,6 @@ import (
 	"gopmgr/internal/sigma/service"
 	"gopmgr/internal/sigma/stats"
 	"gopmgr/internal/sigma/tollgate"
-	"time"
 )
 
 // =========================================================
@@ -280,30 +281,6 @@ func (a *App) SigmaExportProjectReport(projectID string) (string, error) {
 func trimExt(name string) string {
 	ext := filepath.Ext(name)
 	return name[:len(name)-len(ext)]
-}
-
-// collectChartRefs scans a document's JSON content for FieldChartRef
-// values, returning the chart IDs referenced. Used by
-// ExportCombinedReport to pre-fetch every chart needed by the
-// included documents in a single pass.
-func collectChartRefs(contentJSON string, fields []documents.Field) []string {
-	if contentJSON == "" || len(fields) == 0 {
-		return nil
-	}
-	var m map[string]interface{}
-	if err := json.Unmarshal([]byte(contentJSON), &m); err != nil {
-		return nil
-	}
-	var out []string
-	for _, f := range fields {
-		if f.Type != documents.FieldChartRef {
-			continue
-		}
-		if id, ok := m[f.Key].(string); ok && id != "" {
-			out = append(out, id)
-		}
-	}
-	return out
 }
 
 func combinedReportCheckpointID(projectID, reportTitle, subtitle string, sections []documents.ReportSection) string {
