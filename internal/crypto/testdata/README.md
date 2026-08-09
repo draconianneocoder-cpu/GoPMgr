@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: GFDL-1.3-or-later
+-->
+
 # Test-only PKCS#12 fixtures
 
 These `.p12` files hold self-signed, non-production key material used only

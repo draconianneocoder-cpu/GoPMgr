@@ -81,6 +81,7 @@ make verify
 ```
 
 `make verify` is the fast local and CI gate: tracked YAML/TOML configuration,
+the generated first-party package map,
 native installer and Wails toolchain pins, Go tests, frontend stability, and
 frontend build-budget checks. Run it before ordinary commits.
 

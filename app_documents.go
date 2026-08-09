@@ -5,7 +5,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,6 +25,7 @@ import (
 	"gopmgr/internal/documents"
 	"gopmgr/internal/export"
 	"gopmgr/internal/kernel"
+	"gopmgr/internal/reporting"
 	"gopmgr/internal/rfc3161"
 	"gopmgr/internal/sigma/service"
 	"gopmgr/internal/signing"
@@ -228,29 +228,6 @@ type CombinedReportOptions struct {
 	Mode      documents.ReportMode `json:"mode"`
 }
 
-type reportProvenanceArtifact struct {
-	ID        string `json:"id"`
-	Kind      string `json:"kind"`
-	Title     string `json:"title"`
-	Version   int    `json:"version,omitempty"`
-	Status    string `json:"status,omitempty"`
-	UpdatedAt string `json:"updated_at"`
-	SHA256    string `json:"sha256"`
-	Data      string `json:"data,omitempty"`
-	Config    string `json:"config,omitempty"`
-}
-
-type reportProvenanceManifest struct {
-	Format      string                     `json:"format"`
-	GeneratedAt string                     `json:"generated_at"`
-	ReportTitle string                     `json:"report_title"`
-	Profile     documents.ReportProfile    `json:"profile"`
-	Mode        documents.ReportMode       `json:"mode"`
-	Issues      []documents.ReportIssue    `json:"issues"`
-	Documents   []reportProvenanceArtifact `json:"documents"`
-	Charts      []reportProvenanceArtifact `json:"charts"`
-}
-
 func (a *App) ListReportProfiles() []documents.ReportProfile { return documents.ReportProfiles() }
 
 // PreflightCombinedReport exposes quality findings before a user exports. A
@@ -261,46 +238,10 @@ func (a *App) PreflightCombinedReport(sections []documents.ReportSection, option
 	if d == nil {
 		return documents.ReportPreflight{}, errors.New("no project open")
 	}
-	proj, err := d.GetProject()
-	if err != nil {
-		return documents.ReportPreflight{}, err
-	}
-	profile := documents.ReportProfileFor(options.ProfileID, proj.Industry)
-	inputs := make([]documents.ReportInput, 0, len(sections))
-	issues := make([]documents.ReportIssue, 0)
-	referencedKinds := make(map[string]bool)
-	for _, section := range sections {
-		doc, err := d.GetDocument(section.DocumentID)
-		if err != nil {
-			issues = append(issues, documents.ReportIssue{Severity: "error", Code: "document_missing", Message: "Selected report document is unavailable.", EntityID: section.DocumentID})
-			continue
-		}
-		inputs = append(inputs, documents.ReportInput{ID: doc.ID, Kind: documents.Kind(doc.Kind), Status: doc.Status})
-		for _, chartID := range collectChartRefs(doc.Content, documents.EffectiveFields(documents.Kind(doc.Kind))) {
-			chart, err := d.GetChart(chartID)
-			if err != nil {
-				issues = append(issues, documents.ReportIssue{Severity: "error", Code: "linked_chart_missing", Message: "A linked chart cannot be resolved and will not be silently omitted.", EntityID: chartID})
-			} else {
-				referencedKinds[chart.Kind] = true
-			}
-		}
-	}
-	preflight := documents.Preflight(profile, options.Mode, inputs)
-	for _, kind := range profile.RecommendedChartKinds {
-		if !referencedKinds[kind] {
-			preflight.Issues = append(preflight.Issues, documents.ReportIssue{Severity: "warning", Code: "recommended_chart_missing", Message: "Recommended profile chart is not linked in the report: " + kind})
-		}
-	}
-	preflight.Issues = append(preflight.Issues, issues...)
-	if options.Mode == documents.ReportModeCertified {
-		for _, issue := range preflight.Issues {
-			if issue.Severity == "error" {
-				preflight.Ready = false
-				break
-			}
-		}
-	}
-	return preflight, nil
+	return reporting.Service{Database: d}.Preflight(sections, reporting.Options{
+		ProfileID: options.ProfileID,
+		Mode:      options.Mode,
+	})
 }
 
 func (a *App) DeleteDocument(id string) error {
@@ -333,113 +274,18 @@ func (a *App) ExportCombinedReportWithOptions(reportTitle, subtitle string, sect
 	if d == nil || u == nil {
 		return "", errors.New("not signed in or no project open")
 	}
-	if len(sections) == 0 {
-		return "", errors.New("report has no sections")
-	}
-
-	proj, err := d.GetProject()
-	if err != nil {
-		return "", err
-	}
-
-	// Resolve each section to a (doc kind + content) pair, and along
-	// the way collect every chart_ref value so we can pre-fetch the
-	// referenced charts in one pass.
-	preflight, err := a.PreflightCombinedReport(sections, options)
-	if err != nil {
-		return "", err
-	}
-	if options.Mode == documents.ReportModeCertified && !preflight.Ready {
-		return "", errors.New("certified report preflight failed; resolve the listed quality findings")
-	}
-
-	resolved := make([]documents.ResolvedSection, 0, len(sections))
-	manifestDocs := make([]reportProvenanceArtifact, 0, len(sections))
-	chartIDs := make(map[string]struct{})
-	for _, s := range sections {
-		doc, err := d.GetDocument(s.DocumentID)
-		if err != nil {
-			return "", fmt.Errorf("section %s: %w", s.DocumentID, err)
-		}
-		if s.Title == "" {
-			s.Title = doc.Title
-		}
-		resolved = append(resolved, documents.ResolvedSection{
-			Section: s,
-			Kind:    documents.Kind(doc.Kind),
-			Content: doc.Content,
-			Version: doc.Version,
-			Status:  doc.Status,
-		})
-		digest := sha256.Sum256([]byte(doc.Content))
-		manifestDocs = append(manifestDocs, reportProvenanceArtifact{ID: doc.ID, Kind: doc.Kind, Title: doc.Title, Version: doc.Version, Status: doc.Status, UpdatedAt: doc.UpdatedAt, SHA256: fmt.Sprintf("%x", digest)})
-
-		// Scan the document's content for chart_ref values. We
-		// don't unmarshal the JSON twice — that work happens again
-		// in renderSectionBody — but a cheap string-key lookup is
-		// fine because chart_ref values are short opaque IDs.
-		for _, id := range collectChartRefs(doc.Content, documents.EffectiveFields(documents.Kind(doc.Kind))) {
-			chartIDs[id] = struct{}{}
-		}
-	}
-
-	// Pre-fetch every referenced chart.
-	resolvedCharts := make(map[string]documents.ResolvedChart, len(chartIDs))
-	manifestCharts := make([]reportProvenanceArtifact, 0, len(chartIDs))
-	for id := range chartIDs {
-		c, err := d.GetChart(id)
-		if err != nil {
-			// The preflight and PDF quality page record this as an explicit
-			// finding. Never silently hide a requested linked chart.
-			continue
-		}
-		resolvedCharts[id] = documents.ResolvedChart{
-			Kind:  c.Kind,
-			Title: c.Title,
-			Data:  c.Data,
-		}
-		digest := sha256.Sum256([]byte(c.Data + "\n" + c.Config))
-		manifestCharts = append(manifestCharts, reportProvenanceArtifact{ID: c.ID, Kind: c.Kind, Title: c.Title, UpdatedAt: c.UpdatedAt, SHA256: fmt.Sprintf("%x", digest), Data: c.Data, Config: c.Config})
-	}
-
-	bytes, err := documents.BuildCombinedReport(documents.ReportSpec{
-		ReportTitle:    reportTitle,
-		Subtitle:       subtitle,
-		Author:         u.DisplayName,
-		ProjectName:    proj.Name,
-		Sections:       sections,
-		ResolvedCharts: resolvedCharts,
-		ResolvedEVM:    resolvedEVMForCharts(proj, resolvedCharts, time.Now().UTC()),
-		Profile:        preflight.Profile,
-		Mode:           preflight.Mode,
-		QualityIssues:  preflight.Issues,
-	}, resolved)
-	if err != nil {
-		return "", err
-	}
-
-	outDir := filepath.Join(u.DataDir, "exports")
-	if err := os.MkdirAll(outDir, 0o700); err != nil {
-		return "", err
-	}
-	stamp := time.Now().UTC().Format("20060102-150405")
-	outPath := filepath.Join(outDir, fmt.Sprintf("%s-%s.pdf", sanitizeFilename(reportTitle), stamp))
-	if err := os.WriteFile(outPath, bytes, 0o600); err != nil {
-		return "", err
-	}
-	manifest := reportProvenanceManifest{
-		Format: "gopmgr-report-provenance/v1", GeneratedAt: time.Now().UTC().Format(time.RFC3339Nano),
-		ReportTitle: reportTitle, Profile: preflight.Profile, Mode: preflight.Mode,
-		Issues: preflight.Issues, Documents: manifestDocs, Charts: manifestCharts,
-	}
-	manifestBytes, err := json.MarshalIndent(manifest, "", "  ")
-	if err != nil {
-		return "", fmt.Errorf("encode report provenance: %w", err)
-	}
-	if err := os.WriteFile(outPath+".manifest.json", manifestBytes, 0o600); err != nil {
-		return "", fmt.Errorf("write report provenance: %w", err)
-	}
-	return outPath, nil
+	return reporting.Service{Database: d, ResolveEVM: resolvedEVMForCharts}.Export(reporting.ExportRequest{
+		ReportTitle: reportTitle,
+		Subtitle:    subtitle,
+		Sections:    sections,
+		Options: reporting.Options{
+			ProfileID: options.ProfileID,
+			Mode:      options.Mode,
+		},
+		Author:     u.DisplayName,
+		ExportsDir: filepath.Join(u.DataDir, "exports"),
+		FileStem:   sanitizeFilename(reportTitle),
+	})
 }
 
 // ExportCombinedReportSigned is like ExportCombinedReport but applies the
@@ -506,7 +352,7 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 			Version: doc.Version,
 			Status:  doc.Status,
 		})
-		for _, id := range collectChartRefs(doc.Content, documents.EffectiveFields(documents.Kind(doc.Kind))) {
+		for _, id := range reporting.ChartReferences(doc.Content, documents.EffectiveFields(documents.Kind(doc.Kind))) {
 			chartIDs[id] = struct{}{}
 		}
 	}

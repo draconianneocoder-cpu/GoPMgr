@@ -12,6 +12,14 @@ readme_text="$(tr '\n' ' ' < README.md)"
 agent_text="$(tr '\n' ' ' < DEVELOPER_HANDBOOK.md)"
 trap 'rm -f "$go_scope_matches" "$go_list_scope"' EXIT
 
+# The scope matcher is intentionally narrower than a general documentation
+# search: historical validation records must not be treated as live commands.
+if [ "${GOPMGR_RELEASE_SCOPE_SKIP_SELF_TEST:-}" != "1" ] &&
+	! bash scripts/release-gate-scope-check_test.sh >/dev/null; then
+	echo "release-scope: command-scope regression tests failed." >&2
+	fail=1
+fi
+
 # Concrete release-candidate names are publication claims, not harmless
 # examples. Exercise the isolated fixtures before checking the live tree so
 # future draft notes cannot silently recreate the false release history.
@@ -21,7 +29,9 @@ if ! bash scripts/check-release-reference-truth_test.sh >/dev/null ||
 	fail=1
 fi
 
-if rg -n '((go|\$\(GO\)) (test|vet)( -race)?|staticcheck|gosec -quiet|govulncheck) \./\.\.\.' Makefile scripts DEVELOPER_HANDBOOK.md >"$go_scope_matches"; then
+# Test fixtures intentionally contain malformed commands; only active
+# maintainer scripts are release-gate candidates.
+if rg -n --glob '!**/*_test.sh' '((go|\$\(GO\)) (test|vet)( -race)?|staticcheck|gosec -quiet|govulncheck) \./\.\.\.' Makefile scripts >"$go_scope_matches"; then
 	echo "release-scope: Go quality gates must target . ./internal/... instead of ./..." >&2
 	cat "$go_scope_matches" >&2
 	fail=1

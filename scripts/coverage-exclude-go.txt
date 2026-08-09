@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: CC0-1.0
+
 # Files excluded from the Go coverage ratchet's numerator/denominator.
 # This is the authoritative exclusion list -- scripts/coverage-go.sh reads it
 # directly, so "what's excluded and why" has one place that can't drift from

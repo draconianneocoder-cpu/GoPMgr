@@ -93,6 +93,12 @@ SPDX-FileCopyrightText = "2026 The Compact ICC Profiles contributors"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
+path = "internal/crypto/testdata/testonly-*.p12"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
 path = "internal/templates/launchpad_seeds.json"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
@@ -100,6 +106,12 @@ SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
 path = "code-map/*.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "coverage-baseline.json"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "CC0-1.0"
