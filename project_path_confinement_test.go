@@ -96,6 +96,7 @@ func TestProjectPathForAcceptsCurrentAndLegacyExtension(t *testing.T) {
 	user := app.CurrentUser()
 	if user == nil {
 		t.Fatal("CurrentUser is nil after CreateAccount")
+		return
 	}
 
 	// projectPathFor is pure path validation (no filesystem access), so

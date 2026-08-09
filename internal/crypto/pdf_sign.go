@@ -157,7 +157,7 @@ func splitLeafCertificate(key *rsa.PrivateKey, certs []*x509.Certificate) (*x509
 		if !ok {
 			continue
 		}
-		if certKey.E == key.PublicKey.E && certKey.N.Cmp(key.PublicKey.N) == 0 {
+		if certKey.E == key.E && certKey.N.Cmp(key.N) == 0 {
 			extraCerts := make([]*x509.Certificate, 0, len(certs)-1)
 			extraCerts = append(extraCerts, certs[:i]...)
 			extraCerts = append(extraCerts, certs[i+1:]...)

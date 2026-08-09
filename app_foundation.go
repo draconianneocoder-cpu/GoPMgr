@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"gopmgr/internal/agile"
 	"gopmgr/internal/analytics"
 	"gopmgr/internal/budget"
@@ -18,6 +16,8 @@ import (
 	"gopmgr/internal/templates"
 	"gopmgr/internal/timeline"
 	"gopmgr/internal/update"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
