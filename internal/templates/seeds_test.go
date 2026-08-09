@@ -53,6 +53,7 @@ func TestSeeder_ChartSeeds(t *testing.T) {
 			}
 			if receipt == nil {
 				t.Fatalf("applyOne(%q) returned a nil receipt", seed)
+				return
 			}
 			if receipt.Kind != "chart" {
 				t.Errorf("receipt.Kind = %q, want %q", receipt.Kind, "chart")
@@ -86,6 +87,7 @@ func TestSeeder_DocumentSeeds(t *testing.T) {
 			}
 			if receipt == nil {
 				t.Fatalf("applyOne(%q) returned a nil receipt", seed)
+				return
 			}
 			if receipt.Kind != "document" {
 				t.Errorf("receipt.Kind = %q, want %q", receipt.Kind, "document")

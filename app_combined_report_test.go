@@ -34,6 +34,7 @@ func TestExportCombinedReportWithOptionsUsesCurrentUserExports(t *testing.T) {
 	user := app.CurrentUser()
 	if user == nil {
 		t.Fatal("expected signed-in user")
+		return
 	}
 	if wantDir := filepath.Join(user.DataDir, "exports"); filepath.Dir(path) != wantDir {
 		t.Fatalf("report directory = %q, want %q", filepath.Dir(path), wantDir)
