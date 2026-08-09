@@ -8,14 +8,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 This is an itemized inventory of every test file in the repository: what
 production code it exercises, how (the testing technique used), and why
 that coverage exists (the regression class it guards against). It answers
-"what tests do we have and what are they actually for", as a companion to:
-
-- **`ROADMAP.md`**'s "100% Full-Repo Test Coverage" section — the ongoing
-  effort to *close gaps*, phase by phase, with cost estimates and
-  decisions.
-- **`DEVELOPER_HANDBOOK.md`**'s dated entries — the *why* behind
-  non-obvious testing decisions (fault-injection patterns, break-verify
-  discipline, scope exclusions) as they were made.
+"what tests do we have and what are they actually for." The test source and
+the coverage scripts are authoritative when an entry here becomes stale.
 
 This document is the *what exists*, itemized. It is a snapshot as of
 2026-08-05 and will drift as tests are added — update the relevant
@@ -34,11 +28,10 @@ disagrees with the code.
 
 **Numbers:** package percentages below are `go test -cover` statement
 coverage under the default build (no `-tags duckdb`), current as of the
-`coverage-baseline.json` this session ended with. Reproduce with
+tracked `coverage-baseline.json`. Reproduce with
 `scripts/coverage-go.sh default` / `scripts/coverage-go.sh duckdb` (Go) or
-`npm --prefix frontend run test:coverage` (frontend) — see
-`DEVELOPER_HANDBOOK.md`'s "100% coverage: scope and exclusions" entry for
-what each of those excludes and why.
+`npm --prefix frontend run test:coverage` (frontend). The exclusion rationale
+is recorded beside `scripts/coverage-exclude-go.txt`.
 
 **Technique legend** (used in the "How" column throughout):
 
@@ -496,7 +489,7 @@ map used for repository orientation.
 ## Frontend (`frontend/src`) — 14.69% of statements (see `DEVELOPER_HANDBOOK.md`)
 
 Vitest + `@testing-library/svelte`. Coverage here is intentionally far
-lower than Go — see `ROADMAP.md`'s Phase 6 for the reasoning (most of the
+lower than Go because most of the
 233 `.svelte` files are presentational and haven't been reached yet; the
 tests below are either pure-logic modules or the components judged
 highest-value so far).
@@ -524,9 +517,7 @@ highest-value so far).
 
 ## Known gaps (cross-reference)
 
-This ledger records what exists; it does not restate what's missing —
-that's `ROADMAP.md`'s job (see the "100% Full-Repo Test Coverage"
-section for the phased plan, cost estimates, and the exclusion list).
-The two package rows above marked "Known low-coverage package" are the
-exception, flagged here because their coverage number would otherwise
-read as unexplained given how thorough this ledger is everywhere else.
+This ledger records existing coverage, not a work plan. The two package rows
+marked "Known low-coverage package" are the exception, flagged here because
+their coverage number would otherwise read as unexplained given how thorough
+this ledger is elsewhere.

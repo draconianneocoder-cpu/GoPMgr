@@ -13,12 +13,9 @@ Troubleshooting & FAQ and a keyboard-shortcuts reference.
 
 ## First Run
 
-GoPMgr stores local data in your platform's per-user data folder:
-`~/Library/Application Support/GoPMgr/` on macOS and `~/Documents/GoPMgr/`
-on Linux and Windows (`$XDG_DATA_HOME/GoPMgr/` overrides both). An existing
-`PMForge`-named folder from before the August 2026 GoPMgr rename — at either
-of those same platform-appropriate locations, or the older pre-2026-06
-`~/Documents/PMForge/` on macOS — is migrated automatically on first launch.
+GoPMgr stores local data in a private platform-selected application-data
+folder. A configured XDG data location overrides the default where supported.
+Supported legacy PMForge data is migrated automatically on first launch.
 The first launch creates:
 
 - `system.db` for local account metadata.
@@ -356,14 +353,15 @@ as the export password. Plaintext projects open without credentials. For
 example:
 
 ```sh
-PMF_PW='…' gopmgr --check \
-  --username alice --password-env PMF_PW \
-  ~/Documents/GoPMgr/alice/projects/<id>/project.gopmgr
+export GOPMGR_PASSWORD
+gopmgr --check \
+  --username alice --password-env GOPMGR_PASSWORD \
+  /path/to/project.gopmgr
 
 # Headless schedule export to encrypted XLSX:
-PMF_PW='…' gopmgr --export schedule.xlsx --format xlsx --encrypt \
-  --username alice --password-env PMF_PW \
-  ~/Documents/GoPMgr/alice/projects/<id>/project.gopmgr
+gopmgr --export schedule.xlsx --format xlsx --encrypt \
+  --username alice --password-env GOPMGR_PASSWORD \
+  /path/to/project.gopmgr
 ```
 
 ## Logs and Startup Diagnostics

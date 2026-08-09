@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 James L. Burns and The PMForge Contributors
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GFDL-1.3-or-later
 #
 # Snapshot of tags that have a published GitHub Release. Verify against GitHub

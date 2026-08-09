@@ -63,8 +63,7 @@ type Signer struct {
 // signing certificate is routinely exported with its issuing chain
 // bundled into the same file, which Decode rejects outright with
 // "expected exactly two safe bags in the PFX PDU". That made every such
-// certificate fail to load here at all, not just lose its chain -- see
-// DEVELOPER_HANDBOOK.md's dated entry for the reproduction. ToPEM has no
+// certificate fail to load here at all, not just lose its chain. ToPEM has no
 // such 2-bag limit; parseP12PrivateKey/splitLeafCertificate below do the
 // classification pkcs12.Decode used to do internally.
 func LoadCertificate(path, password string) (*Signer, error) {

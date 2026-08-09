@@ -26,9 +26,10 @@ local machine.
 
 ## Data Layout
 
-On first run GoPMgr creates a local root in the platform data directory
-(`~/Library/Application Support/GoPMgr` on macOS, `~/Documents/GoPMgr`
-on Linux and Windows; `$XDG_DATA_HOME/GoPMgr` overrides both):
+On first run GoPMgr creates a private application data root selected for the
+current platform. The application records the resolved location in its startup
+diagnostics. A configured XDG data location overrides the default where
+supported:
 
 ```text
 <data-root>/
@@ -39,8 +40,8 @@ on Linux and Windows; `$XDG_DATA_HOME/GoPMgr` overrides both):
     exports/
 ```
 
-On macOS an existing `~/Documents/GoPMgr` install is copied into the new
-Application Support root on first launch after upgrade (`users.MigrateLegacyRoot`).
+Supported legacy data roots are copied into the current root on first launch
+after an upgrade (`users.MigrateLegacyRoot`). The migration is non-destructive.
 
 `system.db` stores local users, Argon2id password hashes, recovery-code
 metadata, and wrapped data-encryption keys. Per-project `.gopmgr`
