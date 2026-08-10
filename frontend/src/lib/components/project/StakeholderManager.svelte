@@ -22,6 +22,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // empty state cannot flash while the list is still being fetched.
   let loading = $state(true);
 
+  // Snapshot of `editing` as of the last open. Compared against the live
+  // value to decide whether closing needs confirmation.
+  let original = $state<string | null>(null);
+  let dirty = $derived(editing !== null && original !== null && JSON.stringify(editing) !== original);
+
   onMount(async () => {
     await refresh();
   });
@@ -59,10 +64,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
       created_at: '',
       updated_at: '',
     };
+    original = JSON.stringify(editing);
   }
 
   function openExisting(s: Stakeholder) {
     editing = { ...s };
+    original = JSON.stringify(editing);
   }
 
   async function save() {
@@ -78,6 +85,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } finally {
       busy = false;
     }
+  }
+
+  // Every path that discards `editing` (header close, Cancel, Escape) must
+  // route through here rather than assigning `editing = null` directly, so
+  // an edited-but-unsaved stakeholder is never dropped silently. No-ops
+  // while a save is in flight so a close requested mid-save can't confirm
+  // a "discard" for edits the in-flight request is about to persist anyway.
+  function requestClose() {
+    if (busy) return;
+    if (dirty && !confirm('Discard unsaved changes to this stakeholder?')) return;
+    editing = null;
   }
 
   async function destroy(s: Stakeholder) {
@@ -188,7 +206,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     class="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-6"
     role="dialog"
     aria-modal="true"
-    onkeydown={(e) => e.key === 'Escape' && (editing = null)}
+    onkeydown={(e) => e.key === 'Escape' && requestClose()}
     tabindex="-1"
   >
     <div class="w-full max-w-xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl">
@@ -196,7 +214,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <h2 class="text-sm font-bold tracking-widest uppercase text-slate-50">
           {editing.id ? 'Edit stakeholder' : 'New stakeholder'}
         </h2>
-        <button onclick={() => (editing = null)} class="text-slate-500 hover:text-slate-200">×</button>
+        <button onclick={requestClose} class="text-slate-500 hover:text-slate-200">×</button>
       </header>
       <div class="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
         <div class="grid grid-cols-2 gap-3">
@@ -297,7 +315,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </label>
       </div>
       <footer class="px-5 py-3 border-t border-slate-800 flex justify-end gap-2">
-        <button onclick={() => (editing = null)} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
+        <button onclick={requestClose} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
           Cancel
         </button>
         <button
