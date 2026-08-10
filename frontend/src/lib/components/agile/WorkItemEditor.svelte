@@ -39,6 +39,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let status = $state<Status>('idle');
   let error = $state('');
 
+  // Snapshot of `draft` as of the last load or successful save. Compared
+  // against the live draft to decide whether closing needs confirmation.
+  let original = $state<string | null>(null);
+  let dirty = $derived(draft !== null && original !== null && JSON.stringify(draft) !== original);
+
   // Re-seed the draft when `item` changes from null → record (modal
   // opens) or to a different record. Skip when only inner fields
   // changed (parent's optimistic update).
@@ -46,11 +51,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   $effect(() => {
     if (!item) {
       draft = null;
+      original = null;
       lastItemID = null;
       return;
     }
     if (item.id !== lastItemID) {
       draft = { ...item };
+      original = JSON.stringify(draft);
       lastItemID = item.id;
       error = '';
     }
@@ -62,6 +69,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     try {
       const saved = await window.go.main.App.SaveWorkItem(draft);
+      // Mark clean before the callbacks run: `onSaved` can trigger a
+      // parent refresh that awaits before this modal actually unmounts,
+      // and a stale `original` would make a post-save `requestClose`
+      // wrongly prompt to discard.
+      original = JSON.stringify(draft);
       onSaved(saved);
       onClose();
     } catch (err: any) {
@@ -69,6 +81,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } finally {
       status = 'idle';
     }
+  }
+
+  // Every path that discards the draft (header close, Cancel, Escape,
+  // backdrop click) must route through here rather than calling `onClose`
+  // directly, so an edited-but-unsaved work item is never dropped silently.
+  // Native `confirm()` matches the existing pattern in this file (see
+  // `destroy` below). Ignored while a save/delete is in flight — same as
+  // the Save/Delete buttons' own `disabled` guard — so a close requested
+  // mid-save can't discard a draft the in-flight request is about to
+  // persist anyway.
+  function requestClose() {
+    if (status !== 'idle') return;
+    if (dirty && !confirm('Discard unsaved changes to this work item?')) return;
+    onClose();
   }
 
   async function destroy() {
@@ -91,13 +117,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     // panel. The check is by ID rather than target/currentTarget
     // identity so React-style nested events work.
     if ((e.target as HTMLElement).dataset.role === 'backdrop') {
-      onClose();
+      requestClose();
     }
   }
 
   function onKey(e: KeyboardEvent) {
     if (e.key === 'Escape') {
-      onClose();
+      requestClose();
     } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       void save();
     }
@@ -131,7 +157,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           {draft.id ? 'Edit work item' : 'New work item'}
         </h2>
         <button
-          onclick={onClose}
+          onclick={requestClose}
           class="text-slate-500 hover:text-slate-200"
           aria-label="Close"
         >
@@ -251,7 +277,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </button>
         <div class="flex gap-2">
           <button
-            onclick={onClose}
+            onclick={requestClose}
             class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded"
           >
             Cancel
