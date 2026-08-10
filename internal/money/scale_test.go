@@ -38,9 +38,14 @@ func TestScaleByRatio_ComputesExactRatio(t *testing.T) {
 // TestScaleByRatio_ZeroInputsReturnZeroWithoutPanic covers all three
 // of ScaleByRatio's explicit zero guards. denominator==0 is the
 // highest-stakes case: without the guard, big.NewRat(n, 0) panics
-// ("division by zero"), and EAC's real call site computes this ratio
-// from a live EV total that can legitimately be zero (no earned value
-// yet on a freshly started project).
+// ("division by zero"). Note this is a general-purpose-helper
+// contract, not a guard the live EAC call site currently depends on:
+// internal/kernel/evm.go pre-guards EV==0 itself before calling
+// ScaleByRatio at all (`if m.EVMinorUnits > 0 && m.ACMinorUnits > 0`),
+// assigning EAC = BAC directly in the else branch. ScaleByRatio must
+// still be safe against a zero denominator on its own terms, the same
+// way internal/crypto's pdf_cms_test.go tests helpers no current
+// caller happens to be able to break.
 func TestScaleByRatio_ZeroInputsReturnZeroWithoutPanic(t *testing.T) {
 	cases := []struct {
 		name                   string
@@ -129,36 +134,29 @@ func TestMajorFloat_RoundTripsWithFromMajorFloat(t *testing.T) {
 	}
 }
 
-// TestFromMajorFloat_ClampsRatherThanWrappingOnOverflow pins observed
-// (not spec-guaranteed) behavior: Go's float64->int64 conversion is
-// documented as implementation-defined for out-of-range values.
-// Confirmed directly on this toolchain/platform (not assumed) that an
-// absurdly large input -- e.g. a legacy import that put a value in
-// the wrong unit, or major/minor units transposed upstream -- clamps
-// to math.MaxInt64/math.MinInt64 rather than silently wrapping to a
-// small, plausible-looking wrong dollar figure. This test exists to
-// catch a *change* in that behavior (a Go version or architecture
-// where the clamp doesn't hold), not to claim the clamp itself is
-// validated input handling -- FromMajorFloat still accepts and
-// silently "succeeds" on a nonsensical multi-quadrillion-dollar
-// input; no bounds validation exists at this layer, disclosed here
-// rather than fixed (out of this increment's authorized scope).
-func TestFromMajorFloat_ClampsRatherThanWrappingOnOverflow(t *testing.T) {
-	cases := []struct {
-		name string
-		in   float64
-		want int64
-	}{
-		{"large positive overflows to MaxInt64", 1e18, 9223372036854775807},
-		{"large negative overflows to MinInt64", -1e18, -9223372036854775808},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := FromMajorFloat(tc.in).MinorUnits
-			if got != tc.want {
-				t.Errorf("FromMajorFloat(%v).MinorUnits = %d, want %d (clamp behavior changed)", tc.in, got, tc.want)
-			}
-		})
+// TestFromMajorFloat_SaturatesRatherThanWrappingOnOverflow pins
+// observed (not spec-guaranteed) toolchain behavior, not a property
+// FromMajorFloat itself enforces: Go's float64->int64 conversion is
+// documented as implementation-defined for out-of-range values, and
+// the exact saturated value differs by architecture (arm64's FCVTZS
+// saturates toward the input's sign; amd64 has historically produced
+// a single "integer indefinite" value for either direction) -- this
+// repo's CI runs Go tests on ubuntu-24.04 (amd64), so this assertion
+// deliberately checks only that an absurdly large input (e.g. a
+// legacy import with transposed major/minor units) saturates to one
+// of the two int64 extremes rather than silently wrapping to a small,
+// plausible-looking wrong dollar figure; it does not pin which
+// extreme, since that's arch-dependent and not something this test
+// should fail over. FromMajorFloat performs no bounds validation of
+// its own on this input -- it silently "succeeds" on a nonsensical
+// multi-quadrillion-dollar value -- disclosed here, not fixed (out of
+// this increment's authorized scope).
+func TestFromMajorFloat_SaturatesRatherThanWrappingOnOverflow(t *testing.T) {
+	for _, in := range []float64{1e18, -1e18} {
+		got := FromMajorFloat(in).MinorUnits
+		if got != math.MaxInt64 && got != math.MinInt64 {
+			t.Errorf("FromMajorFloat(%v).MinorUnits = %d, want math.MaxInt64 or math.MinInt64 (saturation behavior changed)", in, got)
+		}
 	}
 }
 
