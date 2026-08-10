@@ -132,8 +132,8 @@ func TestListDocuments_OrdersByMostRecentlyUpdatedDescending(t *testing.T) {
 	}
 }
 
-// TestListDocuments_WholeSecondTimestampSortsWrongRelativeToFractional
-// pins a real, verified (not assumed) latent defect in ListDocuments'
+// TestListDocuments_WholeSecondTimestampDoesNotPanicOrDropRows exercises a
+// real, verified (not assumed) latent ordering hazard in ListDocuments'
 // `ORDER BY updated_at DESC`: RFC3339Nano trims trailing zeros from the
 // fractional-seconds component, and OMITS the fractional component
 // entirely when it's exactly zero (formats as "...T10:00:00Z", not
@@ -142,19 +142,28 @@ func TestListDocuments_OrdersByMostRecentlyUpdatedDescending(t *testing.T) {
 // comparison (both in Go's string "<" and in SQLite's default TEXT
 // ordering) -- and '.' (0x2E) sorts BEFORE 'Z' (0x5A) in ASCII, so
 // "10:00:00.5Z" < "10:00:00Z" lexicographically, even though
-// 10:00:00.000 is chronologically EARLIER than 10:00:00.5.
+// 10:00:00.000 is chronologically EARLIER than 10:00:00.5: a whole-second
+// save can sort AFTER a later same-second fractional save.
 //
-// Confirmed directly with Go's time.Format before writing this test,
-// not assumed from reading the RFC3339Nano format documentation. In
-// practice this requires a save landing at time.Now() with exactly
-// zero nanoseconds -- vanishingly unlikely under real wall-clock
-// jitter -- so it is not expected to occur in normal use, and is not
-// fixed here (out of this increment's authorized scope: it would mean
-// changing the stored timestamp format or the query, a production
-// change, not a test). Pinned so the behavior is deliberate knowledge,
-// not a surprise the next person to touch this ordering rediscovers
-// from a bug report.
-func TestListDocuments_WholeSecondTimestampSortsWrongRelativeToFractional(t *testing.T) {
+// Confirmed directly with Go's time.Format before writing this test, not
+// assumed from reading the RFC3339Nano format documentation. In practice
+// this requires a save landing at time.Now() with exactly zero
+// nanoseconds -- vanishingly unlikely under real wall-clock jitter -- so
+// it is not expected to occur in normal use, and is not fixed here (out
+// of this increment's authorized scope: it would mean changing the
+// stored timestamp format or the query, a production change, not a
+// test). This assertion deliberately checks only that both documents
+// still come back (no row silently dropped, no panic) rather than
+// pinning which specific order results: the specific order is the bug,
+// and asserting it would make this test fail the day someone fixes the
+// ordering, forcing them to delete a test to land a fix. The mechanism
+// itself is described here and in
+// .agent_memory/db-audit-documents-read-increment-2026-08-10.md for
+// whoever investigates the ordering hazard next; charts.go has the same
+// RFC3339Nano-string-ORDER-BY pattern (and an existing comment there
+// incorrectly asserts it "stays chronological") and was not covered by
+// this increment.
+func TestListDocuments_WholeSecondTimestampDoesNotPanicOrDropRows(t *testing.T) {
 	d := newBackupTestDB(t)
 	project, err := d.UpsertProject(Project{Name: "Docs"})
 	if err != nil {
@@ -168,8 +177,6 @@ func TestListDocuments_WholeSecondTimestampSortsWrongRelativeToFractional(t *tes
 	if err != nil {
 		t.Fatalf("SaveDocument halfSecondLater: %v", err)
 	}
-	// wholeSecond is chronologically EARLIER (exactly on the second);
-	// halfSecondLater is 500ms later in the same second.
 	setDocumentUpdatedAt(t, d, wholeSecond.ID, "2026-01-01T10:00:00Z")
 	setDocumentUpdatedAt(t, d, halfSecondLater.ID, "2026-01-01T10:00:00.5Z")
 
@@ -178,17 +185,11 @@ func TestListDocuments_WholeSecondTimestampSortsWrongRelativeToFractional(t *tes
 		t.Fatalf("ListDocuments: %v", err)
 	}
 	if len(got) != 2 {
-		t.Fatalf("ListDocuments returned %d documents, want 2", len(got))
+		t.Fatalf("ListDocuments returned %d documents, want 2 (both rows must survive regardless of ordering)", len(got))
 	}
-	// Chronologically-correct DESC order would be [HalfSecondLater,
-	// ExactSecond]. The lexicographic ORDER BY this function actually
-	// uses produces the reverse -- this assertion documents the
-	// observed (wrong, but real) behavior, not the desired one.
-	if got[0].Title != "ExactSecond" || got[1].Title != "HalfSecondLater" {
-		t.Errorf("ListDocuments order = [%q, %q]; expected the documented lexicographic-ordering defect to produce [ExactSecond, HalfSecondLater] "+
-			"(chronologically-correct order would be the reverse) -- if this now returns the chronologically-correct order, "+
-			"the defect this test pins has been fixed and this test should be deleted, not adjusted",
-			got[0].Title, got[1].Title)
+	gotTitles := map[string]bool{got[0].Title: true, got[1].Title: true}
+	if !gotTitles["ExactSecond"] || !gotTitles["HalfSecondLater"] {
+		t.Errorf("ListDocuments returned %v, want both ExactSecond and HalfSecondLater present (in either order)", []string{got[0].Title, got[1].Title})
 	}
 }
 
@@ -231,6 +232,19 @@ func TestListDocuments_WhereClauseFiltersOnProjectID(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].Title != "Mine" {
 		t.Errorf("ListDocuments(project.ID) = %v, want exactly [Mine] -- WHERE project_id clause did not filter out the other project's document", got)
+	}
+
+	// ListDocuments carries the project_id predicate in two separate
+	// query strings -- one for the kind-empty branch (exercised above)
+	// and a distinct one for the kind-filtered branch. Both "Mine" and
+	// "Not Mine" are kind="charter", so this call exercises the second
+	// copy of the predicate specifically.
+	gotKind, err := d.ListDocuments(project.ID, "charter")
+	if err != nil {
+		t.Fatalf("ListDocuments(kind=charter): %v", err)
+	}
+	if len(gotKind) != 1 || gotKind[0].Title != "Mine" {
+		t.Errorf("ListDocuments(project.ID, \"charter\") = %v, want exactly [Mine] -- kind-filtered branch's WHERE project_id clause did not filter out the other project's document", gotKind)
 	}
 }
 
