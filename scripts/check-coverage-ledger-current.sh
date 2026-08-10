@@ -28,8 +28,14 @@ while IFS= read -r -d '' f; do
 		echo "check-coverage-ledger-current: $f is not mentioned in $ledger." >&2
 		missing=1
 	fi
+# .claude/worktrees holds full duplicate checkouts from parallel agent
+# sessions (git-worktree add), each on its own branch/commit with its own
+# TEST_COVERAGE_LEDGER.md. Scanning them here checks a worktree's test
+# files against a ledger snapshot that isn't tracking the same tree -- a
+# false pass today (subset of current tests) and false failures the
+# moment the two diverge, neither of which says anything about this repo.
 done < <(find . \
-	\( -name node_modules -o -path ./frontend/coverage -o -name .git \) -prune -o \
+	\( -name node_modules -o -path ./frontend/coverage -o -name .git -o -path ./.claude/worktrees \) -prune -o \
 	\( -name '*_test.go' -o -name '*.test.ts' \) -type f -print0)
 
 if [ "$missing" -ne 0 ]; then
