@@ -219,13 +219,14 @@ func TestSwapInSnapshot_NoExistingLiveFileSucceeds(t *testing.T) {
 	if err := d.CreateSnapshot(livePath + ".bak"); err != nil {
 		t.Fatalf("CreateSnapshot: %v", err)
 	}
-	if err := d.Close(); err != nil {
-		t.Fatalf("close: %v", err)
-	}
 	if err := os.Remove(livePath); err != nil {
 		t.Fatalf("simulate external deletion of live file: %v", err)
 	}
 
+	// SwapInSnapshot's own step 1 closes d; do not close it here first
+	// (a double-close on an already-closed *sql.DB happens to return
+	// nil, which would silently mask this test running a different
+	// code path than the real flow ever does).
 	fresh, err := d.SwapInSnapshot(livePath)
 	if err != nil {
 		t.Fatalf("SwapInSnapshot with no existing live file: %v", err)
