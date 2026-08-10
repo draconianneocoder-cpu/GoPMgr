@@ -337,13 +337,14 @@ Scheduling math core: Critical Path Method, resource leveling, EVM, Monte Carlo 
 | `resources_test.go` | 15 | Resource usage profiles, overallocation detection, contention-based leveling | table-driven, fixture | Overallocation detection must honor per-resource calendar overrides (a resource unavailable Tuesdays isn't "overallocated" for not working Tuesday); leveling must serialize genuinely contending assignments without touching unrelated ones. |
 | `scheduler_test.go` | 10 | `CalculateCPM`, topological sort | table-driven | Diamond-shaped and parallel-equal-path dependency graphs are specifically tested since they're the classic cases naive CPM implementations get wrong (picking the wrong critical path). |
 
-## `internal/money` — 63.3%
+## `internal/money` — 96.7%
 
-Exact monetary arithmetic (minor units, avoiding floating-point currency bugs).
+Exact monetary arithmetic (minor units, avoiding floating-point currency bugs). 2026-08-10: `ScaleByRatio` (used by `internal/kernel/evm.go` to compute EAC, the Estimate-At-Completion figure shown to the user) was previously entirely untested (0%); `MajorFloat` (the display-conversion inverse used by ~25 call sites across `budget`/`db`/`analytics`/`kernel`) and `Positive` (gates cost-rollup inclusion in `internal/budget`) had no direct tests either, only indirect exercise through other packages' fixtures.
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
-| `money_test.go` | 3 | `AmountFromMajorFloat`, `RateTimesQuantity` (exact rational rounding) | unit | Rate×quantity must use exact rational arithmetic, not float multiplication — float rounding errors compounding across many line items is a classic real-world accounting bug class. |
+| `money_test.go` | 3 | `FromMajorFloat`, `RateTimesQuantity` (exact rational rounding), `Add`/`Sub` | unit | Rate×quantity must use exact rational arithmetic, not float multiplication — float rounding errors compounding across many line items is a classic real-world accounting bug class. |
+| `scale_test.go` | 7 (several carry subtests) | `ScaleByRatio`, `MajorFloat`, `Positive`, `FromMajorFloat`'s NaN/Inf and overflow behavior, `RateTimesQuantity`'s guards and negative-tie rounding | unit, table-driven, round-trip | `ScaleByRatio` computes EAC's `BAC*(AC/EV)` — its `denominator==0` guard is load-bearing against a real `big.Rat` division-by-zero panic (EV can legitimately be zero on a freshly started project); fault-seeded by removing the guard, confirmed to panic. `roundRat`'s half-away-from-zero tie rounding was previously proven only for positive quotients; a negative-rate tie case closes that gap — a negative `HourlyRate` is not validated against at this layer, so this is a general-purpose contract the package must uphold, not a scenario confirmed reachable through the current UI. Two sign-branch/tie-comparison mutations were fault-seeded and both caught by the positive- and negative-tie tests together. `Positive`'s exact-zero boundary (`>` vs `>=`) was fault-seeded and caught only by this package's own new test — `internal/budget`'s existing fixtures, which call `Positive` indirectly, do not exercise the zero boundary and stayed green under the same mutation, confirming the boundary's only test coverage lives here. `MajorFloat` is tested as the round-trip property `FromMajorFloat(x).MajorFloat()` reproduces the same minor units, not as an isolated value check, since that round-trip is what its ~25 call sites actually depend on. `FromMajorFloat`'s NaN/Inf guard and its (disclosed, not fixed) large-value overflow behavior are tested separately: Go's float64→int64 conversion is implementation-defined for out-of-range values, and this pins the platform-observed clamp-to-MaxInt64/MinInt64 behavior (confirmed directly, not assumed) so a toolchain change that turns it into wrapping garbage would be caught — `FromMajorFloat` still performs no bounds validation of its own on an absurdly large input, a disclosed gap, not a fixed one. `RateTimesQuantity`'s `q == nil` branch (reachable only if `big.Rat.SetFloat64` returns nil for NaN/Inf, both already rejected two lines above) stays disclosed-untested as dead code, not forced via a contrived seam. |
 
 ## `internal/pdfmeta` — 96.4%
 
@@ -526,7 +527,12 @@ highest-value so far).
 
 ## Known gaps (cross-reference)
 
-This ledger records existing coverage, not a work plan. The two package rows
-marked "Known low-coverage package" are the exception, flagged here because
-their coverage number would otherwise read as unexplained given how thorough
-this ledger is elsewhere.
+This ledger records existing coverage, not a work plan. The one package row
+marked "Known low-coverage package" (`internal/charts/pdfrender`) is the
+exception, flagged here because its coverage number would otherwise read as
+unexplained given how thorough this ledger is elsewhere. (This section
+previously read "two package rows" — a stale claim dating to this ledger's
+original commit; no second row has carried that marker at any point in this
+repository's history, confirmed via `git log -p -S`. Corrected 2026-08-10
+during a ledger audit, not by adding a marker to a second package to make the
+old text true.)
