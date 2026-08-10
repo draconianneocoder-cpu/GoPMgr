@@ -17,6 +17,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let loading = $state(true);
   let error = $state('');
   let status = $state('');
+  let saving = $state(false);
+
+  // Snapshot of `editing` as of the last open. Compared against the live
+  // value to decide whether closing needs confirmation.
+  let original = $state<string | null>(null);
+  let dirty = $derived(editing !== null && original !== null && JSON.stringify(editing) !== original);
 
   onMount(async () => {
     await refresh();
@@ -57,14 +63,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
       capacity: 0,
       created_at: '',
     };
+    original = JSON.stringify(editing);
   }
 
   function openExisting(s: AgileSprint) {
     editing = { ...s };
+    original = JSON.stringify(editing);
   }
 
   async function save() {
     if (!editing) return;
+    saving = true;
     try {
       const saved = await window.go.main.App.SaveSprint(editing);
       const idx = sprints.findIndex((s) => s.id === saved.id);
@@ -74,7 +83,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
       status = 'Sprint saved.';
     } catch (err: any) {
       error = `Save failed: ${err}`;
+    } finally {
+      saving = false;
     }
+  }
+
+  // Every path that discards `editing` (header close, Cancel, Escape,
+  // backdrop click) must route through here rather than assigning
+  // `editing = null` directly, so an edited-but-unsaved sprint is never
+  // dropped silently. No-ops while a save is in flight so a close
+  // requested mid-save can't confirm a "discard" for edits the in-flight
+  // request is about to persist anyway.
+  function requestClose() {
+    if (saving) return;
+    if (dirty && !confirm('Discard unsaved changes to this sprint?')) return;
+    editing = null;
   }
 
   async function activate(s: AgileSprint) {
@@ -234,9 +257,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     aria-modal="true"
     aria-label="Edit sprint"
     onclick={(e) => {
-      if ((e.target as HTMLElement).dataset?.role === 'backdrop') editing = null;
+      if ((e.target as HTMLElement).dataset?.role === 'backdrop') requestClose();
     }}
-    onkeydown={(e) => { if (e.key === 'Escape') editing = null; }}
+    onkeydown={(e) => { if (e.key === 'Escape') requestClose(); }}
     tabindex="-1"
   >
     <div data-role="backdrop" class="absolute inset-0"></div>
@@ -245,7 +268,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <h2 class="text-sm font-bold tracking-widest uppercase text-slate-50">
           {editing.id ? 'Edit sprint' : 'New sprint'}
         </h2>
-        <button onclick={() => (editing = null)} class="text-slate-500 hover:text-slate-200">×</button>
+        <button onclick={requestClose} class="text-slate-500 hover:text-slate-200">×</button>
       </header>
       <div class="p-5 space-y-3">
         <label class="block">
@@ -294,7 +317,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </div>
       <footer class="px-5 py-3 border-t border-slate-800 flex justify-end gap-2">
         <button
-          onclick={() => (editing = null)}
+          onclick={requestClose}
           class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded"
         >
           Cancel
