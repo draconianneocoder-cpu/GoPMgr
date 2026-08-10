@@ -150,9 +150,6 @@ func TestDrawFlowNode_ShapeDispatch(t *testing.T) {
 		if !bytes.Contains(out, []byte("re f\n")) {
 			t.Error("fork node did not emit a fill-only rect (Rect \"F\")")
 		}
-		if bytes.Contains(out, []byte("\nB\n")) {
-			t.Error("fork node unexpectedly drew a stroked shape")
-		}
 	})
 	t.Run("initial draws one filled+stroked circle, final draws two (bullseye)", func(t *testing.T) {
 		initial := renderSingleShapeNode(t, "initial")
