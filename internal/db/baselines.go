@@ -131,7 +131,7 @@ func saveBaselineTx(tx *sql.Tx, b Baseline) (Baseline, string, error) {
 	if b.Data == "" {
 		b.Data = "{}"
 	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := nowTimestamp()
 
 	if _, err := tx.Exec(`
 		INSERT INTO baselines (id, project_id, chart_id, name, data, created_at)

@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
 
 	"gopmgr/internal/debug"
 	"gopmgr/internal/exportsafe"
@@ -163,7 +162,7 @@ func appendAuditEventTx(tx *sql.Tx, in AuditEventInput) (AuditEvent, error) {
 		AfterCanonicalJSON:    after,
 		UserID:                in.UserID,
 		SessionID:             in.SessionID,
-		TimestampUTC:          time.Now().UTC().Format(time.RFC3339Nano),
+		TimestampUTC:          nowTimestamp(),
 		SignatureStatus:       in.SignatureStatus,
 		SignatureBlobOptional: in.SignatureBlobOptional,
 	}

@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 )
 
 // Scenario is a project-local what-if branch descriptor. The first
@@ -72,7 +71,7 @@ func (db *Database) SaveScenario(s Scenario) (Scenario, error) {
 	if s.IsActive {
 		active = 1
 	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := nowTimestamp()
 
 	tx, err := db.Conn.Begin()
 	if err != nil {
@@ -293,7 +292,7 @@ func (db *Database) BranchScenarioChart(scenarioID, chartID, baselineID string) 
 	if err != nil {
 		return ScenarioChart{}, fmt.Errorf("generate scenario chart id: %w", err)
 	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := nowTimestamp()
 	tx, err := db.Conn.Begin()
 	if err != nil {
 		return ScenarioChart{}, err
@@ -406,7 +405,7 @@ func (db *Database) SaveScenarioChart(c ScenarioChart) (ScenarioChart, error) {
 	if config == "" {
 		config = "{}"
 	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := nowTimestamp()
 	if _, err = tx.Exec(`
 		UPDATE scenario_charts
 		SET title = ?, data = ?, config = ?, updated_at = ?

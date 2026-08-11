@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 )
 
 // Chart is one entry in the unified `charts` table. The semantic
@@ -22,16 +21,21 @@ type Chart struct {
 	Data       string `json:"data"`   // JSON string
 	Config     string `json:"config"` // JSON string
 	TemplateID string `json:"template_id"`
-	// CreatedAt/UpdatedAt are RFC3339Nano strings (server-managed). They
-	// are strings rather than time.Time so the Wails bridge can round-trip
-	// records whose timestamps are empty (new records) without failing to
-	// unmarshal "" into time.Time. RFC3339Nano's lexicographic ordering
-	// does NOT stay chronological in general: it trims trailing zeros
-	// from the fractional-seconds component and omits it entirely when
-	// exactly zero, so a whole-second timestamp can sort AFTER a later
-	// same-second fractional one in "ORDER BY updated_at" / string
-	// comparisons ('.' sorts before 'Z' in ASCII). See this package's
-	// own tests and documents_read_test.go's equivalent for documents.go.
+	// CreatedAt/UpdatedAt are fixed-width RFC3339 strings (see
+	// timestampLayout in timestamps.go), server-managed. They are
+	// strings rather than time.Time so the Wails bridge can round-trip
+	// records whose timestamps are empty (new records) without failing
+	// to unmarshal "" into time.Time. Plain time.RFC3339Nano's
+	// lexicographic ordering does NOT stay chronological in general (a
+	// trimmed or omitted fraction sorts incorrectly against one that IS
+	// present in the same second) -- timestampLayout's fixed nine-digit
+	// fraction closes that hazard for every write through this package,
+	// and a retrofit (see retrofitTimestampFormat) normalizes
+	// pre-existing on-disk values the same way. See
+	// TestListCharts_WholeSecondTimestampDoesNotPanicOrDropRows and its
+	// documents.go equivalent for the residual, narrower case this
+	// doesn't cover: a value written directly via SQL (bypassing
+	// SaveChart) between one Migrate() call and the next read.
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }
@@ -55,7 +59,7 @@ func (db *Database) SaveChart(c Chart) (Chart, error) {
 	if c.Config == "" {
 		c.Config = "{}"
 	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := nowTimestamp()
 
 	tx, err := db.Conn.Begin()
 	if err != nil {

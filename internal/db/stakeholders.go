@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"gopmgr/internal/money"
-	"time"
 )
 
 // StakeholderCategory enumerates the role a stakeholder plays in the
@@ -81,7 +80,7 @@ func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 	}
 	s.HourlyRate = money.Amount{MinorUnits: s.HourlyRateMinorUnits}.MajorFloat()
 	s.ContractValue = money.Amount{MinorUnits: s.ContractValueMinorUnits}.MajorFloat()
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := nowTimestamp()
 
 	_, err := db.Conn.Exec(`
 		INSERT INTO stakeholders (id, project_id, name, role, organisation,

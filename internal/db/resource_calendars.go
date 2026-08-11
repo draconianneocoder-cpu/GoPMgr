@@ -64,7 +64,7 @@ func (db *Database) SaveResourceCalendar(c ResourceCalendar) (ResourceCalendar, 
 		return ResourceCalendar{}, fmt.Errorf("notes: %w", err)
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := nowTimestamp()
 	_, err = db.Conn.Exec(`
 		INSERT INTO resource_calendars (
 			id, project_id, resource, name, default_capacity,
