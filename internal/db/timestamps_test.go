@@ -6,6 +6,7 @@ package db
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 )
@@ -355,6 +356,58 @@ func TestMigrate_RunsTimestampUnixNanoRetrofit(t *testing.T) {
 	}
 }
 
+// TestMigrate_RecoversFromPartiallyBackfilledState covers the crash-
+// recovery property retrofitTimestampUnixNano's design depends on: if
+// the process dies partway through the backfill phase (a loop over
+// potentially many rows, one UPDATE each -- the realistic interruption
+// point, unlike the single fast ALTER TABLE ADD COLUMN per table, which
+// is effectively atomic), some tables are left with rows still at the
+// 0 sentinel while others are already fully backfilled. The next
+// Migrate() must converge everything to a correct, fully backfilled
+// state, not get confused by tables being in different states from each
+// other.
+//
+// This does not (and given this SQLite build's lack of ALTER TABLE ...
+// DROP COLUMN support, cannot without duplicating real schema
+// definitions into test code) simulate the ALTER phase itself being
+// interrupted -- addUnixNanoColumn's own probe-then-ALTER idempotency is
+// already covered directly by re-running it, and ALTER TABLE ADD COLUMN
+// is a single metadata operation per table, not a loop, so a crash
+// leaving SOME tables columned and others not is a real but much
+// narrower window than the backfill loop this test does cover.
+func TestMigrate_RecoversFromPartiallyBackfilledState(t *testing.T) {
+	d := newBackupTestDB(t)
+	project, err := d.UpsertProject(Project{Name: "Timestamps"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	chart, err := d.SaveChart(Chart{ProjectID: project.ID, Kind: "cpm", Title: "T"})
+	if err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+	doc, err := d.SaveDocument(Document{ProjectID: project.ID, Kind: "charter", Title: "T"})
+	if err != nil {
+		t.Fatalf("SaveDocument: %v", err)
+	}
+
+	// Simulate the interruption: charts already backfilled correctly
+	// (as it would be from the initial Migrate() above); documents reset
+	// to the pre-backfill sentinel, as if the crash happened between the
+	// two tables' backfill passes.
+	if _, err := d.Conn.Exec(`UPDATE documents SET created_at_unixnano = 0, updated_at_unixnano = 0 WHERE id = ?`, doc.ID); err != nil {
+		t.Fatalf("seed partially-backfilled state: %v", err)
+	}
+
+	if err := d.Migrate(); err != nil {
+		t.Fatalf("Migrate did not recover from a partially-backfilled state: %v", err)
+	}
+
+	checkTimestampColumnsAgree(t, d, "charts", "id", chart.ID, "created_at", "created_at_unixnano")
+	checkTimestampColumnsAgree(t, d, "charts", "id", chart.ID, "updated_at", "updated_at_unixnano")
+	checkTimestampColumnsAgree(t, d, "documents", "id", doc.ID, "created_at", "created_at_unixnano")
+	checkTimestampColumnsAgree(t, d, "documents", "id", doc.ID, "updated_at", "updated_at_unixnano")
+}
+
 // TestCaptureTimestamp_TextAndUnixNanoAgree pins the basic contract of
 // captureTimestamp itself: both fields must describe the same instant.
 func TestCaptureTimestamp_TextAndUnixNanoAgree(t *testing.T) {
@@ -634,7 +687,12 @@ func TestRetrofitTimestampUnixNano_IsIdempotent(t *testing.T) {
 // serving the sort -- catching a silent regression in
 // repointUnixNanoIndex or the static schema's index definitions with a
 // measured answer rather than an assumption.
-func explainUsesIndex(t *testing.T, d *Database, query string, args ...any) {
+// explainUsesIndex asserts both directions, not just the absence of a
+// bad pattern: wantIndex must appear in the plan (a positive check that
+// fails loudly if a future SQLite version rewords "USE TEMP B-TREE FOR
+// ORDER BY" and the negative check below silently stops firing on a real
+// regression), and that exact "full sort" wording must NOT appear.
+func explainUsesIndex(t *testing.T, d *Database, wantIndex, query string, args ...any) {
 	t.Helper()
 	rows, err := d.Conn.Query("EXPLAIN QUERY PLAN "+query, args...) // #nosec G201 -- test-only, query is a hardcoded literal in this file, never external input.
 	if err != nil {
@@ -653,6 +711,9 @@ func explainUsesIndex(t *testing.T, d *Database, query string, args ...any) {
 	}
 	if err := rows.Err(); err != nil {
 		t.Fatalf("query plan rows: %v", err)
+	}
+	if !strings.Contains(plan, wantIndex) {
+		t.Errorf("query plan does not mention expected index %q:\n%s\nquery: %s", wantIndex, plan, query)
 	}
 	if regexp.MustCompile(`(?i)USE TEMP B-TREE FOR ORDER BY`).MatchString(plan) {
 		t.Errorf("query falls back to a full sort instead of using an index:\n%s\nquery: %s", plan, query)
@@ -675,12 +736,12 @@ func explainUsesIndex(t *testing.T, d *Database, query string, args ...any) {
 // (project_id, created_at_unixnano).
 func TestListActiveScenariosExcept_UsesIndexForSort(t *testing.T) {
 	d := newBackupTestDB(t)
-	explainUsesIndex(t, d, `SELECT id FROM scenarios WHERE project_id = ? AND id <> ? AND is_active <> 0 ORDER BY created_at_unixnano ASC`, "p1", "x")
+	explainUsesIndex(t, d, "idx_scenarios_project", `SELECT id FROM scenarios WHERE project_id = ? AND id <> ? AND is_active <> 0 ORDER BY created_at_unixnano ASC`, "p1", "x")
 }
 
 func TestListScenarioCharts_UsesIndexForSort(t *testing.T) {
 	d := newBackupTestDB(t)
-	explainUsesIndex(t, d, `SELECT id FROM scenario_charts WHERE scenario_id = ? ORDER BY updated_at_unixnano DESC, title ASC`, "s1")
+	explainUsesIndex(t, d, "idx_scenario_charts_scenario", `SELECT id FROM scenario_charts WHERE scenario_id = ? ORDER BY updated_at_unixnano DESC, title ASC`, "s1")
 }
 
 // TestRepointUnixNanoIndex_RecreatesWhenMissing covers the crash-recovery
