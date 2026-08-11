@@ -33,6 +33,15 @@ tracked `coverage-baseline.json`. Reproduce with
 `npm --prefix frontend run test:coverage` (frontend). The exclusion rationale
 is recorded beside `scripts/coverage-exclude-go.txt`.
 
+`scripts/check-coverage-ledger-drift.sh` (2026-08-10, standalone —
+not yet wired into `make verify`) checks that every `## \`internal/X\` —
+NN.N%` heading above still matches live `go test -cover` output, and
+that every `internal/*` package with live coverage has a heading at all.
+It does not check anything else in this document: a row's test count,
+its "How"/"Why" prose, or `internal/applog`'s per-file claim ("100% of
+`applog.go`") are still unverified by any automation and rely on the
+methodology note above.
+
 **Technique legend** (used in the "How" column throughout):
 
 | Tag | Meaning |
