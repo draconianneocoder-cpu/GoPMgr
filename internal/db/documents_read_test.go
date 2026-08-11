@@ -4,6 +4,7 @@
 package db
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -287,4 +288,124 @@ func TestSaveDocument_VersionSequenceAcrossThreeSaves(t *testing.T) {
 	if fetched.Version != 3 {
 		t.Errorf("GetDocument version = %d, want 3 (returned struct and stored row must agree)", fetched.Version)
 	}
+}
+
+// TestDeleteDocument_ActuallyRemovesTheRow is the direct behavioral
+// contract for an irreversible operation: DeleteDocument's only existing
+// exercise (audit_events_test.go's
+// TestSaveDocumentAppendsCreateUpdateAndDeleteAuditEvents) checks the
+// resulting audit-event type, never that the document itself is gone.
+func TestDeleteDocument_ActuallyRemovesTheRow(t *testing.T) {
+	d := newBackupTestDB(t)
+	project, err := d.UpsertProject(Project{Name: "Docs"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	doc, err := d.SaveDocument(Document{ProjectID: project.ID, Kind: "charter", Title: "Doomed"})
+	if err != nil {
+		t.Fatalf("SaveDocument: %v", err)
+	}
+
+	if err := d.DeleteDocument(doc.ID); err != nil {
+		t.Fatalf("DeleteDocument: %v", err)
+	}
+
+	if _, err := d.GetDocument(doc.ID); err != ErrNoDocument {
+		t.Errorf("GetDocument after delete: err = %v, want ErrNoDocument", err)
+	}
+	all, err := d.ListDocuments(project.ID, "")
+	if err != nil {
+		t.Fatalf("ListDocuments: %v", err)
+	}
+	if len(all) != 0 {
+		t.Errorf("ListDocuments after delete = %v, want empty", all)
+	}
+}
+
+// TestDeleteDocument_MissingIDIsANoOpNotAnError pins the early-return
+// branch (documents.go: `if err == ErrNoDocument { err = nil; return
+// tx.Commit() }`), which is otherwise completely unexercised. This
+// matters specifically because DeleteDocument is irreversible: a caller
+// that retries a delete (e.g. after a timeout on the first attempt's
+// response, unsure whether it landed) must not receive an error on the
+// harmless second call. Beyond "no error," this asserts the concrete
+// prohibited effect: no document.delete audit event may be appended for
+// an ID that never existed -- a phantom delete event would corrupt the
+// hash chain's meaning as forensic evidence (it would record deleting
+// something that was never there).
+func TestDeleteDocument_MissingIDIsANoOpNotAnError(t *testing.T) {
+	d := newBackupTestDB(t)
+	before := countAuditEvents(t, d)
+
+	if err := d.DeleteDocument("does-not-exist"); err != nil {
+		t.Errorf("DeleteDocument(missing) = %v, want nil (no-op)", err)
+	}
+
+	after := countAuditEvents(t, d)
+	if after != before {
+		t.Errorf("audit_events count went from %d to %d after a no-op delete, want unchanged (no phantom document.delete event)", before, after)
+	}
+}
+
+func countAuditEvents(t *testing.T, d *Database) int {
+	t.Helper()
+	var n int
+	if err := d.Conn.QueryRow(`SELECT COUNT(*) FROM audit_events`).Scan(&n); err != nil {
+		t.Fatalf("count audit_events: %v", err)
+	}
+	return n
+}
+
+// TestDeleteDocument_AuditEventCapturesDeletedContent proves the
+// forensic value of the delete's audit trail: for an irreversible
+// operation, the audit event's BeforeJSON must reflect the document's
+// actual content at time of deletion, not merely record that *a* delete
+// happened.
+func TestDeleteDocument_AuditEventCapturesDeletedContent(t *testing.T) {
+	d := newBackupTestDB(t)
+	project, err := d.UpsertProject(Project{Name: "Docs"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	doc, err := d.SaveDocument(Document{
+		ProjectID: project.ID,
+		Kind:      "charter",
+		Title:     "Forensic Target",
+		Content:   `{"summary":"must survive in the audit trail"}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveDocument: %v", err)
+	}
+	if err := d.DeleteDocument(doc.ID); err != nil {
+		t.Fatalf("DeleteDocument: %v", err)
+	}
+
+	events, err := d.ListAuditEvents(project.ID)
+	if err != nil {
+		t.Fatalf("ListAuditEvents: %v", err)
+	}
+	var deleteEvent *AuditEvent
+	for i := range events {
+		if events[i].EventType == "document.delete" {
+			deleteEvent = &events[i]
+		}
+	}
+	if deleteEvent == nil {
+		t.Fatalf("no document.delete event found among %d events", len(events))
+	}
+	if !stringContainsAll(deleteEvent.BeforeCanonicalJSON, "Forensic Target", "must survive in the audit trail") {
+		t.Errorf("document.delete BeforeCanonicalJSON = %q, want it to contain the deleted document's title and content", deleteEvent.BeforeCanonicalJSON)
+	}
+	if deleteEvent.AfterCanonicalJSON != "null" {
+		t.Errorf("document.delete AfterCanonicalJSON = %q, want %q (nothing exists after a delete)", deleteEvent.AfterCanonicalJSON, "null")
+	}
+}
+
+func stringContainsAll(s string, substrs ...string) bool {
+	for _, sub := range substrs {
+		if !strings.Contains(s, sub) {
+			return false
+		}
+	}
+	return true
 }
