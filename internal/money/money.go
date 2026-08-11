@@ -23,11 +23,32 @@ type Amount struct {
 // FromMajorFloat converts a UI/database compatibility number such as
 // 12.34 into exact minor units. The rest of the application should use
 // Amount for arithmetic; this adapter exists only at legacy boundaries.
+//
+// A magnitude too large to fit in int64 once scaled to minor units
+// (e.g. a legacy import with transposed major/minor units) saturates
+// to math.MaxInt64/math.MinInt64 by sign rather than relying on Go's
+// float64->int64 conversion, which is documented as
+// implementation-defined once the value no longer fits -- this makes
+// the saturating behavior a guarantee of this function rather than an
+// artifact of the current toolchain/architecture. This is a real
+// behavior change on amd64 (this repo's CI target): amd64's prior
+// implementation-defined conversion has been observed to produce a
+// single sign-losing "integer indefinite" value for either direction,
+// so the sign-preserving clamp here is strictly more correct there,
+// not merely a portability no-op.
 func FromMajorFloat(v float64) Amount {
 	if math.IsNaN(v) || math.IsInf(v, 0) {
 		return Amount{}
 	}
-	return Amount{MinorUnits: int64(math.Round(v * float64(MinorUnitsPerMajor)))}
+	scaled := math.Round(v * float64(MinorUnitsPerMajor))
+	switch {
+	case scaled >= float64(math.MaxInt64):
+		return Amount{MinorUnits: math.MaxInt64}
+	case scaled <= float64(math.MinInt64):
+		return Amount{MinorUnits: math.MinInt64}
+	default:
+		return Amount{MinorUnits: int64(scaled)}
+	}
 }
 
 // MajorFloat returns a display/compatibility number. Do not use the

@@ -134,28 +134,33 @@ func TestMajorFloat_RoundTripsWithFromMajorFloat(t *testing.T) {
 	}
 }
 
-// TestFromMajorFloat_SaturatesRatherThanWrappingOnOverflow pins
-// observed (not spec-guaranteed) toolchain behavior, not a property
-// FromMajorFloat itself enforces: Go's float64->int64 conversion is
-// documented as implementation-defined for out-of-range values, and
-// the exact saturated value differs by architecture (arm64's FCVTZS
-// saturates toward the input's sign; amd64 has historically produced
-// a single "integer indefinite" value for either direction) -- this
-// repo's CI runs Go tests on ubuntu-24.04 (amd64), so this assertion
-// deliberately checks only that an absurdly large input (e.g. a
-// legacy import with transposed major/minor units) saturates to one
-// of the two int64 extremes rather than silently wrapping to a small,
-// plausible-looking wrong dollar figure; it does not pin which
-// extreme, since that's arch-dependent and not something this test
-// should fail over. FromMajorFloat performs no bounds validation of
-// its own on this input -- it silently "succeeds" on a nonsensical
-// multi-quadrillion-dollar value -- disclosed here, not fixed (out of
-// this increment's authorized scope).
+// TestFromMajorFloat_SaturatesRatherThanWrappingOnOverflow previously
+// pinned only that an overflowing input saturates to ONE OF the two
+// int64 extremes, not which one -- because that behavior was inherited
+// from Go's float64->int64 conversion, documented as
+// implementation-defined once the value no longer fits, and observed
+// to differ by architecture (arm64's FCVTZS saturates toward the
+// input's sign; amd64 has historically produced a single "integer
+// indefinite" value for either direction). FromMajorFloat now clamps
+// explicitly in Go code instead of relying on that conversion, so the
+// direction is a guarantee of this function, not an artifact of the
+// toolchain -- this test was strengthened to pin it, rather than left
+// unpinned or deleted. A legacy import with transposed major/minor
+// units (or any other absurdly large input) now deterministically
+// saturates to math.MaxInt64/math.MinInt64 by sign, on every
+// architecture this package runs on.
 func TestFromMajorFloat_SaturatesRatherThanWrappingOnOverflow(t *testing.T) {
-	for _, in := range []float64{1e18, -1e18} {
-		got := FromMajorFloat(in).MinorUnits
-		if got != math.MaxInt64 && got != math.MinInt64 {
-			t.Errorf("FromMajorFloat(%v).MinorUnits = %d, want math.MaxInt64 or math.MinInt64 (saturation behavior changed)", in, got)
+	cases := []struct {
+		in   float64
+		want int64
+	}{
+		{1e18, math.MaxInt64},
+		{-1e18, math.MinInt64},
+	}
+	for _, tc := range cases {
+		got := FromMajorFloat(tc.in).MinorUnits
+		if got != tc.want {
+			t.Errorf("FromMajorFloat(%v).MinorUnits = %d, want %d", tc.in, got, tc.want)
 		}
 	}
 }
