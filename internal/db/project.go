@@ -86,7 +86,7 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 		p.BudgetMinorUnits = money.FromMajorFloat(p.Budget).MinorUnits
 	}
 	p.Budget = money.Amount{MinorUnits: p.BudgetMinorUnits}.MajorFloat()
-	now := nowTimestamp()
+	now := captureTimestamp()
 
 	tx, err := db.Conn.Begin()
 	if err != nil {
@@ -111,8 +111,8 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 		INSERT INTO project (id, name, description, status, phase,
 			start_date, end_date, budget, budget_minor_units, owner,
 			industry, sub_category, methodology, country_code, time_zone,
-			created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			created_at, updated_at, created_at_unixnano, updated_at_unixnano)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			name         = excluded.name,
 			description  = excluded.description,
@@ -128,12 +128,13 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 			methodology  = excluded.methodology,
 			country_code = excluded.country_code,
 			time_zone    = excluded.time_zone,
-			updated_at   = excluded.updated_at
+			updated_at   = excluded.updated_at,
+			updated_at_unixnano = excluded.updated_at_unixnano
 	`,
 		p.ID, p.Name, p.Description, p.Status, p.Phase,
 		p.StartDate, p.EndDate, p.Budget, p.BudgetMinorUnits, p.Owner,
 		p.Industry, p.SubCategory, p.Methodology, p.CountryCode, p.TimeZone,
-		now, now,
+		now.text, now.text, now.unixNano, now.unixNano,
 	)
 	if err != nil {
 		return Project{}, err

@@ -59,7 +59,7 @@ func (db *Database) SaveChart(c Chart) (Chart, error) {
 	if c.Config == "" {
 		c.Config = "{}"
 	}
-	now := nowTimestamp()
+	now := captureTimestamp()
 
 	tx, err := db.Conn.Begin()
 	if err != nil {
@@ -81,17 +81,18 @@ func (db *Database) SaveChart(c Chart) (Chart, error) {
 	}
 
 	_, err = tx.Exec(`
-		INSERT INTO charts (id, project_id, kind, title, data, config, template_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO charts (id, project_id, kind, title, data, config, template_id, created_at, updated_at, created_at_unixnano, updated_at_unixnano)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
-			kind        = excluded.kind,
-			title       = excluded.title,
-			data        = excluded.data,
-			config      = excluded.config,
-			template_id = excluded.template_id,
-			updated_at  = excluded.updated_at
+			kind                = excluded.kind,
+			title               = excluded.title,
+			data                = excluded.data,
+			config              = excluded.config,
+			template_id         = excluded.template_id,
+			updated_at          = excluded.updated_at,
+			updated_at_unixnano = excluded.updated_at_unixnano
 	`,
-		c.ID, c.ProjectID, c.Kind, c.Title, c.Data, c.Config, c.TemplateID, now, now,
+		c.ID, c.ProjectID, c.Kind, c.Title, c.Data, c.Config, c.TemplateID, now.text, now.text, now.unixNano, now.unixNano,
 	)
 	if err != nil {
 		return Chart{}, err
@@ -148,12 +149,12 @@ func (db *Database) ListCharts(projectID, kind string) ([]Chart, error) {
 	if kind == "" {
 		rows, err = db.Conn.Query(`
 			SELECT id, project_id, kind, title, data, config, template_id, created_at, updated_at
-			FROM charts WHERE project_id = ? ORDER BY updated_at DESC
+			FROM charts WHERE project_id = ? ORDER BY updated_at_unixnano DESC
 		`, projectID)
 	} else {
 		rows, err = db.Conn.Query(`
 			SELECT id, project_id, kind, title, data, config, template_id, created_at, updated_at
-			FROM charts WHERE project_id = ? AND kind = ? ORDER BY updated_at DESC
+			FROM charts WHERE project_id = ? AND kind = ? ORDER BY updated_at_unixnano DESC
 		`, projectID, kind)
 	}
 	if err != nil {

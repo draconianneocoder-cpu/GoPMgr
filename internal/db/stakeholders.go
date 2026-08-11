@@ -80,14 +80,14 @@ func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 	}
 	s.HourlyRate = money.Amount{MinorUnits: s.HourlyRateMinorUnits}.MajorFloat()
 	s.ContractValue = money.Amount{MinorUnits: s.ContractValueMinorUnits}.MajorFloat()
-	now := nowTimestamp()
+	now := captureTimestamp()
 
 	_, err := db.Conn.Exec(`
 		INSERT INTO stakeholders (id, project_id, name, role, organisation,
 			email, phone, category, hourly_rate, hourly_rate_minor_units,
 			contract_value, contract_value_minor_units, availability,
-			notes, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			notes, created_at, updated_at, created_at_unixnano, updated_at_unixnano)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			name           = excluded.name,
 			role           = excluded.role,
@@ -101,13 +101,14 @@ func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 			contract_value_minor_units = excluded.contract_value_minor_units,
 			availability   = excluded.availability,
 			notes          = excluded.notes,
-			updated_at     = excluded.updated_at
+			updated_at     = excluded.updated_at,
+			updated_at_unixnano = excluded.updated_at_unixnano
 	`,
 		s.ID, s.ProjectID, s.Name, s.Role, s.Organisation,
 		s.Email, s.Phone, string(s.Category), s.HourlyRate, s.HourlyRateMinorUnits,
 		s.ContractValue, s.ContractValueMinorUnits,
 		s.Availability, s.Notes,
-		now, now,
+		now.text, now.text, now.unixNano, now.unixNano,
 	)
 	if err != nil {
 		return Stakeholder{}, err

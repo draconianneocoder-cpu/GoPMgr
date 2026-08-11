@@ -64,13 +64,14 @@ func (db *Database) SaveResourceCalendar(c ResourceCalendar) (ResourceCalendar, 
 		return ResourceCalendar{}, fmt.Errorf("notes: %w", err)
 	}
 
-	now := nowTimestamp()
+	now := captureTimestamp()
 	_, err = db.Conn.Exec(`
 		INSERT INTO resource_calendars (
 			id, project_id, resource, name, default_capacity,
-			weekly_capacity, overrides, skill_tags, notes, created_at, updated_at
+			weekly_capacity, overrides, skill_tags, notes, created_at, updated_at,
+			created_at_unixnano, updated_at_unixnano
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			project_id        = excluded.project_id,
 			resource          = excluded.resource,
@@ -80,9 +81,10 @@ func (db *Database) SaveResourceCalendar(c ResourceCalendar) (ResourceCalendar, 
 			overrides         = excluded.overrides,
 			skill_tags        = excluded.skill_tags,
 			notes             = excluded.notes,
-			updated_at        = excluded.updated_at
+			updated_at        = excluded.updated_at,
+			updated_at_unixnano = excluded.updated_at_unixnano
 	`, c.ID, c.ProjectID, c.Resource, c.Name, c.DefaultCapacity,
-		weekly, overrides, tags, notes, now, now)
+		weekly, overrides, tags, notes, now.text, now.text, now.unixNano, now.unixNano)
 	if err != nil {
 		return ResourceCalendar{}, err
 	}
@@ -106,7 +108,7 @@ func (db *Database) ListResourceCalendars(projectID string) ([]ResourceCalendar,
 		       weekly_capacity, overrides, skill_tags, notes, created_at, updated_at
 		FROM resource_calendars
 		WHERE project_id = ?
-		ORDER BY resource ASC, name ASC, created_at ASC
+		ORDER BY resource ASC, name ASC, created_at_unixnano ASC
 	`, projectID)
 	if err != nil {
 		return nil, err

@@ -56,7 +56,7 @@ func (db *Database) SaveDocument(d Document) (Document, error) {
 	if d.Version == 0 {
 		d.Version = 1
 	}
-	now := nowTimestamp()
+	now := captureTimestamp()
 
 	tx, err := db.Conn.Begin()
 	if err != nil {
@@ -78,19 +78,20 @@ func (db *Database) SaveDocument(d Document) (Document, error) {
 	}
 
 	_, err = tx.Exec(`
-		INSERT INTO documents (id, project_id, kind, title, content, template_id, version, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO documents (id, project_id, kind, title, content, template_id, version, status, created_at, updated_at, created_at_unixnano, updated_at_unixnano)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
-			kind        = excluded.kind,
-			title       = excluded.title,
-			content     = excluded.content,
-			template_id = excluded.template_id,
-			version     = documents.version + 1,
-			status      = excluded.status,
-			updated_at  = excluded.updated_at
+			kind                = excluded.kind,
+			title               = excluded.title,
+			content             = excluded.content,
+			template_id         = excluded.template_id,
+			version             = documents.version + 1,
+			status              = excluded.status,
+			updated_at          = excluded.updated_at,
+			updated_at_unixnano = excluded.updated_at_unixnano
 	`,
 		d.ID, d.ProjectID, d.Kind, d.Title, d.Content, d.TemplateID,
-		d.Version, d.Status, now, now,
+		d.Version, d.Status, now.text, now.text, now.unixNano, now.unixNano,
 	)
 	if err != nil {
 		return Document{}, err
@@ -152,12 +153,12 @@ func (db *Database) ListDocuments(projectID, kind string) ([]Document, error) {
 	if kind == "" {
 		rows, err = db.Conn.Query(`
 			SELECT id, project_id, kind, title, content, template_id, version, status, created_at, updated_at
-			FROM documents WHERE project_id = ? ORDER BY updated_at DESC
+			FROM documents WHERE project_id = ? ORDER BY updated_at_unixnano DESC
 		`, projectID)
 	} else {
 		rows, err = db.Conn.Query(`
 			SELECT id, project_id, kind, title, content, template_id, version, status, created_at, updated_at
-			FROM documents WHERE project_id = ? AND kind = ? ORDER BY updated_at DESC
+			FROM documents WHERE project_id = ? AND kind = ? ORDER BY updated_at_unixnano DESC
 		`, projectID, kind)
 	}
 	if err != nil {
