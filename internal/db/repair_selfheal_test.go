@@ -385,6 +385,68 @@ func TestInformativeSelfHeal_StaleBackupRemovalFailureIsReported(t *testing.T) {
 	}
 }
 
+// TestSwapInSnapshot_RenameLiveToCorruptFailureIsReported is the plain
+// counterpart to TestSwapInEncryptedSnapshot_RenameLiveToCorruptFailureIsReported
+// (internal/db/repair_encryption_test.go): step 2 (moving the live file
+// aside to .corrupt) fails AFTER db.Close() has already succeeded, so the
+// original *Database handle d is no longer usable -- the assertion must
+// confirm the live FILE survived untouched and is reopenable, not that
+// the closed handle still works. Same chflags(UF_IMMUTABLE) technique as
+// the rollback test below; darwin-only, skips elsewhere.
+func TestSwapInSnapshot_RenameLiveToCorruptFailureIsReported(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("rename-live-to-corrupt failure is only forceable via macOS's chflags(UF_IMMUTABLE); unverified on this GOOS")
+	}
+
+	livePath := filepath.Join(t.TempDir(), "project.pmforge")
+	d, err := InitDB(livePath)
+	if err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+	if _, err := d.UpsertProject(Project{Name: "OriginalLiveState", Status: "active", Phase: "execution"}); err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	if err := d.CreateSnapshot(livePath + ".bak"); err != nil {
+		t.Fatalf("CreateSnapshot: %v", err)
+	}
+
+	const ufImmutable = 0x2
+	if err := syscall.Chflags(livePath, ufImmutable); err != nil {
+		t.Fatalf("chflags(UF_IMMUTABLE) on live file: %v", err)
+	}
+	t.Cleanup(func() { _ = syscall.Chflags(livePath, 0) })
+
+	_, err = d.SwapInSnapshot(livePath)
+	if err == nil {
+		t.Fatal("SwapInSnapshot succeeded despite an immutable live file blocking the rename to .corrupt")
+	}
+	// Assert the specific branch, not just any error -- db.Close() could
+	// plausibly fail first and land in the "swap: close live" branch
+	// instead of the rename branch this test targets.
+	if !strings.Contains(err.Error(), "rename live → corrupt") {
+		t.Fatalf("SwapInSnapshot error = %v, want a rename-live-to-corrupt error", err)
+	}
+
+	if err := syscall.Chflags(livePath, 0); err != nil {
+		t.Fatalf("clear chflags before reopen: %v", err)
+	}
+	restored, err := InitDB(livePath)
+	if err != nil {
+		t.Fatalf("live path unusable after failed rename-to-corrupt: %v", err)
+	}
+	defer restored.Close()
+	p, err := restored.GetProject()
+	if err != nil {
+		t.Fatalf("GetProject on surviving live file: %v", err)
+	}
+	if p.Name != "OriginalLiveState" {
+		t.Errorf("surviving live project = %q, want %q", p.Name, "OriginalLiveState")
+	}
+	if _, err := os.Stat(livePath + ".corrupt"); !os.IsNotExist(err) {
+		t.Errorf(".corrupt was created despite the rename failing: stat err = %v", err)
+	}
+}
+
 // TestSwapInSnapshot_RollsBackLiveFileWhenFinalRenameFails is the
 // highest-consequence untested branch in this package: if the final
 // rename (snapshot -> live) fails AFTER the live file was already
