@@ -258,3 +258,183 @@ func TestRenderChartToPDF_Bar(t *testing.T) {
 	}
 	assertNoNaNOrInf(t, out)
 }
+
+// --- Deferred helpers: drawStackedAreas, drawRightAxisLine,
+// drawRightAxisTicks, drawDashedLine (increment 2's memory note named
+// these as deliberately deferred -- lower-frequency chart features
+// protected by the same yMax<=yMin guard already proven above, but
+// unverified as call sites in their own right). Tested directly
+// (white-box, in-package) rather than through the full renderCartesian
+// pipeline, since driving each one through specific statsLayout wiring
+// while isolating its own content-stream signature from gridlines/axis
+// labels/other series is simpler and more precise than differencing a
+// full-chart render. ---
+
+// TestDrawStackedAreas_FillsOnePolygonPerSeries: each series in a
+// stacked area chart is drawn as its own semi-transparent filled
+// polygon (SetAlpha(0.55, ...) around the fill, confirmed via probe to
+// be the only SetAlpha call site in this package, so counting the
+// "/GS1 gs" ExtGState reference it emits is a precise, unambiguous
+// signal distinct from any other drawing operation). Two series must
+// produce two polygons, not one merged shape or a silently-dropped
+// second series.
+func TestDrawStackedAreas_FillsOnePolygonPerSeries(t *testing.T) {
+	pdf := newTestPDF()
+	l := statsLayout{
+		Categories: []string{"W1", "W2", "W3"},
+		Series: []statsSeries{
+			{Name: "Done", Values: []float64{1, 2, 3}},
+			{Name: "Doing", Values: []float64{2, 1, 1}},
+		},
+	}
+	drawStackedAreas(pdf, l, Frame{X: 10, Y: 10, W: 100, H: 60}, 0, 6)
+	out := outputBytes(t, pdf)
+	if got := bytes.Count(out, []byte("/GS1 gs")); got != 2 {
+		t.Errorf("alpha-blended fill count = %d, want 2 (one per series)", got)
+	}
+	if got := countBareOp(out, "f"); got != 2 {
+		t.Errorf("bare fill op count = %d, want 2 (one polygon per series)", got)
+	}
+	assertNoNaNOrInf(t, out)
+}
+
+// TestDrawStackedAreas_EmptyCategoriesDrawsNothing covers the `n == 0`
+// guard: with zero categories, colW would be plot.W/0 and every series
+// would still enter SetAlpha/Polygon/SetAlpha around an empty (nil)
+// point list if the guard were missing -- confirmed by fault-seeding
+// the guard away and observing "/GS1 gs" appear once per series with
+// no matching geometry, not a crash. The guard's job is precisely to
+// prevent that degenerate no-op-but-not-actually-empty draw.
+func TestDrawStackedAreas_EmptyCategoriesDrawsNothing(t *testing.T) {
+	pdf := newTestPDF()
+	l := statsLayout{
+		Categories: []string{},
+		Series:     []statsSeries{{Name: "Done", Values: []float64{1, 2, 3}}},
+	}
+	drawStackedAreas(pdf, l, Frame{X: 10, Y: 10, W: 100, H: 60}, 0, 6)
+	out := outputBytes(t, pdf)
+	if got := bytes.Count(out, []byte("/GS1 gs")); got != 0 {
+		t.Errorf("alpha-blended fill count = %d, want 0 for zero categories", got)
+	}
+}
+
+// TestDrawRightAxisLine_DrawsPointsAndConnectingSegments: a 3-point
+// series draws 3 circle point-markers (bare "f" fill, same technique
+// established for the DAG/Pie/Flow engines' node/wedge/point counts)
+// connected by 2 line segments (the plain, non-dashed "l S" pattern --
+// distinct from drawDashedLine's many-short-segments signature tested
+// separately below).
+func TestDrawRightAxisLine_DrawsPointsAndConnectingSegments(t *testing.T) {
+	pdf := newTestPDF()
+	l := statsLayout{Categories: []string{"A", "B", "C"}}
+	s := statsSeries{Name: "Cum%", Values: []float64{50, 80, 100}}
+	drawRightAxisLine(pdf, l, s, Frame{X: 10, Y: 10, W: 100, H: 60})
+	out := outputBytes(t, pdf)
+	if got := countBareOp(out, "f"); got != 3 {
+		t.Errorf("circle-marker fill count = %d, want 3 (one per point)", got)
+	}
+	if got := bytes.Count(out, []byte(" l ")); got != 2 {
+		t.Errorf("connecting-segment count = %d, want 2 (n-1 segments for 3 points)", got)
+	}
+	assertNoNaNOrInf(t, out)
+}
+
+// TestDrawRightAxisLine_GuardsShortSeriesAndNoCategories covers both of
+// drawRightAxisLine's early returns. Fault-seeding each independently
+// found they are NOT equally load-bearing: `n < 2` is real (disabling
+// it alone draws a single orphan point-marker) but `nCats == 0` is an
+// equivalent mutation -- disabling it alone changes nothing observable,
+// because the draw loop's own bound (`i < n && i < nCats`) already
+// excludes every iteration when nCats is 0, the same class of finding
+// this repo's ledger already documents for other guards (e.g.
+// SaveScenarioChart's ID guard in internal/db). Kept in production code
+// (defensive depth, avoids computing colW as +Inf) but not proven
+// necessary by this test's evidence.
+func TestDrawRightAxisLine_GuardsShortSeriesAndNoCategories(t *testing.T) {
+	t.Run("fewer than two points", func(t *testing.T) {
+		pdf := newTestPDF()
+		l := statsLayout{Categories: []string{"A", "B", "C"}}
+		s := statsSeries{Name: "Cum%", Values: []float64{50}}
+		drawRightAxisLine(pdf, l, s, Frame{X: 10, Y: 10, W: 100, H: 60})
+		out := outputBytes(t, pdf)
+		if got := countBareOp(out, "f"); got != 0 {
+			t.Errorf("fill count = %d, want 0 for a single-point series", got)
+		}
+	})
+	t.Run("zero categories", func(t *testing.T) {
+		pdf := newTestPDF()
+		l := statsLayout{Categories: []string{}}
+		s := statsSeries{Name: "Cum%", Values: []float64{50, 80, 100}}
+		drawRightAxisLine(pdf, l, s, Frame{X: 10, Y: 10, W: 100, H: 60})
+		out := outputBytes(t, pdf)
+		if got := countBareOp(out, "f"); got != 0 {
+			t.Errorf("fill count = %d, want 0 for zero categories", got)
+		}
+	})
+}
+
+// TestDrawRightAxisTicks_LabelsMinMidAndMax: three ticks at min/mid/max
+// of the axis range, formatted as "<value>%" -- the default (nil Min/Max
+// fields) is 0/50/100; a custom range must actually be used, not
+// silently fall back to the default.
+func TestDrawRightAxisTicks_LabelsMinMidAndMax(t *testing.T) {
+	t.Run("default 0-100", func(t *testing.T) {
+		pdf := newTestPDF()
+		drawRightAxisTicks(pdf, Frame{X: 10, Y: 10, W: 100, H: 60}, &axisConfig{})
+		out := outputBytes(t, pdf)
+		for _, want := range []string{"(0%)", "(50%)", "(100%)"} {
+			if !bytes.Contains(out, []byte(want)) {
+				t.Errorf("output missing tick label %q", want)
+			}
+		}
+	})
+	t.Run("custom min/max", func(t *testing.T) {
+		pdf := newTestPDF()
+		min, max := 10.0, 50.0
+		drawRightAxisTicks(pdf, Frame{X: 10, Y: 10, W: 100, H: 60}, &axisConfig{Min: &min, Max: &max})
+		out := outputBytes(t, pdf)
+		for _, want := range []string{"(10%)", "(30%)", "(50%)"} {
+			if !bytes.Contains(out, []byte(want)) {
+				t.Errorf("output missing tick label %q -- custom Min/Max not applied", want)
+			}
+		}
+		if bytes.Contains(out, []byte("(0%)")) || bytes.Contains(out, []byte("(100%)")) {
+			t.Error("output contains a default-range label -- custom Min/Max was ignored")
+		}
+	})
+}
+
+// TestDrawDashedLine_DrawsMultipleShortSegments: a dashed line is drawn
+// as a series of short pdf.Line segments, not one continuous stroke --
+// distinguishing it from a solid annotation line requires counting
+// segments, not just checking a line was drawn at all. For a 50mm
+// horizontal line with dash=1.2/gap=0.8, the function's own formula
+// (steps := int(length/(dash+gap)); loop runs 0..steps inclusive) gives
+// int(50/2.0)+1 = 26 segments -- confirmed by direct probe before
+// writing this assertion, not assumed from reading the loop.
+func TestDrawDashedLine_DrawsMultipleShortSegments(t *testing.T) {
+	pdf := newTestPDF()
+	drawDashedLine(pdf, 10, 10, 60, 10, 1.2, 0.8)
+	out := outputBytes(t, pdf)
+	if got := bytes.Count(out, []byte(" l ")); got != 26 {
+		t.Errorf("dash segment count = %d, want 26 (int(50/(1.2+0.8))+1, confirmed by probe)", got)
+	}
+}
+
+// TestDrawDashedLine_ZeroLengthDoesNotProduceNaN covers the `length ==
+// 0` guard: without it, t1 := 0*stepLen/0 is a 0/0 division producing
+// NaN, which -- same failure mode already established for this
+// package's other unguarded-division risks (scanYBounds, the pie
+// wedge-angle calc) -- Go's float formatting renders literally as
+// "NaN" in the PDF content stream. Confirmed by fault-seeding the guard
+// away before writing this test: the seeded version produced exactly
+// this "NaN" string, not a panic and not a silently-wrong coordinate.
+func TestDrawDashedLine_ZeroLengthDoesNotProduceNaN(t *testing.T) {
+	pdf := newTestPDF()
+	drawDashedLine(pdf, 10, 10, 10, 10, 1.2, 0.8)
+	out := outputBytes(t, pdf)
+	assertNoNaNOrInf(t, out)
+	if got := bytes.Count(out, []byte(" l ")); got != 0 {
+		t.Errorf("segment count = %d, want 0 for a zero-length line", got)
+	}
+}
