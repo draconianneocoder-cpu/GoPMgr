@@ -144,3 +144,126 @@ func TestSigmaFishboneRoundTripPreservesBranches(t *testing.T) {
 		t.Fatalf("causes = %#v, want saved cause", got.Branches[0].Causes)
 	}
 }
+
+// TestSigmaSaveFishbone_SecondSaveOverwritesFirst exercises the
+// ON CONFLICT(project_id) DO UPDATE path -- the round trip test above
+// only ever saves once (a create), never a second time against an
+// existing row, so the update branch had no coverage at all.
+func TestSigmaSaveFishbone_SecondSaveOverwritesFirst(t *testing.T) {
+	d := newSigmaTestDB(t)
+	first := domain.FishboneData{
+		ProblemStatement: "late delivery",
+		Branches:         []domain.FishboneBranch{{Category: "Method"}},
+	}
+	if err := d.SigmaSaveFishbone(first, "p1"); err != nil {
+		t.Fatalf("save first: %v", err)
+	}
+
+	second := domain.FishboneData{
+		ProblemStatement: "quality defects",
+		Branches:         []domain.FishboneBranch{{Category: "Machine"}, {Category: "Material"}},
+	}
+	if err := d.SigmaSaveFishbone(second, "p1"); err != nil {
+		t.Fatalf("save second: %v", err)
+	}
+
+	got, err := d.SigmaGetFishbone("p1")
+	if err != nil {
+		t.Fatalf("get fishbone: %v", err)
+	}
+	if got.ProblemStatement != second.ProblemStatement {
+		t.Fatalf("problem statement = %q, want %q (second save must overwrite, not append)", got.ProblemStatement, second.ProblemStatement)
+	}
+	if len(got.Branches) != 2 || got.Branches[0].Category != "Machine" || got.Branches[1].Category != "Material" {
+		t.Fatalf("branches = %#v, want [Machine Material] (second save's branches, not merged with the first)", got.Branches)
+	}
+}
+
+// TestSigmaGetFishbone_ReturnsSixStandardCategoriesWhenNoRowExists covers
+// the sql.ErrNoRows default path, previously untested -- every existing
+// test either saved a fishbone first or inserted corrupt JSON directly,
+// so the "no fishbone yet" happy path (what a brand-new Sigma project's
+// Fishbone tab actually renders on first open) had no test at all.
+func TestSigmaGetFishbone_ReturnsSixStandardCategoriesWhenNoRowExists(t *testing.T) {
+	d := newSigmaTestDB(t)
+	got, err := d.SigmaGetFishbone("p1")
+	if err != nil {
+		t.Fatalf("get fishbone (no row): %v", err)
+	}
+	wantCategories := []string{"Man", "Machine", "Method", "Material", "Measurement", "Environment"}
+	if len(got.Branches) != len(wantCategories) {
+		t.Fatalf("branches = %#v, want %d standard categories", got.Branches, len(wantCategories))
+	}
+	for i, want := range wantCategories {
+		if got.Branches[i].Category != want {
+			t.Errorf("branches[%d].Category = %q, want %q", i, got.Branches[i].Category, want)
+		}
+	}
+}
+
+// TestSigmaGetFishbone_ParsesLegacyArrayOnlyFormatAndFallsBackToColumnProblemStatement
+// covers two real, previously-untested branches together: the legacy
+// decode fallback (data_json as a bare JSON array of branches, the format
+// before FishboneData wrapped Branches in a {problem_statement, branches}
+// object) and the ProblemStatement column fallback (fb.ProblemStatement
+// == "" after decode, since the legacy array format has no embedded
+// problem statement at all). A legacy row surviving from before this
+// wrapping change must still render correctly, not fail to decode or
+// silently lose its problem statement.
+func TestSigmaGetFishbone_ParsesLegacyArrayOnlyFormatAndFallsBackToColumnProblemStatement(t *testing.T) {
+	d := newSigmaTestDB(t)
+	legacyBranchesJSON := `[{"category":"Man","causes":[{"id":"c1","description":"training gap","is_root_cause":true}]}]`
+	if _, err := d.Conn.Exec(
+		`INSERT INTO sigma_fishbones (id, project_id, problem_statement, data_json) VALUES (?, ?, ?, ?)`,
+		"fishbone-p1", "p1", "legacy problem statement", legacyBranchesJSON,
+	); err != nil {
+		t.Fatalf("insert legacy fishbone row: %v", err)
+	}
+
+	got, err := d.SigmaGetFishbone("p1")
+	if err != nil {
+		t.Fatalf("get legacy fishbone: %v", err)
+	}
+	if len(got.Branches) != 1 || got.Branches[0].Category != "Man" {
+		t.Fatalf("branches = %#v, want the legacy array's single Man branch", got.Branches)
+	}
+	if len(got.Branches[0].Causes) != 1 || got.Branches[0].Causes[0].Description != "training gap" {
+		t.Fatalf("causes = %#v, want the legacy array's cause", got.Branches[0].Causes)
+	}
+	if got.ProblemStatement != "legacy problem statement" {
+		t.Fatalf("ProblemStatement = %q, want the problem_statement column's value (the legacy JSON format has no embedded problem statement to prefer)", got.ProblemStatement)
+	}
+}
+
+// TestSigmaGetFishbone_ModernFormatWithEmptyEmbeddedStatementFallsBackToColumn
+// covers the column fallback on the MODERN decode path, not just the
+// legacy one above. SigmaSaveFishbone always writes the same problem
+// statement to both the column and the embedded JSON, so the two can't
+// diverge through the normal save/get API -- but a row written directly
+// by SQL, or migrated from an older schema into the modern
+// {"problem_statement":...,"branches":[...]} shape without carrying the
+// statement forward, can still decode successfully with an empty
+// ProblemStatement field. That must still fall back to the column, the
+// same as the legacy no-embedded-statement case, or a real row like this
+// would silently render a blank problem statement.
+func TestSigmaGetFishbone_ModernFormatWithEmptyEmbeddedStatementFallsBackToColumn(t *testing.T) {
+	d := newSigmaTestDB(t)
+	modernJSONNoStatement := `{"problem_statement":"","branches":[{"category":"Machine"}]}`
+	if _, err := d.Conn.Exec(
+		`INSERT INTO sigma_fishbones (id, project_id, problem_statement, data_json) VALUES (?, ?, ?, ?)`,
+		"fishbone-p1", "p1", "column problem statement", modernJSONNoStatement,
+	); err != nil {
+		t.Fatalf("insert modern fishbone row with empty embedded statement: %v", err)
+	}
+
+	got, err := d.SigmaGetFishbone("p1")
+	if err != nil {
+		t.Fatalf("get fishbone: %v", err)
+	}
+	if got.ProblemStatement != "column problem statement" {
+		t.Fatalf("ProblemStatement = %q, want the problem_statement column's value (modern decode succeeded but left ProblemStatement empty)", got.ProblemStatement)
+	}
+	if len(got.Branches) != 1 || got.Branches[0].Category != "Machine" {
+		t.Fatalf("branches = %#v, want the modern JSON's Machine branch", got.Branches)
+	}
+}

@@ -25,11 +25,13 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # cause) during a 2026-08/2026-08-10 investigation into an intermittent
 # coverage-ratchet flake -- an occasional 2-3x inflation in the reported
 # statement count, most recently reproduced as a triplicated coverage
-# profile during the 2026-08-10 sigma.go increment (see
-# .agent_memory/db-sigma-crud-increment-2026-08-10.md, gitignored, or
+# profile during a 2026-08-10 sigma.go increment. See
 # `git log --all -p -- DEVELOPER_HANDBOOK.md` for the original
 # "coverage-ratchet exclude-filter flake" investigation entry, trimmed
-# from this file's public-facing cleanup in commit ebfd971). Status:
+# from this file's public-facing cleanup in commit ebfd971 (a gitignored
+# .agent_memory/ note also covers the 2026-08-10 reproduction, but that
+# file doesn't exist outside the session that wrote it -- not a citable
+# reference for other clones). Status:
 # unconfirmed, not fixed -- `coverage-ratchet.sh`'s own comment on
 # "never write a worse mark" is why a flaked run can't corrupt the
 # baseline; re-run once on an anomalous result before treating it as real.
