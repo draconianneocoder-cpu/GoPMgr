@@ -25,8 +25,13 @@ type Chart struct {
 	// CreatedAt/UpdatedAt are RFC3339Nano strings (server-managed). They
 	// are strings rather than time.Time so the Wails bridge can round-trip
 	// records whose timestamps are empty (new records) without failing to
-	// unmarshal "" into time.Time. RFC3339 sorts lexicographically, so the
-	// "ORDER BY updated_at" / string comparisons stay chronological.
+	// unmarshal "" into time.Time. RFC3339Nano's lexicographic ordering
+	// does NOT stay chronological in general: it trims trailing zeros
+	// from the fractional-seconds component and omits it entirely when
+	// exactly zero, so a whole-second timestamp can sort AFTER a later
+	// same-second fractional one in "ORDER BY updated_at" / string
+	// comparisons ('.' sorts before 'Z' in ASCII). See this package's
+	// own tests and documents_read_test.go's equivalent for documents.go.
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }
