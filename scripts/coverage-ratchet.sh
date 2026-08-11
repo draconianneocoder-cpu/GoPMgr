@@ -6,9 +6,8 @@
 # the last recorded high-water mark, for any of the three independently-
 # tracked targets (Go default build, Go -tags duckdb build, frontend). It
 # never requires 100% today -- it requires "not worse than the best we've
-# ever measured." See DEVELOPER_HANDBOOK.md's "100% coverage: scope and
-# exclusions" entry for why three separate marks are needed instead of one:
-# the default and duckdb Go builds compile different files (stub.go vs
+# ever measured." Three separate marks are needed instead of one: the
+# default and duckdb Go builds compile different files (stub.go vs
 # duckdb.go), so a single merged percentage can't represent either
 # faithfully and would let one config's regression hide behind the other's
 # improvement.
@@ -18,9 +17,13 @@
 # by the same amount, which mathematically lowers the percentage whenever
 # the deleted code's local coverage was above the repo-wide average --
 # uncovered count is unaffected by that, since it only tracks statements
-# that still exist and still lack a test. See the "100% coverage" handbook
-# entry for the real case (deleting jdm.go's dead branches) that surfaced
-# this and is why the comparison isn't a percentage.
+# that still exist and still lack a test. Surfaced by a real case (a
+# 2026-08 cleanup deleting internal/templates' jdm.go dead branches, which
+# had been 100% covered, correctly showed as "REGRESSED" under a percentage
+# comparison for a change that made the codebase strictly better) --
+# original narrative in `git log --all -p -- DEVELOPER_HANDBOOK.md`
+# (trimmed from this file's public-facing cleanup in commit ebfd971), not
+# reproduced here.
 #
 # coverage-baseline.json (checked into the repo) holds the three marks as
 # exact "<covered> <total>" statement counts (uncovered is covered/total's
@@ -28,8 +31,7 @@
 #
 # GOPMGR_ALLOW_COVERAGE_REGRESSION is an explicit, developer-set escape
 # hatch, the same shape as GOPMGR_SKIP_NSIS_COMPILE: while 100% coverage is
-# a work in progress (see DEVELOPER_HANDBOOK.md's "100% coverage: scope and
-# exclusions" entry), a strict ratchet with no override would fail
+# a work in progress, a strict ratchet with no override would fail
 # `make verify` on ANY unrelated commit that adds a new, not-yet-tested
 # line -- a bugfix, a feature, an untested error branch -- which is exactly
 # the "blocks all unrelated work" problem a ratchet was chosen over a hard

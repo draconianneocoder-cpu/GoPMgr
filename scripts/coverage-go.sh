@@ -21,9 +21,18 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # `go list ./...` and `go test` below resolve against the CALLER's working
 # directory, not $ROOT -- pin it explicitly so this script always measures
 # this repo's own module regardless of what CWD happened to be active when
-# it was invoked. See DEVELOPER_HANDBOOK.md's coverage-ratchet flake entry:
-# this was identified as a latent correctness gap during that
-# investigation, not a proven cause of the flake.
+# it was invoked. Identified as a latent correctness gap (not a proven
+# cause) during a 2026-08/2026-08-10 investigation into an intermittent
+# coverage-ratchet flake -- an occasional 2-3x inflation in the reported
+# statement count, most recently reproduced as a triplicated coverage
+# profile during the 2026-08-10 sigma.go increment (see
+# .agent_memory/db-sigma-crud-increment-2026-08-10.md, gitignored, or
+# `git log --all -p -- DEVELOPER_HANDBOOK.md` for the original
+# "coverage-ratchet exclude-filter flake" investigation entry, trimmed
+# from this file's public-facing cleanup in commit ebfd971). Status:
+# unconfirmed, not fixed -- `coverage-ratchet.sh`'s own comment on
+# "never write a worse mark" is why a flaked run can't corrupt the
+# baseline; re-run once on an anomalous result before treating it as real.
 cd "$ROOT"
 variant="${1:?usage: coverage-go.sh <default|duckdb> [profile-out-path]}"
 
@@ -67,11 +76,12 @@ filtered="$profile.filtered"
 # `grep -f <(...)` process substitution: under macOS's shipped bash 3.2,
 # `grep -f` opening a not-yet-fully-written pipe can read an empty pattern
 # file, silently letting every line through. This is hardening, not a
-# confirmed fix -- see the flake entry in DEVELOPER_HANDBOOK.md for why
-# this specific mechanism was ruled out as the actual cause (the exclude
+# confirmed fix for the flake described above (line ~24): that
+# investigation ruled this mechanism OUT as the actual cause (the exclude
 # list only ever touches ~3 statements, nowhere near the flake's observed
 # ~20,000+ statement inflations, and 5000 stress-test iterations of this
-# exact pipeline reproduced zero anomalies).
+# exact pipeline reproduced zero anomalies) -- kept anyway on general
+# robustness grounds.
 tmp_patterns="$(mktemp)"
 trap 'rm -f "$tmp_patterns"' EXIT
 grep -Ev '^\s*(#|$)' "$exclude_file" >"$tmp_patterns"
