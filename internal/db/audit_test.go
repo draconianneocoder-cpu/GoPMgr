@@ -5,6 +5,8 @@ package db
 
 import (
 	"encoding/csv"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -157,5 +159,38 @@ func TestExportAuditCSVWritesHeaderOnlyForEmptyLog(t *testing.T) {
 	}
 	if rows[0][0] != "id" || rows[0][5] != "details" {
 		t.Fatalf("header = %#v", rows[0])
+	}
+}
+
+// TestExportAuditCSVFailsCleanlyWhenDestinationCannotBeOpened covers the
+// os.OpenFile failure path: the query against audit_log has already
+// succeeded and opened a *sql.Rows cursor by the time OpenFile is
+// attempted, so this also proves that cursor is not leaked on the
+// early-return error path (via db.Conn.Stats().InUse, confirmed by a
+// throwaway probe to actually discriminate a leaked cursor -- InUse
+// went 0 -> 1 while a cursor was held open and unclosed, then back to 0
+// after Close -- not assumed from reading database/sql's docs).
+func TestExportAuditCSVFailsCleanlyWhenDestinationCannotBeOpened(t *testing.T) {
+	d := newBackupTestDB(t)
+	if err := d.LogAction("owner", "export", "target-1", "irrelevant"); err != nil {
+		t.Fatalf("LogAction: %v", err)
+	}
+
+	before := d.Conn.Stats().InUse
+	outPath := filepath.Join(t.TempDir(), "no-such-subdir", "audit.csv")
+
+	if err := d.ExportAuditCSV(outPath); err == nil {
+		t.Fatal("ExportAuditCSV into a nonexistent directory = nil error, want a failure")
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("ExportAuditCSV error = %v, want fs.ErrNotExist", err)
+	}
+
+	if _, statErr := os.Stat(outPath); !errors.Is(statErr, fs.ErrNotExist) {
+		t.Errorf("stat(%s) = %v, want the file to not exist", outPath, statErr)
+	}
+
+	after := d.Conn.Stats().InUse
+	if after != before {
+		t.Errorf("Conn.Stats().InUse = %d after a failed export, want %d (the audit_log query cursor must be closed, not leaked, on the OpenFile error path)", after, before)
 	}
 }
