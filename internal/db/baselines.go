@@ -61,7 +61,7 @@ func (db *Database) GetBaseline(id string) (Baseline, error) {
 func (db *Database) ListBaselines(chartID string) ([]Baseline, error) {
 	rows, err := db.Conn.Query(`
 		SELECT id, project_id, chart_id, name, data, created_at
-		FROM baselines WHERE chart_id = ? ORDER BY created_at DESC
+		FROM baselines WHERE chart_id = ? ORDER BY created_at_unixnano DESC
 	`, chartID)
 	if err != nil {
 		return nil, err
@@ -131,12 +131,12 @@ func saveBaselineTx(tx *sql.Tx, b Baseline) (Baseline, string, error) {
 	if b.Data == "" {
 		b.Data = "{}"
 	}
-	now := nowTimestamp()
+	now := captureTimestamp()
 
 	if _, err := tx.Exec(`
-		INSERT INTO baselines (id, project_id, chart_id, name, data, created_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, b.ID, b.ProjectID, b.ChartID, b.Name, b.Data, now); err != nil {
+		INSERT INTO baselines (id, project_id, chart_id, name, data, created_at, created_at_unixnano)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, b.ID, b.ProjectID, b.ChartID, b.Name, b.Data, now.text, now.unixNano); err != nil {
 		return Baseline{}, "", err
 	}
 	saved, err := getBaselineTx(tx, b.ID)

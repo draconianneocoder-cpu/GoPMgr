@@ -644,6 +644,9 @@ func (db *Database) migrateLegacyColumns() error {
 	if err := db.retrofitTimestampFormat(); err != nil {
 		return fmt.Errorf("retrofit timestamp format: %w", err)
 	}
+	if err := db.retrofitTimestampUnixNano(); err != nil {
+		return fmt.Errorf("retrofit timestamp unixnano: %w", err)
+	}
 	return nil
 }
 

@@ -103,7 +103,7 @@ test: ## Run Go unit tests.
 race: ## Run Go tests with the race detector (concurrency gate).
 	$(GO) test -race -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests wails-version test code-map-current frontend-stability frontend-build-budget coverage-ledger-current ## Fast pre-commit gate: config + packaging/toolchain/font/reset/code-map contracts + Go tests + frontend checks.
+verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests wails-version test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering ## Fast pre-commit gate: config + packaging/toolchain/font/reset/code-map contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
@@ -114,6 +114,10 @@ code-map-current: ## Fail when the checked-in package dependency map is stale.
 
 coverage-ledger-current: ## Fail if a *_test.go/*.test.ts file exists that TEST_COVERAGE_LEDGER.md never mentions.
 	@bash scripts/check-coverage-ledger-current.sh
+
+no-text-timestamp-ordering: ## Fail if internal/db ORDER BYs on a bare created_at/updated_at TEXT column instead of its _unixnano sort-key sibling.
+	@bash scripts/check-no-text-timestamp-ordering_test.sh
+	@bash scripts/check-no-text-timestamp-ordering.sh
 
 coverage-ratchet: ## Fail only if statement coverage drops below its recorded high-water mark (Go default, Go duckdb, frontend -- tracked independently). NOT in `verify`: CI's verify job builds with GO_TEST_TAGS=webkit2_41 only and installs no DuckDB CGO toolchain, so a duckdb-tagged coverage run would hard-fail there today. Run manually; wire into verify once CI installs the duckdb toolchain, or in Phase 7 when this converts to a hard 100% floor.
 	@bash scripts/coverage-ratchet.sh

@@ -71,7 +71,7 @@ func (db *Database) SaveScenario(s Scenario) (Scenario, error) {
 	if s.IsActive {
 		active = 1
 	}
-	now := nowTimestamp()
+	now := captureTimestamp()
 
 	tx, err := db.Conn.Begin()
 	if err != nil {
@@ -99,8 +99,8 @@ func (db *Database) SaveScenario(s Scenario) (Scenario, error) {
 			return Scenario{}, err
 		}
 		if _, err = tx.Exec(
-			`UPDATE scenarios SET is_active = 0, updated_at = ? WHERE project_id = ? AND id <> ? AND is_active <> 0`,
-			now, s.ProjectID, s.ID,
+			`UPDATE scenarios SET is_active = 0, updated_at = ?, updated_at_unixnano = ? WHERE project_id = ? AND id <> ? AND is_active <> 0`,
+			now.text, now.unixNano, s.ProjectID, s.ID,
 		); err != nil {
 			return Scenario{}, err
 		}
@@ -108,17 +108,18 @@ func (db *Database) SaveScenario(s Scenario) (Scenario, error) {
 	_, err = tx.Exec(`
 		INSERT INTO scenarios (
 			id, project_id, name, source_baseline_id, description,
-			is_active, created_at, updated_at
+			is_active, created_at, updated_at, created_at_unixnano, updated_at_unixnano
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			project_id         = excluded.project_id,
 			name               = excluded.name,
 			source_baseline_id = excluded.source_baseline_id,
 			description        = excluded.description,
 			is_active          = excluded.is_active,
-			updated_at         = excluded.updated_at
-	`, s.ID, s.ProjectID, s.Name, s.SourceBaselineID, s.Description, active, now, now)
+			updated_at         = excluded.updated_at,
+			updated_at_unixnano = excluded.updated_at_unixnano
+	`, s.ID, s.ProjectID, s.Name, s.SourceBaselineID, s.Description, active, now.text, now.text, now.unixNano, now.unixNano)
 	if err != nil {
 		return Scenario{}, err
 	}
@@ -198,7 +199,7 @@ func (db *Database) ListScenarios(projectID string) ([]Scenario, error) {
 		       is_active, created_at, updated_at
 		FROM scenarios
 		WHERE project_id = ?
-		ORDER BY is_active DESC, created_at DESC, name ASC
+		ORDER BY is_active DESC, created_at_unixnano DESC, name ASC
 	`, projectID)
 	if err != nil {
 		return nil, err
@@ -292,7 +293,7 @@ func (db *Database) BranchScenarioChart(scenarioID, chartID, baselineID string) 
 	if err != nil {
 		return ScenarioChart{}, fmt.Errorf("generate scenario chart id: %w", err)
 	}
-	now := nowTimestamp()
+	now := captureTimestamp()
 	tx, err := db.Conn.Begin()
 	if err != nil {
 		return ScenarioChart{}, err
@@ -306,11 +307,12 @@ func (db *Database) BranchScenarioChart(scenarioID, chartID, baselineID string) 
 	_, err = tx.Exec(`
 		INSERT INTO scenario_charts (
 			id, scenario_id, project_id, source_chart_id, source_baseline_id,
-			kind, title, data, config, baseline_data, created_at, updated_at
+			kind, title, data, config, baseline_data, created_at, updated_at,
+			created_at_unixnano, updated_at_unixnano
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, id, scenario.ID, scenario.ProjectID, chart.ID, baselineID,
-		chart.Kind, chart.Title, chart.Data, chart.Config, baselineData, now, now)
+		chart.Kind, chart.Title, chart.Data, chart.Config, baselineData, now.text, now.text, now.unixNano, now.unixNano)
 	if err != nil {
 		return ScenarioChart{}, err
 	}
@@ -355,7 +357,7 @@ func (db *Database) ListScenarioCharts(scenarioID string) ([]ScenarioChart, erro
 		       kind, title, data, config, baseline_data, created_at, updated_at
 		FROM scenario_charts
 		WHERE scenario_id = ?
-		ORDER BY updated_at DESC, title ASC
+		ORDER BY updated_at_unixnano DESC, title ASC
 	`, scenarioID)
 	if err != nil {
 		return nil, err
@@ -405,12 +407,12 @@ func (db *Database) SaveScenarioChart(c ScenarioChart) (ScenarioChart, error) {
 	if config == "" {
 		config = "{}"
 	}
-	now := nowTimestamp()
+	now := captureTimestamp()
 	if _, err = tx.Exec(`
 		UPDATE scenario_charts
-		SET title = ?, data = ?, config = ?, updated_at = ?
+		SET title = ?, data = ?, config = ?, updated_at = ?, updated_at_unixnano = ?
 		WHERE id = ?
-	`, title, data, config, now, c.ID); err != nil {
+	`, title, data, config, now.text, now.unixNano, c.ID); err != nil {
 		return ScenarioChart{}, err
 	}
 	saved, err := getScenarioChartTx(tx, c.ID)
@@ -524,7 +526,7 @@ func listActiveScenariosExceptTx(tx *sql.Tx, projectID, exceptID string) ([]Scen
 		       is_active, created_at, updated_at
 		FROM scenarios
 		WHERE project_id = ? AND id <> ? AND is_active <> 0
-		ORDER BY created_at ASC
+		ORDER BY created_at_unixnano ASC
 	`, projectID, exceptID)
 	if err != nil {
 		return nil, err
