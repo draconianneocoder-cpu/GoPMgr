@@ -8,7 +8,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
-	"time"
 )
 
 func appendApprovalCheckpointTx(tx *sql.Tx, projectID, entityType, entityID, approvalType, approvedJSON string) (AuditEvent, error) {
@@ -18,7 +17,7 @@ func appendApprovalCheckpointTx(tx *sql.Tx, projectID, entityType, entityID, app
 	}
 	hash := sha256.Sum256([]byte(canonicalApproved))
 	payloadHash := hex.EncodeToString(hash[:])
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := nowTimestamp()
 
 	payload, err := json.Marshal(struct {
 		ApprovalType string `json:"approval_type"`

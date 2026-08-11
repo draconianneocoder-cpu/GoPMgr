@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 )
 
 // Document is one entry in the unified `documents` table.
@@ -57,7 +56,7 @@ func (db *Database) SaveDocument(d Document) (Document, error) {
 	if d.Version == 0 {
 		d.Version = 1
 	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := nowTimestamp()
 
 	tx, err := db.Conn.Begin()
 	if err != nil {

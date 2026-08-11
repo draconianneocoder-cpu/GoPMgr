@@ -640,6 +640,10 @@ func (db *Database) migrateLegacyColumns() error {
 			return fmt.Errorf("backfill %s: %w", m.name, err)
 		}
 	}
+
+	if err := db.retrofitTimestampFormat(); err != nil {
+		return fmt.Errorf("retrofit timestamp format: %w", err)
+	}
 	return nil
 }
 

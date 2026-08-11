@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"gopmgr/internal/money"
-	"time"
 )
 
 // Project is the canonical metadata for an in-progress effort.
@@ -87,7 +86,7 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 		p.BudgetMinorUnits = money.FromMajorFloat(p.Budget).MinorUnits
 	}
 	p.Budget = money.Amount{MinorUnits: p.BudgetMinorUnits}.MajorFloat()
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := nowTimestamp()
 
 	tx, err := db.Conn.Begin()
 	if err != nil {
