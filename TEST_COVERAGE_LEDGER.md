@@ -323,7 +323,7 @@ Structured error-report wrapping (file/line/stack capture) for diagnostics.
 | --- | --- | --- | --- | --- |
 | `report_test.go` | 11 | `Wrap`, `ToError`, `Report` extraction | unit, table-driven | A wrapped error must capture the real call site (file/line/stack) at wrap time, not at some later unwrap time; wrapping `nil` must be a safe no-op, not panic. |
 
-## `internal/documents` — 58.5%
+## `internal/documents` — 62.3%
 
 25 document kinds (Charter, Risk Register, Status Report, etc.): registry, default content, PDF rendering.
 2026-08-12: `documents_test.go`'s `TestRender_AllKindsProduceValidPDF` seeds every kind exclusively from
@@ -426,6 +426,32 @@ byte count, so this package's length-based testing approach structurally cannot 
 limitation class as the team-chip/role-chip wrap tests, disclosed in the test comment rather than
 overclaimed.
 
+2026-08-12, fifth increment: `business_case_test.go` applies the same pattern to `business_case.go` (chosen
+from the same coverage survey — 6 of 9 functions at 0%). Every function reached 100% statement coverage
+except the top-level renderer (98.1% — the same `pdf.Output` error-return exclusion). 9 mutations run; 6
+caught (5 section/guard mutations plus the sharpest result of the increment — mutating the cost guard from
+`cost != 0` to `cost > 0` was caught, proving this renderer's guard genuinely differs from
+`project_brief.go`'s `budget > 0`/`project_proposal.go`'s `budget > 0` pattern by actually admitting negative
+`costs_summary` values, e.g. a cost-avoidance business case). 3 survived, for two distinct reasons, neither
+papered over: one (the alternative-card empty-fields placeholder) is disclosed-by-design as a crash-safety-only
+test. The other two (the Cost & ROI and Benefits vs Risks outer OR-gates) revealed a real category of
+limitation not yet named in this ledger: a mutation that converts a content-dependent gate into an
+unconditional `if true` cannot be detected by any test built only from comparing two content-varied renders
+of the *same* mutated code, because the mutation removes content-dependence from BOTH operands of the
+comparison equally (the "empty" baseline picks up the same now-unconditional heading the "populated" case
+does) — this is different from, and arguably harder to test around than, the geometry-only limitation found
+in the two prior increments. A first-pass diagnosis of this misread the evidence as "text content compresses
+away to near-zero" and was about to be written into this ledger as a DEFLATE/compression finding; re-checking
+the debug baseline (which was unknowingly built from the *same* mutated binary) showed the empty-comparison
+side had moved by the identical amount, not that the added text vanished — corrected before writing anything
+false into the record. One additional fix made mid-increment, not a survived-mutation disclosure: an initial
+version of the alternative-card empty-fields test asserted only `got < populated`, which an em-dash-filled
+placeholder card (still drawing the full header bar, borders, and column dividers — only the body text
+differs) passed even when its suppression guard was removed, since a placeholder-filled card is close enough
+in size to a real one; replaced with a tighter ceiling derived from the measured contributions (~41 bytes for
+the section heading alone versus ~209 more bytes for a fully-drawn placeholder-filled card beyond that
+heading), and re-verified the mutation is now caught.
+
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
 | `documents_test.go` | 9 | `All`, `Get`, `ByPhase`, `DefaultContent`, `Render` for every kind | table-driven | Every one of the 25 document kinds must produce valid default JSON content AND a valid rendered PDF — a kind that's registered but can't render would be a create-then-crash bug reachable directly from the GUI's "new document" button. |
@@ -433,6 +459,7 @@ overclaimed.
 | `team_charter_test.go` | 10 | `allocationColor` (all 5 threshold bands, exact RGB), `getStringTC`/`getFloatTC` (present/missing/wrong-type), `truncTC` (ASCII-only; see the UTF-8 finding above), `normaliseMembers` (field mapping, missing-key defaulting), `RenderTeamCharterPDF` with populated `team_purpose`/`ground_rules`/`members`, out-of-range `allocation_pct` crash-safety | unit, table-driven, fault-seeded (8 production mutations across both files this increment, each confirmed caught then reverted) | Every function in `team_charter.go` reached statement coverage except the top-level renderer; the pure threshold/accessor/mapper logic got exact-value assertions, which is stronger evidence than the render-growth proxy used for the draw-only functions — disclosed honestly where that proxy's limits were found empirically rather than assumed. |
 | `project_proposal_test.go` | 8 | `RenderProjectProposalPDF` with each of its 7 content-gated sections isolated (`executive_summary`, `goals`, `approach`, `team`, `timeline`, `budget_summary`, `ask`), plus statement coverage of the team-chip wrap-to-next-row branch (`drawProposalTeamChips`'s `x+w > rightEdge` condition, unreachable with a single short name) | unit, fault-seeded (8 production mutations run; 7 caught — one per section plus the budget zero/negative guard — and 1 confirmed to survive, see below) | Six sections are gated by their own distinct content key, so each is genuinely independently isolable — confirmed by mutation, not assumed from the source shape. The wrap-condition mutation survived: disabling `x+w > rightEdge` still draws every chip (unwrapped) and still grows the output past the empty baseline this test compares against, so the test proves the wrap branch *executes*, not that wrapping is *correct* — disclosed in the test's own comment rather than left as an unstated gap. `drawProposalBudgetTile` uses `budget > 0` (excludes negative, not just zero) rather than charter.go's `!= 0` pattern; a mutation to `!= 0` was caught, proving the stricter guard is actually enforced. |
 | `project_brief_test.go` | 8 | `RenderProjectBriefPDF` with `summary`/`goals`/`roles` isolated, the `budget`/`timeline` KPI strip's outer OR-gate and two inner tile-gates tested individually (budget alone, timeline alone, neither), statement coverage of the role-chip wrap branch | unit, fault-seeded (6 production mutations run; 5 caught, 1 survived — tooling limitation, see below) | All four content-gated sections confirmed independently isolable by mutation. The KPI strip's outer gate mutation survived because its two inner guards already suppress all visible drawing when both values are absent — the gate's only remaining effect (skipping an unconditional trailing `pdf.SetXY` that otherwise wastes ~27mm of vertical space) is a real, observable layout difference that byte-length assertions structurally cannot detect (a tooling limitation, not an equivalent mutation — the underlying behavior genuinely differs), disclosed rather than silently passed over. |
+| `business_case_test.go` | 15 | `getStringBC`, `RenderBusinessCasePDF` with `problem_statement`/`proposed_solution`/`recommendation` isolated, alternatives (populated card, all-empty-fields card suppression, empty pros/cons placeholder, card-height branch for a long-wrapping cons column), the cost/ROI and benefits/risks OR-gated sections (each side alone, negative-cost boundary, neither present) | unit, fault-seeded (9 production mutations run; 6 caught, 3 survived — 1 by design, 2 revealing a new limitation class, see below) | Every function reached 100% statement coverage except the top-level renderer. The `costs_summary` guard (`!= 0`, unlike the other two proposal-style renderers' `> 0`) was verified to genuinely admit negative values by mutation. The two outer-OR-gate survivors are a distinct, newly-named limitation (content-varied comparisons can't see a mutation that removes content-dependence from both operands equally) — caught by re-checking the debug evidence before writing an initially-wrong compression-based explanation into this ledger. |
 | `helpers_test.go` | 12 | Date parsing, project-window computation, cost rollups, issue partitioning/sorting | unit, table-driven | Project-window computation (`ComputeProjectWindow`) must correctly extend the window from start-only tasks (milestones with no end date) — an easy off-by-one. |
 | `project_budget_test.go` | 1 | Money formatting with thousands separators | unit | Display formatting correctness for budget figures shown to the user. |
 | `report_evm_test.go` | 3 | EVM summary lines in document reports, combined-report chart-ref resolution | fixture | A status report's schedule chart reference must resolve to real EVM data, not a placeholder. |
