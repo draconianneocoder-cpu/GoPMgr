@@ -66,26 +66,51 @@ func TestAgileEnabled_NoProjectOpenReturnsCachedValue(t *testing.T) {
 	}
 }
 
+// TestAgileEnabled_SetPersistsToProjectSettingsAndReloads proves the
+// setting actually round-trips through the project's DB row on disk, not
+// just through the in-process agile.PackEnabled atomic both methods happen
+// to share. Two things would let a broken AgileEnabled slip past a naive
+// SetAgileEnabled(true)-then-AgileEnabled() assertion:
+//  1. AgileEnabled silently returning the stale atomic without touching the
+//     DB at all -- closed by desyncing the atomic from the expected value
+//     immediately before each AgileEnabled() call, so only a real settings
+//     read can recover the correct answer.
+//  2. SetAgileEnabled writing the atomic but never actually persisting to
+//     the project's settings row -- closed by reopening the project (a real
+//     Close+InitEncryptedDB round trip through OpenProject, not merely
+//     re-reading the same live *db.Database) between the write and the
+//     read, so the assertion can only pass if the value survived on disk.
+//
+// OpenProject does not touch agile.PackEnabled itself, so the atomic-desync
+// step after each reopen still does real work.
 func TestAgileEnabled_SetPersistsToProjectSettingsAndReloads(t *testing.T) {
 	withAgilePackEnabled(t)
 	app := newEncryptionProjectTestApp(t)
 	if _, err := app.CreateAccount("alice", "Alice", "pass-horse-battery-staple", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	mustOpenProject(t, app, "Agile Bridge Plan")
+	path := mustOpenProject(t, app, "Agile Bridge Plan")
 
 	if err := app.SetAgileEnabled(true); err != nil {
 		t.Fatalf("SetAgileEnabled(true): %v", err)
 	}
+	if _, err := app.OpenProject(path); err != nil {
+		t.Fatalf("OpenProject (reload after SetAgileEnabled(true)): %v", err)
+	}
+	agile.PackEnabled.Store(false) // desync: only a real DB read should recover true
 	if got, err := app.AgileEnabled(); err != nil || !got {
-		t.Fatalf("AgileEnabled after SetAgileEnabled(true) = (%v, %v), want (true, nil)", got, err)
+		t.Fatalf("AgileEnabled after SetAgileEnabled(true)+reload = (%v, %v), want (true, nil)", got, err)
 	}
 
 	if err := app.SetAgileEnabled(false); err != nil {
 		t.Fatalf("SetAgileEnabled(false): %v", err)
 	}
+	if _, err := app.OpenProject(path); err != nil {
+		t.Fatalf("OpenProject (reload after SetAgileEnabled(false)): %v", err)
+	}
+	agile.PackEnabled.Store(true) // desync: only a real DB read should recover false
 	if got, err := app.AgileEnabled(); err != nil || got {
-		t.Fatalf("AgileEnabled after SetAgileEnabled(false) = (%v, %v), want (false, nil)", got, err)
+		t.Fatalf("AgileEnabled after SetAgileEnabled(false)+reload = (%v, %v), want (false, nil)", got, err)
 	}
 }
 
