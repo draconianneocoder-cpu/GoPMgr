@@ -323,7 +323,7 @@ Structured error-report wrapping (file/line/stack capture) for diagnostics.
 | --- | --- | --- | --- | --- |
 | `report_test.go` | 11 | `Wrap`, `ToError`, `Report` extraction | unit, table-driven | A wrapped error must capture the real call site (file/line/stack) at wrap time, not at some later unwrap time; wrapping `nil` must be a safe no-op, not panic. |
 
-## `internal/documents` — 52.2%
+## `internal/documents` — 55.8%
 
 25 document kinds (Charter, Risk Register, Status Report, etc.): registry, default content, PDF rendering.
 2026-08-12: `documents_test.go`'s `TestRender_AllKindsProduceValidPDF` seeds every kind exclusively from
@@ -394,11 +394,27 @@ Extraordinaire", 4)` → `"Zo\xc3…"`, a lone lead byte). Cosmetic (a garbled g
 crash — no panic on any input tried. The fix changes `truncTC`'s threshold semantics from byte-count to
 rune-count, which is more than a boundary-local patch, so it's tracked separately rather than bundled here.
 
+2026-08-12, third increment: `project_proposal_test.go` was the widest opportunity remaining (surveyed all
+25 files' `go tool cover -func` output before picking — `project_proposal.go` had 6 of 7 functions at 0%,
+the worst average in the package). Every function reached 100% statement coverage except the top-level
+renderer (97.7% — again just the `pdf.Output` error-return branch). Unlike `team_charter.go`, six of this
+renderer's 7 content sections are gated by their own distinct key, so each was genuinely isolable by
+content alone — verified rather than assumed by mutating each section's guard independently and confirming
+each mutation was caught by its own test (8 mutations run across two passes; 7 caught). The 8th —
+`drawProposalTeamChips`'s wrap-to-next-row condition (`x+w > rightEdge`) — reaches 100% statement coverage
+via a many-long-names test, but is NOT independently pinned: disabling the condition still draws every chip
+(just unwrapped, overflowing the row instead of starting a new one), and that still produces comfortably
+more output than the empty baseline this test compares against, so the mutation survived. First draft of
+both the test comment and this paragraph claimed all 8 were caught before checking each mutation's
+individual PASS/FAIL rather than scanning aggregate output — corrected before commit; see the test's own
+comment for the honest claim.
+
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
 | `documents_test.go` | 9 | `All`, `Get`, `ByPhase`, `DefaultContent`, `Render` for every kind | table-driven | Every one of the 25 document kinds must produce valid default JSON content AND a valid rendered PDF — a kind that's registered but can't render would be a create-then-crash bug reachable directly from the GUI's "new document" button. |
 | `charter_test.go` | 18 | `Validate`/`isZero` (required-field enforcement across real kinds with `FieldString`/`FieldDate`/`FieldText`-typed required fields, plus the pure `isZero` type-switch including its non-matching-type fallthrough), `RenderCharterPDF` with populated content (stakeholder and milestone tables, bullet sections, budget — the first test execution of either literal `writeTable()` call site), `renderGenericPDF` with populated content isolated per `FieldKind` branch (`FieldStringArr`, `FieldText`, `FieldObjectArr`, the shared default case, and the `FieldNumber` zero-vs-non-zero guard), `KindsSorted` | unit, table-driven, fault-seeded (isolated per-branch to defeat aggregate-content masking; confirmed with `go test -count=1` after two apparent "survivors" turned out to be stale test-cache hits, not real gaps) | `Validate` gates every document save (`app_documents.go:134`); a required field that's present but empty must still be rejected, not just an absent key. Populated-content rendering exercises the majority of `charter.go`'s actual layout logic, which the existing zero-value smoke test structurally cannot reach. |
 | `team_charter_test.go` | 10 | `allocationColor` (all 5 threshold bands, exact RGB), `getStringTC`/`getFloatTC` (present/missing/wrong-type), `truncTC` (ASCII-only; see the UTF-8 finding above), `normaliseMembers` (field mapping, missing-key defaulting), `RenderTeamCharterPDF` with populated `team_purpose`/`ground_rules`/`members`, out-of-range `allocation_pct` crash-safety | unit, table-driven, fault-seeded (8 production mutations across both files this increment, each confirmed caught then reverted) | Every function in `team_charter.go` reached statement coverage except the top-level renderer; the pure threshold/accessor/mapper logic got exact-value assertions, which is stronger evidence than the render-growth proxy used for the draw-only functions — disclosed honestly where that proxy's limits were found empirically rather than assumed. |
+| `project_proposal_test.go` | 8 | `RenderProjectProposalPDF` with each of its 7 content-gated sections isolated (`executive_summary`, `goals`, `approach`, `team`, `timeline`, `budget_summary`, `ask`), plus statement coverage of the team-chip wrap-to-next-row branch (`drawProposalTeamChips`'s `x+w > rightEdge` condition, unreachable with a single short name) | unit, fault-seeded (8 production mutations run; 7 caught — one per section plus the budget zero/negative guard — and 1 confirmed to survive, see below) | Six sections are gated by their own distinct content key, so each is genuinely independently isolable — confirmed by mutation, not assumed from the source shape. The wrap-condition mutation survived: disabling `x+w > rightEdge` still draws every chip (unwrapped) and still grows the output past the empty baseline this test compares against, so the test proves the wrap branch *executes*, not that wrapping is *correct* — disclosed in the test's own comment rather than left as an unstated gap. `drawProposalBudgetTile` uses `budget > 0` (excludes negative, not just zero) rather than charter.go's `!= 0` pattern; a mutation to `!= 0` was caught, proving the stricter guard is actually enforced. |
 | `helpers_test.go` | 12 | Date parsing, project-window computation, cost rollups, issue partitioning/sorting | unit, table-driven | Project-window computation (`ComputeProjectWindow`) must correctly extend the window from start-only tasks (milestones with no end date) — an easy off-by-one. |
 | `project_budget_test.go` | 1 | Money formatting with thousands separators | unit | Display formatting correctness for budget figures shown to the user. |
 | `report_evm_test.go` | 3 | EVM summary lines in document reports, combined-report chart-ref resolution | fixture | A status report's schedule chart reference must resolve to real EVM data, not a placeholder. |
