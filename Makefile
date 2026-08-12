@@ -115,6 +115,10 @@ code-map-current: ## Fail when the checked-in package dependency map is stale.
 coverage-ledger-current: ## Fail if a *_test.go/*.test.ts file exists that TEST_COVERAGE_LEDGER.md never mentions.
 	@bash scripts/check-coverage-ledger-current.sh
 
+coverage-ledger-drift: ## Fail if a package-coverage heading in TEST_COVERAGE_LEDGER.md no longer matches live `go test -cover` output. NOT in `verify`: like coverage-ratchet, it runs a -tags duckdb pass CI's verify job has no toolchain for; run manually or once CI installs the duckdb toolchain.
+	@bash scripts/check-coverage-ledger-drift_test.sh
+	@bash scripts/check-coverage-ledger-drift.sh
+
 no-text-timestamp-ordering: ## Fail if internal/db ORDER BYs on a bare created_at/updated_at TEXT column instead of its _unixnano sort-key sibling.
 	@bash scripts/check-no-text-timestamp-ordering_test.sh
 	@bash scripts/check-no-text-timestamp-ordering.sh
