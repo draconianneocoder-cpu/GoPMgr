@@ -157,6 +157,7 @@ installer-tool-pins: ## Reject mutable or mismatched native installer tool selec
 windows-installer-scaffold: ## Validate GoPMgr-owned NSIS templates and Windows release wiring.
 	@bash scripts/check-windows-installer-scaffold_test.sh
 	@bash scripts/check-windows-installer-scaffold.sh
+	@bash scripts/validate-windows-nsis-template_test.sh
 	@bash scripts/validate-windows-nsis-template.sh
 
 linux-runtime-target: ## Verify Linux CI/packages target Ubuntu 24.04+ WebKit2GTK 4.1.

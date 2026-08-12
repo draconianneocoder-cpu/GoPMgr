@@ -75,10 +75,30 @@ if [ -n "${GOPMGR_SKIP_NSIS_COMPILE:-}" ]; then
 	exit 0
 fi
 
+# Captured via `|| nsis_status=$?` rather than letting `set -e` exit
+# directly: a bare failure here would abort the script silently as far as
+# the user is concerned (just "Abort trap: 6" from makensis itself, no
+# GoPMgr-authored line at all), which is exactly what cost three prior
+# development cycles -- an already-working, already-documented escape
+# hatch (GOPMGR_SKIP_NSIS_COMPILE, see the top of this script) went
+# unnoticed because nothing in the failure path pointed at it. The hint
+# below fires on ANY nonzero makensis exit, not just a detected crash
+# signature: `set -e` plus this subshell means the abort's exact signal
+# isn't reliably inspectable here, and a hint that only matches today's
+# crash wording would silently stop firing the moment the upstream bug's
+# message changes. It still reads correctly for a genuine template syntax
+# error, since it's phrased as a possibility ("if this looks like...") not
+# an assertion.
+nsis_status=0
 (
 	cd "$INSTALLER_DIR"
 	makensis -V2 "-DARG_WAILS_AMD64_BINARY=$nsis_binary_arg" project.nsi
-)
+) || nsis_status=$?
+if [ "$nsis_status" -ne 0 ]; then
+	echo "validate-windows-nsis-template: makensis exited $nsis_status." >&2
+	echo "validate-windows-nsis-template: if this looks like a crash (e.g. \"Abort trap\"/\"bad_alloc\") rather than makensis rejecting the template's syntax, see GOPMGR_SKIP_NSIS_COMPILE near the top of this script -- a known upstream Homebrew/NSIS defect on some hosts, not necessarily a GoPMgr template bug. Setting it skips the compile; that is NOT a pass, only a way to keep working on unrelated changes." >&2
+	exit "$nsis_status"
+fi
 
 output="$TEST_ROOT/build/bin/gopmgr-amd64-installer.exe"
 if [ ! -s "$output" ]; then
