@@ -323,13 +323,42 @@ Structured error-report wrapping (file/line/stack capture) for diagnostics.
 | --- | --- | --- | --- | --- |
 | `report_test.go` | 11 | `Wrap`, `ToError`, `Report` extraction | unit, table-driven | A wrapped error must capture the real call site (file/line/stack) at wrap time, not at some later unwrap time; wrapping `nil` must be a safe no-op, not panic. |
 
-## `internal/documents` — 44.9%
+## `internal/documents` — 49.2%
 
 25 document kinds (Charter, Risk Register, Status Report, etc.): registry, default content, PDF rendering.
+2026-08-12: `documents_test.go`'s `TestRender_AllKindsProduceValidPDF` seeds every kind exclusively from
+`DefaultContent()`, which is zero-valued by design — so every "populated content" branch across every
+renderer (tables, headings, per-kind helpers, the generic fallback's per-`FieldKind` switch) had never
+executed under test, and `Validate`/`isZero` (called from `app_documents.go:134` on the document-save
+path, zero tests) and `KindsSorted` (defined, never tested) were also untested. `charter_test.go` closes
+this gap for `charter.go` only — the fully-implemented reference renderer — establishing the pattern for
+the other 24 (still zero-value-only) renderer files as a deferred follow-up. Notable findings from this
+increment: (1) `renderRaw`'s dispatch `switch` now has an explicit case for all 25 registered `Kind`s, so
+`renderGenericPDF` is currently unreachable through the public `Render()`/`renderRaw()` path — it exists
+purely as a forward-compatible fallback for a future `Kind` added without a bespoke renderer, and is
+tested by calling it directly (same package) rather than through the dispatcher. (2) No registered `Kind`
+defines a `FieldBool` field anywhere in `templates.go`, so `renderGenericPDF`'s `FieldBool` switch case is
+unreachable through any real schema today and is not tested — exercising it would require a synthetic,
+non-shipped `Kind`, which the "no speculative rewrites" rule rules out; left as a documented exclusion.
+(3) `RenderSigned` (the public, file-path-based signing entry point) remains untested — its own logic is
+two statements (`crypto.LoadCertificate` + delegate to `renderSignedWithSigner`), the delegate is already
+covered at 85.7% by `signed_pipeline_test.go`, and `crypto.LoadCertificate`'s own error paths are covered
+in `internal/crypto`'s tests — a cross-package `.p12` fixture dependency for two statements' marginal
+coverage was judged not worth the coupling; deferred with reasoning recorded, not silently skipped. (4)
+Fault-seeding surfaced two real test-design gaps before they shipped: an aggregate "populate everything at
+once" render test cannot distinguish "one specific branch stopped firing" from "some other branch simply
+contributed the size difference" when enough other content is present — mutations disabling the charter
+stakeholder/milestone tables, or the generic renderer's `FieldText`/`FieldObjectArr` cases, survived an
+aggregate size-only assertion; each now has its own isolated single-field render test. Separately, an
+exact-byte-length equality assertion between two separately-timed render calls flaked under `go test
+-race` because every render's footer embeds `time.Now().UTC().Format(time.RFC3339Nano)`, whose
+trailing-zero-trimmed fractional seconds vary in length call to call — replaced with a tolerance-based
+delta comparison sized well above that jitter but well below a real written field's contribution.
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
 | `documents_test.go` | 9 | `All`, `Get`, `ByPhase`, `DefaultContent`, `Render` for every kind | table-driven | Every one of the 25 document kinds must produce valid default JSON content AND a valid rendered PDF — a kind that's registered but can't render would be a create-then-crash bug reachable directly from the GUI's "new document" button. |
+| `charter_test.go` | 18 | `Validate`/`isZero` (required-field enforcement across real kinds with `FieldString`/`FieldDate`/`FieldText`-typed required fields, plus the pure `isZero` type-switch including its non-matching-type fallthrough), `RenderCharterPDF` with populated content (stakeholder and milestone tables, bullet sections, budget — the first test execution of either literal `writeTable()` call site), `renderGenericPDF` with populated content isolated per `FieldKind` branch (`FieldStringArr`, `FieldText`, `FieldObjectArr`, the shared default case, and the `FieldNumber` zero-vs-non-zero guard), `KindsSorted` | unit, table-driven, fault-seeded (isolated per-branch to defeat aggregate-content masking; confirmed with `go test -count=1` after two apparent "survivors" turned out to be stale test-cache hits, not real gaps) | `Validate` gates every document save (`app_documents.go:134`); a required field that's present but empty must still be rejected, not just an absent key. Populated-content rendering exercises the majority of `charter.go`'s actual layout logic, which the existing zero-value smoke test structurally cannot reach. |
 | `helpers_test.go` | 12 | Date parsing, project-window computation, cost rollups, issue partitioning/sorting | unit, table-driven | Project-window computation (`ComputeProjectWindow`) must correctly extend the window from start-only tasks (milestones with no end date) — an easy off-by-one. |
 | `project_budget_test.go` | 1 | Money formatting with thousands separators | unit | Display formatting correctness for budget figures shown to the user. |
 | `report_evm_test.go` | 3 | EVM summary lines in document reports, combined-report chart-ref resolution | fixture | A status report's schedule chart reference must resolve to real EVM data, not a placeholder. |
