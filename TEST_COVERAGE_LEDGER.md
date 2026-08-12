@@ -48,6 +48,18 @@ document: a row's test count, its "How"/"Why" prose, or
 `internal/applog`'s per-file claim ("100% of `applog.go`") are still
 unverified by any automation and rely on the methodology note above.
 
+`scripts/check-coverage-ledger-current.sh` (widened 2026-08-12, run
+inside `make coverage-ledger-current`, which is in `make verify`) checks
+that every `*_test.go`/`*.test.ts`/`*.spec.ts`/`*.test.js`/`*.spec.js`
+file in the repo is at least mentioned somewhere in this document.
+Before 2026-08-12 it only recognized `*_test.go`/`*.test.ts`, narrower
+than frontend/vitest.config.ts's actual test-discovery pattern
+(`src/**/*.{test,spec}.{ts,js}`) — a `.spec.ts`/`.spec.js`/`.test.js`
+file would have been picked up and run by vitest but never checked
+against this document at all. That match against vitest's `include` is
+maintained by hand, not enforced; widening the vitest pattern further
+needs the same update here.
+
 **Technique legend** (used in the "How" column throughout):
 
 | Tag | Meaning |
