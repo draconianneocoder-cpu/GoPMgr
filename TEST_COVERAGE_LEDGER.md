@@ -57,7 +57,7 @@ methodology note above.
 
 ---
 
-## Root package (`gopmgr`, package `main`) — 48.4%
+## Root package (`gopmgr`, package `main`) — 52.2%
 
 The Wails desktop app entry point, App struct (bound to the frontend via
 `window.go.main.App`), and CLI/headless dispatch. Most of this package's
@@ -66,11 +66,27 @@ real (temp-dir) `*users.Store` and `*db.Database` — this package has no
 network or GUI dependency to mock, so tests build real state and assert
 on real outcomes rather than mocking collaborators.
 
+**Note on this heading's own guarantees**: it is **not** covered by
+`check-coverage-ledger-drift.sh` — that script's heading regex only matches
+`` ## `internal/...` `` headings, so this one (and any future non-`internal/`
+heading) is silently never checked. That's a real gap in the script relative
+to its own stated "unparseable heading is a hard failure, not a
+pass-by-omission" design principle — confirmed directly by reading the regex,
+not assumed. Deferred rather than fixed in this increment (root-package
+coverage work, not a `scripts` package change), but disclosed here rather
+than left implicit: this 52.2% is hand-verified against `go test ./... -cover`
+(the drift script's own invocation, not just `go test .`) as of 2026-08-11,
+not drift-script-guarded. A future increment fixing the regex should correct
+this number (and any drift that accumulates before then) in the same commit
+that changes the regex, since the moment it starts matching, an
+already-stale number would fail the script.
+
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
 | `main_test.go` | 10 | `logTail`, `GenerateBugReport`, `buildAppMenu` (darwin + non-darwin), `buildAppOptions`, `beforeClose` | unit, fixture, table-driven | Diagnostic-report generation must include the right log tail without unbounded growth; `buildAppMenu`'s two tests (added 2026-08-05, see `DEVELOPER_HANDBOOK.md`) pin the platform-specific menu structure — App/Edit/Window role menus vs. GoPMgr's own Window submenu, and where Quit lives — via an injectable `goos` parameter so both branches run on any single host. |
 | `migration_e2e_test.go` | 1 | `users.DefaultRootDir`, `users.MigrateLegacyRoot`, `App.Login`, `App.ListProjects` | e2e | Proves a pre-rename ("PMForge") install is fully *usable* after migration — not just that files got copied — including deleting the old root first to simulate real post-migration cleanup. Guards the `f1a5501` data-loss class of bug (stale `DataDir` pointing at a deleted root). |
 | `admin_recovery_test.go`, `admin_test.go` | 9 | `App.AdminIssueRecoveryCodes`, `App.CreateAccount`, `App.BecomeAdmin`, `App.AdminDeleteUser`, `App.AdminSetUserRole` | integration | Admin-only operations must reject non-admin callers and forbid self-modification (can't delete/demote yourself) — the access-control boundary between regular and admin accounts. |
+| `app_agile_test.go` (added 2026-08-11) | 9 | Every `app_agile.go` Wails-bridge method (columns, work items, sprints, deployments, `AgileEnabled`/`SetAgileEnabled`, `ComputeDORA`) | integration | Prior increment closed `internal/agile.Store` to 97.7%; this one covers the thin Wails-bridge layer on top of it, which had 13 of 19 methods at 0% before this. **Found and fixed a real correctness defect, not just a coverage gap**: `App.ComputeDORA` computed its deployment-fetch `since` cutoff from the raw `windowDays` argument, while `agile.ComputeDORA` internally defaults `windowDays <= 0` to a 30-day *classification* window — so `ComputeDORA(0)`, the app's own documented "use the 30-day default" call, fetched deployments only since *now* (almost none) while labeling the (empty) result as a 30-day window. Fixed by applying the same `<= 0 → 30` default before computing `since`, matching `agile.ComputeDORA`'s own rule. `TestComputeDORA_FetchWindowMatchesClassificationWindow` is the regression test — fault-seeded by reverting the fix and confirming a 20-day-old deployment silently disappeared from the result (`TotalDeploys` went from the expected 1 to 0), then re-verified clean on restore. `TestAgileStore_RequiresOpenProject` and `TestDeleteWorkItem_RequiresOpenProject` pin two textually distinct "no project open" guards — `agileStore()`'s own `"agile: no project open"` and `DeleteWorkItem`'s separate, un-routed-through-`agileStore()` `"no project open"` (it calls `requireDB()` directly so it can attribute an audit-log entry before deleting) — asserting the exact strings means a future unification of the two is a deliberate, tested change. Every other `agileStore()`-gated method's own `if err != nil { return zero, err }` wrapper after the call is structurally identical to the one these two tests already prove correct; not repeated 11 more times per-method, since that would add no new risk surface for a real coverage cost. `withAgilePackEnabled` saves/restores the package-level `agile.PackEnabled` atomic around every test that touches it (`SetAgileEnabled` writes it; `AgileEnabled`'s no-project branch reads it) — `audit_actions_test.go`'s existing `TestDeleteWorkItem_WritesAuditLog` already calls `SetAgileEnabled(true)` and never resets it, so an unguarded test here would pass or fail depending on run order; confirmed clean with `go test . -shuffle=on -count=3`. `TestListDeployments_SinceISOParsing` pins (rather than changes) `ListDeployments`' current lenient behavior on an unparseable `sinceISO` — a silently-swallowed `time.Parse` error falls back to "no filter" instead of erroring; `grep -rn ListDeployments frontend/src` confirmed the frontend only ever calls this with `""`, never a real date, so there was no live evidence either way to justify changing it, and the test exists so a future switch to strict parsing is deliberate rather than incidental. |
 | `app_documents_split_evm_test.go` | 3 | CPM→kernel task conversion for split/segmented tasks, EVM schedule loading | unit, table-driven | A task split across non-contiguous date ranges must preserve every segment through the kernel conversion, and overlapping segments must be rejected — silent data loss or double-counted effort otherwise. |
 | `app_combined_report_test.go` | 1 | `App.ExportCombinedReportWithOptions` Wails boundary | integration | Confirms the public App adapter sends report output to the authenticated user's private exports directory and preserves the sibling provenance-manifest contract after report orchestration moved into `internal/reporting`. |
 | `app_pades_export_test.go` | 2 | `App.ExportDocumentPDF` / `ExportCombinedReport` with runtime PAdES signing | fixture/golden | A "signed" export must actually contain a verifiable PAdES signature, not just succeed — checked by parsing the produced PDF's signature structure. |

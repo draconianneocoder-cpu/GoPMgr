@@ -249,10 +249,27 @@ func (a *App) ComputeDORA(windowDays int) (agile.DORAResult, error) {
 	if err != nil {
 		return agile.DORAResult{}, err
 	}
-	since := time.Now().AddDate(0, 0, -windowDays)
+	// Apply the same windowDays<=0-means-30 default agile.ComputeDORA
+	// applies internally BEFORE computing `since`. Passing the raw
+	// (possibly <= 0) value here would fetch deployments since "now"
+	// while agile.ComputeDORA classified them as if it were a full
+	// 30-day window -- the fetch and the classification would silently
+	// disagree, under-reporting every metric for a windowDays <= 0 call.
+	if windowDays <= 0 {
+		windowDays = 30
+	}
+	// Capture `now` once and pass it through to agile.ComputeDORA rather
+	// than letting it call time.Now() again internally: two separate
+	// calls would make its `from` cutoff strictly later than the one used
+	// for the fetch below (by however long ListDeployments took), so a
+	// deployment landing in that sliver would be fetched but then
+	// filtered out -- the same class of fetch/classification mismatch
+	// this function already exists to prevent, just far smaller.
+	now := time.Now().UTC()
+	since := now.AddDate(0, 0, -windowDays)
 	deploys, err := s.ListDeployments(since)
 	if err != nil {
 		return agile.DORAResult{}, err
 	}
-	return agile.ComputeDORA(deploys, windowDays, time.Now().UTC()), nil
+	return agile.ComputeDORA(deploys, windowDays, now), nil
 }
