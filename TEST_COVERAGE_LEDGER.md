@@ -33,14 +33,20 @@ tracked `coverage-baseline.json`. Reproduce with
 `npm --prefix frontend run test:coverage` (frontend). The exclusion rationale
 is recorded beside `scripts/coverage-exclude-go.txt`.
 
-`scripts/check-coverage-ledger-drift.sh` (2026-08-10, standalone —
-not yet wired into `make verify`) checks that every `## \`internal/X\` —
-NN.N%` heading above still matches live `go test -cover` output, and
-that every `internal/*` package with live coverage has a heading at all.
-It does not check anything else in this document: a row's test count,
-its "How"/"Why" prose, or `internal/applog`'s per-file claim ("100% of
-`applog.go`") are still unverified by any automation and rely on the
-methodology note above.
+`scripts/check-coverage-ledger-drift.sh` (2026-08-10; widened 2026-08-11;
+run via `make coverage-ledger-drift`, standalone — not in `make verify`,
+same DuckDB-toolchain reason as `coverage-ratchet` below) checks that
+every package-coverage heading above still matches live `go test -cover`
+output — this covers every `internal/*` heading, the root `gopmgr`
+package, `scripts`, and `tools/*`, not just `internal/*` as the original
+2026-08-10 version did — and that every package in that set with live
+coverage has a matching heading at all. Any heading it can't classify
+into a known package-coverage, non-package-prose, or externally-tracked
+(Frontend, checked by `coverage-frontend.sh` instead) bucket is a hard
+failure, not a silent skip. It does not check anything else in this
+document: a row's test count, its "How"/"Why" prose, or
+`internal/applog`'s per-file claim ("100% of `applog.go`") are still
+unverified by any automation and rely on the methodology note above.
 
 **Technique legend** (used in the "How" column throughout):
 
