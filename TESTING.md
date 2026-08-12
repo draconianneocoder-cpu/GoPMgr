@@ -125,6 +125,13 @@ fixtures cover missing branding, destructive uninstall behavior, analytics
 stub drift, and bypassed checks. When `makensis` is installed, the target also
 compiles a harmless fixture installer against the pinned Wails macro template.
 This proves NSIS syntax, not Windows binary linkage or installed-app behavior.
+If `makensis` crashes rather than rejecting the template (some Homebrew
+NSIS bottles abort with `std::bad_alloc` on certain macOS/arm64 hosts,
+independent of any GoPMgr `.nsi` content), the failure output names
+`GOPMGR_SKIP_NSIS_COMPILE`, an explicit env var that skips only the
+compile step; unset by default, so a normal run still fails loudly.
+Setting it is not a pass — it means NSIS syntax went unverified for that
+run.
 
 `make check-release` is the final gate. It currently covers version
 consistency, configuration format policy, native installer tool pins,
