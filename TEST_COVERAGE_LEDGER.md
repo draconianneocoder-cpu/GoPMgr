@@ -323,7 +323,7 @@ Structured error-report wrapping (file/line/stack capture) for diagnostics.
 | --- | --- | --- | --- | --- |
 | `report_test.go` | 11 | `Wrap`, `ToError`, `Report` extraction | unit, table-driven | A wrapped error must capture the real call site (file/line/stack) at wrap time, not at some later unwrap time; wrapping `nil` must be a safe no-op, not panic. |
 
-## `internal/documents` — 49.2%
+## `internal/documents` — 52.2%
 
 25 document kinds (Charter, Risk Register, Status Report, etc.): registry, default content, PDF rendering.
 2026-08-12: `documents_test.go`'s `TestRender_AllKindsProduceValidPDF` seeds every kind exclusively from
@@ -352,13 +352,53 @@ stakeholder/milestone tables, or the generic renderer's `FieldText`/`FieldObject
 aggregate size-only assertion; each now has its own isolated single-field render test. Separately, an
 exact-byte-length equality assertion between two separately-timed render calls flaked under `go test
 -race` because every render's footer embeds `time.Now().UTC().Format(time.RFC3339Nano)`, whose
-trailing-zero-trimmed fractional seconds vary in length call to call — replaced with a tolerance-based
-delta comparison sized well above that jitter but well below a real written field's contribution.
+trailing-zero-trimmed fractional seconds vary in length call to call — replaced with a shared
+`assertGrew`/`growthTolerance` helper sized well above that jitter but well below a real written field's
+contribution.
+
+2026-08-12, second increment: `team_charter_test.go` applies the same pattern to `team_charter.go`. Every
+function in the file reached 100% statement coverage except `RenderTeamCharterPDF` itself (96.8% — the
+one uncovered statement is `pdf.Output(&buf)`'s error-return branch, which needs an injected failing
+writer to reach; same permanent-exclusion class as the other renderers' identical `Output` error checks,
+not related to the members-table branch). `allocationColor` (pure RGB-by-threshold
+function) and `getStringTC`/`getFloatTC`/`truncTC`/`normaliseMembers` (pure accessors/mappers) got direct
+unit tests with exact-value assertions rather than render-growth proxies, since they're extractable pure
+logic — this is strictly stronger evidence than "the PDF got bigger." `drawAllocationBar` and `drawTeamTable`
+are draw-only (no return value), so their assurance is necessarily weaker: `assertGrew` proves the drawing
+code executed and contributed visible output, but not that a bar's width or color is pixel-correct — that
+half of the claim rests on `allocationColor`'s exact-value test plus code review, not on any test in this
+file. `TestRenderTeamCharterPDF_OutOfRangeAllocation_DoesNotPanic` pins allocation_pct values outside
+[0, 100] (320 and -15) as a crash-safety regression, since a corrupted or malformed percentage is a
+plausible real input.
+
+One honest correction made mid-increment: `tcHeading("Team Members")`, `drawTeamTable`, and
+`drawTeamCapacityBanner` all fire together inside the same `if len(members) > 0` block
+(team_charter.go:60-62), gated on the same `members` slice, with no content-based way to isolate one from
+the other two the way charter.go's independently-gated stakeholder/milestone tables could be. A first draft
+of `TestRenderTeamCharterPDF_MembersTable_WrittenWhenPresent`'s comment *claimed* drawTeamTable and
+tcHeading were each individually pinned by that test; actually measuring each mutation's delta against the
+test's true baseline (fully empty content, ~570-byte combined delta when all three are intact) showed
+gutting drawTeamTable alone still leaves ~77 bytes (heading + banner survive on their own), gutting tcHeading
+alone leaves ~550, and gutting the banner alone leaves ~519 — all three individually-gutted mutants clear
+`growthTolerance` (12) against the empty baseline this test actually compares to, so none of the three are
+independently caught. The test comment was corrected to say so plainly: this test proves "populating members
+produces meaningfully more output than not," not "each of the three internal calls independently fired." A
+defect confined to any single one of the three could survive it. Isolating them would require restructuring
+`RenderTeamCharterPDF`'s members branch into separately callable pieces — out of scope for a coverage-only
+increment.
+
+Deferred, not fixed this increment (see `TestTruncTC`'s comment for the evidence and reasoning; spun off as
+a follow-up task): `truncTC` slices by byte index rather than rune index, so a multi-byte UTF-8 name can be
+cut mid-character and produce invalid UTF-8 — confirmed concretely (`truncTC("Zoë Müller-Åström the Third
+Extraordinaire", 4)` → `"Zo\xc3…"`, a lone lead byte). Cosmetic (a garbled glyph in the rendered PDF), not a
+crash — no panic on any input tried. The fix changes `truncTC`'s threshold semantics from byte-count to
+rune-count, which is more than a boundary-local patch, so it's tracked separately rather than bundled here.
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
 | `documents_test.go` | 9 | `All`, `Get`, `ByPhase`, `DefaultContent`, `Render` for every kind | table-driven | Every one of the 25 document kinds must produce valid default JSON content AND a valid rendered PDF — a kind that's registered but can't render would be a create-then-crash bug reachable directly from the GUI's "new document" button. |
 | `charter_test.go` | 18 | `Validate`/`isZero` (required-field enforcement across real kinds with `FieldString`/`FieldDate`/`FieldText`-typed required fields, plus the pure `isZero` type-switch including its non-matching-type fallthrough), `RenderCharterPDF` with populated content (stakeholder and milestone tables, bullet sections, budget — the first test execution of either literal `writeTable()` call site), `renderGenericPDF` with populated content isolated per `FieldKind` branch (`FieldStringArr`, `FieldText`, `FieldObjectArr`, the shared default case, and the `FieldNumber` zero-vs-non-zero guard), `KindsSorted` | unit, table-driven, fault-seeded (isolated per-branch to defeat aggregate-content masking; confirmed with `go test -count=1` after two apparent "survivors" turned out to be stale test-cache hits, not real gaps) | `Validate` gates every document save (`app_documents.go:134`); a required field that's present but empty must still be rejected, not just an absent key. Populated-content rendering exercises the majority of `charter.go`'s actual layout logic, which the existing zero-value smoke test structurally cannot reach. |
+| `team_charter_test.go` | 10 | `allocationColor` (all 5 threshold bands, exact RGB), `getStringTC`/`getFloatTC` (present/missing/wrong-type), `truncTC` (ASCII-only; see the UTF-8 finding above), `normaliseMembers` (field mapping, missing-key defaulting), `RenderTeamCharterPDF` with populated `team_purpose`/`ground_rules`/`members`, out-of-range `allocation_pct` crash-safety | unit, table-driven, fault-seeded (8 production mutations across both files this increment, each confirmed caught then reverted) | Every function in `team_charter.go` reached statement coverage except the top-level renderer; the pure threshold/accessor/mapper logic got exact-value assertions, which is stronger evidence than the render-growth proxy used for the draw-only functions — disclosed honestly where that proxy's limits were found empirically rather than assumed. |
 | `helpers_test.go` | 12 | Date parsing, project-window computation, cost rollups, issue partitioning/sorting | unit, table-driven | Project-window computation (`ComputeProjectWindow`) must correctly extend the window from start-only tasks (milestones with no end date) — an easy off-by-one. |
 | `project_budget_test.go` | 1 | Money formatting with thousands separators | unit | Display formatting correctness for budget figures shown to the user. |
 | `report_evm_test.go` | 3 | EVM summary lines in document reports, combined-report chart-ref resolution | fixture | A status report's schedule chart reference must resolve to real EVM data, not a placeholder. |
