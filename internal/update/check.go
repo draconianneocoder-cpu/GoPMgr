@@ -54,6 +54,13 @@ var UpdateChannel = "stable"
 
 const maxManifestBytes int64 = 64 * 1024
 
+// httpTransport overrides the HTTP client's Transport in tests. Nil in
+// production: http.Client falls back to http.DefaultTransport when
+// Transport is nil, so this is a no-op behavioral change — it exists only
+// to give tests a seam to point CheckLatest at an httptest.NewTLSServer
+// without mutating package-level global HTTP state.
+var httpTransport http.RoundTripper
+
 // Status is the result returned to the GUI / CLI.
 type Status struct {
 	Configured      bool   `json:"configured"`       // ManifestURL + key set?
@@ -100,7 +107,14 @@ func CheckLatest(ctx context.Context) (Status, error) {
 		return st, nil
 	}
 
-	client := &http.Client{Timeout: 8 * time.Second}
+	client := &http.Client{Timeout: 8 * time.Second, Transport: httpTransport}
+	// NewRequestWithContext's own error is disclosed-untested: it only
+	// fails on a nil ctx or an unparseable URL/method, and ManifestURL was
+	// already parsed successfully above, method is a fixed "GET" literal,
+	// and every real caller (Check, the GUI Settings panel) passes a live
+	// context. Reaching this branch would require calling CheckLatest with
+	// an atypical nil ctx, which isn't a realistic call pattern worth
+	// asserting against.
 	req, err := http.NewRequestWithContext(ctx, "GET", ManifestURL, nil)
 	if err != nil {
 		st.Error = err.Error()
@@ -185,13 +199,19 @@ func readManifestBody(r io.Reader) ([]byte, error) {
 	return raw, nil
 }
 
+// osExit is indirected so tests can force Check's startup-error exit path
+// without actually terminating the test binary, mirroring
+// internal/applog's osExit seam.
+var osExit = os.Exit
+
 // Check is the CLI `--update` entry point. Prints a one-line
 // summary to stdout.
 func Check() {
 	st, err := CheckLatest(context.Background())
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "GoPMgr update check failed: %v\n", err)
-		os.Exit(1)
+		osExit(1)
+		return // unreached with the real os.Exit; guards the switch below when osExit is faked in tests
 	}
 	switch {
 	case !st.Configured:
