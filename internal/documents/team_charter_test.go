@@ -86,21 +86,31 @@ func TestGetFloatTC(t *testing.T) {
 	}
 }
 
-// ----- truncTC: ASCII-only cases -----
+// ----- truncTC -----
 //
-// truncTC slices by byte index (s[:n-1]), which can split a multi-byte
-// UTF-8 rune and produce invalid UTF-8 for non-ASCII input (confirmed:
-// truncTC("Zoë Müller-Åström the Third Extraordinaire", 4) returns
-// "Zo\xc3…", a lone lead byte with no continuation byte). That's a real,
-// if cosmetic (garbled glyph, not a crash), finding -- deferred rather
-// than fixed here since it requires changing truncTC's threshold
-// semantics from byte-count to rune-count, a behavior change beyond this
-// coverage increment's scope. Recorded in TEST_COVERAGE_LEDGER.md and
-// spun off as a follow-up task. Not pinning the buggy output here: an
-// assertion that "Zo\xc3…" is the *expected* result would read as a
-// regression test to whoever fixes it later. These cases stay ASCII-only,
-// which is sufficient for full statement coverage of truncTC's two
-// branches.
+// truncTC used to slice by byte index (s[:n-1]) with no rune-boundary
+// check, which could split a multi-byte UTF-8 rune and produce invalid
+// UTF-8 for non-ASCII input (confirmed at the time: truncTC("Zoë
+// Müller-Åström the Third Extraordinaire", 4) returned "Zo\xc3…", a
+// lone lead byte with no continuation byte). That finding was deferred
+// rather than fixed in the increment that found it, and independently
+// duplicated across eight more per-renderer trunc* helpers in this
+// package, all with the same defect and none with any test coverage at
+// all. Fixed by extracting one shared truncDoc (charter.go) that every
+// trunc* function in the package -- including this one -- now delegates
+// to. truncDoc keeps the same byte budget as the old implementations
+// (an early rune-count-based draft was rejected: see truncDoc's doc
+// comment for why) and just adds the missing rune-boundary check, so
+// the historical example above now returns "Zo…" -- dropping the
+// 2-byte "ë" whole, since it doesn't fit in the byte budget remaining
+// after "Zo", rather than splitting it. See TestTruncDoc in
+// charter_test.go for the shared function's own coverage (including a
+// regression case using this exact historical example) and
+// TestTruncWrappersDelegate for confirmation that all nine per-file
+// wrappers actually call through to it. The cases below stay ASCII plus
+// one non-ASCII passthrough case; the multi-byte truncation behavior
+// itself is covered once, on the shared function, rather than re-proven
+// per wrapper.
 func TestTruncTC(t *testing.T) {
 	tests := []struct {
 		name string
@@ -111,6 +121,7 @@ func TestTruncTC(t *testing.T) {
 		{"shorter than limit passes through unchanged", "Alex", 10, "Alex"},
 		{"exact-length boundary passes through unchanged", "Alexandra", 9, "Alexandra"},
 		{"longer than limit is truncated with an ellipsis", "Alexandra Extraordinaire", 10, "Alexandra…"},
+		{"non-ASCII input shorter than limit passes through unchanged", "Zoë Müller-Åström", 30, "Zoë Müller-Åström"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

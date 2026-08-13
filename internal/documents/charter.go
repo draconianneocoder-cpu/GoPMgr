@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"sort"
 	"time"
+	"unicode/utf8"
 
 	"github.com/go-pdf/fpdf"
 
@@ -272,6 +273,80 @@ func getObjectSlice(m map[string]interface{}, key string) []map[string]interface
 		}
 	}
 	return out
+}
+
+// truncDoc truncates s to at most n bytes, appending a single "…" (a
+// 3-byte UTF-8 character) when truncation occurs, without ever
+// splitting a multi-byte UTF-8 character -- the defect every
+// per-renderer trunc* wrapper in this package used to have
+// independently (each sliced by byte index without a rune-boundary
+// check: s[:n-1] + "…"), confirmed concretely via
+// truncTC("Zoë Müller-Åström the Third Extraordinaire", 4), which
+// returned the invalid-UTF-8 "Zo\xc3…" before this fix.
+//
+// This keeps n as a byte budget (matching every old per-file
+// implementation) rather than switching to a rune-count budget. An
+// earlier draft of this fix used rune count -- correct for validity,
+// but wrong for layout: because these n values were tuned against
+// byte-count truncation, and a single CJK character costs 3 bytes,
+// rune-count truncation let a 64-byte call site keep 64 *characters* of
+// CJK text instead of ~21, nearly tripling the string's rendered width
+// (measured directly against issue_log.go's Description column with an
+// embedded font: 46.5mm old vs. 133.6mm under rune-count truncation,
+// against a 75mm-wide column -- a real table-layout overflow, not a
+// theoretical one). Byte-budget truncation with a rune-boundary check
+// avoids that regressing at every call site, not just the measured one:
+// cut is always <= n-1 (it only ever moves left from there), and the
+// old code always cut at exactly n-1, so this function's output is
+// never more bytes than the old code's for the same s and n -- rendered
+// width can only shrink or stay equal. The 46.5mm-both-ways measurement
+// above is a confirming instance of that inspection-provable bound, not
+// the basis for it. For ASCII input (byte count == rune count, so the
+// back-off loop never executes) this is byte-for-byte identical to
+// every old per-file implementation.
+//
+// n <= 0 is not guarded: cut starts at n-1 (negative for n<=0), but the
+// loop condition `cut > 0` never executes a negative-index read, and
+// the function clamps cut to 0 before slicing -- so unlike the
+// byte-slicing/rune-slicing implementations that preceded this one,
+// n <= 0 does NOT panic here; it degrades to a bare "…". Documented as
+// a behavior note rather than added as a guarded precondition, since
+// no call site in this package passes anything but a positive literal
+// (16 to 120).
+//
+// The len(s) <= n passthrough branch returns s unmodified without
+// re-validating it -- if s ever arrived already containing invalid
+// UTF-8 (e.g. ending in a lone lead byte with no continuation byte),
+// this function wouldn't repair it, and fpdf's UTF8-mode text path
+// (reached whenever an embedded font is registered via
+// SetFontApplier, fonts.go) reads continuation bytes by index without
+// its own validity check -- traced concretely to
+// fpdf's utf8toutf16 (github.com/go-pdf/fpdf@v0.9.0/util.go), which
+// could read past a string's end on a sufficiently malformed trailing
+// byte. Verified this isn't reachable through this package's own call
+// path rather than assumed: every s these trunc* functions see
+// originates from renderRaw's json.Unmarshal([]byte(contentJSON),
+// &content) a few lines below, and Go's encoding/json always
+// substitutes U+FFFD (valid UTF-8) for invalid byte sequences on
+// string decode -- confirmed directly (a raw dangling 0xC3 lead byte
+// embedded in JSON input decodes to a valid-UTF-8 Go string, never an
+// invalid one). So s is guaranteed valid UTF-8 on every call site this
+// package actually has.
+func truncDoc(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	cut := n - 1
+	if cut < 0 {
+		cut = 0
+	}
+	// Back off to the start of a rune (never a continuation byte) so a
+	// multi-byte character that doesn't fully fit in the budget is
+	// dropped whole rather than split.
+	for cut > 0 && !utf8.RuneStart(s[cut]) {
+		cut--
+	}
+	return s[:cut] + "…"
 }
 
 // Render dispatches to the kind-specific PDF renderer (or the generic

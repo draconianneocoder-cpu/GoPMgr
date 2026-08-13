@@ -281,9 +281,12 @@ func getFloatTC(m map[string]interface{}, key string) float64 {
 	return 0
 }
 
+// truncTC delegates to the shared, rune-boundary-safe truncDoc (see charter.go).
+// Kept as a named wrapper -- rather than rewriting this file's call
+// sites to call truncDoc directly -- to avoid touching every call site
+// across all nine files that used to duplicate this logic, and to keep
+// this package's existing per-file trunc* names (and the tests/ledger
+// entries that reference them by name) stable.
 func truncTC(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n-1] + "\xe2\x80\xa6" // …
+	return truncDoc(s, n)
 }
