@@ -323,7 +323,7 @@ Structured error-report wrapping (file/line/stack capture) for diagnostics.
 | --- | --- | --- | --- | --- |
 | `report_test.go` | 11 | `Wrap`, `ToError`, `Report` extraction | unit, table-driven | A wrapped error must capture the real call site (file/line/stack) at wrap time, not at some later unwrap time; wrapping `nil` must be a safe no-op, not panic. |
 
-## `internal/documents` — 62.3%
+## `internal/documents` — 65.3%
 
 25 document kinds (Charter, Risk Register, Status Report, etc.): registry, default content, PDF rendering.
 2026-08-12: `documents_test.go`'s `TestRender_AllKindsProduceValidPDF` seeds every kind exclusively from
@@ -452,6 +452,53 @@ in size to a real one; replaced with a tighter ceiling derived from the measured
 the section heading alone versus ~209 more bytes for a fully-drawn placeholder-filled card beyond that
 heading), and re-verified the mutation is now caught.
 
+2026-08-13, sixth increment: `project_overview_test.go` applies the same pattern to `project_overview.go`,
+chosen from the same coverage survey — 5 of its 6 functions were at 0%, the highest zero-coverage ratio of
+any file remaining in the package. Every function reached 100% statement coverage except the top-level
+renderer (96.8% — the same `pdf.Output` error-return exclusion as every other renderer in this package).
+Unlike the five prior files, this one has no per-file `getStringXX`/`getStringSliceXX` accessors of its own
+— it uses the shared `getString`/`getStringSlice` from `charter.go` — so this increment has fewer
+pure-accessor tests and instead adds direct exact-value tests for `overviewStatusColor` (all label/RGB
+branches, including the untrimmed-whitespace and empty-string default paths) and `overviewCardHeight` (the
+3-line/35mm floor, and the fixed 4.5mm-per-line contribution once past that floor). All three content-gated
+sections' guards were mutated and reverted; all 3 caught, checked by the actual pass/fail result of each
+mutated run rather than assumed from the mechanism — though the third took a second test to actually catch,
+not just disclose. `status != "" -> false` and `len(highlights) > 0 -> false` were both caught on the first
+try: with the draw call unconditionally skipped, the populated and empty renders became byte-identical
+(measured delta: 0), well under `growthTolerance`. The milestones/budget/team OR-gate forced to an
+unconditional `if true` survived the section's first test
+(`TestRenderProjectOverviewPDF_Grid_FiresOnAnySingleField`) — an initial pass reasoned this would be caught
+because `drawOverviewGrid` fills an empty card with a literal `"(not provided)"` placeholder, so a populated
+field's real text should still measurably outweigh the placeholder it displaces (confirmed: 35-65 bytes per
+field, comfortably above `growthTolerance`). That reasoning was checked against the actual `go test -v`
+output rather than trusted, and the tests in fact reported PASS under the mutation, i.e. survived — the
+nonzero delta reasoning was correct but irrelevant: that test only asserts that a populated render is bigger
+than this same (possibly mutated) binary's own empty-content render, a claim that holds whether or not the
+grid should have drawn anything for the empty case at all. A growth-only comparison between two
+content-varied renders is structurally unable to distinguish "the gate correctly suppressed the section"
+from "the gate is gone but the section's content differs from its own placeholder" — it proves *content
+reaches the page*, not that *drawing is conditional on content being present*. This is a different mechanism
+than `business_case.go`'s named limitation (there the mutation collapsed both compared operands to identical
+content) reaching the same conclusion — that limitation's stated reason turns out to be narrower than its
+stated conclusion. Unlike that case, though, this gate turned out to be pinnable: a direct ceiling assertion
+on the all-empty render's absolute size, rather than a comparison against a second, differently-populated
+render, sidesteps the growth-only blind spot entirely.
+`TestRenderProjectOverviewPDF_Grid_NotDrawnWhenAllFieldsEmpty` asserts the all-empty render stays under 2050
+bytes (measured: 1969 unmutated, 2201 with the gate forced open — the ceiling sits between the two, clear of
+the footer timestamp's few-byte jitter) and was confirmed to fail against the same `if true` mutation before
+being kept. A first attempt at the newline-counting test for
+`overviewCardHeight` asserted an exact height delta between a plain string and the same string with four
+embedded newlines added; this failed empirically (delta was 6mm, not the predicted 18mm) because
+`overviewCardHeight`'s line-count formula also re-measures the newline-inclusive string's total `GetStringWidth`,
+which grows with the extra text regardless of the newlines — the two terms aren't separable below the 3-line
+floor. Corrected to compare consecutive newline-counts once both terms are already past the floor, where the
+per-line 4.5mm contribution empirically holds exactly (probed and confirmed before writing the assertion, not
+inferred from the source alone). The milestones-only/budget-only/team-only test gives `drawOverviewGrid`
+statement coverage with each field populated alone; on its own it does not pin the gate (closed separately by
+the ceiling test above), and it does not prove each field's text is routed to its own specific card — a
+mutation swapping which field lands in which card would be invisible to either assertion style used in this
+file, disclosed in both the test file's comment and here rather than left implicit.
+
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
 | `documents_test.go` | 9 | `All`, `Get`, `ByPhase`, `DefaultContent`, `Render` for every kind | table-driven | Every one of the 25 document kinds must produce valid default JSON content AND a valid rendered PDF — a kind that's registered but can't render would be a create-then-crash bug reachable directly from the GUI's "new document" button. |
@@ -460,6 +507,7 @@ heading), and re-verified the mutation is now caught.
 | `project_proposal_test.go` | 8 | `RenderProjectProposalPDF` with each of its 7 content-gated sections isolated (`executive_summary`, `goals`, `approach`, `team`, `timeline`, `budget_summary`, `ask`), plus statement coverage of the team-chip wrap-to-next-row branch (`drawProposalTeamChips`'s `x+w > rightEdge` condition, unreachable with a single short name) | unit, fault-seeded (8 production mutations run; 7 caught — one per section plus the budget zero/negative guard — and 1 confirmed to survive, see below) | Six sections are gated by their own distinct content key, so each is genuinely independently isolable — confirmed by mutation, not assumed from the source shape. The wrap-condition mutation survived: disabling `x+w > rightEdge` still draws every chip (unwrapped) and still grows the output past the empty baseline this test compares against, so the test proves the wrap branch *executes*, not that wrapping is *correct* — disclosed in the test's own comment rather than left as an unstated gap. `drawProposalBudgetTile` uses `budget > 0` (excludes negative, not just zero) rather than charter.go's `!= 0` pattern; a mutation to `!= 0` was caught, proving the stricter guard is actually enforced. |
 | `project_brief_test.go` | 8 | `RenderProjectBriefPDF` with `summary`/`goals`/`roles` isolated, the `budget`/`timeline` KPI strip's outer OR-gate and two inner tile-gates tested individually (budget alone, timeline alone, neither), statement coverage of the role-chip wrap branch | unit, fault-seeded (6 production mutations run; 5 caught, 1 survived — tooling limitation, see below) | All four content-gated sections confirmed independently isolable by mutation. The KPI strip's outer gate mutation survived because its two inner guards already suppress all visible drawing when both values are absent — the gate's only remaining effect (skipping an unconditional trailing `pdf.SetXY` that otherwise wastes ~27mm of vertical space) is a real, observable layout difference that byte-length assertions structurally cannot detect (a tooling limitation, not an equivalent mutation — the underlying behavior genuinely differs), disclosed rather than silently passed over. |
 | `business_case_test.go` | 15 | `getStringBC`, `RenderBusinessCasePDF` with `problem_statement`/`proposed_solution`/`recommendation` isolated, alternatives (populated card, all-empty-fields card suppression, empty pros/cons placeholder, card-height branch for a long-wrapping cons column), the cost/ROI and benefits/risks OR-gated sections (each side alone, negative-cost boundary, neither present) | unit, fault-seeded (9 production mutations run; 6 caught, 3 survived — 1 by design, 2 revealing a new limitation class, see below) | Every function reached 100% statement coverage except the top-level renderer. The `costs_summary` guard (`!= 0`, unlike the other two proposal-style renderers' `> 0`) was verified to genuinely admit negative values by mutation. The two outer-OR-gate survivors are a distinct, newly-named limitation (content-varied comparisons can't see a mutation that removes content-dependence from both operands equally) — caught by re-checking the debug evidence before writing an initially-wrong compression-based explanation into this ledger. |
+| `project_overview_test.go` | 8 | `overviewStatusColor` (all label/RGB branches, whitespace-trim, empty-string default, unrecognised-status passthrough), `RenderProjectOverviewPDF` with status/highlights/milestones-or-budget-or-team isolated, the milestones/budget/team OR-gate itself (all-empty render pinned under a measured ceiling), crash-safety for unrecognised and whitespace-only status values, `overviewCardHeight` (3-line/35mm floor, exact 4.5mm-per-line contribution past the floor, tallest-of-several-bodies selection) | unit, table-driven, fault-seeded (3 production mutations run — one per gate, reverted after confirming; all 3 caught, though the OR-gate mutation survived its first test and needed a second — see below) | Every function reached 100% statement coverage except the top-level renderer (the standard `pdf.Output` error-return exclusion). Highest zero-coverage ratio remaining in the package at pick time (5 of 6 functions at 0%). The status and highlights gate mutations were caught immediately (forcing either draw call off makes the populated and empty renders byte-identical). The milestones/budget/team OR-gate forced unconditionally open survived `TestRenderProjectOverviewPDF_Grid_FiresOnAnySingleField`: `drawOverviewGrid`'s per-card `"(not provided)"` placeholder means a populated field's real text still measurably outweighs its placeholder, but that test's growth-only comparison between two content-varied renders can't distinguish that from "the gate correctly suppressed the section" — it proves content reaches the page, not that drawing is conditional on the gate. A different mechanism than `business_case.go`'s named limitation (there the two compared operands collapsed to identical content; here they genuinely differ) reaching the same conclusion, confirmed by checking the mutated run's actual pass/fail result rather than assumed from the delta alone. Unlike that case, this gate was pinnable: `TestRenderProjectOverviewPDF_Grid_NotDrawnWhenAllFieldsEmpty` asserts the all-empty render's absolute size stays under a ceiling measured between the unmutated (1969 bytes) and gate-forced-open (2201 bytes) cases, confirmed to fail under the mutation before being kept. |
 | `helpers_test.go` | 12 | Date parsing, project-window computation, cost rollups, issue partitioning/sorting | unit, table-driven | Project-window computation (`ComputeProjectWindow`) must correctly extend the window from start-only tasks (milestones with no end date) — an easy off-by-one. |
 | `project_budget_test.go` | 1 | Money formatting with thousands separators | unit | Display formatting correctness for budget figures shown to the user. |
 | `report_evm_test.go` | 3 | EVM summary lines in document reports, combined-report chart-ref resolution | fixture | A status report's schedule chart reference must resolve to real EVM data, not a placeholder. |
