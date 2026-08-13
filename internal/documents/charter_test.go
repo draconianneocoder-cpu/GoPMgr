@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"errors"
 	"testing"
+	"unicode/utf8"
 )
 
 // documents_test.go's TestRender_AllKindsProduceValidPDF seeds every kind
@@ -446,5 +447,133 @@ func TestKindsSorted_ReturnsAllKindsInNameOrder(t *testing.T) {
 		if _, ok := byKind[k]; !ok {
 			t.Errorf("KindsSorted() contains %q which is not in All()", k)
 		}
+	}
+}
+
+// ----- truncDoc (shared truncation helper) -----
+//
+// truncDoc replaced nine independently-duplicated, identically-buggy
+// trunc* functions across this package's per-kind renderers (truncTC,
+// truncC, truncClo, truncExec, truncProc, truncIssue, truncBudget,
+// truncReq, truncR). All nine used to slice by byte index (s[:n-1]),
+// which could split a multi-byte UTF-8 character and emit invalid
+// UTF-8 -- confirmed at the time via
+// truncTC("Zoë Müller-Åström the Third Extraordinaire", 4) returning
+// "Zo\xc3…". truncDoc keeps n as a byte budget (not a rune-count budget
+// -- see its doc comment in charter.go for why a rune-count version was
+// tried first and rejected: it nearly tripled a CJK cell's rendered
+// width against the same n, a real table-layout overflow measured
+// directly against a real column width). The multi-byte-safety behavior
+// is proven once here, on the shared implementation, rather than
+// re-proven separately for each of the nine thin wrappers -- see
+// TestTruncWrappersDelegate below for confirmation that each wrapper
+// actually calls through to this function rather than, say, silently
+// reverting to its own inline copy.
+
+func TestTruncDoc(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		n    int
+		want string
+	}{
+		{"shorter than limit passes through unchanged", "Alex", 10, "Alex"},
+		{"exact-length boundary passes through unchanged", "Alexandra", 9, "Alexandra"},
+		{"longer than limit is truncated with an ellipsis", "Alexandra Extraordinaire", 10, "Alexandra…"},
+		// n=1 behaves identically under the old byte-slicing code too
+		// (s[:0] is always a valid empty slice) -- this pins the
+		// boundary but does not discriminate the fix. n=0, below, is
+		// the one that actually differs: confirmed by reverting truncDoc
+		// to the old s[:n-1] body and re-running just this case, which
+		// panics with "slice bounds out of range [:-1]" rather than
+		// merely failing an assertion.
+		{"n=1 produces a bare ellipsis without panicking", "Alexandra", 1, "…"},
+		{"n=0 does not panic (unlike every old per-file implementation)", "Alexandra", 0, "…"},
+		// The historical bug case, and one of only two cases in this
+		// table confirmed (by running it against the reverted old body)
+		// to actually discriminate the fix -- see TestTruncWrappersDelegate's
+		// comment for the full revert-and-rerun methodology. Byte-index
+		// slicing used to cut mid-character here (the old code's s[:3]
+		// landed inside "ë"'s 2-byte encoding, producing invalid UTF-8).
+		// truncDoc backs off from that same byte budget to the last full
+		// rune boundary: "ë" doesn't fit in the 3 bytes available after
+		// "Z" and "o" (2 bytes) leave only 1, so it's dropped whole
+		// rather than split, keeping "Zo".
+		{"multi-byte UTF-8 backs off to the last full rune within the byte budget", "Zoë Müller-Åström the Third Extraordinaire", 4, "Zo…"},
+		{"non-ASCII input shorter than the byte budget passes through unchanged", "Zoë Müller-Åström", 30, "Zoë Müller-Åström"},
+		// This is BYTE budget, not rune-count: a 12-rune CJK string is
+		// 36 bytes (3 bytes/rune), which exceeds n=20 in bytes even
+		// though 12 <= 20 in runes -- so this truncates, matching what
+		// the old byte-based implementations already did (correctly, by
+		// accident) for this exact case. The other of the two cases in
+		// this table confirmed to discriminate the fix (the old code
+		// produces a different, invalid-UTF-8 result here too).
+		{"CJK input within rune-count but over the byte budget still truncates", "日本語のテスト文字列です", 20, "日本語のテス…"},
+		// n=4 happens to land exactly on a rune boundary for this
+		// particular 3-byte-only string (byte index 3 == the start of
+		// the second rune), so the old code's s[:3] and the new
+		// back-off produce the SAME output here -- confirmed by running
+		// this case against the reverted old body, where it passes
+		// rather than fails. Kept as a real, valid case (it does prove
+		// truncDoc handles an exact rune boundary correctly), but NOT
+		// counted among the cases that discriminate the historical bug.
+		{"multi-byte UTF-8 at a 3-byte-rune boundary truncates cleanly", "日本語のテスト文字列です", 4, "日…"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := truncDoc(tt.s, tt.n)
+			if got != tt.want {
+				t.Errorf("truncDoc(%q, %d) = %q, want %q", tt.s, tt.n, got, tt.want)
+			}
+			if !utf8.ValidString(got) {
+				t.Errorf("truncDoc(%q, %d) = %q, which is not valid UTF-8", tt.s, tt.n, got)
+			}
+		})
+	}
+}
+
+// TestTruncWrappersDelegate confirms each of the nine per-file trunc*
+// wrappers actually calls through to the shared truncDoc, using the
+// same multi-byte input that used to expose the byte-slicing defect --
+// a wrapper that silently kept its own old inline logic (a plausible
+// copy-paste-revert slip when a fix touches nine files in one pass)
+// would fail this on the exact input that matters, even though its
+// ASCII-only behavior would look identical either way.
+//
+// Revert-and-rerun methodology: this test and TestTruncDoc's two
+// discriminating cases (see their comments above) were confirmed to
+// actually catch the historical bug, not assumed to from the fix's
+// mechanism alone -- truncDoc's body was temporarily reverted to the
+// old s[:n-1] + "…" slicing (no rune-boundary back-off) and these tests
+// re-run against it: all nine wrapper subtests here failed, as did the
+// two TestTruncDoc cases noted as discriminating, while the coincidence
+// case (n lands exactly on a rune boundary) and the ASCII-only
+// TestTruncTC cases all still passed, confirming they don't exercise
+// the bug. The revert was never committed.
+func TestTruncWrappersDelegate(t *testing.T) {
+	const s = "Zoë Müller-Åström the Third Extraordinaire"
+	const n = 4
+	const want = "Zo…"
+
+	wrappers := []struct {
+		name string
+		fn   func(string, int) string
+	}{
+		{"truncTC", truncTC},
+		{"truncC", truncC},
+		{"truncClo", truncClo},
+		{"truncExec", truncExec},
+		{"truncProc", truncProc},
+		{"truncIssue", truncIssue},
+		{"truncBudget", truncBudget},
+		{"truncReq", truncReq},
+		{"truncR", truncR},
+	}
+	for _, w := range wrappers {
+		t.Run(w.name, func(t *testing.T) {
+			if got := w.fn(s, n); got != want {
+				t.Errorf("%s(%q, %d) = %q, want %q (does it still delegate to truncDoc?)", w.name, s, n, got, want)
+			}
+		})
 	}
 }

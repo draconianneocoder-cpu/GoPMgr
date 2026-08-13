@@ -230,9 +230,7 @@ func getObjectSliceClo(m map[string]interface{}, key string) []map[string]interf
 	return out
 }
 
+// truncClo delegates to the shared, rune-boundary-safe truncDoc (see charter.go).
 func truncClo(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n-1] + "…"
+	return truncDoc(s, n)
 }

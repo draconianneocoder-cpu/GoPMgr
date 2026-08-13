@@ -248,9 +248,7 @@ func getObjectSliceR(m map[string]interface{}, key string) []map[string]interfac
 	return out
 }
 
+// truncR delegates to the shared, rune-boundary-safe truncDoc (see charter.go).
 func truncR(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n-1] + "…"
+	return truncDoc(s, n)
 }

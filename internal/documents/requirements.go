@@ -249,9 +249,7 @@ func getStringReq(m map[string]interface{}, key string) string {
 	return ""
 }
 
+// truncReq delegates to the shared, rune-boundary-safe truncDoc (see charter.go).
 func truncReq(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n-1] + "\xe2\x80\xa6" // …
+	return truncDoc(s, n)
 }

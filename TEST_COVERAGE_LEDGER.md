@@ -323,7 +323,7 @@ Structured error-report wrapping (file/line/stack capture) for diagnostics.
 | --- | --- | --- | --- | --- |
 | `report_test.go` | 11 | `Wrap`, `ToError`, `Report` extraction | unit, table-driven | A wrapped error must capture the real call site (file/line/stack) at wrap time, not at some later unwrap time; wrapping `nil` must be a safe no-op, not panic. |
 
-## `internal/documents` — 65.3%
+## `internal/documents` — 65.9%
 
 25 document kinds (Charter, Risk Register, Status Report, etc.): registry, default content, PDF rendering.
 2026-08-12: `documents_test.go`'s `TestRender_AllKindsProduceValidPDF` seeds every kind exclusively from
@@ -387,12 +387,14 @@ defect confined to any single one of the three could survive it. Isolating them 
 `RenderTeamCharterPDF`'s members branch into separately callable pieces — out of scope for a coverage-only
 increment.
 
-Deferred, not fixed this increment (see `TestTruncTC`'s comment for the evidence and reasoning; spun off as
-a follow-up task): `truncTC` slices by byte index rather than rune index, so a multi-byte UTF-8 name can be
-cut mid-character and produce invalid UTF-8 — confirmed concretely (`truncTC("Zoë Müller-Åström the Third
-Extraordinaire", 4)` → `"Zo\xc3…"`, a lone lead byte). Cosmetic (a garbled glyph in the rendered PDF), not a
-crash — no panic on any input tried. The fix changes `truncTC`'s threshold semantics from byte-count to
-rune-count, which is more than a boundary-local patch, so it's tracked separately rather than bundled here.
+Deferred, not fixed this increment (see `TestTruncTC`'s comment for the evidence and reasoning at the time;
+spun off as a follow-up task): `truncTC` slices by byte index rather than rune index, so a multi-byte UTF-8
+name can be cut mid-character and produce invalid UTF-8 — confirmed concretely (`truncTC("Zoë Müller-Åström
+the Third Extraordinaire", 4)` → `"Zo\xc3…"`, a lone lead byte). At the time judged cosmetic (a garbled glyph
+in the rendered PDF), not a crash. **Fixed in a later increment — see the 2026-08-13 "shared truncDoc" entry
+below** — once the same defect turned out to be independently duplicated across eight more per-renderer
+`trunc*` helpers with zero test coverage on any of them, which changed this from a single boundary-local
+patch into a package-wide consolidation worth its own cycle.
 
 2026-08-12, third increment: `project_proposal_test.go` was the widest opportunity remaining (surveyed all
 25 files' `go tool cover -func` output before picking — `project_proposal.go` had 6 of 7 functions at 0%,
@@ -499,11 +501,126 @@ the ceiling test above), and it does not prove each field's text is routed to it
 mutation swapping which field lands in which card would be invisible to either assertion style used in this
 file, disclosed in both the test file's comment and here rather than left implicit.
 
+2026-08-13, seventh increment (not a coverage sweep — a correctness fix with coverage as a side effect):
+fixes the byte-vs-rune truncation defect the team_charter.go increment (2026-08-12, second increment above)
+found and deferred in `truncTC`. Before fixing it, grepped every `trunc*` function in the package and found
+the identical byte-index-slicing logic (`s[:n-1] + "…"`) independently duplicated across eight more
+per-renderer files — `truncC` (communication_plan.go), `truncClo` (closure.go), `truncExec`
+(execution_plan.go), `truncProc` (procurement_plan.go), `truncIssue` (issue_log.go), `truncBudget`
+(project_budget.go), `truncReq` (requirements.go), `truncR` (risk_register.go) — all with zero test coverage
+(confirmed via `go tool cover -func`), so the same defect existed nine times with only one instance even
+disclosed. That changed the fix's scope: patching `truncTC` alone and leaving eight known-identical copies
+of the same bug in place would have perpetuated the exact duplication this ledger's own methodology note
+warns about. See the "Reachability of a genuine crash risk" paragraph below for the pre-implementation check
+of whether this defect could panic (not just corrupt a glyph) under the app's real, embedded-font PDF path.
+
+Fixed by extracting one shared `truncDoc(s string, n int) string` in `charter.go`, alongside the package's
+other shared helpers (`getString`/`getStringSlice`/`getObjectSlice`), and changing each of the nine `trunc*`
+functions into a one-line named wrapper that delegates to it. Wrappers were kept — rather than rewriting
+every call site across nine files to call `truncDoc` directly — specifically because this package's existing
+shared-helper precedent (`getString`/`getStringSlice`) is called directly with no per-file alias; departing
+from that precedent here was a deliberate choice to avoid a ~30-call-site diff and to keep every existing
+test function and ledger reference (`truncTC`, `TestTruncTC`, etc.) valid by name, not an oversight.
+
+**First implementation attempt, corrected before commit, not after**: the first draft of `truncDoc` switched
+`n`'s meaning from a byte budget to a rune-count budget (`[]rune(s)` then slice by rune index) — this fixes
+UTF-8 validity but was wrong for layout, caught by the post-implementation `/advisor` review rather than
+assumed safe. These `n` values were all tuned against the old byte-count truncation, and a single CJK
+character costs 3 bytes; rune-count truncation let a 64-byte call site keep 64 *characters* of CJK text
+instead of ~21 — measured directly against a real column (`issue_log.go`'s 75mm-wide Description column,
+`truncIssue(it.Description, 64)`) with a real embedded font (`internal/fonts/assets/SourceSans3-Regular.ttf`
+via `AddUTF8FontFromBytes`): the rune-count version rendered at 133.6mm, overflowing the 75mm column by
+nearly 2×, against 46.5mm for the same string under the old byte-based code. Not a theoretical edge case —
+any project with non-Latin content (a very real, plausible user population for a PM tool) would have hit
+visibly overflowing table cells. The ledger's own first draft of this section asserted "cells can now render
+up to a few characters wider than before... no call site needed retuning" without having measured it; that
+claim was wrong and is not the shipped design. **Final design**: `truncDoc` keeps `n` as a byte budget,
+identical to every old implementation, and adds only a rune-boundary back-off — `cut := n-1`, then walk `cut`
+left while `!utf8.RuneStart(s[cut])`, so a multi-byte character that doesn't fully fit in the byte budget is
+dropped whole rather than split, instead of keeping more characters than the old code ever did. This bounds
+the width regression at every call site, not just the one measured, by inspection rather than sampling: `cut`
+only ever moves left from `n-1`, and the old code always cut at exactly `n-1`, so the new output is never
+more bytes than the old output for the same `s` and `n` — rendered width can only shrink or stay equal,
+everywhere. Re-measured against the same real column and font after the redesign as a confirming instance of
+that bound, not its basis: 46.5mm both ways, i.e. no rendered-width change for that specific case. For ASCII
+input (byte count equals rune count, so the back-off loop never executes) this is byte-for-byte identical to
+the old implementations by inspection, not by any indirect test evidence — the existing package-wide
+render-smoke test (`TestRender_AllKindsProduceValidPDF`) seeds every kind from zero-valued `DefaultContent()`
+and never reaches a `trunc*` call at all, so it is not and was not cited as evidence for this claim. A
+genuine, deliberate side effect of the final design: `n <= 0` no longer panics (it degrades to a bare `"…"`,
+since `cut` clamps to 0 rather than going negative) — unlike every old implementation, which panicked on a
+negative slice index for `n <= 0`. This is specifically an `n <= 0` finding, not an `n <= 1` one: `n=1`
+behaves identically under old and new code (`s[:0]` was always a valid empty slice), confirmed by running
+that case against the reverted old body, where it also passes — it pins the boundary but doesn't discriminate
+the fix. Neither is relied on by any call site (all pass positive literals, 16 to 120), but both were checked
+directly rather than assumed, since the panic-avoidance claim is a real behavior change even though an
+accidental improvement.
+
+**Reachability of a genuine crash risk, verified rather than assumed**: before implementing, checked whether
+the embedded-TrueType-font PDF text path (fpdf's `utf8toutf16`, only reached when an app-registered font is
+active via `SetFontApplier` — `go test` uses core Helvetica instead, where the original "no panic on any
+input tried" finding for `truncTC` was made) could turn a dangling-lead-byte string into an actual panic
+rather than a cosmetic glyph, since that function reads continuation bytes by index with no explicit UTF-8
+validity check of its own. Verified empirically: built a real `*fpdf.Fpdf` with `AddUTF8FontFromBytes`
+against the same real embedded `.ttf` and fed it the exact historical buggy output plus a sweep of
+truncation-boundary offsets over a second multi-byte string; no panic in any case under the OLD (pre-fix)
+`trunc*` output, because those functions always appended a 3-byte ellipsis after the cut, and that
+ellipsis's bytes happened to always supply enough trailing bytes to satisfy `utf8toutf16`'s greedy
+continuation-byte reads (mis-decoding, not an out-of-bounds read). That check covers `truncDoc`'s truncation
+branch, but not its passthrough branch (`len(s) <= n` returns `s` unmodified, unvalidated) — if `s` could
+ever arrive already invalid, this function wouldn't repair it, and neither would the old ones. Traced the
+one path this package actually has: every string these functions see originates from `renderRaw`'s
+`json.Unmarshal([]byte(contentJSON), &content)`, and Go's `encoding/json` was confirmed directly (not
+assumed from documentation) to always substitute U+FFFD — valid UTF-8 — for invalid byte sequences on
+string decode, even for a raw dangling lead byte embedded in the JSON source. So `s` is guaranteed valid
+UTF-8 on every call site this package actually has, closing the passthrough-branch question rather than
+leaving it as an unstated assumption.
+
+New tests: `TestTruncDoc` (charter_test.go) proves the shared function's behavior directly against the final
+byte-budget design — ASCII passthrough/exact-boundary/truncation (byte-identical to the old per-file tests),
+`n=1` and `n=0` (both produce a bare ellipsis without panicking), multi-byte UTF-8 that backs off to the last
+full rune within the byte budget (the historical `truncTC("Zoë Müller-Åström the Third Extraordinaire", 4)`
+case now returns `"Zo…"`, not `"Zoë…"` — the fix drops the 2-byte "ë" whole rather than keeping a rune the
+old byte budget never had room for), a CJK case that demonstrates this is a byte budget, not a rune-count
+budget (a 12-rune/36-byte string truncates against `n=20` even though 12 <= 20, matching what the old
+byte-based code already did, correctly, by accident, for this exact case), and a second CJK case at a 3-byte
+rune boundary. `TestTruncWrappersDelegate` (charter_test.go) confirms all nine wrappers actually call through
+to `truncDoc` on the historical multi-byte input, rather than each individually re-proving multi-byte
+correctness — a wrapper that silently kept its own old inline logic (a realistic risk when a fix touches nine
+files in one pass) would look identical to a correct one on ASCII-only input but diverge on exactly this
+case.
+
+**Every test's discrimination was checked individually against the reverted old body, not assumed from the
+fix's mechanism** — the same discipline this ledger's `project_proposal.go`/`project_overview.go` increments
+established for mutation testing, applied here to a revert instead of a forward mutation. First pass at this
+check made the same category of error those increments warned about and corrected: a revert run was executed
+against an *earlier* draft (the rejected rune-count design) with a *different* expected-value table, and its
+PASS/FAIL results were initially written into this ledger as if they applied to the shipped byte-budget
+design — caught before commit by re-running the revert against the actual shipped table. The corrected,
+actually-executed results: reverting `truncDoc` to the old `s[:n-1] + "…"` body (no rune-boundary back-off)
+and re-running — all nine `TestTruncWrappersDelegate` subtests failed; two of `TestTruncDoc`'s three
+multi-byte cases failed (the historical `"Zoë…"→"Zo…"` case and the CJK-truncates-at-n=20 case); the third
+multi-byte case (the 3-byte-rune-boundary CJK case) **passed** under the reverted body too — `n=4` happens to
+land exactly on a rune boundary for that specific 3-byte-only string, so the old and new code coincide there;
+it's a valid correctness case but does not discriminate the bug, and the test's own comment says so rather
+than overclaiming. `TestTruncDoc`'s `n=0` case panicked outright under the revert (confirming the `n <= 0`
+finding above with an executed stack trace, not just an assertion failure) rather than failing quietly; `n=1`
+passed under both bodies, as expected once the misattribution above was caught. `TestTruncTC`'s existing
+cases (ASCII plus one non-ASCII passthrough) passed throughout every revert, confirming they never actually
+discriminated the bug and the new shared tests are not redundant with them. `TestTruncTC` gained the one
+non-ASCII passthrough case plus a rewritten comment pointing at this fix and the two new shared tests rather
+than re-asserting multi-byte behavior locally.
+Package coverage moved from 65.3% to 65.9% purely from the eight previously-0% `trunc*` functions reaching
+100% — no other function's coverage changed, and this increment intentionally did not also add "populated
+content" render-growth tests for the eight files it touched (that remains separate, larger-scope future work
+per this package's established per-file pattern; this cycle's boundary was the trunc defect and its own
+direct coverage only).
+
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
 | `documents_test.go` | 9 | `All`, `Get`, `ByPhase`, `DefaultContent`, `Render` for every kind | table-driven | Every one of the 25 document kinds must produce valid default JSON content AND a valid rendered PDF — a kind that's registered but can't render would be a create-then-crash bug reachable directly from the GUI's "new document" button. |
-| `charter_test.go` | 18 | `Validate`/`isZero` (required-field enforcement across real kinds with `FieldString`/`FieldDate`/`FieldText`-typed required fields, plus the pure `isZero` type-switch including its non-matching-type fallthrough), `RenderCharterPDF` with populated content (stakeholder and milestone tables, bullet sections, budget — the first test execution of either literal `writeTable()` call site), `renderGenericPDF` with populated content isolated per `FieldKind` branch (`FieldStringArr`, `FieldText`, `FieldObjectArr`, the shared default case, and the `FieldNumber` zero-vs-non-zero guard), `KindsSorted` | unit, table-driven, fault-seeded (isolated per-branch to defeat aggregate-content masking; confirmed with `go test -count=1` after two apparent "survivors" turned out to be stale test-cache hits, not real gaps) | `Validate` gates every document save (`app_documents.go:134`); a required field that's present but empty must still be rejected, not just an absent key. Populated-content rendering exercises the majority of `charter.go`'s actual layout logic, which the existing zero-value smoke test structurally cannot reach. |
-| `team_charter_test.go` | 10 | `allocationColor` (all 5 threshold bands, exact RGB), `getStringTC`/`getFloatTC` (present/missing/wrong-type), `truncTC` (ASCII-only; see the UTF-8 finding above), `normaliseMembers` (field mapping, missing-key defaulting), `RenderTeamCharterPDF` with populated `team_purpose`/`ground_rules`/`members`, out-of-range `allocation_pct` crash-safety | unit, table-driven, fault-seeded (8 production mutations across both files this increment, each confirmed caught then reverted) | Every function in `team_charter.go` reached statement coverage except the top-level renderer; the pure threshold/accessor/mapper logic got exact-value assertions, which is stronger evidence than the render-growth proxy used for the draw-only functions — disclosed honestly where that proxy's limits were found empirically rather than assumed. |
+| `charter_test.go` | 20 | `Validate`/`isZero` (required-field enforcement across real kinds with `FieldString`/`FieldDate`/`FieldText`-typed required fields, plus the pure `isZero` type-switch including its non-matching-type fallthrough), `RenderCharterPDF` with populated content (stakeholder and milestone tables, bullet sections, budget — the first test execution of either literal `writeTable()` call site), `renderGenericPDF` with populated content isolated per `FieldKind` branch (`FieldStringArr`, `FieldText`, `FieldObjectArr`, the shared default case, and the `FieldNumber` zero-vs-non-zero guard), `KindsSorted`, `truncDoc` (the shared byte-budget, rune-boundary-safe truncation helper: ASCII passthrough/boundary/truncation, `n=0`/`n=1`, multi-byte UTF-8 at 2- and 3-byte-rune boundaries, `utf8.ValidString` on every case), and confirmation that all nine per-file `trunc*` wrappers actually delegate to it | unit, table-driven, fault-seeded (isolated per-branch to defeat aggregate-content masking; confirmed with `go test -count=1` after two apparent "survivors" turned out to be stale test-cache hits, not real gaps) | `Validate` gates every document save (`app_documents.go:134`); a required field that's present but empty must still be rejected, not just an absent key. Populated-content rendering exercises the majority of `charter.go`'s actual layout logic, which the existing zero-value smoke test structurally cannot reach. `truncDoc` is this package's fix for a byte-vs-rune truncation defect (see the 2026-08-13 "shared truncDoc" increment note above) that used to be duplicated, buggy, and untested across nine files; a wrapper silently reverting to its own old inline logic during that fix would look correct on ASCII input and wrong only on multi-byte input, which the delegation test targets directly. |
+| `team_charter_test.go` | 10 | `allocationColor` (all 5 threshold bands, exact RGB), `getStringTC`/`getFloatTC` (present/missing/wrong-type), `truncTC` (now delegates to the shared, rune-safe `truncDoc` in charter_test.go — see the 2026-08-13 fix note above; this file's own case adds one non-ASCII passthrough check), `normaliseMembers` (field mapping, missing-key defaulting), `RenderTeamCharterPDF` with populated `team_purpose`/`ground_rules`/`members`, out-of-range `allocation_pct` crash-safety | unit, table-driven, fault-seeded (8 production mutations across both files this increment, each confirmed caught then reverted) | Every function in `team_charter.go` reached statement coverage except the top-level renderer; the pure threshold/accessor/mapper logic got exact-value assertions, which is stronger evidence than the render-growth proxy used for the draw-only functions — disclosed honestly where that proxy's limits were found empirically rather than assumed. |
 | `project_proposal_test.go` | 8 | `RenderProjectProposalPDF` with each of its 7 content-gated sections isolated (`executive_summary`, `goals`, `approach`, `team`, `timeline`, `budget_summary`, `ask`), plus statement coverage of the team-chip wrap-to-next-row branch (`drawProposalTeamChips`'s `x+w > rightEdge` condition, unreachable with a single short name) | unit, fault-seeded (8 production mutations run; 7 caught — one per section plus the budget zero/negative guard — and 1 confirmed to survive, see below) | Six sections are gated by their own distinct content key, so each is genuinely independently isolable — confirmed by mutation, not assumed from the source shape. The wrap-condition mutation survived: disabling `x+w > rightEdge` still draws every chip (unwrapped) and still grows the output past the empty baseline this test compares against, so the test proves the wrap branch *executes*, not that wrapping is *correct* — disclosed in the test's own comment rather than left as an unstated gap. `drawProposalBudgetTile` uses `budget > 0` (excludes negative, not just zero) rather than charter.go's `!= 0` pattern; a mutation to `!= 0` was caught, proving the stricter guard is actually enforced. |
 | `project_brief_test.go` | 8 | `RenderProjectBriefPDF` with `summary`/`goals`/`roles` isolated, the `budget`/`timeline` KPI strip's outer OR-gate and two inner tile-gates tested individually (budget alone, timeline alone, neither), statement coverage of the role-chip wrap branch | unit, fault-seeded (6 production mutations run; 5 caught, 1 survived — tooling limitation, see below) | All four content-gated sections confirmed independently isolable by mutation. The KPI strip's outer gate mutation survived because its two inner guards already suppress all visible drawing when both values are absent — the gate's only remaining effect (skipping an unconditional trailing `pdf.SetXY` that otherwise wastes ~27mm of vertical space) is a real, observable layout difference that byte-length assertions structurally cannot detect (a tooling limitation, not an equivalent mutation — the underlying behavior genuinely differs), disclosed rather than silently passed over. |
 | `business_case_test.go` | 15 | `getStringBC`, `RenderBusinessCasePDF` with `problem_statement`/`proposed_solution`/`recommendation` isolated, alternatives (populated card, all-empty-fields card suppression, empty pros/cons placeholder, card-height branch for a long-wrapping cons column), the cost/ROI and benefits/risks OR-gated sections (each side alone, negative-cost boundary, neither present) | unit, fault-seeded (9 production mutations run; 6 caught, 3 survived — 1 by design, 2 revealing a new limitation class, see below) | Every function reached 100% statement coverage except the top-level renderer. The `costs_summary` guard (`!= 0`, unlike the other two proposal-style renderers' `> 0`) was verified to genuinely admit negative values by mutation. The two outer-OR-gate survivors are a distinct, newly-named limitation (content-varied comparisons can't see a mutation that removes content-dependence from both operands equally) — caught by re-checking the debug evidence before writing an initially-wrong compression-based explanation into this ledger. |
