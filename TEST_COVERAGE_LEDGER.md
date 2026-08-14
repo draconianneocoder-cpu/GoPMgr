@@ -855,6 +855,34 @@ lower than Go because most of the
 tests below are either pure-logic modules or the components judged
 highest-value so far).
 
+**2026-08-13 `coverage-ratchet.sh` note on the `HelpGuide.svelte` split:**
+running the ratchet after the split reports frontend as REGRESSED (10631 →
+10909 uncovered statements). This is not new untested code from the split —
+it's a pre-existing measurement blind spot getting partially un-hidden.
+`persistence-boundary-strings.test.ts` imports `HelpGuide.svelte` via Vite's
+`?raw` query; confirmed by checking out `main` and re-running coverage that
+this `?raw` import already caused vitest's `coverage.all` instrumentation to
+report `HelpGuide.svelte` as 0/0 statements *before* this split, silently
+excluding its then-2223 lines of real template logic from every ratchet run
+to date. Splitting the file changed which pieces fall under that same
+artifact: `HelpFeatures.svelte` and `HelpTroubleshooting.svelte` are now
+also `?raw`-imported by that test (for the same `.gopmgr`/`.pmforge`
+literal-drift check `HelpGuide.svelte` used to cover) and so are still
+shadowed to 0/0, but `HelpOverview.svelte`, `HelpTutorials.svelte`,
+`HelpMethodologies.svelte`, and `HelpReference.svelte` are not raw-imported
+anywhere and now report their real, previously-invisible statement counts
+(46 + 40 + 32 + 158 = 276 uncovered) — accounting for essentially the entire
+regression delta. `coverage-baseline.json` was deliberately left unchanged
+(not lowered to the new number): the ratchet script's own `--update` refuses
+to record a worse mark for exactly this reason, and hand-editing the JSON to
+bypass that would defeat the safeguard rather than honor it. A real fix
+would replace the `?raw` imports in `persistence-boundary-strings.test.ts`
+with a plain `node:fs` read at test time, so instrumentation stops
+colliding with the raw-text import and the ratchet finally measures the
+true total (which would surface still more previously-hidden uncovered
+statements from `HelpGuide.svelte`'s shell and the two still-shadowed
+children) — left as a follow-up, out of scope for a component-split task.
+
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
 | `src/lib/autosave.test.ts` | 2 | Autosave debounce/trigger logic | unit | Autosave must actually debounce (not fire on every keystroke) and must fire on the trailing edge. |
@@ -873,7 +901,7 @@ highest-value so far).
 | `src/lib/components/project/ProjectSettings.test.ts` | 2 | Project settings — PAdES timestamp configuration section only | component | Narrow, targeted coverage: this file is one section of a much larger (1,900-line) component — see `DEVELOPER_HANDBOOK.md`'s coverage entries for why the rest of `ProjectSettings.svelte` is a known, tracked gap (48% covered) rather than assumed complete. |
 | `src/lib/components/project/StakeholderManager.test.ts` | 7 | `StakeholderManager`'s edit-modal close guard (header ×, Cancel, Escape) | component | Added 2026-08-10, third instance of the same fix as `WorkItemEditor.test.ts`/`SprintList.test.ts`: all close paths previously assigned `editing = null` directly and dropped an edited-but-unsaved stakeholder (name/role/org/contact/rates/notes) with no warning. This component has no backdrop-click-to-close at all (pre-existing, out of scope), so that case isn't covered here. Covers: no prompt when clean, prompt-and-keep-open on decline, prompt-and-discard on confirm, prompt on header × and Escape, no false-positive prompt after a successful save, and a close requested while a save is in flight being a no-op. The header-close test scopes its button query to the dialog element — the stakeholder list has its own unrelated "×" delete button with identical text content, and an unscoped query caught the wrong one during development. |
 | `src/lib/components/sigma/SigmaFishbone.test.ts` | 1 | Six Sigma Fishbone diagram editor | component | Basic render sanity for the Fishbone editor. |
-| `src/lib/persistence-boundary-strings.test.ts` | 4 | `.gopmgr`/`.pmforge` extension strings, GoPMgr/PMForge data-root path strings across `HelpGuide.svelte`, `Dashboard.svelte`, `ProjectLaunchpad.test.ts` (via Vite `?raw` imports) | fixture, unit | Added during the PMForge→GoPMgr rename (`7d8a699`/`b1c8336`) specifically to pin these literals against find/replace drift — these strings are a real persistence boundary (existing user files on disk), not branding, so a careless rename would orphan real installs. |
+| `src/lib/persistence-boundary-strings.test.ts` | 3 | `.gopmgr`/`.pmforge` extension strings, GoPMgr/PMForge data-root path strings across `HelpGuide.svelte` + `HelpFeatures.svelte` + `HelpTroubleshooting.svelte` (concatenated), `Dashboard.svelte`, `ProjectLaunchpad.test.ts` (via Vite `?raw` imports) | fixture, unit | Added during the PMForge→GoPMgr rename (`7d8a699`/`b1c8336`) specifically to pin these literals against find/replace drift — these strings are a real persistence boundary (existing user files on disk), not branding, so a careless rename would orphan real installs. Updated 2026-08-13 when `HelpGuide.svelte` was split into a shell plus six `Help*.svelte` content components: the `.gopmgr`/`.pmforge` text this test checks for lives in `HelpFeatures.svelte` (Backups & Data Safety) and `HelpTroubleshooting.svelte` (the `cli` section), so the check now concatenates all `Help*.svelte` raw sources rather than importing `HelpGuide.svelte` alone, robust to a future reorganization of section content between those files. (Stale count corrected in the same pass: this row previously read "4", but the file has always had 3 `it()` blocks.) |
 | `src/lib/session.test.ts` | 2 | Session state store | unit | Login/logout state transitions. |
 | `src/lib/terminology.test.ts` | 7 | `term`/`capitalised` (methodology-specific vocabulary: "task" → "user story" for Scrum, etc.) | unit, table-driven | Added 2026-08-04. This lookup table drives user-visible labels across the whole GUI — a wrong entry silently mislabels every work item for that methodology with no error and no visual signal it's wrong. Covers per-methodology overrides, fallback to the generic word, case-insensitive matching, and unknown-methodology fallback. |
 | `src/lib/theme.test.ts` | 6 | Light/dark theme resolution | unit | Theme preference resolution (explicit setting vs. OS preference) must be correct, since a wrong theme reads as a visual bug immediately. |
