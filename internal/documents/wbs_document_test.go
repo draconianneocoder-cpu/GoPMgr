@@ -4,6 +4,7 @@
 package documents
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -99,53 +100,84 @@ func TestWBSDepth(t *testing.T) {
 	}
 }
 
-func TestParseSegment(t *testing.T) {
+func TestNormalizedDigitRun(t *testing.T) {
 	tests := []struct {
 		s    string
-		want int
+		want string
 	}{
-		{"1", 1},
-		{"10", 10},
-		{"007", 7},
-		{"", 0},
-		{"a", 0},
-		{"1a", 1}, // numeric prefix only; the trailing "a" is not consumed
+		{"1", "1"},
+		{"10", "10"},
+		{"007", "7"},
+		{"000", "0"},
+		{"", "0"},
+		{"a", "0"},
+		{"1a", "1"}, // leading digit run only; the trailing "a" is not consumed
 	}
 	for _, tt := range tests {
 		t.Run(tt.s, func(t *testing.T) {
-			if got := parseSegment(tt.s); got != tt.want {
-				t.Errorf("parseSegment(%q) = %d, want %d", tt.s, got, tt.want)
+			if got := normalizedDigitRun(tt.s); got != tt.want {
+				t.Errorf("normalizedDigitRun(%q) = %q, want %q", tt.s, got, tt.want)
 			}
 		})
 	}
 }
 
-// parseSegment's accumulator (n = n*10 + digit) has no overflow guard.
-// A pathologically long numeric segment (tried here at 24 nines, far
-// beyond any real WBS numbering scheme) silently wraps rather than
-// panicking -- Go's defined behavior for int overflow, confirmed
-// directly rather than assumed. The only user-visible effect is a wrong
-// sort position for that one malformed code; recorded in
-// TEST_COVERAGE_LEDGER.md as an accepted, evidenced defect rather than
-// fixed, per this package's convention for findings that are real but
-// not worth the scope to close in a
-// coverage-only increment (matching truncTC's now-fixed precedent, but
-// without that finding's crash-adjacency -- this one can't corrupt
-// output, only misorder one pathological row).
-func TestParseSegment_LongNumericSegmentOverflowsWithoutPanicking(t *testing.T) {
-	// The wrapped value itself isn't meaningful (two's-complement
-	// overflow of an unbounded accumulator), but pinning the exact
-	// observed value -- measured by running this input directly, not
-	// derived -- turns "doesn't panic" into a real regression pin
-	// rather than a tautology that would pass even if the function's
-	// overflow behavior changed to something else non-panicking.
-	// The pinned constant is 64-bit-int specific (int is the accumulator
-	// type); this repo only builds for 64-bit targets, but a 32-bit
-	// build would wrap to a different value and fail here.
-	const in = "999999999999999999999999" // 24 nines
-	const want = 2003764205206896639
-	if got := parseSegment(in); got != want {
-		t.Errorf("parseSegment(%q) = %d, want %d (the specific wrapped value observed for this input)", in, got, want)
+func TestCompareNumericSegment(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b string
+		want int
+	}{
+		{"equal", "1", "1", 0},
+		{"9 < 10 numerically, not lexically", "9", "10", -1},
+		{"10 > 9 numerically, not lexically", "10", "9", 1},
+		{"leading zeros ignored", "007", "7", 0},
+		{"non-numeric segments both normalize to 0", "a", "b", 0},
+		{"empty and non-numeric both normalize to 0", "", "a", 0},
+		// The former int-accumulator implementation
+		// (TestParseSegment_LongNumericSegmentOverflowsWithoutPanicking,
+		// now removed) silently wrapped on inputs this long, landing on
+		// an arbitrary -- sometimes even negative -- comparison result.
+		// This implementation has no accumulator and therefore no
+		// overflow bound: a 25-digit run of 9s is still correctly
+		// greater than a 24-digit run of 9s (more digits at the same
+		// leading value is numerically larger), and a same-length,
+		// larger-leading-digit run still wins.
+		{
+			"arbitrarily long numeric segments order by length first",
+			"999999999999999999999999",  // 24 nines
+			"9999999999999999999999999", // 25 nines
+			-1,
+		},
+		{
+			"arbitrarily long numeric segments of equal length order lexically",
+			"9999999999999999999999999", // 25 nines
+			"8888888888888888888888888", // 25 eights
+			1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := compareNumericSegment(tt.a, tt.b); got != tt.want {
+				t.Errorf("compareNumericSegment(%q, %q) = %d, want %d", tt.a, tt.b, got, tt.want)
+			}
+		})
+	}
+}
+
+// Ordering property, exercised through the public wbsCodeLess entry
+// point rather than the internal comparator directly: an arbitrarily
+// long numeric WBS segment must still sort correctly relative to
+// another long segment, matching TestCompareNumericSegment's findings
+// above at the level callers actually observe.
+func TestWBSCodeLess_ArbitraryLengthNumericSegments(t *testing.T) {
+	shorter := "1." + strings.Repeat("9", 24)
+	longer := "1." + strings.Repeat("9", 25)
+	if !wbsCodeLess(shorter, longer) {
+		t.Errorf("wbsCodeLess(%q, %q) = false, want true (fewer digits at the same leading value is numerically smaller)", shorter, longer)
+	}
+	if wbsCodeLess(longer, shorter) {
+		t.Errorf("wbsCodeLess(%q, %q) = true, want false", longer, shorter)
 	}
 }
 
@@ -192,6 +224,16 @@ func TestWBSCodeLess(t *testing.T) {
 		{"numeric tie falls back to lexical comparison", "1a", "1b", true},
 		{"numeric tie falls back to lexical comparison, reverse", "1b", "1a", false},
 		{"different top-level numbers", "1.2", "2.1", true},
+		// Pins end-to-end (not just the comparator in isolation) that
+		// leading-zero stripping still leaves the segments a numeric
+		// tie, so this still falls to the same lexical fallback as
+		// above ("007" < "7" as raw strings) rather than the padded
+		// segment sorting differently once it's no longer int-parsed.
+		// Confirmed unchanged from the pre-fix behavior by a 52M-pair
+		// differential run against the old int-accumulator
+		// implementation (see this increment's commit message).
+		{"leading zeros: numeric tie still falls back to lexical comparison", "1.007", "1.7", true},
+		{"leading zeros: numeric tie, reverse", "1.7", "1.007", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
