@@ -28,7 +28,7 @@ for planned work.
 
 ## Build and verify
 
-Prerequisites are Go 1.26.5, Node.js, npm, CGO, and the matching Wails CLI.
+Prerequisites are Go 1.26.6, Node.js, npm, CGO, and the matching Wails CLI.
 Wails: the project uses Wails v2.13.0. Install that exact CLI version with:
 
 ```sh
