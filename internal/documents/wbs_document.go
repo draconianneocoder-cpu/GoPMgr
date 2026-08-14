@@ -123,10 +123,8 @@ func wbsCodeLess(a, b string) bool {
 		n = len(bs)
 	}
 	for i := 0; i < n; i++ {
-		ai := parseSegment(as[i])
-		bi := parseSegment(bs[i])
-		if ai != bi {
-			return ai < bi
+		if cmp := compareNumericSegment(as[i], bs[i]); cmp != 0 {
+			return cmp < 0
 		}
 		// Fallback to lexical comparison when both segments parse to
 		// the same number (e.g. "1a" vs "1b").
@@ -137,18 +135,54 @@ func wbsCodeLess(a, b string) bool {
 	return len(as) < len(bs)
 }
 
-// parseSegment converts a numeric prefix of a WBS segment to int.
-// Returns 0 for non-numeric segments so the fallback lexical check in
-// wbsCodeLess takes over.
-func parseSegment(s string) int {
-	n := 0
-	for _, ch := range s {
-		if ch < '0' || ch > '9' {
-			break
+// compareNumericSegment orders two WBS segments by the numeric value of
+// their leading digit run, returning -1, 0, or 1. The comparison is
+// arbitrary-precision (digit-run length first, then lexical for equal
+// lengths -- equal-length pure-digit strings already sort in numeric
+// order) rather than accumulator-based, so it has no overflow bound.
+// wbs_code is free text with no length validation on either side (the
+// frontend's FieldString editor is a plain, unbounded <input
+// type="text">), so an arbitrarily long numeric segment -- e.g. pasted
+// from an external source -- is a reachable input, not a hypothetical
+// one; a fixed-width int accumulator would wrap silently on it.
+func compareNumericSegment(a, b string) int {
+	da, db := normalizedDigitRun(a), normalizedDigitRun(b)
+	if len(da) != len(db) {
+		if len(da) < len(db) {
+			return -1
 		}
-		n = n*10 + int(ch-'0')
+		return 1
 	}
-	return n
+	switch {
+	case da < db:
+		return -1
+	case da > db:
+		return 1
+	default:
+		return 0
+	}
+}
+
+// normalizedDigitRun returns the leading run of ASCII digits in s with
+// leading zeros stripped, collapsing to "0" for an all-zero or absent
+// run (e.g. "007" -> "7", "000" -> "0", "" -> "0", "1a" -> "1", the
+// trailing "a" left for the caller's lexical fallback to consider).
+// Matches the former int-based parse's treatment of a non-numeric
+// segment as zero.
+func normalizedDigitRun(s string) string {
+	i := 0
+	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+		i++
+	}
+	digits := s[:i]
+	if digits == "" {
+		return "0"
+	}
+	j := 0
+	for j < len(digits)-1 && digits[j] == '0' {
+		j++
+	}
+	return digits[j:]
 }
 
 // drawWBSChartBanner renders a tinted strip linking back to the WBS
