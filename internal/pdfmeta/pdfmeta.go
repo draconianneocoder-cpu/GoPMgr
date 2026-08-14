@@ -131,6 +131,14 @@ func InjectXMPStream(pdfBytes []byte, xmpPacket []byte) ([]byte, error) {
 		return nil, fmt.Errorf("pdfmeta: locate Catalog object: %w", err)
 	}
 
+	// This function allocates one new object ID from trailerSize
+	// (metaID below) and later writes trailerSize+1 as the new /Size
+	// -- see checkTrailerSizeRoom's doc comment for why trailerSize
+	// alone being in range of math.MaxInt isn't enough.
+	if err := checkTrailerSizeRoom(trailerSize, 1); err != nil {
+		return nil, err
+	}
+
 	metaID := trailerSize
 	revisedCatalog := insertMetadataReference(catalogOriginal, metaID)
 
@@ -215,6 +223,27 @@ func parseDigits(digits []byte) (int, error) {
 		n = n*10 + d
 	}
 	return n, nil
+}
+
+// checkTrailerSizeRoom errors out if trailerSize is too close to
+// math.MaxInt for a caller to safely add newObjects new object IDs on
+// top of it (trailerSize, trailerSize+1, ... trailerSize+newObjects-1)
+// and then write trailerSize+newObjects as the incremental update's
+// new /Size. parseDigits (the trailer's own /Size parse, upstream in
+// parseTrailerSizeAndRoot) already rejects a digit run that would
+// exceed math.MaxInt, but it lets math.MaxInt itself through --
+// leaving trailerSize within newObjects of math.MaxInt free to
+// silently wrap to a negative object ID or a negative /Size with
+// err == nil. Shared by InjectXMPStream (newObjects=1),
+// InjectOutputIntent, and InjectPAdESSignature (both newObjects=2)
+// rather than duplicated per call site, the same way parseDigits
+// itself was extracted in increment 4a after the same bug shape
+// turned up at multiple sites.
+func checkTrailerSizeRoom(trailerSize, newObjects int) error {
+	if trailerSize > math.MaxInt-newObjects {
+		return fmt.Errorf("pdfmeta: trailer /Size %d leaves no room to allocate %d new object id(s)", trailerSize, newObjects)
+	}
+	return nil
 }
 
 // writeClassicXrefEntry writes one classic-xref-table entry in the fixed
@@ -517,6 +546,17 @@ func InjectOutputIntent(pdfBytes []byte, iccProfile []byte) ([]byte, error) {
 		return nil, fmt.Errorf("pdfmeta: locate Catalog object: %w", err)
 	}
 
+	// This function allocates two new object IDs from trailerSize
+	// (iccID/oiID below) and later writes trailerSize+2 as the new
+	// /Size -- see checkTrailerSizeRoom's doc comment for why
+	// trailerSize alone being within range of math.MaxInt isn't enough
+	// (confirmed by direct execution with a fixture literal
+	// "/Size 9223372036854775807"; see TEST_COVERAGE_LEDGER.md's
+	// increment 5b entry for the full trace).
+	if err := checkTrailerSizeRoom(trailerSize, 2); err != nil {
+		return nil, err
+	}
+
 	// We will add two new objects in this incremental update:
 	//   1. ICC profile stream object
 	//   2. OutputIntent dictionary object
@@ -576,28 +616,22 @@ func InjectOutputIntent(pdfBytes []byte, iccProfile []byte) ([]byte, error) {
 	appended.WriteString("0 1\n")
 	appended.WriteString("0000000000 65535 f \n")
 
-	// Order the new objects for the xref table (smaller ID first)
+	// Order the new objects for the xref table (smaller ID first).
 	//
-	// Reachable, but not through this app's own generation path today:
-	// iccID := trailerSize and oiID := trailerSize+1 mean first > second
-	// requires trailerSize+1 to overflow past math.MaxInt. parseDigits
-	// (via readDictInt's /Size parse in parseTrailerSizeAndRoot) already
-	// guards against overflow, but permits trailerSize == math.MaxInt
-	// itself through -- at that exact value, trailerSize+1 wraps to
-	// math.MinInt, making first > second true. Confirmed by direct
-	// execution, not just reasoning: a trailer with a literal
-	// "/Size 9223372036854775807" produces a silently corrupted PDF
-	// (negative object IDs in both the Catalog rewrite and the xref
-	// table) with err == nil -- the same silent-corruption shape as the
-	// bugs fixed in increments 3a and 4a, but downstream of an
-	// already-guarded parse rather than an unguarded accumulator, and
-	// gated behind an exact 19-digit magic literal rather than a large
-	// but ordinary input. Every InjectOutputIntent call site traced back
-	// to MakePDFA3, and every MakePDFA3 caller passes bytes this app
-	// generated with fpdf moments earlier (see internal/documents and
-	// internal/export), never a foreign or re-parsed trailer -- not
-	// reachable through this app's own generation path today. Flagged,
-	// The remaining gap is documented in TEST_COVERAGE_LEDGER.md.
+	// iccID = trailerSize and oiID = trailerSize+1: now that
+	// checkTrailerSizeRoom above guarantees trailerSize+1 doesn't
+	// overflow, oiID = iccID+1 > iccID always holds (parseDigits never
+	// returns a negative trailerSize either), so "first > second" below
+	// is unconditionally false for these two locals. The swap is kept
+	// rather than deleted -- it costs nothing and doesn't ask a reader
+	// to trust that iccID/oiID stay assigned in ascending order forever.
+	// Before checkTrailerSizeRoom existed, this was the branch a
+	// trailerSize == math.MaxInt overflow rode in on: oiID wrapping to
+	// math.MinInt flipped it to true (confirmed by direct execution
+	// against a trailer with a literal "/Size 9223372036854775807",
+	// which previously produced a silently corrupted PDF -- negative
+	// object IDs in both the Catalog rewrite and the xref table -- with
+	// err == nil).
 	first, second := iccID, oiID
 	firstOff, secondOff := iccObjOffset, oiObjOffset
 	firstGen, secondGen := 0, 0
@@ -967,6 +1001,14 @@ func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, erro
 	catalogOriginal, err := findObjectBody(pdfBytes, catalogID, catalogGen)
 	if err != nil {
 		return nil, fmt.Errorf("pdfmeta: locate Catalog: %w", err)
+	}
+
+	// This function allocates two new object IDs from trailerSize
+	// (sigID/fieldID below) and later writes trailerSize+2 as the new
+	// /Size -- see checkTrailerSizeRoom's doc comment for why
+	// trailerSize alone being in range of math.MaxInt isn't enough.
+	if err := checkTrailerSizeRoom(trailerSize, 2); err != nil {
+		return nil, err
 	}
 
 	base := len(pdfBytes)
