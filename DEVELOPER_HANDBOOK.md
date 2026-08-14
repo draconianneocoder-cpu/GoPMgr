@@ -16,7 +16,7 @@ application surface; domain packages live under `internal/`; the Svelte
 frontend lives under `frontend/`. Read [ARCHITECTURE.md](ARCHITECTURE.md)
 before changing package boundaries.
 
-The required toolchain is Go 1.26.5 and **Wails v2.13.0**. Install the matching
+The required toolchain is Go 1.26.6 and **Wails v2.13.0**. Install the matching
 CLI with:
 
 ```sh
@@ -83,6 +83,13 @@ make verify
 `make build` builds `frontend/dist` and embeds it through `main.go`. Direct Go
 tests also need that output present. Release-sensitive work additionally needs
 the gates in [TESTING.md](TESTING.md), including `make check-release`.
+
+CI's `govulncheck` job queries a live vulnerability database, so a commit with
+no code change can go from green to red (or back) between runs as new
+advisories publish. A stdlib finding usually means a newer Go patch release
+fixes it — bump `go.mod`'s `go` directive and confirm `govulncheck ./...`
+(both the default and `-tags duckdb` builds) comes back clean before assuming
+the repository itself regressed.
 
 ## 6. Concurrency and lifecycle invariants
 
