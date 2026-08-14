@@ -258,3 +258,34 @@ func TestBeforeCloseAllowsCleanWindow(t *testing.T) {
 		t.Fatal("clean window close was prevented")
 	}
 }
+
+// TestBeforeCloseClearsAfterUnsavedChangesResolve covers the one dirty-flag
+// transition this package can safely unit-test: SetUnsavedChanges(true) then
+// SetUnsavedChanges(false) (the frontend's own "save succeeded" sequence)
+// must leave beforeClose on the clean path, not stuck blocking a window that
+// no longer has unsaved work.
+//
+// The actual dirty→true→beforeClose-blocks-and-emits path is deliberately
+// NOT unit-tested here, and can't be without a production change this
+// finding doesn't justify (see /advisor's review, 2026-08-13): beforeClose
+// calls wailsruntime.EventsEmit, whose getEvents(ctx) calls log.Fatalf --
+// os.Exit(1), not a recoverable panic -- when ctx has no bound Wails
+// frontend.Events value. A plain context.Background(), the only kind test
+// code can construct, has none: frontend.Events lives in wails/v2's
+// internal/frontend package, unreachable from outside the module, so no
+// mock context is constructible here. Calling beforeClose(context.Background())
+// with the dirty flag set to true would silently kill the test binary
+// rather than fail an assertion -- confirmed by reading wails v2.13.0's
+// runtime.go source, not assumed. This is why TestBeforeCloseAllowsCleanWindow
+// above only ever exercised the non-dirty branch: the dirty branch requires
+// a real Wails-bound context, which only a running packaged app has. Real
+// evidence for the dirty path lives in packaged-app testing, not here — see
+// docs/beta-release-backlog.md's P0 "Prevent silent editor data loss" row.
+func TestBeforeCloseClearsAfterUnsavedChangesResolve(t *testing.T) {
+	app := &App{}
+	app.SetUnsavedChanges(true)
+	app.SetUnsavedChanges(false)
+	if app.beforeClose(context.Background()) {
+		t.Fatal("beforeClose still blocking after SetUnsavedChanges(false)")
+	}
+}
