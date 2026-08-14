@@ -54,6 +54,14 @@ frontend/package.json.md5
 /session-notes.md
 /docs/superpowers/plans/
 
+# Local release-readiness evidence (screenshots, packaged-app test notes).
+# Contains machine-specific paths; see beta-release-backlog.md's "must link
+# to current tests or an archived release artifact" rule -- a gitignored
+# path here does not satisfy that for another clone, and backlog rows
+# referencing it must say so explicitly rather than link it as if it were a
+# tracked repo artifact.
+/docs/release-evidence/
+
 # Superseded root agent-instruction duplicates; keep public guidance in AGENTS.md.
 /CLAUDE.md
 /GO_CODER_AGENTS.md
