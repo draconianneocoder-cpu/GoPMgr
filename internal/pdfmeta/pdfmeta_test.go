@@ -12,6 +12,7 @@ import (
 	"encoding/asn1"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"math/big"
 	"regexp"
 	"strconv"
@@ -316,6 +317,112 @@ func TestInjectPAdESSignature_RootGenOverflowReturnsError(t *testing.T) {
 		t.Fatal("expected an error for a /Root generation that overflows the xref format's 5-digit field")
 	}
 	if !strings.Contains(err.Error(), "5-digit field width") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestCheckTrailerSizeRoom_BoundaryValues pins checkTrailerSizeRoom's
+// off-by-one behavior at the exact math.MaxInt boundary, the same shape
+// as TestParseDigits_BoundaryValues did for parseDigits in increment
+// 4a. This guard closes the increment-5a-disclosed, 5b-fixed bug:
+// InjectOutputIntent/InjectPAdESSignature each allocate two IDs off
+// trailerSize and then write trailerSize+2 as /Size, so a trailerSize
+// within 2 of math.MaxInt — not just exactly math.MaxInt, which is as
+// far as parseDigits' own guard reaches — silently wraps to a negative
+// value downstream. newObjects=1 (InjectXMPStream's shape) and
+// newObjects=2 (InjectOutputIntent/InjectPAdESSignature's shape) are
+// each checked at their own exact boundary: the largest trailerSize
+// that must still succeed, and one past it that must fail.
+func TestCheckTrailerSizeRoom_BoundaryValues(t *testing.T) {
+	if err := checkTrailerSizeRoom(math.MaxInt-1, 1); err != nil {
+		t.Errorf("newObjects=1 at the boundary (MaxInt-1): unexpected error: %v", err)
+	}
+	if err := checkTrailerSizeRoom(math.MaxInt, 1); err == nil {
+		t.Error("newObjects=1 one past the boundary (MaxInt): expected an error")
+	}
+	if err := checkTrailerSizeRoom(math.MaxInt-2, 2); err != nil {
+		t.Errorf("newObjects=2 at the boundary (MaxInt-2): unexpected error: %v", err)
+	}
+	if err := checkTrailerSizeRoom(math.MaxInt-1, 2); err == nil {
+		t.Error("newObjects=2 one past the boundary (MaxInt-1): expected an error")
+	}
+}
+
+// trailerSizeOverflowPDF returns a hand-built, single-object PDF whose
+// trailer /Size is the given literal decimal string. Modeled on
+// rootGenOverflowPDF: a real Catalog body is required because all
+// three Inject* functions call findObjectBody(catalogID, catalogGen)
+// and reach checkTrailerSizeRoom only after that lookup succeeds.
+func trailerSizeOverflowPDF(size string) []byte {
+	var b bytes.Buffer
+	b.WriteString("%PDF-1.4\n")
+	b.WriteString("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
+	xrefOff := b.Len()
+	b.WriteString("xref\n0 1\n0000000000 65535 f \n")
+	fmt.Fprintf(&b, "trailer\n<<\n/Size %s\n/Root 1 0 R\n>>\n", size)
+	fmt.Fprintf(&b, "startxref\n%d\n%%%%EOF\n", xrefOff)
+	return b.Bytes()
+}
+
+// TestInjectXMPStream_TrailerSizeOverflowReturnsError covers
+// checkTrailerSizeRoom's newObjects=1 call site. A /Size of literal
+// "9223372036854775807" (math.MaxInt) parses cleanly through
+// parseDigits (which only rejects a value that would exceed
+// math.MaxInt, not math.MaxInt itself) — this is the exact value
+// increment 5a confirmed, by direct execution, silently corrupts
+// InjectOutputIntent's output; checkTrailerSizeRoom now rejects it
+// before any object ID or /Size arithmetic runs. Confirmed by
+// mutation: removing the checkTrailerSizeRoom call in InjectXMPStream
+// lets this fixture through with err == nil.
+func TestInjectXMPStream_TrailerSizeOverflowReturnsError(t *testing.T) {
+	_, err := InjectXMPStream(trailerSizeOverflowPDF("9223372036854775807"), []byte("<xmp/>"))
+	if err == nil {
+		t.Fatal("expected an error for a trailer /Size of math.MaxInt")
+	}
+	if !strings.Contains(err.Error(), "no room to allocate") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestInjectOutputIntent_TrailerSizeOverflowReturnsError uses
+// math.MaxInt-1, not math.MaxInt, deliberately: InjectOutputIntent
+// allocates two IDs (trailerSize, trailerSize+1) and writes
+// trailerSize+2 as /Size, so its correct bound rejects anything above
+// math.MaxInt-2 — one lower than InjectXMPStream's bound. A fixture at
+// math.MaxInt alone would pass just as well under an off-by-one guard
+// written for InjectXMPStream's shape (trailerSize >= math.MaxInt)
+// mistakenly reused here; math.MaxInt-1 is the value that
+// discriminates the two (it must still error under the correct
+// newObjects=2 bound, but would wrongly succeed under the
+// newObjects=1 bound). Confirmed by mutation: reverting the call site
+// to `checkTrailerSizeRoom(trailerSize, 1)` lets this fixture through
+// with err == nil.
+func TestInjectOutputIntent_TrailerSizeOverflowReturnsError(t *testing.T) {
+	_, err := InjectOutputIntent(trailerSizeOverflowPDF("9223372036854775806"), []byte("fake-icc-profile"))
+	if err == nil {
+		t.Fatal("expected an error for a trailer /Size of math.MaxInt-1")
+	}
+	if !strings.Contains(err.Error(), "no room to allocate") {
+		t.Errorf("expected the guard's own error text, got %q", err)
+	}
+}
+
+// TestInjectPAdESSignature_TrailerSizeOverflowReturnsError mirrors
+// TestInjectOutputIntent_TrailerSizeOverflowReturnsError —
+// InjectPAdESSignature has the identical trailerSize/trailerSize+1/
+// trailerSize+2 shape (sigID, fieldID, /Size). See that test's
+// docstring for why math.MaxInt-1, not math.MaxInt, is the
+// discriminating fixture value. Confirmed by mutation: reverting the
+// call site to `checkTrailerSizeRoom(trailerSize, 1)` lets this
+// fixture through with err == nil.
+func TestInjectPAdESSignature_TrailerSizeOverflowReturnsError(t *testing.T) {
+	_, err := InjectPAdESSignature(trailerSizeOverflowPDF("9223372036854775806"), func(b []byte) ([]byte, error) {
+		return []byte{0xde, 0xad, 0xbe, 0xef}, nil
+	})
+	if err == nil {
+		t.Fatal("expected an error for a trailer /Size of math.MaxInt-1")
+	}
+	if !strings.Contains(err.Error(), "no room to allocate") {
 		t.Errorf("expected the guard's own error text, got %q", err)
 	}
 }
