@@ -9,6 +9,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // active sprint is auto-moved to "complete" first.
 
   import { onMount, onDestroy } from 'svelte';
+  import { autosave } from '../../autosave.svelte';
   import { session, goto } from '../../session.svelte';
 
   let sprints = $state<AgileSprint[]>([]);
@@ -23,6 +24,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // value to decide whether closing needs confirmation.
   let original = $state<string | null>(null);
   let dirty = $derived(editing !== null && original !== null && JSON.stringify(editing) !== original);
+  let stopDirtyGuard: (() => void) | null = null;
 
   onMount(async () => {
     await refresh();
@@ -52,7 +54,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     const inTwoWeeks = new Date(Date.now() + 14 * 86400 * 1000)
       .toISOString()
       .slice(0, 10);
-    editing = {
+    openEditor({
       id: '',
       project_id: session.project!.id,
       name: '',
@@ -62,27 +64,89 @@ SPDX-License-Identifier: GPL-3.0-or-later
       end_date: inTwoWeeks,
       capacity: 0,
       created_at: '',
-    };
-    original = JSON.stringify(editing);
+    });
   }
 
   function openExisting(s: AgileSprint) {
-    editing = { ...s };
-    original = JSON.stringify(editing);
+    openEditor({ ...s });
   }
 
-  async function save() {
-    if (!editing) return;
+  // The shared Save/Discard/Cancel guard only knows about registered drafts.
+  // Tear its entry down before clearing or replacing `editing`; otherwise its
+  // snapshot can briefly change to `null` and falsely block a continuation.
+  function stopEditing() {
+    stopDirtyGuard?.();
+    stopDirtyGuard = null;
+    editing = null;
+    original = null;
+  }
+
+  function openEditor(next: AgileSprint) {
+    stopEditing();
+    editing = next;
+    original = JSON.stringify(next);
+    error = '';
+    // A successful save closes this lightweight modal, so timed autosave
+    // would dismiss it unexpectedly. It remains registered for shared
+    // navigation, sign-out, project-close, and native-close decisions.
+    stopDirtyGuard = autosave.register(
+      () => JSON.stringify(editing),
+      () => save(),
+      false,
+    );
+  }
+
+  function rebaseEditableChanges(
+    saved: AgileSprint,
+    savingSprint: AgileSprint,
+    latestSprint: AgileSprint,
+  ): AgileSprint {
+    return {
+      ...saved,
+      name: latestSprint.name !== savingSprint.name ? latestSprint.name : saved.name,
+      goal: latestSprint.goal !== savingSprint.goal ? latestSprint.goal : saved.goal,
+      start_date: latestSprint.start_date !== savingSprint.start_date
+        ? latestSprint.start_date
+        : saved.start_date,
+      end_date: latestSprint.end_date !== savingSprint.end_date
+        ? latestSprint.end_date
+        : saved.end_date,
+      capacity: latestSprint.capacity !== savingSprint.capacity
+        ? latestSprint.capacity
+        : saved.capacity,
+    };
+  }
+
+  async function save(): Promise<boolean> {
+    if (!editing || saving) return false;
+    if (!editing.name.trim()) {
+      error = 'Sprint name is required.';
+      return false;
+    }
+    // Persist an immutable start snapshot. Disabled controls rule out normal
+    // user changes while saving, but a programmatic update must still survive
+    // rather than being silently overwritten by the backend response.
+    const savingSprint = { ...editing };
+    const savingSnapshot = JSON.stringify(savingSprint);
     saving = true;
+    error = '';
     try {
-      const saved = await window.go.main.App.SaveSprint(editing);
+      const saved = await window.go.main.App.SaveSprint(savingSprint);
       const idx = sprints.findIndex((s) => s.id === saved.id);
       if (idx >= 0) sprints[idx] = saved;
       else sprints = [saved, ...sprints];
-      editing = null;
+      const latestSprint = editing;
+      original = JSON.stringify(saved);
+      if (latestSprint && JSON.stringify(latestSprint) !== savingSnapshot) {
+        editing = rebaseEditableChanges(saved, savingSprint, latestSprint);
+        return true;
+      }
+      stopEditing();
       status = 'Sprint saved.';
+      return true;
     } catch (err: any) {
       error = `Save failed: ${err}`;
+      return false;
     } finally {
       saving = false;
     }
@@ -97,7 +161,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function requestClose() {
     if (saving) return;
     if (dirty && !confirm('Discard unsaved changes to this sprint?')) return;
-    editing = null;
+    stopEditing();
   }
 
   async function activate(s: AgileSprint) {
@@ -160,9 +224,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     return { done, total: items.length };
   }
 
-  // No timers in this component, but the pattern from DEVELOPER_HANDBOOK.md §6
-  // applies to anything we might add later.
-  onDestroy(() => {});
+  onDestroy(() => stopDirtyGuard?.());
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">
@@ -268,13 +330,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <h2 class="text-sm font-bold tracking-widest uppercase text-slate-50">
           {editing.id ? 'Edit sprint' : 'New sprint'}
         </h2>
-        <button onclick={requestClose} class="text-slate-500 hover:text-slate-200">×</button>
+        <button
+          onclick={requestClose}
+          disabled={saving}
+          class="text-slate-500 hover:text-slate-200"
+          aria-label="Close"
+        >×</button>
       </header>
       <div class="p-5 space-y-3">
         <label class="block">
           <span class="text-xs text-slate-500 uppercase">Name</span>
           <input
             bind:value={editing.name}
+            disabled={saving}
             placeholder="e.g. Sprint 14"
             class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
           />
@@ -283,6 +351,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <span class="text-xs text-slate-500 uppercase">Goal</span>
           <textarea
             bind:value={editing.goal}
+            disabled={saving}
             rows="2"
             class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
           ></textarea>
@@ -293,6 +362,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <input
               type="date"
               bind:value={editing.start_date}
+              disabled={saving}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"
             />
           </label>
@@ -301,6 +371,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <input
               type="date"
               bind:value={editing.end_date}
+              disabled={saving}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"
             />
           </label>
@@ -311,6 +382,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             type="number"
             step="0.5"
             bind:value={editing.capacity}
+            disabled={saving}
             class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
           />
         </label>
@@ -318,16 +390,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <footer class="px-5 py-3 border-t border-slate-800 flex justify-end gap-2">
         <button
           onclick={requestClose}
+          disabled={saving}
           class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded"
         >
           Cancel
         </button>
         <button
           onclick={save}
-          disabled={!editing.name}
+          disabled={saving || !editing.name.trim()}
           class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
         >
-          Save
+          {saving ? 'Saving...' : 'Save'}
         </button>
       </footer>
     </div>
