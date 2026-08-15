@@ -29,4 +29,21 @@ describe('autosave persistence contract', () => {
     expect(autosave.hasDirty()).toBe(false);
     unregister();
   });
+
+  it('keeps an edit made during a save dirty for a second save', async () => {
+    let value = 'saved';
+    let finishSave!: (result: boolean) => void;
+    const save = vi.fn(() => new Promise<boolean>((resolve) => { finishSave = resolve; }));
+    const unregister = autosave.register(() => value, save, false);
+    value = 'first edit';
+
+    const saving = autosave.saveAll();
+    value = 'second edit';
+    finishSave(true);
+
+    expect(await saving).toBe(false);
+    expect(autosave.hasDirty()).toBe(true);
+    expect(autosave.lastError).toContain('Changes were made while saving');
+    unregister();
+  });
 });

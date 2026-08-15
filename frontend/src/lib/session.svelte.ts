@@ -97,6 +97,7 @@ export function requestNavigation(
   editingId: string | null = null,
   beforeCommit?: () => Promise<boolean>,
 ): void {
+  if (navigation.pending || navigation.saving) return;
   const target = { view, editingId, beforeCommit };
   if (autosave.hasDirty()) {
     navigation.pending = target;

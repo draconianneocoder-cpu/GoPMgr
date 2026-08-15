@@ -27,7 +27,6 @@ let elapsed = 0;
 const entries = new Set<Entry>();
 let heartbeat: ReturnType<typeof setInterval> | null = null;
 let lastError = $state('');
-let lastReportedDirty: boolean | null = null;
 
 function safeSnapshot(fn: () => string): string {
   try {
@@ -37,22 +36,15 @@ function safeSnapshot(fn: () => string): string {
   }
 }
 
-function syncNativeDirtyState(): void {
-  const dirty = [...entries].some((e) => safeSnapshot(e.snapshot) !== e.last);
-  if (dirty === lastReportedDirty) return;
-  lastReportedDirty = dirty;
-  void window.go?.main?.App?.SetUnsavedChanges?.(dirty)?.catch?.(() => {});
-}
-
 async function saveEntry(e: Entry): Promise<boolean> {
   if (e.saving) return false;
   e.saving = true;
+  const savedSnapshot = safeSnapshot(e.snapshot);
   try {
     const result = await e.save();
     if (result === false) throw new Error('The editor reported that the save failed.');
-    e.last = safeSnapshot(e.snapshot);
+    e.last = savedSnapshot;
     lastError = '';
-    syncNativeDirtyState();
     return true;
   } catch (err: unknown) {
     lastError = err instanceof Error ? err.message : String(err ?? 'Save failed.');
@@ -63,7 +55,6 @@ async function saveEntry(e: Entry): Promise<boolean> {
 }
 
 function tick(): void {
-  syncNativeDirtyState();
   if (intervalSeconds <= 0 || entries.size === 0) {
     elapsed = 0;
     return;
@@ -98,12 +89,16 @@ export const autosave = {
   async saveAll(): Promise<boolean> {
     const dirty = [...entries].filter((e) => safeSnapshot(e.snapshot) !== e.last);
     const results = await Promise.all(dirty.map(saveEntry));
-    return results.every(Boolean);
+    if (!results.every(Boolean)) return false;
+    if (this.hasDirty()) {
+      lastError = 'Changes were made while saving. Save again before continuing.';
+      return false;
+    }
+    return true;
   },
   discardAll(): void {
     for (const e of entries) e.last = safeSnapshot(e.snapshot);
     lastError = '';
-    syncNativeDirtyState();
   },
   /** Set the interval (seconds); 0 disables auto-save. */
   setInterval(seconds: number): void {
@@ -123,10 +118,8 @@ export const autosave = {
     const entry: Entry = { snapshot, save, last: safeSnapshot(snapshot), automatic };
     entries.add(entry);
     ensureHeartbeat();
-    syncNativeDirtyState();
     return () => {
       entries.delete(entry);
-      syncNativeDirtyState();
     };
   },
 };
