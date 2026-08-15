@@ -86,7 +86,8 @@ type App struct {
 	logPath string // dated log file path, e.g. .../logs/gopmgr-2026-06-20.log
 	logDir  string // parent of logPath, e.g. .../logs
 
-	unsavedChanges bool
+	nativeCloseGuardReady bool
+	nativeClosePermit     bool
 }
 
 // NewApp constructs an App at process start. It opens the system DB
@@ -158,22 +159,59 @@ func (a *App) Greet() string {
 	return "GoPMgr " + cli.Version + " ready."
 }
 
-// SetUnsavedChanges mirrors the frontend editor guard into the native window
-// lifecycle so closing the title-bar window cannot silently bypass it.
-func (a *App) SetUnsavedChanges(dirty bool) {
+// EnableNativeCloseGuard makes subsequent native close requests ask the
+// frontend to evaluate its current editor state. Before the frontend is ready,
+// closing remains allowed so a failed startup cannot trap the user in a window.
+func (a *App) EnableNativeCloseGuard() {
 	a.mu.Lock()
-	a.unsavedChanges = dirty
+	a.nativeCloseGuardReady = true
+	a.nativeClosePermit = false
 	a.mu.Unlock()
 }
 
-func (a *App) beforeClose(ctx context.Context) bool {
-	a.mu.RLock()
-	dirty := a.unsavedChanges
-	a.mu.RUnlock()
-	if dirty {
-		wailsruntime.EventsEmit(ctx, "app:before-close")
+// CompleteNativeClose grants the one-shot permit and immediately invokes the
+// Wails quit path. Keeping those operations in one backend call prevents the
+// permit from being exposed while the frontend waits for a bridge response.
+func (a *App) CompleteNativeClose() error {
+	return a.completeNativeClose(wailsruntime.Quit)
+}
+
+func (a *App) completeNativeClose(quit func(context.Context)) error {
+	a.mu.Lock()
+	if a.ctx == nil {
+		a.mu.Unlock()
+		return errors.New("native close: Wails runtime is not ready")
 	}
-	return dirty
+	if !a.nativeCloseGuardReady {
+		a.mu.Unlock()
+		return errors.New("native close: frontend guard is not ready")
+	}
+	a.nativeClosePermit = true
+	ctx := a.ctx
+	a.mu.Unlock()
+	quit(ctx)
+	return nil
+}
+
+func (a *App) shouldPreventNativeClose() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if !a.nativeCloseGuardReady {
+		return false
+	}
+	if a.nativeClosePermit {
+		a.nativeClosePermit = false
+		return false
+	}
+	return true
+}
+
+func (a *App) beforeClose(ctx context.Context) bool {
+	if !a.shouldPreventNativeClose() {
+		return false
+	}
+	wailsruntime.EventsEmit(ctx, "app:before-close")
+	return true
 }
 
 // =========================================================

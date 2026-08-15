@@ -21,7 +21,8 @@ declare global {
           ChooseTSARootCertFile: () => Promise<string>;
           SecureArchive: (projectPath: string) => Promise<string>;
           RestoreProjectArchive: () => Promise<ProjectFile>;
-          SetUnsavedChanges: (dirty: boolean) => Promise<void>;
+          EnableNativeCloseGuard: () => Promise<void>;
+          CompleteNativeClose: () => Promise<void>;
 
           // ----- V2: accounts & session -----
           ListUsers: () => Promise<Account[]>;

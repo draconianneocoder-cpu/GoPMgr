@@ -13,6 +13,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     discardAndContinueNavigation,
     cancelNavigation,
   } from './lib/session.svelte';
+  import { NativeCloseController, installNativeCloseGuard } from './lib/native-close';
   import { applyTheme, readCachedTheme, rememberTheme } from './lib/theme';
   import { autosave } from './lib/autosave.svelte';
 
@@ -95,6 +96,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let routeProps = $state<Record<string, unknown>>({});
   let routeError = $state('');
   let routeToken = 0;
+  let nativeClose: NativeCloseController | null = null;
+  let nativeCloseLocked = $state(false);
+
+  function cancelPendingNavigation(): void {
+    if (nativeClose) {
+      nativeClose.cancel();
+      return;
+    }
+    cancelNavigation();
+  }
+
+  function setNativeCloseInteractionLocked(locked: boolean): void {
+    nativeCloseLocked = locked;
+    document.body.inert = locked;
+    if (locked && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  }
 
   // Human-readable names for each view, used by the screen-reader route
   // announcer below. Navigation swaps the whole screen with no page reload,
@@ -200,21 +219,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   // On first mount, wire the native menu and check whether a user is already
   // signed in (the Go side keeps state across `wails dev` HMR cycles).
-  onMount(async () => {
+  onMount(() => {
     // Native menu items (built in Go) emit these events; turn them into
     // navigation. `window.runtime` is injected by the Wails runtime.
     const rt = (window as any).runtime;
+    const stopEvents: Array<() => void> = [];
     if (rt?.EventsOn) {
-      rt.EventsOn('menu:new-project', () => {
+      stopEvents.push(rt.EventsOn('menu:new-project', () => {
         if (session.user) goto('launchpad');
-      });
-      rt.EventsOn('menu:open-project', () => {
+      }));
+      stopEvents.push(rt.EventsOn('menu:open-project', () => {
         if (session.user) goto('project_picker');
-      });
-      rt.EventsOn('menu:settings', () => {
+      }));
+      stopEvents.push(rt.EventsOn('menu:settings', () => {
         if (session.user && session.project) goto('project_settings');
-      });
-      rt.EventsOn('menu:close-project', async () => {
+      }));
+      stopEvents.push(rt.EventsOn('menu:close-project', async () => {
         if (!session.project) return;
         requestNavigation('portfolio', null, async () => {
           try {
@@ -227,35 +247,44 @@ SPDX-License-Identifier: GPL-3.0-or-later
             return false;
           }
         });
-      });
-      rt.EventsOn('menu:dashboard', () => {
+      }));
+      stopEvents.push(rt.EventsOn('menu:dashboard', () => {
         if (session.user) goto('portfolio');
-      });
-      rt.EventsOn('menu:app-settings', () => {
+      }));
+      stopEvents.push(rt.EventsOn('menu:app-settings', () => {
         if (session.user) goto('app_settings');
-      });
-      rt.EventsOn('menu:help', () => {
+      }));
+      stopEvents.push(rt.EventsOn('menu:help', () => {
         if (session.user) goto('help');
-      });
-      rt.EventsOn('app:before-close', () => {
-        requestNavigation(session.view, session.editingId, async () => {
-          await window.go.main.App.SetUnsavedChanges(false);
-          rt.Quit();
-          return false;
+      }));
+      const app = window.go?.main?.App;
+      if (app) {
+        nativeClose = new NativeCloseController({
+          app,
+          reportError: (message) => { routeError = message; },
+          setInteractionLocked: setNativeCloseInteractionLocked,
         });
+        stopEvents.push(installNativeCloseGuard(rt, app, nativeClose, (message) => {
+          routeError = message;
+        }));
+      }
+    }
+
+    if (window.go?.main?.App?.CurrentUser) {
+      void window.go.main.App.CurrentUser().then((u) => {
+        if (u) {
+          session.user = u;
+          goto('portfolio');
+        }
+      }).catch(() => {
+        // No active session — stay on login.
       });
     }
 
-    if (!window.go?.main?.App?.CurrentUser) return;
-    try {
-      const u = await window.go.main.App.CurrentUser();
-      if (u) {
-        session.user = u;
-        goto('portfolio');
-      }
-    } catch {
-      // No active session — stay on login.
-    }
+    return () => {
+      setNativeCloseInteractionLocked(false);
+      stopEvents.forEach((stop) => stop());
+    };
   });
 </script>
 
@@ -309,6 +338,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 <ToastContainer />
 
+{#if nativeCloseLocked}
+  <div class="fixed inset-0 z-[60] bg-slate-950/75" aria-hidden="true"></div>
+{/if}
+
 {#if navigation.pending}
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="presentation">
     <div
@@ -326,7 +359,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <p class="mt-3 text-sm text-red-400" role="alert">{navigation.error}</p>
       {/if}
       <div class="mt-5 flex flex-wrap justify-end gap-2">
-        <button onclick={cancelNavigation} disabled={navigation.saving} class="rounded px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">Cancel</button>
+        <button onclick={cancelPendingNavigation} disabled={navigation.saving} class="rounded px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">Cancel</button>
         <button onclick={discardAndContinueNavigation} disabled={navigation.saving} class="rounded border border-red-800 px-3 py-2 text-xs text-red-300 hover:bg-red-950/40">Discard</button>
         <button onclick={saveAndContinueNavigation} disabled={navigation.saving} class="rounded bg-cyan-600 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-500 disabled:opacity-50">
           {navigation.saving ? 'Saving…' : 'Save and continue'}

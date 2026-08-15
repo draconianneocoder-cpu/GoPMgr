@@ -407,8 +407,10 @@ available from Application Settings. Auto-save is snapshot-based, so idle
 editors do not rewrite unchanged data or churn `updated_at`.
 
 Navigation, project close, sign-out, and native window close protect registered
-editor changes with Save, Discard, and Cancel choices. A failed automatic or
-manual save remains dirty and must be retried or explicitly discarded.
+editor changes with Save, Discard, and Cancel choices. After the desktop
+renderer is ready, native close uses the editor's current local dirty state;
+a failed automatic or manual save remains dirty and must be retried or
+explicitly discarded.
 
 Document editors show an unsaved-changes indicator and a status dropdown
 for `draft`, `review`, `approved`, and `archived`.
