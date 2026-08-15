@@ -4,10 +4,124 @@
 package main
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 )
+
+func TestReserveProjectFolderRetriesCollisionsAndKeepsPrivateMode(t *testing.T) {
+	dir := t.TempDir()
+	const id = "20260815-120000-project"
+	if err := os.Mkdir(filepath.Join(dir, id), 0o700); err != nil {
+		t.Fatalf("create pre-existing project folder: %v", err)
+	}
+	sentinelPath := filepath.Join(dir, id, "keep")
+	if err := os.WriteFile(sentinelPath, []byte("original"), 0o600); err != nil {
+		t.Fatalf("write existing project sentinel: %v", err)
+	}
+
+	path, err := reserveProjectFolder(dir, id)
+	if err != nil {
+		t.Fatalf("reserveProjectFolder: %v", err)
+	}
+	if got, want := filepath.Base(filepath.Dir(path)), id+"-2"; got != want {
+		t.Fatalf("reserved folder = %q, want %q", got, want)
+	}
+	info, err := os.Stat(filepath.Dir(path))
+	if err != nil {
+		t.Fatalf("stat reserved folder: %v", err)
+	}
+	if got, want := info.Mode().Perm(), os.FileMode(0o700); got != want {
+		t.Fatalf("reserved folder mode = %o, want %o", got, want)
+	}
+	if got, err := os.ReadFile(sentinelPath); err != nil || string(got) != "original" {
+		t.Fatalf("existing project sentinel = %q, err %v, want original", got, err)
+	}
+}
+
+func TestReserveProjectFolderAllocatesUniquePathsUnderContention(t *testing.T) {
+	const workers = 32
+	const id = "20260815-120000-project"
+	dir := t.TempDir()
+	paths := make(chan string, workers)
+	errs := make(chan error, workers)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Go(func() {
+			<-start
+			path, err := reserveProjectFolder(dir, id)
+			if err != nil {
+				errs <- err
+				return
+			}
+			paths <- path
+		})
+	}
+	close(start)
+	wg.Wait()
+	close(paths)
+	close(errs)
+
+	for err := range errs {
+		t.Fatalf("reserveProjectFolder: %v", err)
+	}
+	seen := make(map[string]struct{}, workers)
+	for path := range paths {
+		if filepath.Base(path) != "project"+projectFileExtension {
+			t.Fatalf("project path = %q, want project filename", path)
+		}
+		if _, exists := seen[path]; exists {
+			t.Fatalf("duplicate project path allocated: %q", path)
+		}
+		if filepath.Dir(filepath.Dir(path)) != dir {
+			t.Fatalf("project path = %q, want direct child of %q", path, dir)
+		}
+		seen[path] = struct{}{}
+	}
+	if got := len(seen); got != workers {
+		t.Fatalf("allocated %d project paths, want %d", got, workers)
+	}
+}
+
+func TestReserveProjectFolderReturnsParentCreationError(t *testing.T) {
+	parentFile := filepath.Join(t.TempDir(), "not-a-directory")
+	if err := os.WriteFile(parentFile, []byte("block"), 0o600); err != nil {
+		t.Fatalf("create blocking parent file: %v", err)
+	}
+
+	path, err := reserveProjectFolder(parentFile, "20260815-120000-project")
+	if path != "" {
+		t.Fatalf("path = %q, want empty on parent creation failure", path)
+	}
+	if err == nil {
+		t.Fatal("reserveProjectFolder succeeded through a non-directory parent")
+	}
+	if errors.Is(err, fs.ErrExist) {
+		t.Fatalf("reserveProjectFolder error = %v, want non-collision error", err)
+	}
+}
+
+func TestReserveProjectFolderReturnsCandidateCreationError(t *testing.T) {
+	dir := t.TempDir()
+	called := false
+	path, err := reserveProjectFolderWithMkdir(dir, "20260815-120000-project", func(_ string, _ fs.FileMode) error {
+		called = true
+		return fs.ErrPermission
+	})
+	if !called {
+		t.Fatal("candidate directory creator was not called")
+	}
+	if path != "" {
+		t.Fatalf("path = %q, want empty on candidate creation failure", path)
+	}
+	if !errors.Is(err, fs.ErrPermission) {
+		t.Fatalf("reserveProjectFolder error = %v, want error wrapping fs.ErrPermission", err)
+	}
+}
 
 func TestProjectDisplayNameStripsTimestamp(t *testing.T) {
 	if got := projectDisplayName("20260615-153000-My Plan"); got != "My Plan" {

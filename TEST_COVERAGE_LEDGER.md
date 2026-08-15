@@ -75,7 +75,7 @@ needs the same update here.
 
 ---
 
-## Root package (`gopmgr`, package `main`) — 52.4%
+## Root package (`gopmgr`, package `main`) — 52.6%
 
 The Wails desktop app entry point, App struct (bound to the frontend via
 `window.go.main.App`), and CLI/headless dispatch. Most of this package's
@@ -117,7 +117,7 @@ already-stale number would fail the script.
 | `montecarlo_action_test.go` | 4 | `App.RunChartMonteCarlo`, worker-count stability | property, table-driven | Monte Carlo risk simulation must reject a non-CPM chart and produce worker-count-independent (deterministic) results. |
 | `portfolio_evm_test.go` | 3 | Portfolio-level EVM rollup across multiple projects | unit | Committed cost and EVM actual cost must stay in separate columns (a real bug class: conflating them double-counts spend); a cyclic schedule must be rejected rather than hang. |
 | `project_path_confinement_test.go` | 3 | Path-taking IPC methods, encrypted DSN path handling | fixture | Every App method that takes a file path from the (untrusted) frontend must confine reads/writes to the user's own projects directory — a path-traversal guard. |
-| `project_storage_test.go` | 3 | `enumerateProjects`, `CreateProject` subfolder layout | table-driven | Must find projects across every layout this app has ever used (flat vs. subfolder, `.pmforge` vs. `.gopmgr`) — see the PMForge→GoPMgr rename work. |
+| `project_storage_test.go` | 7 | `enumerateProjects`, project subfolder layout, and atomic project-folder reservation | table-driven, concurrent, fault-injected | Must find projects across every layout this app has ever used (flat vs. subfolder, `.pmforge` vs. `.gopmgr`). Reservation tests prove collision suffixes preserve existing data, 32 simultaneous allocations receive distinct private paths, and unusable parent or candidate-create failures return errors instead of entering the suffix loop. This prevents concurrent create, launchpad, restore, or clone operations from sharing a database directory. |
 | `report_evm_test.go`, `resources_action_test.go` | 13 | CPM-referenced EVM resolution, resource leveling/histogram actions | integration, table-driven | Resource leveling must honor calendars, priority strategy, and split-task segments, and report tasks it genuinely cannot place rather than silently dropping them. |
 | `risk_sync_test.go` | 3 | Risk Register document → Risk Matrix chart sync | unit | Syncing must map rows correctly, refuse a wrong chart kind, and leave the chart untouched (not partially overwritten) on invalid input. |
 | `scenarios_app_test.go` | 6 | Scenario/what-if chart branching, baseline promotion | integration | Scenario charts are isolated copies — App methods must scope strictly to the currently-open project and never leak another project's scenario data. |
