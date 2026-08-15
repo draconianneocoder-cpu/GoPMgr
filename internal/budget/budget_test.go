@@ -4,16 +4,28 @@
 package budget
 
 import (
+	"errors"
+	"math"
 	"testing"
 
 	"gopmgr/internal/agile"
 	"gopmgr/internal/db"
+	"gopmgr/internal/money"
 )
+
+func mustCompute(t *testing.T, project db.Project, stakeholders []db.Stakeholder, workItems []agile.WorkItem) Summary {
+	t.Helper()
+	got, err := Compute(project, stakeholders, workItems)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
 
 // TestComputeEmpty: with no stakeholders and no work items, Committed
 // should be 0 and Remaining should equal Budget.
 func TestComputeEmpty(t *testing.T) {
-	got := Compute(db.Project{Budget: 100_000}, nil, nil)
+	got := mustCompute(t, db.Project{Budget: 100_000}, nil, nil)
 	if got.Budget != 100_000 {
 		t.Errorf("Budget: want 100000, got %v", got.Budget)
 	}
@@ -33,7 +45,7 @@ func TestVendorContractsRollUp(t *testing.T) {
 		{Name: "Beta LLC", Category: db.StakeholderVendor, ContractValue: 25_000},
 		{Name: "Sponsor", Category: db.StakeholderSponsor, ContractValue: 0},
 	}
-	got := Compute(db.Project{Budget: 100_000}, stake, nil)
+	got := mustCompute(t, db.Project{Budget: 100_000}, stake, nil)
 	if got.ContractValue != 65_000 {
 		t.Errorf("ContractValue: want 65000, got %v", got.ContractValue)
 	}
@@ -61,7 +73,7 @@ func TestLabourEstimateNameMatch(t *testing.T) {
 		{Assignee: "Bob", Points: 3},
 		{Assignee: "Carol", Points: 2}, // no stakeholder → ignored
 	}
-	got := Compute(db.Project{Budget: 5000}, stake, items)
+	got := mustCompute(t, db.Project{Budget: 5000}, stake, items)
 	want := 4*120 + 3*90 // 750
 	if int(got.LabourEstimate) != want {
 		t.Errorf("LabourEstimate: want %d, got %v", want, got.LabourEstimate)
@@ -82,7 +94,7 @@ func TestLabourEstimateFractionalPointsUsesMinorUnits(t *testing.T) {
 		{Assignee: "Alice", Points: 1.5},
 	}
 
-	got := Compute(db.Project{BudgetMinorUnits: 10_000}, stake, items)
+	got := mustCompute(t, db.Project{BudgetMinorUnits: 10_000}, stake, items)
 	if got.LabourEstimateMinorUnits != 5000 {
 		t.Fatalf("LabourEstimateMinorUnits = %d, want 5000", got.LabourEstimateMinorUnits)
 	}
@@ -103,7 +115,7 @@ func TestOverBudgetNegativeRemaining(t *testing.T) {
 	stake := []db.Stakeholder{
 		{Category: db.StakeholderVendor, ContractValue: 200},
 	}
-	got := Compute(db.Project{Budget: 100}, stake, nil)
+	got := mustCompute(t, db.Project{Budget: 100}, stake, nil)
 	if got.Remaining != -100 {
 		t.Errorf("Remaining: want -100 (over budget), got %v", got.Remaining)
 	}
@@ -121,8 +133,58 @@ func TestZeroPointsAndZeroRates(t *testing.T) {
 		{Assignee: "Bob", Points: 0},   // points=0 → 0
 		{Assignee: "Bob", Points: 2},   // 100
 	}
-	got := Compute(db.Project{}, stake, items)
+	got := mustCompute(t, db.Project{}, stake, items)
 	if got.LabourEstimate != 100 {
 		t.Errorf("LabourEstimate: want 100, got %v", got.LabourEstimate)
+	}
+}
+
+func TestComputeReportsAggregateOverflow(t *testing.T) {
+	tests := []struct {
+		name         string
+		project      db.Project
+		stakeholders []db.Stakeholder
+		workItems    []agile.WorkItem
+	}{
+		{
+			name:    "contracts",
+			project: db.Project{BudgetMinorUnits: math.MaxInt64},
+			stakeholders: []db.Stakeholder{
+				{Category: db.StakeholderVendor, ContractValueMinorUnits: math.MaxInt64},
+				{Category: db.StakeholderVendor, ContractValueMinorUnits: 1},
+			},
+		},
+		{
+			name:    "labour",
+			project: db.Project{BudgetMinorUnits: math.MaxInt64},
+			stakeholders: []db.Stakeholder{
+				{Name: "Alice", Category: db.StakeholderTeam, HourlyRateMinorUnits: math.MaxInt64},
+			},
+			workItems: []agile.WorkItem{{Assignee: "Alice", Points: 1}, {Assignee: "Alice", Points: 1}},
+		},
+		{
+			name:    "committed subtotal",
+			project: db.Project{BudgetMinorUnits: math.MaxInt64},
+			stakeholders: []db.Stakeholder{
+				{Category: db.StakeholderVendor, ContractValueMinorUnits: math.MaxInt64},
+				{Name: "Alice", Category: db.StakeholderTeam, HourlyRateMinorUnits: 1},
+			},
+			workItems: []agile.WorkItem{{Assignee: "Alice", Points: 1}},
+		},
+		{
+			name:    "remaining",
+			project: db.Project{BudgetMinorUnits: math.MinInt64},
+			stakeholders: []db.Stakeholder{
+				{Category: db.StakeholderVendor, ContractValueMinorUnits: 1},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Compute(tt.project, tt.stakeholders, tt.workItems)
+			if !errors.Is(err, money.ErrOverflow) {
+				t.Fatalf("error = %v, want ErrOverflow", err)
+			}
+		})
 	}
 }

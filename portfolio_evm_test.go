@@ -4,12 +4,14 @@
 package main
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"gopmgr/internal/analytics"
 	"gopmgr/internal/db"
+	"gopmgr/internal/money"
 )
 
 func newPortfolioEVMTestProject(t *testing.T, startDate string) (*db.Database, db.Project) {
@@ -166,5 +168,37 @@ func TestPortfolioProjectMetricsRejectsCyclicSchedule(t *testing.T) {
 
 	if got.EVMAvailable {
 		t.Fatal("EVMAvailable = true, want false for a cyclic schedule")
+	}
+}
+
+func TestPortfolioProjectMetricsReportsEVMOverflow(t *testing.T) {
+	d, project := newPortfolioEVMTestProject(t, "2026-01-05")
+	savePortfolioEVMChart(t, d, project.ID, `{
+		"nodes":[
+			{"id":"a","label":"A","duration":1,"budgeted_cost_minor_units":9223372036854775807},
+			{"id":"b","label":"B","duration":1,"budgeted_cost_minor_units":1}
+		],
+		"edges":[]
+	}`)
+
+	_, err := portfolioProjectMetrics(d, project, "", time.Date(2026, 1, 12, 12, 0, 0, 0, time.UTC))
+	if !errors.Is(err, money.ErrOverflow) {
+		t.Fatalf("portfolioProjectMetrics error = %v, want ErrOverflow", err)
+	}
+}
+
+func TestPortfolioProjectMetricsReportsEVMEstimateOverflow(t *testing.T) {
+	d, project := newPortfolioEVMTestProject(t, "2026-01-05")
+	savePortfolioEVMChart(t, d, project.ID, `{
+		"nodes":[{
+			"id":"a","label":"A","duration":1,"percent_complete":50,
+			"budgeted_cost_minor_units":2,"actual_cost_minor_units":9223372036854775807
+		}],
+		"edges":[]
+	}`)
+
+	_, err := portfolioProjectMetrics(d, project, "", time.Date(2026, 1, 12, 12, 0, 0, 0, time.UTC))
+	if !errors.Is(err, money.ErrOverflow) {
+		t.Fatalf("portfolioProjectMetrics error = %v, want ErrOverflow", err)
 	}
 }

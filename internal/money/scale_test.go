@@ -4,6 +4,7 @@
 package money
 
 import (
+	"errors"
 	"math"
 	"math/big"
 	"testing"
@@ -65,6 +66,21 @@ func TestScaleByRatio_ZeroInputsReturnZeroWithoutPanic(t *testing.T) {
 					tc.amount, tc.numerator, tc.denominator, got.MinorUnits)
 			}
 		})
+	}
+}
+
+func TestScaleByRatioChecked(t *testing.T) {
+	got, err := ScaleByRatioChecked(Amount{MinorUnits: 1000}, 1, 3)
+	if err != nil || got.MinorUnits != 333 {
+		t.Fatalf("ScaleByRatioChecked() = %v, %v; want 333, nil", got, err)
+	}
+	got, err = ScaleByRatioChecked(Amount{MinorUnits: 1000}, 0, 3)
+	if err != nil || got.MinorUnits != 0 {
+		t.Fatalf("ScaleByRatioChecked zero numerator = %v, %v; want 0, nil", got, err)
+	}
+	_, err = ScaleByRatioChecked(Amount{MinorUnits: 2}, math.MaxInt64, 1)
+	if !errors.Is(err, ErrOverflow) {
+		t.Fatalf("ScaleByRatioChecked overflow error = %v, want ErrOverflow", err)
 	}
 }
 

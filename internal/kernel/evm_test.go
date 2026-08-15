@@ -3,7 +3,22 @@
 
 package kernel
 
-import "testing"
+import (
+	"errors"
+	"math"
+	"testing"
+
+	"gopmgr/internal/money"
+)
+
+func mustComputeEVM(t *testing.T, tasks map[string]*Task, asOfDay float64) EVMetrics {
+	t.Helper()
+	got, err := ComputeEVM(tasks, asOfDay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
 
 // Textbook scenario: A (4d, $400) feeds B (4d, $400). Status day 4:
 // A planned done, B planned not started. A is only 75% complete and
@@ -21,7 +36,7 @@ func evmFixture(t *testing.T) map[string]*Task {
 }
 
 func TestComputeEVM_Totals(t *testing.T) {
-	m := ComputeEVM(evmFixture(t), 4)
+	m := mustComputeEVM(t, evmFixture(t), 4)
 
 	approx(t, "BAC", m.BAC, 800)
 	approx(t, "PV", m.PV, 400) // A fully planned, B not started
@@ -45,7 +60,7 @@ func TestComputeEVM_Totals(t *testing.T) {
 }
 
 func TestComputeEVM_MidTaskPVIsLinear(t *testing.T) {
-	m := ComputeEVM(evmFixture(t), 6)
+	m := mustComputeEVM(t, evmFixture(t), 6)
 	// Day 6: A fully planned (400) + B halfway (200).
 	approx(t, "PV", m.PV, 600)
 }
@@ -78,7 +93,7 @@ func TestComputeEVM_SplitTaskPVPausesDuringGaps(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ComputeEVM(tasks, tt.asOfDay)
+			got := mustComputeEVM(t, tasks, tt.asOfDay)
 			if got.PVMinorUnits != tt.wantPVMinor {
 				t.Fatalf("PVMinorUnits = %d, want %d", got.PVMinorUnits, tt.wantPVMinor)
 			}
@@ -91,7 +106,7 @@ func TestComputeEVM_ZeroDenominators(t *testing.T) {
 		"A": {ID: "A", Duration: 2, BudgetedCost: 100},
 	}
 	mustCPM(t, tasks)
-	m := ComputeEVM(tasks, 0)
+	m := mustComputeEVM(t, tasks, 0)
 
 	// Nothing planned, earned, or spent yet.
 	approx(t, "PV", m.PV, 0)
@@ -108,14 +123,14 @@ func TestComputeEVM_MilestonePV(t *testing.T) {
 	}
 	mustCPM(t, tasks)
 
-	before := ComputeEVM(tasks, 1)
+	before := mustComputeEVM(t, tasks, 1)
 	approx(t, "PV before milestone", before.PV, 0)
-	after := ComputeEVM(tasks, 2)
+	after := mustComputeEVM(t, tasks, 2)
 	approx(t, "PV at milestone", after.PV, 50)
 }
 
 func TestComputeEVM_DeterministicTaskOrder(t *testing.T) {
-	m := ComputeEVM(evmFixture(t), 4)
+	m := mustComputeEVM(t, evmFixture(t), 4)
 	if len(m.Tasks) != 2 || m.Tasks[0].TaskID != "A" || m.Tasks[1].TaskID != "B" {
 		t.Errorf("per-task breakdown not ID-ordered: %+v", m.Tasks)
 	}
@@ -137,7 +152,7 @@ func TestComputeEVM_UsesMinorUnitsForMoney(t *testing.T) {
 	}
 	mustCPM(t, tasks)
 
-	m := ComputeEVM(tasks, 1)
+	m := mustComputeEVM(t, tasks, 1)
 
 	if m.BACMinorUnits != 3333 {
 		t.Fatalf("BACMinorUnits = %d, want 3333", m.BACMinorUnits)
@@ -162,4 +177,51 @@ func TestComputeEVM_UsesMinorUnitsForMoney(t *testing.T) {
 	approx(t, "EV display", m.EV, 11.11)
 	approx(t, "AC display", m.AC, 20)
 	approx(t, "EAC display", m.EAC, 60)
+}
+
+func TestComputeEVMAllowsExactCancellation(t *testing.T) {
+	tasks := map[string]*Task{
+		"A": {ID: "A", BudgetedCostMinorUnits: math.MaxInt64},
+		"B": {ID: "B", BudgetedCostMinorUnits: 1},
+		"C": {ID: "C", BudgetedCostMinorUnits: -1},
+	}
+	got := mustComputeEVM(t, tasks, -1)
+	if got.BACMinorUnits != math.MaxInt64 {
+		t.Fatalf("BAC = %d, want %d", got.BACMinorUnits, int64(math.MaxInt64))
+	}
+}
+
+func TestComputeEVMReportsOverflow(t *testing.T) {
+	tests := []struct {
+		name  string
+		tasks map[string]*Task
+	}{
+		{
+			name: "aggregate",
+			tasks: map[string]*Task{
+				"A": {ID: "A", BudgetedCostMinorUnits: math.MaxInt64},
+				"B": {ID: "B", BudgetedCostMinorUnits: 1},
+			},
+		},
+		{
+			name: "cost variance",
+			tasks: map[string]*Task{
+				"A": {ID: "A", BudgetedCostMinorUnits: math.MaxInt64, ActualCostMinorUnits: -1, PercentComplete: 100},
+			},
+		},
+		{
+			name: "estimate at completion",
+			tasks: map[string]*Task{
+				"A": {ID: "A", BudgetedCostMinorUnits: 2, ActualCostMinorUnits: math.MaxInt64, PercentComplete: 50},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ComputeEVM(tt.tasks, -1)
+			if !errors.Is(err, money.ErrOverflow) {
+				t.Fatalf("error = %v, want ErrOverflow", err)
+			}
+		})
+	}
 }

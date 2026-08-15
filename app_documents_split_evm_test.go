@@ -47,7 +47,10 @@ func TestCpmChartDataToKernelTasksPreservesSplitPlanForEVM(t *testing.T) {
 	if task.ES != 2 {
 		t.Fatalf("split task ES = %v, want 2 after predecessor", task.ES)
 	}
-	got := kernel.ComputeEVM(tasks, 3.5)
+	got, err := kernel.ComputeEVM(tasks, 3.5)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.PVMinorUnits != 10000 {
 		t.Fatalf("PVMinorUnits during split gap = %d, want 10000", got.PVMinorUnits)
 	}

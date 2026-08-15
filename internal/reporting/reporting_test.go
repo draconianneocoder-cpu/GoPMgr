@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,7 @@ import (
 
 	"gopmgr/internal/db"
 	"gopmgr/internal/documents"
+	"gopmgr/internal/kernel"
 )
 
 func TestExportWritesPrivatePDFAndProvenanceManifest(t *testing.T) {
@@ -117,6 +119,32 @@ func TestExportRejectsPathSeparatorsInFileStem(t *testing.T) {
 		FileStem:    "../unsafe",
 	}); err == nil || !strings.Contains(err.Error(), "path separators") {
 		t.Fatalf("Export error = %v, want path-separator rejection", err)
+	}
+}
+
+func TestExportDoesNotWriteWhenEVMResolutionFails(t *testing.T) {
+	database, _, document := newReportFixture(t, "approved")
+	exportsDir := filepath.Join(t.TempDir(), "exports")
+	resolveErr := errors.New("EVM total exceeds range")
+	service := Service{
+		Database: database,
+		ResolveEVM: func(db.Project, map[string]documents.ResolvedChart, time.Time) (map[string]*kernel.EVMetrics, error) {
+			return nil, resolveErr
+		},
+	}
+
+	_, err := service.Export(ExportRequest{
+		ReportTitle: "Overflow",
+		Sections:    []documents.ReportSection{{DocumentID: document.ID}},
+		Options:     Options{ProfileID: "custom"},
+		ExportsDir:  exportsDir,
+		FileStem:    "Overflow",
+	})
+	if !errors.Is(err, resolveErr) {
+		t.Fatalf("Export error = %v, want resolver error", err)
+	}
+	if _, err := os.Stat(exportsDir); !os.IsNotExist(err) {
+		t.Fatalf("exports directory exists after failed EVM resolution: %v", err)
 	}
 }
 

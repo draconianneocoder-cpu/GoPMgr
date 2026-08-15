@@ -29,8 +29,8 @@ type Options struct {
 
 // EVMResolver supplies optional schedule metrics for referenced charts. The
 // App owns the chart-to-kernel adaptation, so this package does not couple to
-// the Wails layer's scheduling helpers.
-type EVMResolver func(db.Project, map[string]documents.ResolvedChart, time.Time) map[string]*kernel.EVMetrics
+// the Wails layer's scheduling helpers. An error prevents report output.
+type EVMResolver func(db.Project, map[string]documents.ResolvedChart, time.Time) (map[string]*kernel.EVMetrics, error)
 
 // Service runs combined-report workflows against one already-open project
 // database. Database is required; Now and ResolveEVM are optional seams for
@@ -159,6 +159,10 @@ func (s Service) Export(request ExportRequest) (string, error) {
 		return "", err
 	}
 	charts, chartManifest := s.resolveCharts(chartIDs)
+	resolvedEVM, err := s.resolveEVM(project, charts)
+	if err != nil {
+		return "", fmt.Errorf("resolve report EVM: %w", err)
+	}
 	bytes, err := documents.BuildCombinedReport(documents.ReportSpec{
 		ReportTitle:    request.ReportTitle,
 		Subtitle:       request.Subtitle,
@@ -166,7 +170,7 @@ func (s Service) Export(request ExportRequest) (string, error) {
 		ProjectName:    project.Name,
 		Sections:       request.Sections,
 		ResolvedCharts: charts,
-		ResolvedEVM:    s.resolveEVM(project, charts),
+		ResolvedEVM:    resolvedEVM,
 		Profile:        preflight.Profile,
 		Mode:           preflight.Mode,
 		QualityIssues:  preflight.Issues,
@@ -247,9 +251,9 @@ func (s Service) resolveCharts(chartIDs map[string]struct{}) (map[string]documen
 	return resolved, manifest
 }
 
-func (s Service) resolveEVM(project db.Project, charts map[string]documents.ResolvedChart) map[string]*kernel.EVMetrics {
+func (s Service) resolveEVM(project db.Project, charts map[string]documents.ResolvedChart) (map[string]*kernel.EVMetrics, error) {
 	if s.ResolveEVM == nil {
-		return nil
+		return nil, nil
 	}
 	return s.ResolveEVM(project, charts, s.now().UTC())
 }

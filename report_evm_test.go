@@ -4,11 +4,14 @@
 package main
 
 import (
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"gopmgr/internal/db"
 	"gopmgr/internal/documents"
+	"gopmgr/internal/money"
 )
 
 func TestResolvedEVMForChartsComputesCPMReferences(t *testing.T) {
@@ -24,7 +27,10 @@ func TestResolvedEVMForChartsComputesCPMReferences(t *testing.T) {
 	proj := db.Project{StartDate: "2026-06-01", CountryCode: "US"}
 	asOf := time.Date(2026, 6, 5, 12, 0, 0, 0, time.UTC)
 
-	resolved := resolvedEVMForCharts(proj, charts, asOf)
+	resolved, err := resolvedEVMForCharts(proj, charts, asOf)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	metrics := resolved["chart-1"]
 	if metrics == nil {
@@ -33,5 +39,33 @@ func TestResolvedEVMForChartsComputesCPMReferences(t *testing.T) {
 	}
 	if metrics.BAC != 800 || metrics.PV != 500 || metrics.EV != 300 || metrics.AC != 500 {
 		t.Fatalf("metrics = %+v, want BAC=800 PV=500 EV=300 AC=500", metrics)
+	}
+}
+
+func TestResolvedEVMForChartsReportsOverflow(t *testing.T) {
+	charts := map[string]documents.ResolvedChart{
+		"z-last": {
+			Kind: "cpm",
+			Data: `{"nodes":[
+				{"id":"A","duration":1,"budgeted_cost_minor_units":9223372036854775807},
+				{"id":"B","duration":1,"budgeted_cost_minor_units":1}
+			],"edges":[]}`,
+		},
+		"a-first": {
+			Kind: "cpm",
+			Data: `{"nodes":[
+				{"id":"C","duration":1,"budgeted_cost_minor_units":9223372036854775807},
+				{"id":"D","duration":1,"budgeted_cost_minor_units":1}
+			],"edges":[]}`,
+		},
+	}
+	proj := db.Project{StartDate: "2026-06-01", CountryCode: "US"}
+
+	_, err := resolvedEVMForCharts(proj, charts, time.Date(2026, 6, 5, 12, 0, 0, 0, time.UTC))
+	if !errors.Is(err, money.ErrOverflow) {
+		t.Fatalf("resolvedEVMForCharts error = %v, want ErrOverflow", err)
+	}
+	if !strings.Contains(err.Error(), `"a-first"`) {
+		t.Fatalf("resolvedEVMForCharts error = %v, want lexical first chart", err)
 	}
 }

@@ -292,7 +292,7 @@ func (a *App) ComputeScheduleEVM(chartID, asOfDate string) (kernel.EVMetrics, er
 		return kernel.EVMetrics{}, errors.New("status date is unreachably far from the project start")
 	}
 
-	return kernel.ComputeEVM(tasks, asOfDay), nil
+	return kernel.ComputeEVM(tasks, asOfDay)
 }
 
 // RunChartMonteCarlo runs probabilistic scheduling for a CPM chart

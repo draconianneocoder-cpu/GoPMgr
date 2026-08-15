@@ -77,7 +77,9 @@ families.
 - `internal/calendar`: named resource calendars (weekly capacity and day
   overrides) used for calendar-aware leveling and over-allocation checks.
 - `internal/money`: exact monetary arithmetic in integer minor units
-  (`math/big.Rat` for rate x quantity, rounded once at the boundary).
+  (`math/big.Rat` for rate x quantity and `math/big.Int` for aggregates),
+  with explicit range errors on checked arithmetic and aggregates; legacy
+  conversion helpers retain their documented sign-preserving saturation.
 - `internal/analytics`: DuckDB-backed in-memory portfolio rollups and
   CSV/TSV/Parquet/JSON data import (behind the `duckdb` build tag).
 - `internal/export`: PDF, PDF/A, DOCX, ODT, XLSX, iCal, MSPDI, and Monte

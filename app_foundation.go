@@ -645,7 +645,7 @@ func (a *App) ComputeBudget() (budget.Summary, error) {
 	if err != nil {
 		return budget.Summary{}, err
 	}
-	return budget.Compute(p, stakeholders, workItems), nil
+	return budget.Compute(p, stakeholders, workItems)
 }
 
 // RunPortfolioAnalytics aggregates a cross-project cost and EVM rollup over every
@@ -748,11 +748,17 @@ func portfolioProjectMetrics(
 	if err != nil {
 		return analytics.ProjectMetrics{}, fmt.Errorf("list work items for committed cost: %w", err)
 	}
-	committed := budget.Compute(p, stakeholders, workItems)
+	committed, err := budget.Compute(p, stakeholders, workItems)
+	if err != nil {
+		return analytics.ProjectMetrics{}, fmt.Errorf("compute committed cost: %w", err)
+	}
 	out.CommittedCost = committed.Committed
 	out.CommittedCostMinorUnits = committed.CommittedMinorUnits
 
-	evm, ok := portfolioScheduleEVM(d, p, asOf)
+	evm, ok, err := portfolioScheduleEVM(d, p, asOf)
+	if err != nil {
+		return analytics.ProjectMetrics{}, fmt.Errorf("compute portfolio EVM: %w", err)
+	}
 	if !ok {
 		return out, nil
 	}
@@ -770,21 +776,23 @@ func portfolioProjectMetrics(
 // portfolioScheduleEVM returns false for any prerequisite that would make the
 // figures incomparable or misleading. The caller records that as unavailable
 // coverage instead of silently substituting zero or a stale legacy schedule.
+// Computation failures are returned separately so they cannot be mislabeled as
+// unavailable coverage.
 func portfolioScheduleEVM(
 	d *db.Database,
 	p db.Project,
 	asOf time.Time,
-) (kernel.EVMetrics, bool) {
+) (kernel.EVMetrics, bool, error) {
 	start, ok := parseProjectDate(p.StartDate)
 	if !ok {
-		return kernel.EVMetrics{}, false
+		return kernel.EVMetrics{}, false, nil
 	}
 	tasks, err := loadCurrentProjectSchedule(d, p.ID)
 	if err != nil || len(tasks) == 0 {
-		return kernel.EVMetrics{}, false
+		return kernel.EVMetrics{}, false, nil
 	}
 	if !scheduleProjectTasks(p, tasks) {
-		return kernel.EVMetrics{}, false
+		return kernel.EVMetrics{}, false, nil
 	}
 	// DayOffset compares timestamps, while portfolio EVM is a date-based
 	// snapshot. Strip the clock so a midday run does not count tomorrow as
@@ -793,13 +801,16 @@ func portfolioScheduleEVM(
 	reportingDate := time.Date(asOfUTC.Year(), asOfUTC.Month(), asOfUTC.Day(), 0, 0, 0, 0, time.UTC)
 	day, ok := kernel.DayOffset(start, reportingDate, calendar.For(p.CountryCode).IsWorkday)
 	if !ok {
-		return kernel.EVMetrics{}, false
+		return kernel.EVMetrics{}, false, nil
 	}
-	evm := kernel.ComputeEVM(tasks, day)
+	evm, err := kernel.ComputeEVM(tasks, day)
+	if err != nil {
+		return kernel.EVMetrics{}, false, err
+	}
 	if evm.BACMinorUnits <= 0 {
-		return kernel.EVMetrics{}, false
+		return kernel.EVMetrics{}, false, nil
 	}
-	return evm, true
+	return evm, true, nil
 }
 
 // ImportDatasetForAnalysis opens a native file picker for a CSV/Parquet/JSON

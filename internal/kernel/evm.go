@@ -4,6 +4,7 @@
 package kernel
 
 import (
+	"fmt"
 	"math"
 	"sort"
 
@@ -71,9 +72,11 @@ type EVMetrics struct {
 // during idle gaps. A zero-duration milestone is fully planned once
 // asOfDay reaches its ES. EV = BudgetedCost × PercentComplete/100.
 // AC = ActualCost. CalculateCPM must have run first so ES/EF are
-// populated; PercentComplete is assumed clamped.
-func ComputeEVM(tasks map[string]*Task, asOfDay float64) EVMetrics {
+// populated; PercentComplete is assumed clamped. An unrepresentable aggregate,
+// derived difference, or EAC ratio returns an error wrapping money.ErrOverflow.
+func ComputeEVM(tasks map[string]*Task, asOfDay float64) (EVMetrics, error) {
 	m := EVMetrics{AsOfDay: asOfDay}
+	var bacTotal, pvTotal, evTotal, acTotal money.Accumulator
 
 	for _, t := range tasks {
 		bac := taskBudgetAmount(t)
@@ -81,10 +84,10 @@ func ComputeEVM(tasks map[string]*Task, asOfDay float64) EVMetrics {
 		pv := money.RateTimesQuantity(bac, plannedFraction(t, asOfDay))
 		ev := money.RateTimesQuantity(bac, t.PercentComplete/100)
 
-		m.BACMinorUnits += bac.MinorUnits
-		m.PVMinorUnits += pv.MinorUnits
-		m.EVMinorUnits += ev.MinorUnits
-		m.ACMinorUnits += ac.MinorUnits
+		bacTotal.Add(bac)
+		pvTotal.Add(pv)
+		evTotal.Add(ev)
+		acTotal.Add(ac)
 
 		m.Tasks = append(m.Tasks, TaskEV{
 			TaskID:        t.ID,
@@ -101,8 +104,25 @@ func ComputeEVM(tasks map[string]*Task, asOfDay float64) EVMetrics {
 	}
 	sort.Slice(m.Tasks, func(i, j int) bool { return m.Tasks[i].TaskID < m.Tasks[j].TaskID })
 
-	m.SVMinorUnits = m.EVMinorUnits - m.PVMinorUnits
-	m.CVMinorUnits = m.EVMinorUnits - m.ACMinorUnits
+	var err error
+	if m.BACMinorUnits, err = accumulatedMinorUnits("BAC", &bacTotal); err != nil {
+		return EVMetrics{}, err
+	}
+	if m.PVMinorUnits, err = accumulatedMinorUnits("PV", &pvTotal); err != nil {
+		return EVMetrics{}, err
+	}
+	if m.EVMinorUnits, err = accumulatedMinorUnits("EV", &evTotal); err != nil {
+		return EVMetrics{}, err
+	}
+	if m.ACMinorUnits, err = accumulatedMinorUnits("AC", &acTotal); err != nil {
+		return EVMetrics{}, err
+	}
+	if m.SVMinorUnits, err = subtractMinorUnits("SV", m.EVMinorUnits, m.PVMinorUnits); err != nil {
+		return EVMetrics{}, err
+	}
+	if m.CVMinorUnits, err = subtractMinorUnits("CV", m.EVMinorUnits, m.ACMinorUnits); err != nil {
+		return EVMetrics{}, err
+	}
 	if m.PVMinorUnits > 0 {
 		m.SPI = float64(m.EVMinorUnits) / float64(m.PVMinorUnits)
 	}
@@ -111,16 +131,24 @@ func ComputeEVM(tasks map[string]*Task, asOfDay float64) EVMetrics {
 	}
 
 	if m.EVMinorUnits > 0 && m.ACMinorUnits > 0 {
-		m.EACMinorUnits = money.ScaleByRatio(
+		eac, err := money.ScaleByRatioChecked(
 			money.Amount{MinorUnits: m.BACMinorUnits},
 			m.ACMinorUnits,
 			m.EVMinorUnits,
-		).MinorUnits
+		)
+		if err != nil {
+			return EVMetrics{}, fmt.Errorf("compute EVM EAC: %w", err)
+		}
+		m.EACMinorUnits = eac.MinorUnits
 	} else {
 		m.EACMinorUnits = m.BACMinorUnits
 	}
-	m.ETCMinorUnits = m.EACMinorUnits - m.ACMinorUnits
-	m.VACMinorUnits = m.BACMinorUnits - m.EACMinorUnits
+	if m.ETCMinorUnits, err = subtractMinorUnits("ETC", m.EACMinorUnits, m.ACMinorUnits); err != nil {
+		return EVMetrics{}, err
+	}
+	if m.VACMinorUnits, err = subtractMinorUnits("VAC", m.BACMinorUnits, m.EACMinorUnits); err != nil {
+		return EVMetrics{}, err
+	}
 
 	m.BAC = money.Amount{MinorUnits: m.BACMinorUnits}.MajorFloat()
 	m.PV = money.Amount{MinorUnits: m.PVMinorUnits}.MajorFloat()
@@ -132,7 +160,23 @@ func ComputeEVM(tasks map[string]*Task, asOfDay float64) EVMetrics {
 	m.ETC = money.Amount{MinorUnits: m.ETCMinorUnits}.MajorFloat()
 	m.VAC = money.Amount{MinorUnits: m.VACMinorUnits}.MajorFloat()
 
-	return m
+	return m, nil
+}
+
+func accumulatedMinorUnits(label string, total *money.Accumulator) (int64, error) {
+	amount, err := total.Amount()
+	if err != nil {
+		return 0, fmt.Errorf("compute EVM %s: %w", label, err)
+	}
+	return amount.MinorUnits, nil
+}
+
+func subtractMinorUnits(label string, left, right int64) (int64, error) {
+	amount, err := (money.Amount{MinorUnits: left}).Sub(money.Amount{MinorUnits: right})
+	if err != nil {
+		return 0, fmt.Errorf("compute EVM %s: %w", label, err)
+	}
+	return amount.MinorUnits, nil
 }
 
 func taskBudgetAmount(t *Task) money.Amount {

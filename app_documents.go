@@ -366,6 +366,12 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 		resolvedCharts[id] = documents.ResolvedChart{Kind: c.Kind, Title: c.Title, Data: c.Data}
 	}
 
+	resolvedEVM, err := resolvedEVMForCharts(proj, resolvedCharts, time.Now().UTC())
+	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("resolve EVM: %v", err), "")
+		return "", fmt.Errorf("resolve report EVM: %w", err)
+	}
+
 	bytes, err := documents.BuildCombinedReport(documents.ReportSpec{
 		ReportTitle:       reportTitle,
 		Subtitle:          subtitle,
@@ -373,7 +379,7 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 		ProjectName:       proj.Name,
 		Sections:          sections,
 		ResolvedCharts:    resolvedCharts,
-		ResolvedEVM:       resolvedEVMForCharts(proj, resolvedCharts, time.Now().UTC()),
+		ResolvedEVM:       resolvedEVM,
 		AddSignatureBlock: true,
 	}, resolved)
 	if err != nil {
@@ -637,7 +643,10 @@ func (a *App) exportScheduleReportAs(format export.ExportFormat) (string, error)
 	if start, ok := parseProjectDate(proj.StartDate); ok && len(kernelTasks) > 0 {
 		cal := calendar.For(proj.CountryCode)
 		if day, dok := kernel.DayOffset(start, time.Now().UTC(), cal.IsWorkday); dok {
-			m := kernel.ComputeEVM(kernelTasks, day)
+			m, err := kernel.ComputeEVM(kernelTasks, day)
+			if err != nil {
+				return "", fmt.Errorf("compute schedule EVM: %w", err)
+			}
 			payload.EVM = &m
 		}
 	}
