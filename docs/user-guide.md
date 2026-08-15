@@ -412,9 +412,11 @@ renderer is ready, native close uses the editor's current local dirty state;
 a failed automatic or manual save remains dirty and must be retried or
 explicitly discarded.
 
-An open work-item draft is registered with the same Save, Discard, and Cancel
-protection, but is not timed-auto-saved. If an edit arrives while a work-item
-save is in progress, it stays open and must be saved again before continuing.
+Open work-item and sprint drafts are registered with the same Save, Discard,
+and Cancel protection, but are not timed-auto-saved because a successful modal
+save closes the editor. If a modal field changes while a save is in progress,
+the first saved result stays in place and the later change remains open for
+another Save before continuing.
 
 Document editors show an unsaved-changes indicator and a status dropdown
 for `draft`, `review`, `approved`, and `archived`.
