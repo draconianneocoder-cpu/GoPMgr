@@ -7,6 +7,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
+	"log"
+	"os"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"strings"
+	"time"
+
 	"gopmgr/internal/admin"
 	"gopmgr/internal/applog"
 	"gopmgr/internal/calendar"
@@ -17,14 +27,6 @@ import (
 	"gopmgr/internal/sigma/service"
 	"gopmgr/internal/update"
 	"gopmgr/internal/users"
-	"io"
-	"log"
-	"os"
-	"path/filepath"
-	"regexp"
-	"runtime"
-	"strings"
-	"time"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -416,23 +418,38 @@ func copyFile(src, dst string) (err error) {
 
 // newProjectPath creates a fresh, uniquely-named subfolder for a project
 // under dir and returns the path of the project database inside it. The
-// folder ID is "<YYYYMMDD-HHMMSS>-<safe-name>", so every project gets a
-// unique, time-stamped folder - this avoids name collisions and keeps a
-// project's files grouped together. `safe` must be a non-empty sanitized
-// name (the caller validates it).
+// folder ID is "<YYYYMMDD-HHMMSS>-<safe-name>". Each candidate is reserved
+// atomically, so concurrent callers receive distinct folders. `safe` must be
+// a non-empty sanitized name (the caller validates it).
 func newProjectPath(dir, safe string) (string, error) {
-	id := time.Now().Format("20060102-150405") + "-" + safe
-	folder := filepath.Join(dir, id)
-	for i := 2; ; i++ {
-		if _, err := os.Stat(folder); os.IsNotExist(err) {
-			break
+	return reserveProjectFolder(dir, time.Now().Format("20060102-150405")+"-"+safe)
+}
+
+// reserveProjectFolder atomically creates one project folder under dir. The
+// caller supplies an already-sanitized ID so tests can exercise collisions
+// without depending on the wall clock.
+func reserveProjectFolder(dir, id string) (string, error) {
+	return reserveProjectFolderWithMkdir(dir, id, os.Mkdir)
+}
+
+// reserveProjectFolderWithMkdir keeps the collision policy testable without
+// relying on platform-specific permission failures.
+func reserveProjectFolderWithMkdir(dir, id string, mkdir func(string, fs.FileMode) error) (string, error) {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", fmt.Errorf("create projects directory: %w", err)
+	}
+	for i := 1; ; i++ {
+		name := id
+		if i > 1 {
+			name = fmt.Sprintf("%s-%d", id, i)
 		}
-		folder = filepath.Join(dir, fmt.Sprintf("%s-%d", id, i))
+		folder := filepath.Join(dir, name)
+		if err := mkdir(folder, 0o700); err == nil {
+			return filepath.Join(folder, "project"+projectFileExtension), nil
+		} else if !errors.Is(err, fs.ErrExist) {
+			return "", fmt.Errorf("create project directory: %w", err)
+		}
 	}
-	if err := os.MkdirAll(folder, 0o700); err != nil {
-		return "", err
-	}
-	return filepath.Join(folder, "project"+projectFileExtension), nil
 }
 
 // projectFolderRe matches the "<YYYYMMDD-HHMMSS>-" prefix newProjectPath puts
