@@ -5,6 +5,7 @@ package money
 
 import (
 	"math"
+	"math/big"
 	"testing"
 )
 
@@ -208,5 +209,114 @@ func TestRateTimesQuantity_NegativeRateRoundsAwayFromZeroAtTie(t *testing.T) {
 	const want = -5000
 	if got.MinorUnits != want {
 		t.Fatalf("RateTimesQuantity(-33.33/hr, 1.5h).MinorUnits = %d, want %d (half-cent tie must round away from zero)", got.MinorUnits, want)
+	}
+}
+
+func TestRoundRat_ClampsAfterRoundingOutsideInt64(t *testing.T) {
+	two := big.NewInt(2)
+	cases := []struct {
+		name string
+		num  *big.Int
+		want int64
+	}{
+		{
+			name: "positive half unit at maximum still rounds to maximum",
+			num:  new(big.Int).Sub(new(big.Int).Mul(big.NewInt(math.MaxInt64), two), big.NewInt(1)),
+			want: math.MaxInt64,
+		},
+		{
+			name: "positive half unit past maximum clamps",
+			num:  new(big.Int).Add(new(big.Int).Mul(big.NewInt(math.MaxInt64), two), big.NewInt(1)),
+			want: math.MaxInt64,
+		},
+		{
+			name: "negative half unit at minimum still rounds to minimum",
+			num:  new(big.Int).Add(new(big.Int).Mul(big.NewInt(math.MinInt64), two), big.NewInt(1)),
+			want: math.MinInt64,
+		},
+		{
+			name: "negative half unit past minimum clamps",
+			num:  new(big.Int).Sub(new(big.Int).Mul(big.NewInt(math.MinInt64), two), big.NewInt(1)),
+			want: math.MinInt64,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := roundRat(new(big.Rat).SetFrac(tc.num, two)); got != tc.want {
+				t.Fatalf("roundRat(%s/2) = %d, want %d", tc.num, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRationalArithmetic_ClampsOverflowingResults(t *testing.T) {
+	cases := []struct {
+		name      string
+		calculate func() Amount
+		want      int64
+	}{
+		{
+			name: "rate times quantity positive overflow",
+			calculate: func() Amount {
+				return RateTimesQuantity(Amount{MinorUnits: math.MaxInt64}, 2)
+			},
+			want: math.MaxInt64,
+		},
+		{
+			name: "rate times quantity negative overflow",
+			calculate: func() Amount {
+				return RateTimesQuantity(Amount{MinorUnits: math.MinInt64}, 2)
+			},
+			want: math.MinInt64,
+		},
+		{
+			name: "rate times quantity exact maximum",
+			calculate: func() Amount {
+				return RateTimesQuantity(Amount{MinorUnits: math.MaxInt64}, 1)
+			},
+			want: math.MaxInt64,
+		},
+		{
+			name: "rate times quantity exact minimum",
+			calculate: func() Amount {
+				return RateTimesQuantity(Amount{MinorUnits: math.MinInt64}, 1)
+			},
+			want: math.MinInt64,
+		},
+		{
+			name: "scale ratio exact maximum",
+			calculate: func() Amount {
+				return ScaleByRatio(Amount{MinorUnits: math.MaxInt64}, 1, 1)
+			},
+			want: math.MaxInt64,
+		},
+		{
+			name: "scale ratio exact minimum",
+			calculate: func() Amount {
+				return ScaleByRatio(Amount{MinorUnits: math.MinInt64}, 1, 1)
+			},
+			want: math.MinInt64,
+		},
+		{
+			name: "scale ratio positive overflow",
+			calculate: func() Amount {
+				return ScaleByRatio(Amount{MinorUnits: math.MaxInt64}, 2, 1)
+			},
+			want: math.MaxInt64,
+		},
+		{
+			name: "scale ratio negative overflow",
+			calculate: func() Amount {
+				return ScaleByRatio(Amount{MinorUnits: math.MinInt64}, 2, 1)
+			},
+			want: math.MinInt64,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.calculate().MinorUnits; got != tc.want {
+				t.Fatalf("minor units = %d, want %d", got, tc.want)
+			}
+		})
 	}
 }

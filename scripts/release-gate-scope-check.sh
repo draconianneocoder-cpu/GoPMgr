@@ -30,8 +30,11 @@ if ! bash scripts/check-release-reference-truth_test.sh >/dev/null ||
 fi
 
 # Test fixtures intentionally contain malformed commands; only active
-# maintainer scripts are release-gate candidates.
-if rg -n --glob '!**/*_test.sh' '((go|\$\(GO\)) (test|vet)( -race)?|staticcheck|gosec -quiet|govulncheck) \./\.\.\.' Makefile scripts >"$go_scope_matches"; then
+# maintainer command lines are release-gate candidates. The coverage-ledger
+# drift checker intentionally runs `go test ./... -cover` to compare every
+# ledger heading, but no other all-package command is exempt.
+if rg -n --glob '!**/*_test.sh' '^[[:space:]]*(if ! )?((go|\$\(GO\)) (test|vet)( -race)?|staticcheck|gosec -quiet|govulncheck) \./\.\.\.' Makefile scripts |
+	rg -v '^scripts/check-coverage-ledger-drift\.sh:[0-9]+:[[:space:]]*if ! go test \./\.\.\. -cover[[:space:]]*>' >"$go_scope_matches"; then
 	echo "release-scope: Go quality gates must target . ./internal/... instead of ./..." >&2
 	cat "$go_scope_matches" >&2
 	fail=1

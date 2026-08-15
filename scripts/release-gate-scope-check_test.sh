@@ -21,6 +21,7 @@ new_fixture() {
 	local fixture="$TEST_ROOT/$name"
 	git clone -q --no-hardlinks "$ROOT" "$fixture"
 	cp "$CHECK" "$fixture/scripts/release-gate-scope-check.sh"
+	cp "$ROOT/scripts/check-help-guide-current.sh" "$fixture/scripts/check-help-guide-current.sh"
 	mkdir -p "$fixture/frontend/dist"
 	: >"$fixture/frontend/dist/index.html"
 	printf '%s\n' "$fixture"
@@ -57,5 +58,9 @@ expect_failure "$unscoped_command" "Go quality gates must target"
 unscoped_script="$(new_fixture unscoped-script)"
 printf '%s\n' 'go test ./...' >"$unscoped_script/scripts/quality-check.sh"
 expect_failure "$unscoped_script" "Go quality gates must target"
+
+unscoped_coverage_script="$(new_fixture unscoped-coverage-script)"
+printf '%s\n' 'govulncheck ./...' >>"$unscoped_coverage_script/scripts/check-coverage-ledger-drift.sh"
+expect_failure "$unscoped_coverage_script" "Go quality gates must target"
 
 echo "release-gate-scope-check tests passed."
