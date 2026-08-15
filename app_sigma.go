@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"gopmgr/internal/calendar"
@@ -350,22 +351,29 @@ func logCombinedReportSignatureEventWithStatus(d *db.Database, projectID, report
 	}
 }
 
-func resolvedEVMForCharts(proj db.Project, resolvedCharts map[string]documents.ResolvedChart, asOf time.Time) map[string]*kernel.EVMetrics {
+func resolvedEVMForCharts(proj db.Project, resolvedCharts map[string]documents.ResolvedChart, asOf time.Time) (map[string]*kernel.EVMetrics, error) {
 	if len(resolvedCharts) == 0 {
-		return nil
+		return nil, nil
 	}
 	start, ok := parseProjectDate(proj.StartDate)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 	cal := calendar.For(proj.CountryCode)
 	day, ok := kernel.DayOffset(start, asOf, cal.IsWorkday)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
+	chartIDs := make([]string, 0, len(resolvedCharts))
+	for id := range resolvedCharts {
+		chartIDs = append(chartIDs, id)
+	}
+	sort.Strings(chartIDs)
+
 	out := make(map[string]*kernel.EVMetrics)
-	for id, c := range resolvedCharts {
+	for _, id := range chartIDs {
+		c := resolvedCharts[id]
 		kind := charts.Kind(c.Kind)
 		if kind != charts.KindCPM && kind != charts.KindGantt {
 			continue
@@ -375,7 +383,10 @@ func resolvedEVMForCharts(proj db.Project, resolvedCharts map[string]documents.R
 			continue
 		}
 		scheduleProjectTasks(proj, tasks)
-		metrics := kernel.ComputeEVM(tasks, day)
+		metrics, err := kernel.ComputeEVM(tasks, day)
+		if err != nil {
+			return nil, fmt.Errorf("compute EVM for chart %q: %w", id, err)
+		}
 		if metrics.BAC <= 0 {
 			continue
 		}
@@ -383,9 +394,9 @@ func resolvedEVMForCharts(proj db.Project, resolvedCharts map[string]documents.R
 		out[id] = &m
 	}
 	if len(out) == 0 {
-		return nil
+		return nil, nil
 	}
-	return out
+	return out, nil
 }
 
 // sanitizeFilename strips path separators and disallowed characters

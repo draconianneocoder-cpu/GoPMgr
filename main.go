@@ -522,7 +522,10 @@ func runHeadlessExport(cfg *cli.Config, d *db.Database) error {
 	if start, ok := parseProjectDate(proj.StartDate); ok && len(tasks) > 0 {
 		cal := calendar.For(proj.CountryCode)
 		if day, dok := kernel.DayOffset(start, time.Now().UTC(), cal.IsWorkday); dok {
-			m := kernel.ComputeEVM(tasks, day)
+			m, err := kernel.ComputeEVM(tasks, day)
+			if err != nil {
+				return fmt.Errorf("compute schedule EVM: %w", err)
+			}
 			payload.EVM = &m
 		}
 	}

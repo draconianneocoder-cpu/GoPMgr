@@ -21,7 +21,10 @@ func reportEVMFixture(t *testing.T) *kernel.EVMetrics {
 	if !kernel.CalculateCPM(tasks) {
 		t.Fatal("cycle in EVM fixture")
 	}
-	m := kernel.ComputeEVM(tasks, 4)
+	m, err := kernel.ComputeEVM(tasks, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return &m
 }
 

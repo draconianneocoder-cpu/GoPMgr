@@ -3,7 +3,11 @@
 
 package money
 
-import "testing"
+import (
+	"errors"
+	"math"
+	"testing"
+)
 
 func TestAmountFromMajorFloatRoundsToMinorUnits(t *testing.T) {
 	cases := []struct {
@@ -42,10 +46,58 @@ func TestAmountHandlesNegativeValues(t *testing.T) {
 	refund := Amount{MinorUnits: -2500}
 	charge := Amount{MinorUnits: 1000}
 
-	if got := charge.Add(refund).MinorUnits; got != -1500 {
+	got, err := charge.Add(refund)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.MinorUnits != -1500 {
 		t.Fatalf("add refund = %d, want -1500", got)
 	}
-	if got := charge.Sub(refund).MinorUnits; got != 3500 {
+	got, err = charge.Sub(refund)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.MinorUnits != 3500 {
 		t.Fatalf("subtract refund = %d, want 3500", got)
+	}
+}
+
+func TestAmountAddSubOverflow(t *testing.T) {
+	tests := []struct {
+		name string
+		fn   func() (Amount, error)
+	}{
+		{"add positive", func() (Amount, error) { return Amount{MinorUnits: math.MaxInt64}.Add(Amount{MinorUnits: 1}) }},
+		{"add negative", func() (Amount, error) { return Amount{MinorUnits: math.MinInt64}.Add(Amount{MinorUnits: -1}) }},
+		{"subtract positive", func() (Amount, error) { return Amount{MinorUnits: math.MaxInt64}.Sub(Amount{MinorUnits: -1}) }},
+		{"subtract minimum", func() (Amount, error) { return Amount{}.Sub(Amount{MinorUnits: math.MinInt64}) }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.fn()
+			if !errors.Is(err, ErrOverflow) {
+				t.Fatalf("error = %v, want ErrOverflow", err)
+			}
+		})
+	}
+}
+
+func TestAccumulatorIsOrderIndependent(t *testing.T) {
+	for _, amounts := range [][]Amount{
+		{{MinorUnits: math.MaxInt64}, {MinorUnits: 1}, {MinorUnits: -1}},
+		{{MinorUnits: 1}, {MinorUnits: -1}, {MinorUnits: math.MaxInt64}},
+		{{MinorUnits: -1}, {MinorUnits: math.MaxInt64}, {MinorUnits: 1}},
+	} {
+		var total Accumulator
+		for _, amount := range amounts {
+			total.Add(amount)
+		}
+		got, err := total.Amount()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.MinorUnits != math.MaxInt64 {
+			t.Fatalf("total = %d, want %d", got.MinorUnits, int64(math.MaxInt64))
+		}
 	}
 }

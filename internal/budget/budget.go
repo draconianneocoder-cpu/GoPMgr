@@ -15,6 +15,8 @@
 package budget
 
 import (
+	"fmt"
+
 	"gopmgr/internal/agile"
 	"gopmgr/internal/db"
 	"gopmgr/internal/money"
@@ -39,21 +41,19 @@ type Summary struct {
 
 // Compute walks the inputs and produces a Summary. Stakeholder is
 // the lookup table; we index it by ID before scanning work items so
-// the rollup is O(workItems + stakeholders).
-func Compute(project db.Project, stakeholders []db.Stakeholder, workItems []agile.WorkItem) Summary {
+// the rollup is O(workItems + stakeholders). An unrepresentable aggregate or
+// derived difference returns an error wrapping money.ErrOverflow.
+func Compute(project db.Project, stakeholders []db.Stakeholder, workItems []agile.WorkItem) (Summary, error) {
 	budget := amountFromProject(project)
-	sum := Summary{
-		BudgetMinorUnits:     budget.MinorUnits,
-		ByCategory:           map[string]float64{},
-		ByCategoryMinorUnits: map[string]int64{},
-	}
+	var contracts, labour money.Accumulator
+	byCategory := make(map[string]*money.Accumulator)
 
 	for _, s := range stakeholders {
 		// Vendor / contract values roll up directly.
 		contract := amountFromContractValue(s)
 		if contract.Positive() {
-			sum.ContractValueMinorUnits += contract.MinorUnits
-			addCategory(&sum, string(s.Category), contract)
+			contracts.Add(contract)
+			addCategory(byCategory, string(s.Category), contract)
 		}
 	}
 
@@ -78,23 +78,52 @@ func Compute(project db.Project, stakeholders []db.Stakeholder, workItems []agil
 			continue
 		}
 		cost := money.RateTimesQuantity(rate, wi.Points)
-		sum.LabourEstimateMinorUnits += cost.MinorUnits
+		labour.Add(cost)
 		if cat := catByName[lower(wi.Assignee)]; cat != "" {
-			addCategory(&sum, cat, cost)
+			addCategory(byCategory, cat, cost)
 		}
 	}
 
-	sum.CommittedMinorUnits = sum.ContractValueMinorUnits + sum.LabourEstimateMinorUnits
-	sum.RemainingMinorUnits = sum.BudgetMinorUnits - sum.CommittedMinorUnits
+	contractValue, err := accumulatedAmount("contract value", &contracts)
+	if err != nil {
+		return Summary{}, err
+	}
+	labourEstimate, err := accumulatedAmount("labour estimate", &labour)
+	if err != nil {
+		return Summary{}, err
+	}
+	committed, err := contractValue.Add(labourEstimate)
+	if err != nil {
+		return Summary{}, fmt.Errorf("compute committed cost: %w", err)
+	}
+	remaining, err := budget.Sub(committed)
+	if err != nil {
+		return Summary{}, fmt.Errorf("compute budget remaining: %w", err)
+	}
+
+	sum := Summary{
+		BudgetMinorUnits:         budget.MinorUnits,
+		ContractValueMinorUnits:  contractValue.MinorUnits,
+		LabourEstimateMinorUnits: labourEstimate.MinorUnits,
+		CommittedMinorUnits:      committed.MinorUnits,
+		RemainingMinorUnits:      remaining.MinorUnits,
+		ByCategory:               make(map[string]float64, len(byCategory)),
+		ByCategoryMinorUnits:     make(map[string]int64, len(byCategory)),
+	}
 	sum.Budget = money.Amount{MinorUnits: sum.BudgetMinorUnits}.MajorFloat()
 	sum.ContractValue = money.Amount{MinorUnits: sum.ContractValueMinorUnits}.MajorFloat()
 	sum.LabourEstimate = money.Amount{MinorUnits: sum.LabourEstimateMinorUnits}.MajorFloat()
 	sum.Committed = money.Amount{MinorUnits: sum.CommittedMinorUnits}.MajorFloat()
 	sum.Remaining = money.Amount{MinorUnits: sum.RemainingMinorUnits}.MajorFloat()
-	for cat, minor := range sum.ByCategoryMinorUnits {
-		sum.ByCategory[cat] = money.Amount{MinorUnits: minor}.MajorFloat()
+	for cat, total := range byCategory {
+		amount, err := accumulatedAmount("category "+cat, total)
+		if err != nil {
+			return Summary{}, err
+		}
+		sum.ByCategoryMinorUnits[cat] = amount.MinorUnits
+		sum.ByCategory[cat] = amount.MajorFloat()
 	}
-	return sum
+	return sum, nil
 }
 
 func amountFromProject(p db.Project) money.Amount {
@@ -118,8 +147,21 @@ func amountFromContractValue(s db.Stakeholder) money.Amount {
 	return money.FromMajorFloat(s.ContractValue)
 }
 
-func addCategory(sum *Summary, cat string, amount money.Amount) {
-	sum.ByCategoryMinorUnits[cat] += amount.MinorUnits
+func addCategory(totals map[string]*money.Accumulator, cat string, amount money.Amount) {
+	total := totals[cat]
+	if total == nil {
+		total = &money.Accumulator{}
+		totals[cat] = total
+	}
+	total.Add(amount)
+}
+
+func accumulatedAmount(label string, total *money.Accumulator) (money.Amount, error) {
+	amount, err := total.Amount()
+	if err != nil {
+		return money.Amount{}, fmt.Errorf("compute %s: %w", label, err)
+	}
+	return amount, nil
 }
 
 // lower is a cheap ASCII-lowercase fold used for case-insensitive

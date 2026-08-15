@@ -9,11 +9,16 @@
 package money
 
 import (
+	"errors"
 	"math"
 	"math/big"
 )
 
 const MinorUnitsPerMajor int64 = 100
+
+// ErrOverflow reports that an exact monetary result cannot be represented in
+// Amount's signed int64 minor-unit storage.
+var ErrOverflow = errors.New("monetary amount exceeds int64 minor-unit range")
 
 // Amount is a signed monetary value in minor units.
 type Amount struct {
@@ -57,16 +62,48 @@ func (a Amount) MajorFloat() float64 {
 	return float64(a.MinorUnits) / float64(MinorUnitsPerMajor)
 }
 
-func (a Amount) Add(b Amount) Amount {
-	return Amount{MinorUnits: a.MinorUnits + b.MinorUnits}
+// Add returns the exact sum when it fits in Amount.
+func (a Amount) Add(b Amount) (Amount, error) {
+	var total Accumulator
+	total.Add(a)
+	total.Add(b)
+	return total.Amount()
 }
 
-func (a Amount) Sub(b Amount) Amount {
-	return Amount{MinorUnits: a.MinorUnits - b.MinorUnits}
+// Sub returns the exact difference when it fits in Amount.
+func (a Amount) Sub(b Amount) (Amount, error) {
+	var total Accumulator
+	total.Add(a)
+	total.Sub(b)
+	return total.Amount()
 }
 
 func (a Amount) Positive() bool {
 	return a.MinorUnits > 0
+}
+
+// Accumulator aggregates monetary amounts exactly. It defers the int64 range
+// check until Amount is called, so a representable final total does not depend
+// on the order in which its terms were added.
+//
+// Do not copy an Accumulator after first use.
+type Accumulator struct {
+	total big.Int
+}
+
+// Add includes amount in the exact total.
+func (a *Accumulator) Add(amount Amount) {
+	a.total.Add(&a.total, big.NewInt(amount.MinorUnits))
+}
+
+// Sub removes amount from the exact total.
+func (a *Accumulator) Sub(amount Amount) {
+	a.total.Sub(&a.total, big.NewInt(amount.MinorUnits))
+}
+
+// Amount returns the accumulated total when it fits in Amount.
+func (a *Accumulator) Amount() (Amount, error) {
+	return amountFromBigInt(&a.total)
 }
 
 // RateTimesQuantity multiplies a monetary rate by a fractional
@@ -99,16 +136,35 @@ func ScaleByRatio(amount Amount, numerator, denominator int64) Amount {
 	return Amount{MinorUnits: roundRat(value)}
 }
 
+// ScaleByRatioChecked multiplies amount by numerator/denominator exactly and
+// rounds half away from zero to minor units. A zero operand or denominator
+// returns zero, matching ScaleByRatio; an unrepresentable rounded result
+// returns ErrOverflow instead of saturating.
+func ScaleByRatioChecked(amount Amount, numerator, denominator int64) (Amount, error) {
+	if amount.MinorUnits == 0 || numerator == 0 || denominator == 0 {
+		return Amount{}, nil
+	}
+	value := new(big.Rat).Mul(
+		big.NewRat(amount.MinorUnits, 1),
+		big.NewRat(numerator, denominator),
+	)
+	return amountFromBigInt(roundedRat(value))
+}
+
 // roundRat rounds half away from zero and saturates a result that cannot fit
 // in Amount's int64 minor-unit representation. The range check happens after
 // rounding so a half-unit at either endpoint has the same result as any other
 // exact monetary calculation.
 func roundRat(r *big.Rat) int64 {
+	return saturatingInt64(roundedRat(r))
+}
+
+func roundedRat(r *big.Rat) *big.Int {
 	n := new(big.Int).Set(r.Num())
 	d := new(big.Int).Set(r.Denom())
 	q, rem := new(big.Int).QuoRem(n, d, new(big.Int))
 	if rem.Sign() == 0 {
-		return saturatingInt64(q)
+		return q
 	}
 
 	absRem := new(big.Int).Abs(rem)
@@ -120,7 +176,7 @@ func roundRat(r *big.Rat) int64 {
 			q.Sub(q, big.NewInt(1))
 		}
 	}
-	return saturatingInt64(q)
+	return q
 }
 
 func saturatingInt64(q *big.Int) int64 {
@@ -131,4 +187,11 @@ func saturatingInt64(q *big.Int) int64 {
 		return math.MaxInt64
 	}
 	return q.Int64()
+}
+
+func amountFromBigInt(value *big.Int) (Amount, error) {
+	if !value.IsInt64() {
+		return Amount{}, ErrOverflow
+	}
+	return Amount{MinorUnits: value.Int64()}, nil
 }
