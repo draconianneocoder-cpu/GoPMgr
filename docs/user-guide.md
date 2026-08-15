@@ -412,11 +412,16 @@ renderer is ready, native close uses the editor's current local dirty state;
 a failed automatic or manual save remains dirty and must be retried or
 explicitly discarded.
 
-Open work-item and sprint drafts are registered with the same Save, Discard,
-and Cancel protection, but are not timed-auto-saved because a successful modal
-save closes the editor. If a modal field changes while a save is in progress,
-the first saved result stays in place and the later change remains open for
-another Save before continuing.
+Open work-item, sprint, and stakeholder drafts are registered with the same
+Save, Discard, and Cancel protection, but are not timed-auto-saved because a
+successful modal save closes the editor. If a modal field changes while a save
+is in progress, the first saved result stays in place and the later change
+remains open for another Save before continuing.
+
+Stakeholder money values are retained exactly while their stored minor-unit
+amounts are safe JavaScript integers. If an older value is too large for that
+representation, the app refuses to save it rather than risk rounding it; use a
+version with decimal-string money transport before changing that record.
 
 Document editors show an unsaved-changes indicator and a status dropdown
 for `draft`, `review`, `approved`, and `archived`.

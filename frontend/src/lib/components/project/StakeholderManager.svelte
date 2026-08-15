@@ -9,7 +9,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // hourly_rate × work-item assignee matches, and contract_value sums
   // for vendor rows.
 
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { autosave } from '../../autosave.svelte';
   import { session, goto } from '../../session.svelte';
   import Spinner from '../Spinner.svelte';
 
@@ -26,6 +27,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // value to decide whether closing needs confirmation.
   let original = $state<string | null>(null);
   let dirty = $derived(editing !== null && original !== null && JSON.stringify(editing) !== original);
+  let stopDirtyGuard: (() => void) | null = null;
 
   onMount(async () => {
     await refresh();
@@ -48,7 +50,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   });
 
   function openNew() {
-    editing = {
+    if (editing || busy) return;
+    openEditor({
       id: '',
       project_id: session.project!.id,
       name: '',
@@ -63,25 +66,124 @@ SPDX-License-Identifier: GPL-3.0-or-later
       notes: '',
       created_at: '',
       updated_at: '',
-    };
-    original = JSON.stringify(editing);
+    });
   }
 
   function openExisting(s: Stakeholder) {
-    editing = { ...s };
-    original = JSON.stringify(editing);
+    if (editing || busy) return;
+    openEditor({ ...s });
   }
 
-  async function save() {
-    if (!editing || !editing.name) return;
+  // The shared Save/Discard/Cancel guard only knows about registered drafts.
+  // Remove its entry before clearing or replacing `editing` so it never sees
+  // a transient `null` snapshot as a new unsaved change.
+  function stopEditing() {
+    stopDirtyGuard?.();
+    stopDirtyGuard = null;
+    editing = null;
+    original = null;
+  }
+
+  function openEditor(next: Stakeholder) {
+    if (editing || busy) return;
+    stopEditing();
+    editing = next;
+    original = JSON.stringify(next);
+    error = '';
+    // A successful manual save closes this modal, so timed autosave would
+    // dismiss it unexpectedly. Registration still protects all shared exits.
+    stopDirtyGuard = autosave.register(
+      () => JSON.stringify(editing),
+      () => save(),
+      false,
+    );
+  }
+
+  function savePayload(stakeholder: Stakeholder, baseline: Stakeholder): Stakeholder {
+    // The database derives canonical minor units from major-unit form inputs
+    // only when these fields are zero. Existing values must not silently
+    // override a later edit to the rendered rate/value inputs.
+    const baselineHourlyMinorUnits = baseline.hourly_rate_minor_units ?? 0;
+    const baselineContractMinorUnits = baseline.contract_value_minor_units ?? 0;
+    return {
+      ...stakeholder,
+      hourly_rate_minor_units: stakeholder.hourly_rate === baselineHourlyMinorUnits / 100
+        ? stakeholder.hourly_rate_minor_units
+        : 0,
+      contract_value_minor_units: stakeholder.contract_value === baselineContractMinorUnits / 100
+        ? stakeholder.contract_value_minor_units
+        : 0,
+    };
+  }
+
+  function hasUnsafeMinorUnits(stakeholder: Stakeholder): boolean {
+    return !Number.isSafeInteger(stakeholder.hourly_rate_minor_units ?? 0)
+      || !Number.isSafeInteger(stakeholder.contract_value_minor_units ?? 0);
+  }
+
+  function rebaseEditableChanges(
+    saved: Stakeholder,
+    savingStakeholder: Stakeholder,
+    latestStakeholder: Stakeholder,
+  ): Stakeholder {
+    return {
+      ...saved,
+      name: latestStakeholder.name !== savingStakeholder.name ? latestStakeholder.name : saved.name,
+      role: latestStakeholder.role !== savingStakeholder.role ? latestStakeholder.role : saved.role,
+      organisation: latestStakeholder.organisation !== savingStakeholder.organisation
+        ? latestStakeholder.organisation
+        : saved.organisation,
+      email: latestStakeholder.email !== savingStakeholder.email ? latestStakeholder.email : saved.email,
+      phone: latestStakeholder.phone !== savingStakeholder.phone ? latestStakeholder.phone : saved.phone,
+      category: latestStakeholder.category !== savingStakeholder.category
+        ? latestStakeholder.category
+        : saved.category,
+      hourly_rate: latestStakeholder.hourly_rate !== savingStakeholder.hourly_rate
+        ? latestStakeholder.hourly_rate
+        : saved.hourly_rate,
+      contract_value: latestStakeholder.contract_value !== savingStakeholder.contract_value
+        ? latestStakeholder.contract_value
+        : saved.contract_value,
+      availability: latestStakeholder.availability !== savingStakeholder.availability
+        ? latestStakeholder.availability
+        : saved.availability,
+      notes: latestStakeholder.notes !== savingStakeholder.notes ? latestStakeholder.notes : saved.notes,
+    };
+  }
+
+  async function save(): Promise<boolean> {
+    if (!editing || busy) return false;
+    if (!editing.name.trim()) {
+      error = 'Stakeholder name is required.';
+      return false;
+    }
+    if (hasUnsafeMinorUnits(editing)) {
+      error = 'This stakeholder has a money value too large to save safely in this version of the app.';
+      return false;
+    }
+    // Keep the pre-canonicalization snapshot for late-edit detection. The
+    // payload zeroes only a changed money field's minor units so the backend
+    // recalculates that field from the major-unit value rendered in this modal.
+    const savingStakeholder = { ...editing };
+    const savingSnapshot = JSON.stringify(savingStakeholder);
+    const baseline = original ? JSON.parse(original) as Stakeholder : savingStakeholder;
     busy = true;
     error = '';
     try {
-      await window.go.main.App.SaveStakeholder(editing);
-      editing = null;
+      const saved = await window.go.main.App.SaveStakeholder(savePayload(savingStakeholder, baseline));
+      const latestStakeholder = editing;
+      original = JSON.stringify(saved);
+      if (latestStakeholder && JSON.stringify(latestStakeholder) !== savingSnapshot) {
+        editing = rebaseEditableChanges(saved, savingStakeholder, latestStakeholder);
+        await refresh();
+        return true;
+      }
+      stopEditing();
       await refresh();
+      return true;
     } catch (err: any) {
       error = `Save failed: ${err}`;
+      return false;
     } finally {
       busy = false;
     }
@@ -95,10 +197,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function requestClose() {
     if (busy) return;
     if (dirty && !confirm('Discard unsaved changes to this stakeholder?')) return;
-    editing = null;
+    stopEditing();
   }
 
   async function destroy(s: Stakeholder) {
+    if (editing || busy) return;
     if (!confirm(`Delete ${s.name}?`)) return;
     try {
       await window.go.main.App.DeleteStakeholder(s.id);
@@ -117,6 +220,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  onDestroy(() => stopDirtyGuard?.());
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">
@@ -214,7 +318,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <h2 class="text-sm font-bold tracking-widest uppercase text-slate-50">
           {editing.id ? 'Edit stakeholder' : 'New stakeholder'}
         </h2>
-        <button onclick={requestClose} class="text-slate-500 hover:text-slate-200">×</button>
+        <button
+          onclick={requestClose}
+          disabled={busy}
+          class="text-slate-500 hover:text-slate-200"
+          aria-label="Close"
+        >×</button>
       </header>
       <div class="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
         <div class="grid grid-cols-2 gap-3">
@@ -222,12 +331,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="text-xs text-slate-500 uppercase">Name</span>
             <input
               bind:value={editing.name}
+              disabled={busy}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             />
           </label>
           <label class="block">
             <span class="text-xs text-slate-500 uppercase">Category</span>
-            <select bind:value={editing.category} class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded">
+            <select bind:value={editing.category} disabled={busy} class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded">
               <option value="team">Team</option>
               <option value="vendor">Vendor</option>
               <option value="sponsor">Sponsor</option>
@@ -240,6 +350,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="text-xs text-slate-500 uppercase">Role</span>
             <input
               bind:value={editing.role}
+              disabled={busy}
               placeholder="e.g. Tech lead"
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             />
@@ -248,6 +359,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="text-xs text-slate-500 uppercase">Organisation</span>
             <input
               bind:value={editing.organisation}
+              disabled={busy}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             />
           </label>
@@ -258,6 +370,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <input
               type="email"
               bind:value={editing.email}
+              disabled={busy}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             />
           </label>
@@ -265,6 +378,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="text-xs text-slate-500 uppercase">Phone</span>
             <input
               bind:value={editing.phone}
+              disabled={busy}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             />
           </label>
@@ -276,6 +390,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               type="number"
               step="0.5"
               bind:value={editing.hourly_rate}
+              disabled={busy}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             />
           </label>
@@ -285,6 +400,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               type="number"
               step="100"
               bind:value={editing.contract_value}
+              disabled={busy}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             />
           </label>
@@ -297,6 +413,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             max="10"
             step="0.1"
             bind:value={editing.availability}
+            disabled={busy}
             class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
           />
           <span class="text-[10px] text-slate-500">
@@ -309,18 +426,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <span class="text-xs text-slate-500 uppercase">Notes</span>
           <textarea
             bind:value={editing.notes}
+            disabled={busy}
             rows="3"
             class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
           ></textarea>
         </label>
       </div>
       <footer class="px-5 py-3 border-t border-slate-800 flex justify-end gap-2">
-        <button onclick={requestClose} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
+        <button onclick={requestClose} disabled={busy} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
           Cancel
         </button>
         <button
           onclick={save}
-          disabled={busy || !editing.name}
+          disabled={busy || !editing.name.trim()}
           class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
         >
           {busy ? 'Saving…' : 'Save'}
