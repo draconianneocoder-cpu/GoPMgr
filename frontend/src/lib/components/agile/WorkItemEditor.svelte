@@ -12,7 +12,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // self-fetch; the parent supplies an in-memory work item so
   // unsaved edits don't disappear if the user toggles columns.
 
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
+  import { autosave } from '../../autosave.svelte';
 
   type Status = 'idle' | 'saving' | 'deleting';
 
@@ -44,40 +45,95 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let original = $state<string | null>(null);
   let dirty = $derived(draft !== null && original !== null && JSON.stringify(draft) !== original);
 
-  // Re-seed the draft when `item` changes from null → record (modal
-  // opens) or to a different record. Skip when only inner fields
-  // changed (parent's optimistic update).
+  // Re-seed the draft and its guard when `item` changes from null → record
+  // (modal opens) or to a different record. This component stays mounted
+  // while its modal opens and closes, so a component-lifetime registration
+  // would retain the previous item's baseline and report a false dirty state.
+  // Skip when only inner fields changed (parent's optimistic update).
   let lastItemID: string | null = null;
+  let stopDirtyGuard: (() => void) | null = null;
   $effect(() => {
-    if (!item) {
+    const currentItem = item;
+    if (!currentItem) {
+      stopDirtyGuard?.();
+      stopDirtyGuard = null;
       draft = null;
       original = null;
       lastItemID = null;
       return;
     }
-    if (item.id !== lastItemID) {
-      draft = { ...item };
-      original = JSON.stringify(draft);
-      lastItemID = item.id;
+    if (currentItem.id !== lastItemID) {
+      stopDirtyGuard?.();
+      stopDirtyGuard = null;
+      const nextDraft = untrack(() => ({ ...currentItem }));
+      draft = nextDraft;
+      original = JSON.stringify(nextDraft);
+      lastItemID = currentItem.id;
       error = '';
+      // register() snapshots immediately. Keep that read untracked so typing
+      // into the draft does not tear down and recreate the per-item guard.
+      stopDirtyGuard = untrack(() => autosave.register(
+        () => JSON.stringify(draft),
+        () => save(),
+        false,
+      ));
     }
   });
 
-  async function save() {
-    if (!draft) return;
+  function rebaseEditableChanges(
+    saved: AgileWorkItem,
+    savingDraft: AgileWorkItem,
+    latestDraft: AgileWorkItem,
+  ): AgileWorkItem {
+    return {
+      ...saved,
+      title: latestDraft.title !== savingDraft.title ? latestDraft.title : saved.title,
+      type: latestDraft.type !== savingDraft.type ? latestDraft.type : saved.type,
+      priority: latestDraft.priority !== savingDraft.priority ? latestDraft.priority : saved.priority,
+      points: latestDraft.points !== savingDraft.points ? latestDraft.points : saved.points,
+      assignee: latestDraft.assignee !== savingDraft.assignee ? latestDraft.assignee : saved.assignee,
+      state: latestDraft.state !== savingDraft.state ? latestDraft.state : saved.state,
+      sprint_id: latestDraft.sprint_id !== savingDraft.sprint_id ? latestDraft.sprint_id : saved.sprint_id,
+      description: latestDraft.description !== savingDraft.description
+        ? latestDraft.description
+        : saved.description,
+    };
+  }
+
+  async function save(): Promise<boolean> {
+    if (!draft || status !== 'idle') return false;
+    if (!draft.title.trim()) {
+      error = 'Title is required.';
+      return false;
+    }
+    // Persist a stable copy. The editable controls are disabled while this is
+    // in flight, but the snapshot keeps this boundary correct if a future
+    // caller changes draft state programmatically during the await.
+    const savingDraft = { ...draft };
+    const savingSnapshot = JSON.stringify(savingDraft);
     status = 'saving';
     error = '';
     try {
-      const saved = await window.go.main.App.SaveWorkItem(draft);
+      const saved = await window.go.main.App.SaveWorkItem(savingDraft);
       // Mark clean before the callbacks run: `onSaved` can trigger a
       // parent refresh that awaits before this modal actually unmounts,
       // and a stale `original` would make a post-save `requestClose`
       // wrongly prompt to discard.
-      original = JSON.stringify(draft);
+      const latestDraft = draft;
+      original = JSON.stringify(saved);
+      if (latestDraft && JSON.stringify(latestDraft) !== savingSnapshot) {
+        // Keep a late edit open, but retain backend-owned fields such as a
+        // newly assigned ID and timestamps from the successful save.
+        draft = rebaseEditableChanges(saved, savingDraft, latestDraft);
+        onSaved(saved);
+        return true;
+      }
       onSaved(saved);
       onClose();
+      return true;
     } catch (err: any) {
       error = String(err?.message ?? err);
+      return false;
     } finally {
       status = 'idle';
     }
@@ -98,12 +154,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   async function destroy() {
-    if (!draft) return;
-    if (!confirm(`Delete "${draft.title}"?`)) return;
+    if (!draft || status !== 'idle') return;
+    const deletingID = draft.id;
+    const deletingTitle = draft.title;
+    if (!deletingID || !confirm(`Delete "${deletingTitle}"?`)) return;
     status = 'deleting';
     try {
-      await window.go.main.App.DeleteWorkItem(draft.id);
-      onDeleted(draft.id);
+      await window.go.main.App.DeleteWorkItem(deletingID);
+      onDeleted(deletingID);
       onClose();
     } catch (err: any) {
       error = String(err?.message ?? err);
@@ -129,12 +187,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  // Concurrency hardening: no timers in this component, but the
-  // keydown listener is attached via the modal's `tabindex` element
-  // and unmounted by Svelte automatically.
-  onDestroy(() => {
-    // No-op; the modal has no timers or external listeners.
-  });
+  onDestroy(() => stopDirtyGuard?.());
 
   const TYPES: AgileWorkItemType[] = ['story', 'bug', 'task', 'epic'];
   const PRIOS: AgilePriority[] = ['low', 'medium', 'high', 'urgent'];
@@ -158,6 +211,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </h2>
         <button
           onclick={requestClose}
+          disabled={status !== 'idle'}
           class="text-slate-500 hover:text-slate-200"
           aria-label="Close"
         >
@@ -174,6 +228,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <span class="text-xs text-slate-500 uppercase">Title</span>
           <input
             bind:value={draft.title}
+            disabled={status !== 'idle'}
             class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
           />
         </label>
@@ -183,6 +238,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="text-xs text-slate-500 uppercase">Type</span>
             <select
               bind:value={draft.type}
+              disabled={status !== 'idle'}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"
             >
               {#each TYPES as t (t)}
@@ -194,6 +250,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="text-xs text-slate-500 uppercase">Priority</span>
             <select
               bind:value={draft.priority}
+              disabled={status !== 'idle'}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"
             >
               {#each PRIOS as p (p)}
@@ -210,6 +267,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               type="number"
               step="0.5"
               bind:value={draft.points}
+              disabled={status !== 'idle'}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             />
           </label>
@@ -218,6 +276,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <input
               bind:value={draft.assignee}
               placeholder="(unassigned)"
+              disabled={status !== 'idle'}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             />
           </label>
@@ -228,6 +287,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="text-xs text-slate-500 uppercase">State / Column</span>
             <select
               bind:value={draft.state}
+              disabled={status !== 'idle'}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"
             >
               <option value="backlog">backlog</option>
@@ -240,6 +300,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="text-xs text-slate-500 uppercase">Sprint</span>
             <select
               bind:value={draft.sprint_id}
+              disabled={status !== 'idle'}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded"
             >
               <option value="">(none)</option>
@@ -255,6 +316,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <textarea
             bind:value={draft.description}
             rows="5"
+            disabled={status !== 'idle'}
             class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
           ></textarea>
         </label>
@@ -278,13 +340,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <div class="flex gap-2">
           <button
             onclick={requestClose}
+            disabled={status !== 'idle'}
             class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded"
           >
             Cancel
           </button>
           <button
             onclick={save}
-            disabled={status !== 'idle' || !draft.title}
+            disabled={status !== 'idle' || !draft.title.trim()}
             class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
           >
             {status === 'saving' ? 'Saving...' : 'Save'}
