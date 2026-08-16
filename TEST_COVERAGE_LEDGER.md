@@ -914,7 +914,9 @@ for this measurement fix.
 **Rule going forward:** never `?raw`-import a file under `frontend/src/` in a
 test. It shadows that file's `coverage.all` statement count to 0/0 for every
 future ratchet run. Read file contents with `node:fs.readFileSync` instead
-(see `persistence-boundary-strings.test.ts`).
+(see `persistence-boundary-strings.test.ts`). Enforced 2026-08-15 by `make
+no-raw-import-in-tests` (`scripts/check-no-raw-import-in-tests.sh`, wired
+into `make verify`), scoped to `*.test.ts`/`*.spec.ts` files.
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
