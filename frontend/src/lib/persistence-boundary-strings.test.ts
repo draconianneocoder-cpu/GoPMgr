@@ -1,12 +1,28 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import helpGuideSource from './components/HelpGuide.svelte?raw';
-import helpFeaturesSource from './components/help/HelpFeatures.svelte?raw';
-import helpTroubleshootingSource from './components/help/HelpTroubleshooting.svelte?raw';
-import dashboardSource from './components/project/Dashboard.svelte?raw';
-import projectLaunchpadTestSource from './components/project/ProjectLaunchpad.test.ts?raw';
+
+// Read source files directly from disk rather than via Vite's `?raw` import.
+// A `?raw` import pulls the target file into this test's own module graph
+// under a raw-text loader, which suppresses Vitest's `--coverage.all`
+// instrumentation for that file -- it stops counting as "never imported,
+// needs synthetic instrumentation" but was never executed as real
+// Svelte/JS either, so it silently reports as 0/0 covered statements
+// instead of its true (typically much larger) uncovered count. Confirmed
+// 2026-08-15: this shadowed HelpGuide.svelte, HelpFeatures.svelte,
+// HelpTroubleshooting.svelte, and Dashboard.svelte to 0/0 in the coverage
+// ratchet. `readFileSync` never enters Vite's module graph, so none of
+// these files are shadowed.
+const read = (relativePath: string) => readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf-8');
+
+const helpGuideSource = read('./components/HelpGuide.svelte');
+const helpFeaturesSource = read('./components/help/HelpFeatures.svelte');
+const helpTroubleshootingSource = read('./components/help/HelpTroubleshooting.svelte');
+const dashboardSource = read('./components/project/Dashboard.svelte');
+const projectLaunchpadTestSource = read('./components/project/ProjectLaunchpad.test.ts');
 
 // HelpGuide.svelte was split into HelpGuide.svelte (shell) plus six
 // Help*.svelte content components under ./components/help/ (2026-08-13).

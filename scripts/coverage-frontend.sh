@@ -3,10 +3,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Runs the frontend's full-repo statement coverage (every src/**/*.ts and
-# .svelte file, not just ones already imported by a test -- see the
-# "Frontend coverage: measured, not just counted" DEVELOPER_HANDBOOK.md
-# entry for why --coverage.all is required) and prints "<covered> <total>"
-# statement counts on stdout.
+# .svelte file, not just ones already imported by a test -- --coverage.all
+# is required so an entirely-untested component reads as its real uncovered
+# count instead of being absent from the denominator) and prints
+# "<covered> <total>" statement counts on stdout.
+#
+# A file can still read as a false 0/0 under --coverage.all despite this:
+# see TEST_COVERAGE_LEDGER.md's "Frontend" section note on `?raw` imports
+# shadowing coverage instrumentation.
 #
 # frontend/wailsjs/ (generated Wails bindings) is outside the src/** glob
 # and so is never in the denominator; nothing else is currently excluded.
