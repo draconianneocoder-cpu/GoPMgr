@@ -17,10 +17,13 @@ import (
 // past the schema/settings/project pages OpenProject's own startup
 // queries touch), then closes it and returns the file path with a
 // pristine copy of its bytes for corruption-and-restore round trips.
-//
-// The specific byte offsets used by the two tests below
+// Used only by the two corruption-sweep tests below
 // (TestRepairAndSwapHealsReachableLightCorruption,
-// TestRepairAndSwapCanFailToHealEvenWhenReached) were derived from an
+// TestRepairAndSwapCanFailToHealEvenWhenReached) —
+// TestRepairAndSwapReportsSwapFailureForBadBakFile needs no corruption
+// and builds its own minimal fixture instead.
+//
+// The specific byte offsets used by those two tests were derived from an
 // exhaustive page-by-page corruption sweep against this exact fixture
 // (one byte flipped per 4096-byte page, OpenProject/ListStakeholders/
 // RepairAndSwap outcome recorded, byte restored, next page) — see
@@ -147,5 +150,57 @@ func TestRepairAndSwapCanFailToHealEvenWhenReached(t *testing.T) {
 	}
 	if result.Success {
 		t.Fatal("RepairAndSwap: want Success=false alongside the snapshot-creation error")
+	}
+}
+
+// TestRepairAndSwapReportsSwapFailureForBadBakFile covers RepairAndSwap's
+// "Swap failed" branch (app_documents.go) — reached when InformativeSelfHeal
+// reports the live database as already healthy (so it creates no snapshot
+// of its own) but a *pre-existing* .bak file is present from some other
+// source. This is not a contrived fixture: RepairAndSwap's own comment
+// documents that it detects "do the swap" by checking for a .bak file's
+// mere presence, not by parsing InformativeSelfHeal's log — so any
+// leftover .bak (an interrupted prior repair, a manual copy, a synced
+// file from another device) drives this exact path on the next repair
+// attempt. A .bak that isn't a valid encrypted snapshot must be reported
+// as a failed swap, not silently accepted or allowed to corrupt the live
+// file the swap step already renamed aside.
+func TestRepairAndSwapReportsSwapFailureForBadBakFile(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	path := mustOpenProject(t, app, "Proj")
+	if _, err := app.SaveStakeholder(db.Stakeholder{Name: "Dana", Category: db.StakeholderTeam}); err != nil {
+		t.Fatalf("SaveStakeholder: %v", err)
+	}
+
+	if err := os.WriteFile(path+".bak", []byte("not a valid sqlite snapshot"), 0o600); err != nil {
+		t.Fatalf("plant bogus .bak: %v", err)
+	}
+
+	result, err := app.RepairAndSwap()
+	if err == nil {
+		t.Fatalf("RepairAndSwap: want an error for a bogus .bak snapshot, got nil (result=%+v)", result)
+	}
+	if !strings.Contains(err.Error(), "swap:") {
+		t.Fatalf("RepairAndSwap: want the swap-step error wrapped through, got %v", err)
+	}
+	found := false
+	for _, line := range result.Log {
+		if strings.HasPrefix(line, "Swap failed:") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("RepairAndSwap: want a \"Swap failed:\" log line, got %v", result.Log)
+	}
+
+	// The live database must still be open and usable — a failed swap
+	// must never have touched it (SwapInEncryptedSnapshot verifies the
+	// snapshot before it ever closes or renames the live file).
+	if _, err := app.ListStakeholders(""); err != nil {
+		t.Fatalf("ListStakeholders after failed swap: want the live db untouched and usable, got %v", err)
 	}
 }
