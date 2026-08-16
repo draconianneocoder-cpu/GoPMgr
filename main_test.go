@@ -12,7 +12,41 @@ import (
 	"testing"
 
 	"github.com/wailsapp/wails/v2/pkg/menu"
+
+	"gopmgr/internal/cli"
 )
+
+// TestHeadlessProjectMode covers headlessProjectMode's seven independent
+// OR-clauses individually. Unlike a bare pass-through, dropping one of
+// these clauses is a real bug class: it would silently route a CLI
+// invocation that should run in headless maintenance mode into the GUI
+// startup path instead (or vice versa), which is why this earns a test
+// despite having no guard of its own.
+func TestHeadlessProjectMode(t *testing.T) {
+	cases := []struct {
+		name string
+		cfg  cli.Config
+	}{
+		{"CheckOnly", cli.Config{CheckOnly: true}},
+		{"Repair", cli.Config{Repair: true}},
+		{"Vacuum", cli.Config{Vacuum: true}},
+		{"ExportAuditPath", cli.Config{ExportAuditPath: "/tmp/audit.json"}},
+		{"ShowStats", cli.Config{ShowStats: true}},
+		{"SchemaDump", cli.Config{SchemaDump: true}},
+		{"ExportPath", cli.Config{ExportPath: "/tmp/export.csv"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if !headlessProjectMode(&tc.cfg) {
+				t.Fatalf("headlessProjectMode(%+v): want true, got false", tc.cfg)
+			}
+		})
+	}
+
+	if headlessProjectMode(&cli.Config{}) {
+		t.Fatal("headlessProjectMode(zero value): want false, got true")
+	}
+}
 
 // buildTestLog constructs a slice of n lines, each "line NNN", and writes
 // them joined with newlines to path.
