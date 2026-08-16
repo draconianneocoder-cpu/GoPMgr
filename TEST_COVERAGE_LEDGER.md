@@ -896,30 +896,45 @@ split, not this fix. Post-fix 2801/14386 (**11585 uncovered**). Covered
 stayed at 2801 throughout; only the total grew, because the fix makes
 previously-invisible uncovered code visible rather than covering anything.
 
-`coverage-baseline.json`'s frontend mark (10631 uncovered) is deliberately
-left unchanged, so the frontend line of `make coverage-ratchet` continues
-reading REGRESSED (now 11585 vs 10631) against it. The ratchet script's own
-`--update` refuses to record a worse mark for exactly this reason, and
-hand-editing the JSON to bypass that would defeat the safeguard rather than
-honor it — that stands even though this particular regression is a
-measurement correction, not new debt, because the ratchet has no way to
-represent that distinction and `coverage-ratchet` is not part of `make
-verify` or CI (see its Makefile target), so leaving it red costs no
-automated gate. Absorbing the corrected baseline — writing tests for
-`Dashboard.svelte` and the four remaining `Help*.svelte` content
-components, or an explicit owner decision to accept the debt and update
-`coverage-baseline.json` by hand — is tracked as a follow-up, out of scope
-for this measurement fix.
+Immediately after the fix, `coverage-baseline.json`'s frontend mark (10631
+uncovered) was deliberately left unchanged: `coverage-ratchet.sh --update`
+refuses to record a worse mark by design, and hand-editing the JSON to
+bypass that would have defeated the safeguard rather than honored it — that
+held even though the regression was a measurement correction rather than
+new debt, because the ratchet has no way to represent that distinction on
+its own.
 
-**Partial absorption, 2026-08-15 (`Dashboard.test.ts`):** `Dashboard.svelte`
-went from 0% to 85.2% (329/386 statements) — see its ledger row below.
-Measured with the same `coverage-frontend.sh` command: 3256/14386 covered,
-**11130 uncovered**, still above baseline's 10631 by 499. The four
-`Help*.svelte` content components (604 statements combined) remain
-untested and are the largest piece of what's left; `DORADashboard.svelte`
-(271 statements, pre-existing and unrelated to this note) is the other.
-Full absorption still needs either more test coverage or an explicit
-owner decision on `coverage-baseline.json`.
+**`Dashboard.test.ts`, 2026-08-15:** `Dashboard.svelte` went from 0% to
+85.2% (329/386 statements) — see its ledger row below. Measured:
+3256/14386 covered, 11130 uncovered, 499 above the old baseline.
+
+**Baseline accepted, 2026-08-15:** the owner reviewed the corrected
+measurement and explicitly accepted the remaining gap as debt rather than
+requiring it be tested away. `coverage-baseline.json`'s frontend mark is
+now `{"covered": 3260, "total": 14390}` (11130 uncovered) — hand-edited on
+this explicit, recorded owner decision, reversing the "leave it unchanged"
+stance the two prior ledger passes took. `--update` still only ever
+records an *improved* mark automatically; this hand-edit is not something
+the script itself performs or was designed to invite, it is a deliberate
+override of that default, made once, with the reasoning on the record
+here rather than silently. `make coverage-ratchet` reads frontend as
+**held** at this mark (verified before recording it here). The old mark
+(10631 uncovered, out of a 13223-statement denominator) was measured
+under the broken `?raw`-import instrument described above and understated
+the true gap by the 714 statements that fix unhid; the new mark measures
+honestly and is the correct floor to ratchet from going forward.
+
+What this trades away: any regression between the old floor (10631) and
+the new one (11130) is now invisible to the ratchet — a change that adds
+up to 499 newly-uncovered statements elsewhere in the frontend, or fails
+to test new code up to that amount, will not trip `make coverage-ratchet`.
+That is the actual cost of accepting the debt rather than testing it away;
+recorded here so it is a known tradeoff, not a silently loosened gate.
+Remaining untested at the new floor: the four `Help*.svelte` content
+components (604 statements, static/presentational, never addressed) and
+`DORADashboard.svelte` (271 statements, pre-existing and unrelated to any
+of the above). `coverage-ratchet` is still not part of `make verify` or
+CI (see its Makefile target); it remains a manually-run signal.
 
 **Rule going forward:** never `?raw`-import a file under `frontend/src/` in a
 test. It shadows that file's `coverage.all` statement count to 0/0 for every
@@ -942,7 +957,7 @@ into `make verify`), scoped to `*.test.ts`/`*.spec.ts` files.
 | `src/lib/components/charts/gantt_geometry.test.ts` | 11 | Gantt geometry helpers | unit, table-driven | Pixel-position math for Gantt rendering, tested independent of the Svelte component. |
 | `src/lib/components/charts/leveling_messages.test.ts` | 13 | Resource-leveling result → user-facing message text | unit, table-driven | Each leveling outcome (horizon exceeded, cycle detected, fully levelled, etc.) must map to a distinct, correct user-facing message — a mismatch here would show the user a misleading explanation of what leveling actually did. |
 | `src/lib/components/project/ChartCatalog.test.ts` | 3 | Chart-kind catalog/picker | component | Renders the correct set of creatable chart kinds. |
-| `src/lib/components/project/Dashboard.test.ts` | 23 | Data load + retry, chart/document delete confirmation, chart/document creation and routing, Agile Pack toggle (incl. the toggle-vs-load() race guard), signed document export (GnuPG/none), MSPDI import, project close | component, integration | Added 2026-08-15: this 386-statement, actively-used component had zero committed coverage (see the frontend-coverage note above this table — it was shadowed to a false 0/0 by a `?raw` import bug in an unrelated test, not actually exercised). Delete flows require an explicit Yes and leave the item in place with an error toast on backend failure, never delete-then-fail-silently. Chart creation asserts the exact starter JSON payload per kind and the post-create route, including the `chartRoutes[kind] ?? 'charts'` fallback for a kind with no registered route. Signed export covers the `none` and `gpg` `SignatureExportOptions.method` branches and that a failed export releases the Signature button rather than leaving it stuck mid-export; the `pades` branch (`ExportDocumentPDFSigned`, Dashboard.svelte:91-97) is untested by this or any other suite — `SignCertificateModal` has no test file of its own, and reaching `pades` here requires filling in both a password and a certificate path before Export enables, which no test does. The Agile-binding-missing case proves the older-binary compatibility path degrades to disabled instead of throwing. Initial writing of this suite discovered (same day) that `load()`'s five sequential backend calls (ending in `AgileEnabled()`) assign state as each resolves while every interactive control renders immediately without being gated on `loading` — a control dispatched before `load()` finishes could race load()'s own late assignment and be silently clobbered (confirmed empirically for the Agile Pack toggle: toggling before load() reached `AgileEnabled()` left the backend correctly updated but the UI reverted). A suspected identical `charts`/`docs` variant was investigated and found **not reachable**: those arrays are each assigned exactly once per `load()` call, and the delete buttons that mutate them can't render before that one assignment already happened, so no later same-call write remains to clobber a dispatched delete. Fixed the same day: `toggleAgile()` now early-returns while `loading` is true (the actual guard — confirmed via a failing-then-passing test that a `disabled` DOM attribute alone does not stop `fireEvent.click` from invoking the handler under jsdom) and the toggle button carries `disabled={loading}` for the visual signal. Two dedicated regression tests cover it: the toggle is inert and calls no backend method while `AgileEnabled()` is pending, becomes usable only once it resolves, and is *not* left stuck disabled when `load()` fails before ever reaching `AgileEnabled()`. All other tests still route through a `renderLoaded` helper (waits for `AgileEnabled` to have been called) to reach post-load state directly; the spinner and load-error tests render directly, since they deliberately observe mid-load state. Coverage this added: `Dashboard.svelte` 0% → 85.2% (329/386 statements) — the untested remainder is mostly the `pades` export branch, the non-`wbs`/`raci`/unmapped chart-starter closures (`network`/`pert`/`cpm`/... never exercised since no test creates those kinds), and a few template branches (the `six_sigma`-methodology banner, individual `statusStyles`/`docStatusStyles` map entries beyond what the fixtures hit). Frontend coverage-ratchet mark: 3260/14390 covered, 11130 uncovered, still 499 above baseline's 10631 (see the frontend-coverage note above) — this fix was coverage-neutral (added as many covered statements as total statements). |
+| `src/lib/components/project/Dashboard.test.ts` | 23 | Data load + retry, chart/document delete confirmation, chart/document creation and routing, Agile Pack toggle (incl. the toggle-vs-load() race guard), signed document export (GnuPG/none), MSPDI import, project close | component, integration | Added 2026-08-15: this 386-statement, actively-used component had zero committed coverage (see the frontend-coverage note above this table — it was shadowed to a false 0/0 by a `?raw` import bug in an unrelated test, not actually exercised). Delete flows require an explicit Yes and leave the item in place with an error toast on backend failure, never delete-then-fail-silently. Chart creation asserts the exact starter JSON payload per kind and the post-create route, including the `chartRoutes[kind] ?? 'charts'` fallback for a kind with no registered route. Signed export covers the `none` and `gpg` `SignatureExportOptions.method` branches and that a failed export releases the Signature button rather than leaving it stuck mid-export; the `pades` branch (`ExportDocumentPDFSigned`, Dashboard.svelte:91-97) is untested by this or any other suite — `SignCertificateModal` has no test file of its own, and reaching `pades` here requires filling in both a password and a certificate path before Export enables, which no test does. The Agile-binding-missing case proves the older-binary compatibility path degrades to disabled instead of throwing. Initial writing of this suite discovered (same day) that `load()`'s five sequential backend calls (ending in `AgileEnabled()`) assign state as each resolves while every interactive control renders immediately without being gated on `loading` — a control dispatched before `load()` finishes could race load()'s own late assignment and be silently clobbered (confirmed empirically for the Agile Pack toggle: toggling before load() reached `AgileEnabled()` left the backend correctly updated but the UI reverted). A suspected identical `charts`/`docs` variant was investigated and found **not reachable**: those arrays are each assigned exactly once per `load()` call, and the delete buttons that mutate them can't render before that one assignment already happened, so no later same-call write remains to clobber a dispatched delete. Fixed the same day: `toggleAgile()` now early-returns while `loading` is true (the actual guard — confirmed via a failing-then-passing test that a `disabled` DOM attribute alone does not stop `fireEvent.click` from invoking the handler under jsdom) and the toggle button carries `disabled={loading}` for the visual signal. Two dedicated regression tests cover it: the toggle is inert and calls no backend method while `AgileEnabled()` is pending, becomes usable only once it resolves, and is *not* left stuck disabled when `load()` fails before ever reaching `AgileEnabled()`. All other tests still route through a `renderLoaded` helper (waits for `AgileEnabled` to have been called) to reach post-load state directly; the spinner and load-error tests render directly, since they deliberately observe mid-load state. Coverage this added: `Dashboard.svelte` 0% → 85.2% (329/386 statements) — the untested remainder is mostly the `pades` export branch, the non-`wbs`/`raci`/unmapped chart-starter closures (`network`/`pert`/`cpm`/... never exercised since no test creates those kinds), and a few template branches (the `six_sigma`-methodology banner, individual `statusStyles`/`docStatusStyles` map entries beyond what the fixtures hit). Frontend coverage-ratchet mark: 3260/14390 covered, 11130 uncovered — held against baseline (the baseline was hand-updated to this exact figure the same day on an explicit owner decision; see the frontend-coverage note above). This fix was itself coverage-neutral against the pre-update mark (added as many covered statements as total statements). |
 | `src/lib/components/project/DocumentCatalog.test.ts` | 3 | Document-kind catalog/picker | component | Renders the correct set of creatable document kinds. |
 | `src/lib/components/project/ProjectLaunchpad.test.ts` | 2 | Project-creation launchpad (industry/methodology selection → seed preview) | component | Confirms explicit user confirmation is required before advancing, and that the selected timezone is sent to the backend on creation. |
 | `src/lib/components/project/ProjectSettings.test.ts` | 2 | Project settings — PAdES timestamp configuration section only | component | Narrow, targeted coverage: this file is one section of a much larger (1,900-line) component — see `DEVELOPER_HANDBOOK.md`'s coverage entries for why the rest of `ProjectSettings.svelte` is a known, tracked gap (48% covered) rather than assumed complete. |

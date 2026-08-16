@@ -1,7 +1,7 @@
 {
   "frontend": {
-    "covered": 2592,
-    "total": 13223
+    "covered": 3260,
+    "total": 14390
   },
   "go_default": {
     "covered": 11123,
