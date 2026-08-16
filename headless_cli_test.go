@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"gopmgr/internal/crypto"
 	"gopmgr/internal/db"
 	"gopmgr/internal/export"
+	"gopmgr/internal/money"
 )
 
 // seedHeadlessProject creates a plaintext project DB with one project row
@@ -74,6 +76,44 @@ func TestRunHeadlessExportWritesFile(t *testing.T) {
 	}
 	if info.Size() == 0 {
 		t.Fatal("export file is empty")
+	}
+}
+
+// TestRunHeadlessExportPropagatesEVMOverflow proves runHeadlessExport
+// checks and propagates kernel.ComputeEVM's overflow error rather than
+// silently writing an export file with missing or wrong EVM data, for the
+// CLI headless path (a separate call site from the Wails-bound schedule
+// and combined-report exports covered in report_evm_test.go).
+func TestRunHeadlessExportPropagatesEVMOverflow(t *testing.T) {
+	d := seedHeadlessProject(t)
+	proj, err := d.GetProject()
+	if err != nil {
+		t.Fatalf("GetProject: %v", err)
+	}
+	proj.StartDate = "2026-06-01"
+	proj.CountryCode = "US"
+	if _, err := d.UpsertProject(proj); err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	if _, err := d.SaveChart(db.Chart{
+		ProjectID: proj.ID,
+		Kind:      "cpm",
+		Title:     "Overflow Schedule",
+		Data: `{"nodes":[
+			{"id":"A","duration":1,"budgeted_cost_minor_units":9223372036854775807},
+			{"id":"B","duration":1,"budgeted_cost_minor_units":1}
+		],"edges":[]}`,
+	}); err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+
+	out := filepath.Join(t.TempDir(), "schedule.csv")
+	cfg := &cli.Config{ExportPath: out, ExportFormat: "csv"}
+	if err := runHeadlessExport(cfg, d); !errors.Is(err, money.ErrOverflow) {
+		t.Fatalf("runHeadlessExport error = %v, want ErrOverflow", err)
+	}
+	if _, statErr := os.Stat(out); statErr == nil {
+		t.Fatal("runHeadlessExport wrote an export file despite the EVM overflow error")
 	}
 }
 

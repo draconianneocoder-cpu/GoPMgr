@@ -147,6 +147,22 @@ func ComputeEVM(tasks map[string]*Task, asOfDay float64) (EVMetrics, error) {
 		return EVMetrics{}, err
 	}
 	if m.VACMinorUnits, err = subtractMinorUnits("VAC", m.BACMinorUnits, m.EACMinorUnits); err != nil {
+		// Defensive, not reachable today: EAC is either exactly BAC (the
+		// EV<=0||AC<=0 fallback branch above) or BAC scaled by AC/EV with
+		// both strictly positive (the ratio branch), which can only
+		// preserve or zero BAC's sign, never flip it — confirmed by an
+		// exhaustive boundary-value search directly over the three int64
+		// inputs to this subtraction (BAC, AC, EV values fed to
+		// money.ScaleByRatioChecked: min/max/halves/±1/±2, all combinations
+		// with AC,EV>0), not over task-level fixtures, since ComputeEVM
+		// does not itself clamp PercentComplete (CalculateCPM's job, per
+		// this function's doc comment) and a task-driven sweep would only
+		// exercise already-clamped inputs. No combination found where EAC
+		// is individually valid but BAC-EAC overflows. BAC and EAC
+		// therefore never sit on opposite ends of the int64 range, which
+		// is what VAC's subtraction would need to overflow. Kept as a
+		// guard in case a future change to the EAC formula breaks that
+		// invariant; no portable test reaches it under the current one.
 		return EVMetrics{}, err
 	}
 
