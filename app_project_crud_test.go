@@ -35,6 +35,7 @@ func TestAppMethodsRequireOpenProject(t *testing.T) {
 		{"ListHolidays", func() error { _, err := app.ListHolidays("2026-01-01", "2026-12-31"); return err }},
 		{"ComputeBudget", func() error { _, err := app.ComputeBudget(); return err }},
 		{"BuildTimeline", func() error { _, err := app.BuildTimeline(); return err }},
+		{"RepairAndSwap", func() error { _, err := app.RepairAndSwap(); return err }},
 		{"PreflightCombinedReport", func() error {
 			_, err := app.PreflightCombinedReport(nil, CombinedReportOptions{})
 			return err
