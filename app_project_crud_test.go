@@ -35,6 +35,10 @@ func TestAppMethodsRequireOpenProject(t *testing.T) {
 		{"ListHolidays", func() error { _, err := app.ListHolidays("2026-01-01", "2026-12-31"); return err }},
 		{"ComputeBudget", func() error { _, err := app.ComputeBudget(); return err }},
 		{"BuildTimeline", func() error { _, err := app.BuildTimeline(); return err }},
+		{"PreflightCombinedReport", func() error {
+			_, err := app.PreflightCombinedReport(nil, CombinedReportOptions{})
+			return err
+		}},
 	}
 
 	for _, tc := range cases {
@@ -272,6 +276,27 @@ func TestComputeBudgetIncludesStakeholderContractValue(t *testing.T) {
 	}
 	if summary.CommittedMinorUnits != 500_00 {
 		t.Fatalf("want committed cost 50000 minor units, got %d", summary.CommittedMinorUnits)
+	}
+}
+
+// TestPreflightCombinedReport covers only the App-layer wrapper's own four
+// statements (requireDB, nil guard, delegation, return) — reporting.
+// Service.Preflight's actual preflight logic (missing documents/charts,
+// profile selection) is already covered at the reporting package level
+// (internal/reporting/reporting_test.go), so this doesn't re-test that.
+func TestPreflightCombinedReport(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Proj")
+
+	preflight, err := app.PreflightCombinedReport(nil, CombinedReportOptions{})
+	if err != nil {
+		t.Fatalf("PreflightCombinedReport: %v", err)
+	}
+	if preflight.Profile.ID == "" {
+		t.Fatal("PreflightCombinedReport: want a resolved profile, got empty ID")
 	}
 }
 
