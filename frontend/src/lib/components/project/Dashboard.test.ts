@@ -332,6 +332,56 @@ describe('Dashboard Agile Pack toggle', () => {
     await waitFor(() => expect(getByText(/software-dev pack \(disabled\)/i)).toBeInTheDocument());
     expect(queryByRole('button', { name: /^Board Kanban/ })).not.toBeInTheDocument();
   });
+
+  // Regression test for the race documented in
+  // .agent_memory/dashboard-coverage-2026-08-15.md: load()'s own
+  // `agileEnabled = await AgileEnabled()` assignment runs after
+  // toggleAgile()'s assignment would if the toggle were clicked mid-load,
+  // silently reverting it. The fix disables the toggle for the entire
+  // window `loading` is true, which this test proves by holding
+  // AgileEnabled() pending, confirming the button is inert, then
+  // confirming it becomes usable (and only then) once load() settles.
+  it('disables the toggle for the whole initial load, closing the toggle-vs-load() race', async () => {
+    let resolveAgileEnabled: (v: boolean) => void;
+    setApp({
+      AgileEnabled: vi.fn(() => new Promise<boolean>((resolve) => (resolveAgileEnabled = resolve))),
+    });
+    const { getByRole } = render(Dashboard);
+
+    await waitFor(() => expect(getByRole('button', { name: /enable agile pack/i })).toBeInTheDocument());
+    const toggle = getByRole('button', { name: /enable agile pack/i });
+    expect(toggle).toBeDisabled();
+
+    // A click while disabled must reach neither the backend nor the
+    // clobber-prone assignment — this is what actually closes the race,
+    // not just the visual disabled state.
+    await fireEvent.click(toggle);
+    expect(app.SetAgileEnabled).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(resolveAgileEnabled).toBeDefined());
+    resolveAgileEnabled!(false);
+    await waitFor(() => expect(getByRole('button', { name: /enable agile pack/i })).not.toBeDisabled());
+
+    await fireEvent.click(getByRole('button', { name: /enable agile pack/i }));
+    await waitFor(() => expect(app.SetAgileEnabled).toHaveBeenCalledWith(true));
+  });
+
+  it('leaves the toggle enabled (not stuck) when the load fails before reaching AgileEnabled', async () => {
+    setApp({
+      ListCharts: vi.fn(async () => {
+        throw new Error('backend unavailable');
+      }),
+    });
+    const { getByText, getByRole } = render(Dashboard);
+
+    await waitFor(() => expect(getByText(/could not load this project/i)).toBeInTheDocument());
+    // load()'s outer catch sets loadError and loading=false without ever
+    // reaching the AgileEnabled() call — agileEnabled keeps its default
+    // (false) and there is no pending assignment left to race, so the
+    // toggle must not be left permanently disabled by this path.
+    expect(getByRole('button', { name: /enable agile pack/i })).not.toBeDisabled();
+    expect(app.AgileEnabled).not.toHaveBeenCalled();
+  });
 });
 
 describe('Dashboard signed document export', () => {

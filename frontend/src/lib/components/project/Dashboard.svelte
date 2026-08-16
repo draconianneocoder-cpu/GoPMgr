@@ -116,7 +116,17 @@ import Spinner from '../Spinner.svelte';
     })();
   }
 
+  // Guarded on `loading`, not just the disabled attribute on the button
+  // below: load()'s own agileEnabled = await AgileEnabled() assignment
+  // runs after this function's assignment would, so a toggle dispatched
+  // during the initial load raced and lost to it — the backend call still
+  // fired, but the UI silently reverted to the pre-toggle value. The
+  // early return closes that window at the source, since `loading` only
+  // flips false once load()'s own agileEnabled assignment has already
+  // settled (see load()'s try/finally shape); the disabled attribute is
+  // the visual/UX signal, this guard is what actually prevents the race.
   async function toggleAgile() {
+    if (loading) return;
     const next = !agileEnabled;
     try {
       await window.go.main.App.SetAgileEnabled(next);
@@ -573,7 +583,9 @@ import Spinner from '../Spinner.svelte';
         </h2>
         <button
           onclick={toggleAgile}
-          class="text-xs {agileEnabled ? 'bg-slate-800 hover:bg-slate-700' : 'bg-cyan-600 hover:bg-cyan-500 text-white'} px-3 py-1 rounded"
+          disabled={loading}
+          title={loading ? 'Waiting for the project to finish loading…' : undefined}
+          class="text-xs {agileEnabled ? 'bg-slate-800 hover:bg-slate-700' : 'bg-cyan-600 hover:bg-cyan-500 text-white'} disabled:opacity-50 px-3 py-1 rounded"
         >
           {agileEnabled ? 'Disable' : 'Enable Agile Pack'}
         </button>
