@@ -35,7 +35,8 @@ export CC
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
         help-guide-current wails-version wails-cli-version wails-version-test tag-preflight config-check \
         installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests \
-        code-map code-map-current
+        code-map code-map-current coverage-ledger-current coverage-ledger-drift coverage-ratchet \
+        coverage-ratchet-update no-text-timestamp-ordering no-raw-import-in-tests
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
