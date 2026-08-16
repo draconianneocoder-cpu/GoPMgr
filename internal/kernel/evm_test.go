@@ -215,6 +215,65 @@ func TestComputeEVMReportsOverflow(t *testing.T) {
 				"A": {ID: "A", BudgetedCostMinorUnits: 2, ActualCostMinorUnits: math.MaxInt64, PercentComplete: 50},
 			},
 		},
+		{
+			// Planned value: two fully-planned (ES <= asOfDay) tasks at
+			// BudgetedCostMinorUnits=MaxInt64 push the PV total past
+			// int64 range, while a third task's negative budget keeps
+			// the BAC total itself within range (MaxInt64-MaxInt64+
+			// MaxInt64=MaxInt64, exactly at the boundary) so BAC's own
+			// check passes and PV's is what actually fires.
+			name: "planned value",
+			tasks: map[string]*Task{
+				"A": {ID: "A", Duration: 0, ES: -1, BudgetedCostMinorUnits: math.MaxInt64},
+				"B": {ID: "B", Duration: 0, ES: 1000, BudgetedCostMinorUnits: -math.MaxInt64},
+				"C": {ID: "C", Duration: 0, ES: -1, BudgetedCostMinorUnits: math.MaxInt64},
+			},
+		},
+		{
+			// Earned value: same shape as "planned value" but driven by
+			// PercentComplete instead of ES, with every task's own PV
+			// forced to 0 (ES in the future) so only the EV check fires.
+			name: "earned value",
+			tasks: map[string]*Task{
+				"A": {ID: "A", Duration: 0, ES: 1000, BudgetedCostMinorUnits: math.MaxInt64, PercentComplete: 100},
+				"B": {ID: "B", Duration: 0, ES: 1000, BudgetedCostMinorUnits: -math.MaxInt64, PercentComplete: 0},
+				"C": {ID: "C", Duration: 0, ES: 1000, BudgetedCostMinorUnits: math.MaxInt64, PercentComplete: 100},
+			},
+		},
+		{
+			// Actual cost: ActualCostMinorUnits is an independent field
+			// from BudgetedCost, so a zero budget on both tasks keeps
+			// BAC/PV/EV at 0 (no overflow there) while AC's own
+			// aggregation overflows on its own.
+			name: "actual cost",
+			tasks: map[string]*Task{
+				"A": {ID: "A", ActualCostMinorUnits: math.MaxInt64},
+				"B": {ID: "B", ActualCostMinorUnits: 1},
+			},
+		},
+		{
+			// Schedule variance (EV-PV): task A contributes PV=-1, EV=0;
+			// task B contributes PV=0, EV=MaxInt64 (fully earned, not yet
+			// planned) — individually-valid EV and PV whose difference
+			// overflows.
+			name: "schedule variance",
+			tasks: map[string]*Task{
+				"A": {ID: "A", Duration: 0, ES: -1, BudgetedCostMinorUnits: -1, PercentComplete: 0},
+				"B": {ID: "B", Duration: 0, ES: 1000, BudgetedCostMinorUnits: math.MaxInt64, PercentComplete: 100},
+			},
+		},
+		{
+			// Estimate to complete (EAC-AC): task A has EV=0
+			// (PercentComplete=0), forcing the EAC-falls-back-to-BAC
+			// branch rather than the EV>0&&AC>0 ratio branch, so
+			// EAC=BAC=MaxInt64 exactly (individually valid). Task B's
+			// independent AC=-1 makes EAC-AC overflow.
+			name: "estimate to complete",
+			tasks: map[string]*Task{
+				"A": {ID: "A", Duration: 0, ES: -1, BudgetedCostMinorUnits: math.MaxInt64, PercentComplete: 0},
+				"B": {ID: "B", Duration: 0, ES: -1, BudgetedCostMinorUnits: 0, ActualCostMinorUnits: -1},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

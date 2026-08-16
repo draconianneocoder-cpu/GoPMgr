@@ -5,6 +5,7 @@ package main
 
 import (
 	"errors"
+	"math"
 	"path/filepath"
 	"testing"
 	"time"
@@ -180,6 +181,32 @@ func TestPortfolioProjectMetricsReportsEVMOverflow(t *testing.T) {
 		],
 		"edges":[]
 	}`)
+
+	_, err := portfolioProjectMetrics(d, project, "", time.Date(2026, 1, 12, 12, 0, 0, 0, time.UTC))
+	if !errors.Is(err, money.ErrOverflow) {
+		t.Fatalf("portfolioProjectMetrics error = %v, want ErrOverflow", err)
+	}
+}
+
+// TestPortfolioProjectMetricsReportsCommittedCostOverflow proves
+// portfolioProjectMetrics checks and propagates budget.Compute's overflow
+// error (the "compute committed cost" wrap) rather than silently
+// continuing with wrong committed-cost figures. This is a separate check
+// from the EVM overflow cases above: it fires before portfolioScheduleEVM
+// is ever called, so no schedule chart is needed here.
+func TestPortfolioProjectMetricsReportsCommittedCostOverflow(t *testing.T) {
+	d, project := newPortfolioEVMTestProject(t, "2026-01-05")
+	// newPortfolioEVMTestProject already saves one vendor stakeholder with
+	// ContractValueMinorUnits=20_000; add a second whose contract value
+	// alone pushes the aggregate contract-value sum past int64 range.
+	if _, err := d.SaveStakeholder(db.Stakeholder{
+		ProjectID:               project.ID,
+		Name:                    "Overflowing Supplier",
+		Category:                db.StakeholderVendor,
+		ContractValueMinorUnits: math.MaxInt64,
+	}); err != nil {
+		t.Fatalf("SaveStakeholder: %v", err)
+	}
 
 	_, err := portfolioProjectMetrics(d, project, "", time.Date(2026, 1, 12, 12, 0, 0, 0, time.UTC))
 	if !errors.Is(err, money.ErrOverflow) {

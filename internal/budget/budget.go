@@ -118,6 +118,19 @@ func Compute(project db.Project, stakeholders []db.Stakeholder, workItems []agil
 	for cat, total := range byCategory {
 		amount, err := accumulatedAmount("category "+cat, total)
 		if err != nil {
+			// Defensive, not reachable through this function today: every
+			// category's accumulator only receives non-negative contract
+			// values (guarded by contract.Positive() above) and
+			// non-negative labour costs (rate/points both gated positive
+			// before RateTimesQuantity), and each category is a subset of
+			// the exact same non-negative contributions already summed
+			// into contractValue/labourEstimate/committed above. Since
+			// committed didn't overflow (checked before this loop), no
+			// category subtotal — being a non-negative subset of a
+			// representable sum — can overflow either. Kept as a guard in
+			// case a future change (e.g. allowing negative adjustments)
+			// breaks that invariant; no portable test reaches it under the
+			// current one.
 			return Summary{}, err
 		}
 		sum.ByCategoryMinorUnits[cat] = amount.MinorUnits
