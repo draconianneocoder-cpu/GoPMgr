@@ -857,33 +857,64 @@ lower than Go because most of the
 tests below are either pure-logic modules or the components judged
 highest-value so far).
 
-**2026-08-13 `coverage-ratchet.sh` note on the `HelpGuide.svelte` split:**
-running the ratchet after the split reports frontend as REGRESSED (10631 →
-10909 uncovered statements). This is not new untested code from the split —
-it's a pre-existing measurement blind spot getting partially un-hidden.
-`persistence-boundary-strings.test.ts` imports `HelpGuide.svelte` via Vite's
-`?raw` query; confirmed by checking out `main` and re-running coverage that
-this `?raw` import already caused vitest's `coverage.all` instrumentation to
-report `HelpGuide.svelte` as 0/0 statements *before* this split, silently
-excluding its then-2223 lines of real template logic from every ratchet run
-to date. Splitting the file changed which pieces fall under that same
-artifact: `HelpFeatures.svelte` and `HelpTroubleshooting.svelte` are now
-also `?raw`-imported by that test (for the same `.gopmgr`/`.pmforge`
-literal-drift check `HelpGuide.svelte` used to cover) and so are still
-shadowed to 0/0, but `HelpOverview.svelte`, `HelpTutorials.svelte`,
-`HelpMethodologies.svelte`, and `HelpReference.svelte` are not raw-imported
-anywhere and now report their real, previously-invisible statement counts
-(46 + 40 + 32 + 158 = 276 uncovered) — accounting for essentially the entire
-regression delta. `coverage-baseline.json` was deliberately left unchanged
-(not lowered to the new number): the ratchet script's own `--update` refuses
-to record a worse mark for exactly this reason, and hand-editing the JSON to
-bypass that would defeat the safeguard rather than honor it. A real fix
-would replace the `?raw` imports in `persistence-boundary-strings.test.ts`
-with a plain `node:fs` read at test time, so instrumentation stops
-colliding with the raw-text import and the ratchet finally measures the
-true total (which would surface still more previously-hidden uncovered
-statements from `HelpGuide.svelte`'s shell and the two still-shadowed
-children) — left as a follow-up, out of scope for a component-split task.
+**2026-08-13 `coverage-ratchet.sh` note on the `HelpGuide.svelte` split,
+resolved 2026-08-15:** running the ratchet after the split reported frontend
+as REGRESSED (10631 → 10909 uncovered statements). This was not new untested
+code from the split — it was a pre-existing measurement blind spot getting
+partially un-hidden. `persistence-boundary-strings.test.ts` imported
+`HelpGuide.svelte` via Vite's `?raw` query; a `?raw` import pulls the target
+file into a test's own module graph under a raw-text loader, which suppresses
+vitest's `coverage.all` instrumentation for that file entirely (it stops
+counting as "never imported, needs synthetic instrumentation" but was never
+executed as real Svelte/JS either), so it silently reports as 0/0 covered
+statements instead of its true uncovered count. Confirmed by checking out
+`main` and re-running coverage that this `?raw` import already caused
+`HelpGuide.svelte` to report 0/0 *before* the split, silently excluding its
+then-2223 lines of real template logic from every ratchet run to date.
+
+`HelpOverview.svelte`, `HelpTutorials.svelte`, `HelpMethodologies.svelte`, and
+`HelpReference.svelte` were never raw-imported by this test, so their real
+statement counts (46 + 40 + 32 + 158 = 276) were already visible from the
+split alone and already in the denominator before this fix — that was the
+2026-08-13 regression. The 2026-08-13 note predicted a follow-up fix
+(replacing the `?raw` imports with a plain `node:fs` read at test time) would
+unshadow the remaining still-hidden files: `HelpGuide.svelte`'s shell and its
+two still-`?raw`-imported children. Applying that fix on 2026-08-15 confirmed
+those three (`HelpGuide.svelte` shell 59, `HelpFeatures.svelte` 196,
+`HelpTroubleshooting.svelte` 73 = 328) and found one the original note
+missed: `Dashboard.svelte` was also `?raw`-imported by this same test and
+nowhere else, so it was *also* shadowed to 0/0 despite being a
+386-statement, actively-used component. This fix's delta is therefore
+328 + 386 = **714** newly-counted uncovered statements (none were executed by
+any test; the fix only changes measurement, not behavior). The 276 from the
+four Help content components is unrelated to this fix — it was already
+counted before today.
+
+Measured 2026-08-15: pre-fix 2801/13672 (10871 uncovered) — already
+REGRESSED against baseline's 10631, originating in the 2026-08-13 Help-file
+split, not this fix. Post-fix 2801/14386 (**11585 uncovered**). Covered
+stayed at 2801 throughout; only the total grew, because the fix makes
+previously-invisible uncovered code visible rather than covering anything.
+
+`coverage-baseline.json`'s frontend mark (10631 uncovered) is deliberately
+left unchanged, so the frontend line of `make coverage-ratchet` continues
+reading REGRESSED (now 11585 vs 10631) against it. The ratchet script's own
+`--update` refuses to record a worse mark for exactly this reason, and
+hand-editing the JSON to bypass that would defeat the safeguard rather than
+honor it — that stands even though this particular regression is a
+measurement correction, not new debt, because the ratchet has no way to
+represent that distinction and `coverage-ratchet` is not part of `make
+verify` or CI (see its Makefile target), so leaving it red costs no
+automated gate. Absorbing the corrected baseline — writing tests for
+`Dashboard.svelte` and the four remaining `Help*.svelte` content
+components, or an explicit owner decision to accept the debt and update
+`coverage-baseline.json` by hand — is tracked as a follow-up, out of scope
+for this measurement fix.
+
+**Rule going forward:** never `?raw`-import a file under `frontend/src/` in a
+test. It shadows that file's `coverage.all` statement count to 0/0 for every
+future ratchet run. Read file contents with `node:fs.readFileSync` instead
+(see `persistence-boundary-strings.test.ts`).
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
@@ -904,7 +935,7 @@ children) — left as a follow-up, out of scope for a component-split task.
 | `src/lib/components/project/ProjectSettings.test.ts` | 2 | Project settings — PAdES timestamp configuration section only | component | Narrow, targeted coverage: this file is one section of a much larger (1,900-line) component — see `DEVELOPER_HANDBOOK.md`'s coverage entries for why the rest of `ProjectSettings.svelte` is a known, tracked gap (48% covered) rather than assumed complete. |
 | `src/lib/components/project/StakeholderManager.test.ts` | 17 | `StakeholderManager` close guard, safe exact-money payload, and per-open stakeholder-draft shared registration | component, integration | Added 2026-08-10 for local close paths, then extended 2026-08-15 because this local draft bypassed navigation/project-close/sign-out/native-close protection. Covers clean/declined/confirmed local close, header ×, Escape, normal save, and no close or duplicate Save during a pending request. Shared-guard cases prove navigation saves before continuing and a real `NativeCloseController` leaves native close pending through a failed save until retry. A deferred-save mutation test preserves the immutable first payload, all ten rendered modal fields through the retry payload, and backend-owned ID/project/timestamps/canonical money fields. Existing-record tests prove an unrelated edit preserves safe-integer exact minor units, while an hourly-rate or contract-value edit resets only its matching minor-unit payload field for backend canonicalization. A Wails-exposed unsafe integer is rejected before any save so a rounded int64 cannot corrupt stored money. Background row open/delete actions cannot replace a dirty draft or race a save; confirmed close, reopen, guarded save, and unmount prove stale or duplicate registrations cannot keep later navigation dirty or issue a second backend save. Whitespace names are rejected through guarded save and the disabled button. No backdrop-click path exists in this modal. Source-level/jsdom evidence does not replace packaged-Wails close verification. |
 | `src/lib/components/sigma/SigmaFishbone.test.ts` | 1 | Six Sigma Fishbone diagram editor | component | Basic render sanity for the Fishbone editor. |
-| `src/lib/persistence-boundary-strings.test.ts` | 3 | `.gopmgr`/`.pmforge` extension strings, GoPMgr/PMForge data-root path strings across `HelpGuide.svelte` + `HelpFeatures.svelte` + `HelpTroubleshooting.svelte` (concatenated), `Dashboard.svelte`, `ProjectLaunchpad.test.ts` (via Vite `?raw` imports) | fixture, unit | Added during the PMForge→GoPMgr rename (`7d8a699`/`b1c8336`) specifically to pin these literals against find/replace drift — these strings are a real persistence boundary (existing user files on disk), not branding, so a careless rename would orphan real installs. Updated 2026-08-13 when `HelpGuide.svelte` was split into a shell plus six `Help*.svelte` content components: the `.gopmgr`/`.pmforge` text this test checks for lives in `HelpFeatures.svelte` (Backups & Data Safety) and `HelpTroubleshooting.svelte` (the `cli` section), so the check now concatenates all `Help*.svelte` raw sources rather than importing `HelpGuide.svelte` alone, robust to a future reorganization of section content between those files. (Stale count corrected in the same pass: this row previously read "4", but the file has always had 3 `it()` blocks.) |
+| `src/lib/persistence-boundary-strings.test.ts` | 3 | `.gopmgr`/`.pmforge` extension strings, GoPMgr/PMForge data-root path strings across `HelpGuide.svelte` + `HelpFeatures.svelte` + `HelpTroubleshooting.svelte` (concatenated), `Dashboard.svelte`, `ProjectLaunchpad.test.ts` (via `node:fs.readFileSync` at test time, not Vite `?raw` imports — see the frontend-coverage note above this table) | fixture, unit | Added during the PMForge→GoPMgr rename (`7d8a699`/`b1c8336`) specifically to pin these literals against find/replace drift — these strings are a real persistence boundary (existing user files on disk), not branding, so a careless rename would orphan real installs. Updated 2026-08-13 when `HelpGuide.svelte` was split into a shell plus six `Help*.svelte` content components: the `.gopmgr`/`.pmforge` text this test checks for lives in `HelpFeatures.svelte` (Backups & Data Safety) and `HelpTroubleshooting.svelte` (the `cli` section), so the check now concatenates all `Help*.svelte` raw sources rather than importing `HelpGuide.svelte` alone, robust to a future reorganization of section content between those files. (Stale count corrected in the same pass: this row previously read "4", but the file has always had 3 `it()` blocks.) Updated again 2026-08-15: switched from Vite `?raw` imports to `node:fs.readFileSync` because the raw imports were silently shadowing `HelpGuide.svelte`, `HelpFeatures.svelte`, `HelpTroubleshooting.svelte`, and `Dashboard.svelte` to 0/0 in `coverage.all` — a measurement bug, not a behavior change; this test's own assertions are unaffected. |
 | `src/lib/session.test.ts` | 2 | Guarded navigation after save failure or discard | unit | A failed save must keep the current editor and pending destination intact; discard must be explicit before navigation commits. |
 | `src/lib/terminology.test.ts` | 7 | `term`/`capitalised` (methodology-specific vocabulary: "task" → "user story" for Scrum, etc.) | unit, table-driven | Added 2026-08-04. This lookup table drives user-visible labels across the whole GUI — a wrong entry silently mislabels every work item for that methodology with no error and no visual signal it's wrong. Covers per-methodology overrides, fallback to the generic word, case-insensitive matching, and unknown-methodology fallback. |
 | `src/lib/theme.test.ts` | 6 | Light/dark theme resolution | unit | Theme preference resolution (explicit setting vs. OS preference) must be correct, since a wrong theme reads as a visual bug immediately. |
