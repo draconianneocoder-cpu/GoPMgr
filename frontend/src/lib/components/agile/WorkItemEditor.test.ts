@@ -8,6 +8,7 @@ import WorkItemEditor from './WorkItemEditor.svelte';
 import { autosave } from '../../autosave.svelte';
 import {
   cancelNavigation,
+  discardAndContinueNavigation,
   navigation,
   requestNavigation,
   saveAndContinueNavigation,
@@ -75,9 +76,19 @@ describe('WorkItemEditor close guard', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('prompts to discard on Cancel when the title was edited, and keeps the modal open on decline', async () => {
+  it('opens the shared unsaved-changes guard on Cancel when the title was edited, and keeps the modal open when declined', async () => {
+    // Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+    // confirm/alert/prompt panel methods (verified: no `runJavaScript*Panel`
+    // implementation anywhere in the vendored module). The observed result
+    // in a packaged build is that `window.confirm()` produces no dialog and
+    // the close silently no-ops (2026-08-16 GUI evidence) — the exact value
+    // WebKit's `confirm()` returns was not independently confirmed, only
+    // that no dialog appears. Mocking it to return `false` reproduces the
+    // observed symptom; the close guard must not depend on this return
+    // value at all.
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const onClose = vi.fn();
+    session.view = 'kanban';
     const utils = render(WorkItemEditor, {
       item: makeItem(),
       onClose,
@@ -93,15 +104,20 @@ describe('WorkItemEditor close guard', () => {
     )!;
     await fireEvent.click(cancelBtn);
 
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(navigation.pending?.view).toBe('kanban');
+    expect(onClose).not.toHaveBeenCalled();
+
+    cancelNavigation();
     expect(onClose).not.toHaveBeenCalled();
     // The draft survives the declined discard.
     expect((utils.container.querySelector('input') as HTMLInputElement).value).toBe('Edited title');
   });
 
-  it('discards and closes on Cancel when the user confirms', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('discards and closes on Cancel when the shared guard is told to discard', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const onClose = vi.fn();
+    session.view = 'kanban';
     const utils = render(WorkItemEditor, {
       item: makeItem(),
       onClose,
@@ -116,17 +132,19 @@ describe('WorkItemEditor close guard', () => {
       (b) => b.textContent?.trim() === 'Cancel',
     )!;
     await fireEvent.click(cancelBtn);
+    expect(navigation.pending?.view).toBe('kanban');
 
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    await discardAndContinueNavigation();
+
+    expect(confirmSpy).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(app.SaveWorkItem).not.toHaveBeenCalled();
   });
 
-  it('prompts on backdrop click and on the header close button when dirty', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm')
-      .mockReturnValueOnce(false)
-      .mockReturnValueOnce(true);
+  it('prompts via the shared guard on backdrop click and on the header close button when dirty', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const onClose = vi.fn();
+    session.view = 'kanban';
     const utils = render(WorkItemEditor, {
       item: makeItem(),
       onClose,
@@ -139,17 +157,23 @@ describe('WorkItemEditor close guard', () => {
 
     const backdrop = utils.container.querySelector('[data-role="backdrop"]') as HTMLElement;
     await fireEvent.click(backdrop);
+    expect(navigation.pending?.view).toBe('kanban');
     expect(onClose).not.toHaveBeenCalled();
 
-    await fireEvent.click(utils.getByRole('button', { name: 'Close' }));
+    cancelNavigation();
 
-    expect(confirmSpy).toHaveBeenCalledTimes(2);
+    await fireEvent.click(utils.getByRole('button', { name: 'Close' }));
+    expect(navigation.pending?.view).toBe('kanban');
+    await discardAndContinueNavigation();
+
+    expect(confirmSpy).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('prompts on Escape when dirty and does not close on decline', async () => {
+  it('prompts via the shared guard on Escape when dirty and does not close on decline', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const onClose = vi.fn();
+    session.view = 'kanban';
     const utils = render(WorkItemEditor, {
       item: makeItem(),
       onClose,
@@ -164,7 +188,11 @@ describe('WorkItemEditor close guard', () => {
     const backdrop = utils.container.querySelector('[data-role="backdrop"]') as HTMLElement;
     await fireEvent.keyDown(backdrop, { key: 'Escape' });
 
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(navigation.pending?.view).toBe('kanban');
+    expect(onClose).not.toHaveBeenCalled();
+
+    cancelNavigation();
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -463,5 +491,45 @@ describe('WorkItemEditor close guard', () => {
 
     utils.unmount();
     expect(autosave.hasDirty()).toBe(false);
+  });
+
+  it('regression: never calls window.confirm to guard a dirty close, and dismissal does not depend on its return value', async () => {
+    // Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+    // confirm/alert/prompt panel methods (verified against the vendored
+    // module source). The observed result in a packaged build is that
+    // `window.confirm()` produces no dialog and the close silently no-ops
+    // — this is the same defect class confirmed in StakeholderManager's
+    // 2026-08-16 GUI evidence; the exact value WebKit's `confirm()` returns
+    // was not independently confirmed. The assertion below (`not
+    // .toHaveBeenCalled()`) is the actual regression guard; throwing from
+    // the mock is belt-and-braces so a `confirm()` call surfaces loudly at
+    // the call site too.
+    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => {
+      throw new Error('requestClose() must not call window.confirm() - Wails silently no-ops it on macOS');
+    });
+    const onClose = vi.fn();
+    session.view = 'kanban';
+    const utils = render(WorkItemEditor, {
+      item: makeItem(),
+      onClose,
+      onSaved: vi.fn(),
+      onDeleted: vi.fn(),
+    });
+    await fireEvent.input(utils.container.querySelector('input') as HTMLInputElement, {
+      target: { value: 'Regression check' },
+    });
+
+    const cancelBtn = Array.from(document.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Cancel',
+    )!;
+    await fireEvent.click(cancelBtn);
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(navigation.pending?.view).toBe('kanban');
+
+    await discardAndContinueNavigation();
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

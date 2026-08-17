@@ -8,6 +8,7 @@ import StakeholderManager from './StakeholderManager.svelte';
 import { autosave } from '../../autosave.svelte';
 import {
   cancelNavigation,
+  discardAndContinueNavigation,
   navigation,
   requestNavigation,
   saveAndContinueNavigation,
@@ -115,10 +116,20 @@ describe('StakeholderManager close guard', () => {
     expect(document.querySelector('input')).toBeNull();
   });
 
-  it('prompts to discard on Cancel when the name was edited, and keeps the modal open on decline', async () => {
+  it('opens the shared unsaved-changes guard on Cancel when the name was edited, and keeps the modal open when declined', async () => {
+    // Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+    // confirm/alert/prompt panel methods (verified: no `runJavaScript*Panel`
+    // implementation anywhere in the vendored module). The observed result
+    // in a packaged build is that `window.confirm()` produces no dialog and
+    // the close silently no-ops (2026-08-16 GUI evidence) — the exact value
+    // WebKit's `confirm()` returns was not independently confirmed, only
+    // that no dialog appears. Mocking it to return `false` reproduces the
+    // observed symptom; the close guard must not depend on this return
+    // value at all.
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const utils = render(StakeholderManager);
     await openEditor(utils);
+    session.view = 'stakeholders';
 
     const nameInput = document.querySelector('input') as HTMLInputElement;
     await fireEvent.input(nameInput, { target: { value: 'Edited name' } });
@@ -128,14 +139,20 @@ describe('StakeholderManager close guard', () => {
     )!;
     await fireEvent.click(cancelBtn);
 
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(navigation.pending?.view).toBe('stakeholders');
+    expect((document.querySelector('input') as HTMLInputElement).value).toBe('Edited name');
+
+    cancelNavigation();
+    expect(navigation.pending).toBeNull();
     expect((document.querySelector('input') as HTMLInputElement).value).toBe('Edited name');
   });
 
-  it('discards and closes on Cancel when the user confirms', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('discards and closes on Cancel when the shared guard is told to discard', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const utils = render(StakeholderManager);
     await openEditor(utils);
+    session.view = 'stakeholders';
 
     const nameInput = document.querySelector('input') as HTMLInputElement;
     await fireEvent.input(nameInput, { target: { value: 'Edited name' } });
@@ -144,16 +161,21 @@ describe('StakeholderManager close guard', () => {
       (b) => b.textContent?.trim() === 'Cancel',
     )!;
     await fireEvent.click(cancelBtn);
+    expect(navigation.pending?.view).toBe('stakeholders');
 
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    await discardAndContinueNavigation();
+
+    expect(confirmSpy).not.toHaveBeenCalled();
     expect(document.querySelector('input')).toBeNull();
     expect(app.SaveStakeholder).not.toHaveBeenCalled();
+    expect(navigation.pending).toBeNull();
   });
 
-  it('prompts on the header close button when dirty', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('opens the shared unsaved-changes guard on the header close button when dirty', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const utils = render(StakeholderManager);
     await openEditor(utils);
+    session.view = 'stakeholders';
 
     const nameInput = document.querySelector('input') as HTMLInputElement;
     await fireEvent.input(nameInput, { target: { value: 'Edited via header close' } });
@@ -166,14 +188,19 @@ describe('StakeholderManager close guard', () => {
     )!;
     await fireEvent.click(closeBtn);
 
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(navigation.pending?.view).toBe('stakeholders');
+    expect(document.querySelector('input')).not.toBeNull();
+
+    await discardAndContinueNavigation();
     expect(document.querySelector('input')).toBeNull();
   });
 
-  it('prompts on Escape when dirty and does not close on decline', async () => {
+  it('opens the shared unsaved-changes guard on Escape when dirty and does not close when declined', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const utils = render(StakeholderManager);
     await openEditor(utils);
+    session.view = 'stakeholders';
 
     const nameInput = document.querySelector('input') as HTMLInputElement;
     await fireEvent.input(nameInput, { target: { value: 'Edited via escape test' } });
@@ -181,7 +208,11 @@ describe('StakeholderManager close guard', () => {
     const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
     await fireEvent.keyDown(dialog, { key: 'Escape' });
 
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(navigation.pending?.view).toBe('stakeholders');
+    expect(document.querySelector('input')).not.toBeNull();
+
+    cancelNavigation();
     expect(document.querySelector('input')).not.toBeNull();
   });
 
@@ -512,16 +543,19 @@ describe('StakeholderManager close guard', () => {
   });
 
   it('does not retain a dirty shared registration after confirmed close, reopen, or unmount', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const confirmSpy = vi.spyOn(window, 'confirm');
     const utils = render(StakeholderManager);
     await openEditor(utils);
+    session.view = 'stakeholders';
     await fireEvent.input(document.querySelector('input') as HTMLInputElement, {
       target: { value: 'Dirty existing stakeholder' },
     });
     expect(autosave.hasDirty()).toBe(true);
 
     await fireEvent.click(editorButtons().find((button) => button.textContent?.trim() === 'Cancel')!);
-    expect(confirmSpy).toHaveBeenCalledOnce();
+    expect(navigation.pending?.view).toBe('stakeholders');
+    await discardAndContinueNavigation();
+    expect(confirmSpy).not.toHaveBeenCalled();
     expect(autosave.hasDirty()).toBe(false);
 
     await openNewEditor();
@@ -545,5 +579,41 @@ describe('StakeholderManager close guard', () => {
 
     utils.unmount();
     expect(autosave.hasDirty()).toBe(false);
+  });
+
+  it('regression: never calls window.confirm to guard a dirty close, and dismissal does not depend on its return value', async () => {
+    // Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+    // confirm/alert/prompt panel methods (verified against the vendored
+    // module source). The observed result in a packaged build is that
+    // `window.confirm()` produces no dialog and the close silently no-ops
+    // (2026-08-16 GUI evidence) — this is exactly what left Cancel/×/Escape
+    // stuck on a dirty draft; the exact value WebKit's `confirm()` returns
+    // was not independently confirmed. The assertion below (`not
+    // .toHaveBeenCalled()`) is the actual regression guard; throwing from
+    // the mock is belt-and-braces so a `confirm()` call surfaces loudly at
+    // the call site too, unless a future refactor swallows it in a
+    // try/catch.
+    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => {
+      throw new Error('requestClose() must not call window.confirm() - Wails silently no-ops it on macOS');
+    });
+    const utils = render(StakeholderManager);
+    await openEditor(utils);
+    session.view = 'stakeholders';
+    await fireEvent.input(document.querySelector('input') as HTMLInputElement, {
+      target: { value: 'Regression check' },
+    });
+
+    const cancelBtn = Array.from(document.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Cancel',
+    )!;
+    await fireEvent.click(cancelBtn);
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(navigation.pending?.view).toBe('stakeholders');
+
+    await discardAndContinueNavigation();
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(document.querySelector('input')).toBeNull();
   });
 });

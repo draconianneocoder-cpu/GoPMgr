@@ -11,7 +11,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onDestroy, onMount } from 'svelte';
   import { autosave } from '../../autosave.svelte';
-  import { session, goto } from '../../session.svelte';
+  import { session, goto, requestNavigation } from '../../session.svelte';
   import Spinner from '../Spinner.svelte';
 
   let list = $state<Stakeholder[]>([]);
@@ -194,10 +194,27 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // an edited-but-unsaved stakeholder is never dropped silently. No-ops
   // while a save is in flight so a close requested mid-save can't confirm
   // a "discard" for edits the in-flight request is about to persist anyway.
+  // Routes through the shared Save/Discard/Cancel guard (the same modal the
+  // native-close guard uses) rather than `confirm()`: Wails v2.13.0's darwin
+  // WKUIDelegate (WailsContext, in
+  // github.com/wailsapp/wails/v2@v2.13.0/internal/frontend/desktop/darwin/
+  // WailsContext.m) declares conformance to WKUIDelegate but implements none
+  // of the JS confirm/alert/prompt panel methods (verified: no
+  // `runJavaScript*Panel` implementation anywhere in the vendored module).
+  // Observed result in a packaged build: `confirm()` produces no dialog and
+  // the close silently no-ops (2026-08-16 GUI evidence) — the exact value
+  // WebKit's `confirm()` returns in that case was not independently
+  // confirmed, only that no dialog appears.
   function requestClose() {
     if (busy) return;
-    if (dirty && !confirm('Discard unsaved changes to this stakeholder?')) return;
-    stopEditing();
+    if (!dirty) {
+      stopEditing();
+      return;
+    }
+    requestNavigation(session.view, session.editingId, async () => {
+      stopEditing();
+      return true;
+    });
   }
 
   async function destroy(s: Stakeholder) {
