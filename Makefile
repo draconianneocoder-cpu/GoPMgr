@@ -33,7 +33,7 @@ export CC
         check-release clean fonts icc check-pdfa frontend-stability \
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
-        help-guide-current wails-version wails-cli-version wails-version-test tag-preflight config-check \
+        help-guide-current wails-version wails-cli-version wails-version-test package-version-lib-test tag-preflight config-check \
         installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests \
         code-map code-map-current coverage-ledger-current coverage-ledger-drift coverage-ratchet \
         coverage-ratchet-update no-text-timestamp-ordering no-raw-import-in-tests
@@ -104,7 +104,7 @@ test: ## Run Go unit tests.
 race: ## Run Go tests with the race detector (concurrency gate).
 	$(GO) test -race -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests wails-version test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/reset/code-map contracts + Go tests + frontend checks.
+verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests wails-version package-version-lib-test test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/reset/code-map contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
@@ -177,6 +177,9 @@ wails-cli-version: ## Verify the installed Wails CLI also matches the go.mod pin
 wails-version-test: ## Run isolated regression cases for the Wails version gate.
 	@bash scripts/check-wails-version_test.sh
 
+package-version-lib-test: ## Run isolated regression cases for the shared macOS package version derivation.
+	@bash scripts/package-version-lib_test.sh
+
 help-guide-current: ## Verify in-app Help Guide covers recent release corrections.
 	@bash scripts/check-help-guide-current.sh
 
@@ -209,10 +212,13 @@ package-darwin: ## Build a macOS tarball on a macOS host.
 	@bash scripts/package.sh darwin
 
 package-macos: ## Build a macOS drag-to-Applications .dmg installer.
+	@bash scripts/package-version-lib_test.sh
+	@bash scripts/package-macos_test.sh
 	@$(MAKE) build
 	@bash scripts/package-macos.sh
 
 package-macos-installer: ## Build a local macOS .pkg installer for /Applications.
+	@bash scripts/package-version-lib_test.sh
 	@bash scripts/package-macos-installer.sh
 
 check-release: ## Run the full release gate (versions, REUSE, memory-safety, race, frontend, build, encrypted DB, PDF/A, PAdES).

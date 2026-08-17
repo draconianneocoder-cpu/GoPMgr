@@ -11,10 +11,11 @@
 # notarization, fill in the notarytool block below (needs an Apple Developer
 # account + an App Store Connect API key or app-specific password).
 set -euo pipefail
-cd "$(dirname "$0")/.."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+. "$SCRIPT_DIR/package-version-lib.sh"
+cd "$SCRIPT_DIR/.."
 
-VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')}"
-VERSION="${VERSION:-0.0.0}"
+VERSION="$(release_version)"
 
 app="$(ls -d build/bin/*.app 2>/dev/null | head -1 || true)"
 if [ -z "$app" ] || [ ! -d "$app" ]; then
