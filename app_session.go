@@ -150,6 +150,40 @@ func (a *App) AdminIssueRecoveryCodes(username, password string) ([]string, erro
 // Returns a generic error on bad credentials — the message is shaped
 // by the frontend so usernames cannot be enumerated by error
 // inspection.
+//
+// Refuses outright if a project is already open: unlike Logout and
+// shutdown, which always clear a.db and a.dek together in the same
+// locked section, Login had no symmetric guard — a caller invoking it
+// while a.db was still set from a previous session would leave that
+// database live under the newly-authenticated user's DEK, mixing one
+// user's project with another's encryption key. Not reachable through
+// the shipped frontend today (the only path to the login screen that
+// can follow a project being open — AppHeader's sign-out — always
+// calls Logout first; the other two transitions into the login flow,
+// recovery reset and create-account, are only reachable from the login
+// screen itself, confirmed via grep, so a.db is already nil there) but
+// guarded here as defense-in-depth against any other caller, present
+// or future.
+//
+// Checked once, deliberately after credentials are verified and a DEK
+// is derived: an earlier check-then-act attempt (checked up front,
+// before Authenticate/UnlockDEK) left a TOCTOU window open, since those
+// calls do real password-hashing work a concurrent OpenProject could
+// land inside of. The single check here sits in the same critical
+// section as the assignment it guards, so there is no window at all —
+// the cost is that a doomed-to-be-refused call still derives a DEK,
+// which is why it's zeroed immediately via zeroBytes on the refusal
+// path, matching Logout/shutdown's own "ADR-001: zero the session DEK"
+// handling. That cost is strictly smaller than it looks: the DEK is
+// live for microseconds before zeroing, versus an entire session for
+// Logout's, and this path is unreachable through the shipped UI in the
+// first place. One further side effect worth naming: Authenticate
+// (called before this guard) already stamped the account's last_login
+// on success, so a refused Login still records a real login timestamp
+// for a user who was never actually signed in. Accepted rather than
+// worked around — avoiding it would mean either restoring the racy
+// early check or teaching Authenticate to defer its own write, and
+// this path is unreachable through the shipped UI regardless.
 func (a *App) Login(username, password string) (users.Account, error) {
 	acc, err := a.store.Authenticate(username, password)
 	if err != nil {
@@ -167,10 +201,27 @@ func (a *App) Login(username, password string) (users.Account, error) {
 		return users.Account{}, err
 	}
 	a.mu.Lock()
+	if a.db != nil {
+		a.mu.Unlock()
+		zeroBytes(dek)
+		return users.Account{}, errors.New("a project is already open; close it before signing in as a different user")
+	}
 	a.user = &acc
 	a.dek = dek
 	a.mu.Unlock()
 	return acc, nil
+}
+
+// zeroBytes overwrites b in place. ADR-001 requires the session DEK be
+// zeroed wherever it's dropped rather than merely dereferenced, so the
+// key doesn't linger in the heap for a swap file or core dump to catch.
+// Shared by every DEK-dropping site (Logout, shutdown, and Login's
+// TOCTOU-refusal path below) so each new call site adds one line, not
+// a duplicated loop.
+func zeroBytes(b []byte) {
+	for i := range b {
+		b[i] = 0
+	}
 }
 
 // IssueRecoveryCodes generates 8 fresh recovery codes for the
@@ -224,10 +275,7 @@ func (a *App) Logout() error {
 		a.adminSvc = nil
 	}
 	a.user = nil
-	// ADR-001: zero the session DEK before dropping it.
-	for i := range a.dek {
-		a.dek[i] = 0
-	}
+	zeroBytes(a.dek)
 	a.dek = nil
 	return nil
 }
