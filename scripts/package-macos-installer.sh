@@ -11,7 +11,9 @@
 # Developer ID nor notarized.
 
 set -euo pipefail
-cd "$(dirname "$0")/.."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+. "$SCRIPT_DIR/package-version-lib.sh"
+cd "$SCRIPT_DIR/.."
 
 if [ "$(go env GOOS)" != "darwin" ]; then
 	echo "package-macos-installer: macOS packaging requires a Darwin host." >&2
@@ -54,13 +56,14 @@ if [ -z "$app_dir" ] || [ ! -d "$app_dir" ]; then
 fi
 app_name="$(basename "$app_dir" .app)"
 
-# Read the canonical version from wails.json (single source of truth; also
-# what gets templated into the bundle's Info.plist).
-full_version="$(grep -oE '"productVersion" *: *"[^"]+"' wails.json | sed -E 's/.*"([^"]+)"$/\1/')"
-if [ -z "$full_version" ]; then
-	echo "package-macos-installer: failed to read productVersion from wails.json." >&2
-	exit 1
-fi
+# Filename version: same derivation as package-macos.sh (see
+# package-version-lib.sh), so the .dmg and .pkg from one build always agree.
+# This is independent of the bundle's actual CFBundleVersion/
+# CFBundleShortVersionString, which pkgbuild reads from the .app's own
+# Info.plist (templated from wails.json's productVersion by `wails build`)
+# and which stays a clean major.minor.patch on purpose — release gates
+# require it.
+full_version="$(release_version)"
 safe_version="$(printf '%s' "$full_version" | tr -c 'A-Za-z0-9._-' '-')"
 
 pkg_dir="build/packages"
