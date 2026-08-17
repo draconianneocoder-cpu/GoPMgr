@@ -137,9 +137,7 @@ func (a *App) shutdown(_ context.Context) {
 	// ADR-001: zero the session DEK on exit too, not only on Logout, so
 	// quitting with a session open does not leave key bytes in the heap
 	// (swap / core-dump hygiene).
-	for i := range a.dek {
-		a.dek[i] = 0
-	}
+	zeroBytes(a.dek)
 	a.dek = nil
 	// Close the store but keep the pointer: `store` is documented as
 	// set-once and readable without the lock (DEVELOPER_HANDBOOK.md §6), so nilling it
