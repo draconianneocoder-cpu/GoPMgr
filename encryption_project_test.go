@@ -116,6 +116,85 @@ func TestCreateProjectFromLaunchpadActivatesProject(t *testing.T) {
 	}
 }
 
+// TestCreateProjectFromLaunchpadEnablesAgilePackWhenSeeded guards against a
+// regression to the bug fixed 2026-08-17: the launchpad wizard's "Starter
+// Artifacts" step defaults kanban/backlog/sprint1 to checked for Scrum-ish
+// methodologies, promising an active Software-Dev Pack, but the seeder only
+// ever wrote the board/backlog/sprint rows — it never flipped the separate
+// agile.PackEnabled setting the Dashboard actually gates the pack's
+// visibility on. The user got a project with real seeded data sitting
+// behind a pack shown as "(disabled)", discoverable only via a manual
+// "Enable Agile Pack" button at the bottom of a long scrolling dashboard.
+func TestCreateProjectFromLaunchpadEnablesAgilePackWhenSeeded(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+
+	res, err := app.CreateProjectFromLaunchpad(
+		"Seeded Agile Project",
+		"kanban/backlog/sprint1 requested",
+		"software",
+		"web",
+		"scrum",
+		"US",
+		"America/New_York",
+		[]string{"kanban", "backlog", "sprint1", "charter"},
+	)
+	if err != nil {
+		t.Fatalf("CreateProjectFromLaunchpad: %v", err)
+	}
+	seeded := make(map[string]bool, len(res.Seeds))
+	for _, r := range res.Seeds {
+		seeded[r.Seed] = true
+	}
+	for _, want := range []string{"kanban", "backlog", "sprint1", "charter_word"} {
+		if !seeded[want] {
+			t.Fatalf("receipts = %#v, missing a receipt for seed %q", res.Seeds, want)
+		}
+	}
+
+	enabled, err := app.AgileEnabled()
+	if err != nil {
+		t.Fatalf("AgileEnabled: %v", err)
+	}
+	if !enabled {
+		t.Fatalf("AgileEnabled = false, want true after seeding kanban/backlog/sprint1")
+	}
+}
+
+// TestCreateProjectFromLaunchpadLeavesAgilePackDisabledWithoutAgileSeeds is
+// the negative-case sibling of the test above: a project created without
+// requesting any agile starter artifact must NOT have the pack silently
+// switched on behind the user's back.
+func TestCreateProjectFromLaunchpadLeavesAgilePackDisabledWithoutAgileSeeds(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+
+	if _, err := app.CreateProjectFromLaunchpad(
+		"Non-Agile Project",
+		"no agile seeds requested",
+		"software",
+		"web",
+		"waterfall",
+		"US",
+		"America/New_York",
+		[]string{"charter", "wbs"},
+	); err != nil {
+		t.Fatalf("CreateProjectFromLaunchpad: %v", err)
+	}
+
+	enabled, err := app.AgileEnabled()
+	if err != nil {
+		t.Fatalf("AgileEnabled: %v", err)
+	}
+	if enabled {
+		t.Fatalf("AgileEnabled = true, want false — no agile seeds were requested")
+	}
+}
+
 func TestCreateProjectFromLaunchpadPreservesCalendarPolicyAndTimeZone(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
 	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
