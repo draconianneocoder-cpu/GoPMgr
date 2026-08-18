@@ -10,10 +10,8 @@ import (
 )
 
 // newSigmaProjectFKTarget inserts a `project` row (required by
-// sigma_projects' own FOREIGN KEY (id) REFERENCES project(id)) and
-// returns its ID, without creating the sigma_projects row itself --
-// tests exercising SigmaCreateProject/EnsureProjectSigmaLink need that
-// second row to not already exist.
+// sigma_projects' own FOREIGN KEY (project_id) REFERENCES project(id))
+// and returns its ID for use as a Sigma project's GopmgrProjectID.
 func newSigmaProjectFKTarget(t *testing.T, d *Database) string {
 	t.Helper()
 	p, err := d.UpsertProject(Project{Name: "Sigma Link Target"})
@@ -25,28 +23,35 @@ func newSigmaProjectFKTarget(t *testing.T, d *Database) string {
 
 func TestSigmaCreateAndGetProject_RoundTrips(t *testing.T) {
 	d := newBackupTestDB(t)
-	projectID := newSigmaProjectFKTarget(t, d)
+	gopmgrProjectID := newSigmaProjectFKTarget(t, d)
 
 	want := domain.Project{
-		ID:           projectID,
-		Title:        "Reduce Cycle Time",
-		Description:  "Cut order-to-ship time by 30%",
-		BeltLevel:    domain.BeltBlack,
-		Phase:        domain.PhaseMeasure,
-		Status:       domain.StatusActive,
-		Sponsor:      "VP Ops",
-		ProcessOwner: "Line Manager",
-		BeltLead:     "J. Doe",
+		GopmgrProjectID: gopmgrProjectID,
+		Title:           "Reduce Cycle Time",
+		Description:     "Cut order-to-ship time by 30%",
+		BeltLevel:       domain.BeltBlack,
+		Phase:           domain.PhaseMeasure,
+		Status:          domain.StatusActive,
+		Sponsor:         "VP Ops",
+		ProcessOwner:    "Line Manager",
+		BeltLead:        "J. Doe",
 	}
-	if err := d.SigmaCreateProject(want); err != nil {
+	created, err := d.SigmaCreateProject(want)
+	if err != nil {
 		t.Fatalf("SigmaCreateProject: %v", err)
 	}
+	if created.ID == "" {
+		t.Fatal("SigmaCreateProject did not assign an ID")
+	}
+	if created.GopmgrProjectID != gopmgrProjectID {
+		t.Errorf("created.GopmgrProjectID = %q, want %q", created.GopmgrProjectID, gopmgrProjectID)
+	}
 
-	got, err := d.SigmaGetProject(projectID)
+	got, err := d.SigmaGetProject(created.ID)
 	if err != nil {
 		t.Fatalf("SigmaGetProject: %v", err)
 	}
-	if got.ID != want.ID || got.Title != want.Title || got.Description != want.Description {
+	if got.ID != created.ID || got.Title != want.Title || got.Description != want.Description {
 		t.Errorf("identity/description fields = %+v, want %+v", got, want)
 	}
 	if got.BeltLevel != want.BeltLevel || got.Phase != want.Phase || got.Status != want.Status {
@@ -57,6 +62,54 @@ func TestSigmaCreateAndGetProject_RoundTrips(t *testing.T) {
 	}
 	if got.CreatedAt.IsZero() || got.UpdatedAt.IsZero() {
 		t.Errorf("timestamps not parsed: %+v", got)
+	}
+}
+
+// TestSigmaCreateProject_MultipleProjectsPerFile is the regression test
+// for the FK bug that made every Sigma project create through the real
+// UI fail outright: sigma_projects.id used to be forced equal to
+// project.id (both the primary key AND the sole foreign key target),
+// capping every file at exactly one Sigma project row -- but the
+// Process Excellence Suite's workspace (SigmaWorkspace.svelte) creates
+// and lists many. Asserting that ONE create succeeds would also have
+// passed under the wrong "reuse the open project's ID" fix, which fixes
+// the first create and then fails the second on a primary-key
+// collision -- so this requires two, with distinct IDs, both returned
+// by SigmaListProjects.
+func TestSigmaCreateProject_MultipleProjectsPerFile(t *testing.T) {
+	d := newBackupTestDB(t)
+	gopmgrProjectID := newSigmaProjectFKTarget(t, d)
+
+	first, err := d.SigmaCreateProject(domain.Project{GopmgrProjectID: gopmgrProjectID, Title: "Reduce Defect Rate"})
+	if err != nil {
+		t.Fatalf("SigmaCreateProject (first): %v", err)
+	}
+	second, err := d.SigmaCreateProject(domain.Project{GopmgrProjectID: gopmgrProjectID, Title: "Cut Cycle Time"})
+	if err != nil {
+		t.Fatalf("SigmaCreateProject (second): %v", err)
+	}
+	if first.ID == "" || second.ID == "" {
+		t.Fatalf("expected both projects to get generated IDs, got %q and %q", first.ID, second.ID)
+	}
+	if first.ID == second.ID {
+		t.Fatalf("both Sigma projects got the same ID (%q) -- IDs must be independent, not derived from the shared GoPMgr project", first.ID)
+	}
+
+	all, err := d.SigmaListProjects()
+	if err != nil {
+		t.Fatalf("SigmaListProjects: %v", err)
+	}
+	if len(all) != 2 {
+		t.Fatalf("SigmaListProjects returned %d projects, want 2: %+v", len(all), all)
+	}
+	titles := map[string]bool{all[0].Title: true, all[1].Title: true}
+	if !titles["Reduce Defect Rate"] || !titles["Cut Cycle Time"] {
+		t.Errorf("SigmaListProjects titles = %v, want both created titles present", titles)
+	}
+	for _, p := range all {
+		if p.GopmgrProjectID != gopmgrProjectID {
+			t.Errorf("project %q GopmgrProjectID = %q, want %q", p.Title, p.GopmgrProjectID, gopmgrProjectID)
+		}
 	}
 }
 
@@ -100,17 +153,20 @@ func setSigmaProjectUpdatedAt(t *testing.T, d *Database, id, updatedAt string) {
 // between rapid inserts.
 func TestSigmaListProjects_OrdersByMostRecentlyUpdatedDescending(t *testing.T) {
 	d := newBackupTestDB(t)
-	oldestID := newSigmaProjectFKTarget(t, d)
-	middleID := newSigmaProjectFKTarget(t, d)
-	newestID := newSigmaProjectFKTarget(t, d)
-	for id, title := range map[string]string{oldestID: "Oldest", middleID: "Middle", newestID: "Newest"} {
-		if err := d.SigmaCreateProject(domain.Project{ID: id, Title: title}); err != nil {
+	oldestProjectID := newSigmaProjectFKTarget(t, d)
+	middleProjectID := newSigmaProjectFKTarget(t, d)
+	newestProjectID := newSigmaProjectFKTarget(t, d)
+	sigmaIDs := make(map[string]string, 3) // title -> sigma project id
+	for gopmgrID, title := range map[string]string{oldestProjectID: "Oldest", middleProjectID: "Middle", newestProjectID: "Newest"} {
+		created, err := d.SigmaCreateProject(domain.Project{GopmgrProjectID: gopmgrID, Title: title})
+		if err != nil {
 			t.Fatalf("SigmaCreateProject(%s): %v", title, err)
 		}
+		sigmaIDs[title] = created.ID
 	}
-	setSigmaProjectUpdatedAt(t, d, oldestID, "2026-01-01T10:00:00.100Z")
-	setSigmaProjectUpdatedAt(t, d, middleID, "2026-01-01T10:00:00.500Z")
-	setSigmaProjectUpdatedAt(t, d, newestID, "2026-01-01T10:00:00.900Z")
+	setSigmaProjectUpdatedAt(t, d, sigmaIDs["Oldest"], "2026-01-01T10:00:00.100Z")
+	setSigmaProjectUpdatedAt(t, d, sigmaIDs["Middle"], "2026-01-01T10:00:00.500Z")
+	setSigmaProjectUpdatedAt(t, d, sigmaIDs["Newest"], "2026-01-01T10:00:00.900Z")
 
 	got, err := d.SigmaListProjects()
 	if err != nil {
@@ -138,10 +194,12 @@ func TestSigmaListProjects_OrdersByMostRecentlyUpdatedDescending(t *testing.T) {
 // between two meaningful phases.
 func TestSigmaAdvancePhase_PersistsPhase(t *testing.T) {
 	d := newBackupTestDB(t)
-	projectID := newSigmaProjectFKTarget(t, d)
-	if err := d.SigmaCreateProject(domain.Project{ID: projectID, Title: "Phase Test", Phase: domain.PhaseDefine}); err != nil {
+	gopmgrProjectID := newSigmaProjectFKTarget(t, d)
+	created, err := d.SigmaCreateProject(domain.Project{GopmgrProjectID: gopmgrProjectID, Title: "Phase Test", Phase: domain.PhaseDefine})
+	if err != nil {
 		t.Fatalf("SigmaCreateProject: %v", err)
 	}
+	projectID := created.ID
 	before, err := d.SigmaGetProject(projectID)
 	if err != nil {
 		t.Fatalf("SigmaGetProject (before): %v", err)
@@ -163,38 +221,6 @@ func TestSigmaAdvancePhase_PersistsPhase(t *testing.T) {
 	}
 }
 
-// TestEnsureProjectSigmaLink_DoesNotOverwriteExistingRow is the real
-// data-integrity risk this function exists to avoid: its own doc comment
-// says it creates the link "if it doesn't exist" specifically because
-// calling it against an already-linked project must be a safe no-op, not
-// a silent overwrite of real Sigma project data (title, belt level,
-// phase, status) with whatever placeholder values a caller passes on a
-// second call.
-func TestEnsureProjectSigmaLink_DoesNotOverwriteExistingRow(t *testing.T) {
-	d := newBackupTestDB(t)
-	projectID := newSigmaProjectFKTarget(t, d)
-
-	if err := d.EnsureProjectSigmaLink(domain.Project{
-		ID: projectID, Title: "Original Title", BeltLevel: domain.BeltBlack, Phase: domain.PhaseAnalyze, Status: domain.StatusActive,
-	}); err != nil {
-		t.Fatalf("EnsureProjectSigmaLink (first call): %v", err)
-	}
-
-	if err := d.EnsureProjectSigmaLink(domain.Project{
-		ID: projectID, Title: "Clobbering Title", BeltLevel: domain.BeltGreen, Phase: domain.PhaseDefine, Status: domain.StatusOnHold,
-	}); err != nil {
-		t.Fatalf("EnsureProjectSigmaLink (second call): %v", err)
-	}
-
-	got, err := d.SigmaGetProject(projectID)
-	if err != nil {
-		t.Fatalf("SigmaGetProject: %v", err)
-	}
-	if got.Title != "Original Title" || got.BeltLevel != domain.BeltBlack || got.Phase != domain.PhaseAnalyze || got.Status != domain.StatusActive {
-		t.Errorf("EnsureProjectSigmaLink's second call overwrote the existing row: %+v, want the original values preserved", got)
-	}
-}
-
 // TestSigmaSaveCharter_CreateThenUpdateRoundTripsJSONFields exercises
 // SaveCharter's create path, its ON CONFLICT(project_id) update path,
 // and the ScopeIn/ScopeOut/CTQs JSON round trip -- including a
@@ -203,10 +229,12 @@ func TestEnsureProjectSigmaLink_DoesNotOverwriteExistingRow(t *testing.T) {
 // silently drops all but the first slice element would be caught.
 func TestSigmaSaveCharter_CreateThenUpdateRoundTripsJSONFields(t *testing.T) {
 	d := newBackupTestDB(t)
-	projectID := newSigmaProjectFKTarget(t, d)
-	if err := d.SigmaCreateProject(domain.Project{ID: projectID, Title: "Charter Test"}); err != nil {
+	gopmgrProjectID := newSigmaProjectFKTarget(t, d)
+	created, err := d.SigmaCreateProject(domain.Project{GopmgrProjectID: gopmgrProjectID, Title: "Charter Test"})
+	if err != nil {
 		t.Fatalf("SigmaCreateProject: %v", err)
 	}
+	projectID := created.ID
 
 	original := domain.Charter{
 		ID:               "charter-" + projectID,
@@ -298,10 +326,12 @@ func TestSigmaGetCharter_ReturnsDefaultForMissingProject(t *testing.T) {
 // not just a length.
 func TestSigmaSaveAndGet_RoundTripsAndDefaultsToEmpty(t *testing.T) {
 	d := newBackupTestDB(t)
-	projectID := newSigmaProjectFKTarget(t, d)
-	if err := d.SigmaCreateProject(domain.Project{ID: projectID, Title: "Save/Get Test"}); err != nil {
+	gopmgrProjectID := newSigmaProjectFKTarget(t, d)
+	created, err := d.SigmaCreateProject(domain.Project{GopmgrProjectID: gopmgrProjectID, Title: "Save/Get Test"})
+	if err != nil {
 		t.Fatalf("SigmaCreateProject: %v", err)
 	}
+	projectID := created.ID
 
 	t.Run("solutions", func(t *testing.T) {
 		empty, err := d.SigmaGetSolutions(projectID)

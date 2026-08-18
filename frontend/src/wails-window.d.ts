@@ -924,6 +924,7 @@ declare global {
 
   interface SigmaProject {
     id: string;
+    gopmgr_project_id: string;
     title: string;
     description: string;
     belt_level: SigmaBeltLevel;

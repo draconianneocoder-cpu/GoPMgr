@@ -31,19 +31,28 @@ const (
 	BeltMaster BeltLevel = "master"
 )
 
-// Project represents a Six Sigma improvement project.
+// Project represents a Six Sigma improvement project. A single .gopmgr
+// file may hold several of these (the Process Excellence Suite's
+// workspace lists and creates many), each belonging to the one GoPMgr
+// project the file represents.
 type Project struct {
-	ID           string        `json:"id"`
-	Title        string        `json:"title"`
-	Description  string        `json:"description"`
-	BeltLevel    BeltLevel     `json:"belt_level"`
-	Phase        Phase         `json:"phase"`
-	Status       ProjectStatus `json:"status"`
-	Sponsor      string        `json:"sponsor"`
-	ProcessOwner string        `json:"process_owner"`
-	BeltLead     string        `json:"belt_lead"`
-	CreatedAt    time.Time     `json:"created_at"`
-	UpdatedAt    time.Time     `json:"updated_at"`
+	ID string `json:"id"`
+	// GopmgrProjectID is the owning GoPMgr project's id (the row in the
+	// file's single-row `project` table) -- distinct from ID above,
+	// which identifies this Sigma project itself. Not to be confused
+	// with the `project_id` field on Charter/FishboneData/etc. in this
+	// package, which refers to THIS Sigma project's ID.
+	GopmgrProjectID string        `json:"gopmgr_project_id"`
+	Title           string        `json:"title"`
+	Description     string        `json:"description"`
+	BeltLevel       BeltLevel     `json:"belt_level"`
+	Phase           Phase         `json:"phase"`
+	Status          ProjectStatus `json:"status"`
+	Sponsor         string        `json:"sponsor"`
+	ProcessOwner    string        `json:"process_owner"`
+	BeltLead        string        `json:"belt_lead"`
+	CreatedAt       time.Time     `json:"created_at"`
+	UpdatedAt       time.Time     `json:"updated_at"`
 }
 
 // Charter represents the Define phase deliverable.

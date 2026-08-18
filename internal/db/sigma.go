@@ -19,24 +19,36 @@ func decodeSigmaJSON(label string, data []byte, dst any) error {
 	return nil
 }
 
-func (d *Database) SigmaCreateProject(p domain.Project) error {
+// SigmaCreateProject inserts a Sigma project, generating p.ID if empty
+// (mirroring SaveChart/UpsertProject), and returns the row as stored.
+func (d *Database) SigmaCreateProject(p domain.Project) (domain.Project, error) {
+	if p.ID == "" {
+		id, err := newID("sigma")
+		if err != nil {
+			return domain.Project{}, fmt.Errorf("generate sigma project id: %w", err)
+		}
+		p.ID = id
+	}
 	_, err := d.Conn.Exec(
-		`INSERT INTO sigma_projects (id, title, description, belt_level, phase, status, sponsor, process_owner, belt_lead)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.ID, p.Title, p.Description, p.BeltLevel, p.Phase, p.Status, p.Sponsor, p.ProcessOwner, p.BeltLead,
+		`INSERT INTO sigma_projects (id, project_id, title, description, belt_level, phase, status, sponsor, process_owner, belt_lead)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.ID, p.GopmgrProjectID, p.Title, p.Description, p.BeltLevel, p.Phase, p.Status, p.Sponsor, p.ProcessOwner, p.BeltLead,
 	)
-	return err
+	if err != nil {
+		return domain.Project{}, err
+	}
+	return p, nil
 }
 
 func (d *Database) SigmaGetProject(id string) (*domain.Project, error) {
 	row := d.Conn.QueryRow(
-		`SELECT id, title, description, belt_level, phase, status, sponsor, process_owner, belt_lead, created_at, updated_at
+		`SELECT id, project_id, title, description, belt_level, phase, status, sponsor, process_owner, belt_lead, created_at, updated_at
 		 FROM sigma_projects WHERE id = ?`,
 		id,
 	)
 	var p domain.Project
 	var created, updated string
-	err := row.Scan(&p.ID, &p.Title, &p.Description, &p.BeltLevel, &p.Phase, &p.Status, &p.Sponsor, &p.ProcessOwner, &p.BeltLead, &created, &updated)
+	err := row.Scan(&p.ID, &p.GopmgrProjectID, &p.Title, &p.Description, &p.BeltLevel, &p.Phase, &p.Status, &p.Sponsor, &p.ProcessOwner, &p.BeltLead, &created, &updated)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +59,7 @@ func (d *Database) SigmaGetProject(id string) (*domain.Project, error) {
 
 func (d *Database) SigmaListProjects() ([]domain.Project, error) {
 	rows, err := d.Conn.Query(
-		`SELECT id, title, description, belt_level, phase, status, sponsor, process_owner, belt_lead, created_at, updated_at
+		`SELECT id, project_id, title, description, belt_level, phase, status, sponsor, process_owner, belt_lead, created_at, updated_at
 		 FROM sigma_projects ORDER BY updated_at DESC`, // timestamp-order-guard-exempt: updated_at is DB-managed via strftime('%f'), which SQLite guarantees zero-pads to a fixed 3-digit fraction -- structurally immune to the trimmed-width hazard by construction, unlike Go's time.Format(time.RFC3339Nano). See timestampRetrofitTargets' doc comment in timestamps.go.
 	)
 	if err != nil {
@@ -59,7 +71,7 @@ func (d *Database) SigmaListProjects() ([]domain.Project, error) {
 	for rows.Next() {
 		var p domain.Project
 		var created, updated string
-		if err := rows.Scan(&p.ID, &p.Title, &p.Description, &p.BeltLevel, &p.Phase, &p.Status, &p.Sponsor, &p.ProcessOwner, &p.BeltLead, &created, &updated); err != nil {
+		if err := rows.Scan(&p.ID, &p.GopmgrProjectID, &p.Title, &p.Description, &p.BeltLevel, &p.Phase, &p.Status, &p.Sponsor, &p.ProcessOwner, &p.BeltLead, &created, &updated); err != nil {
 			return nil, err
 		}
 		p.CreatedAt, _ = time.Parse(time.RFC3339, created)
@@ -138,16 +150,6 @@ func (d *Database) SigmaAdvancePhase(projectID string, phase domain.Phase) error
 	_, err := d.Conn.Exec(
 		`UPDATE sigma_projects SET phase = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`,
 		phase, projectID,
-	)
-	return err
-}
-
-// EnsureProjectSigmaLink creates a sigma_projects row linked to the main project table if it doesn't exist.
-func (d *Database) EnsureProjectSigmaLink(p domain.Project) error {
-	_, err := d.Conn.Exec(
-		`INSERT OR IGNORE INTO sigma_projects (id, title, description, belt_level, phase, status)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		p.ID, p.Title, p.Description, p.BeltLevel, p.Phase, p.Status,
 	)
 	return err
 }

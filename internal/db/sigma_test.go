@@ -25,7 +25,7 @@ func newSigmaTestDB(t *testing.T) *Database {
 	if _, err := d.Conn.Exec(`INSERT INTO project (id, name) VALUES (?, ?)`, "p1", "Sigma Test"); err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
-	if _, err := d.Conn.Exec(`INSERT INTO sigma_projects (id, title) VALUES (?, ?)`, "p1", "Sigma Test"); err != nil {
+	if _, err := d.Conn.Exec(`INSERT INTO sigma_projects (id, project_id, title) VALUES (?, ?, ?)`, "p1", "p1", "Sigma Test"); err != nil {
 		t.Fatalf("insert sigma project: %v", err)
 	}
 	return d

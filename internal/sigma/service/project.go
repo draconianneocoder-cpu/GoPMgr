@@ -24,18 +24,19 @@ func (s *ProjectService) CreateProject(input domain.Project) (*domain.Project, e
 	if input.Title == "" {
 		return nil, fmt.Errorf("sigma: title required")
 	}
-	if input.ID == "" {
-		input.ID = fmt.Sprintf("sigma-%d", time.Now().UnixNano())
+	if input.GopmgrProjectID == "" {
+		return nil, fmt.Errorf("sigma: gopmgr project id required")
 	}
 	input.CreatedAt = time.Now().UTC()
 	input.UpdatedAt = time.Now().UTC()
 	input.Phase = domain.PhaseDefine
 	input.Status = domain.StatusActive
 
-	if err := s.DB.SigmaCreateProject(input); err != nil {
+	created, err := s.DB.SigmaCreateProject(input)
+	if err != nil {
 		return nil, err
 	}
-	return &input, nil
+	return &created, nil
 }
 
 func (s *ProjectService) GetProject(id string) (*domain.Project, error) {

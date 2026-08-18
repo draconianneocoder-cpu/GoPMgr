@@ -35,10 +35,19 @@ func (a *App) SigmaCreateProject(title, description string, beltLevel string) (d
 	if svc == nil {
 		return domain.Project{}, fmt.Errorf("sigma: no project open")
 	}
+	d := a.requireDB()
+	if d == nil {
+		return domain.Project{}, fmt.Errorf("sigma: no project open")
+	}
+	openProject, err := d.GetProject()
+	if err != nil {
+		return domain.Project{}, fmt.Errorf("sigma: resolve open project: %w", err)
+	}
 	input := domain.Project{
-		Title:       title,
-		Description: description,
-		BeltLevel:   domain.BeltLevel(beltLevel),
+		GopmgrProjectID: openProject.ID,
+		Title:           title,
+		Description:     description,
+		BeltLevel:       domain.BeltLevel(beltLevel),
 	}
 	p, err := svc.CreateProject(input)
 	if err != nil {

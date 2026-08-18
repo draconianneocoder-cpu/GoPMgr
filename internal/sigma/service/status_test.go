@@ -30,7 +30,7 @@ func newStatusTestSvc(t *testing.T) *ProjectService {
 	if _, err := d.Conn.Exec(`INSERT INTO project (id, name) VALUES (?, ?)`, "p1", "Status Test"); err != nil {
 		t.Fatalf("insert project: %v", err)
 	}
-	if _, err := d.Conn.Exec(`INSERT INTO sigma_projects (id, title) VALUES (?, ?)`, "p1", "Status Test"); err != nil {
+	if _, err := d.Conn.Exec(`INSERT INTO sigma_projects (id, project_id, title) VALUES (?, ?, ?)`, "p1", "p1", "Status Test"); err != nil {
 		t.Fatalf("insert sigma project: %v", err)
 	}
 	return &ProjectService{DB: d}

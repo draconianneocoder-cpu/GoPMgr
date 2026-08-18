@@ -11,6 +11,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -450,8 +451,15 @@ func (db *Database) Migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_resource_calendars_resource ON resource_calendars(project_id, resource);
 
 	-- Process Excellence Suite (Six Sigma) — MVP 1
+	-- id is this Sigma project's own identity; project_id points at the
+	-- single-row project table for the GoPMgr file it belongs to. A
+	-- file may hold many sigma_projects rows (the Process Excellence
+	-- Suite's workspace creates and lists several), so id must NOT be
+	-- forced equal to project_id -- see migrateSigmaProjectsSchema for
+	-- the table-rebuild that corrects files created before this shipped.
 	CREATE TABLE IF NOT EXISTS sigma_projects (
 		id             TEXT PRIMARY KEY,
+		project_id     TEXT NOT NULL,
 		title          TEXT NOT NULL,
 		description    TEXT NOT NULL DEFAULT '',
 		belt_level     TEXT NOT NULL DEFAULT 'green',
@@ -462,7 +470,7 @@ func (db *Database) Migrate() error {
 		belt_lead      TEXT NOT NULL DEFAULT '',
 		created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
 		updated_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-		FOREIGN KEY (id) REFERENCES project(id) ON DELETE CASCADE
+		FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE
 	);
 
 	CREATE TABLE IF NOT EXISTS sigma_charters (
@@ -481,6 +489,13 @@ func (db *Database) Migrate() error {
 
 	CREATE INDEX IF NOT EXISTS idx_sigma_projects_phase ON sigma_projects(phase);
 	CREATE INDEX IF NOT EXISTS idx_sigma_projects_status ON sigma_projects(status);
+	-- idx_sigma_projects_project is NOT created here: on a file with the
+	-- pre-project_id schema, this whole schema exec runs before
+	-- migrateSigmaProjectsSchema adds that column, and CREATE INDEX
+	-- (unlike CREATE TABLE IF NOT EXISTS) isn't gated on the table being
+	-- newly created -- it would fail with "no such column: project_id".
+	-- See Migrate() below, which creates it once project_id is guaranteed
+	-- to exist either way.
 
 	CREATE TABLE IF NOT EXISTS sigma_fishbones (
 		id                TEXT PRIMARY KEY,
@@ -526,7 +541,133 @@ func (db *Database) Migrate() error {
 	if _, err := db.Conn.Exec(schema); err != nil {
 		return err
 	}
+	if err := db.migrateSigmaProjectsSchema(); err != nil {
+		return err
+	}
+	// project_id is now guaranteed to exist (fresh DBs got it directly
+	// from the schema exec above; legacy files got it from the rebuild
+	// just above), so this index is safe to create unconditionally here.
+	if _, err := db.Conn.Exec("CREATE INDEX IF NOT EXISTS idx_sigma_projects_project ON sigma_projects(project_id)"); err != nil {
+		return fmt.Errorf("create idx_sigma_projects_project: %w", err)
+	}
 	return db.migrateLegacyColumns()
+}
+
+// migrateSigmaProjectsSchema rebuilds sigma_projects for files created
+// before it gained its own project_id column. The original schema
+// declared sigma_projects.id itself as the foreign key to project(id)
+// -- which, combined with id being the primary key, capped every file
+// at exactly one Sigma project row. That contradicts the Process
+// Excellence Suite's workspace UI (a project grid backed by
+// SigmaListProjects), which every insert through that UI has always
+// failed against with a foreign-key error since the feature shipped.
+//
+// SQLite cannot ALTER a PRIMARY KEY or FOREIGN KEY in place, so this
+// performs the standard SQLite table-rebuild: disable FK enforcement,
+// recreate the table with an independent id plus a project_id column,
+// copy any existing rows, swap the table in, re-enable FK enforcement,
+// and verify with PRAGMA foreign_key_check.
+//
+// Idempotent: probes for the project_id column first and no-ops if
+// it's already present (including brand-new files, whose CREATE TABLE
+// IF NOT EXISTS above already has the corrected shape) or if the table
+// doesn't exist yet at all.
+func (db *Database) migrateSigmaProjectsSchema() error {
+	cols, err := db.columnSet("sigma_projects")
+	if err != nil {
+		return err
+	}
+	if len(cols) == 0 {
+		// Defensive only: Migrate() always execs the static schema (whose
+		// CREATE TABLE IF NOT EXISTS sigma_projects already has the
+		// corrected shape) before calling this function, so the table is
+		// guaranteed to exist by this point on every real path today.
+		// Guards against that ordering changing later, not a live branch.
+		return nil
+	}
+	if _, ok := cols["project_id"]; ok {
+		return nil // already migrated
+	}
+
+	ctx := context.Background()
+
+	// PRAGMA foreign_keys can only be toggled outside a transaction, and
+	// must run on the same physical connection as the rebuild below --
+	// see withConnPragmas' comment above on why a bare db.Conn.Exec
+	// would be unsafe under the pool (a second pooled connection could
+	// silently run the rebuild with foreign keys still on).
+	conn, err := db.Conn.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("reserve connection for sigma_projects migration: %w", err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
+		return fmt.Errorf("disable foreign keys for sigma_projects migration: %w", err)
+	}
+	restoreFK := func() {
+		_, _ = conn.ExecContext(ctx, "PRAGMA foreign_keys = ON")
+	}
+
+	tx, err := conn.BeginTx(ctx, nil)
+	if err != nil {
+		restoreFK()
+		return fmt.Errorf("begin sigma_projects migration: %w", err)
+	}
+
+	stmts := []string{
+		`CREATE TABLE sigma_projects_new (
+			id             TEXT PRIMARY KEY,
+			project_id     TEXT NOT NULL,
+			title          TEXT NOT NULL,
+			description    TEXT NOT NULL DEFAULT '',
+			belt_level     TEXT NOT NULL DEFAULT 'green',
+			phase          TEXT NOT NULL DEFAULT 'define',
+			status         TEXT NOT NULL DEFAULT 'active',
+			sponsor        TEXT NOT NULL DEFAULT '',
+			process_owner  TEXT NOT NULL DEFAULT '',
+			belt_lead      TEXT NOT NULL DEFAULT '',
+			created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+			updated_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+			FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE
+		)`,
+		// The schema being replaced forced sigma_projects.id to equal the
+		// single project row's id (enforced by the very FK this migration
+		// removes), so joining on that equality recovers project_id for
+		// any row that exists. ON DELETE CASCADE on that same old FK also
+		// means no sigma_projects row can have outlived its project row,
+		// so this join cannot silently drop a row.
+		`INSERT INTO sigma_projects_new (id, project_id, title, description, belt_level, phase, status, sponsor, process_owner, belt_lead, created_at, updated_at)
+		 SELECT sp.id, p.id, sp.title, sp.description, sp.belt_level, sp.phase, sp.status, sp.sponsor, sp.process_owner, sp.belt_lead, sp.created_at, sp.updated_at
+		 FROM sigma_projects sp JOIN project p ON p.id = sp.id`,
+		`DROP TABLE sigma_projects`,
+		`ALTER TABLE sigma_projects_new RENAME TO sigma_projects`,
+		`CREATE INDEX IF NOT EXISTS idx_sigma_projects_phase ON sigma_projects(phase)`,
+		`CREATE INDEX IF NOT EXISTS idx_sigma_projects_status ON sigma_projects(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_sigma_projects_project ON sigma_projects(project_id)`,
+	}
+	for _, stmt := range stmts {
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+			_ = tx.Rollback()
+			restoreFK()
+			return fmt.Errorf("rebuild sigma_projects: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		restoreFK()
+		return fmt.Errorf("commit sigma_projects migration: %w", err)
+	}
+	restoreFK()
+
+	rows, err := conn.QueryContext(ctx, "PRAGMA foreign_key_check")
+	if err != nil {
+		return fmt.Errorf("foreign_key_check after sigma_projects migration: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	if rows.Next() {
+		return fmt.Errorf("sigma_projects migration left foreign-key violations")
+	}
+	return rows.Err()
 }
 
 // migrateLegacyColumns folds the V2.x project columns (industry,

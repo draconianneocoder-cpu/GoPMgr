@@ -34,6 +34,18 @@ import (
 // may need to be re-derived the same way — the existing precedent for
 // this kind of fixed-offset fixture is internal/db/repair_selfheal_test.go's
 // corruptLightly (offset 4097 into a plaintext database).
+//
+// This already happened once: the sigma_projects FK-bug schema
+// migration (2026-08-17, adding sigma_projects.project_id and its
+// rebuild path) shifted this fixture's page layout enough that page
+// 99 — TestRepairAndSwapCanFailToHealEvenWhenReached's original
+// severe-corruption offset — moved into a page Migrate() itself now
+// fails to open, an outcome that test doesn't exercise. Re-swept pages
+// 90-106 with a temporary throwaway test (not committed) and confirmed
+// page 100 reproduces the same "OpenProject and the first query both
+// succeed, RepairAndSwap's own VACUUM INTO fails" outcome across 5
+// repeated runs; TestRepairAndSwapHealsReachableLightCorruption's page
+// 3 offset was unaffected and confirmed still passing, unchanged.
 func seedRepairFixtureProject(t *testing.T) (app *App, path string, pristine []byte) {
 	t.Helper()
 	app = newEncryptionProjectTestApp(t)
@@ -108,7 +120,11 @@ func TestRepairAndSwapHealsReachableLightCorruption(t *testing.T) {
 // TestRepairAndSwapCanFailToHealEvenWhenReached pins current, real
 // behavior discovered by the same sweep: RepairAndSwap being reachable
 // does not guarantee it can heal what it finds. This corruption pattern
-// (page 99) leaves OpenProject succeeding but a real query failing —
+// (page 100 — re-derived 2026-08-17 after the sigma_projects schema
+// migration shifted this fixture's page layout; the original sweep had
+// found page 99, which after that migration lands on a page Migrate()
+// itself now fails to open, an OpenProject-failure outcome this test
+// doesn't exercise) leaves OpenProject succeeding but a real query failing —
 // genuinely user-visible corruption, exactly the scenario RepairAndSwap
 // exists for — yet RepairAndSwap's own VACUUM INTO snapshot attempt
 // fails with the same underlying error rather than producing a healthy
@@ -123,8 +139,8 @@ func TestRepairAndSwapHealsReachableLightCorruption(t *testing.T) {
 // is a deliberate, reviewed change rather than an unnoticed regression.
 func TestRepairAndSwapCanFailToHealEvenWhenReached(t *testing.T) {
 	app, path, pristine := seedRepairFixtureProject(t)
-	const page99Offset = 99*4096 + 1
-	corruptByteAt(t, path, pristine, page99Offset)
+	const page100Offset = 100*4096 + 1
+	corruptByteAt(t, path, pristine, page100Offset)
 
 	if _, err := app.OpenProject(path); err != nil {
 		t.Fatalf("OpenProject: want success on this corruption pattern, got %v", err)
