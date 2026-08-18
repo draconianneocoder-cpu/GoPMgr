@@ -132,6 +132,16 @@ async function renderLoaded(overrides: Record<string, ReturnType<typeof vi.fn>> 
   return utils;
 }
 
+// Dashboard IA restructuring (design doc §3.3/R3/R4): the chart-creation
+// catalog, document-creation catalog, MSPDI import, and Software-Dev Pack
+// sections moved off the default Overview tab into their own tabs. Tests
+// that interact with them must switch tabs first -- tab switching is local
+// component state, independent of load(), so it's always safe to click
+// immediately, even mid-load.
+async function switchTab(getByRole: (...args: any[]) => HTMLElement, name: RegExp | string) {
+  await fireEvent.click(getByRole('tab', { name }));
+}
+
 describe('Dashboard load', () => {
   it('shows a spinner while data is loading, then the loaded content', async () => {
     let resolveCharts: (v: ChartRecord[]) => void;
@@ -242,6 +252,7 @@ describe('Dashboard document deletion', () => {
 describe('Dashboard chart creation', () => {
   it('creates a chart with its registered starter payload and navigates to its route', async () => {
     const { getByRole } = await renderLoaded();
+    await switchTab(getByRole, /^charts$/i);
 
     await fireEvent.click(getByRole('button', { name: /^RACI Matrix/ }));
 
@@ -259,6 +270,7 @@ describe('Dashboard chart creation', () => {
         { kind: 'future_kind', name: 'Future Kind', engine: 'dag', description: '', data_example: '{}' },
       ]),
     });
+    await switchTab(getByRole, /^charts$/i);
 
     await fireEvent.click(getByRole('button', { name: /^Future Kind/ }));
 
@@ -272,6 +284,7 @@ describe('Dashboard chart creation', () => {
         throw new Error('disk full');
       }),
     });
+    await switchTab(getByRole, /^charts$/i);
 
     await fireEvent.click(getByRole('button', { name: /^RACI Matrix/ }));
 
@@ -286,6 +299,7 @@ describe('Dashboard chart creation', () => {
 describe('Dashboard document creation', () => {
   it('routes charter-kind documents to the charter view', async () => {
     const { getByRole } = await renderLoaded();
+    await switchTab(getByRole, /^documents$/i);
 
     await fireEvent.click(getByRole('button', { name: /^Project Charter/ }));
 
@@ -296,6 +310,7 @@ describe('Dashboard document creation', () => {
 
   it('routes non-charter documents to the generic documents editor', async () => {
     const { getByRole } = await renderLoaded();
+    await switchTab(getByRole, /^documents$/i);
 
     await fireEvent.click(getByRole('button', { name: /^Business Case/ }));
 
@@ -307,6 +322,7 @@ describe('Dashboard document creation', () => {
 describe('Dashboard Agile Pack toggle', () => {
   it('enabling shows the workspace links; disabling hides them again', async () => {
     const { getByRole, queryByRole } = await renderLoaded();
+    await switchTab(getByRole, /^dev tools$/i);
     expect(queryByRole('button', { name: /^Board Kanban/ })).not.toBeInTheDocument();
 
     await fireEvent.click(getByRole('button', { name: /enable agile pack/i }));
@@ -327,7 +343,8 @@ describe('Dashboard Agile Pack toggle', () => {
         throw new Error('method not found');
       }),
     });
-    const { getByText, queryByRole } = render(Dashboard);
+    const { getByRole, getByText, queryByRole } = render(Dashboard);
+    await switchTab(getByRole, /^dev tools$/i);
 
     await waitFor(() => expect(getByText(/software-dev pack \(disabled\)/i)).toBeInTheDocument());
     expect(queryByRole('button', { name: /^Board Kanban/ })).not.toBeInTheDocument();
@@ -347,6 +364,9 @@ describe('Dashboard Agile Pack toggle', () => {
       AgileEnabled: vi.fn(() => new Promise<boolean>((resolve) => (resolveAgileEnabled = resolve))),
     });
     const { getByRole } = render(Dashboard);
+    // Tab switching is local state, independent of load() -- safe to click
+    // immediately, before load() has resolved.
+    await switchTab(getByRole, /^dev tools$/i);
 
     await waitFor(() => expect(getByRole('button', { name: /enable agile pack/i })).toBeInTheDocument());
     const toggle = getByRole('button', { name: /enable agile pack/i });
@@ -374,7 +394,12 @@ describe('Dashboard Agile Pack toggle', () => {
     });
     const { getByText, getByRole } = render(Dashboard);
 
+    // The load-error message is outside every tab panel (design doc §3.3
+    // correction), so it's visible without switching tabs.
     await waitFor(() => expect(getByText(/could not load this project/i)).toBeInTheDocument());
+    // The toggle itself lives in the Dev Tools tab panel, so reaching it
+    // needs a switch first.
+    await switchTab(getByRole, /^dev tools$/i);
     // load()'s outer catch sets loadError and loading=false without ever
     // reaching the AgileEnabled() call — agileEnabled keeps its default
     // (false) and there is no pending assignment left to race, so the
@@ -447,6 +472,7 @@ describe('Dashboard signed document export', () => {
 describe('Dashboard MSPDI import', () => {
   it('imports a schedule as a new CPM chart with the default option set', async () => {
     const { getByRole } = await renderLoaded();
+    await switchTab(getByRole, /^charts$/i);
 
     await fireEvent.click(getByRole('button', { name: /import schedule/i }));
 
@@ -467,6 +493,7 @@ describe('Dashboard MSPDI import', () => {
         throw new Error('cancelled by user');
       }),
     });
+    await switchTab(getByRole, /^charts$/i);
 
     await fireEvent.click(getByRole('button', { name: /import schedule/i }));
 
@@ -480,6 +507,7 @@ describe('Dashboard MSPDI import', () => {
         throw new Error('malformed MSPDI XML');
       }),
     });
+    await switchTab(getByRole, /^charts$/i);
 
     await fireEvent.click(getByRole('button', { name: /import schedule/i }));
 
@@ -496,5 +524,86 @@ describe('Dashboard project close', () => {
     await waitFor(() => expect(app.CloseProject).toHaveBeenCalledOnce());
     expect(session.project).toBeNull();
     expect(session.view).toBe('portfolio');
+  });
+});
+
+// Dashboard IA restructuring (design doc §3.3/R3/R4): integration coverage
+// for Dashboard's own wiring of the shared Tabs component -- which tab is
+// default, that each tab reveals its own content and hides the others', and
+// that Dev Tools is unconditionally present (not methodology-gated, per the
+// design doc's §3.3 correction). Keyboard navigation (arrow keys, Home/End,
+// roving tabindex) is Tabs.svelte's own responsibility and is covered once,
+// generically, in Tabs.test.ts -- not re-tested here.
+describe('Dashboard tabs', () => {
+  it('defaults to the Overview tab, with the existing-work lists visible and the other tabs empty', async () => {
+    const { getByRole, getByText, queryByRole } = await renderLoaded({
+      ListCharts: vi.fn(async () => [chart]),
+      ListDocuments: vi.fn(async () => [doc]),
+    });
+
+    expect(getByRole('tab', { selected: true })).toHaveTextContent('Overview');
+    expect(getByText('Existing WBS')).toBeInTheDocument();
+    expect(getByText('Existing Business Case')).toBeInTheDocument();
+    // The chart/document catalogs and the Software-Dev Pack section live on
+    // other tabs and must not be reachable without switching to them first.
+    expect(queryByRole('button', { name: /^RACI Matrix/ })).not.toBeInTheDocument();
+    expect(queryByRole('button', { name: /^Project Charter/ })).not.toBeInTheDocument();
+    expect(queryByRole('button', { name: /enable agile pack/i })).not.toBeInTheDocument();
+  });
+
+  it('switching to Charts reveals the chart catalog and hides the Overview panel', async () => {
+    // Default fixture (no existing charts) so ChartCatalog's own
+    // initiallyExpanded={charts.length === 0} auto-opens it -- an existing
+    // chart would collapse it behind its own "Browse N chart tools" toggle,
+    // which is ChartCatalog's own tested behavior, not this test's concern.
+    // The same empty fixture makes Overview's own "nothing created yet"
+    // copy the thing to check disappears once Overview isn't active.
+    const { getByRole, getByText, queryByText } = await renderLoaded();
+    expect(getByText(/nothing created yet/i)).toBeInTheDocument();
+
+    await switchTab(getByRole, /^charts$/i);
+
+    expect(getByRole('tab', { selected: true })).toHaveTextContent('Charts');
+    expect(getByRole('button', { name: /^RACI Matrix/ })).toBeInTheDocument();
+    expect(queryByText(/nothing created yet/i)).not.toBeInTheDocument();
+  });
+
+  it('switching to Documents reveals the document catalog', async () => {
+    const { getByRole } = await renderLoaded();
+
+    await switchTab(getByRole, /^documents$/i);
+
+    expect(getByRole('tab', { selected: true })).toHaveTextContent('Documents');
+    expect(getByRole('button', { name: /^Project Charter/ })).toBeInTheDocument();
+  });
+
+  it('Dev Tools is present regardless of project methodology', async () => {
+    session.project = { id: 'p1', name: 'Test Project', methodology: 'six_sigma' } as unknown as typeof session.project;
+    const { getByRole } = await renderLoaded();
+
+    // Confirms the methodology override above actually took effect (not
+    // just that Dev Tools happens to always render) -- the Process
+    // Excellence quick-link is the one piece of Dashboard that IS gated on
+    // methodology === 'six_sigma', so its presence here is proof the
+    // reassigned session.project was read, not stale defaults.
+    expect(getByRole('button', { name: /^six sigma dmaic workspace/i })).toBeInTheDocument();
+
+    await switchTab(getByRole, /^dev tools$/i);
+
+    expect(getByRole('tab', { selected: true })).toHaveTextContent('Dev Tools');
+    expect(getByRole('heading', { name: /software-dev pack/i })).toBeInTheDocument();
+  });
+
+  it('the load-error message renders regardless of the active tab', async () => {
+    setApp({
+      ListCharts: vi.fn(async () => {
+        throw new Error('backend unavailable');
+      }),
+    });
+    const { getByRole, getByText } = render(Dashboard);
+
+    await switchTab(getByRole, /^charts$/i);
+
+    await waitFor(() => expect(getByText(/could not load this project/i)).toBeInTheDocument());
   });
 });

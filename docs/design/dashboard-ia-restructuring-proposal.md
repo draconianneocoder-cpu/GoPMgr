@@ -84,10 +84,16 @@ restructuring, not a feature request.
   for a value reached through a genuine bug. `'charts'` is reachable
   through intentional, tested drift-handling logic (§3.2), so it needs its
   own honest screen, not removal from the union.
-- **R3.** A user must be able to reach any one of the five content groups
-  currently on `project/Dashboard.svelte` (meta cards, Documents, chart
-  catalog, document-template catalog, Software-Dev Pack) without scrolling
-  past unrelated content to do it.
+- **R3.** A user must be able to reach any one of the seven content groups
+  currently on `project/Dashboard.svelte` (meta cards, Process Excellence
+  quick-link, existing charts, existing documents, chart catalog,
+  document-template catalog, Software-Dev Pack — §1's corrected count) without
+  scrolling past unrelated content to do it. **Correction, made while
+  updating this document alongside the R3/R4 implementation**: this
+  requirement's parenthetical previously still listed the pre-correction
+  five-group taxonomy ("Documents" as one group, no separate charts/quick-link
+  entries) after §1 and §3.3 had already been corrected to seven in the prior
+  cycle — left stale by oversight, not a deliberate narrower requirement.
 - **R4.** The Software-Dev Pack's enabled/disabled state and its toggle must
   be visible without scrolling past both catalogs, given the existing
   backlog finding that its current position contradicts the Launchpad
@@ -226,7 +232,7 @@ failed title lookup is not evidence the chart wasn't saved. Verified the
 both wrap the call in `try`/`catch` that shows an error toast and never
 navigates on failure.
 
-### 3.3 Dashboard restructuring (R3, R4) — not yet implemented, see §7
+### 3.3 Dashboard restructuring (R3, R4) — **Implemented 2026-08-17**, see §7
 
 Proposed structure: a tabbed shell wrapping the seven existing content
 groups (§1, corrected count), with the meta cards **and** the Process
@@ -256,6 +262,48 @@ gated behind a click).
 | **Charts** | The 24-item chart-creation tool catalog, category chips unchanged. The MSPDI import controls (currently interleaved with this catalog) move here too, since they're part of the same "create a new chart" task. |
 | **Documents** | The 25-item document-template catalog, no longer behind a collapsed accordion — the accordion was doing the job a tab now does (hiding low-frequency content), so a plain always-expanded grid is simpler once it has its own tab. The "Build combined report" action (currently in the same section) moves here too. |
 | **Dev Tools** | The Software-Dev Pack section (R4) — reachable in one click from the tab row regardless of scroll position, closing the gap the "Fix launchpad wizard" backlog item already flagged from the enable-toggle's *positioning*, not just its default state. **Correction, made while re-reading `Dashboard.svelte` before implementation**: an earlier draft of this table proposed making this tab conditional on `session.project.methodology`. That was wrong — the Software-Dev Pack's enable/disable toggle is **universal**, not methodology-gated; any project can enable it regardless of methodology, and the section already renders unconditionally today (with its own internal enabled/disabled state, not an external visibility gate). This tab must therefore always be present in the tab row, matching current always-rendered behavior — not conditionally shown. |
+
+**Implementation notes, corrections made during R3/R4 build-out:**
+
+- **Loading/error placement (correction to this table's implicit framing)**:
+  the table above describes the loading/error state as moving into the
+  Overview tab (it "gates both lists"). Built instead with the loading
+  spinner and load-error/retry block sitting **outside all four tab
+  panels**, directly below the tab row, visible regardless of which tab is
+  active. Rationale found only while implementing: the Charts and Documents
+  tabs' catalogs also depend on the same `load()` call
+  (`chartKinds`/`docKinds`); scoping the loading/error indicator to Overview
+  only would leave a Charts or Documents tab switched to mid-load rendering
+  blank with no explanation. Keeping it outside every panel preserves this
+  section's pre-restructuring behavior (visible regardless of scroll
+  position) and extends it to "regardless of tab" at no extra cost, since it
+  doesn't touch content that differs between the two placements.
+- **Panel mounting: `{#if}`, not `hidden`.** Considered and rejected keeping
+  all four panels mounted with the `hidden` attribute (the W3C APG reference
+  pattern, which would have preserved `ChartCatalog`/`DocumentCatalog`'s own
+  local search/filter/expand state across tab switches). Rejected because
+  `ChartCatalog`/`DocumentCatalog` render every catalog entry's name as
+  text — with all four panels mounted, a kind name that also appears as an
+  existing-chart's kind label in the Overview tab (e.g. "Work Breakdown
+  Structure") exists twice in the DOM at once, which breaks Testing
+  Library's `getByText` (throws on multiple matches) in `Dashboard.test.ts`'s
+  own pre-existing load test — caught pre-implementation by tracing the
+  actual fixture data, not discovered after the fact. `{#if}`-gated panels
+  avoid this collision entirely, at the cost of resetting a catalog's
+  search/filter state when the user leaves its tab and returns — a real but
+  minor UX regression, not corrected this cycle.
+- **New "nothing created yet" empty-state copy on the Overview tab** — not
+  specified anywhere above. Without it, a project with zero existing charts
+  and zero existing documents renders an empty Overview tab (no heading, no
+  content, nothing telling the user where to go), a UX gap the pre-tab flat
+  layout didn't have (the catalogs used to render directly below, so an
+  empty project was never actually visually blank). Added one line of new
+  user-facing copy ("Nothing created yet — use the Charts or Documents tab
+  above to get started.") shown only when both lists are empty and loading
+  has finished without error. Disclosed here because it's new copy this
+  document didn't call for, not because it's risky — it's covered by
+  `Dashboard.test.ts`'s "switching to Charts reveals the chart catalog and
+  hides the Overview panel" test.
 
 ## 4. Deep dive
 
@@ -334,12 +382,16 @@ here too, even though `activeTab` isn't part of `session.view`'s union).
 **R1 (naming collision) and R2 (`'charts'` fallback route) were implemented
 2026-08-17**, in a cycle deliberately split from R3/R4: pre-implementation
 adversarial review found R3/R4 (the tab restructuring) carries a
-substantial, entangled cost R1/R2 don't — `Dashboard.test.ts` has 23 tests
+substantial, entangled cost R1/R2 don't — `Dashboard.test.ts` had 23 tests
 across 8 `describe` blocks, nearly all of which interact with content that
 would move into a specific tab, and `Testing Library`'s queries exclude
 elements not actually rendered/visible, so a tabbed restructuring requires
 inserting a tab-switch into the majority of those tests, not just moving
-markup. `Dashboard.test.ts`'s own header comment also documents a live,
+markup — an estimate that measurement later corrected: 12 of 23, not
+"nearly all" (see the R3/R4 paragraph below). The deferral decision itself
+still held once R3/R4 were actually built; the entangled cost was real,
+just smaller than this estimate suggested at the time. `Dashboard.test.ts`'s
+own header comment also documents a live,
 unfixed load-order race in the component being restructured — mixing a
 DOM restructuring with a rewrite of the tests that currently work around
 that race would make a test failure's cause ambiguous (the tab change, the
@@ -347,11 +399,54 @@ pre-existing race, or a bad test edit). R1/R2 have neither entanglement:
 zero existing tests touched the strings R1 changed, and R2 added a route
 `routeLoaders` didn't previously have, so nothing could regress.
 
-**R3/R4 (the tab restructuring itself) remain not implemented** and are
-scoped as their own future cycle, for the reason above. Still out of
-scope, independent of R1–R4:
+**R3/R4 (the tab restructuring itself) implemented 2026-08-17**, its own
+cycle as planned above. Actual test-edit surface, measured (not estimated):
+12 of the 23 pre-existing tests needed a tab-switch inserted — chart
+creation (3), document creation (2), Agile Pack toggle (4), MSPDI import
+(3) — the other 11 (load, chart/document deletion, signed export, project
+close) reach their target content on the default Overview tab or the
+always-visible header, unchanged. Confirmed by running the un-edited test
+suite against the restructured component first: 12 failed / 11 passed,
+matching this count exactly before any test file was touched. A new shared
+`Tabs.svelte` (role=tablist/tab, roving tabindex, arrow-key + Home/End
+navigation, automatic activation — the W3C ARIA APG pattern) ships with its
+own test file (8 tests) rather than re-testing keyboard mechanics inside
+`Dashboard.test.ts`; `Dashboard.test.ts` gained 5 new tests covering its own
+tab wiring only (default tab, each tab's content reachable, Dev Tools
+present independent of methodology — verified by asserting the
+methodology-gated Process Excellence quick-link is also present, proving
+the test's methodology override actually took effect rather than
+trivially passing). The pre-existing toggle-vs-load() race test was
+fault-seeded after its tab-switch edit (temporarily removing
+`toggleAgile()`'s `if (loading) return;` guard) and confirmed it still
+fails without the guard — proof the edit didn't make it vacuous. The
+load-order race itself is unchanged and intentionally not touched this
+cycle, per the plan above. See §3.3 for the three implementation
+corrections made during this build-out (loading/error placement, `{#if}`
+vs `hidden` panel mounting, and the new "nothing created yet" empty-state
+copy).
+
+**Residual risk, not closed this cycle**: not live-verified in a running
+Wails build. All coverage above is `vitest`/jsdom assertion-level — it
+proves the DOM queries resolve and the right elements exist, not that the
+tab row renders legibly, that panel spacing survived the restructuring, or
+that the focus ring (flagged as a genuine strength in the original
+design-critique pass, C3) is still visually present on the new tab
+buttons. C3 is verified here by assertion only (`tabindex`,
+`aria-selected`, `document.activeElement` after an arrow-key press), not
+by looking at a real focus ring in a real window. This is the same
+constraint disclosed for R1/R2 last cycle, but it matters more here: R1/R2
+changed strings, R3/R4 changed the DOM structure of the app's most-visited
+screen, and nobody has looked at the result in a browser.
+
+Still out of scope, independent of R1–R4:
 
 - Migrating `Dashboard.svelte`'s existing markup to the Button/Card library
   (tracked separately, C5).
 - Project Settings' own flat-form restructuring (a distinct, independently
   flagged defect from the same design-critique pass, not addressed here).
+- Preserving `ChartCatalog`/`DocumentCatalog`'s search/filter state across a
+  tab switch away and back (see §3.3's `{#if}`-vs-`hidden` note) — the
+  `{#if}` implementation resets it; fixing this would mean lifting that
+  state into `Dashboard.svelte` as props, a small follow-up if it turns out
+  to matter in practice.

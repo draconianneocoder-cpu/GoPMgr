@@ -11,6 +11,26 @@ import BudgetPanel from './BudgetPanel.svelte';
 import ChartCatalog from './ChartCatalog.svelte';
 import DocumentCatalog from './DocumentCatalog.svelte';
 import Spinner from '../Spinner.svelte';
+import Tabs from '../Tabs.svelte';
+
+  // Dashboard IA restructuring (design doc §3.3/R3/R4): local, not
+  // session.* -- there's no requirement for the active tab to survive
+  // navigating away and back (§4.2). Panels are {#if}-gated rather than
+  // kept mounted with `hidden`: ChartCatalog/DocumentCatalog carry local
+  // search/filter/expand state, and keeping all four panels mounted was
+  // tried and rejected pre-implementation -- their catalogs would then
+  // both render every kind's name into the DOM at once, colliding with
+  // this file's own kind-label text in the Overview tab's existing-work
+  // lists (e.g. "Work Breakdown Structure" would exist twice at once).
+  // {#if} avoids that at the cost of resetting a catalog's search/filter
+  // when the user leaves its tab and comes back -- accepted as minor.
+  let activeTab = $state<'overview' | 'charts' | 'documents' | 'devtools'>('overview');
+  const dashboardTabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'charts', label: 'Charts' },
+    { id: 'documents', label: 'Documents' },
+    { id: 'devtools', label: 'Dev Tools' },
+  ];
 
   let chartKinds = $state<ChartDefinition[]>([]);
   let docKinds = $state<DocumentDefinition[]>([]);
@@ -396,7 +416,16 @@ import Spinner from '../Spinner.svelte';
       </section>
     {/if}
 
-    <!-- Loading / error state for the project's existing charts & documents. -->
+    <!-- Loading / error state for the project's existing charts & documents.
+         Deliberately kept outside all four tab panels below (design doc
+         §3.3 correction) rather than nested inside the Overview panel as
+         originally drafted: the chart/document catalogs on the Charts/
+         Documents tabs also depend on this same load, so scoping the
+         indicator to Overview only would leave a switched-to Charts/
+         Documents tab blank with no explanation during the initial load
+         or after a load error. Visible regardless of the active tab,
+         matching this section's pre-restructuring behavior of being
+         visible regardless of scroll position. -->
     {#if loading}
       <Spinner label="Loading charts &amp; documents…" />
     {:else if loadError}
@@ -411,236 +440,263 @@ import Spinner from '../Spinner.svelte';
       </section>
     {/if}
 
-    <!-- Existing charts (shown first so returning users reach their work quickly) -->
-    {#if charts.length > 0}
-    <section>
-      <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">Charts</h2>
-      <ul class="space-y-2">
-        {#each charts as c (c.id)}
-          <li class="flex items-center gap-2">
-            <button
-              onclick={() => goto(chartRoutes[c.kind] ?? 'charts', c.id)}
-              class="flex-1 text-left p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex items-center justify-between"
-            >
-              <div>
-                <div class="font-bold text-slate-50">{c.title}</div>
-                <div class="text-xs text-slate-500">{chartKindLabel.get(c.kind) ?? c.kind}</div>
-              </div>
-              <span class="text-xs text-slate-500">{c.updated_at?.slice(0, 10) ?? ''}</span>
-            </button>
-            {#if deletingChartId === c.id}
-              <span class="text-xs text-slate-400 shrink-0">Delete?</span>
-              <button
-                onclick={() => confirmDeleteChart(c.id)}
-                class="text-xs bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded"
-                aria-label={`Confirm delete ${c.title}`}
-              >Yes</button>
-              <button
-                onclick={() => (deletingChartId = null)}
-                class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded"
-              >No</button>
-            {:else}
-              <button
-                onclick={() => (deletingChartId = c.id)}
-                class="text-xs bg-slate-800 hover:bg-red-900/60 px-2 py-1 rounded text-slate-500 hover:text-red-300"
-                aria-label={`Delete ${c.title}`}
-              >Delete</button>
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    </section>
-    {/if}
+    <Tabs tabs={dashboardTabs} bind:activeTab idPrefix="dashboard" label="Dashboard sections" />
 
-    <!-- Existing documents (shown before new-document actions for return-user flow) -->
-    {#if docs.length > 0}
-    <section>
-      <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">Documents</h2>
-      <ul class="space-y-2">
-        {#each docs as d (d.id)}
-          <li class="flex items-center gap-2">
-            <button
-              onclick={() => goto(d.kind.startsWith('charter') ? 'charter' : 'documents', d.id)}
-              class="flex-1 text-left p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex items-center justify-between gap-3"
-            >
-              <div class="min-w-0">
-                <div class="font-bold text-slate-50 truncate">{d.title}</div>
-                <div class="text-xs text-slate-500 mt-0.5">{docKindLabel.get(d.kind) ?? d.kind}</div>
-              </div>
-              <div class="flex items-center gap-2 shrink-0">
-                <span class={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${docStatusStyles[d.status] ?? 'bg-slate-700/40 text-slate-400 border-slate-600/40'}`}>
-                  {d.status || 'draft'}
-                </span>
-                <span class="text-xs text-slate-500">v{d.version}</span>
-              </div>
-            </button>
-            <button
-              onclick={() => exportSignedDocument(d)}
-              disabled={signingDocId === d.id}
-              class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 px-2 py-1 rounded self-center"
-              title="Choose PAdES, GnuPG, or no digital signature"
-            >
-              {signingDocId === d.id ? '…' : 'Signature'}
-            </button>
-            {#if deletingDocId === d.id}
-              <span class="text-xs text-slate-400 shrink-0">Delete?</span>
+    {#if activeTab === 'overview'}
+    <div id="dashboard-panel-overview" role="tabpanel" aria-labelledby="dashboard-tab-overview" tabindex="0" class="space-y-8">
+      <!-- Existing charts (shown first so returning users reach their work quickly) -->
+      {#if charts.length > 0}
+      <section>
+        <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">Charts</h2>
+        <ul class="space-y-2">
+          {#each charts as c (c.id)}
+            <li class="flex items-center gap-2">
               <button
-                onclick={() => confirmDeleteDoc(d.id)}
-                class="text-xs bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded"
-                aria-label={`Confirm delete ${d.title}`}
-              >Yes</button>
-              <button
-                onclick={() => (deletingDocId = null)}
-                class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded"
-              >No</button>
-            {:else}
-              <button
-                onclick={() => (deletingDocId = d.id)}
-                class="text-xs bg-slate-800 hover:bg-red-900/60 px-2 py-1 rounded text-slate-500 hover:text-red-300"
-                aria-label={`Delete ${d.title}`}
-              >Delete</button>
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    </section>
-    {/if}
-
-    <!-- One registry-backed chart catalog replaces the former duplicated
-         full card grid + engine reference grid. Empty projects open it
-         automatically; established projects keep it compact. -->
-    <section>
-      <div class="flex items-center justify-between mb-3">
-        <div>
-          <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500">
-            Create chart
-          </h2>
-          <p class="mt-1 text-xs text-slate-500">Choose the right visual instrument for the decision at hand.</p>
-        </div>
-        <div class="flex items-center gap-2">
-          {#if importMsg}
-            <span class="text-xs text-amber-300 break-words min-w-0">{importMsg}</span>
-          {/if}
-          <button
-            onclick={importMSPDI}
-            class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded"
-            title="Import an MSPDI XML schedule as a new CPM chart"
-          >
-            Import schedule (MSPDI)
-          </button>
-        </div>
-      </div>
-      <div class="flex flex-wrap gap-3 mb-3 text-xs text-slate-400" aria-label="MSPDI import fields">
-        <label class="flex items-center gap-1"><input type="checkbox" bind:checked={importDependencies} /> Dependencies</label>
-        <label class="flex items-center gap-1"><input type="checkbox" bind:checked={importProgress} /> Progress</label>
-        <label class="flex items-center gap-1"><input type="checkbox" bind:checked={importAssignments} /> Resource assignments</label>
-        <span class="text-slate-500">A mapping receipt is retained with the imported chart.</span>
-      </div>
-      {#if !loading && !loadError}
-        <ChartCatalog
-          definitions={chartKinds}
-          initiallyExpanded={charts.length === 0}
-          onCreate={(definition) => newChart(definition.kind, definition.name)}
-        />
+                onclick={() => goto(chartRoutes[c.kind] ?? 'charts', c.id)}
+                class="flex-1 text-left p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex items-center justify-between"
+              >
+                <div>
+                  <div class="font-bold text-slate-50">{c.title}</div>
+                  <div class="text-xs text-slate-500">{chartKindLabel.get(c.kind) ?? c.kind}</div>
+                </div>
+                <span class="text-xs text-slate-500">{c.updated_at?.slice(0, 10) ?? ''}</span>
+              </button>
+              {#if deletingChartId === c.id}
+                <span class="text-xs text-slate-400 shrink-0">Delete?</span>
+                <button
+                  onclick={() => confirmDeleteChart(c.id)}
+                  class="text-xs bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded"
+                  aria-label={`Confirm delete ${c.title}`}
+                >Yes</button>
+                <button
+                  onclick={() => (deletingChartId = null)}
+                  class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded"
+                >No</button>
+              {:else}
+                <button
+                  onclick={() => (deletingChartId = c.id)}
+                  class="text-xs bg-slate-800 hover:bg-red-900/60 px-2 py-1 rounded text-slate-500 hover:text-red-300"
+                  aria-label={`Delete ${c.title}`}
+                >Delete</button>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      </section>
       {/if}
-    </section>
 
-    <!-- Registry-backed document discovery mirrors the compact chart catalog.
-         Combined Report remains a separate composition action because it
-         assembles existing documents rather than creating a registry kind. -->
-    <section>
-      <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500">
-            Create document
-          </h2>
-          <p class="mt-1 text-xs text-slate-500">
-            Start from a controlled template aligned to the project lifecycle.
-          </p>
-        </div>
-        <button
-          onclick={() => goto('report_composer')}
-          class="rounded border border-slate-700 bg-slate-900 px-3 py-2 text-left hover:border-slate-600 hover:bg-slate-800"
-        >
-          <span class="block text-[10px] font-bold uppercase tracking-widest text-cyan-300">Report assembly</span>
-          <span class="mt-0.5 block text-xs font-semibold text-slate-100">Build combined report →</span>
-        </button>
-      </div>
-      {#if !loading && !loadError}
-        <DocumentCatalog
-          definitions={docKinds}
-          initiallyExpanded={docs.length === 0}
-          onCreate={(definition) => newDocument(definition.kind, definition.name)}
-        />
+      <!-- Existing documents (shown before new-document actions for return-user flow) -->
+      {#if docs.length > 0}
+      <section>
+        <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-3">Documents</h2>
+        <ul class="space-y-2">
+          {#each docs as d (d.id)}
+            <li class="flex items-center gap-2">
+              <button
+                onclick={() => goto(d.kind.startsWith('charter') ? 'charter' : 'documents', d.id)}
+                class="flex-1 text-left p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex items-center justify-between gap-3"
+              >
+                <div class="min-w-0">
+                  <div class="font-bold text-slate-50 truncate">{d.title}</div>
+                  <div class="text-xs text-slate-500 mt-0.5">{docKindLabel.get(d.kind) ?? d.kind}</div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${docStatusStyles[d.status] ?? 'bg-slate-700/40 text-slate-400 border-slate-600/40'}`}>
+                    {d.status || 'draft'}
+                  </span>
+                  <span class="text-xs text-slate-500">v{d.version}</span>
+                </div>
+              </button>
+              <button
+                onclick={() => exportSignedDocument(d)}
+                disabled={signingDocId === d.id}
+                class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 px-2 py-1 rounded self-center"
+                title="Choose PAdES, GnuPG, or no digital signature"
+              >
+                {signingDocId === d.id ? '…' : 'Signature'}
+              </button>
+              {#if deletingDocId === d.id}
+                <span class="text-xs text-slate-400 shrink-0">Delete?</span>
+                <button
+                  onclick={() => confirmDeleteDoc(d.id)}
+                  class="text-xs bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded"
+                  aria-label={`Confirm delete ${d.title}`}
+                >Yes</button>
+                <button
+                  onclick={() => (deletingDocId = null)}
+                  class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded"
+                >No</button>
+              {:else}
+                <button
+                  onclick={() => (deletingDocId = d.id)}
+                  class="text-xs bg-slate-800 hover:bg-red-900/60 px-2 py-1 rounded text-slate-500 hover:text-red-300"
+                  aria-label={`Delete ${d.title}`}
+                >Delete</button>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      </section>
       {/if}
-    </section>
 
-    <!-- Agile Pack — opt-in via toggle -->
-    <section>
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500">
-          Software-Dev Pack {agileEnabled ? '' : '(disabled)'}
-        </h2>
-        <button
-          onclick={toggleAgile}
-          disabled={loading}
-          title={loading ? 'Waiting for the project to finish loading…' : undefined}
-          class="text-xs {agileEnabled ? 'bg-slate-800 hover:bg-slate-700' : 'bg-cyan-600 hover:bg-cyan-500 text-white'} disabled:opacity-50 px-3 py-1 rounded"
-        >
-          {agileEnabled ? 'Disable' : 'Enable Agile Pack'}
-        </button>
-      </div>
-      {#if agileEnabled}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button
-            onclick={() => goto('kanban')}
-            class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
-          >
-            <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Board</div>
-            <div class="text-base font-bold text-slate-50 mt-1">Kanban</div>
-            <p class="text-xs text-slate-500 mt-1">
-              Drag work items between columns; WIP-limit indicators.
-            </p>
-          </button>
-          <button
-            onclick={() => goto('backlog')}
-            class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
-          >
-            <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">List</div>
-            <div class="text-base font-bold text-slate-50 mt-1">Backlog</div>
-            <p class="text-xs text-slate-500 mt-1">
-              Prioritized work waiting to be picked up.
-            </p>
-          </button>
-          <button
-            onclick={() => goto('sprints')}
-            class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
-          >
-            <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Iteration</div>
-            <div class="text-base font-bold text-slate-50 mt-1">Sprints</div>
-            <p class="text-xs text-slate-500 mt-1">
-              Plan, activate, and complete time-boxed sprints.
-            </p>
-          </button>
-          <button
-            onclick={() => goto('dora')}
-            class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
-          >
-            <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Metrics</div>
-            <div class="text-base font-bold text-slate-50 mt-1">DORA Dashboard</div>
-            <p class="text-xs text-slate-500 mt-1">
-              Deploy frequency, lead time, CFR, MTTR with classifications.
-            </p>
-          </button>
-        </div>
-      {:else}
+      {#if charts.length === 0 && docs.length === 0 && !loading && !loadError}
         <p class="text-xs text-slate-500">
-          Enable the Software-Dev Pack to add Kanban, Backlog, Sprints, and DORA metrics
-          to this project. The pack stores its data in this project's <code>.gopmgr</code>
-          file; disabling hides it without deleting anything.
+          Nothing created yet — use the Charts or Documents tab above to get started.
         </p>
       {/if}
-    </section>
+    </div>
+    {/if}
+
+    {#if activeTab === 'charts'}
+    <div id="dashboard-panel-charts" role="tabpanel" aria-labelledby="dashboard-tab-charts" tabindex="0" class="space-y-8">
+      <!-- One registry-backed chart catalog replaces the former duplicated
+           full card grid + engine reference grid. Empty projects open it
+           automatically; established projects keep it compact. -->
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500">
+              Create chart
+            </h2>
+            <p class="mt-1 text-xs text-slate-500">Choose the right visual instrument for the decision at hand.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            {#if importMsg}
+              <span class="text-xs text-amber-300 break-words min-w-0">{importMsg}</span>
+            {/if}
+            <button
+              onclick={importMSPDI}
+              class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded"
+              title="Import an MSPDI XML schedule as a new CPM chart"
+            >
+              Import schedule (MSPDI)
+            </button>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-3 mb-3 text-xs text-slate-400" aria-label="MSPDI import fields">
+          <label class="flex items-center gap-1"><input type="checkbox" bind:checked={importDependencies} /> Dependencies</label>
+          <label class="flex items-center gap-1"><input type="checkbox" bind:checked={importProgress} /> Progress</label>
+          <label class="flex items-center gap-1"><input type="checkbox" bind:checked={importAssignments} /> Resource assignments</label>
+          <span class="text-slate-500">A mapping receipt is retained with the imported chart.</span>
+        </div>
+        {#if !loading && !loadError}
+          <ChartCatalog
+            definitions={chartKinds}
+            initiallyExpanded={charts.length === 0}
+            onCreate={(definition) => newChart(definition.kind, definition.name)}
+          />
+        {/if}
+      </section>
+    </div>
+    {/if}
+
+    {#if activeTab === 'documents'}
+    <div id="dashboard-panel-documents" role="tabpanel" aria-labelledby="dashboard-tab-documents" tabindex="0" class="space-y-8">
+      <!-- Registry-backed document discovery mirrors the compact chart catalog.
+           Combined Report remains a separate composition action because it
+           assembles existing documents rather than creating a registry kind. -->
+      <section>
+        <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500">
+              Create document
+            </h2>
+            <p class="mt-1 text-xs text-slate-500">
+              Start from a controlled template aligned to the project lifecycle.
+            </p>
+          </div>
+          <button
+            onclick={() => goto('report_composer')}
+            class="rounded border border-slate-700 bg-slate-900 px-3 py-2 text-left hover:border-slate-600 hover:bg-slate-800"
+          >
+            <span class="block text-[10px] font-bold uppercase tracking-widest text-cyan-300">Report assembly</span>
+            <span class="mt-0.5 block text-xs font-semibold text-slate-100">Build combined report →</span>
+          </button>
+        </div>
+        {#if !loading && !loadError}
+          <DocumentCatalog
+            definitions={docKinds}
+            initiallyExpanded={docs.length === 0}
+            onCreate={(definition) => newDocument(definition.kind, definition.name)}
+          />
+        {/if}
+      </section>
+    </div>
+    {/if}
+
+    {#if activeTab === 'devtools'}
+    <div id="dashboard-panel-devtools" role="tabpanel" aria-labelledby="dashboard-tab-devtools" tabindex="0" class="space-y-8">
+      <!-- Agile Pack — opt-in via toggle. Always present in the tab row,
+           not methodology-gated (design doc §3.3 correction) — the toggle
+           itself is universal, matching this section's own unconditional
+           rendering below. -->
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500">
+            Software-Dev Pack {agileEnabled ? '' : '(disabled)'}
+          </h2>
+          <button
+            onclick={toggleAgile}
+            disabled={loading}
+            title={loading ? 'Waiting for the project to finish loading…' : undefined}
+            class="text-xs {agileEnabled ? 'bg-slate-800 hover:bg-slate-700' : 'bg-cyan-600 hover:bg-cyan-500 text-white'} disabled:opacity-50 px-3 py-1 rounded"
+          >
+            {agileEnabled ? 'Disable' : 'Enable Agile Pack'}
+          </button>
+        </div>
+        {#if agileEnabled}
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button
+              onclick={() => goto('kanban')}
+              class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
+            >
+              <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Board</div>
+              <div class="text-base font-bold text-slate-50 mt-1">Kanban</div>
+              <p class="text-xs text-slate-500 mt-1">
+                Drag work items between columns; WIP-limit indicators.
+              </p>
+            </button>
+            <button
+              onclick={() => goto('backlog')}
+              class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
+            >
+              <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">List</div>
+              <div class="text-base font-bold text-slate-50 mt-1">Backlog</div>
+              <p class="text-xs text-slate-500 mt-1">
+                Prioritized work waiting to be picked up.
+              </p>
+            </button>
+            <button
+              onclick={() => goto('sprints')}
+              class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
+            >
+              <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Iteration</div>
+              <div class="text-base font-bold text-slate-50 mt-1">Sprints</div>
+              <p class="text-xs text-slate-500 mt-1">
+                Plan, activate, and complete time-boxed sprints.
+              </p>
+            </button>
+            <button
+              onclick={() => goto('dora')}
+              class="p-5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
+            >
+              <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Metrics</div>
+              <div class="text-base font-bold text-slate-50 mt-1">DORA Dashboard</div>
+              <p class="text-xs text-slate-500 mt-1">
+                Deploy frequency, lead time, CFR, MTTR with classifications.
+              </p>
+            </button>
+          </div>
+        {:else}
+          <p class="text-xs text-slate-500">
+            Enable the Software-Dev Pack to add Kanban, Backlog, Sprints, and DORA metrics
+            to this project. The pack stores its data in this project's <code>.gopmgr</code>
+            file; disabling hides it without deleting anything.
+          </p>
+        {/if}
+      </section>
+    </div>
+    {/if}
 
   </main>
 </div>
