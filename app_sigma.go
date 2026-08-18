@@ -72,49 +72,61 @@ func (a *App) SigmaListProjects() ([]domain.Project, error) {
 	return svc.ListProjects(openProject.ID)
 }
 
-func (a *App) SigmaGetProject(id string) (domain.Project, error) {
+// requireSigmaProjectInOpenFile verifies that the Sigma project identified
+// by sigmaProjectID belongs to the currently open GoPMgr project, and
+// returns it if so. Every Sigma App method keyed by a bare Sigma project id
+// must call this before touching that project's data: sigma_charters/
+// sigma_fishbones/etc.'s own FOREIGN KEY constraints only prove the Sigma
+// project row exists (they reference sigma_projects(id), not project(id)),
+// not that it belongs to the file that's currently open -- an id from
+// another GoPMgr file's Sigma project would otherwise resolve, and for the
+// Save methods write, against the wrong tenant's data. A Sigma project id
+// from a stale session.editingId (left over from a previously open file)
+// hitting this returns the same not-found error a genuinely bad id would.
+func (a *App) requireSigmaProjectInOpenFile(sigmaProjectID string) (*domain.Project, error) {
 	svc := a.requireSigmaSvc()
 	if svc == nil {
-		return domain.Project{}, fmt.Errorf("sigma: no project open")
+		return nil, fmt.Errorf("sigma: no project open")
 	}
 	d := a.requireDB()
 	if d == nil {
-		return domain.Project{}, fmt.Errorf("sigma: no project open")
+		return nil, fmt.Errorf("sigma: no project open")
 	}
 	openProject, err := d.GetProject()
 	if err != nil {
-		return domain.Project{}, fmt.Errorf("sigma: resolve open project: %w", err)
+		return nil, fmt.Errorf("sigma: resolve open project: %w", err)
 	}
-	p, err := svc.GetProject(id)
+	p, err := svc.GetProject(sigmaProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if p.GopmgrProjectID != openProject.ID {
+		return nil, fmt.Errorf("sigma: project %q not found", sigmaProjectID)
+	}
+	return p, nil
+}
+
+func (a *App) SigmaGetProject(id string) (domain.Project, error) {
+	p, err := a.requireSigmaProjectInOpenFile(id)
 	if err != nil {
 		return domain.Project{}, err
-	}
-	// A Sigma project id from a stale session.editingId (left over from a
-	// previously open GoPMgr file) must not resolve against whatever file
-	// happens to be open now -- SigmaListProjects is scoped the same way,
-	// and this is the chokepoint SigmaProjectView.svelte's loadProject()
-	// calls before any sub-tab getter (Charter/Fishbone/SIPOC/VoC/...),
-	// so a not-found here also stops those from ever being requested with
-	// a foreign id in the normal UI flow.
-	if p.GopmgrProjectID != openProject.ID {
-		return domain.Project{}, fmt.Errorf("sigma: project %q not found", id)
 	}
 	return *p, nil
 }
 
 func (a *App) SigmaSaveCharter(c domain.Charter) error {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(c.ProjectID); err != nil {
+		return err
 	}
+	svc := a.requireSigmaSvc()
 	return svc.SaveCharter(c)
 }
 
 func (a *App) SigmaGetCharter(projectID string) (domain.Charter, error) {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return domain.Charter{}, fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return domain.Charter{}, err
 	}
+	svc := a.requireSigmaSvc()
 	c, err := svc.GetCharter(projectID)
 	if err != nil {
 		return domain.Charter{}, err
@@ -127,12 +139,12 @@ func (a *App) SigmaAdvancePhase(projectID, phase string) error {
 	if svc == nil {
 		return fmt.Errorf("sigma: no project open")
 	}
-	// Check readiness of the CURRENT phase before allowing advance
-	// We need to know the current phase to check it.
-	// For MVP, we check Define readiness if moving FROM Define.
-	// In a real app, we'd pass currentPhase or fetch it.
-	// Let's fetch the project to get current phase.
-	p, err := svc.GetProject(projectID)
+	// Check readiness of the CURRENT phase before allowing advance.
+	// For MVP, we check Define readiness if moving FROM Define. The
+	// ownership guard already fetches the project, so its returned phase
+	// is reused here instead of a second, now-redundant svc.GetProject
+	// call.
+	p, err := a.requireSigmaProjectInOpenFile(projectID)
 	if err != nil {
 		return err
 	}
@@ -168,10 +180,10 @@ func (a *App) SigmaCalculatePareto(categories []string, counts []int) ([]sigmach
 
 // SigmaCheckReadiness evaluates the current phase tollgate requirements.
 func (a *App) SigmaCheckReadiness(projectID, phase string) (tollgate.Result, error) {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return tollgate.Result{}, fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return tollgate.Result{}, err
 	}
+	svc := a.requireSigmaSvc()
 	charter, err := svc.GetCharter(projectID)
 	if err != nil {
 		return tollgate.Result{}, err
@@ -186,19 +198,19 @@ func (a *App) SigmaCheckReadiness(projectID, phase string) (tollgate.Result, err
 
 // SigmaSaveFishbone persists the Fishbone diagram data.
 func (a *App) SigmaSaveFishbone(projectID string, fb domain.FishboneData) error {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return err
 	}
+	svc := a.requireSigmaSvc()
 	return svc.SaveFishbone(fb, projectID)
 }
 
 // SigmaGetFishbone retrieves the Fishbone diagram data.
 func (a *App) SigmaGetFishbone(projectID string) (domain.FishboneData, error) {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return domain.FishboneData{}, fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return domain.FishboneData{}, err
 	}
+	svc := a.requireSigmaSvc()
 	fb, err := svc.GetFishbone(projectID)
 	if err != nil {
 		return domain.FishboneData{}, err
@@ -208,55 +220,55 @@ func (a *App) SigmaGetFishbone(projectID string) (domain.FishboneData, error) {
 
 // SigmaSaveSolutions persists the Solution Selection Matrix data.
 func (a *App) SigmaSaveSolutions(projectID string, solutions []domain.Solution) error {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return err
 	}
+	svc := a.requireSigmaSvc()
 	return svc.SaveSolutions(projectID, solutions)
 }
 
 // SigmaGetSolutions retrieves the Solution Selection Matrix data.
 func (a *App) SigmaGetSolutions(projectID string) ([]domain.Solution, error) {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return nil, fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return nil, err
 	}
+	svc := a.requireSigmaSvc()
 	return svc.GetSolutions(projectID)
 }
 
 // SigmaSaveControlPlan persists the Control Plan data.
 func (a *App) SigmaSaveControlPlan(projectID string, items []domain.ControlPlanItem) error {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return err
 	}
+	svc := a.requireSigmaSvc()
 	return svc.SaveControlPlan(projectID, items)
 }
 
 // SigmaGetControlPlan retrieves the Control Plan data.
 func (a *App) SigmaGetControlPlan(projectID string) ([]domain.ControlPlanItem, error) {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return nil, fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return nil, err
 	}
+	svc := a.requireSigmaSvc()
 	return svc.GetControlPlan(projectID)
 }
 
 // SigmaSaveSIPOC persists the SIPOC diagram data.
 func (a *App) SigmaSaveSIPOC(projectID string, data domain.SIPOCData) error {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return err
 	}
+	svc := a.requireSigmaSvc()
 	return svc.SaveSIPOC(projectID, data)
 }
 
 // SigmaGetSIPOC retrieves the SIPOC diagram data.
 func (a *App) SigmaGetSIPOC(projectID string) (domain.SIPOCData, error) {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return domain.SIPOCData{}, fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return domain.SIPOCData{}, err
 	}
+	svc := a.requireSigmaSvc()
 	sipoc, err := svc.GetSIPOC(projectID)
 	if err != nil {
 		return domain.SIPOCData{}, err
@@ -266,19 +278,19 @@ func (a *App) SigmaGetSIPOC(projectID string) (domain.SIPOCData, error) {
 
 // SigmaSaveVoC persists the Voice of Customer data.
 func (a *App) SigmaSaveVoC(projectID string, data domain.VoCData) error {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return err
 	}
+	svc := a.requireSigmaSvc()
 	return svc.SaveVoC(projectID, data)
 }
 
 // SigmaGetVoC retrieves the Voice of Customer data.
 func (a *App) SigmaGetVoC(projectID string) (domain.VoCData, error) {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return domain.VoCData{}, fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return domain.VoCData{}, err
 	}
+	svc := a.requireSigmaSvc()
 	voc, err := svc.GetVoC(projectID)
 	if err != nil {
 		return domain.VoCData{}, err
@@ -288,10 +300,10 @@ func (a *App) SigmaGetVoC(projectID string) (domain.VoCData, error) {
 
 // SigmaGetToolStatus returns the completion status of tools for the given phase.
 func (a *App) SigmaGetToolStatus(projectID, phase string) (service.PhaseTools, error) {
-	svc := a.requireSigmaSvc()
-	if svc == nil {
-		return service.PhaseTools{}, fmt.Errorf("sigma: no project open")
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return service.PhaseTools{}, err
 	}
+	svc := a.requireSigmaSvc()
 	return svc.GetToolStatus(projectID, phase), nil
 }
 
@@ -299,11 +311,14 @@ func (a *App) SigmaGetToolStatus(projectID, phase string) (service.PhaseTools, e
 // The report is written under the signed-in user's own exports/ folder, the
 // same location every other export in the app uses.
 func (a *App) SigmaExportProjectReport(projectID string) (string, error) {
-	svc := a.requireSigmaSvc()
 	u := a.requireUser()
-	if svc == nil || u == nil {
+	if u == nil {
 		return "", fmt.Errorf("sigma: not signed in or no project open")
 	}
+	if _, err := a.requireSigmaProjectInOpenFile(projectID); err != nil {
+		return "", err
+	}
+	svc := a.requireSigmaSvc()
 
 	project, charter, sipoc, fishbone, solutions, controlPlan, err := svc.GetProjectReportData(projectID)
 	if err != nil {
