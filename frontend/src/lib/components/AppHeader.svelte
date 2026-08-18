@@ -4,7 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   // Shared top toolbar for the post-login, project-independent screens
-  // (Portfolio dashboard, Projects list, Application settings). Centralises
+  // (Portfolio, Projects list, Application settings). Centralises
   // primary navigation and the sign-out control so the screens stay
   // consistent.
   import { session, goto, requestNavigation } from '../session.svelte';
@@ -13,7 +13,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let { active = 'portfolio' }: { active?: 'portfolio' | 'projects' | 'settings' | 'admin' | 'help' } = $props();
 
   const baseNav: { key: 'portfolio' | 'projects' | 'settings' | 'admin' | 'help'; label: string; view: typeof session.view }[] = [
-    { key: 'portfolio', label: 'Dashboard', view: 'portfolio' },
+    { key: 'portfolio', label: 'Portfolio', view: 'portfolio' },
     { key: 'projects', label: 'Projects', view: 'project_picker' },
     { key: 'settings', label: 'App Settings', view: 'app_settings' },
     { key: 'help', label: 'Help', view: 'help' },

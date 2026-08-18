@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
-  // Portfolio dashboard: the post-login landing screen. Shows every project
+  // Portfolio: the post-login landing screen. Shows every project
   // in the user's folder with its status, phase, dates, and chart/document
   // counts, sorted so in-progress work appears first. Clicking a card opens
   // the project and routes to its per-project dashboard.
@@ -137,7 +137,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <main class="max-w-5xl mx-auto p-8">
     <div class="flex items-center justify-between mb-5">
       <div>
-        <h1 class="text-xl font-bold">Portfolio dashboard</h1>
+        <h1 class="text-xl font-bold">Portfolio</h1>
         <p class="text-xs text-slate-500 mt-1">
           {counts.active} active · {counts.all} total
         </p>

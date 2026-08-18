@@ -41,14 +41,25 @@ concrete defects in the app's navigation and its most-visited screen:
    preventing that from changing.
 3. **Unstructured single-project dashboard.** `project/Dashboard.svelte` is
    one flat vertical scroll, confirmed live at roughly 2500px tall on a
-   1280×800 viewport, mixing five distinct kinds of content in sequence with
-   no tabs, sections, or in-page navigation: project-meta cards
-   (Stakeholders/Timeline/Budget) → a Documents list → a 24-item
-   chart-creation tool catalog (2-column grid, lightly filterable by 4
-   category chips, all 24 shown unsorted by default) → a 25-item
-   document-template catalog (behind one collapsed accordion) → a
-   Software-Dev Pack section (the enable/disable control for the
-   agile/Sigma tooling fixed under the "Fix launchpad wizard" backlog item).
+   1280×800 viewport, with no tabs, sections, or in-page navigation.
+   **Correction, made while implementing this document's own R1/R2 items
+   and re-reading the file**: earlier drafts of this document described
+   this as "five distinct kinds of content" and mapped "Documents list" to
+   a single existing-work list. The file actually has seven content
+   groups (plus a loading/error state that gates two of them but isn't
+   itself content), in order: project-meta cards
+   (Stakeholders/Timeline/Budget) → a Process Excellence quick-link
+   (shown only for `six_sigma`-methodology projects) → *(loading/error
+   state)* → an **existing charts** list → a separate **existing
+   documents** list → a 24-item chart-creation tool catalog (2-column
+   grid, lightly filterable by 4 category chips, all 24 shown unsorted by
+   default) → a 25-item document-template catalog (behind one collapsed
+   accordion) → a Software-Dev Pack section (the enable/disable control
+   for the agile/Sigma tooling fixed under the "Fix launchpad wizard"
+   backlog item) — seven, not five, once the existing-work lists are
+   split out as the two distinct sections they are in the code, and the
+   Sigma quick-link is counted as its own group rather than folded into
+   the meta cards.
    A user opening a project to check its budget must scroll past the chart
    catalog to reach it if they landed below the meta cards, and the
    Software-Dev Pack toggle — which the Launchpad wizard's own copy tells
@@ -115,7 +126,7 @@ restructuring, not a feature request.
 
 ## 3. High-level design
 
-### 3.1 Naming collision (R1)
+### 3.1 Naming collision (R1) — **Implemented 2026-08-17**
 
 Two independent screens currently share the word "dashboard." The fix is a
 naming decision, not a structural one:
@@ -123,7 +134,22 @@ naming decision, not a structural one:
 | View | Current nav label | Current heading | Proposed nav label | Proposed heading |
 | --- | --- | --- | --- | --- |
 | `portfolio` | "DASHBOARD" | "Portfolio dashboard" | "PORTFOLIO" | "Portfolio" |
-| `dashboard` (per-project) | *(no nav entry — reached from inside a project)* | "Project dashboard" | *(unchanged)* | "Dashboard" |
+| `dashboard` (per-project) | *(no nav entry — reached from inside a project)* | *(none — see correction below)* | *(unchanged)* | *(unchanged)* |
+
+**Correction to this table, made while implementing it**: the `dashboard`
+row's "Current heading" cell originally said "Project dashboard," inherited
+from the source design-critique without re-reading the code. That is not a
+visible heading. `Dashboard.svelte`'s actual `<h1>` renders
+`{session.project?.name}` — the open project's own name — not a static
+string. "Project dashboard" exists only as `App.svelte`'s
+`VIEW_LABELS['dashboard']`, a screen-reader-only string read by the
+`aria-live` route announcer on navigation; a sighted user never sees it
+printed anywhere. The real, visible collision was narrower than originally
+described: the `portfolio` nav tab and its own heading, not a second
+on-screen "Project dashboard" heading competing with it. Because
+`VIEW_LABELS['dashboard']` doesn't visibly collide with anything once
+`portfolio`'s label changes to "Portfolio," it was left unchanged — no
+"Proposed heading" column entry was needed for the `dashboard` row.
 
 Rationale: `portfolio` is the multi-project landing screen — "Portfolio" is
 already the more specific, correct noun for it (a list of projects), and
@@ -136,7 +162,7 @@ screen-reader route announcer) moves from `'Portfolio'` to stay consistent
 — it already reads `'Portfolio'`, not `'Dashboard'`, so the announcer was
 already correct; only the *visible* nav chip and page heading were wrong.
 
-### 3.2 `'charts'` fallback route (R2) — corrected during drafting
+### 3.2 `'charts'` fallback route (R2) — corrected during drafting, **implemented 2026-08-17**
 
 **The original design-critique framing of this as a "dead route" turned out
 to be imprecise, caught by re-reading the code rather than trusting the
@@ -187,17 +213,34 @@ goes out of its way to test for. `Dashboard.test.ts`'s existing fallback
 test needs no change — it only asserts `session.view === 'charts'`, not
 what that view renders.
 
-### 3.3 Dashboard restructuring (R3, R4)
+**Implementation note**: shipped as `ChartFallback.svelte`, fetching the
+chart's title via the existing `GetChart(id)` binding (`session.editingId`
+carries the id the fallback navigation already passes) so the copy can
+name the specific chart rather than speaking generically — with a
+graceful fallback to generic copy if that lookup itself fails, since a
+failed title lookup is not evidence the chart wasn't saved. Verified the
+"was saved" claim holds on both call sites that can reach this view
+(`Dashboard.svelte`'s `newChart()` and `importMSPDI()`): both only call
+`goto(chartRoutes[kind] ?? 'charts', c.id)` after their `SaveChart`/
+`ImportMSPDIChartWithOptions` call has already resolved successfully, and
+both wrap the call in `try`/`catch` that shows an error toast and never
+navigates on failure.
 
-Proposed structure: a tabbed shell wrapping the five existing content
-groups, with the meta cards promoted out of the tab set entirely (they're
-the orientation content every visit needs, not one option among several).
+### 3.3 Dashboard restructuring (R3, R4) — not yet implemented, see §7
+
+Proposed structure: a tabbed shell wrapping the seven existing content
+groups (§1, corrected count), with the meta cards **and** the Process
+Excellence quick-link promoted out of the tab set entirely — both are
+orientation/navigation content every visit needs, not one option among
+several, matching how they already behave today (always rendered, never
+gated behind a click).
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  ← Back to portfolio          Project Name          ⋮   │  (existing header, unchanged)
 ├─────────────────────────────────────────────────────────┤
 │  Stakeholders: 12   Timeline: Mar–Sep   Budget: $42,000  │  (meta cards, always visible)
+│  [ DMAIC Workspace → ]                                   │  (Sigma quick-link, six_sigma only, always visible)
 ├─────────────────────────────────────────────────────────┤
 │  [ Overview ]  [ Charts ]  [ Documents ]  [ Dev Tools ]  │  (new tab row)
 ├─────────────────────────────────────────────────────────┤
@@ -209,10 +252,10 @@ the orientation content every visit needs, not one option among several).
 
 | Tab | Content (from current `Dashboard.svelte`) |
 | --- | --- |
-| **Overview** (default) | The existing Documents list. This is the tab a user lands on — the highest-frequency task (checking recent documents / project state) shouldn't be behind a click, matching R3's "reach without scrolling past unrelated content" for the single most common case. |
-| **Charts** | The 24-item chart-creation tool catalog, category chips unchanged. |
-| **Documents** | The 25-item document-template catalog, no longer behind a collapsed accordion — the accordion was doing the job a tab now does (hiding low-frequency content), so a plain always-expanded grid is simpler once it has its own tab. |
-| **Dev Tools** | The Software-Dev Pack section (R4) — reachable in one click from the tab row regardless of scroll position, closing the gap the "Fix launchpad wizard" backlog item already flagged from the enable-toggle's *positioning*, not just its default state. This tab should only render in the tab row when `session.project.methodology` is one that has agile/Sigma tooling available, matching whatever condition currently gates the section's visibility — not shown as a fourth tab that's always empty for e.g. a Waterfall project with no Software-Dev Pack applicable. **This condition needs confirming against `Dashboard.svelte`'s actual current gating logic before implementation**, not assumed from this document.
+| **Overview** (default) | **Correction**: not "the existing Documents list" (singular) — the file has two separate existing-work lists, an existing **charts** list and an existing **documents** list, both of which belong here together as "what you've already made in this project." This is the tab a user lands on — the highest-frequency task (checking recent work / project state) shouldn't be behind a click, matching R3's "reach without scrolling past unrelated content" for the single most common case. The loading/error state that currently gates both lists moves with them into this tab. |
+| **Charts** | The 24-item chart-creation tool catalog, category chips unchanged. The MSPDI import controls (currently interleaved with this catalog) move here too, since they're part of the same "create a new chart" task. |
+| **Documents** | The 25-item document-template catalog, no longer behind a collapsed accordion — the accordion was doing the job a tab now does (hiding low-frequency content), so a plain always-expanded grid is simpler once it has its own tab. The "Build combined report" action (currently in the same section) moves here too. |
+| **Dev Tools** | The Software-Dev Pack section (R4) — reachable in one click from the tab row regardless of scroll position, closing the gap the "Fix launchpad wizard" backlog item already flagged from the enable-toggle's *positioning*, not just its default state. **Correction, made while re-reading `Dashboard.svelte` before implementation**: an earlier draft of this table proposed making this tab conditional on `session.project.methodology`. That was wrong — the Software-Dev Pack's enable/disable toggle is **universal**, not methodology-gated; any project can enable it regardless of methodology, and the section already renders unconditionally today (with its own internal enabled/disabled state, not an external visibility gate). This tab must therefore always be present in the tab row, matching current always-rendered behavior — not conditionally shown. |
 
 ## 4. Deep dive
 
@@ -259,7 +302,7 @@ here too, even though `activeTab` isn't part of `session.view`'s union).
 | --- | --- | --- |
 | Tabs vs. accordion-everywhere | Tabs hide non-active content entirely (no partial-scroll preview of what's below); accordions keep a compact always-visible outline. | The catalogs are large (24/25 items) — an accordion-only approach still leaves the *expanded* catalog just as tall as it is today; tabs cap the maximum visible height for any given task, which is what R3 actually asks for. |
 | Overview tab shows Documents only vs. Documents + a "recent activity" summary | A richer Overview tab could show more, but nothing in the current `Dashboard.svelte` has activity-feed data to summarize — inventing one is a real feature, not an IA fix. | Keep Overview to what already exists (Documents), consistent with C2/C5's "don't expand scope." |
-| Dev Tools as a conditional tab vs. always-present with an empty state | An always-present tab is simpler to implement (no conditional tab-row logic) but reintroduces exactly the kind of "feature that doesn't apply to this project shown anyway" clutter the original critique flagged the Software-Dev Pack contradiction as an instance of. | Conditional, matching the existing gating logic (to be confirmed, §3.3). |
+| Dev Tools as a conditional tab vs. always-present | **Superseded, §3.3**: this row originally framed the choice as open, pending confirmation of the section's gating logic. Re-reading `Dashboard.svelte` found the Software-Dev Pack toggle is universal (no methodology gate), so "conditional on methodology" was never a real option — the section already renders unconditionally today. | Always-present, matching current behavior. Not a trade-off once the actual gating logic was checked. |
 | Rename `portfolio`'s label vs. rename per-project `dashboard`'s label | Renaming the per-project screen (to something other than "dashboard") would also resolve the collision. | `portfolio` is the multi-project list — "Portfolio" is the more accurate existing word already used in its own heading; changing the *other* screen's long-established name has a larger blast radius (help docs, user muscle memory) for the same fix. |
 
 ## 6. What I'd revisit as this grows
@@ -286,14 +329,28 @@ here too, even though `activeTab` isn't part of `session.view`'s union).
   original critique assumed it already was — worth deleting at that point,
   not before.
 
-## 7. Explicitly out of scope this cycle
+## 7. Implementation status
 
-- Implementing any of the above in code. This document is the design
-  artifact for a future implementation cycle, per this cycle's own scoping
-  decision (a full `Dashboard.svelte` restructuring without a dedicated
-  implementation-and-review cycle was judged too high-risk for the app's
-  most-visited screen to bundle into the same cycle as the residual-risk
-  closures — see the Executive Summary for the explicit reasoning).
+**R1 (naming collision) and R2 (`'charts'` fallback route) were implemented
+2026-08-17**, in a cycle deliberately split from R3/R4: pre-implementation
+adversarial review found R3/R4 (the tab restructuring) carries a
+substantial, entangled cost R1/R2 don't — `Dashboard.test.ts` has 23 tests
+across 8 `describe` blocks, nearly all of which interact with content that
+would move into a specific tab, and `Testing Library`'s queries exclude
+elements not actually rendered/visible, so a tabbed restructuring requires
+inserting a tab-switch into the majority of those tests, not just moving
+markup. `Dashboard.test.ts`'s own header comment also documents a live,
+unfixed load-order race in the component being restructured — mixing a
+DOM restructuring with a rewrite of the tests that currently work around
+that race would make a test failure's cause ambiguous (the tab change, the
+pre-existing race, or a bad test edit). R1/R2 have neither entanglement:
+zero existing tests touched the strings R1 changed, and R2 added a route
+`routeLoaders` didn't previously have, so nothing could regress.
+
+**R3/R4 (the tab restructuring itself) remain not implemented** and are
+scoped as their own future cycle, for the reason above. Still out of
+scope, independent of R1–R4:
+
 - Migrating `Dashboard.svelte`'s existing markup to the Button/Card library
   (tracked separately, C5).
 - Project Settings' own flat-form restructuring (a distinct, independently

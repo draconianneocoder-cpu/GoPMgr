@@ -277,7 +277,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   {#each [
                     ['Ctrl/⌘ + N', 'New project (opens the Launchpad)'],
                     ['Ctrl/⌘ + O', 'Open project (project picker)'],
-                    ['Ctrl/⌘ + D', 'Portfolio dashboard'],
+                    ['Ctrl/⌘ + D', 'Portfolio'],
                     ['Ctrl/⌘ + ,', 'Application settings'],
                     ['Ctrl/⌘ + W', 'Close the current project'],
                     ['Ctrl/⌘ + Q', 'Quit GoPMgr'],

@@ -39,7 +39,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Creating a Project — The Launchpad</h3>
             <p class="text-sm text-slate-300 mb-3">
-              From the Portfolio dashboard, click "New Project" (or File &rarr; New Project). The Launchpad
+              From the Portfolio screen, click "New Project" (or File &rarr; New Project). The Launchpad
               walks through four steps:
             </p>
             <ol class="space-y-2 text-sm text-slate-300 list-decimal list-inside">
