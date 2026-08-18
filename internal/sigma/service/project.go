@@ -43,8 +43,8 @@ func (s *ProjectService) GetProject(id string) (*domain.Project, error) {
 	return s.DB.SigmaGetProject(id)
 }
 
-func (s *ProjectService) ListProjects() ([]domain.Project, error) {
-	return s.DB.SigmaListProjects()
+func (s *ProjectService) ListProjects(gopmgrProjectID string) ([]domain.Project, error) {
+	return s.DB.SigmaListProjects(gopmgrProjectID)
 }
 
 func (s *ProjectService) SaveCharter(c domain.Charter) error {

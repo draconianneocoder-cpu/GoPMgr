@@ -57,10 +57,11 @@ func (d *Database) SigmaGetProject(id string) (*domain.Project, error) {
 	return &p, nil
 }
 
-func (d *Database) SigmaListProjects() ([]domain.Project, error) {
+func (d *Database) SigmaListProjects(gopmgrProjectID string) ([]domain.Project, error) {
 	rows, err := d.Conn.Query(
 		`SELECT id, project_id, title, description, belt_level, phase, status, sponsor, process_owner, belt_lead, created_at, updated_at
-		 FROM sigma_projects ORDER BY updated_at DESC`, // timestamp-order-guard-exempt: updated_at is DB-managed via strftime('%f'), which SQLite guarantees zero-pads to a fixed 3-digit fraction -- structurally immune to the trimmed-width hazard by construction, unlike Go's time.Format(time.RFC3339Nano). See timestampRetrofitTargets' doc comment in timestamps.go.
+		 FROM sigma_projects WHERE project_id = ? ORDER BY updated_at DESC`, // timestamp-order-guard-exempt: updated_at is DB-managed via strftime('%f'), which SQLite guarantees zero-pads to a fixed 3-digit fraction -- structurally immune to the trimmed-width hazard by construction, unlike Go's time.Format(time.RFC3339Nano). See timestampRetrofitTargets' doc comment in timestamps.go.
+		gopmgrProjectID,
 	)
 	if err != nil {
 		return nil, err

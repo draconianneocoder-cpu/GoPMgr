@@ -95,7 +95,7 @@ func TestSigmaCreateProject_MultipleProjectsPerFile(t *testing.T) {
 		t.Fatalf("both Sigma projects got the same ID (%q) -- IDs must be independent, not derived from the shared GoPMgr project", first.ID)
 	}
 
-	all, err := d.SigmaListProjects()
+	all, err := d.SigmaListProjects(gopmgrProjectID)
 	if err != nil {
 		t.Fatalf("SigmaListProjects: %v", err)
 	}
@@ -153,12 +153,10 @@ func setSigmaProjectUpdatedAt(t *testing.T, d *Database, id, updatedAt string) {
 // between rapid inserts.
 func TestSigmaListProjects_OrdersByMostRecentlyUpdatedDescending(t *testing.T) {
 	d := newBackupTestDB(t)
-	oldestProjectID := newSigmaProjectFKTarget(t, d)
-	middleProjectID := newSigmaProjectFKTarget(t, d)
-	newestProjectID := newSigmaProjectFKTarget(t, d)
+	gopmgrProjectID := newSigmaProjectFKTarget(t, d)
 	sigmaIDs := make(map[string]string, 3) // title -> sigma project id
-	for gopmgrID, title := range map[string]string{oldestProjectID: "Oldest", middleProjectID: "Middle", newestProjectID: "Newest"} {
-		created, err := d.SigmaCreateProject(domain.Project{GopmgrProjectID: gopmgrID, Title: title})
+	for _, title := range []string{"Oldest", "Middle", "Newest"} {
+		created, err := d.SigmaCreateProject(domain.Project{GopmgrProjectID: gopmgrProjectID, Title: title})
 		if err != nil {
 			t.Fatalf("SigmaCreateProject(%s): %v", title, err)
 		}
@@ -168,7 +166,7 @@ func TestSigmaListProjects_OrdersByMostRecentlyUpdatedDescending(t *testing.T) {
 	setSigmaProjectUpdatedAt(t, d, sigmaIDs["Middle"], "2026-01-01T10:00:00.500Z")
 	setSigmaProjectUpdatedAt(t, d, sigmaIDs["Newest"], "2026-01-01T10:00:00.900Z")
 
-	got, err := d.SigmaListProjects()
+	got, err := d.SigmaListProjects(gopmgrProjectID)
 	if err != nil {
 		t.Fatalf("SigmaListProjects: %v", err)
 	}
@@ -181,6 +179,47 @@ func TestSigmaListProjects_OrdersByMostRecentlyUpdatedDescending(t *testing.T) {
 			t.Errorf("order[%d] = %q, want %q (full order: %v)", i, got[i].Title, want,
 				[]string{got[0].Title, got[1].Title, got[2].Title})
 		}
+	}
+}
+
+// TestSigmaListProjects_ScopesToGivenGopmgrProject is the regression test
+// for the residual risk left by the FK-bug fix: SigmaListProjects used to
+// return every sigma_projects row unfiltered, which was indistinguishable
+// from correct as long as exactly one GoPMgr project ever existed per
+// open database -- but tests elsewhere in this package (e.g.
+// TestListDocuments_WhereClauseFiltersOnProjectID,
+// TestListAuditEvents_WhereClauseFiltersOnProjectID) already exercise
+// multiple project rows in a single database to verify project_id
+// scoping, so that assumption does not hold as broadly as the "exactly
+// ONE project per file" schema comment suggests. Two GoPMgr projects each
+// get their own Sigma project here; listing against one must not leak
+// the other's row.
+func TestSigmaListProjects_ScopesToGivenGopmgrProject(t *testing.T) {
+	d := newBackupTestDB(t)
+	projectA := newSigmaProjectFKTarget(t, d)
+	projectB := newSigmaProjectFKTarget(t, d)
+
+	if _, err := d.SigmaCreateProject(domain.Project{GopmgrProjectID: projectA, Title: "A's Sigma Project"}); err != nil {
+		t.Fatalf("SigmaCreateProject (A): %v", err)
+	}
+	if _, err := d.SigmaCreateProject(domain.Project{GopmgrProjectID: projectB, Title: "B's Sigma Project"}); err != nil {
+		t.Fatalf("SigmaCreateProject (B): %v", err)
+	}
+
+	gotA, err := d.SigmaListProjects(projectA)
+	if err != nil {
+		t.Fatalf("SigmaListProjects(A): %v", err)
+	}
+	if len(gotA) != 1 || gotA[0].Title != "A's Sigma Project" {
+		t.Fatalf("SigmaListProjects(A) = %+v, want only A's Sigma Project", gotA)
+	}
+
+	gotB, err := d.SigmaListProjects(projectB)
+	if err != nil {
+		t.Fatalf("SigmaListProjects(B): %v", err)
+	}
+	if len(gotB) != 1 || gotB[0].Title != "B's Sigma Project" {
+		t.Fatalf("SigmaListProjects(B) = %+v, want only B's Sigma Project", gotB)
 	}
 }
 

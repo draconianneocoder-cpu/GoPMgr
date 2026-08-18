@@ -61,7 +61,15 @@ func (a *App) SigmaListProjects() ([]domain.Project, error) {
 	if svc == nil {
 		return nil, fmt.Errorf("sigma: no project open")
 	}
-	return svc.ListProjects()
+	d := a.requireDB()
+	if d == nil {
+		return nil, fmt.Errorf("sigma: no project open")
+	}
+	openProject, err := d.GetProject()
+	if err != nil {
+		return nil, fmt.Errorf("sigma: resolve open project: %w", err)
+	}
+	return svc.ListProjects(openProject.ID)
 }
 
 func (a *App) SigmaGetProject(id string) (domain.Project, error) {
@@ -69,9 +77,27 @@ func (a *App) SigmaGetProject(id string) (domain.Project, error) {
 	if svc == nil {
 		return domain.Project{}, fmt.Errorf("sigma: no project open")
 	}
+	d := a.requireDB()
+	if d == nil {
+		return domain.Project{}, fmt.Errorf("sigma: no project open")
+	}
+	openProject, err := d.GetProject()
+	if err != nil {
+		return domain.Project{}, fmt.Errorf("sigma: resolve open project: %w", err)
+	}
 	p, err := svc.GetProject(id)
 	if err != nil {
 		return domain.Project{}, err
+	}
+	// A Sigma project id from a stale session.editingId (left over from a
+	// previously open GoPMgr file) must not resolve against whatever file
+	// happens to be open now -- SigmaListProjects is scoped the same way,
+	// and this is the chokepoint SigmaProjectView.svelte's loadProject()
+	// calls before any sub-tab getter (Charter/Fishbone/SIPOC/VoC/...),
+	// so a not-found here also stops those from ever being requested with
+	// a foreign id in the normal UI flow.
+	if p.GopmgrProjectID != openProject.ID {
+		return domain.Project{}, fmt.Errorf("sigma: project %q not found", id)
 	}
 	return *p, nil
 }

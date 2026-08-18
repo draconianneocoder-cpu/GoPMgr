@@ -131,7 +131,7 @@ func TestMigrateSigmaProjectsSchema_RebuildsLegacyTableAndPreservesRows(t *testi
 		t.Fatalf("second project reused the first project's ID (%q) -- IDs must be independent", second.ID)
 	}
 
-	all, err := d.SigmaListProjects()
+	all, err := d.SigmaListProjects(projectID)
 	if err != nil {
 		t.Fatalf("SigmaListProjects: %v", err)
 	}
