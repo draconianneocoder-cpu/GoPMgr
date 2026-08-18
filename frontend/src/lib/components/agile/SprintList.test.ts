@@ -495,6 +495,12 @@ describe('SprintList complete/delete', () => {
     const utils = render(SprintList);
     await waitFor(() => expect(app.ListSprints).toHaveBeenCalled());
     await waitFor(() => expect(() => findButton(utils.container, 'Delete')).not.toThrow());
+    // Migrated from a raw <button> to `Button variant="remove"` — pins the
+    // exact rendered class string so the row's appearance is provably
+    // unchanged by the migration, not just assumed safe.
+    expect(findButton(utils.container, 'Delete').className.trim()).toBe(
+      'text-slate-500 hover:text-red-400 disabled:opacity-50 text-xs',
+    );
     await fireEvent.click(findButton(utils.container, 'Delete'));
 
     const dialog = document.querySelector('[role="alertdialog"]');

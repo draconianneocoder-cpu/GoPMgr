@@ -12,6 +12,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { autosave } from '../../autosave.svelte';
   import { session, goto, requestNavigation } from '../../session.svelte';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import Button from '../Button.svelte';
 
   let sprints = $state<AgileSprint[]>([]);
   let workItemsBySprint = $state<Record<string, AgileWorkItem[]>>({});
@@ -339,12 +340,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     Complete
                   </button>
                 {/if}
-                <button
-                  onclick={() => requestDeleteSprint(s)}
-                  class="text-xs text-slate-500 hover:text-red-400"
-                >
+                <Button variant="remove" class="text-xs" onclick={() => requestDeleteSprint(s)}>
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
           </li>

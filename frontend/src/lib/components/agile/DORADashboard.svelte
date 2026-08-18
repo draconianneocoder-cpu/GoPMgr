@@ -13,6 +13,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import StatsChart from '../charts/StatsChart.svelte';
   import type { StatsLayout } from '../charts/_stats_types';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import Button from '../Button.svelte';
 
   let windowDays = $state(30);
   let dora = $state<DORAResult | null>(null);
@@ -350,13 +351,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
               {#if !d.successful && d.restore_time_hours > 0}
                 <span class="text-[10px] text-amber-400 w-24 text-right">{d.restore_time_hours.toFixed(1)}h restore</span>
               {/if}
-              <button
+              <Button
+                variant="remove"
+                class="text-xs"
                 onclick={() => requestDeleteDeployment(d)}
-                class="text-xs text-slate-500 hover:text-red-400"
                 aria-label="Delete deployment"
               >
                 ×
-              </button>
+              </Button>
             </li>
           {/each}
         </ul>

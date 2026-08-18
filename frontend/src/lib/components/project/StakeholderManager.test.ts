@@ -633,6 +633,13 @@ describe('StakeholderManager delete', () => {
     const deleteBtn = await waitFor(
       () => utils.container.querySelector('[aria-label="Delete stakeholder"]') as HTMLButtonElement,
     );
+    // Migrated from a raw <button> to `Button variant="remove"` — pins the
+    // exact rendered class string (base + the passed-through `text-xs`) so
+    // the appearance this row had before migration is provably unchanged,
+    // not just assumed safe from Tailwind's non-conflicting utility rules.
+    expect(deleteBtn.className.trim()).toBe(
+      'text-slate-500 hover:text-red-400 disabled:opacity-50 text-xs',
+    );
     await fireEvent.click(deleteBtn);
 
     const dialog = document.querySelector('[role="alertdialog"]');

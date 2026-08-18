@@ -86,6 +86,12 @@ describe('DORADashboard', () => {
     const deleteBtn = await waitFor(
       () => container.querySelector('[aria-label="Delete deployment"]') as HTMLButtonElement,
     );
+    // Migrated from a raw <button> to `Button variant="remove"` — pins the
+    // exact rendered class string so the row's appearance is provably
+    // unchanged by the migration, not just assumed safe.
+    expect(deleteBtn.className.trim()).toBe(
+      'text-slate-500 hover:text-red-400 disabled:opacity-50 text-xs',
+    );
     await fireEvent.click(deleteBtn);
 
     const dialog = document.querySelector('[role="alertdialog"]');

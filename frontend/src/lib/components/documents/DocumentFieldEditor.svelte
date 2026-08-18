@@ -9,6 +9,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // every document kind (all 25) reuses it.
 
   import ChartPicker from './ChartPicker.svelte';
+  import Button from '../Button.svelte';
 
   let { field, value = $bindable() }: { field: DocumentField; value: unknown } = $props();
 
@@ -101,13 +102,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
             bind:value={(value as string[])[i]}
             class="flex-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
           />
-          <button
-            type="button"
-            onclick={() => removeStringRow(i)}
-            class="text-xs text-slate-500 hover:text-red-400 px-2"
-          >
+          <Button variant="remove" class="text-xs px-2" onclick={() => removeStringRow(i)}>
             ×
-          </button>
+          </Button>
         </div>
       {/each}
       <button
@@ -152,13 +149,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
               {/if}
             </label>
           {/each}
-          <button
-            type="button"
-            onclick={() => removeObjectRow(i)}
-            class="text-xs text-slate-500 hover:text-red-400"
-          >
+          <Button variant="remove" class="text-xs" onclick={() => removeObjectRow(i)}>
             Remove row
-          </button>
+          </Button>
         </div>
       {/each}
       <button

@@ -333,13 +333,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 {s.contract_value > 0 ? `${s.hourly_rate > 0 ? ' · ' : ''}${s.contract_value.toFixed(2)} contract` : ''}
               </div>
             </button>
-            <button
+            <Button
+              variant="remove"
+              class="text-xs"
               onclick={() => requestDelete(s)}
-              class="text-xs text-slate-500 hover:text-red-400"
               aria-label="Delete stakeholder"
             >
               ×
-            </button>
+            </Button>
           </li>
         {/each}
       </ul>
