@@ -27,3 +27,16 @@ for chunk in frontend/dist/assets/index-*.js; do
 		exit 1
 	fi
 done
+
+for asset in \
+	frontend/dist/branding/gopmgr-logo-lockup-dark.png \
+	frontend/dist/branding/gopmgr-logo-lockup-light.png \
+	frontend/dist/branding/gopmgr-app-icon-dark.png \
+	frontend/dist/branding/gopmgr-app-icon-light.png \
+	frontend/dist/branding/gopmgr-app-icon-dark-128.png \
+	frontend/dist/branding/gopmgr-app-icon-light-128.png; do
+	if [ ! -s "$asset" ]; then
+		echo "frontend-budget: missing built branding asset $asset." >&2
+		exit 1
+	fi
+done

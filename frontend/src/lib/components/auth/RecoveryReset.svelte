@@ -69,7 +69,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     onsubmit={submit}
   >
     <div class="space-y-2 text-center">
-      <Logo class="h-9 w-auto mx-auto text-slate-50" />
+      <Logo class="h-32 w-auto mx-auto" />
       <h1 class="text-sm font-bold text-slate-300 tracking-widest uppercase">Reset password</h1>
       <p class="text-xs text-slate-500">
         Enter one of the recovery codes you saved when the account was created.

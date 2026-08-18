@@ -3,43 +3,48 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
-  // Theme-aware GoPMgr wordmark + Gantt/anvil mark, rendered inline so it
-  // adapts to the light/dark theme with no file swapping: the timeline
-  // gridlines and the "GoPMgr" wordmark use `currentColor`, while the mark
-  // uses --brand-accent so it remains legible in both the
-  // dark workshop and light fieldbook appearances. Background is transparent.
-  //
-  // Size with the `class` prop (height + a flipping text colour), e.g.
-  //   <Logo class="h-6 text-slate-100" />
-  // The viewBox is 4:1, so width tracks the height automatically.
-  let { class: klass = 'h-7 text-slate-100' }: { class?: string } = $props();
+  import { onMount } from 'svelte';
+
+  // Bobby's supplied lockups are portrait compositions, while the header
+  // needs a compact square mark. The two variants deliberately use distinct
+  // theme assets instead of squeezing a full lockup into the toolbar.
+  let {
+    class: klass = 'h-32 w-auto',
+    variant = 'full',
+  }: { class?: string; variant?: 'compact' | 'full' } = $props();
+
+  function currentTheme(): 'dark' | 'light' {
+    if (typeof document === 'undefined') return 'dark';
+    return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+  }
+
+  let theme = $state<'dark' | 'light'>(currentTheme());
+
+  onMount(() => {
+    const root = document.documentElement;
+    const syncTheme = () => {
+      theme = root.dataset.theme === 'light' ? 'light' : 'dark';
+    };
+    const observer = new MutationObserver(syncTheme);
+    syncTheme();
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  });
+
+  const asset = $derived(
+    variant === 'compact'
+      ? `/branding/gopmgr-app-icon-${theme}.png`
+      : `/branding/gopmgr-logo-lockup-${theme}.png`,
+  );
+  const compactSrcset = $derived(
+    `/branding/gopmgr-app-icon-${theme}-128.png 128w, /branding/gopmgr-app-icon-${theme}.png 512w`,
+  );
 </script>
 
-<svg
+<img
   class={klass}
-  viewBox="0 0 800 200"
-  role="img"
-  aria-label="GoPMgr"
-  xmlns="http://www.w3.org/2000/svg"
->
-  <g transform="translate(45,38)">
-    <line x1="0" y1="0" x2="0" y2="125" stroke="currentColor" stroke-width="3" opacity="0.55" />
-    <line x1="32" y1="0" x2="32" y2="125" stroke="currentColor" stroke-width="3" opacity="0.55" />
-    <line x1="64" y1="0" x2="64" y2="125" stroke="currentColor" stroke-width="3" opacity="0.55" />
-    <line x1="96" y1="0" x2="96" y2="125" stroke="currentColor" stroke-width="3" opacity="0.55" />
-    <rect x="8" y="8" width="38" height="19" rx="4" fill="rgb(var(--brand-accent))" />
-    <rect x="8" y="34" width="58" height="19" rx="4" fill="rgb(var(--brand-accent))" />
-    <rect x="8" y="60" width="88" height="19" rx="4" fill="rgb(var(--brand-accent))" />
-    <rect x="8" y="86" width="118" height="19" rx="4" fill="rgb(var(--brand-accent))" />
-    <polygon points="8,115 28,115 38,135 88,135 98,115" fill="rgb(var(--brand-accent))" />
-  </g>
-  <text
-    x="225"
-    y="142"
-    font-family="'Arial Black', system-ui, sans-serif"
-    font-size="98"
-    font-weight="900"
-    letter-spacing="-3.5"
-    fill="currentColor">GoPMgr</text
-  >
-</svg>
+  src={asset}
+  srcset={variant === 'compact' ? compactSrcset : undefined}
+  sizes={variant === 'compact' ? '32px' : undefined}
+  alt="GoPMgr, featuring Bobby Beaver"
+/>

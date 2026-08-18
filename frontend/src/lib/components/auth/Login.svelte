@@ -59,7 +59,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     onsubmit={submit}
   >
     <div class="space-y-2 text-center">
-      <Logo class="h-10 w-auto mx-auto text-slate-50" />
+      <Logo class="h-32 w-auto mx-auto" />
       <p class="text-xs text-slate-500">Local-first project controls</p>
     </div>
 

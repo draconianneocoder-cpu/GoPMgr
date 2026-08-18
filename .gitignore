@@ -30,8 +30,8 @@
 /gopmgr
 /gopmgr-*
 /GoPMgr/
-!gopmgr-icon-*.svg
-!gopmgr-logo-*.svg
+# Branding masters and platform exports are tracked under assets/branding and
+# frontend/public/branding. Root SVG branding has been retired intentionally.
 
 # Wails generated bindings
 /frontend/wailsjs/
@@ -90,7 +90,6 @@ temp_snapshot.db
 /GoPMgr App Icon (square-style, no text).png
 /Full GoPMgr Dark Logo (gopher + text).png
 /Full GoPMgr Light Logo (gopher + text).png
-/bobby-beaver-*.svg
 *.zip
 
 # Certificates (NEVER commit private keys)

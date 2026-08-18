@@ -92,6 +92,7 @@ making trust claims.
 - [TESTING.md](TESTING.md): test and release gates.
 - [DEPENDENCIES.md](DEPENDENCIES.md): dependency and tool policy.
 - [docs/user-guide.md](docs/user-guide.md): user workflows.
+- [docs/branding.md](docs/branding.md): Bobby Beaver identity, asset placement, platform behavior, and attribution.
 - [docs/INSTALL.md](docs/INSTALL.md): installation and source-run guidance.
 - [docs/beta-release-backlog.md](docs/beta-release-backlog.md): release
   readiness work.
@@ -101,5 +102,7 @@ making trust claims.
 
 Source code is licensed under GPL-3.0-or-later. Documentation is generally
 licensed under GFDL-1.3-or-later. Each file declares its authoritative SPDX
-license identifier; run `make license-check` to verify REUSE compliance. See
-[LICENSE.md](LICENSE.md) and [LICENSES.md](LICENSES.md) for details.
+license identifier; GoPMgr-owned Bobby Beaver artwork is GPL-3.0-or-later
+with attribution recorded in [docs/branding.md](docs/branding.md). Run `make
+license-check` to verify REUSE compliance. See [LICENSE.md](LICENSE.md) and
+[LICENSES.md](LICENSES.md) for details.

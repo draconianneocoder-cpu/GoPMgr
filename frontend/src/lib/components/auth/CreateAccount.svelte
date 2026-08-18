@@ -123,7 +123,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   {#if step === 'form'}
   <form class="space-y-4" onsubmit={submit}>
     <div class="space-y-2 text-center">
-      <Logo class="h-9 w-auto mx-auto text-slate-50" />
+      <Logo class="h-32 w-auto mx-auto" />
       <h1 class="text-sm font-bold text-slate-300 tracking-widest uppercase">Create your account</h1>
       <p class="text-xs text-slate-500">
         Everything you create stays on this computer — nothing is uploaded.
@@ -281,7 +281,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   {:else}
   <div class="space-y-5">
     <div class="space-y-2 text-center">
-      <Logo class="h-9 w-auto mx-auto text-slate-50" />
+      <Logo class="h-32 w-auto mx-auto" />
       <h1 class="text-sm font-bold text-slate-300 tracking-widest uppercase">Save your recovery codes</h1>
     </div>
 

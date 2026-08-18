@@ -35,7 +35,7 @@ export CC
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
         help-guide-current wails-version wails-cli-version wails-version-test package-version-lib-test tag-preflight config-check \
         installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests \
-        code-map code-map-current coverage-ledger-current coverage-ledger-drift coverage-ratchet \
+        code-map code-map-current brand-assets coverage-ledger-current coverage-ledger-drift coverage-ratchet \
         coverage-ratchet-update no-text-timestamp-ordering no-raw-import-in-tests
 
 help: ## Show this help.
@@ -104,7 +104,7 @@ test: ## Run Go unit tests.
 race: ## Run Go tests with the race detector (concurrency gate).
 	$(GO) test -race -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests wails-version package-version-lib-test test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/reset/code-map contracts + Go tests + frontend checks.
+verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests wails-version package-version-lib-test brand-assets test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/reset/code-map contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
@@ -112,6 +112,9 @@ code-map: ## Regenerate the portable first-party Go package dependency map.
 
 code-map-current: ## Fail when the checked-in package dependency map is stale.
 	@$(GO) run ./tools/code-map -check
+
+brand-assets: ## Verify Bobby branding assets and the Wails native icon source.
+	@node scripts/check-brand-assets.mjs
 
 coverage-ledger-current: ## Fail if a *_test.go/*.{test,spec}.{ts,js} file exists that TEST_COVERAGE_LEDGER.md never mentions.
 	@bash scripts/check-coverage-ledger-current_test.sh
@@ -232,5 +235,5 @@ tag-preflight: ## Validate PMFORGE_RELEASE_TAG and run the full gate before tag-
 	@bash scripts/check-release-tag.sh
 	@$(MAKE) check-release
 
-clean: ## Remove build artifacts (keeps the tracked build/darwin scaffold).
-	rm -rf build/bin/ build/packages/ build/macos/ build/appicon.png bin/ frontend/dist/ frontend/wailsjs/
+clean: ## Remove build artifacts while preserving source-owned platform assets.
+	rm -rf build/bin/ build/packages/ build/macos/ bin/ frontend/dist/ frontend/wailsjs/

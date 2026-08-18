@@ -22,6 +22,7 @@ identifiers used in this project are:
 | SPDX ID              | Applies to                                | Source                                                                                              |
 | -------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `GPL-3.0-or-later`   | Source code (Go, Svelte, TS, Makefile)    | https://www.gnu.org/licenses/gpl-3.0.txt                                                            |
+| `GPL-3.0-or-later`   | GoPMgr-owned Bobby Beaver branding artwork | [docs/branding.md](docs/branding.md)                                                                |
 | `GFDL-1.3-or-later`  | User-facing documentation (`docs/`)       | https://www.gnu.org/licenses/fdl-1.3.txt                                                            |
 | `CC0-1.0`            | Tiny config files, license notes, and compact ICC profile | https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt                  |
 | `OFL-1.1`            | Bundled fonts (Liberation, Noto, Source Sans 3, JetBrains Mono, Ledger) | https://openfontlicense.org/documents/OFL.txt                          |

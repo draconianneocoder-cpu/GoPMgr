@@ -51,7 +51,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       class="shrink-0 text-slate-100"
       aria-label="GoPMgr home"
     >
-      <Logo class="h-6 text-slate-100" />
+      <span class="flex items-center gap-2">
+        <Logo variant="compact" class="h-8 w-8" />
+        <span class="text-sm font-bold tracking-tight text-slate-100">GoPMgr</span>
+      </span>
     </a>
     <nav class="flex items-center gap-1" aria-label="Primary">
       {#each nav as item (item.key)}
