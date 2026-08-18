@@ -22,6 +22,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
+  import Button from '../Button.svelte';
 
   interface RACITask {
     id: string;
@@ -327,13 +328,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <th class="p-2 border-b border-slate-800 border-l text-center">
                   <div class="flex flex-col items-center gap-1">
                     <span>{role}</span>
-                    <button
+                    <Button
+                      variant="remove"
                       onclick={() => removeRole(role)}
-                      class="text-[10px] text-slate-500 hover:text-red-400"
-                      aria-label="Remove role {role}" title="Remove role {role}"
+                      class="text-[10px]"
+                      aria-label={`Remove role ${role}`} title={`Remove role ${role}`}
                     >
                       remove
-                    </button>
+                    </Button>
                   </div>
                 </th>
               {/each}
@@ -368,13 +370,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   </td>
                 {/each}
                 <td class="p-1 border-b border-slate-800 text-center">
-                  <button
+                  <Button
+                    variant="remove"
                     onclick={() => removeTask(task.id)}
-                    class="text-slate-500 hover:text-red-400 text-xs"
+                    class="text-xs"
                     aria-label="Remove task" title="Remove task"
                   >
                     ×
-                  </button>
+                  </Button>
                 </td>
               </tr>
             {/each}

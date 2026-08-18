@@ -17,6 +17,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import Button from '../Button.svelte';
 
   interface FishboneCategory {
     name: string;
@@ -378,13 +379,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
               bind:value={cat.name}
               class="flex-1 bg-slate-950 border border-slate-800 p-2 text-sm rounded focus:border-cyan-500 outline-none"
             />
-            <button
+            <Button
+              variant="remove"
               onclick={() => removeCategory(i)}
-              class="text-xs text-slate-500 hover:text-red-400 px-2"
+              class="text-xs px-2"
               aria-label="Remove category" title="Remove category"
             >
               ×
-            </button>
+            </Button>
           </div>
 
           {#each cat.causes as _, ci}
@@ -394,13 +396,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 placeholder="cause"
                 class="flex-1 bg-slate-950 border border-slate-800 p-2 text-xs rounded focus:border-cyan-500 outline-none"
               />
-              <button
+              <Button
+                variant="remove"
                 onclick={() => removeCause(i, ci)}
-                class="text-xs text-slate-500 hover:text-red-400 px-1"
+                class="text-xs px-1"
                 aria-label="Remove cause" title="Remove cause"
               >
                 ×
-              </button>
+              </Button>
             </div>
           {/each}
 

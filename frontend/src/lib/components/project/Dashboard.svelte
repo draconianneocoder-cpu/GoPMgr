@@ -32,6 +32,22 @@ import Tabs from '../Tabs.svelte';
     { id: 'devtools', label: 'Dev Tools' },
   ];
 
+  // Held here (not local to ChartCatalog/DocumentCatalog) and bound down,
+  // so a catalog's search/filter/expansion survives the user leaving its
+  // tab and coming back -- {#if}-gating the panels (see the comment above)
+  // unmounts the catalog component itself on every tab switch, which would
+  // otherwise reset this state every time. Initial values match each
+  // catalog's own pre-existing initiallyExpanded contract (auto-open an
+  // empty project's catalog); set once here rather than left to each
+  // catalog's own now-inert `initiallyExpanded` default, since a bound
+  // prop's initial value comes from the parent, not the child's fallback.
+  let chartsExpanded = $state(false);
+  let chartsQuery = $state('');
+  let chartsEngine = $state('all');
+  let docsExpanded = $state(false);
+  let docsQuery = $state('');
+  let docsPhase = $state('all');
+
   let chartKinds = $state<ChartDefinition[]>([]);
   let docKinds = $state<DocumentDefinition[]>([]);
   let charts = $state<ChartRecord[]>([]);
@@ -59,6 +75,17 @@ import Tabs from '../Tabs.svelte';
       docKinds = (await window.go.main.App.ListDocumentKinds()) ?? [];
       charts = (await window.go.main.App.ListCharts('')) ?? [];
       docs = (await window.go.main.App.ListDocuments('')) ?? [];
+      // One-time default (matches ChartCatalog/DocumentCatalog's own prior
+      // initiallyExpanded contract): an empty project's catalog opens
+      // automatically. Setting it here, once per successful load, rather
+      // than reactively on every charts/docs change, so creating a chart
+      // later doesn't silently reopen a catalog the user deliberately
+      // collapsed. load() only reruns on a full Dashboard remount (the
+      // Retry button only renders under loadError, never after a
+      // successful load), so this can't unexpectedly re-collapse or
+      // re-expand a catalog the user already interacted with this session.
+      chartsExpanded = charts.length === 0;
+      docsExpanded = docs.length === 0;
       try {
         agileEnabled = await window.go.main.App.AgileEnabled();
       } catch {
@@ -582,7 +609,9 @@ import Tabs from '../Tabs.svelte';
         {#if !loading && !loadError}
           <ChartCatalog
             definitions={chartKinds}
-            initiallyExpanded={charts.length === 0}
+            bind:expanded={chartsExpanded}
+            bind:query={chartsQuery}
+            bind:engine={chartsEngine}
             onCreate={(definition) => newChart(definition.kind, definition.name)}
           />
         {/if}
@@ -616,7 +645,9 @@ import Tabs from '../Tabs.svelte';
         {#if !loading && !loadError}
           <DocumentCatalog
             definitions={docKinds}
-            initiallyExpanded={docs.length === 0}
+            bind:expanded={docsExpanded}
+            bind:query={docsQuery}
+            bind:phase={docsPhase}
             onCreate={(definition) => newDocument(definition.kind, definition.name)}
           />
         {/if}

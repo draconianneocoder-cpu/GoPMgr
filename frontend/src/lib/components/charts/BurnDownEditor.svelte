@@ -7,6 +7,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // computes the ideal linear trajectory from remaining[0] to 0 and
   // adds it as a second series.
   import StatsEditorShell from './_stats_editor_shell.svelte';
+  import Button from '../Button.svelte';
 
   interface BurnDownDoc {
     title?: string;
@@ -65,7 +66,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <input type="number" bind:value={doc.remaining[i]} class="w-full bg-transparent text-sm px-2 py-1 focus:bg-slate-950 rounded text-right" />
             </td>
             <td class="p-1 border-b border-l border-slate-800 text-center">
-              <button onclick={() => removeRow(i)} class="text-slate-500 hover:text-red-400 text-xs" aria-label="Remove day" title="Remove day">×</button>
+              <Button variant="remove" class="text-xs" onclick={() => removeRow(i)} aria-label="Remove day" title="Remove day">×</Button>
             </td>
           </tr>
         {/each}

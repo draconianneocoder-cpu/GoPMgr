@@ -7,6 +7,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // count for a state on a day. State order (bottom-to-top of the
   // stack) is editable via the up/down arrows on each state header.
   import StatsEditorShell from './_stats_editor_shell.svelte';
+  import Button from '../Button.svelte';
 
   interface CumFlowDoc {
     title?: string;
@@ -95,7 +96,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <button onclick={() => moveState(name, -1)} disabled={i === 0} class="text-slate-500 hover:text-cyan-400 disabled:opacity-30" aria-label="Move down">▼</button>
             <button onclick={() => moveState(name, 1)} disabled={i === doc.state_order.length - 1} class="text-slate-500 hover:text-cyan-400 disabled:opacity-30" aria-label="Move up">▲</button>
             <span class="font-bold">{name}</span>
-            <button onclick={() => removeState(name)} class="text-slate-500 hover:text-red-400 ml-1" aria-label="Remove state" title="Remove state">×</button>
+            <Button variant="remove" class="ml-1" onclick={() => removeState(name)} aria-label="Remove state" title="Remove state">×</Button>
           </li>
         {/each}
       </ul>
@@ -139,7 +140,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   </td>
                 {/each}
                 <td class="p-1 border-b border-l border-slate-800 text-center">
-                  <button onclick={() => removeDay(di)} class="text-slate-500 hover:text-red-400 text-xs" aria-label="Remove day" title="Remove day">×</button>
+                  <Button variant="remove" class="text-xs" onclick={() => removeDay(di)} aria-label="Remove day" title="Remove day">×</Button>
                 </td>
               </tr>
             {/each}

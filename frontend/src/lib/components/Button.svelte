@@ -14,6 +14,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // original pattern), not a padded action button, so forcing it through
   // the same base would expand its box and disturb surrounding text.
   import type { Snippet } from 'svelte';
+  import type { HTMLButtonAttributes } from 'svelte/elements';
 
   let {
     variant = 'secondary',
@@ -23,8 +24,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     class: klass = '',
     onclick,
     children,
-  }: {
-    variant?: 'primary' | 'secondary' | 'danger' | 'caution' | 'ghost' | 'link';
+    ...rest
+  }: Omit<HTMLButtonAttributes, 'type' | 'class' | 'disabled' | 'onclick'> & {
+    variant?: 'primary' | 'secondary' | 'danger' | 'caution' | 'ghost' | 'link' | 'remove';
     size?: 'sm' | 'md' | 'lg';
     type?: 'button' | 'submit';
     disabled?: boolean;
@@ -43,7 +45,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // hand-written buttons (the dogfooding call site) never had it, unlike
   // the primary/cyan family which does app-wide; adding it here would
   // silently change ConfirmDialog's already-live-verified appearance.
-  const variantClasses: Record<Exclude<typeof variant, 'link'>, string> = {
+  const variantClasses: Record<Exclude<typeof variant, 'link' | 'remove'>, string> = {
     primary: 'bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase',
     secondary: 'bg-slate-800 hover:bg-slate-700',
     danger: 'bg-red-700 hover:bg-red-600 text-white font-bold',
@@ -53,7 +55,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
 </script>
 
 {#if variant === 'link'}
-  <button {type} {disabled} {onclick} class="text-cyan-400 underline hover:text-cyan-300 disabled:opacity-50 {klass}">
+  <button {type} {disabled} {onclick} class="text-cyan-400 underline hover:text-cyan-300 disabled:opacity-50 {klass}" {...rest}>
+    {@render children?.()}
+  </button>
+{:else if variant === 'remove'}
+  <!-- Inline icon-glyph buttons (the app's 21 aria-label="Remove …" ×
+       buttons across 14 chart editors) — exempt from the shared base like
+       `link`, since none of those call sites have `rounded`/`text-xs`/
+       padding in their original hand-written classes; folding this into
+       `variantClasses` instead would silently add padding to all 21. -->
+  <button {type} {disabled} {onclick} class="text-slate-500 hover:text-red-400 disabled:opacity-50 {klass}" {...rest}>
     {@render children?.()}
   </button>
 {:else}
@@ -62,6 +73,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {disabled}
     {onclick}
     class="rounded text-xs disabled:opacity-50 {sizeClasses[size]} {variantClasses[variant]} {klass}"
+    {...rest}
   >
     {@render children?.()}
   </button>

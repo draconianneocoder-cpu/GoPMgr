@@ -17,6 +17,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
+  import Button from '../Button.svelte';
 
   interface SWOTDoc {
     title?: string;
@@ -272,13 +273,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   aria-label={`${q.title} item ${i + 1}`}
                   class="flex-1 bg-transparent border-b border-slate-800 text-sm py-1 focus:border-cyan-500 outline-none resize-none"
                 ></textarea>
-                <button
+                <Button
+                  variant="remove"
                   onclick={() => removeItem(q.key, i)}
-                  class="text-slate-500 hover:text-red-400 text-xs mt-1"
+                  class="text-xs mt-1"
                   aria-label="Remove item" title="Remove item"
                 >
                   ×
-                </button>
+                </Button>
               </li>
             {/each}
             <li>
@@ -313,13 +315,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   aria-label={`${q.title} item ${i + 1}`}
                   class="flex-1 bg-transparent border-b border-slate-800 text-sm py-1 focus:border-cyan-500 outline-none resize-none"
                 ></textarea>
-                <button
+                <Button
+                  variant="remove"
                   onclick={() => removeItem(q.key, i)}
-                  class="text-slate-500 hover:text-red-400 text-xs mt-1"
+                  class="text-xs mt-1"
                   aria-label="Remove item" title="Remove item"
                 >
                   ×
-                </button>
+                </Button>
               </li>
             {/each}
             <li>

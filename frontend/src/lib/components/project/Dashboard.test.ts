@@ -606,4 +606,25 @@ describe('Dashboard tabs', () => {
 
     await waitFor(() => expect(getByText(/could not load this project/i)).toBeInTheDocument());
   });
+
+  // Regression test for the ChartCatalog/DocumentCatalog search-state
+  // reset flagged as a residual risk when the tab restructuring shipped
+  // (design doc §7's "out of scope" list): {#if}-gating the tab panels
+  // unmounts ChartCatalog/DocumentCatalog on every tab switch, which would
+  // reset their local search/filter/expansion state without the bindable
+  // props fix in ChartCatalog.svelte/DocumentCatalog.svelte.
+  it('preserves the chart catalog search text across a tab switch away and back', async () => {
+    const { getByRole } = await renderLoaded();
+    await switchTab(getByRole, /^charts$/i);
+
+    await fireEvent.input(getByRole('searchbox', { name: /search chart tools/i }), {
+      target: { value: 'earned value' },
+    });
+    expect((getByRole('searchbox', { name: /search chart tools/i }) as HTMLInputElement).value).toBe('earned value');
+
+    await switchTab(getByRole, /^overview$/i);
+    await switchTab(getByRole, /^charts$/i);
+
+    expect((getByRole('searchbox', { name: /search chart tools/i }) as HTMLInputElement).value).toBe('earned value');
+  });
 });

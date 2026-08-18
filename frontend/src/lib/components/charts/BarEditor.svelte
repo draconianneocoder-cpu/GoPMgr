@@ -7,6 +7,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // grid — but the chart renders as vertical bars. Same data model
   // (categories + named series of values).
   import StatsEditorShell from './_stats_editor_shell.svelte';
+  import Button from '../Button.svelte';
 
   interface SeriesDef {
     name: string;
@@ -78,7 +79,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <th class="p-2 border-b border-l border-slate-800 min-w-[140px]">
                 <div class="flex items-center gap-1">
                   <input bind:value={doc.series[i].name} class="flex-1 bg-transparent text-xs px-1 py-1 focus:bg-slate-800 rounded" />
-                  <button onclick={() => removeSeries(i)} class="text-slate-500 hover:text-red-400" aria-label="Remove series" title="Remove series">×</button>
+                  <Button variant="remove" onclick={() => removeSeries(i)} aria-label="Remove series" title="Remove series">×</Button>
                 </div>
               </th>
             {/each}
@@ -93,7 +94,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <td class="p-1 border-b border-slate-800 bg-slate-950">
                 <div class="flex items-center gap-1">
                   <input bind:value={doc.categories[ci]} class="flex-1 bg-transparent text-xs px-2 py-1 focus:bg-slate-900 rounded" />
-                  <button onclick={() => removeCategory(ci)} class="text-slate-500 hover:text-red-400 text-xs" aria-label="Remove category" title="Remove category">×</button>
+                  <Button variant="remove" class="text-xs" onclick={() => removeCategory(ci)} aria-label="Remove category" title="Remove category">×</Button>
                 </div>
               </td>
               {#each doc.series as _, si}

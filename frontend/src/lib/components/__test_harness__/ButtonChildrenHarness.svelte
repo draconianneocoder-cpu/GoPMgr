@@ -17,15 +17,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     disabled = undefined,
     class: klass = undefined,
     onclick = undefined,
+    ...rest
   }: {
     text: string;
-    variant?: 'primary' | 'secondary' | 'danger' | 'caution' | 'ghost' | 'link';
+    variant?: 'primary' | 'secondary' | 'danger' | 'caution' | 'ghost' | 'link' | 'remove';
     size?: 'sm' | 'md' | 'lg';
     type?: 'button' | 'submit';
     disabled?: boolean;
     class?: string;
     onclick?: (e: MouseEvent) => void;
+    [key: string]: unknown;
   } = $props();
 </script>
 
-<Button {variant} {size} {type} {disabled} class={klass} {onclick}>{text}</Button>
+<Button {variant} {size} {type} {disabled} class={klass} {onclick} {...rest}>{text}</Button>

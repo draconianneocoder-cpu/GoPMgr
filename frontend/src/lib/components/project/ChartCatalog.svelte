@@ -8,23 +8,31 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // cannot drift from the renderers that actually support them.
   import Card from '../Card.svelte';
 
+  // expanded/query/engine are optionally bindable: a parent that keeps this
+  // component's tab/section conditionally mounted (Dashboard.svelte's
+  // {#if}-gated tab panels) can bind them to persist search/filter/expansion
+  // state across an unmount+remount instead of it silently resetting on
+  // every tab switch. A caller that doesn't bind them (this component's own
+  // test file) gets the original one-time-init-from-prop behavior, since
+  // $bindable()'s default is only used when the parent doesn't supply the
+  // prop at all -- initiallyExpanded is already in scope by the time
+  // `expanded`'s default is evaluated, since destructuring defaults run
+  // left-to-right and can reference earlier bindings in the same pattern.
   let {
     definitions,
     initiallyExpanded = false,
     onCreate,
+    expanded = $bindable(initiallyExpanded),
+    query = $bindable(''),
+    engine = $bindable('all'),
   }: {
     definitions: ChartDefinition[];
     initiallyExpanded?: boolean;
     onCreate: (definition: ChartDefinition) => void;
+    expanded?: boolean;
+    query?: string;
+    engine?: string;
   } = $props();
-
-  // Read the prop through a closure to make the one-time initialization
-  // explicit to Svelte: parent changes must not unexpectedly reopen a catalog
-  // that the user deliberately collapsed.
-  const initialExpansion = () => initiallyExpanded;
-  let expanded = $state(initialExpansion());
-  let query = $state('');
-  let engine = $state('all');
 
   const engineLabels: Record<string, string> = {
     dag: 'Schedules and networks',

@@ -103,4 +103,50 @@ describe('Button', () => {
     const { getByText } = render(ButtonChildrenHarness, { props: { text: 'Submit', type: 'submit' } });
     expect((getByText('Submit') as HTMLButtonElement).type).toBe('submit');
   });
+
+  // Added 2026-08-18 for the app's 21 aria-label="Remove …" inline ×
+  // buttons across 14 chart editors (docs/beta-release-backlog.md's
+  // Priority #2 row): those buttons could not migrate to Button as built
+  // because Button had no `...rest` prop spread, so aria-label/title
+  // (their only accessible name -- the visible content is a bare "×") could
+  // not reach the rendered element. Fixed by widening Button's props type
+  // to intersect with svelte/elements' HTMLButtonAttributes.
+  describe('remove variant', () => {
+    it('reconstructs the original hand-written class string exactly, with no rounded/text-xs/padding', () => {
+      const { getByText } = render(ButtonChildrenHarness, {
+        props: { text: '×', variant: 'remove', size: 'lg' },
+      });
+      // size is deliberately passed and must be ignored, same as `link` --
+      // this is the whole reason `remove` is its own branch rather than a
+      // variantClasses entry: folding it into the shared base would
+      // silently add padding to all 21 inline glyph buttons it replaces.
+      expect(getByText('×').className.trim()).toBe('text-slate-500 hover:text-red-400 disabled:opacity-50');
+    });
+
+    it('forwards aria-label and title through the ...rest spread', () => {
+      const { getByRole } = render(ButtonChildrenHarness, {
+        props: { text: '×', variant: 'remove', 'aria-label': 'Remove series', title: 'Remove series' },
+      });
+      const btn = getByRole('button', { name: 'Remove series' });
+      expect(btn).toHaveAttribute('title', 'Remove series');
+    });
+
+    it('fires onclick and appends a passed-through class', async () => {
+      const onclick = vi.fn();
+      const { getByText } = render(ButtonChildrenHarness, {
+        props: { text: '×', variant: 'remove', class: 'ml-1', onclick },
+      });
+      const btn = getByText('×');
+      expect(btn.className).toContain('ml-1');
+      await fireEvent.click(btn);
+      expect(onclick).toHaveBeenCalledOnce();
+    });
+
+    it('forwards disabled', () => {
+      const { getByText } = render(ButtonChildrenHarness, {
+        props: { text: '×', variant: 'remove', disabled: true },
+      });
+      expect((getByText('×') as HTMLButtonElement).disabled).toBe(true);
+    });
+  });
 });

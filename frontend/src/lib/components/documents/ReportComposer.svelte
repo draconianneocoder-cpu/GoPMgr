@@ -16,6 +16,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { goto } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
   import SignCertificateModal from '../SignCertificateModal.svelte';
+  import Button from '../Button.svelte';
 
   let reportTitle = $state('Project Report');
   let subtitle = $state('');
@@ -353,7 +354,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   <div class="flex flex-col gap-1 items-end">
                     <button onclick={() => move(d.id, -1)} class="text-slate-500 hover:text-cyan-400 text-xs px-2" aria-label="Move up">▲</button>
                     <button onclick={() => move(d.id, 1)} class="text-slate-500 hover:text-cyan-400 text-xs px-2" aria-label="Move down">▼</button>
-                    <button onclick={() => exclude(d.id)} class="text-slate-500 hover:text-red-400 text-xs px-2" aria-label="Remove">×</button>
+                    <Button variant="remove" class="text-xs px-2" onclick={() => exclude(d.id)} aria-label="Remove">×</Button>
                   </div>
                 </div>
               </li>

@@ -21,6 +21,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
+  import Button from '../Button.svelte';
 
   interface MatrixDoc {
     title?: string;
@@ -317,13 +318,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
                       aria-label="Column name"
                       class="flex-1 bg-transparent text-xs px-2 py-1 rounded focus:bg-slate-800 focus:outline focus:outline-cyan-500"
                     />
-                    <button
+                    <Button
+                      variant="remove"
                       onclick={() => removeCol(ci)}
-                      class="text-slate-500 hover:text-red-400 text-xs"
+                      class="text-xs"
                       aria-label="Remove column" title="Remove column"
                     >
                       ×
-                    </button>
+                    </Button>
                   </div>
                 </th>
               {/each}
@@ -341,13 +343,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
                       aria-label="Row name"
                       class="flex-1 bg-transparent text-xs px-2 py-1 rounded focus:bg-slate-800 focus:outline focus:outline-cyan-500"
                     />
-                    <button
+                    <Button
+                      variant="remove"
                       onclick={() => removeRow(ri)}
-                      class="text-slate-500 hover:text-red-400 text-xs"
+                      class="text-xs"
                       aria-label="Remove row" title="Remove row"
                     >
                       ×
-                    </button>
+                    </Button>
                   </div>
                 </td>
                 {#each doc.cols as _, ci (ci)}

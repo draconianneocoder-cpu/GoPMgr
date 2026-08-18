@@ -20,6 +20,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
+  import Button from '../Button.svelte';
   import {
     shapePath,
     shapeFill,
@@ -501,13 +502,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
               bind:value={s.name}
               class="flex-1 bg-slate-950 border border-slate-800 p-2 text-xs rounded focus:border-cyan-500 outline-none"
             />
-            <button
+            <Button
+              variant="remove"
               onclick={() => removeSwimlane(s.id)}
-              class="text-xs text-slate-500 hover:text-red-400 px-1"
+              class="text-xs px-1"
               aria-label="Remove swimlane" title="Remove swimlane"
             >
               ×
-            </button>
+            </Button>
           </li>
         {/each}
       </ul>

@@ -8,22 +8,31 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // user-facing names aligned with the schemas used by the editor.
   import Card from '../Card.svelte';
 
+  // expanded/query/phase are optionally bindable: a parent that keeps this
+  // component's tab/section conditionally mounted (Dashboard.svelte's
+  // {#if}-gated tab panels) can bind them to persist search/filter/expansion
+  // state across an unmount+remount instead of it silently resetting on
+  // every tab switch. A caller that doesn't bind them (this component's own
+  // test file) gets the original one-time-init-from-prop behavior, since
+  // $bindable()'s default is only used when the parent doesn't supply the
+  // prop at all -- initiallyExpanded is already in scope by the time
+  // `expanded`'s default is evaluated, since destructuring defaults run
+  // left-to-right and can reference earlier bindings in the same pattern.
   let {
     definitions,
     initiallyExpanded = false,
     onCreate,
+    expanded = $bindable(initiallyExpanded),
+    query = $bindable(''),
+    phase = $bindable('all'),
   }: {
     definitions: DocumentDefinition[];
     initiallyExpanded?: boolean;
     onCreate: (definition: DocumentDefinition) => void;
+    expanded?: boolean;
+    query?: string;
+    phase?: string;
   } = $props();
-
-  // This is intentionally a one-time initialization. Later parent updates must
-  // not reopen a catalog that the user chose to collapse.
-  const initialExpansion = () => initiallyExpanded;
-  let expanded = $state(initialExpansion());
-  let query = $state('');
-  let phase = $state('all');
 
   const lifecyclePhases = ['initiation', 'planning', 'execution', 'monitoring', 'closing'];
   const phaseRank = new Map(lifecyclePhases.map((id, index) => [id, index]));

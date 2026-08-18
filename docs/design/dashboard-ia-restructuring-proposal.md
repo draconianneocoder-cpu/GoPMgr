@@ -426,27 +426,67 @@ corrections made during this build-out (loading/error placement, `{#if}`
 vs `hidden` panel mounting, and the new "nothing created yet" empty-state
 copy).
 
-**Residual risk, not closed this cycle**: not live-verified in a running
-Wails build. All coverage above is `vitest`/jsdom assertion-level — it
-proves the DOM queries resolve and the right elements exist, not that the
-tab row renders legibly, that panel spacing survived the restructuring, or
-that the focus ring (flagged as a genuine strength in the original
-design-critique pass, C3) is still visually present on the new tab
-buttons. C3 is verified here by assertion only (`tabindex`,
-`aria-selected`, `document.activeElement` after an arrow-key press), not
-by looking at a real focus ring in a real window. This is the same
-constraint disclosed for R1/R2 last cycle, but it matters more here: R1/R2
-changed strings, R3/R4 changed the DOM structure of the app's most-visited
-screen, and nobody has looked at the result in a browser.
+**Residual risk closed 2026-08-18**: R3/R4 was live-verified in a real
+running `wails dev` build (real Go bindings via `window.go`, not a
+vite-only dev server without them — confirmed by the
+`Using DevServer URL: http://localhost:34115` log line). Signed in, created
+a project, and exercised all four tabs, chart/document creation and
+deletion, and the Agile Pack toggle. Provenance note: automated sign-in
+succeeded earlier in this same work session; a later `wails dev` restart in
+this same cycle (to capture supplementary screenshot evidence) hit an
+environment guardrail that blocks automated credential entry, so that
+restart's screenshot instead came from a browser tab left authenticated
+from before the restart (session persisted because the isolated data
+directory was reused) — its project (`testguy`, a Pie Chart) was created by
+the repository owner directly, not by automation. The tab row renders legibly, panel spacing is intact,
+and the focus ring (C3) is visually present on the tab buttons in a real
+window, not just asserted via `tabindex`/`aria-selected`/
+`document.activeElement` as the prior cycle's jsdom-only coverage could
+prove. Zero defects found. (Methodology note: the browser pane's
+coordinate-based click tool did not reliably register clicks against this
+particular dev-server page in this environment — screenshot dimensions
+reported did not match the set viewport, a scaling mismatch, not an app
+bug — so interaction was driven via direct DOM `element.click()` calls
+instead. This exercises the real Svelte `onclick` handlers but not the
+physical hit-target/pointer-event path a real user's click would take;
+disclosed here rather than silently omitted.)
+
+**Also fixed 2026-08-18**: the `ChartCatalog`/`DocumentCatalog`
+search/filter/expansion state-reset-on-tab-switch item below was closed —
+see the next section.
 
 Still out of scope, independent of R1–R4:
 
 - Migrating `Dashboard.svelte`'s existing markup to the Button/Card library
-  (tracked separately, C5).
+  (tracked separately, C5) — partially addressed 2026-08-18 only insofar as
+  the 21 `aria-label="Remove …"` icon-glyph buttons across 14 chart/document
+  editors (a different subtree, not `Dashboard.svelte`'s own markup) were
+  migrated to `Button variant="remove"`; `Dashboard.svelte`'s own inline
+  button/input markup is untouched and C5 remains open.
 - Project Settings' own flat-form restructuring (a distinct, independently
-  flagged defect from the same design-critique pass, not addressed here).
-- Preserving `ChartCatalog`/`DocumentCatalog`'s search/filter state across a
-  tab switch away and back (see §3.3's `{#if}`-vs-`hidden` note) — the
-  `{#if}` implementation resets it; fixing this would mean lifting that
-  state into `Dashboard.svelte` as props, a small follow-up if it turns out
-  to matter in practice.
+  flagged defect from the same design-critique pass, not addressed here;
+  `Tabs.svelte` is available and unblocked as its second consumer whenever
+  this is picked up).
+- Priority #2's remaining shared-component migration surface (~68 files
+  with the duplicated inline button/input/select patterns this design
+  doc's C5 references) — not addressed this cycle beyond the 14
+  remove-button files above.
+
+**Closed 2026-08-18 — `ChartCatalog`/`DocumentCatalog` search/filter state
+across a tab switch**: previously listed here as out of scope (the
+`{#if}`-vs-`hidden` panel-mounting decision in §3.3 meant each catalog
+remounted on every tab switch away and back, silently resetting its local
+`expanded`/`query`/`engine`(or `phase`) state). Fixed by lifting that state
+into `Dashboard.svelte` via Svelte 5 `$bindable()` props
+(`bind:expanded`/`bind:query`/`bind:engine`/`bind:phase`) rather than
+changing the panel-mounting strategy — keeping all four panels mounted
+simultaneously (the alternative considered and rejected) would duplicate
+chart/document-kind name text in the DOM at once and break
+`Dashboard.test.ts`'s existing `getByText` load-test assertions. One
+fault-seeded regression test
+(`Dashboard.test.ts`, `'preserves the chart catalog search text across a
+tab switch away and back'`) proves this is load-bearing. Live-verified in
+the running `wails dev` build alongside the R3/R4 re-check above. See
+`TEST_COVERAGE_LEDGER.md`'s `Dashboard.test.ts`/`ChartCatalog.test.ts`/
+`DocumentCatalog.test.ts` rows for the full detail, including the
+`initiallyExpanded` prop's narrowed (test-only) role after this change.
