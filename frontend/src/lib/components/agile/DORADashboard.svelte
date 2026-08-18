@@ -12,6 +12,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../../session.svelte';
   import StatsChart from '../charts/StatsChart.svelte';
   import type { StatsLayout } from '../charts/_stats_types';
+  import ConfirmDialog from '../ConfirmDialog.svelte';
 
   let windowDays = $state(30);
   let dora = $state<DORAResult | null>(null);
@@ -80,13 +81,34 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  async function deleteDeployment(id: string) {
-    if (!confirm('Delete this deployment record?')) return;
+  // Used `confirm()` — silently a no-op in the packaged macOS build, since
+  // Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+  // confirm/alert/prompt panel methods (verified: no `runJavaScript*Panel`
+  // implementation anywhere in the vendored module). Now routed through the
+  // shared ConfirmDialog (a real DOM modal) instead.
+  let deletingDeployment = $state<AgileDeployment | null>(null);
+  let deleteDeploymentBusy = $state(false);
+
+  function requestDeleteDeployment(d: AgileDeployment) {
+    deletingDeployment = d;
+  }
+
+  function cancelDeleteDeployment() {
+    deletingDeployment = null;
+  }
+
+  async function deleteDeployment() {
+    if (!deletingDeployment) return;
+    const id = deletingDeployment.id;
+    deleteDeploymentBusy = true;
     try {
       await window.go.main.App.DeleteDeployment(id);
+      deletingDeployment = null;
       await refresh();
     } catch (err: any) {
       error = `Delete failed: ${err}`;
+    } finally {
+      deleteDeploymentBusy = false;
     }
   }
 
@@ -329,7 +351,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <span class="text-[10px] text-amber-400 w-24 text-right">{d.restore_time_hours.toFixed(1)}h restore</span>
               {/if}
               <button
-                onclick={() => deleteDeployment(d.id)}
+                onclick={() => requestDeleteDeployment(d)}
                 class="text-xs text-slate-500 hover:text-red-400"
                 aria-label="Delete deployment"
               >
@@ -342,3 +364,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </section>
   </main>
 </div>
+
+<ConfirmDialog
+  open={!!deletingDeployment}
+  title="Delete deployment record"
+  message={`Delete deployment "${deletingDeployment?.version ?? ''}"? This cannot be undone.`}
+  busy={deleteDeploymentBusy}
+  onConfirm={deleteDeployment}
+  onCancel={cancelDeleteDeployment}
+/>

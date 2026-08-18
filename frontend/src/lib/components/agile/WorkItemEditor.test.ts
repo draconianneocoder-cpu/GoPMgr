@@ -533,3 +533,68 @@ describe('WorkItemEditor close guard', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('WorkItemEditor delete', () => {
+  // Delete used `confirm()` — silently a no-op in the packaged macOS build
+  // (Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+  // confirm/alert/prompt panel methods). Now routed through the shared
+  // ConfirmDialog instead; these tests cover that path directly, since
+  // nothing above exercised the Delete button at all.
+  it('opens the shared confirm dialog on Delete and does not call window.confirm', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm');
+    const utils = render(WorkItemEditor, {
+      item: makeItem({ title: 'Doomed item' }),
+      onClose: vi.fn(),
+      onSaved: vi.fn(),
+      onDeleted: vi.fn(),
+    });
+    const deleteBtn = utils.getByText('Delete');
+    await fireEvent.click(deleteBtn);
+
+    const dialog = document.querySelector('[role="alertdialog"]');
+    expect(dialog).not.toBeNull();
+    expect(dialog?.textContent).toContain('Doomed item');
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(app.DeleteWorkItem).not.toHaveBeenCalled();
+  });
+
+  it('deletes the work item, notifies the parent, and closes when the dialog is confirmed', async () => {
+    const onDeleted = vi.fn();
+    const onClose = vi.fn();
+    const utils = render(WorkItemEditor, {
+      item: makeItem({ id: 'wi-42' }),
+      onClose,
+      onSaved: vi.fn(),
+      onDeleted,
+    });
+    await fireEvent.click(utils.getByText('Delete'));
+    const confirmBtn = Array.from(document.querySelectorAll('[role="alertdialog"] button')).find(
+      (b) => b.textContent?.trim() === 'Delete',
+    )!;
+    await fireEvent.click(confirmBtn);
+
+    await waitFor(() => expect(app.DeleteWorkItem).toHaveBeenCalledWith('wi-42'));
+    expect(onDeleted).toHaveBeenCalledWith('wi-42');
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+  });
+
+  it('keeps the work item and the editor open when the dialog is cancelled', async () => {
+    const utils = render(WorkItemEditor, {
+      item: makeItem(),
+      onClose: vi.fn(),
+      onSaved: vi.fn(),
+      onDeleted: vi.fn(),
+    });
+    await fireEvent.click(utils.getByText('Delete'));
+    const dialogCancelBtn = Array.from(document.querySelectorAll('[role="alertdialog"] button')).find(
+      (b) => b.textContent?.trim() === 'Cancel',
+    )!;
+    await fireEvent.click(dialogCancelBtn);
+
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(app.DeleteWorkItem).not.toHaveBeenCalled();
+    // Editor itself is still open.
+    expect(document.querySelector('input')).not.toBeNull();
+  });
+});

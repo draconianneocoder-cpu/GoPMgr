@@ -478,3 +478,83 @@ describe('SprintList close guard', () => {
     expect(document.querySelector('input')).toBeNull();
   });
 });
+
+function findButton(root: ParentNode, text: string): HTMLButtonElement {
+  const btn = Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.trim() === text);
+  if (!btn) throw new Error(`no button with text "${text}" found`);
+  return btn as HTMLButtonElement;
+}
+
+describe('SprintList complete/delete', () => {
+  // Complete/Delete both used `confirm()` — silently a no-op in the
+  // packaged macOS build (Wails v2.13.0's darwin WKUIDelegate implements
+  // none of the JS confirm/alert/prompt panel methods). Now routed through
+  // the shared ConfirmDialog instead.
+  it('opens the shared confirm dialog on Delete and does not call window.confirm', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm');
+    const utils = render(SprintList);
+    await waitFor(() => expect(app.ListSprints).toHaveBeenCalled());
+    await waitFor(() => expect(() => findButton(utils.container, 'Delete')).not.toThrow());
+    await fireEvent.click(findButton(utils.container, 'Delete'));
+
+    const dialog = document.querySelector('[role="alertdialog"]');
+    expect(dialog).not.toBeNull();
+    expect(dialog?.textContent).toContain('Sprint 1');
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(app.DeleteSprint).not.toHaveBeenCalled();
+  });
+
+  it('deletes the sprint when the delete dialog is confirmed', async () => {
+    const utils = render(SprintList);
+    await waitFor(() => expect(() => findButton(utils.container, 'Delete')).not.toThrow());
+    await fireEvent.click(findButton(utils.container, 'Delete'));
+    await waitFor(() => expect(document.querySelector('[role="alertdialog"]')).not.toBeNull());
+    await fireEvent.click(findButton(document.querySelector('[role="alertdialog"]')!, 'Delete'));
+
+    await waitFor(() => expect(app.DeleteSprint).toHaveBeenCalledWith('sp-1'));
+    await waitFor(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
+  });
+
+  it('keeps the sprint when the delete dialog is cancelled', async () => {
+    const utils = render(SprintList);
+    await waitFor(() => expect(() => findButton(utils.container, 'Delete')).not.toThrow());
+    await fireEvent.click(findButton(utils.container, 'Delete'));
+    await waitFor(() => expect(document.querySelector('[role="alertdialog"]')).not.toBeNull());
+    await fireEvent.click(findButton(document.querySelector('[role="alertdialog"]')!, 'Cancel'));
+
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(app.DeleteSprint).not.toHaveBeenCalled();
+  });
+
+  it('opens a caution-toned confirm dialog on Complete for an active sprint and does not call window.confirm', async () => {
+    const activeSprint: AgileSprint = { ...sprint, status: 'active' };
+    app.ListSprints = vi.fn(async () => [activeSprint]);
+    const confirmSpy = vi.spyOn(window, 'confirm');
+    const utils = render(SprintList);
+    await waitFor(() => expect(() => findButton(utils.container, 'Complete')).not.toThrow());
+    await fireEvent.click(findButton(utils.container, 'Complete'));
+
+    await waitFor(() => expect(document.querySelector('[role="alertdialog"]')).not.toBeNull());
+    const dialog = document.querySelector('[role="alertdialog"]')!;
+    expect(dialog.textContent).toContain('Sprint 1');
+    const confirmBtn = findButton(dialog, 'Complete');
+    expect(confirmBtn.className).toContain('bg-amber-700');
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(app.SaveSprint).not.toHaveBeenCalled();
+  });
+
+  it('completes the sprint via SaveSprint when the complete dialog is confirmed', async () => {
+    const activeSprint: AgileSprint = { ...sprint, status: 'active' };
+    app.ListSprints = vi.fn(async () => [activeSprint]);
+    const utils = render(SprintList);
+    await waitFor(() => expect(() => findButton(utils.container, 'Complete')).not.toThrow());
+    await fireEvent.click(findButton(utils.container, 'Complete'));
+    await waitFor(() => expect(document.querySelector('[role="alertdialog"]')).not.toBeNull());
+    await fireEvent.click(findButton(document.querySelector('[role="alertdialog"]')!, 'Complete'));
+
+    await waitFor(() =>
+      expect(app.SaveSprint).toHaveBeenCalledWith(expect.objectContaining({ id: 'sp-1', status: 'complete' })),
+    );
+    await waitFor(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
+  });
+});

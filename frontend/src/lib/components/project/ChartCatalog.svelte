@@ -6,6 +6,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // ChartCatalog is a compact "tool crib" for the Dashboard. Definitions come
   // from Go's chart registry, so names, descriptions, and engine membership
   // cannot drift from the renderers that actually support them.
+  import Card from '../Card.svelte';
+
   let {
     definitions,
     initiallyExpanded = false,
@@ -78,7 +80,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 </script>
 
-<div class="overflow-hidden rounded-lg border border-slate-800 bg-slate-900/60">
+<Card>
   <button
     type="button"
     onclick={toggle}
@@ -158,4 +160,4 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {/if}
     </div>
   {/if}
-</div>
+</Card>

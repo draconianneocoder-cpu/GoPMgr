@@ -16,6 +16,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
+  import ConfirmDialog from '../ConfirmDialog.svelte';
 
   interface FishboneCategory {
     name: string;
@@ -104,12 +105,45 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  // Used `confirm()` — silently a no-op in the packaged macOS build, since
+  // Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+  // confirm/alert/prompt panel methods (verified: no `runJavaScript*Panel`
+  // implementation anywhere in the vendored module). Now routed through the
+  // shared ConfirmDialog (a real DOM modal) instead; the replace-and-refresh
+  // that used to run right after the guarded `confirm()` call now runs
+  // inside the dialog's onConfirm callback instead.
+  let confirmingSixMs = $state(false);
+  // Guards against a second "Apply 6 Ms preset" click re-opening the dialog
+  // while the first confirm's refreshLayout() (SaveChart + LayoutChart) is
+  // still in flight — the button is enabled again the instant the dialog
+  // closes, but the categories it would ask to replace are already the
+  // preset's own categories mid-save.
+  let applyingSixMs = $state(false);
+
   function applySixMs() {
+    if (applyingSixMs) return;
     if (doc.categories.length > 0) {
-      if (!confirm('Replace existing categories with the 6 Ms preset?')) return;
+      confirmingSixMs = true;
+      return;
     }
     doc.categories = SIX_MS.map((name) => ({ name, causes: [] }));
-    void refreshLayout();
+    applyingSixMs = true;
+    void refreshLayout().finally(() => {
+      applyingSixMs = false;
+    });
+  }
+
+  function confirmSixMs() {
+    confirmingSixMs = false;
+    doc.categories = SIX_MS.map((name) => ({ name, causes: [] }));
+    applyingSixMs = true;
+    void refreshLayout().finally(() => {
+      applyingSixMs = false;
+    });
+  }
+
+  function cancelSixMs() {
+    confirmingSixMs = false;
   }
 
   function addCategory() {
@@ -221,7 +255,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
           Saved {lastSavedAt.toLocaleTimeString()}
         </span>
       {/if}
-      <button onclick={applySixMs} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
+      <button
+        onclick={applySixMs}
+        disabled={applyingSixMs}
+        class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded disabled:opacity-50"
+      >
         Apply 6 Ms preset
       </button>
       <button onclick={addCategory} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
@@ -378,3 +416,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   </div>
 </div>
 {/if}
+
+<ConfirmDialog
+  open={confirmingSixMs}
+  title="Replace categories"
+  message="Replace existing categories with the 6 Ms preset? This cannot be undone."
+  tone="caution"
+  confirmLabel="Replace"
+  onConfirm={confirmSixMs}
+  onCancel={cancelSixMs}
+/>

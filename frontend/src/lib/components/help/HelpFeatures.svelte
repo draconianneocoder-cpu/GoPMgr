@@ -4,6 +4,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import type { SectionId } from '../help-sections';
+  // 23 in-page cross-reference links were hand-copied `<button class="text-
+  // cyan-400 underline hover:text-cyan-300">` — the app's cleanest, lowest-
+  // risk migration candidate: one exact class string, zero variant
+  // diversity, purely internal navigation. Now the shared Button component's
+  // `link` variant, which is deliberately exempt from `size`/padding/rounded
+  // (see Button.svelte) since these sit inline inside prose sentences.
+  import Button from '../Button.svelte';
 
   let { active, nav }: { active: SectionId; nav: (id: SectionId) => void } = $props();
 </script>
@@ -56,7 +63,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section>
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Creating Projects</h3>
             <p class="text-sm text-slate-300">Click "New Project" (top right) to launch the
-              <button onclick={() => nav('getting-started')} class="text-cyan-400 underline hover:text-cyan-300">Project Launchpad</button>.
+              <Button variant="link" onclick={() => nav('getting-started')}>Project Launchpad</Button>.
               Projects cannot be deleted from the Portfolio. Project files remain on disk; data directories are never removed by the application.
             </p>
           </section>
@@ -84,7 +91,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li>The controlled-document index searches all 25 templates by name and purpose, with lifecycle-phase filters. It opens automatically when the project has no documents and stays compact for returning users.</li>
               <li><span class="font-medium text-slate-100">Build combined report</span> opens report assembly separately because it combines existing documents rather than creating a document template.</li>
               <li><span class="font-medium text-slate-100">Export</span> — export the document in the configured format (PDF, DOCX, ODT, etc.). See
-                <button onclick={() => nav('export-signing')} class="text-cyan-400 underline hover:text-cyan-300">Export &amp; Digital Signing</button>.
+                <Button variant="link" onclick={() => nav('export-signing')}>Export &amp; Digital Signing</Button>.
               </li>
               <li><span class="font-medium text-slate-100">Sign &amp; Export</span> — export as a digitally signed PAdES PDF. Requires a certificate to be configured in Project Settings.</li>
               <li>Delete (two-click confirm) removes the document permanently.</li>
@@ -105,10 +112,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section>
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Other Project Views</h3>
             <ul class="text-sm text-slate-300 space-y-1 ml-3">
-              <li><span class="font-medium text-slate-100">Timeline</span> — chronological event strip. See <button onclick={() => nav('timeline')} class="text-cyan-400 underline hover:text-cyan-300">Timeline</button>.</li>
-              <li><span class="font-medium text-slate-100">Stakeholders</span> — project stakeholder registry. See <button onclick={() => nav('stakeholders')} class="text-cyan-400 underline hover:text-cyan-300">Stakeholder Manager</button>.</li>
-              <li><span class="font-medium text-slate-100">Report Composer</span> — assemble multi-document reports. See <button onclick={() => nav('report-composer')} class="text-cyan-400 underline hover:text-cyan-300">Report Composer</button>.</li>
-              <li><span class="font-medium text-slate-100">Project Settings</span> — edit project metadata, what-if scenarios, scenario chart copies and editor access, scenario comparison, baseline promotion, export settings, compliance-mode audit verification, database encryption, document fonts, and Resource Capacity calendars. The scenario editor also compares and promotes copied charts. See <button onclick={() => nav('encryption')} class="text-cyan-400 underline hover:text-cyan-300">Database Encryption</button> and <button onclick={() => nav('export-signing')} class="text-cyan-400 underline hover:text-cyan-300">Export &amp; Signing</button>.</li>
+              <li><span class="font-medium text-slate-100">Timeline</span> — chronological event strip. See <Button variant="link" onclick={() => nav('timeline')}>Timeline</Button>.</li>
+              <li><span class="font-medium text-slate-100">Stakeholders</span> — project stakeholder registry. See <Button variant="link" onclick={() => nav('stakeholders')}>Stakeholder Manager</Button>.</li>
+              <li><span class="font-medium text-slate-100">Report Composer</span> — assemble multi-document reports. See <Button variant="link" onclick={() => nav('report-composer')}>Report Composer</Button>.</li>
+              <li><span class="font-medium text-slate-100">Project Settings</span> — edit project metadata, what-if scenarios, scenario chart copies and editor access, scenario comparison, baseline promotion, export settings, compliance-mode audit verification, database encryption, document fonts, and Resource Capacity calendars. The scenario editor also compares and promotes copied charts. See <Button variant="link" onclick={() => nav('encryption')}>Database Encryption</Button> and <Button variant="link" onclick={() => nav('export-signing')}>Export &amp; Signing</Button>.</li>
             </ul>
           </section>
 
@@ -172,11 +179,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Related</h3>
             <p class="text-sm text-slate-300">
               Methodology guidance:
-              <button onclick={() => nav('scrum')} class="text-cyan-400 underline hover:text-cyan-300">Scrum</button>,
-              <button onclick={() => nav('kanban')} class="text-cyan-400 underline hover:text-cyan-300">Kanban</button>,
-              <button onclick={() => nav('scrumban')} class="text-cyan-400 underline hover:text-cyan-300">Scrumban</button>.
+              <Button variant="link" onclick={() => nav('scrum')}>Scrum</Button>,
+              <Button variant="link" onclick={() => nav('kanban')}>Kanban</Button>,
+              <Button variant="link" onclick={() => nav('scrumban')}>Scrumban</Button>.
               Progress charts: see the
-              <button onclick={() => nav('charts')} class="text-cyan-400 underline hover:text-cyan-300">Charts reference</button>.
+              <Button variant="link" onclick={() => nav('charts')}>Charts reference</Button>.
             </p>
           </section>
 
@@ -192,9 +199,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">How the numbers are built</h3>
             <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
-              <li><span class="font-medium text-slate-100">Budget</span> — the cap you set in <button onclick={() => nav('project-settings')} class="text-cyan-400 underline hover:text-cyan-300">Project Settings</button>.</li>
+              <li><span class="font-medium text-slate-100">Budget</span> — the cap you set in <Button variant="link" onclick={() => nav('project-settings')}>Project Settings</Button>.</li>
               <li><span class="font-medium text-slate-100">Contracts</span> — the sum of contract values on vendor stakeholders.</li>
-              <li><span class="font-medium text-slate-100">Labour estimate</span> — work-item points × the assignee's hourly rate from the <button onclick={() => nav('stakeholders')} class="text-cyan-400 underline hover:text-cyan-300">Stakeholder Manager</button>.</li>
+              <li><span class="font-medium text-slate-100">Labour estimate</span> — work-item points × the assignee's hourly rate from the <Button variant="link" onclick={() => nav('stakeholders')}>Stakeholder Manager</Button>.</li>
               <li><span class="font-medium text-slate-100">Committed</span> = contracts + labour estimate; <span class="font-medium text-slate-100">Remaining</span> = budget − committed.</li>
             </ul>
           </section>
@@ -295,7 +302,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <p class="text-sm text-slate-400 mb-5">
             Everything that belongs to one project (File &rarr; Project Settings while a project
             is open). Not to be confused with
-            <button onclick={() => nav('app-settings')} class="text-cyan-400 underline hover:text-cyan-300">App Settings</button>,
+            <Button variant="link" onclick={() => nav('app-settings')}>App Settings</Button>,
             which holds your personal, cross-project preferences.
           </p>
 
@@ -305,7 +312,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               Name, description, owner, industry, sub-category, methodology, country code,
               lifecycle status, phase, start/end dates, and the budget cap. The classification
               fields drive terminology, Launchpad rules, and the country's holiday calendar on the
-              <button onclick={() => nav('timeline')} class="text-cyan-400 underline hover:text-cyan-300">Timeline</button>.
+              <Button variant="link" onclick={() => nav('timeline')}>Timeline</Button>.
             </p>
           </section>
 
@@ -322,8 +329,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Export, signing &amp; fonts</h3>
             <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
-              <li>Default document signing method and certificate — see <button onclick={() => nav('export-signing')} class="text-cyan-400 underline hover:text-cyan-300">Export &amp; Digital Signing</button>.</li>
-              <li>Schedule report exports and MS Project interchange — see <button onclick={() => nav('import-export')} class="text-cyan-400 underline hover:text-cyan-300">Schedule Import &amp; Export</button>.</li>
+              <li>Default document signing method and certificate — see <Button variant="link" onclick={() => nav('export-signing')}>Export &amp; Digital Signing</Button>.</li>
+              <li>Schedule report exports and MS Project interchange — see <Button variant="link" onclick={() => nav('import-export')}>Schedule Import &amp; Export</Button>.</li>
               <li>Document font selection, including importing a .ttf for this project's PDFs.</li>
             </ul>
           </section>
@@ -331,9 +338,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Scenarios, compliance &amp; encryption</h3>
             <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
-              <li>What-if scenarios are created and managed here — see <button onclick={() => nav('scenarios')} class="text-cyan-400 underline hover:text-cyan-300">Scenarios &amp; What-If</button>.</li>
+              <li>What-if scenarios are created and managed here — see <Button variant="link" onclick={() => nav('scenarios')}>Scenarios &amp; What-If</Button>.</li>
               <li><span class="font-medium text-slate-100">Compliance mode</span> verifies the tamper-evident audit chain before the project opens and blocks it if the chain was altered. Export a JSON verification report — or repair evidence before any manual fix — from this panel.</li>
-              <li>Eligible plaintext project databases can be migrated to encrypted storage — see <button onclick={() => nav('encryption')} class="text-cyan-400 underline hover:text-cyan-300">Database Encryption</button>.</li>
+              <li>Eligible plaintext project databases can be migrated to encrypted storage — see <Button variant="link" onclick={() => nav('encryption')}>Database Encryption</Button>.</li>
             </ul>
           </section>
 
@@ -349,7 +356,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Workflow</h3>
             <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
-              <li>In <button onclick={() => nav('project-settings')} class="text-cyan-400 underline hover:text-cyan-300">Project Settings</button>, create a scenario and select it as active.</li>
+              <li>In <Button variant="link" onclick={() => nav('project-settings')}>Project Settings</Button>, create a scenario and select it as active.</li>
               <li>Copy a source chart into it — either with its <span class="font-medium text-slate-100">current data</span> or from a <span class="font-medium text-slate-100">saved schedule baseline</span>.</li>
               <li>Open the copy in the dedicated scenario editor and experiment: change durations, dependencies, whatever the question needs.</li>
               <li>Compare the edited scenario against its captured baseline data side by side.</li>
@@ -362,7 +369,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
               <li>Scenario copies never overwrite the source chart — promotion creates a baseline; it does not silently replace your working schedule.</li>
               <li>Scenario lifecycle actions are recorded in the tamper-evident audit chain, so compliance mode can account for them.</li>
-              <li>For probabilistic (rather than structural) what-ifs, the CPM editor's Monte Carlo panel answers "how likely is this date" — see the <button onclick={() => nav('charts')} class="text-cyan-400 underline hover:text-cyan-300">Charts reference</button>.</li>
+              <li>For probabilistic (rather than structural) what-ifs, the CPM editor's Monte Carlo panel answers "how likely is this date" — see the <Button variant="link" onclick={() => nav('charts')}>Charts reference</Button>.</li>
             </ul>
           </section>
 
@@ -391,7 +398,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Exporting the schedule</h3>
             <p class="text-sm text-slate-300 mb-3">
-              From <button onclick={() => nav('project-settings')} class="text-cyan-400 underline hover:text-cyan-300">Project Settings</button>, export the current schedule report as:
+              From <Button variant="link" onclick={() => nav('project-settings')}>Project Settings</Button>, export the current schedule report as:
             </p>
             <div class="overflow-x-auto">
               <table class="w-full text-sm border-collapse">
@@ -418,7 +425,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             </div>
             <p class="text-sm text-slate-400 mt-3">
               Individual documents and charts export from the Dashboard with optional
-              <button onclick={() => nav('export-signing')} class="text-cyan-400 underline hover:text-cyan-300">digital signing</button>;
+              <Button variant="link" onclick={() => nav('export-signing')}>digital signing</Button>;
               the same schedule report is also available headless via the command line.
             </p>
           </section>
@@ -617,7 +624,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               For encrypted projects add <span class="font-mono text-xs">--username</span> and
               <span class="font-mono text-xs">--password-env</span> — the password comes from an
               environment variable, never the command line. See
-              <button onclick={() => nav('install')} class="text-cyan-400 underline hover:text-cyan-300">Installing &amp; Running</button>
+              <Button variant="link" onclick={() => nav('install')}>Installing &amp; Running</Button>
               for where the binary lives.
             </p>
           </section>

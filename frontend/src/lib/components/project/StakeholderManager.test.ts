@@ -617,3 +617,60 @@ describe('StakeholderManager close guard', () => {
     expect(document.querySelector('input')).toBeNull();
   });
 });
+
+describe('StakeholderManager delete', () => {
+  // Delete used `confirm()` — silently a no-op in the packaged macOS build
+  // (Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+  // confirm/alert/prompt panel methods). Now routed through the shared
+  // ConfirmDialog instead. The "does not replace or delete an open draft
+  // through background actions" test above already covers the
+  // `editing || busy` guard that runs before this dialog ever opens; these
+  // cover the dialog path itself.
+  it('opens the shared confirm dialog on the row delete button and does not call window.confirm', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm');
+    const utils = render(StakeholderManager);
+    await waitFor(() => expect(app.ListStakeholders).toHaveBeenCalled());
+    const deleteBtn = await waitFor(
+      () => utils.container.querySelector('[aria-label="Delete stakeholder"]') as HTMLButtonElement,
+    );
+    await fireEvent.click(deleteBtn);
+
+    const dialog = document.querySelector('[role="alertdialog"]');
+    expect(dialog).not.toBeNull();
+    expect(dialog?.textContent).toContain('Ada Lovelace');
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(app.DeleteStakeholder).not.toHaveBeenCalled();
+  });
+
+  it('deletes the stakeholder and refreshes the list when the dialog is confirmed', async () => {
+    const utils = render(StakeholderManager);
+    await waitFor(() => expect(app.ListStakeholders).toHaveBeenCalled());
+    const deleteBtn = await waitFor(
+      () => utils.container.querySelector('[aria-label="Delete stakeholder"]') as HTMLButtonElement,
+    );
+    await fireEvent.click(deleteBtn);
+    const confirmBtn = Array.from(document.querySelectorAll('[role="alertdialog"] button')).find(
+      (b) => b.textContent?.trim() === 'Delete',
+    )!;
+    await fireEvent.click(confirmBtn);
+
+    await waitFor(() => expect(app.DeleteStakeholder).toHaveBeenCalledWith('sh-1'));
+    await waitFor(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
+  });
+
+  it('keeps the stakeholder when the dialog is cancelled', async () => {
+    const utils = render(StakeholderManager);
+    await waitFor(() => expect(app.ListStakeholders).toHaveBeenCalled());
+    const deleteBtn = await waitFor(
+      () => utils.container.querySelector('[aria-label="Delete stakeholder"]') as HTMLButtonElement,
+    );
+    await fireEvent.click(deleteBtn);
+    const cancelBtn = Array.from(document.querySelectorAll('[role="alertdialog"] button')).find(
+      (b) => b.textContent?.trim() === 'Cancel',
+    )!;
+    await fireEvent.click(cancelBtn);
+
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(app.DeleteStakeholder).not.toHaveBeenCalled();
+  });
+});

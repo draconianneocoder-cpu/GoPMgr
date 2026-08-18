@@ -13,6 +13,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { autosave } from '../../autosave.svelte';
   import { session, goto, requestNavigation } from '../../session.svelte';
   import Spinner from '../Spinner.svelte';
+  import ConfirmDialog from '../ConfirmDialog.svelte';
+  import Button from '../Button.svelte';
+  import Input from '../Input.svelte';
+  import Select from '../Select.svelte';
+  import Textarea from '../Textarea.svelte';
 
   let list = $state<Stakeholder[]>([]);
   let filter = $state<'' | StakeholderCategory>('');
@@ -217,14 +222,40 @@ SPDX-License-Identifier: GPL-3.0-or-later
     });
   }
 
-  async function destroy(s: Stakeholder) {
+  // Deleting used `confirm()` — silently a no-op in the packaged macOS
+  // build, since Wails v2.13.0's darwin WKUIDelegate implements none of the
+  // JS confirm/alert/prompt panel methods (verified: no `runJavaScript*Panel`
+  // implementation anywhere in the vendored module). Now routed through the
+  // shared ConfirmDialog (a real DOM modal) instead, matching the fix
+  // already applied to this file's unsaved-changes close guard. The
+  // `editing || busy` guard is preserved unchanged so a background delete
+  // still cannot fire while an editor draft is open or a save is in flight
+  // (see "does not replace or delete an open draft through background
+  // actions" below).
+  let deletingStakeholder = $state<Stakeholder | null>(null);
+  let deleteBusy = $state(false);
+
+  function requestDelete(s: Stakeholder) {
     if (editing || busy) return;
-    if (!confirm(`Delete ${s.name}?`)) return;
+    deletingStakeholder = s;
+  }
+
+  function cancelDelete() {
+    deletingStakeholder = null;
+  }
+
+  async function destroy() {
+    if (!deletingStakeholder) return;
+    const s = deletingStakeholder;
+    deleteBusy = true;
     try {
       await window.go.main.App.DeleteStakeholder(s.id);
+      deletingStakeholder = null;
       await refresh();
     } catch (err: any) {
       error = `Delete failed: ${err}`;
+    } finally {
+      deleteBusy = false;
     }
   }
 
@@ -263,12 +294,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <option value="external">External</option>
         </select>
       </label>
-      <button
-        onclick={openNew}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase px-3 py-1 rounded"
-      >
-        + Stakeholder
-      </button>
+      <Button variant="primary" size="sm" onclick={openNew}>+ Stakeholder</Button>
     </div>
   </header>
 
@@ -308,7 +334,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               </div>
             </button>
             <button
-              onclick={() => destroy(s)}
+              onclick={() => requestDelete(s)}
               class="text-xs text-slate-500 hover:text-red-400"
               aria-label="Delete stakeholder"
             >
@@ -346,93 +372,51 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <div class="grid grid-cols-2 gap-3">
           <label class="block">
             <span class="text-xs text-slate-500 uppercase">Name</span>
-            <input
-              bind:value={editing.name}
-              disabled={busy}
-              class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-            />
+            <Input bind:value={editing.name} disabled={busy} />
           </label>
           <label class="block">
             <span class="text-xs text-slate-500 uppercase">Category</span>
-            <select bind:value={editing.category} disabled={busy} class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded">
+            <Select bind:value={editing.category} disabled={busy}>
               <option value="team">Team</option>
               <option value="vendor">Vendor</option>
               <option value="sponsor">Sponsor</option>
               <option value="external">External</option>
-            </select>
+            </Select>
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <label class="block">
             <span class="text-xs text-slate-500 uppercase">Role</span>
-            <input
-              bind:value={editing.role}
-              disabled={busy}
-              placeholder="e.g. Tech lead"
-              class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-            />
+            <Input bind:value={editing.role} disabled={busy} placeholder="e.g. Tech lead" />
           </label>
           <label class="block">
             <span class="text-xs text-slate-500 uppercase">Organisation</span>
-            <input
-              bind:value={editing.organisation}
-              disabled={busy}
-              class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-            />
+            <Input bind:value={editing.organisation} disabled={busy} />
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <label class="block">
             <span class="text-xs text-slate-500 uppercase">Email</span>
-            <input
-              type="email"
-              bind:value={editing.email}
-              disabled={busy}
-              class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-            />
+            <Input type="email" bind:value={editing.email} disabled={busy} />
           </label>
           <label class="block">
             <span class="text-xs text-slate-500 uppercase">Phone</span>
-            <input
-              bind:value={editing.phone}
-              disabled={busy}
-              class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-            />
+            <Input bind:value={editing.phone} disabled={busy} />
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <label class="block">
             <span class="text-xs text-slate-500 uppercase">Hourly rate</span>
-            <input
-              type="number"
-              step="0.5"
-              bind:value={editing.hourly_rate}
-              disabled={busy}
-              class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-            />
+            <Input type="number" step="0.5" bind:value={editing.hourly_rate} disabled={busy} />
           </label>
           <label class="block">
             <span class="text-xs text-slate-500 uppercase">Contract value</span>
-            <input
-              type="number"
-              step="100"
-              bind:value={editing.contract_value}
-              disabled={busy}
-              class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-            />
+            <Input type="number" step="100" bind:value={editing.contract_value} disabled={busy} />
           </label>
         </div>
         <label class="block">
           <span class="text-xs text-slate-500 uppercase">Availability (units)</span>
-          <input
-            type="number"
-            min="0.1"
-            max="10"
-            step="0.1"
-            bind:value={editing.availability}
-            disabled={busy}
-            class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-          />
+          <Input type="number" min="0.1" max="10" step="0.1" bind:value={editing.availability} disabled={busy} />
           <span class="text-[10px] text-slate-500">
             Resource capacity for scheduling: 1 = full-time, 0.5 =
             half-time, 2 = a two-person pool. Overallocation flags and
@@ -441,26 +425,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </label>
         <label class="block">
           <span class="text-xs text-slate-500 uppercase">Notes</span>
-          <textarea
-            bind:value={editing.notes}
-            disabled={busy}
-            rows="3"
-            class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-          ></textarea>
+          <Textarea bind:value={editing.notes} disabled={busy} rows={3} />
         </label>
       </div>
       <footer class="px-5 py-3 border-t border-slate-800 flex justify-end gap-2">
-        <button onclick={requestClose} disabled={busy} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
-          Cancel
-        </button>
-        <button
-          onclick={save}
-          disabled={busy || !editing.name.trim()}
-          class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
-        >
+        <Button variant="secondary" size="sm" onclick={requestClose} disabled={busy}>Cancel</Button>
+        <Button variant="primary" size="sm" onclick={save} disabled={busy || !editing.name.trim()}>
           {busy ? 'Saving…' : 'Save'}
-        </button>
+        </Button>
       </footer>
     </div>
   </div>
 {/if}
+
+<ConfirmDialog
+  open={!!deletingStakeholder}
+  title="Delete stakeholder"
+  message={`Delete ${deletingStakeholder?.name ?? ''}? This cannot be undone.`}
+  busy={deleteBusy}
+  onConfirm={destroy}
+  onCancel={cancelDelete}
+/>

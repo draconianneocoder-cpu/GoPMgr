@@ -6,6 +6,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <script lang="ts">
   import { onMount } from 'svelte';
   import { showToast } from '../../toast.svelte';
+  import Button from '../Button.svelte';
 
   let {
     projectID,
@@ -96,7 +97,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <div class="header">
     <h3>SIPOC Diagram</h3>
     <div class="actions">
-      <button class="btn btn-primary" onclick={saveSIPOC}>Save</button>
+      <Button variant="primary" size="lg" onclick={saveSIPOC}>Save</Button>
     </div>
   </div>
 
@@ -145,7 +146,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <div class="sipoc-column border-t-4 {cat.color}">
           <div class="column-header">
             <h4>{cat.label}</h4>
-            <button class="btn btn-sm btn-secondary" onclick={() => addElement(cat.key)}>+</button>
+            <Button variant="secondary" size="sm" onclick={() => addElement(cat.key)}>+</Button>
           </div>
           <div class="column-content">
             {#each getElementsForCategory(cat.key) as element, index (element.id || index)}
@@ -267,10 +268,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     padding: 0.25rem;
   }
   .btn-remove {
+    /* #B91C1C matches Tailwind's stock red-700 (this app's danger-button
+       precedent, incl. Button.svelte's danger variant) — not a themed CSS
+       variable, since neither this app nor Tailwind's red-500..800 shades
+       flip with the light/dark theme (see tailwind.config.js's red override,
+       which only remaps 100/200/300/400/900/950). Was Bootstrap's #dc3545
+       via an unset --color-danger custom property that nothing in this repo
+       ever defined, i.e. the fallback was always the real value in use. */
     position: absolute;
     top: 0.25rem;
     right: 0.25rem;
-    background: var(--color-danger, #dc3545);
+    background: #b91c1c;
     color: white;
     border: none;
     border-radius: 50%;
@@ -287,25 +295,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
     color: var(--text-muted, #999);
     font-size: 0.75rem;
     padding: 1rem 0;
-  }
-  .btn {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: 500;
-  }
-  .btn-primary {
-    background: var(--color-primary, #007bff);
-    color: white;
-  }
-  .btn-secondary {
-    background: var(--bg-tertiary, #e9ecef);
-    color: var(--text-color, #333);
-  }
-  .btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
   }
   @media (max-width: 1024px) {
     .sipoc-columns {

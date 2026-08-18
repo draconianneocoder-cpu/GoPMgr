@@ -6,6 +6,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <script lang="ts">
   import { onMount } from 'svelte';
   import { showToast } from '../../toast.svelte';
+  import Button from '../Button.svelte';
 
   let {
     projectID,
@@ -77,8 +78,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <div class="header">
     <h3>Solution Selection Matrix</h3>
     <div class="actions">
-      <button class="btn btn-secondary" onclick={addSolution}>+ Add Solution</button>
-      <button class="btn btn-primary" onclick={saveSolutions}>Save</button>
+      <Button variant="secondary" size="lg" onclick={addSolution}>+ Add Solution</Button>
+      <Button variant="primary" size="lg" onclick={saveSolutions}>Save</Button>
     </div>
   </div>
 
@@ -167,7 +168,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 </select>
               </td>
               <td>
-                <button class="btn btn-danger btn-sm" onclick={() => removeSolution(index)}>×</button>
+                <Button variant="danger" size="sm" onclick={() => removeSolution(index)}>×</Button>
               </td>
             </tr>
           {/each}
@@ -239,28 +240,5 @@ SPDX-License-Identifier: GPL-3.0-or-later
     text-align: center;
     padding: 2rem;
     color: var(--text-muted, #666);
-  }
-  .btn {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: 500;
-  }
-  .btn-primary {
-    background: var(--color-primary, #007bff);
-    color: white;
-  }
-  .btn-secondary {
-    background: var(--bg-secondary, #e9ecef);
-    color: var(--text-color, #333);
-  }
-  .btn-danger {
-    background: var(--color-danger, #dc3545);
-    color: white;
-  }
-  .btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
   }
 </style>

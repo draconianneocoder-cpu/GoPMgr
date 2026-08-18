@@ -6,6 +6,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // DocumentCatalog is the Dashboard's controlled-document index. It consumes
   // Go registry definitions directly, keeping lifecycle phase, purpose, and
   // user-facing names aligned with the schemas used by the editor.
+  import Card from '../Card.svelte';
+
   let {
     definitions,
     initiallyExpanded = false,
@@ -81,7 +83,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 </script>
 
-<div class="overflow-hidden rounded-lg border border-slate-800 bg-slate-900/60">
+<Card>
   <button
     type="button"
     onclick={toggle}
@@ -165,4 +167,4 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {/if}
     </div>
   {/if}
-</div>
+</Card>

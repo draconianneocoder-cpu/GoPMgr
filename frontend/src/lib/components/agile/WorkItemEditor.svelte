@@ -15,6 +15,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onDestroy, untrack } from 'svelte';
   import { autosave } from '../../autosave.svelte';
   import { session, requestNavigation } from '../../session.svelte';
+  import ConfirmDialog from '../ConfirmDialog.svelte';
 
   type Status = 'idle' | 'saving' | 'deleting';
 
@@ -169,11 +170,27 @@ SPDX-License-Identifier: GPL-3.0-or-later
     });
   }
 
+  // Deleting used `confirm()` — silently a no-op in the packaged macOS
+  // build, since Wails v2.13.0's darwin WKUIDelegate implements none of the
+  // JS confirm/alert/prompt panel methods (verified: no `runJavaScript*Panel`
+  // implementation anywhere in the vendored module). Now routed through the
+  // shared ConfirmDialog (a real DOM modal) instead, matching the fix
+  // already applied to this file's unsaved-changes close guard.
+  let confirmingDelete = $state(false);
+
+  function requestDelete() {
+    if (!draft || status !== 'idle' || !draft.id) return;
+    confirmingDelete = true;
+  }
+
+  function cancelDelete() {
+    confirmingDelete = false;
+  }
+
   async function destroy() {
-    if (!draft || status !== 'idle') return;
+    if (!draft || status !== 'idle' || !draft.id) return;
     const deletingID = draft.id;
-    const deletingTitle = draft.title;
-    if (!deletingID || !confirm(`Delete "${deletingTitle}"?`)) return;
+    confirmingDelete = false;
     status = 'deleting';
     try {
       await window.go.main.App.DeleteWorkItem(deletingID);
@@ -347,7 +364,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
       <footer class="px-6 py-3 border-t border-slate-800 flex items-center justify-between">
         <button
-          onclick={destroy}
+          onclick={requestDelete}
           disabled={status !== 'idle' || !draft.id}
           class="text-xs text-red-400 hover:text-red-300 disabled:opacity-30"
         >
@@ -373,3 +390,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </div>
   </div>
 {/if}
+
+<ConfirmDialog
+  open={confirmingDelete}
+  title="Delete work item"
+  message={`Delete "${draft?.title ?? ''}"? This cannot be undone.`}
+  busy={status === 'deleting'}
+  onConfirm={destroy}
+  onCancel={cancelDelete}
+/>

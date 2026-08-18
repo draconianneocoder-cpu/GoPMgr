@@ -11,6 +11,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount, onDestroy } from 'svelte';
   import { autosave } from '../../autosave.svelte';
   import { session, goto, requestNavigation } from '../../session.svelte';
+  import ConfirmDialog from '../ConfirmDialog.svelte';
 
   let sprints = $state<AgileSprint[]>([]);
   let workItemsBySprint = $state<Record<string, AgileWorkItem[]>>({});
@@ -198,23 +199,48 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  async function complete(s: AgileSprint) {
-    if (!confirm(`Complete sprint "${s.name}"?`)) return;
-    try {
-      await window.go.main.App.SaveSprint({ ...s, status: 'complete' });
-      await refresh();
-    } catch (err: any) {
-      error = `Complete failed: ${err}`;
-    }
+  // Complete/Delete both used `confirm()` — silently a no-op in the
+  // packaged macOS build, since Wails v2.13.0's darwin WKUIDelegate
+  // implements none of the JS confirm/alert/prompt panel methods (verified:
+  // no `runJavaScript*Panel` implementation anywhere in the vendored
+  // module). Now routed through the shared ConfirmDialog (a real DOM modal)
+  // instead, matching the fix already applied to this file's
+  // unsaved-changes close guard. "Complete" has no reopen path anywhere in
+  // this app (no ReopenSprint/UncompleteSprint binding, and the row's own
+  // action button only shows for 'planning'/'active' status) — it's
+  // irreversible in effect even though it isn't a delete, so it gets the
+  // 'caution' tone rather than being treated as a harmless confirmation.
+  let pendingSprintAction = $state<{ sprint: AgileSprint; kind: 'complete' | 'delete' } | null>(null);
+  let sprintActionBusy = $state(false);
+
+  function requestComplete(s: AgileSprint) {
+    pendingSprintAction = { sprint: s, kind: 'complete' };
   }
 
-  async function destroy(s: AgileSprint) {
-    if (!confirm(`Delete sprint "${s.name}"? Work items will return to the backlog (sprint link only).`)) return;
+  function requestDeleteSprint(s: AgileSprint) {
+    pendingSprintAction = { sprint: s, kind: 'delete' };
+  }
+
+  function cancelSprintAction() {
+    pendingSprintAction = null;
+  }
+
+  async function confirmSprintAction() {
+    if (!pendingSprintAction) return;
+    const { sprint: s, kind } = pendingSprintAction;
+    sprintActionBusy = true;
     try {
-      await window.go.main.App.DeleteSprint(s.id);
+      if (kind === 'complete') {
+        await window.go.main.App.SaveSprint({ ...s, status: 'complete' });
+      } else {
+        await window.go.main.App.DeleteSprint(s.id);
+      }
+      pendingSprintAction = null;
       await refresh();
     } catch (err: any) {
-      error = `Delete failed: ${err}`;
+      error = `${kind === 'complete' ? 'Complete' : 'Delete'} failed: ${err}`;
+    } finally {
+      sprintActionBusy = false;
     }
   }
 
@@ -307,14 +333,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   </button>
                 {:else if s.status === 'active'}
                   <button
-                    onclick={() => complete(s)}
+                    onclick={() => requestComplete(s)}
                     class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
                   >
                     Complete
                   </button>
                 {/if}
                 <button
-                  onclick={() => destroy(s)}
+                  onclick={() => requestDeleteSprint(s)}
                   class="text-xs text-slate-500 hover:text-red-400"
                 >
                   Delete
@@ -423,3 +449,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </div>
   </div>
 {/if}
+
+<ConfirmDialog
+  open={!!pendingSprintAction}
+  title={pendingSprintAction?.kind === 'complete' ? 'Complete sprint' : 'Delete sprint'}
+  message={pendingSprintAction?.kind === 'complete'
+    ? `Complete sprint "${pendingSprintAction.sprint.name}"? This cannot be undone.`
+    : `Delete sprint "${pendingSprintAction?.sprint.name ?? ''}"? Work items will return to the backlog (sprint link only).`}
+  confirmLabel={pendingSprintAction?.kind === 'complete' ? 'Complete' : 'Delete'}
+  tone={pendingSprintAction?.kind === 'complete' ? 'caution' : 'danger'}
+  busy={sprintActionBusy}
+  onConfirm={confirmSprintAction}
+  onCancel={cancelSprintAction}
+/>
