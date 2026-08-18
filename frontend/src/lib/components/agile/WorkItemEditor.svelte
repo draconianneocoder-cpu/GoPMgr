@@ -15,6 +15,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onDestroy, untrack } from 'svelte';
   import { autosave } from '../../autosave.svelte';
   import { session, requestNavigation } from '../../session.svelte';
+  import { rebaseEditableChanges } from '../../rebase-editable-changes';
   import ConfirmDialog from '../ConfirmDialog.svelte';
 
   type Status = 'idle' | 'saving' | 'deleting';
@@ -82,25 +83,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   });
 
-  function rebaseEditableChanges(
-    saved: AgileWorkItem,
-    savingDraft: AgileWorkItem,
-    latestDraft: AgileWorkItem,
-  ): AgileWorkItem {
-    return {
-      ...saved,
-      title: latestDraft.title !== savingDraft.title ? latestDraft.title : saved.title,
-      type: latestDraft.type !== savingDraft.type ? latestDraft.type : saved.type,
-      priority: latestDraft.priority !== savingDraft.priority ? latestDraft.priority : saved.priority,
-      points: latestDraft.points !== savingDraft.points ? latestDraft.points : saved.points,
-      assignee: latestDraft.assignee !== savingDraft.assignee ? latestDraft.assignee : saved.assignee,
-      state: latestDraft.state !== savingDraft.state ? latestDraft.state : saved.state,
-      sprint_id: latestDraft.sprint_id !== savingDraft.sprint_id ? latestDraft.sprint_id : saved.sprint_id,
-      description: latestDraft.description !== savingDraft.description
-        ? latestDraft.description
-        : saved.description,
-    };
-  }
+  // Fields the backend owns/mutates independently of this form -- always
+  // taken from the server response, never diffed against a stale draft
+  // copy. order_idx is drag-drop-managed by KanbanBoard/Backlog; closed_at
+  // is server-stamped on a state transition to done, never form-written.
+  const WORK_ITEM_BACKEND_OWNED_KEYS: readonly (keyof AgileWorkItem)[] = [
+    'id',
+    'project_id',
+    'order_idx',
+    'created_at',
+    'updated_at',
+    'closed_at',
+  ];
 
   async function save(): Promise<boolean> {
     if (!draft || status !== 'idle') return false;
@@ -126,7 +120,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       if (latestDraft && JSON.stringify(latestDraft) !== savingSnapshot) {
         // Keep a late edit open, but retain backend-owned fields such as a
         // newly assigned ID and timestamps from the successful save.
-        draft = rebaseEditableChanges(saved, savingDraft, latestDraft);
+        draft = rebaseEditableChanges(saved, savingDraft, latestDraft, WORK_ITEM_BACKEND_OWNED_KEYS);
         onSaved(saved);
         return true;
       }

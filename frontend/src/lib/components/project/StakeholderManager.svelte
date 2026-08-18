@@ -12,6 +12,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onDestroy, onMount } from 'svelte';
   import { autosave } from '../../autosave.svelte';
   import { session, goto, requestNavigation } from '../../session.svelte';
+  import { rebaseEditableChanges } from '../../rebase-editable-changes';
   import Spinner from '../Spinner.svelte';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import Button from '../Button.svelte';
@@ -131,35 +132,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
       || !Number.isSafeInteger(stakeholder.contract_value_minor_units ?? 0);
   }
 
-  function rebaseEditableChanges(
-    saved: Stakeholder,
-    savingStakeholder: Stakeholder,
-    latestStakeholder: Stakeholder,
-  ): Stakeholder {
-    return {
-      ...saved,
-      name: latestStakeholder.name !== savingStakeholder.name ? latestStakeholder.name : saved.name,
-      role: latestStakeholder.role !== savingStakeholder.role ? latestStakeholder.role : saved.role,
-      organisation: latestStakeholder.organisation !== savingStakeholder.organisation
-        ? latestStakeholder.organisation
-        : saved.organisation,
-      email: latestStakeholder.email !== savingStakeholder.email ? latestStakeholder.email : saved.email,
-      phone: latestStakeholder.phone !== savingStakeholder.phone ? latestStakeholder.phone : saved.phone,
-      category: latestStakeholder.category !== savingStakeholder.category
-        ? latestStakeholder.category
-        : saved.category,
-      hourly_rate: latestStakeholder.hourly_rate !== savingStakeholder.hourly_rate
-        ? latestStakeholder.hourly_rate
-        : saved.hourly_rate,
-      contract_value: latestStakeholder.contract_value !== savingStakeholder.contract_value
-        ? latestStakeholder.contract_value
-        : saved.contract_value,
-      availability: latestStakeholder.availability !== savingStakeholder.availability
-        ? latestStakeholder.availability
-        : saved.availability,
-      notes: latestStakeholder.notes !== savingStakeholder.notes ? latestStakeholder.notes : saved.notes,
-    };
-  }
+  // Fields the backend owns/mutates independently of this form -- always
+  // taken from the server response, never diffed against a stale draft
+  // copy. The *_minor_units fields are a backend-computed shadow of
+  // hourly_rate/contract_value, never independently form-edited.
+  const STAKEHOLDER_BACKEND_OWNED_KEYS: readonly (keyof Stakeholder)[] = [
+    'id',
+    'project_id',
+    'hourly_rate_minor_units',
+    'contract_value_minor_units',
+    'created_at',
+    'updated_at',
+  ];
 
   async function save(): Promise<boolean> {
     if (!editing || busy) return false;
@@ -184,7 +168,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const latestStakeholder = editing;
       original = JSON.stringify(saved);
       if (latestStakeholder && JSON.stringify(latestStakeholder) !== savingSnapshot) {
-        editing = rebaseEditableChanges(saved, savingStakeholder, latestStakeholder);
+        editing = rebaseEditableChanges(saved, savingStakeholder, latestStakeholder, STAKEHOLDER_BACKEND_OWNED_KEYS);
         await refresh();
         return true;
       }

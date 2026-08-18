@@ -11,6 +11,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount, onDestroy } from 'svelte';
   import { autosave } from '../../autosave.svelte';
   import { session, goto, requestNavigation } from '../../session.svelte';
+  import { rebaseEditableChanges } from '../../rebase-editable-changes';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import Button from '../Button.svelte';
 
@@ -104,26 +105,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
     );
   }
 
-  function rebaseEditableChanges(
-    saved: AgileSprint,
-    savingSprint: AgileSprint,
-    latestSprint: AgileSprint,
-  ): AgileSprint {
-    return {
-      ...saved,
-      name: latestSprint.name !== savingSprint.name ? latestSprint.name : saved.name,
-      goal: latestSprint.goal !== savingSprint.goal ? latestSprint.goal : saved.goal,
-      start_date: latestSprint.start_date !== savingSprint.start_date
-        ? latestSprint.start_date
-        : saved.start_date,
-      end_date: latestSprint.end_date !== savingSprint.end_date
-        ? latestSprint.end_date
-        : saved.end_date,
-      capacity: latestSprint.capacity !== savingSprint.capacity
-        ? latestSprint.capacity
-        : saved.capacity,
-    };
-  }
+  // Fields the backend owns/mutates independently of this form -- always
+  // taken from the server response, never diffed against a stale draft
+  // copy. status is mutated only via activate()/complete() below, which
+  // call SaveSprint directly and never go through this editor's own draft.
+  const SPRINT_BACKEND_OWNED_KEYS: readonly (keyof AgileSprint)[] = [
+    'id',
+    'project_id',
+    'status',
+    'created_at',
+  ];
 
   async function save(): Promise<boolean> {
     if (!editing || saving) return false;
@@ -146,7 +137,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const latestSprint = editing;
       original = JSON.stringify(saved);
       if (latestSprint && JSON.stringify(latestSprint) !== savingSnapshot) {
-        editing = rebaseEditableChanges(saved, savingSprint, latestSprint);
+        editing = rebaseEditableChanges(saved, savingSprint, latestSprint, SPRINT_BACKEND_OWNED_KEYS);
         return true;
       }
       stopEditing();

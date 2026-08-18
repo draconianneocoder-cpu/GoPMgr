@@ -17,6 +17,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../../session.svelte';
   import { autosave } from '../../autosave.svelte';
   import { METHODOLOGIES } from '../../methodologies';
+  import { rebaseEditableChanges } from '../../rebase-editable-changes';
   import Tabs from '../Tabs.svelte';
 
   // Tab grouping (docs/design/project-settings-tab-restructuring.md §3):
@@ -286,39 +287,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     draft !== null && original !== null && JSON.stringify(draft) !== JSON.stringify(original),
   );
 
-  // Keeps the user's editable fields from a later edit made while this
-  // save's await was still in flight; takes backend-owned fields (id,
-  // timestamps) from the server response. Mirrors WorkItemEditor.svelte's
-  // rebaseEditableChanges -- without this, a mid-save edit was silently
-  // overwritten by the pre-edit `saved` response (found via packaged-GUI
-  // testing on 2026-08-18: see docs/beta-release-backlog.md's "Prevent
-  // silent editor data loss" row).
-  function rebaseEditableChanges(
-    saved: ProjectMeta,
-    savingDraft: ProjectMeta,
-    latestDraft: ProjectMeta,
-  ): ProjectMeta {
-    return {
-      ...saved,
-      name: latestDraft.name !== savingDraft.name ? latestDraft.name : saved.name,
-      owner: latestDraft.owner !== savingDraft.owner ? latestDraft.owner : saved.owner,
-      description:
-        latestDraft.description !== savingDraft.description ? latestDraft.description : saved.description,
-      industry: latestDraft.industry !== savingDraft.industry ? latestDraft.industry : saved.industry,
-      sub_category:
-        latestDraft.sub_category !== savingDraft.sub_category ? latestDraft.sub_category : saved.sub_category,
-      methodology:
-        latestDraft.methodology !== savingDraft.methodology ? latestDraft.methodology : saved.methodology,
-      country_code:
-        latestDraft.country_code !== savingDraft.country_code ? latestDraft.country_code : saved.country_code,
-      time_zone: latestDraft.time_zone !== savingDraft.time_zone ? latestDraft.time_zone : saved.time_zone,
-      status: latestDraft.status !== savingDraft.status ? latestDraft.status : saved.status,
-      phase: latestDraft.phase !== savingDraft.phase ? latestDraft.phase : saved.phase,
-      start_date: latestDraft.start_date !== savingDraft.start_date ? latestDraft.start_date : saved.start_date,
-      end_date: latestDraft.end_date !== savingDraft.end_date ? latestDraft.end_date : saved.end_date,
-      budget: latestDraft.budget !== savingDraft.budget ? latestDraft.budget : saved.budget,
-    };
-  }
+  // Fields the backend owns/mutates independently of this form -- always
+  // taken from the server response, never diffed against a stale draft
+  // copy. Derived from ProjectMeta's full key set minus the fields this
+  // form actually edits (see rebase-editable-changes.ts for why a
+  // blocklist, not an allowlist).
+  const PROJECT_META_BACKEND_OWNED_KEYS: readonly (keyof ProjectMeta)[] = [
+    'id',
+    'budget_minor_units',
+    'created_at',
+    'updated_at',
+  ];
 
   async function save() {
     if (!draft) return false;
@@ -344,7 +323,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       original = merged;
       session.project = merged;
       if (latestDraft && JSON.stringify(latestDraft) !== JSON.stringify(savingDraft)) {
-        draft = rebaseEditableChanges(merged, savingDraft, latestDraft);
+        draft = rebaseEditableChanges(merged, savingDraft, latestDraft, PROJECT_META_BACKEND_OWNED_KEYS);
         // Suppress unused-variable warning while keeping the explicit
         // call so the metadata path is always exercised.
         void meta;
