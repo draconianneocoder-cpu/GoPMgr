@@ -16,6 +16,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onDestroy, onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import { autosave } from '../../autosave.svelte';
+  import { METHODOLOGIES } from '../../methodologies';
+  import Tabs from '../Tabs.svelte';
+
+  // Tab grouping (docs/design/project-settings-tab-restructuring.md §3):
+  // General binds to `draft`/save()/revert() below; the other four tabs
+  // are each fully self-contained state declared at this component's own
+  // top level, so switching tabs (an {#if activeTab === 'x'} remount of
+  // markup only, not of this component) never resets them -- see §4.2.
+  let activeTab = $state<'general' | 'scenarios' | 'resources' | 'exports' | 'protection'>(
+    'general',
+  );
+  const settingsTabs = [
+    { id: 'general', label: 'General' },
+    { id: 'scenarios', label: 'Scenarios' },
+    { id: 'resources', label: 'Resources' },
+    { id: 'exports', label: 'Exports & Signing' },
+    { id: 'protection', label: 'Data Protection' },
+  ];
 
   let draft = $state<ProjectMeta | null>(null);
   let original = $state<ProjectMeta | null>(null);
@@ -34,6 +52,31 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!draft) return;
     const allowed = timeZonesFor(draft.country_code);
     if (!allowed.includes(draft.time_zone)) draft.time_zone = allowed[0];
+  }
+
+  // Methodology field (design doc §5): options are scoped to the current
+  // industry, same as ProjectLaunchpad's wizard. `methodology` has no
+  // server-side whitelist (app_foundation.go's UpdateProjectIndustry
+  // stores it as a free string), so an out-of-list current value is
+  // prepended as its own selectable option rather than silently dropped.
+  let methodologyOptions = $derived.by(() => {
+    if (!draft) return [];
+    const currentIndustry = draft.industry;
+    const currentMethodology = draft.methodology;
+    const opts = METHODOLOGIES[currentIndustry] ?? [];
+    if (currentMethodology && !opts.some((m) => m.id === currentMethodology)) {
+      return [{ id: currentMethodology, label: `${currentMethodology} (current)`, blurb: '' }, ...opts];
+    }
+    return opts;
+  });
+
+  // Mirrors ProjectLaunchpad's selectIndustry(), which clears methodology
+  // on industry change since the recommended set is industry-scoped
+  // (design doc §4.3). Only fires on a real user edit -- bind:value does
+  // not invoke onchange on initial mount, so loading an existing project
+  // never clears its methodology.
+  function clearMethodologyOnIndustryChange() {
+    if (draft) draft.methodology = '';
   }
 
   // Schedule report export state
@@ -186,8 +229,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
     try {
       const p = await window.go.main.App.GetProjectMeta();
-      draft = { ...p };
-      original = p;
+      // db.Project's industry/methodology fields have no `omitempty`
+      // (internal/db/project.go), so a real GetProjectMeta response always
+      // includes them even when empty -- this coercion is defensive
+      // insurance against an undefined value (e.g. a stale mock or future
+      // field removal) making the Methodology <select> bind to no matching
+      // option and read as dirty on load with no user edit, not a fix for
+      // an observed defect.
+      const normalized = { ...p, industry: p.industry ?? '', methodology: p.methodology ?? '' };
+      draft = { ...normalized };
+      original = { ...normalized };
     } catch (err: any) {
       error = `Could not load project: ${err}`;
     }
@@ -932,14 +983,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
         disabled={!dirty || busy}
         class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-30 px-3 py-1 rounded"
       >
-        Revert
+        Revert details
       </button>
       <button
         onclick={save}
         disabled={!dirty || busy}
         class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
       >
-        {busy ? 'Saving…' : 'Save changes'}
+        {busy ? 'Saving details…' : 'Save details'}
       </button>
     </div>
   </header>
@@ -958,6 +1009,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {#if !draft}
       <p class="text-sm text-slate-500">Loading…</p>
     {:else}
+      <Tabs tabs={settingsTabs} bind:activeTab idPrefix="settings" label="Project settings sections" />
+
+      {#if activeTab === 'general'}
+      <div id="settings-panel-general" role="tabpanel" aria-labelledby="settings-tab-general" tabindex="0" class="space-y-6">
       <!-- Identity -->
       <section class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <label class="block">
@@ -994,6 +1049,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="text-xs text-slate-500 uppercase">Industry</span>
             <select
               bind:value={draft.industry}
+              onchange={clearMethodologyOnIndustryChange}
               class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded"
             >
               <option value="">(none)</option>
@@ -1014,11 +1070,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </label>
           <label class="block">
             <span class="text-xs text-slate-500 uppercase">Methodology</span>
-            <input
+            <select
               bind:value={draft.methodology}
-              placeholder="e.g. scrum / cpm / waterfall"
-              class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-            />
+              class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded"
+            >
+              <option value="">(none)</option>
+              {#each methodologyOptions as m (m.id)}
+                <option value={m.id}>{m.label}</option>
+              {/each}
+            </select>
           </label>
           <label class="block">
             <span class="text-xs text-slate-500 uppercase">Business calendar policy</span>
@@ -1105,7 +1165,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
            </label>
        </div>
      </section>
+      </div>
+      {/if}
 
+      {#if activeTab === 'scenarios'}
+      <div id="settings-panel-scenarios" role="tabpanel" aria-labelledby="settings-tab-scenarios" tabindex="0" class="space-y-6">
       <!-- What-if Scenarios -->
       <section>
         <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
@@ -1430,7 +1494,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </div>
         </div>
       </section>
+      </div>
+      {/if}
 
+      {#if activeTab === 'resources'}
+      <div id="settings-panel-resources" role="tabpanel" aria-labelledby="settings-tab-resources" tabindex="0" class="space-y-6">
       <!-- Resource Capacity -->
       <section>
         <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
@@ -1562,73 +1630,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
            {/if}
          </div>
        </section>
+      </div>
+      {/if}
 
-       <!-- Schedule Reports (CPM) -->
-       <section>
-         <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
-           Schedule Reports (CPM)
-         </h2>
-         <p class="text-xs text-slate-400 mb-3">
-           Export the current project schedule with full Critical Path Method (ES/EF/LS/LF/Float/Critical) calculations.
-         </p>
-
-         <div class="flex flex-wrap gap-2">
-           <button
-             onclick={() => exportScheduleReport('pdf')}
-             disabled={exporting}
-             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
-           >
-             {exporting && exportFormat === 'pdf' ? 'Exporting…' : 'Export PDF'}
-           </button>
-
-           <button
-             onclick={() => exportScheduleReport('docx')}
-             disabled={exporting}
-             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
-           >
-             {exporting && exportFormat === 'docx' ? 'Exporting…' : 'Export DOCX'}
-           </button>
-
-           <button
-             onclick={() => exportScheduleReport('odt')}
-             disabled={exporting}
-             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
-           >
-             {exporting && exportFormat === 'odt' ? 'Exporting…' : 'Export ODT'}
-           </button>
-
-           <button
-             onclick={() => exportScheduleReport('csv')}
-             disabled={exporting}
-             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
-           >
-             {exporting && exportFormat === 'csv' ? 'Exporting…' : 'Export CSV'}
-           </button>
-
-           <button
-             onclick={() => exportScheduleReport('html')}
-             disabled={exporting}
-             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
-           >
-             {exporting && exportFormat === 'html' ? 'Exporting…' : 'Export HTML'}
-           </button>
-
-           <button
-             onclick={() => exportScheduleReport('mspdi')}
-             disabled={exporting}
-             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
-           >
-             {exporting && exportFormat === 'mspdi' ? 'Exporting…' : 'Export MS Project XML'}
-           </button>
-         </div>
-
-         {#if exportStatus}
-           <p class="text-xs mt-2 break-words {exportError ? 'text-red-400' : 'text-cyan-400'}">
-             {exportStatus}
-           </p>
-         {/if}
-       </section>
-
+      {#if activeTab === 'protection'}
+      <div id="settings-panel-protection" role="tabpanel" aria-labelledby="settings-tab-protection" tabindex="0" class="space-y-6">
        <section>
          <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Project Backup</h2>
          <div class="border border-slate-800 bg-slate-900/60 rounded p-4 space-y-3">
@@ -1719,6 +1725,76 @@ SPDX-License-Identifier: GPL-3.0-or-later
              </div>
            {/if}
          </div>
+       </section>
+      </div>
+      {/if}
+
+      {#if activeTab === 'exports'}
+      <div id="settings-panel-exports" role="tabpanel" aria-labelledby="settings-tab-exports" tabindex="0" class="space-y-6">
+       <!-- Schedule Reports (CPM) -->
+       <section>
+         <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+           Schedule Reports (CPM)
+         </h2>
+         <p class="text-xs text-slate-400 mb-3">
+           Export the current project schedule with full Critical Path Method (ES/EF/LS/LF/Float/Critical) calculations.
+         </p>
+
+         <div class="flex flex-wrap gap-2">
+           <button
+             onclick={() => exportScheduleReport('pdf')}
+             disabled={exporting}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
+           >
+             {exporting && exportFormat === 'pdf' ? 'Exporting…' : 'Export PDF'}
+           </button>
+
+           <button
+             onclick={() => exportScheduleReport('docx')}
+             disabled={exporting}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
+           >
+             {exporting && exportFormat === 'docx' ? 'Exporting…' : 'Export DOCX'}
+           </button>
+
+           <button
+             onclick={() => exportScheduleReport('odt')}
+             disabled={exporting}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
+           >
+             {exporting && exportFormat === 'odt' ? 'Exporting…' : 'Export ODT'}
+           </button>
+
+           <button
+             onclick={() => exportScheduleReport('csv')}
+             disabled={exporting}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
+           >
+             {exporting && exportFormat === 'csv' ? 'Exporting…' : 'Export CSV'}
+           </button>
+
+           <button
+             onclick={() => exportScheduleReport('html')}
+             disabled={exporting}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
+           >
+             {exporting && exportFormat === 'html' ? 'Exporting…' : 'Export HTML'}
+           </button>
+
+           <button
+             onclick={() => exportScheduleReport('mspdi')}
+             disabled={exporting}
+             class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
+           >
+             {exporting && exportFormat === 'mspdi' ? 'Exporting…' : 'Export MS Project XML'}
+           </button>
+         </div>
+
+         {#if exportStatus}
+           <p class="text-xs mt-2 break-words {exportError ? 'text-red-400' : 'text-cyan-400'}">
+             {exportStatus}
+           </p>
+         {/if}
        </section>
 
        <!-- Export & Signature Settings -->
@@ -1970,6 +2046,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
            <p class="text-xs mt-2 text-cyan-400 break-words">{fontStatus}</p>
          {/if}
        </section>
+      </div>
+      {/if}
      {/if}
    </main>
  </div>
