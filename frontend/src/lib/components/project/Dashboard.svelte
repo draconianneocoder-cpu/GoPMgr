@@ -317,6 +317,15 @@ import Tabs from '../Tabs.svelte';
   }
 
   async function close() {
+    // CloseProject() runs before the guarded goto('portfolio') below, so if
+    // Dashboard itself ever registers dirty state (it doesn't today -- only
+    // its child editor views do, and those are separate routed views
+    // already gated on their own entry/exit), this ordering would let the
+    // backend close happen before any unsaved-changes check. Currently
+    // safe because Dashboard never calls autosave.register(); flagged
+    // 2026-08-18 as a latent ordering trap, not a live defect, so it isn't
+    // rediscovered as a mystery if this component grows its own dirty
+    // state later.
     await window.go.main.App.CloseProject();
     session.project = null;
     session.projectPath = null;

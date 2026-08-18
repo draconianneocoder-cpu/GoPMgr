@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, waitFor, within } from '@testing-library/svelte';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/svelte';
 
-import { session } from '../../session.svelte';
+import { autosave } from '../../autosave.svelte';
+import { navigation, requestNavigation, saveAndContinueNavigation, session } from '../../session.svelte';
 import ProjectSettings from './ProjectSettings.svelte';
 
 async function switchTab(
@@ -61,6 +62,12 @@ beforeEach(() => {
   (window as unknown as { go: unknown }).go = { main: { App: app } };
   session.projectPath = null;
   session.project = null;
+});
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  autosave.discardAll();
 });
 
 describe('project PAdES timestamp settings', () => {
@@ -240,5 +247,108 @@ describe('methodology field', () => {
     await findByRole('tab', { name: /general/i });
     expect(await findByRole('button', { name: /^revert details$/i })).toBeDisabled();
     expect(await findByRole('button', { name: /^save details$/i })).toBeDisabled();
+  });
+});
+
+// Regression coverage for a defect found via packaged-GUI testing on
+// 2026-08-18: UpdateProjectIndustry always returns a fresh server-stamped
+// `updated_at` (internal/db/project.go's UpsertProject). The shared
+// navigation/native-close guard's "Save and continue" button routes through
+// session.svelte's saveAndContinueNavigation -> autosave.saveAll(), which is
+// a different path from this component's own "Save details" button (that
+// one calls save() directly and never touches autosave's bookkeeping). A
+// registered snapshot that included updated_at never converged on the
+// guarded path, so "Save and continue" looped forever reporting "Changes
+// were made while saving" even though nothing further was edited. See
+// docs/beta-release-backlog.md's "Prevent silent editor data loss" row for
+// the live reproduction (dirty ProjectSettings -> "<- Dashboard" -> Save and
+// continue, twice, same error both times).
+describe('guarded-navigation save convergence (updated_at exclusion)', () => {
+  function projectMeta(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'project-1',
+      name: 'Convergence Project',
+      description: 'Original description',
+      industry: 'software',
+      sub_category: '',
+      methodology: 'scrum',
+      country_code: 'US',
+      time_zone: 'America/Chicago',
+      status: 'planning',
+      phase: 'planning',
+      updated_at: '2026-01-01T00:00:00Z',
+      ...overrides,
+    };
+  }
+
+  it('reports clean and completes the pending navigation after "Save and continue", despite a fresh updated_at', async () => {
+    app.GetProjectMeta = vi.fn(async () => projectMeta());
+    app.UpdateProjectMeta = vi.fn(async (p: unknown) => p);
+    app.UpdateProjectIndustry = vi.fn(async () =>
+      projectMeta({ description: 'Edited description', updated_at: '2026-01-01T00:00:05Z' }),
+    );
+
+    const registerSpy = vi.spyOn(autosave, 'register');
+    const { findByLabelText, findByRole } = render(ProjectSettings);
+    await findByRole('tab', { name: /general/i });
+    // register() runs at the tail of onMount's async chain (after the
+    // calendar/font/scenario/encryption loads) -- later than the fields
+    // themselves render. Editing before it captures its baseline snapshot
+    // would bake the edit into the "clean" baseline instead of testing it.
+    await waitFor(() => expect(registerSpy).toHaveBeenCalled());
+
+    const description = await findByLabelText(/description/i);
+    await fireEvent.input(description, { target: { value: 'Edited description' } });
+    expect(autosave.hasDirty()).toBe(true);
+
+    session.view = 'project_settings';
+    requestNavigation('dashboard');
+    expect(navigation.pending?.view).toBe('dashboard');
+
+    await saveAndContinueNavigation();
+
+    expect(app.UpdateProjectIndustry).toHaveBeenCalledOnce();
+    expect(autosave.hasDirty()).toBe(false);
+    expect(navigation.pending).toBeNull();
+    expect(navigation.error).toBe('');
+    expect(session.view).toBe('dashboard');
+  });
+
+  it('stays dirty, and leaves navigation pending, if the user edits again while a slow save is in flight', async () => {
+    app.GetProjectMeta = vi.fn(async () => projectMeta());
+    app.UpdateProjectMeta = vi.fn(async (p: unknown) => p);
+    let resolveIndustry: (value: unknown) => void = () => {};
+    app.UpdateProjectIndustry = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveIndustry = resolve;
+        }),
+    );
+
+    const registerSpy = vi.spyOn(autosave, 'register');
+    const { findByLabelText, findByRole } = render(ProjectSettings);
+    await findByRole('tab', { name: /general/i });
+    await waitFor(() => expect(registerSpy).toHaveBeenCalled());
+
+    const description = await findByLabelText(/description/i);
+    await fireEvent.input(description, { target: { value: 'First edit' } });
+    expect(autosave.hasDirty()).toBe(true);
+
+    session.view = 'project_settings';
+    requestNavigation('dashboard');
+    const continuing = saveAndContinueNavigation();
+
+    // A further edit lands while the save is still awaiting its response.
+    await fireEvent.input(description, { target: { value: 'Second edit, made mid-save' } });
+    resolveIndustry(projectMeta({ description: 'First edit', updated_at: '2026-01-01T00:00:05Z' }));
+    await continuing;
+
+    expect(autosave.hasDirty()).toBe(true);
+    expect(navigation.pending).not.toBeNull();
+    expect(session.view).toBe('project_settings');
+    expect(navigation.error).toMatch(/save again/i);
+    // The data-loss assertion proper: the mid-save edit must survive, not
+    // be silently overwritten by the first save's (now-stale) response.
+    expect(description).toHaveValue('Second edit, made mid-save');
   });
 });

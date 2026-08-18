@@ -90,7 +90,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     // A successful save closes this lightweight modal, so timed autosave
     // would dismiss it unexpectedly. It remains registered for shared
-    // navigation, sign-out, project-close, and native-close decisions.
+    // navigation, project-close, and native-close decisions. Sign-out is
+    // NOT one of them: AppHeader (the only place Sign out renders) is
+    // never shown while a routed view like this one is on screen, so a
+    // dirty draft here can never coexist with a visible Sign-out control
+    // -- confirmed 2026-08-18 by grepping AppHeader's 5 render sites, not
+    // assumed. The guard mechanism would still protect it if that ever
+    // changed; it just currently cannot be exercised.
     stopDirtyGuard = autosave.register(
       () => JSON.stringify(editing),
       () => save(),

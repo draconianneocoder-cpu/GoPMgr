@@ -96,7 +96,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     original = JSON.stringify(next);
     error = '';
     // A successful manual save closes this modal, so timed autosave would
-    // dismiss it unexpectedly. Registration still protects all shared exits.
+    // dismiss it unexpectedly. Registration still protects navigation,
+    // project-close, and native-close. Sign-out is the one exit this can't
+    // reach: AppHeader (Sign out's only render site) never shows while a
+    // routed view like this one is on screen -- confirmed 2026-08-18 by
+    // grepping AppHeader's 5 render sites, not assumed. The guard would
+    // still fire if that structural fact ever changed.
     stopDirtyGuard = autosave.register(
       () => JSON.stringify(editing),
       () => save(),

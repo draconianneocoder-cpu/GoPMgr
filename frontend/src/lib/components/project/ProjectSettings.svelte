@@ -267,7 +267,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     await loadScenarioSources();
     await loadScenarios();
     await loadEncryptionState();
-    stopDirtyGuard = autosave.register(() => JSON.stringify(draft), () => save(), false);
+    // `updated_at` is server-stamped fresh on every UpdateProjectIndustry
+    // call (internal/db/project.go's UpsertProject), so a snapshot that
+    // includes it never matches after even a fully successful save with no
+    // further user edits — the shared guard's post-save hasDirty() recheck
+    // would see a permanent, spurious diff and "Save and continue" would
+    // never converge. Excluded here, not compared elsewhere.
+    stopDirtyGuard = autosave.register(
+      () => JSON.stringify(draft && { ...draft, updated_at: '' }),
+      () => save(),
+      false,
+    );
   });
 
   onDestroy(() => stopDirtyGuard?.());
@@ -276,8 +286,46 @@ SPDX-License-Identifier: GPL-3.0-or-later
     draft !== null && original !== null && JSON.stringify(draft) !== JSON.stringify(original),
   );
 
+  // Keeps the user's editable fields from a later edit made while this
+  // save's await was still in flight; takes backend-owned fields (id,
+  // timestamps) from the server response. Mirrors WorkItemEditor.svelte's
+  // rebaseEditableChanges -- without this, a mid-save edit was silently
+  // overwritten by the pre-edit `saved` response (found via packaged-GUI
+  // testing on 2026-08-18: see docs/beta-release-backlog.md's "Prevent
+  // silent editor data loss" row).
+  function rebaseEditableChanges(
+    saved: ProjectMeta,
+    savingDraft: ProjectMeta,
+    latestDraft: ProjectMeta,
+  ): ProjectMeta {
+    return {
+      ...saved,
+      name: latestDraft.name !== savingDraft.name ? latestDraft.name : saved.name,
+      owner: latestDraft.owner !== savingDraft.owner ? latestDraft.owner : saved.owner,
+      description:
+        latestDraft.description !== savingDraft.description ? latestDraft.description : saved.description,
+      industry: latestDraft.industry !== savingDraft.industry ? latestDraft.industry : saved.industry,
+      sub_category:
+        latestDraft.sub_category !== savingDraft.sub_category ? latestDraft.sub_category : saved.sub_category,
+      methodology:
+        latestDraft.methodology !== savingDraft.methodology ? latestDraft.methodology : saved.methodology,
+      country_code:
+        latestDraft.country_code !== savingDraft.country_code ? latestDraft.country_code : saved.country_code,
+      time_zone: latestDraft.time_zone !== savingDraft.time_zone ? latestDraft.time_zone : saved.time_zone,
+      status: latestDraft.status !== savingDraft.status ? latestDraft.status : saved.status,
+      phase: latestDraft.phase !== savingDraft.phase ? latestDraft.phase : saved.phase,
+      start_date: latestDraft.start_date !== savingDraft.start_date ? latestDraft.start_date : saved.start_date,
+      end_date: latestDraft.end_date !== savingDraft.end_date ? latestDraft.end_date : saved.end_date,
+      budget: latestDraft.budget !== savingDraft.budget ? latestDraft.budget : saved.budget,
+    };
+  }
+
   async function save() {
     if (!draft) return false;
+    // Snapshot what's actually being submitted so both backend calls agree,
+    // and so a later mid-save edit can be detected and preserved rather
+    // than silently overwritten by this save's own response.
+    const savingDraft = { ...draft };
     busy = true;
     error = '';
     status = '';
@@ -285,19 +333,25 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // Two calls because UpdateProjectIndustry covers the four
       // Launchpad columns explicitly; UpdateProjectMeta handles
       // everything else.
-      const meta = await window.go.main.App.UpdateProjectMeta(draft);
+      const meta = await window.go.main.App.UpdateProjectMeta(savingDraft);
       const merged = await window.go.main.App.UpdateProjectIndustry(
-        draft.industry,
-        draft.sub_category,
-        draft.methodology,
-        draft.country_code,
+        savingDraft.industry,
+        savingDraft.sub_category,
+        savingDraft.methodology,
+        savingDraft.country_code,
       );
+      const latestDraft = draft;
       original = merged;
-      draft = { ...merged };
       session.project = merged;
+      if (latestDraft && JSON.stringify(latestDraft) !== JSON.stringify(savingDraft)) {
+        draft = rebaseEditableChanges(merged, savingDraft, latestDraft);
+        // Suppress unused-variable warning while keeping the explicit
+        // call so the metadata path is always exercised.
+        void meta;
+        return true;
+      }
+      draft = { ...merged };
       status = 'Saved.';
-      // Suppress unused-variable warning while keeping the explicit
-      // call so the metadata path is always exercised.
       void meta;
       return true;
     } catch (err: any) {
