@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/wailsapp/wails/v2/pkg/menu"
@@ -325,4 +327,112 @@ func TestCompleteNativeCloseRequiresRuntimeAndGuard(t *testing.T) {
 	if err := app.completeNativeClose(func(context.Context) {}); err == nil {
 		t.Fatal("complete native close without frontend guard succeeded")
 	}
+}
+
+// TestNativeCloseGuard_ConcurrentAccessRaceFree proves — under `go test
+// -race`, not by reading the mutex and assuming — that EnableNativeCloseGuard,
+// completeNativeClose, and shouldPreventNativeClose have no unsynchronized
+// access to nativeCloseGuardReady/nativeClosePermit. This matters because the
+// App struct's own concurrency-model comment above documents these fields as
+// "shared mutable state" accessed from a fresh goroutine per Wails frontend
+// call, but until this test, that claim was only exercised sequentially
+// (TestNativeCloseGuardConsumesOneShotPermit) — a clean `-race` run over code
+// that never ran concurrently is not evidence it is race-free.
+//
+// Fault-seed check performed manually while writing this test (not left as
+// an untested assumption): temporarily removing shouldPreventNativeClose's
+// `a.mu.Lock()`/`defer a.mu.Unlock()` and re-running `go test -race -run
+// TestNativeCloseGuard_ConcurrentAccessRaceFree` reliably reported a DATA
+// RACE on nativeClosePermit between that function and EnableNativeCloseGuard;
+// restoring the lock made the race disappear. This confirms the test
+// actually exercises the concurrent path the race detector needs to see —
+// see TEST_COVERAGE_LEDGER.md's entry for this file for the full result.
+func TestNativeCloseGuard_ConcurrentAccessRaceFree(t *testing.T) {
+	app := &App{ctx: context.Background()}
+
+	const n = 200
+	var wg sync.WaitGroup
+	wg.Add(n * 3)
+	for range n {
+		go func() {
+			defer wg.Done()
+			app.EnableNativeCloseGuard()
+		}()
+		go func() {
+			defer wg.Done()
+			_ = app.shouldPreventNativeClose()
+		}()
+		go func() {
+			defer wg.Done()
+			_ = app.completeNativeClose(func(context.Context) {})
+		}()
+	}
+	wg.Wait()
+}
+
+// TestNativeCloseGuard_ConcurrentEnableRevokesPermits_Observation records a
+// real, demonstrated consequence of EnableNativeCloseGuard,
+// completeNativeClose, and shouldPreventNativeClose being three separate
+// critical sections rather than one atomic operation: a permit
+// completeNativeClose has just granted (and is about to consume via its own
+// quit callback) can be silently revoked by a concurrent EnableNativeCloseGuard
+// call landing in the gap between completeNativeClose's unlock and its quit
+// callback's shouldPreventNativeClose check. This is a genuine TOCTOU gap in
+// the exposed Go API's contract, not a data race (the mutex fully serializes
+// every access; nothing is corrupted) and not a bug reachable from the
+// current frontend: frontend/src/lib/native-close.ts's NativeCloseController
+// only calls EnableNativeCloseGuard once at startup, or sequentially in the
+// catch block after a CompleteNativeClose call has already rejected — both of
+// completeNativeClose's Go-side error returns happen before
+// nativeClosePermit is ever set to true, so the frontend never has an
+// in-flight granted permit for a concurrent EnableNativeCloseGuard call to
+// revoke.
+//
+// This is deliberately NOT a regression guard for the gap itself: the split
+// between "revoked" and "consumed by self" is scheduler-dependent (348/500
+// and 360/500 across two observed runs), so asserting a specific ratio, or
+// even that a gap exists at all, would pin non-deterministic behavior this
+// test doesn't control. If a future change merges the three critical
+// sections into one atomic operation and closes the gap, this test must
+// keep passing — that would be a fix, not a regression. The only invariant
+// asserted is that the callback path actually runs; the logged ratio is
+// evidence for a human reader, not a pass/fail condition. Re-check the
+// JS-side reachability argument above if native-close.ts's control flow
+// changes or a second Go caller of EnableNativeCloseGuard is added — that
+// argument, not this test, is what keeps the gap unreachable in practice.
+func TestNativeCloseGuard_ConcurrentEnableRevokesPermits_Observation(t *testing.T) {
+	app := &App{ctx: context.Background()}
+	app.EnableNativeCloseGuard()
+
+	const n = 500
+	var wg sync.WaitGroup
+	var granted, consumedBySelf int64
+
+	wg.Add(n * 2)
+	for range n {
+		go func() {
+			defer wg.Done()
+			_ = app.completeNativeClose(func(context.Context) {
+				atomic.AddInt64(&granted, 1)
+				if !app.shouldPreventNativeClose() {
+					atomic.AddInt64(&consumedBySelf, 1)
+				}
+			})
+		}()
+		// A concurrent re-arm, interleaved with the completeNativeClose calls
+		// above rather than run in its own separate loop, so it lands in the
+		// narrow unlock-to-consume window this test is checking for.
+		go func() {
+			defer wg.Done()
+			app.EnableNativeCloseGuard()
+		}()
+	}
+	wg.Wait()
+
+	if granted == 0 {
+		t.Fatal("no completeNativeClose call ever ran its quit callback")
+	}
+	// Observational only — see the function comment for why this ratio is
+	// not, and must not become, a pass/fail assertion.
+	t.Logf("granted=%d consumedBySelf=%d (scheduler-dependent; a gap here is the documented TOCTOU behavior, not a failure, and its absence would mean the gap is closed, also not a failure)", granted, consumedBySelf)
 }

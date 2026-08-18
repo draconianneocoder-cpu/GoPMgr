@@ -157,6 +157,46 @@ func (a *App) Greet() string {
 	return "GoPMgr " + cli.Version + " ready."
 }
 
+// Native-close guard: EnableNativeCloseGuard, CompleteNativeClose,
+// shouldPreventNativeClose, and beforeClose together intercept every native
+// quit trigger and hand the frontend a chance to block it on unsaved editor
+// state. Two facts about the invocation model, traced against the vendored
+// github.com/wailsapp/wails/v2@v2.13.0 module source rather than assumed:
+//
+//   - Every quit trigger funnels through the same path. The native
+//     window-close button (WindowDelegate.m windowShouldClose:, all
+//     platforms), macOS's App-menu Quit / Cmd+Q (AppDelegate.m), and this
+//     file's own non-darwin "Quit" menu item (wailsruntime.Quit below) all
+//     end up at internal/frontend/dispatcher/dispatcher.go's `case 'Q':
+//     sender.Quit()`, which calls frontendOptions.OnBeforeClose — our
+//     beforeClose — before ever touching the window.
+//   - That call is NOT invoked the same way on every platform. darwin's and
+//     linux's Frontend.Quit spawn OnBeforeClose in a goroutine of their own;
+//     windows/frontend.go's Frontend.Quit calls it synchronously on the
+//     same path that requested the quit. beforeClose's body MUST stay
+//     non-blocking because of this — it is not proven what thread the
+//     Windows synchronous call runs on, only that it does not spawn a new
+//     goroutine to make the call. wailsruntime.EventsEmit's own blocking
+//     behavior on Windows was not traced, so treat it as unverified rather
+//     than assumed safe.
+//
+// A separate, three-critical-section fact, demonstrated (not assumed) by
+// TestNativeCloseGuard_ConcurrentEnableRevokesPermits_Observation in
+// main_test.go: EnableNativeCloseGuard, completeNativeClose, and
+// shouldPreventNativeClose each take and release a.mu independently rather
+// than sharing one critical section, so a concurrent EnableNativeCloseGuard
+// call can revoke a permit completeNativeClose just granted before that
+// same call's own quit callback consumes it. This is not reachable from the
+// current frontend: frontend/src/lib/native-close.ts's
+// NativeCloseController calls EnableNativeCloseGuard exactly once at
+// startup, and otherwise only sequentially inside the catch block after a
+// CompleteNativeClose call has already rejected — and completeNativeClose's
+// two Go-side error returns both happen before nativeClosePermit is ever
+// set to true, so there is never an in-flight granted permit for that later
+// call to revoke. If native-close.ts's control flow changes, or a second Go
+// caller of EnableNativeCloseGuard is added, re-check this reachability
+// argument rather than assuming it still holds.
+//
 // EnableNativeCloseGuard makes subsequent native close requests ask the
 // frontend to evaluate its current editor state. Before the frontend is ready,
 // closing remains allowed so a failed startup cannot trap the user in a window.
