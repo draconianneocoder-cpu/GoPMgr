@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, waitFor } from '@testing-library/svelte';
+import { render, fireEvent, waitFor } from '@testing-library/svelte';
 
 // autosave.register sets up a timer; stub it so the mounted editor doesn't
 // leave a live interval running through the test.
@@ -79,13 +79,14 @@ describe('CPMEditor toolbarExtra migrated buttons', () => {
   // migration pass ("py-1.5" had no matching Button size), now closed by
   // adding the `compact` size bucket (px-3 py-1.5, confirmed by grep as a
   // real, app-wide-reused 4th padding bucket, not invented for this pair).
-  // "Export PDF/A" (the third py-1.5 button in this file) remains
-  // unmigrated — its original padding is px-2.5, not px-3, and relying on
-  // a `class="px-2.5"` override to win over the `compact` variant's own
-  // `px-3` is not safely assumable (Tailwind resolves same-property
-  // utility conflicts by the utilities' fixed position in the generated
-  // stylesheet, not by source/class-list order — documented precedent
-  // elsewhere in this ledger's Input/Select entries).
+  // "Export PDF/A" (the third py-1.5 button in this file) was left
+  // unmigrated at the time — its original padding is px-2.5, not px-3, and
+  // relying on a `class="px-2.5"` override to win over the `compact`
+  // variant's own `px-3` is not safely assumable (Tailwind resolves
+  // same-property utility conflicts by the utilities' fixed position in
+  // the generated stylesheet, not by source/class-list order — documented
+  // precedent elsewhere in this ledger's Input/Select entries). Migrated
+  // in a later pass instead of overridden — see the describe block below.
   it('renders "Compute" and "Run" as Button variant="secondary" size="compact"', async () => {
     const app = installApp();
     const { getByText } = render(CPMEditor);
@@ -97,5 +98,44 @@ describe('CPMEditor toolbarExtra migrated buttons', () => {
     for (const label of ['Compute', 'Run']) {
       expect(getByText(label).className.split(/\s+/).filter(Boolean).sort()).toEqual(expected);
     }
+  });
+});
+
+const simResult: SimResult = {
+  valid: true,
+  iterations: 1000,
+  workers: 1,
+  p50: 10,
+  p80: 12,
+  p90: 14,
+  finish_cdf: [],
+  critical_path_frequency: {},
+  duration_percentiles: {},
+  tornado_drivers: [],
+};
+
+// Added 2026-08-19 (design-critique Priority #2, Option B from the
+// system-design consult on this button's padding mismatch — see
+// docs/beta-release-backlog.md): "Export PDF/A" migrated from a raw
+// <button class="rounded bg-slate-800 px-2.5 py-1.5 ...">, whose px-2.5
+// padding had no matching Button size, to `variant="secondary"
+// size="compact"` (px-3 py-1.5 — 2px wider). A real, small, deliberate
+// visual change, not a pure refactor — accepted explicitly as the
+// trade-off of closing this file's last raw-button exclusion, per the
+// decision made in that consult. The button is gated behind a completed
+// Monte Carlo run (`{#if monteCarlo}`), so reaching it requires clicking
+// "Run" first and letting RunChartMonteCarlo resolve.
+describe('CPMEditor migrated "Export PDF/A" button', () => {
+  it('Button variant="secondary" size="compact"', async () => {
+    const app = installApp({ RunChartMonteCarlo: vi.fn(async () => simResult) });
+    const { getByText, findByText } = render(CPMEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+
+    await fireEvent.click(getByText('Run'));
+    const btn = await findByText('Export PDF/A');
+
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'rounded text-xs disabled:opacity-50 px-3 py-1.5 bg-slate-800 hover:bg-slate-700'.split(/\s+/).sort(),
+    );
   });
 });

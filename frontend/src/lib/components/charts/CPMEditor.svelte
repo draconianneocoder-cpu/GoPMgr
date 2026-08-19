@@ -1036,13 +1036,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </div>
         </div>
         <div class="mt-2 flex items-center justify-between gap-2">
-          <button
-            onclick={exportMonteCarloReport}
-            disabled={monteCarloReportBusy}
-            class="rounded bg-slate-800 px-2.5 py-1.5 text-xs text-slate-100 hover:bg-slate-700 disabled:opacity-50"
-          >
+          <Button variant="secondary" size="compact" onclick={exportMonteCarloReport} disabled={monteCarloReportBusy}>
             {monteCarloReportBusy ? 'Exporting…' : 'Export PDF/A'}
-          </button>
+          </Button>
           <span class="text-[10px] text-slate-500">Risk report</span>
         </div>
         {#if monteCarloReportStatus}
