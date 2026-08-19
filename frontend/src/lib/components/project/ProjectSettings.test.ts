@@ -352,3 +352,17 @@ describe('guarded-navigation save convergence (updated_at exclusion)', () => {
     expect(description).toHaveValue('Second edit, made mid-save');
   });
 });
+
+// Added 2026-08-19 alongside migrating the header "&larr; Dashboard" nav
+// link (previously a raw <button>) to the new `nav` Button variant.
+describe('ProjectSettings migrated header "&larr; Dashboard" button', () => {
+  it('Button variant="nav"', async () => {
+    const { getByText, findByRole } = render(ProjectSettings);
+    await findByRole('tablist');
+
+    const btn = getByText('← Dashboard');
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50'.split(/\s+/).sort(),
+    );
+  });
+});

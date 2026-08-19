@@ -50,7 +50,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       | 'canvas'
       | 'canvas-danger'
       | 'link'
-      | 'remove';
+      | 'remove'
+      | 'nav';
     size?: 'sm' | 'compact' | 'md' | 'lg';
     type?: 'button' | 'submit';
     disabled?: boolean;
@@ -70,7 +71,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // hand-written buttons (the dogfooding call site) never had it, unlike
   // the primary/cyan family which does app-wide; adding it here would
   // silently change ConfirmDialog's already-live-verified appearance.
-  const variantClasses: Record<Exclude<typeof variant, 'link' | 'remove'>, string> = {
+  const variantClasses: Record<Exclude<typeof variant, 'link' | 'remove' | 'nav'>, string> = {
     primary: 'bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase disabled:opacity-50',
     secondary: 'bg-slate-800 hover:bg-slate-700 disabled:opacity-50',
     danger: 'bg-red-700 hover:bg-red-600 text-white font-bold disabled:opacity-50',
@@ -101,6 +102,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
        padding in their original hand-written classes; folding this into
        `variantClasses` instead would silently add padding to all 21. -->
   <button {type} {disabled} {onclick} class="text-slate-500 hover:text-red-400 disabled:opacity-50 {klass}" {...rest}>
+    {@render children?.()}
+  </button>
+{:else if variant === 'nav'}
+  <!-- The "&larr; Dashboard" header-nav idiom: 28 grep-confirmed call sites
+       app-wide, all `text-xs text-slate-400 hover:text-cyan-400` with no
+       padding/rounded — exempt from the shared base for the same reason as
+       `link`/`remove`. None of the 28 pass `disabled`, so
+       `disabled:opacity-50` here is untested by any live call site, but
+       included for parity with `link`/`remove` rather than left silently
+       broken if a future caller does pass it. Distinct from `link`
+       (cyan-400 + underline, a different color contract) — a further 3
+       call sites (AppHeader "Sign out", Dashboard "Settings"/"Close
+       project") add `underline` to this same slate/cyan pair; that's a
+       third, rarer idiom, deliberately left unmigrated rather than folded
+       in here. -->
+  <button {type} {disabled} {onclick} class="text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50 {klass}" {...rest}>
     {@render children?.()}
   </button>
 {:else}

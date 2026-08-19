@@ -19,6 +19,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { METHODOLOGIES } from '../../methodologies';
   import { rebaseEditableChanges } from '../../rebase-editable-changes';
   import Tabs from '../Tabs.svelte';
+  import Button from '../Button.svelte';
 
   // Tab grouping (docs/design/project-settings-tab-restructuring.md §3):
   // General binds to `draft`/save()/revert() below; the other four tabs
@@ -1005,9 +1006,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <div class="min-h-screen bg-slate-950 text-slate-200">
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-4">
-      <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
+      <Button variant="nav" onclick={() => goto('dashboard')}>
         &larr; Dashboard
-      </button>
+      </Button>
       <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Project Settings</h1>
     </div>
     <div class="flex gap-2">

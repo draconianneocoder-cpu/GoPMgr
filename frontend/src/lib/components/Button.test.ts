@@ -184,4 +184,38 @@ describe('Button', () => {
       expect((getByText('×') as HTMLButtonElement).disabled).toBe(true);
     });
   });
+
+  // Added 2026-08-19 for the app's 28 grep-confirmed "&larr; Dashboard"
+  // header-nav-link call sites (docs/beta-release-backlog.md's Priority #2
+  // row): text-xs text-slate-400 hover:text-cyan-400, no padding/rounded —
+  // exempt from the shared base like `link`/`remove`. Distinct from `link`
+  // (cyan-400 + underline, a different color contract).
+  describe('nav variant', () => {
+    it('reconstructs the original hand-written class string exactly, ignoring size, with no rounded/padding', () => {
+      const { getByText } = render(ButtonChildrenHarness, {
+        props: { text: '← Dashboard', variant: 'nav', size: 'lg' },
+      });
+      expect(getByText('← Dashboard').className.trim()).toBe(
+        'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50',
+      );
+    });
+
+    it('fires onclick and appends a passed-through class', async () => {
+      const onclick = vi.fn();
+      const { getByText } = render(ButtonChildrenHarness, {
+        props: { text: '← Dashboard', variant: 'nav', class: 'ml-2', onclick },
+      });
+      const btn = getByText('← Dashboard');
+      expect(btn.className).toContain('ml-2');
+      await fireEvent.click(btn);
+      expect(onclick).toHaveBeenCalledOnce();
+    });
+
+    it('forwards disabled', () => {
+      const { getByText } = render(ButtonChildrenHarness, {
+        props: { text: '← Dashboard', variant: 'nav', disabled: true },
+      });
+      expect((getByText('← Dashboard') as HTMLButtonElement).disabled).toBe(true);
+    });
+  });
 });

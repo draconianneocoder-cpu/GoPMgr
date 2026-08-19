@@ -153,3 +153,19 @@ describe('FishboneEditor "Apply 6 Ms preset"', () => {
     expect((document.querySelectorAll('aside input')[1] as HTMLInputElement).value).toBe('Custom category');
   });
 });
+
+// Added 2026-08-19 alongside migrating the header "&larr; Dashboard" nav
+// link (previously a raw <button>) to the new `nav` Button variant — a
+// distinct, unpadded exempt-branch idiom, like `link`/`remove` — see
+// Button.svelte's `nav` branch comment.
+describe('FishboneEditor migrated header "&larr; Dashboard" button', () => {
+  it('Button variant="nav"', async () => {
+    const app = installApp(JSON.stringify({ effect: '', categories: [] }));
+    const { getByText } = await mountLoaded(app);
+
+    const btn = getByText('← Dashboard');
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50'.split(/\s+/).sort(),
+    );
+  });
+});

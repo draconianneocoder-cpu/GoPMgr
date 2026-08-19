@@ -132,4 +132,16 @@ describe('DORADashboard', () => {
     expect(document.querySelector('[role="alertdialog"]')).toBeNull();
     expect(app.DeleteDeployment).not.toHaveBeenCalled();
   });
+
+  // Added 2026-08-19 alongside migrating the header "&larr; Dashboard" nav
+  // link (previously a raw <button>) to the new `nav` Button variant.
+  it('header "&larr; Dashboard": Button variant="nav"', async () => {
+    const app = installApp([]);
+    const { getByText } = await mountLoaded(app);
+
+    const btn = getByText('← Dashboard');
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50'.split(/\s+/).sort(),
+    );
+  });
 });

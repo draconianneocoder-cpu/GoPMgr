@@ -13,6 +13,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import Button from '../Button.svelte';
   import WorkItemEditor from './WorkItemEditor.svelte';
 
   let board = $state<AgileBoard | null>(null);
@@ -162,9 +163,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <div class="min-h-screen bg-slate-950 text-slate-200 flex flex-col">
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-4">
-      <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
+      <Button variant="nav" onclick={() => goto('dashboard')}>
         &larr; Dashboard
-      </button>
+      </Button>
       <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">
         Kanban · {board?.name ?? '...'}
       </h1>

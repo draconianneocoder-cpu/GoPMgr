@@ -18,6 +18,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   import { onMount, tick } from 'svelte';
   import { METHODOLOGIES } from '../../methodologies';
+  import Button from '../Button.svelte';
 
   // Props — Launchpad can be opened from ProjectPicker; on close we
   // notify the parent so it can refresh its list.
@@ -223,9 +224,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">
       New Project · Step {step} of 4
     </h1>
-    <button onclick={onCancel} class="text-xs text-slate-400 hover:text-cyan-400">
+    <Button variant="nav" onclick={onCancel}>
       Cancel
-    </button>
+    </Button>
   </header>
 
   <ol
@@ -393,9 +394,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </div>
 
       <div class="flex items-center justify-between">
-        <button onclick={prev} class="text-xs text-slate-400 hover:text-cyan-400">
+        <Button variant="nav" onclick={prev}>
           ← Back
-        </button>
+        </Button>
         <button
           onclick={create}
           disabled={busy || !name || !countryCode || !timeZone}
@@ -409,9 +410,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {#if step < 4}
       <div class="mt-8 flex items-center justify-between border-t border-slate-800 pt-5">
         {#if step > 1}
-          <button onclick={prev} class="text-xs text-slate-400 hover:text-cyan-400">
+          <Button variant="nav" onclick={prev}>
             ← Back
-          </button>
+          </Button>
         {:else}
           <span></span>
         {/if}

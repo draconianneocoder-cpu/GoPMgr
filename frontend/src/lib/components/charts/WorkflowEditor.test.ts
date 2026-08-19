@@ -109,4 +109,18 @@ describe('WorkflowEditor migrated buttons', () => {
       'rounded text-xs px-3 py-1 bg-slate-800 hover:bg-red-900 disabled:opacity-30'.split(/\s+/).sort(),
     );
   });
+
+  // Added 2026-08-19 (second pass, same date): the header "&larr; Dashboard"
+  // nav link, previously a raw <button>, migrated to the new `nav` Button
+  // variant.
+  it('"&larr; Dashboard": Button variant="nav"', async () => {
+    const app = installApp();
+    const { getByText } = render(WorkflowEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+
+    const btn = getByText('← Dashboard');
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50'.split(/\s+/).sort(),
+    );
+  });
 });

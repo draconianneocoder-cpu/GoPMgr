@@ -98,3 +98,21 @@ describe('KanbanBoard modal backdrop', () => {
     expect(backdrop.className).toMatch(/\bz-40\b/);
   });
 });
+
+// Added 2026-08-19 alongside migrating the header "&larr; Dashboard" nav
+// link (previously a raw <button>) to the new `nav` Button variant — see
+// Button.svelte's `nav` branch comment.
+describe('KanbanBoard migrated header "&larr; Dashboard" button', () => {
+  it('Button variant="nav"', async () => {
+    const utils = render(KanbanBoard);
+    await waitFor(() => expect(app.ListWorkItems).toHaveBeenCalled());
+
+    const btn = Array.from(utils.container.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === '← Dashboard',
+    ) as HTMLButtonElement;
+    expect(btn).toBeDefined();
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50'.split(/\s+/).sort(),
+    );
+  });
+});

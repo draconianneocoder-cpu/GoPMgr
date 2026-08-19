@@ -23,6 +23,10 @@ import { session } from '../../session.svelte';
 // 2026-08-19 (third pass, same date): the load-error "Back to dashboard"
 // button also migrated, identical disposition to WBSEditor.test.ts's third
 // pass.
+//
+// 2026-08-19 (fourth pass, same date): the header "&larr; Dashboard" nav
+// link also migrated to the new `nav` Button variant, identical disposition
+// to WBSEditor.test.ts's fourth pass.
 
 type AppMock = Record<string, ReturnType<typeof vi.fn>>;
 
@@ -100,6 +104,19 @@ describe('CauseEffectEditor migrated load-error "Back to dashboard" button', () 
       'rounded text-xs disabled:opacity-50 px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
         .split(/\s+/)
         .sort(),
+    );
+  });
+});
+
+describe('CauseEffectEditor migrated header "&larr; Dashboard" button', () => {
+  it('Button variant="nav"', async () => {
+    const app = installApp();
+    const { getByText } = render(CauseEffectEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+
+    const btn = getByText('← Dashboard');
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50'.split(/\s+/).sort(),
     );
   });
 });

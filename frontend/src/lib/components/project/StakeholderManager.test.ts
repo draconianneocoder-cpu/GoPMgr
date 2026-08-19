@@ -681,3 +681,20 @@ describe('StakeholderManager delete', () => {
     expect(app.DeleteStakeholder).not.toHaveBeenCalled();
   });
 });
+
+// Added 2026-08-19 alongside migrating the header "&larr; Dashboard" nav
+// link (previously a raw <button>) to the new `nav` Button variant.
+describe('StakeholderManager migrated header "&larr; Dashboard" button', () => {
+  it('Button variant="nav"', async () => {
+    const utils = render(StakeholderManager);
+    await waitFor(() => expect(app.ListStakeholders).toHaveBeenCalled());
+
+    const btn = Array.from(utils.container.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === '← Dashboard',
+    ) as HTMLButtonElement;
+    expect(btn).toBeDefined();
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50'.split(/\s+/).sort(),
+    );
+  });
+});

@@ -14,6 +14,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../../session.svelte';
   import { autosave } from '../../autosave.svelte';
   import { showToast } from '../../toast.svelte';
+  import Button from '../Button.svelte';
   import GanttBars from './GanttBars.svelte';
   import { GANTT_ROW_H as rowH, type GanttLayout, type GanttRow } from './gantt_geometry';
   import { splitLevelStatus, splitPreviewMessage, clearWorkSegments } from './leveling_messages';
@@ -303,9 +304,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <div class="min-h-screen bg-slate-950 text-slate-200 flex flex-col">
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-4">
-      <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
+      <Button variant="nav" onclick={() => goto('dashboard')}>
         &larr; Dashboard
-      </button>
+      </Button>
       <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Gantt Chart</h1>
       {#if status}<span class="text-xs text-cyan-300" role="status" aria-live="polite">{status}</span>{/if}
     </div>
