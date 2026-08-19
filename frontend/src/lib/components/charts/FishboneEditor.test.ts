@@ -169,3 +169,27 @@ describe('FishboneEditor migrated header "&larr; Dashboard" button', () => {
     );
   });
 });
+
+// Added 2026-08-19 (second pass, same date): the load-error "Back to
+// dashboard" button also migrated (variant="primary" size="md" — the same
+// pattern already used by WorkflowEditor/ActivityEditor/WBSEditor/
+// CauseEffectEditor's equivalent buttons, found in passing via a completeness
+// grep after the cycle 9/10 nav-variant migration).
+describe('FishboneEditor migrated load-error "Back to dashboard" button', () => {
+  it('Button variant="primary" size="md"', async () => {
+    const app: AppMock = {
+      GetChart: vi.fn(async () => { throw new Error('boom'); }),
+      SaveChart: vi.fn(async (c: unknown) => c),
+      LayoutChart: vi.fn(async () => ({ body: emptyLayout })),
+    };
+    (window as unknown as { go: unknown }).go = { main: { App: app } };
+    const { findByText } = render(FishboneEditor);
+
+    const btn = await findByText('Back to dashboard');
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'rounded text-xs disabled:opacity-50 px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
+        .split(/\s+/)
+        .sort(),
+    );
+  });
+});

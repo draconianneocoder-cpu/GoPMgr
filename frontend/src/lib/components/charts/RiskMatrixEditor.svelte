@@ -168,7 +168,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <div class="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center">
     <div class="text-center space-y-4 px-6">
       <p class="text-sm text-red-400" role="alert">{loadError}</p>
-      <button onclick={() => goto('dashboard')} class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase px-3 py-2 rounded">Back to dashboard</button>
+      <Button variant="primary" size="md" onclick={() => goto('dashboard')}>Back to dashboard</Button>
     </div>
   </div>
 {:else}

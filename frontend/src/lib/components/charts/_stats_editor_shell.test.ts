@@ -37,6 +37,12 @@ import { session } from '../../session.svelte';
 // design: pins only the migrated button's exact class string, reachable on
 // mount once `GetChart`/`SaveChart`/`LayoutChart` resolve — does not cover
 // slice CRUD, chart rendering, or autosave.
+//
+// 2026-08-19 (second pass, same date): the load-error "Back to dashboard"
+// button also migrated (variant="primary" size="md" — the same pattern
+// already used by WorkflowEditor/ActivityEditor/WBSEditor/CauseEffectEditor's
+// equivalent buttons), also mounted via `PieEditor` as the shared shell's
+// thinnest door.
 
 type AppMock = Record<string, ReturnType<typeof vi.fn>>;
 
@@ -76,6 +82,20 @@ describe('_stats_editor_shell migrated header "&larr; Dashboard" button (via Pie
     const btn = getByText('← Dashboard');
     expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
       'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50'.split(/\s+/).sort(),
+    );
+  });
+});
+
+describe('_stats_editor_shell migrated load-error "Back to dashboard" button (via PieEditor)', () => {
+  it('Button variant="primary" size="md"', async () => {
+    installApp({ GetChart: vi.fn(async () => { throw new Error('boom'); }) });
+    const { findByText } = render(PieEditor);
+
+    const btn = await findByText('Back to dashboard');
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'rounded text-xs disabled:opacity-50 px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
+        .split(/\s+/)
+        .sort(),
     );
   });
 });

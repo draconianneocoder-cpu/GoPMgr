@@ -102,3 +102,22 @@ describe('_layered_editor_shell migrated header "&larr; Dashboard" button (via N
     );
   });
 });
+
+// Added 2026-08-19 (third pass, same date): the load-error "Back to
+// dashboard" button also migrated (variant="primary" size="md"), found in
+// passing via a completeness grep after the second pass above. Same
+// disposition: coverage of the shared shell file, reached through
+// NetworkEditor as the thinnest door.
+describe('_layered_editor_shell migrated load-error "Back to dashboard" button (via NetworkEditor)', () => {
+  it('Button variant="primary" size="md"', async () => {
+    installApp({ GetChart: vi.fn(async () => { throw new Error('boom'); }) });
+    const { findByText } = render(NetworkEditor);
+
+    const btn = await findByText('Back to dashboard');
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'rounded text-xs disabled:opacity-50 px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
+        .split(/\s+/)
+        .sort(),
+    );
+  });
+});
