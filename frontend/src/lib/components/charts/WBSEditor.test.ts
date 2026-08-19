@@ -28,6 +28,10 @@ import { session } from '../../session.svelte';
 // migrated (secondary/sm and primary/sm respectively — the always-enabled
 // "+ Child"/"+ Sibling" pair was deliberately excluded from the first pass
 // above as a different, unreviewed pattern; that review has now happened).
+//
+// 2026-08-19 (third pass, same date): the load-error "Back to dashboard"
+// button also migrated (primary/md — the same pattern already used by
+// WorkflowEditor/ActivityEditor's equivalent buttons).
 
 type AppMock = Record<string, ReturnType<typeof vi.fn>>;
 
@@ -89,6 +93,20 @@ describe('WBSEditor migrated "+ Child"/"+ Sibling"/"Save" buttons', () => {
     expect(save.disabled).toBe(false);
     expect(save.className.split(/\s+/).filter(Boolean).sort()).toEqual(
       'rounded text-xs disabled:opacity-50 px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
+        .split(/\s+/)
+        .sort(),
+    );
+  });
+});
+
+describe('WBSEditor migrated load-error "Back to dashboard" button', () => {
+  it('Button variant="primary" size="md"', async () => {
+    installApp({ GetChart: vi.fn(async () => { throw new Error('boom'); }) });
+    const { findByText } = render(WBSEditor);
+
+    const btn = await findByText('Back to dashboard');
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'rounded text-xs disabled:opacity-50 px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
         .split(/\s+/)
         .sort(),
     );

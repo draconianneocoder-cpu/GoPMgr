@@ -19,6 +19,10 @@ import { session } from '../../session.svelte';
 //
 // 2026-08-19 (second pass, same date): "+ Child cause"/"+ Sibling"/"Save"
 // also migrated, identical disposition to WBSEditor.test.ts's second pass.
+//
+// 2026-08-19 (third pass, same date): the load-error "Back to dashboard"
+// button also migrated, identical disposition to WBSEditor.test.ts's third
+// pass.
 
 type AppMock = Record<string, ReturnType<typeof vi.fn>>;
 
@@ -80,6 +84,20 @@ describe('CauseEffectEditor migrated "+ Child cause"/"+ Sibling"/"Save" buttons'
     expect(save.disabled).toBe(false);
     expect(save.className.split(/\s+/).filter(Boolean).sort()).toEqual(
       'rounded text-xs disabled:opacity-50 px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
+        .split(/\s+/)
+        .sort(),
+    );
+  });
+});
+
+describe('CauseEffectEditor migrated load-error "Back to dashboard" button', () => {
+  it('Button variant="primary" size="md"', async () => {
+    installApp({ GetChart: vi.fn(async () => { throw new Error('boom'); }) });
+    const { findByText } = render(CauseEffectEditor);
+
+    const btn = await findByText('Back to dashboard');
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'rounded text-xs disabled:opacity-50 px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
         .split(/\s+/)
         .sort(),
     );
