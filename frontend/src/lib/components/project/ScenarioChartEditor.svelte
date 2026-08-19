@@ -5,6 +5,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <script lang="ts">
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
+  import Button from '../Button.svelte';
 
   let chart = $state<ScenarioChart | null>(null);
   let title = $state('');
@@ -128,9 +129,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <div class="min-h-screen bg-slate-950 text-slate-200">
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-4">
-      <button onclick={() => goto('project_settings')} class="text-xs text-slate-400 hover:text-cyan-400">
+      <Button variant="nav" onclick={() => goto('project_settings')}>
         &larr; Project Settings
-      </button>
+      </Button>
       <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">Scenario chart editor</h1>
     </div>
     <div class="flex flex-wrap gap-2">

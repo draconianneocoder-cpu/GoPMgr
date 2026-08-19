@@ -6,6 +6,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
+  import Button from '../Button.svelte';
 
   let projects = $state<SigmaProject[]>([]);
   let loading = $state(true);
@@ -52,9 +53,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <div class="min-h-screen bg-slate-950 text-slate-200">
   <header class="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
     <div class="flex items-center gap-4">
-      <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
+      <Button variant="nav" onclick={() => goto('dashboard')}>
         &larr; Dashboard
-      </button>
+      </Button>
       <h1 class="text-lg font-bold tracking-widest uppercase text-slate-50">Process Excellence Suite</h1>
     </div>
   </header>

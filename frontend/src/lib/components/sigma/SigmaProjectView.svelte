@@ -14,6 +14,7 @@ import SigmaControlPlan from './SigmaControlPlan.svelte';
 import SigmaSIPOC from './SigmaSIPOC.svelte';
 import SigmaVoCCTQ from './SigmaVoCCTQ.svelte';
 import TollgateChecklist from './TollgateChecklist.svelte';
+import Button from '../Button.svelte';
 
   let project = $state<SigmaProject | null>(null);
   let charter = $state<SigmaCharter | null>(null);
@@ -249,9 +250,9 @@ import TollgateChecklist from './TollgateChecklist.svelte';
 <div class="min-h-screen bg-slate-950 text-slate-200">
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-4">
-      <button onclick={() => goto('sigma_dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
+      <Button variant="nav" onclick={() => goto('sigma_dashboard')}>
         &larr; Sigma Home
-      </button>
+      </Button>
       <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">
         {project?.title ?? 'Loading...'}
       </h1>
