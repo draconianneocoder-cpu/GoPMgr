@@ -16,6 +16,9 @@ import { session } from '../../session.svelte';
 // Added 2026-08-19, identical disposition to WBSEditor.test.ts's new row —
 // see that file's header comment. This file mirrors WBSEditor's UX (its own
 // header comment says so) and shares the exact same "Delete" button pattern.
+//
+// 2026-08-19 (second pass, same date): "+ Child cause"/"+ Sibling"/"Save"
+// also migrated, identical disposition to WBSEditor.test.ts's second pass.
 
 type AppMock = Record<string, ReturnType<typeof vi.fn>>;
 
@@ -56,6 +59,29 @@ describe('CauseEffectEditor migrated "Delete" button', () => {
     expect(btn.disabled).toBe(true);
     expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
       'rounded text-xs px-3 py-1 bg-slate-800 hover:bg-red-900 disabled:opacity-30'.split(/\s+/).sort(),
+    );
+  });
+});
+
+describe('CauseEffectEditor migrated "+ Child cause"/"+ Sibling"/"Save" buttons', () => {
+  it('"+ Child cause"/"+ Sibling": Button variant="secondary" size="sm"; "Save": variant="primary" size="sm"', async () => {
+    const app = installApp();
+    const { getByText } = render(CauseEffectEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+
+    const secondaryExpected = 'rounded text-xs px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50'
+      .split(/\s+/)
+      .sort();
+    for (const label of ['+ Child cause', '+ Sibling']) {
+      expect(getByText(label).className.split(/\s+/).filter(Boolean).sort()).toEqual(secondaryExpected);
+    }
+
+    const save = getByText('Save') as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    expect(save.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'rounded text-xs disabled:opacity-50 px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
+        .split(/\s+/)
+        .sort(),
     );
   });
 });

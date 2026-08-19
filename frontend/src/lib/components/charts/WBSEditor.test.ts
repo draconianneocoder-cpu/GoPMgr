@@ -22,9 +22,12 @@ import { session } from '../../session.svelte';
 // same disposition Gate A required for WorkflowEditor/ActivityEditor's
 // canvas/canvas-danger migration. Does not cover tree CRUD, layout
 // rendering, or autosave — unchanged by this migration and a pre-existing,
-// disclosed gap; "+ Child"/"+ Sibling" are a different, always-enabled
-// pattern (no disabled/opacity at all) and were deliberately left as raw
-// <button> elements, not part of this migration's named scope.
+// disclosed gap.
+//
+// 2026-08-19 (second pass, same date): "+ Child"/"+ Sibling"/"Save" also
+// migrated (secondary/sm and primary/sm respectively — the always-enabled
+// "+ Child"/"+ Sibling" pair was deliberately excluded from the first pass
+// above as a different, unreviewed pattern; that review has now happened).
 
 type AppMock = Record<string, ReturnType<typeof vi.fn>>;
 
@@ -65,6 +68,29 @@ describe('WBSEditor migrated "Delete" button', () => {
     expect(btn.disabled).toBe(true);
     expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
       'rounded text-xs px-3 py-1 bg-slate-800 hover:bg-red-900 disabled:opacity-30'.split(/\s+/).sort(),
+    );
+  });
+});
+
+describe('WBSEditor migrated "+ Child"/"+ Sibling"/"Save" buttons', () => {
+  it('"+ Child"/"+ Sibling": Button variant="secondary" size="sm"; "Save": variant="primary" size="sm"', async () => {
+    const app = installApp();
+    const { getByText } = render(WBSEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+
+    const secondaryExpected = 'rounded text-xs px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50'
+      .split(/\s+/)
+      .sort();
+    for (const label of ['+ Child', '+ Sibling']) {
+      expect(getByText(label).className.split(/\s+/).filter(Boolean).sort()).toEqual(secondaryExpected);
+    }
+
+    const save = getByText('Save') as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    expect(save.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'rounded text-xs disabled:opacity-50 px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
+        .split(/\s+/)
+        .sort(),
     );
   });
 });

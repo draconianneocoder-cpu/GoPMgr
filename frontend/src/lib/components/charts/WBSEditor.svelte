@@ -255,12 +255,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
           Saved {lastSavedAt.toLocaleTimeString()}
         </span>
       {/if}
-      <button onclick={addChild} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
-        + Child
-      </button>
-      <button onclick={addSibling} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
-        + Sibling
-      </button>
+      <Button variant="secondary" size="sm" onclick={addChild}>+ Child</Button>
+      <Button variant="secondary" size="sm" onclick={addSibling}>+ Sibling</Button>
       <Button
         variant="canvas-danger"
         size="sm"
@@ -269,13 +265,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       >
         Delete
       </Button>
-      <button
-        onclick={save}
-        disabled={saving}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
-      >
+      <Button variant="primary" size="sm" onclick={save} disabled={saving}>
         {saving ? 'Saving...' : 'Save'}
-      </button>
+      </Button>
     </div>
   </header>
 
