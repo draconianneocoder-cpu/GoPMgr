@@ -24,6 +24,7 @@ JSON.stringified back to db.charts.data.
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import { autosave } from '../../autosave.svelte';
+  import Button from '../Button.svelte';
   import StatsChart from './StatsChart.svelte';
   import type { Snippet } from 'svelte';
   import type { StatsLayout } from './_stats_types';
@@ -172,9 +173,9 @@ JSON.stringified back to db.charts.data.
 <div class="min-h-screen bg-slate-950 text-slate-200">
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-4">
-      <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
+      <Button variant="nav" onclick={() => goto('dashboard')}>
         &larr; Dashboard
-      </button>
+      </Button>
       <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">{headingLabel}</h1>
     </div>
     <div class="flex items-center gap-3">

@@ -238,9 +238,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <div class="min-h-screen bg-slate-950 text-slate-200">
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-4">
-      <button onclick={() => goto('dashboard')} class="text-xs text-slate-400 hover:text-cyan-400">
+      <Button variant="nav" onclick={() => goto('dashboard')}>
         &larr; Dashboard
-      </button>
+      </Button>
       <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">RACI Matrix</h1>
       {#if layout.validation.error_count > 0}
         <span class="text-xs px-2 py-1 bg-red-900 text-red-200 rounded-full">
