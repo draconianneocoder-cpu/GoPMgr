@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 )
@@ -181,6 +182,133 @@ func TestEnumerateProjectsSupportsBothLayouts(t *testing.T) {
 		if !names[want] {
 			t.Errorf("%q missing; names=%v", want, names)
 		}
+	}
+}
+
+// TestEnumerateProjectsDiscoversOneLevelOfNestedWrapping proves the fix this
+// change makes: a project subfolder that ended up wrapped in one extra
+// directory (a manual reorganization, an archive extraction, a backup
+// restore) is still found, not silently invisible in the picker. Before
+// this change enumerateProjects only ever did a single-level os.ReadDir, so
+// this exact case was undiscoverable with no error surfaced anywhere.
+func TestEnumerateProjectsDiscoversOneLevelOfNestedWrapping(t *testing.T) {
+	dir := t.TempDir()
+
+	wrapped := filepath.Join(dir, "Reorganized", "20260901-120000-Wrapped Project")
+	if err := os.MkdirAll(wrapped, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wrapped, "project"+projectFileExtension), []byte("y"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := enumerateProjects(dir)
+	if err != nil {
+		t.Fatalf("enumerateProjects: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected 1 project, got %d: %#v", len(got), got)
+	}
+	if got[0].Name != "Wrapped Project" {
+		t.Errorf("Name = %q, want %q", got[0].Name, "Wrapped Project")
+	}
+	if got[0].Path != filepath.Join(wrapped, "project"+projectFileExtension) {
+		t.Errorf("Path = %q, want the nested project file", got[0].Path)
+	}
+}
+
+// TestEnumerateProjectsDoesNotDescendBeyondDepthCap proves discovery is
+// bounded, not an unbounded walk: a project wrapped in TWO extra directories
+// (one past what TestEnumerateProjectsDiscoversOneLevelOfNestedWrapping
+// covers) must not be found. This is the mutation-sensitivity check for
+// maxProjectDiscoveryDepth/the fs.SkipDir call — removing either would make
+// this test the one that catches it, since the depth-1-nesting test above
+// would still pass either way.
+func TestEnumerateProjectsDoesNotDescendBeyondDepthCap(t *testing.T) {
+	dir := t.TempDir()
+
+	tooDeep := filepath.Join(dir, "One", "Two", "20260901-120000-Too Deep Project")
+	if err := os.MkdirAll(tooDeep, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tooDeep, "project"+projectFileExtension), []byte("y"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := enumerateProjects(dir)
+	if err != nil {
+		t.Fatalf("enumerateProjects: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("expected 0 projects beyond the depth cap, got %d: %#v", len(got), got)
+	}
+}
+
+// TestEnumerateProjectsSkipsSymlinkedProjectFile proves a symlinked file
+// sitting directly in projectsDir and matching the project-file pattern is
+// never reported, even though it would satisfy every other check. A
+// symlink here can point anywhere on disk, including another account's
+// data directory — reporting through one would weaken the per-user
+// isolation boundary the caller (ListProjects/ProjectsOverview) relies on
+// projectsDir alone to provide.
+func TestEnumerateProjectsSkipsSymlinkedProjectFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires elevated privileges on Windows")
+	}
+	dir := t.TempDir()
+
+	outside := t.TempDir()
+	realFile := filepath.Join(outside, "someone-elses-project"+projectFileExtension)
+	if err := os.WriteFile(realFile, []byte("not yours"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	link := filepath.Join(dir, "Linked Project"+projectFileExtension)
+	if err := os.Symlink(realFile, link); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := enumerateProjects(dir)
+	if err != nil {
+		t.Fatalf("enumerateProjects: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("expected a symlinked project file to be skipped, got %d: %#v", len(got), got)
+	}
+}
+
+// TestEnumerateProjectsDoesNotDescendIntoSymlinkedDirectory proves a
+// symlinked directory inside projectsDir is never traversed, even when it
+// points at a real, otherwise-valid project subfolder elsewhere on disk.
+// Combined with the file-symlink test above, this closes both halves of
+// the "no path out of the isolation boundary" requirement: neither a
+// symlinked project file nor a symlinked project directory is followed.
+func TestEnumerateProjectsDoesNotDescendIntoSymlinkedDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires elevated privileges on Windows")
+	}
+	dir := t.TempDir()
+
+	outside := t.TempDir()
+	realProjectDir := filepath.Join(outside, "20260901-120000-Someone Elses Project")
+	if err := os.MkdirAll(realProjectDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(realProjectDir, "project"+projectFileExtension), []byte("not yours"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	link := filepath.Join(dir, "linked-dir")
+	if err := os.Symlink(realProjectDir, link); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := enumerateProjects(dir)
+	if err != nil {
+		t.Fatalf("enumerateProjects: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("expected a symlinked directory to never be descended into, got %d: %#v", len(got), got)
 	}
 }
 

@@ -469,56 +469,123 @@ type projectEntry struct {
 	Modified string
 }
 
-// enumerateProjects lists every project in projectsDir, supporting BOTH the
-// current layout (each project in its own "<id>/project.<ext>" subfolder)
-// and the legacy flat layout ("<name>.<ext>" directly in projectsDir), so
-// projects created before the subfolder change keep working — and, as of
-// 2026-08-04, both the current ".gopmgr" and legacy ".pmforge" extension
-// within each layout, so projects created before that rename keep working
-// too.
+// isProjectFileName reports whether name is exactly a subfolder-layout
+// project file — "project.gopmgr" or its pre-2026-08-04 name
+// "project.pmforge" — as opposed to isProjectExtension, which only checks
+// the suffix and is used for the flat-layout case where the file is named
+// after the project itself.
+func isProjectFileName(name string) bool {
+	return name == "project"+projectFileExtension || name == "project"+legacyProjectFileExtension
+}
+
+// maxProjectDiscoveryDepth bounds how many directory levels below
+// projectsDir enumerateProjects will descend while looking for a
+// subfolder-layout project file. 3 covers the existing "<id>/project.<ext>"
+// layout (depth 2) plus one extra level of wrapping (depth 3) — e.g. a
+// project folder a user dragged into a manually-created subfolder, or one
+// restored a level deeper by a backup/archive tool — without turning
+// discovery into an unbounded walk of the user's projects/ directory.
+const maxProjectDiscoveryDepth = 3
+
+// enumerateProjects lists every project under projectsDir, supporting BOTH
+// the current layout (each project in its own "<id>/project.<ext>"
+// subfolder) and the legacy flat layout ("<name>.<ext>" directly in
+// projectsDir), so projects created before the subfolder change keep
+// working — and, as of 2026-08-04, both the current ".gopmgr" and legacy
+// ".pmforge" extension within each layout, so projects created before that
+// rename keep working too.
+//
+// The subfolder layout is discovered up to maxProjectDiscoveryDepth levels
+// deep (not just directly under projectsDir), so a project nested inside an
+// extra wrapping folder is still found instead of silently disappearing
+// from the picker. The walk never follows symlinks — a symlinked directory
+// is reported by the underlying directory read as a non-directory entry and
+// is skipped without being descended into or listed, and a symlinked file
+// is skipped explicitly below — because a symlink inside a user's own
+// projects/ folder can point anywhere on disk, including another account's
+// data, and following or listing through one would weaken the per-user
+// isolation boundary this function exists inside of (callers only ever pass
+// projectsDir = user.DataDir + "/projects" for the signed-in user).
 func enumerateProjects(projectsDir string) ([]projectEntry, error) {
-	entries, err := os.ReadDir(projectsDir)
-	if err != nil {
+	if _, err := os.Lstat(projectsDir); err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
 		return nil, err
 	}
+
 	var out []projectEntry
-	for _, e := range entries {
-		if e.IsDir() {
-			// A subfolder written by this build has "project.gopmgr"; one
-			// written before the rename has "project.pmforge". Check the
-			// current extension first since it's the common case going
-			// forward.
-			pf := filepath.Join(projectsDir, e.Name(), "project"+projectFileExtension)
-			info, serr := os.Stat(pf)
-			if serr != nil {
-				pf = filepath.Join(projectsDir, e.Name(), "project"+legacyProjectFileExtension)
-				info, serr = os.Stat(pf)
-				if serr != nil {
-					continue // not a project subfolder
-				}
+	walkErr := filepath.WalkDir(projectsDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			// One unreadable entry (permission error, concurrent delete
+			// mid-walk) must not hide every other project; skip just this
+			// subtree/file rather than aborting the whole listing.
+			if d != nil && d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if path == projectsDir {
+			return nil
+		}
+		if d.Type()&fs.ModeSymlink != 0 {
+			return nil
+		}
+
+		rel, relErr := filepath.Rel(projectsDir, path)
+		if relErr != nil {
+			return nil // unreachable: WalkDir only visits paths under projectsDir
+		}
+		depth := strings.Count(rel, string(filepath.Separator)) + 1
+
+		if d.IsDir() {
+			if depth >= maxProjectDiscoveryDepth {
+				return fs.SkipDir
+			}
+			return nil
+		}
+
+		if depth == 1 {
+			// Flat-layout project file directly in projectsDir.
+			if !isProjectExtension(filepath.Ext(d.Name())) {
+				return nil
+			}
+			info, ierr := d.Info()
+			if ierr != nil {
+				return nil
 			}
 			out = append(out, projectEntry{
-				Path:     pf,
-				Name:     projectDisplayName(e.Name()),
+				Path:     path,
+				Name:     trimExt(d.Name()),
 				Modified: info.ModTime().Format(time.RFC3339),
 			})
-			continue
+			return nil
 		}
-		if !isProjectExtension(filepath.Ext(e.Name())) {
-			continue
+
+		// Subfolder-layout project file, one or two levels deep. The
+		// display name comes from the immediate parent folder regardless
+		// of how many wrapping folders sit above it. If a subfolder somehow
+		// contains BOTH "project.gopmgr" and "project.pmforge" — never
+		// produced by this app, which only ever writes one extension per
+		// project and never both — both are listed as separate entries
+		// rather than deduped to one, unlike the old single-ReadDir version.
+		// Accepted: reaching that state requires manual disk tampering, not
+		// normal use.
+		if isProjectFileName(d.Name()) {
+			info, ierr := d.Info()
+			if ierr != nil {
+				return nil
+			}
+			out = append(out, projectEntry{
+				Path:     path,
+				Name:     projectDisplayName(filepath.Base(filepath.Dir(path))),
+				Modified: info.ModTime().Format(time.RFC3339),
+			})
 		}
-		info, ierr := e.Info()
-		if ierr != nil {
-			continue
-		}
-		out = append(out, projectEntry{
-			Path:     filepath.Join(projectsDir, e.Name()),
-			Name:     trimExt(e.Name()),
-			Modified: info.ModTime().Format(time.RFC3339),
-		})
+		return nil
+	})
+	if walkErr != nil {
+		return nil, walkErr
 	}
 	return out, nil
 }
