@@ -17,6 +17,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
   import { autosave } from '../../autosave.svelte';
+  import Button from '../Button.svelte';
 
   interface CauseNode {
     id: string;
@@ -249,13 +250,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={addSibling} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
         + Sibling
       </button>
-      <button
+      <Button
+        variant="canvas-danger"
+        size="sm"
         onclick={deleteNode}
         disabled={!selectedId || selectedId === doc.root?.id}
-        class="text-xs bg-slate-800 hover:bg-red-900 disabled:opacity-30 px-3 py-1 rounded"
       >
         Delete
-      </button>
+      </Button>
       <button
         onclick={save}
         disabled={saving}

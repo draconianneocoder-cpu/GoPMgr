@@ -15,6 +15,7 @@ not routed directly.
   import { autosave } from '../../autosave.svelte';
   import { showToast } from '../../toast.svelte';
   import LayeredDiagram from './LayeredDiagram.svelte';
+  import Button from '../Button.svelte';
   import type { Snippet } from 'svelte';
 
   interface LayeredNode {
@@ -356,27 +357,15 @@ not routed directly.
       <button onclick={addNode} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">
         + Node
       </button>
-      <button
-        onclick={startConnect}
-        disabled={!selectedId}
-        class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-30 px-3 py-1 rounded"
-      >
+      <Button variant="canvas" size="sm" onclick={startConnect} disabled={!selectedId}>
         Connect…
-      </button>
-      <button
-        onclick={clearEdgesFromSelected}
-        disabled={!selectedId}
-        class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-30 px-3 py-1 rounded"
-      >
+      </Button>
+      <Button variant="canvas" size="sm" onclick={clearEdgesFromSelected} disabled={!selectedId}>
         Clear edges
-      </button>
-      <button
-        onclick={deleteNode}
-        disabled={!selectedId}
-        class="text-xs bg-slate-800 hover:bg-red-900 disabled:opacity-30 px-3 py-1 rounded"
-      >
+      </Button>
+      <Button variant="canvas-danger" size="sm" onclick={deleteNode} disabled={!selectedId}>
         Delete node
-      </button>
+      </Button>
       <button
         onclick={save}
         disabled={saving}
