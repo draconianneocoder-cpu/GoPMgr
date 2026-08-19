@@ -23,6 +23,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
+  import Button from '../Button.svelte';
   import { autosave } from '../../autosave.svelte';
   import {
     shapePath,
@@ -245,12 +246,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <div class="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center">
     <div class="text-center space-y-4 px-6">
       <p class="text-sm text-red-400 break-words" role="alert">{loadError}</p>
-      <button
-        onclick={() => goto('dashboard')}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase px-3 py-2 rounded"
-      >
+      <Button variant="primary" size="md" onclick={() => goto('dashboard')}>
         Back to dashboard
-      </button>
+      </Button>
     </div>
   </div>
 {:else}
@@ -297,13 +295,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       >
         Delete node
       </button>
-      <button
-        onclick={save}
-        disabled={saving}
-        class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
-      >
+      <Button variant="primary" size="sm" onclick={save} disabled={saving}>
         {saving ? 'Saving...' : 'Save'}
-      </button>
+      </Button>
     </div>
   </header>
 
@@ -436,13 +430,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
                       <span class="font-mono text-slate-400">
                         {e.from} → {e.to}
                       </span>
-                      <button
+                      <Button
+                        variant="remove"
                         onclick={() => deleteEdge(e.idx)}
-                        class="text-slate-500 hover:text-red-400"
                         aria-label="Delete edge" title="Delete edge"
                       >
                         ×
-                      </button>
+                      </Button>
                     </div>
                     <input
                       placeholder="Edge label (e.g. Yes / No)"

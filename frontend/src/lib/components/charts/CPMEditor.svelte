@@ -10,6 +10,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount, onDestroy } from 'svelte';
   import { session } from '../../session.svelte';
   import LayeredEditorShell from './_layered_editor_shell.svelte';
+  import Button from '../Button.svelte';
   import { levelResourcesMessages, splitPreviewMessage } from './leveling_messages';
 
   function fmt(n: unknown, digits = 1): string {
@@ -390,41 +391,45 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <input type="checkbox" bind:checked={priorityCritical} disabled={resourceBusy} />
       Protect critical
     </label>
-    <button
+    <Button
+      variant="secondary"
+      size="sm"
       onclick={levelResources}
       disabled={resourceBusy}
-      class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded"
       title="Delay contended tasks until resources fit capacity; delays persist as SNET constraints"
     >
       Level
-    </button>
-    <button
+    </Button>
+    <Button
+      variant="secondary"
+      size="sm"
       onclick={previewSplitting}
       disabled={resourceBusy}
-      class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded"
       title="Preview (read-only) whether interrupting tasks across non-contiguous days would clear overallocation. Not saved."
     >
       Preview splitting
-    </button>
+    </Button>
     {#if splitPreviewMsg}
       <span class="text-[10px] text-sky-300" title={splitPreviewTitle}>{splitPreviewMsg}</span>
     {/if}
-    <button
+    <Button
+      variant="secondary"
+      size="sm"
       onclick={generateHistogram}
       disabled={resourceBusy}
-      class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded"
       title="Save a bar chart of per-day resource demand (snapshot; regenerate after edits)"
     >
       Histogram
-    </button>
-    <button
+    </Button>
+    <Button
+      variant="secondary"
+      size="sm"
       onclick={setBaseline}
       disabled={baselineBusy}
-      class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded"
       title="Snapshot the current schedule for planned-vs-actual comparison"
     >
       {baselineCount > 0 ? `Re-baseline (${baselineCount})` : 'Set baseline'}
-    </button>
+    </Button>
   {/snippet}
   {#snippet nodeContent(data, n)}
     <!-- Critical-path tint overrides the shell's default fill. -->
@@ -652,13 +657,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
               title="Units (1 = full-time)"
               class="w-16 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-cyan-500 outline-none"
             />
-            <button
+            <Button
+              variant="remove"
+              class="px-1 text-xs"
               onclick={() => {
                 node.assignments = (node.assignments ?? []).filter((_, j) => j !== i);
               }}
-              class="text-xs text-slate-500 hover:text-red-400 px-1"
               title="Remove assignment"
-            >✕</button>
+            >✕</Button>
           </div>
           <div class="mt-2 grid grid-cols-3 gap-2">
             <input
