@@ -330,20 +330,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
           {/each}
         </div>
       </details>
-      <button
-        onclick={startConnect}
-        disabled={!selectedId}
-        class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-30 px-3 py-1 rounded"
-      >
+      <Button variant="canvas" size="sm" onclick={startConnect} disabled={!selectedId}>
         Connect…
-      </button>
-      <button
-        onclick={deleteNode}
-        disabled={!selectedId}
-        class="text-xs bg-slate-800 hover:bg-red-900 disabled:opacity-30 px-3 py-1 rounded"
-      >
+      </Button>
+      <Button variant="canvas-danger" size="sm" onclick={deleteNode} disabled={!selectedId}>
         Delete node
-      </button>
+      </Button>
       <Button variant="primary" size="sm" onclick={save} disabled={saving}>
         {saving ? 'Saving...' : 'Save'}
       </Button>

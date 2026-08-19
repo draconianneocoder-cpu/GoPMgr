@@ -4,7 +4,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 
-import Button from './Button.svelte';
 import ButtonChildrenHarness from './__test_harness__/ButtonChildrenHarness.svelte';
 
 describe('Button', () => {
@@ -86,11 +85,47 @@ describe('Button', () => {
     expect(btn.className.trim()).toBe('text-cyan-400 underline hover:text-cyan-300 disabled:opacity-50');
   });
 
-  it('sizes: sm is px-3 py-1, md is px-3 py-2, lg is px-4 py-2', () => {
+  it('sizes: sm is px-3 py-1, compact is px-3 py-1.5, md is px-3 py-2, lg is px-4 py-2', () => {
     const { getByText, rerender } = render(ButtonChildrenHarness, { props: { text: 'X', size: 'sm' } });
     expect(getByText('X').className).toContain('px-3 py-1');
+    rerender({ text: 'X', size: 'compact' });
+    // 'px-3 py-1' is a prefix of 'px-3 py-1.5', so assert py-1.5
+    // specifically rather than the ambiguous 'py-1' substring.
+    expect(getByText('X').className).toContain('px-3 py-1.5');
     rerender({ text: 'X', size: 'lg' });
     expect(getByText('X').className).toContain('px-4 py-2');
+  });
+
+  // Added 2026-08-19 for the canvas-toolbar idiom (WorkflowEditor/
+  // ActivityEditor's "Connect…"/"Delete node"): a real, grep-confirmed,
+  // app-wide-reused second disabled-opacity idiom (30%, not 50%) distinct
+  // from every other variant. disabled:opacity-50 was relocated out of the
+  // shared base template into each of the five pre-existing variantClasses
+  // entries to make room for this — verified as a pure relocation (no
+  // rendered-output change) by running the full pre-existing suite above
+  // unmodified against the relocated code before adding these two cases.
+  describe('canvas / canvas-danger variants', () => {
+    it('canvas: bg-slate-800, hover:bg-slate-700, and — the actual differentiator from secondary — disabled:opacity-30 while disabled', () => {
+      const { getByText } = render(ButtonChildrenHarness, {
+        props: { text: 'Connect…', variant: 'canvas', size: 'sm', disabled: true },
+      });
+      const classes = getByText('Connect…').className.split(/\s+/).filter(Boolean).sort();
+      const expected = 'rounded text-xs px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30'
+        .split(/\s+/)
+        .sort();
+      expect(classes).toEqual(expected);
+    });
+
+    it('canvas-danger: bg-slate-800, hover:bg-red-900, disabled:opacity-30 while disabled — distinct from the solid-red always-visible `danger` variant', () => {
+      const { getByText } = render(ButtonChildrenHarness, {
+        props: { text: 'Delete node', variant: 'canvas-danger', size: 'sm', disabled: true },
+      });
+      const classes = getByText('Delete node').className.split(/\s+/).filter(Boolean).sort();
+      const expected = 'rounded text-xs px-3 py-1 bg-slate-800 hover:bg-red-900 disabled:opacity-30'
+        .split(/\s+/)
+        .sort();
+      expect(classes).toEqual(expected);
+    });
   });
 
   it('appends a passed-through class without dropping the base classes', () => {

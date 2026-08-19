@@ -61,8 +61,10 @@ describe('WorkflowEditor migrated buttons', () => {
     const { findByText } = render(WorkflowEditor);
 
     const btn = await findByText('Back to dashboard');
-    expect(btn.className.trim()).toBe(
-      'rounded text-xs disabled:opacity-50 px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase',
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'rounded text-xs disabled:opacity-50 px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
+        .split(/\s+/)
+        .sort(),
     );
   });
 
@@ -72,11 +74,39 @@ describe('WorkflowEditor migrated buttons', () => {
     await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
 
     const btn = getByText('Save');
-    expect(btn.className.trim()).toBe(
-      'rounded text-xs disabled:opacity-50 px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase',
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'rounded text-xs disabled:opacity-50 px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase'
+        .split(/\s+/)
+        .sort(),
     );
 
     await fireEvent.click(btn);
     await waitFor(() => expect(app.SaveChart).toHaveBeenCalled());
+  });
+
+  // Added 2026-08-19: these two were previously excluded from the initial
+  // migration pass (Button had no way to express the app-wide
+  // canvas-toolbar disabled:opacity-30 idiom), now closed by adding the
+  // `canvas`/`canvas-danger` variants. Pinned in their default,
+  // no-node-selected state (disabled — reachable on mount without any
+  // canvas interaction), per Gate A: an enabled-state-only assertion
+  // cannot prove the migration preserved the opacity-30, not opacity-50,
+  // dimming these two buttons actually rely on.
+  it('"Connect…"/"Delete node": Button variant="canvas"/"canvas-danger" size="sm", disabled by default with no node selected', async () => {
+    const app = installApp();
+    const { getByText } = render(WorkflowEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+
+    const connect = getByText('Connect…') as HTMLButtonElement;
+    expect(connect.disabled).toBe(true);
+    expect(connect.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'rounded text-xs px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30'.split(/\s+/).sort(),
+    );
+
+    const deleteNode = getByText('Delete node') as HTMLButtonElement;
+    expect(deleteNode.disabled).toBe(true);
+    expect(deleteNode.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'rounded text-xs px-3 py-1 bg-slate-800 hover:bg-red-900 disabled:opacity-30'.split(/\s+/).sort(),
+    );
   });
 });

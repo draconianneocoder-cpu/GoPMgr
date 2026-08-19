@@ -67,9 +67,35 @@ describe('CPMEditor toolbarExtra migrated buttons', () => {
     await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
     await waitFor(() => expect(app.ListScheduleBaselines).toHaveBeenCalled());
 
-    const expected = 'rounded text-xs disabled:opacity-50 px-3 py-1 bg-slate-800 hover:bg-slate-700';
+    const expected = 'rounded text-xs disabled:opacity-50 px-3 py-1 bg-slate-800 hover:bg-slate-700'
+      .split(/\s+/)
+      .sort();
     for (const label of ['Level', 'Preview splitting', 'Histogram', 'Set baseline']) {
-      expect(getByText(label).className.trim()).toBe(expected);
+      expect(getByText(label).className.split(/\s+/).filter(Boolean).sort()).toEqual(expected);
+    }
+  });
+
+  // Added 2026-08-19: these two were previously excluded from the initial
+  // migration pass ("py-1.5" had no matching Button size), now closed by
+  // adding the `compact` size bucket (px-3 py-1.5, confirmed by grep as a
+  // real, app-wide-reused 4th padding bucket, not invented for this pair).
+  // "Export PDF/A" (the third py-1.5 button in this file) remains
+  // unmigrated — its original padding is px-2.5, not px-3, and relying on
+  // a `class="px-2.5"` override to win over the `compact` variant's own
+  // `px-3` is not safely assumable (Tailwind resolves same-property
+  // utility conflicts by the utilities' fixed position in the generated
+  // stylesheet, not by source/class-list order — documented precedent
+  // elsewhere in this ledger's Input/Select entries).
+  it('renders "Compute" and "Run" as Button variant="secondary" size="compact"', async () => {
+    const app = installApp();
+    const { getByText } = render(CPMEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+
+    const expected = 'rounded text-xs disabled:opacity-50 px-3 py-1.5 bg-slate-800 hover:bg-slate-700'
+      .split(/\s+/)
+      .sort();
+    for (const label of ['Compute', 'Run']) {
+      expect(getByText(label).className.split(/\s+/).filter(Boolean).sort()).toEqual(expected);
     }
   });
 });

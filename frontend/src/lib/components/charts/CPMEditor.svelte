@@ -832,13 +832,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
         title="Status date (blank = today)"
         class="flex-1 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-cyan-500 outline-none"
       />
-      <button
-        onclick={computeEVM}
-        disabled={evmBusy}
-        class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1.5 rounded"
-      >
+      <Button variant="secondary" size="compact" onclick={computeEVM} disabled={evmBusy}>
         {evmBusy ? 'Computing…' : 'Compute'}
-      </button>
+      </Button>
     </div>
     {#if evmError}
       <p class="mt-2 text-xs text-amber-300">{evmError}</p>
@@ -920,13 +916,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
             title="Simulation iterations"
           />
         </label>
-        <button
-          onclick={runMonteCarlo}
-          disabled={monteCarloBusy}
-          class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1.5 rounded"
-        >
+        <Button variant="secondary" size="compact" onclick={runMonteCarlo} disabled={monteCarloBusy}>
           {monteCarloBusy ? 'Running…' : 'Run'}
-        </button>
+        </Button>
       </div>
       <div class="mt-2 h-1.5 overflow-hidden rounded bg-slate-950">
         <div

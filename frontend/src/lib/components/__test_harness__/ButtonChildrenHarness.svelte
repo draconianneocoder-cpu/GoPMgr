@@ -20,8 +20,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     ...rest
   }: {
     text: string;
-    variant?: 'primary' | 'secondary' | 'danger' | 'caution' | 'ghost' | 'link' | 'remove';
-    size?: 'sm' | 'md' | 'lg';
+    variant?:
+      | 'primary'
+      | 'secondary'
+      | 'danger'
+      | 'caution'
+      | 'ghost'
+      | 'canvas'
+      | 'canvas-danger'
+      | 'link'
+      | 'remove';
+    size?: 'sm' | 'compact' | 'md' | 'lg';
     type?: 'button' | 'submit';
     disabled?: boolean;
     class?: string;
