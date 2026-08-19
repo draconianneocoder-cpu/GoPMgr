@@ -45,4 +45,21 @@ describe('AppHeader', () => {
     const admin = render(AppHeader, { props: { active: 'portfolio' } });
     expect(admin.getByRole('button', { name: 'Admin' })).toBeTruthy();
   });
+
+  // Added 2026-08-19: migrated from a raw <button class="text-xs
+  // text-slate-400 hover:text-cyan-400 underline"> to
+  // `Button variant="nav" class="underline"` — the last of the app's 3-site
+  // "underline" nav-family idiom (see Button.svelte's `nav` branch
+  // comment), folded into the existing `nav` variant via class passthrough
+  // rather than a fourth exempt branch. Only asserts the rendered class;
+  // `logout` itself routes through `requestNavigation`'s guard machinery,
+  // which is session.test.ts's territory, not this component's.
+  it('renders "Sign out" as Button variant="nav" class="underline"', () => {
+    session.user = { username: 'alice', display_name: 'Alice', data_dir: '', created_at: '', last_login: '', is_admin: false };
+    const { getByText } = render(AppHeader, { props: { active: 'portfolio' } });
+    const btn = getByText('Sign out');
+    expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50 underline'.split(/\s+/).sort(),
+    );
+  });
 });

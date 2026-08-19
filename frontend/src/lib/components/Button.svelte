@@ -105,18 +105,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {@render children?.()}
   </button>
 {:else if variant === 'nav'}
-  <!-- The "&larr; Dashboard" header-nav idiom: 28 grep-confirmed call sites
-       app-wide, all `text-xs text-slate-400 hover:text-cyan-400` with no
-       padding/rounded — exempt from the shared base for the same reason as
-       `link`/`remove`. None of the 28 pass `disabled`, so
+  <!-- The "&larr; Dashboard" header-nav idiom: originally 28 grep-confirmed
+       call sites app-wide, all `text-xs text-slate-400 hover:text-cyan-400`
+       with no padding/rounded — exempt from the shared base for the same
+       reason as `link`/`remove`. None of the 28 pass `disabled`, so
        `disabled:opacity-50` here is untested by any live call site, but
        included for parity with `link`/`remove` rather than left silently
        broken if a future caller does pass it. Distinct from `link`
-       (cyan-400 + underline, a different color contract) — a further 3
-       call sites (AppHeader "Sign out", Dashboard "Settings"/"Close
-       project") add `underline` to this same slate/cyan pair; that's a
-       third, rarer idiom, deliberately left unmigrated rather than folded
-       in here. -->
+       (cyan-400 + underline, a different color contract). A further 3 call
+       sites (AppHeader "Sign out", Dashboard "Settings"/"Close project")
+       add `underline` to this same slate/cyan pair — as of 2026-08-19
+       these are migrated too, via `class="underline"` passed through
+       `{klass}` below rather than a fourth exempt branch: `underline` sets
+       only `text-decoration-line`, which nothing else in this branch's
+       class list touches, so the passthrough can't collide with or get
+       overridden by anything `nav` itself sets. No unmigrated call sites
+       of this idiom remain. -->
   <button {type} {disabled} {onclick} class="text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50 {klass}" {...rest}>
     {@render children?.()}
   </button>

@@ -9,6 +9,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // consistent.
   import { session, goto, requestNavigation } from '../session.svelte';
   import Logo from './Logo.svelte';
+  import Button from './Button.svelte';
 
   let { active = 'portfolio' }: { active?: 'portfolio' | 'projects' | 'settings' | 'admin' | 'help' } = $props();
 
@@ -76,8 +77,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <span class="text-xs text-slate-500 hidden sm:inline">
       {session.user?.display_name ?? session.user?.username}
     </span>
-    <button onclick={logout} class="text-xs text-slate-400 hover:text-cyan-400 underline">
+    <Button variant="nav" class="underline" onclick={logout}>
       Sign out
-    </button>
+    </Button>
   </div>
 </header>

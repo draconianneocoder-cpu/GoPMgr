@@ -12,6 +12,7 @@ import ChartCatalog from './ChartCatalog.svelte';
 import DocumentCatalog from './DocumentCatalog.svelte';
 import Spinner from '../Spinner.svelte';
 import Tabs from '../Tabs.svelte';
+import Button from '../Button.svelte';
 
   // Dashboard IA restructuring (design doc §3.3/R3/R4): local, not
   // session.* -- there's no requirement for the active tab to survive
@@ -382,12 +383,12 @@ import Tabs from '../Tabs.svelte';
       {/if}
     </div>
     <div class="flex items-center gap-4 shrink-0">
-      <button onclick={() => goto('project_settings')} class="text-xs text-slate-400 hover:text-cyan-400 underline">
+      <Button variant="nav" class="underline" onclick={() => goto('project_settings')}>
         Settings
-      </button>
-      <button onclick={close} class="text-xs text-slate-400 hover:text-cyan-400 underline">
+      </Button>
+      <Button variant="nav" class="underline" onclick={close}>
         Close project
-      </button>
+      </Button>
     </div>
   </header>
 

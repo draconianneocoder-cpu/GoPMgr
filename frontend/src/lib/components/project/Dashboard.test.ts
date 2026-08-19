@@ -628,3 +628,27 @@ describe('Dashboard tabs', () => {
     expect((getByRole('searchbox', { name: /search chart tools/i }) as HTMLInputElement).value).toBe('earned value');
   });
 });
+
+// Added 2026-08-19: "Settings" and "Close project" migrated from raw
+// <button class="text-xs text-slate-400 hover:text-cyan-400 underline">
+// to `Button variant="nav" class="underline"` — the last 2 of the app's
+// 3-site "underline" nav-family idiom (see Button.svelte's `nav` branch
+// comment), folded into the existing `nav` variant via class passthrough
+// rather than a fourth exempt branch. This closes the nav-family idiom
+// app-wide; Dashboard.svelte's other ~20 raw <button> elements are
+// unrelated (different, un-migrated patterns) and remain out of scope.
+describe('Dashboard migrated header "Settings"/"Close project" buttons', () => {
+  const expectedClass = 'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50 underline'
+    .split(/\s+/)
+    .sort();
+
+  it('renders "Settings" as Button variant="nav" class="underline"', async () => {
+    const { getByText } = await renderLoaded();
+    expect(getByText('Settings').className.split(/\s+/).filter(Boolean).sort()).toEqual(expectedClass);
+  });
+
+  it('renders "Close project" as Button variant="nav" class="underline"', async () => {
+    const { getByText } = await renderLoaded();
+    expect(getByText('Close project').className.split(/\s+/).filter(Boolean).sort()).toEqual(expectedClass);
+  });
+});
