@@ -186,7 +186,8 @@ func (s *Signer) SignPDFHash(pdfContent []byte) ([]byte, error) {
 // This is the form Adobe Acrobat / PAdES validators look for. The
 // returned bytes go directly into the PDF's /Contents entry under
 // the /Sig dictionary; embedding (byte-range + zero-padded slot)
-// is handled by internal/export/pdf.go.
+// is handled by internal/pdfmeta.InjectPAdESSignature, reached via
+// internal/signing.ApplyPAdES.
 //
 // PKCS#7 "detached" mode is what PAdES requires: the signed data
 // is not embedded in the CMS blob — only the hash is — so verifiers

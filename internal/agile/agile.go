@@ -4,8 +4,8 @@
 // Package agile implements GoPMgr's Agile / Software-Dev Pack:
 // Kanban boards, sprints, work items, and DORA metrics.
 //
-// The pack is opt-in via the --software-dev-pack CLI flag (and the
-// equivalent runtime setting). When disabled, the GUI hides every
+// The pack is opt-in via the persisted AgileEnabled runtime setting
+// (app_settings.go/app_agile.go). When disabled, the GUI hides every
 // agile entry point but the tables remain so a re-enable is loss-
 // less. PackEnabled tracks the in-process toggle.
 package agile
@@ -18,10 +18,11 @@ import (
 	"time"
 )
 
-// PackEnabled is the in-memory toggle. main.go flips it true when
-// the CLI flag is set or the user enables the pack from settings.
-// atomic.Bool eliminates the data race between the Wails goroutines
-// that read and write this flag concurrently.
+// PackEnabled is the in-memory toggle. app_settings.go/app_agile.go
+// flip it from the persisted AgileEnabled setting on project load and
+// on GetAgileEnabled/SetAgileEnabled. atomic.Bool eliminates the data
+// race between the Wails goroutines that read and write this flag
+// concurrently.
 var PackEnabled atomic.Bool
 
 // ----- Domain types -----

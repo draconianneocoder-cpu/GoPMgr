@@ -2,14 +2,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package crypto provides GoPMgr's symmetric-encryption and digital-
-// signature primitives. The file is intentionally narrow:
+// signature primitives, kept intentionally narrow per file:
 //
-//   - encrypt.go    AES-256-GCM with Argon2id key derivation
-//   - pdf_sign.go   X.509 / RSA / SHA-256 signing for archival PDFs
+//   - encrypt.go            AES-256-GCM with Argon2id key derivation
+//   - keywrap.go            ADR-001 per-user DEK wrapping
+//   - pdf_sign.go           X.509 / RSA / SHA-256 signing for archival PDFs
+//   - pdf_cms.go            CMS/PKCS#7 ASN.1 structures for PAdES
+//   - pdf_cms_timestamp.go  RFC 3161 signature-timestamp embedding
 //
-// Anything cryptographic that isn't one of those two things should be
-// added as a new file in this package rather than dropped into either
-// of the existing ones.
+// A new cryptographic concern should get its own file in this package
+// rather than being folded into one of the existing ones.
 package crypto
 
 import (

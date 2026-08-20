@@ -77,8 +77,7 @@ func Wrap(err error, context string) ErrorReport {
 }
 
 // ToError converts an ErrorReport back into a standard error value while
-// preserving the underlying report. Use errors.As(err, &target) where
-// target is *Report{} (defined below) to recover it.
+// preserving the underlying report. Call Report(err) to recover it.
 func (r ErrorReport) ToError() error {
 	return &reportError{r: r}
 }

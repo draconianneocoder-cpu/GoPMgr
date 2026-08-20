@@ -19,7 +19,8 @@ All three use the public deterministic fixture passphrase
   certificate bundled in, reproducing the shape a commercially-issued
   signing certificate has when exported with its issuing chain. This is
   the fixture that reproduces the "expected exactly two safe bags in the
-  PFX PDU" bug fixed 2026-08-05 (see `DEVELOPER_HANDBOOK.md`), and the only
+  PFX PDU" bug fixed 2026-08-05 (see `TEST_COVERAGE_LEDGER.md`'s
+  `pdf_sign_test.go` row), and the only
   way `LoadCertificate`'s `ExtraCerts` extraction is exercised at all.
 - `testonly-ec-2bag.p12` — one EC (P-256) key + its own self-signed
   certificate, for testing that `LoadCertificate` still rejects non-RSA

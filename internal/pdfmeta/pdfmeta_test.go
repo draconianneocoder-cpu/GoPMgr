@@ -1326,7 +1326,8 @@ func TestMakePDFA3_PropagatesOutputIntentInjectionError(t *testing.T) {
 // branches below it can index into data at all.
 //
 // NOTE ON THE OTHER TWO BRANCHES (not tested here, see
-// DEVELOPER_HANDBOOK.md's dated finding): streamPayload's third branch
+// `git log --all -p -- DEVELOPER_HANDBOOK.md`, trimmed from the public
+// handbook in commit ebfd971): streamPayload's third branch
 // (data ending in '\n' or '\r') returns a byte-for-byte copy of data,
 // not a trailing-EOL-stripped version despite the name and the
 // newline-conditioned structure suggesting that was the intent. Both

@@ -4,8 +4,10 @@
 # Files excluded from the Go coverage ratchet's numerator/denominator.
 # This is the authoritative exclusion list -- scripts/coverage-go.sh reads it
 # directly, so "what's excluded and why" has one place that can't drift from
-# what's enforced. See DEVELOPER_HANDBOOK.md's "100% coverage: scope and
-# exclusions" entry for the full rationale.
+# what's enforced. See `git log --all -p -- DEVELOPER_HANDBOOK.md` for the
+# fuller rationale narrative (trimmed from the public handbook in commit
+# ebfd971); the per-line comments below are the current authoritative
+# reasons.
 #
 # One Go regexp fragment per line (matched with `grep -E -f` against
 # coverage-profile path fields, e.g. "gopmgr/internal/applog/opendir_darwin.go").
