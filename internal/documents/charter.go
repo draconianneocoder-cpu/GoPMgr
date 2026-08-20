@@ -75,9 +75,10 @@ func isZero(v interface{}) bool {
 }
 
 // RenderCharterPDF produces an archival-quality PDF for the Project
-// Charter document. This is the fully-implemented reference renderer
-// in V2; other 24 document kinds get a fallback generic renderer
-// (see Render() below) until they get bespoke layouts.
+// Charter document. All 25 registered document kinds now have their
+// own bespoke renderer; renderGenericPDF (see Render() below) remains
+// as a forward-compatible fallback for a future kind added without
+// one yet, not a currently-used path.
 //
 // Layout:
 //

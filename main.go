@@ -11,7 +11,7 @@
 //     copied forward into this location on first launch — see
 //     users.MigrateLegacyRoot.
 //   - Per-user folders for project files and exports
-//   - Unified charts/documents data model (19 + 25 kinds)
+//   - Unified charts/documents data model (22 + 25 kinds)
 //
 // CLI dispatch (--version, --check, --repair, ...) is unchanged from
 // V1 and runs without launching the Wails GUI.

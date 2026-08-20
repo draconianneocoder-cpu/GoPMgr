@@ -11,9 +11,10 @@ import (
 	"github.com/go-pdf/fpdf"
 )
 
-// RenderStatusReportPDF produces a bespoke Status Report PDF — the
-// reference implementation for the bespoke-renderer pattern that the
-// other 23 generic document kinds can follow as needed.
+// RenderStatusReportPDF produces a bespoke Status Report PDF — one
+// reference implementation of the bespoke-renderer pattern; all 25
+// registered document kinds now have their own bespoke renderer (see
+// project_overview.go, the last one added).
 //
 // Layout:
 //
@@ -27,8 +28,8 @@ import (
 //	  Upcoming             (heading + bulleted list)
 //	  Footer with nanosecond timestamp + GoPMgr version
 //
-// This renderer is what RACI, Risk Register, Project Plan, etc.
-// should look like once they get their own bespoke layouts.
+// RACI, Risk Register, Project Plan, etc. now have their own bespoke
+// renderers too; this one remains a reasonable model for the pattern.
 //
 // Recipe (see DEVELOPER_HANDBOOK.md §12.3):
 //

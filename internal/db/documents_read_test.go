@@ -133,37 +133,22 @@ func TestListDocuments_OrdersByMostRecentlyUpdatedDescending(t *testing.T) {
 	}
 }
 
-// TestListDocuments_WholeSecondTimestampDoesNotPanicOrDropRows exercises a
-// real, verified (not assumed) latent ordering hazard in ListDocuments'
-// `ORDER BY updated_at DESC`: RFC3339Nano trims trailing zeros from the
-// fractional-seconds component, and OMITS the fractional component
-// entirely when it's exactly zero (formats as "...T10:00:00Z", not
-// "...T10:00:00.000000000Z"). Comparing that omitted-fraction string
-// against a same-second fractional string is a plain byte/lexicographic
-// comparison (both in Go's string "<" and in SQLite's default TEXT
-// ordering) -- and '.' (0x2E) sorts BEFORE 'Z' (0x5A) in ASCII, so
-// "10:00:00.5Z" < "10:00:00Z" lexicographically, even though
-// 10:00:00.000 is chronologically EARLIER than 10:00:00.5: a whole-second
-// save can sort AFTER a later same-second fractional save.
+// TestListDocuments_WholeSecondTimestampDoesNotPanicOrDropRows.
 //
-// Confirmed directly with Go's time.Format before writing this test, not
-// assumed from reading the RFC3339Nano format documentation. In practice
-// this requires a save landing at time.Now() with exactly zero
-// nanoseconds -- vanishingly unlikely under real wall-clock jitter -- so
-// it is not expected to occur in normal use, and is not fixed here (out
-// of this increment's authorized scope: it would mean changing the
-// stored timestamp format or the query, a production change, not a
-// test). This assertion deliberately checks only that both documents
-// still come back (no row silently dropped, no panic) rather than
-// pinning which specific order results: the specific order is the bug,
-// and asserting it would make this test fail the day someone fixes the
-// ordering, forcing them to delete a test to land a fix. The mechanism
-// itself is described here and in
-// .agent_memory/db-audit-documents-read-increment-2026-08-10.md for
-// whoever investigates the ordering hazard next; charts.go has the same
-// RFC3339Nano-string-ORDER-BY pattern (and an existing comment there
-// incorrectly asserts it "stays chronological") and was not covered by
-// this increment.
+// Historical note: ListDocuments originally ordered by the RFC3339Nano
+// TEXT `updated_at` column, which has a real string-ordering hazard (a
+// whole-second save formats without a fractional component and, being
+// lexicographically smaller, can sort after a later same-second
+// fractional save). That hazard was closed by internal/db/timestamps.go's
+// `updated_at_unixnano` retrofit -- ListDocuments now orders by that
+// INTEGER column instead, which has no such ambiguity. charts_test.go has
+// the equivalent test and note for ListCharts, which got the same fix.
+//
+// This test's setDocumentUpdatedAt helper only overwrites the TEXT
+// `updated_at` column, not `updated_at_unixnano`, so it can no longer
+// reproduce the original hazard against the live query. It still pins the
+// one thing it asserts: both rows must come back present, in either order,
+// with no panic and no row silently dropped.
 func TestListDocuments_WholeSecondTimestampDoesNotPanicOrDropRows(t *testing.T) {
 	d := newBackupTestDB(t)
 	project, err := d.UpsertProject(Project{Name: "Docs"})

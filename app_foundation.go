@@ -47,7 +47,7 @@ func (a *App) LaunchpadEvaluate(industry, methodology string) ([]string, error) 
 	return resp.Seeds, nil
 }
 
-// CreateProjectFromLaunchpad creates a new .pmforge file just like
+// CreateProjectFromLaunchpad creates a new .gopmgr file just like
 // CreateProject, then applies the seed actions returned by the
 // templates engine. The receipts slice records what was created so
 // the GUI can show the user a "we set up the following for you" toast.

@@ -79,10 +79,10 @@ func NewEngine() (*Engine, error) {
 }
 
 // Evaluate runs the Launchpad decision against the given request and
-// returns the list of seed action strings. An unknown
-// industry/methodology pair returns an empty Seeds slice rather than
-// an error — the GUI treats that as "no auto-seed, user starts
-// blank".
+// returns the list of seed action strings. An unknown industry/
+// methodology pair does not error — it hits launchpad_seeds.json's
+// catch-all rule (empty industry/methodology, first-hit policy) and
+// returns Seeds == []string{"charter"}, not an empty slice.
 //
 // The zen (Go binding) Evaluate takes the decision key and an input map;
 // SeedRequest's two fields are built into the map directly (their JSON

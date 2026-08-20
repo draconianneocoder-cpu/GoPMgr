@@ -54,7 +54,8 @@ type Config struct {
 	// Debugging
 	DebugMode bool
 
-	// Positional argument: project file path (.pmforge)
+	// Positional argument: project file path (.gopmgr; legacy .pmforge
+	// files are still accepted)
 	ProjectPath string
 }
 

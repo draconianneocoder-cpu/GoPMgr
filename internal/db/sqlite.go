@@ -96,7 +96,7 @@ func applyStandardPragmas(conn *sql.DB) error {
 //   - settings, tasks, command_log, audit_log  (V1)
 //   - project, charts, documents, templates    (V2 — multi-entity model)
 //
-// V2 tables are the foundation for the 19 chart types and 25 document
+// V2 tables are the foundation for the 22 chart types and 25 document
 // types: rather than one table per kind, every chart lives in `charts`
 // with a `kind` discriminator and a JSON `data` blob whose shape
 // depends on the kind. The same pattern applies to documents.
@@ -212,7 +212,7 @@ func (db *Database) Migrate() error {
 	-- (Older files will silently gain the four new columns on next
 	-- open; defaults match the table definition above.)
 
-	-- Charts table. ` + "`kind`" + ` is one of the 19 chart types defined in
+	-- Charts table. ` + "`kind`" + ` is one of the 22 chart types defined in
 	-- internal/charts/registry.go. ` + "`data`" + ` and ` + "`config`" + ` are JSON whose
 	-- shape depends on kind.
 	CREATE TABLE IF NOT EXISTS charts (
