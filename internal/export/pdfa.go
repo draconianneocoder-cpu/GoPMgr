@@ -17,7 +17,7 @@ import (
 // montecarlo_report.go) actually call, so they don't need to import
 // pdfmeta directly.
 //
-// Still NOT provided (V3 milestones, DEVELOPER_HANDBOOK.md §8):
+// Still NOT provided (V3 milestones, DEVELOPER_HANDBOOK.md):
 //   - Font embedding (ship a TTF; switch SetFont calls to it).
 //   - OutputIntent / ICC profile embedding — the injection code
 //     (InjectOutputIntent + MakePDFA3) is complete. Run `make icc` to

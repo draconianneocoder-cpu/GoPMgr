@@ -146,7 +146,7 @@ JSON.stringified back to db.charts.data.
   });
 
   // Concurrency hardening: cancel pending debounce on unmount.
-  // (DEVELOPER_HANDBOOK.md §6 — every editor with a setTimeout MUST clean up.)
+  // (DEVELOPER_HANDBOOK.md §10.5 — every editor with a setTimeout MUST clean up.)
   onDestroy(() => {
     window.removeEventListener('keydown', handleKeyDown);
     stopAutosave?.();
