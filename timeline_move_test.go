@@ -5,12 +5,15 @@ package main
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"gopmgr/internal/agile"
 	"gopmgr/internal/db"
 	"gopmgr/internal/timeline"
+	"gopmgr/internal/users"
 )
 
 func newTimelineMoveTestApp(t *testing.T) (*App, *db.Database, agile.Sprint) {
@@ -155,6 +158,82 @@ func TestBuildTimeline_IncludesCharterMilestones(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("want exactly 1 milestone entry (malformed ones skipped), got %d", count)
+	}
+}
+
+// TestBuildTimeline_TwoIdenticalMilestonesGetDistinctSourceIDs guards the
+// synthesized SourceID scheme (docID + array index) against two Charter
+// milestones that share the same name and date -- the case the frontend's
+// {#each entries} keying (source_id + kind + date) would collide on if the
+// index weren't part of the ID.
+func TestBuildTimeline_TwoIdenticalMilestonesGetDistinctSourceIDs(t *testing.T) {
+	app, d, _ := newTimelineMoveTestApp(t)
+
+	_, err := d.SaveDocument(db.Document{
+		ID:        "charter-1",
+		ProjectID: "project-1",
+		Kind:      "charter",
+		Title:     "Project Charter",
+		Content: `{"milestones": [
+			{"name": "Review", "date": "2026-03-01"},
+			{"name": "Review", "date": "2026-03-01"}
+		]}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveDocument: %v", err)
+	}
+
+	entries, err := app.BuildTimeline()
+	if err != nil {
+		t.Fatalf("BuildTimeline: %v", err)
+	}
+	var ids []string
+	for _, e := range entries {
+		if e.Kind == timeline.KindMilestone {
+			ids = append(ids, e.SourceID)
+		}
+	}
+	if len(ids) != 2 {
+		t.Fatalf("want 2 milestone entries, got %d: %#v", len(ids), ids)
+	}
+	if ids[0] == ids[1] {
+		t.Errorf("two same-name/same-date milestones got identical SourceID %q; frontend {#each} key would collide", ids[0])
+	}
+}
+
+// TestExportProjectICS_IncludesMilestone exercises the full iCal export
+// path (not just BuildTimeline) with a Charter milestone present, since
+// ExportProjectICS derives its VEVENT UID from SourceID+Kind independently
+// of the Timeline view.
+func TestExportProjectICS_IncludesMilestone(t *testing.T) {
+	app, d, _ := newTimelineMoveTestApp(t)
+	app.user = &users.Account{Username: "alice", DataDir: t.TempDir()}
+
+	_, err := d.SaveDocument(db.Document{
+		ID:        "charter-1",
+		ProjectID: "project-1",
+		Kind:      "charter",
+		Title:     "Project Charter",
+		Content:   `{"milestones": [{"name": "Kickoff", "date": "2026-01-10"}]}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveDocument: %v", err)
+	}
+
+	path, err := app.ExportProjectICS(false)
+	if err != nil {
+		t.Fatalf("ExportProjectICS: %v", err)
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile(%s): %v", path, err)
+	}
+	ics := string(content)
+	if !strings.Contains(ics, "SUMMARY:Kickoff") {
+		t.Errorf("exported .ics missing milestone SUMMARY; got:\n%s", ics)
+	}
+	if !strings.Contains(ics, "UID:charter-1-0-milestone") {
+		t.Errorf("exported .ics missing expected milestone UID; got:\n%s", ics)
 	}
 }
 
