@@ -1235,7 +1235,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               {/each}
             </select>
             <span id="reporting-currency-help" class="block text-[10px] text-slate-500 mt-1">
-              Used for all Cost Control amounts. It can change only while this project has no budget or Cost Control entries, because GoPMgr does not convert stored values.
+              Used for all Cost Control amounts. It can change only while this project has no Budget value, Cost Control entry, non-zero reserve balance, or approved Cost Control baseline, because GoPMgr does not convert stored values.
             </span>
           </label>
        </div>

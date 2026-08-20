@@ -100,11 +100,7 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 	if err != nil {
 		return Project{}, err
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	defer tx.Rollback() // harmless after Commit; releases every early-return path.
 
 	before, err := getProjectByIDTx(tx, p.ID)
 	isCreate := false
@@ -126,7 +122,7 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 			return Project{}, err
 		}
 		if count > 0 || reserveCount > 0 || baselineCount > 0 || before.BudgetMinorUnits != 0 {
-			return Project{}, errors.New("project reporting currency cannot change while a budget or cost entries exist")
+			return Project{}, errors.New("project reporting currency cannot change while a Budget value, Cost Control entry, non-zero reserve balance, or approved Cost Control baseline exists")
 		}
 	}
 

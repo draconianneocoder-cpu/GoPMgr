@@ -288,7 +288,7 @@ describe('reporting currency', () => {
     await waitFor(() => expect(app.UpdateProjectMeta).toHaveBeenCalledOnce());
     expect(app.UpdateProjectMeta).toHaveBeenCalledWith(expect.objectContaining({ currency_code: 'EUR' }));
     expect(await findByLabelText(/reporting currency/i)).toHaveValue('EUR');
-    expect(await findByText(/can change only while this project has no budget/i)).toBeInTheDocument();
+    expect(await findByText(/can change only while this project has no budget value, cost control entry, non-zero reserve balance, or approved cost control baseline/i)).toBeInTheDocument();
   });
 });
 
