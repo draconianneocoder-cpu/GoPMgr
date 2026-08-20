@@ -11,6 +11,8 @@ import (
 	"gopmgr/internal/analytics"
 	"gopmgr/internal/budget"
 	"gopmgr/internal/calendar"
+	"gopmgr/internal/charts"
+	"gopmgr/internal/charts/dag"
 	"gopmgr/internal/db"
 	"gopmgr/internal/kernel"
 	"gopmgr/internal/templates"
@@ -605,11 +607,27 @@ func buildTimelineFromDB(d *db.Database) ([]timeline.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	milestones, err := projectMilestones(d, p.ID)
+	milestones, err := timelineMilestones(d, p)
 	if err != nil {
 		return nil, err
 	}
 	return timeline.Build(p, sprints, deploys, milestones), nil
+}
+
+// timelineMilestones gathers every dated milestone source that can be
+// represented on the project timeline. Chart milestones are completion events:
+// an explicit milestone with non-zero duration uses its scheduled finish date;
+// the conventional zero-duration case has identical start and finish dates.
+func timelineMilestones(d *db.Database, p db.Project) ([]timeline.Milestone, error) {
+	charter, err := projectMilestones(d, p.ID)
+	if err != nil {
+		return nil, err
+	}
+	chart, err := chartMilestones(d, p)
+	if err != nil {
+		return nil, err
+	}
+	return append(charter, chart...), nil
 }
 
 // projectMilestones extracts every Charter document's structured
@@ -649,6 +667,62 @@ func projectMilestones(d *db.Database, projectID string) ([]timeline.Milestone, 
 				ID:   fmt.Sprintf("%s-%d", doc.ID, i),
 				Name: name,
 				Date: date,
+			})
+		}
+	}
+	return out, nil
+}
+
+// chartMilestones extracts scheduled milestones from every CPM and Gantt
+// chart. A project without a valid start date has no calendar-anchored chart
+// dates, so its chart rows are intentionally omitted rather than exposing CPM
+// day offsets as timeline dates.
+func chartMilestones(d *db.Database, p db.Project) ([]timeline.Milestone, error) {
+	if _, ok := parseProjectDate(p.StartDate); !ok {
+		return nil, nil
+	}
+	stored, err := d.ListCharts(p.ID, "")
+	if err != nil {
+		return nil, err
+	}
+
+	var out []timeline.Milestone
+	for _, c := range stored {
+		kind := charts.Kind(c.Kind)
+		if kind != charts.KindCPM && kind != charts.KindGantt {
+			continue
+		}
+		res, err := layoutChartForProject(d, c, p)
+		if err != nil {
+			return nil, fmt.Errorf("layout timeline milestone chart %q: %w", c.ID, err)
+		}
+		var body struct {
+			Doc dag.LayeredDocument `json:"doc"`
+		}
+		if err := json.Unmarshal(res.Body, &body); err != nil {
+			return nil, fmt.Errorf("decode timeline milestone chart %q layout: %w", c.ID, err)
+		}
+		for i, task := range body.Doc.Nodes {
+			if !task.Milestone && task.Duration != 0 {
+				continue
+			}
+			if task.FinishDate == "" {
+				continue
+			}
+			title := task.Label
+			if title == "" {
+				title = task.ID
+			}
+			if title == "" {
+				title = fmt.Sprintf("Task %d", i+1)
+			}
+			if c.Title != "" {
+				title = c.Title + ": " + title
+			}
+			out = append(out, timeline.Milestone{
+				ID:   fmt.Sprintf("chart:%s:task:%d:%s", c.ID, i, task.ID),
+				Name: title,
+				Date: task.FinishDate,
 			})
 		}
 	}

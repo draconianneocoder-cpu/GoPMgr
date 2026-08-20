@@ -81,35 +81,23 @@ loss, or a release blocker.
   (frontend + Wails-binding) feature, not a backend discovery-depth fix.
 - Expand release validation only after it has an owner, target, and repeatable
   acceptance criteria.
-- Wire Gantt/CPM chart `Milestone` flag into the Timeline view as a second
-  milestone source — 2026-08-20: `timeline.KindMilestone` was a dead enum
-  value until this cycle; it's now emitted for the Charter document's
-  structured "milestones" field only (`app_foundation.go`'s
-  `projectMilestones()`, both `BuildTimeline` and `ExportProjectICS`).
-  Gantt/CPM tasks flagged `Milestone: true` (`internal/kernel.Task.Milestone`,
-  `internal/charts/dag.GanttRow.Milestone`) are not yet aggregated. No
-  `timeline.Build()` signature change is needed — a caller can merge
-  chart-derived entries into the same `[]timeline.Milestone` slice already
-  passed in. The real work: a chart task's calendar date is computed by
-  re-running the CPM layout (`App.LayoutChart` → `internal/charts/dag`,
-  anchored via `internal/kernel/anchor.go`), not stored verbatim in
-  `ChartRecord.Data`, so the implementation needs to run that layout for
-  every Gantt/CPM chart in the project, filter to `Milestone == true` rows,
-  and decide which computed date to use. Full context and file pointers are
-  on the `Milestone` type's doc comment in `internal/timeline/timeline.go`.
-- Finish the 2026-08-19/20 documentation-slop audit's remaining scope —
-  the targeted sweep (root docs, all of `internal/`, root `app_*.go` files,
-  most of `frontend/src/`, `scripts/`) is complete, but these areas were
-  never audited: `tools/`, `docs/design/` (the ADR bodies themselves),
-  `ROADMAP.md`, `VISION.md`, `code-map/recent-decisions.md` (hand-maintained,
-  so the one code-map file most likely to drift), `debian/`,
-  `.github/workflows/*.yml`, `wails.json`.
-- Verify the `excelize` version claim in `internal/export/xlsx.go`'s comment
-  (asserts behavior "verified against excelize v2.8.1"; `go.mod` has pinned
-  `v2.11.0` since before this cycle, and no test pins the original claim).
-  The comment already discloses the discrepancy rather than asserting it's
-  still true — this item is to actually re-verify the behavior against
-  v2.11.0 and update or reconfirm the claim, not just re-flag it.
+- Done 2026-08-20: Timeline aggregation now merges Charter milestones with
+  scheduled Gantt/CPM task milestones. `timelineMilestones()` reuses the
+  calendar-aware chart layout shared with `App.LayoutChart`, includes explicit
+  and zero-duration milestones, uses the computed completion date, and omits
+  unanchored chart tasks rather than treating CPM offsets as dates. End-to-end
+  Timeline and iCal coverage is in `timeline_move_test.go`.
+- Done 2026-08-20: completed the documentation audit of `tools/`,
+  `docs/design/`, `ROADMAP.md`, `VISION.md`, `code-map/recent-decisions.md`,
+  `debian/`, `.github/workflows/*.yml`, and `wails.json`. Corrected stale
+  chart-catalog counts and Project Settings status in the Dashboard proposal,
+  aligned Debian's Go build dependency with `go.mod`, and refreshed the
+  installed man-page date; the other audited claims matched current source or
+  intentionally preserved historical release records.
+- Done 2026-08-20: re-verified the XLSX formula-injection boundary against
+  the pinned `excelize` v2.11.0. `TestRenderXLSXStoresFormulaLikeTitlesAsText`
+  proves formula-like task titles remain string cells; the source comment now
+  points to that test.
 
 ## Maintenance rules
 

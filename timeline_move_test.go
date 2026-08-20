@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"gopmgr/internal/agile"
+	"gopmgr/internal/charts"
 	"gopmgr/internal/db"
 	"gopmgr/internal/timeline"
 	"gopmgr/internal/users"
@@ -201,6 +202,117 @@ func TestBuildTimeline_TwoIdenticalMilestonesGetDistinctSourceIDs(t *testing.T) 
 	}
 }
 
+func TestBuildTimeline_IncludesScheduledChartMilestones(t *testing.T) {
+	app, d, _ := newTimelineMoveTestApp(t)
+	project, err := d.GetProject()
+	if err != nil {
+		t.Fatalf("GetProject: %v", err)
+	}
+	project.StartDate = "2026-01-05" // Monday; all dates below are weekdays.
+	project.CountryCode = "US"
+	if _, err := d.UpsertProject(project); err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+
+	for _, chart := range []db.Chart{
+		{
+			ID:        "gantt-1",
+			ProjectID: project.ID,
+			Kind:      string(charts.KindGantt),
+			Title:     "Delivery plan",
+			Data: `{"nodes":[
+				{"id":"design","label":"Design","duration":2},
+				{"id":"review","label":"Review","duration":2,"milestone":true},
+				{"id":"ship","label":"Ship","duration":0}
+			],"edges":[{"from":"design","to":"review"},{"from":"review","to":"ship"}]}`,
+		},
+		{
+			ID:        "cpm-1",
+			ProjectID: project.ID,
+			Kind:      string(charts.KindCPM),
+			Title:     "Release plan",
+			Data:      `{"nodes":[{"id":"release","label":"Release","duration":0}],"edges":[]}`,
+		},
+		{
+			ID:        "wbs-1",
+			ProjectID: project.ID,
+			Kind:      string(charts.KindWBS),
+			Title:     "Not a schedule",
+			Data:      `{"nodes":[]}`,
+		},
+	} {
+		if _, err := d.SaveChart(chart); err != nil {
+			t.Fatalf("SaveChart(%s): %v", chart.ID, err)
+		}
+	}
+
+	entries, err := app.BuildTimeline()
+	if err != nil {
+		t.Fatalf("BuildTimeline: %v", err)
+	}
+	want := map[string]struct {
+		title string
+		date  string
+	}{
+		"chart:gantt-1:task:1:review": {"Delivery plan: Review", "2026-01-08"},
+		"chart:gantt-1:task:2:ship":   {"Delivery plan: Ship", "2026-01-09"},
+		"chart:cpm-1:task:0:release":  {"Release plan: Release", "2026-01-05"},
+	}
+	got := make(map[string]timeline.Entry)
+	for _, entry := range entries {
+		if entry.Kind == timeline.KindMilestone {
+			got[entry.SourceID] = entry
+		}
+	}
+	if len(got) != len(want) {
+		t.Fatalf("chart milestones = %#v, want %d", got, len(want))
+	}
+	for id, expected := range want {
+		entry, ok := got[id]
+		if !ok {
+			t.Errorf("missing chart milestone %q in %#v", id, got)
+			continue
+		}
+		if entry.Title != expected.title || entry.Date.Format("2006-01-02") != expected.date {
+			t.Errorf("chart milestone %q = %q on %s, want %q on %s", id, entry.Title, entry.Date.Format("2006-01-02"), expected.title, expected.date)
+		}
+		if entry.Editable {
+			t.Errorf("chart milestone %q must be read-only", id)
+		}
+	}
+}
+
+func TestBuildTimeline_OmitsChartMilestonesWithoutProjectStart(t *testing.T) {
+	app, d, _ := newTimelineMoveTestApp(t)
+	project, err := d.GetProject()
+	if err != nil {
+		t.Fatalf("GetProject: %v", err)
+	}
+	project.StartDate = ""
+	if _, err := d.UpsertProject(project); err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	if _, err := d.SaveChart(db.Chart{
+		ID:        "gantt-1",
+		ProjectID: project.ID,
+		Kind:      string(charts.KindGantt),
+		Title:     "Delivery plan",
+		Data:      `{"nodes":[{"id":"ship","label":"Ship","duration":0}],"edges":[]}`,
+	}); err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+
+	entries, err := app.BuildTimeline()
+	if err != nil {
+		t.Fatalf("BuildTimeline: %v", err)
+	}
+	for _, entry := range entries {
+		if entry.SourceID == "chart:gantt-1:task:0:ship" {
+			t.Fatalf("unanchored chart milestone unexpectedly present: %#v", entry)
+		}
+	}
+}
+
 // TestExportProjectICS_IncludesMilestone exercises the full iCal export
 // path (not just BuildTimeline) with a Charter milestone present, since
 // ExportProjectICS derives its VEVENT UID from SourceID+Kind independently
@@ -219,6 +331,15 @@ func TestExportProjectICS_IncludesMilestone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SaveDocument: %v", err)
 	}
+	if _, err := d.SaveChart(db.Chart{
+		ID:        "gantt-1",
+		ProjectID: "project-1",
+		Kind:      string(charts.KindGantt),
+		Title:     "Delivery plan",
+		Data:      `{"nodes":[{"id":"ship","label":"Ship","duration":0}],"edges":[]}`,
+	}); err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
 
 	path, err := app.ExportProjectICS(false)
 	if err != nil {
@@ -234,6 +355,12 @@ func TestExportProjectICS_IncludesMilestone(t *testing.T) {
 	}
 	if !strings.Contains(ics, "UID:charter-1-0-milestone") {
 		t.Errorf("exported .ics missing expected milestone UID; got:\n%s", ics)
+	}
+	if !strings.Contains(ics, "SUMMARY:Delivery plan: Ship") {
+		t.Errorf("exported .ics missing chart milestone SUMMARY; got:\n%s", ics)
+	}
+	if !strings.Contains(ics, "UID:chart:gantt-1:task:0:ship-milestone") {
+		t.Errorf("exported .ics missing chart milestone UID; got:\n%s", ics)
 	}
 }
 

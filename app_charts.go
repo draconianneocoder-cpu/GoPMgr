@@ -110,20 +110,32 @@ func (a *App) LayoutChart(id string) (charts.LayoutResult, error) {
 	if err != nil {
 		return charts.LayoutResult{}, err
 	}
+	if proj, err := d.GetProject(); err == nil {
+		return layoutChartForProject(d, c, proj)
+	}
+
+	res, err := charts.Layout(charts.Kind(c.Kind), c.Data)
+	if err != nil && !errors.Is(err, charts.ErrEngineNotImplemented) {
+		return charts.LayoutResult{}, err
+	}
+	res.Title = c.Title
+	return res, nil
+}
+
+// layoutChartForProject produces a chart layout with the project's calendar
+// and resource-capacity context. It is shared by the chart endpoint and
+// timeline aggregation so both expose the same scheduled dates.
+func layoutChartForProject(d *db.Database, c db.Chart, proj db.Project) (charts.LayoutResult, error) {
 
 	var (
-		projectStart    time.Time
-		isWorkday       kernel.WorkdayFunc
-		capacityPlan    kernel.ResourceCapacityPlan
-		projectTimeZone string
+		projectStart time.Time
+		isWorkday    kernel.WorkdayFunc
+		capacityPlan kernel.ResourceCapacityPlan
 	)
-	if proj, perr := d.GetProject(); perr == nil {
-		projectTimeZone = proj.TimeZone
-		if start, ok := parseProjectDate(proj.StartDate); ok {
-			projectStart = start
-			isWorkday = calendar.For(proj.CountryCode).IsWorkday
-			capacityPlan = resourceCapacityPlan(d, proj.ID)
-		}
+	if start, ok := parseProjectDate(proj.StartDate); ok {
+		projectStart = start
+		isWorkday = calendar.For(proj.CountryCode).IsWorkday
+		capacityPlan = resourceCapacityPlan(d, proj.ID)
 	}
 
 	res, err := charts.LayoutWithSchedulePlan(charts.Kind(c.Kind), c.Data, projectStart, isWorkday, capacityPlan)
@@ -131,7 +143,7 @@ func (a *App) LayoutChart(id string) (charts.LayoutResult, error) {
 		return charts.LayoutResult{}, err
 	}
 	res.Title = c.Title
-	res.TimeZone = projectTimeZone
+	res.TimeZone = proj.TimeZone
 	return res, nil
 }
 

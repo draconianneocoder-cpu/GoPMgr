@@ -52,8 +52,8 @@ concrete defects in the app's navigation and its most-visited screen:
    (Stakeholders/Timeline/Budget) → a Process Excellence quick-link
    (shown only for `six_sigma`-methodology projects) → *(loading/error
    state)* → an **existing charts** list → a separate **existing
-   documents** list → a 24-item chart-creation tool catalog (2-column
-   grid, lightly filterable by 4 category chips, all 24 shown unsorted by
+   documents** list → a 22-item chart-creation tool catalog (2-column
+   grid, lightly filterable by 4 category chips, all 22 shown unsorted by
    default) → a 25-item document-template catalog (behind one collapsed
    accordion) → a Software-Dev Pack section (the enable/disable control
    for the agile/Sigma tooling fixed under the "Fix launchpad wizard"
@@ -260,7 +260,7 @@ gated behind a click).
 | Tab | Content (from current `Dashboard.svelte`) |
 | --- | --- |
 | **Overview** (default) | **Correction**: not "the existing Documents list" (singular) — the file has two separate existing-work lists, an existing **charts** list and an existing **documents** list, both of which belong here together as "what you've already made in this project." This is the tab a user lands on — the highest-frequency task (checking recent work / project state) shouldn't be behind a click, matching R3's "reach without scrolling past unrelated content" for the single most common case. The loading/error state that currently gates both lists moves with them into this tab. |
-| **Charts** | The 24-item chart-creation tool catalog, category chips unchanged. The MSPDI import controls (currently interleaved with this catalog) move here too, since they're part of the same "create a new chart" task. |
+| **Charts** | The 22-item chart-creation tool catalog, category chips unchanged. The MSPDI import controls (currently interleaved with this catalog) move here too, since they're part of the same "create a new chart" task. |
 | **Documents** | The 25-item document-template catalog, no longer behind a collapsed accordion — the accordion was doing the job a tab now does (hiding low-frequency content), so a plain always-expanded grid is simpler once it has its own tab. The "Build combined report" action (currently in the same section) moves here too. |
 | **Dev Tools** | The Software-Dev Pack section (R4) — reachable in one click from the tab row regardless of scroll position, closing the gap the "Fix launchpad wizard" backlog item already flagged from the enable-toggle's *positioning*, not just its default state. **Correction, made while re-reading `Dashboard.svelte` before implementation**: an earlier draft of this table proposed making this tab conditional on `session.project.methodology`. That was wrong — the Software-Dev Pack's enable/disable toggle is **universal**, not methodology-gated; any project can enable it regardless of methodology, and the section already renders unconditionally today (with its own internal enabled/disabled state, not an external visibility gate). This tab must therefore always be present in the tab row, matching current always-rendered behavior — not conditionally shown. |
 
@@ -349,27 +349,25 @@ here too, even though `activeTab` isn't part of `session.view`'s union).
 
 | Decision | Trade-off | Why this direction |
 | --- | --- | --- |
-| Tabs vs. accordion-everywhere | Tabs hide non-active content entirely (no partial-scroll preview of what's below); accordions keep a compact always-visible outline. | The catalogs are large (24/25 items) — an accordion-only approach still leaves the *expanded* catalog just as tall as it is today; tabs cap the maximum visible height for any given task, which is what R3 actually asks for. |
+| Tabs vs. accordion-everywhere | Tabs hide non-active content entirely (no partial-scroll preview of what's below); accordions keep a compact always-visible outline. | The catalogs are large (22/25 items) — an accordion-only approach still leaves the *expanded* catalog just as tall as it is today; tabs cap the maximum visible height for any given task, which is what R3 actually asks for. |
 | Overview tab shows Documents only vs. Documents + a "recent activity" summary | A richer Overview tab could show more, but nothing in the current `Dashboard.svelte` has activity-feed data to summarize — inventing one is a real feature, not an IA fix. | Keep Overview to what already exists (Documents), consistent with C2/C5's "don't expand scope." |
 | Dev Tools as a conditional tab vs. always-present | **Superseded, §3.3**: this row originally framed the choice as open, pending confirmation of the section's gating logic. Re-reading `Dashboard.svelte` found the Software-Dev Pack toggle is universal (no methodology gate), so "conditional on methodology" was never a real option — the section already renders unconditionally today. | Always-present, matching current behavior. Not a trade-off once the actual gating logic was checked. |
 | Rename `portfolio`'s label vs. rename per-project `dashboard`'s label | Renaming the per-project screen (to something other than "dashboard") would also resolve the collision. | `portfolio` is the multi-project list — "Portfolio" is the more accurate existing word already used in its own heading; changing the *other* screen's long-established name has a larger blast radius (help docs, user muscle memory) for the same fix. |
 
 ## 6. What I'd revisit as this grows
 
-- **If Project Settings gets the same tab treatment** (a second, independent
-  candidate flagged in §4.1), the `Tabs.svelte` component built here should
-  be validated against a *second* real use case before being called
-  "the" shared pattern — one consumer isn't enough to know if its API
-  generalizes.
+- **If a third screen adopts the shared tab treatment**, validate
+  `Tabs.svelte` against that distinct interaction before expanding its API.
+  Project Settings became the second consumer on 2026-08-18; see
+  [project-settings-tab-restructuring.md](project-settings-tab-restructuring.md).
 - **If usage telemetry is ever added** (currently absent per C1), the
   Overview-tab-as-default decision and the catalog category-chip filtering
   should be revisited against real data instead of the structural argument
   this document relies on.
-- **If a sixth content group is ever added to the dashboard** (e.g. a
-  reporting/analytics tab), the four-tab row's width and the "always
-  visible meta cards above the tabs" decision should be re-examined —
-  this proposal was sized for five known groups, not designed to scale
-  indefinitely.
+- **If a fifth dashboard tab is added** (e.g. reporting/analytics), the
+  four-tab row's width and the "always visible meta cards above the tabs"
+  decision should be re-examined. The current four-tab structure is not
+  designed to scale indefinitely.
 - **If the chart-kind registry (`internal/charts/registry.go`) and the
   frontend's `chartRoutes` map are ever unified into one source of truth**
   (e.g. generating `chartRoutes` from `ListChartKinds()` at build or
@@ -464,10 +462,8 @@ Still out of scope, independent of R1–R4:
   editors (a different subtree, not `Dashboard.svelte`'s own markup) were
   migrated to `Button variant="remove"`; `Dashboard.svelte`'s own inline
   button/input markup is untouched and C5 remains open.
-- Project Settings' own flat-form restructuring (a distinct, independently
-  flagged defect from the same design-critique pass, not addressed here;
-  `Tabs.svelte` is available and unblocked as its second consumer whenever
-  this is picked up).
+- Project Settings' distinct tab restructuring was completed on 2026-08-18;
+  see [project-settings-tab-restructuring.md](project-settings-tab-restructuring.md).
 - Priority #2's remaining shared-component migration surface (~68 files
   with the duplicated inline button/input/select patterns this design
   doc's C5 references) — not addressed this cycle beyond the 14

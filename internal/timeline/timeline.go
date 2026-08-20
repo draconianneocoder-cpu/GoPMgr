@@ -51,33 +51,15 @@ type Entry struct {
 // from wherever they live — this package stays database- and
 // documents-package-free.
 //
-// Currently the only populated source is the Charter document's
-// structured "milestones" field, extracted by app_foundation.go's
-// projectMilestones() (see internal/documents/templates.go's Charter
-// template and internal/documents/charter.go's PDF renderer, which
-// reads the same field).
-//
-// KNOWN GAP, not yet implemented: Gantt/CPM chart tasks can also be
-// flagged as milestones (internal/kernel.Task.Milestone,
-// internal/charts/dag.GanttRow.Milestone — a task explicitly marked,
-// or implicitly one with zero duration), and the app's own Help text
-// historically described the Timeline as aggregating "milestone
-// events in charts" before that claim was corrected to describe only
-// the Charter source (see frontend/src/lib/components/help/
-// HelpFeatures.svelte, "Data Sources" under the Timeline entry).
-// Wiring this in does NOT require changing Build()'s signature —
-// a caller can merge chart-derived Milestones into the same
-// []Milestone slice already passed in. The real work is upstream of
-// that: a chart task's calendar date (GanttRow.StartDate/FinishDate)
-// is computed by re-running the CPM layout (App.LayoutChart →
-// internal/charts/dag, anchored via internal/kernel/anchor.go against
-// the project's start date) — it is NOT stored verbatim in
-// ChartRecord.Data — so a caller would need to run that layout for
-// every Gantt/CPM chart in the project, filter to Milestone==true
-// rows, and decide which date (start vs. finish, for a genuinely
-// zero-duration milestone the two coincide) to use as the Entry.Date.
-// See docs/beta-release-backlog.md's P2 section for the tracked
-// backlog item.
+// Sources are the Charter document's structured "milestones" field
+// (app_foundation.go's projectMilestones()) and scheduled Gantt/CPM
+// chart tasks (app_foundation.go's chartMilestones()). Chart task dates
+// are computed, not stored: aggregation re-runs the same calendar-aware
+// layout used by App.LayoutChart and records a task's FinishDate as its
+// completion milestone date. Conventional zero-duration milestones have
+// identical StartDate and FinishDate. Projects without a start date have
+// no calendar-anchored chart dates, so only their Charter milestones are
+// included.
 type Milestone struct {
 	// ID identifies the source document + position so the frontend can
 	// key the entry; it is not a persisted row ID, since milestone

@@ -119,10 +119,10 @@ type Task struct {
 	// marks an explicit milestone (conventionally zero duration).
 	// ActualStart / ActualFinish record observed dates (DateLayout).
 	//
-	// NOT currently surfaced on the project Timeline view: see the
-	// "KNOWN GAP" note on timeline.Milestone (internal/timeline/timeline.go)
-	// for what wiring this in would require and why it isn't a trivial
-	// Build() signature change.
+	// Timeline aggregation includes this task, and any zero-duration task,
+	// from Gantt/CPM charts after calendar-aware layout. See
+	// timeline.Milestone (internal/timeline/timeline.go) for the date and
+	// unanchored-project policy.
 	PercentComplete float64 `json:"percent_complete,omitempty"`
 	Milestone       bool    `json:"milestone,omitempty"`
 	ActualStart     string  `json:"actual_start,omitempty"`

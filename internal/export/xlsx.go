@@ -49,9 +49,8 @@ func renderXLSX(payload ReportPayload, opts ExportOptions) (out []byte, err erro
 		// No formula-injection neutralization is needed here (unlike the CSV
 		// exporter): excelize stores Go strings as string-typed cells, which
 		// Excel/LibreOffice never evaluate as formulas — only an explicit
-		// SetCellFormula produces a formula. Verified against excelize v2.8.1;
-		// go.mod now pins v2.11.0 and this claim has not been re-verified
-		// against that version.
+		// SetCellFormula produces a formula. Verified against the pinned
+		// excelize v2.11.0 by TestRenderXLSXStoresFormulaLikeTitlesAsText.
 		row := []interface{}{
 			t.ID, t.Title, t.Duration, t.ES, t.EF, t.LS, t.LF, t.Float, t.IsCritical,
 		}

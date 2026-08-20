@@ -142,7 +142,7 @@ func (a *App) ExportProjectICS(includeHolidays bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	milestones, err := projectMilestones(d, p.ID)
+	milestones, err := timelineMilestones(d, p)
 	if err != nil {
 		return "", err
 	}

@@ -782,6 +782,7 @@ Converts internal data models to interchange formats (PDF, CSV, HTML, MSPDI, Six
 | `pdf_eof_test.go` | 1 | Schedule PDF has no trailing data after `%%EOF` | fixture/golden | Trailing bytes after a PDF's EOF marker is a known malformed-PDF/steganography-adjacent smell some validators reject — verified absent. |
 | `pdf_signing_test.go` | 3 | `RenderPDFWithSignerLoader` (PAdES embedding pipeline) | fixture/golden, fault-injection | A certificate-load failure must propagate as an error, not silently produce an unsigned PDF that looks signed. |
 | `sigma_report_test.go` | 2 | `GenerateSigmaReport` (per-user export directory + permission tightening) | fixture | See `ea454d5`: proves the report writes into the caller-supplied `outDir` (the per-user isolation fix) and tightens an over-permissive existing directory to `0700`. |
+| `xlsx_test.go` | 1 | XLSX formula-injection boundary | fixture/round-trip | Opens a generated workbook with the pinned `excelize` v2.11.0 and proves a task title beginning with `=` remains a string value with no cell formula. This protects the version-specific safety claim in `xlsx.go` from silently drifting. |
 
 ## `internal/exportsafe` — 100%
 
