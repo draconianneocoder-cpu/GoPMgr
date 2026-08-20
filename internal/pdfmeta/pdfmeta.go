@@ -19,10 +19,10 @@
 //   - InjectXMPStream appends the packet as an incremental update,
 //     adding a /Metadata reference to the Catalog dictionary.
 //
-// PDF/A-3 support is complete: fonts are embedded (internal/fonts,
-// registered by every renderer), the sRGB ICC profile is committed and
-// embedded at build time (icc.go), and veraPDF validation runs as a
-// release gate (make check-pdfa, scripts/validate-pdfa.sh).
+// Fonts are embedded (internal/fonts, registered by every renderer),
+// the sRGB ICC profile is committed and embedded at build time
+// (icc.go), and veraPDF validation runs as a release gate
+// (make check-pdfa, scripts/validate-pdfa.sh).
 package pdfmeta
 
 import (
