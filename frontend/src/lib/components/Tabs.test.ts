@@ -24,7 +24,7 @@ describe('Tabs', () => {
   });
 
   it('clicking an inactive tab selects it', async () => {
-    const { getByRole, component } = render(Tabs, { tabs, activeTab: 'a', idPrefix: 'x', label: 'Sections' });
+    const { getByRole } = render(Tabs, { tabs, activeTab: 'a', idPrefix: 'x', label: 'Sections' });
 
     await fireEvent.click(getByRole('tab', { name: 'Gamma' }));
 

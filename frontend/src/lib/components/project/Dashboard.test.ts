@@ -72,7 +72,7 @@ function makeApp(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
     })),
     DeleteChart: vi.fn(async () => undefined),
     DeleteDocument: vi.fn(async () => undefined),
-    SaveChart: vi.fn(async (c: any) => ({ ...c, id: 'new-chart-1' })),
+    SaveChart: vi.fn(async (c: ChartRecord) => ({ ...c, id: 'new-chart-1' })),
     NewDocument: vi.fn(async (kind: string) => ({ id: 'new-doc-1', kind })),
     ImportMSPDIChartWithOptions: vi.fn(async () => ({ id: 'imported-cpm-1' })),
     CloseProject: vi.fn(async () => undefined),
@@ -138,7 +138,7 @@ async function renderLoaded(overrides: Record<string, ReturnType<typeof vi.fn>> 
 // that interact with them must switch tabs first -- tab switching is local
 // component state, independent of load(), so it's always safe to click
 // immediately, even mid-load.
-async function switchTab(getByRole: (...args: any[]) => HTMLElement, name: RegExp | string) {
+async function switchTab(getByRole: ReturnType<typeof render>['getByRole'], name: RegExp | string) {
   await fireEvent.click(getByRole('tab', { name }));
 }
 
@@ -417,7 +417,7 @@ describe('Dashboard signed document export', () => {
   // the modal is open, so the ambiguity doesn't currently bite — but a new
   // assertion using getByRole('button', { name: /signature/i }) *after*
   // opening the modal would hit a "multiple elements" error.
-  async function openSignModal(getByRole: any) {
+  async function openSignModal(getByRole: ReturnType<typeof render>['getByRole']) {
     await fireEvent.click(getByRole('button', { name: /signature/i }));
     await waitFor(() => expect(getByRole('dialog')).toBeInTheDocument());
   }
