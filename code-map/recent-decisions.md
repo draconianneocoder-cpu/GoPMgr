@@ -13,6 +13,7 @@ historical rationale and superseded investigations remain in Git history.
 | Decision | Source of truth |
 | --- | --- |
 | SQLCipher project-database encryption and recovery-key hierarchy | [ADR-001](../docs/design/ADR-001-database-encryption-at-rest.md), `internal/users`, `internal/crypto`, `internal/db` |
+| Cost Control Phase 1 uses project-local exact-money ledger rows and separate reserves; it does not import the legacy stakeholder/agile rollup or schedule EVM | `app_cost_control.go`, `internal/db/cost_control.go`, `internal/money`, `docs/user-guide.md`, `docs/beta-release-backlog.md` |
 | DuckDB for in-memory analytics and SQLCipher for project persistence | [ADR-002](../docs/design/ADR-002-duckdb-vs-sqlcipher-evaluation.md), `internal/analytics` |
 | Maintained Go PDF renderer | [ADR-003](../docs/design/ADR-003-gofpdf-to-go-pdf-fpdf-migration.md), `internal/documents`, `internal/pdfmeta` |
 | Combined-report and signed-export orchestration | `internal/reporting`, `app_documents.go` |

@@ -16,13 +16,31 @@ import (
 // CostEntryWire is the Wails-safe financial boundary. Amount is a canonical
 // decimal string such as "12.34"; it is never a JavaScript number.
 type CostEntryWire struct {
-	ID, CostTypeID, Kind, CostDate, Description, Amount string
+	ID          string `json:"id"`
+	CostTypeID  string `json:"cost_type_id"`
+	Kind        string `json:"kind"`
+	CostDate    string `json:"cost_date"`
+	Description string `json:"description"`
+	Amount      string `json:"amount"`
 }
 
 type CostSummaryWire struct {
-	CurrencyCode, Funding, Planned, Contingency, CostBaseline, ManagementReserve, AuthorisedFunding, Commitment, Actual, RemainingFunding string
+	CurrencyCode      string `json:"currency_code"`
+	Funding           string `json:"funding"`
+	Planned           string `json:"planned"`
+	Contingency       string `json:"contingency"`
+	CostBaseline      string `json:"cost_baseline"`
+	ManagementReserve string `json:"management_reserve"`
+	AuthorisedFunding string `json:"authorised_funding"`
+	Commitment        string `json:"commitment"`
+	Actual            string `json:"actual"`
+	RemainingFunding  string `json:"remaining_funding"`
 }
-type CostReserveWire struct{ Kind, Amount, Description string }
+type CostReserveWire struct {
+	Kind        string `json:"kind"`
+	Amount      string `json:"amount"`
+	Description string `json:"description"`
+}
 
 func (a *App) ListCostTypes() ([]db.CostType, error) {
 	d := a.requireDB()

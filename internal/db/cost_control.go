@@ -218,9 +218,14 @@ func (db *Database) SaveCostReserve(r CostReserve) (CostReserve, error) {
 		}
 	}()
 	if r.ID == "" {
-		r.ID, err = newID("reserve")
-		if err != nil {
-			return CostReserve{}, err
+		lookupErr := tx.QueryRow(`SELECT id FROM cost_reserves WHERE project_id = ? AND kind = ?`, r.ProjectID, r.Kind).Scan(&r.ID)
+		if lookupErr == sql.ErrNoRows {
+			r.ID, err = newID("reserve")
+			if err != nil {
+				return CostReserve{}, err
+			}
+		} else if lookupErr != nil {
+			return CostReserve{}, lookupErr
 		}
 	}
 	now := captureTimestamp()

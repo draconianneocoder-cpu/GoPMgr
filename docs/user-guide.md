@@ -121,7 +121,7 @@ per-project settings:
 - The Beta Center, signed-update status, current release limitations, logs,
   and privacy-safe bug-report generation.
 
-## Stakeholders, Timeline, and Budget
+## Stakeholders, Timeline, Budget, and Cost Control
 
 The Dashboard exposes:
 
@@ -133,6 +133,17 @@ The Dashboard exposes:
 - **Budget:** a live rollup of project budget against vendor contracts
   and work-item estimates. Currency calculations are kept at cent precision,
   so fractional labour estimates round once at the money boundary.
+- **Cost Control:** an independent, project-local ledger for planned,
+  commitment, and actual entries. It does not import the Budget panel's
+  stakeholder contracts or agile estimates, preventing double counting. New
+  entries use exact decimal-string amounts in the project's locked reporting
+  currency (USD by default for new and legacy projects). The dashboard shows
+  base plan, contingency reserve, cost baseline, management reserve,
+  authorised funding, commitments, actuals, and unallocated funding.
+  Contingency and management reserves are separate records and do not count as
+  commitments or actual costs. Phase 1 does not yet provide reserve drawdowns,
+  baseline approval/versioning, foreign exchange, time-phased cash flow, or
+  automatic EVM integration.
 - **Resource assignments:** CPM tasks can carry resource units, optional
   calendar labels, max-unit caps, and skill tags. Project Settings stores named
   resource calendars with weekly capacity and day overrides; leveling uses

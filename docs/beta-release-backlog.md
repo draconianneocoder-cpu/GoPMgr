@@ -64,6 +64,12 @@ loss, or a release blocker.
 
 ## P2: follow after beta stability
 
+- Cost Control Phase 2: add immutable baseline versions and approvals, reserve
+  drawdown movements linked to known risks/change evidence, time-phased cash
+  flow/EAC reporting, and a real authorization model. Phase 1 deliberately
+  keeps the project-local ledger separate from the legacy stakeholder/agile
+  budget rollup and schedule EVM, has no FX conversion, and does not treat a
+  reserve balance as a commitment or actual cost.
 - Restore a usable normal window frame across relaunch.
 - Improve local project discovery without weakening data isolation — partly
   done 2026-08-18: `enumerateProjects` (`app_projects.go`) only ever did a

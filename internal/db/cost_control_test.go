@@ -72,3 +72,30 @@ func TestCostEntryRejectsArchivedOrZeroAmount(t *testing.T) {
 		t.Fatal("zero amount accepted")
 	}
 }
+
+func TestCostReserveUpsertPreservesIdentityAndAudits(t *testing.T) {
+	d := newCostControlTestDB(t)
+	p, err := d.UpsertProject(Project{Name: "Reserves"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := d.SaveCostReserve(CostReserve{ProjectID: p.ID, Kind: "contingency", AmountMinorUnits: 10_000, Description: "Known risk"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := d.SaveCostReserve(CostReserve{ProjectID: p.ID, Kind: "contingency", AmountMinorUnits: 12_500, Description: "Reassessed"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.ID != first.ID {
+		t.Fatalf("reserve ID changed: %q -> %q", first.ID, second.ID)
+	}
+	reserves, err := d.ListCostReserves(p.ID)
+	if err != nil || len(reserves) != 1 || reserves[0].AmountMinorUnits != 12_500 {
+		t.Fatalf("reserves = %#v, %v", reserves, err)
+	}
+	verified, err := d.VerifyAuditChain(p.ID)
+	if err != nil || !verified.Valid {
+		t.Fatalf("audit = %#v, %v", verified, err)
+	}
+}
