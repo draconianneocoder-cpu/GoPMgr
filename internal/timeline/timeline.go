@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package timeline assembles every dated entity in a project —
-// sprints, agile deployments, project start/end — into one
-// chronological stream consumed by:
+// sprints, agile deployments, project start/end, Charter milestones —
+// into one chronological stream consumed by:
 //
 //   - the Timeline view (a horizontal strip rendering in Svelte)
 //   - the iCal exporter (one VEVENT per entry)
@@ -46,10 +46,24 @@ type Entry struct {
 	EditField   string    `json:"edit_field,omitempty"`
 }
 
+// Milestone is a single dated entry from a document's structured
+// "milestones" field (currently only the Charter template has one).
+// The caller is responsible for extracting these from document
+// content — this package stays database- and documents-package-free.
+type Milestone struct {
+	// ID identifies the source document + position so the frontend can
+	// key the entry; it is not a persisted row ID, since milestone
+	// objects have no ID field of their own in document content.
+	ID   string
+	Name string
+	Date string // ISO-8601 or RFC3339, same formats parseDate accepts
+}
+
 // Build returns every timeline Entry for the project in ascending
-// date order. The caller passes the project + a list of sprints and
-// deployments (pre-fetched) so this package stays database-free.
-func Build(project db.Project, sprints []agile.Sprint, deploys []agile.Deployment) []Entry {
+// date order. The caller passes the project, a list of sprints and
+// deployments, and any document-sourced milestones (all pre-fetched)
+// so this package stays database-free.
+func Build(project db.Project, sprints []agile.Sprint, deploys []agile.Deployment, milestones []Milestone) []Entry {
 	var out []Entry
 
 	if t, ok := parseDate(project.StartDate); ok {
@@ -114,6 +128,17 @@ func Build(project db.Project, sprints []agile.Sprint, deploys []agile.Deploymen
 			Description: d.Notes,
 			SourceID:    d.ID,
 		})
+	}
+
+	for _, m := range milestones {
+		if t, ok := parseDate(m.Date); ok {
+			out = append(out, Entry{
+				Kind:     KindMilestone,
+				Title:    m.Name,
+				Date:     t,
+				SourceID: m.ID,
+			})
+		}
 	}
 
 	sort.SliceStable(out, func(i, j int) bool {

@@ -97,6 +97,67 @@ func TestMoveTimelineEntry_RejectsReadOnlyAndInvalidMoves(t *testing.T) {
 	}
 }
 
+// TestBuildTimeline_IncludesCharterMilestones is an end-to-end check (real
+// DB, real document content JSON) that projectMilestones actually reaches
+// BuildTimeline -- the unit tests in internal/timeline exercise Build()
+// directly given a []timeline.Milestone, but not the JSON-extraction path.
+func TestBuildTimeline_IncludesCharterMilestones(t *testing.T) {
+	app, d, _ := newTimelineMoveTestApp(t)
+
+	_, err := d.SaveDocument(db.Document{
+		ID:        "charter-1",
+		ProjectID: "project-1",
+		Kind:      "charter",
+		Title:     "Project Charter",
+		Content: `{"milestones": [
+			{"name": "Kickoff", "date": "2026-01-10"},
+			{"name": "not a milestone", "date": ""},
+			{"name": "", "date": "2026-02-01"}
+		]}`,
+	})
+	if err != nil {
+		t.Fatalf("SaveDocument: %v", err)
+	}
+
+	entries, err := app.BuildTimeline()
+	if err != nil {
+		t.Fatalf("BuildTimeline: %v", err)
+	}
+
+	var found *timeline.Entry
+	for i := range entries {
+		if entries[i].Kind == timeline.KindMilestone {
+			found = &entries[i]
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("no milestone entry in timeline: %#v", entries)
+	}
+	if found.Title != "Kickoff" {
+		t.Errorf("milestone title = %q, want %q", found.Title, "Kickoff")
+	}
+	if found.SourceID != "charter-1-0" {
+		t.Errorf("milestone source id = %q, want %q", found.SourceID, "charter-1-0")
+	}
+	if found.Editable {
+		t.Error("milestone entries must not be Editable")
+	}
+
+	// Only one well-formed milestone: the empty-date and empty-name entries
+	// in the fixture above must both be skipped, not turned into a zero-value
+	// entry.
+	count := 0
+	for _, e := range entries {
+		if e.Kind == timeline.KindMilestone {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("want exactly 1 milestone entry (malformed ones skipped), got %d", count)
+	}
+}
+
 func timelineContainsEditableDate(entries []timeline.Entry, kind, sourceID, date string) bool {
 	for _, e := range entries {
 		if string(e.Kind) == kind && e.SourceID == sourceID && e.Editable && e.Date.Format("2006-01-02") == date {

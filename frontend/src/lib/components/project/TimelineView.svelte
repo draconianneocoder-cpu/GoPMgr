@@ -207,6 +207,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       case 'sprint_start':   return '#22d3ee';
       case 'sprint_end':     return '#0891b2';
       case 'deployment':     return '#22c55e';
+      case 'milestone':      return '#a855f7';
       case 'project_start':  return '#f59e0b';
       case 'project_end':    return '#ef4444';
       default:               return '#94a3b8';

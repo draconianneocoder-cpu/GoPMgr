@@ -246,14 +246,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Interacting</h3>
             <ul class="text-sm text-slate-300 space-y-1 ml-3">
-              <li><span class="font-medium text-slate-100">Drag events</span> — drag a sprint range or milestone to reschedule it. Changes are saved to the project.</li>
-              <li><span class="font-medium text-slate-100">Export</span> — export the timeline as an image for inclusion in presentations or reports.</li>
+              <li><span class="font-medium text-slate-100">Drag events</span> — drag a project or sprint boundary to reschedule it. Changes are saved to the project. Milestones are read-only here; edit the Charter's Milestones field to change one.</li>
+              <li><span class="font-medium text-slate-100">Export</span> — export the timeline as an .ics calendar file (optionally including public holidays) for import into any calendar app.</li>
             </ul>
           </section>
 
           <section>
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Data Sources</h3>
-            <p class="text-sm text-slate-300">The timeline aggregates events from the project's Sprints (if agile), Charter dates (start/end), and any milestone events in charts. The country setting in Project Settings determines which public holiday calendar is used.</p>
+            <p class="text-sm text-slate-300">The timeline aggregates events from the project's Sprints (if agile), Charter dates (start/end), and the Charter's Milestones field. The country setting in Project Settings determines which public holiday calendar is used.</p>
           </section>
 
         <!-- ── Stakeholder Manager ──────────────────────────────── -->

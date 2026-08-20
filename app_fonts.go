@@ -142,7 +142,11 @@ func (a *App) ExportProjectICS(includeHolidays bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	entries := timeline.Build(p, sprints, deploys)
+	milestones, err := projectMilestones(d, p.ID)
+	if err != nil {
+		return "", err
+	}
+	entries := timeline.Build(p, sprints, deploys, milestones)
 
 	events := make([]export.ICalEvent, 0, len(entries))
 	for _, e := range entries {

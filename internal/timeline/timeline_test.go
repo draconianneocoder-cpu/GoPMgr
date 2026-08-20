@@ -14,7 +14,7 @@ import (
 // TestBuildEmpty: a project with no dates and no sprints/deploys
 // yields an empty timeline rather than failing.
 func TestBuildEmpty(t *testing.T) {
-	got := Build(db.Project{}, nil, nil)
+	got := Build(db.Project{}, nil, nil, nil)
 	if len(got) != 0 {
 		t.Errorf("empty inputs: want 0 entries, got %d", len(got))
 	}
@@ -29,7 +29,7 @@ func TestBuildProjectDates(t *testing.T) {
 		StartDate: "2026-01-15",
 		EndDate:   "2026-06-30",
 	}
-	got := Build(p, nil, nil)
+	got := Build(p, nil, nil, nil)
 	if len(got) != 2 {
 		t.Fatalf("want 2 entries (start + end), got %d", len(got))
 	}
@@ -48,7 +48,7 @@ func TestBuildProjectDates(t *testing.T) {
 // entries (we don't emit a "today" placeholder for missing data).
 func TestBuildSkipsEmptyDates(t *testing.T) {
 	p := db.Project{StartDate: "", EndDate: "2026-12-31"}
-	got := Build(p, nil, nil)
+	got := Build(p, nil, nil, nil)
 	if len(got) != 1 {
 		t.Errorf("want 1 entry (end only), got %d", len(got))
 	}
@@ -64,7 +64,7 @@ func TestBuildSprintRangeAndDeployment(t *testing.T) {
 	deploys := []agile.Deployment{
 		{ID: "d1", Version: "v1.0", TS: time.Date(2026, 2, 10, 12, 0, 0, 0, time.UTC), Successful: true},
 	}
-	got := Build(db.Project{ID: "p", StartDate: "2026-01-01"}, sprints, deploys)
+	got := Build(db.Project{ID: "p", StartDate: "2026-01-01"}, sprints, deploys, nil)
 	// project_start + sprint_start + deployment + sprint_end = 4
 	if len(got) != 4 {
 		t.Fatalf("want 4 entries, got %d", len(got))
@@ -90,7 +90,7 @@ func TestBuildAcceptsRFC3339(t *testing.T) {
 	sprints := []agile.Sprint{
 		{ID: "s1", Name: "S", StartDate: "2026-03-01T09:00:00Z", EndDate: ""},
 	}
-	got := Build(db.Project{}, sprints, nil)
+	got := Build(db.Project{}, sprints, nil, nil)
 	if len(got) != 1 {
 		t.Fatalf("want 1 entry, got %d", len(got))
 	}
@@ -106,7 +106,7 @@ func TestBuildSkipsZeroDeployTS(t *testing.T) {
 	deploys := []agile.Deployment{
 		{ID: "d1", Version: "v1.0"}, // TS not set
 	}
-	got := Build(db.Project{}, nil, deploys)
+	got := Build(db.Project{}, nil, deploys, nil)
 	if len(got) != 0 {
 		t.Errorf("zero-TS deployment should be skipped; got %d entries", len(got))
 	}
@@ -118,12 +118,52 @@ func TestBuildFailedDeploymentTitle(t *testing.T) {
 	deploys := []agile.Deployment{
 		{ID: "d1", Version: "v2.0", TS: time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC), Successful: false},
 	}
-	got := Build(db.Project{}, nil, deploys)
+	got := Build(db.Project{}, nil, deploys, nil)
 	if len(got) != 1 {
 		t.Fatalf("want 1 entry, got %d", len(got))
 	}
 	if got[0].Title != "Deploy v2.0 (failed)" {
 		t.Errorf("failed deploy title: got %q, want %q", got[0].Title, "Deploy v2.0 (failed)")
+	}
+}
+
+// TestBuildMilestones: Charter milestones become KindMilestone entries,
+// sorted alongside everything else, and are never Editable — unlike
+// sprint/project boundaries, a milestone has no dedicated MoveTimelineEntry
+// case; it can only be changed by editing the source Charter document.
+func TestBuildMilestones(t *testing.T) {
+	milestones := []Milestone{
+		{ID: "doc1-0", Name: "Kickoff", Date: "2026-01-10"},
+		{ID: "doc1-1", Name: "Beta", Date: "2026-05-01"},
+	}
+	got := Build(db.Project{ID: "p", StartDate: "2026-01-01"}, nil, nil, milestones)
+	if len(got) != 3 {
+		t.Fatalf("want 3 entries (project_start + 2 milestones), got %d", len(got))
+	}
+	wantKinds := []EntryKind{KindProjectStart, KindMilestone, KindMilestone}
+	for i, k := range wantKinds {
+		if got[i].Kind != k {
+			t.Errorf("[%d]: want %v, got %v", i, k, got[i].Kind)
+		}
+	}
+	if got[1].Title != "Kickoff" || got[1].SourceID != "doc1-0" {
+		t.Errorf("[1]: want title %q sourceID %q, got %q %q", "Kickoff", "doc1-0", got[1].Title, got[1].SourceID)
+	}
+	if got[1].Editable {
+		t.Error("milestone entries must not be Editable: there is no MoveTimelineEntry case for them")
+	}
+}
+
+// TestBuildSkipsMilestonesWithEmptyDate: a milestone with an unparseable
+// or empty date is skipped, mirroring how project/sprint dates behave.
+func TestBuildSkipsMilestonesWithEmptyDate(t *testing.T) {
+	milestones := []Milestone{
+		{ID: "doc1-0", Name: "No date", Date: ""},
+		{ID: "doc1-1", Name: "Bad date", Date: "not-a-date"},
+	}
+	got := Build(db.Project{}, nil, nil, milestones)
+	if len(got) != 0 {
+		t.Errorf("want 0 entries, got %d", len(got))
 	}
 }
 

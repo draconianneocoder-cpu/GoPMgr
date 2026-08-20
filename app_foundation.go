@@ -605,7 +605,54 @@ func buildTimelineFromDB(d *db.Database) ([]timeline.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return timeline.Build(p, sprints, deploys), nil
+	milestones, err := projectMilestones(d, p.ID)
+	if err != nil {
+		return nil, err
+	}
+	return timeline.Build(p, sprints, deploys, milestones), nil
+}
+
+// projectMilestones extracts every Charter document's structured
+// "milestones" field (name + target date) for the Timeline view and
+// iCal export. A milestone has no persisted row ID of its own inside
+// document content, so the returned Milestone.ID is synthesized from
+// the document ID and array position, for frontend keying only.
+// Malformed content on an individual document is skipped rather than
+// failing the whole timeline build, since document content is
+// freeform JSON the user can hand-edit.
+func projectMilestones(d *db.Database, projectID string) ([]timeline.Milestone, error) {
+	docs, err := d.ListDocuments(projectID, "charter")
+	if err != nil {
+		return nil, err
+	}
+	var out []timeline.Milestone
+	for _, doc := range docs {
+		var content map[string]interface{}
+		if err := json.Unmarshal([]byte(doc.Content), &content); err != nil {
+			continue
+		}
+		items, ok := content["milestones"].([]interface{})
+		if !ok {
+			continue
+		}
+		for i, item := range items {
+			m, ok := item.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			name, _ := m["name"].(string)
+			date, _ := m["date"].(string)
+			if name == "" || date == "" {
+				continue
+			}
+			out = append(out, timeline.Milestone{
+				ID:   fmt.Sprintf("%s-%d", doc.ID, i),
+				Name: name,
+				Date: date,
+			})
+		}
+	}
+	return out, nil
 }
 
 func normaliseTimelineMoveDate(dateISO string) (string, error) {
