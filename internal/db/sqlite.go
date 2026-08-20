@@ -174,6 +174,30 @@ func (db *Database) Migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_audit_events_project_seq ON audit_events(project_id, sequence_number);
 	CREATE INDEX IF NOT EXISTS idx_audit_events_hash ON audit_events(project_id, event_hash);
 
+	CREATE TABLE IF NOT EXISTS cost_types (
+		id TEXT PRIMARY KEY, project_id TEXT NOT NULL, code TEXT NOT NULL, name TEXT NOT NULL,
+		attribution TEXT NOT NULL CHECK(attribution IN ('direct','indirect')),
+		behavior TEXT NOT NULL CHECK(behavior IN ('fixed','variable')),
+		treatment TEXT NOT NULL CHECK(treatment IN ('capex','opex','not_applicable')),
+		active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+		UNIQUE(project_id, code), FOREIGN KEY(project_id) REFERENCES project(id) ON DELETE CASCADE
+	);
+	CREATE TABLE IF NOT EXISTS cost_entries (
+		id TEXT PRIMARY KEY, project_id TEXT NOT NULL, cost_type_id TEXT NOT NULL,
+		kind TEXT NOT NULL CHECK(kind IN ('planned','commitment','actual')),
+		amount_minor_units INTEGER NOT NULL, cost_date TEXT NOT NULL, description TEXT NOT NULL,
+		created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+		FOREIGN KEY(project_id) REFERENCES project(id) ON DELETE CASCADE,
+		FOREIGN KEY(cost_type_id) REFERENCES cost_types(id) ON DELETE RESTRICT
+	);
+	CREATE INDEX IF NOT EXISTS idx_cost_entries_project_date ON cost_entries(project_id, cost_date);
+	CREATE TABLE IF NOT EXISTS cost_reserves (
+		id TEXT PRIMARY KEY, project_id TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('contingency','management')),
+		amount_minor_units INTEGER NOT NULL CHECK(amount_minor_units >= 0), description TEXT NOT NULL,
+		created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(project_id, kind),
+		FOREIGN KEY(project_id) REFERENCES project(id) ON DELETE CASCADE
+	);
+
 	-- ===========================================================
 	-- V2 tables: project lifecycle, charts, documents, templates
 	-- ===========================================================
@@ -196,6 +220,7 @@ func (db *Database) Migrate() error {
 		end_date      TEXT NOT NULL DEFAULT '',
 		budget        NUMERIC NOT NULL DEFAULT 0,
 		budget_minor_units INTEGER NOT NULL DEFAULT 0,
+		currency_code TEXT NOT NULL DEFAULT 'USD', -- locked Phase 1 project reporting currency
 		owner         TEXT NOT NULL DEFAULT '',
 		industry      TEXT NOT NULL DEFAULT '',
 		sub_category  TEXT NOT NULL DEFAULT '',
@@ -690,6 +715,7 @@ func (db *Database) migrateLegacyColumns() error {
 		{"country_code", "ALTER TABLE project ADD COLUMN country_code TEXT NOT NULL DEFAULT 'US'"},
 		{"time_zone", "ALTER TABLE project ADD COLUMN time_zone TEXT NOT NULL DEFAULT 'America/New_York'"},
 		{"budget_minor_units", "ALTER TABLE project ADD COLUMN budget_minor_units INTEGER NOT NULL DEFAULT 0"},
+		{"currency_code", "ALTER TABLE project ADD COLUMN currency_code TEXT NOT NULL DEFAULT 'USD'"},
 	}
 	existing, err := db.columnSet("project")
 	if err != nil {

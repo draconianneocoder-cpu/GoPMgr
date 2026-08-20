@@ -8,6 +8,7 @@ import { session, goto } from '../../session.svelte';
 import { showToast } from '../../toast.svelte';
 import SignCertificateModal from '../SignCertificateModal.svelte';
 import BudgetPanel from './BudgetPanel.svelte';
+import CostControlPanel from './CostControlPanel.svelte';
 import ChartCatalog from './ChartCatalog.svelte';
 import DocumentCatalog from './DocumentCatalog.svelte';
 import Spinner from '../Spinner.svelte';
@@ -431,6 +432,8 @@ import Button from '../Button.svelte';
         </div>
       </div>
     </section>
+
+    <CostControlPanel />
 
     <!-- Process Excellence (Six Sigma) — shown only for six_sigma methodology projects -->
     {#if session.project?.methodology === 'six_sigma'}

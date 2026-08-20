@@ -57,6 +57,12 @@ declare global {
           CloseProject: () => Promise<void>;
           GetProjectMeta: () => Promise<ProjectMeta>;
           UpdateProjectMeta: (p: ProjectMeta) => Promise<ProjectMeta>;
+          ListCostTypes: () => Promise<CostType[]>;
+          ListCostEntries: () => Promise<CostEntry[]>;
+          SaveCostEntry: (entry: CostEntry) => Promise<CostEntry>;
+          ListCostReserves: () => Promise<CostReserve[]>;
+          SaveCostReserve: (reserve: CostReserve) => Promise<CostReserve>;
+          ComputeCostSummary: () => Promise<CostSummary>;
 
           // ----- V2: charts -----
           ListChartKinds: () => Promise<ChartDefinition[]>;
@@ -548,6 +554,7 @@ declare global {
     end_date: string;
     budget: number;
     budget_minor_units?: number;
+    currency_code: string;
     owner: string;
     industry: string;
     sub_category: string;
@@ -557,6 +564,40 @@ declare global {
     created_at: string;
     updated_at: string;
   }
+
+  interface CostType {
+    id: string;
+    project_id: string;
+    code: string;
+    name: string;
+    attribution: 'direct' | 'indirect';
+    behavior: 'fixed' | 'variable';
+    treatment: 'capex' | 'opex' | 'not_applicable';
+    active: boolean;
+  }
+
+  interface CostEntry {
+    id: string;
+    cost_type_id: string;
+    kind: 'planned' | 'commitment' | 'actual';
+    cost_date: string;
+    description: string;
+    amount: string;
+  }
+
+  interface CostSummary {
+    currency_code: string;
+    funding: string;
+    planned: string;
+    contingency: string;
+    cost_baseline: string;
+    management_reserve: string;
+    authorised_funding: string;
+    commitment: string;
+    actual: string;
+    remaining_funding: string;
+  }
+  interface CostReserve { kind: 'contingency' | 'management'; amount: string; description: string; }
 
   interface CalendarPolicy {
     country_code: string;

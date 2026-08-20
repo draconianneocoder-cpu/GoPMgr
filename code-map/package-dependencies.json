@@ -23,6 +23,7 @@
         "gopmgr/internal/export",
         "gopmgr/internal/fonts",
         "gopmgr/internal/kernel",
+        "gopmgr/internal/money",
         "gopmgr/internal/reporting",
         "gopmgr/internal/rfc3161",
         "gopmgr/internal/sigma/charts",
@@ -336,6 +337,7 @@
     "gopmgr/internal/money": {
       "dir": "internal/money",
       "imported_by_internal": [
+        "gopmgr",
         "gopmgr/internal/budget",
         "gopmgr/internal/db",
         "gopmgr/internal/kernel"

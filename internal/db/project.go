@@ -33,6 +33,7 @@ type Project struct {
 	EndDate          string  `json:"end_date"`
 	Budget           float64 `json:"budget"`
 	BudgetMinorUnits int64   `json:"budget_minor_units,omitempty"`
+	CurrencyCode     string  `json:"currency_code"`
 	Owner            string  `json:"owner"`
 	Industry         string  `json:"industry"`
 	SubCategory      string  `json:"sub_category"`
@@ -59,7 +60,7 @@ var ErrNoProject = errors.New("db: no project initialised in this file")
 func (db *Database) GetProject() (Project, error) {
 	row := db.Conn.QueryRow(
 		`SELECT id, name, description, status, phase, start_date, end_date,
-		        budget, budget_minor_units, owner, industry, sub_category, methodology, country_code, time_zone,
+		        budget, budget_minor_units, currency_code, owner, industry, sub_category, methodology, country_code, time_zone,
 		        created_at, updated_at
 		 FROM project LIMIT 1`,
 	)
@@ -78,6 +79,13 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 	}
 	if p.CountryCode == "" {
 		p.CountryCode = "US"
+	}
+	if p.CurrencyCode == "" {
+		p.CurrencyCode = "USD"
+	}
+	p.CurrencyCode = normaliseCurrencyCode(p.CurrencyCode)
+	if !validCurrencyCode(p.CurrencyCode) {
+		return Project{}, fmt.Errorf("invalid ISO currency code %q", p.CurrencyCode)
 	}
 	if p.TimeZone == "" {
 		p.TimeZone = "America/New_York"
@@ -106,13 +114,22 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 	} else if err != nil {
 		return Project{}, err
 	}
+	if !isCreate && before.CurrencyCode != p.CurrencyCode {
+		var count int
+		if err = tx.QueryRow(`SELECT COUNT(*) FROM cost_entries WHERE project_id = ?`, p.ID).Scan(&count); err != nil {
+			return Project{}, err
+		}
+		if count > 0 || before.BudgetMinorUnits != 0 {
+			return Project{}, errors.New("project currency cannot change after cost entries exist")
+		}
+	}
 
 	_, err = tx.Exec(`
 		INSERT INTO project (id, name, description, status, phase,
-			start_date, end_date, budget, budget_minor_units, owner,
+			start_date, end_date, budget, budget_minor_units, currency_code, owner,
 			industry, sub_category, methodology, country_code, time_zone,
 			created_at, updated_at, created_at_unixnano, updated_at_unixnano)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			name         = excluded.name,
 			description  = excluded.description,
@@ -122,6 +139,7 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 			end_date     = excluded.end_date,
 			budget       = excluded.budget,
 			budget_minor_units = excluded.budget_minor_units,
+			currency_code = excluded.currency_code,
 			owner        = excluded.owner,
 			industry     = excluded.industry,
 			sub_category = excluded.sub_category,
@@ -132,7 +150,7 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 			updated_at_unixnano = excluded.updated_at_unixnano
 	`,
 		p.ID, p.Name, p.Description, p.Status, p.Phase,
-		p.StartDate, p.EndDate, p.Budget, p.BudgetMinorUnits, p.Owner,
+		p.StartDate, p.EndDate, p.Budget, p.BudgetMinorUnits, p.CurrencyCode, p.Owner,
 		p.Industry, p.SubCategory, p.Methodology, p.CountryCode, p.TimeZone,
 		now.text, now.text, now.unixNano, now.unixNano,
 	)
@@ -175,7 +193,7 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 func getProjectByIDTx(tx *sql.Tx, id string) (Project, error) {
 	row := tx.QueryRow(
 		`SELECT id, name, description, status, phase, start_date, end_date,
-		        budget, budget_minor_units, owner, industry, sub_category, methodology, country_code, time_zone,
+		        budget, budget_minor_units, currency_code, owner, industry, sub_category, methodology, country_code, time_zone,
 		        created_at, updated_at
 		 FROM project WHERE id = ? LIMIT 1`,
 		id,
@@ -200,7 +218,7 @@ func scanProject(row interface {
 	)
 	err := row.Scan(
 		&p.ID, &p.Name, &p.Description, &p.Status, &p.Phase,
-		&p.StartDate, &p.EndDate, &p.Budget, &p.BudgetMinorUnits, &p.Owner,
+		&p.StartDate, &p.EndDate, &p.Budget, &p.BudgetMinorUnits, &p.CurrencyCode, &p.Owner,
 		&p.Industry, &p.SubCategory, &p.Methodology, &p.CountryCode, &p.TimeZone,
 		&created, &updated,
 	)
@@ -214,6 +232,9 @@ func scanProject(row interface {
 	p.UpdatedAt = updated
 	if p.CountryCode == "" {
 		p.CountryCode = "US"
+	}
+	if p.CurrencyCode == "" {
+		p.CurrencyCode = "USD"
 	}
 	if p.TimeZone == "" {
 		p.TimeZone = "America/New_York"
