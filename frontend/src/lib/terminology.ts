@@ -111,7 +111,7 @@ export function term(methodology: string | undefined, key: Term): string {
  * capitalised is a thin convenience around term() that uppercases
  * the first character — handy when the noun starts a sentence:
  *
- *   capitalised(methodology, 'tasks')  →  "User Stories"
+ *   capitalised(methodology, 'tasks')  →  "User stories"
  */
 export function capitalised(methodology: string | undefined, key: Term): string {
   const s = term(methodology, key);

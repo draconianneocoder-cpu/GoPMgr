@@ -6,8 +6,8 @@
 // the CPM and Gantt editors' action handlers are behaviour-verified by unit
 // tests rather than only type-checked.
 
-// Structural subsets of the App return shapes (see main.go LevelResult /
-// SplitLevelingPreview).
+// Structural subsets of the App return shapes (see app_charts.go
+// LevelResult / SplitLevelingPreview).
 export interface LevelResult {
   pinned: number;
   unplaced_labels?: string[];

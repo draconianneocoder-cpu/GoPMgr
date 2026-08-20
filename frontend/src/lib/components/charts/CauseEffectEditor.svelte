@@ -10,8 +10,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   //
   // Mirrors the WBSEditor UX: visual tree on the left, side panel
   // on the right, "add child / sibling / delete" actions in the
-  // header. The backend reuses the WBS subtree-width algorithm with
-  // axes swapped so the diagram grows leftward from the effect.
+  // header. The backend independently reimplements WBS's subtree-
+  // sizing approach with axes swapped so the diagram grows leftward
+  // from the effect (internal/charts/dag/causal_tree.go).
 
   import { onMount, onDestroy, untrack } from 'svelte';
   import { session, goto } from '../../session.svelte';

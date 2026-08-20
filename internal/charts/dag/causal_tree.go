@@ -16,9 +16,10 @@ import (
 // problem as a tree of causes of arbitrary depth (e.g., the 5 Whys
 // drill-down) growing leftward from the central effect.
 //
-// Internally it reuses the WBS layout from wbs.go (left-to-right
-// rather than top-down), so callers benefit from the same subtree-
-// width algorithm.
+// It independently reimplements WBS's divide-and-conquer subtree-sizing
+// approach (left-to-right rather than top-down, via its own
+// causalHeight/assignCausal rather than wbs.go's subtreeWidth/assign);
+// the only thing actually shared with wbs.go is DefaultLayoutOptions.
 
 // CauseNode is one cause in the tree.
 type CauseNode struct {
@@ -61,8 +62,9 @@ func EncodeCausalTree(doc CausalTreeDocument) (string, error) {
 
 // LayoutCausalTree produces a left-to-right tree layout. The root
 // (the effect) sits at the far right; causes branch leftward, each
-// child node above/below its parent. The layout reuses the WBS
-// subtree-width algorithm with axes swapped.
+// child node above/below its parent. The layout independently
+// reimplements WBS's subtree-sizing approach with axes swapped, not a
+// shared algorithm (see the package doc above).
 func LayoutCausalTree(doc CausalTreeDocument) (Layout, error) {
 	if doc.Root == nil {
 		return Layout{}, ErrNoRoot

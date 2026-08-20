@@ -10,7 +10,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   //
   // Props
   // -----
-  //   layout       — Layout returned by charts.LayoutLayered (Go side).
+  //   layout       — Layout returned by dag.LayoutLayered (Go side).
   //   nodes        — The LayeredNode array (so the snippet can read
   //                  the kind-specific fields like ES/EF/Float).
   //   selectedId   — Currently-focused node ID.

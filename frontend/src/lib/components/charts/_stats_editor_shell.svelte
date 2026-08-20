@@ -133,9 +133,10 @@ JSON.stringified back to db.charts.data.
     }
   }
 
-  // Debounced refresh on any doc change. Editors call `bumpDoc()`
-  // through the bound doc; we watch the serialised form so additions
-  // and removals at arbitrary depths trigger reactivity.
+  // Debounced refresh on any doc change. Editors mutate the bound `doc`
+  // object directly; we watch its serialised form ($derived below) so
+  // additions and removals at arbitrary depths trigger reactivity,
+  // since Svelte 5's $effect wouldn't otherwise see a deep mutation.
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let serialised = $derived(JSON.stringify(doc));
   $effect(() => {
