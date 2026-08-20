@@ -118,6 +118,11 @@ type Task struct {
 	// PercentComplete is clamped to 0..100 by CalculateCPM. Milestone
 	// marks an explicit milestone (conventionally zero duration).
 	// ActualStart / ActualFinish record observed dates (DateLayout).
+	//
+	// NOT currently surfaced on the project Timeline view: see the
+	// "KNOWN GAP" note on timeline.Milestone (internal/timeline/timeline.go)
+	// for what wiring this in would require and why it isn't a trivial
+	// Build() signature change.
 	PercentComplete float64 `json:"percent_complete,omitempty"`
 	Milestone       bool    `json:"milestone,omitempty"`
 	ActualStart     string  `json:"actual_start,omitempty"`

@@ -46,10 +46,38 @@ type Entry struct {
 	EditField   string    `json:"edit_field,omitempty"`
 }
 
-// Milestone is a single dated entry from a document's structured
-// "milestones" field (currently only the Charter template has one).
-// The caller is responsible for extracting these from document
-// content — this package stays database- and documents-package-free.
+// Milestone is a single dated entry contributed to the timeline as a
+// KindMilestone Entry. The caller is responsible for extracting these
+// from wherever they live — this package stays database- and
+// documents-package-free.
+//
+// Currently the only populated source is the Charter document's
+// structured "milestones" field, extracted by app_foundation.go's
+// projectMilestones() (see internal/documents/templates.go's Charter
+// template and internal/documents/charter.go's PDF renderer, which
+// reads the same field).
+//
+// KNOWN GAP, not yet implemented: Gantt/CPM chart tasks can also be
+// flagged as milestones (internal/kernel.Task.Milestone,
+// internal/charts/dag.GanttRow.Milestone — a task explicitly marked,
+// or implicitly one with zero duration), and the app's own Help text
+// historically described the Timeline as aggregating "milestone
+// events in charts" before that claim was corrected to describe only
+// the Charter source (see frontend/src/lib/components/help/
+// HelpFeatures.svelte, "Data Sources" under the Timeline entry).
+// Wiring this in does NOT require changing Build()'s signature —
+// a caller can merge chart-derived Milestones into the same
+// []Milestone slice already passed in. The real work is upstream of
+// that: a chart task's calendar date (GanttRow.StartDate/FinishDate)
+// is computed by re-running the CPM layout (App.LayoutChart →
+// internal/charts/dag, anchored via internal/kernel/anchor.go against
+// the project's start date) — it is NOT stored verbatim in
+// ChartRecord.Data — so a caller would need to run that layout for
+// every Gantt/CPM chart in the project, filter to Milestone==true
+// rows, and decide which date (start vs. finish, for a genuinely
+// zero-duration milestone the two coincide) to use as the Entry.Date.
+// See docs/beta-release-backlog.md's P2 section for the tracked
+// backlog item.
 type Milestone struct {
 	// ID identifies the source document + position so the frontend can
 	// key the entry; it is not a persisted row ID, since milestone
