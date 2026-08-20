@@ -137,7 +137,11 @@ The Dashboard exposes:
   commitment, and actual entries. It does not import the Budget panel's
   stakeholder contracts or agile estimates, preventing double counting. New
   entries use exact decimal-string amounts in the project's locked reporting
-  currency (USD by default for new and legacy projects). The dashboard shows
+  currency (USD by default for new and legacy projects). Before any budget or
+  Cost Control entry is recorded, Project Settings can select USD, EUR, GBP,
+  CAD, AUD, JPY, or CHF. It may change only while the project has neither a
+  budget nor Cost Control entries, because Phase 1 has no FX conversion. The
+  dashboard shows
   base plan, contingency reserve, cost baseline, management reserve,
   authorised funding, commitments, actuals, and unallocated funding.
   Contingency and management reserves are separate records and do not count as

@@ -70,6 +70,10 @@ loss, or a release blocker.
   keeps the project-local ledger separate from the legacy stakeholder/agile
   budget rollup and schedule EVM, has no FX conversion, and does not treat a
   reserve balance as a commitment or actual cost.
+- Cost Control currency expansion: add additional ISO 4217 currencies only with
+  maintained metadata, formatting rules, migration policy, and FX/reporting
+  requirements. Phase 1 deliberately supports only the seven selectable
+  reporting currencies documented in the user guide and never converts values.
 - Restore a usable normal window frame across relaunch.
 - Improve local project discovery without weakening data isolation — partly
   done 2026-08-18: `enumerateProjects` (`app_projects.go`) only ever did a

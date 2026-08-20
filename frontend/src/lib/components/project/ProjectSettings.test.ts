@@ -250,6 +250,48 @@ describe('methodology field', () => {
   });
 });
 
+describe('reporting currency', () => {
+  it('defaults a legacy or stale response to USD and saves a supported selection', async () => {
+    app.GetProjectMeta = vi.fn(async () => ({
+      id: 'project-1',
+      name: 'Currency Project',
+      description: '',
+      industry: '',
+      sub_category: '',
+      methodology: '',
+      country_code: 'US',
+      time_zone: 'America/Chicago',
+      status: 'planning',
+      phase: 'planning',
+    }));
+    app.UpdateProjectMeta = vi.fn(async (p: unknown) => p);
+    app.UpdateProjectIndustry = vi.fn(async () => ({
+      id: 'project-1',
+      name: 'Currency Project',
+      description: '',
+      industry: '',
+      sub_category: '',
+      methodology: '',
+      country_code: 'US',
+      time_zone: 'America/Chicago',
+      status: 'planning',
+      phase: 'planning',
+      currency_code: 'EUR',
+    }));
+    const { findByLabelText, findByRole, findByText } = render(ProjectSettings);
+
+    const currency = (await findByLabelText(/reporting currency/i)) as HTMLSelectElement;
+    expect(currency).toHaveValue('USD');
+    await fireEvent.change(currency, { target: { value: 'EUR' } });
+    await fireEvent.click(await findByRole('button', { name: /^save details$/i }));
+
+    await waitFor(() => expect(app.UpdateProjectMeta).toHaveBeenCalledOnce());
+    expect(app.UpdateProjectMeta).toHaveBeenCalledWith(expect.objectContaining({ currency_code: 'EUR' }));
+    expect(await findByLabelText(/reporting currency/i)).toHaveValue('EUR');
+    expect(await findByText(/can change only while this project has no budget/i)).toBeInTheDocument();
+  });
+});
+
 // Regression coverage for a defect found via packaged-GUI testing on
 // 2026-08-18: UpdateProjectIndustry always returns a fresh server-stamped
 // `updated_at` (internal/db/project.go's UpsertProject). The shared

@@ -5,6 +5,7 @@ package db
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -49,6 +50,40 @@ func TestCostControlSeedsAndAuditsProjectScopedEntry(t *testing.T) {
 	verification, err := d.VerifyAuditChain(p.ID)
 	if err != nil || !verification.Valid {
 		t.Fatalf("audit = %#v, %v", verification, err)
+	}
+}
+
+func TestProjectReportingCurrencyPolicy(t *testing.T) {
+	d := newCostControlTestDB(t)
+	p, err := d.UpsertProject(Project{Name: "Currency policy"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.CurrencyCode != "USD" {
+		t.Fatalf("default currency = %q, want USD", p.CurrencyCode)
+	}
+	p.CurrencyCode = " eur "
+	p, err = d.UpsertProject(p)
+	if err != nil {
+		t.Fatalf("change empty project currency: %v", err)
+	}
+	if p.CurrencyCode != "EUR" {
+		t.Fatalf("normalised currency = %q, want EUR", p.CurrencyCode)
+	}
+	p.CurrencyCode = "ZZZ"
+	if _, err := d.UpsertProject(p); err == nil || !strings.Contains(err.Error(), "unsupported project reporting currency") {
+		t.Fatalf("unsupported currency error = %v", err)
+	}
+
+	p.CurrencyCode = "EUR"
+	p.BudgetMinorUnits = 1
+	p, err = d.UpsertProject(p)
+	if err != nil {
+		t.Fatalf("set budget: %v", err)
+	}
+	p.CurrencyCode = "USD"
+	if _, err := d.UpsertProject(p); err == nil || !strings.Contains(err.Error(), "cannot change while a budget") {
+		t.Fatalf("currency change after budget error = %v", err)
 	}
 }
 

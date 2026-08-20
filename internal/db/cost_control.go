@@ -172,7 +172,7 @@ func (db *Database) SaveCostEntry(entry CostEntry) (CostEntry, error) {
 }
 
 func (db *Database) ListCostEntries(projectID string) ([]CostEntry, error) {
-	rows, err := db.Conn.Query(`SELECT id,project_id,cost_type_id,kind,amount_minor_units,cost_date,description,created_at,updated_at FROM cost_entries WHERE project_id=? ORDER BY cost_date DESC, created_at DESC`, projectID)
+	rows, err := db.Conn.Query(`SELECT id,project_id,cost_type_id,kind,amount_minor_units,cost_date,description,created_at,updated_at FROM cost_entries WHERE project_id=? ORDER BY cost_date DESC, created_at DESC`, projectID) // timestamp-order-guard-exempt: Cost Control tables are new in this schema and write created_at only through captureTimestamp's fixed-width UTC timestampLayout; lexicographic order is chronological. See timestamps.go.
 	if err != nil {
 		return nil, err
 	}
@@ -242,14 +242,22 @@ func (db *Database) SaveCostReserve(r CostReserve) (CostReserve, error) {
 }
 
 func validCurrencyCode(code string) bool {
-	if len(code) != 3 {
-		return false
-	}
-	for _, r := range code {
-		if r < 'A' || r > 'Z' {
-			return false
-		}
-	}
-	return true
+	// Phase 1 is intentionally single-currency per project and does not
+	// implement FX. Keep the accepted reporting currencies in a deliberately
+	// small, UI-representable set rather than claiming every three-letter string
+	// is an ISO 4217 code.
+	_, ok := supportedProjectCurrencies[code]
+	return ok
 }
+
+var supportedProjectCurrencies = map[string]struct{}{
+	"AUD": {},
+	"CAD": {},
+	"CHF": {},
+	"EUR": {},
+	"GBP": {},
+	"JPY": {},
+	"USD": {},
+}
+
 func normaliseCurrencyCode(code string) string { return strings.ToUpper(strings.TrimSpace(code)) }

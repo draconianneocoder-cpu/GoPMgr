@@ -37,6 +37,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
     { id: 'protection', label: 'Data Protection' },
   ];
 
+  // Phase 1 financial reporting is single-currency per project. This list is
+  // kept in sync with internal/db/cost_control.go's supportedProjectCurrencies.
+  const projectCurrencies = [
+    ['USD', 'US dollar (USD)'],
+    ['EUR', 'Euro (EUR)'],
+    ['GBP', 'Pound sterling (GBP)'],
+    ['CAD', 'Canadian dollar (CAD)'],
+    ['AUD', 'Australian dollar (AUD)'],
+    ['JPY', 'Japanese yen (JPY)'],
+    ['CHF', 'Swiss franc (CHF)'],
+  ] as const;
+
   let draft = $state<ProjectMeta | null>(null);
   let original = $state<ProjectMeta | null>(null);
   let busy = $state(false);
@@ -79,6 +91,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // never clears its methodology.
   function clearMethodologyOnIndustryChange() {
     if (draft) draft.methodology = '';
+  }
+
+  function normaliseProjectMeta(p: ProjectMeta): ProjectMeta {
+    // Current database responses always include these fields. Normalising also
+    // keeps old Wails mocks and legacy responses from creating a false dirty
+    // state when a save response is rebased into the form.
+    return {
+      ...p,
+      industry: p.industry ?? '',
+      methodology: p.methodology ?? '',
+      currency_code: p.currency_code ?? 'USD',
+    };
   }
 
   // Schedule report export state
@@ -238,7 +262,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // field removal) making the Methodology <select> bind to no matching
       // option and read as dirty on load with no user edit, not a fix for
       // an observed defect.
-      const normalized = { ...p, industry: p.industry ?? '', methodology: p.methodology ?? '' };
+      const normalized = normaliseProjectMeta(p);
       draft = { ...normalized };
       original = { ...normalized };
     } catch (err: any) {
@@ -314,11 +338,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // Launchpad columns explicitly; UpdateProjectMeta handles
       // everything else.
       const meta = await window.go.main.App.UpdateProjectMeta(savingDraft);
-      const merged = await window.go.main.App.UpdateProjectIndustry(
-        savingDraft.industry,
-        savingDraft.sub_category,
-        savingDraft.methodology,
-        savingDraft.country_code,
+      const merged = normaliseProjectMeta(
+        await window.go.main.App.UpdateProjectIndustry(
+          savingDraft.industry,
+          savingDraft.sub_category,
+          savingDraft.methodology,
+          savingDraft.country_code,
+        ),
       );
       const latestDraft = draft;
       original = merged;
@@ -1197,6 +1223,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
               Feeds the Dashboard Budget panel via stakeholder rates × work-item points.
             </span>
            </label>
+          <label class="block md:col-span-2">
+            <span class="text-xs text-slate-500 uppercase">Reporting currency</span>
+            <select
+              aria-describedby="reporting-currency-help"
+              bind:value={draft.currency_code}
+              class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded"
+            >
+              {#each projectCurrencies as [code, label] (code)}
+                <option value={code}>{label}</option>
+              {/each}
+            </select>
+            <span id="reporting-currency-help" class="block text-[10px] text-slate-500 mt-1">
+              Used for all Cost Control amounts. It can change only while this project has no budget or Cost Control entries, because GoPMgr does not convert stored values.
+            </span>
+          </label>
        </div>
      </section>
       </div>

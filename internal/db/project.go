@@ -85,7 +85,7 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 	}
 	p.CurrencyCode = normaliseCurrencyCode(p.CurrencyCode)
 	if !validCurrencyCode(p.CurrencyCode) {
-		return Project{}, fmt.Errorf("invalid ISO currency code %q", p.CurrencyCode)
+		return Project{}, fmt.Errorf("unsupported project reporting currency %q", p.CurrencyCode)
 	}
 	if p.TimeZone == "" {
 		p.TimeZone = "America/New_York"
@@ -120,7 +120,7 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 			return Project{}, err
 		}
 		if count > 0 || before.BudgetMinorUnits != 0 {
-			return Project{}, errors.New("project currency cannot change after cost entries exist")
+			return Project{}, errors.New("project reporting currency cannot change while a budget or cost entries exist")
 		}
 	}
 
