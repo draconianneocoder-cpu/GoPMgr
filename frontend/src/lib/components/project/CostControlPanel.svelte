@@ -5,6 +5,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <script lang="ts">
   import { onMount } from 'svelte';
   import Spinner from '../Spinner.svelte';
+  import ConfirmDialog from '../ConfirmDialog.svelte';
 
   let types = $state<CostType[]>([]);
   let entries = $state<CostEntry[]>([]);
@@ -20,18 +21,28 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let reserveKind = $state<CostReserve['kind']>('contingency');
   let reserveAmount = $state('');
   let reserveDescription = $state('');
+  let baselines = $state<CostBaseline[]>([]);
+  let approvalNote = $state('');
+  let approvalConfirmOpen = $state(false);
 
   async function load() {
     error = '';
     try {
-      [types, entries, reserves, summary] = await Promise.all([
+      [types, entries, reserves, summary, baselines] = await Promise.all([
         window.go.main.App.ListCostTypes(),
         window.go.main.App.ListCostEntries(),
         window.go.main.App.ListCostReserves(),
         window.go.main.App.ComputeCostSummary(),
+        window.go.main.App.ListCostBaselines(),
       ]);
       if (!typeID) typeID = types[0]?.id ?? '';
     } catch (err) { error = String(err); }
+  }
+  async function approveBaseline() {
+    if (saving || !approvalNote.trim()) return;
+    saving = true; error = '';
+    try { await window.go.main.App.ApproveCostBaseline(approvalNote.trim()); approvalNote = ''; await load(); }
+    catch (err) { error = String(err); } finally { saving = false; approvalConfirmOpen = false; }
   }
 
   async function saveReserve() {
@@ -81,7 +92,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <label class="text-xs text-slate-400 md:col-span-2">Basis / owner note<input bind:value={reserveDescription} required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
       <button disabled={saving} class="md:col-span-4 rounded border border-amber-700/70 hover:bg-amber-950/40 disabled:opacity-50 p-2 text-xs font-bold text-amber-200">{saving ? 'Saving…' : 'Set reserve balance'}</button>
     </form>
+    <section class="border-t border-slate-800 pt-3 space-y-2" aria-labelledby="baseline-governance-heading">
+      <div><h3 id="baseline-governance-heading" class="text-[10px] tracking-widest uppercase text-slate-500">Baseline governance</h3><p class="text-[10px] text-slate-500">Approval is a local-account record, not role authorization or an electronic signature. It snapshots Cost Control only, never the legacy Budget panel.</p></div>
+      <label class="block text-xs text-slate-400">Approval rationale<input bind:value={approvalNote} required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Why this Cost Control baseline is approved" /></label>
+      <button onclick={() => approvalConfirmOpen = true} disabled={saving || !approvalNote.trim()} class="rounded border border-cyan-700/70 hover:bg-cyan-950/40 disabled:opacity-50 p-2 text-xs font-bold text-cyan-200">Approve immutable baseline</button>
+      {#if baselines.length > 0}<div class="overflow-x-auto"><table class="w-full text-xs"><thead class="text-left text-slate-500"><tr><th>Version</th><th>Approved by</th><th>Cost baseline</th><th>Authorised</th></tr></thead><tbody>{#each baselines as baseline (baseline.version)}<tr class="border-t border-slate-800"><td>v{baseline.version}</td><td>{baseline.approved_by}</td><td>{baseline.currency_code} {baseline.cost_baseline}</td><td>{baseline.currency_code} {baseline.authorised_funding}</td></tr>{/each}</tbody></table></div>{/if}
+    </section>
     {#if reserves.length > 0}<p class="text-[10px] text-slate-500">Reserve balances are governance buffers, not posted costs. Each balance retains its basis note.</p>{/if}
     {#if entries.length > 0}<div class="overflow-x-auto"><table class="w-full text-xs"><thead class="text-left text-slate-500"><tr><th>Date</th><th>State</th><th>Description</th><th class="text-right">Amount</th></tr></thead><tbody>{#each entries as entry (entry.id)}<tr class="border-t border-slate-800"><td>{entry.cost_date}</td><td class="capitalize">{entry.kind}</td><td>{entry.description}</td><td class="text-right tabular-nums">{summary.currency_code} {entry.amount}</td></tr>{/each}</tbody></table></div>{/if}
   {/if}
 </section>
+<ConfirmDialog open={approvalConfirmOpen} title="Approve Cost Control baseline?" message="This records an immutable local-account approval snapshot. It does not approve legacy Budget values." confirmLabel="Approve baseline" tone="caution" busy={saving} onConfirm={() => void approveBaseline()} onCancel={() => approvalConfirmOpen = false} />

@@ -11,6 +11,10 @@ import (
 )
 
 func appendApprovalCheckpointTx(tx *sql.Tx, projectID, entityType, entityID, approvalType, approvedJSON string) (AuditEvent, error) {
+	return appendApprovalCheckpointForUserTx(tx, projectID, entityType, entityID, approvalType, approvedJSON, "")
+}
+
+func appendApprovalCheckpointForUserTx(tx *sql.Tx, projectID, entityType, entityID, approvalType, approvedJSON, userID string) (AuditEvent, error) {
 	canonicalApproved, err := canonicalJSON(approvedJSON)
 	if err != nil {
 		return AuditEvent{}, err
@@ -56,6 +60,7 @@ func appendApprovalCheckpointTx(tx *sql.Tx, projectID, entityType, entityID, app
 		EntityType:            entityType,
 		EntityID:              entityID,
 		AfterJSON:             string(payload),
+		UserID:                userID,
 		SignatureStatus:       "signed",
 		SignatureBlobOptional: string(signatureBlob),
 	})

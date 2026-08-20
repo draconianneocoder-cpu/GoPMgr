@@ -42,6 +42,19 @@ type CostReserveWire struct {
 	Description string `json:"description"`
 }
 
+type CostBaselineWire struct {
+	Version           int64  `json:"version"`
+	CurrencyCode      string `json:"currency_code"`
+	Planned           string `json:"planned"`
+	Contingency       string `json:"contingency"`
+	CostBaseline      string `json:"cost_baseline"`
+	ManagementReserve string `json:"management_reserve"`
+	AuthorisedFunding string `json:"authorised_funding"`
+	ApprovedBy        string `json:"approved_by"`
+	ApprovalNote      string `json:"approval_note"`
+	ApprovedAt        string `json:"approved_at"`
+}
+
 func (a *App) ListCostTypes() ([]db.CostType, error) {
 	d := a.requireDB()
 	if d == nil {
@@ -132,6 +145,43 @@ func (a *App) SaveCostEntry(input CostEntryWire) (CostEntryWire, error) {
 	return costEntryWire(saved), nil
 }
 
+func (a *App) ApproveCostBaseline(note string) (CostBaselineWire, error) {
+	d := a.requireDB()
+	user := a.requireUser()
+	if d == nil || user == nil {
+		return CostBaselineWire{}, errors.New("no signed-in project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return CostBaselineWire{}, err
+	}
+	s, err := d.ApproveCostBaseline(p.ID, user.Username, strings.TrimSpace(note))
+	if err != nil {
+		return CostBaselineWire{}, err
+	}
+	return costBaselineWire(s), nil
+}
+
+func (a *App) ListCostBaselines() ([]CostBaselineWire, error) {
+	d := a.requireDB()
+	if d == nil {
+		return nil, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	items, err := d.ListCostBaselines(p.ID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]CostBaselineWire, 0, len(items))
+	for _, item := range items {
+		out = append(out, costBaselineWire(item))
+	}
+	return out, nil
+}
+
 func (a *App) ComputeCostSummary() (CostSummaryWire, error) {
 	d := a.requireDB()
 	if d == nil {
@@ -206,6 +256,15 @@ func (a *App) ComputeCostSummary() (CostSummaryWire, error) {
 
 func costEntryWire(entry db.CostEntry) CostEntryWire {
 	return CostEntryWire{ID: entry.ID, CostTypeID: entry.CostTypeID, Kind: entry.Kind, CostDate: entry.CostDate, Description: entry.Description, Amount: formatMoneyDecimal(money.Amount{MinorUnits: entry.AmountMinorUnits})}
+}
+
+func costBaselineWire(s db.CostBaselineSnapshot) CostBaselineWire {
+	pl := money.Amount{MinorUnits: s.PlannedMinorUnits}
+	cont := money.Amount{MinorUnits: s.ContingencyMinorUnits}
+	mgmt := money.Amount{MinorUnits: s.ManagementReserveMinorUnits}
+	base, _ := pl.Add(cont)
+	authority, _ := base.Add(mgmt)
+	return CostBaselineWire{Version: s.Version, CurrencyCode: s.CurrencyCode, Planned: formatMoneyDecimal(pl), Contingency: formatMoneyDecimal(cont), CostBaseline: formatMoneyDecimal(base), ManagementReserve: formatMoneyDecimal(mgmt), AuthorisedFunding: formatMoneyDecimal(authority), ApprovedBy: s.ApprovedBy, ApprovalNote: s.ApprovalNote, ApprovedAt: s.ApprovedAt}
 }
 
 func parseMoneyDecimal(v string) (money.Amount, error) {

@@ -62,6 +62,8 @@ declare global {
           SaveCostEntry: (entry: CostEntry) => Promise<CostEntry>;
           ListCostReserves: () => Promise<CostReserve[]>;
           SaveCostReserve: (reserve: CostReserve) => Promise<CostReserve>;
+          ApproveCostBaseline: (note: string) => Promise<CostBaseline>;
+          ListCostBaselines: () => Promise<CostBaseline[]>;
           ComputeCostSummary: () => Promise<CostSummary>;
 
           // ----- V2: charts -----
@@ -598,6 +600,11 @@ declare global {
     remaining_funding: string;
   }
   interface CostReserve { kind: 'contingency' | 'management'; amount: string; description: string; }
+  interface CostBaseline {
+    version: number; currency_code: string; planned: string; contingency: string;
+    cost_baseline: string; management_reserve: string; authorised_funding: string;
+    approved_by: string; approval_note: string; approved_at: string;
+  }
 
   interface CalendarPolicy {
     country_code: string;

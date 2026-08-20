@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"gopmgr/internal/money"
 )
 
 // CostType classifies a cost along independent accounting dimensions.
@@ -44,6 +46,21 @@ type CostReserve struct {
 	Kind             string `json:"kind"`
 	AmountMinorUnits int64  `json:"amount_minor_units"`
 	Description      string `json:"description"`
+}
+
+// CostBaselineSnapshot is an immutable, server-derived approval record. Its
+// derived totals are calculated by callers with checked money arithmetic.
+type CostBaselineSnapshot struct {
+	ID                          string `json:"id"`
+	ProjectID                   string `json:"project_id"`
+	Version                     int64  `json:"version"`
+	CurrencyCode                string `json:"currency_code"`
+	PlannedMinorUnits           int64  `json:"planned_minor_units"`
+	ContingencyMinorUnits       int64  `json:"contingency_minor_units"`
+	ManagementReserveMinorUnits int64  `json:"management_reserve_minor_units"`
+	ApprovedBy                  string `json:"approved_by"`
+	ApprovalNote                string `json:"approval_note"`
+	ApprovedAt                  string `json:"approved_at"`
 }
 
 var ErrNoCostType = errors.New("db: cost type not found")
@@ -239,6 +256,117 @@ func (db *Database) SaveCostReserve(r CostReserve) (CostReserve, error) {
 	}
 	err = tx.Commit()
 	return r, err
+}
+
+// ApproveCostBaseline snapshots the current Cost Control plan and reserves.
+// Project.BudgetMinorUnits is deliberately excluded: it is the legacy Budget
+// panel's independent rollup, not Cost Control funding.
+func (db *Database) ApproveCostBaseline(projectID, actor, note string) (CostBaselineSnapshot, error) {
+	if projectID == "" || strings.TrimSpace(actor) == "" || strings.TrimSpace(note) == "" {
+		return CostBaselineSnapshot{}, errors.New("cost baseline approval: project, actor, and note are required")
+	}
+	tx, err := db.Conn.Begin()
+	if err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	defer tx.Rollback() // harmless after Commit; releases every early-return path.
+	var currency string
+	if err = tx.QueryRow(`SELECT currency_code FROM project WHERE id=?`, projectID).Scan(&currency); err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	var planned money.Accumulator
+	rows, err := tx.Query(`SELECT amount_minor_units FROM cost_entries WHERE project_id=? AND kind='planned'`, projectID)
+	if err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	for rows.Next() {
+		var n int64
+		if err = rows.Scan(&n); err != nil {
+			rows.Close()
+			return CostBaselineSnapshot{}, err
+		}
+		planned.Add(money.Amount{MinorUnits: n})
+	}
+	if err = rows.Close(); err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	pl, err := planned.Amount()
+	if err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	var contingency, management int64
+	rows, err = tx.Query(`SELECT kind,amount_minor_units FROM cost_reserves WHERE project_id=?`, projectID)
+	if err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	for rows.Next() {
+		var kind string
+		var n int64
+		if err = rows.Scan(&kind, &n); err != nil {
+			rows.Close()
+			return CostBaselineSnapshot{}, err
+		}
+		if kind == "contingency" {
+			contingency = n
+		} else if kind == "management" {
+			management = n
+		}
+	}
+	if err = rows.Close(); err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	base, err := pl.Add(money.Amount{MinorUnits: contingency})
+	if err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	if base.MinorUnits <= 0 {
+		return CostBaselineSnapshot{}, errors.New("cost baseline approval: cost baseline must be positive")
+	}
+	if _, err = base.Add(money.Amount{MinorUnits: management}); err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	var version int64
+	if err = tx.QueryRow(`SELECT COALESCE(MAX(version),0)+1 FROM cost_baseline_snapshots WHERE project_id=?`, projectID).Scan(&version); err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	id, err := newID("costbase")
+	if err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	now := captureTimestamp()
+	s := CostBaselineSnapshot{ID: id, ProjectID: projectID, Version: version, CurrencyCode: currency, PlannedMinorUnits: pl.MinorUnits, ContingencyMinorUnits: contingency, ManagementReserveMinorUnits: management, ApprovedBy: strings.TrimSpace(actor), ApprovalNote: strings.TrimSpace(note), ApprovedAt: now.text}
+	if _, err = tx.Exec(`INSERT INTO cost_baseline_snapshots (id,project_id,version,currency_code,planned_minor_units,contingency_minor_units,management_reserve_minor_units,approved_by,approval_note,approved_at,approved_at_unixnano) VALUES (?,?,?,?,?,?,?,?,?,?,?)`, s.ID, s.ProjectID, s.Version, s.CurrencyCode, s.PlannedMinorUnits, s.ContingencyMinorUnits, s.ManagementReserveMinorUnits, s.ApprovedBy, s.ApprovalNote, s.ApprovedAt, now.unixNano); err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	payload, err := json.Marshal(s)
+	if err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	if _, err = appendAuditEventTx(tx, AuditEventInput{ProjectID: projectID, EventType: "cost_baseline_snapshot.create", EntityType: "cost_baseline_snapshot", EntityID: s.ID, AfterJSON: string(payload), UserID: s.ApprovedBy}); err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	if _, err = appendApprovalCheckpointForUserTx(tx, projectID, "cost_baseline_snapshot", s.ID, "cost_baseline_approved", string(payload), s.ApprovedBy); err != nil {
+		return CostBaselineSnapshot{}, err
+	}
+	err = tx.Commit()
+	return s, err
+}
+
+func (db *Database) ListCostBaselines(projectID string) ([]CostBaselineSnapshot, error) {
+	rows, err := db.Conn.Query(`SELECT id,project_id,version,currency_code,planned_minor_units,contingency_minor_units,management_reserve_minor_units,approved_by,approval_note,approved_at FROM cost_baseline_snapshots WHERE project_id=? ORDER BY version DESC`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []CostBaselineSnapshot
+	for rows.Next() {
+		var s CostBaselineSnapshot
+		if err := rows.Scan(&s.ID, &s.ProjectID, &s.Version, &s.CurrencyCode, &s.PlannedMinorUnits, &s.ContingencyMinorUnits, &s.ManagementReserveMinorUnits, &s.ApprovedBy, &s.ApprovalNote, &s.ApprovedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
 }
 
 func validCurrencyCode(code string) bool {

@@ -41,8 +41,8 @@ import (
 // 99 — TestRepairAndSwapCanFailToHealEvenWhenReached's original
 // severe-corruption offset — moved into a page Migrate() itself now
 // fails to open, an outcome that test doesn't exercise. Re-swept pages
-// 90-110 with a temporary throwaway test (not committed) and confirmed
-// page 110 reproduces the same "OpenProject and the first query both
+// 90-160 with a temporary throwaway test (not committed) and found pages 113
+// and 114 as valid candidates. Page 113 reproduced the same "OpenProject and the first query both
 // succeed, RepairAndSwap's own VACUUM INTO fails" outcome across 3
 // repeated runs; TestRepairAndSwapHealsReachableLightCorruption's page
 // 3 offset was unaffected and confirmed still passing, unchanged.
@@ -120,7 +120,7 @@ func TestRepairAndSwapHealsReachableLightCorruption(t *testing.T) {
 // TestRepairAndSwapCanFailToHealEvenWhenReached pins current, real
 // behavior discovered by the same sweep: RepairAndSwap being reachable
 // does not guarantee it can heal what it finds. This corruption pattern
-// (page 110 — re-derived 2026-08-20 after the Cost Control schema
+// (page 113 — re-derived 2026-08-20 after the Cost Control baseline schema
 // migration shifted this fixture's page layout; the original sweep had
 // found page 99, which after that migration lands on a page Migrate()
 // itself now fails to open, an OpenProject-failure outcome this test
@@ -139,8 +139,8 @@ func TestRepairAndSwapHealsReachableLightCorruption(t *testing.T) {
 // is a deliberate, reviewed change rather than an unnoticed regression.
 func TestRepairAndSwapCanFailToHealEvenWhenReached(t *testing.T) {
 	app, path, pristine := seedRepairFixtureProject(t)
-	const page110Offset = 110*4096 + 1
-	corruptByteAt(t, path, pristine, page110Offset)
+	const page113Offset = 113*4096 + 1
+	corruptByteAt(t, path, pristine, page113Offset)
 
 	if _, err := app.OpenProject(path); err != nil {
 		t.Fatalf("OpenProject: want success on this corruption pattern, got %v", err)

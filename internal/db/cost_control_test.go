@@ -134,3 +134,48 @@ func TestCostReserveUpsertPreservesIdentityAndAudits(t *testing.T) {
 		t.Fatalf("audit = %#v, %v", verified, err)
 	}
 }
+
+func TestApproveCostBaselineIsImmutableAndAudited(t *testing.T) {
+	d := newCostControlTestDB(t)
+	p, err := d.UpsertProject(Project{Name: "Baseline"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	types, err := d.ListCostTypes(p.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = d.SaveCostEntry(CostEntry{ProjectID: p.ID, CostTypeID: types[0].ID, Kind: "planned", CostDate: "2026-08-20", Description: "Plan", AmountMinorUnits: 10000}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = d.SaveCostReserve(CostReserve{ProjectID: p.ID, Kind: "contingency", AmountMinorUnits: 1000, Description: "Risk"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = d.SaveCostReserve(CostReserve{ProjectID: p.ID, Kind: "management", AmountMinorUnits: 500, Description: "Unknowns"}); err != nil {
+		t.Fatal(err)
+	}
+	first, err := d.ApproveCostBaseline(p.ID, "alice", "Initial approval")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Version != 1 || first.PlannedMinorUnits != 10000 || first.ContingencyMinorUnits != 1000 || first.ManagementReserveMinorUnits != 500 {
+		t.Fatalf("first = %#v", first)
+	}
+	if _, err = d.SaveCostEntry(CostEntry{ProjectID: p.ID, CostTypeID: types[0].ID, Kind: "planned", CostDate: "2026-08-21", Description: "Later", AmountMinorUnits: 200}); err != nil {
+		t.Fatal(err)
+	}
+	second, err := d.ApproveCostBaseline(p.ID, "alice", "Revised approval")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Version != 2 || second.PlannedMinorUnits != 10200 {
+		t.Fatalf("second = %#v", second)
+	}
+	all, err := d.ListCostBaselines(p.ID)
+	if err != nil || len(all) != 2 || all[1].PlannedMinorUnits != 10000 {
+		t.Fatalf("baselines = %#v, %v", all, err)
+	}
+	if v, err := d.VerifyAuditChain(p.ID); err != nil || !v.Valid {
+		t.Fatalf("audit = %#v, %v", v, err)
+	}
+}

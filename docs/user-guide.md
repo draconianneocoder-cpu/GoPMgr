@@ -146,8 +146,14 @@ The Dashboard exposes:
   authorised funding, commitments, actuals, and unallocated funding.
   Contingency and management reserves are separate records and do not count as
   commitments or actual costs. Phase 1 does not yet provide reserve drawdowns,
-  baseline approval/versioning, foreign exchange, time-phased cash flow, or
+  foreign exchange, time-phased cash flow, or
   automatic EVM integration.
+
+Cost Control can record immutable approved baseline snapshots. A snapshot is
+derived on the backend from the current planned entries and both reserve
+balances; it excludes the legacy Dashboard Budget rollup. Approval records the
+signed-in local account and a rationale in the audit chain. This is not role
+authorization or an electronic signature.
 - **Resource assignments:** CPM tasks can carry resource units, optional
   calendar labels, max-unit caps, and skill tags. Project Settings stores named
   resource calendars with weekly capacity and day overrides; leveling uses

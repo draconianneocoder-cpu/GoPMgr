@@ -10,9 +10,11 @@ function installApp() {
     ListCostTypes: vi.fn(async () => [{ id: 'labor', project_id: 'p', code: 'labor', name: 'Labor', attribution: 'direct', behavior: 'variable', treatment: 'opex', active: true }]),
     ListCostEntries: vi.fn(async () => []),
     ListCostReserves: vi.fn(async () => []),
+    ListCostBaselines: vi.fn(async () => []),
     ComputeCostSummary: vi.fn(async () => ({ currency_code: 'USD', funding: '1000.00', planned: '800.00', contingency: '100.00', cost_baseline: '900.00', management_reserve: '50.00', authorised_funding: '950.00', commitment: '0.00', actual: '0.00', remaining_funding: '150.00' })),
     SaveCostEntry: vi.fn(async (entry) => entry),
     SaveCostReserve: vi.fn(async (reserve) => reserve),
+    ApproveCostBaseline: vi.fn(async () => ({})),
   };
   (window as unknown as { go: unknown }).go = { main: { App: app } };
   return app;
@@ -28,5 +30,16 @@ describe('CostControlPanel', () => {
     await fireEvent.input(getByLabelText('Basis / owner note'), { target: { value: 'Known supplier risk' } });
     await fireEvent.click(getByRole('button', { name: 'Set reserve balance' }));
     expect(app.SaveCostReserve).toHaveBeenCalledWith({ kind: 'contingency', amount: '25.00', description: 'Known supplier risk' });
+  });
+
+  it('requires confirmation before recording an immutable baseline', async () => {
+    const app = installApp();
+    const { findByLabelText, findByRole } = render(CostControlPanel);
+    const note = await findByLabelText('Approval rationale');
+    await fireEvent.input(note, { target: { value: 'Approved plan' } });
+    await fireEvent.click(await findByRole('button', { name: 'Approve immutable baseline' }));
+    expect(app.ApproveCostBaseline).not.toHaveBeenCalled();
+    await fireEvent.click(await findByRole('button', { name: 'Approve baseline' }));
+    expect(app.ApproveCostBaseline).toHaveBeenCalledWith('Approved plan');
   });
 });

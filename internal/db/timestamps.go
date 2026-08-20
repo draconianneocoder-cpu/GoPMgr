@@ -142,6 +142,7 @@ var timestampRetrofitTargets = []struct {
 	{"resource_calendars", "id", "updated_at"},
 	{"stakeholders", "id", "created_at"},
 	{"stakeholders", "id", "updated_at"},
+	{"cost_baseline_snapshots", "id", "approved_at"},
 }
 
 // retrofitTimestampFormat normalizes every pre-existing on-disk

@@ -197,6 +197,15 @@ func (db *Database) Migrate() error {
 		created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(project_id, kind),
 		FOREIGN KEY(project_id) REFERENCES project(id) ON DELETE CASCADE
 	);
+	CREATE TABLE IF NOT EXISTS cost_baseline_snapshots (
+		id TEXT PRIMARY KEY, project_id TEXT NOT NULL, version INTEGER NOT NULL,
+		currency_code TEXT NOT NULL, planned_minor_units INTEGER NOT NULL,
+		contingency_minor_units INTEGER NOT NULL, management_reserve_minor_units INTEGER NOT NULL,
+		approved_by TEXT NOT NULL, approval_note TEXT NOT NULL,
+		approved_at TEXT NOT NULL, approved_at_unixnano INTEGER NOT NULL,
+		UNIQUE(project_id, version), FOREIGN KEY(project_id) REFERENCES project(id) ON DELETE CASCADE
+	);
+	CREATE INDEX IF NOT EXISTS idx_cost_baselines_project_version ON cost_baseline_snapshots(project_id, version DESC);
 
 	-- ===========================================================
 	-- V2 tables: project lifecycle, charts, documents, templates

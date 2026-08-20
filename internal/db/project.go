@@ -115,11 +115,17 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 		return Project{}, err
 	}
 	if !isCreate && before.CurrencyCode != p.CurrencyCode {
-		var count int
+		var count, reserveCount, baselineCount int
 		if err = tx.QueryRow(`SELECT COUNT(*) FROM cost_entries WHERE project_id = ?`, p.ID).Scan(&count); err != nil {
 			return Project{}, err
 		}
-		if count > 0 || before.BudgetMinorUnits != 0 {
+		if err = tx.QueryRow(`SELECT COUNT(*) FROM cost_reserves WHERE project_id = ? AND amount_minor_units != 0`, p.ID).Scan(&reserveCount); err != nil {
+			return Project{}, err
+		}
+		if err = tx.QueryRow(`SELECT COUNT(*) FROM cost_baseline_snapshots WHERE project_id = ?`, p.ID).Scan(&baselineCount); err != nil {
+			return Project{}, err
+		}
+		if count > 0 || reserveCount > 0 || baselineCount > 0 || before.BudgetMinorUnits != 0 {
 			return Project{}, errors.New("project reporting currency cannot change while a budget or cost entries exist")
 		}
 	}
