@@ -91,7 +91,7 @@ func TestConfig_DefaultValues(t *testing.T) {
 
 func TestParseFlags_NoArgsUsesDefaults(t *testing.T) {
 	cfg := parseArgs(t)
-	if cfg.ShowVersion || cfg.AdminPack || cfg.SoftwareDevPack || cfg.CheckOnly ||
+	if cfg.ShowVersion || cfg.CheckOnly ||
 		cfg.Repair || cfg.UpdateCheck || cfg.SchemaDump || cfg.ShowStats ||
 		cfg.Vacuum || cfg.EncryptExport || cfg.DebugMode {
 		t.Errorf("expected every bool flag false with no args, got %+v", cfg)
@@ -108,21 +108,19 @@ func TestParseFlags_NoArgsUsesDefaults(t *testing.T) {
 
 func TestParseFlags_BoolFlags(t *testing.T) {
 	cfg := parseArgs(t,
-		"-version", "-admin-pack", "-software-dev-pack", "-check", "-repair",
+		"-version", "-check", "-repair",
 		"-update", "-schema-dump", "-stats", "-vacuum", "-encrypt", "-debug",
 	)
 	cases := map[string]bool{
-		"ShowVersion":     cfg.ShowVersion,
-		"AdminPack":       cfg.AdminPack,
-		"SoftwareDevPack": cfg.SoftwareDevPack,
-		"CheckOnly":       cfg.CheckOnly,
-		"Repair":          cfg.Repair,
-		"UpdateCheck":     cfg.UpdateCheck,
-		"SchemaDump":      cfg.SchemaDump,
-		"ShowStats":       cfg.ShowStats,
-		"Vacuum":          cfg.Vacuum,
-		"EncryptExport":   cfg.EncryptExport,
-		"DebugMode":       cfg.DebugMode,
+		"ShowVersion":   cfg.ShowVersion,
+		"CheckOnly":     cfg.CheckOnly,
+		"Repair":        cfg.Repair,
+		"UpdateCheck":   cfg.UpdateCheck,
+		"SchemaDump":    cfg.SchemaDump,
+		"ShowStats":     cfg.ShowStats,
+		"Vacuum":        cfg.Vacuum,
+		"EncryptExport": cfg.EncryptExport,
+		"DebugMode":     cfg.DebugMode,
 	}
 	for name, got := range cases {
 		if !got {

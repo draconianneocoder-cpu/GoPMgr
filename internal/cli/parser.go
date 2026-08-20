@@ -31,10 +31,6 @@ type Config struct {
 	// Info flags
 	ShowVersion bool
 
-	// Pack toggles
-	AdminPack       bool
-	SoftwareDevPack bool
-
 	// Maintenance
 	CheckOnly       bool
 	Repair          bool
@@ -66,10 +62,6 @@ func ParseFlags() *Config {
 
 	// Info
 	flag.BoolVar(&cfg.ShowVersion, "version", false, "Display version information")
-
-	// Packs
-	flag.BoolVar(&cfg.AdminPack, "admin-pack", false, "Enable Admin Pack")
-	flag.BoolVar(&cfg.SoftwareDevPack, "software-dev-pack", false, "Enable Software Dev Pack")
 
 	// Maintenance
 	flag.BoolVar(&cfg.CheckOnly, "check", false, "Run integrity check and exit")
