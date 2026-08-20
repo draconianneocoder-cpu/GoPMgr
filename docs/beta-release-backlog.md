@@ -76,6 +76,10 @@ loss, or a release blocker.
   maintained metadata, formatting rules, migration policy, and FX/reporting
   requirements. Phase 1 deliberately supports only the seven selectable
   reporting currencies documented in the user guide and never converts values.
+- Cost Control summary semantics: reconcile the Dashboard's legacy Budget
+  "Funding" value and the Cost Control "Unallocated" label with the approved
+  financial vocabulary before changing displayed or computed totals. Current
+  Cost Control ledger/reserve calculations remain intentionally unchanged.
 - Restore a usable normal window frame across relaunch.
 - Improve local project discovery without weakening data isolation — partly
   done 2026-08-18: `enumerateProjects` (`app_projects.go`) only ever did a

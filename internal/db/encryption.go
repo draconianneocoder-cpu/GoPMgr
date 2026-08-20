@@ -48,7 +48,7 @@ func IsEncryptedFile(path string) (bool, error) {
 }
 
 // MigratePlaintextToEncrypted converts a plaintext .pmforge file to
-// SQLCipher in place and retains the original as
+// SQLCipher in place and retains the schema-migrated plaintext source as
 // <path>.pre-encryption.bak. It mirrors the repair swap pattern:
 // verify source, export to an encrypted sibling, verify destination,
 // then rename.

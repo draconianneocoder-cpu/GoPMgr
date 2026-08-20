@@ -152,8 +152,9 @@ The Dashboard exposes:
 Cost Control can record immutable approved baseline snapshots. A snapshot is
 derived on the backend from the current planned entries and both reserve
 balances; it excludes the legacy Dashboard Budget rollup. Approval records the
-signed-in local account and a rationale in the audit chain. This is not role
-authorization or an electronic signature.
+signed-in local account and a rationale in the audit chain. Its history shows
+the version, local account, UTC approval time, rationale, baseline, and
+authorised funding. This is not role authorization or an electronic signature.
 - **Resource assignments:** CPM tasks can carry resource units, optional
   calendar labels, max-unit caps, and skill tags. Project Settings stores named
   resource calendars with weekly capacity and day overrides; leveling uses
