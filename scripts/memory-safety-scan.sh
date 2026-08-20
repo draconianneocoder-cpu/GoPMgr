@@ -15,9 +15,9 @@
 #   3. os.Open without nearby Close — likely file-handle leak
 #   4. sql.Open without nearby Close — likely connection leak
 #   5. naked sync.Mutex copies      — `var m = otherMutex` is a bug
-#   6. Goroutines without context   — every `go func` must accept a
-#      ctx or be documented as fire-and-forget in this script's
-#      allow-list at the bottom.
+#   6. Goroutine inventory          — informational only: every explicit
+#      `go func`/`go ident(` call site is listed for human review, not
+#      enforced (no ctx-parameter check, no allow-list, never fails).
 #
 # Optional tools (auto-detected; skipped silently if absent):
 #   staticcheck . ./internal/...

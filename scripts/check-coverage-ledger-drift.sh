@@ -132,7 +132,7 @@ all_heading_re = re.compile(r'^## (.+)$', re.M)
 # and match with it empty.
 generic_pkg_re = re.compile(r'^## `([a-zA-Z0-9_/.-]+)`(?:\s*\([^)]*\))?\s*—\s*(.+)$', re.M)
 # The root package heading doesn't lead with a backtick at all ("## Root
-# package (`gopmgr`, package `main`) — 52.2%"), so it needs its own literal
+# package (`gopmgr`, package `main`) — 62.4%"), so it needs its own literal
 # pattern rather than fitting generic_pkg_re.
 root_re = re.compile(r'^## Root package \(`gopmgr`, package `main`\) — (.+)$', re.M)
 
