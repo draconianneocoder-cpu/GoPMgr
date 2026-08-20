@@ -11,9 +11,10 @@
 // for creating pages and adding titles.
 //
 // Dispatch is by chart kind, which the caller pulls from the
-// db.charts row. The kind selects one of the five engine-specific
-// renderers (dag, fishbone, flow, matrix, stats) defined in sibling
-// files.
+// db.charts row. The kind selects one of the six engine-specific
+// renderers (dag, fishbone, flow, gantt, matrix, stats) defined in
+// sibling files (gantt is a DAG-family special case with its own
+// file).
 package pdfrender
 
 import (

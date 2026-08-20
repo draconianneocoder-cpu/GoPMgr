@@ -39,9 +39,10 @@ type Summary struct {
 	ByCategory               map[string]float64 `json:"by_category"` // breakdown by stakeholder category
 }
 
-// Compute walks the inputs and produces a Summary. Stakeholder is
-// the lookup table; we index it by ID before scanning work items so
-// the rollup is O(workItems + stakeholders). An unrepresentable aggregate or
+// Compute walks the inputs and produces a Summary. Stakeholders are
+// indexed by lower-cased Name before scanning work items (matched
+// against each work item's Assignee) so the rollup is
+// O(workItems + stakeholders). An unrepresentable aggregate or
 // derived difference returns an error wrapping money.ErrOverflow.
 func Compute(project db.Project, stakeholders []db.Stakeholder, workItems []agile.WorkItem) (Summary, error) {
 	budget := amountFromProject(project)

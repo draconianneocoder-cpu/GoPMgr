@@ -204,16 +204,12 @@ func drawFlowNode(pdf *fpdf.Fpdf, n flowNode, frame Frame, scale, ox, oy float64
 	}
 }
 
-// drawPolygon draws a closed filled+stroked polygon. fpdf has
-// fpdf.PolyLine for open polylines but not a one-call polygon
-// helper, so we trace it manually with Line() and rely on the
-// caller's SetFillColor / SetDrawColor.
+// drawPolygon draws a closed filled+stroked polygon, using fpdf's
+// built-in Polygon helper.
 func drawPolygon(pdf *fpdf.Fpdf, pts []fpdf.PointType, _ string) {
 	if len(pts) < 3 {
 		return
 	}
-	// Use the built-in Polygon helper from fpdf when available
-	// (it is, via fpdf.Polygon).
 	pdf.Polygon(pts, "FD")
 }
 

@@ -19,14 +19,10 @@
 //   - InjectXMPStream appends the packet as an incremental update,
 //     adding a /Metadata reference to the Catalog dictionary.
 //
-// What it does NOT provide
-//
-//   - Font embedding. Strict PDF/A-3 still requires shipping a TTF
-//     and switching every renderer's SetFont call to it.
-//   - OutputIntent / ICC profile. Code is complete (InjectOutputIntent,
-//     MakePDFA3). Only the actual profile bytes (fetched via `make icc`)
-//     are required at build time.
-//   - veraPDF validation. Tracked as a V3 milestone in DEVELOPER_HANDBOOK.md.
+// PDF/A-3 support is complete: fonts are embedded (internal/fonts,
+// registered by every renderer), the sRGB ICC profile is committed and
+// embedded at build time (icc.go), and veraPDF validation runs as a
+// release gate (make check-pdfa, scripts/validate-pdfa.sh).
 package pdfmeta
 
 import (

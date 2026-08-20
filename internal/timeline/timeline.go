@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package timeline assembles every dated entity in a project —
-// sprints, milestones from document fields, agile deployments,
-// project start/end — into one chronological stream consumed by:
+// sprints, agile deployments, project start/end — into one
+// chronological stream consumed by:
 //
 //   - the Timeline view (a horizontal strip rendering in Svelte)
 //   - the iCal exporter (one VEVENT per entry)

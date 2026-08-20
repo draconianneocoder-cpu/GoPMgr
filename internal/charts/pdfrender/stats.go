@@ -93,7 +93,7 @@ func renderPie(pdf *fpdf.Fpdf, l statsLayout, frame Frame) error {
 	cy := frame.Y + frame.H/2
 	r := math.Min(pieW, frame.H) / 2 * 0.85
 
-	// Approximate wedges with thin triangular polygons. 60 segments
+	// Approximate wedges with thin triangular polygons. 48 segments
 	// per wedge is plenty smooth at typical print sizes.
 	startAngle := -math.Pi / 2 // start at 12 o'clock
 	pdf.SetDrawColor(15, 23, 42)

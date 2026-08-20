@@ -16,7 +16,7 @@
 //     for traceability matrices, prioritization, etc.
 //   - Risk Matrix is a fixed 5×5 probability × impact heat map.
 //
-// Because the four kinds are structurally different, each gets its
+// Because the five kinds are structurally different, each gets its
 // own *Layout type. The frontend dispatches on `engine == "matrix"`
 // and then on `kind` to pick the right renderer.
 package matrix

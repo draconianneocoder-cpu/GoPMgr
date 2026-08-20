@@ -10,8 +10,10 @@
 // (UpdateChannelPublicKey, set by the release pipeline at build
 // time) and reject any manifest whose signature doesn't verify.
 //
-// The current binary's version is held in cli.Version. The CLI
-// `--update` flag prints a one-line status; the GUI Settings panel
+// The current binary's version for update purposes is held in
+// CurrentVersion (initialized from cli.Version, independently
+// overridable via -ldflags in release builds, so it can diverge). The
+// CLI `--update` flag prints a one-line status; the GUI Settings panel
 // calls CheckLatest() and shows the result.
 package update
 

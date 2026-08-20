@@ -256,8 +256,12 @@ func TestRegister_NilRegistrar(t *testing.T) {
 }
 
 // TestRegister_BundledWithoutAssets confirms the actionable error when
-// a bundled family's binaries haven't been fetched (the sandbox state:
-// assets/ holds only README.md).
+// a bundled family's binaries haven't been fetched. assets/ always
+// carries README.md plus the always-tracked Source Sans 3 baseline;
+// Liberation Sans (like other optional families) is gitignored and
+// fetched via `make fonts`, so a checkout without it reproduces the
+// no-assets state this test targets. Skips if fonts happen to be
+// present already (e.g. after `make fonts` ran locally).
 func TestRegister_BundledWithoutAssets(t *testing.T) {
 	mgr := NewManager(t.TempDir())
 	reg := &recordingRegistrar{}

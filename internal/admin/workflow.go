@@ -74,9 +74,10 @@ func (s *Service) SecureArchive(projectPath string) (string, error) {
 }
 
 // LogSignatureEvent records the outcome of a digital-signature attempt
-// against a document. Always returns nil; signature outcomes must not
-// fail the caller's broader workflow just because the audit write
-// failed (we still attempt to log to stderr via debug.Wrap).
+// against a document. Never fails the caller: it has no return value,
+// and audit-write failures are logged (via debug.Wrap) rather than
+// propagated, since signature outcomes must not fail the caller's
+// broader workflow just because the audit write failed.
 func (s *Service) LogSignatureEvent(docID string, success bool, err error) {
 	status := "SUCCESS"
 	details := "Digital signature applied successfully."

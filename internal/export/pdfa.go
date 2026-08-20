@@ -17,12 +17,11 @@ import (
 // montecarlo_report.go) actually call, so they don't need to import
 // pdfmeta directly.
 //
-// Still NOT provided (V3 milestones, DEVELOPER_HANDBOOK.md):
-//   - Font embedding (ship a TTF; switch SetFont calls to it).
-//   - OutputIntent / ICC profile embedding — the injection code
-//     (InjectOutputIntent + MakePDFA3) is complete. Run `make icc` to
-//     fetch the sRGB profile and get full PDF/A-3 conformance.
-//   - veraPDF validation gate.
+// PDF/A-3 support is complete: fonts are embedded (internal/fonts,
+// registered in pdf.go), OutputIntent/ICC profile embedding is wired
+// (InjectOutputIntent + MakePDFA3, with the sRGB profile committed and
+// embedded at build time in internal/pdfmeta), and veraPDF validation
+// runs as a release gate (make check-pdfa).
 
 // XMPSpec is re-exported from pdfmeta so existing export-package
 // callers keep their type reference without importing pdfmeta directly.

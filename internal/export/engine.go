@@ -3,7 +3,7 @@
 
 // Package export converts GoPMgr's internal data models into the
 // archival document formats required by the Administrative Pack:
-// PDF/A, ODT, DOCX, XLSX, CSV, and MSPDI XML (Microsoft Project).
+// PDF/A, ODT, DOCX, XLSX, CSV, HTML, and MSPDI XML (Microsoft Project).
 //
 // The package exposes a single entry point: GenerateArchivalReport.
 // Each format lives in its own file (pdf.go, mspdi.go, xlsx.go, ...)
