@@ -227,7 +227,7 @@ package-macos-installer: ## Build a local macOS .pkg installer for /Applications
 check-release: ## Run the full release gate (versions, REUSE, memory-safety, race, frontend, build, encrypted DB, PDF/A, PAdES).
 	@bash scripts/check-release.sh
 
-tag-preflight: ## Validate PMFORGE_RELEASE_TAG and run the full gate before tag-triggered packaging.
+tag-preflight: ## Validate GOPMGR_RELEASE_TAG and run the full gate before tag-triggered packaging.
 	# Test the tag contract before applying it to the real tag, then run the
 	# complete gate in the same checkout that the package matrix will consume.
 	@command -v reuse >/dev/null 2>&1 || { echo "tag-preflight: reuse is required; install the pinned release tool first." >&2; exit 1; }

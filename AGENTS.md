@@ -58,8 +58,10 @@ automated engineering work.
   standard library, third-party, then first-party packages.
 - Use table-driven tests for multi-case logic. Use `t.Cleanup` for test
   cleanup that must run after `t.Fatal`.
-- For complex comparisons, prefer `github.com/google/go-cmp/cmp` over
-  `reflect.DeepEqual`.
+- For complex comparisons, use `reflect.DeepEqual` (the project's current
+  practice — no comparison-diff dependency such as `go-cmp` is vendored;
+  don't add one without a deliberate dependency-addition decision, per
+  DEPENDENCIES.md).
 - Use `crypto/rand` for security-sensitive randomness. In recoverable
   paths such as IDs, salts, or recovery codes, use
   `io.ReadFull(rand.Reader, buf)` so entropy failures return errors

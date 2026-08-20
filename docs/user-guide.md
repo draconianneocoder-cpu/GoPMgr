@@ -268,9 +268,10 @@ and skipped summary or null rows. This makes the MSPDI round-trip boundary
 auditable rather than silently lossy.
 
 In Project Settings, schedule and time-series context can use the United
-States, supported Western European country, or Japan holiday policy together
-with the corresponding selectable IANA time zone. The selected context is
-retained with the project and returned with chart layouts.
+States, Canada, a supported Western European country, Japan, or Australia
+holiday policy together with the corresponding selectable IANA time zone. The
+selected context is retained with the project and returned with chart
+layouts.
 
 ## PDF Signing
 
@@ -406,9 +407,11 @@ All document and chart editors support Ctrl+S / Cmd+S. Auto-save is also
 available from Application Settings. Auto-save is snapshot-based, so idle
 editors do not rewrite unchanged data or churn `updated_at`.
 
-Navigation, project close, sign-out, and native window close protect registered
-editor changes with Save, Discard, and Cancel choices. After the desktop
-renderer is ready, native close uses the editor's current local dirty state;
+Navigation, project close, and native window close protect registered
+editor changes with Save, Discard, and Cancel choices. Sign-out cannot be
+reached while an editor has unsaved changes, so no data loss is possible
+there either. After the desktop renderer is ready, native close uses the
+editor's current local dirty state;
 a failed automatic or manual save remains dirty and must be retried or
 explicitly discarded.
 

@@ -27,9 +27,12 @@ Callers check them with `errors.Is`, never with string comparison on
 entity: `ErrNoChart`, `ErrNoDocument`, `ErrNoBaseline`, `ErrNoScenario`, ...),
 `internal/documents`, `internal/update`, `internal/users`, `internal/analytics`
 (`ErrAnalyticsUnavailable`), `internal/charts` (`ErrEngineNotImplemented`),
-and `main.go` (`ErrProjectRequiresEncryptionMigration`,
+and `app_projects.go` (`ErrProjectRequiresEncryptionMigration`,
 `ErrRecoveryCodesRequireReissue`). See
-[code-map/symbols.json](code-map/symbols.json) for the full current list.
+[code-map/symbols.json](code-map/symbols.json) for a snapshot list — it is
+manually regenerated (no CI gate keeps it current, unlike
+`code-map/package-dependencies.json`), so treat it as a starting point and
+confirm against the actual source for anything load-bearing.
 
 **Wrapped sentinels must still match `errors.Is`.** When a sentinel crosses
 a package boundary, wrap it with `%w`, not `%v`:
@@ -60,9 +63,9 @@ before it crosses the Wails bridge (the `ErrorReport` struct has `json`
 tags for direct serialization). `context` is a short upper-case tag
 (`SNAPSHOT_FAILED`, `CERT_BUNDLING_FAILED`, ...) the UI can match on to
 show a specific recovery hint rather than a generic failure message.
-Every `Wrap` call also logs one line to the persistent log file, so a
-self-heal failure is diagnosable from `logs/` even without reproducing it
-in the UI.
+Every `Wrap` call with a non-nil error also logs one line to the persistent
+log file, so a self-heal failure is diagnosable from `logs/` even without
+reproducing it in the UI.
 
 Use `debug.Wrap` for: database repair/snapshot paths, anything the user
 might need to send a log excerpt about. Use plain `fmt.Errorf` wrapping for
@@ -150,5 +153,8 @@ User-facing errors accumulated during a form/editor session are held in
 
 - [SECURITY.md](SECURITY.md) — secrets must never appear in an error string
   or log line (DEKs, passwords, recovery codes, SQLCipher keys).
-- [code-map/public-api-map.json](code-map/public-api-map.json) — every
-  Wails `App` method's return signature, most of which end in `error`.
+- [code-map/public-api-map.json](code-map/public-api-map.json) — a snapshot
+  of Wails `App` method return signatures, most of which end in `error`.
+  Manually regenerated with no CI gate keeping it current (it has drifted
+  before — confirm against the actual method set in the root package for
+  anything load-bearing).

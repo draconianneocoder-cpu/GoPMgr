@@ -101,7 +101,7 @@ make license-check
 make release-scope
 make memory-scan
 make check-release
-PMFORGE_RELEASE_TAG=v1.1.0 make tag-preflight
+GOPMGR_RELEASE_TAG=v1.1.0 make tag-preflight
 ```
 
 `make config-check` runs table-driven malformed-input regressions, parses every
@@ -133,17 +133,22 @@ compile step; unset by default, so a normal run still fails loudly.
 Setting it is not a pass — it means NSIS syntax went unverified for that
 run.
 
-`make check-release` is the final gate. It currently covers version
-consistency, configuration format policy, native installer tool pins,
-REUSE/SPDX, frontend build budget, release-scope guards, frontend stability,
-frontend runtime smoke, memory-safety scan, Go race tests, production build,
-PDF/A-3 validation, and the PAdES harness regression target. Pre-merge GitHub
-CI also runs `make pades-harness-tests` in a dedicated job with `qpdf` and
-`pdfsig` installed.
+`make check-release` is the final gate. It runs `scripts/check-release.sh`,
+which is the source of truth for exactly what it covers — read that script
+rather than relying on a prose summary here, since a step list drifts as the
+script grows. As of this writing it covers (non-exhaustively): the Wails
+toolchain/CLI version check, version consistency, configuration format
+policy, native installer tool pins, required font assets, the Windows
+installer scaffold, the Linux runtime target, REUSE/SPDX, frontend build
+budget, release-scope guards, frontend stability, frontend runtime smoke,
+memory-safety scan, Go race tests, production build, DuckDB linkage,
+encrypted-database validation, PDF/A-3 validation, and the PAdES harness
+regression target. Pre-merge GitHub CI also runs `make pades-harness-tests`
+in a dedicated job with `qpdf` and `pdfsig` installed.
 
 `make tag-preflight` first tests and applies the publication-tag contract, then
 runs the full release gate. The Release workflow supplies `GITHUB_REF_NAME` as
-`PMFORGE_RELEASE_TAG` and blocks its Linux, macOS, and Windows package matrix on
+`GOPMGR_RELEASE_TAG` and blocks its Linux, macOS, and Windows package matrix on
 this job. Accepted tags are `v<product-version>` and SemVer prereleases such as
 `v<product-version>-rc.1`; mismatched versions, build metadata, empty
 identifiers, and numeric prerelease identifiers with leading zeroes fail before

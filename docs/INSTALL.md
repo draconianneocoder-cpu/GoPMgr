@@ -8,10 +8,14 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 GoPMgr is a local-first desktop app: your projects live in encrypted files on
 your own machine — no account, cloud, or network is required.
 
-Packaged releases publish a native installer per platform. The current
-[v1.1.0-alpha.1 prerelease](https://github.com/draconianneocoder-cpu/GoPMgr/releases/tag/v1.1.0-alpha.1)
-contains all four files listed below. Download the file for your OS and follow
-the platform steps.
+Packaged releases will publish a native installer per platform, but **no
+GitHub Release has been published yet** — there is currently nothing to
+download. Until the first release is cut, build from source instead (see
+[Run / build from source](#run--build-from-source) below), or build the
+installers yourself (see [Build the installers
+yourself](#build-the-installers-yourself)). The table and per-platform steps
+below describe what installing a packaged release will look like once one
+exists.
 
 > **Heads-up — unsigned builds.** Current packages are not code-signed, so
 > Windows SmartScreen and macOS Gatekeeper show an "unidentified developer"

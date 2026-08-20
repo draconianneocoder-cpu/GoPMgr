@@ -87,9 +87,12 @@ the gates in [TESTING.md](TESTING.md), including `make check-release`.
 CI's `govulncheck` job queries a live vulnerability database, so a commit with
 no code change can go from green to red (or back) between runs as new
 advisories publish. A stdlib finding usually means a newer Go patch release
-fixes it — bump `go.mod`'s `go` directive and confirm `govulncheck ./...`
-(both the default and `-tags duckdb` builds) comes back clean before assuming
-the repository itself regressed.
+fixes it — bump `go.mod`'s `go` directive and confirm `govulncheck -tags
+webkit2_41 ./...` (the default build) and `govulncheck -tags
+duckdb,webkit2_41 ./internal/analytics/...` (the DuckDB build, scoped to that
+package — see the Makefile's own note on avoiding a bare `./...`, which can
+expose unrelated generated-frontend Go packages) both come back clean before
+assuming the repository itself regressed.
 
 ## 6. Concurrency and lifecycle invariants
 

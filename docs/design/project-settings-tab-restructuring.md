@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: GFDL-1.3-or-later
+-->
+
 # Project Settings tab restructuring
 
 Status: implemented 2026-08-18.

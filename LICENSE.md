@@ -64,15 +64,17 @@ The licenses that appear in this project are:
 | `OFL-1.1`                   | Bundled fonts: Liberation, Noto Sans, Source Sans 3, JetBrains Mono, Ledger |
 | `Apache-2.0`                | Bundled fonts: Roboto and the Croscore family (Arimo, Cousine)          |
 | `LicenseRef-Bitstream-Vera` | Bundled DejaVu Sans font                                                 |
+| `MIT`                       | Wails-derived Windows installer templates (`build/windows/`)           |
 
-The full texts of the licenses that apply to committed source and
-documentation — `GPL-3.0-or-later`, `GFDL-1.3-or-later`, and `CC0-1.0` — live
-in the [`LICENSES/`](LICENSES/) directory, as REUSE requires. Bundled font
-binaries are fetched at build time by `scripts/fetch-fonts.sh` and are **not
-committed**; their upstream licenses (OFL-1.1, Apache-2.0, Bitstream-Vera) are
-recorded above, in `REUSE.toml`, and in `internal/fonts/assets/README.md`, and
-their full texts are downloaded alongside the fonts when a clean checkout is
-built.
+The full texts of the licenses that apply to committed source, documentation,
+and committed binaries — `GPL-3.0-or-later`, `GFDL-1.3-or-later`, `CC0-1.0`,
+`OFL-1.1` (the committed Source Sans 3 faces), and `MIT` (the Windows
+installer templates) — live in the [`LICENSES/`](LICENSES/) directory, as
+REUSE requires. The other bundled font families are fetched at build time by
+`scripts/fetch-fonts.sh` and are **not committed**; their upstream licenses
+(OFL-1.1 for the rest, Apache-2.0, Bitstream-Vera) are recorded above, in
+`REUSE.toml`, and in `internal/fonts/assets/README.md`, and their full texts
+are downloaded alongside the fonts when a clean checkout is built.
 
 For the rationale behind each identifier and how to regenerate the license
 texts, see [`LICENSES.md`](LICENSES.md).

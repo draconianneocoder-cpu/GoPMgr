@@ -5,11 +5,12 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # Dashboard information-architecture restructuring — design proposal
 
-**Status:** Proposed, not implemented
-**Author's note:** This is a design document, not a change log. Nothing in
-`frontend/src/lib/components/project/Dashboard.svelte`, `App.svelte`, or
-`AppHeader.svelte` has changed as a result of this document. It exists to be
-reviewed and either approved for its own implementation cycle or revised.
+**Status:** R1–R4 implemented 2026-08-17/18 (see §7 for the implementation
+record). `frontend/src/lib/components/project/Dashboard.svelte`, `App.svelte`,
+and `AppHeader.svelte` have all changed as a direct result of this document.
+The proposal below is kept as-written (not edited into a change log after the
+fact) so the original design rationale stays intact; §7 documents what was
+actually built and any deviations from the original proposal.
 
 ## 1. Problem statement
 

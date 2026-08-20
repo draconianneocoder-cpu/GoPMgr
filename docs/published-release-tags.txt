@@ -3,6 +3,9 @@
 #
 # Snapshot of tags that have a published GitHub Release. Verify against GitHub
 # before adding an entry; draft releases and local-only tags do not qualify.
-
-v0.9.1-alpha
-v1.1.0-alpha.1
+#
+# 2026-08-19: cleared. This file previously listed v0.9.1-alpha and
+# v1.1.0-alpha.1 as published, but neither was ever pushed to the remote
+# (confirmed via `git ls-remote --tags origin` and `gh api
+# repos/draconianneocoder-cpu/GoPMgr/releases`, both empty) -- both are
+# local-only tags. No GitHub Release has been published yet.

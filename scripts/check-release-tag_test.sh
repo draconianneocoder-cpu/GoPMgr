@@ -15,14 +15,14 @@ fail() {
 
 expect_pass() {
 	local tag="$1"
-	if ! PMFORGE_RELEASE_TAG="$tag" bash "$CHECK" >/dev/null 2>&1; then
+	if ! GOPMGR_RELEASE_TAG="$tag" bash "$CHECK" >/dev/null 2>&1; then
 		fail "expected release tag to pass: $tag"
 	fi
 }
 
 expect_fail() {
 	local tag="$1"
-	if PMFORGE_RELEASE_TAG="$tag" bash "$CHECK" >/dev/null 2>&1; then
+	if GOPMGR_RELEASE_TAG="$tag" bash "$CHECK" >/dev/null 2>&1; then
 		fail "expected release tag to fail: $tag"
 	fi
 }
@@ -38,8 +38,8 @@ expect_fail "v$VERSION-preview..1"
 expect_fail "v$VERSION-preview.01"
 expect_fail "v$VERSION+build.1"
 
-if env -u PMFORGE_RELEASE_TAG bash "$CHECK" >/dev/null 2>&1; then
-	fail "release-tag validation passed without PMFORGE_RELEASE_TAG"
+if env -u GOPMGR_RELEASE_TAG bash "$CHECK" >/dev/null 2>&1; then
+	fail "release-tag validation passed without GOPMGR_RELEASE_TAG"
 fi
 
 echo "check-release-tag tests passed."

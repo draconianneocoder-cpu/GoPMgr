@@ -17,9 +17,9 @@ fail() {
 	exit 1
 }
 
-TAG="${PMFORGE_RELEASE_TAG:-}"
+TAG="${GOPMGR_RELEASE_TAG:-}"
 if [ -z "$TAG" ]; then
-	fail "PMFORGE_RELEASE_TAG is required; use v<product-version> or a matching SemVer prerelease."
+	fail "GOPMGR_RELEASE_TAG is required; use v<product-version> or a matching SemVer prerelease."
 fi
 
 APP_VERSION="$(grep -oE 'Version *= *"[^"]+"' internal/cli/parser.go | head -1 | sed -E 's/.*"([^"]+)".*/\1/' || true)"

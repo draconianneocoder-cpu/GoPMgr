@@ -123,8 +123,10 @@ PAdES, and encryption status from drifting away from supported behavior.
 - [GO-2026-5932](https://pkg.go.dev/vuln/GO-2026-5932)
   (`golang.org/x/crypto`): affects a code path GoPMgr does not call
   (`govulncheck` reports 0 reachable symbols). No fixed upstream release
-  exists yet; the dependency is at the latest version and will be bumped
-  when a fix ships.
+  exists yet (`govulncheck` reports `Fixed in: N/A`); the dependency is
+  pinned to v0.54.0 as of 2026-08-19 and will be bumped when a fix ships.
+  Routine version bumps that don't fix this advisory (e.g. v0.55.0) may be
+  skipped without updating this note.
 
 ## Reporting
 

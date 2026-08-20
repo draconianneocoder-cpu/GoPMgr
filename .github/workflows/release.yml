@@ -81,7 +81,7 @@ jobs:
         run: npm ci
 
       - name: Validate tag and run full release gate
-        run: PMFORGE_RELEASE_TAG="$GITHUB_REF_NAME" make tag-preflight
+        run: GOPMGR_RELEASE_TAG="$GITHUB_REF_NAME" make tag-preflight
 
   build:
     name: Package ${{ matrix.label }}

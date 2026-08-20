@@ -137,7 +137,7 @@ if ! rg -q '^  preflight:$' .github/workflows/release.yml; then
 	fail=1
 fi
 
-if ! rg -Fq 'run: PMFORGE_RELEASE_TAG="$GITHUB_REF_NAME" make tag-preflight' .github/workflows/release.yml; then
+if ! rg -Fq 'run: GOPMGR_RELEASE_TAG="$GITHUB_REF_NAME" make tag-preflight' .github/workflows/release.yml; then
 	echo "release-scope: Release workflow must run the tag-aware preflight target." >&2
 	fail=1
 fi
