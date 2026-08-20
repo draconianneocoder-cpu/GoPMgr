@@ -80,6 +80,10 @@ loss, or a release blocker.
   "Funding" value and the Cost Control "Unallocated" label with the approved
   financial vocabulary before changing displayed or computed totals. Current
   Cost Control ledger/reserve calculations remain intentionally unchanged.
+- Encryption migration durability: the canonical path now remains present on
+  synchronous preparation/publication failure through a single replacement
+  operation. Add native Windows execution evidence and a power-loss durability
+  strategy/test before claiming stronger crash-consistency guarantees.
 - Restore a usable normal window frame across relaunch.
 - Improve local project discovery without weakening data isolation — partly
   done 2026-08-18: `enumerateProjects` (`app_projects.go`) only ever did a

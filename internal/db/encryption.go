@@ -9,12 +9,21 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"gopmgr/internal/crypto"
 )
 
 const sqliteHeader = "SQLite format 3\x00"
+
+// These narrow seams let the database tests exercise failed backup preparation
+// and failed publication without weakening the production file-operation
+// contract. They are never changed outside package db tests.
+var (
+	createPlaintextBackupForMigration = createPrivatePlaintextBackup
+	replaceCanonicalFileForMigration  = replaceExistingFile
+)
 
 // InitEncryptedDB opens (or creates) a SQLCipher-encrypted GoPMgr
 // project database with the user's 32-byte DEK as a raw keyspec.
@@ -48,11 +57,12 @@ func IsEncryptedFile(path string) (bool, error) {
 }
 
 // MigratePlaintextToEncrypted converts a plaintext .pmforge file to
-// SQLCipher in place and retains the schema-migrated plaintext source as
-// <path>.pre-encryption.bak. It mirrors the repair swap pattern:
-// verify source, export to an encrypted sibling, verify destination,
-// then rename.
-func MigratePlaintextToEncrypted(path string, dek []byte) (backupPath string, err error) {
+// SQLCipher in place and retains an independent, schema-migrated plaintext
+// backup as <path>.pre-encryption.bak. It verifies and prepares both sibling
+// files before one replace-existing operation publishes the encrypted file at
+// path, so a synchronous preparation or publication failure leaves path as
+// the readable plaintext source.
+func MigratePlaintextToEncrypted(path string, dek []byte) (string, error) {
 	// Validate the DEK length up front (cheap, no key material derived) so a
 	// bad DEK is rejected before any filesystem work, matching InitEncryptedDB.
 	if len(dek) != crypto.DEKSize {
@@ -73,7 +83,7 @@ func MigratePlaintextToEncrypted(path string, dek []byte) (backupPath string, er
 		return "", fmt.Errorf("db: migration source is already encrypted: %s", path)
 	}
 
-	backupPath = path + ".pre-encryption.bak"
+	backupPath := path + ".pre-encryption.bak"
 	if _, err := os.Stat(backupPath); err == nil {
 		return "", fmt.Errorf("db: encryption backup already exists: %s", backupPath)
 	} else if !os.IsNotExist(err) {
@@ -81,12 +91,22 @@ func MigratePlaintextToEncrypted(path string, dek []byte) (backupPath string, er
 	}
 
 	encryptedPath := path + ".encrypted.tmp"
+	backupTempPath := ""
+	backupPublished := false
+	encryptedPublished := false
 	if err := removeSQLiteFileSet(encryptedPath); err != nil {
 		return "", fmt.Errorf("db: clear encrypted temp: %w", err)
 	}
 	defer func() {
-		if err != nil {
-			_ = removeSQLiteFileSet(encryptedPath)
+		if encryptedPublished {
+			return
+		}
+		_ = removeSQLiteFileSet(encryptedPath)
+		if backupTempPath != "" {
+			_ = removeIfExists(backupTempPath)
+		}
+		if backupPublished {
+			_ = removeSQLiteFileSet(backupPath)
 		}
 	}()
 
@@ -126,26 +146,66 @@ func MigratePlaintextToEncrypted(path string, dek []byte) (backupPath string, er
 		return "", err
 	}
 
+	// Every operation below must finish before the one publication operation.
+	// In particular, do not move the live path aside to make the backup: a
+	// process exit between that move and publication would leave the canonical
+	// project path absent. The private copy is published under its own name
+	// while the readable source remains at path.
 	if err := removeSQLiteSidecars(path); err != nil {
 		return "", fmt.Errorf("db: clear source sidecars: %w", err)
-	}
-	if err := os.Rename(path, backupPath); err != nil {
-		return "", fmt.Errorf("db: retain plaintext backup: %w", err)
-	}
-	if err := os.Rename(encryptedPath, path); err != nil {
-		_ = os.Rename(backupPath, path)
-		return "", fmt.Errorf("db: publish encrypted database: %w", err)
 	}
 	if err := removeSQLiteSidecars(encryptedPath); err != nil {
 		return "", fmt.Errorf("db: clear encrypted temp sidecars: %w", err)
 	}
-	if err := ensurePrivateSQLiteFiles(path); err != nil {
-		return "", err
+	if err := ensurePrivateSQLiteFiles(encryptedPath); err != nil {
+		return "", fmt.Errorf("db: private encrypted temp: %w", err)
 	}
-	if err := chmodIfExists(backupPath); err != nil {
-		return "", err
+	backupTempPath, err = createPlaintextBackupForMigration(path, backupPath)
+	if err != nil {
+		return "", fmt.Errorf("db: create plaintext backup: %w", err)
 	}
+	if err := os.Rename(backupTempPath, backupPath); err != nil {
+		return "", fmt.Errorf("db: publish plaintext backup: %w", err)
+	}
+	backupTempPath = ""
+	backupPublished = true
+
+	if err := replaceCanonicalFileForMigration(encryptedPath, path); err != nil {
+		return "", fmt.Errorf("db: publish encrypted database: %w", err)
+	}
+	encryptedPublished = true
+	// Do not perform another fallible operation after publication. On POSIX the
+	// replacement is one same-directory rename; Windows uses write-through
+	// MoveFileEx. Power-loss durability remains a platform-level concern.
 	return backupPath, nil
+}
+
+func createPrivatePlaintextBackup(sourcePath, backupPath string) (string, error) {
+	source, err := os.Open(sourcePath) // #nosec G304 -- source was validated by the migration boundary.
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = source.Close() }()
+
+	temp, err := os.CreateTemp(filepath.Dir(backupPath), "."+filepath.Base(backupPath)+".tmp-*")
+	if err != nil {
+		return "", err
+	}
+	tempPath := temp.Name()
+	defer func() { _ = temp.Close() }()
+	if err := temp.Chmod(0o600); err != nil {
+		return tempPath, err
+	}
+	if _, err := io.Copy(temp, source); err != nil {
+		return tempPath, err
+	}
+	if err := temp.Sync(); err != nil {
+		return tempPath, err
+	}
+	if err := temp.Close(); err != nil {
+		return tempPath, err
+	}
+	return tempPath, nil
 }
 
 func encryptedDSN(path string, dek []byte) (string, error) {

@@ -27,6 +27,9 @@ posture, and validator coverage, so keep them intentional and verified.
 - `github.com/mutecomm/go-sqlcipher/v4`: SQLCipher-capable SQLite driver
   registered through `internal/sqlitedriver`.
 - `golang.org/x/crypto`: Argon2id and related cryptographic support.
+- `golang.org/x/sys`: Windows `MoveFileEx` with replace-existing and
+  write-through flags for atomic canonical-path publication after SQLCipher
+  migration.
 - `github.com/digitorus/pkcs7`: CMS/PKCS#7 parsing and OID support for
   PAdES-related code.
 - `github.com/digitorus/timestamp`: BSD-2-Clause RFC 3161 request, token, and

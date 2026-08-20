@@ -103,7 +103,12 @@ Every open project has a Project Settings view. Use it to edit:
   verification failure details separately.
 - Document font selection and per-project imported fonts.
 - Schedule reports and project interchange exports.
-- Database encryption migration for eligible plaintext project databases.
+- Database encryption migration for eligible plaintext project databases. The
+  migration validates a private encrypted copy and preserves an independent,
+  schema-migrated plaintext `.pre-encryption.bak` until the user removes it.
+  A synchronous migration failure leaves the canonical plaintext project
+  readable; protect or remove that backup only after verifying the encrypted
+  project opens successfully.
 
 The classification fields feed the Launchpad rules, terminology, and
 calendar-aware timeline overlays.

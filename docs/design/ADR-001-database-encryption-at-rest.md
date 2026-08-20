@@ -48,9 +48,15 @@ impossible.
 
 The plaintext-to-encrypted migration verifies the source, exports into a
 temporary encrypted sibling with `sqlcipher_export`, validates the destination,
-then publishes it atomically. The original remains as a clearly named backup
-until the user removes it. A failed migration leaves the original project
-unchanged.
+and creates a private independent plaintext backup from a temporary sibling.
+It completes every fallible preparation step before one replace-existing
+operation publishes the encrypted sibling at the canonical project path. A
+synchronous preparation or publication failure leaves the canonical plaintext
+project readable and removes only artifacts created by that attempt. The
+schema-migrated plaintext backup remains until the user removes it. The
+implementation is structured to avoid a missing canonical path on ordinary
+process interruption; power-loss durability remains platform-specific and is
+not yet empirically verified.
 
 ## Consequences
 
