@@ -76,10 +76,10 @@ loss, or a release blocker.
   maintained metadata, formatting rules, migration policy, and FX/reporting
   requirements. Phase 1 deliberately supports only the seven selectable
   reporting currencies documented in the user guide and never converts values.
-- Cost Control summary semantics: reconcile the Dashboard's legacy Budget
-  "Funding" value and the Cost Control "Unallocated" label with the approved
-  financial vocabulary before changing displayed or computed totals. Current
-  Cost Control ledger/reserve calculations remain intentionally unchanged.
+- Cost Control allocation and forecast semantics: define allocation, reserve
+  drawdown, burn, and forecast policy before adding a remaining-spend metric.
+  Phase 1 intentionally presents the legacy Budget rollup only as separate
+  context and does not derive a remaining or unallocated amount.
 - Encryption migration durability: the canonical path now remains present on
   synchronous preparation/publication failure through a single replacement
   operation. Add native Windows execution evidence and a power-loss durability

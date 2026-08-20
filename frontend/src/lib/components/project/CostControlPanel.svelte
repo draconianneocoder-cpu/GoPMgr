@@ -72,8 +72,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   </div>
   {#if error}<p class="text-xs text-red-400 break-words" role="alert">{error}</p>{/if}
   {#if !summary}<Spinner label="Loading cost control…" class="py-2" />{:else}
+    <aside class="border-l-2 border-slate-700 bg-slate-950/50 px-3 py-2 text-xs text-slate-400" aria-label="Legacy Budget context">
+      <span class="font-semibold text-slate-300">Legacy budget rollup</span>
+      <span class="ml-2 tabular-nums text-slate-100">{summary.currency_code} {summary.legacy_budget}</span>
+      <span class="ml-2 text-slate-500">Shown for context only; it is not included in Cost Control baseline or authorised funding.</span>
+    </aside>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs tabular-nums">
-      {#each [['Funding', summary.funding], ['Base plan', summary.planned], ['Contingency reserve', summary.contingency], ['Cost baseline', summary.cost_baseline], ['Management reserve', summary.management_reserve], ['Authorised funding', summary.authorised_funding], ['Committed', summary.commitment], ['Actual', summary.actual], ['Unallocated', summary.remaining_funding]] as [label, value]}
+      {#each [['Base plan', summary.planned], ['Contingency reserve', summary.contingency], ['Cost baseline', summary.cost_baseline], ['Management reserve', summary.management_reserve], ['Authorised funding', summary.authorised_funding], ['Committed', summary.commitment], ['Actual', summary.actual]] as [label, value]}
         <div class="bg-slate-950 rounded p-2"><div class="uppercase tracking-widest text-[10px] text-slate-500">{label}</div><div class="font-bold text-slate-100">{summary.currency_code} {value}</div></div>
       {/each}
     </div>

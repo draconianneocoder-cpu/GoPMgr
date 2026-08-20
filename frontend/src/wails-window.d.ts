@@ -589,7 +589,7 @@ declare global {
 
   interface CostSummary {
     currency_code: string;
-    funding: string;
+    legacy_budget: string;
     planned: string;
     contingency: string;
     cost_baseline: string;
@@ -597,7 +597,6 @@ declare global {
     authorised_funding: string;
     commitment: string;
     actual: string;
-    remaining_funding: string;
   }
   interface CostReserve { kind: 'contingency' | 'management'; amount: string; description: string; }
   interface CostBaseline {

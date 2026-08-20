@@ -147,8 +147,12 @@ The Dashboard exposes:
   Budget value, Cost Control entry, non-zero reserve balance, or approved Cost
   Control baseline. It cannot change while any of those values exists because
   Phase 1 has no FX conversion. The dashboard shows
-  base plan, contingency reserve, cost baseline, management reserve,
-  authorised funding, commitments, actuals, and unallocated funding.
+  its separate legacy Budget rollup for context, then the Cost Control base
+  plan, contingency reserve, cost baseline, management reserve, authorised
+  funding, commitments, and actuals. The legacy Budget rollup does not feed
+  Cost Control calculations. Phase 1 does not present an unallocated or
+  remaining-spend figure because allocation, reserve drawdowns, and forecast
+  policy are not yet defined.
   Contingency and management reserves are separate records and do not count as
   commitments or actual costs. Phase 1 does not yet provide reserve drawdowns,
   foreign exchange, time-phased cash flow, or

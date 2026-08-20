@@ -26,7 +26,7 @@ type CostEntryWire struct {
 
 type CostSummaryWire struct {
 	CurrencyCode      string `json:"currency_code"`
-	Funding           string `json:"funding"`
+	LegacyBudget      string `json:"legacy_budget"`
 	Planned           string `json:"planned"`
 	Contingency       string `json:"contingency"`
 	CostBaseline      string `json:"cost_baseline"`
@@ -34,7 +34,6 @@ type CostSummaryWire struct {
 	AuthorisedFunding string `json:"authorised_funding"`
 	Commitment        string `json:"commitment"`
 	Actual            string `json:"actual"`
-	RemainingFunding  string `json:"remaining_funding"`
 }
 type CostReserveWire struct {
 	Kind        string `json:"kind"`
@@ -238,7 +237,7 @@ func (a *App) ComputeCostSummary() (CostSummaryWire, error) {
 	if err != nil {
 		return CostSummaryWire{}, err
 	}
-	funding := money.Amount{MinorUnits: p.BudgetMinorUnits}
+	legacyBudget := money.Amount{MinorUnits: p.BudgetMinorUnits}
 	baseline, err := pl.Add(c)
 	if err != nil {
 		return CostSummaryWire{}, err
@@ -247,11 +246,7 @@ func (a *App) ComputeCostSummary() (CostSummaryWire, error) {
 	if err != nil {
 		return CostSummaryWire{}, err
 	}
-	remaining, err := authority.Sub(pl)
-	if err != nil {
-		return CostSummaryWire{}, err
-	}
-	return CostSummaryWire{CurrencyCode: p.CurrencyCode, Funding: formatMoneyDecimal(funding), Planned: formatMoneyDecimal(pl), Contingency: formatMoneyDecimal(c), CostBaseline: formatMoneyDecimal(baseline), ManagementReserve: formatMoneyDecimal(m), AuthorisedFunding: formatMoneyDecimal(authority), Commitment: formatMoneyDecimal(co), Actual: formatMoneyDecimal(ac), RemainingFunding: formatMoneyDecimal(remaining)}, nil
+	return CostSummaryWire{CurrencyCode: p.CurrencyCode, LegacyBudget: formatMoneyDecimal(legacyBudget), Planned: formatMoneyDecimal(pl), Contingency: formatMoneyDecimal(c), CostBaseline: formatMoneyDecimal(baseline), ManagementReserve: formatMoneyDecimal(m), AuthorisedFunding: formatMoneyDecimal(authority), Commitment: formatMoneyDecimal(co), Actual: formatMoneyDecimal(ac)}, nil
 }
 
 func costEntryWire(entry db.CostEntry) CostEntryWire {

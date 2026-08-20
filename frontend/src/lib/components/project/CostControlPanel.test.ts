@@ -11,7 +11,7 @@ function installApp(baselines: Array<Record<string, string | number>> = []) {
     ListCostEntries: vi.fn(async () => []),
     ListCostReserves: vi.fn(async () => []),
     ListCostBaselines: vi.fn(async () => baselines),
-    ComputeCostSummary: vi.fn(async () => ({ currency_code: 'USD', funding: '1000.00', planned: '800.00', contingency: '100.00', cost_baseline: '900.00', management_reserve: '50.00', authorised_funding: '950.00', commitment: '0.00', actual: '0.00', remaining_funding: '150.00' })),
+    ComputeCostSummary: vi.fn(async () => ({ currency_code: 'USD', legacy_budget: '1000.00', planned: '800.00', contingency: '100.00', cost_baseline: '900.00', management_reserve: '50.00', authorised_funding: '950.00', commitment: '0.00', actual: '0.00' })),
     SaveCostEntry: vi.fn(async (entry) => entry),
     SaveCostReserve: vi.fn(async (reserve) => reserve),
     ApproveCostBaseline: vi.fn(async () => ({})),
@@ -21,6 +21,15 @@ function installApp(baselines: Array<Record<string, string | number>> = []) {
 }
 
 describe('CostControlPanel', () => {
+  it('separates the legacy Budget rollup and omits unsupported funding labels', async () => {
+    installApp();
+    const { findByText, queryByText } = render(CostControlPanel);
+    expect(await findByText('Legacy budget rollup')).toBeInTheDocument();
+    expect(await findByText('Shown for context only; it is not included in Cost Control baseline or authorised funding.')).toBeInTheDocument();
+    expect(queryByText(/^Funding$/)).not.toBeInTheDocument();
+    expect(queryByText('Unallocated')).not.toBeInTheDocument();
+  });
+
   it('keeps contingency and management reserves distinct and saves a reserve', async () => {
     const app = installApp();
     const { findByText, getByLabelText, getByRole } = render(CostControlPanel);
