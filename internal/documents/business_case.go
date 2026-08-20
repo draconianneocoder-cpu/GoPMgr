@@ -14,8 +14,10 @@ import (
 // RenderBusinessCasePDF is the bespoke renderer for the Business Case.
 // The document is a hybrid: prose-heavy in places (problem, solution,
 // recommendation), table-heavy in others (alternatives with pros/cons,
-// benefits vs risks side-by-side). Layout follows pattern 4 (hybrid
-// card list) from the DEVELOPER_HANDBOOK.md taxonomy.
+// benefits vs risks side-by-side): a hybrid prose/card layout (see
+// `git log --all -p -- DEVELOPER_HANDBOOK.md` for the original
+// layout-pattern taxonomy, trimmed from the public handbook in commit
+// ebfd971).
 //
 // Layout:
 //
