@@ -19,7 +19,7 @@ import (
 // the Wails bridge to serialize it directly to the Svelte frontend.
 type ErrorReport struct {
 	Timestamp time.Time `json:"timestamp"`       // RFC3339Nano on the wire
-	Context   string    `json:"context"`         // short tag, e.g. SNAPSHOT_FAILED
+	Context   string    `json:"context"`         // short tag, e.g. BACKUP_SNAPSHOT_FAILED
 	Message   string    `json:"message"`         // human-readable
 	File      string    `json:"file"`            // source file of the call site
 	Line      int       `json:"line"`            // line number of the call site
@@ -42,7 +42,7 @@ func (e *reportError) Report() ErrorReport { return e.r }
 
 // Wrap captures the caller's file:line, a stack trace, and a nanosecond
 // timestamp around the given error. The `context` argument should be a
-// short uppercase tag (SNAPSHOT_FAILED, CERT_BUNDLING_FAILED, ...) that
+// short uppercase tag (BACKUP_SNAPSHOT_FAILED, CERT_BUNDLING_FAILED, ...) that
 // the UI can match against to render a specific recovery hint.
 //
 // When err is non-nil, Wrap emits one line to the standard logger so the

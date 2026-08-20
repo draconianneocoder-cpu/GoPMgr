@@ -61,7 +61,7 @@ call-site `file:line`, and a stack trace into an `ErrorReport`, then
 The frontend recovers the structured report via `errors.As` on the Go side
 before it crosses the Wails bridge (the `ErrorReport` struct has `json`
 tags for direct serialization). `context` is a short upper-case tag
-(`SNAPSHOT_FAILED`, `CERT_BUNDLING_FAILED`, ...) the UI can match on to
+(`BACKUP_SNAPSHOT_FAILED`, `CERT_BUNDLING_FAILED`, ...) the UI can match on to
 show a specific recovery hint rather than a generic failure message.
 Every `Wrap` call with a non-nil error also logs one line to the persistent
 log file, so a self-heal failure is diagnosable from `logs/` even without
