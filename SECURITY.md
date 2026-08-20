@@ -24,7 +24,7 @@ for a legitimate local user.
   frontend-supplied path (`OpenProject`, `DeleteProject`, `CloneProject`,
   `EncryptProjectAtRest`, `SecureArchive`, etc.) is confined to the
   signed-in user's own `projects/` directory via `projectPathFor` in
-  `main.go`, rejecting anything outside it before touching disk.
+  `app_projects.go`, rejecting anything outside it before touching disk.
 
 ## Encryption At Rest
 

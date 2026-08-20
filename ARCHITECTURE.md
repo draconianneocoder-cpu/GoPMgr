@@ -74,8 +74,8 @@ families.
 - `internal/kernel`: CPM scheduling, dependencies, constraints,
   baselines, EVM, resource calculations, and Monte Carlo schedule-risk
   simulation.
-- `internal/calendar`: named resource calendars (weekly capacity and day
-  overrides) used for calendar-aware leveling and over-allocation checks.
+- `internal/calendar`: country-keyed holiday, workday, and timezone
+  lookups, consumed by CPM date anchoring and iCal export.
 - `internal/money`: exact monetary arithmetic in integer minor units
   (`math/big.Rat` for rate x quantity and `math/big.Int` for aggregates),
   with explicit range errors on checked arithmetic and aggregates; legacy

@@ -43,7 +43,7 @@ posture, and validator coverage, so keep them intentional and verified.
   configuration parsing for `make config-check`. They are imported only by
   the `scripts` command and are not linked into the GoPMgr desktop binary.
 - `github.com/duckdb/duckdb-go/v2`: in-memory DuckDB analytics engine
-  (ADR-002 Option B), compiled under the `duckdb` build tag
+  (ADR-002 decision), compiled under the `duckdb` build tag
   (`internal/analytics`). Production/package builds enable that tag so
   installers include the analytics engine; untagged developer builds link the
   stub. See `docs/design/duckdb-analytics-engine.md`.
