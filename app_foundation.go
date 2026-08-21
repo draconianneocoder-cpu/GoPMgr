@@ -142,27 +142,7 @@ func (a *App) CreateProjectFromLaunchpad(
 	}
 	a.applyGlobalDefaults(d)
 
-	// Apply seeds via the dedicated seeder.
-	seeder := templates.NewSeeder(d, proj.ID)
-	receipts, seedErr := seeder.Apply(seeds)
-	// The wizard's "Starter Artifacts" step defaults kanban/backlog/sprint1
-	// to checked for Scrum-ish methodologies, which promises the user an
-	// active Software-Dev Pack. Without this, the pack stayed disabled
-	// (agile.PackEnabled defaults false) even though the board/backlog/
-	// sprint rows were seeded successfully — a stuck, hidden feature the
-	// user has to discover a manual toggle for. Only flip it on a clean
-	// seedErr == nil: Apply short-circuits on its first error, so a partial
-	// failure must not enable a pack around artifacts that didn't all land.
-	if seedErr == nil && seedsRequestAgilePack(seeds) {
-		if s, err := d.GetSettings(); err != nil {
-			seedErr = fmt.Errorf("seeded but could not enable the software-dev pack: %w", err)
-		} else {
-			s.AgileEnabled = true
-			if err := d.SaveSettings(s); err != nil {
-				seedErr = fmt.Errorf("seeded but could not enable the software-dev pack: %w", err)
-			}
-		}
-	}
+	receipts, seedErr := applyLaunchpadSeeds(d, proj.ID, seeds)
 	_ = d.Close()
 
 	// Install as the active project now so that dashboard operations
@@ -181,6 +161,31 @@ func (a *App) CreateProjectFromLaunchpad(
 			fmt.Errorf("project created but seeding partial: %w", seedErr)
 	}
 	return LaunchpadResult{Project: proj, Seeds: receipts, Path: path}, nil
+}
+
+// applyLaunchpadSeeds applies the requested starter artifacts and enables the
+// Software-Dev Pack only when every requested seed succeeds.
+func applyLaunchpadSeeds(d *db.Database, projectID string, seeds []string) ([]templates.SeedReceipt, error) {
+	receipts, seedErr := templates.NewSeeder(d, projectID).Apply(seeds)
+	// The wizard's "Starter Artifacts" step defaults kanban/backlog/sprint1
+	// to checked for Scrum-ish methodologies, which promises the user an
+	// active Software-Dev Pack. Without this, the pack stayed disabled
+	// (agile.PackEnabled defaults false) even though the board/backlog/
+	// sprint rows were seeded successfully — a stuck, hidden feature the
+	// user has to discover a manual toggle for. Only flip it on a clean
+	// seedErr == nil: Apply short-circuits on its first error, so a partial
+	// failure must not enable a pack around artifacts that didn't all land.
+	if seedErr == nil && seedsRequestAgilePack(seeds) {
+		if s, err := d.GetSettings(); err != nil {
+			seedErr = fmt.Errorf("seeded but could not enable the software-dev pack: %w", err)
+		} else {
+			s.AgileEnabled = true
+			if err := d.SaveSettings(s); err != nil {
+				seedErr = fmt.Errorf("seeded but could not enable the software-dev pack: %w", err)
+			}
+		}
+	}
+	return receipts, seedErr
 }
 
 // seedsRequestAgilePack reports whether the launchpad seed list includes any

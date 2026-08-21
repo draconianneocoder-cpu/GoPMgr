@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -192,6 +193,100 @@ func TestCreateProjectFromLaunchpadLeavesAgilePackDisabledWithoutAgileSeeds(t *t
 	}
 	if enabled {
 		t.Fatalf("AgileEnabled = true, want false — no agile seeds were requested")
+	}
+}
+
+func TestApplyLaunchpadSeedsLeavesAgilePackDisabledAfterPartialFailure(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		seeds          []string
+		blockedTable   string
+		wantErrorSeed  string
+		wantReceipts   []string
+		wantBoardCount int
+		wantBacklog    int
+	}{
+		{
+			name:          "before agile seed",
+			seeds:         []string{"wbs", "kanban", "backlog"},
+			blockedTable:  "charts",
+			wantErrorSeed: "wbs",
+			wantBacklog:   0,
+		},
+		{
+			name:          "in agile seed",
+			seeds:         []string{"kanban", "backlog"},
+			blockedTable:  "agile_boards",
+			wantErrorSeed: "kanban",
+			wantBacklog:   0,
+		},
+		{
+			name:           "after agile seed",
+			seeds:          []string{"kanban", "wbs", "backlog"},
+			blockedTable:   "charts",
+			wantErrorSeed:  "wbs",
+			wantReceipts:   []string{"kanban"},
+			wantBoardCount: 1,
+			wantBacklog:    0,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := db.InitDB(filepath.Join(t.TempDir(), "launchpad-seed-failure.gopmgr"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = d.Close() })
+			project, err := d.UpsertProject(db.Project{Name: "Partial seed failure"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			blockLaunchpadSeedInsert(t, d, tc.blockedTable)
+
+			receipts, err := applyLaunchpadSeeds(d, project.ID, tc.seeds)
+			if err == nil || !strings.Contains(err.Error(), "seed "+tc.wantErrorSeed+":") {
+				t.Fatalf("applyLaunchpadSeeds error = %v, want failure for seed %q", err, tc.wantErrorSeed)
+			}
+			var gotReceipts []string
+			for _, receipt := range receipts {
+				gotReceipts = append(gotReceipts, receipt.Seed)
+			}
+			if !reflect.DeepEqual(gotReceipts, tc.wantReceipts) {
+				t.Fatalf("receipts = %q, want %q", gotReceipts, tc.wantReceipts)
+			}
+			settings, err := d.GetSettings()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if settings.AgileEnabled {
+				t.Fatal("AgileEnabled = true after partial seed failure, want false")
+			}
+			var boardCount, backlogCount int
+			if err = d.Conn.QueryRow(`SELECT COUNT(*) FROM agile_boards WHERE project_id=?`, project.ID).Scan(&boardCount); err != nil {
+				t.Fatal(err)
+			}
+			if err = d.Conn.QueryRow(`SELECT COUNT(*) FROM agile_work_items WHERE project_id=?`, project.ID).Scan(&backlogCount); err != nil {
+				t.Fatal(err)
+			}
+			if boardCount != tc.wantBoardCount || backlogCount != tc.wantBacklog {
+				t.Fatalf("persisted boards=%d backlog=%d, want %d %d", boardCount, backlogCount, tc.wantBoardCount, tc.wantBacklog)
+			}
+		})
+	}
+}
+
+func blockLaunchpadSeedInsert(t *testing.T, d *db.Database, table string) {
+	t.Helper()
+	var statement string
+	switch table {
+	case "charts":
+		statement = `CREATE TRIGGER block_launchpad_seed BEFORE INSERT ON charts BEGIN SELECT RAISE(ABORT, 'forced chart seed failure'); END`
+	case "agile_boards":
+		statement = `CREATE TRIGGER block_launchpad_seed BEFORE INSERT ON agile_boards BEGIN SELECT RAISE(ABORT, 'forced board seed failure'); END`
+	default:
+		t.Fatalf("unsupported blocked table %q", table)
+	}
+	if _, err := d.Conn.Exec(statement); err != nil {
+		t.Fatal(err)
 	}
 }
 
