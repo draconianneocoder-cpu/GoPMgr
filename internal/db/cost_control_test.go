@@ -8,7 +8,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -55,6 +57,118 @@ func TestCostControlSeedsAndAuditsProjectScopedEntry(t *testing.T) {
 	verification, err := d.VerifyAuditChain(p.ID)
 	if err != nil || !verification.Valid {
 		t.Fatalf("audit = %#v, %v", verification, err)
+	}
+}
+
+func TestCostControlIsolatesProjectsAndRejectsForeignCostTypes(t *testing.T) {
+	d := newCostControlTestDB(t)
+	projectA, err := d.UpsertProject(Project{Name: "Cost control A"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectB, err := d.UpsertProject(Project{Name: "Cost control B"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	typesA, err := d.ListCostTypes(projectA.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	typesB, err := d.ListCostTypes(projectB.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(typesA) == 0 || len(typesB) == 0 {
+		t.Fatalf("seeded types = %d and %d, want non-empty", len(typesA), len(typesB))
+	}
+
+	entryA, err := d.SaveCostEntry(CostEntry{ProjectID: projectA.ID, CostTypeID: typesA[0].ID, Kind: "planned", CostDate: "2026-08-21", Description: "A plan", AmountMinorUnits: 10_000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	entryB, err := d.SaveCostEntry(CostEntry{ProjectID: projectB.ID, CostTypeID: typesB[0].ID, Kind: "planned", CostDate: "2026-08-21", Description: "B plan", AmountMinorUnits: 20_000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reserveA, err := d.SaveCostReserve(CostReserve{ProjectID: projectA.ID, Kind: "contingency", AmountMinorUnits: 1_000, Description: "A risk"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reserveB, err := d.SaveCostReserve(CostReserve{ProjectID: projectB.ID, Kind: "management", AmountMinorUnits: 2_000, Description: "B unknown"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	baselineA, err := d.ApproveCostBaseline(projectA.ID, "alice", "A approval")
+	if err != nil {
+		t.Fatal(err)
+	}
+	baselineB, err := d.ApproveCostBaseline(projectB.ID, "bob", "B approval")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct {
+		name      string
+		projectID string
+		types     []CostType
+		entry     CostEntry
+		reserve   CostReserve
+		baseline  CostBaselineSnapshot
+	}{
+		{name: "project A", projectID: projectA.ID, types: typesA, entry: entryA, reserve: reserveA, baseline: baselineA},
+		{name: "project B", projectID: projectB.ID, types: typesB, entry: entryB, reserve: reserveB, baseline: baselineB},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			types, err := d.ListCostTypes(tc.projectID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(types, tc.types) {
+				t.Fatalf("cost types = %#v, want %#v", types, tc.types)
+			}
+			entries, err := d.ListCostEntries(tc.projectID)
+			if err != nil || len(entries) != 1 || entries[0] != tc.entry {
+				t.Fatalf("entries = %#v, want %#v, %v", entries, tc.entry, err)
+			}
+			reserves, err := d.ListCostReserves(tc.projectID)
+			if err != nil || len(reserves) != 1 || reserves[0] != tc.reserve {
+				t.Fatalf("reserves = %#v, want %#v, %v", reserves, tc.reserve, err)
+			}
+			baselines, err := d.ListCostBaselines(tc.projectID)
+			if err != nil || len(baselines) != 1 || baselines[0] != tc.baseline {
+				t.Fatalf("baselines = %#v, want %#v, %v", baselines, tc.baseline, err)
+			}
+		})
+	}
+
+	entriesBefore, err := d.ListCostEntries(projectA.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var auditEventsBefore int
+	if err = d.Conn.QueryRow(`SELECT COUNT(*) FROM audit_events WHERE project_id=?`, projectA.ID).Scan(&auditEventsBefore); err != nil {
+		t.Fatal(err)
+	}
+	_, err = d.SaveCostEntry(CostEntry{ProjectID: projectA.ID, CostTypeID: typesB[0].ID, Kind: "planned", CostDate: "2026-08-21", Description: "Foreign type", AmountMinorUnits: 1})
+	if !errors.Is(err, ErrNoCostType) {
+		t.Fatalf("foreign cost type error = %v, want %v", err, ErrNoCostType)
+	}
+	entriesAfter, err := d.ListCostEntries(projectA.ID)
+	if err != nil || !reflect.DeepEqual(entriesAfter, entriesBefore) {
+		t.Fatalf("project A entries after foreign type = %#v, want %#v, %v", entriesAfter, entriesBefore, err)
+	}
+	var auditEventsAfter int
+	if err = d.Conn.QueryRow(`SELECT COUNT(*) FROM audit_events WHERE project_id=?`, projectA.ID).Scan(&auditEventsAfter); err != nil {
+		t.Fatal(err)
+	}
+	if auditEventsAfter != auditEventsBefore {
+		t.Fatalf("project A audit events after foreign type = %d, want %d", auditEventsAfter, auditEventsBefore)
+	}
+	for _, projectID := range []string{projectA.ID, projectB.ID} {
+		verification, err := d.VerifyAuditChain(projectID)
+		if err != nil || !verification.Valid {
+			t.Fatalf("project %q audit = %#v, %v", projectID, verification, err)
+		}
 	}
 }
 
