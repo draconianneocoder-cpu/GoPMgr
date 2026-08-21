@@ -40,6 +40,9 @@ type CostEntry struct {
 	UpdatedAt        string `json:"updated_at"`
 }
 
+// CostReserve is the Phase 1 mutable assessed balance for one reserve kind.
+// It is not an authorization or movement history; Phase 2 must introduce its
+// own immutable lifecycle before a drawdown feature changes this meaning.
 type CostReserve struct {
 	ID               string `json:"id"`
 	ProjectID        string `json:"project_id"`

@@ -65,11 +65,15 @@ loss, or a release blocker.
 
 ## P2: follow after beta stability
 
-- Cost Control Phase 2: add contingency-reserve drawdown movements linked to
-  known risks/change evidence, time-phased cash flow/EAC reporting, and a real
-  authorization model. Immutable Cost Control baseline snapshots and local-
-  account approval checkpoints are now available; management-reserve release
-  remains deferred until a real authorization model exists. Phase 1 deliberately
+- Cost Control Phase 2: the proposed [lifecycle and authority contract](design/cost-control-phase-2-lifecycle.md)
+  now gates implementation. Approve its reserve-balance meaning, contingency
+  allocation equation, baseline/evidence bindings, project financial roles,
+  correction/idempotency rules, and rebaseline behavior before code. Then add
+  contingency-reserve movements linked to known risks/change evidence,
+  time-phased cash flow/EAC reporting, and a real authorization model.
+  Immutable Cost Control baseline snapshots and local-account approval
+  checkpoints are available, but are not RBAC; management-reserve release
+  remains blocked until a real authorization model exists. Phase 1 deliberately
   keeps the project-local ledger separate from the legacy stakeholder/agile
   budget rollup and schedule EVM, has no FX conversion, and does not treat a
   reserve balance as a commitment or actual cost.
