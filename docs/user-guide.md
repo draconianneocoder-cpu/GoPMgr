@@ -63,7 +63,10 @@ with status, phase, dates, and chart/document counts. Open a project card
 to enter its Dashboard.
 
 Choose **Run rollup** to calculate portfolio budget and committed-cost totals
-plus Earned Value metrics as of one displayed UTC reporting date. EVM includes
+plus Earned Value metrics as of one displayed UTC reporting date. Every
+portfolio money total, including Remaining, is calculated in the backend and
+shown as an exact decimal value; the desktop renderer does not recompute money.
+EVM includes
 only projects with a start date and a valid, acyclic, costed current CPM
 schedule. The panel shows coverage and warns when projects are excluded rather
 than treating missing evidence as zero. Planned Value, Earned Value, Actual

@@ -105,10 +105,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     return `DuckDB ${kind} is unavailable in this direct developer build. Use make build for release-like testing.`;
   }
 
-  const fmtNum = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  function fmtAmount(value: string): string {
+    const negative = value.startsWith('-');
+    const [whole, fraction] = (negative ? value.slice(1) : value).split('.');
+    return `${negative ? '-' : ''}${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction}`;
+  }
   // A zero index is only "n/a" when its denominator is zero. Zero earned
   // value against a non-zero plan/cost is a real 0.00 performance result.
-  const fmtIndex = (index: number, denominator: number) => denominator === 0 ? 'n/a' : index.toFixed(2);
+  const fmtIndex = (index: number, denominator: string) => denominator === '0.00' ? 'n/a' : index.toFixed(2);
 
   // ----- Local data-file import (DuckDB) -----
   let dataset = $state<Dataset | null>(null);
@@ -194,23 +198,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </div>
           <div class="min-w-0">
             <dt class="text-[10px] uppercase tracking-wider text-slate-500">Total budget</dt>
-            <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtNum(rollup.total_budgeted_cost)}>
-              {fmtNum(rollup.total_budgeted_cost)}
+            <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtAmount(rollup.total_budgeted_cost)}>
+              {fmtAmount(rollup.total_budgeted_cost)}
             </dd>
           </div>
           <div class="min-w-0">
             <dt class="text-[10px] uppercase tracking-wider text-slate-500">Committed</dt>
-            <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtNum(rollup.total_committed_cost)}>
-              {fmtNum(rollup.total_committed_cost)}
+            <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtAmount(rollup.total_committed_cost)}>
+              {fmtAmount(rollup.total_committed_cost)}
             </dd>
           </div>
           <div class="min-w-0">
             <dt class="text-[10px] uppercase tracking-wider text-slate-500">Remaining</dt>
             <dd
-              class="font-bold tabular-nums truncate {rollup.total_budgeted_cost - rollup.total_committed_cost < 0 ? 'text-red-400' : 'text-emerald-300'}"
-              title={fmtNum(rollup.total_budgeted_cost - rollup.total_committed_cost)}
+              class="font-bold tabular-nums truncate {rollup.remaining.startsWith('-') ? 'text-red-400' : 'text-emerald-300'}"
+              title={fmtAmount(rollup.remaining)}
             >
-              {fmtNum(rollup.total_budgeted_cost - rollup.total_committed_cost)}
+              {fmtAmount(rollup.remaining)}
             </dd>
           </div>
         </dl>
@@ -227,20 +231,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <dl class="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <div class="min-w-0">
                 <dt class="text-[10px] uppercase tracking-wider text-slate-500">Planned value</dt>
-                <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtNum(rollup.total_planned_value)}>
-                  {fmtNum(rollup.total_planned_value)}
+                <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtAmount(rollup.total_planned_value)}>
+                  {fmtAmount(rollup.total_planned_value)}
                 </dd>
               </div>
               <div class="min-w-0">
                 <dt class="text-[10px] uppercase tracking-wider text-slate-500">Earned value</dt>
-                <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtNum(rollup.total_earned_value)}>
-                  {fmtNum(rollup.total_earned_value)}
+                <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtAmount(rollup.total_earned_value)}>
+                  {fmtAmount(rollup.total_earned_value)}
                 </dd>
               </div>
               <div class="min-w-0">
                 <dt class="text-[10px] uppercase tracking-wider text-slate-500">Actual cost</dt>
-                <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtNum(rollup.total_actual_cost)}>
-                  {fmtNum(rollup.total_actual_cost)}
+                <dd class="text-slate-100 font-bold tabular-nums truncate" title={fmtAmount(rollup.total_actual_cost)}>
+                  {fmtAmount(rollup.total_actual_cost)}
                 </dd>
               </div>
               <div class="min-w-0">

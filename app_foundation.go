@@ -826,30 +826,30 @@ func (a *App) ComputeBudget() (BudgetSummaryWire, error) {
 // EVM actual cost. EV/PV/AC are included only when the current schedule has a
 // project start date, valid acyclic tasks, and cost data. The summary exposes
 // coverage counts so a partial rollup cannot masquerade as complete evidence.
-func (a *App) RunPortfolioAnalytics() (analytics.PortfolioSummary, error) {
+func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 	user := a.requireUser()
 	if user == nil {
-		return analytics.PortfolioSummary{}, errors.New("not signed in")
+		return PortfolioSummaryWire{}, errors.New("not signed in")
 	}
 
 	eng := analytics.New()
 	defer func() { _ = eng.Close() }()
 	if !eng.Available() {
 		// Default build: skip the (expensive) project scan entirely.
-		return analytics.PortfolioSummary{}, analytics.ErrAnalyticsUnavailable
+		return PortfolioSummaryWire{}, analytics.ErrAnalyticsUnavailable
 	}
 
 	a.mu.RLock()
 	dek, err := a.requireDEKLocked()
 	a.mu.RUnlock()
 	if err != nil {
-		return analytics.PortfolioSummary{}, err
+		return PortfolioSummaryWire{}, err
 	}
 
 	dir := filepath.Join(user.DataDir, "projects")
 	entries, err := enumerateProjects(dir)
 	if err != nil {
-		return analytics.PortfolioSummary{}, err
+		return PortfolioSummaryWire{}, err
 	}
 
 	asOf := time.Now().UTC()
@@ -867,21 +867,21 @@ func (a *App) RunPortfolioAnalytics() (analytics.PortfolioSummary, error) {
 		projectMetrics, metricsErr := portfolioProjectMetrics(d, p, e.Name, asOf)
 		_ = d.Close()
 		if metricsErr != nil {
-			return analytics.PortfolioSummary{}, fmt.Errorf("portfolio project %q: %w", e.Name, metricsErr)
+			return PortfolioSummaryWire{}, fmt.Errorf("portfolio project %q: %w", e.Name, metricsErr)
 		}
 		metrics = append(metrics, projectMetrics)
 	}
 
 	summary, err := eng.PortfolioRollup(a.ctx, metrics)
 	if err != nil {
-		return analytics.PortfolioSummary{}, err
+		return PortfolioSummaryWire{}, err
 	}
 	// Every project is evaluated against the same UTC reporting date. Using
 	// one date avoids cross-region portfolios changing meaning at midnight
 	// in different project time zones; country calendars still define which
 	// dates count as working days for each schedule.
 	summary.AsOfDate = asOf.Format(kernel.DateLayout)
-	return summary, nil
+	return portfolioSummaryWire(summary)
 }
 
 // portfolioProjectMetrics builds the trusted hand-off row passed to DuckDB.
