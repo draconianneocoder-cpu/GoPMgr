@@ -225,20 +225,27 @@ func (db *Database) SaveCostReserve(r CostReserve) (CostReserve, error) {
 		return CostReserve{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if r.ID == "" {
-		lookupErr := tx.QueryRow(`SELECT id FROM cost_reserves WHERE project_id = ? AND kind = ?`, r.ProjectID, r.Kind).Scan(&r.ID)
-		if lookupErr == sql.ErrNoRows {
+	var existingID string
+	lookupErr := tx.QueryRow(`SELECT id FROM cost_reserves WHERE project_id = ? AND kind = ?`, r.ProjectID, r.Kind).Scan(&existingID)
+	switch lookupErr {
+	case nil:
+		r.ID = existingID
+	case sql.ErrNoRows:
+		if r.ID == "" {
 			r.ID, err = newID("reserve")
 			if err != nil {
 				return CostReserve{}, err
 			}
-		} else if lookupErr != nil {
-			return CostReserve{}, lookupErr
 		}
+	default:
+		return CostReserve{}, lookupErr
 	}
 	now := captureTimestamp()
 	_, err = tx.Exec(`INSERT INTO cost_reserves (id,project_id,kind,amount_minor_units,description,created_at,updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(project_id,kind) DO UPDATE SET amount_minor_units=excluded.amount_minor_units,description=excluded.description,updated_at=excluded.updated_at`, r.ID, r.ProjectID, r.Kind, r.AmountMinorUnits, r.Description, now.text, now.text)
 	if err != nil {
+		return CostReserve{}, err
+	}
+	if err := tx.QueryRow(`SELECT id FROM cost_reserves WHERE project_id = ? AND kind = ?`, r.ProjectID, r.Kind).Scan(&r.ID); err != nil {
 		return CostReserve{}, err
 	}
 	after, _ := json.Marshal(r)

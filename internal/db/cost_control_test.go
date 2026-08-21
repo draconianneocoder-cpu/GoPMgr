@@ -247,7 +247,7 @@ func TestCostReserveUpsertPreservesIdentityAndAudits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := d.SaveCostReserve(CostReserve{ProjectID: p.ID, Kind: "contingency", AmountMinorUnits: 12_500, Description: "Reassessed"})
+	second, err := d.SaveCostReserve(CostReserve{ID: "conflicting-caller-id", ProjectID: p.ID, Kind: "contingency", AmountMinorUnits: 12_500, Description: "Reassessed"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,6 +257,32 @@ func TestCostReserveUpsertPreservesIdentityAndAudits(t *testing.T) {
 	reserves, err := d.ListCostReserves(p.ID)
 	if err != nil || len(reserves) != 1 || reserves[0].AmountMinorUnits != 12_500 {
 		t.Fatalf("reserves = %#v, %v", reserves, err)
+	}
+	if reserves[0].ID != first.ID {
+		t.Fatalf("stored reserve ID = %q, want %q", reserves[0].ID, first.ID)
+	}
+	events, err := d.ListAuditEvents(p.ID)
+	if err != nil {
+		t.Fatalf("audit events = %#v, %v", events, err)
+	}
+	var reserveEvents []AuditEvent
+	for _, event := range events {
+		if event.EventType == "cost_reserve.save" {
+			reserveEvents = append(reserveEvents, event)
+		}
+	}
+	if len(reserveEvents) != 2 {
+		t.Fatalf("cost reserve audit events = %#v, want two", reserveEvents)
+	}
+	if reserveEvents[1].EntityID != first.ID {
+		t.Fatalf("audit entity ID = %q, want %q", reserveEvents[1].EntityID, first.ID)
+	}
+	var audited CostReserve
+	if err := json.Unmarshal([]byte(reserveEvents[1].AfterCanonicalJSON), &audited); err != nil {
+		t.Fatalf("decode audit after payload: %v", err)
+	}
+	if audited.ID != first.ID {
+		t.Fatalf("audit after payload ID = %q, want %q", audited.ID, first.ID)
 	}
 	verified, err := d.VerifyAuditChain(p.ID)
 	if err != nil || !verified.Valid {
