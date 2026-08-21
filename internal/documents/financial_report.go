@@ -11,6 +11,12 @@ import (
 	"github.com/go-pdf/fpdf"
 )
 
+var (
+	financialLedgerTableWidths   = []float64{20, 17, 45, 22, 20, 19, 84, 42}
+	financialReserveTableWidths  = []float64{45, 40, 184}
+	financialBaselineTableWidths = []float64{18, 40, 40, 35, 48, 88}
+)
+
 // FinancialReport is a project-scoped, printable snapshot. Monetary fields
 // are canonical decimal strings supplied by the exact-money application layer.
 type FinancialReport struct {
@@ -87,19 +93,19 @@ func RenderFinancialReportPDF(report FinancialReport) ([]byte, error) {
 	if len(report.CostControl.Entries) == 0 {
 		financialNote(pdf, "No Cost Control ledger entries recorded.")
 	} else {
-		financialTable(pdf, []string{"Date", "State", "Type", "Attribution", "Behaviour", "Treatment", "Description", "Amount"}, []float64{23, 19, 29, 27, 24, 29, 95, 30}, financialLedgerRows(report.CostControl.Entries))
+		financialTable(pdf, []string{"Date", "State", "Type", "Attribution", "Behaviour", "Treatment", "Description", "Amount"}, financialLedgerTableWidths, financialLedgerRows(report.CostControl.Entries))
 	}
 	financialHeading(pdf, "Assessed reserve balances")
 	if len(report.CostControl.Reserves) == 0 {
 		financialNote(pdf, "No reserve balances recorded.")
 	} else {
-		financialTable(pdf, []string{"Reserve", "Amount", "Basis / owner note"}, []float64{45, 40, 191}, financialReserveRows(report.CostControl.Reserves))
+		financialTable(pdf, []string{"Reserve", "Amount", "Basis / owner note"}, financialReserveTableWidths, financialReserveRows(report.CostControl.Reserves))
 	}
 	financialHeading(pdf, "Immutable baseline history")
 	if len(report.CostControl.Baselines) == 0 {
 		financialNote(pdf, "No approved Cost Control baseline snapshots recorded.")
 	} else {
-		financialTable(pdf, []string{"Version", "Cost baseline", "Authorised", "Approved by", "Approved at", "Rationale"}, []float64{18, 40, 40, 35, 48, 95}, financialBaselineRows(report.CostControl.Baselines))
+		financialTable(pdf, []string{"Version", "Cost baseline", "Authorised", "Approved by", "Approved at", "Rationale"}, financialBaselineTableWidths, financialBaselineRows(report.CostControl.Baselines))
 	}
 	var out bytes.Buffer
 	if err := pdf.Output(&out); err != nil {
@@ -139,18 +145,51 @@ func financialTable(pdf *fpdf.Fpdf, headers []string, widths []float64, rows [][
 	pdf.SetFillColor(30, 41, 59)
 	pdf.SetTextColor(241, 245, 249)
 	for i, header := range headers {
-		pdf.CellFormat(widths[i], 6, header, "1", 0, "L", true, 0, "")
+		pdf.CellFormat(widths[i], 6, financialCellText(pdf, widths[i], header), "1", 0, "L", true, 0, "")
 	}
 	pdf.Ln(-1)
 	pdf.SetTextColor(0, 0, 0)
 	pdf.SetFont("Helvetica", "", 7)
 	for _, row := range rows {
 		for i, value := range row {
-			pdf.CellFormat(widths[i], 5, truncDoc(value, 55), "1", 0, "L", false, 0, "")
+			pdf.CellFormat(widths[i], 5, financialCellText(pdf, widths[i], value), "1", 0, "L", false, 0, "")
 		}
 		pdf.Ln(-1)
 	}
 	pdf.Ln(4)
+}
+
+// financialCellText fits untrusted project data within the visible bounds of
+// an fpdf table cell. CellFormat does not clip overflowing text, so a
+// character-count cap alone can let a wide string paint into the next column.
+func financialCellText(pdf *fpdf.Fpdf, width float64, value string) string {
+	const suffix = "..."
+	available := width - 2*pdf.GetCellMargin()
+	if available <= 0 {
+		return ""
+	}
+	if pdf.GetStringWidth(value) <= available {
+		return value
+	}
+	suffixWidth := pdf.GetStringWidth(suffix)
+	if available <= suffixWidth {
+		return ""
+	}
+	runes := []rune(value)
+	low, high := 0, len(runes)
+	for low < high {
+		middle := low + (high-low+1)/2
+		candidate := string(runes[:middle]) + suffix
+		if pdf.GetStringWidth(candidate) <= available {
+			low = middle
+		} else {
+			high = middle - 1
+		}
+	}
+	if low == 0 {
+		return suffix
+	}
+	return string(runes[:low]) + suffix
 }
 
 func financialLedgerRows(entries []FinancialLedgerEntry) [][]string {
