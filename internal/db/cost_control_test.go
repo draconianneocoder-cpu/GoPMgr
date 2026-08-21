@@ -290,6 +290,64 @@ func TestCostReserveUpsertPreservesIdentityAndAudits(t *testing.T) {
 	}
 }
 
+func TestCostReserveRollsBackWhenAuditWriteFails(t *testing.T) {
+	d := newCostControlTestDB(t)
+	p, err := d.UpsertProject(Project{Name: "Reserve rollback"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, err := d.SaveCostReserve(CostReserve{ProjectID: p.ID, Kind: "contingency", AmountMinorUnits: 10_000, Description: "Known risk"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var beforeEvents int
+	if err := d.Conn.QueryRow(`SELECT COUNT(*) FROM audit_events WHERE project_id=?`, p.ID).Scan(&beforeEvents); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Conn.Exec(`CREATE TRIGGER reject_cost_reserve_audit BEFORE INSERT ON audit_events
+		WHEN NEW.event_type = 'cost_reserve.save'
+		BEGIN SELECT RAISE(ABORT, 'forced cost reserve audit failure'); END`); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = d.Conn.Exec(`DROP TRIGGER IF EXISTS reject_cost_reserve_audit`) })
+
+	for _, input := range []CostReserve{
+		{ID: "conflicting-caller-id", ProjectID: p.ID, Kind: "contingency", AmountMinorUnits: 12_500, Description: "Reassessed"},
+		{ID: "new-management-id", ProjectID: p.ID, Kind: "management", AmountMinorUnits: 500, Description: "Unknowns"},
+	} {
+		if _, err := d.SaveCostReserve(input); err == nil || !strings.Contains(err.Error(), "forced cost reserve audit failure") {
+			t.Fatalf("SaveCostReserve(%s) error = %v", input.Kind, err)
+		}
+	}
+	if _, err := d.Conn.Exec(`DROP TRIGGER reject_cost_reserve_audit`); err != nil {
+		t.Fatal(err)
+	}
+
+	reserves, err := d.ListCostReserves(p.ID)
+	if err != nil || len(reserves) != 1 || reserves[0] != original {
+		t.Fatalf("reserves after rollback = %#v, want %#v, %v", reserves, original, err)
+	}
+	var afterEvents int
+	if err := d.Conn.QueryRow(`SELECT COUNT(*) FROM audit_events WHERE project_id=?`, p.ID).Scan(&afterEvents); err != nil {
+		t.Fatal(err)
+	}
+	if afterEvents != beforeEvents {
+		t.Fatalf("audit event count after rollback = %d, want %d", afterEvents, beforeEvents)
+	}
+	if v, err := d.VerifyAuditChain(p.ID); err != nil || !v.Valid {
+		t.Fatalf("audit after rollback = %#v, %v", v, err)
+	}
+
+	updated, err := d.SaveCostReserve(CostReserve{ID: "conflicting-caller-id", ProjectID: p.ID, Kind: "contingency", AmountMinorUnits: 12_500, Description: "Reassessed"})
+	if err != nil || updated.ID != original.ID {
+		t.Fatalf("retry update = %#v, %v; want ID %q", updated, err, original.ID)
+	}
+	management, err := d.SaveCostReserve(CostReserve{ID: "new-management-id", ProjectID: p.ID, Kind: "management", AmountMinorUnits: 500, Description: "Unknowns"})
+	if err != nil || management.ID != "new-management-id" {
+		t.Fatalf("retry create = %#v, %v", management, err)
+	}
+}
+
 func TestApproveCostBaselineIsImmutableAndAudited(t *testing.T) {
 	d := newCostControlTestDB(t)
 	p, err := d.UpsertProject(Project{Name: "Baseline"})
