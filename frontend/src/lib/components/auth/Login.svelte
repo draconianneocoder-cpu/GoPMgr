@@ -38,6 +38,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function submit(e: Event) {
     e.preventDefault();
+    if (busy) return;
     error = '';
     busy = true;
     try {
