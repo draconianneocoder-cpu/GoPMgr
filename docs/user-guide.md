@@ -73,7 +73,10 @@ than treating missing evidence as zero. Planned Value, Earned Value, Actual
 Cost, SPI, and CPI use exact minor-unit totals; portfolio SPI is `ΣEV/ΣPV` and
 portfolio CPI is `ΣEV/ΣAC`. They are not averages of individual project ratios.
 Committed cost remains the separate contracts-plus-labour estimate used for
-budget remaining.
+budget remaining. A rollup displays its ISO reporting currency and runs only
+when every readable project uses that same currency. GoPMgr has no foreign
+exchange conversion, so it refuses a mixed-currency portfolio rather than
+showing a misleading total.
 
 The Dashboard is the main project workspace:
 

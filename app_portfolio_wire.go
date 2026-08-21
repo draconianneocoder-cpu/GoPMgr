@@ -18,6 +18,7 @@ type PortfolioSummaryWire struct {
 	EVMProjectCount            int     `json:"evm_project_count"`
 	EVMUnavailableProjectCount int     `json:"evm_unavailable_project_count"`
 	AsOfDate                   string  `json:"as_of_date"`
+	CurrencyCode               string  `json:"currency_code"`
 	TotalBudgetedCost          string  `json:"total_budgeted_cost"`
 	TotalCommittedCost         string  `json:"total_committed_cost"`
 	TotalActualCost            string  `json:"total_actual_cost"`
@@ -28,7 +29,7 @@ type PortfolioSummaryWire struct {
 	CostPerformanceIndex       float64 `json:"cost_performance_index"`
 }
 
-func portfolioSummaryWire(summary analytics.PortfolioSummary) (PortfolioSummaryWire, error) {
+func portfolioSummaryWire(summary analytics.PortfolioSummary, currencyCode string) (PortfolioSummaryWire, error) {
 	budget := money.Amount{MinorUnits: summary.TotalBudgetedCostMinorUnits}
 	committed := money.Amount{MinorUnits: summary.TotalCommittedCostMinorUnits}
 	remaining, err := budget.Sub(committed)
@@ -40,6 +41,7 @@ func portfolioSummaryWire(summary analytics.PortfolioSummary) (PortfolioSummaryW
 		EVMProjectCount:            summary.EVMProjectCount,
 		EVMUnavailableProjectCount: summary.EVMUnavailableProjectCount,
 		AsOfDate:                   summary.AsOfDate,
+		CurrencyCode:               currencyCode,
 		TotalBudgetedCost:          budget.Decimal(),
 		TotalCommittedCost:         committed.Decimal(),
 		TotalActualCost:            money.Amount{MinorUnits: summary.TotalActualCostMinorUnits}.Decimal(),

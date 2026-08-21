@@ -80,13 +80,11 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 	if p.CountryCode == "" {
 		p.CountryCode = "US"
 	}
-	if p.CurrencyCode == "" {
-		p.CurrencyCode = "USD"
+	currencyCode, err := CanonicalProjectCurrency(p.CurrencyCode)
+	if err != nil {
+		return Project{}, err
 	}
-	p.CurrencyCode = normaliseCurrencyCode(p.CurrencyCode)
-	if !validCurrencyCode(p.CurrencyCode) {
-		return Project{}, fmt.Errorf("unsupported project reporting currency %q", p.CurrencyCode)
-	}
+	p.CurrencyCode = currencyCode
 	if p.TimeZone == "" {
 		p.TimeZone = "America/New_York"
 	}

@@ -27,11 +27,11 @@ func TestPortfolioSummaryWireUsesExactDecimalStrings(t *testing.T) {
 		TotalPlannedValueMinorUnits:  1,
 		SchedulePerformanceIndex:     1.25,
 		CostPerformanceIndex:         0.75,
-	})
+	}, "USD")
 	if err != nil {
 		t.Fatalf("portfolioSummaryWire: %v", err)
 	}
-	if wire.TotalBudgetedCost != "92233720368547758.07" || wire.TotalCommittedCost != "92233720368547758.06" || wire.Remaining != "0.01" || wire.TotalActualCost != "-92233720368547758.08" || wire.TotalEarnedValue != "-0.01" || wire.TotalPlannedValue != "0.01" {
+	if wire.CurrencyCode != "USD" || wire.TotalBudgetedCost != "92233720368547758.07" || wire.TotalCommittedCost != "92233720368547758.06" || wire.Remaining != "0.01" || wire.TotalActualCost != "-92233720368547758.08" || wire.TotalEarnedValue != "-0.01" || wire.TotalPlannedValue != "0.01" {
 		t.Fatalf("unexpected exact portfolio wire: %+v", wire)
 	}
 	data, err := json.Marshal(wire)
@@ -39,6 +39,9 @@ func TestPortfolioSummaryWireUsesExactDecimalStrings(t *testing.T) {
 		t.Fatalf("marshal portfolio wire: %v", err)
 	}
 	text := string(data)
+	if !strings.Contains(text, `"currency_code":"USD"`) {
+		t.Fatalf("portfolio wire omitted currency code: %s", text)
+	}
 	for _, forbidden := range []string{"minor_units", `"total_budgeted_cost":9`, `"total_committed_cost":9`, `"remaining":0`} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("portfolio wire exposed numeric money: %s", text)
@@ -46,11 +49,21 @@ func TestPortfolioSummaryWireUsesExactDecimalStrings(t *testing.T) {
 	}
 }
 
+func TestPortfolioSummaryWireEmptyPortfolioHasNoCurrency(t *testing.T) {
+	wire, err := portfolioSummaryWire(analytics.PortfolioSummary{}, "")
+	if err != nil {
+		t.Fatalf("portfolioSummaryWire: %v", err)
+	}
+	if wire.CurrencyCode != "" || wire.TotalBudgetedCost != "0.00" || wire.Remaining != "0.00" {
+		t.Fatalf("empty portfolio wire = %+v", wire)
+	}
+}
+
 func TestPortfolioSummaryWirePreservesNegativeRemaining(t *testing.T) {
 	wire, err := portfolioSummaryWire(analytics.PortfolioSummary{
 		TotalBudgetedCostMinorUnits:  1,
 		TotalCommittedCostMinorUnits: 2,
-	})
+	}, "USD")
 	if err != nil {
 		t.Fatalf("portfolioSummaryWire: %v", err)
 	}
@@ -63,7 +76,7 @@ func TestPortfolioSummaryWireRejectsRemainingOverflow(t *testing.T) {
 	_, err := portfolioSummaryWire(analytics.PortfolioSummary{
 		TotalBudgetedCostMinorUnits:  math.MaxInt64,
 		TotalCommittedCostMinorUnits: -1,
-	})
+	}, "USD")
 	if !errors.Is(err, money.ErrOverflow) {
 		t.Fatalf("portfolioSummaryWire error = %v, want %v", err, money.ErrOverflow)
 	}

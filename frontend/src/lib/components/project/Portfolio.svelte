@@ -191,6 +191,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
             : `Analytics failed: ${rollupErr}`}
         </p>
       {:else if rollup}
+        {#if rollup.currency_code}
+          <p class="mt-3 text-xs text-slate-500">Reporting currency: {rollup.currency_code}</p>
+        {/if}
         <dl class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div class="min-w-0">
             <dt class="text-[10px] uppercase tracking-wider text-slate-500">Projects</dt>

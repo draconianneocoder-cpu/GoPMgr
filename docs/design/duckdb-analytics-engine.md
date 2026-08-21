@@ -33,6 +33,11 @@ so the rest of the application remains buildable without the analytical engine.
 - Accept imports only from an explicit user-selected path and keep directory
   confinement in the import boundary.
 - Keep kernel scheduling and earned-value calculations independent of DuckDB.
+- Reject a Portfolio Analytics rollup when readable projects have different
+  reporting currencies. The application has no FX model, so adding exact
+  minor-unit values from different currencies would still be a false total.
+  A future grouped-by-currency portfolio contract requires an explicit Wails
+  and UI design; do not silently substitute one.
 
 ## Verification
 

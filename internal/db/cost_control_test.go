@@ -26,6 +26,33 @@ func newCostControlTestDB(t *testing.T) *Database {
 	return d
 }
 
+func TestCanonicalProjectCurrency(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+		valid bool
+	}{
+		{input: "", want: "USD", valid: true},
+		{input: " eur ", want: "EUR", valid: true},
+		{input: "JPY", want: "JPY", valid: true},
+		{input: "ZZZ", valid: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := CanonicalProjectCurrency(tt.input)
+			if tt.valid {
+				if err != nil || got != tt.want {
+					t.Fatalf("CanonicalProjectCurrency(%q) = %q, %v; want %q, nil", tt.input, got, err, tt.want)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("CanonicalProjectCurrency(%q) succeeded with %q", tt.input, got)
+			}
+		})
+	}
+}
+
 func TestCostControlSeedsAndAuditsProjectScopedEntry(t *testing.T) {
 	d := newCostControlTestDB(t)
 	p, err := d.UpsertProject(Project{Name: "Cost ledger"})

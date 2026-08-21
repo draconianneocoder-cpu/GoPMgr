@@ -377,6 +377,20 @@ func validCurrencyCode(code string) bool {
 	return ok
 }
 
+// CanonicalProjectCurrency normalizes a project's reporting currency and
+// applies the legacy default. It deliberately accepts JPY because existing
+// projects remain readable even though new Cost Control writes are contained.
+func CanonicalProjectCurrency(code string) (string, error) {
+	code = normaliseCurrencyCode(code)
+	if code == "" {
+		code = "USD"
+	}
+	if !validCurrencyCode(code) {
+		return "", fmt.Errorf("unsupported project reporting currency %q", code)
+	}
+	return code, nil
+}
+
 var supportedProjectCurrencies = map[string]struct{}{
 	"AUD": {},
 	"CAD": {},

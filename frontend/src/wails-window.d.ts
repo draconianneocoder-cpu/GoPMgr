@@ -506,6 +506,7 @@ declare global {
     evm_project_count: number;
     evm_unavailable_project_count: number;
     as_of_date: string;
+    currency_code: string;
     total_budgeted_cost: string;
     total_committed_cost: string;
     total_actual_cost: string;

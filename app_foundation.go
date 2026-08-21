@@ -20,6 +20,7 @@ import (
 	"gopmgr/internal/update"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -854,6 +855,7 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 
 	asOf := time.Now().UTC()
 	metrics := make([]analytics.ProjectMetrics, 0, len(entries))
+	portfolioCurrency := ""
 	for _, e := range entries {
 		d, derr := db.InitEncryptedDB(e.Path, dek)
 		if derr != nil {
@@ -864,6 +866,16 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 			_ = d.Close()
 			continue
 		}
+		currencyCode, currencyErr := db.CanonicalProjectCurrency(p.CurrencyCode)
+		if currencyErr != nil {
+			_ = d.Close()
+			return PortfolioSummaryWire{}, fmt.Errorf("portfolio project %q: %w", e.Name, currencyErr)
+		}
+		if portfolioCurrency != "" && portfolioCurrency != currencyCode {
+			_ = d.Close()
+			return PortfolioSummaryWire{}, portfolioMixedCurrencyError(portfolioCurrency, currencyCode)
+		}
+		portfolioCurrency = currencyCode
 		projectMetrics, metricsErr := portfolioProjectMetrics(d, p, e.Name, asOf)
 		_ = d.Close()
 		if metricsErr != nil {
@@ -881,7 +893,16 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 	// in different project time zones; country calendars still define which
 	// dates count as working days for each schedule.
 	summary.AsOfDate = asOf.Format(kernel.DateLayout)
-	return portfolioSummaryWire(summary)
+	return portfolioSummaryWire(summary, portfolioCurrency)
+}
+
+// portfolioMixedCurrencyError prevents exact arithmetic from producing a
+// financially false total. Portfolio Analytics has no foreign-exchange model,
+// so only one reporting currency can be rolled up at a time.
+func portfolioMixedCurrencyError(first, second string) error {
+	currencies := []string{first, second}
+	sort.Strings(currencies)
+	return fmt.Errorf("portfolio analytics cannot combine %s and %s reporting currencies because foreign exchange conversion is not implemented", currencies[0], currencies[1])
 }
 
 // portfolioProjectMetrics builds the trusted hand-off row passed to DuckDB.

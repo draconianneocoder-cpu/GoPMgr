@@ -45,6 +45,7 @@ describe('Portfolio', () => {
         evm_project_count: 1,
         evm_unavailable_project_count: 1,
         as_of_date: '2026-08-21',
+		currency_code: 'USD',
         total_budgeted_cost: '92233720368547758.07',
         total_committed_cost: '92233720368547758.08',
         total_actual_cost: '-92233720368547758.08',
@@ -64,5 +65,21 @@ describe('Portfolio', () => {
     expect(getByText('92,233,720,368,547,758.08')).toBeTruthy();
     expect(getByText('-0.01')).toBeTruthy();
     expect(getByText('-92,233,720,368,547,758.08')).toBeTruthy();
+		expect(getByText('Reporting currency: USD')).toBeTruthy();
   });
+
+	it('shows a mixed-currency refusal without retaining a prior rollup', async () => {
+		session.user = { username: 'alice', display_name: 'Alice', data_dir: '', created_at: '', last_login: '', is_admin: false };
+		const app = setApp({
+			RunPortfolioAnalytics: vi.fn(async () => {
+				throw new Error('portfolio analytics cannot combine EUR and USD reporting currencies because foreign exchange conversion is not implemented');
+			}),
+		});
+		const { getByRole, getByText, queryByText } = render(Portfolio);
+		await waitFor(() => expect(app.ProjectsOverview).toHaveBeenCalled());
+		await fireEvent.click(getByRole('button', { name: 'Run rollup' }));
+
+		await waitFor(() => expect(getByText(/cannot combine EUR and USD reporting currencies/)).toBeTruthy());
+		expect(queryByText('Reporting currency: USD')).toBeNull();
+	});
 });
