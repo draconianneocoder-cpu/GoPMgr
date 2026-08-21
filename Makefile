@@ -34,7 +34,7 @@ export CC
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
         help-guide-current wails-version wails-cli-version wails-version-test package-version-lib-test tag-preflight config-check \
-        installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests \
+        installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests native-isolation-launch-tests \
         code-map code-map-current brand-assets coverage-ledger-current coverage-ledger-drift coverage-ratchet \
         coverage-ratchet-update no-text-timestamp-ordering no-raw-import-in-tests
 
@@ -71,6 +71,9 @@ reset-clean-test: ## Move GoPMgr data to a recoverable backup for first-launch t
 clean-test-reset-tests: ## Verify clean-test reset/restore safety in isolated fixtures.
 	@bash scripts/reset-clean-test_test.sh
 
+native-isolation-launch-tests: ## Verify the macOS isolated native-launch harness with a fake app bundle.
+	@bash scripts/launch-isolated-native_test.sh
+
 icc: ## Download the sRGB ICC profile for PDF/A-3 OutputIntent embedding.
 	@bash scripts/fetch-icc.sh
 
@@ -104,8 +107,8 @@ test: ## Run Go unit tests.
 race: ## Run Go tests with the race detector (concurrency gate).
 	$(GO) test -race -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests wails-version package-version-lib-test brand-assets test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/reset/code-map contracts + Go tests + frontend checks.
-	@echo "verify: configuration, packaging/Wails/font/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
+verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/code-map contracts + Go tests + frontend checks.
+	@echo "verify: configuration, packaging/Wails/font/native-launch/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
 	@$(GO) run ./tools/code-map

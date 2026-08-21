@@ -999,7 +999,36 @@ Tests exist to protect requirements, invariants, and known risks.
 Do not add tests only to increase a percentage. A useful test should
 fail when a meaningful behavior regresses.
 
-### 13.2 Focus first, broaden later
+### 13.2 Guarded native desktop verification on macOS
+
+For manual native Wails verification of a built app, use the repository-owned
+launcher instead of starting the bundle directly:
+
+```sh
+make build
+bash scripts/launch-isolated-native.sh
+```
+
+The launcher resolves the invoking account's home directory before starting the
+child, creates a retained temporary `HOME`, `XDG_DATA_HOME`, `TMPDIR`, and
+`CFFIXED_USER_HOME`, and launches the direct bundle executable under macOS
+Seatbelt. Its constant, parameterized profile denies both current and legacy
+project-data roots: `Library/Application Support/GoPMgr`, `Library/Application
+Support/PMForge`, `Documents/GoPMgr`, and `Documents/PMForge`. It first proves
+that a temporary allowed path is writable and a separate disposable denied
+probe is neither readable nor writable; existing protected roots are also
+checked for denied metadata access before the app is launched.
+
+The command validates the bundle executable and identifier, refuses to run
+while a GoPMgr process is already present, and keeps the temporary root after
+exit so a create/edit/quit/relaunch test can reuse the same data. It does not
+create an administrator or project. It protects the identified project-data
+roots only; it is not evidence that macOS/WebKit writes no other ancillary
+host preferences or caches, nor is it GUI evidence for a financial workflow.
+Quit the child before deleting the printed root. The fake-bundle regression is
+part of `make verify` as `make native-isolation-launch-tests`.
+
+### 13.3 Focus first, broaden later
 
 During development, run the narrowest test that exercises the changed
 behavior.
@@ -1014,7 +1043,7 @@ go test -count=1 .
 
 Then broaden verification according to risk.
 
-### 13.3 Backend baseline
+### 13.4 Backend baseline
 
 ``` sh
 go test . ./internal/...
@@ -1031,7 +1060,7 @@ The Makefile intentionally avoids an indiscriminate bare `./...` in
 quality gates because generated frontend-related Go packages can expose
 unrelated package behavior.
 
-### 13.4 Race detection
+### 13.5 Race detection
 
 Use:
 
@@ -1047,7 +1076,7 @@ make race
 
 for concurrency-sensitive changes and before release claims.
 
-### 13.5 Frontend checks
+### 13.6 Frontend checks
 
 Relevant commands include:
 
@@ -1064,7 +1093,7 @@ make frontend-smoke
 `frontend-smoke` matters because type checking and a Vite build do not
 catch every Svelte load-time/runtime failure.
 
-### 13.6 Frontend test pattern
+### 13.7 Frontend test pattern
 
 The repository uses:
 
@@ -1079,20 +1108,20 @@ When fixing a frontend regression, add the narrowest test that
 reproduces the original failure class and retain runtime smoke coverage
 where applicable.
 
-### 13.7 Filesystem and persistence tests
+### 13.8 Filesystem and persistence tests
 
 Use temporary directories.
 
 Do not embed developer-specific local paths into tests.
 
-### 13.8 Deterministic tests
+### 13.9 Deterministic tests
 
 Avoid wall-clock dependence unless the clock is fixed or injected.
 
 Use deterministic fixtures for cryptographic and persistence tests where
 security properties do not require fresh randomness.
 
-### 13.9 Encryption tests
+### 13.10 Encryption tests
 
 Encryption work should cover the relevant subset of:
 
@@ -1105,7 +1134,7 @@ Encryption work should cover the relevant subset of:
 - recovery behavior;
 - backup behavior.
 
-### 13.10 PDF tests
+### 13.11 PDF tests
 
 Do not treat byte containment as sufficient proof for PDF/A or PAdES.
 
