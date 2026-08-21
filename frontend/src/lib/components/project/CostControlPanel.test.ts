@@ -10,9 +10,10 @@ type CostControlFixture = {
   types?: Array<Record<string, string | boolean>>;
   entries?: Array<Record<string, string>>;
   failFirstLoad?: boolean;
+  mutationDisabledReason?: string;
 };
 
-function installApp({ baselines = [], types = [{ id: 'labor', project_id: 'p', code: 'labor', name: 'Labor', attribution: 'direct', behavior: 'variable', treatment: 'opex', active: true }], entries = [], failFirstLoad = false }: CostControlFixture = {}) {
+function installApp({ baselines = [], types = [{ id: 'labor', project_id: 'p', code: 'labor', name: 'Labor', attribution: 'direct', behavior: 'variable', treatment: 'opex', active: true }], entries = [], failFirstLoad = false, mutationDisabledReason = '' }: CostControlFixture = {}) {
   const listCostTypes = failFirstLoad
     ? vi.fn().mockRejectedValueOnce(new Error('temporary load failure')).mockResolvedValue(types)
     : vi.fn(async () => types);
@@ -21,7 +22,7 @@ function installApp({ baselines = [], types = [{ id: 'labor', project_id: 'p', c
     ListCostEntries: vi.fn(async () => entries),
     ListCostReserves: vi.fn(async () => []),
     ListCostBaselines: vi.fn(async () => baselines),
-    ComputeCostSummary: vi.fn(async () => ({ currency_code: 'USD', legacy_budget: '1000.00', planned: '800.00', contingency: '100.00', cost_baseline: '900.00', management_reserve: '50.00', authorised_funding: '950.00', commitment: '0.00', actual: '0.00' })),
+    ComputeCostSummary: vi.fn(async () => ({ currency_code: 'USD', mutation_disabled_reason: mutationDisabledReason, legacy_budget: '1000.00', planned: '800.00', contingency: '100.00', cost_baseline: '900.00', management_reserve: '50.00', authorised_funding: '950.00', commitment: '0.00', actual: '0.00' })),
     ComputeCostClassificationSummary: vi.fn(async () => ({ attribution: [{ value: 'direct', planned: '800.00', commitment: '0.00', actual: '0.00' }, { value: 'indirect', planned: '0.00', commitment: '0.00', actual: '0.00' }], behavior: [{ value: 'fixed', planned: '0.00', commitment: '0.00', actual: '0.00' }, { value: 'variable', planned: '800.00', commitment: '0.00', actual: '0.00' }], treatment: [{ value: 'capex', planned: '0.00', commitment: '0.00', actual: '0.00' }, { value: 'opex', planned: '800.00', commitment: '0.00', actual: '0.00' }, { value: 'not_applicable', planned: '0.00', commitment: '0.00', actual: '0.00' }] })),
     SaveCostEntry: vi.fn(async (entry) => entry),
     SaveCostReserve: vi.fn(async (reserve) => reserve),
@@ -64,6 +65,23 @@ describe('CostControlPanel', () => {
     await fireEvent.click(await findByRole('button', { name: 'Retry Cost Control' }));
     expect(await findByText('Legacy budget rollup')).toBeInTheDocument();
     expect(app.ListCostTypes).toHaveBeenCalledTimes(2);
+  });
+
+  it('makes a legacy JPY project read-only while retaining its ledger view', async () => {
+    const app = installApp({
+      mutationDisabledReason: 'Cost Control is read-only for this legacy JPY project: existing amounts retain their original fixed two-decimal convention and are not being converted.',
+      entries: [{ id: 'entry-1', cost_type_id: 'labor', kind: 'actual', cost_date: '2026-08-21', description: 'Existing JPY amount', amount: '123.45' }],
+    });
+    const { findByRole, findByText, getAllByLabelText, getByLabelText, getByRole } = render(CostControlPanel);
+    expect(await findByRole('alert')).toHaveTextContent('legacy JPY project');
+    expect(await findByText('Existing JPY amount')).toBeInTheDocument();
+    expect(getAllByLabelText('Amount')[0]).toBeDisabled();
+    expect(getByLabelText('Reserve amount')).toBeDisabled();
+    expect(getByLabelText('Approval rationale')).toBeDisabled();
+    expect(getByRole('button', { name: 'Add ledger entry' })).toBeDisabled();
+    expect(getByRole('button', { name: 'Set reserve balance' })).toBeDisabled();
+    expect(getByRole('button', { name: 'Approve immutable baseline' })).toBeDisabled();
+    expect(app.SaveCostEntry).not.toHaveBeenCalled();
   });
 
   it('finishes taxonomy seeding before it starts classification reads', async () => {

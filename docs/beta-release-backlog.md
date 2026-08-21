@@ -73,14 +73,15 @@ loss, or a release blocker.
   keeps the project-local ledger separate from the legacy stakeholder/agile
   budget rollup and schedule EVM, has no FX conversion, and does not treat a
   reserve balance as a commitment or actual cost.
-- Cost Control currency-exponent policy: resolve the current mismatch between
-  selectable JPY and the two-decimal Cost Control amount boundary. The current
-  application accepts and stores JPY using that fixed convention; specify ISO
-  4217 metadata, standards/interoperability claims, storage and display rules,
-  existing-data migration or grandfathering, selector behavior, and the
-  interaction with future FX/reporting before introducing exponent-aware JPY.
-  USD, EUR, GBP, CAD, AUD, and CHF use the current two-decimal boundary; Phase
-  1 never converts values.
+- Cost Control currency-exponent policy: JPY is now contained as a legacy-only
+  case. Existing JPY projects are readable but Cost Control is read-only; new
+  JPY projects and currency transitions to JPY are rejected. No value is
+  converted or rescaled. Before introducing exponent-aware JPY, define
+  project-scoped Cost Control scale metadata, immutable-baseline scale capture,
+  a migration that defaults existing values to their fixed two-decimal
+  convention, exact parsing/formatting limits, and the relationship to legacy
+  Budget, schedule EVM, stakeholder rollups, analytics, reporting, and future
+  FX. USD, EUR, GBP, CAD, AUD, and CHF retain the current two-decimal boundary.
 - Cost Control allocation and forecast semantics: define allocation, reserve
   drawdown, burn, and forecast policy before adding a remaining-spend metric.
   Phase 1 intentionally presents the legacy Budget rollup only as separate

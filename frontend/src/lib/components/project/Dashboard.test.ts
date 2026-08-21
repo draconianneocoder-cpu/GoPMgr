@@ -75,7 +75,7 @@ function makeApp(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
     ListCostReserves: vi.fn(async () => []),
     ListCostBaselines: vi.fn(async () => []),
     ComputeCostSummary: vi.fn(async () => ({
-      currency_code: 'USD', legacy_budget: '0.00', planned: '0.00', contingency: '0.00',
+      currency_code: 'USD', mutation_disabled_reason: '', legacy_budget: '0.00', planned: '0.00', contingency: '0.00',
       cost_baseline: '0.00', management_reserve: '0.00', authorised_funding: '0.00',
       commitment: '0.00', actual: '0.00',
     })),

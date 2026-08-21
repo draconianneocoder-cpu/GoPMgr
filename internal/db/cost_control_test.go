@@ -92,6 +92,38 @@ func TestProjectReportingCurrencyPolicy(t *testing.T) {
 	}
 }
 
+func TestProjectReportingCurrencyRetiresNewJPYButPreservesLegacyJPY(t *testing.T) {
+	d := newCostControlTestDB(t)
+	if _, err := d.UpsertProject(Project{Name: "New JPY", CurrencyCode: "JPY"}); err == nil || !strings.Contains(err.Error(), "legacy projects") {
+		t.Fatalf("new JPY project error = %v", err)
+	}
+	p, err := d.UpsertProject(Project{Name: "Legacy JPY"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = d.Conn.Exec(`UPDATE project SET currency_code='JPY' WHERE id=?`, p.ID); err != nil {
+		t.Fatal(err)
+	}
+	p, err = d.GetProject()
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Description = "Still inspectable"
+	p, err = d.UpsertProject(p)
+	if err != nil || p.CurrencyCode != "JPY" || p.Description != "Still inspectable" {
+		t.Fatalf("preserve legacy JPY = %#v, %v", p, err)
+	}
+	p.CurrencyCode = "USD"
+	p, err = d.UpsertProject(p)
+	if err != nil || p.CurrencyCode != "USD" {
+		t.Fatalf("empty legacy JPY to USD = %#v, %v", p, err)
+	}
+	p.CurrencyCode = "JPY"
+	if _, err = d.UpsertProject(p); err == nil || !strings.Contains(err.Error(), "legacy projects") {
+		t.Fatalf("USD to retired JPY error = %v", err)
+	}
+}
+
 func TestProjectReportingCurrencyLocksReservesAndBaselines(t *testing.T) {
 	t.Run("non-zero reserve", func(t *testing.T) {
 		d := newCostControlTestDB(t)

@@ -588,8 +588,9 @@ declare global {
     amount: string;
   }
 
-  interface CostSummary {
-    currency_code: string;
+interface CostSummary {
+  currency_code: string;
+  mutation_disabled_reason: string;
     legacy_budget: string;
     planned: string;
     contingency: string;

@@ -28,6 +28,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let approvalConfirmOpen = $state(false);
   const activeTypes = $derived(types.filter((type) => type.active));
   const typesByID = $derived(new Map(types.map((type) => [type.id, type])));
+	const mutationDisabled = $derived(Boolean(summary?.mutation_disabled_reason));
 
   async function load() {
     loading = true; error = '';
@@ -47,14 +48,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     finally { loading = false; }
   }
   async function approveBaseline() {
-    if (saving || !approvalNote.trim()) return;
+	if (saving || mutationDisabled || !approvalNote.trim()) return;
     saving = true; error = '';
     try { await window.go.main.App.ApproveCostBaseline(approvalNote.trim()); approvalNote = ''; await load(); }
     catch (err) { error = String(err); } finally { saving = false; approvalConfirmOpen = false; }
   }
 
   async function saveReserve() {
-    if (saving) return;
+	if (saving || mutationDisabled) return;
     saving = true; error = '';
     try {
       await window.go.main.App.SaveCostReserve({ kind: reserveKind, amount: reserveAmount, description: reserveDescription });
@@ -64,7 +65,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(load);
 
   async function save() {
-    if (!typeID || saving) return;
+	if (!typeID || saving || mutationDisabled) return;
     saving = true; error = '';
     try {
       await window.go.main.App.SaveCostEntry({ id: '', cost_type_id: typeID, kind, amount, description, cost_date: costDate });
@@ -81,6 +82,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   {#if loading}<Spinner label="Loading cost control…" class="py-2" />
   {:else if error}<div class="space-y-2"><p class="text-xs text-red-400 break-words" role="alert">{error}</p><button onclick={() => void load()} class="rounded border border-red-700/70 px-3 py-2 text-xs font-bold text-red-200 hover:bg-red-950/40">Retry Cost Control</button></div>
   {:else if summary && classifications}
+	{#if mutationDisabled}<p class="border-l-2 border-amber-500 bg-amber-950/20 px-3 py-2 text-xs text-amber-100" role="alert">{summary.mutation_disabled_reason}</p>{/if}
     <aside class="border-l-2 border-slate-700 bg-slate-950/50 px-3 py-2 text-xs text-slate-400" aria-label="Legacy Budget context">
       <span class="font-semibold text-slate-300">Legacy budget rollup</span>
       <span class="ml-2 tabular-nums text-slate-100">{summary.currency_code} {summary.legacy_budget}</span>
@@ -92,24 +94,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {/each}
     </div>
     <form class="grid grid-cols-1 md:grid-cols-5 gap-2" onsubmit={(event) => { event.preventDefault(); void save(); }}>
-      <label class="text-xs text-slate-400">Cost type<select bind:value={typeID} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100">{#each activeTypes as type}<option value={type.id}>{type.name}</option>{/each}</select></label>
-      <label class="text-xs text-slate-400">State<select bind:value={kind} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="planned">Planned</option><option value="commitment">Commitment</option><option value="actual">Actual</option></select></label>
-      <label class="text-xs text-slate-400">Amount<input bind:value={amount} inputmode="decimal" required aria-label="Amount" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="0.00" /></label>
-      <label class="text-xs text-slate-400">Date<input bind:value={costDate} type="date" required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
-      <label class="text-xs text-slate-400">Description<input bind:value={description} required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
-      <button disabled={saving || !typeID} class="md:col-span-5 rounded bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 p-2 text-xs font-bold text-white">{saving ? 'Saving…' : 'Add ledger entry'}</button>
+      <label class="text-xs text-slate-400">Cost type<select disabled={mutationDisabled} bind:value={typeID} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100">{#each activeTypes as type}<option value={type.id}>{type.name}</option>{/each}</select></label>
+      <label class="text-xs text-slate-400">State<select disabled={mutationDisabled} bind:value={kind} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="planned">Planned</option><option value="commitment">Commitment</option><option value="actual">Actual</option></select></label>
+      <label class="text-xs text-slate-400">Amount<input disabled={mutationDisabled} bind:value={amount} inputmode="decimal" required aria-label="Amount" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="0.00" /></label>
+      <label class="text-xs text-slate-400">Date<input disabled={mutationDisabled} bind:value={costDate} type="date" required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
+      <label class="text-xs text-slate-400">Description<input disabled={mutationDisabled} bind:value={description} required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
+      <button disabled={saving || mutationDisabled || !typeID} class="md:col-span-5 rounded bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 p-2 text-xs font-bold text-white">{saving ? 'Saving…' : 'Add ledger entry'}</button>
     </form>
     <form class="border-t border-slate-800 pt-3 grid grid-cols-1 md:grid-cols-4 gap-2" onsubmit={(event) => { event.preventDefault(); void saveReserve(); }}>
       <div class="md:col-span-4 text-[10px] tracking-widest uppercase text-slate-500">Reserve governance</div>
-      <label class="text-xs text-slate-400">Reserve<select bind:value={reserveKind} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="contingency">Contingency — known risks</option><option value="management">Management — unknown risks</option></select></label>
-      <label class="text-xs text-slate-400">Amount<input bind:value={reserveAmount} inputmode="decimal" required aria-label="Reserve amount" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="0.00" /></label>
-      <label class="text-xs text-slate-400 md:col-span-2">Basis / owner note<input bind:value={reserveDescription} required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
-      <button disabled={saving} class="md:col-span-4 rounded border border-amber-700/70 hover:bg-amber-950/40 disabled:opacity-50 p-2 text-xs font-bold text-amber-200">{saving ? 'Saving…' : 'Set reserve balance'}</button>
+      <label class="text-xs text-slate-400">Reserve<select disabled={mutationDisabled} bind:value={reserveKind} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="contingency">Contingency — known risks</option><option value="management">Management — unknown risks</option></select></label>
+      <label class="text-xs text-slate-400">Amount<input disabled={mutationDisabled} bind:value={reserveAmount} inputmode="decimal" required aria-label="Reserve amount" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="0.00" /></label>
+      <label class="text-xs text-slate-400 md:col-span-2">Basis / owner note<input disabled={mutationDisabled} bind:value={reserveDescription} required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
+      <button disabled={saving || mutationDisabled} class="md:col-span-4 rounded border border-amber-700/70 hover:bg-amber-950/40 disabled:opacity-50 p-2 text-xs font-bold text-amber-200">{saving ? 'Saving…' : 'Set reserve balance'}</button>
     </form>
     <section class="border-t border-slate-800 pt-3 space-y-2" aria-labelledby="baseline-governance-heading">
       <div><h3 id="baseline-governance-heading" class="text-[10px] tracking-widest uppercase text-slate-500">Baseline governance</h3><p class="text-[10px] text-slate-500">Approval is a local-account record, not role authorization or an electronic signature. It snapshots Cost Control only, never the legacy Budget panel.</p></div>
-      <label class="block text-xs text-slate-400">Approval rationale<input bind:value={approvalNote} required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Why this Cost Control baseline is approved" /></label>
-      <button onclick={() => approvalConfirmOpen = true} disabled={saving || !approvalNote.trim()} class="rounded border border-cyan-700/70 hover:bg-cyan-950/40 disabled:opacity-50 p-2 text-xs font-bold text-cyan-200">Approve immutable baseline</button>
+      <label class="block text-xs text-slate-400">Approval rationale<input disabled={mutationDisabled} bind:value={approvalNote} required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Why this Cost Control baseline is approved" /></label>
+      <button onclick={() => approvalConfirmOpen = true} disabled={saving || mutationDisabled || !approvalNote.trim()} class="rounded border border-cyan-700/70 hover:bg-cyan-950/40 disabled:opacity-50 p-2 text-xs font-bold text-cyan-200">Approve immutable baseline</button>
       {#if baselines.length > 0}<div class="overflow-x-auto"><table class="w-full text-xs"><thead class="text-left text-slate-500"><tr><th>Version</th><th>Approved by</th><th>Approved at</th><th>Rationale</th><th>Cost baseline</th><th>Authorised</th></tr></thead><tbody>{#each baselines as baseline (baseline.version)}<tr class="border-t border-slate-800 align-top"><td>v{baseline.version}</td><td>{baseline.approved_by}</td><td class="whitespace-nowrap"><time datetime={baseline.approved_at}>{baseline.approved_at}</time></td><td class="min-w-48 break-words text-slate-300">{baseline.approval_note}</td><td>{baseline.currency_code} {baseline.cost_baseline}</td><td>{baseline.currency_code} {baseline.authorised_funding}</td></tr>{/each}</tbody></table></div>{/if}
     </section>
     <section class="border-t border-slate-800 pt-3 space-y-2" aria-labelledby="cost-classification-heading">

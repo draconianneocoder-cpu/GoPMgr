@@ -109,6 +109,9 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 	} else if err != nil {
 		return Project{}, err
 	}
+	if p.CurrencyCode == "JPY" && (isCreate || before.CurrencyCode != "JPY") {
+		return Project{}, errors.New("JPY is retained only for legacy projects because Cost Control uses a fixed two-decimal amount convention")
+	}
 	if !isCreate && before.CurrencyCode != p.CurrencyCode {
 		var count, reserveCount, baselineCount int
 		if err = tx.QueryRow(`SELECT COUNT(*) FROM cost_entries WHERE project_id = ?`, p.ID).Scan(&count); err != nil {

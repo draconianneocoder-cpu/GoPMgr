@@ -37,20 +37,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
     { id: 'protection', label: 'Data Protection' },
   ];
 
-  // Phase 1 financial reporting is single-currency per project. This list is
-  // kept in sync with internal/db/cost_control.go's supportedProjectCurrencies.
+  // Phase 1 financial reporting is single-currency per project. JPY is
+  // intentionally absent: old projects keep it read-only under their original
+  // fixed-two-decimal convention until an exponent-aware migration exists.
   const projectCurrencies = [
     ['USD', 'US dollar (USD)'],
     ['EUR', 'Euro (EUR)'],
     ['GBP', 'Pound sterling (GBP)'],
     ['CAD', 'Canadian dollar (CAD)'],
     ['AUD', 'Australian dollar (AUD)'],
-    ['JPY', 'Japanese yen (JPY)'],
     ['CHF', 'Swiss franc (CHF)'],
   ] as const;
 
   let draft = $state<ProjectMeta | null>(null);
   let original = $state<ProjectMeta | null>(null);
+  const legacyJPY = $derived(original?.currency_code === 'JPY');
   let busy = $state(false);
   let status = $state('');
   let error = $state('');
@@ -330,6 +331,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     // and so a later mid-save edit can be detected and preserved rather
     // than silently overwritten by this save's own response.
     const savingDraft = { ...draft };
+    let savedMeta: ProjectMeta | null = null;
     busy = true;
     error = '';
     status = '';
@@ -337,7 +339,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // Two calls because UpdateProjectIndustry covers the four
       // Launchpad columns explicitly; UpdateProjectMeta handles
       // everything else.
-      const meta = await window.go.main.App.UpdateProjectMeta(savingDraft);
+      savedMeta = normaliseProjectMeta(await window.go.main.App.UpdateProjectMeta(savingDraft));
       const merged = normaliseProjectMeta(
         await window.go.main.App.UpdateProjectIndustry(
           savingDraft.industry,
@@ -351,16 +353,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
       session.project = merged;
       if (latestDraft && JSON.stringify(latestDraft) !== JSON.stringify(savingDraft)) {
         draft = rebaseEditableChanges(merged, savingDraft, latestDraft, PROJECT_META_BACKEND_OWNED_KEYS);
-        // Suppress unused-variable warning while keeping the explicit
-        // call so the metadata path is always exercised.
-        void meta;
         return true;
       }
       draft = { ...merged };
       status = 'Saved.';
-      void meta;
       return true;
     } catch (err: any) {
+      if (savedMeta) {
+        original = savedMeta;
+        session.project = savedMeta;
+        draft = { ...savedMeta };
+      } else if (original) {
+        draft = { ...original };
+      }
       error = `Save failed: ${err}`;
       return false;
     } finally {
@@ -1233,9 +1238,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
               {#each projectCurrencies as [code, label] (code)}
                 <option value={code}>{label}</option>
               {/each}
+              {#if legacyJPY}
+                <option value="JPY">Japanese yen (JPY) — legacy read-only</option>
+              {/if}
             </select>
             <span id="reporting-currency-help" class="block text-[10px] text-slate-500 mt-1">
-              Used for all Cost Control amounts. It can change only while this project has no Budget value, Cost Control entry, non-zero reserve balance, or approved Cost Control baseline, because GoPMgr does not convert stored values.
+              {legacyJPY
+                ? 'Legacy JPY values remain readable under their original fixed two-decimal convention. Cost Control changes are disabled; no values were converted. Select a supported currency only if this project has no financial values that lock its currency.'
+                : 'Used for all Cost Control amounts. It can change only while this project has no Budget value, Cost Control entry, non-zero reserve balance, or approved Cost Control baseline, because GoPMgr does not convert stored values.'}
             </span>
           </label>
        </div>

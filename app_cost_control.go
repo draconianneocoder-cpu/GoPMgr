@@ -25,15 +25,16 @@ type CostEntryWire struct {
 }
 
 type CostSummaryWire struct {
-	CurrencyCode      string `json:"currency_code"`
-	LegacyBudget      string `json:"legacy_budget"`
-	Planned           string `json:"planned"`
-	Contingency       string `json:"contingency"`
-	CostBaseline      string `json:"cost_baseline"`
-	ManagementReserve string `json:"management_reserve"`
-	AuthorisedFunding string `json:"authorised_funding"`
-	Commitment        string `json:"commitment"`
-	Actual            string `json:"actual"`
+	CurrencyCode           string `json:"currency_code"`
+	MutationDisabledReason string `json:"mutation_disabled_reason"`
+	LegacyBudget           string `json:"legacy_budget"`
+	Planned                string `json:"planned"`
+	Contingency            string `json:"contingency"`
+	CostBaseline           string `json:"cost_baseline"`
+	ManagementReserve      string `json:"management_reserve"`
+	AuthorisedFunding      string `json:"authorised_funding"`
+	Commitment             string `json:"commitment"`
+	Actual                 string `json:"actual"`
 }
 
 // CostClassificationRowWire is one bucket in an independent Cost Control
@@ -154,6 +155,9 @@ func (a *App) SaveCostReserve(input CostReserveWire) (CostReserveWire, error) {
 	if err != nil {
 		return CostReserveWire{}, err
 	}
+	if err := costControlMutationAllowed(p); err != nil {
+		return CostReserveWire{}, err
+	}
 	amount, err := parseMoneyDecimal(input.Amount)
 	if err != nil {
 		return CostReserveWire{}, err
@@ -172,6 +176,9 @@ func (a *App) SaveCostEntry(input CostEntryWire) (CostEntryWire, error) {
 	}
 	p, err := d.GetProject()
 	if err != nil {
+		return CostEntryWire{}, err
+	}
+	if err := costControlMutationAllowed(p); err != nil {
 		return CostEntryWire{}, err
 	}
 	amount, err := parseMoneyDecimal(input.Amount)
@@ -193,6 +200,9 @@ func (a *App) ApproveCostBaseline(note string) (CostBaselineWire, error) {
 	}
 	p, err := d.GetProject()
 	if err != nil {
+		return CostBaselineWire{}, err
+	}
+	if err := costControlMutationAllowed(p); err != nil {
 		return CostBaselineWire{}, err
 	}
 	s, err := d.ApproveCostBaseline(p.ID, user.Username, strings.TrimSpace(note))
@@ -291,7 +301,21 @@ func (a *App) ComputeCostSummary() (CostSummaryWire, error) {
 	if err != nil {
 		return CostSummaryWire{}, err
 	}
-	return CostSummaryWire{CurrencyCode: p.CurrencyCode, LegacyBudget: formatMoneyDecimal(legacyBudget), Planned: formatMoneyDecimal(pl), Contingency: formatMoneyDecimal(c), CostBaseline: formatMoneyDecimal(baseline), ManagementReserve: formatMoneyDecimal(m), AuthorisedFunding: formatMoneyDecimal(authority), Commitment: formatMoneyDecimal(co), Actual: formatMoneyDecimal(ac)}, nil
+	return CostSummaryWire{CurrencyCode: p.CurrencyCode, MutationDisabledReason: costControlMutationDisabledReason(p), LegacyBudget: formatMoneyDecimal(legacyBudget), Planned: formatMoneyDecimal(pl), Contingency: formatMoneyDecimal(c), CostBaseline: formatMoneyDecimal(baseline), ManagementReserve: formatMoneyDecimal(m), AuthorisedFunding: formatMoneyDecimal(authority), Commitment: formatMoneyDecimal(co), Actual: formatMoneyDecimal(ac)}, nil
+}
+
+func costControlMutationAllowed(project db.Project) error {
+	if reason := costControlMutationDisabledReason(project); reason != "" {
+		return errors.New(reason)
+	}
+	return nil
+}
+
+func costControlMutationDisabledReason(project db.Project) string {
+	if project.CurrencyCode == "JPY" {
+		return "Cost Control is read-only for this legacy JPY project: existing amounts retain their original fixed two-decimal convention and are not being converted."
+	}
+	return ""
 }
 
 func costEntryWire(entry db.CostEntry) CostEntryWire {

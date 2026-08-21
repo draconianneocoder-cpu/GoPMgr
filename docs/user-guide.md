@@ -142,9 +142,9 @@ The Dashboard exposes:
   commitment, and actual entries. It does not import the Budget panel's
   stakeholder contracts or agile estimates, preventing double counting. New
   entries use exact decimal-string amounts in the project's locked reporting
-  currency (USD by default for new and legacy projects). The current Cost
-  Control amount boundary always uses two decimal places. Project Settings can
-  select USD, EUR, GBP, CAD, AUD, JPY, or CHF only while the project has no
+  currency (USD by default for new and legacy projects). The Cost Control
+  amount boundary uses a fixed two-decimal convention. Project Settings can
+  select USD, EUR, GBP, CAD, AUD, or CHF only while the project has no
   Budget value, Cost Control entry, non-zero reserve balance, or approved Cost
   Control baseline. It cannot change while any of those values exists because
   Phase 1 has no FX conversion. The dashboard shows
@@ -157,11 +157,13 @@ The Dashboard exposes:
   Contingency and management reserves are separate records and do not count as
   commitments or actual costs. Phase 1 does not yet provide reserve drawdowns,
   foreign exchange, time-phased cash flow, or
-  automatic EVM integration. JPY is selectable and the current application
-  accepts it using the same fixed two-decimal convention as every other Cost
-  Control currency. That convention is not currency-exponent-aware, so Phase 2
-  must define JPY's standards/interoperability policy and any needed migration
-  before GoPMgr claims exponent-aware JPY support.
+  automatic EVM integration. JPY cannot be selected for a new project or a
+  currency change. Existing JPY projects remain readable, and their historical
+  Cost Control values retain the original fixed two-decimal convention without
+  conversion. Cost Control is read-only for those legacy JPY projects so a
+  displayed value cannot be silently given new semantics. A future
+  exponent-aware JPY delivery requires an explicit storage, migration, and
+  interoperability design before GoPMgr claims that support.
 
 Each Cost Control entry inherits three cost-type classifications: direct or
 indirect attribution, fixed or variable behavior, and CapEx, OpEx, or not

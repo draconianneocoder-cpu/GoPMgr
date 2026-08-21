@@ -35,12 +35,100 @@ func TestCostControlWireUsesSnakeCaseStringMoney(t *testing.T) {
 		t.Fatal(err)
 	}
 	encoded := string(body)
-	if !strings.Contains(encoded, `"currency_code":"USD"`) || !strings.Contains(encoded, `"legacy_budget":"90071992547409.91"`) || !strings.Contains(encoded, `"cost_baseline":"90071992547409.91"`) {
+	if !strings.Contains(encoded, `"currency_code":"USD"`) || !strings.Contains(encoded, `"mutation_disabled_reason":""`) || !strings.Contains(encoded, `"legacy_budget":"90071992547409.91"`) || !strings.Contains(encoded, `"cost_baseline":"90071992547409.91"`) {
 		t.Fatalf("wire JSON = %s", encoded)
 	}
 	if strings.Contains(encoded, "CurrencyCode") || strings.Contains(encoded, "CostBaseline") || strings.Contains(encoded, `"funding":`) || strings.Contains(encoded, `"remaining_funding":`) {
 		t.Fatalf("wire JSON exposes Go field names: %s", encoded)
 	}
+}
+
+func TestLegacyJPYCostControlIsReadableButRejectsMutations(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Legacy JPY")
+	d := app.requireDB()
+	p, err := d.GetProject()
+	if err != nil {
+		t.Fatalf("GetProject: %v", err)
+	}
+	if _, err = d.Conn.Exec(`UPDATE project SET currency_code='JPY' WHERE id=?`, p.ID); err != nil {
+		t.Fatalf("seed legacy JPY project: %v", err)
+	}
+	p, err = d.GetProject()
+	if err != nil {
+		t.Fatalf("reload legacy JPY project: %v", err)
+	}
+	types, err := d.ListCostTypes(p.ID)
+	if err != nil {
+		t.Fatalf("ListCostTypes: %v", err)
+	}
+	if _, err = d.SaveCostEntry(db.CostEntry{ProjectID: p.ID, CostTypeID: types[0].ID, Kind: "planned", CostDate: "2026-08-21", Description: "Existing legacy value", AmountMinorUnits: 12_345}); err != nil {
+		t.Fatalf("seed legacy entry: %v", err)
+	}
+	if _, err = d.SaveCostReserve(db.CostReserve{ProjectID: p.ID, Kind: "contingency", AmountMinorUnits: 500, Description: "Existing legacy reserve"}); err != nil {
+		t.Fatalf("seed legacy reserve: %v", err)
+	}
+	if _, err = d.ApproveCostBaseline(p.ID, "alice", "Existing legacy baseline"); err != nil {
+		t.Fatalf("seed legacy baseline: %v", err)
+	}
+
+	summary, err := app.ComputeCostSummary()
+	if err != nil {
+		t.Fatalf("ComputeCostSummary: %v", err)
+	}
+	if summary.CurrencyCode != "JPY" || summary.Planned != "123.45" || summary.MutationDisabledReason == "" {
+		t.Fatalf("legacy JPY summary = %#v", summary)
+	}
+	if entries, err := app.ListCostEntries(); err != nil || len(entries) != 1 || entries[0].Amount != "123.45" {
+		t.Fatalf("legacy JPY entries = %#v, %v", entries, err)
+	}
+	if baselines, err := app.ListCostBaselines(); err != nil || len(baselines) != 1 || baselines[0].CostBaseline != "128.45" {
+		t.Fatalf("legacy JPY baselines = %#v, %v", baselines, err)
+	}
+
+	beforeEntries, beforeReserves, beforeBaselines, beforeAuditEvents := countCostControlRows(t, d)
+	for _, mutation := range []struct {
+		name string
+		run  func() error
+	}{
+		{"entry", func() error {
+			_, err := app.SaveCostEntry(CostEntryWire{CostTypeID: types[0].ID, Kind: "actual", CostDate: "2026-08-21", Description: "Blocked", Amount: "1.00"})
+			return err
+		}},
+		{"reserve", func() error {
+			_, err := app.SaveCostReserve(CostReserveWire{Kind: "management", Amount: "1.00", Description: "Blocked"})
+			return err
+		}},
+		{"baseline", func() error { _, err := app.ApproveCostBaseline("Blocked"); return err }},
+	} {
+		if err := mutation.run(); err == nil || !strings.Contains(err.Error(), "read-only") {
+			t.Fatalf("%s mutation error = %v", mutation.name, err)
+		}
+	}
+	afterEntries, afterReserves, afterBaselines, afterAuditEvents := countCostControlRows(t, d)
+	if beforeEntries != afterEntries || beforeReserves != afterReserves || beforeBaselines != afterBaselines || beforeAuditEvents != afterAuditEvents {
+		t.Fatalf("legacy JPY mutation changed rows: before %d/%d/%d/%d after %d/%d/%d/%d", beforeEntries, beforeReserves, beforeBaselines, beforeAuditEvents, afterEntries, afterReserves, afterBaselines, afterAuditEvents)
+	}
+}
+
+func countCostControlRows(t *testing.T, d *db.Database) (entries, reserves, baselines, auditEvents int) {
+	t.Helper()
+	if err := d.Conn.QueryRow(`SELECT COUNT(*) FROM cost_entries`).Scan(&entries); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Conn.QueryRow(`SELECT COUNT(*) FROM cost_reserves`).Scan(&reserves); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Conn.QueryRow(`SELECT COUNT(*) FROM cost_baseline_snapshots`).Scan(&baselines); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Conn.QueryRow(`SELECT COUNT(*) FROM audit_events`).Scan(&auditEvents); err != nil {
+		t.Fatal(err)
+	}
+	return entries, reserves, baselines, auditEvents
 }
 
 func TestCostClassificationWireUsesSnakeCaseStringMoney(t *testing.T) {
