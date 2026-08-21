@@ -275,8 +275,8 @@ func TestComputeBudgetIncludesStakeholderContractValue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ComputeBudget: %v", err)
 	}
-	if summary.CommittedMinorUnits != 500_00 {
-		t.Fatalf("want committed cost 50000 minor units, got %d", summary.CommittedMinorUnits)
+	if summary.Committed != "500.00" {
+		t.Fatalf("want committed cost 500.00, got %q", summary.Committed)
 	}
 }
 

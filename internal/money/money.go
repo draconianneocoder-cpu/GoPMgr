@@ -10,8 +10,11 @@ package money
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"math/big"
+	"strconv"
+	"strings"
 )
 
 const MinorUnitsPerMajor int64 = 100
@@ -23,6 +26,75 @@ var ErrOverflow = errors.New("monetary amount exceeds int64 minor-unit range")
 // Amount is a signed monetary value in minor units.
 type Amount struct {
 	MinorUnits int64
+}
+
+// ParseDecimal parses an unsigned-or-signed major-unit decimal at the public
+// boundary. It accepts a whole number or one/two fractional digits, rejects
+// alternate spellings that could hide a value (such as whitespace, exponent
+// notation, grouping separators, a leading plus, leading zeroes, or negative
+// zero), and returns the exact signed int64 minor-unit representation.
+func ParseDecimal(v string) (Amount, error) {
+	if v == "" {
+		return Amount{}, errors.New("amount is required")
+	}
+	if strings.TrimSpace(v) != v {
+		return Amount{}, errors.New("amount must not contain surrounding whitespace")
+	}
+	negative := strings.HasPrefix(v, "-")
+	if negative {
+		v = v[1:]
+	}
+	parts := strings.Split(v, ".")
+	if len(parts) > 2 || parts[0] == "" || (len(parts) == 2 && (parts[1] == "" || len(parts[1]) > 2)) {
+		return Amount{}, errors.New("amount must be a decimal with at most two fractional digits")
+	}
+	if len(parts[0]) > 1 && parts[0][0] == '0' {
+		return Amount{}, errors.New("amount must not contain leading zeroes")
+	}
+	whole, err := strconv.ParseUint(parts[0], 10, 64)
+	if err != nil {
+		return Amount{}, fmt.Errorf("amount: %w", err)
+	}
+	frac := uint64(0)
+	if len(parts) == 2 {
+		fraction := parts[1]
+		if len(fraction) == 1 {
+			fraction += "0"
+		}
+		frac, err = strconv.ParseUint(fraction, 10, 64)
+		if err != nil {
+			return Amount{}, fmt.Errorf("amount: %w", err)
+		}
+	}
+	limit := uint64(math.MaxInt64)
+	if negative {
+		limit++ // absolute value of math.MinInt64
+	}
+	if whole > (limit-frac)/uint64(MinorUnitsPerMajor) {
+		return Amount{}, ErrOverflow
+	}
+	minor := whole*uint64(MinorUnitsPerMajor) + frac
+	if minor == 0 && negative {
+		return Amount{}, errors.New("amount must not be negative zero")
+	}
+	if negative {
+		if minor == uint64(math.MaxInt64)+1 {
+			return Amount{MinorUnits: math.MinInt64}, nil
+		}
+		return Amount{MinorUnits: -int64(minor)}, nil
+	}
+	return Amount{MinorUnits: int64(minor)}, nil
+}
+
+// Decimal returns a canonical, fixed-two-decimal major-unit representation
+// suitable for Wails transport. It is never a JavaScript number.
+func (a Amount) Decimal() string {
+	n := a.MinorUnits
+	if n < 0 {
+		// Dividing first keeps MinInt64 representable; negating it does not.
+		return fmt.Sprintf("-%d.%02d", -(n / MinorUnitsPerMajor), -(n % MinorUnitsPerMajor))
+	}
+	return fmt.Sprintf("%d.%02d", n/MinorUnitsPerMajor, n%MinorUnitsPerMajor)
 }
 
 // FromMajorFloat converts a UI/database compatibility number such as

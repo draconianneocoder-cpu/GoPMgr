@@ -324,6 +324,35 @@ describe('reporting currency', () => {
   });
 });
 
+describe('legacy Budget decimal transport', () => {
+  it('submits an exact decimal string without a stale minor-unit field', async () => {
+    app.GetProjectMeta = vi.fn(async () => ({
+      id: 'project-1', name: 'Exact Budget Project', description: '', industry: '', sub_category: '', methodology: '',
+      country_code: 'US', time_zone: 'America/Chicago', status: 'planning', phase: 'planning',
+      budget: '90071992547409.91', currency_code: 'USD',
+    }));
+    app.UpdateProjectMeta = vi.fn(async (p: unknown) => p);
+    app.UpdateProjectIndustry = vi.fn(async () => ({
+      id: 'project-1', name: 'Exact Budget Project', description: '', industry: '', sub_category: '', methodology: '',
+      country_code: 'US', time_zone: 'America/Chicago', status: 'planning', phase: 'planning',
+      budget: '92233720368547758.07', currency_code: 'USD',
+    }));
+    const { container, findByRole } = render(ProjectSettings);
+    await findByRole('tab', { name: /general/i });
+    const budget = container.querySelector('input[inputmode="decimal"]');
+    expect(budget).not.toBeNull();
+
+    await fireEvent.input(budget!, { target: { value: '92233720368547758.07' } });
+    await fireEvent.click(await findByRole('button', { name: /^save details$/i }));
+
+    await waitFor(() => expect(app.UpdateProjectMeta).toHaveBeenCalledOnce());
+    expect(app.UpdateProjectMeta).toHaveBeenCalledWith(expect.objectContaining({
+      budget: '92233720368547758.07',
+    }));
+    expect((app.UpdateProjectMeta.mock.calls[0][0] as Record<string, unknown>).budget_minor_units).toBeUndefined();
+  });
+});
+
 // Regression coverage for a defect found via packaged-GUI testing on
 // 2026-08-18: UpdateProjectIndustry always returns a fresh server-stamped
 // `updated_at` (internal/db/project.go's UpsertProject). The shared

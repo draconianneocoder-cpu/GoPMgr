@@ -103,6 +103,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       industry: p.industry ?? '',
       methodology: p.methodology ?? '',
       currency_code: p.currency_code ?? 'USD',
+      budget: p.budget ?? '0.00',
     };
   }
 
@@ -320,7 +321,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // blocklist, not an allowlist).
   const PROJECT_META_BACKEND_OWNED_KEYS: readonly (keyof ProjectMeta)[] = [
     'id',
-    'budget_minor_units',
     'created_at',
     'updated_at',
   ];
@@ -1219,8 +1219,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <label class="block md:col-span-2">
             <span class="text-xs text-slate-500 uppercase">Budget</span>
             <input
-              type="number"
-              step="100"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
               bind:value={draft.budget}
               class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             />

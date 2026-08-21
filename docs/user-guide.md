@@ -136,8 +136,12 @@ The Dashboard exposes:
 - **Timeline:** a chronological project strip with project dates, sprint
   ranges, milestones, deployments, and country-aware holidays.
 - **Budget:** a live rollup of project budget against vendor contracts
-  and work-item estimates. Currency calculations are kept at cent precision,
-  so fractional labour estimates round once at the money boundary.
+  and work-item estimates. The Project Settings value and every Budget-panel
+  total cross the desktop boundary as exact two-decimal strings, not JavaScript
+  numbers. This preserves values through the full signed 64-bit minor-unit
+  range. The progress bar is visual context only; it does not feed a saved
+  amount. Currency calculations are kept at cent precision, so fractional
+  labour estimates round once at the money boundary.
 - **Cost Control:** an independent, project-local ledger for planned,
   commitment, and actual entries. It does not import the Budget panel's
   stakeholder contracts or agile estimates, preventing double counting. New

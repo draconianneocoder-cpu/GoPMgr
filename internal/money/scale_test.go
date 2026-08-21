@@ -151,6 +151,30 @@ func TestMajorFloat_RoundTripsWithFromMajorFloat(t *testing.T) {
 	}
 }
 
+func TestDecimalRoundTripsFullInt64Range(t *testing.T) {
+	for _, minorUnits := range []int64{math.MinInt64, -1, 0, 1, math.MaxInt64} {
+		amount := Amount{MinorUnits: minorUnits}
+		parsed, err := ParseDecimal(amount.Decimal())
+		if err != nil {
+			t.Fatalf("ParseDecimal(%q): %v", amount.Decimal(), err)
+		}
+		if parsed != amount {
+			t.Fatalf("ParseDecimal(%q) = %+v, want %+v", amount.Decimal(), parsed, amount)
+		}
+	}
+}
+
+func TestParseDecimalRejectsAmbiguousOrUnsafeInput(t *testing.T) {
+	for _, input := range []string{
+		"", " 1", "1 ", "+1", "01", "01.00", "1.", ".1", "1.234",
+		"1e2", "1,000", "-0", "-0.00", "92233720368547758.08",
+	} {
+		if _, err := ParseDecimal(input); err == nil {
+			t.Errorf("ParseDecimal(%q) accepted invalid input", input)
+		}
+	}
+}
+
 // TestFromMajorFloat_SaturatesRatherThanWrappingOnOverflow previously
 // pinned only that an overflowing input saturates to ONE OF the two
 // int64 extremes, not which one -- because that behavior was inherited

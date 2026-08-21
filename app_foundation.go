@@ -59,7 +59,7 @@ func (a *App) LaunchpadEvaluate(industry, methodology string) ([]string, error) 
 // `res.project` / `res.path` instead of destructuring an array (a null
 // array result silently broke project creation in the UI).
 type LaunchpadResult struct {
-	Project db.Project              `json:"project"`
+	Project ProjectMetaWire         `json:"project"`
 	Seeds   []templates.SeedReceipt `json:"seeds"`
 	Path    string                  `json:"path"`
 }
@@ -149,7 +149,7 @@ func (a *App) CreateProjectFromLaunchpad(
 	// (opening charts, documents, etc.) work immediately after creation
 	// without requiring a separate OpenProject call from the frontend.
 	if _, openErr := a.OpenProject(path); openErr != nil {
-		return LaunchpadResult{Project: proj, Seeds: receipts, Path: path},
+		return LaunchpadResult{Project: projectMetaWire(proj), Seeds: receipts, Path: path},
 			fmt.Errorf("project created but could not activate: %w", openErr)
 	}
 
@@ -157,10 +157,10 @@ func (a *App) CreateProjectFromLaunchpad(
 	// from the dashboard. Bubble the error up so the GUI shows a
 	// notice.
 	if seedErr != nil {
-		return LaunchpadResult{Project: proj, Seeds: receipts, Path: path},
+		return LaunchpadResult{Project: projectMetaWire(proj), Seeds: receipts, Path: path},
 			fmt.Errorf("project created but seeding partial: %w", seedErr)
 	}
-	return LaunchpadResult{Project: proj, Seeds: receipts, Path: path}, nil
+	return LaunchpadResult{Project: projectMetaWire(proj), Seeds: receipts, Path: path}, nil
 }
 
 // applyLaunchpadSeeds applies the requested starter artifacts and enables the
@@ -205,14 +205,14 @@ func seedsRequestAgilePack(seeds []string) bool {
 // UpdateProjectIndustry persists changes to industry / sub-category /
 // methodology / country code on an already-open project. Used by the
 // project Settings view if the user reclassifies later.
-func (a *App) UpdateProjectIndustry(industry, subCategory, methodology, countryCode string) (db.Project, error) {
+func (a *App) UpdateProjectIndustry(industry, subCategory, methodology, countryCode string) (ProjectMetaWire, error) {
 	d := a.requireDB()
 	if d == nil {
-		return db.Project{}, errors.New("no project open")
+		return ProjectMetaWire{}, errors.New("no project open")
 	}
 	p, err := d.GetProject()
 	if err != nil {
-		return db.Project{}, err
+		return ProjectMetaWire{}, err
 	}
 	p.Industry = industry
 	p.SubCategory = subCategory
@@ -221,7 +221,11 @@ func (a *App) UpdateProjectIndustry(industry, subCategory, methodology, countryC
 	if !calendar.ValidTimeZone(p.CountryCode, p.TimeZone) {
 		p.TimeZone = calendar.DefaultTimeZone(p.CountryCode)
 	}
-	return d.UpsertProject(p)
+	updated, err := d.UpsertProject(p)
+	if err != nil {
+		return ProjectMetaWire{}, err
+	}
+	return projectMetaWire(updated), nil
 }
 
 // ----- Stakeholders -----
@@ -785,25 +789,29 @@ func (a *App) ListHolidays(fromISO, toISO string) ([]calendar.HolidayEvent, erro
 
 // ComputeBudget rolls up the project's cost picture from stakeholder
 // rates × work-item points + vendor contract values.
-func (a *App) ComputeBudget() (budget.Summary, error) {
+func (a *App) ComputeBudget() (BudgetSummaryWire, error) {
 	d := a.requireDB()
 	if d == nil {
-		return budget.Summary{}, errors.New("no project open")
+		return BudgetSummaryWire{}, errors.New("no project open")
 	}
 	p, err := d.GetProject()
 	if err != nil {
-		return budget.Summary{}, err
+		return BudgetSummaryWire{}, err
 	}
 	stakeholders, err := d.ListStakeholders(p.ID, "")
 	if err != nil {
-		return budget.Summary{}, err
+		return BudgetSummaryWire{}, err
 	}
 	store := agile.NewStore(d.Conn, p.ID)
 	workItems, err := store.ListWorkItems("", "", "")
 	if err != nil {
-		return budget.Summary{}, err
+		return BudgetSummaryWire{}, err
 	}
-	return budget.Compute(p, stakeholders, workItems)
+	summary, err := budget.Compute(p, stakeholders, workItems)
+	if err != nil {
+		return BudgetSummaryWire{}, err
+	}
+	return budgetSummaryWire(summary), nil
 }
 
 // RunPortfolioAnalytics aggregates a cross-project cost and EVM rollup over every

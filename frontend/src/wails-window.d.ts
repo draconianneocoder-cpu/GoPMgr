@@ -384,18 +384,12 @@ declare global {
   }
 
   interface BudgetSummary {
-    budget: number;
-    contract_value: number;
-    labour_estimate: number;
-    committed: number;
-    remaining: number;
-    budget_minor_units: number;
-    contract_value_minor_units: number;
-    labour_estimate_minor_units: number;
-    committed_minor_units: number;
-    remaining_minor_units: number;
-    by_category: Record<string, number>;
-    by_category_minor_units: Record<string, number>;
+    budget: string;
+    contract_value: string;
+    labour_estimate: string;
+    committed: string;
+    remaining: string;
+    by_category: Record<string, string>;
   }
 
   interface ReportSection {
@@ -555,8 +549,7 @@ declare global {
     phase: string;
     start_date: string;
     end_date: string;
-    budget: number;
-    budget_minor_units?: number;
+    budget: string;
     currency_code: string;
     owner: string;
     industry: string;

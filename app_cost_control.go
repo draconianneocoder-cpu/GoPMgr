@@ -6,7 +6,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"gopmgr/internal/db"
@@ -420,47 +419,8 @@ func classifyCostEntries(entries []db.CostEntry, typesByID map[string]db.CostTyp
 }
 
 func parseMoneyDecimal(v string) (money.Amount, error) {
-	if v == "" {
-		return money.Amount{}, errors.New("amount is required")
-	}
-	neg := strings.HasPrefix(v, "-")
-	if neg {
-		v = v[1:]
-	}
-	parts := strings.Split(v, ".")
-	if len(parts) > 2 || parts[0] == "" || len(parts) == 2 && len(parts[1]) > 2 {
-		return money.Amount{}, errors.New("amount must be a canonical decimal with at most two fractional digits")
-	}
-	whole, err := strconv.ParseInt(parts[0], 10, 64)
-	if err != nil {
-		return money.Amount{}, fmt.Errorf("amount: %w", err)
-	}
-	frac := int64(0)
-	if len(parts) == 2 {
-		if len(parts[1]) == 1 {
-			parts[1] += "0"
-		}
-		if parts[1] != "" {
-			frac, err = strconv.ParseInt(parts[1], 10, 64)
-			if err != nil {
-				return money.Amount{}, fmt.Errorf("amount: %w", err)
-			}
-		}
-	}
-	if whole > (1<<63-1-frac)/100 {
-		return money.Amount{}, money.ErrOverflow
-	}
-	out := whole*100 + frac
-	if neg {
-		out = -out
-	}
-	return money.Amount{MinorUnits: out}, nil
+	return money.ParseDecimal(v)
 }
 func formatMoneyDecimal(amount money.Amount) string {
-	n := amount.MinorUnits
-	if n < 0 {
-		// Dividing first keeps MinInt64 representable; negating it does not.
-		return fmt.Sprintf("-%d.%02d", -(n / 100), -(n % 100))
-	}
-	return fmt.Sprintf("%d.%02d", n/100, n%100)
+	return amount.Decimal()
 }

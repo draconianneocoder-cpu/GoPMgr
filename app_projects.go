@@ -844,7 +844,7 @@ func (a *App) applyGlobalDefaults(d *db.Database) {
 }
 
 // OpenProject loads a project file (.gopmgr, or legacy .pmforge) as the current project.
-func (a *App) OpenProject(path string) (db.Project, error) {
+func (a *App) OpenProject(path string) (ProjectMetaWire, error) {
 	// Confine to the signed-in user's own projects folder before doing any
 	// work (and before taking the write lock, since projectPathFor read-locks
 	// a.mu via requireUser). This is the same boundary DeleteProject/
@@ -852,7 +852,7 @@ func (a *App) OpenProject(path string) (db.Project, error) {
 	// the SQLCipher DSN.
 	clean, _, err := a.projectPathFor(path)
 	if err != nil {
-		return db.Project{}, err
+		return ProjectMetaWire{}, err
 	}
 
 	a.mu.Lock()
@@ -860,7 +860,7 @@ func (a *App) OpenProject(path string) (db.Project, error) {
 
 	dek, err := a.requireDEKLocked()
 	if err != nil {
-		return db.Project{}, err
+		return ProjectMetaWire{}, err
 	}
 	if a.db != nil {
 		_ = a.db.Close()
@@ -869,18 +869,18 @@ func (a *App) OpenProject(path string) (db.Project, error) {
 	d, err := db.InitEncryptedDB(clean, dek)
 	if err != nil {
 		if encrypted, encErr := db.IsEncryptedFile(clean); encErr == nil && !encrypted {
-			return db.Project{}, ErrProjectRequiresEncryptionMigration
+			return ProjectMetaWire{}, ErrProjectRequiresEncryptionMigration
 		}
-		return db.Project{}, err
+		return ProjectMetaWire{}, err
 	}
 	proj, projErr := d.GetProject()
 	if projErr != nil {
 		_ = d.Close()
-		return db.Project{}, projErr
+		return ProjectMetaWire{}, projErr
 	}
 	if err := verifyProjectAuditForOpen(d, proj); err != nil {
 		_ = d.Close()
-		return db.Project{}, err
+		return ProjectMetaWire{}, err
 	}
 	// Apply the project's saved document font (no-op if unset). Done
 	// while we still hold the lock since it only reads d + the user's
@@ -890,7 +890,7 @@ func (a *App) OpenProject(path string) (db.Project, error) {
 	a.dbPath = clean
 	a.adminSvc = admin.NewService(d)
 	a.sigmaSvc = service.NewProjectService(d)
-	return proj, nil
+	return projectMetaWire(proj), nil
 }
 
 func verifyProjectAuditForOpen(d *db.Database, project db.Project) error {
@@ -1004,25 +1004,37 @@ func (a *App) configureFontsLocked(d *db.Database) {
 }
 
 // GetProjectMeta returns the metadata of the currently-open project.
-func (a *App) GetProjectMeta() (db.Project, error) {
+func (a *App) GetProjectMeta() (ProjectMetaWire, error) {
 	d := a.requireDB()
 	if d == nil {
-		return db.Project{}, errors.New("no project open")
+		return ProjectMetaWire{}, errors.New("no project open")
 	}
-	return d.GetProject()
+	p, err := d.GetProject()
+	if err != nil {
+		return ProjectMetaWire{}, err
+	}
+	return projectMetaWire(p), nil
 }
 
 // UpdateProjectMeta upserts the project metadata.
-func (a *App) UpdateProjectMeta(p db.Project) (db.Project, error) {
+func (a *App) UpdateProjectMeta(wire ProjectMetaWire) (ProjectMetaWire, error) {
 	d := a.requireDB()
 	if d == nil {
-		return db.Project{}, errors.New("no project open")
+		return ProjectMetaWire{}, errors.New("no project open")
+	}
+	p, err := projectFromMetaWire(wire)
+	if err != nil {
+		return ProjectMetaWire{}, err
 	}
 	if p.TimeZone == "" {
 		p.TimeZone = calendar.DefaultTimeZone(p.CountryCode)
 	}
 	if !calendar.ValidTimeZone(p.CountryCode, p.TimeZone) {
-		return db.Project{}, fmt.Errorf("time zone %q is not supported by the %s business-calendar policy", p.TimeZone, p.CountryCode)
+		return ProjectMetaWire{}, fmt.Errorf("time zone %q is not supported by the %s business-calendar policy", p.TimeZone, p.CountryCode)
 	}
-	return d.UpsertProject(p)
+	saved, err := d.UpsertProject(p)
+	if err != nil {
+		return ProjectMetaWire{}, err
+	}
+	return projectMetaWire(saved), nil
 }

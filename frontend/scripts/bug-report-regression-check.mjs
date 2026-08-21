@@ -24,11 +24,11 @@ const checks = [
       adminPanel.includes("formatLastLogin(user.last_login)"),
   ],
   [
-    'budget panel uses compact numbers to prevent overflow',
-    budgetPanel.includes('formatCompactCurrency') &&
-      budgetPanel.includes('compact: true') &&
+    'budget panel keeps exact decimal strings and truncates presentation only',
+    budgetPanel.includes('approximateForProgress') &&
+      budgetPanel.includes('summary.budget') &&
       budgetPanel.includes('truncate') &&
-      budgetPanel.includes('title={fmt('),
+      budgetPanel.includes('title={summary.budget}'),
   ],
   [
     'WBS editor rejects negative effort units',
