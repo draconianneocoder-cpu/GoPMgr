@@ -70,6 +70,18 @@ function makeApp(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
       by_category: {},
       by_category_minor_units: {},
     })),
+    ListCostTypes: vi.fn(async () => []),
+    ListCostEntries: vi.fn(async () => []),
+    ListCostReserves: vi.fn(async () => []),
+    ListCostBaselines: vi.fn(async () => []),
+    ComputeCostSummary: vi.fn(async () => ({
+      currency_code: 'USD', legacy_budget: '0.00', planned: '0.00', contingency: '0.00',
+      cost_baseline: '0.00', management_reserve: '0.00', authorised_funding: '0.00',
+      commitment: '0.00', actual: '0.00',
+    })),
+    ComputeCostClassificationSummary: vi.fn(async () => ({
+      attribution: [], behavior: [], treatment: [],
+    })),
     DeleteChart: vi.fn(async () => undefined),
     DeleteDocument: vi.fn(async () => undefined),
     SaveChart: vi.fn(async (c: ChartRecord) => ({ ...c, id: 'new-chart-1' })),

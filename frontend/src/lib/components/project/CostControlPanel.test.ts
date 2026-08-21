@@ -1,17 +1,28 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { fireEvent, render } from '@testing-library/svelte';
+import { fireEvent, render, waitFor } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import CostControlPanel from './CostControlPanel.svelte';
 
-function installApp(baselines: Array<Record<string, string | number>> = []) {
+type CostControlFixture = {
+  baselines?: Array<Record<string, string | number>>;
+  types?: Array<Record<string, string | boolean>>;
+  entries?: Array<Record<string, string>>;
+  failFirstLoad?: boolean;
+};
+
+function installApp({ baselines = [], types = [{ id: 'labor', project_id: 'p', code: 'labor', name: 'Labor', attribution: 'direct', behavior: 'variable', treatment: 'opex', active: true }], entries = [], failFirstLoad = false }: CostControlFixture = {}) {
+  const listCostTypes = failFirstLoad
+    ? vi.fn().mockRejectedValueOnce(new Error('temporary load failure')).mockResolvedValue(types)
+    : vi.fn(async () => types);
   const app = {
-    ListCostTypes: vi.fn(async () => [{ id: 'labor', project_id: 'p', code: 'labor', name: 'Labor', attribution: 'direct', behavior: 'variable', treatment: 'opex', active: true }]),
-    ListCostEntries: vi.fn(async () => []),
+    ListCostTypes: listCostTypes,
+    ListCostEntries: vi.fn(async () => entries),
     ListCostReserves: vi.fn(async () => []),
     ListCostBaselines: vi.fn(async () => baselines),
     ComputeCostSummary: vi.fn(async () => ({ currency_code: 'USD', legacy_budget: '1000.00', planned: '800.00', contingency: '100.00', cost_baseline: '900.00', management_reserve: '50.00', authorised_funding: '950.00', commitment: '0.00', actual: '0.00' })),
+    ComputeCostClassificationSummary: vi.fn(async () => ({ attribution: [{ value: 'direct', planned: '800.00', commitment: '0.00', actual: '0.00' }, { value: 'indirect', planned: '0.00', commitment: '0.00', actual: '0.00' }], behavior: [{ value: 'fixed', planned: '0.00', commitment: '0.00', actual: '0.00' }, { value: 'variable', planned: '800.00', commitment: '0.00', actual: '0.00' }], treatment: [{ value: 'capex', planned: '0.00', commitment: '0.00', actual: '0.00' }, { value: 'opex', planned: '800.00', commitment: '0.00', actual: '0.00' }, { value: 'not_applicable', planned: '0.00', commitment: '0.00', actual: '0.00' }] })),
     SaveCostEntry: vi.fn(async (entry) => entry),
     SaveCostReserve: vi.fn(async (reserve) => reserve),
     ApproveCostBaseline: vi.fn(async () => ({})),
@@ -28,6 +39,46 @@ describe('CostControlPanel', () => {
     expect(await findByText('Shown for context only; it is not included in Cost Control baseline or authorised funding.')).toBeInTheDocument();
     expect(queryByText(/^Funding$/)).not.toBeInTheDocument();
     expect(queryByText('Unallocated')).not.toBeInTheDocument();
+  });
+
+  it('shows independent classification lenses and keeps historical archived types visible', async () => {
+    installApp({
+      types: [
+        { id: 'labor', project_id: 'p', code: 'labor', name: 'Labor', attribution: 'direct', behavior: 'variable', treatment: 'opex', active: true },
+        { id: 'retired', project_id: 'p', code: 'retired', name: 'Retired capital', attribution: 'direct', behavior: 'fixed', treatment: 'capex', active: false },
+      ],
+      entries: [{ id: 'entry-1', cost_type_id: 'retired', kind: 'actual', cost_date: '2026-08-21', description: 'Historical asset', amount: '25.00' }],
+    });
+    const { findByText, getByLabelText, queryByRole } = render(CostControlPanel);
+    expect(await findByText('Classification and reconciliation')).toBeInTheDocument();
+    expect(await findByText('Each lens independently reconciles to the ledger totals. Do not add values across lenses.')).toBeInTheDocument();
+    expect(await findByText('Retired capital')).toBeInTheDocument();
+    expect(queryByRole('option', { name: 'Retired capital' })).not.toBeInTheDocument();
+    expect(getByLabelText('Cost type')).toHaveValue('labor');
+  });
+
+  it('offers a retry after initial Cost Control loading fails', async () => {
+    const app = installApp({ failFirstLoad: true });
+    const { findByRole, findByText } = render(CostControlPanel);
+    expect(await findByRole('alert')).toHaveTextContent('temporary load failure');
+    await fireEvent.click(await findByRole('button', { name: 'Retry Cost Control' }));
+    expect(await findByText('Legacy budget rollup')).toBeInTheDocument();
+    expect(app.ListCostTypes).toHaveBeenCalledTimes(2);
+  });
+
+  it('finishes taxonomy seeding before it starts classification reads', async () => {
+    let releaseTypes: (types: Array<Record<string, string | boolean>>) => void;
+    const seededTypes = [{ id: 'labor', project_id: 'p', code: 'labor', name: 'Labor', attribution: 'direct', behavior: 'variable', treatment: 'opex', active: true }];
+    const typesReady = new Promise<Array<Record<string, string | boolean>>>((resolve) => { releaseTypes = resolve; });
+    const app = installApp();
+    app.ListCostTypes.mockImplementationOnce(() => typesReady);
+
+    render(CostControlPanel);
+    await Promise.resolve();
+    expect(app.ComputeCostClassificationSummary).not.toHaveBeenCalled();
+
+    releaseTypes!(seededTypes);
+    await waitFor(() => expect(app.ComputeCostClassificationSummary).toHaveBeenCalledTimes(1));
   });
 
   it('keeps contingency and management reserves distinct and saves a reserve', async () => {
@@ -54,7 +105,7 @@ describe('CostControlPanel', () => {
 
   it('shows an immutable baseline rationale and approval timestamp in history', async () => {
     const approvedAt = '2026-08-20T22:15:00.000000000Z';
-    installApp([{ version: 1, currency_code: 'USD', planned: '100.00', contingency: '10.00', cost_baseline: '110.00', management_reserve: '5.00', authorised_funding: '115.00', approved_by: 'alice', approval_note: 'Approved after risk review', approved_at: approvedAt }]);
+    installApp({ baselines: [{ version: 1, currency_code: 'USD', planned: '100.00', contingency: '10.00', cost_baseline: '110.00', management_reserve: '5.00', authorised_funding: '115.00', approved_by: 'alice', approval_note: 'Approved after risk review', approved_at: approvedAt }] });
     const { findByText } = render(CostControlPanel);
     expect(await findByText('Approved after risk review')).toBeInTheDocument();
     expect(await findByText(approvedAt)).toHaveAttribute('datetime', approvedAt);

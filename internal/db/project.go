@@ -100,13 +100,12 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 	if err != nil {
 		return Project{}, err
 	}
-	defer tx.Rollback() // harmless after Commit; releases every early-return path.
+	defer func() { _ = tx.Rollback() }() // harmless after Commit; releases every early-return path.
 
 	before, err := getProjectByIDTx(tx, p.ID)
 	isCreate := false
 	if err == ErrNoProject {
 		isCreate = true
-		err = nil
 	} else if err != nil {
 		return Project{}, err
 	}

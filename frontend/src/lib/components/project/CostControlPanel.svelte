@@ -11,7 +11,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let entries = $state<CostEntry[]>([]);
   let reserves = $state<CostReserve[]>([]);
   let summary = $state<CostSummary | null>(null);
+  let classifications = $state<CostClassificationSummary | null>(null);
   let error = $state('');
+  let loading = $state(true);
   let saving = $state(false);
   let typeID = $state('');
   let kind = $state<CostEntry['kind']>('planned');
@@ -24,19 +26,25 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let baselines = $state<CostBaseline[]>([]);
   let approvalNote = $state('');
   let approvalConfirmOpen = $state(false);
+  const activeTypes = $derived(types.filter((type) => type.active));
+  const typesByID = $derived(new Map(types.map((type) => [type.id, type])));
 
   async function load() {
-    error = '';
+    loading = true; error = '';
     try {
-      [types, entries, reserves, summary, baselines] = await Promise.all([
-        window.go.main.App.ListCostTypes(),
+      // ListCostTypes seeds a new project's taxonomy transactionally. Finish
+      // that one-time write before the concurrent read models inspect it.
+      types = await window.go.main.App.ListCostTypes();
+      [entries, reserves, summary, classifications, baselines] = await Promise.all([
         window.go.main.App.ListCostEntries(),
         window.go.main.App.ListCostReserves(),
         window.go.main.App.ComputeCostSummary(),
+        window.go.main.App.ComputeCostClassificationSummary(),
         window.go.main.App.ListCostBaselines(),
       ]);
-      if (!typeID) typeID = types[0]?.id ?? '';
+      if (!activeTypes.some((type) => type.id === typeID)) typeID = activeTypes[0]?.id ?? '';
     } catch (err) { error = String(err); }
+    finally { loading = false; }
   }
   async function approveBaseline() {
     if (saving || !approvalNote.trim()) return;
@@ -70,8 +78,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <h2 id="cost-control-heading" class="text-xs font-bold uppercase tracking-widest text-cyan-400">Cost control</h2>
     <p class="text-xs text-slate-500 mt-1">Ledger entries are separate from the legacy budget estimate. Amounts use {summary?.currency_code ?? 'USD'}.</p>
   </div>
-  {#if error}<p class="text-xs text-red-400 break-words" role="alert">{error}</p>{/if}
-  {#if !summary}<Spinner label="Loading cost control…" class="py-2" />{:else}
+  {#if loading}<Spinner label="Loading cost control…" class="py-2" />
+  {:else if error}<div class="space-y-2"><p class="text-xs text-red-400 break-words" role="alert">{error}</p><button onclick={() => void load()} class="rounded border border-red-700/70 px-3 py-2 text-xs font-bold text-red-200 hover:bg-red-950/40">Retry Cost Control</button></div>
+  {:else if summary && classifications}
     <aside class="border-l-2 border-slate-700 bg-slate-950/50 px-3 py-2 text-xs text-slate-400" aria-label="Legacy Budget context">
       <span class="font-semibold text-slate-300">Legacy budget rollup</span>
       <span class="ml-2 tabular-nums text-slate-100">{summary.currency_code} {summary.legacy_budget}</span>
@@ -83,7 +92,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {/each}
     </div>
     <form class="grid grid-cols-1 md:grid-cols-5 gap-2" onsubmit={(event) => { event.preventDefault(); void save(); }}>
-      <label class="text-xs text-slate-400">Cost type<select bind:value={typeID} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100">{#each types as type}<option value={type.id}>{type.name}</option>{/each}</select></label>
+      <label class="text-xs text-slate-400">Cost type<select bind:value={typeID} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100">{#each activeTypes as type}<option value={type.id}>{type.name}</option>{/each}</select></label>
       <label class="text-xs text-slate-400">State<select bind:value={kind} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="planned">Planned</option><option value="commitment">Commitment</option><option value="actual">Actual</option></select></label>
       <label class="text-xs text-slate-400">Amount<input bind:value={amount} inputmode="decimal" required aria-label="Amount" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="0.00" /></label>
       <label class="text-xs text-slate-400">Date<input bind:value={costDate} type="date" required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
@@ -103,8 +112,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => approvalConfirmOpen = true} disabled={saving || !approvalNote.trim()} class="rounded border border-cyan-700/70 hover:bg-cyan-950/40 disabled:opacity-50 p-2 text-xs font-bold text-cyan-200">Approve immutable baseline</button>
       {#if baselines.length > 0}<div class="overflow-x-auto"><table class="w-full text-xs"><thead class="text-left text-slate-500"><tr><th>Version</th><th>Approved by</th><th>Approved at</th><th>Rationale</th><th>Cost baseline</th><th>Authorised</th></tr></thead><tbody>{#each baselines as baseline (baseline.version)}<tr class="border-t border-slate-800 align-top"><td>v{baseline.version}</td><td>{baseline.approved_by}</td><td class="whitespace-nowrap"><time datetime={baseline.approved_at}>{baseline.approved_at}</time></td><td class="min-w-48 break-words text-slate-300">{baseline.approval_note}</td><td>{baseline.currency_code} {baseline.cost_baseline}</td><td>{baseline.currency_code} {baseline.authorised_funding}</td></tr>{/each}</tbody></table></div>{/if}
     </section>
+    <section class="border-t border-slate-800 pt-3 space-y-2" aria-labelledby="cost-classification-heading">
+      <div><h3 id="cost-classification-heading" class="text-[10px] tracking-widest uppercase text-slate-500">Classification and reconciliation</h3><p class="text-[10px] text-slate-500">Each lens independently reconciles to the ledger totals. Do not add values across lenses.</p></div>
+      <div class="overflow-x-auto"><table class="w-full min-w-[38rem] text-xs"><thead class="text-left text-slate-500"><tr><th scope="col">Lens</th><th scope="col">Classification</th><th scope="col" class="text-right">Planned</th><th scope="col" class="text-right">Committed</th><th scope="col" class="text-right">Actual</th></tr></thead><tbody>{#each [{ label: 'Attribution', rows: classifications.attribution }, { label: 'Cost behavior', rows: classifications.behavior }, { label: 'Accounting treatment', rows: classifications.treatment }] as lens}{#each lens.rows as row}<tr class="border-t border-slate-800"><th scope="row" class="font-normal text-slate-400">{lens.label}</th><td class="capitalize">{row.value.replace('_', ' ')}</td><td class="text-right tabular-nums">{summary.currency_code} {row.planned}</td><td class="text-right tabular-nums">{summary.currency_code} {row.commitment}</td><td class="text-right tabular-nums">{summary.currency_code} {row.actual}</td></tr>{/each}{/each}</tbody></table></div>
+    </section>
     {#if reserves.length > 0}<p class="text-[10px] text-slate-500">Reserve balances are governance buffers, not posted costs. Each balance retains its basis note.</p>{/if}
-    {#if entries.length > 0}<div class="overflow-x-auto"><table class="w-full text-xs"><thead class="text-left text-slate-500"><tr><th>Date</th><th>State</th><th>Description</th><th class="text-right">Amount</th></tr></thead><tbody>{#each entries as entry (entry.id)}<tr class="border-t border-slate-800"><td>{entry.cost_date}</td><td class="capitalize">{entry.kind}</td><td>{entry.description}</td><td class="text-right tabular-nums">{summary.currency_code} {entry.amount}</td></tr>{/each}</tbody></table></div>{/if}
+    {#if entries.length > 0}<div class="overflow-x-auto"><table class="w-full min-w-[52rem] text-xs"><thead class="text-left text-slate-500"><tr><th scope="col">Date</th><th scope="col">State</th><th scope="col">Description</th><th scope="col">Cost type</th><th scope="col">Attribution</th><th scope="col">Behavior</th><th scope="col">Treatment</th><th scope="col" class="text-right">Amount</th></tr></thead><tbody>{#each entries as entry (entry.id)}{@const type = typesByID.get(entry.cost_type_id)}<tr class="border-t border-slate-800"><td>{entry.cost_date}</td><td class="capitalize">{entry.kind}</td><td>{entry.description}</td><td>{type?.name ?? 'Unavailable type'}</td><td class="capitalize">{type?.attribution ?? 'Unavailable'}</td><td class="capitalize">{type?.behavior ?? 'Unavailable'}</td><td class="capitalize">{type?.treatment?.replace('_', ' ') ?? 'Unavailable'}</td><td class="text-right tabular-nums">{summary.currency_code} {entry.amount}</td></tr>{/each}</tbody></table></div>{/if}
   {/if}
 </section>
 <ConfirmDialog open={approvalConfirmOpen} title="Approve Cost Control baseline?" message="This records an immutable local-account approval snapshot. It does not approve legacy Budget values." confirmLabel="Approve baseline" tone="caution" busy={saving} onConfirm={() => void approveBaseline()} onCancel={() => approvalConfirmOpen = false} />

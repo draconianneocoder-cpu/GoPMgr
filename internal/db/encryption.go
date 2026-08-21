@@ -320,16 +320,6 @@ func removeSQLiteSidecars(path string) error {
 	return nil
 }
 
-func chmodIfExists(path string) error {
-	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-	return os.Chmod(path, 0o600)
-}
-
 func sqlQuote(s string) string {
 	return strings.ReplaceAll(s, "'", "''")
 }

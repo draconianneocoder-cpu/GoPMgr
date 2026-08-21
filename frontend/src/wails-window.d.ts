@@ -65,6 +65,7 @@ declare global {
           ApproveCostBaseline: (note: string) => Promise<CostBaseline>;
           ListCostBaselines: () => Promise<CostBaseline[]>;
           ComputeCostSummary: () => Promise<CostSummary>;
+          ComputeCostClassificationSummary: () => Promise<CostClassificationSummary>;
 
           // ----- V2: charts -----
           ListChartKinds: () => Promise<ChartDefinition[]>;
@@ -597,6 +598,12 @@ declare global {
     authorised_funding: string;
     commitment: string;
     actual: string;
+  }
+  interface CostClassificationRow { value: string; planned: string; commitment: string; actual: string; }
+  interface CostClassificationSummary {
+    attribution: CostClassificationRow[];
+    behavior: CostClassificationRow[];
+    treatment: CostClassificationRow[];
   }
   interface CostReserve { kind: 'contingency' | 'management'; amount: string; description: string; }
   interface CostBaseline {

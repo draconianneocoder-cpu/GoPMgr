@@ -73,10 +73,14 @@ loss, or a release blocker.
   keeps the project-local ledger separate from the legacy stakeholder/agile
   budget rollup and schedule EVM, has no FX conversion, and does not treat a
   reserve balance as a commitment or actual cost.
-- Cost Control currency expansion: add additional ISO 4217 currencies only with
-  maintained metadata, formatting rules, migration policy, and FX/reporting
-  requirements. Phase 1 deliberately supports only the seven selectable
-  reporting currencies documented in the user guide and never converts values.
+- Cost Control currency-exponent policy: resolve the current mismatch between
+  selectable JPY and the two-decimal Cost Control amount boundary. The current
+  application accepts and stores JPY using that fixed convention; specify ISO
+  4217 metadata, standards/interoperability claims, storage and display rules,
+  existing-data migration or grandfathering, selector behavior, and the
+  interaction with future FX/reporting before introducing exponent-aware JPY.
+  USD, EUR, GBP, CAD, AUD, and CHF use the current two-decimal boundary; Phase
+  1 never converts values.
 - Cost Control allocation and forecast semantics: define allocation, reserve
   drawdown, burn, and forecast policy before adding a remaining-spend metric.
   Phase 1 intentionally presents the legacy Budget rollup only as separate

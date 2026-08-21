@@ -142,7 +142,8 @@ The Dashboard exposes:
   commitment, and actual entries. It does not import the Budget panel's
   stakeholder contracts or agile estimates, preventing double counting. New
   entries use exact decimal-string amounts in the project's locked reporting
-  currency (USD by default for new and legacy projects). Project Settings can
+  currency (USD by default for new and legacy projects). The current Cost
+  Control amount boundary always uses two decimal places. Project Settings can
   select USD, EUR, GBP, CAD, AUD, JPY, or CHF only while the project has no
   Budget value, Cost Control entry, non-zero reserve balance, or approved Cost
   Control baseline. It cannot change while any of those values exists because
@@ -156,7 +157,19 @@ The Dashboard exposes:
   Contingency and management reserves are separate records and do not count as
   commitments or actual costs. Phase 1 does not yet provide reserve drawdowns,
   foreign exchange, time-phased cash flow, or
-  automatic EVM integration.
+  automatic EVM integration. JPY is selectable and the current application
+  accepts it using the same fixed two-decimal convention as every other Cost
+  Control currency. That convention is not currency-exponent-aware, so Phase 2
+  must define JPY's standards/interoperability policy and any needed migration
+  before GoPMgr claims exponent-aware JPY support.
+
+Each Cost Control entry inherits three cost-type classifications: direct or
+indirect attribution, fixed or variable behavior, and CapEx, OpEx, or not
+applicable treatment. The dashboard keeps inactive types visible on historical
+ledger rows but excludes them from the entry selector. Its classification table
+reconciles every one of the three lenses independently to the same ledger
+totals. Do not add values between lenses: the same ledger entry appears once in
+each lens.
 
 Cost Control can record immutable approved baseline snapshots. A snapshot is
 derived on the backend from the current planned entries and both reserve

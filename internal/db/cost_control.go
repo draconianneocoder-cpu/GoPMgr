@@ -80,11 +80,7 @@ func (db *Database) EnsureCostTypes(projectID string) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	defer func() { _ = tx.Rollback() }()
 	var existing int
 	if err = tx.QueryRow(`SELECT COUNT(*) FROM cost_types WHERE project_id = ?`, projectID).Scan(&existing); err != nil {
 		return err
@@ -120,7 +116,7 @@ func (db *Database) ListCostTypes(projectID string) ([]CostType, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []CostType
 	for rows.Next() {
 		var c CostType
@@ -151,11 +147,7 @@ func (db *Database) SaveCostEntry(entry CostEntry) (CostEntry, error) {
 	if err != nil {
 		return CostEntry{}, err
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	defer func() { _ = tx.Rollback() }()
 	var active int
 	if err = tx.QueryRow(`SELECT active FROM cost_types WHERE id=? AND project_id=?`, entry.CostTypeID, entry.ProjectID).Scan(&active); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -193,7 +185,7 @@ func (db *Database) ListCostEntries(projectID string) ([]CostEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []CostEntry
 	for rows.Next() {
 		var e CostEntry
@@ -210,7 +202,7 @@ func (db *Database) ListCostReserves(projectID string) ([]CostReserve, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []CostReserve
 	for rows.Next() {
 		var r CostReserve
@@ -229,11 +221,7 @@ func (db *Database) SaveCostReserve(r CostReserve) (CostReserve, error) {
 	if err != nil {
 		return CostReserve{}, err
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	defer func() { _ = tx.Rollback() }()
 	if r.ID == "" {
 		lookupErr := tx.QueryRow(`SELECT id FROM cost_reserves WHERE project_id = ? AND kind = ?`, r.ProjectID, r.Kind).Scan(&r.ID)
 		if lookupErr == sql.ErrNoRows {
@@ -269,7 +257,7 @@ func (db *Database) ApproveCostBaseline(projectID, actor, note string) (CostBase
 	if err != nil {
 		return CostBaselineSnapshot{}, err
 	}
-	defer tx.Rollback() // harmless after Commit; releases every early-return path.
+	defer func() { _ = tx.Rollback() }() // harmless after Commit; releases every early-return path.
 	var currency string
 	if err = tx.QueryRow(`SELECT currency_code FROM project WHERE id=?`, projectID).Scan(&currency); err != nil {
 		return CostBaselineSnapshot{}, err
@@ -282,7 +270,7 @@ func (db *Database) ApproveCostBaseline(projectID, actor, note string) (CostBase
 	for rows.Next() {
 		var n int64
 		if err = rows.Scan(&n); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return CostBaselineSnapshot{}, err
 		}
 		planned.Add(money.Amount{MinorUnits: n})
@@ -303,12 +291,13 @@ func (db *Database) ApproveCostBaseline(projectID, actor, note string) (CostBase
 		var kind string
 		var n int64
 		if err = rows.Scan(&kind, &n); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return CostBaselineSnapshot{}, err
 		}
-		if kind == "contingency" {
+		switch kind {
+		case "contingency":
 			contingency = n
-		} else if kind == "management" {
+		case "management":
 			management = n
 		}
 	}
@@ -357,7 +346,7 @@ func (db *Database) ListCostBaselines(projectID string) ([]CostBaselineSnapshot,
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []CostBaselineSnapshot
 	for rows.Next() {
 		var s CostBaselineSnapshot

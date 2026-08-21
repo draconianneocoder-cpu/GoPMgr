@@ -158,6 +158,53 @@ func TestCostEntryRejectsArchivedOrZeroAmount(t *testing.T) {
 	}
 }
 
+func TestRejectedCostWritesReleaseTransactionConnection(t *testing.T) {
+	t.Run("archived cost type", func(t *testing.T) {
+		d := newCostControlTestDB(t)
+		p, err := d.UpsertProject(Project{Name: "Archived cost type"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		types, err := d.ListCostTypes(p.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = d.Conn.Exec(`UPDATE cost_types SET active=0 WHERE id=?`, types[0].ID); err != nil {
+			t.Fatal(err)
+		}
+		d.Conn.SetMaxOpenConns(1)
+		if _, err = d.SaveCostEntry(CostEntry{ProjectID: p.ID, CostTypeID: types[0].ID, Kind: "planned", CostDate: "2026-08-21", Description: "Archived", AmountMinorUnits: 1}); err == nil || !strings.Contains(err.Error(), "archived") {
+			t.Fatalf("SaveCostEntry error = %v", err)
+		}
+		assertCostControlConnectionAvailable(t, d)
+	})
+
+	t.Run("reserve lookup failure", func(t *testing.T) {
+		d := newCostControlTestDB(t)
+		p, err := d.UpsertProject(Project{Name: "Reserve lookup"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = d.Conn.Exec(`DROP TABLE cost_reserves`); err != nil {
+			t.Fatal(err)
+		}
+		d.Conn.SetMaxOpenConns(1)
+		if _, err = d.SaveCostReserve(CostReserve{ProjectID: p.ID, Kind: "contingency", AmountMinorUnits: 1, Description: "Risk"}); err == nil {
+			t.Fatal("SaveCostReserve accepted missing table")
+		}
+		assertCostControlConnectionAvailable(t, d)
+	})
+}
+
+func assertCostControlConnectionAvailable(t *testing.T, d *Database) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := d.Conn.PingContext(ctx); err != nil {
+		t.Fatalf("transaction connection was not released: %v", err)
+	}
+}
+
 func TestCostReserveUpsertPreservesIdentityAndAudits(t *testing.T) {
 	d := newCostControlTestDB(t)
 	p, err := d.UpsertProject(Project{Name: "Reserves"})
