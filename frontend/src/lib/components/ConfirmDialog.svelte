@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { onDestroy, tick } from 'svelte';
+
   // Shared yes/no confirmation modal, replacing `window.confirm()` at call
   // sites where a destructive or hard-to-reverse action needs a real prompt.
   // Wails v2.13.0's darwin WKUIDelegate implements none of the JS
@@ -44,21 +46,92 @@ SPDX-License-Identifier: GPL-3.0-or-later
     onConfirm: () => void;
     onCancel: () => void;
   } = $props();
+
+  let dialogEl = $state<HTMLElement>();
+  let previouslyFocused: HTMLElement | null = null;
+
+  const focusableSelector =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  function getFocusable(): HTMLElement[] {
+    if (!dialogEl) return [];
+    return Array.from(dialogEl.querySelectorAll<HTMLElement>(focusableSelector));
+  }
+
+  function focusFirst() {
+    (getFocusable()[0] ?? dialogEl)?.focus();
+  }
+
+  function restoreFocus() {
+    if (previouslyFocused?.isConnected && !previouslyFocused.matches(':disabled, [inert]')) {
+      previouslyFocused.focus();
+    }
+    previouslyFocused = null;
+  }
+
+  // A native confirm dialog owns focus while open. Mirror that behavior so
+  // keyboard users cannot reach the concealed page and can resume at the
+  // control that requested confirmation.
+  $effect(() => {
+    if (!open) {
+      restoreFocus();
+      return;
+    }
+
+    previouslyFocused = document.activeElement as HTMLElement | null;
+    let active = true;
+    tick().then(() => {
+      if (active && open) focusFirst();
+    });
+    return () => {
+      active = false;
+    };
+  });
+
+  onDestroy(restoreFocus);
+
+  function onDialogKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      if (!busy) onCancel();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+
+    const focusable = getFocusable();
+    if (focusable.length === 0) {
+      event.preventDefault();
+      dialogEl?.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey) {
+      if (active === first || active === dialogEl) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else if (active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 </script>
 
 {#if open}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
     role="presentation"
-    onkeydown={(e) => e.key === 'Escape' && !busy && onCancel()}
   >
     <div
+      bind:this={dialogEl}
       class="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 p-5 shadow-2xl"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-description"
       tabindex="-1"
+      onkeydown={onDialogKeydown}
     >
       <h2 id="confirm-dialog-title" class="text-base font-bold text-slate-100">{title}</h2>
       <p id="confirm-dialog-description" class="mt-2 text-sm text-slate-400">{message}</p>

@@ -324,8 +324,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Dialogs &amp; wizards</h3>
             <ul class="space-y-1.5 text-sm text-slate-300 list-disc list-inside">
-              <li><span class="font-mono text-xs text-cyan-300">Esc</span> closes any dialog from anywhere inside it (for example the export Signature Options), cancelling the action.</li>
-              <li><span class="font-mono text-xs text-cyan-300">Tab</span> cycles only through the dialog's own controls while it is open, and focus returns to the control that opened it when it closes.</li>
+              <li><span class="font-mono text-xs text-cyan-300">Esc</span> cancels the export Signature Options and shared confirmation prompts when their controls are available.</li>
+              <li>In export Signature Options and shared confirmation prompts, <span class="font-mono text-xs text-cyan-300">Tab</span> cycles through that dialog's controls while it is open, and focus returns to the control that opened it when it closes.</li>
               <li>The New Project wizard moves focus to each step's heading as you advance, so keyboard and screen-reader users always know where they are.</li>
             </ul>
           </section>
