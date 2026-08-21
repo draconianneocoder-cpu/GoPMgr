@@ -85,6 +85,14 @@ loss, or a release blocker.
   synchronous preparation/publication failure through a single replacement
   operation. Add native Windows execution evidence and a power-loss durability
   strategy/test before claiming stronger crash-consistency guarantees.
+- Penpot evidence bridge: the local self-hosted stack was upgraded to 2.17.1,
+  the exposed bridge credential was revoked and replaced outside the
+  repository, and Codex completed the canonical read-only probe before and
+  after a controlled MCP-container restart. The saved board `Cost Control —
+  Penpot Recovery Evidence (2026-08-21)` records the verified scope. Start a
+  fresh Claude Code client and repeat its read-only probe before treating the
+  Claude bridge as live-verified; do not add credentials, configuration files,
+  or private recovery material to the repository.
 - Restore a usable normal window frame across relaunch.
 - Improve local project discovery without weakening data isolation — partly
   done 2026-08-18: `enumerateProjects` (`app_projects.go`) only ever did a
