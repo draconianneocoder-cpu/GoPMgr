@@ -604,6 +604,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const path = await exporters[format]();
       exportStatus = `Exported to: ${path}`;
     } catch (err: any) {
+      if (String(err).includes('export cancelled')) return;
       exportError = true;
       exportStatus = `Export failed: ${err}`;
     } finally {

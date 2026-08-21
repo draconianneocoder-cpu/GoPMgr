@@ -24,6 +24,7 @@ function installApp({ baselines = [], types = [{ id: 'labor', project_id: 'p', c
     ListCostBaselines: vi.fn(async () => baselines),
     ComputeCostSummary: vi.fn(async () => ({ currency_code: 'USD', mutation_disabled_reason: mutationDisabledReason, legacy_budget: '1000.00', planned: '800.00', contingency: '100.00', cost_baseline: '900.00', management_reserve: '50.00', authorised_funding: '950.00', commitment: '0.00', actual: '0.00' })),
     ComputeCostClassificationSummary: vi.fn(async () => ({ attribution: [{ value: 'direct', planned: '800.00', commitment: '0.00', actual: '0.00' }, { value: 'indirect', planned: '0.00', commitment: '0.00', actual: '0.00' }], behavior: [{ value: 'fixed', planned: '0.00', commitment: '0.00', actual: '0.00' }, { value: 'variable', planned: '800.00', commitment: '0.00', actual: '0.00' }], treatment: [{ value: 'capex', planned: '0.00', commitment: '0.00', actual: '0.00' }, { value: 'opex', planned: '800.00', commitment: '0.00', actual: '0.00' }, { value: 'not_applicable', planned: '0.00', commitment: '0.00', actual: '0.00' }] })),
+    ExportFinancialReportPDF: vi.fn(async () => '/tmp/financial-report.pdf'),
     SaveCostEntry: vi.fn(async (entry) => entry),
     SaveCostReserve: vi.fn(async (reserve) => reserve),
     ApproveCostBaseline: vi.fn(async () => ({})),
@@ -108,6 +109,15 @@ describe('CostControlPanel', () => {
     await fireEvent.input(getByLabelText('Basis / owner note'), { target: { value: 'Known supplier risk' } });
     await fireEvent.click(getByRole('button', { name: 'Set reserve balance' }));
     expect(app.SaveCostReserve).toHaveBeenCalledWith({ kind: 'contingency', amount: '25.00', description: 'Known supplier risk' });
+  });
+
+  it('exports a printable project financial report without inventing a forecast', async () => {
+    const app = installApp();
+    const { findByRole, findByText } = render(CostControlPanel);
+    await findByText('Legacy budget rollup');
+    await fireEvent.click(await findByRole('button', { name: 'Export printable financial report' }));
+    expect(app.ExportFinancialReportPDF).toHaveBeenCalledTimes(1);
+    expect(await findByText(/does not calculate a forecast or remaining funding/i)).toBeInTheDocument();
   });
 
   it('requires confirmation before recording an immutable baseline', async () => {

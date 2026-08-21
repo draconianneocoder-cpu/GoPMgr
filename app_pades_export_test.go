@@ -16,6 +16,7 @@ import (
 	"encoding/asn1"
 	"math/big"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -116,8 +117,11 @@ func TestExportCombinedReportSignedWithRuntimeWritesUnevaluatedPAdEST(t *testing
 	if status != "pades_t_not_evaluated" {
 		t.Fatalf("signature_status = %q, want pades_t_not_evaluated", status)
 	}
-	if !strings.Contains(payload, `"output_path":"`+outputPath+`"`) {
-		t.Fatalf("combined report signature payload = %s, want output path %q", payload, outputPath)
+	if !strings.Contains(payload, `"output_path":"`+filepath.Base(outputPath)+`"`) {
+		t.Fatalf("combined report signature payload = %s, want output artifact %q", payload, filepath.Base(outputPath))
+	}
+	if strings.Contains(payload, filepath.Dir(outputPath)) {
+		t.Fatalf("combined report signature payload leaks output directory: %s", payload)
 	}
 }
 

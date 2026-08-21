@@ -189,6 +189,14 @@ balances; it excludes the legacy Dashboard Budget rollup. Approval records the
 signed-in local account and a rationale in the audit chain. Its history shows
 the version, local account, UTC approval time, rationale, baseline, and
 authorised funding. This is not role authorization or an electronic signature.
+
+Use **Export printable financial report** in Cost Control to choose a PDF
+location for one project's financial snapshot. It prints the Legacy Budget
+context separately from Cost Control, then includes Cost Control ledger rows,
+assessed reserve balances, and immutable baseline history. It does not combine
+those sections or calculate forecast, allocation, drawdown, or remaining-funds
+figures. The report is a printable export; use your PDF viewer's print command
+when a paper copy is needed.
 - **Resource assignments:** CPM tasks can carry resource units, optional
   calendar labels, max-unit caps, and skill tags. Project Settings stores named
   resource calendars with weekly capacity and day overrides; leveling uses
@@ -277,6 +285,12 @@ documents and stays collapsed once document work exists.
 
 Every document kind can export to PDF, DOCX, and ODT. XLSX is available
 where the document kind benefits from spreadsheet output.
+For document, combined-report, and schedule exports, GoPMgr opens a save
+dialog so you choose a new output location. It refuses to replace an existing
+selected file. Combined-report manifests and GnuPG `.asc` sidecars also must
+not already exist, avoiding an unconfirmed overwrite of a paired artifact.
+Chart, calendar, audit, and Sigma export locations retain their existing
+separate workflows in this release.
 
 Combined reports let users assemble several project documents into one
 PDF. From the Dashboard, choose **Build combined report**, add

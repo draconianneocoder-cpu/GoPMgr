@@ -65,6 +65,7 @@ declare global {
           ApproveCostBaseline: (note: string) => Promise<CostBaseline>;
           ListCostBaselines: () => Promise<CostBaseline[]>;
           ComputeCostSummary: () => Promise<CostSummary>;
+          ExportFinancialReportPDF: () => Promise<string>;
           ComputeCostClassificationSummary: () => Promise<CostClassificationSummary>;
 
           // ----- V2: charts -----

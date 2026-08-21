@@ -21,6 +21,7 @@
         "gopmgr/internal/db",
         "gopmgr/internal/documents",
         "gopmgr/internal/export",
+        "gopmgr/internal/exportfs",
         "gopmgr/internal/fonts",
         "gopmgr/internal/kernel",
         "gopmgr/internal/money",
@@ -298,6 +299,15 @@
         "github.com/xuri/excelize/v2"
       ]
     },
+    "gopmgr/internal/exportfs": {
+      "dir": "internal/exportfs",
+      "imported_by_internal": [
+        "gopmgr",
+        "gopmgr/internal/reporting"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
     "gopmgr/internal/exportsafe": {
       "dir": "internal/exportsafe",
       "imported_by_internal": [
@@ -365,6 +375,7 @@
       "imports_internal": [
         "gopmgr/internal/db",
         "gopmgr/internal/documents",
+        "gopmgr/internal/exportfs",
         "gopmgr/internal/kernel"
       ],
       "notable_external_deps": []

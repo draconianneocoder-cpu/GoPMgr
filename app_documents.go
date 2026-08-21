@@ -29,6 +29,7 @@ import (
 	"gopmgr/internal/rfc3161"
 	"gopmgr/internal/sigma/service"
 	"gopmgr/internal/signing"
+	"gopmgr/internal/users"
 )
 
 // =========================================================
@@ -266,14 +267,27 @@ func (a *App) ExportCombinedReport(reportTitle, subtitle string, sections []docu
 
 // ExportCombinedReportWithOptions assembles multiple documents into one PDF.
 // `sections` is an ordered list of {document_id, title, description}
-// tuples — the report renders sections in that order. Returns the
-// absolute path the PDF was written to (under the user's exports/).
+// tuples — the report renders sections in that order. Desktop callers choose
+// a new PDF path; direct/headless callers retain the private exports fallback.
 func (a *App) ExportCombinedReportWithOptions(reportTitle, subtitle string, sections []documents.ReportSection, options CombinedReportOptions) (string, error) {
 	d := a.requireDB()
 	u := a.requireUser()
 	if d == nil || u == nil {
 		return "", errors.New("not signed in or no project open")
 	}
+	defaultDirectory := filepath.Join(u.DataDir, "exports")
+	defaultFilename := fmt.Sprintf("%s-%s.pdf", sanitizeFilename(reportTitle), time.Now().UTC().Format("20060102-150405"))
+	outputPath, err := a.selectExportDestination(defaultDirectory, defaultFilename, ".pdf", "Export combined report")
+	if err != nil {
+		return "", err
+	}
+	if err := ensureExportDestinationsAvailable(outputPath, outputPath+".manifest.json"); err != nil {
+		return "", err
+	}
+	return a.exportCombinedReportToPath(d, u, reportTitle, subtitle, sections, options, outputPath)
+}
+
+func (a *App) exportCombinedReportToPath(d *db.Database, u *users.Account, reportTitle, subtitle string, sections []documents.ReportSection, options CombinedReportOptions, outputPath string) (string, error) {
 	return reporting.Service{Database: d, ResolveEVM: resolvedEVMForCharts}.Export(reporting.ExportRequest{
 		ReportTitle: reportTitle,
 		Subtitle:    subtitle,
@@ -283,8 +297,9 @@ func (a *App) ExportCombinedReportWithOptions(reportTitle, subtitle string, sect
 			Mode:      options.Mode,
 		},
 		Author:     u.DisplayName,
-		ExportsDir: filepath.Join(u.DataDir, "exports"),
+		ExportsDir: filepath.Dir(outputPath),
 		FileStem:   sanitizeFilename(reportTitle),
+		OutputPath: outputPath,
 	})
 }
 
@@ -327,6 +342,14 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 		return "", err
 	}
 	reportID := combinedReportCheckpointID(proj.ID, reportTitle, subtitle, sections)
+	stamp := time.Now().UTC().Format("20060102-150405")
+	outPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), fmt.Sprintf("%s-%s-signed.pdf", sanitizeFilename(reportTitle), stamp), ".pdf", "Export signed combined report")
+	if err != nil {
+		return "", err
+	}
+	if err := ensureExportDestinationsAvailable(outPath); err != nil {
+		return "", err
+	}
 	timestampConfig, err := runtime.timestamp(d)
 	if err != nil {
 		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("timestamp settings: %v", err), "")
@@ -402,14 +425,7 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 		return "", fmt.Errorf("pades embedding: %w", err)
 	}
 
-	outDir := filepath.Join(u.DataDir, "exports")
-	if err := os.MkdirAll(outDir, 0o700); err != nil {
-		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("create exports dir: %v", err), "")
-		return "", err
-	}
-	stamp := time.Now().UTC().Format("20060102-150405")
-	outPath := filepath.Join(outDir, fmt.Sprintf("%s-%s-signed.pdf", sanitizeFilename(reportTitle), stamp))
-	if err := os.WriteFile(outPath, signedBytes, 0o600); err != nil {
+	if err := writeNewPrivateExport(outPath, signedBytes); err != nil {
 		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("write signed report: %v", err), "")
 		return "", err
 	}
@@ -423,7 +439,7 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 		sections,
 		signatureStatus,
 		details,
-		outPath,
+		exportArtifactName(outPath),
 	)
 	return outPath, nil
 }
@@ -432,7 +448,8 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 // ASCII-armored GnuPG signature sidecar.
 func (a *App) ExportCombinedReportGnuPG(reportTitle, subtitle string, sections []documents.ReportSection, keyID string) (GnuPGExportResult, error) {
 	d := a.requireDB()
-	if d == nil {
+	u := a.requireUser()
+	if d == nil || u == nil {
 		return GnuPGExportResult{}, errors.New("no project open")
 	}
 	proj, err := d.GetProject()
@@ -441,17 +458,44 @@ func (a *App) ExportCombinedReportGnuPG(reportTitle, subtitle string, sections [
 	}
 	reportID := combinedReportCheckpointID(proj.ID, reportTitle, subtitle, sections)
 
-	pdfPath, err := a.ExportCombinedReport(reportTitle, subtitle, sections)
+	pdfPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), fmt.Sprintf("%s-%s.pdf", sanitizeFilename(reportTitle), time.Now().UTC().Format("20060102-150405")), ".pdf", "Export GnuPG-signed combined report")
+	if err != nil {
+		return GnuPGExportResult{}, err
+	}
+	sigPath := pdfPath + ".asc"
+	if err := ensureExportDestinationsAvailable(pdfPath, pdfPath+".manifest.json", sigPath); err != nil {
+		return GnuPGExportResult{}, err
+	}
+	pdfPath, err = a.exportCombinedReportToPath(d, u, reportTitle, subtitle, sections, CombinedReportOptions{Mode: documents.ReportModeDraft}, pdfPath)
 	if err != nil {
 		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("build report: %v", err), "")
 		return GnuPGExportResult{}, err
 	}
-	sigPath := pdfPath + ".asc"
-	if err := a.signFileWithGnuPG(pdfPath, sigPath, keyID); err != nil {
+	temporary, err := os.CreateTemp(filepath.Dir(sigPath), ".gopmgr-signature-*")
+	if err != nil {
+		return GnuPGExportResult{}, fmt.Errorf("create temporary GnuPG signature path: %w", err)
+	}
+	temporaryPath := temporary.Name()
+	if err := temporary.Close(); err != nil {
+		_ = os.Remove(temporaryPath)
+		return GnuPGExportResult{}, fmt.Errorf("close temporary GnuPG signature path: %w", err)
+	}
+	if err := os.Remove(temporaryPath); err != nil {
+		return GnuPGExportResult{}, fmt.Errorf("prepare temporary GnuPG signature path: %w", err)
+	}
+	defer func() { _ = os.Remove(temporaryPath) }()
+	if err := a.signFileWithGnuPG(pdfPath, temporaryPath, keyID); err != nil {
 		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("gpg detached signature: %v", err), "")
 		return GnuPGExportResult{}, err
 	}
-	logCombinedReportSignatureEventWithStatus(d, proj.ID, reportID, reportTitle, subtitle, sections, "gpg_signed", "Detached GnuPG signature written.", sigPath)
+	signatureBytes, err := os.ReadFile(temporaryPath)
+	if err != nil {
+		return GnuPGExportResult{}, fmt.Errorf("read temporary GnuPG signature: %w", err)
+	}
+	if err := writeNewPrivateExport(sigPath, signatureBytes); err != nil {
+		return GnuPGExportResult{}, err
+	}
+	logCombinedReportSignatureEventWithStatus(d, proj.ID, reportID, reportTitle, subtitle, sections, "gpg_signed", "Detached GnuPG signature written.", exportArtifactName(sigPath))
 	return GnuPGExportResult{PDFPath: pdfPath, SignaturePath: sigPath, Method: db.SignatureMethodGnuPG}, nil
 }
 
@@ -535,9 +579,9 @@ func (a *App) RepairAndSwap() (db.RepairResult, error) {
 	return result, nil
 }
 
-// ExportDocumentDOCX renders the document to a Microsoft Word file
-// under the user's exports/ folder and returns the absolute path
-// written. Uses gomutex/godocx under the hood.
+// ExportDocumentDOCX renders the document to a Microsoft Word file at a
+// desktop-user-selected location and returns the absolute path written. Uses
+// gomutex/godocx under the hood.
 func (a *App) ExportDocumentDOCX(id string) (string, error) {
 	return a.exportDocumentAs(id, ".docx", func(kind documents.Kind, content, projectName string) ([]byte, error) {
 		return export.RenderDocumentDOCX(kind, content, projectName)
@@ -555,13 +599,13 @@ func (a *App) ExportDocumentODT(id string) (string, error) {
 
 // ExportScheduleReportDOCX generates a Microsoft Word report of the
 // current project's CPM schedule (tasks with full ES/EF/LS/LF/Float/
-// Critical data) and saves it to the user's exports folder.
+// Critical data) and prompts for a destination.
 func (a *App) ExportScheduleReportDOCX() (string, error) {
 	return a.exportScheduleReportAs(export.FormatDOCX)
 }
 
 // ExportScheduleReportODT generates an OpenDocument Text report of the
-// current project's CPM schedule and saves it to the user's exports folder.
+// current project's CPM schedule and prompts for a destination.
 func (a *App) ExportScheduleReportODT() (string, error) {
 	return a.exportScheduleReportAs(export.FormatODT)
 }
@@ -592,8 +636,9 @@ func (a *App) ExportScheduleReportMSPDI() (string, error) {
 }
 
 // exportDocumentAs is the shared body of every per-format export
-// method on App: fetch the document, call the format-specific
-// renderer, write to the user's exports/ folder.
+// method on App: fetch the document, call the format-specific renderer, then
+// write to a desktop-user-selected location (or the private fallback in a
+// direct/headless caller).
 func (a *App) exportDocumentAs(
 	id, extension string,
 	renderer func(documents.Kind, string, string) ([]byte, error),
@@ -615,16 +660,16 @@ func (a *App) exportDocumentAs(
 	if err != nil {
 		return "", err
 	}
-	outDir := filepath.Join(u.DataDir, "exports")
-	if err := os.MkdirAll(outDir, 0o700); err != nil {
-		return "", err
-	}
-	outPath := filepath.Join(outDir, fmt.Sprintf("%s-%s%s",
+	defaultFilename := fmt.Sprintf("%s-%s%s",
 		sanitizeFilename(doc.Title),
 		time.Now().UTC().Format("20060102-150405"),
 		extension,
-	))
-	if err := os.WriteFile(outPath, bytes, 0o600); err != nil {
+	)
+	outPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), defaultFilename, extension, "Export document")
+	if err != nil {
+		return "", err
+	}
+	if err := writeNewPrivateExport(outPath, bytes); err != nil {
 		return "", err
 	}
 	return outPath, nil
@@ -687,11 +732,6 @@ func (a *App) exportScheduleReportAs(format export.ExportFormat) (string, error)
 		return "", err
 	}
 
-	outDir := filepath.Join(u.DataDir, "exports")
-	if err := os.MkdirAll(outDir, 0o700); err != nil {
-		return "", err
-	}
-
 	var ext string
 	switch format {
 	case export.FormatODT:
@@ -708,12 +748,16 @@ func (a *App) exportScheduleReportAs(format export.ExportFormat) (string, error)
 		ext = ".docx"
 	}
 
-	outPath := filepath.Join(outDir, fmt.Sprintf("Schedule-Report-%s%s",
+	defaultFilename := fmt.Sprintf("Schedule-Report-%s%s",
 		time.Now().UTC().Format("20060102-150405"),
 		ext,
-	))
+	)
+	outPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), defaultFilename, ext, "Export schedule report")
+	if err != nil {
+		return "", err
+	}
 
-	if err := os.WriteFile(outPath, raw, 0o600); err != nil {
+	if err := writeNewPrivateExport(outPath, raw); err != nil {
 		return "", err
 	}
 
@@ -987,8 +1031,8 @@ func loadV1TasksAsKernel(d *db.Database) (map[string]*kernel.Task, error) {
 	return tasks, nil
 }
 
-// ExportDocumentPDF renders the document to PDF under the user's
-// exports/ folder and returns the absolute path written.
+// ExportDocumentPDF renders the document to PDF at a desktop-user-selected
+// location and returns the absolute path written.
 func (a *App) ExportDocumentPDF(id string) (string, error) {
 	d := a.requireDB()
 	u := a.requireUser()
@@ -1007,13 +1051,13 @@ func (a *App) ExportDocumentPDF(id string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	outDir := filepath.Join(u.DataDir, "exports")
-	if err := os.MkdirAll(outDir, 0o700); err != nil {
+	defaultFilename := fmt.Sprintf("%s-%s.pdf",
+		sanitizeFilename(doc.Title), time.Now().UTC().Format("20060102-150405"))
+	outPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), defaultFilename, ".pdf", "Export document PDF")
+	if err != nil {
 		return "", err
 	}
-	outPath := filepath.Join(outDir, fmt.Sprintf("%s-%s.pdf",
-		sanitizeFilename(doc.Title), time.Now().UTC().Format("20060102-150405")))
-	if err := os.WriteFile(outPath, bytes, 0o600); err != nil {
+	if err := writeNewPrivateExport(outPath, bytes); err != nil {
 		return "", err
 	}
 	return outPath, nil
@@ -1064,19 +1108,58 @@ func padesAuditOutcome(result signing.PAdESResult) (string, string) {
 // modified, so PDF/A validation and print-and-wet-sign workflows remain intact.
 func (a *App) ExportDocumentPDFGnuPG(id, keyID string) (GnuPGExportResult, error) {
 	d := a.requireDB()
-	if d == nil {
+	u := a.requireUser()
+	if d == nil || u == nil {
 		return GnuPGExportResult{}, errors.New("no project open")
 	}
-	pdfPath, err := a.ExportDocumentPDF(id)
+	doc, err := d.GetDocument(id)
+	if err != nil {
+		return GnuPGExportResult{}, err
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return GnuPGExportResult{}, err
+	}
+	pdfPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), fmt.Sprintf("%s-%s.pdf", sanitizeFilename(doc.Title), time.Now().UTC().Format("20060102-150405")), ".pdf", "Export GnuPG-signed document PDF")
 	if err != nil {
 		return GnuPGExportResult{}, err
 	}
 	sigPath := pdfPath + ".asc"
-	if err := a.signFileWithGnuPG(pdfPath, sigPath, keyID); err != nil {
+	if err := ensureExportDestinationsAvailable(pdfPath, sigPath); err != nil {
+		return GnuPGExportResult{}, err
+	}
+	bytes, err := documents.Render(documents.Kind(doc.Kind), doc.Content, proj.Name)
+	if err != nil {
+		return GnuPGExportResult{}, err
+	}
+	if err := writeNewPrivateExport(pdfPath, bytes); err != nil {
+		return GnuPGExportResult{}, err
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(sigPath), ".gopmgr-signature-*")
+	if err != nil {
+		return GnuPGExportResult{}, fmt.Errorf("create temporary GnuPG signature path: %w", err)
+	}
+	temporaryPath := temporary.Name()
+	if err := temporary.Close(); err != nil {
+		_ = os.Remove(temporaryPath)
+		return GnuPGExportResult{}, fmt.Errorf("close temporary GnuPG signature path: %w", err)
+	}
+	if err := os.Remove(temporaryPath); err != nil {
+		return GnuPGExportResult{}, fmt.Errorf("prepare temporary GnuPG signature path: %w", err)
+	}
+	defer func() { _ = os.Remove(temporaryPath) }()
+	if err := a.signFileWithGnuPG(pdfPath, temporaryPath, keyID); err != nil {
 		admin.NewService(d).LogSignatureEvent(id, false, err)
 		return GnuPGExportResult{}, err
 	}
-	admin.NewService(d).LogDocumentSignatureOutcome(id, "gpg_signed", "Detached GnuPG signature written.", sigPath)
+	signatureBytes, err := os.ReadFile(temporaryPath)
+	if err != nil {
+		return GnuPGExportResult{}, fmt.Errorf("read temporary GnuPG signature: %w", err)
+	}
+	if err := writeNewPrivateExport(sigPath, signatureBytes); err != nil {
+		return GnuPGExportResult{}, err
+	}
+	admin.NewService(d).LogDocumentSignatureOutcome(id, "gpg_signed", "Detached GnuPG signature written.", exportArtifactName(sigPath))
 	return GnuPGExportResult{PDFPath: pdfPath, SignaturePath: sigPath, Method: db.SignatureMethodGnuPG}, nil
 }
 
@@ -1112,6 +1195,13 @@ func (a *App) exportDocumentPDFSignedWithRuntime(
 	if err != nil {
 		return "", err
 	}
+	outPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), fmt.Sprintf("%s-%s-signed.pdf", sanitizeFilename(doc.Title), time.Now().UTC().Format("20060102-150405")), ".pdf", "Export signed document PDF")
+	if err != nil {
+		return "", err
+	}
+	if err := ensureExportDestinationsAvailable(outPath); err != nil {
+		return "", err
+	}
 
 	timestampConfig, err := runtime.timestamp(d)
 	if err != nil {
@@ -1140,18 +1230,12 @@ func (a *App) exportDocumentPDFSignedWithRuntime(
 		return "", err
 	}
 
-	outDir := filepath.Join(u.DataDir, "exports")
-	if err := os.MkdirAll(outDir, 0o700); err != nil {
-		return "", err
-	}
-	outPath := filepath.Join(outDir, fmt.Sprintf("%s-%s-signed.pdf",
-		sanitizeFilename(doc.Title), time.Now().UTC().Format("20060102-150405")))
-	if err := os.WriteFile(outPath, signedBytes, 0o600); err != nil {
+	if err := writeNewPrivateExport(outPath, signedBytes); err != nil {
 		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
 		return "", err
 	}
 	signatureStatus, details := padesAuditOutcome(padesResult)
-	admin.NewService(d).LogDocumentSignatureOutcome(doc.ID, signatureStatus, details, outPath)
+	admin.NewService(d).LogDocumentSignatureOutcome(doc.ID, signatureStatus, details, exportArtifactName(outPath))
 	return outPath, nil
 }
 

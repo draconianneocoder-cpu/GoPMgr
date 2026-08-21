@@ -127,6 +127,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       );
       status = `Report exported to ${path}`;
     } catch (err: any) {
+      if (String(err).includes('export cancelled')) return;
       status = `Export failed: ${err}`;
     } finally {
       exporting = false;
@@ -188,6 +189,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         showToast('Combined report exported without digital signature', 'success');
       }
     } catch (err: any) {
+      if (String(err).includes('export cancelled')) return;
       status = `Export failed: ${err}`;
       showToast(`Export failed: ${err}`, 'error');
     } finally {

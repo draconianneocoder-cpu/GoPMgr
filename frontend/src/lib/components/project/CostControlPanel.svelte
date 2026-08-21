@@ -26,6 +26,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let baselines = $state<CostBaseline[]>([]);
   let approvalNote = $state('');
   let approvalConfirmOpen = $state(false);
+  let exporting = $state(false);
   const activeTypes = $derived(types.filter((type) => type.active));
   const typesByID = $derived(new Map(types.map((type) => [type.id, type])));
 	const mutationDisabled = $derived(Boolean(summary?.mutation_disabled_reason));
@@ -72,6 +73,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
       amount = ''; description = ''; await load();
     } catch (err) { error = String(err); } finally { saving = false; }
   }
+  async function exportFinancialReport() {
+    if (exporting) return;
+    exporting = true; error = '';
+    try { await window.go.main.App.ExportFinancialReportPDF(); }
+    catch (err) { if (!String(err).includes('export cancelled')) error = String(err); }
+    finally { exporting = false; }
+  }
 </script>
 
 <section class="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-4" aria-labelledby="cost-control-heading">
@@ -92,6 +100,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {#each [['Base plan', summary.planned], ['Contingency reserve', summary.contingency], ['Cost baseline', summary.cost_baseline], ['Management reserve', summary.management_reserve], ['Authorised funding', summary.authorised_funding], ['Committed', summary.commitment], ['Actual', summary.actual]] as [label, value]}
         <div class="bg-slate-950 rounded p-2"><div class="uppercase tracking-widest text-[10px] text-slate-500">{label}</div><div class="font-bold text-slate-100">{summary.currency_code} {value}</div></div>
       {/each}
+    </div>
+    <div class="border-t border-slate-800 pt-3">
+      <button onclick={() => void exportFinancialReport()} disabled={exporting} class="rounded border border-cyan-700/70 hover:bg-cyan-950/40 disabled:opacity-50 px-3 py-2 text-xs font-bold text-cyan-100">{exporting ? 'Preparing financial report…' : 'Export printable financial report'}</button>
+      <p class="mt-1 text-[10px] text-slate-500">Exports this project's Legacy Budget context and Cost Control ledger separately as a printable PDF. It does not calculate a forecast or remaining funding.</p>
     </div>
     <form class="grid grid-cols-1 md:grid-cols-5 gap-2" onsubmit={(event) => { event.preventDefault(); void save(); }}>
       <label class="text-xs text-slate-400">Cost type<select disabled={mutationDisabled} bind:value={typeID} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100">{#each activeTypes as type}<option value={type.id}>{type.name}</option>{/each}</select></label>

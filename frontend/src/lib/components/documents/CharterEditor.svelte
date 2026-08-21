@@ -118,6 +118,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const path = await window.go.main.App.ExportDocumentPDF(doc.id);
       status = `Exported to ${path}`;
     } catch (err: any) {
+      if (String(err).includes('export cancelled')) return;
       status = `Export failed: ${err}`;
     }
   }
@@ -130,6 +131,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const path = await window.go.main.App.ExportDocumentDOCX(doc.id);
       status = `Exported to ${path}`;
     } catch (err: any) {
+      if (String(err).includes('export cancelled')) return;
       status = `Export failed: ${err}`;
     }
   }
@@ -142,6 +144,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const path = await window.go.main.App.ExportDocumentODT(doc.id);
       status = `Exported to ${path}`;
     } catch (err: any) {
+      if (String(err).includes('export cancelled')) return;
       status = `Export failed: ${err}`;
     }
   }
@@ -217,6 +220,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           showToast(`PDF exported without digital signature`, 'success');
         }
       } catch (err: any) {
+        if (String(err).includes('export cancelled')) return;
         status = `Export failed: ${err}`;
       } finally {
         signing = false;

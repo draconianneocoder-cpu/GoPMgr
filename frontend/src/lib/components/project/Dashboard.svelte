@@ -155,6 +155,7 @@ import Button from '../Button.svelte';
           showToast(`PDF exported without digital signature to: ${path}`, 'success');
         }
       } catch (e: any) {
+        if (String(e).includes('export cancelled')) return;
         showToast(`Export failed: ${e}`, 'error');
       } finally {
         signingDocId = null;

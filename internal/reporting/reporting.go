@@ -18,6 +18,7 @@ import (
 
 	"gopmgr/internal/db"
 	"gopmgr/internal/documents"
+	"gopmgr/internal/exportfs"
 	"gopmgr/internal/kernel"
 )
 
@@ -52,6 +53,10 @@ type ExportRequest struct {
 	Author      string
 	ExportsDir  string
 	FileStem    string
+	// OutputPath, when non-empty, is the caller-selected primary PDF path.
+	// It must be a new file; the caller is responsible for paired-artifact
+	// collision policy before Export runs.
+	OutputPath string
 }
 
 type provenanceArtifact struct {
@@ -183,8 +188,11 @@ func (s Service) Export(request ExportRequest) (string, error) {
 		return "", err
 	}
 	stamp := s.now().UTC().Format("20060102-150405")
-	outputPath := filepath.Join(request.ExportsDir, fmt.Sprintf("%s-%s.pdf", request.FileStem, stamp))
-	if err := os.WriteFile(outputPath, bytes, 0o600); err != nil {
+	outputPath := request.OutputPath
+	if outputPath == "" {
+		outputPath = filepath.Join(request.ExportsDir, fmt.Sprintf("%s-%s.pdf", request.FileStem, stamp))
+	}
+	if err := exportfs.WriteNewPrivate(outputPath, bytes); err != nil {
 		return "", err
 	}
 	manifest := provenanceManifest{
@@ -201,7 +209,7 @@ func (s Service) Export(request ExportRequest) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("encode report provenance: %w", err)
 	}
-	if err := os.WriteFile(outputPath+".manifest.json", manifestBytes, 0o600); err != nil {
+	if err := exportfs.WriteNewPrivate(outputPath+".manifest.json", manifestBytes); err != nil {
 		return "", fmt.Errorf("write report provenance: %w", err)
 	}
 	return outputPath, nil
