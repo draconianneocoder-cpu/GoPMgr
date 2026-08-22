@@ -80,6 +80,14 @@ loss, or a release blocker.
   keeps the project-local ledger separate from the legacy stakeholder/agile
   budget rollup and schedule EVM, has no FX conversion, and does not treat a
   reserve balance as a commitment or actual cost.
+- Governed presentation-only FX for Portfolio Analytics: [the proposed bounded
+  contract](design/governed-presentation-only-fx.md) preserves the existing
+  mixed-currency refusal and proposes a separate direct-pair report workflow.
+  It does not authorize code, a portfolio database, FX tables, RBAC, provider
+  integration, or Cost Control Phase 2 work. The precise next action is FX-0:
+  explicitly approve or amend its bounded contract and record the accepted
+  revision. Only then may FX-1 implement exact rate parsing and immutable
+  user-private rate-set storage.
 - Cost Control currency-exponent policy: JPY is now contained as a legacy-only
   case. Existing JPY projects are readable but Cost Control is read-only; new
   JPY projects and currency transitions to JPY are rejected. No value is
