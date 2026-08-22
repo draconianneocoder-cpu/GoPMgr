@@ -68,6 +68,12 @@ loss, or a release blocker.
 
 ## P2: follow after beta stability
 
+- Project Cost Control ledger scope: [the current project-local boundary](design/project-cost-ledger-scope.md)
+  defines the ordinary product. Keep legacy Budget as separate context, then
+  track Cost Control expenses, inputs, materials, and direct/indirect overhead
+  as exact project-currency entries and summaries. Do not introduce portfolio
+  persistence, FX, financial RBAC, transaction or statutory-accounting
+  semantics, or Phase 2 reserve/forecast behavior merely to improve the ledger.
 - Cost Control Phase 2: the proposed [lifecycle and authority contract](design/cost-control-phase-2-lifecycle.md)
   now gates implementation. Approve its reserve-balance meaning, contingency
   allocation equation, baseline/evidence bindings, project financial roles,

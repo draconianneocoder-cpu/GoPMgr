@@ -16,6 +16,11 @@ planned, commitment, and actual states; two mutable reserve balances; and
 immutable locally attributed baseline snapshots. It deliberately has no
 remaining-spend, allocation, drawdown, or forecast metric.
 
+The [project cost ledger scope](project-cost-ledger-scope.md) is authoritative
+for ordinary budget, expense, input, material, and overhead tracking. Phase 2
+does not broaden or replace that ledger merely because it later addresses
+reserve movements, financial authority, or forecasts.
+
 This document defines the implementation gate for the tracked Phase 2 work:
 
 1. contingency-reserve allocation/drawdown movements linked to known

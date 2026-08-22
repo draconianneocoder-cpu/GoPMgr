@@ -183,6 +183,12 @@ reconciles every one of the three lenses independently to the same ledger
 totals. Do not add values between lenses: the same ledger entry appears once in
 each lens.
 
+Use **Cost item or reference** to identify the material or input, an invoice or
+supplier reference, or the basis of an overhead entry. It is the existing
+required free-text description, not a separate structured record: Phase 1 has
+no independently stored quantity, unit, supplier, invoice, SKU, or attachment
+field.
+
 Cost Control can record immutable approved baseline snapshots. A snapshot is
 derived on the backend from the current planned entries and both reserve
 balances; it excludes the legacy Dashboard Budget rollup. Approval records the

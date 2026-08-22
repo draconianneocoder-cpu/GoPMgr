@@ -59,6 +59,30 @@ describe('CostControlPanel', () => {
     expect(getByLabelText('Cost type')).toHaveValue('labor');
   });
 
+  it('uses the existing free-text description to identify a cost item without changing the save payload', async () => {
+    const app = installApp({
+      entries: [{ id: 'entry-1', cost_type_id: 'labor', kind: 'actual', cost_date: '2026-08-21', description: 'Historic supplier reference', amount: '25.00' }],
+    });
+    const { findByRole, findByText, getAllByLabelText, getByLabelText, getByRole } = render(CostControlPanel);
+    expect(await findByRole('columnheader', { name: 'Cost item or reference' })).toBeInTheDocument();
+    expect(getByLabelText('Cost item or reference')).toHaveAttribute('placeholder', 'Material, invoice reference, supplier, or overhead note');
+    await fireEvent.input(getByLabelText('Cost item or reference'), { target: { value: 'Concrete delivery, supplier PO-1042' } });
+    await fireEvent.input(getAllByLabelText('Amount')[0], { target: { value: '25.00' } });
+    await fireEvent.input(getByLabelText('Date'), { target: { value: '2026-08-21' } });
+    await fireEvent.click(getByRole('button', { name: 'Add ledger entry' }));
+    const saved = app.SaveCostEntry.mock.calls[0][0];
+    expect(Object.keys(saved).sort()).toEqual(['amount', 'cost_date', 'cost_type_id', 'description', 'id', 'kind']);
+    expect(saved).toEqual({
+      id: '',
+      cost_type_id: 'labor',
+      kind: 'planned',
+      amount: '25.00',
+      description: 'Concrete delivery, supplier PO-1042',
+      cost_date: '2026-08-21',
+    });
+    expect(await findByText('Historic supplier reference')).toBeInTheDocument();
+  });
+
   it('offers a retry after initial Cost Control loading fails', async () => {
     const app = installApp({ failFirstLoad: true });
     const { findByRole, findByText } = render(CostControlPanel);

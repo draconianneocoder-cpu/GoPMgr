@@ -13,6 +13,10 @@ capability; it does not authorize Cost Control Phase 2, a portfolio persistence
 domain, multi-user financial RBAC, statutory accounting, or transaction-price
 functionality.
 
+The [project cost ledger scope](project-cost-ledger-scope.md) remains separate:
+FX must not add conversion, provenance, approval, or portfolio behavior to
+ordinary project budget, expense, input, material, or overhead tracking.
+
 ## Executive decision
 
 GoPMgr retains its mixed-currency Portfolio Analytics refusal as the safe
