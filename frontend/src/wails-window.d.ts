@@ -67,6 +67,10 @@ declare global {
           ComputeCostSummary: () => Promise<CostSummary>;
           ExportFinancialReportPDF: () => Promise<string>;
           ComputeCostClassificationSummary: () => Promise<CostClassificationSummary>;
+          ListCatalogVendors: (query: string, includeArchived: boolean) => Promise<CatalogVendor[]>;
+          SaveCatalogVendor: (vendor: CatalogVendor) => Promise<CatalogVendor>;
+          ListCatalogItems: (query: string, includeArchived: boolean) => Promise<CatalogItem[]>;
+          SaveCatalogItem: (item: CatalogItem) => Promise<CatalogItem>;
 
           // ----- V2: charts -----
           ListChartKinds: () => Promise<ChartDefinition[]>;
@@ -577,6 +581,16 @@ declare global {
     cost_date: string;
     description: string;
     amount: string;
+  }
+
+  interface CatalogVendor {
+    id: string; version: number; name: string; address: string; phone: string; fax: string;
+    email: string; primary_contact: string; notes: string; archived: boolean;
+    created_at: string; updated_at: string;
+  }
+  interface CatalogItem {
+    id: string; version: number; name: string; sku: string; kind: string; default_unit: string;
+    description: string; archived: boolean; created_at: string; updated_at: string;
   }
 
 interface CostSummary {

@@ -53,6 +53,7 @@ export const session = $state<{
     | 'sigma_project'
     | 'launchpad'
     | 'stakeholders'
+    | 'catalog'
     | 'timeline'
     | 'project_settings'
     | 'scenario_chart'

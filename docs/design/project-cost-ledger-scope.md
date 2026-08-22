@@ -25,8 +25,9 @@ For one project and its reporting currency, the ledger must let the user:
 1. record planned, committed, and actual cost amounts exactly;
 2. classify an entry by its cost type, including direct/indirect attribution,
    fixed/variable behavior, and CapEx/OpEx treatment where applicable;
-3. record materials and other inputs as ordinary cost entries, with their
-   identifying detail in the existing free-text entry reference and cost;
+3. record materials and other inputs as ordinary cost entries, and retain a
+   structured quantity, unit, supplier, item, SKU, invoice-reference, and
+   attachment record when that extension is delivered;
 4. make indirect or material overhead visible through an ordinary cost type or
    cost entry rather than a hidden adjustment; and
 5. review project-scoped planned, committed, actual, and classification
@@ -62,5 +63,10 @@ it must not redefine ordinary ledger entry tracking. The proposed
 also separate and must not add FX behavior or governance to the project ledger.
 
 When a request concerns budget, expenses, inputs, materials, or overhead,
-extend this project-local model first. Escalate only when the request explicitly
-needs one of the deferred capabilities above.
+extend this project-local model first. Reusable supplier and item selection is
+an approved convenience boundary, not portfolio finance: its encrypted
+user-private catalog may supply a selection, but a posted project row retains
+its own display snapshot and remains readable if the catalog is unavailable.
+Supplier addresses and contact details do not belong in project audit payloads
+or ordinary financial exports. Escalate only when the request explicitly needs
+one of the deferred capabilities above.

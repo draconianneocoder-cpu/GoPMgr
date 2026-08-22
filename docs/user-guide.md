@@ -86,6 +86,20 @@ The Dashboard is the main project workspace:
   Software-Dev and Process Excellence entry points.
 - A shared toolbar links to Dashboard, Projects, App Settings, and Help.
 
+## Reusable suppliers and items
+
+Choose **Suppliers & items** from an open project's Dashboard to maintain a
+private reusable catalog for the signed-in user. Supplier records can hold a
+name, postal address, phone, fax, email, primary contact, and notes. Item
+records can hold a name, SKU, kind, default unit, and description. Archive a
+record instead of deleting it when it should no longer be offered for future
+selection.
+
+The catalog is encrypted and separate from individual projects. Editing a
+catalog record changes future selections only; it does not rewrite historical
+project ledger records. Project-ledger item, invoice, quantity, attachment,
+and attachment-bundle export integration is delivered separately.
+
 ## Project Settings
 
 Every open project has a Project Settings view. Use it to edit:

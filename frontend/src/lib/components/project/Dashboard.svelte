@@ -419,6 +419,16 @@ import Button from '../Button.svelte';
           </p>
         </button>
         <button
+          onclick={() => goto('catalog')}
+          class="p-4 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
+        >
+          <div class="text-cyan-400 text-[10px] font-bold uppercase tracking-widest">Procurement</div>
+          <div class="text-base font-bold text-slate-50 mt-1">Suppliers &amp; items</div>
+          <p class="text-xs text-slate-500 mt-1">
+            Reusable supplier contacts and material, product, or service details for future projects.
+          </p>
+        </button>
+        <button
           onclick={() => goto('timeline')}
           class="p-4 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-left"
         >
