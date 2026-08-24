@@ -12,7 +12,6 @@ import (
 	"gopmgr/internal/export"
 	"gopmgr/internal/fonts"
 	"gopmgr/internal/timeline"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -183,16 +182,19 @@ func (a *App) ExportProjectICS(includeHolidays bool) (string, error) {
 
 	bytes := export.ICalRender(spec)
 
-	outDir := filepath.Join(u.DataDir, "exports")
-	if err := os.MkdirAll(outDir, 0o700); err != nil {
-		return "", err
-	}
 	stamp := time.Now().UTC().Format("20060102-150405")
-	outPath := filepath.Join(outDir, fmt.Sprintf("%s-%s.ics", sanitizeFilename(p.Name), stamp))
-	if err := os.WriteFile(outPath, bytes, 0o600); err != nil {
+	path, err := a.selectExportDestination(
+		filepath.Join(u.DataDir, "exports"),
+		fmt.Sprintf("%s-%s.ics", sanitizeFilename(p.Name), stamp),
+		".ics", "Export project calendar",
+	)
+	if err != nil {
 		return "", err
 	}
-	return outPath, nil
+	if err := writeNewPrivateExport(path, bytes); err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 // helpers ---------------------------------------------------------

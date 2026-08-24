@@ -29,6 +29,39 @@ func TestParseMoneyDecimalRejectsNonCanonicalOrUnsafeInput(t *testing.T) {
 	}
 }
 
+func TestParseQuantityDecimalRejectsNonCanonicalOrUnsafeInput(t *testing.T) {
+	for _, input := range []string{"1.2345", "1e2", "NaN", " 1.000", "9,000.000", "-1.000", "-0.001", "01.000"} {
+		if _, err := parseQuantityDecimal(input); err == nil {
+			t.Errorf("parseQuantityDecimal(%q) accepted invalid input", input)
+		}
+	}
+	if got, err := parseQuantityDecimal(""); err != nil || got != 0 {
+		t.Fatalf("parseQuantityDecimal(\"\") = %d, %v, want 0, nil", got, err)
+	}
+	got, err := parseQuantityDecimal("2.5")
+	if err != nil || got != 2_500 {
+		t.Fatalf("parseQuantityDecimal(\"2.5\") = %d, %v, want 2500, nil", got, err)
+	}
+	got, err = parseQuantityDecimal("1000")
+	if err != nil || got != 1_000_000 {
+		t.Fatalf("parseQuantityDecimal(\"1000\") = %d, %v, want 1000000, nil", got, err)
+	}
+	if formatted := formatQuantityDecimal(2_500); formatted != "2.500" {
+		t.Fatalf("formatQuantityDecimal(2500) = %q, want 2.500", formatted)
+	}
+	if formatted := formatQuantityDecimal(0); formatted != "" {
+		t.Fatalf("formatQuantityDecimal(0) = %q, want empty (unset)", formatted)
+	}
+	// Round-trip: every value formatQuantityDecimal can produce must parse
+	// back to the exact same milli-units -- no float drift at the boundary.
+	for _, milli := range []int64{1, 999, 1_000, 2_500, 1_234_567_000} {
+		back, err := parseQuantityDecimal(formatQuantityDecimal(milli))
+		if err != nil || back != milli {
+			t.Fatalf("round-trip %d -> %q -> %d, %v", milli, formatQuantityDecimal(milli), back, err)
+		}
+	}
+}
+
 func TestCostControlWireUsesSnakeCaseStringMoney(t *testing.T) {
 	body, err := json.Marshal(CostSummaryWire{CurrencyCode: "USD", LegacyBudget: "90071992547409.91", CostBaseline: "90071992547409.91"})
 	if err != nil {
@@ -188,6 +221,88 @@ func TestComputeCostSummarySeparatesLegacyBudgetFromCostControl(t *testing.T) {
 	}
 	if summary != (CostSummaryWire{CurrencyCode: "USD", LegacyBudget: "1000.00", Planned: "800.00", Contingency: "100.00", CostBaseline: "900.00", ManagementReserve: "50.00", AuthorisedFunding: "950.00", Commitment: "300.00", Actual: "200.00"}) {
 		t.Fatalf("summary = %#v", summary)
+	}
+}
+
+func TestSaveCostEntryWiresStructuredFieldsRoundTrip(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Structured wire")
+	types, err := app.ListCostTypes()
+	if err != nil {
+		t.Fatalf("ListCostTypes: %v", err)
+	}
+	saved, err := app.SaveCostEntry(CostEntryWire{
+		CostTypeID: types[0].ID, Kind: "actual", CostDate: "2026-08-20", Description: "Rebar",
+		Amount: "500.00", Quantity: "2.500", Unit: "kg", ItemName: "Rebar 10mm", SKU: "RB-10",
+		SupplierName: "Acme Steel", InvoiceReference: "INV-1",
+	})
+	if err != nil {
+		t.Fatalf("SaveCostEntry: %v", err)
+	}
+	want := CostEntryWire{ID: saved.ID, CostTypeID: types[0].ID, Kind: "actual", CostDate: "2026-08-20", Description: "Rebar", Amount: "500.00", Quantity: "2.500", Unit: "kg", ItemName: "Rebar 10mm", SKU: "RB-10", SupplierName: "Acme Steel", InvoiceReference: "INV-1"}
+	if saved != want {
+		t.Fatalf("SaveCostEntry round trip = %#v, want %#v", saved, want)
+	}
+	listed, err := app.ListCostEntries()
+	if err != nil || len(listed) != 1 || listed[0] != want {
+		t.Fatalf("ListCostEntries = %#v, %v, want [%#v]", listed, err, want)
+	}
+}
+
+func TestSearchCostEntriesApp(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Search app")
+	types, err := app.ListCostTypes()
+	if err != nil {
+		t.Fatalf("ListCostTypes: %v", err)
+	}
+	if _, err := app.SaveCostEntry(CostEntryWire{CostTypeID: types[0].ID, Kind: "actual", CostDate: "2026-08-20", Description: "Server rack", Amount: "10.00", SupplierName: "Acme Hardware"}); err != nil {
+		t.Fatalf("SaveCostEntry: %v", err)
+	}
+	if _, err := app.SaveCostEntry(CostEntryWire{CostTypeID: types[0].ID, Kind: "actual", CostDate: "2026-08-21", Description: "Office chairs", Amount: "20.00"}); err != nil {
+		t.Fatalf("SaveCostEntry: %v", err)
+	}
+	got, err := app.SearchCostEntries("acme")
+	if err != nil {
+		t.Fatalf("SearchCostEntries: %v", err)
+	}
+	if len(got) != 1 || got[0].Description != "Server rack" {
+		t.Fatalf("SearchCostEntries(acme) = %#v", got)
+	}
+	all, err := app.SearchCostEntries("")
+	if err != nil || len(all) != 2 {
+		t.Fatalf("SearchCostEntries(\"\") = %#v, %v, want 2 entries", all, err)
+	}
+}
+
+func TestAggregateCostEntryQuantitiesApp(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Aggregate app")
+	types, err := app.ListCostTypes()
+	if err != nil {
+		t.Fatalf("ListCostTypes: %v", err)
+	}
+	for _, qty := range []string{"2.500", "1.500"} {
+		if _, err := app.SaveCostEntry(CostEntryWire{CostTypeID: types[0].ID, Kind: "actual", CostDate: "2026-08-20", Description: "Rebar", Amount: "10.00", Quantity: qty, Unit: "kg", ItemName: "Rebar 10mm"}); err != nil {
+			t.Fatalf("SaveCostEntry: %v", err)
+		}
+	}
+	got, err := app.AggregateCostEntryQuantities()
+	if err != nil {
+		t.Fatalf("AggregateCostEntryQuantities: %v", err)
+	}
+	want := []CostQuantityAggregateWire{{ItemName: "Rebar 10mm", Unit: "kg", TotalQuantity: "4.000", EntryCount: 2}}
+	if len(got) != 1 || got[0] != want[0] {
+		t.Fatalf("AggregateCostEntryQuantities = %#v, want %#v", got, want)
 	}
 }
 

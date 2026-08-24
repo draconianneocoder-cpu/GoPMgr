@@ -28,17 +28,61 @@ type CostType struct {
 
 // CostEntry is an immutable amount-bearing ledger row once recorded. Amounts
 // are canonical signed integer minor units; callers use a wire DTO at Wails.
+//
+// QuantityMilliUnits, Unit, ItemName, SKU, SupplierName, and InvoiceReference
+// are optional structured procurement detail (project-cost-ledger-scope.md
+// item 3). They are display-value SNAPSHOTS: when a value is chosen from the
+// separate user-private catalog (internal/catalog), only its display text is
+// copied here, never a foreign key into that database and never a supplier
+// address/contact detail. A row with these fields blank remains a fully
+// valid ordinary ledger entry, matching existing behavior.
 type CostEntry struct {
-	ID               string `json:"id"`
-	ProjectID        string `json:"project_id"`
-	CostTypeID       string `json:"cost_type_id"`
-	Kind             string `json:"kind"`
-	CostDate         string `json:"cost_date"`
-	Description      string `json:"description"`
-	AmountMinorUnits int64  `json:"amount_minor_units"`
-	CreatedAt        string `json:"created_at"`
-	UpdatedAt        string `json:"updated_at"`
+	ID                 string `json:"id"`
+	ProjectID          string `json:"project_id"`
+	CostTypeID         string `json:"cost_type_id"`
+	Kind               string `json:"kind"`
+	CostDate           string `json:"cost_date"`
+	Description        string `json:"description"`
+	AmountMinorUnits   int64  `json:"amount_minor_units"`
+	QuantityMilliUnits int64  `json:"quantity_milli_units"`
+	Unit               string `json:"unit"`
+	ItemName           string `json:"item_name"`
+	SKU                string `json:"sku"`
+	SupplierName       string `json:"supplier_name"`
+	InvoiceReference   string `json:"invoice_reference"`
+	CreatedAt          string `json:"created_at"`
+	UpdatedAt          string `json:"updated_at"`
 }
+
+// CostQuantityAggregate is a same-item/unit rollup of quantity across every
+// ledger entry that carries both fields (project-cost-ledger-scope.md item
+// 3's "enriched exports" requirement). It is derived/read-only; it is never
+// persisted and never feeds baseline or funding totals.
+type CostQuantityAggregate struct {
+	ItemName                string `json:"item_name"`
+	Unit                    string `json:"unit"`
+	TotalQuantityMilliUnits int64  `json:"total_quantity_milli_units"`
+	EntryCount              int    `json:"entry_count"`
+}
+
+const (
+	// maxLedgerFieldLength bounds each optional procurement-detail text
+	// field. These are short display snapshots (a unit symbol, a SKU, a
+	// supplier name, an invoice number), not free-form notes, so this is
+	// deliberately tighter than catalog.maxFieldLength (1000).
+	maxLedgerFieldLength = 200
+	// maxQuantityMajorUnits bounds a single entry's quantity so that
+	// summing maxSearchLimit-many entries in AggregateCostEntryQuantities
+	// stays far inside int64 milli-unit range without needing a
+	// checked-overflow error path on every read.
+	maxQuantityMajorUnits = 999_999_999
+	maxQuantityMilliUnits = maxQuantityMajorUnits * 1000
+	// maxSearchLength/maxSearchResults bound SearchCostEntries, mirroring
+	// internal/catalog's identical constants for the same reason: a bounded
+	// query length and result count keep search cheap and UI-representable.
+	maxSearchLength  = 200
+	maxSearchResults = 200
+)
 
 // CostReserve is the Phase 1 mutable assessed balance for one reserve kind.
 // It is not an authorization or movement history; Phase 2 must introduce its
@@ -146,6 +190,9 @@ func (db *Database) SaveCostEntry(entry CostEntry) (CostEntry, error) {
 	if _, err := time.Parse("2006-01-02", entry.CostDate); err != nil {
 		return CostEntry{}, fmt.Errorf("cost entry: date must be YYYY-MM-DD: %w", err)
 	}
+	if err := validateCostEntryProcurementDetail(&entry); err != nil {
+		return CostEntry{}, err
+	}
 	tx, err := db.Conn.Begin()
 	if err != nil {
 		return CostEntry{}, err
@@ -168,7 +215,10 @@ func (db *Database) SaveCostEntry(entry CostEntry) (CostEntry, error) {
 		}
 	}
 	now := captureTimestamp()
-	if _, err = tx.Exec(`INSERT INTO cost_entries (id, project_id, cost_type_id, kind, amount_minor_units, cost_date, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, entry.ID, entry.ProjectID, entry.CostTypeID, entry.Kind, entry.AmountMinorUnits, entry.CostDate, entry.Description, now.text, now.text); err != nil {
+	if _, err = tx.Exec(`INSERT INTO cost_entries (id, project_id, cost_type_id, kind, amount_minor_units, cost_date, description, quantity_milli_units, unit, item_name, sku, supplier_name, invoice_reference, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		entry.ID, entry.ProjectID, entry.CostTypeID, entry.Kind, entry.AmountMinorUnits, entry.CostDate, entry.Description,
+		entry.QuantityMilliUnits, entry.Unit, entry.ItemName, entry.SKU, entry.SupplierName, entry.InvoiceReference,
+		now.text, now.text); err != nil {
 		return CostEntry{}, err
 	}
 	entry.CreatedAt, entry.UpdatedAt = now.text, now.text
@@ -183,21 +233,167 @@ func (db *Database) SaveCostEntry(entry CostEntry) (CostEntry, error) {
 	return entry, err
 }
 
+const costEntrySelectColumns = `id,project_id,cost_type_id,kind,amount_minor_units,cost_date,description,quantity_milli_units,unit,item_name,sku,supplier_name,invoice_reference,created_at,updated_at`
+
+func scanCostEntry(row interface{ Scan(...any) error }) (CostEntry, error) {
+	var e CostEntry
+	err := row.Scan(&e.ID, &e.ProjectID, &e.CostTypeID, &e.Kind, &e.AmountMinorUnits, &e.CostDate, &e.Description,
+		&e.QuantityMilliUnits, &e.Unit, &e.ItemName, &e.SKU, &e.SupplierName, &e.InvoiceReference,
+		&e.CreatedAt, &e.UpdatedAt)
+	return e, err
+}
+
 func (db *Database) ListCostEntries(projectID string) ([]CostEntry, error) {
-	rows, err := db.Conn.Query(`SELECT id,project_id,cost_type_id,kind,amount_minor_units,cost_date,description,created_at,updated_at FROM cost_entries WHERE project_id=? ORDER BY cost_date DESC, created_at DESC`, projectID) // timestamp-order-guard-exempt: Cost Control tables are new in this schema and write created_at only through captureTimestamp's fixed-width UTC timestampLayout; lexicographic order is chronological. See timestamps.go.
+	rows, err := db.Conn.Query(`SELECT `+costEntrySelectColumns+` FROM cost_entries WHERE project_id=? ORDER BY cost_date DESC, created_at DESC`, projectID) // timestamp-order-guard-exempt: Cost Control tables are new in this schema and write created_at only through captureTimestamp's fixed-width UTC timestampLayout; lexicographic order is chronological. See timestamps.go.
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
 	var out []CostEntry
 	for rows.Next() {
-		var e CostEntry
-		if err := rows.Scan(&e.ID, &e.ProjectID, &e.CostTypeID, &e.Kind, &e.AmountMinorUnits, &e.CostDate, &e.Description, &e.CreatedAt, &e.UpdatedAt); err != nil {
+		e, err := scanCostEntry(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, e)
 	}
 	return out, rows.Err()
+}
+
+// SearchCostEntries returns ledger rows whose description or structured
+// procurement detail (item, SKU, supplier, invoice reference) contains query,
+// case-insensitively. An empty query delegates to ListCostEntries verbatim
+// (no cap) -- maxSearchResults bounds only an actual substring search, where
+// a user who over-matches can narrow their own query; it must never silently
+// truncate what would otherwise be the complete, uncapped ledger view.
+func (db *Database) SearchCostEntries(projectID, query string) ([]CostEntry, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return db.ListCostEntries(projectID)
+	}
+	if len(query) > maxSearchLength {
+		return nil, errors.New("cost entry search: query is too long")
+	}
+	needle := ledgerSearchNeedle(query)
+	rows, err := db.Conn.Query(
+		`SELECT `+costEntrySelectColumns+` FROM cost_entries
+		 WHERE project_id=? AND (
+			description LIKE ? ESCAPE '\' OR item_name LIKE ? ESCAPE '\' OR sku LIKE ? ESCAPE '\' OR
+			supplier_name LIKE ? ESCAPE '\' OR invoice_reference LIKE ? ESCAPE '\'
+		 )
+		 ORDER BY cost_date DESC, created_at DESC LIMIT ?`, // timestamp-order-guard-exempt: same as ListCostEntries above -- cost_entries.created_at is written only through captureTimestamp's fixed-width UTC timestampLayout, so lexicographic order is chronological.
+		projectID, needle, needle, needle, needle, needle, maxSearchResults,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []CostEntry
+	for rows.Next() {
+		e, err := scanCostEntry(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+// AggregateCostEntryQuantities sums quantity across every ledger entry that
+// shares the same (item_name, unit) pair, ignoring entries where either is
+// blank -- there is nothing meaningful to group an entry without both into.
+// Summation happens in Go via money.Accumulator (an exact int64 big.Int
+// accumulator; reused here purely for its overflow-checked arithmetic, not
+// for any monetary meaning) rather than SQL SUM(), because SQLite's SUM over
+// an INTEGER column silently promotes to floating point on int64 overflow
+// instead of erroring -- exactly the failure mode this function must not
+// have, given it renders directly into the UI and the financial-report PDF.
+func (db *Database) AggregateCostEntryQuantities(projectID string) ([]CostQuantityAggregate, error) {
+	rows, err := db.Conn.Query(
+		`SELECT item_name, unit, quantity_milli_units
+		 FROM cost_entries
+		 WHERE project_id=? AND item_name != '' AND unit != '' AND quantity_milli_units > 0
+		 ORDER BY item_name, unit`,
+		projectID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	type bucket struct {
+		itemName, unit string
+		total          money.Accumulator
+		count          int
+	}
+	var order []string
+	byKey := make(map[string]*bucket)
+	for rows.Next() {
+		var itemName, unit string
+		var milliUnits int64
+		if err := rows.Scan(&itemName, &unit, &milliUnits); err != nil {
+			return nil, err
+		}
+		key := itemName + "\x00" + unit
+		b, ok := byKey[key]
+		if !ok {
+			b = &bucket{itemName: itemName, unit: unit}
+			byKey[key] = b
+			order = append(order, key)
+		}
+		b.total.Add(money.Amount{MinorUnits: milliUnits})
+		b.count++
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]CostQuantityAggregate, 0, len(order))
+	for _, key := range order {
+		b := byKey[key]
+		total, err := b.total.Amount()
+		if err != nil {
+			return nil, fmt.Errorf("aggregate quantity for %q/%q: %w", b.itemName, b.unit, err)
+		}
+		out = append(out, CostQuantityAggregate{ItemName: b.itemName, Unit: b.unit, TotalQuantityMilliUnits: total.MinorUnits, EntryCount: b.count})
+	}
+	return out, nil
+}
+
+// ledgerSearchNeedle escapes SQL LIKE metacharacters in query and wraps it
+// for a substring match, mirroring internal/catalog's searchNeedle.
+func ledgerSearchNeedle(query string) string {
+	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(query)
+	return "%" + escaped + "%"
+}
+
+// validateCostEntryProcurementDetail bounds and cross-checks the optional
+// structured fields. Quantity without a unit is meaningless for
+// AggregateCostEntryQuantities, so it is rejected rather than silently
+// accepted and excluded from every rollup.
+func validateCostEntryProcurementDetail(entry *CostEntry) error {
+	entry.Unit = strings.TrimSpace(entry.Unit)
+	entry.ItemName = strings.TrimSpace(entry.ItemName)
+	entry.SKU = strings.TrimSpace(entry.SKU)
+	entry.SupplierName = strings.TrimSpace(entry.SupplierName)
+	entry.InvoiceReference = strings.TrimSpace(entry.InvoiceReference)
+	if ledgerFieldTooLong(entry.Unit, entry.ItemName, entry.SKU, entry.SupplierName, entry.InvoiceReference) {
+		return errors.New("cost entry: quantity, unit, item, SKU, supplier, and invoice reference fields must each be 200 characters or fewer")
+	}
+	if entry.QuantityMilliUnits < 0 || entry.QuantityMilliUnits > maxQuantityMilliUnits {
+		return errors.New("cost entry: quantity is out of range")
+	}
+	if entry.QuantityMilliUnits > 0 && entry.Unit == "" {
+		return errors.New("cost entry: quantity requires a unit")
+	}
+	return nil
+}
+
+func ledgerFieldTooLong(values ...string) bool {
+	for _, v := range values {
+		if len(v) > maxLedgerFieldLength {
+			return true
+		}
+	}
+	return false
 }
 
 func (db *Database) ListCostReserves(projectID string) ([]CostReserve, error) {

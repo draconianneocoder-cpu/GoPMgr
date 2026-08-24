@@ -46,6 +46,15 @@ import (
 // succeed, RepairAndSwap's own VACUUM INTO fails" outcome across 3
 // repeated runs; TestRepairAndSwapHealsReachableLightCorruption's page
 // 3 offset was unaffected and confirmed still passing, unchanged.
+//
+// This happened a third time on 2026-08-23: the project-cost-ledger-scope.md
+// item 3 migration (cost_entries procurement columns + the new
+// cost_entry_attachments table) shifted the layout again, moving page 113
+// into a page Migrate() now fails to open. Re-swept pages 90-200 with a
+// temporary throwaway test (not committed) and found pages 119 and 120 as
+// valid candidates; page 119 reproduced the same reachable-but-unhealable
+// outcome across 3 repeated runs. Page 3 was unaffected and confirmed still
+// passing, unchanged.
 func seedRepairFixtureProject(t *testing.T) (app *App, path string, pristine []byte) {
 	t.Helper()
 	app = newEncryptionProjectTestApp(t)
@@ -120,11 +129,12 @@ func TestRepairAndSwapHealsReachableLightCorruption(t *testing.T) {
 // TestRepairAndSwapCanFailToHealEvenWhenReached pins current, real
 // behavior discovered by the same sweep: RepairAndSwap being reachable
 // does not guarantee it can heal what it finds. This corruption pattern
-// (page 113 — re-derived 2026-08-20 after the Cost Control baseline schema
-// migration shifted this fixture's page layout; the original sweep had
-// found page 99, which after that migration lands on a page Migrate()
-// itself now fails to open, an OpenProject-failure outcome this test
-// doesn't exercise) leaves OpenProject succeeding but a real query failing —
+// (page 119 — re-derived 2026-08-23 after the project-cost-ledger-scope.md
+// item 3 migration (cost_entries procurement columns + the new
+// cost_entry_attachments table) again shifted this fixture's page layout;
+// the prior sweep had found page 113, which after this migration lands on
+// a page Migrate() itself now fails to open, an OpenProject-failure outcome
+// this test doesn't exercise) leaves OpenProject succeeding but a real query failing —
 // genuinely user-visible corruption, exactly the scenario RepairAndSwap
 // exists for — yet RepairAndSwap's own VACUUM INTO snapshot attempt
 // fails with the same underlying error rather than producing a healthy
@@ -139,8 +149,8 @@ func TestRepairAndSwapHealsReachableLightCorruption(t *testing.T) {
 // is a deliberate, reviewed change rather than an unnoticed regression.
 func TestRepairAndSwapCanFailToHealEvenWhenReached(t *testing.T) {
 	app, path, pristine := seedRepairFixtureProject(t)
-	const page113Offset = 113*4096 + 1
-	corruptByteAt(t, path, pristine, page113Offset)
+	const page119Offset = 119*4096 + 1
+	corruptByteAt(t, path, pristine, page119Offset)
 
 	if _, err := app.OpenProject(path); err != nil {
 		t.Fatalf("OpenProject: want success on this corruption pattern, got %v", err)

@@ -199,7 +199,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const path = await window.go.main.App.ExportChartMonteCarloRiskReport(session.editingId, iterations, 0);
       monteCarloReportStatus = `Exported to: ${path}`;
     } catch (err: any) {
-      monteCarloReportError = `Export failed: ${String(err?.message ?? err)}`;
+      if (!String(err?.message ?? err).includes('export cancelled')) monteCarloReportError = `Export failed: ${String(err?.message ?? err)}`;
     } finally {
       monteCarloReportBusy = false;
     }

@@ -241,7 +241,7 @@ import Button from '../Button.svelte';
       const path = await window.go.main.App.SigmaExportProjectReport(project.id);
       showToast(`Report exported: ${path}`, 'success');
     } catch (err: any) {
-      showToast(`Export failed: ${err}`, 'error');
+      if (!String(err).includes('export cancelled')) showToast(`Export failed: ${err}`, 'error');
     }
   }
 

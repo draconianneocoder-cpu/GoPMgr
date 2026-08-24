@@ -12,6 +12,7 @@
         "gopmgr/internal/auth",
         "gopmgr/internal/budget",
         "gopmgr/internal/calendar",
+        "gopmgr/internal/catalog",
         "gopmgr/internal/charts",
         "gopmgr/internal/charts/dag",
         "gopmgr/internal/charts/matrix",
@@ -130,6 +131,17 @@
         "github.com/rickar/cal/v2/us"
       ]
     },
+    "gopmgr/internal/catalog": {
+      "dir": "internal/catalog",
+      "imported_by_internal": [
+        "gopmgr"
+      ],
+      "imports_internal": [
+        "gopmgr/internal/crypto",
+        "gopmgr/internal/sqlitedriver"
+      ],
+      "notable_external_deps": []
+    },
     "gopmgr/internal/charts": {
       "dir": "internal/charts",
       "imported_by_internal": [
@@ -208,6 +220,7 @@
       "dir": "internal/crypto",
       "imported_by_internal": [
         "gopmgr",
+        "gopmgr/internal/catalog",
         "gopmgr/internal/db",
         "gopmgr/internal/documents",
         "gopmgr/internal/export",
@@ -461,6 +474,7 @@
     "gopmgr/internal/sqlitedriver": {
       "dir": "internal/sqlitedriver",
       "imported_by_internal": [
+        "gopmgr/internal/catalog",
         "gopmgr/internal/db",
         "gopmgr/internal/users"
       ],

@@ -6,21 +6,104 @@ package main
 import (
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 
 	"gopmgr/internal/db"
 	"gopmgr/internal/money"
 )
 
-// CostEntryWire is the Wails-safe financial boundary. Amount is a canonical
-// decimal string such as "12.34"; it is never a JavaScript number.
+// CostEntryWire is the Wails-safe financial boundary. Amount and Quantity are
+// canonical decimal strings such as "12.34" / "2.500"; neither is ever a
+// JavaScript number. Quantity, Unit, ItemName, SKU, SupplierName, and
+// InvoiceReference are optional structured procurement detail
+// (project-cost-ledger-scope.md item 3); an empty Quantity means "not set",
+// distinct from a quantity of zero (which SaveCostEntry rejects).
 type CostEntryWire struct {
-	ID          string `json:"id"`
-	CostTypeID  string `json:"cost_type_id"`
-	Kind        string `json:"kind"`
-	CostDate    string `json:"cost_date"`
-	Description string `json:"description"`
-	Amount      string `json:"amount"`
+	ID               string `json:"id"`
+	CostTypeID       string `json:"cost_type_id"`
+	Kind             string `json:"kind"`
+	CostDate         string `json:"cost_date"`
+	Description      string `json:"description"`
+	Amount           string `json:"amount"`
+	Quantity         string `json:"quantity"`
+	Unit             string `json:"unit"`
+	ItemName         string `json:"item_name"`
+	SKU              string `json:"sku"`
+	SupplierName     string `json:"supplier_name"`
+	InvoiceReference string `json:"invoice_reference"`
+}
+
+// CostQuantityAggregateWire mirrors db.CostQuantityAggregate at the Wails
+// boundary with a canonical decimal quantity string.
+type CostQuantityAggregateWire struct {
+	ItemName      string `json:"item_name"`
+	Unit          string `json:"unit"`
+	TotalQuantity string `json:"total_quantity"`
+	EntryCount    int    `json:"entry_count"`
+}
+
+const quantityMilliUnitsPerMajor = 1000
+
+// parseQuantityDecimal parses an unsigned major-unit decimal quantity (not
+// money) with at most three fractional digits into milli-units. Modeled on
+// money.ParseDecimal's boundary discipline -- reject whitespace, exponents,
+// leading zeroes -- but unsigned (a quantity is never negative) and
+// three fractional digits (covers kg/L/hr/ea-style ledger units). An empty
+// string means "not set" and returns (0, nil).
+func parseQuantityDecimal(v string) (int64, error) {
+	if v == "" {
+		return 0, nil
+	}
+	if strings.TrimSpace(v) != v {
+		return 0, errors.New("quantity must not contain surrounding whitespace")
+	}
+	if strings.HasPrefix(v, "-") {
+		return 0, errors.New("quantity must not be negative")
+	}
+	parts := strings.Split(v, ".")
+	if len(parts) > 2 || parts[0] == "" || (len(parts) == 2 && (parts[1] == "" || len(parts[1]) > 3)) {
+		return 0, errors.New("quantity must be a decimal with at most three fractional digits")
+	}
+	if len(parts[0]) > 1 && parts[0][0] == '0' {
+		return 0, errors.New("quantity must not contain leading zeroes")
+	}
+	whole, err := strconv.ParseUint(parts[0], 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("quantity: %w", err)
+	}
+	frac := uint64(0)
+	if len(parts) == 2 {
+		fraction := parts[1]
+		for len(fraction) < 3 {
+			fraction += "0"
+		}
+		frac, err = strconv.ParseUint(fraction, 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("quantity: %w", err)
+		}
+	}
+	const maxUint64 = ^uint64(0)
+	if whole > (maxUint64-frac)/quantityMilliUnitsPerMajor {
+		return 0, errors.New("quantity is too large")
+	}
+	milli := whole*quantityMilliUnitsPerMajor + frac
+	if milli > math.MaxInt64 {
+		return 0, errors.New("quantity is too large")
+	}
+	return int64(milli), nil
+}
+
+// formatQuantityDecimal returns a canonical, fixed-three-decimal major-unit
+// representation, or "" for zero/unset -- distinguishing an entry with no
+// quantity from one whose quantity happens to be zero (which SaveCostEntry
+// never persists; see validateCostEntryProcurementDetail).
+func formatQuantityDecimal(milliUnits int64) string {
+	if milliUnits <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d.%03d", milliUnits/quantityMilliUnitsPerMajor, milliUnits%quantityMilliUnitsPerMajor)
 }
 
 type CostSummaryWire struct {
@@ -184,11 +267,66 @@ func (a *App) SaveCostEntry(input CostEntryWire) (CostEntryWire, error) {
 	if err != nil {
 		return CostEntryWire{}, err
 	}
-	saved, err := d.SaveCostEntry(db.CostEntry{ProjectID: p.ID, CostTypeID: input.CostTypeID, Kind: input.Kind, CostDate: input.CostDate, Description: strings.TrimSpace(input.Description), AmountMinorUnits: amount.MinorUnits})
+	quantity, err := parseQuantityDecimal(input.Quantity)
+	if err != nil {
+		return CostEntryWire{}, err
+	}
+	saved, err := d.SaveCostEntry(db.CostEntry{
+		ProjectID: p.ID, CostTypeID: input.CostTypeID, Kind: input.Kind, CostDate: input.CostDate,
+		Description: strings.TrimSpace(input.Description), AmountMinorUnits: amount.MinorUnits,
+		QuantityMilliUnits: quantity, Unit: input.Unit, ItemName: input.ItemName, SKU: input.SKU,
+		SupplierName: input.SupplierName, InvoiceReference: input.InvoiceReference,
+	})
 	if err != nil {
 		return CostEntryWire{}, err
 	}
 	return costEntryWire(saved), nil
+}
+
+// SearchCostEntries returns ledger rows whose description or structured
+// procurement detail matches query (case-insensitive substring); an empty
+// query returns the same rows as ListCostEntries.
+func (a *App) SearchCostEntries(query string) ([]CostEntryWire, error) {
+	d := a.requireDB()
+	if d == nil {
+		return nil, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	entries, err := d.SearchCostEntries(p.ID, query)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]CostEntryWire, 0, len(entries))
+	for _, entry := range entries {
+		out = append(out, costEntryWire(entry))
+	}
+	return out, nil
+}
+
+// AggregateCostEntryQuantities sums quantity across every ledger entry that
+// shares the same item and unit (project-cost-ledger-scope.md item 3's
+// "enriched exports" requirement).
+func (a *App) AggregateCostEntryQuantities() ([]CostQuantityAggregateWire, error) {
+	d := a.requireDB()
+	if d == nil {
+		return nil, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	rows, err := d.AggregateCostEntryQuantities(p.ID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]CostQuantityAggregateWire, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, CostQuantityAggregateWire{ItemName: r.ItemName, Unit: r.Unit, TotalQuantity: formatQuantityDecimal(r.TotalQuantityMilliUnits), EntryCount: r.EntryCount})
+	}
+	return out, nil
 }
 
 func (a *App) ApproveCostBaseline(note string) (CostBaselineWire, error) {
@@ -318,7 +456,11 @@ func costControlMutationDisabledReason(project db.Project) string {
 }
 
 func costEntryWire(entry db.CostEntry) CostEntryWire {
-	return CostEntryWire{ID: entry.ID, CostTypeID: entry.CostTypeID, Kind: entry.Kind, CostDate: entry.CostDate, Description: entry.Description, Amount: formatMoneyDecimal(money.Amount{MinorUnits: entry.AmountMinorUnits})}
+	return CostEntryWire{
+		ID: entry.ID, CostTypeID: entry.CostTypeID, Kind: entry.Kind, CostDate: entry.CostDate, Description: entry.Description,
+		Amount: formatMoneyDecimal(money.Amount{MinorUnits: entry.AmountMinorUnits}), Quantity: formatQuantityDecimal(entry.QuantityMilliUnits),
+		Unit: entry.Unit, ItemName: entry.ItemName, SKU: entry.SKU, SupplierName: entry.SupplierName, InvoiceReference: entry.InvoiceReference,
+	}
 }
 
 func costBaselineWire(s db.CostBaselineSnapshot) (CostBaselineWire, error) {

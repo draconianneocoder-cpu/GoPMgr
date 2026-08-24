@@ -28,6 +28,11 @@ function installApp({ baselines = [], types = [{ id: 'labor', project_id: 'p', c
     SaveCostEntry: vi.fn(async (entry) => entry),
     SaveCostReserve: vi.fn(async (reserve) => reserve),
     ApproveCostBaseline: vi.fn(async () => ({})),
+    AggregateCostEntryQuantities: vi.fn(async () => []),
+    SearchCostEntries: vi.fn(async () => entries),
+    ListCostEntryAttachments: vi.fn(async () => []),
+    AttachCostEntryFile: vi.fn(async () => ({ id: 'att-1', cost_entry_id: '', filename: 'file.pdf', content_type: 'application/pdf', size_bytes: 1024, sha256: '', created_at: '' })),
+    ExportCostEntryAttachmentsZip: vi.fn(async () => '/tmp/attachments.zip'),
   };
   (window as unknown as { go: unknown }).go = { main: { App: app } };
   return app;
@@ -71,7 +76,7 @@ describe('CostControlPanel', () => {
     await fireEvent.input(getByLabelText('Date'), { target: { value: '2026-08-21' } });
     await fireEvent.click(getByRole('button', { name: 'Add ledger entry' }));
     const saved = app.SaveCostEntry.mock.calls[0][0];
-    expect(Object.keys(saved).sort()).toEqual(['amount', 'cost_date', 'cost_type_id', 'description', 'id', 'kind']);
+    expect(Object.keys(saved).sort()).toEqual(['amount', 'cost_date', 'cost_type_id', 'description', 'id', 'invoice_reference', 'item_name', 'kind', 'quantity', 'sku', 'supplier_name', 'unit']);
     expect(saved).toEqual({
       id: '',
       cost_type_id: 'labor',
@@ -79,8 +84,85 @@ describe('CostControlPanel', () => {
       amount: '25.00',
       description: 'Concrete delivery, supplier PO-1042',
       cost_date: '2026-08-21',
+      quantity: '',
+      unit: '',
+      item_name: '',
+      sku: '',
+      supplier_name: '',
+      invoice_reference: '',
     });
     expect(await findByText('Historic supplier reference')).toBeInTheDocument();
+  });
+
+  it('saves structured procurement detail (item, SKU, supplier, invoice ref, quantity) alongside the free-text description', async () => {
+    const app = installApp();
+    const { findByText, getAllByLabelText, getByLabelText, getByRole } = render(CostControlPanel);
+    await findByText('Legacy budget rollup');
+    await fireEvent.input(getByLabelText('Cost item or reference'), { target: { value: 'Structural steel delivery' } });
+    await fireEvent.input(getAllByLabelText('Amount')[0], { target: { value: '1200.00' } });
+    await fireEvent.input(getByLabelText('Date'), { target: { value: '2026-08-21' } });
+    await fireEvent.input(getByLabelText('Item name'), { target: { value: 'Structural steel beam' } });
+    await fireEvent.input(getByLabelText('SKU'), { target: { value: 'SKU-BEAM-1' } });
+    await fireEvent.input(getByLabelText('Supplier'), { target: { value: 'Acme Structural Supply' } });
+    await fireEvent.input(getByLabelText('Invoice reference'), { target: { value: 'INV-1001' } });
+    await fireEvent.input(getByLabelText('Quantity'), { target: { value: '10.000' } });
+    await fireEvent.input(getByLabelText('Unit'), { target: { value: 'each' } });
+    await fireEvent.click(getByRole('button', { name: 'Add ledger entry' }));
+    expect(app.SaveCostEntry).toHaveBeenCalledWith(expect.objectContaining({
+      item_name: 'Structural steel beam', sku: 'SKU-BEAM-1', supplier_name: 'Acme Structural Supply', invoice_reference: 'INV-1001', quantity: '10.000', unit: 'each',
+    }));
+  });
+
+  it('searches the ledger and lets the user export a ledger attachments archive', async () => {
+    const app = installApp({
+      entries: [{ id: 'entry-1', cost_type_id: 'labor', kind: 'actual', cost_date: '2026-08-21', description: 'Steel beams', amount: '25.00' }],
+    });
+    const { findByText, getByLabelText, getByRole } = render(CostControlPanel);
+    await findByText('Legacy budget rollup');
+    await fireEvent.input(getByLabelText('Search ledger'), { target: { value: 'steel' } });
+    await fireEvent.click(getByRole('button', { name: 'Search' }));
+    expect(app.SearchCostEntries).toHaveBeenCalledWith('steel');
+
+    await fireEvent.click(getByRole('button', { name: 'Export ledger attachments (.zip)' }));
+    expect(app.ExportCostEntryAttachmentsZip).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps an active ledger search applied after a mutation reloads the panel', async () => {
+    const app = installApp({
+      entries: [{ id: 'entry-1', cost_type_id: 'labor', kind: 'actual', cost_date: '2026-08-21', description: 'Steel beams', amount: '25.00' }],
+    });
+    const { findByText, getAllByLabelText, getByLabelText, getByRole } = render(CostControlPanel);
+    await findByText('Legacy budget rollup');
+    await fireEvent.input(getByLabelText('Search ledger'), { target: { value: 'steel' } });
+    await fireEvent.click(getByRole('button', { name: 'Search' }));
+    expect(app.SearchCostEntries).toHaveBeenCalledWith('steel');
+    app.SearchCostEntries.mockClear();
+    app.ListCostEntries.mockClear();
+
+    await fireEvent.input(getByLabelText('Cost item or reference'), { target: { value: 'More steel' } });
+    await fireEvent.input(getAllByLabelText('Amount')[0], { target: { value: '10.00' } });
+    await fireEvent.input(getByLabelText('Date'), { target: { value: '2026-08-21' } });
+    await fireEvent.click(getByRole('button', { name: 'Add ledger entry' }));
+    await waitFor(() => expect(app.SaveCostEntry).toHaveBeenCalledTimes(1));
+
+    expect(app.SearchCostEntries).toHaveBeenCalledWith('steel');
+    expect(app.ListCostEntries).not.toHaveBeenCalled();
+  });
+
+  it('shows the quantity aggregation table and lets a user attach a file to a ledger entry', async () => {
+    const app = installApp({
+      entries: [{ id: 'entry-1', cost_type_id: 'labor', kind: 'actual', cost_date: '2026-08-21', description: 'Steel beams', amount: '25.00' }],
+    });
+    app.AggregateCostEntryQuantities.mockResolvedValue([{ item_name: 'Structural steel beam', unit: 'each', total_quantity: '15.000', entry_count: 2 }]);
+    const { findByText, getByRole } = render(CostControlPanel);
+    await findByText('Legacy budget rollup');
+    expect(await findByText('Quantity by item & unit')).toBeInTheDocument();
+    expect(await findByText('15.000')).toBeInTheDocument();
+
+    await fireEvent.click(getByRole('button', { name: 'Attachments' }));
+    expect(app.ListCostEntryAttachments).toHaveBeenCalledWith('entry-1');
+    await fireEvent.click(getByRole('button', { name: 'Attach file…' }));
+    expect(app.AttachCostEntryFile).toHaveBeenCalledWith('entry-1');
   });
 
   it('offers a retry after initial Cost Control loading fails', async () => {

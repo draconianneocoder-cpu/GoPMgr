@@ -60,13 +60,20 @@ var ErrNotAdmin = errors.New("users: administrator privileges required")
 var ErrLastAdmin = errors.New("users: cannot remove the last administrator")
 
 // Account is the persisted user record.
+//
+// LastExportDirectory is the directory the user most recently chose in an
+// export save dialog, remembered so the next export defaults there instead
+// of always resetting to DataDir/exports. It is a device/user preference,
+// not project data, so it lives here in the plaintext system.db (like
+// DataDir itself) rather than inside any portable per-project database.
 type Account struct {
-	Username    string    `json:"username"`
-	DisplayName string    `json:"display_name"`
-	DataDir     string    `json:"data_dir"`
-	CreatedAt   time.Time `json:"created_at"`
-	LastLogin   time.Time `json:"last_login"`
-	IsAdmin     bool      `json:"is_admin"`
+	Username            string    `json:"username"`
+	DisplayName         string    `json:"display_name"`
+	DataDir             string    `json:"data_dir"`
+	LastExportDirectory string    `json:"last_export_directory"`
+	CreatedAt           time.Time `json:"created_at"`
+	LastLogin           time.Time `json:"last_login"`
+	IsAdmin             bool      `json:"is_admin"`
 }
 
 // Store is the connection to system.db. Construct one per process via
@@ -165,7 +172,41 @@ func (s *Store) migrate() error {
 		return err
 	}
 	// Admin role — additive column; safe to run on existing databases.
-	return s.migrateAdminColumn()
+	if err := s.migrateAdminColumn(); err != nil {
+		return err
+	}
+	// Remembered last export directory — additive column; safe to run on
+	// existing databases.
+	return s.migrateLastExportDirColumn()
+}
+
+// migrateLastExportDirColumn adds last_export_directory to pre-existing
+// databases. Idempotent, mirroring migrateAdminColumn.
+func (s *Store) migrateLastExportDirColumn() error {
+	var cols []string
+	rows, err := s.conn.Query(`PRAGMA table_info(users)`)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var cid int
+		var name, typ, notnull string
+		var dflt sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		cols = append(cols, name)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if slices.Contains(cols, "last_export_directory") {
+		return nil // already present
+	}
+	_, err = s.conn.Exec(`ALTER TABLE users ADD COLUMN last_export_directory TEXT NOT NULL DEFAULT ''`)
+	return err
 }
 
 // migrateAdminColumn adds is_admin to pre-admin databases. Idempotent.
@@ -246,6 +287,14 @@ func (s *Store) SetAdmin(username string, isAdmin bool) error {
 		}
 	}
 	_, err := s.conn.Exec(`UPDATE users SET is_admin = ? WHERE username = ?`, boolToInt(isAdmin), username)
+	return err
+}
+
+// SetLastExportDirectory persists the directory the user most recently
+// chose in an export save dialog. Called after every successful dialog
+// confirmation so the next export defaults there.
+func (s *Store) SetLastExportDirectory(username, dir string) error {
+	_, err := s.conn.Exec(`UPDATE users SET last_export_directory = ? WHERE username = ?`, dir, username)
 	return err
 }
 
@@ -362,10 +411,10 @@ func (s *Store) Authenticate(username, password string) (Account, error) {
 		isAdmin       int
 	)
 	err := s.conn.QueryRow(
-		`SELECT username, display_name, password_hash, data_dir, created_at, last_login, is_admin
+		`SELECT username, display_name, password_hash, data_dir, created_at, last_login, is_admin, last_export_directory
 		 FROM users WHERE username = ?`,
 		username,
-	).Scan(&acc.Username, &acc.DisplayName, &hash, &storedDataDir, &createdAt, &lastLogin, &isAdmin)
+	).Scan(&acc.Username, &acc.DisplayName, &hash, &storedDataDir, &createdAt, &lastLogin, &isAdmin, &acc.LastExportDirectory)
 	if err == sql.ErrNoRows {
 		return Account{}, ErrNoSuchUser
 	}
@@ -421,7 +470,7 @@ func (s *Store) Authenticate(username, password string) (Account, error) {
 // by the GUI's user-switcher dropdown and admin panel.
 func (s *Store) List() ([]Account, error) {
 	rows, err := s.conn.Query(
-		`SELECT username, display_name, data_dir, created_at, last_login, is_admin
+		`SELECT username, display_name, data_dir, created_at, last_login, is_admin, last_export_directory
 		 FROM users ORDER BY username ASC`,
 	)
 	if err != nil {
@@ -437,7 +486,7 @@ func (s *Store) List() ([]Account, error) {
 			createdAt, lastLogin string
 			isAdmin              int
 		)
-		if err := rows.Scan(&a.Username, &a.DisplayName, &storedDataDir, &createdAt, &lastLogin, &isAdmin); err != nil {
+		if err := rows.Scan(&a.Username, &a.DisplayName, &storedDataDir, &createdAt, &lastLogin, &isAdmin, &a.LastExportDirectory); err != nil {
 			return nil, err
 		}
 		// See the comment in Authenticate: data_dir is recomputed, not trusted.

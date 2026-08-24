@@ -363,6 +363,71 @@ func TestMigrateAdminColumn_AlreadyPresentIsNoop(t *testing.T) {
 	t.Cleanup(func() { _ = s2.Close() })
 }
 
+func TestMigrateLastExportDirColumn_QueryFailsOnClosedStore(t *testing.T) {
+	store := openTestStore(t)
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if err := store.migrateLastExportDirColumn(); err == nil || !strings.Contains(err.Error(), "database is closed") {
+		t.Fatalf("migrateLastExportDirColumn on closed store = %v, want \"database is closed\"", err)
+	}
+}
+
+// TestMigrateLastExportDirColumn_AlreadyPresentIsNoop mirrors
+// TestMigrateAdminColumn_AlreadyPresentIsNoop: the first Open's migration
+// already added last_export_directory, so a second Open must take the
+// already-present branch rather than re-running the ALTER TABLE.
+func TestMigrateLastExportDirColumn_AlreadyPresentIsNoop(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "GoPMgr")
+	s1, err := Open(root)
+	if err != nil {
+		t.Fatalf("first Open: %v", err)
+	}
+	if err := s1.Close(); err != nil {
+		t.Fatalf("close first store: %v", err)
+	}
+
+	s2, err := Open(root)
+	if err != nil {
+		t.Fatalf("second Open (should hit the already-present branch, not error): %v", err)
+	}
+	t.Cleanup(func() { _ = s2.Close() })
+}
+
+func TestSetLastExportDirectoryPersistsAndRoundTripsThroughAuthenticateAndList(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	acc, err := store.Authenticate("alice", "correct horse battery staple")
+	if err != nil {
+		t.Fatalf("Authenticate before set: %v", err)
+	}
+	if acc.LastExportDirectory != "" {
+		t.Fatalf("LastExportDirectory before any export = %q, want empty", acc.LastExportDirectory)
+	}
+
+	if err := store.SetLastExportDirectory("alice", "/Users/alice/Documents/Reports"); err != nil {
+		t.Fatalf("SetLastExportDirectory: %v", err)
+	}
+
+	acc, err = store.Authenticate("alice", "correct horse battery staple")
+	if err != nil {
+		t.Fatalf("Authenticate after set: %v", err)
+	}
+	if acc.LastExportDirectory != "/Users/alice/Documents/Reports" {
+		t.Fatalf("Authenticate LastExportDirectory = %q, want the set directory", acc.LastExportDirectory)
+	}
+
+	list, err := store.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(list) != 1 || list[0].LastExportDirectory != "/Users/alice/Documents/Reports" {
+		t.Fatalf("List = %#v, want LastExportDirectory set", list)
+	}
+}
+
 // TestSetAdmin_NoSuchUserReturnsError covers SetAdmin's first QueryRow
 // (reading the target's current admin status) failing with sql.ErrNoRows
 // for a username that was never created. The second QueryRow (the admin

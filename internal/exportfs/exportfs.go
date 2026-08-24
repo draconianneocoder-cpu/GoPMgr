@@ -37,7 +37,21 @@ func EnsureAvailable(paths ...string) error {
 // WriteNewPrivate writes complete bytes to a 0600 temporary file and then
 // publishes it as a new hard link. The no-replacement policy is deliberate:
 // a save dialog can confirm only a primary artifact, not its sidecars.
-func WriteNewPrivate(path string, data []byte) (err error) {
+func WriteNewPrivate(path string, data []byte) error {
+	return WriteNewPrivateStream(path, func(f *os.File) error {
+		_, err := f.Write(data)
+		return err
+	})
+}
+
+// WriteNewPrivateStream is WriteNewPrivate's streaming form: write receives
+// an open, 0600 temporary file in the destination's directory and fills it
+// however it needs to (e.g. a zip.Writer written incrementally), without
+// requiring the caller to hold the complete payload in memory at once. The
+// temporary file is synced, closed, and published as a new hard link only
+// after write returns nil -- the no-overwrite guarantee and cleanup-on-error
+// behavior are identical to WriteNewPrivate.
+func WriteNewPrivateStream(path string, write func(*os.File) error) (err error) {
 	if err := EnsureAvailable(path); err != nil {
 		return err
 	}
@@ -55,7 +69,7 @@ func WriteNewPrivate(path string, data []byte) (err error) {
 	if err := temporary.Chmod(0o600); err != nil {
 		return fmt.Errorf("set export temporary permissions: %w", err)
 	}
-	if _, err := temporary.Write(data); err != nil {
+	if err := write(temporary); err != nil {
 		return fmt.Errorf("write export temporary file: %w", err)
 	}
 	if err := temporary.Sync(); err != nil {

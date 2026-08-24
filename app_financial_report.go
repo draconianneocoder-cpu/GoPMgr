@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"gopmgr/internal/agile"
@@ -153,7 +154,7 @@ func snapshotCostTypes(tx *sql.Tx, projectID string) ([]db.CostType, error) {
 	return out, rows.Err()
 }
 func snapshotCostEntries(tx *sql.Tx, projectID string) ([]db.CostEntry, error) {
-	rows, err := tx.Query(`SELECT id,cost_type_id,kind,amount_minor_units,cost_date,description FROM cost_entries WHERE project_id=? ORDER BY cost_date DESC,created_at DESC`, projectID)
+	rows, err := tx.Query(`SELECT id,cost_type_id,kind,amount_minor_units,cost_date,description,quantity_milli_units,unit,item_name,sku,supplier_name,invoice_reference FROM cost_entries WHERE project_id=? ORDER BY cost_date DESC,created_at DESC`, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +162,7 @@ func snapshotCostEntries(tx *sql.Tx, projectID string) ([]db.CostEntry, error) {
 	var out []db.CostEntry
 	for rows.Next() {
 		var e db.CostEntry
-		if err := rows.Scan(&e.ID, &e.CostTypeID, &e.Kind, &e.AmountMinorUnits, &e.CostDate, &e.Description); err != nil {
+		if err := rows.Scan(&e.ID, &e.CostTypeID, &e.Kind, &e.AmountMinorUnits, &e.CostDate, &e.Description, &e.QuantityMilliUnits, &e.Unit, &e.ItemName, &e.SKU, &e.SupplierName, &e.InvoiceReference); err != nil {
 			return nil, err
 		}
 		e.ProjectID = projectID
@@ -227,7 +228,11 @@ func financialCostControlSnapshot(types []db.CostType, entries []db.CostEntry, r
 		default:
 			return documents.FinancialCostControl{}, fmt.Errorf("financial report cost entry %q has unsupported kind %q", e.ID, e.Kind)
 		}
-		rows = append(rows, documents.FinancialLedgerEntry{Date: e.CostDate, State: e.Kind, Type: t.Name, Attribution: t.Attribution, Behavior: t.Behavior, Treatment: t.Treatment, Description: e.Description, Amount: amount.Decimal()})
+		rows = append(rows, documents.FinancialLedgerEntry{Date: e.CostDate, State: e.Kind, Type: t.Name, Attribution: t.Attribution, Behavior: t.Behavior, Treatment: t.Treatment, Description: e.Description, Amount: amount.Decimal(), ItemName: e.ItemName, SKU: e.SKU, SupplierName: e.SupplierName, InvoiceReference: e.InvoiceReference, Quantity: formatQuantityDecimal(e.QuantityMilliUnits), Unit: e.Unit})
+	}
+	quantityAggregates, err := aggregateEntryQuantities(entries)
+	if err != nil {
+		return documents.FinancialCostControl{}, err
 	}
 	reserveRows := make([]documents.FinancialReserve, 0, len(reserves))
 	for _, r := range reserves {
@@ -278,5 +283,45 @@ func financialCostControlSnapshot(types []db.CostType, entries []db.CostEntry, r
 		}
 		baselineRows = append(baselineRows, documents.FinancialBaseline{Version: wire.Version, Planned: wire.Planned, Contingency: wire.Contingency, CostBaseline: wire.CostBaseline, ManagementReserve: wire.ManagementReserve, AuthorisedFunding: wire.AuthorisedFunding, ApprovedBy: wire.ApprovedBy, ApprovalNote: wire.ApprovalNote, ApprovedAt: wire.ApprovedAt})
 	}
-	return documents.FinancialCostControl{Planned: pl.Decimal(), Contingency: cont.Decimal(), CostBaseline: baseline.Decimal(), ManagementReserve: mgmt.Decimal(), AuthorisedFunding: authority.Decimal(), Commitment: co.Decimal(), Actual: ac.Decimal(), Entries: rows, Reserves: reserveRows, Baselines: baselineRows}, nil
+	return documents.FinancialCostControl{Planned: pl.Decimal(), Contingency: cont.Decimal(), CostBaseline: baseline.Decimal(), ManagementReserve: mgmt.Decimal(), AuthorisedFunding: authority.Decimal(), Commitment: co.Decimal(), Actual: ac.Decimal(), Entries: rows, Reserves: reserveRows, Baselines: baselineRows, QuantityAggregates: quantityAggregates}, nil
+}
+
+// aggregateEntryQuantities mirrors db.(*Database).AggregateCostEntryQuantities
+// but groups the entries already fetched inside buildFinancialReportSnapshot's
+// single read transaction, rather than issuing a second query outside it --
+// preserving that function's documented guarantee that the whole report is a
+// single consistent snapshot.
+func aggregateEntryQuantities(entries []db.CostEntry) ([]documents.FinancialQuantityAggregate, error) {
+	type bucket struct {
+		itemName, unit string
+		total          money.Accumulator
+		count          int
+	}
+	var order []string
+	byKey := make(map[string]*bucket)
+	for _, e := range entries {
+		if e.ItemName == "" || e.Unit == "" || e.QuantityMilliUnits <= 0 {
+			continue
+		}
+		key := e.ItemName + "\x00" + e.Unit
+		b, ok := byKey[key]
+		if !ok {
+			b = &bucket{itemName: e.ItemName, unit: e.Unit}
+			byKey[key] = b
+			order = append(order, key)
+		}
+		b.total.Add(money.Amount{MinorUnits: e.QuantityMilliUnits})
+		b.count++
+	}
+	sort.Strings(order)
+	out := make([]documents.FinancialQuantityAggregate, 0, len(order))
+	for _, key := range order {
+		b := byKey[key]
+		total, err := b.total.Amount()
+		if err != nil {
+			return nil, fmt.Errorf("aggregate quantity for %q/%q: %w", b.itemName, b.unit, err)
+		}
+		out = append(out, documents.FinancialQuantityAggregate{ItemName: b.itemName, Unit: b.unit, TotalQuantity: formatQuantityDecimal(total.MinorUnits), EntryCount: b.count})
+	}
+	return out, nil
 }

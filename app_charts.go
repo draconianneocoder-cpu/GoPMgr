@@ -368,18 +368,18 @@ func (a *App) ExportChartMonteCarloRiskReport(chartID string, iterations int, wo
 	if err != nil {
 		return "", err
 	}
-	outDir := filepath.Join(u.DataDir, "exports")
-	if err := os.MkdirAll(outDir, 0o700); err != nil {
+	path, err := a.selectExportDestination(
+		filepath.Join(u.DataDir, "exports"),
+		fmt.Sprintf("Monte-Carlo-Risk-Report-%s-%s.pdf", sanitizeFilename(c.Title), time.Now().UTC().Format("20060102-150405")),
+		".pdf", "Export Monte Carlo risk report",
+	)
+	if err != nil {
 		return "", err
 	}
-	outPath := filepath.Join(outDir, fmt.Sprintf("Monte-Carlo-Risk-Report-%s-%s.pdf",
-		sanitizeFilename(c.Title),
-		time.Now().UTC().Format("20060102-150405"),
-	))
-	if err := os.WriteFile(outPath, raw, 0o600); err != nil {
+	if err := writeNewPrivateExport(path, raw); err != nil {
 		return "", err
 	}
-	return outPath, nil
+	return path, nil
 }
 
 // LevelResult is the outcome of LevelChartResources: how many tasks were

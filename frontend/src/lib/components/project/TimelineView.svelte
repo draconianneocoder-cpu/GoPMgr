@@ -235,7 +235,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const path = await window.go.main.App.ExportProjectICS(includeHolidays);
       exportStatus = `Exported to ${path}`;
     } catch (err: any) {
-      exportStatus = `Export failed: ${err}`;
+      if (!String(err).includes('export cancelled')) exportStatus = `Export failed: ${err}`;
     } finally {
       exporting = false;
     }

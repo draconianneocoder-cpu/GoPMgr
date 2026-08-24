@@ -53,9 +53,11 @@ func TestFinancialTableWidthsAndCellsFitLandscapeContent(t *testing.T) {
 	contentWidth := pageWidth - left - right
 
 	for name, widths := range map[string][]float64{
-		"ledger":    financialLedgerTableWidths,
-		"reserves":  financialReserveTableWidths,
-		"baselines": financialBaselineTableWidths,
+		"ledger":      financialLedgerTableWidths,
+		"reserves":    financialReserveTableWidths,
+		"baselines":   financialBaselineTableWidths,
+		"procurement": financialProcurementTableWidths,
+		"quantity":    financialQuantityTableWidths,
 	} {
 		var total float64
 		for _, width := range widths {
@@ -89,6 +91,18 @@ func TestFinancialTableWidthsAndCellsFitLandscapeContent(t *testing.T) {
 			widths:  financialBaselineTableWidths,
 			headers: []string{"Version", "Cost baseline", "Authorised", "Approved by", "Approved at", "Rationale"},
 			row:     []string{"v1", "-92233720368547758.08", "-92233720368547758.08", "local administrator", "2026-08-21T21:00:41.472810000Z", "Long project-provided approval rationale"},
+		},
+		{
+			name:    "procurement",
+			widths:  financialProcurementTableWidths,
+			headers: []string{"Date", "Item", "SKU", "Supplier", "Invoice ref", "Quantity", "Unit", "Amount"},
+			row:     []string{"2026-08-21", "Structural steel beam, hot-rolled", "SKU-STEEL-BEAM-12345", "Acme Structural Supply Co.", "INV-2026-0821-00123", "12345.678", "each", "-92233720368547758.08"},
+		},
+		{
+			name:    "quantity",
+			widths:  financialQuantityTableWidths,
+			headers: []string{"Item", "Unit", "Total quantity", "Entries"},
+			row:     []string{"Structural steel beam, hot-rolled", "each", "12345.678", "42"},
 		},
 	} {
 		for _, font := range []struct {

@@ -325,8 +325,18 @@ func (a *App) SigmaExportProjectReport(projectID string) (string, error) {
 		return "", err
 	}
 
-	outDir := filepath.Join(u.DataDir, "exports")
-	return export.GenerateSigmaReport(project, charter, sipoc, fishbone, solutions, controlPlan, outDir)
+	pdfBytes, filename, err := export.GenerateSigmaReportPDF(project, charter, sipoc, fishbone, solutions, controlPlan)
+	if err != nil {
+		return "", err
+	}
+	path, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), filename, ".pdf", "Export Six Sigma project report")
+	if err != nil {
+		return "", err
+	}
+	if err := writeNewPrivateExport(path, pdfBytes); err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 func trimExt(name string) string {

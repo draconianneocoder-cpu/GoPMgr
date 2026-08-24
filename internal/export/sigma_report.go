@@ -22,6 +22,14 @@ import (
 // permissively). The caller owns choosing outDir — every other exporter in
 // this codebase writes to the signed-in user's own <DataDir>/exports, and
 // this function has no user context of its own to derive that path from.
+//
+// Deprecated: this outDir-writing form predates the application-wide
+// save-destination dialog. New callers should call GenerateSigmaReportPDF
+// (pure, no filesystem access) and publish the result through
+// exportfs.WriteNewPrivate after prompting the user for a destination, the
+// same way every other exporter in this codebase does. This function is
+// kept only for its own direct-write test coverage and is not called from
+// application code.
 func GenerateSigmaReport(
 	project domain.Project,
 	charter *domain.Charter,
@@ -31,6 +39,38 @@ func GenerateSigmaReport(
 	controlPlan []domain.ControlPlanItem,
 	outDir string,
 ) (string, error) {
+	pdfBytes, filename, err := GenerateSigmaReportPDF(project, charter, sipoc, fishbone, solutions, controlPlan)
+	if err != nil {
+		return "", err
+	}
+
+	if err := os.MkdirAll(outDir, 0o700); err != nil {
+		return "", fmt.Errorf("sigma report mkdir: %w", err)
+	}
+	if err := os.Chmod(outDir, 0o700); err != nil { // #nosec G302 -- this is a private directory mode, not a file mode.
+		return "", fmt.Errorf("sigma report chmod export dir: %w", err)
+	}
+
+	outputPath := filepath.Join(outDir, filename)
+	if err := os.WriteFile(outputPath, pdfBytes, 0o600); err != nil {
+		return "", fmt.Errorf("sigma report write: %w", err)
+	}
+
+	return outputPath, nil
+}
+
+// GenerateSigmaReportPDF renders the Six Sigma phase deliverables report to
+// PDF bytes and a suggested filename, with no filesystem access -- the
+// caller chooses the destination (typically via a save dialog) and
+// publishes the bytes itself.
+func GenerateSigmaReportPDF(
+	project domain.Project,
+	charter *domain.Charter,
+	sipoc *domain.SIPOCData,
+	fishbone *domain.FishboneData,
+	solutions []domain.Solution,
+	controlPlan []domain.ControlPlanItem,
+) (pdfBytes []byte, filename string, err error) {
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetTitle("Six Sigma Project Report: "+project.Title, true)
 	pdf.SetAuthor("GoPMgr", true)
@@ -45,10 +85,10 @@ func GenerateSigmaReport(
 
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
-		return "", fmt.Errorf("sigma report: %w", err)
+		return nil, "", fmt.Errorf("sigma report: %w", err)
 	}
 
-	pdfBytes := buf.Bytes()
+	pdfBytes = buf.Bytes()
 	if pdfmeta.HasDefaultICC() {
 		icc := pdfmeta.DefaultICCProfile()
 		spec := pdfmeta.XMPSpec{
@@ -62,21 +102,8 @@ func GenerateSigmaReport(
 		}
 	}
 
-	if err := os.MkdirAll(outDir, 0o700); err != nil {
-		return "", fmt.Errorf("sigma report mkdir: %w", err)
-	}
-	if err := os.Chmod(outDir, 0o700); err != nil { // #nosec G302 -- this is a private directory mode, not a file mode.
-		return "", fmt.Errorf("sigma report chmod export dir: %w", err)
-	}
-
-	filename := fmt.Sprintf("sigma_report_%s_%s.pdf", sanitizeFilename(project.Title), time.Now().UTC().Format("20060102_150405"))
-	outputPath := filepath.Join(outDir, filename)
-
-	if err := os.WriteFile(outputPath, pdfBytes, 0o600); err != nil {
-		return "", fmt.Errorf("sigma report write: %w", err)
-	}
-
-	return outputPath, nil
+	filename = fmt.Sprintf("sigma_report_%s_%s.pdf", sanitizeFilename(project.Title), time.Now().UTC().Format("20060102_150405"))
+	return pdfBytes, filename, nil
 }
 
 func generateReportCover(pdf *fpdf.Fpdf, project domain.Project) {

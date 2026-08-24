@@ -76,6 +76,8 @@ function makeApp(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
     ComputeCostClassificationSummary: vi.fn(async () => ({
       attribution: [], behavior: [], treatment: [],
     })),
+    AggregateCostEntryQuantities: vi.fn(async () => []),
+    SearchCostEntries: vi.fn(async () => []),
     DeleteChart: vi.fn(async () => undefined),
     DeleteDocument: vi.fn(async () => undefined),
     SaveChart: vi.fn(async (c: ChartRecord) => ({ ...c, id: 'new-chart-1' })),

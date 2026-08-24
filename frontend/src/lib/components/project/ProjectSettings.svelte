@@ -441,7 +441,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const path = await window.go.main.App.ExportAuditVerificationReport();
       auditReportStatus = `Audit verification report exported to: ${path}`;
     } catch (err: any) {
-      auditReportError = `Audit verification report failed: ${err}`;
+      if (!String(err).includes('export cancelled')) auditReportError = `Audit verification report failed: ${err}`;
     } finally {
       auditReportBusy = false;
     }
@@ -455,7 +455,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const path = await window.go.main.App.ExportAuditRepairEvidence();
       auditRepairStatus = `Audit repair evidence exported to: ${path}`;
     } catch (err: any) {
-      auditRepairError = `Audit repair evidence failed: ${err}`;
+      if (!String(err).includes('export cancelled')) auditRepairError = `Audit repair evidence failed: ${err}`;
     } finally {
       auditRepairBusy = false;
     }

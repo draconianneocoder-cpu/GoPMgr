@@ -186,11 +186,48 @@ func (db *Database) Migrate() error {
 		id TEXT PRIMARY KEY, project_id TEXT NOT NULL, cost_type_id TEXT NOT NULL,
 		kind TEXT NOT NULL CHECK(kind IN ('planned','commitment','actual')),
 		amount_minor_units INTEGER NOT NULL, cost_date TEXT NOT NULL, description TEXT NOT NULL,
+		-- Procurement detail (roadmap: project-cost-ledger-scope.md item 3). All
+		-- optional and immutable once written (cost_entries is insert-only);
+		-- these are display-value SNAPSHOTS copied from the user-private
+		-- catalog at entry time, never a live reference into that separate
+		-- SQLCipher database. Never populate supplier address/contact fields
+		-- here -- see the scope doc's export/audit boundary.
+		quantity_milli_units INTEGER NOT NULL DEFAULT 0,
+		unit TEXT NOT NULL DEFAULT '',
+		item_name TEXT NOT NULL DEFAULT '',
+		sku TEXT NOT NULL DEFAULT '',
+		supplier_name TEXT NOT NULL DEFAULT '',
+		invoice_reference TEXT NOT NULL DEFAULT '',
 		created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
 		FOREIGN KEY(project_id) REFERENCES project(id) ON DELETE CASCADE,
 		FOREIGN KEY(cost_type_id) REFERENCES cost_types(id) ON DELETE RESTRICT
 	);
 	CREATE INDEX IF NOT EXISTS idx_cost_entries_project_date ON cost_entries(project_id, cost_date);
+	-- idx_cost_entries_project_item_unit is created in migrateLegacyColumns,
+	-- not here: on a pre-existing (pre-procurement-columns) database this
+	-- Exec runs against the OLD cost_entries shape (CREATE TABLE IF NOT
+	-- EXISTS is a no-op), so an index referencing item_name here would fail
+	-- with "no such column" before the ALTER TABLE migration below adds it.
+
+	-- Bounded, SQLCipher-encrypted-at-rest attachment BLOBs (roadmap:
+	-- project-cost-ledger-scope.md item 3). Confidentiality relies entirely
+	-- on the project database's existing SQLCipher encryption -- the same
+	-- guarantee every other project table already has -- so no second
+	-- application-layer encryption pass is added here. Size and per-entry
+	-- count are bounded in Go (see maxAttachmentBytes / maxAttachmentsPerEntry
+	-- / maxAttachmentTotalBytesPerProject in cost_control_attachments.go) so a
+	-- project file cannot silently grow past what internal/db/backup.go's
+	-- maxBackupProjectSize can later restore.
+	CREATE TABLE IF NOT EXISTS cost_entry_attachments (
+		id TEXT PRIMARY KEY, project_id TEXT NOT NULL, cost_entry_id TEXT NOT NULL,
+		filename TEXT NOT NULL, content_type TEXT NOT NULL DEFAULT '',
+		size_bytes INTEGER NOT NULL, sha256 TEXT NOT NULL, blob BLOB NOT NULL,
+		created_at TEXT NOT NULL,
+		FOREIGN KEY(project_id) REFERENCES project(id) ON DELETE CASCADE,
+		FOREIGN KEY(cost_entry_id) REFERENCES cost_entries(id) ON DELETE CASCADE
+	);
+	CREATE INDEX IF NOT EXISTS idx_cost_entry_attachments_entry ON cost_entry_attachments(cost_entry_id);
+	CREATE INDEX IF NOT EXISTS idx_cost_entry_attachments_project ON cost_entry_attachments(project_id);
 	CREATE TABLE IF NOT EXISTS cost_reserves (
 		id TEXT PRIMARY KEY, project_id TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('contingency','management')),
 		amount_minor_units INTEGER NOT NULL CHECK(amount_minor_units >= 0), description TEXT NOT NULL,
@@ -815,6 +852,37 @@ func (db *Database) migrateLegacyColumns() error {
 		if _, err := db.Conn.Exec(m.backfill); err != nil {
 			return fmt.Errorf("backfill %s: %w", m.name, err)
 		}
+	}
+
+	// cost_entries procurement-detail columns added after Cost Control
+	// shipped (project-cost-ledger-scope.md item 3). All are optional with
+	// zero-value defaults, so every existing row already satisfies them
+	// once the columns exist -- no backfill needed.
+	costEntryCols, err := db.columnSet("cost_entries")
+	if err != nil {
+		return err
+	}
+	costEntryMigrations := []struct{ name, ddl string }{
+		{"quantity_milli_units", "ALTER TABLE cost_entries ADD COLUMN quantity_milli_units INTEGER NOT NULL DEFAULT 0"},
+		{"unit", "ALTER TABLE cost_entries ADD COLUMN unit TEXT NOT NULL DEFAULT ''"},
+		{"item_name", "ALTER TABLE cost_entries ADD COLUMN item_name TEXT NOT NULL DEFAULT ''"},
+		{"sku", "ALTER TABLE cost_entries ADD COLUMN sku TEXT NOT NULL DEFAULT ''"},
+		{"supplier_name", "ALTER TABLE cost_entries ADD COLUMN supplier_name TEXT NOT NULL DEFAULT ''"},
+		{"invoice_reference", "ALTER TABLE cost_entries ADD COLUMN invoice_reference TEXT NOT NULL DEFAULT ''"},
+	}
+	for _, m := range costEntryMigrations {
+		if _, ok := costEntryCols[m.name]; ok {
+			continue
+		}
+		if _, err := db.Conn.Exec(m.ddl); err != nil {
+			return fmt.Errorf("add column %s: %w", m.name, err)
+		}
+	}
+	// Safe to run unconditionally and every open: item_name now exists
+	// either way (fresh CREATE TABLE above, or the ALTER loop just above),
+	// and CREATE INDEX IF NOT EXISTS is naturally idempotent.
+	if _, err := db.Conn.Exec(`CREATE INDEX IF NOT EXISTS idx_cost_entries_project_item_unit ON cost_entries(project_id, item_name, unit)`); err != nil {
+		return fmt.Errorf("create cost_entries item/unit index: %w", err)
 	}
 
 	if err := db.retrofitTimestampFormat(); err != nil {

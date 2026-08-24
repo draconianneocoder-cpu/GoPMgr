@@ -60,6 +60,11 @@ declare global {
           ListCostTypes: () => Promise<CostType[]>;
           ListCostEntries: () => Promise<CostEntry[]>;
           SaveCostEntry: (entry: CostEntry) => Promise<CostEntry>;
+          SearchCostEntries: (query: string) => Promise<CostEntry[]>;
+          AggregateCostEntryQuantities: () => Promise<CostQuantityAggregate[]>;
+          AttachCostEntryFile: (costEntryId: string) => Promise<CostEntryAttachment>;
+          ListCostEntryAttachments: (costEntryId: string) => Promise<CostEntryAttachment[]>;
+          ExportCostEntryAttachmentsZip: () => Promise<string>;
           ListCostReserves: () => Promise<CostReserve[]>;
           SaveCostReserve: (reserve: CostReserve) => Promise<CostReserve>;
           ApproveCostBaseline: (note: string) => Promise<CostBaseline>;
@@ -581,6 +586,29 @@ declare global {
     cost_date: string;
     description: string;
     amount: string;
+    quantity: string;
+    unit: string;
+    item_name: string;
+    sku: string;
+    supplier_name: string;
+    invoice_reference: string;
+  }
+
+  interface CostQuantityAggregate {
+    item_name: string;
+    unit: string;
+    total_quantity: string;
+    entry_count: number;
+  }
+
+  interface CostEntryAttachment {
+    id: string;
+    cost_entry_id: string;
+    filename: string;
+    content_type: string;
+    size_bytes: number;
+    sha256: string;
+    created_at: string;
   }
 
   interface CatalogVendor {

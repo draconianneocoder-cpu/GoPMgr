@@ -25,14 +25,20 @@ For one project and its reporting currency, the ledger must let the user:
 1. record planned, committed, and actual cost amounts exactly;
 2. classify an entry by its cost type, including direct/indirect attribution,
    fixed/variable behavior, and CapEx/OpEx treatment where applicable;
-3. record materials and other inputs as ordinary cost entries, and retain a
-   structured quantity, unit, supplier, item, SKU, invoice-reference, and
-   attachment record when that extension is delivered;
-4. make indirect or material overhead visible through an ordinary cost type or
+3. record materials and other inputs as ordinary cost entries, with an
+   optional structured quantity, unit, supplier, item, SKU, and
+   invoice-reference record (delivered 2026-08-24; a project-local snapshot
+   taken at save time, never a live reference into the separate catalog
+   database), plus optional bounded, encrypted file attachments per entry;
+4. search the ledger by item, SKU, supplier, invoice reference, or
+   description, and view the same-item/same-unit quantity aggregated across
+   entries;
+5. make indirect or material overhead visible through an ordinary cost type or
    cost entry rather than a hidden adjustment; and
-5. review project-scoped planned, committed, actual, and classification
-   summaries, and export the project financial snapshot and classified ledger
-   rows without changing the source entries.
+6. review project-scoped planned, committed, actual, and classification
+   summaries, and export the project financial snapshot, classified ledger
+   rows, and every ledger attachment (as a single no-overwrite ZIP with a
+   metadata manifest) without changing the source entries.
 
 Amounts remain exact minor-unit values in Go and canonical decimal strings at
 the Wails boundary. The ledger records the project's chosen reporting currency;

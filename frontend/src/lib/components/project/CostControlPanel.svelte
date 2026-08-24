@@ -27,6 +27,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let approvalNote = $state('');
   let approvalConfirmOpen = $state(false);
   let exporting = $state(false);
+  let quantity = $state('');
+  let unit = $state('');
+  let itemName = $state('');
+  let sku = $state('');
+  let supplierName = $state('');
+  let invoiceReference = $state('');
+  let searchQuery = $state('');
+  let searching = $state(false);
+  let quantityAggregates = $state<CostQuantityAggregate[]>([]);
+  let expandedEntryID = $state<string | null>(null);
+  let attachmentsByEntry = $state<Record<string, CostEntryAttachment[]>>({});
+  let attachingEntryID = $state<string | null>(null);
+  let exportingAttachments = $state(false);
   const activeTypes = $derived(types.filter((type) => type.active));
   const typesByID = $derived(new Map(types.map((type) => [type.id, type])));
 	const mutationDisabled = $derived(Boolean(summary?.mutation_disabled_reason));
@@ -37,16 +50,50 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // ListCostTypes seeds a new project's taxonomy transactionally. Finish
       // that one-time write before the concurrent read models inspect it.
       types = await window.go.main.App.ListCostTypes();
-      [entries, reserves, summary, classifications, baselines] = await Promise.all([
-        window.go.main.App.ListCostEntries(),
+      [entries, reserves, summary, classifications, baselines, quantityAggregates] = await Promise.all([
+        searchQuery ? window.go.main.App.SearchCostEntries(searchQuery) : window.go.main.App.ListCostEntries(),
         window.go.main.App.ListCostReserves(),
         window.go.main.App.ComputeCostSummary(),
         window.go.main.App.ComputeCostClassificationSummary(),
         window.go.main.App.ListCostBaselines(),
+        window.go.main.App.AggregateCostEntryQuantities(),
       ]);
       if (!activeTypes.some((type) => type.id === typeID)) typeID = activeTypes[0]?.id ?? '';
     } catch (err) { error = String(err); }
     finally { loading = false; }
+  }
+
+  async function runSearch() {
+    if (searching) return;
+    searching = true; error = '';
+    try { entries = await window.go.main.App.SearchCostEntries(searchQuery); }
+    catch (err) { error = String(err); } finally { searching = false; }
+  }
+
+  async function toggleAttachments(entryID: string) {
+    if (expandedEntryID === entryID) { expandedEntryID = null; return; }
+    expandedEntryID = entryID;
+    if (attachmentsByEntry[entryID]) return;
+    try { attachmentsByEntry = { ...attachmentsByEntry, [entryID]: await window.go.main.App.ListCostEntryAttachments(entryID) }; }
+    catch (err) { error = String(err); }
+  }
+
+  async function attachFile(entryID: string) {
+    if (attachingEntryID || mutationDisabled) return;
+    attachingEntryID = entryID; error = '';
+    try {
+      await window.go.main.App.AttachCostEntryFile(entryID);
+      attachmentsByEntry = { ...attachmentsByEntry, [entryID]: await window.go.main.App.ListCostEntryAttachments(entryID) };
+    } catch (err) { if (!String(err).includes('export cancelled')) error = String(err); }
+    finally { attachingEntryID = null; }
+  }
+
+  async function exportAttachmentsZip() {
+    if (exportingAttachments) return;
+    exportingAttachments = true; error = '';
+    try { await window.go.main.App.ExportCostEntryAttachmentsZip(); }
+    catch (err) { if (!String(err).includes('export cancelled')) error = String(err); }
+    finally { exportingAttachments = false; }
   }
   async function approveBaseline() {
 	if (saving || mutationDisabled || !approvalNote.trim()) return;
@@ -69,8 +116,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 	if (!typeID || saving || mutationDisabled) return;
     saving = true; error = '';
     try {
-      await window.go.main.App.SaveCostEntry({ id: '', cost_type_id: typeID, kind, amount, description, cost_date: costDate });
-      amount = ''; description = ''; await load();
+      await window.go.main.App.SaveCostEntry({ id: '', cost_type_id: typeID, kind, amount, description, cost_date: costDate, quantity, unit, item_name: itemName, sku, supplier_name: supplierName, invoice_reference: invoiceReference });
+      amount = ''; description = ''; quantity = ''; unit = ''; itemName = ''; sku = ''; supplierName = ''; invoiceReference = ''; await load();
     } catch (err) { error = String(err); } finally { saving = false; }
   }
   async function exportFinancialReport() {
@@ -101,16 +148,30 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <div class="bg-slate-950 rounded p-2"><div class="uppercase tracking-widest text-[10px] text-slate-500">{label}</div><div class="font-bold text-slate-100">{summary.currency_code} {value}</div></div>
       {/each}
     </div>
-    <div class="border-t border-slate-800 pt-3">
+    <div class="border-t border-slate-800 pt-3 flex flex-wrap gap-2">
       <button onclick={() => void exportFinancialReport()} disabled={exporting} class="rounded border border-cyan-700/70 hover:bg-cyan-950/40 disabled:opacity-50 px-3 py-2 text-xs font-bold text-cyan-100">{exporting ? 'Preparing financial report…' : 'Export printable financial report'}</button>
-      <p class="mt-1 text-[10px] text-slate-500">Exports this project's Legacy Budget context and Cost Control ledger separately as a printable PDF. It does not calculate a forecast or remaining funding.</p>
+      <button onclick={() => void exportAttachmentsZip()} disabled={exportingAttachments} class="rounded border border-cyan-700/70 hover:bg-cyan-950/40 disabled:opacity-50 px-3 py-2 text-xs font-bold text-cyan-100">{exportingAttachments ? 'Preparing attachments archive…' : 'Export ledger attachments (.zip)'}</button>
+      <p class="w-full text-[10px] text-slate-500">Exports this project's Legacy Budget context and Cost Control ledger separately as a printable PDF. It does not calculate a forecast or remaining funding. The attachments archive bundles every file attached to a ledger entry alongside a manifest.</p>
     </div>
+    <form class="flex flex-wrap items-end gap-2" onsubmit={(event) => { event.preventDefault(); void runSearch(); }}>
+      <label class="text-xs text-slate-400 flex-1 min-w-[16rem]">Search ledger<input bind:value={searchQuery} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Item, SKU, supplier, invoice reference, or description" /></label>
+      <button disabled={searching} class="rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-50 px-3 py-2 text-xs font-bold text-slate-200">{searching ? 'Searching…' : 'Search'}</button>
+    </form>
     <form class="grid grid-cols-1 md:grid-cols-5 gap-2" onsubmit={(event) => { event.preventDefault(); void save(); }}>
       <label class="text-xs text-slate-400">Cost type<select disabled={mutationDisabled} bind:value={typeID} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100">{#each activeTypes as type}<option value={type.id}>{type.name}</option>{/each}</select></label>
       <label class="text-xs text-slate-400">State<select disabled={mutationDisabled} bind:value={kind} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="planned">Planned</option><option value="commitment">Commitment</option><option value="actual">Actual</option></select></label>
       <label class="text-xs text-slate-400">Amount<input disabled={mutationDisabled} bind:value={amount} inputmode="decimal" required aria-label="Amount" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="0.00" /></label>
       <label class="text-xs text-slate-400">Date<input disabled={mutationDisabled} bind:value={costDate} type="date" required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
       <label class="text-xs text-slate-400">Cost item or reference<input disabled={mutationDisabled} bind:value={description} required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Material, invoice reference, supplier, or overhead note" /></label>
+      <div class="md:col-span-5 text-[10px] tracking-widest uppercase text-slate-500 pt-1">Procurement detail (optional)</div>
+      <label class="text-xs text-slate-400">Item name<input disabled={mutationDisabled} bind:value={itemName} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
+      <label class="text-xs text-slate-400">SKU<input disabled={mutationDisabled} bind:value={sku} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
+      <label class="text-xs text-slate-400">Supplier<input disabled={mutationDisabled} bind:value={supplierName} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
+      <label class="text-xs text-slate-400">Invoice reference<input disabled={mutationDisabled} bind:value={invoiceReference} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
+      <div class="grid grid-cols-2 gap-2">
+        <label class="text-xs text-slate-400">Quantity<input disabled={mutationDisabled} bind:value={quantity} inputmode="decimal" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="0.000" /></label>
+        <label class="text-xs text-slate-400">Unit<input disabled={mutationDisabled} bind:value={unit} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="each, kg, hr" /></label>
+      </div>
       <button disabled={saving || mutationDisabled || !typeID} class="md:col-span-5 rounded bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 p-2 text-xs font-bold text-white">{saving ? 'Saving…' : 'Add ledger entry'}</button>
     </form>
     <form class="border-t border-slate-800 pt-3 grid grid-cols-1 md:grid-cols-4 gap-2" onsubmit={(event) => { event.preventDefault(); void saveReserve(); }}>
@@ -131,7 +192,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="overflow-x-auto"><table class="w-full min-w-[38rem] text-xs"><thead class="text-left text-slate-500"><tr><th scope="col">Lens</th><th scope="col">Classification</th><th scope="col" class="text-right">Planned</th><th scope="col" class="text-right">Committed</th><th scope="col" class="text-right">Actual</th></tr></thead><tbody>{#each [{ label: 'Attribution', rows: classifications.attribution }, { label: 'Cost behavior', rows: classifications.behavior }, { label: 'Accounting treatment', rows: classifications.treatment }] as lens}{#each lens.rows as row}<tr class="border-t border-slate-800"><th scope="row" class="font-normal text-slate-400">{lens.label}</th><td class="capitalize">{row.value.replace('_', ' ')}</td><td class="text-right tabular-nums">{summary.currency_code} {row.planned}</td><td class="text-right tabular-nums">{summary.currency_code} {row.commitment}</td><td class="text-right tabular-nums">{summary.currency_code} {row.actual}</td></tr>{/each}{/each}</tbody></table></div>
     </section>
     {#if reserves.length > 0}<p class="text-[10px] text-slate-500">Reserve balances are governance buffers, not posted costs. Each balance retains its basis note.</p>{/if}
-    {#if entries.length > 0}<div class="overflow-x-auto"><table class="w-full min-w-[52rem] text-xs"><thead class="text-left text-slate-500"><tr><th scope="col">Date</th><th scope="col">State</th><th scope="col">Cost item or reference</th><th scope="col">Cost type</th><th scope="col">Attribution</th><th scope="col">Behavior</th><th scope="col">Treatment</th><th scope="col" class="text-right">Amount</th></tr></thead><tbody>{#each entries as entry (entry.id)}{@const type = typesByID.get(entry.cost_type_id)}<tr class="border-t border-slate-800"><td>{entry.cost_date}</td><td class="capitalize">{entry.kind}</td><td>{entry.description}</td><td>{type?.name ?? 'Unavailable type'}</td><td class="capitalize">{type?.attribution ?? 'Unavailable'}</td><td class="capitalize">{type?.behavior ?? 'Unavailable'}</td><td class="capitalize">{type?.treatment?.replace('_', ' ') ?? 'Unavailable'}</td><td class="text-right tabular-nums">{summary.currency_code} {entry.amount}</td></tr>{/each}</tbody></table></div>{/if}
+    {#if quantityAggregates.length > 0}
+    <section class="border-t border-slate-800 pt-3 space-y-2" aria-labelledby="quantity-aggregation-heading">
+      <h3 id="quantity-aggregation-heading" class="text-[10px] tracking-widest uppercase text-slate-500">Quantity by item &amp; unit</h3>
+      <div class="overflow-x-auto"><table class="w-full text-xs"><thead class="text-left text-slate-500"><tr><th scope="col">Item</th><th scope="col">Unit</th><th scope="col" class="text-right">Total quantity</th><th scope="col" class="text-right">Entries</th></tr></thead><tbody>{#each quantityAggregates as agg (agg.item_name + ' ' + agg.unit)}<tr class="border-t border-slate-800"><td>{agg.item_name}</td><td>{agg.unit}</td><td class="text-right tabular-nums">{agg.total_quantity}</td><td class="text-right tabular-nums">{agg.entry_count}</td></tr>{/each}</tbody></table></div>
+    </section>
+    {/if}
+    {#if entries.length > 0}<div class="overflow-x-auto"><table class="w-full min-w-[80rem] text-xs"><thead class="text-left text-slate-500"><tr><th scope="col">Date</th><th scope="col">State</th><th scope="col">Cost item or reference</th><th scope="col">Item</th><th scope="col">SKU</th><th scope="col">Supplier</th><th scope="col">Invoice ref</th><th scope="col" class="text-right">Quantity</th><th scope="col">Cost type</th><th scope="col">Attribution</th><th scope="col">Behavior</th><th scope="col">Treatment</th><th scope="col" class="text-right">Amount</th><th scope="col">Attachments</th></tr></thead><tbody>{#each entries as entry (entry.id)}{@const type = typesByID.get(entry.cost_type_id)}<tr class="border-t border-slate-800"><td>{entry.cost_date}</td><td class="capitalize">{entry.kind}</td><td>{entry.description}</td><td>{entry.item_name}</td><td>{entry.sku}</td><td>{entry.supplier_name}</td><td>{entry.invoice_reference}</td><td class="text-right tabular-nums">{entry.quantity}{#if entry.quantity} {entry.unit}{/if}</td><td>{type?.name ?? 'Unavailable type'}</td><td class="capitalize">{type?.attribution ?? 'Unavailable'}</td><td class="capitalize">{type?.behavior ?? 'Unavailable'}</td><td class="capitalize">{type?.treatment?.replace('_', ' ') ?? 'Unavailable'}</td><td class="text-right tabular-nums">{summary.currency_code} {entry.amount}</td><td><button type="button" onclick={() => void toggleAttachments(entry.id)} class="rounded border border-slate-700 hover:bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-200">{expandedEntryID === entry.id ? 'Hide' : 'Attachments'}</button></td></tr>{#if expandedEntryID === entry.id}<tr class="border-t border-slate-800 bg-slate-950/40"><td colspan="14" class="p-2"><div class="flex flex-wrap items-center gap-2"><button type="button" disabled={mutationDisabled || Boolean(attachingEntryID)} onclick={() => void attachFile(entry.id)} class="rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-50 px-2 py-1 text-[10px] font-bold text-slate-200">{attachingEntryID === entry.id ? 'Attaching…' : 'Attach file…'}</button>{#if attachmentsByEntry[entry.id]?.length}{#each attachmentsByEntry[entry.id] as att (att.id)}<span class="rounded bg-slate-800 px-2 py-1 text-[10px] text-slate-300">{att.filename} ({Math.ceil(att.size_bytes / 1024)} KB)</span>{/each}{:else if attachmentsByEntry[entry.id]}<span class="text-[10px] text-slate-500">No attachments on this entry.</span>{/if}</div></td></tr>{/if}{/each}</tbody></table></div>{/if}
   {/if}
 </section>
 <ConfirmDialog open={approvalConfirmOpen} title="Approve Cost Control baseline?" message="This records an immutable local-account approval snapshot. It does not approve legacy Budget values." confirmLabel="Approve baseline" tone="caution" busy={saving} onConfirm={() => void approveBaseline()} onCancel={() => approvalConfirmOpen = false} />

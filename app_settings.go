@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -136,16 +135,18 @@ func (a *App) ExportAuditVerificationReport() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	outDir := filepath.Join(u.DataDir, "exports")
-	if err := os.MkdirAll(outDir, 0o700); err != nil {
+	path, err := a.selectExportDestination(
+		filepath.Join(u.DataDir, "exports"),
+		fmt.Sprintf("%s-audit-verification-%s.json", sanitizeFilename(proj.Name), time.Now().UTC().Format("20060102-150405")),
+		".json", "Export audit verification report",
+	)
+	if err != nil {
 		return "", err
 	}
-	outPath := filepath.Join(outDir, fmt.Sprintf("%s-audit-verification-%s.json",
-		sanitizeFilename(proj.Name), time.Now().UTC().Format("20060102-150405")))
-	if err := os.WriteFile(outPath, bytes, 0o600); err != nil {
+	if err := writeNewPrivateExport(path, bytes); err != nil {
 		return "", err
 	}
-	return outPath, nil
+	return path, nil
 }
 
 // ExportAuditRepairEvidence preserves the current raw audit_events rows
@@ -209,16 +210,18 @@ func (a *App) ExportAuditRepairEvidence() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	outDir := filepath.Join(u.DataDir, "exports")
-	if err := os.MkdirAll(outDir, 0o700); err != nil {
+	path, err := a.selectExportDestination(
+		filepath.Join(u.DataDir, "exports"),
+		fmt.Sprintf("%s-audit-repair-evidence-%s.json", sanitizeFilename(proj.Name), generatedAt.Format("20060102-150405")),
+		".json", "Export audit repair evidence",
+	)
+	if err != nil {
 		return "", err
 	}
-	outPath := filepath.Join(outDir, fmt.Sprintf("%s-audit-repair-evidence-%s.json",
-		sanitizeFilename(proj.Name), generatedAt.Format("20060102-150405")))
-	if err := os.WriteFile(outPath, bytes, 0o600); err != nil {
+	if err := writeNewPrivateExport(path, bytes); err != nil {
 		return "", err
 	}
-	return outPath, nil
+	return path, nil
 }
 
 func (a *App) SecureArchive(projectPath string) (string, error) {
