@@ -44,6 +44,12 @@ type Entry struct {
 	SourceID    string    `json:"source_id,omitempty"` // sprint ID, deployment ID, etc.
 	Editable    bool      `json:"editable,omitempty"`
 	EditField   string    `json:"edit_field,omitempty"`
+	// MilestoneSource distinguishes the two milestone origins ("charter" or
+	// "chart") so the frontend can render them distinguishably instead of
+	// as one undifferentiated KindMilestone bucket. Empty for every other
+	// Kind, which has no such ambiguity. Deliberately not named "Source":
+	// that reads as a synonym for SourceID above, which it is not.
+	MilestoneSource string `json:"milestone_source,omitempty"`
 }
 
 // Milestone is a single dated entry contributed to the timeline as a
@@ -67,6 +73,10 @@ type Milestone struct {
 	ID   string
 	Name string
 	Date string // ISO-8601 or RFC3339, same formats parseDate accepts
+	// Source is "charter" or "chart", set by the caller according to
+	// which of the two extraction functions produced this Milestone.
+	// Copied verbatim onto the resulting Entry.MilestoneSource.
+	Source string
 }
 
 // Build returns every timeline Entry for the project in ascending
@@ -143,10 +153,11 @@ func Build(project db.Project, sprints []agile.Sprint, deploys []agile.Deploymen
 	for _, m := range milestones {
 		if t, ok := parseDate(m.Date); ok {
 			out = append(out, Entry{
-				Kind:     KindMilestone,
-				Title:    m.Name,
-				Date:     t,
-				SourceID: m.ID,
+				Kind:            KindMilestone,
+				Title:           m.Name,
+				Date:            t,
+				SourceID:        m.ID,
+				MilestoneSource: m.Source,
 			})
 		}
 	}

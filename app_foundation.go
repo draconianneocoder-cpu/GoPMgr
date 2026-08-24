@@ -684,9 +684,10 @@ func projectMilestones(d *db.Database, projectID string) ([]timeline.Milestone, 
 				continue
 			}
 			out = append(out, timeline.Milestone{
-				ID:   fmt.Sprintf("%s-%d", doc.ID, i),
-				Name: name,
-				Date: date,
+				ID:     fmt.Sprintf("%s-%d", doc.ID, i),
+				Name:   name,
+				Date:   date,
+				Source: "charter",
 			})
 		}
 	}
@@ -740,9 +741,10 @@ func chartMilestones(d *db.Database, p db.Project) ([]timeline.Milestone, error)
 				title = c.Title + ": " + title
 			}
 			out = append(out, timeline.Milestone{
-				ID:   fmt.Sprintf("chart:%s:task:%d:%s", c.ID, i, task.ID),
-				Name: title,
-				Date: task.FinishDate,
+				ID:     fmt.Sprintf("chart:%s:task:%d:%s", c.ID, i, task.ID),
+				Name:   title,
+				Date:   task.FinishDate,
+				Source: "chart",
 			})
 		}
 	}

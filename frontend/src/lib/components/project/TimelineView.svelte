@@ -202,16 +202,29 @@ SPDX-License-Identifier: GPL-3.0-or-later
     void moveEntryDate(e, addDays(isoDate(e.date), delta));
   }
 
-  function kindColor(kind: TimelineKind): string {
-    switch (kind) {
+  // Charter-sourced milestones keep the original purple; chart-sourced
+  // milestones get a distinct hue. Color alone is not a sufficient cue
+  // (WCAG 1.4.1) -- see milestoneSourceLabel below for the paired text
+  // label, and the diamond-vs-circle marker shape in the strip itself.
+  function kindColor(e: TimelineEntry): string {
+    switch (e.kind) {
       case 'sprint_start':   return '#22d3ee';
       case 'sprint_end':     return '#0891b2';
       case 'deployment':     return '#22c55e';
-      case 'milestone':      return '#a855f7';
+      case 'milestone':      return e.milestone_source === 'chart' ? '#ec4899' : '#a855f7';
       case 'project_start':  return '#f59e0b';
       case 'project_end':    return '#ef4444';
       default:               return '#94a3b8';
     }
+  }
+
+  // Non-color, non-shape cue for the same distinction, shown in the
+  // detail list below the strip. Undefined milestone_source (e.g. a
+  // stale cached response) reads as "charter", matching kindColor's
+  // default branch above.
+  function milestoneSourceLabel(e: TimelineEntry): string {
+    if (e.kind !== 'milestone') return '';
+    return e.milestone_source === 'chart' ? ' · chart' : ' · charter';
   }
 
   // Generate a small number of x-axis ticks evenly spaced across
@@ -343,10 +356,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 onpointerdown={(event) => beginDrag(e, event)}
                 onkeydown={(event) => handleEntryKey(e, event)}
               >
+                <!-- No diamond-vs-circle branch here (unlike the non-editable
+                     branch below): milestones are never Editable
+                     (internal/timeline's TestBuildMilestones pins this), so
+                     this branch never actually renders one. If that ever
+                     changes, a chart-sourced milestone would silently render
+                     as a circle here -- add the same shape branch then. -->
                 <line x1={x} y1={STRIP_Y - 8} x2={x} y2={STRIP_Y + STRIP_H + 8}
-                      stroke={kindColor(e.kind)} stroke-width="2" />
+                      stroke={kindColor(e)} stroke-width="2" />
                 <circle cx={x} cy={STRIP_Y + STRIP_H / 2} r="5"
-                        fill={kindColor(e.kind)} stroke="#0f172a" stroke-width="1" />
+                        fill={kindColor(e)} stroke="#0f172a" stroke-width="1" />
                 <circle cx={x} cy={STRIP_Y + STRIP_H / 2} r="8"
                         fill="transparent" stroke={movingKey === key ? '#fbbf24' : '#67e8f9'}
                         stroke-width="1" opacity="0.65" />
@@ -361,9 +380,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
             {:else}
               <g>
                 <line x1={x} y1={STRIP_Y - 8} x2={x} y2={STRIP_Y + STRIP_H + 8}
-                      stroke={kindColor(e.kind)} stroke-width="1.5" />
-                <circle cx={x} cy={STRIP_Y + STRIP_H / 2} r="3.5"
-                        fill={kindColor(e.kind)} stroke="#0f172a" stroke-width="1" />
+                      stroke={kindColor(e)} stroke-width="1.5" />
+                {#if e.kind === 'milestone' && e.milestone_source === 'chart'}
+                  <!-- Chart-sourced milestone: diamond, not the default circle,
+                       so the distinction doesn't rely on color alone. -->
+                  <polygon
+                    points="{x},{STRIP_Y + STRIP_H / 2 - 4.5} {x + 4.5},{STRIP_Y + STRIP_H / 2} {x},{STRIP_Y + STRIP_H / 2 + 4.5} {x - 4.5},{STRIP_Y + STRIP_H / 2}"
+                    fill={kindColor(e)} stroke="#0f172a" stroke-width="1" />
+                {:else}
+                  <circle cx={x} cy={STRIP_Y + STRIP_H / 2} r="3.5"
+                          fill={kindColor(e)} stroke="#0f172a" stroke-width="1" />
+                {/if}
                 {#if i % 2 === 0}
                   <text x={x + 4} y={STRIP_Y - 14}
                         font-size="9" fill="#cbd5e1">{e.title}</text>
@@ -413,9 +440,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 {isoDate(e.date)}
               </span>
             {/if}
-            <span class="inline-block w-2 h-2 rounded-full" style="background:{kindColor(e.kind)}"></span>
+            <span class="inline-block w-2 h-2 rounded-full" style="background:{kindColor(e)}"></span>
             <span class="text-xs text-slate-200 flex-1">{e.title}</span>
-            <span class="text-[10px] text-slate-500 uppercase tracking-widest">{e.kind}</span>
+            <span class="text-[10px] text-slate-500 uppercase tracking-widest">{e.kind}{milestoneSourceLabel(e)}</span>
           </li>
         {/each}
       </ul>

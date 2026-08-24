@@ -130,14 +130,17 @@ func TestBuildTimeline_CharterMilestonesReachTimelineThroughRealDocumentCreation
 			if err != nil {
 				t.Fatalf("BuildTimeline: %v", err)
 			}
-			var found bool
-			for _, e := range entries {
-				if e.Kind == timeline.KindMilestone && e.Title == "Kickoff" {
-					found = true
+			var found *timeline.Entry
+			for i := range entries {
+				if entries[i].Kind == timeline.KindMilestone && entries[i].Title == "Kickoff" {
+					found = &entries[i]
 				}
 			}
-			if !found {
+			if found == nil {
 				t.Fatalf("milestone from a real %s document did not reach the timeline: %#v", kind, entries)
+			}
+			if found.MilestoneSource != "charter" {
+				t.Errorf("MilestoneSource = %q, want %q", found.MilestoneSource, "charter")
 			}
 		})
 	}
@@ -320,6 +323,9 @@ func TestBuildTimeline_IncludesScheduledChartMilestones(t *testing.T) {
 		}
 		if entry.Editable {
 			t.Errorf("chart milestone %q must be read-only", id)
+		}
+		if entry.MilestoneSource != "chart" {
+			t.Errorf("chart milestone %q MilestoneSource = %q, want %q", id, entry.MilestoneSource, "chart")
 		}
 	}
 }

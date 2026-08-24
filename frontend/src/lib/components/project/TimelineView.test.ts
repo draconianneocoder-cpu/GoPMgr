@@ -12,6 +12,18 @@ const milestoneEntry: TimelineEntry = {
   date: '2026-01-10T00:00:00Z',
   source_id: 'charter-1-0',
   editable: false,
+  // milestone_source deliberately omitted: pins the "undefined source reads
+  // as charter" default (matches every real backend response before this
+  // field existed, and any future entry the backend fails to populate).
+};
+
+const chartMilestoneEntry: TimelineEntry = {
+  kind: 'milestone',
+  title: 'Delivery plan: Ship',
+  date: '2026-01-09T00:00:00Z',
+  source_id: 'chart:gantt-1:task:2:ship',
+  editable: false,
+  milestone_source: 'chart',
 };
 
 let app: Record<string, ReturnType<typeof vi.fn>>;
@@ -36,7 +48,10 @@ describe('milestone entries', () => {
     // Shown twice: once as the SVG tick label, once in the detail list below
     // the strip.
     await waitFor(() => expect(getAllByText('Kickoff').length).toBe(2));
-    expect(getByText('milestone')).toBeInTheDocument();
+    // "milestone · charter": the label is not optional, and an entry with
+    // no milestone_source (this fixture) is pinned to read as charter --
+    // see the fixture's own comment.
+    expect(getByText('milestone · charter')).toBeInTheDocument();
 
     // No date <input> for it (editable=false means no drag/edit affordance) --
     // only a plain text span with the ISO date.
@@ -48,9 +63,31 @@ describe('milestone entries', () => {
     expect(dot).toBeTruthy();
     expect(dot?.style.background).toBe('rgb(168, 85, 247)'); // #a855f7
 
+    // A charter-sourced milestone is a plain circle in the strip, not the
+    // chart-sourced diamond (see the next test).
+    expect(container.querySelector('svg polygon')).not.toBeInTheDocument();
+
     // The SVG tick for a non-editable entry has no role="button" (only
     // draggable entries get pointer/keyboard handlers).
     expect(container.querySelector('svg [role="button"]')).not.toBeInTheDocument();
+  });
+
+  it('chart-sourced milestone renders with a distinct color, shape, and label', async () => {
+    app.BuildTimeline = vi.fn(async () => [chartMilestoneEntry]);
+    const { getByText, container } = render(TimelineView);
+
+    await waitFor(() => expect(getByText('milestone · chart')).toBeInTheDocument());
+
+    // Distinct color from the charter case above (#ec4899, not #a855f7).
+    const dot = container.querySelector('.rounded-full') as HTMLElement | null;
+    expect(dot?.style.background).toBe('rgb(236, 72, 153)'); // #ec4899
+
+    // Distinct marker shape in the strip: a diamond (polygon), not the
+    // charter case's circle -- the distinction doesn't rely on color alone.
+    const marker = container.querySelector('svg polygon');
+    expect(marker).toBeTruthy();
+    expect(marker?.getAttribute('fill')).toBe('#ec4899');
+    expect(container.querySelector('svg circle[fill="#ec4899"]')).not.toBeInTheDocument();
   });
 });
 

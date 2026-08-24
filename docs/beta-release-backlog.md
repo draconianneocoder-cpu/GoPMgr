@@ -152,6 +152,24 @@ loss, or a release blocker.
   CPM/Gantt half was always correct. Fixed 2026-08-24 in `app_foundation.go`;
   see `TEST_COVERAGE_LEDGER.md`'s `timeline_move_test.go` row for the full
   account and the added regression test.
+- Done 2026-08-24: Timeline milestones now visually distinguish their two
+  sources. Both `timeline.Entry` and `timeline.Milestone` gained a
+  `MilestoneSource` field (`"charter"`/`"chart"`); `TimelineView.svelte`
+  renders a Charter-sourced milestone as a purple circle and a chart-sourced
+  one as a pink diamond, paired with a `milestone · charter`/`milestone ·
+  chart` text label (not color alone, per WCAG 1.4.1). Closes the
+  "identical purple regardless of source" gap the row above's fix had
+  explicitly left open. Live-verified end-to-end in a running isolated
+  instance: a real Charter document and a real Gantt-chart milestone
+  rendered with the correct distinct color/shape/label. **Known gap, not
+  closed by this change**: `ExportProjectICS` builds its iCal events
+  field-by-field from `timeline.Entry` and does not read `MilestoneSource`,
+  so the `.ics` export still emits `CATEGORIES:MILESTONE` for both sources
+  undifferentiated — a new inconsistency between the Timeline view and the
+  iCal export, not present before this change (previously neither
+  distinguished sources; now only one does). See
+  `TEST_COVERAGE_LEDGER.md`'s `timeline_move_test.go` and
+  `TimelineView.test.ts` rows for full test evidence and fault-seeds.
 - Done 2026-08-20: completed the documentation audit of `tools/`,
   `docs/design/`, `ROADMAP.md`, `VISION.md`, `code-map/recent-decisions.md`,
   `debian/`, `.github/workflows/*.yml`, and `wails.json`. Corrected stale

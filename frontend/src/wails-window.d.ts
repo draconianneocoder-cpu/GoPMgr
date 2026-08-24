@@ -386,6 +386,9 @@ declare global {
     source_id?: string;
     editable?: boolean;
     edit_field?: 'start_date' | 'end_date' | string;
+    // Only meaningful when kind === 'milestone': distinguishes a Charter
+    // document milestone from a scheduled Gantt/CPM chart milestone.
+    milestone_source?: 'charter' | 'chart';
   }
 
   interface HolidayEvent {

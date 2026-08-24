@@ -133,8 +133,8 @@ func TestBuildFailedDeploymentTitle(t *testing.T) {
 // case; it can only be changed by editing the source Charter document.
 func TestBuildMilestones(t *testing.T) {
 	milestones := []Milestone{
-		{ID: "doc1-0", Name: "Kickoff", Date: "2026-01-10"},
-		{ID: "doc1-1", Name: "Beta", Date: "2026-05-01"},
+		{ID: "doc1-0", Name: "Kickoff", Date: "2026-01-10", Source: "charter"},
+		{ID: "doc1-1", Name: "Beta", Date: "2026-05-01", Source: "chart"},
 	}
 	got := Build(db.Project{ID: "p", StartDate: "2026-01-01"}, nil, nil, milestones)
 	if len(got) != 3 {
@@ -151,6 +151,10 @@ func TestBuildMilestones(t *testing.T) {
 	}
 	if got[1].Editable {
 		t.Error("milestone entries must not be Editable: there is no MoveTimelineEntry case for them")
+	}
+	if got[1].MilestoneSource != "charter" || got[2].MilestoneSource != "chart" {
+		t.Errorf("MilestoneSource not carried through: got[1]=%q, got[2]=%q, want %q, %q",
+			got[1].MilestoneSource, got[2].MilestoneSource, "charter", "chart")
 	}
 }
 
