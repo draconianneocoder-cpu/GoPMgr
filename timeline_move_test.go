@@ -101,6 +101,48 @@ func TestMoveTimelineEntry_RejectsReadOnlyAndInvalidMoves(t *testing.T) {
 	}
 }
 
+// TestBuildTimeline_CharterMilestonesReachTimelineThroughRealDocumentCreation
+// is a regression test for a document-kind mismatch: projectMilestones once
+// queried the literal string "charter", a kind no document can actually have
+// -- every real creation path (App.NewDocument, the UI, and project-template
+// seeding) only ever produces a kind from the documents registry, and
+// Project Charter is registered as charter_word/charter_excel, never bare
+// "charter". The bug went undetected because the other Charter-milestone
+// tests in this file wrote "charter" directly via the lower-level
+// db.SaveDocument, a shape no real user action can produce. This test
+// instead creates the document through App.NewDocument so the kind string
+// comes from the registry, the same as a real user action would.
+func TestBuildTimeline_CharterMilestonesReachTimelineThroughRealDocumentCreation(t *testing.T) {
+	for _, kind := range []string{"charter_word", "charter_excel"} {
+		t.Run(kind, func(t *testing.T) {
+			app, _, _ := newTimelineMoveTestApp(t)
+
+			doc, err := app.NewDocument(kind, "")
+			if err != nil {
+				t.Fatalf("NewDocument(%q): %v", kind, err)
+			}
+			doc.Content = `{"milestones": [{"name": "Kickoff", "date": "2026-01-10"}]}`
+			if _, err := app.SaveDocument(doc); err != nil {
+				t.Fatalf("SaveDocument: %v", err)
+			}
+
+			entries, err := app.BuildTimeline()
+			if err != nil {
+				t.Fatalf("BuildTimeline: %v", err)
+			}
+			var found bool
+			for _, e := range entries {
+				if e.Kind == timeline.KindMilestone && e.Title == "Kickoff" {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("milestone from a real %s document did not reach the timeline: %#v", kind, entries)
+			}
+		})
+	}
+}
+
 // TestBuildTimeline_IncludesCharterMilestones is an end-to-end check (real
 // DB, real document content JSON) that projectMilestones actually reaches
 // BuildTimeline -- the unit tests in internal/timeline exercise Build()
@@ -111,7 +153,7 @@ func TestBuildTimeline_IncludesCharterMilestones(t *testing.T) {
 	_, err := d.SaveDocument(db.Document{
 		ID:        "charter-1",
 		ProjectID: "project-1",
-		Kind:      "charter",
+		Kind:      "charter_word",
 		Title:     "Project Charter",
 		Content: `{"milestones": [
 			{"name": "Kickoff", "date": "2026-01-10"},
@@ -173,7 +215,7 @@ func TestBuildTimeline_TwoIdenticalMilestonesGetDistinctSourceIDs(t *testing.T) 
 	_, err := d.SaveDocument(db.Document{
 		ID:        "charter-1",
 		ProjectID: "project-1",
-		Kind:      "charter",
+		Kind:      "charter_word",
 		Title:     "Project Charter",
 		Content: `{"milestones": [
 			{"name": "Review", "date": "2026-03-01"},
@@ -324,7 +366,7 @@ func TestExportProjectICS_IncludesMilestone(t *testing.T) {
 	_, err := d.SaveDocument(db.Document{
 		ID:        "charter-1",
 		ProjectID: "project-1",
-		Kind:      "charter",
+		Kind:      "charter_word",
 		Title:     "Project Charter",
 		Content:   `{"milestones": [{"name": "Kickoff", "date": "2026-01-10"}]}`,
 	})

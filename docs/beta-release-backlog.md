@@ -136,12 +136,22 @@ loss, or a release blocker.
   (frontend + Wails-binding) feature, not a backend discovery-depth fix.
 - Expand release validation only after it has an owner, target, and repeatable
   acceptance criteria.
-- Done 2026-08-20: Timeline aggregation now merges Charter milestones with
-  scheduled Gantt/CPM task milestones. `timelineMilestones()` reuses the
-  calendar-aware chart layout shared with `App.LayoutChart`, includes explicit
-  and zero-duration milestones, uses the computed completion date, and omits
-  unanchored chart tasks rather than treating CPM offsets as dates. End-to-end
-  Timeline and iCal coverage is in `timeline_move_test.go`.
+- Done 2026-08-20, corrected 2026-08-24: Timeline aggregation merges Charter
+  milestones with scheduled Gantt/CPM task milestones. `timelineMilestones()`
+  reuses the calendar-aware chart layout shared with `App.LayoutChart`,
+  includes explicit and zero-duration milestones, uses the computed
+  completion date, and omits unanchored chart tasks rather than treating CPM
+  offsets as dates. **The 2026-08-20 entry overclaimed the Charter half**:
+  `projectMilestones()` queried the document kind `"charter"`, which no real
+  document has ever had (Project Charter is registered as
+  `charter_word`/`charter_excel`) — so real Charter documents never actually
+  surfaced milestones on the Timeline or in `.ics` export, despite the
+  passing test suite, which exercised the bug's own fixture (`Kind:
+  "charter"` written directly via `db.SaveDocument`, bypassing the
+  registry validation every real document-creation path enforces). The
+  CPM/Gantt half was always correct. Fixed 2026-08-24 in `app_foundation.go`;
+  see `TEST_COVERAGE_LEDGER.md`'s `timeline_move_test.go` row for the full
+  account and the added regression test.
 - Done 2026-08-20: completed the documentation audit of `tools/`,
   `docs/design/`, `ROADMAP.md`, `VISION.md`, `code-map/recent-decisions.md`,
   `debian/`, `.github/workflows/*.yml`, and `wails.json`. Corrected stale

@@ -14,6 +14,7 @@ import (
 	"gopmgr/internal/charts"
 	"gopmgr/internal/charts/dag"
 	"gopmgr/internal/db"
+	"gopmgr/internal/documents"
 	"gopmgr/internal/kernel"
 	"gopmgr/internal/templates"
 	"gopmgr/internal/timeline"
@@ -649,9 +650,18 @@ func timelineMilestones(d *db.Database, p db.Project) ([]timeline.Milestone, err
 // failing the whole timeline build, since document content is
 // freeform JSON the user can hand-edit.
 func projectMilestones(d *db.Database, projectID string) ([]timeline.Milestone, error) {
-	docs, err := d.ListDocuments(projectID, "charter")
-	if err != nil {
-		return nil, err
+	// Project Charter is stored as one of two document kinds depending on
+	// which template the user picked (Word-style vs. Excel-style); both
+	// share the same structured "milestones" schema. Team Charter
+	// (KindTeamCharter) is a different document with no milestones field
+	// and is intentionally excluded.
+	var docs []db.Document
+	for _, kind := range []documents.Kind{documents.KindProjectCharterWord, documents.KindProjectCharterExcel} {
+		kindDocs, err := d.ListDocuments(projectID, string(kind))
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, kindDocs...)
 	}
 	var out []timeline.Milestone
 	for _, doc := range docs {
