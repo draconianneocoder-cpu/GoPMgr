@@ -21,7 +21,7 @@ type ICalEvent struct {
 	Description string    // multi-line body (newlines are CRLF-escaped)
 	Start       time.Time // event start (UTC)
 	End         time.Time // event end; if zero, treated as all-day at Start
-	Category    string    // optional CATEGORIES value (sprint / milestone / holiday / doc)
+	Category    string    // optional CATEGORIES value (sprint_start / sprint_end / deployment / milestone[_charter|_chart] / project_start / project_end / holiday)
 }
 
 // ICalSpec is the input for ICalRender.

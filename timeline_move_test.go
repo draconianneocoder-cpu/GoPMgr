@@ -410,6 +410,16 @@ func TestExportProjectICS_IncludesMilestone(t *testing.T) {
 	if !strings.Contains(ics, "UID:chart:gantt-1:task:0:ship-milestone") {
 		t.Errorf("exported .ics missing chart milestone UID; got:\n%s", ics)
 	}
+	// CATEGORIES:MILESTONE_CHART is a byte-for-byte prefix of
+	// CATEGORIES:MILESTONE_CHARTER, so both checks anchor on the line
+	// terminator -- a plain Contains on the shorter string would pass
+	// vacuously even if only the "_CHARTER" line were present.
+	if !strings.Contains(ics, "CATEGORIES:MILESTONE_CHARTER\r\n") {
+		t.Errorf("exported .ics missing Charter milestone CATEGORIES; got:\n%s", ics)
+	}
+	if !strings.Contains(ics, "CATEGORIES:MILESTONE_CHART\r\n") {
+		t.Errorf("exported .ics missing chart milestone CATEGORIES; got:\n%s", ics)
+	}
 }
 
 func timelineContainsEditableDate(entries []timeline.Entry, kind, sourceID, date string) bool {

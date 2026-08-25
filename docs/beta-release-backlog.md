@@ -161,15 +161,17 @@ loss, or a release blocker.
   "identical purple regardless of source" gap the row above's fix had
   explicitly left open. Live-verified end-to-end in a running isolated
   instance: a real Charter document and a real Gantt-chart milestone
-  rendered with the correct distinct color/shape/label. **Known gap, not
-  closed by this change**: `ExportProjectICS` builds its iCal events
-  field-by-field from `timeline.Entry` and does not read `MilestoneSource`,
-  so the `.ics` export still emits `CATEGORIES:MILESTONE` for both sources
-  undifferentiated — a new inconsistency between the Timeline view and the
-  iCal export, not present before this change (previously neither
-  distinguished sources; now only one does). See
-  `TEST_COVERAGE_LEDGER.md`'s `timeline_move_test.go` and
-  `TimelineView.test.ts` rows for full test evidence and fault-seeds.
+  rendered with the correct distinct color/shape/label. The gap this left
+  open — `ExportProjectICS` built its iCal events field-by-field from
+  `timeline.Entry` without reading `MilestoneSource`, so the `.ics` export
+  still emitted `CATEGORIES:MILESTONE` for both sources undifferentiated —
+  was closed the same day: `ExportProjectICS` now emits
+  `CATEGORIES:MILESTONE_CHARTER`/`CATEGORIES:MILESTONE_CHART`, matching the
+  Timeline view's own distinction. `internal/export/ical.go`'s `Category`
+  field comment was corrected to match (it previously described a coarser,
+  now-stale enumeration). See `TEST_COVERAGE_LEDGER.md`'s
+  `timeline_move_test.go` and `TimelineView.test.ts` rows for full test
+  evidence and fault-seeds.
 - Done 2026-08-20: completed the documentation audit of `tools/`,
   `docs/design/`, `ROADMAP.md`, `VISION.md`, `code-map/recent-decisions.md`,
   `debian/`, `.github/workflows/*.yml`, and `wails.json`. Corrected stale

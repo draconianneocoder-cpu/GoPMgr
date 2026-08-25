@@ -149,13 +149,26 @@ func (a *App) ExportProjectICS(includeHolidays bool) (string, error) {
 
 	events := make([]export.ICalEvent, 0, len(entries))
 	for _, e := range entries {
+		category := string(e.Kind)
+		// Distinguish the two milestone sources in the exported category,
+		// matching the Timeline view's own charter/chart distinction
+		// (TimelineView.svelte). Falls back to the bare "milestone" if
+		// MilestoneSource is unset, same as the Timeline view's default.
+		if e.Kind == timeline.KindMilestone && e.MilestoneSource != "" {
+			category += "_" + e.MilestoneSource
+		}
 		events = append(events, export.ICalEvent{
+			// UID intentionally keeps the bare Kind, not category:
+			// SourceID already differs per milestone source (e.g.
+			// "charter-1-0" vs. "chart:gantt-1:task:0:ship"), so UIDs
+			// stay unique without it, and changing this scheme would
+			// orphan previously-imported calendar events on re-export.
 			UID:         e.SourceID + "-" + string(e.Kind),
 			Summary:     e.Title,
 			Description: e.Description,
 			Start:       e.Date,
 			End:         e.EndDate,
-			Category:    string(e.Kind),
+			Category:    category,
 		})
 	}
 
