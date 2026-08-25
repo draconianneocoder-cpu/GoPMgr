@@ -561,7 +561,7 @@ import Button from '../Button.svelte';
               <button
                 onclick={() => exportSignedDocument(d)}
                 disabled={signingDocId === d.id}
-                class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 px-2 py-1 rounded self-center"
+                class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 text-white px-2 py-1 rounded self-center"
                 title="Choose PAdES, GnuPG, or no digital signature"
               >
                 {signingDocId === d.id ? '…' : 'Signature'}

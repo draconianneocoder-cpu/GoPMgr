@@ -262,7 +262,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           onclick={syncRiskMatrix}
           disabled={!linkedRiskMatrixId || syncingRiskMatrix || saving}
           title={linkedRiskMatrixId ? 'Replace the linked matrix items with this saved register' : 'Select a Linked Risk Matrix in the document first'}
-          class="text-xs bg-amber-800 hover:bg-amber-700 disabled:opacity-40 px-3 py-1 rounded"
+          class="text-xs bg-amber-800 hover:bg-amber-700 disabled:opacity-40 text-white px-3 py-1 rounded"
         >
           {syncingRiskMatrix ? 'Syncing...' : 'Refresh Risk Matrix'}
         </button>
@@ -279,7 +279,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button
         onclick={exportSignedPDF}
         disabled={signing}
-        class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 px-3 py-1 rounded"
+        class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 text-white px-3 py-1 rounded"
         title="Choose PAdES, GnuPG, or no digital signature"
       >
         {signing ? 'Exporting…' : 'Signature Options'}
