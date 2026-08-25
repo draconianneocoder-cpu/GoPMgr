@@ -17,16 +17,13 @@ import { session } from '../../session.svelte';
 // (see TEST_COVERAGE_LEDGER.md): this file previously had zero test
 // coverage. Pins the exact rendered class string of the toolbarExtra
 // buttons (all `Button variant="secondary" size="sm"`) migrated from raw
-// <button> elements. The "Remove assignment" button (variant="remove",
-// class="px-1 text-xs" — the one place a real bug was caught and fixed
-// during this migration: the original omitted "text-xs", which the
-// `remove` variant does not bake in) is not covered here — reaching it
-// needs a selected node with an assignment row added first, which goes
-// through LayeredDiagram's canvas selection and is disproportionate setup
-// for this pass. Its class was instead verified by reading Button.svelte's
-// `remove` branch directly (interpolates `{klass}` verbatim, spreads
-// `{...rest}` so `title` also passes through) — see TEST_COVERAGE_LEDGER.md
-// for the full disposition.
+// <button> elements.
+//
+// 2026-08-25: the "Remove assignment" button (variant="remove", class=
+// "px-1 text-xs") now has its own reachability test below — see that
+// describe block for why it was previously excluded (disproportionate
+// canvas-selection setup) and how the shell's own `+ Node` button turned
+// out to be a much shorter path in than the LayeredDiagram canvas.
 
 type AppMock = Record<string, ReturnType<typeof vi.fn>>;
 
@@ -137,5 +134,39 @@ describe('CPMEditor migrated "Export PDF/A" button', () => {
     expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
       'rounded text-xs disabled:opacity-50 px-3 py-1.5 bg-slate-800 hover:bg-slate-700'.split(/\s+/).sort(),
     );
+  });
+});
+
+// Added 2026-08-25: closes the reachability gap the file header above used
+// to disclose. The shell's `+ Node` button (`_layered_editor_shell.svelte`)
+// sets `selectedId` directly on click — no LayeredDiagram canvas
+// interaction needed — which renders CPMEditor's own `nodeDetailPanel`
+// snippet immediately, including this button. Also regression-covers the
+// 2026-08-25 accessibility fix: this button previously had `title` but no
+// `aria-label`, so its computed accessible name came from its own "✕" text
+// content rather than the title (title is not used as the accessible name
+// when the element has non-empty text content) — a real gap, unlike its
+// "Delete edge" siblings in ActivityEditor/WorkflowEditor which always had
+// both. `getByRole(..., { name: 'Remove assignment' })` below is
+// load-bearing: it fails against the pre-fix markup.
+describe('CPMEditor "Remove assignment" button (variant="remove")', () => {
+  it('reachable via + Node -> + Assign resource; correct accessible name, class, and removes its row on click', async () => {
+    const app = installApp();
+    const { getByRole, findByText, queryByRole } = render(CPMEditor);
+    await waitFor(() => expect(app.LayoutChart).toHaveBeenCalled());
+
+    await fireEvent.click(getByRole('button', { name: '+ Node' }));
+    const assignBtn = await findByText('+ Assign resource');
+    await fireEvent.click(assignBtn);
+
+    const removeBtn = await findByText('✕');
+    expect(removeBtn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
+      'text-slate-500 hover:text-red-400 disabled:opacity-50 px-1 text-xs'.split(/\s+/).sort(),
+    );
+    // Accessible name comes from aria-label, not the "✕" text content.
+    expect(getByRole('button', { name: 'Remove assignment' })).toBe(removeBtn);
+
+    await fireEvent.click(removeBtn);
+    expect(queryByRole('button', { name: 'Remove assignment' })).toBeNull();
   });
 });

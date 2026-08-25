@@ -663,7 +663,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               onclick={() => {
                 node.assignments = (node.assignments ?? []).filter((_, j) => j !== i);
               }}
-              title="Remove assignment"
+              aria-label="Remove assignment" title="Remove assignment"
             >✕</Button>
           </div>
           <div class="mt-2 grid grid-cols-3 gap-2">
