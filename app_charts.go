@@ -14,6 +14,7 @@ import (
 	"gopmgr/internal/db"
 	"gopmgr/internal/export"
 	"gopmgr/internal/kernel"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -838,6 +839,27 @@ func (a *App) ImportMSPDIChartWithOptions(options export.MSPDIImportOptions) (db
 	return a.importScheduleFileWithOptions(path, options)
 }
 
+// maxMSPDIImportSize bounds the user-selected MSPDI/.xml chart import file
+// GoPMgr will read into memory before parsing. It's a var, not a const, so
+// tests can shrink it and prove the LimitReader bound actually holds rather
+// than only exercising the early os.Stat-based refusal. The value is
+// generous relative to observed MSPDI file sizes rather than tightly
+// measured — the goal is bounding worst-case memory use on a malformed or
+// oversized import, not fitting realistic project sizes exactly. It mirrors
+// the size-capping pattern internal/db/backup_restore.go already applies to
+// untrusted archive entries (maxBackupProjectSize, maxBackupCertSize).
+var maxMSPDIImportSize int64 = 64 << 20 // 64 MiB
+
+// mspdiImportTooLargeErr is shared by both size guards below (the fast
+// os.Stat check and the io.LimitReader-backed post-read check) so a user
+// sees the same actionable message regardless of which one catches it.
+func mspdiImportTooLargeErr() error {
+	return fmt.Errorf(
+		"import file exceeds GoPMgr's %d MiB MSPDI import limit; this is larger "+
+			"than any real MSPDI schedule export and was refused rather than read into memory",
+		maxMSPDIImportSize>>20)
+}
+
 // importScheduleFile routes an imported project file by extension. MS Project
 // XML (MSPDI, *.xml) is parsed directly. Binary/serialized formats (.mpp,
 // .pod) and the legacy .mpx text format cannot be read in pure Go, so we
@@ -866,9 +888,32 @@ func (a *App) importScheduleFileWithOptions(path string, options export.MSPDIImp
 	default:
 		// .xml or any other extension: attempt the MSPDI parser (it fails
 		// clearly if the content is not MSPDI XML).
-		data, err := os.ReadFile(path) // #nosec G304 -- user-selected import file.
+		info, err := os.Stat(path)
 		if err != nil {
 			return db.Chart{}, err
+		}
+		if !info.Mode().IsRegular() {
+			return db.Chart{}, errors.New(
+				"the selected import path is not a regular file; choose a Microsoft " +
+					"Project XML (.xml) file exported from your scheduling tool")
+		}
+		if info.Size() > maxMSPDIImportSize {
+			return db.Chart{}, mspdiImportTooLargeErr()
+		}
+		f, err := os.Open(path) // #nosec G304 -- user-selected import file; size-checked above.
+		if err != nil {
+			return db.Chart{}, err
+		}
+		defer func() { _ = f.Close() }()
+		// Bound the actual read regardless of what os.Stat reported above
+		// (TOCTOU, or a path whose Stat().Size() doesn't reflect what a
+		// read actually returns).
+		data, err := io.ReadAll(io.LimitReader(f, maxMSPDIImportSize+1))
+		if err != nil {
+			return db.Chart{}, err
+		}
+		if int64(len(data)) > maxMSPDIImportSize {
+			return db.Chart{}, mspdiImportTooLargeErr()
 		}
 		return a.importMSPDIFromBytesWithOptions(data, options)
 	}
@@ -932,7 +977,7 @@ func (a *App) importMSPDIFromBytesWithOptions(data []byte, options export.MSPDII
 		}
 	}
 
-	receipt, err := json.Marshal(map[string]interface{}{"mspdi_import_receipt": imported.Receipt})
+	receipt, err := json.Marshal(map[string]any{"mspdi_import_receipt": imported.Receipt})
 	if err != nil {
 		return db.Chart{}, fmt.Errorf("encode MSPDI import receipt: %w", err)
 	}
