@@ -49,7 +49,7 @@ env:
 jobs:
   verify:
     name: Verify (config + Wails pin + code-map + Go tests + frontend checks)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -89,7 +89,7 @@ jobs:
 
   pades-harnesses:
     name: PAdES harness regressions
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # This job is intentionally independent of the Wails/frontend jobs. The
     # generator imports only GoPMgr's signing and PDF packages, while fake
     # veraPDF/DSS tools exercise deterministic parser branches without network
@@ -119,7 +119,7 @@ jobs:
 
   build:
     name: Build (Wails, linux/amd64)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -162,7 +162,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Required gate: golangci-lint (v2.12.2) + npm run lint. Wails v2.13.0 raised the
     # project's x/tools floor to a Go 1.26-compatible release, so this passes cleanly;
     # a lint regression now fails the workflow.
@@ -208,7 +208,7 @@ jobs:
 
   security:
     name: Security scan (non-blocking)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Mirrors GitLab `security` (allow_failure: true), upgraded from a placeholder to a real scan.
     continue-on-error: true
     steps:
@@ -235,7 +235,7 @@ jobs:
 
   vuln:
     name: Vulnerability scan (govulncheck)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Real, blocking dependency-vulnerability gate. `make memory-scan` only runs
     # govulncheck when it happens to be installed and skips silently otherwise, so
     # nothing actually scanned dependencies in CI before this job. govulncheck does
@@ -272,7 +272,7 @@ jobs:
 
   analytics-duckdb:
     name: Analytics engine (-tags duckdb)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # Builds and tests the optional DuckDB analytics engine so it can't bitrot.
     # internal/analytics imports duckdb-go (CGO) but not Wails, so no GTK/WebKit
     # is needed; the default-build jobs above never link DuckDB.

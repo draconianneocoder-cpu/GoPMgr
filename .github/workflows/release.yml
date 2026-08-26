@@ -38,7 +38,7 @@ defaults:
 jobs:
   preflight:
     name: Tag preflight
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Installer jobs must consume only a checkout that passed the complete
     # release gate. This job builds an unshipped Linux smoke artifact; no
     # installer is created or uploaded until the dependent matrix starts.

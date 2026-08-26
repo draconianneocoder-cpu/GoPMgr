@@ -27,7 +27,7 @@ require_not_contains() {
 
 workflow_files=(.github/workflows/ci.yml .github/workflows/release.yml)
 for file in "${workflow_files[@]}"; do
-	require_contains "$file" "ubuntu-24.04"
+	require_contains "$file" "ubuntu-26.04"
 	require_contains "$file" "libwebkit2gtk-4.1-dev"
 	require_not_contains "$file" "ubuntu-22.04"
 	require_not_contains "$file" "libwebkit2gtk-4.0-dev"
@@ -53,4 +53,4 @@ for file in "${release_docs[@]}"; do
 	require_not_contains "$file" "WebKit2GTK 4.0"
 done
 
-echo "check-linux-runtime-target: Ubuntu 24.04 + WebKit2GTK 4.1 target is consistent."
+echo "check-linux-runtime-target: Ubuntu 26.04 + WebKit2GTK 4.1 target is consistent."
