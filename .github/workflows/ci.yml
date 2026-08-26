@@ -163,9 +163,13 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-26.04
-    # Required gate: golangci-lint (v2.12.2) + npm run lint. Wails v2.13.0 raised the
+    # Required gate: golangci-lint (v2.13.1) + npm run lint. Wails v2.13.0 raised the
     # project's x/tools floor to a Go 1.26-compatible release, so this passes cleanly;
-    # a lint regression now fails the workflow.
+    # a lint regression now fails the workflow. golangci-lint's own pin must be built
+    # with a Go toolchain >= go.mod's `go` directive -- it refuses to run otherwise
+    # ("the Go language version used to build golangci-lint is lower than the
+    # targeted Go version"). Bumped from v2.12.2 (published 2026-05-06, months
+    # before Go 1.27.0 existed) alongside the go.mod bump to Go 1.27.0.
     steps:
       - uses: actions/checkout@v7
 
@@ -195,7 +199,7 @@ jobs:
       - name: "golangci-lint (scope: . ./internal/...)"
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.12.2
+          version: v2.13.1
           args: --build-tags=webkit2_41 . ./internal/...
 
       - name: Install frontend dependencies

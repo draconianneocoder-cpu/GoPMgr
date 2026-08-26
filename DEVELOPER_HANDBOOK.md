@@ -124,7 +124,7 @@ live on the user's machine rather than requiring a hosted service.
 
 The current repository uses:
 
-- Go 1.26.6;
+- Go 1.27.0;
 - Wails v2.13.0;
 - Svelte 5;
 - TypeScript 6;
@@ -172,7 +172,7 @@ leaves ownership clearer.
 
 A normal development checkout requires:
 
-- Go 1.26.6;
+- Go 1.27.0;
 - **Wails v2.13.0** (the exact CLI version, not "latest");
 - Node.js and npm;
 - a C compiler and CGO-capable Go toolchain;

@@ -3,10 +3,12 @@
 
 module gopmgr
 
-go 1.26.6
+go 1.27.0
 
 require (
 	github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c
+	github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea
+	github.com/duckdb/duckdb-go/v2 v2.10505.0
 	github.com/go-pdf/fpdf v0.9.0
 	github.com/gomutex/godocx v0.1.5
 	// V2.x — Foundation Slice additions:
@@ -15,6 +17,8 @@ require (
 	// data rather than a Go switch. New industry/methodology combos
 	// are one row in launchpad_seeds.json. Used in internal/templates.
 	github.com/gorules/zen-go v0.20.0
+	github.com/mutecomm/go-sqlcipher/v4 v4.4.2
+	github.com/pelletier/go-toml/v2 v2.4.3
 
 	// rickar/cal/v2 supplies maintained holiday datasets for ~40
 	// countries. Used by internal/calendar and internal/export/ical.go
@@ -24,13 +28,6 @@ require (
 	github.com/wailsapp/wails/v2 v2.13.0
 	github.com/xuri/excelize/v2 v2.11.0
 	golang.org/x/crypto v0.54.0
-)
-
-require (
-	github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea
-	github.com/duckdb/duckdb-go/v2 v2.10505.0
-	github.com/mutecomm/go-sqlcipher/v4 v4.4.2
-	github.com/pelletier/go-toml/v2 v2.4.3
 	golang.org/x/mod v0.38.0
 	golang.org/x/sys v0.47.0
 	gonum.org/v1/gonum v0.17.0
