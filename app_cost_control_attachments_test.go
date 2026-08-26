@@ -75,13 +75,12 @@ func TestExportCostEntryAttachmentsZipWritesManifestAndFiles(t *testing.T) {
 	if err := os.WriteFile(srcA, []byte("receipt-a-bytes"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	// Same filename on a different ledger row: must not collide in the zip.
-	srcB := filepath.Join(fixtureDir, "receipt.pdf")
 	dupDir := filepath.Join(fixtureDir, "dup")
 	if err := os.MkdirAll(dupDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	srcB = filepath.Join(dupDir, "receipt.pdf")
+	// Same filename as srcA, in a different directory: must not collide in the zip.
+	srcB := filepath.Join(dupDir, "receipt.pdf")
 	if err := os.WriteFile(srcB, []byte("receipt-b-bytes"), 0o600); err != nil {
 		t.Fatal(err)
 	}

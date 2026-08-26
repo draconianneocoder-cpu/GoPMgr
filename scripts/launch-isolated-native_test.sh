@@ -52,7 +52,14 @@ fi
 exit 1
 EOF
 chmod 0700 "$stub_bin/pgrep"
-sed -i '' "s|/usr/bin/dscl|$stub_bin/dscl|" "$launcher"
+# Portable form deliberately avoids `sed -i`: BSD sed (macOS) requires a
+# backup-suffix argument (`-i ''`) that GNU sed (Linux CI) instead treats as
+# the script text, silently shifting the real script and target path into
+# filename arguments -- this line runs before the Darwin guard below, so it
+# executed (and failed) on every platform, not just macOS.
+sed "s|/usr/bin/dscl|$stub_bin/dscl|" "$launcher" >"$launcher.tmp"
+mv "$launcher.tmp" "$launcher"
+chmod 0700 "$launcher"
 
 make_bundle() {
 	local base="$1"

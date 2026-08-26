@@ -144,7 +144,7 @@ func (s *Store) ListVendors(query string, includeArchived bool) ([]Vendor, error
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []Vendor
 	for rows.Next() {
 		var v Vendor
@@ -185,7 +185,7 @@ func (s *Store) ListItems(query string, includeArchived bool) ([]Item, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []Item
 	for rows.Next() {
 		var v Item
