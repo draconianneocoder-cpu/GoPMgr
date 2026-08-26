@@ -29,7 +29,7 @@ exists.
 | Platform | File | How you install it |
 |---|---|---|
 | Windows 10/11 (x86-64) | `GoPMgr-<version>-amd64-setup.exe` | Guided installer |
-| macOS (Apple Silicon) | `GoPMgr-<version>-arm64.dmg` | Drag to Applications |
+| macOS 13 Ventura or later (Apple Silicon) | `GoPMgr-<version>-arm64.dmg` | Drag to Applications |
 | Debian / Ubuntu (x86-64) | `gopmgr-<version>-amd64.deb` | `apt` / `dpkg` |
 | Fedora / RHEL / openSUSE (x86-64) | `gopmgr-<version>-x86_64.rpm` | `dnf` / `rpm` |
 
@@ -41,6 +41,9 @@ Double-click the installer and follow the prompts. If SmartScreen appears,
 choose **More info → Run anyway**.
 
 ### macOS Apple Silicon (`.dmg`)
+
+Requires macOS 13 Ventura or later; the Go toolchain GoPMgr is built with does
+not support earlier macOS releases.
 
 1. Open the `.dmg`.
 2. Drag **GoPMgr** onto the **Applications** shortcut.
