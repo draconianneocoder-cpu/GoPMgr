@@ -52,9 +52,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <div
           class="w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all
             {isCompleted(phase.id)
-              ? 'bg-emerald-600 text-white'
+              ? 'bg-emerald-700 text-white'
               : isCurrent(phase.id)
-              ? 'bg-cyan-600 text-white ring-4 ring-cyan-900'
+              ? 'bg-cyan-700 text-white ring-4 ring-cyan-900'
               : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700'}"
         >
           {isCompleted(phase.id) ? '✓' : phase.icon}

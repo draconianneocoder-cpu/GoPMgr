@@ -335,7 +335,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                         </span>
                         <button
                           onclick={() => toggleRole(user)}
-                          class="text-[11px] bg-amber-700 hover:bg-amber-600 text-white px-2 py-0.5 rounded"
+                          class="text-[11px] bg-amber-800 hover:bg-amber-700 text-white px-2 py-0.5 rounded"
                         >Confirm</button>
                         <button
                           onclick={() => cancelPending(user.username)}

@@ -380,7 +380,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <button
               onclick={claimAdmin}
               disabled={claimingAdmin}
-              class="bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
+              class="bg-amber-800 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
             >
               {claimingAdmin ? 'Claiming…' : 'Become administrator'}
             </button>

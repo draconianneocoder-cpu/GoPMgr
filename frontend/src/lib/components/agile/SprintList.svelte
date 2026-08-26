@@ -325,7 +325,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 {#if s.status === 'planning'}
                   <button
                     onclick={() => activate(s)}
-                    class="text-xs bg-emerald-700 hover:bg-emerald-600 px-3 py-1 rounded"
+                    class="text-xs bg-emerald-800 hover:bg-emerald-700 text-white px-3 py-1 rounded"
                   >
                     Start
                   </button>

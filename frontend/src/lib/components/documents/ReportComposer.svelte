@@ -223,7 +223,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <button
       onclick={exportSignedReport}
       disabled={exporting || showSignModal || included.length === 0}
-      class="text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
+      class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold uppercase px-3 py-1 rounded"
       title="Choose PAdES, GnuPG, or no digital signature"
     >
       {exporting ? 'Exporting...' : 'Signature Options'}

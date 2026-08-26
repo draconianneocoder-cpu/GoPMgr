@@ -75,7 +75,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     primary: 'bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase disabled:opacity-50',
     secondary: 'bg-slate-800 hover:bg-slate-700 disabled:opacity-50',
     danger: 'bg-red-700 hover:bg-red-600 text-white font-bold disabled:opacity-50',
-    caution: 'bg-amber-700 hover:bg-amber-600 text-white font-bold disabled:opacity-50',
+    caution: 'bg-amber-800 hover:bg-amber-700 text-white font-bold disabled:opacity-50',
     ghost: 'text-slate-300 hover:bg-slate-800 disabled:opacity-50',
     // The canvas-toolbar idiom: same idle background as `secondary`, but
     // disabled state dims to 30% opacity, not 50 -- confirmed by grep as a

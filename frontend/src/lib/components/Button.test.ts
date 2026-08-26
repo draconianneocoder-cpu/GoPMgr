@@ -43,7 +43,14 @@ describe('Button', () => {
 
   it('applies the caution variant classes', () => {
     const { getByText } = render(ButtonChildrenHarness, { props: { text: 'Complete', variant: 'caution' } });
-    expect(getByText('Complete').className).toContain('bg-amber-700');
+    const className = getByText('Complete').className;
+    // Asserted as two distinct tokens, not a single toContain('bg-amber-700'):
+    // that would pass on either shade, since "bg-amber-700" is also a
+    // substring of "hover:bg-amber-700" -- a false negative that let the
+    // rest-state shade drift to amber-800 (2026-08-25 AA contrast fix)
+    // without this test catching it.
+    expect(className).toContain('bg-amber-800');
+    expect(className).toContain('hover:bg-amber-700');
   });
 
   it('applies the ghost variant classes (transparent at rest, hover background)', () => {

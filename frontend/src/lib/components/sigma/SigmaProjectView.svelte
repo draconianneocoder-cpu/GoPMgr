@@ -262,7 +262,7 @@ import Button from '../Button.svelte';
     </div>
     <button
       onclick={exportProjectReport}
-      class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase px-3 py-1.5 rounded"
+      class="text-xs bg-emerald-800 hover:bg-emerald-700 text-white font-bold uppercase px-3 py-1.5 rounded"
     >
       Export Report
     </button>
@@ -529,7 +529,7 @@ import Button from '../Button.svelte';
             </button>
             <button
               onclick={advancePhase}
-              class="text-xs bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded font-bold"
+              class="text-xs bg-emerald-800 hover:bg-emerald-700 text-white px-3 py-1.5 rounded font-bold"
             >
               Advance Phase →
             </button>

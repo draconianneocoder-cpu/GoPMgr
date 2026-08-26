@@ -171,7 +171,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
         <div class="flex justify-end gap-3 mt-4">
           <button onclick={() => selectedCause = null} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded">Cancel</button>
-          <button onclick={saveFiveWhys} class="text-xs bg-amber-600 hover:bg-amber-500 text-white font-bold uppercase px-3 py-1.5 rounded">Save Drill-Down</button>
+          <button onclick={saveFiveWhys} class="text-xs bg-amber-800 hover:bg-amber-700 text-white font-bold uppercase px-3 py-1.5 rounded">Save Drill-Down</button>
         </div>
       </div>
     </div>

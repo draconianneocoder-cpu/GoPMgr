@@ -196,7 +196,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <button
                   onclick={() => confirmDelete(p)}
                   disabled={busyPath === p.path}
-                  class="text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white"
+                  class="text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white"
                   aria-label={`Confirm delete ${p.name}`}
                 >
                   Confirm

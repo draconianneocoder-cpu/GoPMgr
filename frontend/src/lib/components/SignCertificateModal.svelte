@@ -251,7 +251,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           onclick={confirm}
           disabled={!canConfirm}
           title={selectedMethod === 'pades' && !effectivePath ? 'Choose a certificate first' : undefined}
-          class="text-xs px-4 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold"
+          class="text-xs px-4 py-1.5 rounded bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold"
         >
           Export
         </button>

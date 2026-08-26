@@ -323,7 +323,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <button
           onclick={exportSignedPDF}
           disabled={signing}
-          class="text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-1.5 rounded"
+          class="text-xs bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold uppercase px-4 py-1.5 rounded"
         >
           {signing ? 'Exporting…' : 'Choose Signature & Export'}
         </button>
