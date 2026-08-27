@@ -153,7 +153,11 @@ jobs:
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@"${NFPM_VERSION}"
           # `nfpm --version` reports "dev" for go-install builds. Go's embedded
           # module metadata is the authoritative proof of the selected tag.
-          actual_nfpm_version="$(go version -m "$(command -v nfpm)" | awk '$1 == "mod" && $2 == "github.com/goreleaser/nfpm/v2" { print $3 }')"
+          # `|| true`: GitHub Actions runs this under `bash -e -o pipefail`, so
+          # a `go version -m` failure (e.g. a stale nfpm shadowing the fresh
+          # install on PATH) would otherwise kill the step via pipefail before
+          # the `test` comparison below runs at all.
+          actual_nfpm_version="$(go version -m "$(command -v nfpm)" | awk '$1 == "mod" && $2 == "github.com/goreleaser/nfpm/v2" { print $3 }' || true)"
           test "$actual_nfpm_version" = "$NFPM_VERSION"
 
       - name: Install NSIS (Windows installer)

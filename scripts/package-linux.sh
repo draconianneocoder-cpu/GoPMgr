@@ -37,7 +37,12 @@ fi
 # A source-built nFPM reports a development CLI version, so Go's embedded
 # module metadata is the stable way to prove the binary matches the release pin.
 nfpm_binary="$(command -v nfpm)"
-actual_nfpm_version="$(go version -m "$nfpm_binary" 2>/dev/null | awk '$1 == "mod" && $2 == "github.com/goreleaser/nfpm/v2" { print $3 }')"
+# `|| true`: if $nfpm_binary isn't a Go executable at all, `go version -m`
+# exits non-zero and, under pipefail, so does this whole assignment -- which
+# would trip `set -e` and kill the script before the version-mismatch error
+# below ever prints. Fold that failure into an empty actual_nfpm_version
+# instead, so it still hits the intended mismatch check and message.
+actual_nfpm_version="$(go version -m "$nfpm_binary" 2>/dev/null | awk '$1 == "mod" && $2 == "github.com/goreleaser/nfpm/v2" { print $3 }' || true)"
 if [ "$actual_nfpm_version" != "$NFPM_VERSION" ]; then
 	echo "package-linux: nfpm $NFPM_VERSION is required; found ${actual_nfpm_version:-unknown} at $nfpm_binary." >&2
 	echo "  go install github.com/goreleaser/nfpm/v2/cmd/nfpm@$NFPM_VERSION" >&2
