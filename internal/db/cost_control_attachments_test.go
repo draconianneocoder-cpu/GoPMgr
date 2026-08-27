@@ -97,6 +97,23 @@ func TestSaveCostEntryAttachmentEnforcesBounds(t *testing.T) {
 	}
 }
 
+// TestSaveCostEntryAttachmentAcceptsFileExactlyAtCap proves the boundary is
+// `>`, not `>=`: an attachment of exactly maxAttachmentBytes must be
+// accepted. This is reachable on the normal Wails upload path, not just
+// direct API use: readBoundedFile (app_cost_control_attachments.go) passes
+// through data up to and including its limit, and that limit is
+// MaxAttachmentBytes() == maxAttachmentBytes here, so a legitimate
+// max-size upload reaches this exact boundary.
+func TestSaveCostEntryAttachmentAcceptsFileExactlyAtCap(t *testing.T) {
+	d := newCostControlTestDB(t)
+	projectID, costEntryID := seedAttachmentTestEntry(t, d)
+
+	exact := make([]byte, maxAttachmentBytes)
+	if _, err := d.SaveCostEntryAttachment(projectID, costEntryID, "exact.bin", "application/octet-stream", exact); err != nil {
+		t.Fatalf("attachment exactly at the cap: %v", err)
+	}
+}
+
 func TestSaveCostEntryAttachmentEnforcesProjectBudget(t *testing.T) {
 	// The real 200 MiB budget is far larger than maxAttachmentBytes (10
 	// MiB), so no single call can approach it -- lower the budget for this
@@ -117,13 +134,18 @@ func TestSaveCostEntryAttachmentEnforcesProjectBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := d.SaveCostEntryAttachment(projectID, costEntryID, "a.bin", "application/octet-stream", []byte("12345678")); err != nil {
-		t.Fatalf("SaveCostEntryAttachment within lowered budget: %v", err)
+	// Land exactly on the boundary: budget is 10, this attachment is
+	// exactly 10 bytes (0+10 > 10 is false) -- proves the boundary is `>`,
+	// not `>=`, rather than only exercising "well under."
+	exact := make([]byte, maxAttachmentTotalBytesPerProject)
+	if _, err := d.SaveCostEntryAttachment(projectID, costEntryID, "a.bin", "application/octet-stream", exact); err != nil {
+		t.Fatalf("SaveCostEntryAttachment exactly at the lowered budget: %v", err)
 	}
 	// A second attachment (even on a different cost entry in the same
-	// project) that would push the running total over the aggregate cap
-	// must be rejected -- the budget is project-wide, not per-entry.
-	if _, err := d.SaveCostEntryAttachment(projectID, otherEntry.ID, "b.bin", "application/octet-stream", []byte("xxx")); !errors.Is(err, ErrAttachmentProjectBudget) {
+	// project) that would push the running total even one byte over the
+	// aggregate cap must be rejected -- the budget is project-wide, not
+	// per-entry.
+	if _, err := d.SaveCostEntryAttachment(projectID, otherEntry.ID, "b.bin", "application/octet-stream", []byte("x")); !errors.Is(err, ErrAttachmentProjectBudget) {
 		t.Fatalf("over-budget attachment err = %v, want ErrAttachmentProjectBudget", err)
 	}
 }

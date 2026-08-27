@@ -212,7 +212,18 @@ func readBoundedFile(path string, limit int64) ([]byte, error) {
 		return nil, err
 	}
 	defer func() { _ = f.Close() }()
-	data, err := io.ReadAll(io.LimitReader(f, limit+1))
+	return readBoundedReader(f, limit)
+}
+
+// readBoundedReader is readBoundedFile's core, split out so a test can
+// prove the io.LimitReader bound itself holds -- by wrapping a counting
+// io.Reader around a source far larger than limit and asserting how many
+// bytes were actually consumed -- without needing an on-disk fixture of
+// comparable size, and independently of SaveCostEntryAttachment's own
+// downstream size check (which would reject an oversized result the same
+// way regardless of how much was read to produce it).
+func readBoundedReader(r io.Reader, limit int64) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(r, limit+1))
 	if err != nil {
 		return nil, fmt.Errorf("read attachment file: %w", err)
 	}

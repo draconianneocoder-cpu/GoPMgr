@@ -5,6 +5,7 @@ package main
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -173,6 +174,14 @@ func TestExportCostEntryAttachmentsZipRejectsWhenNoAttachments(t *testing.T) {
 	}
 }
 
+// TestAttachCostEntryFileAtPathRejectsOversizedFile proves end-to-end
+// rejection through the real Wails-boundary call. It does not by itself
+// prove readBoundedFile's own size check works: instrumentation showed
+// this test still passes even with that check entirely removed, because
+// SaveCostEntryAttachment's independent downstream check (internal/db)
+// rejects the same oversized data with the identical db.ErrAttachmentTooLarge
+// sentinel. TestReadBoundedFileRejectsOversizedFile below isolates
+// readBoundedFile specifically to close that gap.
 func TestAttachCostEntryFileAtPathRejectsOversizedFile(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
 	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
@@ -202,5 +211,76 @@ func TestAttachCostEntryFileAtPathRejectsOversizedFile(t *testing.T) {
 
 	if _, err := app.attachCostEntryFileAtPath(entry.ID, src); !errors.Is(err, db.ErrAttachmentTooLarge) {
 		t.Fatalf("attachCostEntryFileAtPath oversized: err = %v, want ErrAttachmentTooLarge", err)
+	}
+}
+
+// TestReadBoundedFileRejectsOversizedFile isolates readBoundedFile itself
+// (not routed through attachCostEntryFileAtPath/SaveCostEntryAttachment),
+// closing the gap TestAttachCostEntryFileAtPathRejectsOversizedFile's own
+// doc comment discloses: without this test, readBoundedFile's own
+// `len(data) > limit` check was never independently proven -- the
+// end-to-end test passes even with it removed, because
+// SaveCostEntryAttachment's downstream check catches the same case.
+func TestReadBoundedFileRejectsOversizedFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "big.bin")
+	if err := os.WriteFile(path, []byte("this content is more than ten bytes long"), 0o600); err != nil {
+		t.Fatalf("write fixture file: %v", err)
+	}
+	if _, err := readBoundedFile(path, 10); !errors.Is(err, db.ErrAttachmentTooLarge) {
+		t.Fatalf("readBoundedFile oversized: err = %v, want ErrAttachmentTooLarge", err)
+	}
+}
+
+// TestReadBoundedFileAcceptsFileExactlyAtLimit proves the boundary is `>`,
+// not `>=`: a file exactly at limit bytes must be accepted and returned in
+// full.
+func TestReadBoundedFileAcceptsFileExactlyAtLimit(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "exact.bin")
+	content := []byte("0123456789") // exactly 10 bytes
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatalf("write fixture file: %v", err)
+	}
+	data, err := readBoundedFile(path, int64(len(content)))
+	if err != nil {
+		t.Fatalf("readBoundedFile exactly at limit: %v", err)
+	}
+	if string(data) != string(content) {
+		t.Fatalf("data = %q, want %q", data, content)
+	}
+}
+
+// countingReader wraps an io.Reader and records the total number of bytes
+// ever returned across every Read call, so a test can observe how much was
+// actually consumed rather than only the final error.
+type countingReader struct {
+	r     io.Reader
+	total int64
+}
+
+func (c *countingReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.total += int64(n)
+	return n, err
+}
+
+// TestReadBoundedReaderStopsReadingAtLimit proves io.LimitReader genuinely
+// bounds how much is read from the source, not just the length of the
+// returned error -- the property no other test here can show, since
+// SaveCostEntryAttachment's own downstream size check would reject an
+// oversized result the same way regardless of how much was actually read
+// to produce it, and a fixture only one byte over the limit reads the same
+// number of bytes whether or not LimitReader is present at all. Wraps a
+// source far larger than the limit and asserts at most limit+1 bytes were
+// ever consumed.
+func TestReadBoundedReaderStopsReadingAtLimit(t *testing.T) {
+	const limit = 16
+	const sourceSize = 10 << 20 // 10 MiB, far over the 16-byte limit
+	source := &countingReader{r: bytes.NewReader(bytes.Repeat([]byte("x"), sourceSize))}
+
+	if _, err := readBoundedReader(source, limit); !errors.Is(err, db.ErrAttachmentTooLarge) {
+		t.Fatalf("readBoundedReader oversized: err = %v, want ErrAttachmentTooLarge", err)
+	}
+	if source.total > limit+1 {
+		t.Fatalf("readBoundedReader consumed %d bytes from a %d-byte source, want at most %d (limit+1) -- io.LimitReader bound is not holding", source.total, sourceSize, limit+1)
 	}
 }
