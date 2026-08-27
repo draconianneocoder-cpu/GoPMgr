@@ -266,12 +266,31 @@ func TestImportFont_RejectsOversizedFile(t *testing.T) {
 	}
 }
 
-// TestImportFont_BoundsReadRegardlessOfStatSize proves oversized refusal
-// at a shrunk cap with a real (non-sparse) file. Fault-seeding showed this
-// passes even without io.LimitReader -- the post-read length check catches
-// it -- so what this pins is "oversized input never reaches
-// validateTrueType," not bounded peak memory.
-func TestImportFont_BoundsReadRegardlessOfStatSize(t *testing.T) {
+// TestImportFont_RejectsOversizedRealFileAtShrunkCap proves oversized
+// refusal at a shrunk cap using a real (non-sparse) file, complementing the
+// sparse-file fast-path test above. It does NOT prove independence from
+// the os.Stat fast path -- this file's real byte count matches what Stat
+// reports, both exceed the cap, so the shipped os.Stat check catches it
+// first; instrumentation confirmed the second-layer (io.LimitReader +
+// post-read length check) code is never reached by either test. What the
+// second layer alone proves rests on separate os.Stat-disabled
+// fault-seeding, not on either test in this file: with Stat neutered, the
+// second layer still rejects both correctly; disabling only the post-read
+// length check (keeping io.LimitReader) makes both FAIL, and does so worse
+// here than in internal/crypto: io.LimitReader alone silently truncates a
+// 64-byte fakeTTF to the shrunk cap, and since validateTrueType only
+// inspects the leading 4 signature bytes, the truncated file passes
+// validation and imports successfully with NO error at all -- silent
+// truncate-and-accept, not even a confusing downstream error. The
+// post-read length check, not LimitReader, is what produces the actionable
+// "too large" error and prevents that silent truncation. Disabling only
+// LimitReader (keeping the post-read check) still passes, so no test
+// distinguishes a properly memory-bounded read from an unbounded one
+// that's rejected afterward. The os.Stat-vs-actual-size TOCTOU scenario
+// named in the guard's code comment is accordingly unproven by any test
+// here; it rests on io.LimitReader's documented stdlib contract, not
+// independent evidence.
+func TestImportFont_RejectsOversizedRealFileAtShrunkCap(t *testing.T) {
 	original := maxFontFileSize
 	maxFontFileSize = 16
 	t.Cleanup(func() { maxFontFileSize = original })
@@ -286,6 +305,27 @@ func TestImportFont_BoundsReadRegardlessOfStatSize(t *testing.T) {
 		t.Fatal("expected an error once the file exceeds the (shrunk) import limit, got nil")
 	} else if !strings.Contains(err.Error(), "font-file limit") {
 		t.Errorf("error %q should mention the font-file limit", err.Error())
+	}
+}
+
+// TestImportFont_AcceptsFileExactlyAtCap proves the boundary is `>`, not
+// `>=`: a file exactly maxFontFileSize bytes must pass the guard. This is
+// the one plausible mutation (`>` -> `>=`) no refusal-only test above would
+// catch.
+func TestImportFont_AcceptsFileExactlyAtCap(t *testing.T) {
+	original := maxFontFileSize
+	maxFontFileSize = 16
+	t.Cleanup(func() { maxFontFileSize = original })
+
+	src := filepath.Join(t.TempDir(), "Cap-Regular.ttf")
+	content := fakeTTF()[:maxFontFileSize] // exactly at the cap, not over; still a valid TrueType signature
+	if err := os.WriteFile(src, content, 0o600); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	mgr := NewManager(t.TempDir())
+	if _, err := mgr.ImportFont(src); err != nil {
+		t.Fatalf("a file exactly at the cap must not be rejected: %v", err)
 	}
 }
 

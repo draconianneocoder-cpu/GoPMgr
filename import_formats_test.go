@@ -62,11 +62,33 @@ func TestImportScheduleFileRejectsOversizedFile(t *testing.T) {
 	}
 }
 
-// Proves oversized refusal at a shrunk cap with a real (non-sparse) file.
-// Fault-seeding showed this passes even without io.LimitReader -- the
-// post-read length check catches it -- so what this pins is "oversized
-// input never reaches the XML parser," not bounded peak memory.
-func TestImportScheduleFileBoundsReadRegardlessOfStatSize(t *testing.T) {
+// TestImportScheduleFileRejectsOversizedRealFileAtShrunkCap proves oversized
+// refusal at a shrunk cap using a real (non-sparse) file, complementing the
+// sparse-file fast-path test above. It does NOT prove independence from the
+// os.Stat fast path -- this file's real byte count matches what Stat
+// reports, both exceed the cap, so the shipped os.Stat check catches it
+// first; instrumentation (added, run, then reverted during a later
+// assurance review -- see internal/crypto/pdf_sign_test.go's equivalent
+// test for the full decomposition and internal/fonts' for why the
+// second-layer post-read check specifically matters there) confirmed the
+// second-layer (io.LimitReader + post-read length check) code is never
+// reached by this test, or by the sparse-file test above. What the second
+// layer alone proves rests on separate os.Stat-disabled fault-seeding, not
+// on either test in this file, and that fault-seeding is weaker evidence
+// here than in the two sibling packages: this package's bare App{} test
+// harness hits its own unconditional "no project open" guard before ever
+// reaching XML parsing, so a fault-seed that disables only the post-read
+// check can't show what specifically would go wrong downstream (a
+// truncated-but-plausible XML parse, a silent accept) the way the P12 and
+// TTF sibling tests could. The os.Stat-vs-actual-size TOCTOU scenario named
+// in the guard's code comment is accordingly unproven by any test here; it
+// rests on io.LimitReader's documented stdlib contract, not independent
+// evidence. No exactly-at-cap boundary test exists in this file either
+// (added to the two sibling packages during the same review) -- a `>` ->
+// `>=` mutation on this guard's boundary would go undetected; disclosed as
+// a residual gap rather than added here to avoid mixing this review's
+// scope with a behavior-preserving-only pass over already-shipped code.
+func TestImportScheduleFileRejectsOversizedRealFileAtShrunkCap(t *testing.T) {
 	original := maxMSPDIImportSize
 	maxMSPDIImportSize = 16
 	t.Cleanup(func() { maxMSPDIImportSize = original })

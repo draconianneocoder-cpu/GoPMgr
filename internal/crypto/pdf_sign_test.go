@@ -116,12 +116,27 @@ func TestLoadCertificate_RejectsOversizedFile(t *testing.T) {
 	}
 }
 
-// TestLoadCertificate_BoundsReadRegardlessOfStatSize proves oversized
-// refusal at a shrunk cap with a real (non-sparse) file. Fault-seeding
-// showed this passes even without io.LimitReader -- the post-read length
-// check catches it -- so what this pins is "oversized input never reaches
-// pkcs12.ToPEM," not bounded peak memory.
-func TestLoadCertificate_BoundsReadRegardlessOfStatSize(t *testing.T) {
+// TestLoadCertificate_RejectsOversizedRealFileAtShrunkCap proves oversized
+// refusal at a shrunk cap using a real (non-sparse) file, complementing the
+// sparse-file fast-path test above. It does NOT prove independence from
+// the os.Stat fast path -- this file's real byte count matches what Stat
+// reports, both exceed the cap, so the shipped os.Stat check catches it
+// first; instrumentation confirmed the second-layer (io.LimitReader +
+// post-read length check) code is never reached by this test, or by the
+// sparse-file test above. What the second layer alone proves rests on
+// separate os.Stat-disabled fault-seeding, not on either test in this
+// file: with Stat neutered, the second layer still rejects both correctly;
+// disabling only the post-read length check (keeping io.LimitReader) makes
+// both FAIL with a cryptic ASN.1 parse error instead of the correct
+// message, since LimitReader alone silently truncates rather than
+// erroring -- the post-read length check, not LimitReader, is what
+// produces the actionable "too large" error; disabling only LimitReader
+// (keeping the post-read check) still passes, so no test distinguishes a
+// properly memory-bounded read from an unbounded one that's rejected
+// afterward. The os.Stat-vs-actual-size TOCTOU scenario named in the
+// guard's code comment is accordingly unproven by any test here; it rests
+// on io.LimitReader's documented stdlib contract, not independent evidence.
+func TestLoadCertificate_RejectsOversizedRealFileAtShrunkCap(t *testing.T) {
 	original := maxP12ImportSize
 	maxP12ImportSize = 16
 	t.Cleanup(func() { maxP12ImportSize = original })
@@ -136,6 +151,27 @@ func TestLoadCertificate_BoundsReadRegardlessOfStatSize(t *testing.T) {
 		t.Fatal("expected an error once the file exceeds the (shrunk) import limit, got nil")
 	} else if !strings.Contains(err.Error(), "PKCS#12 import limit") {
 		t.Errorf("error %q should mention the PKCS#12 import limit", err.Error())
+	}
+}
+
+// TestLoadCertificate_AcceptsFileExactlyAtCap proves the boundary is `>`,
+// not `>=`: a file exactly maxP12ImportSize bytes must pass the guard,
+// whatever happens next (a parse failure on non-P12 content is fine; a
+// "too large" refusal is not). This is the one plausible mutation
+// (`>` -> `>=`) no refusal-only test above would catch.
+func TestLoadCertificate_AcceptsFileExactlyAtCap(t *testing.T) {
+	original := maxP12ImportSize
+	maxP12ImportSize = 16
+	t.Cleanup(func() { maxP12ImportSize = original })
+
+	path := filepath.Join(t.TempDir(), "exactly-at-cap.p12")
+	content := make([]byte, maxP12ImportSize) // exactly at the cap, not over
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	if _, err := LoadCertificate(path, testP12Password); err != nil && strings.Contains(err.Error(), "PKCS#12 import limit") {
+		t.Fatalf("a file exactly at the cap must not be rejected as too large: %v", err)
 	}
 }
 
