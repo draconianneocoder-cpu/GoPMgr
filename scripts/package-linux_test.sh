@@ -162,15 +162,22 @@ if [ ! -f "$rpm" ]; then
 	fail "package-linux.sh did not produce the expected .rpm at $rpm"
 fi
 # The .rpm's own internal Version: metadata is NOT independently inspected
-# here (unlike the .deb below) -- this host has no rpm/rpm2cpio/dnf and no
-# such Python library, which is exactly docs/beta-release-backlog.md row
-# 52's own disclosed remaining blocker. nfpm is the same tool producing
-# both formats from the same VERSION input, so its .deb-observed
-# sanitization behavior is a reasonable basis for confidence, not proof, for
-# the .rpm. Whether rpm/dnf themselves correctly PARSE and ORDER the
-# resulting version string relative to a plain release version -- the real
-# question this whole backlog item is blocked on -- is verified by nothing
-# in this test file; that needs an actual Linux host with rpm/dnf installed.
+# here (macOS has no rpm/rpm2cpio/dnf and no such Python library) -- this
+# only runs on macOS in practice, since Case 1/2 above are gated on nfpm
+# being present. docs/beta-release-backlog.md row 52 records a real Linux
+# host (rpm 6.0.1, Ubuntu 26.04, 2026-08-27) inspecting this directly:
+# nfpm's .rpm sanitization is NOT the same as its .deb sanitization from
+# the same VERSION input. The .deb keeps every hyphen after the first as a
+# literal "-" (only the first becomes "~"); the .rpm additionally replaces
+# every hyphen AFTER the first with "_" (e.g. "1.2.0-3-gabc1234" becomes
+# "1.2.0~3-gabc1234" for the .deb but "1.2.0~3_gabc1234" for the .rpm),
+# because RPM's Version field forbids "-" entirely (it's the Version/Release
+# delimiter in EVR), while Debian only forbids an unescaped "-" before the
+# final component. Do not infer one format's sanitization from the other's.
+# rpm/dnf's own PARSING and ORDERING of the result was also verified on that
+# host, via rpm 6.0.1's `rpm.vercmp()` and a real (sandboxed, --justdb)
+# install/upgrade/downgrade transaction sequence -- not by anything in this
+# file, which stays macOS-only.
 
 # Prove VERSION is actually threaded through to nfpm's own package metadata,
 # not just the output filename -- ar+tar for .deb (both are standard on
