@@ -40,7 +40,27 @@ if [ -e build/packages ]; then
 fi
 
 mkdir -p build/bin build/packages
-printf '#!/bin/bash\necho fake gopmgr\n' > build/bin/gopmgr
+
+# A real cross-compiled linux/amd64 ELF, used as the fixture for every case
+# below that expects package-linux.sh to accept build/bin/gopmgr and needs
+# packaging to actually proceed -- package-linux.sh's ELF-header content
+# check (added alongside R6/R7 below) rejects the plain shell-script stub
+# this file used to stage here. CGO_ENABLED=0 keeps this to the pure-Go
+# cross-compiler, no C toolchain needed. gopmgr_elf_arm64 is the same
+# trivial program built for a different architecture, used by R7 to prove
+# the check's machine-type comparison is load-bearing, not just its ELF-
+# magic check.
+fixture_src="$backup_root/fixture-src"
+mkdir -p "$fixture_src"
+printf 'package main\nfunc main() {}\n' > "$fixture_src/main.go"
+gopmgr_elf_amd64="$backup_root/gopmgr-elf-amd64"
+gopmgr_elf_arm64="$backup_root/gopmgr-elf-arm64"
+(cd "$fixture_src" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$gopmgr_elf_amd64" main.go) ||
+	fail "could not cross-compile the linux/amd64 ELF test fixture -- this test needs a working Go toolchain with cross-compilation enabled (CGO_ENABLED=0 needs no C cross-compiler)"
+(cd "$fixture_src" && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o "$gopmgr_elf_arm64" main.go) ||
+	fail "could not cross-compile the linux/arm64 ELF test fixture (used by R7's wrong-architecture case) -- same requirement as the amd64 fixture above"
+
+cp "$gopmgr_elf_amd64" build/bin/gopmgr
 chmod +x build/bin/gopmgr
 
 # A hyphenated, untagged-past-its-nearest-tag version, matching real
@@ -125,6 +145,46 @@ esac
 if [ -f "$nfpm_called_sentinel" ]; then
 	fail "R5: package-linux.sh invoked nfpm despite an unverifiable version -- the version guard did not block packaging"
 fi
+
+# R6: build/bin/gopmgr present but not an ELF binary at all (e.g. a stray
+# script, or a non-Linux binary left over from another platform's build)
+# must hard-fail rather than being silently packaged -- the exact defect
+# this guard exists to close (docs/beta-release-backlog.md's
+# package-linux.sh row, found 2026-08-27 while testing R5 above).
+printf '#!/bin/bash\necho fake gopmgr\n' > build/bin/gopmgr
+chmod +x build/bin/gopmgr
+r6_output="$(VERSION="$test_version" bash scripts/package-linux.sh 2>&1)" && {
+	printf '%s\n' "$r6_output" >&2
+	fail "R6: package-linux.sh should fail when build/bin/gopmgr is not an ELF binary, but it succeeded"
+}
+case "$r6_output" in
+*"is not a linux/amd64 ELF executable"*) ;;
+*)
+	printf '%s\n' "$r6_output" >&2
+	fail "R6: package-linux.sh's non-ELF error did not say 'is not a linux/amd64 ELF executable'"
+	;;
+esac
+cp "$gopmgr_elf_amd64" build/bin/gopmgr
+chmod +x build/bin/gopmgr
+
+# R7: build/bin/gopmgr present, a genuine ELF binary, but for the wrong
+# architecture (arm64 instead of amd64) must also hard-fail -- proves the
+# guard actually compares e_machine rather than just checking ELF magic.
+cp "$gopmgr_elf_arm64" build/bin/gopmgr
+chmod +x build/bin/gopmgr
+r7_output="$(VERSION="$test_version" bash scripts/package-linux.sh 2>&1)" && {
+	printf '%s\n' "$r7_output" >&2
+	fail "R7: package-linux.sh should fail when build/bin/gopmgr is the wrong ELF architecture, but it succeeded"
+}
+case "$r7_output" in
+*"is not a linux/amd64 ELF executable"*) ;;
+*)
+	printf '%s\n' "$r7_output" >&2
+	fail "R7: package-linux.sh's wrong-arch error did not say 'is not a linux/amd64 ELF executable'"
+	;;
+esac
+cp "$gopmgr_elf_amd64" build/bin/gopmgr
+chmod +x build/bin/gopmgr
 
 # R2 (malformed NFPM_VERSION in release-tool-versions.env) is deliberately
 # not covered here: scripts/check-installer-tool-pins.sh already validates
@@ -228,7 +288,7 @@ mkdir -p "$fake_repo/scripts" "$fake_repo/build/linux" "$fake_repo/build/bin"
 cp scripts/package-linux.sh scripts/package-version-lib.sh scripts/release-tool-versions.env "$fake_repo/scripts/"
 cp build/linux/nfpm.yaml build/linux/gopmgr.desktop "$fake_repo/build/linux/"
 cp build/appicon.png "$fake_repo/build/"
-printf '#!/bin/bash\necho fake gopmgr\n' > "$fake_repo/build/bin/gopmgr"
+cp "$gopmgr_elf_amd64" "$fake_repo/build/bin/gopmgr"
 chmod +x "$fake_repo/build/bin/gopmgr"
 (
 	cd "$fake_repo"

@@ -29,6 +29,22 @@ if [ ! -x build/bin/gopmgr ]; then
 	echo "package-linux: build/bin/gopmgr missing — run 'wails build -platform linux/amd64' first." >&2
 	exit 1
 fi
+# A stray non-Linux or wrong-arch file at this path (e.g. leftover from a
+# `wails build -platform darwin/...` run, or a test fixture) would otherwise
+# pass the -x check above and get silently packaged as a working release
+# artifact -- one that installs but can't run. Reads the raw ELF header
+# rather than shelling out to `file`, whose free-text output format isn't a
+# stable contract to match against. Checks magic + 64-bit + little-endian +
+# x86-64 (e_machine 0x3E, little-endian bytes "3e00" at offset 18) --
+# amd64 to match build/linux/nfpm.yaml's hardcoded `arch: amd64`. Does NOT
+# check e_type (ET_EXEC vs ET_DYN/PIE): a cgo-enabled Wails build's PIE-ness
+# depends on toolchain/linker defaults this script shouldn't need to pin.
+elf_header="$(od -An -tx1 -N20 build/bin/gopmgr 2>/dev/null | tr -d ' \n')"
+if [ "${elf_header:0:8}" != "7f454c46" ] || [ "${elf_header:8:2}" != "02" ] ||
+	[ "${elf_header:10:2}" != "01" ] || [ "${elf_header:36:4}" != "3e00" ]; then
+	echo "package-linux: build/bin/gopmgr is not a linux/amd64 ELF executable — rebuild with 'wails build -platform linux/amd64'." >&2
+	exit 1
+fi
 if ! command -v nfpm >/dev/null 2>&1; then
 	echo "package-linux: nfpm not found. Install with:" >&2
 	echo "  go install github.com/goreleaser/nfpm/v2/cmd/nfpm@$NFPM_VERSION" >&2
