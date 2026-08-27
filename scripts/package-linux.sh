@@ -5,10 +5,16 @@
 # Build Linux installers from the Wails Linux binary at build/bin/gopmgr:
 #   - .deb and .rpm via nfpm (build/linux/nfpm.yaml)
 #
-# Run `wails build -platform linux/amd64` first. VERSION defaults to the
-# latest git tag with the leading "v" stripped (e.g. v1.2.0 -> 1.2.0).
+# Run `wails build -platform linux/amd64` first. VERSION defaults to
+# scripts/package-version-lib.sh's release_version() -- the same derivation
+# package-macos.sh/package-macos-installer.sh use, so a build past its
+# nearest tag gets an honest "-<N>-g<sha>" suffix instead of silently
+# reusing the tag's bare name (see that file's own comment for why
+# `git describe --tags --abbrev=0` alone is wrong).
 set -euo pipefail
-cd "$(dirname "$0")/.."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+. "$SCRIPT_DIR/package-version-lib.sh"
+cd "$SCRIPT_DIR/.."
 
 NFPM_VERSION="$(sed -n 's/^NFPM_VERSION=//p' scripts/release-tool-versions.env)"
 if [[ ! "$NFPM_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -16,8 +22,7 @@ if [[ ! "$NFPM_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 	exit 1
 fi
 
-VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')}"
-VERSION="${VERSION:-0.0.0}"
+VERSION="$(release_version)"
 export VERSION
 
 if [ ! -x build/bin/gopmgr ]; then

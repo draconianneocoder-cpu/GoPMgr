@@ -29,7 +29,7 @@ export CGO_ENABLED := 1
 export CC
 
 .PHONY: help build dev tidy test race verify lint lint-go lint-frontend lint-all \
-        license-check memory-scan package-linux package-windows package-darwin package-macos package-macos-installer \
+        license-check memory-scan package-linux package-linux-nfpm package-windows package-darwin package-macos package-macos-installer \
         check-release clean fonts icc check-pdfa frontend-stability \
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
@@ -226,6 +226,11 @@ package-macos: ## Build a macOS drag-to-Applications .dmg installer.
 package-macos-installer: ## Build a local macOS .pkg installer for /Applications.
 	@bash scripts/package-version-lib_test.sh
 	@bash scripts/package-macos-installer.sh
+
+package-linux-nfpm: ## Build .deb and .rpm via nfpm on a Linux host (distinct from package-linux, which builds a tarball).
+	@bash scripts/package-version-lib_test.sh
+	@bash scripts/package-linux_test.sh
+	@bash scripts/package-linux.sh
 
 check-release: ## Run the full release gate (versions, REUSE, memory-safety, race, frontend, build, encrypted DB, PDF/A, PAdES).
 	@bash scripts/check-release.sh
