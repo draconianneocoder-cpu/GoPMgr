@@ -13,6 +13,12 @@ fail() {
 }
 
 if ! command -v nfpm >/dev/null 2>&1; then
+	# Safe to skip silently here: package-linux.sh itself hard-fails with a
+	# clear error if nfpm is missing, so this isn't a path that can go green
+	# without exercising the real check. Re-verify that invariant before
+	# wiring this test into `make verify` or CI, where a silent skip would
+	# otherwise let a missing-nfpm environment look untested rather than
+	# failing loudly.
 	echo "package-linux_test: nfpm not found on PATH, skipping (install with" >&2
 	echo "  go install github.com/goreleaser/nfpm/v2/cmd/nfpm@\$(sed -n 's/^NFPM_VERSION=//p' scripts/release-tool-versions.env))." >&2
 	exit 0
