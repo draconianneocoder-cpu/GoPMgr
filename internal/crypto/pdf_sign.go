@@ -14,6 +14,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"os"
 
@@ -53,6 +54,28 @@ type Signer struct {
 	ExtraCerts []*x509.Certificate
 }
 
+// maxP12ImportSize bounds the user-selected PKCS#12 (.p12/.pfx) certificate
+// bundle GoPMgr will read into memory before parsing. It's a var, not a
+// const, so tests can shrink it and prove the LimitReader bound actually
+// holds rather than only exercising the early os.Stat-based refusal. The
+// value is generous relative to real PKCS#12 bundles (typically a few KB
+// to a few hundred KB, even with a full issuing chain bundled in) rather
+// than tightly measured -- the goal is bounding worst-case memory use on a
+// malformed or oversized import, not fitting realistic bundle sizes
+// exactly. Mirrors the size-capping pattern app_charts.go applies to MSPDI
+// schedule imports (maxMSPDIImportSize).
+var maxP12ImportSize int64 = 16 << 20 // 16 MiB
+
+// p12ImportTooLargeErr is shared by both size guards below (the fast
+// os.Stat check and the io.LimitReader-backed post-read check) so a caller
+// sees the same actionable message regardless of which one catches it.
+func p12ImportTooLargeErr(path string) error {
+	return fmt.Errorf(
+		"certificate bundle %q exceeds GoPMgr's %d MiB PKCS#12 import limit; this is "+
+			"far larger than any real signing certificate bundle and was refused "+
+			"rather than read into memory", path, maxP12ImportSize>>20)
+}
+
 // LoadCertificate reads a PKCS#12 (.p12 / .pfx) bundle and returns a
 // Signer ready to sign. Only RSA keys are accepted; if you need EC
 // support, branch on the type assertion in parseP12PrivateKey below.
@@ -67,9 +90,30 @@ type Signer struct {
 // such 2-bag limit; parseP12PrivateKey/splitLeafCertificate below do the
 // classification pkcs12.Decode used to do internally.
 func LoadCertificate(path, password string) (*Signer, error) {
-	p12Data, err := os.ReadFile(path) // #nosec G304 -- user-selected PKCS#12 certificate bundle path.
+	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("certificate bundle %q is not a regular file", path)
+	}
+	if info.Size() > maxP12ImportSize {
+		return nil, p12ImportTooLargeErr(path)
+	}
+	f, err := os.Open(path) // #nosec G304 -- user-selected PKCS#12 certificate bundle path; size-checked above.
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	// Bound the actual read regardless of what os.Stat reported above
+	// (TOCTOU, or a path whose Stat().Size() doesn't reflect what a
+	// read actually returns).
+	p12Data, err := io.ReadAll(io.LimitReader(f, maxP12ImportSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(p12Data)) > maxP12ImportSize {
+		return nil, p12ImportTooLargeErr(path)
 	}
 
 	blocks, err := pkcs12.ToPEM(p12Data, password)

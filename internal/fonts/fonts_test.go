@@ -6,6 +6,7 @@ package fonts
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -237,6 +238,89 @@ func TestImportFont_RejectsNonTTF(t *testing.T) {
 	}
 	if _, err := mgr.ImportFont(fakeOtf); err == nil {
 		t.Error("expected error importing OTTO-signed .ttf")
+	}
+}
+
+// TestImportFont_RejectsOversizedFile proves the early os.Stat-based
+// refusal: a file reported larger than maxFontFileSize is refused before
+// any read is attempted. The file is sparse (Truncate, no real bytes
+// written) since only its reported size matters for this branch.
+func TestImportFont_RejectsOversizedFile(t *testing.T) {
+	src := filepath.Join(t.TempDir(), "huge.ttf")
+	f, err := os.Create(src) // #nosec G304 -- test-owned temp path.
+	if err != nil {
+		t.Fatalf("create temp file: %v", err)
+	}
+	if err := f.Truncate(maxFontFileSize + 1); err != nil {
+		t.Fatalf("truncate temp file: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("close temp file: %v", err)
+	}
+
+	mgr := NewManager(t.TempDir())
+	if _, err := mgr.ImportFont(src); err == nil {
+		t.Fatal("expected an error for an oversized font file, got nil")
+	} else if !strings.Contains(err.Error(), "font-file limit") {
+		t.Errorf("error %q should mention the font-file limit", err.Error())
+	}
+}
+
+// TestImportFont_BoundsReadRegardlessOfStatSize proves oversized refusal
+// at a shrunk cap with a real (non-sparse) file. Fault-seeding showed this
+// passes even without io.LimitReader -- the post-read length check catches
+// it -- so what this pins is "oversized input never reaches
+// validateTrueType," not bounded peak memory.
+func TestImportFont_BoundsReadRegardlessOfStatSize(t *testing.T) {
+	original := maxFontFileSize
+	maxFontFileSize = 16
+	t.Cleanup(func() { maxFontFileSize = original })
+
+	src := filepath.Join(t.TempDir(), "small-but-over-cap.ttf")
+	if err := os.WriteFile(src, fakeTTF(), 0o600); err != nil { // fakeTTF is 64 bytes, well over the shrunk cap
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	mgr := NewManager(t.TempDir())
+	if _, err := mgr.ImportFont(src); err == nil {
+		t.Fatal("expected an error once the file exceeds the (shrunk) import limit, got nil")
+	} else if !strings.Contains(err.Error(), "font-file limit") {
+		t.Errorf("error %q should mention the font-file limit", err.Error())
+	}
+}
+
+// TestRegisterAs_SkipsOversizedStyleButRegistersSiblings proves RegisterAs's
+// existing skip-and-continue behavior (already relied on for unreadable or
+// invalid-signature style files) extends to an oversized one: a single
+// oversized style file must not abort registration of the family's other,
+// well-sized styles. The files are written directly into the user font
+// directory (bypassing ImportFont, which would itself refuse the oversized
+// one at import time) to model the RegisterAs threat this guards against --
+// a file already on disk growing out-of-band, not a fresh user import.
+func TestRegisterAs_SkipsOversizedStyleButRegistersSiblings(t *testing.T) {
+	original := maxFontFileSize
+	maxFontFileSize = 16
+	t.Cleanup(func() { maxFontFileSize = original })
+
+	dir := t.TempDir()
+	oversized := append(fakeTTF(), make([]byte, 16)...)
+	if err := os.WriteFile(filepath.Join(dir, "Acme-Regular.ttf"), fakeTTF()[:8], 0o600); err != nil {
+		t.Fatalf("write Regular: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "Acme-Bold.ttf"), oversized, 0o600); err != nil {
+		t.Fatalf("write Bold: %v", err)
+	}
+
+	mgr := NewManager(dir)
+	reg := &recordingRegistrar{}
+	if err := mgr.Register(reg, "Acme"); err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+	if len(reg.calls) != 1 {
+		t.Fatalf("expected exactly 1 registrar call (Regular only), got %d: %+v", len(reg.calls), reg.calls)
+	}
+	if reg.calls[0].style != "" {
+		t.Errorf("registered style = %q, want Regular (empty FpdfStyle)", reg.calls[0].style)
 	}
 }
 

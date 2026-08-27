@@ -16,6 +16,8 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"math/big"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -87,6 +89,53 @@ func TestLoadCertificate_FileNotFound(t *testing.T) {
 func TestLoadCertificate_WrongPassword(t *testing.T) {
 	if _, err := LoadCertificate("testdata/testonly-rsa-2bag.p12", "not-the-right-password"); err == nil {
 		t.Fatal("expected an error for the wrong P12 password")
+	}
+}
+
+// TestLoadCertificate_RejectsOversizedFile proves the early os.Stat-based
+// refusal: a file reported larger than maxP12ImportSize is refused before
+// any read is attempted. The file is sparse (Truncate, no real bytes
+// written) since only its reported size matters for this branch.
+func TestLoadCertificate_RejectsOversizedFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "huge.p12")
+	f, err := os.Create(path) // #nosec G304 -- test-owned temp path.
+	if err != nil {
+		t.Fatalf("create temp file: %v", err)
+	}
+	if err := f.Truncate(maxP12ImportSize + 1); err != nil {
+		t.Fatalf("truncate temp file: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("close temp file: %v", err)
+	}
+
+	if _, err := LoadCertificate(path, testP12Password); err == nil {
+		t.Fatal("expected an error for an oversized P12 file, got nil")
+	} else if !strings.Contains(err.Error(), "PKCS#12 import limit") {
+		t.Errorf("error %q should mention the PKCS#12 import limit", err.Error())
+	}
+}
+
+// TestLoadCertificate_BoundsReadRegardlessOfStatSize proves oversized
+// refusal at a shrunk cap with a real (non-sparse) file. Fault-seeding
+// showed this passes even without io.LimitReader -- the post-read length
+// check catches it -- so what this pins is "oversized input never reaches
+// pkcs12.ToPEM," not bounded peak memory.
+func TestLoadCertificate_BoundsReadRegardlessOfStatSize(t *testing.T) {
+	original := maxP12ImportSize
+	maxP12ImportSize = 16
+	t.Cleanup(func() { maxP12ImportSize = original })
+
+	path := filepath.Join(t.TempDir(), "small-but-over-cap.p12")
+	content := []byte("this content is more than sixteen bytes long")
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	if _, err := LoadCertificate(path, testP12Password); err == nil {
+		t.Fatal("expected an error once the file exceeds the (shrunk) import limit, got nil")
+	} else if !strings.Contains(err.Error(), "PKCS#12 import limit") {
+		t.Errorf("error %q should mention the PKCS#12 import limit", err.Error())
 	}
 }
 

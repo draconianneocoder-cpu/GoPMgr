@@ -6,6 +6,7 @@ package fonts
 import (
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -21,6 +22,67 @@ import (
 //
 //go:embed assets
 var assetsFS embed.FS
+
+// maxFontFileSize bounds a .ttf file GoPMgr will read into memory, whether
+// during ImportFont's copy-in validation or when re-reading a previously
+// imported file from the user font directory for registration. It's a var,
+// not a const, so tests can shrink it and prove the LimitReader bound
+// actually holds rather than only exercising the early os.Stat-based
+// refusal. The value is set generously for a full-coverage CJK TrueType
+// face (which can legitimately reach tens of MB), not for the bundled
+// catalog's own baseline (the largest bundled family file is under 500 KB)
+// -- the goal is bounding worst-case memory use on a malformed or
+// oversized font, not fitting the bundled catalog's own sizes. Mirrors the
+// size-capping pattern app_charts.go applies to MSPDI schedule imports
+// (maxMSPDIImportSize).
+var maxFontFileSize int64 = 64 << 20 // 64 MiB
+
+// fontFileTooLargeErr is shared by every size guard in readFontFileBounded
+// so a caller sees the same actionable message regardless of which of the
+// two layers (the fast os.Stat check or the io.LimitReader-backed
+// post-read check) caught it.
+func fontFileTooLargeErr(path string) error {
+	return fmt.Errorf(
+		"font file %q exceeds GoPMgr's %d MiB font-file limit; this is far larger "+
+			"than any real TrueType font and was refused rather than read into memory",
+		path, maxFontFileSize>>20)
+}
+
+// readFontFileBounded reads path the same way os.ReadFile would, but
+// refuses anything larger than maxFontFileSize before reading it fully
+// into memory: an os.Stat fast-path plus an io.LimitReader-bounded actual
+// read, matching the two-layer guard app_charts.go applies to MSPDI
+// schedule imports. Shared by ImportFont (a fresh user file-picker
+// selection) and RegisterAs (re-reading a file already inside the app's
+// own user font directory) so both call sites use one audited guard
+// instead of two hand-rolled ones; each site's existing error handling
+// (hard-fail in ImportFont, skip-and-continue in RegisterAs) applies
+// unchanged to the size error this returns, same as any other read error.
+func readFontFileBounded(path string) ([]byte, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("font file %q is not a regular file", path)
+	}
+	if info.Size() > maxFontFileSize {
+		return nil, fontFileTooLargeErr(path)
+	}
+	f, err := os.Open(path) // #nosec G304 -- caller-selected font file path; size-checked above.
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	data, err := io.ReadAll(io.LimitReader(f, maxFontFileSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > maxFontFileSize {
+		return nil, fontFileTooLargeErr(path)
+	}
+	return data, nil
+}
 
 // FontRegistrar is the slice of fpdf API the Manager needs. It is
 // satisfied by *fpdf.Fpdf. Defining it as an interface keeps this
@@ -175,7 +237,7 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 		}
 		registered := 0
 		for style, path := range uf.styles {
-			b, err := os.ReadFile(path) // #nosec G304 -- paths come from scanning the configured user font directory.
+			b, err := readFontFileBounded(path)
 			if err != nil {
 				continue
 			}
@@ -210,7 +272,7 @@ func (m *Manager) ImportFont(srcPath string) (FamilyInfo, error) {
 		return FamilyInfo{}, fmt.Errorf("fonts: only .ttf files are supported (got %q); OpenType/CFF .otf and WOFF are not supported by the PDF engine", ext)
 	}
 
-	b, err := os.ReadFile(srcPath) // #nosec G304 -- user-selected font import path; extension and signature are validated before copy.
+	b, err := readFontFileBounded(srcPath)
 	if err != nil {
 		return FamilyInfo{}, fmt.Errorf("fonts: read source: %w", err)
 	}
