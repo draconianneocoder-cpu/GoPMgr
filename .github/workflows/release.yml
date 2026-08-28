@@ -176,6 +176,25 @@ jobs:
           export PATH="$nsis_dir:$PATH"
           command -v makensis >/dev/null
 
+      - name: Run Linux packaging guard tests
+        # Mirrors `make package-linux-nfpm`'s wiring: these tests must run
+        # before build/bin holds the real release binary, since they back up
+        # and stub build/bin/build/packages for the duration of the test and
+        # restore them on exit. Placed before the Wails build so there is
+        # nothing real to disturb if a step is killed mid-test.
+        if: runner.os == 'Linux'
+        run: |
+          bash scripts/package-version-lib_test.sh
+          bash scripts/package-linux_test.sh
+
+      - name: Run macOS packaging guard tests
+        # Mirrors `make package-macos`'s wiring; see the Linux step above for
+        # why this runs before the real binary exists.
+        if: runner.os == 'macOS'
+        run: |
+          bash scripts/package-version-lib_test.sh
+          bash scripts/package-macos_test.sh
+
       - name: Wails build (Linux)
         if: runner.os == 'Linux'
         run: wails build -platform ${{ matrix.platform }} -tags duckdb,webkit2_41 -ldflags "$GOPMGR_RELEASE_LDFLAGS"
