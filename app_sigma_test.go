@@ -126,3 +126,59 @@ func TestSigmaAppMethods_RejectSigmaProjectFromAnotherProjectRowInSameFile(t *te
 		t.Fatalf("SigmaGetProject(own): got %+v, want Title=\"Own Sigma Project\"", got)
 	}
 }
+
+// TestSigmaListProjects_AppLayerScopesToOpenProject is the App-layer
+// regression test for the other half of the same fix
+// (TestSigmaAppMethods_RejectSigmaProjectFromAnotherProjectRowInSameFile
+// covers every method keyed by a bare Sigma project id; SigmaListProjects
+// takes no id at all, so it falls outside that test's table and had no
+// App-layer coverage of its own). internal/db's
+// TestSigmaListProjects_ScopesToGivenGopmgrProject already proves the DB
+// layer filters correctly given a project id; what that leaves unverified
+// is that App.SigmaListProjects actually resolves the open project and
+// threads its id through rather than, say, reverting to the old
+// zero-argument call (which would compile against a stale service-layer
+// signature but silently return every row in the file again). Reuses the
+// same two-project-row-in-one-open-database fixture as the sibling test
+// above, for the same reason documented there.
+func TestSigmaListProjects_AppLayerScopesToOpenProject(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Open Project")
+
+	app.mu.RLock()
+	conn := app.db.Conn
+	dbConn := app.db
+	app.mu.RUnlock()
+
+	openProject, err := dbConn.GetProject()
+	if err != nil {
+		t.Fatalf("GetProject (precondition): %v", err)
+	}
+
+	if _, err := conn.Exec(`INSERT INTO project (id, name) VALUES (?, ?)`, "prj-other-row", "Other Row"); err != nil {
+		t.Fatalf("seed second project row: %v", err)
+	}
+
+	if _, err := dbConn.SigmaCreateProject(domain.Project{GopmgrProjectID: "prj-other-row", Title: "Foreign Sigma Project"}); err != nil {
+		t.Fatalf("SigmaCreateProject (foreign, DB layer): %v", err)
+	}
+
+	own, err := app.SigmaCreateProject("Own Sigma Project", "", "green_belt")
+	if err != nil {
+		t.Fatalf("SigmaCreateProject (own, App layer): %v", err)
+	}
+	if own.GopmgrProjectID != openProject.ID {
+		t.Fatalf("fixture precondition failed: own Sigma project's GopmgrProjectID = %q, want %q", own.GopmgrProjectID, openProject.ID)
+	}
+
+	got, err := app.SigmaListProjects()
+	if err != nil {
+		t.Fatalf("SigmaListProjects: %v", err)
+	}
+	if len(got) != 1 || got[0].Title != "Own Sigma Project" {
+		t.Fatalf("SigmaListProjects() = %+v, want exactly [Own Sigma Project] -- the foreign row's Sigma project must not appear", got)
+	}
+}
