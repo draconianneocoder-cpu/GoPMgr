@@ -98,9 +98,15 @@ selection.
 The catalog is encrypted and separate from individual projects. Cost Control
 ledger entries can independently store item, SKU, supplier display name,
 invoice reference, quantity, unit, and attachments as project-local snapshots.
-Editing a catalog record never rewrites a historical ledger entry. The Cost
-Control form does not yet select from or autofill this catalog; catalog-assisted
-selection remains future work.
+Editing a catalog record never rewrites a historical ledger entry.
+
+In Cost Control, use **Find catalog item** or **Find catalog supplier** to
+search active reusable records, then copy a selection into the entry. Item
+copying fills item name, SKU, and default unit; supplier copying fills only the
+supplier display name. Every copied value remains editable before save, and no
+catalog ID/version is stored on the project ledger row. Supplier addresses and
+contact details are not copied automatically. A catalog lookup problem does not
+block direct manual entry.
 
 ## Project Settings
 
@@ -207,9 +213,9 @@ row. Quantity uses an exact three-decimal value and requires a unit; it does
 not calculate or replace the entry amount. Search matches the description,
 item name, SKU, supplier display name, and invoice reference. **Quantity by
 item & unit** aggregates only
-identical item/unit pairs without unit conversion. The form currently accepts
-these values directly; it does not yet select or autofill them from the
-reusable catalog.
+identical item/unit pairs without unit conversion. The form accepts direct
+entry and can copy selected active catalog defaults into these editable
+project-local snapshots; it never makes a posted row depend on the catalog.
 
 Open **Attachments** on a ledger row to add and inspect bounded encrypted
 files. **Export ledger attachments (.zip)** writes the project's original

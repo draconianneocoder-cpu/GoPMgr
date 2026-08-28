@@ -31,17 +31,31 @@ const (
 var ErrConflict = errors.New("catalog: record changed by another save")
 
 type Vendor struct {
-	ID, Name, Address, Phone, Fax, Email, PrimaryContact, Notes string
-	Version                                                     int64
-	Archived                                                    bool
-	CreatedAt, UpdatedAt                                        string
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Address        string `json:"address"`
+	Phone          string `json:"phone"`
+	Fax            string `json:"fax"`
+	Email          string `json:"email"`
+	PrimaryContact string `json:"primary_contact"`
+	Notes          string `json:"notes"`
+	Version        int64  `json:"version"`
+	Archived       bool   `json:"archived"`
+	CreatedAt      string `json:"created_at"`
+	UpdatedAt      string `json:"updated_at"`
 }
 
 type Item struct {
-	ID, Name, SKU, Kind, DefaultUnit, Description string
-	Version                                       int64
-	Archived                                      bool
-	CreatedAt, UpdatedAt                          string
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	SKU         string `json:"sku"`
+	Kind        string `json:"kind"`
+	DefaultUnit string `json:"default_unit"`
+	Description string `json:"description"`
+	Version     int64  `json:"version"`
+	Archived    bool   `json:"archived"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
 }
 
 type Store struct{ db *sql.DB }
@@ -145,7 +159,7 @@ func (s *Store) ListVendors(query string, includeArchived bool) ([]Vendor, error
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	var out []Vendor
+	out := make([]Vendor, 0)
 	for rows.Next() {
 		var v Vendor
 		var archived int
@@ -186,7 +200,7 @@ func (s *Store) ListItems(query string, includeArchived bool) ([]Item, error) {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	var out []Item
+	out := make([]Item, 0)
 	for rows.Next() {
 		var v Item
 		var archived int

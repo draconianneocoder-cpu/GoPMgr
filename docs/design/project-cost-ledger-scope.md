@@ -73,9 +73,12 @@ also separate and must not add FX behavior or governance to the project ledger.
 
 When a request concerns budget, expenses, inputs, materials, or overhead,
 extend this project-local model first. Reusable supplier and item selection is
-an approved convenience boundary, not portfolio finance: its encrypted
-user-private catalog may supply a selection, but a posted project row retains
-its own display snapshot and remains readable if the catalog is unavailable.
-Supplier addresses and contact details do not belong in project audit payloads
-or ordinary financial exports. Escalate only when the request explicitly needs
-one of the deferred capabilities above.
+an approved convenience boundary, not portfolio finance: the Cost Control form
+queries active catalog records and copies an item name/SKU/default unit or a
+supplier display name into editable ledger fields. A posted project row retains
+only its own display snapshot, no catalog ID or version, and remains readable
+if the catalog is unavailable. Automatic catalog copying excludes supplier
+addresses and contact details from project audit payloads and ordinary
+financial exports; user-entered free text is outside that automatic-copying
+guarantee. Escalate only when the request explicitly needs one of the deferred
+capabilities above.

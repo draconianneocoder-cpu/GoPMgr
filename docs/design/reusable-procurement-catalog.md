@@ -5,8 +5,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # Reusable procurement catalog
 
-**Status:** Approved product boundary; catalog foundation and project-ledger
-procurement detail delivered. Catalog-assisted ledger selection remains pending.
+**Status:** Catalog foundation, project-ledger procurement detail, and
+catalog-assisted Cost Control copying delivered.
 
 ## Purpose
 
@@ -60,18 +60,29 @@ same-unit quantity aggregates. These records are independent project snapshots:
 they have no live cross-database foreign key to the catalog and remain readable
 when the catalog is unavailable.
 
-## Remaining catalog connection
+## Catalog-assisted Cost Control copying
 
-The Cost Control form currently accepts the delivered procurement detail as
-plain text. Selecting a reusable catalog supplier or item from that form,
-autofilling its fields, and retaining a catalog ID or catalog version are not
-yet delivered. If this connection is added, it must still save only the
-project-local display snapshot, never make a historical ledger row depend on a
-live catalog record.
+Cost Control supports query-driven lookup of active catalog records. It does
+not offer an unbounded empty-query dropdown: catalog queries are bounded, so a
+user searches by item name/SKU or supplier name and then selects a result.
 
-Catalog changes never alter posted ledger entries. Supplier address/contact PII
-must not be copied into a project entry, audit event, routine financial report,
-log, or support bundle.
+Selecting an item copies only its name, SKU, and default unit. Selecting a
+supplier copies only its display name. The copied ledger fields remain editable
+before save. Copying does not alter the entry description, amount, quantity,
+invoice reference, cost type, state, or date. A catalog lookup failure is
+non-blocking: the user can continue with direct manual entry.
+
+Saving writes the same project-local display snapshot fields already used by
+the ledger. It stores no catalog ID, catalog version, or live cross-database
+relationship. Successful save clears the transient lookup and selection state.
+Catalog changes therefore never alter posted ledger entries, and those entries
+remain readable when the user catalog is unavailable.
+
+Automatic catalog assistance never copies supplier address or contact fields
+into a project entry, audit event, routine financial report, log, support
+bundle, or attachment manifest. This is a scoped copying guarantee: users can
+still manually enter arbitrary free text, so the application does not claim to
+prevent every possible manually entered contact detail in a ledger field.
 
 ## Attachment and export contract
 

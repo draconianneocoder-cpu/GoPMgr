@@ -7,6 +7,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import Spinner from '../Spinner.svelte';
   import ConfirmDialog from '../ConfirmDialog.svelte';
 
+  type CatalogSupplierOption = { id: string; name: string };
+  type CatalogItemOption = { id: string; name: string; sku: string; default_unit: string };
+
   let types = $state<CostType[]>([]);
   let entries = $state<CostEntry[]>([]);
   let reserves = $state<CostReserve[]>([]);
@@ -33,6 +36,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let sku = $state('');
   let supplierName = $state('');
   let invoiceReference = $state('');
+  let catalogItemQuery = $state('');
+  let catalogSupplierQuery = $state('');
+  let catalogItemOptions = $state<CatalogItemOption[]>([]);
+  let catalogSupplierOptions = $state<CatalogSupplierOption[]>([]);
+  let selectedCatalogItemID = $state('');
+  let selectedCatalogSupplierID = $state('');
+  let catalogItemNotice = $state('');
+  let catalogSupplierNotice = $state('');
+  let catalogItemRequest = 0;
+  let catalogSupplierRequest = 0;
   let searchQuery = $state('');
   let searching = $state(false);
   let quantityAggregates = $state<CostQuantityAggregate[]>([]);
@@ -112,12 +125,79 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
   onMount(load);
 
+  async function findCatalogItems() {
+    const request = ++catalogItemRequest;
+    const query = catalogItemQuery.trim();
+    selectedCatalogItemID = '';
+    catalogItemOptions = [];
+    catalogItemNotice = '';
+    if (!query) return;
+    try {
+      const rows = await window.go.main.App.ListCatalogItems(query, false);
+      if (request !== catalogItemRequest) return;
+      catalogItemOptions = rows
+        .filter((row) => !row.archived)
+        .map(({ id, name, sku, default_unit }) => ({ id, name, sku, default_unit }));
+    } catch {
+      if (request !== catalogItemRequest) return;
+      catalogItemNotice = 'Catalog item lookup is unavailable. You can enter procurement detail manually.';
+    }
+  }
+
+  async function findCatalogSuppliers() {
+    const request = ++catalogSupplierRequest;
+    const query = catalogSupplierQuery.trim();
+    selectedCatalogSupplierID = '';
+    catalogSupplierOptions = [];
+    catalogSupplierNotice = '';
+    if (!query) return;
+    try {
+      const rows = await window.go.main.App.ListCatalogVendors(query, false);
+      if (request !== catalogSupplierRequest) return;
+      catalogSupplierOptions = rows
+        .filter((row) => !row.archived)
+        .map(({ id, name }) => ({ id, name }));
+    } catch {
+      if (request !== catalogSupplierRequest) return;
+      catalogSupplierNotice = 'Catalog supplier lookup is unavailable. You can enter procurement detail manually.';
+    }
+  }
+
+  function copyCatalogItemDefaults() {
+    if (mutationDisabled) return;
+    const selected = catalogItemOptions.find((option) => option.id === selectedCatalogItemID);
+    if (!selected) return;
+    itemName = selected.name;
+    sku = selected.sku;
+    unit = selected.default_unit;
+  }
+
+  function copyCatalogSupplierName() {
+    if (mutationDisabled) return;
+    const selected = catalogSupplierOptions.find((option) => option.id === selectedCatalogSupplierID);
+    if (!selected) return;
+    supplierName = selected.name;
+  }
+
+  function clearCatalogSelections() {
+    catalogItemRequest++;
+    catalogSupplierRequest++;
+    catalogItemQuery = '';
+    catalogSupplierQuery = '';
+    catalogItemOptions = [];
+    catalogSupplierOptions = [];
+    selectedCatalogItemID = '';
+    selectedCatalogSupplierID = '';
+    catalogItemNotice = '';
+    catalogSupplierNotice = '';
+  }
+
   async function save() {
 	if (!typeID || saving || mutationDisabled) return;
     saving = true; error = '';
     try {
       await window.go.main.App.SaveCostEntry({ id: '', cost_type_id: typeID, kind, amount, description, cost_date: costDate, quantity, unit, item_name: itemName, sku, supplier_name: supplierName, invoice_reference: invoiceReference });
-      amount = ''; description = ''; quantity = ''; unit = ''; itemName = ''; sku = ''; supplierName = ''; invoiceReference = ''; await load();
+      amount = ''; description = ''; quantity = ''; unit = ''; itemName = ''; sku = ''; supplierName = ''; invoiceReference = ''; clearCatalogSelections(); await load();
     } catch (err) { error = String(err); } finally { saving = false; }
   }
   async function exportFinancialReport() {
@@ -164,6 +244,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <label class="text-xs text-slate-400">Date<input disabled={mutationDisabled} bind:value={costDate} type="date" required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
       <label class="text-xs text-slate-400">Cost item or reference<input disabled={mutationDisabled} bind:value={description} required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Material, invoice reference, supplier, or overhead note" /></label>
       <div class="md:col-span-5 text-[10px] tracking-widest uppercase text-slate-500 pt-1">Procurement detail (optional)</div>
+      <div class="md:col-span-5 grid grid-cols-1 gap-2 rounded border border-slate-800 bg-slate-950/40 p-2 md:grid-cols-2">
+        <div class="grid grid-cols-[1fr_auto] gap-2 items-end">
+          <label class="text-xs text-slate-400">Find catalog item<input disabled={mutationDisabled} bind:value={catalogItemQuery} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Item name or SKU" /></label>
+          <button type="button" onclick={() => void findCatalogItems()} disabled={mutationDisabled} class="rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-50 px-3 py-2 text-xs font-bold text-slate-200">Find catalog item</button>
+          <label class="col-span-2 text-xs text-slate-400">Copy catalog item defaults<select disabled={mutationDisabled || catalogItemOptions.length === 0} bind:value={selectedCatalogItemID} onchange={copyCatalogItemDefaults} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="">Select an item to copy</option>{#each catalogItemOptions as option (option.id)}<option value={option.id}>{option.name}{option.sku ? ` · ${option.sku}` : ''}{option.default_unit ? ` · ${option.default_unit}` : ''}</option>{/each}</select></label>
+          <p class="col-span-2 text-[10px] text-slate-500">Copies item name, SKU, and default unit into editable project fields.</p>
+          {#if catalogItemNotice}<p class="col-span-2 text-xs text-amber-200" role="status">{catalogItemNotice}</p>{/if}
+        </div>
+        <div class="grid grid-cols-[1fr_auto] gap-2 items-end">
+          <label class="text-xs text-slate-400">Find catalog supplier<input disabled={mutationDisabled} bind:value={catalogSupplierQuery} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Supplier name" /></label>
+          <button type="button" onclick={() => void findCatalogSuppliers()} disabled={mutationDisabled} class="rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-50 px-3 py-2 text-xs font-bold text-slate-200">Find catalog supplier</button>
+          <label class="col-span-2 text-xs text-slate-400">Copy catalog supplier name<select disabled={mutationDisabled || catalogSupplierOptions.length === 0} bind:value={selectedCatalogSupplierID} onchange={copyCatalogSupplierName} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="">Select a supplier to copy</option>{#each catalogSupplierOptions as option (option.id)}<option value={option.id}>{option.name}</option>{/each}</select></label>
+          <p class="col-span-2 text-[10px] text-slate-500">Copies only the supplier display name. Contact details are not copied.</p>
+          {#if catalogSupplierNotice}<p class="col-span-2 text-xs text-amber-200" role="status">{catalogSupplierNotice}</p>{/if}
+        </div>
+      </div>
       <label class="text-xs text-slate-400">Item name<input disabled={mutationDisabled} bind:value={itemName} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
       <label class="text-xs text-slate-400">SKU<input disabled={mutationDisabled} bind:value={sku} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
       <label class="text-xs text-slate-400">Supplier<input disabled={mutationDisabled} bind:value={supplierName} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
