@@ -5,7 +5,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # Reusable procurement catalog
 
-**Status:** Approved product boundary; catalog foundation delivered.
+**Status:** Approved product boundary; catalog foundation and project-ledger
+procurement detail delivered. Catalog-assisted ledger selection remains pending.
 
 ## Purpose
 
@@ -38,16 +39,14 @@ than hard-deleted. A stale edit is rejected instead of silently replacing a
 newer edit. The **Suppliers & items** dashboard entry point exposes the
 catalog to the user.
 
-## Required ledger integration, not yet delivered
+## Delivered project-ledger detail
 
-The catalog foundation does not yet change `cost_entries`. The next ledger
-slice must add additive, project-local fields for:
+`cost_entries` has additive, project-local display-snapshot fields for:
 
-- exact decimal quantity and canonical unit, where both are present or both
-  absent;
-- independent optional supplier and item catalog identifiers;
-- supplier display name, item name, SKU, unit, catalog version snapshots; and
-- a bounded invoice reference.
+- an optional exact three-decimal quantity and unit, with quantity requiring a
+  unit;
+- item name, SKU, supplier display name, and a bounded invoice reference; and
+- bounded encrypted file attachments per entry.
 
 The existing exact money amount remains the authoritative line total. Quantity
 does not calculate or overwrite money, and no unit price is introduced by this
@@ -55,21 +54,39 @@ scope. Quantity aggregation is permitted only for the same item identity and
 identical canonical unit; GoPMgr does not convert kilograms to pounds, hours
 to days, or other units implicitly.
 
-Catalog changes affect future selection only. Project snapshots must never be
-silently refreshed, and supplier address/contact PII must not be copied into a
-project entry, audit event, routine report, log, or support bundle.
+The ledger searches description, item, SKU, supplier, and invoice-reference
+text. Its printable financial report includes procurement detail and same-item,
+same-unit quantity aggregates. These records are independent project snapshots:
+they have no live cross-database foreign key to the catalog and remain readable
+when the catalog is unavailable.
+
+## Remaining catalog connection
+
+The Cost Control form currently accepts the delivered procurement detail as
+plain text. Selecting a reusable catalog supplier or item from that form,
+autofilling its fields, and retaining a catalog ID or catalog version are not
+yet delivered. If this connection is added, it must still save only the
+project-local display snapshot, never make a historical ledger row depend on a
+live catalog record.
+
+Catalog changes never alter posted ledger entries. Supplier address/contact PII
+must not be copied into a project entry, audit event, routine financial report,
+log, or support bundle.
 
 ## Attachment and export contract
 
-Attachments are a separate project-local slice. They will use bounded
+Attachments are a project-local feature. They use bounded
 SQLCipher BLOBs inside the project database, not external plaintext or
 application-encrypted sidecar files. This keeps content in the existing
 project encryption, recovery, and backup lifecycle.
 
-The ledger report/CSV will show attachment metadata only. A separate explicit,
-user-selected, no-overwrite ZIP bundle will export original attachment files
-plus a manifest. The bundle must contain no absolute source paths, and every
-exported attachment must have its stored byte count and SHA-256 verified.
+The ledger detail UI exposes attachment metadata, while the printable financial
+report never embeds attachment bytes. A separate explicit, user-selected,
+no-overwrite ZIP bundle exports original attachment files plus a manifest. The
+bundle contains no absolute source paths, and every exported attachment has its
+stored byte count and SHA-256 verified immediately before its archive entry is
+created. This is a consistency check against stored metadata, not a claim that
+a privileged local attacker cannot alter both a project database and its hash.
 
 ## Non-goals
 

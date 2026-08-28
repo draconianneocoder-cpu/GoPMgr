@@ -5,10 +5,17 @@ package export
 
 import (
 	"archive/zip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 )
+
+// ErrAttachmentIntegrity means fetched attachment bytes do not match the
+// stored metadata that the ZIP manifest would otherwise describe.
+var ErrAttachmentIntegrity = errors.New("attachment integrity check failed")
 
 // AttachmentManifestRow is one entry in an attachments ZIP's manifest.json.
 // It intentionally carries only what already lives on the ledger row's own
@@ -47,14 +54,30 @@ type AttachmentZIPSource struct {
 // top-level manifest.json describing each entry, fetching one attachment's
 // bytes at a time rather than buffering the whole export. It writes nothing
 // about vendor address/contact detail, matching AttachmentManifestRow's
-// contract.
+// contract. Each fetched blob is checked against its stored byte count and
+// SHA-256 before its archive entry is created. Atomic publication and cleanup
+// on a later-source failure belong to exportfs.WriteNewPrivateStream.
 func WriteAttachmentsZIP(w io.Writer, sources []AttachmentZIPSource) error {
 	zw := zip.NewWriter(w)
 	manifest := make([]AttachmentManifestRow, 0, len(sources))
 	for _, source := range sources {
+		expectedDigest, err := validateAttachmentManifest(source)
+		if err != nil {
+			return err
+		}
+		if source.Fetch == nil {
+			return fmt.Errorf("fetch attachment %q: fetch function is required", source.ZipEntryName)
+		}
 		data, err := source.Fetch()
 		if err != nil {
 			return fmt.Errorf("fetch attachment %q: %w", source.ZipEntryName, err)
+		}
+		if int64(len(data)) != source.Manifest.SizeBytes {
+			return fmt.Errorf("verify attachment %q: %w: stored size %d, fetched size %d", source.ZipEntryName, ErrAttachmentIntegrity, source.Manifest.SizeBytes, len(data))
+		}
+		actualDigest := sha256.Sum256(data)
+		if actualDigest != expectedDigest {
+			return fmt.Errorf("verify attachment %q: %w: SHA-256 differs from stored metadata", source.ZipEntryName, ErrAttachmentIntegrity)
 		}
 		entry, err := zw.Create(source.ZipEntryName)
 		if err != nil {
@@ -80,4 +103,24 @@ func WriteAttachmentsZIP(w io.Writer, sources []AttachmentZIPSource) error {
 		return fmt.Errorf("finalize attachments zip: %w", err)
 	}
 	return nil
+}
+
+func validateAttachmentManifest(source AttachmentZIPSource) ([sha256.Size]byte, error) {
+	if source.Manifest.ZipEntryName != source.ZipEntryName {
+		return [sha256.Size]byte{}, fmt.Errorf("verify attachment %q: %w: manifest archive name differs", source.ZipEntryName, ErrAttachmentIntegrity)
+	}
+	if source.Manifest.SizeBytes < 0 {
+		return [sha256.Size]byte{}, fmt.Errorf("verify attachment %q: %w: stored size is negative", source.ZipEntryName, ErrAttachmentIntegrity)
+	}
+	encodedDigest := source.Manifest.SHA256
+	if len(encodedDigest) != sha256.Size*2 {
+		return [sha256.Size]byte{}, fmt.Errorf("verify attachment %q: %w: stored SHA-256 is malformed", source.ZipEntryName, ErrAttachmentIntegrity)
+	}
+	decodedDigest, err := hex.DecodeString(encodedDigest)
+	if err != nil || len(decodedDigest) != sha256.Size {
+		return [sha256.Size]byte{}, fmt.Errorf("verify attachment %q: %w: stored SHA-256 is malformed", source.ZipEntryName, ErrAttachmentIntegrity)
+	}
+	var expectedDigest [sha256.Size]byte
+	copy(expectedDigest[:], decodedDigest)
+	return expectedDigest, nil
 }

@@ -40,6 +40,8 @@
 /cmd/
 
 # Node
+# Root Vite/Vitest invocations can create generated caches here.
+/node_modules/
 /frontend/node_modules/
 /frontend/dist/
 /frontend/.svelte-kit/

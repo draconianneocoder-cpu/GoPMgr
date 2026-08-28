@@ -95,10 +95,12 @@ records can hold a name, SKU, kind, default unit, and description. Archive a
 record instead of deleting it when it should no longer be offered for future
 selection.
 
-The catalog is encrypted and separate from individual projects. Editing a
-catalog record changes future selections only; it does not rewrite historical
-project ledger records. Project-ledger item, invoice, quantity, attachment,
-and attachment-bundle export integration is delivered separately.
+The catalog is encrypted and separate from individual projects. Cost Control
+ledger entries can independently store item, SKU, supplier display name,
+invoice reference, quantity, unit, and attachments as project-local snapshots.
+Editing a catalog record never rewrites a historical ledger entry. The Cost
+Control form does not yet select from or autofill this catalog; catalog-assisted
+selection remains future work.
 
 ## Project Settings
 
@@ -197,11 +199,24 @@ reconciles every one of the three lenses independently to the same ledger
 totals. Do not add values between lenses: the same ledger entry appears once in
 each lens.
 
-Use **Cost item or reference** to identify the material or input, an invoice or
-supplier reference, or the basis of an overhead entry. It is the existing
-required free-text description, not a separate structured record: Phase 1 has
-no independently stored quantity, unit, supplier, invoice, SKU, or attachment
-field.
+Use **Cost item or reference** for the required free-text description of a
+material, input, invoice, supplier reference, or overhead basis. The optional
+**Procurement detail** fields independently store item name, SKU, supplier
+display name, invoice reference, quantity, and unit on that project ledger
+row. Quantity uses an exact three-decimal value and requires a unit; it does
+not calculate or replace the entry amount. Search matches the description,
+item name, SKU, supplier display name, and invoice reference. **Quantity by
+item & unit** aggregates only
+identical item/unit pairs without unit conversion. The form currently accepts
+these values directly; it does not yet select or autofill them from the
+reusable catalog.
+
+Open **Attachments** on a ledger row to add and inspect bounded encrypted
+files. **Export ledger attachments (.zip)** writes the project's original
+attachment files and a manifest to a user-selected new ZIP file, checking each
+fetched file against its stored byte count and SHA-256 before archiving. The
+printable financial report shows procurement detail and quantity aggregates,
+but does not embed attachment bytes.
 
 Cost Control can record immutable approved baseline snapshots. A snapshot is
 derived on the backend from the current planned entries and both reserve

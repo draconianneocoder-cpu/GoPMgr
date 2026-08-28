@@ -87,6 +87,12 @@ That result took six live-GUI cycles to reach because the first five, all run un
   as exact project-currency entries and summaries. Do not introduce portfolio
   persistence, FX, financial RBAC, transaction or statutory-accounting
   semantics, or Phase 2 reserve/forecast behavior merely to improve the ledger.
+- Cost Control cross-platform attachment archive names: attachment filenames
+  are currently sanitized with the host platform's `filepath.Base` before
+  storage. Evaluate separator normalization and archive-path validation for
+  extraction on a different operating system before claiming that a filename
+  accepted on one platform is equally safe for every ZIP consumer. This is
+  separate from the delivered size/SHA-256 consistency check.
 - Cost Control Phase 2: the proposed [lifecycle and authority contract](design/cost-control-phase-2-lifecycle.md)
   now gates implementation. Approve its reserve-balance meaning, contingency
   allocation equation, baseline/evidence bindings, project financial roles,

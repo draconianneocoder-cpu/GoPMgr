@@ -139,6 +139,8 @@ func TestSearchCostEntries(t *testing.T) {
 		{"matches sku", "chr-100", 1},
 		{"matches supplier", "acme", 1},
 		{"matches invoice reference", "inv-42", 1},
+		{"does not match unit", "ea", 0},
+		{"does not match quantity", "4.000", 0},
 		{"no match", "nonexistent-widget", 0},
 		{"escapes LIKE wildcards literally", "%", 0},
 	}
