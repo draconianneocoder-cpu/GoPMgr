@@ -124,9 +124,23 @@ PAdES, and encryption status from drifting away from supported behavior.
   (`golang.org/x/crypto`): affects a code path GoPMgr does not call
   (`govulncheck` reports 0 reachable symbols). No fixed upstream release
   exists yet (`govulncheck` reports `Fixed in: N/A`); the dependency is
-  pinned to v0.54.0 as of 2026-08-19 and will be bumped when a fix ships.
-  Routine version bumps that don't fix this advisory (e.g. v0.55.0) may be
+  pinned to v0.55.0 as of 2026-08-28 and will be bumped again when a fix
+  ships. Routine version bumps that don't fix this advisory may be
   skipped without updating this note.
+
+  A 2026-08-28 documentation-drift pass found `govulncheck` additionally
+  reporting three advisories not previously tracked here — all likewise
+  0 reachable, but each already had a fix available:
+  [GO-2026-6303](https://pkg.go.dev/vuln/GO-2026-6303) (`x/crypto/ssh`,
+  fixed in v0.55.0) and [GO-2026-6180](https://pkg.go.dev/vuln/GO-2026-6180)/
+  [GO-2026-6179](https://pkg.go.dev/vuln/GO-2026-6179) (`x/mod/sumdb`, fixed
+  in v0.40.0). Rather than document them as accepted risk, `x/crypto` was
+  bumped to v0.55.0 and `x/mod` to v0.40.0 in the same pass, closing all
+  three; `go build ./...`, `go vet ./...`, `go test ./...`, and
+  `go test -race` on `internal/crypto`/`internal/db`/`internal/auth` all
+  passed clean afterward. This is the mechanism by which advisories should
+  keep leaving this list going forward: fix when a fix exists and nothing
+  else breaks, document as accepted risk only when it doesn't.
 
 ## Reporting
 
