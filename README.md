@@ -51,7 +51,8 @@ make verify
 make check-release
 ```
 
-It verifies configuration, tool pins, licenses, frontend checks, release
+It verifies configuration, tool pins, licenses (when the `reuse` CLI is
+installed — it skips rather than fails if not), frontend checks, release
 claims, memory safety, race tests, production build inputs, encrypted database
 behavior, PDF/A, and PAdES regression harnesses. See [TESTING.md](TESTING.md)
 for focused commands and [docs/release-preflight.md](docs/release-preflight.md)

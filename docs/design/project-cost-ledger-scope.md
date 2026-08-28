@@ -72,8 +72,9 @@ it must not redefine ordinary ledger entry tracking. The proposed
 also separate and must not add FX behavior or governance to the project ledger.
 
 When a request concerns budget, expenses, inputs, materials, or overhead,
-extend this project-local model first. Reusable supplier and item selection is
-an approved convenience boundary, not portfolio finance: the Cost Control form
+extend this project-local model first. Reusable supplier and item selection
+(full spec: [reusable procurement catalog](reusable-procurement-catalog.md))
+is an approved convenience boundary, not portfolio finance: the Cost Control form
 queries active catalog records and copies an item name/SKU/default unit or a
 supplier display name into editable ledger fields. A posted project row retains
 only its own display snapshot, no catalog ID or version, and remains readable

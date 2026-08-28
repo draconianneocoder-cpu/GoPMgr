@@ -58,8 +58,12 @@ Check `go.mod` for the authoritative version list.
 Runtime:
 
 - `chart.js`: Chart rendering in the frontend.
-- `read-excel-file`: `.xlsx` parsing for the Sigma data import (replaced
-  the dead-ended SheetJS `xlsx`; see ADR-002 file-import notes).
+- `read-excel-file`: `.xlsx` parsing for the Sigma data import. Replaced
+  the npm `xlsx` (SheetJS) package (commit `8d58828`), which was frozen
+  at 0.18.5 with unpatched prototype-pollution and ReDoS CVEs — a
+  permanent Dependabot dead-end since SheetJS ships fixes only via their
+  own CDN, not npm. No ADR exists for this swap; legacy binary `.xls` is
+  no longer supported as a result (`.xlsx`-only).
 
 Development:
 

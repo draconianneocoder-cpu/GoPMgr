@@ -21,7 +21,12 @@ near-term priority is making those workflows dependable for wider testing.
 2. Complete real-target installation and upgrade evidence for every advertised
    package format.
 3. Establish trustworthy distribution: code signing, notarization where
-   applicable, signed update metadata, and release-certificate PAdES evidence.
+   applicable, and release-certificate PAdES evidence. The Ed25519 signed
+   update-manifest mechanism itself (`internal/update`, `tools/update-manifest`)
+   is already built and tested end-to-end; what remains is standing up a live
+   channel — generating and provisioning the signing keypair as CI secrets so
+   `ManifestURL`/`UpdateChannelPublicKey` are actually populated in release
+   builds, which today ship with the update channel disabled by design.
 4. Improve keyboard and assistive-technology coverage before broad release.
 
 ## Planned product work

@@ -15,7 +15,8 @@
 //     Network Diagram, PERT, CPM, Gantt, Fishbone, Cause-and-Effect.
 //   - stats   Quantitative data series: Line, Bar, Pareto, Pie,
 //     Burn-Up, Burn-Down, Cumulative Flow, Control.
-//   - matrix  Grid-based: RACI, SWOT, Stakeholder Analysis, Matrix Diagram.
+//   - matrix  Grid-based: RACI, SWOT, Stakeholder Analysis, Matrix Diagram,
+//     Risk Matrix.
 //   - flow    Process flowcharts: Workflow, Activity.
 //
 // Each Kind is bound to exactly one engine in the registry below.

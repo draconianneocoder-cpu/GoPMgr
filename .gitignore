@@ -54,6 +54,7 @@ frontend/package.json.md5
 # Local agent handoff and execution plans. These can contain machine-specific
 # paths, dirty-worktree notes, and private planning context.
 /session-notes.md
+/session-notes.archive.md
 /docs/superpowers/plans/
 
 # Local release-readiness evidence (screenshots, packaged-app test notes).

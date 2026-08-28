@@ -33,7 +33,7 @@ proposal (`dashboard-ia-restructuring-proposal.md`), both on
 - `Tabs.svelte` reused as-is (no API changes) — this is its first
   validation as a second consumer.
 - `methodology` is stored server-side as an **unvalidated free string**
-  (`UpdateProjectIndustry`, `app_foundation.go:201` — confirmed by
+  (`UpdateProjectIndustry`, `app_foundation.go:210` — confirmed by
   reading the Go source, no whitelist). A project's stored value can
   legitimately be outside any industry's recommended list (older data,
   direct API/db use, or the industry changed after creation). The fix

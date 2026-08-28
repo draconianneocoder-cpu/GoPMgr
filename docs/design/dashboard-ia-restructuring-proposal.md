@@ -336,7 +336,7 @@ here too, even though `activeTab` isn't part of `session.view`'s union).
 ### 4.3 What does NOT change
 
 - The meta cards' content, data source, and visual design.
-- The chart catalog's 24 entries, their category chips, or their filtering
+- The chart catalog's 22 entries, their category chips, or their filtering
   logic.
 - The document-template catalog's 25 entries.
 - The Software-Dev Pack section's own internal content and enable/disable

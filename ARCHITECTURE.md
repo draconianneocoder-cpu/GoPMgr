@@ -55,9 +55,11 @@ families.
 
 ## Important Packages
 
-- `main.go` (repo root): Wails app object, CLI dispatch, account/session
-  flow, project lifecycle, export entry points, and frontend embed. Lives at
-  the root because `wails build` requires the main package there.
+- `main.go` (repo root): Wails app object entry point, CLI dispatch, and
+  frontend embed. Lives at the root because `wails build` requires the main
+  package there; the ~30 `app_*.go` files alongside it (also root package
+  `main`) implement account/session flow, project lifecycle, and export
+  entry points.
 - `internal/users`: Local account store, Argon2id authentication,
   recovery codes, and wrapped DEK handling.
 - `internal/db`: Project database schema, migrations, CRUD, backup,
@@ -65,6 +67,11 @@ families.
 - `internal/sqlitedriver`: Central SQLite/SQLCipher driver registration.
 - `internal/crypto`: AES-GCM utilities, key wrapping, X.509/RSA signing,
   and detached CMS helpers for PAdES.
+- `internal/rfc3161`: fail-closed RFC 3161 timestamp-authority client for
+  the signing pipeline.
+- `internal/signing`: GnuPG detached-signature and PAdES PDF-signing
+  workflows; composes `internal/crypto` and `internal/rfc3161` into
+  PAdES-T exports.
 - `internal/pdfmeta`: PDF incremental updates for XMP, output intents,
   and PAdES signature embedding.
 - `internal/documents`: Document registry, default content, combined
@@ -122,10 +129,14 @@ not caught by TypeScript or Vite build alone.
 
 ## Release Architecture
 
-`scripts/check-release.sh` is the release gate. It verifies version
-consistency, REUSE/SPDX compliance, frontend budget and stability,
-frontend runtime smoke, memory-safety checks, Go race tests, production
-build, strict PDF/A-3 validation, and local PAdES validation.
+`scripts/check-release.sh` is the release gate. It verifies configuration,
+installer tool pins, required font assets, the Windows installer scaffold,
+version consistency, REUSE/SPDX compliance (when the `reuse` CLI is
+installed — it skips rather than fails if not), frontend budget and
+stability, frontend runtime smoke, memory-safety checks, Go race tests,
+production build, encrypted-database create/open/migrate/backup behavior,
+the Linux CI/packaging runtime-target split, release-claim scope, strict
+PDF/A-3 validation, and local PAdES validation.
 
 Generated embed output under `frontend/dist` (repo root) is build output
 embedded by the root `main.go`. `wails build` regenerates it as needed.

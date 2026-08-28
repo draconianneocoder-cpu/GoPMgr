@@ -171,7 +171,7 @@ windows-installer-scaffold: ## Validate GoPMgr-owned NSIS templates and Windows 
 	@bash scripts/validate-windows-nsis-template_test.sh
 	@bash scripts/validate-windows-nsis-template.sh
 
-linux-runtime-target: ## Verify Linux CI/packages target Ubuntu 26.04+ WebKit2GTK 4.1.
+linux-runtime-target: ## Verify Linux CI targets Ubuntu 26.04, packaging is deliberately pinned to Ubuntu 24.04+, both use WebKit2GTK 4.1.
 	@bash scripts/check-linux-runtime-target.sh
 
 wails-version: ## Verify Wails runtime, CLI, and current documentation pins match go.mod.

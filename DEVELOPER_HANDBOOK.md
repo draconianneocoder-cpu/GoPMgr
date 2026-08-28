@@ -292,8 +292,9 @@ focused package under `internal/`.
 
 ### 3.3 Important internal packages
 
-`internal/` currently holds 28 top-level packages. The table groups them
-by concern; regenerate this list from `ls internal/` and
+`internal/` currently holds 30 top-level packages (directories; `internal/sigma`
+counts once here despite holding five subpackages — see its own note below).
+The table groups them by concern; regenerate this list from `ls internal/` and
 `code-map/package-dependencies.json` if it drifts.
 
 **Accounts, security, and persistence**
@@ -317,6 +318,7 @@ by concern; regenerate this list from `ls internal/` and
 | `internal/documents` | Document taxonomy (25 kinds), schemas, templates, validation, bespoke PDF/DOCX/ODT renderers |
 | `internal/charts` | Taxonomy and dispatch for 22 chart/diagram types, layout engines, vector PDF renderers |
 | `internal/export` | Converts internal data models to PDF/A, DOCX, ODT, XLSX, CSV, iCal, MSPDI, risk-report output |
+| `internal/exportfs` | Publishes user-requested exports without silently replacing an existing artifact; shared file-safety policy for primary PDFs and generated sidecars |
 | `internal/reporting` | Combined-report preflight, assembly, provenance output |
 | `internal/exportsafe` | Spreadsheet-formula-injection neutralization (CWE-1236) for CSV/TSV |
 | `internal/fonts` | Embedded TrueType font management for generated PDFs |
@@ -330,6 +332,7 @@ by concern; regenerate this list from `ls internal/` and
 | `internal/calendar` | Thin wrapper over `rickar/cal/v2` for holiday lookups and working-day math |
 | `internal/money` | Exact monetary arithmetic (integer minor units plus `math/big.Rat`) |
 | `internal/budget` | Cost-rollup engine spanning vendor contract values and agile work-item cost |
+| `internal/catalog` | A signed-in user's reusable suppliers and items, kept separate from `system.db` and from individual (portable, self-contained) project files |
 | `internal/timeline` | Assembles dated project entities into one chronological stream (Timeline view, iCal export) |
 | `internal/analytics` | DuckDB-backed portfolio analytics and data import, built under the `duckdb` tag |
 
@@ -1710,13 +1713,25 @@ Run it after documentation changes that affect those claims.
 Platform packaging has platform-specific evidence requirements.
 
 Regular CI (`.github/workflows/ci.yml`, on push/PR) runs entirely on
-`ubuntu-24.04` — it validates `make verify`, linting, the PAdES harness,
+`ubuntu-26.04` — it validates `make verify`, linting, the PAdES harness,
 vulnerability scanning, and a Linux Wails build, but it never builds or
 runs the macOS or Windows installer. The three-platform packaging matrix
 (Linux `.deb`/`.rpm`, macOS `.dmg`, Windows `.exe`) only runs in
 `.github/workflows/release.yml`, triggered by a `v*` tag push. A change
 that only passed regular CI has not been exercised on macOS or Windows at
 all.
+
+The Linux packaging job specifically stays pinned to `ubuntu-24.04` rather
+than following the rest of CI onto `ubuntu-26.04`: GitHub's `ubuntu-26.04`
+hosted runner is still experimental, and this job only runs on a rare,
+high-stakes tag push — a poor place to absorb a beta runner's instability.
+Building on the older 24.04 baseline is deliberate build-old-run-new
+packaging practice: the resulting `.deb`/`.rpm`'s only runtime requirement
+is `libwebkit2gtk-4.1`, present on 24.04 and every release since, so it
+installs and runs correctly on this project's actual target
+audience — Ubuntu 26.04+ users — without the release pipeline itself
+depending on an experimental runner. `scripts/check-linux-runtime-target.sh`
+(run by `make check-release`) enforces this split explicitly.
 
 A source/template check is not equivalent to installing and exercising
 the resulting package on the target operating system.
@@ -1968,7 +1983,7 @@ reason.
 | `make coverage-ratchet` | Check recorded coverage high-water marks (not in `verify`; same DuckDB-toolchain reason) |
 | `make coverage-ratchet-update` | Record legitimate improved coverage marks |
 
-Run `make help` for the live Makefile target list — it has roughly 40
+Run `make help` for the live Makefile target list — it has 56
 targets; this table curates the ones a developer needs most often.
 
 ------------------------------------------------------------------------
