@@ -16,7 +16,6 @@ cd "$ROOT"
 
 SAMPLE_DIR="$ROOT/.tmp/gopmgr-pades-test"
 PADES_LOCK="$ROOT/.tmp/gopmgr-pades-test.lock"
-GENERATOR="$SAMPLE_DIR/validate_pades.go"
 
 echo "=== PAdES Local Validation Gate ==="
 
@@ -35,19 +34,22 @@ acquire_pades_lock() {
 
 acquire_pades_lock
 
-rm -rf "$SAMPLE_DIR"
-mkdir -p "$SAMPLE_DIR"
+# Build the whole sample directory in an isolated, private scratch dir and
+# atomically publish it, rather than clearing and repopulating $SAMPLE_DIR
+# in place. An earlier version of this script did the latter and, despite
+# holding PADES_LOCK throughout, still hit two distinct CI-only failures
+# (a truncated generator source read mid-heredoc-write, and the sample
+# directory reported missing entirely) -- both consistent with a second
+# reader observing $SAMPLE_DIR during the window it's being torn down and
+# rebuilt, however that happens under CI's specific timing. Publishing via
+# rename(2) removes that window instead of trying to further narrow it:
+# any observer of $SAMPLE_DIR sees either the complete prior directory or
+# the complete new one, never a partial one, no matter what raced it.
+mkdir -p "$ROOT/.tmp"
+WORK_DIR="$(mktemp -d "$ROOT/.tmp/gopmgr-pades-test.build.XXXXXX")"
+GENERATOR="$WORK_DIR/validate_pades.go"
 
-# Write to a sibling temp file and rename into place rather than writing
-# $GENERATOR directly: rename(2) on the same filesystem is atomic, so any
-# reader of $GENERATOR (e.g. a concurrently-scheduled `go run` from a
-# process that inherited GOPMGR_PADES_LOCK_HELD, or CI's slower/throttled
-# I/O widening the window versus a fast local disk) can only ever observe
-# the complete file, never a truncated one mid-heredoc-write. This closed
-# a real, observed CI failure (`validate_pades.go:1:1: expected 'package',
-# found 'EOF'`) in validate-pades-parallel_test.sh's concurrency gate.
-GENERATOR_TMP="$SAMPLE_DIR/.validate_pades.go.tmp.$$"
-cat > "$GENERATOR_TMP" <<'EOF'
+cat > "$GENERATOR" <<'EOF'
 package main
 
 import (
@@ -153,12 +155,23 @@ func main() {
 		fatal(fmt.Errorf("CMS verification unexpectedly passed after tampering with signed bytes"))
 	}
 
-	samplePath := filepath.Join(".tmp", "gopmgr-pades-test", "signed-sample.pdf")
+	sampleDir := filepath.Join(".tmp", "gopmgr-pades-test")
+	if override := os.Getenv("GOPMGR_PADES_SAMPLE_DIR"); override != "" {
+		sampleDir = override
+	}
+	samplePath := filepath.Join(sampleDir, "signed-sample.pdf")
 	if err := os.WriteFile(samplePath, out, 0o644); err != nil {
 		fatal(fmt.Errorf("write signed sample: %w", err))
 	}
 
-	fmt.Printf("Generated %s\n", samplePath)
+	// Report the sample's canonical, post-publish location rather than
+	// samplePath: when GOPMGR_PADES_SAMPLE_DIR overrides sampleDir to a
+	// private build directory (see validate-pades.sh's atomic-publish
+	// wrapper), samplePath points at that scratch location, which the
+	// wrapper renames into place immediately after this program exits --
+	// printing it here would show a path that no longer exists once the
+	// caller's swap completes.
+	fmt.Printf("Generated %s\n", filepath.Join(".tmp", "gopmgr-pades-test", "signed-sample.pdf"))
 	fmt.Println("PAdES-T local validation gate PASSED.")
 }
 
@@ -361,6 +374,18 @@ func byteRangeBytes(pdf []byte, br [4]int) []byte {
 	return out
 }
 EOF
-mv "$GENERATOR_TMP" "$GENERATOR"
 
-go run "$GENERATOR"
+GOPMGR_PADES_SAMPLE_DIR="$WORK_DIR" go run "$GENERATOR"
+
+# Publish atomically: move the old directory aside (if any) only after the
+# new one is already live at $SAMPLE_DIR, so $SAMPLE_DIR is never briefly
+# absent to a concurrent reader; then discard the old one.
+OLD_SAMPLE_DIR=""
+if [ -e "$SAMPLE_DIR" ]; then
+	OLD_SAMPLE_DIR="$SAMPLE_DIR.stale.$$"
+	mv "$SAMPLE_DIR" "$OLD_SAMPLE_DIR"
+fi
+mv "$WORK_DIR" "$SAMPLE_DIR"
+if [ -n "$OLD_SAMPLE_DIR" ]; then
+	rm -rf "$OLD_SAMPLE_DIR"
+fi
