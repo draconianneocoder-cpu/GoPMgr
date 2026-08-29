@@ -38,7 +38,16 @@ acquire_pades_lock
 rm -rf "$SAMPLE_DIR"
 mkdir -p "$SAMPLE_DIR"
 
-cat > "$GENERATOR" <<'EOF'
+# Write to a sibling temp file and rename into place rather than writing
+# $GENERATOR directly: rename(2) on the same filesystem is atomic, so any
+# reader of $GENERATOR (e.g. a concurrently-scheduled `go run` from a
+# process that inherited GOPMGR_PADES_LOCK_HELD, or CI's slower/throttled
+# I/O widening the window versus a fast local disk) can only ever observe
+# the complete file, never a truncated one mid-heredoc-write. This closed
+# a real, observed CI failure (`validate_pades.go:1:1: expected 'package',
+# found 'EOF'`) in validate-pades-parallel_test.sh's concurrency gate.
+GENERATOR_TMP="$SAMPLE_DIR/.validate_pades.go.tmp.$$"
+cat > "$GENERATOR_TMP" <<'EOF'
 package main
 
 import (
@@ -352,5 +361,6 @@ func byteRangeBytes(pdf []byte, br [4]int) []byte {
 	return out
 }
 EOF
+mv "$GENERATOR_TMP" "$GENERATOR"
 
 go run "$GENERATOR"
