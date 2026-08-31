@@ -422,6 +422,62 @@ func TestExportProjectICS_IncludesMilestone(t *testing.T) {
 	}
 }
 
+// TestExportProjectICS_EndDatePresence exercises the branch app_fonts.go
+// added when timeline.Entry.EndDate became *time.Time: a nil-check
+// dereference feeding export.ICalEvent.End. TestExportProjectICS_-
+// IncludesMilestone only covers milestone entries, which never carry an
+// EndDate, so it cannot detect a mutation that drops the dereference and
+// always emits a zero End -- that would silently strip DTEND from every
+// ranged event (sprints) while every existing test kept passing. This
+// test uses the fixture sprint (2026-01-05 to 2026-01-12) to prove the
+// non-nil branch actually reaches the rendered .ics, and the project's
+// point-in-time end entry to prove the nil branch still correctly omits
+// DTEND at the full pipeline level, not just inside package timeline.
+func TestExportProjectICS_EndDatePresence(t *testing.T) {
+	app, _, _ := newTimelineMoveTestApp(t)
+	app.user = &users.Account{Username: "alice", DataDir: t.TempDir()}
+
+	path, err := app.ExportProjectICS(false)
+	if err != nil {
+		t.Fatalf("ExportProjectICS: %v", err)
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile(%s): %v", path, err)
+	}
+	ics := string(content)
+
+	sprintBlock := vEventBlock(t, ics, "sprint-1-sprint_start@gopmgr.local")
+	if !strings.Contains(sprintBlock, "DTEND:20260112T000000Z\r\n") {
+		t.Errorf("sprint_start VEVENT missing DTEND for its real end date; got:\n%s", sprintBlock)
+	}
+
+	projectEndBlock := vEventBlock(t, ics, "project-1-project_end@gopmgr.local")
+	if strings.Contains(projectEndBlock, "DTEND") {
+		t.Errorf("project_end VEVENT (a point event, no end date) must omit DTEND; got:\n%s", projectEndBlock)
+	}
+	if !strings.Contains(projectEndBlock, "DTSTART;VALUE=DATE:") {
+		t.Errorf("project_end VEVENT should render as an all-day DTSTART when End is zero; got:\n%s", projectEndBlock)
+	}
+}
+
+// vEventBlock extracts the BEGIN:VEVENT..END:VEVENT block containing the
+// given UID, so assertions target the right event instead of matching
+// DTEND/DTSTART anywhere in the whole calendar.
+func vEventBlock(t *testing.T, ics, uid string) string {
+	t.Helper()
+	idx := strings.Index(ics, "UID:"+uid)
+	if idx < 0 {
+		t.Fatalf("no VEVENT with UID %q found in:\n%s", uid, ics)
+	}
+	start := strings.LastIndex(ics[:idx], "BEGIN:VEVENT")
+	end := strings.Index(ics[idx:], "END:VEVENT")
+	if start < 0 || end < 0 {
+		t.Fatalf("could not bound VEVENT block for UID %q", uid)
+	}
+	return ics[start : idx+end]
+}
+
 func timelineContainsEditableDate(entries []timeline.Entry, kind, sourceID, date string) bool {
 	for _, e := range entries {
 		if string(e.Kind) == kind && e.SourceID == sourceID && e.Editable && e.Date.Format("2006-01-02") == date {

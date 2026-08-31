@@ -353,7 +353,19 @@ describe('CostControlPanel', () => {
     await fireEvent.click(getByRole('button', { name: 'Search' }));
     expect(app.SearchCostEntries).toHaveBeenCalledWith('steel');
 
-    await fireEvent.click(getByRole('button', { name: 'Export ledger attachments (.zip)' }));
+    const exportButton = getByRole('button', { name: 'Export ledger attachments (.zip)' });
+    // Pinned as two distinct tokens (not a single toContain substring
+    // match) so a future edit can't silently drift the text shade back to
+    // cyan-100 -- the light-theme-invisible shade this button originally
+    // shipped with (undefined in app.css's light-theme remap table, so it
+    // fell through to Tailwind's stock near-white cyan-100 in both
+    // themes) -- or the hover wash back to cyan-950/40, which independently
+    // failed WCAG AA in light theme (~2.15:1, computed against the app's
+    // actual light-theme CSS custom properties).
+    expect(exportButton.className).toContain('text-cyan-300');
+    expect(exportButton.className).toContain('hover:bg-slate-700/20');
+
+    await fireEvent.click(exportButton);
     expect(app.ExportCostEntryAttachmentsZip).toHaveBeenCalledTimes(1);
   });
 
@@ -455,7 +467,10 @@ describe('CostControlPanel', () => {
     const app = installApp();
     const { findByRole, findByText } = render(CostControlPanel);
     await findByText('Legacy budget rollup');
-    await fireEvent.click(await findByRole('button', { name: 'Export printable financial report' }));
+    const exportButton = await findByRole('button', { name: 'Export printable financial report' });
+    expect(exportButton.className).toContain('text-cyan-300');
+    expect(exportButton.className).toContain('hover:bg-slate-700/20');
+    await fireEvent.click(exportButton);
     expect(app.ExportFinancialReportPDF).toHaveBeenCalledTimes(1);
     expect(await findByText(/does not calculate a forecast or remaining funding/i)).toBeInTheDocument();
   });

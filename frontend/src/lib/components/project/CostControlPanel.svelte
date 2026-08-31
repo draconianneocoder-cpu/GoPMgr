@@ -271,8 +271,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <section aria-labelledby="reports-heading" class="border-t border-slate-800 pt-3">
       <div class="mb-2"><h3 id="reports-heading" class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Reports and exports</h3><p class="mt-1 text-[10px] text-slate-500">Create a printable project report or download the ledger attachments. Neither action changes the project.</p></div>
       <div class="flex flex-wrap gap-2">
-        <button onclick={() => void exportFinancialReport()} disabled={exporting} class="rounded border border-cyan-700/70 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-950/40 disabled:opacity-50">{exporting ? 'Preparing financial report…' : 'Export printable financial report'}</button>
-        <button onclick={() => void exportAttachmentsZip()} disabled={exportingAttachments} class="rounded border border-cyan-700/70 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-950/40 disabled:opacity-50">{exportingAttachments ? 'Preparing attachments archive…' : 'Export ledger attachments (.zip)'}</button>
+        <button onclick={() => void exportFinancialReport()} disabled={exporting} class="rounded border border-cyan-700/70 px-3 py-2 text-xs font-bold text-cyan-300 hover:bg-slate-700/20 disabled:opacity-50">{exporting ? 'Preparing financial report…' : 'Export printable financial report'}</button>
+        <button onclick={() => void exportAttachmentsZip()} disabled={exportingAttachments} class="rounded border border-cyan-700/70 px-3 py-2 text-xs font-bold text-cyan-300 hover:bg-slate-700/20 disabled:opacity-50">{exportingAttachments ? 'Preparing attachments archive…' : 'Export ledger attachments (.zip)'}</button>
       </div>
       <p class="mt-2 text-[10px] text-slate-500">The financial report keeps Legacy Budget context separate from the Cost Control ledger and does not calculate a forecast or remaining funding. The attachments archive bundles every file attached to a ledger entry alongside a manifest.</p>
     </section>

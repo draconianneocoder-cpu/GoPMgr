@@ -66,10 +66,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
       holidays = [];
       return;
     }
-    const dates = nextEntries.flatMap((e) => [e.date, e.end_date].filter(Boolean) as string[]);
-    const times = dates.map((d) => new Date(d).getTime());
-    const minDateMS = Math.min(...times);
-    const maxDateMS = Math.max(...times);
+    // Reuse the same domain-bound logic the strip itself renders with
+    // (timelineMin only reads e.date; timelineMax's zero-value end_date
+    // fallback never wins its Math.max) instead of an independent
+    // flatMap/Math.min over both date and end_date -- that independent
+    // computation let an unset end_date's Go zero-value ("0001-01-01",
+    // which survives JSON's `omitempty` on struct-typed fields) win
+    // Math.min and blow the query out to a ~2000-year window.
+    const minDateMS = timelineMin(nextEntries);
+    const maxDateMS = timelineMax(nextEntries);
     const from = new Date(minDateMS - 30 * 86400 * 1000).toISOString().slice(0, 10);
     const to = new Date(maxDateMS + 30 * 86400 * 1000).toISOString().slice(0, 10);
     holidays = (await window.go.main.App.ListHolidays(from, to)) ?? [];
@@ -86,9 +91,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
   function timelineMax(es: TimelineEntry[]): number {
     if (es.length === 0) return Date.now() + 30 * 86400 * 1000;
-    const ends = es.map((e) =>
-      e.end_date ? new Date(e.end_date).getTime() : new Date(e.date).getTime(),
-    );
+    const ends = es.map((e) => {
+      const startMS = new Date(e.date).getTime();
+      const endMS = e.end_date ? new Date(e.end_date).getTime() : startMS;
+      // An end date earlier than its own entry's start date is
+      // nonsensical (a range can't end before it begins) -- ignoring it
+      // in favor of startMS means a single corrupted end_date can't drag
+      // the whole domain (and refreshHolidays' lookup range, which reuses
+      // this function) backward, even with no other entry around to
+      // outrank it in the Math.max below.
+      return endMS > startMS ? endMS : startMS;
+    });
     return Math.max(...ends);
   }
 
@@ -315,14 +328,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
         >
           <!-- Strip background -->
           <rect x={PAD_L} y={STRIP_Y} width={innerW} height={STRIP_H}
-                fill="#1e293b" stroke="#334155" stroke-width="0.5" />
+                style="fill: rgb(var(--slate-800)); stroke: rgb(var(--slate-700))" stroke-width="0.5" />
 
           <!-- Axis ticks -->
           {#each ticks() as t (t.label + t.x)}
             <line x1={t.x} y1={STRIP_Y - 4} x2={t.x} y2={STRIP_Y + STRIP_H + 4}
-                  stroke="#475569" stroke-width="0.5" />
+                  style="stroke: rgb(var(--slate-500))" stroke-width="0.5" />
             <text x={t.x} y={STRIP_Y + STRIP_H + 16}
-                  font-size="9" fill="#94a3b8" text-anchor="middle">
+                  font-size="9" style="fill: rgb(var(--slate-400))" text-anchor="middle">
               {t.label}
             </text>
           {/each}
@@ -331,7 +344,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           {#each holidays as h (h.date)}
             {@const hx = xFor(h.date)}
             <line x1={hx} y1={STRIP_Y} x2={hx} y2={STRIP_Y + STRIP_H}
-                  stroke="#fb923c" stroke-width="1" stroke-dasharray="2 2" opacity="0.7" />
+                  style="stroke: rgb(var(--orange-300))" stroke-width="1" stroke-dasharray="2 2" opacity="0.7" />
           {/each}
 
           <!-- Sprint ranges as bands -->
@@ -365,16 +378,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <line x1={x} y1={STRIP_Y - 8} x2={x} y2={STRIP_Y + STRIP_H + 8}
                       stroke={kindColor(e)} stroke-width="2" />
                 <circle cx={x} cy={STRIP_Y + STRIP_H / 2} r="5"
-                        fill={kindColor(e)} stroke="#0f172a" stroke-width="1" />
+                        fill={kindColor(e)} style="stroke: rgb(var(--slate-900))" stroke-width="1" />
                 <circle cx={x} cy={STRIP_Y + STRIP_H / 2} r="8"
-                        fill="transparent" stroke={movingKey === key ? '#fbbf24' : '#67e8f9'}
+                        fill="transparent"
+                        style="stroke: {movingKey === key ? 'rgb(var(--amber-400))' : 'rgb(var(--cyan-300))'}"
                         stroke-width="1" opacity="0.65" />
                 {#if i % 2 === 0}
                   <text x={x + 4} y={STRIP_Y - 14}
-                        font-size="9" fill="#cbd5e1">{e.title}</text>
+                        font-size="9" style="fill: rgb(var(--slate-300))">{e.title}</text>
                 {:else}
                   <text x={x + 4} y={STRIP_Y + STRIP_H + 30}
-                        font-size="9" fill="#cbd5e1">{e.title}</text>
+                        font-size="9" style="fill: rgb(var(--slate-300))">{e.title}</text>
                 {/if}
               </g>
             {:else}
@@ -386,17 +400,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
                        so the distinction doesn't rely on color alone. -->
                   <polygon
                     points="{x},{STRIP_Y + STRIP_H / 2 - 4.5} {x + 4.5},{STRIP_Y + STRIP_H / 2} {x},{STRIP_Y + STRIP_H / 2 + 4.5} {x - 4.5},{STRIP_Y + STRIP_H / 2}"
-                    fill={kindColor(e)} stroke="#0f172a" stroke-width="1" />
+                    fill={kindColor(e)} style="stroke: rgb(var(--slate-900))" stroke-width="1" />
                 {:else}
                   <circle cx={x} cy={STRIP_Y + STRIP_H / 2} r="3.5"
-                          fill={kindColor(e)} stroke="#0f172a" stroke-width="1" />
+                          fill={kindColor(e)} style="stroke: rgb(var(--slate-900))" stroke-width="1" />
                 {/if}
                 {#if i % 2 === 0}
                   <text x={x + 4} y={STRIP_Y - 14}
-                        font-size="9" fill="#cbd5e1">{e.title}</text>
+                        font-size="9" style="fill: rgb(var(--slate-300))">{e.title}</text>
                 {:else}
                   <text x={x + 4} y={STRIP_Y + STRIP_H + 30}
-                        font-size="9" fill="#cbd5e1">{e.title}</text>
+                        font-size="9" style="fill: rgb(var(--slate-300))">{e.title}</text>
                 {/if}
               </g>
               {/if}
@@ -405,9 +419,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
           {#if dragging}
             {@const previewX = xFor(dragging.previewISO)}
             <line x1={previewX} y1={STRIP_Y - 28} x2={previewX} y2={STRIP_Y + STRIP_H + 38}
-                  stroke="#fbbf24" stroke-width="1" stroke-dasharray="4 3" />
+                  style="stroke: rgb(var(--amber-400))" stroke-width="1" stroke-dasharray="4 3" />
             <text x={previewX + 5} y={STRIP_Y - 30}
-                  font-size="10" fill="#fbbf24">{dragging.previewISO}</text>
+                  font-size="10" style="fill: rgb(var(--amber-400))">{dragging.previewISO}</text>
           {/if}
         </svg>
       </div>
@@ -416,8 +430,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {#if holidays.length > 0}
         <p class="mt-3 text-[10px] text-slate-500">
           <span class="inline-block w-2 h-2 align-middle"
-                style="background: repeating-linear-gradient(0deg, #fb923c 0 2px, transparent 2px 4px)"></span>
-          {holidays.length} holiday{holidays.length === 1 ? '' : 's'} marked from your country calendar.
+                style="background: repeating-linear-gradient(0deg, rgb(var(--orange-300)) 0 2px, transparent 2px 4px)"></span>
+          Dashed lines mark {holidays.length} public holiday{holidays.length === 1 ? '' : 's'} near this project's dates, for the project's country (set in Project Settings).
         </p>
       {/if}
 

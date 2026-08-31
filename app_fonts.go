@@ -157,6 +157,12 @@ func (a *App) ExportProjectICS(includeHolidays bool) (string, error) {
 		if e.Kind == timeline.KindMilestone && e.MilestoneSource != "" {
 			category += "_" + e.MilestoneSource
 		}
+		// e.EndDate is nil for point events (ICalEvent.End's zero value
+		// is its own "no end date" sentinel via IsZero()).
+		var end time.Time
+		if e.EndDate != nil {
+			end = *e.EndDate
+		}
 		events = append(events, export.ICalEvent{
 			// UID intentionally keeps the bare Kind, not category:
 			// SourceID already differs per milestone source (e.g.
@@ -167,7 +173,7 @@ func (a *App) ExportProjectICS(includeHolidays bool) (string, error) {
 			Summary:     e.Title,
 			Description: e.Description,
 			Start:       e.Date,
-			End:         e.EndDate,
+			End:         end,
 			Category:    category,
 		})
 	}

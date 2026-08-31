@@ -36,14 +36,19 @@ const (
 
 // Entry is one event on the timeline.
 type Entry struct {
-	Kind        EntryKind `json:"kind"`
-	Title       string    `json:"title"`
-	Date        time.Time `json:"date"`
-	EndDate     time.Time `json:"end_date,omitempty"` // for ranges (sprints)
-	Description string    `json:"description,omitempty"`
-	SourceID    string    `json:"source_id,omitempty"` // sprint ID, deployment ID, etc.
-	Editable    bool      `json:"editable,omitempty"`
-	EditField   string    `json:"edit_field,omitempty"`
+	Kind  EntryKind `json:"kind"`
+	Title string    `json:"title"`
+	Date  time.Time `json:"date"`
+	// Pointer, not time.Time: json's omitempty is a no-op on non-pointer
+	// struct fields, so a zero-value EndDate would still serialize as
+	// "0001-01-01T00:00:00Z" for every entry kind that has no end date
+	// (project/sprint/deployment/milestone point events) rather than
+	// being omitted.
+	EndDate     *time.Time `json:"end_date,omitempty"` // for ranges (sprints)
+	Description string     `json:"description,omitempty"`
+	SourceID    string     `json:"source_id,omitempty"` // sprint ID, deployment ID, etc.
+	Editable    bool       `json:"editable,omitempty"`
+	EditField   string     `json:"edit_field,omitempty"`
 	// MilestoneSource distinguishes the two milestone origins ("charter" or
 	// "chart") so the frontend can render them distinguishably instead of
 	// as one undifferentiated KindMilestone bucket. Empty for every other
@@ -109,7 +114,10 @@ func Build(project db.Project, sprints []agile.Sprint, deploys []agile.Deploymen
 
 	for _, s := range sprints {
 		if t, ok := parseDate(s.StartDate); ok {
-			end, _ := parseDate(s.EndDate)
+			var end *time.Time
+			if e, ok := parseDate(s.EndDate); ok {
+				end = &e
+			}
 			out = append(out, Entry{
 				Kind:        KindSprintStart,
 				Title:       s.Name + " starts",

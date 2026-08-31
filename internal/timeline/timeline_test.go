@@ -4,6 +4,8 @@
 package timeline
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -97,6 +99,14 @@ func TestBuildAcceptsRFC3339(t *testing.T) {
 	if got[0].Date.Year() != 2026 || got[0].Date.Month() != 3 {
 		t.Errorf("parseDate dropped RFC3339 timestamp: got %v", got[0].Date)
 	}
+	// The sprint's own EndDate is empty, so the sprint_start entry must
+	// get a nil EndDate pointer (not a &time.Time{} zero value) -- this
+	// is the other branch of the `if e, ok := parseDate(s.EndDate); ok`
+	// conditional in Build(); TestMarshalIncludesRealEndDate only
+	// exercises the ok=true branch.
+	if got[0].EndDate != nil {
+		t.Errorf("sprint with no end date must produce a nil Entry.EndDate, got %v", *got[0].EndDate)
+	}
 }
 
 // TestBuildSkipsZeroDeployTS: a deployment with a zero TS is skipped
@@ -168,6 +178,52 @@ func TestBuildSkipsMilestonesWithEmptyDate(t *testing.T) {
 	got := Build(db.Project{}, nil, nil, milestones)
 	if len(got) != 0 {
 		t.Errorf("want 0 entries, got %d", len(got))
+	}
+}
+
+// TestMarshalOmitsUnsetEndDate: a point-in-time entry (no natural end
+// date, e.g. project_end) must not serialize an end_date at all. Before
+// EndDate became *time.Time, json's `omitempty` was a documented no-op
+// on the non-pointer time.Time field, so the zero value always
+// serialized as "0001-01-01T00:00:00Z" -- silently corrupting any
+// consumer that treats a present end_date as meaningful (the frontend's
+// holiday-range lookup did exactly that, producing a query spanning
+// ~2000 years instead of the intended date window).
+func TestMarshalOmitsUnsetEndDate(t *testing.T) {
+	p := db.Project{ID: "p1", Name: "Testing", EndDate: "2026-08-31"}
+	got := Build(p, nil, nil, nil)
+	if len(got) != 1 || got[0].Kind != KindProjectEnd {
+		t.Fatalf("want 1 project_end entry, got %+v", got)
+	}
+	b, err := json.Marshal(got[0])
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(b), `"end_date":`) {
+		t.Errorf("point-event entry must omit the end_date key entirely, got %s", b)
+	}
+}
+
+// TestMarshalIncludesRealEndDate: a sprint_start entry with a genuine
+// end date must still serialize it -- the pointer conversion must not
+// regress the case omitempty was never broken for.
+func TestMarshalIncludesRealEndDate(t *testing.T) {
+	sprints := []agile.Sprint{
+		{ID: "s1", Name: "Sprint 1", StartDate: "2026-02-01", EndDate: "2026-02-14"},
+	}
+	got := Build(db.Project{}, sprints, nil, nil)
+	if len(got) != 2 || got[0].Kind != KindSprintStart {
+		t.Fatalf("want sprint_start first, got %+v", got)
+	}
+	if got[0].EndDate == nil {
+		t.Fatal("sprint_start with a real end date must carry a non-nil EndDate")
+	}
+	b, err := json.Marshal(got[0])
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(b), `"end_date":"2026-02-14`) {
+		t.Errorf("want end_date present with the real value, got %s", b)
 	}
 }
 
