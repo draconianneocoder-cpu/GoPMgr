@@ -24,8 +24,8 @@ require (
 	// countries. Used by internal/calendar and internal/export/ical.go
 	// to mark holidays on the Timeline view and to skip non-business
 	// days when emitting iCal events.
-	github.com/rickar/cal/v2 v2.1.28
-	github.com/wailsapp/wails/v2 v2.13.0
+	github.com/rickar/cal/v2 v2.1.29
+	github.com/wailsapp/wails/v2 v2.15.0
 	github.com/xuri/excelize/v2 v2.11.0
 	golang.org/x/crypto v0.55.0
 	golang.org/x/mod v0.40.0
