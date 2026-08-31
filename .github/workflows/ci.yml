@@ -142,7 +142,7 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
 
       # Wails runs `npm install` + `npm run build` itself, creating frontend/dist before
       # compiling Go, so no separate frontend build step is needed here.
@@ -163,8 +163,8 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-26.04
-    # Required gate: golangci-lint (v2.13.1) + npm run lint. Wails v2.13.0 raised the
-    # project's x/tools floor to a Go 1.26-compatible release, so this passes cleanly;
+    # Required gate: golangci-lint (v2.13.1) + npm run lint. The dependency graph
+    # currently resolves golang.org/x/tools v0.49.0, so this passes cleanly;
     # a lint regression now fails the workflow. golangci-lint's own pin must be built
     # with a Go toolchain >= go.mod's `go` directive -- it refuses to run otherwise
     # ("the Go language version used to build golangci-lint is lower than the

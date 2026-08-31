@@ -158,9 +158,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // requested mid-save can't confirm a "discard" for edits the in-flight
   // request is about to persist anyway.
   // Routes through the shared Save/Discard/Cancel guard (the same modal the
-  // native-close guard uses) rather than `confirm()`: Wails v2.13.0's darwin
+  // native-close guard uses) rather than `confirm()`: Wails v2.15.0's darwin
   // WKUIDelegate (WailsContext, in
-  // github.com/wailsapp/wails/v2@v2.13.0/internal/frontend/desktop/darwin/
+  // github.com/wailsapp/wails/v2@v2.15.0/internal/frontend/desktop/darwin/
   // WailsContext.m) declares conformance to WKUIDelegate but implements none
   // of the JS confirm/alert/prompt panel methods (verified: no
   // `runJavaScript*Panel` implementation anywhere in the vendored module).
@@ -198,7 +198,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   // Complete/Delete both used `confirm()` — silently a no-op in the
-  // packaged macOS build, since Wails v2.13.0's darwin WKUIDelegate
+  // packaged macOS build, since Wails v2.15.0's darwin WKUIDelegate
   // implements none of the JS confirm/alert/prompt panel methods (verified:
   // no `runJavaScript*Panel` implementation anywhere in the vendored
   // module). Now routed through the shared ConfirmDialog (a real DOM modal)

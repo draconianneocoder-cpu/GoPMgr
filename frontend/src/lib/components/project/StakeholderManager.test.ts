@@ -117,7 +117,7 @@ describe('StakeholderManager close guard', () => {
   });
 
   it('opens the shared unsaved-changes guard on Cancel when the name was edited, and keeps the modal open when declined', async () => {
-    // Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+    // Wails v2.15.0's darwin WKUIDelegate implements none of the JS
     // confirm/alert/prompt panel methods (verified: no `runJavaScript*Panel`
     // implementation anywhere in the vendored module). The observed result
     // in a packaged build is that `window.confirm()` produces no dialog and
@@ -582,7 +582,7 @@ describe('StakeholderManager close guard', () => {
   });
 
   it('regression: never calls window.confirm to guard a dirty close, and dismissal does not depend on its return value', async () => {
-    // Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+    // Wails v2.15.0's darwin WKUIDelegate implements none of the JS
     // confirm/alert/prompt panel methods (verified against the vendored
     // module source). The observed result in a packaged build is that
     // `window.confirm()` produces no dialog and the close silently no-ops
@@ -620,7 +620,7 @@ describe('StakeholderManager close guard', () => {
 
 describe('StakeholderManager delete', () => {
   // Delete used `confirm()` — silently a no-op in the packaged macOS build
-  // (Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+  // (Wails v2.15.0's darwin WKUIDelegate implements none of the JS
   // confirm/alert/prompt panel methods). Now routed through the shared
   // ConfirmDialog instead. The "does not replace or delete an open draft
   // through background actions" test above already covers the

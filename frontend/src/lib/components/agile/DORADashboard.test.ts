@@ -76,7 +76,7 @@ describe('DORADashboard', () => {
   });
 
   // Delete used `confirm()` — silently a no-op in the packaged macOS build,
-  // since Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+  // since Wails v2.15.0's darwin WKUIDelegate implements none of the JS
   // confirm/alert/prompt panel methods. Now routed through the shared
   // ConfirmDialog instead.
   it('opens the shared confirm dialog on delete and does not call window.confirm', async () => {

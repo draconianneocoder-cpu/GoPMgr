@@ -65,6 +65,8 @@ require_contains README.md "Wails: the project uses Wails ${module_version}."
 require_contains AGENTS.md "Wails ${module_version}."
 require_contains DEPENDENCIES.md "Wails: ${module_version}."
 require_contains DEVELOPER_HANDBOOK.md "**Wails ${module_version}**"
+require_contains docs/branding.md "Wails ${module_version%.*}"
+require_contains build/windows/installer/project.nsi "GoPMgr-owned Wails ${module_version%.*} NSIS entrypoint"
 
 if [[ "${GOPMGR_REQUIRE_WAILS_CLI:-0}" == "1" ]]; then
 	if ! command -v wails >/dev/null 2>&1; then

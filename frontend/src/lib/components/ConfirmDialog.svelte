@@ -7,7 +7,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   // Shared yes/no confirmation modal, replacing `window.confirm()` at call
   // sites where a destructive or hard-to-reverse action needs a real prompt.
-  // Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+  // Wails v2.15.0's darwin WKUIDelegate implements none of the JS
   // confirm/alert/prompt panel methods (verified: no `runJavaScript*Panel`
   // implementation anywhere in the vendored module), so `confirm()` silently
   // no-ops in the packaged macOS build — the calling code proceeds as if the

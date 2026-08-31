@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: MIT
 #
-# GoPMgr-owned Wails v2.13 NSIS entrypoint. Wails regenerates
+# GoPMgr-owned Wails v2.15 NSIS entrypoint. Wails regenerates
 # wails_tools.nsh from its pinned embedded template on every build; keeping
 # project.nsi here prevents fallback to Wails' generic installer entrypoint.
 

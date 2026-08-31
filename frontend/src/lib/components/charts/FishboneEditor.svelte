@@ -107,7 +107,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   // Used `confirm()` — silently a no-op in the packaged macOS build, since
-  // Wails v2.13.0's darwin WKUIDelegate implements none of the JS
+  // Wails v2.15.0's darwin WKUIDelegate implements none of the JS
   // confirm/alert/prompt panel methods (verified: no `runJavaScript*Panel`
   // implementation anywhere in the vendored module). Now routed through the
   // shared ConfirmDialog (a real DOM modal) instead; the replace-and-refresh

@@ -125,7 +125,7 @@ live on the user's machine rather than requiring a hosted service.
 The current repository uses:
 
 - Go 1.27.0;
-- Wails v2.13.0;
+- Wails v2.15.0;
 - Svelte 5;
 - TypeScript 6;
 - Vite 8;
@@ -173,7 +173,7 @@ leaves ownership clearer.
 A normal development checkout requires:
 
 - Go 1.27.0;
-- **Wails v2.13.0** (the exact CLI version, not "latest");
+- **Wails v2.15.0** (the exact CLI version, not "latest");
 - Node.js and npm;
 - a C compiler and CGO-capable Go toolchain;
 - platform dependencies required by Wails.
@@ -181,7 +181,7 @@ A normal development checkout requires:
 Install the matching Wails CLI:
 
 ``` sh
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
 ```
 
 Do not use an arbitrary newer Wails CLI. The repository intentionally

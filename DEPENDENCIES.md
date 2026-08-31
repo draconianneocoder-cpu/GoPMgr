@@ -12,7 +12,7 @@ posture, and validator coverage, so keep them intentional and verified.
 ## Toolchain
 
 - Go: 1.27.0 from `go.mod`.
-- Wails: v2.13.0.
+- Wails: v2.15.0.
 - Node frontend: Node.js 26 in CI/release workflows, with Vite 8, Svelte 5,
   TypeScript 6, and npm scripts in `frontend/package.json`. Browser storage
   code uses `window.localStorage`, and Vitest workers disable Node's

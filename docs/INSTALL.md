@@ -110,7 +110,7 @@ test root instead of the platform default.
 Prerequisites:
 
 - **Go** (version in `go.mod`) and **Node** with `npm`.
-- The **Wails CLI**: `go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0`.
+- The **Wails CLI**: `go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0`.
 - **Linux only:** Wails v2 GTK/WebKit dev packages for Ubuntu 24.04+, e.g. on
   Debian/Ubuntu:
   `sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config`.

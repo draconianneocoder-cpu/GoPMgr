@@ -16,7 +16,7 @@ fail() {
 
 make_fixture() {
 	local root=$1
-	mkdir -p "$root/.github/workflows" "$root/docs" "$root/scripts"
+	mkdir -p "$root/.github/workflows" "$root/docs" "$root/scripts" "$root/build/windows/installer"
 
 	cat >"$root/go.mod" <<'EOF'
 module example.test/gopmgr
@@ -49,6 +49,12 @@ Current runtime: **Wails v2.13.0**.
 Install with go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0.
 
 Historical note: GoPMgr previously upgraded from Wails v2.9.2 to v2.12.0.
+EOF
+	cat >"$root/docs/branding.md" <<'EOF'
+Wails v2.13 reads build/appicon.png.
+EOF
+	cat >"$root/build/windows/installer/project.nsi" <<'EOF'
+# GoPMgr-owned Wails v2.13 NSIS entrypoint.
 EOF
 	for script in check-release.sh package-macos-installer.sh; do
 		cat >"$root/scripts/$script" <<'EOF'
@@ -110,6 +116,16 @@ documentation_mismatch="$test_root/documentation-mismatch"
 make_fixture "$documentation_mismatch"
 perl -0pi -e 's/Wails v2\.13\.0/Wails v2.12.0/' "$documentation_mismatch/AGENTS.md"
 expect_failure "$documentation_mismatch" "AGENTS.md"
+
+branding_mismatch="$test_root/branding-mismatch"
+make_fixture "$branding_mismatch"
+perl -0pi -e 's/Wails v2\.13/Wails v2.12/' "$branding_mismatch/docs/branding.md"
+expect_failure "$branding_mismatch" "docs/branding.md"
+
+installer_mismatch="$test_root/installer-mismatch"
+make_fixture "$installer_mismatch"
+perl -0pi -e 's/Wails v2\.13/Wails v2.12/' "$installer_mismatch/build/windows/installer/project.nsi"
+expect_failure "$installer_mismatch" "build/windows/installer/project.nsi"
 
 unpinned_guidance="$test_root/unpinned-guidance"
 make_fixture "$unpinned_guidance"

@@ -36,7 +36,7 @@ masters are retained so those choices can be revised without reconstructing
 the originals.
 
 macOS, Windows, and Linux each expose one installed application icon per
-package. They cannot switch when GoPMgr's frontend theme changes. Wails v2.13
+package. They cannot switch when GoPMgr's frontend theme changes. Wails v2.15
 reads `build/appicon.png`, generates the macOS bundle's
 `Contents/Resources/iconfile.icns`, and generates `build/windows/icon.ico`
 when needed. Linux packaging installs that same PNG. The dark/light lockup and
