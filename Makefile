@@ -30,7 +30,7 @@ export CC
 
 .PHONY: help build dev tidy test race verify lint lint-go lint-frontend lint-all \
         license-check memory-scan package-linux package-linux-nfpm package-windows package-darwin package-macos package-macos-installer \
-        check-release clean fonts icc check-pdfa frontend-stability \
+        check-release clean fonts icc check-pdfa frontend-stability pades-lock-test \
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
         help-guide-current wails-version wails-cli-version wails-version-test package-version-lib-test tag-preflight config-check \
@@ -93,10 +93,14 @@ pades-harness-tests: ## Run deterministic local, external, locking, and trusted-
 	# Keep the real local generator alongside the fake-validator matrices: the
 	# matrices isolate error branches, while generation exercises GoPMgr's
 	# current CMS, RFC 3161, and PDF incremental-update implementation.
+	@bash scripts/pades-lock_test.sh
 	@bash scripts/validate-pades.sh
 	@bash scripts/validate-pades-external_test.sh
 	@bash scripts/validate-pades-trusted-source_test.sh
 	@bash scripts/validate-pades-parallel_test.sh
+
+pades-lock-test: ## Verify PAdES lock acquisition is bounded and never reclaims an existing lock.
+	@bash scripts/pades-lock_test.sh
 
 check-encrypted-db: ## Validate SQLCipher encrypted project DB create/open/migration/backup.
 	@bash scripts/validate-encrypted-db.sh

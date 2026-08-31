@@ -27,6 +27,7 @@ TRUSTED_LOCK="$ROOT/.tmp/gopmgr-pades-trusted-source.lock"
 PDF_PATH="${GOPMGR_TRUSTED_SIGNED_PDF:-${1:-}}"
 REQUIRED="${GOPMGR_PADES_TRUSTED_REQUIRED:-0}"
 LOCK_OWNED=false
+source "$ROOT/scripts/pades-lock.sh"
 
 if [ "$#" -gt 1 ]; then
 	echo "Usage: $0 [trusted-signed.pdf]" >&2
@@ -58,11 +59,7 @@ acquire_trusted_lock() {
 		return
 	fi
 
-	mkdir -p "$ROOT/.tmp"
-	while ! mkdir "$TRUSTED_LOCK" 2>/dev/null; do
-		sleep 0.1
-	done
-	echo "$$" >"$TRUSTED_LOCK/pid"
+	pades_acquire_directory_lock "$TRUSTED_LOCK" "${GOPMGR_PADES_TRUSTED_LOCK_TIMEOUT_SECONDS:-30}"
 	LOCK_OWNED=true
 	export GOPMGR_PADES_TRUSTED_LOCK_HELD=1
 }

@@ -44,6 +44,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let selectedCatalogSupplierID = $state('');
   let catalogItemNotice = $state('');
   let catalogSupplierNotice = $state('');
+  let catalogItemSearchComplete = $state('');
+  let catalogSupplierSearchComplete = $state('');
+  let catalogItemSearching = $state(false);
+  let catalogSupplierSearching = $state(false);
+  let catalogItemInFlightQuery = $state('');
+  let catalogSupplierInFlightQuery = $state('');
+  let appliedSearchQuery = $state('');
   let catalogItemRequest = 0;
   let catalogSupplierRequest = 0;
   let searchQuery = $state('');
@@ -59,18 +66,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function load() {
     loading = true; error = '';
+    const query = searchQuery;
     try {
       // ListCostTypes seeds a new project's taxonomy transactionally. Finish
       // that one-time write before the concurrent read models inspect it.
       types = await window.go.main.App.ListCostTypes();
       [entries, reserves, summary, classifications, baselines, quantityAggregates] = await Promise.all([
-        searchQuery ? window.go.main.App.SearchCostEntries(searchQuery) : window.go.main.App.ListCostEntries(),
+        query ? window.go.main.App.SearchCostEntries(query) : window.go.main.App.ListCostEntries(),
         window.go.main.App.ListCostReserves(),
         window.go.main.App.ComputeCostSummary(),
         window.go.main.App.ComputeCostClassificationSummary(),
         window.go.main.App.ListCostBaselines(),
         window.go.main.App.AggregateCostEntryQuantities(),
       ]);
+      appliedSearchQuery = query.trim();
       if (!activeTypes.some((type) => type.id === typeID)) typeID = activeTypes[0]?.id ?? '';
     } catch (err) { error = String(err); }
     finally { loading = false; }
@@ -79,7 +88,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function runSearch() {
     if (searching) return;
     searching = true; error = '';
-    try { entries = await window.go.main.App.SearchCostEntries(searchQuery); }
+    const query = searchQuery;
+    try { entries = await window.go.main.App.SearchCostEntries(query); appliedSearchQuery = query.trim(); }
     catch (err) { error = String(err); } finally { searching = false; }
   }
 
@@ -126,40 +136,62 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(load);
 
   async function findCatalogItems() {
-    const request = ++catalogItemRequest;
     const query = catalogItemQuery.trim();
+    if (catalogItemSearching && catalogItemInFlightQuery === query) return;
+    const request = ++catalogItemRequest;
     selectedCatalogItemID = '';
     catalogItemOptions = [];
     catalogItemNotice = '';
-    if (!query) return;
+    catalogItemSearchComplete = '';
+    if (!query) { catalogItemSearching = false; catalogItemInFlightQuery = ''; return; }
+    catalogItemSearching = true;
+    catalogItemInFlightQuery = query;
     try {
       const rows = await window.go.main.App.ListCatalogItems(query, false);
       if (request !== catalogItemRequest) return;
       catalogItemOptions = rows
         .filter((row) => !row.archived)
         .map(({ id, name, sku, default_unit }) => ({ id, name, sku, default_unit }));
+      catalogItemSearchComplete = query;
     } catch {
       if (request !== catalogItemRequest) return;
       catalogItemNotice = 'Catalog item lookup is unavailable. You can enter procurement detail manually.';
+      catalogItemSearchComplete = query;
+    } finally {
+      if (request === catalogItemRequest) {
+        catalogItemSearching = false;
+        catalogItemInFlightQuery = '';
+      }
     }
   }
 
   async function findCatalogSuppliers() {
-    const request = ++catalogSupplierRequest;
     const query = catalogSupplierQuery.trim();
+    if (catalogSupplierSearching && catalogSupplierInFlightQuery === query) return;
+    const request = ++catalogSupplierRequest;
     selectedCatalogSupplierID = '';
     catalogSupplierOptions = [];
     catalogSupplierNotice = '';
-    if (!query) return;
+    catalogSupplierSearchComplete = '';
+    if (!query) { catalogSupplierSearching = false; catalogSupplierInFlightQuery = ''; return; }
+    catalogSupplierSearching = true;
+    catalogSupplierInFlightQuery = query;
     try {
       const rows = await window.go.main.App.ListCatalogVendors(query, false);
       if (request !== catalogSupplierRequest) return;
       catalogSupplierOptions = rows
         .filter((row) => !row.archived)
         .map(({ id, name }) => ({ id, name }));
+      catalogSupplierSearchComplete = query;
     } catch {
       if (request !== catalogSupplierRequest) return;
       catalogSupplierNotice = 'Catalog supplier lookup is unavailable. You can enter procurement detail manually.';
+      catalogSupplierSearchComplete = query;
+    } finally {
+      if (request === catalogSupplierRequest) {
+        catalogSupplierSearching = false;
+        catalogSupplierInFlightQuery = '';
+      }
     }
   }
 
@@ -190,6 +222,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     selectedCatalogSupplierID = '';
     catalogItemNotice = '';
     catalogSupplierNotice = '';
+    catalogItemSearchComplete = '';
+    catalogSupplierSearchComplete = '';
+    catalogItemSearching = false;
+    catalogSupplierSearching = false;
+    catalogItemInFlightQuery = '';
+    catalogSupplierInFlightQuery = '';
   }
 
   async function save() {
@@ -218,48 +256,56 @@ SPDX-License-Identifier: GPL-3.0-or-later
   {:else if error}<div class="space-y-2"><p class="text-xs text-red-400 break-words" role="alert">{error}</p><button onclick={() => void load()} class="rounded border border-red-700/70 px-3 py-2 text-xs font-bold text-red-200 hover:bg-red-950/40">Retry Cost Control</button></div>
   {:else if summary && classifications}
 	{#if mutationDisabled}<p class="border-l-2 border-amber-500 bg-amber-950/20 px-3 py-2 text-xs text-amber-100" role="alert">{summary.mutation_disabled_reason}</p>{/if}
-    <aside class="border-l-2 border-slate-700 bg-slate-950/50 px-3 py-2 text-xs text-slate-400" aria-label="Legacy Budget context">
-      <span class="font-semibold text-slate-300">Legacy budget rollup</span>
-      <span class="ml-2 tabular-nums text-slate-100">{summary.currency_code} {summary.legacy_budget}</span>
-      <span class="ml-2 text-slate-500">Shown for context only; it is not included in Cost Control baseline or authorised funding.</span>
-    </aside>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs tabular-nums">
+    <section aria-labelledby="legacy-budget-heading" class="border-l-2 border-slate-700 bg-slate-950/50 px-3 py-2">
+      <h3 id="legacy-budget-heading" class="text-xs font-semibold text-slate-300">Legacy budget rollup</h3>
+      <p class="mt-1 text-xs text-slate-400"><span class="tabular-nums text-slate-100">{summary.currency_code} {summary.legacy_budget}</span><span class="ml-2 text-slate-500">Shown for context only; it is not included in Cost Control baseline or authorised funding.</span></p>
+    </section>
+    <section aria-labelledby="cost-summary-heading">
+      <div class="mb-2 flex items-baseline justify-between gap-3"><h3 id="cost-summary-heading" class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Cost Control summary</h3><span class="text-[10px] uppercase tracking-widest text-slate-600">{summary.currency_code} reporting currency</span></div>
+      <div class="grid grid-cols-2 gap-2 text-xs tabular-nums md:grid-cols-4">
       {#each [['Base plan', summary.planned], ['Contingency reserve', summary.contingency], ['Cost baseline', summary.cost_baseline], ['Management reserve', summary.management_reserve], ['Authorised funding', summary.authorised_funding], ['Committed', summary.commitment], ['Actual', summary.actual]] as [label, value]}
-        <div class="bg-slate-950 rounded p-2"><div class="uppercase tracking-widest text-[10px] text-slate-500">{label}</div><div class="font-bold text-slate-100">{summary.currency_code} {value}</div></div>
+        <div class="rounded border border-slate-800 bg-slate-950 p-3"><div class="uppercase tracking-widest text-[10px] text-slate-500">{label}</div><div class="mt-1 font-bold text-slate-100">{summary.currency_code} {value}</div></div>
       {/each}
-    </div>
-    <div class="border-t border-slate-800 pt-3 flex flex-wrap gap-2">
-      <button onclick={() => void exportFinancialReport()} disabled={exporting} class="rounded border border-cyan-700/70 hover:bg-cyan-950/40 disabled:opacity-50 px-3 py-2 text-xs font-bold text-cyan-100">{exporting ? 'Preparing financial report…' : 'Export printable financial report'}</button>
-      <button onclick={() => void exportAttachmentsZip()} disabled={exportingAttachments} class="rounded border border-cyan-700/70 hover:bg-cyan-950/40 disabled:opacity-50 px-3 py-2 text-xs font-bold text-cyan-100">{exportingAttachments ? 'Preparing attachments archive…' : 'Export ledger attachments (.zip)'}</button>
-      <p class="w-full text-[10px] text-slate-500">Exports this project's Legacy Budget context and Cost Control ledger separately as a printable PDF. It does not calculate a forecast or remaining funding. The attachments archive bundles every file attached to a ledger entry alongside a manifest.</p>
-    </div>
-    <form class="flex flex-wrap items-end gap-2" onsubmit={(event) => { event.preventDefault(); void runSearch(); }}>
-      <label class="text-xs text-slate-400 flex-1 min-w-[16rem]">Search ledger<input bind:value={searchQuery} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Item, SKU, supplier, invoice reference, or description" /></label>
-      <button disabled={searching} class="rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-50 px-3 py-2 text-xs font-bold text-slate-200">{searching ? 'Searching…' : 'Search'}</button>
-    </form>
-    <form class="grid grid-cols-1 md:grid-cols-5 gap-2" onsubmit={(event) => { event.preventDefault(); void save(); }}>
-      <label class="text-xs text-slate-400">Cost type<select disabled={mutationDisabled} bind:value={typeID} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100">{#each activeTypes as type}<option value={type.id}>{type.name}</option>{/each}</select></label>
-      <label class="text-xs text-slate-400">State<select disabled={mutationDisabled} bind:value={kind} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="planned">Planned</option><option value="commitment">Commitment</option><option value="actual">Actual</option></select></label>
-      <label class="text-xs text-slate-400">Amount<input disabled={mutationDisabled} bind:value={amount} inputmode="decimal" required aria-label="Amount" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="0.00" /></label>
-      <label class="text-xs text-slate-400">Date<input disabled={mutationDisabled} bind:value={costDate} type="date" required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
-      <label class="text-xs text-slate-400">Cost item or reference<input disabled={mutationDisabled} bind:value={description} required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Material, invoice reference, supplier, or overhead note" /></label>
-      <div class="md:col-span-5 text-[10px] tracking-widest uppercase text-slate-500 pt-1">Procurement detail (optional)</div>
-      <div class="md:col-span-5 grid grid-cols-1 gap-2 rounded border border-slate-800 bg-slate-950/40 p-2 md:grid-cols-2">
+      </div>
+    </section>
+    <section aria-labelledby="reports-heading" class="border-t border-slate-800 pt-3">
+      <div class="mb-2"><h3 id="reports-heading" class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Reports and exports</h3><p class="mt-1 text-[10px] text-slate-500">Create a printable project report or download the ledger attachments. Neither action changes the project.</p></div>
+      <div class="flex flex-wrap gap-2">
+        <button onclick={() => void exportFinancialReport()} disabled={exporting} class="rounded border border-cyan-700/70 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-950/40 disabled:opacity-50">{exporting ? 'Preparing financial report…' : 'Export printable financial report'}</button>
+        <button onclick={() => void exportAttachmentsZip()} disabled={exportingAttachments} class="rounded border border-cyan-700/70 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-950/40 disabled:opacity-50">{exportingAttachments ? 'Preparing attachments archive…' : 'Export ledger attachments (.zip)'}</button>
+      </div>
+      <p class="mt-2 text-[10px] text-slate-500">The financial report keeps Legacy Budget context separate from the Cost Control ledger and does not calculate a forecast or remaining funding. The attachments archive bundles every file attached to a ledger entry alongside a manifest.</p>
+    </section>
+    <section aria-labelledby="ledger-entry-heading" class="border-t border-slate-800 pt-3 space-y-3">
+      <div><h3 id="ledger-entry-heading" class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Ledger entries</h3><p id="ledger-entry-help" class="mt-1 text-[10px] text-slate-500">Search existing entries, then add a project-local snapshot. Required fields are marked by the browser.</p></div>
+      <form class="flex flex-wrap items-end gap-2" onsubmit={(event) => { event.preventDefault(); void runSearch(); }}>
+        <label class="min-w-[16rem] flex-1 text-xs text-slate-400">Search ledger<input bind:value={searchQuery} aria-describedby="ledger-entry-help" class="mt-1 block w-full rounded border border-slate-700 bg-slate-950 p-2 text-slate-100" placeholder="Item, SKU, supplier, invoice reference, or description" /></label>
+        <button disabled={searching} class="rounded border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800 disabled:opacity-50">{searching ? 'Searching…' : 'Search'}</button>
+      </form>
+    <form class="grid grid-cols-1 gap-2 md:grid-cols-5" onsubmit={(event) => { event.preventDefault(); void save(); }}>
+      <label class="text-xs text-slate-400">Cost type<select disabled={mutationDisabled} bind:value={typeID} aria-describedby="ledger-entry-help" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100">{#each activeTypes as type}<option value={type.id}>{type.name}</option>{/each}</select></label>
+      <label class="text-xs text-slate-400">State<select disabled={mutationDisabled} bind:value={kind} aria-describedby="ledger-entry-help" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="planned">Planned</option><option value="commitment">Commitment</option><option value="actual">Actual</option></select></label>
+      <label class="text-xs text-slate-400">Amount<input disabled={mutationDisabled} bind:value={amount} aria-describedby="ledger-entry-help" inputmode="decimal" required aria-label="Amount" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="0.00" /></label>
+      <label class="text-xs text-slate-400">Date<input disabled={mutationDisabled} bind:value={costDate} aria-describedby="ledger-entry-help" type="date" required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
+      <label class="text-xs text-slate-400">Cost item or reference<input disabled={mutationDisabled} bind:value={description} aria-describedby="ledger-entry-help" required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Material, invoice reference, supplier, or overhead note" /></label>
+      <fieldset class="md:col-span-5 rounded border border-slate-800 bg-slate-950/40 p-3"><legend class="px-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Catalog assistance (optional)</legend><p id="procurement-help" class="mb-2 text-[10px] text-slate-500">Copy reusable catalog values into editable project fields. Supplier contact details and catalog identity are never copied into this ledger entry.</p>
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div class="grid grid-cols-[1fr_auto] gap-2 items-end">
-          <label class="text-xs text-slate-400">Find catalog item<input disabled={mutationDisabled} bind:value={catalogItemQuery} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Item name or SKU" /></label>
-          <button type="button" onclick={() => void findCatalogItems()} disabled={mutationDisabled} class="rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-50 px-3 py-2 text-xs font-bold text-slate-200">Find catalog item</button>
-          <label class="col-span-2 text-xs text-slate-400">Copy catalog item defaults<select disabled={mutationDisabled || catalogItemOptions.length === 0} bind:value={selectedCatalogItemID} onchange={copyCatalogItemDefaults} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="">Select an item to copy</option>{#each catalogItemOptions as option (option.id)}<option value={option.id}>{option.name}{option.sku ? ` · ${option.sku}` : ''}{option.default_unit ? ` · ${option.default_unit}` : ''}</option>{/each}</select></label>
+          <label class="text-xs text-slate-400">Find catalog item<input disabled={mutationDisabled} bind:value={catalogItemQuery} aria-describedby="procurement-help" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Item name or SKU" /></label>
+          <button type="button" onclick={() => void findCatalogItems()} disabled={mutationDisabled || (catalogItemSearching && catalogItemInFlightQuery === catalogItemQuery.trim())} class="rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-50 px-3 py-2 text-xs font-bold text-slate-200">{catalogItemSearching && catalogItemInFlightQuery === catalogItemQuery.trim() ? 'Searching…' : 'Find catalog item'}</button>
+          <label class="col-span-2 text-xs text-slate-400">Copy catalog item defaults<select disabled={mutationDisabled || catalogItemOptions.length === 0} aria-describedby="procurement-help" bind:value={selectedCatalogItemID} onchange={copyCatalogItemDefaults} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="">Select an item to copy</option>{#each catalogItemOptions as option (option.id)}<option value={option.id}>{option.name}{option.sku ? ` · ${option.sku}` : ''}{option.default_unit ? ` · ${option.default_unit}` : ''}</option>{/each}</select></label>
           <p class="col-span-2 text-[10px] text-slate-500">Copies item name, SKU, and default unit into editable project fields.</p>
-          {#if catalogItemNotice}<p class="col-span-2 text-xs text-amber-200" role="status">{catalogItemNotice}</p>{/if}
+          {#if catalogItemNotice}<p class="col-span-2 text-xs text-amber-200" role="status">{catalogItemNotice}</p>{:else if catalogItemSearchComplete === catalogItemQuery.trim() && catalogItemSearchComplete && catalogItemOptions.length === 0}<p class="col-span-2 text-xs text-slate-500" role="status">No active catalog items match this search.</p>{/if}
         </div>
         <div class="grid grid-cols-[1fr_auto] gap-2 items-end">
-          <label class="text-xs text-slate-400">Find catalog supplier<input disabled={mutationDisabled} bind:value={catalogSupplierQuery} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Supplier name" /></label>
-          <button type="button" onclick={() => void findCatalogSuppliers()} disabled={mutationDisabled} class="rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-50 px-3 py-2 text-xs font-bold text-slate-200">Find catalog supplier</button>
-          <label class="col-span-2 text-xs text-slate-400">Copy catalog supplier name<select disabled={mutationDisabled || catalogSupplierOptions.length === 0} bind:value={selectedCatalogSupplierID} onchange={copyCatalogSupplierName} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="">Select a supplier to copy</option>{#each catalogSupplierOptions as option (option.id)}<option value={option.id}>{option.name}</option>{/each}</select></label>
+          <label class="text-xs text-slate-400">Find catalog supplier<input disabled={mutationDisabled} bind:value={catalogSupplierQuery} aria-describedby="procurement-help" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Supplier name" /></label>
+          <button type="button" onclick={() => void findCatalogSuppliers()} disabled={mutationDisabled || (catalogSupplierSearching && catalogSupplierInFlightQuery === catalogSupplierQuery.trim())} class="rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-50 px-3 py-2 text-xs font-bold text-slate-200">{catalogSupplierSearching && catalogSupplierInFlightQuery === catalogSupplierQuery.trim() ? 'Searching…' : 'Find catalog supplier'}</button>
+          <label class="col-span-2 text-xs text-slate-400">Copy catalog supplier name<select disabled={mutationDisabled || catalogSupplierOptions.length === 0} aria-describedby="procurement-help" bind:value={selectedCatalogSupplierID} onchange={copyCatalogSupplierName} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="">Select a supplier to copy</option>{#each catalogSupplierOptions as option (option.id)}<option value={option.id}>{option.name}</option>{/each}</select></label>
           <p class="col-span-2 text-[10px] text-slate-500">Copies only the supplier display name. Contact details are not copied.</p>
-          {#if catalogSupplierNotice}<p class="col-span-2 text-xs text-amber-200" role="status">{catalogSupplierNotice}</p>{/if}
+          {#if catalogSupplierNotice}<p class="col-span-2 text-xs text-amber-200" role="status">{catalogSupplierNotice}</p>{:else if catalogSupplierSearchComplete === catalogSupplierQuery.trim() && catalogSupplierSearchComplete && catalogSupplierOptions.length === 0}<p class="col-span-2 text-xs text-slate-500" role="status">No active catalog suppliers match this search.</p>{/if}
         </div>
       </div>
+      </fieldset>
       <label class="text-xs text-slate-400">Item name<input disabled={mutationDisabled} bind:value={itemName} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
       <label class="text-xs text-slate-400">SKU<input disabled={mutationDisabled} bind:value={sku} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
       <label class="text-xs text-slate-400">Supplier<input disabled={mutationDisabled} bind:value={supplierName} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
@@ -270,13 +316,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </div>
       <button disabled={saving || mutationDisabled || !typeID} class="md:col-span-5 rounded bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 p-2 text-xs font-bold text-white">{saving ? 'Saving…' : 'Add ledger entry'}</button>
     </form>
-    <form class="border-t border-slate-800 pt-3 grid grid-cols-1 md:grid-cols-4 gap-2" onsubmit={(event) => { event.preventDefault(); void saveReserve(); }}>
-      <div class="md:col-span-4 text-[10px] tracking-widest uppercase text-slate-500">Reserve governance</div>
-      <label class="text-xs text-slate-400">Reserve<select disabled={mutationDisabled} bind:value={reserveKind} class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="contingency">Contingency — known risks</option><option value="management">Management — unknown risks</option></select></label>
-      <label class="text-xs text-slate-400">Amount<input disabled={mutationDisabled} bind:value={reserveAmount} inputmode="decimal" required aria-label="Reserve amount" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="0.00" /></label>
-      <label class="text-xs text-slate-400 md:col-span-2">Basis / owner note<input disabled={mutationDisabled} bind:value={reserveDescription} required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
+    </section>
+    <section aria-labelledby="reserve-governance-heading" class="border-t border-slate-800 pt-3">
+      <div class="mb-2"><h3 id="reserve-governance-heading" class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Reserve governance</h3><p id="reserve-governance-help" class="mt-1 text-[10px] text-slate-500">Keep contingency and management reserves distinct. A reserve balance is not a posted cost.</p></div>
+      <form class="grid grid-cols-1 gap-2 md:grid-cols-4" onsubmit={(event) => { event.preventDefault(); void saveReserve(); }}>
+      <label class="text-xs text-slate-400">Reserve<select disabled={mutationDisabled} bind:value={reserveKind} aria-describedby="reserve-governance-help" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100"><option value="contingency">Contingency — known risks</option><option value="management">Management — unknown risks</option></select></label>
+      <label class="text-xs text-slate-400">Amount<input disabled={mutationDisabled} bind:value={reserveAmount} aria-describedby="reserve-governance-help" inputmode="decimal" required aria-label="Reserve amount" class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="0.00" /></label>
+      <label class="text-xs text-slate-400 md:col-span-2">Basis / owner note<input disabled={mutationDisabled} bind:value={reserveDescription} aria-describedby="reserve-governance-help" required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" /></label>
       <button disabled={saving || mutationDisabled} class="md:col-span-4 rounded border border-amber-700/70 hover:bg-amber-950/40 disabled:opacity-50 p-2 text-xs font-bold text-amber-200">{saving ? 'Saving…' : 'Set reserve balance'}</button>
-    </form>
+      </form>
+    </section>
     <section class="border-t border-slate-800 pt-3 space-y-2" aria-labelledby="baseline-governance-heading">
       <div><h3 id="baseline-governance-heading" class="text-[10px] tracking-widest uppercase text-slate-500">Baseline governance</h3><p class="text-[10px] text-slate-500">Approval is a local-account record, not role authorization or an electronic signature. It snapshots Cost Control only, never the legacy Budget panel.</p></div>
       <label class="block text-xs text-slate-400">Approval rationale<input disabled={mutationDisabled} bind:value={approvalNote} required class="block mt-1 w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-100" placeholder="Why this Cost Control baseline is approved" /></label>
@@ -294,7 +343,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="overflow-x-auto"><table class="w-full text-xs"><thead class="text-left text-slate-500"><tr><th scope="col">Item</th><th scope="col">Unit</th><th scope="col" class="text-right">Total quantity</th><th scope="col" class="text-right">Entries</th></tr></thead><tbody>{#each quantityAggregates as agg (agg.item_name + ' ' + agg.unit)}<tr class="border-t border-slate-800"><td>{agg.item_name}</td><td>{agg.unit}</td><td class="text-right tabular-nums">{agg.total_quantity}</td><td class="text-right tabular-nums">{agg.entry_count}</td></tr>{/each}</tbody></table></div>
     </section>
     {/if}
-    {#if entries.length > 0}<div class="overflow-x-auto"><table class="w-full min-w-[80rem] text-xs"><thead class="text-left text-slate-500"><tr><th scope="col">Date</th><th scope="col">State</th><th scope="col">Cost item or reference</th><th scope="col">Item</th><th scope="col">SKU</th><th scope="col">Supplier</th><th scope="col">Invoice ref</th><th scope="col" class="text-right">Quantity</th><th scope="col">Cost type</th><th scope="col">Attribution</th><th scope="col">Behavior</th><th scope="col">Treatment</th><th scope="col" class="text-right">Amount</th><th scope="col">Attachments</th></tr></thead><tbody>{#each entries as entry (entry.id)}{@const type = typesByID.get(entry.cost_type_id)}<tr class="border-t border-slate-800"><td>{entry.cost_date}</td><td class="capitalize">{entry.kind}</td><td>{entry.description}</td><td>{entry.item_name}</td><td>{entry.sku}</td><td>{entry.supplier_name}</td><td>{entry.invoice_reference}</td><td class="text-right tabular-nums">{entry.quantity}{#if entry.quantity} {entry.unit}{/if}</td><td>{type?.name ?? 'Unavailable type'}</td><td class="capitalize">{type?.attribution ?? 'Unavailable'}</td><td class="capitalize">{type?.behavior ?? 'Unavailable'}</td><td class="capitalize">{type?.treatment?.replace('_', ' ') ?? 'Unavailable'}</td><td class="text-right tabular-nums">{summary.currency_code} {entry.amount}</td><td><button type="button" onclick={() => void toggleAttachments(entry.id)} class="rounded border border-slate-700 hover:bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-200">{expandedEntryID === entry.id ? 'Hide' : 'Attachments'}</button></td></tr>{#if expandedEntryID === entry.id}<tr class="border-t border-slate-800 bg-slate-950/40"><td colspan="14" class="p-2"><div class="flex flex-wrap items-center gap-2"><button type="button" disabled={mutationDisabled || Boolean(attachingEntryID)} onclick={() => void attachFile(entry.id)} class="rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-50 px-2 py-1 text-[10px] font-bold text-slate-200">{attachingEntryID === entry.id ? 'Attaching…' : 'Attach file…'}</button>{#if attachmentsByEntry[entry.id]?.length}{#each attachmentsByEntry[entry.id] as att (att.id)}<span class="rounded bg-slate-800 px-2 py-1 text-[10px] text-slate-300">{att.filename} ({Math.ceil(att.size_bytes / 1024)} KB)</span>{/each}{:else if attachmentsByEntry[entry.id]}<span class="text-[10px] text-slate-500">No attachments on this entry.</span>{/if}</div></td></tr>{/if}{/each}</tbody></table></div>{/if}
+    <section aria-labelledby="ledger-history-heading" class="border-t border-slate-800 pt-3"><div class="mb-2"><h3 id="ledger-history-heading" class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Ledger history</h3><p class="mt-1 text-[10px] text-slate-500">Project-local entries retain their native procurement detail and can be expanded to manage attachments.</p></div>{#if entries.length > 0}<div class="overflow-x-auto"><table class="w-full min-w-[80rem] text-xs"><thead class="text-left text-slate-500"><tr><th scope="col">Date</th><th scope="col">State</th><th scope="col">Cost item or reference</th><th scope="col">Item</th><th scope="col">SKU</th><th scope="col">Supplier</th><th scope="col">Invoice ref</th><th scope="col" class="text-right">Quantity</th><th scope="col">Cost type</th><th scope="col">Attribution</th><th scope="col">Behavior</th><th scope="col">Treatment</th><th scope="col" class="text-right">Amount</th><th scope="col">Attachments</th></tr></thead><tbody>{#each entries as entry (entry.id)}{@const type = typesByID.get(entry.cost_type_id)}<tr class="border-t border-slate-800"><td>{entry.cost_date}</td><td class="capitalize">{entry.kind}</td><td>{entry.description}</td><td>{entry.item_name}</td><td>{entry.sku}</td><td>{entry.supplier_name}</td><td>{entry.invoice_reference}</td><td class="text-right tabular-nums">{entry.quantity}{#if entry.quantity} {entry.unit}{/if}</td><td>{type?.name ?? 'Unavailable type'}</td><td class="capitalize">{type?.attribution ?? 'Unavailable'}</td><td class="capitalize">{type?.behavior ?? 'Unavailable'}</td><td class="capitalize">{type?.treatment?.replace('_', ' ') ?? 'Unavailable'}</td><td class="text-right tabular-nums">{summary.currency_code} {entry.amount}</td><td><button type="button" onclick={() => void toggleAttachments(entry.id)} class="rounded border border-slate-700 hover:bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-200">{expandedEntryID === entry.id ? 'Hide' : 'Attachments'}</button></td></tr>{#if expandedEntryID === entry.id}<tr class="border-t border-slate-800 bg-slate-950/40"><td colspan="14" class="p-2"><div class="flex flex-wrap items-center gap-2"><button type="button" disabled={mutationDisabled || Boolean(attachingEntryID)} onclick={() => void attachFile(entry.id)} class="rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-50 px-2 py-1 text-[10px] font-bold text-slate-200">{attachingEntryID === entry.id ? 'Attaching…' : 'Attach file…'}</button>{#if attachmentsByEntry[entry.id]?.length}{#each attachmentsByEntry[entry.id] as att (att.id)}<span class="rounded bg-slate-800 px-2 py-1 text-[10px] text-slate-300">{att.filename} ({Math.ceil(att.size_bytes / 1024)} KB)</span>{/each}{:else if attachmentsByEntry[entry.id]}<span class="text-[10px] text-slate-500">No attachments on this entry.</span>{/if}</div></td></tr>{/if}{/each}</tbody></table></div>{:else}<div class="rounded border border-dashed border-slate-800 bg-slate-950/40 px-4 py-6 text-center" role="status"><p class="text-sm font-medium text-slate-300">{appliedSearchQuery ? 'No ledger entries match this search.' : 'No ledger entries yet.'}</p><p class="mt-1 text-xs text-slate-500">{appliedSearchQuery ? 'Try a different description, item, SKU, supplier, or invoice reference.' : 'Add the first entry above to start tracking project costs.'}</p></div>{/if}</section>
   {/if}
 </section>
 <ConfirmDialog open={approvalConfirmOpen} title="Approve Cost Control baseline?" message="This records an immutable local-account approval snapshot. It does not approve legacy Budget values." confirmLabel="Approve baseline" tone="caution" busy={saving} onConfirm={() => void approveBaseline()} onCancel={() => approvalConfirmOpen = false} />

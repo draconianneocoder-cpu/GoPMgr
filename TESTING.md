@@ -37,6 +37,30 @@ release claims. Run the frontend smoke gate for frontend changes because
 it catches module-load and SSR-render failures that `svelte-check` and
 `vite build` can miss.
 
+## Flakiness diagnostics
+
+Use uncached, shuffled runs when investigating order-sensitive behavior and
+record the seed printed by `go test` so a failure can be replayed exactly:
+
+```sh
+GOCACHE=/tmp/gopmgr-go-cache go test -count=1 -shuffle=on ./internal/...
+GOCACHE=/tmp/gopmgr-go-cache go test -shuffle=<seed> ./path/to/package
+```
+
+Repeat only the suspected package or test with a bounded `-count`; do not add
+suite retries or loosen assertions to hide an intermittent failure. For
+date-sensitive logging tests, run the focused package under both `TZ=UTC` and
+the supported local timezone. The PAdES harness serializes shared evidence
+with a directory lock and now fails closed after a bounded wait (30 seconds by
+default). Set `GOPMGR_PADES_LOCK_TIMEOUT_SECONDS` or
+`GOPMGR_PADES_TRUSTED_LOCK_TIMEOUT_SECONDS` only for an explicit diagnostic;
+the lock is never reclaimed automatically, so confirm no owner remains before
+removing an abandoned lock. `scripts/validate-pades-parallel_test.sh` uses
+isolated harness scratch/log directories and relies on the same lock for the
+shared sample. Environment failures such as a sandbox denying local socket
+creation or an installed validator aborting are reported as blocked evidence,
+not converted into passing results.
+
 ## Frontend Checks
 
 ```sh

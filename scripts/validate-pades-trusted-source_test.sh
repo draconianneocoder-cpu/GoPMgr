@@ -8,10 +8,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT_DIR="$ROOT/.tmp/gopmgr-pades-trusted-source"
 REPORT="$OUT_DIR/trusted-source-validation-report.txt"
 TRUSTED_LOCK="$ROOT/.tmp/gopmgr-pades-trusted-source.lock"
-FAKE_BIN="$ROOT/.tmp/pades-trusted-source-bin-test"
-PDF_PATH="$FAKE_BIN/trusted-input.pdf"
-PDF_BEFORE="$FAKE_BIN/trusted-input.before.pdf"
+FAKE_BIN=""
+PDF_PATH=""
+PDF_BEFORE=""
 LOCK_OWNED="false"
+source "$ROOT/scripts/pades-lock.sh"
 
 fail() {
 	echo "FAIL: $*" >&2
@@ -19,7 +20,7 @@ fail() {
 }
 
 cleanup() {
-	rm -rf "$FAKE_BIN"
+	[ -z "$FAKE_BIN" ] || rm -rf "$FAKE_BIN"
 	if [ "$LOCK_OWNED" = "true" ]; then
 		rm -rf "$TRUSTED_LOCK"
 	fi
@@ -28,15 +29,13 @@ trap cleanup EXIT
 
 # Hold the harness lock through every assertion so another validation cannot
 # replace the fixed report path between a child exit and this test reading it.
-mkdir -p "$ROOT/.tmp"
-while ! mkdir "$TRUSTED_LOCK" 2>/dev/null; do
-	sleep 0.1
-done
+pades_acquire_directory_lock "$TRUSTED_LOCK" "${GOPMGR_PADES_TRUSTED_LOCK_TIMEOUT_SECONDS:-30}"
 LOCK_OWNED="true"
-echo "$$" >"$TRUSTED_LOCK/pid"
 export GOPMGR_PADES_TRUSTED_LOCK_HELD=1
 
-rm -rf "$OUT_DIR" "$FAKE_BIN"
+FAKE_BIN="$(mktemp -d "$ROOT/.tmp/pades-trusted-source-bin-test.XXXXXX")"
+PDF_PATH="$FAKE_BIN/trusted-input.pdf"
+PDF_BEFORE="$FAKE_BIN/trusted-input.before.pdf"
 mkdir -p "$OUT_DIR" "$FAKE_BIN"
 printf 'stale pdfsig output\n' >"$OUT_DIR/pdfsig-output.txt"
 printf 'stale veraPDF output\n' >"$OUT_DIR/verapdf-signature-features.xml"

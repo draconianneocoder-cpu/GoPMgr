@@ -6,6 +6,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+mkdir -p "$ROOT/.tmp"
+TEST_ROOT="$(mktemp -d "$ROOT/.tmp/gopmgr-pades-parallel-test.XXXXXX")"
+trap 'rm -rf "$TEST_ROOT"' EXIT
 
 fail() {
 	echo "FAIL: $*" >&2
@@ -14,8 +17,7 @@ fail() {
 
 run_pair() {
 	local iter="$1"
-	local log_dir="$ROOT/.tmp/gopmgr-pades-parallel-test-$iter"
-	rm -rf "$ROOT/.tmp/gopmgr-pades-test" "$log_dir"
+	local log_dir="$TEST_ROOT/pair-$iter"
 	mkdir -p "$log_dir"
 
 	set +e
@@ -40,8 +42,7 @@ run_pair() {
 
 run_trio() {
 	local iter="$1"
-	local log_dir="$ROOT/.tmp/gopmgr-pades-parallel-test-trio-$iter"
-	rm -rf "$ROOT/.tmp/gopmgr-pades-test" "$log_dir"
+	local log_dir="$TEST_ROOT/trio-$iter"
 	mkdir -p "$log_dir"
 
 	set +e

@@ -7,10 +7,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SAMPLE_DIR="$ROOT/.tmp/gopmgr-pades-test"
 PADES_LOCK="$ROOT/.tmp/gopmgr-pades-test.lock"
-FAKE_BIN="$ROOT/.tmp/pades-external-bin-test"
+FAKE_BIN=""
 FAKE_LOG="$FAKE_BIN/verapdf.args"
 DSS_LOG="$FAKE_BIN/dss-validation-tool.args"
 LOCK_OWNED="false"
+source "$ROOT/scripts/pades-lock.sh"
 
 fail() {
 	echo "FAIL: $*" >&2
@@ -18,7 +19,7 @@ fail() {
 }
 
 cleanup() {
-	rm -rf "$FAKE_BIN"
+	[ -z "$FAKE_BIN" ] || rm -rf "$FAKE_BIN"
 	if [ "$LOCK_OWNED" = "true" ]; then
 		rm -rf "$PADES_LOCK"
 	fi
@@ -28,15 +29,13 @@ trap cleanup EXIT
 # Keep setup, both child validations, and report assertions in one critical
 # section. Otherwise another test can replace the fake tools, or a waiting
 # generator can remove SAMPLE_DIR before this test reads its evidence report.
-mkdir -p "$ROOT/.tmp"
-while ! mkdir "$PADES_LOCK" 2>/dev/null; do
-	sleep 0.1
-done
+pades_acquire_directory_lock "$PADES_LOCK" "${GOPMGR_PADES_LOCK_TIMEOUT_SECONDS:-30}"
 LOCK_OWNED="true"
-echo "$$" >"$PADES_LOCK/pid"
 export GOPMGR_PADES_LOCK_HELD=1
 
-rm -rf "$FAKE_BIN"
+FAKE_BIN="$(mktemp -d "$ROOT/.tmp/pades-external-bin-test.XXXXXX")"
+FAKE_LOG="$FAKE_BIN/verapdf.args"
+DSS_LOG="$FAKE_BIN/dss-validation-tool.args"
 mkdir -p "$FAKE_BIN"
 cat > "$FAKE_BIN/verapdf" <<'EOF'
 #!/bin/bash

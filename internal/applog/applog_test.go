@@ -166,7 +166,7 @@ func TestInit_OpenFileFails(t *testing.T) {
 	// "today" before calling Init, which calls time.Now() again itself, so
 	// a run straddling midnight between the two calls must not flake.
 	now := time.Now()
-	for _, d := range []time.Time{now, now.Add(24 * time.Hour)} {
+	for _, d := range []time.Time{now, now.AddDate(0, 0, 1)} {
 		blocker := filepath.Join(logDir, fmt.Sprintf("gopmgr-%s.log", d.Format("2006-01-02")))
 		if err := os.MkdirAll(blocker, 0o700); err != nil {
 			t.Fatalf("mkdir blocker: %v", err)

@@ -52,6 +52,55 @@ describe('CostControlPanel', () => {
     expect(queryByText('Unallocated')).not.toBeInTheDocument();
   });
 
+  it('gives the empty ledger and the searched-empty ledger distinct guidance', async () => {
+    const app = installApp();
+    const { findByText, getByLabelText, getByRole, queryByText } = render(CostControlPanel);
+    expect(await findByText('No ledger entries yet.')).toBeInTheDocument();
+    expect(queryByText('No ledger entries match this search.')).not.toBeInTheDocument();
+    expect(getByLabelText('Search ledger')).toHaveAttribute('aria-describedby', 'ledger-entry-help');
+    await fireEvent.input(getByLabelText('Search ledger'), { target: { value: 'missing' } });
+    expect(queryByText('No ledger entries match this search.')).not.toBeInTheDocument();
+    await fireEvent.click(getByRole('button', { name: 'Search' }));
+    await waitFor(() => expect(app.SearchCostEntries).toHaveBeenCalledWith('missing'));
+    expect(await findByText('No ledger entries match this search.')).toBeInTheDocument();
+    expect(queryByText('No ledger entries yet.')).not.toBeInTheDocument();
+  });
+
+  it('shows catalog no-match guidance only after a completed lookup', async () => {
+    const app = installApp();
+    const { findByText, getByLabelText, getByRole, queryByText } = render(CostControlPanel);
+    await findByText('Legacy budget rollup');
+    await fireEvent.input(getByLabelText('Find catalog item'), { target: { value: 'missing item' } });
+    expect(queryByText('No active catalog items match this search.')).not.toBeInTheDocument();
+    await fireEvent.click(getByRole('button', { name: 'Find catalog item' }));
+    expect(await findByText('No active catalog items match this search.')).toBeInTheDocument();
+    expect(app.ListCatalogItems).toHaveBeenCalledWith('missing item', false);
+  });
+
+  it('shows request-scoped catalog busy feedback for item and supplier searches', async () => {
+    let resolveItems: (rows: Array<Record<string, string | boolean | number>>) => void;
+    let resolveSuppliers: (rows: Array<Record<string, string | boolean | number>>) => void;
+    const pendingItems = new Promise<Array<Record<string, string | boolean | number>>>((resolve) => { resolveItems = resolve; });
+    const pendingSuppliers = new Promise<Array<Record<string, string | boolean | number>>>((resolve) => { resolveSuppliers = resolve; });
+    const app = installApp();
+    app.ListCatalogItems.mockImplementationOnce(() => pendingItems);
+    app.ListCatalogVendors.mockImplementationOnce(() => pendingSuppliers);
+    const { findByText, getByLabelText, getByRole } = render(CostControlPanel);
+    await findByText('Legacy budget rollup');
+
+    await fireEvent.input(getByLabelText('Find catalog item'), { target: { value: 'steel' } });
+    await fireEvent.click(getByRole('button', { name: 'Find catalog item' }));
+    expect(getByRole('button', { name: 'Searching…' })).toBeDisabled();
+    resolveItems!([]);
+    await waitFor(() => expect(getByRole('button', { name: 'Find catalog item' })).toBeEnabled());
+
+    await fireEvent.input(getByLabelText('Find catalog supplier'), { target: { value: 'acme' } });
+    await fireEvent.click(getByRole('button', { name: 'Find catalog supplier' }));
+    expect(getByRole('button', { name: 'Searching…' })).toBeDisabled();
+    resolveSuppliers!([]);
+    await waitFor(() => expect(getByRole('button', { name: 'Find catalog supplier' })).toBeEnabled());
+  });
+
   it('shows independent classification lenses and keeps historical archived types visible', async () => {
     installApp({
       types: [

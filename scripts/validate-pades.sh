@@ -16,6 +16,7 @@ cd "$ROOT"
 
 SAMPLE_DIR="$ROOT/.tmp/gopmgr-pades-test"
 PADES_LOCK="$ROOT/.tmp/gopmgr-pades-test.lock"
+source "$ROOT/scripts/pades-lock.sh"
 
 echo "=== PAdES Local Validation Gate ==="
 
@@ -23,11 +24,7 @@ acquire_pades_lock() {
 	if [ "${GOPMGR_PADES_LOCK_HELD:-0}" = "1" ]; then
 		return
 	fi
-	mkdir -p "$ROOT/.tmp"
-	while ! mkdir "$PADES_LOCK" 2>/dev/null; do
-		sleep 0.1
-	done
-	echo "$$" > "$PADES_LOCK/pid"
+	pades_acquire_directory_lock "$PADES_LOCK" "${GOPMGR_PADES_LOCK_TIMEOUT_SECONDS:-30}"
 	trap 'rm -rf "$PADES_LOCK"' EXIT INT TERM
 	export GOPMGR_PADES_LOCK_HELD=1
 }
