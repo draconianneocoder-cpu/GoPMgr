@@ -29,15 +29,6 @@ import (
 // httpTransport's existing test-seam pattern in check.go.
 var maxArtifactBytes int64 = 500 * 1024 * 1024
 
-// installerExtension maps the platforms the release pipeline actually
-// signs manifests for (.github/workflows/release.yml: darwin-arm64,
-// windows-amd64) to their artifact's file extension. Any other GOOS
-// (including linux, deliberately excluded from the update channel — see
-// this package's doc comment) returns an error: DownloadAndInstall should
-// never be reachable there, since CheckLatest's own platform-match check
-// in validatePayload already keeps Status.UpdateAvailable false there —
-// but that is asserted explicitly rather than silently doing something
-// platform-wrong if it ever is reached.
 // currentGOOS is runtime.GOOS by default. A var, not a direct
 // runtime.GOOS reference at the call site, so tests can force a
 // supported platform regardless of which OS actually runs `go test` —
@@ -47,6 +38,15 @@ var maxArtifactBytes int64 = 500 * 1024 * 1024
 // never running in CI on a standard Linux runner.
 var currentGOOS = runtime.GOOS
 
+// installerExtension maps the platforms the release pipeline actually
+// signs manifests for (.github/workflows/release.yml: darwin-arm64,
+// windows-amd64) to their artifact's file extension. Any other GOOS
+// (including linux, deliberately excluded from the update channel — see
+// this package's doc comment) returns an error: DownloadAndInstall should
+// never be reachable there, since CheckLatest's own platform-match check
+// in validatePayload already keeps Status.UpdateAvailable false there —
+// but that is asserted explicitly rather than silently doing something
+// platform-wrong if it ever is reached.
 func installerExtension(goos string) (string, error) {
 	switch goos {
 	case "darwin":
