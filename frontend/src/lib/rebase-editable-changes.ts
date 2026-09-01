@@ -26,6 +26,15 @@ export function rebaseEditableChanges<T extends object>(
   latestDraft: T,
   backendOwnedKeys: readonly (keyof T)[],
 ): T {
+  // Equality against savingDraft is a proxy for "was this field edited
+  // during the flight," not a real dirty flag. It's only wrong if the
+  // user's mid-flight edit round-trips back to the exact value that was
+  // sent AND the backend independently returns something different for
+  // that same field -- today no editor's backend does the latter for a
+  // non-blocklisted field (it just echoes what was sent), so the proxy
+  // and a real dirty flag agree in every reachable case. If a future
+  // backend change starts normalizing a non-blocklisted field, this
+  // stops being equivalent to a real dirty flag.
   const result = { ...saved };
   for (const key of Object.keys(saved) as (keyof T)[]) {
     if (backendOwnedKeys.includes(key)) continue;
