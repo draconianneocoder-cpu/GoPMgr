@@ -88,6 +88,10 @@ func withCurrentGOOS(t *testing.T, goos string) {
 	t.Cleanup(func() { currentGOOS = old })
 }
 
+// wantArtifactPath's Skipf branch is unreachable today — every current
+// caller sets currentGOOS via withCurrentGOOS(t, "darwin") first — but it
+// stays as a guard for a future caller that forgets to: a clear skip beats
+// a confusing extension mismatch further down the test.
 func wantArtifactPath(t *testing.T, destDir, version string) string {
 	t.Helper()
 	ext, err := installerExtension(currentGOOS)

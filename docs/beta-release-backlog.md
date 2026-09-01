@@ -208,8 +208,10 @@ That result took six live-GUI cycles to reach because the first five, all run un
 - `deadcode` baseline for future audits: `go run golang.org/x/tools/cmd/deadcode@latest
   -tags webkit2_41,duckdb .` reports 30 "unreachable func" findings as of
   2026-09-01 (2 fewer than a 2026-09-01 audit's original 32, after deleting
-  the 2 genuinely-dead ones — see `TEST_COVERAGE_LEDGER.md`'s Go-package
-  history for that pass). The remaining 28 were individually investigated
+  the 2 genuinely-dead ones in commit `98f3688` — see that commit for the
+  deletion diff; `TEST_COVERAGE_LEDGER.md` is indexed by test file and has
+  no entry for this, since deleting unreferenced production functions
+  touched no test file). The remaining 28 were individually investigated
   that same audit, not just deleted or ignored: each is a `WithOptions`/
   `WithPlan`/`Checked`-style simpler wrapper that production code no longer
   calls directly (the fuller variant is called instead), but that still has
