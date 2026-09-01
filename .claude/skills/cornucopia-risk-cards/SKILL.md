@@ -15,6 +15,11 @@ description: >-
   tool-use conduct on this repository (not GoPMgr's product code).
 ---
 
+<!--
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: GFDL-1.3-or-later
+-->
+
 # Cornucopia risk cards for GoPMgr
 
 This skill packages the subset of the OWASP Cornucopia card deck relevant

@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 OWASP Foundation
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # VE — DATA VALIDATION & ENCODING
 
 Source: OWASP Cornucopia, Website App edition v3.0. Card text CC-BY-SA-4.0, OWASP Cornucopia project.

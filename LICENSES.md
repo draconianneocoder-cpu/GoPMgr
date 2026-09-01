@@ -23,7 +23,8 @@ identifiers used in this project are:
 | -------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `GPL-3.0-or-later`   | Source code (Go, Svelte, TS, Makefile)    | https://www.gnu.org/licenses/gpl-3.0.txt                                                            |
 | `GPL-3.0-or-later`   | GoPMgr-owned Bobby Beaver branding artwork | [docs/branding.md](docs/branding.md)                                                                |
-| `GFDL-1.3-or-later`  | User-facing documentation (`docs/`)       | https://www.gnu.org/licenses/fdl-1.3.txt                                                            |
+| `GFDL-1.3-or-later`  | User-facing and agent-facing documentation (`docs/`, root guides such as `AGENTS.md`, `.claude/skills/`) | https://www.gnu.org/licenses/fdl-1.3.txt                                                            |
+| `CC-BY-SA-4.0`       | Third-party OWASP Cornucopia card text and GoPMgr's derived curation of it (`.claude/skills/cornucopia-risk-cards/references/`) | https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt                                        |
 | `CC0-1.0`            | Tiny config files, license notes, and compact ICC profile | https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt                  |
 | `OFL-1.1`            | Bundled fonts (Liberation, Noto, Source Sans 3, JetBrains Mono, Ledger) | https://openfontlicense.org/documents/OFL.txt                          |
 | `LicenseRef-Bitstream-Vera` | Bundled DejaVu Sans font           | https://dejavu-fonts.github.io/License.html                                                         |
@@ -48,6 +49,7 @@ curl -L -o OFL-1.1.txt            https://openfontlicense.org/documents/OFL.txt
 curl -L -o LicenseRef-Bitstream-Vera.txt https://dejavu-fonts.github.io/License.html
 curl -L -o Apache-2.0.txt         https://www.apache.org/licenses/LICENSE-2.0.txt
 curl -L -o MIT.txt                https://raw.githubusercontent.com/wailsapp/wails/v2.13.0/LICENSE
+curl -L -o CC-BY-SA-4.0.txt       https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt
 ```
 
 Or, if you have the `reuse` tool installed:

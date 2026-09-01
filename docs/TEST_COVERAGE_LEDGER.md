@@ -218,7 +218,7 @@ DAG-family chart engines: WBS, CPM/Network/PERT, layered (Workflow-adjacent), Fi
 | `link_label_test.go` | 2 | Dependency-link label parsing (`FS+5d` etc.) | unit | Malformed or unusual link labels must parse to a sane default rather than crash the layout. |
 | `pert_test.go` | 6 | PERT three-point estimation (optimistic/likely/pessimistic → expected + std dev) | table-driven | PERT's statistical formulas (expected duration, variance) must match the textbook formula exactly, including the all-zero-variance edge case. |
 
-## `internal/charts/flow` — 95.6%
+## `internal/charts/flow` — 97.5%
 
 Flow-family chart engines: Workflow, Activity diagrams.
 
@@ -806,7 +806,7 @@ Shared CSV/spreadsheet formula-injection neutralization, used by every CSV-produ
 | --- | --- | --- | --- | --- |
 | `exportsafe_test.go` | 2 | `Cell` neutralization | unit, table-driven | Same vulnerability class as `internal/export/csv_test.go` but at the shared-helper level; also asserts safe values pass through completely unmodified (no over-aggressive escaping that would corrupt legitimate data starting with, e.g., a minus sign). |
 
-## `internal/fonts` — 82.3%
+## `internal/fonts` — 83.8%
 
 TrueType font catalog/embedding for generated PDFs.
 
@@ -931,7 +931,7 @@ Project Launchpad seeding: JDM (JSON Decision Model) rule evaluation + seed-acti
 | `jdm_windows_test.go` | 1 | Windows build of the JDM engine | fixture | Windows-only build (`jdm_windows.go`, excluded from the coverage ratchet as platform-narrow — see `scripts/coverage-exclude-go.txt`) gets its own minimal smoke test since it can't be exercised on this (macOS) CI/dev host. |
 | `seeds_test.go` | 14 | `Seeder.Apply`/`applyOne` for all 15 seed kinds, error propagation, partial-success contract | integration, fault-injection | `TestSeeder_ApplyReturnsPartialReceiptsOnFailure` is the one genuinely non-obvious behavior: `Apply` must return receipts for every seed that succeeded *before* a failure, not discard them — verified using a SQLite trigger that blocks one specific seed's insert mid-batch. Four more trigger-based tests pin each individual seed handler's error propagation. |
 
-## `internal/timeline` — 97.1%
+## `internal/timeline` — 97.3%
 
 Assembles every dated entity in a project (tasks, sprints, deployments) into one timeline view.
 

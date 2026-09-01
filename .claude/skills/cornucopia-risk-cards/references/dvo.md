@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 OWASP Foundation
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # DVO — DevOps
 
 Source: OWASP Cornucopia, Companion edition v1.0. Card text CC-BY-SA-4.0, OWASP Cornucopia project.

@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 OWASP Foundation
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # C — CORNUCOPIA
 
 Source: OWASP Cornucopia, Website App edition v3.0. Card text CC-BY-SA-4.0, OWASP Cornucopia project.

@@ -32,6 +32,14 @@
 /GoPMgr/
 # Branding masters and platform exports are tracked under assets/branding and
 # frontend/public/branding. Root SVG branding has been retired intentionally.
+# Extracted SVG originals with no tracked equivalent yet -- kept locally,
+# not tracked, pending a separate decision on whether to add them.
+/assets/branding/source/svg/
+
+# Personal planning document, unrelated to source/build/docs. Already
+# matched by /gopmgr-* on case-insensitive filesystems (macOS); explicit
+# rule here so it's ignored on case-sensitive ones too (e.g. Linux).
+/GoPMgr-Strategic-Roadmap-2026.docx
 
 # Wails generated bindings
 /frontend/wailsjs/
