@@ -223,6 +223,8 @@ declare global {
           RemainingRecoveryCodes: () => Promise<number>;
           ResetWithRecoveryCode: (username: string, code: string, newPassword: string) => Promise<void>;
           CheckLatestVersion: () => Promise<UpdateStatus>;
+          DownloadAndInstallUpdate: () => Promise<string>;
+          QuitToInstallUpdate: () => Promise<void>;
           ExportDocumentDOCX: (id: string) => Promise<string>;
           ExportDocumentODT: (id: string) => Promise<string>;
           ExportDocumentPDFSigned: (
@@ -323,6 +325,7 @@ declare global {
     sha256?: string;
     channel: string;
     error?: string;
+    platform: string;
   }
 
   // ----- V2.x: Foundation-Slice types -----
@@ -540,6 +543,7 @@ declare global {
     default_theme: string;
     app_theme: string;
     auto_save_seconds: number;
+    auto_check_updates: boolean;
   }
 
   interface AppInfo {

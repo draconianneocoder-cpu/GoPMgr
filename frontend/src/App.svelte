@@ -16,8 +16,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { NativeCloseController, installNativeCloseGuard } from './lib/native-close';
   import { applyTheme, readCachedTheme, rememberTheme } from './lib/theme';
   import { autosave } from './lib/autosave.svelte';
+  import { showToast } from './lib/toast.svelte';
+  import { shouldAutoCheckForUpdates } from './lib/update-gate';
 
   import ToastContainer from './lib/components/ToastContainer.svelte';
+
+  // Set once an automatic update check has run this session, so a second
+  // sign-in (e.g. after Logout -> Login without restarting the app)
+  // doesn't check again -- "once per session" as documented in
+  // AppSettings' toggle copy.
+  let autoUpdateCheckedThisSession = false;
 
   // On sign-in, load the user's app settings to apply the UI theme and the
   // auto-save interval; on sign-out, revert to the dark default and stop
@@ -33,11 +41,34 @@ SPDX-License-Identifier: GPL-3.0-or-later
           const theme = applyTheme(info?.settings?.app_theme);
           rememberTheme(theme, session.user?.username);
           autosave.setInterval(info?.settings?.auto_save_seconds ?? 0);
+
+          // Opt-in only (see AppSettings.svelte's toggle); a fresh
+          // install/settings file defaults this to false. This check
+          // itself never downloads or installs anything -- it only
+          // populates session.updateStatus so a small notice can point
+          // the user at Settings, where the actual download is always a
+          // separate, explicit click.
+          if (shouldAutoCheckForUpdates(info?.settings, autoUpdateCheckedThisSession)) {
+            autoUpdateCheckedThisSession = true;
+            window.go?.main?.App?.CheckLatestVersion?.()
+              ?.then((status) => {
+                session.updateStatus = status;
+                if (status?.update_available && !status.error) {
+                  showToast(`GoPMgr ${status.latest} is available — see Application Settings to update.`, 'info');
+                }
+              })
+              .catch(() => {
+                // Silent: matches update.CheckLatest's own fail-closed,
+                // non-blocking design -- a network hiccup on launch must
+                // never interrupt the user.
+              });
+          }
         }).catch(() => {});
       }
     } else {
       applyTheme('dark');
       autosave.setInterval(0);
+      autoUpdateCheckedThisSession = false;
     }
   });
 

@@ -33,6 +33,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let claimingAdmin = $state(false);
   let updateStatus = $state<UpdateStatus | null>(null);
   let checkingUpdate = $state(false);
+  let autoCheckUpdates = $state(false);
+  let installingUpdate = $state(false);
+  let installError = $state('');
+  let installedPath = $state('');
+  let showQuitConfirm = $state(false);
+  let quittingToInstall = $state(false);
 
   const themes = [
     { value: '', label: 'Modern (default)' },
@@ -67,6 +73,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     await load();
+    // If App.svelte's automatic check-on-launch already ran this session,
+    // show its result immediately instead of leaving the panel blank
+    // until the user clicks "Check for updates" again.
+    if (session.updateStatus) updateStatus = session.updateStatus;
     try { hasAdmin = await window.go.main.App.HasAnyAdmin(); } catch { hasAdmin = true; }
   });
 
@@ -87,6 +97,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const secs = i.settings.auto_save_seconds ?? 0;
       autoSaveOn = secs > 0;
       autoSaveSeconds = secs > 0 ? secs : 60;
+      autoCheckUpdates = i.settings.auto_check_updates ?? false;
     } catch (err: any) {
       error = `Could not load settings: ${err}`;
     } finally {
@@ -140,18 +151,57 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function checkForUpdates() {
     checkingUpdate = true;
+    installError = '';
+    installedPath = '';
+    showQuitConfirm = false;
     try {
       updateStatus = await window.go.main.App.CheckLatestVersion();
+      session.updateStatus = updateStatus;
     } catch (err: any) {
       updateStatus = {
         configured: true,
         current: info?.version ?? '',
         channel: 'unknown',
         update_available: false,
+        platform: '',
         error: String(err?.message ?? err),
       };
     } finally {
       checkingUpdate = false;
+    }
+  }
+
+  // Downloads and SHA-256-verifies the update CheckLatestVersion already
+  // found, then hands it to the OS's own install UX (Finder's .dmg flow on
+  // macOS, the NSIS installer on Windows). This never happens
+  // automatically -- even with "check on launch" enabled, reaching this
+  // function always requires the user's own click here.
+  async function downloadAndInstallUpdate() {
+    installingUpdate = true;
+    installError = '';
+    installedPath = '';
+    showQuitConfirm = false;
+    try {
+      installedPath = await window.go.main.App.DownloadAndInstallUpdate();
+      // Windows only: the NSIS installer cannot overwrite GoPMgr.exe while
+      // it's running, so ask before closing the app out from under the
+      // user. macOS's Finder-mounted .dmg needs no such step.
+      if (updateStatus?.platform === 'windows') showQuitConfirm = true;
+    } catch (err: any) {
+      installError = `Update download failed: ${err}`;
+    } finally {
+      installingUpdate = false;
+    }
+  }
+
+  async function confirmQuitToInstall() {
+    quittingToInstall = true;
+    try {
+      await window.go.main.App.QuitToInstallUpdate();
+      // No further UI update expected: a successful call quits the app.
+    } catch (err: any) {
+      quittingToInstall = false;
+      installError = `Could not close GoPMgr: ${err}`;
     }
   }
 
@@ -166,6 +216,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         default_theme: theme,
         app_theme: appTheme,
         auto_save_seconds: autoVal,
+        auto_check_updates: autoCheckUpdates,
       });
       applyTheme(appTheme);
       rememberTheme(appTheme, session.user?.username);
@@ -187,6 +238,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     const secs = settings.auto_save_seconds ?? 0;
     autoSaveOn = secs > 0;
     autoSaveSeconds = secs > 0 ? secs : 60;
+    autoCheckUpdates = settings.auto_check_updates ?? false;
     applyTheme(appTheme);
     rememberTheme(appTheme, session.user?.username);
     autosave.setInterval(secs);
@@ -403,17 +455,63 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <p class="pt-2 text-[11px] leading-relaxed text-amber-300/80">
             Beta packages may be unsigned. Windows and Fedora lifecycle validation and publicly trusted PAdES evidence remain release limitations until their native evidence is recorded.
           </p>
+          <label class="mt-2 flex items-center gap-2">
+            <input type="checkbox" bind:checked={autoCheckUpdates} />
+            <span class="text-xs font-semibold text-slate-300">Automatically check for updates on launch</span>
+          </label>
+          <p class="text-[11px] text-slate-500">
+            GoPMgr checks once per session and only shows whether an update exists — downloading and installing one is always a separate action you start yourself. Requires Save below to take effect.
+          </p>
           <button onclick={checkForUpdates} disabled={checkingUpdate} class="mt-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded">
             {checkingUpdate ? 'Checking…' : 'Check for updates'}
           </button>
           {#if updateStatus}
-            <div class="mt-2 rounded border border-slate-800 bg-slate-950 p-3 space-y-1">
+            <div class="mt-2 rounded border border-slate-800 bg-slate-950 p-3 space-y-2">
               <p>Channel: <span class="font-mono">{updateStatus.channel || 'unconfigured'}</span></p>
               {#if !updateStatus.configured}<p class="text-slate-400">This build has no automatic update channel configured.</p>
               {:else if updateStatus.error}<p class="text-red-400" role="alert">Verification failed: {updateStatus.error}</p>
               {:else if updateStatus.update_available}<p class="text-cyan-300">Update available: {updateStatus.latest}</p>
               {:else}<p class="text-emerald-400">This build is current.</p>{/if}
               {#if updateStatus.sha256}<p class="break-all font-mono text-[10px] text-slate-500">SHA-256: {updateStatus.sha256}</p>{/if}
+
+              {#if updateStatus.update_available && !updateStatus.error}
+                {#if !installedPath}
+                  <button
+                    onclick={downloadAndInstallUpdate}
+                    disabled={installingUpdate}
+                    class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-bold uppercase px-3 py-1.5 rounded"
+                  >
+                    {installingUpdate ? 'Downloading and verifying…' : 'Download & Open Installer'}
+                  </button>
+                {:else if updateStatus.platform === 'windows' && showQuitConfirm}
+                  <div class="rounded border border-amber-700/60 bg-amber-950/30 p-3 space-y-2">
+                    <p class="text-amber-300">
+                      The installer is ready. GoPMgr needs to close to finish installing — any unsaved work is protected the same way as a normal quit.
+                    </p>
+                    <div class="flex gap-2">
+                      <button
+                        onclick={confirmQuitToInstall}
+                        disabled={quittingToInstall}
+                        class="bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded"
+                      >
+                        {quittingToInstall ? 'Closing…' : 'Close & Install'}
+                      </button>
+                      <button
+                        onclick={() => (showQuitConfirm = false)}
+                        disabled={quittingToInstall}
+                        class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded"
+                      >
+                        Not now
+                      </button>
+                    </div>
+                  </div>
+                {:else}
+                  <p class="text-emerald-400">
+                    Installer opened. Drag GoPMgr to Applications, then relaunch to finish updating.
+                  </p>
+                {/if}
+              {/if}
+              {#if installError}<p class="text-red-400" role="alert">{installError}</p>{/if}
             </div>
           {/if}
         </section>

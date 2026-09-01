@@ -666,6 +666,18 @@ type AppSettings struct {
 	AppTheme string `json:"app_theme"`
 	// AutoSaveSeconds is the editor auto-save interval in seconds; 0 disables auto-save.
 	AutoSaveSeconds int `json:"auto_save_seconds"`
+	// AutoCheckUpdates opts into a single, non-blocking update.CheckLatest
+	// call on sign-in (App.svelte's session-start effect), rather than
+	// only the on-demand "Check for updates" button. Defaults to false
+	// (Go zero value): this app's established posture is opt-in for
+	// anything that reaches the network (signing, timestamping,
+	// compliance mode), and a `true` default here would also disagree
+	// with an older settings file written before this field existed,
+	// which unmarshals the missing key as false regardless of what a
+	// fresh default might claim. Checking never installs anything by
+	// itself — DownloadAndInstallUpdate is always a separate, explicit
+	// user action.
+	AutoCheckUpdates bool `json:"auto_check_updates"`
 }
 
 // defaultAppSettings is what a brand-new user gets before they save any

@@ -63,12 +63,21 @@ export const session = $state<{
     | 'help';
   // When `view` is a chart/doc editor, the currently-edited record ID.
   editingId: string | null;
+  // Populated once per sign-in by App.svelte's automatic-check-on-launch
+  // effect, when the user has opted in (AppSettings' "Automatically check
+  // for updates on launch"). Null until then, or if auto-check is off.
+  // AppSettings reads this to avoid a redundant re-check when the user
+  // navigates there after already having been notified; downloading and
+  // installing is never triggered from here — only ever from an explicit
+  // click in AppSettings.
+  updateStatus: UpdateStatus | null;
 }>({
   user: null,
   project: null,
   projectPath: null,
   view: 'login',
   editingId: null,
+  updateStatus: null,
 });
 
 type PendingNavigation = {

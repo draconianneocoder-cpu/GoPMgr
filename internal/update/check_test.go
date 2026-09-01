@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"runtime"
 	"strings"
@@ -246,6 +247,33 @@ func manifestServer(t *testing.T, body []byte, status int) *httptest.Server {
 	return srv
 }
 
+// selfHostedManifestServer starts a TLS test server, then builds and signs
+// a payload whose DownloadURL points back at that same server -- required
+// because validatePayload now rejects a download URL whose host doesn't
+// match the manifest's own host, and only the running server knows its own
+// URL (assigned by the OS at Listen time). The returned server serves the
+// signed bytes for every request; the returned Payload is the unsigned
+// source of truth for tests that assert on individual fields. mutate, if
+// non-nil, runs after the payload is built but before it's signed, so
+// callers can adjust fields (e.g. an invalid platform) while keeping the
+// self-referencing DownloadURL intact.
+func selfHostedManifestServer(t *testing.T, priv ed25519.PrivateKey, version string, mutate func(*Payload)) (*httptest.Server, Payload) {
+	t.Helper()
+	var body []byte
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}))
+	t.Cleanup(srv.Close)
+	p := validPayload(version)
+	p.DownloadURL = srv.URL + "/gopmgr.pkg"
+	if mutate != nil {
+		mutate(&p)
+	}
+	body = signedManifest(t, priv, p)
+	return srv, p
+}
+
 func TestCheckLatestNotConfiguredWhenURLOrKeyMissing(t *testing.T) {
 	withUpdateConfig(t, "", "")
 	st, err := CheckLatest(context.Background())
@@ -257,6 +285,9 @@ func TestCheckLatestNotConfiguredWhenURLOrKeyMissing(t *testing.T) {
 	}
 	if st.Error != "" {
 		t.Fatalf("expected no error for the not-configured case, got %q", st.Error)
+	}
+	if st.Platform != runtime.GOOS {
+		t.Errorf("Platform = %q, want %q even when not configured", st.Platform, runtime.GOOS)
 	}
 }
 
@@ -366,8 +397,8 @@ func TestCheckLatestRejectsDowngrade(t *testing.T) {
 	CurrentVersion = "5.0.0"
 	t.Cleanup(func() { CurrentVersion = old })
 
-	raw := signedManifest(t, priv, validPayload("1.2.0")) // "latest" older than CurrentVersion
-	srv := manifestServer(t, raw, http.StatusOK)
+	// "latest" older than CurrentVersion.
+	srv, _ := selfHostedManifestServer(t, priv, "1.2.0", nil)
 	withTestTransport(t, srv)
 	withUpdateConfig(t, srv.URL, base64.StdEncoding.EncodeToString(pub))
 
@@ -389,8 +420,7 @@ func TestCheckLatestNoUpdateAvailableWhenVersionsMatch(t *testing.T) {
 	CurrentVersion = "1.2.0"
 	t.Cleanup(func() { CurrentVersion = old })
 
-	raw := signedManifest(t, priv, validPayload("1.2.0"))
-	srv := manifestServer(t, raw, http.StatusOK)
+	srv, _ := selfHostedManifestServer(t, priv, "1.2.0", nil)
 	withTestTransport(t, srv)
 	withUpdateConfig(t, srv.URL, base64.StdEncoding.EncodeToString(pub))
 
@@ -415,9 +445,7 @@ func TestCheckLatestUpdateAvailableHappyPath(t *testing.T) {
 	CurrentVersion = "1.1.0"
 	t.Cleanup(func() { CurrentVersion = old })
 
-	want := validPayload("1.2.0")
-	raw := signedManifest(t, priv, want)
-	srv := manifestServer(t, raw, http.StatusOK)
+	srv, want := selfHostedManifestServer(t, priv, "1.2.0", nil)
 	withTestTransport(t, srv)
 	withUpdateConfig(t, srv.URL, base64.StdEncoding.EncodeToString(pub))
 
@@ -511,13 +539,13 @@ func TestIsNewerRejectsInvalidLegacyVersion(t *testing.T) {
 func TestValidatePayloadRejectsChannelMismatch(t *testing.T) {
 	p := validPayload("1.2.0")
 	p.Channel = "beta"
-	if err := validatePayload(p); err == nil || !strings.Contains(err.Error(), "channel mismatch") {
+	if err := validatePayload(p, "updates.example.test"); err == nil || !strings.Contains(err.Error(), "channel mismatch") {
 		t.Fatalf("validatePayload error = %v, want channel mismatch", err)
 	}
 }
 
 func TestValidatePayloadAcceptsWellFormedPayload(t *testing.T) {
-	if err := validatePayload(validPayload("1.2.0")); err != nil {
+	if err := validatePayload(validPayload("1.2.0"), "updates.example.test"); err != nil {
 		t.Fatalf("validatePayload rejected a well-formed payload: %v", err)
 	}
 }
@@ -525,7 +553,7 @@ func TestValidatePayloadAcceptsWellFormedPayload(t *testing.T) {
 func TestValidatePayloadRejectsPlatformMismatch(t *testing.T) {
 	p := validPayload("1.2.0")
 	p.Platform = "not-" + runtime.GOOS
-	if err := validatePayload(p); err == nil || !strings.Contains(err.Error(), "artifact target mismatch") {
+	if err := validatePayload(p, "updates.example.test"); err == nil || !strings.Contains(err.Error(), "artifact target mismatch") {
 		t.Fatalf("validatePayload error = %v, want artifact target mismatch", err)
 	}
 }
@@ -533,14 +561,14 @@ func TestValidatePayloadRejectsPlatformMismatch(t *testing.T) {
 func TestValidatePayloadRejectsArchitectureMismatch(t *testing.T) {
 	p := validPayload("1.2.0")
 	p.Architecture = "not-" + runtime.GOARCH
-	if err := validatePayload(p); err == nil || !strings.Contains(err.Error(), "artifact target mismatch") {
+	if err := validatePayload(p, "updates.example.test"); err == nil || !strings.Contains(err.Error(), "artifact target mismatch") {
 		t.Fatalf("validatePayload error = %v, want artifact target mismatch", err)
 	}
 }
 
 func TestValidatePayloadRejectsInvalidSemver(t *testing.T) {
 	p := validPayload("not-a-version")
-	if err := validatePayload(p); err == nil || !strings.Contains(err.Error(), "invalid semantic version") {
+	if err := validatePayload(p, "updates.example.test"); err == nil || !strings.Contains(err.Error(), "invalid semantic version") {
 		t.Fatalf("validatePayload error = %v, want invalid semantic version", err)
 	}
 }
@@ -548,7 +576,7 @@ func TestValidatePayloadRejectsInvalidSemver(t *testing.T) {
 func TestValidatePayloadRejectsNonHTTPSDownloadURL(t *testing.T) {
 	p := validPayload("1.2.0")
 	p.DownloadURL = "http://updates.example.test/gopmgr.pkg"
-	if err := validatePayload(p); err == nil || !strings.Contains(err.Error(), "download URL must be HTTPS") {
+	if err := validatePayload(p, "updates.example.test"); err == nil || !strings.Contains(err.Error(), "download URL must be HTTPS") {
 		t.Fatalf("validatePayload error = %v, want download URL must be HTTPS", err)
 	}
 }
@@ -556,7 +584,7 @@ func TestValidatePayloadRejectsNonHTTPSDownloadURL(t *testing.T) {
 func TestValidatePayloadRejectsEmptyDownloadURL(t *testing.T) {
 	p := validPayload("1.2.0")
 	p.DownloadURL = ""
-	if err := validatePayload(p); err == nil || !strings.Contains(err.Error(), "download URL must be HTTPS") {
+	if err := validatePayload(p, "updates.example.test"); err == nil || !strings.Contains(err.Error(), "download URL must be HTTPS") {
 		t.Fatalf("validatePayload error = %v, want download URL must be HTTPS", err)
 	}
 }
@@ -564,7 +592,7 @@ func TestValidatePayloadRejectsEmptyDownloadURL(t *testing.T) {
 func TestValidatePayloadRejectsShortSHA256(t *testing.T) {
 	p := validPayload("1.2.0")
 	p.SHA256 = strings.Repeat("a", 63)
-	if err := validatePayload(p); err == nil || !strings.Contains(err.Error(), "64 hexadecimal characters") {
+	if err := validatePayload(p, "updates.example.test"); err == nil || !strings.Contains(err.Error(), "64 hexadecimal characters") {
 		t.Fatalf("validatePayload error = %v, want 64 hexadecimal characters", err)
 	}
 }
@@ -572,15 +600,53 @@ func TestValidatePayloadRejectsShortSHA256(t *testing.T) {
 func TestValidatePayloadRejectsNonHexSHA256(t *testing.T) {
 	p := validPayload("1.2.0")
 	p.SHA256 = strings.Repeat("g", 64)
-	if err := validatePayload(p); err == nil || !strings.Contains(err.Error(), "64 hexadecimal characters") {
+	if err := validatePayload(p, "updates.example.test"); err == nil || !strings.Contains(err.Error(), "64 hexadecimal characters") {
 		t.Fatalf("validatePayload error = %v, want 64 hexadecimal characters", err)
+	}
+}
+
+func TestValidatePayloadRejectsMismatchedDownloadHost(t *testing.T) {
+	p := validPayload("1.2.0") // DownloadURL host is updates.example.test
+	if err := validatePayload(p, "attacker.example.test"); err == nil || !strings.Contains(err.Error(), "does not match manifest host") {
+		t.Fatalf("validatePayload error = %v, want download host mismatch", err)
+	}
+}
+
+// TestReleaseWorkflowURLsShareHost pins the same-origin assumption the
+// download-host check in validatePayload relies on: .github/workflows/release.yml
+// builds the manifest URL and the artifact download URL from the same
+// "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/..."
+// prefix, differing only in the trailing filename. If that workflow ever
+// changes to route artifacts through a different host (e.g. a CDN), this
+// test — not just a code comment — is what breaks first.
+func TestReleaseWorkflowURLsShareHost(t *testing.T) {
+	const (
+		repo     = "jlburns/gopmgr"
+		refName  = "v1.2.0"
+		channel  = "stable"
+		target   = "windows-amd64"
+		filename = "GoPMgr-1.2.0-amd64.exe"
+	)
+	manifestURL := "https://github.com/" + repo + "/releases/download/" + refName + "/update-" + channel + "-" + target + ".json"
+	downloadURL := "https://github.com/" + repo + "/releases/download/" + refName + "/" + filename
+
+	mu, err := url.Parse(manifestURL)
+	if err != nil {
+		t.Fatalf("parse manifest URL: %v", err)
+	}
+	du, err := url.Parse(downloadURL)
+	if err != nil {
+		t.Fatalf("parse download URL: %v", err)
+	}
+	if mu.Host != du.Host {
+		t.Fatalf("manifest host %q != download host %q; validatePayload's same-origin check would reject every real release", mu.Host, du.Host)
 	}
 }
 
 func TestValidatePayloadRejectsUnparseablePublishedAt(t *testing.T) {
 	p := validPayload("1.2.0")
 	p.PublishedAt = "not-a-timestamp"
-	if err := validatePayload(p); err == nil || !strings.Contains(err.Error(), "invalid publication time") {
+	if err := validatePayload(p, "updates.example.test"); err == nil || !strings.Contains(err.Error(), "invalid publication time") {
 		t.Fatalf("validatePayload error = %v, want invalid publication time", err)
 	}
 }
@@ -708,9 +774,7 @@ func TestCheck_ReportsUpdateAvailableWithDownloadURL(t *testing.T) {
 	CurrentVersion = "1.0.0"
 	t.Cleanup(func() { CurrentVersion = old })
 
-	want := validPayload("2.0.0")
-	raw := signedManifest(t, priv, want)
-	srv := manifestServer(t, raw, http.StatusOK)
+	srv, want := selfHostedManifestServer(t, priv, "2.0.0", nil)
 	withTestTransport(t, srv)
 	withUpdateConfig(t, srv.URL, base64.StdEncoding.EncodeToString(pub))
 
@@ -729,8 +793,7 @@ func TestCheck_ReportsUpToDate(t *testing.T) {
 	CurrentVersion = "1.2.0"
 	t.Cleanup(func() { CurrentVersion = old })
 
-	raw := signedManifest(t, priv, validPayload("1.2.0"))
-	srv := manifestServer(t, raw, http.StatusOK)
+	srv, _ := selfHostedManifestServer(t, priv, "1.2.0", nil)
 	withTestTransport(t, srv)
 	withUpdateConfig(t, srv.URL, base64.StdEncoding.EncodeToString(pub))
 

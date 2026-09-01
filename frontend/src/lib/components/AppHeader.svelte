@@ -36,6 +36,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       session.user = null;
       session.project = null;
       session.projectPath = null;
+      session.updateStatus = null;
       return true;
     });
   }

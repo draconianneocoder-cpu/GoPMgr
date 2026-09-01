@@ -1060,6 +1060,37 @@ func (a *App) CheckLatestVersion() (update.Status, error) {
 	return update.CheckLatest(a.ctx)
 }
 
+// DownloadAndInstallUpdate downloads and SHA-256-verifies the update
+// artifact CheckLatest currently reports (re-verifying the signed manifest
+// fresh, not trusting any status the frontend may be holding — see
+// update.DownloadAndInstall's doc comment), then hands it to the
+// platform's own install UX: opens the .dmg in Finder on macOS, or
+// launches the NSIS installer as a detached process on Windows.
+//
+// It does not quit GoPMgr. On Windows the installer cannot overwrite the
+// running executable, so the frontend must show the user a confirmation
+// and then call QuitToInstallUpdate — kept as a separate step so a failed
+// download or launch never quits the app out from under the user.
+func (a *App) DownloadAndInstallUpdate() (string, error) {
+	user := a.requireUser()
+	if user == nil {
+		return "", errors.New("not signed in")
+	}
+	return update.DownloadAndInstall(a.ctx, filepath.Join(user.DataDir, "updates"))
+}
+
+// QuitToInstallUpdate quits GoPMgr through the same wailsruntime.Quit path
+// as the Quit menu item (main.go) and the OS window-close button, so the
+// existing native-close guard's unsaved-work protection applies exactly as
+// it does for any other quit trigger. Windows-only in practice — the NSIS
+// installer launched by DownloadAndInstallUpdate cannot overwrite a
+// running GoPMgr.exe, so the frontend calls this only after the user
+// confirms — but harmless to expose on every platform rather than gating
+// it behind a runtime.GOOS check the frontend would have to duplicate.
+func (a *App) QuitToInstallUpdate() {
+	wailsruntime.Quit(a.ctx)
+}
+
 // ChooseCertFile opens a native file-picker for X.509 certificate
 // bundles (.p12 / .pfx). Returns the absolute path the user picked
 // or empty string on cancel. Used by SignatureSettings.svelte.

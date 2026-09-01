@@ -74,6 +74,14 @@ type Status struct {
 	SHA256          string `json:"sha256,omitempty"`
 	Channel         string `json:"channel"`
 	Error           string `json:"error,omitempty"`
+	// Platform is always runtime.GOOS, regardless of Configured/Error —
+	// unlike every other field here, it doesn't come from the manifest.
+	// The GUI uses it to decide whether DownloadAndInstallUpdate's result
+	// needs the Windows-only quit-to-install confirmation (see
+	// install_windows.go's doc comment: the NSIS installer cannot
+	// overwrite a running GoPMgr.exe, but macOS's Finder-mounted .dmg
+	// flow needs no such step).
+	Platform string `json:"platform"`
 }
 
 // CheckLatest performs the full update-check flow:
@@ -86,7 +94,7 @@ type Status struct {
 // returned error means we couldn't even start the check (no URL or
 // bad public key).
 func CheckLatest(ctx context.Context) (Status, error) {
-	st := Status{Current: CurrentVersion, Channel: UpdateChannel}
+	st := Status{Current: CurrentVersion, Channel: UpdateChannel, Platform: runtime.GOOS}
 	if ManifestURL == "" || UpdateChannelPublicKey == "" {
 		// Not a misconfiguration — the build chose not to wire an
 		// update channel. The GUI shows "automatic updates not
@@ -145,7 +153,7 @@ func CheckLatest(ctx context.Context) (Status, error) {
 		st.Error = err.Error()
 		return st, nil
 	}
-	if err := validatePayload(payload); err != nil {
+	if err := validatePayload(payload, manifestURL.Host); err != nil {
 		st.Error = err.Error()
 		return st, nil
 	}
@@ -162,7 +170,19 @@ func CheckLatest(ctx context.Context) (Status, error) {
 	return st, nil
 }
 
-func validatePayload(p Payload) error {
+// validatePayload checks the signed payload's contents against the running
+// binary's channel/platform/architecture and rejects a malformed download
+// target. manifestHost is the already-verified ManifestURL's host: the
+// download URL must resolve to the same host. A correctly-signed manifest
+// could otherwise point download_url at any HTTPS host, and unlike the
+// check-only flow, that URL's contents are now downloaded, written to disk,
+// and handed to the OS installer -- same-origin pinning is cheap
+// defense-in-depth against a compromised or overly-permissive release
+// pipeline, and costs nothing against the real one: the release workflow
+// derives both ManifestURL and download_url from the same
+// $GITHUB_REPOSITORY (.github/workflows/release.yml), so they are
+// same-origin by construction today.
+func validatePayload(p Payload, manifestHost string) error {
 	if p.Channel != UpdateChannel {
 		return fmt.Errorf("update: channel mismatch: manifest %q, binary %q", p.Channel, UpdateChannel)
 	}
@@ -175,6 +195,9 @@ func validatePayload(p Payload) error {
 	download, err := url.Parse(p.DownloadURL)
 	if err != nil || download.Scheme != "https" || download.Host == "" {
 		return fmt.Errorf("update: download URL must be HTTPS")
+	}
+	if download.Host != manifestHost {
+		return fmt.Errorf("update: download URL host %q does not match manifest host %q", download.Host, manifestHost)
 	}
 	if len(p.SHA256) != 64 {
 		return fmt.Errorf("update: artifact SHA-256 must contain 64 hexadecimal characters")
