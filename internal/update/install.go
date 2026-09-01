@@ -38,6 +38,15 @@ var maxArtifactBytes int64 = 500 * 1024 * 1024
 // in validatePayload already keeps Status.UpdateAvailable false there —
 // but that is asserted explicitly rather than silently doing something
 // platform-wrong if it ever is reached.
+// currentGOOS is runtime.GOOS by default. A var, not a direct
+// runtime.GOOS reference at the call site, so tests can force a
+// supported platform regardless of which OS actually runs `go test` —
+// mirrors launcher/maxArtifactBytes/httpTransport's existing test-seam
+// pattern. Without this, every test exercising the download/verify/
+// launch path could only ever pass on darwin or windows, silently
+// never running in CI on a standard Linux runner.
+var currentGOOS = runtime.GOOS
+
 func installerExtension(goos string) (string, error) {
 	switch goos {
 	case "darwin":
@@ -94,7 +103,7 @@ func DownloadAndInstall(ctx context.Context, destDir string) (string, error) {
 		return "", errors.New("update: no update available")
 	}
 
-	ext, err := installerExtension(runtime.GOOS)
+	ext, err := installerExtension(currentGOOS)
 	if err != nil {
 		return "", err
 	}

@@ -14,7 +14,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -77,11 +76,23 @@ func withCurrentVersion(t *testing.T, v string) {
 	t.Cleanup(func() { CurrentVersion = old })
 }
 
+// withCurrentGOOS forces the platform DownloadAndInstall's installer-
+// extension check sees, restoring it in t.Cleanup. Without this, every
+// test exercising the download/verify/launch path could only ever pass
+// on darwin or windows — the two platforms installerExtension supports —
+// which silently meant they never ran on a standard Linux CI runner.
+func withCurrentGOOS(t *testing.T, goos string) {
+	t.Helper()
+	old := currentGOOS
+	currentGOOS = goos
+	t.Cleanup(func() { currentGOOS = old })
+}
+
 func wantArtifactPath(t *testing.T, destDir, version string) string {
 	t.Helper()
-	ext, err := installerExtension(runtime.GOOS)
+	ext, err := installerExtension(currentGOOS)
 	if err != nil {
-		t.Skipf("installerExtension(%s): %v — no install support on this test platform", runtime.GOOS, err)
+		t.Skipf("installerExtension(%s): %v — no install support on this test platform", currentGOOS, err)
 	}
 	return filepath.Join(destDir, "GoPMgr-"+version+ext)
 }
@@ -107,6 +118,7 @@ func tempDownloadFilesIn(t *testing.T, dir string) []string {
 func TestDownloadAndInstall_HappyPath(t *testing.T) {
 	pub, priv, _ := ed25519.GenerateKey(nil)
 	withCurrentVersion(t, "1.0.0")
+	withCurrentGOOS(t, "darwin")
 
 	artifact := []byte("fake installer bytes")
 	srv, want := artifactManifestServer(t, priv, "2.0.0", artifact, "")
@@ -150,6 +162,7 @@ func TestDownloadAndInstall_HappyPath(t *testing.T) {
 func TestDownloadAndInstall_ChecksumMismatch(t *testing.T) {
 	pub, priv, _ := ed25519.GenerateKey(nil)
 	withCurrentVersion(t, "1.0.0")
+	withCurrentGOOS(t, "darwin")
 
 	artifact := []byte("fake installer bytes")
 	srv, want := artifactManifestServer(t, priv, "2.0.0", artifact, strings.Repeat("f", 64))
@@ -179,6 +192,7 @@ func TestDownloadAndInstall_ChecksumMismatch(t *testing.T) {
 func TestDownloadAndInstall_OversizedArtifactRejectedBeforeChecksum(t *testing.T) {
 	pub, priv, _ := ed25519.GenerateKey(nil)
 	withCurrentVersion(t, "1.0.0")
+	withCurrentGOOS(t, "darwin")
 
 	oldMax := maxArtifactBytes
 	maxArtifactBytes = 8
@@ -210,6 +224,7 @@ func TestDownloadAndInstall_OversizedArtifactRejectedBeforeChecksum(t *testing.T
 func TestDownloadAndInstall_LauncherErrorKeepsVerifiedArtifact(t *testing.T) {
 	pub, priv, _ := ed25519.GenerateKey(nil)
 	withCurrentVersion(t, "1.0.0")
+	withCurrentGOOS(t, "darwin")
 
 	artifact := []byte("fake installer bytes")
 	srv, want := artifactManifestServer(t, priv, "2.0.0", artifact, "")
