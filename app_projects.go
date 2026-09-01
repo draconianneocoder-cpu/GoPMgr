@@ -22,6 +22,7 @@ import (
 	"gopmgr/internal/calendar"
 	"gopmgr/internal/cli"
 	"gopmgr/internal/db"
+	"gopmgr/internal/debug"
 	"gopmgr/internal/documents"
 	"gopmgr/internal/fonts"
 	"gopmgr/internal/sigma/service"
@@ -775,8 +776,12 @@ func (a *App) OpenLogsFolder() error {
 }
 
 // GenerateBugReport writes a self-contained diagnostic bundle to the logs
-// directory and returns its path. The bundle includes environment info and
-// the tail of today's log file. It never contains credentials or key material.
+// directory and returns its path. The bundle includes environment info,
+// the tail of today's log file, and any debug.ErrorReport captured this
+// session (full stack trace, precise timestamp) via debug.Capture. It
+// never contains credentials or key material: Cause and Stack come from
+// Go error strings and runtime.Stack's own frame text, neither of which
+// carries secret values in any call site debug.Wrap currently instruments.
 func (a *App) GenerateBugReport() (string, error) {
 	if a.logDir == "" {
 		return "", errors.New("log directory not available")
@@ -812,6 +817,20 @@ func (a *App) GenerateBugReport() (string, error) {
 		}
 	} else {
 		fmt.Fprintf(&buf, "(no log file — logging fell back to stderr at startup)\n")
+	}
+
+	fmt.Fprintf(&buf, "\n=== Recent Structured Diagnostics ===\n")
+	reports := debug.RecentReports()
+	if len(reports) == 0 {
+		fmt.Fprintf(&buf, "(none captured this session)\n")
+	} else {
+		for _, r := range reports {
+			fmt.Fprintf(&buf, "[%s] %s (at %s:%d)\n", r.Timestamp.Format(time.RFC3339Nano), r.Context, r.File, r.Line)
+			if r.Cause != "" {
+				fmt.Fprintf(&buf, "  cause: %s\n", r.Cause)
+			}
+			fmt.Fprintf(&buf, "%s\n", r.Stack)
+		}
 	}
 
 	if err := os.WriteFile(reportPath, []byte(buf.String()), 0o600); err != nil { // #nosec G306 -- 0o600: report is private to the user.

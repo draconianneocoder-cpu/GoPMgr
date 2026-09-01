@@ -12,6 +12,7 @@ import (
 
 	"gopmgr/internal/agile"
 	"gopmgr/internal/db"
+	"gopmgr/internal/debug"
 	"gopmgr/internal/documents"
 	"gopmgr/internal/signing"
 )
@@ -237,5 +238,8 @@ func (a *App) SecureArchive(projectPath string) (string, error) {
 	if svc == nil {
 		return "", errors.New("no project open")
 	}
-	return svc.SecureArchive(clean)
+	path, err := svc.SecureArchive(clean)
+	// Capture the structured report (if any) for GenerateBugReport before
+	// it collapses to a plain string on the way to the frontend.
+	return path, debug.Capture(err)
 }

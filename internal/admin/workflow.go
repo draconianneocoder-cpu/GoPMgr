@@ -54,7 +54,11 @@ func (s *Service) SecureArchive(projectPath string) (string, error) {
 	if err := s.DB.CreateArchivalBundle(backupName, certs); err != nil {
 		report := debug.Wrap(err, "ARCHIVAL_BUNDLE_ERROR")
 		_ = s.DB.LogAction("System", "ARCHIVE_FAILED", projectPath, report.Message)
-		return "", fmt.Errorf("security backup failed: %s", report.Message)
+		// %w on report.ToError(), not %s on report.Message: preserves the
+		// structured report through errors.As/debug.Report so it can reach
+		// GenerateBugReport's diagnostics section. The visible string is
+		// unchanged — report.ToError().Error() is report.Message.
+		return "", fmt.Errorf("security backup failed: %w", report.ToError())
 	}
 
 	if err := s.DB.LogAction("System", "ARCHIVE_CREATED", projectPath, backupName); err != nil {

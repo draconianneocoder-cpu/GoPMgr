@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -16,6 +17,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/menu"
 
 	"gopmgr/internal/cli"
+	"gopmgr/internal/debug"
 )
 
 // TestHeadlessProjectMode covers headlessProjectMode's seven independent
@@ -170,6 +172,102 @@ func TestGenerateBugReport_NoLogDir(t *testing.T) {
 	_, err := app.GenerateBugReport()
 	if err == nil {
 		t.Fatal("GenerateBugReport with empty logDir should return an error")
+	}
+}
+
+// TestGenerateBugReport_IncludesRecentStructuredReports proves the
+// consumer half of the wiring: debug.RecentReports() content reaches the
+// bug-report file. Asserts by a unique per-test marker rather than exact
+// buffer contents/count — debug's ring buffer is process-global package
+// state, so other tests in this binary may have already populated it
+// (see internal/debug/report_test.go's resetRecentReports, which only
+// package debug's own tests can use).
+func TestGenerateBugReport_IncludesRecentStructuredReports(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "gopmgr-x.log")
+	if err := os.WriteFile(logPath, []byte("line1\n"), 0o600); err != nil {
+		t.Fatalf("write log: %v", err)
+	}
+
+	marker := "BUG_REPORT_MARKER_" + t.Name()
+	debug.Capture(debug.Wrap(errors.New("synthetic failure"), marker).ToError())
+
+	app := &App{logDir: dir, logPath: logPath}
+	path, err := app.GenerateBugReport()
+	if err != nil {
+		t.Fatalf("GenerateBugReport: %v", err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read report: %v", err)
+	}
+	content := string(data)
+
+	for _, want := range []string{"=== Recent Structured Diagnostics ===", marker, "synthetic failure"} {
+		if !strings.Contains(content, want) {
+			t.Errorf("report missing %q; content:\n%s", want, content)
+		}
+	}
+}
+
+// TestSecureArchive_CapturesReportForBugReport is the end-to-end proof
+// for this feature: a real, project-scoped, Wails-bound App.SecureArchive
+// failure — reached the same way the frontend reaches it
+// (ProjectSettings.svelte's createBackup) — must leave a structured
+// report behind for a later App.GenerateBugReport call to surface. Forces
+// the ARCHIVE_SETTINGS_LOAD_FAILED branch (internal/admin/workflow.go:34)
+// the same way internal/admin/admin_test.go's
+// TestSecureArchive_PropagatesSettingsLoadError does: close the DB before
+// calling SecureArchive.
+func TestSecureArchive_CapturesReportForBugReport(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	logDir := t.TempDir()
+	app.logDir = logDir
+	app.logPath = filepath.Join(logDir, "gopmgr-x.log")
+	if err := os.WriteFile(app.logPath, []byte("line1\n"), 0o600); err != nil {
+		t.Fatalf("write log: %v", err)
+	}
+
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	file, err := app.CreateProject("Secure Archive Test", "")
+	if err != nil {
+		t.Fatalf("CreateProject: %v", err)
+	}
+	if _, err := app.OpenProject(file.Path); err != nil {
+		t.Fatalf("OpenProject: %v", err)
+	}
+	if err := app.db.Close(); err != nil {
+		t.Fatalf("close db: %v", err)
+	}
+
+	if _, err := app.SecureArchive(file.Path); err == nil || !strings.Contains(err.Error(), "ARCHIVE_SETTINGS_LOAD_FAILED") {
+		t.Fatalf("SecureArchive() error = %v, want ARCHIVE_SETTINGS_LOAD_FAILED", err)
+	}
+
+	path, err := app.GenerateBugReport()
+	if err != nil {
+		t.Fatalf("GenerateBugReport: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read report: %v", err)
+	}
+	content := string(data)
+
+	// "ARCHIVE_SETTINGS_LOAD_FAILED" alone isn't a strong enough anchor:
+	// Wrap also log.Printf's it, so it could in principle reach the report
+	// via the "Recent Log" tail section instead of the structured-reports
+	// section this test exists to prove. "cause: sql: database is closed"
+	// is only ever written by the fmt.Fprintf in GenerateBugReport's new
+	// section (app_projects.go), so its presence pins the right path.
+	if !strings.Contains(content, "=== Recent Structured Diagnostics ===") {
+		t.Fatalf("bug report is missing the structured-diagnostics section; content:\n%s", content)
+	}
+	if !strings.Contains(content, "cause: sql: database is closed") {
+		t.Errorf("bug report's structured-diagnostics section does not include the SecureArchive failure captured moments earlier; content:\n%s", content)
 	}
 }
 

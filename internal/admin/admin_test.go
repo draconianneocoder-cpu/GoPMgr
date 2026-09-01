@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"gopmgr/internal/db"
+	"gopmgr/internal/debug"
 )
 
 func newAdminTestDB(t *testing.T) *db.Database {
@@ -107,6 +108,45 @@ func TestSecureArchive_PropagatesCertBundlingError(t *testing.T) {
 	s := NewService(d)
 	if _, err := s.SecureArchive(d.Path); err == nil || !strings.Contains(err.Error(), "security backup failed") {
 		t.Fatalf("SecureArchive() error = %v, want cert bundling failure", err)
+	}
+}
+
+// TestSecureArchive_CertBundlingError_PreservesStructuredReport pins the
+// %w-not-%s fix in workflow.go's ARCHIVAL_BUNDLE_ERROR branch: before that
+// fix, this error was rebuilt via fmt.Errorf("...: %s", report.Message),
+// which discards the Unwrap chain and makes debug.Report(err) return
+// false for the one branch that covers every debug.Wrap call site inside
+// CreateArchivalBundle (internal/db/backup.go). Same failure injection as
+// TestSecureArchive_PropagatesCertBundlingError above; this test adds the
+// debug.Report assertion that test doesn't make.
+func TestSecureArchive_CertBundlingError_PreservesStructuredReport(t *testing.T) {
+	d := newAdminTestDB(t)
+	workDir := t.TempDir()
+	t.Chdir(workDir)
+
+	certDir := filepath.Join(workDir, "not-a-cert-file")
+	if err := os.Mkdir(certDir, 0o700); err != nil {
+		t.Fatalf("mkdir cert path: %v", err)
+	}
+	if err := d.SaveSettings(db.UserSettings{CertPath: certDir}); err != nil {
+		t.Fatalf("SaveSettings: %v", err)
+	}
+
+	s := NewService(d)
+	_, err := s.SecureArchive(d.Path)
+	if err == nil {
+		t.Fatal("SecureArchive: want a cert bundling error, got nil")
+	}
+
+	report, ok := debug.Report(err)
+	if !ok {
+		t.Fatal("debug.Report(err) returned false: the structured ErrorReport did not survive workflow.go's error rewrap")
+	}
+	if report.Context != "ARCHIVAL_BUNDLE_ERROR" {
+		t.Errorf("Context: got %q, want %q", report.Context, "ARCHIVAL_BUNDLE_ERROR")
+	}
+	if report.Stack == "" {
+		t.Error("Stack: got empty, want a captured stack trace")
 	}
 }
 

@@ -20,6 +20,7 @@
         "gopmgr/internal/cli",
         "gopmgr/internal/crypto",
         "gopmgr/internal/db",
+        "gopmgr/internal/debug",
         "gopmgr/internal/documents",
         "gopmgr/internal/export",
         "gopmgr/internal/exportfs",
@@ -261,6 +262,7 @@
     "gopmgr/internal/debug": {
       "dir": "internal/debug",
       "imported_by_internal": [
+        "gopmgr",
         "gopmgr/internal/admin",
         "gopmgr/internal/db",
         "gopmgr/internal/export"

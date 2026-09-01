@@ -3,8 +3,16 @@
 
 // Package debug provides structured, high-precision error reports for
 // GoPMgr's self-healing diagnostics. Every recoverable error path SHOULD
-// wrap the underlying error with debug.Wrap so the UI can surface a
-// full report (timestamp, file:line, stack) instead of an opaque string.
+// wrap the underlying error with debug.Wrap so a caller can recover the
+// full report (timestamp, file:line, stack) via debug.Report instead of
+// settling for an opaque string.
+//
+// Capture does that recovery and keeps the most recent reports in
+// memory; RecentReports exposes them to the bug-report generator
+// (App.GenerateBugReport, app_projects.go), which is the one place this
+// package's structured detail reaches a user-facing surface today. Most
+// debug.Wrap call sites still only reach the persistent log file, via
+// Wrap's own log.Printf side effect.
 package debug
 
 import (
@@ -12,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -90,4 +99,45 @@ func Report(err error) (ErrorReport, bool) {
 		return re.r, true
 	}
 	return ErrorReport{}, false
+}
+
+// maxRecentReports bounds the in-memory ring buffer Capture fills, so a
+// long session cannot grow it without limit.
+const maxRecentReports = 5
+
+var (
+	recentMu      sync.Mutex
+	recentReports = make([]ErrorReport, 0, maxRecentReports)
+)
+
+// Capture recovers the ErrorReport embedded in err (via Report) and, if
+// present, appends it to a small in-memory ring buffer that
+// RecentReports exposes. It always returns err unchanged, so a call site
+// can capture and return in one step: `return debug.Capture(err)`.
+func Capture(err error) error {
+	report, ok := Report(err)
+	if !ok {
+		return err
+	}
+	recentMu.Lock()
+	if len(recentReports) == maxRecentReports {
+		copy(recentReports, recentReports[1:])
+		recentReports[maxRecentReports-1] = report
+	} else {
+		recentReports = append(recentReports, report)
+	}
+	recentMu.Unlock()
+	return err
+}
+
+// RecentReports returns a copy of the most recently Captured
+// ErrorReports, oldest first. The bug-report generator uses this to
+// include full diagnostic detail (stack, precise timestamp) that a plain
+// error string loses.
+func RecentReports() []ErrorReport {
+	recentMu.Lock()
+	defer recentMu.Unlock()
+	out := make([]ErrorReport, len(recentReports))
+	copy(out, recentReports)
+	return out
 }
