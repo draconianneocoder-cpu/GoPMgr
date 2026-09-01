@@ -44,6 +44,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.useRealTimers();
   autosave.discardAll();
   cancelNavigation();
   navigation.saving = false;
@@ -317,6 +318,14 @@ describe('SprintList close guard', () => {
   });
 
   it('preserves programmatic edits made during a save for a second guarded save', async () => {
+    // openNew() below stamps its default start/end dates from the real
+    // wall clock. This test also types a fixed '2026-09-01' start-date
+    // literal into the mid-flight edit further down -- pin the clock so
+    // that default can never collide with the literal (it did on the real
+    // 2026-09-01, which made rebaseEditableChanges's untouched-field
+    // fallback silently mask a real edit; see the fixture note below).
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-15T00:00:00Z'));
     let finishFirstSave!: (saved: AgileSprint) => void;
     const firstSaved: AgileSprint = {
       id: 'sp-server',
