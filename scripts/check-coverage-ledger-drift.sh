@@ -35,7 +35,7 @@ set -euo pipefail
 
 ROOT="${GOPMGR_REPO_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 cd "$ROOT"
-ledger="TEST_COVERAGE_LEDGER.md"
+ledger="docs/TEST_COVERAGE_LEDGER.md"
 
 if [ ! -f "$ledger" ]; then
 	echo "check-coverage-ledger-drift: $ledger is missing." >&2

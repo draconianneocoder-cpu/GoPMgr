@@ -46,7 +46,7 @@ GOPMGR_RELEASE_SCOPE_SKIP_SELF_TEST=1 \
 	fail "valid release scope was rejected"
 
 historical_prose="$(new_fixture historical-prose)"
-printf '%s\n' 'Historical evidence: go test ./... passed before this gate existed.' >>"$historical_prose/DEVELOPER_HANDBOOK.md"
+printf '%s\n' 'Historical evidence: go test ./... passed before this gate existed.' >>"$historical_prose/docs/DEVELOPER_HANDBOOK.md"
 GOPMGR_RELEASE_SCOPE_SKIP_SELF_TEST=1 \
 	bash "$historical_prose/scripts/release-gate-scope-check.sh" >/dev/null ||
 	fail "historical handbook prose was treated as a live quality gate"

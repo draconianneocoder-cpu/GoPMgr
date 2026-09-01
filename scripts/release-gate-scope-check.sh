@@ -9,7 +9,7 @@ fail=0
 go_scope_matches="$(mktemp "${TMPDIR:-/tmp}/gopmgr-go-scope-matches.XXXXXX")"
 go_list_scope="$(mktemp "${TMPDIR:-/tmp}/gopmgr-go-list-scope.XXXXXX")"
 readme_text="$(tr '\n' ' ' < README.md)"
-agent_text="$(tr '\n' ' ' < DEVELOPER_HANDBOOK.md)"
+agent_text="$(tr '\n' ' ' < docs/DEVELOPER_HANDBOOK.md)"
 trap 'rm -f "$go_scope_matches" "$go_list_scope"' EXIT
 
 # The scope matcher is intentionally narrower than a general documentation
@@ -248,12 +248,12 @@ if ! printf '%s\n' "$readme_text" | rg -q 'SQLCipher.*encrypted.*\.gopmgr|\.gopm
 fi
 
 if ! printf '%s\n' "$readme_text $agent_text" | rg -q 'DSS.*PAdES-BASELINE-T|PAdES-BASELINE-T.*DSS'; then
-	echo "release-scope: README.md/DEVELOPER_HANDBOOK.md must document the current DSS PAdES-BASELINE-T fixture result." >&2
+	echo "release-scope: README.md/docs/DEVELOPER_HANDBOOK.md must document the current DSS PAdES-BASELINE-T fixture result." >&2
 	fail=1
 fi
 
-if rg -n 'Acrobat/DSS coverage|DSS validation coverage when available|DSS remains skipped|DSS CLI tooling is not installed' README.md DEVELOPER_HANDBOOK.md >"$go_scope_matches"; then
-	echo "release-scope: README.md/DEVELOPER_HANDBOOK.md contain stale DSS validation status." >&2
+if rg -n 'Acrobat/DSS coverage|DSS validation coverage when available|DSS remains skipped|DSS CLI tooling is not installed' README.md docs/DEVELOPER_HANDBOOK.md >"$go_scope_matches"; then
+	echo "release-scope: README.md/docs/DEVELOPER_HANDBOOK.md contain stale DSS validation status." >&2
 	cat "$go_scope_matches" >&2
 	fail=1
 fi

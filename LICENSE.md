@@ -84,7 +84,7 @@ texts, see [`LICENSES.md`](LICENSES.md).
 GoPMgr links Go modules and npm packages that carry their own permissive or
 copyleft licenses (for example MIT, BSD-3-Clause, Apache-2.0, and MPL-2.0).
 Those licenses are compatible with distributing GoPMgr under
-GPL-3.0-or-later. See [`DEPENDENCIES.md`](DEPENDENCIES.md) for the dependency
+GPL-3.0-or-later. See [`DEPENDENCIES.md`](docs/DEPENDENCIES.md) for the dependency
 policy and the tools used to audit license compatibility.
 
 ## Verifying compliance

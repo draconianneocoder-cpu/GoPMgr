@@ -43,4 +43,4 @@ so the rest of the application remains buildable without the analytical engine.
 
 Run the `internal/analytics` tests with the applicable build tags and verify a
 production build before shipping. Dependency and packaging requirements are in
-[DEPENDENCIES.md](../../DEPENDENCIES.md).
+[DEPENDENCIES.md](../DEPENDENCIES.md).

@@ -47,7 +47,7 @@ fail() {
 # check_pkg_heading rejects it as an unrecognized dual-build heading.
 make_fixture() {
 	local root=$1
-	mkdir -p "$root/internal/foo" "$root/internal/analytics" "$root/scripts" "$root/tools/thing"
+	mkdir -p "$root/internal/foo" "$root/internal/analytics" "$root/scripts" "$root/tools/thing" "$root/docs"
 
 	cat >"$root/go.mod" <<'EOF'
 module gopmgr
@@ -142,7 +142,7 @@ func TestNegate(t *testing.T) {
 }
 EOF
 
-	cat >"$root/TEST_COVERAGE_LEDGER.md" <<'EOF'
+	cat >"$root/docs/TEST_COVERAGE_LEDGER.md" <<'EOF'
 # Fixture ledger
 
 ## Purpose
@@ -203,7 +203,7 @@ fi
 root_drift="$test_root/root-drift"
 make_fixture "$root_drift"
 perl -0pi -e 's/Root package \(`gopmgr`, package `main`\) — 100\.0%/Root package (`gopmgr`, package `main`) — 50.0%/' \
-	"$root_drift/TEST_COVERAGE_LEDGER.md"
+	"$root_drift/docs/TEST_COVERAGE_LEDGER.md"
 expect_failure "$root_drift" "gopmgr: heading claims 50.0%"
 
 # --- `scripts` heading drift: exercises the parenthetical-before-em-dash
@@ -212,14 +212,14 @@ expect_failure "$root_drift" "gopmgr: heading claims 50.0%"
 scripts_drift="$test_root/scripts-drift"
 make_fixture "$scripts_drift"
 perl -0pi -e 's/config-check helper\) — 100\.0%/config-check helper) — 50.0%/' \
-	"$scripts_drift/TEST_COVERAGE_LEDGER.md"
+	"$scripts_drift/docs/TEST_COVERAGE_LEDGER.md"
 expect_failure "$scripts_drift" "scripts: heading claims 50.0%"
 
 # --- missing heading: a package with live coverage (`tools/thing`) but no
 # ledger heading at all must fail, not pass by omission.
 missing_heading="$test_root/missing-heading"
 make_fixture "$missing_heading"
-perl -0pi -e 's/\n## `tools\/thing` — 100\.0%\n//' "$missing_heading/TEST_COVERAGE_LEDGER.md"
+perl -0pi -e 's/\n## `tools\/thing` — 100\.0%\n//' "$missing_heading/docs/TEST_COVERAGE_LEDGER.md"
 expect_failure "$missing_heading" "tools/thing: has live coverage"
 
 # --- unrecognized heading format: garbling a heading past what
@@ -230,7 +230,7 @@ expect_failure "$missing_heading" "tools/thing: has live coverage"
 garbled="$test_root/garbled-heading"
 make_fixture "$garbled"
 perl -0pi -e 's/## `internal\/foo` — 100\.0%/## internal foo coverage is fine, trust me/' \
-	"$garbled/TEST_COVERAGE_LEDGER.md"
+	"$garbled/docs/TEST_COVERAGE_LEDGER.md"
 if output="$(GOPMGR_REPO_ROOT="$garbled" bash "$checker" 2>&1)"; then
 	fail "garbled heading: expected failure, got success: $output"
 fi

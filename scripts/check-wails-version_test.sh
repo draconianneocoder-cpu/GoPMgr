@@ -38,13 +38,13 @@ EOF
 	cat >"$root/AGENTS.md" <<'EOF'
 go.mod pins Go 1.26.5 and Wails v2.13.0.
 EOF
-	cat >"$root/DEPENDENCIES.md" <<'EOF'
+	cat >"$root/docs/DEPENDENCIES.md" <<'EOF'
 Wails: v2.13.0.
 EOF
 	cat >"$root/docs/INSTALL.md" <<'EOF'
 go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
 EOF
-	cat >"$root/DEVELOPER_HANDBOOK.md" <<'EOF'
+	cat >"$root/docs/DEVELOPER_HANDBOOK.md" <<'EOF'
 Current runtime: **Wails v2.13.0**.
 Install with go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0.
 

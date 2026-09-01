@@ -23,7 +23,7 @@ instructions and platform limitations are in [docs/INSTALL.md](docs/INSTALL.md).
   recovery codes, and tamper-evident audit records.
 - PDF/A-3 export and optional PAdES digital signing.
 
-See [VISION.md](VISION.md) for product principles and [ROADMAP.md](ROADMAP.md)
+See [VISION.md](docs/VISION.md) for product principles and [ROADMAP.md](docs/ROADMAP.md)
 for planned work.
 
 ## Build and verify
@@ -54,7 +54,7 @@ make check-release
 It verifies configuration, tool pins, licenses (when the `reuse` CLI is
 installed — it skips rather than fails if not), frontend checks, release
 claims, memory safety, race tests, production build inputs, encrypted database
-behavior, PDF/A, and PAdES regression harnesses. See [TESTING.md](TESTING.md)
+behavior, PDF/A, and PAdES regression harnesses. See [TESTING.md](docs/TESTING.md)
 for focused commands and [docs/release-preflight.md](docs/release-preflight.md)
 for the release checklist.
 
@@ -71,7 +71,7 @@ metadata, not project records. If the password and all valid recovery codes
 are lost, encrypted projects cannot be recovered.
 
 Use whole-device encryption as well: FileVault on macOS, BitLocker on Windows,
-or LUKS on Linux. See [SECURITY.md](SECURITY.md) and
+or LUKS on Linux. See [SECURITY.md](docs/SECURITY.md) and
 [ADR-001](docs/design/ADR-001-database-encryption-at-rest.md) for the threat
 model and migration rules.
 
@@ -87,11 +87,11 @@ making trust claims.
 
 ## Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md): runtime and package boundaries.
-- [DEVELOPER_HANDBOOK.md](DEVELOPER_HANDBOOK.md): development conventions and
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md): runtime and package boundaries.
+- [DEVELOPER_HANDBOOK.md](docs/DEVELOPER_HANDBOOK.md): development conventions and
   extension guidance.
-- [TESTING.md](TESTING.md): test and release gates.
-- [DEPENDENCIES.md](DEPENDENCIES.md): dependency and tool policy.
+- [TESTING.md](docs/TESTING.md): test and release gates.
+- [DEPENDENCIES.md](docs/DEPENDENCIES.md): dependency and tool policy.
 - [docs/user-guide.md](docs/user-guide.md): user workflows.
 - [docs/branding.md](docs/branding.md): Bobby Beaver identity, asset placement, platform behavior, and attribution.
 - [docs/INSTALL.md](docs/INSTALL.md): installation and source-run guidance.

@@ -49,7 +49,7 @@ make_fixture() {
 	local root=$1
 	mkdir -p "$root/internal/foo" "$root/frontend/src/lib" \
 		"$root/node_modules/some-dep" "$root/frontend/coverage/lcov" \
-		"$root/.claude/worktrees/branch-x" "$root/.git/hooks"
+		"$root/.claude/worktrees/branch-x" "$root/.git/hooks" "$root/docs"
 
 	: >"$root/internal/foo/foo_test.go"
 	: >"$root/frontend/src/lib/session.test.ts"
@@ -65,7 +65,7 @@ make_fixture() {
 	: >"$root/.claude/worktrees/branch-x/stale_test.go"
 	: >"$root/.git/hooks/hook.test.ts"
 
-	cat >"$root/TEST_COVERAGE_LEDGER.md" <<'EOF'
+	cat >"$root/docs/TEST_COVERAGE_LEDGER.md" <<'EOF'
 # Fixture ledger
 
 foo_test.go covers internal/foo.

@@ -52,7 +52,7 @@ install_surfaces=(
 	.github/workflows/release.yml
 	README.md
 	docs/INSTALL.md
-	DEVELOPER_HANDBOOK.md
+	docs/DEVELOPER_HANDBOOK.md
 	scripts/check-release.sh
 	scripts/package-macos-installer.sh
 )
@@ -63,8 +63,8 @@ done
 
 require_contains README.md "Wails: the project uses Wails ${module_version}."
 require_contains AGENTS.md "Wails ${module_version}."
-require_contains DEPENDENCIES.md "Wails: ${module_version}."
-require_contains DEVELOPER_HANDBOOK.md "**Wails ${module_version}**"
+require_contains docs/DEPENDENCIES.md "Wails: ${module_version}."
+require_contains docs/DEVELOPER_HANDBOOK.md "**Wails ${module_version}**"
 require_contains docs/branding.md "Wails ${module_version%.*}"
 require_contains build/windows/installer/project.nsi "GoPMgr-owned Wails ${module_version%.*} NSIS entrypoint"
 

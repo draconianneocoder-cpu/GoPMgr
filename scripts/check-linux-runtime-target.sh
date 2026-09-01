@@ -64,7 +64,7 @@ require_not_contains build/linux/nfpm.yaml "webkit2gtk3"
 
 release_docs=(
 	README.md
-	ROADMAP.md
+	docs/ROADMAP.md
 	docs/INSTALL.md
 	docs/release-preflight.md
 )
