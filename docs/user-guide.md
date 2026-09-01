@@ -151,8 +151,12 @@ per-project settings:
 - Default export theme for new projects.
 - Auto-save on/off and interval.
 - Version and data-location information.
-- The Beta Center, signed-update status, current release limitations, logs,
-  and privacy-safe bug-report generation.
+- The Beta Center: signed-update status, an opt-in toggle to check for
+  updates automatically on launch (off by default), a manual "Check for
+  updates" action, and — once a newer signed build is available — a
+  "Download & Open Installer" action that verifies the download before
+  handing it to the OS's own installer. Current release limitations, logs,
+  and privacy-safe bug-report generation are also here.
 
 ## Stakeholders, Timeline, Budget, and Cost Control
 

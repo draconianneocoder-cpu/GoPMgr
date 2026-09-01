@@ -345,7 +345,7 @@ The table groups them by concern; regenerate this list from `ls internal/` and
 | `internal/sigma` | Namespace directory (not itself a package) for the Six Sigma/DMAIC feature pack — see `sigma/domain`, `sigma/service`, `sigma/stats`, `sigma/tollgate`, `sigma/charts` |
 | `internal/applog` | Process-level diagnostic logging and fatal-startup handling for the Wails GUI |
 | `internal/cli` | GNU-style command-line flag parsing for the headless/CLI entry points |
-| `internal/update` | Fetches the signed release manifest over HTTPS and checks for a newer version (Ed25519-pinned) |
+| `internal/update` | Fetches the signed release manifest over HTTPS and checks for a newer version (Ed25519-pinned); on request, downloads and SHA-256-verifies the matching artifact and hands it to the OS's own installer UX |
 
 `internal/sigma` has no `package sigma` declaration at its root — treat
 it as a directory of five independent subpackages, not a single import.

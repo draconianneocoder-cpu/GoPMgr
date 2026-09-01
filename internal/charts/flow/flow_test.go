@@ -54,7 +54,7 @@ func TestParseWorkflow_ValidDocument(t *testing.T) {
 	}
 }
 
-// ----- ParseActivity / EncodeActivity -----
+// ----- ParseActivity -----
 
 func TestParseActivity_Empty(t *testing.T) {
 	doc, err := ParseActivity("")

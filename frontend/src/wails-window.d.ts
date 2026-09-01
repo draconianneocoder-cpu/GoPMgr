@@ -217,7 +217,7 @@ declare global {
           ImportDatasetForAnalysis: () => Promise<Dataset>;
           ExportProjectICS: (includeHolidays: boolean) => Promise<string>;
 
-          // ----- V2.x: Remaining-TODOs Slice -----
+          // ----- V2.x: Account Recovery, Updates & Additional Export Formats -----
           ChooseCertFile: () => Promise<string>;
           IssueRecoveryCodes: () => Promise<string[]>;
           RemainingRecoveryCodes: () => Promise<number>;

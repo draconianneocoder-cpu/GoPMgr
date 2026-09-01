@@ -12,8 +12,9 @@
 // templates.go. Each entry binds a Kind to its display metadata
 // (name, phase, description) and a Definition that specifies the
 // JSON shape of its content. The validator and renderer dispatch on
-// Kind. The frontend reads All() to populate its "new document" menu
-// and ByPhase() to organise documents by lifecycle phase.
+// Kind. Callers read All() to populate a "new document" menu; each
+// returned Definition carries its own Phase field so a caller can
+// group or filter by lifecycle phase without a dedicated lookup.
 package documents
 
 // Kind is the discriminator stored in db.documents.kind.

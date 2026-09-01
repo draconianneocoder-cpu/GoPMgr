@@ -49,15 +49,6 @@ func ParseActivity(raw string) (ActivityDocument, error) {
 	return doc, nil
 }
 
-// EncodeActivity serialises back to JSON.
-func EncodeActivity(doc ActivityDocument) (string, error) {
-	b, err := json.Marshal(doc)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
 // LayoutActivity produces a top-to-bottom activity layout with
 // swimlanes drawn as horizontal columns.
 //

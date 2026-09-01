@@ -383,8 +383,10 @@ func shiftY(l *Layout, dy float64) {
 	}
 }
 
-// NewLayeredNode is a convenience constructor used by the kind-specific
-// wrappers to create a node with a fresh ID and a sensible label.
+// NewLayeredNode is a convenience constructor for a node with a fresh
+// ID and a sensible label. Kept for its own test coverage; production
+// code currently constructs LayeredNode{} literals directly (see
+// app_charts.go) rather than calling this.
 func NewLayeredNode(id, label string) LayeredNode {
 	return LayeredNode{ID: id, Label: label}
 }

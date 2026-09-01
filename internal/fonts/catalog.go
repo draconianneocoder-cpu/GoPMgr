@@ -274,12 +274,3 @@ func CatalogFamily(name string) (FontFamily, bool) {
 	}
 	return FontFamily{}, false
 }
-
-// FamilyNames returns every bundled family name in catalog order.
-func FamilyNames() []string {
-	out := make([]string, 0, len(Catalog))
-	for _, f := range Catalog {
-		out = append(out, f.Name)
-	}
-	return out
-}
