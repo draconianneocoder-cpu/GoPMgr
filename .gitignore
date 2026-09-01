@@ -109,8 +109,11 @@ temp_snapshot.db
 /.agent_memory/
 
 # Claude Code project directory (machine-specific state, local settings,
-# worktrees, session data). Not for public consumption.
-/.claude/
+# worktrees, session data). Not for public consumption. Exception:
+# .claude/skills/ holds portable, repo-relevant reference material (not
+# machine state) and is tracked deliberately.
+/.claude/*
+!/.claude/skills/
 
 # OS / editor
 .DS_Store

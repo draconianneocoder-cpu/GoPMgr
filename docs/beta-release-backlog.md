@@ -224,6 +224,14 @@ That result took six live-GUI cycles to reach because the first five, all run un
   re-running `deadcode` and seeing ~28-30 results should read this entry
   before assuming they're all newly-orphaned code; a genuinely new
   unreachable function would raise the count above this baseline.
+- OWASP Cornucopia integration (2026-09-01): a project skill
+  (`.claude/skills/cornucopia-risk-cards/`) folds the deck's
+  GoPMgr-relevant cards into the risk-matrix step of security-relevant
+  work. A review against the 7 relevant suits found and fixed a real gap
+  (GitHub Actions pinned by mutable tag rather than commit SHA) and closed
+  the previously-open FRE4 (frontend DOM-XSS) question by confirming no
+  `{@html}`/`innerHTML`/`eval` sink exists anywhere in the frontend.
+  Findings and suit-by-suit scope: `docs/cornucopia-elicitation-2026-09-01.md`.
 
 - Use `Planned`, `In progress`, `Blocked`, `Done`, or `Deferred`.
 - A completed item must link to current tests or an archived release artifact;
