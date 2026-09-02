@@ -56,7 +56,7 @@ fi
 # internal/analytics is the only heading with a second, -tags duckdb
 # number, so only that package is re-run under the duckdb tag rather than
 # paying for a full second suite run here (coverage-ratchet.sh already
-# covers the full duckdb build elsewhere in `make verify`).
+# covers the full duckdb build when run manually).
 echo "check-coverage-ledger-drift: running go test -tags duckdb ./internal/analytics/... -cover..." >&2
 if ! go test -tags duckdb ./internal/analytics/... -cover >"$duckdb_analytics_log" 2>&1; then
 	echo "check-coverage-ledger-drift: go test -tags duckdb ./internal/analytics/... -cover failed:" >&2

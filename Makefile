@@ -127,7 +127,7 @@ coverage-ledger-current: ## Fail if a *_test.go/*.{test,spec}.{ts,js} file exist
 	@bash scripts/check-coverage-ledger-current_test.sh
 	@bash scripts/check-coverage-ledger-current.sh
 
-coverage-ledger-drift: ## Fail if a package-coverage heading in TEST_COVERAGE_LEDGER.md no longer matches live `go test -cover` output. NOT in `verify`: like coverage-ratchet, it runs a -tags duckdb pass CI's verify job has no toolchain for; run manually or once CI installs the duckdb toolchain.
+coverage-ledger-drift: ## Fail if a package-coverage heading in TEST_COVERAGE_LEDGER.md no longer matches live `go test -cover` output. Runs separately from local `verify` because it includes the DuckDB CGO coverage pass; the blocking CI assurance job runs it on the pinned macOS baseline used by the ledger.
 	@bash scripts/check-coverage-ledger-drift_test.sh
 	@bash scripts/check-coverage-ledger-drift.sh
 
@@ -139,7 +139,7 @@ no-raw-import-in-tests: ## Fail if a frontend *.test.ts/*.spec.ts file imports a
 	@bash scripts/check-no-raw-import-in-tests_test.sh
 	@bash scripts/check-no-raw-import-in-tests.sh
 
-coverage-ratchet: ## Fail only if statement coverage drops below its recorded high-water mark (Go default, Go duckdb, frontend -- tracked independently). NOT in `verify`: CI's verify job builds with GO_TEST_TAGS=webkit2_41 only and installs no DuckDB CGO toolchain, so a duckdb-tagged coverage run would hard-fail there today. Run manually; wire into verify once CI installs the duckdb toolchain, or in Phase 7 when this converts to a hard 100% floor.
+coverage-ratchet: ## Fail only if statement coverage drops below its recorded high-water mark (Go default, Go duckdb, frontend -- tracked independently). Remains a manual signal; the CI assurance job currently enforces ledger-heading drift, not high-water-mark policy.
 	@bash scripts/coverage-ratchet.sh
 
 coverage-ratchet-update: ## Re-run the ratchet and record any improved marks in coverage-baseline.json. Run this after adding tests; never after a real regression.

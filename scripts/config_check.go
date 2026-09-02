@@ -38,7 +38,7 @@ type configSpec struct {
 
 var supportedConfigs = []configSpec{
 	{path: ".github/dependabot.yml", format: formatYAML, validate: validateDependabot},
-	{path: ".github/workflows/ci.yml", format: formatYAML, validate: validateWorkflow},
+	{path: ".github/workflows/ci.yml", format: formatYAML, validate: validateCIAssuranceWorkflow},
 	{path: ".github/workflows/release.yml", format: formatYAML, validate: validateWorkflow},
 	{path: ".golangci.yml", format: formatYAML, validate: validateGolangCI},
 	{path: "build/linux/nfpm.yaml", format: formatYAML, validate: validateNFPM},
@@ -243,6 +243,123 @@ func validateWorkflow(config map[string]any) error {
 		return fmt.Errorf("jobs must contain at least one job")
 	}
 	return nil
+}
+
+func validateCIAssuranceWorkflow(config map[string]any) error {
+	if err := validateWorkflow(config); err != nil {
+		return err
+	}
+
+	jobs, ok := stringMap(config["jobs"])
+	if !ok {
+		return fmt.Errorf("jobs must be a mapping")
+	}
+	assuranceRaw, ok := jobs["assurance"]
+	if !ok {
+		return fmt.Errorf("jobs.assurance is required")
+	}
+	assurance, ok := stringMap(assuranceRaw)
+	if !ok {
+		return fmt.Errorf("jobs.assurance must be a mapping")
+	}
+	if _, ok := assurance["if"]; ok {
+		return fmt.Errorf("jobs.assurance must not define if")
+	}
+	if value, ok := assurance["continue-on-error"]; ok && value != false {
+		return fmt.Errorf("jobs.assurance continue-on-error must be absent or false")
+	}
+	if runsOn, ok := assurance["runs-on"].(string); !ok || runsOn != "macos-15" {
+		return fmt.Errorf("jobs.assurance must run on macos-15")
+	}
+
+	steps, ok := assurance["steps"].([]any)
+	if !ok || len(steps) == 0 {
+		return fmt.Errorf("jobs.assurance.steps must contain at least one step")
+	}
+	var stepsWithRuns []map[string]any
+	for _, rawStep := range steps {
+		step, ok := stringMap(rawStep)
+		if !ok {
+			return fmt.Errorf("jobs.assurance.steps entries must be mappings")
+		}
+		if _, ok := step["if"]; ok {
+			return fmt.Errorf("jobs.assurance steps must not define if")
+		}
+		if value, ok := step["continue-on-error"]; ok && value != false {
+			return fmt.Errorf("jobs.assurance steps continue-on-error must be absent or false")
+		}
+		stepsWithRuns = append(stepsWithRuns, step)
+	}
+
+	if !hasExactRun(stepsWithRuns, "make license-check", "") {
+		return fmt.Errorf("jobs.assurance must have an exact make license-check step")
+	}
+	if !hasExactRun(stepsWithRuns, "make coverage-ledger-drift", "") {
+		return fmt.Errorf("jobs.assurance must have an exact make coverage-ledger-drift step")
+	}
+	if !hasExactRun(stepsWithRuns, "npm ci", "frontend") {
+		return fmt.Errorf("jobs.assurance must have an exact frontend npm ci step")
+	}
+	if !hasExactRun(stepsWithRuns, "npm run build", "frontend") {
+		return fmt.Errorf("jobs.assurance must have an exact frontend npm run build step")
+	}
+	if !hasRunLine(stepsWithRuns, "pipx install reuse==6.2.0") {
+		return fmt.Errorf("jobs.assurance must install reuse==6.2.0")
+	}
+	if !hasRunLine(stepsWithRuns, `echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"`) {
+		return fmt.Errorf("jobs.assurance must add the pinned REUSE binary path")
+	}
+	if !hasUsesPrefix(stepsWithRuns, "actions/setup-go@") {
+		return fmt.Errorf("jobs.assurance must set up Go")
+	}
+	if !hasUsesPrefix(stepsWithRuns, "actions/setup-node@") {
+		return fmt.Errorf("jobs.assurance must set up Node")
+	}
+	return nil
+}
+
+func hasExactRun(steps []map[string]any, command, workingDirectory string) bool {
+	for _, step := range steps {
+		run, ok := step["run"].(string)
+		if !ok || strings.TrimSpace(run) != command {
+			continue
+		}
+		if workingDirectory == "" {
+			if _, ok := step["working-directory"]; !ok {
+				return true
+			}
+			continue
+		}
+		if directory, ok := step["working-directory"].(string); ok && directory == workingDirectory {
+			return true
+		}
+	}
+	return false
+}
+
+func hasRunLine(steps []map[string]any, required string) bool {
+	for _, step := range steps {
+		run, ok := step["run"].(string)
+		if !ok {
+			continue
+		}
+		for _, line := range strings.Split(run, "\n") {
+			if strings.TrimSpace(line) == required {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hasUsesPrefix(steps []map[string]any, prefix string) bool {
+	for _, step := range steps {
+		uses, ok := step["uses"].(string)
+		if ok && strings.HasPrefix(uses, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func validateGolangCI(config map[string]any) error {

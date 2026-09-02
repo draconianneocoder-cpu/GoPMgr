@@ -79,6 +79,54 @@ func TestValidateRepositoryConfigs(t *testing.T) {
 			},
 			wantErrText: `.golangci.yml: expected version "2"`,
 		},
+		{
+			name: "rejects a non-blocking CI assurance job",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
+					string(files[".github/workflows/ci.yml"]),
+					"  assurance:\n    name: Assurance checks",
+					"  assurance:\n    continue-on-error: true\n    name: Assurance checks",
+					1,
+				))
+			},
+			wantErrText: ".github/workflows/ci.yml: jobs.assurance continue-on-error must be absent or false",
+		},
+		{
+			name: "rejects CI assurance without the ledger drift gate",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
+					string(files[".github/workflows/ci.yml"]),
+					"      - name: Coverage ledger drift\n        run: make coverage-ledger-drift\n",
+					"      - name: Coverage ledger drift\n        run: echo skipped\n",
+					1,
+				))
+			},
+			wantErrText: ".github/workflows/ci.yml: jobs.assurance must have an exact make coverage-ledger-drift step",
+		},
+		{
+			name: "rejects a lookalike license gate",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
+					string(files[".github/workflows/ci.yml"]),
+					"        run: make license-check\n",
+					"        run: echo 'make license-check'\n",
+					1,
+				))
+			},
+			wantErrText: ".github/workflows/ci.yml: jobs.assurance must have an exact make license-check step",
+		},
+		{
+			name: "rejects a conditional assurance gate",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
+					string(files[".github/workflows/ci.yml"]),
+					"      - name: Coverage ledger drift\n",
+					"      - name: Coverage ledger drift\n        if: \"${{ false }}\"\n",
+					1,
+				))
+			},
+			wantErrText: ".github/workflows/ci.yml: jobs.assurance steps must not define if",
+		},
 	}
 
 	for _, tt := range tests {
@@ -152,6 +200,29 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps: []
+  assurance:
+    name: Assurance checks
+    runs-on: macos-15
+    steps:
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Install pinned REUSE
+        run: |
+          brew install pipx
+          pipx install reuse==6.2.0
+          echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
+      - uses: actions/setup-node@v7
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: REUSE check
+        run: make license-check
+      - name: Coverage ledger drift
+        run: make coverage-ledger-drift
 `),
 		".github/workflows/release.yml": []byte(`
 name: Release

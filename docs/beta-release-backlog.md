@@ -84,6 +84,14 @@ That result took six live-GUI cycles to reach because the first five, all run un
 
 ## P2: follow after beta stability
 
+- CI recurrence guards — Implemented locally 2026-09-02: the failing-on-error
+  GitHub Actions `assurance` job runs `make license-check` and
+  `make coverage-ledger-drift` on the pinned macOS ledger baseline, after
+  installing pinned REUSE tooling and building the frontend embed.
+  `make config-check` semantically rejects removal, lookalike replacement,
+  conditional skipping, non-blocking changes, or missing setup for this job.
+  Hosted execution and branch-protection required-status configuration remain
+  unverified; the separate release-validation expansion item remains open.
 - Project Cost Control ledger scope: [the current project-local boundary](design/project-cost-ledger-scope.md)
   defines the ordinary product. Keep legacy Budget as separate context, then
   track Cost Control expenses, inputs, materials, and direct/indirect overhead

@@ -1712,14 +1712,16 @@ Run it after documentation changes that affect those claims.
 
 Platform packaging has platform-specific evidence requirements.
 
-Regular CI (`.github/workflows/ci.yml`, on push/PR) runs entirely on
-`ubuntu-26.04` — it validates `make verify`, linting, the PAdES harness,
-vulnerability scanning, and a Linux Wails build, but it never builds or
-runs the macOS or Windows installer. The three-platform packaging matrix
+Regular CI (`.github/workflows/ci.yml`, on push/PR) runs its main verification
+and build jobs on `ubuntu-26.04`, with a separate pinned `macos-15` assurance
+job for the Darwin coverage ledger and REUSE checks. It validates `make verify`,
+linting, the PAdES harness, vulnerability scanning, and a Linux Wails build, but
+it never builds or runs the macOS or Windows installer. The three-platform
+packaging matrix
 (Linux `.deb`/`.rpm`, macOS `.dmg`, Windows `.exe`) only runs in
 `.github/workflows/release.yml`, triggered by a `v*` tag push. A change
-that only passed regular CI has not been exercised on macOS or Windows at
-all.
+A change that only passed regular CI has not been exercised through the macOS or
+Windows installer paths, and has not been exercised on Windows at all.
 
 The Linux packaging job specifically stays pinned to `ubuntu-24.04` rather
 than following the rest of CI onto `ubuntu-26.04`: GitHub's `ubuntu-26.04`
@@ -1979,7 +1981,7 @@ reason.
 | `make code-map` | Regenerate first-party package dependency/API maps |
 | `make code-map-current` | Fail if checked-in code map is stale |
 | `make coverage-ledger-current` | Fail if `TEST_COVERAGE_LEDGER.md` disagrees with the live test-file set |
-| `make coverage-ledger-drift` | Fail if a ledger coverage-percentage heading no longer matches live `go test -cover` output (not in `verify`; needs the DuckDB toolchain) |
+| `make coverage-ledger-drift` | Fail if a ledger coverage-percentage heading no longer matches live `go test -cover` output (separate from local `verify`; blocking CI assurance job runs it on the pinned macOS ledger baseline) |
 | `make coverage-ratchet` | Check recorded coverage high-water marks (not in `verify`; same DuckDB-toolchain reason) |
 | `make coverage-ratchet-update` | Record legitimate improved coverage marks |
 

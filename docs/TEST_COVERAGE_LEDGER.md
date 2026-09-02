@@ -969,7 +969,7 @@ Local multi-user account system: Argon2id-backed accounts, ADR-001 DEK hierarchy
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
-| `config_check_test.go` | 2 | Repository config-file validation, version-control-candidate path selection | fixture | Backs the `make config-check` gate — must correctly identify which config paths are actually tracked before validating them. |
+| `config_check_test.go` | 2 | Repository config-file validation, version-control-candidate path selection, and semantic CI assurance-job contract (pinned macOS baseline, pinned REUSE, frontend embed preparation, exact license and coverage-ledger commands, and no conditional/non-blocking bypass) | fixture | Backs the `make config-check` gate — must correctly identify which config paths are actually tracked before validating them, and must fail closed if the CI recurrence guards are removed or made non-blocking. |
 | `scripts/pades-lock_test.sh` | 1 shell matrix | PAdES directory-lock acquisition success and bounded abandoned-lock refusal | shell unit | Proves a lock records its owner on success, an existing lock is not reclaimed, and a zero-wait acquisition fails with an actionable timeout rather than polling forever. The concurrent PAdES harness separately exercises mutual exclusion. |
 
 ## `tools/update-manifest` — 52.5%

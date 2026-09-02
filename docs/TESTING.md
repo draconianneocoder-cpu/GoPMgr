@@ -131,8 +131,20 @@ GOPMGR_RELEASE_TAG=v1.1.0 make tag-preflight
 `make config-check` runs table-driven malformed-input regressions, parses every
 tracked YAML and TOML file, rejects duplicate YAML keys, checks required
 top-level structures, and fails if a new configuration has not been explicitly
-classified. GitHub Actions is the CI authority; the retired `.gitlab-ci.yml`
-must not be reintroduced accidentally.
+classified. It also checks the CI assurance job's pinned macOS runner, pinned
+REUSE tool, frontend embed preparation, and blocking coverage/license commands.
+GitHub Actions is the CI authority; the retired `.gitlab-ci.yml` must
+not be reintroduced accidentally.
+
+The failing-on-error `assurance` job in `.github/workflows/ci.yml` runs `make
+license-check` and `make coverage-ledger-drift` on the pinned `macos-15` runner,
+matching the Darwin/macOS coverage baseline recorded by the ledger. It installs
+the pinned `reuse==6.2.0` tool and builds `frontend/dist` for the root package's
+`go:embed`. The job is separate from local `make verify` because the ledger-drift
+check also runs the DuckDB-tagged analytics coverage pass; neither check is
+allowed to use `continue-on-error` or a conditional skip. Branch protection must
+require the assurance status if it should block merges; hosted execution and
+that repository setting remain release-validation evidence, not local evidence.
 
 `make installer-tool-pins` first mutates isolated release-workflow fixtures to
 prove that mutable nFPM installs, unversioned NSIS installs, unused
