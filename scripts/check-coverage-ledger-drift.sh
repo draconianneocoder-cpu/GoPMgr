@@ -12,8 +12,10 @@
 # internal/pdfmeta's heading three points stale (claimed 96.4%, actual
 # 97.6%), left behind when a landed increment's own commit message got
 # the number right but the ledger heading update didn't land. This script
-# is that prevention: it runs the real Go test suite and fails on any
-# heading whose claimed percentage no longer matches.
+# is that prevention: it runs the explicit first-party Go package set and
+# fails on any heading whose claimed percentage no longer matches. The
+# explicit scope prevents Go packages embedded in frontend/node_modules
+# from becoming executable test inputs after `npm ci`.
 #
 # Deliberately does NOT silently skip a heading it can't parse. A heading
 # in a format this script doesn't recognize is exactly the kind of drift
@@ -46,9 +48,9 @@ mkdir -p "$ROOT/.tmp"
 default_log="$ROOT/.tmp/coverage-ledger-drift-default.log"
 duckdb_analytics_log="$ROOT/.tmp/coverage-ledger-drift-duckdb-analytics.log"
 
-echo "check-coverage-ledger-drift: running go test ./... -cover (default build)..." >&2
-if ! go test ./... -cover >"$default_log" 2>&1; then
-	echo "check-coverage-ledger-drift: go test ./... -cover failed:" >&2
+echo "check-coverage-ledger-drift: running go test -cover . ./internal/... ./scripts ./tools/... (default build)..." >&2
+if ! go test -cover . ./internal/... ./scripts ./tools/... >"$default_log" 2>&1; then
+	echo "check-coverage-ledger-drift: go test -cover . ./internal/... ./scripts ./tools/... failed:" >&2
 	cat "$default_log" >&2
 	exit 1
 fi
@@ -225,8 +227,8 @@ for heading_text in all_heading_re.findall(content):
 # coverage has a heading at all. Without this, deleting a heading (or
 # adding a new package and never giving it one) passes silently -- the
 # same pass-by-omission failure mode this script exists to close, just at
-# the section level instead of the row level. Scoped to the full universe
-# this script's own `go test ./...` run covers: internal/*, the root
+# the section level instead of the row level. Scoped to the explicit universe
+# this script's first-party `go test` command covers: internal/*, the root
 # `gopmgr` package, `scripts`, and `tools/*`. Frontend coverage is a
 # different tool's output (vitest, not `go test`) and is out of scope
 # here by design (see coverage-frontend.sh), not omission.

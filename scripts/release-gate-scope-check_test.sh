@@ -21,6 +21,7 @@ new_fixture() {
 	local fixture="$TEST_ROOT/$name"
 	git clone -q --no-hardlinks "$ROOT" "$fixture"
 	cp "$CHECK" "$fixture/scripts/release-gate-scope-check.sh"
+	cp "$ROOT/scripts/check-coverage-ledger-drift.sh" "$fixture/scripts/check-coverage-ledger-drift.sh"
 	cp "$ROOT/scripts/check-help-guide-current.sh" "$fixture/scripts/check-help-guide-current.sh"
 	mkdir -p "$fixture/frontend/dist"
 	: >"$fixture/frontend/dist/index.html"
@@ -53,14 +54,24 @@ GOPMGR_RELEASE_SCOPE_SKIP_SELF_TEST=1 \
 
 unscoped_command="$(new_fixture unscoped-command)"
 printf '%s\n' 'quality-check:' $'\tgo test ./...' >>"$unscoped_command/Makefile"
-expect_failure "$unscoped_command" "Go quality gates must target"
+expect_failure "$unscoped_command" "Go quality gates must use explicit first-party package roots"
 
 unscoped_script="$(new_fixture unscoped-script)"
 printf '%s\n' 'go test ./...' >"$unscoped_script/scripts/quality-check.sh"
-expect_failure "$unscoped_script" "Go quality gates must target"
+expect_failure "$unscoped_script" "Go quality gates must use explicit first-party package roots"
 
 unscoped_coverage_script="$(new_fixture unscoped-coverage-script)"
 printf '%s\n' 'govulncheck ./...' >>"$unscoped_coverage_script/scripts/check-coverage-ledger-drift.sh"
-expect_failure "$unscoped_coverage_script" "Go quality gates must target"
+expect_failure "$unscoped_coverage_script" "Go quality gates must use explicit first-party package roots"
+
+unscoped_ledger_test="$(new_fixture unscoped-ledger-test-trailing-cover)"
+perl -0pi -e 's/if ! go test -cover \. \.\/internal\/\.\.\. \.\/scripts \.\/tools\/\.\.\./if ! go test .\/... -cover/' \
+	"$unscoped_ledger_test/scripts/check-coverage-ledger-drift.sh"
+expect_failure "$unscoped_ledger_test" "Go quality gates must use explicit first-party package roots"
+
+unscoped_ledger_test="$(new_fixture unscoped-ledger-test-leading-cover)"
+perl -0pi -e 's/if ! go test -cover \. \.\/internal\/\.\.\. \.\/scripts \.\/tools\/\.\.\./if ! go test -cover .\/.../' \
+	"$unscoped_ledger_test/scripts/check-coverage-ledger-drift.sh"
+expect_failure "$unscoped_ledger_test" "Go quality gates must use explicit first-party package roots"
 
 echo "release-gate-scope-check tests passed."

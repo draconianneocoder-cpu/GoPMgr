@@ -33,13 +33,15 @@ tracked `coverage-baseline.json`. Reproduce with
 is recorded beside `scripts/coverage-exclude-go.txt`.
 
 `scripts/check-coverage-ledger-drift.sh` (2026-08-10; widened 2026-08-11;
-run via `make coverage-ledger-drift`, standalone — not in `make verify`,
-same DuckDB-toolchain reason as `coverage-ratchet` below) checks that
-every package-coverage heading above still matches live `go test -cover`
-output — this covers every `internal/*` heading, the root `gopmgr`
+run via `make coverage-ledger-drift` and the failing-on-error macOS CI assurance job,
+standalone — not in local `make verify`, same DuckDB-toolchain reason as
+`coverage-ratchet` below) checks that every package-coverage heading above
+still matches live `go test -cover` output from explicit first-party package
+roots — this covers every `internal/*` heading, the root `gopmgr`
 package, `scripts`, and `tools/*`, not just `internal/*` as the original
-2026-08-10 version did — and that every package in that set with live
-coverage has a matching heading at all. Any heading it can't classify
+2026-08-10 version did, while excluding incidental Go packages under
+`frontend/node_modules` — and that every package in that set with live coverage
+has a matching heading at all. Any heading it can't classify
 into a known package-coverage, non-package-prose, or externally-tracked
 (Frontend, checked by `coverage-frontend.sh` instead) bucket is a hard
 failure, not a silent skip. It does not check anything else in this
@@ -965,11 +967,11 @@ Local multi-user account system: Argon2id-backed accounts, ADR-001 DEK hierarchy
 
 ---
 
-## `scripts` (package `scripts`, config-check helper) — 63.4%
+## `scripts` (package `scripts`, config-check helper) — 69.8%
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
-| `config_check_test.go` | 2 | Repository config-file validation, version-control-candidate path selection, and semantic CI assurance-job contract (pinned macOS baseline, pinned REUSE, frontend embed preparation, exact license and coverage-ledger commands, and no conditional/non-blocking bypass) | fixture | Backs the `make config-check` gate — must correctly identify which config paths are actually tracked before validating them, and must fail closed if the CI recurrence guards are removed or made non-blocking. |
+| `config_check_test.go` | 2 | Repository config-file validation, version-control-candidate path selection, and semantic CI assurance-job contract (pinned macOS baseline, pinned REUSE and its binary path, frontend embed preparation, exact license and coverage-ledger commands, and no dependency-propagated skip, conditional, non-blocking, or custom-shell bypass) | fixture | Backs the `make config-check` gate — must correctly identify which config paths are actually tracked before validating them, and must fail closed if the CI recurrence guards are removed or made non-blocking. |
 | `scripts/pades-lock_test.sh` | 1 shell matrix | PAdES directory-lock acquisition success and bounded abandoned-lock refusal | shell unit | Proves a lock records its owner on success, an existing lock is not reclaimed, and a zero-wait acquisition fails with an actionable timeout rather than polling forever. The concurrent PAdES harness separately exercises mutual exclusion. |
 
 ## `tools/update-manifest` — 52.5%

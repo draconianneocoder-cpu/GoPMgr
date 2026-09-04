@@ -113,9 +113,9 @@ jobs:
 
       - name: Install pinned REUSE
         run: |
-          brew install pipx
+          command -v pipx >/dev/null
           pipx install reuse==6.2.0
-          echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
+          pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"
 
       - name: Download Go modules
         run: go mod download

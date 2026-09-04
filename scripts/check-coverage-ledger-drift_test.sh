@@ -47,7 +47,8 @@ fail() {
 # check_pkg_heading rejects it as an unrecognized dual-build heading.
 make_fixture() {
 	local root=$1
-	mkdir -p "$root/internal/foo" "$root/internal/analytics" "$root/scripts" "$root/tools/thing" "$root/docs"
+	mkdir -p "$root/internal/foo" "$root/internal/analytics" "$root/scripts" "$root/tools/thing" \
+		"$root/frontend/node_modules/thirdparty" "$root/docs"
 
 	cat >"$root/go.mod" <<'EOF'
 module gopmgr
@@ -139,6 +140,25 @@ func TestNegate(t *testing.T) {
 	if Negate(2) != -2 {
 		t.Fatal("Negate(2) != -2")
 	}
+}
+EOF
+
+	# The real assurance job runs npm ci before this checker. A broad ./...
+	# pattern would therefore discover and execute incidental Go packages in
+	# node_modules. Keep a deliberately failing third-party test in the fixture
+	# so the happy path proves the checker uses only first-party package roots.
+	cat >"$root/frontend/node_modules/thirdparty/thirdparty.go" <<'EOF'
+package thirdparty
+
+func Present() bool { return true }
+EOF
+	cat >"$root/frontend/node_modules/thirdparty/thirdparty_test.go" <<'EOF'
+package thirdparty
+
+import "testing"
+
+func TestMustNotRun(t *testing.T) {
+	t.Fatal("third-party Go tests under node_modules must not run")
 }
 EOF
 

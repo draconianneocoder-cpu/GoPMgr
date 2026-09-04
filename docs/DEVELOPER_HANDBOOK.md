@@ -1981,7 +1981,7 @@ reason.
 | `make code-map` | Regenerate first-party package dependency/API maps |
 | `make code-map-current` | Fail if checked-in code map is stale |
 | `make coverage-ledger-current` | Fail if `TEST_COVERAGE_LEDGER.md` disagrees with the live test-file set |
-| `make coverage-ledger-drift` | Fail if a ledger coverage-percentage heading no longer matches live `go test -cover` output (separate from local `verify`; blocking CI assurance job runs it on the pinned macOS ledger baseline) |
+| `make coverage-ledger-drift` | Fail if a ledger coverage-percentage heading no longer matches live `go test -cover` output (separate from local `verify`; a failing-on-error CI assurance job runs it on the pinned macOS ledger baseline) |
 | `make coverage-ratchet` | Check recorded coverage high-water marks (not in `verify`; same DuckDB-toolchain reason) |
 | `make coverage-ratchet-update` | Record legitimate improved coverage marks |
 

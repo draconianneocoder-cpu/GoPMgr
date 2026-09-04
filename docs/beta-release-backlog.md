@@ -89,7 +89,11 @@ That result took six live-GUI cycles to reach because the first five, all run un
   `make coverage-ledger-drift` on the pinned macOS ledger baseline, after
   installing pinned REUSE tooling and building the frontend embed.
   `make config-check` semantically rejects removal, lookalike replacement,
-  conditional skipping, non-blocking changes, or missing setup for this job.
+  conditional or dependency-propagated skipping, non-blocking changes,
+  custom-shell bypasses, an invalid REUSE binary path, or missing setup for this
+  job. The coverage command uses
+  explicit first-party Go package roots so `npm ci` cannot add executable test
+  scope through `frontend/node_modules`.
   Hosted execution and branch-protection required-status configuration remain
   unverified; the separate release-validation expansion item remains open.
 - Project Cost Control ledger scope: [the current project-local boundary](design/project-cost-ledger-scope.md)

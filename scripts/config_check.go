@@ -249,6 +249,9 @@ func validateCIAssuranceWorkflow(config map[string]any) error {
 	if err := validateWorkflow(config); err != nil {
 		return err
 	}
+	if hasDefaultRunShell(config) {
+		return fmt.Errorf("workflow defaults.run.shell must not override jobs.assurance")
+	}
 
 	jobs, ok := stringMap(config["jobs"])
 	if !ok {
@@ -265,11 +268,17 @@ func validateCIAssuranceWorkflow(config map[string]any) error {
 	if _, ok := assurance["if"]; ok {
 		return fmt.Errorf("jobs.assurance must not define if")
 	}
+	if _, ok := assurance["needs"]; ok {
+		return fmt.Errorf("jobs.assurance must not define needs")
+	}
 	if value, ok := assurance["continue-on-error"]; ok && value != false {
 		return fmt.Errorf("jobs.assurance continue-on-error must be absent or false")
 	}
 	if runsOn, ok := assurance["runs-on"].(string); !ok || runsOn != "macos-15" {
 		return fmt.Errorf("jobs.assurance must run on macos-15")
+	}
+	if hasDefaultRunShell(assurance) {
+		return fmt.Errorf("jobs.assurance defaults.run.shell must not be defined")
 	}
 
 	steps, ok := assurance["steps"].([]any)
@@ -287,6 +296,9 @@ func validateCIAssuranceWorkflow(config map[string]any) error {
 		}
 		if value, ok := step["continue-on-error"]; ok && value != false {
 			return fmt.Errorf("jobs.assurance steps continue-on-error must be absent or false")
+		}
+		if _, ok := step["shell"]; ok {
+			return fmt.Errorf("jobs.assurance steps must use the default shell")
 		}
 		stepsWithRuns = append(stepsWithRuns, step)
 	}
@@ -306,7 +318,10 @@ func validateCIAssuranceWorkflow(config map[string]any) error {
 	if !hasRunLine(stepsWithRuns, "pipx install reuse==6.2.0") {
 		return fmt.Errorf("jobs.assurance must install reuse==6.2.0")
 	}
-	if !hasRunLine(stepsWithRuns, `echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"`) {
+	if !hasRunLine(stepsWithRuns, `command -v pipx >/dev/null`) {
+		return fmt.Errorf("jobs.assurance must verify pipx is available")
+	}
+	if !hasRunLine(stepsWithRuns, `pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"`) {
 		return fmt.Errorf("jobs.assurance must add the pinned REUSE binary path")
 	}
 	if !hasUsesPrefix(stepsWithRuns, "actions/setup-go@") {
@@ -316,6 +331,19 @@ func validateCIAssuranceWorkflow(config map[string]any) error {
 		return fmt.Errorf("jobs.assurance must set up Node")
 	}
 	return nil
+}
+
+func hasDefaultRunShell(config map[string]any) bool {
+	defaults, ok := stringMap(config["defaults"])
+	if !ok {
+		return false
+	}
+	run, ok := stringMap(defaults["run"])
+	if !ok {
+		return false
+	}
+	_, ok = run["shell"]
+	return ok
 }
 
 func hasExactRun(steps []map[string]any, command, workingDirectory string) bool {

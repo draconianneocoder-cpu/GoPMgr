@@ -92,6 +92,18 @@ func TestValidateRepositoryConfigs(t *testing.T) {
 			wantErrText: ".github/workflows/ci.yml: jobs.assurance continue-on-error must be absent or false",
 		},
 		{
+			name: "rejects an assurance job dependency that can propagate a skip",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
+					string(files[".github/workflows/ci.yml"]),
+					"  assurance:\n    name: Assurance checks",
+					"  assurance:\n    needs: verify\n    name: Assurance checks",
+					1,
+				))
+			},
+			wantErrText: ".github/workflows/ci.yml: jobs.assurance must not define needs",
+		},
+		{
 			name: "rejects CI assurance without the ledger drift gate",
 			mutate: func(files map[string][]byte, _ *[]string) {
 				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
@@ -126,6 +138,66 @@ func TestValidateRepositoryConfigs(t *testing.T) {
 				))
 			},
 			wantErrText: ".github/workflows/ci.yml: jobs.assurance steps must not define if",
+		},
+		{
+			name: "rejects a custom shell on an assurance step",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
+					string(files[".github/workflows/ci.yml"]),
+					"      - name: Coverage ledger drift\n        run: make coverage-ledger-drift\n",
+					"      - name: Coverage ledger drift\n        shell: echo {0}\n        run: make coverage-ledger-drift\n",
+					1,
+				))
+			},
+			wantErrText: ".github/workflows/ci.yml: jobs.assurance steps must use the default shell",
+		},
+		{
+			name: "rejects a custom default shell for the assurance job",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
+					string(files[".github/workflows/ci.yml"]),
+					"    runs-on: macos-15\n    steps:\n",
+					"    runs-on: macos-15\n    defaults:\n      run:\n        shell: echo {0}\n    steps:\n",
+					1,
+				))
+			},
+			wantErrText: ".github/workflows/ci.yml: jobs.assurance defaults.run.shell must not be defined",
+		},
+		{
+			name: "rejects a workflow default shell that overrides assurance",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
+					string(files[".github/workflows/ci.yml"]),
+					"name: CI\non:\n",
+					"name: CI\ndefaults:\n  run:\n    shell: echo {0}\non:\n",
+					1,
+				))
+			},
+			wantErrText: ".github/workflows/ci.yml: workflow defaults.run.shell must not override jobs.assurance",
+		},
+		{
+			name: "rejects missing pipx availability check",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
+					string(files[".github/workflows/ci.yml"]),
+					"          command -v pipx >/dev/null\n",
+					"",
+					1,
+				))
+			},
+			wantErrText: ".github/workflows/ci.yml: jobs.assurance must verify pipx is available",
+		},
+		{
+			name: "rejects the Python user-base path for pipx binaries",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
+					string(files[".github/workflows/ci.yml"]),
+					`pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"`,
+					`echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"`,
+					1,
+				))
+			},
+			wantErrText: ".github/workflows/ci.yml: jobs.assurance must add the pinned REUSE binary path",
 		},
 	}
 
@@ -209,9 +281,9 @@ jobs:
           go-version-file: go.mod
       - name: Install pinned REUSE
         run: |
-          brew install pipx
+          command -v pipx >/dev/null
           pipx install reuse==6.2.0
-          echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
+          pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"
       - uses: actions/setup-node@v7
       - name: Install frontend dependencies
         working-directory: frontend

@@ -132,19 +132,25 @@ GOPMGR_RELEASE_TAG=v1.1.0 make tag-preflight
 tracked YAML and TOML file, rejects duplicate YAML keys, checks required
 top-level structures, and fails if a new configuration has not been explicitly
 classified. It also checks the CI assurance job's pinned macOS runner, pinned
-REUSE tool, frontend embed preparation, and blocking coverage/license commands.
+REUSE tool, runner-provided `pipx` binary path, frontend embed preparation,
+default-shell execution, independence from upstream job skip propagation, and
+blocking coverage/license commands.
 GitHub Actions is the CI authority; the retired `.gitlab-ci.yml` must
 not be reintroduced accidentally.
 
 The failing-on-error `assurance` job in `.github/workflows/ci.yml` runs `make
 license-check` and `make coverage-ledger-drift` on the pinned `macos-15` runner,
 matching the Darwin/macOS coverage baseline recorded by the ledger. It installs
-the pinned `reuse==6.2.0` tool and builds `frontend/dist` for the root package's
-`go:embed`. The job is separate from local `make verify` because the ledger-drift
-check also runs the DuckDB-tagged analytics coverage pass; neither check is
-allowed to use `continue-on-error` or a conditional skip. Branch protection must
-require the assurance status if it should block merges; hosted execution and
-that repository setting remain release-validation evidence, not local evidence.
+the pinned `reuse==6.2.0` tool, derives its binary directory from `pipx`, and
+builds `frontend/dist` for the root package's `go:embed`. The ledger checker
+targets the repository's explicit first-party Go package roots, excluding
+incidental Go packages in `frontend/node_modules`, and separately runs the
+DuckDB-tagged analytics coverage pass. The assurance job must not declare
+`needs`; neither check may use `continue-on-error`, a conditional skip, or a
+custom shell that discards its command. Branch
+protection must require the assurance status if it should block merges; hosted
+execution and that repository setting remain release-validation evidence, not
+local evidence.
 
 `make installer-tool-pins` first mutates isolated release-workflow fixtures to
 prove that mutable nFPM installs, unversioned NSIS installs, unused
