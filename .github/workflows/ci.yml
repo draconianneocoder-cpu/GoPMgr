@@ -112,9 +112,17 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install pinned REUSE
+        # The charset-normalizer extra is required, not cosmetic. reuse depends
+        # unconditionally on python-magic, a ctypes binding to the *native*
+        # libmagic library that pip does not ship; reuse/extract.py tries
+        # python-magic, file-magic, charset_normalizer, chardet in that order
+        # and raises NoEncodingModuleError at import time if none load. Ubuntu
+        # runners preinstall libmagic1, macOS runners do not -- so on this
+        # macos-15 job a bare `reuse==6.2.0` makes every reuse invocation exit
+        # 1. charset_normalizer is pure Python and needs no system library.
         run: |
           command -v pipx >/dev/null
-          pipx install reuse==6.2.0
+          pipx install 'reuse[charset-normalizer]==6.2.0'
           pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"
 
       - name: Download Go modules

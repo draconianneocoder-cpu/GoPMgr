@@ -163,9 +163,13 @@ not be reintroduced accidentally.
 The failing-on-error `assurance` job in `.github/workflows/ci.yml` runs `make
 license-check` and `make coverage-ledger-drift` on the pinned `macos-15` runner,
 matching the Darwin/macOS coverage baseline recorded by the ledger. It installs
-the pinned `reuse==6.2.0` tool, derives its binary directory from `pipx`, and
-builds `frontend/dist` for the root package's `go:embed`. The ledger checker
-targets the repository's explicit first-party Go package roots, excluding
+the pinned `reuse[charset-normalizer]==6.2.0` tool, derives its binary directory
+from `pipx`, and builds `frontend/dist` for the root package's `go:embed`. The
+`charset-normalizer` extra is required, not optional: `reuse` aborts at import
+time unless an encoding module loads, and macOS runners have no `libmagic` for
+its mandatory `python-magic` dependency to bind. `config-check` asserts the
+extra, not just the version. The ledger
+checker targets the repository's explicit first-party Go package roots, excluding
 incidental Go packages in `frontend/node_modules`, and separately runs the
 DuckDB-tagged analytics coverage pass. The assurance job must not declare
 `needs`; neither check may use `continue-on-error`, a conditional skip, or a

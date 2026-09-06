@@ -315,8 +315,14 @@ func validateCIAssuranceWorkflow(config map[string]any) error {
 	if !hasExactRun(stepsWithRuns, "npm run build", "frontend") {
 		return fmt.Errorf("jobs.assurance must have an exact frontend npm run build step")
 	}
-	if !hasRunLine(stepsWithRuns, "pipx install reuse==6.2.0") {
-		return fmt.Errorf("jobs.assurance must install reuse==6.2.0")
+	// The charset-normalizer extra is load-bearing on this macOS job, not
+	// cosmetic: reuse depends unconditionally on python-magic, a ctypes
+	// binding to the native libmagic library that pip does not ship, and
+	// raises NoEncodingModuleError at import time when no encoding module
+	// loads. macOS runners have no libmagic, so a bare `reuse==6.2.0` makes
+	// every reuse invocation exit 1. Assert the extra, not just the version.
+	if !hasRunLine(stepsWithRuns, `pipx install 'reuse[charset-normalizer]==6.2.0'`) {
+		return fmt.Errorf("jobs.assurance must install reuse[charset-normalizer]==6.2.0")
 	}
 	if !hasRunLine(stepsWithRuns, `command -v pipx >/dev/null`) {
 		return fmt.Errorf("jobs.assurance must verify pipx is available")

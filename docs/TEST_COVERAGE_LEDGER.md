@@ -970,11 +970,11 @@ Local multi-user account system: Argon2id-backed accounts, ADR-001 DEK hierarchy
 
 ---
 
-## `scripts` (package `scripts`, config-check helper) — 69.8%
+## `scripts` (package `scripts`, config-check helper) — 70.2%
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
-| `config_check_test.go` | 2 | Repository config-file validation, version-control-candidate path selection, and semantic CI assurance-job contract (pinned macOS baseline, pinned REUSE and its binary path, frontend embed preparation, exact license and coverage-ledger commands, and no dependency-propagated skip, conditional, non-blocking, or custom-shell bypass) | fixture | Backs the `make config-check` gate — must correctly identify which config paths are actually tracked before validating them, and must fail closed if the CI recurrence guards are removed or made non-blocking. |
+| `config_check_test.go` | 2 | Repository config-file validation, version-control-candidate path selection, and semantic CI assurance-job contract (pinned macOS baseline, pinned REUSE with a required encoding-module extra and its binary path, frontend embed preparation, exact license and coverage-ledger commands, and no dependency-propagated skip, conditional, non-blocking, or custom-shell bypass) | fixture | Backs the `make config-check` gate — must correctly identify which config paths are actually tracked before validating them, and must fail closed if the CI recurrence guards are removed or made non-blocking. |
 | `scripts/pades-lock_test.sh` | 1 shell matrix | PAdES directory-lock acquisition success and bounded abandoned-lock refusal | shell unit | Proves a lock records its owner on success, an existing lock is not reclaimed, and a zero-wait acquisition fails with an actionable timeout rather than polling forever. The concurrent PAdES harness separately exercises mutual exclusion. |
 | `scripts/pades-publish_test.sh` | 1 shell matrix | PAdES sample-directory publication, rollback, and recovery preservation | fixture, fault-injection | A failed replacement must restore the prior signed sample; if replacement and rollback both fail, both the generated sample and stale recovery sample must remain. Symlinked and cross-parent targets are rejected before mutation. |
 | `scripts/validate-pades-cleanup_test.sh` | 1 shell matrix | PAdES scratch-root confinement, failed-generation retention under an inherited lock, and successful alternate-root publication | fixture, fake tool, prohibited-effects | Rejects outside, symlinked, and traversal-style scratch locations without mutation; a nested failure must retain its generator diagnostics and caller-owned lock; a successful repository-contained override must publish and report the actual sample path. |
