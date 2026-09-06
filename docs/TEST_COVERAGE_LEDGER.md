@@ -811,9 +811,19 @@ Shared CSV/spreadsheet formula-injection neutralization, used by every CSV-produ
 | --- | --- | --- | --- | --- |
 | `exportsafe_test.go` | 2 | `Cell` neutralization | unit, table-driven | Same vulnerability class as `internal/export/csv_test.go` but at the shared-helper level; also asserts safe values pass through completely unmodified (no over-aggressive escaping that would corrupt legitimate data starting with, e.g., a minus sign). |
 
-## `internal/fonts` — 83.8%
+## `internal/fonts` — 83.3%
 
 TrueType font catalog/embedding for generated PDFs.
+
+This package's coverage is environment-dependent, so the number recorded
+here is the one the pinned `macos-15` assurance runner produces, not a
+local figure. `TestRegister_BundledWithoutAssets` skips when Liberation
+Sans is present: with optional families fetched, `Register` succeeds and
+covers the full registration path (83.8%); without them — the state of
+every CI runner, since `make fonts` is deliberately never a CI gate — it
+returns early on the missing-assets branch (83.3%). Do not "correct" this
+back to a locally observed 83.8% after running `make fonts`; the CI
+baseline is the authority for this heading.
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
