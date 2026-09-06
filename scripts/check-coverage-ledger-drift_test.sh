@@ -215,6 +215,9 @@ fi
 if [[ "$output" != *"all 5 package headings match"* ]]; then
 	fail "happy path: expected 5 package headings checked, got: $output"
 fi
+if find "$happy/.tmp" -mindepth 1 -maxdepth 1 -print | grep -q .; then
+	fail "happy path retained successful-run diagnostics"
+fi
 
 # --- root package drift: this is the specific gap the 2026-08-11 fix
 # closed -- the original checker's heading_re only matched `internal/*`
@@ -225,6 +228,9 @@ make_fixture "$root_drift"
 perl -0pi -e 's/Root package \(`gopmgr`, package `main`\) — 100\.0%/Root package (`gopmgr`, package `main`) — 50.0%/' \
 	"$root_drift/docs/TEST_COVERAGE_LEDGER.md"
 expect_failure "$root_drift" "gopmgr: heading claims 50.0%"
+if ! find "$root_drift/.tmp" -mindepth 1 -maxdepth 1 -type d -name 'coverage-ledger-drift.*' -print | grep -q .; then
+	fail "drift failure did not retain diagnostics"
+fi
 
 # --- `scripts` heading drift: exercises the parenthetical-before-em-dash
 # format specifically, another heading shape the pre-fix script never

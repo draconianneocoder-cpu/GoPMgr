@@ -66,7 +66,11 @@ acquire_pades_lock
 # regenerates the sample without attempting to acquire the lock recursively.
 if [ "$EVIDENCE_SOURCE" = "generated_current_checkout" ]; then
 	echo "Generating fresh local PAdES sample..."
-	bash "$ROOT/scripts/validate-pades.sh" >/dev/null
+	# This harness owns and reads the repository-local sample and lock paths.
+	# Pin the child generator to that same root even if the caller exported the
+	# generator's isolated-test override.
+	GOPMGR_PADES_SCRATCH_ROOT="$ROOT/.tmp" \
+		bash "$ROOT/scripts/validate-pades.sh" >/dev/null
 elif [ ! -s "$PDF_PATH" ]; then
 	echo "supplied PAdES PDF is missing or empty: $PDF_PATH" >&2
 	exit 66

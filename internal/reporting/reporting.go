@@ -97,14 +97,14 @@ func (s Service) Preflight(sections []documents.ReportSection, options Options) 
 	issues := make([]documents.ReportIssue, 0)
 	referencedKinds := make(map[string]bool)
 	for _, section := range sections {
-		document, err := s.Database.GetDocument(section.DocumentID)
+		document, err := s.documentForProject(project.ID, section.DocumentID)
 		if err != nil {
 			issues = append(issues, documents.ReportIssue{Severity: "error", Code: "document_missing", Message: "Selected report document is unavailable.", EntityID: section.DocumentID})
 			continue
 		}
 		inputs = append(inputs, documents.ReportInput{ID: document.ID, Kind: documents.Kind(document.Kind), Status: document.Status})
 		for _, chartID := range ChartReferences(document.Content, documents.EffectiveFields(documents.Kind(document.Kind))) {
-			chart, err := s.Database.GetChart(chartID)
+			chart, err := s.chartForProject(project.ID, chartID)
 			if err != nil {
 				issues = append(issues, documents.ReportIssue{Severity: "error", Code: "linked_chart_missing", Message: "A linked chart cannot be resolved and will not be silently omitted.", EntityID: chartID})
 				continue
@@ -159,11 +159,11 @@ func (s Service) Export(request ExportRequest) (string, error) {
 		return "", errors.New("certified report preflight failed; resolve the listed quality findings")
 	}
 
-	sections, documentManifest, chartIDs, err := s.resolveSections(request.Sections)
+	sections, documentManifest, chartIDs, err := s.resolveSections(project.ID, request.Sections)
 	if err != nil {
 		return "", err
 	}
-	charts, chartManifest := s.resolveCharts(chartIDs)
+	charts, chartManifest := s.resolveCharts(project.ID, chartIDs)
 	resolvedEVM, err := s.resolveEVM(project, charts)
 	if err != nil {
 		return "", fmt.Errorf("resolve report EVM: %w", err)
@@ -215,12 +215,12 @@ func (s Service) Export(request ExportRequest) (string, error) {
 	return outputPath, nil
 }
 
-func (s Service) resolveSections(sections []documents.ReportSection) ([]documents.ResolvedSection, []provenanceArtifact, map[string]struct{}, error) {
+func (s Service) resolveSections(projectID string, sections []documents.ReportSection) ([]documents.ResolvedSection, []provenanceArtifact, map[string]struct{}, error) {
 	resolved := make([]documents.ResolvedSection, 0, len(sections))
 	manifest := make([]provenanceArtifact, 0, len(sections))
 	chartIDs := make(map[string]struct{})
 	for _, section := range sections {
-		document, err := s.Database.GetDocument(section.DocumentID)
+		document, err := s.documentForProject(projectID, section.DocumentID)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("section %s: %w", section.DocumentID, err)
 		}
@@ -243,11 +243,11 @@ func (s Service) resolveSections(sections []documents.ReportSection) ([]document
 	return resolved, manifest, chartIDs, nil
 }
 
-func (s Service) resolveCharts(chartIDs map[string]struct{}) (map[string]documents.ResolvedChart, []provenanceArtifact) {
+func (s Service) resolveCharts(projectID string, chartIDs map[string]struct{}) (map[string]documents.ResolvedChart, []provenanceArtifact) {
 	resolved := make(map[string]documents.ResolvedChart, len(chartIDs))
 	manifest := make([]provenanceArtifact, 0, len(chartIDs))
 	for id := range chartIDs {
-		chart, err := s.Database.GetChart(id)
+		chart, err := s.chartForProject(projectID, id)
 		if err != nil {
 			// Preflight records unresolved chart references as explicit findings.
 			continue
@@ -257,6 +257,28 @@ func (s Service) resolveCharts(chartIDs map[string]struct{}) (map[string]documen
 		manifest = append(manifest, provenanceArtifact{ID: chart.ID, Kind: chart.Kind, Title: chart.Title, UpdatedAt: chart.UpdatedAt, SHA256: fmt.Sprintf("%x", digest), Data: chart.Data, Config: chart.Config})
 	}
 	return resolved, manifest
+}
+
+func (s Service) documentForProject(projectID, documentID string) (db.Document, error) {
+	document, err := s.Database.GetDocument(documentID)
+	if err != nil {
+		return db.Document{}, err
+	}
+	if document.ProjectID != projectID {
+		return db.Document{}, db.ErrNoDocument
+	}
+	return document, nil
+}
+
+func (s Service) chartForProject(projectID, chartID string) (db.Chart, error) {
+	chart, err := s.Database.GetChart(chartID)
+	if err != nil {
+		return db.Chart{}, err
+	}
+	if chart.ProjectID != projectID {
+		return db.Chart{}, db.ErrNoChart
+	}
+	return chart, nil
 }
 
 func (s Service) resolveEVM(project db.Project, charts map[string]documents.ResolvedChart) (map[string]*kernel.EVMetrics, error) {

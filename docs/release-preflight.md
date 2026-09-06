@@ -9,6 +9,9 @@ Use this checklist from the exact commit that will be tagged. Do not convert a
 missing validator, target machine, certificate, or signing credential into a
 passing claim.
 
+For a prerelease, first resolve the decisions and evidence matrix in
+[next-alpha-release-plan.md](next-alpha-release-plan.md).
+
 ## Before tagging
 
 1. Confirm the version of record in `internal/cli/parser.go` and `wails.json`.
@@ -52,9 +55,14 @@ git tag "v<version-of-record>"
 git push origin "v<version-of-record>"
 ```
 
-The Release workflow repeats the release gate before packaging. Wait for every
-required package job, verify the uploaded artifact digests, then update
-`docs/published-release-tags.txt` only after the GitHub release is public.
+The Release workflow repeats the release gate before packaging and creates a
+draft release. Wait for every required package job, verify the draft's release
+notes and uploaded artifact digests, and publish it only when the evidence and
+limitations are accurate. Update `docs/published-release-tags.txt` only after
+the GitHub release is public.
+The workflow derives both package and manifest update channels from the first
+SemVer prerelease identifier (`alpha` and `alpha.2` both use `alpha`); a clean
+version tag uses `stable`.
 
 ## After publication
 

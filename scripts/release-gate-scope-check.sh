@@ -150,6 +150,12 @@ if ! grep -Eq 'sudo apt-get install -y .*ripgrep' .github/workflows/release.yml 
 	fail=1
 fi
 
+if ! grep -Fq 'pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"' .github/workflows/release.yml ||
+	grep -Fq 'python3 -m site --user-base' .github/workflows/release.yml; then
+	echo "release-scope: Release preflight must add pipx's configured binary directory, not Python's user-base bin." >&2
+	fail=1
+fi
+
 if ! awk '
 	$0 == "  verify:" { in_verify = 1; next }
 	in_verify && /^  [A-Za-z0-9_-]+:/ { in_verify = 0 }

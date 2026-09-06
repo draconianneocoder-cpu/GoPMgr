@@ -45,8 +45,21 @@ if [ ! -f "$ledger" ]; then
 fi
 
 mkdir -p "$ROOT/.tmp"
-default_log="$ROOT/.tmp/coverage-ledger-drift-default.log"
-duckdb_analytics_log="$ROOT/.tmp/coverage-ledger-drift-duckdb-analytics.log"
+run_dir="$(mktemp -d "$ROOT/.tmp/coverage-ledger-drift.XXXXXX")"
+default_log="$run_dir/default.log"
+duckdb_analytics_log="$run_dir/duckdb-analytics.log"
+
+cleanup() {
+	status=$?
+	trap - EXIT
+	if [ "$status" -eq 0 ]; then
+		rm -rf "$run_dir"
+	else
+		echo "check-coverage-ledger-drift: diagnostics retained at $run_dir" >&2
+	fi
+	exit "$status"
+}
+trap cleanup EXIT
 
 echo "check-coverage-ledger-drift: running go test -cover . ./internal/... ./scripts ./tools/... (default build)..." >&2
 if ! go test -cover . ./internal/... ./scripts ./tools/... >"$default_log" 2>&1; then

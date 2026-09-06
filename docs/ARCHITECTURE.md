@@ -53,6 +53,15 @@ document records use discriminator columns and JSON payloads so new
 kinds can be added through registries without multiplying table
 families.
 
+The Wails-facing App layer treats the project returned by `GetProject` as the
+open-project boundary. Chart, schedule-baseline, document, stakeholder, and
+resource-calendar operations that accept bare record IDs verify their
+`project_id` before use; combined-report
+resolution applies the same rule to selected documents and linked charts.
+These checks remain necessary even though the intended file model contains one
+project row, because malformed or legacy same-file multi-project state must not
+cross project boundaries.
+
 ## Important Packages
 
 - `main.go` (repo root): Wails app object entry point, CLI dispatch, and

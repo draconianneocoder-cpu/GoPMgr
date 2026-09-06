@@ -79,12 +79,27 @@ func (a *App) ListDocuments(kind string) ([]db.Document, error) {
 	return d.ListDocuments(p.ID, kind)
 }
 
+func documentForProject(d *db.Database, projectID, documentID string) (db.Document, error) {
+	doc, err := d.GetDocument(documentID)
+	if err != nil {
+		return db.Document{}, err
+	}
+	if doc.ProjectID != projectID {
+		return db.Document{}, db.ErrNoDocument
+	}
+	return doc, nil
+}
+
 func (a *App) GetDocument(id string) (db.Document, error) {
 	d := a.requireDB()
 	if d == nil {
 		return db.Document{}, errors.New("no project open")
 	}
-	return d.GetDocument(id)
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Document{}, err
+	}
+	return documentForProject(d, p.ID, id)
 }
 
 // NewDocument creates a fresh document with default content for the
@@ -120,6 +135,16 @@ func (a *App) SaveDocument(doc db.Document) (db.Document, error) {
 	if d == nil {
 		return db.Document{}, errors.New("no project open")
 	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Document{}, err
+	}
+	if doc.ID != "" {
+		if _, err := documentForProject(d, p.ID, doc.ID); err != nil {
+			return db.Document{}, err
+		}
+	}
+	doc.ProjectID = p.ID
 	if _, ok := documents.Get(documents.Kind(doc.Kind)); !ok {
 		return db.Document{}, fmt.Errorf("unknown document kind %q", doc.Kind)
 	}
@@ -149,7 +174,11 @@ func (a *App) SyncRiskRegisterToMatrix(documentID string) (db.Chart, error) {
 	if d == nil {
 		return db.Chart{}, errors.New("no project open")
 	}
-	doc, err := d.GetDocument(documentID)
+	proj, err := d.GetProject()
+	if err != nil {
+		return db.Chart{}, err
+	}
+	doc, err := documentForProject(d, proj.ID, documentID)
 	if err != nil {
 		return db.Chart{}, err
 	}
@@ -178,12 +207,9 @@ func (a *App) SyncRiskRegisterToMatrix(documentID string) (db.Chart, error) {
 	if chartID == "" {
 		return db.Chart{}, errors.New("risk register has no linked Risk Matrix")
 	}
-	chart, err := d.GetChart(chartID)
+	chart, err := chartForProject(d, proj.ID, chartID)
 	if err != nil {
 		return db.Chart{}, fmt.Errorf("load linked Risk Matrix: %w", err)
-	}
-	if chart.ProjectID != doc.ProjectID {
-		return db.Chart{}, errors.New("linked Risk Matrix belongs to another project")
 	}
 	if chart.Kind != string(charts.KindRiskMatrix) {
 		return db.Chart{}, fmt.Errorf("linked chart %q has kind %q, want %q", chart.ID, chart.Kind, charts.KindRiskMatrix)
@@ -249,6 +275,16 @@ func (a *App) DeleteDocument(id string) error {
 	d := a.requireDB()
 	if d == nil {
 		return errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return err
+	}
+	if _, err := documentForProject(d, p.ID, id); err != nil {
+		if errors.Is(err, db.ErrNoDocument) {
+			return nil
+		}
+		return err
 	}
 	actor := "unknown"
 	if u := a.requireUser(); u != nil {
@@ -360,7 +396,7 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 	resolved := make([]documents.ResolvedSection, 0, len(sections))
 	chartIDs := make(map[string]struct{})
 	for _, s := range sections {
-		doc, err := d.GetDocument(s.DocumentID)
+		doc, err := documentForProject(d, proj.ID, s.DocumentID)
 		if err != nil {
 			logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("section %s: %v", s.DocumentID, err), "")
 			return "", fmt.Errorf("section %s: %w", s.DocumentID, err)
@@ -382,7 +418,7 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 
 	resolvedCharts := make(map[string]documents.ResolvedChart, len(chartIDs))
 	for id := range chartIDs {
-		c, err := d.GetChart(id)
+		c, err := chartForProject(d, proj.ID, id)
 		if err != nil {
 			continue
 		}
@@ -648,11 +684,11 @@ func (a *App) exportDocumentAs(
 	if d == nil || u == nil {
 		return "", errors.New("not signed in or no project open")
 	}
-	doc, err := d.GetDocument(id)
+	proj, err := d.GetProject()
 	if err != nil {
 		return "", err
 	}
-	proj, err := d.GetProject()
+	doc, err := documentForProject(d, proj.ID, id)
 	if err != nil {
 		return "", err
 	}
@@ -1039,11 +1075,11 @@ func (a *App) ExportDocumentPDF(id string) (string, error) {
 	if d == nil || u == nil {
 		return "", errors.New("not signed in or no project open")
 	}
-	doc, err := d.GetDocument(id)
+	proj, err := d.GetProject()
 	if err != nil {
 		return "", err
 	}
-	proj, err := d.GetProject()
+	doc, err := documentForProject(d, proj.ID, id)
 	if err != nil {
 		return "", err
 	}
@@ -1112,11 +1148,11 @@ func (a *App) ExportDocumentPDFGnuPG(id, keyID string) (GnuPGExportResult, error
 	if d == nil || u == nil {
 		return GnuPGExportResult{}, errors.New("no project open")
 	}
-	doc, err := d.GetDocument(id)
+	proj, err := d.GetProject()
 	if err != nil {
 		return GnuPGExportResult{}, err
 	}
-	proj, err := d.GetProject()
+	doc, err := documentForProject(d, proj.ID, id)
 	if err != nil {
 		return GnuPGExportResult{}, err
 	}
@@ -1187,11 +1223,11 @@ func (a *App) exportDocumentPDFSignedWithRuntime(
 	if d == nil || u == nil {
 		return "", errors.New("not signed in or no project open")
 	}
-	doc, err := d.GetDocument(id)
+	proj, err := d.GetProject()
 	if err != nil {
 		return "", err
 	}
-	proj, err := d.GetProject()
+	doc, err := documentForProject(d, proj.ID, id)
 	if err != nil {
 		return "", err
 	}

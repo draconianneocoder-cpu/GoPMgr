@@ -10,6 +10,7 @@ set -euo pipefail
 ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
 WORKFLOW="$ROOT/.github/workflows/release.yml"
 HELPER="$ROOT/scripts/release-publication-flag.sh"
+CHANNEL_HELPER="$ROOT/scripts/release-update-channel.sh"
 
 fail=0
 require_literal() {
@@ -22,8 +23,8 @@ require_literal() {
 	fi
 }
 
-if [ ! -f "$WORKFLOW" ] || [ ! -f "$HELPER" ]; then
-	echo "release-publication-mode: workflow and classification helper are required." >&2
+if [ ! -f "$WORKFLOW" ] || [ ! -f "$HELPER" ] || [ ! -f "$CHANNEL_HELPER" ]; then
+	echo "release-publication-mode: workflow and classification helpers are required." >&2
 	exit 1
 fi
 
@@ -34,8 +35,15 @@ require_literal "$WORKFLOW" 'publication_args+=("$publication_flag")' \
 	"publish job must preserve the helper output as one gh argument."
 require_literal "$WORKFLOW" '"${publication_args[@]}"' \
 	"gh release create must consume the optional publication argument."
+require_literal "$WORKFLOW" '--draft' \
+	"release artifacts must remain private until their digests and claims are reviewed."
 require_literal "$HELPER" 'printf '\''%s\n'\'' "--prerelease"' \
 	"classification helper must mark SemVer suffixes as prereleases."
+channel_calls="$(grep -Fc 'channel="$(bash scripts/release-update-channel.sh "$GITHUB_REF_NAME")"' "$WORKFLOW" || true)"
+if [ "$channel_calls" -ne 2 ]; then
+	echo "release-publication-mode: build and publish jobs must both derive the signed-update channel from the validated tag." >&2
+	fail=1
+fi
 
 classify_line="$(awk '/publication_flag=.*release-publication-flag/ { print NR; exit }' "$WORKFLOW")"
 publish_line="$(awk '/gh release create/ { print NR; exit }' "$WORKFLOW")"
@@ -49,4 +57,4 @@ if [ "$fail" -ne 0 ]; then
 	exit "$fail"
 fi
 
-echo "release-publication-mode: prerelease and GA publication wiring is consistent."
+echo "release-publication-mode: GitHub and signed-update tag classification wiring is consistent."

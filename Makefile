@@ -36,7 +36,8 @@ export CC
         help-guide-current wails-version wails-cli-version wails-version-test package-version-lib-test tag-preflight config-check \
         installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests native-isolation-launch-tests \
         code-map code-map-current brand-assets coverage-ledger-current coverage-ledger-drift coverage-ratchet \
-        coverage-ratchet-update no-text-timestamp-ordering no-raw-import-in-tests
+        coverage-ratchet-update coverage-go-cleanup-tests workspace-hygiene workspace-hygiene-tests cache-maintenance \
+        pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -94,6 +95,7 @@ pades-harness-tests: ## Run deterministic local, external, locking, and trusted-
 	# matrices isolate error branches, while generation exercises GoPMgr's
 	# current CMS, RFC 3161, and PDF incremental-update implementation.
 	@bash scripts/pades-lock_test.sh
+	@bash scripts/pades-publish_test.sh
 	@bash scripts/validate-pades.sh
 	@bash scripts/validate-pades-external_test.sh
 	@bash scripts/validate-pades-trusted-source_test.sh
@@ -111,7 +113,7 @@ test: ## Run Go unit tests.
 race: ## Run Go tests with the race detector (concurrency gate).
 	$(GO) test -race -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/code-map contracts + Go tests + frontend checks.
+verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/native-launch/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
@@ -144,6 +146,23 @@ coverage-ratchet: ## Fail only if statement coverage drops below its recorded hi
 
 coverage-ratchet-update: ## Re-run the ratchet and record any improved marks in coverage-baseline.json. Run this after adding tests; never after a real regression.
 	@bash scripts/coverage-ratchet.sh --update
+
+coverage-go-cleanup-tests: ## Verify successful Go coverage runs self-clean and failed runs retain diagnostics.
+	@bash scripts/coverage-go-cleanup_test.sh
+
+workspace-hygiene: ## Report repository scratch classifications and sizes without deleting anything.
+	@bash scripts/workspace-hygiene.sh
+
+workspace-hygiene-tests: ## Verify the workspace report is confined, symlink-safe, and read-only.
+	@bash scripts/workspace-hygiene_test.sh
+
+pades-publish-test: ## Verify PAdES sample replacement preserves recoverable evidence on publication faults.
+	@bash scripts/pades-publish_test.sh
+	@bash scripts/validate-pades-cleanup_test.sh
+
+cache-maintenance: ## Explicitly reclaim shared Go build/test cache and verify/garbage-collect npm cache; preserves module and node_modules dependencies.
+	$(GO) clean -cache -testcache
+	$(NPM) cache verify
 
 frontend-stability: ## Run Svelte warning-clean and Sigma regression gates.
 	@bash scripts/frontend-stability-check.sh

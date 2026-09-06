@@ -7,13 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gopmgr/internal/calendar"
-	"gopmgr/internal/charts"
-	"gopmgr/internal/charts/dag"
-	chartstats "gopmgr/internal/charts/stats"
-	"gopmgr/internal/db"
-	"gopmgr/internal/export"
-	"gopmgr/internal/kernel"
 	"io"
 	"os"
 	"path/filepath"
@@ -22,6 +15,14 @@ import (
 	"time"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"gopmgr/internal/calendar"
+	"gopmgr/internal/charts"
+	"gopmgr/internal/charts/dag"
+	chartstats "gopmgr/internal/charts/stats"
+	"gopmgr/internal/db"
+	"gopmgr/internal/export"
+	"gopmgr/internal/kernel"
 )
 
 // =========================================================
@@ -42,12 +43,56 @@ func (a *App) ListCharts(kind string) ([]db.Chart, error) {
 	return d.ListCharts(p.ID, kind)
 }
 
+// chartForProject resolves a bare chart ID without allowing records from a
+// different project row in the same database file to cross the App boundary.
+// Return the ordinary not-found sentinel so callers do not learn whether a
+// foreign record exists.
+func chartForProject(d *db.Database, projectID, chartID string) (db.Chart, error) {
+	c, err := d.GetChart(chartID)
+	if err != nil {
+		return db.Chart{}, err
+	}
+	if c.ProjectID != projectID {
+		return db.Chart{}, db.ErrNoChart
+	}
+	return c, nil
+}
+
+func baselineForProject(d *db.Database, projectID, baselineID string) (db.Baseline, error) {
+	b, err := d.GetBaseline(baselineID)
+	if err != nil {
+		return db.Baseline{}, err
+	}
+	if b.ProjectID != projectID {
+		return db.Baseline{}, db.ErrNoBaseline
+	}
+	return b, nil
+}
+
+func baselinesForProject(d *db.Database, projectID, chartID string) ([]db.Baseline, error) {
+	baselines, err := d.ListBaselines(chartID)
+	if err != nil {
+		return nil, err
+	}
+	owned := make([]db.Baseline, 0, len(baselines))
+	for _, baseline := range baselines {
+		if baseline.ProjectID == projectID {
+			owned = append(owned, baseline)
+		}
+	}
+	return owned, nil
+}
+
 func (a *App) GetChart(id string) (db.Chart, error) {
 	d := a.requireDB()
 	if d == nil {
 		return db.Chart{}, errors.New("no project open")
 	}
-	return d.GetChart(id)
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Chart{}, err
+	}
+	return chartForProject(d, p.ID, id)
 }
 
 func (a *App) SaveChart(c db.Chart) (db.Chart, error) {
@@ -55,13 +100,16 @@ func (a *App) SaveChart(c db.Chart) (db.Chart, error) {
 	if d == nil {
 		return db.Chart{}, errors.New("no project open")
 	}
-	if c.ProjectID == "" {
-		p, err := d.GetProject()
-		if err != nil {
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Chart{}, err
+	}
+	if c.ID != "" {
+		if _, err := chartForProject(d, p.ID, c.ID); err != nil {
 			return db.Chart{}, err
 		}
-		c.ProjectID = p.ID
 	}
+	c.ProjectID = p.ID
 	if _, ok := charts.Get(charts.Kind(c.Kind)); !ok {
 		return db.Chart{}, fmt.Errorf("unknown chart kind %q", c.Kind)
 	}
@@ -87,6 +135,16 @@ func (a *App) DeleteChart(id string) error {
 	if d == nil {
 		return errors.New("no project open")
 	}
+	p, err := d.GetProject()
+	if err != nil {
+		return err
+	}
+	if _, err := chartForProject(d, p.ID, id); err != nil {
+		if errors.Is(err, db.ErrNoChart) {
+			return nil
+		}
+		return err
+	}
 	actor := "unknown"
 	if u := a.requireUser(); u != nil {
 		actor = u.Username
@@ -107,20 +165,15 @@ func (a *App) LayoutChart(id string) (charts.LayoutResult, error) {
 	if d == nil {
 		return charts.LayoutResult{}, errors.New("no project open")
 	}
-	c, err := d.GetChart(id)
+	proj, err := d.GetProject()
 	if err != nil {
 		return charts.LayoutResult{}, err
 	}
-	if proj, err := d.GetProject(); err == nil {
-		return layoutChartForProject(d, c, proj)
-	}
-
-	res, err := charts.Layout(charts.Kind(c.Kind), c.Data)
-	if err != nil && !errors.Is(err, charts.ErrEngineNotImplemented) {
+	c, err := chartForProject(d, proj.ID, id)
+	if err != nil {
 		return charts.LayoutResult{}, err
 	}
-	res.Title = c.Title
-	return res, nil
+	return layoutChartForProject(d, c, proj)
 }
 
 // layoutChartForProject produces a chart layout with the project's calendar
@@ -165,7 +218,7 @@ func (a *App) SetScheduleBaseline(chartID, name string) (db.Baseline, error) {
 	if err != nil {
 		return db.Baseline{}, err
 	}
-	c, err := d.GetChart(chartID)
+	c, err := chartForProject(d, proj.ID, chartID)
 	if err != nil {
 		return db.Baseline{}, err
 	}
@@ -195,7 +248,14 @@ func (a *App) ListScheduleBaselines(chartID string) ([]db.Baseline, error) {
 	if d == nil {
 		return nil, errors.New("no project open")
 	}
-	return d.ListBaselines(chartID)
+	proj, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := chartForProject(d, proj.ID, chartID); err != nil {
+		return nil, err
+	}
+	return baselinesForProject(d, proj.ID, chartID)
 }
 
 // DeleteScheduleBaseline removes a baseline snapshot.
@@ -203,6 +263,16 @@ func (a *App) DeleteScheduleBaseline(id string) error {
 	d := a.requireDB()
 	if d == nil {
 		return errors.New("no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return err
+	}
+	if _, err := baselineForProject(d, proj.ID, id); err != nil {
+		if errors.Is(err, db.ErrNoBaseline) {
+			return nil
+		}
+		return err
 	}
 	return d.DeleteBaseline(id)
 }
@@ -216,18 +286,26 @@ func (a *App) CompareScheduleBaseline(chartID, baselineID string) (map[string]ke
 	if d == nil {
 		return nil, errors.New("no project open")
 	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	c, err := chartForProject(d, proj.ID, chartID)
+	if err != nil {
+		return nil, err
+	}
 
-	var (
-		base db.Baseline
-		err  error
-	)
+	var base db.Baseline
 	if baselineID != "" {
-		base, err = d.GetBaseline(baselineID)
+		base, err = baselineForProject(d, proj.ID, baselineID)
 		if err != nil {
 			return nil, err
 		}
+		if base.ChartID != chartID {
+			return nil, db.ErrNoBaseline
+		}
 	} else {
-		list, lerr := d.ListBaselines(chartID)
+		list, lerr := baselinesForProject(d, proj.ID, chartID)
 		if lerr != nil {
 			return nil, lerr
 		}
@@ -242,14 +320,6 @@ func (a *App) CompareScheduleBaseline(chartID, baselineID string) (map[string]ke
 		return nil, fmt.Errorf("baseline %s is corrupt: %w", base.ID, err)
 	}
 
-	proj, err := d.GetProject()
-	if err != nil {
-		return nil, err
-	}
-	c, err := d.GetChart(chartID)
-	if err != nil {
-		return nil, err
-	}
 	current, err := cpmChartDataToKernelTasks(c.Data)
 	if err != nil {
 		return nil, err
@@ -278,7 +348,7 @@ func (a *App) ComputeScheduleEVM(chartID, asOfDate string) (kernel.EVMetrics, er
 		return kernel.EVMetrics{}, errors.New("earned value needs a project start date (Project Settings)")
 	}
 
-	c, err := d.GetChart(chartID)
+	c, err := chartForProject(d, proj.ID, chartID)
 	if err != nil {
 		return kernel.EVMetrics{}, err
 	}
@@ -316,7 +386,11 @@ func (a *App) RunChartMonteCarlo(chartID string, iterations int, workers int) (k
 	if d == nil {
 		return kernel.SimResult{}, errors.New("no project open")
 	}
-	c, err := d.GetChart(chartID)
+	proj, err := d.GetProject()
+	if err != nil {
+		return kernel.SimResult{}, err
+	}
+	c, err := chartForProject(d, proj.ID, chartID)
 	if err != nil {
 		return kernel.SimResult{}, err
 	}
@@ -350,7 +424,7 @@ func (a *App) ExportChartMonteCarloRiskReport(chartID string, iterations int, wo
 	if err != nil {
 		return "", err
 	}
-	c, err := d.GetChart(chartID)
+	c, err := chartForProject(d, proj.ID, chartID)
 	if err != nil {
 		return "", err
 	}
@@ -472,7 +546,7 @@ func (a *App) LevelChartResources(chartID string, strategy string, priorityCriti
 	if !ok {
 		return LevelResult{}, errors.New("resource levelling needs a project start date (Project Settings)")
 	}
-	c, err := d.GetChart(chartID)
+	c, err := chartForProject(d, proj.ID, chartID)
 	if err != nil {
 		return LevelResult{}, err
 	}
@@ -620,7 +694,7 @@ func (a *App) PreviewSplitLeveling(chartID string) (SplitLevelingPreview, error)
 	if !ok {
 		return SplitLevelingPreview{}, errors.New("resource levelling needs a project start date (Project Settings)")
 	}
-	c, err := d.GetChart(chartID)
+	c, err := chartForProject(d, proj.ID, chartID)
 	if err != nil {
 		return SplitLevelingPreview{}, err
 	}
@@ -692,7 +766,7 @@ func (a *App) GenerateResourceHistogram(chartID string) (db.Chart, error) {
 	if err != nil {
 		return db.Chart{}, err
 	}
-	c, err := d.GetChart(chartID)
+	c, err := chartForProject(d, proj.ID, chartID)
 	if err != nil {
 		return db.Chart{}, err
 	}

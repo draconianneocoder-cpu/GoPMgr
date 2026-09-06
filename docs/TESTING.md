@@ -61,6 +61,28 @@ shared sample. Environment failures such as a sandbox denying local socket
 creation or an installed validator aborting are reported as blocked evidence,
 not converted into passing results.
 
+## Workspace and cache hygiene
+
+Repository `.tmp` is a mixed-purpose scratch area. Successful Go coverage and
+coverage-ledger runs remove their own private run directories. Failed runs keep
+their diagnostics and print the retained path. PDF/A, PAdES, and trusted-source
+outputs remain available for manual validators, and `.tmp/verapdf` remains a
+reusable validator cache. Files under `.tmp` are not durable release evidence;
+archive evidence that must survive cleanup or another checkout through the
+release process. The gitignored `docs/release-evidence/` directory can hold
+machine-local notes but does not satisfy cross-checkout evidence requirements.
+
+Run `make workspace-hygiene` for a read-only classification and size report.
+Unknown entries, validator locks, retained evidence, and caches are reported but
+never removed by that command. If entries cannot be enumerated or sized
+consistently, the command reports an incomplete inventory and returns nonzero.
+`make clean` remains limited to reproducible build outputs.
+`make cache-maintenance` is an explicit local maintenance action: it
+clears the shared Go build/test cache and asks npm to verify and garbage-collect
+its shared cache, while preserving the Go module cache, `node_modules`, validator
+evidence, and project data. Shared caches are never cleaned by normal local
+build, test, or verification commands.
+
 ## Frontend Checks
 
 ```sh
@@ -188,6 +210,11 @@ encrypted-database validation, PDF/A-3 validation, and the PAdES harness
 regression target. Pre-merge GitHub CI also runs `make pades-harness-tests`
 in a dedicated job with `qpdf` and `pdfsig` installed.
 
+A passing `make check-release` means these local gates passed on the current
+host. It does not establish hosted-workflow, cross-platform package lifecycle,
+signing, notarization, trusted-certificate, or assistive-technology evidence.
+Use the applicable release plan and preflight record for those claims.
+
 `make tag-preflight` first tests and applies the publication-tag contract, then
 runs the full release gate. The Release workflow supplies `GITHUB_REF_NAME` as
 `GOPMGR_RELEASE_TAG` and blocks its Linux, macOS, and Windows package matrix on
@@ -198,6 +225,12 @@ packaging. The release-scope gate also exercises
 `release-publication-flag.sh`: suffix-bearing tags must supply GitHub CLI's
 `--prerelease` flag, while a clean version tag must not. This distinction is
 explicit because GitHub does not infer release classification from SemVer.
+The same gate exercises `release-update-channel.sh`, which derives the signed
+update channel from the first prerelease identifier (`alpha` and `alpha.1`
+both select `alpha`) and selects `stable` only for a clean version tag. Both
+the package build and manifest publication jobs must call that helper. Release
+preflight also resolves the REUSE executable directory through pipx itself;
+Python's user-base path is not assumed to contain pipx-installed commands.
 
 Run `make license-check` after adding files or generated assets. Run
 `make release-scope` after documentation changes that touch release

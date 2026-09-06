@@ -17,7 +17,7 @@
 
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="${GOPMGR_REPO_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 # `go list ./...` and `go test` below resolve against the CALLER's working
 # directory, not $ROOT -- pin it explicitly so this script always measures
 # this repo's own module regardless of what CWD happened to be active when
@@ -51,7 +51,20 @@ duckdb) tags_arg="-tags duckdb" ;;
 esac
 
 mkdir -p "$ROOT/.tmp"
-profile="${2:-$ROOT/.tmp/coverage-go-$variant.out}"
+run_dir="$(mktemp -d "$ROOT/.tmp/coverage-go-$variant.XXXXXX")"
+profile="${2:-$run_dir/coverage.out}"
+
+cleanup() {
+	status=$?
+	trap - EXIT
+	if [ "$status" -eq 0 ]; then
+		rm -rf "$run_dir"
+	else
+		echo "coverage-go ($variant): diagnostics retained at $run_dir" >&2
+	fi
+	exit "$status"
+}
+trap cleanup EXIT
 
 # The .claude/worktrees/ exclusion guards a narrow case `go list`'s own
 # go.mod-boundary handling doesn't cover on its own: a nested checkout
@@ -68,9 +81,15 @@ pkgs="$(go list ./... | grep -v '/frontend/node_modules/' | grep -v '/\.claude/w
 # session's stray worktree can be auto-cleaned before anyone investigates.
 pkg_count="$(echo "$pkgs" | wc -l | tr -d ' ')"
 echo "coverage-go ($variant): $pkg_count packages" >&2
-echo "$pkgs" >"$ROOT/.tmp/coverage-go-$variant.pkgs"
+echo "$pkgs" >"$run_dir/packages.txt"
 # shellcheck disable=SC2086
-go test $tags_arg -coverprofile="$profile" $pkgs >/dev/null
+if go test $tags_arg -coverprofile="$profile" $pkgs >"$run_dir/go-test.log" 2>&1; then
+	:
+else
+	status=$?
+	cat "$run_dir/go-test.log" >&2
+	exit "$status"
+fi
 
 exclude_file="$ROOT/scripts/coverage-exclude-go.txt"
 filtered="$profile.filtered"
@@ -84,8 +103,7 @@ filtered="$profile.filtered"
 # ~20,000+ statement inflations, and 5000 stress-test iterations of this
 # exact pipeline reproduced zero anomalies) -- kept anyway on general
 # robustness grounds.
-tmp_patterns="$(mktemp)"
-trap 'rm -f "$tmp_patterns"' EXIT
+tmp_patterns="$run_dir/exclude-patterns.txt"
 grep -Ev '^\s*(#|$)' "$exclude_file" >"$tmp_patterns"
 {
 	head -1 "$profile"

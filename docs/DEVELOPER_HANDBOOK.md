@@ -1698,7 +1698,16 @@ Use the actual intended version/tag according to repository release
 policy.
 
 The tag preflight validates the publication-tag contract before running
-the full release gate.
+the full release gate. The release workflow uses
+`scripts/release-update-channel.sh` in both packaging and publication so a
+clean tag maps to `stable`, while `alpha`, `alpha.1`, or another valid SemVer
+prerelease maps to its first identifier. Keep this derivation centralized;
+duplicated workflow pattern matches previously misclassified valid bare
+prerelease tags as stable.
+
+The publication job creates a draft release. Artifact digests, generated notes,
+platform claims, and limitations must be reviewed before a maintainer makes the
+release public.
 
 ### 23.3 Release claims
 
@@ -1956,7 +1965,9 @@ reason.
 | `make tidy` | `go mod tidy` + `npm --prefix frontend install`; the real onboarding step |
 | `make dev` | Run Wails development mode |
 | `make build` | Production Wails build with repository build wrapper |
-| `make clean` | Remove build output and generated `frontend/wailsjs/` bindings |
+| `make clean` | Remove build output and generated `frontend/wailsjs/` bindings; does not sweep mixed-purpose `.tmp` or shared caches |
+| `make workspace-hygiene` | Read-only size and ownership classification for `.tmp`; unknown entries and retained evidence are preserved |
+| `make cache-maintenance` | Explicitly clear shared Go build/test cache and verify/garbage-collect npm cache; preserves module dependencies and `node_modules` |
 | `make fonts`, `make icc` | Fetch required embedded font/ICC assets before first build |
 | `make test` | Go test gate over repository-defined Go packages |
 | `make race` | Go race-detector gate |
@@ -1971,6 +1982,7 @@ reason.
 | `make check-pades-external` | External PAdES validators where available |
 | `make check-pades-trusted` | Trusted-source PAdES evidence classification |
 | `make pades-harness-tests` | PAdES generator/validator regression harness |
+| `make pades-publish-test` | Fault-injected PAdES publication and rollback-safety checks |
 | `make license-check` | REUSE/SPDX validation |
 | `make memory-scan` | Memory-safety hardening gate |
 | `make release-scope` | Protect release/public-claim scope |

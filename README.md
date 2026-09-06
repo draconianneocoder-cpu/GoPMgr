@@ -56,7 +56,8 @@ installed — it skips rather than fails if not), frontend checks, release
 claims, memory safety, race tests, production build inputs, encrypted database
 behavior, PDF/A, and PAdES regression harnesses. See [TESTING.md](docs/TESTING.md)
 for focused commands and [docs/release-preflight.md](docs/release-preflight.md)
-for the release checklist.
+for the release checklist. The version-neutral plan for the next limited alpha
+is [docs/next-alpha-release-plan.md](docs/next-alpha-release-plan.md).
 
 ## Data and security
 
@@ -97,6 +98,9 @@ making trust claims.
 - [docs/INSTALL.md](docs/INSTALL.md): installation and source-run guidance.
 - [docs/beta-release-backlog.md](docs/beta-release-backlog.md): release
   readiness work.
+- [docs/next-alpha-release-plan.md](docs/next-alpha-release-plan.md): go/no-go
+  decisions, evidence matrix, publication sequence, and rollback conditions for
+  the next alpha.
 - [AGENTS.md](AGENTS.md): repository instructions for automated contributors.
 
 ## License

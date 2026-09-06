@@ -107,6 +107,50 @@ func TestPreflightAndExportRejectMissingDocumentForCertifiedReport(t *testing.T)
 	}
 }
 
+func TestServiceRejectsForeignProjectRecordsInSameFile(t *testing.T) {
+	database, project, _ := newReportFixture(t, "approved")
+	if _, err := database.Conn.Exec(`INSERT INTO project (id, name) VALUES (?, ?)`, "prj-foreign", "Foreign Project"); err != nil {
+		t.Fatalf("seed foreign project row: %v", err)
+	}
+	foreignDocument, err := database.SaveDocument(db.Document{
+		ProjectID: "prj-foreign",
+		Kind:      string(documents.KindProjectCharterWord),
+		Title:     "Foreign Charter",
+		Content:   `{"project_name":"Foreign"}`,
+		Status:    "approved",
+	})
+	if err != nil {
+		t.Fatalf("seed foreign document: %v", err)
+	}
+	foreignChart, err := database.SaveChart(db.Chart{
+		ProjectID: "prj-foreign",
+		Kind:      "line",
+		Title:     "Foreign Chart",
+		Data:      `{}`,
+		Config:    `{}`,
+	})
+	if err != nil {
+		t.Fatalf("seed foreign chart: %v", err)
+	}
+
+	service := Service{Database: database}
+	sections := []documents.ReportSection{{DocumentID: foreignDocument.ID}}
+	preflight, err := service.Preflight(sections, Options{ProfileID: "custom"})
+	if err != nil {
+		t.Fatalf("Preflight: %v", err)
+	}
+	if len(preflight.Issues) != 1 || preflight.Issues[0].Code != "document_missing" {
+		t.Fatalf("Preflight issues = %+v, want one document_missing issue", preflight.Issues)
+	}
+	if _, _, _, err := service.resolveSections(project.ID, sections); !errors.Is(err, db.ErrNoDocument) {
+		t.Fatalf("resolveSections(foreign) error = %v, want db.ErrNoDocument", err)
+	}
+	resolved, manifest := service.resolveCharts(project.ID, map[string]struct{}{foreignChart.ID: {}})
+	if len(resolved) != 0 || len(manifest) != 0 {
+		t.Fatalf("resolveCharts(foreign) = (%+v, %+v), want empty results", resolved, manifest)
+	}
+}
+
 func TestExportRejectsPathSeparatorsInFileStem(t *testing.T) {
 	database, _, document := newReportFixture(t, "approved")
 	service := Service{Database: database}

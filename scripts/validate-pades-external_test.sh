@@ -90,7 +90,9 @@ chmod +x "$FAKE_BIN/dss-validation-tool"
 
 mkdir -p "$SAMPLE_DIR"
 printf 'stale default artifact\n' >"$SAMPLE_DIR/signed-sample.pdf"
-GOPMGR_FAKE_VERAPDF_LOG="$FAKE_LOG" GOPMGR_FAKE_DSS_LOG="$DSS_LOG" PATH="$FAKE_BIN:$PATH" \
+alternate_scratch="$FAKE_BIN/alternate-scratch"
+GOPMGR_PADES_SCRATCH_ROOT="$alternate_scratch" \
+	GOPMGR_FAKE_VERAPDF_LOG="$FAKE_LOG" GOPMGR_FAKE_DSS_LOG="$DSS_LOG" PATH="$FAKE_BIN:$PATH" \
 	bash "$ROOT/scripts/validate-pades-external.sh" >"$FAKE_BIN/default.out"
 
 report="$SAMPLE_DIR/external-validation-report.txt"
@@ -98,6 +100,9 @@ report="$SAMPLE_DIR/external-validation-report.txt"
 
 if grep -q "stale default artifact" "$SAMPLE_DIR/signed-sample.pdf"; then
 	fail "default external validation reused a stale signed sample"
+fi
+if [ -e "$alternate_scratch/gopmgr-pades-test" ]; then
+	fail "external validation allowed the child generator to use a different scratch root"
 fi
 if ! grep -q "^evidence_source=generated_current_checkout$" "$report"; then
 	cat "$report" >&2

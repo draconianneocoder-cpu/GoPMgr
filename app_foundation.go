@@ -232,6 +232,17 @@ func (a *App) UpdateProjectIndustry(industry, subCategory, methodology, countryC
 
 // ----- Stakeholders -----
 
+func stakeholderForProject(d *db.Database, projectID, stakeholderID string) (db.Stakeholder, error) {
+	stakeholder, err := d.GetStakeholder(stakeholderID)
+	if err != nil {
+		return db.Stakeholder{}, err
+	}
+	if stakeholder.ProjectID != projectID {
+		return db.Stakeholder{}, db.ErrNoStakeholder
+	}
+	return stakeholder, nil
+}
+
 // ListStakeholders returns every stakeholder for the open project,
 // optionally filtered by category ("team" / "vendor" / "sponsor" /
 // "external").
@@ -253,13 +264,16 @@ func (a *App) SaveStakeholder(s db.Stakeholder) (db.Stakeholder, error) {
 	if d == nil {
 		return db.Stakeholder{}, errors.New("no project open")
 	}
-	if s.ProjectID == "" {
-		p, err := d.GetProject()
-		if err != nil {
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Stakeholder{}, err
+	}
+	if s.ID != "" {
+		if _, err := stakeholderForProject(d, p.ID, s.ID); err != nil {
 			return db.Stakeholder{}, err
 		}
-		s.ProjectID = p.ID
 	}
+	s.ProjectID = p.ID
 	return d.SaveStakeholder(s)
 }
 
@@ -269,10 +283,31 @@ func (a *App) DeleteStakeholder(id string) error {
 	if d == nil {
 		return errors.New("no project open")
 	}
+	p, err := d.GetProject()
+	if err != nil {
+		return err
+	}
+	if _, err := stakeholderForProject(d, p.ID, id); err != nil {
+		if errors.Is(err, db.ErrNoStakeholder) {
+			return nil
+		}
+		return err
+	}
 	return d.DeleteStakeholder(id)
 }
 
 // ----- Resource calendars -----
+
+func resourceCalendarForProject(d *db.Database, projectID, calendarID string) (db.ResourceCalendar, error) {
+	calendar, err := d.GetResourceCalendar(calendarID)
+	if err != nil {
+		return db.ResourceCalendar{}, err
+	}
+	if calendar.ProjectID != projectID {
+		return db.ResourceCalendar{}, db.ErrNoResourceCalendar
+	}
+	return calendar, nil
+}
 
 // ListResourceCalendars returns every named resource-capacity calendar
 // for the open project.
@@ -299,6 +334,11 @@ func (a *App) SaveResourceCalendar(c db.ResourceCalendar) (db.ResourceCalendar, 
 	if err != nil {
 		return db.ResourceCalendar{}, err
 	}
+	if c.ID != "" {
+		if _, err := resourceCalendarForProject(d, p.ID, c.ID); err != nil {
+			return db.ResourceCalendar{}, err
+		}
+	}
 	c.ProjectID = p.ID
 	return d.SaveResourceCalendar(c)
 }
@@ -308,6 +348,16 @@ func (a *App) DeleteResourceCalendar(id string) error {
 	d := a.requireDB()
 	if d == nil {
 		return errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return err
+	}
+	if _, err := resourceCalendarForProject(d, p.ID, id); err != nil {
+		if errors.Is(err, db.ErrNoResourceCalendar) {
+			return nil
+		}
+		return err
 	}
 	return d.DeleteResourceCalendar(id)
 }

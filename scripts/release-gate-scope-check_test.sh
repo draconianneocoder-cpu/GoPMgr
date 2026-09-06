@@ -21,8 +21,13 @@ new_fixture() {
 	local fixture="$TEST_ROOT/$name"
 	git clone -q --no-hardlinks "$ROOT" "$fixture"
 	cp "$CHECK" "$fixture/scripts/release-gate-scope-check.sh"
+	cp "$ROOT/.github/workflows/release.yml" "$fixture/.github/workflows/release.yml"
 	cp "$ROOT/scripts/check-coverage-ledger-drift.sh" "$fixture/scripts/check-coverage-ledger-drift.sh"
 	cp "$ROOT/scripts/check-help-guide-current.sh" "$fixture/scripts/check-help-guide-current.sh"
+	cp "$ROOT/scripts/check-release-publication-mode.sh" "$fixture/scripts/check-release-publication-mode.sh"
+	cp "$ROOT/scripts/check-release-publication-mode_test.sh" "$fixture/scripts/check-release-publication-mode_test.sh"
+	cp "$ROOT/scripts/release-publication-flag.sh" "$fixture/scripts/release-publication-flag.sh"
+	cp "$ROOT/scripts/release-update-channel.sh" "$fixture/scripts/release-update-channel.sh"
 	mkdir -p "$fixture/frontend/dist"
 	: >"$fixture/frontend/dist/index.html"
 	printf '%s\n' "$fixture"
@@ -73,5 +78,10 @@ unscoped_ledger_test="$(new_fixture unscoped-ledger-test-leading-cover)"
 perl -0pi -e 's/if ! go test -cover \. \.\/internal\/\.\.\. \.\/scripts \.\/tools\/\.\.\./if ! go test -cover .\/.../' \
 	"$unscoped_ledger_test/scripts/check-coverage-ledger-drift.sh"
 expect_failure "$unscoped_ledger_test" "Go quality gates must use explicit first-party package roots"
+
+wrong_pipx_path="$(new_fixture wrong-pipx-path)"
+perl -0pi -e 's#pipx environment --value PIPX_BIN_DIR >> "\$GITHUB_PATH"#echo "\$\(python3 -m site --user-base\)/bin" >> "\$GITHUB_PATH"#' \
+	"$wrong_pipx_path/.github/workflows/release.yml"
+expect_failure "$wrong_pipx_path" "Release preflight must add pipx's configured binary directory"
 
 echo "release-gate-scope-check tests passed."

@@ -25,6 +25,12 @@ for a legitimate local user.
   `EncryptProjectAtRest`, `SecureArchive`, etc.) is confined to the
   signed-in user's own `projects/` directory via `projectPathFor` in
   `app_projects.go`, rejecting anything outside it before touching disk.
+- Chart, schedule-baseline, document, stakeholder, and resource-calendar IPC
+  methods resolve
+  frontend-supplied record IDs against the currently open project. Combined
+  reports apply the same rule to selected documents and linked charts. A
+  record attached to another project row in the same database file is returned
+  as not found rather than read, changed, exported, or deleted.
 
 ## Encryption At Rest
 

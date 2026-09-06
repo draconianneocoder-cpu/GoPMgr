@@ -7,7 +7,7 @@
 #   Linux (x86_64)        -> .deb + .rpm (nfpm)
 #   Windows (x86_64)      -> NSIS .exe installer (wails build -nsis)
 #   macOS (Apple Silicon) -> .dmg (drag-to-Applications)
-# A final job attaches everything to a GitHub Release.
+# A final job attaches everything to a draft GitHub Release for review.
 #
 # Code-signing/notarization is OFF (packages install/run but show OS
 # "unidentified developer" warnings). The signing hooks live in
@@ -74,7 +74,7 @@ jobs:
         run: |
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
           pipx install reuse==6.2.0
-          echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
+          pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"
 
       - name: Install frontend dependencies
         working-directory: frontend
@@ -128,12 +128,7 @@ jobs:
       - name: Define signed update-channel build identity
         run: |
           version="${GITHUB_REF_NAME#v}"
-          case "$version" in
-            *-alpha.*) channel="alpha" ;;
-            *-beta.*) channel="beta" ;;
-            *-rc.*) channel="rc" ;;
-            *) channel="stable" ;;
-          esac
+          channel="$(bash scripts/release-update-channel.sh "$GITHUB_REF_NAME")"
           ldflags="-X gopmgr/internal/update.CurrentVersion=$version -X gopmgr/internal/update.UpdateChannel=$channel"
           if [ -n "$GOPMGR_UPDATE_PUBLIC_KEY" ] && [ "${{ matrix.platform }}" != "linux/amd64" ]; then
             target="${{ matrix.platform }}"
@@ -288,12 +283,7 @@ jobs:
           GOPMGR_UPDATE_PRIVATE_KEY: ${{ secrets.GOPMGR_UPDATE_PRIVATE_KEY }}
         run: |
           version="${GITHUB_REF_NAME#v}"
-          case "$version" in
-            *-alpha.*) channel="alpha" ;;
-            *-beta.*) channel="beta" ;;
-            *-rc.*) channel="rc" ;;
-            *) channel="stable" ;;
-          esac
+          channel="$(bash scripts/release-update-channel.sh "$GITHUB_REF_NAME")"
           if [ -n "$GOPMGR_UPDATE_PUBLIC_KEY" ]; then
             test -n "$GOPMGR_UPDATE_PRIVATE_KEY"
             for target in darwin-arm64 windows-amd64; do
@@ -320,6 +310,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
             --title "GoPMgr $GITHUB_REF_NAME" \
+            --draft \
             --generate-notes \
             "${publication_args[@]}" \
             dist/*

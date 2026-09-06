@@ -14,36 +14,89 @@ set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-SAMPLE_DIR="$ROOT/.tmp/gopmgr-pades-test"
-PADES_LOCK="$ROOT/.tmp/gopmgr-pades-test.lock"
+SCRATCH_ROOT="${GOPMGR_PADES_SCRATCH_ROOT:-$ROOT/.tmp}"
+case "$SCRATCH_ROOT" in
+/*) ;;
+*)
+	echo "PAdES scratch root must be absolute: $SCRATCH_ROOT" >&2
+	exit 64
+	;;
+esac
+SCRATCH_PARENT="$(dirname "$SCRATCH_ROOT")"
+SCRATCH_NAME="$(basename "$SCRATCH_ROOT")"
+case "$SCRATCH_NAME" in
+"" | . | ..)
+	echo "Invalid PAdES scratch-root leaf: $SCRATCH_NAME" >&2
+	exit 64
+	;;
+esac
+if [ ! -d "$SCRATCH_PARENT" ]; then
+	echo "PAdES scratch-root parent must already exist: $SCRATCH_PARENT" >&2
+	exit 64
+fi
+SCRATCH_PARENT="$(cd "$SCRATCH_PARENT" && pwd -P)"
+SCRATCH_ROOT="$SCRATCH_PARENT/$SCRATCH_NAME"
+case "$SCRATCH_ROOT" in
+"$ROOT"/*) ;;
+*)
+	echo "PAdES scratch root must remain inside the repository: $SCRATCH_ROOT" >&2
+	exit 64
+	;;
+esac
+if [ -L "$SCRATCH_ROOT" ]; then
+	echo "Refusing symlinked PAdES scratch root: $SCRATCH_ROOT" >&2
+	exit 64
+fi
+mkdir -p "$SCRATCH_ROOT"
+SCRATCH_ROOT="$(cd "$SCRATCH_ROOT" && pwd -P)"
+SAMPLE_DIR="$SCRATCH_ROOT/gopmgr-pades-test"
+PADES_LOCK="$SCRATCH_ROOT/gopmgr-pades-test.lock"
+LOCK_OWNED=false
+WORK_DIR=""
 source "$ROOT/scripts/pades-lock.sh"
+source "$ROOT/scripts/pades-publish.sh"
 
 echo "=== PAdES Local Validation Gate ==="
+
+cleanup() {
+	status=$?
+	trap - EXIT
+	if [ "$LOCK_OWNED" = true ]; then
+		rm -rf "$PADES_LOCK"
+	fi
+	if [ "$status" -ne 0 ] && [ -n "$WORK_DIR" ] && [ -d "$WORK_DIR" ]; then
+		echo "PAdES validation failed; generated diagnostics retained at $WORK_DIR" >&2
+	fi
+	exit "$status"
+}
 
 acquire_pades_lock() {
 	if [ "${GOPMGR_PADES_LOCK_HELD:-0}" = "1" ]; then
 		return
 	fi
 	pades_acquire_directory_lock "$PADES_LOCK" "${GOPMGR_PADES_LOCK_TIMEOUT_SECONDS:-30}"
-	trap 'rm -rf "$PADES_LOCK"' EXIT INT TERM
+	LOCK_OWNED=true
 	export GOPMGR_PADES_LOCK_HELD=1
 }
 
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 acquire_pades_lock
 
-# Build the whole sample directory in an isolated, private scratch dir and
-# atomically publish it, rather than clearing and repopulating $SAMPLE_DIR
-# in place. An earlier version of this script did the latter and, despite
-# holding PADES_LOCK throughout, still hit two distinct CI-only failures
+# Build the whole sample directory in an isolated, private scratch dir before
+# publishing it under the cooperative PAdES lock, rather than clearing and
+# repopulating $SAMPLE_DIR in place. An earlier version did the latter and,
+# despite holding PADES_LOCK throughout, still hit two distinct CI-only failures
 # (a truncated generator source read mid-heredoc-write, and the sample
 # directory reported missing entirely) -- both consistent with a second
 # reader observing $SAMPLE_DIR during the window it's being torn down and
-# rebuilt, however that happens under CI's specific timing. Publishing via
-# rename(2) removes that window instead of trying to further narrow it:
-# any observer of $SAMPLE_DIR sees either the complete prior directory or
-# the complete new one, never a partial one, no matter what raced it.
-mkdir -p "$ROOT/.tmp"
-WORK_DIR="$(mktemp -d "$ROOT/.tmp/gopmgr-pades-test.build.XXXXXX")"
+# rebuilt, however that happens under CI's specific timing. The two publication
+# renames are not one atomic transaction; participating readers are serialized
+# by PADES_LOCK, and pades_publish_sample_dir restores the prior sample when the
+# replacement move reports failure. Unlocked readers remain outside this
+# cooperative contract.
+WORK_DIR="$(mktemp -d "$SCRATCH_ROOT/gopmgr-pades-test.build.XXXXXX")"
 GENERATOR="$WORK_DIR/validate_pades.go"
 
 cat > "$GENERATOR" <<'EOF'
@@ -161,15 +214,6 @@ func main() {
 		fatal(fmt.Errorf("write signed sample: %w", err))
 	}
 
-	// Report the sample's canonical, post-publish location rather than
-	// samplePath: when GOPMGR_PADES_SAMPLE_DIR overrides sampleDir to a
-	// private build directory (see validate-pades.sh's atomic-publish
-	// wrapper), samplePath points at that scratch location, which the
-	// wrapper renames into place immediately after this program exits --
-	// printing it here would show a path that no longer exists once the
-	// caller's swap completes.
-	fmt.Printf("Generated %s\n", filepath.Join(".tmp", "gopmgr-pades-test", "signed-sample.pdf"))
-	fmt.Println("PAdES-T local validation gate PASSED.")
 }
 
 func fatal(err error) {
@@ -374,15 +418,9 @@ EOF
 
 GOPMGR_PADES_SAMPLE_DIR="$WORK_DIR" go run "$GENERATOR"
 
-# Publish atomically: move the old directory aside (if any) only after the
-# new one is already live at $SAMPLE_DIR, so $SAMPLE_DIR is never briefly
-# absent to a concurrent reader; then discard the old one.
-OLD_SAMPLE_DIR=""
-if [ -e "$SAMPLE_DIR" ]; then
-	OLD_SAMPLE_DIR="$SAMPLE_DIR.stale.$$"
-	mv "$SAMPLE_DIR" "$OLD_SAMPLE_DIR"
-fi
-mv "$WORK_DIR" "$SAMPLE_DIR"
-if [ -n "$OLD_SAMPLE_DIR" ]; then
-	rm -rf "$OLD_SAMPLE_DIR"
-fi
+# Publish while the shared PAdES lock is held. The helper retains or restores
+# the previous sample if replacement fails, so a failed second move cannot
+# silently discard the only usable validation evidence.
+pades_publish_sample_dir "$WORK_DIR" "$SAMPLE_DIR"
+echo "Generated $SAMPLE_DIR/signed-sample.pdf"
+echo "PAdES-T local validation gate PASSED."

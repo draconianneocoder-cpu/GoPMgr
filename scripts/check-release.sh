@@ -213,4 +213,4 @@ if ! make pades-harness-tests >/dev/null; then
 fi
 echo "PAdES harness regression gate passed."
 
-echo "GoPMgr is ready for release."
+echo "GoPMgr local release gates passed; complete the platform and publication evidence separately."

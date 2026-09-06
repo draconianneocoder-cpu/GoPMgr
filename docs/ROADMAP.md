@@ -7,8 +7,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 This roadmap describes intended product direction, not a release promise.
 Current release-readiness work is tracked in
-[docs/beta-release-backlog.md](docs/beta-release-backlog.md). Decisions that
-change architecture belong in [docs/design/](docs/design/).
+[beta-release-backlog.md](beta-release-backlog.md). The next limited alpha is
+planned in [next-alpha-release-plan.md](next-alpha-release-plan.md). Decisions
+that change architecture belong in [design/](design/).
 
 ## Current focus
 
@@ -64,9 +65,9 @@ near-term priority is making those workflows dependable for wider testing.
 
 | ADR | Decision | Status |
 | --- | --- | --- |
-| [ADR-001](docs/design/ADR-001-database-encryption-at-rest.md) | Per-user database encryption at rest | Implemented |
-| [ADR-002](docs/design/ADR-002-duckdb-vs-sqlcipher-evaluation.md) | DuckDB analytics and SQLCipher project storage | Implemented |
-| [ADR-003](docs/design/ADR-003-gofpdf-to-go-pdf-fpdf-migration.md) | PDF library migration | Implemented |
+| [ADR-001](design/ADR-001-database-encryption-at-rest.md) | Per-user database encryption at rest | Implemented |
+| [ADR-002](design/ADR-002-duckdb-vs-sqlcipher-evaluation.md) | DuckDB analytics and SQLCipher project storage | Implemented |
+| [ADR-003](design/ADR-003-gofpdf-to-go-pdf-fpdf-migration.md) | PDF library migration | Implemented |
 
 ## Not planned
 
