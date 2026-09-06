@@ -73,7 +73,13 @@ jobs:
         # depend on whichever release happened to be newest that day.
         run: |
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
-          pipx install reuse==6.2.0
+          # charset-normalizer extra: reuse's mandatory python-magic dep is a
+          # ctypes binding to native libmagic, which pip does not ship. This
+          # job runs on Linux where libmagic1 is preinstalled, but the extra
+          # removes that implicit system dependency so a runner-image change
+          # cannot break the release gate at tag time (it already broke the
+          # macos-15 CI assurance job for exactly this reason).
+          pipx install 'reuse[charset-normalizer]==6.2.0'
           pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"
 
       - name: Install frontend dependencies

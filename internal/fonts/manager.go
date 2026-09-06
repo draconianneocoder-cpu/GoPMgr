@@ -124,13 +124,49 @@ type FamilyInfo struct {
 // fonts appear without a restart.
 type Manager struct {
 	userDir string
+
+	// bundledFS is the source of bundled font bytes. NewManager always
+	// binds it to the real assetsFS embed; only newManagerWithBundledFS
+	// substitutes it, and that constructor is unexported, so no production
+	// path and no caller outside this package can swap the asset source.
+	// It exists so the bundled-font branches are testable against a known
+	// asset set instead of against whichever optional families `make
+	// fonts` happened to fetch on the machine running the tests.
+	// Substituting it does not bypass validation: bundled bytes still go
+	// through validateTrueType before reaching the registrar.
+	bundledFS fs.FS
 }
 
 // NewManager constructs a Manager. userDir is the directory where
 // user-imported .ttf files live; pass "" to disable user fonts. The
 // directory is created lazily on the first ImportFont call.
 func NewManager(userDir string) *Manager {
-	return &Manager{userDir: userDir}
+	return &Manager{userDir: userDir, bundledFS: assetsFS}
+}
+
+// newManagerWithBundledFS is NewManager with the bundled-asset source
+// replaced. Test-only seam: it is unexported precisely so the substitution
+// cannot reach production code, and it is what lets the bundled branches
+// be exercised deterministically -- the real embed's contents vary with
+// whether optional families were fetched, which previously forced
+// TestRegister_BundledWithoutAssets to skip itself on a developer machine
+// and made this package's measured coverage depend on the environment.
+func newManagerWithBundledFS(userDir string, bundled fs.FS) *Manager {
+	return &Manager{userDir: userDir, bundledFS: bundled}
+}
+
+// bundled returns the bundled-asset source, falling back to the real
+// embed when the field is unset. Manager's fields are all unexported, so
+// a caller outside this package can still write fonts.Manager{}; before
+// bundledFS existed that zero value worked for bundled fonts, and reading
+// a nil fs.FS directly would turn it into a panic instead. The fallback
+// keeps the zero value usable rather than making correct construction a
+// precondition callers cannot see.
+func (m *Manager) bundled() fs.FS {
+	if m.bundledFS == nil {
+		return assetsFS
+	}
+	return m.bundledFS
 }
 
 // Available returns every font family the Manager can register: bundled
@@ -208,15 +244,23 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 			regName = aliasName
 		}
 		registered := 0
+		// present counts styles whose file exists in the embed but was
+		// rejected by validateTrueType. Without it, a family whose files
+		// are all present-but-corrupt reported the same "run 'make fonts'"
+		// error as one whose files were never fetched -- advice that
+		// cannot fix a corrupt file and sends the reader to the wrong
+		// problem. The two cases now report distinctly.
+		present := 0
 		for _, style := range AllStyles {
 			ff, ok := fam.File(style)
 			if !ok {
 				continue
 			}
-			b, err := assetsFS.ReadFile(filepath.ToSlash(filepath.Join("assets", ff.FileName)))
+			b, err := fs.ReadFile(m.bundled(), filepath.ToSlash(filepath.Join("assets", ff.FileName)))
 			if err != nil {
 				continue // file not fetched; skip this style
 			}
+			present++
 			if err := validateTrueType(b); err != nil {
 				continue
 			}
@@ -224,6 +268,9 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 			registered++
 		}
 		if registered == 0 {
+			if present > 0 {
+				return fmt.Errorf("fonts: bundled family %q has %d embedded .ttf file(s) but none is a usable TrueType font; the embedded assets are corrupt, so re-fetch them with 'make fonts'", family, present)
+			}
 			return fmt.Errorf("fonts: bundled family %q has no fetched .ttf files (run 'make fonts')", family)
 		}
 		return nil
@@ -307,11 +354,22 @@ func (m *Manager) ImportFont(srcPath string) (FamilyInfo, error) {
 
 // presentBundledStyles returns the styles of a bundled family whose
 // .ttf files are actually present in the embed.
+//
+// Presence only: it does not run validateTrueType over each file, so a
+// family whose embedded files are all present-but-corrupt is still listed
+// by Available() and then fails in RegisterAs. Validating here would mean
+// reading every bundled font's bytes on every Available() call, which the
+// font picker makes on each refresh, to defend against a state that
+// cannot occur in a supported build -- the assets are embedded at compile
+// time and make required-font-assets checks the tracked baseline.
+// RegisterAs reports that case distinctly instead, so the failure is at
+// least diagnosable when it does happen.
 func (m *Manager) presentBundledStyles(fam FontFamily) []Style {
 	var styles []Style
 	for _, ff := range fam.Files {
 		name := filepath.ToSlash(filepath.Join("assets", ff.FileName))
-		if _, err := assetsFS.Open(name); err == nil {
+		if f, err := m.bundled().Open(name); err == nil {
+			_ = f.Close()
 			styles = append(styles, ff.Style)
 		}
 	}

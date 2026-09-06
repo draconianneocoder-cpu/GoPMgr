@@ -188,6 +188,25 @@ func TestValidateRepositoryConfigs(t *testing.T) {
 			wantErrText: ".github/workflows/ci.yml: jobs.assurance must verify pipx is available",
 		},
 		{
+			// Recurrence guard for the macos-15 assurance failure: reuse
+			// depends unconditionally on python-magic, a ctypes binding to
+			// the native libmagic library pip does not ship, and aborts with
+			// NoEncodingModuleError at import time when no encoding module
+			// loads. macOS runners have no libmagic, so a bare reuse==6.2.0
+			// made every reuse invocation exit 1 and the assurance job never
+			// once passed. Dropping the extra must fail verification.
+			name: "rejects a REUSE install without an encoding-module extra",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
+					string(files[".github/workflows/ci.yml"]),
+					`pipx install 'reuse[charset-normalizer]==6.2.0'`,
+					"pipx install reuse==6.2.0",
+					1,
+				))
+			},
+			wantErrText: ".github/workflows/ci.yml: jobs.assurance must install reuse[charset-normalizer]==6.2.0",
+		},
+		{
 			name: "rejects the Python user-base path for pipx binaries",
 			mutate: func(files map[string][]byte, _ *[]string) {
 				files[".github/workflows/ci.yml"] = []byte(strings.Replace(
@@ -282,7 +301,7 @@ jobs:
       - name: Install pinned REUSE
         run: |
           command -v pipx >/dev/null
-          pipx install reuse==6.2.0
+          pipx install 'reuse[charset-normalizer]==6.2.0'
           pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH"
       - uses: actions/setup-node@v7
       - name: Install frontend dependencies
