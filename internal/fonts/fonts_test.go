@@ -6,8 +6,11 @@ package fonts
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 func TestStyleFpdfStyle(t *testing.T) {
@@ -379,23 +382,277 @@ func TestRegister_NilRegistrar(t *testing.T) {
 	}
 }
 
-// TestRegister_BundledWithoutAssets confirms the actionable error when
-// a bundled family's binaries haven't been fetched. assets/ always
-// carries README.md plus the always-tracked Source Sans 3 baseline;
-// Liberation Sans (like other optional families) is gitignored and
-// fetched via `make fonts`, so a checkout without it reproduces the
-// no-assets state this test targets. Skips if fonts happen to be
-// present already (e.g. after `make fonts` ran locally).
-func TestRegister_BundledWithoutAssets(t *testing.T) {
+// TestNewManager_BindsRealEmbeddedAssets guards the seam itself. Every
+// other bundled-path test injects a fake bundle, so if NewManager stopped
+// binding the real assetsFS embed -- or bound a nil fs.FS -- nothing else
+// in this file would notice, and production would ship a Manager that can
+// register no bundled font at all.
+//
+// It asserts only on Source Sans 3, which is committed to the repository
+// as the PDF/A baseline (the other families are gitignored and fetched by
+// `make fonts`), so this stays deterministic on any checkout.
+func TestNewManager_BindsRealEmbeddedAssets(t *testing.T) {
 	mgr := NewManager(t.TempDir())
 	reg := &recordingRegistrar{}
+
+	if err := mgr.Register(reg, "Source Sans 3"); err != nil {
+		t.Fatalf("Register the committed Source Sans 3 baseline: %v", err)
+	}
+	if len(reg.calls) == 0 {
+		t.Fatal("NewManager must bind the real embed; no style was registered")
+	}
+	for _, call := range reg.calls {
+		if call.n == 0 {
+			t.Errorf("style %q registered with 0 bytes; the embed is not being read", call.style)
+		}
+	}
+}
+
+// TestZeroValueManager_FallsBackToRealEmbed guards Manager.bundled()'s
+// nil fallback. Manager's fields are all unexported, so code outside this
+// package can legally write fonts.Manager{}; that zero value worked for
+// bundled fonts before bundledFS was introduced, and reading the field
+// directly would have turned it into a nil-interface panic. Without this
+// test, collapsing bundled() back into a plain field read would reinstate
+// that panic silently.
+func TestZeroValueManager_FallsBackToRealEmbed(t *testing.T) {
+	var mgr Manager // deliberately not NewManager
+
+	got := mgr.Available()
+	if len(got) == 0 {
+		t.Fatal("zero-value Manager should still report the committed Source Sans 3 baseline")
+	}
+
+	reg := &recordingRegistrar{}
+	if err := mgr.Register(reg, "Source Sans 3"); err != nil {
+		t.Fatalf("zero-value Manager should register the committed baseline: %v", err)
+	}
+	if len(reg.calls) == 0 {
+		t.Error("zero-value Manager registered no styles")
+	}
+}
+
+// bundledAsset is the embed-relative path of one bundled style, matching
+// what Manager builds from the catalog. Kept next to the tests that
+// construct fake bundles so a catalog rename shows up here as a compile
+// or lookup failure rather than as a silently empty fake FS.
+func bundledAsset(fileName string) string { return "assets/" + fileName }
+
+// TestRegister_BundledWithoutAssets confirms the actionable error when a
+// bundled family's binaries haven't been fetched.
+//
+// This drives the Manager against an empty in-memory bundle rather than
+// the real embed. The real embed's contents depend on whether `make
+// fonts` fetched the optional families -- Liberation Sans is gitignored
+// -- so the previous version of this test skipped itself whenever a
+// developer had run `make fonts`, and, worse, made this package's
+// measured coverage depend on the machine it ran on: with assets present
+// Register covered its whole success path (83.8%), without them it
+// returned early (83.3%). That is why the drift ledger recorded a number
+// no CI runner could reproduce. Injecting the bundle removes the
+// environmental dependency entirely: the no-assets branch is now always
+// the branch under test.
+func TestRegister_BundledWithoutAssets(t *testing.T) {
+	mgr := newManagerWithBundledFS(t.TempDir(), fstest.MapFS{})
+	reg := &recordingRegistrar{}
+
 	err := mgr.Register(reg, "Liberation Sans")
 	if err == nil {
-		t.Skip("Liberation Sans assets present (fonts were fetched); skipping no-assets check")
+		t.Fatal("Register with an empty bundle should fail, got nil")
 	}
-	// Error should mention running 'make fonts'.
 	if !contains(err.Error(), "make fonts") {
 		t.Errorf("error %q should guide the user to 'make fonts'", err.Error())
+	}
+	if !contains(err.Error(), "no fetched") {
+		t.Errorf("error %q should report the files as unfetched", err.Error())
+	}
+	if len(reg.calls) != 0 {
+		t.Errorf("nothing should be registered from an empty bundle, got %d calls", len(reg.calls))
+	}
+}
+
+// TestRegister_BundledAssetsPresentButCorrupt covers the case the old
+// skip-based test could never reach: the embedded files exist but none is
+// a usable TrueType font. This previously reported the same "no fetched
+// .ttf files (run 'make fonts')" error as an empty bundle, which points
+// the reader at fetching -- advice that cannot fix a file that is already
+// there and corrupt. The two cases must report distinctly.
+func TestRegister_BundledAssetsPresentButCorrupt(t *testing.T) {
+	fam, ok := CatalogFamily("Liberation Sans")
+	if !ok {
+		t.Fatal("Liberation Sans missing from the catalog")
+	}
+	bundle := fstest.MapFS{}
+	for _, ff := range fam.Files {
+		// "OTTO" is a real signature validateTrueType rejects, so this is
+		// a plausible corruption (an OpenType/CFF file named .ttf) rather
+		// than arbitrary bytes.
+		bundle[bundledAsset(ff.FileName)] = &fstest.MapFile{Data: []byte("OTTO____")}
+	}
+
+	mgr := newManagerWithBundledFS(t.TempDir(), bundle)
+	reg := &recordingRegistrar{}
+
+	err := mgr.Register(reg, "Liberation Sans")
+	if err == nil {
+		t.Fatal("Register over a corrupt bundle should fail, got nil")
+	}
+	if contains(err.Error(), "no fetched") {
+		t.Errorf("error %q misreports present-but-corrupt files as unfetched", err.Error())
+	}
+	if !contains(err.Error(), "corrupt") {
+		t.Errorf("error %q should say the embedded assets are corrupt", err.Error())
+	}
+	if len(reg.calls) != 0 {
+		t.Errorf("a font failing validation must never reach the registrar, got %d calls", len(reg.calls))
+	}
+}
+
+// TestRegister_BundledFromInjectedBundle proves the seam registers real
+// styles when the bundle holds valid TrueType data, so the two failure
+// tests above are asserting a genuine failure rather than a bundle the
+// Manager could never read in the first place. It also pins the
+// alias-registration contract RegisterAs exists for.
+func TestRegister_BundledFromInjectedBundle(t *testing.T) {
+	fam, ok := CatalogFamily("Liberation Sans")
+	if !ok {
+		t.Fatal("Liberation Sans missing from the catalog")
+	}
+	bundle := fstest.MapFS{}
+	for _, ff := range fam.Files {
+		bundle[bundledAsset(ff.FileName)] = &fstest.MapFile{Data: fakeTTF()}
+	}
+
+	mgr := newManagerWithBundledFS(t.TempDir(), bundle)
+	reg := &recordingRegistrar{}
+
+	if err := mgr.RegisterAs(reg, "Liberation Sans", "Helvetica"); err != nil {
+		t.Fatalf("RegisterAs over a valid bundle: %v", err)
+	}
+	if len(reg.calls) != len(fam.Files) {
+		t.Fatalf("expected %d registrar calls, got %d", len(fam.Files), len(reg.calls))
+	}
+	for _, call := range reg.calls {
+		if call.family != "Helvetica" {
+			t.Errorf("RegisterAs should register under the alias, got %q", call.family)
+		}
+	}
+}
+
+// TestAvailable_SortsBundledBeforeUserThenByName pins the order the font
+// picker renders. Available() documents "sorted by origin (bundled first)
+// then name", and nothing asserted it.
+//
+// It also removes the last environmental dependency in this package's
+// coverage. The comparator's name tiebreak is only reached when two
+// entries share an origin, and against the real embed that needs two
+// bundled families -- i.e. optional families fetched by `make fonts`. On a
+// bare checkout only the committed Source Sans 3 baseline is bundled, so
+// the tiebreak went uncovered and this package measured 0.5 points lower
+// than on a developer machine. Injecting two bundled families covers it on
+// every checkout.
+func TestAvailable_SortsBundledBeforeUserThenByName(t *testing.T) {
+	// Three families, deliberately not two: Catalog's own order is
+	// "Liberation Sans", "Liberation Serif", "Liberation Mono", so the
+	// first *two* already happen to be in name order and would pass even
+	// against a comparator that never reordered anything. Taking three
+	// makes catalog order and name order genuinely differ, so the
+	// assertion below can only pass if the sort actually ran.
+	const want = 3
+	var picked []FontFamily
+	bundle := fstest.MapFS{}
+	for _, fam := range Catalog {
+		ff, ok := fam.File(Regular)
+		if !ok {
+			continue
+		}
+		picked = append(picked, fam)
+		bundle[bundledAsset(ff.FileName)] = &fstest.MapFile{Data: fakeTTF()}
+		if len(picked) == want {
+			break
+		}
+	}
+	if len(picked) != want {
+		t.Fatalf("need %d bundled families with a Regular style, catalog gave %d", want, len(picked))
+	}
+
+	catalogOrder := make([]string, len(picked))
+	for i, fam := range picked {
+		catalogOrder[i] = fam.Name
+	}
+	nameOrder := append([]string(nil), catalogOrder...)
+	sort.Strings(nameOrder)
+	if reflect.DeepEqual(catalogOrder, nameOrder) {
+		// Not a pass: it means this test can no longer detect a broken
+		// comparator, which is exactly the pass-by-omission this suite
+		// treats as a failure elsewhere.
+		t.Fatalf("catalog order %v already equals name order; pick families whose orders differ or this test proves nothing", catalogOrder)
+	}
+
+	userDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(userDir, "Acme-Regular.ttf"), fakeTTF(), 0o600); err != nil {
+		t.Fatalf("write user font: %v", err)
+	}
+
+	mgr := newManagerWithBundledFS(userDir, bundle)
+	got := mgr.Available()
+	if len(got) != want+1 {
+		t.Fatalf("expected %d bundled + 1 user family, got %d: %+v", want, len(got), got)
+	}
+
+	var gotBundled []string
+	for i, info := range got {
+		if info.Origin == OriginBundled.String() {
+			if i >= want {
+				t.Errorf("bundled family %q at index %d should precede every user font", info.Name, i)
+			}
+			gotBundled = append(gotBundled, info.Name)
+			continue
+		}
+		if i != want {
+			t.Errorf("user font %q at index %d should sort after all bundled families", info.Name, i)
+		}
+	}
+	if !reflect.DeepEqual(gotBundled, nameOrder) {
+		t.Errorf("bundled families = %v, want ascending by name %v", gotBundled, nameOrder)
+	}
+}
+
+// TestAvailable_ReportsOnlyBundledStylesPresent pins Available() to the
+// injected bundle too, so the family list the UI renders is asserted
+// against a known asset set instead of whichever optional families the
+// developer happened to fetch.
+func TestAvailable_ReportsOnlyBundledStylesPresent(t *testing.T) {
+	fam, ok := CatalogFamily("Liberation Sans")
+	if !ok {
+		t.Fatal("Liberation Sans missing from the catalog")
+	}
+	regularFile, ok := fam.File(Regular)
+	if !ok {
+		t.Fatal("Liberation Sans has no Regular style in the catalog")
+	}
+	// Only the Regular face is present; the other three are unfetched.
+	bundle := fstest.MapFS{
+		bundledAsset(regularFile.FileName): &fstest.MapFile{Data: fakeTTF()},
+	}
+
+	mgr := newManagerWithBundledFS("", bundle)
+
+	var got *FamilyInfo
+	for i, info := range mgr.Available() {
+		if info.Name == "Liberation Sans" {
+			got = &mgr.Available()[i]
+			break
+		}
+	}
+	if got == nil {
+		t.Fatal("Liberation Sans should be available when its Regular face is present")
+	}
+	if len(got.Styles) != 1 || got.Styles[0] != Regular.String() {
+		t.Errorf("expected only the Regular style, got %v", got.Styles)
+	}
+	if got.Origin != OriginBundled.String() {
+		t.Errorf("expected a bundled origin, got %q", got.Origin)
 	}
 }
 
