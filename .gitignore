@@ -101,6 +101,8 @@ temp_snapshot.db
 /GoPMgr App Icon (square-style, no text).png
 /Full GoPMgr Dark Logo (gopher + text).png
 /Full GoPMgr Light Logo (gopher + text).png
+# Local historical inputs superseded by canonical tracked branding masters.
+/assets/branding/source/archive/
 *.zip
 
 # Certificates (NEVER commit private keys)
