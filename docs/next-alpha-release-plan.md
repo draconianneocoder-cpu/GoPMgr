@@ -9,6 +9,10 @@ This is the version-neutral execution plan for GoPMgr's next alpha. It does not
 authorize a tag, push, hosted workflow, or publication, and it does not turn an
 unverified package into a supported-platform claim.
 
+The candidate-specific designation, risk dispositions, recovery action, and
+evidence for `v1.1.0-alpha.2` are recorded in
+[releases/v1.1.0-alpha.2.md](releases/v1.1.0-alpha.2.md).
+
 ## Release intent
 
 The next alpha is a limited engineering-validation release. Its purpose is to
@@ -82,8 +86,10 @@ Before the tag, also require:
    pass preflight before any package job can build artifacts; its final job
    creates a draft GitHub prerelease rather than publishing immediately.
 5. Review every hosted job and every draft-release package name, platform
-   metadata, signature/trust result, SHA-256 digest, signed-update manifest,
-   generated note, and required limitation before publishing the draft.
+   metadata, signature/trust result, SHA-256 digest, generated note, and
+   required limitation before publishing the draft. Review the signed-update
+   manifest when the channel is configured; otherwise record that the channel
+   is disabled and no manifest was produced.
 6. Publish the reviewed draft as a GitHub prerelease, not a general release.
    Add the tag to
    `published-release-tags.txt` only after the public release exists and has
