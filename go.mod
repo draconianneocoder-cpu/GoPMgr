@@ -27,7 +27,7 @@ require (
 	github.com/rickar/cal/v2 v2.1.29
 	github.com/wailsapp/wails/v2 v2.15.0
 	github.com/xuri/excelize/v2 v2.11.0
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/mod v0.40.0
 	golang.org/x/sys v0.47.0
 	gonum.org/v1/gonum v0.17.0
