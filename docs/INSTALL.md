@@ -8,21 +8,22 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 GoPMgr is a local-first desktop app: your projects live in encrypted files on
 your own machine — no account, cloud, or network is required.
 
-Packaged releases will publish a native installer per platform, but **no
-GitHub Release has been published yet** — there is currently nothing to
-download. Until the first release is cut, build from source instead (see
-[Run / build from source](#run--build-from-source) below), or build the
-installers yourself (see [Build the installers
-yourself](#build-the-installers-yourself)). The table and per-platform steps
-below describe what installing a packaged release will look like once one
-exists.
+The limited engineering-validation prerelease
+[v1.1.0-alpha.2](https://github.com/draconianneocoder-cpu/GoPMgr/releases/tag/v1.1.0-alpha.2)
+provides native installers for evaluation. It is not a beta, stable release,
+or supported-platform claim. Read its platform evidence, trust limitations,
+digests, and backup instructions before downloading. Building from source
+remains available below, as does building the installers yourself.
 
 > **Heads-up — unsigned builds.** Current packages are not code-signed, so
 > Windows SmartScreen and macOS Gatekeeper show an "unidentified developer"
 > warning the first time you run the app. The warning reflects the absence of
 > an Apple Developer ID or Windows Authenticode signature; signing is planned.
 > Confirm that the downloaded file's SHA-256 digest matches the digest GitHub
-> displays for that release asset before bypassing the platform warning.
+> displays for that release asset to detect a transfer mismatch. A matching
+> digest does not establish publisher identity or replace Developer ID signing,
+> notarization, Authenticode, or the platform's trust checks. Evaluate that
+> limitation before choosing whether to override a platform warning.
 
 ## Which file do I download?
 

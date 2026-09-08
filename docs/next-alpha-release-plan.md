@@ -9,8 +9,8 @@ This is the version-neutral execution plan for GoPMgr's next alpha. It does not
 authorize a tag, push, hosted workflow, or publication, and it does not turn an
 unverified package into a supported-platform claim.
 
-The candidate-specific designation, risk dispositions, recovery action, and
-evidence for `v1.1.0-alpha.2` are recorded in
+The completed designation, risk dispositions, recovery action, and evidence
+for the published `v1.1.0-alpha.2` prerelease are recorded in
 [releases/v1.1.0-alpha.2.md](releases/v1.1.0-alpha.2.md).
 
 ## Release intent

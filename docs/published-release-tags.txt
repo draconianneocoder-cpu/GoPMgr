@@ -9,5 +9,7 @@
 # (confirmed via `gh api repos/draconianneocoder-cpu/GoPMgr/releases`, which
 # was empty). A later audit found historical tag-triggered Release workflow
 # runs for v1.1.0-alpha.1, so the absence of that tag from the 2026-08-19
-# remote-tag snapshot does not prove it was local-only. No GitHub Release has
-# been published yet.
+# remote-tag snapshot does not prove it was local-only. No GitHub Release had
+# been published before the entry below.
+
+v1.1.0-alpha.2
