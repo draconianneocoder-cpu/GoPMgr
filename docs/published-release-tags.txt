@@ -5,7 +5,9 @@
 # before adding an entry; draft releases and local-only tags do not qualify.
 #
 # 2026-08-19: cleared. This file previously listed v0.9.1-alpha and
-# v1.1.0-alpha.1 as published, but neither was ever pushed to the remote
-# (confirmed via `git ls-remote --tags origin` and `gh api
-# repos/draconianneocoder-cpu/GoPMgr/releases`, both empty) -- both are
-# local-only tags. No GitHub Release has been published yet.
+# v1.1.0-alpha.1 as published, but neither had a published GitHub Release
+# (confirmed via `gh api repos/draconianneocoder-cpu/GoPMgr/releases`, which
+# was empty). A later audit found historical tag-triggered Release workflow
+# runs for v1.1.0-alpha.1, so the absence of that tag from the 2026-08-19
+# remote-tag snapshot does not prove it was local-only. No GitHub Release has
+# been published yet.
