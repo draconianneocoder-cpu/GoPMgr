@@ -78,7 +78,14 @@ find . -name .DS_Store -delete
 
 if ! command -v reuse >/dev/null 2>&1; then
     echo "reuse tool not installed; skipping license check."
-    echo "  Install with:  pip install reuse"
+    # The charset-normalizer extra is required, not optional: reuse depends
+    # unconditionally on python-magic, a ctypes binding to the native
+    # libmagic library pip does not ship, and aborts at import time with
+    # NoEncodingModuleError when no encoding module loads. macOS has no
+    # libmagic, so a bare `pip install reuse` yields a binary that satisfies
+    # the command -v check above and then fails every invocation. Version
+    # pinned to match .github/workflows/release.yml's tag-preflight gate.
+    echo "  Install with:  pipx install 'reuse[charset-normalizer]==6.2.0'"
 else
     if ! reuse lint >/dev/null; then
         echo "REUSE/SPDX compliance failed. Run 'reuse lint' for details."
