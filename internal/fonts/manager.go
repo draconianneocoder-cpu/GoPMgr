@@ -244,13 +244,20 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 			regName = aliasName
 		}
 		registered := 0
-		// present counts styles whose file exists in the embed but was
-		// rejected by validateTrueType. Without it, a family whose files
-		// are all present-but-corrupt reported the same "run 'make fonts'"
-		// error as one whose files were never fetched -- advice that
-		// cannot fix a corrupt file and sends the reader to the wrong
-		// problem. The two cases now report distinctly.
-		present := 0
+		// present is the set of distinct embedded files this family
+		// resolved to, whether or not they turned out to be valid fonts.
+		// It separates "files are there but unusable" from "files were
+		// never fetched", which otherwise reported the same error and sent
+		// the reader to the wrong problem.
+		//
+		// A set rather than a counter, and populated before validation
+		// rather than after, for two reasons that are easy to get wrong:
+		// the loop walks AllStyles while FontFamily.File falls back to the
+		// Regular face for undefined styles, so a single-file family
+		// resolves the same file once per style and a counter reported 4
+		// files for 1; and membership here means "readable", since the
+		// validity verdict is what registered tracks.
+		present := make(map[string]struct{}, len(fam.Files))
 		for _, style := range AllStyles {
 			ff, ok := fam.File(style)
 			if !ok {
@@ -260,7 +267,7 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 			if err != nil {
 				continue // file not fetched; skip this style
 			}
-			present++
+			present[ff.FileName] = struct{}{}
 			if err := validateTrueType(b); err != nil {
 				continue
 			}
@@ -268,8 +275,13 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 			registered++
 		}
 		if registered == 0 {
-			if present > 0 {
-				return fmt.Errorf("fonts: bundled family %q has %d embedded .ttf file(s) but none is a usable TrueType font; the embedded assets are corrupt, so re-fetch them with 'make fonts'", family, present)
+			if len(present) > 0 {
+				// Not 'make fonts': that runs scripts/fetch-fonts.sh with no
+				// flags, and the script skips any file already on disk unless
+				// --force is passed. For assets that are present but corrupt
+				// it would do nothing at all, which is the same dead-end this
+				// branch exists to steer the reader away from.
+				return fmt.Errorf("fonts: bundled family %q has %d embedded .ttf file(s) but none is a usable TrueType font; the embedded assets are corrupt, so overwrite them with 'scripts/fetch-fonts.sh --force' ('make fonts' alone skips files that already exist)", family, len(present))
 			}
 			return fmt.Errorf("fonts: bundled family %q has no fetched .ttf files (run 'make fonts')", family)
 		}
