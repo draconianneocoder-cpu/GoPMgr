@@ -38,12 +38,37 @@ updates:
     commit-message:
       prefix: "frontend"
     groups:
+      # vitest is the one exception to the ungrouped-majors rule below, and it
+      # has to be: @vitest/coverage-v8 peer-depends on *exactly* its matching
+      # vitest version, so the family cannot be reviewed as separate PRs --
+      # neither half installs without the other. Splitting them produced PRs
+      # #67 and #68, which were individually unmergeable in either order
+      # (`npm ci` died with ERESOLVE, taking out Build, Lint, Verify and
+      # Assurance). All three update-types are grouped, not just major: the
+      # peer pin is exact, so a minor split breaks identically. That worked
+      # before only because npm-minor-patch happened to catch both halves.
+      #
+      # Listed first because a dependency joins the first group it matches,
+      # and npm-minor-patch below matches on update-types alone. The
+      # exclude-patterns there makes that independent of ordering, so
+      # reordering these groups cannot silently resplit the family.
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+        update-types:
+          - major
+          - minor
+          - patch
       npm-minor-patch:
+        exclude-patterns:
+          - "vitest"
+          - "@vitest/*"
         update-types:
           - minor
           - patch
-    # Majors (e.g. vite, @sveltejs/vite-plugin-svelte) are deliberately NOT
-    # grouped, so they arrive as individual PRs for careful, separately
+    # Other majors (e.g. vite, @sveltejs/vite-plugin-svelte) are deliberately
+    # NOT grouped, so they arrive as individual PRs for careful, separately
     # verified review — and this keeps you notified the moment a new Vite
     # major lands (e.g. once vite-plugin-svelte supports Vite 8's Rolldown).
 
