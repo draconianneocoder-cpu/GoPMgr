@@ -128,11 +128,15 @@ PAdES, and encryption status from drifting away from supported behavior.
 
 - [GO-2026-5932](https://pkg.go.dev/vuln/GO-2026-5932)
   (`golang.org/x/crypto`): affects a code path GoPMgr does not call
-  (`govulncheck` reports 0 reachable symbols). No fixed upstream release
-  exists yet (`govulncheck` reports `Fixed in: N/A`); the dependency is
-  pinned to v0.55.0 as of 2026-08-28 and will be bumped again when a fix
-  ships. Routine version bumps that don't fix this advisory may be
-  skipped without updating this note.
+  (`govulncheck` reports 0 reachable symbols). No fixed release exists,
+  and none is expected: the advisory records that `x/crypto/openpgp` is
+  unmaintained and unsafe by design, so its OSV entry carries no fixed
+  version at all rather than a fix that has yet to ship (`govulncheck`
+  reports `Fixed in: N/A`). It leaves this list only if GoPMgr's
+  dependency tree stops reaching the package. The dependency tracks
+  current upstream regardless — v0.56.0 as of 2026-09-11. Routine
+  version bumps that don't fix this advisory may be skipped without
+  updating this note.
 
   A 2026-08-28 documentation-drift pass found `govulncheck` additionally
   reporting three advisories not previously tracked here — all likewise
