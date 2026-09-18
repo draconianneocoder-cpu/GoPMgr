@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-pdf/fpdf"
 
-	"gopmgr/internal/fonts"
 	"gopmgr/internal/kernel"
 )
 
@@ -49,7 +48,7 @@ func GenerateMonteCarloRiskReport(spec MonteCarloRiskReportSpec) ([]byte, error)
 
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetCompression(false)
-	_ = fonts.NewManager("").RegisterAs(pdf, "Source Sans 3", "Helvetica")
+	registerPDFABaseline(pdf)
 	reportTitle := "Monte Carlo Risk Report - " + spec.ProjectName + " - " + spec.ChartTitle
 	pdf.SetTitle(reportTitle, true)
 	pdf.SetAuthor("GoPMgr", true)
