@@ -383,17 +383,29 @@ func TestRegister_NilRegistrar(t *testing.T) {
 }
 
 // TestNewManager_BindsRealEmbeddedAssets guards the seam itself. Every
-// other bundled-path test injects a fake bundle, so if NewManager stopped
-// binding the real assetsFS embed -- or bound a nil fs.FS -- nothing else
-// in this file would notice, and production would ship a Manager that can
-// register no bundled font at all.
+// other bundled-path test injects a fake bundle, so without this nothing
+// would notice if NewManager stopped binding the real assetsFS embed.
 //
-// It asserts only on Source Sans 3, which is committed to the repository
-// as the PDF/A baseline (the other families are gitignored and fetched by
-// `make fonts`), so this stays deterministic on any checkout.
+// The binding is checked on the field directly, which is not redundant
+// with the behavioral assertions that follow: Manager.bundled() falls back
+// to assetsFS whenever bundledFS is nil, so a constructor that binds
+// nothing still reads the real embed and still registers fonts. That
+// fallback is deliberate -- it keeps the zero-value fonts.Manager{} usable
+// -- but it means behavior alone cannot distinguish a bound constructor
+// from an unbound one. Fault-seeding NewManager to drop the binding left
+// this entire package green until the field check below was added: the
+// guarantee this comment describes only became real at that point.
+//
+// The behavioral half asserts only on Source Sans 3, which is committed to
+// the repository as the PDF/A baseline (the other families are gitignored
+// and fetched by `make fonts`), so it stays deterministic on any checkout.
 func TestNewManager_BindsRealEmbeddedAssets(t *testing.T) {
 	mgr := NewManager(t.TempDir())
 	reg := &recordingRegistrar{}
+
+	if mgr.bundledFS == nil {
+		t.Fatal("NewManager must bind the real assetsFS embed; bundledFS is nil")
+	}
 
 	if err := mgr.Register(reg, "Source Sans 3"); err != nil {
 		t.Fatalf("Register the committed Source Sans 3 baseline: %v", err)
@@ -505,6 +517,63 @@ func TestRegister_BundledAssetsPresentButCorrupt(t *testing.T) {
 	}
 	if len(reg.calls) != 0 {
 		t.Errorf("a font failing validation must never reach the registrar, got %d calls", len(reg.calls))
+	}
+}
+
+// TestRegister_BundledCorruptCountsDistinctFiles pins the file count in the
+// corrupt-assets error to real files rather than style slots.
+//
+// RegisterAs iterates AllStyles (4 entries) and FontFamily.File falls back to
+// the Regular face for any style a family does not define, so a single-file
+// family resolved the same file four times and the error claimed "4 embedded
+// .ttf file(s)". "Ledger" is exactly that family: one Ledger-Regular.ttf.
+func TestRegister_BundledCorruptCountsDistinctFiles(t *testing.T) {
+	fam, ok := CatalogFamily("Ledger")
+	if !ok {
+		t.Fatal("Ledger missing from the catalog")
+	}
+	if len(fam.Files) != 1 {
+		t.Fatalf("this test needs a single-file family; Ledger now has %d files", len(fam.Files))
+	}
+	bundle := fstest.MapFS{
+		bundledAsset(fam.Files[0].FileName): &fstest.MapFile{Data: []byte("OTTO____")},
+	}
+
+	mgr := newManagerWithBundledFS(t.TempDir(), bundle)
+	err := mgr.Register(&recordingRegistrar{}, "Ledger")
+	if err == nil {
+		t.Fatal("Register over a corrupt bundle should fail, got nil")
+	}
+	if !contains(err.Error(), "1 embedded .ttf file") {
+		t.Errorf("error %q should report exactly 1 embedded file for a single-file family", err.Error())
+	}
+}
+
+// TestRegister_BundledCorruptRemedyIsNotAnInstalledNoOp pins the remedy the
+// corrupt-assets error prescribes.
+//
+// The error used to say "re-fetch them with 'make fonts'", but `make fonts`
+// runs scripts/fetch-fonts.sh with no flags and that script skips any file
+// that already exists unless --force is passed. For present-but-corrupt
+// assets the advice was therefore a no-op -- the same misdirection this error
+// was split out to remove, just relocated into the fix.
+func TestRegister_BundledCorruptRemedyIsNotAnInstalledNoOp(t *testing.T) {
+	fam, ok := CatalogFamily("Liberation Sans")
+	if !ok {
+		t.Fatal("Liberation Sans missing from the catalog")
+	}
+	bundle := fstest.MapFS{}
+	for _, ff := range fam.Files {
+		bundle[bundledAsset(ff.FileName)] = &fstest.MapFile{Data: []byte("OTTO____")}
+	}
+
+	mgr := newManagerWithBundledFS(t.TempDir(), bundle)
+	err := mgr.Register(&recordingRegistrar{}, "Liberation Sans")
+	if err == nil {
+		t.Fatal("Register over a corrupt bundle should fail, got nil")
+	}
+	if !contains(err.Error(), "--force") {
+		t.Errorf("error %q must prescribe a remedy that actually overwrites existing files", err.Error())
 	}
 }
 

@@ -55,9 +55,15 @@ curl -L -o CC-BY-SA-4.0.txt       https://creativecommons.org/licenses/by-sa/4.0
 Or, if you have the `reuse` tool installed:
 
 ```sh
-pip install reuse
+pip install 'reuse[charset-normalizer]'
 reuse download --all
 ```
+
+The `charset-normalizer` extra is required rather than optional. `reuse`
+depends unconditionally on `python-magic`, a ctypes binding to the native
+`libmagic` library that pip does not ship, and aborts at import time when no
+encoding module loads; macOS has no `libmagic`, so a bare `pip install reuse`
+installs a `reuse` that fails on every invocation.
 
 License text files that correspond to committed assets should be tracked so
 `reuse lint` can run without network access. License texts for ignored local
