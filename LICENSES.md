@@ -55,15 +55,20 @@ curl -L -o CC-BY-SA-4.0.txt       https://creativecommons.org/licenses/by-sa/4.0
 Or, if you have the `reuse` tool installed:
 
 ```sh
-pip install 'reuse[charset-normalizer]'
+pipx install 'reuse[charset-normalizer]==6.2.0'
 reuse download --all
 ```
 
-The `charset-normalizer` extra is required rather than optional. `reuse`
-depends unconditionally on `python-magic`, a ctypes binding to the native
-`libmagic` library that pip does not ship, and aborts at import time when no
-encoding module loads; macOS has no `libmagic`, so a bare `pip install reuse`
-installs a `reuse` that fails on every invocation.
+This is the same command `scripts/check-release.sh` and both GitHub Actions
+workflows use, and the pin matters for the same reason they pin it: a local
+`reuse lint` pass only implies the 6.2.0 gate passes if it ran on 6.2.0. The
+`charset-normalizer` extra is required rather than optional — `reuse` depends
+unconditionally on `python-magic`, a ctypes binding to the native `libmagic`
+library that pip does not ship, and aborts at import time when no encoding
+module loads, and macOS has no `libmagic`. `pipx` rather than `pip` because a
+Homebrew or other PEP 668 "externally managed" interpreter — the macOS case
+this paragraph is about — refuses `pip install` outright, before the extra
+ever matters.
 
 License text files that correspond to committed assets should be tracked so
 `reuse lint` can run without network access. License texts for ignored local
