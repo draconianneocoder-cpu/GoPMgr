@@ -76,16 +76,28 @@ echo "Windows installer source contract verified."
 # lint skips gitignored paths, so frontend/dist is not linted.
 find . -name .DS_Store -delete
 
+# The charset-normalizer extra is required, not optional: reuse depends
+# unconditionally on python-magic, a ctypes binding to the native libmagic
+# library pip does not ship, and aborts at import time with
+# NoEncodingModuleError when no encoding module loads. macOS has no libmagic,
+# so a bare `pip install reuse` yields a binary that satisfies `command -v`
+# and then fails every invocation. Version pinned to match
+# .github/workflows/release.yml's tag-preflight gate.
+REUSE_INSTALL_HINT="pipx install 'reuse[charset-normalizer]==6.2.0'"
+
 if ! command -v reuse >/dev/null 2>&1; then
     echo "reuse tool not installed; skipping license check."
-    # The charset-normalizer extra is required, not optional: reuse depends
-    # unconditionally on python-magic, a ctypes binding to the native
-    # libmagic library pip does not ship, and aborts at import time with
-    # NoEncodingModuleError when no encoding module loads. macOS has no
-    # libmagic, so a bare `pip install reuse` yields a binary that satisfies
-    # the command -v check above and then fails every invocation. Version
-    # pinned to match .github/workflows/release.yml's tag-preflight gate.
-    echo "  Install with:  pipx install 'reuse[charset-normalizer]==6.2.0'"
+    echo "  Install with:  $REUSE_INSTALL_HINT"
+elif ! reuse --version >/dev/null 2>&1; then
+    # The case the comment above describes. It reaches here, not the branch
+    # above: the binary exists, so `command -v` succeeds, and only running it
+    # surfaces the import-time abort. Probing --version separates "cannot run"
+    # from "ran and found violations" -- previously both produced
+    # "REUSE/SPDX compliance failed", pointing at the repository's licensing
+    # when the real fault was the local install, and the hint never printed.
+    # Skips rather than exits, matching the not-installed branch's behavior.
+    echo "reuse is installed but cannot run (it aborts before linting; usually a missing encoding module); skipping license check."
+    echo "  Reinstall with:  $REUSE_INSTALL_HINT"
 else
     if ! reuse lint >/dev/null; then
         echo "REUSE/SPDX compliance failed. Run 'reuse lint' for details."

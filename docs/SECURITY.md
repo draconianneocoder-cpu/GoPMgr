@@ -134,7 +134,9 @@ PAdES, and encryption status from drifting away from supported behavior.
   version at all rather than a fix that has yet to ship (`govulncheck`
   reports `Fixed in: N/A`). It leaves this list only if GoPMgr's
   dependency tree stops reaching the package. The dependency tracks
-  current upstream regardless — v0.56.0 as of 2026-09-11. Routine
+  current upstream regardless. No version is named here on purpose: the
+  next sentence licenses exactly the bumps that would falsify one, so
+  `go.mod` is the only accurate source for the version in force. Routine
   version bumps that don't fix this advisory may be skipped without
   updating this note.
 

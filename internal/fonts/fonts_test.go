@@ -572,8 +572,25 @@ func TestRegister_BundledCorruptRemedyIsNotAnInstalledNoOp(t *testing.T) {
 	if err == nil {
 		t.Fatal("Register over a corrupt bundle should fail, got nil")
 	}
-	if !contains(err.Error(), "--force") {
-		t.Errorf("error %q must prescribe a remedy that actually overwrites existing files", err.Error())
+	// Assert the properties a usable remedy must have, not one substring.
+	// The first version of this test checked only for "--force", and passed
+	// against advice that was unrunnable (scripts/fetch-fonts.sh is mode
+	// 100644), catalog-wide destructive (fetch() rm -f's its target on a
+	// failed download, including the tracked SHA-pinned Source Sans 3
+	// baseline) and incomplete (assets are //go:embed-ed, so re-fetching
+	// without rebuilding changes nothing the running binary sees).
+	msg := err.Error()
+	if contains(msg, "scripts/fetch-fonts.sh") && !contains(msg, "bash scripts/fetch-fonts.sh") {
+		t.Errorf("error %q invokes a mode-100644 script directly; it is not executable", msg)
+	}
+	if contains(msg, "--force") {
+		t.Errorf("error %q prescribes a catalog-wide --force re-fetch, which deletes any asset whose download fails, including the tracked Source Sans 3 baseline", msg)
+	}
+	if !contains(msg, "make build") {
+		t.Errorf("error %q omits the rebuild step; bundled assets are embedded at compile time, so re-fetching alone cannot clear this error", msg)
+	}
+	if !contains(msg, "make fonts") {
+		t.Errorf("error %q should name a runnable re-fetch step", msg)
 	}
 }
 

@@ -276,12 +276,29 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 		}
 		if registered == 0 {
 			if len(present) > 0 {
-				// Not 'make fonts': that runs scripts/fetch-fonts.sh with no
-				// flags, and the script skips any file already on disk unless
-				// --force is passed. For assets that are present but corrupt
-				// it would do nothing at all, which is the same dead-end this
-				// branch exists to steer the reader away from.
-				return fmt.Errorf("fonts: bundled family %q has %d embedded .ttf file(s) but none is a usable TrueType font; the embedded assets are corrupt, so overwrite them with 'scripts/fetch-fonts.sh --force' ('make fonts' alone skips files that already exist)", family, len(present))
+				// Three constraints shape this remedy, and an earlier
+				// version of it violated all three by saying
+				// "scripts/fetch-fonts.sh --force".
+				//
+				// It must be runnable: fetch-fonts.sh is tracked mode
+				// 100644, so invoking it directly gives "Permission
+				// denied"; the Makefile targets run it under bash.
+				//
+				// It must not destroy anything. --force is catalog-wide
+				// and fetch() does `rm -f "$dest"` on a failed download,
+				// so one offline run deletes every asset it cannot
+				// re-fetch -- including the git-tracked, SHA-256-pinned
+				// Source Sans 3 files that are the PDF/A baseline and
+				// that check-required-font-assets.sh verifies. Deleting
+				// only the corrupt files and re-running plain `make
+				// fonts` re-downloads exactly those, because the script
+				// skips what already exists.
+				//
+				// It must mention the rebuild. These assets are
+				// //go:embed-ed, so a re-fetch alone leaves a built
+				// binary byte-identical and reproduces this same error;
+				// fetch-fonts.sh says as much on its own last line.
+				return fmt.Errorf("fonts: bundled family %q has %d embedded .ttf file(s) but none is a usable TrueType font; the embedded assets are corrupt: delete them from internal/fonts/assets, re-run 'make fonts' to re-download just those, then 'make build' to re-embed them (the assets are compiled in, so re-fetching alone does not change a built binary)", family, len(present))
 			}
 			return fmt.Errorf("fonts: bundled family %q has no fetched .ttf files (run 'make fonts')", family)
 		}
