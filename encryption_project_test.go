@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"gopmgr/internal/db"
 	"gopmgr/internal/users"
@@ -53,6 +54,61 @@ func TestCreateProjectEncryptsAndReopensWithSessionDEK(t *testing.T) {
 	}
 	if proj.Name != "Secret Plan" || proj.Owner != "alice" {
 		t.Fatalf("project = %#v, want Secret Plan owned by alice", proj)
+	}
+}
+
+// sanitizeFilename bounds its output in bytes, so a multibyte rune that
+// straddles the bound must be dropped whole: cutting inside it leaves
+// invalid UTF-8, which APFS refuses outright ("illegal byte sequence").
+func TestSanitizeFilenameTruncatesAtRuneBoundary(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+	}{
+		{"CJK straddling the bound", strings.Repeat("工程", 14)}, // 84 bytes; byte 80 is mid-rune
+		{"emoji straddling the bound", strings.Repeat("a", 78) + "📐📐"},
+		{"accented Latin", strings.Repeat("é", 45)},
+		{"ASCII over the bound", strings.Repeat("x", 100)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := sanitizeFilename(tc.in)
+			if !utf8.ValidString(got) {
+				t.Fatalf("sanitizeFilename(%q) = %q, not valid UTF-8", tc.in, got)
+			}
+			if len(got) > 80 || len(got) < 77 {
+				t.Fatalf("sanitizeFilename(%q) is %d bytes, want the longest rune-aligned prefix within 80", tc.in, len(got))
+			}
+			if !strings.HasPrefix(tc.in, got) {
+				t.Fatalf("sanitizeFilename(%q) = %q, want a prefix of the input", tc.in, got)
+			}
+		})
+	}
+}
+
+// A long non-ASCII project name must create a project. Before the
+// rune-boundary fix this failed on macOS with "illegal byte sequence";
+// Linux ext4 accepts invalid UTF-8 names, so on Linux this passes either
+// way and TestSanitizeFilenameTruncatesAtRuneBoundary carries the check.
+func TestCreateProjectAcceptsLongMultibyteName(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	name := strings.Repeat("工程", 14)
+	file, err := app.CreateProject(name, "")
+	if err != nil {
+		t.Fatalf("CreateProject(%d-byte multibyte name): %v", len(name), err)
+	}
+	if !utf8.ValidString(filepath.Base(filepath.Dir(file.Path))) {
+		t.Fatalf("project folder %q is not valid UTF-8", file.Path)
+	}
+	proj, err := app.OpenProject(file.Path)
+	if err != nil {
+		t.Fatalf("OpenProject: %v", err)
+	}
+	if proj.Name != name {
+		t.Fatalf("project name = %q, want the full untruncated %q", proj.Name, name)
 	}
 }
 
