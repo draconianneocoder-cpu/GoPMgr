@@ -184,7 +184,7 @@ fi
 # the desktop,production tags, links the macOS frameworks, and produces the
 # packaged app under build/bin. Requires the `wails` CLI on PATH.
 if ! make build >/dev/null; then
-    echo "Final build failed (is the pinned 'wails' CLI installed? See 'go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0')."
+    echo "Final build failed (is the pinned 'wails' CLI installed? See 'go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0')."
     exit 1
 fi
 if [ -f scripts/verify-duckdb-linked.sh ]; then

@@ -197,7 +197,7 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
 
       # Wails runs `npm install` + `npm run build` itself, creating frontend/dist before
       # compiling Go, so no separate frontend build step is needed here.
