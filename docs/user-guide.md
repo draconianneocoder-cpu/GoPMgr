@@ -224,7 +224,10 @@ project-local snapshots; it never makes a posted row depend on the catalog.
 Open **Attachments** on a ledger row to add and inspect bounded encrypted
 files. **Export ledger attachments (.zip)** writes the project's original
 attachment files and a manifest to a user-selected new ZIP file, checking each
-fetched file against its stored byte count and SHA-256 before archiving. The
+fetched file against its stored byte count and SHA-256 before archiving. File
+names inside the ZIP are adjusted where needed to follow Windows, macOS, and
+Linux naming rules, and names that differ only in letter case get distinct
+entries; the manifest keeps each original file name. The
 printable financial report shows procurement detail and quantity aggregates,
 but does not embed attachment bytes.
 

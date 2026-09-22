@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"gopmgr/internal/db"
@@ -160,6 +161,132 @@ func TestExportCostEntryAttachmentsZipWritesManifestAndFiles(t *testing.T) {
 		return writeErr
 	}); !errors.Is(err, exportfs.ErrDestinationExists) {
 		t.Fatalf("second publish at the same attachments-zip path: err = %v, want ErrDestinationExists", err)
+	}
+}
+
+// Stored filenames are only host-sanitized: on macOS and Linux `..\..\x`
+// survives filepath.Base, and a project may hold rows created on another
+// operating system. The export must still produce entries that stay inside
+// attachments/ and never overwrite each other on a case-insensitive
+// filesystem, while the manifest keeps each original filename.
+func TestExportCostEntryAttachmentsZipUsesPortableUniqueEntryNames(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Portable attachment names")
+	types, err := app.ListCostTypes()
+	if err != nil {
+		t.Fatalf("ListCostTypes: %v", err)
+	}
+	entryA, err := app.SaveCostEntry(CostEntryWire{CostTypeID: types[0].ID, Kind: "actual", CostDate: "2026-09-01", Description: "Row A", Amount: "1.00"})
+	if err != nil {
+		t.Fatalf("SaveCostEntry A: %v", err)
+	}
+	entryB, err := app.SaveCostEntry(CostEntryWire{CostTypeID: types[0].ID, Kind: "actual", CostDate: "2026-09-02", Description: "Row B", Amount: "2.00"})
+	if err != nil {
+		t.Fatalf("SaveCostEntry B: %v", err)
+	}
+	d := app.requireDB()
+	p, err := d.GetProject()
+	if err != nil {
+		t.Fatalf("GetProject: %v", err)
+	}
+	// 250 bytes: past PortableArchiveSegment's budget, so the collision
+	// suffix must still fit the 255-byte segment limit.
+	long := strings.Repeat("a", 246) + ".pdf"
+	fixtures := []struct{ entryID, name string }{
+		{entryA.ID, `..\..\evil.txt`},
+		{entryA.ID, "CON.txt"},
+		{entryA.ID, "Invoice.pdf"},
+		{entryB.ID, "invoice.pdf"},
+		{entryA.ID, long},
+		{entryB.ID, long},
+	}
+	want := make(map[string]string) // cost entry ID + stored filename -> bytes
+	for _, f := range fixtures {
+		data := []byte("bytes of " + f.name + " on " + f.entryID)
+		saved, err := d.SaveCostEntryAttachment(p.ID, f.entryID, f.name, "", data)
+		if err != nil {
+			t.Fatalf("SaveCostEntryAttachment(%q): %v", f.name, err)
+		}
+		want[saved.CostEntryID+"\x00"+saved.Filename] = string(data)
+	}
+
+	path, err := app.ExportCostEntryAttachmentsZip()
+	if err != nil {
+		t.Fatalf("ExportCostEntryAttachmentsZip: %v", err)
+	}
+	zr, err := zip.OpenReader(path)
+	if err != nil {
+		t.Fatalf("open exported zip: %v", err)
+	}
+	defer func() { _ = zr.Close() }()
+	files := make(map[string]string)
+	folded := make(map[string]bool)
+	for _, f := range zr.File {
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatalf("open entry %q: %v", f.Name, err)
+		}
+		data, err := io.ReadAll(rc)
+		_ = rc.Close()
+		if err != nil {
+			t.Fatalf("read entry %q: %v", f.Name, err)
+		}
+		files[f.Name] = string(data)
+		key := strings.ToLower(f.Name)
+		if folded[key] {
+			t.Fatalf("entry %q collides with another entry ignoring case; entries = %v", f.Name, zr.File)
+		}
+		folded[key] = true
+		if f.Name == "manifest.json" {
+			continue
+		}
+		segment, ok := strings.CutPrefix(f.Name, "attachments/")
+		if !ok || segment == "" || segment == ".." || strings.ContainsAny(segment, `/\:`) || len(segment) > 255 {
+			t.Fatalf("entry %q is not one portable segment under attachments/", f.Name)
+		}
+	}
+	if len(files) != len(fixtures)+1 {
+		t.Fatalf("zip has %d entries, want %d attachments + manifest.json", len(files), len(fixtures))
+	}
+	if got := "attachments/" + export.PortableArchiveSegment("CON.txt"); files[got] == "" {
+		t.Fatalf("reserved name not exported as %q; entries = %v", got, zr.File)
+	}
+
+	var manifest []export.AttachmentManifestRow
+	if err := json.Unmarshal([]byte(files["manifest.json"]), &manifest); err != nil {
+		t.Fatalf("decode manifest.json: %v", err)
+	}
+	if len(manifest) != len(fixtures) {
+		t.Fatalf("manifest rows = %d, want %d", len(manifest), len(fixtures))
+	}
+	for _, row := range manifest {
+		wantData, ok := want[row.CostEntryID+"\x00"+row.Filename]
+		if !ok {
+			t.Fatalf("manifest filename %q on %s is not a stored filename", row.Filename, row.CostEntryID)
+		}
+		if files[row.ZipEntryName] != wantData {
+			t.Fatalf("entry %q for stored %q holds %q, want %q", row.ZipEntryName, row.Filename, files[row.ZipEntryName], wantData)
+		}
+	}
+}
+
+func TestUniqueAttachmentZipEntryNameDisambiguatesIgnoringCase(t *testing.T) {
+	seen := make(map[string]bool)
+	steps := []struct{ filename, id, want string }{
+		{"Invoice.pdf", "attachment_1", "attachments/Invoice.pdf"},
+		{"invoice.pdf", "attachment_2", "attachments/invoice-attachment_2.pdf"},
+		// "Invoice-attachment_2.pdf" is itself taken (ignoring case), so the
+		// ID suffix alone is not enough and a counter follows it.
+		{"Invoice-attachment_2.pdf", "attachment_9", "attachments/Invoice-attachment_2-attachment_9.pdf"},
+		{"INVOICE.pdf", "attachment_2", "attachments/INVOICE-attachment_2-2.pdf"},
+	}
+	for _, s := range steps {
+		if got := uniqueAttachmentZipEntryName(seen, s.filename, s.id); got != s.want {
+			t.Fatalf("uniqueAttachmentZipEntryName(%q, %q) = %q, want %q", s.filename, s.id, got, s.want)
+		}
 	}
 }
 

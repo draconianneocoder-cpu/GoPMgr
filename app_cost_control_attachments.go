@@ -182,22 +182,27 @@ func (a *App) ExportCostEntryAttachmentsZip() (string, error) {
 	return path, nil
 }
 
-// uniqueAttachmentZipEntryName places filename under attachments/ inside the
-// archive, disambiguating with the attachment's own ID when two attachments
-// (necessarily from different ledger rows -- SaveCostEntryAttachment already
-// sanitizes to a bare basename, so a collision means two different rows
-// happened to use the same filename) would otherwise collide.
+// uniqueAttachmentZipEntryName places a portable form of filename under
+// attachments/ inside the archive. The stored filename stays in the manifest;
+// the entry name must be safe to extract on any operating system, which the
+// host-sanitized stored name is not (see export.PortableArchiveSegment).
+// seen is keyed case-insensitively, because extracting Invoice.pdf and
+// invoice.pdf onto a default macOS or Windows filesystem keeps only one. A
+// collision is disambiguated with the attachment's ID, then a counter.
 func uniqueAttachmentZipEntryName(seen map[string]bool, filename, attachmentID string) string {
-	name := "attachments/" + filename
-	if !seen[name] {
-		seen[name] = true
-		return name
+	name := export.PortableArchiveSegment(filename)
+	ext := filepath.Ext(name)
+	base := strings.TrimSuffix(name, ext)
+	candidate := "attachments/" + name
+	for i := 1; seen[strings.ToLower(candidate)]; i++ {
+		suffix := "-" + attachmentID
+		if i > 1 {
+			suffix += fmt.Sprintf("-%d", i)
+		}
+		candidate = "attachments/" + base + suffix + ext
 	}
-	ext := filepath.Ext(filename)
-	base := strings.TrimSuffix(filename, ext)
-	disambiguated := fmt.Sprintf("attachments/%s-%s%s", base, attachmentID, ext)
-	seen[disambiguated] = true
-	return disambiguated
+	seen[strings.ToLower(candidate)] = true
+	return candidate
 }
 
 // readBoundedFile reads path into memory, refusing anything larger than
