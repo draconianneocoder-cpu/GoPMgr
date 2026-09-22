@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"time"
+	"unicode/utf8"
 
 	"gopmgr/internal/calendar"
 	"gopmgr/internal/charts"
@@ -478,8 +479,14 @@ func sanitizeFilename(s string) string {
 	if out == "" {
 		return ""
 	}
+	// Bound by bytes but cut on a rune boundary: slicing inside a multibyte
+	// rune leaves invalid UTF-8, which APFS rejects as a file name.
 	if len(out) > 80 {
-		out = out[:80]
+		end := 80
+		for end > 0 && !utf8.RuneStart(out[end]) {
+			end--
+		}
+		out = out[:end]
 	}
 	return out
 }

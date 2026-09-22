@@ -105,12 +105,19 @@ That result took six live-GUI cycles to reach because the first five, all run un
   as exact project-currency entries and summaries. Do not introduce portfolio
   persistence, FX, financial RBAC, transaction or statutory-accounting
   semantics, or Phase 2 reserve/forecast behavior merely to improve the ledger.
-- Cost Control cross-platform attachment archive names: attachment filenames
-  are currently sanitized with the host platform's `filepath.Base` before
-  storage. Evaluate separator normalization and archive-path validation for
-  extraction on a different operating system before claiming that a filename
-  accepted on one platform is equally safe for every ZIP consumer. This is
-  separate from the delivered size/SHA-256 consistency check.
+- Done 2026-09-22: Cost Control attachment archive names are portable.
+  Stored filenames are still only host-sanitized (POSIX `filepath.Base` keeps
+  `\`), so the export now builds each ZIP entry with
+  `export.PortableArchiveSegment` (reserved characters, control characters,
+  invalid UTF-8, Windows device names, trailing dots/spaces, 200-byte budget)
+  and makes names unique ignoring case. `WriteAttachmentsZIP` refuses any
+  unsafe or case-colliding entry name before fetching a byte. The manifest
+  keeps each stored filename. Tests and seeds: `archive_names_test.go` and
+  `app_cost_control_attachments_test.go` rows in `TEST_COVERAGE_LEDGER.md`.
+  Not covered: names that differ only in Unicode normalization (NFC/NFD) or
+  in case rules beyond simple lowercasing, which APFS or NTFS may treat as
+  one name; fullwidth `＼`/`／` that a Windows tool's ANSI best-fit
+  conversion might map to separators; and no Windows-host extraction run.
 - Cost Control Phase 2: the proposed [lifecycle and authority contract](design/cost-control-phase-2-lifecycle.md)
   now gates implementation. Approve its reserve-balance meaning, contingency
   allocation equation, baseline/evidence bindings, project financial roles,

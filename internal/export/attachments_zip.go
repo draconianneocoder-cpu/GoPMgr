@@ -38,12 +38,16 @@ type AttachmentManifestRow struct {
 	InvoiceReference     string `json:"invoice_reference,omitempty"`
 }
 
+// attachmentsManifestName is the archive's top-level metadata entry.
+const attachmentsManifestName = "manifest.json"
+
 // AttachmentZIPSource is one attachment to stream into the archive.
-// ZipEntryName must already be sanitized and unique among the sources
-// passed to WriteAttachmentsZIP -- this package does not second-guess a
-// caller-supplied archive path. Fetch is called at most once, in order,
-// so only one attachment's bytes are ever resident in memory at a time
-// regardless of how many sources there are.
+// ZipEntryName is a "/"-separated relative path whose segments are portable
+// (see PortableArchiveSegment); it must be unique among the sources, ignoring
+// case, and must not name manifest.json. WriteAttachmentsZIP refuses the whole
+// archive otherwise. Fetch is called at most once, in order, so only one
+// attachment's bytes are ever resident in memory at a time regardless of how
+// many sources there are.
 type AttachmentZIPSource struct {
 	ZipEntryName string
 	Manifest     AttachmentManifestRow
@@ -54,10 +58,15 @@ type AttachmentZIPSource struct {
 // top-level manifest.json describing each entry, fetching one attachment's
 // bytes at a time rather than buffering the whole export. It writes nothing
 // about vendor address/contact detail, matching AttachmentManifestRow's
-// contract. Each fetched blob is checked against its stored byte count and
-// SHA-256 before its archive entry is created. Atomic publication and cleanup
-// on a later-source failure belong to exportfs.WriteNewPrivateStream.
+// contract. Every entry name is validated before anything is fetched or
+// written (ErrUnsafeArchiveName), and each fetched blob is checked against its
+// stored byte count and SHA-256 before its archive entry is created. Atomic
+// publication and cleanup on a later-source failure belong to
+// exportfs.WriteNewPrivateStream.
 func WriteAttachmentsZIP(w io.Writer, sources []AttachmentZIPSource) error {
+	if err := validateArchiveEntryNames(sources); err != nil {
+		return err
+	}
 	zw := zip.NewWriter(w)
 	manifest := make([]AttachmentManifestRow, 0, len(sources))
 	for _, source := range sources {
@@ -92,7 +101,7 @@ func WriteAttachmentsZIP(w io.Writer, sources []AttachmentZIPSource) error {
 	if err != nil {
 		return fmt.Errorf("encode attachments manifest: %w", err)
 	}
-	manifestEntry, err := zw.Create("manifest.json")
+	manifestEntry, err := zw.Create(attachmentsManifestName)
 	if err != nil {
 		return fmt.Errorf("create manifest.json entry: %w", err)
 	}
