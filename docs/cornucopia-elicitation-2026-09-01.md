@@ -50,7 +50,11 @@ critical functions haven't been independently audited this review.
 [`projectPathFor`](../app_projects.go) rejects any path whose parent
 directory isn't the signed-in user's own `projects/` directory (or an
 immediate subfolder of it) — the primary access-control boundary for
-project-file access can't be bypassed through another path.
+project-file access. Correction, 2026-09-22: that check is made on the path
+only, so a symlinked project file or project folder inside the projects
+folder could point outside it and `OpenProject` would follow it.
+`projectPathFor` now also requires an existing regular file in a real
+folder, which refuses both.
 
 Business-rule bypass and function/property-level authorization beyond the
 file-path boundary haven't been independently audited this review.

@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gopmgr/internal/admin"
 	"gopmgr/internal/applog"
@@ -240,11 +241,14 @@ func isProjectExtension(ext string) bool {
 
 // projectPathFor validates that path points at a project file (current
 // .gopmgr or legacy .pmforge extension) inside the signed-in user's own
-// projects directory and returns the cleaned path plus the account. It
+// projects directory and returns the on-disk path plus the account. It
 // rejects anything outside that directory so DeleteProject and CloneProject
 // can never touch arbitrary files on disk. Recognising both extensions
 // widens WHICH files pass the extension check; it does not touch the
 // containment check below, which is what actually stops path traversal.
+// A path the frontend received with U+FFFD in place of invalid UTF-8 is
+// mapped back to the real name (resolveWireProjectPath), and the result must
+// be an existing regular file: missing files and symlinks are refused.
 func (a *App) projectPathFor(path string) (string, *users.Account, error) {
 	user := a.requireUser()
 	if user == nil {
@@ -263,7 +267,124 @@ func (a *App) projectPathFor(path string) (string, *users.Account, error) {
 	if parent != projectsDir && filepath.Dir(parent) != projectsDir {
 		return "", nil, errors.New("project is outside your projects folder")
 	}
+	if strings.ContainsRune(clean, utf8.RuneError) {
+		resolved, err := resolveWireProjectPath(projectsDir, clean)
+		if err != nil {
+			return "", nil, err
+		}
+		clean = resolved
+	}
+	// Containment above is checked on the path, so a symlinked project folder
+	// or file could still lead outside; both must be real. Lstat does not
+	// follow the last component, so check the folder and the file separately.
+	if dir := filepath.Dir(clean); dir != projectsDir {
+		dirInfo, err := os.Lstat(dir)
+		if errors.Is(err, fs.ErrNotExist) {
+			return "", nil, ErrProjectNotFound
+		}
+		if err != nil {
+			return "", nil, err
+		}
+		if dirInfo.Mode().Type() != fs.ModeDir {
+			return "", nil, errors.New("not a project file")
+		}
+	}
+	// SQLite creates a missing database on open, so a stale path must stop
+	// here rather than leave an empty, uninitialised project behind.
+	info, err := os.Lstat(clean)
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", nil, ErrProjectNotFound
+	}
+	if err != nil {
+		return "", nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return "", nil, errors.New("not a project file")
+	}
 	return clean, user, nil
+}
+
+// ErrProjectNotFound means the requested project file no longer exists.
+var ErrProjectNotFound = errors.New("project not found; refresh the project list")
+
+// ErrProjectPathAmbiguous means more than one project on disk matches a
+// path the frontend sent back, so none is opened or changed.
+var ErrProjectPathAmbiguous = errors.New("more than one project folder matches this name; rename one of them in your file manager, then refresh the project list")
+
+// resolveWireProjectPath maps a path the frontend sent back to the on-disk
+// path it came from. Wails marshals results with encoding/json, which
+// replaces each invalid UTF-8 byte with U+FFFD, so a folder or legacy file
+// name that is not valid UTF-8 (Linux accepts these; releases before
+// rune-boundary truncation in sanitizeFilename could create them) comes back
+// naming nothing on disk. Each component below projectsDir that contains
+// U+FFFD is resolved by listing its directory. The result is rebuilt from
+// projectsDir and real entry names, so it stays inside the projects folder.
+func resolveWireProjectPath(projectsDir, clean string) (string, error) {
+	rel, err := filepath.Rel(projectsDir, clean)
+	if err != nil {
+		return "", err
+	}
+	parts := strings.Split(rel, string(filepath.Separator))
+	resolved := projectsDir
+	for i, part := range parts {
+		if !strings.ContainsRune(part, utf8.RuneError) {
+			resolved = filepath.Join(resolved, part)
+			continue
+		}
+		entries, err := os.ReadDir(resolved)
+		if errors.Is(err, fs.ErrNotExist) {
+			return "", ErrProjectNotFound
+		}
+		if err != nil {
+			return "", err
+		}
+		name, err := matchWireProjectName(part, entries, i < len(parts)-1)
+		if err != nil {
+			return "", err
+		}
+		resolved = filepath.Join(resolved, name)
+	}
+	return resolved, nil
+}
+
+// matchWireProjectName returns the one entry of the requested kind (a real
+// directory, or a regular file; never a symlink) whose name, sent through
+// encoding/json the way Wails sends it, equals requested. A valid name
+// encodes to itself, so a folder literally named with U+FFFD is a candidate
+// too, and two candidates are refused rather than guessed between.
+func matchWireProjectName(requested string, entries []fs.DirEntry, wantDir bool) (string, error) {
+	match := ""
+	for _, e := range entries {
+		kindMatches := e.Type().IsRegular()
+		if wantDir {
+			kindMatches = e.Type() == fs.ModeDir
+		}
+		if !kindMatches || wireString(e.Name()) != requested {
+			continue
+		}
+		if match != "" {
+			return "", ErrProjectPathAmbiguous
+		}
+		match = e.Name()
+	}
+	if match == "" {
+		return "", ErrProjectNotFound
+	}
+	return match, nil
+}
+
+// wireString returns s as the frontend receives it from Wails, which
+// marshals with encoding/json.
+func wireString(s string) string {
+	raw, err := json.Marshal(s)
+	if err != nil {
+		return s
+	}
+	var out string
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return s
+	}
+	return out
 }
 
 // DeleteProject permanently removes a project file (.gopmgr, or legacy .pmforge) and its

@@ -24,7 +24,11 @@ for a legitimate local user.
   frontend-supplied path (`OpenProject`, `DeleteProject`, `CloneProject`,
   `EncryptProjectAtRest`, `SecureArchive`, etc.) is confined to the
   signed-in user's own `projects/` directory via `projectPathFor` in
-  `app_projects.go`, rejecting anything outside it before touching disk.
+  `app_projects.go`, rejecting anything outside it before touching disk. The
+  target must also be an existing regular file in a real project folder: a
+  symlinked project file or folder is refused, because the containment check
+  is made on the path, and a missing file is refused rather than letting
+  SQLite create an empty database in its place.
 - Chart, schedule-baseline, document, stakeholder, and resource-calendar IPC
   methods resolve
   frontend-supplied record IDs against the currently open project. Combined

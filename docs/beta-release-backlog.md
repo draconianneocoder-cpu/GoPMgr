@@ -105,6 +105,19 @@ That result took six live-GUI cycles to reach because the first five, all run un
   as exact project-currency entries and summaries. Do not introduce portfolio
   persistence, FX, financial RBAC, transaction or statutory-accounting
   semantics, or Phase 2 reserve/forecast behavior merely to improve the ledger.
+- Done 2026-09-22: projects stay reachable when their folder name is not
+  valid UTF-8. Releases before rune-boundary truncation in `sanitizeFilename`
+  could create such folders on Linux. Wails sends paths through
+  `encoding/json`, which replaces each invalid byte with U+FFFD, so the path
+  that came back named nothing and the project could not be opened.
+  `projectPathFor` now resolves those paths against the folder listing,
+  refusing when two entries match. It also requires an existing regular file:
+  a stale path no longer creates an empty database, and a symlinked project
+  file or folder leading out of the projects folder is refused. Evidence: `project_path_confinement_test.go` row
+  in `TEST_COVERAGE_LEDGER.md` (the invalid-UTF-8 case runs on Linux only).
+  Not addressed: such a project still shows U+FFFD in its displayed name, and
+  an empty database a stale path created before this change still cannot be
+  deleted from the app, because the delete audit needs a project row.
 - Done 2026-09-22: Cost Control attachment archive names are portable.
   Stored filenames are still only host-sanitized (POSIX `filepath.Base` keeps
   `\`), so the export now builds each ZIP entry with
