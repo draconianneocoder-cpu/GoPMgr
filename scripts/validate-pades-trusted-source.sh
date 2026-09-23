@@ -59,7 +59,7 @@ acquire_trusted_lock() {
 		return
 	fi
 
-	pades_acquire_directory_lock "$TRUSTED_LOCK" "${GOPMGR_PADES_TRUSTED_LOCK_TIMEOUT_SECONDS:-30}"
+	pades_acquire_lock "$TRUSTED_LOCK" "${GOPMGR_PADES_TRUSTED_LOCK_TIMEOUT_SECONDS:-30}"
 	LOCK_OWNED=true
 	export GOPMGR_PADES_TRUSTED_LOCK_HELD=1
 }

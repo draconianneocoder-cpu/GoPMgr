@@ -29,7 +29,7 @@ trap cleanup EXIT
 
 # Hold the harness lock through every assertion so another validation cannot
 # replace the fixed report path between a child exit and this test reading it.
-pades_acquire_directory_lock "$TRUSTED_LOCK" "${GOPMGR_PADES_TRUSTED_LOCK_TIMEOUT_SECONDS:-30}"
+pades_acquire_lock "$TRUSTED_LOCK" "${GOPMGR_PADES_TRUSTED_LOCK_TIMEOUT_SECONDS:-30}"
 LOCK_OWNED="true"
 export GOPMGR_PADES_TRUSTED_LOCK_HELD=1
 

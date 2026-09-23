@@ -53,7 +53,7 @@ acquire_pades_lock() {
 	if [ "${GOPMGR_PADES_LOCK_HELD:-0}" = "1" ]; then
 		return
 	fi
-	pades_acquire_directory_lock "$PADES_LOCK" "${GOPMGR_PADES_LOCK_TIMEOUT_SECONDS:-30}"
+	pades_acquire_lock "$PADES_LOCK" "${GOPMGR_PADES_LOCK_TIMEOUT_SECONDS:-30}"
 	trap 'rm -rf "$PADES_LOCK"' EXIT INT TERM
 	export GOPMGR_PADES_LOCK_HELD=1
 }
