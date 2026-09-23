@@ -29,7 +29,7 @@ trap cleanup EXIT
 # Keep setup, both child validations, and report assertions in one critical
 # section. Otherwise another test can replace the fake tools, or a waiting
 # generator can remove SAMPLE_DIR before this test reads its evidence report.
-pades_acquire_directory_lock "$PADES_LOCK" "${GOPMGR_PADES_LOCK_TIMEOUT_SECONDS:-30}"
+pades_acquire_lock "$PADES_LOCK" "${GOPMGR_PADES_LOCK_TIMEOUT_SECONDS:-30}"
 LOCK_OWNED="true"
 export GOPMGR_PADES_LOCK_HELD=1
 

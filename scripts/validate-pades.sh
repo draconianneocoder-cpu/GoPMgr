@@ -74,7 +74,7 @@ acquire_pades_lock() {
 	if [ "${GOPMGR_PADES_LOCK_HELD:-0}" = "1" ]; then
 		return
 	fi
-	pades_acquire_directory_lock "$PADES_LOCK" "${GOPMGR_PADES_LOCK_TIMEOUT_SECONDS:-30}"
+	pades_acquire_lock "$PADES_LOCK" "${GOPMGR_PADES_LOCK_TIMEOUT_SECONDS:-30}"
 	LOCK_OWNED=true
 	export GOPMGR_PADES_LOCK_HELD=1
 }
@@ -86,12 +86,14 @@ acquire_pades_lock
 
 # Build the whole sample directory in an isolated, private scratch dir before
 # publishing it under the cooperative PAdES lock, rather than clearing and
-# repopulating $SAMPLE_DIR in place. An earlier version did the latter and,
-# despite holding PADES_LOCK throughout, still hit two distinct CI-only failures
-# (a truncated generator source read mid-heredoc-write, and the sample
-# directory reported missing entirely) -- both consistent with a second
-# reader observing $SAMPLE_DIR during the window it's being torn down and
-# rebuilt, however that happens under CI's specific timing. The two publication
+# repopulating $SAMPLE_DIR in place. An earlier version did the latter and hit
+# two CI-only failures (a truncated generator source read mid-heredoc-write,
+# and the sample directory reported missing entirely): a second process was
+# inside the "locked" section at the same time. The root cause was the lock,
+# not this layout: it relied on the mkdir tool refusing an existing path, and
+# Ubuntu 26.04's default (uutils) mkdir, the release CI runs, can report
+# success to two concurrent callers (see pades-lock.sh). This private build-then-publish layout is still worth
+# keeping, because it narrows what any reader can observe. The two publication
 # renames are not one atomic transaction; participating readers are serialized
 # by PADES_LOCK, and pades_publish_sample_dir restores the prior sample when the
 # replacement move reports failure. Unlocked readers remain outside this
