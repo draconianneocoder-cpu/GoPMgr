@@ -46,6 +46,7 @@ declare global {
           ListProjects: () => Promise<ProjectFile[]>;
           CreateProject: (name: string, description: string) => Promise<ProjectFile>;
           DeleteProject: (path: string) => Promise<void>;
+          ListProjectDeletions: () => Promise<ProjectDeletion[]>;
           CloneProject: (path: string) => Promise<ProjectFile>;
           ProjectsOverview: () => Promise<ProjectSummary[]>;
           GetAppInfo: () => Promise<AppInfo>;
@@ -502,6 +503,24 @@ declare global {
     path: string;
     name: string;
     modified: string;
+  }
+
+  // One entry of the signed-in user's deletion log. outcome is '' when the
+  // app stopped before it could record how the deletion ended; project_id is
+  // '' for an empty file that held no project.
+  interface ProjectDeletion {
+    id: string;
+    project_id: string;
+    project_name: string;
+    location: string;
+    deleted_by: string;
+    requested_at: string;
+    outcome: 'deleted' | 'failed' | '';
+    outcome_at: string;
+    detail: string;
+    audit_events: number;
+    audit_valid: boolean;
+    audit_terminal_hash: string;
   }
 
   interface ProjectSummary {

@@ -107,6 +107,19 @@ opt-in per project; with it off, tampering is not detected on open. The
 actions write JSON evidence to the user's private exports folder without
 mutating the project database.
 
+A project's chain is deleted with the project, so deleting a project is
+recorded outside it, in the signed-in user's deletion log
+(`<data dir>/deletions.gopmgr`). The log is SQLCipher-encrypted under a
+subkey of the session key, like the reusable catalog, and triggers refuse any
+update or delete of its rows. `DeleteProject` commits a `requested` entry
+(synchronous=FULL) before removing anything, then records `deleted` or
+`failed`. Each entry keeps the project's ID, name, location, who deleted it,
+and the audit chain's validity, verified-event count, and terminal hash at
+that moment (for a chain that fails verification, the count and hash stop
+at the first bad event), so a deleted project's name stays in the log. A file the user's key
+cannot open is not deleted; a tampered chain does not block deletion and is
+recorded as invalid.
+
 Audit integrity detects tampering; it does not by itself prevent it — a
 holder of the DEK can rewrite the database. It complements, and does not
 replace, encryption at rest and OS-level disk encryption.

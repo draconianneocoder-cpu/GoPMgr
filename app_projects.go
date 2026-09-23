@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -24,6 +25,7 @@ import (
 	"gopmgr/internal/cli"
 	"gopmgr/internal/db"
 	"gopmgr/internal/debug"
+	"gopmgr/internal/deletionlog"
 	"gopmgr/internal/documents"
 	"gopmgr/internal/fonts"
 	"gopmgr/internal/sigma/service"
@@ -391,7 +393,19 @@ func wireString(s string) string {
 // WAL/SHM sidecars from the signed-in user's projects folder. If the project
 // is the one currently open it is closed first so we never unlink an in-use
 // database. The path must live inside the user's own projects directory.
+//
+// The project's audit chain is deleted with it, so the deletion is recorded
+// in the user's encrypted deletion log instead: "requested" is committed
+// before anything is removed (no record, no deletion), then "deleted" or
+// "failed". A file that cannot be opened with the user's key is refused, as
+// it may still be recoverable; an empty file with no project row may be
+// deleted.
 func (a *App) DeleteProject(path string) error {
+	// Serialise deletions and check the path inside the lock. Otherwise two
+	// deletes of one project can both read it before either removes it, and
+	// the log records the same deletion twice.
+	projectDeletionMu.Lock()
+	defer projectDeletionMu.Unlock()
 	clean, user, err := a.projectPathFor(path)
 	if err != nil {
 		return err
@@ -404,11 +418,101 @@ func (a *App) DeleteProject(path string) error {
 			return err
 		}
 	}
-	if err := a.appendProjectDeleteAudit(clean, user.Username); err != nil {
+	projectsDir := filepath.Clean(filepath.Join(user.DataDir, "projects"))
+	req, err := a.projectDeletionRequest(clean, projectsDir, user.Username)
+	if err != nil {
 		return err
 	}
-	projectsDir := filepath.Clean(filepath.Join(user.DataDir, "projects"))
-	parent := filepath.Dir(clean)
+	deletions, err := a.openDeletionLog()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = deletions.Close() }()
+	deletionID, err := recordProjectDeletionRequested(deletions, req)
+	if err != nil {
+		return err
+	}
+	if err := removeProjectFiles(clean, projectsDir); err != nil {
+		if logErr := deletions.Failed(deletionID, err); logErr != nil {
+			log.Printf("project deletion %s failed and could not be recorded: %v", deletionID, logErr)
+		}
+		return err
+	}
+	// The project is gone. If this last write fails the log still shows the
+	// request with no outcome, which is accurate, so don't report failure.
+	if err := recordProjectDeleted(deletions, deletionID); err != nil {
+		log.Printf("project deletion %s completed but could not be recorded: %v", deletionID, err)
+	}
+	return nil
+}
+
+// projectDeletionMu serialises DeleteProject (see its comment).
+var projectDeletionMu sync.Mutex
+
+// recordProjectDeletionRequested and recordProjectDeleted are variables so a
+// test can make either log write fail: the first must stop the deletion, the
+// second comes after the project is already removed.
+var recordProjectDeletionRequested = func(l *deletionlog.Log, req deletionlog.Request) (string, error) {
+	return l.Requested(req)
+}
+
+var recordProjectDeleted = func(l *deletionlog.Log, deletionID string) error {
+	return l.Deleted(deletionID)
+}
+
+// projectDeletionRequest reads what the deletion log records about the
+// project at path: its identity and the final state of its audit chain. A
+// tampered chain does not block deletion; it is recorded as invalid.
+func (a *App) projectDeletionRequest(path, projectsDir, actor string) (deletionlog.Request, error) {
+	location, err := filepath.Rel(projectsDir, path)
+	if err != nil {
+		return deletionlog.Request{}, err
+	}
+	req := deletionlog.Request{Actor: actor, Location: strings.ToValidUTF8(location, "\uFFFD")}
+	a.mu.RLock()
+	dek, err := a.requireDEKLocked()
+	a.mu.RUnlock()
+	if err != nil {
+		return deletionlog.Request{}, err
+	}
+	defer zeroBytes(dek)
+	d, err := db.InitEncryptedDB(path, dek)
+	if err != nil {
+		return deletionlog.Request{}, err
+	}
+	defer func() { _ = d.Close() }()
+	project, err := d.GetProject()
+	if errors.Is(err, db.ErrNoProject) {
+		req.ProjectName = deletedProjectDisplayName(path, projectsDir)
+		return req, nil
+	}
+	if err != nil {
+		return deletionlog.Request{}, err
+	}
+	chain, err := d.VerifyAuditChain(project.ID)
+	if err != nil {
+		return deletionlog.Request{}, fmt.Errorf("read audit chain before deletion: %w", err)
+	}
+	req.ProjectID = project.ID
+	req.ProjectName = project.Name
+	req.AuditEvents = chain.CheckedEvents
+	req.AuditValid = chain.Valid
+	req.AuditTerminalHash = chain.TerminalEventHash
+	return req, nil
+}
+
+// deletedProjectDisplayName names a project file with no project row the way
+// the project list does: the folder name without its timestamp, or the
+// legacy file name without its extension.
+func deletedProjectDisplayName(path, projectsDir string) string {
+	if parent := filepath.Dir(path); parent != projectsDir {
+		return strings.ToValidUTF8(projectDisplayName(filepath.Base(parent)), "\uFFFD")
+	}
+	return strings.ToValidUTF8(trimExt(filepath.Base(path)), "\uFFFD")
+}
+
+func removeProjectFiles(path, projectsDir string) error {
+	parent := filepath.Dir(path)
 	if parent != projectsDir {
 		// Current layout: the project owns its subfolder; remove it whole
 		// (DB + WAL/SHM sidecars). projectPathFor already proved `parent` is
@@ -416,7 +520,7 @@ func (a *App) DeleteProject(path string) error {
 		return os.RemoveAll(parent)
 	}
 	// Legacy flat layout: remove just the file and its sidecars.
-	for _, p := range []string{clean, clean + "-wal", clean + "-shm"} {
+	for _, p := range []string{path, path + "-wal", path + "-shm"} {
 		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
 			return err
 		}
@@ -424,38 +528,68 @@ func (a *App) DeleteProject(path string) error {
 	return nil
 }
 
-func (a *App) appendProjectDeleteAudit(path, actor string) error {
+// openDeletionLog opens the signed-in user's encrypted deletion log. Like the
+// catalog, it is unavailable before login because its key derives from the
+// session DEK.
+func (a *App) openDeletionLog() (*deletionlog.Log, error) {
 	a.mu.RLock()
+	defer a.mu.RUnlock()
+	if a.user == nil {
+		return nil, errors.New("not signed in")
+	}
 	dek, err := a.requireDEKLocked()
-	a.mu.RUnlock()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	d, err := db.InitEncryptedDB(path, dek)
+	defer zeroBytes(dek)
+	l, err := deletionlog.Open(filepath.Join(a.user.DataDir, "deletions.gopmgr"), dek)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("open project deletion log: %w", err)
 	}
-	defer func() { _ = d.Close() }()
+	return l, nil
+}
 
-	project, err := d.GetProject()
+// ProjectDeletionWire is one entry of the signed-in user's deletion log.
+// Outcome is "deleted", "failed", or "" when the app stopped before it could
+// record how the deletion ended. AuditEvents and AuditTerminalHash come from
+// VerifyAuditChain: for a chain that fails verification they stop at the
+// first bad event (the count includes it; the hash is the last good one).
+type ProjectDeletionWire struct {
+	ID                string `json:"id"`
+	ProjectID         string `json:"project_id"`
+	ProjectName       string `json:"project_name"`
+	Location          string `json:"location"`
+	DeletedBy         string `json:"deleted_by"`
+	RequestedAt       string `json:"requested_at"`
+	Outcome           string `json:"outcome"`
+	OutcomeAt         string `json:"outcome_at"`
+	Detail            string `json:"detail"`
+	AuditEvents       int    `json:"audit_events"`
+	AuditValid        bool   `json:"audit_valid"`
+	AuditTerminalHash string `json:"audit_terminal_hash"`
+}
+
+// ListProjectDeletions returns the signed-in user's deletion log, newest
+// first.
+func (a *App) ListProjectDeletions() ([]ProjectDeletionWire, error) {
+	deletions, err := a.openDeletionLog()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	before, err := json.Marshal(project)
+	defer func() { _ = deletions.Close() }()
+	entries, err := deletions.List()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if _, err := d.AppendAuditEvent(db.AuditEventInput{
-		ProjectID:  project.ID,
-		EventType:  "project.delete",
-		EntityType: "project",
-		EntityID:   project.ID,
-		BeforeJSON: string(before),
-		UserID:     actor,
-	}); err != nil {
-		return err
+	out := make([]ProjectDeletionWire, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, ProjectDeletionWire{
+			ID: e.ID, ProjectID: e.ProjectID, ProjectName: e.ProjectName, Location: e.Location,
+			DeletedBy: e.Actor, RequestedAt: e.RequestedAt, Outcome: e.Outcome, OutcomeAt: e.OutcomeAt,
+			Detail: e.Detail, AuditEvents: e.AuditEvents, AuditValid: e.AuditValid, AuditTerminalHash: e.AuditTerminalHash,
+		})
 	}
-	return nil
+	return out, nil
 }
 
 // CloneProject duplicates a project file under a new, non-conflicting name in
