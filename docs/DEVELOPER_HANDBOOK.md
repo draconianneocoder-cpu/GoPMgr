@@ -1312,6 +1312,24 @@ not dismiss it merely because no source changed.
 
 ------------------------------------------------------------------------
 
+### 15.8 A shell gate fails only on Linux CI
+
+CI's Linux jobs run Ubuntu 26.04, whose default command-line tools are
+uutils coreutils rather than GNU or BSD coreutils. Do not assume a tool
+behaves the same as on macOS.
+
+Known difference: uutils `mkdir` (0.8.0) can report success to two callers
+racing to create the same path; in a direct test both calls succeeded 1921
+times out of 2000. A sequential second `mkdir` still fails. Never use
+`mkdir` (or any external tool) as a lock. `scripts/pades-lock.sh` takes its
+lock with a bash `noclobber` file create, which bash performs itself; use it
+or the same pattern. This one difference caused the long-running
+`pades-harness-tests` race (backlog row "Fix a recurring CI-only race").
+
+To investigate a Linux-only shell failure, reproduce on an Ubuntu 26.04 host
+from a real `git clone` (some gates read git metadata), loop the gate, and
+log timestamps and PIDs around the shared resource before changing code.
+
 ## 16. Concurrency and Resource Ownership
 
 ### 16.1 Prefer synchronous APIs
@@ -2132,6 +2150,7 @@ These are high-value rules that should remain easy to find.
 | `make verify` fails on generated map/ledger | Regenerate only through the repository-owned target; inspect the diff before committing |
 | Release documentation claims fail the scope gate | Reduce/correct the claim or supply the required gate-backed evidence |
 | Cross-platform installer bug not caught by CI | Regular CI (`ci.yml`) runs Linux-only; macOS/Windows packaging only builds in `release.yml` at tag push (23.4) |
+| Shell gate fails only on Linux CI, intermittently | Ubuntu 26.04's uutils coreutils differ from macOS; `mkdir` is not a lock (15.8) |
 
 ------------------------------------------------------------------------
 
