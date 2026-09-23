@@ -22,6 +22,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let confirmingDelete = $state<string | null>(null);
   // Path of a project with a clone/delete request in flight (disables its row).
   let busyPath = $state<string | null>(null);
+  // The signed-in user's deletion log, newest first. Loaded separately so a
+  // failure here never hides the project list.
+  let deletions = $state<ProjectDeletion[]>([]);
+  let deletionsError = $state('');
 
   onMount(refresh);
 
@@ -31,6 +35,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } catch (err: any) {
       error = `Could not list projects: ${err}`;
     }
+    try {
+      deletions = (await window.go.main.App.ListProjectDeletions()) ?? [];
+      deletionsError = '';
+    } catch (err: any) {
+      deletionsError = `Could not load deleted projects: ${err}`;
+    }
+  }
+
+  function formatWhen(iso: string): string {
+    const when = new Date(iso);
+    return Number.isNaN(when.getTime()) ? iso : when.toLocaleString();
   }
 
   async function open(p: ProjectFile) {
@@ -229,6 +244,52 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </li>
         {/each}
       </ul>
+    {/if}
+
+    {#if deletions.length > 0 || deletionsError}
+      <details class="mt-10 border-t border-slate-800 pt-6">
+        <summary class="cursor-pointer text-sm font-semibold text-slate-400 hover:text-slate-200">
+          Deleted projects ({deletions.length})
+        </summary>
+        <p class="mt-3 text-xs text-slate-500">
+          A record of each project you deleted. To bring one back, restore it from a backup.
+        </p>
+        {#if deletionsError}
+          <p class="mt-3 text-sm text-red-400" role="alert">{deletionsError}</p>
+        {:else}
+          <ul class="mt-3 space-y-2" aria-label="Deleted projects">
+            {#each deletions as d (d.id)}
+              <li class="p-3 bg-slate-900/60 border border-slate-800 rounded-lg text-xs text-slate-400">
+                <div class="font-bold text-sm text-slate-200 truncate">{d.project_name}</div>
+                {#if d.outcome === 'deleted'}
+                  <div>Deleted {formatWhen(d.outcome_at)} by {d.deleted_by}</div>
+                {:else if d.outcome === 'failed'}
+                  <div class="text-amber-400">
+                    Deletion failed {formatWhen(d.outcome_at)}: {d.detail}. Some files may already be gone.
+                  </div>
+                {:else}
+                  <div class="text-amber-400">
+                    Deletion started {formatWhen(d.requested_at)} by {d.deleted_by}; the result was not recorded.
+                  </div>
+                {/if}
+                <!-- Failed verification is checked first so nothing can mask tampering. -->
+                {#if d.project_id === ''}
+                  <div>Empty file with no project data.</div>
+                {:else if !d.audit_valid}
+                  <div class="text-amber-400">Audit trail failed verification before deletion.</div>
+                {:else if d.audit_events === 0}
+                  <div>No audit trail was recorded for this project.</div>
+                {:else}
+                  <div>
+                    Audit trail verified: {d.audit_events} events, final hash
+                    <span class="font-mono" title={d.audit_terminal_hash}>{d.audit_terminal_hash.slice(0, 12)}…</span>
+                  </div>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </details>
     {/if}
   </main>
 </div>

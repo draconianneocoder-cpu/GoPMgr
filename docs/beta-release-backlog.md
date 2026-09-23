@@ -115,9 +115,18 @@ That result took six live-GUI cycles to reach because the first five, all run un
   a stale path no longer creates an empty database, and a symlinked project
   file or folder leading out of the projects folder is refused. Evidence: `project_path_confinement_test.go` row
   in `TEST_COVERAGE_LEDGER.md` (the invalid-UTF-8 case runs on Linux only).
-  Not addressed: such a project still shows U+FFFD in its displayed name, and
-  an empty database a stale path created before this change still cannot be
-  deleted from the app, because the delete audit needs a project row.
+  Not addressed: such a project still shows U+FFFD in its displayed name.
+- Done 2026-09-23: project deletion leaves a durable record. The
+  `project.delete` audit event was written into the database being deleted,
+  so it never survived. Deletions now go to the user's encrypted, append-only
+  deletion log (`internal/deletionlog`), with a `requested` entry committed
+  before removal, and the project picker shows the history. An empty,
+  uninitialised project file can now be deleted; one the user's key cannot
+  open still cannot. Evidence: `project_deletion_test.go`,
+  `internal/deletionlog/log_test.go`, and `ProjectPicker.test.ts` rows in
+  `TEST_COVERAGE_LEDGER.md`. Not addressed: removal is not atomic, so a
+  `failed` outcome can mean a partial deletion; a crash between the request
+  and its outcome leaves an entry with no outcome.
 - Done 2026-09-22: Cost Control attachment archive names are portable.
   Stored filenames are still only host-sanitized (POSIX `filepath.Base` keeps
   `\`), so the export now builds each ZIP entry with

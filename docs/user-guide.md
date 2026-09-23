@@ -555,3 +555,9 @@ available from the project picker and always creates a new project instead of
 overwriting existing data. Bundled certificates are checked but are not
 automatically imported. An encrypted archive can be restored only by an
 account that can unlock its project database.
+
+Deleting a project from the project picker removes it permanently. The
+picker's **Deleted projects** list records each deletion: when and by whom,
+whether it finished, and whether the project's audit trail verified at that
+moment. It is a record only; to bring a project back, restore it from a
+backup.

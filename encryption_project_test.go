@@ -482,32 +482,3 @@ func TestOpenProjectComplianceModeRejectsTamperedAuditChain(t *testing.T) {
 		t.Fatalf("OpenProject tampered err = %v, want audit verification failure", err)
 	}
 }
-
-func TestAppendProjectDeleteAuditWritesDeleteEvent(t *testing.T) {
-	app := newEncryptionProjectTestApp(t)
-	if _, err := app.CreateAccount("alice", "Alice", "alice-password", false); err != nil {
-		t.Fatalf("CreateAccount: %v", err)
-	}
-	file, err := app.CreateProject("Delete Audit", "")
-	if err != nil {
-		t.Fatalf("CreateProject: %v", err)
-	}
-
-	if err := app.appendProjectDeleteAudit(file.Path, "alice"); err != nil {
-		t.Fatalf("appendProjectDeleteAudit: %v", err)
-	}
-	project, err := app.OpenProject(file.Path)
-	if err != nil {
-		t.Fatalf("OpenProject after delete audit: %v", err)
-	}
-	var count int
-	if err := app.db.Conn.QueryRow(
-		`SELECT COUNT(*) FROM audit_events WHERE project_id = ? AND event_type = 'project.delete'`,
-		project.ID,
-	).Scan(&count); err != nil {
-		t.Fatalf("count delete audit events: %v", err)
-	}
-	if count != 1 {
-		t.Fatalf("delete audit events = %d, want 1", count)
-	}
-}

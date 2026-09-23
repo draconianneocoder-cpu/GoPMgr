@@ -333,6 +333,7 @@ The table groups them by concern; regenerate this list from `ls internal/` and
 | `internal/money` | Exact monetary arithmetic (integer minor units plus `math/big.Rat`) |
 | `internal/budget` | Cost-rollup engine spanning vendor contract values and agile work-item cost |
 | `internal/catalog` | A signed-in user's reusable suppliers and items, kept separate from `system.db` and from individual (portable, self-contained) project files |
+| `internal/deletionlog` | A signed-in user's encrypted, append-only record of deleted projects; a project's own audit chain is deleted with it |
 | `internal/timeline` | Assembles dated project entities into one chronological stream (Timeline view, iCal export) |
 | `internal/analytics` | DuckDB-backed portfolio analytics and data import, built under the `duckdb` tag |
 

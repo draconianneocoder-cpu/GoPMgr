@@ -21,6 +21,7 @@
         "gopmgr/internal/crypto",
         "gopmgr/internal/db",
         "gopmgr/internal/debug",
+        "gopmgr/internal/deletionlog",
         "gopmgr/internal/documents",
         "gopmgr/internal/export",
         "gopmgr/internal/exportfs",
@@ -223,6 +224,7 @@
         "gopmgr",
         "gopmgr/internal/catalog",
         "gopmgr/internal/db",
+        "gopmgr/internal/deletionlog",
         "gopmgr/internal/documents",
         "gopmgr/internal/export",
         "gopmgr/internal/signing",
@@ -268,6 +270,17 @@
         "gopmgr/internal/export"
       ],
       "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/deletionlog": {
+      "dir": "internal/deletionlog",
+      "imported_by_internal": [
+        "gopmgr"
+      ],
+      "imports_internal": [
+        "gopmgr/internal/crypto",
+        "gopmgr/internal/sqlitedriver"
+      ],
       "notable_external_deps": []
     },
     "gopmgr/internal/documents": {
@@ -478,6 +491,7 @@
       "imported_by_internal": [
         "gopmgr/internal/catalog",
         "gopmgr/internal/db",
+        "gopmgr/internal/deletionlog",
         "gopmgr/internal/users"
       ],
       "imports_internal": [],
