@@ -128,9 +128,13 @@ That result took six live-GUI cycles to reach because the first five, all run un
   account flows (planned, highest risk first):
   - Account deletion is a data decision. Deleting an account removes the
     only wraps of its encryption key, so its encrypted projects become
-    unreadable, and its folder stays on disk. Offer explicit choices and
-    record which one ran; the choices need an owner decision, because an
-    archive cannot keep encrypted projects readable once the key is gone.
+    unreadable, and its folder stays on disk. Owner decision, 2026-09-24:
+    offer two choices and record which one ran. **Disable** keeps the
+    account, its key wraps, and its folder, and blocks sign-in; it can be
+    undone. **Purge** requires typing the username, then deletes the account
+    and its folder. Moving the folder aside while deleting the account was
+    rejected: an archive cannot keep encrypted projects readable once the
+    key is gone.
     Done 2026-09-24: a new account never takes over an existing folder.
     `createUserFolder` uses an exclusive `os.Mkdir` and refuses anything at
     the path (folder, file, symlink, or a case variant on APFS/NTFS); failed
