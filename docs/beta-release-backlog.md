@@ -140,10 +140,16 @@ That result took six live-GUI cycles to reach because the first five, all run un
     history. Last-administrator guards (including `SetAdmin`'s) now count
     only administrators who can sign in, inside the same transaction. An
     account named `logs` cannot be purged (its folder is the app's logs);
-    disable it instead. Evidence: `account_status_test.go`, `admin_test.go`,
+    disable it instead. Disable and Purge read the acting administrator's
+    role inside the transaction, and Purge is refused when another account's
+    name differs only in case (pairs from before 2026-06-20 may share a
+    folder). Evidence: `account_status_test.go`, `admin_test.go`,
     `user_isolation_test.go`, `AdminPanel.test.ts`, and `Login.test.ts` rows
-    in `TEST_COVERAGE_LEDGER.md`. Not tested: Windows, where `RemoveAll`
-    fails on files another process has open.
+    in `TEST_COVERAGE_LEDGER.md`. Not covered: Windows, where `RemoveAll`
+    fails on files another process has open; no check in the native app
+    window; and a crash between the purge commit and the folder removal,
+    which records "purged" with no `folder_not_removed` event and leaves the
+    folder (its name stays blocked until someone removes it).
   - Record account creation and role changes in `account_events` too; that
     history is where an audited administrator-access record would live.
     Done 2026-09-24: a new account never takes over an existing folder.
@@ -151,9 +157,9 @@ That result took six live-GUI cycles to reach because the first five, all run un
     the path (folder, file, symlink, or a case variant on APFS/NTFS); failed
     inserts and commits remove the empty folders they made; `logs` is
     reserved. Evidence: `create_account_rule_test.go` and
-    `user_isolation_test.go` rows in `TEST_COVERAGE_LEDGER.md`. Until the
-    deletion choices exist, recreating a deleted account's name is refused
-    and someone must move the old folder by hand. An existing account named
+    `user_isolation_test.go` rows in `TEST_COVERAGE_LEDGER.md`. A folder
+    left by an older version's delete or an incomplete permanent deletion
+    still blocks its name until someone moves it by hand. An existing account named
     `logs` keeps the log folder as its home. If the app dies between making
     the folder and committing the account, the empty folder blocks that
     username until someone removes it.

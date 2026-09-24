@@ -31,6 +31,13 @@ import (
 // not know the password.
 var ErrAccountDisabled = errors.New("users: account is disabled")
 
+// ErrFolderShared is returned by PurgeAccount when another account's name
+// differs from username only in letter case. Such pairs predate the
+// case-insensitive duplicate check (2026-06-20); on a case-insensitive
+// filesystem both accounts use the same folder, so deleting it would delete
+// the other account's data.
+var ErrFolderShared = errors.New("users: another account may share this account's folder")
+
 // ErrPurgeIncomplete is returned by PurgeAccount when the account was
 // deleted but its folder could not be fully removed.
 var ErrPurgeIncomplete = errors.New("users: account deleted but its folder was not fully removed")
@@ -167,6 +174,23 @@ func guardLastEnabledAdmin(ctx context.Context, q accountWriter, isAdmin, disabl
 	return nil
 }
 
+// requireEnabledAdmin returns ErrNotAdmin unless actor is an administrator
+// who can sign in, read inside the transaction rather than trusted from a
+// session that another GoPMgr process may have demoted since.
+func requireEnabledAdmin(ctx context.Context, q accountWriter, actor string) error {
+	isAdmin, disabled, err := accountRole(ctx, q, actor)
+	if errors.Is(err, ErrNoSuchUser) {
+		return ErrNotAdmin
+	}
+	if err != nil {
+		return err
+	}
+	if !isAdmin || disabled {
+		return ErrNotAdmin
+	}
+	return nil
+}
+
 func recordAccountEvent(ctx context.Context, q accountWriter, actor, username, action, detail string) error {
 	_, err := q.ExecContext(ctx,
 		`INSERT INTO account_events (occurred_at, actor, username, action, detail) VALUES (?, ?, ?, ?, ?)`,
@@ -175,11 +199,15 @@ func recordAccountEvent(ctx context.Context, q accountWriter, actor, username, a
 	return err
 }
 
-// SetDisabled disables or enables username on behalf of actor. Disabling
-// the last enabled administrator returns ErrLastAdmin. A call that changes
-// nothing records nothing.
+// SetDisabled disables or enables username on behalf of actor, who must be
+// an enabled administrator (ErrNotAdmin otherwise). Disabling the last
+// enabled administrator returns ErrLastAdmin. A call that changes nothing
+// records nothing.
 func (s *Store) SetDisabled(actor, username string, disabled bool) error {
 	return s.inWriteTx("account status change", func(ctx context.Context, q accountWriter) error {
+		if err := requireEnabledAdmin(ctx, q, actor); err != nil {
+			return err
+		}
 		isAdmin, current, err := accountRole(ctx, q, username)
 		if err != nil {
 			return err
@@ -207,8 +235,10 @@ func (s *Store) SetDisabled(actor, username string, disabled bool) error {
 // of actor. The account row (with its recovery codes, which cascade) and
 // the "purged" event are committed together first; if the folder then
 // cannot be fully removed, a "folder_not_removed" event is added and
-// ErrPurgeIncomplete returned with the folder's path. Purging the last
-// enabled administrator returns ErrLastAdmin.
+// ErrPurgeIncomplete returned with the folder's path. actor must be an
+// enabled administrator (ErrNotAdmin otherwise). Purging the last enabled
+// administrator returns ErrLastAdmin, and an account whose name differs
+// from another's only in case returns ErrFolderShared.
 //
 // An account whose folder is one of GoPMgr's own (an account named "logs"
 // from before that name was reserved) is refused with ErrReservedUsername:
@@ -228,9 +258,22 @@ func (s *Store) PurgeAccount(actor, username string) error {
 	dataDir := filepath.Join(s.rootDir, username)
 
 	err := s.inWriteTx("account deletion", func(ctx context.Context, q accountWriter) error {
+		if err := requireEnabledAdmin(ctx, q, actor); err != nil {
+			return err
+		}
 		isAdmin, disabled, err := accountRole(ctx, q, username)
 		if err != nil {
 			return err
+		}
+		var caseVariants int
+		if err := q.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM users WHERE lower(username) = lower(?) AND username <> ?`,
+			username, username,
+		).Scan(&caseVariants); err != nil {
+			return err
+		}
+		if caseVariants > 0 {
+			return ErrFolderShared
 		}
 		if err := guardLastEnabledAdmin(ctx, q, isAdmin, disabled); err != nil {
 			return err

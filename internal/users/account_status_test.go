@@ -143,10 +143,12 @@ func TestLastEnabledAdminGuards(t *testing.T) {
 	if err := store.SetAdmin("alice", false); !errors.Is(err, ErrLastAdmin) {
 		t.Fatalf("demote the only enabled admin: err = %v, want ErrLastAdmin", err)
 	}
-	if err := store.SetDisabled("bob", "alice", true); !errors.Is(err, ErrLastAdmin) {
+	// Only alice may act (bob is disabled), so she is acting on herself; the
+	// app refuses that separately, but the store must still refuse it.
+	if err := store.SetDisabled("alice", "alice", true); !errors.Is(err, ErrLastAdmin) {
 		t.Fatalf("disable the only enabled admin: err = %v, want ErrLastAdmin", err)
 	}
-	if err := store.PurgeAccount("bob", "alice"); !errors.Is(err, ErrLastAdmin) {
+	if err := store.PurgeAccount("alice", "alice"); !errors.Is(err, ErrLastAdmin) {
 		t.Fatalf("purge the only enabled admin: err = %v, want ErrLastAdmin", err)
 	}
 	if roles := accountRoles(t, store); !roles["alice"] {
@@ -359,4 +361,58 @@ func TestOpenAddsAccountStatusToAnOlderDatabase(t *testing.T) {
 	if events, err := store.AccountEvents(); err != nil || len(events) != 0 {
 		t.Fatalf("AccountEvents after upgrade = %v, %v; want none", events, err)
 	}
+}
+
+// TestOnlyEnabledAdministratorsCanDisableOrPurge reads the acting account's
+// role inside the transaction, so a session demoted or disabled by another
+// GoPMgr process cannot still act.
+func TestOnlyEnabledAdministratorsCanDisableOrPurge(t *testing.T) {
+	store := newStatusStore(t)
+	if _, err := store.CreateAccount("carol", "Carol", statusPassword, true); err != nil {
+		t.Fatalf("create carol: %v", err)
+	}
+	if err := store.SetDisabled("alice", "carol", true); err != nil {
+		t.Fatalf("disable carol: %v", err)
+	}
+	for _, actor := range []string{"bob", "carol", "nobody", ""} {
+		if err := store.SetDisabled(actor, "bob", true); !errors.Is(err, ErrNotAdmin) {
+			t.Fatalf("SetDisabled by %q: err = %v, want ErrNotAdmin", actor, err)
+		}
+		if err := store.PurgeAccount(actor, "bob"); !errors.Is(err, ErrNotAdmin) {
+			t.Fatalf("PurgeAccount by %q: err = %v, want ErrNotAdmin", actor, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(store.RootDir(), "bob")); err != nil {
+		t.Fatalf("bob's folder after refused purges: %v", err)
+	}
+	assertEvents(t, store, "alice disabled carol")
+}
+
+// TestPurgeAccountRefusesWhenAnotherAccountDiffersOnlyInCase covers
+// accounts created before the case-insensitive duplicate check: on a
+// case-insensitive filesystem "Bob" and "bob" share one folder.
+func TestPurgeAccountRefusesWhenAnotherAccountDiffersOnlyInCase(t *testing.T) {
+	store := newStatusStore(t)
+	if _, err := store.conn.Exec(
+		`INSERT INTO users (username, display_name, password_hash, data_dir, created_at, is_admin) VALUES ('Bob', 'Bob', 'x', '', '2026-06-01T00:00:00Z', 0)`,
+	); err != nil {
+		t.Fatalf("seed Bob: %v", err)
+	}
+	project := filepath.Join(store.RootDir(), "bob", "projects", "plan.gopmgr")
+	if err := os.WriteFile(project, []byte("shared"), 0o600); err != nil {
+		t.Fatalf("write project: %v", err)
+	}
+
+	for _, name := range []string{"bob", "Bob"} {
+		if err := store.PurgeAccount("alice", name); !errors.Is(err, ErrFolderShared) {
+			t.Fatalf("PurgeAccount(%s): err = %v, want ErrFolderShared", name, err)
+		}
+	}
+	if data, err := os.ReadFile(project); err != nil || string(data) != "shared" {
+		t.Fatalf("project after refused purges: %q, %v", data, err)
+	}
+	if roles := accountRoles(t, store); len(roles) != 3 {
+		t.Fatalf("accounts after refused purges = %v, want all three kept", roles)
+	}
+	assertEvents(t, store)
 }

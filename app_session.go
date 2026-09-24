@@ -156,6 +156,9 @@ func (a *App) AdminSetUserDisabled(username string, disabled bool) error {
 		return errors.New("administrators cannot disable their own account")
 	}
 	err := a.store.SetDisabled(caller.Username, username, disabled)
+	if errors.Is(err, users.ErrNotAdmin) {
+		return errors.New("administrator privileges required")
+	}
 	if errors.Is(err, users.ErrLastAdmin) {
 		return errors.New("this is the only administrator who can sign in; make someone else an administrator first")
 	}
@@ -180,6 +183,10 @@ func (a *App) AdminPurgeUser(username, confirmation string) error {
 	}
 	err := a.store.PurgeAccount(caller.Username, username)
 	switch {
+	case errors.Is(err, users.ErrNotAdmin):
+		return errors.New("administrator privileges required")
+	case errors.Is(err, users.ErrFolderShared):
+		return fmt.Errorf("another account's name differs from %q only in letter case, so the two may share a folder; disable the account instead", username)
 	case errors.Is(err, users.ErrLastAdmin):
 		return errors.New("this is the only administrator who can sign in; make someone else an administrator first")
 	case errors.Is(err, users.ErrReservedUsername):

@@ -174,7 +174,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
       purgeTarget = null;
       purgeTyped = '';
     } catch (err: any) {
-      showToast(`Delete failed: ${err}`, 'error');
+      const message = String(err?.message ?? err);
+      // The account is gone but part of its folder is not: say so plainly
+      // rather than calling it a failed delete.
+      if (message.startsWith('the account was deleted')) {
+        showToast(message.charAt(0).toUpperCase() + message.slice(1), 'error');
+        purgeTarget = null;
+        purgeTyped = '';
+      } else {
+        showToast(`Delete failed: ${message}`, 'error');
+      }
     } finally {
       purging = false;
       await load();

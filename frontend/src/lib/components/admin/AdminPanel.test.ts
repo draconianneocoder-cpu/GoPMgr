@@ -102,6 +102,26 @@ describe('AdminPanel account removal', () => {
     expect(app.AdminPurgeUser).toHaveBeenCalledOnce();
   });
 
+  it('reports an incomplete deletion as a deletion, not as a failure', async () => {
+    const toasts = await import('../../toast.svelte');
+    const toastSpy = vi.spyOn(toasts, 'showToast');
+    app.AdminPurgeUser.mockRejectedValue(new Error(
+      'the account was deleted, but part of its folder could not be removed; remove it by hand (/tmp/gopmgr/bob: permission denied)',
+    ));
+    const utils = render(AdminPanel);
+    await fireEvent.click(await utils.findByRole('button', { name: 'Delete account bob permanently' }));
+    const panel = utils.getByRole('group', { name: 'Permanently delete bob' });
+    await fireEvent.input(within(panel).getByLabelText(/Type\s+bob\s+to confirm/), { target: { value: 'bob' } });
+    await fireEvent.click(within(panel).getByRole('button', { name: 'Delete permanently' }));
+
+    await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+    const [message] = toastSpy.mock.calls.at(-1)!;
+    expect(message).toMatch(/^The account was deleted, but part of its folder could not be removed/);
+    expect(message).toContain('/tmp/gopmgr/bob');
+    expect(message).not.toMatch(/Delete failed/);
+    expect(utils.queryByRole('group', { name: 'Permanently delete bob' })).not.toBeInTheDocument();
+  });
+
   it('cancels a permanent deletion without calling the backend', async () => {
     const utils = render(AdminPanel);
     await fireEvent.click(await utils.findByRole('button', { name: 'Delete account bob permanently' }));

@@ -19,8 +19,9 @@ for a legitimate local user.
 - Per-user directories under the GoPMgr application data root are created with
   restrictive POSIX permissions where supported. A new account's folder is
   created with an exclusive `os.Mkdir`: if anything already exists at that
-  path, such as the folder of a deleted account (in any letter case on a
-  case-insensitive filesystem), creation is refused instead of handing the
+  path, such as a folder left by an account deleted before permanent
+  deletion existed or by a deletion that could not finish (in any letter
+  case on a case-insensitive filesystem), creation is refused instead of handing the
   old projects, certificates, and exports to the new account. `logs` is
   reserved for GoPMgr's own log folder.
 - `system.db` file permissions are tightened to owner-only access where
@@ -35,8 +36,12 @@ for a legitimate local user.
   refused after the password matches; projects, key wraps, and recovery
   codes kept) or by permanently deleting it (`Store.PurgeAccount`: the
   account row, its recovery codes, and its folder, after the username is
-  typed). Last-administrator guards count only administrators who can sign
-  in. Each disable, enable, and deletion is written to `account_events` in
+  typed). Both read the acting administrator's role inside the transaction,
+  so a session demoted or disabled by another GoPMgr process cannot still
+  act. Purge is refused when another account's name differs only in letter
+  case (such pairs predate the case-insensitive duplicate check of
+  2026-06-20 and may share one folder). Last-administrator guards count
+  only administrators who can sign in. Each disable, enable, and deletion is written to `account_events` in
   `system.db` in the same transaction as the change. Limits: the history is
   plaintext and anyone who can write `system.db` can change it (triggers
   only stop the app); a recovery-code reset still works on a disabled
