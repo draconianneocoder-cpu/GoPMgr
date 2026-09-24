@@ -126,15 +126,26 @@ That result took six live-GUI cycles to reach because the first five, all run un
   aside.
 - Account and recovery follow-ups, adopted 2026-09-24 from a review of the
   account flows (planned, highest risk first):
-  - Account deletion is a data decision. Deleting an account removes the
-    only wraps of its encryption key, so its encrypted projects become
-    unreadable, and its folder stays on disk. Owner decision, 2026-09-24:
-    offer two choices and record which one ran. **Disable** keeps the
-    account, its key wraps, and its folder, and blocks sign-in; it can be
-    undone. **Purge** requires typing the username, then deletes the account
-    and its folder. Moving the folder aside while deleting the account was
-    rejected: an archive cannot keep encrypted projects readable once the
-    key is gone.
+  - Done 2026-09-24: account deletion is a data decision. Deleting an
+    account removed the only wraps of its encryption key, so its encrypted
+    projects became unreadable, and left its folder on disk. Owner decision,
+    2026-09-24: offer two choices and record which one ran. The Admin panel
+    now offers **Disable** (keeps the account, its key wraps, and its
+    folder, blocks sign-in, can be undone) and **Delete permanently**
+    (`Store.PurgeAccount`, after the username is typed exactly: the account,
+    its recovery codes, and its folder). Moving the folder aside while
+    deleting the account was rejected, because an archive cannot keep
+    encrypted projects readable once the key is gone. Each action is written
+    to `account_events` with the change, and the Admin panel shows the
+    history. Last-administrator guards (including `SetAdmin`'s) now count
+    only administrators who can sign in, inside the same transaction. An
+    account named `logs` cannot be purged (its folder is the app's logs);
+    disable it instead. Evidence: `account_status_test.go`, `admin_test.go`,
+    `user_isolation_test.go`, `AdminPanel.test.ts`, and `Login.test.ts` rows
+    in `TEST_COVERAGE_LEDGER.md`. Not tested: Windows, where `RemoveAll`
+    fails on files another process has open.
+  - Record account creation and role changes in `account_events` too; that
+    history is where an audited administrator-access record would live.
     Done 2026-09-24: a new account never takes over an existing folder.
     `createUserFolder` uses an exclusive `os.Mkdir` and refuses anything at
     the path (folder, file, symlink, or a case variant on APFS/NTFS); failed

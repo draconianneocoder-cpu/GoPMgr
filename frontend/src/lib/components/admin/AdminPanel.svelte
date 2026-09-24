@@ -33,8 +33,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
   });
 
   // Per-row action state
-  let pendingDelete = $state<string | null>(null);
   let pendingRoleChange = $state<string | null>(null);
+  let pendingDisable = $state<string | null>(null);
+  // Permanent deletion needs the username typed exactly (the backend
+  // checks it too), so it opens its own panel instead of a two-click confirm.
+  let purgeTarget = $state<string | null>(null);
+  let purgeTyped = $state('');
+  let purging = $state(false);
+
+  let events = $state<AccountEvent[]>([]);
+  let eventsError = $state('');
 
   const usernameRule = /^[A-Za-z0-9_-]{3,32}$/;
 
@@ -49,6 +57,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
       error = `Could not load users: ${err}`;
     } finally {
       loading = false;
+    }
+    await loadEvents();
+  }
+
+  async function loadEvents() {
+    eventsError = '';
+    try {
+      events = (await window.go.main.App.AdminListAccountEvents()) ?? [];
+    } catch (err: any) {
+      eventsError = `Could not load account history: ${err}`;
     }
   }
 
@@ -119,18 +137,47 @@ SPDX-License-Identifier: GPL-3.0-or-later
     copied = false;
   }
 
-  async function confirmDelete(username: string) {
-    if (pendingDelete !== username) {
-      pendingDelete = username;
+  async function toggleDisabled(user: Account) {
+    if (pendingDisable !== user.username) {
+      cancelPending(user.username);
+      pendingDisable = user.username;
       return;
     }
-    pendingDelete = null;
+    pendingDisable = null;
+    const disable = !user.disabled;
     try {
-      await window.go.main.App.AdminDeleteUser(username);
-      showToast(`Account "${username}" deleted.`, 'success');
+      await window.go.main.App.AdminSetUserDisabled(user.username, disable);
+      showToast(
+        disable
+          ? `${user.username} is disabled. Their projects are kept.`
+          : `${user.username} can sign in again.`,
+        'success'
+      );
       await load();
     } catch (err: any) {
+      showToast(`Could not ${disable ? 'disable' : 'enable'} ${user.username}: ${err}`, 'error');
+    }
+  }
+
+  function startPurge(username: string) {
+    cancelPending(username);
+    purgeTarget = username;
+    purgeTyped = '';
+  }
+
+  async function purge(username: string) {
+    if (purgeTyped !== username || purging) return;
+    purging = true;
+    try {
+      await window.go.main.App.AdminPurgeUser(username, purgeTyped);
+      showToast(`${username} and their folder were permanently deleted.`, 'success');
+      purgeTarget = null;
+      purgeTyped = '';
+    } catch (err: any) {
       showToast(`Delete failed: ${err}`, 'error');
+    } finally {
+      purging = false;
+      await load();
     }
   }
 
@@ -154,8 +201,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   function cancelPending(username: string) {
-    if (pendingDelete === username) pendingDelete = null;
     if (pendingRoleChange === username) pendingRoleChange = null;
+    if (pendingDisable === username) pendingDisable = null;
+    if (purgeTarget === username) {
+      purgeTarget = null;
+      purgeTyped = '';
+    }
+  }
+
+  const eventLabels: Record<string, string> = {
+    disabled: 'disabled',
+    enabled: 'enabled',
+    purged: 'permanently deleted',
+    folder_not_removed: 'could not fully remove the folder of',
+  };
+
+  function formatEventTime(value: string): string {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
   }
 
   function formatLastLogin(value: string): string {
@@ -176,11 +239,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div>
         <h1 class="text-xl font-bold">User management</h1>
         <p class="text-xs text-slate-500 mt-0.5">
-          Administrators can create and delete accounts and manage roles on this machine.
+          Administrators create, disable, and delete accounts and manage roles on this machine.
         </p>
       </div>
       <button
-        onclick={() => { showCreateForm = !showCreateForm; pendingDelete = null; pendingRoleChange = null; }}
+        onclick={() => { showCreateForm = !showCreateForm; pendingRoleChange = null; pendingDisable = null; purgeTarget = null; }}
         class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded shrink-0"
       >
         {showCreateForm ? 'Cancel' : 'Create user'}
@@ -322,6 +385,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   {:else}
                     <span class="text-[11px] text-slate-500">Standard</span>
                   {/if}
+                  {#if user.disabled}
+                    <span class="ml-1 inline-flex items-center text-[11px] font-semibold text-slate-300 bg-slate-800 border border-slate-700 rounded px-2 py-0.5">
+                      Disabled
+                    </span>
+                  {/if}
                 </td>
                 <td class="px-4 py-3 text-[11px] text-slate-500 font-mono">
                   {formatLastLogin(user.last_login)}
@@ -341,17 +409,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
                           onclick={() => cancelPending(user.username)}
                           class="text-[11px] text-slate-400 hover:text-slate-200 underline"
                         >Cancel</button>
-                      {:else if pendingDelete === user.username}
-                        <span class="text-[11px] text-red-400">Delete account?</span>
+                      {:else if pendingDisable === user.username}
+                        <span class="text-[11px] text-amber-400">
+                          {user.disabled ? 'Let them sign in again?' : 'Disable? Projects are kept.'}
+                        </span>
                         <button
-                          onclick={() => confirmDelete(user.username)}
-                          class="text-[11px] bg-red-700 hover:bg-red-600 text-white px-2 py-0.5 rounded"
+                          onclick={() => toggleDisabled(user)}
+                          class="text-[11px] bg-amber-800 hover:bg-amber-700 text-white px-2 py-0.5 rounded"
                         >Confirm</button>
                         <button
                           onclick={() => cancelPending(user.username)}
                           class="text-[11px] text-slate-400 hover:text-slate-200 underline"
                         >Cancel</button>
-                      {:else}
+                      {:else if purgeTarget !== user.username}
                         <button
                           onclick={() => toggleRole(user)}
                           class="text-[11px] text-slate-400 hover:text-amber-400 underline"
@@ -360,15 +430,56 @@ SPDX-License-Identifier: GPL-3.0-or-later
                           {user.is_admin ? 'Remove admin' : 'Grant admin'}
                         </button>
                         <button
-                          onclick={() => confirmDelete(user.username)}
+                          onclick={() => toggleDisabled(user)}
+                          class="text-[11px] text-slate-400 hover:text-amber-400 underline"
+                          aria-label={`${user.disabled ? 'Enable' : 'Disable'} account ${user.username}`}
+                        >{user.disabled ? 'Enable' : 'Disable'}</button>
+                        <button
+                          onclick={() => startPurge(user.username)}
                           class="text-[11px] text-slate-400 hover:text-red-400 underline"
-                          aria-label={`Delete account ${user.username}`}
-                        >Delete</button>
+                          aria-label={`Delete account ${user.username} permanently`}
+                        >Delete permanently</button>
                       {/if}
                     </div>
                   {/if}
                 </td>
               </tr>
+              {#if purgeTarget === user.username}
+                <tr class="border-b border-slate-800/60 bg-red-950/20">
+                  <td colspan="5" class="px-4 py-3">
+                    <div class="space-y-2" role="group" aria-label={`Permanently delete ${user.username}`}>
+                      <p class="text-xs font-semibold text-red-300">Permanently delete {user.username}?</p>
+                      <p class="text-xs text-slate-300">
+                        This deletes the account and its folder: all of {user.username}'s projects
+                        (including encrypted ones), certificates, exports, and recovery codes. It can't be
+                        undone. To keep the data, disable the account instead.
+                      </p>
+                      <label for={`purge-confirm-${user.username}`} class="block text-[11px] text-slate-400">
+                        Type <span class="font-mono text-slate-200">{user.username}</span> to confirm
+                      </label>
+                      <div class="flex items-center gap-2">
+                        <input
+                          id={`purge-confirm-${user.username}`}
+                          type="text"
+                          autocomplete="off"
+                          spellcheck="false"
+                          bind:value={purgeTyped}
+                          class="w-48 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-red-500 outline-none"
+                        />
+                        <button
+                          onclick={() => purge(user.username)}
+                          disabled={purgeTyped !== user.username || purging}
+                          class="text-[11px] bg-red-700 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-2 py-1 rounded"
+                        >{purging ? 'Deleting…' : 'Delete permanently'}</button>
+                        <button
+                          onclick={() => cancelPending(user.username)}
+                          class="text-[11px] text-slate-400 hover:text-slate-200 underline"
+                        >Cancel</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              {/if}
             {/each}
           </tbody>
         </table>
@@ -376,6 +487,27 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <p class="text-center text-slate-500 text-xs py-6">No accounts found.</p>
         {/if}
       </div>
+
+      <section class="space-y-2" aria-labelledby="account-history-heading">
+        <h2 id="account-history-heading" class="text-xs font-bold uppercase tracking-widest text-slate-400">Account history</h2>
+        {#if eventsError}
+          <p class="text-xs text-red-400" role="alert">{eventsError}</p>
+        {:else if events.length === 0}
+          <p class="text-xs text-slate-500">No accounts have been disabled, enabled, or deleted.</p>
+        {:else}
+          <ul class="text-xs text-slate-300 space-y-1">
+            {#each events as event (event.id)}
+              <li>
+                <span class="text-slate-500 font-mono">{formatEventTime(event.occurred_at)}</span>
+                — {event.actor} {eventLabels[event.action] ?? event.action} {event.username}
+                {#if event.detail}
+                  <span class="block text-[11px] text-slate-500 font-mono break-all">{event.detail}</span>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </section>
     {/if}
   </main>
 </div>
