@@ -412,26 +412,25 @@ func TestSetLastExportDirectoryPersistsAndRoundTripsThroughAuthenticateAndList(t
 	}
 }
 
-// TestSetAdmin_NoSuchUserReturnsError covers SetAdmin's first QueryRow
-// (reading the target's current admin status) failing with sql.ErrNoRows
-// for a username that was never created. The second QueryRow (the admin
-// COUNT) is only reached when the first found an existing admin row, so it
-// has no independent failure trigger on the same live connection — same
-// reasoning as DeleteAccount's equivalent COUNT query below; kept as a
-// documented, uncovered line.
+// TestSetAdmin_NoSuchUserReturnsError covers SetAdmin's role lookup
+// finding no account, for both promotion and demotion. The enabled-admin
+// COUNT that follows has no independent failure trigger on the same live
+// connection; kept as a documented, uncovered line.
 func TestSetAdmin_NoSuchUserReturnsError(t *testing.T) {
 	store := openTestStore(t)
-	if err := store.SetAdmin("nobody", false); err == nil {
-		t.Fatal("SetAdmin(nonexistent user) = nil, want an error")
+	for _, promote := range []bool{true, false} {
+		if err := store.SetAdmin("nobody", promote); !errors.Is(err, ErrNoSuchUser) {
+			t.Fatalf("SetAdmin(nonexistent user, %v) = %v, want ErrNoSuchUser", promote, err)
+		}
 	}
 }
 
-// TestDeleteAccount_NoSuchUserReturnsError is DeleteAccount's analogue of
+// TestPurgeAccount_NoSuchUserReturnsError is PurgeAccount's analogue of
 // TestSetAdmin_NoSuchUserReturnsError above.
-func TestDeleteAccount_NoSuchUserReturnsError(t *testing.T) {
+func TestPurgeAccount_NoSuchUserReturnsError(t *testing.T) {
 	store := openTestStore(t)
-	if err := store.DeleteAccount("nobody"); err == nil {
-		t.Fatal("DeleteAccount(nonexistent user) = nil, want an error")
+	if err := store.PurgeAccount("alice", "nobody"); err == nil {
+		t.Fatal("PurgeAccount(nonexistent user) = nil, want an error")
 	}
 }
 
@@ -950,17 +949,17 @@ func TestSetAdmin_DemoteSucceedsWhenMultipleAdmins(t *testing.T) {
 	}
 }
 
-func TestDeleteAccount_SoleAdminReturnsErrLastAdmin(t *testing.T) {
+func TestPurgeAccount_SoleAdminReturnsErrLastAdmin(t *testing.T) {
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	if err := store.DeleteAccount("alice"); !errors.Is(err, ErrLastAdmin) {
-		t.Fatalf("DeleteAccount sole admin: got %v, want ErrLastAdmin", err)
+	if err := store.PurgeAccount("alice", "alice"); !errors.Is(err, ErrLastAdmin) {
+		t.Fatalf("PurgeAccount sole admin: got %v, want ErrLastAdmin", err)
 	}
 }
 
-func TestDeleteAccount_StandardUserSucceeds(t *testing.T) {
+func TestPurgeAccount_StandardUserSucceeds(t *testing.T) {
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount admin: %v", err)
@@ -968,8 +967,8 @@ func TestDeleteAccount_StandardUserSucceeds(t *testing.T) {
 	if _, err := store.CreateAccount("bob", "Bob", "passphrase-long", false); err != nil {
 		t.Fatalf("CreateAccount standard: %v", err)
 	}
-	if err := store.DeleteAccount("bob"); err != nil {
-		t.Fatalf("DeleteAccount standard user: %v", err)
+	if err := store.PurgeAccount("alice", "bob"); err != nil {
+		t.Fatalf("PurgeAccount standard user: %v", err)
 	}
 	accs, err := store.List()
 	if err != nil {
@@ -977,12 +976,12 @@ func TestDeleteAccount_StandardUserSucceeds(t *testing.T) {
 	}
 	for _, a := range accs {
 		if strings.EqualFold(a.Username, "bob") {
-			t.Error("bob still present after DeleteAccount")
+			t.Error("bob still present after PurgeAccount")
 		}
 	}
 }
 
-func TestDeleteAccount_CascadesRecoveryCodes(t *testing.T) {
+func TestPurgeAccount_CascadesRecoveryCodes(t *testing.T) {
 	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount admin: %v", err)
@@ -996,8 +995,8 @@ func TestDeleteAccount_CascadesRecoveryCodes(t *testing.T) {
 	); err != nil {
 		t.Fatalf("insert recovery code: %v", err)
 	}
-	if err := store.DeleteAccount("bob"); err != nil {
-		t.Fatalf("DeleteAccount: %v", err)
+	if err := store.PurgeAccount("alice", "bob"); err != nil {
+		t.Fatalf("PurgeAccount: %v", err)
 	}
 	var n int
 	if err := store.conn.QueryRow(

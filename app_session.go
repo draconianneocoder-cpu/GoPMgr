@@ -144,9 +144,30 @@ func (a *App) AdminListUsers() ([]users.Account, error) {
 	return a.store.List()
 }
 
-// AdminDeleteUser removes an account. Requires the caller to be an
-// administrator. Callers cannot delete their own account.
-func (a *App) AdminDeleteUser(username string) error {
+// AdminSetUserDisabled disables or enables another account. A disabled
+// account keeps its projects and encryption key but cannot sign in.
+// Requires an administrator; administrators cannot disable themselves.
+func (a *App) AdminSetUserDisabled(username string, disabled bool) error {
+	caller := a.requireUser()
+	if caller == nil || !caller.IsAdmin {
+		return errors.New("administrator privileges required")
+	}
+	if strings.EqualFold(caller.Username, username) {
+		return errors.New("administrators cannot disable their own account")
+	}
+	err := a.store.SetDisabled(caller.Username, username, disabled)
+	if errors.Is(err, users.ErrLastAdmin) {
+		return errors.New("this is the only administrator who can sign in; make someone else an administrator first")
+	}
+	return err
+}
+
+// AdminPurgeUser permanently deletes another account and its folder: its
+// projects (encrypted or not), certificates, exports, and recovery codes.
+// confirmation must be the username exactly as stored, typed by the
+// administrator. Requires an administrator; administrators cannot delete
+// themselves.
+func (a *App) AdminPurgeUser(username, confirmation string) error {
 	caller := a.requireUser()
 	if caller == nil || !caller.IsAdmin {
 		return errors.New("administrator privileges required")
@@ -154,7 +175,29 @@ func (a *App) AdminDeleteUser(username string) error {
 	if strings.EqualFold(caller.Username, username) {
 		return errors.New("administrators cannot delete their own account")
 	}
-	return a.store.DeleteAccount(username)
+	if confirmation != username {
+		return errors.New("type the username exactly to confirm permanent deletion")
+	}
+	err := a.store.PurgeAccount(caller.Username, username)
+	switch {
+	case errors.Is(err, users.ErrLastAdmin):
+		return errors.New("this is the only administrator who can sign in; make someone else an administrator first")
+	case errors.Is(err, users.ErrReservedUsername):
+		return fmt.Errorf("%q's folder is GoPMgr's own log folder, so it cannot be deleted; disable the account instead", username)
+	case errors.Is(err, users.ErrPurgeIncomplete):
+		return fmt.Errorf("the account was deleted, but part of its folder could not be removed; remove it by hand (%v)", err)
+	}
+	return err
+}
+
+// AdminListAccountEvents returns the history of disabled, enabled, and
+// deleted accounts, newest first. Requires an administrator.
+func (a *App) AdminListAccountEvents() ([]users.AccountEvent, error) {
+	caller := a.requireUser()
+	if caller == nil || !caller.IsAdmin {
+		return nil, errors.New("administrator privileges required")
+	}
+	return a.store.AccountEvents()
 }
 
 // AdminSetUserRole promotes or demotes a user's administrator status.
@@ -236,6 +279,11 @@ func (a *App) Login(username, password string) (users.Account, error) {
 		// one error so the timing/message is identical.
 		if errors.Is(err, users.ErrNoSuchUser) || errors.Is(err, auth.ErrMismatch) {
 			return users.Account{}, errors.New("invalid credentials")
+		}
+		// Only returned after the password matched, so it tells nothing
+		// to someone who does not know it.
+		if errors.Is(err, users.ErrAccountDisabled) {
+			return users.Account{}, errors.New("this account is disabled; ask your administrator to enable it")
 		}
 		return users.Account{}, err
 	}

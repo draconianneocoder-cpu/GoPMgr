@@ -33,7 +33,7 @@ func accountRoles(t *testing.T, store *Store) map[string]bool {
 func assertNoAccountFolder(t *testing.T, store *Store, username string) {
 	t.Helper()
 	if _, err := os.Stat(filepath.Join(store.RootDir(), username)); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("folder for refused account %q: stat err = %v, want not exist", username, err)
+		t.Fatalf("folder for account %q: stat err = %v, want not exist", username, err)
 	}
 }
 

@@ -93,6 +93,7 @@ type Account struct {
 	CreatedAt           time.Time `json:"created_at"`
 	LastLogin           time.Time `json:"last_login"`
 	IsAdmin             bool      `json:"is_admin"`
+	Disabled            bool      `json:"disabled"`
 }
 
 // Store is the connection to system.db. Construct one per process via
@@ -196,7 +197,11 @@ func (s *Store) migrate() error {
 	}
 	// Remembered last export directory — additive column; safe to run on
 	// existing databases.
-	return s.migrateLastExportDirColumn()
+	if err := s.migrateLastExportDirColumn(); err != nil {
+		return err
+	}
+	// Disabled accounts and the account history (account_status.go).
+	return s.migrateAccountStatus()
 }
 
 // migrateLastExportDirColumn adds last_export_directory to pre-existing
@@ -269,12 +274,13 @@ func ValidateUsername(name string) error {
 	return nil
 }
 
-// HasAnyAdmin reports whether at least one administrator account exists.
-// Safe to call without authentication; used to decide whether to offer
-// the administrator claim (App Settings) and by AccountSetup.
+// HasAnyAdmin reports whether at least one administrator who can sign in
+// (not disabled) exists. Safe to call without authentication; used to
+// decide whether to offer the administrator claim (App Settings) and by
+// AccountSetup.
 func (s *Store) HasAnyAdmin() (bool, error) {
 	var n int
-	err := s.conn.QueryRow(`SELECT COUNT(*) FROM users WHERE is_admin = 1`).Scan(&n)
+	err := s.conn.QueryRow(`SELECT COUNT(*) FROM users WHERE is_admin = 1 AND disabled = 0`).Scan(&n)
 	return n > 0, err
 }
 
@@ -287,35 +293,24 @@ func (s *Store) HasAnyAccount() (bool, error) {
 	return exists, err
 }
 
-// SetAdmin promotes or demotes username. It returns ErrLastAdmin if the
-// operation would leave the system with zero administrators (i.e. demoting
-// the last admin). Demoting a non-admin is a no-op and never returns
-// ErrLastAdmin.
+// SetAdmin promotes or demotes username. It returns ErrLastAdmin if
+// demoting username would leave no administrator who can sign in, and
+// ErrNoSuchUser if there is no such account. Demoting a non-admin or a
+// disabled admin never returns ErrLastAdmin.
 func (s *Store) SetAdmin(username string, isAdmin bool) error {
-	if !isAdmin {
-		// Only guard the last-admin case when the target is currently an admin.
-		var targetIsAdmin int
-		if err := s.conn.QueryRow(`SELECT is_admin FROM users WHERE username = ?`, username).Scan(&targetIsAdmin); err != nil {
+	return s.inWriteTx("role change", func(ctx context.Context, q accountWriter) error {
+		targetIsAdmin, targetDisabled, err := accountRole(ctx, q, username)
+		if err != nil {
 			return err
 		}
-		if targetIsAdmin == 1 {
-			var n int
-			// This COUNT query's own error is not tested: it and the
-			// targetIsAdmin query above both read the `users` table on the
-			// same live connection with no intervening hook a test can
-			// break, and a SELECT can't be sabotaged with a trigger the way
-			// an INSERT/UPDATE/DELETE can (same reasoning as
-			// DeleteAccount's equivalent COUNT query below).
-			if err := s.conn.QueryRow(`SELECT COUNT(*) FROM users WHERE is_admin = 1`).Scan(&n); err != nil {
+		if !isAdmin {
+			if err := guardLastEnabledAdmin(ctx, q, targetIsAdmin, targetDisabled); err != nil {
 				return err
 			}
-			if n <= 1 {
-				return ErrLastAdmin
-			}
 		}
-	}
-	_, err := s.conn.Exec(`UPDATE users SET is_admin = ? WHERE username = ?`, boolToInt(isAdmin), username)
-	return err
+		_, err = q.ExecContext(ctx, `UPDATE users SET is_admin = ? WHERE username = ?`, boolToInt(isAdmin), username)
+		return err
+	})
 }
 
 // SetLastExportDirectory persists the directory the user most recently
@@ -323,34 +318,6 @@ func (s *Store) SetAdmin(username string, isAdmin bool) error {
 // confirmation so the next export defaults there.
 func (s *Store) SetLastExportDirectory(username, dir string) error {
 	_, err := s.conn.Exec(`UPDATE users SET last_export_directory = ? WHERE username = ?`, dir, username)
-	return err
-}
-
-// DeleteAccount removes the account row from system.db. The foreign key
-// CASCADE on recovery_codes and the wrapped-DEK column on users are
-// handled automatically. The user's data directory is NOT removed —
-// project files remain on disk and an administrator can access them
-// through the filesystem.
-//
-// Returns ErrLastAdmin if deleting this account would leave no admins.
-func (s *Store) DeleteAccount(username string) error {
-	// Guard against orphaning the system by deleting the last admin.
-	var isAdmin int
-	if err := s.conn.QueryRow(`SELECT is_admin FROM users WHERE username = ?`, username).Scan(&isAdmin); err != nil {
-		return err
-	}
-	if isAdmin == 1 {
-		var n int
-		// This COUNT query's own error is not tested: see SetAdmin's
-		// identical query above for why.
-		if err := s.conn.QueryRow(`SELECT COUNT(*) FROM users WHERE is_admin = 1`).Scan(&n); err != nil {
-			return err
-		}
-		if n <= 1 {
-			return ErrLastAdmin
-		}
-	}
-	_, err := s.conn.Exec(`DELETE FROM users WHERE username = ?`, username)
 	return err
 }
 
@@ -392,7 +359,8 @@ func (s *Store) CreateAccount(username, displayName, password string, isAdmin bo
 //     administrator now, or ErrNotAdmin is returned, and isAdmin is honored.
 //     The role is read here rather than taken from the caller's session.
 //
-// The rule is checked in the same write transaction that inserts the row,
+// The rule is checked in the same write transaction that inserts the row
+// (inWriteTx),
 // so two callers racing on an empty machine (or two GoPMgr processes
 // sharing one data root) cannot both take the first-account path. A
 // refused call creates no folders. The returned Account carries the role
@@ -408,55 +376,43 @@ func (s *Store) CreateAccountAs(callerUsername, username, displayName, password 
 		return Account{}, err
 	}
 
-	ctx := context.Background()
-	// BEGIN IMMEDIATE needs one physical connection for the whole
-	// transaction, and takes SQLite's write lock at once, so no other
-	// writer can add an account between the checks below and the insert.
-	conn, err := s.conn.Conn(ctx)
-	if err != nil {
-		return Account{}, err
-	}
-	defer func() { _ = conn.Close() }()
-	if _, err := conn.ExecContext(ctx, `BEGIN IMMEDIATE`); err != nil {
-		return Account{}, fmt.Errorf("users: begin account creation: %w", err)
-	}
-	committed := false
-	defer func() {
-		if !committed {
-			_, _ = conn.ExecContext(ctx, `ROLLBACK`)
+	var acc Account
+	err = s.inWriteTx("account creation", func(ctx context.Context, q accountWriter) error {
+		var existing int
+		if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&existing); err != nil {
+			return err
 		}
-	}()
+		if existing == 0 {
+			isAdmin = true
+		} else {
+			callerIsAdmin, callerDisabled, err := accountRole(ctx, q, callerUsername)
+			if errors.Is(err, ErrNoSuchUser) {
+				return ErrNotAdmin
+			}
+			if err != nil {
+				return err
+			}
+			if !callerIsAdmin || callerDisabled {
+				return ErrNotAdmin
+			}
+		}
 
-	var existing int
-	if err := conn.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&existing); err != nil {
-		return Account{}, err
-	}
-	if existing == 0 {
-		isAdmin = true
-	} else {
-		var callerIsAdmin int
-		err := conn.QueryRowContext(ctx, `SELECT is_admin FROM users WHERE username = ?`, callerUsername).Scan(&callerIsAdmin)
-		if errors.Is(err, sql.ErrNoRows) {
-			return Account{}, ErrNotAdmin
-		}
+		afterAccountRuleCheck()
+		created, err := s.insertAccount(ctx, q, username, displayName, hash, isAdmin)
 		if err != nil {
-			return Account{}, err
+			return err
 		}
-		if callerIsAdmin != 1 {
-			return Account{}, ErrNotAdmin
-		}
-	}
-
-	afterAccountRuleCheck()
-	acc, err := s.insertAccount(ctx, conn, username, displayName, hash, isAdmin)
+		acc = created
+		return nil
+	})
 	if err != nil {
+		// insertAccount removes its folders if the insert fails; a folder
+		// that exists now belongs to a row the failed COMMIT rolled back.
+		if acc.DataDir != "" {
+			removeNewUserFolder(acc.DataDir)
+		}
 		return Account{}, err
 	}
-	if _, err := conn.ExecContext(ctx, `COMMIT`); err != nil {
-		removeNewUserFolder(acc.DataDir)
-		return Account{}, fmt.Errorf("users: commit account creation: %w", err)
-	}
-	committed = true
 	return acc, nil
 }
 
@@ -538,12 +494,13 @@ func (s *Store) Authenticate(username, password string) (Account, error) {
 		createdAt     string
 		lastLogin     string
 		isAdmin       int
+		disabled      int
 	)
 	err := s.conn.QueryRow(
-		`SELECT username, display_name, password_hash, data_dir, created_at, last_login, is_admin, last_export_directory
+		`SELECT username, display_name, password_hash, data_dir, created_at, last_login, is_admin, last_export_directory, disabled
 		 FROM users WHERE username = ?`,
 		username,
-	).Scan(&acc.Username, &acc.DisplayName, &hash, &storedDataDir, &createdAt, &lastLogin, &isAdmin, &acc.LastExportDirectory)
+	).Scan(&acc.Username, &acc.DisplayName, &hash, &storedDataDir, &createdAt, &lastLogin, &isAdmin, &acc.LastExportDirectory, &disabled)
 	if err == sql.ErrNoRows {
 		return Account{}, ErrNoSuchUser
 	}
@@ -553,6 +510,11 @@ func (s *Store) Authenticate(username, password string) (Account, error) {
 
 	if err := auth.VerifyPassword(password, hash); err != nil {
 		return Account{}, err
+	}
+	// Checked only after the password, so it reveals nothing to someone
+	// who does not know it, and before last_login or a rehash is written.
+	if disabled == 1 {
+		return Account{}, ErrAccountDisabled
 	}
 
 	// data_dir is recomputed from the scanned username and the store's
@@ -599,7 +561,7 @@ func (s *Store) Authenticate(username, password string) (Account, error) {
 // by the GUI's user-switcher dropdown and admin panel.
 func (s *Store) List() ([]Account, error) {
 	rows, err := s.conn.Query(
-		`SELECT username, display_name, data_dir, created_at, last_login, is_admin, last_export_directory
+		`SELECT username, display_name, data_dir, created_at, last_login, is_admin, last_export_directory, disabled
 		 FROM users ORDER BY username ASC`,
 	)
 	if err != nil {
@@ -613,9 +575,9 @@ func (s *Store) List() ([]Account, error) {
 			a                    Account
 			storedDataDir        string
 			createdAt, lastLogin string
-			isAdmin              int
+			isAdmin, disabled    int
 		)
-		if err := rows.Scan(&a.Username, &a.DisplayName, &storedDataDir, &createdAt, &lastLogin, &isAdmin, &a.LastExportDirectory); err != nil {
+		if err := rows.Scan(&a.Username, &a.DisplayName, &storedDataDir, &createdAt, &lastLogin, &isAdmin, &a.LastExportDirectory, &disabled); err != nil {
 			return nil, err
 		}
 		// See the comment in Authenticate: data_dir is recomputed, not trusted.
@@ -629,6 +591,7 @@ func (s *Store) List() ([]Account, error) {
 			}
 		}
 		a.IsAdmin = isAdmin == 1
+		a.Disabled = disabled == 1
 		out = append(out, a)
 	}
 	return out, rows.Err()

@@ -31,6 +31,19 @@ for a legitimate local user.
   caller's role from `system.db`. Accounts from releases before this rule
   may have no administrator; one of them claims the role with
   `BecomeAdmin`, and until then nobody can add accounts.
+- Administrators take an account out of use by disabling it (sign-in
+  refused after the password matches; projects, key wraps, and recovery
+  codes kept) or by permanently deleting it (`Store.PurgeAccount`: the
+  account row, its recovery codes, and its folder, after the username is
+  typed). Last-administrator guards count only administrators who can sign
+  in. Each disable, enable, and deletion is written to `account_events` in
+  `system.db` in the same transaction as the change. Limits: the history is
+  plaintext and anyone who can write `system.db` can change it (triggers
+  only stop the app); a recovery-code reset still works on a disabled
+  account but does not sign it in; a disabled user or demoted administrator
+  already signed in through another GoPMgr process keeps working until they
+  sign out; and the unauthenticated `ListUsers` method now also exposes
+  each account's disabled flag.
 - Administrators must not be able to read another user's data without an
   audit record that states a legitimate reason (owner decision,
   2026-09-24). **Not yet met:** an administrator who creates an account

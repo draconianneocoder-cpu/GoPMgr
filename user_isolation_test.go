@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -95,8 +96,19 @@ func TestRecreatedUsernameDoesNotInheritDeletedAccountsFolder(t *testing.T) {
 	if _, err := app.Login("alice", "alice-strong-password"); err != nil {
 		t.Fatalf("Login alice: %v", err)
 	}
-	if err := app.AdminDeleteUser("bob"); err != nil {
-		t.Fatalf("AdminDeleteUser bob: %v", err)
+	// Leave bob's folder behind without his account, as account deletion
+	// did before Purge existed (and as a Purge that cannot finish does):
+	// set the folder aside, purge, and put it back.
+	bobDir := filepath.Dir(filepath.Dir(filepath.Dir(project.Path)))
+	aside := bobDir + "-aside"
+	if err := os.Rename(bobDir, aside); err != nil {
+		t.Fatalf("set bob's folder aside: %v", err)
+	}
+	if err := app.AdminPurgeUser("bob", "bob"); err != nil {
+		t.Fatalf("AdminPurgeUser bob: %v", err)
+	}
+	if err := os.Rename(aside, bobDir); err != nil {
+		t.Fatalf("restore bob's folder: %v", err)
 	}
 
 	_, err = app.CreateAccount("bob", "Another Bob", "new-bob-password", false)
