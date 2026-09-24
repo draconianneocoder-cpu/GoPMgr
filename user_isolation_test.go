@@ -3,7 +3,12 @@
 
 package main
 
-import "testing"
+import (
+	"bytes"
+	"os"
+	"strings"
+	"testing"
+)
 
 // TestProjectsAreIsolatedPerUser locks in the invariant that a signed-in
 // user only ever enumerates their own projects. It guards against a
@@ -54,5 +59,65 @@ func TestProjectsAreIsolatedPerUser(t *testing.T) {
 	}
 	if len(bobOverview) != 0 {
 		t.Fatalf("ISOLATION LEAK: bob saw %d projects via ProjectsOverview: %#v", len(bobOverview), bobOverview)
+	}
+}
+
+// TestRecreatedUsernameDoesNotInheritDeletedAccountsFolder covers an
+// administrator deleting an account and later creating one with the same
+// name, possibly for someone else. The deleted account's folder stays on
+// disk; the new account must not be handed it.
+func TestRecreatedUsernameDoesNotInheritDeletedAccountsFolder(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "alice-strong-password", false); err != nil {
+		t.Fatalf("CreateAccount alice: %v", err)
+	}
+	if _, err := app.CreateAccount("bob", "Bob", "bob-strong-password", false); err != nil {
+		t.Fatalf("CreateAccount bob: %v", err)
+	}
+	if err := app.Logout(); err != nil {
+		t.Fatalf("Logout alice: %v", err)
+	}
+	if _, err := app.Login("bob", "bob-strong-password"); err != nil {
+		t.Fatalf("Login bob: %v", err)
+	}
+	project, err := app.CreateProject("Bob Private", "")
+	if err != nil {
+		t.Fatalf("bob CreateProject: %v", err)
+	}
+	if err := app.Logout(); err != nil {
+		t.Fatalf("Logout bob: %v", err)
+	}
+	projectBytes, err := os.ReadFile(project.Path)
+	if err != nil {
+		t.Fatalf("read bob's project: %v", err)
+	}
+
+	if _, err := app.Login("alice", "alice-strong-password"); err != nil {
+		t.Fatalf("Login alice: %v", err)
+	}
+	if err := app.AdminDeleteUser("bob"); err != nil {
+		t.Fatalf("AdminDeleteUser bob: %v", err)
+	}
+
+	_, err = app.CreateAccount("bob", "Another Bob", "new-bob-password", false)
+	if err == nil {
+		// Show the leak itself, not just the missing error.
+		if logoutErr := app.Logout(); logoutErr != nil {
+			t.Fatalf("Logout alice: %v", logoutErr)
+		}
+		if _, loginErr := app.Login("bob", "new-bob-password"); loginErr != nil {
+			t.Fatalf("recreated bob was allowed but cannot sign in: %v", loginErr)
+		}
+		list, listErr := app.ListProjects()
+		t.Fatalf("recreated bob was allowed and inherited the old folder: sees %d project(s) %v (list err %v)", len(list), list, listErr)
+	}
+	if !strings.Contains(err.Error(), "left over") {
+		t.Fatalf("CreateAccount over a deleted account's folder: err = %v, want the left-over folder message", err)
+	}
+	if after, err := os.ReadFile(project.Path); err != nil || !bytes.Equal(after, projectBytes) {
+		t.Fatalf("deleted account's project changed by the refused creation (read err %v)", err)
+	}
+	if _, err := app.CreateAccount("bobby", "Bobby", "bobby-password", false); err != nil {
+		t.Fatalf("CreateAccount with a different name: %v", err)
 	}
 }

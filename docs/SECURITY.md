@@ -17,7 +17,12 @@ for a legitimate local user.
 - Login errors should remain generic so unknown users and wrong
   passwords are not distinguishable.
 - Per-user directories under the GoPMgr application data root are created with
-  restrictive POSIX permissions where supported.
+  restrictive POSIX permissions where supported. A new account's folder is
+  created with an exclusive `os.Mkdir`: if anything already exists at that
+  path, such as the folder of a deleted account (in any letter case on a
+  case-insensitive filesystem), creation is refused instead of handing the
+  old projects, certificates, and exports to the new account. `logs` is
+  reserved for GoPMgr's own log folder.
 - `system.db` file permissions are tightened to owner-only access where
   supported.
 - The first account on a machine is always an administrator. After that,

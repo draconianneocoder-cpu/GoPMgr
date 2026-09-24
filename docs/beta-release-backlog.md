@@ -128,11 +128,27 @@ That result took six live-GUI cycles to reach because the first five, all run un
   account flows (planned, highest risk first):
   - Account deletion is a data decision. Deleting an account removes the
     only wraps of its encryption key, so its encrypted projects become
-    unreadable, and a new account with the same name (or the same name in a
-    different case) inherits the old folder, including plaintext projects and
-    signing certificates. Offer remove-sign-in-only, archive-then-remove, and
-    purge, record which one ran, and never hand an old folder to a new
-    account.
+    unreadable, and its folder stays on disk. Owner decision, 2026-09-24:
+    offer two choices and record which one ran. **Disable** keeps the
+    account, its key wraps, and its folder, and blocks sign-in; it can be
+    undone. **Purge** requires typing the username, then deletes the account
+    and its folder. Moving the folder aside while deleting the account was
+    rejected: an archive cannot keep encrypted projects readable once the
+    key is gone.
+    Done 2026-09-24: a new account never takes over an existing folder.
+    `createUserFolder` uses an exclusive `os.Mkdir` and refuses anything at
+    the path (folder, file, symlink, or a case variant on APFS/NTFS); failed
+    inserts and commits remove the empty folders they made; `logs` is
+    reserved. Evidence: `create_account_rule_test.go` and
+    `user_isolation_test.go` rows in `TEST_COVERAGE_LEDGER.md`. Until the
+    deletion choices exist, recreating a deleted account's name is refused
+    and someone must move the old folder by hand. An existing account named
+    `logs` keeps the log folder as its home. If the app dies between making
+    the folder and committing the account, the empty folder blocks that
+    username until someone removes it.
+  - Windows device names (`CON`, `NUL`, `AUX`, `PRN`, `COM1`–`COM9`,
+    `LPT1`–`LPT9`) pass `ValidateUsername` but cannot be folder names on
+    Windows. Add them to `reservedFolderNames` when Windows is tested.
   - Admin-created accounts must not leave the administrator able to read the
     user's data (see `SECURITY.md`, Local Accounts). Require a new password
     and freshly issued recovery codes at the user's first sign-in, which

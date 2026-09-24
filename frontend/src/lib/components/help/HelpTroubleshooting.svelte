@@ -39,6 +39,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
           <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">"A folder for this username is left over"</h3>
+            <p class="text-sm text-slate-300">
+              Deleting an account does not delete its folder in GoPMgr's data folder, and a new
+              account never takes over an existing folder, because it may hold another person's
+              projects and certificates. Choose another username, or ask whoever manages this
+              computer to move the old folder somewhere safe first. The error shows where the data
+              folder is.
+            </p>
+          </section>
+
+          <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">GoPMgr won't start</h3>
             <p class="text-sm text-slate-300">
               Startup failures are written to a dated log and a native error dialog names the log
