@@ -404,11 +404,15 @@ func TestOpenProjectRejectsDifferentUsersDEK(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
 	}
+	// Alice is the first account and so the administrator; she creates Bob.
+	if _, err := app.CreateAccount("bob", "Bob", "bob-password", false); err != nil {
+		t.Fatalf("CreateAccount bob: %v", err)
+	}
 	if err := app.Logout(); err != nil {
 		t.Fatalf("Logout alice: %v", err)
 	}
-	if _, err := app.CreateAccount("bob", "Bob", "bob-password", false); err != nil {
-		t.Fatalf("CreateAccount bob: %v", err)
+	if _, err := app.Login("bob", "bob-password"); err != nil {
+		t.Fatalf("Login bob: %v", err)
 	}
 
 	if _, err := app.OpenProject(file.Path); err == nil {

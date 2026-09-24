@@ -21,7 +21,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <ol class="space-y-1.5 text-sm text-slate-300 list-decimal list-inside">
               <li>Launch GoPMgr. With no accounts yet, the Create Account screen appears.</li>
               <li>Enter a username, display name, and a passphrase you can remember — it also protects your encrypted projects.</li>
-              <li>As the first user you are offered the administrator role; accept it.</li>
+              <li>The first account on a computer is always the administrator, so yours can add accounts for other people.</li>
               <li>
                 GoPMgr shows your <span class="font-medium text-slate-100">eight recovery codes once</span>.
                 Store them somewhere safe (password manager, printed copy) before continuing —

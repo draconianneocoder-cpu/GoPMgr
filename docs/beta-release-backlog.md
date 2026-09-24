@@ -105,6 +105,56 @@ That result took six live-GUI cycles to reach because the first five, all run un
   as exact project-currency entries and summaries. Do not introduce portfolio
   persistence, FX, financial RBAC, transaction or statutory-accounting
   semantics, or Phase 2 reserve/forecast behavior merely to improve the ledger.
+- Done 2026-09-24: the first account is always an administrator. Anyone on
+  the sign-in screen could create accounts, including administrators, while
+  no administrator existed, so if the first person skipped the admin option a
+  second could claim it and delete the first person's account, taking the
+  only wraps of their encryption key with it. `Store.CreateAccountAs` now
+  decides the rule inside a `BEGIN IMMEDIATE` transaction: an empty machine's
+  first account is an administrator, and after that only an administrator
+  (read from `system.db`, not the session) can create accounts. The sign-in
+  screen offers account creation only when no account exists. `BecomeAdmin`
+  now updates the session too; before, the new administrator was refused by
+  admin-only methods until they signed in again. Evidence:
+  `create_account_rule_test.go`, `admin_test.go`, `Login.test.ts`, and
+  `CreateAccount.test.ts` rows in `TEST_COVERAGE_LEDGER.md`. Not addressed:
+  other admin-only methods still take the role from the session, so an
+  administrator demoted by another GoPMgr process on the same data root keeps
+  admin rights until they sign out. A known cost: on an older install with
+  accounts but no administrator, where nobody can sign in any more, no
+  account can be created; the only way out is moving the data directory
+  aside.
+- Account and recovery follow-ups, adopted 2026-09-24 from a review of the
+  account flows (planned, highest risk first):
+  - Account deletion is a data decision. Deleting an account removes the
+    only wraps of its encryption key, so its encrypted projects become
+    unreadable, and a new account with the same name (or the same name in a
+    different case) inherits the old folder, including plaintext projects and
+    signing certificates. Offer remove-sign-in-only, archive-then-remove, and
+    purge, record which one ran, and never hand an old folder to a new
+    account.
+  - Admin-created accounts must not leave the administrator able to read the
+    user's data (see `SECURITY.md`, Local Accounts). Require a new password
+    and freshly issued recovery codes at the user's first sign-in, which
+    depends on change password below. `AdminIssueRecoveryCodes` also leaves
+    the user's key in memory without zeroing it.
+  - Change password while signed in, rewrapping the same encryption key.
+  - An Account security card in App Settings: remaining recovery codes
+    (`RemainingRecoveryCodes` has no caller), a warning at 0 or 1, and code
+    rotation. Then fix the create-account screen's "generate recovery codes
+    later from Project Settings", which is wrong today: Project Settings
+    offers a reissue only after encryption fails for that reason.
+  - Recovery-code download: check whether the blob-link download writes a
+    file in the native build; use the app's save-dialog pattern either way.
+  - Prefill the username on the sign-in screen after a recovery reset.
+  - Explain the last-administrator guard in the Admin panel before the click.
+  - Undecided (owner): a username picker on the sign-in screen conflicts with
+    the generic sign-in error rule. The unused `ListUsers` IPC method already
+    returns every account without signing in; remove it or gate it as part
+    of that decision.
+  - Declined for now: a sign-in lockout (`system.db` is readable, so
+    passwords can be attacked offline regardless), session timeout, and
+    self-service account deletion.
 - Done 2026-09-22: projects stay reachable when their folder name is not
   valid UTF-8. Releases before rune-boundary truncation in `sanitizeFilename`
   could create such folders on Linux. Wails sends paths through

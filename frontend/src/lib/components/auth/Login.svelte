@@ -13,26 +13,27 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let busy = $state(false);
   let showPassword = $state(false);
   let usernameEl = $state<HTMLInputElement>();
-  // Fail OPEN: assume account creation is allowed until we positively learn
-  // that an administrator already exists. Defaulting to "an admin exists"
-  // (and swallowing a HasAnyAdmin() failure into that state) would hide the
-  // only route to the create-account screen — stranding the very first user
-  // on a fresh machine with "contact your administrator" and no admin to
-  // contact. The backend still enforces the real gate: CreateAccount rejects
-  // non-admin callers once any admin exists, so showing the link when the
-  // state is unknown is safe.
-  let hasAdmin = $state(false);
-  let adminChecked = $state(false); // suppress the admin/create hint until resolved
+  // What the sign-in screen offers depends on this machine's first-run
+  // state: account creation only while no account exists (the backend
+  // refuses it otherwise), and a pointer to Become administrator for an
+  // install whose accounts predate the administrator role.
+  //
+  // If the check fails, fail OPEN to the create link rather than to
+  // "contact your administrator": on a fresh machine the latter would
+  // strand the very first user with nobody to contact. Showing the link is
+  // safe because CreateAccount enforces the real rule.
+  let setup = $state<AccountSetup | null>(null);
+  let setupChecked = $state(false); // suppress the setup hints until resolved
 
   // Focus the first field on load so the user can type immediately.
   onMount(async () => {
     usernameEl?.focus();
     try {
-      hasAdmin = await window.go.main.App.HasAnyAdmin();
+      setup = await window.go.main.App.AccountSetup();
     } catch {
-      hasAdmin = false; // unknown → keep the create path open
+      setup = null; // unknown → keep the create path open
     } finally {
-      adminChecked = true;
+      setupChecked = true;
     }
   });
 
@@ -64,9 +65,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <p class="text-xs text-slate-500">Local-first project controls</p>
     </div>
 
-    {#if adminChecked && !hasAdmin}
+    {#if setupChecked && setup && !setup.has_accounts}
+      <div class="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-300">
+        No accounts yet. The first account you create becomes this computer's GoPMgr administrator.
+      </div>
+    {:else if setupChecked && setup && !setup.has_admin}
       <div class="bg-amber-950/40 border border-amber-700/50 rounded-lg p-2.5 text-xs text-amber-300">
-        No administrator is configured. The first user to create an account can claim the administrator role.
+        No administrator is configured. Sign in, then use Become administrator in App Settings.
       </div>
     {/if}
 
@@ -126,8 +131,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {busy ? 'Signing in…' : 'SIGN IN'}
     </button>
 
-    {#if adminChecked}
-      {#if !hasAdmin}
+    {#if setupChecked}
+      {#if !setup || !setup.has_accounts}
         <button
           type="button"
           onclick={() => goto('create_account')}
@@ -135,7 +140,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         >
           Create a new account
         </button>
-      {:else}
+      {:else if setup.has_admin}
         <p class="text-center text-xs text-slate-500">
           Contact your administrator to create an account on this machine.
         </p>
