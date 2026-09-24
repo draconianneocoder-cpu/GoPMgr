@@ -41,6 +41,24 @@ import (
 // ErrUserExists is returned by CreateAccount when the username is taken.
 var ErrUserExists = errors.New("users: username already exists")
 
+// ErrUserFolderExists is returned when something already exists where a
+// new account's folder would go, typically a folder left by a deleted
+// account. Account creation never adopts an existing folder: it could hold
+// another person's projects, certificates, and exports.
+var ErrUserFolderExists = errors.New("users: a folder for this username already exists")
+
+// ErrReservedUsername is returned when a new account's folder would be one
+// of GoPMgr's own folders in the data root.
+var ErrReservedUsername = errors.New("users: username is reserved")
+
+// reservedFolderNames are the data-root folders GoPMgr keeps for itself
+// (applog writes <data-root>/logs). Checked only when creating an account,
+// so an existing account with such a name can still sign in.
+var reservedFolderNames = []string{"logs"}
+
+// userSubfolders are created inside each new account's folder.
+var userSubfolders = []string{"projects", "certs", "exports"}
+
 // ErrInvalidUsername is returned for usernames that fail validation.
 var ErrInvalidUsername = errors.New("users: invalid username")
 
@@ -435,6 +453,7 @@ func (s *Store) CreateAccountAs(callerUsername, username, displayName, password 
 		return Account{}, err
 	}
 	if _, err := conn.ExecContext(ctx, `COMMIT`); err != nil {
+		removeNewUserFolder(acc.DataDir)
 		return Account{}, fmt.Errorf("users: commit account creation: %w", err)
 	}
 	committed = true
@@ -453,8 +472,10 @@ type accountWriter interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-// insertAccount refuses a taken username, creates the account's folders,
-// and records it. username must already be valid and hash already made.
+// insertAccount refuses a taken or reserved username, creates the
+// account's folders, and records it. username must already be valid and
+// hash already made. If the insert fails, the new folders are removed; a
+// caller that commits later must do the same if its commit fails.
 func (s *Store) insertAccount(ctx context.Context, q accountWriter, username, displayName, hash string, isAdmin bool) (Account, error) {
 	// Check duplicate — case-insensitive so that "Alice" and "alice" cannot
 	// coexist and collide on case-insensitive filesystems (e.g. macOS APFS).
@@ -466,12 +487,15 @@ func (s *Store) insertAccount(ctx context.Context, q accountWriter, username, di
 		return Account{}, ErrUserExists
 	}
 
-	dataDir := filepath.Join(s.rootDir, username)
-	for _, sub := range []string{"", "projects", "certs", "exports"} {
-		path := filepath.Join(dataDir, sub)
-		if err := ensurePrivateDir(path); err != nil {
-			return Account{}, fmt.Errorf("users: provision %s: %w", path, err)
+	for _, reserved := range reservedFolderNames {
+		if strings.EqualFold(username, reserved) {
+			return Account{}, ErrReservedUsername
 		}
+	}
+
+	dataDir := filepath.Join(s.rootDir, username)
+	if err := createUserFolder(dataDir); err != nil {
+		return Account{}, err
 	}
 
 	now := time.Now().UTC()
@@ -481,6 +505,7 @@ func (s *Store) insertAccount(ctx context.Context, q accountWriter, username, di
 		username, strings.TrimSpace(displayName), hash, dataDir, now.Format(time.RFC3339Nano), boolToInt(isAdmin),
 	)
 	if err != nil {
+		removeNewUserFolder(dataDir)
 		return Account{}, err
 	}
 
@@ -810,6 +835,44 @@ func copyFile(src, dst string, perm fs.FileMode) error {
 		return err
 	}
 	return out.Close()
+}
+
+// createUserFolder creates a new account's private folder and its
+// subfolders. The account folder itself is made with os.Mkdir, which fails
+// atomically if anything is already at dataDir (a folder, a file, or a
+// symlink), so a new account can never take over a leftover folder, even
+// one created by another process a moment earlier.
+func createUserFolder(dataDir string) error {
+	if err := os.Mkdir(dataDir, 0o700); err != nil {
+		if errors.Is(err, fs.ErrExist) {
+			return ErrUserFolderExists
+		}
+		return fmt.Errorf("users: provision %s: %w", dataDir, err)
+	}
+	// Mkdir's mode is filtered by the umask; set it explicitly.
+	if err := os.Chmod(dataDir, 0o700); err != nil { // #nosec G302 -- this is a private directory mode, not a file mode.
+		removeNewUserFolder(dataDir)
+		return fmt.Errorf("users: provision %s: %w", dataDir, err)
+	}
+	for _, sub := range userSubfolders {
+		path := filepath.Join(dataDir, sub)
+		if err := ensurePrivateDir(path); err != nil {
+			removeNewUserFolder(dataDir)
+			return fmt.Errorf("users: provision %s: %w", path, err)
+		}
+	}
+	return nil
+}
+
+// removeNewUserFolder undoes createUserFolder after a failed account
+// creation. It uses os.Remove, which refuses a non-empty folder, so it can
+// only remove the empty folders createUserFolder made, never anything put
+// there since.
+func removeNewUserFolder(dataDir string) {
+	for _, sub := range userSubfolders {
+		_ = os.Remove(filepath.Join(dataDir, sub))
+	}
+	_ = os.Remove(dataDir)
 }
 
 func ensurePrivateDir(path string) error {

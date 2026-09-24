@@ -5,6 +5,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"gopmgr/internal/auth"
 	"gopmgr/internal/users"
 	"strings"
@@ -70,6 +71,12 @@ func (a *App) CreateAccount(username, displayName, password string, isAdmin bool
 	acc, err := a.store.CreateAccountAs(callerUsername, username, displayName, password, isAdmin)
 	if errors.Is(err, users.ErrNotAdmin) {
 		return users.Account{}, errors.New("account creation requires administrator privileges")
+	}
+	if errors.Is(err, users.ErrUserFolderExists) {
+		return users.Account{}, fmt.Errorf("a folder for %q is left over in GoPMgr's data folder (%s); remove or rename it, or choose another username", username, a.store.RootDir())
+	}
+	if errors.Is(err, users.ErrReservedUsername) {
+		return users.Account{}, fmt.Errorf("%q is reserved for GoPMgr's own files; choose another username", username)
 	}
 	if err != nil {
 		return users.Account{}, err

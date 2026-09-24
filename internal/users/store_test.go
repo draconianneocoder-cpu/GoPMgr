@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -112,34 +113,17 @@ func TestOpenTightensExistingSystemDatabaseFile(t *testing.T) {
 	}
 }
 
-func TestCreateAccountTightensExistingUserDirectories(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "GoPMgr")
-	for _, sub := range []string{
-		"alice",
-		filepath.Join("alice", "projects"),
-		filepath.Join("alice", "certs"),
-		filepath.Join("alice", "exports"),
-	} {
-		if err := os.MkdirAll(filepath.Join(root, sub), 0o755); err != nil {
-			t.Fatalf("mkdir %s: %v", sub, err)
-		}
-	}
-
-	store, err := Open(root)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := store.Close(); err != nil {
-			t.Fatalf("Close: %v", err)
-		}
-	})
-
+// TestCreateAccountCreatesPrivateUserFolders checks the new account's
+// folder and subfolders are owner-only. A folder that already exists is
+// refused rather than tightened and adopted; see
+// TestCreateAccountRefusesAnythingAtTheFolderPath.
+func TestCreateAccountCreatesPrivateUserFolders(t *testing.T) {
+	store := openTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 	for _, sub := range []string{"alice", filepath.Join("alice", "projects"), filepath.Join("alice", "certs"), filepath.Join("alice", "exports")} {
-		info, err := os.Stat(filepath.Join(root, sub))
+		info, err := os.Stat(filepath.Join(store.RootDir(), sub))
 		if err != nil {
 			t.Fatalf("stat %s: %v", sub, err)
 		}
@@ -491,19 +475,25 @@ func TestCreateAccount_HashPasswordEntropyFailure(t *testing.T) {
 	}
 }
 
-// TestCreateAccount_ProvisioningFailsWhenDataDirIsFile forces
-// ensurePrivateDir's os.MkdirAll to fail while provisioning the new
-// account's data directory, by pre-occupying that path with a plain file.
-func TestCreateAccount_ProvisioningFailsWhenDataDirIsFile(t *testing.T) {
-	store := openTestStore(t)
-	dataDir := filepath.Join(store.RootDir(), "alice")
-	if err := os.WriteFile(dataDir, []byte("collide"), 0o644); err != nil {
-		t.Fatalf("write colliding file: %v", err)
+// TestCreateAccount_ProvisioningFailsWhenRootIsReadOnly forces the new
+// account's folder creation to fail for a reason other than an existing
+// path, which must surface as a "provision" error.
+func TestCreateAccount_ProvisioningFailsWhenRootIsReadOnly(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("directory permission bits do not block creation on Windows")
 	}
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions")
+	}
+	store := openTestStore(t)
+	if err := os.Chmod(store.RootDir(), 0o500); err != nil {
+		t.Fatalf("chmod root: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(store.RootDir(), 0o700) })
 
 	_, err := store.CreateAccount("alice", "Alice", "passphrase-long", false)
 	if err == nil || !strings.Contains(err.Error(), "provision") {
-		t.Fatalf("CreateAccount with blocked data dir = %v, want a \"provision\" error", err)
+		t.Fatalf("CreateAccount with read-only root = %v, want a \"provision\" error", err)
 	}
 }
 
