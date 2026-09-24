@@ -49,14 +49,14 @@ for a legitimate local user.
   already signed in through another GoPMgr process keeps working until they
   sign out; and the unauthenticated `ListUsers` method now also exposes
   each account's disabled flag.
-- Administrators must not be able to read another user's data without an
-  audit record that states a legitimate reason (owner decision,
-  2026-09-24). **Not yet met:** an administrator who creates an account
-  sets its password and receives its recovery codes, and either one unlocks
-  that user's encryption key. The fix is tracked in
-  `docs/beta-release-backlog.md` (admin-created accounts). A sanctioned,
-  audited access path would need the administrator to hold a copy of each
-  user's key, which changes ADR-001 and needs its own decision.
+- Administrators may read another user's data, and each access must be
+  recorded with who read which account, when, and why (owner decision,
+  2026-09-24, replacing the same day's rule that they must not). **Planned,
+  not built:** an in-app way to do this, which needs the administrator to
+  hold a copy of each user's encryption key and so changes ADR-001; see
+  `docs/beta-release-backlog.md`. Until then, an administrator can read only
+  accounts they created, using the initial password or recovery codes they
+  were given, outside the app, and nothing records it.
 - Every IPC method that opens, mutates, or archives a project by a
   frontend-supplied path (`OpenProject`, `DeleteProject`, `CloneProject`,
   `EncryptProjectAtRest`, `SecureArchive`, etc.) is confined to the
