@@ -20,6 +20,20 @@ for a legitimate local user.
   restrictive POSIX permissions where supported.
 - `system.db` file permissions are tightened to owner-only access where
   supported.
+- The first account on a machine is always an administrator. After that,
+  only a signed-in administrator can create accounts. `Store.CreateAccountAs`
+  checks this in the same write transaction as the insert, reading the
+  caller's role from `system.db`. Accounts from releases before this rule
+  may have no administrator; one of them claims the role with
+  `BecomeAdmin`, and until then nobody can add accounts.
+- Administrators must not be able to read another user's data without an
+  audit record that states a legitimate reason (owner decision,
+  2026-09-24). **Not yet met:** an administrator who creates an account
+  sets its password and receives its recovery codes, and either one unlocks
+  that user's encryption key. The fix is tracked in
+  `docs/beta-release-backlog.md` (admin-created accounts). A sanctioned,
+  audited access path would need the administrator to hold a copy of each
+  user's key, which changes ADR-001 and needs its own decision.
 - Every IPC method that opens, mutates, or archives a project by a
   frontend-supplied path (`OpenProject`, `DeleteProject`, `CloneProject`,
   `EncryptProjectAtRest`, `SecureArchive`, etc.) is confined to the

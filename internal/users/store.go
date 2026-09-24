@@ -20,6 +20,7 @@
 package users
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -259,6 +260,15 @@ func (s *Store) HasAnyAdmin() (bool, error) {
 	return n > 0, err
 }
 
+// HasAnyAccount reports whether any account exists. Safe to call without
+// authentication; the sign-in screen offers account creation only on a
+// machine with no accounts, since CreateAccountAs refuses it otherwise.
+func (s *Store) HasAnyAccount() (bool, error) {
+	var exists bool
+	err := s.conn.QueryRow(`SELECT EXISTS (SELECT 1 FROM users)`).Scan(&exists)
+	return exists, err
+}
+
 // SetAdmin promotes or demotes username. It returns ErrLastAdmin if the
 // operation would leave the system with zero administrators (i.e. demoting
 // the last admin). Demoting a non-admin is a no-op and never returns
@@ -337,29 +347,123 @@ func boolToInt(b bool) int {
 // <data-root>/<username>/{projects,certs,exports}/ (see DefaultRootDir
 // for data-root), and records the account in system.db.
 //
-// isAdmin marks the new account as an administrator. If an
-// administrator already exists, callers MUST enforce that only an
-// existing admin can set isAdmin=true (or at all create the account).
+// isAdmin marks the new account as an administrator. CreateAccount does
+// not apply the machine's account-creation rule; the app goes through
+// CreateAccountAs, which does. Tests and tools use this to set up a state
+// directly, such as accounts with no administrator.
 //
 // Returns ErrUserExists if username is already taken.
 func (s *Store) CreateAccount(username, displayName, password string, isAdmin bool) (Account, error) {
 	if err := ValidateUsername(username); err != nil {
 		return Account{}, err
 	}
+	hash, err := auth.HashPassword(password)
+	if err != nil {
+		return Account{}, err
+	}
+	return s.insertAccount(context.Background(), s.conn, username, displayName, hash, isAdmin)
+}
 
+// CreateAccountAs provisions a new account under this machine's
+// account-creation rule:
+//
+//   - When no account exists, anyone may create one, and it is always an
+//     administrator; isAdmin is ignored. A machine therefore never starts
+//     without an administrator.
+//   - Otherwise callerUsername must name an account that is an
+//     administrator now, or ErrNotAdmin is returned, and isAdmin is honored.
+//     The role is read here rather than taken from the caller's session.
+//
+// The rule is checked in the same write transaction that inserts the row,
+// so two callers racing on an empty machine (or two GoPMgr processes
+// sharing one data root) cannot both take the first-account path. A
+// refused call creates no folders. The returned Account carries the role
+// actually stored.
+func (s *Store) CreateAccountAs(callerUsername, username, displayName, password string, isAdmin bool) (Account, error) {
+	if err := ValidateUsername(username); err != nil {
+		return Account{}, err
+	}
+	// Hash before taking the write lock: Argon2id is deliberately slow and
+	// would hold every other writer off system.db for its whole run.
+	hash, err := auth.HashPassword(password)
+	if err != nil {
+		return Account{}, err
+	}
+
+	ctx := context.Background()
+	// BEGIN IMMEDIATE needs one physical connection for the whole
+	// transaction, and takes SQLite's write lock at once, so no other
+	// writer can add an account between the checks below and the insert.
+	conn, err := s.conn.Conn(ctx)
+	if err != nil {
+		return Account{}, err
+	}
+	defer func() { _ = conn.Close() }()
+	if _, err := conn.ExecContext(ctx, `BEGIN IMMEDIATE`); err != nil {
+		return Account{}, fmt.Errorf("users: begin account creation: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_, _ = conn.ExecContext(ctx, `ROLLBACK`)
+		}
+	}()
+
+	var existing int
+	if err := conn.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&existing); err != nil {
+		return Account{}, err
+	}
+	if existing == 0 {
+		isAdmin = true
+	} else {
+		var callerIsAdmin int
+		err := conn.QueryRowContext(ctx, `SELECT is_admin FROM users WHERE username = ?`, callerUsername).Scan(&callerIsAdmin)
+		if errors.Is(err, sql.ErrNoRows) {
+			return Account{}, ErrNotAdmin
+		}
+		if err != nil {
+			return Account{}, err
+		}
+		if callerIsAdmin != 1 {
+			return Account{}, ErrNotAdmin
+		}
+	}
+
+	afterAccountRuleCheck()
+	acc, err := s.insertAccount(ctx, conn, username, displayName, hash, isAdmin)
+	if err != nil {
+		return Account{}, err
+	}
+	if _, err := conn.ExecContext(ctx, `COMMIT`); err != nil {
+		return Account{}, fmt.Errorf("users: commit account creation: %w", err)
+	}
+	committed = true
+	return acc, nil
+}
+
+// afterAccountRuleCheck runs inside CreateAccountAs's transaction, after
+// the rule check and before the insert. Tests replace it to hold that
+// window open, so a missing write lock fails deterministically.
+var afterAccountRuleCheck = func() {}
+
+// accountWriter is the part of *sql.DB and *sql.Conn that insertAccount
+// uses, so it can run inside CreateAccountAs's transaction or without one.
+type accountWriter interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// insertAccount refuses a taken username, creates the account's folders,
+// and records it. username must already be valid and hash already made.
+func (s *Store) insertAccount(ctx context.Context, q accountWriter, username, displayName, hash string, isAdmin bool) (Account, error) {
 	// Check duplicate — case-insensitive so that "Alice" and "alice" cannot
 	// coexist and collide on case-insensitive filesystems (e.g. macOS APFS).
 	var count int
-	if err := s.conn.QueryRow(`SELECT COUNT(*) FROM users WHERE lower(username) = lower(?)`, username).Scan(&count); err != nil {
+	if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE lower(username) = lower(?)`, username).Scan(&count); err != nil {
 		return Account{}, err
 	}
 	if count > 0 {
 		return Account{}, ErrUserExists
-	}
-
-	hash, err := auth.HashPassword(password)
-	if err != nil {
-		return Account{}, err
 	}
 
 	dataDir := filepath.Join(s.rootDir, username)
@@ -371,7 +475,7 @@ func (s *Store) CreateAccount(username, displayName, password string, isAdmin bo
 	}
 
 	now := time.Now().UTC()
-	_, err = s.conn.Exec(
+	_, err := q.ExecContext(ctx,
 		`INSERT INTO users (username, display_name, password_hash, data_dir, created_at, is_admin)
 		 VALUES (?, ?, ?, ?, ?, ?)`,
 		username, strings.TrimSpace(displayName), hash, dataDir, now.Format(time.RFC3339Nano), boolToInt(isAdmin),

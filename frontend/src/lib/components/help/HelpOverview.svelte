@@ -16,12 +16,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">First Launch</h3>
             <p class="text-sm text-slate-300 mb-2">
               On first launch GoPMgr has no accounts. Enter a username, display name, and
-              passphrase on the Create Account screen. The first account is prompted to become
-              the administrator. At least one admin must exist before additional users can be added.
+              passphrase on the Create Account screen. The first account on a computer is always
+              the administrator, and only an administrator can add more accounts.
             </p>
             <p class="text-sm text-slate-300">
-              If you skipped the admin claim, open App Settings and use "Become administrator"
-              while no other admin exists on the machine.
+              Accounts from an earlier GoPMgr version may have no administrator. Sign in, open
+              App Settings, and use "Become administrator" while no admin exists on the machine.
             </p>
           </section>
 

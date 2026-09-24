@@ -27,6 +27,7 @@ declare global {
           // ----- V2: accounts & session -----
           ListUsers: () => Promise<Account[]>;
           HasAnyAdmin: () => Promise<boolean>;
+          AccountSetup: () => Promise<AccountSetup>;
           CreateAccount: (
             username: string,
             displayName: string,
@@ -497,6 +498,12 @@ declare global {
     created_at: string;
     last_login: string;
     is_admin: boolean;
+  }
+
+  // First-run state for the sign-in screen (AccountSetupWire).
+  interface AccountSetup {
+    has_accounts: boolean;
+    has_admin: boolean;
   }
 
   interface ProjectFile {

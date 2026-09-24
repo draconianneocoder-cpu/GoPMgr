@@ -25,7 +25,7 @@ function deferred<T>() {
 
 function installApp(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
   const app = {
-    HasAnyAdmin: vi.fn(async () => true),
+    AccountSetup: vi.fn(async () => ({ has_accounts: true, has_admin: true })),
     Login: vi.fn(async () => account),
     ...overrides,
   };
@@ -92,18 +92,45 @@ describe('Login', () => {
     expect(app.Login).toHaveBeenCalledTimes(1);
   });
 
-  it('fails open to account creation only after the administrator check fails', async () => {
-    const adminCheck = deferred<boolean>();
-    const app = installApp({ HasAnyAdmin: vi.fn(() => adminCheck.promise) });
+  it('fails open to account creation only after the setup check fails', async () => {
+    const setupCheck = deferred<{ has_accounts: boolean; has_admin: boolean }>();
+    const app = installApp({ AccountSetup: vi.fn(() => setupCheck.promise) });
     const utils = render(Login);
 
-    await waitFor(() => expect(app.HasAnyAdmin).toHaveBeenCalledOnce());
+    await waitFor(() => expect(app.AccountSetup).toHaveBeenCalledOnce());
     expect(utils.queryByRole('button', { name: 'Create a new account' })).not.toBeInTheDocument();
     expect(utils.queryByText(/contact your administrator/i)).not.toBeInTheDocument();
 
-    adminCheck.reject(new Error('system database unavailable'));
+    setupCheck.reject(new Error('system database unavailable'));
 
     expect(await utils.findByRole('button', { name: 'Create a new account' })).toBeInTheDocument();
     expect(utils.queryByText(/contact your administrator/i)).not.toBeInTheDocument();
+  });
+
+  it('offers account creation on a machine with no accounts and says the first becomes administrator', async () => {
+    installApp({ AccountSetup: vi.fn(async () => ({ has_accounts: false, has_admin: false })) });
+    const utils = render(Login);
+
+    expect(await utils.findByRole('button', { name: 'Create a new account' })).toBeInTheDocument();
+    expect(utils.getByText(/first account you create becomes this computer's GoPMgr administrator/i)).toBeInTheDocument();
+    expect(utils.queryByText(/contact your administrator/i)).not.toBeInTheDocument();
+  });
+
+  it('withholds account creation when accounts exist but none is an administrator', async () => {
+    installApp({ AccountSetup: vi.fn(async () => ({ has_accounts: true, has_admin: false })) });
+    const utils = render(Login);
+
+    expect(await utils.findByText(/Sign in, then use Become administrator in App Settings/)).toBeInTheDocument();
+    expect(utils.queryByRole('button', { name: 'Create a new account' })).not.toBeInTheDocument();
+    expect(utils.queryByText(/contact your administrator/i)).not.toBeInTheDocument();
+  });
+
+  it('points to the administrator once one exists', async () => {
+    installApp();
+    const utils = render(Login);
+
+    expect(await utils.findByText(/contact your administrator/i)).toBeInTheDocument();
+    expect(utils.queryByRole('button', { name: 'Create a new account' })).not.toBeInTheDocument();
+    expect(utils.queryByText(/No accounts yet|No administrator is configured/)).not.toBeInTheDocument();
   });
 });

@@ -11,10 +11,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let displayName = $state('');
   let password = $state('');
   let confirm = $state('');
-  let isAdmin = $state(false);
   let error = $state('');
   let busy = $state(false);
-  let hasAdmin = $state(true); // optimistic: assume admin exists until we know otherwise
+  // True only once the backend confirms this machine has no accounts, so
+  // the "first account becomes administrator" notice never shows on a
+  // guess. The role itself is decided by the backend, not this screen.
+  let firstAccount = $state(false);
   let showPassword = $state(false);
   let showConfirm = $state(false);
   let usernameEl = $state<HTMLInputElement>();
@@ -47,9 +49,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     usernameEl?.focus();
     try {
-      hasAdmin = await window.go.main.App.HasAnyAdmin();
+      firstAccount = !(await window.go.main.App.AccountSetup()).has_accounts;
     } catch {
-      hasAdmin = true; // safe default: don't show admin prompt on error
+      firstAccount = false;
     }
   });
 
@@ -72,7 +74,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
     busy = true;
     try {
-      const acc = await window.go.main.App.CreateAccount(username, displayName || username, password, isAdmin);
+      // The first account on this machine is always the administrator; the
+      // backend ignores the role argument for it and refuses anyone else
+      // who is not signed in as an administrator.
+      const acc = await window.go.main.App.CreateAccount(username, displayName || username, password, false);
       session.user = acc;
       // Issue and show recovery codes before entering the app. A failure here
       // is non-fatal — the account exists and is signed in — so surface it and
@@ -84,7 +89,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       }
       step = 'codes';
     } catch (err: any) {
-      error = String(err?.message ?? err);
+      const message = String(err?.message ?? err);
+      error = message.includes('administrator privileges')
+        ? 'This computer already has GoPMgr accounts. Ask your administrator to create yours.'
+        : message;
     } finally {
       busy = false;
     }
@@ -130,12 +138,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </p>
     </div>
 
-    {#if !hasAdmin}
-      <div class="bg-amber-950/40 border border-amber-700/50 rounded-lg p-3 text-xs text-amber-300 space-y-1">
-        <p class="font-semibold">You're the first user on this computer</p>
-        <p class="text-amber-400/80">
-          No GoPMgr administrator exists yet. You can make this account the administrator below —
-          administrators can create and remove other accounts.
+    {#if firstAccount}
+      <div class="bg-slate-800/60 border border-slate-700 rounded-lg p-3 text-xs text-slate-300 space-y-1">
+        <p class="font-semibold text-slate-100">You're the first user on this computer</p>
+        <p>
+          This account will be the GoPMgr administrator. Administrators create and remove
+          the other accounts on this computer.
         </p>
       </div>
     {/if}
@@ -240,23 +248,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {passwordsMatch ? '✓ Passwords match' : 'Passwords don’t match yet'}
       </p>
     </div>
-
-    {#if !hasAdmin}
-      <label class="flex items-start gap-3 cursor-pointer select-none">
-        <input
-          type="checkbox"
-          bind:checked={isAdmin}
-          class="mt-0.5 accent-cyan-500"
-        />
-        <span class="text-xs text-slate-300">
-          <span class="font-semibold text-slate-100">Make this account an administrator</span><br />
-          <span class="text-slate-500">
-            Grants the ability to create and delete GoPMgr accounts on this machine.
-            This option is only available while no administrator exists.
-          </span>
-        </span>
-      </label>
-    {/if}
 
     {#if error}
       <p class="text-xs text-red-400" role="alert" aria-live="assertive">{error}</p>

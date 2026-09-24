@@ -21,34 +21,56 @@ func (a *App) ListUsers() ([]users.Account, error) {
 }
 
 // HasAnyAdmin reports whether at least one administrator account exists.
-// Safe to call without signing in — used by the login and account-
-// creation screens to decide whether to show the admin claim prompt.
+// Safe to call without signing in — used by App Settings to decide
+// whether to offer the administrator claim.
 func (a *App) HasAnyAdmin() (bool, error) {
 	return a.store.HasAnyAdmin()
 }
 
-// CreateAccount provisions a new user and signs the new user in.
+// AccountSetupWire tells the sign-in screen which first-run state this
+// machine is in. It carries no account names.
+type AccountSetupWire struct {
+	HasAccounts bool `json:"has_accounts"`
+	HasAdmin    bool `json:"has_admin"`
+}
+
+// AccountSetup reports whether any account and any administrator exist.
+// Safe to call without signing in: the sign-in screen offers account
+// creation only when there are no accounts, and points an install whose
+// accounts predate the administrator role to Become administrator.
+func (a *App) AccountSetup() (AccountSetupWire, error) {
+	hasAccounts, err := a.store.HasAnyAccount()
+	if err != nil {
+		return AccountSetupWire{}, err
+	}
+	hasAdmin, err := a.store.HasAnyAdmin()
+	if err != nil {
+		return AccountSetupWire{}, err
+	}
+	return AccountSetupWire{HasAccounts: hasAccounts, HasAdmin: hasAdmin}, nil
+}
+
+// CreateAccount provisions a new user, signing them in only when nobody
+// is signed in.
 //
-// isAdmin marks the account as an administrator. The call is gated:
-//   - If no admin exists yet: any caller may create an account with any
-//     role (first-user bootstrap).
-//   - If an admin already exists: the caller must be signed in as an
-//     admin. Non-admin or unauthenticated callers receive an error.
+// The rule is users.Store.CreateAccountAs's: on a machine with no
+// accounts, anyone may create the first account and it is always an
+// administrator (isAdmin is ignored). After that, only a signed-in
+// administrator may create accounts, and isAdmin is honored. Earlier
+// versions let anyone create accounts while no administrator existed,
+// which let a second person make themselves administrator whenever the
+// first skipped the admin option.
 //
 // Returns the account record (no password material).
 func (a *App) CreateAccount(username, displayName, password string, isAdmin bool) (users.Account, error) {
-	hasAdmin, err := a.store.HasAnyAdmin()
-	if err != nil {
-		return users.Account{}, err
+	callerUsername := ""
+	if caller := a.requireUser(); caller != nil {
+		callerUsername = caller.Username
 	}
-	if hasAdmin {
-		// An admin already exists — only admins may create new accounts.
-		caller := a.requireUser()
-		if caller == nil || !caller.IsAdmin {
-			return users.Account{}, errors.New("account creation requires administrator privileges")
-		}
+	acc, err := a.store.CreateAccountAs(callerUsername, username, displayName, password, isAdmin)
+	if errors.Is(err, users.ErrNotAdmin) {
+		return users.Account{}, errors.New("account creation requires administrator privileges")
 	}
-	acc, err := a.store.CreateAccount(username, displayName, password, isAdmin)
 	if err != nil {
 		return users.Account{}, err
 	}
@@ -58,14 +80,16 @@ func (a *App) CreateAccount(username, displayName, password string, isAdmin bool
 	if err != nil {
 		return users.Account{}, err
 	}
-	// Only auto-sign-in when no one is currently logged in (i.e. this
-	// is a self-registration or the first-user case). When an admin
-	// creates an account on behalf of another user, the admin session
-	// remains active.
+	// Only auto-sign-in when no one is currently logged in (the first
+	// account). When an admin creates an account on behalf of another
+	// user, the admin session remains active and the new user's DEK is
+	// zeroed rather than dropped (ADR-001).
 	a.mu.Lock()
 	if a.user == nil {
 		a.user = &acc
 		a.dek = dek
+	} else {
+		zeroBytes(dek)
 	}
 	a.mu.Unlock()
 	return acc, nil
@@ -86,7 +110,21 @@ func (a *App) BecomeAdmin() error {
 	if hasAdmin {
 		return errors.New("an administrator already exists; ask them to grant you admin rights")
 	}
-	return a.store.SetAdmin(caller.Username, true)
+	if err := a.store.SetAdmin(caller.Username, true); err != nil {
+		return err
+	}
+	// Admin-only methods read the role from the session, so update it here
+	// or the new administrator would be refused until they sign in again.
+	// Replace the account rather than editing it: requireUser hands the
+	// same pointer to other goroutines.
+	a.mu.Lock()
+	if a.user != nil && a.user.Username == caller.Username {
+		promoted := *a.user
+		promoted.IsAdmin = true
+		a.user = &promoted
+	}
+	a.mu.Unlock()
+	return nil
 }
 
 // AdminListUsers returns every account, including admin status. Requires

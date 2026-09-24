@@ -28,12 +28,16 @@ func TestProjectsAreIsolatedPerUser(t *testing.T) {
 		t.Fatalf("alice should see exactly her 1 project, got %d", len(aliceList))
 	}
 
-	// Switch to Bob, a brand-new user.
+	// Switch to Bob, a brand-new user. Alice, the first account and so the
+	// administrator, creates him; only administrators can add accounts.
+	if _, err := app.CreateAccount("bob", "Bob", "bob-strong-password", false); err != nil {
+		t.Fatalf("CreateAccount bob: %v", err)
+	}
 	if err := app.Logout(); err != nil {
 		t.Fatalf("Logout: %v", err)
 	}
-	if _, err := app.CreateAccount("bob", "Bob", "bob-strong-password", false); err != nil {
-		t.Fatalf("CreateAccount bob: %v", err)
+	if _, err := app.Login("bob", "bob-strong-password"); err != nil {
+		t.Fatalf("Login bob: %v", err)
 	}
 
 	// Bob must see none of Alice's projects, via either listing path.

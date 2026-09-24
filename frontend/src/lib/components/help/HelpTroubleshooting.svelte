@@ -30,10 +30,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">There is no administrator</h3>
             <p class="text-sm text-slate-300">
-              If the first account skipped the admin claim, open
+              Accounts from an earlier GoPMgr version may have no administrator, and no one can add
+              accounts until one exists. Sign in, open
               <button onclick={() => nav('app-settings')} class="text-cyan-400 underline hover:text-cyan-300">App Settings</button>
               and use <span class="font-medium text-slate-100">Become administrator</span> — available
-              while no other admin exists on the machine.
+              while no admin exists on the machine.
             </p>
           </section>
 

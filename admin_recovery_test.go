@@ -42,9 +42,19 @@ func TestAdminIssueRecoveryCodesForCreatedUser(t *testing.T) {
 // mint recovery codes for an account.
 func TestAdminIssueRecoveryCodesRequiresAdmin(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
-	// First (and only) account is a standard user, signed in.
+	// The first account is always an administrator, so an admin creates
+	// Carol as a standard user and she signs in on her own.
+	if _, err := app.CreateAccount("admin", "Admin", "admin-password", true); err != nil {
+		t.Fatalf("create admin: %v", err)
+	}
 	if _, err := app.CreateAccount("carol", "Carol", "carol-password", false); err != nil {
 		t.Fatalf("create carol: %v", err)
+	}
+	if err := app.Logout(); err != nil {
+		t.Fatalf("Logout admin: %v", err)
+	}
+	if _, err := app.Login("carol", "carol-password"); err != nil {
+		t.Fatalf("Login carol: %v", err)
 	}
 	if _, err := app.AdminIssueRecoveryCodes("carol", "carol-password"); err == nil {
 		t.Fatal("non-admin was allowed to issue recovery codes")
