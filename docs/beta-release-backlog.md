@@ -120,7 +120,10 @@ That result took six live-GUI cycles to reach because the first five, all run un
   `CreateAccount.test.ts` rows in `TEST_COVERAGE_LEDGER.md`. Not addressed:
   other admin-only methods still take the role from the session, so an
   administrator demoted by another GoPMgr process on the same data root keeps
-  admin rights until they sign out.
+  admin rights until they sign out. A known cost: on an older install with
+  accounts but no administrator, where nobody can sign in any more, no
+  account can be created; the only way out is moving the data directory
+  aside.
 - Account and recovery follow-ups, adopted 2026-09-24 from a review of the
   account flows (planned, highest risk first):
   - Account deletion is a data decision. Deleting an account removes the

@@ -13,7 +13,7 @@
 //     projects, certificates, and export output. Folders are chmod'd to
 //     0700 on POSIX so other OS accounts cannot read.
 //   - A login flow (Authenticate) and an account-creation flow
-//     (CreateAccount) that the GUI and CLI both call.
+//     (CreateAccountAs, which applies the machine's account-creation rule).
 //
 // GoPMgr does NOT use OS user accounts. Multiple GoPMgr users on the
 // same OS account is the supported model.
@@ -252,8 +252,8 @@ func ValidateUsername(name string) error {
 }
 
 // HasAnyAdmin reports whether at least one administrator account exists.
-// Safe to call without authentication; used by the login and account-
-// creation screens to decide whether to show the admin claim prompt.
+// Safe to call without authentication; used to decide whether to offer
+// the administrator claim (App Settings) and by AccountSetup.
 func (s *Store) HasAnyAdmin() (bool, error) {
 	var n int
 	err := s.conn.QueryRow(`SELECT COUNT(*) FROM users WHERE is_admin = 1`).Scan(&n)
@@ -349,8 +349,8 @@ func boolToInt(b bool) int {
 //
 // isAdmin marks the new account as an administrator. CreateAccount does
 // not apply the machine's account-creation rule; the app goes through
-// CreateAccountAs, which does. Tests and tools use this to set up a state
-// directly, such as accounts with no administrator.
+// CreateAccountAs, which does. Tests use this to set up a state directly,
+// such as accounts with no administrator.
 //
 // Returns ErrUserExists if username is already taken.
 func (s *Store) CreateAccount(username, displayName, password string, isAdmin bool) (Account, error) {
