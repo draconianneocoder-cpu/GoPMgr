@@ -139,7 +139,12 @@ That result took six live-GUI cycles to reach because the first five, all run un
     `user_isolation_test.go` rows in `TEST_COVERAGE_LEDGER.md`. Until the
     deletion choices exist, recreating a deleted account's name is refused
     and someone must move the old folder by hand. An existing account named
-    `logs` keeps the log folder as its home.
+    `logs` keeps the log folder as its home. If the app dies between making
+    the folder and committing the account, the empty folder blocks that
+    username until someone removes it.
+  - Windows device names (`CON`, `NUL`, `AUX`, `PRN`, `COM1`–`COM9`,
+    `LPT1`–`LPT9`) pass `ValidateUsername` but cannot be folder names on
+    Windows. Add them to `reservedFolderNames` when Windows is tested.
   - Admin-created accounts must not leave the administrator able to read the
     user's data (see `SECURITY.md`, Local Accounts). Require a new password
     and freshly issued recovery codes at the user's first sign-in, which
