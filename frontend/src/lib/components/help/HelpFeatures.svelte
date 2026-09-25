@@ -710,12 +710,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Account</h3>
+            <p class="text-sm text-slate-300 mb-2">Shows your current version, signed-in username, and the resolved data directory location on disk.</p>
             <p class="text-sm text-slate-300">Change your password by entering your current password and the new one twice (at least 8 characters). Your projects, including encrypted ones, and your recovery codes keep working.</p>
-          </section>
-
-          <section class="mb-5">
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Account Info</h3>
-            <p class="text-sm text-slate-300">Shows your current version, signed-in username, and the resolved data directory location on disk.</p>
           </section>
 
           <section class="mb-5">

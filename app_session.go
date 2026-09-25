@@ -343,6 +343,8 @@ func (a *App) ChangePassword(currentPassword, newPassword string) error {
 		return fmt.Errorf("new password must be at least %d characters", users.MinPasswordLength)
 	case errors.Is(err, users.ErrPasswordChangedElsewhere):
 		return errors.New("your password was changed elsewhere; sign out and sign in again")
+	case errors.Is(err, users.ErrPasswordWrapCorrupt):
+		return errors.New("your stored encryption key could not be read with this password, so nothing was changed; sign out and use a recovery code")
 	}
 	return err
 }

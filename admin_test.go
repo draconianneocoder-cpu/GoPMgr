@@ -5,9 +5,11 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 
+	"gopmgr/internal/sqlitedriver"
 	"gopmgr/internal/users"
 )
 
@@ -376,5 +378,28 @@ func TestCreateAccount_RefusesAShortPasswordInPlainWords(t *testing.T) {
 	app := newAdminTestApp(t)
 	if _, err := app.CreateAccount("alice", "Alice", "short", false); err == nil || err.Error() != "password must be at least 8 characters" {
 		t.Fatalf("CreateAccount with a short password: err = %v", err)
+	}
+}
+
+// TestChangePassword_ReportsACorruptWrapInPlainWords corrupts the stored
+// password wrap through a second connection to system.db.
+func TestChangePassword_ReportsACorruptWrapInPlainWords(t *testing.T) {
+	app := newAdminTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "original-password", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	conn, err := sql.Open(sqlitedriver.Name, filepath.Join(app.store.RootDir(), "system.db"))
+	if err != nil {
+		t.Fatalf("open system.db: %v", err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	if _, err := conn.Exec(`UPDATE users SET wrapped_dek_pw = 'bm90IGEgd3JhcA==' WHERE username = 'alice'`); err != nil {
+		t.Fatalf("corrupt wrap: %v", err)
+	}
+
+	err = app.ChangePassword("original-password", "replacement-password")
+	want := "your stored encryption key could not be read with this password, so nothing was changed; sign out and use a recovery code"
+	if err == nil || err.Error() != want {
+		t.Fatalf("ChangePassword with a corrupt wrap: err = %v, want %q", err, want)
 	}
 }
