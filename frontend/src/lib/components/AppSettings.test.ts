@@ -193,3 +193,21 @@ describe('automatic update checking and installation', () => {
     expect(app.CheckLatestVersion).not.toHaveBeenCalled();
   });
 });
+
+describe('account section', () => {
+  it('submits a password change without saving app settings', async () => {
+    app.ChangePassword = vi.fn(async () => undefined);
+    const utils = render(AppSettings);
+    const current = await utils.findByLabelText('Current password');
+
+    await fireEvent.input(current, { target: { value: 'original-password' } });
+    await fireEvent.input(utils.getByLabelText('New password'), { target: { value: 'replacement-password' } });
+    await fireEvent.input(utils.getByLabelText('Confirm new password'), { target: { value: 'replacement-password' } });
+    // false means the submit's default action (a page reload in the
+    // desktop webview) was prevented.
+    expect(await fireEvent.submit(current.closest('form')!)).toBe(false);
+
+    await waitFor(() => expect(app.ChangePassword).toHaveBeenCalledWith('original-password', 'replacement-password'));
+    expect(app.SaveAppSettings).not.toHaveBeenCalled();
+  });
+});

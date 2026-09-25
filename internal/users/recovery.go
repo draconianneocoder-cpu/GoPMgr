@@ -145,8 +145,8 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 	if err := ValidateUsername(username); err != nil {
 		return ErrInvalidRecoveryCode
 	}
-	if len(newPassword) < 8 {
-		return errors.New("users: new password too short")
+	if err := ValidatePassword(newPassword); err != nil {
+		return err
 	}
 
 	// Begin the transaction now so scan and write are in the same

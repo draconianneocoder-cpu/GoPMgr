@@ -78,6 +78,9 @@ func (a *App) CreateAccount(username, displayName, password string, isAdmin bool
 	if errors.Is(err, users.ErrReservedUsername) {
 		return users.Account{}, fmt.Errorf("%q is reserved for GoPMgr's own files; choose another username", username)
 	}
+	if errors.Is(err, users.ErrPasswordTooShort) {
+		return users.Account{}, fmt.Errorf("password must be at least %d characters", users.MinPasswordLength)
+	}
 	if err != nil {
 		return users.Account{}, err
 	}
@@ -322,6 +325,28 @@ func zeroBytes(b []byte) {
 	for i := range b {
 		b[i] = 0
 	}
+}
+
+// ChangePassword replaces the signed-in user's password. The encryption
+// key is re-wrapped, not replaced, so the session, encrypted projects, and
+// recovery codes are unaffected.
+func (a *App) ChangePassword(currentPassword, newPassword string) error {
+	u := a.requireUser()
+	if u == nil {
+		return errors.New("not signed in")
+	}
+	err := a.store.ChangePassword(u.Username, currentPassword, newPassword)
+	switch {
+	case errors.Is(err, auth.ErrMismatch):
+		return errors.New("current password is incorrect")
+	case errors.Is(err, users.ErrPasswordTooShort):
+		return fmt.Errorf("new password must be at least %d characters", users.MinPasswordLength)
+	case errors.Is(err, users.ErrPasswordChangedElsewhere):
+		return errors.New("your password was changed elsewhere; sign out and sign in again")
+	case errors.Is(err, users.ErrPasswordWrapCorrupt):
+		return errors.New("your stored encryption key could not be read with this password, so nothing was changed; sign out and use a recovery code")
+	}
+	return err
 }
 
 // IssueRecoveryCodes generates 8 fresh recovery codes for the

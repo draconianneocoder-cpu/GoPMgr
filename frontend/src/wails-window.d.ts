@@ -42,6 +42,7 @@ declare global {
           AdminSetUserRole: (username: string, isAdmin: boolean) => Promise<void>;
           AdminIssueRecoveryCodes: (username: string, password: string) => Promise<string[]>;
           Login: (username: string, password: string) => Promise<Account>;
+          ChangePassword: (currentPassword: string, newPassword: string) => Promise<void>;
           Logout: () => Promise<void>;
           CurrentUser: () => Promise<Account | null>;
 
