@@ -168,12 +168,10 @@ That result took six live-GUI cycles to reach because the first five, all run un
     decision, 2026-09-24, replacing the same day's rule that administrators
     must not read users' data). An administrator opens another user's
     projects from the app, and each access records who, which account,
-    when, and the stated reason in `account_events`. Needs an ADR before
-    code: the administrator must hold a copy of each user's encryption key,
-    which changes ADR-001. The ADR must settle how that copy is protected,
-    what happens when administrators are added, removed, or change their
-    password, how existing accounts get a copy, and what the audit record
-    can and cannot prove given that `system.db` is plaintext.
+    when, and the stated reason in `account_events`. Design accepted
+    2026-09-25 in [ADR-004](design/ADR-004-administrator-access-to-user-data.md)
+    (read-only, projects only, user told, escrow rotated on demotion); build
+    it in the ADR's three phases.
   - Record account creation and role changes in `account_events` too,
     alongside the administrator-access record above.
   - `AdminIssueRecoveryCodes` leaves the user's key in memory without

@@ -53,8 +53,10 @@ for a legitimate local user.
   recorded with who read which account, when, and why (owner decision,
   2026-09-24, replacing the same day's rule that they must not). **Planned,
   not built:** an in-app way to do this, which needs the administrator to
-  hold a copy of each user's encryption key and so changes ADR-001; see
-  `docs/beta-release-backlog.md`. Until then, an administrator can read only
+  hold a copy of each user's encryption key and so changes ADR-001; the
+  accepted design is
+  [ADR-004](design/ADR-004-administrator-access-to-user-data.md): read-only,
+  projects only, the user told at their next sign-in. Until then, an administrator can read only
   accounts they created, using the initial password or recovery codes they
   were given, outside the app, and nothing records it.
 - Every IPC method that opens, mutates, or archives a project by a
