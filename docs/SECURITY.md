@@ -99,6 +99,17 @@ Before enabling encryption for a user with legacy recovery codes, reissue
 recovery codes so password reset can preserve the same DEK. Otherwise a
 reset would orphan encrypted project databases.
 
+Recovery codes are a lasting way into an account, so App Settings issues new
+ones only after the current password is verified, and wraps the DEK
+unwrapped from that password into every code. The new set is prepared in
+memory (`Store.PrepareRecoveryCodes`) and replaces the old codes only when
+the user confirms they saved it (`Store.ConfirmRecoveryCodes`), in one
+transaction that refuses if the codes changed meanwhile; signing out or
+leaving the page discards it, so the user is never left without working
+codes. `App.IssueRecoveryCodes` refuses a session without its DEK instead of
+issuing codes that could not recover it. App Settings counts a legacy code
+(no DEK wrap) as unsafe, not as a working code.
+
 Plaintext-to-encrypted migration must:
 
 - Reject already encrypted sources.

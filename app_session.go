@@ -241,6 +241,7 @@ func (a *App) AdminIssueRecoveryCodes(username, password string) ([]string, erro
 	if err != nil {
 		return nil, errors.New("could not unlock the account's key (wrong password?)")
 	}
+	defer zeroBytes(dek)
 	return a.store.IssueRecoveryCodes(username, dek)
 }
 
@@ -364,21 +365,95 @@ func (a *App) IssueRecoveryCodes() ([]string, error) {
 	// ADR-001: wrap the session DEK into every code so a recovery
 	// reset can re-wrap the same DEK (encrypted projects survive).
 	// requireDEKLocked returns a deep copy, preventing a concurrent
-	// Logout from zeroing the backing array mid-wrap.
+	// Logout from zeroing the backing array mid-wrap. Codes issued
+	// without it would reset the password with a new DEK and orphan
+	// encrypted projects, so a missing key is refused, never tolerated.
 	a.mu.RLock()
-	dek, _ := a.requireDEKLocked() // nil if encryption not yet enabled; valid
+	dek, err := a.requireDEKLocked()
 	a.mu.RUnlock()
+	if err != nil {
+		return nil, err
+	}
+	defer zeroBytes(dek)
 	return a.store.IssueRecoveryCodes(u.Username, dek)
 }
 
-// RemainingRecoveryCodes returns the count of unused recovery codes
-// for the active user. The GUI nags at 0 or 1.
-func (a *App) RemainingRecoveryCodes() (int, error) {
+// RecoveryCodeStatusWire tells App Settings whether the signed-in user
+// still has a safe way back in.
+type RecoveryCodeStatusWire struct {
+	Unused int  `json:"unused"`
+	Total  int  `json:"total"`
+	Legacy bool `json:"legacy"`
+}
+
+// RecoveryCodeStatus reports the signed-in user's unused recovery codes,
+// and whether any is a legacy code that cannot recover encrypted projects.
+func (a *App) RecoveryCodeStatus() (RecoveryCodeStatusWire, error) {
 	u := a.requireUser()
 	if u == nil {
-		return 0, errors.New("not signed in")
+		return RecoveryCodeStatusWire{}, errors.New("not signed in")
 	}
-	return a.store.RemainingRecoveryCodes(u.Username)
+	unused, legacy, err := a.store.RecoveryCodeStatus(u.Username)
+	if err != nil {
+		return RecoveryCodeStatusWire{}, err
+	}
+	return RecoveryCodeStatusWire{Unused: unused, Total: users.RecoveryCodeCount, Legacy: legacy}, nil
+}
+
+// PrepareRecoveryCodes makes a new set of recovery codes for the signed-in
+// user, after checking their current password, and returns them to show
+// once. Nothing is stored and the old codes keep working until
+// ConfirmRecoveryCodes; DiscardRecoveryCodes or signing out drops them.
+func (a *App) PrepareRecoveryCodes(currentPassword string) ([]string, error) {
+	u := a.requireUser()
+	if u == nil {
+		return nil, errors.New("not signed in")
+	}
+	pending, err := a.store.PrepareRecoveryCodes(u.Username, currentPassword)
+	switch {
+	case errors.Is(err, auth.ErrMismatch):
+		return nil, errors.New("current password is incorrect")
+	case errors.Is(err, users.ErrPasswordWrapCorrupt):
+		return nil, errors.New("your stored encryption key could not be read with this password, so no codes were made; sign out and use a recovery code")
+	case err != nil:
+		return nil, err
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.user == nil || a.user.Username != u.Username {
+		return nil, errors.New("not signed in")
+	}
+	a.pendingCodes = pending
+	return pending.Codes(), nil
+}
+
+// ConfirmRecoveryCodes stores the codes from PrepareRecoveryCodes,
+// replacing the signed-in user's old codes, once the user has saved them.
+func (a *App) ConfirmRecoveryCodes() error {
+	a.mu.Lock()
+	pending := a.pendingCodes
+	a.pendingCodes = nil
+	user := a.user
+	a.mu.Unlock()
+	if user == nil {
+		return errors.New("not signed in")
+	}
+	if pending == nil || pending.Username() != user.Username {
+		return errors.New("there are no new codes to save; create them again")
+	}
+	err := a.store.ConfirmRecoveryCodes(pending)
+	if errors.Is(err, users.ErrRecoveryCodesChanged) {
+		return errors.New("your recovery codes changed while these were on screen, so they were not saved; create new ones again")
+	}
+	return err
+}
+
+// DiscardRecoveryCodes drops prepared codes without storing them; the old
+// codes keep working.
+func (a *App) DiscardRecoveryCodes() {
+	a.mu.Lock()
+	a.pendingCodes = nil
+	a.mu.Unlock()
 }
 
 // ResetWithRecoveryCode is the "forgot password" flow. It does NOT
@@ -402,6 +477,7 @@ func (a *App) Logout() error {
 	a.user = nil
 	zeroBytes(a.dek)
 	a.dek = nil
+	a.pendingCodes = nil
 	return nil
 }
 

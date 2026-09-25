@@ -21,7 +21,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <p class="text-sm text-slate-300">
               On the login screen choose <span class="font-medium text-slate-100">"Forgot password? Use a recovery code"</span>,
               then enter your username, one unused recovery code, and a new passphrase. Each code
-              works once; reissue a fresh set afterwards from App Settings. If the passphrase
+              works once; create a fresh set afterwards in App Settings, under Account. If the passphrase
               <span class="font-medium text-slate-100">and</span> all recovery codes are lost,
               encrypted project databases are unrecoverable by design — there is no back door.
             </p>

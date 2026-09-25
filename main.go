@@ -72,15 +72,18 @@ var assets embed.FS
 type App struct {
 	ctx context.Context
 
-	mu        sync.RWMutex
-	store     *users.Store   // immutable after NewApp — safe to read without lock
-	user      *users.Account // nil unless logged in
-	dek       []byte         // ADR-001: session DEK, unlocked at login; nil when logged out
-	db        *db.Database   // nil unless a project is open
-	dbPath    string         // absolute path of the open project file (.gopmgr, or legacy .pmforge)
-	adminSvc  *admin.Service
-	templates *templates.Engine       // immutable after NewApp; safe lock-free read
-	sigmaSvc  *service.ProjectService // initialized when a project is open
+	mu    sync.RWMutex
+	store *users.Store   // immutable after NewApp — safe to read without lock
+	user  *users.Account // nil unless logged in
+	dek   []byte         // ADR-001: session DEK, unlocked at login; nil when logged out
+	// pendingCodes holds recovery codes prepared in App Settings but not
+	// yet confirmed as saved; cleared on sign-out and shutdown.
+	pendingCodes *users.PendingRecoveryCodes
+	db           *db.Database // nil unless a project is open
+	dbPath       string       // absolute path of the open project file (.gopmgr, or legacy .pmforge)
+	adminSvc     *admin.Service
+	templates    *templates.Engine       // immutable after NewApp; safe lock-free read
+	sigmaSvc     *service.ProjectService // initialized when a project is open
 
 	// Diagnostic logging — set in main() after applog.Init; never reassigned.
 	logPath string // dated log file path, e.g. .../logs/gopmgr-2026-06-20.log
@@ -139,6 +142,7 @@ func (a *App) shutdown(_ context.Context) {
 	// (swap / core-dump hygiene).
 	zeroBytes(a.dek)
 	a.dek = nil
+	a.pendingCodes = nil
 	// Close the store but keep the pointer: `store` is documented as
 	// set-once and readable without the lock (DEVELOPER_HANDBOOK.md §16), so nilling it
 	// here would be the one write that violates that invariant. A closed

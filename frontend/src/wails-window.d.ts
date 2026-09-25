@@ -225,7 +225,10 @@ declare global {
           // ----- V2.x: Account Recovery, Updates & Additional Export Formats -----
           ChooseCertFile: () => Promise<string>;
           IssueRecoveryCodes: () => Promise<string[]>;
-          RemainingRecoveryCodes: () => Promise<number>;
+          RecoveryCodeStatus: () => Promise<RecoveryCodeStatus>;
+          PrepareRecoveryCodes: (currentPassword: string) => Promise<string[]>;
+          ConfirmRecoveryCodes: () => Promise<void>;
+          DiscardRecoveryCodes: () => Promise<void>;
           ResetWithRecoveryCode: (username: string, code: string, newPassword: string) => Promise<void>;
           CheckLatestVersion: () => Promise<UpdateStatus>;
           DownloadAndInstallUpdate: () => Promise<string>;
@@ -512,6 +515,13 @@ declare global {
     username: string;
     action: 'disabled' | 'enabled' | 'purged' | 'folder_not_removed';
     detail: string;
+  }
+
+  // The signed-in user's recovery codes (RecoveryCodeStatusWire).
+  interface RecoveryCodeStatus {
+    unused: number;
+    total: number;
+    legacy: boolean;
   }
 
   // First-run state for the sign-in screen (AccountSetupWire).

@@ -174,8 +174,6 @@ That result took six live-GUI cycles to reach because the first five, all run un
     it in the ADR's three phases.
   - Record account creation and role changes in `account_events` too,
     alongside the administrator-access record above.
-  - `AdminIssueRecoveryCodes` leaves the user's key in memory without
-    zeroing it.
   - Done 2026-09-25: change password while signed in (App Settings,
     Account). `Store.ChangePassword` verifies the current password without
     `Authenticate` (which would stamp `last_login` and could re-hash), re-wraps
@@ -185,11 +183,25 @@ That result took six live-GUI cycles to reach because the first five, all run un
     Evidence: `password_change_test.go`, `admin_test.go`,
     `ChangePasswordForm.test.ts`, and `AppSettings.test.ts` rows in
     `TEST_COVERAGE_LEDGER.md`. Not tested: that the unwrapped key is zeroed.
-  - An Account security card in App Settings: remaining recovery codes
-    (`RemainingRecoveryCodes` has no caller), a warning at 0 or 1, and code
-    rotation. Then fix the create-account screen's "generate recovery codes
-    later from Project Settings", which is wrong today: Project Settings
-    offers a reissue only after encryption fails for that reason.
+  - Done 2026-09-25: recovery codes in App Settings (Account). Shows unused
+    codes out of eight, warns at one or none and when any unused code is a
+    legacy one that cannot recover encrypted projects, and creates new codes
+    after the current password is verified. New codes are prepared in memory
+    and replace the old ones only when the user confirms they saved them, so
+    a closed window or crash leaves the old codes working. The create-account
+    screen and Admin panel now point to App Settings instead of Project
+    Settings. `App.IssueRecoveryCodes` refuses a session without its key, and
+    both issuing paths zero their copy of the key. Evidence:
+    `recovery_rotation_test.go`, `admin_recovery_test.go`,
+    `RecoveryCodesPanel.test.ts`, and `CreateAccount.test.ts` rows in
+    `TEST_COVERAGE_LEDGER.md`. Not covered: a reminder outside App Settings
+    (for example at sign-in) when codes run low.
+  - Project Settings' reissue (shown when encryption is refused because of
+    legacy codes) issues new codes without asking for the password and
+    replaces the old ones at once; move it onto the App Settings flow.
+  - CreateAccount, the Admin panel, and App Settings each show recovery
+    codes their own way; share one component once the first two have tests
+    of their code-display steps.
   - Recovery-code download: check whether the blob-link download writes a
     file in the native build; use the app's save-dialog pattern either way.
   - Prefill the username on the sign-in screen after a recovery reset.
