@@ -196,9 +196,18 @@ That result took six live-GUI cycles to reach because the first five, all run un
     `RecoveryCodesPanel.test.ts`, and `CreateAccount.test.ts` rows in
     `TEST_COVERAGE_LEDGER.md`. Not covered: a reminder outside App Settings
     (for example at sign-in) when codes run low.
-  - Project Settings' reissue (shown when encryption is refused because of
-    legacy codes) issues new codes without asking for the password and
-    replaces the old ones at once; move it onto the App Settings flow.
+  - Done 2026-09-25: Project Settings' recovery-code reissue. It issued new
+    codes without the password and replaced the old ones at once, just before
+    encryption, so closing the window left the user with no codes that could
+    recover the projects they were encrypting. The Data Protection tab now
+    shows the App Settings recovery-codes panel whenever the project is
+    plaintext (password check, two steps, old codes kept until confirmed,
+    warnings for none left and for legacy codes), and `EncryptProjectAtRest`
+    still refuses until no legacy codes remain. Evidence:
+    `encryption_migration_test.go`, `ProjectSettings.test.ts`, and
+    `RecoveryCodesPanel.test.ts` rows in `TEST_COVERAGE_LEDGER.md`.
+  - Undecided (owner): whether to refuse encryption when the user has no
+    unused recovery codes at all. Today it is only warned about.
   - CreateAccount, the Admin panel, and App Settings each show recovery
     codes their own way; share one component once the first two have tests
     of their code-display steps.

@@ -20,6 +20,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { rebaseEditableChanges } from '../../rebase-editable-changes';
   import Tabs from '../Tabs.svelte';
   import Button from '../Button.svelte';
+  import RecoveryCodesPanel from '../auth/RecoveryCodesPanel.svelte';
 
   // Tab grouping (docs/design/project-settings-tab-restructuring.md §3):
   // General binds to `draft`/save()/revert() below; the other four tabs
@@ -144,7 +145,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let archiveBusy = $state(false);
   let archiveStatus = $state('');
   let archiveError = $state('');
-  let recoveryCodes = $state<string[]>([]);
 
   // Font settings
   let fonts = $state<FontFamilyInfo[]>([]);
@@ -461,15 +461,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  function recoveryReissueRequired(message: string) {
-    return message.includes('Reissue recovery codes before enabling database encryption');
-  }
-
   async function loadEncryptionState() {
     encryptionStatus = '';
     encryptionError = '';
     encryptionBackupPath = '';
-    recoveryCodes = [];
     if (!session.projectPath) {
       encryptionState = 'unknown';
       encryptionError = 'Open this project from the project list before checking database encryption.';
@@ -493,7 +488,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
     encryptionStatus = '';
     encryptionError = '';
     encryptionBackupPath = '';
-    recoveryCodes = [];
     try {
       const backupPath = await window.go.main.App.EncryptProjectAtRest(session.projectPath);
       encryptionBackupPath = backupPath;
@@ -521,19 +515,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  async function reissueRecoveryCodes() {
-    encryptionBusy = true;
-    encryptionStatus = '';
+  // New recovery codes go through the same password-checked, two-step flow
+  // as App Settings (RecoveryCodesPanel): the old codes keep working until
+  // the new ones are confirmed as saved. EncryptProjectAtRest checks again
+  // for legacy codes, so backing out still leaves encryption refused.
+  function recoveryCodesRenewed() {
     encryptionError = '';
-    recoveryCodes = [];
-    try {
-      recoveryCodes = (await window.go.main.App.IssueRecoveryCodes()) ?? [];
-      encryptionStatus = 'Recovery codes reissued. Save these codes, then encrypt the database.';
-    } catch (err: any) {
-      encryptionError = `Recovery-code reissue failed: ${err}`;
-    } finally {
-      encryptionBusy = false;
-    }
+    encryptionStatus = 'New recovery codes saved. You can encrypt the database now.';
   }
 
   async function chooseCert() {
@@ -1788,27 +1776,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
              <p class="text-xs text-cyan-400">{encryptionStatus}</p>
            {/if}
            {#if encryptionError}
-             <div class="space-y-2">
-               <p class="text-xs text-red-400" role="alert">{encryptionError}</p>
-               {#if recoveryReissueRequired(encryptionError)}
-                 <button
-                   onclick={reissueRecoveryCodes}
-                   disabled={encryptionBusy}
-                   class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-4 py-2 rounded border border-slate-700"
-                 >
-                   {encryptionBusy ? 'Reissuing…' : 'Reissue recovery codes'}
-                 </button>
-               {/if}
-             </div>
+             <p class="text-xs text-red-400" role="alert">{encryptionError}</p>
            {/if}
-           {#if recoveryCodes.length > 0}
-             <div class="border border-cyan-900/60 bg-cyan-950/20 rounded p-3">
-               <p class="text-xs text-cyan-300 mb-2">Save these new recovery codes now.</p>
-               <ul class="grid grid-cols-1 sm:grid-cols-2 gap-1 font-mono text-xs text-slate-200">
-                 {#each recoveryCodes as code}
-                   <li>{code}</li>
-                 {/each}
-               </ul>
+           {#if encryptionState === 'plaintext'}
+             <div class="border-t border-slate-800 pt-3">
+               <RecoveryCodesPanel onrenewed={recoveryCodesRenewed} />
              </div>
            {/if}
          </div>

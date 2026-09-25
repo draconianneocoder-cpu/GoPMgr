@@ -95,9 +95,12 @@ Project databases are SQLCipher-capable. The intended key hierarchy is:
 only bootstrap metadata such as password hashes, recovery-code metadata,
 and wrapped DEKs, not project content.
 
-Before enabling encryption for a user with legacy recovery codes, reissue
-recovery codes so password reset can preserve the same DEK. Otherwise a
-reset would orphan encrypted project databases.
+Before enabling encryption for a user with legacy recovery codes, new codes
+must be created so password reset can preserve the same DEK. Otherwise a
+reset would orphan encrypted project databases. `EncryptProjectAtRest`
+refuses while any unused code is legacy; Project Settings offers the same
+two-step renewal as App Settings (below), and `App.IssueRecoveryCodes`, which
+replaces codes at once, is used only at account creation.
 
 Recovery codes are a lasting way into an account, so App Settings issues new
 ones only after the current password is verified, and wraps the DEK

@@ -119,3 +119,40 @@ describe('RecoveryCodesPanel rotation', () => {
     expect(within(utils.container).queryByText(newCodes[0])).not.toBeInTheDocument();
   });
 });
+
+describe('RecoveryCodesPanel onrenewed', () => {
+  it('runs only after new codes are saved', async () => {
+    const onrenewed = vi.fn();
+    const utils = render(RecoveryCodesPanel, { props: { onrenewed } });
+
+    // Backing out does not count.
+    await openCodes(utils);
+    await fireEvent.click(utils.getByRole('button', { name: 'Keep my current codes' }));
+    await waitFor(() => expect(app.DiscardRecoveryCodes).toHaveBeenCalled());
+    expect(onrenewed).not.toHaveBeenCalled();
+
+    // A failed prepare does not count.
+    app.PrepareRecoveryCodes.mockRejectedValueOnce(new Error('current password is incorrect'));
+    await fireEvent.click(utils.getByRole('button', { name: 'Create new recovery codes' }));
+    await fireEvent.input(utils.getByLabelText('Current password'), { target: { value: 'wrong-password' } });
+    await fireEvent.click(utils.getByRole('button', { name: 'Create codes' }));
+    await utils.findByRole('alert');
+    expect(onrenewed).not.toHaveBeenCalled();
+
+    // A failed confirm does not count.
+    app.ConfirmRecoveryCodes.mockRejectedValueOnce(new Error('your recovery codes changed while these were on screen'));
+    await fireEvent.input(utils.getByLabelText('Current password'), { target: { value: 'current-password' } });
+    await fireEvent.click(utils.getByRole('button', { name: 'Create codes' }));
+    await utils.findByText(newCodes[0]);
+    await fireEvent.click(utils.getByLabelText('I have saved these codes somewhere safe.'));
+    await fireEvent.click(utils.getByRole('button', { name: 'Use the new codes' }));
+    await waitFor(() => expect(utils.getByRole('alert')).toHaveTextContent('Your recovery codes changed'));
+    expect(onrenewed).not.toHaveBeenCalled();
+
+    // A saved set does.
+    await openCodes(utils);
+    await fireEvent.click(utils.getByLabelText('I have saved these codes somewhere safe.'));
+    await fireEvent.click(utils.getByRole('button', { name: 'Use the new codes' }));
+    await waitFor(() => expect(onrenewed).toHaveBeenCalledOnce());
+  });
+});

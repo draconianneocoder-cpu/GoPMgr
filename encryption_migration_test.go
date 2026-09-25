@@ -139,3 +139,47 @@ func TestEncryptProjectAtRestMigratesAfterRecoveryCodeReissue(t *testing.T) {
 		t.Fatalf("documents = %#v, want Legacy Charter preserved", docs)
 	}
 }
+
+// TestEncryptProjectAtRestStaysRefusedUntilNewCodesAreConfirmed walks the
+// Project Settings path: legacy codes block encryption, preparing new codes
+// changes nothing, and only confirming them lets encryption run.
+func TestEncryptProjectAtRestStaysRefusedUntilNewCodesAreConfirmed(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "alice-password", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	path := createPlaintextProjectForMigration(t, app)
+	if _, err := app.store.IssueRecoveryCodes("alice", nil); err != nil {
+		t.Fatalf("IssueRecoveryCodes legacy: %v", err)
+	}
+	if _, err := app.EncryptProjectAtRest(path); !errors.Is(err, ErrRecoveryCodesRequireReissue) {
+		t.Fatalf("EncryptProjectAtRest with legacy codes: err = %v, want ErrRecoveryCodesRequireReissue", err)
+	}
+
+	if _, err := app.PrepareRecoveryCodes("alice-password"); err != nil {
+		t.Fatalf("PrepareRecoveryCodes: %v", err)
+	}
+	if _, err := app.EncryptProjectAtRest(path); !errors.Is(err, ErrRecoveryCodesRequireReissue) {
+		t.Fatalf("EncryptProjectAtRest with new codes prepared but not saved: err = %v, want ErrRecoveryCodesRequireReissue", err)
+	}
+	app.DiscardRecoveryCodes()
+	if _, err := app.EncryptProjectAtRest(path); !errors.Is(err, ErrRecoveryCodesRequireReissue) {
+		t.Fatalf("EncryptProjectAtRest after backing out: err = %v, want ErrRecoveryCodesRequireReissue", err)
+	}
+	if encrypted, err := app.IsProjectEncrypted(path); err != nil || encrypted {
+		t.Fatalf("IsProjectEncrypted after refusals = %v, %v; want false", encrypted, err)
+	}
+
+	if _, err := app.PrepareRecoveryCodes("alice-password"); err != nil {
+		t.Fatalf("PrepareRecoveryCodes: %v", err)
+	}
+	if err := app.ConfirmRecoveryCodes(); err != nil {
+		t.Fatalf("ConfirmRecoveryCodes: %v", err)
+	}
+	if _, err := app.EncryptProjectAtRest(path); err != nil {
+		t.Fatalf("EncryptProjectAtRest after confirming new codes: %v", err)
+	}
+	if encrypted, err := app.IsProjectEncrypted(path); err != nil || !encrypted {
+		t.Fatalf("IsProjectEncrypted = %v, %v; want true", encrypted, err)
+	}
+}

@@ -65,9 +65,9 @@ const checks = [
     component.includes('encryptionBackupPath'),
   ],
   [
-    'settings handles legacy recovery-code reissue',
-    component.includes('IssueRecoveryCodes()') &&
-      component.includes('Reissue recovery codes'),
+    'settings renews legacy recovery codes through the two-step panel',
+    component.includes('<RecoveryCodesPanel onrenewed=') &&
+      !component.includes('IssueRecoveryCodes()'),
   ],
   [
     'settings exposes compliance-mode audit verification toggle',
