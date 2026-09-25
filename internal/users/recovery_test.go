@@ -361,8 +361,8 @@ func TestResetWithRecoveryCode_RejectsShortNewPassword(t *testing.T) {
 		t.Fatalf("IssueRecoveryCodes: %v", err)
 	}
 	err = store.ResetWithRecoveryCode("alice", codes[0], "short")
-	if err == nil || !strings.Contains(err.Error(), "too short") {
-		t.Fatalf("ResetWithRecoveryCode(short password) error = %v, want a too-short error", err)
+	if !errors.Is(err, ErrPasswordTooShort) {
+		t.Fatalf("ResetWithRecoveryCode(short password) error = %v, want ErrPasswordTooShort", err)
 	}
 }
 

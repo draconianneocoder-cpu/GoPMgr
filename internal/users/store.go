@@ -369,6 +369,9 @@ func (s *Store) CreateAccountAs(callerUsername, username, displayName, password 
 	if err := ValidateUsername(username); err != nil {
 		return Account{}, err
 	}
+	if err := ValidatePassword(password); err != nil {
+		return Account{}, err
+	}
 	// Hash before taking the write lock: Argon2id is deliberately slow and
 	// would hold every other writer off system.db for its whole run.
 	hash, err := auth.HashPassword(password)

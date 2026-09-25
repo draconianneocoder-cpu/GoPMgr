@@ -176,7 +176,15 @@ That result took six live-GUI cycles to reach because the first five, all run un
     alongside the administrator-access record above.
   - `AdminIssueRecoveryCodes` leaves the user's key in memory without
     zeroing it.
-  - Change password while signed in, rewrapping the same encryption key.
+  - Done 2026-09-25: change password while signed in (App Settings,
+    Account). `Store.ChangePassword` verifies the current password without
+    `Authenticate` (which would stamp `last_login` and could re-hash), re-wraps
+    the same DEK, and writes the hash and wrap in one compare-and-swap, so a
+    change made elsewhere in the meantime is refused, not overwritten. The
+    8-character rule is now enforced by the backend at account creation too.
+    Evidence: `password_change_test.go`, `admin_test.go`,
+    `ChangePasswordForm.test.ts`, and `AppSettings.test.ts` rows in
+    `TEST_COVERAGE_LEDGER.md`. Not tested: that the unwrapped key is zeroed.
   - An Account security card in App Settings: remaining recovery codes
     (`RemainingRecoveryCodes` has no caller), a warning at 0 or 1, and code
     rotation. Then fix the create-account screen's "generate recovery codes

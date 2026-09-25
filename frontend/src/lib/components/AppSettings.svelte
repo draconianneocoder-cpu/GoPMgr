@@ -8,6 +8,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // projects, and shows read-only environment info.
   import { onDestroy, onMount } from 'svelte';
   import AppHeader from './AppHeader.svelte';
+  import ChangePasswordForm from './auth/ChangePasswordForm.svelte';
   import { applyTheme, rememberTheme, type AppTheme } from '../theme';
   import { autosave } from '../autosave.svelte';
   import { session } from '../session.svelte';
@@ -421,6 +422,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </button>
           {#if status}<span class="text-xs text-emerald-400">{status}</span>{/if}
         </div>
+
+        <section class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-3" aria-labelledby="account-heading">
+          <h2 id="account-heading" class="text-xs font-bold uppercase tracking-widest text-cyan-400">Account</h2>
+          <ChangePasswordForm />
+        </section>
 
         {#if !hasAdmin && !session.user?.is_admin}
           <section class="p-4 bg-amber-950/30 border border-amber-700/50 rounded-lg space-y-3 text-xs">

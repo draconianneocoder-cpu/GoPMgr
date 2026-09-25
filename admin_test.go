@@ -323,3 +323,58 @@ func TestAdminSetUserDisabled_BlocksAndRestoresSignIn(t *testing.T) {
 		t.Fatal("AdminListAccountEvents as a standard user: got nil, want error")
 	}
 }
+
+func TestChangePassword_KeepsSessionAndEncryptedProjects(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "original-password", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	project, err := app.CreateProject("Encrypted Plan", "")
+	if err != nil {
+		t.Fatalf("CreateProject: %v", err)
+	}
+	encrypted, err := app.IsProjectEncrypted(project.Path)
+	if err != nil || !encrypted {
+		t.Fatalf("IsProjectEncrypted = %v, %v; want an encrypted project", encrypted, err)
+	}
+
+	if err := app.ChangePassword("wrong-password", "replacement-password"); err == nil || err.Error() != "current password is incorrect" {
+		t.Fatalf("ChangePassword with a wrong current password: err = %v", err)
+	}
+	if err := app.ChangePassword("original-password", "short"); err == nil || err.Error() != "new password must be at least 8 characters" {
+		t.Fatalf("ChangePassword with a short new password: err = %v", err)
+	}
+	if err := app.ChangePassword("original-password", "replacement-password"); err != nil {
+		t.Fatalf("ChangePassword: %v", err)
+	}
+	if u := app.requireUser(); u == nil || u.Username != "alice" {
+		t.Fatalf("session after ChangePassword = %+v, want alice still signed in", u)
+	}
+
+	if err := app.Logout(); err != nil {
+		t.Fatalf("Logout: %v", err)
+	}
+	if _, err := app.Login("alice", "original-password"); err == nil {
+		t.Fatal("Login with the old password succeeded")
+	}
+	if _, err := app.Login("alice", "replacement-password"); err != nil {
+		t.Fatalf("Login with the new password: %v", err)
+	}
+	if _, err := app.OpenProject(project.Path); err != nil {
+		t.Fatalf("OpenProject after the password change: %v", err)
+	}
+}
+
+func TestChangePassword_RequiresASession(t *testing.T) {
+	app := newAdminTestApp(t)
+	if err := app.ChangePassword("anything-long", "replacement-password"); err == nil {
+		t.Fatal("ChangePassword with no session: got nil, want error")
+	}
+}
+
+func TestCreateAccount_RefusesAShortPasswordInPlainWords(t *testing.T) {
+	app := newAdminTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "short", false); err == nil || err.Error() != "password must be at least 8 characters" {
+		t.Fatalf("CreateAccount with a short password: err = %v", err)
+	}
+}

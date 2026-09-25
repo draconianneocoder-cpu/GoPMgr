@@ -14,6 +14,11 @@ for a legitimate local user.
 ## Local Accounts
 
 - User credentials are stored in `system.db` as Argon2id PHC strings.
+  Passwords must be at least 8 bytes (`users.ValidatePassword`, applied at
+  account creation, password change, and recovery reset). Changing a
+  password (`Store.ChangePassword`) verifies the current one and re-wraps
+  the same DEK in one compare-and-swap write, so encrypted projects and
+  recovery codes are unaffected and a concurrent change is not overwritten.
 - Login errors should remain generic so unknown users and wrong
   passwords are not distinguishable.
 - Per-user directories under the GoPMgr application data root are created with

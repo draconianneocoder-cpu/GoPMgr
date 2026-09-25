@@ -650,7 +650,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li>Click "Create user" to expand the creation form.</li>
               <li>Enter a username (3-32 characters, letters/digits/underscore/hyphen only).</li>
               <li>Enter a display name (optional; defaults to username).</li>
-              <li>Set an initial password (minimum 8 characters). Share it securely — the user should change it after first login.</li>
+              <li>Set an initial password (minimum 8 characters). Share it securely — the user can change it in App Settings, under Account.</li>
               <li>Optionally check "Administrator account" to grant admin role immediately.</li>
               <li>Click "Create account."</li>
             </ol>
@@ -706,6 +706,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-36 shrink-0">Default Font</dt><dd class="text-slate-400">Font applied to newly created project documents. Per-project override available in Project Settings.</dd></div>
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-36 shrink-0">Export Theme</dt><dd class="text-slate-400">Modern (default), Classic, or Archival. Applied to document exports. Per-project override available.</dd></div>
             </dl>
+          </section>
+
+          <section class="mb-5">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Account</h3>
+            <p class="text-sm text-slate-300">Change your password by entering your current password and the new one twice (at least 8 characters). Your projects, including encrypted ones, and your recovery codes keep working.</p>
           </section>
 
           <section class="mb-5">
