@@ -712,7 +712,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Account</h3>
             <p class="text-sm text-slate-300 mb-2">Shows your current version, signed-in username, and the resolved data directory location on disk.</p>
             <p class="text-sm text-slate-300">Change your password by entering your current password and the new one twice (at least 8 characters). Your projects, including encrypted ones, and your recovery codes keep working.</p>
-            <p class="text-sm text-slate-300 mt-2">Recovery codes shows how many of your eight codes are unused, and warns when one or none is left, or when your codes are from an older version and can't recover encrypted projects. "Create new recovery codes" asks for your password, shows the new codes once, and replaces the old ones only after you tick that you saved them; until then, and if you leave the page, the old codes keep working.</p>
+            <p class="text-sm text-slate-300 mt-2">Recovery codes shows how many of your eight codes are unused, and warns when one or none is left, or when your codes are from an older version and can't recover encrypted projects. "Create new recovery codes" asks for your password, shows the new codes once, and replaces the old ones only after you tick that you saved them; until then, and if you leave the page, any old codes you still have keep working.</p>
           </section>
 
           <section class="mb-5">
