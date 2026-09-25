@@ -8,7 +8,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   // onrenewed runs after new codes are saved, once the panel has returned
   // to its idle step (Project Settings uses it to allow encryption again).
-  let { onrenewed }: { onrenewed?: () => void } = $props();
+  // onpendingchange reports whether unsaved new codes are on screen, so a
+  // parent can hold back actions (such as encrypting) until they are saved
+  // or discarded.
+  let {
+    onrenewed,
+    onpendingchange,
+  }: { onrenewed?: () => void; onpendingchange?: (pending: boolean) => void } = $props();
 
   // New codes are made in two steps so the user never ends up without
   // working codes: PrepareRecoveryCodes returns them without storing
@@ -27,9 +33,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
   onMount(loadStatus);
+  $effect(() => {
+    onpendingchange?.(step === 'codes');
+  });
   onDestroy(() => {
     if (copiedTimer) clearTimeout(copiedTimer);
     if (step === 'codes') void window.go.main.App.DiscardRecoveryCodes();
+    onpendingchange?.(false);
   });
 
   async function loadStatus() {

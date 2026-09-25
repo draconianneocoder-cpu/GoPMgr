@@ -484,6 +484,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       encryptionError = 'Open this project from the project list before encrypting the database.';
       return;
     }
+    if (recoveryCodesPending) {
+      encryptionError = 'Save or discard your new recovery codes first.';
+      return;
+    }
     encryptionBusy = true;
     encryptionStatus = '';
     encryptionError = '';
@@ -519,6 +523,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // as App Settings (RecoveryCodesPanel): the old codes keep working until
   // the new ones are confirmed as saved. EncryptProjectAtRest checks again
   // for legacy codes, so backing out still leaves encryption refused.
+  // True while the panel shows new codes the user has not saved yet:
+  // encrypting then would leave them without codes that work.
+  let recoveryCodesPending = $state(false);
+
   function recoveryCodesRenewed() {
     encryptionError = '';
     encryptionStatus = 'New recovery codes saved. You can encrypt the database now.';
@@ -1744,7 +1752,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
              {#if encryptionState === 'plaintext'}
                <button
                  onclick={encryptDatabase}
-                 disabled={encryptionBusy}
+                 disabled={encryptionBusy || recoveryCodesPending}
                  class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
                >
                  {encryptionBusy ? 'Encrypting…' : 'Encrypt database'}
@@ -1765,6 +1773,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
                Encryption keeps project rows in a SQLCipher database and retains a plaintext backup
                beside the project file.
              </p>
+             {#if recoveryCodesPending}
+               <p class="text-xs text-amber-300">Save or discard your new recovery codes before encrypting.</p>
+             {/if}
            {/if}
 
            {#if encryptionBackupPath}
@@ -1780,7 +1791,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
            {/if}
            {#if encryptionState === 'plaintext'}
              <div class="border-t border-slate-800 pt-3">
-               <RecoveryCodesPanel onrenewed={recoveryCodesRenewed} />
+               <RecoveryCodesPanel
+                 onrenewed={recoveryCodesRenewed}
+                 onpendingchange={(pending) => (recoveryCodesPending = pending)}
+               />
              </div>
            {/if}
          </div>

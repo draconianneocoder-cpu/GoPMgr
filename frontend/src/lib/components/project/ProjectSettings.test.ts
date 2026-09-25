@@ -511,6 +511,38 @@ describe('database encryption and recovery codes', () => {
     expect(app.ConfirmRecoveryCodes).toHaveBeenCalledOnce();
   });
 
+  it('does not encrypt while new recovery codes are on screen and unsaved', async () => {
+    Object.assign(app, {
+      IsProjectEncrypted: vi.fn(async () => false),
+      EncryptProjectAtRest: vi.fn(async () => '/tmp/gopmgr/plan.gopmgr.pre-encryption.bak'),
+      RecoveryCodeStatus: vi.fn(async () => ({ unused: 0, total: 8, legacy: false })),
+      PrepareRecoveryCodes: vi.fn(async () => ['AAAAAAAA-BBBBBBBB']),
+      ConfirmRecoveryCodes: vi.fn(async () => undefined),
+      DiscardRecoveryCodes: vi.fn(async () => undefined),
+    });
+    session.projectPath = '/tmp/gopmgr/plan.gopmgr';
+    const utils = render(ProjectSettings);
+    await utils.findByRole('tab', { name: /data protection/i });
+    await switchTab(utils.container, /data protection/i);
+
+    await fireEvent.click(await utils.findByRole('button', { name: 'Create new recovery codes' }));
+    await fireEvent.input(utils.getByLabelText('Current password'), { target: { value: 'current-password' } });
+    await fireEvent.click(utils.getByRole('button', { name: 'Create codes' }));
+    await utils.findByText('AAAAAAAA-BBBBBBBB');
+
+    const encrypt = utils.getByRole('button', { name: 'Encrypt database' });
+    expect(encrypt).toBeDisabled();
+    expect(utils.getByText('Save or discard your new recovery codes before encrypting.')).toBeInTheDocument();
+    await fireEvent.click(encrypt);
+    expect(app.EncryptProjectAtRest).not.toHaveBeenCalled();
+
+    await fireEvent.click(utils.getByLabelText('I have saved these codes somewhere safe.'));
+    await fireEvent.click(utils.getByRole('button', { name: 'Use the new codes' }));
+    await waitFor(() => expect(utils.getByRole('button', { name: 'Encrypt database' })).toBeEnabled());
+    await fireEvent.click(utils.getByRole('button', { name: 'Encrypt database' }));
+    await waitFor(() => expect(app.EncryptProjectAtRest).toHaveBeenCalledOnce());
+  });
+
   it('warns a user with no unused codes before they encrypt', async () => {
     Object.assign(app, {
       IsProjectEncrypted: vi.fn(async () => false),
