@@ -37,6 +37,7 @@ beforeEach(() => {
   app = {
     GetAppInfo: vi.fn(async () => appInfo),
     HasAnyAdmin: vi.fn(async () => true),
+    RecoveryCodeStatus: vi.fn(async () => ({ unused: 8, total: 8, legacy: false })),
     SaveAppSettings: vi.fn(async () => undefined),
     CheckLatestVersion: vi.fn(async () => upToDateStatus),
   };

@@ -87,12 +87,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
       await window.go.main.App.CreateAccount(uname, newDisplayName || uname, pw, newIsAdmin);
       // Issue recovery codes for the new account (same footing as a
       // self-registered user). Non-fatal: the account exists even if this
-      // fails, and the user can generate codes later from Project Settings.
+      // fails, and the user can create codes in App Settings, under Account.
       try {
         createdCodes = (await window.go.main.App.AdminIssueRecoveryCodes(uname, pw)) ?? [];
         createdFor = uname;
       } catch (err: any) {
-        showToast(`Account created, but recovery codes could not be generated: ${err}. The user can create them from Project Settings.`, 'error');
+        showToast(`Account created, but recovery codes could not be generated: ${err}. The user can create them in App Settings, under Account.`, 'error');
       }
       showToast(`Account "${uname}" created.`, 'success');
       newUsername = '';

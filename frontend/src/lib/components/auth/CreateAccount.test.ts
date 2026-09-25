@@ -74,6 +74,16 @@ describe('CreateAccount', () => {
     expect(await utils.findByText('Save your recovery codes')).toBeInTheDocument();
   });
 
+  it('points to App Settings when recovery codes could not be made', async () => {
+    installApp({ IssueRecoveryCodes: vi.fn(async () => { throw new Error('entropy unavailable'); }) });
+    const utils = render(CreateAccount);
+    await fillForm(utils);
+    await fireEvent.submit(utils.container.querySelector('form')!);
+
+    expect(await utils.findByRole('alert')).toHaveTextContent(/Create your recovery codes in\s+App Settings, under Account/);
+    expect(utils.getByRole('alert')).not.toHaveTextContent('Project Settings');
+  });
+
   it('explains a refused creation in plain language', async () => {
     installApp({
       AccountSetup: vi.fn(async () => ({ has_accounts: true, has_admin: true })),

@@ -4,6 +4,7 @@
 package users
 
 import (
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/base32"
@@ -78,27 +79,9 @@ func (s *Store) IssueRecoveryCodes(username string, dek []byte) ([]string, error
 		return nil, ErrNoSuchUser
 	}
 
-	plain := make([]string, RecoveryCodeCount)
-	hashes := make([]string, RecoveryCodeCount)
-	wraps := make([]string, RecoveryCodeCount)
-	for i := 0; i < RecoveryCodeCount; i++ {
-		code, err := generateCode()
-		if err != nil {
-			return nil, err
-		}
-		hash, err := auth.HashPassword(canonicalise(code))
-		if err != nil {
-			return nil, err
-		}
-		plain[i] = code
-		hashes[i] = hash
-		if dek != nil {
-			wrap, err := crypto.WrapKey(dek, canonicalise(code))
-			if err != nil {
-				return nil, err
-			}
-			wraps[i] = wrap
-		}
+	set, err := newRecoveryCodeSet(dek)
+	if err != nil {
+		return nil, err
 	}
 
 	// Not tested: this Begin's own error is not independently forceable.
@@ -112,17 +95,8 @@ func (s *Store) IssueRecoveryCodes(username string, dek []byte) ([]string, error
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if _, err := tx.Exec(`DELETE FROM recovery_codes WHERE username = ?`, username); err != nil {
+	if err := replaceRecoveryCodes(context.Background(), tx, username, set); err != nil {
 		return nil, err
-	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
-	for i, h := range hashes {
-		if _, err := tx.Exec(
-			`INSERT INTO recovery_codes (username, code_hash, wrapped_dek, created_at) VALUES (?, ?, ?, ?)`,
-			username, h, wraps[i], now,
-		); err != nil {
-			return nil, err
-		}
 	}
 	// Not tested: no portable way to force a COMMIT failure against
 	// SQLite short of a deferred-constraint or disk-level fault this
@@ -131,7 +105,61 @@ func (s *Store) IssueRecoveryCodes(username string, dek []byte) ([]string, error
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	return plain, nil
+	return set.plain, nil
+}
+
+// recoveryCodeSet is a freshly generated set of codes: the plaintext shown
+// to the user once, and the hashes and DEK wraps that are stored.
+type recoveryCodeSet struct {
+	plain, hashes, wraps []string
+}
+
+// newRecoveryCodeSet generates RecoveryCodeCount codes. With a nil dek the
+// codes carry no DEK wrap (legacy codes; see HasLegacyRecoveryCodeWraps).
+func newRecoveryCodeSet(dek []byte) (recoveryCodeSet, error) {
+	set := recoveryCodeSet{
+		plain:  make([]string, RecoveryCodeCount),
+		hashes: make([]string, RecoveryCodeCount),
+		wraps:  make([]string, RecoveryCodeCount),
+	}
+	for i := 0; i < RecoveryCodeCount; i++ {
+		code, err := generateCode()
+		if err != nil {
+			return recoveryCodeSet{}, err
+		}
+		hash, err := auth.HashPassword(canonicalise(code))
+		if err != nil {
+			return recoveryCodeSet{}, err
+		}
+		set.plain[i] = code
+		set.hashes[i] = hash
+		if dek != nil {
+			wrap, err := crypto.WrapKey(dek, canonicalise(code))
+			if err != nil {
+				return recoveryCodeSet{}, err
+			}
+			set.wraps[i] = wrap
+		}
+	}
+	return set, nil
+}
+
+// replaceRecoveryCodes deletes username's codes and stores set through q,
+// which the caller runs inside a transaction.
+func replaceRecoveryCodes(ctx context.Context, q accountWriter, username string, set recoveryCodeSet) error {
+	if _, err := q.ExecContext(ctx, `DELETE FROM recovery_codes WHERE username = ?`, username); err != nil {
+		return err
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	for i, h := range set.hashes {
+		if _, err := q.ExecContext(ctx,
+			`INSERT INTO recovery_codes (username, code_hash, wrapped_dek, created_at) VALUES (?, ?, ?, ?)`,
+			username, h, set.wraps[i], now,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ResetWithRecoveryCode verifies the recovery code, marks it used,

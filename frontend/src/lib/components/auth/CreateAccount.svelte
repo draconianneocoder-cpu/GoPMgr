@@ -81,7 +81,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       session.user = acc;
       // Issue and show recovery codes before entering the app. A failure here
       // is non-fatal — the account exists and is signed in — so surface it and
-      // let the user continue and generate codes later from Project Settings.
+      // let the user continue and create codes in App Settings, under Account.
       try {
         codes = (await window.go.main.App.IssueRecoveryCodes()) ?? [];
       } catch (err: any) {
@@ -280,8 +280,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="bg-amber-950/40 border border-amber-700/50 rounded-lg p-3 text-xs text-amber-300 space-y-1" role="alert">
         <p class="font-semibold">Recovery codes could not be generated</p>
         <p class="text-amber-400/80">
-          Your account was created and you're signed in. You can generate recovery codes
-          later from Project Settings. ({codesError})
+          Your account was created and you're signed in. Create your recovery codes in
+          App Settings, under Account. ({codesError})
         </p>
       </div>
       <button

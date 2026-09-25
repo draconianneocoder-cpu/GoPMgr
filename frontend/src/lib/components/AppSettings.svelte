@@ -9,6 +9,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onDestroy, onMount } from 'svelte';
   import AppHeader from './AppHeader.svelte';
   import ChangePasswordForm from './auth/ChangePasswordForm.svelte';
+  import RecoveryCodesPanel from './auth/RecoveryCodesPanel.svelte';
   import { applyTheme, rememberTheme, type AppTheme } from '../theme';
   import { autosave } from '../autosave.svelte';
   import { session } from '../session.svelte';
@@ -426,6 +427,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <section class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-3" aria-labelledby="account-heading">
           <h2 id="account-heading" class="text-xs font-bold uppercase tracking-widest text-cyan-400">Account</h2>
           <ChangePasswordForm />
+          <div class="border-t border-slate-800 pt-3">
+            <RecoveryCodesPanel />
+          </div>
         </section>
 
         {#if !hasAdmin && !session.user?.is_admin}
