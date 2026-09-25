@@ -92,6 +92,23 @@ describe('Login', () => {
     expect(app.Login).toHaveBeenCalledTimes(1);
   });
 
+  it('tells a disabled account why it cannot sign in, and keeps every other failure generic', async () => {
+    const app = installApp({
+      Login: vi.fn()
+        .mockRejectedValueOnce(new Error('this account is disabled; ask your administrator to enable it'))
+        .mockRejectedValueOnce(new Error('users: update last_login: database is locked')),
+    });
+    const utils = render(Login);
+    await fillCredentials(utils);
+    await fireEvent.submit(utils.container.querySelector('form')!);
+    expect(await utils.findByRole('alert')).toHaveTextContent('This account is disabled. Ask your administrator to enable it.');
+
+    await fireEvent.submit(utils.container.querySelector('form')!);
+    await waitFor(() => expect(app.Login).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(utils.getByRole('alert')).toHaveTextContent('Invalid username or password.'));
+    expect(session.user).toBeNull();
+  });
+
   it('fails open to account creation only after the setup check fails', async () => {
     const setupCheck = deferred<{ has_accounts: boolean; has_admin: boolean }>();
     const app = installApp({ AccountSetup: vi.fn(() => setupCheck.promise) });

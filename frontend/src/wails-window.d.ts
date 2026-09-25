@@ -36,7 +36,9 @@ declare global {
           ) => Promise<Account>;
           BecomeAdmin: () => Promise<void>;
           AdminListUsers: () => Promise<Account[]>;
-          AdminDeleteUser: (username: string) => Promise<void>;
+          AdminSetUserDisabled: (username: string, disabled: boolean) => Promise<void>;
+          AdminPurgeUser: (username: string, confirmation: string) => Promise<void>;
+          AdminListAccountEvents: () => Promise<AccountEvent[]>;
           AdminSetUserRole: (username: string, isAdmin: boolean) => Promise<void>;
           AdminIssueRecoveryCodes: (username: string, password: string) => Promise<string[]>;
           Login: (username: string, password: string) => Promise<Account>;
@@ -498,6 +500,17 @@ declare global {
     created_at: string;
     last_login: string;
     is_admin: boolean;
+    disabled: boolean;
+  }
+
+  // One entry in the account history (users.AccountEvent).
+  interface AccountEvent {
+    id: number;
+    occurred_at: string;
+    actor: string;
+    username: string;
+    action: 'disabled' | 'enabled' | 'purged' | 'folder_not_removed';
+    detail: string;
   }
 
   // First-run state for the sign-in screen (AccountSetupWire).

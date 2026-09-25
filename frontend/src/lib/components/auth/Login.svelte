@@ -46,9 +46,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const acc = await window.go.main.App.Login(username, password);
       session.user = acc;
       goto('portfolio');
-    } catch (err) {
-      // Generic message — never reveal whether username or password was wrong.
-      error = 'Invalid username or password.';
+    } catch (err: any) {
+      // Generic message — never reveal whether username or password was
+      // wrong. The disabled message is only sent after the password
+      // matched, so it reveals nothing to someone who does not know it.
+      error = String(err?.message ?? err).includes('account is disabled')
+        ? 'This account is disabled. Ask your administrator to enable it.'
+        : 'Invalid username or password.';
     } finally {
       busy = false;
     }

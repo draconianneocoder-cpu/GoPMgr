@@ -41,11 +41,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">"A folder for this username is left over"</h3>
             <p class="text-sm text-slate-300">
-              Deleting an account does not delete its folder in GoPMgr's data folder, and a new
-              account never takes over an existing folder, because it may hold another person's
-              projects and certificates. Choose another username, or ask whoever manages this
-              computer to move the old folder somewhere safe first. The error shows where the data
-              folder is.
+              A folder with that name is already in GoPMgr's data folder: left by an account deleted
+              in an earlier GoPMgr version, or by a permanent deletion that could not remove
+              everything (Account history in the Admin panel shows this). A new account never takes
+              over an existing folder, because it may hold another person's projects and
+              certificates. Choose another username, or ask whoever manages this computer to move
+              the old folder somewhere safe first. The error shows where the data folder is.
             </p>
           </section>
 

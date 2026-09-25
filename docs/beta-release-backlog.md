@@ -126,34 +126,58 @@ That result took six live-GUI cycles to reach because the first five, all run un
   aside.
 - Account and recovery follow-ups, adopted 2026-09-24 from a review of the
   account flows (planned, highest risk first):
-  - Account deletion is a data decision. Deleting an account removes the
-    only wraps of its encryption key, so its encrypted projects become
-    unreadable, and its folder stays on disk. Owner decision, 2026-09-24:
-    offer two choices and record which one ran. **Disable** keeps the
-    account, its key wraps, and its folder, and blocks sign-in; it can be
-    undone. **Purge** requires typing the username, then deletes the account
-    and its folder. Moving the folder aside while deleting the account was
-    rejected: an archive cannot keep encrypted projects readable once the
-    key is gone.
-    Done 2026-09-24: a new account never takes over an existing folder.
+  - Done 2026-09-24: account deletion is a data decision. Deleting an
+    account removed the only wraps of its encryption key, so its encrypted
+    projects became unreadable, and left its folder on disk. Owner decision,
+    2026-09-24: offer two choices and record which one ran. The Admin panel
+    now offers **Disable** (keeps the account, its key wraps, and its
+    folder, blocks sign-in, can be undone) and **Delete permanently**
+    (`Store.PurgeAccount`, after the username is typed exactly: the account,
+    its recovery codes, and its folder). Moving the folder aside while
+    deleting the account was rejected, because an archive cannot keep
+    encrypted projects readable once the key is gone. Each action is written
+    to `account_events` with the change, and the Admin panel shows the
+    history. Last-administrator guards (including `SetAdmin`'s) now count
+    only administrators who can sign in, inside the same transaction. An
+    account named `logs` cannot be purged (its folder is the app's logs);
+    disable it instead. Disable and Purge read the acting administrator's
+    role inside the transaction, and Purge is refused when another account's
+    name differs only in case (pairs from before 2026-06-20 may share a
+    folder). Evidence: `account_status_test.go`, `admin_test.go`,
+    `user_isolation_test.go`, `AdminPanel.test.ts`, and `Login.test.ts` rows
+    in `TEST_COVERAGE_LEDGER.md`. Not covered: Windows, where `RemoveAll`
+    fails on files another process has open; no check in the native app
+    window; and a crash between the purge commit and the folder removal,
+    which records "purged" with no `folder_not_removed` event and leaves the
+    folder (its name stays blocked until someone removes it).
+  - Done 2026-09-24: a new account never takes over an existing folder.
     `createUserFolder` uses an exclusive `os.Mkdir` and refuses anything at
     the path (folder, file, symlink, or a case variant on APFS/NTFS); failed
     inserts and commits remove the empty folders they made; `logs` is
     reserved. Evidence: `create_account_rule_test.go` and
-    `user_isolation_test.go` rows in `TEST_COVERAGE_LEDGER.md`. Until the
-    deletion choices exist, recreating a deleted account's name is refused
-    and someone must move the old folder by hand. An existing account named
+    `user_isolation_test.go` rows in `TEST_COVERAGE_LEDGER.md`. A folder
+    left by an older version's delete or an incomplete permanent deletion
+    still blocks its name until someone moves it by hand. An existing account named
     `logs` keeps the log folder as its home. If the app dies between making
     the folder and committing the account, the empty folder blocks that
     username until someone removes it.
   - Windows device names (`CON`, `NUL`, `AUX`, `PRN`, `COM1`–`COM9`,
     `LPT1`–`LPT9`) pass `ValidateUsername` but cannot be folder names on
     Windows. Add them to `reservedFolderNames` when Windows is tested.
-  - Admin-created accounts must not leave the administrator able to read the
-    user's data (see `SECURITY.md`, Local Accounts). Require a new password
-    and freshly issued recovery codes at the user's first sign-in, which
-    depends on change password below. `AdminIssueRecoveryCodes` also leaves
-    the user's key in memory without zeroing it.
+  - In-app administrator access to another user's data, recorded (owner
+    decision, 2026-09-24, replacing the same day's rule that administrators
+    must not read users' data). An administrator opens another user's
+    projects from the app, and each access records who, which account,
+    when, and the stated reason in `account_events`. Needs an ADR before
+    code: the administrator must hold a copy of each user's encryption key,
+    which changes ADR-001. The ADR must settle how that copy is protected,
+    what happens when administrators are added, removed, or change their
+    password, how existing accounts get a copy, and what the audit record
+    can and cannot prove given that `system.db` is plaintext.
+  - Record account creation and role changes in `account_events` too,
+    alongside the administrator-access record above.
+  - `AdminIssueRecoveryCodes` leaves the user's key in memory without
+    zeroing it.
   - Change password while signed in, rewrapping the same encryption key.
   - An Account security card in App Settings: remaining recovery codes
     (`RemainingRecoveryCodes` has no caller), a warning at 0 or 1, and code

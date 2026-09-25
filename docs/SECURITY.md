@@ -19,8 +19,9 @@ for a legitimate local user.
 - Per-user directories under the GoPMgr application data root are created with
   restrictive POSIX permissions where supported. A new account's folder is
   created with an exclusive `os.Mkdir`: if anything already exists at that
-  path, such as the folder of a deleted account (in any letter case on a
-  case-insensitive filesystem), creation is refused instead of handing the
+  path, such as a folder left by an account deleted before permanent
+  deletion existed or by a deletion that could not finish (in any letter
+  case on a case-insensitive filesystem), creation is refused instead of handing the
   old projects, certificates, and exports to the new account. `logs` is
   reserved for GoPMgr's own log folder.
 - `system.db` file permissions are tightened to owner-only access where
@@ -31,14 +32,31 @@ for a legitimate local user.
   caller's role from `system.db`. Accounts from releases before this rule
   may have no administrator; one of them claims the role with
   `BecomeAdmin`, and until then nobody can add accounts.
-- Administrators must not be able to read another user's data without an
-  audit record that states a legitimate reason (owner decision,
-  2026-09-24). **Not yet met:** an administrator who creates an account
-  sets its password and receives its recovery codes, and either one unlocks
-  that user's encryption key. The fix is tracked in
-  `docs/beta-release-backlog.md` (admin-created accounts). A sanctioned,
-  audited access path would need the administrator to hold a copy of each
-  user's key, which changes ADR-001 and needs its own decision.
+- Administrators take an account out of use by disabling it (sign-in
+  refused after the password matches; projects, key wraps, and recovery
+  codes kept) or by permanently deleting it (`Store.PurgeAccount`: the
+  account row, its recovery codes, and its folder, after the username is
+  typed). Both read the acting administrator's role inside the transaction,
+  so a session demoted or disabled by another GoPMgr process cannot still
+  act. Purge is refused when another account's name differs only in letter
+  case (such pairs predate the case-insensitive duplicate check of
+  2026-06-20 and may share one folder). Last-administrator guards count
+  only administrators who can sign in. Each disable, enable, and deletion is written to `account_events` in
+  `system.db` in the same transaction as the change. Limits: the history is
+  plaintext and anyone who can write `system.db` can change it (triggers
+  only stop the app); a recovery-code reset still works on a disabled
+  account but does not sign it in; a disabled user or demoted administrator
+  already signed in through another GoPMgr process keeps working until they
+  sign out; and the unauthenticated `ListUsers` method now also exposes
+  each account's disabled flag.
+- Administrators may read another user's data, and each access must be
+  recorded with who read which account, when, and why (owner decision,
+  2026-09-24, replacing the same day's rule that they must not). **Planned,
+  not built:** an in-app way to do this, which needs the administrator to
+  hold a copy of each user's encryption key and so changes ADR-001; see
+  `docs/beta-release-backlog.md`. Until then, an administrator can read only
+  accounts they created, using the initial password or recovery codes they
+  were given, outside the app, and nothing records it.
 - Every IPC method that opens, mutates, or archives a project by a
   frontend-supplied path (`OpenProject`, `DeleteProject`, `CloneProject`,
   `EncryptProjectAtRest`, `SecureArchive`, etc.) is confined to the

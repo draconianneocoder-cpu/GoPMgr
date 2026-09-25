@@ -127,16 +127,16 @@ func TestBecomeAdmin_ErrorsWhenAdminAlreadyExists(t *testing.T) {
 	}
 }
 
-func TestAdminDeleteUser_CannotDeleteSelf(t *testing.T) {
+func TestAdminPurgeUser_CannotDeleteSelf(t *testing.T) {
 	app := newAdminTestApp(t)
 	if _, err := app.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 	signIn(t, app, "alice")
 
-	err := app.AdminDeleteUser("alice")
+	err := app.AdminPurgeUser("alice", "alice")
 	if err == nil {
-		t.Fatal("AdminDeleteUser self: got nil, want error")
+		t.Fatal("AdminPurgeUser self: got nil, want error")
 	}
 }
 
@@ -153,7 +153,7 @@ func TestAdminSetUserRole_CannotChangeSelf(t *testing.T) {
 	}
 }
 
-func TestAdminDeleteUser_RejectsNonAdmin(t *testing.T) {
+func TestAdminPurgeUser_RejectsNonAdmin(t *testing.T) {
 	app := newAdminTestApp(t)
 	if _, err := app.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount admin: %v", err)
@@ -163,8 +163,8 @@ func TestAdminDeleteUser_RejectsNonAdmin(t *testing.T) {
 	}
 	signIn(t, app, "bob")
 
-	if err := app.AdminDeleteUser("alice"); err == nil {
-		t.Fatal("AdminDeleteUser as non-admin: got nil, want error")
+	if err := app.AdminPurgeUser("alice", "alice"); err == nil {
+		t.Fatal("AdminPurgeUser as non-admin: got nil, want error")
 	}
 }
 
@@ -235,5 +235,91 @@ func TestAccountSetupReportsFirstRunState(t *testing.T) {
 				t.Fatalf("AccountSetup = %+v, want %+v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestAdminPurgeUser_RequiresTheExactUsername(t *testing.T) {
+	app := newAdminTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
+		t.Fatalf("CreateAccount alice: %v", err)
+	}
+	if _, err := app.CreateAccount("bob", "Bob", "passphrase-long", false); err != nil {
+		t.Fatalf("CreateAccount bob: %v", err)
+	}
+	for _, typed := range []string{"", "Bob", "bob ", "alice"} {
+		if err := app.AdminPurgeUser("bob", typed); err == nil {
+			t.Fatalf("AdminPurgeUser(bob) confirmed with %q: got nil, want error", typed)
+		}
+	}
+	events, err := app.AdminListAccountEvents()
+	if err != nil {
+		t.Fatalf("AdminListAccountEvents: %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("events after refused purges = %+v, want none", events)
+	}
+	if err := app.AdminPurgeUser("bob", "bob"); err != nil {
+		t.Fatalf("AdminPurgeUser with the exact name: %v", err)
+	}
+	events, err = app.AdminListAccountEvents()
+	if err != nil || len(events) != 1 || events[0].Action != users.AccountPurged || events[0].Actor != "alice" {
+		t.Fatalf("events after purge = %+v, %v; want one purge by alice", events, err)
+	}
+}
+
+func TestAdminSetUserDisabled_BlocksAndRestoresSignIn(t *testing.T) {
+	app := newAdminTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
+		t.Fatalf("CreateAccount alice: %v", err)
+	}
+	if _, err := app.CreateAccount("bob", "Bob", "passphrase-long", false); err != nil {
+		t.Fatalf("CreateAccount bob: %v", err)
+	}
+	// With bob an administrator too, only the self-check can refuse this;
+	// the last-administrator guard would not.
+	if err := app.AdminSetUserRole("bob", true); err != nil {
+		t.Fatalf("promote bob: %v", err)
+	}
+	if err := app.AdminSetUserDisabled("alice", true); err == nil {
+		t.Fatal("AdminSetUserDisabled self: got nil, want error")
+	}
+	if err := app.AdminSetUserRole("bob", false); err != nil {
+		t.Fatalf("demote bob: %v", err)
+	}
+	if err := app.AdminSetUserDisabled("bob", true); err != nil {
+		t.Fatalf("disable bob: %v", err)
+	}
+	if err := app.Logout(); err != nil {
+		t.Fatalf("Logout: %v", err)
+	}
+
+	_, err := app.Login("bob", "passphrase-long")
+	if err == nil || err.Error() != "this account is disabled; ask your administrator to enable it" {
+		t.Fatalf("Login disabled bob: err = %v, want the disabled message", err)
+	}
+	if _, err := app.Login("bob", "wrong-password"); err == nil || err.Error() != "invalid credentials" {
+		t.Fatalf("Login disabled bob with a wrong password: err = %v, want invalid credentials", err)
+	}
+	if u := app.requireUser(); u != nil {
+		t.Fatalf("session after refused sign-in = %+v, want none", u)
+	}
+	if err := app.AdminSetUserDisabled("alice", false); err == nil {
+		t.Fatal("AdminSetUserDisabled with no session: got nil, want error")
+	}
+
+	if _, err := app.Login("alice", "passphrase-long"); err != nil {
+		t.Fatalf("Login alice: %v", err)
+	}
+	if err := app.AdminSetUserDisabled("bob", false); err != nil {
+		t.Fatalf("enable bob: %v", err)
+	}
+	if err := app.Logout(); err != nil {
+		t.Fatalf("Logout: %v", err)
+	}
+	if _, err := app.Login("bob", "passphrase-long"); err != nil {
+		t.Fatalf("Login bob after enabling: %v", err)
+	}
+	if _, err := app.AdminListAccountEvents(); err == nil {
+		t.Fatal("AdminListAccountEvents as a standard user: got nil, want error")
 	}
 }

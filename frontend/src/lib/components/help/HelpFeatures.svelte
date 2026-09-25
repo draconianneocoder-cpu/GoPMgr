@@ -64,7 +64,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Creating Projects</h3>
             <p class="text-sm text-slate-300">Click "New Project" (top right) to launch the
               <Button variant="link" onclick={() => nav('getting-started')}>Project Launchpad</Button>.
-              Projects cannot be deleted from the Portfolio. Project files remain on disk; data directories are never removed by the application.
+              Projects cannot be deleted from the Portfolio. A user's data folder is removed only when an administrator permanently deletes the account.
             </p>
           </section>
 
@@ -660,18 +660,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Role Management</h3>
             <ul class="text-sm text-slate-300 space-y-1 ml-3">
               <li>Click "Grant admin" / "Remove admin" next to a user to change their role. A confirmation step prevents accidental changes.</li>
-              <li>The system enforces at least one administrator at all times — demoting the last admin is blocked.</li>
+              <li>The system keeps at least one administrator who can sign in — demoting the last one is blocked.</li>
               <li>Administrators cannot change their own role from the Admin Panel.</li>
             </ul>
           </section>
 
           <section>
-            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Deleting Accounts</h3>
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Disabling and Deleting Accounts</h3>
             <ul class="text-sm text-slate-300 space-y-1 ml-3">
-              <li>Click "Delete" then "Confirm" to permanently remove an account from the system database.</li>
-              <li>The user's data directory (projects, exports, certificates) is <span class="font-medium text-slate-100">not deleted</span> — project files remain on disk.</li>
-              <li>Deleting the last admin account is blocked.</li>
-              <li>Admins cannot delete their own account.</li>
+              <li><span class="font-medium text-slate-100">Disable</span> stops the person signing in and keeps everything: their projects, encryption key, and recovery codes. "Enable" lets them sign in again.</li>
+              <li><span class="font-medium text-slate-100">Delete permanently</span> removes the account and its folder: all of that user's projects (including encrypted ones), certificates, exports, and recovery codes. Type the username to confirm. It cannot be undone, so disable the account instead if the data might be needed.</li>
+              <li>Every disable, enable, and deletion appears under Account history, with who did it and when.</li>
+              <li>You cannot disable or delete the last administrator who can sign in, or your own account.</li>
             </ul>
           </section>
 
