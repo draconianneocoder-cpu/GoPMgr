@@ -66,7 +66,7 @@ const checks = [
   ],
   [
     'settings renews legacy recovery codes through the two-step panel',
-    component.includes('<RecoveryCodesPanel onrenewed=') &&
+    /<RecoveryCodesPanel\s[^>]*onrenewed=/.test(component) &&
       !component.includes('IssueRecoveryCodes()'),
   ],
   [
