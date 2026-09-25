@@ -168,9 +168,10 @@ That result took six live-GUI cycles to reach because the first five, all run un
     decision, 2026-09-24, replacing the same day's rule that administrators
     must not read users' data). An administrator opens another user's
     projects from the app, and each access records who, which account,
-    when, and the stated reason in `account_events`. Design proposed in
-    [ADR-004](design/ADR-004-administrator-access-to-user-data.md); it needs
-    the owner decisions listed at its end before any code.
+    when, and the stated reason in `account_events`. Design accepted
+    2026-09-25 in [ADR-004](design/ADR-004-administrator-access-to-user-data.md)
+    (read-only, projects only, user told, escrow rotated on demotion); build
+    it in the ADR's three phases.
   - Record account creation and role changes in `account_events` too,
     alongside the administrator-access record above.
   - `AdminIssueRecoveryCodes` leaves the user's key in memory without

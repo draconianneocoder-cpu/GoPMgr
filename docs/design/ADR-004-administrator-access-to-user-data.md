@@ -5,7 +5,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-004: Administrator access to users' data
 
-**Status:** Proposed. Needs the owner decisions at the end before any code.
+**Status:** Accepted, not yet implemented. The owner accepted every
+recommendation under Owner decisions on 2026-09-25.
 **Decision date:** 2026-09-25 (owner requirement: 2026-09-24)
 
 ## Context
@@ -235,7 +236,12 @@ administrators, re-attest personal keys, retire the old escrow key, and record
 - Two GoPMgr processes enrolling and granting at the same time; fault seeds
   for every check above.
 
-## Owner decisions needed
+## Owner decisions
+
+Accepted as recommended, 2026-09-25: read-only access through a temporary
+copy, the user is told at their next sign-in, the escrow key is rotated when
+someone stops being an administrator, access covers projects only, and the
+trust-on-first-use window and wider exposure below are accepted.
 
 1. **Read-only or read-write access?** Recommended: read-only. Cost: opening a
    project normally migrates an older schema in place, so read-only access

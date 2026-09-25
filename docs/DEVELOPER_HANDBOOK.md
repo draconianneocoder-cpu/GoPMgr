@@ -1662,7 +1662,7 @@ proposals. Current ADRs:
 - `docs/design/ADR-001-database-encryption-at-rest.md`
 - `docs/design/ADR-002-duckdb-vs-sqlcipher-evaluation.md`
 - `docs/design/ADR-003-gofpdf-to-go-pdf-fpdf-migration.md`
-- `docs/design/ADR-004-administrator-access-to-user-data.md` (proposed)
+- `docs/design/ADR-004-administrator-access-to-user-data.md` (accepted, not yet implemented)
 
 Update `ARCHITECTURE.md` or add/update an ADR when a change alters a
 durable architectural contract, including:
