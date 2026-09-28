@@ -41,6 +41,11 @@ describe('RecoveryCodesGate', () => {
     expect(app.AcceptEncryptionWithoutRecoveryCodes).toHaveBeenCalledOnce();
   });
 
+  it('moves focus to its heading when it opens', () => {
+    const utils = render(RecoveryCodesGate, { props: { variant: 'none', onready: vi.fn(), oncancel: vi.fn() } });
+    expect(document.activeElement).toBe(utils.getByRole('heading', { name: /save a way back in/i }));
+  });
+
   it('offers no way to skip legacy codes', () => {
     const utils = render(RecoveryCodesGate, { props: { variant: 'legacy', onready: vi.fn(), oncancel: vi.fn() } });
     expect(utils.getByRole('region', { name: /save a way back in/i })).toHaveTextContent(/from an older version of GoPMgr/);

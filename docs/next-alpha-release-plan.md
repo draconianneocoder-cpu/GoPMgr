@@ -55,6 +55,11 @@ make check-release
 GOPMGR_RELEASE_TAG=v<version-of-record>-alpha.<sequence> make tag-preflight
 ```
 
+Do not tag while ADR-004 phase 1 (administrator key escrow) is merged and
+phase 2 (recorded access) is not: phase 1 alone lets any administrator's
+password unlock every enrolled user's data with nothing recorded. See
+[ADR-004](design/ADR-004-administrator-access-to-user-data.md).
+
 Before the tag, also require:
 
 - an adversarial review of the complete candidate diff and release claims;

@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
+  import { onMount } from 'svelte';
   import RecoveryCodesPanel from './RecoveryCodesPanel.svelte';
   import type { RecoveryGate } from '../../recovery-gate';
 
@@ -17,6 +18,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }: { variant: RecoveryGate; onready: () => void; oncancel: () => void } = $props();
 
   let understood = $state(false);
+  // The gate appears below the button that opened it, so move focus to its
+  // heading for keyboard and screen-reader users.
+  let heading = $state<HTMLHeadingElement>();
+  onMount(() => heading?.focus());
   let busy = $state(false);
   let error = $state('');
 
@@ -39,7 +44,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   class="border border-amber-700/50 bg-amber-950/20 rounded-lg p-4 space-y-3"
   aria-labelledby="recovery-gate-heading"
 >
-  <h3 id="recovery-gate-heading" class="text-sm font-semibold text-amber-200">Before you continue: save a way back in</h3>
+  <h3 id="recovery-gate-heading" bind:this={heading} tabindex="-1" class="text-sm font-semibold text-amber-200 outline-none">Before you continue: save a way back in</h3>
   {#if variant === 'legacy'}
     <p class="text-xs text-slate-300">
       Your recovery codes are from an older version of GoPMgr and can't recover encrypted projects.

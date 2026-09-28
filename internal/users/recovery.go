@@ -237,9 +237,11 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 	// ADR-001: recover the DEK so encrypted projects survive the
 	// reset. A code issued with a DEK wrap re-wraps the SAME DEK
 	// under the new password. A legacy code (no wrap) generates a
-	// FRESH DEK — only safe while the user has no encrypted data,
-	// which is guaranteed because enabling encryption forces a code
-	// re-issue (ADR-001 migration step).
+	// FRESH DEK — only safe while the user has no encrypted data. The
+	// app refuses to create or encrypt a project while any unused code
+	// is legacy (encryptionReadiness, 2026-09-28; conversion only before
+	// that), but projects created earlier with legacy codes in hand can
+	// exist, and this reset makes them unreadable.
 	var dek []byte
 	if matchWrap != "" {
 		dek, err = crypto.UnwrapKey(matchWrap, canon)

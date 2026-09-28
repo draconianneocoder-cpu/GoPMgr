@@ -230,7 +230,10 @@ That result took six live-GUI cycles to reach because the first five, all run un
   - Recovery for home and small-business users, owner decision 2026-09-28
     to combine the options as follows:
     1. guide instead of block, and 2. informed opt-out: done above;
-    4. a reminder at sign-in when one or no codes are left: next;
+    4. a reminder at sign-in when one or no codes are left, or when any
+       code is legacy: next. Projects created before 2026-09-28 while
+       holding legacy codes exist; a reset with a legacy code replaces the
+       key and makes them unreadable, and nothing but App Settings warns;
     3. a printable recovery sheet: after the blob-download check below;
     5. administrator recovery: through ADR-004 (phases 1 and 2 ship in one
        release);

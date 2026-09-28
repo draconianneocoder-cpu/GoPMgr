@@ -43,6 +43,17 @@ func encryptingPaths(t *testing.T, app *App) map[string]func() error {
 	}
 }
 
+// projectFolderEntries counts the entries directly in the signed-in user's
+// projects folder, so a refused create is seen to leave no project folder.
+func projectFolderEntries(t *testing.T, app *App) int {
+	t.Helper()
+	entries, err := os.ReadDir(filepath.Join(app.requireUser().DataDir, "projects"))
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("read projects folder: %v", err)
+	}
+	return len(entries)
+}
+
 // encryptedProjectCount counts encrypted project files in the signed-in user's projects folder.
 func encryptedProjectCount(t *testing.T, app *App) int {
 	t.Helper()
@@ -73,11 +84,17 @@ func TestEncryptingPathsRefuseWithoutRecoveryCodesOrAcceptance(t *testing.T) {
 			app := newReadinessApp(t)
 			run := encryptingPaths(t, app)[name]
 
+			before := projectFolderEntries(t, app)
 			if err := run(); !errors.Is(err, ErrRecoveryCodesMissing) {
 				t.Fatalf("%s with no codes: err = %v, want ErrRecoveryCodesMissing", name, err)
 			}
 			if n := encryptedProjectCount(t, app); n != 0 {
 				t.Fatalf("%s refused but left %d encrypted project(s)", name, n)
+			}
+			if name != "EncryptProjectAtRest" {
+				if after := projectFolderEntries(t, app); after != before {
+					t.Fatalf("%s refused but changed the projects folder: %d entries before, %d after", name, before, after)
+				}
 			}
 
 			if err := app.AcceptEncryptionWithoutRecoveryCodes(); err != nil {
