@@ -218,12 +218,33 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  const eventLabels: Record<string, string> = {
-    disabled: 'disabled',
-    enabled: 'enabled',
-    purged: 'permanently deleted',
-    folder_not_removed: 'could not fully remove the folder of',
-  };
+  // One sentence per history entry. An action this version does not know
+  // (written by a newer GoPMgr) falls back to its raw name.
+  function describeEvent(e: AccountEvent): string {
+    const self = e.actor === e.username;
+    switch (e.action) {
+      case 'created':
+        return self
+          ? `${e.username} created the first account (${e.detail})`
+          : `${e.actor} created ${e.username} (${e.detail})`;
+      case 'promoted':
+        return self
+          ? `${e.username} claimed the administrator role`
+          : `${e.actor} made ${e.username} an administrator`;
+      case 'demoted':
+        return `${e.actor} removed ${e.username}'s administrator role`;
+      case 'disabled':
+        return `${e.actor} disabled ${e.username}`;
+      case 'enabled':
+        return `${e.actor} enabled ${e.username}`;
+      case 'purged':
+        return `${e.actor} permanently deleted ${e.username}`;
+      case 'folder_not_removed':
+        return `${e.actor} could not fully remove the folder of ${e.username}`;
+      default:
+        return `${e.actor} ${e.action} ${e.username}`;
+    }
+  }
 
   function formatEventTime(value: string): string {
     const date = new Date(value);
@@ -502,14 +523,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
         {#if eventsError}
           <p class="text-xs text-red-400" role="alert">{eventsError}</p>
         {:else if events.length === 0}
-          <p class="text-xs text-slate-500">No accounts have been disabled, enabled, or deleted.</p>
+          <p class="text-xs text-slate-500">No account changes yet.</p>
         {:else}
           <ul class="text-xs text-slate-300 space-y-1">
             {#each events as event (event.id)}
               <li>
                 <span class="text-slate-500 font-mono">{formatEventTime(event.occurred_at)}</span>
-                — {event.actor} {eventLabels[event.action] ?? event.action} {event.username}
-                {#if event.detail}
+                — {describeEvent(event)}
+                {#if event.action === 'folder_not_removed' && event.detail}
                   <span class="block text-[11px] text-slate-500 font-mono break-all">{event.detail}</span>
                 {/if}
               </li>

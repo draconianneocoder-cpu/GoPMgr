@@ -257,15 +257,16 @@ func TestAdminPurgeUser_RequiresTheExactUsername(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AdminListAccountEvents: %v", err)
 	}
-	if len(events) != 0 {
-		t.Fatalf("events after refused purges = %+v, want none", events)
+	// Only the two account creations; the refused purges recorded nothing.
+	if len(events) != 2 || events[0].Action != users.AccountCreated || events[1].Action != users.AccountCreated {
+		t.Fatalf("events after refused purges = %+v, want only the two creations", events)
 	}
 	if err := app.AdminPurgeUser("bob", "bob"); err != nil {
 		t.Fatalf("AdminPurgeUser with the exact name: %v", err)
 	}
 	events, err = app.AdminListAccountEvents()
-	if err != nil || len(events) != 1 || events[0].Action != users.AccountPurged || events[0].Actor != "alice" {
-		t.Fatalf("events after purge = %+v, %v; want one purge by alice", events, err)
+	if err != nil || len(events) != 3 || events[0].Action != users.AccountPurged || events[0].Actor != "alice" {
+		t.Fatalf("events after purge = %+v, %v; want a purge by alice on top of the two creations", events, err)
 	}
 }
 

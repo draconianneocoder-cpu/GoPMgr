@@ -46,8 +46,13 @@ for a legitimate local user.
   act. Purge is refused when another account's name differs only in letter
   case (such pairs predate the case-insensitive duplicate check of
   2026-06-20 and may share one folder). Last-administrator guards count
-  only administrators who can sign in. Each disable, enable, and deletion is written to `account_events` in
-  `system.db` in the same transaction as the change. Limits: the history is
+  only administrators who can sign in. Each account creation (with its
+  role), promotion, demotion, disable, enable, and deletion is written to
+  `account_events` in `system.db` in the same transaction as the change,
+  naming the acting administrator, whose role is read inside that
+  transaction; claiming the role on an install with no administrator
+  (`Store.ClaimAdmin`) records the user as their own actor. Actions are
+  checked in Go before insert, since history rows cannot be corrected. Limits: the history is
   plaintext and anyone who can write `system.db` can change it (triggers
   only stop the app); a recovery-code reset still works on a disabled
   account but does not sign it in; a disabled user or demoted administrator

@@ -113,14 +113,11 @@ func (a *App) BecomeAdmin() error {
 	if caller == nil {
 		return errors.New("not signed in")
 	}
-	hasAdmin, err := a.store.HasAnyAdmin()
-	if err != nil {
-		return err
-	}
-	if hasAdmin {
+	err := a.store.ClaimAdmin(caller.Username)
+	if errors.Is(err, users.ErrAdminExists) {
 		return errors.New("an administrator already exists; ask them to grant you admin rights")
 	}
-	if err := a.store.SetAdmin(caller.Username, true); err != nil {
+	if err != nil {
 		return err
 	}
 	// Admin-only methods read the role from the session, so update it here
@@ -221,7 +218,11 @@ func (a *App) AdminSetUserRole(username string, isAdmin bool) error {
 	if strings.EqualFold(caller.Username, username) {
 		return errors.New("administrators cannot change their own role")
 	}
-	return a.store.SetAdmin(username, isAdmin)
+	err := a.store.SetAdmin(caller.Username, username, isAdmin)
+	if errors.Is(err, users.ErrNotAdmin) {
+		return errors.New("administrator privileges required")
+	}
+	return err
 }
 
 // AdminIssueRecoveryCodes issues one-time recovery codes for the named

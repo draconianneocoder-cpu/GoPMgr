@@ -134,14 +134,14 @@ func TestCreateAccountAsReadsCallerRoleFromStore(t *testing.T) {
 		t.Fatalf("create bob: %v", err)
 	}
 
-	if err := store.SetAdmin("bob", true); err != nil {
+	if err := store.SetAdmin("alice", "bob", true); err != nil {
 		t.Fatalf("promote bob: %v", err)
 	}
 	if _, err := store.CreateAccountAs("bob", "carol", "Carol", rulePassword, false); err != nil {
 		t.Fatalf("promoted caller refused: %v", err)
 	}
 
-	if err := store.SetAdmin("bob", false); err != nil {
+	if err := store.SetAdmin("alice", "bob", false); err != nil {
 		t.Fatalf("demote bob: %v", err)
 	}
 	if _, err := store.CreateAccountAs("bob", "dave", "Dave", rulePassword, false); !errors.Is(err, ErrNotAdmin) {
@@ -190,6 +190,9 @@ func TestCreateAccountAsConcurrentFirstAccounts(t *testing.T) {
 		if !isAdmin {
 			t.Fatalf("sole account %q is not an administrator", name)
 		}
+	}
+	if events, err := store.AccountEvents(); err != nil || len(events) != 1 || events[0].Action != AccountCreated {
+		t.Fatalf("history after racing first accounts = %+v, %v; want exactly one creation", events, err)
 	}
 }
 

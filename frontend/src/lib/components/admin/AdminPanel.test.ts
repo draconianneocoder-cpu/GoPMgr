@@ -135,6 +135,28 @@ describe('AdminPanel account removal', () => {
 });
 
 describe('AdminPanel account history', () => {
+  it('describes creations and role changes, and falls back for an unknown action', async () => {
+    app.AdminListAccountEvents.mockResolvedValue([
+      { id: 7, occurred_at: '2026-09-28T10:06:00Z', actor: 'alice', username: 'bob', action: 'renamed', detail: '' },
+      { id: 6, occurred_at: '2026-09-28T10:05:00Z', actor: 'alice', username: 'bob', action: 'demoted', detail: '' },
+      { id: 5, occurred_at: '2026-09-28T10:04:00Z', actor: 'alice', username: 'bob', action: 'promoted', detail: '' },
+      { id: 4, occurred_at: '2026-09-28T10:03:00Z', actor: 'dave', username: 'dave', action: 'promoted', detail: 'claimed with no administrator on the machine' },
+      { id: 3, occurred_at: '2026-09-28T10:02:00Z', actor: 'alice', username: 'bob', action: 'created', detail: 'standard' },
+      { id: 1, occurred_at: '2026-09-28T10:00:00Z', actor: 'alice', username: 'alice', action: 'created', detail: 'administrator' },
+    ]);
+    const utils = render(AdminPanel);
+    const history = await utils.findByRole('region', { name: 'Account history' });
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(6));
+    const items = within(history).getAllByRole('listitem').map((li) => li.textContent?.replace(/\s+/g, ' ').trim());
+    expect(items[0]).toContain('alice renamed bob');
+    expect(items[1]).toContain("alice removed bob's administrator role");
+    expect(items[2]).toContain('alice made bob an administrator');
+    expect(items[3]).toContain('dave claimed the administrator role');
+    expect(items[3]).not.toContain('claimed with no administrator on the machine');
+    expect(items[4]).toContain('alice created bob (standard)');
+    expect(items[5]).toContain('alice created the first account (administrator)');
+  });
+
   it('lists disable, enable, delete, and incomplete-deletion events', async () => {
     app.AdminListAccountEvents.mockResolvedValue([
       { id: 4, occurred_at: '2026-09-24T10:03:00Z', actor: 'alice', username: 'carol', action: 'folder_not_removed', detail: '/tmp/gopmgr/carol: permission denied' },
@@ -156,7 +178,7 @@ describe('AdminPanel account history', () => {
 
   it('says when there is no history, and reports a failed load', async () => {
     const utils = render(AdminPanel);
-    expect(await utils.findByText('No accounts have been disabled, enabled, or deleted.')).toBeInTheDocument();
+    expect(await utils.findByText('No account changes yet.')).toBeInTheDocument();
     cleanup();
 
     app.AdminListAccountEvents.mockRejectedValue(new Error('system database unavailable'));
