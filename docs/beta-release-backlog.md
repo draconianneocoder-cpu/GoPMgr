@@ -172,8 +172,17 @@ That result took six live-GUI cycles to reach because the first five, all run un
     2026-09-25 in [ADR-004](design/ADR-004-administrator-access-to-user-data.md)
     (read-only, projects only, user told, escrow rotated on demotion); build
     it in the ADR's three phases.
-  - Record account creation and role changes in `account_events` too,
-    alongside the administrator-access record above.
+  - Done 2026-09-28: account creation (with its role) and role changes are
+    recorded in `account_events`, in the same transaction as the change.
+    `SetAdmin` now takes the acting administrator and checks it inside the
+    transaction; `BecomeAdmin` uses `Store.ClaimAdmin`, which checks for an
+    administrator and promotes in one transaction (two accounts could both
+    claim the role before). The table's `CHECK` on action was removed, with
+    a one-time rebuild for development databases that already had it, and
+    actions are checked in Go, so ADR-004's actions need no migration.
+    Evidence: `account_history_test.go` and `AdminPanel.test.ts` rows in
+    `TEST_COVERAGE_LEDGER.md`. An older GoPMgr reading this history shows the
+    new actions by their raw names.
   - Done 2026-09-25: change password while signed in (App Settings,
     Account). `Store.ChangePassword` verifies the current password without
     `Authenticate` (which would stamp `last_login` and could re-hash), re-wraps

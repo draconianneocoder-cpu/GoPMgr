@@ -293,23 +293,66 @@ func (s *Store) HasAnyAccount() (bool, error) {
 	return exists, err
 }
 
-// SetAdmin promotes or demotes username. It returns ErrLastAdmin if
-// demoting username would leave no administrator who can sign in, and
-// ErrNoSuchUser if there is no such account. Demoting a non-admin or a
-// disabled admin never returns ErrLastAdmin.
-func (s *Store) SetAdmin(username string, isAdmin bool) error {
+// SetAdmin promotes or demotes username on behalf of actor, who must be an
+// enabled administrator (ErrNotAdmin otherwise; read inside the
+// transaction, not from a session). It returns ErrLastAdmin if demoting
+// username would leave no administrator who can sign in, and ErrNoSuchUser
+// if there is no such account. A change is recorded as "promoted" or
+// "demoted"; a call that changes nothing records nothing.
+func (s *Store) SetAdmin(actor, username string, isAdmin bool) error {
 	return s.inWriteTx("role change", func(ctx context.Context, q accountWriter) error {
+		if err := requireEnabledAdmin(ctx, q, actor); err != nil {
+			return err
+		}
 		targetIsAdmin, targetDisabled, err := accountRole(ctx, q, username)
 		if err != nil {
 			return err
+		}
+		if targetIsAdmin == isAdmin {
+			return nil
 		}
 		if !isAdmin {
 			if err := guardLastEnabledAdmin(ctx, q, targetIsAdmin, targetDisabled); err != nil {
 				return err
 			}
 		}
-		_, err = q.ExecContext(ctx, `UPDATE users SET is_admin = ? WHERE username = ?`, boolToInt(isAdmin), username)
-		return err
+		if _, err := q.ExecContext(ctx, `UPDATE users SET is_admin = ? WHERE username = ?`, boolToInt(isAdmin), username); err != nil {
+			return err
+		}
+		action := AccountDemoted
+		if isAdmin {
+			action = AccountPromoted
+		}
+		return recordAccountEvent(ctx, q, actor, username, action, "")
+	})
+}
+
+// ClaimAdmin makes username an administrator on an install with no
+// administrator who can sign in (ErrAdminExists otherwise), recording
+// "promoted" with username as its own actor. The check and the change are
+// one transaction, so two accounts cannot both claim the role.
+func (s *Store) ClaimAdmin(username string) error {
+	return s.inWriteTx("administrator claim", func(ctx context.Context, q accountWriter) error {
+		n, err := enabledAdminCount(ctx, q)
+		if err != nil {
+			return err
+		}
+		if n > 0 {
+			return ErrAdminExists
+		}
+		// With no enabled administrator, username can only be a standard
+		// account or a disabled one.
+		_, disabled, err := accountRole(ctx, q, username)
+		if err != nil {
+			return err
+		}
+		if disabled {
+			return ErrAccountDisabled
+		}
+		if _, err := q.ExecContext(ctx, `UPDATE users SET is_admin = 1 WHERE username = ?`, username); err != nil {
+			return err
+		}
+		return recordAccountEvent(ctx, q, username, username, AccountPromoted, "claimed with no administrator on the machine")
 	})
 }
 
@@ -406,7 +449,14 @@ func (s *Store) CreateAccountAs(callerUsername, username, displayName, password 
 			return err
 		}
 		acc = created
-		return nil
+		actor, role := callerUsername, "standard"
+		if existing == 0 {
+			actor = username // the first account creates itself
+		}
+		if created.IsAdmin {
+			role = "administrator"
+		}
+		return recordAccountEvent(ctx, q, actor, username, AccountCreated, role)
 	})
 	if err != nil {
 		// insertAccount removes its folders if the insert fails; a folder

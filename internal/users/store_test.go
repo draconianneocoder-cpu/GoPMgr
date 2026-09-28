@@ -418,8 +418,11 @@ func TestSetLastExportDirectoryPersistsAndRoundTripsThroughAuthenticateAndList(t
 // connection; kept as a documented, uncovered line.
 func TestSetAdmin_NoSuchUserReturnsError(t *testing.T) {
 	store := openTestStore(t)
+	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
 	for _, promote := range []bool{true, false} {
-		if err := store.SetAdmin("nobody", promote); !errors.Is(err, ErrNoSuchUser) {
+		if err := store.SetAdmin("alice", "nobody", promote); !errors.Is(err, ErrNoSuchUser) {
 			t.Fatalf("SetAdmin(nonexistent user, %v) = %v, want ErrNoSuchUser", promote, err)
 		}
 	}
@@ -904,7 +907,7 @@ func TestSetAdmin_DemoteSoleAdminReturnsErrLastAdmin(t *testing.T) {
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	if err := store.SetAdmin("alice", false); !errors.Is(err, ErrLastAdmin) {
+	if err := store.SetAdmin("alice", "alice", false); !errors.Is(err, ErrLastAdmin) {
 		t.Fatalf("SetAdmin sole admin to false: got %v, want ErrLastAdmin", err)
 	}
 }
@@ -918,7 +921,7 @@ func TestSetAdmin_DemoteNonAdminSucceeds(t *testing.T) {
 		t.Fatalf("CreateAccount standard: %v", err)
 	}
 	// Demoting a non-admin with exactly one real admin should NOT return ErrLastAdmin.
-	if err := store.SetAdmin("bob", false); err != nil {
+	if err := store.SetAdmin("alice", "bob", false); err != nil {
 		t.Fatalf("SetAdmin non-admin to false: got %v, want nil", err)
 	}
 }
@@ -931,7 +934,7 @@ func TestSetAdmin_DemoteSucceedsWhenMultipleAdmins(t *testing.T) {
 	if _, err := store.CreateAccount("bob", "Bob", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount bob: %v", err)
 	}
-	if err := store.SetAdmin("alice", false); err != nil {
+	if err := store.SetAdmin("bob", "alice", false); err != nil {
 		t.Fatalf("SetAdmin alice to false: %v", err)
 	}
 	// Verify bob is still admin.

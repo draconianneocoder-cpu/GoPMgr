@@ -133,14 +133,14 @@ func TestSetDisabledWithNoChangeRecordsNothing(t *testing.T) {
 // can be taken out of use while a disabled administrator exists.
 func TestLastEnabledAdminGuards(t *testing.T) {
 	store := newStatusStore(t)
-	if err := store.SetAdmin("bob", true); err != nil {
+	if err := store.SetAdmin("alice", "bob", true); err != nil {
 		t.Fatalf("promote bob: %v", err)
 	}
 	if err := store.SetDisabled("alice", "bob", true); err != nil {
 		t.Fatalf("disable bob: %v", err)
 	}
 
-	if err := store.SetAdmin("alice", false); !errors.Is(err, ErrLastAdmin) {
+	if err := store.SetAdmin("alice", "alice", false); !errors.Is(err, ErrLastAdmin) {
 		t.Fatalf("demote the only enabled admin: err = %v, want ErrLastAdmin", err)
 	}
 	// Only alice may act (bob is disabled), so she is acting on herself; the
@@ -154,10 +154,10 @@ func TestLastEnabledAdminGuards(t *testing.T) {
 	if roles := accountRoles(t, store); !roles["alice"] {
 		t.Fatalf("roles after refusals = %v, want alice still an administrator", roles)
 	}
-	// Only the disable of bob; the refused actions recorded nothing.
-	assertEvents(t, store, "alice disabled bob")
+	// Bob's promotion and disable; the refused actions recorded nothing.
+	assertEvents(t, store, "alice promoted bob", "alice disabled bob")
 
-	if err := store.SetAdmin("bob", false); err != nil {
+	if err := store.SetAdmin("alice", "bob", false); err != nil {
 		t.Fatalf("demote a disabled admin: %v", err)
 	}
 }
@@ -179,7 +179,7 @@ func TestHasAnyAdminIgnoresDisabledAdministrators(t *testing.T) {
 
 func TestDisabledAdministratorCannotCreateAccounts(t *testing.T) {
 	store := newStatusStore(t)
-	if err := store.SetAdmin("bob", true); err != nil {
+	if err := store.SetAdmin("alice", "bob", true); err != nil {
 		t.Fatalf("promote bob: %v", err)
 	}
 	if err := store.SetDisabled("alice", "bob", true); err != nil {

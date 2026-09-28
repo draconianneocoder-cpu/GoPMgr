@@ -513,7 +513,7 @@ declare global {
     occurred_at: string;
     actor: string;
     username: string;
-    action: 'disabled' | 'enabled' | 'purged' | 'folder_not_removed';
+    action: 'created' | 'promoted' | 'demoted' | 'disabled' | 'enabled' | 'purged' | 'folder_not_removed';
     detail: string;
   }
 

@@ -42,13 +42,34 @@ var ErrFolderShared = errors.New("users: another account may share this account'
 // deleted but its folder could not be fully removed.
 var ErrPurgeIncomplete = errors.New("users: account deleted but its folder was not fully removed")
 
+// ErrAdminExists is returned by ClaimAdmin when an administrator who can
+// sign in already exists.
+var ErrAdminExists = errors.New("users: an administrator already exists")
+
 // Account event actions.
 const (
+	AccountCreated          = "created"
+	AccountPromoted         = "promoted"
+	AccountDemoted          = "demoted"
 	AccountDisabled         = "disabled"
 	AccountEnabled          = "enabled"
 	AccountPurged           = "purged"
 	AccountFolderNotRemoved = "folder_not_removed"
 )
+
+// accountEventActions lists the actions recordAccountEvent accepts. It is
+// the only guard on the action column: history rows cannot be corrected
+// once written, and the table has no CHECK, so a new action needs only a
+// line here, not a table rebuild.
+var accountEventActions = map[string]bool{
+	AccountCreated:          true,
+	AccountPromoted:         true,
+	AccountDemoted:          true,
+	AccountDisabled:         true,
+	AccountEnabled:          true,
+	AccountPurged:           true,
+	AccountFolderNotRemoved: true,
+}
 
 // AccountEvent is one entry in the account history.
 type AccountEvent struct {
@@ -73,21 +94,66 @@ func (s *Store) migrateAccountStatus() error {
 			return err
 		}
 	}
-	_, err = s.conn.Exec(`
-	CREATE TABLE IF NOT EXISTS account_events (
+	return s.inWriteTx("account history migration", func(ctx context.Context, q accountWriter) error {
+		var ddl string
+		err := q.QueryRowContext(ctx,
+			`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'account_events'`,
+		).Scan(&ddl)
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			if _, err := q.ExecContext(ctx, accountEventsTableSQL("account_events")); err != nil {
+				return err
+			}
+		case err != nil:
+			return err
+		case strings.Contains(ddl, "CHECK"):
+			if err := rebuildAccountEventsWithoutCheck(ctx, q); err != nil {
+				return err
+			}
+		}
+		_, err = q.ExecContext(ctx, accountEventsTriggersSQL)
+		return err
+	})
+}
+
+// accountEventsTableSQL creates the history table under name. Actions are
+// checked in Go (accountEventActions), not by a CHECK constraint.
+func accountEventsTableSQL(name string) string {
+	return `CREATE TABLE ` + name + ` (
 		id          INTEGER PRIMARY KEY AUTOINCREMENT,
 		occurred_at TEXT NOT NULL,
 		actor       TEXT NOT NULL,
 		username    TEXT NOT NULL,
-		action      TEXT NOT NULL CHECK (action IN ('disabled', 'enabled', 'purged', 'folder_not_removed')),
+		action      TEXT NOT NULL,
 		detail      TEXT NOT NULL DEFAULT ''
-	);
+	)`
+}
+
+// accountEventsTriggersSQL makes the history append-only for the app.
+const accountEventsTriggersSQL = `
 	CREATE TRIGGER IF NOT EXISTS account_events_no_update BEFORE UPDATE ON account_events
 	BEGIN SELECT RAISE(ABORT, 'account_events is append-only'); END;
 	CREATE TRIGGER IF NOT EXISTS account_events_no_delete BEFORE DELETE ON account_events
 	BEGIN SELECT RAISE(ABORT, 'account_events is append-only'); END;
-	`)
-	return err
+`
+
+// rebuildAccountEventsWithoutCheck replaces a history table created with
+// the original CHECK on action (development builds between 2026-09-24 and
+// its removal) by one without it, keeping every row and id. Dropping the
+// old table also drops its triggers, which the caller recreates.
+func rebuildAccountEventsWithoutCheck(ctx context.Context, q accountWriter) error {
+	for _, stmt := range []string{
+		accountEventsTableSQL("account_events_new"),
+		`INSERT INTO account_events_new (id, occurred_at, actor, username, action, detail)
+		 SELECT id, occurred_at, actor, username, action, detail FROM account_events ORDER BY id`,
+		`DROP TABLE account_events`,
+		`ALTER TABLE account_events_new RENAME TO account_events`,
+	} {
+		if _, err := q.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("users: rebuild account history: %w", err)
+		}
+	}
+	return nil
 }
 
 // usersColumns returns the users table's column names.
@@ -192,6 +258,9 @@ func requireEnabledAdmin(ctx context.Context, q accountWriter, actor string) err
 }
 
 func recordAccountEvent(ctx context.Context, q accountWriter, actor, username, action, detail string) error {
+	if !accountEventActions[action] {
+		return fmt.Errorf("users: unknown account event action %q", action)
+	}
 	_, err := q.ExecContext(ctx,
 		`INSERT INTO account_events (occurred_at, actor, username, action, detail) VALUES (?, ?, ?, ?, ?)`,
 		time.Now().UTC().Format(time.RFC3339Nano), actor, username, action, detail,

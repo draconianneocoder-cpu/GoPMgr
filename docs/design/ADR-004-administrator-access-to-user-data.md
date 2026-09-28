@@ -124,9 +124,10 @@ an administrator an attacker's escrow key to seal new accounts to.
 | Permanent deletion of any account | The sealed DEK, personal keys, and grant go with the row. |
 
 The `account_events` action list gains `admin_access`, `escrow_key_mismatch`,
-`escrow_reenrolled`, `personal_key_repaired`, and `escrow_rotated`. `account_events` has not shipped
-in a release yet. Changing its `CHECK` after a release needs a table rebuild,
-so this change should land before it ships.
+`escrow_reenrolled`, `personal_key_repaired`, and `escrow_rotated`. Actions
+are checked in Go (`accountEventActions`), not by a `CHECK` on the table
+(removed 2026-09-28, before the table shipped in a release), so each needs
+only a new entry there, not a migration.
 
 ### Rotation
 
