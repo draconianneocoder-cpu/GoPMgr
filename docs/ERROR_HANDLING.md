@@ -95,9 +95,11 @@ the existing example).
 `.golangci.yml` disables `staticcheck`'s `ST1005` (Go convention: error
 strings should not be capitalized) for exactly the error strings meant to
 reach the UI verbatim, e.g. `ErrRecoveryCodesRequireReissue`
-(`"Reissue recovery codes before enabling database encryption. ..."`).
-These are a **contract** — at least one is matched verbatim by frontend
-code, so don't reword an existing user-facing error string without
+(`"Create new recovery codes before encrypting this database. ..."`).
+These are a **contract** — some are matched by frontend code (for example
+`CreateAccount.svelte` on "administrator privileges", `Login.svelte` on
+"account is disabled", and `AdminPanel.svelte` on "the account was
+deleted"), so don't reword an existing user-facing error string without
 grepping the frontend for a literal match first.
 
 ## Go: what NOT to do

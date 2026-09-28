@@ -357,7 +357,11 @@ func (a *App) ChangePassword(currentPassword, newPassword string) error {
 // will not be visible again — only their Argon2id hashes are
 // persisted.
 //
-// Calling this rotates the user's existing unused codes.
+// Calling this rotates the user's existing unused codes at once, so it is
+// used only by account creation, where there are no older codes to lose.
+// App Settings and Project Settings use PrepareRecoveryCodes and
+// ConfirmRecoveryCodes, which keep the old codes until the new ones are
+// saved.
 func (a *App) IssueRecoveryCodes() ([]string, error) {
 	u := a.requireUser()
 	if u == nil {

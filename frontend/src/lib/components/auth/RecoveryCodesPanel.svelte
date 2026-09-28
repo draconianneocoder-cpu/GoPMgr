@@ -6,6 +6,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onDestroy, onMount } from 'svelte';
   import { showToast } from '../../toast.svelte';
 
+  // onrenewed runs after new codes are saved, once the panel has returned
+  // to its idle step (Project Settings uses it to allow encryption again).
+  // onpendingchange reports whether unsaved new codes are on screen, so a
+  // parent can hold back actions (such as encrypting) until they are saved
+  // or discarded.
+  let {
+    onrenewed,
+    onpendingchange,
+  }: { onrenewed?: () => void; onpendingchange?: (pending: boolean) => void } = $props();
+
   // New codes are made in two steps so the user never ends up without
   // working codes: PrepareRecoveryCodes returns them without storing
   // anything, and ConfirmRecoveryCodes replaces the old ones only after the
@@ -23,9 +33,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
   onMount(loadStatus);
+  $effect(() => {
+    onpendingchange?.(step === 'codes');
+  });
   onDestroy(() => {
     if (copiedTimer) clearTimeout(copiedTimer);
     if (step === 'codes') void window.go.main.App.DiscardRecoveryCodes();
+    onpendingchange?.(false);
   });
 
   async function loadStatus() {
@@ -63,12 +77,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function confirm() {
     if (busy || !saved) return;
+    let renewed = false;
     busy = true;
     error = '';
     try {
       await window.go.main.App.ConfirmRecoveryCodes();
       showToast('New recovery codes saved. Your old codes no longer work.', 'success');
       finish();
+      renewed = true;
     } catch (err: any) {
       const message = String(err?.message ?? err);
       error = message.charAt(0).toUpperCase() + message.slice(1) + '.';
@@ -78,6 +94,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       busy = false;
       await loadStatus();
     }
+    if (renewed) onrenewed?.();
   }
 
   async function cancel() {
