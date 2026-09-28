@@ -552,11 +552,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Prerequisites</h3>
-            <p class="text-sm text-slate-300 mb-2">Before enabling encryption, you must generate recovery codes for your account:</p>
+            <p class="text-sm text-slate-300 mb-2">Before encrypting, make sure you have working recovery codes; they are the only way back into encrypted projects if you forget your password:</p>
             <ol class="space-y-1 text-sm text-slate-300 list-decimal list-inside">
-              <li>Go to App Settings (top nav) and find the Recovery Codes section.</li>
-              <li>Generate a new set of recovery codes. Store them securely (password manager, safe, printed).</li>
-              <li>Recovery codes must be current — if you have old codes from before, reissue them. GoPMgr enforces this before allowing encryption to proceed.</li>
+              <li>The Data Protection tab shows your recovery codes next to the Encrypt button (the same panel as App Settings, under Account), and warns when none are left.</li>
+              <li>Codes from an older version cannot recover encrypted projects, and GoPMgr refuses to encrypt until you create new ones. Creating them asks for your password, shows the new codes once, and replaces the old ones only after you tick that you saved them.</li>
             </ol>
           </section>
 

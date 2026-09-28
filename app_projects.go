@@ -48,7 +48,7 @@ type ProjectFile struct {
 
 var ErrProjectRequiresEncryptionMigration = errors.New("project requires encryption migration")
 
-var ErrRecoveryCodesRequireReissue = errors.New("Reissue recovery codes before enabling database encryption. Old recovery codes cannot preserve encrypted projects during password reset.")
+var ErrRecoveryCodesRequireReissue = errors.New("Create new recovery codes before encrypting this database. Your current codes are from an older version and could not recover encrypted projects after a password reset.")
 
 // ListProjects returns every project file (.gopmgr, or legacy .pmforge) under the current user's
 // projects/ folder.
