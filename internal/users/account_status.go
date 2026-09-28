@@ -106,7 +106,9 @@ func (s *Store) migrateAccountStatus() error {
 			}
 		case err != nil:
 			return err
-		case strings.Contains(ddl, "CHECK"):
+		// Match the original constraint only, so a CHECK added to the table
+		// later would not make every Open rebuild the history.
+		case strings.Contains(ddl, "CHECK (action IN"):
 			if err := rebuildAccountEventsWithoutCheck(ctx, q); err != nil {
 				return err
 			}
