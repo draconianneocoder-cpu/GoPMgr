@@ -555,7 +555,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <p class="text-sm text-slate-300 mb-2">Before encrypting, make sure you have working recovery codes; they are the only way back into encrypted projects if you forget your password:</p>
             <ol class="space-y-1 text-sm text-slate-300 list-decimal list-inside">
               <li>The Data Protection tab shows your recovery codes next to the Encrypt button (the same panel as App Settings, under Account), and warns when none are left.</li>
-              <li>Codes from an older version cannot recover encrypted projects, and GoPMgr refuses to encrypt until you create new ones. Creating them asks for your password, shows the new codes once, and replaces the old ones only after you tick that you saved them.</li>
+              <li>If you click Encrypt (or create a project) with no working codes, GoPMgr first shows "Before you continue: save a way back in". Create codes there and it carries on by itself once they're saved.</li>
+              <li>With no codes at all, you can instead tick that you understand projects you create or encrypt until you sign out can't be recovered if you forget your password, and continue without codes.</li>
+              <li>Codes from an older version cannot recover encrypted projects, so they can't be skipped: GoPMgr asks you to create new ones first. Creating them asks for your password, shows the new codes once, and replaces the old ones only after you tick that you saved them.</li>
             </ol>
           </section>
 

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, waitFor } from '@testing-library/svelte';
+import { fireEvent, render, waitFor, within } from '@testing-library/svelte';
 
 import ProjectLaunchpad from './ProjectLaunchpad.svelte';
 
@@ -30,6 +30,7 @@ beforeEach(() => {
       seeds: [],
       path: '/tmp/Tokyo Delivery.gopmgr',
     })),
+    RecoveryCodeStatus: vi.fn(async () => ({ unused: 8, total: 8, legacy: false, encryption_ready: true })),
   };
   (window as unknown as { go: unknown }).go = { main: { App: app } };
 });
@@ -143,5 +144,29 @@ describe('ProjectLaunchpad migrated nav buttons', () => {
 
     const btn = utils.getByRole('button', { name: /back/i });
     expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(navExpected);
+  });
+});
+
+describe('project launchpad recovery-code gate', () => {
+  it('asks for a way back in before creating, and creates once the user accepts', async () => {
+    let accepted = false;
+    Object.assign(app, {
+      RecoveryCodeStatus: vi.fn(async () => ({ unused: 0, total: 8, legacy: false, encryption_ready: accepted })),
+      AcceptEncryptionWithoutRecoveryCodes: vi.fn(async () => {
+        accepted = true;
+      }),
+    });
+    const onCreated = vi.fn();
+    const utils = await reachSetup(onCreated);
+    await fireEvent.input(utils.getByLabelText(/project name/i), { target: { value: 'Tokyo Delivery' } });
+    await fireEvent.click(utils.getByRole('button', { name: /create project/i }));
+
+    const gate = await utils.findByRole('region', { name: /save a way back in/i });
+    expect(app.CreateProjectFromLaunchpad).not.toHaveBeenCalled();
+    await fireEvent.click(within(gate).getByLabelText(/projects I create or encrypt until I sign out/));
+    await fireEvent.click(within(gate).getByRole('button', { name: 'Continue without recovery codes' }));
+
+    await waitFor(() => expect(app.CreateProjectFromLaunchpad).toHaveBeenCalledOnce());
+    await waitFor(() => expect(onCreated).toHaveBeenCalledOnce());
   });
 });

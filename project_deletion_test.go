@@ -40,6 +40,7 @@ func onlyDeletion(t *testing.T, app *App) ProjectDeletionWire {
 // must outlive it and pin the chain's final state.
 func TestDeleteProjectLeavesDurableRecord(t *testing.T) {
 	app := newDeletionTestApp(t)
+	acceptNoRecoveryCodes(t, app)
 	file, err := app.CreateProject("Bridge Retrofit", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
@@ -133,6 +134,7 @@ func TestDeleteProjectRefusesUnreadableFileWithoutRecording(t *testing.T) {
 // shows the chain did not verify.
 func TestDeleteProjectRecordsTamperedAuditChain(t *testing.T) {
 	app := newDeletionTestApp(t)
+	acceptNoRecoveryCodes(t, app)
 	file, err := app.CreateProject("Tampered", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
@@ -161,6 +163,7 @@ func TestDeleteProjectRecordsTamperedAuditChain(t *testing.T) {
 // No record, no deletion: if the log cannot be written, the project stays.
 func TestDeleteProjectKeepsProjectWhenLogUnavailable(t *testing.T) {
 	app := newDeletionTestApp(t)
+	acceptNoRecoveryCodes(t, app)
 	file, err := app.CreateProject("Kept", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
@@ -181,6 +184,7 @@ func TestDeleteProjectKeepsProjectWhenLogUnavailable(t *testing.T) {
 // nothing is removed.
 func TestDeleteProjectKeepsProjectWhenRequestCannotBeRecorded(t *testing.T) {
 	app := newDeletionTestApp(t)
+	acceptNoRecoveryCodes(t, app)
 	file, err := app.CreateProject("Kept too", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
@@ -204,6 +208,7 @@ func TestDeleteProjectKeepsProjectWhenRequestCannotBeRecorded(t *testing.T) {
 // file through the pre-delete read and log a deletion that never mattered.
 func TestConcurrentDeletesOfOneProjectRecordOnce(t *testing.T) {
 	app := newDeletionTestApp(t)
+	acceptNoRecoveryCodes(t, app)
 	file, err := app.CreateProject("Raced", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
@@ -248,6 +253,7 @@ func TestDeleteProjectRecordsFailedRemoval(t *testing.T) {
 		t.Skip("root ignores directory permissions")
 	}
 	app := newDeletionTestApp(t)
+	acceptNoRecoveryCodes(t, app)
 	file, err := app.CreateProject("Locked", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
@@ -283,6 +289,7 @@ func TestDeleteProjectRecordsFailedRemoval(t *testing.T) {
 // succeeded; the log shows the request with no outcome rather than a lie.
 func TestDeleteProjectSucceedsWhenOutcomeCannotBeRecorded(t *testing.T) {
 	app := newDeletionTestApp(t)
+	acceptNoRecoveryCodes(t, app)
 	file, err := app.CreateProject("Outcome lost", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)

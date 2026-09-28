@@ -320,6 +320,7 @@ func TestCreateProjectUsesUniqueSubfolder(t *testing.T) {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 
+	acceptNoRecoveryCodes(t, app)
 	pf, err := app.CreateProject("My Plan", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)

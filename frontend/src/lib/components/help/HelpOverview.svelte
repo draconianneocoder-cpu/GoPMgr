@@ -58,6 +58,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
               boundaries and time-series chart dates.
             </p>
             <p class="text-sm text-slate-300 mt-3">
+              New projects are encrypted. If you have no working recovery codes, Create Project first
+              asks you to save some (or, with none at all, to confirm you understand the project can't
+              be recovered if you forget your password), then carries on.
+            </p>
+            <p class="text-sm text-slate-300 mt-3">
               New to GoPMgr? The
               <button onclick={() => nav('quick-start')} class="text-cyan-400 underline hover:text-cyan-300">Quick Start tutorial</button>
               walks the whole journey — account to exported report — in about ten minutes.

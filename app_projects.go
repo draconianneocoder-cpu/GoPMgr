@@ -48,7 +48,42 @@ type ProjectFile struct {
 
 var ErrProjectRequiresEncryptionMigration = errors.New("project requires encryption migration")
 
-var ErrRecoveryCodesRequireReissue = errors.New("Create new recovery codes before encrypting this database. Your current codes are from an older version and could not recover encrypted projects after a password reset.")
+var ErrRecoveryCodesRequireReissue = errors.New("Create new recovery codes before creating or encrypting a project. Your current codes are from an older version and could not recover encrypted projects after a password reset.")
+
+// ErrRecoveryCodesMissing is returned when the user has no unused recovery
+// codes and has not accepted, this session, that encrypted projects would
+// then be unrecoverable if they forget their password.
+var ErrRecoveryCodesMissing = errors.New("Save recovery codes before creating or encrypting a project, or confirm that you understand it cannot be recovered if you forget your password.")
+
+// encryptionReadiness decides whether username may create or encrypt a
+// project now. New projects are always encrypted with the user's DEK, so
+// both paths need a way back in if the password is forgotten:
+//   - any unused legacy recovery code is refused outright
+//     (ErrRecoveryCodesRequireReissue): a reset with it would replace the
+//     DEK and orphan the project;
+//   - no unused codes is refused (ErrRecoveryCodesMissing) unless the same
+//     user accepted, this session, to go without them.
+//
+// RecoveryCodeStatus reports the same answer to the frontend.
+func (a *App) encryptionReadiness(username string) error {
+	unused, legacy, err := a.store.RecoveryCodeStatus(username)
+	if err != nil {
+		return err
+	}
+	if legacy {
+		return ErrRecoveryCodesRequireReissue
+	}
+	if unused > 0 {
+		return nil
+	}
+	a.mu.RLock()
+	accepted := a.noCodesAcceptedFor == username
+	a.mu.RUnlock()
+	if accepted {
+		return nil
+	}
+	return ErrRecoveryCodesMissing
+}
 
 // ListProjects returns every project file (.gopmgr, or legacy .pmforge) under the current user's
 // projects/ folder.
@@ -76,6 +111,9 @@ func (a *App) CreateProject(name, description string) (ProjectFile, error) {
 	user := a.requireUser()
 	if user == nil {
 		return ProjectFile{}, errors.New("not signed in")
+	}
+	if err := a.encryptionReadiness(user.Username); err != nil {
+		return ProjectFile{}, err
 	}
 	safe := sanitizeFilename(name)
 	if safe == "" {
@@ -1226,12 +1264,8 @@ func (a *App) EncryptProjectAtRest(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	needsReissue, err := a.store.HasLegacyRecoveryCodeWraps(user.Username)
-	if err != nil {
+	if err := a.encryptionReadiness(user.Username); err != nil {
 		return "", err
-	}
-	if needsReissue {
-		return "", ErrRecoveryCodesRequireReissue
 	}
 
 	a.mu.Lock()

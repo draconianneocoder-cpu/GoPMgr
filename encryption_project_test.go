@@ -17,6 +17,17 @@ import (
 	"gopmgr/internal/users"
 )
 
+// acceptNoRecoveryCodes lets a test that only needs a project create one
+// for an account without recovery codes, as a user can after ticking "I
+// understand" (App.AcceptEncryptionWithoutRecoveryCodes). Tests of that
+// rule itself do not use it.
+func acceptNoRecoveryCodes(t *testing.T, app *App) {
+	t.Helper()
+	if err := app.AcceptEncryptionWithoutRecoveryCodes(); err != nil {
+		t.Fatalf("AcceptEncryptionWithoutRecoveryCodes: %v", err)
+	}
+}
+
 func newEncryptionProjectTestApp(t *testing.T) *App {
 	t.Helper()
 	store, err := users.Open(filepath.Join(t.TempDir(), "root"))
@@ -36,6 +47,7 @@ func TestCreateProjectEncryptsAndReopensWithSessionDEK(t *testing.T) {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 
+	acceptNoRecoveryCodes(t, app)
 	file, err := app.CreateProject("Secret Plan", "keep private")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
@@ -96,6 +108,7 @@ func TestCreateProjectAcceptsLongMultibyteName(t *testing.T) {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 	name := strings.Repeat("工程", 14)
+	acceptNoRecoveryCodes(t, app)
 	file, err := app.CreateProject(name, "")
 	if err != nil {
 		t.Fatalf("CreateProject(%d-byte multibyte name): %v", len(name), err)
@@ -118,6 +131,7 @@ func TestCreateProjectFromLaunchpadEncryptsProject(t *testing.T) {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 
+	acceptNoRecoveryCodes(t, app)
 	res, err := app.CreateProjectFromLaunchpad(
 		"Launchpad Secret",
 		"seeded and encrypted",
@@ -154,6 +168,7 @@ func TestCreateProjectFromLaunchpadActivatesProject(t *testing.T) {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 
+	acceptNoRecoveryCodes(t, app)
 	if _, err := app.CreateProjectFromLaunchpad(
 		"Immediate Access",
 		"db must be active",
@@ -188,6 +203,7 @@ func TestCreateProjectFromLaunchpadEnablesAgilePackWhenSeeded(t *testing.T) {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 
+	acceptNoRecoveryCodes(t, app)
 	res, err := app.CreateProjectFromLaunchpad(
 		"Seeded Agile Project",
 		"kanban/backlog/sprint1 requested",
@@ -230,6 +246,7 @@ func TestCreateProjectFromLaunchpadLeavesAgilePackDisabledWithoutAgileSeeds(t *t
 		t.Fatalf("CreateAccount: %v", err)
 	}
 
+	acceptNoRecoveryCodes(t, app)
 	if _, err := app.CreateProjectFromLaunchpad(
 		"Non-Agile Project",
 		"no agile seeds requested",
@@ -352,6 +369,7 @@ func TestCreateProjectFromLaunchpadPreservesCalendarPolicyAndTimeZone(t *testing
 		t.Fatalf("CreateAccount: %v", err)
 	}
 
+	acceptNoRecoveryCodes(t, app)
 	res, err := app.CreateProjectFromLaunchpad(
 		"Tokyo Delivery",
 		"schedule in local business time",
@@ -380,6 +398,7 @@ func TestCreateProjectFromLaunchpadRejectsMismatchedTimeZone(t *testing.T) {
 		t.Fatalf("CreateAccount: %v", err)
 	}
 
+	acceptNoRecoveryCodes(t, app)
 	_, err := app.CreateProjectFromLaunchpad(
 		"Invalid Calendar",
 		"",
@@ -400,6 +419,7 @@ func TestOpenProjectRejectsDifferentUsersDEK(t *testing.T) {
 	if _, err := app.CreateAccount("alice", "Alice", "alice-password", false); err != nil {
 		t.Fatalf("CreateAccount alice: %v", err)
 	}
+	acceptNoRecoveryCodes(t, app)
 	file, err := app.CreateProject("Alice Only", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
@@ -455,6 +475,7 @@ func TestOpenProjectComplianceModeRejectsTamperedAuditChain(t *testing.T) {
 	if _, err := app.CreateAccount("alice", "Alice", "alice-password", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
+	acceptNoRecoveryCodes(t, app)
 	file, err := app.CreateProject("Compliance Project", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)

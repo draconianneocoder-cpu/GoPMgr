@@ -232,6 +232,7 @@ func TestSecureArchive_CapturesReportForBugReport(t *testing.T) {
 	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
+	acceptNoRecoveryCodes(t, app)
 	file, err := app.CreateProject("Secure Archive Test", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)

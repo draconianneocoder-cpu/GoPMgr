@@ -21,6 +21,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import Tabs from '../Tabs.svelte';
   import Button from '../Button.svelte';
   import RecoveryCodesPanel from '../auth/RecoveryCodesPanel.svelte';
+  import RecoveryCodesGate from '../auth/RecoveryCodesGate.svelte';
+  import { recoveryGateNeeded, type RecoveryGate } from '../../recovery-gate';
 
   // Tab grouping (docs/design/project-settings-tab-restructuring.md §3):
   // General binds to `draft`/save()/revert() below; the other four tabs
@@ -492,17 +494,33 @@ SPDX-License-Identifier: GPL-3.0-or-later
     encryptionStatus = '';
     encryptionError = '';
     encryptionBackupPath = '';
+    // Encrypting needs a way back in: show the gate instead when the user
+    // has no working recovery codes and has not accepted going without.
+    encryptGate = await recoveryGateNeeded();
+    if (encryptGate) {
+      encryptionBusy = false;
+      return;
+    }
     try {
       const backupPath = await window.go.main.App.EncryptProjectAtRest(session.projectPath);
       encryptionBackupPath = backupPath;
       encryptionState = 'encrypted';
       encryptionStatus = 'Database encrypted.';
     } catch (err: any) {
-      const message = String(err?.message ?? err);
-      encryptionError = message;
+      // The backend refuses when codes changed since the check; ask again.
+      encryptGate = await recoveryGateNeeded();
+      if (!encryptGate) encryptionError = String(err?.message ?? err);
     } finally {
       encryptionBusy = false;
     }
+  }
+
+  // Called when the gate is satisfied: new codes were saved (the panel
+  // inside it is idle again) or the user accepted going without them.
+  function encryptAfterGate() {
+    encryptGate = null;
+    recoveryCodesPending = false;
+    void encryptDatabase();
   }
 
   async function createBackup() {
@@ -526,6 +544,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // True while the panel shows new codes the user has not saved yet:
   // encrypting then would leave them without codes that work.
   let recoveryCodesPending = $state(false);
+  // Set while the "save a way back in" step is shown for an Encrypt click.
+  let encryptGate = $state<RecoveryGate | null>(null);
 
   function recoveryCodesRenewed() {
     encryptionError = '';
@@ -1752,7 +1772,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
              {#if encryptionState === 'plaintext'}
                <button
                  onclick={encryptDatabase}
-                 disabled={encryptionBusy || recoveryCodesPending}
+                 disabled={encryptionBusy || recoveryCodesPending || encryptGate !== null}
                  class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
                >
                  {encryptionBusy ? 'Encrypting…' : 'Encrypt database'}
@@ -1789,7 +1809,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
            {#if encryptionError}
              <p class="text-xs text-red-400" role="alert">{encryptionError}</p>
            {/if}
-           {#if encryptionState === 'plaintext'}
+           {#if encryptionState === 'plaintext' && encryptGate}
+             <RecoveryCodesGate
+               variant={encryptGate}
+               onready={encryptAfterGate}
+               oncancel={() => (encryptGate = null)}
+             />
+           {:else if encryptionState === 'plaintext'}
              <div class="border-t border-slate-800 pt-3">
                <RecoveryCodesPanel
                  onrenewed={recoveryCodesRenewed}
