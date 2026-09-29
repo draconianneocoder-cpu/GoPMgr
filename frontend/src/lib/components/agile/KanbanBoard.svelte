@@ -92,8 +92,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
     };
   }
 
-  function openExisting(item: AgileWorkItem) {
-    editing = item;
+  // Open the stored copy, not the list's: the item may have changed or been
+  // deleted since the list loaded (in another view, or through autosave).
+  // Repeat clicks while it loads are ignored.
+  let opening = false;
+  async function openExisting(item: AgileWorkItem) {
+    if (opening) return;
+    opening = true;
+    error = '';
+    try {
+      editing = await window.go.main.App.GetWorkItem(item.id);
+    } catch {
+      error = 'That work item no longer exists. The list has been refreshed.';
+      await refresh();
+    } finally {
+      opening = false;
+    }
   }
 
   function onSaved(saved: AgileWorkItem) {

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, waitFor } from '@testing-library/svelte';
+import { fireEvent, render, waitFor } from '@testing-library/svelte';
 
 import Backlog from './Backlog.svelte';
 import { session } from '../../session.svelte';
@@ -40,5 +40,32 @@ describe('Backlog migrated header "&larr; Dashboard" button', () => {
     expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
       'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50'.split(/\s+/).sort(),
     );
+  });
+});
+
+describe('Backlog opening an item', () => {
+  const stored: AgileWorkItem = {
+    id: 'wi-9', project_id: 'p1', type: 'story', title: 'Listed title', description: '', state: 'backlog',
+    points: 0, assignee: '', sprint_id: '', priority: 'medium', order_idx: 0, created_at: '', updated_at: '',
+  };
+
+  it('opens the stored copy, not the one the list loaded', async () => {
+    app.ListWorkItems = vi.fn(async () => [stored]);
+    app.GetWorkItem = vi.fn(async () => ({ ...stored, title: 'Stored title' }));
+    const utils = render(Backlog);
+    await fireEvent.click(await utils.findByText('Listed title'));
+    await waitFor(() => expect(utils.getByDisplayValue('Stored title')).toBeInTheDocument());
+    expect(app.GetWorkItem).toHaveBeenCalledWith('wi-9');
+  });
+
+  it('reports an item deleted elsewhere', async () => {
+    app.ListWorkItems = vi.fn(async () => [stored]);
+    app.GetWorkItem = vi.fn(async () => {
+      throw 'agile: work item not found';
+    });
+    const utils = render(Backlog);
+    await fireEvent.click(await utils.findByText('Listed title'));
+    expect(await utils.findByRole('alert')).toHaveTextContent('That work item no longer exists. The list has been refreshed.');
+    expect(app.ListWorkItems).toHaveBeenCalledTimes(2);
   });
 });

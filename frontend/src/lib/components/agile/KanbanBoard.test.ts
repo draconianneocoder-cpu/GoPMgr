@@ -56,6 +56,7 @@ beforeEach(() => {
     WIPCounts: vi.fn(async () => ({})),
     SaveWorkItem: vi.fn(async (wi: AgileWorkItem) => wi),
     DeleteWorkItem: vi.fn(async () => undefined),
+    GetWorkItem: vi.fn(async (id: string) => items.find((i) => i.id === id)),
   };
   (window as unknown as { go: unknown }).go = { main: { App: app } };
 });
@@ -127,5 +128,35 @@ describe('KanbanBoard columns', () => {
     app.EnsureDefaultBoard.mockResolvedValueOnce({ board, columns: [{ ...columns[0], name: 'Ready' }, columns[1]] });
     await fireEvent.click(utils.getByRole('button', { name: 'Save columns' }));
     await waitFor(() => expect(utils.getByRole('region', { name: 'Ready work items' })).toBeInTheDocument());
+  });
+});
+
+describe('KanbanBoard opening a card', () => {
+  it('opens the stored copy, not the one the board loaded', async () => {
+    app.GetWorkItem.mockResolvedValueOnce({ ...items[0], title: 'Renamed elsewhere' });
+    const utils = render(KanbanBoard);
+    await fireEvent.click(await utils.findByText('First card'));
+    expect(app.GetWorkItem).toHaveBeenCalledWith('wi-1');
+    await waitFor(() => expect(utils.getByDisplayValue('Renamed elsewhere')).toBeInTheDocument());
+  });
+
+  it('says so and refreshes when the card was deleted elsewhere', async () => {
+    app.GetWorkItem.mockRejectedValueOnce('agile: work item not found');
+    const utils = render(KanbanBoard);
+    await fireEvent.click(await utils.findByText('First card'));
+    expect(await utils.findByRole('alert')).toHaveTextContent('That work item no longer exists. The list has been refreshed.');
+    expect(app.ListWorkItems).toHaveBeenCalledTimes(2);
+    expect(utils.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('ignores a second click while the card loads', async () => {
+    let finish!: (v: AgileWorkItem) => void;
+    app.GetWorkItem.mockReturnValueOnce(new Promise((r) => (finish = r)));
+    const utils = render(KanbanBoard);
+    const card = await utils.findByText('First card');
+    await fireEvent.click(card);
+    await fireEvent.click(card);
+    expect(app.GetWorkItem).toHaveBeenCalledOnce();
+    finish(items[0]);
   });
 });
