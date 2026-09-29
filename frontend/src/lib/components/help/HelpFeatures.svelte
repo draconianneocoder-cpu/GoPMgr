@@ -582,7 +582,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
           <section>
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Recovering Access</h3>
-            <p class="text-sm text-slate-300">If you lose your passphrase, use a recovery code from the login screen to reset it. When you issue recovery codes, each code carries a wrapped copy of your Data Encryption Key (DEK). A passphrase reset via recovery code unwraps the DEK from the code and re-wraps it under the new passphrase — encrypted projects remain accessible. Legacy recovery codes issued before encryption was enabled do not carry a DEK wrap; that is why current recovery codes are required before enabling encryption.</p>
+            <p class="text-sm text-slate-300">If you lose your passphrase, use a recovery code from the login screen to reset it. When you issue recovery codes, each code carries a wrapped copy of your Data Encryption Key (DEK). A passphrase reset via recovery code unwraps the DEK from the code and re-wraps it under the new passphrase — encrypted projects remain accessible. A reset never replaces the DEK. Legacy recovery codes issued before encryption was enabled do not carry a DEK wrap, so once you have encrypted data they are refused and nothing changes; that is why current recovery codes are required before enabling encryption.</p>
           </section>
 
         <!-- ── Backups & Data Safety ──────────────────────────────── -->

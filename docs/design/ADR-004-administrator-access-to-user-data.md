@@ -116,7 +116,6 @@ an administrator an attacker's escrow key to seal new accounts to.
 | First account creation (the first administrator) | Bootstrap as above, in the same session. |
 | Sign-in of an account that is not yet enrolled | Create the personal key pair if missing, check or set the escrow pin, seal the DEK. Failure does not block sign-in; it is retried at the next sign-in and shown in the Admin panel. |
 | `UnlockDEK` generates a DEK for an account older than ADR-001 (`dek.go:98`) | Seal it in the same transaction as its password wrap. |
-| Recovery reset with a legacy code mints a fresh DEK (`recovery.go:223`) | Replace the sealed DEK and escrow pin in the same transaction. The new pin is trust on first use again. |
 | Password change or ordinary recovery reset | Nothing: the DEK does not change. |
 | Promotion (`AdminSetUserRole`, `BecomeAdmin`) | Check the target's personal key attestation, then add a grant. A target with no personal key yet is promoted, but the grant is added by the next administrator session after the target has signed in. |
 | Demotion, disable, or permanent deletion of an administrator | Delete that administrator's grant (`ON DELETE CASCADE` on the account row). This stops later use of the current `system.db`; an administrator who kept an earlier copy still holds the old grant, and only rotation keeps them out of accounts enrolled afterwards. |
@@ -231,8 +230,9 @@ same pull request as the first sealing, never after it.
   public key) fails the administrator's pin check.
 - Swapping a personal public key: the owner's next sign-in repairs it, and a
   promotion before then is refused by the attestation check.
-- Every DEK creation and replacement site (`dek.go:98`, `recovery.go:223`, and
-  account creation) leaves a sealed DEK that opens to the current DEK.
+- Every DEK creation site (`dek.go:98` and account creation) leaves a sealed
+  DEK that opens to the current DEK. A recovery reset never replaces the DEK
+  (a legacy code is refused, 2026-09-29), so it needs no sealing step.
 - Injecting a failure into the access record: no key is released.
 - The access handle is zeroed on stop, sign-out, and shutdown, and never
   replaces `a.dek` (the administrator's own catalog and deletion log still open

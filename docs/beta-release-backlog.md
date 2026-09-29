@@ -231,9 +231,11 @@ That result took six live-GUI cycles to reach because the first five, all run un
     to combine the options as follows:
     1. guide instead of block, and 2. informed opt-out: done above;
     4. a reminder at sign-in when one or no codes are left, or when any
-       code is legacy: next. Projects created before 2026-09-28 while
-       holding legacy codes exist; a reset with a legacy code replaces the
-       key and makes them unreadable, and nothing but App Settings warns;
+       code is legacy: next. A reset with a legacy code is refused without
+       changes (it never replaces the key, 2026-09-29), so a user holding
+       only legacy codes who forgets their password is locked out until
+       administrator recovery exists; this reminder is how they renew codes
+       while they still know it;
     3. a printable recovery sheet: after the blob-download check below;
     5. administrator recovery: through ADR-004 (phases 1 and 2 ship in one
        release);

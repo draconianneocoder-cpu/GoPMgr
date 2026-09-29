@@ -5,6 +5,7 @@ package users
 
 import (
 	"bytes"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -96,11 +97,34 @@ func TestRecoveryResetPreservesDEK(t *testing.T) {
 	}
 }
 
-// Legacy path: codes issued WITHOUT a DEK wrap (pre-ADR-001) still
-// reset the password; the DEK is freshly generated (safe only while
-// no encrypted projects exist — enforced by the future
-// encryption-enable flow re-issuing codes).
-func TestRecoveryResetLegacyCodesFreshDEK(t *testing.T) {
+// accountKeyState is what a refused reset must leave untouched.
+type accountKeyState struct {
+	passwordHash, wrappedDEK string
+	unusedCodes              int
+}
+
+func readAccountKeyState(t *testing.T, s *Store, username string) accountKeyState {
+	t.Helper()
+	var st accountKeyState
+	if err := s.conn.QueryRow(
+		`SELECT password_hash, wrapped_dek_pw FROM users WHERE username = ?`, username,
+	).Scan(&st.passwordHash, &st.wrappedDEK); err != nil {
+		t.Fatalf("read account: %v", err)
+	}
+	if err := s.conn.QueryRow(
+		`SELECT COUNT(*) FROM recovery_codes WHERE username = ? AND used = 0`, username,
+	).Scan(&st.unusedCodes); err != nil {
+		t.Fatalf("count unused codes: %v", err)
+	}
+	return st
+}
+
+// A legacy code (issued without a DEK wrap) cannot unlock the DEK. Once
+// the account has a DEK, resetting with one would have to replace the
+// key and orphan every encrypted project, so it is refused and nothing
+// changes: the old password still unlocks the same DEK, and the code is
+// not used up.
+func TestRecoveryResetRefusesLegacyCodeWhenAccountHasDEK(t *testing.T) {
 	s := newDEKTestStore(t)
 
 	dek, err := s.UnlockDEK("alice", "p4ssw0rd-original")
@@ -111,21 +135,55 @@ func TestRecoveryResetLegacyCodesFreshDEK(t *testing.T) {
 	if err != nil {
 		t.Fatalf("IssueRecoveryCodes: %v", err)
 	}
-	if err := s.ResetWithRecoveryCode("alice", codes[0], "another-password"); err != nil {
-		t.Fatalf("ResetWithRecoveryCode: %v", err)
+	before := readAccountKeyState(t, s, "alice")
+
+	for attempt := 1; attempt <= 2; attempt++ {
+		if err := s.ResetWithRecoveryCode("alice", codes[0], "another-password"); !errors.Is(err, ErrLegacyRecoveryCode) {
+			t.Fatalf("attempt %d: legacy reset err = %v, want ErrLegacyRecoveryCode", attempt, err)
+		}
+		if after := readAccountKeyState(t, s, "alice"); after != before {
+			t.Fatalf("attempt %d: refused reset changed the account: before %+v, after %+v", attempt, before, after)
+		}
 	}
-	got, err := s.UnlockDEK("alice", "another-password")
+
+	got, err := s.UnlockDEK("alice", "p4ssw0rd-original")
 	if err != nil {
-		t.Fatalf("UnlockDEK after legacy reset: %v", err)
+		t.Fatalf("UnlockDEK with the old password after a refused reset: %v", err)
 	}
-	if bytes.Equal(got, dek) {
-		t.Error("legacy reset should have generated a FRESH DEK")
+	if !bytes.Equal(got, dek) {
+		t.Fatal("DEK changed across a refused reset")
+	}
+	if _, err := s.Authenticate("alice", "another-password"); err == nil {
+		t.Fatal("the refused reset's new password signs in")
 	}
 }
 
-// TestHasLegacyRecoveryCodeWraps pins the DEK-orphan guard: if any active
-// recovery code lacks a wrapped DEK, a future password reset would generate
-// a fresh DEK and silently orphan every encrypted project.
+// An account created before ADR-001 and not signed in since has no DEK
+// yet, so a legacy code resets the password without creating one; the
+// next sign-in creates the DEK, wrapped by the new password.
+func TestRecoveryResetLegacyCodeWithoutDEKResetsPasswordOnly(t *testing.T) {
+	s := newDEKTestStore(t)
+	codes, err := s.IssueRecoveryCodes("alice", nil) // legacy: no wraps
+	if err != nil {
+		t.Fatalf("IssueRecoveryCodes: %v", err)
+	}
+	if err := s.ResetWithRecoveryCode("alice", codes[0], "another-password"); err != nil {
+		t.Fatalf("ResetWithRecoveryCode: %v", err)
+	}
+	if st := readAccountKeyState(t, s, "alice"); st.wrappedDEK != "" {
+		t.Fatalf("legacy reset of an account without a DEK stored a key wrap %q, want none until sign-in", st.wrappedDEK)
+	}
+	if _, err := s.Authenticate("alice", "another-password"); err != nil {
+		t.Fatalf("Authenticate with the new password: %v", err)
+	}
+	if _, err := s.UnlockDEK("alice", "another-password"); err != nil {
+		t.Fatalf("UnlockDEK with the new password: %v", err)
+	}
+}
+
+// TestHasLegacyRecoveryCodeWraps pins the legacy-code check: an active
+// recovery code without a wrapped DEK cannot reset the password once the
+// account has a DEK, so encryption waits until such codes are replaced.
 func TestHasLegacyRecoveryCodeWraps(t *testing.T) {
 	s := newDEKTestStore(t)
 
@@ -289,5 +347,34 @@ func TestHasLegacyRecoveryCodeWraps_RejectsInvalidUsername(t *testing.T) {
 	s := newDEKTestStore(t)
 	if _, err := s.HasLegacyRecoveryCodeWraps("a"); err != ErrInvalidUsername {
 		t.Fatalf("HasLegacyRecoveryCodeWraps(invalid username) error = %v, want ErrInvalidUsername", err)
+	}
+}
+
+// The no-DEK branch sets only the password, and only while the account
+// still has no DEK. A trigger gives the account a key wrap between the
+// check and the write (as a sign-in on another connection could); the
+// reset must be refused and roll back, never erase that wrap.
+func TestRecoveryResetLegacyCodeNeverErasesAKeyThatAppears(t *testing.T) {
+	s := newDEKTestStore(t)
+	codes, err := s.IssueRecoveryCodes("alice", nil) // legacy: no wraps
+	if err != nil {
+		t.Fatalf("IssueRecoveryCodes: %v", err)
+	}
+	if _, err := s.conn.Exec(`
+		CREATE TRIGGER key_appears
+		BEFORE UPDATE OF used ON recovery_codes
+		BEGIN
+			UPDATE users SET wrapped_dek_pw = 'appeared' WHERE username = NEW.username;
+		END;
+	`); err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+	before := readAccountKeyState(t, s, "alice")
+
+	if err := s.ResetWithRecoveryCode("alice", codes[0], "another-password"); !errors.Is(err, ErrLegacyRecoveryCode) {
+		t.Fatalf("reset after a key appeared: err = %v, want ErrLegacyRecoveryCode", err)
+	}
+	if after := readAccountKeyState(t, s, "alice"); after != before {
+		t.Fatalf("refused reset changed the account: before %+v, after %+v", before, after)
 	}
 }
