@@ -378,10 +378,11 @@ func tasksOnDay(tasks map[string]*Task, r string, day int) []*Task {
 	return out
 }
 
-// LevelResources reschedules ES/EF so no resource exceeds capacity,
+// LevelResourcesWithOptions reschedules ES/EF so no resource exceeds capacity,
 // using the serial method: tasks become ready when all predecessors
 // are levelled, the ready task with the smallest (LS, ID) — i.e. the
-// least float — goes first, and each task is delayed to the earliest
+// least float, under the default LeastTotalFloat strategy — goes first,
+// and each task is delayed to the earliest
 // integer start where its precedence links are satisfied and every
 // assigned resource has capacity across its whole span.
 //
@@ -389,7 +390,7 @@ func tasksOnDay(tasks map[string]*Task, r string, day int) []*Task {
 // leveling pass):
 //
 //   - CalculateCPM is run internally first; it returns false on a
-//     cycle and LevelResources propagates that.
+//     cycle and this returns ErrSchedulingCycle.
 //   - After leveling, ES/EF are the resource-feasible dates. LS, LF
 //     and Float still describe the precedence-only schedule — float
 //     analysis of a levelled plan is a later refinement.
@@ -400,26 +401,10 @@ func tasksOnDay(tasks map[string]*Task, r string, day int) []*Task {
 //   - Date constraints: SNET/MFO forward effects are preserved via
 //     the initial CalculateCPM pass (the levelled start never moves
 //     earlier than the constrained ES).
-func LevelResources(tasks map[string]*Task, capacities map[string]float64) bool {
-	return LevelResourcesWithPlan(tasks, capacityPlanFromMap(capacities))
-}
-
-// LevelResourcesWithPlan reschedules ES/EF using calendar-aware resource
-// capacities and the default leveling horizon. It returns false only on a
-// dependency cycle; a horizon overflow (some tasks unplaceable) still
-// returns true, with those tasks left at their earliest start and visible
-// to DetectOverallocations — preserving the original silent-cap behaviour
-// for existing callers. Callers that need the horizon outcome or a custom
-// per-schedule horizon should use LevelResourcesWithOptions.
-func LevelResourcesWithPlan(tasks map[string]*Task, plan ResourceCapacityPlan) bool {
-	_, err := LevelResourcesWithOptions(tasks, plan, LevelingOptions{})
-	return !errors.Is(err, ErrSchedulingCycle)
-}
-
-// LevelResourcesWithOptions is the full serial resource-leveling entry
-// point. See LevelResources for the leveling semantics. Beyond the capacity
-// plan it accepts LevelingOptions carrying a per-schedule Horizon (zero uses
-// DefaultLevelingHorizon) and Strategy (empty uses LeastTotalFloat).
+//
+// Beyond the capacity plan it accepts LevelingOptions carrying a
+// per-schedule Horizon (zero uses DefaultLevelingHorizon) and Strategy
+// (empty uses LeastTotalFloat).
 //
 // Return values:
 //   - (LevelingResult{}, ErrSchedulingCycle) if the graph has a cycle.

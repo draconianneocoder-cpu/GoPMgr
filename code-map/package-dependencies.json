@@ -225,7 +225,6 @@
         "gopmgr/internal/catalog",
         "gopmgr/internal/db",
         "gopmgr/internal/deletionlog",
-        "gopmgr/internal/documents",
         "gopmgr/internal/export",
         "gopmgr/internal/signing",
         "gopmgr/internal/users"
@@ -293,11 +292,9 @@
       ],
       "imports_internal": [
         "gopmgr/internal/charts/pdfrender",
-        "gopmgr/internal/crypto",
         "gopmgr/internal/fonts",
         "gopmgr/internal/kernel",
-        "gopmgr/internal/pdfmeta",
-        "gopmgr/internal/signing"
+        "gopmgr/internal/pdfmeta"
       ],
       "notable_external_deps": [
         "github.com/go-pdf/fpdf"
@@ -476,7 +473,6 @@
       "dir": "internal/signing",
       "imported_by_internal": [
         "gopmgr",
-        "gopmgr/internal/documents",
         "gopmgr/internal/export"
       ],
       "imports_internal": [

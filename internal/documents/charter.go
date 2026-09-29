@@ -5,19 +5,15 @@ package documents
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 	"unicode/utf8"
 
 	"github.com/go-pdf/fpdf"
 
-	"gopmgr/internal/crypto"
 	"gopmgr/internal/pdfmeta"
-	"gopmgr/internal/signing"
 )
 
 // ErrMissingRequired is returned by Validate when a required field is
@@ -391,46 +387,6 @@ func Render(kind Kind, contentJSON, projectName string) ([]byte, error) {
 	return raw, nil
 }
 
-// RenderSigned renders the document and applies a PAdES Baseline B digital
-// signature using the provided certificate. Application exports use
-// signing.ApplyPAdES instead so project-level RFC 3161 settings can upgrade
-// this same final mutation to Baseline T. This compatibility entry point
-// remains useful to callers that explicitly require Baseline B.
-//
-//  1. Standard document rendering, including PDF/A-3 metadata.
-//  2. Shared PAdES Baseline B signing pipeline.
-//
-// Callers that need a visible signature appearance must render it before
-// this function signs the PDF. Appending another PDF after signing would
-// leave those bytes outside the declared /ByteRange.
-func RenderSigned(kind Kind, contentJSON, projectName, certPath, certPassword string) ([]byte, error) {
-	signer, err := crypto.LoadCertificate(certPath, certPassword)
-	if err != nil {
-		return nil, fmt.Errorf("documents: load certificate for signing: %w", err)
-	}
-	return renderSignedWithSigner(kind, contentJSON, projectName, signer)
-}
-
-// renderSignedWithSigner is the testable compatibility seam behind
-// RenderSigned. It intentionally passes nil timestamp configuration because
-// this API promises Baseline B; application exports prepare project-level
-// PAdES-T settings before calling the same signing pipeline.
-func renderSignedWithSigner(
-	kind Kind,
-	contentJSON, projectName string,
-	signer *crypto.Signer,
-) ([]byte, error) {
-	pdfBytes, err := Render(kind, contentJSON, projectName)
-	if err != nil {
-		return nil, err
-	}
-	signed, _, err := signing.ApplyPAdES(context.Background(), pdfBytes, signer, nil)
-	if err != nil {
-		return nil, fmt.Errorf("documents: apply PAdES Baseline B signature: %w", err)
-	}
-	return signed, nil
-}
-
 // renderRaw dispatches to the kind-specific PDF renderer, or falls
 // back to a generic key/value renderer for kinds without bespoke
 // layouts. It returns the PDF exactly as the renderer produced it,
@@ -634,16 +590,4 @@ func toObjectSlice(v interface{}) []map[string]interface{} {
 		return out
 	}
 	return nil
-}
-
-// KindsSorted returns every Kind in stable name order. Useful for
-// menus.
-func KindsSorted() []Kind {
-	defs := All()
-	sort.Slice(defs, func(i, j int) bool { return defs[i].Name < defs[j].Name })
-	out := make([]Kind, len(defs))
-	for i, d := range defs {
-		out[i] = d.Kind
-	}
-	return out
 }

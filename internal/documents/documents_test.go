@@ -60,14 +60,14 @@ func TestGet_UnknownKind_ReturnsFalse(t *testing.T) {
 	}
 }
 
-func TestByPhase_SumEqualsAll(t *testing.T) {
-	phases := []Phase{PhaseInitiation, PhasePlanning, PhaseExecution, PhaseMonitoring, PhaseClosing}
-	total := 0
-	for _, p := range phases {
-		total += len(ByPhase(p))
-	}
-	if total != len(All()) {
-		t.Errorf("ByPhase sum across all phases = %d, want %d", total, len(All()))
+// TestEveryKindHasAKnownPhase: every registered document belongs to one of
+// the five phases the document catalog groups by.
+func TestEveryKindHasAKnownPhase(t *testing.T) {
+	known := map[Phase]bool{PhaseInitiation: true, PhasePlanning: true, PhaseExecution: true, PhaseMonitoring: true, PhaseClosing: true}
+	for _, d := range All() {
+		if !known[d.Phase] {
+			t.Errorf("%s has phase %q, not one of the five known phases", d.Kind, d.Phase)
+		}
 	}
 }
 

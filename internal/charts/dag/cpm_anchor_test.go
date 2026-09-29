@@ -15,7 +15,10 @@ func weekdaysOnly(t time.Time) bool {
 	return wd != time.Saturday && wd != time.Sunday
 }
 
-func TestAnchorCPMDates_WritesRealDates(t *testing.T) {
+// defaultPlan is the capacity plan for one unit of every resource.
+var defaultPlan = kernel.ResourceCapacityPlan{DefaultCapacity: 1}
+
+func TestLayoutCPMScheduled_WritesRealDates(t *testing.T) {
 	nodes := []LayeredNode{
 		{ID: "A", Label: "A", Duration: 2},
 		{ID: "B", Label: "B", Duration: 3},
@@ -24,13 +27,11 @@ func TestAnchorCPMDates_WritesRealDates(t *testing.T) {
 		Nodes: nodes,
 		Edges: []LayeredEdge{{From: "A", To: "B"}},
 	}
-	if _, err := LayoutCPM(doc); err != nil {
-		t.Fatalf("LayoutCPM: %v", err)
-	}
-
 	// Friday 2026-06-05; weekend skipped.
 	start := time.Date(2026, 6, 5, 0, 0, 0, 0, time.UTC)
-	AnchorCPMDates(&doc, start, weekdaysOnly)
+	if _, err := LayoutCPMScheduledWithPlan(doc, start, weekdaysOnly, defaultPlan); err != nil {
+		t.Fatalf("LayoutCPMScheduledWithPlan: %v", err)
+	}
 
 	want := [][2]string{
 		{"2026-06-05", "2026-06-08"}, // A: Fri + Mon
@@ -42,11 +43,6 @@ func TestAnchorCPMDates_WritesRealDates(t *testing.T) {
 				n.ID, n.StartDate, n.FinishDate, want[i][0], want[i][1])
 		}
 	}
-}
-
-func TestAnchorCPMDates_NilAndEmptyAreNoops(t *testing.T) {
-	AnchorCPMDates(nil, time.Now(), nil)                // must not panic
-	AnchorCPMDates(&LayeredDocument{}, time.Now(), nil) // must not panic
 }
 
 func TestLayoutCPMScheduled_HonoursConstraintsAndDates(t *testing.T) {
@@ -67,8 +63,8 @@ func TestLayoutCPMScheduled_HonoursConstraintsAndDates(t *testing.T) {
 
 	// Monday 2026-06-01.
 	start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
-	if _, err := LayoutCPMScheduled(doc, start, weekdaysOnly, nil); err != nil {
-		t.Fatalf("LayoutCPMScheduled: %v", err)
+	if _, err := LayoutCPMScheduledWithPlan(doc, start, weekdaysOnly, defaultPlan); err != nil {
+		t.Fatalf("LayoutCPMScheduledWithPlan: %v", err)
 	}
 
 	// B: SNET Thursday (case-insensitive "snet") beats link ES=1.

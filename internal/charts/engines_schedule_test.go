@@ -7,15 +7,17 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"gopmgr/internal/kernel"
 )
 
 const cpmRaw = `{"nodes":[{"id":"A","label":"A","duration":2}],"edges":[]}`
 
 func TestLayoutWithSchedule_CPMEmitsAnchoredDates(t *testing.T) {
 	start := time.Date(2026, 6, 5, 0, 0, 0, 0, time.UTC)
-	res, err := LayoutWithSchedule(KindCPM, cpmRaw, start, nil, nil)
+	res, err := LayoutWithSchedulePlan(KindCPM, cpmRaw, start, nil, kernel.ResourceCapacityPlan{DefaultCapacity: 1})
 	if err != nil {
-		t.Fatalf("LayoutWithSchedule: %v", err)
+		t.Fatalf("LayoutWithSchedulePlan: %v", err)
 	}
 	body := string(res.Body)
 	if !strings.Contains(body, `"start_date":"2026-06-05"`) {
@@ -27,9 +29,9 @@ func TestLayoutWithSchedule_CPMEmitsAnchoredDates(t *testing.T) {
 }
 
 func TestLayoutWithSchedule_ZeroStartFallsBack(t *testing.T) {
-	res, err := LayoutWithSchedule(KindCPM, cpmRaw, time.Time{}, nil, nil)
+	res, err := LayoutWithSchedulePlan(KindCPM, cpmRaw, time.Time{}, nil, kernel.ResourceCapacityPlan{DefaultCapacity: 1})
 	if err != nil {
-		t.Fatalf("LayoutWithSchedule: %v", err)
+		t.Fatalf("LayoutWithSchedulePlan: %v", err)
 	}
 	if strings.Contains(string(res.Body), "start_date") {
 		t.Errorf("un-anchored layout must not carry start_date:\n%s", res.Body)
@@ -39,9 +41,9 @@ func TestLayoutWithSchedule_ZeroStartFallsBack(t *testing.T) {
 func TestLayoutWithSchedule_NonCPMDelegates(t *testing.T) {
 	raw := `{"root":{"id":"1","title":"Project"}}`
 	start := time.Date(2026, 6, 5, 0, 0, 0, 0, time.UTC)
-	res, err := LayoutWithSchedule(KindWBS, raw, start, nil, nil)
+	res, err := LayoutWithSchedulePlan(KindWBS, raw, start, nil, kernel.ResourceCapacityPlan{DefaultCapacity: 1})
 	if err != nil {
-		t.Fatalf("LayoutWithSchedule(WBS): %v", err)
+		t.Fatalf("LayoutWithSchedulePlan(WBS): %v", err)
 	}
 	plain, err := Layout(KindWBS, raw)
 	if err != nil {

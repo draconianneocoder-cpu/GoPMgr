@@ -83,15 +83,6 @@ func ParseFishbone(raw string) (FishboneDocument, error) {
 	return doc, nil
 }
 
-// EncodeFishbone serialises a FishboneDocument back to JSON.
-func EncodeFishbone(doc FishboneDocument) (string, error) {
-	b, err := json.Marshal(doc)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
 // FishboneLayoutOptions controls visual spacing.
 type FishboneLayoutOptions struct {
 	EffectWidth    float64 // width of the effect node

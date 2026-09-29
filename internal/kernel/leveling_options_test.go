@@ -104,19 +104,6 @@ func TestLevelResourcesWithOptions_FullyLevelledReturnsNil(t *testing.T) {
 	}
 }
 
-// TestLevelResourcesWithPlan_HorizonOverflowStillReturnsTrue pins the
-// backward-compatible bool wrapper: a horizon overflow is NOT a cycle, so the
-// wrapper still reports success (true), matching the pre-sentinel behaviour.
-func TestLevelResourcesWithPlan_HorizonOverflowStillReturnsTrue(t *testing.T) {
-	tasks := map[string]*Task{
-		"A": {ID: "A", Duration: 1,
-			Assignments: []Assignment{{Resource: "alice", Units: 2}}},
-	}
-	if !LevelResourcesWithPlan(tasks, ResourceCapacityPlan{DefaultCapacity: 1}) {
-		t.Error("horizon overflow must still return true (only a cycle returns false)")
-	}
-}
-
 // levelingStrategyGraph builds a fresh contention graph where the
 // LeastTotalFloat and EarliestDeadline strategies disagree about which of
 // two alice-contending tasks (A, B) claims day 0:

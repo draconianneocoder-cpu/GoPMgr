@@ -118,14 +118,3 @@ func Get(k Kind) (Definition, bool) {
 	}
 	return Definition{}, false
 }
-
-// ByPhase returns every Definition whose Phase matches.
-func ByPhase(p Phase) []Definition {
-	var out []Definition
-	for _, d := range registry {
-		if d.Phase == p {
-			out = append(out, d)
-		}
-	}
-	return out
-}

@@ -55,15 +55,6 @@ func Parse(raw string) (WBSDocument, error) {
 	return doc, nil
 }
 
-// Encode serialises a WBSDocument back into JSON suitable for storage.
-func Encode(doc WBSDocument) (string, error) {
-	b, err := json.Marshal(doc)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
 // Renumber assigns dotted WBS codes ("1", "1.1", "1.2", "1.2.1", ...)
 // to every node in the tree, in pre-order. The root is always "1".
 func Renumber(doc *WBSDocument) {
@@ -78,28 +69,6 @@ func renumberRec(n *WBSNode, prefix string) {
 	for i, c := range n.Children {
 		renumberRec(c, prefix+"."+itoa(i+1))
 	}
-}
-
-// FlattenLeaves returns every leaf (childless) node in pre-order. PMI
-// calls these "work packages" — the level at which effort is estimated
-// and tasks scheduled.
-func FlattenLeaves(doc WBSDocument) []*WBSNode {
-	var out []*WBSNode
-	walk(doc.Root, func(n *WBSNode) {
-		if len(n.Children) == 0 {
-			out = append(out, n)
-		}
-	})
-	return out
-}
-
-// TotalEffort returns the sum of Effort across every leaf node.
-func TotalEffort(doc WBSDocument) float64 {
-	var sum float64
-	for _, leaf := range FlattenLeaves(doc) {
-		sum += leaf.Effort
-	}
-	return sum
 }
 
 // ----- Layout (used by the Svelte renderer) -----
@@ -237,16 +206,6 @@ func assign(
 		cw := widths[c.ID]
 		assign(c, depth+1, cursor, opt, widths, n.ID, nodes, edges, maxX, maxY)
 		cursor += cw + opt.HorizontalSpacing
-	}
-}
-
-func walk(n *WBSNode, visit func(*WBSNode)) {
-	if n == nil {
-		return
-	}
-	visit(n)
-	for _, c := range n.Children {
-		walk(c, visit)
 	}
 }
 

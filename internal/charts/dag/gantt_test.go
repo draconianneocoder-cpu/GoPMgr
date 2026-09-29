@@ -66,9 +66,9 @@ func TestLayoutGantt(t *testing.T) {
 
 func TestLayoutGanttScheduled(t *testing.T) {
 	start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC) // Monday
-	layout, err := LayoutGanttScheduled(ganttDoc(), start, weekdaysOnly, nil)
+	layout, err := LayoutGanttScheduledWithPlan(ganttDoc(), start, weekdaysOnly, defaultPlan)
 	if err != nil {
-		t.Fatalf("LayoutGanttScheduled: %v", err)
+		t.Fatalf("LayoutGanttScheduledWithPlan: %v", err)
 	}
 	if !layout.Anchored {
 		t.Error("scheduled layout must be anchored")
@@ -96,9 +96,9 @@ func TestLayoutGanttEmitsAbsoluteWorkSegments(t *testing.T) {
 		},
 	}
 	start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC) // Monday
-	layout, err := LayoutGanttScheduled(doc, start, weekdaysOnly, nil)
+	layout, err := LayoutGanttScheduledWithPlan(doc, start, weekdaysOnly, defaultPlan)
 	if err != nil {
-		t.Fatalf("LayoutGanttScheduled: %v", err)
+		t.Fatalf("LayoutGanttScheduledWithPlan: %v", err)
 	}
 	row := layout.Rows[0]
 	// SNET 2026-06-02 (Tue) is offset 1, so absolute segments are ES+rel.

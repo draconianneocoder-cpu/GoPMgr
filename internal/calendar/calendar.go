@@ -146,38 +146,10 @@ func For(countryCode string) *Calendar {
 	return &Calendar{bc: bc, CountryCode: code}
 }
 
-// IsHoliday reports whether t falls on a recognised holiday in the
-// calendar's country.
-func (c *Calendar) IsHoliday(t time.Time) bool {
-	actual, observed, _ := c.bc.IsHoliday(t)
-	return actual || observed
-}
-
 // IsWorkday reports whether t is a normal working day (workweek and
 // not a holiday).
 func (c *Calendar) IsWorkday(t time.Time) bool {
 	return c.bc.IsWorkday(t)
-}
-
-// WorkdaysFrom returns the date that is `days` working days after
-// `start`. Useful for due-date math: "this milestone is 10 working
-// days after the sprint begins".
-//
-// A negative `days` walks backward.
-func (c *Calendar) WorkdaysFrom(start time.Time, days int) time.Time {
-	step := 1
-	if days < 0 {
-		step = -1
-		days = -days
-	}
-	d := start
-	for i := 0; i < days; {
-		d = d.AddDate(0, 0, step)
-		if c.bc.IsWorkday(d) {
-			i++
-		}
-	}
-	return d
 }
 
 // HolidaysIn returns every (actual or observed) holiday between from

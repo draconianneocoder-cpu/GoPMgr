@@ -193,25 +193,10 @@ func RateTimesQuantity(rate Amount, quantity float64) Amount {
 	return Amount{MinorUnits: roundRat(value)}
 }
 
-// ScaleByRatio multiplies amount by numerator/denominator exactly and
-// rounds half away from zero to minor units. A zero denominator returns
-// zero because the caller has no valid ratio. A rounded result outside
-// int64 saturates by sign.
-func ScaleByRatio(amount Amount, numerator, denominator int64) Amount {
-	if amount.MinorUnits == 0 || numerator == 0 || denominator == 0 {
-		return Amount{}
-	}
-	value := new(big.Rat).Mul(
-		big.NewRat(amount.MinorUnits, 1),
-		big.NewRat(numerator, denominator),
-	)
-	return Amount{MinorUnits: roundRat(value)}
-}
-
 // ScaleByRatioChecked multiplies amount by numerator/denominator exactly and
-// rounds half away from zero to minor units. A zero operand or denominator
-// returns zero, matching ScaleByRatio; an unrepresentable rounded result
-// returns ErrOverflow instead of saturating.
+// rounds half away from zero to minor units. A zero amount or numerator
+// returns zero, as does a zero denominator (there is no valid ratio); an
+// unrepresentable rounded result returns ErrOverflow instead of saturating.
 func ScaleByRatioChecked(amount Amount, numerator, denominator int64) (Amount, error) {
 	if amount.MinorUnits == 0 || numerator == 0 || denominator == 0 {
 		return Amount{}, nil

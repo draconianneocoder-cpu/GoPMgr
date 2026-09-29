@@ -36,28 +36,18 @@ func TestIsWorkdayWeekend(t *testing.T) {
 }
 
 // TestUSNewYearIsHoliday: the rickar/cal/v2/us pack should mark
-// January 1st as a holiday in any year.
+// January 1st as a holiday, so Thursday 2026-01-01 is not a workday.
 func TestUSNewYearIsHoliday(t *testing.T) {
 	c := For("US")
 	d := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	if !c.IsHoliday(d) {
-		t.Error("US New Year's Day 2026 should be a holiday")
-	}
-}
-
-// TestWorkdaysFromSkipsWeekend: starting Friday and adding 1
-// working day lands on Monday, not Saturday.
-func TestWorkdaysFromSkipsWeekend(t *testing.T) {
-	c := For("US")
-	fri := time.Date(2026, 1, 2, 12, 0, 0, 0, time.UTC) // Friday
-	mon := c.WorkdaysFrom(fri, 1)
-	if mon.Weekday() == time.Saturday || mon.Weekday() == time.Sunday {
-		t.Errorf("WorkdaysFrom(Fri, 1) landed on weekend: %v", mon.Weekday())
+	if c.IsWorkday(d) {
+		t.Error("US New Year's Day 2026 (a Thursday) should not be a workday")
 	}
 }
 
 // TestFor_AllSupportedCountries exercises every country switch case and
-// confirms New Year's Day (2026-01-01) is recognised as a holiday in each.
+// confirms New Year's Day (2026-01-01, a Thursday) is a holiday, not a
+// workday, in each.
 func TestFor_AllSupportedCountries(t *testing.T) {
 	newYear := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	tests := []struct{ code string }{
@@ -81,7 +71,7 @@ func TestFor_AllSupportedCountries(t *testing.T) {
 			if c.CountryCode != tt.code {
 				t.Errorf("CountryCode: got %q, want %q", c.CountryCode, tt.code)
 			}
-			if !c.IsHoliday(newYear) {
+			if c.IsWorkday(newYear) {
 				t.Errorf("For(%q): New Year's Day 2026-01-01 should be a holiday", tt.code)
 			}
 		})
@@ -112,17 +102,6 @@ func TestSupportedPoliciesReturnsIndependentTimeZoneSlices(t *testing.T) {
 	policies[0].TimeZones[0] = "Etc/Unexpected"
 	if got := DefaultTimeZone(policies[0].CountryCode); got == "Etc/Unexpected" {
 		t.Fatal("mutating a returned policy changed the package catalogue")
-	}
-}
-
-// TestWorkdaysFrom_BackwardWalk confirms the negative-days path counts
-// backward correctly. One workday before Monday 2026-01-05 is Friday 2026-01-02.
-func TestWorkdaysFrom_BackwardWalk(t *testing.T) {
-	c := For("US")
-	mon := time.Date(2026, 1, 5, 12, 0, 0, 0, time.UTC)
-	got := c.WorkdaysFrom(mon, -1)
-	if got.Weekday() != time.Friday {
-		t.Errorf("WorkdaysFrom(Monday, -1) = %v (%v), want Friday", got, got.Weekday())
 	}
 }
 

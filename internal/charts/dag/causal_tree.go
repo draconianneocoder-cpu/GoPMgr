@@ -51,15 +51,6 @@ func ParseCausalTree(raw string) (CausalTreeDocument, error) {
 	return doc, nil
 }
 
-// EncodeCausalTree serialises back to JSON.
-func EncodeCausalTree(doc CausalTreeDocument) (string, error) {
-	b, err := json.Marshal(doc)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
 // LayoutCausalTree produces a left-to-right tree layout. The root
 // (the effect) sits at the far right; causes branch leftward, each
 // child node above/below its parent. The layout independently

@@ -61,8 +61,8 @@ type LayeredNode struct {
 	Float      float64 `json:"float,omitempty"`
 	IsCritical bool    `json:"is_critical,omitempty"`
 
-	// CPM calendar-anchored dates (filled by AnchorCPMDates when the
-	// project has a start date). YYYY-MM-DD; empty when un-anchored.
+	// CPM calendar-anchored dates (filled by the scheduled layouts when
+	// the project has a start date). YYYY-MM-DD; empty when un-anchored.
 	StartDate  string `json:"start_date,omitempty"`
 	FinishDate string `json:"finish_date,omitempty"`
 
@@ -136,15 +136,6 @@ func ParseLayered(raw string) (LayeredDocument, error) {
 		return LayeredDocument{}, err
 	}
 	return doc, nil
-}
-
-// EncodeLayered serialises a LayeredDocument back to JSON.
-func EncodeLayered(doc LayeredDocument) (string, error) {
-	b, err := json.Marshal(doc)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
 }
 
 // LayeredLayoutOptions controls visual spacing.
@@ -381,12 +372,4 @@ func shiftY(l *Layout, dy float64) {
 	for i := range l.Nodes {
 		l.Nodes[i].Y += dy
 	}
-}
-
-// NewLayeredNode is a convenience constructor for a node with a fresh
-// ID and a sensible label. Kept for its own test coverage; production
-// code currently constructs LayeredNode{} literals directly (see
-// app_charts.go) rather than calling this.
-func NewLayeredNode(id, label string) LayeredNode {
-	return LayeredNode{ID: id, Label: label}
 }

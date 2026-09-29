@@ -10,8 +10,8 @@ import (
 	"testing"
 )
 
-// TestScaleByRatio_ComputesExactRatio exercises ScaleByRatio's one
-// real production call site: internal/kernel/evm.go computes EAC
+// TestScaleByRatio_ComputesExactRatio exercises ScaleByRatioChecked's
+// production call site: internal/kernel/evm.go computes EAC
 // (Estimate At Completion) as BAC*(AC/EV), the standard EVM formula.
 // A rounding defect here silently misstates the dollar figure GoPMgr
 // shows a project manager as the forecast final cost.
@@ -28,23 +28,23 @@ func TestScaleByRatio_ComputesExactRatio(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := ScaleByRatio(tc.amount, tc.numerator, tc.denominator)
-			if got.MinorUnits != tc.wantMinorUnits {
-				t.Fatalf("ScaleByRatio(%v, %d, %d).MinorUnits = %d, want %d",
-					tc.amount, tc.numerator, tc.denominator, got.MinorUnits, tc.wantMinorUnits)
+			got, err := ScaleByRatioChecked(tc.amount, tc.numerator, tc.denominator)
+			if err != nil || got.MinorUnits != tc.wantMinorUnits {
+				t.Fatalf("ScaleByRatioChecked(%v, %d, %d) = %d, %v; want %d, nil",
+					tc.amount, tc.numerator, tc.denominator, got.MinorUnits, err, tc.wantMinorUnits)
 			}
 		})
 	}
 }
 
 // TestScaleByRatio_ZeroInputsReturnZeroWithoutPanic covers all three
-// of ScaleByRatio's explicit zero guards. denominator==0 is the
+// of ScaleByRatioChecked's explicit zero guards. denominator==0 is the
 // highest-stakes case: without the guard, big.NewRat(n, 0) panics
 // ("division by zero"). Note this is a general-purpose-helper
 // contract, not a guard the live EAC call site currently depends on:
 // internal/kernel/evm.go pre-guards EV==0 itself before calling
-// ScaleByRatio at all (`if m.EVMinorUnits > 0 && m.ACMinorUnits > 0`),
-// assigning EAC = BAC directly in the else branch. ScaleByRatio must
+// ScaleByRatioChecked at all (`if m.EVMinorUnits > 0 && m.ACMinorUnits > 0`),
+// assigning EAC = BAC directly in the else branch. ScaleByRatioChecked must
 // still be safe against a zero denominator on its own terms, the same
 // way internal/crypto's pdf_cms_test.go tests helpers no current
 // caller happens to be able to break.
@@ -60,10 +60,10 @@ func TestScaleByRatio_ZeroInputsReturnZeroWithoutPanic(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := ScaleByRatio(tc.amount, tc.numerator, tc.denominator)
-			if got.MinorUnits != 0 {
-				t.Errorf("ScaleByRatio(%v, %d, %d).MinorUnits = %d, want 0",
-					tc.amount, tc.numerator, tc.denominator, got.MinorUnits)
+			got, err := ScaleByRatioChecked(tc.amount, tc.numerator, tc.denominator)
+			if err != nil || got.MinorUnits != 0 {
+				t.Errorf("ScaleByRatioChecked(%v, %d, %d) = %d, %v; want 0, nil",
+					tc.amount, tc.numerator, tc.denominator, got.MinorUnits, err)
 			}
 		})
 	}
@@ -323,34 +323,6 @@ func TestRationalArithmetic_ClampsOverflowingResults(t *testing.T) {
 			},
 			want: math.MinInt64,
 		},
-		{
-			name: "scale ratio exact maximum",
-			calculate: func() Amount {
-				return ScaleByRatio(Amount{MinorUnits: math.MaxInt64}, 1, 1)
-			},
-			want: math.MaxInt64,
-		},
-		{
-			name: "scale ratio exact minimum",
-			calculate: func() Amount {
-				return ScaleByRatio(Amount{MinorUnits: math.MinInt64}, 1, 1)
-			},
-			want: math.MinInt64,
-		},
-		{
-			name: "scale ratio positive overflow",
-			calculate: func() Amount {
-				return ScaleByRatio(Amount{MinorUnits: math.MaxInt64}, 2, 1)
-			},
-			want: math.MaxInt64,
-		},
-		{
-			name: "scale ratio negative overflow",
-			calculate: func() Amount {
-				return ScaleByRatio(Amount{MinorUnits: math.MinInt64}, 2, 1)
-			},
-			want: math.MinInt64,
-		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -358,5 +330,20 @@ func TestRationalArithmetic_ClampsOverflowingResults(t *testing.T) {
 				t.Fatalf("minor units = %d, want %d", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestScaleByRatioChecked_Bounds: results exactly at the int64 bounds are
+// returned as is; anything past them is ErrOverflow, never a wrapped or
+// silently clamped figure.
+func TestScaleByRatioChecked_Bounds(t *testing.T) {
+	for _, v := range []int64{math.MaxInt64, math.MinInt64} {
+		got, err := ScaleByRatioChecked(Amount{MinorUnits: v}, 1, 1)
+		if err != nil || got.MinorUnits != v {
+			t.Fatalf("ScaleByRatioChecked(%d, 1, 1) = %d, %v; want %d, nil", v, got.MinorUnits, err, v)
+		}
+		if _, err := ScaleByRatioChecked(Amount{MinorUnits: v}, 2, 1); !errors.Is(err, ErrOverflow) {
+			t.Fatalf("ScaleByRatioChecked(%d, 2, 1) err = %v, want ErrOverflow", v, err)
+		}
 	}
 }

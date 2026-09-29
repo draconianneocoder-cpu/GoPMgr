@@ -35,10 +35,15 @@ const sampleMSPDI = `<?xml version="1.0" encoding="UTF-8"?>
   </Assignments>
 </Project>`
 
+// fromMSPDI parses with the default options, as the app's import does.
+func fromMSPDI(data []byte) (ImportedProject, error) {
+	return FromMSPDIWithOptions(data, DefaultMSPDIImportOptions())
+}
+
 func TestFromMSPDI(t *testing.T) {
-	p, err := FromMSPDI([]byte(sampleMSPDI))
+	p, err := fromMSPDI([]byte(sampleMSPDI))
 	if err != nil {
-		t.Fatalf("FromMSPDI: %v", err)
+		t.Fatalf("fromMSPDI: %v", err)
 	}
 
 	if p.Title != "Office Move" || p.StartDate != "2026-06-01" {
@@ -84,10 +89,10 @@ func TestFromMSPDI(t *testing.T) {
 }
 
 func TestFromMSPDIEmptyErrors(t *testing.T) {
-	if _, err := FromMSPDI([]byte(`<Project xmlns="x"><Tasks></Tasks></Project>`)); err == nil {
+	if _, err := fromMSPDI([]byte(`<Project xmlns="x"><Tasks></Tasks></Project>`)); err == nil {
 		t.Error("no importable tasks must error")
 	}
-	if _, err := FromMSPDI([]byte(`not xml`)); err == nil {
+	if _, err := fromMSPDI([]byte(`not xml`)); err == nil {
 		t.Error("malformed XML must error")
 	}
 }
@@ -129,9 +134,9 @@ func TestMSPDIRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ToMSPDI: %v", err)
 	}
-	back, err := FromMSPDI(xmlBytes)
+	back, err := fromMSPDI(xmlBytes)
 	if err != nil {
-		t.Fatalf("FromMSPDI(ToMSPDI(...)): %v", err)
+		t.Fatalf("fromMSPDI(ToMSPDI(...)): %v", err)
 	}
 
 	if back.Title != "Round Trip" || len(back.Tasks) != 3 {

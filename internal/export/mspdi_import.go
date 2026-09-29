@@ -25,7 +25,7 @@ type ImportedTask struct {
 	Assignments     []kernel.Assignment
 }
 
-// ImportedProject is the result of FromMSPDI.
+// ImportedProject is the result of FromMSPDIWithOptions.
 type ImportedProject struct {
 	Title     string
 	StartDate string // YYYY-MM-DD, or "" when the file has none
@@ -92,8 +92,9 @@ type mspdiImport struct {
 // are converted with, matching the exporter's isoDurationDays.
 const mspdiHoursPerDay = 8.0
 
-// FromMSPDI parses a Microsoft Project Data Interchange XML document
-// into GoPMgr's import shape.
+// FromMSPDIWithOptions parses a Microsoft Project Data Interchange XML
+// document into GoPMgr's import shape, importing the fields options
+// selects (DefaultMSPDIImportOptions imports everything below).
 //
 // Conversions and conventions:
 //
@@ -107,11 +108,6 @@ const mspdiHoursPerDay = 8.0
 //     full-time, same as GoPMgr).
 //   - The project StartDate is reduced to YYYY-MM-DD for
 //     project.start_date compatibility.
-func FromMSPDI(data []byte) (ImportedProject, error) {
-	return FromMSPDIWithOptions(data, DefaultMSPDIImportOptions())
-}
-
-// FromMSPDIWithOptions parses MSPDI using an explicit field-selection policy.
 func FromMSPDIWithOptions(data []byte, options MSPDIImportOptions) (ImportedProject, error) {
 	var raw mspdiImport
 	if err := xml.Unmarshal(data, &raw); err != nil {

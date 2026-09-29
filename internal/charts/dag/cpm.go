@@ -19,7 +19,7 @@ import (
 //
 // LayoutCPM mutates the input document in place. Date-bearing
 // constraints (SNET/FNLT/MFO) are ignored on this un-anchored path;
-// use LayoutCPMScheduled when a project start date is available.
+// use LayoutCPMScheduledWithPlan when a project start date is available.
 func LayoutCPM(doc LayeredDocument) (Layout, error) {
 	tasks := cpmTasksFromDoc(doc)
 	if ok := kernel.CalculateCPM(tasks); !ok {
@@ -30,21 +30,12 @@ func LayoutCPM(doc LayeredDocument) (Layout, error) {
 	return LayoutLayered(doc, DefaultLayeredOptions())
 }
 
-// LayoutCPMScheduled is LayoutCPM with full schedule context: date
-// constraints are armed against the project start + work calendar,
+// LayoutCPMScheduledWithPlan is LayoutCPM with full schedule context:
+// date constraints are armed against the project start + work calendar,
 // the CPM passes honour them, and every node additionally gets
-// calendar-anchored StartDate/FinishDate. isWorkday may be nil
-// (every day working); capacities follows DetectOverallocations'
-// convention (nil / missing entries = 1.0 per resource).
-func LayoutCPMScheduled(doc LayeredDocument, projectStart time.Time, isWorkday kernel.WorkdayFunc, capacities map[string]float64) (Layout, error) {
-	return LayoutCPMScheduledWithPlan(doc, projectStart, isWorkday, kernel.ResourceCapacityPlan{
-		DefaultCapacity: 1,
-		Capacities:      capacities,
-	})
-}
-
-// LayoutCPMScheduledWithPlan is LayoutCPMScheduled with named
-// resource calendars and per-day capacity overrides.
+// calendar-anchored StartDate/FinishDate. isWorkday may be nil (every day
+// working); plan carries resource capacities, named resource calendars,
+// and per-day capacity overrides.
 func LayoutCPMScheduledWithPlan(doc LayeredDocument, projectStart time.Time, isWorkday kernel.WorkdayFunc, plan kernel.ResourceCapacityPlan) (Layout, error) {
 	tasks := cpmTasksFromDoc(doc)
 	kernel.ApplyConstraintDates(tasks, projectStart, isWorkday)
@@ -190,34 +181,4 @@ func FormatLinkLabel(typ kernel.LinkType, lag float64) string {
 		sign = "" // strconv keeps the minus
 	}
 	return name + sign + strconv.FormatFloat(lag, 'f', -1, 64)
-}
-
-// AnchorCPMDates maps the ES/EF annotations LayoutCPM wrote into doc
-// onto real calendar dates via kernel.AnchorSchedule, writing
-// StartDate/FinishDate back to each node. Call it after LayoutCPM and
-// only when a project start date is known; it is a no-op for an empty
-// document. isWorkday may be nil (every day counts as working).
-func AnchorCPMDates(doc *LayeredDocument, projectStart time.Time, isWorkday kernel.WorkdayFunc) {
-	if doc == nil || len(doc.Nodes) == 0 {
-		return
-	}
-
-	tasks := make(map[string]*kernel.Task, len(doc.Nodes))
-	for _, n := range doc.Nodes {
-		tasks[n.ID] = &kernel.Task{
-			ID:       n.ID,
-			Duration: n.Duration,
-			ES:       n.ES,
-			EF:       n.EF,
-		}
-	}
-
-	kernel.AnchorSchedule(tasks, projectStart, isWorkday)
-
-	for i := range doc.Nodes {
-		if t, ok := tasks[doc.Nodes[i].ID]; ok {
-			doc.Nodes[i].StartDate = t.StartDate
-			doc.Nodes[i].FinishDate = t.FinishDate
-		}
-	}
 }

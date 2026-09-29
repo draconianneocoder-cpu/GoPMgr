@@ -102,53 +102,6 @@ func TestRenumber_NilDoc_NoPanic(t *testing.T) {
 	Renumber(&WBSDocument{})
 }
 
-func TestFlattenLeaves_SingleRoot_IsLeaf(t *testing.T) {
-	doc := WBSDocument{Root: &WBSNode{ID: "r"}}
-	leaves := FlattenLeaves(doc)
-	if len(leaves) != 1 || leaves[0].ID != "r" {
-		t.Errorf("expected [r], got %v", leaves)
-	}
-}
-
-func TestFlattenLeaves_TwoChildren_ParentExcluded(t *testing.T) {
-	doc := WBSDocument{
-		Root: &WBSNode{
-			ID: "r",
-			Children: []*WBSNode{
-				{ID: "c1"},
-				{ID: "c2"},
-			},
-		},
-	}
-	leaves := FlattenLeaves(doc)
-	if len(leaves) != 2 {
-		t.Fatalf("expected 2 leaves, got %d", len(leaves))
-	}
-	ids := map[string]bool{leaves[0].ID: true, leaves[1].ID: true}
-	if !ids["c1"] || !ids["c2"] {
-		t.Errorf("expected c1 and c2 as leaves, got %v", leaves)
-	}
-	for _, l := range leaves {
-		if l.ID == "r" {
-			t.Error("parent should not appear in leaves")
-		}
-	}
-}
-
-func TestTotalEffort_SumOfLeafEfforts(t *testing.T) {
-	doc := WBSDocument{
-		Root: &WBSNode{
-			ID: "r", Effort: 99, // parent effort is not counted
-			Children: []*WBSNode{
-				{ID: "c1", Effort: 3},
-				{ID: "c2", Effort: 7},
-			},
-		},
-	}
-	got := TotalEffort(doc)
-	within(t, "TotalEffort", got, 10.0)
-}
-
 func TestLayoutWBS_NilRoot(t *testing.T) {
 	layout := LayoutWBS(WBSDocument{}, DefaultLayoutOptions())
 	if len(layout.Nodes) != 0 {
@@ -484,107 +437,52 @@ func TestLayoutCausalTree_RootWithChildren_HasEdges(t *testing.T) {
 	}
 }
 
-// ===== Encode round-trips (Encode/EncodeLayered/EncodeFishbone/EncodeCausalTree) =====
+// ===== Parse success paths for the stored JSON shapes =====
 //
-// Each Encode is the inverse of its Parse. A round-trip both exercises
-// the encoder and drives the Parse success path (valid non-empty JSON),
-// which the existing empty/invalid-only Parse tests leave uncovered.
+// The frontend writes these documents; each test parses a literal of the
+// stored shape and checks nothing is lost, which the empty/invalid-only
+// Parse tests leave uncovered.
 
-func TestEncodeWBS_RoundTrip(t *testing.T) {
-	doc := WBSDocument{Root: &WBSNode{
-		ID: "r", Title: "Project", Children: []*WBSNode{
-			{ID: "a", Title: "Phase A", Effort: 3},
-		},
-	}}
-	raw, err := Encode(doc)
+func TestParseLayered_StoredShape(t *testing.T) {
+	got, err := ParseLayered(`{"nodes":[{"id":"A","label":"Start","duration":2}],"edges":[{"from":"A","to":"B","label":"FS"}]}`)
 	if err != nil {
-		t.Fatalf("Encode: %v", err)
+		t.Fatalf("ParseLayered: %v", err)
 	}
-	got, err := Parse(raw)
-	if err != nil {
-		t.Fatalf("Parse(Encode(doc)): %v", err)
-	}
-	if got.Root == nil || got.Root.Title != "Project" {
-		t.Fatalf("round-trip lost root: %+v", got.Root)
-	}
-	if len(got.Root.Children) != 1 || got.Root.Children[0].ID != "a" {
-		t.Errorf("round-trip lost children: %+v", got.Root.Children)
-	}
-}
-
-func TestEncodeLayered_RoundTrip(t *testing.T) {
-	doc := LayeredDocument{
-		Nodes: []LayeredNode{{ID: "A", Label: "Start", Duration: 2}},
-		Edges: []LayeredEdge{{From: "A", To: "B", Label: "FS"}},
-	}
-	raw, err := EncodeLayered(doc)
-	if err != nil {
-		t.Fatalf("EncodeLayered: %v", err)
-	}
-	got, err := ParseLayered(raw)
-	if err != nil {
-		t.Fatalf("ParseLayered(EncodeLayered(doc)): %v", err)
-	}
-	if len(got.Nodes) != 1 || got.Nodes[0].ID != "A" {
-		t.Errorf("round-trip lost nodes: %+v", got.Nodes)
+	if len(got.Nodes) != 1 || got.Nodes[0].ID != "A" || got.Nodes[0].Duration != 2 {
+		t.Errorf("lost nodes: %+v", got.Nodes)
 	}
 	if len(got.Edges) != 1 || got.Edges[0].Label != "FS" {
-		t.Errorf("round-trip lost edges: %+v", got.Edges)
+		t.Errorf("lost edges: %+v", got.Edges)
 	}
 }
 
-func TestEncodeFishbone_RoundTrip(t *testing.T) {
-	doc := FishboneDocument{
-		Effect: "Defects",
-		Categories: []FishboneCategory{
-			{Name: "People", Causes: []string{"training", "fatigue"}},
-		},
-	}
-	raw, err := EncodeFishbone(doc)
+func TestParseFishbone_StoredShape(t *testing.T) {
+	got, err := ParseFishbone(`{"effect":"Defects","categories":[{"name":"People","causes":["training","fatigue"]}]}`)
 	if err != nil {
-		t.Fatalf("EncodeFishbone: %v", err)
-	}
-	got, err := ParseFishbone(raw)
-	if err != nil {
-		t.Fatalf("ParseFishbone(EncodeFishbone(doc)): %v", err)
+		t.Fatalf("ParseFishbone: %v", err)
 	}
 	if got.Effect != "Defects" {
-		t.Errorf("round-trip lost effect: %q", got.Effect)
+		t.Errorf("lost effect: %q", got.Effect)
 	}
 	if len(got.Categories) != 1 || len(got.Categories[0].Causes) != 2 {
-		t.Errorf("round-trip lost categories: %+v", got.Categories)
+		t.Errorf("lost categories: %+v", got.Categories)
 	}
 }
 
-func TestEncodeCausalTree_RoundTrip(t *testing.T) {
-	doc := CausalTreeDocument{
-		Effect: "Outage",
-		Root:   &CauseNode{ID: "r", Label: "Root", Children: []*CauseNode{{ID: "c", Label: "Cause"}}},
-	}
-	raw, err := EncodeCausalTree(doc)
+func TestParseCausalTree_StoredShape(t *testing.T) {
+	got, err := ParseCausalTree(`{"effect":"Outage","root":{"id":"r","label":"Root","children":[{"id":"c","label":"Cause"}]}}`)
 	if err != nil {
-		t.Fatalf("EncodeCausalTree: %v", err)
-	}
-	got, err := ParseCausalTree(raw)
-	if err != nil {
-		t.Fatalf("ParseCausalTree(EncodeCausalTree(doc)): %v", err)
+		t.Fatalf("ParseCausalTree: %v", err)
 	}
 	if got.Effect != "Outage" || got.Root == nil {
-		t.Fatalf("round-trip lost effect/root: %+v", got)
+		t.Fatalf("lost effect/root: %+v", got)
 	}
 	if len(got.Root.Children) != 1 || got.Root.Children[0].ID != "c" {
-		t.Errorf("round-trip lost children: %+v", got.Root.Children)
+		t.Errorf("lost children: %+v", got.Root.Children)
 	}
 }
 
 // ===== Kind-specific layout wrappers (network.go, pert.go, cpm.go) =====
-
-func TestNewLayeredNode(t *testing.T) {
-	n := NewLayeredNode("n1", "Task One")
-	if n.ID != "n1" || n.Label != "Task One" {
-		t.Errorf("NewLayeredNode: got %+v", n)
-	}
-}
 
 func TestLayoutNetwork_LinearChain(t *testing.T) {
 	doc := LayeredDocument{
@@ -660,15 +558,5 @@ func TestLayoutCPM_Cycle_ReturnsErrCycle(t *testing.T) {
 	}
 	if _, err := LayoutCPM(doc); !errors.Is(err, ErrCycle) {
 		t.Errorf("expected ErrCycle, got %v", err)
-	}
-}
-
-// TestWalk_NilNode covers the nil guard in walk (reached when a tree
-// contains a nil child pointer or walk is seeded with nil).
-func TestWalk_NilNode(t *testing.T) {
-	count := 0
-	walk(nil, func(*WBSNode) { count++ })
-	if count != 0 {
-		t.Errorf("walk(nil) visited %d nodes, want 0", count)
 	}
 }

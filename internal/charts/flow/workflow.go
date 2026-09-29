@@ -44,15 +44,6 @@ func ParseWorkflow(raw string) (WorkflowDocument, error) {
 	return doc, nil
 }
 
-// EncodeWorkflow serialises back to JSON.
-func EncodeWorkflow(doc WorkflowDocument) (string, error) {
-	b, err := json.Marshal(doc)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
 // LayoutWorkflow produces a top-to-bottom flow layout.
 //
 // Geometry:

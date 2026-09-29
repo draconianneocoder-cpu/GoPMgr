@@ -163,8 +163,8 @@ func TestLevelResourcesSerialisesContention(t *testing.T) {
 		"B": {ID: "B", Duration: 2,
 			Assignments: []Assignment{{Resource: "alice"}}},
 	}
-	if !LevelResources(tasks, nil) {
-		t.Fatal("LevelResources reported a cycle")
+	if !levelResources(tasks, nil) {
+		t.Fatal("leveling reported a cycle")
 	}
 
 	approx(t, "A.ES", tasks["A"].ES, 0)
@@ -184,8 +184,8 @@ func TestLevelResourcesPrioritisesLeastFloat(t *testing.T) {
 			Assignments: []Assignment{{Resource: "alice"}}},
 		"C": {ID: "C", Duration: 3, Precedents: []string{"B"}},
 	}
-	if !LevelResources(tasks, nil) {
-		t.Fatal("LevelResources reported a cycle")
+	if !levelResources(tasks, nil) {
+		t.Fatal("leveling reported a cycle")
 	}
 
 	approx(t, "B.ES", tasks["B"].ES, 0) // least float goes first
@@ -201,8 +201,8 @@ func TestLevelResourcesRespectsLinksAndLag(t *testing.T) {
 			Links:       []Link{{Pred: "A", Type: FinishToStart, Lag: 1}},
 			Assignments: []Assignment{{Resource: "alice"}}},
 	}
-	if !LevelResources(tasks, nil) {
-		t.Fatal("LevelResources reported a cycle")
+	if !levelResources(tasks, nil) {
+		t.Fatal("leveling reported a cycle")
 	}
 	approx(t, "B.ES", tasks["B"].ES, 3) // A finishes day 2 + lag 1
 }
@@ -224,8 +224,8 @@ func TestLevelResourcesWithCalendarsSkipsUnavailableDays(t *testing.T) {
 		},
 	}
 
-	if !LevelResourcesWithPlan(tasks, plan) {
-		t.Fatal("LevelResourcesWithPlan reported a cycle")
+	if !levelResourcesWithPlan(tasks, plan) {
+		t.Fatal("leveling reported a cycle")
 	}
 	approx(t, "A.ES", tasks["A"].ES, 1)
 	approx(t, "A.EF", tasks["A"].EF, 2)
@@ -252,8 +252,8 @@ func TestLevelResourcesWithAssignmentCalendarID(t *testing.T) {
 		},
 	}
 
-	if !LevelResourcesWithPlan(tasks, plan) {
-		t.Fatal("LevelResourcesWithPlan reported a cycle")
+	if !levelResourcesWithPlan(tasks, plan) {
+		t.Fatal("leveling reported a cycle")
 	}
 	approx(t, "A.ES", tasks["A"].ES, 1)
 	approx(t, "A.EF", tasks["A"].EF, 2)
@@ -266,8 +266,8 @@ func TestLevelResourcesFractionalUnitsShare(t *testing.T) {
 		"B": {ID: "B", Duration: 2,
 			Assignments: []Assignment{{Resource: "alice", Units: 0.5}}},
 	}
-	if !LevelResources(tasks, nil) {
-		t.Fatal("LevelResources reported a cycle")
+	if !levelResources(tasks, nil) {
+		t.Fatal("leveling reported a cycle")
 	}
 	// Half-time each: both fit in parallel.
 	approx(t, "A.ES", tasks["A"].ES, 0)
@@ -279,8 +279,8 @@ func TestLevelResourcesImpossibleDemandStaysPut(t *testing.T) {
 		"A": {ID: "A", Duration: 1,
 			Assignments: []Assignment{{Resource: "alice", Units: 2}}},
 	}
-	if !LevelResources(tasks, nil) {
-		t.Fatal("LevelResources reported a cycle")
+	if !levelResources(tasks, nil) {
+		t.Fatal("leveling reported a cycle")
 	}
 	// Units 2 can never fit capacity 1: stays at earliest, flagged by
 	// a subsequent detection run.
@@ -295,7 +295,7 @@ func TestLevelResourcesCycleDetected(t *testing.T) {
 		"A": {ID: "A", Duration: 1, Precedents: []string{"B"}},
 		"B": {ID: "B", Duration: 1, Precedents: []string{"A"}},
 	}
-	if LevelResources(tasks, nil) {
+	if levelResources(tasks, nil) {
 		t.Error("cycle must fail leveling")
 	}
 }
@@ -308,8 +308,8 @@ func TestLevelResourcesUnassignedTasksUntouchedByContention(t *testing.T) {
 			Assignments: []Assignment{{Resource: "alice"}}},
 		"X": {ID: "X", Duration: 1}, // no resources
 	}
-	if !LevelResources(tasks, nil) {
-		t.Fatal("LevelResources reported a cycle")
+	if !levelResources(tasks, nil) {
+		t.Fatal("leveling reported a cycle")
 	}
 	approx(t, "X.ES", tasks["X"].ES, 0)
 }

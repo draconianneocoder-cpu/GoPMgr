@@ -263,14 +263,3 @@ func Get(k Kind) (Definition, bool) {
 	}
 	return Definition{}, false
 }
-
-// ByEngine returns every Kind that the given engine handles.
-func ByEngine(e Engine) []Definition {
-	var out []Definition
-	for _, d := range registry {
-		if d.Engine == e {
-			out = append(out, d)
-		}
-	}
-	return out
-}

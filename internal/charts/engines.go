@@ -34,23 +34,14 @@ type LayoutResult struct {
 // renderer. main.go treats it as a non-fatal "skip this chart" signal.
 var ErrEngineNotImplemented = errors.New("charts: engine renderer not yet implemented")
 
-// LayoutWithSchedule is Layout plus schedule context for the CPM
-// kind: when projectStart is non-zero, every CPM node additionally
-// carries StartDate/FinishDate (real dates, non-working days skipped
-// via isWorkday), and date-bearing node constraints (SNET/FNLT/MFO)
-// are armed and honoured by the CPM passes with violations flagged.
+// LayoutWithSchedulePlan is Layout plus schedule context for the CPM
+// and Gantt kinds: when projectStart is non-zero, every node additionally
+// carries StartDate/FinishDate (real dates, non-working days skipped via
+// isWorkday), date-bearing node constraints (SNET/FNLT/MFO) are armed and
+// honoured by the CPM passes with violations flagged, and resources are
+// checked against plan (named calendars and per-day capacity overrides).
 // All other kinds — and a zero projectStart — fall through to plain
-// Layout, so callers without project context lose nothing by not
-// using this entry point.
-func LayoutWithSchedule(kind Kind, rawData string, projectStart time.Time, isWorkday kernel.WorkdayFunc, capacities map[string]float64) (LayoutResult, error) {
-	return LayoutWithSchedulePlan(kind, rawData, projectStart, isWorkday, kernel.ResourceCapacityPlan{
-		DefaultCapacity: 1,
-		Capacities:      capacities,
-	})
-}
-
-// LayoutWithSchedulePlan is LayoutWithSchedule with full resource
-// capacity context, including named resource calendars.
+// Layout, so callers without project context lose nothing by using it.
 func LayoutWithSchedulePlan(kind Kind, rawData string, projectStart time.Time, isWorkday kernel.WorkdayFunc, plan kernel.ResourceCapacityPlan) (LayoutResult, error) {
 	if (kind != KindCPM && kind != KindGantt) || projectStart.IsZero() {
 		return Layout(kind, rawData)
