@@ -620,7 +620,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               file (<span class="font-mono text-xs">.gopmgr</span>, or an
               older <span class="font-mono text-xs">.pmforge</span> project you haven't reopened yet):
               <span class="font-mono text-xs">--check</span> (integrity),
-              <span class="font-mono text-xs">--repair</span> (writes a healed copy beside the file as <span class="font-mono text-xs">.bak</span> without replacing it),
+              <span class="font-mono text-xs">--repair</span> (if it finds damage, writes a healed copy beside the file as <span class="font-mono text-xs">.bak</span> without replacing it),
               <span class="font-mono text-xs">--vacuum</span> (compaction), and
               <span class="font-mono text-xs">--export-audit</span> (audit log to CSV).
               For encrypted projects add <span class="font-mono text-xs">--username</span> and

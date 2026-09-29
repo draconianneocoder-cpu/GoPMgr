@@ -899,3 +899,27 @@ func TestSaveColumn_PropagatesAWriteFailure(t *testing.T) {
 		t.Fatalf("SaveColumn with the write blocked = %v, want the trigger's error", err)
 	}
 }
+
+// GetWorkItem backs opening a card, so it must not return another
+// project's item even when given its ID.
+func TestGetWorkItem_OnlyReturnsThisProjectsItems(t *testing.T) {
+	d, store, _ := newAgileTestStore(t)
+	other, err := d.UpsertProject(db.Project{ID: "project-other", Name: "Other"})
+	if err != nil {
+		t.Fatalf("seed other project: %v", err)
+	}
+	theirs, err := NewStore(d.Conn, other.ID).SaveWorkItem(WorkItem{Title: "Theirs"})
+	if err != nil {
+		t.Fatalf("SaveWorkItem (other project): %v", err)
+	}
+	if _, err := store.GetWorkItem(theirs.ID); !errors.Is(err, ErrNoWorkItem) {
+		t.Fatalf("GetWorkItem of another project's item = %v, want ErrNoWorkItem", err)
+	}
+	mine, err := store.SaveWorkItem(WorkItem{Title: "Mine"})
+	if err != nil {
+		t.Fatalf("SaveWorkItem: %v", err)
+	}
+	if got, err := store.GetWorkItem(mine.ID); err != nil || got.Title != "Mine" {
+		t.Fatalf("GetWorkItem of this project's item = %+v, %v", got, err)
+	}
+}

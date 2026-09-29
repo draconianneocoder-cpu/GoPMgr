@@ -208,3 +208,25 @@ describe('ProjectLaunchpad blank project', () => {
     expect(utils.getByRole('heading', { name: 'What kind of project is this?' })).toBeInTheDocument();
   });
 });
+
+describe('ProjectLaunchpad blank project that cannot be opened', () => {
+  it('reports the created project and never creates it twice', async () => {
+    app.CreateProject = vi.fn(async () => ({ path: '/p/Blank.gopmgr', name: 'Blank', modified: '' }));
+    app.OpenProject = vi.fn(async () => {
+      throw 'project is locked';
+    });
+    const onCreated = vi.fn();
+    const utils = render(ProjectLaunchpad, { props: { onCreated, onCancel: vi.fn() } });
+    await fireEvent.click(utils.getByRole('button', { name: 'Start with a blank project' }));
+    await fireEvent.input(utils.getByLabelText('Project name'), { target: { value: 'Blank' } });
+    await fireEvent.click(utils.getByRole('button', { name: 'Create blank project' }));
+    expect(await utils.findByRole('alert')).toHaveTextContent(
+      'Project created, but it could not be opened: project is locked. Open it from the project list.',
+    );
+    const create = utils.getByRole('button', { name: 'Create blank project' });
+    expect(create).toBeDisabled();
+    await fireEvent.click(create);
+    expect(app.CreateProject).toHaveBeenCalledOnce();
+    expect(onCreated).not.toHaveBeenCalled();
+  });
+});

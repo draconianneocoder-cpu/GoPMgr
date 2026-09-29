@@ -318,13 +318,14 @@ func (s *Store) SaveWorkItem(wi WorkItem) (WorkItem, error) {
 	return s.GetWorkItem(wi.ID)
 }
 
-// GetWorkItem fetches by ID.
+// GetWorkItem fetches one of this project's work items by ID; an item
+// belonging to another project is ErrNoWorkItem.
 func (s *Store) GetWorkItem(id string) (WorkItem, error) {
 	row := s.Conn.QueryRow(`
 		SELECT id, project_id, type, title, description, state, points,
 		       assignee, sprint_id, priority, order_idx,
 		       created_at, updated_at, closed_at
-		FROM agile_work_items WHERE id = ?`, id)
+		FROM agile_work_items WHERE id = ? AND project_id = ?`, id, s.ProjectID)
 	return scanWorkItem(row)
 }
 

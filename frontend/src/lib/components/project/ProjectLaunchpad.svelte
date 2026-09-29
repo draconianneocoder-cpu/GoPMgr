@@ -78,6 +78,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // only, created by CreateProject with the default calendar policy, and no
   // starter artifacts.
   let blank = $state(false);
+  let created = $state(false);
   // Set when creating needs recovery codes (or acceptance) first.
   let gate = $state<RecoveryGate | null>(null);
   let calendarError = $state('');
@@ -197,14 +198,24 @@ SPDX-License-Identifier: GPL-3.0-or-later
       busy = false;
       return;
     }
+    let file: ProjectFile;
     try {
-      const file = await window.go.main.App.CreateProject(name.trim(), description);
-      const project = await window.go.main.App.OpenProject(file.path);
-      onCreated(project, file.path);
+      file = await window.go.main.App.CreateProject(name.trim(), description);
     } catch (err: any) {
       // The backend refuses when codes changed since the check; ask again.
       gate = await recoveryGateNeeded();
       if (!gate) error = `Create failed: ${err}`;
+      busy = false;
+      return;
+    }
+    // The project exists now, so a failure from here on must not offer to
+    // create it again (a retry would make a second copy).
+    try {
+      const project = await window.go.main.App.OpenProject(file.path);
+      onCreated(project, file.path);
+    } catch (err: any) {
+      created = true;
+      error = `Project created, but it could not be opened: ${err}. Open it from the project list.`;
     } finally {
       busy = false;
     }
@@ -301,7 +312,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         class="max-w-xl space-y-4"
         onsubmit={(e) => {
           e.preventDefault();
-          if (name.trim() && !busy) void createBlank();
+          if (name.trim() && !busy && !created) void createBlank();
         }}
       >
         <label class="block">
@@ -324,7 +335,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <Button variant="nav" onclick={() => (blank = false)}>← Back to the guided setup</Button>
           <button
             type="submit"
-            disabled={busy || !name.trim()}
+            disabled={busy || created || !name.trim()}
             class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
           >{busy ? 'Creating…' : 'Create blank project'}</button>
         </div>
