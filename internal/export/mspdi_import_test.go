@@ -35,9 +35,9 @@ const sampleMSPDI = `<?xml version="1.0" encoding="UTF-8"?>
   </Assignments>
 </Project>`
 
-// fromMSPDI parses with the default options, as the app's import does.
+// fromMSPDI parses with every field selected, the app's default choice.
 func fromMSPDI(data []byte) (ImportedProject, error) {
-	return FromMSPDIWithOptions(data, DefaultMSPDIImportOptions())
+	return FromMSPDIWithOptions(data, MSPDIImportOptions{IncludeDependencies: true, IncludeProgress: true, IncludeAssignments: true})
 }
 
 func TestFromMSPDI(t *testing.T) {

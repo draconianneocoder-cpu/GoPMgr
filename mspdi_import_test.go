@@ -25,6 +25,9 @@ const sampleImportXML = `<?xml version="1.0" encoding="UTF-8"?>
   </Tasks>
 </Project>`
 
+// allMSPDIFields imports every schedule field, the import dialog's default.
+var allMSPDIFields = export.MSPDIImportOptions{IncludeDependencies: true, IncludeProgress: true, IncludeAssignments: true}
+
 func TestImportMSPDIFromBytes(t *testing.T) {
 	d, err := db.InitDB(filepath.Join(t.TempDir(), "mspdi-import.pmforge"))
 	if err != nil {
@@ -38,9 +41,9 @@ func TestImportMSPDIFromBytes(t *testing.T) {
 	}
 	app := &App{db: d}
 
-	c, err := app.importMSPDIFromBytes([]byte(sampleImportXML))
+	c, err := app.importMSPDIFromBytesWithOptions([]byte(sampleImportXML), allMSPDIFields)
 	if err != nil {
-		t.Fatalf("importMSPDIFromBytes: %v", err)
+		t.Fatalf("importMSPDIFromBytesWithOptions: %v", err)
 	}
 	if c.Kind != "cpm" || c.Title != "Imported Plan" {
 		t.Errorf("chart = %s %q", c.Kind, c.Title)
@@ -126,8 +129,8 @@ func TestImportMSPDIKeepsExistingStartDate(t *testing.T) {
 	}
 	app := &App{db: d}
 
-	if _, err := app.importMSPDIFromBytes([]byte(sampleImportXML)); err != nil {
-		t.Fatalf("importMSPDIFromBytes: %v", err)
+	if _, err := app.importMSPDIFromBytesWithOptions([]byte(sampleImportXML), allMSPDIFields); err != nil {
+		t.Fatalf("importMSPDIFromBytesWithOptions: %v", err)
 	}
 	proj, _ := d.GetProject()
 	if proj.StartDate != "2026-01-01" {

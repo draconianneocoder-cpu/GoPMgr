@@ -24,7 +24,7 @@ func TestImportScheduleFileRejectsBinaryFormats(t *testing.T) {
 		"/tmp/plan.pod":     "Microsoft Project XML",
 	}
 	for path, want := range cases {
-		_, err := app.importScheduleFile(path)
+		_, err := app.importScheduleFileWithOptions(path, allMSPDIFields)
 		if err == nil {
 			t.Errorf("%s: expected an error, got nil", path)
 			continue
@@ -53,7 +53,7 @@ func TestImportScheduleFileRejectsOversizedFile(t *testing.T) {
 	}
 
 	app := &App{}
-	_, err = app.importScheduleFile(path)
+	_, err = app.importScheduleFileWithOptions(path, allMSPDIFields)
 	if err == nil {
 		t.Fatal("expected an error for an oversized import file, got nil")
 	}
@@ -100,7 +100,7 @@ func TestImportScheduleFileRejectsOversizedRealFileAtShrunkCap(t *testing.T) {
 	}
 
 	app := &App{}
-	_, err := app.importScheduleFile(path)
+	_, err := app.importScheduleFileWithOptions(path, allMSPDIFields)
 	if err == nil {
 		t.Fatal("expected an error once the file exceeds the (shrunk) import limit, got nil")
 	}

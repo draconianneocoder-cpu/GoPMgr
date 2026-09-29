@@ -41,10 +41,6 @@ type MSPDIImportOptions struct {
 	IncludeAssignments  bool `json:"include_assignments"`
 }
 
-func DefaultMSPDIImportOptions() MSPDIImportOptions {
-	return MSPDIImportOptions{IncludeDependencies: true, IncludeProgress: true, IncludeAssignments: true}
-}
-
 // MSPDIImportReceipt records exactly which source fields were preserved,
 // intentionally transformed, or excluded, so an import can be reviewed and
 // repeated without guessing at data loss.
@@ -94,7 +90,7 @@ const mspdiHoursPerDay = 8.0
 
 // FromMSPDIWithOptions parses a Microsoft Project Data Interchange XML
 // document into GoPMgr's import shape, importing the fields options
-// selects (DefaultMSPDIImportOptions imports everything below).
+// selects (with every option on, everything below is imported).
 //
 // Conversions and conventions:
 //

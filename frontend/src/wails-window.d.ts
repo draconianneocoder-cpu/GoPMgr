@@ -14,7 +14,6 @@ declare global {
       main: {
         App: {
           // ----- V1 -----
-          Greet: () => Promise<string>;
           GetSettings: () => Promise<UserSettings>;
           SaveSettings: (s: UserSettings) => Promise<void>;
           ResetProjectSettings: () => Promise<UserSettings>;
@@ -25,7 +24,6 @@ declare global {
           CompleteNativeClose: () => Promise<void>;
 
           // ----- V2: accounts & session -----
-          ListUsers: () => Promise<Account[]>;
           HasAnyAdmin: () => Promise<boolean>;
           AccountSetup: () => Promise<AccountSetup>;
           CreateAccount: (
@@ -109,7 +107,6 @@ declare global {
           ) => Promise<LevelResult>;
           PreviewSplitLeveling: (chartId: string) => Promise<SplitLevelingPreview>;
           GenerateResourceHistogram: (chartId: string) => Promise<ChartRecord>;
-          ImportMSPDIChart: () => Promise<ChartRecord>;
           ImportMSPDIChartWithOptions: (options: MSPDIImportOptions) => Promise<ChartRecord>;
 
           // ----- V2: documents -----

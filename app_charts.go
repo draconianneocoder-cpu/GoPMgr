@@ -879,18 +879,13 @@ type dagDoc struct {
 	Edges []dag.LayeredEdge `json:"edges"`
 }
 
-// ImportMSPDIChart opens a file dialog for a Microsoft Project Data
-// Interchange XML file and imports it as a new CPM chart in the open
-// project. If the project has no start date yet and the file carries
-// one, the project start date is adopted so the imported schedule
-// anchors immediately.
-func (a *App) ImportMSPDIChart() (db.Chart, error) {
-	return a.ImportMSPDIChartWithOptions(export.DefaultMSPDIImportOptions())
-}
-
-// ImportMSPDIChartWithOptions opens the importer after the user has selected
-// the schedule fields to preserve. The resulting chart config contains a
-// durable mapping receipt for later audit and re-import decisions.
+// ImportMSPDIChartWithOptions opens a file dialog for a Microsoft Project Data
+// Interchange XML file, after the user has selected the schedule fields to
+// preserve, and imports it as a new CPM chart in the open project. If the
+// project has no start date yet and the file carries one, the project start
+// date is adopted so the imported schedule anchors immediately. The chart
+// config contains a durable mapping receipt for later audit and re-import
+// decisions.
 func (a *App) ImportMSPDIChartWithOptions(options export.MSPDIImportOptions) (db.Chart, error) {
 	if a.ctx == nil {
 		return db.Chart{}, errors.New("no context (Wails not started)")
@@ -934,15 +929,11 @@ func mspdiImportTooLargeErr() error {
 		maxMSPDIImportSize>>20)
 }
 
-// importScheduleFile routes an imported project file by extension. MS Project
-// XML (MSPDI, *.xml) is parsed directly. Binary/serialized formats (.mpp,
+// importScheduleFileWithOptions routes an imported project file by
+// extension. MS Project XML (MSPDI, *.xml) is parsed directly. Binary/serialized formats (.mpp,
 // .pod) and the legacy .mpx text format cannot be read in pure Go, so we
 // return a precise, actionable message pointing at the universally-supported
 // MS Project XML interchange path rather than failing opaquely.
-func (a *App) importScheduleFile(path string) (db.Chart, error) {
-	return a.importScheduleFileWithOptions(path, export.DefaultMSPDIImportOptions())
-}
-
 func (a *App) importScheduleFileWithOptions(path string, options export.MSPDIImportOptions) (db.Chart, error) {
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".mpp":
@@ -993,12 +984,8 @@ func (a *App) importScheduleFileWithOptions(path string, options export.MSPDIImp
 	}
 }
 
-// importMSPDIFromBytes is ImportMSPDIChart minus the file dialog so
-// the conversion is unit-testable.
-func (a *App) importMSPDIFromBytes(data []byte) (db.Chart, error) {
-	return a.importMSPDIFromBytesWithOptions(data, export.DefaultMSPDIImportOptions())
-}
-
+// importMSPDIFromBytesWithOptions is ImportMSPDIChartWithOptions minus the
+// file dialog, so the conversion is unit-testable.
 func (a *App) importMSPDIFromBytesWithOptions(data []byte, options export.MSPDIImportOptions) (db.Chart, error) {
 	d := a.requireDB()
 	if d == nil {
