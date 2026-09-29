@@ -3,7 +3,10 @@
 
 package db
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 // newBaselineFixture creates the project + chart rows the baselines
 // table's foreign keys require, returning their IDs.
@@ -89,5 +92,52 @@ func TestListBaselinesEmptyChart(t *testing.T) {
 	}
 	if len(list) != 0 {
 		t.Errorf("expected no baselines, got %d", len(list))
+	}
+}
+
+// A scenario names its source baseline and BranchScenarioChart looks it up
+// again on every branch, so that baseline cannot be deleted until the
+// scenario's source changes. Nothing is deleted or audited on refusal.
+func TestDeleteBaselineRefusesAScenarioSource(t *testing.T) {
+	d := newBackupTestDB(t)
+	projectID, chartID := newBaselineFixture(t, d)
+	base, err := d.SaveBaseline(Baseline{ProjectID: projectID, ChartID: chartID, Name: "Plan of record"})
+	if err != nil {
+		t.Fatalf("SaveBaseline: %v", err)
+	}
+	scenario, err := d.SaveScenario(Scenario{ProjectID: projectID, Name: "Late vendor", SourceBaselineID: base.ID})
+	if err != nil {
+		t.Fatalf("SaveScenario: %v", err)
+	}
+	countAudit := func() int {
+		t.Helper()
+		var n int
+		if err := d.Conn.QueryRow(`SELECT COUNT(*) FROM audit_events WHERE event_type = 'baseline.delete'`).Scan(&n); err != nil {
+			t.Fatalf("count audit events: %v", err)
+		}
+		return n
+	}
+
+	err = d.DeleteBaseline(base.ID)
+	var inUse *BaselineInUseError
+	if !errors.As(err, &inUse) || inUse.Scenario != "Late vendor" {
+		t.Fatalf("DeleteBaseline of a scenario source: err = %v, want *BaselineInUseError naming Late vendor", err)
+	}
+	if _, err := d.GetBaseline(base.ID); err != nil {
+		t.Fatalf("refused delete removed the baseline: %v", err)
+	}
+	if n := countAudit(); n != 0 {
+		t.Fatalf("refused delete wrote %d audit events", n)
+	}
+
+	scenario.SourceBaselineID = ""
+	if _, err := d.SaveScenario(scenario); err != nil {
+		t.Fatalf("SaveScenario (clear source): %v", err)
+	}
+	if err := d.DeleteBaseline(base.ID); err != nil {
+		t.Fatalf("DeleteBaseline after the scenario stopped using it: %v", err)
+	}
+	if n := countAudit(); n != 1 {
+		t.Fatalf("delete wrote %d audit events, want 1", n)
 	}
 }

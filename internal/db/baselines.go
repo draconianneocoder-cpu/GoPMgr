@@ -81,7 +81,20 @@ func (db *Database) ListBaselines(chartID string) ([]Baseline, error) {
 	return out, rows.Err()
 }
 
-// DeleteBaseline removes a baseline snapshot.
+// BaselineInUseError refuses deleting a baseline that a scenario names as
+// its source: BranchScenarioChart looks that baseline up again whenever a
+// chart is branched into the scenario. Scenario charts already branched keep
+// their own copy and do not block a delete. The text is shown to the user.
+type BaselineInUseError struct {
+	Scenario string
+}
+
+func (e *BaselineInUseError) Error() string {
+	return fmt.Sprintf("The scenario %q is based on this baseline. Change its source baseline in Project Settings › Scenarios before deleting it.", e.Scenario)
+}
+
+// DeleteBaseline removes a baseline snapshot, refusing with
+// *BaselineInUseError while a scenario names it as its source.
 func (db *Database) DeleteBaseline(id string) error {
 	tx, err := db.Conn.Begin()
 	if err != nil {
@@ -99,6 +112,18 @@ func (db *Database) DeleteBaseline(id string) error {
 		return tx.Commit()
 	}
 	if err != nil {
+		return err
+	}
+	var scenario string
+	switch err = tx.QueryRow(
+		`SELECT name FROM scenarios WHERE source_baseline_id = ? ORDER BY name LIMIT 1`, id,
+	).Scan(&scenario); {
+	case err == nil:
+		err = &BaselineInUseError{Scenario: scenario}
+		return err
+	case errors.Is(err, sql.ErrNoRows):
+		err = nil
+	default:
 		return err
 	}
 	if _, err = tx.Exec(`DELETE FROM baselines WHERE id = ?`, id); err != nil {
