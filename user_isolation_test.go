@@ -23,6 +23,7 @@ func TestProjectsAreIsolatedPerUser(t *testing.T) {
 	if _, err := app.CreateAccount("alice", "Alice", "alice-strong-password", false); err != nil {
 		t.Fatalf("CreateAccount alice: %v", err)
 	}
+	acceptNoRecoveryCodes(t, app)
 	if _, err := app.CreateProject("Alice Secret", "only alice"); err != nil {
 		t.Fatalf("alice CreateProject: %v", err)
 	}
@@ -81,6 +82,7 @@ func TestRecreatedUsernameDoesNotInheritDeletedAccountsFolder(t *testing.T) {
 	if _, err := app.Login("bob", "bob-strong-password"); err != nil {
 		t.Fatalf("Login bob: %v", err)
 	}
+	acceptNoRecoveryCodes(t, app)
 	project, err := app.CreateProject("Bob Private", "")
 	if err != nil {
 		t.Fatalf("bob CreateProject: %v", err)

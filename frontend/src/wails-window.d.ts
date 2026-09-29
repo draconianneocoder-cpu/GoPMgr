@@ -229,6 +229,7 @@ declare global {
           PrepareRecoveryCodes: (currentPassword: string) => Promise<string[]>;
           ConfirmRecoveryCodes: () => Promise<void>;
           DiscardRecoveryCodes: () => Promise<void>;
+          AcceptEncryptionWithoutRecoveryCodes: () => Promise<void>;
           ResetWithRecoveryCode: (username: string, code: string, newPassword: string) => Promise<void>;
           CheckLatestVersion: () => Promise<UpdateStatus>;
           DownloadAndInstallUpdate: () => Promise<string>;
@@ -522,6 +523,7 @@ declare global {
     unused: number;
     total: number;
     legacy: boolean;
+    encryption_ready: boolean;
   }
 
   // First-run state for the sign-in screen (AccountSetupWire).

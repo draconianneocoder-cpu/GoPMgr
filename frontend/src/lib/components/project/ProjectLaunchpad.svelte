@@ -19,6 +19,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount, tick } from 'svelte';
   import { METHODOLOGIES } from '../../methodologies';
   import Button from '../Button.svelte';
+  import RecoveryCodesGate from '../auth/RecoveryCodesGate.svelte';
+  import { recoveryGateNeeded, type RecoveryGate } from '../../recovery-gate';
 
   // Props — Launchpad can be opened from ProjectPicker; on close we
   // notify the parent so it can refresh its list.
@@ -71,6 +73,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   let busy = $state(false);
   let error = $state('');
+  // Set when creating needs recovery codes (or acceptance) first.
+  let gate = $state<RecoveryGate | null>(null);
   let calendarError = $state('');
 
   let canContinue = $derived(
@@ -147,6 +151,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function create() {
     busy = true;
     error = '';
+    gate = await recoveryGateNeeded();
+    if (gate) {
+      busy = false;
+      return;
+    }
     try {
       const seeds = suggestedSeeds.filter((s) => seedsChecked[s]);
       const res = await window.go.main.App.CreateProjectFromLaunchpad(
@@ -161,7 +170,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       );
       onCreated(res.project, res.path);
     } catch (err: any) {
-      error = `Create failed: ${err}`;
+      // The backend refuses when codes changed since the check; ask again.
+      gate = await recoveryGateNeeded();
+      if (!gate) error = `Create failed: ${err}`;
     } finally {
       busy = false;
     }
@@ -405,6 +416,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
           {busy ? 'Creating…' : 'Create project'}
         </button>
       </div>
+      {#if gate}
+        <div class="mt-4">
+          <RecoveryCodesGate
+            variant={gate}
+            onready={() => { gate = null; void create(); }}
+            oncancel={() => (gate = null)}
+          />
+        </div>
+      {/if}
     {/if}
 
     {#if step < 4}

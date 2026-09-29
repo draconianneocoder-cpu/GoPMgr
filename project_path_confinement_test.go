@@ -178,6 +178,7 @@ func TestPathTakingIPCMethodsRefuseSymlinkedProjectFile(t *testing.T) {
 	}
 	// A real project encrypted under this user's key, so the only thing
 	// that can refuse it is the regular-file check, not a failed decrypt.
+	acceptNoRecoveryCodes(t, app)
 	created, err := app.CreateProject("Moved outside", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
@@ -256,6 +257,7 @@ func TestPathTakingIPCMethodsRefuseSymlinkedProjectFolder(t *testing.T) {
 	if _, err := app.CreateAccount("alice", "Alice", "alice-strong-password", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
+	acceptNoRecoveryCodes(t, app)
 	created, err := app.CreateProject("Folder moved outside", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
@@ -288,6 +290,7 @@ func TestProjectFolderNamedWithReplacementCharacterOpens(t *testing.T) {
 	if _, err := app.CreateAccount("alice", "Alice", "alice-strong-password", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
+	acceptNoRecoveryCodes(t, app)
 	created, err := app.CreateProject("Literal replacement", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)
@@ -316,6 +319,7 @@ func TestProjectWithInvalidUTF8FolderIsReachableFromWirePath(t *testing.T) {
 	if _, err := app.CreateAccount("alice", "Alice", "alice-strong-password", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
+	acceptNoRecoveryCodes(t, app)
 	created, err := app.CreateProject("Pre-fix project", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)

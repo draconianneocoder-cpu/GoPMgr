@@ -107,6 +107,17 @@ refuses while any unused code is legacy; Project Settings offers the same
 two-step renewal as App Settings (below), and `App.IssueRecoveryCodes`, which
 replaces codes at once, is used only at account creation.
 
+New projects are always encrypted, so every path that produces an
+encrypted project (`CreateProject`, `CreateProjectFromLaunchpad`,
+`EncryptProjectAtRest`) calls `encryptionReadiness` first, before touching
+any file: an unused legacy code is refused outright, and having no unused
+codes is refused unless the same signed-in user accepted, this session,
+that such projects cannot be recovered if they forget their password
+(`AcceptEncryptionWithoutRecoveryCodes`, cleared on sign-in, sign-out, and
+shutdown). The Launchpad and Project Settings show a guided "save a way
+back in" step first (`RecoveryCodeStatus.encryption_ready`), so this is a
+prompt, not a dead end.
+
 Recovery codes are a lasting way into an account, so App Settings issues new
 ones only after the current password is verified, and wraps the DEK
 unwrapped from that password into every code. The new set is prepared in

@@ -55,6 +55,7 @@ func TestPreRenameInstallIsUsableAfterMigration(t *testing.T) {
 	if _, err := oldApp.Login("alice", "correct horse battery staple"); err != nil {
 		t.Fatalf("Login (pre-migration): %v", err)
 	}
+	acceptNoRecoveryCodes(t, oldApp)
 	project, err := oldApp.CreateProject("Pre-Rename Plan", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)

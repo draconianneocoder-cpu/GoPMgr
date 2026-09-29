@@ -21,6 +21,7 @@ import (
 // that a.db is non-nil.  It returns the path of the project file.
 func mustOpenProject(t *testing.T, app *App, name string) string {
 	t.Helper()
+	acceptNoRecoveryCodes(t, app)
 	pf, err := app.CreateProject(name, "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)

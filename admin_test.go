@@ -332,6 +332,7 @@ func TestChangePassword_KeepsSessionAndEncryptedProjects(t *testing.T) {
 	if _, err := app.CreateAccount("alice", "Alice", "original-password", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
+	acceptNoRecoveryCodes(t, app)
 	project, err := app.CreateProject("Encrypted Plan", "")
 	if err != nil {
 		t.Fatalf("CreateProject: %v", err)

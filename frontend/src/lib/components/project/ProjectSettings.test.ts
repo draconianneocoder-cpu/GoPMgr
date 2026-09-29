@@ -470,66 +470,114 @@ describe('ProjectSettings migrated header "&larr; Dashboard" button', () => {
   });
 });
 
-describe('database encryption and recovery codes', () => {
-  it('renews legacy codes through the two-step panel, never the one-step reissue, before encrypting', async () => {
-    const reissueMessage =
-      'Create new recovery codes before encrypting this database. Your current codes are from an older version and could not recover encrypted projects after a password reset.';
-    Object.assign(app, {
-      IsProjectEncrypted: vi.fn(async () => false),
-      EncryptProjectAtRest: vi
-        .fn()
-        .mockRejectedValueOnce(new Error(reissueMessage))
-        .mockResolvedValueOnce('/tmp/gopmgr/plan.gopmgr.pre-encryption.bak'),
-      RecoveryCodeStatus: vi.fn(async () => ({ unused: 8, total: 8, legacy: true })),
-      PrepareRecoveryCodes: vi.fn(async () => ['AAAAAAAA-BBBBBBBB']),
-      ConfirmRecoveryCodes: vi.fn(async () => undefined),
-      DiscardRecoveryCodes: vi.fn(async () => undefined),
-      IssueRecoveryCodes: vi.fn(async () => ['ONE-STEP']),
-    });
-    session.projectPath = '/tmp/gopmgr/plan.gopmgr';
-    const utils = render(ProjectSettings);
-    await utils.findByRole('tab', { name: /data protection/i });
-    await switchTab(utils.container, /data protection/i);
+// A fake of the recovery-code backend whose status follows the calls made,
+// so the gate's checks see what the real backend would report.
+function codesBackend(initial: { unused: number; legacy: boolean }) {
+  const state = { ...initial, accepted: false };
+  return {
+    RecoveryCodeStatus: vi.fn(async () => ({
+      unused: state.unused,
+      total: 8,
+      legacy: state.legacy,
+      encryption_ready: !state.legacy && (state.unused > 0 || state.accepted),
+    })),
+    PrepareRecoveryCodes: vi.fn(async () => ['AAAAAAAA-BBBBBBBB']),
+    ConfirmRecoveryCodes: vi.fn(async () => {
+      state.unused = 8;
+      state.legacy = false;
+    }),
+    DiscardRecoveryCodes: vi.fn(async () => undefined),
+    AcceptEncryptionWithoutRecoveryCodes: vi.fn(async () => {
+      state.accepted = true;
+    }),
+    IssueRecoveryCodes: vi.fn(async () => ['ONE-STEP']),
+  };
+}
 
-    expect(await utils.findByText(/from an older version of GoPMgr and can't recover encrypted projects/)).toBeInTheDocument();
+async function openProtection(backend: ReturnType<typeof codesBackend>, extra: Record<string, unknown> = {}) {
+  Object.assign(app, backend, {
+    IsProjectEncrypted: vi.fn(async () => false),
+    EncryptProjectAtRest: vi.fn(async () => '/tmp/gopmgr/plan.gopmgr.pre-encryption.bak'),
+    ...extra,
+  });
+  session.projectPath = '/tmp/gopmgr/plan.gopmgr';
+  const utils = render(ProjectSettings);
+  await utils.findByRole('tab', { name: /data protection/i });
+  await switchTab(utils.container, /data protection/i);
+  return utils;
+}
+
+async function saveNewCodes(utils: ReturnType<typeof render>) {
+  await fireEvent.click(utils.getByRole('button', { name: 'Create new recovery codes' }));
+  await fireEvent.input(utils.getByLabelText('Current password'), { target: { value: 'current-password' } });
+  await fireEvent.click(utils.getByRole('button', { name: 'Create codes' }));
+  await utils.findByText('AAAAAAAA-BBBBBBBB');
+  await fireEvent.click(utils.getByLabelText('I have saved these codes somewhere safe.'));
+  await fireEvent.click(utils.getByRole('button', { name: 'Use the new codes' }));
+}
+
+describe('database encryption and recovery codes', () => {
+  it('encrypts at once for a user with working codes', async () => {
+    const utils = await openProtection(codesBackend({ unused: 8, legacy: false }));
     await fireEvent.click(await utils.findByRole('button', { name: 'Encrypt database' }));
-    expect(await utils.findByText(reissueMessage)).toBeInTheDocument();
+    expect(await utils.findByText('Database encrypted.')).toBeInTheDocument();
+    expect(app.EncryptProjectAtRest).toHaveBeenCalledOnce();
+    expect(utils.queryByRole('region', { name: /save a way back in/i })).not.toBeInTheDocument();
+  });
+
+  it('with legacy codes, guides through new codes and then encrypts, never offering to skip', async () => {
+    const backend = codesBackend({ unused: 8, legacy: true });
+    const utils = await openProtection(backend);
+    await fireEvent.click(await utils.findByRole('button', { name: 'Encrypt database' }));
+
+    const gate = await utils.findByRole('region', { name: /save a way back in/i });
+    expect(gate).toHaveTextContent(/from an older version of GoPMgr/);
+    expect(within(gate).queryByRole('button', { name: 'Continue without recovery codes' })).not.toBeInTheDocument();
+    expect(app.EncryptProjectAtRest).not.toHaveBeenCalled();
+    expect(utils.getByRole('button', { name: 'Encrypt database' })).toBeDisabled();
+
+    await saveNewCodes(utils);
+    expect(await utils.findByText('Database encrypted.')).toBeInTheDocument();
+    expect(app.EncryptProjectAtRest).toHaveBeenCalledOnce();
+    expect(backend.IssueRecoveryCodes).not.toHaveBeenCalled();
+  });
+
+  it('with no codes, encrypts after the user accepts going without them', async () => {
+    const backend = codesBackend({ unused: 0, legacy: false });
+    const utils = await openProtection(backend);
+    await fireEvent.click(await utils.findByRole('button', { name: 'Encrypt database' }));
+
+    const gate = await utils.findByRole('region', { name: /save a way back in/i });
+    const skip = within(gate).getByRole('button', { name: 'Continue without recovery codes' });
+    expect(skip).toBeDisabled();
+    await fireEvent.click(skip);
+    expect(backend.AcceptEncryptionWithoutRecoveryCodes).not.toHaveBeenCalled();
+
+    await fireEvent.click(within(gate).getByLabelText(/projects I create or encrypt until I sign out/));
+    await fireEvent.click(skip);
+    expect(await utils.findByText('Database encrypted.')).toBeInTheDocument();
+    expect(backend.AcceptEncryptionWithoutRecoveryCodes).toHaveBeenCalledOnce();
+    expect(app.EncryptProjectAtRest).toHaveBeenCalledOnce();
+  });
+
+  it('does not encrypt when the guided step is cancelled', async () => {
+    const utils = await openProtection(codesBackend({ unused: 0, legacy: false }));
+    await fireEvent.click(await utils.findByRole('button', { name: 'Encrypt database' }));
+    await fireEvent.click(await utils.findByRole('button', { name: 'Cancel' }));
+
+    expect(utils.queryByRole('region', { name: /save a way back in/i })).not.toBeInTheDocument();
+    expect(utils.getByRole('button', { name: 'Encrypt database' })).toBeEnabled();
+    expect(app.EncryptProjectAtRest).not.toHaveBeenCalled();
+  });
+
+  it('renewing codes from the panel alone does not encrypt, and Encrypt waits for unsaved codes', async () => {
+    const utils = await openProtection(codesBackend({ unused: 0, legacy: false }));
+    expect(await utils.findByText(/You have no unused recovery codes/)).toBeInTheDocument();
 
     await fireEvent.click(utils.getByRole('button', { name: 'Create new recovery codes' }));
     await fireEvent.input(utils.getByLabelText('Current password'), { target: { value: 'current-password' } });
     await fireEvent.click(utils.getByRole('button', { name: 'Create codes' }));
     await utils.findByText('AAAAAAAA-BBBBBBBB');
-    await fireEvent.click(utils.getByLabelText('I have saved these codes somewhere safe.'));
-    await fireEvent.click(utils.getByRole('button', { name: 'Use the new codes' }));
-
-    expect(await utils.findByText('New recovery codes saved. You can encrypt the database now.')).toBeInTheDocument();
-    expect(utils.queryByText(reissueMessage)).not.toBeInTheDocument();
-    await fireEvent.click(utils.getByRole('button', { name: 'Encrypt database' }));
-    await waitFor(() => expect(app.EncryptProjectAtRest).toHaveBeenCalledTimes(2));
-    expect(await utils.findByText('Database encrypted.')).toBeInTheDocument();
-    expect(app.IssueRecoveryCodes).not.toHaveBeenCalled();
-    expect(app.ConfirmRecoveryCodes).toHaveBeenCalledOnce();
-  });
-
-  it('does not encrypt while new recovery codes are on screen and unsaved', async () => {
-    Object.assign(app, {
-      IsProjectEncrypted: vi.fn(async () => false),
-      EncryptProjectAtRest: vi.fn(async () => '/tmp/gopmgr/plan.gopmgr.pre-encryption.bak'),
-      RecoveryCodeStatus: vi.fn(async () => ({ unused: 0, total: 8, legacy: false })),
-      PrepareRecoveryCodes: vi.fn(async () => ['AAAAAAAA-BBBBBBBB']),
-      ConfirmRecoveryCodes: vi.fn(async () => undefined),
-      DiscardRecoveryCodes: vi.fn(async () => undefined),
-    });
-    session.projectPath = '/tmp/gopmgr/plan.gopmgr';
-    const utils = render(ProjectSettings);
-    await utils.findByRole('tab', { name: /data protection/i });
-    await switchTab(utils.container, /data protection/i);
-
-    await fireEvent.click(await utils.findByRole('button', { name: 'Create new recovery codes' }));
-    await fireEvent.input(utils.getByLabelText('Current password'), { target: { value: 'current-password' } });
-    await fireEvent.click(utils.getByRole('button', { name: 'Create codes' }));
-    await utils.findByText('AAAAAAAA-BBBBBBBB');
-
     const encrypt = utils.getByRole('button', { name: 'Encrypt database' });
     expect(encrypt).toBeDisabled();
     expect(utils.getByText('Save or discard your new recovery codes before encrypting.')).toBeInTheDocument();
@@ -538,22 +586,25 @@ describe('database encryption and recovery codes', () => {
 
     await fireEvent.click(utils.getByLabelText('I have saved these codes somewhere safe.'));
     await fireEvent.click(utils.getByRole('button', { name: 'Use the new codes' }));
-    await waitFor(() => expect(utils.getByRole('button', { name: 'Encrypt database' })).toBeEnabled());
+    expect(await utils.findByText('New recovery codes saved. You can encrypt the database now.')).toBeInTheDocument();
+    expect(app.EncryptProjectAtRest).not.toHaveBeenCalled();
+
     await fireEvent.click(utils.getByRole('button', { name: 'Encrypt database' }));
     await waitFor(() => expect(app.EncryptProjectAtRest).toHaveBeenCalledOnce());
   });
 
-  it('warns a user with no unused codes before they encrypt', async () => {
-    Object.assign(app, {
-      IsProjectEncrypted: vi.fn(async () => false),
-      RecoveryCodeStatus: vi.fn(async () => ({ unused: 0, total: 8, legacy: false })),
+  it('shows the guided step, not the raw error, when the backend refuses after a stale check', async () => {
+    const backend = codesBackend({ unused: 0, legacy: false });
+    backend.RecoveryCodeStatus
+      .mockResolvedValueOnce({ unused: 8, total: 8, legacy: false, encryption_ready: true })
+      .mockResolvedValueOnce({ unused: 8, total: 8, legacy: false, encryption_ready: true });
+    const refusal = 'Save recovery codes before creating or encrypting a project, or confirm that you understand it cannot be recovered if you forget your password.';
+    const utils = await openProtection(backend, {
+      EncryptProjectAtRest: vi.fn().mockRejectedValueOnce(new Error(refusal)),
     });
-    session.projectPath = '/tmp/gopmgr/plan.gopmgr';
-    const utils = render(ProjectSettings);
-    await utils.findByRole('tab', { name: /data protection/i });
-    await switchTab(utils.container, /data protection/i);
+    await fireEvent.click(await utils.findByRole('button', { name: 'Encrypt database' }));
 
-    expect(await utils.findByText(/You have no unused recovery codes/)).toBeInTheDocument();
-    expect(utils.getByRole('button', { name: 'Create new recovery codes' })).toBeInTheDocument();
+    expect(await utils.findByRole('region', { name: /save a way back in/i })).toBeInTheDocument();
+    expect(utils.queryByText(refusal)).not.toBeInTheDocument();
   });
 });

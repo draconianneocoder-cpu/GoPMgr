@@ -79,11 +79,16 @@ type App struct {
 	// pendingCodes holds recovery codes prepared in App Settings but not
 	// yet confirmed as saved; cleared on sign-out and shutdown.
 	pendingCodes *users.PendingRecoveryCodes
-	db           *db.Database // nil unless a project is open
-	dbPath       string       // absolute path of the open project file (.gopmgr, or legacy .pmforge)
-	adminSvc     *admin.Service
-	templates    *templates.Engine       // immutable after NewApp; safe lock-free read
-	sigmaSvc     *service.ProjectService // initialized when a project is open
+	// noCodesAcceptedFor names the user who, this session, accepted that
+	// projects they create or encrypt cannot be recovered without recovery
+	// codes (AcceptEncryptionWithoutRecoveryCodes). Cleared on sign-in,
+	// sign-out, and shutdown.
+	noCodesAcceptedFor string
+	db                 *db.Database // nil unless a project is open
+	dbPath             string       // absolute path of the open project file (.gopmgr, or legacy .pmforge)
+	adminSvc           *admin.Service
+	templates          *templates.Engine       // immutable after NewApp; safe lock-free read
+	sigmaSvc           *service.ProjectService // initialized when a project is open
 
 	// Diagnostic logging — set in main() after applog.Init; never reassigned.
 	logPath string // dated log file path, e.g. .../logs/gopmgr-2026-06-20.log
@@ -143,6 +148,7 @@ func (a *App) shutdown(_ context.Context) {
 	zeroBytes(a.dek)
 	a.dek = nil
 	a.pendingCodes = nil
+	a.noCodesAcceptedFor = ""
 	// Close the store but keep the pointer: `store` is documented as
 	// set-once and readable without the lock (DEVELOPER_HANDBOOK.md §16), so nilling it
 	// here would be the one write that violates that invariant. A closed

@@ -209,6 +209,13 @@ administrators, re-attest personal keys, retire the old escrow key, and record
 3. **Afterwards:** telling the user, and escrow rotation, if the owner chooses
    them.
 
+Phases 1 and 2 ship in the same release, with no tag between them (owner
+decision, 2026-09-28). Phase 1 alone would let any administrator's password
+unlock every enrolled user's data outside the app with nothing recorded;
+phase 2 adds the recorded access that justifies the escrow. They may be
+separate pull requests. The trust anchors (pins and attestation) ship in the
+same pull request as the first sealing, never after it.
+
 ## Test strategy
 
 - A sealed DEK or grant moved to another account's row fails to open.

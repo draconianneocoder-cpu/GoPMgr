@@ -17,9 +17,11 @@ func TestRunPortfolioAnalyticsRequiresOneReportingCurrency(t *testing.T) {
 	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
+	acceptNoRecoveryCodes(t, app)
 	if _, err := app.CreateProject("USD project", ""); err != nil {
 		t.Fatalf("CreateProject(USD): %v", err)
 	}
+	acceptNoRecoveryCodes(t, app)
 	eur, err := app.CreateProject("EUR project", "")
 	if err != nil {
 		t.Fatalf("CreateProject(EUR): %v", err)

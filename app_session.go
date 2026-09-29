@@ -98,6 +98,7 @@ func (a *App) CreateAccount(username, displayName, password string, isAdmin bool
 	if a.user == nil {
 		a.user = &acc
 		a.dek = dek
+		a.noCodesAcceptedFor = ""
 	} else {
 		zeroBytes(dek)
 	}
@@ -313,6 +314,7 @@ func (a *App) Login(username, password string) (users.Account, error) {
 	}
 	a.user = &acc
 	a.dek = dek
+	a.noCodesAcceptedFor = ""
 	a.mu.Unlock()
 	return acc, nil
 }
@@ -389,6 +391,9 @@ type RecoveryCodeStatusWire struct {
 	Unused int  `json:"unused"`
 	Total  int  `json:"total"`
 	Legacy bool `json:"legacy"`
+	// EncryptionReady says whether creating or encrypting a project would be
+	// allowed now (encryptionReadiness).
+	EncryptionReady bool `json:"encryption_ready"`
 }
 
 // RecoveryCodeStatus reports the signed-in user's unused recovery codes,
@@ -402,7 +407,26 @@ func (a *App) RecoveryCodeStatus() (RecoveryCodeStatusWire, error) {
 	if err != nil {
 		return RecoveryCodeStatusWire{}, err
 	}
-	return RecoveryCodeStatusWire{Unused: unused, Total: users.RecoveryCodeCount, Legacy: legacy}, nil
+	return RecoveryCodeStatusWire{
+		Unused:          unused,
+		Total:           users.RecoveryCodeCount,
+		Legacy:          legacy,
+		EncryptionReady: a.encryptionReadiness(u.Username) == nil,
+	}, nil
+}
+
+// AcceptEncryptionWithoutRecoveryCodes records that the signed-in user
+// understands that projects they create or encrypt until they sign out
+// cannot be recovered if they forget their password. It does not cover
+// legacy codes, which must be replaced.
+func (a *App) AcceptEncryptionWithoutRecoveryCodes() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.user == nil {
+		return errors.New("not signed in")
+	}
+	a.noCodesAcceptedFor = a.user.Username
+	return nil
 }
 
 // PrepareRecoveryCodes makes a new set of recovery codes for the signed-in
@@ -483,6 +507,7 @@ func (a *App) Logout() error {
 	zeroBytes(a.dek)
 	a.dek = nil
 	a.pendingCodes = nil
+	a.noCodesAcceptedFor = ""
 	return nil
 }
 

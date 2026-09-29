@@ -82,6 +82,9 @@ func (a *App) CreateProjectFromLaunchpad(
 	if user == nil {
 		return LaunchpadResult{}, errors.New("not signed in")
 	}
+	if err := a.encryptionReadiness(user.Username); err != nil {
+		return LaunchpadResult{}, err
+	}
 	safe := sanitizeFilename(name)
 	if safe == "" {
 		return LaunchpadResult{}, errors.New("invalid project name")

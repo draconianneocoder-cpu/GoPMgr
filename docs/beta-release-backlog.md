@@ -215,8 +215,34 @@ That result took six live-GUI cycles to reach because the first five, all run un
     still refuses until no legacy codes remain. Evidence:
     `encryption_migration_test.go`, `ProjectSettings.test.ts`, and
     `RecoveryCodesPanel.test.ts` rows in `TEST_COVERAGE_LEDGER.md`.
-  - Undecided (owner): whether to refuse encryption when the user has no
-    unused recovery codes at all. Today it is only warned about.
+  - Done 2026-09-28: guided encryption instead of a hard refusal (owner
+    decision). New projects are always encrypted, and nothing checked for
+    recovery codes before creating one. `CreateProject`,
+    `CreateProjectFromLaunchpad`, and `EncryptProjectAtRest` now call one
+    readiness check first: legacy codes are refused outright, and no unused
+    codes is refused unless the signed-in user ticked, this session, that
+    they understand such projects cannot be recovered. The Launchpad and
+    Project Settings show a "save a way back in" step that continues on its
+    own once codes are saved or the acceptance is given. Evidence:
+    `encryption_readiness_test.go`, `RecoveryCodesGate.test.ts`,
+    `recovery-gate.test.ts`, `ProjectSettings.test.ts`, and
+    `ProjectLaunchpad.test.ts` rows in `TEST_COVERAGE_LEDGER.md`.
+  - Recovery for home and small-business users, owner decision 2026-09-28
+    to combine the options as follows:
+    1. guide instead of block, and 2. informed opt-out: done above;
+    4. a reminder at sign-in when one or no codes are left, or when any
+       code is legacy: next. Projects created before 2026-09-28 while
+       holding legacy codes exist; a reset with a legacy code replaces the
+       key and makes them unreadable, and nothing but App Settings warns;
+    3. a printable recovery sheet: after the blob-download check below;
+    5. administrator recovery: through ADR-004 (phases 1 and 2 ship in one
+       release);
+    6. keeping a key copy in the OS keychain: declined by default, because
+       everyone sharing the OS account could then open every GoPMgr account;
+       only as an explicit single-user opt-in, with its own design record.
+  - The Project Picker's own create form is unreachable (`creating` is never
+    set; "+ New Project" opens the Launchpad) and has been since the first
+    commit. Remove it; `App.CreateProject` stays guarded for other callers.
   - CreateAccount, the Admin panel, and App Settings each show recovery
     codes their own way; share one component once the first two have tests
     of their code-display steps.
