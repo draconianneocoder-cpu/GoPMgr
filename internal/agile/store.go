@@ -238,6 +238,8 @@ func (s *Store) DeleteColumn(id string) error {
 		return err
 	}
 	var items int
+	// Not tested: the DELETE just ran on this connection, so this count
+	// fails only on an I/O error, with no portable injection point.
 	if err := s.Conn.QueryRow(
 		`SELECT COUNT(*) FROM agile_work_items WHERE project_id = ? AND state = ?`, s.ProjectID, id,
 	).Scan(&items); err != nil {

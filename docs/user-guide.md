@@ -56,6 +56,10 @@ Western Europe, Japan, and Australia.
 The suggested starter artifacts come from the embedded Launchpad rule set.
 The user can deselect any suggestion before creating the project.
 
+**Start with a blank project** on the first step skips the wizard: it asks
+only for a name and description and creates an empty project with the US
+business calendar, which can be changed in Project Settings.
+
 ## Portfolio and Dashboard
 
 After sign-in, GoPMgr opens the Portfolio dashboard. It lists projects
@@ -302,7 +306,11 @@ CPM and Gantt link labels set the dependency type and lag in days: `FS`,
 `SS`, `FF`, or `SF` with optional `+n`/`-n` — for example `SS+2` or
 `FS-1`; blank means `FS`. These labels drive the computed schedule. The
 Gantt editor can also snapshot a baseline (**Set baseline**); grey ghost
-bars then show drift against that snapshot as the plan changes.
+bars then show drift against that snapshot as the plan changes. **Baselines**
+in the CPM and Gantt editors lists a chart's snapshots, newest first, and
+deletes one after confirmation; variances then compare against the newest
+remaining one. A baseline a what-if scenario uses as its source can't be
+deleted until the scenario's source changes.
 
 CPM charts can generate a Resource Histogram. The generated histogram shows
 resource demand as bars and overlays dashed capacity lines from stakeholder
@@ -453,7 +461,11 @@ The maintenance operations take a project file path — `.gopmgr`, or `.pmforge`
 for a project created before the August 2026 rename — as the final argument:
 
 - `--check` runs an integrity check and exits.
-- `--repair` runs the self-healing repair workflow.
+- `--repair` checks integrity and, if it finds damage, writes a healed copy
+  beside the file as `<file>.bak` without replacing the project. To repair a
+  project in place, open it and use **Check and repair** in Project Settings ›
+  Data Protection, which swaps in a healed copy and keeps the damaged file as
+  `<file>.corrupt`.
 - `--vacuum` compacts the database (`VACUUM`).
 - `--export-audit <path>` writes the audit log to CSV at `<path>`.
 - `--stats` prints a compact project summary (status, phase, methodology,

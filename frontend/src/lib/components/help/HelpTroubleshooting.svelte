@@ -67,10 +67,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">A project may be corrupt</h3>
             <p class="text-sm text-slate-300">
-              Run the built-in maintenance from a terminal:
+              Open the project and choose <span class="font-medium text-slate-100">Check and repair</span> in
+              Project Settings › Data Protection; it repairs the project from a clean copy and keeps
+              the damaged file beside it. If the project won't open, restore it from your latest
+              backup. From a terminal,
               <span class="font-mono text-xs">--check</span> reports integrity,
-              <span class="font-mono text-xs">--repair</span> runs the self-healing workflow and
-              prints what it did, and <span class="font-mono text-xs">--vacuum</span> compacts the
+              <span class="font-mono text-xs">--repair</span> writes a healed copy beside the file as
+              <span class="font-mono text-xs">.bak</span> without replacing it, and <span class="font-mono text-xs">--vacuum</span> compacts the
               file. See <button onclick={() => nav('cli')} class="text-cyan-400 underline hover:text-cyan-300">Command-Line Maintenance</button>
               for exact invocations (encrypted projects also need
               <span class="font-mono text-xs">--username</span> / <span class="font-mono text-xs">--password-env</span>).
@@ -148,7 +151,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     ['--version', 'Print the version banner and exit'],
                     ['--update', 'Check the signed update channel (no-op if none configured)'],
                     ['--check', 'Integrity check; prints ok or CORRUPT'],
-                    ['--repair', 'Self-healing repair workflow with a printed action log'],
+                    ['--repair', 'Write a healed copy beside the file (.bak), without replacing it; prints an action log'],
                     ['--vacuum', 'Compact the database (VACUUM)'],
                     ['--export-audit <path>', 'Write the audit log to CSV'],
                     ['--stats', 'Compact project summary: status, phase, counts'],

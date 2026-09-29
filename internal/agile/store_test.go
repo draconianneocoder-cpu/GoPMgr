@@ -770,6 +770,8 @@ func TestStoreMethods_PropagateClosedConnectionErrors(t *testing.T) {
 	}{
 		{"EnsureDefaultBoard", func() error { _, err := store.EnsureDefaultBoard(); return err }},
 		{"ListColumns", func() error { _, err := store.ListColumns("any-board"); return err }},
+		{"SaveColumn", func() error { return store.SaveColumn(Column{BoardID: "any-board", Name: "x"}) }},
+		{"DeleteColumn", func() error { return store.DeleteColumn("any-column") }},
 		{"SaveWorkItem", func() error { _, err := store.SaveWorkItem(WorkItem{Title: "x"}); return err }},
 		{"ListWorkItems", func() error { _, err := store.ListWorkItems("", "", ""); return err }},
 		{"WIPCountByColumn", func() error { _, err := store.WIPCountByColumn(); return err }},
@@ -875,5 +877,25 @@ func TestListDeployments_PropagatesScanErrorOnCorruptedColumn(t *testing.T) {
 	}
 	if _, err := store.ListDeployments(time.Time{}); err == nil {
 		t.Fatal("ListDeployments with corrupted successful column = nil, want a Scan error")
+	}
+}
+
+// TestSaveColumn_PropagatesAWriteFailure blocks the column write itself
+// (after the board check passes) with a trigger, so the error comes from the
+// upsert rather than an earlier call.
+func TestSaveColumn_PropagatesAWriteFailure(t *testing.T) {
+	d, store, _ := newAgileTestStore(t)
+	board, err := store.EnsureDefaultBoard()
+	if err != nil {
+		t.Fatalf("EnsureDefaultBoard: %v", err)
+	}
+	if _, err := d.Conn.Exec(`
+		CREATE TRIGGER block_column_insert BEFORE INSERT ON agile_columns
+		BEGIN SELECT RAISE(ABORT, 'column write blocked'); END;
+	`); err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+	if err := store.SaveColumn(Column{BoardID: board.ID, Name: "Blocked"}); err == nil || err.Error() != "column write blocked" {
+		t.Fatalf("SaveColumn with the write blocked = %v, want the trigger's error", err)
 	}
 }
