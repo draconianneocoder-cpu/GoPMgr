@@ -930,10 +930,11 @@ func mspdiImportTooLargeErr() error {
 }
 
 // importScheduleFileWithOptions routes an imported project file by
-// extension. MS Project XML (MSPDI, *.xml) is parsed directly. Binary/serialized formats (.mpp,
-// .pod) and the legacy .mpx text format cannot be read in pure Go, so we
-// return a precise, actionable message pointing at the universally-supported
-// MS Project XML interchange path rather than failing opaquely.
+// extension. MS Project XML (MSPDI, *.xml) is parsed directly.
+// Binary/serialized formats (.mpp, .pod) and the legacy .mpx text format
+// cannot be read in pure Go, so we return a precise, actionable message
+// pointing at the universally-supported MS Project XML interchange path
+// rather than failing opaquely.
 func (a *App) importScheduleFileWithOptions(path string, options export.MSPDIImportOptions) (db.Chart, error) {
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".mpp":
