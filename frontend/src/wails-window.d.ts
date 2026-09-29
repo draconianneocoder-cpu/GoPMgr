@@ -461,6 +461,9 @@ declare global {
   interface RepairResult {
     success: boolean;
     log: string[];
+    snapshot?: string;
+    swapped: boolean;
+    damaged_copy?: string;
   }
 
   interface UserSettings {

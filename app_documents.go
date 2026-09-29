@@ -535,83 +535,83 @@ func (a *App) ExportCombinedReportGnuPG(reportTitle, subtitle string, sections [
 	return GnuPGExportResult{PDFPath: pdfPath, SignaturePath: sigPath, Method: db.SignatureMethodGnuPG}, nil
 }
 
-// RepairAndSwap runs InformativeSelfHeal and, on success, calls
-// SwapInSnapshot to atomically replace the live file. The handle on
-// `a.db` is refreshed in place.
+// afterRepairHeal runs between RepairAndSwap's heal and its swap. It is a
+// no-op except in tests, which use it to try another call at that moment.
+var afterRepairHeal = func() {}
+
+// RepairAndSwap runs InformativeSelfHeal and, when it wrote a healed
+// snapshot, swaps that snapshot into place and refreshes `a.db`. It holds
+// the write lock throughout, so no call can open another project or read
+// the handle mid-swap. A leftover .bak from an earlier run is never swapped
+// in: it is an older copy of the project, and swapping it over a healthy
+// database would silently roll the project back.
 func (a *App) RepairAndSwap() (db.RepairResult, error) {
-	a.mu.RLock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	d := a.db
 	path := a.dbPath
-	var dek []byte
-	if len(a.dek) == crypto.DEKSize {
-		dek = make([]byte, len(a.dek))
-		copy(dek, a.dek)
-	}
-	a.mu.RUnlock()
+	dek := a.dek
 	if d == nil {
 		return db.RepairResult{}, errors.New("no project open")
 	}
 
 	result, err := d.InformativeSelfHeal(path)
-	if err != nil || !result.Success {
+	if err != nil || !result.Success || result.Snapshot == "" {
 		return result, err
 	}
-	// If the result.Log mentions a snapshot, do the swap. We detect
-	// this by checking for a .bak file rather than re-parsing the log.
-	if _, statErr := os.Stat(path + ".bak"); statErr == nil {
-		// db.IsEncryptedFile's own error branch here (os.Open failing on
-		// the live path, which InformativeSelfHeal above just proved
-		// readable) needs a permission-based fixture this repo has
-		// already judged too fragile for its test suite for the same
-		// class of branch (see repair_selfheal_test.go's documented
-		// deferral of the non-IsNotExist stat-live branch: root bypasses
-		// permission checks, a mid-test panic leaves an unremovable temp
-		// directory, and no other test in this repo uses this technique).
-		// Left untested for the same reason, not chased with a fragile
-		// fixture just to close this one line.
-		encrypted, err := db.IsEncryptedFile(path)
-		if err != nil {
-			result.Log = append(result.Log, "Swap failed: "+err.Error())
-			return result, err
-		}
-		var fresh *db.Database
-		if encrypted {
-			// Defensive, not reachable today: every write site for a.dek
-			// (grep -n "a\.dek = \|a\.dek\[" *.go — CreateAccount, Login,
-			// Logout, shutdown) either sets it to a fresh, full-length DEK
-			// or clears it to nil/zero-length in the same locked section
-			// that also nils a.db. No code path leaves a.db non-nil with
-			// a.dek short or absent, so this guard cannot fire through any
-			// current App method. Kept in case a future session-teardown
-			// path breaks that invariant; no test reaches it under the
-			// current one, matching this codebase's convention for
-			// similarly-proven-unreachable branches (e.g. ComputeEVM's VAC
-			// subtraction in internal/kernel/evm.go).
-			if len(dek) != crypto.DEKSize {
-				err := errors.New("database key is locked; sign in again")
-				result.Log = append(result.Log, "Swap failed: "+err.Error())
-				return result, err
-			}
-			fresh, err = d.SwapInEncryptedSnapshot(path, dek)
-		} else {
-			// Defensive, not reachable today: every GoPMgr project is
-			// SQLCipher-encrypted (see TestCreateProjectEncryptsAndReopensWithSessionDEK),
-			// so `encrypted` above is always true and this branch never
-			// runs through App.RepairAndSwap. Kept for the day a
-			// plaintext-project migration path is reintroduced.
-			fresh, err = d.SwapInSnapshot(path)
-		}
-		if err != nil {
-			result.Log = append(result.Log, "Swap failed: "+err.Error())
-			return result, err
-		}
-		a.mu.Lock()
-		a.db = fresh
-		a.adminSvc = admin.NewService(fresh)
-		a.sigmaSvc = service.NewProjectService(fresh)
-		a.mu.Unlock()
-		result.Log = append(result.Log, "Snapshot swapped into place; live file is now the healed copy.")
+	afterRepairHeal()
+	// db.IsEncryptedFile's own error branch here (os.Open failing on
+	// the live path, which InformativeSelfHeal above just proved
+	// readable) needs a permission-based fixture this repo has
+	// already judged too fragile for its test suite for the same
+	// class of branch (see repair_selfheal_test.go's documented
+	// deferral of the non-IsNotExist stat-live branch: root bypasses
+	// permission checks, a mid-test panic leaves an unremovable temp
+	// directory, and no other test in this repo uses this technique).
+	// Left untested for the same reason, not chased with a fragile
+	// fixture just to close this one line.
+	encrypted, err := db.IsEncryptedFile(path)
+	if err != nil {
+		result.Log = append(result.Log, "Swap failed: "+err.Error())
+		return result, err
 	}
+	var fresh *db.Database
+	if encrypted {
+		// Defensive, not reachable today: every write site for a.dek
+		// (grep -n "a\.dek = \|a\.dek\[" *.go — CreateAccount, Login,
+		// Logout, shutdown) either sets it to a fresh, full-length DEK
+		// or clears it to nil/zero-length in the same locked section
+		// that also nils a.db. No code path leaves a.db non-nil with
+		// a.dek short or absent, so this guard cannot fire through any
+		// current App method. Kept in case a future session-teardown
+		// path breaks that invariant; no test reaches it under the
+		// current one, matching this codebase's convention for
+		// similarly-proven-unreachable branches (e.g. ComputeEVM's VAC
+		// subtraction in internal/kernel/evm.go).
+		if len(dek) != crypto.DEKSize {
+			err := errors.New("database key is locked; sign in again")
+			result.Log = append(result.Log, "Swap failed: "+err.Error())
+			return result, err
+		}
+		fresh, err = d.SwapInEncryptedSnapshot(path, dek)
+	} else {
+		// Defensive, not reachable today: every GoPMgr project is
+		// SQLCipher-encrypted (see TestCreateProjectEncryptsAndReopensWithSessionDEK),
+		// so `encrypted` above is always true and this branch never
+		// runs through App.RepairAndSwap. Kept for the day a
+		// plaintext-project migration path is reintroduced.
+		fresh, err = d.SwapInSnapshot(path)
+	}
+	if err != nil {
+		result.Log = append(result.Log, "Swap failed: "+err.Error())
+		return result, err
+	}
+	a.db = fresh
+	a.adminSvc = admin.NewService(fresh)
+	a.sigmaSvc = service.NewProjectService(fresh)
+	result.Swapped = true
+	result.DamagedCopy = path + ".corrupt"
+	result.Log = append(result.Log, "Snapshot swapped into place; live file is now the healed copy.")
 	return result, nil
 }
 
