@@ -57,8 +57,9 @@ for a legitimate local user.
   only stop the app); a recovery-code reset still works on a disabled
   account but does not sign it in; a disabled user or demoted administrator
   already signed in through another GoPMgr process keeps working until they
-  sign out; and the unauthenticated `ListUsers` method now also exposes
-  each account's disabled flag.
+  sign out. (The unauthenticated `ListUsers` method, which listed every
+  account and its disabled flag, was removed on 2026-09-29; account lists
+  come only from `AdminListUsers`, which checks the role.)
 - Administrators may read another user's data, and each access must be
   recorded with who read which account, when, and why (owner decision,
   2026-09-24, replacing the same day's rule that they must not). **Planned,
