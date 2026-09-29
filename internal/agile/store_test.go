@@ -173,6 +173,99 @@ func TestDeleteColumn_RemovesRow(t *testing.T) {
 	}
 }
 
+func TestSaveColumn_RefusesInvalidColumns(t *testing.T) {
+	d, store, _ := newAgileTestStore(t)
+	board, err := store.EnsureDefaultBoard()
+	if err != nil {
+		t.Fatalf("EnsureDefaultBoard: %v", err)
+	}
+	other, err := d.UpsertProject(db.Project{ID: "project-other", Name: "Other"})
+	if err != nil {
+		t.Fatalf("seed other project: %v", err)
+	}
+	otherBoard, err := NewStore(d.Conn, other.ID).EnsureDefaultBoard()
+	if err != nil {
+		t.Fatalf("other EnsureDefaultBoard: %v", err)
+	}
+	if _, err := d.Conn.Exec(
+		`INSERT INTO agile_columns (id, board_id, name, order_idx, wip_limit) VALUES ('foreign-col', ?, 'Theirs', 5, 0)`, otherBoard.ID,
+	); err != nil {
+		t.Fatalf("seed foreign column: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name string
+		col  Column
+		want error
+	}{
+		{"blank name", Column{BoardID: board.ID, Name: "   "}, ErrColumnName},
+		{"negative WIP limit", Column{BoardID: board.ID, Name: "Blocked", WIPLimit: -1}, ErrColumnWIPLimit},
+		{"another project's board", Column{BoardID: otherBoard.ID, Name: "Blocked"}, ErrColumnNotOnBoard},
+		{"moving another board's column", Column{ID: "foreign-col", BoardID: board.ID, Name: "Mine"}, ErrColumnNotOnBoard},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := store.SaveColumn(tc.col); !errors.Is(err, tc.want) {
+				t.Fatalf("SaveColumn(%+v) = %v, want %v", tc.col, err, tc.want)
+			}
+		})
+	}
+	var name, boardID string
+	if err := d.Conn.QueryRow(`SELECT name, board_id FROM agile_columns WHERE id = 'foreign-col'`).Scan(&name, &boardID); err != nil {
+		t.Fatalf("read foreign column: %v", err)
+	}
+	if name != "Theirs" || boardID != otherBoard.ID {
+		t.Fatalf("refused save changed another board's column: name %q, board %q", name, boardID)
+	}
+	cols, err := store.ListColumns(board.ID)
+	if err != nil {
+		t.Fatalf("ListColumns: %v", err)
+	}
+	if len(cols) != 4 {
+		t.Fatalf("refused saves added columns: %#v", cols)
+	}
+}
+
+func TestDeleteColumn_RefusesBuiltInAndNonEmptyColumns(t *testing.T) {
+	_, store, _ := newAgileTestStore(t)
+	board, err := store.EnsureDefaultBoard()
+	if err != nil {
+		t.Fatalf("EnsureDefaultBoard: %v", err)
+	}
+	for _, id := range []string{"todo", "doing", "review", "done"} {
+		if err := store.DeleteColumn(id); !errors.Is(err, ErrBuiltInColumn) {
+			t.Fatalf("DeleteColumn(%q) = %v, want ErrBuiltInColumn", id, err)
+		}
+	}
+
+	if err := store.SaveColumn(Column{ID: "blocked", BoardID: board.ID, Name: "Blocked", OrderIdx: 4}); err != nil {
+		t.Fatalf("SaveColumn: %v", err)
+	}
+	for range 2 {
+		if _, err := store.SaveWorkItem(WorkItem{Title: "Stuck", State: "blocked"}); err != nil {
+			t.Fatalf("SaveWorkItem: %v", err)
+		}
+	}
+	err = store.DeleteColumn("blocked")
+	var notEmpty *ColumnNotEmptyError
+	if !errors.As(err, &notEmpty) || notEmpty.Items != 2 {
+		t.Fatalf("DeleteColumn with 2 items = %v, want *ColumnNotEmptyError{Items: 2}", err)
+	}
+	if err.Error() != "Move the 2 work items out of this column before deleting it." {
+		t.Fatalf("refusal text = %q", err.Error())
+	}
+
+	cols, err := store.ListColumns(board.ID)
+	if err != nil {
+		t.Fatalf("ListColumns: %v", err)
+	}
+	if len(cols) != 5 {
+		t.Fatalf("refused deletes removed columns: %#v", cols)
+	}
+	if err := store.DeleteColumn("no-such-column"); err != nil {
+		t.Fatalf("DeleteColumn of a missing column = %v, want nil", err)
+	}
+}
+
 // ----- Work items -----
 
 func TestSaveWorkItem_AppliesDefaults(t *testing.T) {

@@ -116,3 +116,16 @@ describe('KanbanBoard migrated header "&larr; Dashboard" button', () => {
     );
   });
 });
+
+describe('KanbanBoard columns', () => {
+  it('shows renamed columns on the board after the column manager saves', async () => {
+    app.SaveColumn = vi.fn(async () => undefined);
+    const utils = render(KanbanBoard);
+    await utils.findByText('First card');
+    await fireEvent.click(utils.getByRole('button', { name: 'Columns' }));
+    await fireEvent.input(utils.getByLabelText('Column 1 name'), { target: { value: 'Ready' } });
+    app.EnsureDefaultBoard.mockResolvedValueOnce({ board, columns: [{ ...columns[0], name: 'Ready' }, columns[1]] });
+    await fireEvent.click(utils.getByRole('button', { name: 'Save columns' }));
+    await waitFor(() => expect(utils.getByRole('region', { name: 'Ready work items' })).toBeInTheDocument());
+  });
+});

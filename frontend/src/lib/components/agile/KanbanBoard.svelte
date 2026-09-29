@@ -15,6 +15,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../../session.svelte';
   import Button from '../Button.svelte';
   import WorkItemEditor from './WorkItemEditor.svelte';
+  import ColumnManager from './ColumnManager.svelte';
 
   let board = $state<AgileBoard | null>(null);
   let columns = $state<AgileColumn[]>([]);
@@ -26,6 +27,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   // Editor modal state.
   let editing = $state<AgileWorkItem | null>(null);
+  let managingColumns = $state(false);
+
+  // Items per column, for the column manager's delete guard.
+  const itemCounts = $derived(
+    items.reduce<Record<string, number>>((acc, i) => {
+      acc[i.state] = (acc[i.state] ?? 0) + 1;
+      return acc;
+    }, {}),
+  );
 
   // Drag state.
   let draggingID = $state<string | null>(null);
@@ -172,6 +182,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </div>
     <div class="flex gap-2">
       <button
+        onclick={() => (managingColumns = !managingColumns)}
+        disabled={!board}
+        aria-expanded={managingColumns}
+        class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded"
+      >
+        Columns
+      </button>
+      <button
         onclick={() => goto('backlog')}
         class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded"
       >
@@ -186,6 +204,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </button>
     </div>
   </header>
+
+  {#if managingColumns && board}
+    <ColumnManager
+      boardId={board.id}
+      {columns}
+      {itemCounts}
+      onchange={(cols) => {
+        columns = cols;
+        void refresh();
+      }}
+      onclose={() => (managingColumns = false)}
+    />
+  {/if}
 
   <main class="flex-1 overflow-x-auto p-6">
     {#if error}
