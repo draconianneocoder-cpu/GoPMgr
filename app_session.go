@@ -15,12 +15,6 @@ import (
 // Accounts & session
 // =========================================================
 
-// ListUsers returns every account on the machine. Used by the login
-// screen if you want a user-picker variant later.
-func (a *App) ListUsers() ([]users.Account, error) {
-	return a.store.List()
-}
-
 // HasAnyAdmin reports whether at least one administrator account exists.
 // Safe to call without signing in — used by App Settings to decide
 // whether to offer the administrator claim.

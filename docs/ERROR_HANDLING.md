@@ -98,8 +98,8 @@ reach the UI verbatim, e.g. `ErrRecoveryCodesRequireReissue`
 (`"Create new recovery codes before encrypting this database. ..."`).
 These are a **contract** — some are matched by frontend code (for example
 `CreateAccount.svelte` on "administrator privileges", `Login.svelte` on
-"account is disabled", and `AdminPanel.svelte` on "the account was
-deleted"), so don't reword an existing user-facing error string without
+"account is disabled", `AdminPanel.svelte` on "the account was
+deleted", and `RecoveryReset.svelte` on "older version of GoPMgr"), so don't reword an existing user-facing error string without
 grepping the frontend for a literal match first.
 
 ## Go: what NOT to do

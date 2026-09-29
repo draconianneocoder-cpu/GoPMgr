@@ -265,23 +265,3 @@ func isNewer(latest, current string) bool {
 	current = "v" + strings.TrimPrefix(current, "v")
 	return semver.IsValid(latest) && semver.IsValid(current) && semver.Compare(latest, current) > 0
 }
-
-// splitVer and atoi remain narrow helpers for legacy-version diagnostics and
-// their regression tests. Update decisions use strict SemVer above.
-func splitVer(s string) []string {
-	return strings.FieldsFunc(s, func(r rune) bool { return r == '.' || r == '-' })
-}
-
-func atoi(s string) (int, bool) {
-	if s == "" {
-		return 0, false
-	}
-	n := 0
-	for _, r := range s {
-		if r < '0' || r > '9' {
-			return 0, false
-		}
-		n = n*10 + int(r-'0')
-	}
-	return n, true
-}

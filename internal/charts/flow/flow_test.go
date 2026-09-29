@@ -87,24 +87,18 @@ func TestParseActivity_ValidDocument(t *testing.T) {
 	}
 }
 
-func TestEncodeWorkflow_RoundTrip(t *testing.T) {
-	original := WorkflowDocument{
-		Nodes: []Node{{ID: "A", Label: "Start", Shape: ShapeStart}},
-		Edges: []Edge{{From: "A", To: "B", Label: "ok"}},
-	}
-	encoded, err := EncodeWorkflow(original)
+// TestParseWorkflow_StoredShape parses the JSON shape the frontend stores
+// and checks nothing is lost.
+func TestParseWorkflow_StoredShape(t *testing.T) {
+	decoded, err := ParseWorkflow(`{"nodes":[{"id":"A","label":"Start","shape":"start"}],"edges":[{"from":"A","to":"B","label":"ok"}]}`)
 	if err != nil {
-		t.Fatalf("EncodeWorkflow: %v", err)
+		t.Fatalf("ParseWorkflow: %v", err)
 	}
-	decoded, err := ParseWorkflow(encoded)
-	if err != nil {
-		t.Fatalf("ParseWorkflow roundtrip: %v", err)
-	}
-	if len(decoded.Nodes) != 1 || decoded.Nodes[0].ID != "A" {
-		t.Errorf("roundtrip nodes: %+v", decoded.Nodes)
+	if len(decoded.Nodes) != 1 || decoded.Nodes[0].ID != "A" || decoded.Nodes[0].Shape != ShapeStart {
+		t.Errorf("nodes: %+v", decoded.Nodes)
 	}
 	if len(decoded.Edges) != 1 || decoded.Edges[0].Label != "ok" {
-		t.Errorf("roundtrip edges: %+v", decoded.Edges)
+		t.Errorf("edges: %+v", decoded.Edges)
 	}
 }
 

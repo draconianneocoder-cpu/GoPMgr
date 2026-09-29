@@ -33,6 +33,16 @@ const rawCodeBytes = 10
 // such user" at the GUI level to avoid enumeration.
 var ErrInvalidRecoveryCode = errors.New("users: invalid or used recovery code")
 
+// ErrLegacyRecoveryCode is returned when a recovery code verifies but was
+// issued before ADR-001 and carries no wrapped DEK, while the account
+// already has a DEK. Using it would mean replacing the key, which makes
+// every encrypted project unreadable, so the reset is refused and nothing
+// changes. It is only returned after the code verifies, so it reveals
+// nothing to someone who does not hold one of the account's codes.
+// The text is shown to the user; RecoveryReset.svelte matches "older
+// version of GoPMgr" (docs/ERROR_HANDLING.md).
+var ErrLegacyRecoveryCode = errors.New("This recovery code is from an older version of GoPMgr and can't unlock your encryption key, so nothing was changed.")
+
 // migrateRecoveryTable is called by Store.migrate() (system.db
 // migration step). Idempotent; safe to re-run.
 func (s *Store) migrateRecoveryTable() error {
@@ -166,6 +176,14 @@ func replaceRecoveryCodes(ctx context.Context, q accountWriter, username string,
 // and updates the user's password hash to a fresh Argon2id hash of
 // newPassword. Returns ErrInvalidRecoveryCode on no match.
 //
+// A reset never replaces the user's DEK: it re-wraps the same DEK under
+// the new password. A legacy code (no wrap) cannot unlock the DEK, so it
+// is refused with ErrLegacyRecoveryCode and nothing is written — the code
+// stays unused and the old password keeps working. The one exception is
+// an account that has no DEK yet (created before ADR-001 and not signed in
+// since): there is no key to keep, so the password is reset and the DEK
+// is created at the next sign-in, as UnlockDEK does for such accounts.
+//
 // Verification scans every unused hash for the user and tries
 // auth.VerifyPassword on each. The fixed-time Argon2 cost makes this
 // O(n) but n ≤ 8, which is fine.
@@ -234,30 +252,37 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 		return ErrInvalidRecoveryCode
 	}
 
-	// ADR-001: recover the DEK so encrypted projects survive the
-	// reset. A code issued with a DEK wrap re-wraps the SAME DEK
-	// under the new password. A legacy code (no wrap) generates a
-	// FRESH DEK — only safe while the user has no encrypted data. The
-	// app refuses to create or encrypt a project while any unused code
-	// is legacy (encryptionReadiness, 2026-09-28; conversion only before
-	// that), but projects created earlier with legacy codes in hand can
-	// exist, and this reset makes them unreadable.
-	var dek []byte
+	// ADR-001: keep the DEK so encrypted projects survive the reset. A
+	// code issued with a DEK wrap re-wraps the SAME DEK under the new
+	// password. A legacy code (no wrap) cannot unlock the DEK; minting a
+	// fresh one would make every encrypted project unreadable, so it is
+	// refused before any write unless the account has no DEK yet.
+	var newWrapPW string
 	if matchWrap != "" {
-		dek, err = crypto.UnwrapKey(matchWrap, canon)
+		dek, err := crypto.UnwrapKey(matchWrap, canon)
 		if err != nil {
 			// The hash matched but the wrap did not — corrupt row.
 			return fmt.Errorf("users: recovery wrap corrupt: %w", err)
 		}
-	} else {
-		dek, err = crypto.GenerateDEK()
+		newWrapPW, err = crypto.WrapKey(dek, newPassword)
 		if err != nil {
 			return err
 		}
-	}
-	newWrapPW, err := crypto.WrapKey(dek, newPassword)
-	if err != nil {
-		return err
+	} else {
+		var currentWrap string
+		if err := tx.QueryRow(
+			`SELECT wrapped_dek_pw FROM users WHERE username = ?`, username,
+		).Scan(&currentWrap); err != nil {
+			// Not tested: the matched code's row cascades with its user
+			// row, so the user exists inside this transaction; this fires
+			// only on an I/O error, with no portable injection point.
+			return fmt.Errorf("users: read key wrap for recovery reset: %w", err)
+		}
+		if currentWrap != "" {
+			return ErrLegacyRecoveryCode
+		}
+		// No DEK yet: newWrapPW stays empty and UnlockDEK creates the
+		// DEK, wrapped by the new password, at the next sign-in.
 	}
 
 	// Atomically: mark code used + rotate password hash + re-wrap DEK.
@@ -272,11 +297,31 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec(
-		`UPDATE users SET password_hash = ?, wrapped_dek_pw = ? WHERE username = ?`,
-		newHash, newWrapPW, username,
-	); err != nil {
-		return err
+	if matchWrap != "" {
+		if _, err := tx.Exec(
+			`UPDATE users SET password_hash = ?, wrapped_dek_pw = ? WHERE username = ?`,
+			newHash, newWrapPW, username,
+		); err != nil {
+			return err
+		}
+	} else {
+		// No DEK yet: set only the password, and only while there is
+		// still no DEK, so this branch can never erase a key wrap.
+		res, err := tx.Exec(
+			`UPDATE users SET password_hash = ? WHERE username = ? AND wrapped_dek_pw = ''`,
+			newHash, username,
+		)
+		if err != nil {
+			return err
+		}
+		// Not tested: RowsAffected cannot fail on the SQLite driver.
+		n, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return ErrLegacyRecoveryCode
+		}
 	}
 	// Not tested: same class as IssueRecoveryCodes' tx.Commit() check
 	// above -- no portable way to force a COMMIT failure against

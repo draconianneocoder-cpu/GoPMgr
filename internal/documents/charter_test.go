@@ -419,37 +419,6 @@ func TestRenderGenericPDF_UnknownKind_ReturnsError(t *testing.T) {
 	}
 }
 
-// ----- KindsSorted -----
-
-func TestKindsSorted_ReturnsAllKindsInNameOrder(t *testing.T) {
-	got := KindsSorted()
-	all := All()
-	if len(got) != len(all) {
-		t.Fatalf("KindsSorted() returned %d kinds, want %d", len(got), len(all))
-	}
-
-	byKind := make(map[Kind]string, len(all))
-	for _, d := range all {
-		byKind[d.Kind] = d.Name
-	}
-	for i := 1; i < len(got); i++ {
-		if byKind[got[i-1]] > byKind[got[i]] {
-			t.Errorf("KindsSorted() not sorted by Name at index %d: %q > %q", i, byKind[got[i-1]], byKind[got[i]])
-		}
-	}
-
-	seen := make(map[Kind]bool, len(got))
-	for _, k := range got {
-		if seen[k] {
-			t.Errorf("KindsSorted() contains duplicate kind %q", k)
-		}
-		seen[k] = true
-		if _, ok := byKind[k]; !ok {
-			t.Errorf("KindsSorted() contains %q which is not in All()", k)
-		}
-	}
-}
-
 // ----- truncDoc (shared truncation helper) -----
 //
 // truncDoc replaced nine independently-duplicated, identically-buggy

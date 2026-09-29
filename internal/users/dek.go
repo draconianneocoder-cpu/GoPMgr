@@ -117,8 +117,8 @@ func (s *Store) UnlockDEK(username, password string) ([]byte, error) {
 
 // HasLegacyRecoveryCodeWraps reports whether any active recovery code
 // lacks a wrapped DEK. Such codes must be reissued before encrypting
-// project databases, otherwise a future password reset would generate
-// a fresh DEK and orphan encrypted projects.
+// project databases: they cannot unlock the DEK, so once encrypted data
+// exists a password reset with one is refused (ErrLegacyRecoveryCode).
 func (s *Store) HasLegacyRecoveryCodeWraps(username string) (bool, error) {
 	if err := ValidateUsername(username); err != nil {
 		return false, err

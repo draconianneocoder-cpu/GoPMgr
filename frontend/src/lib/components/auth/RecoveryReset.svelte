@@ -7,7 +7,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // here from the Login screen by clicking "use a recovery code".
   // They enter their username, one of the 8 unused codes generated
   // at account creation, and a new password. On success the code
-  // is marked used and the password hash is rotated atomically.
+  // is marked used and the password hash is rotated atomically. The
+  // encryption key never changes, so encrypted projects stay readable;
+  // a code too old to unlock the key is refused and nothing changes.
 
   import { onMount } from 'svelte';
   import { goto } from '../../session.svelte';
@@ -54,9 +56,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
       await window.go.main.App.ResetWithRecoveryCode(username, code, password);
       done = true;
     } catch (err: any) {
-      // Generic message — the backend collapses unknown-user and
-      // invalid-code into the same error to avoid enumeration.
-      error = 'Invalid username or recovery code.';
+      // The backend returns this only after the code verifies
+      // (users.ErrLegacyRecoveryCode), so naming it reveals nothing.
+      // Everything else stays generic: unknown user and wrong code
+      // look the same to avoid enumeration.
+      if (String(err?.message ?? err).includes('older version of GoPMgr')) {
+        error =
+          "This recovery code is from an older version of GoPMgr and can't unlock your encryption key, so nothing was changed and your projects are safe. Sign in with your password if you remember it.";
+      } else {
+        error = 'Invalid username or recovery code.';
+      }
     } finally {
       busy = false;
     }
@@ -74,11 +83,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <p class="text-xs text-slate-500">
         Enter one of the recovery codes you saved when the account was created.
       </p>
+      <p class="text-xs text-slate-500">
+        This changes only your password. Your encrypted projects stay readable.
+      </p>
     </div>
 
     {#if done}
       <p class="text-center text-sm text-emerald-300" role="status" aria-live="polite">
-        Password reset. You can now sign in with your new password.
+        Password reset. Your projects are unchanged. Sign in with your new password.
       </p>
       <button
         type="button"

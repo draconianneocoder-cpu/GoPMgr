@@ -258,6 +258,28 @@ func TestApplyPAdESFailsClosedWhenTimestampRequestFails(t *testing.T) {
 	}
 }
 
+// TestApplyPAdESReturnsNoBytesWhenSigningFails: a signer that cannot sign
+// yields an error and no PDF, so no unsigned document is ever written as if
+// it were signed (moved from documents.RenderSigned's test, 2026-09-29).
+func TestApplyPAdESReturnsNoBytesWhenSigningFails(t *testing.T) {
+	t.Parallel()
+
+	signer, _ := newPAdESTestSigner(t)
+	signer.PrivateKey = nil
+	out, _, err := ApplyPAdES(
+		context.Background(),
+		[]byte("%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\nxref\n0 2\n0000000000 65535 f \n0000000009 00000 n \ntrailer\n<< /Size 2 /Root 1 0 R >>\nstartxref\n45\n%%EOF\n"),
+		signer,
+		nil,
+	)
+	if err == nil || !strings.Contains(err.Error(), "missing key") {
+		t.Fatalf("ApplyPAdES() error = %v, want missing-key failure", err)
+	}
+	if out != nil {
+		t.Fatalf("ApplyPAdES() returned %d bytes after signing failure", len(out))
+	}
+}
+
 func TestApplyPAdESRejectsIncompletePreparedTimestamp(t *testing.T) {
 	t.Parallel()
 

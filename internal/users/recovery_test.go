@@ -439,7 +439,6 @@ func TestResetWithRecoveryCode_RejectsNonMatchingCode(t *testing.T) {
 // (here, deleting this check would leave dek nil, and the following
 // WrapKey(nil, newPassword) call would independently fail with
 // ErrBadDEK) -- see the exact same shape break-verified below in
-// TestResetWithRecoveryCode_GenerateDEKEntropyFailure and
 // TestResetWithRecoveryCode_WrapKeyEntropyFailure.
 func TestResetWithRecoveryCode_RejectsCorruptedWrap(t *testing.T) {
 	store := newRecoveryTestStore(t)
@@ -465,12 +464,12 @@ func TestResetWithRecoveryCode_RejectsCorruptedWrap(t *testing.T) {
 	}
 }
 
-// TestResetWithRecoveryCode_GenerateDEKEntropyFailure forces
-// crypto.GenerateDEK's rand.Reader read to fail on the LEGACY path
-// (matchWrap == "", i.e. codes issued with a nil DEK) -- this is the
-// first rand.Reader call in that whole branch, so an always-fail
-// reader is sufficient with no call-indexing needed.
-func TestResetWithRecoveryCode_GenerateDEKEntropyFailure(t *testing.T) {
+// TestResetWithRecoveryCode_NoDEKLegacyPathHashEntropyFailure forces
+// the rand.Reader read on the legacy path for an account with no DEK yet
+// (matchWrap == "" and wrapped_dek_pw == ""): nothing is wrapped there, so
+// auth.HashPassword's salt read is the first rand call, and the reset must
+// fail with that error and leave the code unused.
+func TestResetWithRecoveryCode_NoDEKLegacyPathHashEntropyFailure(t *testing.T) {
 	store := newRecoveryTestStore(t)
 	if _, err := store.CreateAccount("alice", "Alice", "p4ssw0rd-original", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -483,8 +482,12 @@ func TestResetWithRecoveryCode_GenerateDEKEntropyFailure(t *testing.T) {
 	defer restore()
 
 	err = store.ResetWithRecoveryCode("alice", codes[0], "brand-new-password")
-	if err == nil || !strings.Contains(err.Error(), "generate DEK") {
-		t.Fatalf("ResetWithRecoveryCode with failing entropy source = %v, want a generate-DEK error", err)
+	if err == nil || err.Error() != "auth: read salt: entropy unavailable" {
+		t.Fatalf("ResetWithRecoveryCode with failing entropy source = %v, want the HashPassword read-salt error", err)
+	}
+	restore()
+	if n, err := store.RemainingRecoveryCodes("alice"); err != nil || n != RecoveryCodeCount {
+		t.Fatalf("unused codes after a failed reset = %d (%v), want %d", n, err, RecoveryCodeCount)
 	}
 }
 
@@ -557,8 +560,8 @@ func TestResetWithRecoveryCode_UsedFlagUpdateFailsOnBlockedTrigger(t *testing.T)
 }
 
 // TestResetWithRecoveryCode_PasswordUpdateFailsOnBlockedTrigger
-// forces the final `UPDATE users SET password_hash = ..., wrapped_dek_pw = ...`
-// step to fail via a SQLite trigger. Uses "password reset blocked"
+// forces the final password update (here the no-DEK legacy path's
+// `UPDATE users SET password_hash = ...`) to fail via a SQLite trigger. Uses "password reset blocked"
 // rather than store_test.go's "password rehash blocked" (a different
 // function's trigger, on the same table/column, in a separate temp
 // DB with no runtime conflict) so a reader grepping for

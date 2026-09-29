@@ -67,44 +67,56 @@ func TestGet_UnknownKind_ReturnsFalse(t *testing.T) {
 	}
 }
 
+// byEngine returns every registered Definition handled by engine e. It
+// lives here because only these registry pins need the grouping.
+func byEngine(e Engine) []Definition {
+	var out []Definition
+	for _, d := range registry {
+		if d.Engine == e {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
 func TestByEngine_DAG_Returns7Kinds(t *testing.T) {
-	defs := ByEngine(EngineDAG)
+	defs := byEngine(EngineDAG)
 	if len(defs) != 7 {
-		t.Errorf("ByEngine(EngineDAG) = %d, want 7", len(defs))
+		t.Errorf("byEngine(EngineDAG) = %d, want 7", len(defs))
 	}
 }
 
 func TestByEngine_Stats_Returns8Kinds(t *testing.T) {
-	defs := ByEngine(EngineStats)
+	defs := byEngine(EngineStats)
 	if len(defs) != 8 {
-		t.Errorf("ByEngine(EngineStats) = %d, want 8", len(defs))
+		t.Errorf("byEngine(EngineStats) = %d, want 8", len(defs))
 	}
 }
 
 func TestByEngine_Matrix_Returns5Kinds(t *testing.T) {
-	defs := ByEngine(EngineMatrix)
+	defs := byEngine(EngineMatrix)
 	if len(defs) != 5 {
-		t.Errorf("ByEngine(EngineMatrix) = %d, want 5", len(defs))
+		t.Errorf("byEngine(EngineMatrix) = %d, want 5", len(defs))
 	}
 }
 
 func TestByEngine_Flow_Returns2Kinds(t *testing.T) {
-	defs := ByEngine(EngineFlow)
+	defs := byEngine(EngineFlow)
 	if len(defs) != 2 {
-		t.Errorf("ByEngine(EngineFlow) = %d, want 2", len(defs))
+		t.Errorf("byEngine(EngineFlow) = %d, want 2", len(defs))
 	}
 }
 
 func TestByEngine_UnknownEngine_ReturnsEmpty(t *testing.T) {
-	defs := ByEngine("nonexistent")
+	defs := byEngine("nonexistent")
 	if len(defs) != 0 {
-		t.Errorf("ByEngine(\"nonexistent\") = %d, want 0", len(defs))
+		t.Errorf("byEngine(\"nonexistent\") = %d, want 0", len(defs))
 	}
 }
 
 func TestByEngine_SumEqualsAll(t *testing.T) {
-	total := len(ByEngine(EngineDAG)) + len(ByEngine(EngineStats)) +
-		len(ByEngine(EngineMatrix)) + len(ByEngine(EngineFlow))
+	total := len(byEngine(EngineDAG)) + len(byEngine(EngineStats)) +
+		len(byEngine(EngineMatrix)) + len(byEngine(EngineFlow))
 	all := len(All())
 	if total != all {
 		t.Errorf("sum of ByEngine counts = %d, want %d (len(All()))", total, all)

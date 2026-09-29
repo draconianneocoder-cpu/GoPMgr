@@ -159,14 +159,6 @@ func (a *App) shutdown(_ context.Context) {
 	}
 }
 
-// =========================================================
-// Diagnostics / sanity
-// =========================================================
-
-func (a *App) Greet() string {
-	return "GoPMgr " + cli.Version + " ready."
-}
-
 // Native-close guard: EnableNativeCloseGuard, CompleteNativeClose,
 // shouldPreventNativeClose, and beforeClose together intercept every native
 // quit trigger and hand the frontend a chance to block it on unsaved editor

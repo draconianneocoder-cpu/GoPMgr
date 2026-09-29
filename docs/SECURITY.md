@@ -57,8 +57,9 @@ for a legitimate local user.
   only stop the app); a recovery-code reset still works on a disabled
   account but does not sign it in; a disabled user or demoted administrator
   already signed in through another GoPMgr process keeps working until they
-  sign out; and the unauthenticated `ListUsers` method now also exposes
-  each account's disabled flag.
+  sign out. (The unauthenticated `ListUsers` method, which listed every
+  account and its disabled flag, was removed on 2026-09-29; account lists
+  come only from `AdminListUsers`, which checks the role.)
 - Administrators may read another user's data, and each access must be
   recorded with who read which account, when, and why (owner decision,
   2026-09-24, replacing the same day's rule that they must not). **Planned,
@@ -100,9 +101,19 @@ Project databases are SQLCipher-capable. The intended key hierarchy is:
 only bootstrap metadata such as password hashes, recovery-code metadata,
 and wrapped DEKs, not project content.
 
+A password reset never replaces the DEK: a recovery code re-wraps the same
+DEK under the new password. A legacy code (issued before ADR-001, with no
+DEK wrap) cannot unlock the DEK, so `ResetWithRecoveryCode` refuses it with
+`ErrLegacyRecoveryCode` and writes nothing: the code stays unused and the
+old password keeps working. That specific error is returned only after the
+code verifies, so it reveals nothing to someone without a code; a wrong code
+or unknown user still gets the same generic error. The one exception is an
+account with no DEK yet (not signed in since ADR-001), where the password is
+reset and the DEK is created at the next sign-in.
+
 Before enabling encryption for a user with legacy recovery codes, new codes
-must be created so password reset can preserve the same DEK. Otherwise a
-reset would orphan encrypted project databases. `EncryptProjectAtRest`
+must be created, because those codes could not reset the password once the
+account has encrypted data. `EncryptProjectAtRest`
 refuses while any unused code is legacy; Project Settings offers the same
 two-step renewal as App Settings (below), and `App.IssueRecoveryCodes`, which
 replaces codes at once, is used only at account creation.
