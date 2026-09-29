@@ -6,7 +6,6 @@
 // renders from these so the tests cover the production code path.
 
 export const GANTT_ROW_H = 30;
-export const GANTT_BAR_H = 14;
 
 export interface GanttSegment {
   start: number;

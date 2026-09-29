@@ -8,9 +8,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import AppHeader from '../AppHeader.svelte';
 
   let projects = $state<ProjectFile[]>([]);
-  let creating = $state(false);
-  let newName = $state('');
-  let newDesc = $state('');
   let error = $state('');
   let query = $state('');
   let restoring = $state(false);
@@ -55,21 +52,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
       session.project = meta;
       session.projectPath = p.path;
       goto('dashboard');
-    } catch (err: any) {
-      error = String(err?.message ?? err);
-    }
-  }
-
-  async function createProject(e: Event) {
-    e.preventDefault();
-    error = '';
-    try {
-      const p = await window.go.main.App.CreateProject(newName, newDesc);
-      newName = '';
-      newDesc = '';
-      creating = false;
-      await refresh();
-      await open(p);
     } catch (err: any) {
       error = String(err?.message ?? err);
     }
@@ -143,38 +125,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
     {#if error}
       <p class="text-sm text-red-400 mb-4" role="alert">{error}</p>
-    {/if}
-
-    {#if creating}
-      <form
-        onsubmit={createProject}
-        class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-3 mb-6"
-      >
-        <label class="block">
-          <span class="text-xs font-semibold text-slate-500 uppercase">Project Name</span>
-          <input
-            type="text"
-            bind:value={newName}
-            required
-            class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-          />
-        </label>
-        <label class="block">
-          <span class="text-xs font-semibold text-slate-500 uppercase">Description</span>
-          <textarea
-            bind:value={newDesc}
-            rows="2"
-            class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
-          ></textarea>
-        </label>
-        <button
-          type="submit"
-          disabled={!newName}
-          class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider px-3 py-2 rounded"
-        >
-          Create
-        </button>
-      </form>
     {/if}
 
     {#if projects.length > 0}
