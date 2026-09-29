@@ -507,3 +507,32 @@ func TestOpenProjectComplianceModeRejectsTamperedAuditChain(t *testing.T) {
 		t.Fatalf("OpenProject tampered err = %v, want audit verification failure", err)
 	}
 }
+
+// A blank project from CreateProject gets the same calendar policy as a
+// Launchpad project created with the defaults (db.UpsertProject fills in
+// both), so the Launchpad's blank-project option schedules the same way.
+func TestCreateProjectUsesTheLaunchpadCalendarDefaults(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	acceptNoRecoveryCodes(t, app)
+
+	blank, err := app.CreateProject("Blank Plan", "")
+	if err != nil {
+		t.Fatalf("CreateProject: %v", err)
+	}
+	blankMeta, err := app.OpenProject(blank.Path)
+	if err != nil {
+		t.Fatalf("OpenProject: %v", err)
+	}
+	wizard, err := app.CreateProjectFromLaunchpad("Wizard Plan", "", "custom", "", "", "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateProjectFromLaunchpad: %v", err)
+	}
+	if blankMeta.CountryCode == "" || blankMeta.TimeZone == "" ||
+		blankMeta.CountryCode != wizard.Project.CountryCode || blankMeta.TimeZone != wizard.Project.TimeZone {
+		t.Fatalf("blank project calendar = %q/%q, Launchpad default = %q/%q; want the same, non-empty",
+			blankMeta.CountryCode, blankMeta.TimeZone, wizard.Project.CountryCode, wizard.Project.TimeZone)
+	}
+}

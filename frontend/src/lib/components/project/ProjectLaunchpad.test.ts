@@ -170,3 +170,41 @@ describe('project launchpad recovery-code gate', () => {
     await waitFor(() => expect(onCreated).toHaveBeenCalledOnce());
   });
 });
+
+describe('ProjectLaunchpad blank project', () => {
+  async function openBlank(onCreated = vi.fn()) {
+    app.CreateProject = vi.fn(async () => ({ path: '/p/Blank.gopmgr', name: 'Blank', modified: '' }));
+    app.OpenProject = vi.fn(async () => ({ id: 'project-9', name: 'Blank' }));
+    const utils = render(ProjectLaunchpad, { props: { onCreated, onCancel: vi.fn() } });
+    await fireEvent.click(utils.getByRole('button', { name: 'Start with a blank project' }));
+    return { utils, onCreated };
+  }
+
+  it('creates and opens a blank project from a name alone', async () => {
+    const { utils, onCreated } = await openBlank();
+    const create = utils.getByRole('button', { name: 'Create blank project' });
+    expect(create).toBeDisabled();
+    await fireEvent.input(utils.getByLabelText('Project name'), { target: { value: '  Blank  ' } });
+    await fireEvent.click(create);
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith({ id: 'project-9', name: 'Blank' }, '/p/Blank.gopmgr'));
+    expect(app.CreateProject).toHaveBeenCalledWith('Blank', '');
+    expect(app.OpenProject).toHaveBeenCalledWith('/p/Blank.gopmgr');
+    expect(app.CreateProjectFromLaunchpad).not.toHaveBeenCalled();
+  });
+
+  it('asks for a way back in before creating when there are no recovery codes', async () => {
+    app.RecoveryCodeStatus = vi.fn(async () => ({ unused: 0, total: 0, legacy: false, encryption_ready: false }));
+    const { utils, onCreated } = await openBlank();
+    await fireEvent.input(utils.getByLabelText('Project name'), { target: { value: 'Blank' } });
+    await fireEvent.click(utils.getByRole('button', { name: 'Create blank project' }));
+    expect(await utils.findByRole('heading', { name: /save a way back in/i })).toBeInTheDocument();
+    expect(app.CreateProject).not.toHaveBeenCalled();
+    expect(onCreated).not.toHaveBeenCalled();
+  });
+
+  it('returns to the guided setup', async () => {
+    const { utils } = await openBlank();
+    await fireEvent.click(utils.getByRole('button', { name: /Back to the guided setup/ }));
+    expect(utils.getByRole('heading', { name: 'What kind of project is this?' })).toBeInTheDocument();
+  });
+});
