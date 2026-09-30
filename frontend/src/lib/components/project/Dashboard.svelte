@@ -4,6 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
 import { onMount } from 'svelte';
+import ProjectHealthNotice from './ProjectHealthNotice.svelte';
 import { session, goto } from '../../session.svelte';
 import { showToast } from '../../toast.svelte';
 import SignCertificateModal from '../SignCertificateModal.svelte';
@@ -403,6 +404,7 @@ import Button from '../Button.svelte';
   />
 
   <main class="max-w-6xl mx-auto p-8 space-y-8">
+    <ProjectHealthNotice />
     <!-- Project navigation row: Stakeholders + Timeline are always
          available (not gated on a pack toggle). Budget panel shows
          a live summary. -->

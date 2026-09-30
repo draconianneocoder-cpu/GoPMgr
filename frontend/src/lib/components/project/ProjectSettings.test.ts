@@ -608,3 +608,16 @@ describe('database encryption and recovery codes', () => {
     expect(utils.queryByText(refusal)).not.toBeInTheDocument();
   });
 });
+
+describe('ProjectSettings opening tab', () => {
+  it('opens a tab another screen asked for once, then General on later visits', async () => {
+    session.settingsTab = 'protection';
+    const first = render(ProjectSettings);
+    expect(await within(first.container).findByRole('tab', { name: /Data Protection/i, selected: true })).toBeInTheDocument();
+    expect(session.settingsTab).toBeNull();
+    first.unmount();
+
+    const second = render(ProjectSettings);
+    expect(await within(second.container).findByRole('tab', { name: /General/i, selected: true })).toBeInTheDocument();
+  });
+});

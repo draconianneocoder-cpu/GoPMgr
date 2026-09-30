@@ -90,6 +90,11 @@ type App struct {
 	templates          *templates.Engine       // immutable after NewApp; safe lock-free read
 	sigmaSvc           *service.ProjectService // initialized when a project is open
 
+	// openCheck caches CheckOpenProject's result for the database handle it
+	// checked; any open, reopen, or swap installs a new handle, which makes
+	// it stale without a reset. Guarded by mu.
+	openCheck *openProjectCheck
+
 	// Diagnostic logging — set in main() after applog.Init; never reassigned.
 	logPath string // dated log file path, e.g. .../logs/gopmgr-2026-06-20.log
 	logDir  string // parent of logPath, e.g. .../logs

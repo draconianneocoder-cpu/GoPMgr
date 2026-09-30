@@ -69,7 +69,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <p class="text-sm text-slate-300">
               Open the project and choose <span class="font-medium text-slate-100">Check and repair</span> in
               Project Settings › Data Protection; it repairs the project from a clean copy and keeps
-              the damaged file beside it. If the project won't open, restore it from your latest
+              the damaged file beside it. With "Check this project for damage when it opens" on (the
+              default), the Dashboard also warns you when the check on opening finds a problem. If the project won't open, restore it from your latest
               backup. From a terminal,
               <span class="font-mono text-xs">--check</span> reports integrity,
               <span class="font-mono text-xs">--repair</span> checks it and, if it finds damage, writes a healed copy beside the file as

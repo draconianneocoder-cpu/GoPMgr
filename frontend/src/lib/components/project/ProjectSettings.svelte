@@ -30,9 +30,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // are each fully self-contained state declared at this component's own
   // top level, so switching tabs (an {#if activeTab === 'x'} remount of
   // markup only, not of this component) never resets them -- see §4.2.
+  // Another screen can ask for a tab once (session.settingsTab); later
+  // visits open on General.
   let activeTab = $state<'general' | 'scenarios' | 'resources' | 'exports' | 'protection'>(
-    'general',
+    session.settingsTab ?? 'general',
   );
+  session.settingsTab = null;
   const settingsTabs = [
     { id: 'general', label: 'General' },
     { id: 'scenarios', label: 'Scenarios' },
@@ -1178,7 +1181,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <label class="block">
             <span class="text-xs text-slate-500 uppercase">Schedule and time-series time zone</span>
             <select bind:value={draft.time_zone} class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded">
-              {#each timeZonesFor(draft.country_code) as timeZone}
+              {#each timeZonesFor(draft.country_code) as timeZone (timeZone)}
                 <option value={timeZone}>{timeZone}</option>
               {/each}
             </select>
@@ -1922,7 +1925,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
            <label class="flex items-center gap-3 cursor-pointer">
              <input type="checkbox" bind:checked={autoRepair} class="accent-cyan-500" />
-             <span class="text-sm text-slate-300">Enable background self-healing</span>
+             <span class="text-sm text-slate-300">Check this project for damage when it opens</span>
            </label>
 
            <label class="block">

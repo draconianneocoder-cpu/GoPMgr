@@ -465,7 +465,10 @@ for a project created before the August 2026 rename — as the final argument:
   beside the file as `<file>.bak` without replacing the project. To repair a
   project in place, open it and use **Check and repair** in Project Settings ›
   Data Protection, which swaps in a healed copy and keeps the damaged file as
-  `<file>.corrupt`.
+  `<file>.corrupt`. With **Check this project for damage when it opens** on
+  (the default), each open runs an integrity check and the Dashboard shows a
+  warning with a way to Check and repair if it finds damage; it never
+  repairs on its own.
 - `--vacuum` compacts the database (`VACUUM`).
 - `--export-audit <path>` writes the audit log to CSV at `<path>`.
 - `--stats` prints a compact project summary (status, phase, methodology,
