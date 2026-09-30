@@ -552,6 +552,72 @@ var swapSnapshot = func(d *db.Database, path string, dek []byte, encrypted bool)
 	return d.SwapInSnapshot(path)
 }
 
+// OpenProjectCheck is the result of the integrity check a project gets once
+// per open while its "Check this project for damage when it opens" setting
+// (db.UserSettings.AutoRepair) is on. Checked is false when the setting is
+// off. Damaged covers a check that itself fails, since a malformed file is
+// what makes it fail. Dismissed is set once the user dismisses the notice.
+type OpenProjectCheck struct {
+	Checked   bool `json:"checked"`
+	Damaged   bool `json:"damaged"`
+	Dismissed bool `json:"dismissed"`
+}
+
+type openProjectCheck struct {
+	db     *db.Database
+	result OpenProjectCheck
+}
+
+// beforeOpenCheckStored runs between CheckOpenProject's check and storing
+// its result. It is a no-op except in tests.
+var beforeOpenCheckStored = func() {}
+
+// CheckOpenProject runs PRAGMA integrity_check on the open project once per
+// open, when the project's setting asks for it, and returns the result on
+// later calls. It runs without holding the lock, so a large project doesn't
+// block other calls, and stores the result only if the same database handle
+// is still open: a project closed, reopened, or repaired meanwhile has a new
+// handle, so a result read from the old file is discarded.
+func (a *App) CheckOpenProject() (OpenProjectCheck, error) {
+	a.mu.RLock()
+	d := a.db
+	cached := a.openCheck
+	a.mu.RUnlock()
+	if d == nil {
+		return OpenProjectCheck{}, errors.New("no project open")
+	}
+	if cached != nil && cached.db == d {
+		return cached.result, nil
+	}
+	settings, err := d.GetSettings()
+	if err != nil {
+		return OpenProjectCheck{}, fmt.Errorf("read project settings: %w", err)
+	}
+	if !settings.AutoRepair {
+		return OpenProjectCheck{}, nil
+	}
+	// Not tested: err != nil. Both corruption fixtures make integrity_check
+	// report damage in its result rows rather than fail outright.
+	ok, err := d.CheckIntegrity()
+	result := OpenProjectCheck{Checked: true, Damaged: err != nil || !ok}
+	beforeOpenCheckStored()
+	a.mu.Lock()
+	if a.db == d {
+		a.openCheck = &openProjectCheck{db: d, result: result}
+	}
+	a.mu.Unlock()
+	return result, nil
+}
+
+// DismissOpenProjectCheck hides the damage notice for the rest of this open.
+func (a *App) DismissOpenProjectCheck() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.openCheck != nil && a.openCheck.db == a.db {
+		a.openCheck.result.Dismissed = true
+	}
+}
+
 // ErrRepairClosedProject is returned when a repair's swap failed after
 // closing the project's database and the project file could not be
 // reopened, so the project was closed rather than left on a closed handle.
@@ -577,6 +643,10 @@ func (a *App) RepairAndSwap() (db.RepairResult, error) {
 
 	result, err := d.InformativeSelfHeal(path)
 	if err != nil || !result.Success || result.Snapshot == "" {
+		if err == nil && result.Success {
+			// Healthy now: the next CheckOpenProject re-checks.
+			a.openCheck = nil
+		}
 		return result, err
 	}
 	afterRepairHeal()

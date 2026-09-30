@@ -75,6 +75,9 @@ export const session = $state<{
   // reminder. Every sign-in assigns a new Account object, so the reminder
   // returns at the next sign-in, for this user or another, with no reset.
   recoveryReminderDismissedFor: Account | null;
+  // A Project Settings tab to open on the next visit (the Dashboard's damage
+  // notice asks for Data Protection); ProjectSettings clears it on use.
+  settingsTab: 'protection' | null;
 }>({
   user: null,
   project: null,
@@ -83,6 +86,7 @@ export const session = $state<{
   editingId: null,
   updateStatus: null,
   recoveryReminderDismissedFor: null,
+  settingsTab: null,
 });
 
 type PendingNavigation = {

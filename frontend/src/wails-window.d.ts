@@ -142,6 +142,8 @@ declare global {
             certPassword: string,
           ) => Promise<string>;
           RepairAndSwap: () => Promise<RepairResult>;
+          CheckOpenProject: () => Promise<OpenProjectCheck>;
+          DismissOpenProjectCheck: () => Promise<void>;
 
           // ----- V2.x: Agile Pack -----
           AgileEnabled: () => Promise<boolean>; // persists to project settings
@@ -456,6 +458,12 @@ declare global {
     include_dependencies: boolean;
     include_progress: boolean;
     include_assignments: boolean;
+  }
+
+  interface OpenProjectCheck {
+    checked: boolean;
+    damaged: boolean;
+    dismissed: boolean;
   }
 
   interface RepairResult {

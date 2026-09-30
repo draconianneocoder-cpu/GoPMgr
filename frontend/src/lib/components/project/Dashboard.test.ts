@@ -50,6 +50,7 @@ const doc: DocumentRecord = {
 // test overrides ListCharts/ListDocuments.
 function makeApp(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
   return {
+    CheckOpenProject: vi.fn(async () => ({ checked: true, damaged: false, dismissed: false })),
     ListChartKinds: vi.fn(async () => chartKinds),
     ListDocumentKinds: vi.fn(async () => docKinds),
     ListCharts: vi.fn(async () => []),
@@ -658,5 +659,20 @@ describe('Dashboard migrated header "Settings"/"Close project" buttons', () => {
   it('renders "Close project" as Button variant="nav" class="underline"', async () => {
     const { getByText } = await renderLoaded();
     expect(getByText('Close project').className.split(/\s+/).filter(Boolean).sort()).toEqual(expectedClass);
+  });
+});
+
+describe('Dashboard damage notice', () => {
+  it('shows the notice when the check on open found damage', async () => {
+    const utils = await renderLoaded({
+      CheckOpenProject: vi.fn(async () => ({ checked: true, damaged: true, dismissed: false })),
+    });
+    expect(await utils.findByRole('heading', { name: 'This project may be damaged' })).toBeInTheDocument();
+  });
+
+  it('shows no notice for a healthy project', async () => {
+    const utils = await renderLoaded();
+    await waitFor(() => expect(app.CheckOpenProject).toHaveBeenCalled());
+    expect(utils.queryByRole('heading', { name: 'This project may be damaged' })).not.toBeInTheDocument();
   });
 });

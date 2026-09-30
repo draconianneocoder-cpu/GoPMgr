@@ -266,9 +266,17 @@ That result took six live-GUI cycles to reach because the first five, all run un
     copy (`GetWorkItem`), the scenario chart editor shows its scenario
     (`GetScenario`), and "Start with a blank project" in the Launchpad
     (`CreateProject`).
-  - The `auto_repair` project setting is saved and loaded but nothing acts on
-    it. Either run Check and repair when a project opens with it set, or
-    remove the setting.
+  - Done 2026-09-30 (owner: check on open, ask to repair): the `auto_repair`
+    setting, labelled "Enable background self-healing" but acted on by
+    nothing, is now "Check this project for damage when it opens". Each open
+    runs `PRAGMA integrity_check` once (`App.CheckOpenProject`, cached by
+    database handle) after the Dashboard loads, and a damage notice offers
+    Check and repair; nothing is repaired without a click. It is on by
+    default, so every existing project now gets the check.
+  - Agile store methods that act by ID alone: `DeleteWorkItem`,
+    `MoveWorkItem`, `GetSprint`, `DeleteSprint`, `DeleteDeployment`, and the
+    `SaveWorkItem`/`SaveSprint`/`SaveDeployment` upserts (which can
+    overwrite another project's row). Scope each to the store's project.
   - `--repair` prints "Call SwapInSnapshot to atomically replace the live
     file." after writing its `.bak`, which is a developer instruction. Word
     it for users (where the healed copy is and how to use it), or have the
@@ -279,8 +287,6 @@ That result took six live-GUI cycles to reach because the first five, all run un
     the project path if there is one, and otherwise closes the project
     (`ErrRepairClosedProject`) without creating an empty file there; the
     panel then sends the user back to the project list.
-  - `Store.DeleteWorkItem` and `MoveWorkItem` match by ID alone, like
-    `GetWorkItem` did before 2026-09-29; scope them to the project too.
   - Declined for now: a sign-in lockout (`system.db` is readable, so
     passwords can be attacked offline regardless), session timeout, and
     self-service account deletion.
