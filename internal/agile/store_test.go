@@ -923,3 +923,117 @@ func TestGetWorkItem_OnlyReturnsThisProjectsItems(t *testing.T) {
 		t.Fatalf("GetWorkItem of this project's item = %+v, %v", got, err)
 	}
 }
+
+// Every Store method acting on an ID stays inside the store's project: two
+// projects share one database here, and project A's store is pointed at
+// project B's rows. B's rows must be unchanged and A's calls must not see
+// them. (Each project normally has its own file; this is defence in depth.)
+func TestStoreMethodsLeaveAnotherProjectsRowsAlone(t *testing.T) {
+	d, storeA, _ := newAgileTestStore(t)
+	other, err := d.UpsertProject(db.Project{ID: "project-b", Name: "B"})
+	if err != nil {
+		t.Fatalf("seed project B: %v", err)
+	}
+	storeB := NewStore(d.Conn, other.ID)
+	sprintB, err := storeB.SaveSprint(Sprint{Name: "B sprint"})
+	if err != nil {
+		t.Fatalf("SaveSprint B: %v", err)
+	}
+	itemB, err := storeB.SaveWorkItem(WorkItem{Title: "B item", State: "todo", SprintID: sprintB.ID})
+	if err != nil {
+		t.Fatalf("SaveWorkItem B: %v", err)
+	}
+	depB, err := storeB.SaveDeployment(Deployment{Version: "b-1.0", Successful: true})
+	if err != nil {
+		t.Fatalf("SaveDeployment B: %v", err)
+	}
+
+	unchangedItem := func(t *testing.T) {
+		t.Helper()
+		got, err := storeB.GetWorkItem(itemB.ID)
+		if err != nil || got.Title != "B item" || got.State != "todo" || got.SprintID != sprintB.ID {
+			t.Fatalf("project B's work item changed: %+v, %v", got, err)
+		}
+	}
+	unchangedSprint := func(t *testing.T) {
+		t.Helper()
+		got, err := storeB.GetSprint(sprintB.ID)
+		if err != nil || got.Name != "B sprint" {
+			t.Fatalf("project B's sprint changed: %+v, %v", got, err)
+		}
+	}
+	unchangedDeployment := func(t *testing.T) {
+		t.Helper()
+		deps, err := storeB.ListDeployments(time.Time{})
+		if err != nil || len(deps) != 1 || deps[0].Version != "b-1.0" {
+			t.Fatalf("project B's deployment changed: %+v, %v", deps, err)
+		}
+	}
+
+	t.Run("MoveWorkItem", func(t *testing.T) {
+		if err := storeA.MoveWorkItem(itemB.ID, "done", 0); err != nil {
+			t.Fatalf("MoveWorkItem: %v", err)
+		}
+		unchangedItem(t)
+	})
+	t.Run("DeleteWorkItem", func(t *testing.T) {
+		if err := storeA.DeleteWorkItem(itemB.ID); err != nil {
+			t.Fatalf("DeleteWorkItem: %v", err)
+		}
+		unchangedItem(t)
+	})
+	t.Run("SaveWorkItem over B's ID", func(t *testing.T) {
+		if _, err := storeA.SaveWorkItem(WorkItem{ID: itemB.ID, Title: "hijacked"}); !errors.Is(err, ErrNoWorkItem) {
+			t.Fatalf("SaveWorkItem over B's ID = %v, want ErrNoWorkItem", err)
+		}
+		unchangedItem(t)
+	})
+	t.Run("SaveWorkItem naming project B", func(t *testing.T) {
+		saved, err := storeA.SaveWorkItem(WorkItem{ProjectID: other.ID, Title: "A item"})
+		if err != nil || saved.ProjectID != storeA.ProjectID {
+			t.Fatalf("SaveWorkItem naming project B = %+v, %v; want it saved under A", saved, err)
+		}
+	})
+	t.Run("GetSprint", func(t *testing.T) {
+		if _, err := storeA.GetSprint(sprintB.ID); !errors.Is(err, ErrNoSprint) {
+			t.Fatalf("GetSprint of B's sprint = %v, want ErrNoSprint", err)
+		}
+	})
+	t.Run("DeleteSprint", func(t *testing.T) {
+		if err := storeA.DeleteSprint(sprintB.ID); err != nil {
+			t.Fatalf("DeleteSprint: %v", err)
+		}
+		unchangedSprint(t)
+		unchangedItem(t) // its sprint link must survive too
+	})
+	t.Run("SaveSprint over B's ID", func(t *testing.T) {
+		if _, err := storeA.SaveSprint(Sprint{ID: sprintB.ID, Name: "hijacked"}); !errors.Is(err, ErrNoSprint) {
+			t.Fatalf("SaveSprint over B's ID = %v, want ErrNoSprint", err)
+		}
+		unchangedSprint(t)
+	})
+	t.Run("SaveDeployment over B's ID", func(t *testing.T) {
+		if _, err := storeA.SaveDeployment(Deployment{ID: depB.ID, Version: "hijacked"}); !errors.Is(err, ErrNoDeployment) {
+			t.Fatalf("SaveDeployment over B's ID = %v, want ErrNoDeployment", err)
+		}
+		unchangedDeployment(t)
+	})
+	t.Run("DeleteDeployment", func(t *testing.T) {
+		if err := storeA.DeleteDeployment(depB.ID); err != nil {
+			t.Fatalf("DeleteDeployment: %v", err)
+		}
+		unchangedDeployment(t)
+	})
+	t.Run("ListColumns", func(t *testing.T) {
+		boardB, err := storeB.EnsureDefaultBoard()
+		if err != nil {
+			t.Fatalf("EnsureDefaultBoard B: %v", err)
+		}
+		if err := storeB.SaveColumn(Column{ID: "b-col", BoardID: boardB.ID, Name: "B only"}); err != nil {
+			t.Fatalf("SaveColumn B: %v", err)
+		}
+		if cols, err := storeA.ListColumns(boardB.ID); err != nil || len(cols) != 0 {
+			t.Fatalf("ListColumns of B's board through A = %+v, %v; want none", cols, err)
+		}
+	})
+}

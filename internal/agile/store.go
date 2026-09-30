@@ -107,12 +107,14 @@ func ensureDefaultColumns(exec columnExecutor, boardID string) error {
 }
 
 // ListColumns returns every column on the given board, ordered by
-// order_idx.
+// order_idx. A board of another project has no columns here.
 func (s *Store) ListColumns(boardID string) ([]Column, error) {
 	rows, err := s.Conn.Query(
 		`SELECT id, board_id, name, order_idx, wip_limit
-		 FROM agile_columns WHERE board_id = ? ORDER BY order_idx ASC`,
-		boardID,
+		 FROM agile_columns
+		 WHERE board_id = ? AND board_id IN (SELECT id FROM agile_boards WHERE project_id = ?)
+		 ORDER BY order_idx ASC`,
+		boardID, s.ProjectID,
 	)
 	if err != nil {
 		return nil, err
@@ -204,15 +206,7 @@ func (s *Store) SaveColumn(c Column) error {
 	if err != nil {
 		return err
 	}
-	// Not tested: RowsAffected cannot fail on the SQLite driver.
-	n, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if n == 0 {
-		return ErrColumnNotOnBoard
-	}
-	return nil
+	return requireOneRow(res, ErrColumnNotOnBoard)
 }
 
 // DeleteColumn removes an empty column the user added. Built-in columns
@@ -267,9 +261,9 @@ func (s *Store) SaveWorkItem(wi WorkItem) (WorkItem, error) {
 		}
 		wi.ID = id
 	}
-	if wi.ProjectID == "" {
-		wi.ProjectID = s.ProjectID
-	}
+	// The store's project always wins: a caller cannot create or rewrite a
+	// work item under another project.
+	wi.ProjectID = s.ProjectID
 	if wi.Type == "" {
 		wi.Type = WorkItemStory
 	}
@@ -289,7 +283,7 @@ func (s *Store) SaveWorkItem(wi WorkItem) (WorkItem, error) {
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 
-	_, err := s.Conn.Exec(`
+	res, err := s.Conn.Exec(`
 		INSERT INTO agile_work_items
 			(id, project_id, type, title, description, state, points,
 			 assignee, sprint_id, priority, order_idx,
@@ -307,12 +301,16 @@ func (s *Store) SaveWorkItem(wi WorkItem) (WorkItem, error) {
 			order_idx   = excluded.order_idx,
 			updated_at  = excluded.updated_at,
 			closed_at   = excluded.closed_at
+		WHERE agile_work_items.project_id = excluded.project_id
 	`,
 		wi.ID, wi.ProjectID, string(wi.Type), wi.Title, wi.Description,
 		wi.State, wi.Points, wi.Assignee, wi.SprintID, string(wi.Priority),
 		wi.OrderIdx, now, now, closedAt,
 	)
 	if err != nil {
+		return WorkItem{}, err
+	}
+	if err := requireOneRow(res, ErrNoWorkItem); err != nil {
 		return WorkItem{}, err
 	}
 	return s.GetWorkItem(wi.ID)
@@ -368,9 +366,10 @@ func (s *Store) ListWorkItems(sprintID, state, assignee string) ([]WorkItem, err
 	return out, rows.Err()
 }
 
-// DeleteWorkItem removes a work item.
+// DeleteWorkItem removes one of this project's work items. An ID that is
+// not one of them is a no-op.
 func (s *Store) DeleteWorkItem(id string) error {
-	_, err := s.Conn.Exec(`DELETE FROM agile_work_items WHERE id = ?`, id)
+	_, err := s.Conn.Exec(`DELETE FROM agile_work_items WHERE id = ? AND project_id = ?`, id, s.ProjectID)
 	return err
 }
 
@@ -387,8 +386,8 @@ func (s *Store) MoveWorkItem(id, newState string, newOrder int) error {
 		SET state = ?, order_idx = ?,
 		    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now'),
 		    closed_at = CASE WHEN ? = 'done' THEN ? ELSE closed_at END
-		WHERE id = ?
-	`, newState, newOrder, newState, closedAt, id)
+		WHERE id = ? AND project_id = ?
+	`, newState, newOrder, newState, closedAt, id, s.ProjectID)
 	return err
 }
 
@@ -461,13 +460,11 @@ func (s *Store) SaveSprint(sp Sprint) (Sprint, error) {
 		}
 		sp.ID = id
 	}
-	if sp.ProjectID == "" {
-		sp.ProjectID = s.ProjectID
-	}
+	sp.ProjectID = s.ProjectID // a caller cannot write another project's sprint
 	if sp.Status == "" {
 		sp.Status = SprintPlanning
 	}
-	_, err := s.Conn.Exec(`
+	res, err := s.Conn.Exec(`
 		INSERT INTO agile_sprints
 			(id, project_id, name, goal, status, start_date, end_date, capacity)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -478,6 +475,7 @@ func (s *Store) SaveSprint(sp Sprint) (Sprint, error) {
 			start_date = excluded.start_date,
 			end_date   = excluded.end_date,
 			capacity   = excluded.capacity
+		WHERE agile_sprints.project_id = excluded.project_id
 	`,
 		sp.ID, sp.ProjectID, sp.Name, sp.Goal, string(sp.Status),
 		sp.StartDate, sp.EndDate, sp.Capacity,
@@ -485,15 +483,19 @@ func (s *Store) SaveSprint(sp Sprint) (Sprint, error) {
 	if err != nil {
 		return Sprint{}, err
 	}
+	if err := requireOneRow(res, ErrNoSprint); err != nil {
+		return Sprint{}, err
+	}
 	return s.GetSprint(sp.ID)
 }
 
-// GetSprint fetches by ID.
+// GetSprint fetches one of this project's sprints by ID; a sprint of
+// another project is ErrNoSprint.
 func (s *Store) GetSprint(id string) (Sprint, error) {
 	row := s.Conn.QueryRow(`
 		SELECT id, project_id, name, goal, status,
 		       start_date, end_date, capacity, created_at
-		FROM agile_sprints WHERE id = ?`, id)
+		FROM agile_sprints WHERE id = ? AND project_id = ?`, id, s.ProjectID)
 	return scanSprint(row)
 }
 
@@ -531,11 +533,11 @@ func (s *Store) DeleteSprint(id string) error {
 	defer func() { _ = tx.Rollback() }() // no-op if Commit succeeds
 
 	if _, err := tx.Exec(
-		`UPDATE agile_work_items SET sprint_id = '' WHERE sprint_id = ?`, id,
+		`UPDATE agile_work_items SET sprint_id = '' WHERE sprint_id = ? AND project_id = ?`, id, s.ProjectID,
 	); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`DELETE FROM agile_sprints WHERE id = ?`, id); err != nil {
+	if _, err := tx.Exec(`DELETE FROM agile_sprints WHERE id = ? AND project_id = ?`, id, s.ProjectID); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -576,9 +578,7 @@ func (s *Store) SaveDeployment(d Deployment) (Deployment, error) {
 		}
 		d.ID = id
 	}
-	if d.ProjectID == "" {
-		d.ProjectID = s.ProjectID
-	}
+	d.ProjectID = s.ProjectID // a caller cannot write another project's deployment
 	if d.TS.IsZero() {
 		d.TS = time.Now().UTC()
 	}
@@ -586,7 +586,7 @@ func (s *Store) SaveDeployment(d Deployment) (Deployment, error) {
 	if d.Successful {
 		successful = 1
 	}
-	_, err := s.Conn.Exec(`
+	res, err := s.Conn.Exec(`
 		INSERT INTO agile_deployments
 			(id, project_id, ts, version, successful,
 			 lead_time_hours, restore_time_hours, notes)
@@ -598,11 +598,15 @@ func (s *Store) SaveDeployment(d Deployment) (Deployment, error) {
 			lead_time_hours    = excluded.lead_time_hours,
 			restore_time_hours = excluded.restore_time_hours,
 			notes              = excluded.notes
+		WHERE agile_deployments.project_id = excluded.project_id
 	`,
 		d.ID, d.ProjectID, d.TS.Format(time.RFC3339Nano), d.Version, successful,
 		d.LeadTimeHours, d.RestoreTimeHours, d.Notes,
 	)
 	if err != nil {
+		return Deployment{}, err
+	}
+	if err := requireOneRow(res, ErrNoDeployment); err != nil {
 		return Deployment{}, err
 	}
 	return d, nil
@@ -656,8 +660,28 @@ func (s *Store) ListDeployments(since time.Time) ([]Deployment, error) {
 	return out, rows.Err()
 }
 
-// DeleteDeployment removes a deployment record.
+// ErrNoDeployment is returned when a save names a deployment that belongs
+// to another project.
+var ErrNoDeployment = errors.New("agile: deployment not found")
+
+// DeleteDeployment removes one of this project's deployment records. An ID
+// that is not one of them is a no-op.
 func (s *Store) DeleteDeployment(id string) error {
-	_, err := s.Conn.Exec(`DELETE FROM agile_deployments WHERE id = ?`, id)
+	_, err := s.Conn.Exec(`DELETE FROM agile_deployments WHERE id = ? AND project_id = ?`, id, s.ProjectID)
 	return err
+}
+
+// requireOneRow turns an upsert that changed no row into notFound: the ID
+// exists but belongs to another project (or, for columns, another board),
+// so the upsert's DO UPDATE ... WHERE guard skipped it.
+func requireOneRow(res sql.Result, notFound error) error {
+	// Not tested: RowsAffected cannot fail on the SQLite driver.
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return notFound
+	}
+	return nil
 }
