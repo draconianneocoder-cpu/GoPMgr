@@ -20,6 +20,15 @@ type RepairResult struct {
 	Success bool              `json:"success"`
 	Report  debug.ErrorReport `json:"report,omitempty"`
 	Log     []string          `json:"log"`
+	// Snapshot is the healed copy this run wrote (<path>.bak), or empty
+	// when the database was healthy and nothing was written. Only this
+	// run's snapshot may be swapped in: a leftover .bak from an earlier
+	// run is an older copy of the project.
+	Snapshot string `json:"snapshot,omitempty"`
+	// Swapped and DamagedCopy are set by the caller that swaps the
+	// snapshot into place: DamagedCopy is where the damaged file was kept.
+	Swapped     bool   `json:"swapped"`
+	DamagedCopy string `json:"damaged_copy,omitempty"`
 }
 
 // InformativeSelfHeal runs GoPMgr's diagnostic + repair flow:
@@ -62,6 +71,7 @@ func (db *Database) InformativeSelfHeal(path string) (RepairResult, error) {
 		result.Report = debug.Wrap(err, "SNAPSHOT_CREATION_FAILED")
 		return result, err
 	}
+	result.Snapshot = snapshotPath
 	result.Log = append(result.Log, fmt.Sprintf("Snapshot created at %s.", snapshotPath))
 
 	// 3. Caller is responsible for calling SwapInSnapshot to atomically

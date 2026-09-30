@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"gopmgr/internal/db"
 )
@@ -117,12 +118,15 @@ func TestRepairAndSwapHealsReachableLightCorruption(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RepairAndSwap: %v", err)
 	}
-	if !result.Success {
-		t.Fatalf("RepairAndSwap: want Success=true, got %+v", result)
+	if !result.Success || !result.Swapped || result.DamagedCopy != path+".corrupt" {
+		t.Fatalf("RepairAndSwap: want Success, Swapped, and DamagedCopy=%s, got %+v", path+".corrupt", result)
+	}
+	if _, err := os.Stat(result.DamagedCopy); err != nil {
+		t.Fatalf("damaged copy not kept at %s: %v", result.DamagedCopy, err)
 	}
 
-	if _, err := app.ListStakeholders(""); err != nil {
-		t.Fatalf("ListStakeholders after repair: want success, got %v", err)
+	if got, err := app.ListStakeholders(""); err != nil || len(got) != 300 {
+		t.Fatalf("ListStakeholders after repair: want 300 rows, got %d, %v", len(got), err)
 	}
 }
 
@@ -179,54 +183,92 @@ func TestRepairAndSwapCanFailToHealEvenWhenReached(t *testing.T) {
 	}
 }
 
-// TestRepairAndSwapReportsSwapFailureForBadBakFile covers RepairAndSwap's
-// "Swap failed" branch (app_documents.go) — reached when InformativeSelfHeal
-// reports the live database as already healthy (so it creates no snapshot
-// of its own) but a *pre-existing* .bak file is present from some other
-// source. This is not a contrived fixture: RepairAndSwap's own comment
-// documents that it detects "do the swap" by checking for a .bak file's
-// mere presence, not by parsing InformativeSelfHeal's log — so any
-// leftover .bak (an interrupted prior repair, a manual copy, a synced
-// file from another device) drives this exact path on the next repair
-// attempt. A .bak that isn't a valid encrypted snapshot must be reported
-// as a failed swap, not silently accepted or allowed to corrupt the live
-// file the swap step already renamed aside.
-func TestRepairAndSwapReportsSwapFailureForBadBakFile(t *testing.T) {
-	app := newEncryptionProjectTestApp(t)
-	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
-		t.Fatalf("CreateAccount: %v", err)
+// A .bak left beside a healthy project (an interrupted earlier repair, the
+// command-line --repair, a manual or synced copy) is an older copy of the
+// project. RepairAndSwap must never swap it in: before 2026-09-29 it swapped
+// in any .bak it found, so a valid stale snapshot silently rolled a healthy
+// project back, and an invalid one produced a "Swap failed" error.
+func TestRepairAndSwapIgnoresALeftoverSnapshotOnAHealthyProject(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		plant func(t *testing.T, app *App, path string)
+	}{
+		{"valid older snapshot", func(t *testing.T, app *App, path string) {
+			if err := app.requireDB().CreateSnapshot(path + ".bak"); err != nil {
+				t.Fatalf("CreateSnapshot: %v", err)
+			}
+		}},
+		{"not a database", func(t *testing.T, _ *App, path string) {
+			if err := os.WriteFile(path+".bak", []byte("not a valid sqlite snapshot"), 0o600); err != nil {
+				t.Fatalf("plant bogus .bak: %v", err)
+			}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := newEncryptionProjectTestApp(t)
+			if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+				t.Fatalf("CreateAccount: %v", err)
+			}
+			path := mustOpenProject(t, app, "Proj")
+			if _, err := app.SaveStakeholder(db.Stakeholder{Name: "Before", Category: db.StakeholderTeam}); err != nil {
+				t.Fatalf("SaveStakeholder: %v", err)
+			}
+			tc.plant(t, app, path)
+			if _, err := app.SaveStakeholder(db.Stakeholder{Name: "After", Category: db.StakeholderTeam}); err != nil {
+				t.Fatalf("SaveStakeholder: %v", err)
+			}
+
+			result, err := app.RepairAndSwap()
+			if err != nil || !result.Success || result.Swapped || result.Snapshot != "" {
+				t.Fatalf("RepairAndSwap on a healthy project = %+v, %v; want success with nothing swapped", result, err)
+			}
+			got, err := app.ListStakeholders("")
+			if err != nil || len(got) != 2 {
+				t.Fatalf("stakeholders after repair = %d, %v; want both, including the one added after the leftover snapshot", len(got), err)
+			}
+			if _, err := os.Stat(path + ".corrupt"); !os.IsNotExist(err) {
+				t.Fatalf("a healthy project was moved aside to .corrupt (stat err %v)", err)
+			}
+		})
 	}
-	path := mustOpenProject(t, app, "Proj")
-	if _, err := app.SaveStakeholder(db.Stakeholder{Name: "Dana", Category: db.StakeholderTeam}); err != nil {
-		t.Fatalf("SaveStakeholder: %v", err)
+}
+
+// TestRepairAndSwapBlocksOtherCallsUntilTheSwapIsDone tries to close the
+// project between the heal and the swap. RepairAndSwap holds the write lock
+// for the whole operation, so the close must wait; without the lock it would
+// run first and the swap would install a handle for a project no longer open.
+func TestRepairAndSwapBlocksOtherCallsUntilTheSwapIsDone(t *testing.T) {
+	app, path, pristine := seedRepairFixtureProject(t)
+	corruptByteAt(t, path, pristine, 3*4096+1)
+	if _, err := app.OpenProject(path); err != nil {
+		t.Fatalf("OpenProject: %v", err)
 	}
 
-	if err := os.WriteFile(path+".bak", []byte("not a valid sqlite snapshot"), 0o600); err != nil {
-		t.Fatalf("plant bogus .bak: %v", err)
+	closed := make(chan error, 1)
+	closedEarly := false
+	previous := afterRepairHeal
+	t.Cleanup(func() { afterRepairHeal = previous })
+	afterRepairHeal = func() {
+		go func() { closed <- app.CloseProject() }()
+		select {
+		case err := <-closed:
+			closedEarly = true
+			t.Errorf("CloseProject ran between the heal and the swap (err %v)", err)
+		case <-time.After(300 * time.Millisecond):
+		}
 	}
 
 	result, err := app.RepairAndSwap()
-	if err == nil {
-		t.Fatalf("RepairAndSwap: want an error for a bogus .bak snapshot, got nil (result=%+v)", result)
+	if closedEarly {
+		t.FailNow()
 	}
-	if !strings.Contains(err.Error(), "swap:") {
-		t.Fatalf("RepairAndSwap: want the swap-step error wrapped through, got %v", err)
+	if err != nil || !result.Swapped {
+		t.Fatalf("RepairAndSwap = %+v, %v; want a swap", result, err)
 	}
-	found := false
-	for _, line := range result.Log {
-		if strings.HasPrefix(line, "Swap failed:") {
-			found = true
-			break
-		}
+	if err := <-closed; err != nil {
+		t.Fatalf("CloseProject after the repair: %v", err)
 	}
-	if !found {
-		t.Fatalf("RepairAndSwap: want a \"Swap failed:\" log line, got %v", result.Log)
-	}
-
-	// The live database must still be open and usable — a failed swap
-	// must never have touched it (SwapInEncryptedSnapshot verifies the
-	// snapshot before it ever closes or renames the live file).
-	if _, err := app.ListStakeholders(""); err != nil {
-		t.Fatalf("ListStakeholders after failed swap: want the live db untouched and usable, got %v", err)
+	if app.requireDB() != nil {
+		t.Fatal("the project is still open after CloseProject ran")
 	}
 }

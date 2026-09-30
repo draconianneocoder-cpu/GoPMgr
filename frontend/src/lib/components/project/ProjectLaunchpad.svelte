@@ -50,6 +50,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let stepInitialised = false;
   $effect(() => {
     void step;
+    void blank;
     if (!stepInitialised) {
       stepInitialised = true;
       return;
@@ -73,6 +74,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   let busy = $state(false);
   let error = $state('');
+  // "Start with a blank project" skips the wizard: name and description
+  // only, created by CreateProject with the default calendar policy, and no
+  // starter artifacts.
+  let blank = $state(false);
+  let created = $state(false);
   // Set when creating needs recovery codes (or acceptance) first.
   let gate = $state<RecoveryGate | null>(null);
   let calendarError = $state('');
@@ -184,6 +190,37 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
     if (step < 4) step = (step + 1) as Step;
   }
+  async function createBlank() {
+    busy = true;
+    error = '';
+    gate = await recoveryGateNeeded();
+    if (gate) {
+      busy = false;
+      return;
+    }
+    let file: ProjectFile;
+    try {
+      file = await window.go.main.App.CreateProject(name.trim(), description);
+    } catch (err: any) {
+      // The backend refuses when codes changed since the check; ask again.
+      gate = await recoveryGateNeeded();
+      if (!gate) error = `Create failed: ${err}`;
+      busy = false;
+      return;
+    }
+    // The project exists now, so a failure from here on must not offer to
+    // create it again (a retry would make a second copy).
+    try {
+      const project = await window.go.main.App.OpenProject(file.path);
+      onCreated(project, file.path);
+    } catch (err: any) {
+      created = true;
+      error = `Project created, but it could not be opened: ${err}. Open it from the project list.`;
+    } finally {
+      busy = false;
+    }
+  }
+
   function prev() {
     if (step > 1) step = (step - 1) as Step;
   }
@@ -233,18 +270,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
 <div class="min-h-screen bg-slate-950 text-slate-200 flex flex-col">
   <header class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
     <h1 class="text-sm font-bold tracking-widest uppercase text-slate-50">
-      New Project · Step {step} of 4
+      {blank ? 'New Blank Project' : `New Project · Step ${step} of 4`}
     </h1>
     <Button variant="nav" onclick={onCancel}>
       Cancel
     </Button>
   </header>
 
+  {#if !blank}
   <ol
     aria-label="Project creation progress"
     class="grid grid-cols-4 border-b border-slate-800 bg-slate-950"
   >
-    {#each STEPS as item}
+    {#each STEPS as item (item.id)}
       <li
         aria-current={item.id === step ? 'step' : undefined}
         class="border-t-2 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider
@@ -254,6 +292,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </li>
     {/each}
   </ol>
+  {/if}
 
   <main class="flex-1 p-8 max-w-5xl mx-auto w-full">
     {#if error}
@@ -263,7 +302,54 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <p class="text-xs text-red-400 mb-3" role="alert">{calendarError}</p>
     {/if}
 
-    {#if step === 1}
+    {#if blank}
+      <h2 bind:this={headingEl} tabindex="-1" class="text-lg font-bold mb-2 outline-none">Start with a blank project</h2>
+      <p class="text-xs text-slate-400 mb-6">
+        No starter charts or documents. It uses the US business calendar; you can change
+        the calendar, industry, and method later in Project Settings.
+      </p>
+      <form
+        class="max-w-xl space-y-4"
+        onsubmit={(e) => {
+          e.preventDefault();
+          if (name.trim() && !busy && !created) void createBlank();
+        }}
+      >
+        <label class="block">
+          <span class="text-xs text-slate-500 uppercase">Project name</span>
+          <input
+            bind:value={name}
+            required
+            class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+          />
+        </label>
+        <label class="block">
+          <span class="text-xs text-slate-500 uppercase">Description</span>
+          <textarea
+            bind:value={description}
+            rows="2"
+            class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
+          ></textarea>
+        </label>
+        <div class="flex items-center justify-between">
+          <Button variant="nav" onclick={() => (blank = false)}>← Back to the guided setup</Button>
+          <button
+            type="submit"
+            disabled={busy || created || !name.trim()}
+            class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
+          >{busy ? 'Creating…' : 'Create blank project'}</button>
+        </div>
+      </form>
+      {#if gate}
+        <div class="mt-4">
+          <RecoveryCodesGate
+            variant={gate}
+            onready={() => { gate = null; void createBlank(); }}
+            oncancel={() => (gate = null)}
+          />
+        </div>
+      {/if}
+    {:else if step === 1}
       <h2 bind:this={headingEl} tabindex="-1" class="text-lg font-bold mb-6 outline-none">What kind of project is this?</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {#each INDUSTRIES as ind (ind.id)}
@@ -278,6 +364,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </button>
         {/each}
       </div>
+      <p class="mt-6 text-xs text-slate-500">
+        Want an empty project instead?
+        <button type="button" onclick={() => (blank = true)} class="text-cyan-400 hover:text-cyan-300 underline">Start with a blank project</button>
+      </p>
     {:else if step === 2}
       <h2 bind:this={headingEl} tabindex="-1" class="text-lg font-bold mb-6 outline-none">
         Narrow it down (<span class="text-cyan-400">{industry}</span>)
@@ -427,7 +517,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {/if}
     {/if}
 
-    {#if step < 4}
+    {#if step < 4 && !blank}
       <div class="mt-8 flex items-center justify-between border-t border-slate-800 pt-5">
         {#if step > 1}
           <Button variant="nav" onclick={prev}>

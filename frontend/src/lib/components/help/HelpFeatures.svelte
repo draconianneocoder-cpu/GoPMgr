@@ -134,6 +134,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li>Columns run left to right; each card is a work item. <span class="font-medium text-slate-100">Drag a card between columns</span> to change its state — the move is saved immediately.</li>
               <li>Each column header shows a <span class="font-medium text-slate-100">WIP indicator</span> (count / limit). When a column exceeds its work-in-progress limit the badge changes tone — your cue to finish before starting.</li>
               <li>Click a card to edit its title, description, points, priority, and assignee; use the add button to create a card in the first column.</li>
+              <li><span class="font-medium text-slate-100">Columns</span> opens the column manager: rename columns, set WIP limits (0 for none), move them left or right, add your own, and delete an empty one you added. The built-in To Do, In Progress, Review, and Done columns can be renamed but not deleted.</li>
               <li>Card edges are tinted by priority so the board reads at a glance.</li>
             </ul>
           </section>
@@ -619,7 +620,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               file (<span class="font-mono text-xs">.gopmgr</span>, or an
               older <span class="font-mono text-xs">.pmforge</span> project you haven't reopened yet):
               <span class="font-mono text-xs">--check</span> (integrity),
-              <span class="font-mono text-xs">--repair</span> (self-healing),
+              <span class="font-mono text-xs">--repair</span> (if it finds damage, writes a healed copy beside the file as <span class="font-mono text-xs">.bak</span> without replacing it),
               <span class="font-mono text-xs">--vacuum</span> (compaction), and
               <span class="font-mono text-xs">--export-audit</span> (audit log to CSV).
               For encrypted projects add <span class="font-mono text-xs">--username</span> and
@@ -627,6 +628,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
               environment variable, never the command line. See
               <Button variant="link" onclick={() => nav('install')}>Installing &amp; Running</Button>
               for where the binary lives.
+            </p>
+            <p class="text-sm text-slate-300 mt-2">
+              To repair the open project in the app, use <span class="font-medium text-slate-100">Check and repair</span>
+              in Project Settings › Data Protection. It replaces a damaged project with a healed copy
+              and keeps the damaged file beside it.
             </p>
           </section>
 

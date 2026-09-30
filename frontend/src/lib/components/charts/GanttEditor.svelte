@@ -16,6 +16,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { showToast } from '../../toast.svelte';
   import Button from '../Button.svelte';
   import GanttBars from './GanttBars.svelte';
+  import BaselineList from './BaselineList.svelte';
   import { GANTT_ROW_H as rowH, type GanttLayout, type GanttRow } from './gantt_geometry';
   import { splitLevelStatus, splitPreviewMessage, clearWorkSegments } from './leveling_messages';
 
@@ -316,6 +317,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <button onclick={() => (pxPerDay = Math.max(8, pxPerDay - 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title="Zoom out">−</button>
       <button onclick={() => (pxPerDay = Math.min(80, pxPerDay + 6))} class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded" title="Zoom in">+</button>
       <button onclick={setBaseline} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded" title="Snapshot for baseline ghost bars">Set baseline</button>
+      {#if session.editingId}
+        <BaselineList chartId={session.editingId} onchange={refreshBaseline} />
+      {/if}
       <button onclick={previewSplit} disabled={saving} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded" title="Check (read-only) whether splitting tasks across non-contiguous days would clear overallocation. Nothing is saved.">Preview splitting</button>
       <button onclick={levelSplit} disabled={saving} class="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3 py-1 rounded" title="Level resources allowing tasks to be split across non-contiguous days; split tasks render as interrupted bars">Level (split)</button>
       <button onclick={addTask} class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded">+ Task</button>

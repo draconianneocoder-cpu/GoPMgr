@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, waitFor } from '@testing-library/svelte';
+import { cleanup, render, waitFor } from '@testing-library/svelte';
 
 import ScenarioChartEditor from './ScenarioChartEditor.svelte';
 import { session } from '../../session.svelte';
@@ -31,6 +31,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   vi.restoreAllMocks();
   session.editingId = null;
 });
@@ -50,5 +51,28 @@ describe('ScenarioChartEditor migrated header "&larr; Project Settings" button',
     expect(btn.className.split(/\s+/).filter(Boolean).sort()).toEqual(
       'text-xs text-slate-400 hover:text-cyan-400 disabled:opacity-50'.split(/\s+/).sort(),
     );
+  });
+});
+
+describe('ScenarioChartEditor scenario context', () => {
+  it('shows the scenario the chart belongs to', async () => {
+    app.GetScenario = vi.fn(async () => ({
+      id: 'scn-1', project_id: 'p1', name: 'Late vendor', source_baseline_id: '',
+      description: 'Supplier slips two weeks', is_active: false, created_at: '', updated_at: '',
+    }));
+    const utils = render(ScenarioChartEditor);
+    expect(await utils.findByText('Late vendor')).toBeInTheDocument();
+    expect(utils.getByText('Supplier slips two weeks')).toBeInTheDocument();
+    expect(app.GetScenario).toHaveBeenCalledWith('scn-1');
+  });
+
+  it('still opens the chart when the scenario cannot be read', async () => {
+    app.GetScenario = vi.fn(async () => {
+      throw 'db: scenario not found';
+    });
+    const utils = render(ScenarioChartEditor);
+    await waitFor(() => expect(app.GetScenario).toHaveBeenCalled());
+    expect(await utils.findByText('Unavailable')).toBeInTheDocument();
+    for (const save of utils.getAllByRole('button', { name: /Save scenario edits/i })) expect(save).toBeEnabled();
   });
 });

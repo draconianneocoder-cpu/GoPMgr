@@ -22,6 +22,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import Button from '../Button.svelte';
   import RecoveryCodesPanel from '../auth/RecoveryCodesPanel.svelte';
   import RecoveryCodesGate from '../auth/RecoveryCodesGate.svelte';
+  import ProjectRepairPanel from './ProjectRepairPanel.svelte';
   import { recoveryGateNeeded, type RecoveryGate } from '../../recovery-gate';
 
   // Tab grouping (docs/design/project-settings-tab-restructuring.md §3):
@@ -1750,6 +1751,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
            {#if archiveStatus}<p class="text-xs text-cyan-400 break-all">Backup created: {archiveStatus}</p>{/if}
            {#if archiveError}<p class="text-xs text-red-400" role="alert">{archiveError}</p>{/if}
          </div>
+       </section>
+
+       <section>
+         <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Check and Repair</h2>
+         <ProjectRepairPanel />
        </section>
 
        <!-- Database Encryption -->

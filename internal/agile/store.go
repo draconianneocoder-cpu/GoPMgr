@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -129,8 +130,44 @@ func (s *Store) ListColumns(boardID string) ([]Column, error) {
 	return out, rows.Err()
 }
 
-// SaveColumn upserts one column. Used to rename a column or change
-// its WIP limit.
+// Column errors. The texts are shown to the user by the Kanban board's
+// column manager.
+var (
+	ErrColumnName       = errors.New("Give the column a name.")
+	ErrColumnWIPLimit   = errors.New("A WIP limit can't be negative. Use 0 for no limit.")
+	ErrColumnNotOnBoard = errors.New("agile: column is not on this project's board")
+	ErrBuiltInColumn    = errors.New("The built-in columns To Do, In Progress, Review, and Done can be renamed but not deleted.")
+)
+
+// ColumnNotEmptyError refuses deleting a column that still holds work
+// items; their state would name a column that no longer exists.
+type ColumnNotEmptyError struct {
+	Items int
+}
+
+func (e *ColumnNotEmptyError) Error() string {
+	if e.Items == 1 {
+		return "Move the 1 work item out of this column before deleting it."
+	}
+	return fmt.Sprintf("Move the %d work items out of this column before deleting it.", e.Items)
+}
+
+// isBuiltInColumn reports whether id is one of DefaultColumns. Those are
+// restored by EnsureDefaultBoard whenever they are missing, and "done"
+// stamps closed_at for DORA lead times, so they can be renamed but never
+// deleted.
+func isBuiltInColumn(id string) bool {
+	for _, c := range DefaultColumns("") {
+		if c.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// SaveColumn upserts one column: renames it, changes its WIP limit, or
+// moves it. The board must belong to this store's project, and an existing
+// column cannot move to another board.
 func (s *Store) SaveColumn(c Column) error {
 	if c.ID == "" {
 		id, err := NewColumnID()
@@ -139,22 +176,79 @@ func (s *Store) SaveColumn(c Column) error {
 		}
 		c.ID = id
 	}
-	_, err := s.Conn.Exec(`
+	c.Name = strings.TrimSpace(c.Name)
+	if c.Name == "" {
+		return ErrColumnName
+	}
+	if c.WIPLimit < 0 {
+		return ErrColumnWIPLimit
+	}
+	var owned int
+	if err := s.Conn.QueryRow(
+		`SELECT COUNT(*) FROM agile_boards WHERE id = ? AND project_id = ?`, c.BoardID, s.ProjectID,
+	).Scan(&owned); err != nil {
+		return err
+	}
+	if owned == 0 {
+		return ErrColumnNotOnBoard
+	}
+	res, err := s.Conn.Exec(`
 		INSERT INTO agile_columns (id, board_id, name, order_idx, wip_limit)
 		VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			name      = excluded.name,
 			order_idx = excluded.order_idx,
 			wip_limit = excluded.wip_limit
+		WHERE agile_columns.board_id = excluded.board_id
 	`, c.ID, c.BoardID, c.Name, c.OrderIdx, c.WIPLimit)
-	return err
+	if err != nil {
+		return err
+	}
+	// Not tested: RowsAffected cannot fail on the SQLite driver.
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrColumnNotOnBoard
+	}
+	return nil
 }
 
-// DeleteColumn removes a column. The caller MUST first re-home or
-// delete any work items whose state references this column.
+// DeleteColumn removes an empty column the user added. Built-in columns
+// are refused (ErrBuiltInColumn), and so is a column that still holds work
+// items (*ColumnNotEmptyError): the emptiness check and the delete are one
+// statement, so a card moved in meanwhile cannot be left without a column.
+// Deleting a column that does not exist is a no-op.
 func (s *Store) DeleteColumn(id string) error {
-	_, err := s.Conn.Exec(`DELETE FROM agile_columns WHERE id = ?`, id)
-	return err
+	if isBuiltInColumn(id) {
+		return ErrBuiltInColumn
+	}
+	res, err := s.Conn.Exec(`
+		DELETE FROM agile_columns
+		WHERE id = ?
+		  AND board_id IN (SELECT id FROM agile_boards WHERE project_id = ?)
+		  AND NOT EXISTS (SELECT 1 FROM agile_work_items WHERE project_id = ? AND state = ?)`,
+		id, s.ProjectID, s.ProjectID, id)
+	if err != nil {
+		return err
+	}
+	// Not tested: RowsAffected cannot fail on the SQLite driver.
+	if n, err := res.RowsAffected(); err != nil || n > 0 {
+		return err
+	}
+	var items int
+	// Not tested: the DELETE just ran on this connection, so this count
+	// fails only on an I/O error, with no portable injection point.
+	if err := s.Conn.QueryRow(
+		`SELECT COUNT(*) FROM agile_work_items WHERE project_id = ? AND state = ?`, s.ProjectID, id,
+	).Scan(&items); err != nil {
+		return err
+	}
+	if items > 0 {
+		return &ColumnNotEmptyError{Items: items}
+	}
+	return nil
 }
 
 // ----- Work items -----
@@ -224,13 +318,14 @@ func (s *Store) SaveWorkItem(wi WorkItem) (WorkItem, error) {
 	return s.GetWorkItem(wi.ID)
 }
 
-// GetWorkItem fetches by ID.
+// GetWorkItem fetches one of this project's work items by ID; an item
+// belonging to another project is ErrNoWorkItem.
 func (s *Store) GetWorkItem(id string) (WorkItem, error) {
 	row := s.Conn.QueryRow(`
 		SELECT id, project_id, type, title, description, state, points,
 		       assignee, sprint_id, priority, order_idx,
 		       created_at, updated_at, closed_at
-		FROM agile_work_items WHERE id = ?`, id)
+		FROM agile_work_items WHERE id = ? AND project_id = ?`, id, s.ProjectID)
 	return scanWorkItem(row)
 }
 

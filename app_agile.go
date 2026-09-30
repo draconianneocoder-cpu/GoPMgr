@@ -89,7 +89,8 @@ func (a *App) EnsureDefaultBoard() (BoardWithColumns, error) {
 	return BoardWithColumns{Board: b, Columns: cols}, nil
 }
 
-// SaveColumn upserts a column (rename, change WIP, reorder).
+// SaveColumn upserts a column on the project's board (rename, change WIP,
+// reorder, or add); agile.Store.SaveColumn validates it.
 func (a *App) SaveColumn(c agile.Column) error {
 	s, err := a.agileStore()
 	if err != nil {
@@ -98,8 +99,8 @@ func (a *App) SaveColumn(c agile.Column) error {
 	return s.SaveColumn(c)
 }
 
-// DeleteColumn removes a column. The frontend warns about
-// re-homing work items before calling this.
+// DeleteColumn removes an empty column the user added; built-in columns
+// and columns that still hold work items are refused (agile.Store.DeleteColumn).
 func (a *App) DeleteColumn(id string) error {
 	s, err := a.agileStore()
 	if err != nil {

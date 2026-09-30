@@ -8,6 +8,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import Button from '../Button.svelte';
 
   let chart = $state<ScenarioChart | null>(null);
+  let scenario = $state<Scenario | null>(null);
   let title = $state('');
   let data = $state('');
   let config = $state('');
@@ -56,12 +57,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
       title = loaded.title;
       data = pretty(loaded.data);
       config = pretty(loaded.config);
+      void loadScenario(loaded.scenario_id);
     } catch (err: any) {
       error = String(err?.message ?? err);
     } finally {
       loading = false;
     }
   });
+
+  // The parent scenario's name and description are context only, so the
+  // editor still works when it cannot be read.
+  async function loadScenario(id: string) {
+    try {
+      scenario = await window.go.main.App.GetScenario(id);
+    } catch {
+      scenario = null;
+    }
+  }
 
   async function save() {
     if (!chart || saving) return;
@@ -163,7 +175,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </div>
     {:else if chart}
       <section class="border border-slate-800 rounded bg-slate-900/40 p-4 space-y-3">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+          <div>
+            <p class="uppercase tracking-widest text-slate-500">Scenario</p>
+            <p class="text-slate-200">{scenario?.name || 'Unavailable'}</p>
+            {#if scenario?.description}
+              <p class="text-slate-400 mt-0.5">{scenario.description}</p>
+            {/if}
+          </div>
           <div>
             <p class="uppercase tracking-widest text-slate-500">Kind</p>
             <p class="text-slate-200">{chart.kind}</p>

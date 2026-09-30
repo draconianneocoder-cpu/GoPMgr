@@ -11,6 +11,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session } from '../../session.svelte';
   import LayeredEditorShell from './_layered_editor_shell.svelte';
   import Button from '../Button.svelte';
+  import BaselineList from './BaselineList.svelte';
   import { levelResourcesMessages, splitPreviewMessage } from './leveling_messages';
 
   function fmt(n: unknown, digits = 1): string {
@@ -430,6 +431,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     >
       {baselineCount > 0 ? `Re-baseline (${baselineCount})` : 'Set baseline'}
     </Button>
+    {#if session.editingId}
+      <BaselineList chartId={session.editingId} onchange={refreshBaseline} />
+    {/if}
   {/snippet}
   {#snippet nodeContent(data, n)}
     <!-- Critical-path tint overrides the shell's default fill. -->
