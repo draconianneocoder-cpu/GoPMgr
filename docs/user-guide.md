@@ -429,6 +429,14 @@ GoPMgr issues one-time recovery codes at account creation. Recovery codes
 can reset an account password once and, for encrypted project databases,
 also unlock the user's wrapped DEK.
 
+The codes are shown once. **Copy** puts them on the clipboard; **Save as
+.txt…** writes them to a new text file you choose, named with the date.
+GoPMgr never replaces an existing file. Keep a copy somewhere other than
+this computer. To make new codes, open App Settings › Account and choose
+**Create new recovery codes**; they replace the old ones only after you
+choose **Use the new codes**, so a file saved before that holds codes that
+won't work if you keep your current ones.
+
 After migrating an existing plaintext project database to encrypted
 storage, recovery codes must be reissued so active codes can unlock the
 DEK. If the password and all valid wrapped recovery codes are lost,

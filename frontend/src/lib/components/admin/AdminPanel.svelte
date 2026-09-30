@@ -3,8 +3,9 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import AppHeader from '../AppHeader.svelte';
+  import RecoveryCodeList from '../auth/RecoveryCodeList.svelte';
   import Spinner from '../Spinner.svelte';
   import { session } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
@@ -25,15 +26,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // hand to the user (an admin-created account otherwise gets none).
   let createdCodes = $state<string[]>([]);
   let createdFor = $state('');
-  let copied = $state(false);
-  let saving = $state(false);
-  let savedPath = $state('');
-  let saveError = $state('');
-  // DEVELOPER_HANDBOOK.md §10.5: every timer must be cleared on destroy.
-  let copiedTimer: ReturnType<typeof setTimeout> | null = null;
-  onDestroy(() => {
-    if (copiedTimer) clearTimeout(copiedTimer);
-  });
 
   // Per-row action state
   let pendingRoleChange = $state<string | null>(null);
@@ -94,8 +86,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
       try {
         createdCodes = (await window.go.main.App.AdminIssueRecoveryCodes(uname, pw)) ?? [];
         createdFor = uname;
-        savedPath = '';
-        saveError = '';
       } catch (err: any) {
         showToast(`Account created, but recovery codes could not be generated: ${err}. The user can create them in App Settings, under Account.`, 'error');
       }
@@ -113,40 +103,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  async function copyCodes() {
-    try {
-      await navigator.clipboard.writeText(createdCodes.join('\n'));
-      copied = true;
-      if (copiedTimer) clearTimeout(copiedTimer);
-      copiedTimer = setTimeout(() => (copied = false), 2000);
-    } catch {
-      // Clipboard may be unavailable; the codes stay visible for manual copy.
-    }
-  }
-
-  // Codes are saved through the desktop save dialog the other exports use;
-  // a browser blob download was never shown to produce a file in the app
-  // window.
-  async function saveCodes() {
-    if (saving) return;
-    saving = true;
-    saveError = '';
-    try {
-      savedPath = await window.go.main.App.SaveRecoveryCodesFile(createdFor, createdCodes);
-    } catch (err: any) {
-      const message = String(err?.message ?? err);
-      if (!message.includes('export cancelled')) saveError = `Could not save the codes: ${message}`;
-    } finally {
-      saving = false;
-    }
-  }
-
   function dismissCodes() {
     createdCodes = [];
     createdFor = '';
-    copied = false;
-    savedPath = '';
-    saveError = '';
   }
 
   async function toggleDisabled(user: Account) {
@@ -361,41 +320,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
             account if the password is lost, and they won't be shown again.
           </p>
         </div>
-        <ul class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 font-mono text-xs text-slate-100 bg-slate-950 border border-slate-800 rounded p-3">
-          {#each createdCodes as code (code)}
-            <li>{code}</li>
-          {/each}
-        </ul>
-        <div class="flex items-center gap-2">
-          <button
-            type="button"
-            onclick={copyCodes}
-            class="text-xs font-semibold uppercase tracking-wide bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-1.5 rounded transition-colors"
-          >
-            {copied ? 'Copied ✓' : 'Copy'}
-          </button>
-          <button
-            type="button"
-            onclick={saveCodes}
-            disabled={saving}
-            class="text-xs font-semibold uppercase tracking-wide bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-100 px-3 py-1.5 rounded transition-colors"
-          >
-            {saving ? 'Saving…' : 'Save as .txt…'}
-          </button>
-          <button
-            type="button"
-            onclick={dismissCodes}
-            class="ml-auto text-xs font-semibold uppercase tracking-wide bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded transition-colors"
-          >
-            Done
-          </button>
-        </div>
-        <p class="text-[10px] text-slate-500 break-all" aria-live="polite">
-          {copied ? 'Recovery codes copied to the clipboard.' : savedPath ? `Saved to ${savedPath}. Keep a copy somewhere other than this computer.` : ''}
-        </p>
-        {#if saveError}
-          <p class="text-[10px] text-red-400" role="alert">{saveError}</p>
-        {/if}
+        <!-- Keyed so a second account's codes start without the last save's message. -->
+        {#key createdCodes}
+          <RecoveryCodeList username={createdFor} codes={createdCodes} />
+        {/key}
+        <button
+          type="button"
+          onclick={dismissCodes}
+          class="text-xs font-semibold uppercase tracking-wide bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded transition-colors"
+        >
+          Done
+        </button>
       </div>
     {/if}
 
