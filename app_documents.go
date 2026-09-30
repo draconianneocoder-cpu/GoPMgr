@@ -539,6 +539,26 @@ func (a *App) ExportCombinedReportGnuPG(reportTitle, subtitle string, sections [
 // no-op except in tests, which use it to try another call at that moment.
 var afterRepairHeal = func() {}
 
+// swapSnapshot swaps RepairAndSwap's healed snapshot into place. Tests
+// replace it to make the swap fail after it has closed the live handle.
+// The plaintext branch is defensive and not reachable today: every GoPMgr
+// project is SQLCipher-encrypted (see
+// TestCreateProjectEncryptsAndReopensWithSessionDEK); it is kept for the day
+// a plaintext-project migration path is reintroduced.
+var swapSnapshot = func(d *db.Database, path string, dek []byte, encrypted bool) (*db.Database, error) {
+	if encrypted {
+		return d.SwapInEncryptedSnapshot(path, dek)
+	}
+	return d.SwapInSnapshot(path)
+}
+
+// ErrRepairClosedProject is returned when a repair's swap failed after
+// closing the project's database and the project file could not be
+// reopened, so the project was closed rather than left on a closed handle.
+// The text is shown to the user; ProjectRepairPanel.svelte matches "the
+// project was closed" (docs/ERROR_HANDLING.md).
+var ErrRepairClosedProject = errors.New("The repair could not finish, so the project was closed. Reopen it from the project list.")
+
 // RepairAndSwap runs InformativeSelfHeal and, when it wrote a healed
 // snapshot, swaps that snapshot into place and refreshes `a.db`. It holds
 // the write lock throughout, so no call can open another project or read
@@ -593,18 +613,11 @@ func (a *App) RepairAndSwap() (db.RepairResult, error) {
 			result.Log = append(result.Log, "Swap failed: "+err.Error())
 			return result, err
 		}
-		fresh, err = d.SwapInEncryptedSnapshot(path, dek)
-	} else {
-		// Defensive, not reachable today: every GoPMgr project is
-		// SQLCipher-encrypted (see TestCreateProjectEncryptsAndReopensWithSessionDEK),
-		// so `encrypted` above is always true and this branch never
-		// runs through App.RepairAndSwap. Kept for the day a
-		// plaintext-project migration path is reintroduced.
-		fresh, err = d.SwapInSnapshot(path)
 	}
+	fresh, err = swapSnapshot(d, path, dek, encrypted)
 	if err != nil {
 		result.Log = append(result.Log, "Swap failed: "+err.Error())
-		return result, err
+		return result, a.recoverFromFailedSwapLocked(d, path, dek, encrypted, &result, err)
 	}
 	a.db = fresh
 	a.adminSvc = admin.NewService(fresh)
@@ -613,6 +626,46 @@ func (a *App) RepairAndSwap() (db.RepairResult, error) {
 	result.DamagedCopy = path + ".corrupt"
 	result.Log = append(result.Log, "Snapshot swapped into place; live file is now the healed copy.")
 	return result, nil
+}
+
+// recoverFromFailedSwapLocked leaves the App on a working database after a
+// failed swap. A swap can fail after it has closed the live handle (a
+// rename, or reopening the swapped-in file), which used to leave a.db
+// pointing at the closed handle so every later call failed. If the handle
+// still answers, it is kept. Otherwise the file now at path is reopened;
+// if there is no file there (a rename failed and so did its rollback; the
+// data is at <path>.corrupt) or it will not open, the project is closed as
+// CloseProject would, and ErrRepairClosedProject is returned. A missing
+// file is never reopened, since opening creates an empty project. Must be
+// called with a.mu held for writing.
+func (a *App) recoverFromFailedSwapLocked(d *db.Database, path string, dek []byte, encrypted bool, result *db.RepairResult, swapErr error) error {
+	if d.Conn.Ping() == nil {
+		return swapErr
+	}
+	_ = d.Close()
+	var reopened *db.Database
+	var openErr error
+	if info, statErr := os.Stat(path); statErr != nil || !info.Mode().IsRegular() {
+		openErr = fmt.Errorf("no project file at %s", path)
+	} else if encrypted {
+		reopened, openErr = db.InitEncryptedDB(path, dek)
+	} else {
+		reopened, openErr = db.InitDB(path)
+	}
+	if openErr != nil {
+		a.db = nil
+		a.dbPath = ""
+		a.adminSvc = nil
+		a.sigmaSvc = nil
+		documents.UseFont(nil, "")
+		result.Log = append(result.Log, "Could not reopen the project: "+openErr.Error())
+		return fmt.Errorf("%w (%v)", ErrRepairClosedProject, swapErr)
+	}
+	a.db = reopened
+	a.adminSvc = admin.NewService(reopened)
+	a.sigmaSvc = service.NewProjectService(reopened)
+	result.Log = append(result.Log, "Reopened the project file after the failed swap.")
+	return swapErr
 }
 
 // ExportDocumentDOCX renders the document to a Microsoft Word file at a
