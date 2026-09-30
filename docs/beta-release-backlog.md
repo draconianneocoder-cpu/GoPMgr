@@ -237,7 +237,8 @@ That result took six live-GUI cycles to reach because the first five, all run un
        without changes, so a user holding only legacy codes who forgets
        their password stays locked out until administrator recovery exists;
        the reminder is how they renew codes while they still know it;
-    3. a printable recovery sheet: after the blob-download check below;
+    3. a printable recovery sheet: unblocked now that codes save through
+       the desktop dialog (below);
     5. administrator recovery: through ADR-004 (phases 1 and 2 ship in one
        release);
     6. keeping a key copy in the OS keychain: declined by default, because
@@ -246,10 +247,15 @@ That result took six live-GUI cycles to reach because the first five, all run un
   - Done 2026-09-29: the Project Picker's unreachable create form is removed.
     `App.CreateProject` backs the Launchpad's "Start with a blank project".
   - CreateAccount, the Admin panel, and App Settings each show recovery
-    codes their own way; share one component once the first two have tests
-    of their code-display steps.
-  - Recovery-code download: check whether the blob-link download writes a
-    file in the native build; use the app's save-dialog pattern either way.
+    codes their own way; the first two now have tests of their code-display
+    steps, so share one component. App Settings' panel (also used by the
+    sign-in reminder) offers only Copy; the shared component gives it
+    "Save as .txt…" too.
+  - Done 2026-09-30: recovery codes save through the desktop save dialog
+    (`App.SaveRecoveryCodesFile`) instead of a blob-link download, on account
+    creation and in the Admin panel. The dialog opens in the home folder and
+    does not remember the folder; the file is new and private (`0600`).
+    Not yet clicked in the native window.
   - Prefill the username on the sign-in screen after a recovery reset.
   - Explain the last-administrator guard in the Admin panel before the click.
   - Undecided (owner): a username picker on the sign-in screen conflicts with

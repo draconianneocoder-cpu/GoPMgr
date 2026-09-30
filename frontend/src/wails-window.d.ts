@@ -142,6 +142,7 @@ declare global {
             certPassword: string,
           ) => Promise<string>;
           RepairAndSwap: () => Promise<RepairResult>;
+          SaveRecoveryCodesFile: (username: string, codes: string[]) => Promise<string>;
           CheckOpenProject: () => Promise<OpenProjectCheck>;
           DismissOpenProjectCheck: () => Promise<void>;
 

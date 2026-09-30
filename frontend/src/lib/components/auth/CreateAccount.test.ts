@@ -98,4 +98,71 @@ describe('CreateAccount', () => {
     );
     expect(session.user).toBeNull();
   });
+
+  describe('saving the recovery codes', () => {
+    async function reachCodes(app: ReturnType<typeof installApp>) {
+      const utils = render(CreateAccount);
+      await fillForm(utils);
+      await fireEvent.submit(utils.container.querySelector('form')!);
+      await utils.findByText('Save your recovery codes');
+      return { app, utils, save: utils.getByRole('button', { name: 'Save as .txt…' }) };
+    }
+
+    it('saves through the desktop dialog and says where the file went', async () => {
+      const { app, utils, save } = await reachCodes(installApp({
+        SaveRecoveryCodesFile: vi.fn(async () => '/Users/alice/gopmgr-recovery-codes-alice.txt'),
+      }));
+      await fireEvent.click(save);
+
+      expect(app.SaveRecoveryCodesFile).toHaveBeenCalledWith('alice', ['AAAAAAAA-BBBBBBBB']);
+      expect(await utils.findByText(
+        'Saved to /Users/alice/gopmgr-recovery-codes-alice.txt. Keep a copy somewhere other than this computer.',
+      )).toBeInTheDocument();
+      expect(utils.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('says nothing when the save dialog is cancelled', async () => {
+      const { app, utils, save } = await reachCodes(installApp({
+        SaveRecoveryCodesFile: vi.fn(async () => { throw 'export cancelled'; }),
+      }));
+      await fireEvent.click(save);
+
+      await waitFor(() => expect(save).not.toBeDisabled());
+      expect(app.SaveRecoveryCodesFile).toHaveBeenCalledOnce();
+      expect(utils.queryByRole('alert')).not.toBeInTheDocument();
+      expect(utils.queryByText(/Saved to/)).not.toBeInTheDocument();
+    });
+
+    it('reports a failed save and lets the user try again', async () => {
+      const { app, utils, save } = await reachCodes(installApp({
+        SaveRecoveryCodesFile: vi.fn(async () => { throw 'export destination already exists'; }),
+      }));
+      await fireEvent.click(save);
+
+      expect(await utils.findByRole('alert')).toHaveTextContent(
+        'Could not save the codes: export destination already exists',
+      );
+      app.SaveRecoveryCodesFile.mockResolvedValueOnce('/Users/alice/codes.txt');
+      await fireEvent.click(save);
+      await waitFor(() => expect(utils.queryByRole('alert')).not.toBeInTheDocument());
+      expect(await utils.findByText(/Saved to \/Users\/alice\/codes\.txt\./)).toBeInTheDocument();
+    });
+
+    it('opens one save dialog at a time', async () => {
+      let finishSave: (path: string) => void = () => {};
+      const { app, utils, save } = await reachCodes(installApp({
+        SaveRecoveryCodesFile: vi.fn(() => new Promise<string>((resolve) => { finishSave = resolve; })),
+      }));
+      await fireEvent.click(save);
+
+      expect(save).toBeDisabled();
+      expect(save).toHaveTextContent('Saving…');
+      await fireEvent.click(save);
+      expect(app.SaveRecoveryCodesFile).toHaveBeenCalledOnce();
+
+      finishSave('/Users/alice/codes.txt');
+      await waitFor(() => expect(save).not.toBeDisabled());
+      expect(utils.getByText(/Saved to \/Users\/alice\/codes\.txt\./)).toBeInTheDocument();
+    });
+  });
 });
