@@ -71,6 +71,10 @@ export const session = $state<{
   // installing is never triggered from here — only ever from an explicit
   // click in AppSettings.
   updateStatus: UpdateStatus | null;
+  // The signed-in account object that chose "Not now" on the recovery-code
+  // reminder. Every sign-in assigns a new Account object, so the reminder
+  // returns at the next sign-in, for this user or another, with no reset.
+  recoveryReminderDismissedFor: Account | null;
 }>({
   user: null,
   project: null,
@@ -78,6 +82,7 @@ export const session = $state<{
   view: 'login',
   editingId: null,
   updateStatus: null,
+  recoveryReminderDismissedFor: null,
 });
 
 type PendingNavigation = {
