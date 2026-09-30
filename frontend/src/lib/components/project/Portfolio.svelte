@@ -10,6 +10,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import AppHeader from '../AppHeader.svelte';
+  import RecoveryReminder from '../auth/RecoveryReminder.svelte';
   import Spinner from '../Spinner.svelte';
 
   let projects = $state<ProjectSummary[]>([]);
@@ -139,6 +140,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <AppHeader active="portfolio" />
 
   <main class="max-w-5xl mx-auto p-8">
+    <RecoveryReminder />
     <div class="flex items-center justify-between mb-5">
       <div>
         <h1 class="text-xl font-bold">Portfolio</h1>

@@ -231,11 +231,12 @@ That result took six live-GUI cycles to reach because the first five, all run un
     to combine the options as follows:
     1. guide instead of block, and 2. informed opt-out: done above;
     4. a reminder at sign-in when one or no codes are left, or when any
-       code is legacy: next. A reset with a legacy code is refused without
-       changes (it never replaces the key, 2026-09-29), so a user holding
-       only legacy codes who forgets their password is locked out until
-       administrator recovery exists; this reminder is how they renew codes
-       while they still know it;
+       code is legacy: done 2026-09-30. Portfolio embeds the recovery-codes
+       panel under "Keep a way back into your account"; "Not now" lasts
+       until the next sign-in. A reset with a legacy code is refused
+       without changes, so a user holding only legacy codes who forgets
+       their password stays locked out until administrator recovery exists;
+       the reminder is how they renew codes while they still know it;
     3. a printable recovery sheet: after the blob-download check below;
     5. administrator recovery: through ADR-004 (phases 1 and 2 ship in one
        release);

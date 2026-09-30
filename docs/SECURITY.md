@@ -127,7 +127,11 @@ that such projects cannot be recovered if they forget their password
 (`AcceptEncryptionWithoutRecoveryCodes`, cleared on sign-in, sign-out, and
 shutdown). The Launchpad and Project Settings show a guided "save a way
 back in" step first (`RecoveryCodeStatus.encryption_ready`), so this is a
-prompt, not a dead end.
+prompt, not a dead end. After sign-in, Portfolio shows the same renewal
+panel while the account has one or no unused codes or any legacy code
+(`RecoveryReminder.svelte`), since a legacy code cannot reset the password;
+"Not now" lasts until the next sign-in, and a failed status read shows
+nothing rather than blocking the screen.
 
 Recovery codes are a lasting way into an account, so App Settings issues new
 ones only after the current password is verified, and wraps the DEK
