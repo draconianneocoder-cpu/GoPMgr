@@ -198,6 +198,34 @@ describe('RecoveryCodesPanel saving new codes', () => {
     expect(await utils.findByRole('alert')).toHaveTextContent(unusedWarning);
   });
 
+  it('names every file saved from one set of new codes', async () => {
+    const usb = '/Volumes/USB/gopmgr-recovery-codes-alice-2026-09-30.txt';
+    app.SaveRecoveryCodesFile.mockResolvedValueOnce(file).mockResolvedValueOnce(usb);
+    const toastSpy = vi.spyOn(toast, 'showToast');
+    const utils = render(RecoveryCodesPanel);
+    await saveNewCodes(utils);
+    await fireEvent.click(utils.getByRole('button', { name: 'Save as .txt…' }));
+    await utils.findByText(new RegExp(`Saved to ${usb}`));
+    await fireEvent.click(utils.getByRole('button', { name: 'Keep my current codes' }));
+
+    expect(await utils.findByRole('alert')).toHaveTextContent(
+      `The codes saved to ${file}, ${usb} were never put in use and won't work. Delete those files.`,
+    );
+
+    // Both are named in the toast too when the panel closes instead.
+    await openCodes(utils);
+    app.SaveRecoveryCodesFile.mockResolvedValueOnce('/a.txt').mockResolvedValueOnce('/b.txt');
+    await fireEvent.click(utils.getByRole('button', { name: 'Save as .txt…' }));
+    await utils.findByText(/Saved to \/a\.txt/);
+    await fireEvent.click(utils.getByRole('button', { name: 'Save as .txt…' }));
+    await utils.findByText(/Saved to \/b\.txt/);
+    utils.unmount();
+    expect(toastSpy).toHaveBeenCalledWith(
+      "The codes saved to /a.txt, /b.txt were never put in use and won't work. Delete those files.",
+      'error',
+    );
+  });
+
   it('names a saved file when putting its codes in use fails', async () => {
     app.ConfirmRecoveryCodes.mockRejectedValueOnce(new Error('your recovery codes changed while these were on screen'));
     const utils = render(RecoveryCodesPanel);

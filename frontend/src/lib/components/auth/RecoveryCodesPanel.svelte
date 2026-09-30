@@ -30,10 +30,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let saved = $state(false);
   let busy = $state(false);
   let error = $state('');
-  // A file saved while new codes are on screen holds codes that work only
-  // once they are confirmed. If they are dropped instead, the file looks
-  // like a good recovery file but is not, so name it for the user to delete.
-  let savedFile = $state('');
+  // Files saved while new codes are on screen hold codes that work only once
+  // they are confirmed. If they are dropped instead, each file looks like a
+  // good recovery file but is not, so name them for the user to delete.
+  let savedFiles = $state<string[]>([]);
   let unusedFiles = $state<string[]>([]);
 
   onMount(loadStatus);
@@ -44,7 +44,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (step === 'codes') {
       void window.go.main.App.DiscardRecoveryCodes();
       // The panel is gone, so only a toast can still reach the user.
-      if (savedFile) showToast(unusedFileWarning([savedFile]), 'error');
+      if (savedFiles.length > 0) showToast(unusedFileWarning(savedFiles), 'error');
     }
     onpendingchange?.(false);
   });
@@ -55,9 +55,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       : `The codes saved to ${files.join(', ')} were never put in use and won't work. Delete those files.`;
   }
 
-  function dropSavedFile() {
-    if (savedFile) unusedFiles = [...unusedFiles, savedFile];
-    savedFile = '';
+  function dropSavedFiles() {
+    unusedFiles = [...unusedFiles, ...savedFiles];
+    savedFiles = [];
   }
 
   async function loadStatus() {
@@ -106,7 +106,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } catch (err: any) {
       const message = String(err?.message ?? err);
       error = message.charAt(0).toUpperCase() + message.slice(1) + '.';
-      dropSavedFile();
+      dropSavedFiles();
       step = 'idle';
       codes = [];
     } finally {
@@ -119,7 +119,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function cancel() {
     if (step === 'codes') {
       await window.go.main.App.DiscardRecoveryCodes();
-      dropSavedFile();
+      dropSavedFiles();
     }
     finish();
   }
@@ -129,7 +129,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     password = '';
     codes = [];
     saved = false;
-    savedFile = '';
+    savedFiles = [];
   }
 </script>
 
@@ -202,7 +202,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         username={session.user?.username ?? ''}
         {codes}
         savedHint="These codes start working only when you choose “Use the new codes”."
-        onsaved={(path) => (savedFile = path)}
+        onsaved={(path) => (savedFiles = [...savedFiles, path])}
       />
       <label class="flex items-start gap-2 text-xs text-slate-300 select-none">
         <input type="checkbox" bind:checked={saved} class="mt-0.5 accent-cyan-500" />
