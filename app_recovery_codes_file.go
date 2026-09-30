@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -56,13 +57,16 @@ func (a *App) saveRecoveryCodesFileWithRuntime(username string, codes []string, 
 		return "", errors.New("save dialog is required")
 	}
 
+	// The date tells sets apart after a renewal, in the default name and in
+	// the file itself, since the file may be renamed.
+	created := time.Now().Format("2006-01-02")
 	home, err := os.UserHomeDir()
 	if err != nil {
 		home = ""
 	}
 	path, err := runtime.saveFileDialog(a.ctx, wailsruntime.SaveDialogOptions{
 		DefaultDirectory:     home,
-		DefaultFilename:      "gopmgr-recovery-codes-" + username + ".txt",
+		DefaultFilename:      "gopmgr-recovery-codes-" + username + "-" + created + ".txt",
 		Title:                "Save recovery codes",
 		Filters:              []wailsruntime.FileFilter{{DisplayName: "Text files", Pattern: "*.txt"}},
 		CanCreateDirectories: true,
@@ -85,7 +89,7 @@ func (a *App) saveRecoveryCodesFileWithRuntime(username string, codes []string, 
 		return "", errors.New("recovery codes are saved as a .txt file")
 	}
 
-	body := "GoPMgr recovery codes for " + username + "\n\n" + strings.Join(codes, "\n") + "\n"
+	body := "GoPMgr recovery codes for " + username + "\nCreated " + created + "\n\n" + strings.Join(codes, "\n") + "\n"
 	if err := writeNewPrivateExport(path, []byte(body)); err != nil {
 		return "", err
 	}

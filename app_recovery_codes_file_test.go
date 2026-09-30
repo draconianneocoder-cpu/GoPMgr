@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -48,16 +49,23 @@ func TestSaveRecoveryCodesFileWritesThePrivateFileTheUserChose(t *testing.T) {
 	dest := filepath.Join(t.TempDir(), "my-codes.txt")
 	var opts wailsruntime.SaveDialogOptions
 	calls := 0
+	before := time.Now().Format("2006-01-02")
 	path, err := app.saveRecoveryCodesFileWithRuntime("alice", codes, fakeSaveDialog(dest, &opts, &calls))
+	after := time.Now().Format("2006-01-02")
 	if err != nil || path != dest {
 		t.Fatalf("save = %q, %v; want %q", path, err, dest)
+	}
+	// The run may cross midnight; the date is one of the two.
+	created := before
+	if !strings.HasSuffix(opts.DefaultFilename, "-"+before+".txt") {
+		created = after
 	}
 
 	body, err := os.ReadFile(dest)
 	if err != nil {
 		t.Fatalf("read saved file: %v", err)
 	}
-	want := "GoPMgr recovery codes for alice\n\n" + strings.Join(codes, "\n") + "\n"
+	want := "GoPMgr recovery codes for alice\nCreated " + created + "\n\n" + strings.Join(codes, "\n") + "\n"
 	if string(body) != want {
 		t.Fatalf("saved body = %q, want %q", body, want)
 	}
@@ -67,8 +75,8 @@ func TestSaveRecoveryCodesFileWritesThePrivateFileTheUserChose(t *testing.T) {
 	}
 
 	home, _ := os.UserHomeDir()
-	if opts.DefaultDirectory != home || opts.DefaultFilename != "gopmgr-recovery-codes-alice.txt" {
-		t.Fatalf("dialog opened with %q / %q; want the home folder and gopmgr-recovery-codes-alice.txt", opts.DefaultDirectory, opts.DefaultFilename)
+	if wantName := "gopmgr-recovery-codes-alice-" + created + ".txt"; opts.DefaultDirectory != home || opts.DefaultFilename != wantName {
+		t.Fatalf("dialog opened with %q / %q; want the home folder and %s", opts.DefaultDirectory, opts.DefaultFilename, wantName)
 	}
 	if got := app.requireUser().LastExportDirectory; got != remembered {
 		t.Fatalf("remembered export directory changed to %q, want it left at %q", got, remembered)
@@ -131,6 +139,25 @@ func TestSaveRecoveryCodesFileNeverOverwritesAFile(t *testing.T) {
 	}
 	if body, _ := os.ReadFile(dest); string(body) != "keep me" {
 		t.Fatalf("existing file was changed to %q", body)
+	}
+}
+
+// Renewal shows codes from PrepareRecoveryCodes before they are confirmed;
+// the save method must accept that set too, not only the first one.
+func TestSaveRecoveryCodesFileAcceptsRenewedCodes(t *testing.T) {
+	app, _ := recoveryFileApp(t)
+	renewed, err := app.PrepareRecoveryCodes("correct horse battery staple")
+	if err != nil {
+		t.Fatalf("PrepareRecoveryCodes: %v", err)
+	}
+	dest := filepath.Join(t.TempDir(), "renewed.txt")
+	calls := 0
+	if _, err := app.saveRecoveryCodesFileWithRuntime("alice", renewed, fakeSaveDialog(dest, nil, &calls)); err != nil {
+		t.Fatalf("save renewed codes: %v", err)
+	}
+	body, err := os.ReadFile(dest)
+	if err != nil || !strings.HasSuffix(string(body), "\n\n"+strings.Join(renewed, "\n")+"\n") {
+		t.Fatalf("renewed file = %q, %v; want it to end with the renewed codes", body, err)
 	}
 }
 
