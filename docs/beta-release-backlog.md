@@ -273,11 +273,12 @@ That result took six live-GUI cycles to reach because the first five, all run un
     file." after writing its `.bak`, which is a developer instruction. Word
     it for users (where the healed copy is and how to use it), or have the
     CLI swap it in the way Check and repair does.
-  - `SwapIn*Snapshot` closes the live handle before renaming the files. If
-    a rename then fails, `a.db` still points at the closed handle and every
-    call errors until the project is reopened. Check and repair makes this
-    reachable from the UI; reopen the snapshot or the original on failure,
-    and add a test for the swap-failure path.
+  - Done 2026-09-30: a Check and repair whose swap fails after closing the
+    live handle no longer leaves `a.db` on the closed handle.
+    `RepairAndSwap` keeps a handle that still answers, reopens the file at
+    the project path if there is one, and otherwise closes the project
+    (`ErrRepairClosedProject`) without creating an empty file there; the
+    panel then sends the user back to the project list.
   - `Store.DeleteWorkItem` and `MoveWorkItem` match by ID alone, like
     `GetWorkItem` did before 2026-09-29; scope them to the project too.
   - Declined for now: a sign-in lockout (`system.db` is readable, so

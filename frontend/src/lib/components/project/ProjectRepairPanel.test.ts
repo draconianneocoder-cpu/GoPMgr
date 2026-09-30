@@ -4,8 +4,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/svelte';
 
-const goto = vi.fn();
-vi.mock('../../session.svelte', () => ({ goto: (...args: unknown[]) => goto(...args) }));
+const { goto, session } = vi.hoisted(() => ({
+  goto: vi.fn(),
+  session: { project: null as unknown, projectPath: null as string | null },
+}));
+vi.mock('../../session.svelte', () => ({ goto: (...args: unknown[]) => goto(...args), session }));
 
 import ProjectRepairPanel from './ProjectRepairPanel.svelte';
 
@@ -68,5 +71,24 @@ describe('ProjectRepairPanel', () => {
     await fireEvent.click(utils.getByRole('button', { name: 'Checking…' }));
     expect(app.RepairAndSwap).toHaveBeenCalledOnce();
     finish({ success: true, swapped: false, log: [] });
+  });
+});
+
+describe('ProjectRepairPanel when the repair closed the project', () => {
+  it('forgets the project and sends the user back to the project list', async () => {
+    app.RepairAndSwap.mockRejectedValue(
+      'The repair could not finish, so the project was closed. Reopen it from the project list. (swap: rename snapshot → live: disk full)',
+    );
+    session.project = { id: 'p1', name: 'Plan' };
+    session.projectPath = '/p/Plan.gopmgr';
+    const utils = await run();
+    expect(await utils.findByRole('alert')).toHaveTextContent(
+      'The repair could not finish, so the project was closed. Reopen it from the project list, or restore it from a backup.',
+    );
+    expect(session.project).toBeNull();
+    expect(session.projectPath).toBeNull();
+    expect(utils.getByRole('button', { name: 'Check and repair' })).toBeDisabled();
+    await fireEvent.click(utils.getByRole('button', { name: 'Back to projects' }));
+    expect(goto).toHaveBeenCalledWith('portfolio');
   });
 });

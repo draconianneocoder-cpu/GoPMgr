@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -270,5 +271,103 @@ func TestRepairAndSwapBlocksOtherCallsUntilTheSwapIsDone(t *testing.T) {
 	}
 	if app.requireDB() != nil {
 		t.Fatal("the project is still open after CloseProject ran")
+	}
+}
+
+// failSwapWith replaces swapSnapshot for one test with a swap that runs
+// fail (which may close the live handle or move files) and returns its error.
+func failSwapWith(t *testing.T, fail func(d *db.Database, path string) error) {
+	t.Helper()
+	previous := swapSnapshot
+	t.Cleanup(func() { swapSnapshot = previous })
+	swapSnapshot = func(d *db.Database, path string, _ []byte, _ bool) (*db.Database, error) {
+		return nil, fail(d, path)
+	}
+}
+
+// openHealableProject opens the repair fixture with light corruption, so
+// RepairAndSwap heals it and reaches the swap.
+func openHealableProject(t *testing.T) (*App, string) {
+	t.Helper()
+	app, path, pristine := seedRepairFixtureProject(t)
+	corruptByteAt(t, path, pristine, 3*4096+1)
+	if _, err := app.OpenProject(path); err != nil {
+		t.Fatalf("OpenProject: %v", err)
+	}
+	return app, path
+}
+
+// A swap that fails after closing the live handle (here, the rename of the
+// live file) used to leave a.db on the closed handle, so every later call
+// failed with "sql: database is closed". The project file is still in place,
+// so it is reopened and keeps working.
+func TestRepairAndSwapReopensTheProjectWhenTheSwapFailsAfterClosingIt(t *testing.T) {
+	app, _ := openHealableProject(t)
+	swapErr := errors.New("swap: rename live → corrupt: permission denied")
+	failSwapWith(t, func(d *db.Database, _ string) error {
+		_ = d.Close()
+		return swapErr
+	})
+
+	result, err := app.RepairAndSwap()
+	if !errors.Is(err, swapErr) || errors.Is(err, ErrRepairClosedProject) || result.Swapped {
+		t.Fatalf("RepairAndSwap = %+v, %v; want the swap error, nothing swapped, project still open", result, err)
+	}
+	if got, err := app.ListStakeholders(""); err != nil || len(got) != 300 {
+		t.Fatalf("ListStakeholders after the failed swap = %d rows, %v; want the reopened project's 300", len(got), err)
+	}
+}
+
+// If nothing is left at the project path (a rename failed and so did its
+// rollback, leaving the data at <path>.corrupt), reopening would create an
+// empty project there. The project is closed instead and nothing is created.
+func TestRepairAndSwapClosesTheProjectWhenItCannotBeReopened(t *testing.T) {
+	app, path := openHealableProject(t)
+	failSwapWith(t, func(d *db.Database, path string) error {
+		_ = d.Close()
+		if err := os.Rename(path, path+".corrupt"); err != nil {
+			t.Fatalf("move live file aside: %v", err)
+		}
+		return errors.New("swap: rename snapshot → live: disk full; rollback live: disk full")
+	})
+
+	_, err := app.RepairAndSwap()
+	if !errors.Is(err, ErrRepairClosedProject) {
+		t.Fatalf("RepairAndSwap = %v, want ErrRepairClosedProject", err)
+	}
+	// ProjectRepairPanel.svelte matches this phrase to forget the project.
+	if !strings.Contains(err.Error(), "the project was closed") {
+		t.Fatalf("closed-project error text = %q, want it to contain \"the project was closed\"", err.Error())
+	}
+	if app.requireDB() != nil {
+		t.Fatal("the project is still open on a handle after it could not be reopened")
+	}
+	if _, err := app.ListStakeholders(""); err == nil || !strings.Contains(err.Error(), "no project open") {
+		t.Fatalf("ListStakeholders after the project was closed = %v, want \"no project open\"", err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("an empty project was created at %s after the failed swap (stat err %v)", path, err)
+	}
+	if _, err := os.Stat(path + ".corrupt"); err != nil {
+		t.Fatalf("the project data at .corrupt was touched: %v", err)
+	}
+}
+
+// A swap that fails before closing anything (for example, the snapshot
+// failed its check) keeps the same, still-working handle.
+func TestRepairAndSwapKeepsTheOpenHandleWhenTheSwapFailsBeforeClosingIt(t *testing.T) {
+	app, _ := openHealableProject(t)
+	before := app.requireDB()
+	swapErr := errors.New("swap: encrypted snapshot integrity: file is not a database")
+	failSwapWith(t, func(*db.Database, string) error { return swapErr })
+
+	if _, err := app.RepairAndSwap(); !errors.Is(err, swapErr) {
+		t.Fatalf("RepairAndSwap = %v, want the swap error", err)
+	}
+	if app.requireDB() != before {
+		t.Fatal("a still-open handle was replaced after a swap that closed nothing")
+	}
+	if _, err := app.ListStakeholders(""); err != nil {
+		t.Fatalf("ListStakeholders after the failed swap: %v", err)
 	}
 }
