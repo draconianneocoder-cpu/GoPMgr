@@ -273,10 +273,17 @@ That result took six live-GUI cycles to reach because the first five, all run un
     database handle) after the Dashboard loads, and a damage notice offers
     Check and repair; nothing is repaired without a click. It is on by
     default, so every existing project now gets the check.
-  - Agile store methods that act by ID alone: `DeleteWorkItem`,
-    `MoveWorkItem`, `GetSprint`, `DeleteSprint`, `DeleteDeployment`, and the
-    `SaveWorkItem`/`SaveSprint`/`SaveDeployment` upserts (which can
-    overwrite another project's row). Scope each to the store's project.
+  - Done 2026-09-30: every agile store method that acted by ID alone is
+    scoped to the store's project (`DeleteWorkItem`, `MoveWorkItem`,
+    `GetSprint`, both statements of `DeleteSprint`, `DeleteDeployment`).
+    The `SaveWorkItem`/`SaveSprint`/`SaveDeployment` upserts always use the
+    store's project and refuse (`ErrNoWorkItem`/`ErrNoSprint`/new
+    `ErrNoDeployment`) an ID that belongs to another project, and
+    `ListColumns` returns nothing for another project's board.
+  - Defence in depth, only relevant with more than one project per file:
+    the built-in column IDs (`todo`, `doing`, `review`, `done`) are primary
+    keys shared by every board, so `ensureDefaultColumns`'s `ON CONFLICT DO
+    NOTHING` gives a second project's board no default columns.
   - `--repair` prints "Call SwapInSnapshot to atomically replace the live
     file." after writing its `.bak`, which is a developer instruction. Word
     it for users (where the healed copy is and how to use it), or have the
