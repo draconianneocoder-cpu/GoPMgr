@@ -125,6 +125,10 @@ func TestRepairAndSwapHealsReachableLightCorruption(t *testing.T) {
 	if _, err := os.Stat(result.DamagedCopy); err != nil {
 		t.Fatalf("damaged copy not kept at %s: %v", result.DamagedCopy, err)
 	}
+	// The log is shown under Details: it ends by naming the damaged copy.
+	if last := result.Log[len(result.Log)-1]; last != "Checked the rebuilt copy and swapped it in. The damaged file is kept as "+path+".corrupt." {
+		t.Fatalf("last log line = %q, want the swap and the damaged copy's path", last)
+	}
 
 	if got, err := app.ListStakeholders(""); err != nil || len(got) != 300 {
 		t.Fatalf("ListStakeholders after repair: want 300 rows, got %d, %v", len(got), err)

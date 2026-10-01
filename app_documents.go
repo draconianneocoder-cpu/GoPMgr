@@ -694,7 +694,7 @@ func (a *App) RepairAndSwap() (db.RepairResult, error) {
 	a.sigmaSvc = service.NewProjectService(fresh)
 	result.Swapped = true
 	result.DamagedCopy = path + ".corrupt"
-	result.Log = append(result.Log, "Snapshot swapped into place; live file is now the healed copy.")
+	result.Log = append(result.Log, "Checked the rebuilt copy and swapped it in. The damaged file is kept as "+result.DamagedCopy+".")
 	return result, nil
 }
 

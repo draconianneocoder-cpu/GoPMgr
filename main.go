@@ -22,6 +22,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -436,6 +437,25 @@ func headlessProjectMode(cfg *cli.Config) bool {
 		cfg.ShowStats || cfg.SchemaDump || cfg.ExportPath != ""
 }
 
+// runHeadlessRepair prints --repair's log and, when it wrote a rebuilt
+// copy, how to use it: the CLI never replaces the project file, and only
+// the app checks a copy before swapping it in.
+func runHeadlessRepair(d *db.Database, projectPath string, w io.Writer) error {
+	result, err := d.InformativeSelfHeal(projectPath)
+	lines := append([]string{}, result.Log...)
+	if err == nil && result.Snapshot != "" {
+		lines = append(lines,
+			"The project file was not changed.",
+			"To repair the project, open it in GoPMgr and choose Check and repair in Project Settings › Data Protection.",
+			"GoPMgr checks a rebuilt copy before using it and keeps the damaged file as "+projectPath+".corrupt.",
+		)
+	}
+	if _, werr := io.WriteString(w, strings.Join(lines, "\n")+"\n"); werr != nil {
+		return fmt.Errorf("print repair log: %w", werr)
+	}
+	return err
+}
+
 func openHeadlessDB(cfg *cli.Config) (*db.Database, error) {
 	encrypted, err := db.IsEncryptedFile(cfg.ProjectPath)
 	if err != nil {
@@ -513,11 +533,7 @@ func runHeadless(cfg *cli.Config) {
 		fmt.Println("CORRUPT")
 		os.Exit(1)
 	case cfg.Repair:
-		result, err := d.InformativeSelfHeal(cfg.ProjectPath)
-		for _, line := range result.Log {
-			fmt.Println(line)
-		}
-		if err != nil {
+		if err := runHeadlessRepair(d, cfg.ProjectPath, os.Stdout); err != nil {
 			log.Fatalf("repair: %v", err)
 		}
 	case cfg.Vacuum:

@@ -73,7 +73,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               default), the Dashboard also warns you when the check on opening finds a problem. If the project won't open, restore it from your latest
               backup. From a terminal,
               <span class="font-mono text-xs">--check</span> reports integrity,
-              <span class="font-mono text-xs">--repair</span> checks it and, if it finds damage, writes a healed copy beside the file as
+              <span class="font-mono text-xs">--repair</span> checks it and, if it finds damage, writes a copy rebuilt from the readable data beside the file as
               <span class="font-mono text-xs">.bak</span> without replacing it, and <span class="font-mono text-xs">--vacuum</span> compacts the
               file. See <button onclick={() => nav('cli')} class="text-cyan-400 underline hover:text-cyan-300">Command-Line Maintenance</button>
               for exact invocations (encrypted projects also need
@@ -152,7 +152,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     ['--version', 'Print the version banner and exit'],
                     ['--update', 'Check the signed update channel (no-op if none configured)'],
                     ['--check', 'Integrity check; prints ok or CORRUPT'],
-                    ['--repair', 'If damaged, write a healed copy beside the file (.bak) without replacing it; prints an action log'],
+                    ['--repair', 'If damaged, write a copy rebuilt from the readable data beside the file (.bak) without replacing it; prints what it did and how to use the copy'],
                     ['--vacuum', 'Compact the database (VACUUM)'],
                     ['--export-audit <path>', 'Write the audit log to CSV'],
                     ['--stats', 'Compact project summary: status, phase, counts'],
