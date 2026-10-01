@@ -79,12 +79,12 @@ describe('RecoveryCodeList', () => {
   });
 
   it('reports any other failure and clears it when a retry succeeds', async () => {
-    app.SaveRecoveryCodesFile.mockRejectedValueOnce('recovery codes are saved as a .txt file');
+    app.SaveRecoveryCodesFile.mockRejectedValueOnce('choose a file name ending in .txt');
     const { utils, save } = renderList();
     await fireEvent.click(save);
 
     expect(await utils.findByRole('alert')).toHaveTextContent(
-      'Could not save the codes: recovery codes are saved as a .txt file',
+      'Could not save the codes: choose a file name ending in .txt',
     );
     await fireEvent.click(save);
     await waitFor(() => expect(utils.queryByRole('alert')).not.toBeInTheDocument());

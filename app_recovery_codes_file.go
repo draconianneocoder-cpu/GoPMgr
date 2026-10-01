@@ -39,6 +39,30 @@ func (a *App) SaveRecoveryCodesFile(username string, codes []string) (string, er
 }
 
 func (a *App) saveRecoveryCodesFileWithRuntime(username string, codes []string, runtime exportDestinationRuntime) (string, error) {
+	return a.saveRecoveryCodes(username, codes, runtime, recoveryCodesText)
+}
+
+// recoveryCodesFormat is one way of saving a set of recovery codes. Every
+// format shares saveRecoveryCodes' checks and its new-private-file write.
+type recoveryCodesFormat struct {
+	ext    string // lower case, with the dot
+	stem   string // default file name before "<username>-<date><ext>"
+	title  string
+	filter wailsruntime.FileFilter
+	render func(username, created string, codes []string) ([]byte, error)
+}
+
+var recoveryCodesText = recoveryCodesFormat{
+	ext:    ".txt",
+	stem:   "gopmgr-recovery-codes-",
+	title:  "Save recovery codes",
+	filter: wailsruntime.FileFilter{DisplayName: "Text files", Pattern: "*.txt"},
+	render: func(username, created string, codes []string) ([]byte, error) {
+		return []byte("GoPMgr recovery codes for " + username + "\nCreated " + created + "\n\n" + strings.Join(codes, "\n") + "\n"), nil
+	},
+}
+
+func (a *App) saveRecoveryCodes(username string, codes []string, runtime exportDestinationRuntime, format recoveryCodesFormat) (string, error) {
 	if a.requireUser() == nil {
 		return "", errors.New("not signed in")
 	}
@@ -60,15 +84,19 @@ func (a *App) saveRecoveryCodesFileWithRuntime(username string, codes []string, 
 	// The date tells sets apart after a renewal, in the default name and in
 	// the file itself, since the file may be renamed.
 	created := time.Now().Format("2006-01-02")
+	body, err := format.render(username, created, codes)
+	if err != nil {
+		return "", fmt.Errorf("prepare the recovery codes: %w", err)
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		home = ""
 	}
 	path, err := runtime.saveFileDialog(a.ctx, wailsruntime.SaveDialogOptions{
 		DefaultDirectory:     home,
-		DefaultFilename:      "gopmgr-recovery-codes-" + username + "-" + created + ".txt",
-		Title:                "Save recovery codes",
-		Filters:              []wailsruntime.FileFilter{{DisplayName: "Text files", Pattern: "*.txt"}},
+		DefaultFilename:      format.stem + username + "-" + created + format.ext,
+		Title:                format.title,
+		Filters:              []wailsruntime.FileFilter{format.filter},
 		CanCreateDirectories: true,
 	})
 	if err != nil {
@@ -79,18 +107,17 @@ func (a *App) saveRecoveryCodesFileWithRuntime(username string, codes []string, 
 		return "", ErrExportCancelled
 	}
 	// Some platforms' dialogs return a typed name without the filter's
-	// extension; add it. ".TXT" is still a text file; any other extension
-	// is refused.
+	// extension; add it. Upper case is the same extension; any other
+	// extension is refused.
 	switch ext := filepath.Ext(path); {
-	case strings.EqualFold(ext, ".txt"):
+	case strings.EqualFold(ext, format.ext):
 	case ext == "":
-		path += ".txt"
+		path += format.ext
 	default:
-		return "", errors.New("recovery codes are saved as a .txt file")
+		return "", fmt.Errorf("choose a file name ending in %s", format.ext)
 	}
 
-	body := "GoPMgr recovery codes for " + username + "\nCreated " + created + "\n\n" + strings.Join(codes, "\n") + "\n"
-	if err := writeNewPrivateExport(path, []byte(body)); err != nil {
+	if err := writeNewPrivateExport(path, body); err != nil {
 		return "", err
 	}
 	return path, nil
