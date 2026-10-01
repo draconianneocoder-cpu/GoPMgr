@@ -304,8 +304,9 @@ That result took six live-GUI cycles to reach because the first five, all run un
   - Done 2026-10-01: `--repair` no longer prints "Call SwapInSnapshot…" or
     calls an unchecked copy "healthy". It says where the rebuilt copy is,
     that the project file was not changed, and how to use Check and repair;
-    the app's Details log names where the damaged file is kept. Open: it
-    still exits 0 when it found damage, though the project is unchanged.
+    the app's Details log names where the damaged file is kept. It now
+    exits 1 when it found damage (owner decision 2026-10-01), like
+    `--check`, and 0 for a healthy project.
   - Done 2026-09-30: a Check and repair whose swap fails after closing the
     live handle no longer leaves `a.db` on the closed handle.
     `RepairAndSwap` keeps a handle that still answers, reopens the file at

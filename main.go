@@ -439,8 +439,9 @@ func headlessProjectMode(cfg *cli.Config) bool {
 
 // runHeadlessRepair prints --repair's log and, when it wrote a rebuilt
 // copy, how to use it: the CLI never replaces the project file, and only
-// the app checks a copy before swapping it in.
-func runHeadlessRepair(d *db.Database, projectPath string, w io.Writer) error {
+// the app checks a copy before swapping it in. damaged reports that it
+// found damage and wrote a copy, so the project file still needs repair.
+func runHeadlessRepair(d *db.Database, projectPath string, w io.Writer) (damaged bool, err error) {
 	result, err := d.InformativeSelfHeal(projectPath)
 	lines := append([]string{}, result.Log...)
 	if err == nil && result.Snapshot != "" {
@@ -451,9 +452,12 @@ func runHeadlessRepair(d *db.Database, projectPath string, w io.Writer) error {
 		)
 	}
 	if _, werr := io.WriteString(w, strings.Join(lines, "\n")+"\n"); werr != nil {
-		return fmt.Errorf("print repair log: %w", werr)
+		return false, fmt.Errorf("print repair log: %w", werr)
 	}
-	return err
+	if err != nil {
+		return false, err
+	}
+	return result.Snapshot != "", nil
 }
 
 func openHeadlessDB(cfg *cli.Config) (*db.Database, error) {
@@ -533,8 +537,15 @@ func runHeadless(cfg *cli.Config) {
 		fmt.Println("CORRUPT")
 		os.Exit(1)
 	case cfg.Repair:
-		if err := runHeadlessRepair(d, cfg.ProjectPath, os.Stdout); err != nil {
+		damaged, err := runHeadlessRepair(d, cfg.ProjectPath, os.Stdout)
+		if err != nil {
 			log.Fatalf("repair: %v", err)
+		}
+		if damaged {
+			// The project file is still damaged; exit 1 like --check so
+			// scripts notice, after closing the database cleanly.
+			_ = d.Close()
+			os.Exit(1)
 		}
 	case cfg.Vacuum:
 		if err := d.Vacuum(); err != nil {

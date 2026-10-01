@@ -152,7 +152,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     ['--version', 'Print the version banner and exit'],
                     ['--update', 'Check the signed update channel (no-op if none configured)'],
                     ['--check', 'Integrity check; prints ok or CORRUPT'],
-                    ['--repair', 'If damaged, write a copy rebuilt from the readable data beside the file (.bak) without replacing it; prints what it did and how to use the copy'],
+                    ['--repair', 'If damaged, write a copy rebuilt from the readable data beside the file (.bak) without replacing it, print how to use the copy, and exit 1; exits 0 for a healthy project'],
                     ['--vacuum', 'Compact the database (VACUUM)'],
                     ['--export-audit <path>', 'Write the audit log to CSV'],
                     ['--stats', 'Compact project summary: status, phase, counts'],

@@ -473,7 +473,9 @@ for a project created before the August 2026 rename — as the final argument:
 - `--check` runs an integrity check and exits.
 - `--repair` checks integrity and, if it finds damage, writes a copy rebuilt
   from the readable data beside the file as `<file>.bak`, without checking it
-  or replacing the project, and prints how to use it. To repair a project in
+  or replacing the project, and prints how to use it. It exits 1 when it
+  found damage (the project still needs repair) and 0 when the project is
+  healthy, like `--check`. To repair a project in
   place, open it and use **Check and repair** in Project Settings › Data
   Protection, which checks a rebuilt copy before swapping it in and keeps the
   damaged file as `<file>.corrupt`. With **Check this project for damage when it opens** on

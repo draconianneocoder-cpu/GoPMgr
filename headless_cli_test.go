@@ -298,8 +298,8 @@ func TestRunHeadlessRepairExplainsTheRebuiltCopy(t *testing.T) {
 	}
 
 	var healthy bytes.Buffer
-	if err := runHeadlessRepair(d, path, &healthy); err != nil {
-		t.Fatalf("repair of a healthy project: %v", err)
+	if damaged, err := runHeadlessRepair(d, path, &healthy); err != nil || damaged {
+		t.Fatalf("repair of a healthy project = damaged %v, %v; want healthy (exit 0)", damaged, err)
 	}
 	if out := healthy.String(); !strings.Contains(out, "No corruption found.") || strings.Contains(out, "Check and repair") {
 		t.Fatalf("healthy project output = %q, want no next steps", out)
@@ -330,8 +330,8 @@ func TestRunHeadlessRepairExplainsTheRebuiltCopy(t *testing.T) {
 	t.Cleanup(func() { _ = d2.Close() })
 
 	var out bytes.Buffer
-	if err := runHeadlessRepair(d2, path, &out); err != nil {
-		t.Fatalf("repair of a damaged project: %v\n%s", err, out.String())
+	if damaged, err := runHeadlessRepair(d2, path, &out); err != nil || !damaged {
+		t.Fatalf("repair of a damaged project = damaged %v, %v; want damaged (exit 1)\n%s", damaged, err, out.String())
 	}
 	text := out.String()
 	for _, want := range []string{
