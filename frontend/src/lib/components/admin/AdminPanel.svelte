@@ -26,6 +26,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let createdCodes = $state<string[]>([]);
   let createdFor = $state('');
   let copied = $state(false);
+  let saving = $state(false);
+  let savedPath = $state('');
+  let saveError = $state('');
   // DEVELOPER_HANDBOOK.md §10.5: every timer must be cleared on destroy.
   let copiedTimer: ReturnType<typeof setTimeout> | null = null;
   onDestroy(() => {
@@ -91,6 +94,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       try {
         createdCodes = (await window.go.main.App.AdminIssueRecoveryCodes(uname, pw)) ?? [];
         createdFor = uname;
+        savedPath = '';
+        saveError = '';
       } catch (err: any) {
         showToast(`Account created, but recovery codes could not be generated: ${err}. The user can create them in App Settings, under Account.`, 'error');
       }
@@ -119,22 +124,29 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  function downloadCodes() {
-    const body = `GoPMgr recovery codes for ${createdFor}\n\n${createdCodes.join('\n')}\n`;
-    const url = URL.createObjectURL(new Blob([body], { type: 'text/plain' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gopmgr-recovery-codes-${createdFor}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+  // Codes are saved through the desktop save dialog the other exports use;
+  // a browser blob download was never shown to produce a file in the app
+  // window.
+  async function saveCodes() {
+    if (saving) return;
+    saving = true;
+    saveError = '';
+    try {
+      savedPath = await window.go.main.App.SaveRecoveryCodesFile(createdFor, createdCodes);
+    } catch (err: any) {
+      const message = String(err?.message ?? err);
+      if (!message.includes('export cancelled')) saveError = `Could not save the codes: ${message}`;
+    } finally {
+      saving = false;
+    }
   }
 
   function dismissCodes() {
     createdCodes = [];
     createdFor = '';
     copied = false;
+    savedPath = '';
+    saveError = '';
   }
 
   async function toggleDisabled(user: Account) {
@@ -364,10 +376,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </button>
           <button
             type="button"
-            onclick={downloadCodes}
-            class="text-xs font-semibold uppercase tracking-wide bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-1.5 rounded transition-colors"
+            onclick={saveCodes}
+            disabled={saving}
+            class="text-xs font-semibold uppercase tracking-wide bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-100 px-3 py-1.5 rounded transition-colors"
           >
-            Download .txt
+            {saving ? 'Saving…' : 'Save as .txt…'}
           </button>
           <button
             type="button"
@@ -377,9 +390,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
             Done
           </button>
         </div>
-        <p class="text-[10px] text-slate-500" aria-live="polite">
-          {copied ? 'Recovery codes copied to the clipboard.' : ''}
+        <p class="text-[10px] text-slate-500 break-all" aria-live="polite">
+          {copied ? 'Recovery codes copied to the clipboard.' : savedPath ? `Saved to ${savedPath}. Keep a copy somewhere other than this computer.` : ''}
         </p>
+        {#if saveError}
+          <p class="text-[10px] text-red-400" role="alert">{saveError}</p>
+        {/if}
       </div>
     {/if}
 

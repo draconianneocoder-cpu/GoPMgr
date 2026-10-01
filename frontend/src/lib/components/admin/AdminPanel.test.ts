@@ -186,3 +186,78 @@ describe('AdminPanel account history', () => {
     expect(await failed.findByText(/Could not load account history/)).toBeInTheDocument();
   });
 });
+
+describe('AdminPanel new-account recovery codes', () => {
+  async function createCarol(utils: ReturnType<typeof render>) {
+    await fireEvent.click(await utils.findByRole('button', { name: 'Create user' }));
+    await fireEvent.input(utils.getByPlaceholderText('username'), { target: { value: 'carol' } });
+    await fireEvent.input(utils.getByLabelText(/Initial password/), { target: { value: 'correct horse battery' } });
+    await fireEvent.submit(utils.container.querySelector('form')!);
+    await utils.findByText('Recovery codes for carol');
+  }
+
+  beforeEach(() => {
+    app.CreateAccount = vi.fn(async () => account('carol'));
+    app.AdminIssueRecoveryCodes = vi.fn(async () => ['AAAAAAAA-BBBBBBBB', 'CCCCCCCC-DDDDDDDD']);
+    app.SaveRecoveryCodesFile = vi.fn(async () => '/Users/alice/gopmgr-recovery-codes-carol.txt');
+  });
+
+  it("saves the new account's codes through the desktop dialog", async () => {
+    const utils = render(AdminPanel);
+    await createCarol(utils);
+    await fireEvent.click(utils.getByRole('button', { name: 'Save as .txt…' }));
+
+    expect(app.SaveRecoveryCodesFile).toHaveBeenCalledWith('carol', ['AAAAAAAA-BBBBBBBB', 'CCCCCCCC-DDDDDDDD']);
+    expect(await utils.findByText(
+      'Saved to /Users/alice/gopmgr-recovery-codes-carol.txt. Keep a copy somewhere other than this computer.',
+    )).toBeInTheDocument();
+  });
+
+  it('says nothing on cancel and reports any other failure', async () => {
+    app.SaveRecoveryCodesFile = vi.fn(async () => { throw 'export cancelled'; });
+    const utils = render(AdminPanel);
+    await createCarol(utils);
+    const save = utils.getByRole('button', { name: 'Save as .txt…' });
+    await fireEvent.click(save);
+    await waitFor(() => expect(save).not.toBeDisabled());
+    expect(utils.queryByText(/Could not save the codes/)).not.toBeInTheDocument();
+    expect(utils.queryByText(/Saved to/)).not.toBeInTheDocument();
+
+    app.SaveRecoveryCodesFile.mockRejectedValueOnce('recovery codes are saved as a .txt file');
+    await fireEvent.click(save);
+    expect(await utils.findByText('Could not save the codes: recovery codes are saved as a .txt file')).toBeInTheDocument();
+  });
+
+  it('opens one save dialog at a time', async () => {
+    let finishSave: (path: string) => void = () => {};
+    app.SaveRecoveryCodesFile = vi.fn(() => new Promise<string>((resolve) => { finishSave = resolve; }));
+    const utils = render(AdminPanel);
+    await createCarol(utils);
+    const save = utils.getByRole('button', { name: 'Save as .txt…' });
+    await fireEvent.click(save);
+
+    expect(save).toBeDisabled();
+    await fireEvent.click(save);
+    expect(app.SaveRecoveryCodesFile).toHaveBeenCalledOnce();
+    finishSave('/Users/alice/codes.txt');
+    await waitFor(() => expect(save).not.toBeDisabled());
+  });
+
+  it("clears the last save's message when the codes are dismissed", async () => {
+    const utils = render(AdminPanel);
+    await createCarol(utils);
+    await fireEvent.click(utils.getByRole('button', { name: 'Save as .txt…' }));
+    await utils.findByText(/Saved to/);
+
+    await fireEvent.click(utils.getByRole('button', { name: 'Done' }));
+    expect(utils.queryByText('Recovery codes for carol')).not.toBeInTheDocument();
+
+    app.CreateAccount = vi.fn(async () => account('dave'));
+    await fireEvent.click(await utils.findByRole('button', { name: 'Create user' }));
+    await fireEvent.input(utils.getByPlaceholderText('username'), { target: { value: 'dave' } });
+    await fireEvent.input(utils.getByLabelText(/Initial password/), { target: { value: 'correct horse battery' } });
+    await fireEvent.submit(utils.container.querySelector('form')!);
+    await utils.findByText('Recovery codes for dave');
+    expect(utils.queryByText(/Saved to/)).not.toBeInTheDocument();
+  });
+});
