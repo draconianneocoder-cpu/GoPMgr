@@ -187,3 +187,84 @@ func TestSaveRecoveryCodesFileNeedsTheWindow(t *testing.T) {
 		t.Fatal("SaveRecoveryCodesFile with no window succeeded, want a refusal")
 	}
 }
+
+func TestSaveRecoverySheetPDFWritesAPrivatePrintableSheet(t *testing.T) {
+	app, codes := recoveryFileApp(t)
+	dest := filepath.Join(t.TempDir(), "sheet.pdf")
+	var opts wailsruntime.SaveDialogOptions
+	calls := 0
+	before := time.Now().Format("2006-01-02")
+	path, err := app.saveRecoveryCodes("alice", codes, fakeSaveDialog(dest, &opts, &calls), recoverySheetPDF)
+	after := time.Now().Format("2006-01-02")
+	if err != nil || path != dest {
+		t.Fatalf("save sheet = %q, %v; want %q", path, err, dest)
+	}
+	body, err := os.ReadFile(dest)
+	if err != nil || !strings.HasPrefix(string(body), "%PDF-") {
+		t.Fatalf("saved sheet is not a PDF (read err %v)", err)
+	}
+	info, err := os.Stat(dest)
+	if err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("saved sheet mode = %v, %v; want 0600", info.Mode().Perm(), err)
+	}
+	home, _ := os.UserHomeDir()
+	if opts.DefaultDirectory != home ||
+		(opts.DefaultFilename != "gopmgr-recovery-sheet-alice-"+before+".pdf" && opts.DefaultFilename != "gopmgr-recovery-sheet-alice-"+after+".pdf") ||
+		len(opts.Filters) != 1 || opts.Filters[0].Pattern != "*.pdf" {
+		t.Fatalf("dialog opened with %q / %q / %v; want the home folder, a dated sheet name, and a PDF filter", opts.DefaultDirectory, opts.DefaultFilename, opts.Filters)
+	}
+}
+
+func TestSaveRecoverySheetPDFExtensionAndChecks(t *testing.T) {
+	app, codes := recoveryFileApp(t)
+	dir := t.TempDir()
+	calls := 0
+	if path, err := app.saveRecoveryCodes("alice", codes, fakeSaveDialog(filepath.Join(dir, "sheet"), nil, &calls), recoverySheetPDF); err != nil || path != filepath.Join(dir, "sheet.pdf") {
+		t.Fatalf("save without an extension = %q, %v; want sheet.pdf", path, err)
+	}
+	upper := filepath.Join(dir, "Backup.PDF")
+	if path, err := app.saveRecoveryCodes("alice", codes, fakeSaveDialog(upper, nil, &calls), recoverySheetPDF); err != nil || path != upper {
+		t.Fatalf("save as .PDF = %q, %v; want %q", path, err, upper)
+	}
+	if _, err := app.saveRecoveryCodes("alice", codes, fakeSaveDialog(filepath.Join(dir, "sheet.txt"), nil, &calls), recoverySheetPDF); err == nil {
+		t.Fatal("saved the printable sheet as .txt, want a refusal")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "sheet.txt")); !os.IsNotExist(err) {
+		t.Fatalf("a .txt file was written (stat err %v)", err)
+	}
+
+	calls = 0
+	if _, err := app.saveRecoveryCodes("alice", []string{"anything at all"}, fakeSaveDialog(filepath.Join(dir, "x.pdf"), nil, &calls), recoverySheetPDF); err == nil || calls != 0 {
+		t.Fatalf("sheet of arbitrary text = %v with %d dialogs; want a refusal before any dialog", err, calls)
+	}
+	if _, err := app.SaveRecoverySheetPDF("alice", codes); err == nil {
+		t.Fatal("SaveRecoverySheetPDF without a window succeeded, want a refusal")
+	}
+}
+
+// The public methods pick the format; reach them with a stand-in window and
+// dialog to check each saves the format its name promises.
+func TestPublicRecoverySaveMethodsUseTheirOwnFormat(t *testing.T) {
+	app, codes := recoveryFileApp(t)
+	app.ctx = context.Background()
+	t.Cleanup(func() { app.ctx = nil })
+	var opts wailsruntime.SaveDialogOptions
+	calls := 0
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "codes")
+	saved := recoveryCodesRuntime
+	recoveryCodesRuntime = func() exportDestinationRuntime { return fakeSaveDialog(dest, &opts, &calls) }
+	t.Cleanup(func() { recoveryCodesRuntime = saved })
+
+	path, err := app.SaveRecoveryCodesFile("alice", codes)
+	if err != nil || path != dest+".txt" || !strings.HasSuffix(opts.DefaultFilename, ".txt") {
+		t.Fatalf("SaveRecoveryCodesFile = %q, %v (default %q); want a .txt file", path, err, opts.DefaultFilename)
+	}
+	path, err = app.SaveRecoverySheetPDF("alice", codes)
+	if err != nil || path != dest+".pdf" || !strings.HasPrefix(opts.DefaultFilename, "gopmgr-recovery-sheet-") {
+		t.Fatalf("SaveRecoverySheetPDF = %q, %v (default %q); want a printable .pdf sheet", path, err, opts.DefaultFilename)
+	}
+	if body, err := os.ReadFile(path); err != nil || !strings.HasPrefix(string(body), "%PDF-") {
+		t.Fatalf("SaveRecoverySheetPDF wrote something other than a PDF (read err %v)", err)
+	}
+}

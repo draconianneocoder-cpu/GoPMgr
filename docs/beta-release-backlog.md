@@ -237,8 +237,13 @@ That result took six live-GUI cycles to reach because the first five, all run un
        without changes, so a user holding only legacy codes who forgets
        their password stays locked out until administrator recovery exists;
        the reminder is how they renew codes while they still know it;
-    3. a printable recovery sheet: unblocked now that codes save through
-       the desktop dialog (below);
+    3. a printable recovery sheet: done 2026-10-01. "Save printable PDF…"
+       next to "Save as .txt…" writes a one-page sheet (codes with tick
+       boxes, how to use them, keep it safe, delete the file once printed)
+       through the same checks and save dialog. It is a plain PDF without a
+       PDF/A claim, since no embedded font is set before a project opens;
+       saved through the native Save panel on 2026-10-01 (see below), not
+       yet printed;
     5. administrator recovery: through ADR-004 (phases 1 and 2 ship in one
        release);
     6. keeping a key copy in the OS keychain: declined by default, because
@@ -254,7 +259,14 @@ That result took six live-GUI cycles to reach because the first five, all run un
     reminder, and the encryption step) share `RecoveryCodeList`, so renewal
     can save too. Renewed codes work only once confirmed: if a saved set is
     kept out of use, the panel names the file to delete (a toast if the
-    panel closes first). Not yet clicked in the native window.
+    panel closes first). Native check 2026-10-01 (isolated `wails dev`,
+    darwin/arm64): the macOS Save panel opened in the home folder with the
+    dated name for both formats; the .txt and the one-page PDF were written
+    `0600` with the same 8 codes in order (`pdftotext`); Cancel (including
+    Cancel on macOS's "Replace?" alert) showed nothing and changed nothing;
+    "Keep my current codes" named both files. Not checked natively:
+    choosing Replace in that alert (GoPMgr's refusal is covered by tests
+    only), and an actual printout.
   - Prefill the username on the sign-in screen after a recovery reset.
   - Explain the last-administrator guard in the Admin panel before the click.
   - Undecided (owner): a username picker on the sign-in screen conflicts with

@@ -51,8 +51,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   function unusedFileWarning(files: string[]): string {
     return files.length === 1
-      ? `The codes saved to ${files[0]} were never put in use and won't work. Delete that file.`
-      : `The codes saved to ${files.join(', ')} were never put in use and won't work. Delete those files.`;
+      ? `The codes saved to ${files[0]} were never put in use and won't work. Delete that file and any copy you printed.`
+      : `The codes saved to ${files.join(', ')} were never put in use and won't work. Delete those files and any copies you printed.`;
   }
 
   function dropSavedFiles() {
