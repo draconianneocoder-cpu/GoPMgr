@@ -10,7 +10,10 @@ const codes = ['AAAAAAAA-BBBBBBBB', 'CCCCCCCC-DDDDDDDD'];
 let app: Record<string, ReturnType<typeof vi.fn>>;
 
 beforeEach(() => {
-  app = { SaveRecoveryCodesFile: vi.fn(async () => '/Users/alice/codes.txt') };
+  app = {
+    SaveRecoveryCodesFile: vi.fn(async () => '/Users/alice/codes.txt'),
+    SaveRecoverySheetPDF: vi.fn(async () => '/Users/alice/sheet.pdf'),
+  };
   (window as unknown as { go: unknown }).go = { main: { App: app } };
 });
 
@@ -49,10 +52,37 @@ describe('RecoveryCodeList', () => {
     expect(utils.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('uses the caller\'s hint after the saved path', async () => {
+  it('adds the caller\'s hint after the saved message', async () => {
     const { utils, save } = renderList({ savedHint: 'These start working later.' });
     await fireEvent.click(save);
-    expect(await utils.findByText('Saved to /Users/alice/codes.txt. These start working later.')).toBeInTheDocument();
+    expect(await utils.findByText(
+      'Saved to /Users/alice/codes.txt. Keep a copy somewhere other than this computer. These start working later.',
+    )).toBeInTheDocument();
+  });
+
+  it('saves a printable sheet and says to delete the file once printed', async () => {
+    const onsaved = vi.fn();
+    const { utils } = renderList({ onsaved });
+    await fireEvent.click(utils.getByRole('button', { name: 'Save printable PDF…' }));
+
+    expect(app.SaveRecoverySheetPDF).toHaveBeenCalledWith('alice', codes);
+    expect(app.SaveRecoveryCodesFile).not.toHaveBeenCalled();
+    expect(await utils.findByText('Saved to /Users/alice/sheet.pdf. Print it, then delete the file.')).toBeInTheDocument();
+    expect(onsaved).toHaveBeenCalledWith('/Users/alice/sheet.pdf');
+  });
+
+  it('opens one save dialog at a time across both formats', async () => {
+    let finishSave: (path: string) => void = () => {};
+    app.SaveRecoveryCodesFile.mockImplementationOnce(() => new Promise<string>((resolve) => { finishSave = resolve; }));
+    const { utils, save } = renderList();
+    const sheet = utils.getByRole('button', { name: 'Save printable PDF…' });
+    await fireEvent.click(save);
+
+    expect(sheet).toBeDisabled();
+    await fireEvent.click(sheet);
+    expect(app.SaveRecoverySheetPDF).not.toHaveBeenCalled();
+    finishSave('/Users/alice/codes.txt');
+    await waitFor(() => expect(sheet).not.toBeDisabled());
   });
 
   it('says nothing when the save dialog is cancelled', async () => {

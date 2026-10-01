@@ -14,12 +14,17 @@ import (
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"gopmgr/internal/documents"
 	"gopmgr/internal/users"
 )
 
 // recoveryCodeFormat matches a code as users.IssueRecoveryCodes returns it:
 // two groups of eight base32 characters joined by a dash.
 var recoveryCodeFormat = regexp.MustCompile(`^[A-Z2-7]{8}-[A-Z2-7]{8}$`)
+
+// recoveryCodesRuntime supplies the save dialog; tests replace it to reach
+// the public methods, which otherwise need a real window.
+var recoveryCodesRuntime = productionExportDestinationRuntime
 
 // SaveRecoveryCodesFile writes freshly shown recovery codes to a text file
 // the user picks in a save dialog, and returns its path. Account creation and
@@ -35,7 +40,19 @@ func (a *App) SaveRecoveryCodesFile(username string, codes []string) (string, er
 	if a.ctx == nil {
 		return "", errors.New("saving recovery codes needs the application window")
 	}
-	return a.saveRecoveryCodesFileWithRuntime(username, codes, productionExportDestinationRuntime())
+	return a.saveRecoveryCodesFileWithRuntime(username, codes, recoveryCodesRuntime())
+}
+
+// SaveRecoverySheetPDF writes the codes as a one-page printable sheet, with
+// instructions and a box to tick off each code, to a PDF the user picks in
+// the save dialog, and returns its path. The sheet tells the user to delete
+// the file once it is printed. Same checks and folder rules as
+// SaveRecoveryCodesFile.
+func (a *App) SaveRecoverySheetPDF(username string, codes []string) (string, error) {
+	if a.ctx == nil {
+		return "", errors.New("saving recovery codes needs the application window")
+	}
+	return a.saveRecoveryCodes(username, codes, recoveryCodesRuntime(), recoverySheetPDF)
 }
 
 func (a *App) saveRecoveryCodesFileWithRuntime(username string, codes []string, runtime exportDestinationRuntime) (string, error) {
@@ -59,6 +76,16 @@ var recoveryCodesText = recoveryCodesFormat{
 	filter: wailsruntime.FileFilter{DisplayName: "Text files", Pattern: "*.txt"},
 	render: func(username, created string, codes []string) ([]byte, error) {
 		return []byte("GoPMgr recovery codes for " + username + "\nCreated " + created + "\n\n" + strings.Join(codes, "\n") + "\n"), nil
+	},
+}
+
+var recoverySheetPDF = recoveryCodesFormat{
+	ext:    ".pdf",
+	stem:   "gopmgr-recovery-sheet-",
+	title:  "Save printable recovery sheet",
+	filter: wailsruntime.FileFilter{DisplayName: "PDF files", Pattern: "*.pdf"},
+	render: func(username, created string, codes []string) ([]byte, error) {
+		return documents.RenderRecoverySheetPDF(documents.RecoverySheet{Username: username, Created: created, Codes: codes})
 	},
 }
 

@@ -64,6 +64,29 @@ func TestRecoveryResetKeepsEncryptedProjectsReadable(t *testing.T) {
 	signInAndOpen(t, app, "reset-password", projectPath)
 }
 
+// The printable sheet tells the user each code works once and to tick it
+// off: after one reset the used code is refused and every other code still
+// resets the password and keeps the encrypted project readable.
+func TestRecoveryResetLeavesTheOtherCodesWorking(t *testing.T) {
+	app, projectPath, codes := newResetTestApp(t)
+
+	if err := app.ResetWithRecoveryCode("alice", codes[0], "first-reset"); err != nil {
+		t.Fatalf("first ResetWithRecoveryCode: %v", err)
+	}
+	signInAndOpen(t, app, "first-reset", projectPath)
+	if err := app.Logout(); err != nil {
+		t.Fatalf("Logout: %v", err)
+	}
+
+	if err := app.ResetWithRecoveryCode("alice", codes[0], "reuse-attempt"); !errors.Is(err, users.ErrInvalidRecoveryCode) {
+		t.Fatalf("reusing a code = %v, want ErrInvalidRecoveryCode", err)
+	}
+	if err := app.ResetWithRecoveryCode("alice", codes[len(codes)-1], "second-reset"); err != nil {
+		t.Fatalf("a second code after the first was used: %v", err)
+	}
+	signInAndOpen(t, app, "second-reset", projectPath)
+}
+
 // A code from before ADR-001 cannot unlock the key, so the reset is
 // refused and the account is left as it was: the old password still signs
 // in and the project still opens.

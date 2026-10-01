@@ -161,7 +161,7 @@ describe('RecoveryCodesPanel onrenewed', () => {
 
 describe('RecoveryCodesPanel saving new codes', () => {
   const file = '/Users/alice/gopmgr-recovery-codes-alice-2026-09-30.txt';
-  const unusedWarning = `The codes saved to ${file} were never put in use and won't work. Delete that file.`;
+  const unusedWarning = `The codes saved to ${file} were never put in use and won't work. Delete that file and any copy you printed.`;
 
   beforeEach(() => {
     session.user = {
@@ -186,7 +186,7 @@ describe('RecoveryCodesPanel saving new codes', () => {
 
     expect(app.SaveRecoveryCodesFile).toHaveBeenCalledWith('alice', newCodes);
     expect(utils.getByText(
-      `Saved to ${file}. These codes start working only when you choose “Use the new codes”.`,
+      `Saved to ${file}. Keep a copy somewhere other than this computer. These codes start working only when you choose “Use the new codes”.`,
     )).toBeInTheDocument();
   });
 
@@ -209,7 +209,7 @@ describe('RecoveryCodesPanel saving new codes', () => {
     await fireEvent.click(utils.getByRole('button', { name: 'Keep my current codes' }));
 
     expect(await utils.findByRole('alert')).toHaveTextContent(
-      `The codes saved to ${file}, ${usb} were never put in use and won't work. Delete those files.`,
+      `The codes saved to ${file}, ${usb} were never put in use and won't work. Delete those files and any copies you printed.`,
     );
 
     // Both are named in the toast too when the panel closes instead.
@@ -221,7 +221,7 @@ describe('RecoveryCodesPanel saving new codes', () => {
     await utils.findByText(/Saved to \/b\.txt/);
     utils.unmount();
     expect(toastSpy).toHaveBeenCalledWith(
-      "The codes saved to /a.txt, /b.txt were never put in use and won't work. Delete those files.",
+      "The codes saved to /a.txt, /b.txt were never put in use and won't work. Delete those files and any copies you printed.",
       'error',
     );
   });

@@ -430,12 +430,14 @@ can reset an account password once and, for encrypted project databases,
 also unlock the user's wrapped DEK.
 
 The codes are shown once. **Copy** puts them on the clipboard; **Save as
-.txt…** writes them to a new text file you choose, named with the date.
+.txt…** writes them to a new text file you choose, named with the date;
+**Save printable PDF…** writes a one-page sheet with the codes, how to use
+them, and a box to tick off each one. Print the sheet, then delete the PDF.
 GoPMgr never replaces an existing file. Keep a copy somewhere other than
 this computer. To make new codes, open App Settings › Account and choose
 **Create new recovery codes**; they replace the old ones only after you
-choose **Use the new codes**, so a file saved before that holds codes that
-won't work if you keep your current ones.
+choose **Use the new codes**, so a file or sheet saved before that holds
+codes that won't work if you keep your current ones.
 
 After migrating an existing plaintext project database to encrypted
 storage, recovery codes must be reissued so active codes can unlock the

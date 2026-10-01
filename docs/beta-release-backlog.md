@@ -237,8 +237,12 @@ That result took six live-GUI cycles to reach because the first five, all run un
        without changes, so a user holding only legacy codes who forgets
        their password stays locked out until administrator recovery exists;
        the reminder is how they renew codes while they still know it;
-    3. a printable recovery sheet: unblocked now that codes save through
-       the desktop dialog (below);
+    3. a printable recovery sheet: done 2026-10-01. "Save printable PDF…"
+       next to "Save as .txt…" writes a one-page sheet (codes with tick
+       boxes, how to use them, keep it safe, delete the file once printed)
+       through the same checks and save dialog. It is a plain PDF without a
+       PDF/A claim, since no embedded font is set before a project opens;
+       not yet printed from the native app;
     5. administrator recovery: through ADR-004 (phases 1 and 2 ship in one
        release);
     6. keeping a key copy in the OS keychain: declined by default, because
