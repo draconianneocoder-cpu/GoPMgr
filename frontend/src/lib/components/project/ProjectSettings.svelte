@@ -553,7 +553,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   function recoveryCodesRenewed() {
     encryptionError = '';
-    encryptionStatus = 'New recovery codes saved. You can encrypt the database now.';
+    encryptionStatus = 'New recovery codes are in use. You can encrypt the database now.';
   }
 
   async function chooseCert() {

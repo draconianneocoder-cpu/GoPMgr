@@ -4,7 +4,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
+  import { session } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
+  import RecoveryCodeList from './RecoveryCodeList.svelte';
 
   // onrenewed runs after new codes are saved, once the panel has returned
   // to its idle step (Project Settings uses it to allow encryption again).
@@ -28,19 +30,35 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let saved = $state(false);
   let busy = $state(false);
   let error = $state('');
-  let copied = $state(false);
-  // DEVELOPER_HANDBOOK.md §10.5: every timer must be cleared on destroy.
-  let copiedTimer: ReturnType<typeof setTimeout> | null = null;
+  // Files saved while new codes are on screen hold codes that work only once
+  // they are confirmed. If they are dropped instead, each file looks like a
+  // good recovery file but is not, so name them for the user to delete.
+  let savedFiles = $state<string[]>([]);
+  let unusedFiles = $state<string[]>([]);
 
   onMount(loadStatus);
   $effect(() => {
     onpendingchange?.(step === 'codes');
   });
   onDestroy(() => {
-    if (copiedTimer) clearTimeout(copiedTimer);
-    if (step === 'codes') void window.go.main.App.DiscardRecoveryCodes();
+    if (step === 'codes') {
+      void window.go.main.App.DiscardRecoveryCodes();
+      // The panel is gone, so only a toast can still reach the user.
+      if (savedFiles.length > 0) showToast(unusedFileWarning(savedFiles), 'error');
+    }
     onpendingchange?.(false);
   });
+
+  function unusedFileWarning(files: string[]): string {
+    return files.length === 1
+      ? `The codes saved to ${files[0]} were never put in use and won't work. Delete that file.`
+      : `The codes saved to ${files.join(', ')} were never put in use and won't work. Delete those files.`;
+  }
+
+  function dropSavedFiles() {
+    unusedFiles = [...unusedFiles, ...savedFiles];
+    savedFiles = [];
+  }
 
   async function loadStatus() {
     statusError = '';
@@ -82,12 +100,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     try {
       await window.go.main.App.ConfirmRecoveryCodes();
-      showToast('New recovery codes saved. Your old codes no longer work.', 'success');
+      showToast('New recovery codes are in use. Your old codes no longer work.', 'success');
       finish();
       renewed = true;
     } catch (err: any) {
       const message = String(err?.message ?? err);
       error = message.charAt(0).toUpperCase() + message.slice(1) + '.';
+      dropSavedFiles();
       step = 'idle';
       codes = [];
     } finally {
@@ -98,7 +117,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   async function cancel() {
-    if (step === 'codes') await window.go.main.App.DiscardRecoveryCodes();
+    if (step === 'codes') {
+      await window.go.main.App.DiscardRecoveryCodes();
+      dropSavedFiles();
+    }
     finish();
   }
 
@@ -107,17 +129,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     password = '';
     codes = [];
     saved = false;
-  }
-
-  async function copyCodes() {
-    try {
-      await navigator.clipboard.writeText(codes.join('\n'));
-      copied = true;
-      if (copiedTimer) clearTimeout(copiedTimer);
-      copiedTimer = setTimeout(() => (copied = false), 2000);
-    } catch {
-      // Clipboard may be unavailable; the codes stay visible to copy by hand.
-    }
+    savedFiles = [];
   }
 </script>
 
@@ -145,6 +157,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     {/if}
   {/if}
 
+  {#if unusedFiles.length > 0}
+    <p class="text-xs text-amber-300 bg-amber-950/40 border border-amber-700/50 rounded p-2" role="alert">
+      {unusedFileWarning(unusedFiles)}
+    </p>
+  {/if}
+
   {#if step === 'idle'}
     <button
       type="button"
@@ -154,7 +172,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   {:else if step === 'password'}
     <form class="space-y-2" onsubmit={prepare}>
       <p class="text-xs text-slate-400">
-        Your current codes keep working until you save the new ones.
+        Your current codes keep working until you use the new ones.
       </p>
       <label for="rc-password" class="block text-[11px] font-semibold text-slate-500 uppercase">Current password</label>
       <input
@@ -177,15 +195,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
     <div class="space-y-2">
       <p class="text-xs text-slate-300">
         Save these codes somewhere safe, such as a password manager or a printed copy. Each works
-        once, and they are shown only now. Your current codes keep working until you save these.
+        once, and they are shown only now. Your current codes keep working until you choose
+        “Use the new codes”.
       </p>
-      <ol class="grid grid-cols-2 gap-1 font-mono text-xs text-slate-200 bg-slate-950 border border-slate-800 rounded p-3">
-        {#each codes as code (code)}
-          <li>{code}</li>
-        {/each}
-      </ol>
-      <button type="button" onclick={copyCodes} class="text-xs text-cyan-400 hover:text-cyan-300 underline">Copy codes</button>
-      <span class="text-xs text-emerald-400" aria-live="polite">{copied ? 'Copied.' : ''}</span>
+      <RecoveryCodeList
+        username={session.user?.username ?? ''}
+        {codes}
+        savedHint="These codes start working only when you choose “Use the new codes”."
+        onsaved={(path) => (savedFiles = [...savedFiles, path])}
+      />
       <label class="flex items-start gap-2 text-xs text-slate-300 select-none">
         <input type="checkbox" bind:checked={saved} class="mt-0.5 accent-cyan-500" />
         I have saved these codes somewhere safe.

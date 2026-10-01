@@ -3,9 +3,10 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import Logo from '../Logo.svelte';
+  import RecoveryCodeList from './RecoveryCodeList.svelte';
 
   let username = $state('');
   let displayName = $state('');
@@ -28,15 +29,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let codes = $state<string[]>([]);
   let codesError = $state('');
   let acknowledged = $state(false);
-  let copied = $state(false);
-  let saving = $state(false);
-  let savedPath = $state('');
-  let saveError = $state('');
-  // DEVELOPER_HANDBOOK.md §10.5: every timer must be cleared on destroy.
-  let copiedTimer: ReturnType<typeof setTimeout> | null = null;
-  onDestroy(() => {
-    if (copiedTimer) clearTimeout(copiedTimer);
-  });
 
   const usernameRule = /^[A-Za-z0-9_-]{3,32}$/;
 
@@ -98,34 +90,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
         : message;
     } finally {
       busy = false;
-    }
-  }
-
-  async function copyCodes() {
-    try {
-      await navigator.clipboard.writeText(codes.join('\n'));
-      copied = true;
-      if (copiedTimer) clearTimeout(copiedTimer);
-      copiedTimer = setTimeout(() => (copied = false), 2000);
-    } catch {
-      // Clipboard may be unavailable; the codes stay visible for manual copy.
-    }
-  }
-
-  // Codes are saved through the desktop save dialog the other exports use;
-  // a browser blob download was never shown to produce a file in the app
-  // window.
-  async function saveCodes() {
-    if (saving) return;
-    saving = true;
-    saveError = '';
-    try {
-      savedPath = await window.go.main.App.SaveRecoveryCodesFile(username, codes);
-    } catch (err: any) {
-      const message = String(err?.message ?? err);
-      if (!message.includes('export cancelled')) saveError = `Could not save the codes: ${message}`;
-    } finally {
-      saving = false;
     }
   }
 
@@ -308,35 +272,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </p>
       </div>
 
-      <ul class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 font-mono text-sm text-slate-100 bg-slate-950 border border-slate-800 rounded-lg p-4">
-        {#each codes as code (code)}
-          <li>{code}</li>
-        {/each}
-      </ul>
-
-      <div class="flex gap-2">
-        <button
-          type="button"
-          onclick={copyCodes}
-          class="flex-1 text-xs font-semibold uppercase tracking-wide bg-slate-800 hover:bg-slate-700 text-slate-100 py-2 rounded transition-colors"
-        >
-          {copied ? 'Copied ✓' : 'Copy'}
-        </button>
-        <button
-          type="button"
-          onclick={saveCodes}
-          disabled={saving}
-          class="flex-1 text-xs font-semibold uppercase tracking-wide bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-100 py-2 rounded transition-colors"
-        >
-          {saving ? 'Saving…' : 'Save as .txt…'}
-        </button>
-      </div>
-      <p class="text-[10px] text-slate-500 text-center min-h-[1rem] break-all" aria-live="polite">
-        {copied ? 'Recovery codes copied to the clipboard.' : savedPath ? `Saved to ${savedPath}. Keep a copy somewhere other than this computer.` : ''}
-      </p>
-      {#if saveError}
-        <p class="text-[10px] text-red-400 text-center" role="alert">{saveError}</p>
-      {/if}
+      <RecoveryCodeList {username} {codes} />
 
       <label class="flex items-start gap-3 cursor-pointer select-none">
         <input type="checkbox" bind:checked={acknowledged} class="mt-0.5 accent-cyan-500" />

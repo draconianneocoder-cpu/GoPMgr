@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/svelte';
 
 import RecoveryCodesPanel from './RecoveryCodesPanel.svelte';
+import { session } from '../../session.svelte';
+import * as toast from '../../toast.svelte';
 
 const newCodes = ['AAAAAAAA-BBBBBBBB', 'CCCCCCCC-DDDDDDDD'];
 let app: Record<string, ReturnType<typeof vi.fn>>;
@@ -154,5 +156,106 @@ describe('RecoveryCodesPanel onrenewed', () => {
     await fireEvent.click(utils.getByLabelText('I have saved these codes somewhere safe.'));
     await fireEvent.click(utils.getByRole('button', { name: 'Use the new codes' }));
     await waitFor(() => expect(onrenewed).toHaveBeenCalledOnce());
+  });
+});
+
+describe('RecoveryCodesPanel saving new codes', () => {
+  const file = '/Users/alice/gopmgr-recovery-codes-alice-2026-09-30.txt';
+  const unusedWarning = `The codes saved to ${file} were never put in use and won't work. Delete that file.`;
+
+  beforeEach(() => {
+    session.user = {
+      username: 'alice', display_name: 'Alice', data_dir: '', created_at: '', last_login: '', is_admin: false,
+    } as Account;
+    app.SaveRecoveryCodesFile = vi.fn(async () => file);
+  });
+
+  afterEach(() => {
+    session.user = null;
+  });
+
+  async function saveNewCodes(utils: ReturnType<typeof render>) {
+    await openCodes(utils);
+    await fireEvent.click(utils.getByRole('button', { name: 'Save as .txt…' }));
+    await utils.findByText(/Saved to/);
+  }
+
+  it('saves the new codes for the signed-in user and says they are not in use yet', async () => {
+    const utils = render(RecoveryCodesPanel);
+    await saveNewCodes(utils);
+
+    expect(app.SaveRecoveryCodesFile).toHaveBeenCalledWith('alice', newCodes);
+    expect(utils.getByText(
+      `Saved to ${file}. These codes start working only when you choose “Use the new codes”.`,
+    )).toBeInTheDocument();
+  });
+
+  it('names a saved file whose codes were kept out of use', async () => {
+    const utils = render(RecoveryCodesPanel);
+    await saveNewCodes(utils);
+    await fireEvent.click(utils.getByRole('button', { name: 'Keep my current codes' }));
+
+    expect(await utils.findByRole('alert')).toHaveTextContent(unusedWarning);
+  });
+
+  it('names every file saved from one set of new codes', async () => {
+    const usb = '/Volumes/USB/gopmgr-recovery-codes-alice-2026-09-30.txt';
+    app.SaveRecoveryCodesFile.mockResolvedValueOnce(file).mockResolvedValueOnce(usb);
+    const toastSpy = vi.spyOn(toast, 'showToast');
+    const utils = render(RecoveryCodesPanel);
+    await saveNewCodes(utils);
+    await fireEvent.click(utils.getByRole('button', { name: 'Save as .txt…' }));
+    await utils.findByText(new RegExp(`Saved to ${usb}`));
+    await fireEvent.click(utils.getByRole('button', { name: 'Keep my current codes' }));
+
+    expect(await utils.findByRole('alert')).toHaveTextContent(
+      `The codes saved to ${file}, ${usb} were never put in use and won't work. Delete those files.`,
+    );
+
+    // Both are named in the toast too when the panel closes instead.
+    await openCodes(utils);
+    app.SaveRecoveryCodesFile.mockResolvedValueOnce('/a.txt').mockResolvedValueOnce('/b.txt');
+    await fireEvent.click(utils.getByRole('button', { name: 'Save as .txt…' }));
+    await utils.findByText(/Saved to \/a\.txt/);
+    await fireEvent.click(utils.getByRole('button', { name: 'Save as .txt…' }));
+    await utils.findByText(/Saved to \/b\.txt/);
+    utils.unmount();
+    expect(toastSpy).toHaveBeenCalledWith(
+      "The codes saved to /a.txt, /b.txt were never put in use and won't work. Delete those files.",
+      'error',
+    );
+  });
+
+  it('names a saved file when putting its codes in use fails', async () => {
+    app.ConfirmRecoveryCodes.mockRejectedValueOnce(new Error('your recovery codes changed while these were on screen'));
+    const utils = render(RecoveryCodesPanel);
+    await saveNewCodes(utils);
+    await fireEvent.click(utils.getByLabelText('I have saved these codes somewhere safe.'));
+    await fireEvent.click(utils.getByRole('button', { name: 'Use the new codes' }));
+
+    await waitFor(() => expect(utils.getAllByRole('alert').map((a) => a.textContent?.trim())).toContain(unusedWarning));
+  });
+
+  it('warns about nothing when the saved codes are put in use, or none were saved', async () => {
+    const utils = render(RecoveryCodesPanel);
+    await saveNewCodes(utils);
+    await fireEvent.click(utils.getByLabelText('I have saved these codes somewhere safe.'));
+    await fireEvent.click(utils.getByRole('button', { name: 'Use the new codes' }));
+    await waitFor(() => expect(app.ConfirmRecoveryCodes).toHaveBeenCalledOnce());
+
+    await openCodes(utils);
+    await fireEvent.click(utils.getByRole('button', { name: 'Keep my current codes' }));
+    await waitFor(() => expect(app.DiscardRecoveryCodes).toHaveBeenCalledOnce());
+    expect(utils.queryByText(/never put in use/)).not.toBeInTheDocument();
+  });
+
+  it('still names the file when the panel closes with its codes unused', async () => {
+    const toastSpy = vi.spyOn(toast, 'showToast');
+    const utils = render(RecoveryCodesPanel);
+    await saveNewCodes(utils);
+    utils.unmount();
+
+    expect(app.DiscardRecoveryCodes).toHaveBeenCalledOnce();
+    expect(toastSpy).toHaveBeenCalledWith(unusedWarning, 'error');
   });
 });

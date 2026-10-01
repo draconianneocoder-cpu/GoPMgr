@@ -246,16 +246,15 @@ That result took six live-GUI cycles to reach because the first five, all run un
        only as an explicit single-user opt-in, with its own design record.
   - Done 2026-09-29: the Project Picker's unreachable create form is removed.
     `App.CreateProject` backs the Launchpad's "Start with a blank project".
-  - CreateAccount, the Admin panel, and App Settings each show recovery
-    codes their own way; the first two now have tests of their code-display
-    steps, so share one component. App Settings' panel (also used by the
-    sign-in reminder) offers only Copy; the shared component gives it
-    "Save as .txt…" too.
   - Done 2026-09-30: recovery codes save through the desktop save dialog
-    (`App.SaveRecoveryCodesFile`) instead of a blob-link download, on account
-    creation and in the Admin panel. The dialog opens in the home folder and
-    does not remember the folder; the file is new and private (`0600`).
-    Not yet clicked in the native window.
+    (`App.SaveRecoveryCodesFile`) instead of a blob-link download. The dialog
+    opens in the home folder and does not remember the folder; the file is
+    new and private (`0600`), and its name and first lines carry the date.
+    Account creation, the Admin panel, and renewal (App Settings, the sign-in
+    reminder, and the encryption step) share `RecoveryCodeList`, so renewal
+    can save too. Renewed codes work only once confirmed: if a saved set is
+    kept out of use, the panel names the file to delete (a toast if the
+    panel closes first). Not yet clicked in the native window.
   - Prefill the username on the sign-in screen after a recovery reset.
   - Explain the last-administrator guard in the Admin panel before the click.
   - Undecided (owner): a username picker on the sign-in screen conflicts with

@@ -586,7 +586,7 @@ describe('database encryption and recovery codes', () => {
 
     await fireEvent.click(utils.getByLabelText('I have saved these codes somewhere safe.'));
     await fireEvent.click(utils.getByRole('button', { name: 'Use the new codes' }));
-    expect(await utils.findByText('New recovery codes saved. You can encrypt the database now.')).toBeInTheDocument();
+    expect(await utils.findByText('New recovery codes are in use. You can encrypt the database now.')).toBeInTheDocument();
     expect(app.EncryptProjectAtRest).not.toHaveBeenCalled();
 
     await fireEvent.click(utils.getByRole('button', { name: 'Encrypt database' }));
