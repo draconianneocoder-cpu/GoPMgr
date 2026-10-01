@@ -7,12 +7,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../../session.svelte';
   import Logo from '../Logo.svelte';
 
-  let username = $state('');
+  // After a recovery reset, sign in as the account just reset: the name is
+  // filled in once and the cursor waits in the password field.
+  const prefilled = session.signInUsername ?? '';
+  session.signInUsername = null;
+  let username = $state(prefilled);
   let password = $state('');
   let error = $state('');
   let busy = $state(false);
   let showPassword = $state(false);
   let usernameEl = $state<HTMLInputElement>();
+  let passwordEl = $state<HTMLInputElement>();
   // What the sign-in screen offers depends on this machine's first-run
   // state: account creation only while no account exists (the backend
   // refuses it otherwise), and a pointer to Become administrator for an
@@ -25,9 +30,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let setup = $state<AccountSetup | null>(null);
   let setupChecked = $state(false); // suppress the setup hints until resolved
 
-  // Focus the first field on load so the user can type immediately.
+  // Focus the first empty field on load so the user can type immediately.
   onMount(async () => {
-    usernameEl?.focus();
+    (prefilled ? passwordEl : usernameEl)?.focus();
     try {
       setup = await window.go.main.App.AccountSetup();
     } catch {
@@ -98,6 +103,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           id="lg-password"
           type={showPassword ? 'text' : 'password'}
           autocomplete="current-password"
+          bind:this={passwordEl}
           bind:value={password}
           class="w-full bg-slate-950 border border-slate-800 p-2 pr-11 rounded focus:border-cyan-500 outline-none"
         />

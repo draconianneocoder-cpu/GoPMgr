@@ -42,10 +42,27 @@ afterEach(() => {
   cleanup();
   session.user = null;
   session.view = 'login';
+  session.signInUsername = null;
   vi.restoreAllMocks();
 });
 
 describe('Login', () => {
+  it('fills in the username from a recovery reset once, with the cursor in the password field', async () => {
+    installApp();
+    session.signInUsername = 'alice';
+    const first = render(Login);
+
+    expect(first.getByLabelText('Username')).toHaveValue('alice');
+    await waitFor(() => expect(first.getByLabelText('Password')).toHaveFocus());
+    expect(session.signInUsername).toBeNull();
+
+    // Signing out later, or any other visit, starts blank.
+    cleanup();
+    const second = render(Login);
+    expect(second.getByLabelText('Username')).toHaveValue('');
+    await waitFor(() => expect(second.getByLabelText('Username')).toHaveFocus());
+  });
+
   it('submits the exact credentials once, stores the returned account, and opens the portfolio', async () => {
     const app = installApp();
     const utils = render(Login);

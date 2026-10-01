@@ -78,6 +78,11 @@ export const session = $state<{
   // A Project Settings tab to open on the next visit (the Dashboard's damage
   // notice asks for Data Protection); ProjectSettings clears it on use.
   settingsTab: 'protection' | null;
+  // The username a successful recovery reset just accepted, for the next
+  // sign-in screen to fill in once (Login clears it on use). It only echoes
+  // a name the user typed and the backend accepted, so it reveals no other
+  // account; it is not the undecided username picker.
+  signInUsername: string | null;
 }>({
   user: null,
   project: null,
@@ -87,6 +92,7 @@ export const session = $state<{
   updateStatus: null,
   recoveryReminderDismissedFor: null,
   settingsTab: null,
+  signInUsername: null,
 });
 
 type PendingNavigation = {
