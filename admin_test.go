@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"gopmgr/internal/sqlitedriver"
@@ -403,5 +404,67 @@ func TestChangePassword_ReportsACorruptWrapInPlainWords(t *testing.T) {
 	want := "your stored encryption key could not be read with this password, so nothing was changed; sign out and use a recovery code"
 	if err == nil || err.Error() != want {
 		t.Fatalf("ChangePassword with a corrupt wrap: err = %v, want %q", err, want)
+	}
+}
+
+// The last-administrator guard (users.ErrLastAdmin) cannot be reached
+// through the App: its methods refuse the caller's own account, and the
+// store re-checks inside the transaction that the caller is still an
+// enabled administrator. So the Admin panel never needs to explain it.
+func TestAdminMethodsNeverReachTheLastAdministratorGuard(t *testing.T) {
+	const lastAdmin = "only administrator who can sign in"
+	app := newAdminTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
+		t.Fatalf("CreateAccount alice: %v", err)
+	}
+	signIn(t, app, "alice")
+
+	// The only administrator aiming at herself: refused as her own account.
+	for name, err := range map[string]error{
+		"role":    app.AdminSetUserRole("alice", false),
+		"disable": app.AdminSetUserDisabled("alice", true),
+		"delete":  app.AdminPurgeUser("alice", "alice"),
+	} {
+		if err == nil || !strings.Contains(err.Error(), "own") || strings.Contains(err.Error(), lastAdmin) {
+			t.Errorf("%s of your own account = %v, want the own-account refusal", name, err)
+		}
+	}
+
+	// Another enabled administrator can be demoted and disabled: the caller
+	// is still one.
+	if _, err := app.CreateAccount("bob", "Bob", "passphrase-long", true); err != nil {
+		t.Fatalf("CreateAccount bob: %v", err)
+	}
+	if err := app.AdminSetUserRole("bob", false); err != nil {
+		t.Fatalf("demote another administrator: %v", err)
+	}
+	if err := app.AdminSetUserRole("bob", true); err != nil {
+		t.Fatalf("promote bob again: %v", err)
+	}
+	if err := app.AdminSetUserDisabled("bob", true); err != nil {
+		t.Fatalf("disable another administrator: %v", err)
+	}
+	if err := app.AdminSetUserDisabled("bob", false); err != nil {
+		t.Fatalf("enable bob again: %v", err)
+	}
+
+	// Another GoPMgr process demotes alice; her session still says admin.
+	// Acting on bob, now the last enabled administrator, is refused because
+	// she is no longer one, before the last-administrator guard runs.
+	if err := app.store.SetAdmin("bob", "alice", false); err != nil {
+		t.Fatalf("demote alice from another session: %v", err)
+	}
+	err := app.AdminSetUserDisabled("bob", true)
+	if err == nil || err.Error() != "administrator privileges required" {
+		t.Fatalf("stale session disabling the last administrator = %v, want administrator privileges required", err)
+	}
+	accounts, err := app.store.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	for _, a := range accounts {
+		if a.Username == "bob" && (!a.IsAdmin || a.Disabled) {
+			t.Fatalf("bob = admin %v, disabled %v; want an enabled administrator", a.IsAdmin, a.Disabled)
+		}
 	}
 }

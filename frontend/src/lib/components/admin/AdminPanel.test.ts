@@ -234,3 +234,38 @@ describe('AdminPanel new-account recovery codes', () => {
     expect(app.SaveRecoveryCodesFile).toHaveBeenLastCalledWith('dave', ['EEEEEEEE-FFFFFFFF']);
   });
 });
+
+describe('AdminPanel own row', () => {
+  const sole = /You're the only administrator, so no one can change your account\. To step down, make someone else an administrator who can sign in first\./;
+  const other = 'Another administrator can change your account.';
+
+  // The note sits in your own row only; other rows keep their actions.
+  function ownRowNote(utils: ReturnType<typeof render>) {
+    const row = utils.getByText('(you)').closest('tr') as HTMLElement;
+    expect(within(bobRow(utils)).queryByText(sole)).not.toBeInTheDocument();
+    expect(within(bobRow(utils)).queryByText(other)).not.toBeInTheDocument();
+    return row;
+  }
+
+  it('tells the only administrator how to step down', async () => {
+    const utils = render(AdminPanel);
+    await utils.findByRole('button', { name: 'Disable account bob' });
+    expect(within(ownRowNote(utils)).getByText(sole)).toBeInTheDocument();
+  });
+
+  it('points to the other administrators when there are any', async () => {
+    app.AdminListUsers.mockResolvedValue([account('alice', { is_admin: true }), account('bob', { is_admin: true })]);
+    const utils = render(AdminPanel);
+    await utils.findByRole('button', { name: 'Disable account bob' });
+    const row = ownRowNote(utils);
+    expect(within(row).getByText(other)).toBeInTheDocument();
+    expect(within(row).queryByText(sole)).not.toBeInTheDocument();
+  });
+
+  it('does not count a disabled administrator, who cannot sign in', async () => {
+    app.AdminListUsers.mockResolvedValue([account('alice', { is_admin: true }), account('bob', { is_admin: true, disabled: true })]);
+    const utils = render(AdminPanel);
+    await utils.findByRole('button', { name: 'Enable account bob' });
+    expect(within(ownRowNote(utils)).getByText(sole)).toBeInTheDocument();
+  });
+});

@@ -274,7 +274,24 @@ That result took six live-GUI cycles to reach because the first five, all run un
     to end in the isolated `wails dev` sandbox: a real code reset, the name
     filled in with the cursor in Password, sign-in, and a blank screen after
     signing out.
-  - Explain the last-administrator guard in the Admin panel before the click.
+  - Done 2026-10-02: the last-administrator guard cannot be reached from the
+    Admin panel. `AdminSetUserRole`, `AdminSetUserDisabled`, and
+    `AdminPurgeUser` refuse the caller's own account, and the store re-checks
+    inside the transaction that the caller is an enabled administrator, so
+    acting on another enabled administrator always leaves at least two
+    (`TestAdminMethodsNeverReachTheLastAdministratorGuard`; the guard stays
+    as defence in depth for the store API). What users met was a blank
+    Actions cell on their own row: it now says another administrator can
+    change the account, or, for the only administrator, to make someone else
+    an administrator who can sign in before stepping down. Help says the
+    same.
+  - Legacy account pairs that differ only in letter case (created before the
+    2026-06-20 duplicate check): the panel's "your own row" test is
+    case-sensitive while the backend's self check is not, so the panel offers
+    actions on the other-cased account that the backend refuses as "your own
+    account". Deleting it is refused anyway (the two may share a folder).
+    Decide whether such a sibling may be disabled or have its role changed,
+    then align the two checks.
   - Undecided (owner): a username picker on the sign-in screen conflicts with
     the generic sign-in error rule. The unused `ListUsers` IPC method, which
     returned every account without signing in, was removed 2026-09-29; a

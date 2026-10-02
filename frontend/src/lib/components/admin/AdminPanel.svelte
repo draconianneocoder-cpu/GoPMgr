@@ -230,6 +230,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   const isSelf = (u: Account) => u.username === session.user?.username;
+  // Your own row has no actions: the backend refuses changes to your own
+  // account, which is also what keeps at least one administrator able to
+  // sign in. Counted like the backend's guard: disabled admins don't count.
+  const soleAdmin = $derived(allUsers.filter((u) => u.is_admin && !u.disabled).length <= 1);
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">
@@ -422,6 +426,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
                         >Delete permanently</button>
                       {/if}
                     </div>
+                  {:else}
+                    <p class="text-[11px] text-slate-500 text-right">
+                      {soleAdmin
+                        ? "You're the only administrator, so no one can change your account. To step down, make someone else an administrator who can sign in first."
+                        : 'Another administrator can change your account.'}
+                    </p>
                   {/if}
                 </td>
               </tr>

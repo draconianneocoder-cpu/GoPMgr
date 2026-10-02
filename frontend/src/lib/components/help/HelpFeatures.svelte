@@ -678,7 +678,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li><span class="font-medium text-slate-100">Disable</span> stops the person signing in and keeps everything: their projects, encryption key, and recovery codes. "Enable" lets them sign in again.</li>
               <li><span class="font-medium text-slate-100">Delete permanently</span> removes the account and its folder: all of that user's projects (including encrypted ones), certificates, exports, and recovery codes. Type the username to confirm. It cannot be undone, so disable the account instead if the data might be needed.</li>
               <li>Every account creation, role change, disable, enable, and deletion appears under Account history, with who did it and when.</li>
-              <li>You cannot disable or delete the last administrator who can sign in, or your own account.</li>
+              <li>You can't change your own account's role, disable it, or delete it; another administrator can. If you're the only administrator, make someone else an administrator first, so there is always one who can sign in.</li>
             </ul>
           </section>
 
