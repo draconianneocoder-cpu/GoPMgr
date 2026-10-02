@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -35,6 +36,7 @@ import (
 	"time"
 
 	"gopmgr/internal/auth"
+	"gopmgr/internal/crypto"
 	"gopmgr/internal/sqlitedriver"
 )
 
@@ -339,6 +341,10 @@ func (s *Store) SetAdmin(actor, username string, isAdmin bool) error {
 			if err := guardLastEnabledAdmin(ctx, q, targetIsAdmin, targetDisabled); err != nil {
 				return err
 			}
+			// A former administrator keeps no escrow grant (ADR-004).
+			if err := removeGrantTx(ctx, q, username); err != nil {
+				return err
+			}
 		}
 		if _, err := q.ExecContext(ctx, `UPDATE users SET is_admin = ? WHERE username = ?`, boolToInt(isAdmin), username); err != nil {
 			return err
@@ -433,17 +439,40 @@ func (s *Store) CreateAccount(username, displayName, password string, isAdmin bo
 // refused call creates no folders. The returned Account carries the role
 // actually stored.
 func (s *Store) CreateAccountAs(callerUsername, username, displayName, password string, isAdmin bool) (Account, error) {
+	acc, dek, err := s.CreateAccountWithKey(callerUsername, username, displayName, password, isAdmin, nil)
+	clear(dek)
+	return acc, err
+}
+
+// CreateAccountWithKey is CreateAccountAs that also gives the account its
+// DEK (ADR-001), wrapped under its password and stored with the row, and
+// returns it. The account is enrolled in administrator escrow (ADR-004) in
+// the same transaction: with session, the creating administrator's escrow
+// key (sealed to and attested with it, and granted to a new administrator);
+// without, the escrow key on disk, if any. An enrollment failure does not
+// stop the account being created; the account's next sign-in enrolls it.
+// The caller must clear the DEK.
+func (s *Store) CreateAccountWithKey(callerUsername, username, displayName, password string, isAdmin bool, session *EscrowSession) (Account, []byte, error) {
 	if err := ValidateUsername(username); err != nil {
-		return Account{}, err
+		return Account{}, nil, err
 	}
 	if err := ValidatePassword(password); err != nil {
-		return Account{}, err
+		return Account{}, nil, err
 	}
-	// Hash before taking the write lock: Argon2id is deliberately slow and
-	// would hold every other writer off system.db for its whole run.
+	// Hash and wrap before taking the write lock: Argon2id is deliberately
+	// slow and would hold every other writer off system.db for its runs.
 	hash, err := auth.HashPassword(password)
 	if err != nil {
-		return Account{}, err
+		return Account{}, nil, err
+	}
+	dek, err := crypto.GenerateDEK()
+	if err != nil {
+		return Account{}, nil, err
+	}
+	wrapped, err := crypto.WrapKey(dek, password)
+	if err != nil {
+		clear(dek)
+		return Account{}, nil, err
 	}
 
 	var acc Account
@@ -480,17 +509,27 @@ func (s *Store) CreateAccountAs(callerUsername, username, displayName, password 
 		if created.IsAdmin {
 			role = "administrator"
 		}
-		return recordAccountEvent(ctx, q, actor, username, AccountCreated, role)
+		if err := recordAccountEvent(ctx, q, actor, username, AccountCreated, role); err != nil {
+			return err
+		}
+		if _, err := q.ExecContext(ctx, `UPDATE users SET wrapped_dek_pw = ? WHERE username = ?`, wrapped, username); err != nil {
+			return err
+		}
+		if err := enrollInSavepoint(ctx, q, username, dek, session, created.IsAdmin); err != nil {
+			log.Printf("users: escrow enrollment of new account %s failed, retried at its sign-in: %v", username, err)
+		}
+		return nil
 	})
 	if err != nil {
+		clear(dek)
 		// insertAccount removes its folders if the insert fails; a folder
 		// that exists now belongs to a row the failed COMMIT rolled back.
 		if acc.DataDir != "" {
 			removeNewUserFolder(acc.DataDir)
 		}
-		return Account{}, err
+		return Account{}, nil, err
 	}
-	return acc, nil
+	return acc, dek, nil
 }
 
 // afterAccountRuleCheck runs inside CreateAccountAs's transaction, after
@@ -502,6 +541,7 @@ var afterAccountRuleCheck = func() {}
 // uses, so it can run inside CreateAccountAs's transaction or without one.
 type accountWriter interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 

@@ -4,7 +4,9 @@
 package users
 
 import (
+	"context"
 	"fmt"
+	"log"
 
 	"gopmgr/internal/crypto"
 )
@@ -95,24 +97,52 @@ func (s *Store) UnlockDEK(username, password string) ([]byte, error) {
 	}
 
 	if wrapped == "" {
-		dek, err := crypto.GenerateDEK()
-		if err != nil {
-			return nil, err
-		}
-		blob, err := crypto.WrapKey(dek, password)
-		if err != nil {
-			return nil, err
-		}
-		if _, err := s.conn.Exec(
-			`UPDATE users SET wrapped_dek_pw = ? WHERE username = ?`,
-			blob, username,
-		); err != nil {
-			return nil, err
-		}
-		return dek, nil
+		return s.createLegacyDEK(username, password)
 	}
 
 	return crypto.UnwrapKey(wrapped, password)
+}
+
+// createLegacyDEK gives an account that predates ADR-001 its DEK, wrapped
+// under its password, and enrolls it in administrator escrow (ADR-004) in
+// the same transaction. The DEK is made and wrapped before taking the
+// write lock (Argon2id is slow); if another process stored a DEK first,
+// that one is unwrapped and returned instead, so an account never has two.
+func (s *Store) createLegacyDEK(username, password string) ([]byte, error) {
+	dek, err := crypto.GenerateDEK()
+	if err != nil {
+		return nil, err
+	}
+	blob, err := crypto.WrapKey(dek, password)
+	if err != nil {
+		clear(dek)
+		return nil, err
+	}
+	var existing string
+	err = s.inWriteTx("encryption key creation", func(ctx context.Context, q accountWriter) error {
+		if err := q.QueryRowContext(ctx, `SELECT wrapped_dek_pw FROM users WHERE username = ?`, username).Scan(&existing); err != nil {
+			return ErrNoSuchUser
+		}
+		if existing != "" {
+			return nil
+		}
+		if _, err := q.ExecContext(ctx, `UPDATE users SET wrapped_dek_pw = ? WHERE username = ?`, blob, username); err != nil {
+			return err
+		}
+		if err := enrollInSavepoint(ctx, q, username, dek, nil, false); err != nil {
+			log.Printf("users: escrow enrollment of %s failed, retried at next sign-in: %v", username, err)
+		}
+		return nil
+	})
+	if err != nil {
+		clear(dek)
+		return nil, err
+	}
+	if existing != "" {
+		clear(dek)
+		return crypto.UnwrapKey(existing, password)
+	}
+	return dek, nil
 }
 
 // HasLegacyRecoveryCodeWraps reports whether any active recovery code

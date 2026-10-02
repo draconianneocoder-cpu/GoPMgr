@@ -176,6 +176,31 @@ describe('AdminPanel account history', () => {
     expect(items[3]).toContain('alice disabled bob');
   });
 
+  it('lists administrator key events in plain words', async () => {
+    app.AdminListAccountEvents.mockResolvedValue([
+      { id: 6, occurred_at: '2026-10-02T10:05:00Z', actor: 'alice', username: 'bob', action: 'escrow_rotated', detail: '' },
+      { id: 5, occurred_at: '2026-10-02T10:04:00Z', actor: 'alice', username: 'bob', action: 'admin_access', detail: '' },
+      { id: 4, occurred_at: '2026-10-02T10:03:00Z', actor: 'alice', username: 'dave', action: 'personal_key_trusted', detail: '' },
+      { id: 3, occurred_at: '2026-10-02T10:02:00Z', actor: 'carol', username: 'carol', action: 'personal_key_repaired', detail: 'the stored key could not be opened, so a new one was made' },
+      { id: 2, occurred_at: '2026-10-02T10:01:00Z', actor: 'bob', username: 'bob', action: 'escrow_reenrolled', detail: '' },
+      { id: 1, occurred_at: '2026-10-02T10:00:00Z', actor: 'bob', username: 'bob', action: 'escrow_key_mismatch', detail: 'the administrator key in system.db is not the one this account trusts, so nothing was sealed' },
+    ]);
+    const utils = render(AdminPanel);
+    const history = await utils.findByRole('region', { name: 'Account history' });
+
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(6));
+    const items = within(history).getAllByRole('listitem').map((li) => li.textContent?.replace(/\s+/g, ' '));
+    expect(items[0]).toContain('alice replaced the administrator key');
+    expect(items[1]).toContain("alice opened bob's data as an administrator");
+    expect(items[2]).toContain("alice accepted dave's account key without an earlier check");
+    expect(items[3]).toContain("carol's account key was changed outside GoPMgr and was repaired at sign-in");
+    expect(items[3]).toContain('a new one was made');
+    expect(items[4]).toContain("bob's key records were missing and were made again at sign-in");
+    expect(items[5]).toContain('A key check failed for bob');
+    expect(items[5]).toContain('nothing was sealed');
+    for (const item of items) expect(item).not.toMatch(/escrow|_/);
+  });
+
   it('says when there is no history, and reports a failed load', async () => {
     const utils = render(AdminPanel);
     expect(await utils.findByText('No account changes yet.')).toBeInTheDocument();

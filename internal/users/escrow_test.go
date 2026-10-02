@@ -148,7 +148,7 @@ func TestEscrowAccountEventsAreAccepted(t *testing.T) {
 	store := newStatusStore(t)
 	for _, action := range []string{
 		AccountAdminAccess, AccountEscrowKeyMismatch, AccountEscrowReenrolled,
-		AccountPersonalKeyRepaired, AccountEscrowRotated,
+		AccountPersonalKeyRepaired, AccountEscrowRotated, AccountPersonalKeyTrusted,
 	} {
 		if err := recordAccountEvent(context.Background(), store.conn, "alice", "bob", action, ""); err != nil {
 			t.Errorf("record %s: %v", action, err)
