@@ -416,3 +416,37 @@ func TestPurgeAccountRefusesWhenAnotherAccountDiffersOnlyInCase(t *testing.T) {
 	}
 	assertEvents(t, store)
 }
+
+// An account created before Windows device names were refused, here "con",
+// still signs in and can be disabled and deleted: the refusal applies only
+// to new accounts.
+func TestAccountWithAWindowsDeviceNameStillWorks(t *testing.T) {
+	store := newStatusStore(t)
+	folder := filepath.Join(store.RootDir(), "con")
+	if err := os.MkdirAll(filepath.Join(folder, "projects"), 0o700); err != nil {
+		t.Fatalf("mkdir con: %v", err)
+	}
+	hash, err := auth.HashPassword(statusPassword)
+	if err != nil {
+		t.Fatalf("HashPassword: %v", err)
+	}
+	if _, err := store.conn.Exec(
+		`INSERT INTO users (username, display_name, password_hash, data_dir, created_at, is_admin) VALUES ('con', 'Con', ?, ?, '2026-01-01T00:00:00Z', 0)`,
+		hash, folder,
+	); err != nil {
+		t.Fatalf("seed con account: %v", err)
+	}
+
+	if _, err := store.Authenticate("con", statusPassword); err != nil {
+		t.Fatalf("sign in as con: %v", err)
+	}
+	if err := store.SetDisabled("alice", "con", true); err != nil {
+		t.Fatalf("disable con: %v", err)
+	}
+	if err := store.PurgeAccount("alice", "con"); err != nil {
+		t.Fatalf("delete con: %v", err)
+	}
+	if _, err := os.Stat(folder); !os.IsNotExist(err) {
+		t.Fatalf("con's folder after deletion: stat err = %v, want it gone", err)
+	}
+}

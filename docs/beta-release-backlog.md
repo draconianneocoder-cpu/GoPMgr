@@ -161,9 +161,13 @@ That result took six live-GUI cycles to reach because the first five, all run un
     `logs` keeps the log folder as its home. If the app dies between making
     the folder and committing the account, the empty folder blocks that
     username until someone removes it.
-  - Windows device names (`CON`, `NUL`, `AUX`, `PRN`, `COM1`–`COM9`,
-    `LPT1`–`LPT9`) pass `ValidateUsername` but cannot be folder names on
-    Windows. Add them to `reservedFolderNames` when Windows is tested.
+  - Done 2026-10-02: new accounts cannot use Windows device names (`CON`,
+    `PRN`, `AUX`, `NUL`, `COM0`–`COM9`, `LPT0`–`LPT9`, any letter case) on
+    any platform (`ErrWindowsDeviceName`, checked before the folder is made).
+    They are a separate list, not `reservedFolderNames`, because that list
+    also refuses deletion with a "log folder" message; an existing account
+    with such a name still signs in and can be disabled or deleted. Tested
+    on macOS only; not exercised on Windows.
   - In-app administrator access to another user's data, recorded (owner
     decision, 2026-09-24, replacing the same day's rule that administrators
     must not read users' data). An administrator opens another user's

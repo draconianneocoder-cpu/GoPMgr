@@ -365,6 +365,42 @@ func TestCreateAccountRefusesReservedFolderNames(t *testing.T) {
 	}
 }
 
+// Windows keeps these names for devices, so they cannot be account folders
+// there; new accounts are refused on every platform, in any letter case.
+// All 24 are spelled out here, independently of the production list.
+func TestCreateAccountRefusesWindowsDeviceNames(t *testing.T) {
+	names := []string{
+		"con", "prn", "aux", "nul",
+		"com0", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+		"lpt0", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+		"CON", "Prn", "NUL", "Com9", "LPT1",
+	}
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			store := openTestStore(t)
+			if _, err := store.CreateAccountAs("", name, "", rulePassword, false); !errors.Is(err, ErrWindowsDeviceName) {
+				t.Fatalf("CreateAccountAs(%q): err = %v, want ErrWindowsDeviceName", name, err)
+			}
+			assertNoAccountFolder(t, store, name)
+			if got, err := store.HasAnyAccount(); err != nil || got {
+				t.Fatalf("HasAnyAccount after refusal = %v, %v; want false", got, err)
+			}
+		})
+	}
+}
+
+// Names that only start like a device name are ordinary usernames.
+func TestCreateAccountAllowsNamesThatOnlyResembleDevices(t *testing.T) {
+	for _, name := range []string{"com10", "console", "auxiliary", "lpt", "nul_1", "con-2"} {
+		t.Run(name, func(t *testing.T) {
+			store := openTestStore(t)
+			if _, err := store.CreateAccountAs("", name, "", rulePassword, false); err != nil {
+				t.Fatalf("CreateAccountAs(%q): %v", name, err)
+			}
+		})
+	}
+}
+
 // TestCreateAccountRemovesFoldersWhenInsertFails proves a failed insert
 // does not leave a folder behind that would block the username forever.
 func TestCreateAccountRemovesFoldersWhenInsertFails(t *testing.T) {

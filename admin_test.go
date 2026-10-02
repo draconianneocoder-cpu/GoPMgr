@@ -468,3 +468,12 @@ func TestAdminMethodsNeverReachTheLastAdministratorGuard(t *testing.T) {
 		}
 	}
 }
+
+func TestCreateAccount_ExplainsAWindowsDeviceName(t *testing.T) {
+	app := newAdminTestApp(t)
+	_, err := app.CreateAccount("Con", "Con", "passphrase-long", false)
+	want := `"Con" is a name Windows keeps for devices, so it can't be a folder; choose another username`
+	if err == nil || err.Error() != want {
+		t.Fatalf("CreateAccount(Con) = %v, want %q", err, want)
+	}
+}
