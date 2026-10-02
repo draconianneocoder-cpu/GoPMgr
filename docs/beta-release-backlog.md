@@ -185,6 +185,20 @@ That result took six live-GUI cycles to reach because the first five, all run un
       and promotion is refused until the account has signed in once (owner
       decision). Evidence: `escrow_enroll_test.go` and `app_escrow_test.go`
       rows in `TEST_COVERAGE_LEDGER.md`.
+    - Phase 2 slice A built 2026-10-02 (backend): `Store.OpenUserForAdmin`
+      records `admin_access` with the reason and releases the target's DEK
+      only after the commit; `App.AdminOpenUserData`, `AdminListUserProjects`,
+      `AdminViewUserProject`, and `AdminStopUserData` view a read-only copy
+      held apart from `a.db` and `a.dek`. View only, by owner decision.
+      Slice B (the Admin panel, with a required reason, and the read-only
+      viewer's screens) removes the release guard. Slice B must also: show
+      the `admin_access` reason in the account history (its detail line
+      shows only for `folder_not_removed`, `escrow_key_mismatch`, and
+      `personal_key_repaired`); route every viewer read method through one
+      accessor that re-checks the role, as `openAccess` does; and decide
+      whether the viewer warns about a broken audit chain, which
+      `OpenProject` checks for compliance-mode projects and the viewer does
+      not.
     - Open for phase 2: the Admin panel offers no way to grant an
       existing administrator who lacks a grant (one created or promoted by
       an administrator without one, or one present before escrow began);

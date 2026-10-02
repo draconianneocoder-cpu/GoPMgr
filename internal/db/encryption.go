@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"gopmgr/internal/crypto"
+	"gopmgr/internal/sqlitedriver"
 )
 
 const sqliteHeader = "SQLite format 3\x00"
@@ -33,6 +34,47 @@ func InitEncryptedDB(path string, dek []byte) (*Database, error) {
 		return nil, err
 	}
 	return initDBWithDSN(path, dsn)
+}
+
+// ErrCopyDamaged is returned by OpenEncryptedCopyReadOnly when the copy
+// fails SQLite's integrity check, for example because it was taken while
+// its owner was writing to the original.
+var ErrCopyDamaged = errors.New("db: project copy fails its integrity check")
+
+// OpenEncryptedCopyReadOnly opens a copy of an encrypted project for
+// reading only (ADR-004 administrator access). path must be the copy, never
+// the owner's file: the copy's schema is migrated first, as any open does,
+// then its integrity is checked, and it is reopened with query_only set on
+// every pooled connection, so nothing read through the result can change
+// it.
+func OpenEncryptedCopyReadOnly(path string, dek []byte) (*Database, error) {
+	d, err := InitEncryptedDB(path, dek)
+	if err != nil {
+		return nil, err
+	}
+	ok, err := checkIntegrity(d.Conn)
+	if closeErr := d.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return nil, fmt.Errorf("db: check project copy: %w", err)
+	}
+	if !ok {
+		return nil, ErrCopyDamaged
+	}
+	dsn, err := encryptedDSN(path, dek)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := sql.Open(sqlitedriver.Name, withConnPragmas(dsn)+"&_query_only=1")
+	if err != nil {
+		return nil, fmt.Errorf("sql.Open: %w", err)
+	}
+	if err := applyStandardPragmas(conn); err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+	return &Database{Conn: conn, Path: path}, nil
 }
 
 // IsEncryptedFile reports whether path does not expose SQLite's
