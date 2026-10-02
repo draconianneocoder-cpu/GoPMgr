@@ -29,8 +29,8 @@ func seedRows(t *testing.T, d *Database) {
 // err=nil) on the ORIGINAL file, but VACUUM INTO -- which rebuilds
 // every page via B-tree traversal -- produces a genuinely clean copy;
 // checkSnapshotIntegrity on the resulting .bak passes. This is the
-// fixture for InformativeSelfHeal's "Corruption found -> Snapshot is
-// healthy" success path.
+// fixture for InformativeSelfHeal's "Corruption found -> rebuilt copy
+// written" success path.
 func corruptLightly(t *testing.T, d *Database, path string) {
 	t.Helper()
 	seedRows(t, d)
@@ -304,8 +304,17 @@ func TestInformativeSelfHeal_LightCorruptionProducesHealthySnapshot(t *testing.T
 	if !strings.Contains(logJoined, "Corruption found.") {
 		t.Errorf("log = %v, want a \"Corruption found.\" entry", result.Log)
 	}
-	if !strings.Contains(logJoined, "Snapshot is healthy") {
-		t.Errorf("log = %v, want a \"Snapshot is healthy\" entry", result.Log)
+	// The log is shown to users in the app and by --repair: it says where
+	// the copy is, and gives no developer instruction or unchecked
+	// "healthy" claim. It does not say the project is unchanged, because
+	// in the app the copy is swapped in next.
+	if want := "Wrote the rebuilt copy to " + livePath + ".bak."; !strings.Contains(logJoined, want) || strings.Contains(logJoined, "not changed") {
+		t.Errorf("log = %v, want %q", result.Log, want)
+	}
+	for _, banned := range []string{"SwapInSnapshot", "healthy"} {
+		if strings.Contains(logJoined, banned) {
+			t.Errorf("log = %v, must not mention %q", result.Log, banned)
+		}
 	}
 	if err := checkSnapshotIntegrity(livePath + ".bak"); err != nil {
 		t.Errorf("resulting .bak snapshot is not healthy: %v (stale .bak was not properly replaced)", err)

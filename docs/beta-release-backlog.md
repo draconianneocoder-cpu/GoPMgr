@@ -301,10 +301,12 @@ That result took six live-GUI cycles to reach because the first five, all run un
     the built-in column IDs (`todo`, `doing`, `review`, `done`) are primary
     keys shared by every board, so `ensureDefaultColumns`'s `ON CONFLICT DO
     NOTHING` gives a second project's board no default columns.
-  - `--repair` prints "Call SwapInSnapshot to atomically replace the live
-    file." after writing its `.bak`, which is a developer instruction. Word
-    it for users (where the healed copy is and how to use it), or have the
-    CLI swap it in the way Check and repair does.
+  - Done 2026-10-01: `--repair` no longer prints "Call SwapInSnapshot…" or
+    calls an unchecked copy "healthy". It says where the rebuilt copy is,
+    that the project file was not changed, and how to use Check and repair;
+    the app's Details log names where the damaged file is kept. It now
+    exits 1 when it found damage (owner decision 2026-10-01), like
+    `--check`, and 0 for a healthy project.
   - Done 2026-09-30: a Check and repair whose swap fails after closing the
     live handle no longer leaves `a.db` on the closed handle.
     `RepairAndSwap` keeps a handle that still answers, reopens the file at

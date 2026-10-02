@@ -35,11 +35,14 @@ type RepairResult struct {
 //
 //  1. PRAGMA integrity_check; on the live database.
 //  2. If clean, return success immediately.
-//  3. If dirty, create a side-by-side .bak snapshot via VACUUM INTO.
-//  4. Replace the live file with the snapshot (atomic rename on POSIX).
+//  3. If dirty, rebuild a side-by-side .bak copy via VACUUM INTO from the
+//     pages SQLite can still read.
 //
-// The function is intentionally chatty: every step writes a line into
-// result.Log so the GUI can render a transparent "what happened" report.
+// It never replaces the live file and does not check the copy: the app's
+// Check and repair verifies it and swaps it in (SwapInSnapshot); the
+// --repair CLI only writes it. Every step writes a line into result.Log,
+// which the app shows under Details and the CLI prints, so the lines are
+// written for users.
 func (db *Database) InformativeSelfHeal(path string) (RepairResult, error) {
 	result := RepairResult{Log: []string{"Starting diagnostic check..."}}
 
@@ -57,7 +60,7 @@ func (db *Database) InformativeSelfHeal(path string) (RepairResult, error) {
 	}
 
 	// 2. Snapshot.
-	result.Log = append(result.Log, "Corruption found. Attempting snapshot and recovery...")
+	result.Log = append(result.Log, "Corruption found. Rebuilding a copy from the readable data...")
 	snapshotPath := path + ".bak"
 
 	// VACUUM INTO refuses to overwrite, so clear any stale .bak first.
@@ -72,17 +75,12 @@ func (db *Database) InformativeSelfHeal(path string) (RepairResult, error) {
 		return result, err
 	}
 	result.Snapshot = snapshotPath
-	result.Log = append(result.Log, fmt.Sprintf("Snapshot created at %s.", snapshotPath))
 
-	// 3. Caller is responsible for calling SwapInSnapshot to atomically
-	// replace the live file. We cannot do it here because db.Conn is
-	// held by the rest of the application and we need its cooperation
-	// to close handles before the rename.
+	// 3. The caller swaps the copy in (SwapInSnapshot), after checking
+	// it. It cannot happen here because db.Conn is held by the rest of
+	// the application, which has to close its handles before the rename.
 	result.Success = true
-	result.Log = append(result.Log, fmt.Sprintf(
-		"Snapshot is healthy at %s. Call SwapInSnapshot to atomically replace the live file.",
-		snapshotPath,
-	))
+	result.Log = append(result.Log, fmt.Sprintf("Wrote the rebuilt copy to %s.", snapshotPath))
 	return result, nil
 }
 

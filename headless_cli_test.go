@@ -4,9 +4,12 @@
 package main
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"gopmgr/internal/cli"
@@ -273,4 +276,78 @@ func TestOpenHeadlessDBEncryptedCredentialFailures(t *testing.T) {
 			t.Fatal("opened encrypted project with the wrong password")
 		}
 	})
+}
+
+// --repair prints the repair log and, only when it wrote a rebuilt copy,
+// how to use it. It never changes the project file and never tells the
+// user to call an internal function.
+func TestRunHeadlessRepairExplainsTheRebuiltCopy(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "project.gopmgr")
+	d, err := db.InitDB(path)
+	if err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+	project, err := d.UpsertProject(db.Project{Name: "Repair Demo", Status: "planning", Phase: "planning"})
+	if err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	for i := range 300 {
+		if _, err := d.SaveStakeholder(db.Stakeholder{ProjectID: project.ID, Name: fmt.Sprintf("S%d", i), Category: db.StakeholderTeam}); err != nil {
+			t.Fatalf("seed stakeholder %d: %v", i, err)
+		}
+	}
+
+	var healthy bytes.Buffer
+	if damaged, err := runHeadlessRepair(d, path, &healthy); err != nil || damaged {
+		t.Fatalf("repair of a healthy project = damaged %v, %v; want healthy (exit 0)", damaged, err)
+	}
+	if out := healthy.String(); !strings.Contains(out, "No corruption found.") || strings.Contains(out, "Check and repair") {
+		t.Fatalf("healthy project output = %q, want no next steps", out)
+	}
+	if err := d.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	damaged, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read project: %v", err)
+	}
+	damaged[3*4096+1] ^= 0xFF
+	if err := os.WriteFile(path, damaged, 0o600); err != nil {
+		t.Fatalf("write damaged project: %v", err)
+	}
+	// GOPMGR_REPAIR_SAMPLE=<path> keeps a copy of the damaged file, to run
+	// the built binary's --repair against by hand.
+	if sample := os.Getenv("GOPMGR_REPAIR_SAMPLE"); sample != "" {
+		if err := os.WriteFile(sample, damaged, 0o600); err != nil {
+			t.Fatalf("write sample: %v", err)
+		}
+	}
+	d2, err := db.InitDB(path)
+	if err != nil {
+		t.Fatalf("reopen damaged project: %v", err)
+	}
+	t.Cleanup(func() { _ = d2.Close() })
+
+	var out bytes.Buffer
+	if damaged, err := runHeadlessRepair(d2, path, &out); err != nil || !damaged {
+		t.Fatalf("repair of a damaged project = damaged %v, %v; want damaged (exit 1)\n%s", damaged, err, out.String())
+	}
+	text := out.String()
+	for _, want := range []string{
+		"Corruption found.",
+		"Wrote the rebuilt copy to " + path + ".bak.\nThe project file was not changed.",
+		"open it in GoPMgr and choose Check and repair in Project Settings › Data Protection",
+		"keeps the damaged file as " + path + ".corrupt",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("output is missing %q:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "SwapInSnapshot") {
+		t.Errorf("output tells the user to call an internal function:\n%s", text)
+	}
+	if after, err := os.ReadFile(path); err != nil || !bytes.Equal(after, damaged) {
+		t.Fatalf("--repair changed the project file (read err %v)", err)
+	}
 }
