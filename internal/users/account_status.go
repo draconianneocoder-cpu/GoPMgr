@@ -55,6 +55,13 @@ const (
 	AccountEnabled          = "enabled"
 	AccountPurged           = "purged"
 	AccountFolderNotRemoved = "folder_not_removed"
+
+	// Administrator escrow (ADR-004).
+	AccountAdminAccess         = "admin_access"
+	AccountEscrowKeyMismatch   = "escrow_key_mismatch"
+	AccountEscrowReenrolled    = "escrow_reenrolled"
+	AccountPersonalKeyRepaired = "personal_key_repaired"
+	AccountEscrowRotated       = "escrow_rotated"
 )
 
 // accountEventActions lists the actions recordAccountEvent accepts. It is
@@ -69,6 +76,12 @@ var accountEventActions = map[string]bool{
 	AccountEnabled:          true,
 	AccountPurged:           true,
 	AccountFolderNotRemoved: true,
+
+	AccountAdminAccess:         true,
+	AccountEscrowKeyMismatch:   true,
+	AccountEscrowReenrolled:    true,
+	AccountPersonalKeyRepaired: true,
+	AccountEscrowRotated:       true,
 }
 
 // AccountEvent is one entry in the account history.

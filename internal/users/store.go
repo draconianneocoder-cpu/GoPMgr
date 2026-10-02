@@ -178,6 +178,10 @@ func (s *Store) Close() error {
 // RootDir returns the configured GoPMgr data root (see DefaultRootDir).
 func (s *Store) RootDir() string { return s.rootDir }
 
+// migrate creates and upgrades system.db. Never rebuild the users table
+// (create a copy, drop, rename) while foreign keys are on: dropping it
+// deletes its rows first, which cascades to every account's escrow rows
+// (escrow.go) and recovery codes.
 func (s *Store) migrate() error {
 	const schema = `
 	CREATE TABLE IF NOT EXISTS users (
@@ -217,7 +221,11 @@ func (s *Store) migrate() error {
 		return err
 	}
 	// Disabled accounts and the account history (account_status.go).
-	return s.migrateAccountStatus()
+	if err := s.migrateAccountStatus(); err != nil {
+		return err
+	}
+	// Administrator escrow (ADR-004, escrow.go).
+	return s.migrateEscrowTables()
 }
 
 // migrateLastExportDirColumn adds last_export_directory to pre-existing

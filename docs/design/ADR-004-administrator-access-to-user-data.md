@@ -5,8 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-004: Administrator access to users' data
 
-**Status:** Accepted, not yet implemented. The owner accepted every
-recommendation under Owner decisions on 2026-09-25.
+**Status:** Accepted; phase 1 in progress (2026-10-02). The owner accepted
+every recommendation under Owner decisions on 2026-09-25. Phases 1 and 2
+reach `main` before a release; `make escrow-release-guard`, run by
+`check-release`, fails while any code seals a DEK, and phase 2's pull
+request deletes it.
 **Decision date:** 2026-09-25 (owner requirement: 2026-09-24)
 
 ## Context
