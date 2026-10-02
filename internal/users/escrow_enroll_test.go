@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 
@@ -684,5 +685,78 @@ func TestPromotingADisabledAccountGrantsAtEnabling(t *testing.T) {
 	}
 	if err := store.PromoteAdmin("alice", aliceDEK, "carol"); !errors.Is(err, ErrNoPersonalKey) {
 		t.Fatalf("PromoteAdmin(disabled carol, no key) = %v, want ErrNoPersonalKey", err)
+	}
+}
+
+func TestGrantKeyGivesTheKeyOrRefusesWithTheReason(t *testing.T) {
+	store, aliceDEK := escrowStore(t)
+	session := openEscrow(t, store, "alice", aliceDEK)
+	bobDEK := addUser(t, store, "bob", nil)
+	carolDEK := addUser(t, store, "carol", nil)
+	addUser(t, store, "dave", session)
+	if _, err := store.CreateAccount("erin", "Erin", statusPassword, true); err != nil {
+		t.Fatalf("create erin: %v", err)
+	}
+	addUser(t, store, "frank", nil)
+	// bob, carol, and dave are administrators without a grant, as on an
+	// install upgraded from before escrow; erin has no personal key.
+	mustExec(t, store, `UPDATE users SET is_admin = 1 WHERE username IN ('bob', 'carol', 'dave')`)
+	_, attackerPub := attackerKeyPair(t)
+	mustExec(t, store, `UPDATE personal_keys SET public_key = ? WHERE username = 'dave'`, attackerPub)
+	mustExec(t, store, `UPDATE users SET disabled = 1 WHERE username = 'carol'`)
+
+	waiting, err := store.AdminsWithoutGrant()
+	if err != nil || strings.Join(waiting, ",") != "bob,dave,erin" {
+		t.Fatalf("AdminsWithoutGrant = %v, %v; want bob, dave, erin (not the disabled carol)", waiting, err)
+	}
+
+	if err := store.GrantKey("alice", aliceDEK, "bob"); err != nil {
+		t.Fatalf("GrantKey(bob): %v", err)
+	}
+	openEscrow(t, store, "bob", bobDEK)
+	if err := store.GrantKey("alice", aliceDEK, "bob"); err != nil {
+		t.Fatalf("GrantKey(bob) again: %v", err)
+	}
+
+	for name, tc := range map[string]struct {
+		actor  string
+		dek    []byte
+		target string
+		want   error
+	}{
+		"a standard account":                    {"alice", aliceDEK, "frank", ErrTargetNotAdmin},
+		"a disabled administrator":              {"alice", aliceDEK, "carol", ErrTargetNotAdmin},
+		"an administrator with no personal key": {"alice", aliceDEK, "erin", ErrNoPersonalKey},
+		"a swapped attested key":                {"alice", aliceDEK, "dave", ErrPersonalKeyNotAttested},
+		"a caller without the key":              {"carol", carolDEK, "erin", ErrNotAdmin},
+	} {
+		if err := store.GrantKey(tc.actor, tc.dek, tc.target); !errors.Is(err, tc.want) {
+			t.Errorf("%s: GrantKey = %v, want %v", name, err, tc.want)
+		}
+	}
+	requireEvent(t, store, "alice escrow_key_mismatch dave")
+	if n := countRows(t, store, "escrow_grants", "admin_username IN ('carol', 'dave', 'erin', 'frank')"); n != 0 {
+		t.Fatalf("%d grants were given by refused requests", n)
+	}
+}
+
+// An administrator without a usable key is told so; promotion, by
+// contrast, quietly changes the role only.
+func TestGrantKeyByAnAdministratorWithoutAUsableKeyFails(t *testing.T) {
+	store, aliceDEK := escrowStore(t)
+	bobDEK := addUser(t, store, "bob", nil)
+	addUser(t, store, "carol", nil)
+	mustExec(t, store, `UPDATE users SET is_admin = 1 WHERE username IN ('bob', 'carol')`)
+
+	if err := store.GrantKey("bob", bobDEK, "carol"); !errors.Is(err, ErrNoEscrowGrant) {
+		t.Fatalf("GrantKey by bob, who holds no grant = %v, want ErrNoEscrowGrant", err)
+	}
+	mustExec(t, store, `UPDATE escrow_grants SET sealed = x'00' WHERE admin_username = 'alice'`)
+	if err := store.GrantKey("alice", aliceDEK, "carol"); !errors.Is(err, ErrEscrowMismatch) {
+		t.Fatalf("GrantKey with an unusable grant = %v, want ErrEscrowMismatch", err)
+	}
+	requireEvent(t, store, "alice escrow_key_mismatch alice")
+	if n := countRows(t, store, "escrow_grants", "1 = 1"); n != 0 {
+		t.Fatalf("%d grants remain; want alice's unusable one removed and none given", n)
 	}
 }

@@ -73,8 +73,8 @@ func TestAdminAccessViewsACopyAndLeavesTheOwnersFileAlone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AdminViewUserProject: %v", err)
 	}
-	if meta.Name != "Plan" {
-		t.Fatalf("viewed project name = %q, want Plan", meta.Name)
+	if meta.Project.Name != "Plan" {
+		t.Fatalf("viewed project name = %q, want Plan", meta.Project.Name)
 	}
 
 	app.mu.RLock()
@@ -308,8 +308,8 @@ func TestAdminViewIncludesChangesStillInTheWriteAheadLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AdminViewUserProject: %v", err)
 	}
-	if meta.Name != "Plan, revised" {
-		t.Fatalf("viewed name = %q; want the edit still in bob's -wal file", meta.Name)
+	if meta.Project.Name != "Plan, revised" {
+		t.Fatalf("viewed name = %q; want the edit still in bob's -wal file", meta.Project.Name)
 	}
 }
 

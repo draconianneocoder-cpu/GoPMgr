@@ -37,7 +37,7 @@ export CC
         installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests native-isolation-launch-tests \
         code-map code-map-current brand-assets coverage-ledger-current coverage-ledger-drift coverage-ratchet \
         coverage-ratchet-update coverage-go-cleanup-tests workspace-hygiene workspace-hygiene-tests cache-maintenance \
-        pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests escrow-release-guard escrow-release-guard-tests
+        pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests access-notice-release-guard access-notice-release-guard-tests
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -113,7 +113,7 @@ test: ## Run Go unit tests.
 race: ## Run Go tests with the race detector (concurrency gate).
 	$(GO) test -race -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests escrow-release-guard-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map contracts + Go tests + frontend checks.
+verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests access-notice-release-guard-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/native-launch/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
@@ -137,12 +137,12 @@ no-text-timestamp-ordering: ## Fail if internal/db ORDER BYs on a bare created_a
 	@bash scripts/check-no-text-timestamp-ordering_test.sh
 	@bash scripts/check-no-text-timestamp-ordering.sh
 
-escrow-release-guard: ## Fail while ADR-004 escrow sealing exists (phase 1 must not be tagged before phase 2, which deletes this guard). Run by check-release.
-	@bash scripts/check-escrow-release-guard_test.sh
-	@bash scripts/check-escrow-release-guard.sh
+access-notice-release-guard: ## Fail while the app can open another account's data before users are told at sign-in (ADR-004 phase 3 deletes this guard). Run by check-release.
+	@bash scripts/check-access-notice-release-guard_test.sh
+	@bash scripts/check-access-notice-release-guard.sh
 
-escrow-release-guard-tests: ## Exercise the escrow release guard against fixture trees (run by verify; the guard itself runs only at release).
-	@bash scripts/check-escrow-release-guard_test.sh
+access-notice-release-guard-tests: ## Exercise the access-notice release guard against fixture trees (run by verify; the guard itself runs only at release).
+	@bash scripts/check-access-notice-release-guard_test.sh
 
 no-raw-import-in-tests: ## Fail if a frontend *.test.ts/*.spec.ts file imports another file via Vite's ?raw query, which silently shadows that file's coverage.all statement count to a false 0/0.
 	@bash scripts/check-no-raw-import-in-tests_test.sh

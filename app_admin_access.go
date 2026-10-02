@@ -101,29 +101,41 @@ func (a *App) AdminListUserProjects() ([]ProjectFile, error) {
 	return out, nil
 }
 
+// AdminViewProjectWire is a project opened for viewing: its details and,
+// for a compliance-mode project whose audit trail fails its check, a
+// warning (the owner would be refused; the administrator sees it).
+type AdminViewProjectWire struct {
+	Project      ProjectMetaWire `json:"project"`
+	AuditWarning string          `json:"audit_warning"`
+}
+
 // AdminViewUserProject opens a copy of one of the target's projects for
 // viewing, replacing any project already being viewed. path is checked
 // against the target's projects folder as projectPathFor checks the
 // administrator's own.
-func (a *App) AdminViewUserProject(path string) (ProjectMetaWire, error) {
+func (a *App) AdminViewUserProject(path string) (AdminViewProjectWire, error) {
 	dataDir, dek, err := a.openAccess()
 	if err != nil {
-		return ProjectMetaWire{}, err
+		return AdminViewProjectWire{}, err
 	}
 	defer zeroBytes(dek)
 	clean, err := confineProjectPath(filepath.Join(dataDir, "projects"), path)
 	if err != nil {
-		return ProjectMetaWire{}, err
+		return AdminViewProjectWire{}, err
 	}
 
 	copyDir, err := os.MkdirTemp(dataDir, adminViewDirPrefix)
 	if err != nil {
-		return ProjectMetaWire{}, fmt.Errorf("make a folder for the copy: %w", err)
+		return AdminViewProjectWire{}, fmt.Errorf("make a folder for the copy: %w", err)
 	}
-	view, meta, err := openProjectCopy(clean, filepath.Join(copyDir, filepath.Base(clean)), dek)
+	view, proj, err := openProjectCopy(clean, filepath.Join(copyDir, filepath.Base(clean)), dek)
 	if err != nil {
 		_ = os.RemoveAll(copyDir)
-		return ProjectMetaWire{}, err
+		return AdminViewProjectWire{}, err
+	}
+	out := AdminViewProjectWire{Project: projectMetaWire(proj)}
+	if err := verifyProjectAuditForOpen(view, proj); err != nil {
+		out.AuditWarning = "This project's audit trail fails its tamper check, so it may have been changed outside GoPMgr: " + err.Error()
 	}
 
 	a.mu.Lock()
@@ -132,12 +144,12 @@ func (a *App) AdminViewUserProject(path string) (ProjectMetaWire, error) {
 		// Access stopped or moved to another account meanwhile.
 		_ = view.Close()
 		_ = os.RemoveAll(copyDir)
-		return ProjectMetaWire{}, errors.New("administrator access has stopped")
+		return AdminViewProjectWire{}, errors.New("administrator access has stopped")
 	}
 	a.closeAdminViewLocked()
 	a.access.view = view
 	a.access.copyDir = copyDir
-	return meta, nil
+	return out, nil
 }
 
 // AdminStopUserData stops the administrator's access: the project copy is
@@ -149,19 +161,27 @@ func (a *App) AdminStopUserData() error {
 	return nil
 }
 
-// openAccess re-checks in system.db that the signed-in user is still an
-// enabled administrator and returns the open access's folder and a copy of
-// its key, which the caller must zero.
-func (a *App) openAccess() (dataDir string, dek []byte, err error) {
+// checkAccessCaller re-checks in system.db that the signed-in user is still
+// an enabled administrator, ending any access if not.
+func (a *App) checkAccessCaller() error {
 	caller := a.requireUser()
 	if caller == nil || !caller.IsAdmin {
-		return "", nil, errors.New("administrator privileges required")
+		return errors.New("administrator privileges required")
 	}
 	if err := a.store.RequireEnabledAdmin(caller.Username); err != nil {
 		a.mu.Lock()
 		a.stopAdminAccessLocked()
 		a.mu.Unlock()
-		return "", nil, errors.New("administrator privileges required")
+		return errors.New("administrator privileges required")
+	}
+	return nil
+}
+
+// openAccess checks the caller (checkAccessCaller) and returns the open
+// access's folder and a copy of its key, which the caller must zero.
+func (a *App) openAccess() (dataDir string, dek []byte, err error) {
+	if err := a.checkAccessCaller(); err != nil {
+		return "", nil, err
 	}
 	a.mu.RLock()
 	defer a.mu.RUnlock()
@@ -174,9 +194,9 @@ func (a *App) openAccess() (dataDir string, dek []byte, err error) {
 // openProjectCopy copies the project at src (with any -wal and -shm files)
 // to dst and opens the copy read-only with dek. The owner's file is only
 // read.
-func openProjectCopy(src, dst string, dek []byte) (*db.Database, ProjectMetaWire, error) {
+func openProjectCopy(src, dst string, dek []byte) (*db.Database, db.Project, error) {
 	if err := copyFile(src, dst); err != nil {
-		return nil, ProjectMetaWire{}, fmt.Errorf("copy the project: %w", err)
+		return nil, db.Project{}, fmt.Errorf("copy the project: %w", err)
 	}
 	for _, suffix := range []string{"-wal", "-shm"} {
 		info, err := os.Lstat(src + suffix)
@@ -184,25 +204,25 @@ func openProjectCopy(src, dst string, dek []byte) (*db.Database, ProjectMetaWire
 			continue
 		}
 		if err != nil || !info.Mode().IsRegular() {
-			return nil, ProjectMetaWire{}, errors.New("the project's files could not be copied")
+			return nil, db.Project{}, errors.New("the project's files could not be copied")
 		}
 		if err := copyFile(src+suffix, dst+suffix); err != nil {
-			return nil, ProjectMetaWire{}, fmt.Errorf("copy the project: %w", err)
+			return nil, db.Project{}, fmt.Errorf("copy the project: %w", err)
 		}
 	}
 	view, err := db.OpenEncryptedCopyReadOnly(dst, dek)
 	if errors.Is(err, db.ErrCopyDamaged) {
-		return nil, ProjectMetaWire{}, errors.New("the copy of this project could not be read cleanly, perhaps because its owner was changing it; try again")
+		return nil, db.Project{}, errors.New("the copy of this project could not be read cleanly, perhaps because its owner was changing it; try again")
 	}
 	if err != nil {
-		return nil, ProjectMetaWire{}, fmt.Errorf("open the project copy: %w", err)
+		return nil, db.Project{}, fmt.Errorf("open the project copy: %w", err)
 	}
 	proj, err := view.GetProject()
 	if err != nil {
 		_ = view.Close()
-		return nil, ProjectMetaWire{}, err
+		return nil, db.Project{}, err
 	}
-	return view, projectMetaWire(proj), nil
+	return view, proj, nil
 }
 
 // stopAdminAccessLocked ends any administrator access. Must hold a.mu.

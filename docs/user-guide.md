@@ -441,8 +441,24 @@ codes that won't work if you keep your current ones.
 
 After migrating an existing plaintext project database to encrypted
 storage, recovery codes must be reissued so active codes can unlock the
-DEK. If the password and all valid wrapped recovery codes are lost,
-encrypted project databases are unrecoverable by design.
+DEK. If the password and all valid wrapped recovery codes are lost, you
+can't open your encrypted projects again. An administrator can view them
+read only through recorded access (below), but that doesn't give them back
+to you.
+
+## Administrator Access to Users' Data
+
+An administrator can open another account's projects from the Admin panel
+with **Open data**, after giving a reason. They see each project read only:
+its summary, schedule, costs, and the list of documents, not the documents'
+contents. Nothing can be changed, exported, or printed. Every opening is
+recorded in the Admin panel's account history with who opened which account,
+when, and why. An account that has not signed in since this feature arrived
+can't be opened until it does.
+
+Opening data needs the administrator key. The first administrator holds it;
+others get it when an administrator makes them administrators, or later with
+**Give administrator key**.
 
 ## Fonts
 

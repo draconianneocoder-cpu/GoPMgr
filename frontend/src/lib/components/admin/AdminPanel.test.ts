@@ -294,3 +294,88 @@ describe('AdminPanel own row', () => {
     expect(within(ownRowNote(utils)).getByText(sole)).toBeInTheDocument();
   });
 });
+
+describe('AdminPanel recorded access to user data', () => {
+  beforeEach(() => {
+    app.AdminOpenUserData = vi.fn(async () => undefined);
+    app.AdminListUserProjects = vi.fn(async () => []);
+    app.AdminStopUserData = vi.fn(async () => undefined);
+    app.AdminListAdminsWithoutKey = vi.fn(async () => []);
+  });
+
+  it('opens another account only with a reason, then shows the read-only viewer', async () => {
+    const utils = render(AdminPanel);
+    await fireEvent.click(await utils.findByRole('button', { name: "Open bob's data" }));
+    expect(utils.queryByRole('button', { name: "Open alice's data" })).not.toBeInTheDocument();
+
+    const form = utils.getByRole('group', { name: "Open bob's data" });
+    const open = within(form).getByRole('button', { name: 'Open data' });
+    expect(open).toBeDisabled();
+    await fireEvent.input(within(form).getByLabelText('Reason (required)'), { target: { value: '   ' } });
+    expect(open).toBeDisabled();
+    expect(within(form).getByText(/recorded in the account history with your reason/)).toBeInTheDocument();
+
+    await fireEvent.input(within(form).getByLabelText('Reason (required)'), { target: { value: 'Support ticket 42' } });
+    await fireEvent.click(open);
+    expect(app.AdminOpenUserData).toHaveBeenCalledWith('bob', 'Support ticket 42');
+    expect(await utils.findByRole('region', { name: "Viewing bob's data" })).toBeInTheDocument();
+    // One account at a time: no other account can be opened while viewing.
+    expect(utils.queryByRole('button', { name: /^Open .*'s data$/ })).not.toBeInTheDocument();
+
+    await fireEvent.click(utils.getByRole('button', { name: 'Stop viewing' }));
+    expect(app.AdminStopUserData).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(utils.queryByRole('region', { name: "Viewing bob's data" })).not.toBeInTheDocument());
+  });
+
+  it("refuses in the handler too, if the disabled button is forced", async () => {
+    const utils = render(AdminPanel);
+    await fireEvent.click(await utils.findByRole('button', { name: "Open bob's data" }));
+    const form = utils.getByRole('group', { name: "Open bob's data" });
+    await fireEvent.input(within(form).getByLabelText('Reason (required)'), { target: { value: '  ' } });
+    const open = within(form).getByRole('button', { name: 'Open data' });
+    open.removeAttribute('disabled');
+    await fireEvent.click(open);
+    expect(app.AdminOpenUserData).not.toHaveBeenCalled();
+  });
+
+  it('shows no viewer when opening is refused', async () => {
+    app.AdminOpenUserData = vi.fn(async () => {
+      throw new Error("bob has not signed in since administrator access began, so their data can't be opened yet");
+    });
+    const utils = render(AdminPanel);
+    await fireEvent.click(await utils.findByRole('button', { name: "Open bob's data" }));
+    const form = utils.getByRole('group', { name: "Open bob's data" });
+    await fireEvent.input(within(form).getByLabelText('Reason (required)'), { target: { value: 'Checking' } });
+    await fireEvent.click(within(form).getByRole('button', { name: 'Open data' }));
+    await waitFor(() => expect(app.AdminOpenUserData).toHaveBeenCalled());
+    expect(utils.queryByRole('region', { name: "Viewing bob's data" })).not.toBeInTheDocument();
+  });
+
+  it('shows the reason for each recorded access in the account history', async () => {
+    app.AdminListAccountEvents.mockResolvedValue([
+      { id: 1, occurred_at: '2026-10-02T10:00:00Z', actor: 'alice', username: 'bob', action: 'admin_access', detail: 'Support ticket 42' },
+    ]);
+    const utils = render(AdminPanel);
+    const history = await utils.findByRole('region', { name: 'Account history' });
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(1));
+    const item = within(history).getAllByRole('listitem')[0].textContent?.replace(/\s+/g, ' ');
+    expect(item).toContain("alice opened bob's data as an administrator");
+    expect(item).toContain('Reason: Support ticket 42');
+  });
+
+  it('offers the administrator key to administrators without it', async () => {
+    app.AdminListUsers.mockResolvedValue([
+      account('alice', { is_admin: true }),
+      account('carol', { is_admin: true }),
+      account('bob'),
+    ]);
+    app.AdminListAdminsWithoutKey = vi.fn(async () => ['carol']);
+    app.AdminGrantKey = vi.fn(async () => undefined);
+    const utils = render(AdminPanel);
+    const give = await utils.findByRole('button', { name: 'Give administrator key' });
+    expect(utils.getAllByRole('button', { name: 'Give administrator key' })).toHaveLength(1);
+    expect(utils.getByText('No administrator key')).toBeInTheDocument();
+    await fireEvent.click(give);
+    expect(app.AdminGrantKey).toHaveBeenCalledWith('carol');
+  });
+});
