@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"gopmgr/internal/auth"
 	"gopmgr/internal/users"
+	"log"
 	"strings"
 )
 
@@ -59,10 +60,18 @@ func (a *App) AccountSetup() (AccountSetupWire, error) {
 // Returns the account record (no password material).
 func (a *App) CreateAccount(username, displayName, password string, isAdmin bool) (users.Account, error) {
 	callerUsername := ""
+	var escrow *users.EscrowSession
 	if caller := a.requireUser(); caller != nil {
 		callerUsername = caller.Username
+		if caller.IsAdmin {
+			escrow = a.openSessionEscrow(caller.Username)
+		}
 	}
-	acc, err := a.store.CreateAccountAs(callerUsername, username, displayName, password, isAdmin)
+	defer escrow.Close()
+	// ADR-001: the account's DEK is created with it, wrapped under the
+	// password, and returned here. ADR-004: it is enrolled in escrow in the
+	// same transaction, with the creating administrator's escrow key.
+	acc, dek, err := a.store.CreateAccountWithKey(callerUsername, username, displayName, password, isAdmin, escrow)
 	if errors.Is(err, users.ErrNotAdmin) {
 		return users.Account{}, errors.New("account creation requires administrator privileges")
 	}
@@ -81,11 +90,9 @@ func (a *App) CreateAccount(username, displayName, password string, isAdmin bool
 	if err != nil {
 		return users.Account{}, err
 	}
-	// ADR-001: unlock (here: lazily create) the per-user DEK while we
-	// hold the verified password — the only moment that is possible.
-	dek, err := a.store.UnlockDEK(username, password)
-	if err != nil {
-		return users.Account{}, err
+	if callerUsername == "" {
+		// The first account: it creates the escrow key (ADR-004).
+		a.enrollEscrow(acc.Username, dek)
 	}
 	// Only auto-sign-in when no one is currently logged in (the first
 	// account). When an admin creates an account on behalf of another
@@ -118,6 +125,11 @@ func (a *App) BecomeAdmin() error {
 	if err != nil {
 		return err
 	}
+	// The first administrator creates the escrow key (ADR-004).
+	_ = a.withSessionDEK(func(dek []byte) error {
+		a.enrollEscrow(caller.Username, dek)
+		return nil
+	})
 	// Admin-only methods read the role from the session, so update it here
 	// or the new administrator would be refused until they sign in again.
 	// Replace the account rather than editing it: requireUser hands the
@@ -153,12 +165,24 @@ func (a *App) AdminSetUserDisabled(username string, disabled bool) error {
 	if strings.EqualFold(caller.Username, username) {
 		return errors.New("administrators cannot disable their own account")
 	}
-	err := a.store.SetDisabled(caller.Username, username, disabled)
+	var err error
+	if disabled {
+		err = a.store.SetDisabled(caller.Username, username, disabled)
+	} else {
+		// Enabling an administrator grants them the escrow key again
+		// (ADR-004), which takes the caller's own key.
+		err = a.withSessionDEK(func(dek []byte) error {
+			return a.store.EnableAccount(caller.Username, dek, username)
+		})
+	}
 	if errors.Is(err, users.ErrNotAdmin) {
 		return errors.New("administrator privileges required")
 	}
 	if errors.Is(err, users.ErrLastAdmin) {
 		return errors.New("this is the only administrator who can sign in; make someone else an administrator first")
+	}
+	if errors.Is(err, users.ErrPersonalKeyNotAttested) {
+		return fmt.Errorf("%s was not enabled: their account key has been changed since an administrator last checked it. The change is recorded in the account history", username)
 	}
 	return err
 }
@@ -216,9 +240,24 @@ func (a *App) AdminSetUserRole(username string, isAdmin bool) error {
 	if strings.EqualFold(caller.Username, username) {
 		return errors.New("administrators cannot change their own role")
 	}
-	err := a.store.SetAdmin(caller.Username, username, isAdmin)
+	var err error
+	if isAdmin {
+		// Promotion grants the escrow key in the same step (ADR-004),
+		// which takes the caller's own key.
+		err = a.withSessionDEK(func(dek []byte) error {
+			return a.store.PromoteAdmin(caller.Username, dek, username)
+		})
+	} else {
+		err = a.store.SetAdmin(caller.Username, username, isAdmin)
+	}
 	if errors.Is(err, users.ErrNotAdmin) {
 		return errors.New("administrator privileges required")
+	}
+	if errors.Is(err, users.ErrNoPersonalKey) {
+		return fmt.Errorf("%s must sign in once before they can be made an administrator", username)
+	}
+	if errors.Is(err, users.ErrPersonalKeyNotAttested) {
+		return fmt.Errorf("%s was not made an administrator: their account key has been changed since an administrator last checked it. The change is recorded in the account history", username)
 	}
 	return err
 }
@@ -303,6 +342,7 @@ func (a *App) Login(username, password string) (users.Account, error) {
 	if err != nil {
 		return users.Account{}, err
 	}
+	a.enrollEscrow(acc.Username, dek)
 	a.mu.Lock()
 	if a.db != nil {
 		a.mu.Unlock()
@@ -314,6 +354,45 @@ func (a *App) Login(username, password string) (users.Account, error) {
 	a.noCodesAcceptedFor = ""
 	a.mu.Unlock()
 	return acc, nil
+}
+
+// enrollEscrow enrolls a signed-in account in administrator escrow
+// (ADR-004) and, for an administrator, does the escrow checks listed on
+// users.Store.EnrollAdminSession. A failure never stops the sign-in: it is
+// logged, and the next sign-in tries again.
+func (a *App) enrollEscrow(username string, dek []byte) {
+	if err := a.store.EnrollAdminSession(username, dek); err != nil {
+		log.Printf("escrow enrollment of %s failed; retried at next sign-in: %v", username, err)
+	}
+}
+
+// openSessionEscrow opens the signed-in administrator's escrow key for one
+// operation, or returns nil when they hold no grant or it does not open;
+// the caller then goes ahead without it. The caller must Close the result
+// (Close is safe on nil).
+func (a *App) openSessionEscrow(username string) *users.EscrowSession {
+	var escrow *users.EscrowSession
+	err := a.withSessionDEK(func(dek []byte) error {
+		var err error
+		escrow, err = a.store.OpenEscrow(username, dek)
+		return err
+	})
+	if err != nil && !errors.Is(err, users.ErrNoEscrowGrant) {
+		log.Printf("open escrow key for %s: %v", username, err)
+	}
+	return escrow
+}
+
+// withSessionDEK calls fn with a copy of the session DEK, zeroed after.
+func (a *App) withSessionDEK(fn func(dek []byte) error) error {
+	a.mu.RLock()
+	dek, err := a.requireDEKLocked()
+	a.mu.RUnlock()
+	if err != nil {
+		return err
+	}
+	defer zeroBytes(dek)
+	return fn(dek)
 }
 
 // zeroBytes overwrites b in place. ADR-001 requires the session DEK be

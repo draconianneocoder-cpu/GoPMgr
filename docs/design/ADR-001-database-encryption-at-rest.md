@@ -42,7 +42,14 @@ recovery code ──Argon2id──► recovery KEK ──┼──► one user D
 Changing a password re-wraps the same DEK. Resetting with a valid recovery
 code also re-wraps that DEK, so encrypted projects remain available. If the
 password and every valid recovery code are lost, recovery is intentionally
-impossible.
+impossible for the user.
+
+[ADR-004](ADR-004-administrator-access-to-user-data.md) adds a third copy:
+each enrolled account's DEK sealed to an escrow key that administrators hold.
+So the password and recovery codes are no longer the only ways to the DEK;
+an administrator's password also reaches every enrolled account's DEK. Phase
+1 (2026-10-02) creates and seals the copies; nothing opens them until phase
+2's recorded access.
 
 ## Migration
 

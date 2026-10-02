@@ -212,6 +212,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
         return `${e.actor} permanently deleted ${e.username}`;
       case 'folder_not_removed':
         return `${e.actor} could not fully remove the folder of ${e.username}`;
+      case 'admin_access':
+        return `${e.actor} opened ${e.username}'s data as an administrator`;
+      case 'escrow_key_mismatch':
+        return `A key check failed for ${e.username}; GoPMgr's key records may have been changed outside GoPMgr`;
+      case 'escrow_reenrolled':
+        return `${e.username}'s key records were missing and were made again at sign-in`;
+      case 'personal_key_repaired':
+        return `${e.username}'s account key was changed outside GoPMgr and was repaired at sign-in`;
+      case 'personal_key_trusted':
+        return `${e.actor} accepted ${e.username}'s account key without an earlier check`;
+      case 'escrow_rotated':
+        return `${e.actor} replaced the administrator key`;
       default:
         return `${e.actor} ${e.action} ${e.username}`;
     }
@@ -491,7 +503,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li>
                 <span class="text-slate-500 font-mono">{formatEventTime(event.occurred_at)}</span>
                 — {describeEvent(event)}
-                {#if event.action === 'folder_not_removed' && event.detail}
+                {#if (event.action === 'folder_not_removed' || event.action === 'escrow_key_mismatch' || event.action === 'personal_key_repaired') && event.detail}
                   <span class="block text-[11px] text-slate-500 font-mono break-all">{event.detail}</span>
                 {/if}
               </li>

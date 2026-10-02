@@ -54,6 +54,12 @@ echo "Native installer tool versions verified."
 # PDF/A forbids unembedded core fonts. Validate the tracked Source Sans 3
 # baseline before the expensive build and veraPDF gates so a clean-checkout
 # omission produces a direct, actionable failure.
+if ! make escrow-release-guard >/dev/null; then
+    echo "ADR-004 escrow release guard failed. Run 'make escrow-release-guard' for details."
+    exit 1
+fi
+echo "ADR-004 escrow release guard passed."
+
 if ! make required-font-assets >/dev/null; then
     echo "Required font asset validation failed. Run 'make required-font-assets' for details."
     exit 1

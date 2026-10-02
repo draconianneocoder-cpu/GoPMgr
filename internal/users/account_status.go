@@ -55,6 +55,14 @@ const (
 	AccountEnabled          = "enabled"
 	AccountPurged           = "purged"
 	AccountFolderNotRemoved = "folder_not_removed"
+
+	// Administrator escrow (ADR-004).
+	AccountAdminAccess         = "admin_access"
+	AccountEscrowKeyMismatch   = "escrow_key_mismatch"
+	AccountEscrowReenrolled    = "escrow_reenrolled"
+	AccountPersonalKeyRepaired = "personal_key_repaired"
+	AccountEscrowRotated       = "escrow_rotated"
+	AccountPersonalKeyTrusted  = "personal_key_trusted"
 )
 
 // accountEventActions lists the actions recordAccountEvent accepts. It is
@@ -69,6 +77,13 @@ var accountEventActions = map[string]bool{
 	AccountEnabled:          true,
 	AccountPurged:           true,
 	AccountFolderNotRemoved: true,
+
+	AccountAdminAccess:         true,
+	AccountEscrowKeyMismatch:   true,
+	AccountEscrowReenrolled:    true,
+	AccountPersonalKeyRepaired: true,
+	AccountEscrowRotated:       true,
+	AccountPersonalKeyTrusted:  true,
 }
 
 // AccountEvent is one entry in the account history.
@@ -276,30 +291,39 @@ func recordAccountEvent(ctx context.Context, q accountWriter, actor, username, a
 // records nothing.
 func (s *Store) SetDisabled(actor, username string, disabled bool) error {
 	return s.inWriteTx("account status change", func(ctx context.Context, q accountWriter) error {
-		if err := requireEnabledAdmin(ctx, q, actor); err != nil {
-			return err
-		}
-		isAdmin, current, err := accountRole(ctx, q, username)
-		if err != nil {
-			return err
-		}
-		if current == disabled {
-			return nil
-		}
-		if disabled {
-			if err := guardLastEnabledAdmin(ctx, q, isAdmin, current); err != nil {
-				return err
-			}
-		}
-		if _, err := q.ExecContext(ctx, `UPDATE users SET disabled = ? WHERE username = ?`, boolToInt(disabled), username); err != nil {
-			return err
-		}
-		action := AccountEnabled
-		if disabled {
-			action = AccountDisabled
-		}
-		return recordAccountEvent(ctx, q, actor, username, action, "")
+		return setDisabledTx(ctx, q, actor, username, disabled)
 	})
+}
+
+func setDisabledTx(ctx context.Context, q accountWriter, actor, username string, disabled bool) error {
+	if err := requireEnabledAdmin(ctx, q, actor); err != nil {
+		return err
+	}
+	isAdmin, current, err := accountRole(ctx, q, username)
+	if err != nil {
+		return err
+	}
+	if current == disabled {
+		return nil
+	}
+	if disabled {
+		if err := guardLastEnabledAdmin(ctx, q, isAdmin, current); err != nil {
+			return err
+		}
+		// A disabled administrator keeps no escrow grant (ADR-004);
+		// EnableAccount grants again.
+		if err := removeGrantTx(ctx, q, username); err != nil {
+			return err
+		}
+	}
+	if _, err := q.ExecContext(ctx, `UPDATE users SET disabled = ? WHERE username = ?`, boolToInt(disabled), username); err != nil {
+		return err
+	}
+	action := AccountEnabled
+	if disabled {
+		action = AccountDisabled
+	}
+	return recordAccountEvent(ctx, q, actor, username, action, "")
 }
 
 // PurgeAccount deletes username's account and then its folder, on behalf
