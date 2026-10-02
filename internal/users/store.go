@@ -56,6 +56,22 @@ var ErrReservedUsername = errors.New("users: username is reserved")
 // so an existing account with such a name can still sign in.
 var reservedFolderNames = []string{"logs"}
 
+// ErrWindowsDeviceName is returned when a new username is a name Windows
+// reserves for devices, which cannot be a folder there.
+var ErrWindowsDeviceName = errors.New("users: username is a Windows device name")
+
+// windowsDeviceNames are refused for new accounts on every platform, so an
+// account's folder stays valid if the data folder moves to Windows. Only
+// the forms a username can take (3 to 32 letters, digits, _ and -) are
+// listed. Kept apart from reservedFolderNames, which also stops an account
+// being deleted: an existing account with one of these names can still
+// sign in and be disabled or deleted.
+var windowsDeviceNames = []string{
+	"con", "prn", "aux", "nul",
+	"com0", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+	"lpt0", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+}
+
 // userSubfolders are created inside each new account's folder.
 var userSubfolders = []string{"projects", "certs", "exports"}
 
@@ -499,6 +515,11 @@ func (s *Store) insertAccount(ctx context.Context, q accountWriter, username, di
 	for _, reserved := range reservedFolderNames {
 		if strings.EqualFold(username, reserved) {
 			return Account{}, ErrReservedUsername
+		}
+	}
+	for _, device := range windowsDeviceNames {
+		if strings.EqualFold(username, device) {
+			return Account{}, ErrWindowsDeviceName
 		}
 	}
 

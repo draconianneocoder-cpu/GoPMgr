@@ -72,6 +72,9 @@ func (a *App) CreateAccount(username, displayName, password string, isAdmin bool
 	if errors.Is(err, users.ErrReservedUsername) {
 		return users.Account{}, fmt.Errorf("%q is reserved for GoPMgr's own files; choose another username", username)
 	}
+	if errors.Is(err, users.ErrWindowsDeviceName) {
+		return users.Account{}, fmt.Errorf("%q is a name Windows keeps for devices, so it can't be a folder; choose another username", username)
+	}
 	if errors.Is(err, users.ErrPasswordTooShort) {
 		return users.Account{}, fmt.Errorf("password must be at least %d characters", users.MinPasswordLength)
 	}

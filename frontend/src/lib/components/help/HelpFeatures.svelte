@@ -655,7 +655,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Creating an Account</h3>
             <ol class="space-y-2 text-sm text-slate-300 list-decimal list-inside">
               <li>Click "Create user" to expand the creation form.</li>
-              <li>Enter a username (3-32 characters, letters/digits/underscore/hyphen only).</li>
+              <li>Enter a username (3-32 characters, letters/digits/underscore/hyphen only). A few names are taken: <span class="font-mono text-xs">logs</span>, and the names Windows keeps for devices (such as <span class="font-mono text-xs">con</span>, <span class="font-mono text-xs">nul</span>, <span class="font-mono text-xs">com1</span>).</li>
               <li>Enter a display name (optional; defaults to username).</li>
               <li>Set an initial password (minimum 8 characters). Share it securely — the user can change it in App Settings, under Account.</li>
               <li>Optionally check "Administrator account" to grant admin role immediately.</li>

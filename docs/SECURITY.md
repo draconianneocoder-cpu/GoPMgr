@@ -28,7 +28,11 @@ for a legitimate local user.
   deletion existed or by a deletion that could not finish (in any letter
   case on a case-insensitive filesystem), creation is refused instead of handing the
   old projects, certificates, and exports to the new account. `logs` is
-  reserved for GoPMgr's own log folder.
+  reserved for GoPMgr's own log folder. New accounts also cannot use the
+  names Windows keeps for devices (`CON`, `PRN`, `AUX`, `NUL`, `COM0`–`COM9`,
+  `LPT0`–`LPT9`, in any letter case) on any platform, so a data folder stays
+  valid if it moves to Windows; an existing account with such a name keeps
+  working and can still be disabled or deleted.
 - `system.db` file permissions are tightened to owner-only access where
   supported.
 - The first account on a machine is always an administrator. After that,
