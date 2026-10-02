@@ -12,7 +12,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // a code too old to unlock the key is refused and nothing changes.
 
   import { onMount } from 'svelte';
-  import { goto } from '../../session.svelte';
+  import { session, goto } from '../../session.svelte';
   import Logo from '../Logo.svelte';
 
   let username = $state('');
@@ -54,6 +54,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     busy = true;
     try {
       await window.go.main.App.ResetWithRecoveryCode(username, code, password);
+      session.signInUsername = username;
       done = true;
     } catch (err: any) {
       // The backend returns this only after the code verifies

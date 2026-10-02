@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/svelte';
 
 import RecoveryReset from './RecoveryReset.svelte';
+import { session } from '../../session.svelte';
 
 // The exact text of users.ErrLegacyRecoveryCode as Wails delivers it.
 const LEGACY_ERROR =
@@ -19,6 +20,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  session.signInUsername = null;
   vi.restoreAllMocks();
 });
 
@@ -33,6 +35,21 @@ async function submitReset() {
 }
 
 describe('RecoveryReset', () => {
+  it('hands the reset username to the sign-in screen only after a reset succeeds', async () => {
+    await submitReset();
+    expect(session.signInUsername).toBe('alice');
+  });
+
+  it('hands nothing over when the reset is refused', async () => {
+    for (const failure of [new Error('invalid recovery code'), new Error(LEGACY_ERROR)]) {
+      app.ResetWithRecoveryCode.mockRejectedValueOnce(failure);
+      const utils = await submitReset();
+      await utils.findByRole('alert');
+      expect(session.signInUsername).toBeNull();
+      cleanup();
+    }
+  });
+
   it('says up front that only the password changes', () => {
     const utils = render(RecoveryReset);
     expect(utils.getByText('This changes only your password. Your encrypted projects stay readable.')).toBeInTheDocument();

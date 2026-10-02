@@ -267,7 +267,13 @@ That result took six live-GUI cycles to reach because the first five, all run un
     "Keep my current codes" named both files. Not checked natively:
     choosing Replace in that alert (GoPMgr's refusal is covered by tests
     only), and an actual printout.
-  - Prefill the username on the sign-in screen after a recovery reset.
+  - Done 2026-10-01: after a successful recovery reset, the sign-in screen
+    fills in the username once, with the cursor in the password field. It
+    only echoes, in memory, the name the user just typed and the backend
+    accepted, so it is not the undecided username picker below. Checked end
+    to end in the isolated `wails dev` sandbox: a real code reset, the name
+    filled in with the cursor in Password, sign-in, and a blank screen after
+    signing out.
   - Explain the last-administrator guard in the Admin panel before the click.
   - Undecided (owner): a username picker on the sign-in screen conflicts with
     the generic sign-in error rule. The unused `ListUsers` IPC method, which
