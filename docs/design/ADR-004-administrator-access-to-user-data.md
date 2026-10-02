@@ -5,7 +5,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-004: Administrator access to users' data
 
-**Status:** Accepted; phase 1 built (2026-10-02), phase 2 next. The owner accepted
+**Status:** Accepted; phase 1 built (2026-10-02); phase 2's backend (slice A)
+built (2026-10-02), its Admin panel (slice B) next. The owner accepted
 every recommendation under Owner decisions on 2026-09-25. Phases 1 and 2
 reach `main` before a release; `make escrow-release-guard`, run by
 `check-release`, fails while any code seals a DEK, and phase 2's pull
@@ -174,17 +175,35 @@ administrators, re-attest personal keys, retire the old escrow key, and record
    recording anything, so the record never lists access that could not
    happen.
 2. In one `BEGIN IMMEDIATE` transaction, the backend checks that the caller is
-   an enabled administrator (read from `system.db`, not the session) and
-   records `admin_access` with the actor, the target, and the reason.
-3. Only after that commits does it unwrap the target's DEK. If the record
-   cannot be written, no key is released.
+   an enabled administrator (read from `system.db`, not the session), opens
+   the caller's grant and the target's sealed DEK, and records `admin_access`
+   with the actor, the target, and the reason.
+3. The DEK is released only after that transaction commits. If the record or
+   the commit fails, no key is released. Opening the DEK inside the
+   transaction, rather than after it as first written, means the record never
+   lists access that could not happen: a grant or sealed DEK that does not
+   open is recorded as a mismatch instead, and refused (as built, 2026-10-02).
 4. Paths used during access are confined to the target's `projects/` folder
    with the same checks as `projectPathFor` (no symlinks, an existing regular
    file). Ordinary sessions do not change.
 5. The key lives in a separate, read-scoped handle, never in `a.dek`. The
    administrator's own projects, catalog, deletion log, and exports keep using
-   their own key. The handle is zeroed when the administrator stops viewing or
-   signs out, and on shutdown.
+   their own key. The handle is zeroed when the administrator stops viewing,
+   signs out, or signs in again, and on shutdown. The caller's role is read
+   from `system.db` again at each view, and a demoted caller's access stops.
+7. Viewing only (owner decision, 2026-10-02): the administrator may look at
+   the target's projects in the app and nothing else. A project is copied
+   (with any `-wal` and `-shm` file) into a folder with an unpredictable name
+   in the target's data folder, outside `projects/`, checked for integrity,
+   and opened read-only (`query_only` on every connection). The copy has its
+   own database handle and its own read-only methods, never `a.db`, so no
+   export, report, archive, attachment, or edit method can reach it. The
+   owner's file is only read. The copy is removed when viewing stops; a copy
+   folder more than a day old, left by a crash, is removed when access to that
+   account next opens (younger ones may be open in another GoPMgr process).
+   A copy taken while its owner is writing from another GoPMgr process can be
+   torn; it then fails the integrity check and the administrator is asked to
+   try again.
 6. The handle covers the target's projects. Whether it also covers their
    deletion log and catalog is part of the owner decision on scope below.
 
@@ -301,3 +320,9 @@ trust-on-first-use window and wider exposure below are accepted.
 Decided 2026-10-02, while building phase 1: grants are added only inside an
 administrator's explicit action, never at sign-in, and promoting an account
 that has not signed in since enrollment began is refused until it has.
+
+Decided 2026-10-02, before building phase 2: access is view only (no export,
+report, archive, print, or attachment while viewing), through a dedicated
+read-only viewer rather than the ordinary project screens; phase 2 ships as a
+backend slice and then the Admin panel slice, which removes the release
+guard.

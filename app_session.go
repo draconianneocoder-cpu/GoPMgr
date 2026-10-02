@@ -349,6 +349,7 @@ func (a *App) Login(username, password string) (users.Account, error) {
 		zeroBytes(dek)
 		return users.Account{}, errors.New("a project is already open; close it before signing in as a different user")
 	}
+	a.stopAdminAccessLocked()
 	a.user = &acc
 	a.dek = dek
 	a.noCodesAcceptedFor = ""
@@ -579,6 +580,7 @@ func (a *App) Logout() error {
 		a.dbPath = ""
 		a.adminSvc = nil
 	}
+	a.stopAdminAccessLocked()
 	a.user = nil
 	zeroBytes(a.dek)
 	a.dek = nil
