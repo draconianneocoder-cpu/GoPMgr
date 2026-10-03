@@ -6,6 +6,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount } from 'svelte';
   import AppHeader from '../AppHeader.svelte';
   import RecoveryCodeList from '../auth/RecoveryCodeList.svelte';
+  import AdminUserDataViewer from './AdminUserDataViewer.svelte';
   import Spinner from '../Spinner.svelte';
   import { session } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
@@ -39,6 +40,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let events = $state<AccountEvent[]>([]);
   let eventsError = $state('');
 
+  // Recorded access to another account's data (ADR-004): the row whose
+  // reason form is open, and the account being viewed.
+  const maxReasonLength = 500;
+  let accessTarget = $state<string | null>(null);
+  let accessReason = $state('');
+  let openingAccess = $state(false);
+  let viewing = $state<string | null>(null);
+
+  // Administrators who hold no administrator key yet.
+  let adminsWithoutKey = $state<string[]>([]);
+  let grantingKey = $state<string | null>(null);
+
   const usernameRule = /^[A-Za-z0-9_-]{3,32}$/;
 
   onMount(load);
@@ -53,7 +66,52 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } finally {
       loading = false;
     }
+    try {
+      adminsWithoutKey = (await window.go.main.App.AdminListAdminsWithoutKey()) ?? [];
+    } catch {
+      adminsWithoutKey = [];
+    }
     await loadEvents();
+  }
+
+  function startAccess(username: string) {
+    cancelPending(username);
+    accessTarget = username;
+    accessReason = '';
+  }
+
+  async function openAccess(username: string) {
+    if (!accessReason.trim() || accessReason.length > maxReasonLength || openingAccess) return;
+    openingAccess = true;
+    try {
+      await window.go.main.App.AdminOpenUserData(username, accessReason);
+      accessTarget = null;
+      accessReason = '';
+      viewing = username;
+    } catch (err: any) {
+      showToast(`Could not open ${username}'s data: ${err}`, 'error');
+    } finally {
+      openingAccess = false;
+      await loadEvents();
+    }
+  }
+
+  async function stoppedViewing() {
+    viewing = null;
+    await loadEvents();
+  }
+
+  async function grantKey(username: string) {
+    grantingKey = username;
+    try {
+      await window.go.main.App.AdminGrantKey(username);
+      showToast(`${username} now holds the administrator key.`, 'success');
+      await load();
+    } catch (err: any) {
+      showToast(`Could not give ${username} the administrator key: ${err}`, 'error');
+    } finally {
+      grantingKey = null;
+    }
   }
 
   async function loadEvents() {
@@ -183,6 +241,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function cancelPending(username: string) {
     if (pendingRoleChange === username) pendingRoleChange = null;
     if (pendingDisable === username) pendingDisable = null;
+    if (accessTarget === username) {
+      accessTarget = null;
+      accessReason = '';
+    }
     if (purgeTarget === username) {
       purgeTarget = null;
       purgeTyped = '';
@@ -350,6 +412,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </div>
     {/if}
 
+    {#if viewing}
+      <AdminUserDataViewer username={viewing} onstop={stoppedViewing} />
+    {/if}
+
     {#if loading}
       <Spinner label="Loading users…" class="py-8" />
     {:else}
@@ -387,6 +453,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
                       Disabled
                     </span>
                   {/if}
+                  {#if adminsWithoutKey.includes(user.username)}
+                    <span class="ml-1 inline-flex items-center text-[11px] text-slate-400" title="This administrator can't open other accounts' data until another administrator gives them the administrator key.">
+                      No administrator key
+                    </span>
+                  {/if}
                 </td>
                 <td class="px-4 py-3 text-[11px] text-slate-500 font-mono">
                   {formatLastLogin(user.last_login)}
@@ -418,7 +489,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
                           onclick={() => cancelPending(user.username)}
                           class="text-[11px] text-slate-400 hover:text-slate-200 underline"
                         >Cancel</button>
-                      {:else if purgeTarget !== user.username}
+                      {:else if purgeTarget !== user.username && accessTarget !== user.username}
+                        {#if adminsWithoutKey.includes(user.username)}
+                          <button
+                            onclick={() => grantKey(user.username)}
+                            disabled={grantingKey === user.username}
+                            class="text-[11px] text-slate-400 hover:text-amber-400 underline disabled:opacity-50"
+                          >Give administrator key</button>
+                        {/if}
+                        {#if !viewing}
+                          <!-- One account at a time: stop viewing before opening another. -->
+                          <button
+                            onclick={() => startAccess(user.username)}
+                            class="text-[11px] text-slate-400 hover:text-amber-400 underline"
+                            aria-label={`Open ${user.username}'s data`}
+                          >Open data</button>
+                        {/if}
                         <button
                           onclick={() => toggleRole(user)}
                           class="text-[11px] text-slate-400 hover:text-amber-400 underline"
@@ -447,6 +533,41 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   {/if}
                 </td>
               </tr>
+              {#if accessTarget === user.username}
+                <tr class="border-b border-slate-800/60 bg-amber-950/10">
+                  <td colspan="5" class="px-4 py-3">
+                    <div class="space-y-2" role="group" aria-label={`Open ${user.username}'s data`}>
+                      <p class="text-xs font-semibold text-amber-300">Open {user.username}'s data?</p>
+                      <p class="text-xs text-slate-300">
+                        You'll see {user.username}'s projects read only: you can't change, export, or print
+                        anything. Opening is recorded in the account history with your reason.
+                      </p>
+                      <label for={`access-reason-${user.username}`} class="block text-[11px] text-slate-400">
+                        Reason (required)
+                      </label>
+                      <textarea
+                        id={`access-reason-${user.username}`}
+                        bind:value={accessReason}
+                        maxlength={maxReasonLength}
+                        rows="2"
+                        class="w-full bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-amber-500 outline-none"
+                      ></textarea>
+                      <div class="flex items-center gap-2">
+                        <button
+                          onclick={() => openAccess(user.username)}
+                          disabled={!accessReason.trim() || openingAccess}
+                          class="text-[11px] bg-amber-700 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-2 py-1 rounded"
+                        >{openingAccess ? 'Opening…' : 'Open data'}</button>
+                        <button
+                          onclick={() => cancelPending(user.username)}
+                          class="text-[11px] text-slate-400 hover:text-slate-200 underline"
+                        >Cancel</button>
+                        <span class="ml-auto text-[10px] text-slate-500">{accessReason.length}/{maxReasonLength}</span>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              {/if}
               {#if purgeTarget === user.username}
                 <tr class="border-b border-slate-800/60 bg-red-950/20">
                   <td colspan="5" class="px-4 py-3">
@@ -503,7 +624,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
               <li>
                 <span class="text-slate-500 font-mono">{formatEventTime(event.occurred_at)}</span>
                 — {describeEvent(event)}
-                {#if (event.action === 'folder_not_removed' || event.action === 'escrow_key_mismatch' || event.action === 'personal_key_repaired') && event.detail}
+                {#if event.action === 'admin_access' && event.detail}
+                  <span class="block text-[11px] text-slate-400 break-words">Reason: {event.detail}</span>
+                {:else if (event.action === 'folder_not_removed' || event.action === 'escrow_key_mismatch' || event.action === 'personal_key_repaired') && event.detail}
                   <span class="block text-[11px] text-slate-500 font-mono break-all">{event.detail}</span>
                 {/if}
               </li>

@@ -39,6 +39,16 @@ declare global {
           AdminListAccountEvents: () => Promise<AccountEvent[]>;
           AdminSetUserRole: (username: string, isAdmin: boolean) => Promise<void>;
           AdminIssueRecoveryCodes: (username: string, password: string) => Promise<string[]>;
+          // Recorded administrator access, view only (ADR-004).
+          AdminOpenUserData: (username: string, reason: string) => Promise<void>;
+          AdminListUserProjects: () => Promise<ProjectFile[]>;
+          AdminViewUserProject: (path: string) => Promise<AdminViewProject>;
+          AdminViewSchedule: () => Promise<AdminViewSchedule[]>;
+          AdminViewCosts: () => Promise<AdminViewCosts>;
+          AdminViewDocuments: () => Promise<AdminViewDocument[]>;
+          AdminStopUserData: () => Promise<void>;
+          AdminListAdminsWithoutKey: () => Promise<string[]>;
+          AdminGrantKey: (username: string) => Promise<void>;
           Login: (username: string, password: string) => Promise<Account>;
           ChangePassword: (currentPassword: string, newPassword: string) => Promise<void>;
           Logout: () => Promise<void>;
@@ -550,6 +560,50 @@ declare global {
     path: string;
     name: string;
     modified: string;
+  }
+
+  // A project an administrator views read-only (AdminViewProjectWire).
+  // audit_warning is '' unless a compliance-mode project's audit trail
+  // fails its check.
+  interface AdminViewProject {
+    project: ProjectMeta;
+    audit_warning: string;
+  }
+
+  // One schedule (Gantt or CPM chart) in the viewer. note explains a
+  // schedule whose data could not be read; its tasks are then empty.
+  interface AdminViewSchedule {
+    chart_id: string;
+    title: string;
+    kind: string;
+    tasks: AdminViewTask[];
+    note: string;
+  }
+
+  interface AdminViewTask {
+    id: string;
+    title: string;
+    start_date: string;
+    finish_date: string;
+    duration: number;
+    percent_complete: number;
+    milestone: boolean;
+    critical: boolean;
+  }
+
+  interface AdminViewCosts {
+    entries: CostEntry[];
+    baselines: CostBaseline[];
+  }
+
+  // A document in the viewer: what it is, never its contents.
+  interface AdminViewDocument {
+    id: string;
+    kind: string;
+    title: string;
+    version: number;
+    status: string;
+    updated_at: string;
   }
 
   // One entry of the signed-in user's deletion log. outcome is '' when the

@@ -50,16 +50,19 @@ if ! make installer-tool-pins >/dev/null; then
 fi
 echo "Native installer tool versions verified."
 
+# --- 2a2. ADR-004 access-notice guard --------------------------------
+# Administrators can open users' data before users are told at sign-in
+# (ADR-004 phase 3); no release may ship that.
+if ! make access-notice-release-guard >/dev/null; then
+    echo "ADR-004 access-notice release guard failed. Run 'make access-notice-release-guard' for details."
+    exit 1
+fi
+echo "ADR-004 access-notice release guard passed."
+
 # --- 2b. Required embedded font assets -------------------------------
 # PDF/A forbids unembedded core fonts. Validate the tracked Source Sans 3
 # baseline before the expensive build and veraPDF gates so a clean-checkout
 # omission produces a direct, actionable failure.
-if ! make escrow-release-guard >/dev/null; then
-    echo "ADR-004 escrow release guard failed. Run 'make escrow-release-guard' for details."
-    exit 1
-fi
-echo "ADR-004 escrow release guard passed."
-
 if ! make required-font-assets >/dev/null; then
     echo "Required font asset validation failed. Run 'make required-font-assets' for details."
     exit 1

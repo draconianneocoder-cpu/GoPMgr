@@ -600,7 +600,13 @@ func grantOnActionTx(ctx context.Context, q accountWriter, actor string, actorDE
 		return err
 	}
 	defer session.Close()
+	return attestAndGrantTx(ctx, q, session, actor, username, public, attestation, attestedKeyID)
+}
 
+// attestAndGrantTx grants session's escrow key to username after checking
+// their personal key against its attestation by that key; a key this
+// escrow key never attested is trusted now, on first use, and recorded.
+func attestAndGrantTx(ctx context.Context, q accountWriter, session *EscrowSession, actor, username string, public, attestation []byte, attestedKeyID string) error {
 	if attestedKeyID == session.id {
 		ok, err := crypto.VerifyAttestation(session.private, username, public, attestation)
 		if err != nil {
@@ -705,4 +711,92 @@ func (s *Store) recordAttestationFailure(actor, username string) {
 	if err != nil {
 		log.Printf("users: record attestation failure for %s: %v", username, err)
 	}
+}
+
+// ErrTargetNotAdmin is returned by GrantKey when the account is not an
+// enabled administrator.
+var ErrTargetNotAdmin = errors.New("users: account is not an enabled administrator")
+
+// GrantKey gives username, an enabled administrator without a grant, the
+// active escrow key, on behalf of actor, whose DEK is actorDEK. Unlike
+// promotion, it fails rather than doing nothing when it cannot grant:
+// ErrNoEscrowGrant or ErrEscrowMismatch when actor holds no usable grant
+// (a mismatch is recorded), ErrNoPersonalKey when username has not signed
+// in since enrollment began, and ErrPersonalKeyNotAttested (recorded) when
+// their personal key fails its attestation. An administrator who already
+// holds a grant is left alone.
+func (s *Store) GrantKey(actor string, actorDEK []byte, username string) error {
+	var refused error
+	err := s.inWriteTx("escrow grant", func(ctx context.Context, q accountWriter) error {
+		if err := requireEnabledAdmin(ctx, q, actor); err != nil {
+			return err
+		}
+		if err := requireEnabledAdmin(ctx, q, username); errors.Is(err, ErrNotAdmin) {
+			return ErrTargetNotAdmin
+		} else if err != nil {
+			return err
+		}
+		// The caller's own key first: without it nothing else matters.
+		session, err := openGrantTx(ctx, q, actor, actorDEK)
+		if errors.Is(err, ErrEscrowMismatch) {
+			refused = err
+			return nil // commit the recorded mismatch
+		}
+		if err != nil {
+			return err
+		}
+		defer session.Close()
+		var public, attestation []byte
+		var attestedKeyID string
+		err = q.QueryRowContext(ctx,
+			`SELECT public_key, attestation, attested_escrow_key_id FROM personal_keys WHERE username = ?`,
+			username).Scan(&public, &attestation, &attestedKeyID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNoPersonalKey
+		}
+		if err != nil {
+			return fmt.Errorf("users: read personal key: %w", err)
+		}
+		var granted int
+		if err := q.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM escrow_grants WHERE admin_username = ? AND escrow_key_id = ?`,
+			username, session.id).Scan(&granted); err != nil {
+			return fmt.Errorf("users: read escrow grant: %w", err)
+		}
+		if granted > 0 {
+			return nil
+		}
+		return attestAndGrantTx(ctx, q, session, actor, username, public, attestation, attestedKeyID)
+	})
+	if errors.Is(err, ErrPersonalKeyNotAttested) {
+		s.recordAttestationFailure(actor, username)
+	}
+	if err != nil {
+		return err
+	}
+	return refused
+}
+
+// AdminsWithoutGrant lists the enabled administrators who hold no grant
+// for the active escrow key, so another administrator can give them one.
+// With no escrow key yet it lists nobody.
+func (s *Store) AdminsWithoutGrant() ([]string, error) {
+	rows, err := s.conn.Query(
+		`SELECT u.username FROM users u, escrow_keys k
+		 WHERE k.retired_at = '' AND u.is_admin = 1 AND u.disabled = 0
+		   AND NOT EXISTS (SELECT 1 FROM escrow_grants g WHERE g.admin_username = u.username AND g.escrow_key_id = k.id)
+		 ORDER BY u.username`)
+	if err != nil {
+		return nil, fmt.Errorf("users: list administrators without a grant: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var out []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		out = append(out, name)
+	}
+	return out, rows.Err()
 }

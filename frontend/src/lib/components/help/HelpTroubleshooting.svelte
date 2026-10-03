@@ -25,7 +25,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
               only your passphrase, so your encrypted projects stay readable. A code from an older version
               of GoPMgr can't unlock your encryption key, so it is refused and nothing changes. If the passphrase
               <span class="font-medium text-slate-100">and</span> all recovery codes are lost,
-              encrypted project databases are unrecoverable by design — there is no back door.
+              you can't open your encrypted projects again. An administrator can view them read only
+              through recorded access, but that doesn't give them back to you.
             </p>
           </section>
 
