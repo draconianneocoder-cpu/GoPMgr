@@ -460,6 +460,13 @@ Opening data needs the administrator key. The first administrator holds it;
 others get it when an administrator makes them administrators, or later with
 **Give administrator key**.
 
+If an administrator opens your data, you see who did, when, and their reason
+on the first screen after you sign in, until you choose **I've read this**;
+the Admin panel's history records that you read it. App Settings, under
+Account, lists every time it has happened. This relies on GoPMgr's account
+record, which someone who can edit GoPMgr's files on this computer could
+change.
+
 ## Fonts
 
 GoPMgr embeds TrueType fonts in generated PDFs. Source Sans 3 ships with

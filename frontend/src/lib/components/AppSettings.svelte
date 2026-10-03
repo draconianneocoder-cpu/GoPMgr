@@ -10,6 +10,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import AppHeader from './AppHeader.svelte';
   import ChangePasswordForm from './auth/ChangePasswordForm.svelte';
   import RecoveryCodesPanel from './auth/RecoveryCodesPanel.svelte';
+  import AccessHistory from './auth/AccessHistory.svelte';
   import { applyTheme, rememberTheme, type AppTheme } from '../theme';
   import { autosave } from '../autosave.svelte';
   import { session } from '../session.svelte';
@@ -429,6 +430,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <ChangePasswordForm />
           <div class="border-t border-slate-800 pt-3">
             <RecoveryCodesPanel />
+          </div>
+          <div class="border-t border-slate-800 pt-3">
+            <AccessHistory />
           </div>
         </section>
 

@@ -49,6 +49,10 @@ declare global {
           AdminStopUserData: () => Promise<void>;
           AdminListAdminsWithoutKey: () => Promise<string[]>;
           AdminGrantKey: (username: string) => Promise<void>;
+          // The signed-in user's own record of administrator access.
+          MyDataAccessNotices: () => Promise<AccountEvent[]>;
+          AcknowledgeDataAccessNotices: (throughID: number) => Promise<void>;
+          MyDataAccessHistory: () => Promise<AccountEvent[]>;
           Login: (username: string, password: string) => Promise<Account>;
           ChangePassword: (currentPassword: string, newPassword: string) => Promise<void>;
           Logout: () => Promise<void>;
@@ -538,7 +542,7 @@ declare global {
       | 'created' | 'promoted' | 'demoted' | 'disabled' | 'enabled' | 'purged' | 'folder_not_removed'
       // Administrator key (ADR-004).
       | 'admin_access' | 'escrow_key_mismatch' | 'escrow_reenrolled' | 'personal_key_repaired'
-      | 'personal_key_trusted' | 'escrow_rotated';
+      | 'personal_key_trusted' | 'escrow_rotated' | 'access_notice_read';
     detail: string;
   }
 

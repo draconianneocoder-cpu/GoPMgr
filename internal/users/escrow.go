@@ -16,6 +16,8 @@ package users
 //   - escrow_pins: each account's MAC of the escrow key it trusts.
 //   - escrow_grants: the escrow private key sealed to an administrator's
 //     personal key.
+//   - access_notices: the newest admin_access event each account has
+//     acknowledged in its sign-in notice (ADR-004 decision 2).
 const escrowSchema = `
 CREATE TABLE IF NOT EXISTS escrow_keys (
 	id         TEXT PRIMARY KEY,
@@ -50,6 +52,10 @@ CREATE TABLE IF NOT EXISTS escrow_grants (
 	escrow_key_id  TEXT NOT NULL REFERENCES escrow_keys(id),
 	sealed         BLOB NOT NULL,
 	granted_at     TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS access_notices (
+	username             TEXT PRIMARY KEY REFERENCES users(username) ON DELETE CASCADE,
+	acknowledged_through INTEGER NOT NULL
 );
 `
 

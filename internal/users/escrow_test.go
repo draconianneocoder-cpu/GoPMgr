@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-var escrowTables = []string{"escrow_keys", "personal_keys", "sealed_deks", "escrow_pins", "escrow_grants"}
+var escrowTables = []string{"escrow_keys", "personal_keys", "sealed_deks", "escrow_pins", "escrow_grants", "access_notices"}
 
 func countRows(t *testing.T, store *Store, table, where string, args ...any) int {
 	t.Helper()
@@ -148,7 +148,7 @@ func TestEscrowAccountEventsAreAccepted(t *testing.T) {
 	store := newStatusStore(t)
 	for _, action := range []string{
 		AccountAdminAccess, AccountEscrowKeyMismatch, AccountEscrowReenrolled,
-		AccountPersonalKeyRepaired, AccountEscrowRotated, AccountPersonalKeyTrusted,
+		AccountPersonalKeyRepaired, AccountEscrowRotated, AccountPersonalKeyTrusted, AccountAccessNoticeRead,
 	} {
 		if err := recordAccountEvent(context.Background(), store.conn, "alice", "bob", action, ""); err != nil {
 			t.Errorf("record %s: %v", action, err)

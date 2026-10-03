@@ -286,6 +286,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
         return `${e.actor} accepted ${e.username}'s account key without an earlier check`;
       case 'escrow_rotated':
         return `${e.actor} replaced the administrator key`;
+      case 'access_notice_read':
+        return `${e.username} read the notice that their data was opened (${e.detail})`;
       default:
         return `${e.actor} ${e.action} ${e.username}`;
     }

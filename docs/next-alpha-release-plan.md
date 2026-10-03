@@ -55,9 +55,11 @@ make check-release
 GOPMGR_RELEASE_TAG=v<version-of-record>-alpha.<sequence> make tag-preflight
 ```
 
-Do not tag while administrators can open users' data (ADR-004 phases 1 and
-2) and users are not yet told at their next sign-in (phase 3); `make
-access-notice-release-guard`, run by `check-release`, enforces it. See
+ADR-004 escrow rotation (owner decision 3) is accepted but not built. A
+release without it ships recorded administrator access in which an
+administrator who is demoted, disabled, or deleted, and who kept an earlier
+copy of `system.db`, can still unseal accounts enrolled after they left.
+Do not tag until rotation ships (owner decision, 2026-10-05). See
 [ADR-004](design/ADR-004-administrator-access-to-user-data.md).
 
 Before the tag, also require:

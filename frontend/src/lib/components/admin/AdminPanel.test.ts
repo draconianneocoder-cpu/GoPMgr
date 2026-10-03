@@ -201,6 +201,16 @@ describe('AdminPanel account history', () => {
     for (const item of items) expect(item).not.toMatch(/escrow|_/);
   });
 
+  it('says when a user read the notice that their data was opened', async () => {
+    app.AdminListAccountEvents.mockResolvedValue([
+      { id: 1, occurred_at: '2026-10-02T10:00:00Z', actor: 'bob', username: 'bob', action: 'access_notice_read', detail: '2 accesses' },
+    ]);
+    const utils = render(AdminPanel);
+    const history = await utils.findByRole('region', { name: 'Account history' });
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(1));
+    expect(within(history).getAllByRole('listitem')[0].textContent).toContain('bob read the notice that their data was opened (2 accesses)');
+  });
+
   it('says when there is no history, and reports a failed load', async () => {
     const utils = render(AdminPanel);
     expect(await utils.findByText('No account changes yet.')).toBeInTheDocument();

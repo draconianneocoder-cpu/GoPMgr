@@ -29,6 +29,20 @@ function setApp(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
 // called "dashboard". This is the heading half of that collision;
 // AppHeader.test.ts covers the nav label half.
 describe('Portfolio', () => {
+  // Every sign-in lands here, so this is where users are told that an
+  // administrator opened their data (ADR-004).
+  it('shows the notice of administrator access first', async () => {
+    session.user = { username: 'bob', display_name: 'Bob', data_dir: '', created_at: '', last_login: '', is_admin: false };
+    setApp({
+      MyDataAccessNotices: vi.fn(async () => [
+        { id: 3, occurred_at: '2026-10-02T10:00:00Z', actor: 'alice', username: 'bob', action: 'admin_access', detail: 'Ticket 3' },
+      ]),
+    });
+    const { findByRole } = render(Portfolio);
+    const notice = await findByRole('region', { name: 'An administrator opened your data' });
+    expect(notice.textContent).toContain('Reason: Ticket 3');
+  });
+
   it('headings the screen "Portfolio", not "Portfolio dashboard"', async () => {
     session.user = { username: 'alice', display_name: 'Alice', data_dir: '', created_at: '', last_login: '', is_admin: false };
     const app = setApp();
