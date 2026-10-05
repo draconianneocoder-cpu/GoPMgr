@@ -64,6 +64,10 @@ const (
 	AccountEscrowRotated       = "escrow_rotated"
 	AccountPersonalKeyTrusted  = "personal_key_trusted"
 	AccountAccessNoticeRead    = "access_notice_read"
+
+	// Super administrator (ADR-005).
+	AccountSuperAssigned   = "super_admin_assigned"
+	AccountSuperHandedOver = "super_admin_handed_over"
 )
 
 // accountEventActions lists the actions recordAccountEvent accepts. It is
@@ -86,6 +90,8 @@ var accountEventActions = map[string]bool{
 	AccountEscrowRotated:       true,
 	AccountPersonalKeyTrusted:  true,
 	AccountAccessNoticeRead:    true,
+	AccountSuperAssigned:       true,
+	AccountSuperHandedOver:     true,
 }
 
 // AccountEvent is one entry in the account history.
@@ -305,6 +311,9 @@ func setDisabledTx(ctx context.Context, q accountWriter, actor, username string,
 	if err != nil {
 		return err
 	}
+	if err := requireAccountActionTx(ctx, q, actor, username, isAdmin); err != nil {
+		return err
+	}
 	if current == disabled {
 		return nil
 	}
@@ -312,8 +321,7 @@ func setDisabledTx(ctx context.Context, q accountWriter, actor, username string,
 		if err := guardLastEnabledAdmin(ctx, q, isAdmin, current); err != nil {
 			return err
 		}
-		// A disabled administrator keeps no escrow grant (ADR-004);
-		// EnableAccount grants again.
+		// A disabled administrator keeps no escrow grant (ADR-004).
 		if err := removeGrantTx(ctx, q, username); err != nil {
 			return err
 		}
@@ -360,6 +368,9 @@ func (s *Store) PurgeAccount(actor, username string) error {
 		}
 		isAdmin, disabled, err := accountRole(ctx, q, username)
 		if err != nil {
+			return err
+		}
+		if err := requireAccountActionTx(ctx, q, actor, username, isAdmin); err != nil {
 			return err
 		}
 		var caseVariants int

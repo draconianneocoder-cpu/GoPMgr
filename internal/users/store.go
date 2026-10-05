@@ -227,7 +227,10 @@ func (s *Store) migrate() error {
 		return err
 	}
 	// Administrator escrow (ADR-004, escrow.go).
-	return s.migrateEscrowTables()
+	if err := s.migrateEscrowTables(); err != nil {
+		return err
+	}
+	return s.migrateSuperAdmin()
 }
 
 // migrateLastExportDirColumn adds last_export_directory to pre-existing
@@ -337,6 +340,11 @@ func (s *Store) SetAdmin(actor, username string, isAdmin bool) error {
 		if targetIsAdmin == isAdmin {
 			return nil
 		}
+		// Changing anyone's administrator role is the super
+		// administrator's alone (ADR-005).
+		if err := requireAccountActionTx(ctx, q, actor, username, true); err != nil {
+			return err
+		}
 		if !isAdmin {
 			if err := guardLastEnabledAdmin(ctx, q, targetIsAdmin, targetDisabled); err != nil {
 				return err
@@ -382,7 +390,13 @@ func (s *Store) ClaimAdmin(username string) error {
 		if _, err := q.ExecContext(ctx, `UPDATE users SET is_admin = 1 WHERE username = ?`, username); err != nil {
 			return err
 		}
-		return recordAccountEvent(ctx, q, username, username, AccountPromoted, "claimed with no administrator on the machine")
+		if err := recordAccountEvent(ctx, q, username, username, AccountPromoted, "claimed with no administrator on the machine"); err != nil {
+			return err
+		}
+		// With no other administrator able to sign in, the claimant is
+		// the super administrator (ADR-005).
+		_, err = ensureSuperTx(ctx, q)
+		return err
 	})
 }
 
@@ -494,6 +508,13 @@ func (s *Store) CreateAccountWithKey(callerUsername, username, displayName, pass
 			if !callerIsAdmin || callerDisabled {
 				return ErrNotAdmin
 			}
+			// Only the super administrator creates administrators
+			// (ADR-005).
+			if isAdmin {
+				if err := requireSuperTx(ctx, q, callerUsername); err != nil {
+					return err
+				}
+			}
 		}
 
 		afterAccountRuleCheck()
@@ -515,7 +536,8 @@ func (s *Store) CreateAccountWithKey(callerUsername, username, displayName, pass
 		if _, err := q.ExecContext(ctx, `UPDATE users SET wrapped_dek_pw = ? WHERE username = ?`, wrapped, username); err != nil {
 			return err
 		}
-		if err := enrollInSavepoint(ctx, q, username, dek, session, created.IsAdmin); err != nil {
+		// A new administrator is a subordinate and gets no key (ADR-005).
+		if err := enrollInSavepoint(ctx, q, username, dek, session, false); err != nil {
 			log.Printf("users: escrow enrollment of new account %s failed, retried at its sign-in: %v", username, err)
 		}
 		return nil

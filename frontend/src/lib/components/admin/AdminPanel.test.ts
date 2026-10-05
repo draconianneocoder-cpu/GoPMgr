@@ -28,6 +28,7 @@ beforeEach(() => {
     AdminListAccountEvents: vi.fn(async () => []),
     AdminSetUserDisabled: vi.fn(async () => undefined),
     AdminPurgeUser: vi.fn(async () => undefined),
+    AdminRoles: vi.fn(async () => ({ super: 'alice' })),
   };
   (window as unknown as { go: unknown }).go = { main: { App: app } };
   session.user = account('alice', { is_admin: true });
@@ -270,38 +271,79 @@ describe('AdminPanel new-account recovery codes', () => {
   });
 });
 
-describe('AdminPanel own row', () => {
-  const sole = /You're the only administrator, so no one can change your account\. To step down, make someone else an administrator who can sign in first\./;
-  const other = 'Another administrator can change your account.';
+// ADR-005: one super administrator; other administrators are subordinates
+// who manage standard accounts only.
+describe('AdminPanel super administrator', () => {
+  const superNote = "You're the super administrator, so no one can change your account. To step down, make another administrator who has signed in the super administrator.";
 
-  // The note sits in your own row only; other rows keep their actions.
-  function ownRowNote(utils: ReturnType<typeof render>) {
-    const row = utils.getByText('(you)').closest('tr') as HTMLElement;
-    expect(within(bobRow(utils)).queryByText(sole)).not.toBeInTheDocument();
-    expect(within(bobRow(utils)).queryByText(other)).not.toBeInTheDocument();
-    return row;
-  }
-
-  it('tells the only administrator how to step down', async () => {
-    const utils = render(AdminPanel);
-    await utils.findByRole('button', { name: 'Disable account bob' });
-    expect(within(ownRowNote(utils)).getByText(sole)).toBeInTheDocument();
-  });
-
-  it('points to the other administrators when there are any', async () => {
+  it('marks the super administrator and tells them how to step down', async () => {
     app.AdminListUsers.mockResolvedValue([account('alice', { is_admin: true }), account('bob', { is_admin: true })]);
     const utils = render(AdminPanel);
-    await utils.findByRole('button', { name: 'Disable account bob' });
-    const row = ownRowNote(utils);
-    expect(within(row).getByText(other)).toBeInTheDocument();
-    expect(within(row).queryByText(sole)).not.toBeInTheDocument();
+    await utils.findByRole('button', { name: 'Make bob super administrator' });
+    const own = utils.getByText('(you)').closest('tr') as HTMLElement;
+    expect(within(own).getByText('Super administrator')).toBeInTheDocument();
+    expect(within(own).getByText(superNote)).toBeInTheDocument();
+    expect(within(bobRow(utils)).getByText('Admin')).toBeInTheDocument();
+    expect(within(bobRow(utils)).queryByText(superNote)).not.toBeInTheDocument();
   });
 
-  it('does not count a disabled administrator, who cannot sign in', async () => {
-    app.AdminListUsers.mockResolvedValue([account('alice', { is_admin: true }), account('bob', { is_admin: true, disabled: true })]);
+  it('lets a subordinate manage standard accounts only', async () => {
+    session.user = account('bob', { is_admin: true });
+    app.AdminListUsers.mockResolvedValue([
+      account('alice', { is_admin: true }),
+      account('bob', { is_admin: true }),
+      account('carol'),
+    ]);
+    const utils = render(AdminPanel);
+    await utils.findByRole('button', { name: 'Disable account carol' });
+    expect(utils.getByText(/Only the super administrator, alice, changes administrators and can open users' data\./)).toBeInTheDocument();
+    // alice's row: nothing to do; carol's row: standard-account actions only.
+    expect(utils.queryByRole('button', { name: 'Disable account alice' })).not.toBeInTheDocument();
+    expect(utils.getByText('Only the super administrator can change administrators.')).toBeInTheDocument();
+    expect(utils.getByRole('button', { name: 'Delete account carol permanently' })).toBeInTheDocument();
+    for (const name of [/Grant admin/, /Remove admin/, /^Open .*'s data$/, /super administrator$/]) {
+      expect(utils.queryByRole('button', { name })).not.toBeInTheDocument();
+    }
+    expect((utils.getByText('(you)').closest('tr') as HTMLElement).textContent).toContain('Only the super administrator can change your account.');
+    await fireEvent.click(utils.getByRole('button', { name: 'Create user' }));
+    expect(utils.queryByLabelText('Administrator account')).not.toBeInTheDocument();
+  });
+
+  it('hands the role over only after confirmation, then reloads', async () => {
+    app.AdminListUsers.mockResolvedValue([account('alice', { is_admin: true }), account('bob', { is_admin: true })]);
+    app.AdminHandOverSuper = vi.fn(async () => ({ key_passed: true }));
+    const utils = render(AdminPanel);
+    await fireEvent.click(await utils.findByRole('button', { name: 'Make bob super administrator' }));
+    expect(app.AdminHandOverSuper).not.toHaveBeenCalled();
+    expect(within(bobRow(utils)).getByText(/You'll become a subordinate administrator/)).toBeInTheDocument();
+    app.AdminRoles.mockResolvedValue({ super: 'bob' });
+    await fireEvent.click(within(bobRow(utils)).getByRole('button', { name: 'Confirm' }));
+    expect(app.AdminHandOverSuper).toHaveBeenCalledWith('bob');
+    await waitFor(() => expect(within(bobRow(utils)).getByText('Super administrator')).toBeInTheDocument());
+  });
+
+  it('offers the hand-over only for enabled administrators', async () => {
+    app.AdminListUsers.mockResolvedValue([
+      account('alice', { is_admin: true }),
+      account('bob', { is_admin: true, disabled: true }),
+      account('carol'),
+    ]);
     const utils = render(AdminPanel);
     await utils.findByRole('button', { name: 'Enable account bob' });
-    expect(within(ownRowNote(utils)).getByText(sole)).toBeInTheDocument();
+    expect(utils.queryByRole('button', { name: /super administrator$/ })).not.toBeInTheDocument();
+  });
+
+  it('describes role assignments and hand-overs in the history', async () => {
+    app.AdminListAccountEvents.mockResolvedValue([
+      { id: 2, occurred_at: '2026-10-05T10:01:00Z', actor: 'alice', username: 'bob', action: 'super_admin_handed_over', detail: 'administrator key passed' },
+      { id: 1, occurred_at: '2026-10-05T10:00:00Z', actor: 'alice', username: 'alice', action: 'super_admin_assigned', detail: 'the earliest administrator' },
+    ]);
+    const utils = render(AdminPanel);
+    const history = await utils.findByRole('region', { name: 'Account history' });
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(2));
+    const items = within(history).getAllByRole('listitem').map((li) => li.textContent?.replace(/\s+/g, ' '));
+    expect(items[0]).toContain('alice handed the super administrator role to bob');
+    expect(items[1]).toContain('alice became the super administrator (the earliest administrator)');
   });
 });
 
@@ -310,7 +352,6 @@ describe('AdminPanel recorded access to user data', () => {
     app.AdminOpenUserData = vi.fn(async () => undefined);
     app.AdminListUserProjects = vi.fn(async () => []);
     app.AdminStopUserData = vi.fn(async () => undefined);
-    app.AdminListAdminsWithoutKey = vi.fn(async () => []);
   });
 
   it('opens another account only with a reason, then shows the read-only viewer', async () => {
@@ -373,19 +414,4 @@ describe('AdminPanel recorded access to user data', () => {
     expect(item).toContain('Reason: Support ticket 42');
   });
 
-  it('offers the administrator key to administrators without it', async () => {
-    app.AdminListUsers.mockResolvedValue([
-      account('alice', { is_admin: true }),
-      account('carol', { is_admin: true }),
-      account('bob'),
-    ]);
-    app.AdminListAdminsWithoutKey = vi.fn(async () => ['carol']);
-    app.AdminGrantKey = vi.fn(async () => undefined);
-    const utils = render(AdminPanel);
-    const give = await utils.findByRole('button', { name: 'Give administrator key' });
-    expect(utils.getAllByRole('button', { name: 'Give administrator key' })).toHaveLength(1);
-    expect(utils.getByText('No administrator key')).toBeInTheDocument();
-    await fireEvent.click(give);
-    expect(app.AdminGrantKey).toHaveBeenCalledWith('carol');
-  });
 });

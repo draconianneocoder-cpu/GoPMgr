@@ -214,7 +214,7 @@ func TestAdminViewIsConfinedToTheTargetsProjects(t *testing.T) {
 	}
 }
 
-func TestAdminAccessStopsWhenTheAdministratorIsDemoted(t *testing.T) {
+func TestAdminAccessStopsWhenTheAdministratorLosesTheSuperRole(t *testing.T) {
 	app, path := adminAccessApp(t)
 	if _, err := app.CreateAccount("carol", "Carol", escrowTestPassword, true); err != nil {
 		t.Fatalf("CreateAccount(carol): %v", err)
@@ -225,16 +225,16 @@ func TestAdminAccessStopsWhenTheAdministratorIsDemoted(t *testing.T) {
 	app.mu.RLock()
 	key := app.access.dek
 	app.mu.RUnlock()
-	// Another GoPMgr process demotes alice.
-	if err := app.store.SetAdmin("carol", "alice", false); err != nil {
-		t.Fatalf("demote alice: %v", err)
+	// Another GoPMgr process hands the super administrator role to carol.
+	if _, err := app.store.HandOverSuper("alice", sessionDEK(app), "carol"); err != nil {
+		t.Fatalf("hand over to carol: %v", err)
 	}
 
 	if _, err := app.AdminViewUserProject(path); err == nil || err.Error() != "administrator privileges required" {
-		t.Fatalf("viewing after demotion: err = %v, want administrator privileges required", err)
+		t.Fatalf("viewing after losing the role: err = %v, want administrator privileges required", err)
 	}
 	if !bytes.Equal(key, make([]byte, len(key))) {
-		t.Fatal("the target's key was kept after demotion")
+		t.Fatal("the target's key was kept after losing the role")
 	}
 }
 

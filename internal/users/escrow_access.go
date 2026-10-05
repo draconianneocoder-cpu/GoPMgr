@@ -65,7 +65,7 @@ func (s *Store) OpenUserForAdmin(actor string, actorDEK []byte, target, reason s
 	var dek []byte
 	var refused error
 	err := s.inWriteTx("administrator access", func(ctx context.Context, q accountWriter) error {
-		if err := requireEnabledAdmin(ctx, q, actor); err != nil {
+		if err := requireSuperTx(ctx, q, actor); err != nil {
 			return err
 		}
 		if _, _, err := accountRole(ctx, q, target); err != nil {
@@ -127,10 +127,4 @@ func (s *Store) OpenUserForAdmin(actor string, actorDEK []byte, target, reason s
 		return nil, refused
 	}
 	return dek, nil
-}
-
-// RequireEnabledAdmin returns ErrNotAdmin unless actor is an administrator
-// who can sign in, read from system.db rather than a session.
-func (s *Store) RequireEnabledAdmin(actor string) error {
-	return requireEnabledAdmin(context.Background(), s.conn, actor)
 }

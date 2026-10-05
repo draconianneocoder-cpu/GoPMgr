@@ -158,7 +158,7 @@ func TestEveryAdminViewMethodIsRefusedWithoutAccess(t *testing.T) {
 	// A fresh fixture per method, so one method's own check (which ends
 	// access) cannot make the next method's refusal look like its own.
 	for name, call := range calls {
-		for _, ending := range []string{"stopped", "demoted"} {
+		for _, ending := range []string{"stopped", "no longer super"} {
 			app, path := viewerFixtureApp(t)
 			if ending == "stopped" {
 				if err := app.AdminStopUserData(); err != nil {
@@ -168,8 +168,8 @@ func TestEveryAdminViewMethodIsRefusedWithoutAccess(t *testing.T) {
 				if _, err := app.CreateAccount("carol", "Carol", escrowTestPassword, true); err != nil {
 					t.Fatalf("CreateAccount(carol): %v", err)
 				}
-				if err := app.store.SetAdmin("carol", "alice", false); err != nil {
-					t.Fatalf("demote alice: %v", err)
+				if _, err := app.store.HandOverSuper("alice", sessionDEK(app), "carol"); err != nil {
+					t.Fatalf("hand over to carol: %v", err)
 				}
 			}
 			if err := call(app, path); err == nil {
@@ -212,48 +212,5 @@ func TestAdminViewWarnsAboutABrokenAuditTrail(t *testing.T) {
 	}
 	if !strings.Contains(view.AuditWarning, "audit trail fails its tamper check") {
 		t.Fatalf("audit warning = %q; want the broken trail named", view.AuditWarning)
-	}
-}
-
-func TestAdminGrantKeyGivesTheKeyOrSaysWhyNot(t *testing.T) {
-	app := newAdminTestApp(t)
-	if _, err := app.CreateAccount("alice", "Alice", escrowTestPassword, true); err != nil {
-		t.Fatalf("CreateAccount(alice): %v", err)
-	}
-	// bob and carol are administrators without the key: made so in
-	// system.db, as an install upgraded from before escrow would have them.
-	for _, name := range []string{"bob", "carol"} {
-		if _, err := app.CreateAccount(name, name, escrowTestPassword, false); err != nil {
-			t.Fatalf("CreateAccount(%s): %v", name, err)
-		}
-	}
-	if _, err := app.store.CreateAccount("dave", "Dave", escrowTestPassword, true); err != nil {
-		t.Fatalf("create dave: %v", err)
-	}
-	conn := systemDB(t, app)
-	if _, err := conn.Exec(`UPDATE users SET is_admin = 1 WHERE username IN ('bob', 'carol')`); err != nil {
-		t.Fatalf("make administrators: %v", err)
-	}
-
-	waiting, err := app.AdminListAdminsWithoutKey()
-	if err != nil || strings.Join(waiting, ",") != "bob,carol,dave" {
-		t.Fatalf("AdminListAdminsWithoutKey = %v, %v; want bob, carol, dave", waiting, err)
-	}
-	if err := app.AdminGrantKey("bob"); err != nil {
-		t.Fatalf("AdminGrantKey(bob): %v", err)
-	}
-	want := "dave must sign in once before they can get the administrator key"
-	if err := app.AdminGrantKey("dave"); err == nil || err.Error() != want {
-		t.Fatalf("AdminGrantKey(dave) = %v, want %q", err, want)
-	}
-	if waiting, _ := app.AdminListAdminsWithoutKey(); strings.Join(waiting, ",") != "carol,dave" {
-		t.Fatalf("after granting bob, waiting = %v; want carol, dave", waiting)
-	}
-
-	// An administrator without the key cannot give it, and is told so.
-	switchUser(t, app, "carol")
-	want = "you don't hold the administrator key yourself, so you can't give it"
-	if err := app.AdminGrantKey("dave"); err == nil || err.Error() != want {
-		t.Fatalf("AdminGrantKey by an administrator without the key = %v, want %q", err, want)
 	}
 }

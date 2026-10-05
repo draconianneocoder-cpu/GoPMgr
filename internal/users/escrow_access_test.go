@@ -84,14 +84,14 @@ func TestAdministratorAccessRefusalsRecordNothing(t *testing.T) {
 		reason string
 		want   error
 	}{
-		"no reason":                     {"alice", aliceDEK, "bob", " \t ", ErrAccessReasonRequired},
-		"reason too long":               {"alice", aliceDEK, "bob", strings.Repeat("é", MaxAccessReasonLength+1), ErrAccessReasonTooLong},
-		"own account":                   {"alice", aliceDEK, "ALICE", "checking", ErrSelfAccess},
-		"standard account caller":       {"bob", bobDEK, "dave", "checking", ErrNotAdmin},
-		"demoted administrator":         {"erin", erinDEK, "bob", "checking", ErrNotAdmin},
-		"administrator without a grant": {"frank", frankDEK, "bob", "checking", ErrNoEscrowGrant},
-		"unknown account":               {"alice", aliceDEK, "nobody", "checking", ErrNoSuchUser},
-		"account not enrolled":          {"alice", aliceDEK, "carol", "checking", ErrNotEnrolled},
+		"no reason":                 {"alice", aliceDEK, "bob", " \t ", ErrAccessReasonRequired},
+		"reason too long":           {"alice", aliceDEK, "bob", strings.Repeat("é", MaxAccessReasonLength+1), ErrAccessReasonTooLong},
+		"own account":               {"alice", aliceDEK, "ALICE", "checking", ErrSelfAccess},
+		"standard account caller":   {"bob", bobDEK, "dave", "checking", ErrNotAdmin},
+		"demoted administrator":     {"erin", erinDEK, "bob", "checking", ErrNotAdmin},
+		"subordinate administrator": {"frank", frankDEK, "bob", "checking", ErrNotSuper},
+		"unknown account":           {"alice", aliceDEK, "nobody", "checking", ErrNoSuchUser},
+		"account not enrolled":      {"alice", aliceDEK, "carol", "checking", ErrNotEnrolled},
 	} {
 		dek, err := store.OpenUserForAdmin(tc.actor, tc.dek, tc.target, tc.reason)
 		if !errors.Is(err, tc.want) || dek != nil {

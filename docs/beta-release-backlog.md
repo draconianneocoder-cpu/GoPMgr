@@ -191,22 +191,25 @@ That result took six live-GUI cycles to reach because the first five, all run un
       `AdminViewUserProject`, and `AdminStopUserData` view a read-only copy
       held apart from `a.db` and `a.dek`. View only, by owner decision.
     - Phase 2 slice B built 2026-10-02 (Admin panel): **Open data** with a
-      required reason (500 characters), a read-only viewer (summary,
-      schedule, costs, document titles; owner decision) whose reads all go
-      through `withAdminView`, which re-checks the role; a broken audit
-      trail shows as a warning (owner decision); the reason shows in the
-      account history; **Give administrator key** (`Store.GrantKey`, which
-      fails rather than doing nothing when it cannot grant) for
-      administrators without the key. The phase-1 escrow guard was replaced
-      by the access-notice guard (row above). Evidence:
-      `app_admin_view_test.go`, `AdminUserDataViewer.test.ts`, and
-      `AdminPanel.test.ts` rows in `TEST_COVERAGE_LEDGER.md`.
+      required reason, the read-only viewer, the reason in the account
+      history. Its **Give administrator key** control was removed by
+      ADR-005 part 1 (2026-10-05): only the super administrator holds the
+      key.
     - Phase 3's sign-in notice built 2026-10-02 (see the release row).
     - Open: escrow rotation (ADR-004 decision 3, accepted); required before
-      the next tag (owner decision, 2026-10-05). `BecomeAdmin` on a
-      machine whose administrators were all disabled or removed leaves the
-      escrow key with no holder until rotation. The database and crypto
-      error returns in `escrow_enroll.go` are not tested one by one.
+      the next tag (owner decision, 2026-10-05). `BecomeAdmin` on a machine
+      whose administrators were all disabled or removed leaves the escrow
+      key with no holder until rotation. The database and crypto error
+      returns in `escrow_enroll.go` are not tested one by one.
+    - ADR-005 (owner decisions 2026-10-05): one super administrator;
+      subordinates manage standard accounts only. Part 1 built 2026-10-05
+      (role, subordinate limits, earliest-administrator migration,
+      hand-over). Open, all before the next tag: part 2, the standby
+      successor with a super-set inactivity period (default 30 days) and
+      a confirmed takeover; part 3, rotation (automatic when someone stops
+      holding the key, plus "Replace administrator key"). Evidence:
+      `super_admin_test.go`, `app_super_admin_test.go`, and the
+      `AdminPanel.test.ts` row in `TEST_COVERAGE_LEDGER.md`.
   - Done 2026-09-28: account creation (with its role) and role changes are
     recorded in `account_events`, in the same transaction as the change.
     `SetAdmin` now takes the acting administrator and checks it inside the

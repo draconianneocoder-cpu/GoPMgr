@@ -9,7 +9,10 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 notice built (2026-10-02); escrow rotation (decision 3) accepted but not
 built. The owner accepted every recommendation under Owner decisions on
 2026-09-25. The release guards that kept phases 1 and 2 from shipping before
-the notice were removed with it.
+the notice were removed with it. [ADR-005](ADR-005-super-administrator-and-succession.md)
+(2026-10-05) narrows who holds the key: only the super administrator (and
+their standby), so the promotion, enabling, and administrator-creation rows
+below no longer grant.
 **Decision date:** 2026-09-25 (owner requirement: 2026-09-24)
 
 ## Context
@@ -133,17 +136,17 @@ an administrator an attacker's escrow key to seal new accounts to.
 | Event | Key action |
 | --- | --- |
 | First administrator exists and has a session (sign-in, creation, or `BecomeAdmin`) | Create the escrow key pair, grant it to that administrator, seal their DEK. |
-| Administrator creates an account | The new DEK, personal key pair, sealed DEK, escrow pin, and attestation are written in the same transaction as the account, and a new administrator's grant too. |
+| Administrator creates an account | The new DEK, personal key pair, sealed DEK, escrow pin, and attestation are written in the same transaction as the account. (Until ADR-005, a new administrator's grant too.) |
 | First account creation (the first administrator) | Bootstrap as above, in the same session. |
 | Sign-in of an account that is not yet enrolled | Create the personal key pair if missing, check or set the escrow pin, seal the DEK. Failure does not block sign-in; it is retried at the next sign-in and shown in the Admin panel. |
 | Sign-in of an administrator with a grant | Also check existing attestations and that every sealed DEK opens. Never grants. |
 | `UnlockDEK` generates a DEK for an account older than ADR-001 (`dek.go:98`) | Seal it in the same transaction as its password wrap. |
 | Password change or ordinary recovery reset | Nothing: the DEK does not change. |
-| Promotion (`AdminSetUserRole`) | In one transaction, using the promoting administrator's grant: check the target's personal key against its attestation (a key the escrow key never attested is trusted on first use and recorded), add the grant, and change the role. A target with no personal key yet is refused until they sign in once (owner decision, 2026-10-02). Promoting an administrator without a grant adds one. A disabled target is promoted without a grant and granted when enabled. A promoting administrator without a usable grant changes the role only; an unusable grant is removed and recorded. |
+| Promotion (`AdminSetUserRole`) | Super administrator only (ADR-005). Changes the role and grants nothing: the new administrator is a subordinate. A target with no personal key yet is refused until they sign in once (owner decision, 2026-10-02). The attestation check now runs when the key is passed (hand-over, and ADR-005's standby): a key the escrow key never attested is trusted on first use and recorded. |
 | `BecomeAdmin` (no administrator can sign in) | Bootstrap as above if no escrow key has ever existed. Otherwise the new administrator has no grant, and with no other administrator to promote them, none until rotation. |
 | Demotion, disable, or permanent deletion of an administrator | Delete that administrator's grant (`ON DELETE CASCADE` on the account row). This stops later use of the current `system.db`; an administrator who kept an earlier copy still holds the old grant, and only rotation keeps them out of accounts enrolled afterwards. |
-| An administrator without a grant (made before escrow, or by an administrator without one) | Another administrator chooses **Give administrator key** (`GrantKey`): checked like promotion, and it fails with a reason, never silently, when it cannot grant. |
-| Re-enabling a disabled administrator | A new grant, as for promotion, in the same transaction. A disabled administrator cannot sign in to make a personal key, so one without a key is enabled without a grant. |
+| Super administrator hands over the role (ADR-005) | The key is passed to the new super administrator under the attestation check, and the former one's grant is removed. |
+| Re-enabling a disabled administrator | Super administrator only; grants nothing (ADR-005). |
 | Permanent deletion of any account | The sealed DEK, personal keys, and grant go with the row. |
 
 The `account_events` action list gains `admin_access`, `escrow_key_mismatch`,

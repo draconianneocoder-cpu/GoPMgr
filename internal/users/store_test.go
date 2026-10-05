@@ -907,8 +907,9 @@ func TestSetAdmin_DemoteSoleAdminReturnsErrLastAdmin(t *testing.T) {
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	if err := store.SetAdmin("alice", "alice", false); !errors.Is(err, ErrLastAdmin) {
-		t.Fatalf("SetAdmin sole admin to false: got %v, want ErrLastAdmin", err)
+	// The sole administrator is the super administrator (ADR-005).
+	if err := store.SetAdmin("alice", "alice", false); !errors.Is(err, ErrTargetIsSuper) {
+		t.Fatalf("SetAdmin sole admin to false: got %v, want ErrTargetIsSuper", err)
 	}
 }
 
@@ -934,20 +935,24 @@ func TestSetAdmin_DemoteSucceedsWhenMultipleAdmins(t *testing.T) {
 	if _, err := store.CreateAccount("bob", "Bob", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount bob: %v", err)
 	}
-	if err := store.SetAdmin("bob", "alice", false); err != nil {
-		t.Fatalf("SetAdmin alice to false: %v", err)
+	// alice, the earliest administrator, is the super administrator
+	// (ADR-005): only she demotes, and nobody demotes her.
+	if err := store.SetAdmin("bob", "alice", false); !errors.Is(err, ErrNotSuper) {
+		t.Fatalf("bob demoting alice: %v, want ErrNotSuper", err)
 	}
-	// Verify bob is still admin.
+	if err := store.SetAdmin("alice", "bob", false); err != nil {
+		t.Fatalf("SetAdmin bob to false: %v", err)
+	}
 	accs, err := store.List()
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
 	for _, a := range accs {
-		if a.Username == "bob" && !a.IsAdmin {
-			t.Error("bob should still be admin after alice demoted")
+		if a.Username == "alice" && !a.IsAdmin {
+			t.Error("alice should still be admin after demoting bob")
 		}
-		if a.Username == "alice" && a.IsAdmin {
-			t.Error("alice should no longer be admin")
+		if a.Username == "bob" && a.IsAdmin {
+			t.Error("bob should no longer be admin")
 		}
 	}
 }
@@ -957,8 +962,8 @@ func TestPurgeAccount_SoleAdminReturnsErrLastAdmin(t *testing.T) {
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", true); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	if err := store.PurgeAccount("alice", "alice"); !errors.Is(err, ErrLastAdmin) {
-		t.Fatalf("PurgeAccount sole admin: got %v, want ErrLastAdmin", err)
+	if err := store.PurgeAccount("alice", "alice"); !errors.Is(err, ErrTargetIsSuper) {
+		t.Fatalf("PurgeAccount sole admin: got %v, want ErrTargetIsSuper", err)
 	}
 }
 

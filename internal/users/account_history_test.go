@@ -153,7 +153,9 @@ func TestAccountCreationIsRecordedWithItsRole(t *testing.T) {
 	for i := len(events) - 1; i >= 0; i-- {
 		got = append(got, events[i].Actor+" "+events[i].Action+" "+events[i].Username+" "+events[i].Detail)
 	}
-	want := []string{"alice created alice administrator", "alice created bob standard", "alice created carol administrator"}
+	// Creating an administrator account is the super administrator's, so
+	// alice's role is assigned (ADR-005) before carol is created.
+	want := []string{"alice created alice administrator", "alice created bob standard", "alice super_admin_assigned alice the earliest administrator", "alice created carol administrator"}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("history = %q, want %q", got, want)
 	}
@@ -185,7 +187,7 @@ func TestRoleChangesAreRecordedOnlyForAnEnabledAdministrator(t *testing.T) {
 	if err := store.SetAdmin("alice", "bob", false); err != nil {
 		t.Fatalf("demote bob: %v", err)
 	}
-	assertEvents(t, store, "alice disabled carol", "alice promoted bob", "alice demoted bob")
+	assertEvents(t, store, "alice super_admin_assigned alice", "alice disabled carol", "alice promoted bob", "alice demoted bob")
 }
 
 func TestClaimAdminOnlyWithNoAdministrator(t *testing.T) {
@@ -226,9 +228,12 @@ func TestClaimAdminOnlyWithNoAdministrator(t *testing.T) {
 			t.Fatalf("ClaimAdmin: unexpected error %v", err)
 		}
 	}
+	// The claimant also becomes the super administrator (ADR-005).
 	events, err := legacy.AccountEvents()
-	if err != nil || claimed != 1 || len(events) != 1 || events[0].Action != AccountPromoted || events[0].Actor != events[0].Username {
-		t.Fatalf("claims = %d, events = %+v, %v; want exactly one self-recorded promotion", claimed, events, err)
+	if err != nil || claimed != 1 || len(events) != 2 ||
+		events[1].Action != AccountPromoted || events[1].Actor != events[1].Username ||
+		events[0].Action != AccountSuperAssigned || events[0].Username != events[1].Username {
+		t.Fatalf("claims = %d, events = %+v, %v; want one self-recorded promotion, then the claimant made super administrator", claimed, events, err)
 	}
 }
 

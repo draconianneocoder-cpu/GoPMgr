@@ -47,8 +47,9 @@ declare global {
           AdminViewCosts: () => Promise<AdminViewCosts>;
           AdminViewDocuments: () => Promise<AdminViewDocument[]>;
           AdminStopUserData: () => Promise<void>;
-          AdminListAdminsWithoutKey: () => Promise<string[]>;
-          AdminGrantKey: (username: string) => Promise<void>;
+          // The super administrator (ADR-005).
+          AdminRoles: () => Promise<{ super: string }>;
+          AdminHandOverSuper: (username: string) => Promise<{ key_passed: boolean }>;
           // The signed-in user's own record of administrator access.
           MyDataAccessNotices: () => Promise<AccountEvent[]>;
           AcknowledgeDataAccessNotices: (throughID: number) => Promise<void>;
@@ -542,7 +543,8 @@ declare global {
       | 'created' | 'promoted' | 'demoted' | 'disabled' | 'enabled' | 'purged' | 'folder_not_removed'
       // Administrator key (ADR-004).
       | 'admin_access' | 'escrow_key_mismatch' | 'escrow_reenrolled' | 'personal_key_repaired'
-      | 'personal_key_trusted' | 'escrow_rotated' | 'access_notice_read';
+      | 'personal_key_trusted' | 'escrow_rotated' | 'access_notice_read'
+      | 'super_admin_assigned' | 'super_admin_handed_over';
     detail: string;
   }
 

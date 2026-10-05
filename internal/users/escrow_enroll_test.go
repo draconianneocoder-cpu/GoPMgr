@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
-	"strings"
 	"sync"
 	"testing"
 
@@ -214,20 +213,33 @@ func TestSignInNeverGrantsTheEscrowKey(t *testing.T) {
 	}
 }
 
-func TestPromotionGrantsTheEscrowKey(t *testing.T) {
+// Under ADR-005 a promoted administrator is a subordinate and never holds
+// the administrator key, whether promoted, created as an administrator, or
+// signing in as one. (Intentional change from phase 1, where promotion
+// granted the key.)
+func TestPromotedAdministratorsHoldNoKey(t *testing.T) {
 	store, aliceDEK := escrowStore(t)
-	aliceSession := openEscrow(t, store, "alice", aliceDEK)
-	bobDEK := addUser(t, store, "bob", nil) // personal key not yet attested
+	session := openEscrow(t, store, "alice", aliceDEK)
+	bobDEK := addUser(t, store, "bob", nil)
 
 	if err := store.PromoteAdmin("alice", aliceDEK, "bob"); err != nil {
 		t.Fatalf("PromoteAdmin(bob): %v", err)
 	}
-	bobSession := openEscrow(t, store, "bob", bobDEK)
-	if bobSession.id != aliceSession.id || !bytes.Equal(bobSession.public, aliceSession.public) {
-		t.Fatal("bob's grant does not open to the escrow key")
-	}
-	requireEvent(t, store, "alice personal_key_trusted bob")
 	requireEvent(t, store, "alice promoted bob")
+	if err := store.EnrollAdminSession("bob", bobDEK); err != nil {
+		t.Fatalf("bob's session: %v", err)
+	}
+	if _, err := store.OpenEscrow("bob", bobDEK); !errors.Is(err, ErrNoEscrowGrant) {
+		t.Fatalf("a subordinate's OpenEscrow = %v, want ErrNoEscrowGrant", err)
+	}
+	_, frankDEK, err := store.CreateAccountWithKey("alice", "frank", "Frank", statusPassword, true, session)
+	if err != nil {
+		t.Fatalf("create administrator frank: %v", err)
+	}
+	clear(frankDEK)
+	if n := countRows(t, store, "escrow_grants", "admin_username <> 'alice'"); n != 0 {
+		t.Fatalf("%d subordinate administrators hold the key, want none", n)
+	}
 
 	// Promoting an administrator again changes nothing.
 	before := len(eventActions(t, store))
@@ -239,81 +251,60 @@ func TestPromotionGrantsTheEscrowKey(t *testing.T) {
 	}
 }
 
-func TestAdministratorCreatedByAnAdministratorIsGranted(t *testing.T) {
+// An account is promoted only once it has signed in since enrollment
+// began, disabled or not, so a later hand-over has a key to grant to.
+func TestPromotionNeedsAnAccountThatHasSignedIn(t *testing.T) {
 	store, aliceDEK := escrowStore(t)
-	session := openEscrow(t, store, "alice", aliceDEK)
-	_, frankDEK, err := store.CreateAccountWithKey("alice", "frank", "Frank", statusPassword, true, session)
-	if err != nil {
-		t.Fatalf("create frank: %v", err)
-	}
-	defer clear(frankDEK)
-	if got := openEscrow(t, store, "frank", frankDEK); !bytes.Equal(got.public, session.public) {
-		t.Fatal("frank's grant does not open to the escrow key")
-	}
-}
-
-func TestPromotionIsRefusedWithoutATrustedPersonalKey(t *testing.T) {
-	store, aliceDEK := escrowStore(t)
-	session := openEscrow(t, store, "alice", aliceDEK)
-	_, attackerPub := attackerKeyPair(t)
-
-	// carol predates enrollment and has not signed in since.
 	if _, err := store.CreateAccount("carol", "Carol", statusPassword, false); err != nil {
 		t.Fatalf("create carol: %v", err)
 	}
-	// dave's attested public key is swapped.
-	addUser(t, store, "dave", session)
-	mustExec(t, store, `UPDATE personal_keys SET public_key = ? WHERE username = 'dave'`, attackerPub)
-
-	for username, want := range map[string]error{"carol": ErrNoPersonalKey, "dave": ErrPersonalKeyNotAttested} {
-		if err := store.PromoteAdmin("alice", aliceDEK, username); !errors.Is(err, want) {
-			t.Errorf("PromoteAdmin(%s) = %v, want %v", username, err, want)
-		}
-		if n := countRows(t, store, "users", "username = ? AND is_admin = 1", username); n != 0 {
-			t.Errorf("%s was promoted", username)
-		}
-		if n := countRows(t, store, "escrow_grants", "admin_username = ?", username); n != 0 {
-			t.Errorf("%s was granted the escrow key", username)
-		}
+	if err := store.PromoteAdmin("alice", aliceDEK, "carol"); !errors.Is(err, ErrNoPersonalKey) {
+		t.Fatalf("PromoteAdmin(carol) = %v, want ErrNoPersonalKey", err)
 	}
-	requireEvent(t, store, "alice escrow_key_mismatch dave")
-}
-
-func TestDemotionAndDisablingRemoveTheGrantAndEnablingRestoresIt(t *testing.T) {
-	store, aliceDEK := escrowStore(t)
-	bobDEK := addUser(t, store, "bob", nil)
-	addUser(t, store, "carol", nil)
-	grants := func() int { return countRows(t, store, "escrow_grants", "admin_username = 'bob'") }
-
-	if err := store.PromoteAdmin("alice", aliceDEK, "bob"); err != nil || grants() != 1 {
-		t.Fatalf("PromoteAdmin(bob) = %v with %d grants, want 1", err, grants())
-	}
-	if err := store.SetAdmin("alice", "bob", false); err != nil || grants() != 0 {
-		t.Fatalf("SetAdmin(bob, false) = %v with %d grants, want 0", err, grants())
-	}
-	if _, err := store.OpenEscrow("bob", bobDEK); !errors.Is(err, ErrNoEscrowGrant) {
-		t.Fatalf("a demoted administrator's OpenEscrow = %v, want ErrNoEscrowGrant", err)
-	}
-	if err := store.PromoteAdmin("alice", aliceDEK, "bob"); err != nil || grants() != 1 {
-		t.Fatalf("PromoteAdmin(bob) again = %v with %d grants, want 1", err, grants())
-	}
-	if err := store.SetDisabled("alice", "bob", true); err != nil || grants() != 0 {
-		t.Fatalf("SetDisabled(bob, true) = %v with %d grants, want 0", err, grants())
-	}
-	if err := store.EnableAccount("alice", aliceDEK, "bob"); err != nil || grants() != 1 {
-		t.Fatalf("EnableAccount(bob) = %v with %d grants, want 1", err, grants())
-	}
-	openEscrow(t, store, "bob", bobDEK)
-
-	// A standard account is enabled without a grant.
 	if err := store.SetDisabled("alice", "carol", true); err != nil {
 		t.Fatalf("SetDisabled(carol): %v", err)
 	}
-	if err := store.EnableAccount("alice", aliceDEK, "carol"); err != nil {
-		t.Fatalf("EnableAccount(carol): %v", err)
+	if err := store.PromoteAdmin("alice", aliceDEK, "carol"); !errors.Is(err, ErrNoPersonalKey) {
+		t.Fatalf("PromoteAdmin(disabled carol) = %v, want ErrNoPersonalKey", err)
 	}
-	if n := countRows(t, store, "escrow_grants", "admin_username = 'carol'"); n != 0 {
-		t.Fatal("enabling a standard account granted the escrow key")
+	if n := countRows(t, store, "users", "username = 'carol' AND is_admin = 1"); n != 0 {
+		t.Fatal("carol was promoted")
+	}
+}
+
+// A grant left on a subordinate from before ADR-005 is removed when the
+// super administrator demotes or disables them, or at their own sign-in.
+func TestLeftoverSubordinateGrantsAreRemoved(t *testing.T) {
+	store, aliceDEK := escrowStore(t)
+	bobDEK := addUser(t, store, "bob", nil)
+	if err := store.PromoteAdmin("alice", aliceDEK, "bob"); err != nil {
+		t.Fatalf("PromoteAdmin(bob): %v", err)
+	}
+	plant := func() {
+		t.Helper()
+		mustExec(t, store, `INSERT OR REPLACE INTO escrow_grants (admin_username, escrow_key_id, sealed, granted_at)
+			SELECT 'bob', id, x'01', '2026-10-05T00:00:00Z' FROM escrow_keys WHERE retired_at = ''`)
+	}
+	grants := func() int { return countRows(t, store, "escrow_grants", "admin_username = 'bob'") }
+
+	plant()
+	if err := store.EnrollAdminSession("bob", bobDEK); err != nil || grants() != 0 {
+		t.Fatalf("bob's session = %v with %d grants, want the leftover removed", err, grants())
+	}
+	requireEvent(t, store, "bob escrow_key_mismatch bob")
+	plant()
+	if err := store.SetAdmin("alice", "bob", false); err != nil || grants() != 0 {
+		t.Fatalf("demoting bob = %v with %d grants, want 0", err, grants())
+	}
+	if err := store.PromoteAdmin("alice", aliceDEK, "bob"); err != nil {
+		t.Fatalf("PromoteAdmin(bob) again: %v", err)
+	}
+	plant()
+	if err := store.SetDisabled("alice", "bob", true); err != nil || grants() != 0 {
+		t.Fatalf("disabling bob = %v with %d grants, want 0", err, grants())
+	}
+	if err := store.SetDisabled("alice", "bob", false); err != nil || grants() != 0 {
+		t.Fatalf("enabling bob = %v with %d grants, want none given", err, grants())
 	}
 }
 
@@ -532,10 +523,9 @@ func TestTwoProcessesEnrollingAtOnce(t *testing.T) {
 			t.Errorf("%s has %d rows for bob, want 1", table, n)
 		}
 	}
-	for _, event := range eventActions(t, store) {
-		if event != "alice created alice" && event != "alice created bob" {
-			t.Errorf("unexpected event %q", event)
-		}
+	// Both processes' sessions ran; alice was made super administrator once.
+	if got := eventActions(t, store); fmt.Sprint(got) != fmt.Sprint([]string{"alice created alice", "alice created bob", "alice super_admin_assigned alice"}) {
+		t.Errorf("events = %q; want the two creations and one super administrator assignment", got)
 	}
 	session := openEscrow(t, store, "alice", aliceDEK)
 	if got, err := openSealedDEK(store, session, "bob"); err != nil || !bytes.Equal(got, bobDEK) {
@@ -570,193 +560,47 @@ func TestFailedEnrollmentKeepsTheAccountAndLeavesNoEscrowRows(t *testing.T) {
 	}
 }
 
-// A grant that cannot be used, because it is corrupt, forged, or sealed to a
-// personal key the administrator no longer has, is removed and recorded,
-// so the administrator's own enrollment still commits and another
-// administrator can grant again.
-func TestUnusableGrantIsRemovedAndCanBeGrantedAgain(t *testing.T) {
-	for name, damage := range map[string]func(t *testing.T, store *Store){
-		"corrupt grant": func(t *testing.T, store *Store) {
-			mustExec(t, store, `UPDATE escrow_grants SET sealed = x'00' WHERE admin_username = 'bob'`)
-		},
-		"personal private key replaced": func(t *testing.T, store *Store) {
-			mustExec(t, store, `UPDATE personal_keys SET wrapped_private_key = x'00112233' WHERE username = 'bob'`)
-		},
+// The super administrator's grant that cannot be used (corrupt, or sealed
+// to a personal key they no longer have) is removed and recorded, and their
+// own enrollment and key repair still commit.
+func TestUnusableSuperGrantIsRemovedAndRecorded(t *testing.T) {
+	for name, damage := range map[string]string{
+		"corrupt grant":                 `UPDATE escrow_grants SET sealed = x'00' WHERE admin_username = 'alice'`,
+		"personal private key replaced": `UPDATE personal_keys SET wrapped_private_key = x'00112233' WHERE username = 'alice'`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			store, aliceDEK := escrowStore(t)
-			bobDEK := addUser(t, store, "bob", nil)
-			if err := store.PromoteAdmin("alice", aliceDEK, "bob"); err != nil {
-				t.Fatalf("PromoteAdmin(bob): %v", err)
+			mustExec(t, store, damage)
+			if err := store.EnrollAdminSession("alice", aliceDEK); err != nil {
+				t.Fatalf("alice's session with an unusable grant: %v", err)
 			}
-			damage(t, store)
-
-			if err := store.EnrollAdminSession("bob", bobDEK); err != nil {
-				t.Fatalf("bob's session with an unusable grant: %v", err)
-			}
-			requireEvent(t, store, "bob escrow_key_mismatch bob")
-			if n := countRows(t, store, "escrow_grants", "admin_username = 'bob'"); n != 0 {
+			requireEvent(t, store, "alice escrow_key_mismatch alice")
+			if n := countRows(t, store, "escrow_grants", "admin_username = 'alice'"); n != 0 {
 				t.Fatal("the unusable grant was kept")
 			}
 			var wrapped []byte
-			if err := store.conn.QueryRow(`SELECT wrapped_private_key FROM personal_keys WHERE username = 'bob'`).Scan(&wrapped); err != nil {
-				t.Fatalf("read bob's personal key: %v", err)
+			if err := store.conn.QueryRow(`SELECT wrapped_private_key FROM personal_keys WHERE username = 'alice'`).Scan(&wrapped); err != nil {
+				t.Fatalf("read alice's personal key: %v", err)
 			}
-			if _, err := crypto.UnwrapPersonalKey(bobDEK, "bob", wrapped); err != nil {
-				t.Fatalf("bob's personal key does not open with his DEK after his session: %v", err)
+			if _, err := crypto.UnwrapPersonalKey(aliceDEK, "alice", wrapped); err != nil {
+				t.Fatalf("alice's personal key does not open with her DEK after her session: %v", err)
 			}
-
-			if err := store.PromoteAdmin("alice", aliceDEK, "bob"); err != nil {
-				t.Fatalf("PromoteAdmin(bob) again: %v", err)
-			}
-			openEscrow(t, store, "bob", bobDEK)
 		})
 	}
 }
 
-// An administrator whose own grant is unusable still changes roles; the
-// target gets no grant from them.
-func TestPromoterWithAnUnusableGrantPromotesWithoutGranting(t *testing.T) {
-	store, aliceDEK := escrowStore(t)
-	addUser(t, store, "bob", nil)
-	mustExec(t, store, `UPDATE escrow_grants SET sealed = x'00' WHERE admin_username = 'alice'`)
-
-	if err := store.PromoteAdmin("alice", aliceDEK, "bob"); err != nil {
-		t.Fatalf("PromoteAdmin(bob) by an administrator with an unusable grant: %v", err)
-	}
-	if n := countRows(t, store, "users", "username = 'bob' AND is_admin = 1"); n != 1 {
-		t.Fatal("bob was not promoted")
-	}
-	if n := countRows(t, store, "escrow_grants", "admin_username = 'bob'"); n != 0 {
-		t.Fatal("bob was granted by an administrator whose grant does not open")
-	}
-	requireEvent(t, store, "alice escrow_key_mismatch alice")
-	if n := countRows(t, store, "escrow_grants", "admin_username = 'alice'"); n != 0 {
-		t.Fatal("alice's unusable grant was kept")
-	}
-}
-
-// An administrator whose stored personal key no longer opens with their DEK
-// still promotes; their grant, sealed to that key, is removed and recorded.
-func TestPromoterWhosePersonalKeyDoesNotOpenPromotesWithoutGranting(t *testing.T) {
+// A super administrator whose stored personal key no longer opens cannot
+// open data: the grant sealed to it is removed and recorded.
+func TestSuperWhosePersonalKeyDoesNotOpenLosesTheGrant(t *testing.T) {
 	store, aliceDEK := escrowStore(t)
 	addUser(t, store, "bob", nil)
 	mustExec(t, store, `UPDATE personal_keys SET wrapped_private_key = x'00112233' WHERE username = 'alice'`)
 
-	if err := store.PromoteAdmin("alice", aliceDEK, "bob"); err != nil {
-		t.Fatalf("PromoteAdmin(bob) by an administrator whose key does not open: %v", err)
-	}
-	if n := countRows(t, store, "users", "username = 'bob' AND is_admin = 1"); n != 1 {
-		t.Fatal("bob was not promoted")
-	}
-	for _, admin := range []string{"alice", "bob"} {
-		if n := countRows(t, store, "escrow_grants", "admin_username = ?", admin); n != 0 {
-			t.Errorf("%s holds a grant, want none", admin)
-		}
+	if dek, err := store.OpenUserForAdmin("alice", aliceDEK, "bob", "checking"); !errors.Is(err, ErrEscrowMismatch) || dek != nil {
+		t.Fatalf("OpenUserForAdmin = %d bytes, %v; want ErrEscrowMismatch", len(dek), err)
 	}
 	requireEvent(t, store, "alice escrow_key_mismatch alice")
-}
-
-// A disabled administrator holds no grant, including one promoted while
-// disabled; enabling grants.
-func TestPromotingADisabledAccountGrantsAtEnabling(t *testing.T) {
-	store, aliceDEK := escrowStore(t)
-	bobDEK := addUser(t, store, "bob", nil)
-	if err := store.SetDisabled("alice", "bob", true); err != nil {
-		t.Fatalf("SetDisabled(bob): %v", err)
-	}
-	if err := store.PromoteAdmin("alice", aliceDEK, "bob"); err != nil {
-		t.Fatalf("PromoteAdmin(disabled bob): %v", err)
-	}
-	if n := countRows(t, store, "escrow_grants", "admin_username = 'bob'"); n != 0 {
-		t.Fatal("a disabled account was granted at promotion")
-	}
-	if err := store.EnableAccount("alice", aliceDEK, "bob"); err != nil {
-		t.Fatalf("EnableAccount(bob): %v", err)
-	}
-	openEscrow(t, store, "bob", bobDEK)
-
-	// A disabled account with no personal key is still refused.
-	if _, err := store.CreateAccount("carol", "Carol", statusPassword, false); err != nil {
-		t.Fatalf("create carol: %v", err)
-	}
-	if err := store.SetDisabled("alice", "carol", true); err != nil {
-		t.Fatalf("SetDisabled(carol): %v", err)
-	}
-	if err := store.PromoteAdmin("alice", aliceDEK, "carol"); !errors.Is(err, ErrNoPersonalKey) {
-		t.Fatalf("PromoteAdmin(disabled carol, no key) = %v, want ErrNoPersonalKey", err)
-	}
-}
-
-func TestGrantKeyGivesTheKeyOrRefusesWithTheReason(t *testing.T) {
-	store, aliceDEK := escrowStore(t)
-	session := openEscrow(t, store, "alice", aliceDEK)
-	bobDEK := addUser(t, store, "bob", nil)
-	carolDEK := addUser(t, store, "carol", nil)
-	addUser(t, store, "dave", session)
-	if _, err := store.CreateAccount("erin", "Erin", statusPassword, true); err != nil {
-		t.Fatalf("create erin: %v", err)
-	}
-	addUser(t, store, "frank", nil)
-	// bob, carol, and dave are administrators without a grant, as on an
-	// install upgraded from before escrow; erin has no personal key.
-	mustExec(t, store, `UPDATE users SET is_admin = 1 WHERE username IN ('bob', 'carol', 'dave')`)
-	_, attackerPub := attackerKeyPair(t)
-	mustExec(t, store, `UPDATE personal_keys SET public_key = ? WHERE username = 'dave'`, attackerPub)
-	mustExec(t, store, `UPDATE users SET disabled = 1 WHERE username = 'carol'`)
-
-	waiting, err := store.AdminsWithoutGrant()
-	if err != nil || strings.Join(waiting, ",") != "bob,dave,erin" {
-		t.Fatalf("AdminsWithoutGrant = %v, %v; want bob, dave, erin (not the disabled carol)", waiting, err)
-	}
-
-	if err := store.GrantKey("alice", aliceDEK, "bob"); err != nil {
-		t.Fatalf("GrantKey(bob): %v", err)
-	}
-	openEscrow(t, store, "bob", bobDEK)
-	if err := store.GrantKey("alice", aliceDEK, "bob"); err != nil {
-		t.Fatalf("GrantKey(bob) again: %v", err)
-	}
-
-	for name, tc := range map[string]struct {
-		actor  string
-		dek    []byte
-		target string
-		want   error
-	}{
-		"a standard account":                    {"alice", aliceDEK, "frank", ErrTargetNotAdmin},
-		"a disabled administrator":              {"alice", aliceDEK, "carol", ErrTargetNotAdmin},
-		"an administrator with no personal key": {"alice", aliceDEK, "erin", ErrNoPersonalKey},
-		"a swapped attested key":                {"alice", aliceDEK, "dave", ErrPersonalKeyNotAttested},
-		"a caller without the key":              {"carol", carolDEK, "erin", ErrNotAdmin},
-	} {
-		if err := store.GrantKey(tc.actor, tc.dek, tc.target); !errors.Is(err, tc.want) {
-			t.Errorf("%s: GrantKey = %v, want %v", name, err, tc.want)
-		}
-	}
-	requireEvent(t, store, "alice escrow_key_mismatch dave")
-	if n := countRows(t, store, "escrow_grants", "admin_username IN ('carol', 'dave', 'erin', 'frank')"); n != 0 {
-		t.Fatalf("%d grants were given by refused requests", n)
-	}
-}
-
-// An administrator without a usable key is told so; promotion, by
-// contrast, quietly changes the role only.
-func TestGrantKeyByAnAdministratorWithoutAUsableKeyFails(t *testing.T) {
-	store, aliceDEK := escrowStore(t)
-	bobDEK := addUser(t, store, "bob", nil)
-	addUser(t, store, "carol", nil)
-	mustExec(t, store, `UPDATE users SET is_admin = 1 WHERE username IN ('bob', 'carol')`)
-
-	if err := store.GrantKey("bob", bobDEK, "carol"); !errors.Is(err, ErrNoEscrowGrant) {
-		t.Fatalf("GrantKey by bob, who holds no grant = %v, want ErrNoEscrowGrant", err)
-	}
-	mustExec(t, store, `UPDATE escrow_grants SET sealed = x'00' WHERE admin_username = 'alice'`)
-	if err := store.GrantKey("alice", aliceDEK, "carol"); !errors.Is(err, ErrEscrowMismatch) {
-		t.Fatalf("GrantKey with an unusable grant = %v, want ErrEscrowMismatch", err)
-	}
-	requireEvent(t, store, "alice escrow_key_mismatch alice")
-	if n := countRows(t, store, "escrow_grants", "1 = 1"); n != 0 {
-		t.Fatalf("%d grants remain; want alice's unusable one removed and none given", n)
+	if n := countRows(t, store, "escrow_grants", "admin_username = 'alice'"); n != 0 {
+		t.Fatal("a grant sealed to a personal key that does not open was kept")
 	}
 }
