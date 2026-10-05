@@ -68,6 +68,12 @@ const (
 	// Super administrator (ADR-005).
 	AccountSuperAssigned   = "super_admin_assigned"
 	AccountSuperHandedOver = "super_admin_handed_over"
+
+	// Standby successor and takeover (ADR-005 part 2).
+	AccountStandbyNamed          = "super_standby_named"
+	AccountStandbyRemoved        = "super_standby_removed"
+	AccountTakeoverPeriodChanged = "super_takeover_period_changed"
+	AccountSuperTakenOver        = "super_admin_taken_over"
 )
 
 // accountEventActions lists the actions recordAccountEvent accepts. It is
@@ -92,6 +98,11 @@ var accountEventActions = map[string]bool{
 	AccountAccessNoticeRead:    true,
 	AccountSuperAssigned:       true,
 	AccountSuperHandedOver:     true,
+
+	AccountStandbyNamed:          true,
+	AccountStandbyRemoved:        true,
+	AccountTakeoverPeriodChanged: true,
+	AccountSuperTakenOver:        true,
 }
 
 // AccountEvent is one entry in the account history.
@@ -321,8 +332,12 @@ func setDisabledTx(ctx context.Context, q accountWriter, actor, username string,
 		if err := guardLastEnabledAdmin(ctx, q, isAdmin, current); err != nil {
 			return err
 		}
-		// A disabled administrator keeps no escrow grant (ADR-004).
+		// A disabled administrator keeps no escrow grant (ADR-004) and is
+		// no longer the standby (ADR-005).
 		if err := removeGrantTx(ctx, q, username); err != nil {
+			return err
+		}
+		if err := clearStandbyTx(ctx, q, actor, username, "disabled"); err != nil {
 			return err
 		}
 	}
@@ -384,6 +399,9 @@ func (s *Store) PurgeAccount(actor, username string) error {
 			return ErrFolderShared
 		}
 		if err := guardLastEnabledAdmin(ctx, q, isAdmin, disabled); err != nil {
+			return err
+		}
+		if err := clearStandbyTx(ctx, q, actor, username, "deleted"); err != nil {
 			return err
 		}
 		if _, err := q.ExecContext(ctx, `DELETE FROM users WHERE username = ?`, username); err != nil {

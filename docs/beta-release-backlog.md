@@ -204,12 +204,18 @@ That result took six live-GUI cycles to reach because the first five, all run un
     - ADR-005 (owner decisions 2026-10-05): one super administrator;
       subordinates manage standard accounts only. Part 1 built 2026-10-05
       (role, subordinate limits, earliest-administrator migration,
-      hand-over). Open, all before the next tag: part 2, the standby
-      successor with a super-set inactivity period (default 30 days) and
-      a confirmed takeover; part 3, rotation (automatic when someone stops
-      holding the key, plus "Replace administrator key"). Evidence:
-      `super_admin_test.go`, `app_super_admin_test.go`, and the
-      `AdminPanel.test.ts` row in `TEST_COVERAGE_LEDGER.md`.
+      hand-over). Part 2 built 2026-10-05 (standby successor holding the
+      key, takeover period 7–365 days, default 30, confirmed takeover by
+      the standby or, with no standby, any administrator without the key).
+      Open before the next tag: part 3, rotation (automatic when someone
+      stops holding the key, plus "Replace administrator key") and a fresh
+      key when nobody holds the old one. Owner questions from part 2: may
+      any administrator take over once the standby has also been inactive
+      for the period, and should a former super administrator be protected
+      from being disabled or deleted for a while after a takeover?
+      Evidence: `super_admin_test.go`, `succession_test.go`,
+      `app_super_admin_test.go`, and the `AdminPanel.test.ts` row in
+      `TEST_COVERAGE_LEDGER.md`.
   - Done 2026-09-28: account creation (with its role) and role changes are
     recorded in `account_events`, in the same transaction as the change.
     `SetAdmin` now takes the acting administrator and checks it inside the

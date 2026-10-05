@@ -6,9 +6,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # ADR-005: Super administrator and succession
 
 **Status:** Accepted (owner decisions, 2026-10-05). Part 1 (the role,
-subordinate limits, hand-over) built 2026-10-05; part 2 (standby and
-takeover) and part 3 (escrow rotation) next. All three ship before the next
-release tag.
+subordinate limits, hand-over) and part 2 (standby and takeover) built
+2026-10-05; part 3 (escrow rotation and a fresh key) next. All three ship
+before the next release tag.
 **Decision date:** 2026-10-05
 
 ## Context
@@ -50,11 +50,16 @@ super administrator instead.
   open is closed.
 - **Standby successor (part 2).** The super administrator names a standby
   in advance and sets how long they may go without signing in before the
-  standby can take over (default 30 days, minimum 7). The standby holds the
-  administrator key so the role is usable after a takeover, but acts as a
-  subordinate until then. Once the period has passed, the Admin panel offers
-  the standby "Become super administrator" at their next sign-in; nothing
-  changes until they choose it, and it is recorded. A former super
+  standby can take over (default 30 days, minimum 7; the maximum of 365 is a
+  bound chosen while building, not an owner decision). The period counts
+  from the later of the super administrator's last sign-in and the time
+  they got the role, so an upgrade or a hand-over starts it again. The
+  standby holds the administrator key so the role is usable after a
+  takeover, but acts as a subordinate until then. Once the period has
+  passed, the Admin panel offers the standby "Become super administrator";
+  nothing changes until they confirm it, and it is recorded. Racing
+  claimants are serialized by `system.db`'s write lock, and the loser finds
+  the role newly given and the takeover no longer due. A former super
   administrator who returns is a subordinate; the current super
   administrator can hand the role back.
 - **Takeover with no standby (part 2).** When the super administrator has
@@ -76,13 +81,21 @@ super administrator instead.
 
 ## Security rule
 
-The `super_admin` row is plaintext in `system.db`, like `is_admin`. It
-decides what the app offers, never what the key allows: every key operation
-(opening data, passing the key at hand-over, granting the standby, rotating)
-also needs the caller's own usable grant, opened with their own DEK and
-checked against their pin. A row forged to name a subordinate gives them no
-data access and no key to pass. Phase 1's lesson applies: granting must never
-follow a plaintext column.
+The `super_admin` row and the standby in `super_succession` are plaintext
+in `system.db`, like `is_admin`. They decide what the app offers, never what
+the key allows: every key operation (opening data, passing the key at
+hand-over, granting the standby, rotating) also needs the caller's own
+usable grant, opened with their own DEK and checked against their pin. A
+row forged to name a subordinate gives them no data access and no key to
+pass. Phase 1's lesson applies: granting must never follow a plaintext
+column.
+
+One exception follows from the standby holding the key: a row forged to
+name the standby does let them open data, as the super administrator could.
+The opening is still recorded and the user still told
+(`TestForgedSuperRowNamingTheStandbyOpensDataAndIsRecorded`). A standby
+column naming the super administrator or someone who is not an enabled
+administrator is cleared when read.
 
 ## Consequences
 
@@ -93,15 +106,27 @@ follow a plaintext column.
 - The last-administrator guard can no longer be reached through the store:
   the super administrator is always an enabled administrator and cannot be
   removed. It stays as defense in depth.
-- Until part 2 ships, if the super administrator stops signing in, nobody
-  can manage administrators. Part 2's takeover is the recovery path, with or
-  without a standby; without one, users' data can be opened again only
-  after part 3's fresh key and each user's next sign-in.
+- A super administrator who stops signing in can be replaced: by the
+  standby, or, with no standby, by any administrator, who then has the role
+  without the key until part 3's fresh key and each user's next sign-in.
+- Accepted risks (part 2):
+  - The period is measured with this computer's clock. An administrator who
+    sets the clock forward can take over early. With no standby that gives
+    them the role without the key, but the role alone lets them disable or
+    permanently delete the former super administrator and every other
+    administrator, and deleting an account deletes its folder. The takeover
+    is recorded, and the former super administrator sees it when they
+    return.
+  - The period counts sign-ins, not use: a super administrator who stays
+    signed in for longer than the period without signing in again can be
+    taken over.
+  - If both the super administrator and the standby stop signing in, nobody
+    can take over: only the standby can while one is named.
 
 ## Implementation parts
 
 1. The role, subordinate limits, migration, hand-over (2026-10-05).
 2. Standby, inactivity period, takeover (with or without a standby),
-   hand-back.
+   hand-back (2026-10-05).
 3. Escrow rotation, automatic and manual, and a fresh key when nobody holds
    the old one.

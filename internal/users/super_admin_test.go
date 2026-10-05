@@ -5,6 +5,7 @@ package users
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -12,9 +13,14 @@ import (
 
 func mustSuper(t *testing.T, store *Store) string {
 	t.Helper()
-	super, err := store.SuperAdmin()
+	var super string
+	err := store.inWriteTx("super administrator", func(ctx context.Context, q accountWriter) error {
+		var err error
+		super, err = ensureSuperTx(ctx, q)
+		return err
+	})
 	if err != nil {
-		t.Fatalf("SuperAdmin: %v", err)
+		t.Fatalf("ensureSuperTx: %v", err)
 	}
 	return super
 }

@@ -48,8 +48,17 @@ declare global {
           AdminViewDocuments: () => Promise<AdminViewDocument[]>;
           AdminStopUserData: () => Promise<void>;
           // The super administrator (ADR-005).
-          AdminRoles: () => Promise<{ super: string }>;
+          AdminRoles: () => Promise<{
+            super: string;
+            standby: string;
+            standby_holds_key: boolean;
+            takeover_days: number;
+            super_inactive_days: number;
+            can_take_over: boolean;
+          }>;
           AdminHandOverSuper: (username: string) => Promise<{ key_passed: boolean }>;
+          AdminSetStandby: (username: string, days: number) => Promise<{ key_passed: boolean }>;
+          AdminTakeOverSuper: () => Promise<{ key_held: boolean }>;
           // The signed-in user's own record of administrator access.
           MyDataAccessNotices: () => Promise<AccountEvent[]>;
           AcknowledgeDataAccessNotices: (throughID: number) => Promise<void>;
@@ -544,7 +553,8 @@ declare global {
       // Administrator key (ADR-004).
       | 'admin_access' | 'escrow_key_mismatch' | 'escrow_reenrolled' | 'personal_key_repaired'
       | 'personal_key_trusted' | 'escrow_rotated' | 'access_notice_read'
-      | 'super_admin_assigned' | 'super_admin_handed_over';
+      | 'super_admin_assigned' | 'super_admin_handed_over' | 'super_admin_taken_over'
+      | 'super_standby_named' | 'super_standby_removed' | 'super_takeover_period_changed';
     detail: string;
   }
 
