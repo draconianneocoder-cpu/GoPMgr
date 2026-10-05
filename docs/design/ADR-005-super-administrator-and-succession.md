@@ -57,9 +57,22 @@ super administrator instead.
   changes until they choose it, and it is recorded. A former super
   administrator who returns is a subordinate; the current super
   administrator can hand the role back.
+- **Takeover with no standby (part 2).** When the super administrator has
+  named no standby, however they got the role (first account, upgrade, or
+  hand-over), any enabled administrator who has signed in can take over
+  once the period has passed (30 days unless the super administrator set
+  another). The first to confirm gets the role, and it is recorded. Nobody
+  else holds the administrator key, so the new super administrator has the
+  role without it until part 3's fresh key (owner decisions, 2026-10-05).
 - **Rotation (part 3).** The escrow key is rotated automatically whenever
   someone stops holding it (a hand-over, a takeover, or a standby being
   replaced or removed), and on demand with "Replace administrator key".
+- **Fresh key when nobody holds it (part 3).** Rotation re-seals with the
+  old private key, which is gone after a takeover with no standby or a
+  hand-over that could not pass the key. The super administrator then
+  creates a new key; each user's data is re-sealed to it at their next
+  sign-in, which is recorded in their history. Until a user signs in again,
+  nobody can open their data.
 
 ## Security rule
 
@@ -80,12 +93,15 @@ follow a plaintext column.
 - The last-administrator guard can no longer be reached through the store:
   the super administrator is always an enabled administrator and cannot be
   removed. It stays as defense in depth.
-- If the super administrator loses their password and recovery codes before
-  naming a standby, nobody can manage administrators or open users' data
-  again. Part 2's standby is the recovery path.
+- Until part 2 ships, if the super administrator stops signing in, nobody
+  can manage administrators. Part 2's takeover is the recovery path, with or
+  without a standby; without one, users' data can be opened again only
+  after part 3's fresh key and each user's next sign-in.
 
 ## Implementation parts
 
 1. The role, subordinate limits, migration, hand-over (2026-10-05).
-2. Standby, inactivity period, takeover, hand-back.
-3. Escrow rotation, automatic and manual.
+2. Standby, inactivity period, takeover (with or without a standby),
+   hand-back.
+3. Escrow rotation, automatic and manual, and a fresh key when nobody holds
+   the old one.
