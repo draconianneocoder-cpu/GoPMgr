@@ -69,6 +69,24 @@ super administrator instead.
   another). The first to confirm gets the role, and it is recorded. Nobody
   else holds the administrator key, so the new super administrator has the
   role without it until part 3's fresh key (owner decisions, 2026-10-05).
+- **Takeover after the standby is also inactive (part 2b).** When the
+  standby has also gone the takeover period without signing in, any enabled
+  administrator can take over, without the key, as when no standby is
+  named (owner decision, 2026-10-05).
+- **Takeover reason and protection (part 2b).** The administrator taking
+  over must choose a reason before confirming; it is recorded with the
+  takeover and sets how long the former super administrator is protected
+  from being disabled, deleted, or demoted (owner decisions, 2026-10-05).
+  Handing the role back stays allowed.
+
+  | Reason | Protected for |
+  | --- | --- |
+  | Vacation | 30 days |
+  | Parental leave (maternity or paternity) | 180 days |
+  | Medical or convalescence leave | 90 days |
+  | No longer an employee | 7 days |
+  | Other (a note is required) | 30 days |
+
 - **Rotation (part 3).** The escrow key is rotated automatically whenever
   someone stops holding it (a hand-over, a takeover, or a standby being
   replaced or removed), and on demand with "Replace administrator key".
@@ -121,12 +139,18 @@ administrator is cleared when read.
     signed in for longer than the period without signing in again can be
     taken over.
   - If both the super administrator and the standby stop signing in, nobody
-    can take over: only the standby can while one is named.
+    can take over until part 2b, which lets any administrator take over
+    once the standby has also been inactive for the period.
+  - Moving the clock forward can also run out a protection window early;
+    part 2b's protection limits the damage a takeover can do, but uses the
+    same clock.
 
 ## Implementation parts
 
 1. The role, subordinate limits, migration, hand-over (2026-10-05).
 2. Standby, inactivity period, takeover (with or without a standby),
    hand-back (2026-10-05).
+   2b. Takeover once the standby is also inactive; takeover reason and the
+   former super administrator's protection.
 3. Escrow rotation, automatic and manual, and a fresh key when nobody holds
    the old one.
