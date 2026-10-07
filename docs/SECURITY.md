@@ -68,8 +68,8 @@ for a legitimate local user.
   recorded with who read which account, when, and why (owner decision,
   2026-09-24, replacing the same day's rule that they must not). The
   design is [ADR-004](design/ADR-004-administrator-access-to-user-data.md):
-  read-only, projects only, the user told at their next sign-in. **Phases 1 and
-  2 built (2026-10-02); users are not yet told (phase 3):** each account's encryption key is
+  read-only, projects only, the user told at their next sign-in. **Built
+  2026-10-02:** each account's encryption key is
   sealed to an escrow key at creation or sign-in, and administrators hold
   the escrow key, granted only when an administrator creates, promotes, or
   enables them, never at sign-in. Pins and attestations detect a swapped
@@ -78,11 +78,15 @@ for a legitimate local user.
   records it with the access before the target's key is released, keeps
   that key out of the session key, and shows projects only through a
   read-only copy (summary, schedule, costs, document titles), with nothing
-  changeable or exportable. The user is not yet told at their next sign-in,
-  as ADR-004 decided, so no release may be tagged until that ships (`make
-  access-notice-release-guard`). Limits: the record is plaintext in
-  `system.db`, and an administrator who decrypts outside the app with their
-  own password leaves no record.
+  changeable or exportable. The user sees each access (who, when, and why)
+  on the first screen after every sign-in until they acknowledge it, which
+  is recorded, and App Settings lists every access to their data. Limits:
+  the record is plaintext in `system.db`, so an administrator who can write
+  it can delete an access row or mark it read, and the user is not told; an
+  administrator who decrypts outside the app with their own password leaves
+  no record; headless sign-in shows no notice; escrow rotation is not built,
+  so a removed administrator who kept an old `system.db` can still unseal
+  accounts enrolled after they left.
 - Every IPC method that opens, mutates, or archives a project by a
   frontend-supplied path (`OpenProject`, `DeleteProject`, `CloneProject`,
   `EncryptProjectAtRest`, `SecureArchive`, etc.) is confined to the

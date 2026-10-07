@@ -53,6 +53,17 @@ afterEach(() => {
   session.updateStatus = null;
 });
 
+describe('account settings', () => {
+  it('lists every administrator access to your data', async () => {
+    app.MyDataAccessHistory = vi.fn(async () => [
+      { id: 3, occurred_at: '2026-10-02T10:00:00Z', actor: 'alice', username: 'bob', action: 'admin_access', detail: 'Ticket 3' },
+    ]);
+    const { findByRole } = render(AppSettings);
+    const history = await findByRole('group', { name: 'Administrator access to your data' });
+    await waitFor(() => expect(history.textContent).toContain('Reason: Ticket 3'));
+  });
+});
+
 describe('application appearance settings', () => {
   it('previews a selected appearance immediately', async () => {
     const { findByRole } = render(AppSettings);

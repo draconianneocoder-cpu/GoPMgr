@@ -63,6 +63,7 @@ const (
 	AccountPersonalKeyRepaired = "personal_key_repaired"
 	AccountEscrowRotated       = "escrow_rotated"
 	AccountPersonalKeyTrusted  = "personal_key_trusted"
+	AccountAccessNoticeRead    = "access_notice_read"
 )
 
 // accountEventActions lists the actions recordAccountEvent accepts. It is
@@ -84,6 +85,7 @@ var accountEventActions = map[string]bool{
 	AccountPersonalKeyRepaired: true,
 	AccountEscrowRotated:       true,
 	AccountPersonalKeyTrusted:  true,
+	AccountAccessNoticeRead:    true,
 }
 
 // AccountEvent is one entry in the account history.
@@ -403,6 +405,12 @@ func (s *Store) AccountEvents() ([]AccountEvent, error) {
 	if err != nil {
 		return nil, err
 	}
+	return scanAccountEvents(rows)
+}
+
+// scanAccountEvents reads id, occurred_at, actor, username, action, and
+// detail rows into events, and closes rows.
+func scanAccountEvents(rows *sql.Rows) ([]AccountEvent, error) {
 	defer func() { _ = rows.Close() }()
 	var out []AccountEvent
 	for rows.Next() {

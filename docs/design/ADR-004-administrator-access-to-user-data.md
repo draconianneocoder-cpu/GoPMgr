@@ -5,12 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-004: Administrator access to users' data
 
-**Status:** Accepted; phases 1 and 2 built (2026-10-02); phase 3 (telling the
-user, rotation) next. The owner accepted every recommendation under Owner
-decisions on 2026-09-25. No release until users are told at their next
-sign-in: `make access-notice-release-guard`, run by `check-release`, fails
-while the app can open another account's data, and the sign-in notice's pull
-request deletes it.
+**Status:** Accepted; phases 1 and 2 built (2026-10-02); phase 3's sign-in
+notice built (2026-10-02); escrow rotation (decision 3) accepted but not
+built. The owner accepted every recommendation under Owner decisions on
+2026-09-25. The release guards that kept phases 1 and 2 from shipping before
+the notice were removed with it.
 **Decision date:** 2026-09-25 (owner requirement: 2026-09-24)
 
 ## Context
@@ -215,6 +214,28 @@ administrators, re-attest personal keys, retire the old escrow key, and record
 6. The handle covers the target's projects. Whether it also covers their
    deletion log and catalog is part of the owner decision on scope below.
 
+
+### Telling the user
+
+Built 2026-10-02 (decision 2). Every `admin_access` event is shown to the
+account it names on the first screen after each sign-in (Portfolio, where
+every sign-in lands) until the user chooses "I've read this"; the
+acknowledgement is recorded as `access_notice_read`, so the Admin panel's
+history shows the user was told. `access_notices` keeps the newest access
+the user acknowledged. An acknowledgement covers only accesses up to the
+newest one shown, so one recorded while the notice was open stays unread;
+it never moves back, and acknowledging nothing new records nothing.
+`account_events` ids come from `AUTOINCREMENT`, so a later access always
+counts as unread. If the notice cannot be read it says so, with a retry,
+rather than showing nothing. App Settings, under Account, lists every access
+to the user's data (owner decision, 2026-10-02).
+
+Limits: the notice is only as good as the record. An administrator who can
+write `system.db` can delete their `admin_access` row (the triggers stop only
+the app) or move the user's acknowledgement mark, and the user is then not
+told. Headless sign-in (the command line) shows no notice; the next desktop
+sign-in does.
+
 ## Consequences
 
 - **One administrator password now unlocks every enrolled user.** An offline
@@ -328,6 +349,10 @@ trust-on-first-use window and wider exposure below are accepted.
 Decided 2026-10-02, while building phase 1: grants are added only inside an
 administrator's explicit action, never at sign-in, and promoting an account
 that has not signed in since enrollment began is refused until it has.
+
+Decided 2026-10-02, before building the notice: it stays at every sign-in
+until acknowledged, the acknowledgement is recorded, and App Settings lists
+every access; rotation is a separate item.
 
 Decided 2026-10-02, before building phase 2: access is view only (no export,
 report, archive, print, or attachment while viewing), through a dedicated
