@@ -258,16 +258,18 @@ func TestAdminPurgeUser_RequiresTheExactUsername(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AdminListAccountEvents: %v", err)
 	}
-	// Only the two account creations; the refused purges recorded nothing.
-	if len(events) != 2 || events[0].Action != users.AccountCreated || events[1].Action != users.AccountCreated {
-		t.Fatalf("events after refused purges = %+v, want only the two creations", events)
+	// The refused purges recorded nothing.
+	for _, e := range events {
+		if e.Action == users.AccountPurged {
+			t.Fatalf("events after refused purges = %+v, want no deletion recorded", events)
+		}
 	}
 	if err := app.AdminPurgeUser("bob", "bob"); err != nil {
 		t.Fatalf("AdminPurgeUser with the exact name: %v", err)
 	}
 	events, err = app.AdminListAccountEvents()
-	if err != nil || len(events) != 3 || events[0].Action != users.AccountPurged || events[0].Actor != "alice" {
-		t.Fatalf("events after purge = %+v, %v; want a purge by alice on top of the two creations", events, err)
+	if err != nil || events[0].Action != users.AccountPurged || events[0].Actor != "alice" || events[0].Username != "bob" {
+		t.Fatalf("events after purge = %+v, %v; want a purge of bob by alice, newest", events, err)
 	}
 }
 
@@ -448,15 +450,16 @@ func TestAdminMethodsNeverReachTheLastAdministratorGuard(t *testing.T) {
 		t.Fatalf("enable bob again: %v", err)
 	}
 
-	// Another GoPMgr process demotes alice; her session still says admin.
-	// Acting on bob, now the last enabled administrator, is refused because
-	// she is no longer one, before the last-administrator guard runs.
-	if err := app.store.SetAdmin("bob", "alice", false); err != nil {
-		t.Fatalf("demote alice from another session: %v", err)
+	// Another GoPMgr process hands the super administrator role to bob;
+	// alice's session still says admin. Acting on bob, now the super
+	// administrator, is refused because she is no longer super, before
+	// the last-administrator guard runs (ADR-005).
+	if _, err := app.store.HandOverSuper("alice", sessionDEK(app), "bob"); err != nil {
+		t.Fatalf("hand over to bob from another session: %v", err)
 	}
 	err := app.AdminSetUserDisabled("bob", true)
-	if err == nil || err.Error() != "administrator privileges required" {
-		t.Fatalf("stale session disabling the last administrator = %v, want administrator privileges required", err)
+	if err == nil || err.Error() != "only the super administrator can change administrators or open users' data" {
+		t.Fatalf("stale session disabling the super administrator = %v, want the super administrator refusal", err)
 	}
 	accounts, err := app.store.List()
 	if err != nil {

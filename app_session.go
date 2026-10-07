@@ -75,6 +75,9 @@ func (a *App) CreateAccount(username, displayName, password string, isAdmin bool
 	if errors.Is(err, users.ErrNotAdmin) {
 		return users.Account{}, errors.New("account creation requires administrator privileges")
 	}
+	if errors.Is(err, users.ErrNotSuper) {
+		return users.Account{}, errors.New("only the super administrator can create administrator accounts")
+	}
 	if errors.Is(err, users.ErrUserFolderExists) {
 		return users.Account{}, fmt.Errorf("a folder for %q is left over in GoPMgr's data folder (%s); remove or rename it, or choose another username", username, a.store.RootDir())
 	}
@@ -165,15 +168,9 @@ func (a *App) AdminSetUserDisabled(username string, disabled bool) error {
 	if strings.EqualFold(caller.Username, username) {
 		return errors.New("administrators cannot disable their own account")
 	}
-	var err error
-	if disabled {
-		err = a.store.SetDisabled(caller.Username, username, disabled)
-	} else {
-		// Enabling an administrator grants them the escrow key again
-		// (ADR-004), which takes the caller's own key.
-		err = a.withSessionDEK(func(dek []byte) error {
-			return a.store.EnableAccount(caller.Username, dek, username)
-		})
+	err := a.store.SetDisabled(caller.Username, username, disabled)
+	if msg := superRoleMessage(err); msg != nil {
+		return msg
 	}
 	if errors.Is(err, users.ErrNotAdmin) {
 		return errors.New("administrator privileges required")
@@ -181,10 +178,19 @@ func (a *App) AdminSetUserDisabled(username string, disabled bool) error {
 	if errors.Is(err, users.ErrLastAdmin) {
 		return errors.New("this is the only administrator who can sign in; make someone else an administrator first")
 	}
-	if errors.Is(err, users.ErrPersonalKeyNotAttested) {
-		return fmt.Errorf("%s was not enabled: their account key has been changed since an administrator last checked it. The change is recorded in the account history", username)
-	}
 	return err
+}
+
+// superRoleMessage words the super administrator's refusals (ADR-005), or
+// returns nil for any other error.
+func superRoleMessage(err error) error {
+	switch {
+	case errors.Is(err, users.ErrNotSuper):
+		return errors.New("only the super administrator can change administrators or open users' data")
+	case errors.Is(err, users.ErrTargetIsSuper):
+		return errors.New("the super administrator can't be changed; they must hand the role to another administrator first")
+	}
+	return nil
 }
 
 // AdminPurgeUser permanently deletes another account and its folder: its
@@ -204,6 +210,9 @@ func (a *App) AdminPurgeUser(username, confirmation string) error {
 		return errors.New("type the username exactly to confirm permanent deletion")
 	}
 	err := a.store.PurgeAccount(caller.Username, username)
+	if msg := superRoleMessage(err); msg != nil {
+		return msg
+	}
 	switch {
 	case errors.Is(err, users.ErrNotAdmin):
 		return errors.New("administrator privileges required")
@@ -242,22 +251,19 @@ func (a *App) AdminSetUserRole(username string, isAdmin bool) error {
 	}
 	var err error
 	if isAdmin {
-		// Promotion grants the escrow key in the same step (ADR-004),
-		// which takes the caller's own key.
-		err = a.withSessionDEK(func(dek []byte) error {
-			return a.store.PromoteAdmin(caller.Username, dek, username)
-		})
+		// A new administrator is a subordinate and gets no key (ADR-005).
+		err = a.store.PromoteAdmin(caller.Username, nil, username)
 	} else {
 		err = a.store.SetAdmin(caller.Username, username, isAdmin)
+	}
+	if msg := superRoleMessage(err); msg != nil {
+		return msg
 	}
 	if errors.Is(err, users.ErrNotAdmin) {
 		return errors.New("administrator privileges required")
 	}
 	if errors.Is(err, users.ErrNoPersonalKey) {
 		return fmt.Errorf("%s must sign in once before they can be made an administrator", username)
-	}
-	if errors.Is(err, users.ErrPersonalKeyNotAttested) {
-		return fmt.Errorf("%s was not made an administrator: their account key has been changed since an administrator last checked it. The change is recorded in the account history", username)
 	}
 	return err
 }
@@ -273,6 +279,16 @@ func (a *App) AdminIssueRecoveryCodes(username, password string) ([]string, erro
 	caller := a.requireUser()
 	if caller == nil || !caller.IsAdmin {
 		return nil, errors.New("administrator privileges required")
+	}
+	// An administrator's codes are the super administrator's to issue
+	// (ADR-005).
+	if target, err := a.accountByName(username); err == nil && target.IsAdmin {
+		if err := a.store.RequireSuper(caller.Username); err != nil {
+			if msg := superRoleMessage(err); msg != nil {
+				return nil, msg
+			}
+			return nil, errors.New("administrator privileges required")
+		}
 	}
 	// Unlock (here: unwrap the just-created) DEK so the codes can wrap it.
 	dek, err := a.store.UnlockDEK(username, password)

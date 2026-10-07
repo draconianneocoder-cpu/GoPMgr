@@ -83,7 +83,11 @@ func TestAppEnrollsEveryAccountInEscrow(t *testing.T) {
 	}
 }
 
-func TestAppPromotionAndStatusChangesManageTheGrant(t *testing.T) {
+// Under ADR-005 promoted administrators are subordinates: promoting,
+// disabling, enabling, and demoting them never grants the administrator
+// key. (Intentional change from phase 1, where promotion and enabling
+// granted it.)
+func TestAppPromotionAndStatusChangesNeverGrantTheKey(t *testing.T) {
 	app := newAdminTestApp(t)
 	if _, err := app.CreateAccount("alice", "Alice", escrowTestPassword, true); err != nil {
 		t.Fatalf("CreateAccount(alice): %v", err)
@@ -102,29 +106,15 @@ func TestAppPromotionAndStatusChangesManageTheGrant(t *testing.T) {
 	}
 	switchUser(t, app, "carol")
 	switchUser(t, app, "alice")
-	if err := app.AdminSetUserRole("carol", true); err != nil || grants() != 1 {
-		t.Fatalf("promote carol = %v with %d grants, want 1", err, grants())
-	}
-	if err := app.AdminSetUserDisabled("carol", true); err != nil || grants() != 0 {
-		t.Fatalf("disable carol = %v with %d grants, want 0", err, grants())
-	}
-	if err := app.AdminSetUserDisabled("carol", false); err != nil || grants() != 1 {
-		t.Fatalf("enable carol = %v with %d grants, want 1", err, grants())
-	}
-	if err := app.AdminSetUserRole("carol", false); err != nil || grants() != 0 {
-		t.Fatalf("demote carol = %v with %d grants, want 0", err, grants())
-	}
-
-	// dave's attested personal key is replaced in system.db.
-	if _, err := app.CreateAccount("dave", "Dave", escrowTestPassword, false); err != nil {
-		t.Fatalf("CreateAccount(dave): %v", err)
-	}
-	if _, err := conn.Exec(`UPDATE personal_keys SET public_key = (SELECT public_key FROM personal_keys WHERE username = 'carol') WHERE username = 'dave'`); err != nil {
-		t.Fatalf("swap dave's personal key: %v", err)
-	}
-	want = "dave was not made an administrator: their account key has been changed since an administrator last checked it. The change is recorded in the account history"
-	if err := app.AdminSetUserRole("dave", true); err == nil || err.Error() != want {
-		t.Fatalf("promoting a swapped key: err = %v, want %q", err, want)
+	for name, call := range map[string]func() error{
+		"promote": func() error { return app.AdminSetUserRole("carol", true) },
+		"disable": func() error { return app.AdminSetUserDisabled("carol", true) },
+		"enable":  func() error { return app.AdminSetUserDisabled("carol", false) },
+		"demote":  func() error { return app.AdminSetUserRole("carol", false) },
+	} {
+		if err := call(); err != nil || grants() != 0 {
+			t.Fatalf("%s carol = %v with %d grants, want none", name, err, grants())
+		}
 	}
 }
 

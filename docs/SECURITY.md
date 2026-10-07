@@ -74,7 +74,13 @@ for a legitimate local user.
   the escrow key, granted only when an administrator creates, promotes, or
   enables them, never at sign-in. Pins and attestations detect a swapped
   escrow key, grant, or personal key, and the Admin panel's account history
-  shows each mismatch. The Admin panel's **Open data** requires a reason,
+  shows each mismatch. Only the super administrator
+  ([ADR-005](design/ADR-005-super-administrator-and-succession.md)) holds
+  the escrow key, changes administrators, and opens users' data; other
+  administrators manage standard accounts. The super administrator role is
+  a plaintext row, so it never unlocks the key by itself: every key
+  operation also needs the caller's own grant. The Admin panel's **Open
+  data** requires a reason,
   records it with the access before the target's key is released, keeps
   that key out of the session key, and shows projects only through a
   read-only copy (summary, schedule, costs, document titles), with nothing
@@ -84,9 +90,11 @@ for a legitimate local user.
   the record is plaintext in `system.db`, so an administrator who can write
   it can delete an access row or mark it read, and the user is not told; an
   administrator who decrypts outside the app with their own password leaves
-  no record; headless sign-in shows no notice; escrow rotation is not built,
-  so a removed administrator who kept an old `system.db` can still unseal
-  accounts enrolled after they left.
+  no record; headless sign-in shows no notice; escrow rotation and the
+  standby successor (ADR-005 parts 2 and 3) are not built, so a former key
+  holder who kept an old `system.db` can still unseal accounts enrolled
+  after they left, and a super administrator who loses their password and
+  recovery codes cannot be replaced.
 - Every IPC method that opens, mutates, or archives a project by a
   frontend-supplied path (`OpenProject`, `DeleteProject`, `CloneProject`,
   `EncryptProjectAtRest`, `SecureArchive`, etc.) is confined to the

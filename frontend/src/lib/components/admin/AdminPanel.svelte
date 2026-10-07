@@ -48,9 +48,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let openingAccess = $state(false);
   let viewing = $state<string | null>(null);
 
-  // Administrators who hold no administrator key yet.
-  let adminsWithoutKey = $state<string[]>([]);
-  let grantingKey = $state<string | null>(null);
+  // The super administrator (ADR-005): the only administrator who changes
+  // administrators and opens users' data; every other one is a subordinate
+  // who manages standard accounts.
+  let superAdmin = $state('');
+  let pendingHandOver = $state<string | null>(null);
+  let handingOver = $state(false);
 
   const usernameRule = /^[A-Za-z0-9_-]{3,32}$/;
 
@@ -67,9 +70,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       loading = false;
     }
     try {
-      adminsWithoutKey = (await window.go.main.App.AdminListAdminsWithoutKey()) ?? [];
+      superAdmin = (await window.go.main.App.AdminRoles()).super;
     } catch {
-      adminsWithoutKey = [];
+      superAdmin = '';
     }
     await loadEvents();
   }
@@ -101,18 +104,32 @@ SPDX-License-Identifier: GPL-3.0-or-later
     await loadEvents();
   }
 
-  async function grantKey(username: string) {
-    grantingKey = username;
+  async function handOver(username: string) {
+    if (pendingHandOver !== username) {
+      cancelPending(username);
+      pendingHandOver = username;
+      return;
+    }
+    handingOver = true;
     try {
-      await window.go.main.App.AdminGrantKey(username);
-      showToast(`${username} now holds the administrator key.`, 'success');
+      const result = await window.go.main.App.AdminHandOverSuper(username);
+      // Any data this administrator had open was closed with the role.
+      viewing = null;
+      showToast(
+        result.key_passed
+          ? `${username} is now the super administrator. You're a subordinate administrator.`
+          : `${username} is now the super administrator, but the administrator key couldn't be passed, so no one can open users' data until it is replaced.`,
+        result.key_passed ? 'success' : 'error'
+      );
+      pendingHandOver = null;
       await load();
     } catch (err: any) {
-      showToast(`Could not give ${username} the administrator key: ${err}`, 'error');
+      showToast(`Could not hand over the role: ${err}`, 'error');
     } finally {
-      grantingKey = null;
+      handingOver = false;
     }
   }
+
 
   async function loadEvents() {
     eventsError = '';
@@ -241,6 +258,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   function cancelPending(username: string) {
     if (pendingRoleChange === username) pendingRoleChange = null;
     if (pendingDisable === username) pendingDisable = null;
+    if (pendingHandOver === username) pendingHandOver = null;
     if (accessTarget === username) {
       accessTarget = null;
       accessReason = '';
@@ -286,6 +304,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
         return `${e.actor} accepted ${e.username}'s account key without an earlier check`;
       case 'escrow_rotated':
         return `${e.actor} replaced the administrator key`;
+      case 'super_admin_assigned':
+        return `${e.username} became the super administrator (${e.detail})`;
+      case 'super_admin_handed_over':
+        return `${e.actor} handed the super administrator role to ${e.username}`;
       case 'access_notice_read':
         return `${e.username} read the notice that their data was opened (${e.detail})`;
       default:
@@ -309,7 +331,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // Your own row has no actions: the backend refuses changes to your own
   // account, which is also what keeps at least one administrator able to
   // sign in. Counted like the backend's guard: disabled admins don't count.
-  const soleAdmin = $derived(allUsers.filter((u) => u.is_admin && !u.disabled).length <= 1);
+  const iAmSuper = $derived(superAdmin !== '' && session.user?.username === superAdmin);
+  // Subordinates manage standard accounts; administrators are the super
+  // administrator's to change.
+  const canManage = (u: Account) => iAmSuper || !u.is_admin;
 </script>
 
 <div class="min-h-screen bg-slate-950 text-slate-200">
@@ -320,7 +345,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div>
         <h1 class="text-xl font-bold">User management</h1>
         <p class="text-xs text-slate-500 mt-0.5">
-          Administrators create, disable, and delete accounts and manage roles on this machine.
+          Administrators create, disable, and delete accounts on this machine.
+          {#if superAdmin && !iAmSuper}
+            Only the super administrator, {superAdmin}, changes administrators and can open users' data.
+          {/if}
         </p>
       </div>
       <button
@@ -373,10 +401,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
           />
           <span class="text-[10px] text-slate-500">8 characters minimum. Share it securely; the user should change it.</span>
         </label>
-        <label class="flex items-center gap-2">
-          <input type="checkbox" bind:checked={newIsAdmin} class="accent-cyan-500" />
-          <span class="text-xs text-slate-300">Administrator account</span>
-        </label>
+        {#if iAmSuper}
+          <label class="flex items-center gap-2">
+            <input type="checkbox" bind:checked={newIsAdmin} class="accent-cyan-500" />
+            <span class="text-xs text-slate-300">Administrator account</span>
+          </label>
+        {/if}
         <div class="flex gap-2 pt-1">
           <button
             type="submit"
@@ -443,7 +473,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 </td>
                 <td class="px-4 py-3 text-slate-300">{user.display_name}</td>
                 <td class="px-4 py-3">
-                  {#if user.is_admin}
+                  {#if user.username === superAdmin}
+                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-300 bg-amber-900/50 border border-amber-500/60 rounded px-2 py-0.5">
+                      Super administrator
+                    </span>
+                  {:else if user.is_admin}
                     <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 bg-amber-900/30 border border-amber-700/40 rounded px-2 py-0.5">
                       Admin
                     </span>
@@ -455,19 +489,29 @@ SPDX-License-Identifier: GPL-3.0-or-later
                       Disabled
                     </span>
                   {/if}
-                  {#if adminsWithoutKey.includes(user.username)}
-                    <span class="ml-1 inline-flex items-center text-[11px] text-slate-400" title="This administrator can't open other accounts' data until another administrator gives them the administrator key.">
-                      No administrator key
-                    </span>
-                  {/if}
                 </td>
                 <td class="px-4 py-3 text-[11px] text-slate-500 font-mono">
                   {formatLastLogin(user.last_login)}
                 </td>
                 <td class="px-4 py-3">
-                  {#if !isSelf(user)}
+                  {#if !isSelf(user) && !canManage(user)}
+                    <p class="text-[11px] text-slate-500 text-right">Only the super administrator can change administrators.</p>
+                  {:else if !isSelf(user)}
                     <div class="flex items-center justify-end gap-2">
-                      {#if pendingRoleChange === user.username}
+                      {#if pendingHandOver === user.username}
+                        <span class="text-[11px] text-amber-400">
+                          Make {user.username} super administrator? You'll become a subordinate administrator.
+                        </span>
+                        <button
+                          onclick={() => handOver(user.username)}
+                          disabled={handingOver}
+                          class="text-[11px] bg-amber-800 hover:bg-amber-700 disabled:opacity-50 text-white px-2 py-0.5 rounded"
+                        >Confirm</button>
+                        <button
+                          onclick={() => cancelPending(user.username)}
+                          class="text-[11px] text-slate-400 hover:text-slate-200 underline"
+                        >Cancel</button>
+                      {:else if pendingRoleChange === user.username}
                         <span class="text-[11px] text-amber-400">
                           {user.is_admin ? 'Remove admin?' : 'Grant admin?'}
                         </span>
@@ -492,14 +536,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
                           class="text-[11px] text-slate-400 hover:text-slate-200 underline"
                         >Cancel</button>
                       {:else if purgeTarget !== user.username && accessTarget !== user.username}
-                        {#if adminsWithoutKey.includes(user.username)}
+                        {#if iAmSuper && user.is_admin && !user.disabled}
                           <button
-                            onclick={() => grantKey(user.username)}
-                            disabled={grantingKey === user.username}
-                            class="text-[11px] text-slate-400 hover:text-amber-400 underline disabled:opacity-50"
-                          >Give administrator key</button>
+                            onclick={() => handOver(user.username)}
+                            class="text-[11px] text-slate-400 hover:text-amber-400 underline"
+                            aria-label={`Make ${user.username} super administrator`}
+                          >Make super administrator</button>
                         {/if}
-                        {#if !viewing}
+                        {#if iAmSuper && !viewing}
                           <!-- One account at a time: stop viewing before opening another. -->
                           <button
                             onclick={() => startAccess(user.username)}
@@ -507,13 +551,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
                             aria-label={`Open ${user.username}'s data`}
                           >Open data</button>
                         {/if}
-                        <button
-                          onclick={() => toggleRole(user)}
-                          class="text-[11px] text-slate-400 hover:text-amber-400 underline"
-                          title={user.is_admin ? 'Remove administrator' : 'Grant administrator'}
-                        >
-                          {user.is_admin ? 'Remove admin' : 'Grant admin'}
-                        </button>
+                        {#if iAmSuper}
+                          <button
+                            onclick={() => toggleRole(user)}
+                            class="text-[11px] text-slate-400 hover:text-amber-400 underline"
+                            title={user.is_admin ? 'Remove administrator' : 'Grant administrator'}
+                          >
+                            {user.is_admin ? 'Remove admin' : 'Grant admin'}
+                          </button>
+                        {/if}
                         <button
                           onclick={() => toggleDisabled(user)}
                           class="text-[11px] text-slate-400 hover:text-amber-400 underline"
@@ -528,9 +574,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     </div>
                   {:else}
                     <p class="text-[11px] text-slate-500 text-right">
-                      {soleAdmin
-                        ? "You're the only administrator, so no one can change your account. To step down, make someone else an administrator who can sign in first."
-                        : 'Another administrator can change your account.'}
+                      {iAmSuper
+                        ? "You're the super administrator, so no one can change your account. To step down, make another administrator who has signed in the super administrator."
+                        : 'Only the super administrator can change your account.'}
                     </p>
                   {/if}
                 </td>

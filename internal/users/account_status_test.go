@@ -130,7 +130,31 @@ func TestSetDisabledWithNoChangeRecordsNothing(t *testing.T) {
 }
 
 // TestLastEnabledAdminGuards covers every way an enabled administrator
-// can be taken out of use while a disabled administrator exists.
+// can be taken out of use while a disabled administrator exists. Since
+// ADR-005 the only enabled administrator is the super administrator, whom
+// nobody can demote, disable, or delete (ErrTargetIsSuper); the
+// last-administrator guard behind it is tested directly below.
+// The guard itself still refuses taking the last enabled administrator out
+// of use, behind the super administrator rule.
+func TestLastEnabledAdminGuardItself(t *testing.T) {
+	store := newStatusStore(t) // alice (administrator) and bob
+	ctx := t.Context()
+	if err := guardLastEnabledAdmin(ctx, store.conn, true, false); !errors.Is(err, ErrLastAdmin) {
+		t.Fatalf("guard with one enabled administrator = %v, want ErrLastAdmin", err)
+	}
+	for name, tc := range map[string]struct{ isAdmin, disabled bool }{
+		"a standard account": {false, false}, "a disabled administrator": {true, true},
+	} {
+		if err := guardLastEnabledAdmin(ctx, store.conn, tc.isAdmin, tc.disabled); err != nil {
+			t.Errorf("guard for %s = %v, want nil", name, err)
+		}
+	}
+	mustExec(t, store, `UPDATE users SET is_admin = 1 WHERE username = 'bob'`)
+	if err := guardLastEnabledAdmin(ctx, store.conn, true, false); err != nil {
+		t.Fatalf("guard with two enabled administrators = %v, want nil", err)
+	}
+}
+
 func TestLastEnabledAdminGuards(t *testing.T) {
 	store := newStatusStore(t)
 	if err := store.SetAdmin("alice", "bob", true); err != nil {
@@ -140,22 +164,22 @@ func TestLastEnabledAdminGuards(t *testing.T) {
 		t.Fatalf("disable bob: %v", err)
 	}
 
-	if err := store.SetAdmin("alice", "alice", false); !errors.Is(err, ErrLastAdmin) {
-		t.Fatalf("demote the only enabled admin: err = %v, want ErrLastAdmin", err)
+	if err := store.SetAdmin("alice", "alice", false); !errors.Is(err, ErrTargetIsSuper) {
+		t.Fatalf("demote the only enabled admin: err = %v, want ErrTargetIsSuper", err)
 	}
 	// Only alice may act (bob is disabled), so she is acting on herself; the
 	// app refuses that separately, but the store must still refuse it.
-	if err := store.SetDisabled("alice", "alice", true); !errors.Is(err, ErrLastAdmin) {
-		t.Fatalf("disable the only enabled admin: err = %v, want ErrLastAdmin", err)
+	if err := store.SetDisabled("alice", "alice", true); !errors.Is(err, ErrTargetIsSuper) {
+		t.Fatalf("disable the only enabled admin: err = %v, want ErrTargetIsSuper", err)
 	}
-	if err := store.PurgeAccount("alice", "alice"); !errors.Is(err, ErrLastAdmin) {
-		t.Fatalf("purge the only enabled admin: err = %v, want ErrLastAdmin", err)
+	if err := store.PurgeAccount("alice", "alice"); !errors.Is(err, ErrTargetIsSuper) {
+		t.Fatalf("purge the only enabled admin: err = %v, want ErrTargetIsSuper", err)
 	}
 	if roles := accountRoles(t, store); !roles["alice"] {
 		t.Fatalf("roles after refusals = %v, want alice still an administrator", roles)
 	}
 	// Bob's promotion and disable; the refused actions recorded nothing.
-	assertEvents(t, store, "alice promoted bob", "alice disabled bob")
+	assertEvents(t, store, "alice super_admin_assigned alice", "alice promoted bob", "alice disabled bob")
 
 	if err := store.SetAdmin("alice", "bob", false); err != nil {
 		t.Fatalf("demote a disabled admin: %v", err)
@@ -385,7 +409,7 @@ func TestOnlyEnabledAdministratorsCanDisableOrPurge(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(store.RootDir(), "bob")); err != nil {
 		t.Fatalf("bob's folder after refused purges: %v", err)
 	}
-	assertEvents(t, store, "alice disabled carol")
+	assertEvents(t, store, "alice super_admin_assigned alice", "alice disabled carol")
 }
 
 // TestPurgeAccountRefusesWhenAnotherAccountDiffersOnlyInCase covers

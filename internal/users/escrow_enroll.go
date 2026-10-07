@@ -375,16 +375,29 @@ func (s *Store) OpenEscrow(admin string, dek []byte) (*EscrowSession, error) {
 //   - checks that every sealed DEK opens with the escrow key, and removes
 //     one that does not, so its owner's next sign-in seals it again.
 //
-// It grants nothing to other administrators: that happens only when an
-// administrator promotes or enables one (PromoteAdmin, EnableAccount). An
-// administrator without a grant stays without one until then. A caller
-// that is not an enabled administrator is only enrolled.
+// Only the super administrator (ADR-005) holds the key and does this work;
+// a subordinate administrator is only enrolled, and a grant left on one is
+// removed. It grants nothing to anyone else. A caller that is not an
+// enabled administrator is only enrolled.
 func (s *Store) EnrollAdminSession(admin string, dek []byte) error {
 	return s.inWriteTx("administrator escrow", func(ctx context.Context, q accountWriter) error {
 		if err := requireEnabledAdmin(ctx, q, admin); errors.Is(err, ErrNotAdmin) {
 			_, err := enrollTx(ctx, q, admin, dek, nil)
 			return err
 		} else if err != nil {
+			return err
+		}
+		super, err := ensureSuperTx(ctx, q)
+		if err != nil {
+			return err
+		}
+		if admin != super {
+			// A subordinate administrator holds no administrator key
+			// (ADR-005); one left from before is removed.
+			if err := removeSubordinateGrantTx(ctx, q, admin); err != nil {
+				return err
+			}
+			_, err := enrollTx(ctx, q, admin, dek, nil)
 			return err
 		}
 
@@ -553,56 +566,6 @@ func removeGrantTx(ctx context.Context, q accountWriter, admin string) error {
 	return err
 }
 
-// grantOnActionTx grants the active escrow key to username, an
-// administrator, inside actor's promotion or enabling of them. actor's own
-// grant supplies the escrow key. username's personal key must pass its
-// attestation by that key; one this key never attested is trusted now, on
-// first use, and the event is recorded so the Admin panel shows it.
-//
-// It grants nothing, without error, when no escrow key exists or actor
-// holds no usable grant: the change goes ahead and another administrator
-// can grant later by promoting again. With requireKey set, an account with
-// no personal key yet returns ErrNoPersonalKey.
-func grantOnActionTx(ctx context.Context, q accountWriter, actor string, actorDEK []byte, username string, requireKey bool) error {
-	active, ok, err := activeEscrowKey(ctx, q)
-	if err != nil || !ok {
-		return err
-	}
-	var public, attestation []byte
-	var attestedKeyID string
-	err = q.QueryRowContext(ctx,
-		`SELECT public_key, attestation, attested_escrow_key_id FROM personal_keys WHERE username = ?`,
-		username).Scan(&public, &attestation, &attestedKeyID)
-	if errors.Is(err, sql.ErrNoRows) {
-		if requireKey {
-			return ErrNoPersonalKey
-		}
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("users: read personal key: %w", err)
-	}
-	var granted int
-	if err := q.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM escrow_grants WHERE admin_username = ? AND escrow_key_id = ?`,
-		username, active.id).Scan(&granted); err != nil {
-		return fmt.Errorf("users: read escrow grant: %w", err)
-	}
-	if granted > 0 {
-		return nil
-	}
-
-	session, err := openGrantTx(ctx, q, actor, actorDEK)
-	if errors.Is(err, ErrNoEscrowGrant) || errors.Is(err, ErrEscrowMismatch) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-	return attestAndGrantTx(ctx, q, session, actor, username, public, attestation, attestedKeyID)
-}
-
 // attestAndGrantTx grants session's escrow key to username after checking
 // their personal key against its attestation by that key; a key this
 // escrow key never attested is trusted now, on first use, and recorded.
@@ -639,67 +602,45 @@ func requirePersonalKeyTx(ctx context.Context, q accountWriter, username string)
 	return nil
 }
 
-// PromoteAdmin makes username an administrator on behalf of actor, an
-// enabled administrator whose DEK is actorDEK, and grants them the escrow
-// key in the same transaction (grantOnActionTx); a disabled account is
-// granted when it is enabled. Promoting an account that is already an
-// administrator only adds a missing grant. An account that
-// has not signed in since enrollment began returns ErrNoPersonalKey, and
-// one whose personal key fails its attestation returns
-// ErrPersonalKeyNotAttested; neither is promoted, and the failed
-// attestation is recorded.
-func (s *Store) PromoteAdmin(actor string, actorDEK []byte, username string) error {
-	err := s.inWriteTx("role change", func(ctx context.Context, q accountWriter) error {
-		if err := requireEnabledAdmin(ctx, q, actor); err != nil {
+// removeSubordinateGrantTx removes the grant of admin, a subordinate
+// administrator, if one is left from before ADR-005, and records it.
+func removeSubordinateGrantTx(ctx context.Context, q accountWriter, admin string) error {
+	res, err := q.ExecContext(ctx, `DELETE FROM escrow_grants WHERE admin_username = ?`, admin)
+	if err != nil {
+		return fmt.Errorf("users: remove subordinate grant: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		return recordAccountEvent(ctx, q, admin, admin, AccountEscrowKeyMismatch,
+			"a subordinate administrator held the administrator key; it was removed")
+	}
+	return nil
+}
+
+// PromoteAdmin makes username an administrator on behalf of actor, the
+// super administrator. The new administrator is a subordinate and holds no
+// administrator key (ADR-005). An account that has not signed in since
+// enrollment began returns ErrNoPersonalKey and is not promoted, so a
+// later hand-over or standby always has a personal key to grant to.
+func (s *Store) PromoteAdmin(actor string, _ []byte, username string) error {
+	return s.inWriteTx("role change", func(ctx context.Context, q accountWriter) error {
+		if err := requireSuperTx(ctx, q, actor); err != nil {
 			return err
 		}
-		isAdmin, disabled, err := accountRole(ctx, q, username)
+		isAdmin, _, err := accountRole(ctx, q, username)
 		if err != nil {
-			return err
-		}
-		if disabled {
-			// A disabled administrator holds no grant; EnableAccount
-			// grants. The account must still have signed in once.
-			if err := requirePersonalKeyTx(ctx, q, username); err != nil {
-				return err
-			}
-		} else if err := grantOnActionTx(ctx, q, actor, actorDEK, username, true); err != nil {
 			return err
 		}
 		if isAdmin {
 			return nil
+		}
+		if err := requirePersonalKeyTx(ctx, q, username); err != nil {
+			return err
 		}
 		if _, err := q.ExecContext(ctx, `UPDATE users SET is_admin = 1 WHERE username = ?`, username); err != nil {
 			return err
 		}
 		return recordAccountEvent(ctx, q, actor, username, AccountPromoted, "")
 	})
-	if errors.Is(err, ErrPersonalKeyNotAttested) {
-		s.recordAttestationFailure(actor, username)
-	}
-	return err
-}
-
-// EnableAccount enables username on behalf of actor, as SetDisabled does,
-// and grants an administrator the escrow key in the same transaction. A
-// disabled administrator cannot sign in to make a personal key, so one
-// without a key is enabled without a grant rather than refused. Called for
-// an administrator who is already enabled, it only adds a missing grant.
-func (s *Store) EnableAccount(actor string, actorDEK []byte, username string) error {
-	err := s.inWriteTx("account status change", func(ctx context.Context, q accountWriter) error {
-		if err := setDisabledTx(ctx, q, actor, username, false); err != nil {
-			return err
-		}
-		isAdmin, _, err := accountRole(ctx, q, username)
-		if err != nil || !isAdmin {
-			return err
-		}
-		return grantOnActionTx(ctx, q, actor, actorDEK, username, false)
-	})
-	if errors.Is(err, ErrPersonalKeyNotAttested) {
-		s.recordAttestationFailure(actor, username)
-	}
-	return err
 }
 
 // recordAttestationFailure records a refused promotion or enabling in its
@@ -713,90 +654,6 @@ func (s *Store) recordAttestationFailure(actor, username string) {
 	}
 }
 
-// ErrTargetNotAdmin is returned by GrantKey when the account is not an
-// enabled administrator.
+// ErrTargetNotAdmin is returned when the account an action needs to be an
+// enabled administrator is not one.
 var ErrTargetNotAdmin = errors.New("users: account is not an enabled administrator")
-
-// GrantKey gives username, an enabled administrator without a grant, the
-// active escrow key, on behalf of actor, whose DEK is actorDEK. Unlike
-// promotion, it fails rather than doing nothing when it cannot grant:
-// ErrNoEscrowGrant or ErrEscrowMismatch when actor holds no usable grant
-// (a mismatch is recorded), ErrNoPersonalKey when username has not signed
-// in since enrollment began, and ErrPersonalKeyNotAttested (recorded) when
-// their personal key fails its attestation. An administrator who already
-// holds a grant is left alone.
-func (s *Store) GrantKey(actor string, actorDEK []byte, username string) error {
-	var refused error
-	err := s.inWriteTx("escrow grant", func(ctx context.Context, q accountWriter) error {
-		if err := requireEnabledAdmin(ctx, q, actor); err != nil {
-			return err
-		}
-		if err := requireEnabledAdmin(ctx, q, username); errors.Is(err, ErrNotAdmin) {
-			return ErrTargetNotAdmin
-		} else if err != nil {
-			return err
-		}
-		// The caller's own key first: without it nothing else matters.
-		session, err := openGrantTx(ctx, q, actor, actorDEK)
-		if errors.Is(err, ErrEscrowMismatch) {
-			refused = err
-			return nil // commit the recorded mismatch
-		}
-		if err != nil {
-			return err
-		}
-		defer session.Close()
-		var public, attestation []byte
-		var attestedKeyID string
-		err = q.QueryRowContext(ctx,
-			`SELECT public_key, attestation, attested_escrow_key_id FROM personal_keys WHERE username = ?`,
-			username).Scan(&public, &attestation, &attestedKeyID)
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNoPersonalKey
-		}
-		if err != nil {
-			return fmt.Errorf("users: read personal key: %w", err)
-		}
-		var granted int
-		if err := q.QueryRowContext(ctx,
-			`SELECT COUNT(*) FROM escrow_grants WHERE admin_username = ? AND escrow_key_id = ?`,
-			username, session.id).Scan(&granted); err != nil {
-			return fmt.Errorf("users: read escrow grant: %w", err)
-		}
-		if granted > 0 {
-			return nil
-		}
-		return attestAndGrantTx(ctx, q, session, actor, username, public, attestation, attestedKeyID)
-	})
-	if errors.Is(err, ErrPersonalKeyNotAttested) {
-		s.recordAttestationFailure(actor, username)
-	}
-	if err != nil {
-		return err
-	}
-	return refused
-}
-
-// AdminsWithoutGrant lists the enabled administrators who hold no grant
-// for the active escrow key, so another administrator can give them one.
-// With no escrow key yet it lists nobody.
-func (s *Store) AdminsWithoutGrant() ([]string, error) {
-	rows, err := s.conn.Query(
-		`SELECT u.username FROM users u, escrow_keys k
-		 WHERE k.retired_at = '' AND u.is_admin = 1 AND u.disabled = 0
-		   AND NOT EXISTS (SELECT 1 FROM escrow_grants g WHERE g.admin_username = u.username AND g.escrow_key_id = k.id)
-		 ORDER BY u.username`)
-	if err != nil {
-		return nil, fmt.Errorf("users: list administrators without a grant: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []string
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return nil, err
-		}
-		out = append(out, name)
-	}
-	return out, rows.Err()
-}

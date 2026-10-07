@@ -448,17 +448,20 @@ to you.
 
 ## Administrator Access to Users' Data
 
-An administrator can open another account's projects from the Admin panel
-with **Open data**, after giving a reason. They see each project read only:
+The super administrator can open another account's projects from the Admin
+panel with **Open data**, after giving a reason. They see each project read only:
 its summary, schedule, costs, and the list of documents, not the documents'
 contents. Nothing can be changed, exported, or printed. Every opening is
 recorded in the Admin panel's account history with who opened which account,
 when, and why. An account that has not signed in since this feature arrived
 can't be opened until it does.
 
-Opening data needs the administrator key. The first administrator holds it;
-others get it when an administrator makes them administrators, or later with
-**Give administrator key**.
+One administrator is the super administrator: on a new machine, the first
+account. Only the super administrator changes administrators, opens users'
+data, and holds the administrator key; other administrators create, disable,
+and delete standard accounts. The super administrator can hand the role to
+another administrator who has signed in with **Make super administrator**,
+and becomes an ordinary administrator.
 
 If an administrator opens your data, you see who did, when, and their reason
 on the first screen after you sign in, until you choose **I've read this**;

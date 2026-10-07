@@ -162,13 +162,13 @@ func (a *App) AdminStopUserData() error {
 }
 
 // checkAccessCaller re-checks in system.db that the signed-in user is still
-// an enabled administrator, ending any access if not.
+// the super administrator (ADR-005), ending any access if not.
 func (a *App) checkAccessCaller() error {
 	caller := a.requireUser()
 	if caller == nil || !caller.IsAdmin {
 		return errors.New("administrator privileges required")
 	}
-	if err := a.store.RequireEnabledAdmin(caller.Username); err != nil {
+	if err := a.store.RequireSuper(caller.Username); err != nil {
 		a.mu.Lock()
 		a.stopAdminAccessLocked()
 		a.mu.Unlock()
@@ -274,16 +274,22 @@ func removeAdminViewCopies(dataDir string, cutoff time.Time) {
 
 // accountDataDir returns username's data folder.
 func (a *App) accountDataDir(username string) (string, error) {
+	acc, err := a.accountByName(username)
+	return acc.DataDir, err
+}
+
+// accountByName returns username's account record.
+func (a *App) accountByName(username string) (users.Account, error) {
 	accounts, err := a.store.List()
 	if err != nil {
-		return "", err
+		return users.Account{}, err
 	}
 	for _, acc := range accounts {
 		if acc.Username == username {
-			return acc.DataDir, nil
+			return acc, nil
 		}
 	}
-	return "", errors.New("no such account")
+	return users.Account{}, errors.New("no such account")
 }
 
 // adminAccessError words a refused access for the Admin panel.
@@ -297,6 +303,8 @@ func adminAccessError(username string, err error) error {
 		return errors.New("you open your own data by signing in to your own account")
 	case errors.Is(err, users.ErrNotAdmin):
 		return errors.New("administrator privileges required")
+	case errors.Is(err, users.ErrNotSuper):
+		return errors.New("only the super administrator can open users' data")
 	case errors.Is(err, users.ErrNoSuchUser):
 		return errors.New("no such account")
 	case errors.Is(err, users.ErrNotEnrolled):

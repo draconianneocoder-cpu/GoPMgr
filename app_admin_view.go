@@ -5,12 +5,10 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 
 	"gopmgr/internal/charts"
 	"gopmgr/internal/db"
-	"gopmgr/internal/users"
 )
 
 // =========================================================
@@ -181,46 +179,4 @@ func (a *App) AdminViewDocuments() ([]AdminViewDocumentWire, error) {
 		return nil
 	})
 	return out, err
-}
-
-// AdminListAdminsWithoutKey lists the enabled administrators who hold no
-// administrator key, so the Admin panel can offer to give them one.
-func (a *App) AdminListAdminsWithoutKey() ([]string, error) {
-	caller := a.requireUser()
-	if caller == nil || !caller.IsAdmin {
-		return nil, errors.New("administrator privileges required")
-	}
-	names, err := a.store.AdminsWithoutGrant()
-	if names == nil && err == nil {
-		names = []string{}
-	}
-	return names, err
-}
-
-// AdminGrantKey gives username, an administrator without the
-// administrator key, the signed-in administrator's key. It reports why
-// when it cannot.
-func (a *App) AdminGrantKey(username string) error {
-	caller := a.requireUser()
-	if caller == nil || !caller.IsAdmin {
-		return errors.New("administrator privileges required")
-	}
-	err := a.withSessionDEK(func(dek []byte) error {
-		return a.store.GrantKey(caller.Username, dek, username)
-	})
-	switch {
-	case errors.Is(err, users.ErrNotAdmin):
-		return errors.New("administrator privileges required")
-	case errors.Is(err, users.ErrTargetNotAdmin):
-		return fmt.Errorf("%s is not an administrator who can sign in", username)
-	case errors.Is(err, users.ErrNoPersonalKey):
-		return fmt.Errorf("%s must sign in once before they can get the administrator key", username)
-	case errors.Is(err, users.ErrPersonalKeyNotAttested):
-		return fmt.Errorf("%s did not get the administrator key: their account key has been changed since an administrator last checked it. The change is recorded in the account history", username)
-	case errors.Is(err, users.ErrNoEscrowGrant):
-		return errors.New("you don't hold the administrator key yourself, so you can't give it")
-	case errors.Is(err, users.ErrEscrowMismatch):
-		return errors.New("your copy of the administrator key failed its check, so nothing was given; the account history records it")
-	}
-	return err
 }
