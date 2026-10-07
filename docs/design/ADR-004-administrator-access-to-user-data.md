@@ -5,11 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-004: Administrator access to users' data
 
-**Status:** Accepted; phase 1 built (2026-10-02); phase 2's backend (slice A)
-built (2026-10-02), its Admin panel (slice B) next. The owner accepted
-every recommendation under Owner decisions on 2026-09-25. Phases 1 and 2
-reach `main` before a release; `make escrow-release-guard`, run by
-`check-release`, fails while any code seals a DEK, and phase 2's pull
+**Status:** Accepted; phases 1 and 2 built (2026-10-02); phase 3 (telling the
+user, rotation) next. The owner accepted every recommendation under Owner
+decisions on 2026-09-25. No release until users are told at their next
+sign-in: `make access-notice-release-guard`, run by `check-release`, fails
+while the app can open another account's data, and the sign-in notice's pull
 request deletes it.
 **Decision date:** 2026-09-25 (owner requirement: 2026-09-24)
 
@@ -143,6 +143,7 @@ an administrator an attacker's escrow key to seal new accounts to.
 | Promotion (`AdminSetUserRole`) | In one transaction, using the promoting administrator's grant: check the target's personal key against its attestation (a key the escrow key never attested is trusted on first use and recorded), add the grant, and change the role. A target with no personal key yet is refused until they sign in once (owner decision, 2026-10-02). Promoting an administrator without a grant adds one. A disabled target is promoted without a grant and granted when enabled. A promoting administrator without a usable grant changes the role only; an unusable grant is removed and recorded. |
 | `BecomeAdmin` (no administrator can sign in) | Bootstrap as above if no escrow key has ever existed. Otherwise the new administrator has no grant, and with no other administrator to promote them, none until rotation. |
 | Demotion, disable, or permanent deletion of an administrator | Delete that administrator's grant (`ON DELETE CASCADE` on the account row). This stops later use of the current `system.db`; an administrator who kept an earlier copy still holds the old grant, and only rotation keeps them out of accounts enrolled afterwards. |
+| An administrator without a grant (made before escrow, or by an administrator without one) | Another administrator chooses **Give administrator key** (`GrantKey`): checked like promotion, and it fails with a reason, never silently, when it cannot grant. |
 | Re-enabling a disabled administrator | A new grant, as for promotion, in the same transaction. A disabled administrator cannot sign in to make a personal key, so one without a key is enabled without a grant. |
 | Permanent deletion of any account | The sealed DEK, personal keys, and grant go with the row. |
 
@@ -204,6 +205,13 @@ administrators, re-attest personal keys, retire the old escrow key, and record
    A copy taken while its owner is writing from another GoPMgr process can be
    torn; it then fails the integrity check and the administrator is asked to
    try again.
+8. The viewer shows the project's summary, its schedules (Gantt and CPM
+   charts, with dates computed as the project's reports compute them), its
+   cost entries and approved cost baselines, and its documents' titles,
+   never their contents or cost attachments (owner decision, 2026-10-02).
+   Every viewer read re-checks the caller's role. A compliance-mode project
+   whose audit trail fails its check is shown with a warning, where its
+   owner would be refused (owner decision, 2026-10-02).
 6. The handle covers the target's projects. Whether it also covers their
    deletion log and catalog is part of the owner decision on scope below.
 
@@ -323,6 +331,9 @@ that has not signed in since enrollment began is refused until it has.
 
 Decided 2026-10-02, before building phase 2: access is view only (no export,
 report, archive, print, or attachment while viewing), through a dedicated
-read-only viewer rather than the ordinary project screens; phase 2 ships as a
-backend slice and then the Admin panel slice, which removes the release
-guard.
+read-only viewer rather than the ordinary project screens, showing the
+summary, schedule, costs, and document titles; a broken audit trail is shown
+with a warning; phase 2 ships as a backend slice and then the Admin panel
+slice. The phase-1 escrow guard is replaced by one that blocks release until
+users are told at sign-in (phase 3), since decision 2 is accepted but not
+yet built.
