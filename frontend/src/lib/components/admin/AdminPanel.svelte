@@ -79,6 +79,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let takeoverReason = $state('');
   let takeoverNote = $state('');
 
+  // Replacing the administrator key (ADR-005 part 3). The new key goes only
+  // to the super administrator and a standby they choose to keep.
+  let superHoldsKey = $state(false);
+  let rotationPending = $state(false);
+  let pendingReplace = $state(false);
+  let keepStandby = $state(true);
+  let replacing = $state(false);
+  let passingKey = $state(false);
+
   const usernameRule = /^[A-Za-z0-9_-]{3,32}$/;
 
   onMount(load);
@@ -104,6 +113,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       standbyInactiveDays = roles.standby_inactive_days ?? 0;
       takeoverReasons = roles.takeover_reasons ?? [];
       protections = roles.protections ?? [];
+      superHoldsKey = roles.super_holds_key ?? false;
+      rotationPending = roles.rotation_pending ?? false;
     } catch {
       superAdmin = '';
       standby = '';
@@ -165,6 +176,41 @@ SPDX-License-Identifier: GPL-3.0-or-later
       showToast(`Could not hand over the role: ${err}`, 'error');
     } finally {
       handingOver = false;
+    }
+  }
+
+  async function passKeyToStandby() {
+    if (passingKey || !standby) return;
+    passingKey = true;
+    try {
+      const result = await window.go.main.App.AdminSetStandby(standby, takeoverDays);
+      showToast(
+        result.key_passed
+          ? `${standby} holds the administrator key again.`
+          : `The administrator key couldn't be passed to ${standby}.`,
+        result.key_passed ? 'success' : 'error'
+      );
+      await load();
+    } catch (err: any) {
+      showToast(`Could not pass the key: ${err}`, 'error');
+    } finally {
+      passingKey = false;
+    }
+  }
+
+  async function replaceKey() {
+    if (replacing) return;
+    replacing = true;
+    try {
+      const result = await window.go.main.App.AdminReplaceEscrowKey(standby && keepStandby ? standby : '');
+      const later = result.reenroll > 0 ? ` ${result.reenroll} will be moved when they next sign in.` : '';
+      showToast(`Administrator key replaced. ${result.resealed} accounts moved to the new key.${later}`, 'success');
+      pendingReplace = false;
+      await load();
+    } catch (err: any) {
+      showToast(`Could not replace the administrator key: ${err}`, 'error');
+    } finally {
+      replacing = false;
     }
   }
 
@@ -396,7 +442,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       case 'personal_key_trusted':
         return `${e.actor} accepted ${e.username}'s account key without an earlier check`;
       case 'escrow_rotated':
-        return `${e.actor} replaced the administrator key`;
+        return `${e.actor} replaced the administrator key (${e.detail})`;
       case 'super_admin_assigned':
         return `${e.username} became the super administrator (${e.detail})`;
       case 'super_admin_handed_over':
@@ -480,6 +526,20 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
     {#if error}
       <p class="text-sm text-red-400" role="alert">{error}</p>
+    {/if}
+
+    {#if iAmSuper && standby && !standbyHoldsKey}
+      <div class="p-3 bg-amber-950/30 border border-amber-700/60 rounded-lg flex flex-wrap items-center gap-3" role="alert">
+        <p class="text-xs text-amber-200 flex-1 min-w-60">
+          {standby}, your standby successor, doesn't hold the administrator key, so after a takeover no one could open
+          users' data.
+        </p>
+        <button
+          onclick={passKeyToStandby}
+          disabled={passingKey}
+          class="text-[11px] bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white px-2 py-1 rounded"
+        >{passingKey ? 'Passing…' : `Pass the key to ${standby}`}</button>
+      </div>
     {/if}
 
     {#if canTakeOver}
@@ -890,12 +950,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 but they won't hold the administrator key. Name a standby to pass it on.
               {/if}
             </p>
-            {#if standby && !standbyHoldsKey}
-              <p class="text-xs text-amber-300" role="alert">
-                {standby} doesn't hold the administrator key, so after a takeover no one could open users' data. Save
-                again to pass it to them.
-              </p>
-            {/if}
             <form onsubmit={saveSuccession} class="flex flex-wrap items-end gap-4">
               <label class="block">
                 <span class="text-xs font-semibold text-slate-500 uppercase">Standby successor</span>
@@ -931,6 +985,54 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 To name a standby, first make another account an administrator; they must have signed in once.
               </p>
             {/if}
+            <div class="pt-2 space-y-2" role="group" aria-label="Administrator key">
+              {#if rotationPending}
+                <p class="text-xs text-amber-300">
+                  {#if superHoldsKey}
+                    The administrator key is waiting to be replaced because someone who held it no longer does. It's
+                    replaced the next time you sign in, or now.
+                  {:else if standby && standbyHoldsKey}
+                    The administrator key is waiting to be replaced. You don't hold it, so {standby} replaces it at
+                    their next sign-in.
+                  {:else}
+                    The administrator key is waiting to be replaced, but nobody holds it, so it can't be replaced yet.
+                  {/if}
+                </p>
+              {/if}
+              {#if superHoldsKey}
+                {#if pendingReplace}
+                  <p class="text-xs text-slate-300">
+                    Replace the administrator key? Every account is moved to a new key and nobody has to do anything.
+                    Copies of GoPMgr's account file made before now still open the data sealed in them.
+                  </p>
+                  {#if standby}
+                    <label class="flex items-center gap-2">
+                      <input type="checkbox" bind:checked={keepStandby} class="accent-cyan-500" />
+                      <span class="text-xs text-slate-300">{standby}, your standby successor, keeps the new key</span>
+                    </label>
+                  {/if}
+                  <div class="flex items-center gap-2">
+                    <button
+                      onclick={replaceKey}
+                      disabled={replacing}
+                      class="text-[11px] bg-amber-800 hover:bg-amber-700 disabled:opacity-50 text-white px-2 py-1 rounded"
+                    >{replacing ? 'Replacing…' : 'Replace key'}</button>
+                    <button
+                      onclick={() => (pendingReplace = false)}
+                      class="text-[11px] text-slate-400 hover:text-slate-200 underline"
+                    >Cancel</button>
+                  </div>
+                {:else}
+                  <button
+                    onclick={() => {
+                      keepStandby = true;
+                      pendingReplace = true;
+                    }}
+                    class="text-[11px] text-slate-400 hover:text-amber-400 underline"
+                  >Replace administrator key</button>
+                {/if}
+              {/if}
+            </div>
           {:else}
             <p class="text-xs text-slate-300">
               {#if iAmStandby}

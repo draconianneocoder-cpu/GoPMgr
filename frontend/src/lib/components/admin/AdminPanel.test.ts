@@ -482,11 +482,70 @@ describe('AdminPanel succession', () => {
     expect(app.AdminSetStandby).not.toHaveBeenCalled();
   });
 
-  it('warns when the standby does not hold the administrator key', async () => {
+  it('alerts the super administrator when the standby lacks the key, and passes it on request', async () => {
+    app.AdminRoles.mockResolvedValue(roles({ standby: 'bob', standby_holds_key: false, takeover_days: 45 }));
+    const utils = render(AdminPanel);
+    const alert = await utils.findByRole('alert');
+    expect(text(alert)).toContain("bob, your standby successor, doesn't hold the administrator key");
+    app.AdminRoles.mockResolvedValue(roles({ standby: 'bob', standby_holds_key: true, takeover_days: 45 }));
+    await fireEvent.click(within(alert).getByRole('button', { name: 'Pass the key to bob' }));
+    expect(app.AdminSetStandby).toHaveBeenCalledWith('bob', 45);
+    await waitFor(() => expect(utils.queryByRole('alert')).not.toBeInTheDocument());
+  });
+
+  it('does not show the standby key alert to a subordinate', async () => {
+    session.user = account('bob', { is_admin: true });
     app.AdminRoles.mockResolvedValue(roles({ standby: 'bob', standby_holds_key: false }));
     const utils = render(AdminPanel);
-    const section = await utils.findByRole('region', { name: 'Succession' });
-    await waitFor(() => expect(text(within(section).getByRole('alert'))).toContain("bob doesn't hold the administrator key"));
+    await utils.findByRole('region', { name: 'Succession' });
+    expect(utils.queryByRole('button', { name: /^Pass the key/ })).not.toBeInTheDocument();
+  });
+
+  it('replaces the administrator key after confirmation, keeping the standby unless unchecked', async () => {
+    app.AdminReplaceEscrowKey = vi.fn(async () => ({ resealed: 4, reenroll: 0 }));
+    app.AdminRoles.mockResolvedValue(roles({ standby: 'bob', standby_holds_key: true, super_holds_key: true }));
+    const utils = render(AdminPanel);
+    const group = await utils.findByRole('group', { name: 'Administrator key' });
+    await fireEvent.click(within(group).getByRole('button', { name: 'Replace administrator key' }));
+    expect(app.AdminReplaceEscrowKey).not.toHaveBeenCalled();
+    expect(text(group)).toContain('Every account is moved to a new key and nobody has to do anything.');
+    const keep = within(group).getByLabelText('bob, your standby successor, keeps the new key') as HTMLInputElement;
+    expect(keep.checked).toBe(true);
+    await fireEvent.click(within(group).getByRole('button', { name: 'Replace key' }));
+    expect(app.AdminReplaceEscrowKey).toHaveBeenCalledWith('bob');
+
+    await waitFor(() =>
+      expect(within(utils.getByRole('group', { name: 'Administrator key' })).getByRole('button', { name: 'Replace administrator key' })).toBeInTheDocument()
+    );
+    const again = utils.getByRole('group', { name: 'Administrator key' });
+    await fireEvent.click(within(again).getByRole('button', { name: 'Replace administrator key' }));
+    await fireEvent.click(within(again).getByLabelText('bob, your standby successor, keeps the new key'));
+    await fireEvent.click(within(again).getByRole('button', { name: 'Replace key' }));
+    expect(app.AdminReplaceEscrowKey).toHaveBeenLastCalledWith('');
+  });
+
+  it('says who replaces a pending key, and offers no replacement without a key', async () => {
+    app.AdminRoles.mockResolvedValue(
+      roles({ standby: 'bob', standby_holds_key: true, super_holds_key: false, rotation_pending: true })
+    );
+    const utils = render(AdminPanel);
+    const group = await utils.findByRole('group', { name: 'Administrator key' });
+    await waitFor(() => expect(text(group)).toContain("You don't hold it, so bob replaces it at their next sign-in."));
+    expect(within(group).queryByRole('button', { name: 'Replace administrator key' })).not.toBeInTheDocument();
+    cleanup();
+
+    app.AdminRoles.mockResolvedValue(roles({ super_holds_key: false, rotation_pending: true }));
+    const nobody = render(AdminPanel);
+    await waitFor(() =>
+      expect(text(nobody.getByRole('group', { name: 'Administrator key' }))).toContain("nobody holds it, so it can't be replaced yet")
+    );
+    cleanup();
+
+    app.AdminRoles.mockResolvedValue(roles({ super_holds_key: true, rotation_pending: true }));
+    const mine = render(AdminPanel);
+    await waitFor(() =>
+      expect(text(mine.getByRole('group', { name: 'Administrator key' }))).toContain("It's replaced the next time you sign in, or now.")
+    );
   });
 
   it('tells a subordinate who can take over, and offers nothing before the period', async () => {
@@ -595,14 +654,16 @@ describe('AdminPanel succession', () => {
       { id: 3, occurred_at: '2026-10-05T10:02:00Z', actor: 'bob', username: 'bob', action: 'super_standby_removed', detail: 'became the super administrator' },
       { id: 2, occurred_at: '2026-10-05T10:01:00Z', actor: 'alice', username: 'alice', action: 'super_takeover_period_changed', detail: '45 days' },
       { id: 1, occurred_at: '2026-10-05T10:00:00Z', actor: 'alice', username: 'bob', action: 'super_standby_named', detail: 'administrator key passed' },
+      { id: 0, occurred_at: '2026-10-05T09:00:00Z', actor: 'alice', username: 'alice', action: 'escrow_rotated', detail: 'replaced by the super administrator; 4 accounts sealed to the new key' },
     ]);
     const utils = render(AdminPanel);
     const history = await utils.findByRole('region', { name: 'Account history' });
-    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(4));
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(5));
     const items = within(history).getAllByRole('listitem').map((li) => li.textContent?.replace(/\s+/g, ' '));
     expect(items[0]).toContain('bob became the super administrator in place of alice (no sign-in for at least 31 days; administrator key held)');
     expect(items[1]).toContain('bob is no longer the standby successor (became the super administrator)');
     expect(items[2]).toContain('alice set the takeover period to 45 days');
     expect(items[3]).toContain('alice named bob standby successor (administrator key passed)');
+    expect(items[4]).toContain('alice replaced the administrator key (replaced by the super administrator; 4 accounts sealed to the new key)');
   });
 });

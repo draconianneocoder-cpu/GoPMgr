@@ -99,10 +99,11 @@ for a legitimate local user.
   the record is plaintext in `system.db`, so an administrator who can write
   it can delete an access row or mark it read, and the user is not told; an
   administrator who decrypts outside the app with their own password leaves
-  no record; headless sign-in shows no notice; escrow rotation (ADR-005 part
-  3) is not built, so a former key holder who kept an old `system.db` can
-  still unseal accounts enrolled after they left, and after a takeover with
-  no standby nobody can open users' data; the takeover period and the
+  no record; headless sign-in shows no notice; the administrator key is
+  replaced whenever someone stops holding it (ADR-005 part 3a), but a copy
+  of `system.db` taken before that still opens every DEK sealed in it; until
+  parts 3b and 3c ship, after a takeover with no standby nobody can open
+  users' data; the takeover period and the
   protection use this computer's clock, so an administrator who sets it
   forward can take over early and end the protection early, and a hostile
   administrator can pick the shortest protection (7 days).

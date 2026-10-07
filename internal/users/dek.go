@@ -129,7 +129,7 @@ func (s *Store) createLegacyDEK(username, password string) ([]byte, error) {
 		if _, err := q.ExecContext(ctx, `UPDATE users SET wrapped_dek_pw = ? WHERE username = ?`, blob, username); err != nil {
 			return err
 		}
-		if err := enrollInSavepoint(ctx, q, username, dek, nil, false); err != nil {
+		if err := enrollInSavepoint(ctx, q, username, dek, nil); err != nil {
 			log.Printf("users: escrow enrollment of %s failed, retried at next sign-in: %v", username, err)
 		}
 		return nil

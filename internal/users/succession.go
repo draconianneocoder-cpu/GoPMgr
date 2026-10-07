@@ -188,6 +188,12 @@ type Succession struct {
 	// CanTakeOver reports whether the administrator who asked can become
 	// the super administrator now.
 	CanTakeOver bool
+	// SuperHoldsKey reports whether the super administrator holds a grant
+	// of the active key; whether it opens is checked at their sign-in.
+	SuperHoldsKey bool
+	// RotationPending reports that the administrator key is waiting to be
+	// replaced (ADR-005 part 3).
+	RotationPending bool
 }
 
 type successionState struct {
@@ -248,7 +254,7 @@ func readSuccessionTx(ctx context.Context, q accountWriter) (successionState, er
 				return successionState{}, err
 			}
 		case errors.Is(err, ErrNotAdmin):
-			if err := removeGrantTx(ctx, q, standby.String); err != nil {
+			if err := revokeGrantTx(ctx, q, standby.String, standby.String+" is no longer an administrator who can sign in"); err != nil {
 				return successionState{}, err
 			}
 			if err := clearStandbyTx(ctx, q, super, standby.String, "no longer an administrator who can sign in"); err != nil {
@@ -460,6 +466,16 @@ func (s *Store) Succession(actor string) (Succession, error) {
 				return err
 			}
 		}
+		if st.super != "" {
+			if out.SuperHoldsKey, err = holdsActiveGrantTx(ctx, q, st.super); err != nil {
+				return err
+			}
+		}
+		reason, err := rotationPendingTx(ctx, q)
+		if err != nil {
+			return err
+		}
+		out.RotationPending = reason != ""
 		out.Protections, err = activeProtectionsTx(ctx, q, now)
 		return err
 	})
@@ -501,7 +517,11 @@ func (s *Store) SetStandby(actor string, actorDEK []byte, standby string, days i
 			}
 		}
 
+		oldStandbyHeld := false
 		if st.standby != "" && st.standby != standby {
+			if oldStandbyHeld, err = holdsAnyGrantTx(ctx, q, st.standby); err != nil {
+				return err
+			}
 			if err := removeGrantTx(ctx, q, st.standby); err != nil {
 				return err
 			}
@@ -515,12 +535,6 @@ func (s *Store) SetStandby(actor string, actorDEK []byte, standby string, days i
 		}
 		if standby != "" {
 			if _, err := passKeyTx(ctx, q, actor, actorDEK, standby); err != nil {
-				return err
-			}
-			// Report what the standby holds, not whether this call passed
-			// the key: one named again keeps their earlier grant even when
-			// actor's own key does not open now.
-			if keyPassed, err = holdsActiveGrantTx(ctx, q, standby); err != nil {
 				return err
 			}
 		}
@@ -544,7 +558,24 @@ func (s *Store) SetStandby(actor string, actorDEK []byte, standby string, days i
 			return fmt.Errorf("users: store standby: %w", err)
 		}
 
+		// The replaced standby held the key: replace it, keeping it for
+		// actor and the new standby only.
+		if oldStandbyHeld {
+			rotation := "the standby " + st.standby + " was removed"
+			if standby != "" {
+				rotation = "the standby " + st.standby + " was replaced"
+			}
+			if err := rotateWithOwnKeyTx(ctx, q, actor, actorDEK, []string{standby}, rotation); err != nil {
+				return err
+			}
+		}
 		if standby != "" {
+			// Report what the standby holds, not whether this call passed
+			// the key: one named again keeps their earlier grant even when
+			// actor's own key does not open now.
+			if keyPassed, err = holdsActiveGrantTx(ctx, q, standby); err != nil {
+				return err
+			}
 			return recordAccountEvent(ctx, q, actor, standby, AccountStandbyNamed,
 				fmt.Sprintf("takes over after %d days without a sign-in by the super administrator; %s", days,
 					keyDetail(keyPassed, "administrator key passed", "the administrator key could not be passed")))
@@ -604,6 +635,10 @@ func (s *Store) TakeOverSuper(actor string, actorDEK []byte, reasonCode, note st
 		if err := clearStandbyTx(ctx, q, actor, actor, "became the super administrator"); err != nil {
 			return err
 		}
+		formerHeld, err := holdsAnyGrantTx(ctx, q, st.super)
+		if err != nil {
+			return err
+		}
 		if err := removeGrantTx(ctx, q, st.super); err != nil {
 			return err
 		}
@@ -620,10 +655,11 @@ func (s *Store) TakeOverSuper(actor string, actorDEK []byte, reasonCode, note st
 		session, err := openGrantTx(ctx, q, actor, actorDEK)
 		switch {
 		case errors.Is(err, ErrNoEscrowGrant), errors.Is(err, ErrEscrowMismatch):
+			session = nil
 		case err != nil:
 			return err
 		default:
-			session.Close()
+			defer session.Close()
 			keyHeld = true
 		}
 
@@ -642,7 +678,23 @@ func (s *Store) TakeOverSuper(actor string, actorDEK []byte, reasonCode, note st
 		}
 		parts = append(parts, why,
 			keyDetail(keyHeld, "administrator key held", "the new super administrator does not hold the administrator key"))
-		return recordAccountEvent(ctx, q, actor, st.super, AccountSuperTakenOver, strings.Join(parts, "; "))
+		if err := recordAccountEvent(ctx, q, actor, st.super, AccountSuperTakenOver, strings.Join(parts, "; ")); err != nil {
+			return err
+		}
+
+		// The former super administrator held the key: replace it. A
+		// claimant holding it (the standby) does so now; otherwise it waits
+		// for a key holder's next sign-in.
+		if !formerHeld {
+			return nil
+		}
+		rotation := "the super administrator role was taken over from " + st.super
+		if session == nil {
+			return markRotationPendingTx(ctx, q, rotation)
+		}
+		next, _, err := rotateInSavepointTx(ctx, q, session, actor, nil, rotation)
+		next.Close()
+		return err
 	})
 	return keyHeld, err
 }

@@ -8,8 +8,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 **Status:** Accepted (owner decisions, 2026-10-05 and 2026-10-07). Part 1
 (the role, subordinate limits, hand-over) and part 2 (standby and takeover)
 built 2026-10-05; part 2b (takeover after an inactive standby, takeover
-reasons and protection) built 2026-10-07; part 3 (escrow rotation and a
-fresh key) next. All of them ship before the next release tag.
+reasons and protection) built 2026-10-07; part 3a (escrow rotation) built
+2026-10-07; parts 3b (recovery code) and 3c (a new key with a sign-in
+notice) next. All of them ship before the next release tag.
 **Decision date:** 2026-10-05
 
 ## Context
@@ -100,18 +101,46 @@ super administrator instead.
   | No longer an employee | 7 days |
   | Other (a note is required) | 30 days |
 
-- **Rotation (part 3).** The escrow key is rotated automatically whenever
-  someone stops holding it (a hand-over, a takeover, or a standby being
-  replaced or removed), and on demand with "Replace administrator key".
+- **Rotation (part 3a, built 2026-10-07).** The administrator key is
+  replaced whenever someone stops holding it, and on demand with "Replace
+  administrator key". Users see it only in the account history (owner
+  decision, 2026-10-07); their pins move cryptographically, so nobody has to
+  do anything. The mechanism is in ADR-004's Rotation section.
+  - **Who gets the new key:** only the administrator doing the rotation and
+    accounts they name in that action (the new standby when changing it; the
+    standby, if the super administrator keeps them, on "Replace
+    administrator key"). Never an account read from `system.db`, so a forged
+    standby or grant row gains nothing. A standby not named loses the key;
+    the Admin panel then alerts the super administrator, with a button that
+    passes it to them again.
+  - **When it runs at once:** changing or removing the standby, "Replace
+    administrator key", and a takeover by the standby.
+  - **When it waits:** a hand-over (never in the session of the person
+    leaving), a takeover by someone without the key, and demoting,
+    disabling, or deleting someone who held it. It then runs at the super
+    administrator's next sign-in, or at the standby's while the super
+    administrator holds no key; after demoting, disabling, or deleting, the
+    Admin panel runs it at once with the super administrator's key. If
+    nobody holds the key, it waits for part 3c. Until it runs, accounts
+    enrolled in the meantime are sealed to the old key, which a former
+    holder's copy of `system.db` still opens.
+  - **Accepted:** the super administrator's confirmation keeps whoever the
+    panel shows as standby, so a standby row forged to name another enabled
+    administrator, and not caught when read, would be kept with their
+    consent.
 - **Recovery when nobody holds the key (part 3; owner decisions,
   2026-10-07).** Rotation re-seals with the old private key, which is gone
   after a takeover with no standby or a hand-over that could not pass the
   key.
-  - **First, a recovery code.** When an administrator key is made, the
-    super administrator is shown a one-time recovery code to print and
-    keep. Entering it restores that same key to the super administrator:
-    no new key, no re-pinning, and no trust in `system.db`'s plaintext
-    rows, since only the code opens the key.
+  - **First, a recovery code.** The current super administrator creates
+    a recovery code for the current key from the Admin panel and prints
+    it; the panel reminds them until one exists. Entering it restores that
+    same key to the super administrator: no new key, no re-pinning, and no
+    trust in `system.db`'s plaintext rows, since only the code opens the
+    key. A rotation makes a new key, so the old code no longer applies and
+    the reminder returns; a rotation never shows a code, so nobody leaving
+    takes one with them (owner decision, 2026-10-07, replacing "shown when
+    a key is made").
   - **If the code is lost, a new key with a notice.** The super
     administrator creates a new key; each user's data is re-sealed to it at
     their next sign-in, and, like the access notice, they are shown who
@@ -182,5 +211,6 @@ administrator is cleared when read.
    hand-back (2026-10-05).
    2b. Takeover once the standby is also inactive; takeover reason and the
    former super administrator's protection (2026-10-07).
-3. Escrow rotation, automatic and manual, and a fresh key when nobody holds
-   the old one.
+3. Escrow rotation, automatic and manual (3a, 2026-10-07); the recovery
+   code (3b); a new key with a sign-in notice when nobody holds the old one
+   (3c).

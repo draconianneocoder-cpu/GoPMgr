@@ -169,6 +169,9 @@ func (a *App) AdminSetUserDisabled(username string, disabled bool) error {
 		return errors.New("administrators cannot disable their own account")
 	}
 	err := a.store.SetDisabled(caller.Username, username, disabled)
+	if err == nil && disabled {
+		a.runPendingRotation(caller.Username)
+	}
 	if msg := superRoleMessage(err); msg != nil {
 		return msg
 	}
@@ -214,6 +217,9 @@ func (a *App) AdminPurgeUser(username, confirmation string) error {
 		return errors.New("type the username exactly to confirm permanent deletion")
 	}
 	err := a.store.PurgeAccount(caller.Username, username)
+	if err == nil || errors.Is(err, users.ErrPurgeIncomplete) {
+		a.runPendingRotation(caller.Username)
+	}
 	if msg := superRoleMessage(err); msg != nil {
 		return msg
 	}
@@ -259,6 +265,9 @@ func (a *App) AdminSetUserRole(username string, isAdmin bool) error {
 		err = a.store.PromoteAdmin(caller.Username, nil, username)
 	} else {
 		err = a.store.SetAdmin(caller.Username, username, isAdmin)
+		if err == nil {
+			a.runPendingRotation(caller.Username)
+		}
 	}
 	if msg := superRoleMessage(err); msg != nil {
 		return msg

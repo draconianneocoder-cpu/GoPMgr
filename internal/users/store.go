@@ -357,7 +357,7 @@ func (s *Store) SetAdmin(actor, username string, isAdmin bool) error {
 			}
 			// A former administrator keeps no escrow grant (ADR-004) and is
 			// no longer the standby (ADR-005).
-			if err := removeGrantTx(ctx, q, username); err != nil {
+			if err := revokeGrantTx(ctx, q, username, username+" is no longer an administrator"); err != nil {
 				return err
 			}
 			if err := clearStandbyTx(ctx, q, actor, username, "no longer an administrator"); err != nil {
@@ -547,7 +547,7 @@ func (s *Store) CreateAccountWithKey(callerUsername, username, displayName, pass
 			return err
 		}
 		// A new administrator is a subordinate and gets no key (ADR-005).
-		if err := enrollInSavepoint(ctx, q, username, dek, session, false); err != nil {
+		if err := enrollInSavepoint(ctx, q, username, dek, session); err != nil {
 			log.Printf("users: escrow enrollment of new account %s failed, retried at its sign-in: %v", username, err)
 		}
 		return nil

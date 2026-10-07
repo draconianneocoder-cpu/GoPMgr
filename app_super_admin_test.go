@@ -230,3 +230,75 @@ func TestAppStandbyRolesNeedAnAdministrator(t *testing.T) {
 		}
 	}
 }
+
+func TestAppReplaceEscrowKeyAndPendingReplacement(t *testing.T) {
+	app := superApp(t)
+	conn := systemDB(t, app)
+	retired := func() int {
+		t.Helper()
+		var n int
+		if err := conn.QueryRow(`SELECT COUNT(*) FROM escrow_keys WHERE retired_at <> ''`).Scan(&n); err != nil {
+			t.Fatalf("count retired keys: %v", err)
+		}
+		return n
+	}
+	if _, err := app.AdminSetStandby("bob", 30); err != nil {
+		t.Fatalf("AdminSetStandby(bob): %v", err)
+	}
+
+	if _, err := app.AdminReplaceEscrowKey("carol"); err == nil || err.Error() != "the standby has changed; reload the Admin panel and try again" {
+		t.Fatalf("keeping someone who is not the standby: err = %v", err)
+	}
+	got, err := app.AdminReplaceEscrowKey("bob")
+	if err != nil || got != (AdminRotationWire{Resealed: 3}) || retired() != 1 {
+		t.Fatalf("AdminReplaceEscrowKey(bob) = %+v, %v (retired %d); want 3 accounts moved", got, err, retired())
+	}
+	if roles, _ := app.AdminRoles(); !roles.StandbyHoldsKey || !roles.SuperHoldsKey || roles.RotationPending {
+		t.Fatalf("AdminRoles = %+v; want both holding the new key and nothing pending", roles)
+	}
+
+	// Disabling the standby, who holds the key, replaces it at once.
+	if err := app.AdminSetUserDisabled("bob", true); err != nil {
+		t.Fatalf("disable bob: %v", err)
+	}
+	if roles, _ := app.AdminRoles(); retired() != 2 || roles.RotationPending || !roles.SuperHoldsKey {
+		t.Fatalf("after disabling the standby: retired %d, roles %+v; want the key replaced at once", retired(), roles)
+	}
+	if err := app.AdminSetUserDisabled("bob", false); err != nil {
+		t.Fatalf("enable bob: %v", err)
+	}
+
+	switchUser(t, app, "bob")
+	if _, err := app.AdminReplaceEscrowKey(""); err == nil || err.Error() != "only the super administrator can replace the administrator key" {
+		t.Fatalf("subordinate replacing the key: err = %v", err)
+	}
+	switchUser(t, app, "carol")
+	if _, err := app.AdminReplaceEscrowKey(""); err == nil || err.Error() != "administrator privileges required" {
+		t.Fatalf("standard account replacing the key: err = %v", err)
+	}
+
+	// A super administrator whose key no longer opens cannot replace it.
+	if _, err := conn.Exec(`UPDATE escrow_grants SET sealed = x'00' WHERE admin_username = 'alice'`); err != nil {
+		t.Fatal(err)
+	}
+	switchUser(t, app, "alice")
+	if _, err := app.AdminReplaceEscrowKey(""); err == nil || err.Error() != "you don't hold a usable administrator key, so you can't replace it" {
+		t.Fatalf("replacing without a usable key: err = %v", err)
+	}
+}
+
+// A hand-over leaves the key waiting for the new super administrator's
+// sign-in, and the Admin panel can say so.
+func TestAppHandOverLeavesTheKeyReplacementPending(t *testing.T) {
+	app := superApp(t)
+	if _, err := app.AdminHandOverSuper("bob"); err != nil {
+		t.Fatalf("AdminHandOverSuper(bob): %v", err)
+	}
+	if roles, err := app.AdminRoles(); err != nil || !roles.RotationPending || roles.Super != "bob" || !roles.SuperHoldsKey {
+		t.Fatalf("AdminRoles after the hand-over = %+v, %v; want the replacement pending for bob", roles, err)
+	}
+	switchUser(t, app, "bob")
+	if roles, err := app.AdminRoles(); err != nil || roles.RotationPending {
+		t.Fatalf("AdminRoles after bob's sign-in = %+v, %v; want the key replaced", roles, err)
+	}
+}

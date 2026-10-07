@@ -55,13 +55,11 @@ make check-release
 GOPMGR_RELEASE_TAG=v<version-of-record>-alpha.<sequence> make tag-preflight
 ```
 
-ADR-004 escrow rotation (owner decision 3) is accepted but not built. A
-release without it ships recorded administrator access in which an
-administrator who is demoted, disabled, or deleted, and who kept an earlier
-copy of `system.db`, can still unseal accounts enrolled after they left.
-Do not tag until rotation ships (owner decision, 2026-10-05), nor before
-the rest of [ADR-005](design/ADR-005-super-administrator-and-succession.md)
-(part 3: rotation and a fresh key when nobody holds the old one) ships. See
+ADR-004 escrow rotation (owner decision 3) is built (ADR-005 part 3a,
+2026-10-07). Do not tag before the rest of
+[ADR-005](design/ADR-005-super-administrator-and-succession.md) ships: part
+3b, the recovery code, and part 3c, a new key with a sign-in notice when
+nobody holds the old one (owner decisions, 2026-10-05 and 2026-10-07). See
 [ADR-004](design/ADR-004-administrator-access-to-user-data.md).
 
 Before the tag, also require:

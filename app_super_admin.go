@@ -6,6 +6,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"gopmgr/internal/users"
@@ -15,7 +16,8 @@ import (
 
 // AdminRolesWire tells the Admin panel who the super administrator and the
 // standby are, whether the signed-in administrator can take over, the
-// reasons a takeover can give, and who is protected after one.
+// reasons a takeover can give, who is protected after one, and whether the
+// administrator key is waiting to be replaced.
 type AdminRolesWire struct {
 	Super               string                    `json:"super"`
 	Standby             string                    `json:"standby"`
@@ -24,6 +26,8 @@ type AdminRolesWire struct {
 	SuperInactiveDays   int                       `json:"super_inactive_days"`
 	StandbyInactiveDays int                       `json:"standby_inactive_days"`
 	CanTakeOver         bool                      `json:"can_take_over"`
+	SuperHoldsKey       bool                      `json:"super_holds_key"`
+	RotationPending     bool                      `json:"rotation_pending"`
 	TakeoverReasons     []AdminTakeoverReasonWire `json:"takeover_reasons"`
 	Protections         []AdminProtectionWire     `json:"protections"`
 }
@@ -64,6 +68,8 @@ func (a *App) AdminRoles() (AdminRolesWire, error) {
 		SuperInactiveDays:   s.SuperInactiveDays,
 		StandbyInactiveDays: s.StandbyInactiveDays,
 		CanTakeOver:         s.CanTakeOver,
+		SuperHoldsKey:       s.SuperHoldsKey,
+		RotationPending:     s.RotationPending,
 		TakeoverReasons:     []AdminTakeoverReasonWire{},
 		Protections:         []AdminProtectionWire{},
 	}
@@ -199,4 +205,52 @@ func targetError(err error, username, role string) error {
 		return fmt.Errorf("%s can't %s: their account key has been changed since an administrator last checked it. The change is recorded in the account history", username, role)
 	}
 	return err
+}
+
+// AdminRotationWire reports a replacement of the administrator key.
+type AdminRotationWire struct {
+	Resealed int `json:"resealed"`
+	Reenroll int `json:"reenroll"`
+}
+
+// AdminReplaceEscrowKey replaces the administrator key (ADR-005 part 3).
+// Requires the super administrator, holding a usable key. keepStandby,
+// when not empty, is the standby the super administrator chose to keep
+// the key; any other standby loses it.
+func (a *App) AdminReplaceEscrowKey(keepStandby string) (AdminRotationWire, error) {
+	caller := a.requireUser()
+	if caller == nil || !caller.IsAdmin {
+		return AdminRotationWire{}, errors.New("administrator privileges required")
+	}
+	var res users.RotationResult
+	err := a.withSessionDEK(func(dek []byte) error {
+		var err error
+		res, err = a.store.ReplaceEscrowKey(caller.Username, dek, keepStandby)
+		return err
+	})
+	switch {
+	case errors.Is(err, users.ErrNotAdmin):
+		return AdminRotationWire{}, errors.New("administrator privileges required")
+	case errors.Is(err, users.ErrNotSuper):
+		return AdminRotationWire{}, errors.New("only the super administrator can replace the administrator key")
+	case errors.Is(err, users.ErrNoEscrowGrant):
+		return AdminRotationWire{}, errors.New("you don't hold a usable administrator key, so you can't replace it")
+	case errors.Is(err, users.ErrStandbyChanged):
+		return AdminRotationWire{}, errors.New("the standby has changed; reload the Admin panel and try again")
+	case err != nil:
+		return AdminRotationWire{}, err
+	}
+	return AdminRotationWire{Resealed: res.Resealed, Reenroll: res.Reenroll}, nil
+}
+
+// runPendingRotation replaces the administrator key now when a change just
+// marked it for replacement and the signed-in administrator is the one to
+// do it. A failure is logged; the next sign-in of a key holder retries.
+func (a *App) runPendingRotation(username string) {
+	err := a.withSessionDEK(func(dek []byte) error {
+		return a.store.RunPendingRotation(username, dek)
+	})
+	if err != nil {
+		log.Printf("replacing the administrator key after an account change failed; it stays pending: %v", err)
+	}
 }

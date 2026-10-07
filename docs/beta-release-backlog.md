@@ -196,11 +196,11 @@ That result took six live-GUI cycles to reach because the first five, all run un
       ADR-005 part 1 (2026-10-05): only the super administrator holds the
       key.
     - Phase 3's sign-in notice built 2026-10-02 (see the release row).
-    - Open: escrow rotation (ADR-004 decision 3, accepted); required before
-      the next tag (owner decision, 2026-10-05). `BecomeAdmin` on a machine
-      whose administrators were all disabled or removed leaves the escrow
-      key with no holder until rotation. The database and crypto error
-      returns in `escrow_enroll.go` are not tested one by one.
+    - Escrow rotation (ADR-004 decision 3) built 2026-10-07 as ADR-005
+      part 3a. Open: `BecomeAdmin` on a machine whose administrators were
+      all disabled or removed leaves the escrow key with no holder until
+      part 3c. The database and crypto error returns in `escrow_enroll.go`
+      and `escrow_rotation.go` are not tested one by one.
     - ADR-005 (owner decisions 2026-10-05): one super administrator;
       subordinates manage standard accounts only. Part 1 built 2026-10-05
       (role, subordinate limits, earliest-administrator migration,
@@ -212,13 +212,14 @@ That result took six live-GUI cycles to reach because the first five, all run un
       the key; the claimant picks a recorded reason that protects the
       former super administrator from disable, delete, and demotion:
       vacation 30 days, parental leave 180, medical or convalescence leave
-      90, no longer an employee 7, other with a note 30). Open before the
-      next tag: part 3, rotation
-      (automatic when someone stops holding the key, plus "Replace
-      administrator key") and recovery when nobody holds the key: a
-      printed recovery code that restores the existing key, and, if it is
-      lost, a new key that each user is told about at sign-in (owner
-      decisions, 2026-10-07).
+      90, no longer an employee 7, other with a note 30). Part 3a built
+      2026-10-07 (rotation whenever someone stops holding the key, plus
+      "Replace administrator key"; the new key goes only to the rotator
+      and accounts they name). Open before the next tag: part 3b, a
+      recovery code the super administrator creates on demand that
+      restores the existing key, and part 3c, a new key that each user is
+      told about at sign-in when the code is lost (owner decisions,
+      2026-10-07).
       Evidence: `super_admin_test.go`, `succession_test.go`,
       `app_super_admin_test.go`, and the `AdminPanel.test.ts` row in
       `TEST_COVERAGE_LEDGER.md`.

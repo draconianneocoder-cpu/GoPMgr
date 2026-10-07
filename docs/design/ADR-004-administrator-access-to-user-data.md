@@ -6,8 +6,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # ADR-004: Administrator access to users' data
 
 **Status:** Accepted; phases 1 and 2 built (2026-10-02); phase 3's sign-in
-notice built (2026-10-02); escrow rotation (decision 3) accepted but not
-built. The owner accepted every recommendation under Owner decisions on
+notice built (2026-10-02); escrow rotation (decision 3) built 2026-10-07 as
+ADR-005 part 3a. The owner accepted every recommendation under Owner decisions on
 2026-09-25. The release guards that kept phases 1 and 2 from shipping before
 the notice were removed with it. [ADR-005](ADR-005-super-administrator-and-succession.md)
 (2026-10-05) narrows who holds the key: only the super administrator (and
@@ -166,13 +166,23 @@ grant removes it when the pin names another key. Rotation must therefore
 re-pin administrators before it re-issues their grants, or each new grant is
 removed at its holder's next sign-in.
 
-If the owner chooses rotation (decision 3), one administrator session does it
-in one `BEGIN IMMEDIATE` transaction: create a new escrow key pair, re-seal
-every enrolled user's DEK to it, recompute each account's escrow pin (the
-session holds each DEK at that moment), re-issue grants to the remaining
-administrators, re-attest personal keys, retire the old escrow key, and record
-`escrow_rotated`. Without re-pinning, every account would report
-`escrow_key_mismatch` at its next sign-in.
+Rotation (decision 3, built 2026-10-07 as ADR-005 part 3a) runs in one
+`BEGIN IMMEDIATE` transaction, inside a savepoint so a failure leaves the
+action that triggered it standing and the rotation pending: create a new
+escrow key pair and retire the old one, re-seal every enrolled user's DEK to
+it, recompute each account's escrow pin (the session holds each DEK at that
+moment), re-attest personal keys whose attestation by the old key verifies
+(one that does not stays refused for grants, rather than becoming a key the
+new key trusts on first use),
+remove every grant and re-issue the new key only to the administrator doing
+it and accounts they name in that action, and record `escrow_rotated`.
+Accounts whose DEK does not open, and pins for any other key, are cleared,
+so those accounts enroll again at their next sign-in. Who rotates, and when,
+is in ADR-005's part 3.
+
+Rotation protects data sealed afterwards, not before: DEKs do not change, so
+a copy of `system.db` taken before a rotation still opens every DEK sealed
+in it with the grant it holds.
 
 ### Access flow
 

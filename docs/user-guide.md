@@ -480,6 +480,16 @@ out medical or personal details. The former super administrator becomes an
 ordinary administrator, and the new one can hand the role back, which ends
 the protection. Each change is recorded in the account history.
 
+GoPMgr replaces the administrator key whenever someone who held it stops
+holding it: after a hand-over or a takeover, or when the standby is changed,
+removed, disabled, or deleted. Nobody has to do anything; every account is
+moved to the new key, and the account history records it. Only the super
+administrator and a standby they keep get the new key. If the panel says
+your standby doesn't hold the administrator key, choose **Pass the key**. The
+super administrator can also choose **Replace administrator key** under
+Succession at any time. A copy of GoPMgr's account file made before a
+replacement still opens the data sealed in it, so keep such copies safe.
+
 If an administrator opens your data, you see who did, when, and their reason
 on the first screen after you sign in, until you choose **I've read this**;
 the Admin panel's history records that you read it. App Settings, under

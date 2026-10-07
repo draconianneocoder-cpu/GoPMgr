@@ -91,15 +91,21 @@ func activeEscrowKey(ctx context.Context, q accountWriter) (ref escrowKeyRef, ok
 // It returns the account's personal public key, derived from its private
 // key, once the account is enrolled, and nil when it enrolled nothing.
 func enrollTx(ctx context.Context, q accountWriter, username string, dek []byte, session *EscrowSession) ([]byte, error) {
-	var key escrowKeyRef
+	active, ok, err := activeEscrowKey(ctx, q)
+	if err != nil || !ok {
+		return nil, err
+	}
+	key := active
 	if session != nil {
-		key = escrowKeyRef{id: session.id, public: session.public}
-	} else {
-		active, ok, err := activeEscrowKey(ctx, q)
-		if err != nil || !ok {
-			return nil, err
+		if session.id != active.id {
+			// A session opened in an earlier transaction may hold a key
+			// that has since been replaced (ADR-005 part 3): enrolling
+			// against it would seal and pin the account to a retired key
+			// nobody holds. Use the active key, without attesting.
+			session = nil
+		} else {
+			key = escrowKeyRef{id: session.id, public: session.public}
 		}
-		key = active
 	}
 
 	hadPersonalKey, personalPublic, err := ensurePersonalKey(ctx, q, username, dek)
@@ -173,19 +179,12 @@ func enrollTx(ctx context.Context, q accountWriter, username string, dek []byte,
 // transaction. If enrolling fails, only the enrollment is rolled back, so
 // the account's own change (a new DEK, a new account) still commits and a
 // later sign-in retries enrollment. It returns the enrollment error for the
-// caller to report.
-//
-// With grant set and a session, the account is also granted the session's
-// escrow key: an administrator account created by an administrator, whose
-// personal key was made in this same transaction.
-func enrollInSavepoint(ctx context.Context, q accountWriter, username string, dek []byte, session *EscrowSession, grant bool) error {
+// caller to report. It grants nothing (ADR-005).
+func enrollInSavepoint(ctx context.Context, q accountWriter, username string, dek []byte, session *EscrowSession) error {
 	if _, err := q.ExecContext(ctx, `SAVEPOINT escrow_enroll`); err != nil {
 		return err
 	}
-	public, enrollErr := enrollTx(ctx, q, username, dek, session)
-	if enrollErr == nil && grant && session != nil && public != nil {
-		enrollErr = grantTx(ctx, q, session, username, public)
-	}
+	_, enrollErr := enrollTx(ctx, q, username, dek, session)
 	if enrollErr != nil {
 		if _, err := q.ExecContext(ctx, `ROLLBACK TO escrow_enroll`); err != nil {
 			return errors.Join(enrollErr, err)
@@ -375,11 +374,12 @@ func (s *Store) OpenEscrow(admin string, dek []byte) (*EscrowSession, error) {
 //   - checks that every sealed DEK opens with the escrow key, and removes
 //     one that does not, so its owner's next sign-in seals it again.
 //
-// Only the super administrator (ADR-005) does this work. The standby is
-// enrolled and their grant checked; any other subordinate administrator is
-// only enrolled, and a grant left on one is removed. It grants nothing to
-// anyone else. A caller that is not an enabled administrator is only
-// enrolled.
+// Only the super administrator (ADR-005) does this work, after running a
+// pending key replacement (ADR-005 part 3). The standby is enrolled and
+// their grant checked, and runs a pending replacement while the super
+// administrator holds no key; any other subordinate administrator is only
+// enrolled, and a grant left on one is removed. It grants nothing to anyone
+// else. A caller that is not an enabled administrator is only enrolled.
 func (s *Store) EnrollAdminSession(admin string, dek []byte) error {
 	return s.inWriteTx("administrator escrow", func(ctx context.Context, q accountWriter) error {
 		if err := requireEnabledAdmin(ctx, q, admin); errors.Is(err, ErrNotAdmin) {
@@ -406,8 +406,11 @@ func (s *Store) EnrollAdminSession(admin string, dek []byte) error {
 			if err != nil {
 				return err
 			}
+			// While the super administrator holds no key, the standby
+			// replaces it when that is pending.
+			session, err = runPendingRotationTx(ctx, q, session, admin)
 			session.Close()
-			return nil
+			return err
 		}
 		if admin != st.super {
 			// A subordinate administrator holds no administrator key
@@ -443,6 +446,13 @@ func (s *Store) EnrollAdminSession(admin string, dek []byte) error {
 			return nil // waits for a grant, or the mismatch is recorded
 		}
 		if err != nil {
+			return err
+		}
+		// A pending replacement runs first, so the checks below use the
+		// key that is active afterwards.
+		session, err = runPendingRotationTx(ctx, q, session, admin)
+		if err != nil {
+			session.Close()
 			return err
 		}
 		defer session.Close()
@@ -628,8 +638,11 @@ func removeSubordinateGrantTx(ctx context.Context, q accountWriter, admin string
 		return fmt.Errorf("users: remove subordinate grant: %w", err)
 	}
 	if n, _ := res.RowsAffected(); n > 0 {
-		return recordAccountEvent(ctx, q, admin, admin, AccountEscrowKeyMismatch,
-			"a subordinate administrator held the administrator key; it was removed")
+		if err := recordAccountEvent(ctx, q, admin, admin, AccountEscrowKeyMismatch,
+			"a subordinate administrator held the administrator key; it was removed"); err != nil {
+			return err
+		}
+		return markRotationPendingTx(ctx, q, "a subordinate administrator, "+admin+", held the administrator key")
 	}
 	return nil
 }

@@ -54,6 +54,22 @@ func mustSuccession(t *testing.T, store *Store, actor string) Succession {
 	return got
 }
 
+// newestEvent returns the newest event with action.
+func newestEvent(t *testing.T, store *Store, action string) AccountEvent {
+	t.Helper()
+	events, err := store.AccountEvents()
+	if err != nil {
+		t.Fatalf("AccountEvents: %v", err)
+	}
+	for _, e := range events {
+		if e.Action == action {
+			return e
+		}
+	}
+	t.Fatalf("no %s event", action)
+	return AccountEvent{}
+}
+
 func latestEvent(t *testing.T, store *Store) AccountEvent {
 	t.Helper()
 	events, err := store.AccountEvents()
@@ -79,7 +95,7 @@ func TestNamingAStandbyPassesTheKeyButNotTheRole(t *testing.T) {
 		t.Fatalf("latest event = %+v; want the standby named with the period and the key", e)
 	}
 	got := mustSuccession(t, store, "alice")
-	want := Succession{Super: "alice", Standby: "bob", StandbyHoldsKey: true, TakeoverDays: 30}
+	want := Succession{Super: "alice", Standby: "bob", StandbyHoldsKey: true, TakeoverDays: 30, SuperHoldsKey: true}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("Succession = %+v, want %+v", got, want)
 	}
@@ -164,8 +180,12 @@ func TestReplacingOrRemovingTheStandbyTakesTheirKey(t *testing.T) {
 	if n := countRows(t, store, "escrow_grants", "admin_username <> 'alice'"); n != 0 {
 		t.Fatal("the removed standby kept the key")
 	}
-	if e := latestEvent(t, store); e.Action != AccountStandbyRemoved || e.Username != "dave" || e.Detail != "removed by the super administrator" {
-		t.Fatalf("latest event = %+v; want dave's removal", e)
+	if e := newestEvent(t, store, AccountStandbyRemoved); e.Username != "dave" || e.Detail != "removed by the super administrator" {
+		t.Fatalf("newest removal = %+v; want dave's", e)
+	}
+	// dave held the key, so it was replaced and only alice holds it.
+	if e := latestEvent(t, store); e.Action != AccountEscrowRotated || e.Detail != "the standby dave was removed; 4 accounts sealed to the new key" {
+		t.Fatalf("latest event = %+v; want the key replaced after dave's removal", e)
 	}
 
 	before := len(eventActions(t, store))
@@ -293,9 +313,13 @@ func TestStandbyTakesOverWithTheKey(t *testing.T) {
 	if n := countRows(t, store, "escrow_grants", "admin_username = 'alice'"); n != 0 {
 		t.Fatal("the former super administrator kept the key")
 	}
-	if e := latestEvent(t, store); e.Actor != "bob" || e.Action != AccountSuperTakenOver || e.Username != "alice" ||
+	if e := newestEvent(t, store, AccountSuperTakenOver); e.Actor != "bob" || e.Username != "alice" ||
 		e.Detail != "no sign-in for at least 31 days; reason: Vacation; administrator key held" {
-		t.Fatalf("latest event = %+v; want bob's takeover from alice recorded", e)
+		t.Fatalf("takeover event = %+v; want bob's takeover from alice recorded", e)
+	}
+	// alice held the key and bob holds it, so bob replaced it at once.
+	if e := latestEvent(t, store); e.Actor != "bob" || e.Action != AccountEscrowRotated {
+		t.Fatalf("latest event = %+v; want bob's replacement of the key", e)
 	}
 	dek, err := store.OpenUserForAdmin("bob", bobDEK, "carol", "checking")
 	if err != nil {

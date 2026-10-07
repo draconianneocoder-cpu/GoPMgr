@@ -337,7 +337,7 @@ func setDisabledTx(ctx context.Context, q accountWriter, actor, username string,
 		}
 		// A disabled administrator keeps no escrow grant (ADR-004) and is
 		// no longer the standby (ADR-005).
-		if err := removeGrantTx(ctx, q, username); err != nil {
+		if err := revokeGrantTx(ctx, q, username, username+" was disabled"); err != nil {
 			return err
 		}
 		if err := clearStandbyTx(ctx, q, actor, username, "disabled"); err != nil {
@@ -408,6 +408,9 @@ func (s *Store) PurgeAccount(actor, username string) error {
 			return err
 		}
 		if err := clearStandbyTx(ctx, q, actor, username, "deleted"); err != nil {
+			return err
+		}
+		if err := revokeGrantTx(ctx, q, username, username+" was deleted"); err != nil {
 			return err
 		}
 		if _, err := q.ExecContext(ctx, `DELETE FROM users WHERE username = ?`, username); err != nil {
