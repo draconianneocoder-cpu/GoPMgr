@@ -215,7 +215,10 @@ That result took six live-GUI cycles to reach because the first five, all run un
       90, no longer an employee 7, other with a note 30). Open before the
       next tag: part 3, rotation
       (automatic when someone stops holding the key, plus "Replace
-      administrator key") and a fresh key when nobody holds the old one.
+      administrator key") and recovery when nobody holds the key: a
+      printed recovery code that restores the existing key, and, if it is
+      lost, a new key that each user is told about at sign-in (owner
+      decisions, 2026-10-07).
       Evidence: `super_admin_test.go`, `succession_test.go`,
       `app_super_admin_test.go`, and the `AdminPanel.test.ts` row in
       `TEST_COVERAGE_LEDGER.md`.

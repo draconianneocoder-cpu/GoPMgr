@@ -103,12 +103,26 @@ super administrator instead.
 - **Rotation (part 3).** The escrow key is rotated automatically whenever
   someone stops holding it (a hand-over, a takeover, or a standby being
   replaced or removed), and on demand with "Replace administrator key".
-- **Fresh key when nobody holds it (part 3).** Rotation re-seals with the
-  old private key, which is gone after a takeover with no standby or a
-  hand-over that could not pass the key. The super administrator then
-  creates a new key; each user's data is re-sealed to it at their next
-  sign-in, which is recorded in their history. Until a user signs in again,
-  nobody can open their data.
+- **Recovery when nobody holds the key (part 3; owner decisions,
+  2026-10-07).** Rotation re-seals with the old private key, which is gone
+  after a takeover with no standby or a hand-over that could not pass the
+  key.
+  - **First, a recovery code.** When an administrator key is made, the
+    super administrator is shown a one-time recovery code to print and
+    keep. Entering it restores that same key to the super administrator:
+    no new key, no re-pinning, and no trust in `system.db`'s plaintext
+    rows, since only the code opens the key.
+  - **If the code is lost, a new key with a notice.** The super
+    administrator creates a new key; each user's data is re-sealed to it at
+    their next sign-in, and, like the access notice, they are shown who
+    created it, when, and why on the first screen after every sign-in until
+    they acknowledge it. Until a user signs in again, nobody can open their
+    data. This is the one key operation that rests on the plaintext role
+    row, so its protection is that every user is told.
+  - Rejected: requiring each user's consent (decliners would stay
+    unrecoverable); a second administrator's approval (it would be stored in
+    the same editable `system.db`); no new key at all (the role could
+    outlive every key holder for good).
 
 ## Security rule
 
