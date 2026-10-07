@@ -415,3 +415,194 @@ describe('AdminPanel recorded access to user data', () => {
   });
 
 });
+
+describe('AdminPanel succession', () => {
+  function roles(extra: Record<string, unknown> = {}) {
+    return {
+      super: 'alice',
+      standby: '',
+      standby_holds_key: false,
+      takeover_days: 30,
+      super_inactive_days: 0,
+      standby_inactive_days: 0,
+      can_take_over: false,
+      takeover_reasons: [
+        { code: 'vacation', label: 'Vacation', days: 30 },
+        { code: 'medical_leave', label: 'Medical or convalescence leave', days: 90 },
+        { code: 'other', label: 'Other', days: 30 },
+      ],
+      protections: [],
+      ...extra,
+    };
+  }
+
+  // Template text wraps across lines; compare it as rendered.
+  const text = (el: HTMLElement) => el.textContent?.replace(/\s+/g, ' ') ?? '';
+
+  beforeEach(() => {
+    app.AdminListUsers.mockResolvedValue([
+      account('alice', { is_admin: true }),
+      account('bob', { is_admin: true }),
+      account('carol'),
+      account('dave', { is_admin: true, disabled: true }),
+    ]);
+    app.AdminSetStandby = vi.fn(async () => ({ key_passed: true }));
+    app.AdminTakeOverSuper = vi.fn(async () => ({ key_held: true }));
+  });
+
+  it('lets the super administrator name an enabled administrator as standby', async () => {
+    app.AdminRoles.mockResolvedValue(roles());
+    const utils = render(AdminPanel);
+    const section = await utils.findByRole('region', { name: 'Succession' });
+    expect(text(section)).toContain("any administrator can become the super administrator, but they won't hold the administrator key");
+
+    const picker = within(section).getByLabelText('Standby successor') as HTMLSelectElement;
+    expect([...picker.options].map((o) => o.value)).toEqual(['', 'bob']);
+    const days = within(section).getByLabelText('Days without signing in') as HTMLInputElement;
+    expect([days.min, days.max, days.value]).toEqual(['7', '365', '30']);
+
+    await fireEvent.change(picker, { target: { value: 'bob' } });
+    await fireEvent.input(days, { target: { value: '45' } });
+    app.AdminRoles.mockResolvedValue(roles({ standby: 'bob', standby_holds_key: true, takeover_days: 45 }));
+    await fireEvent.click(within(section).getByRole('button', { name: 'Save' }));
+    expect(app.AdminSetStandby).toHaveBeenCalledWith('bob', 45);
+    await waitFor(() => expect(within(bobRow(utils)).getByText('Standby')).toBeInTheDocument());
+    const after = utils.getByRole('region', { name: 'Succession' });
+    expect(text(after)).toContain("If you don't sign in for 45 days, bob, your standby successor, can become the super administrator.");
+  });
+
+  it('refuses a period outside 7 to 365 days without calling the backend', async () => {
+    app.AdminRoles.mockResolvedValue(roles());
+    const utils = render(AdminPanel);
+    const section = await utils.findByRole('region', { name: 'Succession' });
+    for (const value of ['6', '366', '']) {
+      await fireEvent.input(within(section).getByLabelText('Days without signing in'), { target: { value } });
+      await fireEvent.click(within(section).getByRole('button', { name: 'Save' }));
+    }
+    expect(app.AdminSetStandby).not.toHaveBeenCalled();
+  });
+
+  it('warns when the standby does not hold the administrator key', async () => {
+    app.AdminRoles.mockResolvedValue(roles({ standby: 'bob', standby_holds_key: false }));
+    const utils = render(AdminPanel);
+    const section = await utils.findByRole('region', { name: 'Succession' });
+    await waitFor(() => expect(text(within(section).getByRole('alert'))).toContain("bob doesn't hold the administrator key"));
+  });
+
+  it('tells a subordinate who can take over, and offers nothing before the period', async () => {
+    session.user = account('bob', { is_admin: true });
+    app.AdminRoles.mockResolvedValue(roles({ standby: 'bob', standby_holds_key: true }));
+    const utils = render(AdminPanel);
+    const section = await utils.findByRole('region', { name: 'Succession' });
+    await waitFor(() => expect(text(section)).toContain("You're the standby successor. If alice doesn't sign in for 30 days"));
+    expect(text(section)).not.toContain('either');
+    expect(within(section).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(utils.queryByRole('button', { name: 'Become super administrator' })).not.toBeInTheDocument();
+  });
+
+  it('lets the standby take over only after choosing a reason', async () => {
+    session.user = account('bob', { is_admin: true });
+    app.AdminRoles.mockResolvedValue(roles({ standby: 'bob', standby_holds_key: true, super_inactive_days: 31, can_take_over: true }));
+    const utils = render(AdminPanel);
+    const banner = await utils.findByRole('region', { name: "The super administrator hasn't signed in" });
+    expect(text(banner)).toContain("alice hasn't signed in for at least 31 days; the takeover period is 30 days.");
+    expect(text(banner)).not.toContain("You won't hold the administrator key");
+    expect(text(banner)).not.toContain("hasn't signed in for at least 0 days either");
+
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Become super administrator' }));
+    expect(app.AdminTakeOverSuper).not.toHaveBeenCalled();
+    const form = within(banner).getByRole('group', { name: 'Take over the super administrator role' });
+    const confirm = within(form).getByRole('button', { name: 'Become super administrator' });
+    expect(confirm).toBeDisabled();
+    expect(text(form)).toContain("Every administrator can see the reason and note in the account history. Don't include medical or personal details.");
+
+    await fireEvent.change(within(form).getByLabelText('Reason (required)'), { target: { value: 'vacation' } });
+    expect(text(form)).toContain("For 30 days, alice can't be disabled, deleted, or removed as an administrator.");
+    app.AdminRoles.mockResolvedValue(roles({ super: 'bob' }));
+    await fireEvent.click(confirm);
+    expect(app.AdminTakeOverSuper).toHaveBeenCalledWith('vacation', '');
+    await waitFor(() =>
+      expect(utils.queryByRole('region', { name: "The super administrator hasn't signed in" })).not.toBeInTheDocument()
+    );
+  });
+
+  it('needs a note for Other, within 500 characters, and refuses in the handler too', async () => {
+    session.user = account('dave', { is_admin: true });
+    app.AdminRoles.mockResolvedValue(roles({ super_inactive_days: 40, can_take_over: true }));
+    const utils = render(AdminPanel);
+    const banner = await utils.findByRole('region', { name: "The super administrator hasn't signed in" });
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Become super administrator' }));
+    const form = within(banner).getByRole('group', { name: 'Take over the super administrator role' });
+    const confirm = within(form).getByRole('button', { name: 'Become super administrator' });
+
+    await fireEvent.change(within(form).getByLabelText('Reason (required)'), { target: { value: 'other' } });
+    const note = within(form).getByLabelText('Note (required)');
+    await fireEvent.input(note, { target: { value: '   ' } });
+    expect(confirm).toBeDisabled();
+    confirm.removeAttribute('disabled');
+    await fireEvent.click(confirm);
+    expect(app.AdminTakeOverSuper).not.toHaveBeenCalled();
+
+    await fireEvent.input(note, { target: { value: 'é'.repeat(501) } });
+    expect(confirm).toBeDisabled();
+    expect(text(form)).toContain('501/500');
+
+    await fireEvent.input(note, { target: { value: '  covering the audit  ' } });
+    expect(confirm).toBeEnabled();
+    await fireEvent.click(confirm);
+    expect(app.AdminTakeOverSuper).toHaveBeenCalledWith('other', 'covering the audit');
+  });
+
+  it('explains a takeover offered because the standby is also away', async () => {
+    session.user = account('dave', { is_admin: true });
+    app.AdminRoles.mockResolvedValue(
+      roles({ standby: 'bob', standby_holds_key: true, super_inactive_days: 40, standby_inactive_days: 35, can_take_over: true })
+    );
+    const utils = render(AdminPanel);
+    const banner = await utils.findByRole('region', { name: "The super administrator hasn't signed in" });
+    expect(text(banner)).toContain("bob, the standby successor, hasn't signed in for at least 35 days either.");
+    expect(text(banner)).toContain("You won't hold the administrator key");
+  });
+
+  it('shows a protected former super administrator and offers nothing that would remove them', async () => {
+    app.AdminRoles.mockResolvedValue(
+      roles({ protections: [{ username: 'bob', reason: 'Vacation', until: '2026-11-06T12:00:00Z' }] })
+    );
+    const utils = render(AdminPanel);
+    await utils.findByRole('button', { name: 'Make bob super administrator' });
+    const row = bobRow(utils);
+    expect(within(row).getByText('Protected')).toBeInTheDocument();
+    expect(text(row)).toContain(
+      `Protected until ${new Date('2026-11-06T12:00:00Z').toLocaleDateString()} after the takeover (Vacation)`
+    );
+    for (const name of ['Disable account bob', 'Delete account bob permanently', 'Remove administrator']) {
+      expect(within(row).queryByRole('button', { name })).not.toBeInTheDocument();
+    }
+    expect(within(row).getByRole('button', { name: "Open bob's data" })).toBeInTheDocument();
+  });
+
+  it('warns an administrator taking over with no standby that they get no key', async () => {
+    session.user = account('bob', { is_admin: true });
+    app.AdminRoles.mockResolvedValue(roles({ super_inactive_days: 40, can_take_over: true }));
+    const utils = render(AdminPanel);
+    const banner = await utils.findByRole('region', { name: "The super administrator hasn't signed in" });
+    expect(text(banner)).toContain("You won't hold the administrator key");
+  });
+
+  it('describes standby and takeover changes in the history', async () => {
+    app.AdminListAccountEvents.mockResolvedValue([
+      { id: 4, occurred_at: '2026-10-05T10:03:00Z', actor: 'bob', username: 'alice', action: 'super_admin_taken_over', detail: 'no sign-in for at least 31 days; administrator key held' },
+      { id: 3, occurred_at: '2026-10-05T10:02:00Z', actor: 'bob', username: 'bob', action: 'super_standby_removed', detail: 'became the super administrator' },
+      { id: 2, occurred_at: '2026-10-05T10:01:00Z', actor: 'alice', username: 'alice', action: 'super_takeover_period_changed', detail: '45 days' },
+      { id: 1, occurred_at: '2026-10-05T10:00:00Z', actor: 'alice', username: 'bob', action: 'super_standby_named', detail: 'administrator key passed' },
+    ]);
+    const utils = render(AdminPanel);
+    const history = await utils.findByRole('region', { name: 'Account history' });
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(4));
+    const items = within(history).getAllByRole('listitem').map((li) => li.textContent?.replace(/\s+/g, ' '));
+    expect(items[0]).toContain('bob became the super administrator in place of alice (no sign-in for at least 31 days; administrator key held)');
+    expect(items[1]).toContain('bob is no longer the standby successor (became the super administrator)');
+    expect(items[2]).toContain('alice set the takeover period to 45 days');
+    expect(items[3]).toContain('alice named bob standby successor (administrator key passed)');
+  });
+});

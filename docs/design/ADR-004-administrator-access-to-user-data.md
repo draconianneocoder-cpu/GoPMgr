@@ -146,6 +146,9 @@ an administrator an attacker's escrow key to seal new accounts to.
 | `BecomeAdmin` (no administrator can sign in) | Bootstrap as above if no escrow key has ever existed. Otherwise the new administrator has no grant, and with no other administrator to promote them, none until rotation. |
 | Demotion, disable, or permanent deletion of an administrator | Delete that administrator's grant (`ON DELETE CASCADE` on the account row). This stops later use of the current `system.db`; an administrator who kept an earlier copy still holds the old grant, and only rotation keeps them out of accounts enrolled afterwards. |
 | Super administrator hands over the role (ADR-005) | The key is passed to the new super administrator under the attestation check, and the former one's grant is removed. |
+| Super administrator names a standby (ADR-005) | The key is granted to the standby under the attestation check. A replaced or removed standby's grant is removed, as is the standby's when they are demoted, disabled, or deleted. |
+| Sign-in of the standby (ADR-005) | Their grant is opened and checked; one that does not open is removed and recorded. Any other subordinate's grant is removed. |
+| Takeover (ADR-005) | The former super administrator's grant is removed. A standby who takes over keeps theirs; a standby passed over because they were also away keeps theirs too, so the role can be handed to them later. With no standby nobody holds the key until ADR-005 part 3's fresh key. |
 | Re-enabling a disabled administrator | Super administrator only; grants nothing (ADR-005). |
 | Permanent deletion of any account | The sealed DEK, personal keys, and grant go with the row. |
 

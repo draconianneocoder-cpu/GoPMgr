@@ -375,10 +375,11 @@ func (s *Store) OpenEscrow(admin string, dek []byte) (*EscrowSession, error) {
 //   - checks that every sealed DEK opens with the escrow key, and removes
 //     one that does not, so its owner's next sign-in seals it again.
 //
-// Only the super administrator (ADR-005) holds the key and does this work;
-// a subordinate administrator is only enrolled, and a grant left on one is
-// removed. It grants nothing to anyone else. A caller that is not an
-// enabled administrator is only enrolled.
+// Only the super administrator (ADR-005) does this work. The standby is
+// enrolled and their grant checked; any other subordinate administrator is
+// only enrolled, and a grant left on one is removed. It grants nothing to
+// anyone else. A caller that is not an enabled administrator is only
+// enrolled.
 func (s *Store) EnrollAdminSession(admin string, dek []byte) error {
 	return s.inWriteTx("administrator escrow", func(ctx context.Context, q accountWriter) error {
 		if err := requireEnabledAdmin(ctx, q, admin); errors.Is(err, ErrNotAdmin) {
@@ -387,11 +388,28 @@ func (s *Store) EnrollAdminSession(admin string, dek []byte) error {
 		} else if err != nil {
 			return err
 		}
-		super, err := ensureSuperTx(ctx, q)
+		st, err := readSuccessionTx(ctx, q)
 		if err != nil {
 			return err
 		}
-		if admin != super {
+		if admin == st.standby {
+			// The standby holds the key but does none of the work; their
+			// grant is checked so one that does not open is removed and
+			// recorded, and the super administrator sees it is gone.
+			if _, err := enrollTx(ctx, q, admin, dek, nil); err != nil {
+				return err
+			}
+			session, err := openGrantTx(ctx, q, admin, dek)
+			if errors.Is(err, ErrNoEscrowGrant) || errors.Is(err, ErrEscrowMismatch) {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			session.Close()
+			return nil
+		}
+		if admin != st.super {
 			// A subordinate administrator holds no administrator key
 			// (ADR-005); one left from before is removed.
 			if err := removeSubordinateGrantTx(ctx, q, admin); err != nil {

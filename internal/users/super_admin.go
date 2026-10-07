@@ -140,18 +140,6 @@ func requireAccountActionTx(ctx context.Context, q accountWriter, actor, usernam
 	return nil
 }
 
-// SuperAdmin returns the super administrator, assigning one if needed, or
-// "" when no administrator can sign in.
-func (s *Store) SuperAdmin() (string, error) {
-	var super string
-	err := s.inWriteTx("super administrator", func(ctx context.Context, q accountWriter) error {
-		var err error
-		super, err = ensureSuperTx(ctx, q)
-		return err
-	})
-	return super, err
-}
-
 // RequireSuper returns ErrNotAdmin or ErrNotSuper unless actor is the super
 // administrator, read from system.db.
 func (s *Store) RequireSuper(actor string) error {
@@ -164,9 +152,11 @@ func (s *Store) RequireSuper(actor string) error {
 // since enrollment began, the super administrator in actor's place; actor
 // becomes a subordinate. actor's administrator key is passed to target
 // under the same attestation check as any grant, and actor's own grant is
-// removed. If actor's key cannot be opened the role still moves, keyPassed
-// is false, and the history says so; a target whose personal key fails its
-// attestation is refused (ErrPersonalKeyNotAttested) and nothing changes.
+// removed. If actor's key cannot be opened the role still moves. keyPassed
+// reports whether target holds the key afterwards (a standby passed over in
+// a takeover may already hold it), and the history says the same; a target
+// whose personal key fails its attestation is refused
+// (ErrPersonalKeyNotAttested) and nothing changes.
 func (s *Store) HandOverSuper(actor string, actorDEK []byte, target string) (keyPassed bool, err error) {
 	err = s.inWriteTx("super administrator hand-over", func(ctx context.Context, q accountWriter) error {
 		keyPassed = false
@@ -184,44 +174,31 @@ func (s *Store) HandOverSuper(actor string, actorDEK []byte, target string) (key
 		if err := requirePersonalKeyTx(ctx, q, target); err != nil {
 			return err
 		}
-
-		if _, ok, err := activeEscrowKey(ctx, q); err != nil {
+		// If actor's key does not open, the role moves without it.
+		if _, err := passKeyTx(ctx, q, actor, actorDEK, target); err != nil {
 			return err
-		} else if ok {
-			session, err := openGrantTx(ctx, q, actor, actorDEK)
-			switch {
-			case errors.Is(err, ErrNoEscrowGrant), errors.Is(err, ErrEscrowMismatch):
-				// The role moves without the key; recorded below.
-			case err != nil:
-				return err
-			default:
-				defer session.Close()
-				var public, attestation []byte
-				var attestedKeyID string
-				if err := q.QueryRowContext(ctx,
-					`SELECT public_key, attestation, attested_escrow_key_id FROM personal_keys WHERE username = ?`,
-					target).Scan(&public, &attestation, &attestedKeyID); err != nil {
-					return fmt.Errorf("users: read personal key: %w", err)
-				}
-				if err := attestAndGrantTx(ctx, q, session, actor, target, public, attestation, attestedKeyID); err != nil {
-					return err
-				}
-				keyPassed = true
-			}
+		}
+		// Report what target holds, not whether this call passed the key.
+		var err error
+		if keyPassed, err = holdsActiveGrantTx(ctx, q, target); err != nil {
+			return err
 		}
 
 		if _, err := q.ExecContext(ctx,
 			`UPDATE super_admin SET username = ?, assigned_at = ? WHERE id = 1`, target, nowStamp()); err != nil {
 			return fmt.Errorf("users: store super administrator: %w", err)
 		}
+		if err := clearStandbyTx(ctx, q, actor, target, "became the super administrator"); err != nil {
+			return err
+		}
+		if err := clearProtectionTx(ctx, q, target); err != nil {
+			return err
+		}
 		if err := removeGrantTx(ctx, q, actor); err != nil {
 			return err
 		}
-		detail := "administrator key passed"
-		if !keyPassed {
-			detail = "the administrator key could not be passed"
-		}
-		return recordAccountEvent(ctx, q, actor, target, AccountSuperHandedOver, detail)
+		return recordAccountEvent(ctx, q, actor, target, AccountSuperHandedOver,
+			keyDetail(keyPassed, "administrator key passed", "the administrator key could not be passed"))
 	})
 	if errors.Is(err, ErrPersonalKeyNotAttested) {
 		s.recordAttestationFailure(actor, target)

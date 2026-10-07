@@ -230,7 +230,10 @@ func (s *Store) migrate() error {
 	if err := s.migrateEscrowTables(); err != nil {
 		return err
 	}
-	return s.migrateSuperAdmin()
+	if err := s.migrateSuperAdmin(); err != nil {
+		return err
+	}
+	return s.migrateSuperSuccession()
 }
 
 // migrateLastExportDirColumn adds last_export_directory to pre-existing
@@ -346,11 +349,18 @@ func (s *Store) SetAdmin(actor, username string, isAdmin bool) error {
 			return err
 		}
 		if !isAdmin {
+			if err := requireUnprotectedTx(ctx, q, username); err != nil {
+				return err
+			}
 			if err := guardLastEnabledAdmin(ctx, q, targetIsAdmin, targetDisabled); err != nil {
 				return err
 			}
-			// A former administrator keeps no escrow grant (ADR-004).
+			// A former administrator keeps no escrow grant (ADR-004) and is
+			// no longer the standby (ADR-005).
 			if err := removeGrantTx(ctx, q, username); err != nil {
+				return err
+			}
+			if err := clearStandbyTx(ctx, q, actor, username, "no longer an administrator"); err != nil {
 				return err
 			}
 		}
