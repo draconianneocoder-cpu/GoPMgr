@@ -5,8 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-004: Administrator access to users' data
 
-**Status:** Accepted, not yet implemented. The owner accepted every
-recommendation under Owner decisions on 2026-09-25.
+**Status:** Accepted; phase 1 built (2026-10-02), phase 2 next. The owner accepted
+every recommendation under Owner decisions on 2026-09-25. Phases 1 and 2
+reach `main` before a release; `make escrow-release-guard`, run by
+`check-release`, fails while any code seals a DEK, and phase 2's pull
+request deletes it.
 **Decision date:** 2026-09-25 (owner requirement: 2026-09-24)
 
 ## Context
@@ -79,7 +82,10 @@ an administrator an attacker's escrow key to seal new accounts to.
   `escrow_key_mismatch` event.
 - **Grant check.** Administrators are accounts too, so each has a pin. Opening
   a grant derives the public key from the unsealed escrow private key and
-  checks it against that administrator's pin before using it.
+  checks it against that administrator's pin before using it. A grant that
+  fails the check, does not open, or was sealed to a personal key the
+  administrator no longer has is deleted and recorded, so their sign-in still
+  commits and another administrator can grant them again.
 - **Admin sessions never read the escrow public key from disk.** They derive it
   from the escrow private key they hold. That covers bootstrap, admin-created
   accounts, promotion, and rotation.
@@ -89,6 +95,19 @@ an administrator an attacker's escrow key to seal new accounts to.
   under a subkey derived from the escrow private key's bytes. At account creation this happens
   in the creating administrator's session. Promotion refuses a key that fails
   its attestation.
+- **Grants only in an administrator's own action.** A grant is added only
+  inside an explicit administrator action: creating the escrow key, creating
+  an administrator account, promotion, or enabling a disabled administrator.
+  A sign-in never grants, and an administrator session never attests a key
+  for the first time; it only checks existing attestations. `is_admin` and
+  `disabled` are plain columns, so a sign-in that granted to whoever they name
+  would hand the escrow key to anyone who can write `system.db` (found while
+  building phase 1, 2026-10-02). First-use attestation happens only at
+  promotion or enabling and is recorded as `personal_key_trusted`. If that
+  administrator's next sign-in then records `personal_key_repaired`, the key
+  trusted at promotion was not theirs and the escrow key may have been sealed
+  to an attacker: treat it as exposed until rotation. A disabled account is
+  promoted without a grant and granted when enabled.
 - **Escrow private key lifetime.** An administrator session unwraps the escrow
   private key for each operation and zeroes it afterwards; it is never kept in
   the session.
@@ -101,9 +120,11 @@ an administrator an attacker's escrow key to seal new accounts to.
   - enrolling an account that already had a pin or a personal key records
     `escrow_reenrolled` and shows in the Admin panel;
   - each administrator session checks that every sealed DEK opens with the
-    real escrow key and flags any that do not;
-  - an administrator session never creates an escrow key when one already
-    exists; an administrator without a grant waits for one.
+    real escrow key and flags any that do not, removing that DEK and the
+    account's pin so its next sign-in pins the real key and seals again;
+  - an administrator session never creates an escrow key while any escrow key
+    row exists, active or retired; an administrator without a grant waits
+    for another administrator to promote or enable them.
 
   The owner must accept this window.
 
@@ -112,23 +133,31 @@ an administrator an attacker's escrow key to seal new accounts to.
 | Event | Key action |
 | --- | --- |
 | First administrator exists and has a session (sign-in, creation, or `BecomeAdmin`) | Create the escrow key pair, grant it to that administrator, seal their DEK. |
-| Administrator creates an account | The new DEK, personal key pair, sealed DEK, escrow pin, and attestation are written in the same transaction as the account. |
+| Administrator creates an account | The new DEK, personal key pair, sealed DEK, escrow pin, and attestation are written in the same transaction as the account, and a new administrator's grant too. |
 | First account creation (the first administrator) | Bootstrap as above, in the same session. |
 | Sign-in of an account that is not yet enrolled | Create the personal key pair if missing, check or set the escrow pin, seal the DEK. Failure does not block sign-in; it is retried at the next sign-in and shown in the Admin panel. |
+| Sign-in of an administrator with a grant | Also check existing attestations and that every sealed DEK opens. Never grants. |
 | `UnlockDEK` generates a DEK for an account older than ADR-001 (`dek.go:98`) | Seal it in the same transaction as its password wrap. |
 | Password change or ordinary recovery reset | Nothing: the DEK does not change. |
-| Promotion (`AdminSetUserRole`, `BecomeAdmin`) | Check the target's personal key attestation, then add a grant. A target with no personal key yet is promoted, but the grant is added by the next administrator session after the target has signed in. |
+| Promotion (`AdminSetUserRole`) | In one transaction, using the promoting administrator's grant: check the target's personal key against its attestation (a key the escrow key never attested is trusted on first use and recorded), add the grant, and change the role. A target with no personal key yet is refused until they sign in once (owner decision, 2026-10-02). Promoting an administrator without a grant adds one. A disabled target is promoted without a grant and granted when enabled. A promoting administrator without a usable grant changes the role only; an unusable grant is removed and recorded. |
+| `BecomeAdmin` (no administrator can sign in) | Bootstrap as above if no escrow key has ever existed. Otherwise the new administrator has no grant, and with no other administrator to promote them, none until rotation. |
 | Demotion, disable, or permanent deletion of an administrator | Delete that administrator's grant (`ON DELETE CASCADE` on the account row). This stops later use of the current `system.db`; an administrator who kept an earlier copy still holds the old grant, and only rotation keeps them out of accounts enrolled afterwards. |
-| Re-enabling a disabled administrator | A new grant, as for promotion. |
+| Re-enabling a disabled administrator | A new grant, as for promotion, in the same transaction. A disabled administrator cannot sign in to make a personal key, so one without a key is enabled without a grant. |
 | Permanent deletion of any account | The sealed DEK, personal keys, and grant go with the row. |
 
 The `account_events` action list gains `admin_access`, `escrow_key_mismatch`,
-`escrow_reenrolled`, `personal_key_repaired`, and `escrow_rotated`. Actions
+`escrow_reenrolled`, `personal_key_repaired`, `personal_key_trusted`, and
+`escrow_rotated`. Actions
 are checked in Go (`accountEventActions`), not by a `CHECK` on the table
 (removed 2026-09-28, before the table shipped in a release), so each needs
 only a new entry there, not a migration.
 
 ### Rotation
+
+Each administrator's pin names the escrow key ID it trusts, and opening a
+grant removes it when the pin names another key. Rotation must therefore
+re-pin administrators before it re-issues their grants, or each new grant is
+removed at its holder's next sign-in.
 
 If the owner chooses rotation (decision 3), one administrator session does it
 in one `BEGIN IMMEDIATE` transaction: create a new escrow key pair, re-seal
@@ -268,3 +297,7 @@ trust-on-first-use window and wider exposure below are accepted.
 5. **Accept the trust-on-first-use window** under Trust anchors, and **the wider
    exposure** under Consequences, in particular that one administrator password
    now unlocks every enrolled account.
+
+Decided 2026-10-02, while building phase 1: grants are added only inside an
+administrator's explicit action, never at sign-in, and promoting an account
+that has not signed in since enrollment began is refused until it has.

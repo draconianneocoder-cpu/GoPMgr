@@ -524,7 +524,11 @@ declare global {
     occurred_at: string;
     actor: string;
     username: string;
-    action: 'created' | 'promoted' | 'demoted' | 'disabled' | 'enabled' | 'purged' | 'folder_not_removed';
+    action:
+      | 'created' | 'promoted' | 'demoted' | 'disabled' | 'enabled' | 'purged' | 'folder_not_removed'
+      // Administrator key (ADR-004).
+      | 'admin_access' | 'escrow_key_mismatch' | 'escrow_reenrolled' | 'personal_key_repaired'
+      | 'personal_key_trusted' | 'escrow_rotated';
     detail: string;
   }
 
