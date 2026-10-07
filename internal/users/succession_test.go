@@ -5,8 +5,11 @@ package users
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -77,7 +80,7 @@ func TestNamingAStandbyPassesTheKeyButNotTheRole(t *testing.T) {
 	}
 	got := mustSuccession(t, store, "alice")
 	want := Succession{Super: "alice", Standby: "bob", StandbyHoldsKey: true, TakeoverDays: 30}
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("Succession = %+v, want %+v", got, want)
 	}
 	// Until a takeover the standby is a subordinate.
@@ -205,6 +208,9 @@ func TestTakeoverRefusalBoundaries(t *testing.T) {
 	base := successionState{super: "alice", days: 30, lastActive: now.Add(-30 * day)}
 	withStandby := base
 	withStandby.standby = "bob"
+	withStandby.standbyLastActive = now.Add(-day) // signed in yesterday
+	standbyAway := withStandby
+	standbyAway.standbyLastActive = now.Add(-30 * day)
 	for _, tc := range []struct {
 		name  string
 		st    successionState
@@ -219,6 +225,10 @@ func TestTakeoverRefusalBoundaries(t *testing.T) {
 		{"the standby", withStandby, "bob", now, nil},
 		{"not the standby", withStandby, "dave", now, ErrNotStandby},
 		{"not the standby, not due", withStandby, "dave", now.Add(-day), ErrNotStandby},
+		{"standby away for the period", standbyAway, "dave", now, nil},
+		{"standby away one second short", standbyAway, "dave", now.Add(-time.Second), ErrNotStandby},
+		{"standby away, super not due", standbyAway, "dave", now.Add(-day), ErrNotStandby},
+		{"standby away, the standby", standbyAway, "bob", now, nil},
 		{"last active in the future", successionState{super: "alice", days: 30, lastActive: now.Add(day)}, "bob", now, ErrTakeoverNotDue},
 		{"nothing on record", successionState{super: "alice", days: 30}, "bob", now, nil},
 	} {
@@ -259,7 +269,7 @@ func TestStandbyTakesOverWithTheKey(t *testing.T) {
 	store, aliceDEK, bobDEK, daveDEK := standbyStore(t)
 	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
 	superInactiveFor(t, store, 29*day)
-	if _, err := store.TakeOverSuper("bob", bobDEK); !errors.Is(err, ErrTakeoverNotDue) {
+	if _, err := store.TakeOverSuper("bob", bobDEK, "vacation", ""); !errors.Is(err, ErrTakeoverNotDue) {
 		t.Fatalf("takeover before the period = %v, want ErrTakeoverNotDue", err)
 	}
 	superInactiveFor(t, store, 31*day)
@@ -269,11 +279,11 @@ func TestStandbyTakesOverWithTheKey(t *testing.T) {
 	if got := mustSuccession(t, store, "dave"); got.CanTakeOver {
 		t.Fatal("a subordinate who is not the standby was offered the takeover")
 	}
-	if _, err := store.TakeOverSuper("dave", daveDEK); !errors.Is(err, ErrNotStandby) {
+	if _, err := store.TakeOverSuper("dave", daveDEK, "vacation", ""); !errors.Is(err, ErrNotStandby) {
 		t.Fatalf("takeover by another subordinate = %v, want ErrNotStandby", err)
 	}
 
-	keyHeld, err := store.TakeOverSuper("bob", bobDEK)
+	keyHeld, err := store.TakeOverSuper("bob", bobDEK, "vacation", "")
 	if err != nil || !keyHeld {
 		t.Fatalf("TakeOverSuper(bob) = %v, %v; want the role with the key", keyHeld, err)
 	}
@@ -284,7 +294,7 @@ func TestStandbyTakesOverWithTheKey(t *testing.T) {
 		t.Fatal("the former super administrator kept the key")
 	}
 	if e := latestEvent(t, store); e.Actor != "bob" || e.Action != AccountSuperTakenOver || e.Username != "alice" ||
-		e.Detail != "no sign-in for at least 31 days; administrator key held" {
+		e.Detail != "no sign-in for at least 31 days; reason: Vacation; administrator key held" {
 		t.Fatalf("latest event = %+v; want bob's takeover from alice recorded", e)
 	}
 	dek, err := store.OpenUserForAdmin("bob", bobDEK, "carol", "checking")
@@ -296,7 +306,7 @@ func TestStandbyTakesOverWithTheKey(t *testing.T) {
 		t.Fatalf("the former super administrator opening data = %v, want ErrNotSuper", err)
 	}
 	// The role was just given, so nobody can take it straight back.
-	if _, err := store.TakeOverSuper("dave", daveDEK); !errors.Is(err, ErrTakeoverNotDue) {
+	if _, err := store.TakeOverSuper("dave", daveDEK, "vacation", ""); !errors.Is(err, ErrTakeoverNotDue) {
 		t.Fatalf("a second takeover = %v, want ErrTakeoverNotDue", err)
 	}
 	// The returning super administrator gets it back by hand-over.
@@ -315,13 +325,13 @@ func TestAnyAdministratorTakesOverWhenNoStandbyIsNamed(t *testing.T) {
 	defer clear(carolDEK)
 	superInactiveFor(t, store, 31*day)
 
-	if _, err := store.TakeOverSuper("alice", aliceDEK); !errors.Is(err, ErrTargetIsSuper) {
+	if _, err := store.TakeOverSuper("alice", aliceDEK, "vacation", ""); !errors.Is(err, ErrTargetIsSuper) {
 		t.Fatalf("the super administrator taking over = %v, want ErrTargetIsSuper", err)
 	}
-	if _, err := store.TakeOverSuper("carol", carolDEK); !errors.Is(err, ErrNotAdmin) {
+	if _, err := store.TakeOverSuper("carol", carolDEK, "vacation", ""); !errors.Is(err, ErrNotAdmin) {
 		t.Fatalf("a standard account taking over = %v, want ErrNotAdmin", err)
 	}
-	keyHeld, err := store.TakeOverSuper("bob", bobDEK)
+	keyHeld, err := store.TakeOverSuper("bob", bobDEK, "vacation", "")
 	if err != nil || keyHeld {
 		t.Fatalf("TakeOverSuper(bob) = %v, %v; want the role without the key", keyHeld, err)
 	}
@@ -331,7 +341,7 @@ func TestAnyAdministratorTakesOverWhenNoStandbyIsNamed(t *testing.T) {
 	if n := countRows(t, store, "escrow_grants", "1 = 1"); n != 0 {
 		t.Fatalf("%d grants remain; nobody holds the key after a takeover with no standby", n)
 	}
-	if e := latestEvent(t, store); e.Detail != "no sign-in for at least 31 days; the new super administrator does not hold the administrator key" {
+	if e := latestEvent(t, store); e.Detail != "no sign-in for at least 31 days; reason: Vacation; the new super administrator does not hold the administrator key" {
 		t.Fatalf("latest event = %+v; want the missing key recorded", e)
 	}
 	if _, err := store.OpenUserForAdmin("bob", bobDEK, "carol", "checking"); !errors.Is(err, ErrNoEscrowGrant) {
@@ -357,11 +367,11 @@ func TestAnUpgradedInstallsDormantSuperCanBeTakenOver(t *testing.T) {
 	if super := mustSuper(t, store); super != "carol" {
 		t.Fatalf("super administrator = %q, want carol", super)
 	}
-	if _, err := store.TakeOverSuper("bob", bobDEK); !errors.Is(err, ErrTakeoverNotDue) {
+	if _, err := store.TakeOverSuper("bob", bobDEK, "vacation", ""); !errors.Is(err, ErrTakeoverNotDue) {
 		t.Fatalf("takeover right after the upgrade = %v, want ErrTakeoverNotDue", err)
 	}
 	mustExec(t, store, `UPDATE super_admin SET assigned_at = ?`, time.Now().UTC().Add(-31*day).Format(time.RFC3339Nano))
-	if _, err := store.TakeOverSuper("bob", bobDEK); err != nil {
+	if _, err := store.TakeOverSuper("bob", bobDEK, "vacation", ""); err != nil {
 		t.Fatalf("takeover from a dormant super administrator: %v", err)
 	}
 	if super := mustSuper(t, store); super != "bob" {
@@ -511,7 +521,7 @@ func TestTwoAdministratorsTakingOverAtOnce(t *testing.T) {
 	for i, name := range []string{"bob", "dave"} {
 		wg.Go(func() {
 			<-start
-			_, errs[i] = stores[i].TakeOverSuper(name, deks[name])
+			_, errs[i] = stores[i].TakeOverSuper(name, deks[name], "vacation", "")
 		})
 	}
 	close(start)
@@ -531,5 +541,280 @@ func TestTwoAdministratorsTakingOverAtOnce(t *testing.T) {
 	}
 	if n := countRows(t, stores[0], "account_events", "action = 'super_admin_taken_over'"); n != 1 {
 		t.Fatalf("%d takeovers recorded, want 1", n)
+	}
+}
+
+// takenOver returns standbyStore's machine after bob, with no standby named,
+// took over from alice (inactive 31 days) giving reason.
+func takenOver(t *testing.T, reason, note string) (store *Store, aliceDEK, bobDEK, daveDEK []byte) {
+	t.Helper()
+	store, aliceDEK, bobDEK, daveDEK = standbyStore(t)
+	superInactiveFor(t, store, 31*day)
+	if _, err := store.TakeOverSuper("bob", bobDEK, reason, note); err != nil {
+		t.Fatalf("TakeOverSuper(bob, %s): %v", reason, err)
+	}
+	return store, aliceDEK, bobDEK, daveDEK
+}
+
+func TestTakeoverNeedsAReason(t *testing.T) {
+	store, _, bobDEK, _ := standbyStore(t)
+	superInactiveFor(t, store, 31*day)
+	for _, tc := range []struct {
+		reason, note string
+		want         error
+	}{
+		{"", "", ErrTakeoverReason},
+		{"holiday", "", ErrTakeoverReason},
+		{"Vacation", "", ErrTakeoverReason},
+		{"other", "", ErrTakeoverNoteRequired},
+		{"other", " \n\t", ErrTakeoverNoteRequired},
+		{"vacation", strings.Repeat("é", MaxTakeoverNoteLength+1), ErrTakeoverNoteTooLong},
+	} {
+		if _, err := store.TakeOverSuper("bob", bobDEK, tc.reason, tc.note); !errors.Is(err, tc.want) {
+			t.Errorf("TakeOverSuper(%q, %d-character note) = %v, want %v", tc.reason, len([]rune(tc.note)), err, tc.want)
+		}
+	}
+	if super := mustSuper(t, store); super != "alice" {
+		t.Fatalf("super administrator = %q after refused takeovers, want alice", super)
+	}
+	// The limit counts characters, not bytes.
+	note := strings.Repeat("é", MaxTakeoverNoteLength)
+	if _, err := store.TakeOverSuper("bob", bobDEK, "other", "  "+note+"  "); err != nil {
+		t.Fatalf("a %d-character note: %v", MaxTakeoverNoteLength, err)
+	}
+	if e := latestEvent(t, store); !strings.Contains(e.Detail, "; reason: Other: "+note+"; ") {
+		t.Fatalf("takeover detail = %q; want the reason's label and the trimmed note", e.Detail)
+	}
+}
+
+// Each reason protects the former super administrator for its own number
+// of days (owner decisions, 2026-10-05).
+func TestEachReasonProtectsForItsDays(t *testing.T) {
+	for _, tc := range []struct {
+		code, label string
+		days        int
+	}{
+		{"vacation", "Vacation", 30},
+		{"parental_leave", "Parental leave (maternity or paternity)", 180},
+		{"medical_leave", "Medical or convalescence leave", 90},
+		{"left_employment", "No longer an employee", 7},
+		{"other", "Other", 30},
+	} {
+		t.Run(tc.code, func(t *testing.T) {
+			before := time.Now().UTC()
+			store, _, _, _ := takenOver(t, tc.code, "covering")
+			got := mustSuccession(t, store, "bob").Protections
+			if len(got) != 1 || got[0].Username != "alice" || got[0].Reason != tc.label {
+				t.Fatalf("protections = %+v; want alice protected for %s", got, tc.label)
+			}
+			want := before.AddDate(0, 0, tc.days)
+			if d := got[0].Until.Sub(want); d < 0 || d > time.Minute {
+				t.Fatalf("protected until %s, want %d days from the takeover (%s)", got[0].Until, tc.days, want)
+			}
+			if e := latestEvent(t, store); !strings.Contains(e.Detail, "reason: "+tc.label) {
+				t.Fatalf("takeover detail = %q; want the reason %q", e.Detail, tc.label)
+			}
+		})
+	}
+}
+
+func TestProtectionBlocksDisablingDeletingAndDemotion(t *testing.T) {
+	store, _, _, _ := takenOver(t, "vacation", "")
+	for name, action := range map[string]func() error{
+		"disable": func() error { return store.SetDisabled("bob", "alice", true) },
+		"demote":  func() error { return store.SetAdmin("bob", "alice", false) },
+		"delete":  func() error { return store.PurgeAccount("bob", "alice") },
+	} {
+		err := action()
+		var p *ProtectionError
+		if !errors.Is(err, ErrProtected) || !errors.As(err, &p) || p.Username != "alice" || p.Reason != "Vacation" {
+			t.Errorf("%s the former super administrator = %v; want a ProtectionError for alice (Vacation)", name, err)
+		}
+	}
+	if roles := accountRoles(t, store); !roles["alice"] {
+		t.Fatal("alice lost the administrator role while protected")
+	}
+	// Only the former super administrator is protected.
+	if err := store.SetDisabled("bob", "dave", true); err != nil {
+		t.Fatalf("disabling another administrator: %v", err)
+	}
+
+	// Once the protection ends, the same actions are allowed.
+	mustExec(t, store, `UPDATE takeover_protection SET protected_until = ?`, time.Now().UTC().Add(-time.Second).Format(time.RFC3339Nano))
+	if got := mustSuccession(t, store, "bob").Protections; len(got) != 0 {
+		t.Fatalf("protections = %+v after the end, want none", got)
+	}
+	if err := store.SetDisabled("bob", "alice", true); err != nil {
+		t.Fatalf("disabling after the protection ended: %v", err)
+	}
+}
+
+func TestProtectionBoundaries(t *testing.T) {
+	store, _, _, _ := takenOver(t, "vacation", "")
+	now := time.Now().UTC()
+	for _, tc := range []struct {
+		name      string
+		until     string
+		protected bool
+	}{
+		{"a minute left", now.Add(time.Minute).Format(time.RFC3339Nano), true},
+		{"ended a second ago", now.Add(-time.Second).Format(time.RFC3339Nano), false},
+		{"unreadable", "garbage", false},
+	} {
+		mustExec(t, store, `UPDATE takeover_protection SET protected_until = ?`, tc.until)
+		err := store.inWriteTx("check", func(ctx context.Context, q accountWriter) error {
+			return requireUnprotectedTx(ctx, q, "alice")
+		})
+		if errors.Is(err, ErrProtected) != tc.protected {
+			t.Errorf("%s: requireUnprotectedTx = %v, want protected=%v", tc.name, err, tc.protected)
+		}
+	}
+}
+
+// Handing the role back ends the protection, so a later step-down of the
+// former super administrator's own is not shielded.
+func TestHandingBackEndsTheProtection(t *testing.T) {
+	store, aliceDEK, bobDEK, _ := takenOver(t, "parental_leave", "")
+	if _, err := store.HandOverSuper("bob", bobDEK, "alice"); err != nil {
+		t.Fatalf("handing back: %v", err)
+	}
+	if n := countRows(t, store, "takeover_protection", "1 = 1"); n != 0 {
+		t.Fatalf("%d protections remain after handing back", n)
+	}
+	if _, err := store.HandOverSuper("alice", aliceDEK, "bob"); err != nil {
+		t.Fatalf("stepping down: %v", err)
+	}
+	if err := store.SetDisabled("bob", "alice", true); err != nil {
+		t.Fatalf("disabling alice after a step-down of her own: %v", err)
+	}
+}
+
+// With the standby also away for the period, any administrator can take
+// over; the standby stays named and keeps the key (owner decision,
+// 2026-10-07), so the role can later be handed to them with it.
+func TestTakeoverOnceTheStandbyIsAlsoAway(t *testing.T) {
+	store, aliceDEK, bobDEK, daveDEK := standbyStore(t)
+	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
+	superInactiveFor(t, store, 31*day)
+	if _, err := store.TakeOverSuper("dave", daveDEK, "vacation", ""); !errors.Is(err, ErrNotStandby) {
+		t.Fatalf("takeover while the standby was just named = %v, want ErrNotStandby", err)
+	}
+
+	old := time.Now().UTC().Add(-31 * day).Format(time.RFC3339Nano)
+	mustExec(t, store, `UPDATE users SET last_login = ? WHERE username = 'bob'`, old)
+	mustExec(t, store, `UPDATE super_succession SET standby_named_at = ?`, old)
+	if got := mustSuccession(t, store, "dave"); !got.CanTakeOver || got.StandbyInactiveDays != 31 {
+		t.Fatalf("Succession(dave) = %+v; want the takeover offered with the standby away 31 days", got)
+	}
+	keyHeld, err := store.TakeOverSuper("dave", daveDEK, "medical_leave", "")
+	if err != nil || keyHeld {
+		t.Fatalf("TakeOverSuper(dave) = %v, %v; want the role without the key", keyHeld, err)
+	}
+	if got := mustSuccession(t, store, "dave"); got.Super != "dave" || got.Standby != "bob" || !got.StandbyHoldsKey {
+		t.Fatalf("Succession = %+v; want dave super with bob still standby and holding the key", got)
+	}
+	if e := latestEvent(t, store); e.Detail != "no sign-in for at least 31 days; the standby, bob, had no sign-in for at least 31 days; reason: Medical or convalescence leave; the new super administrator does not hold the administrator key" {
+		t.Fatalf("takeover detail = %q", e.Detail)
+	}
+
+	// bob returns and is handed the role; the key survives with him, and
+	// the hand-over says so although dave had none to pass.
+	if keyPassed, err := store.HandOverSuper("dave", daveDEK, "bob"); err != nil || !keyPassed {
+		t.Fatalf("HandOverSuper(bob) = %v, %v; want it to report that bob holds the key", keyPassed, err)
+	}
+	if e := latestEvent(t, store); e.Action != AccountSuperHandedOver || e.Detail != "administrator key passed" {
+		t.Fatalf("latest event = %+v; want the hand-over recorded with bob holding the key", e)
+	}
+	dek, err := store.OpenUserForAdmin("bob", bobDEK, "carol", "checking")
+	if err != nil {
+		t.Fatalf("bob opening data after the hand-over: %v", err)
+	}
+	clear(dek)
+}
+
+// The standby's inactivity counts from when they were named: saving the
+// same standby with a new period does not restart it; naming another does.
+func TestStandbyNamedAtChangesOnlyWithTheStandby(t *testing.T) {
+	store, aliceDEK, _, _ := standbyStore(t)
+	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
+	const old = "2026-01-01T00:00:00Z"
+	mustExec(t, store, `UPDATE super_succession SET standby_named_at = ?`, old)
+	readNamedAt := func() string {
+		var namedAt string
+		if err := store.conn.QueryRow(`SELECT standby_named_at FROM super_succession`).Scan(&namedAt); err != nil {
+			t.Fatalf("read standby_named_at: %v", err)
+		}
+		return namedAt
+	}
+
+	mustSetStandby(t, store, "alice", aliceDEK, "bob", 45)
+	if got := readNamedAt(); got != old {
+		t.Fatalf("standby_named_at = %q after a period change, want %q kept", got, old)
+	}
+	mustSetStandby(t, store, "alice", aliceDEK, "dave", 45)
+	if got := readNamedAt(); got == old || laterStamp(got).IsZero() {
+		t.Fatalf("standby_named_at = %q after naming dave, want a new time", got)
+	}
+	mustSetStandby(t, store, "alice", aliceDEK, "", 45)
+	if got := readNamedAt(); got != "" {
+		t.Fatalf("standby_named_at = %q with no standby, want empty", got)
+	}
+}
+
+// A super_succession table from before standby_named_at gains the column.
+func TestMigrationAddsStandbyNamedAt(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "GoPMgr")
+	store, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	mustExec(t, store, `DROP TABLE super_succession`)
+	mustExec(t, store, `CREATE TABLE super_succession (
+		id INTEGER PRIMARY KEY CHECK (id = 1), standby TEXT REFERENCES users(username) ON DELETE SET NULL,
+		takeover_days INTEGER NOT NULL, changed_at TEXT NOT NULL)`)
+	mustExec(t, store, `INSERT INTO super_succession (id, takeover_days, changed_at) VALUES (1, 45, '2026-10-05T00:00:00Z')`)
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	store, err = Open(root)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	var days int
+	var namedAt string
+	if err := store.conn.QueryRow(`SELECT takeover_days, standby_named_at FROM super_succession`).Scan(&days, &namedAt); err != nil || days != 45 || namedAt != "" {
+		t.Fatalf("after migration: days=%d named_at=%q err=%v; want the row kept and the column added", days, namedAt, err)
+	}
+}
+
+// A protected former super administrator who takes the role back loses
+// their protection, and the one they took it from gains one.
+func TestTakingTheRoleBackMovesTheProtection(t *testing.T) {
+	store, aliceDEK, _, _ := takenOver(t, "parental_leave", "")
+	superInactiveFor(t, store, 31*day) // now bob's
+	if _, err := store.TakeOverSuper("alice", aliceDEK, "vacation", ""); err != nil {
+		t.Fatalf("alice taking the role back: %v", err)
+	}
+	got := mustSuccession(t, store, "alice").Protections
+	if len(got) != 1 || got[0].Username != "bob" || got[0].Reason != "Vacation" {
+		t.Fatalf("protections = %+v; want only bob, for Vacation", got)
+	}
+}
+
+// A hand-over to a standby who already holds the key reports and records
+// that the new super administrator holds it, even when the former super
+// administrator's own key no longer opens.
+func TestHandOverToAStandbyReportsTheKeyTheyHold(t *testing.T) {
+	store, aliceDEK, _, _ := standbyStore(t)
+	mustSetStandby(t, store, "alice", aliceDEK, "bob", 30)
+	mustExec(t, store, `UPDATE escrow_grants SET sealed = x'00' WHERE admin_username = 'alice'`)
+
+	keyPassed, err := store.HandOverSuper("alice", aliceDEK, "bob")
+	if err != nil || !keyPassed {
+		t.Fatalf("HandOverSuper(bob) = %v, %v; bob holds the key", keyPassed, err)
+	}
+	if e := latestEvent(t, store); e.Action != AccountSuperHandedOver || e.Detail != "administrator key passed" {
+		t.Fatalf("latest event = %+v; want the hand-over recorded with the key", e)
 	}
 }

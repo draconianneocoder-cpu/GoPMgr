@@ -6,6 +6,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"gopmgr/internal/users"
 )
@@ -13,14 +14,33 @@ import (
 // The super administrator, standby successor, and takeover (ADR-005).
 
 // AdminRolesWire tells the Admin panel who the super administrator and the
-// standby are, and whether the signed-in administrator can take over.
+// standby are, whether the signed-in administrator can take over, the
+// reasons a takeover can give, and who is protected after one.
 type AdminRolesWire struct {
-	Super             string `json:"super"`
-	Standby           string `json:"standby"`
-	StandbyHoldsKey   bool   `json:"standby_holds_key"`
-	TakeoverDays      int    `json:"takeover_days"`
-	SuperInactiveDays int    `json:"super_inactive_days"`
-	CanTakeOver       bool   `json:"can_take_over"`
+	Super               string                    `json:"super"`
+	Standby             string                    `json:"standby"`
+	StandbyHoldsKey     bool                      `json:"standby_holds_key"`
+	TakeoverDays        int                       `json:"takeover_days"`
+	SuperInactiveDays   int                       `json:"super_inactive_days"`
+	StandbyInactiveDays int                       `json:"standby_inactive_days"`
+	CanTakeOver         bool                      `json:"can_take_over"`
+	TakeoverReasons     []AdminTakeoverReasonWire `json:"takeover_reasons"`
+	Protections         []AdminProtectionWire     `json:"protections"`
+}
+
+// AdminTakeoverReasonWire is one reason a takeover can give.
+type AdminTakeoverReasonWire struct {
+	Code  string `json:"code"`
+	Label string `json:"label"`
+	Days  int    `json:"days"`
+}
+
+// AdminProtectionWire is a former super administrator protected after a
+// takeover; Until is RFC 3339.
+type AdminProtectionWire struct {
+	Username string `json:"username"`
+	Reason   string `json:"reason"`
+	Until    string `json:"until"`
 }
 
 // AdminRoles returns the administrator roles. Requires an administrator.
@@ -36,14 +56,24 @@ func (a *App) AdminRoles() (AdminRolesWire, error) {
 	if err != nil {
 		return AdminRolesWire{}, err
 	}
-	return AdminRolesWire{
-		Super:             s.Super,
-		Standby:           s.Standby,
-		StandbyHoldsKey:   s.StandbyHoldsKey,
-		TakeoverDays:      s.TakeoverDays,
-		SuperInactiveDays: s.SuperInactiveDays,
-		CanTakeOver:       s.CanTakeOver,
-	}, nil
+	wire := AdminRolesWire{
+		Super:               s.Super,
+		Standby:             s.Standby,
+		StandbyHoldsKey:     s.StandbyHoldsKey,
+		TakeoverDays:        s.TakeoverDays,
+		SuperInactiveDays:   s.SuperInactiveDays,
+		StandbyInactiveDays: s.StandbyInactiveDays,
+		CanTakeOver:         s.CanTakeOver,
+		TakeoverReasons:     []AdminTakeoverReasonWire{},
+		Protections:         []AdminProtectionWire{},
+	}
+	for _, r := range users.TakeoverReasons {
+		wire.TakeoverReasons = append(wire.TakeoverReasons, AdminTakeoverReasonWire{Code: r.Code, Label: r.Label, Days: r.Days})
+	}
+	for _, p := range s.Protections {
+		wire.Protections = append(wire.Protections, AdminProtectionWire{Username: p.Username, Reason: p.Reason, Until: p.Until.Format(time.RFC3339)})
+	}
+	return wire, nil
 }
 
 // AdminHandOverResultWire reports whether the administrator key went to
@@ -121,9 +151,10 @@ type AdminTakeOverResultWire struct {
 
 // AdminTakeOverSuper makes the signed-in administrator the super
 // administrator once the super administrator has not signed in for the
-// takeover period: only the standby when one is named, otherwise any
-// administrator.
-func (a *App) AdminTakeOverSuper() (AdminTakeOverResultWire, error) {
+// takeover period: only the standby while one is named and has signed in
+// within the period, otherwise any administrator. reason is a code from
+// AdminRoles' takeover_reasons; "other" needs a note.
+func (a *App) AdminTakeOverSuper(reason, note string) (AdminTakeOverResultWire, error) {
 	caller := a.requireUser()
 	if caller == nil || !caller.IsAdmin {
 		return AdminTakeOverResultWire{}, errors.New("administrator privileges required")
@@ -131,7 +162,7 @@ func (a *App) AdminTakeOverSuper() (AdminTakeOverResultWire, error) {
 	var keyHeld bool
 	err := a.withSessionDEK(func(dek []byte) error {
 		var err error
-		keyHeld, err = a.store.TakeOverSuper(caller.Username, dek)
+		keyHeld, err = a.store.TakeOverSuper(caller.Username, dek, reason, note)
 		return err
 	})
 	switch {
@@ -143,6 +174,12 @@ func (a *App) AdminTakeOverSuper() (AdminTakeOverResultWire, error) {
 		return AdminTakeOverResultWire{}, errors.New("only the standby successor can take over")
 	case errors.Is(err, users.ErrTakeoverNotDue):
 		return AdminTakeOverResultWire{}, errors.New("the super administrator has signed in within the takeover period, so the role can't be taken over")
+	case errors.Is(err, users.ErrTakeoverReason):
+		return AdminTakeOverResultWire{}, errors.New("choose a reason for the takeover")
+	case errors.Is(err, users.ErrTakeoverNoteRequired):
+		return AdminTakeOverResultWire{}, errors.New("describe the reason in the note")
+	case errors.Is(err, users.ErrTakeoverNoteTooLong):
+		return AdminTakeOverResultWire{}, fmt.Errorf("the note can be at most %d characters", users.MaxTakeoverNoteLength)
 	case err != nil:
 		return AdminTakeOverResultWire{}, err
 	}

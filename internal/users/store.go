@@ -349,6 +349,9 @@ func (s *Store) SetAdmin(actor, username string, isAdmin bool) error {
 			return err
 		}
 		if !isAdmin {
+			if err := requireUnprotectedTx(ctx, q, username); err != nil {
+				return err
+			}
 			if err := guardLastEnabledAdmin(ctx, q, targetIsAdmin, targetDisabled); err != nil {
 				return err
 			}

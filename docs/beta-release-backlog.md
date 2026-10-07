@@ -207,12 +207,13 @@ That result took six live-GUI cycles to reach because the first five, all run un
       hand-over). Part 2 built 2026-10-05 (standby successor holding the
       key, takeover period 7–365 days, default 30, confirmed takeover by
       the standby or, with no standby, any administrator without the key).
-      Open before the next tag: part 2b (owner decisions 2026-10-05: any
-      administrator may take over once the standby has also been inactive
-      for the period; the claimant picks a recorded reason that protects
-      the former super administrator from disable, delete, and demotion:
+      Part 2b built 2026-10-07 (any administrator may take over once the
+      standby has also been inactive for the period, and the standby keeps
+      the key; the claimant picks a recorded reason that protects the
+      former super administrator from disable, delete, and demotion:
       vacation 30 days, parental leave 180, medical or convalescence leave
-      90, no longer an employee 7, other with a note 30); part 3, rotation
+      90, no longer an employee 7, other with a note 30). Open before the
+      next tag: part 3, rotation
       (automatic when someone stops holding the key, plus "Replace
       administrator key") and a fresh key when nobody holds the old one.
       Evidence: `super_admin_test.go`, `succession_test.go`,

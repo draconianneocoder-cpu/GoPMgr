@@ -81,7 +81,10 @@ for a legitimate local user.
   standby successor, who also holds the key but acts as a subordinate; once
   the super administrator has not signed in for the takeover period (30
   days unless they set another), the standby, or any administrator when no
-  standby is named, can take over, and it is recorded. The role and the
+  standby is named or the standby has also been away that long, can take
+  over, and it is recorded with a chosen reason that protects the former
+  super administrator from being disabled, deleted, or demoted for 7 to 180
+  days. The role and the
   standby are plaintext rows, so they never unlock the key by themselves:
   every key operation also needs the caller's own grant. The exception is
   the standby, who holds a grant, so a row forged to name them opens data
@@ -99,9 +102,10 @@ for a legitimate local user.
   no record; headless sign-in shows no notice; escrow rotation (ADR-005 part
   3) is not built, so a former key holder who kept an old `system.db` can
   still unseal accounts enrolled after they left, and after a takeover with
-  no standby nobody can open users' data; the takeover period uses this
-  computer's clock, so an administrator who sets it forward can take over
-  early.
+  no standby nobody can open users' data; the takeover period and the
+  protection use this computer's clock, so an administrator who sets it
+  forward can take over early and end the protection early, and a hostile
+  administrator can pick the shortest protection (7 days).
 - Every IPC method that opens, mutates, or archives a project by a
   frontend-supplied path (`OpenProject`, `DeleteProject`, `CloneProject`,
   `EncryptProjectAtRest`, `SecureArchive`, etc.) is confined to the

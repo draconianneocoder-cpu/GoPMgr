@@ -184,11 +184,15 @@ func (a *App) AdminSetUserDisabled(username string, disabled bool) error {
 // superRoleMessage words the super administrator's refusals (ADR-005), or
 // returns nil for any other error.
 func superRoleMessage(err error) error {
+	var protected *users.ProtectionError
 	switch {
 	case errors.Is(err, users.ErrNotSuper):
 		return errors.New("only the super administrator can change administrators or open users' data")
 	case errors.Is(err, users.ErrTargetIsSuper):
 		return errors.New("the super administrator can't be changed; they must hand the role to another administrator first")
+	case errors.As(err, &protected):
+		return fmt.Errorf("%s is protected until %s after the takeover (%s), so they can't be disabled, deleted, or removed as an administrator until then",
+			protected.Username, protected.Until.Local().Format("January 2, 2006"), protected.Reason)
 	}
 	return nil
 }

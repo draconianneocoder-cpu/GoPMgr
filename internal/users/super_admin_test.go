@@ -257,12 +257,16 @@ func TestForgedSuperRowGivesNoKey(t *testing.T) {
 	if dek, err := store.OpenUserForAdmin("bob", bobDEK, "carol", "checking"); !errors.Is(err, ErrNoEscrowGrant) || dek != nil {
 		t.Fatalf("OpenUserForAdmin by a forged super administrator = %d bytes, %v; want ErrNoEscrowGrant", len(dek), err)
 	}
-	keyPassed, err := store.HandOverSuper("bob", bobDEK, "alice")
+	// dave, another subordinate, holds no key: the forged super
+	// administrator has none to give him.
+	addUser(t, store, "dave", nil)
+	mustExec(t, store, `UPDATE users SET is_admin = 1 WHERE username = 'dave'`)
+	keyPassed, err := store.HandOverSuper("bob", bobDEK, "dave")
 	if err != nil || keyPassed {
 		t.Fatalf("HandOverSuper by a forged super administrator = %v, %v; want no key passed", keyPassed, err)
 	}
-	if n := countRows(t, store, "escrow_grants", "admin_username = 'bob'"); n != 0 {
-		t.Fatal("a forged super administrator obtained a grant")
+	if n := countRows(t, store, "escrow_grants", "admin_username IN ('bob', 'dave')"); n != 0 {
+		t.Fatal("a forged super administrator obtained or passed a grant")
 	}
 }
 

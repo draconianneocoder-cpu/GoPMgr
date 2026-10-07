@@ -424,7 +424,14 @@ describe('AdminPanel succession', () => {
       standby_holds_key: false,
       takeover_days: 30,
       super_inactive_days: 0,
+      standby_inactive_days: 0,
       can_take_over: false,
+      takeover_reasons: [
+        { code: 'vacation', label: 'Vacation', days: 30 },
+        { code: 'medical_leave', label: 'Medical or convalescence leave', days: 90 },
+        { code: 'other', label: 'Other', days: 30 },
+      ],
+      protections: [],
       ...extra,
     };
   }
@@ -488,26 +495,90 @@ describe('AdminPanel succession', () => {
     const utils = render(AdminPanel);
     const section = await utils.findByRole('region', { name: 'Succession' });
     await waitFor(() => expect(text(section)).toContain("You're the standby successor. If alice doesn't sign in for 30 days"));
+    expect(text(section)).not.toContain('either');
     expect(within(section).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
     expect(utils.queryByRole('button', { name: 'Become super administrator' })).not.toBeInTheDocument();
   });
 
-  it('lets the standby take over only after confirmation', async () => {
+  it('lets the standby take over only after choosing a reason', async () => {
     session.user = account('bob', { is_admin: true });
     app.AdminRoles.mockResolvedValue(roles({ standby: 'bob', standby_holds_key: true, super_inactive_days: 31, can_take_over: true }));
     const utils = render(AdminPanel);
     const banner = await utils.findByRole('region', { name: "The super administrator hasn't signed in" });
     expect(text(banner)).toContain("alice hasn't signed in for at least 31 days; the takeover period is 30 days.");
     expect(text(banner)).not.toContain("You won't hold the administrator key");
+    expect(text(banner)).not.toContain("hasn't signed in for at least 0 days either");
 
     await fireEvent.click(within(banner).getByRole('button', { name: 'Become super administrator' }));
     expect(app.AdminTakeOverSuper).not.toHaveBeenCalled();
+    const form = within(banner).getByRole('group', { name: 'Take over the super administrator role' });
+    const confirm = within(form).getByRole('button', { name: 'Become super administrator' });
+    expect(confirm).toBeDisabled();
+    expect(text(form)).toContain("Every administrator can see the reason and note in the account history. Don't include medical or personal details.");
+
+    await fireEvent.change(within(form).getByLabelText('Reason (required)'), { target: { value: 'vacation' } });
+    expect(text(form)).toContain("For 30 days, alice can't be disabled, deleted, or removed as an administrator.");
     app.AdminRoles.mockResolvedValue(roles({ super: 'bob' }));
-    await fireEvent.click(within(banner).getByRole('button', { name: 'Confirm' }));
-    expect(app.AdminTakeOverSuper).toHaveBeenCalledTimes(1);
+    await fireEvent.click(confirm);
+    expect(app.AdminTakeOverSuper).toHaveBeenCalledWith('vacation', '');
     await waitFor(() =>
       expect(utils.queryByRole('region', { name: "The super administrator hasn't signed in" })).not.toBeInTheDocument()
     );
+  });
+
+  it('needs a note for Other, within 500 characters, and refuses in the handler too', async () => {
+    session.user = account('dave', { is_admin: true });
+    app.AdminRoles.mockResolvedValue(roles({ super_inactive_days: 40, can_take_over: true }));
+    const utils = render(AdminPanel);
+    const banner = await utils.findByRole('region', { name: "The super administrator hasn't signed in" });
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Become super administrator' }));
+    const form = within(banner).getByRole('group', { name: 'Take over the super administrator role' });
+    const confirm = within(form).getByRole('button', { name: 'Become super administrator' });
+
+    await fireEvent.change(within(form).getByLabelText('Reason (required)'), { target: { value: 'other' } });
+    const note = within(form).getByLabelText('Note (required)');
+    await fireEvent.input(note, { target: { value: '   ' } });
+    expect(confirm).toBeDisabled();
+    confirm.removeAttribute('disabled');
+    await fireEvent.click(confirm);
+    expect(app.AdminTakeOverSuper).not.toHaveBeenCalled();
+
+    await fireEvent.input(note, { target: { value: 'é'.repeat(501) } });
+    expect(confirm).toBeDisabled();
+    expect(text(form)).toContain('501/500');
+
+    await fireEvent.input(note, { target: { value: '  covering the audit  ' } });
+    expect(confirm).toBeEnabled();
+    await fireEvent.click(confirm);
+    expect(app.AdminTakeOverSuper).toHaveBeenCalledWith('other', 'covering the audit');
+  });
+
+  it('explains a takeover offered because the standby is also away', async () => {
+    session.user = account('dave', { is_admin: true });
+    app.AdminRoles.mockResolvedValue(
+      roles({ standby: 'bob', standby_holds_key: true, super_inactive_days: 40, standby_inactive_days: 35, can_take_over: true })
+    );
+    const utils = render(AdminPanel);
+    const banner = await utils.findByRole('region', { name: "The super administrator hasn't signed in" });
+    expect(text(banner)).toContain("bob, the standby successor, hasn't signed in for at least 35 days either.");
+    expect(text(banner)).toContain("You won't hold the administrator key");
+  });
+
+  it('shows a protected former super administrator and offers nothing that would remove them', async () => {
+    app.AdminRoles.mockResolvedValue(
+      roles({ protections: [{ username: 'bob', reason: 'Vacation', until: '2026-11-06T12:00:00Z' }] })
+    );
+    const utils = render(AdminPanel);
+    await utils.findByRole('button', { name: 'Make bob super administrator' });
+    const row = bobRow(utils);
+    expect(within(row).getByText('Protected')).toBeInTheDocument();
+    expect(text(row)).toContain(
+      `Protected until ${new Date('2026-11-06T12:00:00Z').toLocaleDateString()} after the takeover (Vacation)`
+    );
+    for (const name of ['Disable account bob', 'Delete account bob permanently', 'Remove administrator']) {
+      expect(within(row).queryByRole('button', { name })).not.toBeInTheDocument();
+    }
+    expect(within(row).getByRole('button', { name: "Open bob's data" })).toBeInTheDocument();
   });
 
   it('warns an administrator taking over with no standby that they get no key', async () => {

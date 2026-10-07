@@ -468,11 +468,17 @@ standby successor and set how many days they may go without signing in (7
 to 365, 30 by default). The standby holds the administrator key but is an
 ordinary administrator until then. Once the super administrator hasn't
 signed in for that long, the standby sees **Become super administrator**
-when they open the Admin panel; with no standby, any administrator does,
-but they won't hold the administrator key, so no one can open users' data
-until it is replaced. The former super administrator becomes an ordinary
-administrator, and the new one can hand the role back. Each change is
-recorded in the account history.
+when they open the Admin panel; with no standby, or once the standby hasn't
+signed in for that long either, any administrator does, but they won't hold
+the administrator key, so no one can open users' data until it is replaced.
+Whoever takes over chooses a reason, which sets how long the former super
+administrator can't be disabled, deleted, or removed as an administrator:
+vacation 30 days, parental leave 180, medical or convalescence leave 90, no
+longer an employee 7, or another reason, described in a note, 30. Every
+administrator can see the reason and note in the account history, so leave
+out medical or personal details. The former super administrator becomes an
+ordinary administrator, and the new one can hand the role back, which ends
+the protection. Each change is recorded in the account history.
 
 If an administrator opens your data, you see who did, when, and their reason
 on the first screen after you sign in, until you choose **I've read this**;

@@ -57,7 +57,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   // Succession (ADR-005): the standby, who holds the administrator key and
   // can take over once the super administrator hasn't signed in for the
-  // takeover period; with no standby, any administrator can, without the key.
+  // takeover period; with no standby, or once the standby is also away that
+  // long, any administrator can, without the key. Whoever takes over picks a
+  // reason, which protects the former super administrator for a while.
   const minTakeoverDays = 7;
   const maxTakeoverDays = 365;
   let standby = $state('');
@@ -70,6 +72,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let savingStandby = $state(false);
   let pendingTakeOver = $state(false);
   let takingOver = $state(false);
+  let standbyInactiveDays = $state(0);
+  let takeoverReasons = $state<{ code: string; label: string; days: number }[]>([]);
+  let protections = $state<{ username: string; reason: string; until: string }[]>([]);
+  const maxTakeoverNote = 500;
+  let takeoverReason = $state('');
+  let takeoverNote = $state('');
 
   const usernameRule = /^[A-Za-z0-9_-]{3,32}$/;
 
@@ -93,10 +101,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
       takeoverDays = roles.takeover_days || 30;
       superInactiveDays = roles.super_inactive_days ?? 0;
       canTakeOver = roles.can_take_over ?? false;
+      standbyInactiveDays = roles.standby_inactive_days ?? 0;
+      takeoverReasons = roles.takeover_reasons ?? [];
+      protections = roles.protections ?? [];
     } catch {
       superAdmin = '';
       standby = '';
       canTakeOver = false;
+      protections = [];
     }
     standbyChoice = standby;
     daysChoice = takeoverDays;
@@ -186,14 +198,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
+  function startTakeOver() {
+    takeoverReason = '';
+    takeoverNote = '';
+    pendingTakeOver = true;
+  }
+
   async function takeOver() {
-    if (!pendingTakeOver) {
-      pendingTakeOver = true;
-      return;
-    }
+    if (!takeoverValid || takingOver) return;
     takingOver = true;
     try {
-      const result = await window.go.main.App.AdminTakeOverSuper();
+      const result = await window.go.main.App.AdminTakeOverSuper(takeoverReason, takeoverNote.trim());
       showToast(
         result.key_held
           ? "You're now the super administrator."
@@ -422,6 +437,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // administrator's to change.
   const canManage = (u: Account) => iAmSuper || !u.is_admin;
   const iAmStandby = $derived(standby !== '' && session.user?.username === standby);
+  // Characters, not UTF-16 units, like the backend's limit.
+  const takeoverNoteLength = $derived([...takeoverNote].length);
+  const chosenReason = $derived(takeoverReasons.find((r) => r.code === takeoverReason));
+  const takeoverValid = $derived(
+    chosenReason !== undefined &&
+      (takeoverReason !== 'other' || takeoverNote.trim() !== '') &&
+      takeoverNoteLength <= maxTakeoverNote
+  );
+  const protectionOf = (u: Account) => protections.find((p) => p.username === u.username);
+  function formatDate(value: string): string {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+  }
   // The backend also refuses anyone who hasn't signed in since enrollment.
   const standbyCandidates = $derived(
     allUsers.filter((u) => u.is_admin && !u.disabled && u.username !== superAdmin)
@@ -464,6 +492,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </h2>
         <p class="text-xs text-slate-300">
           {superAdmin} hasn't signed in for at least {superInactiveDays} days; the takeover period is {takeoverDays} days.
+          {#if standby && !iAmStandby}
+            {standby}, the standby successor, hasn't signed in for at least {standbyInactiveDays} days either.
+          {/if}
           You can become the super administrator. {superAdmin} will become a subordinate administrator, and the
           change is recorded in the account history.
         </p>
@@ -472,25 +503,61 @@ SPDX-License-Identifier: GPL-3.0-or-later
             You won't hold the administrator key, so no one can open users' data until it is replaced.
           </p>
         {/if}
-        <div class="flex items-center gap-2">
-          {#if pendingTakeOver}
-            <span class="text-[11px] text-amber-400">Become the super administrator now?</span>
-            <button
-              onclick={takeOver}
-              disabled={takingOver}
-              class="text-[11px] bg-amber-800 hover:bg-amber-700 disabled:opacity-50 text-white px-2 py-0.5 rounded"
-            >Confirm</button>
-            <button
-              onclick={() => (pendingTakeOver = false)}
-              class="text-[11px] text-slate-400 hover:text-slate-200 underline"
-            >Cancel</button>
-          {:else}
-            <button
-              onclick={takeOver}
-              class="text-xs font-bold uppercase tracking-wider bg-amber-700 hover:bg-amber-600 text-white px-3 py-1.5 rounded"
-            >Become super administrator</button>
-          {/if}
-        </div>
+        {#if pendingTakeOver}
+          <div class="space-y-2" role="group" aria-label="Take over the super administrator role">
+            <label for="takeover-reason" class="block text-[11px] text-slate-400">Reason (required)</label>
+            <select
+              id="takeover-reason"
+              bind:value={takeoverReason}
+              class="block bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-amber-500 outline-none"
+            >
+              <option value="" disabled>Choose a reason</option>
+              {#each takeoverReasons as reason (reason.code)}
+                <option value={reason.code}>{reason.label} (protected {reason.days} days)</option>
+              {/each}
+            </select>
+            {#if chosenReason}
+              <p class="text-[11px] text-slate-300">
+                For {chosenReason.days} days, {superAdmin} can't be disabled, deleted, or removed as an administrator.
+                You can still make them super administrator again.
+              </p>
+            {/if}
+            <label for="takeover-note" class="block text-[11px] text-slate-400">
+              Note {takeoverReason === 'other' ? '(required)' : '(optional)'}
+            </label>
+            <textarea
+              id="takeover-note"
+              bind:value={takeoverNote}
+              rows="2"
+              class="w-full bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-amber-500 outline-none"
+            ></textarea>
+            <div class="flex items-center gap-2">
+              <p class="text-[10px] text-slate-500">
+                Every administrator can see the reason and note in the account history. Don't include medical or
+                personal details.
+              </p>
+              <span class="ml-auto text-[10px] {takeoverNoteLength > maxTakeoverNote ? 'text-red-400' : 'text-slate-500'}">
+                {takeoverNoteLength}/{maxTakeoverNote}
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                onclick={takeOver}
+                disabled={!takeoverValid || takingOver}
+                class="text-[11px] bg-amber-800 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-2 py-1 rounded"
+              >{takingOver ? 'Taking over…' : 'Become super administrator'}</button>
+              <button
+                onclick={() => (pendingTakeOver = false)}
+                class="text-[11px] text-slate-400 hover:text-slate-200 underline"
+              >Cancel</button>
+            </div>
+          </div>
+        {:else}
+          <button
+            onclick={startTakeOver}
+            class="text-xs font-bold uppercase tracking-wider bg-amber-700 hover:bg-amber-600 text-white px-3 py-1.5 rounded"
+          >Become super administrator</button>
+        {/if}
       </section>
     {/if}
 
@@ -625,6 +692,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
                       Disabled
                     </span>
                   {/if}
+                  {#if protectionOf(user)}
+                    <span class="ml-1 inline-flex items-center text-[11px] font-semibold text-emerald-300 bg-emerald-950/40 border border-emerald-800/60 rounded px-2 py-0.5">
+                      Protected
+                    </span>
+                  {/if}
                 </td>
                 <td class="px-4 py-3 text-[11px] text-slate-500 font-mono">
                   {formatLastLogin(user.last_login)}
@@ -687,6 +759,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
                             aria-label={`Open ${user.username}'s data`}
                           >Open data</button>
                         {/if}
+                        {#if protectionOf(user)}
+                          {@const protection = protectionOf(user)!}
+                          <p class="basis-full text-[11px] text-emerald-300/80 text-right">
+                            Protected until {formatDate(protection.until)} after the takeover ({protection.reason}): they
+                            can't be disabled, deleted, or removed as an administrator until then.
+                          </p>
+                        {:else}
                         {#if iAmSuper}
                           <button
                             onclick={() => toggleRole(user)}
@@ -706,6 +785,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
                           class="text-[11px] text-slate-400 hover:text-red-400 underline"
                           aria-label={`Delete account ${user.username} permanently`}
                         >Delete permanently</button>
+                        {/if}
                       {/if}
                     </div>
                   {:else}
@@ -803,7 +883,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <p class="text-xs text-slate-300">
               {#if standby}
                 If you don't sign in for {takeoverDays} days, {standby}, your standby successor, can become the super
-                administrator. They hold the administrator key but act as a subordinate administrator until then.
+                administrator. They hold the administrator key but act as a subordinate administrator until then. If
+                {standby} doesn't sign in for {takeoverDays} days either, any administrator can, without the key.
               {:else}
                 If you don't sign in for {takeoverDays} days, any administrator can become the super administrator,
                 but they won't hold the administrator key. Name a standby to pass it on.
@@ -857,7 +938,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 the super administrator.
               {:else if standby}
                 If {superAdmin} doesn't sign in for {takeoverDays} days, {standby}, the standby successor, can become
-                the super administrator.
+                the super administrator. If {standby} doesn't sign in for {takeoverDays} days either, any administrator
+                can.
               {:else}
                 If {superAdmin} doesn't sign in for {takeoverDays} days, any administrator can become the super
                 administrator.

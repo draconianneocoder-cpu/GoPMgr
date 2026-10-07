@@ -4,6 +4,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -139,8 +140,9 @@ func TestAppStandbyAndTakeover(t *testing.T) {
 		t.Fatalf("AdminSetStandby(bob) = %+v, %v; want the key passed", result, err)
 	}
 	roles, err := app.AdminRoles()
-	if want := (AdminRolesWire{Super: "alice", Standby: "bob", StandbyHoldsKey: true, TakeoverDays: 30}); err != nil || roles != want {
-		t.Fatalf("AdminRoles = %+v, %v; want %+v", roles, err, want)
+	if err != nil || roles.Super != "alice" || roles.Standby != "bob" || !roles.StandbyHoldsKey || roles.TakeoverDays != 30 ||
+		roles.CanTakeOver || roles.Protections == nil || len(roles.Protections) != 0 {
+		t.Fatalf("AdminRoles = %+v, %v; want alice super, bob standby with the key, 30 days, no protections", roles, err)
 	}
 
 	// Signing in as bob stamps a recent sign-in for him, not for alice.
@@ -148,7 +150,7 @@ func TestAppStandbyAndTakeover(t *testing.T) {
 	if _, err := app.AdminSetStandby("bob", 30); err == nil || err.Error() != "only the super administrator can name a standby" {
 		t.Errorf("the standby naming a standby: err = %v", err)
 	}
-	if _, err := app.AdminTakeOverSuper(); err == nil || err.Error() != "the super administrator has signed in within the takeover period, so the role can't be taken over" {
+	if _, err := app.AdminTakeOverSuper("vacation", ""); err == nil || err.Error() != "the super administrator has signed in within the takeover period, so the role can't be taken over" {
 		t.Fatalf("early takeover: err = %v", err)
 	}
 	conn := systemDB(t, app)
@@ -161,14 +163,43 @@ func TestAppStandbyAndTakeover(t *testing.T) {
 	if roles, err := app.AdminRoles(); err != nil || !roles.CanTakeOver || roles.SuperInactiveDays != 31 {
 		t.Fatalf("AdminRoles = %+v, %v; want the takeover offered after 31 days", roles, err)
 	}
-	took, err := app.AdminTakeOverSuper()
+	for _, tc := range []struct{ reason, note, want string }{
+		{"", "", "choose a reason for the takeover"},
+		{"other", "  ", "describe the reason in the note"},
+		{"vacation", strings.Repeat("x", 501), "the note can be at most 500 characters"},
+	} {
+		if _, err := app.AdminTakeOverSuper(tc.reason, tc.note); err == nil || err.Error() != tc.want {
+			t.Errorf("AdminTakeOverSuper(%q): err = %v, want %q", tc.reason, err, tc.want)
+		}
+	}
+	took, err := app.AdminTakeOverSuper("vacation", "")
 	if err != nil || !took.KeyHeld {
 		t.Fatalf("AdminTakeOverSuper = %+v, %v; want the role with the key", took, err)
 	}
-	if roles, _ := app.AdminRoles(); roles.Super != "bob" || roles.Standby != "" || roles.CanTakeOver {
-		t.Fatalf("AdminRoles after the takeover = %+v; want bob super with no standby", roles)
+	roles, _ = app.AdminRoles()
+	if roles.Super != "bob" || roles.Standby != "" || roles.CanTakeOver ||
+		len(roles.Protections) != 1 || roles.Protections[0].Username != "alice" || roles.Protections[0].Reason != "Vacation" {
+		t.Fatalf("AdminRoles after the takeover = %+v; want bob super, no standby, alice protected", roles)
 	}
-	if _, err := app.AdminTakeOverSuper(); err == nil || err.Error() != "you are already the super administrator" {
+	if len(roles.TakeoverReasons) != 5 || roles.TakeoverReasons[0] != (AdminTakeoverReasonWire{Code: "vacation", Label: "Vacation", Days: 30}) {
+		t.Fatalf("takeover reasons = %+v", roles.TakeoverReasons)
+	}
+	until, err := time.Parse(time.RFC3339, roles.Protections[0].Until)
+	if err != nil {
+		t.Fatalf("protection end %q: %v", roles.Protections[0].Until, err)
+	}
+	wantProtected := "alice is protected until " + until.Local().Format("January 2, 2006") +
+		" after the takeover (Vacation), so they can't be disabled, deleted, or removed as an administrator until then"
+	for name, call := range map[string]func() error{
+		"disable": func() error { return app.AdminSetUserDisabled("alice", true) },
+		"demote":  func() error { return app.AdminSetUserRole("alice", false) },
+		"delete":  func() error { return app.AdminPurgeUser("alice", "alice") },
+	} {
+		if err := call(); err == nil || err.Error() != wantProtected {
+			t.Errorf("%s the protected former super administrator: err = %v, want %q", name, err, wantProtected)
+		}
+	}
+	if _, err := app.AdminTakeOverSuper("vacation", ""); err == nil || err.Error() != "you are already the super administrator" {
 		t.Fatalf("second takeover: err = %v", err)
 	}
 	if err := app.AdminOpenUserData("carol", "checking"); err != nil {
@@ -178,7 +209,7 @@ func TestAppStandbyAndTakeover(t *testing.T) {
 	// The former super administrator is a subordinate, and only a standby
 	// named by bob could take over from him.
 	switchUser(t, app, "alice")
-	if _, err := app.AdminTakeOverSuper(); err == nil || err.Error() != "the super administrator has signed in within the takeover period, so the role can't be taken over" {
+	if _, err := app.AdminTakeOverSuper("vacation", ""); err == nil || err.Error() != "the super administrator has signed in within the takeover period, so the role can't be taken over" {
 		t.Fatalf("former super administrator taking back: err = %v", err)
 	}
 	if err := app.AdminOpenUserData("carol", "checking"); err == nil || err.Error() != "only the super administrator can open users' data" {
@@ -192,7 +223,7 @@ func TestAppStandbyRolesNeedAnAdministrator(t *testing.T) {
 	for name, call := range map[string]func() error{
 		"roles":    func() error { _, err := app.AdminRoles(); return err },
 		"standby":  func() error { _, err := app.AdminSetStandby("bob", 30); return err },
-		"takeover": func() error { _, err := app.AdminTakeOverSuper(); return err },
+		"takeover": func() error { _, err := app.AdminTakeOverSuper("vacation", ""); return err },
 	} {
 		if err := call(); err == nil || err.Error() != "administrator privileges required" {
 			t.Errorf("%s by a standard account: err = %v", name, err)

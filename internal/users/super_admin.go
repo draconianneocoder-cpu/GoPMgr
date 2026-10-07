@@ -152,9 +152,11 @@ func (s *Store) RequireSuper(actor string) error {
 // since enrollment began, the super administrator in actor's place; actor
 // becomes a subordinate. actor's administrator key is passed to target
 // under the same attestation check as any grant, and actor's own grant is
-// removed. If actor's key cannot be opened the role still moves, keyPassed
-// is false, and the history says so; a target whose personal key fails its
-// attestation is refused (ErrPersonalKeyNotAttested) and nothing changes.
+// removed. If actor's key cannot be opened the role still moves. keyPassed
+// reports whether target holds the key afterwards (a standby passed over in
+// a takeover may already hold it), and the history says the same; a target
+// whose personal key fails its attestation is refused
+// (ErrPersonalKeyNotAttested) and nothing changes.
 func (s *Store) HandOverSuper(actor string, actorDEK []byte, target string) (keyPassed bool, err error) {
 	err = s.inWriteTx("super administrator hand-over", func(ctx context.Context, q accountWriter) error {
 		keyPassed = false
@@ -172,10 +174,13 @@ func (s *Store) HandOverSuper(actor string, actorDEK []byte, target string) (key
 		if err := requirePersonalKeyTx(ctx, q, target); err != nil {
 			return err
 		}
-		// If actor's key does not open, the role moves without it; recorded
-		// below.
+		// If actor's key does not open, the role moves without it.
+		if _, err := passKeyTx(ctx, q, actor, actorDEK, target); err != nil {
+			return err
+		}
+		// Report what target holds, not whether this call passed the key.
 		var err error
-		if keyPassed, err = passKeyTx(ctx, q, actor, actorDEK, target); err != nil {
+		if keyPassed, err = holdsActiveGrantTx(ctx, q, target); err != nil {
 			return err
 		}
 
@@ -184,6 +189,9 @@ func (s *Store) HandOverSuper(actor string, actorDEK []byte, target string) (key
 			return fmt.Errorf("users: store super administrator: %w", err)
 		}
 		if err := clearStandbyTx(ctx, q, actor, target, "became the super administrator"); err != nil {
+			return err
+		}
+		if err := clearProtectionTx(ctx, q, target); err != nil {
 			return err
 		}
 		if err := removeGrantTx(ctx, q, actor); err != nil {

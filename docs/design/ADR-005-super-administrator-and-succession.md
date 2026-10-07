@@ -5,10 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-005: Super administrator and succession
 
-**Status:** Accepted (owner decisions, 2026-10-05). Part 1 (the role,
-subordinate limits, hand-over) and part 2 (standby and takeover) built
-2026-10-05; part 3 (escrow rotation and a fresh key) next. All three ship
-before the next release tag.
+**Status:** Accepted (owner decisions, 2026-10-05 and 2026-10-07). Part 1
+(the role, subordinate limits, hand-over) and part 2 (standby and takeover)
+built 2026-10-05; part 2b (takeover after an inactive standby, takeover
+reasons and protection) built 2026-10-07; part 3 (escrow rotation and a
+fresh key) next. All of them ship before the next release tag.
 **Decision date:** 2026-10-05
 
 ## Context
@@ -45,7 +46,8 @@ super administrator instead.
   same attestation check as any grant (a target whose personal key fails it
   is refused), and the former super administrator's grant is removed. If the
   key cannot be opened the role still moves, the user is told, and the
-  history says the key could not be passed. Recorded as
+  history records whether the new super administrator holds the key (a
+  standby may already hold it). Recorded as
   `super_admin_handed_over`. Any data the former super administrator had
   open is closed.
 - **Standby successor (part 2).** The super administrator names a standby
@@ -72,12 +74,23 @@ super administrator instead.
 - **Takeover after the standby is also inactive (part 2b).** When the
   standby has also gone the takeover period without signing in, any enabled
   administrator can take over, without the key, as when no standby is
-  named (owner decision, 2026-10-05).
+  named (owner decision, 2026-10-05). The standby's period counts from the
+  later of their last sign-in and the time they were named
+  (`standby_named_at`, which changes only when the standby does, not when
+  the period does). A standby passed over this way stays named and keeps
+  the key, so the new super administrator can hand them the role, with the
+  key, when they return; replacing them in Succession removes it (owner
+  decision, 2026-10-07).
 - **Takeover reason and protection (part 2b).** The administrator taking
   over must choose a reason before confirming; it is recorded with the
   takeover and sets how long the former super administrator is protected
   from being disabled, deleted, or demoted (owner decisions, 2026-10-05).
-  Handing the role back stays allowed.
+  Handing the role back stays allowed, and ends the protection, as does the
+  former super administrator taking the role back; a later step-down of
+  their own is not shielded. A note is optional except for Other, at most
+  500 characters. The reason's label and the note go into the account
+  history, which every administrator can read, so the panel asks for no
+  medical or personal details.
 
   | Reason | Protected for |
   | --- | --- |
@@ -138,12 +151,15 @@ administrator is cleared when read.
   - The period counts sign-ins, not use: a super administrator who stays
     signed in for longer than the period without signing in again can be
     taken over.
-  - If both the super administrator and the standby stop signing in, nobody
-    can take over until part 2b, which lets any administrator take over
-    once the standby has also been inactive for the period.
-  - Moving the clock forward can also run out a protection window early;
-    part 2b's protection limits the damage a takeover can do, but uses the
-    same clock.
+- Accepted risks (part 2b):
+  - The administrator taking over picks the reason, so a hostile one picks
+    the shortest protection, 7 days ("No longer an employee"), and moving
+    the clock forward ends even that early. Against a deliberate takeover,
+    the protection is 7 days at most; the history shows which reason was
+    picked, and by whom.
+  - The protection is a plaintext row: someone who edits `system.db` can
+    change or remove it, as they can the role row. An end time that cannot
+    be read is treated as ended.
 
 ## Implementation parts
 
@@ -151,6 +167,6 @@ administrator is cleared when read.
 2. Standby, inactivity period, takeover (with or without a standby),
    hand-back (2026-10-05).
    2b. Takeover once the standby is also inactive; takeover reason and the
-   former super administrator's protection.
+   former super administrator's protection (2026-10-07).
 3. Escrow rotation, automatic and manual, and a fresh key when nobody holds
    the old one.

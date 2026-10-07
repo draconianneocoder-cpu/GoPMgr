@@ -329,6 +329,9 @@ func setDisabledTx(ctx context.Context, q accountWriter, actor, username string,
 		return nil
 	}
 	if disabled {
+		if err := requireUnprotectedTx(ctx, q, username); err != nil {
+			return err
+		}
 		if err := guardLastEnabledAdmin(ctx, q, isAdmin, current); err != nil {
 			return err
 		}
@@ -397,6 +400,9 @@ func (s *Store) PurgeAccount(actor, username string) error {
 		}
 		if caseVariants > 0 {
 			return ErrFolderShared
+		}
+		if err := requireUnprotectedTx(ctx, q, username); err != nil {
+			return err
 		}
 		if err := guardLastEnabledAdmin(ctx, q, isAdmin, disabled); err != nil {
 			return err

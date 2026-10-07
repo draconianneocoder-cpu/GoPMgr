@@ -54,11 +54,14 @@ declare global {
             standby_holds_key: boolean;
             takeover_days: number;
             super_inactive_days: number;
+            standby_inactive_days: number;
             can_take_over: boolean;
+            takeover_reasons: { code: string; label: string; days: number }[];
+            protections: { username: string; reason: string; until: string }[];
           }>;
           AdminHandOverSuper: (username: string) => Promise<{ key_passed: boolean }>;
           AdminSetStandby: (username: string, days: number) => Promise<{ key_passed: boolean }>;
-          AdminTakeOverSuper: () => Promise<{ key_held: boolean }>;
+          AdminTakeOverSuper: (reason: string, note: string) => Promise<{ key_held: boolean }>;
           // The signed-in user's own record of administrator access.
           MyDataAccessNotices: () => Promise<AccountEvent[]>;
           AcknowledgeDataAccessNotices: (throughID: number) => Promise<void>;
