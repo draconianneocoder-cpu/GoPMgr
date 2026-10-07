@@ -69,15 +69,18 @@ for a legitimate local user.
   2026-09-24, replacing the same day's rule that they must not). The
   design is [ADR-004](design/ADR-004-administrator-access-to-user-data.md):
   read-only, projects only, the user told at their next sign-in. **Phase 1
-  built (2026-10-02), access not yet:** each account's encryption key is
+  and phase 2's backend built (2026-10-02), no Admin panel yet:** each account's encryption key is
   sealed to an escrow key at creation or sign-in, and administrators hold
   the escrow key, granted only when an administrator creates, promotes, or
   enables them, never at sign-in. Pins and attestations detect a swapped
   escrow key, grant, or personal key, and the Admin panel's account history
-  shows each mismatch. Nothing in the app opens a sealed key yet, but a
-  build with phase 1 alone would let an administrator's password unseal
-  every enrolled account outside the app with nothing recorded, so no
-  release may be tagged until phase 2's recorded access lands (`make
+  shows each mismatch. Phase 2's backend (2026-10-02) opens a target's key
+  only after recording the access and its reason, keeps it out of the
+  session key, and shows projects only through a read-only copy; the Admin
+  panel that calls it is not built yet. Until it is, a
+  build would let an administrator's password unseal every enrolled
+  account outside the app with nothing recorded, so no
+  release may be tagged until phase 2's Admin panel lands (`make
   escrow-release-guard`). Until then, an administrator can read only
   accounts they created, using the initial password or recovery codes they
   were given, outside the app, and nothing records it.

@@ -294,23 +294,35 @@ func (a *App) projectPathFor(path string) (string, *users.Account, error) {
 	if user == nil {
 		return "", nil, errors.New("not signed in")
 	}
+	clean, err := confineProjectPath(filepath.Join(user.DataDir, "projects"), path)
+	if err != nil {
+		return "", nil, err
+	}
+	return clean, user, nil
+}
+
+// confineProjectPath is projectPathFor's check against any projects
+// folder: path must name an existing regular project file directly in
+// projectsDir or in one of its immediate subfolders, with no symlink on the
+// way. Administrator access (ADR-004) uses it with the target's folder.
+func confineProjectPath(projectsDir, path string) (string, error) {
 	clean := filepath.Clean(path)
 	if !isProjectExtension(filepath.Ext(clean)) {
-		return "", nil, errors.New("not a project file")
+		return "", errors.New("not a project file")
 	}
-	projectsDir := filepath.Clean(filepath.Join(user.DataDir, "projects"))
+	projectsDir = filepath.Clean(projectsDir)
 	parent := filepath.Dir(clean)
 	// Allowed: legacy flat layout (<projects>/<name>.<ext>) where parent is
 	// the projects dir, OR the current layout (<projects>/<id>/project.<ext>)
 	// where the parent is an immediate subfolder of the projects dir. Anything
 	// deeper or outside is rejected.
 	if parent != projectsDir && filepath.Dir(parent) != projectsDir {
-		return "", nil, errors.New("project is outside your projects folder")
+		return "", errors.New("project is outside your projects folder")
 	}
 	if strings.ContainsRune(clean, utf8.RuneError) {
 		resolved, err := resolveWireProjectPath(projectsDir, clean)
 		if err != nil {
-			return "", nil, err
+			return "", err
 		}
 		clean = resolved
 	}
@@ -320,28 +332,28 @@ func (a *App) projectPathFor(path string) (string, *users.Account, error) {
 	if dir := filepath.Dir(clean); dir != projectsDir {
 		dirInfo, err := os.Lstat(dir)
 		if errors.Is(err, fs.ErrNotExist) {
-			return "", nil, ErrProjectNotFound
+			return "", ErrProjectNotFound
 		}
 		if err != nil {
-			return "", nil, err
+			return "", err
 		}
 		if dirInfo.Mode().Type() != fs.ModeDir {
-			return "", nil, errors.New("not a project file")
+			return "", errors.New("not a project file")
 		}
 	}
 	// SQLite creates a missing database on open, so a stale path must stop
 	// here rather than leave an empty, uninitialised project behind.
 	info, err := os.Lstat(clean)
 	if errors.Is(err, fs.ErrNotExist) {
-		return "", nil, ErrProjectNotFound
+		return "", ErrProjectNotFound
 	}
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 	if !info.Mode().IsRegular() {
-		return "", nil, errors.New("not a project file")
+		return "", errors.New("not a project file")
 	}
-	return clean, user, nil
+	return clean, nil
 }
 
 // ErrProjectNotFound means the requested project file no longer exists.

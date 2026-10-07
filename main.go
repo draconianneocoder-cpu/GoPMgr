@@ -85,11 +85,14 @@ type App struct {
 	// codes (AcceptEncryptionWithoutRecoveryCodes). Cleared on sign-in,
 	// sign-out, and shutdown.
 	noCodesAcceptedFor string
-	db                 *db.Database // nil unless a project is open
-	dbPath             string       // absolute path of the open project file (.gopmgr, or legacy .pmforge)
-	adminSvc           *admin.Service
-	templates          *templates.Engine       // immutable after NewApp; safe lock-free read
-	sigmaSvc           *service.ProjectService // initialized when a project is open
+	// access is an administrator's recorded access to another account's
+	// data (ADR-004), with its own key and project copy; nil when none.
+	access    *adminAccess
+	db        *db.Database // nil unless a project is open
+	dbPath    string       // absolute path of the open project file (.gopmgr, or legacy .pmforge)
+	adminSvc  *admin.Service
+	templates *templates.Engine       // immutable after NewApp; safe lock-free read
+	sigmaSvc  *service.ProjectService // initialized when a project is open
 
 	// openCheck caches CheckOpenProject's result for the database handle it
 	// checked; any open, reopen, or swap installs a new handle, which makes
@@ -148,6 +151,7 @@ func (a *App) shutdown(_ context.Context) {
 		_ = a.db.Close()
 		a.db = nil
 	}
+	a.stopAdminAccessLocked()
 	// ADR-001: zero the session DEK on exit too, not only on Logout, so
 	// quitting with a session open does not leave key bytes in the heap
 	// (swap / core-dump hygiene).
