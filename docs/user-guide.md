@@ -490,6 +490,17 @@ super administrator can also choose **Replace administrator key** under
 Succession at any time. A copy of GoPMgr's account file made before a
 replacement still opens the data sealed in it, so keep such copies safe.
 
+The super administrator should also make a **recovery code** for the
+administrator key: the Admin panel reminds them until one exists. The code
+is shown once. Print it (GoPMgr lists only printers that print on paper;
+choose one connected to this computer) or write it down, keep it somewhere
+safe away from the computer, then type it back to confirm. If nobody can
+open the administrator key any more, the super administrator enters the
+code under Succession to restore it. Together with GoPMgr's account file
+the code opens every user's data, so keep it as carefully as a password.
+Replacing the administrator key voids the code, and the panel asks for a
+new one.
+
 If an administrator opens your data, you see who did, when, and their reason
 on the first screen after you sign in, until you choose **I've read this**;
 the Admin panel's history records that you read it. App Settings, under

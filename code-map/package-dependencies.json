@@ -28,6 +28,7 @@
         "gopmgr/internal/fonts",
         "gopmgr/internal/kernel",
         "gopmgr/internal/money",
+        "gopmgr/internal/printing",
         "gopmgr/internal/reporting",
         "gopmgr/internal/rfc3161",
         "gopmgr/internal/sigma/charts",
@@ -391,6 +392,14 @@
       "notable_external_deps": [
         "github.com/go-pdf/fpdf"
       ]
+    },
+    "gopmgr/internal/printing": {
+      "dir": "internal/printing",
+      "imported_by_internal": [
+        "gopmgr"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
     },
     "gopmgr/internal/reporting": {
       "dir": "internal/reporting",

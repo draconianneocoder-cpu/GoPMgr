@@ -4,9 +4,12 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
+
+	"gopmgr/internal/printing"
 )
 
 // superApp returns an app signed in as alice, the super administrator,
@@ -300,5 +303,119 @@ func TestAppHandOverLeavesTheKeyReplacementPending(t *testing.T) {
 	switchUser(t, app, "bob")
 	if roles, err := app.AdminRoles(); err != nil || roles.RotationPending {
 		t.Fatalf("AdminRoles after bob's sign-in = %+v, %v; want the key replaced", roles, err)
+	}
+}
+
+func TestAppRecoveryCode(t *testing.T) {
+	app := superApp(t)
+	code, err := app.AdminCreateEscrowRecoveryCode()
+	if err != nil || len(code) != 35 {
+		t.Fatalf("AdminCreateEscrowRecoveryCode = %q, %v; want a 35-character code", code, err)
+	}
+	if roles, _ := app.AdminRoles(); !roles.RecoveryCodeExists || roles.RecoveryConfirmed {
+		t.Fatalf("AdminRoles = %+v; want a code that is not yet confirmed", roles)
+	}
+	if err := app.AdminConfirmEscrowRecoveryCode("AAAA"); err == nil || err.Error() != "that doesn't match the recovery code; check it and try again" {
+		t.Fatalf("confirming a wrong code: err = %v", err)
+	}
+	if err := app.AdminConfirmEscrowRecoveryCode(code); err != nil {
+		t.Fatalf("confirming the code: %v", err)
+	}
+	if roles, _ := app.AdminRoles(); !roles.RecoveryConfirmed {
+		t.Fatal("the confirmed code is not reported as confirmed")
+	}
+
+	conn := systemDB(t, app)
+	if _, err := conn.Exec(`DELETE FROM escrow_grants`); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.AdminRecoverEscrowKey("ABCDEFGH-ABCDEFGH-ABCDEFGH-ABCDEFGH"); err == nil || err.Error() != "that recovery code doesn't open the administrator key" {
+		t.Fatalf("restoring with a wrong code: err = %v", err)
+	}
+	if err := app.AdminRecoverEscrowKey(code); err != nil {
+		t.Fatalf("AdminRecoverEscrowKey: %v", err)
+	}
+	if roles, _ := app.AdminRoles(); !roles.SuperHoldsKey {
+		t.Fatal("the super administrator does not hold the restored key")
+	}
+	if err := app.AdminOpenUserData("carol", "checking after recovery"); err != nil {
+		t.Fatalf("opening data with the restored key: %v", err)
+	}
+
+	switchUser(t, app, "bob")
+	if _, err := app.AdminCreateEscrowRecoveryCode(); err == nil || err.Error() != "only the super administrator can make a recovery code" {
+		t.Fatalf("a subordinate making a code: err = %v", err)
+	}
+	if err := app.AdminRecoverEscrowKey(code); err == nil || err.Error() != "only the super administrator can restore the administrator key" {
+		t.Fatalf("a subordinate restoring the key: err = %v", err)
+	}
+}
+
+func TestAppPrintsTheRecoveryCodeOnlyAfterCheckingIt(t *testing.T) {
+	type job struct{ printer, title, text string }
+	var jobs []job
+	oldPrinters, oldPrint := printers, printText
+	t.Cleanup(func() { printers, printText = oldPrinters, oldPrint })
+	printers = func(context.Context) ([]printing.Printer, error) {
+		return []printing.Printer{{Name: "Desk", Connection: printing.Local, Default: true}, {Name: "Office", Connection: printing.Network}}, nil
+	}
+	printText = func(_ context.Context, printer, title, text string) error {
+		if printer != "Desk" && printer != "Office" {
+			return printing.ErrNoSuchPrinter
+		}
+		jobs = append(jobs, job{printer, title, text})
+		return nil
+	}
+
+	app := superApp(t)
+	code, err := app.AdminCreateEscrowRecoveryCode()
+	if err != nil {
+		t.Fatalf("AdminCreateEscrowRecoveryCode: %v", err)
+	}
+	list, err := app.AdminPrinters()
+	if err != nil || len(list) != 2 || list[0] != (AdminPrinterWire{Name: "Desk", Connection: "local", Default: true}) {
+		t.Fatalf("AdminPrinters = %+v, %v", list, err)
+	}
+
+	if err := app.AdminPrintEscrowRecoveryCode("ABCDEFGH-ABCDEFGH-ABCDEFGH-ABCDEFGH", "Desk"); err == nil || err.Error() != "that isn't the administrator key's recovery code" {
+		t.Fatalf("printing a wrong code: err = %v", err)
+	}
+	if len(jobs) != 0 {
+		t.Fatal("a code that is not the key's was printed")
+	}
+	if err := app.AdminPrintEscrowRecoveryCode(code, "Elsewhere"); err == nil || err.Error() != `"Elsewhere" isn't a printer this computer can print on paper with; choose another` {
+		t.Fatalf("printing on an unknown printer: err = %v", err)
+	}
+	if err := app.AdminPrintEscrowRecoveryCode(code, "Desk"); err != nil {
+		t.Fatalf("AdminPrintEscrowRecoveryCode: %v", err)
+	}
+	if len(jobs) != 1 || jobs[0].printer != "Desk" || jobs[0].title != "GoPMgr administrator recovery" || !strings.Contains(jobs[0].text, "    "+code+"\n") {
+		t.Fatalf("printed %+v; want the page with the code on Desk under a title without it", jobs)
+	}
+	for _, r := range jobs[0].text {
+		if r > 127 {
+			t.Fatalf("the page has a non-ASCII character %q", r)
+		}
+	}
+	if roles, _ := app.AdminRoles(); roles.RecoveryConfirmed {
+		t.Fatal("printing confirmed the code; only typing it back does")
+	}
+
+	switchUser(t, app, "bob")
+	if _, err := app.AdminPrinters(); err == nil {
+		t.Fatal("a subordinate listed printers for the recovery code")
+	}
+	if err := app.AdminPrintEscrowRecoveryCode(code, "Desk"); err == nil || err.Error() != "only the super administrator can print the recovery code" {
+		t.Fatalf("a subordinate printing: err = %v", err)
+	}
+}
+
+func TestAppPrintersWithoutAPrintService(t *testing.T) {
+	oldPrinters := printers
+	t.Cleanup(func() { printers = oldPrinters })
+	printers = func(context.Context) ([]printing.Printer, error) { return nil, printing.ErrUnsupported }
+	app := superApp(t)
+	if list, err := app.AdminPrinters(); err != nil || list == nil || len(list) != 0 {
+		t.Fatalf("AdminPrinters = %#v, %v; want an empty list so the panel says to write it down", list, err)
 	}
 }

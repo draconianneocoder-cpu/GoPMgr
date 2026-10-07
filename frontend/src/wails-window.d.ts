@@ -58,6 +58,8 @@ declare global {
             can_take_over: boolean;
             super_holds_key: boolean;
             rotation_pending: boolean;
+            recovery_code_exists: boolean;
+            recovery_code_confirmed: boolean;
             takeover_reasons: { code: string; label: string; days: number }[];
             protections: { username: string; reason: string; until: string }[];
           }>;
@@ -65,6 +67,12 @@ declare global {
           AdminSetStandby: (username: string, days: number) => Promise<{ key_passed: boolean }>;
           AdminTakeOverSuper: (reason: string, note: string) => Promise<{ key_held: boolean }>;
           AdminReplaceEscrowKey: (keepStandby: string) => Promise<{ resealed: number; reenroll: number }>;
+          // The administrator key's recovery code (ADR-005 part 3b).
+          AdminCreateEscrowRecoveryCode: () => Promise<string>;
+          AdminConfirmEscrowRecoveryCode: (code: string) => Promise<void>;
+          AdminRecoverEscrowKey: (code: string) => Promise<void>;
+          AdminPrinters: () => Promise<{ name: string; connection: 'local' | 'network'; default: boolean }[]>;
+          AdminPrintEscrowRecoveryCode: (code: string, printer: string) => Promise<void>;
           // The signed-in user's own record of administrator access.
           MyDataAccessNotices: () => Promise<AccountEvent[]>;
           AcknowledgeDataAccessNotices: (throughID: number) => Promise<void>;
@@ -559,6 +567,7 @@ declare global {
       // Administrator key (ADR-004).
       | 'admin_access' | 'escrow_key_mismatch' | 'escrow_reenrolled' | 'personal_key_repaired'
       | 'personal_key_trusted' | 'escrow_rotated' | 'access_notice_read'
+      | 'escrow_recovery_code_created' | 'escrow_key_recovered'
       | 'super_admin_assigned' | 'super_admin_handed_over' | 'super_admin_taken_over'
       | 'super_standby_named' | 'super_standby_removed' | 'super_takeover_period_changed';
     detail: string;

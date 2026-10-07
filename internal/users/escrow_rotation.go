@@ -179,6 +179,10 @@ func rotateTx(ctx context.Context, q accountWriter, old *EscrowSession, actor st
 	if _, err := q.ExecContext(ctx, `DELETE FROM escrow_rotation_pending`); err != nil {
 		return fail(fmt.Errorf("users: clear pending rotation: %w", err))
 	}
+	// A recovery code opens only the key it was made for (ADR-005 part 3b).
+	if _, err := q.ExecContext(ctx, `DELETE FROM escrow_recovery`); err != nil {
+		return fail(fmt.Errorf("users: remove recovery code: %w", err))
+	}
 	detail := fmt.Sprintf("%s; %d accounts sealed to the new key", reason, res.Resealed)
 	if res.Reenroll > 0 {
 		detail += fmt.Sprintf("; %d sealed again at their next sign-in", res.Reenroll)

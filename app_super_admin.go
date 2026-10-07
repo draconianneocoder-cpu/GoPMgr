@@ -4,11 +4,13 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"time"
 
+	"gopmgr/internal/printing"
 	"gopmgr/internal/users"
 )
 
@@ -28,6 +30,8 @@ type AdminRolesWire struct {
 	CanTakeOver         bool                      `json:"can_take_over"`
 	SuperHoldsKey       bool                      `json:"super_holds_key"`
 	RotationPending     bool                      `json:"rotation_pending"`
+	RecoveryCodeExists  bool                      `json:"recovery_code_exists"`
+	RecoveryConfirmed   bool                      `json:"recovery_code_confirmed"`
 	TakeoverReasons     []AdminTakeoverReasonWire `json:"takeover_reasons"`
 	Protections         []AdminProtectionWire     `json:"protections"`
 }
@@ -70,6 +74,8 @@ func (a *App) AdminRoles() (AdminRolesWire, error) {
 		CanTakeOver:         s.CanTakeOver,
 		SuperHoldsKey:       s.SuperHoldsKey,
 		RotationPending:     s.RotationPending,
+		RecoveryCodeExists:  s.RecoveryCodeExists,
+		RecoveryConfirmed:   s.RecoveryCodeConfirmed,
 		TakeoverReasons:     []AdminTakeoverReasonWire{},
 		Protections:         []AdminProtectionWire{},
 	}
@@ -253,4 +259,152 @@ func (a *App) runPendingRotation(username string) {
 	if err != nil {
 		log.Printf("replacing the administrator key after an account change failed; it stays pending: %v", err)
 	}
+}
+
+// The administrator key's recovery code (ADR-005 part 3b). The code is
+// never logged: it opens every user's data sealed to the key.
+
+// AdminCreateEscrowRecoveryCode makes a recovery code for the administrator
+// key, replacing any earlier one, and returns it to be shown once. Requires
+// the super administrator, holding a usable key.
+func (a *App) AdminCreateEscrowRecoveryCode() (string, error) {
+	caller := a.requireUser()
+	if caller == nil || !caller.IsAdmin {
+		return "", errors.New("administrator privileges required")
+	}
+	var code string
+	err := a.withSessionDEK(func(dek []byte) error {
+		var err error
+		code, err = a.store.CreateEscrowRecoveryCode(caller.Username, dek)
+		return err
+	})
+	switch {
+	case errors.Is(err, users.ErrNotAdmin):
+		return "", errors.New("administrator privileges required")
+	case errors.Is(err, users.ErrNotSuper):
+		return "", errors.New("only the super administrator can make a recovery code")
+	case errors.Is(err, users.ErrNoEscrowGrant):
+		return "", errors.New("you don't hold a usable administrator key, so you can't make a recovery code for it")
+	}
+	return code, err
+}
+
+// AdminConfirmEscrowRecoveryCode marks the recovery code as kept once the
+// super administrator types it back.
+func (a *App) AdminConfirmEscrowRecoveryCode(code string) error {
+	caller := a.requireUser()
+	if caller == nil || !caller.IsAdmin {
+		return errors.New("administrator privileges required")
+	}
+	err := a.store.ConfirmEscrowRecoveryCode(caller.Username, code)
+	switch {
+	case errors.Is(err, users.ErrNotAdmin):
+		return errors.New("administrator privileges required")
+	case errors.Is(err, users.ErrNotSuper):
+		return errors.New("only the super administrator can confirm the recovery code")
+	case errors.Is(err, users.ErrInvalidEscrowRecoveryCode), errors.Is(err, users.ErrNoRecoveryCode):
+		return errors.New("that doesn't match the recovery code; check it and try again")
+	}
+	return err
+}
+
+// AdminRecoverEscrowKey restores the administrator key to the super
+// administrator from its recovery code.
+func (a *App) AdminRecoverEscrowKey(code string) error {
+	caller := a.requireUser()
+	if caller == nil || !caller.IsAdmin {
+		return errors.New("administrator privileges required")
+	}
+	err := a.withSessionDEK(func(dek []byte) error {
+		return a.store.RecoverEscrowKey(caller.Username, dek, code)
+	})
+	switch {
+	case errors.Is(err, users.ErrNotAdmin):
+		return errors.New("administrator privileges required")
+	case errors.Is(err, users.ErrNotSuper):
+		return errors.New("only the super administrator can restore the administrator key")
+	case errors.Is(err, users.ErrNoRecoveryCode):
+		return errors.New("the administrator key has no recovery code")
+	case errors.Is(err, users.ErrInvalidEscrowRecoveryCode):
+		return errors.New("that recovery code doesn't open the administrator key")
+	case errors.Is(err, users.ErrEscrowMismatch):
+		return errors.New("the recovery code can't be used: the key it opens isn't the one your account trusts. The account history has the details")
+	}
+	return err
+}
+
+// AdminPrinterWire is a printer the recovery code can be printed on.
+type AdminPrinterWire struct {
+	Name       string `json:"name"`
+	Connection string `json:"connection"` // "local" or "network"
+	Default    bool   `json:"default"`
+}
+
+// printers and printText are the print service, replaced in tests so
+// nothing is printed.
+var (
+	printers  = printing.Printers
+	printText = printing.Print
+)
+
+// AdminPrinters lists the printers that print on paper, the default first.
+// An empty list means the recovery code has to be written down. Requires
+// the super administrator.
+func (a *App) AdminPrinters() ([]AdminPrinterWire, error) {
+	caller := a.requireUser()
+	if caller == nil || !caller.IsAdmin {
+		return nil, errors.New("administrator privileges required")
+	}
+	if err := a.store.RequireSuper(caller.Username); err != nil {
+		return nil, errors.New("only the super administrator can print the recovery code")
+	}
+	list, err := printers(context.Background())
+	if errors.Is(err, printing.ErrUnsupported) {
+		return []AdminPrinterWire{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := make([]AdminPrinterWire, 0, len(list))
+	for _, p := range list {
+		out = append(out, AdminPrinterWire{Name: p.Name, Connection: string(p.Connection), Default: p.Default})
+	}
+	return out, nil
+}
+
+// recoveryPage is the printed page: ASCII only, the code on its own line.
+func recoveryPage(code, username string, made time.Time) string {
+	return "GoPMgr administrator key recovery code\n\n" +
+		"    " + code + "\n\n" +
+		"Made " + made.Format("2006-01-02") + " by " + username + ".\n\n" +
+		"Keep this page somewhere safe, away from this computer. Together with\n" +
+		"GoPMgr's account file, this code opens every user's data.\n\n" +
+		"It stops working when the administrator key is replaced; GoPMgr then\n" +
+		"reminds the super administrator to make a new one.\n"
+}
+
+// AdminPrintEscrowRecoveryCode prints the recovery code on printer, after
+// checking it is the administrator key's code. Printing does not confirm
+// it: typing it back does. The job title says nothing about the code.
+func (a *App) AdminPrintEscrowRecoveryCode(code, printer string) error {
+	caller := a.requireUser()
+	if caller == nil || !caller.IsAdmin {
+		return errors.New("administrator privileges required")
+	}
+	err := a.store.CheckEscrowRecoveryCode(caller.Username, code)
+	switch {
+	case errors.Is(err, users.ErrNotAdmin):
+		return errors.New("administrator privileges required")
+	case errors.Is(err, users.ErrNotSuper):
+		return errors.New("only the super administrator can print the recovery code")
+	case errors.Is(err, users.ErrInvalidEscrowRecoveryCode), errors.Is(err, users.ErrNoRecoveryCode):
+		return errors.New("that isn't the administrator key's recovery code")
+	case err != nil:
+		return err
+	}
+	err = printText(context.Background(), printer, "GoPMgr administrator recovery", recoveryPage(code, caller.Username, time.Now()))
+	if errors.Is(err, printing.ErrNoSuchPrinter) {
+		return fmt.Errorf("%q isn't a printer this computer can print on paper with; choose another", printer)
+	}
+	return err
 }

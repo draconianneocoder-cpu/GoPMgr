@@ -101,9 +101,14 @@ for a legitimate local user.
   administrator who decrypts outside the app with their own password leaves
   no record; headless sign-in shows no notice; the administrator key is
   replaced whenever someone stops holding it (ADR-005 part 3a), but a copy
-  of `system.db` taken before that still opens every DEK sealed in it; until
-  parts 3b and 3c ship, after a takeover with no standby nobody can open
-  users' data; the takeover period and the
+  of `system.db` taken before that still opens every DEK sealed in it; the
+  super administrator keeps a printed recovery code that restores the key
+  when nobody can open it (ADR-005 part 3b), and the code with a copy of
+  `system.db` opens every user's data sealed to that key, so it must be
+  kept like the key; printing it hands it to the operating system's print
+  service, which holds the job until it prints; until part 3c ships, after
+  a takeover with no standby and no recovery code nobody can open users'
+  data; the takeover period and the
   protection use this computer's clock, so an administrator who sets it
   forward can take over early and end the protection early, and a hostile
   administrator can pick the shortest protection (7 days).

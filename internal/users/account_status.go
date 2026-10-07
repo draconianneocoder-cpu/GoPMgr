@@ -57,13 +57,15 @@ const (
 	AccountFolderNotRemoved = "folder_not_removed"
 
 	// Administrator escrow (ADR-004).
-	AccountAdminAccess         = "admin_access"
-	AccountEscrowKeyMismatch   = "escrow_key_mismatch"
-	AccountEscrowReenrolled    = "escrow_reenrolled"
-	AccountPersonalKeyRepaired = "personal_key_repaired"
-	AccountEscrowRotated       = "escrow_rotated"
-	AccountPersonalKeyTrusted  = "personal_key_trusted"
-	AccountAccessNoticeRead    = "access_notice_read"
+	AccountAdminAccess           = "admin_access"
+	AccountEscrowKeyMismatch     = "escrow_key_mismatch"
+	AccountEscrowReenrolled      = "escrow_reenrolled"
+	AccountPersonalKeyRepaired   = "personal_key_repaired"
+	AccountEscrowRotated         = "escrow_rotated"
+	AccountPersonalKeyTrusted    = "personal_key_trusted"
+	AccountAccessNoticeRead      = "access_notice_read"
+	AccountEscrowRecoveryCreated = "escrow_recovery_code_created"
+	AccountEscrowRecovered       = "escrow_key_recovered"
 
 	// Super administrator (ADR-005).
 	AccountSuperAssigned   = "super_admin_assigned"
@@ -89,15 +91,17 @@ var accountEventActions = map[string]bool{
 	AccountPurged:           true,
 	AccountFolderNotRemoved: true,
 
-	AccountAdminAccess:         true,
-	AccountEscrowKeyMismatch:   true,
-	AccountEscrowReenrolled:    true,
-	AccountPersonalKeyRepaired: true,
-	AccountEscrowRotated:       true,
-	AccountPersonalKeyTrusted:  true,
-	AccountAccessNoticeRead:    true,
-	AccountSuperAssigned:       true,
-	AccountSuperHandedOver:     true,
+	AccountAdminAccess:           true,
+	AccountEscrowKeyMismatch:     true,
+	AccountEscrowReenrolled:      true,
+	AccountPersonalKeyRepaired:   true,
+	AccountEscrowRotated:         true,
+	AccountPersonalKeyTrusted:    true,
+	AccountAccessNoticeRead:      true,
+	AccountEscrowRecoveryCreated: true,
+	AccountEscrowRecovered:       true,
+	AccountSuperAssigned:         true,
+	AccountSuperHandedOver:       true,
 
 	AccountStandbyNamed:          true,
 	AccountStandbyRemoved:        true,

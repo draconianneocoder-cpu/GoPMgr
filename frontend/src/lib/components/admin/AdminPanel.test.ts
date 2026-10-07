@@ -667,3 +667,117 @@ describe('AdminPanel succession', () => {
     expect(items[4]).toContain('alice replaced the administrator key (replaced by the super administrator; 4 accounts sealed to the new key)');
   });
 });
+
+describe('AdminPanel recovery code', () => {
+  const code = 'ABCDEFGH-IJKLMNOP-QRSTUVWX-YZ234567';
+  const text = (el: HTMLElement) => el.textContent?.replace(/\s+/g, ' ') ?? '';
+  function roles(extra: Record<string, unknown> = {}) {
+    return {
+      super: 'alice', standby: '', standby_holds_key: false, takeover_days: 30, super_inactive_days: 0,
+      standby_inactive_days: 0, can_take_over: false, super_holds_key: true, rotation_pending: false,
+      recovery_code_exists: false, recovery_code_confirmed: false, takeover_reasons: [], protections: [],
+      ...extra,
+    };
+  }
+
+  beforeEach(() => {
+    app.AdminCreateEscrowRecoveryCode = vi.fn(async () => code);
+    app.AdminConfirmEscrowRecoveryCode = vi.fn(async () => undefined);
+    app.AdminRecoverEscrowKey = vi.fn(async () => undefined);
+    app.AdminPrintEscrowRecoveryCode = vi.fn(async () => undefined);
+    app.AdminPrinters = vi.fn(async () => [
+      { name: 'Desk', connection: 'local', default: true },
+      { name: 'Office', connection: 'network', default: false },
+    ]);
+  });
+
+  it('reminds the super administrator, shows the code once, prints it, and confirms it when typed back', async () => {
+    app.AdminRoles.mockResolvedValue(roles());
+    const utils = render(AdminPanel);
+    const reminder = await utils.findByRole('alert');
+    expect(text(reminder)).toContain("There's no recovery code for the administrator key.");
+    await fireEvent.click(within(reminder).getByRole('button', { name: 'Make a recovery code' }));
+    expect(app.AdminCreateEscrowRecoveryCode).toHaveBeenCalledTimes(1);
+
+    const card = await utils.findByRole('region', { name: 'Administrator key recovery code' });
+    expect(text(card)).toContain(code);
+    expect(text(card)).toContain("It's shown only now.");
+    const printer = within(card).getByLabelText('Printer') as HTMLSelectElement;
+    expect([...printer.options].map((o) => o.textContent?.trim())).toEqual([
+      'Desk (connected to this computer)',
+      'Office (on the network)',
+    ]);
+    await fireEvent.click(within(card).getByRole('button', { name: 'Print' }));
+    expect(app.AdminPrintEscrowRecoveryCode).toHaveBeenCalledWith(code, 'Desk');
+    expect(app.AdminConfirmEscrowRecoveryCode).not.toHaveBeenCalled();
+
+    const confirm = within(card).getByRole('button', { name: 'Confirm' });
+    expect(confirm).toBeDisabled();
+    confirm.removeAttribute('disabled');
+    await fireEvent.click(confirm);
+    expect(app.AdminConfirmEscrowRecoveryCode).not.toHaveBeenCalled();
+    await fireEvent.input(within(card).getByLabelText('Type the code to confirm you kept it'), { target: { value: code.toLowerCase() } });
+    app.AdminRoles.mockResolvedValue(roles({ recovery_code_exists: true, recovery_code_confirmed: true }));
+    await fireEvent.click(within(card).getByRole('button', { name: 'Confirm' }));
+    expect(app.AdminConfirmEscrowRecoveryCode).toHaveBeenCalledWith(code.toLowerCase());
+    await waitFor(() => expect(utils.queryByRole('region', { name: 'Administrator key recovery code' })).not.toBeInTheDocument());
+    expect(utils.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('says to write the code down when no printer prints on paper', async () => {
+    app.AdminPrinters = vi.fn(async () => []);
+    app.AdminRoles.mockResolvedValue(roles());
+    const utils = render(AdminPanel);
+    await fireEvent.click(within(await utils.findByRole('alert')).getByRole('button', { name: 'Make a recovery code' }));
+    const card = await utils.findByRole('region', { name: 'Administrator key recovery code' });
+    expect(text(card)).toContain('No printer that prints on paper was found, so write the code down.');
+    expect(within(card).queryByRole('button', { name: 'Print' })).not.toBeInTheDocument();
+  });
+
+  it('keeps reminding while the code is not confirmed', async () => {
+    app.AdminRoles.mockResolvedValue(roles({ recovery_code_exists: true }));
+    const utils = render(AdminPanel);
+    const reminder = await utils.findByRole('alert');
+    expect(text(reminder)).toContain("The administrator key's recovery code wasn't confirmed");
+    expect(within(reminder).getByRole('button', { name: 'Make a new recovery code' })).toBeInTheDocument();
+  });
+
+  it('replaces a confirmed code only after confirmation', async () => {
+    app.AdminRoles.mockResolvedValue(roles({ recovery_code_exists: true, recovery_code_confirmed: true }));
+    const utils = render(AdminPanel);
+    const group = await utils.findByRole('group', { name: 'Administrator key' });
+    await fireEvent.click(within(group).getByRole('button', { name: 'Replace recovery code' }));
+    expect(app.AdminCreateEscrowRecoveryCode).not.toHaveBeenCalled();
+    expect(text(group)).toContain('The old one stops working, so destroy the old paper.');
+    await fireEvent.click(within(group).getByRole('button', { name: 'Make new code' }));
+    expect(app.AdminCreateEscrowRecoveryCode).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets a super administrator without the key restore it with the code', async () => {
+    app.AdminRoles.mockResolvedValue(roles({ super_holds_key: false, recovery_code_exists: true, recovery_code_confirmed: true }));
+    const utils = render(AdminPanel);
+    const form = await utils.findByRole('group', { name: 'Restore the administrator key' });
+    const restore = within(form).getByRole('button', { name: 'Restore key' });
+    expect(restore).toBeDisabled();
+    await fireEvent.input(within(form).getByLabelText(/Enter its recovery code to restore it/), { target: { value: code } });
+    await fireEvent.click(restore);
+    expect(app.AdminRecoverEscrowKey).toHaveBeenCalledWith(code);
+    expect(utils.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('describes recovery codes in the history', async () => {
+    app.AdminRoles.mockResolvedValue(roles({ recovery_code_exists: true, recovery_code_confirmed: true }));
+    app.AdminListAccountEvents.mockResolvedValue([
+      { id: 3, occurred_at: '2026-10-07T10:02:00Z', actor: 'alice', username: 'alice', action: 'escrow_key_recovered', detail: '' },
+      { id: 2, occurred_at: '2026-10-07T10:01:00Z', actor: 'alice', username: 'alice', action: 'escrow_recovery_code_created', detail: 'replaces the earlier one' },
+      { id: 1, occurred_at: '2026-10-07T10:00:00Z', actor: 'alice', username: 'alice', action: 'escrow_recovery_code_created', detail: '' },
+    ]);
+    const utils = render(AdminPanel);
+    const history = await utils.findByRole('region', { name: 'Account history' });
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(3));
+    const items = within(history).getAllByRole('listitem').map((li) => text(li));
+    expect(items[0]).toContain('alice restored the administrator key with its recovery code');
+    expect(items[1]).toContain('alice made a new recovery code for the administrator key (replaces the earlier one)');
+    expect(items[2]).toContain('alice made a recovery code for the administrator key');
+  });
+});

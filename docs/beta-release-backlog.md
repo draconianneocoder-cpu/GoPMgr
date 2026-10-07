@@ -215,11 +215,13 @@ That result took six live-GUI cycles to reach because the first five, all run un
       90, no longer an employee 7, other with a note 30). Part 3a built
       2026-10-07 (rotation whenever someone stops holding the key, plus
       "Replace administrator key"; the new key goes only to the rotator
-      and accounts they name). Open before the next tag: part 3b, a
-      recovery code the super administrator creates on demand that
-      restores the existing key, and part 3c, a new key that each user is
-      told about at sign-in when the code is lost (owner decisions,
-      2026-10-07).
+      and accounts they name). Part 3b built 2026-10-07 (a recovery code
+      the super administrator makes on demand, confirms by typing back,
+      and can print through the operating system's print service; it
+      restores the same key, checked against their own pin; Windows
+      printing unverified). Open before the next tag: part 3c, a new key
+      that each user is told about at sign-in when the code is lost (owner
+      decisions, 2026-10-07).
       Evidence: `super_admin_test.go`, `succession_test.go`,
       `app_super_admin_test.go`, and the `AdminPanel.test.ts` row in
       `TEST_COVERAGE_LEDGER.md`.

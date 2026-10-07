@@ -88,6 +88,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let replacing = $state(false);
   let passingKey = $state(false);
 
+  // The administrator key's recovery code (ADR-005 part 3b): shown once,
+  // printed or written down, and counted as made once typed back.
+  let recoveryCodeExists = $state(false);
+  let recoveryConfirmed = $state(false);
+  let shownCode = $state('');
+  let typedBack = $state('');
+  let makingCode = $state(false);
+  let confirmingCode = $state(false);
+  let pendingNewCode = $state(false);
+  let printerList = $state<{ name: string; connection: 'local' | 'network'; default: boolean }[]>([]);
+  let chosenPrinter = $state('');
+  let printingCode = $state(false);
+  let restoreCode = $state('');
+  let restoring = $state(false);
+
   const usernameRule = /^[A-Za-z0-9_-]{3,32}$/;
 
   onMount(load);
@@ -115,6 +130,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       protections = roles.protections ?? [];
       superHoldsKey = roles.super_holds_key ?? false;
       rotationPending = roles.rotation_pending ?? false;
+      recoveryCodeExists = roles.recovery_code_exists ?? false;
+      recoveryConfirmed = roles.recovery_code_confirmed ?? false;
     } catch {
       superAdmin = '';
       standby = '';
@@ -195,6 +212,82 @@ SPDX-License-Identifier: GPL-3.0-or-later
       showToast(`Could not pass the key: ${err}`, 'error');
     } finally {
       passingKey = false;
+    }
+  }
+
+  async function makeRecoveryCode() {
+    if (makingCode) return;
+    makingCode = true;
+    try {
+      shownCode = await window.go.main.App.AdminCreateEscrowRecoveryCode();
+      typedBack = '';
+      pendingNewCode = false;
+      try {
+        printerList = (await window.go.main.App.AdminPrinters()) ?? [];
+      } catch {
+        printerList = [];
+      }
+      chosenPrinter = printerList[0]?.name ?? '';
+      await load();
+    } catch (err: any) {
+      showToast(`Could not make a recovery code: ${err}`, 'error');
+    } finally {
+      makingCode = false;
+    }
+  }
+
+  async function printRecoveryCode() {
+    if (printingCode || !shownCode || !chosenPrinter) return;
+    printingCode = true;
+    try {
+      await window.go.main.App.AdminPrintEscrowRecoveryCode(shownCode, chosenPrinter);
+      showToast(`Sent to ${chosenPrinter}. Check that it printed, then type the code back below.`, 'success');
+    } catch (err: any) {
+      showToast(`Could not print: ${err}. Write the code down instead.`, 'error');
+    } finally {
+      printingCode = false;
+    }
+  }
+
+  async function confirmRecoveryCode() {
+    if (confirmingCode || !typedBack.trim()) return;
+    confirmingCode = true;
+    try {
+      await window.go.main.App.AdminConfirmEscrowRecoveryCode(typedBack);
+      shownCode = '';
+      typedBack = '';
+      showToast('Recovery code confirmed. Keep the paper somewhere safe.', 'success');
+      await load();
+    } catch (err: any) {
+      showToast(`${err}`, 'error');
+    } finally {
+      confirmingCode = false;
+    }
+  }
+
+  function closeRecoveryCode() {
+    shownCode = '';
+    typedBack = '';
+  }
+
+  async function restoreKey() {
+    if (restoring || !restoreCode.trim()) return;
+    restoring = true;
+    const replaced = rotationPending;
+    try {
+      await window.go.main.App.AdminRecoverEscrowKey(restoreCode);
+      restoreCode = '';
+      showToast(
+        replaced
+          ? 'Administrator key restored and replaced, so the old recovery code no longer works. Make a new one.'
+          : 'Administrator key restored.',
+        'success'
+      );
+      await load();
+    } catch (err: any) {
+      showToast(`Could not restore the administrator key: ${err}`, 'error');
+    } finally {
+      restoring = false;
     }
   }
 
@@ -443,6 +536,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
         return `${e.actor} accepted ${e.username}'s account key without an earlier check`;
       case 'escrow_rotated':
         return `${e.actor} replaced the administrator key (${e.detail})`;
+      case 'escrow_recovery_code_created':
+        return e.detail
+          ? `${e.actor} made a new recovery code for the administrator key (${e.detail})`
+          : `${e.actor} made a recovery code for the administrator key`;
+      case 'escrow_key_recovered':
+        return `${e.actor} restored the administrator key with its recovery code`;
       case 'super_admin_assigned':
         return `${e.username} became the super administrator (${e.detail})`;
       case 'super_admin_handed_over':
@@ -540,6 +639,88 @@ SPDX-License-Identifier: GPL-3.0-or-later
           class="text-[11px] bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white px-2 py-1 rounded"
         >{passingKey ? 'Passing…' : `Pass the key to ${standby}`}</button>
       </div>
+    {/if}
+
+    {#if iAmSuper && superHoldsKey && !recoveryConfirmed && !shownCode}
+      <div class="p-3 bg-amber-950/30 border border-amber-700/60 rounded-lg flex flex-wrap items-center gap-3" role="alert">
+        <p class="text-xs text-amber-200 flex-1 min-w-60">
+          {#if recoveryCodeExists}
+            The administrator key's recovery code wasn't confirmed, so there's no sign it was kept. Make a new one
+            and type it back.
+          {:else}
+            There's no recovery code for the administrator key. If nobody can open the key, its recovery code is the
+            only way to restore it.
+          {/if}
+        </p>
+        <button
+          onclick={makeRecoveryCode}
+          disabled={makingCode}
+          class="text-[11px] bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white px-2 py-1 rounded"
+        >{makingCode ? 'Making…' : recoveryCodeExists ? 'Make a new recovery code' : 'Make a recovery code'}</button>
+      </div>
+    {/if}
+
+    {#if shownCode}
+      <section
+        class="p-4 bg-slate-900 border border-amber-700/60 rounded-lg space-y-3"
+        aria-labelledby="recovery-code-heading"
+      >
+        <h2 id="recovery-code-heading" class="text-xs font-bold uppercase tracking-widest text-amber-300">
+          Administrator key recovery code
+        </h2>
+        <p class="text-xs text-slate-300">
+          Print this code or write it down, and keep it somewhere safe away from this computer. It's shown only now.
+          Anyone with this code and a copy of GoPMgr's account file can open every user's data.
+        </p>
+        <p class="font-mono text-lg tracking-wider text-slate-100 select-all">{shownCode}</p>
+        {#if printerList.length > 0}
+          <div class="flex flex-wrap items-end gap-2">
+            <label class="block">
+              <span class="text-[11px] text-slate-400">Printer</span>
+              <select
+                bind:value={chosenPrinter}
+                class="block mt-1 bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-amber-500 outline-none"
+              >
+                {#each printerList as printer (printer.name)}
+                  <option value={printer.name}>
+                    {printer.name} ({printer.connection === 'local' ? 'connected to this computer' : 'on the network'})
+                  </option>
+                {/each}
+              </select>
+            </label>
+            <button
+              onclick={printRecoveryCode}
+              disabled={printingCode || !chosenPrinter}
+              class="text-[11px] bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white px-2 py-1.5 rounded"
+            >{printingCode ? 'Printing…' : 'Print'}</button>
+          </div>
+          <p class="text-[11px] text-slate-500">
+            The code is sent to this printer and kept by the print system until it prints; choose one connected to this
+            computer.
+          </p>
+        {:else}
+          <p class="text-[11px] text-slate-400">No printer that prints on paper was found, so write the code down.</p>
+        {/if}
+        <label for="recovery-type-back" class="block text-[11px] text-slate-400">Type the code to confirm you kept it</label>
+        <div class="flex flex-wrap items-center gap-2">
+          <input
+            id="recovery-type-back"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            bind:value={typedBack}
+            class="w-96 max-w-full bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-amber-500 outline-none"
+          />
+          <button
+            onclick={confirmRecoveryCode}
+            disabled={confirmingCode || !typedBack.trim()}
+            class="text-[11px] bg-amber-700 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-2 py-1 rounded"
+          >{confirmingCode ? 'Checking…' : 'Confirm'}</button>
+          <button onclick={closeRecoveryCode} class="text-[11px] text-slate-400 hover:text-slate-200 underline">
+            Close without confirming
+          </button>
+        </div>
+      </section>
     {/if}
 
     {#if canTakeOver}
@@ -998,6 +1179,54 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     The administrator key is waiting to be replaced, but nobody holds it, so it can't be replaced yet.
                   {/if}
                 </p>
+              {/if}
+              {#if superHoldsKey && recoveryConfirmed && !shownCode}
+                {#if pendingNewCode}
+                  <p class="text-xs text-slate-300">
+                    Make a new recovery code? The old one stops working, so destroy the old paper.
+                  </p>
+                  <div class="flex items-center gap-2">
+                    <button
+                      onclick={makeRecoveryCode}
+                      disabled={makingCode}
+                      class="text-[11px] bg-amber-800 hover:bg-amber-700 disabled:opacity-50 text-white px-2 py-1 rounded"
+                    >{makingCode ? 'Making…' : 'Make new code'}</button>
+                    <button
+                      onclick={() => (pendingNewCode = false)}
+                      class="text-[11px] text-slate-400 hover:text-slate-200 underline"
+                    >Cancel</button>
+                  </div>
+                {:else}
+                  <p class="text-xs text-slate-400">
+                    This key has a recovery code.
+                    <button
+                      onclick={() => (pendingNewCode = true)}
+                      class="text-[11px] text-slate-400 hover:text-amber-400 underline"
+                    >Replace recovery code</button>
+                  </p>
+                {/if}
+              {/if}
+              {#if !superHoldsKey && recoveryCodeExists}
+                <div class="space-y-2" role="group" aria-label="Restore the administrator key">
+                  <label for="restore-code" class="block text-xs text-slate-300">
+                    You don't hold the administrator key. Enter its recovery code to restore it.
+                  </label>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <input
+                      id="restore-code"
+                      type="text"
+                      autocomplete="off"
+                      spellcheck="false"
+                      bind:value={restoreCode}
+                      class="w-96 max-w-full bg-slate-950 border border-slate-800 p-1.5 rounded text-xs font-mono focus:border-amber-500 outline-none"
+                    />
+                    <button
+                      onclick={restoreKey}
+                      disabled={restoring || !restoreCode.trim()}
+                      class="text-[11px] bg-amber-700 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-2 py-1 rounded"
+                    >{restoring ? 'Restoring…' : 'Restore key'}</button>
+                  </div>
+                </div>
               {/if}
               {#if superHoldsKey}
                 {#if pendingReplace}

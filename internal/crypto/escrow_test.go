@@ -5,6 +5,7 @@ package crypto
 
 import (
 	"bytes"
+	"crypto/rand"
 	"errors"
 	"testing"
 )
@@ -242,4 +243,45 @@ func flipLastByte(b []byte) []byte {
 	out := bytes.Clone(b)
 	out[len(out)-1] ^= 0x01
 	return out
+}
+
+func mustRecoveryCode(t *testing.T) []byte {
+	t.Helper()
+	code := make([]byte, EscrowRecoveryCodeSize)
+	if _, err := rand.Read(code); err != nil {
+		t.Fatal(err)
+	}
+	return code
+}
+
+func TestEscrowRecoveryOpensOnlyWithItsCodeAndKeyID(t *testing.T) {
+	priv, _ := mustKeyPair(t)
+	code := mustRecoveryCode(t)
+	wrapped, err := WrapEscrowRecovery(code, "key-1", priv)
+	if err != nil {
+		t.Fatalf("WrapEscrowRecovery: %v", err)
+	}
+	got, err := OpenEscrowRecovery(code, "key-1", wrapped)
+	if err != nil || !bytes.Equal(got, priv) {
+		t.Fatalf("OpenEscrowRecovery of its own wrap = %x, %v; want the private key", got, err)
+	}
+	for name, open := range map[string]func() ([]byte, error){
+		"another code":     func() ([]byte, error) { return OpenEscrowRecovery(mustRecoveryCode(t), "key-1", wrapped) },
+		"another key id":   func() ([]byte, error) { return OpenEscrowRecovery(code, "key-2", wrapped) },
+		"tampered":         func() ([]byte, error) { return OpenEscrowRecovery(code, "key-1", flipLastByte(wrapped)) },
+		"truncated":        func() ([]byte, error) { return OpenEscrowRecovery(code, "key-1", wrapped[:5]) },
+		"short code bytes": func() ([]byte, error) { return OpenEscrowRecovery(code[:10], "key-1", wrapped) },
+	} {
+		if got, err := open(); err == nil {
+			t.Errorf("%s: opened to %x, want an error", name, got)
+		}
+	}
+	// Each wrap uses a fresh nonce.
+	again, err := WrapEscrowRecovery(code, "key-1", priv)
+	if err != nil {
+		t.Fatalf("WrapEscrowRecovery: %v", err)
+	}
+	if bytes.Equal(again[:12], wrapped[:12]) || bytes.Equal(again, wrapped) {
+		t.Fatal("two wraps share a nonce")
+	}
 }

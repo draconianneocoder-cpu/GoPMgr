@@ -7,6 +7,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdh"
+	"crypto/hkdf"
 	"crypto/hmac"
 	"crypto/hpke"
 	"crypto/rand"
@@ -45,6 +46,7 @@ const (
 	escrowPinLabel         = "gopmgr/escrow/pin/v1"
 	escrowAttestKeyLabel   = "gopmgr/escrow/attest-key/v1"
 	escrowAttestLabel      = "gopmgr/escrow/attest/v1"
+	escrowRecoveryLabel    = "gopmgr/escrow/recovery/v1"
 )
 
 // EscrowKEMID is the HPKE KEM identifier of DHKEM(X25519, HKDF-SHA256).
@@ -195,6 +197,62 @@ func UnwrapPersonalKey(dek []byte, username string, wrapped []byte) ([]byte, err
 		return nil, ErrEscrowOpen
 	}
 	return privateKey, nil
+}
+
+// EscrowRecoveryCodeSize is the length in bytes of an escrow recovery code
+// (ADR-005 part 3b): 160 random bits.
+const EscrowRecoveryCodeSize = 20
+
+// WrapEscrowRecovery encrypts the escrow private key escrowKeyID under a
+// recovery code (AES-256-GCM, a key derived from the code with HKDF-SHA256,
+// a random nonce, the key ID bound as additional data). The code is full
+// entropy, so no slow KDF is needed. The result is the nonce followed by the
+// ciphertext.
+func WrapEscrowRecovery(code []byte, escrowKeyID string, escrowPrivateKey []byte) ([]byte, error) {
+	aead, err := recoveryAEAD(code, escrowKeyID)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, aead.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, fmt.Errorf("crypto: recovery nonce: %w", err)
+	}
+	return aead.Seal(nonce, nonce, escrowPrivateKey, bindFields(escrowRecoveryLabel, []byte(escrowKeyID))), nil
+}
+
+// OpenEscrowRecovery reverses WrapEscrowRecovery. It fails with
+// ErrEscrowOpen for another code, another key ID, or altered data. The
+// caller must check the result against a pin before use.
+func OpenEscrowRecovery(code []byte, escrowKeyID string, wrapped []byte) ([]byte, error) {
+	aead, err := recoveryAEAD(code, escrowKeyID)
+	if err != nil {
+		return nil, err
+	}
+	if len(wrapped) < aead.NonceSize() {
+		return nil, ErrEscrowOpen
+	}
+	nonce, ciphertext := wrapped[:aead.NonceSize()], wrapped[aead.NonceSize():]
+	privateKey, err := aead.Open(nil, nonce, ciphertext, bindFields(escrowRecoveryLabel, []byte(escrowKeyID)))
+	if err != nil {
+		return nil, ErrEscrowOpen
+	}
+	return privateKey, nil
+}
+
+func recoveryAEAD(code []byte, escrowKeyID string) (cipher.AEAD, error) {
+	if len(code) != EscrowRecoveryCodeSize {
+		return nil, fmt.Errorf("crypto: escrow recovery code must be %d bytes", EscrowRecoveryCodeSize)
+	}
+	key, err := hkdf.Key(sha256.New, code, nil, string(bindFields(escrowRecoveryLabel, []byte(escrowKeyID))), 32)
+	if err != nil {
+		return nil, err
+	}
+	defer clear(key)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	return cipher.NewGCM(block)
 }
 
 func personalKeyAEAD(dek []byte) (cipher.AEAD, error) {

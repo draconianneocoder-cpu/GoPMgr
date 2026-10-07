@@ -20,6 +20,8 @@ package users
 //     acknowledged in its sign-in notice (ADR-004 decision 2).
 //   - escrow_rotation_pending: one row while the administrator key must be
 //     replaced and nobody able to do it was present (ADR-005 part 3).
+//   - escrow_recovery: the active key's private half wrapped under its
+//     recovery code, and whether the code was confirmed (ADR-005 part 3b).
 const escrowSchema = `
 CREATE TABLE IF NOT EXISTS escrow_keys (
 	id         TEXT PRIMARY KEY,
@@ -63,6 +65,13 @@ CREATE TABLE IF NOT EXISTS escrow_rotation_pending (
 	id        INTEGER PRIMARY KEY CHECK (id = 1),
 	reason    TEXT NOT NULL,
 	marked_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS escrow_recovery (
+	escrow_key_id TEXT PRIMARY KEY REFERENCES escrow_keys(id),
+	wrapped       BLOB NOT NULL,
+	confirmed     INTEGER NOT NULL DEFAULT 0,
+	created_at    TEXT NOT NULL,
+	created_by    TEXT NOT NULL
 );
 `
 

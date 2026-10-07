@@ -8,9 +8,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 **Status:** Accepted (owner decisions, 2026-10-05 and 2026-10-07). Part 1
 (the role, subordinate limits, hand-over) and part 2 (standby and takeover)
 built 2026-10-05; part 2b (takeover after an inactive standby, takeover
-reasons and protection) built 2026-10-07; part 3a (escrow rotation) built
-2026-10-07; parts 3b (recovery code) and 3c (a new key with a sign-in
-notice) next. All of them ship before the next release tag.
+reasons and protection) built 2026-10-07; parts 3a (escrow rotation) and 3b
+(recovery code) built 2026-10-07; part 3c (a new key with a sign-in notice)
+next. All of them ship before the next release tag.
 **Decision date:** 2026-10-05
 
 ## Context
@@ -141,6 +141,37 @@ super administrator instead.
     the reminder returns; a rotation never shows a code, so nobody leaving
     takes one with them (owner decision, 2026-10-07, replacing "shown when
     a key is made").
+    - **Built (part 3b, 2026-10-07).** The code is 160 random bits, shown
+      once as 32 base32 characters in four groups; when typed back, case,
+      spaces, and dashes do not matter, and the digits 0, 1, and 8 read as
+      O, I, and B. The key's private half is stored wrapped under the code
+      (AES-256-GCM, key from HKDF-SHA256, key ID bound). A code counts as
+      made only once typed back; until then the reminder stays. Restoring
+      needs the restored key to match the super administrator's own pin
+      (no pin means no restore: sign in first) and the active key in
+      `system.db`; a failed attempt is recorded without the code, and a
+      pending replacement then runs, which voids the code.
+    - **Printing (owner decision, 2026-10-07: native, all platforms).**
+      GoPMgr sends a plain-text page to the operating system's print
+      service with the text on standard input, so it writes no file: CUPS's
+      `lp` on macOS and Linux, PowerShell's `Out-Printer` on Windows.
+      Printers that save to a file (PDF, XPS, `file:`, OneNote, fax) are not
+      offered, and each printer is labeled as connected to this computer or
+      on the network. The job title is generic. The Windows path is built
+      and unit-tested but has not been run on Windows, and ships marked as
+      such (owner decision, 2026-10-07). Without a printer, the code is
+      written down.
+    - **Accepted risks (part 3b):** the code, with any copy of `system.db`
+      that holds its row, opens every user's data sealed to that key, so it
+      is treated like the key itself; a former super administrator who
+      kept the code and an old copy keeps access to data sealed before the
+      next rotation, the same limit as 3a; the print service holds the job
+      until it prints, on another computer for a network or shared
+      printer, and may keep it under its own retention settings; the
+      super-administrator check before restoring is a policy gate on a
+      plaintext row, and the real authority is the code plus the restorer's
+      pin; the code is a Go string sent over Wails' IPC, so it cannot be
+      wiped from memory.
   - **If the code is lost, a new key with a notice.** The super
     administrator creates a new key; each user's data is re-sealed to it at
     their next sign-in, and, like the access notice, they are shown who

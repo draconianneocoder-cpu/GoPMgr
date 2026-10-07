@@ -194,6 +194,11 @@ type Succession struct {
 	// RotationPending reports that the administrator key is waiting to be
 	// replaced (ADR-005 part 3).
 	RotationPending bool
+	// RecoveryCodeExists and RecoveryCodeConfirmed report whether the
+	// active key has a recovery code, and whether it was typed back
+	// (ADR-005 part 3b).
+	RecoveryCodeExists    bool
+	RecoveryCodeConfirmed bool
 }
 
 type successionState struct {
@@ -476,6 +481,9 @@ func (s *Store) Succession(actor string) (Succession, error) {
 			return err
 		}
 		out.RotationPending = reason != ""
+		if out.RecoveryCodeExists, out.RecoveryCodeConfirmed, err = recoveryStateTx(ctx, q); err != nil {
+			return err
+		}
 		out.Protections, err = activeProtectionsTx(ctx, q, now)
 		return err
 	})

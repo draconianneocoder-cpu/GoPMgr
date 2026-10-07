@@ -56,10 +56,10 @@ GOPMGR_RELEASE_TAG=v<version-of-record>-alpha.<sequence> make tag-preflight
 ```
 
 ADR-004 escrow rotation (owner decision 3) is built (ADR-005 part 3a,
-2026-10-07). Do not tag before the rest of
-[ADR-005](design/ADR-005-super-administrator-and-succession.md) ships: part
-3b, the recovery code, and part 3c, a new key with a sign-in notice when
-nobody holds the old one (owner decisions, 2026-10-05 and 2026-10-07). See
+2026-10-07), and so is the recovery code (part 3b). Do not tag before the
+rest of [ADR-005](design/ADR-005-super-administrator-and-succession.md)
+ships: part 3c, a new key with a sign-in notice when nobody holds the old
+one (owner decisions, 2026-10-05 and 2026-10-07). See
 [ADR-004](design/ADR-004-administrator-access-to-user-data.md).
 
 Before the tag, also require:
@@ -82,6 +82,7 @@ Before the tag, also require:
 | Windows `.exe` | No Windows host evidence is recorded. | Obtain a Windows host and run install, launch, update/upgrade, uninstall, data-preservation, and Narrator/keyboard smoke checks, or label the artifact unverified and do not advertise Windows support. |
 | Signed update channel | Code and manifest verification are tested, but the release keypair is not provisioned. | Provision and protect the Ed25519 keypair, verify the embedded public key and manifest URL, test a real alpha-to-newer-alpha update, or state that updates are disabled. |
 | PDF/A and PAdES | Deterministic and external-validator harnesses exist; trusted-certificate evidence is blocked. | Run the local/external gates. Do not claim trusted-chain validity without a separately supplied trusted sample and `make check-pades-trusted` evidence. |
+| Recovery-code printing (ADR-005 part 3b) | macOS: printer listing and a refused print to a missing queue run against real CUPS; a real print not yet run. Linux: unit tests only (CI has no CUPS). Windows: built and unit-tested, never run (owner decision: ships marked unverified); a field-separator bug in the Windows listing was found by review, not by running it. | Run one real print on macOS and Linux before the tag, or say in the release notes that it was not run; the notes must say Windows printing is unverified. |
 | Keyboard and assistive technology | Focused macOS keyboard work exists; broad VoiceOver and all Windows AT coverage remain open. | Run the flows advertised in the alpha notes and record the exact screen reader, OS, route, and outcome. |
 
 ## Publication sequence
