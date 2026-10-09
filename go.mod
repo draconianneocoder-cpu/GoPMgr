@@ -3,7 +3,7 @@
 
 module gopmgr
 
-go 1.27.0
+go 1.27.2
 
 require (
 	github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c

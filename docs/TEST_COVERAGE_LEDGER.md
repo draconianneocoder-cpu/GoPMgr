@@ -30,7 +30,11 @@ coverage under the default build (no `-tags duckdb`), current as of the
 tracked `coverage-baseline.json`. Reproduce with
 `scripts/coverage-go.sh default` / `scripts/coverage-go.sh duckdb` (Go) or
 `npm --prefix frontend run test:coverage` (frontend). The exclusion rationale
-is recorded beside `scripts/coverage-exclude-go.txt`.
+is recorded beside `scripts/coverage-exclude-go.txt`. Headings are measured
+with Go 1.27.2 since 2026-10-09: its cover tool fixed per-block statement
+counts that 1.27.1 inflated, so most headings fell slightly with the same
+tests (for example `internal/documents`, 78.2% to 69.5%). Per-file
+percentages in rows written before then were measured with the older count.
 
 `scripts/check-coverage-ledger-drift.sh` (2026-08-10; widened 2026-08-11;
 run via `make coverage-ledger-drift` and the failing-on-error macOS CI assurance job,
@@ -76,7 +80,7 @@ needs the same update here.
 
 ---
 
-## Root package (`gopmgr`, package `main`) — 71.7%
+## Root package (`gopmgr`, package `main`) — 71.2%
 
 The Wails desktop app entry point, App struct (bound to the frontend via
 `window.go.main.App`), and CLI/headless dispatch. Most of this package's
@@ -131,7 +135,7 @@ on real outcomes rather than mocking collaborators.
 
 ---
 
-## `internal/admin` — 98.1%
+## `internal/admin` — 97.7%
 
 Administrative Pack: secure archive creation and tamper-evident signature
 event logging.
@@ -140,7 +144,7 @@ event logging.
 | --- | --- | --- | --- | --- |
 | `admin_test.go` | 14 | `NewService`, `SecureArchive` (incl. the `GoPMgr_Archive_` prefix — renamed from `PMForge_Archive_`, see `b1c8336`; settings-load failure; `CertPath`-bundling failure), `LogSignatureEvent`, `LogDocumentSignatureOutcome` (incl. empty-string defaulting) | fault-injection, fixture, closed-DB | `SecureArchive` must fail closed on every stage that can fail: if settings can't be loaded, if the saved certificate can't be bundled, or if the success audit row can't be written (in which case the just-created archive file must be deleted rather than left as an unaudited artifact). Signature-event logging must never panic regardless of success/failure/nil-error combinations, since it runs on the signing hot path. A blocked tamper-evident audit write is proven to leave no partial row behind, though this can't distinguish the log-only guard specifically running from the write simply failing outright — the same disclosed limit as `applog`'s `pruneOldLogs` test. One `os.Remove` double-fault line (removing an unaudited archive fails too) is knowingly untested: forcing it needs a directory permission that would also block archive creation itself, so no portable test reaches it — see the in-code comment at `workflow.go`'s `SecureArchive`. **2026-09-01**: `TestSecureArchive_CertBundlingError_PreservesStructuredReport` pins the fix changing the `ARCHIVAL_BUNDLE_ERROR` branch from `fmt.Errorf("...: %s", report.Message)` to `%w` on `report.ToError()` — without it, `debug.Report(err)` returned `false` for the one branch covering every `debug.Wrap` site inside `CreateArchivalBundle` (`internal/db/backup.go`), silently defeating the new diagnostics wiring for its most likely real failure (disk full, unreadable cert, zip write error). |
 
-## `internal/agile` — 97.5%
+## `internal/agile` — 97.2%
 
 Agile/Software-Dev Pack: Kanban boards, backlog, sprints, DORA metrics.
 
@@ -150,7 +154,7 @@ Agile/Software-Dev Pack: Kanban boards, backlog, sprints, DORA metrics.
 | `ids_test.go` | 1 | Entity ID generation | fault-injection | ID generation must fail loudly (not silently produce a weak/predictable ID) when the entropy source is unavailable. |
 | `store_test.go` (extended 2026-09-29, 2026-09-30) | 35 | Every `Store` method's CRUD surface: `TestStoreMethodsLeaveAnotherProjectsRowsAlone` (two projects in one database: project A's store moving, deleting, reading, or saving over project B's work item, sprint, and deployment leaves them unchanged, a save naming project B lands in A, deleting B's sprint keeps its work item's link, and listing B's board's columns returns none; seeds removing each of the twelve project filters, upsert guards, forced project IDs, and the no-row check each fail); `GetWorkItem` returns only this project's items (`TestGetWorkItem_OnlyReturnsThisProjectsItems`; a seed dropping the project filter fails); columns (the closed-connection and trigger-blocked-write failures of `SaveColumn`/`DeleteColumn`, with `DeleteColumn`'s post-refusal count query and both `RowsAffected` checks disclosed as untested; `SaveColumn` insert+upsert and its refusals of a blank name, a negative WIP limit, another project's board, and moving another board's column; `DeleteColumn` and its refusals of the four built-in columns and of a column holding work items, with the item count; seeds dropping each of those six checks fail), work items (`SaveWorkItem` defaults/closed_at rules/upsert, `GetWorkItem`, `ListWorkItems` scoping+filters, `DeleteWorkItem`, `MoveWorkItem`, `WIPCountByColumn`), sprints (`SaveSprint`, `GetSprint`, `ListSprints` ordering, `DeleteSprint` FK-clearing), deployments (`SaveDeployment`, `ListDeployments` windowing, `DeleteDeployment`), plus closed-connection and corrupted-column error propagation across the board | fixture, fault-injection, closed-DB, corrupted-column | 10 of `store.go`'s 19 methods had zero dedicated tests before this, and the ones that did were only exercised incidentally by `ids_test.go`'s entropy-failure fixture — meaning the actual INSERT/UPSERT business logic (default-value fill-in, the `state == "done"` closed_at auto-stamp, ON CONFLICT DO UPDATE semantics) was unverified in the package backing GoPMgr's entire Agile/Software-Dev Pack; root's `app_agile.go` Wails-bridge methods are thin wrappers over these same functions, so this is the layer where the behavior is actually pinned. Notable findings pinned by dedicated tests: `TestMoveWorkItem_AwayFromDonePreservesClosedAt` locks in an easy-to-miss asymmetry in `MoveWorkItem`'s SQL — moving an item *to* "done" stamps `closed_at`, but moving an already-closed item *away* from "done" does NOT clear it; a test asserting only "non-zero" would miss both a re-stamp-on-every-move mutation and a clear-on-leaving-done mutation, so the test pins the exact preserved value. `TestSaveWorkItem_UpsertUpdatesFieldsAndPreservesCreatedAt` verifies `created_at` is deliberately absent from the `ON CONFLICT DO UPDATE SET` column list (which is what preserves it across an update) — verified by adding it to that list and confirming the test catches the now-overwritten value. `TestDeleteSprint_RemovesSprintAndClearsWorkItemReferences` locks in that deleting a sprint clears `sprint_id` on the work items that referenced it, not just that the sprint row itself is gone. `TestListWorkItems_ScopesToProjectAndOrdersByOrderIdx` and `TestWIPCountByColumn_ScopesToProject` seed a second `project` row directly via SQL to prove the `WHERE project_id = ?` predicates actually filter — both note that two-project files aren't reachable through the application today (each `.pmforge` file holds exactly one project per the schema comment), so a future reader doesn't conclude multi-project files are supported. `TestStoreMethods_PropagateClosedConnectionErrors` closes the DB and drives every remaining method to confirm none silently returns a zero value on a dead connection; for methods with more than one sequential DB call, this proves end-to-end propagation but doesn't pin which specific call's guard fired first. Four corrupted-column tests force `Scan` failure branches by setting a numeric column to a non-numeric string via SQLite's permissive type affinity — the same technique used in `internal/users`. One planned corrupted-column test (`EnsureDefaultBoard`'s existing-board Scan-error branch) was abandoned after discovering the corrupted column is also the one the `WHERE` clause filters on, so corrupting it makes the row stop matching the query before `Scan` ever runs — that branch is reached instead by the closed-connection test. Known gaps, left disclosed: `EnsureDefaultBoard`'s transaction-body branches and `DeleteSprint`'s two `tx.Exec` calls have no way to fail one specific call without failing the ones before it on the same live connection; `WIPCountByColumn`'s `rows.Scan` failure on a `COUNT(*)` aggregate has no realistic corruption path. Separately, six `Store` methods (`GetWorkItem`, `DeleteWorkItem`, `GetSprint`, `DeleteSprint`, `DeleteColumn`, `DeleteDeployment`) take a bare ID with no `project_id` predicate, unlike this codebase's other project-scoped DAOs — confirmed inert today since the schema comment on `internal/db/sqlite.go`'s `project` table states a file currently holds exactly one project, but flagged as something to fix before multi-project-file support ships. |
 
-## `internal/analytics` — 100% (default build) / 82.5% (`-tags duckdb`)
+## `internal/analytics` — 100% (default build) / 80.6% (`-tags duckdb`)
 
 Optional in-memory analytics engine; `stub.go` (default build, always
 reports unavailable) vs. `duckdb.go` (real DuckDB-backed portfolio
@@ -164,7 +168,7 @@ tags are measured independently.
 | `duckdb_test.go` | 8 | `PortfolioRollup` (aggregation, minor-units preference, idempotence), `ImportTabular` (CSV) | unit, table-driven, fixture | Portfolio rollups must aggregate correctly and be safe to call repeatedly (idempotent) since the GUI may re-trigger it; CSV import must reject unsupported extensions and missing files before touching DuckDB. |
 | `stub_test.go` | 1 | Stub engine's "unavailable" reporting | unit | The non-duckdb build must report unavailability cleanly, not panic or silently no-op. |
 
-## `internal/applog` — 100% of `applog.go` (93.9% of package; `dialog_darwin.go`/`opendir_darwin.go` are platform-narrow and excluded from the ratchet, see `coverage-exclude-go.txt`)
+## `internal/applog` — 100% of `applog.go` (95.7% of package; `dialog_darwin.go`/`opendir_darwin.go` are platform-narrow and excluded from the ratchet, see `coverage-exclude-go.txt`)
 
 Process-level diagnostic logging (dated log files, log pruning, fatal-error dialogs).
 
@@ -188,7 +192,7 @@ the test binary.
 
 The `TestInit_OpenFileFails` fixture blocks both the current and next calendar date with `AddDate(0, 0, 1)`, so a local-midnight rollover or DST transition cannot make it miss the filename `Init` chooses.
 
-## `internal/auth` — 98.1%
+## `internal/auth` — 97.7%
 
 Argon2id password hashing/verification — the core of local authentication.
 
@@ -196,7 +200,7 @@ Argon2id password hashing/verification — the core of local authentication.
 | --- | --- | --- | --- | --- |
 | `password_test.go` | 21 | `HashPassword`, `VerifyPassword`, `NeedsRehash` | table-driven, fault-injection, round-trip | Extremely high test density for a security-critical primitive: every malformed-hash-string shape (wrong part count, bad version, bad base64, zero memory/time) must be rejected explicitly rather than causing undefined behavior, and a hash created under weaker parameters must be flagged for transparent rehashing on next login. |
 
-## `internal/budget` — 98.8%
+## `internal/budget` — 98.6%
 
 Cost-rollup engine (vendor contracts + labour estimates).
 
@@ -204,7 +208,7 @@ Cost-rollup engine (vendor contracts + labour estimates).
 | --- | --- | --- | --- | --- |
 | `budget_test.go` | 7 | `Compute` | unit, table-driven, boundary | Vendor and labour costs must sum correctly including fractional story-point rates (via minor-units arithmetic) and a negative remaining budget (over-budget) must be representable, not clamped to zero. Contract, labour, subtotal, and remaining-overflow cases must return the monetary overflow sentinel rather than a wrapped total. `Compute`'s per-category overflow branch is untested by design, not a gap: every category accumulator is a non-negative subset of the same contributions already summed into `committed` (contract values gated `.Positive()`, labour costs gated by a positive rate/points before `RateTimesQuantity`), so if `committed` doesn't overflow no category subtotal can either — documented inline at the branch (`internal/budget/budget.go`) rather than chased with an unreachable test case. |
 
-## `internal/calendar` — 91.7%
+## `internal/calendar` — 90.7%
 
 Working-day/holiday calendars per country, used by scheduling.
 
@@ -221,7 +225,7 @@ Chart taxonomy/dispatch layer: 22 chart kinds routed to one of 4 layout engines 
 | `charts_test.go` | 26 | `All`, `Get`, the per-engine registry counts (through a test-local `byEngine`), `Layout` dispatch for every kind | table-driven | The registry is the single source of truth routing a chart kind string to its layout function — an unrouted or mis-routed kind would silently render nothing or the wrong chart. Every kind's example data is round-tripped through `Layout` to prove the registry and the engines agree on schema. |
 | `engines_schedule_test.go` | 3 | `LayoutWithSchedulePlan` (CPM date-anchoring dispatch) | unit | Only CPM charts anchor to real dates; other DAG-family charts must delegate to plain layout, and a zero project start must fall back safely rather than producing garbage dates. |
 
-## `internal/charts/dag` — 94.8%
+## `internal/charts/dag` — 92.8%
 
 DAG-family chart engines: WBS, CPM/Network/PERT, layered (Workflow-adjacent), Fishbone, causal tree.
 
@@ -233,7 +237,7 @@ DAG-family chart engines: WBS, CPM/Network/PERT, layered (Workflow-adjacent), Fi
 | `link_label_test.go` | 2 | Dependency-link label parsing (`FS+5d` etc.) | unit | Malformed or unusual link labels must parse to a sane default rather than crash the layout. |
 | `pert_test.go` | 6 | PERT three-point estimation (optimistic/likely/pessimistic → expected + std dev) | table-driven | PERT's statistical formulas (expected duration, variance) must match the textbook formula exactly, including the all-zero-variance edge case. |
 
-## `internal/charts/flow` — 98.0%
+## `internal/charts/flow` — 97.6%
 
 Flow-family chart engines: Workflow, Activity diagrams.
 
@@ -241,7 +245,7 @@ Flow-family chart engines: Workflow, Activity diagrams.
 | --- | --- | --- | --- | --- |
 | `flow_test.go` | 32 | `Parse`/`Layout`/`Encode` for Workflow and Activity diagrams, swimlane assignment, shape resolution | table-driven, round-trip | Layering (rank assignment) must handle diamonds and cycles correctly; nodes with no assigned swimlane must get a default lane rather than vanish from the rendered diagram. |
 
-## `internal/charts/matrix` — 92.3%
+## `internal/charts/matrix` — 91.4%
 
 Matrix-family chart engines: RACI, Risk Matrix, Stakeholder, SWOT, generic matrix.
 
@@ -253,7 +257,7 @@ Matrix-family chart engines: RACI, Risk Matrix, Stakeholder, SWOT, generic matri
 | `stakeholder_test.go` | 10 | Stakeholder power/interest quadrant placement | table-driven, property | Every stakeholder must land in exactly one of four labeled quadrants and stay within the unit canvas regardless of input scale; sort order must be deterministic (alphabetical) so re-renders don't jitter. |
 | `swot_test.go` | 6 | SWOT four-quadrant layout | table-driven | The four SWOT categories must always render in the same canonical grid position regardless of how many items are in each. |
 
-## `internal/charts/pdfrender` — 89.0%
+## `internal/charts/pdfrender` — 86.4%
 
 Renders chart layouts directly into PDF via `gofpdf`. **Known low-coverage
 package — Phase 3 (Go construction tier) candidate.** Coverage was closed
@@ -295,7 +299,7 @@ forever.
 | `risk_test.go` | 1 | Risk Matrix PDF rendering | fixture/golden | Confirms a Risk Matrix chart actually produces PDF bytes, not just that the Go call doesn't error. |
 | `stats_test.go` | 17 (`TestRenderPie_NonPositiveTotal`, `TestRenderCartesian_EmptyInput`, `TestDrawRightAxisLine_GuardsShortSeriesAndNoCategories`, `TestDrawRightAxisTicks_LabelsMinMidAndMax`, and `TestHexRGB` each carry subtests) | `renderPie`, `renderCartesian`, `scanYBounds`'s guard, `drawLineSeries`'s point cap, `hexRGB`, plus the `pie`/`bar` kinds through the full `RenderChartToPDF` pipeline (closing `renderStats`'s own kind dispatch and `drawBars`); `drawStackedAreas`, `drawRightAxisLine`, `drawRightAxisTicks`, `drawDashedLine` | unit (table-driven) + fixture/golden with content-stream assertions | The headline risk: `scanYBounds` anchors the low bound at 0 for all-positive data, so an all-zero series (or an explicit `y_axis.min == y_axis.max` override) produces a zero-width Y range before the `yMax <= yMin` guard runs. Without that guard, every tick/gridline/point coordinate divides by zero, and Go's float formatting (used by fpdf for every coordinate) renders that literally as `NaN`/`+Inf`/`-Inf` in the PDF content stream — reproduced by removing the guard, so its absence is a precise, unambiguous assertion rather than relying on the tick-label text's own NaN-safety (which could mask a coordinate-level NaN). Also pins: a non-positive pie-slice total is caught by an explicit guard before the wedge-angle division; every pie slice is drawn, checked both by legend text and by a count of the polygon fill+stroke operator; a line series with more points than categories is capped to the category count rather than drawing past the plot's right edge; `hexRGB` falls back to the caller's default color on every malformed input shape rather than panicking on a short slice. Four mutations (remove each of these four guards/caps) were each confirmed to fail the relevant test before being reverted. The four helpers tested directly rather than through the full pipeline: `drawStackedAreas` draws one alpha-blended filled polygon per series — its `n==0` guard prevents emitting empty alpha-state ops with no polygon geometry between them, a cosmetic no-op rather than a NaN or dropped-geometry failure. `drawRightAxisLine` draws one circle marker per point connected by line segments — its `n<2` guard is real, but its `nCats==0` guard is an equivalent mutation, since the draw loop's own bound already excludes every iteration when `nCats` is 0 (confirmed by seeding each guard independently). `drawRightAxisTicks` renders three tick labels at min/mid/max of the (possibly custom) axis range; a custom min/max is confirmed to actually be used, not silently ignored. `drawDashedLine` draws a line as a fixed number of short segments rather than one continuous stroke — the exact segment count for a known input was confirmed by direct probe before writing the assertion; its `length==0` guard prevents a division by zero that would otherwise render literal `NaN` in the output, the same failure mode as `scanYBounds`'s guard above. |
 
-## `internal/charts/stats` — 95.6%
+## `internal/charts/stats` — 95.4%
 
 Stats-family chart engines: Pareto, Line, Bar, Pie, Burn-up/down, Cumulative Flow, Control chart.
 
@@ -312,7 +316,7 @@ GNU-style CLI flag parsing (`--version`, `--export`, `--repair`, etc.).
 | --- | --- | --- | --- | --- |
 | `parser_test.go` | 9 | `ParseFlags` (all 18 flags + positional project-path arg), `PrintVersion` | table-driven | Added 2026-08-04 (`dd9bf01`) — `ParseFlags` itself had zero tests despite `Config`/`PrintVersion` being tested in the same file. Uses the standard `flag.CommandLine`-reset technique to test code built on Go's package-level `flag` state without any production code changes. |
 
-## `internal/crypto` — 89.8% (part 3b added recovery wrapping, 2026-10-07; up from 72.9% at the start of Phase 2 — the `LoadCertificate` bug fix below, then the `encrypt_test.go`/`keywrap_test.go`/`pdf_cms*_test.go` rows below. Remaining gap is entirely accepted-and-disclosed lines: value-relationship guards that aren't dead by type (`aes.NewCipher`, a `DecryptBuffer` length check), a process-global FIPS-140 branch (`cipher.NewGCM`), and `asn1.Marshal`/`rsa.SignPKCS1v15` error-propagation wrappers whose underlying failure is proven real by direct helper tests but not reachable through this package's own well-formed call sites — see the rows below for the itemized breakdown rather than repeating it here.)
+## `internal/crypto` — 88.9% (part 3b added recovery wrapping, 2026-10-07; up from 72.9% at the start of Phase 2 — the `LoadCertificate` bug fix below, then the `encrypt_test.go`/`keywrap_test.go`/`pdf_cms*_test.go` rows below. Remaining gap is entirely accepted-and-disclosed lines: value-relationship guards that aren't dead by type (`aes.NewCipher`, a `DecryptBuffer` length check), a process-global FIPS-140 branch (`cipher.NewGCM`), and `asn1.Marshal`/`rsa.SignPKCS1v15` error-propagation wrappers whose underlying failure is proven real by direct helper tests but not reachable through this package's own well-formed call sites — see the rows below for the itemized breakdown rather than repeating it here.)
 
 Symmetric encryption (project-at-rest), key wrapping (ADR-001 DEK hierarchy), PDF/CMS digital signing.
 
@@ -346,7 +350,7 @@ destination file instead of buffering it fully in memory first). See
 `app_export_destination_test.go`/`exportfs_test.go`'s row above for
 detail.
 
-## `internal/db` — 78.0%
+## `internal/db` — 76.9%
 
 Persistence kernel: single SQLite file (optionally SQLCipher-encrypted)
 holding every project entity, plus the tamper-evident audit chain.
@@ -574,7 +578,7 @@ this connection pool's public surface.
 | `sigma_migration_test.go` (added 2026-08-17) | 2 | `migrateSigmaProjectsSchema`'s table-rebuild path: legacy-schema files gain `project_id`, keep pre-existing row data, and support a second Sigma project afterward; the rebuild is idempotent across repeated `InitDB` opens of the same file | fixture, migration | Companion to the `sigma_crud_test.go` FK-bug fix, covering the migration path specifically — every database open runs `Migrate()` unconditionally, so a non-idempotent rebuild would corrupt or error on a file's second open. A hand-built fixture reproduces the exact pre-fix schema via a direct low-level connection, bypassing the normal init path, so opening it exercises only the `sigma_projects` rebuild under test. `TestMigrateSigmaProjectsSchema_RebuildsLegacyTableAndPreservesRows` seeds one pre-existing row (proving data survives the rebuild, not just that the column appears), backfills its `project_id` correctly, and then requires a second, differently-titled Sigma project to succeed afterward — the actual bug this migration exists to fix — plus a foreign-key check confirming the rebuild sequence left no dangling violations. `TestMigrateSigmaProjectsSchema_IdempotentAcrossRepeatedOpens` confirms a second open doesn't error or re-run the rebuild against an already-migrated table. Not covered: the migration's own connection-reservation and mid-transaction failure paths — the same class of untriggerable gap as elsewhere in this package. |
 | `timestamps_test.go` | 19 | `nowTimestamp`/`captureTimestamp`, `retrofitTimestampFormat`/`retrofitTimestampColumn` (TEXT format retrofit), `retrofitTimestampUnixNano`/`addUnixNanoColumn`/`backfillUnixNanoColumn`/`repointUnixNanoIndex` (structural INTEGER sort-key fix), plus format-contract and persisted-state-agreement checks across all 8 target tables' real write call sites | unit, fixture, fault-seeded | See the package summary above for the full story of the ordering hazard this closes. This file's tests are the direct verification: `nowTimestamp`/`captureTimestamp` are proven to always emit nine fraction digits and TEXT/integer pairs that agree, and the real `Save*` functions are proven to actually use them, not just the helpers in isolation. `retrofitTimestampFormat` is proven to normalize both legacy TEXT shapes while preserving the underlying instant, to be idempotent, and to leave a malformed value untouched rather than failing the database open. `TestMigrate_RecoversFromPartiallyBackfilledState` proves the integer-column backfill converges correctly when different tables are left in different backfill states relative to each other — the realistic crash-recovery scenario, since the backfill loop does one `UPDATE` per row unlike the near-atomic `ALTER TABLE ADD COLUMN` per table (which this SQLite build's lack of `DROP COLUMN` support makes impractical to simulate independently — disclosed as a real, narrower gap). `TestAllTimestampColumns_TextAndUnixNanoAgree`, `explainUsesIndex`-based index tests, and `TestRepointUnixNanoIndex_RecreatesWhenMissing`/`FailsLoudlyOnUnexpectedShape` are described in the package summary above. `TestMigrate_RunsTimestampRetrofit`/`TestMigrate_RunsTimestampUnixNanoRetrofit` prove both retrofits are wired into the real database-open path, not just callable in isolation. Both retrofit functions' own SQL-driver error-propagation paths remain untested, same class of gap as elsewhere in this package. |
 
-## `internal/debug` — 97.7%
+## `internal/debug` — 96.9%
 
 Structured error-report wrapping (file/line/stack capture) for diagnostics.
 
@@ -589,7 +593,7 @@ Encrypted, append-only per-user log of project deletions (`<data dir>/deletions.
 | --- | --- | --- | --- | --- |
 | `internal/deletionlog/log_test.go` (added 2026-09-23) | 7 | `Open`, `Requested`, `Deleted`, `Failed`, `List` | unit, fault-injection | A deletion record must outlive the project, stay private, and never be rewritten. The tests prove a request and its outcome survive a reopen and list newest first; only one outcome per known request; `UPDATE` and `DELETE` are refused by triggers; commits run with `PRAGMA synchronous` = FULL, so the `requested` entry is on disk before removal; the file is SQLCipher-encrypted, 0600, and unreadable with another key; `?`/`#` in the path is refused, since the path is part of the DSN; and writes on a closed log fail. Seeding NORMAL sync, removing the update trigger, the second-outcome guard, or the DSN guard each failed a test. The uncovered lines are driver, entropy, and chmod failure returns. |
 
-## `internal/documents` — 78.2%
+## `internal/documents` — 69.5%
 
 25 document kinds (Charter, Risk Register, Status Report, etc.): registry, default content, PDF rendering.
 
@@ -803,7 +807,7 @@ for a non-numeric/absent digit run.
 | `report_quality_test.go` | 2 | Document-set preflight validation (certified vs. custom profile) | table-driven | "Certified" export mode must block on any missing required document; a custom profile must allow intentional omissions — different validation strictness for different user intents. |
 | `risk_matrix_ref_test.go` | 1 | Risk Register ↔ Risk Matrix chart cross-reference | unit | The Risk Register document must correctly expose which Risk Matrix chart it's linked to. |
 | `recovery_sheet_test.go` (added 2026-10-01) | 2 | `RenderRecoverySheetPDF`, the printable recovery-code sheet | unit, fault seeding | The sheet is one page and, read back from its inflated content streams, shows the title, account, creation date, how to use a code (naming the sign-in link exactly), the tick-off line, every code in the order given, and the keep-safe, delete-the-file, and new-codes-replace-these notes; a sheet with no codes is refused. It uses fpdf's core Helvetica and Courier and not `newDocPDF`, so it makes no PDF/A claim while no embedded font is registered (account creation happens before any project opens). Seeds skipping a code, adding a page per code, dropping the keep-safe note, or rendering an empty sheet each fail. Set `GOPMGR_RECOVERY_SHEET_SAMPLE=<path>` to write the rendered sample, which was rasterized and checked by eye on 2026-10-01 (fits A4 and US Letter margins). |
-## `internal/export` — 60.6%
+## `internal/export` — 56.8%
 
 `pdfa.go` (2026-08-05): removed three dead re-export shims — `ApplyPDFAMetadata`, `InjectPAdESSignature`, and `HasDefaultICC` — all unreachable from anywhere in the module (confirmed by grepping every call site; the real callers, in `internal/documents/fonts.go`, `internal/signing/pades.go`, and `internal/export/sigma_report.go`, already call `pdfmeta`'s versions directly). None had tests. Removing them also deleted a stale doc comment on `ApplyPDFAMetadata` claiming it overrode the Creator field with the live application version, which no live code path did. The remaining shims (`BuildXMPPacket`, `InjectXMPStream`, `MakePDFA3`, `DefaultICCProfile`) each have a real caller inside the package and were kept.
 
@@ -829,7 +833,7 @@ Shared CSV/spreadsheet formula-injection neutralization, used by every CSV-produ
 | --- | --- | --- | --- | --- |
 | `exportsafe_test.go` | 2 | `Cell` neutralization | unit, table-driven | Same vulnerability class as `internal/export/csv_test.go` but at the shared-helper level; also asserts safe values pass through completely unmodified (no over-aggressive escaping that would corrupt legitimate data starting with, e.g., a minus sign). |
 
-## `internal/fonts` — 87.7%
+## `internal/fonts` — 87.2%
 
 TrueType font catalog/embedding for generated PDFs.
 
@@ -852,7 +856,7 @@ have on disk. Verified by measuring the package both ways: 87.7% with all
 | --- | --- | --- | --- | --- |
 | `fonts_test.go` | 24 | Font family/style resolution, TTF validation, bundled-asset injection seam (empty, corrupt, and valid in-memory bundles; `NewManager` binding the real embed; family ordering), import + directory permission tightening, `ImportFont`/`RegisterAs` oversized-file guard (`os.Stat` fast path, shrunk-cap real-file refusal, exactly-at-cap acceptance, `RegisterAs` skip-and-continue for a single oversized style among otherwise-good siblings) | fixture, fault-injection, sparse-file (`Truncate`) and shrunk-cap fault-seeding | An unregistered font family must fall back to a known-good default rather than producing a PDF with missing glyphs; `ImportFont` rejects non-TTF files by content, not just by file extension. Separately: `ImportFont` and `RegisterAs` both read a font file with an unbounded `os.ReadFile` — the same unbounded-read-on-untrusted-file-pick pattern fixed for MSPDI schedule imports in `app_charts.go` — now bounded via a single shared `readFontFileBounded` helper (`os.Stat` fast path + `io.LimitReader`-bounded read + post-read length check, `maxFontFileSize` var so tests can shrink it) used by both call sites; `RegisterAs`'s existing skip-and-continue behavior on a read error (already relied on for unreadable/invalid-signature style files) extends to an oversized one for free, verified directly. A follow-up assurance review found the original fault-seed narrative wrong for the same reason as `pdf_sign_test.go` (see that row): `os.Stat` catches every oversized test file here before the second layer is ever reached. The corrected, `os.Stat`-disabled decomposition found something specific to this package: disabling only the post-read check (keeping `io.LimitReader`) doesn't just produce a confusing error here — it produces *no error at all*, since `LimitReader` silently truncates a 64-byte fake TTF to the shrunk cap and `validateTrueType` only inspects the leading 4 signature bytes, so the truncated file passes validation and imports successfully. The post-read check is what prevents that silent truncate-and-accept. The `os.Stat`-vs-actual-size TOCTOU scenario the guard's comment names remains unproven by any test. Also added: an exactly-at-cap acceptance test. Separately, the bundled-font branches now run against an injected `fs.FS` rather than the `//go:embed` var: `TestRegister_BundledWithoutAssets` used to skip itself whenever `make fonts` had been run, so the no-assets error it exists to prove went unasserted on exactly the machines where a developer would notice a regression, and the package's coverage differed between a developer checkout and CI. Driving the bundle from `fstest.MapFS` made both failure modes assertable and uncovered a real diagnostic defect: a family whose embedded files were present but all corrupt reported the same "no fetched .ttf files (run 'make fonts')" error as one that was never fetched — advice that cannot fix an already-present corrupt file. The two cases now report distinctly, fault-seeded by reverting the branch and confirming the corrupt-bundle test fails. `TestNewManager_BindsRealEmbeddedAssets` guards the seam itself; its Source Sans 3 half asserts on the committed baseline so it stays deterministic — that baseline is the face `internal/export`'s PDF/A path registers as `Helvetica`, so a mis-wired seam would have been a release-critical break. A later review caught that this test did not actually hold that guarantee: `bundled()`'s nil fallback means a constructor binding nothing still reads the real embed and still registers fonts, so fault-seeding `NewManager` to drop the binding left the whole package green. It now checks `bundledFS` on the field as well, which does fail under that same fault-seed — the behavioral assertions alone never could. `TestZeroValueManager_FallsBackToRealEmbed` covers the other side of introducing the field: `Manager`'s fields are all unexported, so `fonts.Manager{}` is legal outside the package and used to work; reading a nil `fs.FS` directly would have converted that into a panic, so `bundled()` falls back to the embed and this test stops that fallback being optimized away. Two further corrections came out of re-reading the corrupt-assets branch this package added: it counted style slots rather than distinct files, so because `FontFamily.File` falls back to the Regular face the single-file `Ledger` family was reported as "4 embedded .ttf file(s)"; and its remedy said `make fonts`, which runs `fetch-fonts.sh` with no flags and therefore skips every file already on disk — a no-op for exactly the present-but-corrupt state the branch exists to describe, reintroducing the misdirection the split was meant to remove. `TestRegister_BundledCorruptCountsDistinctFiles` and `TestRegister_BundledCorruptRemedyIsNotAnInstalledNoOp` pin both; each was confirmed failing against the pre-fix message before the fix landed. |
 
-## `internal/kernel` — 93.1%
+## `internal/kernel` — 92.1%
 
 Scheduling math core: Critical Path Method, resource leveling, EVM, Monte Carlo simulation.
 
@@ -879,7 +883,7 @@ Exact monetary arithmetic (minor units, avoiding floating-point currency bugs). 
 | `money_test.go` | 5 | `FromMajorFloat`, `RateTimesQuantity` (exact rational rounding), checked `Add`/`Sub`, `Accumulator` | unit, table-driven, boundary | Rate×quantity must use exact rational arithmetic, not float multiplication. Checked binary arithmetic and exact aggregation must reject unrepresentable final amounts while preserving cancellation regardless of term order. |
 | `scale_test.go` (updated 2026-09-29) | 14 (several carry subtests) | `ScaleByRatioChecked` (exact ratios, zero guards, both int64 bounds), `MajorFloat`, `Positive`, `FromMajorFloat`'s NaN/Inf and overflow behavior, `RateTimesQuantity` guards/rounding, `roundRat` range handling | unit, table-driven, round-trip | `ScaleByRatioChecked` returns `ErrOverflow` for EVM's final EAC calculation rather than a saturated figure. Its zero-denominator guard prevents a `big.Rat` division-by-zero panic. `roundRat` is tested at both exact int64 limits, one half-unit inside and outside each limit, and through `RateTimesQuantity` with integral overflow. This proves that rounding occurs before range handling, so an oversized financial value cannot become a plausible wrapped negative or zero amount. `Positive`'s exact-zero boundary and `MajorFloat`'s minor-unit round trip remain directly protected. `RateTimesQuantity`'s `q == nil` branch remains unreachable after its NaN/Inf guards and is intentionally not forced through a contrived seam. |
 
-## `internal/pdfmeta` — 98.5%
+## `internal/pdfmeta` — 97.6%
 
 Byte-level PDF metadata operations: XMP injection, PAdES signature embedding, PDF/A compliance. `ApplyPDFAMetadata` and `insertOutputIntentsReference` were closed to 100% first, since both are pure and fixture-free. The file's larger cluster of byte-surgery functions (`parseTrailerSizeAndRoot`, `InjectPAdESSignature`, etc., 70–95%) need malformed-PDF fixtures and were covered separately.
 
@@ -895,7 +899,7 @@ Plain-text printing through the operating system's print service, for the admini
 | --- | --- | --- | --- | --- |
 | `printing_test.go` (added 2026-10-07) | 10 | `parseCUPSPrinters`, `cupsConnection`, `parseWindowsPrinters`, `sortDefaultFirst`, `printFor`, `printCommand`, the real runner's error path | unit (fixtures), fake runner, one real `lp` refusal | From real-shaped `lpstat -v` and `-d` output, printers that write to a file (`cups-pdf:`, `file:`, `hpfax:`) are left out, the rest are labeled local (USB, IPP over USB) or network (IPP, DNS-SD shared), and the default is marked; from Windows `Win32_Printer` output, Microsoft Print to PDF, XPS, OneNote, Fax, and `FILE:` are left out and WSD or `\\server` ports count as network. Printers connected to this computer come before network ones, the default first within each group, so the picker's first choice keeps the code local. The Windows listing joins fields with `[char]9`: an earlier version used PowerShell's `` `t `` inside single quotes, where it is not an escape, so no Windows printer would ever have parsed (found at final review; the fixtures had real tabs, so only a test of the script itself catches it). On macOS, Linux, and Windows the text goes only on standard input, never in an argument, the title, or the environment; on Windows the printer name goes only in the environment, never in the script. A printer not in the listing (including a filtered PDF queue or an option-looking name) is refused before anything runs; the service's own error is returned; no `lpstat` means unsupported. On a computer with `lp`, a print to a missing queue is refused by the real service. The Windows path has not been run on Windows (owner decision: ships marked unverified). Seven seeds (accepting an unlisted printer, not filtering CUPS or Windows file printers, putting the text in the title, putting the Windows printer name in the script, losing the Windows tab join, and ranking a network default first) each fail. |
 
-## `internal/reporting` — 79.4%
+## `internal/reporting` — 78.9%
 
 Application-level combined-report orchestration over an already-open project
 database. It resolves report inputs, records quality findings, embeds optional
@@ -905,7 +909,7 @@ schedule EVM, and writes private PDF plus provenance-manifest artifacts.
 | --- | --- | --- | --- | --- |
 | `reporting_test.go` | 6 | Report preflight, combined PDF and provenance output, open-project document/chart scoping, safe output-name boundary, chart-reference parsing, EVM-resolution failure | integration, fixture, table-driven | Certified reports must fail before output when a selected document is missing; successful reports must write both the PDF and machine-readable manifest with private permissions. A same-file foreign document is treated as missing and a foreign linked chart is omitted from resolution. Resolver failures are fail-closed before the output directory exists. The path-separator case protects the internal file-output boundary even if a future caller bypasses the Wails filename sanitizer. |
 
-## `internal/rfc3161` — 82.1%
+## `internal/rfc3161` — 81.6%
 
 RFC 3161 timestamp-authority client (fail-closed by design).
 
@@ -927,7 +931,7 @@ Six Sigma Pareto chart calculation.
 | --- | --- | --- | --- | --- |
 | `enums_test.go` | 1 | Sigma enum string values | unit | Enum string values are persisted to the DB and JSON — a renamed constant's *string value* changing would silently corrupt or orphan existing stored data even though the Go identifier looks unchanged. |
 
-## `internal/sigma/service` — 83.0%
+## `internal/sigma/service` — 84.2%
 
 Six Sigma project service layer (DMAIC phase data, tool-completion status).
 
@@ -952,7 +956,7 @@ DMAIC phase-gate readiness checks (can a project advance from Define to Measure,
 | --- | --- | --- | --- | --- |
 | `readiness_test.go` | 24 | `CheckDefineReadiness`/`CheckAnalyzeReadiness`/`CheckImproveReadiness`/`CheckControlReadiness`, `CheckPhase` dispatch | table-driven | `TestCheckDefineReadiness_CanAdvanceThresholdIs80Pct`: the 80% pass threshold is pinned as an explicit literal so it can't silently drift; Measure phase is confirmed auto-approved (no gate) since it has no readiness criteria of its own. |
 
-## `internal/signing` — 84.2%
+## `internal/signing` — 82.5%
 
 Document signing: GnuPG detached signatures, PAdES timestamp preparation and application.
 
@@ -967,7 +971,7 @@ Document signing: GnuPG detached signatures, PAdES timestamp preparation and app
 | --- | --- | --- | --- | --- |
 | `driver_test.go` | 1 | SQLCipher driver registration | unit | Confirms the registered driver is actually the SQLCipher-capable one, not a plain SQLite driver silently substituted (which would mean "encrypted" databases are actually plaintext). |
 
-## `internal/templates` — 97.4%
+## `internal/templates` — 97.3%
 
 Project Launchpad seeding: JDM (JSON Decision Model) rule evaluation + seed-action dispatch.
 
@@ -977,7 +981,7 @@ Project Launchpad seeding: JDM (JSON Decision Model) rule evaluation + seed-acti
 | `jdm_windows_test.go` | 1 | Windows build of the JDM engine | fixture | Windows-only build (`jdm_windows.go`, excluded from the coverage ratchet as platform-narrow — see `scripts/coverage-exclude-go.txt`) gets its own minimal smoke test since it can't be exercised on this (macOS) CI/dev host. |
 | `seeds_test.go` | 14 | `Seeder.Apply`/`applyOne` for all 15 seed kinds, error propagation, partial-success contract | integration, fault-injection | `TestSeeder_ApplyReturnsPartialReceiptsOnFailure` is the one genuinely non-obvious behavior: `Apply` must return receipts for every seed that succeeded *before* a failure, not discard them — verified using a SQLite trigger that blocks one specific seed's insert mid-batch. Four more trigger-based tests pin each individual seed handler's error propagation. |
 
-## `internal/timeline` — 97.3%
+## `internal/timeline` — 97.1%
 
 Assembles every dated entity in a project (tasks, sprints, deployments) into one timeline view.
 
@@ -985,7 +989,7 @@ Assembles every dated entity in a project (tasks, sprints, deployments) into one
 | --- | --- | --- | --- | --- |
 | `timeline_test.go` | 8 | `Build`, `parseDate` | table-driven | Entries with empty or zero-value dates must be skipped from the timeline (not rendered as bogus 1970-01-01 entries); a failed deployment's title must be visually distinguishable. |
 
-## `internal/update` — 91.7%
+## `internal/update` — 91.3%
 
 Signed release-manifest fetch and verification (Ed25519), semver comparison, and (added 2026-08-31) download-verify-install.
 
@@ -994,7 +998,7 @@ Signed release-manifest fetch and verification (Ed25519), semver comparison, and
 | `check_test.go` | 47 | `CheckLatest` (full fetch→verify→decide orchestration), `validatePayload` (every rejection branch, incl. the 2026-08-31 same-origin download-host pin), `VerifyManifest` (Ed25519 signature checks), `isNewer` (semver comparison), `Check` (CLI exit-code contract) | fault-injection, table-driven, httptest end-to-end | Security-critical: `CheckLatest` must reject a non-HTTPS manifest URL outright, and every possible manifest-tampering shape (wrong key, bad base64, invalid JSON, channel mismatch) has its own dedicated rejection test — an update mechanism is a prime supply-chain-attack target, hence the density here despite auto-update not yet being enabled in any shipped release (see `ROADMAP.md`). Coverage was raised from 42.0% to 98.2% by closing `validatePayload` and `CheckLatest`, the two functions that actually implement the package's threat model but had been the least-tested code in it — only the channel-mismatch branch and the non-HTTPS short-circuit had dedicated tests, and the full fetch→verify→decide orchestration had no end-to-end test at all. Added: a dedicated rejection test per remaining `validatePayload` branch (platform mismatch, architecture mismatch, invalid semver, non-HTTPS/empty download URL, short/non-hex SHA-256, unparseable publication time) plus a well-formed-payload acceptance test; `httptest.NewTLSServer`-backed end-to-end tests driving `CheckLatest` through not-configured, bad public key (base64 and wrong-length), fetch error, non-200 status, oversized body, invalid signature, a propagated `validatePayload` rejection, downgrade rejection, no-update-available, and the full update-available happy path with every `Status` field checked; and `Check`'s CLI exit-code contract, since `--update`'s process exit status is an API real scripts depend on. Testing `CheckLatest` against a real TLS server required pointing its internal `http.Client` at the test server without mutating the process-wide `http.DefaultTransport`, which would affect any other test in the binary that makes an HTTP request — added a `httpTransport http.RoundTripper` package variable, nil (a no-op) in production and overridden only in this test file. Six guards (the downgrade check, the platform/architecture mismatch checks, the download-URL and manifest-URL HTTPS checks, and the guard preventing `Check`'s switch statement from running after a faked exit) were each verified by temporarily disabling them and confirming the corresponding test failed, then restoring them. One branch is disclosed as untested: `http.NewRequestWithContext`'s own error only fires on a nil context or an unparseable method/URL, both already excluded by the time it's called, so it has no realistic production trigger. **2026-08-31**: added `validatePayload`'s same-origin download-host pin (rejects a correctly-signed manifest whose `download_url` host doesn't match the manifest's own host — defense in depth against a compromised/misconfigured CDN pointing at an arbitrary HTTPS target), `TestValidatePayloadRejectsMismatchedDownloadHost`, and `TestReleaseWorkflowURLsShareHost`, which builds the manifest and artifact-download URLs exactly as `.github/workflows/release.yml` does and asserts they share a host — pins the assumption the host-check depends on against the real release pipeline, not just a fixture. |
 | `install_test.go` (added 2026-08-31) | 9 | `DownloadAndInstall`: re-verifies fresh via an internal `CheckLatest` call rather than trusting a caller-supplied URL/hash; downloads through a bounded `io.LimitReader`; SHA-256-verifies before publishing; atomic temp-write-then-rename with cleanup on any failure; platform-tagged OS hand-off (`launcher` seam) | fault-injection, httptest, fault-seeded | The highest-risk new code in the update feature: an artifact download the app runs on the user's behalf. `artifactManifestServer` serves both the signed manifest and the artifact from one `httptest.NewTLSServer`. Covers: happy path; checksum mismatch (two distinct assertions — the temp file is deleted, and the launcher is never invoked, so a corrupted download can't reach the OS installer); oversized artifact (bounded read); launcher error (documents that a verified, checksum-correct artifact is intentionally *kept* on disk when only the OS hand-off fails, so the user isn't forced to re-download); no-update-available and not-configured short-circuits; a `CheckLatest` failure surfacing through `DownloadAndInstall` unchanged; non-HTTPS download-URL rejection; and `installerExtension`'s platform table. Fault-seeded: temp-cleanup-on-error, checksum-bypass, and launch-before-verify-error-check were each temporarily removed and confirmed to fail their respective tests, then restored. |
 
-## `internal/users` — 83.3%
+## `internal/users` — 82.7%
 
 Local multi-user account system: Argon2id-backed accounts, ADR-001 DEK hierarchy, ADR-004 administrator escrow enrollment, PMForge→GoPMgr data-root migration. On 2026-10-02, with phase 1 of ADR-004, the package fell from 89.8% to 85.5%: `escrow_enroll.go` is at 77.7%, and its uncovered lines are wrapped returns of database and crypto errors (the failed-enrollment path itself is covered, see `escrow_enroll_test.go`); `dek.go` is at 86.7% and `store.go` at 90.4% for the same reason in `createLegacyDEK` and `CreateAccountWithKey`. Before that, `dek.go` was at 90.2%; `recovery.go` is at 92.9% (`IssueRecoveryCodes` 94.7%, `ResetWithRecoveryCode` 92.2%, `migrateRecoveryTable`/`canonicalise` 100%); `store.go` was at 93.6%, covering both its DB-backed operations (`Open`/`Close`/`RootDir`/`migrate`/`migrateAdminColumn`/`migrateLastExportDirColumn`/`SetAdmin`/`SetLastExportDirectory`/`CreateAccount`/`Authenticate`/`List`, `ensurePrivateSQLiteFiles`) and its filesystem-backed migration (`MigrateLegacyRoot`/`migrateLegacyRoot`/`copyTree`/`copyFile`), with several functions in each group at 100%. Every uncovered line in those three files had a documented reason before escrow enrollment; the escrow error returns above are not yet tested one by one. With ADR-005 part 3b (2026-10-07) the package is at 83.3%: `escrow_recovery.go` is at 78.5%, its uncovered lines being wrapped database and crypto errors. With part 3a it was at 83.8%: `escrow_rotation.go` is at 77.3%, its uncovered lines being wrapped database and crypto errors and the savepoint's own rollback and release failures. With parts 2 and 2b it was at 84.9%: `succession.go` is at 82.7%, and its uncovered lines are wrapped database errors and `migrateSuperSuccession`'s `PRAGMA table_info` scan errors, which, as in `migrateDEKColumns`, cannot be forced.
 
@@ -1036,7 +1040,7 @@ Local multi-user account system: Argon2id-backed accounts, ADR-001 DEK hierarchy
 | `scripts/coverage-go-cleanup_test.sh` | 1 shell matrix | Producer-owned successful-run cleanup and failed-run diagnostic retention for `coverage-go.sh` | fixture, fake tool, fault-injection | Successful coverage runs must not accumulate profiles/package lists unless the caller explicitly names an output profile. A failed Go test must preserve its exact exit status, package inventory, and captured stdout/stderr while reporting the retained diagnostic location. |
 | `scripts/workspace-hygiene_test.sh` | 1 shell matrix | Read-only `.tmp` inventory confinement, classification, and incomplete-report signaling | fixture, fake tools, prohibited-effects | Proves the report changes no file content, preserves unknown and newline-containing entries, identifies retained evidence/cache, rejects unrelated or symlinked roots, continues after a disappearing entry, and returns nonzero when sizing or enumeration is incomplete. |
 
-## `tools/update-manifest` — 52.5%
+## `tools/update-manifest` — 42.4%
 
 Standalone CLI that produces the signed release manifest consumed by `internal/update`.
 
@@ -1044,7 +1048,7 @@ Standalone CLI that produces the signed release manifest consumed by `internal/u
 | --- | --- | --- | --- | --- |
 | `main_test.go` | 1 | `run` (manifest generation + signing) | fixture/golden | Confirms a generated manifest is actually verifiable — round-trips through the same signature-checking logic `internal/update` uses on the client side, so manifest-generation and manifest-verification can't silently drift apart. |
 
-## `tools/code-map` — 73.0%
+## `tools/code-map` — 77.9%
 
 Maintainer tool that produces the portable, first-party Go package dependency
 map used for repository orientation.
