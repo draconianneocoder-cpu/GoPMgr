@@ -196,20 +196,23 @@ describe('AdminPanel account history', () => {
     expect(items[2]).toContain("alice accepted dave's account key without an earlier check");
     expect(items[3]).toContain("carol's account key was changed outside GoPMgr and was repaired at sign-in");
     expect(items[3]).toContain('a new one was made');
-    expect(items[4]).toContain("bob's key records were missing and were made again at sign-in");
+    expect(items[4]).toContain("bob's key records were made again at sign-in, trusting the current administrator key");
     expect(items[5]).toContain('A key check failed for bob');
     expect(items[5]).toContain('nothing was sealed');
     for (const item of items) expect(item).not.toMatch(/escrow|_/);
   });
 
-  it('says when a user read the notice that their data was opened', async () => {
+  it('says when a user read their sign-in notice, and what it held', async () => {
     app.AdminListAccountEvents.mockResolvedValue([
+      { id: 2, occurred_at: '2026-10-09T10:00:00Z', actor: 'bob', username: 'bob', action: 'access_notice_read', detail: '1 new administrator key' },
       { id: 1, occurred_at: '2026-10-02T10:00:00Z', actor: 'bob', username: 'bob', action: 'access_notice_read', detail: '2 accesses' },
     ]);
     const utils = render(AdminPanel);
     const history = await utils.findByRole('region', { name: 'Account history' });
-    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(1));
-    expect(within(history).getAllByRole('listitem')[0].textContent).toContain('bob read the notice that their data was opened (2 accesses)');
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(2));
+    const items = within(history).getAllByRole('listitem').map((li) => li.textContent);
+    expect(items[0]).toContain('bob read their sign-in notice (1 new administrator key)');
+    expect(items[1]).toContain('bob read their sign-in notice (2 accesses)');
   });
 
   it('says when there is no history, and reports a failed load', async () => {
@@ -391,7 +394,7 @@ describe('AdminPanel recorded access to user data', () => {
 
   it('shows no viewer when opening is refused', async () => {
     app.AdminOpenUserData = vi.fn(async () => {
-      throw new Error("bob has not signed in since administrator access began, so their data can't be opened yet");
+      throw new Error("bob hasn't signed in since the current administrator key was made, so their data can't be opened yet");
     });
     const utils = render(AdminPanel);
     await fireEvent.click(await utils.findByRole('button', { name: "Open bob's data" }));
@@ -537,7 +540,7 @@ describe('AdminPanel succession', () => {
     app.AdminRoles.mockResolvedValue(roles({ super_holds_key: false, rotation_pending: true }));
     const nobody = render(AdminPanel);
     await waitFor(() =>
-      expect(text(nobody.getByRole('group', { name: 'Administrator key' }))).toContain("nobody holds it, so it can't be replaced yet")
+      expect(text(nobody.getByRole('group', { name: 'Administrator key' }))).toContain('nobody holds it. Make a new key below.')
     );
     cleanup();
 
@@ -779,5 +782,88 @@ describe('AdminPanel recovery code', () => {
     expect(items[0]).toContain('alice restored the administrator key with its recovery code');
     expect(items[1]).toContain('alice made a new recovery code for the administrator key (replaces the earlier one)');
     expect(items[2]).toContain('alice made a recovery code for the administrator key');
+  });
+});
+
+describe('AdminPanel new administrator key', () => {
+  const text = (el: HTMLElement) => el.textContent?.replace(/\s+/g, ' ') ?? '';
+  function roles(extra: Record<string, unknown> = {}) {
+    return {
+      super: 'alice', standby: '', standby_holds_key: false, takeover_days: 30, super_inactive_days: 0,
+      standby_inactive_days: 0, can_take_over: false, super_holds_key: false, rotation_pending: false,
+      recovery_code_exists: false, recovery_code_confirmed: false, takeover_reasons: [], protections: [],
+      ...extra,
+    };
+  }
+
+  beforeEach(() => {
+    app.AdminCreateNewEscrowKey = vi.fn(async () => 3);
+    app.AdminRecoverEscrowKey = vi.fn(async () => undefined);
+  });
+
+  it('makes a new key only with a reason and after saying what happens', async () => {
+    app.AdminRoles.mockResolvedValue(roles({ rotation_pending: true }));
+    const utils = render(AdminPanel);
+    const group = await utils.findByRole('group', { name: 'Administrator key' });
+    expect(text(group)).toContain('nobody holds it. Make a new key below.');
+    expect(text(group)).toContain("You don't hold the administrator key and it has no recovery code");
+    await fireEvent.click(within(group).getByRole('button', { name: 'Make a new administrator key' }));
+    expect(app.AdminCreateNewEscrowKey).not.toHaveBeenCalled();
+
+    const form = within(group).getByRole('group', { name: 'Make a new administrator key' });
+    expect(text(form)).toContain('Nobody can open a user\'s data until they next sign in');
+    expect(text(form)).toContain('a disabled account moves only once it\'s enabled and signs in');
+    expect(text(form)).toContain("Don't include medical or personal details.");
+    const make = within(form).getByRole('button', { name: 'Make new key' });
+    expect(make).toBeDisabled();
+    const reason = within(form).getByLabelText('Why is a new key needed?');
+    await fireEvent.input(reason, { target: { value: '   ' } });
+    expect(make).toBeDisabled();
+    await fireEvent.input(reason, { target: { value: 'x'.repeat(501) } });
+    expect(make).toBeDisabled();
+    expect(text(form)).toContain('501/500');
+    await fireEvent.input(reason, { target: { value: '  The recovery code is lost  ' } });
+    await fireEvent.click(make);
+    expect(app.AdminCreateNewEscrowKey).toHaveBeenCalledWith('The recovery code is lost');
+    await waitFor(() => expect(app.AdminRoles).toHaveBeenCalledTimes(2));
+  });
+
+  it('offers the recovery code first, and a new key if the code is lost', async () => {
+    app.AdminRoles.mockResolvedValue(roles({ recovery_code_exists: true, recovery_code_confirmed: true, rotation_pending: true }));
+    const utils = render(AdminPanel);
+    const group = await utils.findByRole('group', { name: 'Administrator key' });
+    expect(text(group)).toContain('nobody holds it. Restore it with its recovery code below.');
+    expect(within(group).getByRole('group', { name: 'Restore the administrator key' })).toBeInTheDocument();
+    await fireEvent.click(within(group).getByRole('button', { name: 'Lost the recovery code? Make a new key' }));
+    expect(within(group).getByRole('group', { name: 'Make a new administrator key' })).toBeInTheDocument();
+  });
+
+  it('sends the super administrator to remove the standby who still holds the key', async () => {
+    app.AdminRoles.mockResolvedValue(roles({ standby: 'dave', standby_holds_key: true }));
+    const utils = render(AdminPanel);
+    const group = await utils.findByRole('group', { name: 'Administrator key' });
+    expect(text(group)).toContain('first remove dave as standby, which removes their key');
+    expect(within(group).queryByRole('button', { name: /new.*key/i })).not.toBeInTheDocument();
+  });
+
+  it('offers no new key to a super administrator who holds the key', async () => {
+    app.AdminRoles.mockResolvedValue(roles({ super_holds_key: true }));
+    const utils = render(AdminPanel);
+    const group = await utils.findByRole('group', { name: 'Administrator key' });
+    expect(within(group).queryByRole('button', { name: /new administrator key|Make a new key/ })).not.toBeInTheDocument();
+  });
+
+  it('describes a new key in the history', async () => {
+    app.AdminRoles.mockResolvedValue(roles({ super_holds_key: true, recovery_code_exists: true, recovery_code_confirmed: true }));
+    app.AdminListAccountEvents.mockResolvedValue([
+      { id: 2, occurred_at: '2026-10-09T10:00:00Z', actor: 'alice', username: 'alice', action: 'escrow_key_new', detail: 'lost; 1 account sealed to it at its next sign-in' },
+      { id: 1, occurred_at: '2026-10-09T10:00:00Z', actor: 'alice', username: 'bob', action: 'escrow_key_new', detail: 'lost' },
+    ]);
+    const utils = render(AdminPanel);
+    const history = await utils.findByRole('region', { name: 'Account history' });
+    await waitFor(() => expect(within(history).getAllByRole('listitem')).toHaveLength(2));
+    const items = within(history).getAllByRole('listitem').map((li) => text(li));
+    expect(items[0]).toContain('alice made a new administrator key because nobody held the old one (lost; 1 account sealed');
+    expect(items[1]).toContain("alice made a new administrator key; bob's data moves to it at their next sign-in (lost)");
   });
 });

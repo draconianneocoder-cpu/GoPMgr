@@ -10,7 +10,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 built 2026-10-05; part 2b (takeover after an inactive standby, takeover
 reasons and protection) built 2026-10-07; parts 3a (escrow rotation) and 3b
 (recovery code) built 2026-10-07; part 3c (a new key with a sign-in notice)
-next. All of them ship before the next release tag.
+built 2026-10-09. All of them ship before the next release tag.
 **Decision date:** 2026-10-05
 
 ## Context
@@ -71,7 +71,8 @@ super administrator instead.
   once the period has passed (30 days unless the super administrator set
   another). The first to confirm gets the role, and it is recorded. Nobody
   else holds the administrator key, so the new super administrator has the
-  role without it until part 3's fresh key (owner decisions, 2026-10-05).
+  role without it until they restore it with its recovery code or make a
+  new key (part 3; owner decisions, 2026-10-05).
 - **Takeover after the standby is also inactive (part 2b).** When the
   standby has also gone the takeover period without signing in, any enabled
   administrator can take over, without the key, as when no standby is
@@ -121,7 +122,8 @@ super administrator instead.
     administrator's next sign-in, or at the standby's while the super
     administrator holds no key; after demoting, disabling, or deleting, the
     Admin panel runs it at once with the super administrator's key. If
-    nobody holds the key, it waits for part 3c. Until it runs, accounts
+    nobody holds the key, a restore with the recovery code runs it, and a
+    new key (part 3c) replaces it. Until it runs, accounts
     enrolled in the meantime are sealed to the old key, which a former
     holder's copy of `system.db` still opens.
   - **Accepted:** the super administrator's confirmation keeps whoever the
@@ -179,6 +181,42 @@ super administrator instead.
     they acknowledge it. Until a user signs in again, nobody can open their
     data. This is the one key operation that rests on the plaintext role
     row, so its protection is that every user is told.
+    - **Built (part 3c, 2026-10-09).** "Make a new administrator key" is
+      offered to a super administrator who holds no usable key, after the
+      recovery code when one exists. A reason is required (at most 500
+      characters); every user is shown it, so the panel asks for no medical
+      or personal details. In one transaction the old key is retired and the
+      new one made, and every grant, sealed DEK, recovery code, and pending
+      replacement is removed, with every other account's pin. The super
+      administrator is pinned, sealed, and granted the new key, and every
+      other account gets an `escrow_key_new` event with the reason, which
+      its sign-in notice shows until acknowledged; the creator's own record
+      is not a notice. Each account's next sign-in pins and seals to the new
+      key by the same trust on first use as an account whose pin is missing
+      (recorded as `escrow_reenrolled`). A disabled account moves only once
+      it is enabled and signs in.
+    - **Refused, changing nothing:** while the super administrator holds a
+      usable key (they replace it instead); while another enabled
+      administrator holds a grant of the active key, since the key is not
+      lost: for the standby, removing them as standby removes their key
+      (part 2b), and for anyone else, demoting or disabling them does; and
+      when no key has ever been made, since the first administrator
+      sign-in makes it. A grant left on a disabled account or a standard
+      account is not a holder; the new key removes it. A `system.db` with
+      keys but none active is repaired by a new key. This closes the gap
+      left when `BecomeAdmin` claims the role on a machine whose
+      administrators were all disabled or removed.
+    - **Accepted risks (part 3c):** someone who can write `system.db` can
+      plant a key and remove the pins without a notice, as they already
+      could by removing pins (trust on first use, recorded only in the
+      account history), or delete a notice or mark it read, the same limit
+      as access notices. The new key's first grant to an account trusts
+      that account's personal key without an earlier check, and records it
+      (`personal_key_trusted`): the old key's attestations cannot be checked
+      without it. Headless sign-in shows no notice, but it does not enroll
+      either, so no account is moved without being told at its next
+      desktop sign-in. A former key holder's copy of `system.db` still opens
+      the data sealed in it, as in 3a.
   - Rejected: requiring each user's consent (decliners would stay
     unrecoverable); a second administrator's approval (it would be stored in
     the same editable `system.db`); no new key at all (the role could
@@ -213,7 +251,8 @@ administrator is cleared when read.
   removed. It stays as defense in depth.
 - A super administrator who stops signing in can be replaced: by the
   standby, or, with no standby, by any administrator, who then has the role
-  without the key until part 3's fresh key and each user's next sign-in.
+  without the key until they restore it with the recovery code or make a
+  new key, which reaches each user at their next sign-in.
 - Accepted risks (part 2):
   - The period is measured with this computer's clock. An administrator who
     sets the clock forward can take over early. With no standby that gives
@@ -244,4 +283,4 @@ administrator is cleared when read.
    former super administrator's protection (2026-10-07).
 3. Escrow rotation, automatic and manual (3a, 2026-10-07); the recovery
    code (3b); a new key with a sign-in notice when nobody holds the old one
-   (3c).
+   (3c, 2026-10-09).

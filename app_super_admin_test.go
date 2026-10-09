@@ -351,6 +351,76 @@ func TestAppRecoveryCode(t *testing.T) {
 	}
 }
 
+// A new key is made only when nobody holds the old one, and each account is
+// told at its next sign-in, which seals its data to the new key.
+func TestAppNewEscrowKey(t *testing.T) {
+	app := superApp(t)
+	conn := systemDB(t, app)
+	if _, err := app.AdminCreateNewEscrowKey("lost"); err == nil || err.Error() != "you hold the administrator key, so it isn't lost; replace it instead" {
+		t.Fatalf("a new key while holding the key: err = %v", err)
+	}
+	if _, err := app.AdminSetStandby("bob", 30); err != nil {
+		t.Fatalf("AdminSetStandby(bob): %v", err)
+	}
+	if _, err := conn.Exec(`DELETE FROM escrow_grants WHERE admin_username = 'alice'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.AdminOpenUserData("carol", "checking"); err == nil || err.Error() != "you don't hold the administrator key; under Succession, restore it with its recovery code or make a new one" {
+		t.Fatalf("opening data without the key: err = %v", err)
+	}
+	want := "bob, your standby successor, holds the administrator key, so it isn't lost. To make a new one anyway, first remove bob as standby, which removes their key"
+	if _, err := app.AdminCreateNewEscrowKey("lost"); err == nil || err.Error() != want {
+		t.Fatalf("a new key while the standby holds it: err = %v", err)
+	}
+	if _, err := app.AdminSetStandby("", 30); err != nil {
+		t.Fatalf("removing the standby: %v", err)
+	}
+	// A subordinate administrator's grant, as a row left over or forged.
+	if _, err := conn.Exec(`INSERT INTO escrow_grants (admin_username, escrow_key_id, sealed, granted_at)
+		SELECT 'bob', id, x'00', '2026-10-09T00:00:00Z' FROM escrow_keys WHERE retired_at = ''`); err != nil {
+		t.Fatal(err)
+	}
+	want = "bob holds the administrator key, so it isn't lost. To make a new one anyway, first demote or disable bob, which removes their key"
+	if _, err := app.AdminCreateNewEscrowKey("lost"); err == nil || err.Error() != want {
+		t.Fatalf("a new key while a subordinate holds it: err = %v", err)
+	}
+	if _, err := conn.Exec(`DELETE FROM escrow_grants WHERE admin_username = 'bob'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.AdminCreateNewEscrowKey("  "); err == nil || err.Error() != "say why a new administrator key is needed" {
+		t.Fatalf("a new key without a reason: err = %v", err)
+	}
+	if _, err := app.AdminCreateNewEscrowKey(strings.Repeat("x", 501)); err == nil || err.Error() != "the reason can be at most 500 characters" {
+		t.Fatalf("a new key with a long reason: err = %v", err)
+	}
+	if n, err := app.AdminCreateNewEscrowKey("the recovery code is lost"); err != nil || n != 2 {
+		t.Fatalf("AdminCreateNewEscrowKey = %d, %v; want bob and carol to be told", n, err)
+	}
+	if roles, _ := app.AdminRoles(); !roles.SuperHoldsKey || roles.RotationPending {
+		t.Fatalf("AdminRoles = %+v; want alice holding the new key and nothing pending", roles)
+	}
+	if err := app.AdminOpenUserData("carol", "checking"); err == nil || err.Error() != "carol hasn't signed in since the current administrator key was made, so their data can't be opened yet" {
+		t.Fatalf("opening carol's data before she signs in again: err = %v", err)
+	}
+
+	switchUser(t, app, "carol")
+	notices, err := app.MyDataAccessNotices()
+	if err != nil || len(notices) != 1 || notices[0].Action != "escrow_key_new" || notices[0].Actor != "alice" || notices[0].Detail != "the recovery code is lost" {
+		t.Fatalf("carol's notices = %+v, %v; want alice's new key", notices, err)
+	}
+	if err := app.AcknowledgeDataAccessNotices(notices[0].ID); err != nil {
+		t.Fatalf("AcknowledgeDataAccessNotices: %v", err)
+	}
+	switchUser(t, app, "bob")
+	if _, err := app.AdminCreateNewEscrowKey("again"); err == nil || err.Error() != "only the super administrator can make a new administrator key" {
+		t.Fatalf("a subordinate making a new key: err = %v", err)
+	}
+	switchUser(t, app, "alice")
+	if err := app.AdminOpenUserData("carol", "checking after she signed in"); err != nil {
+		t.Fatalf("opening carol's data after she signed in: %v", err)
+	}
+}
+
 func TestAppPrintsTheRecoveryCodeOnlyAfterCheckingIt(t *testing.T) {
 	type job struct{ printer, title, text string }
 	var jobs []job

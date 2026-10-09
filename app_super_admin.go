@@ -333,6 +333,45 @@ func (a *App) AdminRecoverEscrowKey(code string) error {
 	return err
 }
 
+// AdminCreateNewEscrowKey makes a new administrator key when nobody holds
+// the old one (ADR-005 part 3c) and returns how many other accounts are
+// sealed to it at their next sign-in; each is told why at that sign-in.
+// Requires the super administrator, with no usable key.
+func (a *App) AdminCreateNewEscrowKey(reason string) (int, error) {
+	caller := a.requireUser()
+	if caller == nil || !caller.IsAdmin {
+		return 0, errors.New("administrator privileges required")
+	}
+	var others int
+	err := a.withSessionDEK(func(dek []byte) error {
+		var err error
+		others, err = a.store.CreateNewEscrowKey(caller.Username, dek, reason)
+		return err
+	})
+	var held *users.KeyHeldError
+	switch {
+	case errors.Is(err, users.ErrNotAdmin):
+		return 0, errors.New("administrator privileges required")
+	case errors.Is(err, users.ErrNotSuper):
+		return 0, errors.New("only the super administrator can make a new administrator key")
+	case errors.Is(err, users.ErrNewKeyReasonRequired):
+		return 0, errors.New("say why a new administrator key is needed")
+	case errors.Is(err, users.ErrNewKeyReasonTooLong):
+		return 0, fmt.Errorf("the reason can be at most %d characters", users.MaxNewKeyReasonLength)
+	case errors.Is(err, users.ErrHoldsEscrowKey):
+		return 0, errors.New("you hold the administrator key, so it isn't lost; replace it instead")
+	case errors.As(err, &held) && held.Standby:
+		return 0, fmt.Errorf("%s, your standby successor, holds the administrator key, so it isn't lost. To make a new one anyway, first remove %s as standby, which removes their key", held.Holder, held.Holder)
+	case errors.As(err, &held):
+		return 0, fmt.Errorf("%s holds the administrator key, so it isn't lost. To make a new one anyway, first demote or disable %s, which removes their key", held.Holder, held.Holder)
+	case errors.Is(err, users.ErrNoEscrowGrant):
+		return 0, errors.New("there is no administrator key yet; it's made the next time you sign in")
+	case err != nil:
+		return 0, err
+	}
+	return others, nil
+}
+
 // AdminPrinterWire is a printer the recovery code can be printed on.
 type AdminPrinterWire struct {
 	Name       string `json:"name"`

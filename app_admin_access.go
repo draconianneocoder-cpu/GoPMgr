@@ -308,9 +308,9 @@ func adminAccessError(username string, err error) error {
 	case errors.Is(err, users.ErrNoSuchUser):
 		return errors.New("no such account")
 	case errors.Is(err, users.ErrNotEnrolled):
-		return fmt.Errorf("%s has not signed in since administrator access began, so their data can't be opened yet", username)
+		return fmt.Errorf("%s hasn't signed in since the current administrator key was made, so their data can't be opened yet", username)
 	case errors.Is(err, users.ErrNoEscrowGrant):
-		return errors.New("you don't hold the administrator key yet; another administrator can give it to you")
+		return errors.New("you don't hold the administrator key; under Succession, restore it with its recovery code or make a new one")
 	case errors.Is(err, users.ErrEscrowMismatch):
 		return errors.New("a key check failed, so the data was not opened; the account history records it")
 	}

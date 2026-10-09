@@ -106,9 +106,14 @@ for a legitimate local user.
   when nobody can open it (ADR-005 part 3b), and the code with a copy of
   `system.db` opens every user's data sealed to that key, so it must be
   kept like the key; printing it hands it to the operating system's print
-  service, which holds the job until it prints; until part 3c ships, after
-  a takeover with no standby and no recovery code nobody can open users'
-  data; the takeover period and the
+  service, which holds the job until it prints; without the code, the
+  super administrator can make a new key (ADR-005 part 3c), and each
+  user's data moves to it at their next sign-in, where they are told who
+  made it, when, and why; until then nobody can open that user's data.
+  Someone who can write `system.db` can plant a key and remove the pins
+  without writing a notice: users are then not told, and only the account
+  history records the re-enrollment, as before part 3c; the
+  takeover period and the
   protection use this computer's clock, so an administrator who sets it
   forward can take over early and end the protection early, and a hostile
   administrator can pick the shortest protection (7 days).

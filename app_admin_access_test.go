@@ -326,7 +326,7 @@ func TestAdminAccessRefusalsInPlainWords(t *testing.T) {
 			t.Errorf("reason %.10q: err = %v, want %q", reason, err, want)
 		}
 	}
-	want := "dave has not signed in since administrator access began, so their data can't be opened yet"
+	want := "dave hasn't signed in since the current administrator key was made, so their data can't be opened yet"
 	if err := app.AdminOpenUserData("dave", "checking"); err == nil || err.Error() != want {
 		t.Errorf("unenrolled account: err = %v, want %q", err, want)
 	}

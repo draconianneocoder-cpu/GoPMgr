@@ -197,10 +197,12 @@ That result took six live-GUI cycles to reach because the first five, all run un
       key.
     - Phase 3's sign-in notice built 2026-10-02 (see the release row).
     - Escrow rotation (ADR-004 decision 3) built 2026-10-07 as ADR-005
-      part 3a. Open: `BecomeAdmin` on a machine whose administrators were
-      all disabled or removed leaves the escrow key with no holder until
-      part 3c. The database and crypto error returns in `escrow_enroll.go`
-      and `escrow_rotation.go` are not tested one by one.
+      part 3a. `BecomeAdmin` on a machine whose administrators were all
+      disabled or removed leaves the escrow key with no holder until the
+      claimant makes a new key (part 3c, built 2026-10-09). Open: the
+      database and crypto error returns in `escrow_enroll.go`,
+      `escrow_rotation.go`, and `escrow_new_key.go` are not tested one by
+      one.
     - ADR-005 (owner decisions 2026-10-05): one super administrator;
       subordinates manage standard accounts only. Part 1 built 2026-10-05
       (role, subordinate limits, earliest-administrator migration,
@@ -219,9 +221,10 @@ That result took six live-GUI cycles to reach because the first five, all run un
       the super administrator makes on demand, confirms by typing back,
       and can print through the operating system's print service; it
       restores the same key, checked against their own pin; Windows
-      printing unverified). Open before the next tag: part 3c, a new key
-      that each user is told about at sign-in when the code is lost (owner
-      decisions, 2026-10-07).
+      printing unverified). Part 3c built 2026-10-09 (a new key when nobody
+      holds the old one, refused while anyone else still holds it; each
+      user's data moves to it at their next sign-in, and their sign-in
+      notice says who made it, when, and why).
       Evidence: `super_admin_test.go`, `succession_test.go`,
       `app_super_admin_test.go`, and the `AdminPanel.test.ts` row in
       `TEST_COVERAGE_LEDGER.md`.

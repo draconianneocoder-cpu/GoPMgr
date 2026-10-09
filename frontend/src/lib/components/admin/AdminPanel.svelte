@@ -103,6 +103,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let restoreCode = $state('');
   let restoring = $state(false);
 
+  // A new administrator key when nobody holds the old one (ADR-005 part 3c).
+  // Each account moves to it at its next sign-in and is told why.
+  const maxNewKeyReason = 500;
+  let pendingNewKey = $state(false);
+  let newKeyReason = $state('');
+  let makingNewKey = $state(false);
+
   const usernameRule = /^[A-Za-z0-9_-]{3,32}$/;
 
   onMount(load);
@@ -288,6 +295,25 @@ SPDX-License-Identifier: GPL-3.0-or-later
       showToast(`Could not restore the administrator key: ${err}`, 'error');
     } finally {
       restoring = false;
+    }
+  }
+
+  async function makeNewKey() {
+    if (makingNewKey || !newKeyValid) return;
+    makingNewKey = true;
+    try {
+      const moved = await window.go.main.App.AdminCreateNewEscrowKey(newKeyReason.trim());
+      pendingNewKey = false;
+      newKeyReason = '';
+      showToast(
+        `New administrator key made. ${moved} ${moved === 1 ? 'account moves' : 'accounts move'} to it at their next sign-in.`,
+        'success'
+      );
+      await load();
+    } catch (err: any) {
+      showToast(`Could not make a new administrator key: ${err}`, 'error');
+    } finally {
+      makingNewKey = false;
     }
   }
 
@@ -529,7 +555,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       case 'escrow_key_mismatch':
         return `A key check failed for ${e.username}; GoPMgr's key records may have been changed outside GoPMgr`;
       case 'escrow_reenrolled':
-        return `${e.username}'s key records were missing and were made again at sign-in`;
+        return `${e.username}'s key records were made again at sign-in, trusting the current administrator key`;
       case 'personal_key_repaired':
         return `${e.username}'s account key was changed outside GoPMgr and was repaired at sign-in`;
       case 'personal_key_trusted':
@@ -542,6 +568,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
           : `${e.actor} made a recovery code for the administrator key`;
       case 'escrow_key_recovered':
         return `${e.actor} restored the administrator key with its recovery code`;
+      case 'escrow_key_new':
+        return e.actor === e.username
+          ? `${e.actor} made a new administrator key because nobody held the old one (${e.detail})`
+          : `${e.actor} made a new administrator key; ${e.username}'s data moves to it at their next sign-in (${e.detail})`;
       case 'super_admin_assigned':
         return `${e.username} became the super administrator (${e.detail})`;
       case 'super_admin_handed_over':
@@ -555,7 +585,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       case 'super_takeover_period_changed':
         return `${e.actor} set the takeover period to ${e.detail}`;
       case 'access_notice_read':
-        return `${e.username} read the notice that their data was opened (${e.detail})`;
+        return `${e.username} read their sign-in notice (${e.detail})`;
       default:
         return `${e.actor} ${e.action} ${e.username}`;
     }
@@ -584,6 +614,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   const iAmStandby = $derived(standby !== '' && session.user?.username === standby);
   // Characters, not UTF-16 units, like the backend's limit.
   const takeoverNoteLength = $derived([...takeoverNote].length);
+  const newKeyReasonLength = $derived([...newKeyReason].length);
+  const newKeyValid = $derived(newKeyReason.trim() !== '' && newKeyReasonLength <= maxNewKeyReason);
   const chosenReason = $derived(takeoverReasons.find((r) => r.code === takeoverReason));
   const takeoverValid = $derived(
     chosenReason !== undefined &&
@@ -1175,8 +1207,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
                   {:else if standby && standbyHoldsKey}
                     The administrator key is waiting to be replaced. You don't hold it, so {standby} replaces it at
                     their next sign-in.
+                  {:else if recoveryCodeExists}
+                    The administrator key is waiting to be replaced, but nobody holds it. Restore it with its recovery
+                    code below.
                   {:else}
-                    The administrator key is waiting to be replaced, but nobody holds it, so it can't be replaced yet.
+                    The administrator key is waiting to be replaced, but nobody holds it. Make a new key below.
                   {/if}
                 </p>
               {/if}
@@ -1227,6 +1262,65 @@ SPDX-License-Identifier: GPL-3.0-or-later
                     >{restoring ? 'Restoring…' : 'Restore key'}</button>
                   </div>
                 </div>
+              {/if}
+              {#if !superHoldsKey}
+                {#if standby && standbyHoldsKey}
+                  <p class="text-xs text-slate-300">
+                    You don't hold the administrator key, but {standby}, your standby successor, does, and can't pass
+                    it to you. To make a new key, first remove {standby} as standby, which removes their key.
+                  </p>
+                {:else if pendingNewKey}
+                  <div class="space-y-2" role="group" aria-label="Make a new administrator key">
+                    <p class="text-xs text-slate-300">
+                      Make a new administrator key? Nobody can open a user's data until they next sign in, which
+                      moves it to the new key; a disabled account moves only once it's enabled and signs in. Each
+                      user is told at sign-in that you made a new key, when, and why.
+                    </p>
+                    <label for="new-key-reason" class="block text-[11px] text-slate-400">Why is a new key needed?</label>
+                    <textarea
+                      id="new-key-reason"
+                      bind:value={newKeyReason}
+                      rows="2"
+                      class="w-full bg-slate-950 border border-slate-800 p-1.5 rounded text-xs focus:border-amber-500 outline-none"
+                    ></textarea>
+                    <div class="flex items-center gap-2">
+                      <p class="text-[10px] text-slate-500">
+                        Every user is shown the reason, and every administrator can see it in the account history.
+                        Don't include medical or personal details.
+                      </p>
+                      <span class="ml-auto text-[10px] {newKeyReasonLength > maxNewKeyReason ? 'text-red-400' : 'text-slate-500'}">
+                        {newKeyReasonLength}/{maxNewKeyReason}
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button
+                        onclick={makeNewKey}
+                        disabled={!newKeyValid || makingNewKey}
+                        class="text-[11px] bg-amber-800 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-2 py-1 rounded"
+                      >{makingNewKey ? 'Making…' : 'Make new key'}</button>
+                      <button
+                        onclick={() => {
+                          pendingNewKey = false;
+                          newKeyReason = '';
+                        }}
+                        class="text-[11px] text-slate-400 hover:text-slate-200 underline"
+                      >Cancel</button>
+                    </div>
+                  </div>
+                {:else if recoveryCodeExists}
+                  <button
+                    onclick={() => (pendingNewKey = true)}
+                    class="text-[11px] text-slate-400 hover:text-amber-400 underline"
+                  >Lost the recovery code? Make a new key</button>
+                {:else}
+                  <p class="text-xs text-slate-300">
+                    You don't hold the administrator key and it has no recovery code, so nobody can open users' data.
+                  </p>
+                  <button
+                    onclick={() => (pendingNewKey = true)}
+                    class="text-[11px] bg-amber-800 hover:bg-amber-700 text-white px-2 py-1 rounded"
+                  >Make a new administrator key</button>
+                {/if}
               {/if}
               {#if superHoldsKey}
                 {#if pendingReplace}

@@ -453,8 +453,8 @@ panel with **Open data**, after giving a reason. They see each project read only
 its summary, schedule, costs, and the list of documents, not the documents'
 contents. Nothing can be changed, exported, or printed. Every opening is
 recorded in the Admin panel's account history with who opened which account,
-when, and why. An account that has not signed in since this feature arrived
-can't be opened until it does.
+when, and why. An account that has not signed in since the current
+administrator key was made can't be opened until it does.
 
 One administrator is the super administrator: on a new machine, the first
 account. Only the super administrator changes administrators, opens users'
@@ -501,9 +501,18 @@ the code opens every user's data, so keep it as carefully as a password.
 Replacing the administrator key voids the code, and the panel asks for a
 new one.
 
-If an administrator opens your data, you see who did, when, and their reason
-on the first screen after you sign in, until you choose **I've read this**;
-the Admin panel's history records that you read it. App Settings, under
+If nobody holds the administrator key and the recovery code is lost, the
+super administrator chooses **Make a new administrator key** under
+Succession and says why. Every user's data moves to the new key the next
+time they sign in; until then, no one can open it. A disabled account moves
+only after it is enabled and signs in. Every user is shown the reason, so
+leave out medical or personal details. If your standby still holds the key,
+GoPMgr asks you to remove them as standby first, since the key isn't lost.
+
+If an administrator opens your data, or the super administrator makes a new
+administrator key, you see who did, when, and their reason on the first
+screen after you sign in, until you choose **I've read this**; the Admin
+panel's history records that you read it. App Settings, under
 Account, lists every time it has happened. This relies on GoPMgr's account
 record, which someone who can edit GoPMgr's files on this computer could
 change.

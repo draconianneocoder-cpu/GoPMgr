@@ -67,6 +67,26 @@ describe('AccessNotice', () => {
     expect(utils.getByRole('region', { name: 'Administrators opened your data' })).toBeInTheDocument();
   });
 
+  it('says who made a new administrator key, when, and why', async () => {
+    const newKey: AccountEvent = {
+      id: 9, occurred_at: '2026-10-09T10:00:00Z', actor: 'alice', username: 'bob', action: 'escrow_key_new', detail: 'The recovery code is lost',
+    };
+    app.MyDataAccessNotices.mockResolvedValueOnce([newKey]).mockResolvedValueOnce([newKey, access(4, 'Ticket 4')]);
+    const utils = render(AccessNotice);
+    const region = await utils.findByRole('region', { name: 'A new administrator key was made' });
+    expect(region.textContent).toContain('alice made a new administrator key on');
+    expect(region.textContent).toContain('Reason: The recovery code is lost');
+    expect(region.textContent).not.toContain('read only');
+    utils.unmount();
+
+    const both = render(AccessNotice);
+    const mixed = await both.findByRole('region', { name: 'Administrator access to your data' });
+    expect(mixed.textContent).toContain('alice opened your data on');
+    expect(mixed.textContent).toContain('alice made a new administrator key on');
+    await fireEvent.click(both.getByRole('button', { name: "I've read this" }));
+    expect(app.AcknowledgeDataAccessNotices).toHaveBeenCalledWith(9);
+  });
+
   it('shows nothing when no one opened your data', async () => {
     app.MyDataAccessNotices.mockResolvedValue([]);
     const utils = render(AccessNotice);

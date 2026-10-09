@@ -66,6 +66,7 @@ const (
 	AccountAccessNoticeRead      = "access_notice_read"
 	AccountEscrowRecoveryCreated = "escrow_recovery_code_created"
 	AccountEscrowRecovered       = "escrow_key_recovered"
+	AccountEscrowKeyNew          = "escrow_key_new"
 
 	// Super administrator (ADR-005).
 	AccountSuperAssigned   = "super_admin_assigned"
@@ -100,6 +101,7 @@ var accountEventActions = map[string]bool{
 	AccountAccessNoticeRead:      true,
 	AccountEscrowRecoveryCreated: true,
 	AccountEscrowRecovered:       true,
+	AccountEscrowKeyNew:          true,
 	AccountSuperAssigned:         true,
 	AccountSuperHandedOver:       true,
 

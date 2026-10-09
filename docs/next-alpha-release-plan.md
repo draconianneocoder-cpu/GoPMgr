@@ -56,10 +56,10 @@ GOPMGR_RELEASE_TAG=v<version-of-record>-alpha.<sequence> make tag-preflight
 ```
 
 ADR-004 escrow rotation (owner decision 3) is built (ADR-005 part 3a,
-2026-10-07), and so is the recovery code (part 3b). Do not tag before the
-rest of [ADR-005](design/ADR-005-super-administrator-and-succession.md)
-ships: part 3c, a new key with a sign-in notice when nobody holds the old
-one (owner decisions, 2026-10-05 and 2026-10-07). See
+2026-10-07), as are the recovery code (part 3b, 2026-10-07) and a new key
+with a sign-in notice when nobody holds the old one (part 3c, 2026-10-09),
+so [ADR-005](design/ADR-005-super-administrator-and-succession.md) no
+longer holds the tag once those parts are merged. See
 [ADR-004](design/ADR-004-administrator-access-to-user-data.md).
 
 Before the tag, also require:
