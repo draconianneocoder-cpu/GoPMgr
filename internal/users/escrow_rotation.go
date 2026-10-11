@@ -82,11 +82,11 @@ func holdsAnyGrantTx(ctx context.Context, q accountWriter, username string) (boo
 // that triggered it still commits, the rotation stays pending, and the
 // failure is logged. It returns the new key's session (nil on failure),
 // which the caller must Close.
-func rotateInSavepointTx(ctx context.Context, q accountWriter, old *EscrowSession, actor string, keep []string, reason string) (*EscrowSession, RotationResult, error) {
+func rotateInSavepointTx(ctx context.Context, q accountWriter, old *EscrowSession, actor string, actorDEK []byte, keep []string, reason string) (*EscrowSession, RotationResult, error) {
 	if _, err := q.ExecContext(ctx, `SAVEPOINT escrow_rotate`); err != nil {
 		return nil, RotationResult{}, err
 	}
-	next, res, rotErr := rotateTx(ctx, q, old, actor, keep, reason)
+	next, res, rotErr := rotateTx(ctx, q, old, actor, actorDEK, keep, reason)
 	if rotErr != nil {
 		if _, err := q.ExecContext(ctx, `ROLLBACK TO escrow_rotate`); err != nil {
 			return nil, RotationResult{}, errors.Join(rotErr, err)
@@ -108,7 +108,7 @@ func rotateInSavepointTx(ctx context.Context, q accountWriter, old *EscrowSessio
 // key is granted to actor and to the accounts in keep, under the
 // attestation check, and to nobody else. The caller must Close the
 // returned session.
-func rotateTx(ctx context.Context, q accountWriter, old *EscrowSession, actor string, keep []string, reason string) (*EscrowSession, RotationResult, error) {
+func rotateTx(ctx context.Context, q accountWriter, old *EscrowSession, actor string, actorDEK []byte, keep []string, reason string) (*EscrowSession, RotationResult, error) {
 	var res RotationResult
 	id, err := crypto.NewEscrowKeyID()
 	if err != nil {
@@ -158,6 +158,9 @@ func rotateTx(ctx context.Context, q accountWriter, old *EscrowSession, actor st
 			`SELECT public_key, attestation, attested_escrow_key_id FROM personal_keys WHERE username = ?`,
 			name).Scan(&public, &attestation, &attestedKeyID)
 		if errors.Is(err, sql.ErrNoRows) {
+			if name == actor {
+				return fail(ErrNoPersonalKey)
+			}
 			continue
 		}
 		if err != nil {
@@ -165,6 +168,9 @@ func rotateTx(ctx context.Context, q accountWriter, old *EscrowSession, actor st
 		}
 		err = attestAndGrantTx(ctx, q, next, actor, name, public, attestation, attestedKeyID)
 		if errors.Is(err, ErrPersonalKeyNotAttested) {
+			if name == actor {
+				return fail(err)
+			}
 			if err := recordAccountEvent(ctx, q, actor, name, AccountEscrowKeyMismatch,
 				"the account key is not the one an administrator checked, so it was not given the new administrator key"); err != nil {
 				return fail(err)
@@ -175,6 +181,14 @@ func rotateTx(ctx context.Context, q accountWriter, old *EscrowSession, actor st
 			return fail(err)
 		}
 	}
+
+	// Before retiring the recovery path, prove the actor can open the
+	// replacement with their actual DEK, not a DEK read from system.db.
+	validated, err := openGrantTx(ctx, q, actor, actorDEK)
+	if err != nil {
+		return fail(fmt.Errorf("users: validate replacement grant: %w", err))
+	}
+	validated.Close()
 
 	if _, err := q.ExecContext(ctx, `DELETE FROM escrow_rotation_pending`); err != nil {
 		return fail(fmt.Errorf("users: clear pending rotation: %w", err))
@@ -215,7 +229,7 @@ func resealTx(ctx context.Context, q accountWriter, old, next *EscrowSession, re
 		}
 		sealed = append(sealed, r)
 	}
-	if err := rows.Close(); err != nil {
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 		return err
 	}
 
@@ -287,7 +301,7 @@ func reattestTx(ctx context.Context, q accountWriter, old, next *EscrowSession) 
 		}
 		attested = append(attested, r)
 	}
-	if err := rows.Close(); err != nil {
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 		return err
 	}
 	for _, r := range attested {
@@ -336,7 +350,7 @@ func rotateWithOwnKeyTx(ctx context.Context, q accountWriter, actor string, acto
 		return err
 	}
 	defer session.Close()
-	next, _, err := rotateInSavepointTx(ctx, q, session, actor, keep, reason)
+	next, _, err := rotateInSavepointTx(ctx, q, session, actor, actorDEK, keep, reason)
 	next.Close()
 	return err
 }
@@ -362,7 +376,7 @@ func rotatorTx(ctx context.Context, q accountWriter, actor string) (bool, error)
 // runPendingRotationTx runs a pending rotation with session, actor's opened
 // key, when actor is the one to run it. It returns the session to use
 // afterwards: the new key's after a rotation, otherwise session itself.
-func runPendingRotationTx(ctx context.Context, q accountWriter, session *EscrowSession, actor string) (*EscrowSession, error) {
+func runPendingRotationTx(ctx context.Context, q accountWriter, session *EscrowSession, actor string, actorDEK []byte) (*EscrowSession, error) {
 	reason, err := rotationPendingTx(ctx, q)
 	if err != nil || reason == "" {
 		return session, err
@@ -371,7 +385,7 @@ func runPendingRotationTx(ctx context.Context, q accountWriter, session *EscrowS
 	if err != nil || !ok {
 		return session, err
 	}
-	next, _, err := rotateInSavepointTx(ctx, q, session, actor, nil, reason)
+	next, _, err := rotateInSavepointTx(ctx, q, session, actor, actorDEK, nil, reason)
 	if err != nil {
 		return session, err
 	}
@@ -398,7 +412,7 @@ func (s *Store) RunPendingRotation(actor string, dek []byte) error {
 		if err != nil {
 			return err
 		}
-		next, err := runPendingRotationTx(ctx, q, session, actor)
+		next, err := runPendingRotationTx(ctx, q, session, actor, dek)
 		next.Close()
 		return err
 	})
@@ -434,7 +448,7 @@ func (s *Store) ReplaceEscrowKey(actor string, dek []byte, keepStandby string) (
 			return err
 		}
 		defer session.Close()
-		next, r, err := rotateTx(ctx, q, session, actor, []string{keepStandby}, "replaced by the super administrator")
+		next, r, err := rotateTx(ctx, q, session, actor, dek, []string{keepStandby}, "replaced by the super administrator")
 		if err != nil {
 			return err
 		}

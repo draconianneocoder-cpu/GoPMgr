@@ -700,7 +700,7 @@ func (s *Store) TakeOverSuper(actor string, actorDEK []byte, reasonCode, note st
 		if session == nil {
 			return markRotationPendingTx(ctx, q, rotation)
 		}
-		next, _, err := rotateInSavepointTx(ctx, q, session, actor, nil, rotation)
+		next, _, err := rotateInSavepointTx(ctx, q, session, actor, actorDEK, nil, rotation)
 		next.Close()
 		return err
 	})

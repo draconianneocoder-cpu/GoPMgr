@@ -126,6 +126,17 @@ super administrator instead.
     new key (part 3c) replaces it. Until it runs, accounts
     enrolled in the meantime are sealed to the old key, which a former
     holder's copy of `system.db` still opens.
+    Every successful hand-over schedules replacement when an active key
+    exists, even if the departing administrator's grant is absent or fails
+    to open: neither proves they discarded their key or recovery code.
+  - **Failure safety (hardened 2026-10-10):** replacement must issue a grant
+    that the acting administrator can open with their actual session DEK
+    before removing the old recovery code. Missing or altered actor keys,
+    incorrect actor DEKs sealed in `system.db`, and incomplete database
+    enumerations abort replacement. A manual replacement rolls back its
+    transaction; an automatic replacement rolls back only its savepoint,
+    preserves the triggering role change, and stays pending. Optional
+    recipients whose attestations fail still receive no grant.
   - **Accepted:** the super administrator's confirmation keeps whoever the
     panel shows as standby, so a standby row forged to name another enabled
     administrator, and not caught when read, would be kept with their
@@ -195,6 +206,8 @@ super administrator instead.
       key by the same trust on first use as an account whose pin is missing
       (recorded as `escrow_reenrolled`). A disabled account moves only once
       it is enabled and signs in.
+      Account enumeration must complete before recording these notices;
+      an iteration failure rolls back the new key and all recovery changes.
     - **Refused, changing nothing:** while the super administrator holds a
       usable key (they replace it instead); while another enabled
       administrator holds a grant of the active key, since the key is not

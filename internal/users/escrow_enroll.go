@@ -408,7 +408,7 @@ func (s *Store) EnrollAdminSession(admin string, dek []byte) error {
 			}
 			// While the super administrator holds no key, the standby
 			// replaces it when that is pending.
-			session, err = runPendingRotationTx(ctx, q, session, admin)
+			session, err = runPendingRotationTx(ctx, q, session, admin, dek)
 			session.Close()
 			return err
 		}
@@ -450,7 +450,7 @@ func (s *Store) EnrollAdminSession(admin string, dek []byte) error {
 		}
 		// A pending replacement runs first, so the checks below use the
 		// key that is active afterwards.
-		session, err = runPendingRotationTx(ctx, q, session, admin)
+		session, err = runPendingRotationTx(ctx, q, session, admin, dek)
 		if err != nil {
 			session.Close()
 			return err

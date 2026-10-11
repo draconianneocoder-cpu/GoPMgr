@@ -203,7 +203,7 @@ func newEscrowKeyTx(ctx context.Context, q accountWriter, actor string, dek []by
 		}
 		others = append(others, name)
 	}
-	if err := rows.Close(); err != nil {
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 		return 0, err
 	}
 	for _, name := range others {

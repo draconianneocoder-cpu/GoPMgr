@@ -196,7 +196,12 @@ func (s *Store) HandOverSuper(actor string, actorDEK []byte, target string) (key
 		}
 		// Never replace the key in the session of the person leaving: the
 		// new super administrator does it at their next sign-in.
-		if err := revokeGrantTx(ctx, q, actor, "the super administrator role was handed to "+target); err != nil {
+		if err := removeGrantTx(ctx, q, actor); err != nil {
+			return err
+		}
+		// A missing or unusable grant does not prove the departing holder
+		// discarded their private key or recovery code.
+		if err := markRotationPendingTx(ctx, q, "the super administrator role was handed to "+target); err != nil {
 			return err
 		}
 		return recordAccountEvent(ctx, q, actor, target, AccountSuperHandedOver,

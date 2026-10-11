@@ -280,7 +280,7 @@ func (s *Store) RecoverEscrowKey(actor string, dek []byte, typed string) error {
 			session.Close()
 			return err
 		}
-		next, err := runPendingRotationTx(ctx, q, session, actor)
+		next, err := runPendingRotationTx(ctx, q, session, actor, dek)
 		next.Close()
 		return err
 	})
