@@ -73,6 +73,39 @@ Development:
 
 Check `frontend/package.json` for the authoritative version list.
 
+### Advisory review, 2026-10-11
+
+The frontend lockfile resolves `source-map-js` 1.2.2 and
+`postcss-selector-parser` 7.1.6, removing the resolved package versions
+listed by GHSA-68fv-2mgg-jv7q and GHSA-rj75-hqrm-r3gf without changing
+manifest ranges. These are transitive
+build/test/lint dependencies, not evidence of a desktop request-path exploit.
+`npm --prefix frontend audit` checks the resolved dependency graph; it does
+not inventory code embedded in published bundles. Magicast 0.5.4, used by
+Vitest coverage tooling, still embeds source-map-js 1.2.1. The published
+Magicast 0.5.5 bundle also contains that copy. Its attacker-controlled
+indexed-map reachability has not been established; do not claim this copy
+was fixed by refreshing the separately resolved package.
+
+Vite 8.3.2 also embeds postcss-selector-parser 7.1.1 in its CSS Modules
+pipeline. The published Vite 8.3.3 and 8.3.4 bundles retain the quadratic
+index searches. Attacker-controlled CSS Modules therefore retain the
+reported CPU-exhaustion path; a resolved-package refresh or override does
+not replace that embedded code. No desktop request-path exploit was
+established. Check the published bundle and exercise Vite's `.module.css`
+pipeline before claiming an eventual fix.
+
+Excelize v2.11.0 remains affected by 15 package-level advisories in the
+2026-10-11 GitHub snapshot. The verified stable release list still ends at
+v2.11.0; the advisory fixes identify upstream pseudo-versions. GoPMgr's
+production Excelize caller constructs new XLSX exports with internal sheet
+and cell coordinates; it does not open supplied workbooks or evaluate
+formulas. Sigma XLSX import instead uses `read-excel-file/browser`.
+No production route to the reported malformed-workbook or uncontrolled
+coordinate sinks was demonstrated. This is a bounded reachability finding,
+not a fix or a claim that Excelize is universally safe. Reassess before
+adding an Excelize import path or adopting a patched upstream revision.
+
 ## External Tools
 
 Some gates use optional or required tools outside Go/npm:
