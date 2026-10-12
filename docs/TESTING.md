@@ -37,6 +37,11 @@ release claims. Run the frontend smoke gate for frontend changes because
 it catches module-load and SSR-render failures that `svelte-check` and
 `vite build` can miss.
 
+Native close assurance also requires driving the packaged application's actual
+quit route. For persistence checks, reopen the same isolated profile, not a new
+launcher-created profile. See the [macOS Cmd+Q evidence from 2026-10-12](testing/native-close-macos-2026-10-12.md)
+for the verified editor outcomes, isolation procedure, and remaining gaps.
+
 ## Flakiness diagnostics
 
 Use uncached, shuffled runs when investigating order-sensitive behavior and
