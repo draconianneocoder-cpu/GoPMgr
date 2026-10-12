@@ -98,8 +98,11 @@ That result took six live-GUI cycles to reach because the first five, all run un
   job. The coverage command uses
   explicit first-party Go package roots so `npm ci` cannot add executable test
   scope through `frontend/node_modules`.
-  Hosted execution and branch-protection required-status configuration remain
-  unverified; the separate release-validation expansion item remains open.
+  Hosted execution is verified at `a768d9b` by CI run `38196038118`, including
+  both assurance checks. Branch-protection required-status configuration
+  remains unverified; the separate release-validation expansion item remains
+  open. This is existing-commit evidence, not a claim that a later release
+  candidate passed those checks.
 - Project Cost Control ledger scope: [the current project-local boundary](design/project-cost-ledger-scope.md)
   defines the ordinary product. Keep legacy Budget as separate context, then
   track Cost Control expenses, inputs, materials, and direct/indirect overhead

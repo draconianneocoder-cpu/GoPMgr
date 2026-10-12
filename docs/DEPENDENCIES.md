@@ -95,16 +95,35 @@ not replace that embedded code. No desktop request-path exploit was
 established. Check the published bundle and exercise Vite's `.module.css`
 pipeline before claiming an eventual fix.
 
-Excelize v2.11.0 remains affected by 15 package-level advisories in the
-2026-10-11 GitHub snapshot. The verified stable release list still ends at
-v2.11.0; the advisory fixes identify upstream pseudo-versions. GoPMgr's
-production Excelize caller constructs new XLSX exports with internal sheet
-and cell coordinates; it does not open supplied workbooks or evaluate
-formulas. Sigma XLSX import instead uses `read-excel-file/browser`.
-No production route to the reported malformed-workbook or uncontrolled
-coordinate sinks was demonstrated. This is a bounded reachability finding,
-not a fix or a claim that Excelize is universally safe. Reassess before
-adding an Excelize import path or adopting a patched upstream revision.
+The former Excelize v2.11.0 pin was affected by 15 package-level advisories
+in the 2026-10-11 GitHub snapshot. The stable release list still ends at
+v2.11.0. To include those upstream fixes, GoPMgr deliberately pins
+`v2.11.1-0.20261003002531-6258dcebc4e2`, the immutable
+[upstream revision](https://github.com/qax-os/excelize/commit/6258dcebc4e2a2aed985c38a08098dfd908521d1)
+identified by the newest of those advisories. This is a pre-stable
+pseudo-version, not a released v2.11.1. Its Go 1.26 minimum is satisfied by
+the unchanged Go 1.27.2 pin. It also raises `mscfb` to 1.0.8, `efp` to
+0.0.2, `x/image` to 0.44.0, and `x/net` to 0.59.0.
+
+This revision changes automatic float writing to 15 significant digits.
+The schedule exporter therefore writes Go's shortest round-trip decimal
+representation through `SetCellDefault` for all six finite numeric columns,
+retaining numeric cells without the automatic truncation. Only formatted
+floats reach this API, never user text. NaN and infinity retain text cells;
+IDs/titles remain strings and Critical remains boolean. Raw worksheet XML
+tests detect truncation independently of Excelize's reader, alongside
+sheet/order/metadata/formula checks. A separate
+regression verifies overflowing column rejection with valid boundary controls;
+it does not independently exercise all 15 advisory fixes. GitHub alert closure
+requires a dependency refresh after publication and is separate evidence.
+
+GoPMgr's production Excelize caller constructs new XLSX exports with internal
+sheet and cell coordinates; it does not open supplied workbooks or evaluate
+formulas. Sigma XLSX import instead uses `read-excel-file/browser`. The prior
+reachability review did not demonstrate a production route to the reported
+malformed-workbook or uncontrolled-coordinate sinks. This is not a claim
+that Excelize is universally safe. Reassess before adding an Excelize import
+path, and replace the pseudo-version only through compatibility verification.
 
 ## External Tools
 

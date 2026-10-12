@@ -5,7 +5,9 @@ package export
 
 import (
 	"bytes"
+	"math"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/xuri/excelize/v2"
@@ -49,16 +51,39 @@ func renderXLSX(payload ReportPayload, opts ExportOptions) (out []byte, err erro
 		// No formula-injection neutralization is needed here (unlike the CSV
 		// exporter): excelize stores Go strings as string-typed cells, which
 		// Excel/LibreOffice never evaluate as formulas — only an explicit
-		// SetCellFormula produces a formula. Verified against the pinned
-		// excelize v2.11.0 by TestRenderXLSXStoresFormulaLikeTitlesAsText.
-		row := []interface{}{
-			t.ID, t.Title, t.Duration, t.ES, t.EF, t.LS, t.LF, t.Float, t.IsCritical,
-		}
+		// SetCellFormula produces a formula. Verified with the selected
+		// Excelize version by TestRenderXLSXStoresFormulaLikeTitlesAsText.
+		row := []interface{}{t.ID, t.Title}
 		cell, err := excelize.CoordinatesToCellName(1, i+2)
 		if err != nil {
 			return nil, err
 		}
 		if err := f.SetSheetRow(sheet, cell, &row); err != nil {
+			return nil, err
+		}
+		// Preserve the prior shortest round-trip decimal without Excelize's
+		// automatic 15-digit truncation. SetCellDefault keeps finite decimals
+		// numeric; only internally formatted floats reach it, never user text.
+		for col, value := range []float64{t.Duration, t.ES, t.EF, t.LS, t.LF, t.Float} {
+			cell, err := excelize.CoordinatesToCellName(col+3, i+2)
+			if err != nil {
+				return nil, err
+			}
+			text := strconv.FormatFloat(value, 'f', -1, 64)
+			if math.IsNaN(value) || math.IsInf(value, 0) {
+				err = f.SetCellStr(sheet, cell, text)
+			} else {
+				err = f.SetCellDefault(sheet, cell, text)
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
+		cell, err = excelize.CoordinatesToCellName(9, i+2)
+		if err != nil {
+			return nil, err
+		}
+		if err := f.SetCellBool(sheet, cell, t.IsCritical); err != nil {
 			return nil, err
 		}
 	}
