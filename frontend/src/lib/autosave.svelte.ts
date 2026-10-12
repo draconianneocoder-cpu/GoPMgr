@@ -43,11 +43,15 @@ async function saveEntry(e: Entry): Promise<boolean> {
   try {
     const result = await e.save();
     if (result === false) throw new Error('The editor reported that the save failed.');
-    e.last = savedSnapshot;
-    lastError = '';
+    if (entries.has(e)) {
+      e.last = savedSnapshot;
+      lastError = '';
+    }
     return true;
   } catch (err: unknown) {
-    lastError = err instanceof Error ? err.message : String(err ?? 'Save failed.');
+    if (entries.has(e)) {
+      lastError = err instanceof Error ? err.message : String(err ?? 'Save failed.');
+    }
     return false;
   } finally {
     e.saving = false;
@@ -84,7 +88,13 @@ export const autosave = {
     return lastError;
   },
   hasDirty(): boolean {
-    return [...entries].some((e) => safeSnapshot(e.snapshot) !== e.last);
+    return [...entries].some((e) => e.saving || safeSnapshot(e.snapshot) !== e.last);
+  },
+  /** Save one registered editor through the same gate and baseline as timed saves. */
+  async saveRegistered(snapshot: () => string): Promise<boolean> {
+    const matches = [...entries].filter((e) => e.snapshot === snapshot);
+    if (matches.length !== 1) return false;
+    return saveEntry(matches[0]);
   },
   async saveAll(): Promise<boolean> {
     const dirty = [...entries].filter((e) => safeSnapshot(e.snapshot) !== e.last);

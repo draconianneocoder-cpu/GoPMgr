@@ -6,6 +6,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount, onDestroy } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import { autosave } from '../../autosave.svelte';
+  import { rebaseEditableChanges } from '../../rebase-editable-changes';
   import { showToast } from '../../toast.svelte';
   import SignCertificateModal from '../SignCertificateModal.svelte';
   import DocumentFieldEditor from './DocumentFieldEditor.svelte';
@@ -18,12 +19,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let saving = $state(false);
   let syncingRiskMatrix = $state(false);
 
-  let lastSavedContent = $state<string | null>(null);
-  let lastSavedTitle = $state<string | null>(null);
-  let dirty = $derived(
-    lastSavedContent !== null &&
-      (JSON.stringify(content) !== lastSavedContent || doc?.title !== lastSavedTitle),
-  );
+  let lastSavedSnapshot = $state<string | null>(null);
+  let dirty = $derived(lastSavedSnapshot !== null && snapshot() !== lastSavedSnapshot);
+
+  function snapshot(): string {
+    return JSON.stringify({ c: content, t: doc?.title, s: doc?.status });
+  }
 
   const docStatuses = ['draft', 'review', 'approved', 'archived'] as const;
   const linkedRiskMatrixId = $derived(
@@ -40,58 +41,68 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   let stopAutosave: (() => void) | null = null;
+  let active = true;
 
   onMount(async () => {
     window.addEventListener('keydown', handleKeyDown);
     if (!session.editingId) return;
-    doc = await window.go.main.App.GetDocument(session.editingId);
     try {
-      content = JSON.parse(doc.content);
-    } catch {
-      content = {};
+      const loaded = await window.go.main.App.GetDocument(session.editingId);
+      if (!active) return;
+      doc = loaded;
+      try {
+        content = JSON.parse(loaded.content);
+      } catch {
+        content = {};
+      }
+      lastSavedSnapshot = snapshot();
+      const all = await window.go.main.App.ListDocumentKinds();
+      if (!active) return;
+      definition = all.find((d) => d.kind === loaded.kind) ?? null;
+      // charter_excel and plan_excel carry empty fields; borrow the paired _word schema.
+      if (definition && definition.fields.length === 0 && loaded.kind.endsWith('_excel')) {
+        const wordKind = loaded.kind.replace('_excel', '_word');
+        definition = all.find((d) => d.kind === wordKind) ?? definition;
+      }
+      stopAutosave = autosave.register(snapshot, persist);
+    } catch (err: unknown) {
+      if (active) status = `Load failed: ${err}`;
     }
-    lastSavedContent = JSON.stringify(content);
-    lastSavedTitle = doc.title;
-    const all = await window.go.main.App.ListDocumentKinds();
-    definition = all.find((d) => d.kind === doc!.kind) ?? null;
-    // charter_excel and plan_excel carry empty fields — borrow the paired _word schema.
-    if (definition && definition.fields.length === 0 && doc!.kind.endsWith('_excel')) {
-      const wordKind = doc!.kind.replace('_excel', '_word');
-      definition = all.find((d) => d.kind === wordKind) ?? definition;
-    }
-    // Snapshot covers both field content and the title, matching `dirty`.
-    stopAutosave = autosave.register(
-      () => JSON.stringify({ c: content, t: doc?.title }),
-      () => save(),
-    );
   });
 
   onDestroy(() => {
+    active = false;
     window.removeEventListener('keydown', handleKeyDown);
     stopAutosave?.();
   });
 
-  // Returning success lets export and synchronization actions stop instead of
-  // operating on the previous persisted version after a validation failure.
+  // Every write shares the coordinator's gate/baseline. Export and sync also
+  // require the live draft to match the acknowledged write, not a late edit.
   async function save(): Promise<boolean> {
-    if (!doc) return false;
+    return (await autosave.saveRegistered(snapshot)) && active && !dirty;
+  }
+
+  async function persist(): Promise<boolean> {
+    if (!active || !doc || saving) return false;
+    const submission = { ...doc, content: JSON.stringify(content) };
     saving = true;
     status = '';
     try {
-      const updated = await window.go.main.App.SaveDocument({
-        ...doc,
-        content: JSON.stringify(content),
-      });
-      doc = updated;
-      lastSavedContent = JSON.stringify(content);
-      lastSavedTitle = updated.title;
-      status = `Saved. Version ${updated.version} at ${new Date().toLocaleTimeString()}.`;
+      const updated = await window.go.main.App.SaveDocument(submission);
+      if (!active) return false;
+      const acknowledgedContent = JSON.parse(updated.content);
+      doc = rebaseEditableChanges(updated, submission, { ...doc, content: JSON.stringify(content) },
+        ['id', 'project_id', 'kind', 'template_id', 'version', 'created_at', 'updated_at']);
+      content = JSON.parse(doc.content);
+      lastSavedSnapshot = JSON.stringify({ c: acknowledgedContent, t: updated.title, s: updated.status });
+      status = dirty ? 'Saved earlier changes. Newer edits remain unsaved.'
+        : `Saved. Version ${updated.version} at ${new Date().toLocaleTimeString()}.`;
       return true;
     } catch (err: any) {
-      status = `Save failed: ${err}`;
+      if (active) status = `Save failed: ${err}`;
       return false;
     } finally {
-      saving = false;
+      if (active) saving = false;
     }
   }
 

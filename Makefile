@@ -94,6 +94,7 @@ pades-harness-tests: ## Run deterministic local, external, locking, and trusted-
 	# Keep the real local generator alongside the fake-validator matrices: the
 	# matrices isolate error branches, while generation exercises GoPMgr's
 	# current CMS, RFC 3161, and PDF incremental-update implementation.
+	@python3 -B scripts/pades-harness-lifecycle_test.py
 	@bash scripts/pades-lock_test.sh
 	@bash scripts/pades-publish_test.sh
 	@bash scripts/validate-pades.sh

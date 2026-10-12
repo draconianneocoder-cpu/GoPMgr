@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Shared by StakeholderManager, ProjectSettings, WorkItemEditor, and
-// SprintList's save() functions -- not every autosave.register()-backed
+// Shared by StakeholderManager, ProjectSettings, WorkItemEditor, SprintList,
+// and CharterEditor persistence -- not every autosave.register()-backed
 // editor; the shared chart-editor shells that back most other editors
 // use a different rebase mechanism of their own.
 //

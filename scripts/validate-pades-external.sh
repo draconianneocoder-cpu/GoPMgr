@@ -17,6 +17,7 @@ cd "$ROOT"
 
 SAMPLE_DIR="$ROOT/.tmp/gopmgr-pades-test"
 PADES_LOCK="$ROOT/.tmp/gopmgr-pades-test.lock"
+LOCK_OWNED=false
 source "$ROOT/scripts/pades-lock.sh"
 if [ "$#" -gt 1 ]; then
 	echo "usage: $0 [signed-pdf]" >&2
@@ -49,12 +50,21 @@ REPORT="$SAMPLE_DIR/external-validation-report.txt"
 
 echo "=== PAdES External Validation Harness ==="
 
+cleanup() {
+	if [ "$LOCK_OWNED" = true ]; then
+		rm -rf "$PADES_LOCK"
+	fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 acquire_pades_lock() {
 	if [ "${GOPMGR_PADES_LOCK_HELD:-0}" = "1" ]; then
 		return
 	fi
 	pades_acquire_lock "$PADES_LOCK" "${GOPMGR_PADES_LOCK_TIMEOUT_SECONDS:-30}"
-	trap 'rm -rf "$PADES_LOCK"' EXIT INT TERM
+	LOCK_OWNED=true
 	export GOPMGR_PADES_LOCK_HELD=1
 }
 
@@ -75,6 +85,7 @@ elif [ ! -s "$PDF_PATH" ]; then
 	echo "supplied PAdES PDF is missing or empty: $PDF_PATH" >&2
 	exit 66
 fi
+mkdir -p "$SAMPLE_DIR"
 
 # Explicit-PDF mode preserves its input but must not inherit derived evidence
 # from an earlier validation. Remove only the harness-owned files while the

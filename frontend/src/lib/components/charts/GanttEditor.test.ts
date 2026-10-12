@@ -104,6 +104,9 @@ describe('GanttEditor split actions (handler glue)', () => {
     await fireEvent.click(getByText('Preview splitting'));
 
     expect(app.PreviewSplitLeveling).toHaveBeenCalledWith('chart-1');
+    // Svelte queues a zero-delay delegated-event cleanup. Drain due framework
+    // work before counting the editor's still-pending 4000 ms status timeout.
+    await vi.advanceTimersByTimeAsync(0);
     expect(vi.getTimerCount()).toBe(1);
     unmount();
     expect(vi.getTimerCount()).toBe(0);

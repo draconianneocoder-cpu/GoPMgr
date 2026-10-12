@@ -27,6 +27,7 @@ TRUSTED_LOCK="$ROOT/.tmp/gopmgr-pades-trusted-source.lock"
 PDF_PATH="${GOPMGR_TRUSTED_SIGNED_PDF:-${1:-}}"
 REQUIRED="${GOPMGR_PADES_TRUSTED_REQUIRED:-0}"
 LOCK_OWNED=false
+REPORT_ACCESS_ALLOWED=false
 source "$ROOT/scripts/pades-lock.sh"
 
 if [ "$#" -gt 1 ]; then
@@ -43,7 +44,9 @@ case "$REQUIRED" in
 esac
 
 cleanup() {
-	rm -f "$REPORT_TMP"
+	if [ "$REPORT_ACCESS_ALLOWED" = true ]; then
+		rm -f "$REPORT_TMP"
+	fi
 	if [ "$LOCK_OWNED" = true ]; then
 		rm -rf "$TRUSTED_LOCK"
 	fi
@@ -120,6 +123,7 @@ if [ -n "$PDF_PATH" ]; then
 fi
 
 acquire_trusted_lock
+REPORT_ACCESS_ALLOWED=true
 mkdir -p "$OUT_DIR"
 
 # Derived files must describe only the current invocation. Removing this known
