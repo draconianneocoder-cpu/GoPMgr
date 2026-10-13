@@ -59,43 +59,60 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   // ---------- load ----------
   let stopAutosave: (() => void) | null = null;
+  let active = true;
+  let pendingWrite: Promise<boolean> | null = null;
+  let refreshing = false;
+  let refreshAgain = false;
+
+  function snapshot(): string {
+    return JSON.stringify(doc);
+  }
 
   onMount(async () => {
     if (!session.editingId) return;
     try {
-      chart = await window.go.main.App.GetChart(session.editingId);
+      const loaded = await window.go.main.App.GetChart(session.editingId);
+      if (!active) return;
+      chart = loaded;
     } catch (err: any) {
-      loadError = `Could not load this chart: ${err?.message ?? err}`;
+      if (active) loadError = `Could not load this chart: ${err?.message ?? err}`;
       return;
     }
+    let initialSnapshot: string | undefined;
     try {
       doc = JSON.parse(chart.data) as WBSDoc;
     } catch {
+      initialSnapshot = chart.data;
       doc = { root: { id: 'r', title: chart.title, children: [] } };
     }
+    stopAutosave = autosave.register(snapshot, persist, true, initialSnapshot);
     await refreshLayout();
-    // Register for timed auto-save now the saved doc is loaded.
-    stopAutosave = autosave.register(
-      () => JSON.stringify(doc),
-      () => save(),
-    );
   });
 
   async function refreshLayout() {
-    if (!chart) return;
+    if (!active || !chart) return;
+    refreshAgain = true;
+    if (refreshing) return;
+    refreshing = true;
     try {
-      // Persist the edits so the backend's Renumber + LayoutWBS sees them.
-      const updated = await window.go.main.App.SaveChart({
-        ...chart,
-        data: JSON.stringify(doc),
-      });
-      chart = updated;
-      lastSavedAt = new Date();
-      const res = await window.go.main.App.LayoutChart(updated.id);
-      layout = (res.body as unknown) as Layout;
-    } catch (err: any) {
-      status = `Layout failed: ${err}`;
+      while (refreshAgain && active) {
+        // The coordinator awaits this exact promise first. Its acknowledgement
+        // releases the gate before this later waiter submits the newest draft.
+        if (pendingWrite) await pendingWrite;
+        if (!active) return;
+        refreshAgain = false;
+        await save();
+      }
+    } finally {
+      refreshing = false;
     }
+  }
+
+  // Keep the promise identity: an async wrapper would acknowledge later than
+  // the preview waiter and could cause the next refresh to be refused as busy.
+  function persist(): Promise<boolean> {
+    pendingWrite = writeChart();
+    return pendingWrite;
   }
 
   // ---------- tree edit operations ----------
@@ -171,24 +188,33 @@ SPDX-License-Identifier: GPL-3.0-or-later
     });
   }
 
-  async function save() {
-    if (!chart) return false;
+  async function save(): Promise<boolean> {
+    return active && await autosave.saveRegistered(snapshot);
+  }
+
+  async function writeChart(): Promise<boolean> {
+    if (!active || !chart) return false;
+    const submission = { ...chart, data: snapshot() };
     saving = true;
     status = '';
     try {
-      const updated = await window.go.main.App.SaveChart({
-        ...chart,
-        data: JSON.stringify(doc),
-      });
+      const updated = await window.go.main.App.SaveChart(submission);
+      if (!active) return true;
       chart = updated;
       lastSavedAt = new Date();
       status = `Saved. Version updated at ${new Date().toLocaleTimeString()}.`;
+      try {
+        const res = await window.go.main.App.LayoutChart(updated.id);
+        if (active) layout = (res.body as unknown) as Layout;
+      } catch (err: unknown) {
+        if (active) status = `Saved, but layout failed: ${err}`;
+      }
       return true;
-    } catch (err: any) {
-      status = `Save failed: ${err}`;
+    } catch (err: unknown) {
+      if (active) status = `Save failed: ${err}`;
       return false;
     } finally {
-      saving = false;
+      if (active) saving = false;
     }
   }
 
@@ -215,6 +241,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   // Concurrency hardening: cancel pending debounce on unmount.
   onDestroy(() => {
+    active = false;
+    refreshAgain = false;
     stopAutosave?.();
     if (debounceTimer) {
       clearTimeout(debounceTimer);

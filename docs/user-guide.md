@@ -622,6 +622,13 @@ and restore focus, and animations honor the OS reduced-motion setting.
 
 ## Editor Save Behavior
 
+WBS preview refreshes and Save share one writer. Changes made while saving stay
+in the working draft; newer preview requests are combined and processed after
+the current write. Navigation remains guarded while a write is pending or newer
+changes remain unsaved. A “Saved, but layout failed” message means the chart data
+was saved, but its preview could not refresh; use Save again to refresh it.
+Discard cannot undo a write already submitted to the database.
+
 All document and chart editors support Ctrl+S / Cmd+S. Auto-save is also
 available from Application Settings. Auto-save is snapshot-based, so idle
 editors do not rewrite unchanged data or churn `updated_at`.

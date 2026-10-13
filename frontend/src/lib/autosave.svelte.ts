@@ -119,13 +119,16 @@ export const autosave = {
    * Register an editor for auto-save. `snapshot` returns a string that
    * changes when the editor's working content changes; `save` persists it.
    * Returns an unregister function — call it in onDestroy.
+   * initialSnapshot supplies the stored baseline when recovery changes the
+   * working content before registration; otherwise the current draft is used.
    */
   register(
     snapshot: () => string,
     save: () => unknown | Promise<unknown>,
     automatic = true,
+    initialSnapshot?: string,
   ): () => void {
-    const entry: Entry = { snapshot, save, last: safeSnapshot(snapshot), automatic };
+    const entry: Entry = { snapshot, save, last: initialSnapshot ?? safeSnapshot(snapshot), automatic };
     entries.add(entry);
     ensureHeartbeat();
     return () => {

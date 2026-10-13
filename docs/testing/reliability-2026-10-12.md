@@ -96,7 +96,9 @@ zero failure probability.
 - Supplied-input preservation is tested for a separate input path. Aliases or
   input collisions with derived-output paths need a separate confinement fix.
 - WBS preview writes independently race guarded saves in a controlled-function
-  probe; real bridge/database commit ordering still needs investigation.
+  probe. The subsequent [WBS ordering repair](wbs-ordering-2026-10-13.md)
+  adds controlled component commits and real App/database evidence; native
+  bridge execution remains a separate evidence gap.
 - Other editors may have similar async lifetime/write paths. No broad rewrite
   or claim of closure follows from the Charter fix.
 - The account-creation concurrency test's 300 ms scheduling window remains a
