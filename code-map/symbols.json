@@ -571,6 +571,21 @@
       "type Account struct{ ... }",
       "type Store struct{ ... }",
       "    func Open(rootDir string) (*Store, error)"
+    ],
+    "gopmgr/internal/wbs": [
+      "const SchemaVersion = 2 ...",
+      "var ErrInvalid = errors.New(\"wbs: invalid aggregate\") ...",
+      "var ErrRevision = errors.New(\"wbs: invalid revision\") ...",
+      "func CheckWriteContext(current, requested Identity, revision, expected string) error",
+      "func NextRevision(current string) (string, error)",
+      "func Validate(a Aggregate) error",
+      "type ActivityLink struct{ ... }",
+      "type Aggregate struct{ ... }",
+      "    func Parse(raw []byte) (Aggregate, error)",
+      "type CostLink struct{ ... }",
+      "type Dictionary struct{ ... }",
+      "type Identity struct{ ... }",
+      "type Node struct{ ... }"
     ]
   }
 }

@@ -238,6 +238,14 @@ DAG-family chart engines: WBS, CPM/Network/PERT, layered (Workflow-adjacent), Fi
 | `link_label_test.go` | 2 | Dependency-link label parsing (`FS+5d` etc.) | unit | Malformed or unusual link labels must parse to a sane default rather than crash the layout. |
 | `pert_test.go` | 6 | PERT three-point estimation (optimistic/likely/pessimistic → expected + std dev) | table-driven | PERT's statistical formulas (expected duration, variance) must match the textbook formula exactly, including the all-zero-variance edge case. |
 
+## `internal/wbs` — 100.0%
+
+Isolated unified scope model, not wired into application persistence or migration.
+
+| File | Tests | Covers | How | Why |
+| --- | --- | --- | --- | --- |
+| `internal/wbs/model_test.go` | 15 plus 1 fuzz target | Strict parsing, required identifiers, schema/revisions, topology and resource bounds, dictionary preservation, leaf/source association rules, copy/project/chart/lifetime predicate | boundary, negative, semantic round-trip, bounded fuzz, fault-seeded | Rejects ambiguous or partial writable models without changing legacy WBS behavior. Tests prove exact revision handling above JavaScript precision, combined association limits and decoded UTF-8 size accounting. External source resolution, authorization, transactional CAS and migration are explicitly not established by these tests. |
+
 ## `internal/charts/flow` — 97.6%
 
 Flow-family chart engines: Workflow, Activity diagrams.
