@@ -565,8 +565,8 @@ func (s *Store) CreateAccountWithKey(callerUsername, username, displayName, pass
 }
 
 // afterAccountRuleCheck runs inside CreateAccountAs's transaction, after
-// the rule check and before the insert. Tests replace it to hold that
-// window open, so a missing write lock fails deterministically.
+// the rule check and before the insert. Tests replace it to verify that
+// an independent connection cannot acquire the write lock at this point.
 var afterAccountRuleCheck = func() {}
 
 // accountWriter is the part of *sql.DB and *sql.Conn that insertAccount

@@ -4,14 +4,20 @@
 package users
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
-	"time"
+
+	sqlite3 "github.com/mutecomm/go-sqlcipher/v4"
+
+	"gopmgr/internal/sqlitedriver"
 )
 
 const rulePassword = "passphrase-long"
@@ -37,14 +43,84 @@ func assertNoAccountFolder(t *testing.T, store *Store, username string) {
 	}
 }
 
-// holdAccountRuleWindow pauses every CreateAccountAs between its rule
-// check and its insert. Without the write lock, every racing caller passes
-// the check during the pause; with it, the others wait at BEGIN IMMEDIATE.
-func holdAccountRuleWindow(t *testing.T) {
+// assertAccountRuleWriteLock probes the actual database lock after the rule
+// check, without depending on how long other callers take to hash passwords.
+func assertAccountRuleWriteLock(t *testing.T, store *Store) *atomic.Int64 {
 	t.Helper()
+	probe, err := sql.Open(sqlitedriver.Name, filepath.Join(store.RootDir(), "system.db")+"?_busy_timeout=0&_txlock=immediate")
+	if err != nil {
+		t.Fatalf("open lock probe: %v", err)
+	}
+	probe.SetMaxOpenConns(1)
+	probe.SetMaxIdleConns(1)
+	t.Cleanup(func() {
+		if err := probe.Close(); err != nil {
+			t.Errorf("close lock probe: %v", err)
+		}
+	})
+	if err := probe.Ping(); err != nil {
+		t.Fatalf("warm lock probe: %v", err)
+	}
+	var calls atomic.Int64
 	previous := afterAccountRuleCheck
-	afterAccountRuleCheck = func() { time.Sleep(300 * time.Millisecond) }
+	afterAccountRuleCheck = func() {
+		calls.Add(1)
+		tx, err := probe.BeginTx(context.Background(), nil)
+		if err == nil {
+			t.Error("account rule check does not hold write lock")
+			if err := tx.Rollback(); err != nil {
+				t.Errorf("roll back lock probe: %v", err)
+			}
+			return
+		}
+		var sqliteErr sqlite3.Error
+		if !errors.As(err, &sqliteErr) || sqliteErr.Code != sqlite3.ErrBusy {
+			t.Errorf("lock probe: %v; want SQLite busy", err)
+		}
+	}
 	t.Cleanup(func() { afterAccountRuleCheck = previous })
+	return &calls
+}
+
+func TestCreateAccountAsHoldsWriteLockAcrossRuleCheck(t *testing.T) {
+	for _, seedAdmin := range []bool{false, true} {
+		name := "first_account"
+		if seedAdmin {
+			name = "administrator_creates"
+		}
+		t.Run(name, func(t *testing.T) {
+			store := openTestStore(t)
+			caller, username, wantAccounts := "", "alice", 1
+			if seedAdmin {
+				if _, err := store.CreateAccountAs("", "alice", "Alice", rulePassword, false); err != nil {
+					t.Fatalf("seed administrator: %v", err)
+				}
+				caller, username, wantAccounts = "alice", "bob", 2
+			}
+			calls := assertAccountRuleWriteLock(t, store)
+			acc, err := store.CreateAccountAs(caller, username, "", rulePassword, false)
+			if err != nil {
+				t.Fatalf("CreateAccountAs: %v", err)
+			}
+			if got := calls.Load(); got != 1 {
+				t.Errorf("lock probe calls = %d, want 1", got)
+			}
+			roles := accountRoles(t, store)
+			isAdmin, exists := roles[username]
+			if len(roles) != wantAccounts || !exists || isAdmin != !seedAdmin || acc.IsAdmin != !seedAdmin {
+				t.Errorf("returned admin = %v, stored roles = %v; want %d accounts and %s admin = %v", acc.IsAdmin, roles, wantAccounts, username, !seedAdmin)
+			}
+			events, err := store.AccountEvents()
+			if err != nil || len(events) != wantAccounts {
+				t.Fatalf("creation history = %+v, %v; want %d events", events, err, wantAccounts)
+			}
+			for _, event := range events {
+				if event.Action != AccountCreated {
+					t.Errorf("history action = %q, want created", event.Action)
+				}
+			}
+		})
+	}
 }
 
 func TestHasAnyAccount(t *testing.T) {
@@ -155,7 +231,7 @@ func TestCreateAccountAsReadsCallerRoleFromStore(t *testing.T) {
 func TestCreateAccountAsConcurrentFirstAccounts(t *testing.T) {
 	const contenders = 3
 	store := openTestStore(t)
-	holdAccountRuleWindow(t)
+	calls := assertAccountRuleWriteLock(t, store)
 
 	start := make(chan struct{})
 	errs := make([]error, contenders)
@@ -170,6 +246,9 @@ func TestCreateAccountAsConcurrentFirstAccounts(t *testing.T) {
 	}
 	close(start)
 	wg.Wait()
+	if got := calls.Load(); got != 1 {
+		t.Errorf("lock probe calls = %d, want 1", got)
+	}
 
 	winners := 0
 	for i, err := range errs {
@@ -204,7 +283,7 @@ func TestCreateAccountAsConcurrentCaseVariants(t *testing.T) {
 	if _, err := store.CreateAccountAs("", "alice", "Alice", rulePassword, false); err != nil {
 		t.Fatalf("first account: %v", err)
 	}
-	holdAccountRuleWindow(t)
+	calls := assertAccountRuleWriteLock(t, store)
 
 	names := []string{"Carol", "carol", "CAROL"}
 	start := make(chan struct{})
@@ -220,6 +299,9 @@ func TestCreateAccountAsConcurrentCaseVariants(t *testing.T) {
 	}
 	close(start)
 	wg.Wait()
+	if got := calls.Load(); got != int64(len(names)) {
+		t.Errorf("lock probe calls = %d, want %d", got, len(names))
+	}
 
 	created := 0
 	for i, err := range errs {
