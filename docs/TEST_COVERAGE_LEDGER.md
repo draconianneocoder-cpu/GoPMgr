@@ -359,7 +359,15 @@ destination file instead of buffering it fully in memory first). See
 `app_export_destination_test.go`/`exportfs_test.go`'s row above for
 detail.
 
-## `internal/db` — 76.9%
+## `internal/db` — 77.6%
+
+`wbs_store_test.go` adds nine file-backed transactional storage tests: plaintext
+and SQLCipher replay/reopen, competing independent handles, receipt 257 and
+pruning rollback, audit/receipt failure rollback, generic protection and binding
+refusal, initialization/normalization, cancellation and revision boundaries,
+commit-error cleanup, encoding expansion and incompatible-schema counterexamples.
+Runtime session authorization, source incarnation and old-binary protection
+remain activation gates; this is a dormant internal writer, not native UI evidence.
 
 Persistence kernel: single SQLite file (optionally SQLCipher-encrypted)
 holding every project entity, plus the tamper-evident audit chain.

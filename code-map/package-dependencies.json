@@ -257,7 +257,8 @@
         "gopmgr/internal/exportsafe",
         "gopmgr/internal/money",
         "gopmgr/internal/sigma/domain",
-        "gopmgr/internal/sqlitedriver"
+        "gopmgr/internal/sqlitedriver",
+        "gopmgr/internal/wbs"
       ],
       "notable_external_deps": []
     },
@@ -556,7 +557,9 @@
     },
     "gopmgr/internal/wbs": {
       "dir": "internal/wbs",
-      "imported_by_internal": [],
+      "imported_by_internal": [
+        "gopmgr/internal/db"
+      ],
       "imports_internal": [],
       "notable_external_deps": []
     },

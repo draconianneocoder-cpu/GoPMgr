@@ -69,9 +69,12 @@ rejection and presence/zero-value rules are still necessary. Encoded size can
 exceed decoded-text size through escaping. Hierarchy levels are not JSON depth.
 Association keys must be tuples, not concatenated strings or display codes.
 
-The package has no production caller. Pure context matching is not authorization
-or transactional compare-and-swap. External source existence/ownership,
-unresolved-link warnings, durable receipts, audit rollback, migration, old-binary
-protection, file exchange and UI behavior remain unimplemented. Native Wails,
+At this model milestone the package had no production caller. The later
+[dormant storage foundation](../design/wbs-storage-boundary.md) now uses it
+internally, without production application activation. Pure context matching
+alone is not authorization or transactional compare-and-swap. The storage
+foundation now covers receipts and atomic audit writes; external source
+existence/ownership, unresolved-link warnings, migration, old-binary protection,
+file exchange and UI behavior remain unimplemented. Native Wails,
 Linux/Windows runtime and comparative usability were not tested for this slice;
 no integrated parity or release-readiness claim follows from these results.

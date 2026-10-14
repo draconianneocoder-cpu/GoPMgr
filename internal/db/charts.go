@@ -46,6 +46,9 @@ var ErrNoChart = errors.New("db: chart not found")
 // SaveChart inserts or updates a chart. If c.ID is empty, it's set to
 // a new ID; the resulting Chart is returned.
 func (db *Database) SaveChart(c Chart) (Chart, error) {
+	if protectedWBSPayload(c.Kind, c.Data) {
+		return Chart{}, ErrWBSProtected
+	}
 	if c.ID == "" {
 		id, err := newID("chart")
 		if err != nil {
@@ -65,19 +68,23 @@ func (db *Database) SaveChart(c Chart) (Chart, error) {
 	if err != nil {
 		return Chart{}, err
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	defer func() { _ = tx.Rollback() }()
 
 	before, err := getChartTx(tx, c.ID)
 	isCreate := false
 	if err == ErrNoChart {
 		isCreate = true
-		err = nil
 	} else if err != nil {
 		return Chart{}, err
+	}
+	if !isCreate {
+		protected, checkErr := protectedWBSChartTx(tx, before)
+		if checkErr != nil {
+			return Chart{}, checkErr
+		}
+		if protected {
+			return Chart{}, ErrWBSProtected
+		}
 	}
 
 	_, err = tx.Exec(`
@@ -179,19 +186,21 @@ func (db *Database) DeleteChart(id string) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	defer func() { _ = tx.Rollback() }()
 
 	before, err := getChartTx(tx, id)
 	if err == ErrNoChart {
-		err = nil
 		return tx.Commit()
 	}
 	if err != nil {
 		return err
+	}
+	protected, checkErr := protectedWBSChartTx(tx, before)
+	if checkErr != nil {
+		return checkErr
+	}
+	if protected {
+		return ErrWBSProtected
 	}
 	if _, err = tx.Exec(`DELETE FROM charts WHERE id = ?`, id); err != nil {
 		return err

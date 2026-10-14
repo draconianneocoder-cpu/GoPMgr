@@ -5,13 +5,18 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # Unified local-first WBS model contract
 
-Status: Pure model/validation slice approved; persistence, migration and UI remain
-proposed. On 2026-10-13 the user approved local-first
+Status: Pure model and the bounded internal transactional storage foundation are
+approved; production activation, migration and UI remain gated. On 2026-10-13
+the user approved local-first
 file-based sharing, designing one authoritative WBS across linked views, and
 requiring the new application version for upgraded WBS files. These decisions
 do not approve the exact persistence/API contract, financial Phase 2, or claim
-that old-version protection has been implemented. The user subsequently approved
-the first pure model/identity/revision/validation slice and the limits below.
+that old-version protection has been implemented. On 2026-10-14 the user approved
+256 committed receipts per chart, existing encrypted full-text audit retention,
+atomic revision/receipt/audit writes and unresolved deleted-source links. The
+[storage boundary](wbs-storage-boundary.md) records the implemented foundation
+and its explicit production activation gates. The first pure
+model/identity/revision/validation slice and the limits below were approved earlier.
 
 ## Ownership and identity
 
@@ -65,7 +70,8 @@ Logical payload for the approved pure model slice:
 Copy identity, open-lifetime handle, expected revision and request identity belong
 to the server-bound operation context, not trusted import metadata. Classification
 is optional uninterpreted text; no vocabulary or business rule is inferred.
-Receipt-retention bounds remain a future persistence gate.
+Receipt retention is 256 distinct committed requests per chart; replay does not
+refresh that bound. Production session and recovery integration remain gated.
 
 ### Approved pure validation boundary
 
@@ -108,11 +114,13 @@ pure predicate, not authorization, a lock or a database compare-and-swap.
 Callers must not mutate an aggregate concurrently with validation. No ID generator,
 receipt store, transition command, projection or migration is implemented here.
 
-A dedicated future WBS write boundary accepts expected revision and stable
-request identity. No such API is claimed to exist today. In one transaction it
-compares revision, validates referenced records, replaces the aggregate, advances
-revision, records the request result and appends the audit event. Any failure
-rolls back all effects. Repeating a committed request returns its original result;
+A dedicated internal WBS store accepts expected revision and stable request
+identity; no production Wails API exposes it yet. In one transaction it
+compares revision, replaces the aggregate, advances
+revision, records the request result and appends the audit event. A pre-commit
+failure rolls back all effects; a commit error requires outcome reconciliation.
+Source links are refused in this foundation until incarnation-aware validation
+is established. Repeating a committed request returns its original result;
 reusing its identity for a different payload is refused. Lost acknowledgement
 must not cause a second revision or audit event. Stale writes keep the draft and
 present a conflict; they never overwrite automatically.
