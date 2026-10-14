@@ -27,14 +27,14 @@ code. New project databases are encrypted by default; eligible plaintext
 projects can be migrated from Project Settings.
 
 The project currently builds a runtime subset of v4.4.2 with
-an upstream SQLite WAL-reset correctness backport and a Go-side failed-COMMIT
+an upstream SQLite WAL-reset correctness backport and a Go-side transaction
 cleanup correction. This is a maintenance constraint, not a new encryption
 design: the SQLCipher version, key handling, codec provider, page format,
 journal mode, and existing public driver signatures remain unchanged.
 The additive `IsValid` method enables safe pool eviction. The local replacement
 may be removed only after a containing
 upstream driver release passes the causal WAL-reset and old/new encrypted-file
-interchange tests and the failed-COMMIT cleanup regressions.
+interchange tests and the COMMIT/ROLLBACK cleanup regressions.
 
 `system.db` stays plaintext by design. It contains account names, password
 hashes, recovery-code metadata, and wrapped DEKs, but not project records.

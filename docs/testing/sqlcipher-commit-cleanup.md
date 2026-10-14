@@ -94,8 +94,10 @@ the same test passed outside the sandbox before production edits.
 The race detector checks Go ownership, not the C amalgamation. No native
 Windows/Linux, power-loss, or filesystem I/O-failure durability claim is made.
 Outstanding external Backup/BLOB/native-statement lifetimes are outside this
-bounded fix and must end before connection close. Explicit ROLLBACK rejection
-remains a separate driver path. Public cursor execution resets errors before
+bounded fix and must end before connection close. The later
+[explicit ROLLBACK repair](sqlcipher-rollback-cleanup.md) closes the follow-up
+connection-invalidation gap; the COMMIT regressions remain unchanged.
+Public cursor execution resets errors before
 finalization; the non-OK native finalization fallback is source-reviewed, not
 claimed dynamically exercised through that interface.
 

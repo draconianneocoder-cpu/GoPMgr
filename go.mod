@@ -5,7 +5,7 @@ module gopmgr
 
 go 1.27.2
 
-// SQLCipher 4.4.2 with WAL-reset and failed-commit cleanup corrections.
+// SQLCipher 4.4.2 with WAL-reset and transaction-cleanup corrections.
 // Provenance and maintenance instructions: third_party/go-sqlcipher/GOPMGR.md.
 replace github.com/mutecomm/go-sqlcipher/v4 => ./third_party/go-sqlcipher
 

@@ -445,15 +445,8 @@ func (ai *aggInfo) Done(ctx *C.sqlite3_context) {
 func (tx *SQLiteTx) Commit() error {
 	_, err := tx.c.exec(context.Background(), "COMMIT", nil)
 	if err != nil {
-		// database/sql finishes Tx even when SQLite leaves it open. Preserve
-		// the COMMIT error, but never reuse a transaction whose cleanup failed.
-		if _, rollbackErr := tx.c.exec(context.Background(), "ROLLBACK", nil); rollbackErr != nil {
-			tx.c.mu.Lock()
-			if tx.c.db != nil && C.sqlite3_get_autocommit(tx.c.db) == 0 {
-				tx.c.txFailed = true
-			}
-			tx.c.mu.Unlock()
-		}
+		// Preserve the COMMIT error; Rollback owns cleanup and invalidation.
+		_ = tx.Rollback()
 	}
 	return err
 }
@@ -461,6 +454,14 @@ func (tx *SQLiteTx) Commit() error {
 // Rollback transaction.
 func (tx *SQLiteTx) Rollback() error {
 	_, err := tx.c.exec(context.Background(), "ROLLBACK", nil)
+	if err != nil {
+		// database/sql finishes Tx even if the native transaction remains open.
+		tx.c.mu.Lock()
+		if tx.c.db != nil && C.sqlite3_get_autocommit(tx.c.db) == 0 {
+			tx.c.txFailed = true
+		}
+		tx.c.mu.Unlock()
+	}
 	return err
 }
 

@@ -27,7 +27,7 @@ posture, and validator coverage, so keep them intentional and verified.
 - `github.com/mutecomm/go-sqlcipher/v4`: SQLCipher-capable SQLite driver
   registered through `internal/sqlitedriver`. The v4.4.2 module is replaced by
   the runtime-only copy in `third_party/go-sqlcipher` to carry SQLite's
-  WAL-reset generation-check correction and failed-COMMIT cleanup. The
+  WAL-reset generation-check correction and failed driver-transaction cleanup. The
   replacement retains SQLite 3.33.0, SQLCipher 4.4.2, the LibTomCrypt provider, and the existing encrypted
   file format; provenance, hashes, and the removal procedure are recorded in
   `third_party/go-sqlcipher/GOPMGR.md`.
@@ -183,4 +183,4 @@ SQLite implementation in the binary. Driver changes need encryption
 tests, migration tests, build checks, packaging review, and a causal WAL-reset
 regression when the embedded SQLite core changes. Do not remove the local
 replacement until an upstream driver release containing both corrections passes
-the failed-COMMIT regressions and the same encrypted-file interchange checks.
+the COMMIT/ROLLBACK regressions and the same encrypted-file interchange checks.

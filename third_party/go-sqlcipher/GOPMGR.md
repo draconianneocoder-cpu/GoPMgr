@@ -6,7 +6,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # GoPMgr SQLCipher source provenance
 
 GoPMgr builds this local module instead of the published module to carry a
-WAL-reset correctness backport and failed-COMMIT cleanup. It retains the published
+WAL-reset correctness backport and transaction cleanup. It retains the published
 `github.com/mutecomm/go-sqlcipher/v4` v4.4.2 API, SQLite 3.33.0 core,
 SQLCipher 4.4.2 format and codec, and LibTomCrypt provider.
 
@@ -31,8 +31,9 @@ salt with the checkpoint's cached header. If a writer reset the WAL generation,
 the checkpoint skips all stale backfill I/O and bookkeeping. Lock and iterator
 cleanup remain unconditional.
 
-The Go-side difference is in `sqlite3.go`: every failed COMMIT attempts ROLLBACK
-without replacing the original error. Failed cleanup with an active transaction
+The Go-side difference is in `sqlite3.go`: every failed COMMIT calls ROLLBACK
+without replacing the original COMMIT error. A failed `SQLiteTx.Rollback`
+preserves its own error. Failed cleanup with an active transaction
 marks the connection unusable; the additive `IsValid` method implements
 `driver.Validator`. Preparation, statement execution and cursor stepping refuse
 that connection before native execution. Manual transactions are not invalidated
@@ -43,17 +44,20 @@ rollback and lock release. No native pointer is retained after destruction.
 - Original `sqlite3.go` SHA-256:
   `8e1c03179bf1259c8fbbb983e6932aa9e847692c509c3cfd4cc3fcb6f6bb4071`
 - Patched `sqlite3.go` SHA-256:
-  `ce54fd87a573f3e3097cd75873448b6f7fd2f724905c66a6ccbc1827c643d890`
+  `676c0011b725554d567c490725f6134df31c5bedc7c43efb4ca595277cd7e1ad`
 - Pristine 92-file runtime-tree SHA-256:
   `53b55af239a633b04a6fee66f0e5a9a76fdf2f7dc24c57b78e378d4beda6a73b`
 - Patched 92-file runtime-tree SHA-256:
-  `53faf187f7ff6d4306280b06f48f8e9801e7aaaddce345eeb41769bd3675c430`
+  `f1f26fcbeb046c2b1d3f7aea78d8fdcf30337e2e596b3bbb735c1b5640ae1cb0`
 
-The cleanup fix covers repository `database/sql` callers and their driver-owned
-statements. It does not establish safe closure with an externally retained
+Transaction cleanup applies to the driver's Tx methods, not manually issued
+SQL. Statement lifecycle handling covers driver-owned statements. It does not
+establish safe closure with an externally retained
 `SQLiteConn.Backup`, BLOB handle, or native statement created outside this driver.
-Such resources must finish before connection close. Explicit ROLLBACK rejection
-is a separate existing gap; the new invalidation applies to failed COMMIT cleanup.
+Such resources must finish before connection close. When a ROLLBACK error occurs
+after SQLite has already rolled back, the healthy connection is not invalidated.
+The separate account writer's raw-SQL cleanup gap is recorded in
+[ROLLBACK evidence](../../docs/testing/sqlcipher-rollback-cleanup.md).
 
 This directory contains the 92 root files required to compile the module. The
 upstream tests, examples, scripts, and maintenance utilities are omitted because
@@ -77,7 +81,7 @@ When replacing or refreshing this copy:
 5. Run `go test -count=1 ./internal/sqlitedriver`,
    `scripts/validate-encrypted-db.sh`, `reuse lint`, and the broader release
    gates. Exercise both plaintext and keyed WAL-reset cases and old/new file
-   interchange, failed-COMMIT reuse/disposal, and retained-statement rollback hooks.
+   interchange, failed-COMMIT/ROLLBACK reuse/disposal, and retained-statement rollback hooks.
 
 Rolling back to the unmodified v4.4.2 module restores exposure to the WAL-reset
 and failed-COMMIT defects and is not a safe operational recovery. Existing

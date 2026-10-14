@@ -18,7 +18,7 @@ const (
 	patchedSQLCipherAmalgamationSHA256 = "054c25f4d2637247452338f8277884eeaf67731697a18c7a46b5581c7fae8b78"
 	sqlCipherNoticesSHA256             = "afdc16e2d241db3cbada324fbd5b9ed5a06adb51b52928d7cc66b4b75372408b"
 	pristineSQLCipherRuntimeTreeSHA256 = "53b55af239a633b04a6fee66f0e5a9a76fdf2f7dc24c57b78e378d4beda6a73b"
-	patchedSQLCipherRuntimeTreeSHA256  = "53faf187f7ff6d4306280b06f48f8e9801e7aaaddce345eeb41769bd3675c430"
+	patchedSQLCipherRuntimeTreeSHA256  = "f1f26fcbeb046c2b1d3f7aea78d8fdcf30337e2e596b3bbb735c1b5640ae1cb0"
 )
 
 func TestVendoredSQLCipherProvenance(t *testing.T) {
@@ -90,15 +90,8 @@ func restorePristineCommitCleanup(t *testing.T, patched string) string {
 		{`func (tx *SQLiteTx) Commit() error {
 	_, err := tx.c.exec(context.Background(), "COMMIT", nil)
 	if err != nil {
-		// database/sql finishes Tx even when SQLite leaves it open. Preserve
-		// the COMMIT error, but never reuse a transaction whose cleanup failed.
-		if _, rollbackErr := tx.c.exec(context.Background(), "ROLLBACK", nil); rollbackErr != nil {
-			tx.c.mu.Lock()
-			if tx.c.db != nil && C.sqlite3_get_autocommit(tx.c.db) == 0 {
-				tx.c.txFailed = true
-			}
-			tx.c.mu.Unlock()
-		}
+		// Preserve the COMMIT error; Rollback owns cleanup and invalidation.
+		_ = tx.Rollback()
 	}
 	return err
 }
@@ -111,6 +104,25 @@ func restorePristineCommitCleanup(t *testing.T, patched string) string {
 		// return from Commit() - we must clean up to honour its semantics.
 		tx.c.exec(context.Background(), "ROLLBACK", nil)
 	}
+	return err
+}
+
+`},
+		{`func (tx *SQLiteTx) Rollback() error {
+	_, err := tx.c.exec(context.Background(), "ROLLBACK", nil)
+	if err != nil {
+		// database/sql finishes Tx even if the native transaction remains open.
+		tx.c.mu.Lock()
+		if tx.c.db != nil && C.sqlite3_get_autocommit(tx.c.db) == 0 {
+			tx.c.txFailed = true
+		}
+		tx.c.mu.Unlock()
+	}
+	return err
+}
+
+`, `func (tx *SQLiteTx) Rollback() error {
+	_, err := tx.c.exec(context.Background(), "ROLLBACK", nil)
 	return err
 }
 
