@@ -89,13 +89,13 @@ This repair does not establish that the complete release gate passes.
 ## Separate manual-SQL boundary
 
 This correction applies to `sql.Tx.Rollback` through the driver transaction,
-not arbitrary SQL sent through `Conn.Exec`. Final caller inspection found that
-`internal/users/account_status.go:inWriteTx` owns a manual BEGIN IMMEDIATE,
-ignores its raw ROLLBACK error, then returns the connection to the pool. This
-is a strongly evidenced analogous isolation gap, not a reproduced or repaired
-case here. It needs a separate account-state failure regression and reviewed
-connection-disposal correction. Do not infer that all manual transactions are
-safe from the driver transaction tests.
+not arbitrary SQL sent through `Conn.Exec`. Final caller inspection at `f233f54`
+found that `internal/users/account_status.go:inWriteTx` owned a manual BEGIN
+IMMEDIATE, ignored its raw ROLLBACK error, then returned the connection to the
+pool. This was an analogous gap, not reproduced or repaired by the driver work.
+The subsequent [account transaction repair](account-transaction-cleanup.md)
+confirms and fixes that helper with account-state and audit regressions. Do not
+infer that arbitrary manual transactions are safe from the driver tests.
 
 ## Lessons
 

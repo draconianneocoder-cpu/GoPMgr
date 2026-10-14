@@ -1022,6 +1022,13 @@ Signed release-manifest fetch and verification (Ed25519), semver comparison, and
 
 ## `internal/users` — 83.1%
 
+`account_transaction_cleanup_test.go` adds one table-driven test with eight
+real-file scenarios for manual transaction cleanup: failed audit/COMMIT/callback
+and panic paths, denied/successful rollback and automatic rollback. It checks
+physical connection identity before querying or teardown, exact rejected
+account/audit state, original errors/panic, later valid writes and reopened
+history. See [bounded evidence](testing/account-transaction-cleanup.md).
+
 The 2026-10-10 integration review adds rollback checks for actor-grant
 validation, hand-over without a departing grant, and database iteration
 failures. These tests cover both manual transactions and automatic

@@ -48,6 +48,12 @@ historical rationale and superseded investigations remain in Git history.
 
 ## Product and safety boundaries
 
+- Account transactions using manual `BEGIN IMMEDIATE` discard their connection
+  after any rollback error before pool release, preserving original errors and
+  panic propagation. Healthy rollback stays reusable. See
+  `internal/users/account_status.go` and
+  [account cleanup evidence](../docs/testing/account-transaction-cleanup.md).
+
 - GoPMgr is local-first. Core project, scheduling, and export workflows do not
   require a hosted service.
 - Frontend-supplied project paths are confined to the signed-in user's project

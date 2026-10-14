@@ -6,6 +6,7 @@ package users
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"os"
@@ -220,7 +221,7 @@ func (s *Store) usersColumns() ([]string, error) {
 // and commits if fn succeeds. BEGIN IMMEDIATE takes SQLite's write lock at
 // once, so checks fn makes still hold when it writes, even against another
 // GoPMgr process on the same data root. op names the operation in errors.
-func (s *Store) inWriteTx(op string, fn func(ctx context.Context, q accountWriter) error) error {
+func (s *Store) inWriteTx(op string, fn func(ctx context.Context, q accountWriter) error) (err error) {
 	ctx := context.Background()
 	conn, err := s.conn.Conn(ctx)
 	if err != nil {
@@ -233,7 +234,15 @@ func (s *Store) inWriteTx(op string, fn func(ctx context.Context, q accountWrite
 	committed := false
 	defer func() {
 		if !committed {
-			_, _ = conn.ExecContext(ctx, `ROLLBACK`)
+			if _, rollbackErr := conn.ExecContext(ctx, `ROLLBACK`); rollbackErr != nil {
+				// Raw SQL bypasses driver transaction cleanup. Close alone returns
+				// the connection to the pool, possibly with rejected writes active.
+				err = errors.Join(err, fmt.Errorf("users: rollback %s: %w", op, rollbackErr))
+				discardErr := conn.Raw(func(any) error { return driver.ErrBadConn })
+				if discardErr != nil && !errors.Is(discardErr, driver.ErrBadConn) && !errors.Is(discardErr, sql.ErrConnDone) {
+					err = errors.Join(err, fmt.Errorf("users: discard %s connection: %w", op, discardErr))
+				}
+			}
 		}
 	}()
 	if err := fn(ctx, conn); err != nil {

@@ -130,6 +130,11 @@ whose transaction remains active are refused and evicted, while already-rolled-b
 connections stay usable. See the [COMMIT](testing/sqlcipher-commit-cleanup.md)
 and [ROLLBACK](testing/sqlcipher-rollback-cleanup.md) evidence.
 
+The account writer owns manual `BEGIN IMMEDIATE` transactions separately.
+Failed raw rollback disposes its connection before pool release and preserves
+the operation error alongside cleanup diagnostics. See
+[account cleanup evidence](testing/account-transaction-cleanup.md).
+
 Project encryption migration uses `sqlcipher_export` into a temporary
 encrypted sibling, verifies the destination, retains the plaintext
 source as `<project>.pre-encryption.bak`, and publishes the encrypted

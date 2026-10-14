@@ -56,8 +56,9 @@ establish safe closure with an externally retained
 `SQLiteConn.Backup`, BLOB handle, or native statement created outside this driver.
 Such resources must finish before connection close. When a ROLLBACK error occurs
 after SQLite has already rolled back, the healthy connection is not invalidated.
-The separate account writer's raw-SQL cleanup gap is recorded in
-[ROLLBACK evidence](../../docs/testing/sqlcipher-rollback-cleanup.md).
+The separate account writer disposes connections after any raw rollback error;
+its conservative cleanup and regressions are recorded in
+[account transaction evidence](../../docs/testing/account-transaction-cleanup.md).
 
 This directory contains the 92 root files required to compile the module. The
 upstream tests, examples, scripts, and maintenance utilities are omitted because
