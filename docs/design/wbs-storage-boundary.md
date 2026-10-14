@@ -63,8 +63,8 @@ refused. Revisions never pass through JavaScript numbers or SQLite integers.
 7. Commit. Every pre-commit failure rolls back; a commit error is explicitly
    indeterminate and requires reconciliation. Initialization and writes own a
    dedicated `sql.Conn`. A failed commit discards that connection before pool
-   reuse because the pinned driver otherwise leaves some failed transactions
-   open after `database/sql` marks the transaction finished.
+   reuse as an independent defense. The shared driver also rolls back failed
+   commits and evicts connections whose cleanup leaves a transaction active.
 
 The fingerprint hashes protocol version, operation, copy/project/chart,
 immutable actor, expected revision, title and normalized submitted model.

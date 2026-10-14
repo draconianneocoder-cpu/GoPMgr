@@ -353,10 +353,9 @@ func (s *WBSStore) Save(ctx context.Context, r WBSWrite) (WBSReceipt, error) {
 	return WBSReceipt{RequestID: r.RequestID, Revision: next, AuditID: event.ID}, nil
 }
 
-// The pinned driver only rolls back SQLITE_BUSY on a failed COMMIT. A different
-// failure can leave SQLite in a transaction after database/sql marks Tx done.
-// Owning Conn prevents reuse until Raw's ErrBadConn discards it and SQLite
-// closes/rolls back that transaction. Never label a commit error a safe retry.
+// Retain and discard the dedicated connection on an indeterminate commit,
+// independently of the driver's transaction-cleanup defense. A commit error
+// must never be labeled a safe retry.
 func commitWBS(tx *sql.Tx, conn *sql.Conn) error {
 	err := tx.Commit()
 	if err == nil {

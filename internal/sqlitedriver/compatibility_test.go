@@ -190,6 +190,7 @@ func copyPristineSQLCipherModule(t *testing.T, destination string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	pristine := sha256.New()
 	for _, entry := range entries {
 		if entry.IsDir() || entry.Name() == "GOPMGR.md" || entry.Name() == "THIRD_PARTY_NOTICES.txt" {
 			continue
@@ -201,9 +202,16 @@ func copyPristineSQLCipherModule(t *testing.T, destination string) {
 		if entry.Name() == "sqlite3.c" {
 			data = []byte(restorePristineWALCheckpoint(t, string(data)))
 		}
+		if entry.Name() == "sqlite3.go" {
+			data = []byte(restorePristineCommitCleanup(t, string(data)))
+		}
+		writeInventoryLine(pristine, entry.Name(), data)
 		if err := os.WriteFile(filepath.Join(destination, entry.Name()), data, 0600); err != nil {
 			t.Fatal(err)
 		}
+	}
+	if got := hex.EncodeToString(pristine.Sum(nil)); got != pristineSQLCipherRuntimeTreeSHA256 {
+		t.Fatalf("compatibility runtime tree = %s, want %s", got, pristineSQLCipherRuntimeTreeSHA256)
 	}
 }
 

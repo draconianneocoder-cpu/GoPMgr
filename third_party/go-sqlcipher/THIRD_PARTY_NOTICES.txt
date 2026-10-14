@@ -2,6 +2,7 @@ SPDX-FileCopyrightText: 2011 The Go Authors
 SPDX-FileCopyrightText: 2014, 2018-2019 Yasuhiro Matsumoto
 SPDX-FileCopyrightText: 2018-2019 G.J.R. Timmer
 SPDX-FileCopyrightText: 2018 segment.com
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-FileCopyrightText: 2008 ZETETIC LLC
 SPDX-FileCopyrightText: The SQLite contributors
 SPDX-FileCopyrightText: The LibTomCrypt contributors
@@ -17,6 +18,7 @@ Copyright (c) 2014 Yasuhiro Matsumoto
 Copyright (C) 2018-2019 Yasuhiro Matsumoto <mattn.jp@gmail.com>.
 Copyright (C) 2018-2019 G.J.R. Timmer <gjr.timmer@gmail.com>.
 Copyright (C) 2018 segment.com <friends@segment.com>
+Copyright (C) 2026 James L. Burns and The GoPMgr Contributors (local cleanup corrections).
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -30,8 +30,9 @@ confirmed `SQLiteTx.Commit` in the pinned driver rolls back only `SQLITE_BUSY`.
 Go already marks `sql.Tx` finished, so deferred `Rollback` cannot rescue another
 failure. The WBS writer now retains a dedicated `sql.Conn` through commit and
 discards it via the documented `Raw`/`driver.ErrBadConn` mechanism on failure.
-The unchanged regression passes after correction. General driver cleanup for
-other database writers is a directly discovered follow-up, not a claimed fix.
+The unchanged regression passes after correction. The subsequent shared-driver
+repair is tracked separately in [failed-COMMIT cleanup](sqlcipher-commit-cleanup.md);
+the WBS-specific connection-disposal defense remains in place.
 
 ## Recorded local verification
 

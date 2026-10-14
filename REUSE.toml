@@ -205,6 +205,12 @@ SPDX-FileCopyrightText = "2011 The Go Authors"
 SPDX-License-Identifier = "BSD-3-Clause"
 
 [[annotations]]
+path = "third_party/go-sqlcipher/sqlite3.go"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
 path = [
     "third_party/go-sqlcipher/aes.c",
     "third_party/go-sqlcipher/aes_tab.h",

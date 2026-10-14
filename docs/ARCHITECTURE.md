@@ -124,7 +124,10 @@ runtime-only source copy under `third_party/go-sqlcipher`. That copy carries a
 narrow upstream SQLite WAL-reset correction: a PASSIVE checkpoint refuses to
 backfill frames when a writer has reset the WAL generation since the
 checkpoint cached its header. The change does not alter keys, schemas, journal
-mode, database format, or the Go driver API.
+mode, database format, or existing Go driver signatures. Failed COMMITs are
+rolled back; connections whose cleanup leaves a transaction active are refused and evicted rather
+than reused with an active transaction. See the
+[cleanup evidence](testing/sqlcipher-commit-cleanup.md).
 
 Project encryption migration uses `sqlcipher_export` into a temporary
 encrypted sibling, verifies the destination, retains the plaintext

@@ -299,6 +299,8 @@ type SQLiteDriver struct {
 // SQLiteConn implements driver.Conn.
 type SQLiteConn struct {
 	mu          sync.Mutex
+	txFailed    bool
+	stmts       int
 	db          *C.sqlite3
 	loc         *time.Location
 	txlock      string
@@ -442,11 +444,16 @@ func (ai *aggInfo) Done(ctx *C.sqlite3_context) {
 // Commit transaction.
 func (tx *SQLiteTx) Commit() error {
 	_, err := tx.c.exec(context.Background(), "COMMIT", nil)
-	if err != nil && err.(Error).Code == C.SQLITE_BUSY {
-		// sqlite3 will leave the transaction open in this scenario.
-		// However, database/sql considers the transaction complete once we
-		// return from Commit() - we must clean up to honour its semantics.
-		tx.c.exec(context.Background(), "ROLLBACK", nil)
+	if err != nil {
+		// database/sql finishes Tx even when SQLite leaves it open. Preserve
+		// the COMMIT error, but never reuse a transaction whose cleanup failed.
+		if _, rollbackErr := tx.c.exec(context.Background(), "ROLLBACK", nil); rollbackErr != nil {
+			tx.c.mu.Lock()
+			if tx.c.db != nil && C.sqlite3_get_autocommit(tx.c.db) == 0 {
+				tx.c.txFailed = true
+			}
+			tx.c.mu.Unlock()
+		}
 	}
 	return err
 }
@@ -1737,12 +1744,22 @@ func (c *SQLiteConn) Close() error {
 	if rv != C.SQLITE_OK {
 		return c.lastError()
 	}
-	deleteHandles(c)
 	c.mu.Lock()
 	c.db = nil
+	last := c.stmts == 0
 	c.mu.Unlock()
+	if last {
+		deleteHandles(c)
+	}
 	runtime.SetFinalizer(c, nil)
 	return nil
+}
+
+// IsValid prevents database/sql from pooling a failed transaction cleanup.
+func (c *SQLiteConn) IsValid() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.db != nil && !c.txFailed
 }
 
 func (c *SQLiteConn) dbConnOpen() bool {
@@ -1760,6 +1777,9 @@ func (c *SQLiteConn) Prepare(query string) (driver.Stmt, error) {
 }
 
 func (c *SQLiteConn) prepare(ctx context.Context, query string) (driver.Stmt, error) {
+	if !c.IsValid() {
+		return nil, driver.ErrBadConn
+	}
 	pquery := C.CString(query)
 	defer C.free(unsafe.Pointer(pquery))
 	var s *C.sqlite3_stmt
@@ -1773,6 +1793,9 @@ func (c *SQLiteConn) prepare(ctx context.Context, query string) (driver.Stmt, er
 		t = strings.TrimSpace(C.GoString(tail))
 	}
 	ss := &SQLiteStmt{c: c, s: s, t: t}
+	c.mu.Lock()
+	c.stmts++
+	c.mu.Unlock()
 	runtime.SetFinalizer(ss, (*SQLiteStmt).Close)
 	return ss, nil
 }
@@ -1826,15 +1849,25 @@ func (s *SQLiteStmt) Close() error {
 		return nil
 	}
 	s.closed = true
-	if !s.c.dbConnOpen() {
-		return errors.New("sqlite statement with already closed database connection")
-	}
+	// close_v2 keeps a zombie connection alive until its statements finalize.
+	// Callback handles must survive the final native rollback during finalize.
 	rv := C.sqlite3_finalize(s.s)
 	s.s = nil
+	runtime.SetFinalizer(s, nil)
+	s.c.mu.Lock()
+	s.c.stmts--
+	closed := s.c.db == nil
+	last := closed && s.c.stmts == 0
+	s.c.mu.Unlock()
+	if last {
+		deleteHandles(s.c)
+	}
 	if rv != C.SQLITE_OK {
+		if closed {
+			return Error{Code: ErrNo(rv & 0xff), ExtendedCode: ErrNoExtended(rv)}
+		}
 		return s.c.lastError()
 	}
-	runtime.SetFinalizer(s, nil)
 	return nil
 }
 
@@ -1926,6 +1959,9 @@ func (s *SQLiteStmt) Query(args []driver.Value) (driver.Rows, error) {
 }
 
 func (s *SQLiteStmt) query(ctx context.Context, args []namedValue) (driver.Rows, error) {
+	if !s.c.IsValid() {
+		return nil, driver.ErrBadConn
+	}
 	if err := s.bind(args); err != nil {
 		return nil, err
 	}
@@ -1975,6 +2011,9 @@ func isInterruptErr(err error) bool {
 
 // exec executes a query that doesn't return rows. Attempts to honor context timeout.
 func (s *SQLiteStmt) exec(ctx context.Context, args []namedValue) (driver.Result, error) {
+	if !s.c.IsValid() {
+		return nil, driver.ErrBadConn
+	}
 	if ctx.Done() == nil {
 		return s.execSync(args)
 	}
@@ -2078,6 +2117,9 @@ func (rc *SQLiteRows) DeclTypes() []string {
 
 // Next move cursor to next. Attempts to honor context timeout from QueryContext call.
 func (rc *SQLiteRows) Next(dest []driver.Value) error {
+	if !rc.s.c.IsValid() {
+		return driver.ErrBadConn
+	}
 	rc.s.mu.Lock()
 	defer rc.s.mu.Unlock()
 
