@@ -974,11 +974,14 @@ Document signing: GnuPG detached signatures, PAdES timestamp preparation and app
 | `gnupg_test.go` | 2 | `SignDetachedASCIIArmored` GnuPG command construction | unit | The constructed GnuPG CLI command must include the configured key and fall back to GnuPG's default key correctly when none is configured. |
 | `pades_test.go` (extended 2026-09-29) | 8 | `PrepareTimestamp`, `ApplyPAdES` | fault-injection, table-driven | `TestApplyPAdESReturnsNoBytesWhenSigningFails` (moved from the removed `documents.RenderSigned` test): a signer that cannot sign yields an error and no PDF. `TestApplyPAdESFailsClosedWhenTimestampRequestFails`: if the configured timestamp authority can't be reached, signing must fail closed (no signature produced) rather than silently falling back to an unsigned or wrongly-classified (Baseline-B claimed as Baseline-T) document. |
 
-## `internal/sqlitedriver` — no statements (registration only)
+## `internal/sqlitedriver` — no production statements (registration only)
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
 | `driver_test.go` | 1 | SQLCipher driver registration | unit | Confirms the registered driver is actually the SQLCipher-capable one, not a plain SQLite driver silently substituted (which would mean "encrypted" databases are actually plaintext). |
+| `compatibility_test.go` | 1 | v4.4.2/local driver encrypted-file compatibility | integration, compatibility | Builds an isolated `GOWORK=off` helper against the exact unmodified v4.4.2 amalgamation, then proves each driver can create, append, reopen, integrity-check, and wrong-key-refuse files written by the other. Exact Unicode rows and row counts detect silent content loss. |
+| `provenance_test.go` | 1 | vendored runtime inventory and source identity | source integrity | Pins the 92-file runtime subset, pristine and patched tree hashes, and the only changed amalgamation hash so an accidental source addition, omission, or second modification fails before release. |
+| `wal_reset_test.go` | 1 | SQLite WAL-reset checkpoint generation race | native fault-injection, regression | Reconstructs and hash-verifies the exact pristine v4.4.2 amalgamation. A one-shot public-SQL writer reset makes its plaintext and keyed controls detect stale-generation backfill; the patched source must preserve exact rows through later WAL growth, checkpoint, integrity check, close, and reopen. |
 
 ## `internal/templates` — 97.3%
 

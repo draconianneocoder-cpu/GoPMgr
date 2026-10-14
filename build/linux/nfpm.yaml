@@ -34,6 +34,8 @@ contents:
     dst: /usr/share/applications/gopmgr.desktop
   - src: ./build/appicon.png
     dst: /usr/share/pixmaps/gopmgr.png
+  - src: ./third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt
+    dst: /usr/share/doc/gopmgr/sqlcipher-license.txt
 
 overrides:
   deb:

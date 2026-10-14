@@ -72,6 +72,10 @@ Before the tag, also require:
   certificates, or local-only branding archives;
 - a recorded recovery action for any schema or encryption migration included
   since the prior alpha.
+- `make check-encrypted-db` from the candidate commit, including the SQLCipher
+  source-provenance, pristine/fixed WAL-reset, and v4.4.2/local encrypted-file
+  interchange tests. A future SQLCipher source refresh must update the pinned
+  provenance and retain equivalent evidence before a tag.
 
 ## Platform evidence matrix
 

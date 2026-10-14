@@ -3,14 +3,21 @@
 
 # Gitleaks configuration for GoPMgr.
 #
-# GoPMgr ships no credentials; the only allowlist entry is the design-spike
-# scratch file, whose hardcoded SQLCipher key is a deliberately fake example
-# (see the comment at its definition). The path allowlist also silences the
-# pre-neutralization value that remains in git history.
+# GoPMgr ships no credentials. The design-spike scratch file contains a
+# deliberately fake SQLCipher key (see the comment at its definition). The
+# exact regex allowlist entries are false positives from the hash-pinned
+# upstream go-sqlcipher snapshot: one documented example key and four generated
+# SQLite identifiers. Do not broaden them to file or directory exclusions.
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "Design-spike scratch code with a deliberately fake example key"
+description = "Documented fake keys and exact hash-pinned upstream false positives"
+regexTarget = "match"
 paths = ['''docs/design/spike-sqlcipher/.*''']
+regexes = [
+    '''2DD29CA851E7B56E4697B0E1F08507293D761A05CE4D1B628663F411A8086D99''',
+    '''sqlite3_api->(?:column_bytes16|soft_heap_limit64|hard_heap_limit64)''',
+    '''iKey==FTS5_AVERAGES_ROWID''',
+]

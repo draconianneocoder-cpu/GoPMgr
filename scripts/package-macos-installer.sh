@@ -76,6 +76,8 @@ staging="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-macos.XXXXXX")"
 trap 'rm -rf "$staging"' EXIT
 staged_app="$staging/${app_name}.app"
 cp -R "$app_dir" "$staged_app"
+mkdir -p "$staged_app/Contents/Resources/Licenses"
+cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt "$staged_app/Contents/Resources/Licenses/go-sqlcipher.txt"
 
 if command -v xattr >/dev/null 2>&1; then
 	xattr -cr "$staged_app"

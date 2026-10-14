@@ -55,10 +55,13 @@ cp README.md "$staging/$archive_base/"
 if [ -d LICENSES ]; then
 	cp -R LICENSES "$staging/$archive_base/"
 fi
+cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt "$staging/$archive_base/LICENSES/go-sqlcipher.txt"
 if [ -f LICENSE ]; then
 	cp LICENSE "$staging/$archive_base/"
 fi
 
 (cd "$staging" && tar -czf "$repo_root/$archive" "$archive_base")
+tar -xOf "$archive" "$archive_base/LICENSES/go-sqlcipher.txt" |
+	cmp - third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt
 
 echo "$archive"

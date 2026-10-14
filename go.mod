@@ -5,6 +5,10 @@ module gopmgr
 
 go 1.27.2
 
+// SQLCipher 4.4.2 with the upstream WAL-reset correctness backport.
+// Provenance and maintenance instructions: third_party/go-sqlcipher/GOPMGR.md.
+replace github.com/mutecomm/go-sqlcipher/v4 => ./third_party/go-sqlcipher
+
 require (
 	github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c
 	github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea

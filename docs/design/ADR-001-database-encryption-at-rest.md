@@ -26,6 +26,14 @@ key (DEK). The DEK is wrapped by the login password and by each valid recovery
 code. New project databases are encrypted by default; eligible plaintext
 projects can be migrated from Project Settings.
 
+The project currently builds a source-identical runtime subset of v4.4.2 with
+one upstream SQLite WAL-reset correctness backport. This is a maintenance
+constraint, not a new encryption design: the SQLCipher version, key handling,
+codec provider, page format, journal mode, and public driver API remain
+unchanged. The local replacement may be removed only after a containing
+upstream driver release passes the causal WAL-reset and old/new encrypted-file
+interchange tests.
+
 `system.db` stays plaintext by design. It contains account names, password
 hashes, recovery-code metadata, and wrapped DEKs, but not project records.
 Keeping it available before login avoids an unresolvable bootstrap problem.
@@ -88,5 +96,8 @@ not yet empirically verified.
 
 `internal/crypto`, `internal/users`, and `internal/db` cover DEK wrapping,
 wrong-key rejection, encrypted opens, migration, and recovery-code behavior.
+`internal/sqlitedriver` additionally proves the pristine WAL-reset failure,
+the corrected plaintext and keyed behavior, source provenance, and bidirectional
+encrypted-file interchange with unmodified v4.4.2.
 `make check-encrypted-db` and `make check-release` are the release gates for
 the encrypted database contract.

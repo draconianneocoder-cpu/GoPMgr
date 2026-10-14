@@ -79,6 +79,10 @@ Section "GoPMgr" SEC_GOPMGR
   SetOutPath "$INSTDIR"
   !insertmacro wails.files
 
+  SetOutPath "$INSTDIR\licenses"
+  File /oname=go-sqlcipher.txt "..\..\..\third_party\go-sqlcipher\THIRD_PARTY_NOTICES.txt"
+  SetOutPath "$INSTDIR"
+
   CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
   CreateShortcut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 

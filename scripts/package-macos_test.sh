@@ -76,6 +76,16 @@ if [ ! -d "$srcfolder/GoPMgr.app" ]; then
 	echo "create-dmg stub: source folder lacks GoPMgr.app: $srcfolder" >&2
 	exit 1
 fi
+if [ ! -s "$srcfolder/GoPMgr.app/Contents/Resources/Licenses/go-sqlcipher.txt" ]; then
+	echo "create-dmg stub: app lacks SQLCipher notices: $srcfolder" >&2
+	exit 1
+fi
+for marker in "2011 The Go Authors" "2014 Yasuhiro Matsumoto" "2019 G.J.R. Timmer" "2008, ZETETIC LLC" "2018 segment.com"; do
+	if ! grep -Fq "$marker" "$srcfolder/GoPMgr.app/Contents/Resources/Licenses/go-sqlcipher.txt"; then
+		echo "create-dmg stub: SQLCipher notices lack $marker" >&2
+		exit 1
+	fi
+done
 if [ -d "$srcfolder/Contents" ]; then
 	echo "create-dmg stub: source folder points at app bundle contents: $srcfolder" >&2
 	exit 1
@@ -116,6 +126,16 @@ if [ ! -d "$srcfolder/GoPMgr.app" ]; then
 	echo "hdiutil stub: DMG root lacks GoPMgr.app: $srcfolder" >&2
 	exit 1
 fi
+if [ ! -s "$srcfolder/GoPMgr.app/Contents/Resources/Licenses/go-sqlcipher.txt" ]; then
+	echo "hdiutil stub: app lacks SQLCipher notices: $srcfolder" >&2
+	exit 1
+fi
+for marker in "2011 The Go Authors" "2014 Yasuhiro Matsumoto" "2019 G.J.R. Timmer" "2008, ZETETIC LLC" "2018 segment.com"; do
+	if ! grep -Fq "$marker" "$srcfolder/GoPMgr.app/Contents/Resources/Licenses/go-sqlcipher.txt"; then
+		echo "hdiutil stub: SQLCipher notices lack $marker" >&2
+		exit 1
+	fi
+done
 if [ ! -L "$srcfolder/Applications" ]; then
 	echo "hdiutil stub: DMG root lacks Applications symlink: $srcfolder" >&2
 	exit 1

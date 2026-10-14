@@ -1,0 +1,5 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: CC0-1.0
+
+# Preserve the hash-pinned upstream SQLCipher runtime snapshot byte-for-byte.
+third_party/go-sqlcipher/** -whitespace

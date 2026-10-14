@@ -119,6 +119,13 @@ Project databases can be SQLCipher-encrypted with a per-user DEK. The
 DEK is wrapped by the login password and by each valid recovery code so
 password recovery can preserve encrypted projects.
 
+`internal/sqlitedriver` compiles the v4.4.2 SQLCipher-capable driver from the
+runtime-only source copy under `third_party/go-sqlcipher`. That copy carries a
+narrow upstream SQLite WAL-reset correction: a PASSIVE checkpoint refuses to
+backfill frames when a writer has reset the WAL generation since the
+checkpoint cached its header. The change does not alter keys, schemas, journal
+mode, database format, or the Go driver API.
+
 Project encryption migration uses `sqlcipher_export` into a temporary
 encrypted sibling, verifies the destination, retains the plaintext
 source as `<project>.pre-encryption.bak`, and publishes the encrypted
