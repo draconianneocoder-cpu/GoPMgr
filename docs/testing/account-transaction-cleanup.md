@@ -99,8 +99,11 @@ This is local macOS evidence. Go race detection does not instrument native C.
 There is no new native Windows/Linux, power-loss, cancellation or real I/O-error
 evidence. Authorizer denial supplies a deterministic real native failure,
 without sleeps, retries, or weaker cryptography. The earlier full users race
-timeout remains a separate validation limitation; this repair does not claim
-full release readiness.
+timeout remains a historical failed observation. Subsequent
+[complete account race verification](account-race-assurance.md) at this repair's
+source revision `3f26b76` closes the current local verification gap. The
+historical timeout's cause is still unproven, and an APFS-only broader-suite
+exclusion is explicit. Neither report claims full release readiness.
 
 Logical error return does not imply native rollback. Verify rejected state
 before teardown, retain healthy-path controls, and keep cleanup at the layer

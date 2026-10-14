@@ -66,13 +66,16 @@ full-account race assurance, not a green result. The timeout and cryptographic
 parameters were not increased or weakened. The exact interrupted test passed
 alone under race detection in 4.235 seconds (seed `20261017`). The three account
 concurrency/failed-COMMIT regressions passed in 5.100 seconds (seed `20261018`).
-These focused results do not replace or claim completion of the full account
-race suite; its runtime-budget investigation remains follow-up work.
+Those focused results did not establish full-account race completion at that
+time. Subsequent [full account race verification](account-race-assurance.md)
+at source revision `3f26b76` passed both the complete account suite and the
+44-package release race scope under unchanged default deadlines. The historical
+timeout's cause remains unproven, and the later report records its local
+environment and one pre-existing APFS exclusion.
 An independent verification-gate review accepted this limitation as non-blocking
 for the bounded repair, not for release. The stack and isolated pass support,
 but do not prove, an execution-budget cause or baseline runtime equivalence.
-The full release gate requires a successful broad race run and is not claimed
-passed here.
+The complete release gate is not claimed passed by either bounded report.
 
 ```sh
 go test -count=1 ./internal/sqlitedriver

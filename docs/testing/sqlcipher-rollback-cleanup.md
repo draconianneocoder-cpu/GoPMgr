@@ -82,9 +82,12 @@ implementation already forces disposal on cancellation because this driver
 has no SessionResetter. No cancellation assurance beyond that source review
 is claimed here.
 
-The prior full account-store race timeout remains an unresolved verification
-limitation, documented in [COMMIT cleanup evidence](sqlcipher-commit-cleanup.md).
-This repair does not establish that the complete release gate passes.
+The prior full account-store race timeout is preserved in
+[COMMIT cleanup evidence](sqlcipher-commit-cleanup.md). Subsequent
+[full account verification](account-race-assurance.md) at source revision
+`3f26b76` closes the current local race-evidence gap without changing timeouts,
+cryptography or tests; the historical cause remains unproven. Neither bounded
+repair establishes that the complete release gate passes.
 
 ## Separate manual-SQL boundary
 
