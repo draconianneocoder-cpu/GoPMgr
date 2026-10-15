@@ -303,13 +303,21 @@ func (a *App) AdminIssueRecoveryCodes(username, password string) ([]string, erro
 			return nil, errors.New("administrator privileges required")
 		}
 	}
-	// Unlock (here: unwrap the just-created) DEK so the codes can wrap it.
-	dek, err := a.store.UnlockDEK(username, password)
-	if err != nil {
+	// The password unlocks the account's DEK so the codes can wrap it; the
+	// roles and the account are checked again where the codes are stored.
+	codes, err := a.store.IssueRecoveryCodesWithPassword(caller.Username, username, password)
+	switch {
+	case errors.Is(err, users.ErrNoSuchUser), errors.Is(err, auth.ErrMismatch), errors.Is(err, users.ErrPasswordWrapCorrupt):
 		return nil, errors.New("could not unlock the account's key (wrong password?)")
+	case errors.Is(err, users.ErrNotAdmin):
+		return nil, errors.New("administrator privileges required")
+	case errors.Is(err, users.ErrSignInContended):
+		return nil, errors.New("the account changed while its key was being unlocked; try again")
 	}
-	defer zeroBytes(dek)
-	return a.store.IssueRecoveryCodes(username, dek)
+	if msg := superRoleMessage(err); msg != nil {
+		return nil, msg
+	}
+	return codes, err
 }
 
 // Login authenticates and stores the user as the active session.
@@ -317,41 +325,20 @@ func (a *App) AdminIssueRecoveryCodes(username, password string) ([]string, erro
 // by the frontend so usernames cannot be enumerated by error
 // inspection.
 //
-// Refuses outright if a project is already open: unlike Logout and
-// shutdown, which always clear a.db and a.dek together in the same
-// locked section, Login had no symmetric guard — a caller invoking it
-// while a.db was still set from a previous session would leave that
-// database live under the newly-authenticated user's DEK, mixing one
-// user's project with another's encryption key. Not reachable through
-// the shipped frontend today (the only path to the login screen that
-// can follow a project being open — AppHeader's sign-out — always
-// calls Logout first; the other two transitions into the login flow,
-// recovery reset and create-account, are only reachable from the login
-// screen itself, confirmed via grep, so a.db is already nil there) but
-// guarded here as defense-in-depth against any other caller, present
-// or future.
+// users.Store.SignIn checks the password, unlocks the DEK, records the
+// sign-in, and runs the escrow session for one account incarnation, so a
+// username purged and created again while the password is being checked
+// is never signed in to with the old attempt's key or writes.
 //
-// Checked once, deliberately after credentials are verified and a DEK
-// is derived: an earlier check-then-act attempt (checked up front,
-// before Authenticate/UnlockDEK) left a TOCTOU window open, since those
-// calls do real password-hashing work a concurrent OpenProject could
-// land inside of. The single check here sits in the same critical
-// section as the assignment it guards, so there is no window at all —
-// the cost is that a doomed-to-be-refused call still derives a DEK,
-// which is why it's zeroed immediately via zeroBytes on the refusal
-// path, matching Logout/shutdown's own "ADR-001: zero the session DEK"
-// handling. That cost is strictly smaller than it looks: the DEK is
-// live for microseconds before zeroing, versus an entire session for
-// Logout's, and this path is unreachable through the shipped UI in the
-// first place. One further side effect worth naming: Authenticate
-// (called before this guard) already stamped the account's last_login
-// on success, so a refused Login still records a real login timestamp
-// for a user who was never actually signed in. Accepted rather than
-// worked around — avoiding it would mean either restoring the racy
-// early check or teaching Authenticate to defer its own write, and
-// this path is unreachable through the shipped UI regardless.
+// Refuses if a project is already open, so that project is never left
+// live under another user's DEK. Not reachable through the shipped
+// frontend (sign-out always calls Logout first), but checked in the same
+// critical section as the assignment it guards, after the slow
+// password work, so a concurrent OpenProject cannot slip in between. A
+// refused call has already recorded the sign-in and derived the DEK,
+// which is zeroed at once.
 func (a *App) Login(username, password string) (users.Account, error) {
-	acc, err := a.store.Authenticate(username, password)
+	acc, _, dek, err := a.store.SignIn(username, password)
 	if err != nil {
 		// Collapse both "no such user" and "password mismatch" into
 		// one error so the timing/message is identical.
@@ -363,15 +350,11 @@ func (a *App) Login(username, password string) (users.Account, error) {
 		if errors.Is(err, users.ErrAccountDisabled) {
 			return users.Account{}, errors.New("this account is disabled; ask your administrator to enable it")
 		}
+		if errors.Is(err, users.ErrSignInContended) {
+			return users.Account{}, errors.New("the account changed while signing in; try again")
+		}
 		return users.Account{}, err
 	}
-	// ADR-001: unlock the per-user DEK with the verified password.
-	// Lazy generation covers accounts that predate the key hierarchy.
-	dek, err := a.store.UnlockDEK(username, password)
-	if err != nil {
-		return users.Account{}, err
-	}
-	a.enrollEscrow(acc.Username, dek)
 	a.mu.Lock()
 	if a.db != nil {
 		a.mu.Unlock()

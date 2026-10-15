@@ -24,7 +24,7 @@ func newPasswordStore(t *testing.T) (*Store, []byte) {
 	if _, err := store.CreateAccount("alice", "Alice", oldPassword, true); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	dek, err := store.UnlockDEK("alice", oldPassword)
+	dek, err := unlockDEK(store, "alice", oldPassword)
 	if err != nil {
 		t.Fatalf("UnlockDEK: %v", err)
 	}
@@ -53,13 +53,13 @@ func TestChangePasswordKeepsTheSameKey(t *testing.T) {
 		t.Fatalf("ChangePassword: %v", err)
 	}
 
-	if _, err := store.Authenticate("alice", oldPassword); !errors.Is(err, auth.ErrMismatch) {
+	if _, err := authenticate(store, "alice", oldPassword); !errors.Is(err, auth.ErrMismatch) {
 		t.Fatalf("Authenticate with the old password: err = %v, want auth.ErrMismatch", err)
 	}
-	if _, err := store.Authenticate("alice", newPassword); err != nil {
+	if _, err := authenticate(store, "alice", newPassword); err != nil {
 		t.Fatalf("Authenticate with the new password: %v", err)
 	}
-	got, err := store.UnlockDEK("alice", newPassword)
+	got, err := unlockDEK(store, "alice", newPassword)
 	if err != nil {
 		t.Fatalf("UnlockDEK with the new password: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestChangePasswordKeepsTheSameKey(t *testing.T) {
 	if err := store.ResetWithRecoveryCode("alice", codes[0], "after-recovery-password"); err != nil {
 		t.Fatalf("ResetWithRecoveryCode: %v", err)
 	}
-	recovered, err := store.UnlockDEK("alice", "after-recovery-password")
+	recovered, err := unlockDEK(store, "alice", "after-recovery-password")
 	if err != nil || !bytes.Equal(recovered, dek) {
 		t.Fatalf("key after a recovery reset differs (err %v)", err)
 	}
@@ -102,7 +102,7 @@ func TestChangePasswordRefusalsChangeNothing(t *testing.T) {
 			if h, w := passwordRow(t, store); h != hash || w != wrapped {
 				t.Fatal("a refused change modified the stored password or wrap")
 			}
-			if _, err := store.Authenticate("alice", oldPassword); err != nil {
+			if _, err := authenticate(store, "alice", oldPassword); err != nil {
 				t.Fatalf("old password stopped working after a refusal: %v", err)
 			}
 		})
@@ -127,7 +127,7 @@ func TestChangePasswordWorksWithAnOlderHashAndLeavesLastLogin(t *testing.T) {
 	if got := lastLogin(t, store, "alice"); got != "2026-01-01T00:00:00Z" {
 		t.Fatalf("last_login = %q, want it unchanged", got)
 	}
-	got, err := store.UnlockDEK("alice", newPassword)
+	got, err := unlockDEK(store, "alice", newPassword)
 	if err != nil || !bytes.Equal(got, dek) {
 		t.Fatalf("key after change differs (err %v)", err)
 	}
@@ -149,13 +149,13 @@ func TestChangePasswordDoesNotOverwriteAConcurrentChange(t *testing.T) {
 	if err := store.ChangePassword("alice", oldPassword, newPassword); !errors.Is(err, ErrPasswordChangedElsewhere) {
 		t.Fatalf("ChangePassword racing another change: err = %v, want ErrPasswordChangedElsewhere", err)
 	}
-	if _, err := store.Authenticate("alice", "changed-elsewhere"); err != nil {
+	if _, err := authenticate(store, "alice", "changed-elsewhere"); err != nil {
 		t.Fatalf("the other change was overwritten: %v", err)
 	}
-	if _, err := store.Authenticate("alice", newPassword); !errors.Is(err, auth.ErrMismatch) {
+	if _, err := authenticate(store, "alice", newPassword); !errors.Is(err, auth.ErrMismatch) {
 		t.Fatalf("the refused change took effect: err = %v", err)
 	}
-	got, err := store.UnlockDEK("alice", "changed-elsewhere")
+	got, err := unlockDEK(store, "alice", "changed-elsewhere")
 	if err != nil || !bytes.Equal(got, dek) {
 		t.Fatalf("key after the other change differs (err %v)", err)
 	}

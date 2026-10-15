@@ -4,11 +4,7 @@
 package users
 
 import (
-	"context"
 	"fmt"
-	"log"
-
-	"gopmgr/internal/crypto"
 )
 
 // Per-user Data Encryption Key plumbing (ADR-001). The DEK is the
@@ -74,75 +70,6 @@ func (s *Store) migrateDEKColumns() error {
 		}
 	}
 	return nil
-}
-
-// UnlockDEK returns the user's DEK, unwrapped with the login
-// password. The caller MUST have authenticated first — this function
-// trusts the password only as far as GCM authentication does (a
-// wrong password fails the unwrap).
-//
-// Accounts created before ADR-001 have no wrapped DEK yet; the first
-// unlock after this code ships generates one lazily and persists the
-// password wrap (we hold the verified password right now, which is
-// the only moment that is possible).
-func (s *Store) UnlockDEK(username, password string) ([]byte, error) {
-	if err := ValidateUsername(username); err != nil {
-		return nil, err
-	}
-	var wrapped string
-	if err := s.conn.QueryRow(
-		`SELECT wrapped_dek_pw FROM users WHERE username = ?`, username,
-	).Scan(&wrapped); err != nil {
-		return nil, ErrNoSuchUser
-	}
-
-	if wrapped == "" {
-		return s.createLegacyDEK(username, password)
-	}
-
-	return crypto.UnwrapKey(wrapped, password)
-}
-
-// createLegacyDEK gives an account that predates ADR-001 its DEK, wrapped
-// under its password, and enrolls it in administrator escrow (ADR-004) in
-// the same transaction. The DEK is made and wrapped before taking the
-// write lock (Argon2id is slow); if another process stored a DEK first,
-// that one is unwrapped and returned instead, so an account never has two.
-func (s *Store) createLegacyDEK(username, password string) ([]byte, error) {
-	dek, err := crypto.GenerateDEK()
-	if err != nil {
-		return nil, err
-	}
-	blob, err := crypto.WrapKey(dek, password)
-	if err != nil {
-		clear(dek)
-		return nil, err
-	}
-	var existing string
-	err = s.inWriteTx("encryption key creation", func(ctx context.Context, q accountWriter) error {
-		if err := q.QueryRowContext(ctx, `SELECT wrapped_dek_pw FROM users WHERE username = ?`, username).Scan(&existing); err != nil {
-			return ErrNoSuchUser
-		}
-		if existing != "" {
-			return nil
-		}
-		if _, err := q.ExecContext(ctx, `UPDATE users SET wrapped_dek_pw = ? WHERE username = ?`, blob, username); err != nil {
-			return err
-		}
-		if err := enrollInSavepoint(ctx, q, username, dek, nil); err != nil {
-			log.Printf("users: escrow enrollment of %s failed, retried at next sign-in: %v", username, err)
-		}
-		return nil
-	})
-	if err != nil {
-		clear(dek)
-		return nil, err
-	}
-	if existing != "" {
-		clear(dek)
-		return crypto.UnwrapKey(existing, password)
-	}
-	return dek, nil
 }
 
 // HasLegacyRecoveryCodeWraps reports whether any active recovery code

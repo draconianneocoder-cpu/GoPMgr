@@ -342,7 +342,7 @@ func TestStandbyTakesOverWithTheKey(t *testing.T) {
 
 func TestAnyAdministratorTakesOverWhenNoStandbyIsNamed(t *testing.T) {
 	store, aliceDEK, bobDEK, _ := standbyStore(t)
-	carolDEK, err := store.UnlockDEK("carol", statusPassword)
+	carolDEK, err := unlockDEK(store, "carol", statusPassword)
 	if err != nil {
 		t.Fatalf("UnlockDEK(carol): %v", err)
 	}
@@ -383,7 +383,7 @@ func TestAnUpgradedInstallsDormantSuperCanBeTakenOver(t *testing.T) {
 		}
 	}
 	mustExec(t, store, `UPDATE users SET created_at = '2026-01-01T00:00:00Z' WHERE username = 'carol'`)
-	bobDEK, err := store.UnlockDEK("bob", statusPassword)
+	bobDEK, err := unlockDEK(store, "bob", statusPassword)
 	if err != nil {
 		t.Fatalf("UnlockDEK(bob): %v", err)
 	}

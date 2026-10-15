@@ -32,9 +32,12 @@ func TestAdminIssueRecoveryCodesForCreatedUser(t *testing.T) {
 		t.Fatalf("got %d codes, want %d", len(codes), users.RecoveryCodeCount)
 	}
 
-	// Wrong password must be rejected.
-	if _, err := app.AdminIssueRecoveryCodes("bob", "not-the-password"); err == nil {
-		t.Fatal("AdminIssueRecoveryCodes accepted a wrong password")
+	// A wrong password and an unknown account are refused alike.
+	const want = "could not unlock the account's key (wrong password?)"
+	for _, name := range []string{"bob", "nobody"} {
+		if _, err := app.AdminIssueRecoveryCodes(name, "not-the-password"); err == nil || err.Error() != want {
+			t.Fatalf("AdminIssueRecoveryCodes(%s, wrong password) = %v, want %q", name, err, want)
+		}
 	}
 }
 

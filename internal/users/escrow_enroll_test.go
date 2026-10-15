@@ -135,7 +135,7 @@ func TestEveryDEKCreationSiteSealsTheAccountsDEK(t *testing.T) {
 			if _, err := store.CreateAccount(username, username, statusPassword, false); err != nil {
 				t.Fatalf("create %s: %v", username, err)
 			}
-			dek, err := store.UnlockDEK(username, statusPassword)
+			dek, err := unlockDEK(store, username, statusPassword)
 			if err != nil {
 				t.Fatalf("UnlockDEK(%s): %v", username, err)
 			}
@@ -154,7 +154,7 @@ func TestEveryDEKCreationSiteSealsTheAccountsDEK(t *testing.T) {
 	} {
 		username := fmt.Sprintf("user%d", countRows(t, store, "users", "1 = 1"))
 		dek := create(username)
-		unlocked, err := store.UnlockDEK(username, statusPassword)
+		unlocked, err := unlockDEK(store, username, statusPassword)
 		if err != nil || !bytes.Equal(unlocked, dek) {
 			t.Fatalf("%s: UnlockDEK = %v; want the DEK made at creation, one DEK per account", name, err)
 		}
@@ -544,12 +544,12 @@ func TestFailedEnrollmentKeepsTheAccountAndLeavesNoEscrowRows(t *testing.T) {
 	if _, err := store.CreateAccount("carol", "Carol", statusPassword, false); err != nil {
 		t.Fatalf("create carol: %v", err)
 	}
-	legacy, err := store.UnlockDEK("carol", statusPassword)
+	legacy, err := unlockDEK(store, "carol", statusPassword)
 	if err != nil {
 		t.Fatalf("UnlockDEK(carol) with enrollment failing: %v", err)
 	}
 	for username, dek := range map[string][]byte{"bob": created, "carol": legacy} {
-		if unlocked, err := store.UnlockDEK(username, statusPassword); err != nil || !bytes.Equal(unlocked, dek) {
+		if unlocked, err := unlockDEK(store, username, statusPassword); err != nil || !bytes.Equal(unlocked, dek) {
 			t.Errorf("%s: UnlockDEK = %v; want the DEK stored despite the failed enrollment", username, err)
 		}
 		for _, table := range []string{"personal_keys", "escrow_pins", "sealed_deks"} {

@@ -85,9 +85,10 @@ func TestSelectExportDestinationRemembersAndReusesChosenDirectory(t *testing.T) 
 		t.Fatalf("first dialog default = %q, want the caller's default %q (nothing remembered yet)", firstDialogDefault, firstDefaultDir)
 	}
 
-	persisted, err := app.store.Authenticate("alice", "correct horse battery staple")
+	persisted, _, persistedDEK, err := app.store.SignInHeadless("alice", "correct horse battery staple")
+	zeroBytes(persistedDEK)
 	if err != nil {
-		t.Fatalf("Authenticate to check persistence: %v", err)
+		t.Fatalf("sign in to check persistence: %v", err)
 	}
 	if persisted.LastExportDirectory != chosenDir {
 		t.Fatalf("persisted LastExportDirectory = %q, want %q", persisted.LastExportDirectory, chosenDir)

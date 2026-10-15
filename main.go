@@ -491,12 +491,9 @@ func openHeadlessDB(cfg *cli.Config) (*db.Database, error) {
 		return nil, fmt.Errorf("open system database: %w", err)
 	}
 	defer func() { _ = store.Close() }()
-	if _, err := store.Authenticate(cfg.Username, password); err != nil {
-		return nil, fmt.Errorf("authenticate headless user: %w", err)
-	}
-	dek, err := store.UnlockDEK(cfg.Username, password)
+	_, _, dek, err := store.SignInHeadless(cfg.Username, password)
 	if err != nil {
-		return nil, fmt.Errorf("unlock database key: %w", err)
+		return nil, fmt.Errorf("authenticate headless user: %w", err)
 	}
 	return db.InitEncryptedDB(cfg.ProjectPath, dek)
 }

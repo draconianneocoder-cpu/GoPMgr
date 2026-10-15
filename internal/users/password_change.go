@@ -52,8 +52,8 @@ var beforePasswordSwap = func() {}
 // is taken. The write is a single compare-and-swap on the hash and wrap
 // that were read, so a password changed in the meantime is not
 // overwritten: ErrPasswordChangedElsewhere is returned instead. It does
-// not go through Authenticate, which would stamp last_login and could
-// re-hash the password, changing the value the swap compares against.
+// not go through SignIn, which would stamp last_login and could re-hash
+// the password, changing the value the swap compares against.
 func (s *Store) ChangePassword(username, currentPassword, newPassword string) error {
 	if err := ValidateUsername(username); err != nil {
 		return ErrNoSuchUser
@@ -76,7 +76,7 @@ func (s *Store) ChangePassword(username, currentPassword, newPassword string) er
 		return err
 	}
 	if wrapped == "" {
-		// Signing in creates the wrap (UnlockDEK), so a signed-in account
+		// Signing in creates the wrap (SignIn), so a signed-in account
 		// always has one.
 		return ErrPasswordWrapCorrupt
 	}

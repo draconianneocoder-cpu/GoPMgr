@@ -26,6 +26,14 @@ for a legitimate local user.
   The registry and protected-state generation do not yet authenticate WBS
   callers or revoke existing App sessions. Older-binary read-only support,
   system-database restore/replacement and WBS activation remain unverified gates.
+- Desktop sign-in, headless maintenance sign-in, and administrator-issued
+  recovery codes check the password and unlock the key from one snapshot, then
+  require the same account identity, hash, and key wrap in the transaction
+  that makes their writes. An account purged and created again under the
+  same name meanwhile is refused like an unknown user, and nothing is written
+  to it. Escrow enrollment at sign-in runs in that transaction. A sign-in that
+  finishes after the user signed out or signed in as someone else can still
+  publish its session; that ordering is not built yet.
 
 - User credentials are stored in `system.db` as Argon2id PHC strings.
   Passwords must be at least 8 bytes (`users.ValidatePassword`, applied at

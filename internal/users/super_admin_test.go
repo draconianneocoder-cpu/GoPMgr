@@ -298,7 +298,7 @@ func TestSubordinateSignInDoesNotCreateTheKey(t *testing.T) {
 	}
 	mustExec(t, store, `UPDATE users SET created_at = '2026-01-01T00:00:00Z' WHERE username = 'carol'`)
 	mustExec(t, store, `UPDATE users SET created_at = '2026-02-01T00:00:00Z' WHERE username = 'bob'`)
-	bobDEK, err := store.UnlockDEK("bob", statusPassword)
+	bobDEK, err := unlockDEK(store, "bob", statusPassword)
 	if err != nil {
 		t.Fatalf("UnlockDEK(bob): %v", err)
 	}
@@ -309,7 +309,7 @@ func TestSubordinateSignInDoesNotCreateTheKey(t *testing.T) {
 	if n := countRows(t, store, "escrow_keys", "1 = 1"); n != 0 {
 		t.Fatal("a subordinate's sign-in created the administrator key")
 	}
-	carolDEK, err := store.UnlockDEK("carol", statusPassword)
+	carolDEK, err := unlockDEK(store, "carol", statusPassword)
 	if err != nil {
 		t.Fatalf("UnlockDEK(carol): %v", err)
 	}

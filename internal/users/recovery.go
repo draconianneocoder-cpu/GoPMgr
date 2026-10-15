@@ -182,7 +182,7 @@ func replaceRecoveryCodes(ctx context.Context, q accountWriter, username string,
 // stays unused and the old password keeps working. The one exception is
 // an account that has no DEK yet (created before ADR-001 and not signed in
 // since): there is no key to keep, so the password is reset and the DEK
-// is created at the next sign-in, as UnlockDEK does for such accounts.
+// is created at the next sign-in, as SignIn does for such accounts.
 //
 // Verification scans every unused hash for the user and tries
 // auth.VerifyPassword on each. The fixed-time Argon2 cost makes this
@@ -281,7 +281,7 @@ func (s *Store) ResetWithRecoveryCode(username, code, newPassword string) error 
 		if currentWrap != "" {
 			return ErrLegacyRecoveryCode
 		}
-		// No DEK yet: newWrapPW stays empty and UnlockDEK creates the
+		// No DEK yet: newWrapPW stays empty and SignIn creates the
 		// DEK, wrapped by the new password, at the next sign-in.
 	}
 
