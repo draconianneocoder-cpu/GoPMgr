@@ -219,7 +219,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-26.04
     # Required gate: golangci-lint (v2.14.0) + npm run lint. The dependency graph
-    # currently resolves golang.org/x/tools v0.49.0, so this passes cleanly;
+    # currently resolves golang.org/x/tools v0.51.0, so this passes cleanly;
     # a lint regression now fails the workflow. golangci-lint's own pin must be built
     # with a Go toolchain >= go.mod's `go` directive -- it refuses to run otherwise
     # ("the Go language version used to build golangci-lint is lower than the
