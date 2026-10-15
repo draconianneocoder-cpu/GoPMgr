@@ -112,12 +112,14 @@ func (a *App) rememberedExportDirectory() string {
 // rememberExportDirectory persists dir as the signed-in user's new
 // last-chosen export directory. Failure is logged and otherwise ignored --
 // remembering the directory is a convenience, not a condition for the
-// export that just succeeded. a.user is replaced with a new *Account value
-// rather than mutated in place: requireUser hands out the existing pointer
-// under only a read lock, so writing through it without the write lock
-// would race any concurrent reader.
+// export that just succeeded. Only the session that exported is updated.
+// a.user is replaced with a new *Account value rather than mutated in
+// place: requireUser hands out the existing pointer under only a read
+// lock, so writing through it without the write lock would race any
+// concurrent reader.
 func (a *App) rememberExportDirectory(dir string) {
-	u := a.requireUser()
+	s := a.currentSession()
+	u := s.user
 	if u == nil || dir == "" || dir == u.LastExportDirectory {
 		return
 	}
@@ -128,10 +130,11 @@ func (a *App) rememberExportDirectory(dir string) {
 		log.Printf("remember export directory for %s: %v", u.Username, err)
 		return
 	}
-	updated := *u
-	updated.LastExportDirectory = dir
+	sessionGap("export directory")
 	a.mu.Lock()
-	if a.user != nil && a.user.Username == u.Username {
+	if a.user != nil && a.epoch == s.epoch {
+		updated := *a.user
+		updated.LastExportDirectory = dir
 		a.user = &updated
 	}
 	a.mu.Unlock()

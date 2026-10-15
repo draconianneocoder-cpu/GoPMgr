@@ -47,18 +47,22 @@ type adminAccess struct {
 	dek     []byte
 	view    *db.Database // the project copy being viewed, or nil
 	copyDir string       // the folder holding that copy
+	epoch   uint64       // the session that opened it (App.epoch)
 }
 
 // AdminOpenUserData records the signed-in administrator's access to
 // username's data, with reason, and opens it for viewing. Any access
 // already open is stopped first. Nothing is recorded when it is refused.
+// If the administrator signs out or switches accounts while it opens, the
+// access is recorded but not kept open, and the key is zeroed.
 func (a *App) AdminOpenUserData(username, reason string) error {
-	caller := a.requireUser()
+	s := a.currentSession()
+	caller := s.user
 	if caller == nil || !caller.IsAdmin {
 		return errors.New("administrator privileges required")
 	}
 	var targetDEK []byte
-	err := a.withSessionDEK(func(dek []byte) error {
+	err := a.withSessionDEK(s, func(dek []byte) error {
 		var err error
 		targetDEK, err = a.store.OpenUserForAdmin(caller.Username, dek, username, reason)
 		return err
@@ -76,10 +80,15 @@ func (a *App) AdminOpenUserData(username, reason string) error {
 	a.mu.Unlock()
 	removeAdminViewCopies(dataDir, time.Now().Add(-staleAdminViewCopyAge))
 
+	sessionGap("administrator access")
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if a.epoch != s.epoch {
+		zeroBytes(targetDEK)
+		return errors.New("you signed out or switched accounts while the data was opening, so it was closed; the access is still recorded")
+	}
 	a.stopAdminAccessLocked()
-	a.access = &adminAccess{target: username, dataDir: dataDir, dek: targetDEK}
+	a.access = &adminAccess{target: username, dataDir: dataDir, dek: targetDEK, epoch: s.epoch}
 	return nil
 }
 
@@ -114,6 +123,7 @@ type AdminViewProjectWire struct {
 // against the target's projects folder as projectPathFor checks the
 // administrator's own.
 func (a *App) AdminViewUserProject(path string) (AdminViewProjectWire, error) {
+	started := a.currentSession().epoch
 	dataDir, dek, err := a.openAccess()
 	if err != nil {
 		return AdminViewProjectWire{}, err
@@ -138,10 +148,11 @@ func (a *App) AdminViewUserProject(path string) (AdminViewProjectWire, error) {
 		out.AuditWarning = "This project's audit trail fails its tamper check, so it may have been changed outside GoPMgr: " + err.Error()
 	}
 
+	sessionGap("view copy")
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.access == nil || a.access.dataDir != dataDir {
-		// Access stopped or moved to another account meanwhile.
+	if a.access == nil || a.access.dataDir != dataDir || a.access.epoch != started || a.epoch != started {
+		// Access stopped or moved to another account or session meanwhile.
 		_ = view.Close()
 		_ = os.RemoveAll(copyDir)
 		return AdminViewProjectWire{}, errors.New("administrator access has stopped")
@@ -185,7 +196,9 @@ func (a *App) openAccess() (dataDir string, dek []byte, err error) {
 	}
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	if a.access == nil {
+	// Access belongs to the session that opened it; every session change
+	// stops it, and this check keeps that true if one ever does not.
+	if a.access == nil || a.access.epoch != a.epoch {
 		return "", nil, errors.New("no account is open for administrator access")
 	}
 	return a.access.dataDir, append([]byte(nil), a.access.dek...), nil

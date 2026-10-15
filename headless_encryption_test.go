@@ -26,9 +26,9 @@ func createHeadlessEncryptedProject(t *testing.T) (projectPath, password string)
 	if err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	dek, err := store.UnlockDEK("alice", password)
+	_, _, dek, err := store.SignInHeadless("alice", password)
 	if err != nil {
-		t.Fatalf("UnlockDEK: %v", err)
+		t.Fatalf("SignInHeadless: %v", err)
 	}
 
 	projectPath = filepath.Join(acc.DataDir, "projects", "headless.pmforge")

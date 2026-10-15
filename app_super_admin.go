@@ -98,12 +98,13 @@ type AdminHandOverResultWire struct {
 // the signed-in super administrator, who becomes a subordinate. Any data
 // they had open is closed first.
 func (a *App) AdminHandOverSuper(username string) (AdminHandOverResultWire, error) {
-	caller := a.requireUser()
+	s := a.currentSession()
+	caller := s.user
 	if caller == nil || !caller.IsAdmin {
 		return AdminHandOverResultWire{}, errors.New("administrator privileges required")
 	}
 	var keyPassed bool
-	err := a.withSessionDEK(func(dek []byte) error {
+	err := a.withSessionDEK(s, func(dek []byte) error {
 		var err error
 		keyPassed, err = a.store.HandOverSuper(caller.Username, dek, username)
 		return err
@@ -130,12 +131,13 @@ func (a *App) AdminHandOverSuper(username string) (AdminHandOverResultWire, erro
 // administrator may go without signing in before a takeover. Requires the
 // super administrator.
 func (a *App) AdminSetStandby(username string, days int) (AdminHandOverResultWire, error) {
-	caller := a.requireUser()
+	s := a.currentSession()
+	caller := s.user
 	if caller == nil || !caller.IsAdmin {
 		return AdminHandOverResultWire{}, errors.New("administrator privileges required")
 	}
 	var keyPassed bool
-	err := a.withSessionDEK(func(dek []byte) error {
+	err := a.withSessionDEK(s, func(dek []byte) error {
 		var err error
 		keyPassed, err = a.store.SetStandby(caller.Username, dek, username, days)
 		return err
@@ -167,12 +169,13 @@ type AdminTakeOverResultWire struct {
 // within the period, otherwise any administrator. reason is a code from
 // AdminRoles' takeover_reasons; "other" needs a note.
 func (a *App) AdminTakeOverSuper(reason, note string) (AdminTakeOverResultWire, error) {
-	caller := a.requireUser()
+	s := a.currentSession()
+	caller := s.user
 	if caller == nil || !caller.IsAdmin {
 		return AdminTakeOverResultWire{}, errors.New("administrator privileges required")
 	}
 	var keyHeld bool
-	err := a.withSessionDEK(func(dek []byte) error {
+	err := a.withSessionDEK(s, func(dek []byte) error {
 		var err error
 		keyHeld, err = a.store.TakeOverSuper(caller.Username, dek, reason, note)
 		return err
@@ -224,12 +227,13 @@ type AdminRotationWire struct {
 // when not empty, is the standby the super administrator chose to keep
 // the key; any other standby loses it.
 func (a *App) AdminReplaceEscrowKey(keepStandby string) (AdminRotationWire, error) {
-	caller := a.requireUser()
+	s := a.currentSession()
+	caller := s.user
 	if caller == nil || !caller.IsAdmin {
 		return AdminRotationWire{}, errors.New("administrator privileges required")
 	}
 	var res users.RotationResult
-	err := a.withSessionDEK(func(dek []byte) error {
+	err := a.withSessionDEK(s, func(dek []byte) error {
 		var err error
 		res, err = a.store.ReplaceEscrowKey(caller.Username, dek, keepStandby)
 		return err
@@ -252,9 +256,9 @@ func (a *App) AdminReplaceEscrowKey(keepStandby string) (AdminRotationWire, erro
 // runPendingRotation replaces the administrator key now when a change just
 // marked it for replacement and the signed-in administrator is the one to
 // do it. A failure is logged; the next sign-in of a key holder retries.
-func (a *App) runPendingRotation(username string) {
-	err := a.withSessionDEK(func(dek []byte) error {
-		return a.store.RunPendingRotation(username, dek)
+func (a *App) runPendingRotation(s sessionRef) {
+	err := a.withSessionDEK(s, func(dek []byte) error {
+		return a.store.RunPendingRotation(s.user.Username, dek)
 	})
 	if err != nil {
 		log.Printf("replacing the administrator key after an account change failed; it stays pending: %v", err)
@@ -268,12 +272,13 @@ func (a *App) runPendingRotation(username string) {
 // key, replacing any earlier one, and returns it to be shown once. Requires
 // the super administrator, holding a usable key.
 func (a *App) AdminCreateEscrowRecoveryCode() (string, error) {
-	caller := a.requireUser()
+	s := a.currentSession()
+	caller := s.user
 	if caller == nil || !caller.IsAdmin {
 		return "", errors.New("administrator privileges required")
 	}
 	var code string
-	err := a.withSessionDEK(func(dek []byte) error {
+	err := a.withSessionDEK(s, func(dek []byte) error {
 		var err error
 		code, err = a.store.CreateEscrowRecoveryCode(caller.Username, dek)
 		return err
@@ -311,11 +316,12 @@ func (a *App) AdminConfirmEscrowRecoveryCode(code string) error {
 // AdminRecoverEscrowKey restores the administrator key to the super
 // administrator from its recovery code.
 func (a *App) AdminRecoverEscrowKey(code string) error {
-	caller := a.requireUser()
+	s := a.currentSession()
+	caller := s.user
 	if caller == nil || !caller.IsAdmin {
 		return errors.New("administrator privileges required")
 	}
-	err := a.withSessionDEK(func(dek []byte) error {
+	err := a.withSessionDEK(s, func(dek []byte) error {
 		return a.store.RecoverEscrowKey(caller.Username, dek, code)
 	})
 	switch {
@@ -338,12 +344,13 @@ func (a *App) AdminRecoverEscrowKey(code string) error {
 // sealed to it at their next sign-in; each is told why at that sign-in.
 // Requires the super administrator, with no usable key.
 func (a *App) AdminCreateNewEscrowKey(reason string) (int, error) {
-	caller := a.requireUser()
+	s := a.currentSession()
+	caller := s.user
 	if caller == nil || !caller.IsAdmin {
 		return 0, errors.New("administrator privileges required")
 	}
 	var others int
-	err := a.withSessionDEK(func(dek []byte) error {
+	err := a.withSessionDEK(s, func(dek []byte) error {
 		var err error
 		others, err = a.store.CreateNewEscrowKey(caller.Username, dek, reason)
 		return err

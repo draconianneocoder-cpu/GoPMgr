@@ -8,9 +8,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 **Status: D1–D3 policies approved by the owner on 2026-10-14; implementation
 design remains subject to per-slice review.** The first registry/migration/
 creator slice is implemented; see its [bounded evidence](../testing/account-identity-registry.md).
-Coherent authentication and
-WBS operation grants are not implemented by this slice. The
-[storage foundation](wbs-storage-boundary.md) remains dormant.
+The credential part of slice 2 (steps 1 to 3 below) is implemented; see its
+[evidence](../testing/credential-coherence.md). Step 4's App admission epochs,
+the session-held principal and the first account's principal are implemented;
+see their [evidence](../testing/app-admission-epochs.md). WBS operation grants
+are not. The [storage foundation](wbs-storage-boundary.md) remains dormant.
 
 ## Observed problem and scope
 
@@ -116,6 +118,24 @@ resolution, independently of the persistent account generation.
    a late completion. Project-path confinement and DEK selection must use the
    same pinned principal, not different calls to `requireUser`.
 
+Steps 1 to 3 are built as `users.Store.SignIn` (desktop), `SignInHeadless`
+(maintenance) and `IssueRecoveryCodesWithPassword` (administrator-issued
+codes, which unlocked a key by name the same way). A changed hash or wrap of
+the same identity restarts the attempt, at most three times; a different
+identity is refused like an unknown user. Escrow enrollment runs in a
+savepoint of the sign-in transaction. The unbound `Authenticate`/`UnlockDEK`
+pair was removed.
+
+Step 4 and the following paragraph are built (2026-10-15): the App session
+changes only through two helpers that advance a session epoch. Sign-in,
+first-account sign-in, project opening and administrator access publish only
+for the session they started in, and every operation takes the key through
+the session it captured, so a name, folder or path is never paired with
+another session's key. The session holds the `Principal` from `SignIn` or from
+the creation transaction (`CreateAccountWithPrincipal`). Ordering between two
+project opens in the same session ("project switch wins") is deferred: it is
+same-account ordering, not a cross-account binding.
+
 First-account auto-sign-in is another authentication entry point: its private
 creation result must carry incarnation/generation with the newly created DEK
 from the same transaction. Re-reading identity by username after creation is
@@ -197,9 +217,11 @@ metadata; full project audit history retains its existing confidentiality policy
 
 The following is the full design's verification plan. The first slice establishes
 identity migration, creator rollback, retirement, guarded old-SQL writes and
-generation-transition evidence; see its separate evidence document. Credential,
-App, operation-lease, real older-executable and restore checks remain **required
-future evidence**. Use real file-backed stores and explicit barriers, not sleeps,
+generation-transition evidence; see its separate evidence document. The
+credential slice establishes the "Stale credential side effects" row; see its
+evidence document; the App slice establishes the "Stale App publication" row
+except same-session project-switch ordering. Operation-lease, real
+older-executable and restore checks remain **required future evidence**. Use real file-backed stores and explicit barriers, not sleeps,
 and verify exact persisted effects as well as return errors.
 
 | Risk | Acceptance evidence |

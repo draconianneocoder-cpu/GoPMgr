@@ -382,82 +382,89 @@ func (s *Store) OpenEscrow(admin string, dek []byte) (*EscrowSession, error) {
 // else. A caller that is not an enabled administrator is only enrolled.
 func (s *Store) EnrollAdminSession(admin string, dek []byte) error {
 	return s.inWriteTx("administrator escrow", func(ctx context.Context, q accountWriter) error {
-		if err := requireEnabledAdmin(ctx, q, admin); errors.Is(err, ErrNotAdmin) {
-			_, err := enrollTx(ctx, q, admin, dek, nil)
-			return err
-		} else if err != nil {
-			return err
-		}
-		st, err := readSuccessionTx(ctx, q)
-		if err != nil {
-			return err
-		}
-		if admin == st.standby {
-			// The standby holds the key but does none of the work; their
-			// grant is checked so one that does not open is removed and
-			// recorded, and the super administrator sees it is gone.
-			if _, err := enrollTx(ctx, q, admin, dek, nil); err != nil {
-				return err
-			}
-			session, err := openGrantTx(ctx, q, admin, dek)
-			if errors.Is(err, ErrNoEscrowGrant) || errors.Is(err, ErrEscrowMismatch) {
-				return nil
-			}
-			if err != nil {
-				return err
-			}
-			// While the super administrator holds no key, the standby
-			// replaces it when that is pending.
-			session, err = runPendingRotationTx(ctx, q, session, admin, dek)
-			session.Close()
-			return err
-		}
-		if admin != st.super {
-			// A subordinate administrator holds no administrator key
-			// (ADR-005); one left from before is removed.
-			if err := removeSubordinateGrantTx(ctx, q, admin); err != nil {
-				return err
-			}
-			_, err := enrollTx(ctx, q, admin, dek, nil)
-			return err
-		}
+		return enrollAdminSessionTx(ctx, q, admin, dek)
+	})
+}
 
-		var keys int
-		if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM escrow_keys`).Scan(&keys); err != nil {
-			return fmt.Errorf("users: count escrow keys: %w", err)
-		}
-		if keys == 0 {
-			return bootstrapTx(ctx, q, admin, dek)
-		}
-		if _, active, err := activeEscrowKey(ctx, q); err != nil {
-			return err
-		} else if !active {
-			// Escrow keys are retired only by rotation, which makes a new
-			// active key in the same step; none active means the file was
-			// changed. Never create a second escrow key.
-			return recordAccountEvent(ctx, q, admin, admin, AccountEscrowKeyMismatch, "system.db has no current administrator key")
-		}
-
+// enrollAdminSessionTx is EnrollAdminSession inside the caller's
+// transaction; sign-in runs it in the same transaction that checks the
+// account it verified.
+func enrollAdminSessionTx(ctx context.Context, q accountWriter, admin string, dek []byte) error {
+	if err := requireEnabledAdmin(ctx, q, admin); errors.Is(err, ErrNotAdmin) {
+		_, err := enrollTx(ctx, q, admin, dek, nil)
+		return err
+	} else if err != nil {
+		return err
+	}
+	st, err := readSuccessionTx(ctx, q)
+	if err != nil {
+		return err
+	}
+	if admin == st.standby {
+		// The standby holds the key but does none of the work; their
+		// grant is checked so one that does not open is removed and
+		// recorded, and the super administrator sees it is gone.
 		if _, err := enrollTx(ctx, q, admin, dek, nil); err != nil {
 			return err
 		}
 		session, err := openGrantTx(ctx, q, admin, dek)
 		if errors.Is(err, ErrNoEscrowGrant) || errors.Is(err, ErrEscrowMismatch) {
-			return nil // waits for a grant, or the mismatch is recorded
+			return nil
 		}
 		if err != nil {
 			return err
 		}
-		// A pending replacement runs first, so the checks below use the
-		// key that is active afterwards.
+		// While the super administrator holds no key, the standby
+		// replaces it when that is pending.
 		session, err = runPendingRotationTx(ctx, q, session, admin, dek)
-		if err != nil {
-			session.Close()
+		session.Close()
+		return err
+	}
+	if admin != st.super {
+		// A subordinate administrator holds no administrator key
+		// (ADR-005); one left from before is removed.
+		if err := removeSubordinateGrantTx(ctx, q, admin); err != nil {
 			return err
 		}
-		defer session.Close()
-		return adminDutiesTx(ctx, q, session)
-	})
+		_, err := enrollTx(ctx, q, admin, dek, nil)
+		return err
+	}
+
+	var keys int
+	if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM escrow_keys`).Scan(&keys); err != nil {
+		return fmt.Errorf("users: count escrow keys: %w", err)
+	}
+	if keys == 0 {
+		return bootstrapTx(ctx, q, admin, dek)
+	}
+	if _, active, err := activeEscrowKey(ctx, q); err != nil {
+		return err
+	} else if !active {
+		// Escrow keys are retired only by rotation, which makes a new
+		// active key in the same step; none active means the file was
+		// changed. Never create a second escrow key.
+		return recordAccountEvent(ctx, q, admin, admin, AccountEscrowKeyMismatch, "system.db has no current administrator key")
+	}
+
+	if _, err := enrollTx(ctx, q, admin, dek, nil); err != nil {
+		return err
+	}
+	session, err := openGrantTx(ctx, q, admin, dek)
+	if errors.Is(err, ErrNoEscrowGrant) || errors.Is(err, ErrEscrowMismatch) {
+		return nil // waits for a grant, or the mismatch is recorded
+	}
+	if err != nil {
+		return err
+	}
+	// A pending replacement runs first, so the checks below use the
+	// key that is active afterwards.
+	session, err = runPendingRotationTx(ctx, q, session, admin, dek)
+	if err != nil {
+		session.Close()
+		return err
+	}
+	defer session.Close()
+	return adminDutiesTx(ctx, q, session)
 }
 
 // bootstrapTx creates the machine's escrow key, enrolls admin against it,

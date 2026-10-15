@@ -78,7 +78,7 @@ func TestResetWithRecoveryCodeCanonicalisesPastedWhitespace(t *testing.T) {
 	if err := store.ResetWithRecoveryCode("alice", pasted, "new password"); err != nil {
 		t.Fatalf("ResetWithRecoveryCode: %v", err)
 	}
-	if _, err := store.Authenticate("alice", "new password"); err != nil {
+	if _, err := authenticate(store, "alice", "new password"); err != nil {
 		t.Fatalf("Authenticate with reset password: %v", err)
 	}
 }

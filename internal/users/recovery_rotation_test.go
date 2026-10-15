@@ -30,7 +30,7 @@ func resetRecoversKey(t *testing.T, store *Store, code string, want []byte) bool
 	if err := store.ResetWithRecoveryCode("alice", code, "recovered-password"); err != nil {
 		return false
 	}
-	got, err := store.UnlockDEK("alice", "recovered-password")
+	got, err := unlockDEK(store, "alice", "recovered-password")
 	if err != nil {
 		t.Fatalf("UnlockDEK after a reset: %v", err)
 	}

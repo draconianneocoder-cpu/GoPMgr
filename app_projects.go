@@ -30,7 +30,6 @@ import (
 	"gopmgr/internal/fonts"
 	"gopmgr/internal/sigma/service"
 	"gopmgr/internal/update"
-	"gopmgr/internal/users"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -108,7 +107,8 @@ func (a *App) ListProjects() ([]ProjectFile, error) {
 // projects/ folder, initialises the project row, and returns its
 // ProjectFile representation.
 func (a *App) CreateProject(name, description string) (ProjectFile, error) {
-	user := a.requireUser()
+	s := a.currentSession()
+	user := s.user
 	if user == nil {
 		return ProjectFile{}, errors.New("not signed in")
 	}
@@ -123,9 +123,7 @@ func (a *App) CreateProject(name, description string) (ProjectFile, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return ProjectFile{}, err
 	}
-	a.mu.RLock()
-	dek, err := a.requireDEKLocked()
-	a.mu.RUnlock()
+	dek, err := a.sessionDEK(s)
 	if err != nil {
 		return ProjectFile{}, err
 	}
@@ -164,7 +162,8 @@ func (a *App) CreateProject(name, description string) (ProjectFile, error) {
 // It never overwrites an existing project and never imports bundled
 // certificates automatically.
 func (a *App) RestoreProjectArchive() (ProjectFile, error) {
-	user := a.requireUser()
+	s := a.currentSession()
+	user := s.user
 	if user == nil {
 		return ProjectFile{}, errors.New("not signed in")
 	}
@@ -184,11 +183,11 @@ func (a *App) RestoreProjectArchive() (ProjectFile, error) {
 	if archivePath == "" {
 		return ProjectFile{}, errors.New("restore cancelled")
 	}
-	return a.restoreProjectArchiveFrom(archivePath, user)
+	return a.restoreProjectArchiveFrom(archivePath, s)
 }
 
-func (a *App) restoreProjectArchiveFrom(archivePath string, user *users.Account) (result ProjectFile, err error) {
-	projectsDir := filepath.Join(user.DataDir, "projects")
+func (a *App) restoreProjectArchiveFrom(archivePath string, s sessionRef) (result ProjectFile, err error) {
+	projectsDir := filepath.Join(s.user.DataDir, "projects")
 	if err := os.MkdirAll(projectsDir, 0o700); err != nil {
 		return result, err
 	}
@@ -208,9 +207,7 @@ func (a *App) restoreProjectArchiveFrom(archivePath string, user *users.Account)
 		return result, err
 	}
 
-	a.mu.RLock()
-	dek, dekErr := a.requireDEKLocked()
-	a.mu.RUnlock()
+	dek, dekErr := a.sessionDEK(s)
 	if dekErr != nil {
 		return result, dekErr
 	}
@@ -289,16 +286,16 @@ func isProjectExtension(ext string) bool {
 // A path the frontend received with U+FFFD in place of invalid UTF-8 is
 // mapped back to the real name (resolveWireProjectPath), and the result must
 // be an existing regular file: missing files and symlinks are refused.
-func (a *App) projectPathFor(path string) (string, *users.Account, error) {
-	user := a.requireUser()
-	if user == nil {
-		return "", nil, errors.New("not signed in")
+func (a *App) projectPathFor(path string) (string, sessionRef, error) {
+	s := a.currentSession()
+	if s.user == nil {
+		return "", sessionRef{}, errors.New("not signed in")
 	}
-	clean, err := confineProjectPath(filepath.Join(user.DataDir, "projects"), path)
+	clean, err := confineProjectPath(filepath.Join(s.user.DataDir, "projects"), path)
 	if err != nil {
-		return "", nil, err
+		return "", sessionRef{}, err
 	}
-	return clean, user, nil
+	return clean, s, nil
 }
 
 // confineProjectPath is projectPathFor's check against any projects
@@ -456,10 +453,12 @@ func (a *App) DeleteProject(path string) error {
 	// the log records the same deletion twice.
 	projectDeletionMu.Lock()
 	defer projectDeletionMu.Unlock()
-	clean, user, err := a.projectPathFor(path)
+	clean, s, err := a.projectPathFor(path)
 	if err != nil {
 		return err
 	}
+	sessionGap("delete project")
+	user := s.user
 	a.mu.RLock()
 	openPath := a.dbPath
 	a.mu.RUnlock()
@@ -469,11 +468,11 @@ func (a *App) DeleteProject(path string) error {
 		}
 	}
 	projectsDir := filepath.Clean(filepath.Join(user.DataDir, "projects"))
-	req, err := a.projectDeletionRequest(clean, projectsDir, user.Username)
+	req, err := a.projectDeletionRequest(s, clean, projectsDir)
 	if err != nil {
 		return err
 	}
-	deletions, err := a.openDeletionLog()
+	deletions, err := a.openDeletionLog(s)
 	if err != nil {
 		return err
 	}
@@ -513,15 +512,13 @@ var recordProjectDeleted = func(l *deletionlog.Log, deletionID string) error {
 // projectDeletionRequest reads what the deletion log records about the
 // project at path: its identity and the final state of its audit chain. A
 // tampered chain does not block deletion; it is recorded as invalid.
-func (a *App) projectDeletionRequest(path, projectsDir, actor string) (deletionlog.Request, error) {
+func (a *App) projectDeletionRequest(s sessionRef, path, projectsDir string) (deletionlog.Request, error) {
 	location, err := filepath.Rel(projectsDir, path)
 	if err != nil {
 		return deletionlog.Request{}, err
 	}
-	req := deletionlog.Request{Actor: actor, Location: strings.ToValidUTF8(location, "\uFFFD")}
-	a.mu.RLock()
-	dek, err := a.requireDEKLocked()
-	a.mu.RUnlock()
+	req := deletionlog.Request{Actor: s.user.Username, Location: strings.ToValidUTF8(location, "\uFFFD")}
+	dek, err := a.sessionDEK(s)
 	if err != nil {
 		return deletionlog.Request{}, err
 	}
@@ -578,21 +575,16 @@ func removeProjectFiles(path, projectsDir string) error {
 	return nil
 }
 
-// openDeletionLog opens the signed-in user's encrypted deletion log. Like the
+// openDeletionLog opens the encrypted deletion log of s's user. Like the
 // catalog, it is unavailable before login because its key derives from the
 // session DEK.
-func (a *App) openDeletionLog() (*deletionlog.Log, error) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	if a.user == nil {
-		return nil, errors.New("not signed in")
-	}
-	dek, err := a.requireDEKLocked()
+func (a *App) openDeletionLog(s sessionRef) (*deletionlog.Log, error) {
+	dek, err := a.sessionDEK(s)
 	if err != nil {
 		return nil, err
 	}
 	defer zeroBytes(dek)
-	l, err := deletionlog.Open(filepath.Join(a.user.DataDir, "deletions.gopmgr"), dek)
+	l, err := deletionlog.Open(filepath.Join(s.user.DataDir, "deletions.gopmgr"), dek)
 	if err != nil {
 		return nil, fmt.Errorf("open project deletion log: %w", err)
 	}
@@ -622,7 +614,7 @@ type ProjectDeletionWire struct {
 // ListProjectDeletions returns the signed-in user's deletion log, newest
 // first.
 func (a *App) ListProjectDeletions() ([]ProjectDeletionWire, error) {
-	deletions, err := a.openDeletionLog()
+	deletions, err := a.openDeletionLog(a.currentSession())
 	if err != nil {
 		return nil, err
 	}
@@ -648,11 +640,11 @@ func (a *App) ListProjectDeletions() ([]ProjectDeletionWire, error) {
 // WAL/SHM sidecars are copied when present so no committed data is lost if the
 // source had uncheckpointed pages.
 func (a *App) CloneProject(path string) (ProjectFile, error) {
-	clean, user, err := a.projectPathFor(path)
+	clean, s, err := a.projectPathFor(path)
 	if err != nil {
 		return ProjectFile{}, err
 	}
-	projectsDir := filepath.Join(user.DataDir, "projects")
+	projectsDir := filepath.Join(s.user.DataDir, "projects")
 	// Recover the source's display name from either layout.
 	var srcName string
 	if filepath.Dir(clean) == filepath.Clean(projectsDir) {
@@ -918,13 +910,12 @@ type ProjectSummary struct {
 // that cannot be opened is still listed (Readable=false) so nothing silently
 // disappears from the overview.
 func (a *App) ProjectsOverview() ([]ProjectSummary, error) {
-	user := a.requireUser()
+	s := a.currentSession()
+	user := s.user
 	if user == nil {
 		return nil, errors.New("not signed in")
 	}
-	a.mu.RLock()
-	dek, err := a.requireDEKLocked()
-	a.mu.RUnlock()
+	dek, err := a.sessionDEK(s)
 	if err != nil {
 		return nil, err
 	}
@@ -1186,18 +1177,22 @@ func (a *App) OpenProject(path string) (ProjectMetaWire, error) {
 	// a.mu via requireUser). This is the same boundary DeleteProject/
 	// CloneProject enforce; opening is no less sensitive — the path also feeds
 	// the SQLCipher DSN.
-	clean, _, err := a.projectPathFor(path)
+	clean, s, err := a.projectPathFor(path)
 	if err != nil {
 		return ProjectMetaWire{}, err
 	}
 
+	sessionGap("open project")
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	dek, err := a.requireDEKLocked()
+	// The key of the session whose folder the path was confined to; if
+	// another session signed in meanwhile, the open project is left alone.
+	dek, err := a.sessionDEKLocked(s)
 	if err != nil {
 		return ProjectMetaWire{}, err
 	}
+	defer zeroBytes(dek)
 	if a.db != nil {
 		_ = a.db.Close()
 		a.db = nil
@@ -1272,16 +1267,17 @@ func (a *App) EncryptProjectAtRest(path string) (string, error) {
 	// MigratePlaintextToEncrypted renames the source to a .bak, writes a new
 	// file at this path, and chmods it, so an unconfined path would be a
 	// rename/overwrite primitive outside the user's sandbox.
-	clean, user, err := a.projectPathFor(path)
+	clean, s, err := a.projectPathFor(path)
 	if err != nil {
 		return "", err
 	}
-	if err := a.encryptionReadiness(user.Username); err != nil {
+	if err := a.encryptionReadiness(s.user.Username); err != nil {
 		return "", err
 	}
 
+	sessionGap("encrypt project")
 	a.mu.Lock()
-	dek, err := a.requireDEKLocked()
+	dek, err := a.sessionDEKLocked(s)
 	if err != nil {
 		a.mu.Unlock()
 		return "", err

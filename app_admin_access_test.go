@@ -284,9 +284,9 @@ func TestAdminAccessLeavesTheAdministratorsOwnDataOpen(t *testing.T) {
 // its -wal file; the copy includes them.
 func TestAdminViewIncludesChangesStillInTheWriteAheadLog(t *testing.T) {
 	app, path := adminAccessApp(t)
-	bobDEK, err := app.store.UnlockDEK("bob", escrowTestPassword)
+	_, _, bobDEK, err := app.store.SignInHeadless("bob", escrowTestPassword)
 	if err != nil {
-		t.Fatalf("UnlockDEK(bob): %v", err)
+		t.Fatalf("SignInHeadless(bob): %v", err)
 	}
 	defer zeroBytes(bobDEK)
 	owner, err := db.InitEncryptedDB(path, bobDEK)

@@ -63,7 +63,7 @@ func TestAdministratorAccessRefusalsRecordNothing(t *testing.T) {
 	if _, err := store.CreateAccount("frank", "Frank", statusPassword, true); err != nil {
 		t.Fatalf("create frank: %v", err)
 	}
-	frankDEK, err := store.UnlockDEK("frank", statusPassword)
+	frankDEK, err := unlockDEK(store, "frank", statusPassword)
 	if err != nil {
 		t.Fatalf("UnlockDEK(frank): %v", err)
 	}

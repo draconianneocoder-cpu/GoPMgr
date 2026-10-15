@@ -27,7 +27,7 @@ import (
 // Each one is recorded in account_events, an append-only table in
 // system.db, in the same transaction as the change it records.
 
-// ErrAccountDisabled is returned by Authenticate for a disabled account
+// ErrAccountDisabled is returned by SignIn for a disabled account
 // whose password is correct, so it reveals nothing to someone who does
 // not know the password.
 var ErrAccountDisabled = errors.New("users: account is disabled")

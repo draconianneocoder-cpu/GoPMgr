@@ -143,7 +143,7 @@ an administrator an attacker's escrow key to seal new accounts to.
 | First account creation (the first administrator) | Bootstrap as above, in the same session. |
 | Sign-in of an account that is not yet enrolled | Create the personal key pair if missing, check or set the escrow pin, seal the DEK. Failure does not block sign-in; it is retried at the next sign-in and shown in the Admin panel. |
 | Sign-in of an administrator with a grant | Also check existing attestations and that every sealed DEK opens. Never grants. |
-| `UnlockDEK` generates a DEK for an account older than ADR-001 (`dek.go:98`) | Seal it in the same transaction as its password wrap. |
+| Sign-in (`Store.SignIn`, `credentials.go`) generates a DEK for an account older than ADR-001 | Seal it in the same transaction as its password wrap. |
 | Password change or ordinary recovery reset | Nothing: the DEK does not change. |
 | Promotion (`AdminSetUserRole`) | Super administrator only (ADR-005). Changes the role and grants nothing: the new administrator is a subordinate. A target with no personal key yet is refused until they sign in once (owner decision, 2026-10-02). The attestation check now runs when the key is passed (hand-over, and ADR-005's standby): a key the escrow key never attested is trusted on first use and recorded. |
 | `BecomeAdmin` (no administrator can sign in) | Bootstrap as above if no escrow key has ever existed. Otherwise the new administrator, as super administrator, has no grant until they make a new key (ADR-005 part 3c). |
@@ -211,6 +211,10 @@ in it with the grant it holds.
    their own key. The handle is zeroed when the administrator stops viewing,
    signs out, or signs in again, and on shutdown. The caller's role is read
    from `system.db` again at each view, and a demoted caller's access stops.
+   Access belongs to the session that opened it (2026-10-15): if the
+   administrator signs out or switches accounts while it is opening, it is
+   not kept and the key is zeroed, though the access stays recorded and the
+   user is told of it.
 7. Viewing only (owner decision, 2026-10-02): the administrator may look at
    the target's projects in the app and nothing else. A project is copied
    (with any `-wal` and `-shm` file) into a folder with an unpredictable name

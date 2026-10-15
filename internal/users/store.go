@@ -12,7 +12,7 @@
 //   - Per-user folders at <data-root>/<username>/ that hold each user's
 //     projects, certificates, and export output. Folders are chmod'd to
 //     0700 on POSIX so other OS accounts cannot read.
-//   - A login flow (Authenticate) and an account-creation flow
+//   - A login flow (SignIn) and an account-creation flow
 //     (CreateAccountAs, which applies the machine's account-creation rule).
 //
 // GoPMgr does NOT use OS user accounts. Multiple GoPMgr users on the
@@ -80,7 +80,7 @@ var userSubfolders = []string{"projects", "certs", "exports"}
 // ErrInvalidUsername is returned for usernames that fail validation.
 var ErrInvalidUsername = errors.New("users: invalid username")
 
-// ErrNoSuchUser is returned by Authenticate when the username does not
+// ErrNoSuchUser is returned by SignIn when the username does not
 // exist. Callers SHOULD merge this with ErrMismatch in the UI to avoid
 // leaking which usernames are valid.
 var ErrNoSuchUser = errors.New("users: no such user")
@@ -495,29 +495,38 @@ func (s *Store) CreateAccountAs(callerUsername, username, displayName, password 
 // stop the account being created; the account's next sign-in enrolls it.
 // The caller must clear the DEK.
 func (s *Store) CreateAccountWithKey(callerUsername, username, displayName, password string, isAdmin bool, session *EscrowSession) (Account, []byte, error) {
+	acc, _, dek, err := s.CreateAccountWithPrincipal(callerUsername, username, displayName, password, isAdmin, session)
+	return acc, dek, err
+}
+
+// CreateAccountWithPrincipal is CreateAccountWithKey that also returns the
+// new account's Principal, read in the creation transaction after its
+// writes, for signing the account in without reading it again by name.
+func (s *Store) CreateAccountWithPrincipal(callerUsername, username, displayName, password string, isAdmin bool, session *EscrowSession) (Account, Principal, []byte, error) {
 	if err := ValidateUsername(username); err != nil {
-		return Account{}, nil, err
+		return Account{}, Principal{}, nil, err
 	}
 	if err := ValidatePassword(password); err != nil {
-		return Account{}, nil, err
+		return Account{}, Principal{}, nil, err
 	}
 	// Hash and wrap before taking the write lock: Argon2id is deliberately
 	// slow and would hold every other writer off system.db for its runs.
 	hash, err := auth.HashPassword(password)
 	if err != nil {
-		return Account{}, nil, err
+		return Account{}, Principal{}, nil, err
 	}
 	dek, err := crypto.GenerateDEK()
 	if err != nil {
-		return Account{}, nil, err
+		return Account{}, Principal{}, nil, err
 	}
 	wrapped, err := crypto.WrapKey(dek, password)
 	if err != nil {
 		clear(dek)
-		return Account{}, nil, err
+		return Account{}, Principal{}, nil, err
 	}
 
 	var acc Account
+	var principal Principal
 	err = s.inWriteTx("account creation", func(ctx context.Context, q accountWriter) error {
 		var existing int
 		if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&existing); err != nil {
@@ -568,6 +577,12 @@ func (s *Store) CreateAccountWithKey(callerUsername, username, displayName, pass
 		if err := enrollInSavepoint(ctx, q, username, dek, session); err != nil {
 			log.Printf("users: escrow enrollment of new account %s failed, retried at its sign-in: %v", username, err)
 		}
+		var id string
+		var generation int64
+		if err := q.QueryRowContext(ctx, `SELECT id, generation FROM account_identity_registry WHERE username = ?`, username).Scan(&id, &generation); err != nil {
+			return fmt.Errorf("users: read new account identity: %w", err)
+		}
+		principal = Principal{id: id, username: username, generation: generation}
 		return nil
 	})
 	if err != nil {
@@ -577,9 +592,9 @@ func (s *Store) CreateAccountWithKey(callerUsername, username, displayName, pass
 		if acc.DataDir != "" {
 			removeNewUserFolder(acc.DataDir)
 		}
-		return Account{}, nil, err
+		return Account{}, Principal{}, nil, err
 	}
-	return acc, dek, nil
+	return acc, principal, dek, nil
 }
 
 // afterAccountRuleCheck runs inside CreateAccountAs's transaction, after
@@ -649,89 +664,6 @@ func (s *Store) insertAccount(ctx context.Context, q accountWriter, username, di
 	}, nil
 }
 
-// Authenticate verifies username + password against system.db. On
-// success it updates last_login and returns the Account. On failure it
-// returns ErrNoSuchUser or auth.ErrMismatch — callers should map both
-// to the same "invalid credentials" message in the UI.
-//
-// If the stored hash was produced with weaker parameters than the
-// current defaults, the function transparently re-hashes the password
-// before returning.
-func (s *Store) Authenticate(username, password string) (Account, error) {
-	if err := ValidateUsername(username); err != nil {
-		return Account{}, ErrNoSuchUser
-	}
-
-	var (
-		acc           Account
-		hash          string
-		storedDataDir string
-		createdAt     string
-		lastLogin     string
-		isAdmin       int
-		disabled      int
-	)
-	err := s.conn.QueryRow(
-		`SELECT username, display_name, password_hash, data_dir, created_at, last_login, is_admin, last_export_directory, disabled
-		 FROM users WHERE username = ?`,
-		username,
-	).Scan(&acc.Username, &acc.DisplayName, &hash, &storedDataDir, &createdAt, &lastLogin, &isAdmin, &acc.LastExportDirectory, &disabled)
-	if err == sql.ErrNoRows {
-		return Account{}, ErrNoSuchUser
-	}
-	if err != nil {
-		return Account{}, err
-	}
-
-	if err := auth.VerifyPassword(password, hash); err != nil {
-		return Account{}, err
-	}
-	// Checked only after the password, so it reveals nothing to someone
-	// who does not know it, and before last_login or a rehash is written.
-	if disabled == 1 {
-		return Account{}, ErrAccountDisabled
-	}
-
-	// data_dir is recomputed from the scanned username and the store's
-	// current rootDir rather than trusted from the column: it is written
-	// once at CreateAccount time, so a stale column would silently point
-	// every account at a pre-migration/pre-relocation root once
-	// DefaultRootDir's leaf name or location changes (see
-	// legacyRootCandidates). The column is still written for
-	// debuggability but is not authoritative.
-	acc.DataDir = filepath.Join(s.rootDir, acc.Username)
-	acc.IsAdmin = isAdmin == 1
-
-	// Parse timestamps (silently ignore parse errors — they're cosmetic).
-	if t, err := time.Parse(time.RFC3339Nano, createdAt); err == nil {
-		acc.CreatedAt = t
-	}
-	if lastLogin != "" {
-		if t, err := time.Parse(time.RFC3339Nano, lastLogin); err == nil {
-			acc.LastLogin = t
-		}
-	}
-
-	// Update last_login.
-	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := s.conn.Exec(`UPDATE users SET last_login = ? WHERE username = ?`, now, username); err != nil {
-		return Account{}, fmt.Errorf("users: update last_login: %w", err)
-	}
-
-	// Transparent re-hash if parameters have been strengthened.
-	if auth.NeedsRehash(hash) {
-		newHash, err := auth.HashPassword(password)
-		if err != nil {
-			return Account{}, fmt.Errorf("users: rehash password: %w", err)
-		}
-		if _, err := s.conn.Exec(`UPDATE users SET password_hash = ? WHERE username = ?`, newHash, username); err != nil {
-			return Account{}, fmt.Errorf("users: persist password rehash: %w", err)
-		}
-	}
-
-	return acc, nil
-}
-
 // List returns every account on the system, ordered by username. Used
 // by the GUI's user-switcher dropdown and admin panel.
 func (s *Store) List() ([]Account, error) {
@@ -755,7 +687,10 @@ func (s *Store) List() ([]Account, error) {
 		if err := rows.Scan(&a.Username, &a.DisplayName, &storedDataDir, &createdAt, &lastLogin, &isAdmin, &a.LastExportDirectory, &disabled); err != nil {
 			return nil, err
 		}
-		// See the comment in Authenticate: data_dir is recomputed, not trusted.
+		// data_dir is recomputed from the username and the store's current
+		// rootDir rather than trusted from the column: it is written once at
+		// creation, so a stale column would point the account at a
+		// pre-migration or pre-relocation root (see legacyRootCandidates).
 		a.DataDir = filepath.Join(s.rootDir, a.Username)
 		if t, err := time.Parse(time.RFC3339Nano, createdAt); err == nil {
 			a.CreatedAt = t

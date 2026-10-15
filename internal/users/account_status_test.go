@@ -90,12 +90,12 @@ func TestDisabledAccountCannotSignInUntilEnabled(t *testing.T) {
 	}
 	before := lastLogin(t, store, "bob")
 
-	if _, err := store.Authenticate("bob", statusPassword); !errors.Is(err, ErrAccountDisabled) {
+	if _, err := authenticate(store, "bob", statusPassword); !errors.Is(err, ErrAccountDisabled) {
 		t.Fatalf("Authenticate disabled bob: err = %v, want ErrAccountDisabled", err)
 	}
 	// A wrong password gets the ordinary mismatch, so the disabled state
 	// is only visible to someone who knows the password.
-	if _, err := store.Authenticate("bob", "wrong-password"); !errors.Is(err, auth.ErrMismatch) {
+	if _, err := authenticate(store, "bob", "wrong-password"); !errors.Is(err, auth.ErrMismatch) {
 		t.Fatalf("Authenticate disabled bob with wrong password: err = %v, want auth.ErrMismatch", err)
 	}
 	if after := lastLogin(t, store, "bob"); after != before {
@@ -109,7 +109,7 @@ func TestDisabledAccountCannotSignInUntilEnabled(t *testing.T) {
 	if err := store.SetDisabled("alice", "bob", false); err != nil {
 		t.Fatalf("enable bob: %v", err)
 	}
-	if _, err := store.Authenticate("bob", statusPassword); err != nil {
+	if _, err := authenticate(store, "bob", statusPassword); err != nil {
 		t.Fatalf("Authenticate after enabling: %v", err)
 	}
 	assertEvents(t, store, "alice disabled bob", "alice enabled bob")
@@ -233,7 +233,7 @@ func TestDisabledAdministratorCannotCreateAccounts(t *testing.T) {
 
 func TestPurgeAccountDeletesAccountFolderAndCodes(t *testing.T) {
 	store := newStatusStore(t)
-	dek, err := store.UnlockDEK("bob", statusPassword)
+	dek, err := unlockDEK(store, "bob", statusPassword)
 	if err != nil {
 		t.Fatalf("UnlockDEK: %v", err)
 	}
@@ -478,7 +478,7 @@ func TestAccountWithAWindowsDeviceNameStillWorks(t *testing.T) {
 		hash, folder,
 	)
 
-	if _, err := store.Authenticate("con", statusPassword); err != nil {
+	if _, err := authenticate(store, "con", statusPassword); err != nil {
 		t.Fatalf("sign in as con: %v", err)
 	}
 	if err := store.SetDisabled("alice", "con", true); err != nil {

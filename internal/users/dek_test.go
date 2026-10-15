@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopmgr/internal/auth"
 )
 
 func newDEKTestStore(t *testing.T) *Store {
@@ -28,7 +30,7 @@ func TestUnlockDEKLazyGenerationAndStability(t *testing.T) {
 	s := newDEKTestStore(t)
 
 	// First unlock generates and persists the DEK.
-	dek1, err := s.UnlockDEK("alice", "p4ssw0rd-original")
+	dek1, err := unlockDEK(s, "alice", "p4ssw0rd-original")
 	if err != nil {
 		t.Fatalf("UnlockDEK (first): %v", err)
 	}
@@ -37,7 +39,7 @@ func TestUnlockDEKLazyGenerationAndStability(t *testing.T) {
 	}
 	// Second unlock returns the SAME DEK (it was persisted, not
 	// regenerated).
-	dek2, err := s.UnlockDEK("alice", "p4ssw0rd-original")
+	dek2, err := unlockDEK(s, "alice", "p4ssw0rd-original")
 	if err != nil {
 		t.Fatalf("UnlockDEK (second): %v", err)
 	}
@@ -48,13 +50,13 @@ func TestUnlockDEKLazyGenerationAndStability(t *testing.T) {
 
 func TestUnlockDEKWrongPasswordFails(t *testing.T) {
 	s := newDEKTestStore(t)
-	if _, err := s.UnlockDEK("alice", "p4ssw0rd-original"); err != nil {
+	if _, err := unlockDEK(s, "alice", "p4ssw0rd-original"); err != nil {
 		t.Fatalf("priming unlock: %v", err)
 	}
-	if _, err := s.UnlockDEK("alice", "wrong-password"); err == nil {
+	if _, err := unlockDEK(s, "alice", "wrong-password"); err == nil {
 		t.Error("wrong password must fail the unwrap")
 	}
-	if _, err := s.UnlockDEK("nobody", "x"); err == nil {
+	if _, err := unlockDEK(s, "nobody", "x"); err == nil {
 		t.Error("unknown user must fail")
 	}
 }
@@ -64,7 +66,7 @@ func TestUnlockDEKWrongPasswordFails(t *testing.T) {
 func TestRecoveryResetPreservesDEK(t *testing.T) {
 	s := newDEKTestStore(t)
 
-	dek, err := s.UnlockDEK("alice", "p4ssw0rd-original")
+	dek, err := unlockDEK(s, "alice", "p4ssw0rd-original")
 	if err != nil {
 		t.Fatalf("UnlockDEK: %v", err)
 	}
@@ -80,10 +82,10 @@ func TestRecoveryResetPreservesDEK(t *testing.T) {
 
 	// Old password must no longer unlock; new password must yield the
 	// SAME DEK.
-	if _, err := s.UnlockDEK("alice", "p4ssw0rd-original"); err == nil {
+	if _, err := unlockDEK(s, "alice", "p4ssw0rd-original"); err == nil {
 		t.Error("old password still unlocks after reset")
 	}
-	got, err := s.UnlockDEK("alice", "brand-new-password")
+	got, err := unlockDEK(s, "alice", "brand-new-password")
 	if err != nil {
 		t.Fatalf("UnlockDEK (new password): %v", err)
 	}
@@ -92,7 +94,7 @@ func TestRecoveryResetPreservesDEK(t *testing.T) {
 	}
 
 	// And login itself works with the new password.
-	if _, err := s.Authenticate("alice", "brand-new-password"); err != nil {
+	if _, err := authenticate(s, "alice", "brand-new-password"); err != nil {
 		t.Fatalf("Authenticate after reset: %v", err)
 	}
 }
@@ -127,7 +129,7 @@ func readAccountKeyState(t *testing.T, s *Store, username string) accountKeyStat
 func TestRecoveryResetRefusesLegacyCodeWhenAccountHasDEK(t *testing.T) {
 	s := newDEKTestStore(t)
 
-	dek, err := s.UnlockDEK("alice", "p4ssw0rd-original")
+	dek, err := unlockDEK(s, "alice", "p4ssw0rd-original")
 	if err != nil {
 		t.Fatalf("UnlockDEK: %v", err)
 	}
@@ -146,14 +148,14 @@ func TestRecoveryResetRefusesLegacyCodeWhenAccountHasDEK(t *testing.T) {
 		}
 	}
 
-	got, err := s.UnlockDEK("alice", "p4ssw0rd-original")
+	got, err := unlockDEK(s, "alice", "p4ssw0rd-original")
 	if err != nil {
 		t.Fatalf("UnlockDEK with the old password after a refused reset: %v", err)
 	}
 	if !bytes.Equal(got, dek) {
 		t.Fatal("DEK changed across a refused reset")
 	}
-	if _, err := s.Authenticate("alice", "another-password"); err == nil {
+	if _, err := authenticate(s, "alice", "another-password"); err == nil {
 		t.Fatal("the refused reset's new password signs in")
 	}
 }
@@ -173,10 +175,10 @@ func TestRecoveryResetLegacyCodeWithoutDEKResetsPasswordOnly(t *testing.T) {
 	if st := readAccountKeyState(t, s, "alice"); st.wrappedDEK != "" {
 		t.Fatalf("legacy reset of an account without a DEK stored a key wrap %q, want none until sign-in", st.wrappedDEK)
 	}
-	if _, err := s.Authenticate("alice", "another-password"); err != nil {
+	if _, err := authenticate(s, "alice", "another-password"); err != nil {
 		t.Fatalf("Authenticate with the new password: %v", err)
 	}
-	if _, err := s.UnlockDEK("alice", "another-password"); err != nil {
+	if _, err := unlockDEK(s, "alice", "another-password"); err != nil {
 		t.Fatalf("UnlockDEK with the new password: %v", err)
 	}
 }
@@ -209,7 +211,7 @@ func TestHasLegacyRecoveryCodeWraps(t *testing.T) {
 	}
 
 	// Re-issue with DEK: guard must clear.
-	dek, err := s.UnlockDEK("alice", "p4ssw0rd-original")
+	dek, err := unlockDEK(s, "alice", "p4ssw0rd-original")
 	if err != nil {
 		t.Fatalf("UnlockDEK: %v", err)
 	}
@@ -277,10 +279,12 @@ func TestMigrateDEKColumns_AlterFailsWhenTableMissing(t *testing.T) {
 	}
 }
 
-func TestUnlockDEK_RejectsInvalidUsername(t *testing.T) {
+// An invalid username is refused like an unknown one, so the reply tells
+// nothing about which names exist.
+func TestSignIn_RejectsInvalidUsername(t *testing.T) {
 	s := newDEKTestStore(t)
-	if _, err := s.UnlockDEK("a", "whatever"); err != ErrInvalidUsername {
-		t.Fatalf("UnlockDEK(invalid username) error = %v, want ErrInvalidUsername", err)
+	if _, err := unlockDEK(s, "a", "whatever"); err != ErrNoSuchUser {
+		t.Fatalf("sign-in with an invalid username: error = %v, want ErrNoSuchUser", err)
 	}
 }
 
@@ -299,25 +303,51 @@ func TestUnlockDEK_GenerateDEKEntropyFailure(t *testing.T) {
 	restore := replaceRecoveryRandReader(t, failingRecoveryReader{})
 	defer restore()
 
-	_, err := s.UnlockDEK("alice", "p4ssw0rd-original")
+	_, err := unlockDEK(s, "alice", "p4ssw0rd-original")
 	if err == nil || !strings.Contains(err.Error(), "generate DEK") {
 		t.Fatalf("UnlockDEK with failing entropy source = %v, want a generate-DEK error", err)
 	}
 }
 
-// TestUnlockDEK_WrapKeyFailsOnEmptyPassword forces crypto.WrapKey's
-// error-propagation line (distinct from GenerateDEK's, just above)
-// deterministically: EncryptBuffer rejects an empty password before
-// touching rand.Reader at all, so no entropy-source tricks are
-// needed. Requires a FRESH account (wrapped_dek_pw == "") so
-// UnlockDEK's lazy-generation path is taken and reaches WrapKey --
-// any account that already has a real DEK would instead route to
-// UnwrapKey, which never calls WrapKey.
-func TestUnlockDEK_WrapKeyFailsOnEmptyPassword(t *testing.T) {
+// An empty password is checked against the stored hash before any key is
+// made, so it is a plain mismatch and nothing is stored.
+func TestSignIn_EmptyPasswordIsAMismatch(t *testing.T) {
 	s := newDEKTestStore(t)
-	_, err := s.UnlockDEK("alice", "")
-	if err == nil || !strings.Contains(err.Error(), "empty password") {
-		t.Fatalf("UnlockDEK(empty password) error = %v, want an empty-password error", err)
+	before := readAccountKeyState(t, s, "alice")
+	if _, err := unlockDEK(s, "alice", ""); !errors.Is(err, auth.ErrMismatch) {
+		t.Fatalf("sign-in with an empty password: error = %v, want auth.ErrMismatch", err)
+	}
+	if after := readAccountKeyState(t, s, "alice"); after != before {
+		t.Fatalf("a refused sign-in changed the account: %+v, then %+v", before, after)
+	}
+}
+
+// keyThenFailReader supplies the DEK's 32 bytes and then fails, so
+// GenerateDEK succeeds and WrapKey's salt read fails.
+type keyThenFailReader struct{ left int }
+
+func (r *keyThenFailReader) Read(p []byte) (int, error) {
+	if r.left == 0 {
+		return 0, errors.New("entropy exhausted after the key")
+	}
+	n := min(len(p), r.left)
+	r.left -= n
+	return n, nil
+}
+
+// TestSignIn_WrapKeyFailureStoresNothing makes the new key's wrap fail
+// for an account that has no key yet. The error is the wrap's, not
+// GenerateDEK's, and no key is stored.
+func TestSignIn_WrapKeyFailureStoresNothing(t *testing.T) {
+	s := newDEKTestStore(t)
+	restore := replaceRecoveryRandReader(t, &keyThenFailReader{left: 32})
+	_, err := unlockDEK(s, "alice", "p4ssw0rd-original")
+	restore()
+	if err == nil || !strings.Contains(err.Error(), "entropy exhausted after the key") || strings.Contains(err.Error(), "generate DEK") {
+		t.Fatalf("sign-in with a failing wrap: error = %v, want the wrap's entropy error", err)
+	}
+	if st := readAccountKeyState(t, s, "alice"); st.wrappedDEK != "" {
+		t.Fatalf("a failed wrap stored a key wrap %q", st.wrappedDEK)
 	}
 }
 
@@ -341,7 +371,7 @@ func TestUnlockDEK_PersistFailsOnBlockedUpdate(t *testing.T) {
 		t.Fatalf("create trigger: %v", err)
 	}
 
-	_, err := s.UnlockDEK("alice", "p4ssw0rd-original")
+	_, err := unlockDEK(s, "alice", "p4ssw0rd-original")
 	if err == nil || !strings.Contains(err.Error(), "wrapped dek update blocked") {
 		t.Fatalf("UnlockDEK() error = %v, want the trigger's abort message", err)
 	}

@@ -156,7 +156,7 @@ func TestAuthenticateReturnsLastLoginUpdateError(t *testing.T) {
 		t.Fatalf("create trigger: %v", err)
 	}
 
-	_, err = store.Authenticate("alice", "correct horse battery staple")
+	_, err = authenticate(store, "alice", "correct horse battery staple")
 	if err == nil || !strings.Contains(err.Error(), "update last_login") {
 		t.Fatalf("Authenticate error = %v, want update last_login error", err)
 	}
@@ -192,7 +192,7 @@ func TestAuthenticateReturnsPasswordRehashUpdateError(t *testing.T) {
 		t.Fatalf("create trigger: %v", err)
 	}
 
-	_, err = store.Authenticate("alice", password)
+	_, err = authenticate(store, "alice", password)
 	if err == nil || !strings.Contains(err.Error(), "persist password rehash") {
 		t.Fatalf("Authenticate error = %v, want persist password rehash error", err)
 	}
@@ -383,7 +383,7 @@ func TestSetLastExportDirectoryPersistsAndRoundTripsThroughAuthenticateAndList(t
 	if _, err := store.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	acc, err := store.Authenticate("alice", "correct horse battery staple")
+	acc, err := authenticate(store, "alice", "correct horse battery staple")
 	if err != nil {
 		t.Fatalf("Authenticate before set: %v", err)
 	}
@@ -395,7 +395,7 @@ func TestSetLastExportDirectoryPersistsAndRoundTripsThroughAuthenticateAndList(t
 		t.Fatalf("SetLastExportDirectory: %v", err)
 	}
 
-	acc, err = store.Authenticate("alice", "correct horse battery staple")
+	acc, err = authenticate(store, "alice", "correct horse battery staple")
 	if err != nil {
 		t.Fatalf("Authenticate after set: %v", err)
 	}
@@ -535,7 +535,7 @@ func TestAuthenticate_ValidateUsernameShortCircuitsBeforeDBAccess(t *testing.T) 
 	if err := store.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}
-	if _, err := store.Authenticate("!!", "whatever"); err != ErrNoSuchUser {
+	if _, err := authenticate(store, "!!", "whatever"); err != ErrNoSuchUser {
 		t.Fatalf("Authenticate(invalid username, closed store) = %v, want ErrNoSuchUser (guard must run before any DB access)", err)
 	}
 }
@@ -545,7 +545,7 @@ func TestAuthenticate_ValidateUsernameShortCircuitsBeforeDBAccess(t *testing.T) 
 // ValidateUsername short-circuit above.
 func TestAuthenticate_NoSuchUser(t *testing.T) {
 	store := openTestStore(t)
-	if _, err := store.Authenticate("nosuchuser", "whatever"); err != ErrNoSuchUser {
+	if _, err := authenticate(store, "nosuchuser", "whatever"); err != ErrNoSuchUser {
 		t.Fatalf("Authenticate(unknown username) = %v, want ErrNoSuchUser", err)
 	}
 }
@@ -563,7 +563,7 @@ func TestAuthenticate_ScanFailsOnCorruptedIsAdminColumn(t *testing.T) {
 		t.Fatalf("corrupt is_admin: %v", err)
 	}
 
-	if _, err := store.Authenticate("alice", "passphrase-long"); err == nil {
+	if _, err := authenticate(store, "alice", "passphrase-long"); err == nil {
 		t.Fatal("Authenticate with corrupted is_admin column = nil, want a Scan error")
 	}
 }
@@ -575,7 +575,7 @@ func TestAuthenticate_WrongPasswordReturnsMismatch(t *testing.T) {
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	if _, err := store.Authenticate("alice", "wrong password entirely"); err == nil {
+	if _, err := authenticate(store, "alice", "wrong password entirely"); err == nil {
 		t.Fatal("Authenticate with wrong password = nil, want an error")
 	}
 }
@@ -589,11 +589,11 @@ func TestAuthenticate_ParsesExistingLastLogin(t *testing.T) {
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	if _, err := store.Authenticate("alice", "passphrase-long"); err != nil {
+	if _, err := authenticate(store, "alice", "passphrase-long"); err != nil {
 		t.Fatalf("first Authenticate: %v", err)
 	}
 
-	acc, err := store.Authenticate("alice", "passphrase-long")
+	acc, err := authenticate(store, "alice", "passphrase-long")
 	if err != nil {
 		t.Fatalf("second Authenticate: %v", err)
 	}
@@ -622,7 +622,7 @@ func TestAuthenticate_RehashEntropyFailure(t *testing.T) {
 	restore := replaceRecoveryRandReader(t, failingRecoveryReader{})
 	defer restore()
 
-	_, err := store.Authenticate("alice", password)
+	_, err := authenticate(store, "alice", password)
 	if err == nil || !strings.Contains(err.Error(), "rehash password") {
 		t.Fatalf("Authenticate with failing rehash entropy = %v, want a \"rehash password\" error", err)
 	}
@@ -662,7 +662,7 @@ func TestList_ParsesExistingLastLogin(t *testing.T) {
 	if _, err := store.CreateAccount("alice", "Alice", "passphrase-long", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
 	}
-	if _, err := store.Authenticate("alice", "passphrase-long"); err != nil {
+	if _, err := authenticate(store, "alice", "passphrase-long"); err != nil {
 		t.Fatalf("Authenticate: %v", err)
 	}
 
