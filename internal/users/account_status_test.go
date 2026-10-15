@@ -4,6 +4,7 @@
 package users
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"os"
@@ -16,6 +17,21 @@ import (
 )
 
 const statusPassword = "passphrase-long"
+
+// Historical names bypass current provisioning rules, but their fixture rows
+// still need an identity in the same transaction as the account insert.
+func seedHistoricalAccount(t *testing.T, store *Store, username, statement string, args ...any) {
+	t.Helper()
+	if err := store.inWriteTx("historical account fixture", func(ctx context.Context, q accountWriter) error {
+		if err := allocateAccountIdentity(ctx, q, username); err != nil {
+			return err
+		}
+		_, err := q.ExecContext(ctx, statement, args...)
+		return err
+	}); err != nil {
+		t.Fatalf("seed historical %s: %v", username, err)
+	}
+}
 
 // newStatusStore returns a store with alice (administrator) and bob
 // (standard), both created through the store directly.
@@ -278,6 +294,7 @@ func TestPurgeAccountReportsFolderItCouldNotRemove(t *testing.T) {
 		t.Skip("root ignores directory permissions")
 	}
 	store := newStatusStore(t)
+	retiredID, _ := readAccountIdentity(t, store, "bob")
 	locked := filepath.Join(store.RootDir(), "bob", "projects", "locked")
 	if err := os.Mkdir(locked, 0o700); err != nil {
 		t.Fatalf("mkdir locked: %v", err)
@@ -298,6 +315,12 @@ func TestPurgeAccountReportsFolderItCouldNotRemove(t *testing.T) {
 		t.Fatalf("accounts after incomplete purge = %v, want only alice", roles)
 	}
 	assertEvents(t, store, "alice purged bob", "alice folder_not_removed bob")
+	assertRetiredAccountIdentity(t, store, retiredID)
+	before := identitySnapshot(t, store)
+	if _, err := store.CreateAccountAs("alice", "bob", "Bob", statusPassword, false); !errors.Is(err, ErrUserFolderExists) {
+		t.Fatalf("recreate after incomplete purge: %v, want leftover-folder refusal", err)
+	}
+	assertIdentitySnapshot(t, store, before)
 }
 
 // TestPurgeAccountRefusesGoPMgrsOwnFolder covers an account named "logs"
@@ -311,12 +334,10 @@ func TestPurgeAccountRefusesGoPMgrsOwnFolder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(logs, "gopmgr.log"), []byte("log"), 0o600); err != nil {
 		t.Fatalf("write log: %v", err)
 	}
-	if _, err := store.conn.Exec(
+	seedHistoricalAccount(t, store, "logs",
 		`INSERT INTO users (username, display_name, password_hash, data_dir, created_at, is_admin) VALUES ('logs', 'Logs', 'x', ?, '2026-01-01T00:00:00Z', 0)`,
 		logs,
-	); err != nil {
-		t.Fatalf("seed logs account: %v", err)
-	}
+	)
 
 	if err := store.PurgeAccount("alice", "logs"); !errors.Is(err, ErrReservedUsername) {
 		t.Fatalf("PurgeAccount(logs): err = %v, want ErrReservedUsername", err)
@@ -417,11 +438,9 @@ func TestOnlyEnabledAdministratorsCanDisableOrPurge(t *testing.T) {
 // case-insensitive filesystem "Bob" and "bob" share one folder.
 func TestPurgeAccountRefusesWhenAnotherAccountDiffersOnlyInCase(t *testing.T) {
 	store := newStatusStore(t)
-	if _, err := store.conn.Exec(
+	seedHistoricalAccount(t, store, "Bob",
 		`INSERT INTO users (username, display_name, password_hash, data_dir, created_at, is_admin) VALUES ('Bob', 'Bob', 'x', '', '2026-06-01T00:00:00Z', 0)`,
-	); err != nil {
-		t.Fatalf("seed Bob: %v", err)
-	}
+	)
 	project := filepath.Join(store.RootDir(), "bob", "projects", "plan.gopmgr")
 	if err := os.WriteFile(project, []byte("shared"), 0o600); err != nil {
 		t.Fatalf("write project: %v", err)
@@ -454,12 +473,10 @@ func TestAccountWithAWindowsDeviceNameStillWorks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("HashPassword: %v", err)
 	}
-	if _, err := store.conn.Exec(
+	seedHistoricalAccount(t, store, "con",
 		`INSERT INTO users (username, display_name, password_hash, data_dir, created_at, is_admin) VALUES ('con', 'Con', ?, ?, '2026-01-01T00:00:00Z', 0)`,
 		hash, folder,
-	); err != nil {
-		t.Fatalf("seed con account: %v", err)
-	}
+	)
 
 	if _, err := store.Authenticate("con", statusPassword); err != nil {
 		t.Fatalf("sign in as con: %v", err)

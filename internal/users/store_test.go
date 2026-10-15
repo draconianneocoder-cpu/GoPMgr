@@ -450,8 +450,7 @@ func TestCreateAccount_RejectsInvalidUsername(t *testing.T) {
 	}
 }
 
-// TestCreateAccount_DuplicateCheckFailsOnClosedStore forces the
-// case-insensitive duplicate-username SELECT to fail.
+// A closed store refuses creation before provisioning or identity allocation.
 func TestCreateAccount_DuplicateCheckFailsOnClosedStore(t *testing.T) {
 	store := openTestStore(t)
 	if err := store.Close(); err != nil {

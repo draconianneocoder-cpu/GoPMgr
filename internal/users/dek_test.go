@@ -259,11 +259,15 @@ func TestMigrateDEKColumns_QueryFailsOnClosedStore(t *testing.T) {
 // "users" makes the probe correctly report the column absent
 // (present=false, since PRAGMA table_info of a dropped table returns
 // zero rows), so migrateDEKColumns proceeds to ALTER TABLE users ...,
-// which then fails with "no such table" -- confirmed directly before
-// writing this test that DROP TABLE succeeds cleanly on a store with
-// no dependent rows.
+// which then fails with "no such table". This deliberately corrupt fixture
+// disables foreign keys on its only connection to bypass the identity registry;
+// normal store connections retain their foreign-key enforcement.
 func TestMigrateDEKColumns_AlterFailsWhenTableMissing(t *testing.T) {
 	s := newDEKTestStore(t)
+	s.conn.SetMaxOpenConns(1)
+	if _, err := s.conn.Exec(`PRAGMA foreign_keys=OFF`); err != nil {
+		t.Fatalf("prepare corrupt schema fixture: %v", err)
+	}
 	if _, err := s.conn.Exec(`DROP TABLE users`); err != nil {
 		t.Fatalf("drop users table: %v", err)
 	}

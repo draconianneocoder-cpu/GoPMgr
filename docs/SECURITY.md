@@ -13,6 +13,20 @@ for a legitimate local user.
 
 ## Local Accounts
 
+- Account incarnations use an additive identity registry in plaintext
+  `system.db`. Current creators allocate an immutable random token in the same
+  transaction as the account; reopening validates the identity schema and
+  bindings rather than regenerating missing metadata. Deletion retains only an
+  opaque token in the detached registry row, without username or generation.
+  This is not secure erasure: existing account history and physical database
+  pages retain their existing privacy limits. Tokens can still be correlated.
+  Identity-capable creation is required after upgrade; old-style inserts and
+  replacement writes are refused. Do not delete the registry to downgrade.
+  See the [identity contract](design/wbs-authenticated-account-identity.md).
+  The registry and protected-state generation do not yet authenticate WBS
+  callers or revoke existing App sessions. Older-binary read-only support,
+  system-database restore/replacement and WBS activation remain unverified gates.
+
 - User credentials are stored in `system.db` as Argon2id PHC strings.
   Passwords must be at least 8 bytes (`users.ValidatePassword`, applied at
   account creation, password change, and recovery reset). Changing a

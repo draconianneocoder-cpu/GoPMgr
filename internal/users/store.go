@@ -185,6 +185,9 @@ func (s *Store) RootDir() string { return s.rootDir }
 // deletes its rows first, which cascades to every account's escrow rows
 // (escrow.go) and recovery codes.
 func (s *Store) migrate() error {
+	if err := s.checkExistingAccountIdentity(); err != nil {
+		return err
+	}
 	const schema = `
 	CREATE TABLE IF NOT EXISTS users (
 		username      TEXT PRIMARY KEY,
@@ -233,7 +236,10 @@ func (s *Store) migrate() error {
 	if err := s.migrateSuperAdmin(); err != nil {
 		return err
 	}
-	return s.migrateSuperSuccession()
+	if err := s.migrateSuperSuccession(); err != nil {
+		return err
+	}
+	return s.migrateAccountIdentity()
 }
 
 // migrateLastExportDirColumn adds last_export_directory to pre-existing
@@ -443,7 +449,19 @@ func (s *Store) CreateAccount(username, displayName, password string, isAdmin bo
 	if err != nil {
 		return Account{}, err
 	}
-	return s.insertAccount(context.Background(), s.conn, username, displayName, hash, isAdmin)
+	var acc Account
+	err = s.inWriteTx("account creation", func(ctx context.Context, q accountWriter) error {
+		var err error
+		acc, err = s.insertAccount(ctx, q, username, displayName, hash, isAdmin)
+		return err
+	})
+	if err != nil {
+		if acc.DataDir != "" {
+			removeNewUserFolder(acc.DataDir)
+		}
+		return Account{}, err
+	}
+	return acc, nil
 }
 
 // CreateAccountAs provisions a new account under this machine's
@@ -569,8 +587,7 @@ func (s *Store) CreateAccountWithKey(callerUsername, username, displayName, pass
 // an independent connection cannot acquire the write lock at this point.
 var afterAccountRuleCheck = func() {}
 
-// accountWriter is the part of *sql.DB and *sql.Conn that insertAccount
-// uses, so it can run inside CreateAccountAs's transaction or without one.
+// accountWriter is the connection surface used inside account transactions.
 type accountWriter interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
@@ -605,6 +622,10 @@ func (s *Store) insertAccount(ctx context.Context, q accountWriter, username, di
 
 	dataDir := filepath.Join(s.rootDir, username)
 	if err := createUserFolder(dataDir); err != nil {
+		return Account{}, err
+	}
+	if err := allocateAccountIdentity(ctx, q, username); err != nil {
+		removeNewUserFolder(dataDir)
 		return Account{}, err
 	}
 

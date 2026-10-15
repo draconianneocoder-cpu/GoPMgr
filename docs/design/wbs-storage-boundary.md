@@ -112,6 +112,12 @@ must supply one. Copy reset after restore/clone, old-version file protection,
 source incarnation, all mutation-path guards, bridge outcomes and frontend
 acknowledgement handling must be established before enabling production writes.
 
+The [authenticated account identity proposal](wbs-authenticated-account-identity.md)
+designs this prerequisite. The owner approved its retention, older-writer and
+WBS revocation policies on 2026-10-14. The first account registry/migration slice
+is implemented ([evidence](../testing/account-identity-registry.md)); authenticated
+grants and WBS activation remain unimplemented.
+
 Full before/after audit text stays in the same project database, inheriting its
 encryption. This deliberately retains sensitive text history. Receipts and
 digests are internal metadata, excluded from detached sharing and routine logs;
