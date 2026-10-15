@@ -78,7 +78,8 @@ func (a *App) CreateProjectFromLaunchpad(
 	timeZone string,
 	seeds []string,
 ) (LaunchpadResult, error) {
-	user := a.requireUser()
+	s := a.currentSession()
+	user := s.user
 	if user == nil {
 		return LaunchpadResult{}, errors.New("not signed in")
 	}
@@ -108,9 +109,7 @@ func (a *App) CreateProjectFromLaunchpad(
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return LaunchpadResult{}, err
 	}
-	a.mu.RLock()
-	dek, err := a.requireDEKLocked()
-	a.mu.RUnlock()
+	dek, err := a.sessionDEK(s)
 	if err != nil {
 		return LaunchpadResult{}, err
 	}
@@ -893,7 +892,8 @@ func (a *App) ComputeBudget() (BudgetSummaryWire, error) {
 // project start date, valid acyclic tasks, and cost data. The summary exposes
 // coverage counts so a partial rollup cannot masquerade as complete evidence.
 func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
-	user := a.requireUser()
+	s := a.currentSession()
+	user := s.user
 	if user == nil {
 		return PortfolioSummaryWire{}, errors.New("not signed in")
 	}
@@ -905,9 +905,7 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 		return PortfolioSummaryWire{}, analytics.ErrAnalyticsUnavailable
 	}
 
-	a.mu.RLock()
-	dek, err := a.requireDEKLocked()
-	a.mu.RUnlock()
+	dek, err := a.sessionDEK(s)
 	if err != nil {
 		return PortfolioSummaryWire{}, err
 	}

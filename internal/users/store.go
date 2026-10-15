@@ -495,29 +495,38 @@ func (s *Store) CreateAccountAs(callerUsername, username, displayName, password 
 // stop the account being created; the account's next sign-in enrolls it.
 // The caller must clear the DEK.
 func (s *Store) CreateAccountWithKey(callerUsername, username, displayName, password string, isAdmin bool, session *EscrowSession) (Account, []byte, error) {
+	acc, _, dek, err := s.CreateAccountWithPrincipal(callerUsername, username, displayName, password, isAdmin, session)
+	return acc, dek, err
+}
+
+// CreateAccountWithPrincipal is CreateAccountWithKey that also returns the
+// new account's Principal, read in the creation transaction after its
+// writes, for signing the account in without reading it again by name.
+func (s *Store) CreateAccountWithPrincipal(callerUsername, username, displayName, password string, isAdmin bool, session *EscrowSession) (Account, Principal, []byte, error) {
 	if err := ValidateUsername(username); err != nil {
-		return Account{}, nil, err
+		return Account{}, Principal{}, nil, err
 	}
 	if err := ValidatePassword(password); err != nil {
-		return Account{}, nil, err
+		return Account{}, Principal{}, nil, err
 	}
 	// Hash and wrap before taking the write lock: Argon2id is deliberately
 	// slow and would hold every other writer off system.db for its runs.
 	hash, err := auth.HashPassword(password)
 	if err != nil {
-		return Account{}, nil, err
+		return Account{}, Principal{}, nil, err
 	}
 	dek, err := crypto.GenerateDEK()
 	if err != nil {
-		return Account{}, nil, err
+		return Account{}, Principal{}, nil, err
 	}
 	wrapped, err := crypto.WrapKey(dek, password)
 	if err != nil {
 		clear(dek)
-		return Account{}, nil, err
+		return Account{}, Principal{}, nil, err
 	}
 
 	var acc Account
+	var principal Principal
 	err = s.inWriteTx("account creation", func(ctx context.Context, q accountWriter) error {
 		var existing int
 		if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&existing); err != nil {
@@ -568,6 +577,12 @@ func (s *Store) CreateAccountWithKey(callerUsername, username, displayName, pass
 		if err := enrollInSavepoint(ctx, q, username, dek, session); err != nil {
 			log.Printf("users: escrow enrollment of new account %s failed, retried at its sign-in: %v", username, err)
 		}
+		var id string
+		var generation int64
+		if err := q.QueryRowContext(ctx, `SELECT id, generation FROM account_identity_registry WHERE username = ?`, username).Scan(&id, &generation); err != nil {
+			return fmt.Errorf("users: read new account identity: %w", err)
+		}
+		principal = Principal{id: id, username: username, generation: generation}
 		return nil
 	})
 	if err != nil {
@@ -577,9 +592,9 @@ func (s *Store) CreateAccountWithKey(callerUsername, username, displayName, pass
 		if acc.DataDir != "" {
 			removeNewUserFolder(acc.DataDir)
 		}
-		return Account{}, nil, err
+		return Account{}, Principal{}, nil, err
 	}
-	return acc, dek, nil
+	return acc, principal, dek, nil
 }
 
 // afterAccountRuleCheck runs inside CreateAccountAs's transaction, after

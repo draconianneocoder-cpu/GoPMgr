@@ -31,9 +31,16 @@ for a legitimate local user.
   require the same account identity, hash, and key wrap in the transaction
   that makes their writes. An account purged and created again under the
   same name meanwhile is refused like an unknown user, and nothing is written
-  to it. Escrow enrollment at sign-in runs in that transaction. A sign-in that
-  finishes after the user signed out or signed in as someone else can still
-  publish its session; that ordering is not built yet.
+  to it. Escrow enrollment at sign-in runs in that transaction.
+- The desktop session changes only at sign-in, sign-out, and shutdown, and
+  each change advances a session counter. A sign-in, first-account sign-in,
+  or administrator access that finishes after a sign-out or another sign-in
+  is not published; a refused sign-in has still recorded the sign-in, and a
+  refused administrator access is still recorded and shown to the user. An
+  operation takes the session's key only together with the session it
+  started in, so one account's name, folder, or project is never paired
+  with another account's key or open project. Work that already holds the key can still
+  finish after sign-out, for the same account.
 
 - User credentials are stored in `system.db` as Argon2id PHC strings.
   Passwords must be at least 8 bytes (`users.ValidatePassword`, applied at

@@ -228,13 +228,20 @@ func (a *App) ExportAuditRepairEvidence() (string, error) {
 func (a *App) SecureArchive(projectPath string) (string, error) {
 	// Confine to the user's own projects folder before archiving, so the
 	// backup is always written next to a project the caller actually owns.
-	clean, _, err := a.projectPathFor(projectPath)
+	clean, s, err := a.projectPathFor(projectPath)
 	if err != nil {
 		return "", err
 	}
+	// The archive is of the open project, written next to clean: both must
+	// belong to the session whose folder clean was confined to.
+	sessionGap("secure archive")
 	a.mu.RLock()
 	svc := a.adminSvc
+	changed := a.epoch != s.epoch
 	a.mu.RUnlock()
+	if changed {
+		return "", errSessionChanged
+	}
 	if svc == nil {
 		return "", errors.New("no project open")
 	}

@@ -32,7 +32,7 @@ func (a *App) withAdminView(fn func(view *db.Database, proj db.Project) error) e
 	}
 	a.mu.RLock()
 	var view *db.Database
-	if a.access != nil {
+	if a.access != nil && a.access.epoch == a.epoch {
 		view = a.access.view
 	}
 	a.mu.RUnlock()

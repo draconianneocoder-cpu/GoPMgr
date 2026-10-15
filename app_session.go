@@ -59,19 +59,20 @@ func (a *App) AccountSetup() (AccountSetupWire, error) {
 //
 // Returns the account record (no password material).
 func (a *App) CreateAccount(username, displayName, password string, isAdmin bool) (users.Account, error) {
+	s := a.currentSession()
 	callerUsername := ""
 	var escrow *users.EscrowSession
-	if caller := a.requireUser(); caller != nil {
-		callerUsername = caller.Username
-		if caller.IsAdmin {
-			escrow = a.openSessionEscrow(caller.Username)
+	if s.user != nil {
+		callerUsername = s.user.Username
+		if s.user.IsAdmin {
+			escrow = a.openSessionEscrow(s)
 		}
 	}
 	defer escrow.Close()
 	// ADR-001: the account's DEK is created with it, wrapped under the
 	// password, and returned here. ADR-004: it is enrolled in escrow in the
 	// same transaction, with the creating administrator's escrow key.
-	acc, dek, err := a.store.CreateAccountWithKey(callerUsername, username, displayName, password, isAdmin, escrow)
+	acc, principal, dek, err := a.store.CreateAccountWithPrincipal(callerUsername, username, displayName, password, isAdmin, escrow)
 	if errors.Is(err, users.ErrNotAdmin) {
 		return users.Account{}, errors.New("account creation requires administrator privileges")
 	}
@@ -93,23 +94,24 @@ func (a *App) CreateAccount(username, displayName, password string, isAdmin bool
 	if err != nil {
 		return users.Account{}, err
 	}
-	if callerUsername == "" {
-		// The first account: it creates the escrow key (ADR-004).
-		a.enrollEscrow(acc.Username, dek)
-	}
-	// Only auto-sign-in when no one is currently logged in (the first
-	// account). When an admin creates an account on behalf of another
-	// user, the admin session remains active and the new user's DEK is
-	// zeroed rather than dropped (ADR-001).
-	a.mu.Lock()
-	if a.user == nil {
-		a.user = &acc
-		a.dek = dek
-		a.noCodesAcceptedFor = ""
-	} else {
+	if s.user != nil {
+		// An administrator created it; their session stays, and the new
+		// user's DEK is zeroed rather than dropped (ADR-001).
 		zeroBytes(dek)
+		return acc, nil
 	}
-	a.mu.Unlock()
+	// The first account: it creates the escrow key (ADR-004), and it is
+	// signed in with the identity and key its creation returned, unless the
+	// session changed meanwhile.
+	a.enrollEscrow(acc.Username, dek)
+	sessionGap("first account")
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.epoch != s.epoch {
+		zeroBytes(dek)
+		return users.Account{}, errors.New("your account was created, but signing in was interrupted because the session changed; sign in with your new password")
+	}
+	a.setSessionLocked(acc, principal, dek)
 	return acc, nil
 }
 
@@ -117,7 +119,8 @@ func (a *App) CreateAccount(username, displayName, password string, isAdmin bool
 // but only if no administrator account exists yet. Once any admin
 // exists this method returns an error — use AdminSetUserRole instead.
 func (a *App) BecomeAdmin() error {
-	caller := a.requireUser()
+	s := a.currentSession()
+	caller := s.user
 	if caller == nil {
 		return errors.New("not signed in")
 	}
@@ -129,16 +132,18 @@ func (a *App) BecomeAdmin() error {
 		return err
 	}
 	// The first administrator creates the escrow key (ADR-004).
-	_ = a.withSessionDEK(func(dek []byte) error {
+	_ = a.withSessionDEK(s, func(dek []byte) error {
 		a.enrollEscrow(caller.Username, dek)
 		return nil
 	})
 	// Admin-only methods read the role from the session, so update it here
-	// or the new administrator would be refused until they sign in again.
-	// Replace the account rather than editing it: requireUser hands the
-	// same pointer to other goroutines.
+	// or the new administrator would be refused until they sign in again,
+	// but only in the session that claimed it. Replace the account rather
+	// than editing it: requireUser hands the same pointer to other
+	// goroutines.
+	sessionGap("become admin")
 	a.mu.Lock()
-	if a.user != nil && a.user.Username == caller.Username {
+	if a.user != nil && a.epoch == s.epoch {
 		promoted := *a.user
 		promoted.IsAdmin = true
 		a.user = &promoted
@@ -161,7 +166,8 @@ func (a *App) AdminListUsers() ([]users.Account, error) {
 // account keeps its projects and encryption key but cannot sign in.
 // Requires an administrator; administrators cannot disable themselves.
 func (a *App) AdminSetUserDisabled(username string, disabled bool) error {
-	caller := a.requireUser()
+	s := a.currentSession()
+	caller := s.user
 	if caller == nil || !caller.IsAdmin {
 		return errors.New("administrator privileges required")
 	}
@@ -170,7 +176,7 @@ func (a *App) AdminSetUserDisabled(username string, disabled bool) error {
 	}
 	err := a.store.SetDisabled(caller.Username, username, disabled)
 	if err == nil && disabled {
-		a.runPendingRotation(caller.Username)
+		a.runPendingRotation(s)
 	}
 	if msg := superRoleMessage(err); msg != nil {
 		return msg
@@ -206,7 +212,8 @@ func superRoleMessage(err error) error {
 // administrator. Requires an administrator; administrators cannot delete
 // themselves.
 func (a *App) AdminPurgeUser(username, confirmation string) error {
-	caller := a.requireUser()
+	s := a.currentSession()
+	caller := s.user
 	if caller == nil || !caller.IsAdmin {
 		return errors.New("administrator privileges required")
 	}
@@ -218,7 +225,7 @@ func (a *App) AdminPurgeUser(username, confirmation string) error {
 	}
 	err := a.store.PurgeAccount(caller.Username, username)
 	if err == nil || errors.Is(err, users.ErrPurgeIncomplete) {
-		a.runPendingRotation(caller.Username)
+		a.runPendingRotation(s)
 	}
 	if msg := superRoleMessage(err); msg != nil {
 		return msg
@@ -252,7 +259,8 @@ func (a *App) AdminListAccountEvents() ([]users.AccountEvent, error) {
 // Requires the caller to be an administrator. Callers cannot change
 // their own role (to prevent accidental self-demotion).
 func (a *App) AdminSetUserRole(username string, isAdmin bool) error {
-	caller := a.requireUser()
+	s := a.currentSession()
+	caller := s.user
 	if caller == nil || !caller.IsAdmin {
 		return errors.New("administrator privileges required")
 	}
@@ -266,7 +274,7 @@ func (a *App) AdminSetUserRole(username string, isAdmin bool) error {
 	} else {
 		err = a.store.SetAdmin(caller.Username, username, isAdmin)
 		if err == nil {
-			a.runPendingRotation(caller.Username)
+			a.runPendingRotation(s)
 		}
 	}
 	if msg := superRoleMessage(err); msg != nil {
@@ -330,15 +338,18 @@ func (a *App) AdminIssueRecoveryCodes(username, password string) ([]string, erro
 // username purged and created again while the password is being checked
 // is never signed in to with the old attempt's key or writes.
 //
-// Refuses if a project is already open, so that project is never left
-// live under another user's DEK. Not reachable through the shipped
-// frontend (sign-out always calls Logout first), but checked in the same
-// critical section as the assignment it guards, after the slow
-// password work, so a concurrent OpenProject cannot slip in between. A
-// refused call has already recorded the sign-in and derived the DEK,
-// which is zeroed at once.
+// The session is published only if no sign-out or other sign-in finished
+// while the password was being checked (session_state.go): a late sign-in
+// never overtakes one. Refuses if a project is already open, so that
+// project is never left live under another user's DEK. Not reachable
+// through the shipped frontend (sign-out always calls Logout first), but
+// checked in the same critical section as the assignment it guards, after
+// the slow password work, so a concurrent OpenProject cannot slip in
+// between. A refused call has already recorded the sign-in and derived the
+// DEK, which is zeroed at once.
 func (a *App) Login(username, password string) (users.Account, error) {
-	acc, _, dek, err := a.store.SignIn(username, password)
+	s := a.currentSession()
+	acc, principal, dek, err := a.store.SignIn(username, password)
 	if err != nil {
 		// Collapse both "no such user" and "password mismatch" into
 		// one error so the timing/message is identical.
@@ -355,17 +366,20 @@ func (a *App) Login(username, password string) (users.Account, error) {
 		}
 		return users.Account{}, err
 	}
+	sessionGap("sign-in")
 	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.epoch != s.epoch {
+		// A sign-out or another sign-in finished while this one was
+		// checking the password; it wins.
+		zeroBytes(dek)
+		return users.Account{}, errors.New("signing in was interrupted because you signed out or another account signed in; try again")
+	}
 	if a.db != nil {
-		a.mu.Unlock()
 		zeroBytes(dek)
 		return users.Account{}, errors.New("a project is already open; close it before signing in as a different user")
 	}
-	a.stopAdminAccessLocked()
-	a.user = &acc
-	a.dek = dek
-	a.noCodesAcceptedFor = ""
-	a.mu.Unlock()
+	a.setSessionLocked(acc, principal, dek)
 	return acc, nil
 }
 
@@ -383,29 +397,17 @@ func (a *App) enrollEscrow(username string, dek []byte) {
 // operation, or returns nil when they hold no grant or it does not open;
 // the caller then goes ahead without it. The caller must Close the result
 // (Close is safe on nil).
-func (a *App) openSessionEscrow(username string) *users.EscrowSession {
+func (a *App) openSessionEscrow(s sessionRef) *users.EscrowSession {
 	var escrow *users.EscrowSession
-	err := a.withSessionDEK(func(dek []byte) error {
+	err := a.withSessionDEK(s, func(dek []byte) error {
 		var err error
-		escrow, err = a.store.OpenEscrow(username, dek)
+		escrow, err = a.store.OpenEscrow(s.user.Username, dek)
 		return err
 	})
 	if err != nil && !errors.Is(err, users.ErrNoEscrowGrant) {
-		log.Printf("open escrow key for %s: %v", username, err)
+		log.Printf("open escrow key: %v", err)
 	}
 	return escrow
-}
-
-// withSessionDEK calls fn with a copy of the session DEK, zeroed after.
-func (a *App) withSessionDEK(fn func(dek []byte) error) error {
-	a.mu.RLock()
-	dek, err := a.requireDEKLocked()
-	a.mu.RUnlock()
-	if err != nil {
-		return err
-	}
-	defer zeroBytes(dek)
-	return fn(dek)
 }
 
 // zeroBytes overwrites b in place. ADR-001 requires the session DEK be
@@ -454,24 +456,22 @@ func (a *App) ChangePassword(currentPassword, newPassword string) error {
 // ConfirmRecoveryCodes, which keep the old codes until the new ones are
 // saved.
 func (a *App) IssueRecoveryCodes() ([]string, error) {
-	u := a.requireUser()
-	if u == nil {
+	s := a.currentSession()
+	if s.user == nil {
 		return nil, errors.New("not signed in")
 	}
 	// ADR-001: wrap the session DEK into every code so a recovery
-	// reset can re-wrap the same DEK (encrypted projects survive).
-	// requireDEKLocked returns a deep copy, preventing a concurrent
-	// Logout from zeroing the backing array mid-wrap. Codes issued
+	// reset can re-wrap the same DEK (encrypted projects survive). The key
+	// is the one of the session whose user the codes are stored for, and a
+	// copy, so a concurrent Logout cannot zero it mid-wrap. Codes issued
 	// without it would reset the password with a new DEK and orphan
 	// encrypted projects, so a missing key is refused, never tolerated.
-	a.mu.RLock()
-	dek, err := a.requireDEKLocked()
-	a.mu.RUnlock()
+	dek, err := a.sessionDEK(s)
 	if err != nil {
 		return nil, err
 	}
 	defer zeroBytes(dek)
-	return a.store.IssueRecoveryCodes(u.Username, dek)
+	return a.store.IssueRecoveryCodes(s.user.Username, dek)
 }
 
 // RecoveryCodeStatusWire tells App Settings whether the signed-in user
@@ -523,7 +523,8 @@ func (a *App) AcceptEncryptionWithoutRecoveryCodes() error {
 // once. Nothing is stored and the old codes keep working until
 // ConfirmRecoveryCodes; DiscardRecoveryCodes or signing out drops them.
 func (a *App) PrepareRecoveryCodes(currentPassword string) ([]string, error) {
-	u := a.requireUser()
+	s := a.currentSession()
+	u := s.user
 	if u == nil {
 		return nil, errors.New("not signed in")
 	}
@@ -536,10 +537,11 @@ func (a *App) PrepareRecoveryCodes(currentPassword string) ([]string, error) {
 	case err != nil:
 		return nil, err
 	}
+	sessionGap("prepare codes")
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.user == nil || a.user.Username != u.Username {
-		return nil, errors.New("not signed in")
+	if a.epoch != s.epoch {
+		return nil, errSessionChanged
 	}
 	a.pendingCodes = pending
 	return pending.Codes(), nil
@@ -582,22 +584,13 @@ func (a *App) ResetWithRecoveryCode(username, code, newPassword string) error {
 	return a.store.ResetWithRecoveryCode(username, code, newPassword)
 }
 
-// Logout clears the active session and closes any open project.
+// Logout clears the active session and closes any open project. An
+// operation still in progress for the session can no longer publish into
+// or take the key of whatever session comes next (session_state.go).
 func (a *App) Logout() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.db != nil {
-		_ = a.db.Close()
-		a.db = nil
-		a.dbPath = ""
-		a.adminSvc = nil
-	}
-	a.stopAdminAccessLocked()
-	a.user = nil
-	zeroBytes(a.dek)
-	a.dek = nil
-	a.pendingCodes = nil
-	a.noCodesAcceptedFor = ""
+	a.clearSessionLocked()
 	return nil
 }
 

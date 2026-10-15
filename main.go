@@ -77,6 +77,14 @@ type App struct {
 	store *users.Store   // immutable after NewApp — safe to read without lock
 	user  *users.Account // nil unless logged in
 	dek   []byte         // ADR-001: session DEK, unlocked at login; nil when logged out
+	// principal is the account incarnation the session signed in to
+	// (users.SignIn), zero when logged out. Not sent to the frontend.
+	principal users.Principal
+	// epoch advances every time the signed-in session changes (sign-in,
+	// sign-out, shutdown). An operation that captured the session before
+	// slow work publishes or uses the session's key only if it has not moved
+	// (session_state.go).
+	epoch uint64
 	// pendingCodes holds recovery codes prepared in App Settings but not
 	// yet confirmed as saved; cleared on sign-out and shutdown.
 	pendingCodes *users.PendingRecoveryCodes
@@ -147,18 +155,10 @@ func NewApp() (*App, error) {
 func (a *App) shutdown(_ context.Context) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.db != nil {
-		_ = a.db.Close()
-		a.db = nil
-	}
-	a.stopAdminAccessLocked()
 	// ADR-001: zero the session DEK on exit too, not only on Logout, so
 	// quitting with a session open does not leave key bytes in the heap
 	// (swap / core-dump hygiene).
-	zeroBytes(a.dek)
-	a.dek = nil
-	a.pendingCodes = nil
-	a.noCodesAcceptedFor = ""
+	a.clearSessionLocked()
 	// Close the store but keep the pointer: `store` is documented as
 	// set-once and readable without the lock (DEVELOPER_HANDBOOK.md §16), so nilling it
 	// here would be the one write that violates that invariant. A closed

@@ -211,6 +211,10 @@ in it with the grant it holds.
    their own key. The handle is zeroed when the administrator stops viewing,
    signs out, or signs in again, and on shutdown. The caller's role is read
    from `system.db` again at each view, and a demoted caller's access stops.
+   Access belongs to the session that opened it (2026-10-15): if the
+   administrator signs out or switches accounts while it is opening, it is
+   not kept and the key is zeroed, though the access stays recorded and the
+   user is told of it.
 7. Viewing only (owner decision, 2026-10-02): the administrator may look at
    the target's projects in the app and nothing else. A project is copied
    (with any `-wal` and `-shm` file) into a folder with an unpredictable name
