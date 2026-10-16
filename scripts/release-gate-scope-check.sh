@@ -39,6 +39,40 @@ if rg -n --glob '!**/*_test.sh' '^[[:space:]]*(if ! )?((go|\$\(GO\))[[:space:]]+
 	fail=1
 fi
 
+# These are deliberately strict entrypoint contracts, not a general shell
+# parser. Reject decoy/duplicate recipes and changed failure handling too.
+race_recipe="$(awk '
+    /^race:/ { targets++; active=1; next }
+    /^[^[:space:]#]/ { active=0 }
+    active && /^\t/ && $0 !~ /^\t[[:space:]]*#/ { print }
+    END { if (targets != 1) print "invalid race target count" }
+' Makefile)"
+release_race="$(awk '
+    /^# --- 6\. Race detector / { starts++; active=1; next }
+    /^# --- 7\. / { ends++; active=0 }
+    active && NF && $0 !~ /^[[:space:]]*#/ { print }
+    END { if (starts != 1 || ends != 1) print "invalid race section count" }
+' scripts/check-release.sh)"
+expected_release_race="$(cat <<'RACE'
+if command -v go >/dev/null 2>&1; then
+    if ! go test -race -p=1 -count=1 -tags webkit2_41 $GO_PACKAGES; then
+        echo "Race detector flagged tests. Run 'make race' for details."
+        exit 1
+    fi
+    echo "Race detector clean."
+fi
+RACE
+)"
+if [ "$race_recipe" != $'\t$(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)' ] ||
+	[ "$release_race" != "$expected_release_race" ] ||
+	[ "$(rg -c '^[[:space:]]*((override|export)[[:space:]]+)*GO_PACKAGES[[:space:]]*[:?+]?=' Makefile)" != 1 ] ||
+	! rg -qx 'GO_PACKAGES := \. \./internal/\.\.\. \./tools/\.\.\.' Makefile ||
+	[ "$(rg -c '^[[:space:]]*(export[[:space:]]+)?GO_PACKAGES=' scripts/check-release.sh)" != 1 ] ||
+	! rg -qx 'GO_PACKAGES="\. \./internal/\.\.\. \./tools/update-manifest"' scripts/check-release.sh; then
+	echo "release-scope: race entrypoints must preserve uncached, bounded-package tests, complete scope and failure propagation." >&2
+	fail=1
+fi
+
 if ! rg -q 'frontend-stability-check\.sh' scripts/check-release.sh; then
 	echo "release-scope: check-release.sh must run scripts/frontend-stability-check.sh." >&2
 	fail=1

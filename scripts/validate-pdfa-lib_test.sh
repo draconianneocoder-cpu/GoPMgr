@@ -150,8 +150,12 @@ printf '%s\n' "$*" >> "$GOPMGR_FAKE_DOCKER_LOG"
 printf '%s\n' '<report><jobs><job><validationReport><isCompliant>true</isCompliant></validationReport></job></jobs></report>'
 EOF
 chmod +x "$fake_docker"
-GOPMGR_FAKE_DOCKER_LOG="$fake_docker_log" PATH="$fake_verapdf_dir:$PATH" \
-	bash "$ROOT/scripts/validate-pdfa.sh" >/dev/null
+(
+	# Model a release using the CLI override; the Docker fixture must own its selection.
+	export GOPMGR_VERAPDF_FORCE_CLI=1
+	GOPMGR_VERAPDF_FORCE_CLI=0 GOPMGR_FAKE_DOCKER_LOG="$fake_docker_log" \
+		PATH="$fake_verapdf_dir:$PATH" bash "$ROOT/scripts/validate-pdfa.sh" >/dev/null
+)
 if ! grep -Fq "verapdf/cli:v1.30.2" "$fake_docker_log"; then
 	cat "$fake_docker_log" >&2
 	fail "Docker validation did not invoke the pinned official veraPDF CLI image"

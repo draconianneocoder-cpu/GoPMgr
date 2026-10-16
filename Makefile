@@ -112,7 +112,8 @@ test: ## Run Go unit tests.
 	$(GO) test -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
 race: ## Run Go tests with the race detector (concurrency gate).
-	$(GO) test -race -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
+	# Bound package overlap, not t.Parallel or application goroutines. Always execute tests.
+	$(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
 verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/native-launch/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
