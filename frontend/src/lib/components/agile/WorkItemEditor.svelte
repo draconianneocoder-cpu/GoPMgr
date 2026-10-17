@@ -110,7 +110,16 @@ SPDX-License-Identifier: GPL-3.0-or-later
     status = 'saving';
     error = '';
     try {
-      const saved = await window.go.main.App.SaveWorkItem(savingDraft);
+      // Go's time.Time accepts its zero timestamp, not the empty strings
+      // used by new UI drafts. Keep this conversion out of the dirty snapshot.
+      const zeroTime = '0001-01-01T00:00:00Z';
+      const payload = {
+        ...savingDraft,
+        created_at: savingDraft.created_at === '' ? zeroTime : savingDraft.created_at,
+        updated_at: savingDraft.updated_at === '' ? zeroTime : savingDraft.updated_at,
+      };
+      if (payload.closed_at === '') payload.closed_at = zeroTime;
+      const saved = await window.go.main.App.SaveWorkItem(payload);
       // Mark clean before the callbacks run: `onSaved` can trigger a
       // parent refresh that awaits before this modal actually unmounts,
       // and a stale `original` would make a post-save `requestClose`

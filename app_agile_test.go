@@ -4,12 +4,69 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
 
 	"gopmgr/internal/agile"
 )
+
+func TestWorkItemTimestampJSON(t *testing.T) {
+	const zero = "0001-01-01T00:00:00Z"
+	fields := []string{"created_at", "updated_at", "closed_at"}
+	for _, tc := range []struct {
+		name       string
+		omitClosed bool
+	}{{name: "zero"}, {name: "omitted closed", omitClosed: true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			payload := `{"created_at":"` + zero + `","updated_at":"` + zero + `"}`
+			if !tc.omitClosed {
+				payload = `{"created_at":"` + zero + `","updated_at":"` + zero + `","closed_at":"` + zero + `"}`
+			}
+			var item agile.WorkItem
+			if err := json.Unmarshal([]byte(payload), &item); err != nil {
+				t.Fatalf("decode zero timestamps: %v", err)
+			}
+			if !item.CreatedAt.IsZero() || !item.UpdatedAt.IsZero() || !item.ClosedAt.IsZero() {
+				t.Fatalf("timestamps must retain Go zero semantics: %#v", item)
+			}
+		})
+	}
+
+	t.Run("supplied instant", func(t *testing.T) {
+		const supplied = "2026-10-16T15:30:01.123456789-05:00"
+		payload, err := json.Marshal(map[string]string{"created_at": supplied, "updated_at": supplied, "closed_at": supplied})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var item agile.WorkItem
+		if err := json.Unmarshal(payload, &item); err != nil {
+			t.Fatal(err)
+		}
+		want := time.Date(2026, 10, 16, 20, 30, 1, 123456789, time.UTC)
+		if !item.CreatedAt.Equal(want) || !item.UpdatedAt.Equal(want) || !item.ClosedAt.Equal(want) {
+			t.Fatalf("supplied instants changed: %#v", item)
+		}
+	})
+
+	for _, field := range fields {
+		for _, invalid := range []string{"", "not-a-timestamp"} {
+			t.Run(field+"/"+invalid, func(t *testing.T) {
+				values := map[string]string{"created_at": zero, "updated_at": zero, "closed_at": zero}
+				values[field] = invalid
+				payload, err := json.Marshal(values)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var item agile.WorkItem
+				if err := json.Unmarshal(payload, &item); err == nil {
+					t.Fatal("invalid timestamp must be rejected at the Go JSON boundary")
+				}
+			})
+		}
+	}
+}
 
 // withAgilePackEnabled saves and restores the package-level agile.PackEnabled
 // atomic before/after a test. It's shared process-wide state (SetAgileEnabled

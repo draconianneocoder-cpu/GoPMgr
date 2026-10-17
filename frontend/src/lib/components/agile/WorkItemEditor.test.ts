@@ -57,6 +57,85 @@ afterEach(() => {
 });
 
 describe('WorkItemEditor close guard', () => {
+  it.each(['manual', 'guarded'])('encodes empty Go timestamps on %s save without mutating the draft prop', async (mode) => {
+    const item = makeItem({ id: '', closed_at: '' });
+    const before = { ...item };
+    const onSaved = vi.fn();
+    const onClose = vi.fn();
+    const utils = render(WorkItemEditor, { item, onSaved, onClose, onDeleted: vi.fn() });
+    await fireEvent.input(utils.container.querySelector('input')!, { target: { value: 'Native create' } });
+
+    if (mode === 'guarded') {
+      requestNavigation('portfolio');
+      await saveAndContinueNavigation();
+    } else {
+      await fireEvent.click(utils.getByRole('button', { name: 'Save', exact: true }));
+    }
+
+    expect(app.SaveWorkItem).toHaveBeenCalledExactlyOnceWith({
+      ...item,
+      title: 'Native create',
+      created_at: '0001-01-01T00:00:00Z',
+      updated_at: '0001-01-01T00:00:00Z',
+      closed_at: '0001-01-01T00:00:00Z',
+    });
+    expect(item).toEqual(before);
+    expect(onSaved).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    {
+      name: 'mixed empty and supplied timestamps with no closed_at',
+      timestamps: { created_at: '', updated_at: '2026-10-16T15:30:01.123456789-05:00' },
+      expected: { created_at: '0001-01-01T00:00:00Z', updated_at: '2026-10-16T15:30:01.123456789-05:00' },
+    },
+    {
+      name: 'all supplied timestamps',
+      timestamps: {
+        created_at: '2026-10-16T15:30:01.123456789-05:00',
+        updated_at: '2026-10-16T20:31:00Z',
+        closed_at: '2026-10-16T15:32:00.123-05:00',
+      },
+      expected: {
+        created_at: '2026-10-16T15:30:01.123456789-05:00',
+        updated_at: '2026-10-16T20:31:00Z',
+        closed_at: '2026-10-16T15:32:00.123-05:00',
+      },
+    },
+  ])('preserves $name byte-for-byte', async ({ timestamps, expected }) => {
+    const item = makeItem(timestamps);
+    const utils = render(WorkItemEditor, { item, onSaved: vi.fn(), onClose: vi.fn(), onDeleted: vi.fn() });
+    await fireEvent.click(utils.getByRole('button', { name: 'Save', exact: true }));
+
+    expect(app.SaveWorkItem).toHaveBeenCalledExactlyOnceWith({ ...item, ...expected });
+    if (!('closed_at' in timestamps)) {
+      expect(app.SaveWorkItem.mock.calls[0][0]).not.toHaveProperty('closed_at');
+    }
+  });
+
+  it('does not hide malformed timestamps or lose the draft after bridge rejection', async () => {
+    app.SaveWorkItem.mockRejectedValue(new Error('Invalid timestamp'));
+    const onSaved = vi.fn();
+    const onClose = vi.fn();
+    const utils = render(WorkItemEditor, {
+      item: makeItem({ updated_at: 'not-a-timestamp' }),
+      onSaved, onClose, onDeleted: vi.fn(),
+    });
+    const titleInput = utils.container.querySelector('input')!;
+    await fireEvent.input(titleInput, { target: { value: 'Retained draft' } });
+    requestNavigation('portfolio');
+    await saveAndContinueNavigation();
+
+    expect(app.SaveWorkItem).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ updated_at: 'not-a-timestamp' }));
+    expect(utils.getByRole('alert').textContent).toContain('Invalid timestamp');
+    expect(titleInput.value).toBe('Retained draft');
+    expect(autosave.hasDirty()).toBe(true);
+    expect(navigation.pending).not.toBeNull();
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('closes without prompting when there are no unsaved edits', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     const onClose = vi.fn();
