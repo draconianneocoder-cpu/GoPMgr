@@ -157,6 +157,20 @@ On the matching OS, after `make build`:
 The release workflow (`.github/workflows/release.yml`) runs all of these on
 native runners automatically when you push a `v*` tag.
 
+### Local macOS PKG testing
+
+`VERSION=<local-label> make package-macos-installer` builds a local-test-only
+Apple Silicon `.pkg`; it is not an advertised release asset. The target runs
+`make macos-installer-tests` first, then rebuilds the app. The PKG always
+targets `/Applications/gopmgr.app`: install/reinstall does not search for or
+update copies moved elsewhere. Quit GoPMgr before installation. The filename
+label does not change the bundle or receipt version.
+
+The package is unsigned and its app is ad-hoc signed, not Developer ID signed
+or notarized. Packaging validates the generated metadata before replacing an
+existing output PKG. See [installer policy and bounded verification](testing/macos-installer-policy.md)
+for failure handling, test commands and unverified lifecycle boundaries.
+
 ## Where your data lives
 
 GoPMgr stores each project as an encrypted database under your user data

@@ -11,6 +11,7 @@
 /build/darwin/*
 !/build/darwin/Info.plist
 !/build/darwin/Info.dev.plist
+!/build/darwin/installer-components.plist
 !/build/linux/
 /build/linux/*
 !/build/linux/gopmgr.desktop

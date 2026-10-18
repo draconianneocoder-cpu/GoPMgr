@@ -34,7 +34,7 @@ export CC
         frontend-build-budget frontend-smoke release-scope check-pades check-pades-external \
         check-pades-trusted pades-harness-tests check-encrypted-db linux-runtime-target \
         help-guide-current wails-version wails-cli-version wails-version-test package-version-lib-test tag-preflight config-check \
-        installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests native-isolation-launch-tests \
+        installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests native-isolation-launch-tests macos-installer-tests \
         code-map code-map-current brand-assets coverage-ledger-current coverage-ledger-drift coverage-ratchet \
         coverage-ratchet-update coverage-go-cleanup-tests workspace-hygiene workspace-hygiene-tests cache-maintenance \
         pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests
@@ -248,7 +248,10 @@ package-macos: ## Build a macOS drag-to-Applications .dmg installer.
 	@$(MAKE) build
 	@bash scripts/package-macos.sh
 
-package-macos-installer: ## Build a local macOS .pkg installer for /Applications.
+macos-installer-tests: ## Verify fixed-location PKG policy and failure-safe publication on macOS.
+	@bash scripts/package-macos-installer_test.sh
+
+package-macos-installer: macos-installer-tests ## Build a local macOS .pkg installer for /Applications.
 	@bash scripts/package-version-lib_test.sh
 	@bash scripts/package-macos-installer.sh
 
