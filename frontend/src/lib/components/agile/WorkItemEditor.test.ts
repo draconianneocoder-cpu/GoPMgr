@@ -422,6 +422,75 @@ describe('WorkItemEditor close guard', () => {
     await waitFor(() => expect(nativeApp.CompleteNativeClose).toHaveBeenCalledOnce());
   });
 
+  it('retains an empty-ID draft after a failed native-close save and retries the same payload', async () => {
+    const item = makeItem({ id: '', title: '', state: 'backlog', closed_at: '' });
+    const zeroTime = '0001-01-01T00:00:00Z';
+    const payload = {
+      ...item,
+      title: 'New item retry',
+      description: 'Retain every edited field',
+      type: 'bug',
+      priority: 'urgent',
+      points: 13,
+      assignee: 'fixture-owner',
+      created_at: zeroTime,
+      updated_at: zeroTime,
+      closed_at: zeroTime,
+    };
+    const saved = { ...payload, id: 'wi-created', created_at: '2026-10-18T12:00:00Z' };
+    app.SaveWorkItem = vi.fn()
+      .mockRejectedValueOnce(new Error('database is locked'))
+      .mockResolvedValueOnce(saved);
+    const onClose = vi.fn();
+    const onSaved = vi.fn();
+    const utils = render(WorkItemEditor, {
+      item, onClose, onSaved, onDeleted: vi.fn(),
+    });
+    await fireEvent.input(utils.getByLabelText('Title'), { target: { value: payload.title } });
+    await fireEvent.input(utils.getByLabelText('Description'), { target: { value: payload.description } });
+    await fireEvent.change(utils.getByLabelText('Type'), { target: { value: payload.type } });
+    await fireEvent.change(utils.getByLabelText('Priority'), { target: { value: payload.priority } });
+    await fireEvent.input(utils.getByLabelText('Points'), { target: { value: String(payload.points) } });
+    await fireEvent.input(utils.getByLabelText('Assignee'), { target: { value: payload.assignee } });
+    const nativeApp = {
+      EnableNativeCloseGuard: vi.fn().mockResolvedValue(undefined),
+      CompleteNativeClose: vi.fn().mockResolvedValue(undefined),
+    };
+    const controller = new NativeCloseController({
+      app: nativeApp, reportError: vi.fn(), setInteractionLocked: vi.fn(),
+    });
+    session.view = 'backlog';
+    controller.request();
+    await saveAndContinueNavigation();
+
+    expect(app.SaveWorkItem).toHaveBeenCalledTimes(1);
+    expect(app.SaveWorkItem).toHaveBeenNthCalledWith(1, payload);
+    expect(navigation.pending?.view).toBe('backlog');
+    expect(navigation.error).toContain('reported that the save failed');
+    expect(utils.getByRole('alert')).toHaveTextContent('database is locked');
+    expect(utils.getByLabelText('Title')).toHaveValue(payload.title);
+    expect(utils.getByLabelText('Description')).toHaveValue(payload.description);
+    expect(utils.getByLabelText('Type')).toHaveValue(payload.type);
+    expect(utils.getByLabelText('Priority')).toHaveValue(payload.priority);
+    expect(utils.getByLabelText('Points')).toHaveValue(payload.points);
+    expect(utils.getByLabelText('Assignee')).toHaveValue(payload.assignee);
+    expect(autosave.hasDirty()).toBe(true);
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+    expect(item).toEqual(makeItem({ id: '', title: '', state: 'backlog', closed_at: '' }));
+
+    await saveAndContinueNavigation();
+
+    expect(app.SaveWorkItem).toHaveBeenCalledTimes(2);
+    expect(app.SaveWorkItem).toHaveBeenNthCalledWith(2, payload);
+    expect(onSaved).toHaveBeenCalledExactlyOnceWith(saved);
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(autosave.hasDirty()).toBe(false);
+    expect(navigation.pending).toBeNull();
+    await waitFor(() => expect(nativeApp.CompleteNativeClose).toHaveBeenCalledOnce());
+  });
+
   it('keeps a late edit open and dirty after guarded save rebases a newly-created item', async () => {
     let finishFirstSave!: (saved: AgileWorkItem) => void;
     const columns: AgileColumn[] = [{
