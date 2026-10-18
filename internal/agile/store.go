@@ -250,9 +250,16 @@ func (s *Store) DeleteColumn(id string) error {
 // ErrNoWorkItem indicates a missing work item.
 var ErrNoWorkItem = errors.New("agile: work item not found")
 
+const workItemByIDQuery = `
+	SELECT id, project_id, type, title, description, state, points,
+	       assignee, sprint_id, priority, order_idx,
+	       created_at, updated_at, closed_at
+	FROM agile_work_items WHERE id = ? AND project_id = ?`
+
 // SaveWorkItem inserts or updates a work item. If `wi.State` is
 // "done" and `wi.ClosedAt` is zero, the current time is stamped on
-// closed_at so DORA can compute lead times.
+// closed_at so DORA can compute lead times. The write and readback are atomic;
+// success is returned only after commit, and a readback failure rolls back.
 func (s *Store) SaveWorkItem(wi WorkItem) (WorkItem, error) {
 	if wi.ID == "" {
 		id, err := NewWorkItemID()
@@ -283,7 +290,12 @@ func (s *Store) SaveWorkItem(wi WorkItem) (WorkItem, error) {
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 
-	res, err := s.Conn.Exec(`
+	tx, err := s.Conn.Begin()
+	if err != nil {
+		return WorkItem{}, fmt.Errorf("begin work item save: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.Exec(`
 		INSERT INTO agile_work_items
 			(id, project_id, type, title, description, state, points,
 			 assignee, sprint_id, priority, order_idx,
@@ -308,22 +320,25 @@ func (s *Store) SaveWorkItem(wi WorkItem) (WorkItem, error) {
 		wi.OrderIdx, now, now, closedAt,
 	)
 	if err != nil {
-		return WorkItem{}, err
+		return WorkItem{}, fmt.Errorf("write work item: %w", err)
 	}
 	if err := requireOneRow(res, ErrNoWorkItem); err != nil {
 		return WorkItem{}, err
 	}
-	return s.GetWorkItem(wi.ID)
+	saved, err := scanWorkItem(tx.QueryRow(workItemByIDQuery, wi.ID, s.ProjectID))
+	if err != nil {
+		return WorkItem{}, fmt.Errorf("read saved work item: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return WorkItem{}, fmt.Errorf("commit work item save: %w", err)
+	}
+	return saved, nil
 }
 
 // GetWorkItem fetches one of this project's work items by ID; an item
 // belonging to another project is ErrNoWorkItem.
 func (s *Store) GetWorkItem(id string) (WorkItem, error) {
-	row := s.Conn.QueryRow(`
-		SELECT id, project_id, type, title, description, state, points,
-		       assignee, sprint_id, priority, order_idx,
-		       created_at, updated_at, closed_at
-		FROM agile_work_items WHERE id = ? AND project_id = ?`, id, s.ProjectID)
+	row := s.Conn.QueryRow(workItemByIDQuery, id, s.ProjectID)
 	return scanWorkItem(row)
 }
 
