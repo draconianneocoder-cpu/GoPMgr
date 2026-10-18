@@ -464,9 +464,15 @@ func scanWorkItem(row interface {
 // ErrNoSprint indicates a missing sprint.
 var ErrNoSprint = errors.New("agile: sprint not found")
 
+const sprintByIDQuery = `
+	SELECT id, project_id, name, goal, status,
+	       start_date, end_date, capacity, created_at
+	FROM agile_sprints WHERE id = ? AND project_id = ?`
+
 // SaveSprint upserts a sprint. Activating a sprint (status →
 // "active") is a normal save; the caller is responsible for ensuring
 // only one sprint is active at a time (the GUI enforces this).
+// The write and scoped readback are atomic; success follows commit.
 func (s *Store) SaveSprint(sp Sprint) (Sprint, error) {
 	if sp.ID == "" {
 		id, err := NewSprintID()
@@ -479,7 +485,12 @@ func (s *Store) SaveSprint(sp Sprint) (Sprint, error) {
 	if sp.Status == "" {
 		sp.Status = SprintPlanning
 	}
-	res, err := s.Conn.Exec(`
+	tx, err := s.Conn.Begin()
+	if err != nil {
+		return Sprint{}, fmt.Errorf("begin sprint save: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.Exec(`
 		INSERT INTO agile_sprints
 			(id, project_id, name, goal, status, start_date, end_date, capacity)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -496,21 +507,25 @@ func (s *Store) SaveSprint(sp Sprint) (Sprint, error) {
 		sp.StartDate, sp.EndDate, sp.Capacity,
 	)
 	if err != nil {
-		return Sprint{}, err
+		return Sprint{}, fmt.Errorf("write sprint: %w", err)
 	}
 	if err := requireOneRow(res, ErrNoSprint); err != nil {
 		return Sprint{}, err
 	}
-	return s.GetSprint(sp.ID)
+	saved, err := scanSprint(tx.QueryRow(sprintByIDQuery, sp.ID, s.ProjectID))
+	if err != nil {
+		return Sprint{}, fmt.Errorf("read saved sprint: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return Sprint{}, fmt.Errorf("commit sprint save: %w", err)
+	}
+	return saved, nil
 }
 
 // GetSprint fetches one of this project's sprints by ID; a sprint of
 // another project is ErrNoSprint.
 func (s *Store) GetSprint(id string) (Sprint, error) {
-	row := s.Conn.QueryRow(`
-		SELECT id, project_id, name, goal, status,
-		       start_date, end_date, capacity, created_at
-		FROM agile_sprints WHERE id = ? AND project_id = ?`, id, s.ProjectID)
+	row := s.Conn.QueryRow(sprintByIDQuery, id, s.ProjectID)
 	return scanSprint(row)
 }
 
