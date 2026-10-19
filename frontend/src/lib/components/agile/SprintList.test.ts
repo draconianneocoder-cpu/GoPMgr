@@ -439,14 +439,26 @@ describe('SprintList close guard', () => {
     expect(session.view).toBe('dashboard');
   });
 
-  it('keeps native close pending after a failed save and completes it after retry', async () => {
-    app.SaveSprint = vi.fn()
-      .mockRejectedValueOnce(new Error('bridge unavailable'))
-      .mockResolvedValueOnce({ ...sprint, name: 'Retry saved' });
+  it.each(['retry', 'discard'] as const)('preserves a saved sprint through failed native-quit Save, Cancel, re-arm and %s', async (choice) => {
+    const existing = { ...sprint, created_at: '2001-02-03T04:05:06.123Z' };
+    const other = { ...existing, id: 'sp-other', name: 'Untouched sprint', capacity: 2.5 };
+    const original = [{ ...existing }, { ...other }];
+    const payload: AgileSprint = {
+      id: 'sp-1', project_id: 'p1', name: 'Updated sprint', goal: 'Updated exact goal',
+      status: 'planning', start_date: '2026-09-02', end_date: '2026-09-16',
+      capacity: 13.75, created_at: '2001-02-03T04:05:06.123Z',
+    };
+    app.ListSprints.mockResolvedValue([existing, other]);
+    app.SaveSprint.mockRejectedValueOnce(new Error('database is locked')).mockResolvedValueOnce({ ...payload });
+    session.view = 'sprints';
     const utils = render(SprintList);
     await openEditor(utils);
-    await fireEvent.input(document.querySelector('input') as HTMLInputElement, {
-      target: { value: 'Retry saved' },
+    const inputs = document.querySelectorAll('[role="dialog"] input');
+    for (const [index, value] of ['Updated sprint', '2026-09-02', '2026-09-16', '13.75'].entries()) {
+      await fireEvent.input(inputs[index], { target: { value } });
+    }
+    await fireEvent.input(document.querySelector('[role="dialog"] textarea')!, {
+      target: { value: 'Updated exact goal' },
     });
     const { app: nativeApp, controller } = nativeCloseController();
 
@@ -454,15 +466,41 @@ describe('SprintList close guard', () => {
     expect(navigation.pending).not.toBeNull();
     await saveAndContinueNavigation();
 
-    expect(app.SaveSprint).toHaveBeenCalledTimes(1);
-    expect(document.querySelector('input')).not.toBeNull();
+    expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith(payload);
     expect(autosave.hasDirty()).toBe(true);
     expect(navigation.pending).not.toBeNull();
     expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('database is locked');
+    expect(document.body.textContent).not.toContain('Sprint saved.');
+    expect([existing, other]).toEqual(original);
 
-    await saveAndContinueNavigation();
+    controller.cancel();
+    expect(navigation.pending).toBeNull();
+    expect(autosave.hasDirty()).toBe(true);
+    expect(Array.from(inputs, (input) => (input as HTMLInputElement).value))
+      .toEqual(['Updated sprint', '2026-09-02', '2026-09-16', '13.75']);
+    for (const input of inputs) expect((input as HTMLInputElement).disabled).toBe(false);
+    expect((document.querySelector('[role="dialog"] textarea') as HTMLTextAreaElement).value).toBe('Updated exact goal');
+    expect(findButton(document.querySelector('[role="dialog"]')!, 'Save').disabled).toBe(false);
+    expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+
+    controller.request();
+    expect(navigation.pending).not.toBeNull();
+    if (choice === 'retry') {
+      await saveAndContinueNavigation();
+      expect(app.SaveSprint.mock.calls).toEqual([[payload], [payload]]);
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+      expect(document.body.textContent).toContain('Sprint saved.');
+    } else {
+      await discardAndContinueNavigation();
+      expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith(payload);
+      expect(document.body.textContent).not.toContain('Sprint saved.');
+    }
     await waitFor(() => expect(nativeApp.CompleteNativeClose).toHaveBeenCalledOnce());
-    expect(app.SaveSprint).toHaveBeenCalledTimes(2);
+    expect(navigation.pending).toBeNull();
+    expect(autosave.hasDirty()).toBe(false);
+    expect(app.DeleteSprint).not.toHaveBeenCalled();
+    expect([existing, other]).toEqual(original);
   });
 
   it('preserves programmatic edits made during a save for a second guarded save', async () => {
