@@ -5,12 +5,46 @@ package main
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"gopmgr/internal/agile"
 )
+
+func TestSprintTimestampJSON(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		payload string
+		want    time.Time
+		invalid bool
+	}{
+		{name: "zero", payload: `{"created_at":"0001-01-01T00:00:00Z"}`},
+		{name: "omitted", payload: `{}`},
+		{name: "null", payload: `{"created_at":null}`},
+		{name: "supplied instant", payload: `{"created_at":"2026-10-18T15:30:01.123456789-05:00"}`, want: time.Date(2026, 10, 18, 20, 30, 1, 123456789, time.UTC)},
+		{name: "empty", payload: `{"created_at":""}`, invalid: true},
+		{name: "malformed", payload: `{"created_at":"not-a-timestamp"}`, invalid: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var sprint agile.Sprint
+			err := json.Unmarshal([]byte(tc.payload), &sprint)
+			if tc.invalid {
+				if err == nil {
+					t.Fatal("invalid timestamp accepted by Go JSON boundary")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !sprint.CreatedAt.Equal(tc.want) {
+				t.Fatalf("created_at = %v, want %v", sprint.CreatedAt, tc.want)
+			}
+		})
+	}
+}
 
 func TestWorkItemTimestampJSON(t *testing.T) {
 	const zero = "0001-01-01T00:00:00Z"
@@ -266,16 +300,49 @@ func TestSprint_AppMethodsRoundTrip(t *testing.T) {
 	}
 	mustOpenProject(t, app, "Agile Bridge Plan")
 
-	saved, err := app.SaveSprint(agile.Sprint{Name: "Sprint 1"})
+	var draft agile.Sprint
+	if err := json.Unmarshal([]byte(`{"id":"","project_id":"caller-project","name":"Sprint 1","goal":"Exact decoded goal","status":"planning","start_date":"2026-10-18","end_date":"2026-11-01","capacity":13.5,"created_at":"0001-01-01T00:00:00Z"}`), &draft); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := app.SaveSprint(draft)
 	if err != nil {
 		t.Fatalf("SaveSprint: %v", err)
+	}
+	project, err := app.db.GetProject()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saved.ID == "" || saved.ProjectID != project.ID || saved.CreatedAt.IsZero() {
+		t.Fatalf("missing backend identity, ownership or creation timestamp: %#v", saved)
+	}
+	want := draft
+	want.ID, want.ProjectID, want.CreatedAt = saved.ID, project.ID, saved.CreatedAt
+	if !reflect.DeepEqual(saved, want) {
+		t.Fatalf("saved = %#v, want %#v", saved, want)
 	}
 	list, err := app.ListSprints()
 	if err != nil {
 		t.Fatalf("ListSprints: %v", err)
 	}
-	if len(list) != 1 || list[0].ID != saved.ID {
+	if len(list) != 1 || !reflect.DeepEqual(list[0], saved) {
 		t.Fatalf("ListSprints = %#v, want exactly [%s]", list, saved.ID)
+	}
+	// A caller-supplied creation time on an update must not replace the
+	// database-owned timestamp or create a second identity.
+	update := saved
+	update.Name = "Updated decoded sprint"
+	update.CreatedAt = time.Date(2001, 2, 3, 4, 5, 6, 0, time.UTC)
+	updated, err := app.SaveSprint(update)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want.Name = update.Name
+	if !reflect.DeepEqual(updated, want) {
+		t.Fatalf("updated = %#v, want %#v", updated, want)
+	}
+	list, err = app.ListSprints()
+	if err != nil || len(list) != 1 || !reflect.DeepEqual(list[0], want) {
+		t.Fatalf("updated list = %#v, err = %v", list, err)
 	}
 
 	if err := app.DeleteSprint(saved.ID); err != nil {

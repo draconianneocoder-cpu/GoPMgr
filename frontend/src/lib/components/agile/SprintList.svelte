@@ -130,7 +130,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = true;
     error = '';
     try {
-      const saved = await window.go.main.App.SaveSprint(savingSprint);
+      // New drafts use an empty string; Go's time.Time needs its zero
+      // timestamp. Keep the original snapshot intact for late-edit detection.
+      const payload = {
+        ...savingSprint,
+        created_at: savingSprint.created_at === '' ? '0001-01-01T00:00:00Z' : savingSprint.created_at,
+      };
+      const saved = await window.go.main.App.SaveSprint(payload);
       const idx = sprints.findIndex((s) => s.id === saved.id);
       if (idx >= 0) sprints[idx] = saved;
       else sprints = [saved, ...sprints];

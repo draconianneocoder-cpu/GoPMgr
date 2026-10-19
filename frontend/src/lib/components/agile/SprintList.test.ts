@@ -96,6 +96,119 @@ function nativeCloseController() {
   };
 }
 
+describe('SprintList timestamp boundary', () => {
+  const newPayload: AgileSprint = {
+    id: '', project_id: 'p1', name: 'New sprint', goal: 'Exact goal',
+    status: 'planning', start_date: '2026-08-15', end_date: '2026-08-29',
+    capacity: 13.5, created_at: '0001-01-01T00:00:00Z',
+  };
+  const saved: AgileSprint = {
+    ...newPayload, id: 'sp-generated', created_at: '2026-08-15T12:34:56Z',
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-15T00:00:00Z'));
+  });
+
+  async function newDraft() {
+    render(SprintList);
+    await openNewEditor();
+    const inputs = document.querySelectorAll('[role="dialog"] input');
+    await fireEvent.input(inputs[0], { target: { value: 'New sprint' } });
+    await fireEvent.input(document.querySelector('[role="dialog"] textarea')!, {
+      target: { value: 'Exact goal' },
+    });
+    await fireEvent.input(inputs[3], { target: { value: '13.5' } });
+  }
+
+  it('sends a Go zero timestamp on manual creation without leaving a false late edit', async () => {
+    app.SaveSprint.mockResolvedValue(saved);
+    await newDraft();
+    await fireEvent.click(findButton(document.querySelector('[role="dialog"]')!, 'Save'));
+    expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith(newPayload);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(autosave.hasDirty()).toBe(false);
+    expect(document.body.textContent).toContain('Sprint saved.');
+    expect(document.body.textContent).toContain('New sprint');
+  });
+
+  it('normalizes guarded creation and permits native close only after success', async () => {
+    app.SaveSprint.mockResolvedValue(saved);
+    await newDraft();
+    const { app: nativeApp, controller } = nativeCloseController();
+    controller.request();
+    await saveAndContinueNavigation();
+    expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith(newPayload);
+    await waitFor(() => expect(nativeApp.CompleteNativeClose).toHaveBeenCalledOnce());
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(autosave.hasDirty()).toBe(false);
+    expect(navigation.pending).toBeNull();
+  });
+
+  it('retains the new draft and identical payload through a rejected save and explicit retry', async () => {
+    app.SaveSprint.mockRejectedValueOnce(new Error('database is locked')).mockResolvedValueOnce(saved);
+    await newDraft();
+    const { app: nativeApp, controller } = nativeCloseController();
+    controller.request();
+    await saveAndContinueNavigation();
+    expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith(newPayload);
+    expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+    expect(navigation.pending).not.toBeNull();
+    expect(autosave.hasDirty()).toBe(true);
+    const inputs = document.querySelectorAll('[role="dialog"] input');
+    expect(Array.from(inputs, (input) => (input as HTMLInputElement).value))
+      .toEqual(['New sprint', '2026-08-15', '2026-08-29', '13.5']);
+    expect((document.querySelector('[role="dialog"] textarea') as HTMLTextAreaElement).value).toBe('Exact goal');
+    for (const input of inputs) expect((input as HTMLInputElement).disabled).toBe(false);
+    expect(findButton(document.querySelector('[role="dialog"]')!, 'Save').disabled).toBe(false);
+    expect(document.body.textContent).toContain('database is locked');
+    await saveAndContinueNavigation();
+    expect(app.SaveSprint.mock.calls).toEqual([[newPayload], [newPayload]]);
+    await waitFor(() => expect(nativeApp.CompleteNativeClose).toHaveBeenCalledOnce());
+    expect(autosave.hasDirty()).toBe(false);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('forwards supplied fractional-offset timestamps byte-for-byte without mutating the source', async () => {
+    const supplied = { ...sprint, created_at: '2026-08-01T12:34:56.123456789-05:00' };
+    const original = { ...supplied };
+    app.ListSprints.mockResolvedValue([supplied]);
+    app.SaveSprint.mockResolvedValue({ ...supplied, name: 'Edited timestamp fixture' });
+    const utils = render(SprintList);
+    await openEditor(utils);
+    await fireEvent.input(document.querySelector('[role="dialog"] input')!, {
+      target: { value: 'Edited timestamp fixture' },
+    });
+    await fireEvent.click(findButton(document.querySelector('[role="dialog"]')!, 'Save'));
+    expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith({ ...original, name: 'Edited timestamp fixture' });
+    expect(supplied).toEqual(original);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('does not hide malformed nonempty timestamps or mark their rejected saves clean', async () => {
+    const supplied = { ...sprint, created_at: 'not-a-timestamp' };
+    const original = { ...supplied };
+    app.ListSprints.mockResolvedValue([supplied]);
+    app.SaveSprint.mockRejectedValue(new Error('invalid timestamp'));
+    const utils = render(SprintList);
+    await openEditor(utils);
+    await fireEvent.input(document.querySelector('[role="dialog"] input')!, {
+      target: { value: 'Rejected malformed timestamp' },
+    });
+    const { app: nativeApp, controller } = nativeCloseController();
+    controller.request();
+    await saveAndContinueNavigation();
+    expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith({ ...original, name: 'Rejected malformed timestamp' });
+    expect(supplied).toEqual(original);
+    expect((document.querySelector('[role="dialog"] input') as HTMLInputElement).value).toBe('Rejected malformed timestamp');
+    expect(autosave.hasDirty()).toBe(true);
+    expect(navigation.pending).not.toBeNull();
+    expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('invalid timestamp');
+  });
+});
+
 describe('SprintList close guard', () => {
   it('closes without prompting when there are no unsaved edits', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
