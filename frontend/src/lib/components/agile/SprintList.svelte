@@ -89,6 +89,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     editing = next;
     original = JSON.stringify(next);
     error = '';
+    status = '';
     // A successful save closes this lightweight modal, so timed autosave
     // would dismiss it unexpectedly. It remains registered for shared
     // navigation, project-close, and native-close decisions. Sign-out is

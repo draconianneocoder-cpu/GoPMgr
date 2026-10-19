@@ -244,6 +244,102 @@ describe('SprintList timestamp boundary', () => {
   });
 });
 
+describe('SprintList save feedback', () => {
+  it.each([
+    ['new', 'manual'], ['existing', 'manual'],
+    ['new', 'native quit'], ['existing', 'native quit'],
+  ] as const)('clears prior success for a %s draft through %s failure and retry', async (kind, route) => {
+    const existing = { ...sprint, created_at: '2001-02-03T04:05:06.123Z' };
+    const previous = { ...existing, goal: 'Previously saved goal' };
+    app.ListSprints.mockResolvedValue([existing]);
+    app.SaveSprint.mockImplementation(async (value: AgileSprint) => ({ ...value }));
+    session.view = 'sprints';
+    const utils = render(SprintList);
+    await openEditor(utils);
+    await fireEvent.input(document.querySelector('[role="dialog"] textarea')!, {
+      target: { value: previous.goal },
+    });
+    await fireEvent.click(findButton(document.querySelector('[role="dialog"]')!, 'Save'));
+    await waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith(previous);
+    expect(document.body.textContent).toContain('Sprint saved.');
+
+    if (kind === 'new') await openNewEditor();
+    else await openEditor(utils);
+    expect(document.body.textContent).not.toContain('Sprint saved.');
+    await fireEvent.click(findButton(document.querySelector('[role="dialog"]')!, 'Cancel'));
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.body.textContent).not.toContain('Sprint saved.');
+    expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith(previous);
+    if (kind === 'new') await openNewEditor();
+    else await openEditor(utils);
+    expect(document.body.textContent).not.toContain('Sprint saved.');
+    const payload: AgileSprint = {
+      id: kind === 'new' ? '' : 'sp-1', project_id: 'p1',
+      name: 'Next sprint', goal: 'Next unsaved goal', status: 'planning',
+      start_date: '2026-10-20', end_date: '2026-11-03', capacity: 11.5,
+      created_at: kind === 'new' ? '0001-01-01T00:00:00Z' : '2001-02-03T04:05:06.123Z',
+    };
+    const inputs = document.querySelectorAll('[role="dialog"] input');
+    for (const [index, value] of ['Next sprint', '2026-10-20', '2026-11-03', '11.5'].entries()) {
+      await fireEvent.input(inputs[index], { target: { value } });
+    }
+    await fireEvent.input(document.querySelector('[role="dialog"] textarea')!, {
+      target: { value: payload.goal },
+    });
+    let rejectSave!: (error: Error) => void;
+    app.SaveSprint.mockImplementationOnce(() => new Promise<AgileSprint>((_, reject) => { rejectSave = reject; }))
+      .mockResolvedValueOnce({
+        ...payload, id: kind === 'new' ? 'sp-next' : payload.id,
+        created_at: kind === 'new' ? '2026-10-19T13:00:00Z' : payload.created_at,
+      });
+    const { app: nativeApp, controller } = nativeCloseController();
+    if (route === 'native quit') controller.request();
+    const saving = route === 'native quit'
+      ? saveAndContinueNavigation()
+      : fireEvent.click(findButton(document.querySelector('[role="dialog"]')!, 'Save'));
+    await waitFor(() => expect(app.SaveSprint).toHaveBeenCalledTimes(2));
+    try {
+      expect(app.SaveSprint.mock.calls).toEqual([[previous], [payload]]);
+      expect(document.body.textContent).not.toContain('Sprint saved.');
+      expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+      expect(autosave.hasDirty()).toBe(true);
+    } finally {
+      rejectSave(new Error('database is locked'));
+      await saving;
+    }
+    await waitFor(() => expect(document.body.textContent).toContain('database is locked'));
+    expect(document.body.textContent).not.toContain('Sprint saved.');
+    expect(autosave.hasDirty()).toBe(true);
+    expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+    if (route === 'native quit') {
+      expect(navigation.pending).not.toBeNull();
+      controller.cancel();
+      expect(navigation.pending).toBeNull();
+      expect(autosave.hasDirty()).toBe(true);
+    }
+    expect(Array.from(document.querySelectorAll('[role="dialog"] input'), (input) => (input as HTMLInputElement).value))
+      .toEqual(['Next sprint', '2026-10-20', '2026-11-03', '11.5']);
+    expect((document.querySelector('[role="dialog"] textarea') as HTMLTextAreaElement).value).toBe(payload.goal);
+    expect(findButton(document.querySelector('[role="dialog"]')!, 'Save').disabled).toBe(false);
+
+    if (route === 'native quit') {
+      controller.request();
+      expect(navigation.pending).not.toBeNull();
+      await saveAndContinueNavigation();
+      await waitFor(() => expect(nativeApp.CompleteNativeClose).toHaveBeenCalledOnce());
+    } else {
+      await fireEvent.click(findButton(document.querySelector('[role="dialog"]')!, 'Save'));
+    }
+    await waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    expect(app.SaveSprint.mock.calls).toEqual([[previous], [payload], [payload]]);
+    expect(document.body.textContent).toContain('Sprint saved.');
+    expect(document.body.textContent).not.toContain('database is locked');
+    expect(autosave.hasDirty()).toBe(false);
+    expect(app.DeleteSprint).not.toHaveBeenCalled();
+  });
+});
+
 describe('SprintList close guard', () => {
   it('closes without prompting when there are no unsaved edits', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
