@@ -170,6 +170,41 @@ describe('SprintList timestamp boundary', () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
+  it('cancels a failed new-sprint quit save, re-arms the guard, and discards without another save', async () => {
+    const existing = { ...saved, name: 'Existing sprint' };
+    const original = { ...existing };
+    app.ListSprints.mockResolvedValue([existing]);
+    app.SaveSprint.mockRejectedValue(new Error('database is locked'));
+    await newDraft();
+    const { app: nativeApp, controller } = nativeCloseController();
+
+    controller.request();
+    await saveAndContinueNavigation();
+    expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith(newPayload);
+    expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+    expect(navigation.pending).not.toBeNull();
+    expect(autosave.hasDirty()).toBe(true);
+
+    controller.cancel();
+    expect(navigation.pending).toBeNull();
+    expect(autosave.hasDirty()).toBe(true);
+    const inputs = document.querySelectorAll('[role="dialog"] input');
+    expect(Array.from(inputs, (input) => (input as HTMLInputElement).value))
+      .toEqual(['New sprint', '2026-08-15', '2026-08-29', '13.5']);
+    expect((document.querySelector('[role="dialog"] textarea') as HTMLTextAreaElement).value).toBe('Exact goal');
+    expect(findButton(document.querySelector('[role="dialog"]')!, 'Save').disabled).toBe(false);
+
+    controller.request();
+    expect(navigation.pending).not.toBeNull();
+    await discardAndContinueNavigation();
+    await waitFor(() => expect(nativeApp.CompleteNativeClose).toHaveBeenCalledOnce());
+    expect(navigation.pending).toBeNull();
+    expect(autosave.hasDirty()).toBe(false);
+    expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith(newPayload);
+    expect(app.DeleteSprint).not.toHaveBeenCalled();
+    expect(existing).toEqual(original);
+  });
+
   it('forwards supplied fractional-offset timestamps byte-for-byte without mutating the source', async () => {
     const supplied = { ...sprint, created_at: '2026-08-01T12:34:56.123456789-05:00' };
     const original = { ...supplied };
