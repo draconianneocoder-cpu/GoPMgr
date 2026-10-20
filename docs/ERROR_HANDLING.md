@@ -140,6 +140,14 @@ User-facing errors accumulated during a form/editor session are held in
 `let error = $state('')` and rendered inline, per the Svelte conventions in
 [DEVELOPER_HANDBOOK.md](DEVELOPER_HANDBOOK.md) §10.3.
 
+For guarded sprint saves, the registered callback also forwards that same
+message by throwing an `Error` when the boolean save result is `false`.
+The autosave coordinator catches it and the foreground Save/Discard/Cancel
+dialog displays it. Manual saves retain their inline handling. A refusal
+without a specific message keeps the coordinator's generic fallback; neither
+failure path advances the saved baseline or permits navigation. See
+[sprint guard error evidence](testing/sprint-guard-errors.md).
+
 ## Testing error paths
 
 - Sentinel errors get a table-driven test asserting the wrapped case

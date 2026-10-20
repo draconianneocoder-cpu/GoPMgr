@@ -163,6 +163,7 @@ describe('SprintList timestamp boundary', () => {
     for (const input of inputs) expect((input as HTMLInputElement).disabled).toBe(false);
     expect(findButton(document.querySelector('[role="dialog"]')!, 'Save').disabled).toBe(false);
     expect(document.body.textContent).toContain('database is locked');
+    expect(navigation.error).toBe('Save failed: Error: database is locked');
     await saveAndContinueNavigation();
     expect(app.SaveSprint.mock.calls).toEqual([[newPayload], [newPayload]]);
     await waitFor(() => expect(nativeApp.CompleteNativeClose).toHaveBeenCalledOnce());
@@ -241,10 +242,110 @@ describe('SprintList timestamp boundary', () => {
     expect(navigation.pending).not.toBeNull();
     expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
     expect(document.body.textContent).toContain('invalid timestamp');
+    expect(navigation.error).toBe('Save failed: Error: invalid timestamp');
   });
 });
 
 describe('SprintList save feedback', () => {
+  it('keeps a detail-free overlapping save refused until the manual write finishes', async () => {
+    const existing = { ...sprint, created_at: '2001-02-03T04:05:06.123Z' };
+    app.ListSprints.mockResolvedValue([existing]);
+    let finish!: (value: AgileSprint) => void;
+    app.SaveSprint.mockImplementationOnce(() => new Promise<AgileSprint>((resolve) => { finish = resolve; }));
+    session.view = 'sprints';
+    const utils = render(SprintList);
+    await openEditor(utils);
+    await fireEvent.input(document.querySelector('[role="dialog"] input')!, {
+      target: { value: 'Pending sprint' },
+    });
+    const manualSave = fireEvent.click(findButton(document.querySelector('[role="dialog"]')!, 'Save'));
+    const { app: nativeApp, controller } = nativeCloseController();
+    try {
+      await waitFor(() => expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith({ ...existing, name: 'Pending sprint' }));
+      controller.request();
+      await saveAndContinueNavigation();
+      expect(navigation.error).toBe('The editor reported that the save failed.');
+      expect(navigation.pending).not.toBeNull();
+      expect(autosave.hasDirty()).toBe(true);
+      expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+      expect(app.SaveSprint).toHaveBeenCalledOnce();
+    } finally {
+      finish({ ...existing, name: 'Pending sprint' });
+      await manualSave;
+    }
+    await waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+    expect(navigation.pending).not.toBeNull();
+    expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+    await saveAndContinueNavigation();
+    await waitFor(() => expect(nativeApp.CompleteNativeClose).toHaveBeenCalledOnce());
+    expect(navigation.error).toBe('');
+    expect(app.SaveSprint).toHaveBeenCalledOnce();
+  });
+
+  it.each(['new', 'existing'] as const)('reports the current %s sprint error through Cancel, re-arm and retry', async (kind) => {
+    const existing = { ...sprint, created_at: '2001-02-03T04:05:06.123Z' };
+    const payload: AgileSprint = {
+      id: kind === 'new' ? '' : existing.id, project_id: 'p1',
+      name: 'Foreground sprint', goal: 'Retained goal', status: 'planning',
+      start_date: '2026-10-20', end_date: '2026-11-03', capacity: 9.25,
+      created_at: kind === 'new' ? '0001-01-01T00:00:00Z' : existing.created_at,
+    };
+    app.ListSprints.mockResolvedValue([existing]);
+    app.SaveSprint.mockRejectedValueOnce('database is locked').mockResolvedValueOnce({
+      ...payload, id: kind === 'new' ? 'sp-new' : existing.id,
+      created_at: kind === 'new' ? '2026-10-19T12:00:00Z' : existing.created_at,
+    });
+    session.view = 'sprints';
+    const utils = render(SprintList);
+    if (kind === 'new') await openNewEditor();
+    else await openEditor(utils);
+    const inputs = document.querySelectorAll('[role="dialog"] input');
+    for (const [index, value] of ['Foreground sprint', '2026-10-20', '2026-11-03', '9.25'].entries()) {
+      await fireEvent.input(inputs[index], { target: { value } });
+    }
+    await fireEvent.input(document.querySelector('[role="dialog"] textarea')!, {
+      target: { value: payload.goal },
+    });
+    const { app: nativeApp, controller } = nativeCloseController();
+    controller.request();
+    await saveAndContinueNavigation();
+    expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith(payload);
+    expect(navigation.error).toBe('Save failed: database is locked');
+    expect(navigation.pending).not.toBeNull();
+    expect(autosave.hasDirty()).toBe(true);
+    expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+
+    controller.cancel();
+    expect(navigation.error).toBe('');
+    expect(navigation.pending).toBeNull();
+    await fireEvent.input(inputs[0], { target: { value: '   ' } });
+    controller.request();
+    expect(navigation.error).toBe('');
+    await saveAndContinueNavigation();
+    expect(navigation.error).toBe('Sprint name is required.');
+    expect(navigation.pending).not.toBeNull();
+    expect(autosave.hasDirty()).toBe(true);
+    expect(app.SaveSprint).toHaveBeenCalledExactlyOnceWith(payload);
+    expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+
+    controller.cancel();
+    expect(Array.from(inputs, (input) => (input as HTMLInputElement).value))
+      .toEqual(['   ', '2026-10-20', '2026-11-03', '9.25']);
+    expect((document.querySelector('[role="dialog"] textarea') as HTMLTextAreaElement).value).toBe(payload.goal);
+    expect(autosave.hasDirty()).toBe(true);
+    await fireEvent.input(inputs[0], { target: { value: payload.name } });
+    controller.request();
+    await saveAndContinueNavigation();
+    await waitFor(() => expect(nativeApp.CompleteNativeClose).toHaveBeenCalledOnce());
+    expect(app.SaveSprint.mock.calls).toEqual([[payload], [payload]]);
+    expect(navigation.error).toBe('');
+    expect(navigation.pending).toBeNull();
+    expect(autosave.hasDirty()).toBe(false);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.body.textContent).toContain('Sprint saved.');
+    expect(app.DeleteSprint).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['new', 'manual'], ['existing', 'manual'],
     ['new', 'native quit'], ['existing', 'native quit'],
@@ -568,6 +669,7 @@ describe('SprintList close guard', () => {
     expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
     expect(document.body.textContent).toContain('database is locked');
     expect(document.body.textContent).not.toContain('Sprint saved.');
+    expect(navigation.error).toBe('Save failed: Error: database is locked');
     expect([existing, other]).toEqual(original);
 
     controller.cancel();
@@ -692,6 +794,7 @@ describe('SprintList close guard', () => {
     expect(app.SaveSprint).not.toHaveBeenCalled();
     expect(navigation.pending?.view).toBe('dashboard');
     expect(document.querySelector('[role="alert"]')?.textContent).toContain('Sprint name is required');
+    expect(navigation.error).toBe('Sprint name is required.');
   });
 
   it('does not retain a dirty shared registration after confirmed close, reopen, or unmount', async () => {

@@ -101,7 +101,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
     // changed; it just currently cannot be exercised.
     stopDirtyGuard = autosave.register(
       () => JSON.stringify(editing),
-      () => save(),
+      async () => {
+        const result = await save();
+        if (result === false && error) throw new Error(error);
+        return result;
+      },
       false,
     );
   }
