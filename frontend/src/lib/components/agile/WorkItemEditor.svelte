@@ -77,7 +77,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // into the draft does not tear down and recreate the per-item guard.
       stopDirtyGuard = untrack(() => autosave.register(
         () => JSON.stringify(draft),
-        () => save(),
+        async () => {
+          if (!draft || status !== 'idle') return false;
+          const result = await save();
+          if (result === false && error) throw new Error(error);
+          return result;
+        },
         false,
       ));
     }

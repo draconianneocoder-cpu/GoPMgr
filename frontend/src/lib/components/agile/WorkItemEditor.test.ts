@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { cleanup, render, fireEvent, waitFor } from '@testing-library/svelte';
+import { cleanup, render, fireEvent, waitFor, within } from '@testing-library/svelte';
 
 import WorkItemEditor from './WorkItemEditor.svelte';
 import { autosave } from '../../autosave.svelte';
@@ -129,6 +129,7 @@ describe('WorkItemEditor close guard', () => {
 
     expect(app.SaveWorkItem).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ updated_at: 'not-a-timestamp' }));
     expect(utils.getByRole('alert').textContent).toContain('Invalid timestamp');
+    expect(navigation.error).toBe('Invalid timestamp');
     expect(titleInput.value).toBe('Retained draft');
     expect(autosave.hasDirty()).toBe(true);
     expect(navigation.pending).not.toBeNull();
@@ -407,7 +408,7 @@ describe('WorkItemEditor close guard', () => {
     await saveAndContinueNavigation();
 
     expect(navigation.pending?.view).toBe('kanban');
-    expect(navigation.error).toContain('reported that the save failed');
+    expect(navigation.error).toBe('disk full');
     expect(utils.getByRole('alert').textContent).toContain('disk full');
     expect(titleInput.value).toBe('Retried work item');
     expect(onSaved).not.toHaveBeenCalled();
@@ -466,7 +467,7 @@ describe('WorkItemEditor close guard', () => {
     expect(app.SaveWorkItem).toHaveBeenCalledTimes(1);
     expect(app.SaveWorkItem).toHaveBeenNthCalledWith(1, payload);
     expect(navigation.pending?.view).toBe('backlog');
-    expect(navigation.error).toContain('reported that the save failed');
+    expect(navigation.error).toBe('database is locked');
     expect(utils.getByRole('alert')).toHaveTextContent('database is locked');
     expect(utils.getByLabelText('Title')).toHaveValue(payload.title);
     expect(utils.getByLabelText('Description')).toHaveValue(payload.description);
@@ -609,6 +610,141 @@ describe('WorkItemEditor close guard', () => {
     expect(app.SaveWorkItem).not.toHaveBeenCalled();
     expect(navigation.pending?.view).toBe('portfolio');
     expect(utils.getByRole('alert').textContent).toContain('Title is required');
+    expect(navigation.error).toBe('Title is required.');
+  });
+
+  it.each(['', 'wi-existing'])('replaces a backend error with current validation and recovers draft %s', async (id) => {
+    const item = makeItem({ id });
+    const onSaved = vi.fn();
+    const onClose = vi.fn();
+    app.SaveWorkItem.mockRejectedValueOnce('storage unavailable');
+    const utils = render(WorkItemEditor, { item, onSaved, onClose, onDeleted: vi.fn() });
+    const title = utils.getByLabelText('Title');
+    await fireEvent.input(title, { target: { value: 'Retained title' } });
+    session.view = 'backlog';
+    requestNavigation('portfolio');
+    await saveAndContinueNavigation();
+
+    expect(navigation.error).toBe('storage unavailable');
+    expect(utils.getByRole('alert')).toHaveTextContent('storage unavailable');
+    expect(navigation.pending?.view).toBe('portfolio');
+    expect(session.view).toBe('backlog');
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    cancelNavigation();
+    expect(title).toHaveValue('Retained title');
+
+    await fireEvent.input(title, { target: { value: '   ' } });
+    requestNavigation('portfolio');
+    expect(navigation.error).toBe('');
+    await saveAndContinueNavigation();
+    expect(navigation.error).toBe('Title is required.');
+    expect(app.SaveWorkItem).toHaveBeenCalledTimes(1);
+    expect(navigation.pending?.view).toBe('portfolio');
+    expect(autosave.hasDirty()).toBe(true);
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    cancelNavigation();
+
+    await fireEvent.input(title, { target: { value: 'Recovered title' } });
+    const payload = { ...item, title: 'Recovered title', created_at: '0001-01-01T00:00:00Z', updated_at: '0001-01-01T00:00:00Z' };
+    const saved = { ...payload, id: id || 'wi-created', created_at: '2026-10-20T12:00:00Z' };
+    app.SaveWorkItem.mockResolvedValueOnce(saved);
+    requestNavigation('portfolio');
+    await saveAndContinueNavigation();
+    expect(app.SaveWorkItem).toHaveBeenCalledTimes(2);
+    expect(app.SaveWorkItem).toHaveBeenLastCalledWith(payload);
+    expect(onSaved).toHaveBeenCalledExactlyOnceWith(saved);
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(session.view).toBe('portfolio');
+    expect(navigation.pending).toBeNull();
+    expect(navigation.error).toBe('');
+    expect(autosave.hasDirty()).toBe(false);
+    expect(item).toEqual(makeItem({ id }));
+  });
+
+  it('keeps the generic guard fallback when the backend supplies no error message', async () => {
+    app.SaveWorkItem.mockRejectedValueOnce(new Error(''));
+    const onSaved = vi.fn();
+    const onClose = vi.fn();
+    const utils = render(WorkItemEditor, { item: makeItem(), onSaved, onClose, onDeleted: vi.fn() });
+    await fireEvent.input(utils.getByLabelText('Title'), { target: { value: 'Retained without details' } });
+    requestNavigation('portfolio');
+    await saveAndContinueNavigation();
+    expect(navigation.error).toBe('The editor reported that the save failed.');
+    expect(navigation.pending?.view).toBe('portfolio');
+    expect(utils.getByLabelText('Title')).toHaveValue('Retained without details');
+    expect(autosave.hasDirty()).toBe(true);
+    expect(app.SaveWorkItem).toHaveBeenCalledOnce();
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('keeps the generic guard fallback during a pending manual save without another write', async () => {
+    let rejectSave!: (reason: Error) => void;
+    app.SaveWorkItem.mockImplementationOnce(() => new Promise<AgileWorkItem>((_, reject) => { rejectSave = reject; }));
+    const onClose = vi.fn();
+    const onSaved = vi.fn();
+    const utils = render(WorkItemEditor, { item: makeItem(), onClose, onSaved, onDeleted: vi.fn() });
+    await fireEvent.input(utils.getByLabelText('Title'), { target: { value: 'Pending title' } });
+    await fireEvent.click(utils.getByRole('button', { name: 'Save', exact: true }));
+    await waitFor(() => expect(app.SaveWorkItem).toHaveBeenCalledOnce());
+    try {
+      requestNavigation('portfolio');
+      await saveAndContinueNavigation();
+      expect(navigation.error).toBe('The editor reported that the save failed.');
+      expect(navigation.pending?.view).toBe('portfolio');
+      expect(app.SaveWorkItem).toHaveBeenCalledOnce();
+      expect(onSaved).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(autosave.hasDirty()).toBe(true);
+    } finally {
+      rejectSave(new Error('manual failure'));
+      await waitFor(() => expect(utils.getByRole('alert')).toHaveTextContent('manual failure'));
+    }
+    expect(app.SaveWorkItem).toHaveBeenCalledOnce();
+  });
+
+  it('does not forward an earlier save error when native-close Save is refused during deletion', async () => {
+    app.SaveWorkItem.mockRejectedValueOnce(new Error('earlier save failure'));
+    let rejectDelete!: (reason: Error) => void;
+    app.DeleteWorkItem.mockImplementationOnce(() => new Promise<void>((_, reject) => { rejectDelete = reject; }));
+    const onSaved = vi.fn();
+    const onClose = vi.fn();
+    const onDeleted = vi.fn();
+    const utils = render(WorkItemEditor, { item: makeItem(), onSaved, onClose, onDeleted });
+    await fireEvent.input(utils.getByLabelText('Title'), { target: { value: 'Retained during deletion' } });
+    requestNavigation('portfolio');
+    await saveAndContinueNavigation();
+    expect(navigation.error).toBe('earlier save failure');
+    cancelNavigation();
+    await fireEvent.click(utils.getByRole('button', { name: 'Delete', exact: true }));
+    await fireEvent.click(within(utils.getByRole('alertdialog')).getByRole('button', { name: 'Delete', exact: true }));
+    await waitFor(() => expect(app.DeleteWorkItem).toHaveBeenCalledExactlyOnceWith('wi-1'));
+    const nativeApp = {
+      EnableNativeCloseGuard: vi.fn().mockResolvedValue(undefined),
+      CompleteNativeClose: vi.fn().mockResolvedValue(undefined),
+    };
+    const controller = new NativeCloseController({ app: nativeApp, reportError: vi.fn(), setInteractionLocked: vi.fn() });
+    session.view = 'kanban';
+    try {
+      controller.request();
+      await saveAndContinueNavigation();
+      expect(navigation.error).toBe('The editor reported that the save failed.');
+      expect(navigation.pending?.view).toBe('kanban');
+      expect(app.SaveWorkItem).toHaveBeenCalledOnce();
+      expect(app.DeleteWorkItem).toHaveBeenCalledOnce();
+      expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+      expect(onSaved).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(onDeleted).not.toHaveBeenCalled();
+      expect(utils.getByLabelText('Title')).toHaveValue('Retained during deletion');
+      expect(autosave.hasDirty()).toBe(true);
+    } finally {
+      rejectDelete(new Error('deletion failed'));
+      await waitFor(() => expect(utils.getByRole('alert')).toHaveTextContent('deletion failed'));
+    }
+    expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
   });
 
   it('does not retain a dirty guard when the reused modal changes item, closes, or unmounts', async () => {

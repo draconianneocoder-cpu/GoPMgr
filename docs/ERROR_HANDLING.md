@@ -148,6 +148,11 @@ without a specific message keeps the coordinator's generic fallback; neither
 failure path advances the saved baseline or permits navigation. See
 [sprint guard error evidence](testing/sprint-guard-errors.md).
 
+The work-item editor uses the same forwarding contract for guarded saves.
+Its callback first refuses absent or busy drafts, so a pending deletion cannot
+re-report an earlier save error. Manual saves still return a boolean and render
+their error inline. See [work-item guard evidence](testing/work-item-guard-errors.md).
+
 ## Testing error paths
 
 - Sentinel errors get a table-driven test asserting the wrapped case
