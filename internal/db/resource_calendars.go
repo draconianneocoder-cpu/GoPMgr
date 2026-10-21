@@ -31,7 +31,9 @@ type ResourceCalendar struct {
 // ErrNoResourceCalendar is returned by GetResourceCalendar for unknown IDs.
 var ErrNoResourceCalendar = errors.New("db: resource calendar not found")
 
-// SaveResourceCalendar inserts or updates a named resource calendar.
+// SaveResourceCalendar inserts or updates a named resource calendar without
+// changing its project. The write and project-scoped readback are atomic;
+// success follows commit.
 func (db *Database) SaveResourceCalendar(c ResourceCalendar) (ResourceCalendar, error) {
 	if c.ID == "" {
 		id, err := newID("rcal")
@@ -65,7 +67,12 @@ func (db *Database) SaveResourceCalendar(c ResourceCalendar) (ResourceCalendar, 
 	}
 
 	now := captureTimestamp()
-	_, err = db.Conn.Exec(`
+	tx, err := db.Conn.Begin()
+	if err != nil {
+		return ResourceCalendar{}, fmt.Errorf("begin resource calendar save: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	_, err = tx.Exec(`
 		INSERT INTO resource_calendars (
 			id, project_id, resource, name, default_capacity,
 			weekly_capacity, overrides, skill_tags, notes, created_at, updated_at,
@@ -73,7 +80,6 @@ func (db *Database) SaveResourceCalendar(c ResourceCalendar) (ResourceCalendar, 
 		)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
-			project_id        = excluded.project_id,
 			resource          = excluded.resource,
 			name              = excluded.name,
 			default_capacity  = excluded.default_capacity,
@@ -83,12 +89,24 @@ func (db *Database) SaveResourceCalendar(c ResourceCalendar) (ResourceCalendar, 
 			notes             = excluded.notes,
 			updated_at        = excluded.updated_at,
 			updated_at_unixnano = excluded.updated_at_unixnano
+		WHERE resource_calendars.project_id = excluded.project_id
 	`, c.ID, c.ProjectID, c.Resource, c.Name, c.DefaultCapacity,
 		weekly, overrides, tags, notes, now.text, now.text, now.unixNano, now.unixNano)
 	if err != nil {
-		return ResourceCalendar{}, err
+		return ResourceCalendar{}, fmt.Errorf("write resource calendar: %w", err)
 	}
-	return db.GetResourceCalendar(c.ID)
+	saved, err := scanResourceCalendar(tx.QueryRow(`
+		SELECT id, project_id, resource, name, default_capacity,
+		       weekly_capacity, overrides, skill_tags, notes, created_at, updated_at
+		FROM resource_calendars WHERE id = ? AND project_id = ?
+	`, c.ID, c.ProjectID))
+	if err != nil {
+		return ResourceCalendar{}, fmt.Errorf("read saved resource calendar: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return ResourceCalendar{}, fmt.Errorf("commit resource calendar save: %w", err)
+	}
+	return saved, nil
 }
 
 // GetResourceCalendar fetches one resource calendar by ID.

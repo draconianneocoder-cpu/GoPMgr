@@ -62,6 +62,11 @@ These checks remain necessary even though the intended file model contains one
 project row, because malformed or legacy same-file multi-project state must not
 cross project boundaries.
 
+Resource-calendar saves also enforce ownership in the database writer: an
+existing calendar ID cannot move projects or update a foreign project's row.
+The guarded write and project-scoped readback share one transaction, with success
+returned only after commit. This save operation is not a calendar-transfer API.
+
 ## Important Packages
 
 - `main.go` (repo root): Wails app object entry point, CLI dispatch, and

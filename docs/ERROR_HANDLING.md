@@ -79,6 +79,12 @@ is returned only after commit. Errors wrap the failing operation while retaining
 the original cause. See [stakeholder save evidence](testing/stakeholder-save-atomicity.md)
 for rollback, retry and exact-money checks and commit-error limits.
 
+Resource-calendar saves use the same write/readback/commit contract. Their
+database writer rejects cross-project ID collisions with `ErrNoResourceCalendar`
+without updating the foreign row; ordinary saves cannot transfer ownership.
+See [calendar save evidence](testing/resource-calendar-save-atomicity.md) for
+JSON decoding, rollback, retry, compatibility and commit-error limits.
+
 GoPMgr distinguishes operations where a failure should degrade gracefully
 from operations where it must abort:
 
