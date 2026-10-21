@@ -73,6 +73,12 @@ everything else — most of the codebase.
 
 ## Go: fail-soft vs fail-hard
 
+Stakeholder saves are fail-hard across both the write and project-scoped
+readback: they share one transaction, readback failure rolls back, and success
+is returned only after commit. Errors wrap the failing operation while retaining
+the original cause. See [stakeholder save evidence](testing/stakeholder-save-atomicity.md)
+for rollback, retry and exact-money checks and commit-error limits.
+
 GoPMgr distinguishes operations where a failure should degrade gracefully
 from operations where it must abort:
 

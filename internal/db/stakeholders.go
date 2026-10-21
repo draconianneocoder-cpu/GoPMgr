@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"gopmgr/internal/money"
 )
 
@@ -58,6 +59,7 @@ var ErrNoStakeholder = errors.New("db: stakeholder not found")
 
 // SaveStakeholder inserts or updates a stakeholder. Empty Category
 // defaults to "team"; empty ID gets a fresh one.
+// The write and project-scoped readback are atomic; success follows commit.
 func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 	if s.ID == "" {
 		id, err := newID("stk")
@@ -82,7 +84,12 @@ func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 	s.ContractValue = money.Amount{MinorUnits: s.ContractValueMinorUnits}.MajorFloat()
 	now := captureTimestamp()
 
-	_, err := db.Conn.Exec(`
+	tx, err := db.Conn.Begin()
+	if err != nil {
+		return Stakeholder{}, fmt.Errorf("begin stakeholder save: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	_, err = tx.Exec(`
 		INSERT INTO stakeholders (id, project_id, name, role, organisation,
 			email, phone, category, hourly_rate, hourly_rate_minor_units,
 			contract_value, contract_value_minor_units, availability,
@@ -111,9 +118,22 @@ func (db *Database) SaveStakeholder(s Stakeholder) (Stakeholder, error) {
 		now.text, now.text, now.unixNano, now.unixNano,
 	)
 	if err != nil {
-		return Stakeholder{}, err
+		return Stakeholder{}, fmt.Errorf("write stakeholder: %w", err)
 	}
-	return db.GetStakeholder(s.ID)
+	saved, err := scanStakeholder(tx.QueryRow(`
+		SELECT id, project_id, name, role, organisation, email, phone,
+		       category, hourly_rate, hourly_rate_minor_units,
+		       contract_value, contract_value_minor_units,
+		       availability, notes, created_at, updated_at
+		FROM stakeholders WHERE id = ? AND project_id = ?
+	`, s.ID, s.ProjectID))
+	if err != nil {
+		return Stakeholder{}, fmt.Errorf("read saved stakeholder: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return Stakeholder{}, fmt.Errorf("commit stakeholder save: %w", err)
+	}
+	return saved, nil
 }
 
 // GetStakeholder fetches one stakeholder by ID.
