@@ -316,9 +316,123 @@ describe('StakeholderManager close guard', () => {
     expect(navigation.pending).not.toBeNull();
     expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
 
+    expect(navigation.error).toBe('Save failed: Error: bridge unavailable');
+    controller.cancel();
+    expect(navigation.pending).toBeNull();
+    expect((document.querySelector('input') as HTMLInputElement).value).toBe('Retry saved');
+    controller.request();
+    expect(navigation.pending).not.toBeNull();
+    expect(navigation.error).toBe('');
+
     await saveAndContinueNavigation();
     await waitFor(() => expect(nativeApp.CompleteNativeClose).toHaveBeenCalledOnce());
     expect(app.SaveStakeholder).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    { label: 'Error', rejection: new Error('write refused'), message: 'Save failed: Error: write refused' },
+    { label: 'bridge string', rejection: 'write refused', message: 'Save failed: write refused' },
+    { label: 'empty Error', rejection: new Error(''), message: 'Save failed: Error' },
+  ])('forwards a new stakeholder $label failure without losing the draft before retry', async ({ rejection, message }) => {
+    app.SaveStakeholder.mockRejectedValueOnce(rejection)
+      .mockImplementationOnce(async (draft: Stakeholder) => ({ ...draft, id: 'assigned-id' }));
+    render(StakeholderManager);
+    await openNewEditor();
+    const name = document.querySelector('[role="dialog"] input') as HTMLInputElement;
+    await fireEvent.input(name, { target: { value: 'New stakeholder retry' } });
+    session.view = 'stakeholders';
+    requestNavigation('dashboard');
+    await saveAndContinueNavigation();
+
+    expect(navigation.error).toBe(message);
+    expect(navigation.pending?.view).toBe('dashboard');
+    expect(session.view).toBe('stakeholders');
+    expect(autosave.hasDirty()).toBe(true);
+    expect(name.value).toBe('New stakeholder retry');
+    expect(app.SaveStakeholder).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: '', name: name.value }));
+
+    await saveAndContinueNavigation();
+    expect(app.SaveStakeholder).toHaveBeenCalledTimes(2);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(autosave.hasDirty()).toBe(false);
+    expect(navigation.pending).toBeNull();
+    expect(navigation.error).toBe('');
+    expect(session.view).toBe('dashboard');
+  });
+
+  it('replaces a backend failure with the current validation error on a rearmed close', async () => {
+    app.SaveStakeholder.mockRejectedValueOnce(new Error('earlier failure'));
+    const utils = render(StakeholderManager);
+    await openEditor(utils);
+    const name = document.querySelector('[role="dialog"] input') as HTMLInputElement;
+    await fireEvent.input(name, { target: { value: 'First attempt' } });
+    const { app: nativeApp, controller } = nativeCloseController();
+    controller.request();
+    await saveAndContinueNavigation();
+    expect(navigation.error).toBe('Save failed: Error: earlier failure');
+
+    controller.cancel();
+    await fireEvent.input(name, { target: { value: '   ' } });
+    controller.request();
+    expect(navigation.error).toBe('');
+    await saveAndContinueNavigation();
+    expect(navigation.error).toBe('Stakeholder name is required.');
+    expect(app.SaveStakeholder).toHaveBeenCalledOnce();
+    expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+    expect(navigation.pending).not.toBeNull();
+    expect(autosave.hasDirty()).toBe(true);
+
+    controller.cancel();
+    await fireEvent.input(name, { target: { value: 'Corrected attempt' } });
+    controller.request();
+    await saveAndContinueNavigation();
+    await waitFor(() => expect(nativeApp.CompleteNativeClose).toHaveBeenCalledOnce());
+    expect(app.SaveStakeholder).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps a busy refusal generic even when a late refresh supplies an unrelated error', async () => {
+    let finishSave!: (saved: Stakeholder) => void;
+    let rejectRefresh!: (reason: Error) => void;
+    const pendingSave = new Promise<Stakeholder>((resolve) => { finishSave = resolve; });
+    const pendingRefresh = new Promise<Stakeholder[]>((_, reject) => { rejectRefresh = reject; });
+    const refreshSettled = pendingRefresh.catch(() => undefined);
+    app.ListStakeholders = vi.fn().mockResolvedValueOnce([stakeholder])
+      .mockReturnValueOnce(pendingRefresh).mockResolvedValue([stakeholder]);
+    app.SaveStakeholder.mockReturnValueOnce(pendingSave);
+    const saved = { ...stakeholder, name: 'Manual save in flight' };
+    try {
+      const utils = render(StakeholderManager);
+      await openEditor(utils);
+      await waitFor(() => expect(app.ListStakeholders).toHaveBeenCalledTimes(2));
+      const name = document.querySelector('[role="dialog"] input') as HTMLInputElement;
+      await fireEvent.input(name, { target: { value: saved.name } });
+      await fireEvent.click(editorButtons().find((button) => button.textContent?.trim() === 'Save')!);
+      await waitFor(() => expect(app.SaveStakeholder).toHaveBeenCalledOnce());
+      rejectRefresh(new Error('late list failure'));
+      await waitFor(() => expect(document.querySelector('[role="alert"]')?.textContent)
+        .toBe('Could not load stakeholders: Error: late list failure'));
+
+      const { app: nativeApp, controller } = nativeCloseController();
+      controller.request();
+      await saveAndContinueNavigation();
+      expect(navigation.error).toBe('The editor reported that the save failed.');
+      expect(app.SaveStakeholder).toHaveBeenCalledOnce();
+      expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+      expect(navigation.pending).not.toBeNull();
+      expect(autosave.hasDirty()).toBe(true);
+      expect(name.value).toBe(saved.name);
+
+      finishSave(saved);
+      await waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+      expect(nativeApp.CompleteNativeClose).not.toHaveBeenCalled();
+      await saveAndContinueNavigation();
+      await waitFor(() => expect(nativeApp.CompleteNativeClose).toHaveBeenCalledOnce());
+      expect(app.SaveStakeholder).toHaveBeenCalledOnce();
+    } finally {
+      finishSave(saved);
+      rejectRefresh(new Error('fixture cleanup'));
+      await Promise.all([pendingSave, refreshSettled]);
+    }
   });
 
   it('preserves late modal edits and canonical backend money fields for a second guarded save', async () => {
@@ -417,6 +531,9 @@ describe('StakeholderManager close guard', () => {
     expect(app.SaveStakeholder).not.toHaveBeenCalled();
     expect(navigation.pending?.view).toBe('dashboard');
     expect(document.querySelector('[role="alert"]')?.textContent).toContain('Stakeholder name is required');
+    expect(navigation.error).toBe('Stakeholder name is required.');
+    expect(autosave.hasDirty()).toBe(true);
+    expect(session.view).toBe('stakeholders');
   });
 
   it('normalizes only an edited hourly rate and preserves the exact contract minor units', async () => {
@@ -465,14 +582,14 @@ describe('StakeholderManager close guard', () => {
     }));
   });
 
-  it('refuses a guarded save when Wails supplied an unsafe minor-unit number', async () => {
+  it.each(['hourly_rate', 'contract_value'] as const)('refuses a guarded save when Wails supplied unsafe %s minor units', async (field) => {
     // An int64 above this boundary is rounded before Wails exposes it as a
     // JavaScript number, so returning it unchanged would corrupt money.
-    const unsafeHourlyMinorUnits = Number.MAX_SAFE_INTEGER + 1;
+    const unsafeMinorUnits = Number.MAX_SAFE_INTEGER + 1;
     app.ListStakeholders = vi.fn(async () => [{
       ...stakeholder,
-      hourly_rate: unsafeHourlyMinorUnits / 100,
-      hourly_rate_minor_units: unsafeHourlyMinorUnits,
+      [field]: unsafeMinorUnits / 100,
+      [`${field}_minor_units`]: unsafeMinorUnits,
     }]);
     const utils = render(StakeholderManager);
     await openEditor(utils);
@@ -488,6 +605,8 @@ describe('StakeholderManager close guard', () => {
     expect(navigation.pending?.view).toBe('dashboard');
     expect(autosave.hasDirty()).toBe(true);
     expect(document.querySelector('[role="alert"]')?.textContent).toContain('too large to save safely');
+    expect(navigation.error).toBe('This stakeholder has a money value too large to save safely in this version of the app.');
+    expect(session.view).toBe('stakeholders');
   });
 
   it('normalizes only an edited contract value and preserves exact hourly-rate minor units', async () => {

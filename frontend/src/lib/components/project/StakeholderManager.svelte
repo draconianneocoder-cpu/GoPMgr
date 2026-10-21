@@ -105,7 +105,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     // still fire if that structural fact ever changed.
     stopDirtyGuard = autosave.register(
       () => JSON.stringify(editing),
-      () => save(),
+      async () => {
+        if (!editing || busy) return false;
+        const result = await save();
+        if (result === false && error) throw new Error(error);
+        return result;
+      },
       false,
     );
   }

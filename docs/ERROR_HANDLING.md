@@ -165,6 +165,12 @@ Its callback first refuses absent or busy drafts, so a pending deletion cannot
 re-report an earlier save error. Manual saves still return a boolean and render
 their error inline. See [work-item guard evidence](testing/work-item-guard-errors.md).
 
+Stakeholder saves use the same adapter: absent or busy drafts refuse without
+forwarding a retained message; an attempted save that returns `false` forwards
+its existing nonempty validation or backend error. Exact-money safeguards and
+manual boolean save handling are unchanged. See
+[stakeholder guard evidence](testing/stakeholder-guard-errors.md).
+
 ## Testing error paths
 
 - Sentinel errors get a table-driven test asserting the wrapped case
