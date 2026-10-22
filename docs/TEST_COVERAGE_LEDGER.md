@@ -30,9 +30,10 @@ coverage under the default build (no `-tags duckdb`), current as of the
 tracked `coverage-baseline.json`. Reproduce with
 `scripts/coverage-go.sh default` / `scripts/coverage-go.sh duckdb` (Go) or
 `npm --prefix frontend run test:coverage` (frontend). The exclusion rationale
-is recorded beside `scripts/coverage-exclude-go.txt`. Headings are measured
-with Go 1.27.2 since 2026-10-09: its cover tool fixed per-block statement
-counts that 1.27.1 inflated, so most headings fell slightly with the same
+is recorded beside `scripts/coverage-exclude-go.txt`. All package headings
+were rechecked with Go 1.27.3 on 2026-10-22 and remain unchanged. Since
+2026-10-09 they have used Go 1.27.2's corrected per-block statement counts, which
+1.27.1 inflated, so most headings fell slightly with the same
 tests (for example `internal/documents`, 78.2% to 69.5%). Per-file
 percentages in rows written before then were measured with the older count.
 

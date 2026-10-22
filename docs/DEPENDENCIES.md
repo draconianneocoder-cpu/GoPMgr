@@ -11,7 +11,7 @@ posture, and validator coverage, so keep them intentional and verified.
 
 ## Toolchain
 
-- Go: 1.27.2 from `go.mod`.
+- Go: 1.27.3 minimum from `go.mod`; CI and release workflows select that version.
 - Wails: v2.16.0.
 - Node frontend: Node.js 26 in CI/release workflows, with Vite 8, Svelte 5,
   TypeScript 6, and npm scripts in `frontend/package.json`. Browser storage
@@ -20,6 +20,24 @@ posture, and validator coverage, so keep them intentional and verified.
   environment.
 - CGO: required for the SQLite/SQLCipher driver path and the shipped DuckDB
   analytics build.
+
+### Go security baseline, 2026-10-22
+
+Go 1.27.3 includes the `crypto/x509` fix for
+[GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809). The previous Go 1.27.2
+CI scan reported a call path from RFC 3161 token validation through PKCS#7
+to `x509.Certificate.Verify`. Configured TSA trust chains containing
+denylisted keys can now be rejected even when validating a token at its
+historical generation time. This is an intentional trust-policy correction,
+not a reason to bypass verification or restore the vulnerable toolchain.
+
+Rebuild executables with Go 1.27.3 or later and replace running instances
+to receive the fix; changing `go.mod` or updating the machine's Go
+installation does not patch previously built binaries. No database or
+wire-format migration is required. Keep
+historical test reports at their measured versions. Local validation and its
+platform/publication limits are recorded in
+[the upgrade evidence](testing/go-1.27.3-security.md).
 
 ## Core Go Dependencies
 
@@ -107,7 +125,7 @@ v2.11.0. To include those upstream fixes, GoPMgr deliberately pins
 [upstream revision](https://github.com/qax-os/excelize/commit/6258dcebc4e2a2aed985c38a08098dfd908521d1)
 identified by the newest of those advisories. This is a pre-stable
 pseudo-version, not a released v2.11.1. Its Go 1.26 minimum is satisfied by
-the unchanged Go 1.27.2 pin. It also raises `mscfb` to 1.0.8, `efp` to
+the then-current Go 1.27.2 pin. It also raises `mscfb` to 1.0.8, `efp` to
 0.0.2, `x/image` to 0.44.0, and `x/net` to 0.59.0.
 
 This revision changes automatic float writing to 15 significant digits.

@@ -3,7 +3,7 @@
 
 module gopmgr
 
-go 1.27.2
+go 1.27.3
 
 // SQLCipher 4.4.2 with WAL-reset and transaction-cleanup corrections.
 // Provenance and maintenance instructions: third_party/go-sqlcipher/GOPMGR.md.

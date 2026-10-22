@@ -27,7 +27,7 @@ func TestEncryptedFilesInteroperateWithUnmodifiedDriver(t *testing.T) {
 	// A separate module/process prevents duplicate sqlite3 registrations. Its
 	// local replacement is the hash-verified exact v4.4.2 runtime, not the
 	// patched module selected by the parent repository.
-	mod := "module compatibility\n\ngo 1.27.2\n\nrequire github.com/mutecomm/go-sqlcipher/v4 v4.4.2\n\nreplace github.com/mutecomm/go-sqlcipher/v4 => ./pristine\n"
+	mod := "module compatibility\n\ngo 1.27.3\n\nrequire github.com/mutecomm/go-sqlcipher/v4 v4.4.2\n\nreplace github.com/mutecomm/go-sqlcipher/v4 => ./pristine\n"
 	for name, data := range map[string][]byte{"go.mod": []byte(mod), "main.go": []byte(legacyCompatibilityHelper)} {
 		if err := os.WriteFile(filepath.Join(dir, name), data, 0600); err != nil {
 			t.Fatal(err)
