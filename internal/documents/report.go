@@ -261,17 +261,17 @@ func evmSummaryLines(m *kernel.EVMetrics) []string {
 		return fmt.Sprintf("%.2f", v)
 	}
 	return []string{
-		fmt.Sprintf("Budget at completion (BAC): %.2f", m.BAC),
-		fmt.Sprintf("Planned value (PV): %.2f", m.PV),
-		fmt.Sprintf("Earned value (EV): %.2f", m.EV),
-		fmt.Sprintf("Actual cost (AC): %.2f", m.AC),
-		fmt.Sprintf("Schedule variance (SV): %.2f", m.SV),
-		fmt.Sprintf("Cost variance (CV): %.2f", m.CV),
+		"Budget at completion (BAC): " + formatMoney(m.BAC),
+		"Planned value (PV): " + formatMoney(m.PV),
+		"Earned value (EV): " + formatMoney(m.EV),
+		"Actual cost (AC): " + formatMoney(m.AC),
+		"Schedule variance (SV): " + formatMoney(m.SV),
+		"Cost variance (CV): " + formatMoney(m.CV),
 		"Schedule performance index (SPI): " + idx(m.SPI),
 		"Cost performance index (CPI): " + idx(m.CPI),
-		fmt.Sprintf("Estimate at completion (EAC): %.2f", m.EAC),
-		fmt.Sprintf("Estimate to complete (ETC): %.2f", m.ETC),
-		fmt.Sprintf("Variance at completion (VAC): %.2f", m.VAC),
+		"Estimate at completion (EAC): " + formatMoney(m.EAC),
+		"Estimate to complete (ETC): " + formatMoney(m.ETC),
+		"Variance at completion (VAC): " + formatMoney(m.VAC),
 	}
 }
 

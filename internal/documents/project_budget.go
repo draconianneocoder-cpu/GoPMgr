@@ -169,16 +169,28 @@ func budgetSubtotal(categories []map[string]interface{}) float64 {
 }
 
 // formatMoney formats a float as a 2-decimal number with thousands
-// separators (e.g. 1234567.5 → "1,234,567.50").
+// separators (e.g. 1234567.5 → "1,234,567.50", -123456 → "-123,456.00").
+// An amount that rounds to zero prints as "0.00", never "-0.00".
 func formatMoney(v float64) string {
 	s := fmt.Sprintf("%.2f", v)
-	// Split at decimal point.
+	if s == "-0.00" {
+		return "0.00"
+	}
+	sign := ""
+	if strings.HasPrefix(s, "-") {
+		sign, s = "-", s[1:]
+	}
+	if len(s) < 4 {
+		return sign + s // NaN or Inf
+	}
+	// Split at the decimal point.
 	dotIdx := len(s) - 3
 	intPart := s[:dotIdx]
 	fracPart := s[dotIdx:]
-	// Insert commas every three digits from right.
+	// Insert commas every three digits from the right.
 	var out strings.Builder
-	out.Grow(len(intPart) + len(intPart)/3 + 1)
+	out.Grow(len(sign) + len(intPart) + len(intPart)/3 + len(fracPart))
+	out.WriteString(sign)
 	for i, ch := range intPart {
 		if i > 0 && (len(intPart)-i)%3 == 0 {
 			out.WriteByte(',')

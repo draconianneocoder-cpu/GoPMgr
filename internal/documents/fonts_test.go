@@ -193,7 +193,7 @@ func textX(t *testing.T, pdf []byte, s string) float64 {
 // IBM Plex Serif SemiBold overflowed it, so the budget label covered its
 // first digit.
 func TestKeyValueLabels_NeverOverlapTheirValues(t *testing.T) {
-	const label, value = "High-level budget (USD)", "1284500.00"
+	const label, value = "High-level budget (USD)", "1,284,500.00"
 	writers := map[string]struct {
 		write func(*pdfdoc.PDF, string, string)
 		size  float64

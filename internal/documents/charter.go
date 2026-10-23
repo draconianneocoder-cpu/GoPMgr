@@ -151,7 +151,7 @@ func RenderCharterPDF(content map[string]interface{}, projectName string) ([]byt
 
 	// Budget
 	if b, ok := content["high_level_budget"].(float64); ok && b > 0 {
-		writeKV(pdf, "High-level budget (USD)", fmt.Sprintf("%.2f", b))
+		writeKV(pdf, "High-level budget (USD)", formatMoney(b))
 		pdf.Ln(2)
 	}
 
