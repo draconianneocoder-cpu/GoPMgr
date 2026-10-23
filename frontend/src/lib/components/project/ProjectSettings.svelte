@@ -417,7 +417,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       tsaPolicyOID = defaults.tsa_policy_oid ?? '';
       tsaRootCertPath = defaults.tsa_root_cert_path ?? '';
       complianceMode = defaults.compliance_mode ?? false;
-      defaultFont = defaults.default_font ?? '';
+      // An empty saved font means IBM Plex Sans, as GetDefaultFont reports.
+      defaultFont = defaults.default_font || DEFAULT_DOCUMENT_FONT;
       fontStatus = '';
       fontError = '';
       settingsStatus = 'Defaults restored.';

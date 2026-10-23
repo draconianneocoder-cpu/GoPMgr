@@ -847,6 +847,20 @@ describe('document font picker', () => {
     expect(select.getAttribute('aria-describedby')).toBe(description.id);
   });
 
+  // Reset clears the saved font; the backend then uses IBM Plex Sans, so the
+  // picker shows it rather than a blank choice with no description.
+  it('shows IBM Plex Sans after Reset defaults', async () => {
+    const { select, getByRole, findByText } = await openExports();
+    app.ResetProjectSettings = vi.fn(async () => ({ ...timestampSettings, default_font: '' }));
+
+    await fireEvent.click(getByRole('button', { name: /reset defaults/i }));
+
+    await findByText('Defaults restored.');
+    expect(select.value).toBe('IBM Plex Sans');
+    expect(select).toHaveAccessibleDescription("IBM's open sans-serif.");
+    expect(getByRole('button', { name: /apply font/i })).toBeEnabled();
+  });
+
   it('announces an import failure as an alert, and a success as a status', async () => {
     const { findByText, getByRole, queryByText } = await openExports();
     app.ImportFont = vi.fn(async () => {

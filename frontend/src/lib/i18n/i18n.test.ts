@@ -1,16 +1,20 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { applyLanguage, formatDate, formatNumber, i18n, offeredLocales, t } from './i18n.svelte';
-import { formatLocaleFor, matchLocale, resolveLocale, type LocaleCode } from './locales';
+import { render } from './catalog';
+import { applyLanguage, formatDate, formatNumber, formatTime, i18n, offeredLocales, systemLanguages, t } from './i18n.svelte';
+import { canonicalTag, formatLocaleFor, matchLocale, resolveLocale, type LocaleCode } from './locales';
 
 const wave1: LocaleCode[] = ['en', 'fr', 'de', 'es', 'it', 'pt-PT', 'nl', 'ja', 'ko'];
 
 afterEach(() => {
+  vi.restoreAllMocks();
   applyLanguage('', ['en-US']);
 });
+
+const oct23 = Date.UTC(2026, 9, 23, 15, 4);
 
 describe('language resolution', () => {
   it.each([
@@ -68,5 +72,90 @@ describe('t', () => {
 
   it('leaves a placeholder with no value visible', () => {
     expect(t('recoveryCodes.failed.body')).toContain('({error})');
+  });
+});
+
+describe('system language tags', () => {
+  it.each([
+    ['de_CH', 'de-CH'],
+    ['en_US.UTF-8', 'en-US'],
+    ['sr_RS@latin', 'sr-RS'],
+    [' fr-ca ', 'fr-CA'],
+    ['C', null],
+    ['C.UTF-8', null],
+    ['POSIX', null],
+    ['', null],
+    ['x', null],
+    ['!!', null],
+  ])('canonicalTag(%j) is %j', (tag, want) => {
+    expect(canonicalTag(tag)).toBe(want);
+  });
+
+  it('formats in the system region when the system reports a POSIX tag', () => {
+    expect(formatLocaleFor('', 'en', ['de_CH.UTF-8'])).toBe('de-CH');
+    expect(formatLocaleFor('', 'en', ['C', 'de-DE'])).toBe('de-DE');
+    expect(formatLocaleFor('', 'en', ['C'])).toBe('en');
+    expect(formatLocaleFor('en', 'en', ['de-DE', 'en_GB'])).toBe('en-GB');
+  });
+
+  // Intl throws a RangeError for a tag it rejects; one bad system tag must
+  // not break every date and number on screen.
+  it.each(['de_CH', 'en_US.UTF-8', 'C', 'POSIX', '', 'x', '!!', 'zz-ZZ'])(
+    'keeps formatting working for a system tag of %j',
+    (tag) => {
+      applyLanguage('', [tag]);
+      expect(() => formatNumber(1284500.5)).not.toThrow();
+      expect(() => formatDate(oct23)).not.toThrow();
+      expect(() => formatTime(oct23)).not.toThrow();
+      expect(() => render('{n} items', { n: 1284500 }, i18n.locale, i18n.formatLocale)).not.toThrow();
+    },
+  );
+
+  it('reads the web view languages, most preferred first, without blanks', () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['de-CH', '', 'en-US']);
+    expect(systemLanguages()).toEqual(['de-CH', 'en-US']);
+  });
+
+  it('falls back to navigator.language when the language list is empty', () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue([]);
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('ko-KR');
+    expect(systemLanguages()).toEqual(['ko-KR']);
+  });
+
+  // main.ts calls applyLanguage() with no arguments before the first frame.
+  it('follows the system at startup', () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['ja-JP', 'en-US']);
+    expect(applyLanguage()).toBe('en');
+    expect(document.documentElement.lang).toBe('en');
+    expect(i18n.formatLocale).toBe('ja-JP');
+    expect(formatDate(oct23, { timeZone: 'UTC' })).toBe('2026/10/23');
+  });
+});
+
+// ADR-008 test plan: formats follow the format locale. Short numeric
+// dates and grouped numbers are stable across ICU versions, with two
+// exceptions the checks allow for: newer ICU data groups de-CH with ' rather
+// than ’, and puts U+202F rather than a space before PM.
+describe('formats per locale', () => {
+  it.each([
+    ['en-US', '1,284,500.5', '10/23/2026'],
+    ['en-GB', '1,284,500.5', '23/10/2026'],
+    ['de-DE', '1.284.500,5', '23.10.2026'],
+    ['de-CH', /^1['’]284['’]500\.5$/u, '23.10.2026'],
+    ['fr-FR', '1\u202f284\u202f500,5', '23/10/2026'],
+    ['ja-JP', '1,284,500.5', '2026/10/23'],
+  ])('%s formats numbers as %s and dates as %s', (tag, number, date) => {
+    applyLanguage('', [tag]);
+    const formatted = formatNumber(1284500.5);
+    if (typeof number === 'string') expect(formatted).toBe(number);
+    else expect(formatted).toMatch(number);
+    expect(formatDate(oct23, { timeZone: 'UTC' })).toBe(date);
+  });
+
+  it('formats times in the format locale', () => {
+    applyLanguage('', ['en-GB']);
+    expect(formatTime(oct23, { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' })).toBe('15:04');
+    applyLanguage('', ['en-US']);
+    expect(formatTime(oct23, { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' })).toMatch(/^03:04\sPM$/u);
   });
 });
