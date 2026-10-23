@@ -29,7 +29,7 @@ func reportEVMFixture(t *testing.T) *kernel.EVMetrics {
 }
 
 func TestEVMSummaryLinesForDocumentReport(t *testing.T) {
-	lines := evmSummaryLines(reportEVMFixture(t))
+	lines := evmSummaryLines(reportEVMFixture(t), "USD")
 	joined := strings.Join(lines, "\n")
 
 	for _, want := range []string{

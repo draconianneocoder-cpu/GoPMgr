@@ -202,7 +202,7 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 		}
 		for _, ref := range chartRefs {
 			if metrics := spec.ResolvedEVM[ref.chartID]; metrics != nil {
-				renderEVMSection(pdf, metrics)
+				renderEVMSection(pdf, metrics, spec.Currency)
 			}
 		}
 
@@ -253,7 +253,7 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 // evmSummaryLines renders the earned-value block shared by document
 // report paths. Returns nil when cost data is absent, matching the
 // schedule-report suppression rule.
-func evmSummaryLines(m *kernel.EVMetrics) []string {
+func evmSummaryLines(m *kernel.EVMetrics, currency string) []string {
 	if m == nil || m.BAC <= 0 {
 		return nil
 	}
@@ -264,22 +264,22 @@ func evmSummaryLines(m *kernel.EVMetrics) []string {
 		return fmt.Sprintf("%.2f", v)
 	}
 	return []string{
-		"Budget at completion (BAC): " + formatMoney(m.BAC),
-		"Planned value (PV): " + formatMoney(m.PV),
-		"Earned value (EV): " + formatMoney(m.EV),
-		"Actual cost (AC): " + formatMoney(m.AC),
-		"Schedule variance (SV): " + formatMoney(m.SV),
-		"Cost variance (CV): " + formatMoney(m.CV),
+		"Budget at completion (BAC): " + formatMoneyIn(m.BAC, currency),
+		"Planned value (PV): " + formatMoneyIn(m.PV, currency),
+		"Earned value (EV): " + formatMoneyIn(m.EV, currency),
+		"Actual cost (AC): " + formatMoneyIn(m.AC, currency),
+		"Schedule variance (SV): " + formatMoneyIn(m.SV, currency),
+		"Cost variance (CV): " + formatMoneyIn(m.CV, currency),
 		"Schedule performance index (SPI): " + idx(m.SPI),
 		"Cost performance index (CPI): " + idx(m.CPI),
-		"Estimate at completion (EAC): " + formatMoney(m.EAC),
-		"Estimate to complete (ETC): " + formatMoney(m.ETC),
-		"Variance at completion (VAC): " + formatMoney(m.VAC),
+		"Estimate at completion (EAC): " + formatMoneyIn(m.EAC, currency),
+		"Estimate to complete (ETC): " + formatMoneyIn(m.ETC, currency),
+		"Variance at completion (VAC): " + formatMoneyIn(m.VAC, currency),
 	}
 }
 
-func renderEVMSection(pdf *pdfdoc.PDF, m *kernel.EVMetrics) {
-	lines := evmSummaryLines(m)
+func renderEVMSection(pdf *pdfdoc.PDF, m *kernel.EVMetrics, currency string) {
+	lines := evmSummaryLines(m, currency)
 	if len(lines) == 0 {
 		return
 	}
@@ -367,7 +367,7 @@ func renderSectionBody(pdf *pdfdoc.PDF, s ResolvedSection, currency string) ([]c
 			pdf.Ln(1)
 		case FieldNumber:
 			if n, ok := v.(float64); ok && n != 0 {
-				writeKVCompact(pdf, f.LabelIn(currency), FormatNumberField(f, n))
+				writeKVCompact(pdf, f.LabelIn(currency), FormatNumberField(f, n, currency))
 			}
 		case FieldBool:
 			if b, ok := v.(bool); ok {

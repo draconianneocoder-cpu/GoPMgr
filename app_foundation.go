@@ -876,7 +876,7 @@ func (a *App) ComputeBudget() (BudgetSummaryWire, error) {
 	if err != nil {
 		return BudgetSummaryWire{}, err
 	}
-	return budgetSummaryWire(summary), nil
+	return budgetSummaryWire(summary, p.CurrencyCode), nil
 }
 
 // RunPortfolioAnalytics aggregates a cross-project cost and EVM rollup over every

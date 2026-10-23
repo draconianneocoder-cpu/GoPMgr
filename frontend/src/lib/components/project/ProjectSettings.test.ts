@@ -302,21 +302,25 @@ describe('reporting currency', () => {
     expect(await findByText(/can change only while this project has no budget value, cost control entry, non-zero reserve balance, or approved cost control baseline/i)).toBeInTheDocument();
   });
 
-	it('retains a legacy JPY selection only for inspection and explains the read-only policy', async () => {
+	it('offers Japanese yen as an ordinary reporting currency (ADR-009)', async () => {
 		app.GetProjectMeta = vi.fn(async () => ({
-			id: 'project-1', name: 'Legacy JPY Project', description: '', industry: '', sub_category: '', methodology: '',
-			country_code: 'JP', time_zone: 'Asia/Tokyo', status: 'planning', phase: 'planning', currency_code: 'JPY',
+			id: 'project-1', name: 'Tokyo Project', description: '', industry: '', sub_category: '', methodology: '',
+			country_code: 'JP', time_zone: 'Asia/Tokyo', status: 'planning', phase: 'planning', currency_code: 'USD',
 		}));
-		const { findByLabelText, findByText } = render(ProjectSettings);
+		app.UpdateProjectMeta = vi.fn(async (p: unknown) => p);
+		const { findByLabelText, findByRole, queryByText } = render(ProjectSettings);
 		const currency = (await findByLabelText(/reporting currency/i)) as HTMLSelectElement;
-		expect(currency).toHaveValue('JPY');
-		expect(within(currency).getByRole('option', { name: /legacy read-only/i })).toBeInTheDocument();
-		expect(await findByText(/cost control changes are disabled; no values were converted/i)).toBeInTheDocument();
+		expect(within(currency).getByRole('option', { name: 'Japanese yen (JPY)' })).toBeInTheDocument();
+		expect(within(currency).queryByRole('option', { name: /legacy|read-only/i })).toBeNull();
+		await fireEvent.change(currency, { target: { value: 'JPY' } });
+		await fireEvent.click(await findByRole('button', { name: /^save details$/i }));
+		await waitFor(() => expect(app.UpdateProjectMeta).toHaveBeenCalledWith(expect.objectContaining({ currency_code: 'JPY' })));
+		expect(queryByText(/cost control changes are disabled/i)).toBeNull();
 	});
 
-  it('restores locked legacy JPY after a rejected currency change', async () => {
+  it('restores a locked JPY currency after a rejected change', async () => {
     app.GetProjectMeta = vi.fn(async () => ({
-      id: 'project-1', name: 'Locked Legacy JPY Project', description: '', industry: '', sub_category: '', methodology: '',
+      id: 'project-1', name: 'Locked JPY Project', description: '', industry: '', sub_category: '', methodology: '',
       country_code: 'JP', time_zone: 'Asia/Tokyo', status: 'planning', phase: 'planning', currency_code: 'JPY',
     }));
     app.UpdateProjectMeta = vi.fn(async () => {
@@ -330,8 +334,7 @@ describe('reporting currency', () => {
 
     await findByText(/save failed:.*reporting currency cannot change/i);
     expect(currency).toHaveValue('JPY');
-    expect(within(currency).getByRole('option', { name: /legacy read-only/i })).toBeInTheDocument();
-    expect(await findByText(/cost control changes are disabled; no values were converted/i)).toBeInTheDocument();
+    expect(within(currency).getByRole('option', { name: 'Japanese yen (JPY)' })).toBeInTheDocument();
   });
 });
 

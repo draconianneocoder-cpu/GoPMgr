@@ -44,9 +44,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
     { id: 'protection', label: 'Data Protection' },
   ];
 
-  // Phase 1 financial reporting is single-currency per project. JPY is
-  // intentionally absent: old projects keep it read-only under their original
-  // fixed-two-decimal convention until an exponent-aware migration exists.
+  // Phase 1 financial reporting is single-currency per project. Yen amounts
+  // read as whole numbers; every currency is stored in hundredths, so older
+  // JPY projects keep their values (ADR-009).
   const projectCurrencies = [
     ['USD', 'US dollar (USD)'],
     ['EUR', 'Euro (EUR)'],
@@ -54,11 +54,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
     ['CAD', 'Canadian dollar (CAD)'],
     ['AUD', 'Australian dollar (AUD)'],
     ['CHF', 'Swiss franc (CHF)'],
+    ['JPY', 'Japanese yen (JPY)'],
   ] as const;
 
   let draft = $state<ProjectMeta | null>(null);
   let original = $state<ProjectMeta | null>(null);
-  const legacyJPY = $derived(original?.currency_code === 'JPY');
   let busy = $state(false);
   let status = $state('');
   let error = $state('');
@@ -1251,14 +1251,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
               {#each projectCurrencies as [code, label] (code)}
                 <option value={code}>{label}</option>
               {/each}
-              {#if legacyJPY}
-                <option value="JPY">Japanese yen (JPY) — legacy read-only</option>
-              {/if}
             </select>
             <span id="reporting-currency-help" class="block text-[10px] text-slate-500 mt-1">
-              {legacyJPY
-                ? 'Legacy JPY values remain readable under their original fixed two-decimal convention. Cost Control changes are disabled; no values were converted. Select a supported currency only if this project has no financial values that lock its currency.'
-                : 'Used for all Cost Control amounts. It can change only while this project has no Budget value, Cost Control entry, non-zero reserve balance, or approved Cost Control baseline, because GoPMgr does not convert stored values.'}
+              Used for all Cost Control amounts. It can change only while this project has no Budget value, Cost Control entry, non-zero reserve balance, or approved Cost Control baseline, because GoPMgr does not convert stored values.
             </span>
           </label>
        </div>

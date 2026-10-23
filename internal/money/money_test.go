@@ -101,3 +101,46 @@ func TestAccumulatorIsOrderIndependent(t *testing.T) {
 		}
 	}
 }
+
+// Yen amounts read as whole numbers; a fraction stored by an older JPY
+// project keeps both digits, and other currencies always show two (ADR-009).
+func TestDecimalForCurrency(t *testing.T) {
+	cases := []struct {
+		minor    int64
+		currency string
+		want     string
+	}{
+		{150_000, "JPY", "1500"},
+		{150_000, "jpy", "1500"},
+		{-150_000, "JPY", "-1500"},
+		{0, "JPY", "0"},
+		{12_345, "JPY", "123.45"},
+		{-5, "JPY", "-0.05"},
+		{math.MinInt64, "JPY", "-92233720368547758.08"},
+		{150_000, "USD", "1500.00"},
+		{150_000, "EUR", "1500.00"},
+		{150_000, "", "1500.00"},
+	}
+	for _, c := range cases {
+		if got := (Amount{MinorUnits: c.minor}).DecimalFor(c.currency); got != c.want {
+			t.Errorf("DecimalFor(%d, %q) = %q, want %q", c.minor, c.currency, got, c.want)
+		}
+	}
+	for _, code := range []string{"USD", "EUR", "GBP", "CAD", "AUD", "CHF"} {
+		if WholeUnitCurrency(code) {
+			t.Errorf("WholeUnitCurrency(%q) = true", code)
+		}
+	}
+}
+
+// A whole-yen amount survives the wire: DecimalFor's output parses back to
+// the same stored value.
+func TestDecimalForRoundTripsThroughParseDecimal(t *testing.T) {
+	for _, minor := range []int64{0, 100, 150_000, 12_345, -9_900, math.MaxInt64 - 7} {
+		text := Amount{MinorUnits: minor}.DecimalFor("JPY")
+		got, err := ParseDecimal(text)
+		if err != nil || got.MinorUnits != minor {
+			t.Errorf("ParseDecimal(DecimalFor(%d)) = %+v, %v", minor, got, err)
+		}
+	}
+}

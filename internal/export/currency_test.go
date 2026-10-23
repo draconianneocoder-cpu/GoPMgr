@@ -50,6 +50,15 @@ func TestRenderDocument_LabelsAmountsInTheProjectCurrency(t *testing.T) {
 				}
 			}
 
+			out, err = c.render(documents.KindProjectCharterWord, charter, "Atlas", "JPY")
+			if err != nil {
+				t.Fatalf("render yen charter: %v", err)
+			}
+			body = zipPart(t, out, c.part)
+			if !strings.Contains(body, "High-Level Budget (JPY)") || !strings.Contains(body, "1,284,500") || strings.Contains(body, "1,284,500.00") {
+				t.Errorf("yen charter %s should print High-Level Budget (JPY) 1,284,500 with no decimals", c.part)
+			}
+
 			if _, err := c.render(documents.KindProjectCharterWord, charter, "Atlas", "eur"); err == nil {
 				t.Errorf("render accepted a malformed currency")
 			}

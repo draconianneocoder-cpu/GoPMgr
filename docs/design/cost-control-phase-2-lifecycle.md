@@ -45,7 +45,7 @@ separation, not a compatibility target for GoPMgr.
 | Baselines | `cost_baseline_snapshots` is immutable. Cost baseline is planned plus contingency; authorised funding adds management reserve. | A later movement cannot rewrite an approved snapshot. |
 | Evidence | Risks/change evidence are nested document JSON, not stable relational entities. | A SQL foreign key to a nested risk ID would be invalid. |
 | Authority | A baseline records the signed-in local account. `is_admin` is system-account administration. | Neither is project financial authorization. |
-| Currency | No FX exists. Legacy JPY projects are read-only under their historical two-decimal convention. | Phase 2 cannot introduce currency conversion or mutate legacy JPY Cost Control data. |
+| Currency | No FX exists. Since ADR-009, JPY is an ordinary reporting currency stored in hundredths like the others; older JPY projects keep their values and are editable. | Phase 2 cannot introduce currency conversion or mutate legacy JPY Cost Control data. |
 
 ## Decisions required before implementation
 
@@ -97,7 +97,8 @@ until the financial-role decision is implemented and verified.
   transport. Never route money through JavaScript numbers or `float64`.
 - Every record is project-scoped and uses the baseline's project currency; no
   FX conversion is introduced.
-- Legacy JPY Cost Control stays read-only. No existing amount is rescaled.
+- No existing amount is rescaled. JPY projects, including older ones, are
+  editable since ADR-009 and keep their stored hundredths.
 - An allocation cannot exceed the defined remaining contingency and cannot
   make a reserve negative.
 - Baseline snapshots and existing ledger rows never mutate.
@@ -133,7 +134,7 @@ fields only after documenting their ownership and compatibility impact.
 | Evidence drift | Tests preserve the captured evidence summary after the source document changes or is deleted. |
 | Incorrect accounting | Tests prove allocation changes neither commitment nor actual, preserves baseline/funding, and reconciles current planned and remaining contingency values. |
 | Correction abuse | Tests reject update/delete and a second reversal; one linked reversal restores the defined effect with a reason and audit chain. |
-| Compatibility | Additive plaintext and SQLCipher migration fixtures plus legacy-JPY read-only tests. |
+| Compatibility | Additive plaintext and SQLCipher migration fixtures plus the ADR-009 tests that older JPY values keep their meaning. |
 | User journey | Component tests for confirmation before mutation, duplicate-submit protection, error/retry, focus/keyboard behavior, and native Wails evidence on a disposable project. |
 
 ## Delivery order

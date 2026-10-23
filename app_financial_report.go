@@ -92,8 +92,8 @@ func buildFinancialReportSnapshot(d *db.Database, asOf time.Time) (documents.Fin
 	if err != nil {
 		return documents.FinancialReport{}, fmt.Errorf("compute financial report legacy Budget: %w", err)
 	}
-	legacyWire := budgetSummaryWire(legacy)
-	control, err := financialCostControlSnapshot(types, entries, reserves, baselines)
+	legacyWire := budgetSummaryWire(legacy, project.CurrencyCode)
+	control, err := financialCostControlSnapshot(types, entries, reserves, baselines, project.CurrencyCode)
 	if err != nil {
 		return documents.FinancialReport{}, err
 	}
@@ -205,7 +205,7 @@ func snapshotCostBaselines(tx *sql.Tx, projectID string) ([]db.CostBaselineSnaps
 	return out, rows.Err()
 }
 
-func financialCostControlSnapshot(types []db.CostType, entries []db.CostEntry, reserves []db.CostReserve, baselines []db.CostBaselineSnapshot) (documents.FinancialCostControl, error) {
+func financialCostControlSnapshot(types []db.CostType, entries []db.CostEntry, reserves []db.CostReserve, baselines []db.CostBaselineSnapshot, currency string) (documents.FinancialCostControl, error) {
 	typesByID := make(map[string]db.CostType, len(types))
 	for _, t := range types {
 		typesByID[t.ID] = t
@@ -228,7 +228,7 @@ func financialCostControlSnapshot(types []db.CostType, entries []db.CostEntry, r
 		default:
 			return documents.FinancialCostControl{}, fmt.Errorf("financial report cost entry %q has unsupported kind %q", e.ID, e.Kind)
 		}
-		rows = append(rows, documents.FinancialLedgerEntry{Date: e.CostDate, State: e.Kind, Type: t.Name, Attribution: t.Attribution, Behavior: t.Behavior, Treatment: t.Treatment, Description: e.Description, Amount: amount.Decimal(), ItemName: e.ItemName, SKU: e.SKU, SupplierName: e.SupplierName, InvoiceReference: e.InvoiceReference, Quantity: formatQuantityDecimal(e.QuantityMilliUnits), Unit: e.Unit})
+		rows = append(rows, documents.FinancialLedgerEntry{Date: e.CostDate, State: e.Kind, Type: t.Name, Attribution: t.Attribution, Behavior: t.Behavior, Treatment: t.Treatment, Description: e.Description, Amount: amount.DecimalFor(currency), ItemName: e.ItemName, SKU: e.SKU, SupplierName: e.SupplierName, InvoiceReference: e.InvoiceReference, Quantity: formatQuantityDecimal(e.QuantityMilliUnits), Unit: e.Unit})
 	}
 	quantityAggregates, err := aggregateEntryQuantities(entries)
 	if err != nil {
@@ -245,7 +245,7 @@ func financialCostControlSnapshot(types []db.CostType, entries []db.CostEntry, r
 		default:
 			return documents.FinancialCostControl{}, fmt.Errorf("financial report reserve has unsupported kind %q", r.Kind)
 		}
-		reserveRows = append(reserveRows, documents.FinancialReserve{Kind: r.Kind, Amount: amount.Decimal(), Description: r.Description})
+		reserveRows = append(reserveRows, documents.FinancialReserve{Kind: r.Kind, Amount: amount.DecimalFor(currency), Description: r.Description})
 	}
 	pl, err := planned.Amount()
 	if err != nil {
@@ -283,7 +283,7 @@ func financialCostControlSnapshot(types []db.CostType, entries []db.CostEntry, r
 		}
 		baselineRows = append(baselineRows, documents.FinancialBaseline{Version: wire.Version, Planned: wire.Planned, Contingency: wire.Contingency, CostBaseline: wire.CostBaseline, ManagementReserve: wire.ManagementReserve, AuthorisedFunding: wire.AuthorisedFunding, ApprovedBy: wire.ApprovedBy, ApprovalNote: wire.ApprovalNote, ApprovedAt: wire.ApprovedAt})
 	}
-	return documents.FinancialCostControl{Planned: pl.Decimal(), Contingency: cont.Decimal(), CostBaseline: baseline.Decimal(), ManagementReserve: mgmt.Decimal(), AuthorisedFunding: authority.Decimal(), Commitment: co.Decimal(), Actual: ac.Decimal(), Entries: rows, Reserves: reserveRows, Baselines: baselineRows, QuantityAggregates: quantityAggregates}, nil
+	return documents.FinancialCostControl{Planned: pl.DecimalFor(currency), Contingency: cont.DecimalFor(currency), CostBaseline: baseline.DecimalFor(currency), ManagementReserve: mgmt.DecimalFor(currency), AuthorisedFunding: authority.DecimalFor(currency), Commitment: co.DecimalFor(currency), Actual: ac.DecimalFor(currency), Entries: rows, Reserves: reserveRows, Baselines: baselineRows, QuantityAggregates: quantityAggregates}, nil
 }
 
 // aggregateEntryQuantities mirrors db.(*Database).AggregateCostEntryQuantities

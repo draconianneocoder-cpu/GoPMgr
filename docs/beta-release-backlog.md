@@ -457,7 +457,11 @@ That result took six live-GUI cycles to reach because the first five, all run un
   explicitly approve or amend its bounded contract and record the accepted
   revision. Only then may FX-1 implement exact rate parsing and immutable
   user-private rate-set storage.
-- Cost Control currency-exponent policy: JPY is now contained as a legacy-only
+- Cost Control currency-exponent policy (resolved 2026-10-23 by
+  [ADR-009](design/ADR-009-yen-reporting-currency.md): every currency stays in
+  hundredths, yen reads as whole numbers, and JPY is an ordinary reporting
+  currency, so no scale metadata or migration is needed; the original note
+  follows): JPY is now contained as a legacy-only
   case. Existing JPY projects are readable but Cost Control is read-only; new
   JPY projects and currency transitions to JPY are rejected. No value is
   converted or rescaled. Before introducing exponent-aware JPY, define

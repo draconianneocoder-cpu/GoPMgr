@@ -20,17 +20,19 @@ type BudgetSummaryWire struct {
 	ByCategory     map[string]string `json:"by_category"`
 }
 
-func budgetSummaryWire(summary budget.Summary) BudgetSummaryWire {
+// budgetSummaryWire formats the legacy budget rollup in the project's
+// reporting currency: yen as whole numbers, others with two decimals.
+func budgetSummaryWire(summary budget.Summary, currency string) BudgetSummaryWire {
 	byCategory := make(map[string]string, len(summary.ByCategoryMinorUnits))
 	for category, minorUnits := range summary.ByCategoryMinorUnits {
-		byCategory[category] = money.Amount{MinorUnits: minorUnits}.Decimal()
+		byCategory[category] = money.Amount{MinorUnits: minorUnits}.DecimalFor(currency)
 	}
 	return BudgetSummaryWire{
-		Budget:         money.Amount{MinorUnits: summary.BudgetMinorUnits}.Decimal(),
-		ContractValue:  money.Amount{MinorUnits: summary.ContractValueMinorUnits}.Decimal(),
-		LabourEstimate: money.Amount{MinorUnits: summary.LabourEstimateMinorUnits}.Decimal(),
-		Committed:      money.Amount{MinorUnits: summary.CommittedMinorUnits}.Decimal(),
-		Remaining:      money.Amount{MinorUnits: summary.RemainingMinorUnits}.Decimal(),
+		Budget:         money.Amount{MinorUnits: summary.BudgetMinorUnits}.DecimalFor(currency),
+		ContractValue:  money.Amount{MinorUnits: summary.ContractValueMinorUnits}.DecimalFor(currency),
+		LabourEstimate: money.Amount{MinorUnits: summary.LabourEstimateMinorUnits}.DecimalFor(currency),
+		Committed:      money.Amount{MinorUnits: summary.CommittedMinorUnits}.DecimalFor(currency),
+		Remaining:      money.Amount{MinorUnits: summary.RemainingMinorUnits}.DecimalFor(currency),
 		ByCategory:     byCategory,
 	}
 }

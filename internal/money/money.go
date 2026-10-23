@@ -97,6 +97,25 @@ func (a Amount) Decimal() string {
 	return fmt.Sprintf("%d.%02d", n/MinorUnitsPerMajor, n%MinorUnitsPerMajor)
 }
 
+// WholeUnitCurrency reports whether a reporting currency has no minor unit
+// in use, so its amounts read as whole numbers: JPY, whose ISO 4217 exponent
+// is 0. Amounts are still stored in hundredths of the major unit, as for
+// every currency, so legacy and new values share one meaning.
+func WholeUnitCurrency(code string) bool {
+	return strings.EqualFold(strings.TrimSpace(code), "JPY")
+}
+
+// DecimalFor is Decimal for a reporting currency. For a whole-unit currency
+// it drops the ".00" of a whole amount ("1500" yen, not "1500.00"); an amount
+// with a fraction keeps both digits, so an older value recorded in fractions
+// of a yen still reads exactly as stored.
+func (a Amount) DecimalFor(currency string) string {
+	if WholeUnitCurrency(currency) && a.MinorUnits%MinorUnitsPerMajor == 0 {
+		return strconv.FormatInt(a.MinorUnits/MinorUnitsPerMajor, 10)
+	}
+	return a.Decimal()
+}
+
 // FromMajorFloat converts a UI/database compatibility number such as
 // 12.34 into exact minor units. The rest of the application should use
 // Amount for arithmetic; this adapter exists only at legacy boundaries.

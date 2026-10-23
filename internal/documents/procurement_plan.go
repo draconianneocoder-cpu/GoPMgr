@@ -51,7 +51,7 @@ func RenderProcurementPlanPDF(content map[string]interface{}, projectName string
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetTextColor(30, 41, 59)
 	pdf.Cell(0, 6, fmt.Sprintf("Items: %d  \xc2\xb7  Total budget: %s %s",
-		len(items), currencyOf(content), formatMoney(total)))
+		len(items), currencyOf(content), formatMoneyIn(total, currencyOf(content))))
 	pdf.Ln(7)
 	pdf.SetTextColor(0, 0, 0)
 
@@ -268,7 +268,7 @@ func drawProcurementTable(pdf *pdfdoc.PDF, items []procurementItem, currency str
 
 		budget := "—"
 		if it.Budget != 0 {
-			budget = formatMoney(it.Budget)
+			budget = formatMoneyIn(it.Budget, currency)
 		}
 		pdf.CellFormat(cols[3].w, 6, budget, "1", 0, "R", true, 0, "")
 		pdf.CellFormat(cols[4].w, 6, truncProc(it.VendorSelectionCriteria, 100), "1", 0, "L", true, 0, "")
@@ -279,7 +279,7 @@ func drawProcurementTable(pdf *pdfdoc.PDF, items []procurementItem, currency str
 	pdf.SetFillColor(226, 232, 240)
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.CellFormat(cols[0].w+cols[1].w+cols[2].w, 7, "Total", "1", 0, "R", true, 0, "")
-	pdf.CellFormat(cols[3].w, 7, formatMoney(procurementTotal(items)), "1", 0, "R", true, 0, "")
+	pdf.CellFormat(cols[3].w, 7, formatMoneyIn(procurementTotal(items), currency), "1", 0, "R", true, 0, "")
 	pdf.CellFormat(cols[4].w, 7, "", "1", 0, "L", true, 0, "")
 	pdf.Ln(-1)
 }

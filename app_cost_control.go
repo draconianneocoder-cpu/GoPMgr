@@ -181,7 +181,7 @@ func (a *App) ListCostEntries() ([]CostEntryWire, error) {
 	}
 	out := make([]CostEntryWire, 0, len(entries))
 	for _, entry := range entries {
-		out = append(out, costEntryWire(entry))
+		out = append(out, costEntryWire(entry, p.CurrencyCode))
 	}
 	return out, nil
 }
@@ -207,7 +207,7 @@ func (a *App) ComputeCostClassificationSummary() (CostClassificationSummaryWire,
 	if err != nil {
 		return CostClassificationSummaryWire{}, err
 	}
-	return classifyCostEntries(entries, typesByID)
+	return classifyCostEntries(entries, typesByID, p.CurrencyCode)
 }
 func (a *App) ListCostReserves() ([]CostReserveWire, error) {
 	d := a.requireDB()
@@ -224,7 +224,7 @@ func (a *App) ListCostReserves() ([]CostReserveWire, error) {
 	}
 	out := make([]CostReserveWire, 0, len(items))
 	for _, r := range items {
-		out = append(out, CostReserveWire{Kind: r.Kind, Amount: formatMoneyDecimal(money.Amount{MinorUnits: r.AmountMinorUnits}), Description: r.Description})
+		out = append(out, CostReserveWire{Kind: r.Kind, Amount: formatMoneyDecimal(money.Amount{MinorUnits: r.AmountMinorUnits}, p.CurrencyCode), Description: r.Description})
 	}
 	return out, nil
 }
@@ -248,7 +248,7 @@ func (a *App) SaveCostReserve(input CostReserveWire) (CostReserveWire, error) {
 	if err != nil {
 		return CostReserveWire{}, err
 	}
-	return CostReserveWire{Kind: saved.Kind, Amount: formatMoneyDecimal(money.Amount{MinorUnits: saved.AmountMinorUnits}), Description: saved.Description}, nil
+	return CostReserveWire{Kind: saved.Kind, Amount: formatMoneyDecimal(money.Amount{MinorUnits: saved.AmountMinorUnits}, p.CurrencyCode), Description: saved.Description}, nil
 }
 
 func (a *App) SaveCostEntry(input CostEntryWire) (CostEntryWire, error) {
@@ -280,7 +280,7 @@ func (a *App) SaveCostEntry(input CostEntryWire) (CostEntryWire, error) {
 	if err != nil {
 		return CostEntryWire{}, err
 	}
-	return costEntryWire(saved), nil
+	return costEntryWire(saved, p.CurrencyCode), nil
 }
 
 // SearchCostEntries returns ledger rows whose description or structured
@@ -301,7 +301,7 @@ func (a *App) SearchCostEntries(query string) ([]CostEntryWire, error) {
 	}
 	out := make([]CostEntryWire, 0, len(entries))
 	for _, entry := range entries {
-		out = append(out, costEntryWire(entry))
+		out = append(out, costEntryWire(entry, p.CurrencyCode))
 	}
 	return out, nil
 }
@@ -438,7 +438,7 @@ func (a *App) ComputeCostSummary() (CostSummaryWire, error) {
 	if err != nil {
 		return CostSummaryWire{}, err
 	}
-	return CostSummaryWire{CurrencyCode: p.CurrencyCode, MutationDisabledReason: costControlMutationDisabledReason(p), LegacyBudget: formatMoneyDecimal(legacyBudget), Planned: formatMoneyDecimal(pl), Contingency: formatMoneyDecimal(c), CostBaseline: formatMoneyDecimal(baseline), ManagementReserve: formatMoneyDecimal(m), AuthorisedFunding: formatMoneyDecimal(authority), Commitment: formatMoneyDecimal(co), Actual: formatMoneyDecimal(ac)}, nil
+	return CostSummaryWire{CurrencyCode: p.CurrencyCode, MutationDisabledReason: costControlMutationDisabledReason(p), LegacyBudget: formatMoneyDecimal(legacyBudget, p.CurrencyCode), Planned: formatMoneyDecimal(pl, p.CurrencyCode), Contingency: formatMoneyDecimal(c, p.CurrencyCode), CostBaseline: formatMoneyDecimal(baseline, p.CurrencyCode), ManagementReserve: formatMoneyDecimal(m, p.CurrencyCode), AuthorisedFunding: formatMoneyDecimal(authority, p.CurrencyCode), Commitment: formatMoneyDecimal(co, p.CurrencyCode), Actual: formatMoneyDecimal(ac, p.CurrencyCode)}, nil
 }
 
 func costControlMutationAllowed(project db.Project) error {
@@ -448,17 +448,18 @@ func costControlMutationAllowed(project db.Project) error {
 	return nil
 }
 
-func costControlMutationDisabledReason(project db.Project) string {
-	if project.CurrencyCode == "JPY" {
-		return "Cost Control is read-only for this legacy JPY project: existing amounts retain their original fixed two-decimal convention and are not being converted."
-	}
+// costControlMutationDisabledReason names a project state that makes Cost
+// Control read-only. None exists today: legacy JPY projects became editable
+// when yen became a full reporting currency, because every currency's
+// amounts are stored in hundredths (docs/design/ADR-009-yen-reporting-currency.md).
+func costControlMutationDisabledReason(db.Project) string {
 	return ""
 }
 
-func costEntryWire(entry db.CostEntry) CostEntryWire {
+func costEntryWire(entry db.CostEntry, currency string) CostEntryWire {
 	return CostEntryWire{
 		ID: entry.ID, CostTypeID: entry.CostTypeID, Kind: entry.Kind, CostDate: entry.CostDate, Description: entry.Description,
-		Amount: formatMoneyDecimal(money.Amount{MinorUnits: entry.AmountMinorUnits}), Quantity: formatQuantityDecimal(entry.QuantityMilliUnits),
+		Amount: formatMoneyDecimal(money.Amount{MinorUnits: entry.AmountMinorUnits}, currency), Quantity: formatQuantityDecimal(entry.QuantityMilliUnits),
 		Unit: entry.Unit, ItemName: entry.ItemName, SKU: entry.SKU, SupplierName: entry.SupplierName, InvoiceReference: entry.InvoiceReference,
 	}
 }
@@ -475,10 +476,10 @@ func costBaselineWire(s db.CostBaselineSnapshot) (CostBaselineWire, error) {
 	if err != nil {
 		return CostBaselineWire{}, fmt.Errorf("cost baseline snapshot %q: %w", s.ID, err)
 	}
-	return CostBaselineWire{Version: s.Version, CurrencyCode: s.CurrencyCode, Planned: formatMoneyDecimal(pl), Contingency: formatMoneyDecimal(cont), CostBaseline: formatMoneyDecimal(base), ManagementReserve: formatMoneyDecimal(mgmt), AuthorisedFunding: formatMoneyDecimal(authority), ApprovedBy: s.ApprovedBy, ApprovalNote: s.ApprovalNote, ApprovedAt: s.ApprovedAt}, nil
+	return CostBaselineWire{Version: s.Version, CurrencyCode: s.CurrencyCode, Planned: formatMoneyDecimal(pl, s.CurrencyCode), Contingency: formatMoneyDecimal(cont, s.CurrencyCode), CostBaseline: formatMoneyDecimal(base, s.CurrencyCode), ManagementReserve: formatMoneyDecimal(mgmt, s.CurrencyCode), AuthorisedFunding: formatMoneyDecimal(authority, s.CurrencyCode), ApprovedBy: s.ApprovedBy, ApprovalNote: s.ApprovalNote, ApprovedAt: s.ApprovedAt}, nil
 }
 
-func classifyCostEntries(entries []db.CostEntry, typesByID map[string]db.CostType) (CostClassificationSummaryWire, error) {
+func classifyCostEntries(entries []db.CostEntry, typesByID map[string]db.CostType, currency string) (CostClassificationSummaryWire, error) {
 	type totals struct {
 		planned    money.Accumulator
 		commitment money.Accumulator
@@ -541,7 +542,7 @@ func classifyCostEntries(entries []db.CostEntry, typesByID map[string]db.CostTyp
 			if err != nil {
 				return nil, fmt.Errorf("cost classification %s actual: %w", value, err)
 			}
-			out = append(out, CostClassificationRowWire{Value: value, Planned: formatMoneyDecimal(planned), Commitment: formatMoneyDecimal(commitment), Actual: formatMoneyDecimal(actual)})
+			out = append(out, CostClassificationRowWire{Value: value, Planned: formatMoneyDecimal(planned, currency), Commitment: formatMoneyDecimal(commitment, currency), Actual: formatMoneyDecimal(actual, currency)})
 		}
 		return out, nil
 	}
@@ -563,6 +564,9 @@ func classifyCostEntries(entries []db.CostEntry, typesByID map[string]db.CostTyp
 func parseMoneyDecimal(v string) (money.Amount, error) {
 	return money.ParseDecimal(v)
 }
-func formatMoneyDecimal(amount money.Amount) string {
-	return amount.Decimal()
+
+// formatMoneyDecimal formats an amount for the wire in its reporting
+// currency: yen as whole numbers, other currencies with two decimals.
+func formatMoneyDecimal(amount money.Amount, currency string) string {
+	return amount.DecimalFor(currency)
 }

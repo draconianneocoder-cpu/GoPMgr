@@ -217,7 +217,7 @@ func drawProposalBudgetTile(pdf *pdfdoc.PDF, budget float64, currency string) {
 	pdf.SetXY(tileX+3, startY+7)
 	pdf.SetFont("Helvetica", "B", 18)
 	pdf.SetTextColor(255, 255, 255)
-	pdf.CellFormat(tileW-6, 9, formatMoney(budget), "", 0, "L", false, 0, "")
+	pdf.CellFormat(tileW-6, 9, formatMoneyIn(budget, currency), "", 0, "L", false, 0, "")
 
 	pdf.SetXY(20, startY+tileH+4)
 	pdf.SetTextColor(0, 0, 0)

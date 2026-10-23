@@ -69,7 +69,7 @@ func RenderBusinessCasePDF(content map[string]interface{}, projectName string) (
 			pdf.SetFont("Helvetica", "B", 10)
 			pdf.CellFormat(50, 6, "Cost summary:", "", 0, "L", false, 0, "")
 			pdf.SetFont("Helvetica", "", 10)
-			pdf.CellFormat(0, 6, currencyOf(content)+" "+formatMoney(cost), "", 0, "L", false, 0, "")
+			pdf.CellFormat(0, 6, currencyOf(content)+" "+formatMoneyIn(cost, currencyOf(content)), "", 0, "L", false, 0, "")
 			pdf.Ln(-1)
 		}
 		if roi != "" {

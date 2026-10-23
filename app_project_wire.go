@@ -37,7 +37,7 @@ func projectMetaWire(project db.Project) ProjectMetaWire {
 	return ProjectMetaWire{
 		ID: project.ID, Name: project.Name, Description: project.Description,
 		Status: project.Status, Phase: project.Phase, StartDate: project.StartDate,
-		EndDate: project.EndDate, Budget: money.Amount{MinorUnits: project.BudgetMinorUnits}.Decimal(),
+		EndDate: project.EndDate, Budget: money.Amount{MinorUnits: project.BudgetMinorUnits}.DecimalFor(project.CurrencyCode),
 		CurrencyCode: project.CurrencyCode, Owner: project.Owner, Industry: project.Industry,
 		SubCategory: project.SubCategory, Methodology: project.Methodology,
 		CountryCode: project.CountryCode, TimeZone: project.TimeZone,

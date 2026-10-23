@@ -133,7 +133,7 @@ func (a *App) AdminViewCosts() (AdminViewCostsWire, error) {
 			return err
 		}
 		for _, e := range entries {
-			out.Entries = append(out.Entries, costEntryWire(e))
+			out.Entries = append(out.Entries, costEntryWire(e, proj.CurrencyCode))
 		}
 		baselines, err := view.ListCostBaselines(proj.ID)
 		if err != nil {

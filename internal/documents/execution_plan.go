@@ -54,7 +54,7 @@ func RenderExecutionPlanPDF(content map[string]interface{}, projectName string) 
 	pdf.SetTextColor(30, 41, 59)
 	pdf.Cell(0, 6, fmt.Sprintf(
 		"Tasks: %d  \xc2\xb7  Total cost: %s %s  \xc2\xb7  Window: %s \xe2\x86\x92 %s (%d days)",
-		len(tasks), currencyOf(content), formatMoney(totalCost),
+		len(tasks), currencyOf(content), formatMoneyIn(totalCost, currencyOf(content)),
 		shortExecDate(window.Start), shortExecDate(window.End), window.Days))
 	pdf.Ln(8)
 	pdf.SetTextColor(0, 0, 0)
@@ -217,7 +217,7 @@ func drawExecutionTable(pdf *pdfdoc.PDF, tasks []executionTask, window projectWi
 
 		costLabel := "—"
 		if t.Cost != 0 {
-			costLabel = formatMoney(t.Cost)
+			costLabel = formatMoneyIn(t.Cost, currency)
 		}
 		pdf.CellFormat(cols[5].w, rowH, costLabel, "1", 0, "R", true, 0, "")
 
@@ -233,7 +233,7 @@ func drawExecutionTable(pdf *pdfdoc.PDF, tasks []executionTask, window projectWi
 	pdf.SetFont("Helvetica", "B", 9)
 	leftW := cols[0].w + cols[1].w + cols[2].w + cols[3].w + cols[4].w
 	pdf.CellFormat(leftW, 7, "Total", "1", 0, "R", true, 0, "")
-	pdf.CellFormat(cols[5].w, 7, formatMoney(sumExecutionCost(tasks)), "1", 0, "R", true, 0, "")
+	pdf.CellFormat(cols[5].w, 7, formatMoneyIn(sumExecutionCost(tasks), currency), "1", 0, "R", true, 0, "")
 	pdf.CellFormat(cols[6].w, 7, "", "1", 0, "L", true, 0, "")
 	pdf.Ln(-1)
 }
