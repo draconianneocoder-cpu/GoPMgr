@@ -121,5 +121,7 @@ then uses a font it already has:
   IBM Plex in its font stacks, as fallbacks for emoji and other characters
   Plex lacks.
 
-Imported fonts belong to the user. `ImportFont` checks only that a file is a
-TrueType font, not its license or its embedding permissions.
+Imported fonts belong to the user. `ImportFont` checks that a file is a
+TrueType font and refuses one whose OS/2 `fsType` forbids the way GoPMgr
+embeds fonts: marked restricted-license, not to be subset, or bitmap-only.
+It does not check the font's license itself.
