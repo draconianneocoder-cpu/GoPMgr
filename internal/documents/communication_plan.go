@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderCommunicationPlanPDF is the bespoke renderer for the
@@ -147,7 +147,7 @@ func groupByAudience(rows []channelRow) []audienceGroup {
 
 // drawAudienceBlock renders one (audience, rows) group as a labelled
 // table.
-func drawAudienceBlock(pdf *fpdf.Fpdf, audience string, rows []channelRow) {
+func drawAudienceBlock(pdf *pdfdoc.PDF, audience string, rows []channelRow) {
 	// Audience heading
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)

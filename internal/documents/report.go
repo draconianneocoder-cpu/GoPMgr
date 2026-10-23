@@ -9,10 +9,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
-
 	"gopmgr/internal/charts/pdfrender"
 	"gopmgr/internal/kernel"
+	"gopmgr/internal/pdfdoc"
 	"gopmgr/internal/pdfmeta"
 )
 
@@ -276,7 +275,7 @@ func evmSummaryLines(m *kernel.EVMetrics) []string {
 	}
 }
 
-func renderEVMSection(pdf *fpdf.Fpdf, m *kernel.EVMetrics) {
+func renderEVMSection(pdf *pdfdoc.PDF, m *kernel.EVMetrics) {
 	lines := evmSummaryLines(m)
 	if len(lines) == 0 {
 		return
@@ -307,7 +306,7 @@ type chartRefMention struct {
 // Returns the list of chart_ref field values encountered, in walk
 // order, so the caller can embed the corresponding chart
 // visualisations on their own pages.
-func renderSectionBody(pdf *fpdf.Fpdf, s ResolvedSection) ([]chartRefMention, error) {
+func renderSectionBody(pdf *pdfdoc.PDF, s ResolvedSection) ([]chartRefMention, error) {
 	def, ok := Get(s.Kind)
 	if !ok {
 		return nil, fmt.Errorf("unknown kind %q", s.Kind)
@@ -390,7 +389,7 @@ func renderSectionBody(pdf *fpdf.Fpdf, s ResolvedSection) ([]chartRefMention, er
 
 // drawChartFallback paints a "chart not available" placeholder when
 // pdfrender returns an error or the resolved chart is missing.
-func drawChartFallback(pdf *fpdf.Fpdf, frame pdfrender.Frame, rc ResolvedChart, reason string) {
+func drawChartFallback(pdf *pdfdoc.PDF, frame pdfrender.Frame, rc ResolvedChart, reason string) {
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetTextColor(0, 80, 130)
 	pdf.SetXY(frame.X, frame.Y)
@@ -402,7 +401,7 @@ func drawChartFallback(pdf *fpdf.Fpdf, frame pdfrender.Frame, rc ResolvedChart, 
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func writeSubHeading(pdf *fpdf.Fpdf, label string) {
+func writeSubHeading(pdf *pdfdoc.PDF, label string) {
 	pdf.Ln(2)
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetTextColor(0, 80, 130)
@@ -411,7 +410,7 @@ func writeSubHeading(pdf *fpdf.Fpdf, label string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func writeKVCompact(pdf *fpdf.Fpdf, k, v string) {
+func writeKVCompact(pdf *pdfdoc.PDF, k, v string) {
 	pdf.SetFont("Helvetica", "B", 9)
 	label := k + ":"
 	pdf.CellFormat(kvLabelWidth(pdf, label, 36), 4.5, label, "", 0, "L", false, 0, "")

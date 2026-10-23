@@ -9,20 +9,20 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // newTestPDF returns a page with compression off, so the content
 // stream is greppable for assertions on what was actually drawn --
 // not just that no error occurred.
-func newTestPDF() *fpdf.Fpdf {
-	pdf := fpdf.New("L", "mm", "A4", "")
+func newTestPDF() *pdfdoc.PDF {
+	pdf := pdfdoc.New("L", "mm", "A4", "")
 	pdf.SetCompression(false)
 	pdf.AddPage()
 	return pdf
 }
 
-func outputBytes(t *testing.T, pdf *fpdf.Fpdf) []byte {
+func outputBytes(t *testing.T, pdf *pdfdoc.PDF) []byte {
 	t.Helper()
 	if pdf.Err() {
 		t.Fatalf("fpdf error state: %v", pdf.Error())

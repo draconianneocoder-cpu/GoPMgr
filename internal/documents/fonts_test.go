@@ -12,9 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-pdf/fpdf"
-
 	"gopmgr/internal/fonts"
+	"gopmgr/internal/pdfdoc"
 )
 
 // fontSample mixes letters, tabular figures, and punctuation, so faces with
@@ -53,7 +52,7 @@ func documentFontWidth(t *testing.T, style, s string) float64 {
 // bundledFamilyWidth measures s in a bundled family registered directly.
 func bundledFamilyWidth(t *testing.T, family, style, s string) float64 {
 	t.Helper()
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfdoc.New("P", "mm", "A4", "")
 	if err := fonts.NewManager("").RegisterAs(pdf, family, "Probe"); err != nil {
 		t.Fatalf("register %s: %v", family, err)
 	}
@@ -63,7 +62,7 @@ func bundledFamilyWidth(t *testing.T, family, style, s string) float64 {
 }
 
 func coreHelveticaWidth(style, s string) float64 {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfdoc.New("P", "mm", "A4", "")
 	pdf.AddPage()
 	pdf.SetFont("Helvetica", style, 10)
 	return pdf.GetStringWidth(s)
@@ -196,7 +195,7 @@ func textX(t *testing.T, pdf []byte, s string) float64 {
 func TestKeyValueLabels_NeverOverlapTheirValues(t *testing.T) {
 	const label, value = "High-level budget (USD)", "1284500.00"
 	writers := map[string]struct {
-		write func(*fpdf.Fpdf, string, string)
+		write func(*pdfdoc.PDF, string, string)
 		size  float64
 	}{
 		"writeKV":        {writeKV, 10},
@@ -261,5 +260,20 @@ func TestRender_ProducesPDFA2UWithNamedPlexFonts(t *testing.T) {
 	}
 	if !names["IBMPlexSans"] || !names["IBMPlexSans-SmBld"] {
 		t.Fatalf("charter fonts are not named after IBM Plex Sans Regular and SemiBold; found %v", names)
+	}
+}
+
+// TestRender_AcceptsEmojiInDocumentFields is the regression for emoji in a
+// document: wrapped fields failed the export, and single-line fields
+// crashed fpdf while it wrote the file.
+func TestRender_AcceptsEmojiInDocumentFields(t *testing.T) {
+	withDefaultDocumentFont(t)
+	content := `{"project_name":"Atlas 🚀","sponsor":"Ops 👩\u200D💻","purpose":"Ship it 🎉 on time","objectives":["Go live 🇺🇸"]}`
+	pdf, err := Render(KindProjectCharterWord, content, "Atlas 🚀")
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	if !bytes.Contains(pdf, []byte("<pdfaid:part>2</pdfaid:part>")) {
+		t.Fatal("charter with emoji is not PDF/A-2u")
 	}
 }

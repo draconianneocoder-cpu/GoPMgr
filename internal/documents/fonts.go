@@ -7,9 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/go-pdf/fpdf"
-
 	"gopmgr/internal/fonts"
+	"gopmgr/internal/pdfdoc"
 	"gopmgr/internal/pdfmeta"
 )
 
@@ -20,7 +19,7 @@ import (
 // you register an embedded TrueType font under that name, so GoPMgr
 // can swap the document font for ALL renderers at once by registering
 // the chosen family under "Helvetica" on each new PDF — no per-renderer
-// changes beyond using newDocPDF instead of fpdf.New.
+// changes beyond using newDocPDF instead of pdfdoc.New.
 //
 // By default every document embeds fonts.DefaultFamily (IBM Plex Sans),
 // which every build bundles. The App selects the project's font with
@@ -35,13 +34,13 @@ var (
 )
 
 // defaultFontApplier embeds the bundled default family.
-func defaultFontApplier(pdf *fpdf.Fpdf) {
+func defaultFontApplier(pdf *pdfdoc.PDF) {
 	registerDocumentFont(pdf, fonts.NewManager(""), fonts.DefaultFamily)
 }
 
 // registerDocumentFont registers family under "Helvetica", falling back to
 // the bundled default family if none of its faces can be registered.
-func registerDocumentFont(pdf *fpdf.Fpdf, mgr *fonts.Manager, family string) {
+func registerDocumentFont(pdf *pdfdoc.PDF, mgr *fonts.Manager, family string) {
 	if err := mgr.RegisterAs(pdf, family, "Helvetica"); err == nil || family == fonts.DefaultFamily {
 		return
 	}
@@ -54,7 +53,7 @@ func registerDocumentFont(pdf *fpdf.Fpdf, mgr *fonts.Manager, family string) {
 // output do that. It does not change ActiveFamily. Safe for concurrent use
 // (the Wails runtime may call this from a different goroutine than a
 // render in flight).
-func SetFontApplier(fn func(*fpdf.Fpdf)) {
+func SetFontApplier(fn func(*pdfdoc.PDF)) {
 	fontMu.Lock()
 	fontApplier = fn
 	fontMu.Unlock()
@@ -76,7 +75,7 @@ func UseFont(mgr *fonts.Manager, family string) {
 	}
 	fontMu.Lock()
 	activeFamily = family
-	fontApplier = func(pdf *fpdf.Fpdf) { registerDocumentFont(pdf, mgr, family) }
+	fontApplier = func(pdf *pdfdoc.PDF) { registerDocumentFont(pdf, mgr, family) }
 	fontMu.Unlock()
 }
 
@@ -103,13 +102,13 @@ func availableFamily(mgr *fonts.Manager, family string) (string, bool) {
 }
 
 // newDocPDF creates a portrait/landscape A4 PDF and applies the active
-// embedded font. Renderers use this in place of fpdf.New so the font
+// embedded font. Renderers use this in place of pdfdoc.New so the font
 // choice takes effect everywhere.
 //
-// orientation is "P" (portrait) or "L" (landscape), matching the
-// fpdf.New first argument the renderers previously passed.
-func newDocPDF(orientation string) *fpdf.Fpdf {
-	pdf := fpdf.New(orientation, "mm", "A4", "")
+// orientation is "P" (portrait) or "L" (landscape), matching the first
+// argument of pdfdoc.New.
+func newDocPDF(orientation string) *pdfdoc.PDF {
+	pdf := pdfdoc.New(orientation, "mm", "A4", "")
 	fontMu.RLock()
 	fn := fontApplier
 	fontMu.RUnlock()
@@ -119,7 +118,7 @@ func newDocPDF(orientation string) *fpdf.Fpdf {
 
 	// Apply PDF/A metadata setters early. Individual renderers can
 	// still override Title/Author/Subject with more specific values.
-	pdfmeta.ApplyPDFAMetadata(pdf, pdfmeta.XMPSpec{
+	pdfmeta.ApplyPDFAMetadata(pdf.Fpdf, pdfmeta.XMPSpec{
 		Author:      "GoPMgr",
 		CreatorTool: "GoPMgr",
 	})

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderProjectBudgetPDF is the bespoke renderer for the Project
@@ -80,7 +80,7 @@ func RenderProjectBudgetPDF(content map[string]interface{}, projectName string) 
 
 // drawBudgetTable renders the cost categories as a three-column table.
 // Column widths (portrait A4 body = 170mm): Category 60, Amount 40, Notes 70.
-func drawBudgetTable(pdf *fpdf.Fpdf, categories []map[string]interface{}, currency string) {
+func drawBudgetTable(pdf *pdfdoc.PDF, categories []map[string]interface{}, currency string) {
 	cols := []struct {
 		header string
 		w      float64
@@ -121,7 +121,7 @@ func drawBudgetTable(pdf *fpdf.Fpdf, categories []map[string]interface{}, curren
 }
 
 // drawBudgetSummary renders the subtotal, contingency, and grand total.
-func drawBudgetSummary(pdf *fpdf.Fpdf, subtotal, contingencyPct, explicitTotal float64, currency string) {
+func drawBudgetSummary(pdf *pdfdoc.PDF, subtotal, contingencyPct, explicitTotal float64, currency string) {
 	contingencyAmt := subtotal * contingencyPct / 100
 	grandTotal := subtotal + contingencyAmt
 	if explicitTotal > 0 {
@@ -153,7 +153,7 @@ func drawBudgetSummary(pdf *fpdf.Fpdf, subtotal, contingencyPct, explicitTotal f
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func budgetKV(pdf *fpdf.Fpdf, startX, h float64, label, value string) {
+func budgetKV(pdf *pdfdoc.PDF, startX, h float64, label, value string) {
 	pdf.SetX(startX)
 	pdf.CellFormat(50, h, label, "", 0, "L", false, 0, "")
 	pdf.CellFormat(30, h, value, "", 0, "R", false, 0, "")

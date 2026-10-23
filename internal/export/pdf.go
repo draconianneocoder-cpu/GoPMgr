@@ -12,10 +12,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/go-pdf/fpdf"
-
 	"gopmgr/internal/crypto"
 	"gopmgr/internal/fonts"
+	"gopmgr/internal/pdfdoc"
 	"gopmgr/internal/pdfmeta"
 	"gopmgr/internal/signing"
 )
@@ -61,7 +60,7 @@ func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 // to export at all is not obviously the kinder outcome. Promoting this to a
 // hard error is a deliberate release-policy call for a maintainer to make, not
 // a default to slip in.
-func registerPDFABaseline(pdf *fpdf.Fpdf) {
+func registerPDFABaseline(pdf *pdfdoc.PDF) {
 	if err := fonts.NewManager("").RegisterAs(pdf, fonts.DefaultFamily, "Helvetica"); err != nil {
 		log.Printf("[export] PDF/A baseline font did not register, falling back to a non-embedded core font: %v", err)
 	}
@@ -72,7 +71,7 @@ func renderPDFWithSignerLoader(
 	opts ExportOptions,
 	loadSigner func(path, password string) (*crypto.Signer, error),
 ) ([]byte, error) {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfdoc.New("P", "mm", "A4", "")
 	registerPDFABaseline(pdf)
 	pdf.SetTitle(opts.Title, true)
 	pdf.SetAuthor("GoPMgr", true)

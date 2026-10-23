@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderTeamCharterPDF is the bespoke renderer for the Team Charter.
@@ -102,7 +102,7 @@ func normaliseMembers(raw []map[string]interface{}) []teamMember {
 	return out
 }
 
-func tcHeading(pdf *fpdf.Fpdf, text string) {
+func tcHeading(pdf *pdfdoc.PDF, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -111,7 +111,7 @@ func tcHeading(pdf *fpdf.Fpdf, text string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func tcSection(pdf *fpdf.Fpdf, heading, body string) {
+func tcSection(pdf *pdfdoc.PDF, heading, body string) {
 	if body == "" {
 		return
 	}
@@ -121,7 +121,7 @@ func tcSection(pdf *fpdf.Fpdf, heading, body string) {
 	pdf.Ln(2)
 }
 
-func tcBullets(pdf *fpdf.Fpdf, heading string, items []string) {
+func tcBullets(pdf *pdfdoc.PDF, heading string, items []string) {
 	if len(items) == 0 {
 		return
 	}
@@ -135,7 +135,7 @@ func tcBullets(pdf *fpdf.Fpdf, heading string, items []string) {
 }
 
 // drawTeamTable renders the members table with inline allocation bars.
-func drawTeamTable(pdf *fpdf.Fpdf, members []teamMember) {
+func drawTeamTable(pdf *pdfdoc.PDF, members []teamMember) {
 	cols := []struct {
 		header string
 		w      float64
@@ -188,7 +188,7 @@ func drawTeamTable(pdf *fpdf.Fpdf, members []teamMember) {
 // colour gradates with intensity: 0-25% slate, 26-50% cyan,
 // 51-75% amber, 76-100% green (high commitment is good); >100%
 // renders in red as an over-allocation warning.
-func drawAllocationBar(pdf *fpdf.Fpdf, x, y, w, h, pct float64) {
+func drawAllocationBar(pdf *pdfdoc.PDF, x, y, w, h, pct float64) {
 	if pct < 0 {
 		pct = 0
 	}
@@ -248,7 +248,7 @@ func allocationColor(pct float64) (int, int, int) {
 // drawTeamCapacityBanner sums member allocations and flags
 // over-allocation. Useful at a glance: "we have 4 people at 320% =
 // 0.8 FTE on average".
-func drawTeamCapacityBanner(pdf *fpdf.Fpdf, members []teamMember) {
+func drawTeamCapacityBanner(pdf *pdfdoc.PDF, members []teamMember) {
 	var sum float64
 	for _, m := range members {
 		sum += m.AllocationPct

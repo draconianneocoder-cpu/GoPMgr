@@ -11,8 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/go-pdf/fpdf"
-
+	"gopmgr/internal/pdfdoc"
 	"gopmgr/internal/pdfmeta"
 )
 
@@ -180,7 +179,7 @@ func RenderCharterPDF(content map[string]interface{}, projectName string) ([]byt
 
 // ----- small helpers -----
 
-func writeHeading(pdf *fpdf.Fpdf, text string) {
+func writeHeading(pdf *pdfdoc.PDF, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -189,7 +188,7 @@ func writeHeading(pdf *fpdf.Fpdf, text string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func writeSection(pdf *fpdf.Fpdf, heading, body string) {
+func writeSection(pdf *pdfdoc.PDF, heading, body string) {
 	if body == "" {
 		return
 	}
@@ -199,7 +198,7 @@ func writeSection(pdf *fpdf.Fpdf, heading, body string) {
 	pdf.Ln(2)
 }
 
-func writeBulletSection(pdf *fpdf.Fpdf, heading string, items []string) {
+func writeBulletSection(pdf *pdfdoc.PDF, heading string, items []string) {
 	if len(items) == 0 {
 		return
 	}
@@ -212,7 +211,7 @@ func writeBulletSection(pdf *fpdf.Fpdf, heading string, items []string) {
 	pdf.Ln(2)
 }
 
-func writeKV(pdf *fpdf.Fpdf, k, v string) {
+func writeKV(pdf *pdfdoc.PDF, k, v string) {
 	pdf.SetFont("Helvetica", "B", 10)
 	label := k + ":"
 	pdf.CellFormat(kvLabelWidth(pdf, label, 40), 5, label, "", 0, "L", false, 0, "")
@@ -227,14 +226,14 @@ const kvLabelGap = 2.0
 // the aligned column, or the label's own width plus a gap when the label is
 // wider. fpdf does not clip cell text, so without this a long label in a
 // wide face (IBM Plex Serif SemiBold, a user font) ran into its value.
-func kvLabelWidth(pdf *fpdf.Fpdf, label string, column float64) float64 {
+func kvLabelWidth(pdf *pdfdoc.PDF, label string, column float64) float64 {
 	if w := pdf.GetStringWidth(label) + kvLabelGap; w > column {
 		return w
 	}
 	return column
 }
 
-func writeTable(pdf *fpdf.Fpdf, headers []string, widths []float64, rows []map[string]interface{}, keys []string) {
+func writeTable(pdf *pdfdoc.PDF, headers []string, widths []float64, rows []map[string]interface{}, keys []string) {
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.SetFillColor(235, 240, 245)
 	for i, h := range headers {
@@ -524,7 +523,7 @@ func renderGenericPDF(kind Kind, content map[string]interface{}, projectName str
 	return buf.Bytes(), nil
 }
 
-func renderObjectArray(pdf *fpdf.Fpdf, f Field, objs []map[string]interface{}) {
+func renderObjectArray(pdf *pdfdoc.PDF, f Field, objs []map[string]interface{}) {
 	if len(f.ObjectShape) == 0 || len(objs) == 0 {
 		return
 	}

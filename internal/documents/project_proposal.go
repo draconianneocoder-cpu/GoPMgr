@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderProjectProposalPDF is the bespoke renderer for the Project
@@ -105,7 +105,7 @@ func RenderProjectProposalPDF(content map[string]interface{}, projectName string
 	return buf.Bytes(), nil
 }
 
-func proposalHeading(pdf *fpdf.Fpdf, text string) {
+func proposalHeading(pdf *pdfdoc.PDF, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -117,7 +117,7 @@ func proposalHeading(pdf *fpdf.Fpdf, text string) {
 // drawProposalExecSummary renders the executive summary as a tinted
 // callout box at the top of the document — the first thing the reader
 // sees after the title.
-func drawProposalExecSummary(pdf *fpdf.Fpdf, summary string) {
+func drawProposalExecSummary(pdf *pdfdoc.PDF, summary string) {
 	pdf.Ln(2)
 	startY := pdf.GetY()
 	pdf.SetFillColor(239, 246, 255)
@@ -147,7 +147,7 @@ func drawProposalExecSummary(pdf *fpdf.Fpdf, summary string) {
 // drawProposalNumberedList renders a string array as a numbered list.
 // Numbered (1, 2, 3...) rather than bulleted because the order tends
 // to imply priority in a proposal context.
-func drawProposalNumberedList(pdf *fpdf.Fpdf, items []string) {
+func drawProposalNumberedList(pdf *pdfdoc.PDF, items []string) {
 	pdf.SetFont("Helvetica", "", 10)
 	for i, item := range items {
 		// Number chip
@@ -167,7 +167,7 @@ func drawProposalNumberedList(pdf *fpdf.Fpdf, items []string) {
 // chips — a more persuasive presentation than a dry table when the
 // reader doesn't need per-person details (those live in the Team
 // Charter document).
-func drawProposalTeamChips(pdf *fpdf.Fpdf, members []string) {
+func drawProposalTeamChips(pdf *pdfdoc.PDF, members []string) {
 	pdf.SetFont("Helvetica", "", 9)
 	x := 20.0
 	y := pdf.GetY()
@@ -198,7 +198,7 @@ func drawProposalTeamChips(pdf *fpdf.Fpdf, members []string) {
 // drawProposalBudgetTile renders the budget summary as a large
 // right-aligned KPI tile so a budget reviewer can scan the page and
 // land on the number without reading.
-func drawProposalBudgetTile(pdf *fpdf.Fpdf, budget float64) {
+func drawProposalBudgetTile(pdf *pdfdoc.PDF, budget float64) {
 	pdf.Ln(2)
 	startY := pdf.GetY()
 	tileW := 90.0
@@ -229,7 +229,7 @@ func drawProposalBudgetTile(pdf *fpdf.Fpdf, budget float64) {
 // accent callout. Heavier than the executive summary callout (dark fill
 // + light text) because this is the closing CTA — the reader's eye
 // should land here last.
-func drawProposalAsk(pdf *fpdf.Fpdf, ask string) {
+func drawProposalAsk(pdf *pdfdoc.PDF, ask string) {
 	pdf.Ln(2)
 	startY := pdf.GetY()
 	pdf.SetFillColor(30, 58, 138) // dark blue

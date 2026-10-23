@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderProjectOverviewPDF is the bespoke renderer for the Project
@@ -81,7 +81,7 @@ func RenderProjectOverviewPDF(content map[string]interface{}, projectName string
 // drawOverviewStatusBadge renders a traffic-light style pill in the
 // top-right corner. Same colour vocabulary as Status Report so the
 // two docs read consistently.
-func drawOverviewStatusBadge(pdf *fpdf.Fpdf, status string) {
+func drawOverviewStatusBadge(pdf *pdfdoc.PDF, status string) {
 	label, r, g, b := overviewStatusColor(status)
 	badgeW := 55.0
 	badgeH := 10.0
@@ -132,7 +132,7 @@ func overviewStatusColor(status string) (string, int, int, int) {
 // list inside a tinted strip. Visually different from the bullet
 // pattern so the reader treats them as "things to know" not "things
 // to do".
-func drawOverviewHighlights(pdf *fpdf.Fpdf, items []string) {
+func drawOverviewHighlights(pdf *pdfdoc.PDF, items []string) {
 	pdf.Ln(2)
 	startY := pdf.GetY()
 	pdf.SetFillColor(254, 252, 232) // amber-50 (warm, attention-grabbing)
@@ -169,7 +169,7 @@ func drawOverviewHighlights(pdf *fpdf.Fpdf, items []string) {
 // three side-by-side cards. Each card has a coloured top edge bar
 // (different per category) so the reader can distinguish them at a
 // glance.
-func drawOverviewGrid(pdf *fpdf.Fpdf, milestones, budget, team string) {
+func drawOverviewGrid(pdf *pdfdoc.PDF, milestones, budget, team string) {
 	startY := pdf.GetY()
 	const gap = 4.0
 	cardW := (170.0 - 2*gap) / 3
@@ -228,7 +228,7 @@ func drawOverviewGrid(pdf *fpdf.Fpdf, milestones, budget, team string) {
 // of the three card bodies. Same approach as RACI Document's
 // raciRowHeight: GetStringWidth divided by cell width gives an
 // approximate line count.
-func overviewCardHeight(pdf *fpdf.Fpdf, bodies []string, w float64) float64 {
+func overviewCardHeight(pdf *pdfdoc.PDF, bodies []string, w float64) float64 {
 	pdf.SetFont("Helvetica", "", 9)
 	maxLines := 3
 	for _, body := range bodies {

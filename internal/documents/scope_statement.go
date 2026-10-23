@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderScopeStatementPDF is the bespoke renderer for the Scope
@@ -65,7 +65,7 @@ func RenderScopeStatementPDF(content map[string]interface{}, projectName string)
 	return buf.Bytes(), nil
 }
 
-func scopeHeading(pdf *fpdf.Fpdf, text string) {
+func scopeHeading(pdf *pdfdoc.PDF, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -74,7 +74,7 @@ func scopeHeading(pdf *fpdf.Fpdf, text string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func scopeSectionText(pdf *fpdf.Fpdf, heading, body string) {
+func scopeSectionText(pdf *pdfdoc.PDF, heading, body string) {
 	if body == "" {
 		return
 	}
@@ -84,7 +84,7 @@ func scopeSectionText(pdf *fpdf.Fpdf, heading, body string) {
 	pdf.Ln(2)
 }
 
-func scopeBullets(pdf *fpdf.Fpdf, heading string, items []string) {
+func scopeBullets(pdf *pdfdoc.PDF, heading string, items []string) {
 	if len(items) == 0 {
 		return
 	}
@@ -99,7 +99,7 @@ func scopeBullets(pdf *fpdf.Fpdf, heading string, items []string) {
 
 // scopeAcceptanceCriteria renders acceptance criteria with a teal left
 // rule to visually distinguish them as the formal verification gate.
-func scopeAcceptanceCriteria(pdf *fpdf.Fpdf, items []string) {
+func scopeAcceptanceCriteria(pdf *pdfdoc.PDF, items []string) {
 	if len(items) == 0 {
 		return
 	}
