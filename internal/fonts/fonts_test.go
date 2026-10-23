@@ -69,6 +69,60 @@ func TestCatalogFamily(t *testing.T) {
 	}
 }
 
+// TestCatalogLicensesMatchREUSE keeps the License that ListFonts reports for
+// each family in step with REUSE.toml, the repository's authoritative license
+// record. Roboto, Arimo, and Cousine once said Apache-2.0 here after upstream
+// had moved them to OFL-1.1; this fails if the two records drift again, or if
+// a catalog file has no REUSE annotation (or more than one).
+func TestCatalogLicensesMatchREUSE(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "REUSE.toml"))
+	if err != nil {
+		t.Fatalf("read REUSE.toml: %v", err)
+	}
+	// Font annotations are single-path entries, so a line scan is enough:
+	// each `path = "internal/fonts/assets/..."` is followed by its license.
+	licenses := map[string]string{}
+	pattern := ""
+	for _, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case line == "[[annotations]]":
+			pattern = ""
+		case strings.HasPrefix(line, `path = "internal/fonts/assets/`):
+			pattern = strings.Trim(strings.TrimPrefix(line, "path = "), `"`)
+		case pattern != "" && strings.HasPrefix(line, "SPDX-License-Identifier = "):
+			licenses[pattern] = strings.Trim(strings.TrimPrefix(line, "SPDX-License-Identifier = "), `"`)
+			pattern = ""
+		}
+	}
+	if len(licenses) == 0 {
+		t.Fatal("REUSE.toml has no internal/fonts/assets annotations")
+	}
+
+	for _, fam := range Catalog {
+		for _, ff := range fam.Files {
+			asset := "internal/fonts/assets/" + ff.FileName
+			var matched []string
+			for glob, license := range licenses {
+				ok, err := filepath.Match(glob, asset)
+				if err != nil {
+					t.Fatalf("REUSE.toml font path %q is not a valid pattern: %v", glob, err)
+				}
+				if ok {
+					matched = append(matched, license)
+				}
+			}
+			if len(matched) != 1 {
+				t.Errorf("%s (%s) matches %d REUSE.toml font annotations, want exactly 1", asset, fam.Name, len(matched))
+				continue
+			}
+			if matched[0] != fam.License {
+				t.Errorf("%s: catalog License %q, REUSE.toml says %q", fam.Name, fam.License, matched[0])
+			}
+		}
+	}
+}
+
 func TestDeriveFamilyAndStyle(t *testing.T) {
 	cases := []struct {
 		filename  string
@@ -575,16 +629,17 @@ func TestRegister_BundledCorruptRemedyIsNotAnInstalledNoOp(t *testing.T) {
 	// Assert the properties a usable remedy must have, not one substring.
 	// The first version of this test checked only for "--force", and passed
 	// against advice that was unrunnable (scripts/fetch-fonts.sh is mode
-	// 100644), catalog-wide destructive (fetch() rm -f's its target on a
-	// failed download, including the tracked SHA-pinned Source Sans 3
-	// baseline) and incomplete (assets are //go:embed-ed, so re-fetching
-	// without rebuilding changes nothing the running binary sees).
+	// 100644), catalog-wide (it re-downloads every asset, including the
+	// tracked SHA-pinned Source Sans 3 baseline, and at the time fetch()
+	// also rm -f'd its target on a failed download) and incomplete (assets
+	// are //go:embed-ed, so re-fetching without rebuilding changes nothing
+	// the running binary sees).
 	msg := err.Error()
 	if contains(msg, "scripts/fetch-fonts.sh") && !contains(msg, "bash scripts/fetch-fonts.sh") {
 		t.Errorf("error %q invokes a mode-100644 script directly; it is not executable", msg)
 	}
 	if contains(msg, "--force") {
-		t.Errorf("error %q prescribes a catalog-wide --force re-fetch, which deletes any asset whose download fails, including the tracked Source Sans 3 baseline", msg)
+		t.Errorf("error %q prescribes a catalog-wide --force re-fetch, which re-downloads every asset, including the tracked Source Sans 3 baseline, instead of only the corrupt files", msg)
 	}
 	if !contains(msg, "make build") {
 		t.Errorf("error %q omits the rebuild step; bundled assets are embedded at compile time, so re-fetching alone cannot clear this error", msg)

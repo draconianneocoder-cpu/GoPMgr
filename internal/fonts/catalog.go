@@ -3,7 +3,8 @@
 
 // Package fonts manages the TrueType fonts GoPMgr embeds in generated
 // PDFs. It bundles a curated set of professional, modern, open-source
-// fonts (all free for commercial AND personal use, all GPL-compatible)
+// fonts (all free for commercial AND personal use, and all licensed so
+// they may be bundled and embedded with any software, including GoPMgr)
 // and lets users add their own .ttf files.
 //
 // # Why fonts matter for GoPMgr
@@ -108,7 +109,11 @@ func (f FontFamily) File(style Style) (FontFile, bool) {
 }
 
 // Catalog is the curated set of bundled font families. Every family is
-// free for commercial AND personal use and GPL-3.0-compatible.
+// free for commercial AND personal use. Each is licensed under OFL-1.1,
+// except DejaVu Sans (Bitstream-Vera); both licenses allow the fonts to be
+// bundled and embedded with any software while keeping their own license.
+// License values must match the font annotations in REUSE.toml and the
+// table in assets/README.md.
 //
 // Source Sans 3 is committed as the deterministic PDF/A baseline.
 // scripts/fetch-fonts.sh downloads the other optional families from the
@@ -212,8 +217,8 @@ var Catalog = []FontFamily{
 		Name:        "Roboto",
 		Category:    "sans",
 		Description: "Google's screen-optimised neo-grotesque; ideal primary UI font.",
-		License:     "Apache-2.0",
-		Source:      "https://github.com/google/roboto",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/googlefonts/roboto-3-classic",
 		Files: []FontFile{
 			{Regular, "Roboto-Regular.ttf"},
 			{Bold, "Roboto-Bold.ttf"},
@@ -225,8 +230,8 @@ var Catalog = []FontFamily{
 		Name:        "Arimo",
 		Category:    "sans",
 		Description: "Arial-metric-compatible sans; clean, corporate, native on desktop.",
-		License:     "Apache-2.0",
-		Source:      "https://github.com/google/fonts/tree/main/apache/arimo",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/googlefonts/arimo",
 		Files: []FontFile{
 			{Regular, "Arimo-Regular.ttf"},
 			{Bold, "Arimo-Bold.ttf"},
@@ -238,8 +243,8 @@ var Catalog = []FontFamily{
 		Name:        "Cousine",
 		Category:    "mono",
 		Description: "Monospaced companion to Arimo for code, logs, and commit hashes.",
-		License:     "Apache-2.0",
-		Source:      "https://github.com/google/fonts/tree/main/apache/cousine",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/google/fonts/tree/main/ofl/cousine",
 		Files: []FontFile{
 			{Regular, "Cousine-Regular.ttf"},
 			{Bold, "Cousine-Bold.ttf"},
