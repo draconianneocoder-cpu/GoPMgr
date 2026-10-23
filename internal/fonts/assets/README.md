@@ -80,3 +80,27 @@ Notes:
   The same license identifiers and copyright notices are recorded in
   `REUSE.toml`; `TestCatalogLicensesMatchREUSE` keeps `../catalog.go` in step
   with it.
+- Every font above sets OS/2 `fsType` 0 (installable), so none restricts
+  embedding or subsetting. Liberation 2.1.5 was not checked.
+
+## No proprietary fonts
+
+GoPMgr ships no proprietary fonts. The four Source Sans 3 files are the only
+font files in the repository, in its full Git history, in the release binary,
+and in the frontend bundle. No PDF, SVG, Office file, or data URI in the
+repository embeds a font.
+
+Some outputs name common system fonts without including them, and the viewer
+then uses a font it already has:
+
+- A document PDF whose font is not set, or is not available in the build,
+  uses the PDF standard font Helvetica. The PDF names it but holds no font
+  data; `go-pdf/fpdf` carries only its character widths.
+- Report PDFs embed Source Sans 3 under the internal name `utf8helvetica`,
+  because the renderers select their font through the "Helvetica" family key.
+- DOCX and XLSX exports name Microsoft fonts, such as Calibri, in the default
+  styles of `godocx` and `excelize`. HTML exports and the app's interface use
+  operating-system font stacks.
+
+Imported fonts belong to the user. `ImportFont` checks only that a file is a
+TrueType font, not its license or its embedding permissions.
