@@ -14,11 +14,12 @@ import (
 	"strings"
 )
 
-// assetsFS embeds the tracked Source Sans 3 PDF/A baseline plus any optional
-// families downloaded before compilation. The Manager filters to *.ttf at
-// load time and reports only families whose files are available. Supported
-// release builds always include Source Sans 3; optional families may still
-// fall back to that baseline when their downloaded files are absent.
+// assetsFS embeds the tracked IBM Plex and Source Sans 3 faces plus any
+// optional families downloaded before compilation. The Manager filters to
+// *.ttf at load time and reports only families whose files are available.
+// Every build includes the tracked faces, so DefaultFamily (IBM Plex Sans,
+// the PDF/A baseline) is always available; optional families fall back to it
+// when their downloaded files are absent.
 //
 //go:embed assets
 var assetsFS embed.FS
@@ -284,15 +285,17 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 				// 100644, so invoking it directly gives "Permission
 				// denied"; the Makefile targets run it under bash.
 				//
-				// It must not destroy anything. --force is catalog-wide
-				// and fetch() does `rm -f "$dest"` on a failed download,
-				// so one offline run deletes every asset it cannot
-				// re-fetch -- including the git-tracked, SHA-256-pinned
-				// Source Sans 3 files that are the PDF/A baseline and
-				// that check-required-font-assets.sh verifies. Deleting
-				// only the corrupt files and re-running plain `make
-				// fonts` re-downloads exactly those, because the script
-				// skips what already exists.
+				// It must be targeted. --force is catalog-wide: it
+				// re-downloads every family, including the git-tracked,
+				// SHA-256-pinned IBM Plex and Source Sans 3 files that
+				// check-required-font-assets.sh verifies, IBM Plex Sans
+				// among them as the PDF/A baseline. (When this remedy was written, fetch() also
+				// did `rm -f "$dest"` on a failed download, so one offline
+				// run deleted every asset it could not re-fetch; the
+				// script now replaces a file only after a verified
+				// download.) Deleting only the corrupt files and
+				// re-running plain `make fonts` re-downloads exactly
+				// those, because the script skips what already exists.
 				//
 				// It must mention the rebuild. These assets are
 				// //go:embed-ed, so a re-fetch alone leaves a built
@@ -320,11 +323,17 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 			if err := validateTrueType(b); err != nil {
 				continue
 			}
+			// A font imported before ImportFont checked embedding
+			// permissions is skipped here too, so documents fall back to
+			// the default family instead of embedding it.
+			if err := checkEmbeddingAllowed(b); err != nil {
+				continue
+			}
 			r.AddUTF8FontFromBytes(regName, style.FpdfStyle(), b)
 			registered++
 		}
 		if registered == 0 {
-			return fmt.Errorf("fonts: user family %q has no readable .ttf files", family)
+			return fmt.Errorf("fonts: user family %q has no readable .ttf files that allow embedding", family)
 		}
 		return nil
 	}
@@ -338,7 +347,9 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 //
 // Rejects non-TrueType files (OpenType/CFF .otf, WOFF, collections)
 // with a clear error, because fpdf UTF-8 font path parses
-// TrueType tables only.
+// TrueType tables only. Also rejects a font whose license does not allow
+// embedding it in PDFs (ErrEmbeddingNotAllowed), since every document
+// that uses it would embed it.
 func (m *Manager) ImportFont(srcPath string) (FamilyInfo, error) {
 	if m.userDir == "" {
 		return FamilyInfo{}, fmt.Errorf("fonts: no user font directory configured")
@@ -354,6 +365,9 @@ func (m *Manager) ImportFont(srcPath string) (FamilyInfo, error) {
 	}
 	if err := validateTrueType(b); err != nil {
 		return FamilyInfo{}, err
+	}
+	if err := checkEmbeddingAllowed(b); err != nil {
+		return FamilyInfo{}, fmt.Errorf("fonts: %q can't be used in documents: %w; choose a font that allows embedding, such as IBM Plex Sans", filepath.Base(srcPath), err)
 	}
 
 	if err := ensurePrivateDir(m.userDir); err != nil {

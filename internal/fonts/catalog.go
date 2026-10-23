@@ -3,14 +3,15 @@
 
 // Package fonts manages the TrueType fonts GoPMgr embeds in generated
 // PDFs. It bundles a curated set of professional, modern, open-source
-// fonts (all free for commercial AND personal use, all GPL-compatible)
+// fonts (all free for commercial AND personal use, and all licensed so
+// they may be bundled and embedded with any software, including GoPMgr)
 // and lets users add their own .ttf files.
 //
 // # Why fonts matter for GoPMgr
 //
 // fpdf's built-in core fonts (Helvetica, Times, Courier) are NOT
 // embedded in the PDF and are NOT permitted by strict PDF/A. To move
-// toward PDF/A-3 conformance — and to give users real typographic
+// toward PDF/A conformance — and to give users real typographic
 // choice — GoPMgr embeds TrueType fonts via fpdf's
 // AddUTF8FontFromBytes. This package owns the catalog of bundled
 // fonts, the runtime registration, and user-supplied font import.
@@ -108,15 +109,124 @@ func (f FontFamily) File(style Style) (FontFile, bool) {
 }
 
 // Catalog is the curated set of bundled font families. Every family is
-// free for commercial AND personal use and GPL-3.0-compatible.
+// free for commercial AND personal use. Each is licensed under OFL-1.1,
+// except DejaVu Sans (Bitstream-Vera); both licenses allow the fonts to be
+// bundled and embedded with any software while keeping their own license.
+// License values must match the font annotations in REUSE.toml and the
+// table in assets/README.md.
 //
-// Source Sans 3 is committed as the deterministic PDF/A baseline.
+// The IBM Plex families and Source Sans 3 are committed, so every build
+// bundles them; IBM Plex Sans is the default and the PDF/A baseline.
 // scripts/fetch-fonts.sh downloads the other optional families from the
 // canonical sources below into internal/fonts/assets/, where manager.go's
 // embed directive picks them up at build time. If an optional family's files
-// are absent, the Manager omits it and renderers can fall back to the tracked
-// baseline.
+// are absent, the Manager omits it and renderers fall back to DefaultFamily.
+//
+// fpdf offers four styles per family. Every IBM Plex family maps its Bold
+// style to the SemiBold (600) face: SemiBold is IBM's heading weight, and it
+// sets slightly narrower than Helvetica Bold, the metrics GoPMgr's renderers
+// were laid out against. See docs/design/typography-ibm-plex.md.
+//
+// The Japanese, Korean, and Simplified Chinese families let documents in
+// those languages print their text; each also covers Latin. CJK type has no
+// italics, so their Italic and Bold Italic styles use the upright faces of
+// the same weight. IBM Plex Sans TC is not bundled: its TrueType files leave
+// the character map fpdf reads (cmap format 4) empty, so fpdf would draw no
+// text at all. The Arabic, Hebrew, Devanagari, and Thai families ship only
+// as web fonts for the app (docs/design/ADR-007-ibm-plex-script-coverage.md),
+// because fpdf cannot shape those scripts.
 var Catalog = []FontFamily{
+	{
+		Name:        "IBM Plex Sans",
+		Category:    "sans",
+		Description: "IBM's open sans-serif. GoPMgr's default for documents, reports, and the app.",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/IBM/plex",
+		Files: []FontFile{
+			{Regular, "IBMPlexSans-Regular.ttf"},
+			{Bold, "IBMPlexSans-SemiBold.ttf"},
+			{Italic, "IBMPlexSans-Italic.ttf"},
+			{BoldItalic, "IBMPlexSans-SemiBoldItalic.ttf"},
+		},
+	},
+	{
+		Name:        "IBM Plex Serif",
+		Category:    "serif",
+		Description: "IBM Plex serif for long-form documents meant to be printed.",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/IBM/plex",
+		Files: []FontFile{
+			{Regular, "IBMPlexSerif-Regular.ttf"},
+			{Bold, "IBMPlexSerif-SemiBold.ttf"},
+			{Italic, "IBMPlexSerif-Italic.ttf"},
+			{BoldItalic, "IBMPlexSerif-SemiBoldItalic.ttf"},
+		},
+	},
+	{
+		Name:        "IBM Plex Mono",
+		Category:    "mono",
+		Description: "IBM Plex monospace with distinct look-alike characters, for codes and identifiers.",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/IBM/plex",
+		Files: []FontFile{
+			{Regular, "IBMPlexMono-Regular.ttf"},
+			{Bold, "IBMPlexMono-SemiBold.ttf"},
+			{Italic, "IBMPlexMono-Italic.ttf"},
+			{BoldItalic, "IBMPlexMono-SemiBoldItalic.ttf"},
+		},
+	},
+	{
+		Name:        "IBM Plex Sans Condensed",
+		Category:    "sans",
+		Description: "Narrow IBM Plex Sans that fits more text in dense tables and schedules.",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/IBM/plex",
+		Files: []FontFile{
+			{Regular, "IBMPlexSansCondensed-Regular.ttf"},
+			{Bold, "IBMPlexSansCondensed-SemiBold.ttf"},
+			{Italic, "IBMPlexSansCondensed-Italic.ttf"},
+			{BoldItalic, "IBMPlexSansCondensed-SemiBoldItalic.ttf"},
+		},
+	},
+	{
+		Name:        "IBM Plex Sans JP",
+		Category:    "sans",
+		Description: "IBM Plex Sans for Japanese, with matching Latin text. Choose it for documents in Japanese.",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/IBM/plex",
+		Files: []FontFile{
+			{Regular, "IBMPlexSansJP-Regular.ttf"},
+			{Bold, "IBMPlexSansJP-SemiBold.ttf"},
+			{Italic, "IBMPlexSansJP-Regular.ttf"},
+			{BoldItalic, "IBMPlexSansJP-SemiBold.ttf"},
+		},
+	},
+	{
+		Name:        "IBM Plex Sans KR",
+		Category:    "sans",
+		Description: "IBM Plex Sans for Korean, with matching Latin text. Choose it for documents in Korean.",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/IBM/plex",
+		Files: []FontFile{
+			{Regular, "IBMPlexSansKR-Regular.ttf"},
+			{Bold, "IBMPlexSansKR-SemiBold.ttf"},
+			{Italic, "IBMPlexSansKR-Regular.ttf"},
+			{BoldItalic, "IBMPlexSansKR-SemiBold.ttf"},
+		},
+	},
+	{
+		Name:        "IBM Plex Sans SC",
+		Category:    "sans",
+		Description: "IBM Plex Sans for Simplified Chinese, with matching Latin text. Choose it for documents in Simplified Chinese.",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/IBM/plex",
+		Files: []FontFile{
+			{Regular, "IBMPlexSansSC-Regular.ttf"},
+			{Bold, "IBMPlexSansSC-SemiBold.ttf"},
+			{Italic, "IBMPlexSansSC-Regular.ttf"},
+			{BoldItalic, "IBMPlexSansSC-SemiBold.ttf"},
+		},
+	},
 	{
 		Name:        "Liberation Sans",
 		Category:    "sans",
@@ -212,8 +322,8 @@ var Catalog = []FontFamily{
 		Name:        "Roboto",
 		Category:    "sans",
 		Description: "Google's screen-optimised neo-grotesque; ideal primary UI font.",
-		License:     "Apache-2.0",
-		Source:      "https://github.com/google/roboto",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/googlefonts/roboto-3-classic",
 		Files: []FontFile{
 			{Regular, "Roboto-Regular.ttf"},
 			{Bold, "Roboto-Bold.ttf"},
@@ -225,8 +335,8 @@ var Catalog = []FontFamily{
 		Name:        "Arimo",
 		Category:    "sans",
 		Description: "Arial-metric-compatible sans; clean, corporate, native on desktop.",
-		License:     "Apache-2.0",
-		Source:      "https://github.com/google/fonts/tree/main/apache/arimo",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/googlefonts/arimo",
 		Files: []FontFile{
 			{Regular, "Arimo-Regular.ttf"},
 			{Bold, "Arimo-Bold.ttf"},
@@ -238,8 +348,8 @@ var Catalog = []FontFamily{
 		Name:        "Cousine",
 		Category:    "mono",
 		Description: "Monospaced companion to Arimo for code, logs, and commit hashes.",
-		License:     "Apache-2.0",
-		Source:      "https://github.com/google/fonts/tree/main/apache/cousine",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/google/fonts/tree/main/ofl/cousine",
 		Files: []FontFile{
 			{Regular, "Cousine-Regular.ttf"},
 			{Bold, "Cousine-Bold.ttf"},
@@ -259,10 +369,14 @@ var Catalog = []FontFamily{
 	},
 }
 
-// DefaultFamily is the family used when the user hasn't chosen one and
-// it is available. Liberation Sans is the safe professional default
-// (Arial-metric-compatible).
-const DefaultFamily = "Liberation Sans"
+// DefaultFamily is the family used when the user hasn't chosen one, or when
+// the chosen family is not available in the build. It is committed, so every
+// build has it, and it is also the PDF/A baseline for report exports.
+const DefaultFamily = "IBM Plex Sans"
+
+// MonoFamily is the bundled monospaced family for codes and identifiers,
+// such as the recovery-code sheet.
+const MonoFamily = "IBM Plex Mono"
 
 // CatalogFamily looks up a family by name (case-insensitive). Returns
 // (zero, false) if not found.

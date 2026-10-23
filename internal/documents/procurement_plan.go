@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderProcurementPlanPDF is the bespoke renderer for the Procurement
@@ -50,8 +50,8 @@ func RenderProcurementPlanPDF(content map[string]interface{}, projectName string
 	total := procurementTotal(items)
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetTextColor(30, 41, 59)
-	pdf.Cell(0, 6, fmt.Sprintf("Items: %d  \xc2\xb7  Total budget: USD %s",
-		len(items), formatMoney(total)))
+	pdf.Cell(0, 6, fmt.Sprintf("Items: %d  \xc2\xb7  Total budget: %s %s",
+		len(items), currencyOf(content), formatMoney(total)))
 	pdf.Ln(7)
 	pdf.SetTextColor(0, 0, 0)
 
@@ -73,7 +73,7 @@ func RenderProcurementPlanPDF(content map[string]interface{}, projectName string
 			}
 			return ai < aj
 		})
-		drawProcurementTable(pdf, items)
+		drawProcurementTable(pdf, items, currencyOf(content))
 	}
 
 	// Footer
@@ -183,7 +183,7 @@ func normaliseContractType(ct string) string {
 	return ""
 }
 
-func drawProcurementLegend(pdf *fpdf.Fpdf) {
+func drawProcurementLegend(pdf *pdfdoc.PDF) {
 	pdf.SetFont("Helvetica", "B", 8)
 	bands := []struct {
 		label string
@@ -213,7 +213,7 @@ func drawProcurementLegend(pdf *fpdf.Fpdf) {
 	pdf.SetDrawColor(0, 0, 0)
 }
 
-func drawProcurementTable(pdf *fpdf.Fpdf, items []procurementItem) {
+func drawProcurementTable(pdf *pdfdoc.PDF, items []procurementItem, currency string) {
 	cols := []struct {
 		header string
 		w      float64
@@ -222,7 +222,7 @@ func drawProcurementTable(pdf *fpdf.Fpdf, items []procurementItem) {
 		{"Item", 60, "L"},
 		{"Contract", 32, "L"},
 		{"Target Award", 28, "L"},
-		{"Budget (USD)", 32, "R"},
+		{"Budget (" + currency + ")", 32, "R"},
 		{"Vendor Selection Criteria", 115, "L"},
 	}
 

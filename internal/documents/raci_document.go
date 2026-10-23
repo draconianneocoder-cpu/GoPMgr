@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderRACIDocumentPDF is the bespoke renderer for the RACI Chart
@@ -82,7 +82,7 @@ func RenderRACIDocumentPDF(content map[string]interface{}, projectName string) (
 	return buf.Bytes(), nil
 }
 
-func raciHeading(pdf *fpdf.Fpdf, text string) {
+func raciHeading(pdf *pdfdoc.PDF, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -94,7 +94,7 @@ func raciHeading(pdf *fpdf.Fpdf, text string) {
 // drawRACIBanner is the chart-companion banner adapted from WBS
 // Document, with a second row for effective date. Tinted strip,
 // label-and-value layout.
-func drawRACIBanner(pdf *fpdf.Fpdf, chartRef, effectiveDate string) {
+func drawRACIBanner(pdf *pdfdoc.PDF, chartRef, effectiveDate string) {
 	height := 10.0
 	if effectiveDate != "" && chartRef != "" {
 		height = 14.0
@@ -137,7 +137,7 @@ func drawRACIBanner(pdf *fpdf.Fpdf, chartRef, effectiveDate string) {
 // with their full meanings. Colour vocabulary mirrors the RACI matrix
 // chart's own legend so the doc and the chart use the same visual
 // language.
-func drawRACILegend(pdf *fpdf.Fpdf) {
+func drawRACILegend(pdf *pdfdoc.PDF) {
 	letters := []struct {
 		letter, label string
 		r, g, b       int
@@ -179,7 +179,7 @@ func drawRACILegend(pdf *fpdf.Fpdf) {
 // drawRACIRoleTable renders the role-definitions table. Two columns
 // (Role | Definition) so the heading bar and body have a clean
 // alignment with the rest of the page.
-func drawRACIRoleTable(pdf *fpdf.Fpdf, roles []map[string]interface{}) {
+func drawRACIRoleTable(pdf *pdfdoc.PDF, roles []map[string]interface{}) {
 	cols := []struct {
 		header string
 		w      float64
@@ -236,7 +236,7 @@ func drawRACIRoleTable(pdf *fpdf.Fpdf, roles []map[string]interface{}) {
 // inside a cell `w` wide at 9pt, with 4.5mm line height. The 0.5
 // minimum char width is a coarse approximation that errs on the side
 // of more height (avoiding text clipping at row borders).
-func raciRowHeight(pdf *fpdf.Fpdf, text string, w float64) float64 {
+func raciRowHeight(pdf *pdfdoc.PDF, text string, w float64) float64 {
 	if text == "" {
 		return 6
 	}

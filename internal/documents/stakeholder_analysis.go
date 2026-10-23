@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderStakeholderAnalysisPDF is the bespoke renderer for the
@@ -171,7 +171,7 @@ func quadKey(power, interest string) string {
 
 // drawQuadrantLegend renders the 4-strategy reference chips at the
 // top of the document.
-func drawQuadrantLegend(pdf *fpdf.Fpdf) {
+func drawQuadrantLegend(pdf *pdfdoc.PDF) {
 	pdf.SetFont("Helvetica", "B", 8)
 	x := pdf.GetX()
 	y := pdf.GetY()
@@ -194,7 +194,7 @@ func drawQuadrantLegend(pdf *fpdf.Fpdf) {
 	pdf.SetDrawColor(0, 0, 0)
 }
 
-func drawQuadrantHeader(pdf *fpdf.Fpdf, q quadrant) {
+func drawQuadrantHeader(pdf *pdfdoc.PDF, q quadrant) {
 	pdf.Ln(2)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(q.r, q.g, q.b)
@@ -206,7 +206,7 @@ func drawQuadrantHeader(pdf *fpdf.Fpdf, q quadrant) {
 // drawStakeholderCard renders one stakeholder as a bordered card.
 // Auto-page-break handles tall cards; the card itself is plain
 // rectangles + text so fpdf wraps cleanly across page boundaries.
-func drawStakeholderCard(pdf *fpdf.Fpdf, s stakeholderRow, q quadrant) {
+func drawStakeholderCard(pdf *pdfdoc.PDF, s stakeholderRow, q quadrant) {
 	x := pdf.GetX()
 	y := pdf.GetY()
 	const w = 170.0

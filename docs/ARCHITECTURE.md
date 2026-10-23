@@ -17,8 +17,10 @@ local machine.
 - Frontend: Svelte 5 and TypeScript, bundled by Vite.
 - Persistence: SQLite-compatible databases, with SQLCipher support for
   encrypted per-project `.gopmgr` files.
-- Documents: Go PDF/DOCX/ODT/XLSX/iCal renderers. PDF/A-3 and PAdES
-  support are implemented in Go.
+- Documents: Go PDF/DOCX/ODT/XLSX/iCal renderers. PDF renderers draw
+  through `internal/pdfdoc`; PDF/A-2u and PAdES support are implemented in
+  Go (`internal/pdfmeta`, `internal/signing`; see
+  [ADR-006](design/ADR-006-pdfa-2u-archival-format.md)).
 - Build: `make build` runs `wails build`, which builds the frontend into
   `frontend/dist`, embeds it via the root `main.go` `go:embed`, injects the
   `desktop,production` tags, links the platform frameworks, and compiles the
@@ -166,7 +168,7 @@ installed — it skips rather than fails if not), frontend budget and
 stability, frontend runtime smoke, memory-safety checks, Go race tests,
 production build, encrypted-database create/open/migrate/backup behavior,
 the Linux CI/packaging runtime-target split, release-claim scope, strict
-PDF/A-3 validation, and local PAdES validation.
+PDF/A-2u validation, and local PAdES validation.
 
 Generated embed output under `frontend/dist` (repo root) is build output
 embedded by the root `main.go`. `wails build` regenerates it as needed.

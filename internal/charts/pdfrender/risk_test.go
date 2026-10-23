@@ -7,11 +7,11 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 func TestRenderChartToPDFRiskMatrixProducesPDF(t *testing.T) {
-	pdf := fpdf.New("L", "mm", "A4", "")
+	pdf := pdfdoc.New("L", "mm", "A4", "")
 	pdf.AddPage()
 	err := RenderChartToPDF(
 		pdf,

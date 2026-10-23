@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderProjectClosurePDF is the bespoke renderer for the Project
@@ -66,7 +66,7 @@ func RenderProjectClosurePDF(content map[string]interface{}, projectName string)
 		pdf.Cell(50, 6, "Final budget (actual):")
 		pdf.SetFont("Helvetica", "", 10)
 		pdf.SetTextColor(0, 0, 0)
-		pdf.Cell(0, 6, fmt.Sprintf("%.2f", budget))
+		pdf.Cell(0, 6, currencyOf(content)+" "+formatMoney(budget))
 		pdf.Ln(6)
 	}
 
@@ -99,7 +99,7 @@ func RenderProjectClosurePDF(content map[string]interface{}, projectName string)
 	return buf.Bytes(), nil
 }
 
-func cloHeading(pdf *fpdf.Fpdf, text string, redTint bool) {
+func cloHeading(pdf *pdfdoc.PDF, text string, redTint bool) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	if redTint {
@@ -112,7 +112,7 @@ func cloHeading(pdf *fpdf.Fpdf, text string, redTint bool) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func cloSection(pdf *fpdf.Fpdf, heading, body string) {
+func cloSection(pdf *pdfdoc.PDF, heading, body string) {
 	if body == "" {
 		return
 	}
@@ -122,7 +122,7 @@ func cloSection(pdf *fpdf.Fpdf, heading, body string) {
 	pdf.Ln(1)
 }
 
-func cloBullets(pdf *fpdf.Fpdf, heading string, items []string, redTint bool) {
+func cloBullets(pdf *pdfdoc.PDF, heading string, items []string, redTint bool) {
 	if len(items) == 0 {
 		return
 	}
@@ -141,7 +141,7 @@ func cloBullets(pdf *fpdf.Fpdf, heading string, items []string, redTint bool) {
 
 // drawLessonsLearnedTable renders the structured lessons-learned
 // array as a three-column table.
-func drawLessonsLearnedTable(pdf *fpdf.Fpdf, lessons []map[string]interface{}) {
+func drawLessonsLearnedTable(pdf *pdfdoc.PDF, lessons []map[string]interface{}) {
 	if len(lessons) == 0 {
 		return
 	}
@@ -180,7 +180,7 @@ func drawLessonsLearnedTable(pdf *fpdf.Fpdf, lessons []map[string]interface{}) {
 // drawClosureSignatureLine renders the project manager's signature
 // line at the bottom — single party because closure is from the PM
 // to the sponsor (the sponsor's signature is on the Charter).
-func drawClosureSignatureLine(pdf *fpdf.Fpdf) {
+func drawClosureSignatureLine(pdf *pdfdoc.PDF) {
 	pdf.Ln(12)
 	const lineW = 110.0
 	x := 20.0

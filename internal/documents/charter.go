@@ -11,8 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/go-pdf/fpdf"
-
+	"gopmgr/internal/pdfdoc"
 	"gopmgr/internal/pdfmeta"
 )
 
@@ -152,7 +151,7 @@ func RenderCharterPDF(content map[string]interface{}, projectName string) ([]byt
 
 	// Budget
 	if b, ok := content["high_level_budget"].(float64); ok && b > 0 {
-		writeKV(pdf, "High-level budget (USD)", fmt.Sprintf("%.2f", b))
+		writeKV(pdf, "High-level budget ("+currencyOf(content)+")", formatMoney(b))
 		pdf.Ln(2)
 	}
 
@@ -180,7 +179,7 @@ func RenderCharterPDF(content map[string]interface{}, projectName string) ([]byt
 
 // ----- small helpers -----
 
-func writeHeading(pdf *fpdf.Fpdf, text string) {
+func writeHeading(pdf *pdfdoc.PDF, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -189,7 +188,7 @@ func writeHeading(pdf *fpdf.Fpdf, text string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func writeSection(pdf *fpdf.Fpdf, heading, body string) {
+func writeSection(pdf *pdfdoc.PDF, heading, body string) {
 	if body == "" {
 		return
 	}
@@ -199,7 +198,7 @@ func writeSection(pdf *fpdf.Fpdf, heading, body string) {
 	pdf.Ln(2)
 }
 
-func writeBulletSection(pdf *fpdf.Fpdf, heading string, items []string) {
+func writeBulletSection(pdf *pdfdoc.PDF, heading string, items []string) {
 	if len(items) == 0 {
 		return
 	}
@@ -212,14 +211,29 @@ func writeBulletSection(pdf *fpdf.Fpdf, heading string, items []string) {
 	pdf.Ln(2)
 }
 
-func writeKV(pdf *fpdf.Fpdf, k, v string) {
+func writeKV(pdf *pdfdoc.PDF, k, v string) {
 	pdf.SetFont("Helvetica", "B", 10)
-	pdf.CellFormat(40, 5, k+":", "", 0, "L", false, 0, "")
+	label := k + ":"
+	pdf.CellFormat(kvLabelWidth(pdf, label, 40), 5, label, "", 0, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 10)
 	pdf.MultiCell(0, 5, v, "", "L", false)
 }
 
-func writeTable(pdf *fpdf.Fpdf, headers []string, widths []float64, rows []map[string]interface{}, keys []string) {
+// kvLabelGap separates a label that overflows its column from its value.
+const kvLabelGap = 2.0
+
+// kvLabelWidth is the width of a key/value label cell in the current font:
+// the aligned column, or the label's own width plus a gap when the label is
+// wider. fpdf does not clip cell text, so without this a long label in a
+// wide face (IBM Plex Serif SemiBold, a user font) ran into its value.
+func kvLabelWidth(pdf *pdfdoc.PDF, label string, column float64) float64 {
+	if w := pdf.GetStringWidth(label) + kvLabelGap; w > column {
+		return w
+	}
+	return column
+}
+
+func writeTable(pdf *pdfdoc.PDF, headers []string, widths []float64, rows []map[string]interface{}, keys []string) {
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.SetFillColor(235, 240, 245)
 	for i, h := range headers {
@@ -235,6 +249,40 @@ func writeTable(pdf *fpdf.Fpdf, headers []string, widths []float64, rows []map[s
 		pdf.Ln(-1)
 	}
 	pdf.Ln(2)
+}
+
+// reportingCurrencyKey carries the project's reporting currency from
+// Render to the renderers. No template field uses this key.
+const reportingCurrencyKey = "reporting_currency"
+
+// currencyOf returns the reporting currency Render stored in content. A
+// renderer called directly, as tests do, gets USD, the default reporting
+// currency.
+func currencyOf(content map[string]interface{}) string {
+	return getString(content, reportingCurrencyKey, "USD")
+}
+
+// IsCurrencyCode reports whether code has the form of an ISO 4217
+// alphabetic code: three uppercase ASCII letters.
+func IsCurrencyCode(code string) bool {
+	if len(code) != 3 {
+		return false
+	}
+	for i := 0; i < len(code); i++ {
+		if code[i] < 'A' || code[i] > 'Z' {
+			return false
+		}
+	}
+	return true
+}
+
+// FormatNumberField formats a number field's value: an amount with
+// thousands separators, anything else with two decimals.
+func FormatNumberField(f Field, n float64) string {
+	if f.Money {
+		return formatMoney(n)
+	}
+	return fmt.Sprintf("%.2f", n)
 }
 
 func getString(m map[string]interface{}, key, def string) string {
@@ -352,8 +400,11 @@ func truncDoc(s string, n int) string {
 // fails for any reason, the un-tagged-but-valid PDF is returned rather
 // than erroring the whole export. This keeps document export robust
 // while still tagging every PDF that can be tagged.
-func Render(kind Kind, contentJSON, projectName string) ([]byte, error) {
-	raw, err := renderRaw(kind, contentJSON, projectName)
+//
+// currency is the project's ISO 4217 reporting currency code, such as
+// "EUR"; it labels every amount in the document.
+func Render(kind Kind, contentJSON, projectName, currency string) ([]byte, error) {
+	raw, err := renderRaw(kind, contentJSON, projectName, currency)
 	if err != nil {
 		return nil, err
 	}
@@ -371,31 +422,25 @@ func Render(kind Kind, contentJSON, projectName string) ([]byte, error) {
 		CreatorTool: "GoPMgr",
 	}
 
-	// Prefer full PDF/A-3 (XMP + OutputIntent + ICC) when the profile
-	// has been fetched via `make icc`. Fall back to XMP-only otherwise.
-	if icc := pdfmeta.DefaultICCProfile(); len(icc) > 0 {
-		if tagged, err := pdfmeta.MakePDFA3(raw, spec, icc); err == nil {
-			return tagged, nil
-		}
-	} else if xmp := pdfmeta.BuildXMPPacket(spec); len(xmp) > 0 {
-		if tagged, err := pdfmeta.InjectXMPStream(raw, xmp); err == nil {
-			return tagged, nil
-		}
-	}
-
-	// Fail-soft: return the valid but minimally-tagged PDF.
-	return raw, nil
+	return tagPDFA(raw, spec), nil
 }
 
 // renderRaw dispatches to the kind-specific PDF renderer, or falls
 // back to a generic key/value renderer for kinds without bespoke
 // layouts. It returns the PDF exactly as the renderer produced it,
 // before XMP metadata injection.
-func renderRaw(kind Kind, contentJSON, projectName string) ([]byte, error) {
+func renderRaw(kind Kind, contentJSON, projectName, currency string) ([]byte, error) {
+	if !IsCurrencyCode(currency) {
+		return nil, fmt.Errorf("documents: invalid reporting currency %q", currency)
+	}
 	var content map[string]interface{}
 	if err := json.Unmarshal([]byte(contentJSON), &content); err != nil {
 		return nil, fmt.Errorf("documents: invalid JSON: %w", err)
 	}
+	if content == nil {
+		content = map[string]interface{}{}
+	}
+	content[reportingCurrencyKey] = currency
 
 	switch kind {
 	case KindProjectCharterWord, KindProjectCharterExcel:
@@ -477,6 +522,7 @@ func renderGenericPDF(kind Kind, content map[string]interface{}, projectName str
 
 	// Render fields in registry order so the document layout is
 	// deterministic across exports.
+	currency := currencyOf(content)
 	fields := EffectiveFields(kind)
 	for _, f := range fields {
 		v, ok := content[f.Key]
@@ -489,13 +535,13 @@ func renderGenericPDF(kind Kind, content map[string]interface{}, projectName str
 		case FieldObjectArr:
 			if objs := toObjectSlice(v); len(objs) > 0 {
 				writeHeading(pdf, f.Label)
-				renderObjectArray(pdf, f, objs)
+				renderObjectArray(pdf, f, objs, currency)
 			}
 		case FieldText:
 			writeSection(pdf, f.Label, toString(v))
 		case FieldNumber:
 			if n, ok := v.(float64); ok && n != 0 {
-				writeKV(pdf, f.Label, fmt.Sprintf("%.2f", n))
+				writeKV(pdf, f.LabelIn(currency), FormatNumberField(f, n))
 			}
 		case FieldBool:
 			if b, ok := v.(bool); ok {
@@ -522,7 +568,7 @@ func renderGenericPDF(kind Kind, content map[string]interface{}, projectName str
 	return buf.Bytes(), nil
 }
 
-func renderObjectArray(pdf *fpdf.Fpdf, f Field, objs []map[string]interface{}) {
+func renderObjectArray(pdf *pdfdoc.PDF, f Field, objs []map[string]interface{}, currency string) {
 	if len(f.ObjectShape) == 0 || len(objs) == 0 {
 		return
 	}
@@ -530,14 +576,19 @@ func renderObjectArray(pdf *fpdf.Fpdf, f Field, objs []map[string]interface{}) {
 	headers := make([]string, len(f.ObjectShape))
 	keys := make([]string, len(f.ObjectShape))
 	for i, sub := range f.ObjectShape {
-		headers[i] = sub.Label
+		headers[i] = sub.LabelIn(currency)
 		keys[i] = sub.Key
 	}
-	// Stringify cells (numbers/dates rendered as %v).
+	// Stringify cells (numbers/dates rendered as %v; amounts with
+	// thousands separators).
 	stringified := make([]map[string]interface{}, len(objs))
 	for i, obj := range objs {
 		row := make(map[string]interface{}, len(keys))
-		for _, k := range keys {
+		for j, k := range keys {
+			if n, ok := obj[k].(float64); ok && f.ObjectShape[j].Money {
+				row[k] = formatMoney(n)
+				continue
+			}
 			row[k] = toString(obj[k])
 		}
 		stringified[i] = row

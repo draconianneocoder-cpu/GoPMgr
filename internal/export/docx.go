@@ -32,11 +32,15 @@ import (
 //     — no per-kind code in this file.
 //
 // Used by documents.Render() when the caller asks for DOCX, and
-// by the standalone Export menu's DOCX option.
-func RenderDocumentDOCX(kind documents.Kind, contentJSON, projectName string) ([]byte, error) {
+// by the standalone Export menu's DOCX option. currency is the
+// project's reporting currency, which labels amounts.
+func RenderDocumentDOCX(kind documents.Kind, contentJSON, projectName, currency string) ([]byte, error) {
 	def, ok := documents.Get(kind)
 	if !ok {
 		return nil, fmt.Errorf("export: unknown document kind %q", kind)
+	}
+	if !documents.IsCurrencyCode(currency) {
+		return nil, fmt.Errorf("export: invalid reporting currency %q", currency)
 	}
 
 	var content map[string]interface{}
@@ -49,6 +53,10 @@ func RenderDocumentDOCX(kind documents.Kind, contentJSON, projectName string) ([
 	doc, err := godocx.NewDocument()
 	if err != nil {
 		return nil, fmt.Errorf("export: godocx new: %w", err)
+	}
+	// Documents use the project's document font, like their PDFs.
+	if err := applyDOCXFont(doc, documents.ActiveFamily()); err != nil {
+		return nil, err
 	}
 
 	// Title block
@@ -85,7 +93,7 @@ func RenderDocumentDOCX(kind documents.Kind, contentJSON, projectName string) ([
 			if err := addHeadingDOCX(doc, f.Label, 2); err != nil {
 				return nil, err
 			}
-			renderObjectArrayDOCX(doc, f, objs)
+			renderObjectArrayDOCX(doc, f, objs, currency)
 		case documents.FieldText:
 			body := toStringLocal(v)
 			if body == "" {
@@ -98,8 +106,8 @@ func RenderDocumentDOCX(kind documents.Kind, contentJSON, projectName string) ([
 		case documents.FieldNumber:
 			if n, ok := v.(float64); ok && n != 0 {
 				p := doc.AddParagraph("")
-				p.AddText(f.Label + ": ").Bold(true)
-				p.AddText(fmt.Sprintf("%.2f", n))
+				p.AddText(f.LabelIn(currency) + ": ").Bold(true)
+				p.AddText(documents.FormatNumberField(f, n))
 			}
 		case documents.FieldBool:
 			if b, ok := v.(bool); ok {
@@ -175,7 +183,7 @@ func renderDOCXToBytes(doc *docx.RootDoc, tempPrefix string) (out []byte, err er
 //
 // When a future version of godocx settles on a documented table
 // signature, this function is the only place to upgrade.
-func renderObjectArrayDOCX(doc *docx.RootDoc, f documents.Field, objs []map[string]interface{}) {
+func renderObjectArrayDOCX(doc *docx.RootDoc, f documents.Field, objs []map[string]interface{}, currency string) {
 	if len(f.ObjectShape) == 0 {
 		for i, obj := range objs {
 			keys := make([]string, 0, len(obj))
@@ -197,15 +205,25 @@ func renderObjectArrayDOCX(doc *docx.RootDoc, f documents.Field, objs []map[stri
 		p.AddText(fmt.Sprintf("%d. ", i+1)).Bold(true)
 		// One line per sub-field, "Label: value".
 		for _, sub := range f.ObjectShape {
-			val := fmt.Sprintf("%v", obj[sub.Key])
-			if val == "<nil>" {
-				val = ""
-			}
+			val := subFieldValue(sub, obj[sub.Key])
 			p := doc.AddParagraph("    ")
-			p.AddText(sub.Label + ": ").Bold(true)
+			p.AddText(sub.LabelIn(currency) + ": ").Bold(true)
 			p.AddText(val)
 		}
 	}
+}
+
+// subFieldValue formats one object-array cell: an amount with thousands
+// separators, anything else as fmt prints it, and a missing value as "".
+func subFieldValue(sub documents.Field, v interface{}) string {
+	if n, ok := v.(float64); ok && sub.Money {
+		return documents.FormatNumberField(sub, n)
+	}
+	val := fmt.Sprintf("%v", v)
+	if val == "<nil>" {
+		return ""
+	}
+	return val
 }
 
 // ---- Local toString / toStringSlice / toObjectSlice helpers ----

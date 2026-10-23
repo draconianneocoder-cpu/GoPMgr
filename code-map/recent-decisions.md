@@ -12,6 +12,8 @@ historical rationale and superseded investigations remain in Git history.
 
 | Decision | Source of truth |
 | --- | --- |
+| IBM Plex Sans JP, KR, and SC ship as TrueType document fonts, so CJK documents print their text; Arabic, Hebrew, Devanagari, and Thai ship only as app WOFF2 with per-script `unicode-range`, because fpdf cannot shape them. Sans TC is left out: its format 4 cmap is empty, and fpdf draws only boxes. | [ADR-007](../docs/design/ADR-007-ibm-plex-script-coverage.md), `internal/fonts/catalog.go`, `internal/fonts/cmap_test.go`, `frontend/src/app.css` |
+| Archival PDFs are PDF/A-2u, not PDF/A-3b: GoPMgr embeds no attachments, and NARA prefers PDF/A-2 for textual records. `pdfmeta.TagPDFA` repairs fpdf's ToUnicode CMaps and font names before the XMP and OutputIntent updates; PAdES remains the final mutation and keeps the trailer `/ID`. Renderers draw through `pdfdoc.PDF`, whose `SafeText` turns emoji into U+FFFD. `make check-pdfa` validates a signed and a multilingual sample. | [ADR-006](../docs/design/ADR-006-pdfa-2u-archival-format.md), `internal/pdfmeta/fonts.go`, `internal/pdfdoc`, `scripts/validate-pdfa.sh` |
 | Sprint editor saves normalize only empty creation timestamps in a separate outbound payload, preserving dirty snapshots, supplied values and backend-owned identity/time. Go decoding and wire/schema contracts remain unchanged. | `frontend/src/lib/components/agile/SprintList.svelte`, `app_agile_test.go`, [sprint timestamp evidence](../docs/testing/sprint-timestamp-boundary.md) |
 | Sprint upsert and project-scoped readback share one transaction; a readback failure rolls back and success follows commit. IDs, defaults, creation timestamps and wire/schema contracts are preserved. Multi-save activation and lost successful responses remain separate concerns. | `internal/agile/store.go`, `internal/agile/sprint_atomicity_test.go`, [sprint atomicity evidence](../docs/testing/sprint-save-atomicity.md) |
 | Work-item upsert and project-scoped readback run in one transaction. Readback failure rolls back; success follows commit. This preserves IDs, wire/schema contracts and defaults, but does not solve loss of a successful commit's response. | `internal/agile/store.go`, `internal/agile/work_item_atomicity_test.go`, [atomicity evidence](../docs/testing/work-item-save-atomicity.md) |
@@ -71,6 +73,16 @@ historical rationale and superseded investigations remain in Git history.
 - PAdES is the final PDF mutation. PDF/A changes require a new signature.
 - CSV and TSV exports neutralize user-controlled formula prefixes through
   `internal/exportsafe`.
+- IBM Plex is GoPMgr's typeface: Plex Sans is the default for the app,
+  documents, and reports and the PDF/A baseline; Plex Mono sets codes. PDF
+  "bold" is Plex SemiBold. Documents fall back to Plex Sans, never to an
+  unembedded core font. Release binaries embed only the committed IBM Plex and
+  Source Sans 3 fonts (`OFL-1.1`); other families are optional `make fonts`
+  downloads pinned to immutable refs and SHA-256 checks. Each family's
+  `License` in `internal/fonts/catalog.go` must match its `REUSE.toml`
+  annotation (`TestCatalogLicensesMatchREUSE`). See
+  [typography](../docs/design/typography-ibm-plex.md) and
+  `internal/fonts/assets/README.md`.
 
 ## How to update this map
 

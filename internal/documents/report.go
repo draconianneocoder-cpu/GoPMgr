@@ -9,10 +9,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
-
 	"gopmgr/internal/charts/pdfrender"
 	"gopmgr/internal/kernel"
+	"gopmgr/internal/pdfdoc"
 	"gopmgr/internal/pdfmeta"
 )
 
@@ -31,10 +30,13 @@ type ReportSection struct {
 // keyed by chart ID; missing entries fall back to a text line.
 // Pre-resolution keeps this package free of database dependencies.
 type ReportSpec struct {
-	ReportTitle    string                       `json:"report_title"`
-	Subtitle       string                       `json:"subtitle"`
-	Author         string                       `json:"author"`
-	ProjectName    string                       `json:"project_name"`
+	ReportTitle string `json:"report_title"`
+	Subtitle    string `json:"subtitle"`
+	Author      string `json:"author"`
+	ProjectName string `json:"project_name"`
+	// Currency is the project's reporting currency, which labels amounts.
+	// The server sets it from the project, never from the caller's JSON.
+	Currency       string                       `json:"-"`
 	Sections       []ReportSection              `json:"sections"`
 	ResolvedCharts map[string]ResolvedChart     `json:"-"`
 	ResolvedEVM    map[string]*kernel.EVMetrics `json:"-"`
@@ -194,7 +196,7 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 		// no embed-PDF support), we replay the generic field-walking
 		// directly here, with reduced heading sizes so it nests
 		// visually inside the report's outer structure.
-		chartRefs, err := renderSectionBody(pdf, s)
+		chartRefs, err := renderSectionBody(pdf, s, spec.Currency)
 		if err != nil {
 			return nil, fmt.Errorf("render section %s: %w", s.Section.DocumentID, err)
 		}
@@ -239,23 +241,13 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 	}
 	raw := buf.Bytes()
 
-	// Apply PDF/A-3 XMP + OutputIntent to combined reports as well.
-	xspec := pdfmeta.XMPSpec{
+	// Combined reports are PDF/A-2u like single documents.
+	return tagPDFA(raw, pdfmeta.XMPSpec{
 		Title:       spec.ReportTitle,
 		Author:      spec.Author,
 		Subject:     "GoPMgr Combined Report",
 		CreatorTool: "GoPMgr",
-	}
-	if icc := pdfmeta.DefaultICCProfile(); len(icc) > 0 {
-		if tagged, err := pdfmeta.MakePDFA3(raw, xspec, icc); err == nil {
-			return tagged, nil
-		}
-	} else if xmp := pdfmeta.BuildXMPPacket(xspec); len(xmp) > 0 {
-		if tagged, err := pdfmeta.InjectXMPStream(raw, xmp); err == nil {
-			return tagged, nil
-		}
-	}
-	return raw, nil
+	}), nil
 }
 
 // evmSummaryLines renders the earned-value block shared by document
@@ -272,21 +264,21 @@ func evmSummaryLines(m *kernel.EVMetrics) []string {
 		return fmt.Sprintf("%.2f", v)
 	}
 	return []string{
-		fmt.Sprintf("Budget at completion (BAC): %.2f", m.BAC),
-		fmt.Sprintf("Planned value (PV): %.2f", m.PV),
-		fmt.Sprintf("Earned value (EV): %.2f", m.EV),
-		fmt.Sprintf("Actual cost (AC): %.2f", m.AC),
-		fmt.Sprintf("Schedule variance (SV): %.2f", m.SV),
-		fmt.Sprintf("Cost variance (CV): %.2f", m.CV),
+		"Budget at completion (BAC): " + formatMoney(m.BAC),
+		"Planned value (PV): " + formatMoney(m.PV),
+		"Earned value (EV): " + formatMoney(m.EV),
+		"Actual cost (AC): " + formatMoney(m.AC),
+		"Schedule variance (SV): " + formatMoney(m.SV),
+		"Cost variance (CV): " + formatMoney(m.CV),
 		"Schedule performance index (SPI): " + idx(m.SPI),
 		"Cost performance index (CPI): " + idx(m.CPI),
-		fmt.Sprintf("Estimate at completion (EAC): %.2f", m.EAC),
-		fmt.Sprintf("Estimate to complete (ETC): %.2f", m.ETC),
-		fmt.Sprintf("Variance at completion (VAC): %.2f", m.VAC),
+		"Estimate at completion (EAC): " + formatMoney(m.EAC),
+		"Estimate to complete (ETC): " + formatMoney(m.ETC),
+		"Variance at completion (VAC): " + formatMoney(m.VAC),
 	}
 }
 
-func renderEVMSection(pdf *fpdf.Fpdf, m *kernel.EVMetrics) {
+func renderEVMSection(pdf *pdfdoc.PDF, m *kernel.EVMetrics) {
 	lines := evmSummaryLines(m)
 	if len(lines) == 0 {
 		return
@@ -317,7 +309,7 @@ type chartRefMention struct {
 // Returns the list of chart_ref field values encountered, in walk
 // order, so the caller can embed the corresponding chart
 // visualisations on their own pages.
-func renderSectionBody(pdf *fpdf.Fpdf, s ResolvedSection) ([]chartRefMention, error) {
+func renderSectionBody(pdf *pdfdoc.PDF, s ResolvedSection, currency string) ([]chartRefMention, error) {
 	def, ok := Get(s.Kind)
 	if !ok {
 		return nil, fmt.Errorf("unknown kind %q", s.Kind)
@@ -363,7 +355,7 @@ func renderSectionBody(pdf *fpdf.Fpdf, s ResolvedSection) ([]chartRefMention, er
 				continue
 			}
 			writeSubHeading(pdf, f.Label)
-			renderObjectArray(pdf, f, objs)
+			renderObjectArray(pdf, f, objs, currency)
 		case FieldText:
 			body := toString(v)
 			if body == "" {
@@ -375,7 +367,7 @@ func renderSectionBody(pdf *fpdf.Fpdf, s ResolvedSection) ([]chartRefMention, er
 			pdf.Ln(1)
 		case FieldNumber:
 			if n, ok := v.(float64); ok && n != 0 {
-				writeKVCompact(pdf, f.Label, fmt.Sprintf("%.2f", n))
+				writeKVCompact(pdf, f.LabelIn(currency), FormatNumberField(f, n))
 			}
 		case FieldBool:
 			if b, ok := v.(bool); ok {
@@ -400,7 +392,7 @@ func renderSectionBody(pdf *fpdf.Fpdf, s ResolvedSection) ([]chartRefMention, er
 
 // drawChartFallback paints a "chart not available" placeholder when
 // pdfrender returns an error or the resolved chart is missing.
-func drawChartFallback(pdf *fpdf.Fpdf, frame pdfrender.Frame, rc ResolvedChart, reason string) {
+func drawChartFallback(pdf *pdfdoc.PDF, frame pdfrender.Frame, rc ResolvedChart, reason string) {
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetTextColor(0, 80, 130)
 	pdf.SetXY(frame.X, frame.Y)
@@ -412,7 +404,7 @@ func drawChartFallback(pdf *fpdf.Fpdf, frame pdfrender.Frame, rc ResolvedChart, 
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func writeSubHeading(pdf *fpdf.Fpdf, label string) {
+func writeSubHeading(pdf *pdfdoc.PDF, label string) {
 	pdf.Ln(2)
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetTextColor(0, 80, 130)
@@ -421,9 +413,10 @@ func writeSubHeading(pdf *fpdf.Fpdf, label string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func writeKVCompact(pdf *fpdf.Fpdf, k, v string) {
+func writeKVCompact(pdf *pdfdoc.PDF, k, v string) {
 	pdf.SetFont("Helvetica", "B", 9)
-	pdf.CellFormat(36, 4.5, k+":", "", 0, "L", false, 0, "")
+	label := k + ":"
+	pdf.CellFormat(kvLabelWidth(pdf, label, 36), 4.5, label, "", 0, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 9)
 	pdf.MultiCell(0, 4.5, v, "", "L", false)
 }

@@ -865,6 +865,7 @@ interface CostSummary {
     required?: boolean;
     object_shape?: DocumentField[];
     chart_kind?: string; // restrict ChartPicker to this kind when set
+    money?: boolean; // an amount in the project's reporting currency
   }
 
   interface DocumentRecord {

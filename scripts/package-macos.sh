@@ -44,6 +44,7 @@ staged_app="$staging/$visible_app"
 cp -R "$app" "$staged_app"
 mkdir -p "$staged_app/Contents/Resources/Licenses"
 cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt "$staged_app/Contents/Resources/Licenses/go-sqlcipher.txt"
+cp internal/fonts/assets/FONT-NOTICES.txt "$staged_app/Contents/Resources/Licenses/fonts.txt"
 
 if command -v xattr >/dev/null 2>&1; then
 	xattr -cr "$staged_app"

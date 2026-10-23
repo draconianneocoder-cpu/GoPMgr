@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderRiskRegisterPDF is the second reference bespoke renderer
@@ -121,7 +121,7 @@ func normaliseRisks(raw []map[string]interface{}) []risk {
 //	7..12  High      amber
 //	13..19 Severe    red
 //	20..25 Extreme   dark red
-func drawRiskLegend(pdf *fpdf.Fpdf) {
+func drawRiskLegend(pdf *pdfdoc.PDF) {
 	pdf.SetFont("Helvetica", "B", 8)
 	bands := []struct {
 		label   string
@@ -155,7 +155,7 @@ func drawRiskLegend(pdf *fpdf.Fpdf) {
 
 // drawRiskTable emits the risks as a table with the first column
 // tinted by risk band.
-func drawRiskTable(pdf *fpdf.Fpdf, risks []risk) {
+func drawRiskTable(pdf *pdfdoc.PDF, risks []risk) {
 	// Column widths (mm) — landscape A4 body is ~267mm.
 	cols := []struct {
 		header string

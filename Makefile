@@ -62,7 +62,7 @@ tidy: ## go mod tidy + npm install.
 fonts: ## Download the bundled TrueType fonts into internal/fonts/assets.
 	@bash scripts/fetch-fonts.sh
 
-required-font-assets: ## Verify the tracked Source Sans 3 PDF/A baseline and its provenance.
+required-font-assets: ## Verify the tracked IBM Plex (PDF/A baseline, app UI) and Source Sans 3 fonts and their provenance.
 	@bash scripts/check-required-font-assets_test.sh
 	@bash scripts/check-required-font-assets.sh
 
@@ -75,10 +75,10 @@ clean-test-reset-tests: ## Verify clean-test reset/restore safety in isolated fi
 native-isolation-launch-tests: ## Verify the macOS isolated native-launch harness with a fake app bundle.
 	@bash scripts/launch-isolated-native_test.sh
 
-icc: ## Download the sRGB ICC profile for PDF/A-3 OutputIntent embedding.
+icc: ## Download the sRGB ICC profile for the PDF/A OutputIntent.
 	@bash scripts/fetch-icc.sh
 
-check-pdfa: ## Validate generated PDFs for PDF/A-3 conformance using veraPDF (hard gate; GOPMGR_PDFA_STRICT=0 to skip locally).
+check-pdfa: ## Validate generated PDFs, including signed and CJK ones, for PDF/A-2u conformance using veraPDF (hard gate; GOPMGR_PDFA_STRICT=0 to skip locally).
 	@bash scripts/validate-pdfa.sh
 
 check-pades: ## Generate and locally verify an embedded PAdES signed PDF sample.

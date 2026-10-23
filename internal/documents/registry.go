@@ -91,6 +91,18 @@ type Field struct {
 	Required    bool      `json:"required,omitempty"`
 	ObjectShape []Field   `json:"object_shape,omitempty"` // for FieldObjectArr
 	ChartKind   string    `json:"chart_kind,omitempty"`   // for FieldChartRef
+	// Money marks an amount in the project's reporting currency. Its Label
+	// names no currency; LabelIn adds the project's code.
+	Money bool `json:"money,omitempty"`
+}
+
+// LabelIn returns the field's label, followed by the currency code when
+// the field is an amount: "High-Level Budget (EUR)".
+func (f Field) LabelIn(currency string) string {
+	if !f.Money || currency == "" {
+		return f.Label
+	}
+	return f.Label + " (" + currency + ")"
 }
 
 // Definition describes one document kind end-to-end.

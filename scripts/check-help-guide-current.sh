@@ -51,6 +51,11 @@ require_contains "Command-Line Maintenance"
 require_contains "Search help sections"
 require_contains "Tornado Ranking"
 
+# 2026-10 archival PDFs: the format and its one visible text limit.
+require_contains "PDF/A-2u"
+require_contains "PDF fonts can't show emoji"
+require_contains "IBM Plex Sans JP, KR, or SC"
+
 require_not_contains "libwebkit2gtk-4.0-dev"
 require_not_contains "Ubuntu 22.04"
 require_not_contains "WebKit2GTK 4.0"

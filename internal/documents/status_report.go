@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderStatusReportPDF produces a bespoke Status Report PDF — one
@@ -100,7 +100,7 @@ func RenderStatusReportPDF(content map[string]interface{}, projectName string) (
 // drawStatusBadge renders a pill-shaped status badge. The color comes
 // from the value: "green" / "amber" / "red" map directly; anything
 // else falls back to slate.
-func drawStatusBadge(pdf *fpdf.Fpdf, label, value string, x, y float64) {
+func drawStatusBadge(pdf *pdfdoc.PDF, label, value string, x, y float64) {
 	r, g, b := statusColor(value)
 	pdf.SetFillColor(r, g, b)
 	pdf.SetDrawColor(r, g, b)
@@ -143,7 +143,7 @@ const (
 	bulletRed
 )
 
-func writeStatusSection(pdf *fpdf.Fpdf, heading string, items []string, style bulletStyle) {
+func writeStatusSection(pdf *pdfdoc.PDF, heading string, items []string, style bulletStyle) {
 	if len(items) == 0 {
 		return
 	}

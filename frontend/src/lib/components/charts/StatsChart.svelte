@@ -24,6 +24,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import type { StatsLayout } from './_stats_types';
   import { buildStatsChartConfig, gopmgrAnnotationsPlugin } from './stats_chart_config';
   import { readStatsChartTheme } from './stats_chart_theme';
+  import { FONT_SANS } from '../../typography';
 
   Chart.register(
     LineController,
@@ -41,6 +42,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     Legend,
     gopmgrAnnotationsPlugin,
   );
+  // Chart.js defaults to Helvetica Neue/Arial; draw labels in the app's font.
+  Chart.defaults.font.family = FONT_SANS;
 
   let { layout, height = 400 }: { layout: StatsLayout; height?: number } = $props();
   let canvas = $state<HTMLCanvasElement | null>(null);
@@ -81,6 +84,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(() => {
     const observer = new MutationObserver(rebuild);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    // A canvas keeps whatever font was ready when it drew. Redraw once the
+    // page's fonts finish loading so labels never stay in a fallback font.
+    document.fonts?.ready.then(() => chart?.update());
     return () => observer.disconnect();
   });
 

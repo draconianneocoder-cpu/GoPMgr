@@ -469,7 +469,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Export Formats</h3>
             <dl class="text-sm space-y-1">
-              <div class="flex gap-2"><dt class="font-medium text-slate-200 w-16 shrink-0">PDF</dt><dd class="text-slate-400">Print-ready PDF. Supports optional PAdES digital signature.</dd></div>
+              <div class="flex gap-2"><dt class="font-medium text-slate-200 w-16 shrink-0">PDF</dt><dd class="text-slate-400">Archival PDF/A-2u. Embeds its fonts, and its text copies and searches correctly. Supports an optional PAdES digital signature; a signed PDF stays PDF/A-2u.</dd></div>
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-16 shrink-0">DOCX</dt><dd class="text-slate-400">Microsoft Word format. Compatible with Word 2013 and later.</dd></div>
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-16 shrink-0">ODT</dt><dd class="text-slate-400">OpenDocument Text. Compatible with LibreOffice and Google Docs.</dd></div>
               <div class="flex gap-2"><dt class="font-medium text-slate-200 w-16 shrink-0">CSV</dt><dd class="text-slate-400">Comma-separated values; available for tabular documents (register types).</dd></div>

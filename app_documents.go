@@ -436,6 +436,7 @@ func (a *App) exportCombinedReportSignedWithRuntime(
 		Subtitle:          subtitle,
 		Author:            u.DisplayName,
 		ProjectName:       proj.Name,
+		Currency:          proj.CurrencyCode,
 		Sections:          sections,
 		ResolvedCharts:    resolvedCharts,
 		ResolvedEVM:       resolvedEVM,
@@ -742,8 +743,8 @@ func (a *App) recoverFromFailedSwapLocked(d *db.Database, path string, dek []byt
 // desktop-user-selected location and returns the absolute path written. Uses
 // gomutex/godocx under the hood.
 func (a *App) ExportDocumentDOCX(id string) (string, error) {
-	return a.exportDocumentAs(id, ".docx", func(kind documents.Kind, content, projectName string) ([]byte, error) {
-		return export.RenderDocumentDOCX(kind, content, projectName)
+	return a.exportDocumentAs(id, ".docx", func(kind documents.Kind, content, projectName, currency string) ([]byte, error) {
+		return export.RenderDocumentDOCX(kind, content, projectName, currency)
 	})
 }
 
@@ -751,8 +752,8 @@ func (a *App) ExportDocumentDOCX(id string) (string, error) {
 // file. Sibling to ExportDocumentDOCX; uses the hand-built ODT
 // generator in internal/export/odt.go.
 func (a *App) ExportDocumentODT(id string) (string, error) {
-	return a.exportDocumentAs(id, ".odt", func(kind documents.Kind, content, projectName string) ([]byte, error) {
-		return export.RenderDocumentODT(kind, content, projectName)
+	return a.exportDocumentAs(id, ".odt", func(kind documents.Kind, content, projectName, currency string) ([]byte, error) {
+		return export.RenderDocumentODT(kind, content, projectName, currency)
 	})
 }
 
@@ -800,7 +801,7 @@ func (a *App) ExportScheduleReportMSPDI() (string, error) {
 // direct/headless caller).
 func (a *App) exportDocumentAs(
 	id, extension string,
-	renderer func(documents.Kind, string, string) ([]byte, error),
+	renderer func(kind documents.Kind, content, projectName, currency string) ([]byte, error),
 ) (string, error) {
 	d := a.requireDB()
 	u := a.requireUser()
@@ -815,7 +816,7 @@ func (a *App) exportDocumentAs(
 	if err != nil {
 		return "", err
 	}
-	bytes, err := renderer(documents.Kind(doc.Kind), doc.Content, proj.Name)
+	bytes, err := renderer(documents.Kind(doc.Kind), doc.Content, proj.Name, proj.CurrencyCode)
 	if err != nil {
 		return "", err
 	}
@@ -1206,7 +1207,7 @@ func (a *App) ExportDocumentPDF(id string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	bytes, err := documents.Render(documents.Kind(doc.Kind), doc.Content, proj.Name)
+	bytes, err := documents.Render(documents.Kind(doc.Kind), doc.Content, proj.Name, proj.CurrencyCode)
 	if err != nil {
 		return "", err
 	}
@@ -1287,7 +1288,7 @@ func (a *App) ExportDocumentPDFGnuPG(id, keyID string) (GnuPGExportResult, error
 	if err := ensureExportDestinationsAvailable(pdfPath, sigPath); err != nil {
 		return GnuPGExportResult{}, err
 	}
-	bytes, err := documents.Render(documents.Kind(doc.Kind), doc.Content, proj.Name)
+	bytes, err := documents.Render(documents.Kind(doc.Kind), doc.Content, proj.Name, proj.CurrencyCode)
 	if err != nil {
 		return GnuPGExportResult{}, err
 	}
@@ -1367,7 +1368,7 @@ func (a *App) exportDocumentPDFSignedWithRuntime(
 		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
 		return "", fmt.Errorf("timestamp settings: %w", err)
 	}
-	bytes, err := documents.Render(documents.Kind(doc.Kind), doc.Content, proj.Name)
+	bytes, err := documents.Render(documents.Kind(doc.Kind), doc.Content, proj.Name, proj.CurrencyCode)
 	if err != nil {
 		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
 		return "", err

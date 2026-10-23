@@ -262,6 +262,13 @@ if command -v ar >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
 		*) fail ".deb SQLCipher notices lack $marker" ;;
 		esac
 	done
+	font_notices="$(tar -xOf "$data_tar" -C "$extract_dir" ./usr/share/doc/gopmgr/font-notices.txt 2>/dev/null || tar -xOf "$data_tar" ./usr/share/doc/gopmgr/font-notices.txt 2>/dev/null || true)"
+	for marker in "IBM Corp." "Adobe" "SIL OPEN FONT LICENSE"; do
+		case "$font_notices" in
+		*"$marker"*) ;;
+		*) fail ".deb font notices lack $marker" ;;
+		esac
+	done
 	# nfpm sanitizes VERSION for the package's own internal metadata field
 	# (Debian version syntax forbids an unescaped "-" before the upstream
 	# version's final component): the first hyphen becomes "~", matching
@@ -296,12 +303,13 @@ fi
 # technique one level up the call stack.
 fake_repo="$backup_root/fake-repo"
 mkdir -p "$fake_repo/scripts" "$fake_repo/build/linux" "$fake_repo/build/bin" \
-	"$fake_repo/third_party/go-sqlcipher"
+	"$fake_repo/third_party/go-sqlcipher" "$fake_repo/internal/fonts/assets"
 cp scripts/package-linux.sh scripts/package-version-lib.sh scripts/release-tool-versions.env "$fake_repo/scripts/"
 cp build/linux/nfpm.yaml build/linux/gopmgr.desktop "$fake_repo/build/linux/"
 cp build/appicon.png "$fake_repo/build/"
 cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt \
 	"$fake_repo/third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt"
+cp internal/fonts/assets/FONT-NOTICES.txt "$fake_repo/internal/fonts/assets/FONT-NOTICES.txt"
 cp "$gopmgr_elf_amd64" "$fake_repo/build/bin/gopmgr"
 chmod +x "$fake_repo/build/bin/gopmgr"
 (

@@ -215,7 +215,7 @@ policy, native installer tool pins, required font assets, the Windows
 installer scaffold, the Linux runtime target, REUSE/SPDX, frontend build
 budget, release-scope guards, frontend stability, frontend runtime smoke,
 memory-safety scan, Go race tests, production build, DuckDB linkage,
-encrypted-database validation, PDF/A-3 validation, and the PAdES harness
+encrypted-database validation, PDF/A-2u validation, and the PAdES harness
 regression target. Pre-merge GitHub CI also runs `make pades-harness-tests`
 in a dedicated job with `qpdf` and `pdfsig` installed.
 

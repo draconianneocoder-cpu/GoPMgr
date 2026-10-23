@@ -173,6 +173,7 @@ func (s Service) Export(request ExportRequest) (string, error) {
 		Subtitle:       request.Subtitle,
 		Author:         request.Author,
 		ProjectName:    project.Name,
+		Currency:       project.CurrencyCode,
 		Sections:       request.Sections,
 		ResolvedCharts: charts,
 		ResolvedEVM:    resolvedEVM,

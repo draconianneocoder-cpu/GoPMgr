@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/xuri/excelize/v2"
+
+	"gopmgr/internal/fonts"
 )
 
 // renderXLSX produces an .xlsx workbook with two sheets:
@@ -28,6 +30,13 @@ func renderXLSX(payload ReportPayload, opts ExportOptions) (out []byte, err erro
 			err = closeErr
 		}
 	}()
+
+	// Excel names the workbook font; a recipient without IBM Plex Sans sees
+	// their spreadsheet's substitute. Plex's tabular figures keep columns of
+	// numbers aligned where it is installed.
+	if err := f.SetDefaultFont(fonts.DefaultFamily); err != nil {
+		return nil, err
+	}
 
 	const sheet = "Schedule"
 	if err := f.SetSheetName("Sheet1", sheet); err != nil {

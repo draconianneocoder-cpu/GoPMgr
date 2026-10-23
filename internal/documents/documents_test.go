@@ -111,7 +111,7 @@ func TestRender_AllKindsProduceValidPDF(t *testing.T) {
 	for _, d := range All() {
 		t.Run(string(d.Kind), func(t *testing.T) {
 			content := DefaultContent(d.Kind)
-			pdf, err := Render(d.Kind, content, "Smoke Test Project")
+			pdf, err := Render(d.Kind, content, "Smoke Test Project", "USD")
 			if err != nil {
 				t.Fatalf("Render(%s): %v", d.Kind, err)
 			}

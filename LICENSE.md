@@ -61,20 +61,29 @@ The licenses that appear in this project are:
 | `GPL-3.0-or-later`          | Source code — Go, Svelte, TypeScript, Makefile, build/config scaffolds  |
 | `GFDL-1.3-or-later`         | User-facing documentation (`README.md`, `docs/`, and most `*.md`)       |
 | `CC0-1.0`                   | Tiny config files, these license notes, and the compact sRGB ICC profile |
-| `OFL-1.1`                   | Bundled fonts: Liberation, Noto Sans, Source Sans 3, JetBrains Mono, Ledger |
-| `Apache-2.0`                | Bundled fonts: Roboto and the Croscore family (Arimo, Cousine)          |
-| `LicenseRef-Bitstream-Vera` | Bundled DejaVu Sans font                                                 |
-| `MIT`                       | Wails-derived Windows installer templates (`build/windows/`)           |
+| `CC-BY-SA-4.0`              | OWASP Cornucopia card text and GoPMgr's curation of it (`.claude/skills/cornucopia-risk-cards/references/`) |
+| `OFL-1.1`                   | The committed IBM Plex fonts (Sans, Serif, Mono, Sans Condensed, and Sans JP, KR, and SC as TrueType for PDFs; Sans, Mono, and Sans Arabic, Hebrew, Devanagari, and Thai as WOFF2 for the app) and Source Sans 3; also the optional downloaded fonts Liberation, Noto Sans, JetBrains Mono, Roboto, Arimo, Cousine, and Ledger |
+| `Bitstream-Vera`            | The optional downloaded DejaVu Sans font                                 |
+| `MIT`                       | Wails-derived Windows installer templates (`build/windows/`) and the vendored `go-sqlcipher` Go code (`third_party/go-sqlcipher/`) |
+| `BSD-3-Clause`, `blessing`, `Unlicense` | Other vendored code in `third_party/go-sqlcipher/`: the SQLCipher and SQLite sources, LibTomCrypt, and one Go Authors file |
 
-The full texts of the licenses that apply to committed source, documentation,
-and committed binaries — `GPL-3.0-or-later`, `GFDL-1.3-or-later`, `CC0-1.0`,
-`OFL-1.1` (the committed Source Sans 3 faces), and `MIT` (the Windows
-installer templates) — live in the [`LICENSES/`](LICENSES/) directory, as
-REUSE requires. The other bundled font families are fetched at build time by
-`scripts/fetch-fonts.sh` and are **not committed**; their upstream licenses
-(OFL-1.1 for the rest, Apache-2.0, Bitstream-Vera) are recorded above, in
-`REUSE.toml`, and in `internal/fonts/assets/README.md`, and their full texts
-are downloaded alongside the fonts when a clean checkout is built.
+The full text of every license that applies to a committed file, including
+`OFL-1.1` for the committed IBM Plex and Source Sans 3 fonts, lives in the
+[`LICENSES/`](LICENSES/) directory, as REUSE requires; the fonts' copyright
+notices and license also ship inside the app, in
+`internal/fonts/assets/FONT-NOTICES.txt` and next to the app's web fonts, and
+every release package installs `FONT-NOTICES.txt` as a separate file
+(`/usr/share/doc/gopmgr/font-notices.txt` on Linux, `licenses\fonts.txt` on
+Windows, `Contents/Resources/Licenses/fonts.txt` in the macOS app). The
+other font families are optional: `scripts/fetch-fonts.sh` (`make fonts`)
+downloads them for local builds, they are **not committed**, and CI and
+release builds never download them, so release binaries embed only IBM Plex
+and Source Sans 3. Their licenses
+(`OFL-1.1`, and `Bitstream-Vera` for DejaVu Sans) are recorded above, in
+`REUSE.toml`, and in
+[`internal/fonts/assets/README.md`](internal/fonts/assets/README.md), which
+also links each family's upstream license file. The script downloads font
+files only, not license texts.
 
 For the rationale behind each identifier and how to regenerate the license
 texts, see [`LICENSES.md`](LICENSES.md).

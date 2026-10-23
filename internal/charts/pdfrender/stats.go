@@ -8,6 +8,8 @@ import (
 	"math"
 
 	"github.com/go-pdf/fpdf"
+
+	"gopmgr/internal/pdfdoc"
 )
 
 // Local mirrors of stats.StatsLayout so the PDF renderer doesn't
@@ -59,7 +61,7 @@ type statsLayout struct {
 	Flags       []pointFlag   `json:"flags,omitempty"`
 }
 
-func renderStats(pdf *fpdf.Fpdf, kind string, body json.RawMessage, frame Frame) error {
+func renderStats(pdf *pdfdoc.PDF, kind string, body json.RawMessage, frame Frame) error {
 	var l statsLayout
 	if err := parseBody(body, &l); err != nil {
 		return err
@@ -72,7 +74,7 @@ func renderStats(pdf *fpdf.Fpdf, kind string, body json.RawMessage, frame Frame)
 
 // ---------- Pie ----------
 
-func renderPie(pdf *fpdf.Fpdf, l statsLayout, frame Frame) error {
+func renderPie(pdf *pdfdoc.PDF, l statsLayout, frame Frame) error {
 	if len(l.Slices) == 0 {
 		drawEmptyChartPlaceholder(pdf, frame, "(empty)")
 		return nil
@@ -138,7 +140,7 @@ func renderPie(pdf *fpdf.Fpdf, l statsLayout, frame Frame) error {
 
 // drawPieWedge draws a single pie wedge as a many-sided polygon
 // going from `start` to `end` (radians, 0 = 3 o'clock).
-func drawPieWedge(pdf *fpdf.Fpdf, cx, cy, r, start, end float64) {
+func drawPieWedge(pdf *pdfdoc.PDF, cx, cy, r, start, end float64) {
 	const segs = 48
 	pts := []fpdf.PointType{{X: cx, Y: cy}}
 	step := (end - start) / segs
@@ -155,7 +157,7 @@ func drawPieWedge(pdf *fpdf.Fpdf, cx, cy, r, start, end float64) {
 // ---------- Cartesian (line / bar / pareto / burnup / burndown /
 // cumulative_flow / control) ----------
 
-func renderCartesian(pdf *fpdf.Fpdf, l statsLayout, frame Frame) error {
+func renderCartesian(pdf *pdfdoc.PDF, l statsLayout, frame Frame) error {
 	if len(l.Series) == 0 || len(l.Categories) == 0 {
 		drawEmptyChartPlaceholder(pdf, frame, "(empty)")
 		return nil
@@ -288,7 +290,7 @@ func renderCartesian(pdf *fpdf.Fpdf, l statsLayout, frame Frame) error {
 
 // ---------- Series drawing helpers ----------
 
-func drawBars(pdf *fpdf.Fpdf, l statsLayout, plot Frame, yMin, yMax float64) {
+func drawBars(pdf *pdfdoc.PDF, l statsLayout, plot Frame, yMin, yMax float64) {
 	n := len(l.Categories)
 	if n == 0 {
 		return
@@ -332,7 +334,7 @@ func drawBars(pdf *fpdf.Fpdf, l statsLayout, plot Frame, yMin, yMax float64) {
 	}
 }
 
-func drawStackedAreas(pdf *fpdf.Fpdf, l statsLayout, plot Frame, yMin, yMax float64) {
+func drawStackedAreas(pdf *pdfdoc.PDF, l statsLayout, plot Frame, yMin, yMax float64) {
 	n := len(l.Categories)
 	if n == 0 {
 		return
@@ -373,7 +375,7 @@ func drawStackedAreas(pdf *fpdf.Fpdf, l statsLayout, plot Frame, yMin, yMax floa
 	}
 }
 
-func drawLineSeries(pdf *fpdf.Fpdf, s statsSeries, idx int, flags []pointFlag, plot Frame, yMin, yMax float64, nCats int) {
+func drawLineSeries(pdf *pdfdoc.PDF, s statsSeries, idx int, flags []pointFlag, plot Frame, yMin, yMax float64, nCats int) {
 	fr, fg, fb := paletteRGB(idx, s.Color)
 	pdf.SetDrawColor(fr, fg, fb)
 	pdf.SetLineWidth(0.5)
@@ -416,7 +418,7 @@ func drawLineSeries(pdf *fpdf.Fpdf, s statsSeries, idx int, flags []pointFlag, p
 
 // drawRightAxisLine draws a series mapped onto a 0..100 right axis
 // (Pareto cumulative percentage).
-func drawRightAxisLine(pdf *fpdf.Fpdf, l statsLayout, s statsSeries, plot Frame) {
+func drawRightAxisLine(pdf *pdfdoc.PDF, l statsLayout, s statsSeries, plot Frame) {
 	rMin := 0.0
 	rMax := 100.0
 	if l.YAxisRight != nil {
@@ -455,7 +457,7 @@ func drawRightAxisLine(pdf *fpdf.Fpdf, l statsLayout, s statsSeries, plot Frame)
 	}
 }
 
-func drawRightAxisTicks(pdf *fpdf.Fpdf, plot Frame, ax *axisConfig) {
+func drawRightAxisTicks(pdf *pdfdoc.PDF, plot Frame, ax *axisConfig) {
 	min := 0.0
 	max := 100.0
 	if ax.Min != nil {
@@ -474,7 +476,7 @@ func drawRightAxisTicks(pdf *fpdf.Fpdf, plot Frame, ax *axisConfig) {
 	}
 }
 
-func drawStatsLegend(pdf *fpdf.Fpdf, series []statsSeries, frame Frame) {
+func drawStatsLegend(pdf *pdfdoc.PDF, series []statsSeries, frame Frame) {
 	pdf.SetFont("Helvetica", "", 6)
 	cursor := frame.X + 2
 	yLegend := frame.Y + frame.H - 3.5
@@ -678,7 +680,7 @@ func fmtFloat1(v float64) string {
 	return itoa64(intPart) + "." + itoa64(frac)
 }
 
-func drawDashedLine(pdf *fpdf.Fpdf, x1, y1, x2, y2, dash, gap float64) {
+func drawDashedLine(pdf *pdfdoc.PDF, x1, y1, x2, y2, dash, gap float64) {
 	dx := x2 - x1
 	dy := y2 - y1
 	length := math.Sqrt(dx*dx + dy*dy)

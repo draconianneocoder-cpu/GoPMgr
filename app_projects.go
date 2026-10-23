@@ -1305,15 +1305,15 @@ func (a *App) CloseProject() error {
 		a.adminSvc = nil
 		a.sigmaSvc = nil
 	}
-	// Revert document rendering to the built-in font.
+	// Revert document rendering to the bundled default font (IBM Plex Sans).
 	documents.UseFont(nil, "")
 	return nil
 }
 
 // configureFontsLocked wires the document renderers to use the saved
 // default font for database d. Must be called with a.mu held (it reads
-// a.user without re-locking). A nil/empty default reverts to the core
-// font.
+// a.user without re-locking). A nil database, an unset default, or a font
+// that is no longer available selects the bundled default (IBM Plex Sans).
 func (a *App) configureFontsLocked(d *db.Database) {
 	if d == nil {
 		documents.UseFont(nil, "")

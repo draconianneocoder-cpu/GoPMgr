@@ -20,6 +20,13 @@ fi
 if ! grep -Fq 'VERAPDF_IMAGE="verapdf/cli:v${VERAPDF_VERSION}"' "$ROOT/scripts/validate-pdfa.sh"; then
 	fail "validate-pdfa does not bind the official CLI image to VERAPDF_VERSION"
 fi
+# The installer fallback must be pinned by SHA-256, never run unverified.
+if ! grep -Eq '^VERAPDF_INSTALLER_SHA256="[0-9a-f]{64}"$' "$ROOT/scripts/validate-pdfa.sh"; then
+	fail "validate-pdfa does not pin the veraPDF installer by SHA-256"
+fi
+if ! grep -Fq 'file_has_sha256 "$tmp_zip" "$VERAPDF_INSTALLER_SHA256"' "$ROOT/scripts/validate-pdfa.sh"; then
+	fail "validate-pdfa does not verify a downloaded installer before using it"
+fi
 
 assert_compliant() {
 	if ! printf '%s\n' "$1" | verapdf_output_is_compliant; then
@@ -43,7 +50,25 @@ assert_compliant '<report><jobs><job><validationReport><isCompliant>true</isComp
 assert_compliant '<report><jobs><job><validationReport isCompliant="true"></validationReport></job></jobs></report>' "xml attribute true"
 assert_not_compliant '<report><jobs><job><validationReport><isCompliant>false</isCompliant></validationReport></job></jobs></report>' "xml false"
 assert_not_compliant '<report><jobs><job><validationReport isCompliant="false"></validationReport></job></jobs></report>' "xml attribute false"
-assert_not_compliant 'The file is not compliant with PDF/A-3B.' "text false positive guard"
+assert_not_compliant 'The file is not compliant with PDF/A-2U.' "text false positive guard"
+
+assert_eq "$(verapdf_installer_url 1.30.2)" "https://software.verapdf.org/rel/1.30/verapdf-greenfield-1.30.2-installer.zip" "versioned installer URL"
+case "$(verapdf_auto_install_xml '/tmp/a&b<c>')" in
+	*'<installpath>/tmp/a&amp;b&lt;c&gt;</installpath>'*) ;;
+	*) fail "auto-install XML does not escape the install path" ;;
+esac
+
+sha_probe="$ROOT/.tmp/sha256-probe"
+mkdir -p "$ROOT/.tmp"
+printf 'abc' > "$sha_probe"
+file_has_sha256 "$sha_probe" ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad || fail "file_has_sha256 rejected a matching file"
+if file_has_sha256 "$sha_probe" 0000000000000000000000000000000000000000000000000000000000000000; then
+	fail "file_has_sha256 accepted a mismatched file"
+fi
+if file_has_sha256 "$ROOT/.tmp/does-not-exist" ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad; then
+	fail "file_has_sha256 accepted a missing file"
+fi
+rm -f "$sha_probe"
 
 sample="$ROOT/.tmp/gopmgr-pdfa-test/schedule.pdf"
 assert_eq "$(verapdf_sample_arg docker "$ROOT" "$sample")" "/work/.tmp/gopmgr-pdfa-test/schedule.pdf" "docker sample path"
@@ -91,9 +116,11 @@ cleanup_fake_verapdf() {
 	rm -rf "$fake_verapdf_dir"
 }
 trap cleanup_fake_verapdf EXIT
-cat > "$fake_verapdf" << 'EOF'
+fake_verapdf_log="$fake_verapdf_dir/verapdf.args"
+cat > "$fake_verapdf" << EOF
 #!/bin/bash
-printf '%s\n' '<report><jobs><job><validationReport><isCompliant>true</isCompliant></validationReport></job></jobs></report>'
+printf '%s\\n' "\$*" >> "$fake_verapdf_log"
+printf '%s\\n' '<report><jobs><job><validationReport><isCompliant>true</isCompliant></validationReport></job></jobs></report>'
 EOF
 chmod +x "$fake_verapdf"
 
@@ -132,6 +159,19 @@ case "$gate_output" in
 		fail "validate-pdfa gate did not generate and validate monte-carlo-risk-report.pdf"
 		;;
 esac
+for sample in document-multilingual.pdf document-japanese.pdf document-korean.pdf document-chinese.pdf signed-document.pdf; do
+	case "$gate_output" in
+		*"Checking $sample"* ) ;;
+		*)
+			printf '%s\n' "$gate_output" >&2
+			fail "validate-pdfa gate did not generate and validate $sample"
+			;;
+	esac
+done
+if [ "$(grep -c -- '-f 2u' "$fake_verapdf_log")" -ne 9 ]; then
+	cat "$fake_verapdf_log" >&2
+	fail "validate-pdfa gate did not validate all nine samples against the PDF/A-2u profile"
+fi
 case "$gate_output" in
 	*"Gate passed (nothing to check)"* )
 		printf '%s\n' "$gate_output" >&2

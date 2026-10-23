@@ -42,6 +42,14 @@ changed.
   or `.svelte.js`.
 - Validate important UI changes with runtime smoke or browser testing, not
   only type checks.
+- Put interface text in `frontend/src/lib/i18n/messages/en.ts` and show it
+  with `t('key')`, never as literal text in markup; full sentences with
+  `{placeholders}`, never joined fragments. `hardcoded-text.test.ts` fails
+  when a component gains literal text. Format dates and numbers with
+  `formatDate`, `formatTime`, and `formatNumber` from `i18n.svelte.ts`.
+- Keydown handlers that act on Enter ignore events whose `isComposing` is
+  true, so confirming a Japanese or Korean input-method conversion never
+  submits or saves.
 
 ## Documentation
 

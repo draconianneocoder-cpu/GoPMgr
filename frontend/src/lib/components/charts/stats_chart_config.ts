@@ -3,6 +3,8 @@
 
 import type { Chart, ChartConfiguration, ChartDataset, ChartType, Plugin, TooltipItem } from 'chart.js';
 
+import { FONT_SANS } from '../../typography';
+
 import type { Annotation, StatsLayout, StatsSeries } from './_stats_types';
 import { DEFAULT_PALETTE } from './_stats_types';
 import type { StatsChartTheme } from './stats_chart_theme';
@@ -197,7 +199,7 @@ export function drawStatsChartAnnotations(chart: Chart, options: AnnotationPlugi
     ctx.stroke();
     if (annotation.label) {
       ctx.fillStyle = color;
-      ctx.font = '10px sans-serif';
+      ctx.font = `10px ${FONT_SANS}`;
       ctx.fillText(annotation.label, chart.chartArea.left + 4, y - 4);
     }
   }

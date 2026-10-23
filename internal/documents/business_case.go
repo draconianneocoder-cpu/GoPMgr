@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderBusinessCasePDF is the bespoke renderer for the Business Case.
@@ -69,7 +69,7 @@ func RenderBusinessCasePDF(content map[string]interface{}, projectName string) (
 			pdf.SetFont("Helvetica", "B", 10)
 			pdf.CellFormat(50, 6, "Cost summary:", "", 0, "L", false, 0, "")
 			pdf.SetFont("Helvetica", "", 10)
-			pdf.CellFormat(0, 6, "USD "+formatMoney(cost), "", 0, "L", false, 0, "")
+			pdf.CellFormat(0, 6, currencyOf(content)+" "+formatMoney(cost), "", 0, "L", false, 0, "")
 			pdf.Ln(-1)
 		}
 		if roi != "" {
@@ -112,7 +112,7 @@ func RenderBusinessCasePDF(content map[string]interface{}, projectName string) (
 	return buf.Bytes(), nil
 }
 
-func bcHeading(pdf *fpdf.Fpdf, text string) {
+func bcHeading(pdf *pdfdoc.PDF, text string) {
 	pdf.Ln(3)
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(0, 80, 130)
@@ -121,7 +121,7 @@ func bcHeading(pdf *fpdf.Fpdf, text string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func bcSection(pdf *fpdf.Fpdf, heading, body string) {
+func bcSection(pdf *pdfdoc.PDF, heading, body string) {
 	if body == "" {
 		return
 	}
@@ -134,7 +134,7 @@ func bcSection(pdf *fpdf.Fpdf, heading, body string) {
 // bcAccentSection renders body text with a teal left rule to visually
 // elevate it. Used for the Proposed Solution — the centrepiece of the
 // document.
-func bcAccentSection(pdf *fpdf.Fpdf, heading, body string) {
+func bcAccentSection(pdf *pdfdoc.PDF, heading, body string) {
 	if body == "" {
 		return
 	}
@@ -156,7 +156,7 @@ func bcAccentSection(pdf *fpdf.Fpdf, heading, body string) {
 // drawBCAlternative renders one alternative as a bordered card with a
 // header (the alternative's name) and two columns underneath (pros |
 // cons).
-func drawBCAlternative(pdf *fpdf.Fpdf, name, pros, cons string) {
+func drawBCAlternative(pdf *pdfdoc.PDF, name, pros, cons string) {
 	if name == "" && pros == "" && cons == "" {
 		return
 	}
@@ -200,7 +200,7 @@ func drawBCAlternative(pdf *fpdf.Fpdf, name, pros, cons string) {
 // drawBCColumn writes a small heading + body inside one card column
 // and returns the ending Y so the caller can compute the outer card
 // height.
-func drawBCColumn(pdf *fpdf.Fpdf, x, y, w float64, title, body string, tr, tg, tb int) float64 {
+func drawBCColumn(pdf *pdfdoc.PDF, x, y, w float64, title, body string, tr, tg, tb int) float64 {
 	pdf.SetXY(x+2, y)
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.SetTextColor(tr, tg, tb)
@@ -217,7 +217,7 @@ func drawBCColumn(pdf *fpdf.Fpdf, x, y, w float64, title, body string, tr, tg, t
 
 // drawBCTwoColumn renders two bulleted lists side-by-side under their
 // own coloured headings. Used for Benefits vs Risks.
-func drawBCTwoColumn(pdf *fpdf.Fpdf, leftTitle string, left []string, rightTitle string, right []string) {
+func drawBCTwoColumn(pdf *pdfdoc.PDF, leftTitle string, left []string, rightTitle string, right []string) {
 	startY := pdf.GetY()
 	colW := 85.0
 
@@ -264,7 +264,7 @@ func drawBCTwoColumn(pdf *fpdf.Fpdf, leftTitle string, left []string, rightTitle
 
 // drawBCRecommendation renders the recommendation as an accent-boxed
 // callout so the executive reader's eye lands on it.
-func drawBCRecommendation(pdf *fpdf.Fpdf, body string) {
+func drawBCRecommendation(pdf *pdfdoc.PDF, body string) {
 	startY := pdf.GetY()
 	pdf.SetFillColor(239, 246, 255)
 	pdf.SetDrawColor(59, 130, 246)

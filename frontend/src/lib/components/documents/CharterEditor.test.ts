@@ -218,3 +218,23 @@ describe('CharterEditor migrated header "&larr; Dashboard" button', () => {
     );
   });
 });
+
+describe('CharterEditor amount labels', () => {
+  it("shows the project's reporting currency after amount labels", async () => {
+    app.GetDocument.mockImplementation(async () => ({ ...document, content: '{"high_level_budget":1000}' }));
+    app.ListDocumentKinds.mockImplementation(async () => [
+      { kind: 'charter', name: 'Charter', phase: 'initiate', description: '',
+        fields: [{ key: 'high_level_budget', label: 'High-Level Budget', type: 'number', money: true }] },
+    ]);
+    app.GetProjectMeta = vi.fn(async () => ({ currency_code: 'CHF' }));
+    const utils = await mountEditor();
+    expect(await utils.findByText('High-Level Budget (CHF)')).toBeInTheDocument();
+  });
+
+  it('still opens the document when the project currency cannot be read', async () => {
+    app.GetProjectMeta = vi.fn(async () => { throw new Error('no project open'); });
+    const utils = await mountEditor();
+    expect(utils.getByLabelText('Purpose')).toHaveValue('original');
+    expect(utils.queryByText(/Load failed/)).toBeNull();
+  });
+});

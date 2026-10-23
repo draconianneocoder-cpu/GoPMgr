@@ -26,18 +26,34 @@ assert_fails_with() {
 		fail "failure did not contain '$expected': $output"
 }
 
-mkdir -p "$FIXTURE/scripts" "$FIXTURE/internal/fonts/assets"
+WEB=frontend/public/fonts/ibm-plex
+mkdir -p "$FIXTURE/scripts" "$FIXTURE/internal/fonts/assets" "$FIXTURE/$WEB"
 cp "$ROOT/scripts/check-required-font-assets.sh" "$FIXTURE/scripts/"
-cp "$ROOT"/internal/fonts/assets/SourceSans3-*.ttf "$FIXTURE/internal/fonts/assets/"
+cp "$ROOT"/internal/fonts/assets/IBMPlex*.ttf "$ROOT"/internal/fonts/assets/SourceSans3-*.ttf "$FIXTURE/internal/fonts/assets/"
+cp "$ROOT/$WEB"/*.woff2 "$FIXTURE/$WEB/"
 git -C "$FIXTURE" init -q
-git -C "$FIXTURE" add scripts/check-required-font-assets.sh internal/fonts/assets
+git -C "$FIXTURE" add scripts/check-required-font-assets.sh internal/fonts/assets "$WEB"
 
 (cd "$FIXTURE" && bash scripts/check-required-font-assets.sh >/dev/null)
 
-git -C "$FIXTURE" rm --cached -q internal/fonts/assets/SourceSans3-Regular.ttf
+git -C "$FIXTURE" rm --cached -q internal/fonts/assets/IBMPlexSans-Regular.ttf
 assert_fails_with "must be tracked" \
 	bash -c "cd '$FIXTURE' && bash scripts/check-required-font-assets.sh"
-git -C "$FIXTURE" add internal/fonts/assets/SourceSans3-Regular.ttf
+git -C "$FIXTURE" add internal/fonts/assets/IBMPlexSans-Regular.ttf
+
+cp "$FIXTURE/$WEB/IBMPlexSans-Regular.woff2" "$FIXTURE/$WEB/IBMPlexSans-Regular.woff2.orig"
+cp "$ROOT/internal/fonts/assets/IBMPlexSans-Regular.ttf" "$FIXTURE/$WEB/IBMPlexSans-Regular.woff2"
+assert_fails_with "does not have a supported font signature" \
+	bash -c "cd '$FIXTURE' && bash scripts/check-required-font-assets.sh"
+mv "$FIXTURE/$WEB/IBMPlexSans-Regular.woff2.orig" "$FIXTURE/$WEB/IBMPlexSans-Regular.woff2"
+
+# A committed font without a pinned hash must not ship unchecked.
+cp "$FIXTURE/internal/fonts/assets/IBMPlexSans-Regular.ttf" "$FIXTURE/internal/fonts/assets/Unreviewed-Regular.ttf"
+git -C "$FIXTURE" add -f internal/fonts/assets/Unreviewed-Regular.ttf
+assert_fails_with "has no pinned SHA-256" \
+	bash -c "cd '$FIXTURE' && bash scripts/check-required-font-assets.sh"
+git -C "$FIXTURE" rm --cached -q internal/fonts/assets/Unreviewed-Regular.ttf
+rm "$FIXTURE/internal/fonts/assets/Unreviewed-Regular.ttf"
 
 printf 'corruption' >>"$FIXTURE/internal/fonts/assets/SourceSans3-Bold.ttf"
 assert_fails_with "checksum changed" \

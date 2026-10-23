@@ -7,6 +7,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session, goto } from '../../session.svelte';
   import Logo from '../Logo.svelte';
   import RecoveryCodeList from './RecoveryCodeList.svelte';
+  import { t } from '../../i18n/i18n.svelte';
 
   let username = $state('');
   let displayName = $state('');
@@ -55,15 +56,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
 
     if (!usernameRule.test(username)) {
-      error = 'Username must be 3–32 letters, digits, _ or -.';
+      error = t('createAccount.error.username');
       return;
     }
     if (password.length < 8) {
-      error = 'Password must be at least 8 characters.';
+      error = t('createAccount.error.password');
       return;
     }
     if (password !== confirm) {
-      error = 'Passwords do not match.';
+      error = t('createAccount.error.mismatch');
       return;
     }
 
@@ -86,7 +87,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     } catch (err: any) {
       const message = String(err?.message ?? err);
       error = message.includes('administrator privileges')
-        ? 'This computer already has GoPMgr accounts. Ask your administrator to create yours.'
+        ? t('createAccount.error.notFirst')
         : message;
     } finally {
       busy = false;
@@ -104,24 +105,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
   <form class="space-y-4" onsubmit={submit}>
     <div class="space-y-2 text-center">
       <Logo class="h-32 w-auto mx-auto" />
-      <h1 class="text-sm font-bold text-slate-300 tracking-widest uppercase">Create your account</h1>
+      <h1 class="text-sm font-bold text-slate-300 tracking-widest uppercase">{t('createAccount.title')}</h1>
       <p class="text-xs text-slate-500">
-        Everything you create stays on this computer — nothing is uploaded.
+        {t('createAccount.local')}
       </p>
     </div>
 
     {#if firstAccount}
       <div class="bg-slate-800/60 border border-slate-700 rounded-lg p-3 text-xs text-slate-300 space-y-1">
-        <p class="font-semibold text-slate-100">You're the first user on this computer</p>
-        <p>
-          This account will be the GoPMgr administrator. Administrators create and remove
-          the other accounts on this computer.
-        </p>
+        <p class="font-semibold text-slate-100">{t('createAccount.firstUser.title')}</p>
+        <p>{t('createAccount.firstUser.body')}</p>
       </div>
     {/if}
 
     <div>
-      <label for="ca-username" class="block text-xs font-semibold text-slate-500 uppercase">Username</label>
+      <label for="ca-username" class="block text-xs font-semibold text-slate-500 uppercase">{t('common.username')}</label>
       <input
         id="ca-username"
         type="text"
@@ -133,23 +131,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
         class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
       />
       <p id="ca-username-hint" class="text-[10px] mt-1 {usernameTouched && !usernameValid ? 'text-amber-400' : 'text-slate-500'}">
-        3–32 characters; letters, digits, _ or -
+        {t('createAccount.username.hint')}
       </p>
     </div>
 
     <div>
-      <label for="ca-display" class="block text-xs font-semibold text-slate-500 uppercase">Display name</label>
+      <label for="ca-display" class="block text-xs font-semibold text-slate-500 uppercase">{t('createAccount.displayName')}</label>
       <input
         id="ca-display"
         type="text"
         bind:value={displayName}
         class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
       />
-      <p class="text-[10px] mt-1 text-slate-500">Optional — shown in the app. Defaults to your username.</p>
+      <p class="text-[10px] mt-1 text-slate-500">{t('createAccount.displayName.hint')}</p>
     </div>
 
     <div>
-      <label for="ca-password" class="block text-xs font-semibold text-slate-500 uppercase">Password</label>
+      <label for="ca-password" class="block text-xs font-semibold text-slate-500 uppercase">{t('common.password')}</label>
       <div class="relative mt-1">
         <input
           id="ca-password"
@@ -162,7 +160,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <button
           type="button"
           onclick={() => (showPassword = !showPassword)}
-          aria-label={showPassword ? 'Hide password' : 'Show password'}
+          aria-label={showPassword ? t('common.password.hide') : t('common.password.show')}
           aria-pressed={showPassword}
           class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-300 rounded-r"
         >
@@ -180,12 +178,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </button>
       </div>
       <p id="ca-password-hint" class="text-[10px] mt-1 {password.length === 0 ? 'text-slate-500' : passwordLongEnough ? 'text-emerald-400' : 'text-amber-400'}">
-        {passwordLongEnough ? '✓ ' : ''}At least 8 characters
+        {passwordLongEnough ? '✓ ' : ''}{t('createAccount.password.hint')}
       </p>
     </div>
 
     <div>
-      <label for="ca-confirm" class="block text-xs font-semibold text-slate-500 uppercase">Confirm password</label>
+      <label for="ca-confirm" class="block text-xs font-semibold text-slate-500 uppercase">{t('createAccount.confirm')}</label>
       <div class="relative mt-1">
         <input
           id="ca-confirm"
@@ -199,7 +197,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <button
           type="button"
           onclick={() => (showConfirm = !showConfirm)}
-          aria-label={showConfirm ? 'Hide password' : 'Show password'}
+          aria-label={showConfirm ? t('common.password.hide') : t('common.password.show')}
           aria-pressed={showConfirm}
           class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-300 rounded-r"
         >
@@ -217,7 +215,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </button>
       </div>
       <p id="ca-confirm-hint" class="text-[10px] mt-1 {passwordsMatch ? 'text-emerald-400' : 'text-amber-400'}" class:hidden={confirm.length === 0}>
-        {passwordsMatch ? '✓ Passwords match' : 'Passwords don’t match yet'}
+        {passwordsMatch ? t('createAccount.confirm.match') : t('createAccount.confirm.mismatch')}
       </p>
     </div>
 
@@ -230,7 +228,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       disabled={!canSubmit}
       class="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
     >
-      {busy ? 'Creating…' : 'CREATE ACCOUNT'}
+      {busy ? t('createAccount.submitting') : t('createAccount.submit')}
     </button>
 
     <button
@@ -238,45 +236,39 @@ SPDX-License-Identifier: GPL-3.0-or-later
       onclick={() => goto('login')}
       class="w-full text-xs text-cyan-400 hover:text-cyan-300 underline"
     >
-      Back to sign in
+      {t('createAccount.back')}
     </button>
   </form>
   {:else}
   <div class="space-y-5">
     <div class="space-y-2 text-center">
       <Logo class="h-32 w-auto mx-auto" />
-      <h1 class="text-sm font-bold text-slate-300 tracking-widest uppercase">Save your recovery codes</h1>
+      <h1 class="text-sm font-bold text-slate-300 tracking-widest uppercase">{t('recoveryCodes.title')}</h1>
     </div>
 
     {#if codesError}
       <div class="bg-amber-950/40 border border-amber-700/50 rounded-lg p-3 text-xs text-amber-300 space-y-1" role="alert">
-        <p class="font-semibold">Recovery codes could not be generated</p>
-        <p class="text-amber-400/80">
-          Your account was created and you're signed in. Create your recovery codes in
-          App Settings, under Account. ({codesError})
-        </p>
+        <p class="font-semibold">{t('recoveryCodes.failed.title')}</p>
+        <p class="text-amber-400/80">{t('recoveryCodes.failed.body', { error: codesError })}</p>
       </div>
       <button
         type="button"
         onclick={finish}
         class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded transition-colors"
       >
-        CONTINUE TO GOPMGR
+        {t('recoveryCodes.continue')}
       </button>
     {:else}
       <div class="bg-cyan-950/20 border border-cyan-900/60 rounded-lg p-3 text-xs space-y-1">
-        <p class="font-semibold text-cyan-100">These are the only way back into your account</p>
-        <p class="text-cyan-300/80">
-          If you forget your password, a recovery code is the only way to reset it and keep your
-          encrypted projects. Save them somewhere safe — you won't be shown them again.
-        </p>
+        <p class="font-semibold text-cyan-100">{t('recoveryCodes.onlyWay.title')}</p>
+        <p class="text-cyan-300/80">{t('recoveryCodes.onlyWay.body')}</p>
       </div>
 
       <RecoveryCodeList {username} {codes} />
 
       <label class="flex items-start gap-3 cursor-pointer select-none">
         <input type="checkbox" bind:checked={acknowledged} class="mt-0.5 accent-cyan-500" />
-        <span class="text-xs text-slate-300">I have saved my recovery codes somewhere safe.</span>
+        <span class="text-xs text-slate-300">{t('recoveryCodes.saved')}</span>
       </label>
 
       <button
@@ -285,7 +277,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         onclick={finish}
         class="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
       >
-        CONTINUE TO GOPMGR
+        {t('recoveryCodes.continue')}
       </button>
     {/if}
   </div>
