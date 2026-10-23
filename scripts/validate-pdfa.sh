@@ -254,7 +254,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	documentPDF, err := documents.Render(documents.KindProjectCharterWord, string(charterJSON), "PDF/A Validation Project")
+	documentPDF, err := documents.Render(documents.KindProjectCharterWord, string(charterJSON), "PDF/A Validation Project", "USD")
 	if err != nil {
 		fmt.Println("ERROR generating document PDF:", err)
 		os.Exit(1)
@@ -281,7 +281,7 @@ func main() {
 		fmt.Println("ERROR encoding multilingual content:", err)
 		os.Exit(1)
 	}
-	multilingualPDF, err := documents.Render(documents.KindProjectCharterWord, string(multilingualJSON), "Multilingual Validation 🚀")
+	multilingualPDF, err := documents.Render(documents.KindProjectCharterWord, string(multilingualJSON), "Multilingual Validation 🚀", "EUR")
 	if err != nil {
 		fmt.Println("ERROR generating multilingual document PDF:", err)
 		os.Exit(1)
@@ -310,7 +310,7 @@ func main() {
 			fmt.Println("ERROR encoding", doc.family, "content:", err)
 			os.Exit(1)
 		}
-		cjkPDF, err := documents.Render(documents.KindProjectCharterWord, string(cjkJSON), doc.name)
+		cjkPDF, err := documents.Render(documents.KindProjectCharterWord, string(cjkJSON), doc.name, "USD")
 		if err != nil {
 			fmt.Println("ERROR generating", doc.file+":", err)
 			os.Exit(1)
@@ -477,7 +477,7 @@ func main() {
 	if err != nil {
 		fail("encode content", err)
 	}
-	pdf, err := documents.Render(documents.KindProjectCharterWord, string(content), "Signed Validation Project")
+	pdf, err := documents.Render(documents.KindProjectCharterWord, string(content), "Signed Validation Project", "USD")
 	if err != nil {
 		fail("render document", err)
 	}

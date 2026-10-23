@@ -30,6 +30,12 @@ SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
+path = ".github/ISSUE_TEMPLATE/*.md"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
 path = ["build/bin/**", "build/packages/**"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"

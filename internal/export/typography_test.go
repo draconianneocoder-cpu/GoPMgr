@@ -99,7 +99,7 @@ func TestRenderDocumentDOCX_UsesDocumentFont(t *testing.T) {
 	content := `{"purpose":"Deliver the new site."}`
 	t.Run("default", func(t *testing.T) {
 		useDocumentFont(t, "")
-		out, err := RenderDocumentDOCX(documents.KindBusinessCase, content, "Plex Project")
+		out, err := RenderDocumentDOCX(documents.KindBusinessCase, content, "Plex Project", "USD")
 		if err != nil {
 			t.Fatalf("RenderDocumentDOCX: %v", err)
 		}
@@ -107,7 +107,7 @@ func TestRenderDocumentDOCX_UsesDocumentFont(t *testing.T) {
 	})
 	t.Run("chosen serif", func(t *testing.T) {
 		useDocumentFont(t, "IBM Plex Serif")
-		out, err := RenderDocumentDOCX(documents.KindBusinessCase, content, "Plex Project")
+		out, err := RenderDocumentDOCX(documents.KindBusinessCase, content, "Plex Project", "USD")
 		if err != nil {
 			t.Fatalf("RenderDocumentDOCX: %v", err)
 		}
@@ -148,7 +148,7 @@ func assertODTFont(t *testing.T, odt []byte, family, generic string) {
 // reports use IBM Plex Sans.
 func TestRenderODT_UsesDocumentAndReportFonts(t *testing.T) {
 	useDocumentFont(t, "IBM Plex Serif")
-	doc, err := RenderDocumentODT(documents.KindBusinessCase, `{"purpose":"Deliver the new site."}`, "Plex Project")
+	doc, err := RenderDocumentODT(documents.KindBusinessCase, `{"purpose":"Deliver the new site."}`, "Plex Project", "USD")
 	if err != nil {
 		t.Fatalf("RenderDocumentODT: %v", err)
 	}

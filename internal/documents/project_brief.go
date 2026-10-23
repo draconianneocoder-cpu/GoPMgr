@@ -52,7 +52,7 @@ func RenderProjectBriefPDF(content map[string]interface{}, projectName string) (
 	budget, _ := content["budget"].(float64)
 	timeline := getString(content, "timeline", "")
 	if budget > 0 || timeline != "" {
-		drawBriefKPIStrip(pdf, budget, timeline)
+		drawBriefKPIStrip(pdf, budget, currencyOf(content), timeline)
 	}
 
 	// Goals
@@ -120,7 +120,7 @@ func drawBriefSummary(pdf *pdfdoc.PDF, summary string) {
 // dark KPI tiles. Reuses the budget-tile shape from Project Proposal
 // but pairs it with a sibling timeline tile so the two facts share
 // visual weight.
-func drawBriefKPIStrip(pdf *pdfdoc.PDF, budget float64, timeline string) {
+func drawBriefKPIStrip(pdf *pdfdoc.PDF, budget float64, currency, timeline string) {
 	startY := pdf.GetY()
 	const gap = 4.0
 	tileW := (170.0 - gap) / 2
@@ -129,7 +129,7 @@ func drawBriefKPIStrip(pdf *pdfdoc.PDF, budget float64, timeline string) {
 	// Budget tile
 	if budget > 0 {
 		drawBriefKPITile(pdf, 20, startY, tileW, tileH,
-			"BUDGET", fmt.Sprintf("USD %s", formatMoney(budget)), 16)
+			"BUDGET", currency+" "+formatMoney(budget), 16)
 	}
 
 	// Timeline tile (shorter font so longer strings fit)

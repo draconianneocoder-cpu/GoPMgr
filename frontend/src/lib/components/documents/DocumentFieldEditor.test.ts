@@ -84,3 +84,31 @@ describe('DocumentFieldEditor object_array field', () => {
     expect(container.querySelectorAll('input[type="text"]')).toHaveLength(0);
   });
 });
+
+describe('DocumentFieldEditor amount labels', () => {
+  const budget: DocumentField = { key: 'high_level_budget', label: 'High-Level Budget', type: 'number', money: true };
+
+  it('names the project currency after an amount label, and nothing without one', () => {
+    const withCurrency = render(DocumentFieldEditor, { props: { field: budget, value: 0, currency: 'EUR' } });
+    expect(withCurrency.getByText('High-Level Budget (EUR)')).toBeInTheDocument();
+    withCurrency.unmount();
+
+    const without = render(DocumentFieldEditor, { props: { field: budget, value: 0 } });
+    expect(without.getByText('High-Level Budget')).toBeInTheDocument();
+  });
+
+  it('labels amount columns in object rows, and leaves other fields alone', () => {
+    const tasks: DocumentField = {
+      key: 'tasks', label: 'Tasks', type: 'object_array',
+      object_shape: [
+        { key: 'name', label: 'Task', type: 'string' },
+        { key: 'cost', label: 'Cost', type: 'number', money: true },
+      ],
+    };
+    const { getByText } = render(DocumentFieldEditor, {
+      props: { field: tasks, value: [{ name: 'Build', cost: 10 }], currency: 'GBP' },
+    });
+    expect(getByText('Cost (GBP)')).toBeInTheDocument();
+    expect(getByText('Task')).toBeInTheDocument();
+  });
+});

@@ -5,7 +5,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-007: Which IBM Plex packages GoPMgr bundles
 
-**Status:** Implemented
+**Status:** Implemented; amended by [ADR-008](ADR-008-localization.md),
+which adds IBM Plex Sans JP and KR to the app for a Japanese and Korean
+interface.
 **Decision date:** 2026-10-23
 **Deciders:** GoPMgr maintainer
 

@@ -32,10 +32,15 @@ import (
 // LibreOffice, Microsoft Word 2007+, Apple Pages, and Google Docs
 // all open files with this exact layout. Field-walking matches
 // docx.go and the generic PDF renderer.
-func RenderDocumentODT(kind documents.Kind, contentJSON, projectName string) ([]byte, error) {
+//
+// currency is the project's reporting currency, which labels amounts.
+func RenderDocumentODT(kind documents.Kind, contentJSON, projectName, currency string) ([]byte, error) {
 	def, ok := documents.Get(kind)
 	if !ok {
 		return nil, fmt.Errorf("export: unknown document kind %q", kind)
+	}
+	if !documents.IsCurrencyCode(currency) {
+		return nil, fmt.Errorf("export: invalid reporting currency %q", currency)
 	}
 
 	var content map[string]interface{}
@@ -46,7 +51,7 @@ func RenderDocumentODT(kind documents.Kind, contentJSON, projectName string) ([]
 	}
 
 	// Build the document body XML.
-	body, err := renderODTBody(kind, def, content, projectName)
+	body, err := renderODTBody(kind, def, content, projectName, currency)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +178,7 @@ func odtStyles(family string) string {
 
 // renderODTBody walks the document's Field definitions and emits
 // content.xml.
-func renderODTBody(_ documents.Kind, def documents.Definition, content map[string]interface{}, projectName string) (string, error) {
+func renderODTBody(_ documents.Kind, def documents.Definition, content map[string]interface{}, projectName, currency string) (string, error) {
 	var buf bytes.Buffer
 	buf.WriteString(`<?xml version="1.0" encoding="UTF-8"?>
 <office:document-content ` + odtNS + ` office:version="1.2">
@@ -204,7 +209,7 @@ func renderODTBody(_ documents.Kind, def documents.Definition, content map[strin
 				continue
 			}
 			writeODTPara(&buf, "Heading_2", f.Label)
-			writeODTTable(&buf, f, objs)
+			writeODTTable(&buf, f, objs, currency)
 		case documents.FieldText:
 			body := toStringLocal(v)
 			if body == "" {
@@ -214,7 +219,7 @@ func renderODTBody(_ documents.Kind, def documents.Definition, content map[strin
 			writeODTPara(&buf, "Standard", body)
 		case documents.FieldNumber:
 			if n, ok := v.(float64); ok && n != 0 {
-				writeODTPara(&buf, "Standard", f.Label+": "+fmt.Sprintf("%.2f", n))
+				writeODTPara(&buf, "Standard", f.LabelIn(currency)+": "+documents.FormatNumberField(f, n))
 			}
 		case documents.FieldBool:
 			if b, ok := v.(bool); ok {
@@ -244,7 +249,7 @@ func writeODTPara(buf *bytes.Buffer, style, text string) {
 
 // writeODTTable emits an object-array field as a 1-header + N-row
 // table. Column widths are left to the reader.
-func writeODTTable(buf *bytes.Buffer, f documents.Field, objs []map[string]interface{}) {
+func writeODTTable(buf *bytes.Buffer, f documents.Field, objs []map[string]interface{}, currency string) {
 	if len(f.ObjectShape) == 0 {
 		// Fall back to bullet rows.
 		for _, obj := range objs {
@@ -265,7 +270,7 @@ func writeODTTable(buf *bytes.Buffer, f documents.Field, objs []map[string]inter
 	fmt.Fprintf(buf, `      <table:table-row>`+"\n")
 	for _, sub := range f.ObjectShape {
 		fmt.Fprintf(buf, `        <table:table-cell table:style-name="CellHeader">`+"\n")
-		writeODTPara(buf, "Standard", sub.Label)
+		writeODTPara(buf, "Standard", sub.LabelIn(currency))
 		fmt.Fprintf(buf, `        </table:table-cell>`+"\n")
 	}
 	fmt.Fprintf(buf, `      </table:table-row>`+"\n")
@@ -273,10 +278,7 @@ func writeODTTable(buf *bytes.Buffer, f documents.Field, objs []map[string]inter
 	for _, obj := range objs {
 		fmt.Fprintf(buf, `      <table:table-row>`+"\n")
 		for _, sub := range f.ObjectShape {
-			val := fmt.Sprintf("%v", obj[sub.Key])
-			if val == "<nil>" {
-				val = ""
-			}
+			val := subFieldValue(sub, obj[sub.Key])
 			fmt.Fprintf(buf, `        <table:table-cell table:style-name="Cell">`+"\n")
 			writeODTPara(buf, "Standard", val)
 			fmt.Fprintf(buf, `        </table:table-cell>`+"\n")

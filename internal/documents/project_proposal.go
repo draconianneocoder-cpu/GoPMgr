@@ -82,7 +82,7 @@ func RenderProjectProposalPDF(content map[string]interface{}, projectName string
 
 	// Budget KPI
 	if budget, ok := content["budget_summary"].(float64); ok && budget > 0 {
-		drawProposalBudgetTile(pdf, budget)
+		drawProposalBudgetTile(pdf, budget, currencyOf(content))
 	}
 
 	// THE ASK — bold accent callout at the bottom
@@ -198,7 +198,7 @@ func drawProposalTeamChips(pdf *pdfdoc.PDF, members []string) {
 // drawProposalBudgetTile renders the budget summary as a large
 // right-aligned KPI tile so a budget reviewer can scan the page and
 // land on the number without reading.
-func drawProposalBudgetTile(pdf *pdfdoc.PDF, budget float64) {
+func drawProposalBudgetTile(pdf *pdfdoc.PDF, budget float64, currency string) {
 	pdf.Ln(2)
 	startY := pdf.GetY()
 	tileW := 90.0
@@ -212,7 +212,7 @@ func drawProposalBudgetTile(pdf *pdfdoc.PDF, budget float64) {
 	pdf.SetXY(tileX+3, startY+2)
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.SetTextColor(148, 163, 184)
-	pdf.CellFormat(tileW-6, 4, "PROPOSED BUDGET (USD)", "", 0, "L", false, 0, "")
+	pdf.CellFormat(tileW-6, 4, "PROPOSED BUDGET ("+currency+")", "", 0, "L", false, 0, "")
 
 	pdf.SetXY(tileX+3, startY+7)
 	pdf.SetFont("Helvetica", "B", 18)

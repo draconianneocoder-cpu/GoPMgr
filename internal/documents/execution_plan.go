@@ -53,8 +53,8 @@ func RenderExecutionPlanPDF(content map[string]interface{}, projectName string) 
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetTextColor(30, 41, 59)
 	pdf.Cell(0, 6, fmt.Sprintf(
-		"Tasks: %d  \xc2\xb7  Total cost: USD %s  \xc2\xb7  Window: %s \xe2\x86\x92 %s (%d days)",
-		len(tasks), formatMoney(totalCost),
+		"Tasks: %d  \xc2\xb7  Total cost: %s %s  \xc2\xb7  Window: %s \xe2\x86\x92 %s (%d days)",
+		len(tasks), currencyOf(content), formatMoney(totalCost),
 		shortExecDate(window.Start), shortExecDate(window.End), window.Days))
 	pdf.Ln(8)
 	pdf.SetTextColor(0, 0, 0)
@@ -73,7 +73,7 @@ func RenderExecutionPlanPDF(content map[string]interface{}, projectName string) 
 			}
 			return si < sj
 		})
-		drawExecutionTable(pdf, tasks, window)
+		drawExecutionTable(pdf, tasks, window, currencyOf(content))
 	}
 
 	// Footer
@@ -172,7 +172,7 @@ func parseDate(s string) time.Time {
 
 // drawExecutionTable renders the tasks with an inline timeline segment
 // in the rightmost column.
-func drawExecutionTable(pdf *pdfdoc.PDF, tasks []executionTask, window projectWindow) {
+func drawExecutionTable(pdf *pdfdoc.PDF, tasks []executionTask, window projectWindow, currency string) {
 	cols := []struct {
 		header string
 		w      float64
@@ -183,7 +183,7 @@ func drawExecutionTable(pdf *pdfdoc.PDF, tasks []executionTask, window projectWi
 		{"Start", 22, "L"},
 		{"End", 22, "L"},
 		{"Days", 14, "R"},
-		{"Cost (USD)", 24, "R"},
+		{"Cost (" + currency + ")", 24, "R"},
 		{"Timeline", 102, "L"},
 	}
 

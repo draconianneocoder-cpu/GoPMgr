@@ -15,6 +15,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let doc = $state<DocumentRecord | null>(null);
   let definition = $state<DocumentDefinition | null>(null);
   let content = $state<Record<string, unknown>>({});
+  // The project's reporting currency, shown after amount labels.
+  let currency = $state('');
   let status = $state('');
   let saving = $state(false);
   let syncingRiskMatrix = $state(false);
@@ -65,6 +67,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
         definition = all.find((d) => d.kind === wordKind) ?? definition;
       }
       stopAutosave = autosave.register(snapshot, persist);
+      try {
+        const meta = await window.go.main.App.GetProjectMeta();
+        if (active) currency = meta.currency_code ?? '';
+      } catch {
+        // Amount labels then name no currency; editing is unaffected.
+      }
     } catch (err: unknown) {
       if (active) status = `Load failed: ${err}`;
     }
@@ -322,7 +330,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </label>
 
       {#each definition.fields as field (field.key)}
-        <DocumentFieldEditor {field} bind:value={content[field.key]} />
+        <DocumentFieldEditor {field} {currency} bind:value={content[field.key]} />
       {/each}
 
       <!-- Digital signature action next to human sign-off fields -->

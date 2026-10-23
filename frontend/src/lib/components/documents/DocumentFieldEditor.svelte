@@ -11,7 +11,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import ChartPicker from './ChartPicker.svelte';
   import Button from '../Button.svelte';
 
-  let { field, value = $bindable() }: { field: DocumentField; value: unknown } = $props();
+  // currency is the project's reporting currency code; amount fields
+  // show it after their label, as the exported documents do.
+  let {
+    field,
+    value = $bindable(),
+    currency = '',
+  }: { field: DocumentField; value: unknown; currency?: string } = $props();
+
+  function labelOf(f: DocumentField): string {
+    return f.money && currency ? `${f.label} (${currency})` : f.label;
+  }
 
   // Lazy default values per FieldKind. Initialised here so the first
   // keystroke doesn't have to deal with `undefined`.
@@ -53,7 +63,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 <label class="block space-y-1">
   <span class="text-xs font-semibold text-slate-500 uppercase">
-    {field.label}
+    {labelOf(field)}
     {#if field.required}<span class="text-red-400">*</span>{/if}
   </span>
   {#if field.help}
@@ -121,7 +131,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <div class="border border-slate-800 rounded p-3 space-y-2">
           {#each field.object_shape ?? [] as sub (sub.key)}
             <label class="block">
-              <span class="text-[10px] text-slate-500 uppercase">{sub.label}</span>
+              <span class="text-[10px] text-slate-500 uppercase">{labelOf(sub)}</span>
               {#if sub.type === 'text'}
                 <textarea
                   bind:value={(value as Record<string, unknown>[])[i][sub.key]}

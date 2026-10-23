@@ -32,7 +32,8 @@ func RenderProjectBudgetPDF(content map[string]interface{}, projectName string) 
 	pdf.SetTitle("Project Budget", true)
 	pdf.AddPage()
 
-	currency := getString(content, "currency", "USD")
+	// The document's own Currency field wins; otherwise the project's.
+	currency := getString(content, "currency", currencyOf(content))
 
 	// Title block
 	pdf.SetFont("Helvetica", "B", 22)

@@ -51,7 +51,7 @@ func TestDocumentAppMethodsRejectForeignProjectRowsInSameFile(t *testing.T) {
 		{"SaveDocument", func(doc db.Document) error { _, err := app.SaveDocument(doc); return err }},
 		{"SyncRiskRegisterToMatrix", func(doc db.Document) error { _, err := app.SyncRiskRegisterToMatrix(doc.ID); return err }},
 		{"exportDocumentAs", func(doc db.Document) error {
-			_, err := app.exportDocumentAs(doc.ID, ".txt", func(documents.Kind, string, string) ([]byte, error) {
+			_, err := app.exportDocumentAs(doc.ID, ".txt", func(documents.Kind, string, string, string) ([]byte, error) {
 				return []byte("unexpected"), nil
 			})
 			return err
