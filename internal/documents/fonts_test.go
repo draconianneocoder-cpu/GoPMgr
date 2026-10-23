@@ -5,6 +5,9 @@ package documents
 
 import (
 	"bytes"
+	"compress/zlib"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -275,5 +278,78 @@ func TestRender_AcceptsEmojiInDocumentFields(t *testing.T) {
 	}
 	if !bytes.Contains(pdf, []byte("<pdfaid:part>2</pdfaid:part>")) {
 		t.Fatal("charter with emoji is not PDF/A-2u")
+	}
+}
+
+var (
+	cidFontWithMap = regexp.MustCompile(`/Subtype /CIDFontType2\n/BaseFont /[A-Z]{6}\+(IBMPlex[A-Za-z-]+)\n[^>]*?/CIDToGIDMap (\d+) 0 R`)
+	flateStream    = `(?s)\n%d 0 obj\n<</Length (\d+)/Filter /FlateDecode>>\nstream\n`
+)
+
+// glyphMaps returns the CIDToGIDMap of each embedded font, grouped by the
+// font's PostScript name: a CJK family's italic styles reuse its upright
+// files, so one name can appear more than once. fpdf encodes text as Unicode
+// code points, so a character prints only if its code maps to a glyph other
+// than 0, the missing glyph.
+func glyphMaps(t *testing.T, pdf []byte) map[string][][]byte {
+	t.Helper()
+	maps := map[string][][]byte{}
+	for _, m := range cidFontWithMap.FindAllSubmatch(pdf, -1) {
+		id, _ := strconv.Atoi(string(m[2]))
+		loc := regexp.MustCompile(fmt.Sprintf(flateStream, id)).FindSubmatchIndex(pdf)
+		if loc == nil {
+			t.Fatalf("CIDToGIDMap object %d not found", id)
+		}
+		length, _ := strconv.Atoi(string(pdf[loc[2]:loc[3]]))
+		zr, err := zlib.NewReader(bytes.NewReader(pdf[loc[1] : loc[1]+length]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := io.ReadAll(zr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		maps[string(m[1])] = append(maps[string(m[1])], data)
+	}
+	return maps
+}
+
+// TestRender_CJKFamiliesPrintTheirScripts renders a charter in each bundled
+// CJK family and checks that every character maps to a real glyph. With IBM
+// Plex Sans, the same text prints as missing-glyph boxes.
+func TestRender_CJKFamiliesPrintTheirScripts(t *testing.T) {
+	for family, text := range map[string]string{
+		"IBM Plex Sans JP": "プロジェクト憲章、日本語",
+		"IBM Plex Sans KR": "프로젝트 헌장, 한국어",
+		"IBM Plex Sans SC": "项目章程，简体中文",
+	} {
+		t.Run(family, func(t *testing.T) {
+			withDefaultDocumentFont(t)
+			UseFont(nil, family)
+			content := fmt.Sprintf(`{"project_name":%q,"purpose":%q,"objectives":[%q]}`, text, text, text)
+			pdf, err := Render(KindProjectCharterWord, content, text)
+			if err != nil {
+				t.Fatalf("Render: %v", err)
+			}
+			psName := strings.ReplaceAll(family, " ", "")
+			cidMaps, ok := glyphMaps(t, pdf)[psName]
+			if !ok {
+				t.Fatalf("no embedded font named %s", psName)
+			}
+			for _, r := range text {
+				if r == ' ' {
+					continue
+				}
+				printed := false
+				for _, cidMap := range cidMaps {
+					if int(cidMap[2*r])<<8|int(cidMap[2*r+1]) != 0 {
+						printed = true
+					}
+				}
+				if !printed {
+					t.Errorf("%q (U+%04X) maps to the missing glyph in %s", r, r, psName)
+				}
+			}
+		})
 	}
 }

@@ -210,7 +210,7 @@ extract() {
 	fi
 }
 
-# --- IBM Plex (Sans, Serif, Mono, Sans Condensed), SIL OFL 1.1 ----------
+# --- IBM Plex (Sans, Serif, Mono, Sans Condensed, Sans JP/KR/SC), OFL 1.1 -
 # Committed: the default document font, the PDF/A baseline, and the app's
 # typeface. Each family is pinned to the commit of its IBM release tag; the
 # SHA-256 values match check-required-font-assets.sh. fpdf maps its Bold
@@ -243,6 +243,19 @@ fetch "IBMPlexSansCondensed-Regular.ttf" "$PLEX_SANS_CONDENSED/IBMPlexSansConden
 fetch "IBMPlexSansCondensed-SemiBold.ttf" "$PLEX_SANS_CONDENSED/IBMPlexSansCondensed-SemiBold.ttf" "acc2b1e3b9597ee13b08b767f845bd038fe120cbee806859af7c01b60fe6e9e6"
 fetch "IBMPlexSansCondensed-Italic.ttf" "$PLEX_SANS_CONDENSED/IBMPlexSansCondensed-Italic.ttf" "368d896f1cd1dc9f9b926135bd5c3154aa6f3dcd53f2b330bce487968a3a3e4a"
 fetch "IBMPlexSansCondensed-SemiBoldItalic.ttf" "$PLEX_SANS_CONDENSED/IBMPlexSansCondensed-SemiBoldItalic.ttf" "d6dbb283c007854cd5fd56b86f5c9da8fcac497e50aa8e029258de21599ab8f6"
+
+# Sans JP 1.004, KR 1.003, and SC 1.000, unhinted. CJK type has no italics,
+# so only Regular and SemiBold are bundled (internal/fonts/catalog.go).
+# Tags @ibm/plex-sans-jp@3.0.0, @ibm/plex-sans-kr@1.1.0, @ibm/plex-sans-sc@1.1.0
+PLEX_SANS_JP="https://raw.githubusercontent.com/IBM/plex/89cba80dad75561262e758f4b6ddd474c5119796/packages/plex-sans-jp/fonts/complete/ttf/unhinted"
+PLEX_SANS_KR="https://raw.githubusercontent.com/IBM/plex/1da12f02587b630c07e92692d21492d722f53614/packages/plex-sans-kr/fonts/complete/ttf/unhinted"
+PLEX_SANS_SC="https://raw.githubusercontent.com/IBM/plex/222657a016f31e6d913ede88520de7dec84dc81b/packages/plex-sans-sc/fonts/complete/ttf/unhinted"
+fetch "IBMPlexSansJP-Regular.ttf" "$PLEX_SANS_JP/IBMPlexSansJP-Regular.ttf" "0168493ae143d16e4c0d374c090b1ee5eab9ee475536d2e429368dbcfc4a6abe"
+fetch "IBMPlexSansJP-SemiBold.ttf" "$PLEX_SANS_JP/IBMPlexSansJP-SemiBold.ttf" "3ae17af73062926b013afdec8949923a8adfd4ec8c4f689876c0a359e63e4ceb"
+fetch "IBMPlexSansKR-Regular.ttf" "$PLEX_SANS_KR/IBMPlexSansKR-Regular.ttf" "9b9a2fd392af19b1bd6535fb506e4f4a80bfc23f5421b1772983502394ade125"
+fetch "IBMPlexSansKR-SemiBold.ttf" "$PLEX_SANS_KR/IBMPlexSansKR-SemiBold.ttf" "c957e30a0744bd98d1f7e8c19ee7fcd3740ab59a92e4d9b8168a82eda91d25ea"
+fetch "IBMPlexSansSC-Regular.ttf" "$PLEX_SANS_SC/IBMPlexSansSC-Regular.ttf" "0b8b5c398c3198ec8932f3d3eb5eea0b3e7ff4f6cb5b84fcde180ad890094d5e"
+fetch "IBMPlexSansSC-SemiBold.ttf" "$PLEX_SANS_SC/IBMPlexSansSC-SemiBold.ttf" "a785ab071ae8d75865c8aa9adc74fe6e5af67a9ba7cff76ca533dafba8cb7b2d"
 # --- Liberation 2.1.5 (Sans / Serif / Mono), SIL OFL 1.1 -------------
 # The repository holds only FontForge sources; the TTFs ship in this release
 # archive (linked from the 2.1.5 release page). Its SHA-256 matches the

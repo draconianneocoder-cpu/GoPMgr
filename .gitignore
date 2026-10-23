@@ -109,6 +109,12 @@ temp_snapshot.db
 !/internal/fonts/assets/IBMPlexMono-SemiBold.ttf
 !/internal/fonts/assets/IBMPlexMono-Italic.ttf
 !/internal/fonts/assets/IBMPlexMono-SemiBoldItalic.ttf
+!/internal/fonts/assets/IBMPlexSansJP-Regular.ttf
+!/internal/fonts/assets/IBMPlexSansJP-SemiBold.ttf
+!/internal/fonts/assets/IBMPlexSansKR-Regular.ttf
+!/internal/fonts/assets/IBMPlexSansKR-SemiBold.ttf
+!/internal/fonts/assets/IBMPlexSansSC-Regular.ttf
+!/internal/fonts/assets/IBMPlexSansSC-SemiBold.ttf
 !/internal/fonts/assets/SourceSans3-Regular.ttf
 !/internal/fonts/assets/SourceSans3-Bold.ttf
 !/internal/fonts/assets/SourceSans3-It.ttf

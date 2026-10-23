@@ -159,7 +159,7 @@ case "$gate_output" in
 		fail "validate-pdfa gate did not generate and validate monte-carlo-risk-report.pdf"
 		;;
 esac
-for sample in document-multilingual.pdf signed-document.pdf; do
+for sample in document-multilingual.pdf document-japanese.pdf document-korean.pdf document-chinese.pdf signed-document.pdf; do
 	case "$gate_output" in
 		*"Checking $sample"* ) ;;
 		*)
@@ -168,9 +168,9 @@ for sample in document-multilingual.pdf signed-document.pdf; do
 			;;
 	esac
 done
-if [ "$(grep -c -- '-f 2u' "$fake_verapdf_log")" -ne 6 ]; then
+if [ "$(grep -c -- '-f 2u' "$fake_verapdf_log")" -ne 9 ]; then
 	cat "$fake_verapdf_log" >&2
-	fail "validate-pdfa gate did not validate all six samples against the PDF/A-2u profile"
+	fail "validate-pdfa gate did not validate all nine samples against the PDF/A-2u profile"
 fi
 case "$gate_output" in
 	*"Gate passed (nothing to check)"* )

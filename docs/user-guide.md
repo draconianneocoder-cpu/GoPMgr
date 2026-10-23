@@ -531,14 +531,23 @@ and look the same on any computer, with no download.
 
 Choose a project's document font in Project Settings, under Document Font.
 IBM Plex Serif suits long documents meant for printing, and IBM Plex Sans
-Condensed fits more text in dense tables. The choice applies to the project's
-documents exported as PDF, DOCX, or ODT; schedule reports always use IBM Plex
-Sans. You can also import a `.ttf` font there. Imported fonts are stored in
-your GoPMgr data area and can be selected for document exports. GoPMgr refuses
-a font whose license doesn't allow embedding it in documents.
+Condensed fits more text in dense tables. For documents in Japanese, Korean,
+or Simplified Chinese, choose IBM Plex Sans JP, KR, or SC; each also covers
+Latin text. The choice applies to the project's documents exported as PDF,
+DOCX, or ODT; schedule reports always use IBM Plex Sans. You can also import a
+`.ttf` font there. Imported fonts are stored in your GoPMgr data area and can
+be selected for document exports. GoPMgr refuses a font whose license doesn't
+allow embedding it in documents.
 
-PDF fonts can't show emoji. In a PDF, each emoji prints as �, so a reader can
-tell something was there; the app itself shows emoji normally.
+The app shows Arabic, Hebrew, Devanagari, and Thai text in IBM Plex. PDFs
+can't lay out those scripts, so their letters print unjoined, backwards, or
+with misplaced marks; export documents in those scripts as DOCX or ODT, which
+word processors lay out correctly. For Traditional Chinese PDFs, import a font
+that covers it.
+
+PDF fonts can't show emoji. In a PDF, each emoji prints as � (an empty box in
+IBM Plex Sans JP, KR, and SC), so a reader can tell something was there; the
+app itself shows emoji normally.
 
 DOCX, ODT, XLSX, and HTML files name their font but do not include it. Someone
 who opens them without IBM Plex installed sees a similar font chosen by their

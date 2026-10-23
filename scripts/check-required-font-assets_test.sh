@@ -47,6 +47,14 @@ assert_fails_with "does not have a supported font signature" \
 	bash -c "cd '$FIXTURE' && bash scripts/check-required-font-assets.sh"
 mv "$FIXTURE/$WEB/IBMPlexSans-Regular.woff2.orig" "$FIXTURE/$WEB/IBMPlexSans-Regular.woff2"
 
+# A committed font without a pinned hash must not ship unchecked.
+cp "$FIXTURE/internal/fonts/assets/IBMPlexSans-Regular.ttf" "$FIXTURE/internal/fonts/assets/Unreviewed-Regular.ttf"
+git -C "$FIXTURE" add -f internal/fonts/assets/Unreviewed-Regular.ttf
+assert_fails_with "has no pinned SHA-256" \
+	bash -c "cd '$FIXTURE' && bash scripts/check-required-font-assets.sh"
+git -C "$FIXTURE" rm --cached -q internal/fonts/assets/Unreviewed-Regular.ttf
+rm "$FIXTURE/internal/fonts/assets/Unreviewed-Regular.ttf"
+
 printf 'corruption' >>"$FIXTURE/internal/fonts/assets/SourceSans3-Bold.ttf"
 assert_fails_with "checksum changed" \
 	bash -c "cd '$FIXTURE' && bash scripts/check-required-font-assets.sh"

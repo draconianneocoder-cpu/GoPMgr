@@ -18,6 +18,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   let info = $state<AppInfo | null>(null);
   let font = $state('');
+  // An empty selection means GoPMgr's default, IBM Plex Sans.
+  const selectedFontDescription = $derived(
+    (info?.fonts ?? []).find((f) => f.name === (font || 'IBM Plex Sans'))?.description ?? '',
+  );
   let theme = $state('');
   let appTheme = $state<AppTheme>('dark');
   let committedAppTheme = $state<AppTheme>('dark');
@@ -382,6 +386,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <span class="text-xs font-semibold text-slate-500 uppercase">Default document font</span>
             <select
               bind:value={font}
+              aria-describedby={selectedFontDescription ? 'app-default-font-description' : undefined}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             >
               <option value="">IBM Plex Sans (default)</option>
@@ -389,6 +394,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
                 <option value={f.name}>{f.name}</option>
               {/each}
             </select>
+            {#if selectedFontDescription}
+              <span id="app-default-font-description" class="block mt-1 text-xs text-slate-400">
+                {selectedFontDescription}
+              </span>
+            {/if}
           </label>
 
           <label class="block">

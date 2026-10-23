@@ -75,7 +75,7 @@ func TestCatalogFamily(t *testing.T) {
 // available from the real embed with all four styles, as real TrueType, so
 // no renderer ever falls back to fpdf's unembedded core fonts.
 func TestCommittedFamilies_BundleEveryStyle(t *testing.T) {
-	committed := []string{DefaultFamily, MonoFamily, "IBM Plex Serif", "IBM Plex Sans Condensed", "Source Sans 3"}
+	committed := []string{DefaultFamily, MonoFamily, "IBM Plex Serif", "IBM Plex Sans Condensed", "IBM Plex Sans JP", "IBM Plex Sans KR", "IBM Plex Sans SC", "Source Sans 3"}
 	available := map[string]FamilyInfo{}
 	for _, info := range NewManager(t.TempDir()).Available() {
 		available[info.Name] = info
@@ -131,6 +131,24 @@ func TestPlexFamilies_BoldIsSemiBold(t *testing.T) {
 		for _, style := range AllStyles {
 			ff, ok := fam.File(style)
 			if want := prefix + suffix[style]; !ok || ff.Style != style || ff.FileName != want {
+				t.Errorf("%s %s = %+v, want %s", name, style, ff, want)
+			}
+		}
+	}
+
+	// CJK type has no italics: the italic styles use the upright face of
+	// the same weight, so bold italic text keeps its weight.
+	upright := map[Style]string{Regular: "-Regular.ttf", Bold: "-SemiBold.ttf", Italic: "-Regular.ttf", BoldItalic: "-SemiBold.ttf"}
+	for _, code := range []string{"JP", "KR", "SC"} {
+		name := "IBM Plex Sans " + code
+		fam, ok := CatalogFamily(name)
+		if !ok {
+			t.Errorf("%s missing from the catalog", name)
+			continue
+		}
+		for _, style := range AllStyles {
+			ff, ok := fam.File(style)
+			if want := "IBMPlexSans" + code + upright[style]; !ok || ff.Style != style || ff.FileName != want {
 				t.Errorf("%s %s = %+v, want %s", name, style, ff, want)
 			}
 		}
