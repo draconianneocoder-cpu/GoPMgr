@@ -37,6 +37,18 @@ were rechecked with Go 1.27.3 on 2026-10-22 and remain unchanged. Since
 tests (for example `internal/documents`, 78.2% to 69.5%). Per-file
 percentages in rows written before then were measured with the older count.
 
+**Baseline refresh (2026-10-23):** `coverage-baseline.json` now records
+16990/21133 (Go default, 80.40%), 17105/21231 (Go duckdb, 80.57%), and
+11406/18207 (frontend, 62.65%). The Go marks were last set at 15,039
+statements. The code has grown by about 6,100 statements since, so the
+uncovered count rose from 3,605 to 4,143 while coverage rose from 76.0% to
+80.4%. The maintainer chose to reset the Go marks to the current state
+rather than keep marks no commit could meet; the frontend mark is an
+ordinary ratchet improvement. They were measured in a Linux container as
+root, where three test files skip their permission checks, so the Go marks
+may be slightly looser than a developer machine's; `make
+coverage-ratchet-update` run as a regular user tightens them.
+
 `scripts/check-coverage-ledger-drift.sh` (2026-08-10; widened 2026-08-11;
 run via `make coverage-ledger-drift` and the failing-on-error macOS CI assurance job,
 standalone — not in local `make verify`, same DuckDB-toolchain reason as
@@ -1133,11 +1145,11 @@ map used for repository orientation.
 ---
 
 
-## Frontend (`frontend/src`) — 19.35% of statements
+## Frontend (`frontend/src`) — 62.65% of statements
 
-Vitest + `@testing-library/svelte`. Coverage here is intentionally far
+Vitest + `@testing-library/svelte`. Coverage here is intentionally
 lower than Go because most of the
-233 `.svelte` files are presentational and haven't been reached yet; the
+102 `.svelte` files are presentational and haven't been reached yet; the
 tests below are either pure-logic modules or the components judged
 highest-value so far).
 
