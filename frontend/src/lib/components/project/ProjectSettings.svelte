@@ -2101,7 +2101,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
            Document Font
          </h2>
          <p class="text-xs text-slate-400 mb-3">
-           Applies to all PDF, DOCX, and ODT exports for this project.
+           Applies to this project's documents exported as PDF, DOCX, or ODT. Schedule
+           reports always use IBM Plex Sans, the default.
          </p>
          <div class="flex flex-wrap gap-2 items-end">
            <div class="flex-1 min-w-40">

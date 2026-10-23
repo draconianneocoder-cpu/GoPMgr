@@ -50,6 +50,10 @@ func RenderDocumentDOCX(kind documents.Kind, contentJSON, projectName string) ([
 	if err != nil {
 		return nil, fmt.Errorf("export: godocx new: %w", err)
 	}
+	// Documents use the project's document font, like their PDFs.
+	if err := applyDOCXFont(doc, documents.ActiveFamily()); err != nil {
+		return nil, err
+	}
 
 	// Title block
 	if err := addHeadingDOCX(doc, projectName, 0); err != nil {

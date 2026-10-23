@@ -225,7 +225,7 @@ import (
 )
 
 func main() {
-	documents.UseFont(fonts.NewManager(""), "Source Sans 3")
+	documents.UseFont(fonts.NewManager(""), fonts.DefaultFamily)
 
 	charterContent := map[string]interface{}{
 		"project_name":        "PDF/A Validation Project",
@@ -241,7 +241,7 @@ func main() {
 		"high_level_schedule": "Validation samples are generated during the release gate.",
 		"milestones":          []map[string]string{{"name": "Gate sample passes", "date": "2026-06-06"}},
 		"high_level_budget":   12500.0,
-		"assumptions":         []string{"Bundled Source Sans 3 assets are available."},
+		"assumptions":         []string{"Bundled IBM Plex Sans assets are available."},
 		"constraints":         []string{"No database context is required for gate samples."},
 		"risks":               []string{"Future renderers may regress PDF/A invariants."},
 		"success_criteria":    []string{"veraPDF reports PDF/A-3b compliance."},

@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/gomutex/godocx"
+
+	"gopmgr/internal/fonts"
 )
 
 // renderDocumentDOCX produces a Microsoft Word file containing the CPM schedule
@@ -18,6 +20,10 @@ func renderDocumentDOCX(payload ReportPayload, opts ExportOptions) ([]byte, erro
 	doc, err := godocx.NewDocument()
 	if err != nil {
 		return nil, fmt.Errorf("export: godocx new: %w", err)
+	}
+	// Reports use the PDF/A baseline family, like the PDF report.
+	if err := applyDOCXFont(doc, fonts.DefaultFamily); err != nil {
+		return nil, err
 	}
 
 	// Title block

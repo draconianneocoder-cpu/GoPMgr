@@ -179,9 +179,9 @@ func TestRenderProjectOverviewPDF_Grid_FiresOnAnySingleField(t *testing.T) {
 //
 // Unlike every other assertion in this file, this is an absolute-size
 // check, not a relative one -- it's only valid while no embedded font is
-// registered via SetFontApplier (fonts.go is the only caller; no test in
-// this package calls it, so newDocPDF falls back to fpdf's core
-// Helvetica and 1969/2201 are deterministic today). Re-measure both
+// registered via SetFontApplier (main_test.go's TestMain clears it for this
+// package, so newDocPDF uses fpdf's core Helvetica and 1969/2201 are
+// deterministic; production embeds IBM Plex Sans). Re-measure both
 // numbers if that changes: a future font that shrinks output would leave
 // this test passing without actually discriminating the mutation again.
 func TestRenderProjectOverviewPDF_Grid_NotDrawnWhenAllFieldsEmpty(t *testing.T) {

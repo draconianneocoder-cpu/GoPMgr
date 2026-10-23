@@ -78,7 +78,7 @@ func RenderDocumentODT(kind documents.Kind, contentJSON, projectName string) ([]
 	}{
 		{"META-INF/manifest.xml", odtManifest()},
 		{"meta.xml", odtMeta(projectName, def.Name, now)},
-		{"styles.xml", odtStyles()},
+		{"styles.xml", odtStyles(documents.ActiveFamily())},
 		{"content.xml", body},
 	}
 	for _, f := range files {
@@ -102,7 +102,8 @@ const odtNS = `xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" `
 	`xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" ` +
 	`xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" ` +
 	`xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" ` +
-	`xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"`
+	`xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" ` +
+	`xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"`
 
 func odtManifest() string {
 	return `<?xml version="1.0" encoding="UTF-8"?>
@@ -134,13 +135,16 @@ func odtMeta(projectName, kindName, isoNow string) string {
 }
 
 // odtStyles holds the heading + table styles content.xml references.
-// Kept minimal: one paragraph style per heading level, one default,
-// one table-cell border style. Readers extend this with their own
-// defaults — we don't need to enumerate every property.
-func odtStyles() string {
+// Kept minimal: the document font as the paragraph default, one paragraph
+// style per heading level, one table-cell border style. Readers extend this
+// with their own defaults — we don't need to enumerate every property.
+func odtStyles(family string) string {
 	return `<?xml version="1.0" encoding="UTF-8"?>
 <office:document-styles ` + odtNS + ` office:version="1.2">
-  <office:styles>
+` + odtFontFaceDecls(family) + `  <office:styles>
+    <style:default-style style:family="paragraph">
+      <style:text-properties style:font-name="` + xmlEscape(family) + `"/>
+    </style:default-style>
     <style:style style:name="Title" style:family="paragraph" style:parent-style-name="Standard">
       <style:text-properties fo:font-size="24pt" fo:font-weight="bold"/>
       <style:paragraph-properties fo:margin-bottom="0.25in"/>

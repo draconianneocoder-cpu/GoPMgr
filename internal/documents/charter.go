@@ -214,9 +214,24 @@ func writeBulletSection(pdf *fpdf.Fpdf, heading string, items []string) {
 
 func writeKV(pdf *fpdf.Fpdf, k, v string) {
 	pdf.SetFont("Helvetica", "B", 10)
-	pdf.CellFormat(40, 5, k+":", "", 0, "L", false, 0, "")
+	label := k + ":"
+	pdf.CellFormat(kvLabelWidth(pdf, label, 40), 5, label, "", 0, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 10)
 	pdf.MultiCell(0, 5, v, "", "L", false)
+}
+
+// kvLabelGap separates a label that overflows its column from its value.
+const kvLabelGap = 2.0
+
+// kvLabelWidth is the width of a key/value label cell in the current font:
+// the aligned column, or the label's own width plus a gap when the label is
+// wider. fpdf does not clip cell text, so without this a long label in a
+// wide face (IBM Plex Serif SemiBold, a user font) ran into its value.
+func kvLabelWidth(pdf *fpdf.Fpdf, label string, column float64) float64 {
+	if w := pdf.GetStringWidth(label) + kvLabelGap; w > column {
+		return w
+	}
+	return column
 }
 
 func writeTable(pdf *fpdf.Fpdf, headers []string, widths []float64, rows []map[string]interface{}, keys []string) {

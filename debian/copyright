@@ -16,6 +16,19 @@ License: see individual files
  The vendored dependency graph retains each upstream component's licensing and
  copyright notices in its source tree.
 
+Files: internal/fonts/assets/IBMPlex*.ttf frontend/public/fonts/ibm-plex/*
+Copyright: 2017-2020 IBM Corp., with Reserved Font Name "Plex".
+License: OFL-1.1
+Comment: IBM Plex Sans 3.005, Serif 3.006, Mono 2.005, and Sans Condensed 3.000
+ from https://github.com/IBM/plex. The TrueType faces are embedded in the
+ gopmgr binary for PDFs and the WOFF2 faces in its interface. IBM Plex is a
+ trademark of IBM Corp, registered in many jurisdictions worldwide.
+
+Files: internal/fonts/assets/FONT-NOTICES.txt
+Copyright: 2017-2020 IBM Corp., with Reserved Font Name "Plex".
+ 2010-2024 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+License: OFL-1.1
+
 Files: internal/fonts/assets/SourceSans3-*.ttf
 Copyright: 2010-2024 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
 License: OFL-1.1

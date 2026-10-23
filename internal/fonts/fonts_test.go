@@ -69,6 +69,74 @@ func TestCatalogFamily(t *testing.T) {
 	}
 }
 
+// TestCommittedFamilies_BundleEveryStyle pins the families every build
+// ships: the IBM Plex superfamily (DefaultFamily is the PDF/A baseline and
+// MonoFamily sets the recovery-code sheet) and Source Sans 3. Each must be
+// available from the real embed with all four styles, as real TrueType, so
+// no renderer ever falls back to fpdf's unembedded core fonts.
+func TestCommittedFamilies_BundleEveryStyle(t *testing.T) {
+	committed := []string{DefaultFamily, MonoFamily, "IBM Plex Serif", "IBM Plex Sans Condensed", "Source Sans 3"}
+	available := map[string]FamilyInfo{}
+	for _, info := range NewManager(t.TempDir()).Available() {
+		available[info.Name] = info
+	}
+	for _, name := range committed {
+		t.Run(name, func(t *testing.T) {
+			info, ok := available[name]
+			if !ok {
+				t.Fatalf("%s is not available from the real embed; is it committed and listed in .gitignore's exceptions?", name)
+			}
+			if want := []string{"Regular", "Bold", "Italic", "Bold Italic"}; !reflect.DeepEqual(info.Styles, want) {
+				t.Errorf("%s styles = %v, want %v", name, info.Styles, want)
+			}
+			fam, _ := CatalogFamily(name)
+			for _, ff := range fam.Files {
+				b, err := assetsFS.ReadFile(bundledAsset(ff.FileName))
+				if err != nil {
+					t.Fatalf("read embedded %s: %v", ff.FileName, err)
+				}
+				if err := validateTrueType(b); err != nil {
+					t.Errorf("embedded %s: %v", ff.FileName, err)
+				}
+			}
+		})
+	}
+	if _, ok := CatalogFamily(DefaultFamily); !ok {
+		t.Errorf("DefaultFamily %q is not in the catalog", DefaultFamily)
+	}
+	if fam, ok := CatalogFamily(MonoFamily); !ok || fam.Category != "mono" {
+		t.Errorf("MonoFamily %q must be a mono catalog family, got %+v", MonoFamily, fam)
+	}
+}
+
+// TestPlexFamilies_BoldIsSemiBold pins the weight mapping documented in
+// docs/design/typography-ibm-plex.md: fpdf's four styles map to Regular,
+// SemiBold, Italic, and SemiBold Italic in every IBM Plex family, so
+// headings and table headers keep their widths and every Plex family a user
+// picks renders with the same hierarchy.
+func TestPlexFamilies_BoldIsSemiBold(t *testing.T) {
+	plex := map[string]string{
+		"IBM Plex Sans":           "IBMPlexSans",
+		"IBM Plex Serif":          "IBMPlexSerif",
+		"IBM Plex Mono":           "IBMPlexMono",
+		"IBM Plex Sans Condensed": "IBMPlexSansCondensed",
+	}
+	suffix := map[Style]string{Regular: "-Regular.ttf", Bold: "-SemiBold.ttf", Italic: "-Italic.ttf", BoldItalic: "-SemiBoldItalic.ttf"}
+	for name, prefix := range plex {
+		fam, ok := CatalogFamily(name)
+		if !ok {
+			t.Errorf("%s missing from the catalog", name)
+			continue
+		}
+		for _, style := range AllStyles {
+			ff, ok := fam.File(style)
+			if want := prefix + suffix[style]; !ok || ff.Style != style || ff.FileName != want {
+				t.Errorf("%s %s = %+v, want %s", name, style, ff, want)
+			}
+		}
+	}
+}
+
 // TestCatalogLicensesMatchREUSE keeps the License that ListFonts reports for
 // each family in step with REUSE.toml, the repository's authoritative license
 // record. Roboto, Arimo, and Cousine once said Apache-2.0 here after upstream
@@ -450,9 +518,10 @@ func TestRegister_NilRegistrar(t *testing.T) {
 // this entire package green until the field check below was added: the
 // guarantee this comment describes only became real at that point.
 //
-// The behavioral half asserts only on Source Sans 3, which is committed to
-// the repository as the PDF/A baseline (the other families are gitignored
-// and fetched by `make fonts`), so it stays deterministic on any checkout.
+// The behavioral half asserts only on DefaultFamily, which is committed to
+// the repository as the PDF/A baseline (the optional families are
+// gitignored and fetched by `make fonts`), so it stays deterministic on any
+// checkout.
 func TestNewManager_BindsRealEmbeddedAssets(t *testing.T) {
 	mgr := NewManager(t.TempDir())
 	reg := &recordingRegistrar{}
@@ -461,8 +530,8 @@ func TestNewManager_BindsRealEmbeddedAssets(t *testing.T) {
 		t.Fatal("NewManager must bind the real assetsFS embed; bundledFS is nil")
 	}
 
-	if err := mgr.Register(reg, "Source Sans 3"); err != nil {
-		t.Fatalf("Register the committed Source Sans 3 baseline: %v", err)
+	if err := mgr.Register(reg, DefaultFamily); err != nil {
+		t.Fatalf("Register the committed %s baseline: %v", DefaultFamily, err)
 	}
 	if len(reg.calls) == 0 {
 		t.Fatal("NewManager must bind the real embed; no style was registered")
@@ -486,11 +555,11 @@ func TestZeroValueManager_FallsBackToRealEmbed(t *testing.T) {
 
 	got := mgr.Available()
 	if len(got) == 0 {
-		t.Fatal("zero-value Manager should still report the committed Source Sans 3 baseline")
+		t.Fatal("zero-value Manager should still report the committed baseline families")
 	}
 
 	reg := &recordingRegistrar{}
-	if err := mgr.Register(reg, "Source Sans 3"); err != nil {
+	if err := mgr.Register(reg, DefaultFamily); err != nil {
 		t.Fatalf("zero-value Manager should register the committed baseline: %v", err)
 	}
 	if len(reg.calls) == 0 {
@@ -687,15 +756,14 @@ func TestRegister_BundledFromInjectedBundle(t *testing.T) {
 // It also removes the last environmental dependency in this package's
 // coverage. The comparator's name tiebreak is only reached when two
 // entries share an origin, and against the real embed that needs two
-// bundled families -- i.e. optional families fetched by `make fonts`. On a
-// bare checkout only the committed Source Sans 3 baseline is bundled, so
-// the tiebreak went uncovered and this package measured 0.5 points lower
-// than on a developer machine. Injecting two bundled families covers it on
-// every checkout.
+// bundled families -- once only the committed Source Sans 3 baseline was
+// bundled on a bare checkout, so the tiebreak went uncovered and this
+// package measured 0.5 points lower than on a developer machine. Injecting
+// bundled families covers it on every checkout, whatever is committed.
 func TestAvailable_SortsBundledBeforeUserThenByName(t *testing.T) {
 	// Three families, deliberately not two: Catalog's own order is
-	// "Liberation Sans", "Liberation Serif", "Liberation Mono", so the
-	// first *two* already happen to be in name order and would pass even
+	// "IBM Plex Sans", "IBM Plex Serif", "IBM Plex Mono", so the first
+	// *two* already happen to be in name order and would pass even
 	// against a comparator that never reordered anything. Taking three
 	// makes catalog order and name order genuinely differ, so the
 	// assertion below can only pass if the sort actually ran.

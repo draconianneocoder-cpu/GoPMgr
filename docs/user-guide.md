@@ -519,17 +519,27 @@ change.
 
 ## Fonts
 
-GoPMgr embeds TrueType fonts in generated PDFs. Source Sans 3 ships with
-every supported build so PDF/A reports do not depend on a network download.
+GoPMgr uses the IBM Plex typefaces everywhere: IBM Plex Sans for the app and
+for documents and reports, and IBM Plex Mono for codes and identifiers, such as
+the recovery-code sheet. Every build includes them, so PDFs embed their fonts
+and look the same on any computer, with no download.
+
+Choose a project's document font in Project Settings, under Document Font.
+IBM Plex Serif suits long documents meant for printing, and IBM Plex Sans
+Condensed fits more text in dense tables. The choice applies to the project's
+documents exported as PDF, DOCX, or ODT; schedule reports always use IBM Plex
+Sans. You can also import a `.ttf` font there. Imported fonts are stored in
+your GoPMgr data area and can be selected for document exports.
+
+DOCX, ODT, XLSX, and HTML files name their font but do not include it. Someone
+who opens them without IBM Plex installed sees a similar font chosen by their
+software.
+
 Developers can download the additional optional font catalog with:
 
 ```sh
 make fonts
 ```
-
-Users can also import a `.ttf` font from Project Settings. Imported fonts
-are stored in the user's GoPMgr data area and can be selected for document
-exports.
 
 ## Command-Line Maintenance
 

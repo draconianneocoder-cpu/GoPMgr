@@ -51,9 +51,9 @@ fi
 echo "Native installer tool versions verified."
 
 # --- 2b. Required embedded font assets -------------------------------
-# PDF/A forbids unembedded core fonts. Validate the tracked Source Sans 3
-# baseline before the expensive build and veraPDF gates so a clean-checkout
-# omission produces a direct, actionable failure.
+# PDF/A forbids unembedded core fonts. Validate the tracked IBM Plex baseline
+# (and the other bundled fonts) before the expensive build and veraPDF gates so
+# a clean-checkout omission produces a direct, actionable failure.
 if ! make required-font-assets >/dev/null; then
     echo "Required font asset validation failed. Run 'make required-font-assets' for details."
     exit 1

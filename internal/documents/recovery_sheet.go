@@ -8,6 +8,8 @@ import (
 	"errors"
 
 	"github.com/go-pdf/fpdf"
+
+	"gopmgr/internal/fonts"
 )
 
 // RecoverySheet is a printable page of one account's recovery codes.
@@ -32,16 +34,22 @@ const (
 // a box to tick off.
 //
 // Unlike project documents it does not use newDocPDF: that stamps PDF/A
-// metadata and swaps in the user's embedded font only while a project is
-// open, and this sheet is often made at account creation, before any. It
-// uses fpdf's standard Helvetica and Courier, which every PDF viewer has,
-// and makes no PDF/A claim: the sheet is meant to be printed, not archived.
-// The content fits within the margins of both A4 and US Letter.
+// metadata and applies the project's document font, and this sheet is often
+// made at account creation, before any project exists. It embeds the bundled
+// IBM Plex Sans for its text and IBM Plex Mono for the codes, so it looks the
+// same in every viewer and keeps look-alike code characters (S/5, Z/2, G/6)
+// distinct. It makes no PDF/A claim: the sheet is meant to be printed, not
+// archived. The content fits within the margins of both A4 and US Letter.
 func RenderRecoverySheetPDF(sheet RecoverySheet) ([]byte, error) {
 	if len(sheet.Codes) == 0 {
 		return nil, errors.New("recovery sheet needs at least one code")
 	}
 	pdf := fpdf.New("P", "mm", "A4", "")
+	// Best-effort, like registerDocumentFont: every build embeds both
+	// families, and a failure leaves fpdf's core fonts, which still print.
+	bundled := fonts.NewManager("")
+	_ = bundled.RegisterAs(pdf, fonts.DefaultFamily, "Helvetica")
+	_ = bundled.RegisterAs(pdf, fonts.MonoFamily, "Courier")
 	pdf.SetMargins(20, 20, 20)
 	pdf.SetAutoPageBreak(false, 20)
 	pdf.SetTitle(recoverySheetTitle, true)

@@ -38,17 +38,17 @@ func renderHTML(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 	b.WriteString(`<title>` + esc(title) + ` — Schedule</title>` + "\n")
 	b.WriteString(`<style>
 :root { color-scheme: light dark; }
-body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; color: #0f172a; }
-h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+body { font-family: ` + htmlFontStack + `; margin: 2rem; color: #0f172a; }
+h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 .25rem; }
 .meta { color: #64748b; font-size: .8rem; margin-bottom: 1.5rem; }
 table { border-collapse: collapse; width: 100%; font-size: .85rem; }
 th, td { border: 1px solid #e2e8f0; padding: .4rem .6rem; text-align: left; }
-th { background: #f1f5f9; }
+th { background: #f1f5f9; font-weight: 600; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 tr.critical td { background: #fef2f2; }
 tr.critical td:first-child { border-left: 3px solid #dc2626; }
 .crit-badge { color: #dc2626; font-weight: 700; }
-h2 { font-size: 1.05rem; margin: 1.75rem 0 .5rem; }
+h2 { font-size: 1.05rem; font-weight: 600; margin: 1.75rem 0 .5rem; }
 .evm { columns: 2; max-width: 720px; }
 .evm div { break-inside: avoid; padding: .15rem 0; font-size: .85rem; }
 @media print { body { margin: 0; } th { background: #f1f5f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }

@@ -62,7 +62,7 @@ tidy: ## go mod tidy + npm install.
 fonts: ## Download the bundled TrueType fonts into internal/fonts/assets.
 	@bash scripts/fetch-fonts.sh
 
-required-font-assets: ## Verify the tracked Source Sans 3 PDF/A baseline and its provenance.
+required-font-assets: ## Verify the tracked IBM Plex (PDF/A baseline, app UI) and Source Sans 3 fonts and their provenance.
 	@bash scripts/check-required-font-assets_test.sh
 	@bash scripts/check-required-font-assets.sh
 

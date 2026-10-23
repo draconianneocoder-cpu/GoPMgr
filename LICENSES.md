@@ -26,13 +26,14 @@ identifiers used in this project are:
 | `GFDL-1.3-or-later`  | User-facing and agent-facing documentation (`docs/`, root guides such as `AGENTS.md`, `.claude/skills/`) | https://www.gnu.org/licenses/fdl-1.3.txt                                                            |
 | `CC-BY-SA-4.0`       | Third-party OWASP Cornucopia card text and GoPMgr's derived curation of it (`.claude/skills/cornucopia-risk-cards/references/`) | https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt                                        |
 | `CC0-1.0`            | Tiny config files, license notes, and compact ICC profile | https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt                  |
-| `OFL-1.1`            | Committed Source Sans 3 font; optional downloaded fonts (Liberation, Noto Sans, JetBrains Mono, Roboto, Arimo, Cousine, Ledger) | https://raw.githubusercontent.com/spdx/license-list-data/main/text/OFL-1.1.txt |
+| `OFL-1.1`            | Committed IBM Plex fonts (Sans, Serif, Mono, Sans Condensed) and Source Sans 3; optional downloaded fonts (Liberation, Noto Sans, JetBrains Mono, Roboto, Arimo, Cousine, Ledger) | https://raw.githubusercontent.com/spdx/license-list-data/main/text/OFL-1.1.txt |
 | `Bitstream-Vera`     | Optional downloaded DejaVu Sans font      | https://raw.githubusercontent.com/spdx/license-list-data/main/text/Bitstream-Vera.txt |
 | `MIT`                | Wails-derived Windows installer templates; vendored `go-sqlcipher` Go code (`third_party/go-sqlcipher/`) | https://github.com/wailsapp/wails/blob/v2.13.0/LICENSE                                             |
 | `BSD-3-Clause`, `blessing`, `Unlicense` | Other vendored code in `third_party/go-sqlcipher/` (SQLCipher and SQLite sources, LibTomCrypt, one Go Authors file) | SPDX License List, via `reuse download` |
 
-The Source Sans 3 PDF/A baseline and its `OFL-1.1` license text are committed
-because clean release builds must embed those fonts without a network fetch.
+The IBM Plex fonts (the default typeface and PDF/A baseline), Source Sans 3,
+and their `OFL-1.1` license text are committed because clean release builds
+must embed those fonts without a network fetch.
 Other font binaries are fetched by `scripts/fetch-fonts.sh` and ignored as
 optional local downloads; CI and release builds never fetch them. Their
 licenses are documented here and in `internal/fonts/assets/README.md`, which
