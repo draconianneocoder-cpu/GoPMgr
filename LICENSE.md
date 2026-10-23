@@ -62,7 +62,7 @@ The licenses that appear in this project are:
 | `GFDL-1.3-or-later`         | User-facing documentation (`README.md`, `docs/`, and most `*.md`)       |
 | `CC0-1.0`                   | Tiny config files, these license notes, and the compact sRGB ICC profile |
 | `CC-BY-SA-4.0`              | OWASP Cornucopia card text and GoPMgr's curation of it (`.claude/skills/cornucopia-risk-cards/references/`) |
-| `OFL-1.1`                   | The committed IBM Plex fonts (Sans, Serif, Mono, Sans Condensed; TrueType for PDFs and WOFF2 for the app) and Source Sans 3; also the optional downloaded fonts Liberation, Noto Sans, JetBrains Mono, Roboto, Arimo, Cousine, and Ledger |
+| `OFL-1.1`                   | The committed IBM Plex fonts (Sans, Serif, Mono, Sans Condensed, and Sans JP, KR, and SC as TrueType for PDFs; Sans, Mono, and Sans Arabic, Hebrew, Devanagari, and Thai as WOFF2 for the app) and Source Sans 3; also the optional downloaded fonts Liberation, Noto Sans, JetBrains Mono, Roboto, Arimo, Cousine, and Ledger |
 | `Bitstream-Vera`            | The optional downloaded DejaVu Sans font                                 |
 | `MIT`                       | Wails-derived Windows installer templates (`build/windows/`) and the vendored `go-sqlcipher` Go code (`third_party/go-sqlcipher/`) |
 | `BSD-3-Clause`, `blessing`, `Unlicense` | Other vendored code in `third_party/go-sqlcipher/`: the SQLCipher and SQLite sources, LibTomCrypt, and one Go Authors file |

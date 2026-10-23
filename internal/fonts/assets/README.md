@@ -18,7 +18,17 @@ These faces are committed, so every build bundles them:
   document font and the release-critical PDF/A baseline; IBM Plex Mono sets
   the recovery-code sheet. The app's own interface uses the matching WOFF2
   faces in `frontend/public/fonts/ibm-plex/`.
+- **IBM Plex Sans JP, KR, and SC**, Regular and SemiBold, unhinted, so
+  documents in Japanese, Korean, and Simplified Chinese print their text.
+  They add about 33 MB. CJK type has no italics, so the italic styles use the
+  upright faces.
 - **Source Sans 3**, four faces, kept as a document font choice.
+
+The app also ships IBM Plex Sans Arabic, Hebrew, Devanagari, and Thai as WOFF2
+only (Regular, Medium, SemiBold, Bold), for text in those scripts on screen.
+PDFs cannot use them: the PDF engine does not shape these scripts. See
+`docs/design/ADR-007-ibm-plex-script-coverage.md` for what is bundled where,
+and why IBM Plex Sans TC is not.
 
 Strict archival exports require an embedded TrueType font; without these
 files, PDFs would fall back to the PDF core fonts and fail veraPDF.
@@ -70,6 +80,13 @@ do not place those documents under the font license.
 | IBM Plex Serif (committed) | 3.006 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/434af578549afcfdabd281f386e0ff7314fd20b0/packages/plex-serif/LICENSE.txt) |
 | IBM Plex Mono (committed) | 2.005 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/2f9ba1b25957d958db71a849e85d72e3ecfb845a/packages/plex-mono/LICENSE.txt) |
 | IBM Plex Sans Condensed (committed) | 3.000 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/bb3ab6404e1881ea286f8742dc839e09057db6dd/packages/plex-sans-condensed/LICENSE.txt) |
+| IBM Plex Sans JP (committed) | 1.004 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/89cba80dad75561262e758f4b6ddd474c5119796/packages/plex-sans-jp/LICENSE.txt) |
+| IBM Plex Sans KR (committed) | 1.003 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/1da12f02587b630c07e92692d21492d722f53614/packages/plex-sans-kr/LICENSE.txt) |
+| IBM Plex Sans SC (committed) | 1.000 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/222657a016f31e6d913ede88520de7dec84dc81b/packages/plex-sans-sc/LICENSE.txt) |
+| IBM Plex Sans Arabic (app, WOFF2) | 1.005 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/1da12f02587b630c07e92692d21492d722f53614/packages/plex-sans-arabic/LICENSE.txt) |
+| IBM Plex Sans Hebrew (app, WOFF2) | 1.3 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/1da12f02587b630c07e92692d21492d722f53614/packages/plex-sans-hebrew/LICENSE.txt) |
+| IBM Plex Sans Devanagari (app, WOFF2) | 1.2 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/1da12f02587b630c07e92692d21492d722f53614/packages/plex-sans-devanagari/LICENSE.txt) |
+| IBM Plex Sans Thai (app, WOFF2) | 1.2 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/1da12f02587b630c07e92692d21492d722f53614/packages/plex-sans-thai/LICENSE.txt) |
 | Source Sans 3 (committed) | 3.052 | `OFL-1.1` | © 2010–2024 Adobe, with Reserved Font Name "Source" | [LICENSE.md](https://github.com/adobe-fonts/source-sans/blob/87b37a2daaed80fcb8e8ccb0085c4d72ddade12e/LICENSE.md) |
 | Liberation Sans, Serif, Mono | 2.1.5 | `OFL-1.1` | © 2010 Google Corporation (digitized data), with Reserved Font Arimo, Tinos and Cousine; © 2012 Red Hat, Inc., with Reserved Font Name Liberation | [LICENSE](https://github.com/liberationfonts/liberation-fonts/blob/2.1.5/LICENSE) |
 | DejaVu Sans | 2.37 | `Bitstream-Vera` | © 2003 Bitstream, Inc.; Arev glyphs © 2006 Tavmjong Bah; DejaVu changes are public domain | [LICENSE](https://github.com/dejavu-fonts/dejavu-fonts/blob/version_2_37/LICENSE) |
@@ -83,8 +100,10 @@ do not place those documents under the font license.
 Notes:
 
 - The IBM Plex font files carry IBM Corp. copyright lines from 2017 (Mono),
-  2018 (Sans), 2019 (Sans Condensed), and 2020 (Serif); IBM's license file
-  for every family reads 2017. `REUSE.toml` records the full range.
+  2018 (Sans, JP, KR, SC), 2019 (Sans Condensed, Arabic, Hebrew, Devanagari,
+  Thai), and 2020 (Serif); IBM's license file for every family reads 2017,
+  and every package's license file is identical. `REUSE.toml` records the
+  full range.
 - Roboto, Arimo, and Cousine were once distributed under `Apache-2.0`.
   Their current upstream releases, which the fetch script pins, are
   `OFL-1.1`.

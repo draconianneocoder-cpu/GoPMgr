@@ -126,6 +126,15 @@ func (f FontFamily) File(style Style) (FontFile, bool) {
 // style to the SemiBold (600) face: SemiBold is IBM's heading weight, and it
 // sets slightly narrower than Helvetica Bold, the metrics GoPMgr's renderers
 // were laid out against. See docs/design/typography-ibm-plex.md.
+//
+// The Japanese, Korean, and Simplified Chinese families let documents in
+// those languages print their text; each also covers Latin. CJK type has no
+// italics, so their Italic and Bold Italic styles use the upright faces of
+// the same weight. IBM Plex Sans TC is not bundled: its TrueType files leave
+// the character map fpdf reads (cmap format 4) empty, so fpdf would draw no
+// text at all. The Arabic, Hebrew, Devanagari, and Thai families ship only
+// as web fonts for the app (docs/design/ADR-007-ibm-plex-script-coverage.md),
+// because fpdf cannot shape those scripts.
 var Catalog = []FontFamily{
 	{
 		Name:        "IBM Plex Sans",
@@ -177,6 +186,45 @@ var Catalog = []FontFamily{
 			{Bold, "IBMPlexSansCondensed-SemiBold.ttf"},
 			{Italic, "IBMPlexSansCondensed-Italic.ttf"},
 			{BoldItalic, "IBMPlexSansCondensed-SemiBoldItalic.ttf"},
+		},
+	},
+	{
+		Name:        "IBM Plex Sans JP",
+		Category:    "sans",
+		Description: "IBM Plex Sans for Japanese, with matching Latin text. Choose it for documents in Japanese.",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/IBM/plex",
+		Files: []FontFile{
+			{Regular, "IBMPlexSansJP-Regular.ttf"},
+			{Bold, "IBMPlexSansJP-SemiBold.ttf"},
+			{Italic, "IBMPlexSansJP-Regular.ttf"},
+			{BoldItalic, "IBMPlexSansJP-SemiBold.ttf"},
+		},
+	},
+	{
+		Name:        "IBM Plex Sans KR",
+		Category:    "sans",
+		Description: "IBM Plex Sans for Korean, with matching Latin text. Choose it for documents in Korean.",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/IBM/plex",
+		Files: []FontFile{
+			{Regular, "IBMPlexSansKR-Regular.ttf"},
+			{Bold, "IBMPlexSansKR-SemiBold.ttf"},
+			{Italic, "IBMPlexSansKR-Regular.ttf"},
+			{BoldItalic, "IBMPlexSansKR-SemiBold.ttf"},
+		},
+	},
+	{
+		Name:        "IBM Plex Sans SC",
+		Category:    "sans",
+		Description: "IBM Plex Sans for Simplified Chinese, with matching Latin text. Choose it for documents in Simplified Chinese.",
+		License:     "OFL-1.1",
+		Source:      "https://github.com/IBM/plex",
+		Files: []FontFile{
+			{Regular, "IBMPlexSansSC-Regular.ttf"},
+			{Bold, "IBMPlexSansSC-SemiBold.ttf"},
+			{Italic, "IBMPlexSansSC-Regular.ttf"},
+			{BoldItalic, "IBMPlexSansSC-SemiBold.ttf"},
 		},
 	},
 	{

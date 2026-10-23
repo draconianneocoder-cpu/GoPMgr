@@ -19,9 +19,11 @@ License: see individual files
 Files: internal/fonts/assets/IBMPlex*.ttf frontend/public/fonts/ibm-plex/*
 Copyright: 2017-2020 IBM Corp., with Reserved Font Name "Plex".
 License: OFL-1.1
-Comment: IBM Plex Sans 3.005, Serif 3.006, Mono 2.005, and Sans Condensed 3.000
- from https://github.com/IBM/plex. The TrueType faces are embedded in the
- gopmgr binary for PDFs and the WOFF2 faces in its interface. IBM Plex is a
+Comment: IBM Plex Sans 3.005, Serif 3.006, Mono 2.005, Sans Condensed 3.000,
+ Sans JP 1.004, Sans KR 1.003, and Sans SC 1.000 (TrueType, embedded in the
+ gopmgr binary for PDFs), and Sans Arabic 1.005, Sans Hebrew 1.3, Sans
+ Devanagari 1.2, and Sans Thai 1.2 (WOFF2, for its interface, with the Sans
+ and Mono WOFF2 faces), from https://github.com/IBM/plex. IBM Plex is a
  trademark of IBM Corp, registered in many jurisdictions worldwide.
 
 Files: internal/fonts/assets/FONT-NOTICES.txt

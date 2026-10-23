@@ -4,7 +4,9 @@ GoPMgr bundles the fonts below, unmodified, under the SIL Open Font License,
 Version 1.1. The license text follows the notices. PDFs that GoPMgr creates
 embed subsets of these fonts; the license does not apply to those documents.
 
-IBM Plex Sans, IBM Plex Serif, IBM Plex Mono, IBM Plex Sans Condensed
+IBM Plex Sans, IBM Plex Serif, IBM Plex Mono, IBM Plex Sans Condensed,
+IBM Plex Sans JP, IBM Plex Sans KR, IBM Plex Sans SC, IBM Plex Sans Arabic,
+IBM Plex Sans Hebrew, IBM Plex Sans Devanagari, IBM Plex Sans Thai
   Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
   IBM Plex® is a trademark of IBM Corp, registered in many jurisdictions
   worldwide.
