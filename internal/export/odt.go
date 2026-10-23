@@ -219,7 +219,7 @@ func renderODTBody(_ documents.Kind, def documents.Definition, content map[strin
 			writeODTPara(&buf, "Standard", body)
 		case documents.FieldNumber:
 			if n, ok := v.(float64); ok && n != 0 {
-				writeODTPara(&buf, "Standard", f.LabelIn(currency)+": "+documents.FormatNumberField(f, n))
+				writeODTPara(&buf, "Standard", f.LabelIn(currency)+": "+documents.FormatNumberField(f, n, currency))
 			}
 		case documents.FieldBool:
 			if b, ok := v.(bool); ok {
@@ -278,7 +278,7 @@ func writeODTTable(buf *bytes.Buffer, f documents.Field, objs []map[string]inter
 	for _, obj := range objs {
 		fmt.Fprintf(buf, `      <table:table-row>`+"\n")
 		for _, sub := range f.ObjectShape {
-			val := subFieldValue(sub, obj[sub.Key])
+			val := subFieldValue(sub, obj[sub.Key], currency)
 			fmt.Fprintf(buf, `        <table:table-cell table:style-name="Cell">`+"\n")
 			writeODTPara(buf, "Standard", val)
 			fmt.Fprintf(buf, `        </table:table-cell>`+"\n")

@@ -297,6 +297,7 @@
         "gopmgr/internal/charts/pdfrender",
         "gopmgr/internal/fonts",
         "gopmgr/internal/kernel",
+        "gopmgr/internal/money",
         "gopmgr/internal/pdfdoc",
         "gopmgr/internal/pdfmeta"
       ],
@@ -377,6 +378,7 @@
         "gopmgr",
         "gopmgr/internal/budget",
         "gopmgr/internal/db",
+        "gopmgr/internal/documents",
         "gopmgr/internal/kernel"
       ],
       "imports_internal": [],

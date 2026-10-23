@@ -129,7 +129,7 @@ func drawBriefKPIStrip(pdf *pdfdoc.PDF, budget float64, currency, timeline strin
 	// Budget tile
 	if budget > 0 {
 		drawBriefKPITile(pdf, 20, startY, tileW, tileH,
-			"BUDGET", currency+" "+formatMoney(budget), 16)
+			"BUDGET", currency+" "+formatMoneyIn(budget, currency), 16)
 	}
 
 	// Timeline tile (shorter font so longer strings fit)

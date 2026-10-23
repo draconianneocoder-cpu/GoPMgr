@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"gopmgr/internal/money"
 	"gopmgr/internal/pdfdoc"
 )
 
@@ -114,7 +115,7 @@ func drawBudgetTable(pdf *pdfdoc.PDF, categories []map[string]interface{}, curre
 		amount := getFloatBudget(cat, "amount")
 		notes := getStringBudget(cat, "notes")
 		pdf.CellFormat(cols[0].w, 6, truncBudget(catName, 50), "1", 0, "L", true, 0, "")
-		pdf.CellFormat(cols[1].w, 6, formatMoney(amount), "1", 0, "R", true, 0, "")
+		pdf.CellFormat(cols[1].w, 6, formatMoneyIn(amount, currency), "1", 0, "R", true, 0, "")
 		pdf.CellFormat(cols[2].w, 6, truncBudget(notes, 50), "1", 0, "L", true, 0, "")
 		pdf.Ln(-1)
 	}
@@ -135,11 +136,11 @@ func drawBudgetSummary(pdf *pdfdoc.PDF, subtotal, contingencyPct, explicitTotal 
 	pdf.SetFont("Helvetica", "", 10)
 	pdf.SetTextColor(60, 60, 60)
 
-	budgetKV(pdf, summaryX, lineH, "Subtotal", fmt.Sprintf("%s %s", currency, formatMoney(subtotal)))
+	budgetKV(pdf, summaryX, lineH, "Subtotal", fmt.Sprintf("%s %s", currency, formatMoneyIn(subtotal, currency)))
 	if contingencyPct > 0 {
 		budgetKV(pdf, summaryX, lineH,
 			fmt.Sprintf("Contingency (%.0f%%)", contingencyPct),
-			fmt.Sprintf("%s %s", currency, formatMoney(contingencyAmt)))
+			fmt.Sprintf("%s %s", currency, formatMoneyIn(contingencyAmt, currency)))
 	}
 
 	// Grand total in a tinted bar
@@ -149,7 +150,7 @@ func drawBudgetSummary(pdf *pdfdoc.PDF, subtotal, contingencyPct, explicitTotal 
 	pdf.SetFont("Helvetica", "B", 11)
 	pdf.SetX(summaryX)
 	pdf.CellFormat(50, 8, "Grand Total", "1", 0, "L", true, 0, "")
-	pdf.CellFormat(30, 8, fmt.Sprintf("%s %s", currency, formatMoney(grandTotal)), "1", 0, "R", true, 0, "")
+	pdf.CellFormat(30, 8, fmt.Sprintf("%s %s", currency, formatMoneyIn(grandTotal, currency)), "1", 0, "R", true, 0, "")
 	pdf.Ln(10)
 	pdf.SetTextColor(0, 0, 0)
 }
@@ -172,6 +173,16 @@ func budgetSubtotal(categories []map[string]interface{}) float64 {
 // formatMoney formats a float as a 2-decimal number with thousands
 // separators (e.g. 1234567.5 → "1,234,567.50", -123456 → "-123,456.00").
 // An amount that rounds to zero prints as "0.00", never "-0.00".
+// formatMoneyIn formats an amount in currency: yen as a whole number, as
+// money.Amount.DecimalFor does on screen, and other currencies as formatMoney.
+func formatMoneyIn(v float64, currency string) string {
+	s := formatMoney(v)
+	if money.WholeUnitCurrency(currency) {
+		return strings.TrimSuffix(s, ".00")
+	}
+	return s
+}
+
 func formatMoney(v float64) string {
 	s := fmt.Sprintf("%.2f", v)
 	if s == "-0.00" {

@@ -107,7 +107,7 @@ func RenderDocumentDOCX(kind documents.Kind, contentJSON, projectName, currency 
 			if n, ok := v.(float64); ok && n != 0 {
 				p := doc.AddParagraph("")
 				p.AddText(f.LabelIn(currency) + ": ").Bold(true)
-				p.AddText(documents.FormatNumberField(f, n))
+				p.AddText(documents.FormatNumberField(f, n, currency))
 			}
 		case documents.FieldBool:
 			if b, ok := v.(bool); ok {
@@ -205,7 +205,7 @@ func renderObjectArrayDOCX(doc *docx.RootDoc, f documents.Field, objs []map[stri
 		p.AddText(fmt.Sprintf("%d. ", i+1)).Bold(true)
 		// One line per sub-field, "Label: value".
 		for _, sub := range f.ObjectShape {
-			val := subFieldValue(sub, obj[sub.Key])
+			val := subFieldValue(sub, obj[sub.Key], currency)
 			p := doc.AddParagraph("    ")
 			p.AddText(sub.LabelIn(currency) + ": ").Bold(true)
 			p.AddText(val)
@@ -215,9 +215,9 @@ func renderObjectArrayDOCX(doc *docx.RootDoc, f documents.Field, objs []map[stri
 
 // subFieldValue formats one object-array cell: an amount with thousands
 // separators, anything else as fmt prints it, and a missing value as "".
-func subFieldValue(sub documents.Field, v interface{}) string {
+func subFieldValue(sub documents.Field, v interface{}, currency string) string {
 	if n, ok := v.(float64); ok && sub.Money {
-		return documents.FormatNumberField(sub, n)
+		return documents.FormatNumberField(sub, n, currency)
 	}
 	val := fmt.Sprintf("%v", v)
 	if val == "<nil>" {

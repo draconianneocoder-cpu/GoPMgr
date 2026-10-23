@@ -24,7 +24,7 @@ func TestParseMoneyDecimalRejectsNonCanonicalOrUnsafeInput(t *testing.T) {
 	if err != nil || got.MinorUnits != 9007199254740991 {
 		t.Fatalf("large exact amount = %+v, %v", got, err)
 	}
-	if formatted := formatMoneyDecimal(got); formatted != "90071992547409.91" {
+	if formatted := formatMoneyDecimal(got, "USD"); formatted != "90071992547409.91" {
 		t.Fatalf("formatted = %q", formatted)
 	}
 }
@@ -76,7 +76,11 @@ func TestCostControlWireUsesSnakeCaseStringMoney(t *testing.T) {
 	}
 }
 
-func TestLegacyJPYCostControlIsReadableButRejectsMutations(t *testing.T) {
+// An older JPY project keeps its stored values exactly: amounts are stored
+// in hundredths for every currency, so 12,345 still reads as 123.45 yen.
+// Whole-yen amounts read without decimals, and the project is now editable
+// (ADR-009).
+func TestLegacyJPYCostControlKeepsValuesAndAcceptsEdits(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
 	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
 		t.Fatalf("CreateAccount: %v", err)
@@ -104,46 +108,39 @@ func TestLegacyJPYCostControlIsReadableButRejectsMutations(t *testing.T) {
 	if _, err = d.SaveCostReserve(db.CostReserve{ProjectID: p.ID, Kind: "contingency", AmountMinorUnits: 500, Description: "Existing legacy reserve"}); err != nil {
 		t.Fatalf("seed legacy reserve: %v", err)
 	}
-	if _, err = d.ApproveCostBaseline(p.ID, "alice", "Existing legacy baseline"); err != nil {
-		t.Fatalf("seed legacy baseline: %v", err)
-	}
 
 	summary, err := app.ComputeCostSummary()
 	if err != nil {
 		t.Fatalf("ComputeCostSummary: %v", err)
 	}
-	if summary.CurrencyCode != "JPY" || summary.Planned != "123.45" || summary.MutationDisabledReason == "" {
+	if summary.CurrencyCode != "JPY" || summary.Planned != "123.45" || summary.Contingency != "5" || summary.MutationDisabledReason != "" {
 		t.Fatalf("legacy JPY summary = %#v", summary)
-	}
-	if entries, err := app.ListCostEntries(); err != nil || len(entries) != 1 || entries[0].Amount != "123.45" {
-		t.Fatalf("legacy JPY entries = %#v, %v", entries, err)
-	}
-	if baselines, err := app.ListCostBaselines(); err != nil || len(baselines) != 1 || baselines[0].CostBaseline != "128.45" {
-		t.Fatalf("legacy JPY baselines = %#v, %v", baselines, err)
 	}
 
 	beforeEntries, beforeReserves, beforeBaselines, beforeAuditEvents := countCostControlRows(t, d)
-	for _, mutation := range []struct {
-		name string
-		run  func() error
-	}{
-		{"entry", func() error {
-			_, err := app.SaveCostEntry(CostEntryWire{CostTypeID: types[0].ID, Kind: "actual", CostDate: "2026-08-21", Description: "Blocked", Amount: "1.00"})
-			return err
-		}},
-		{"reserve", func() error {
-			_, err := app.SaveCostReserve(CostReserveWire{Kind: "management", Amount: "1.00", Description: "Blocked"})
-			return err
-		}},
-		{"baseline", func() error { _, err := app.ApproveCostBaseline("Blocked"); return err }},
-	} {
-		if err := mutation.run(); err == nil || !strings.Contains(err.Error(), "read-only") {
-			t.Fatalf("%s mutation error = %v", mutation.name, err)
-		}
+	if _, err := app.SaveCostEntry(CostEntryWire{CostTypeID: types[0].ID, Kind: "actual", CostDate: "2026-10-23", Description: "Venue deposit", Amount: "150000"}); err != nil {
+		t.Fatalf("SaveCostEntry in yen: %v", err)
+	}
+	if _, err := app.ApproveCostBaseline("Kick-off"); err != nil {
+		t.Fatalf("ApproveCostBaseline: %v", err)
 	}
 	afterEntries, afterReserves, afterBaselines, afterAuditEvents := countCostControlRows(t, d)
-	if beforeEntries != afterEntries || beforeReserves != afterReserves || beforeBaselines != afterBaselines || beforeAuditEvents != afterAuditEvents {
-		t.Fatalf("legacy JPY mutation changed rows: before %d/%d/%d/%d after %d/%d/%d/%d", beforeEntries, beforeReserves, beforeBaselines, beforeAuditEvents, afterEntries, afterReserves, afterBaselines, afterAuditEvents)
+	if afterEntries != beforeEntries+1 || afterReserves != beforeReserves || afterBaselines != beforeBaselines+1 || afterAuditEvents <= beforeAuditEvents {
+		t.Fatalf("yen edits wrote rows %d/%d/%d/%d, want one entry and one baseline more than %d/%d/%d/%d, and audit events", afterEntries, afterReserves, afterBaselines, afterAuditEvents, beforeEntries, beforeReserves, beforeBaselines, beforeAuditEvents)
+	}
+	entries, err := app.ListCostEntries()
+	if err != nil || len(entries) != 2 {
+		t.Fatalf("entries = %#v, %v", entries, err)
+	}
+	amounts := map[string]bool{}
+	for _, e := range entries {
+		amounts[e.Amount] = true
+	}
+	if !amounts["123.45"] || !amounts["150000"] {
+		t.Fatalf("entry amounts = %v, want the legacy 123.45 and the new 150000", amounts)
+	}
+	if baselines, err := app.ListCostBaselines(); err != nil || len(baselines) != 1 || baselines[0].CostBaseline != "128.45" {
+		t.Fatalf("baselines = %#v, %v", baselines, err)
 	}
 }
 
@@ -384,7 +381,7 @@ func assertClassificationLensReconciles(t *testing.T, rows []CostClassificationR
 		if err != nil {
 			t.Fatalf("%s classification accumulation: %v", total.name, err)
 		}
-		if got := formatMoneyDecimal(amount); got != total.want {
+		if got := formatMoneyDecimal(amount, "USD"); got != total.want {
 			t.Fatalf("%s classification total = %q, want summary %q", total.name, got, total.want)
 		}
 	}
@@ -399,7 +396,7 @@ func TestCostBaselineWireRejectsOverflow(t *testing.T) {
 
 func TestClassifyCostEntriesFailsClosedForInvalidTypeOrOverflow(t *testing.T) {
 	t.Run("cost type outside the open project", func(t *testing.T) {
-		_, err := classifyCostEntries([]db.CostEntry{{ID: "entry", CostTypeID: "foreign", Kind: "planned", AmountMinorUnits: 1}}, map[string]db.CostType{})
+		_, err := classifyCostEntries([]db.CostEntry{{ID: "entry", CostTypeID: "foreign", Kind: "planned", AmountMinorUnits: 1}}, map[string]db.CostType{}, "USD")
 		if err == nil || !strings.Contains(err.Error(), "outside the open project") {
 			t.Fatalf("classification error = %v", err)
 		}
@@ -411,7 +408,7 @@ func TestClassifyCostEntriesFailsClosedForInvalidTypeOrOverflow(t *testing.T) {
 		_, err := classifyCostEntries([]db.CostEntry{
 			{ID: "first", CostTypeID: costType.ID, Kind: "planned", AmountMinorUnits: maxInt64},
 			{ID: "second", CostTypeID: costType.ID, Kind: "planned", AmountMinorUnits: 1},
-		}, map[string]db.CostType{costType.ID: costType})
+		}, map[string]db.CostType{costType.ID: costType}, "USD")
 		if !errors.Is(err, money.ErrOverflow) {
 			t.Fatalf("classification overflow error = %v", err)
 		}

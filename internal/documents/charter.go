@@ -151,7 +151,7 @@ func RenderCharterPDF(content map[string]interface{}, projectName string) ([]byt
 
 	// Budget
 	if b, ok := content["high_level_budget"].(float64); ok && b > 0 {
-		writeKV(pdf, "High-level budget ("+currencyOf(content)+")", formatMoney(b))
+		writeKV(pdf, "High-level budget ("+currencyOf(content)+")", formatMoneyIn(b, currencyOf(content)))
 		pdf.Ln(2)
 	}
 
@@ -276,11 +276,12 @@ func IsCurrencyCode(code string) bool {
 	return true
 }
 
-// FormatNumberField formats a number field's value: an amount with
-// thousands separators, anything else with two decimals.
-func FormatNumberField(f Field, n float64) string {
+// FormatNumberField formats a number field's value: an amount in currency
+// with thousands separators (yen as a whole number), anything else with two
+// decimals.
+func FormatNumberField(f Field, n float64, currency string) string {
 	if f.Money {
-		return formatMoney(n)
+		return formatMoneyIn(n, currency)
 	}
 	return fmt.Sprintf("%.2f", n)
 }
@@ -541,7 +542,7 @@ func renderGenericPDF(kind Kind, content map[string]interface{}, projectName str
 			writeSection(pdf, f.Label, toString(v))
 		case FieldNumber:
 			if n, ok := v.(float64); ok && n != 0 {
-				writeKV(pdf, f.LabelIn(currency), FormatNumberField(f, n))
+				writeKV(pdf, f.LabelIn(currency), FormatNumberField(f, n, currency))
 			}
 		case FieldBool:
 			if b, ok := v.(bool); ok {
@@ -586,7 +587,7 @@ func renderObjectArray(pdf *pdfdoc.PDF, f Field, objs []map[string]interface{}, 
 		row := make(map[string]interface{}, len(keys))
 		for j, k := range keys {
 			if n, ok := obj[k].(float64); ok && f.ObjectShape[j].Money {
-				row[k] = formatMoney(n)
+				row[k] = formatMoneyIn(n, currency)
 				continue
 			}
 			row[k] = toString(obj[k])

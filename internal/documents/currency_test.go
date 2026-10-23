@@ -14,8 +14,8 @@ import (
 )
 
 // projectCurrencies are the reporting currencies a new project can use
-// (db.supportedProjectCurrencies, less legacy JPY).
-var projectCurrencies = []string{"AUD", "CAD", "CHF", "EUR", "GBP", "USD"}
+// (db.supportedProjectCurrencies).
+var projectCurrencies = []string{"AUD", "CAD", "CHF", "EUR", "GBP", "JPY", "USD"}
 
 var pdfStream = regexp.MustCompile(`(?s)stream\r?\n(.*?)endstream`)
 
@@ -79,8 +79,16 @@ func TestRender_LabelsAmountsInTheProjectCurrency(t *testing.T) {
 				if code != "USD" && strings.Contains(text, "USD") {
 					t.Errorf("a %s project's PDF still says USD", code)
 				}
-				if !strings.Contains(text, "1,284,500.00") {
-					t.Errorf("the amount is missing or lacks thousands separators")
+				want := "1,284,500.00"
+				if code == "JPY" {
+					// Yen prints as a whole number (ADR-009).
+					want = "1,284,500"
+					if strings.Contains(text, "1,284,500.00") {
+						t.Errorf("a yen amount printed decimals")
+					}
+				}
+				if !strings.Contains(text, want) {
+					t.Errorf("the amount %s is missing or lacks thousands separators", want)
 				}
 			})
 		}

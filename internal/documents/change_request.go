@@ -202,7 +202,7 @@ func drawCRImpactGrid(pdf *pdfdoc.PDF, scope, schedule string, cost float64, cur
 
 	costStr := ""
 	if cost != 0 {
-		costStr = currency + " " + formatMoney(cost)
+		costStr = currency + " " + formatMoneyIn(cost, currency)
 	}
 
 	cells := []struct {

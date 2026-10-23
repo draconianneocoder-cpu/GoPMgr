@@ -416,14 +416,17 @@ describe('CostControlPanel', () => {
     expect(app.ListCostTypes).toHaveBeenCalledTimes(2);
   });
 
-  it('makes a legacy JPY project read-only while retaining its ledger view', async () => {
+  // No project state makes Cost Control read-only today (legacy JPY projects
+  // became editable, ADR-009), but the panel still honours the backend's
+  // read-only reason if one is ever reported.
+  it('disables every change while the backend reports Cost Control as read-only', async () => {
     const app = installApp({
-      mutationDisabledReason: 'Cost Control is read-only for this legacy JPY project: existing amounts retain their original fixed two-decimal convention and are not being converted.',
-      entries: [{ id: 'entry-1', cost_type_id: 'labor', kind: 'actual', cost_date: '2026-08-21', description: 'Existing JPY amount', amount: '123.45' }],
+      mutationDisabledReason: 'Cost Control is read-only for this project.',
+      entries: [{ id: 'entry-1', cost_type_id: 'labor', kind: 'actual', cost_date: '2026-08-21', description: 'Existing amount', amount: '123.45' }],
     });
     const { findByRole, findByText, getAllByLabelText, getByLabelText, getByRole } = render(CostControlPanel);
-    expect(await findByRole('alert')).toHaveTextContent('legacy JPY project');
-    expect(await findByText('Existing JPY amount')).toBeInTheDocument();
+    expect(await findByRole('alert')).toHaveTextContent('read-only for this project');
+    expect(await findByText('Existing amount')).toBeInTheDocument();
     expect(getAllByLabelText('Amount')[0]).toBeDisabled();
     expect(getByLabelText('Reserve amount')).toBeDisabled();
     expect(getByLabelText('Approval rationale')).toBeDisabled();

@@ -233,35 +233,34 @@ func TestProjectReportingCurrencyPolicy(t *testing.T) {
 	}
 }
 
-func TestProjectReportingCurrencyRetiresNewJPYButPreservesLegacyJPY(t *testing.T) {
+// JPY is a full reporting currency (ADR-009): a new project may use it, an
+// empty project may switch to and from it, and the usual lock applies once
+// the project holds Cost Control data. Amounts keep their stored hundredths,
+// so an older JPY project's values keep their meaning.
+func TestProjectReportingCurrencyAcceptsJPY(t *testing.T) {
 	d := newCostControlTestDB(t)
-	if _, err := d.UpsertProject(Project{Name: "New JPY", CurrencyCode: "JPY"}); err == nil || !strings.Contains(err.Error(), "legacy projects") {
-		t.Fatalf("new JPY project error = %v", err)
-	}
-	p, err := d.UpsertProject(Project{Name: "Legacy JPY"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = d.Conn.Exec(`UPDATE project SET currency_code='JPY' WHERE id=?`, p.ID); err != nil {
-		t.Fatal(err)
-	}
-	p, err = d.GetProject()
-	if err != nil {
-		t.Fatal(err)
-	}
-	p.Description = "Still inspectable"
-	p, err = d.UpsertProject(p)
-	if err != nil || p.CurrencyCode != "JPY" || p.Description != "Still inspectable" {
-		t.Fatalf("preserve legacy JPY = %#v, %v", p, err)
+	p, err := d.UpsertProject(Project{Name: "Tokyo office", CurrencyCode: "jpy"})
+	if err != nil || p.CurrencyCode != "JPY" {
+		t.Fatalf("new JPY project = %#v, %v", p, err)
 	}
 	p.CurrencyCode = "USD"
-	p, err = d.UpsertProject(p)
-	if err != nil || p.CurrencyCode != "USD" {
-		t.Fatalf("empty legacy JPY to USD = %#v, %v", p, err)
+	if p, err = d.UpsertProject(p); err != nil || p.CurrencyCode != "USD" {
+		t.Fatalf("empty JPY to USD = %#v, %v", p, err)
 	}
 	p.CurrencyCode = "JPY"
-	if _, err = d.UpsertProject(p); err == nil || !strings.Contains(err.Error(), "legacy projects") {
-		t.Fatalf("USD to retired JPY error = %v", err)
+	if p, err = d.UpsertProject(p); err != nil || p.CurrencyCode != "JPY" {
+		t.Fatalf("empty USD to JPY = %#v, %v", p, err)
+	}
+	types, err := d.ListCostTypes(p.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = d.SaveCostEntry(CostEntry{ProjectID: p.ID, CostTypeID: types[0].ID, Kind: "planned", CostDate: "2026-10-23", Description: "Venue", AmountMinorUnits: 150_000}); err != nil {
+		t.Fatal(err)
+	}
+	p.CurrencyCode = "USD"
+	if _, err = d.UpsertProject(p); err == nil || !strings.Contains(err.Error(), "cannot change") {
+		t.Fatalf("JPY with ledger data to USD error = %v", err)
 	}
 }
 

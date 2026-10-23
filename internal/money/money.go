@@ -3,11 +3,9 @@
 
 // Package money provides exact monetary arithmetic for GoPMgr.
 //
-// Money is stored as integer minor units of the project's reporting currency.
-// Most currencies use 100 minor units per major unit (cents). Japanese Yen
-// (JPY) uses 1 minor unit per major unit (whole yen) per ISO 4217.
-// Calculations that combine rates and fractional effort use math/big.Rat,
-// then round once at the boundary back to minor units.
+// Money is stored as integer minor units (cents for USD-style
+// currencies). Calculations that combine rates and fractional effort use
+// math/big.Rat, then round once at the boundary back to minor units.
 package money
 
 import (
@@ -19,49 +17,23 @@ import (
 	"strings"
 )
 
-// MinorUnitsPerMajor is the legacy fixed scale used by ParseDecimal and
-// Decimal. New code should prefer the scale-aware variants when the
-// project's currency is known.
 const MinorUnitsPerMajor int64 = 100
 
 // ErrOverflow reports that an exact monetary result cannot be represented in
 // Amount's signed int64 minor-unit storage.
 var ErrOverflow = errors.New("monetary amount exceeds int64 minor-unit range")
 
-// Amount is a signed monetary value in minor units of its currency.
+// Amount is a signed monetary value in minor units.
 type Amount struct {
 	MinorUnits int64
 }
 
-// ExponentForCurrency returns the ISO 4217 minor-unit exponent for a
-// supported project reporting currency. JPY is 0 (whole yen). All other
-// currently supported currencies are 2.
-func ExponentForCurrency(code string) int {
-	switch strings.ToUpper(strings.TrimSpace(code)) {
-	case "JPY":
-		return 0
-	default:
-		return 2
-	}
-}
-
 // ParseDecimal parses an unsigned-or-signed major-unit decimal at the public
-// boundary using the legacy two-decimal scale. Prefer ParseDecimalWithScale
-// when the project's currency exponent is known.
+// boundary. It accepts a whole number or one/two fractional digits, rejects
+// alternate spellings that could hide a value (such as whitespace, exponent
+// notation, grouping separators, a leading plus, leading zeroes, or negative
+// zero), and returns the exact signed int64 minor-unit representation.
 func ParseDecimal(v string) (Amount, error) {
-	return ParseDecimalWithScale(v, 2)
-}
-
-// ParseDecimalWithScale parses a major-unit decimal using the given number of
-// fractional digits (the currency's exponent). It accepts a whole number or
-// up to `scale` fractional digits, rejects alternate spellings that could
-// hide a value (whitespace, exponent notation, grouping separators, a leading
-// plus, leading zeroes, or negative zero), and returns the exact signed int64
-// minor-unit representation.
-func ParseDecimalWithScale(v string, scale int) (Amount, error) {
-	if scale < 0 || scale > 6 {
-		return Amount{}, fmt.Errorf("invalid currency scale %d", scale)
-	}
 	if v == "" {
 		return Amount{}, errors.New("amount is required")
 	}
@@ -73,8 +45,8 @@ func ParseDecimalWithScale(v string, scale int) (Amount, error) {
 		v = v[1:]
 	}
 	parts := strings.Split(v, ".")
-	if len(parts) > 2 || parts[0] == "" || (len(parts) == 2 && (parts[1] == "" || len(parts[1]) > scale)) {
-		return Amount{}, fmt.Errorf("amount must be a decimal with at most %d fractional digits", scale)
+	if len(parts) > 2 || parts[0] == "" || (len(parts) == 2 && (parts[1] == "" || len(parts[1]) > 2)) {
+		return Amount{}, errors.New("amount must be a decimal with at most two fractional digits")
 	}
 	if len(parts[0]) > 1 && parts[0][0] == '0' {
 		return Amount{}, errors.New("amount must not contain leading zeroes")
@@ -84,9 +56,9 @@ func ParseDecimalWithScale(v string, scale int) (Amount, error) {
 		return Amount{}, fmt.Errorf("amount: %w", err)
 	}
 	frac := uint64(0)
-	if len(parts) == 2 && scale > 0 {
+	if len(parts) == 2 {
 		fraction := parts[1]
-		for len(fraction) < scale {
+		if len(fraction) == 1 {
 			fraction += "0"
 		}
 		frac, err = strconv.ParseUint(fraction, 10, 64)
@@ -94,18 +66,14 @@ func ParseDecimalWithScale(v string, scale int) (Amount, error) {
 			return Amount{}, fmt.Errorf("amount: %w", err)
 		}
 	}
-	multiplier := uint64(1)
-	for i := 0; i < scale; i++ {
-		multiplier *= 10
-	}
 	limit := uint64(math.MaxInt64)
 	if negative {
 		limit++ // absolute value of math.MinInt64
 	}
-	if whole > (limit-frac)/multiplier {
+	if whole > (limit-frac)/uint64(MinorUnitsPerMajor) {
 		return Amount{}, ErrOverflow
 	}
-	minor := whole*multiplier + frac
+	minor := whole*uint64(MinorUnitsPerMajor) + frac
 	if minor == 0 && negative {
 		return Amount{}, errors.New("amount must not be negative zero")
 	}
@@ -119,39 +87,51 @@ func ParseDecimalWithScale(v string, scale int) (Amount, error) {
 }
 
 // Decimal returns a canonical, fixed-two-decimal major-unit representation
-// suitable for Wails transport. Prefer DecimalWithScale when the project's
-// currency exponent is known. It is never a JavaScript number.
+// suitable for Wails transport. It is never a JavaScript number.
 func (a Amount) Decimal() string {
-	return a.DecimalWithScale(2)
-}
-
-// DecimalWithScale returns a canonical major-unit representation with exactly
-// `scale` fractional digits (or no decimal point when scale is 0).
-func (a Amount) DecimalWithScale(scale int) string {
-	if scale < 0 || scale > 6 {
-		scale = 2
-	}
-	multiplier := int64(1)
-	for i := 0; i < scale; i++ {
-		multiplier *= 10
-	}
 	n := a.MinorUnits
-	if scale == 0 {
-		if n < 0 {
-			return fmt.Sprintf("-%d", -n)
-		}
-		return fmt.Sprintf("%d", n)
-	}
 	if n < 0 {
 		// Dividing first keeps MinInt64 representable; negating it does not.
-		return fmt.Sprintf("-%d.%0*d", -(n / multiplier), scale, -(n % multiplier))
+		return fmt.Sprintf("-%d.%02d", -(n / MinorUnitsPerMajor), -(n % MinorUnitsPerMajor))
 	}
-	return fmt.Sprintf("%d.%0*d", n/multiplier, scale, n%multiplier)
+	return fmt.Sprintf("%d.%02d", n/MinorUnitsPerMajor, n%MinorUnitsPerMajor)
+}
+
+// WholeUnitCurrency reports whether a reporting currency has no minor unit
+// in use, so its amounts read as whole numbers: JPY, whose ISO 4217 exponent
+// is 0. Amounts are still stored in hundredths of the major unit, as for
+// every currency, so legacy and new values share one meaning.
+func WholeUnitCurrency(code string) bool {
+	return strings.EqualFold(strings.TrimSpace(code), "JPY")
+}
+
+// DecimalFor is Decimal for a reporting currency. For a whole-unit currency
+// it drops the ".00" of a whole amount ("1500" yen, not "1500.00"); an amount
+// with a fraction keeps both digits, so an older value recorded in fractions
+// of a yen still reads exactly as stored.
+func (a Amount) DecimalFor(currency string) string {
+	if WholeUnitCurrency(currency) && a.MinorUnits%MinorUnitsPerMajor == 0 {
+		return strconv.FormatInt(a.MinorUnits/MinorUnitsPerMajor, 10)
+	}
+	return a.Decimal()
 }
 
 // FromMajorFloat converts a UI/database compatibility number such as
-// 12.34 into exact minor units using the legacy two-decimal scale.
-// Prefer scale-aware conversion when the currency is known.
+// 12.34 into exact minor units. The rest of the application should use
+// Amount for arithmetic; this adapter exists only at legacy boundaries.
+//
+// A magnitude too large to fit in int64 once scaled to minor units
+// (e.g. a legacy import with transposed major/minor units) saturates
+// to math.MaxInt64/math.MinInt64 by sign rather than relying on Go's
+// float64->int64 conversion, which is documented as
+// implementation-defined once the value no longer fits -- this makes
+// the saturating behavior a guarantee of this function rather than an
+// artifact of the current toolchain/architecture. This is a real
+// behavior change on amd64 (this repo's CI target): amd64's prior
+// implementation-defined conversion has been observed to produce a
+// single sign-losing "integer indefinite" value for either direction,
+// so the sign-preserving clamp here is strictly more correct there,
+// not merely a portability no-op.
 func FromMajorFloat(v float64) Amount {
 	if math.IsNaN(v) || math.IsInf(v, 0) {
 		return Amount{}
@@ -167,8 +147,8 @@ func FromMajorFloat(v float64) Amount {
 	}
 }
 
-// MajorFloat returns a display/compatibility number using the legacy
-// two-decimal scale. Do not use the returned value for monetary arithmetic.
+// MajorFloat returns a display/compatibility number. Do not use the
+// returned value for monetary arithmetic.
 func (a Amount) MajorFloat() float64 {
 	return float64(a.MinorUnits) / float64(MinorUnitsPerMajor)
 }

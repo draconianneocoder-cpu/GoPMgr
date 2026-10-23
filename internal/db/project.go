@@ -88,33 +88,10 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 	if p.TimeZone == "" {
 		p.TimeZone = "America/New_York"
 	}
-	scale := money.ExponentForCurrency(p.CurrencyCode)
 	if p.BudgetMinorUnits == 0 && p.Budget != 0 {
-		// Convert the legacy float using the project's currency scale so
-		// JPY stores whole yen and other currencies store cents.
-		multiplier := 1.0
-		for i := 0; i < scale; i++ {
-			multiplier *= 10
-		}
-		scaled := p.Budget * multiplier
-		switch {
-		case scaled >= float64(1<<63-1):
-			p.BudgetMinorUnits = 1<<63 - 1
-		case scaled <= float64(-1<<63):
-			p.BudgetMinorUnits = -1 << 63
-		default:
-			p.BudgetMinorUnits = int64(scaled + 0.5) // simple half-up for the float boundary
-			if scaled < 0 {
-				p.BudgetMinorUnits = int64(scaled - 0.5)
-			}
-		}
+		p.BudgetMinorUnits = money.FromMajorFloat(p.Budget).MinorUnits
 	}
-	// Reconstruct the display float using the same scale.
-	divisor := 1.0
-	for i := 0; i < scale; i++ {
-		divisor *= 10
-	}
-	p.Budget = float64(p.BudgetMinorUnits) / divisor
+	p.Budget = money.Amount{MinorUnits: p.BudgetMinorUnits}.MajorFloat()
 	now := captureTimestamp()
 
 	tx, err := db.Conn.Begin()
@@ -261,30 +238,10 @@ func scanProject(row interface {
 	if p.TimeZone == "" {
 		p.TimeZone = "America/New_York"
 	}
-	scale := money.ExponentForCurrency(p.CurrencyCode)
 	if p.BudgetMinorUnits == 0 && p.Budget != 0 {
-		multiplier := 1.0
-		for i := 0; i < scale; i++ {
-			multiplier *= 10
-		}
-		scaled := p.Budget * multiplier
-		switch {
-		case scaled >= float64(1<<63-1):
-			p.BudgetMinorUnits = 1<<63 - 1
-		case scaled <= float64(-1<<63):
-			p.BudgetMinorUnits = -1 << 63
-		default:
-			p.BudgetMinorUnits = int64(scaled + 0.5)
-			if scaled < 0 {
-				p.BudgetMinorUnits = int64(scaled - 0.5)
-			}
-		}
+		p.BudgetMinorUnits = money.FromMajorFloat(p.Budget).MinorUnits
 	} else {
-		divisor := 1.0
-		for i := 0; i < scale; i++ {
-			divisor *= 10
-		}
-		p.Budget = float64(p.BudgetMinorUnits) / divisor
+		p.Budget = money.Amount{MinorUnits: p.BudgetMinorUnits}.MajorFloat()
 	}
 	return p, nil
 }
