@@ -810,3 +810,54 @@ describe('ProjectSettings opening tab', () => {
     expect(await within(second.container).findByRole('tab', { name: /General/i, selected: true })).toBeInTheDocument();
   });
 });
+
+describe('document font picker', () => {
+  const plexSans = {
+    name: 'IBM Plex Sans', category: 'sans', description: "IBM's open sans-serif.", license: 'OFL-1.1', origin: 'bundled', styles: [],
+  };
+  const plexJP = {
+    name: 'IBM Plex Sans JP', category: 'sans',
+    description: 'IBM Plex Sans for Japanese, with matching Latin text. Choose it for documents in Japanese.',
+    license: 'OFL-1.1', origin: 'bundled', styles: [],
+  };
+  const imported = { name: 'Acme', category: 'user', description: 'User-imported font', license: 'user-supplied', origin: 'user', styles: [] };
+
+  async function openExports() {
+    app.ListFonts = vi.fn(async () => [plexSans, plexJP, imported]);
+    app.GetDefaultFont = vi.fn(async () => 'IBM Plex Sans JP');
+    const view = render(ProjectSettings);
+    await view.findByRole('tablist');
+    await switchTab(view.container, /exports & signing/i);
+    const select = (await view.findByLabelText(/font family/i)) as HTMLSelectElement;
+    await waitFor(() => expect(select.value).toBe('IBM Plex Sans JP'));
+    return { ...view, select };
+  }
+
+  it('groups the fonts, marks the default, and describes the selected font', async () => {
+    const { select, getByText } = await openExports();
+    const groups = [...select.querySelectorAll('optgroup')].map((g) => [g.label, [...g.querySelectorAll('option')].map((o) => o.textContent)]);
+    expect(groups).toEqual([
+      ['Included with GoPMgr', ['IBM Plex Sans (default)', 'IBM Plex Sans JP']],
+      ['Imported', ['Acme']],
+    ]);
+    const description = getByText(/Choose it for documents in Japanese/);
+    expect(select.getAttribute('aria-describedby')).toBe(description.id);
+  });
+
+  it('announces an import failure as an alert, and a success as a status', async () => {
+    const { findByText, getByRole, queryByText } = await openExports();
+    app.ImportFont = vi.fn(async () => {
+      throw 'fonts: "Locked.ttf" can\'t be used in documents: its license doesn\'t allow embedding it in PDFs';
+    });
+    await fireEvent.click(getByRole('button', { name: /import font/i }));
+    const failure = await findByText(/Import failed: fonts: "Locked\.ttf" can't be used in documents/);
+    expect(failure.getAttribute('role')).toBe('alert');
+    expect(failure.className).toContain('text-red-400');
+
+    app.SetDefaultFont = vi.fn(async () => undefined);
+    await fireEvent.click(getByRole('button', { name: /apply font/i }));
+    const success = await findByText("This project's documents now use IBM Plex Sans JP.");
+    expect(success.getAttribute('role')).toBe('status');
+    expect(queryByText(/Import failed/)).toBeNull();
+  });
+});

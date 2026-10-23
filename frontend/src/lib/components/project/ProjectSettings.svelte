@@ -157,6 +157,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
   let defaultFont = $state('');
   let fontBusy = $state(false);
   let fontStatus = $state('');
+  let fontError = $state('');
+  // The family GoPMgr uses when a project names none (fonts.DefaultFamily).
+  const DEFAULT_DOCUMENT_FONT = 'IBM Plex Sans';
+  const bundledFonts = $derived(fonts.filter((f) => f.origin !== 'user'));
+  const importedFonts = $derived(fonts.filter((f) => f.origin === 'user'));
+  const selectedFont = $derived(fonts.find((f) => f.name === defaultFont));
 
   type ResourceCalendarDraft = {
     id: string;
@@ -413,6 +419,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       complianceMode = defaults.compliance_mode ?? false;
       defaultFont = defaults.default_font ?? '';
       fontStatus = '';
+      fontError = '';
       settingsStatus = 'Defaults restored.';
     } catch (err: any) {
       settingsError = `Reset failed: ${err}`;
@@ -560,11 +567,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!defaultFont) return;
     fontBusy = true;
     fontStatus = '';
+    fontError = '';
     try {
       await window.go.main.App.SetDefaultFont(defaultFont);
-      fontStatus = 'Default font updated.';
+      fontStatus = `This project's documents now use ${defaultFont}.`;
     } catch (err: any) {
-      fontStatus = `Failed: ${err}`;
+      fontError = `Couldn't change the document font: ${err}`;
     } finally {
       fontBusy = false;
     }
@@ -573,13 +581,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function importFont() {
     fontBusy = true;
     fontStatus = '';
+    fontError = '';
     try {
       const fi = await window.go.main.App.ImportFont();
       fonts = [...fonts.filter((f) => f.name !== fi.name), fi];
       defaultFont = fi.name;
-      fontStatus = `Imported "${fi.name}".`;
+      fontStatus = `Imported "${fi.name}" and selected it. Choose Apply font to use it.`;
     } catch (err: any) {
-      fontStatus = `Import failed: ${err}`;
+      fontError = `Import failed: ${err}`;
     } finally {
       fontBusy = false;
     }
@@ -2102,19 +2111,34 @@ SPDX-License-Identifier: GPL-3.0-or-later
          </h2>
          <p class="text-xs text-slate-400 mb-3">
            Applies to this project's documents exported as PDF, DOCX, or ODT. Schedule
-           reports always use IBM Plex Sans, the default.
+           reports always use IBM Plex Sans, the default. For documents in Japanese,
+           Korean, or Simplified Chinese, choose the IBM Plex Sans for that language.
+           PDFs can't lay out Arabic, Hebrew, Devanagari, or Thai text; export those
+           documents as DOCX or ODT.
          </p>
          <div class="flex flex-wrap gap-2 items-end">
            <div class="flex-1 min-w-40">
              <label class="block">
-               <span class="text-xs text-slate-500 uppercase">Default family</span>
+               <span class="text-xs text-slate-500 uppercase">Font family</span>
                <select
                  bind:value={defaultFont}
+                 aria-describedby={selectedFont?.description ? 'document-font-description' : undefined}
                  class="w-full mt-1 bg-slate-900 border border-slate-800 p-2 rounded"
                >
-                 {#each fonts as f (f.name)}
-                   <option value={f.name}>{f.name} ({f.category})</option>
-                 {/each}
+                 {#if bundledFonts.length}
+                   <optgroup label="Included with GoPMgr">
+                     {#each bundledFonts as f (f.name)}
+                       <option value={f.name}>{f.name === DEFAULT_DOCUMENT_FONT ? `${f.name} (default)` : f.name}</option>
+                     {/each}
+                   </optgroup>
+                 {/if}
+                 {#if importedFonts.length}
+                   <optgroup label="Imported">
+                     {#each importedFonts as f (f.name)}
+                       <option value={f.name}>{f.name}</option>
+                     {/each}
+                   </optgroup>
+                 {/if}
                </select>
              </label>
            </div>
@@ -2123,7 +2147,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
              disabled={fontBusy || !defaultFont}
              class="text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold uppercase px-4 py-2 rounded"
            >
-             Apply
+             Apply font
            </button>
            <button
              onclick={importFont}
@@ -2133,8 +2157,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
              Import font…
            </button>
          </div>
-         {#if fontStatus}
-           <p class="text-xs mt-2 text-cyan-400 break-words">{fontStatus}</p>
+         {#if selectedFont?.description}
+           <p id="document-font-description" class="text-xs mt-2 text-slate-400">
+             {selectedFont.description}
+           </p>
+         {/if}
+         {#if fontError}
+           <p class="text-xs mt-2 text-red-400 break-words" role="alert">{fontError}</p>
+         {:else if fontStatus}
+           <p class="text-xs mt-2 text-cyan-400 break-words" role="status">{fontStatus}</p>
          {/if}
        </section>
       </div>
