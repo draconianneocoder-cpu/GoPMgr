@@ -226,7 +226,8 @@ func readFontProgram(pdfBytes []byte, id int) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("font file %d: %w", id, err)
 	}
-	defer zr.Close()
+	// Closing a zlib reader only releases it; the data has been read.
+	defer func() { _ = zr.Close() }()
 	program, err := io.ReadAll(io.LimitReader(zr, maxEmbeddedFontBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("font file %d: %w", id, err)
