@@ -50,9 +50,10 @@ verify_font() {
 		fail "$path checksum changed (expected $expected_sha256, got $actual_sha256)."
 }
 
-# These hashes bind the tracked files to Adobe Source Sans release commit
-# 87b37a2daaed80fcb8e8ccb0085c4d72ddade12e. Updating them requires reviewing
-# the upstream font change and its OFL-1.1 licensing before committing bytes.
+# These hashes bind the tracked files to the Source Sans 3 version 3.052 TTFs
+# at Adobe commit 87b37a2daaed80fcb8e8ccb0085c4d72ddade12e (byte-identical to
+# the 3.052R release tag). Updating them requires reviewing the upstream font
+# change and its OFL-1.1 licensing before committing bytes.
 verify_font "SourceSans3-Regular.ttf" "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f"
 verify_font "SourceSans3-Bold.ttf" "9214b9d95e4231c609802815c2646c98174e2102d0d37f88978a7f8e71006e6a"
 verify_font "SourceSans3-It.ttf" "192afd78f0f54a3c69eaf02d43f4d9a821e9d6110e41d3d25d61a7385cd580e4"

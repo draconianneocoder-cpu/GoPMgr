@@ -71,6 +71,12 @@ historical rationale and superseded investigations remain in Git history.
 - PAdES is the final PDF mutation. PDF/A changes require a new signature.
 - CSV and TSV exports neutralize user-controlled formula prefixes through
   `internal/exportsafe`.
+- Release binaries embed only the committed Source Sans 3 baseline
+  (`OFL-1.1`). Other font families are optional `make fonts` downloads pinned
+  to immutable upstream refs and SHA-256 checks. Each family's `License` in
+  `internal/fonts/catalog.go` must match its `REUSE.toml` annotation
+  (`TestCatalogLicensesMatchREUSE`); versions, copyright notices and upstream
+  license files are listed in `internal/fonts/assets/README.md`.
 
 ## How to update this map
 

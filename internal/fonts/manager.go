@@ -284,15 +284,17 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 				// 100644, so invoking it directly gives "Permission
 				// denied"; the Makefile targets run it under bash.
 				//
-				// It must not destroy anything. --force is catalog-wide
-				// and fetch() does `rm -f "$dest"` on a failed download,
-				// so one offline run deletes every asset it cannot
-				// re-fetch -- including the git-tracked, SHA-256-pinned
-				// Source Sans 3 files that are the PDF/A baseline and
-				// that check-required-font-assets.sh verifies. Deleting
-				// only the corrupt files and re-running plain `make
-				// fonts` re-downloads exactly those, because the script
-				// skips what already exists.
+				// It must be targeted. --force is catalog-wide: it
+				// re-downloads every family, including the git-tracked,
+				// SHA-256-pinned Source Sans 3 files that are the PDF/A
+				// baseline and that check-required-font-assets.sh
+				// verifies. (When this remedy was written, fetch() also
+				// did `rm -f "$dest"` on a failed download, so one offline
+				// run deleted every asset it could not re-fetch; the
+				// script now replaces a file only after a verified
+				// download.) Deleting only the corrupt files and
+				// re-running plain `make fonts` re-downloads exactly
+				// those, because the script skips what already exists.
 				//
 				// It must mention the rebuild. These assets are
 				// //go:embed-ed, so a re-fetch alone leaves a built

@@ -26,16 +26,21 @@ identifiers used in this project are:
 | `GFDL-1.3-or-later`  | User-facing and agent-facing documentation (`docs/`, root guides such as `AGENTS.md`, `.claude/skills/`) | https://www.gnu.org/licenses/fdl-1.3.txt                                                            |
 | `CC-BY-SA-4.0`       | Third-party OWASP Cornucopia card text and GoPMgr's derived curation of it (`.claude/skills/cornucopia-risk-cards/references/`) | https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt                                        |
 | `CC0-1.0`            | Tiny config files, license notes, and compact ICC profile | https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt                  |
-| `OFL-1.1`            | Bundled fonts (Liberation, Noto, Source Sans 3, JetBrains Mono, Ledger) | https://openfontlicense.org/documents/OFL.txt                          |
-| `LicenseRef-Bitstream-Vera` | Bundled DejaVu Sans font           | https://dejavu-fonts.github.io/License.html                                                         |
-| `Apache-2.0`         | Bundled fonts (Roboto, Arimo, Cousine)    | https://www.apache.org/licenses/LICENSE-2.0.txt                                                     |
-| `MIT`                | Wails-derived Windows installer templates | https://github.com/wailsapp/wails/blob/v2.13.0/LICENSE                                             |
+| `OFL-1.1`            | Committed Source Sans 3 font; optional downloaded fonts (Liberation, Noto Sans, JetBrains Mono, Roboto, Arimo, Cousine, Ledger) | https://raw.githubusercontent.com/spdx/license-list-data/main/text/OFL-1.1.txt |
+| `Bitstream-Vera`     | Optional downloaded DejaVu Sans font      | https://raw.githubusercontent.com/spdx/license-list-data/main/text/Bitstream-Vera.txt |
+| `MIT`                | Wails-derived Windows installer templates; vendored `go-sqlcipher` Go code (`third_party/go-sqlcipher/`) | https://github.com/wailsapp/wails/blob/v2.13.0/LICENSE                                             |
+| `BSD-3-Clause`, `blessing`, `Unlicense` | Other vendored code in `third_party/go-sqlcipher/` (SQLCipher and SQLite sources, LibTomCrypt, one Go Authors file) | SPDX License List, via `reuse download` |
 
 The Source Sans 3 PDF/A baseline and its `OFL-1.1` license text are committed
 because clean release builds must embed those fonts without a network fetch.
 Other font binaries are fetched by `scripts/fetch-fonts.sh` and ignored as
-optional local downloads. Their upstream licenses are documented here and in
-`internal/fonts/assets/README.md`. The compact sRGB ICC profile used for
+optional local downloads; CI and release builds never fetch them. Their
+licenses are documented here and in `internal/fonts/assets/README.md`, which
+also lists each family's version, upstream copyright notice, and upstream
+license file. Roboto, Arimo, and Cousine were once `Apache-2.0`; the pinned
+upstream releases are `OFL-1.1`. DejaVu's upstream `LICENSE` also contains the
+Arev Fonts license, which applies the same conditions as `Bitstream-Vera` to
+its Arev glyphs. The compact sRGB ICC profile used for
 PDF/A-3 OutputIntent embedding is likewise committed because the Go embed
 directive needs it in clean checkouts.
 
@@ -45,9 +50,8 @@ Run the following after adding a new SPDX identifier:
 curl -L -o GPL-3.0-or-later.txt   https://www.gnu.org/licenses/gpl-3.0.txt
 curl -L -o GFDL-1.3-or-later.txt  https://www.gnu.org/licenses/fdl-1.3.txt
 curl -L -o CC0-1.0.txt            https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt
-curl -L -o OFL-1.1.txt            https://openfontlicense.org/documents/OFL.txt
-curl -L -o LicenseRef-Bitstream-Vera.txt https://dejavu-fonts.github.io/License.html
-curl -L -o Apache-2.0.txt         https://www.apache.org/licenses/LICENSE-2.0.txt
+curl -L -o OFL-1.1.txt            https://raw.githubusercontent.com/spdx/license-list-data/main/text/OFL-1.1.txt
+curl -L -o Bitstream-Vera.txt     https://raw.githubusercontent.com/spdx/license-list-data/main/text/Bitstream-Vera.txt
 curl -L -o MIT.txt                https://raw.githubusercontent.com/wailsapp/wails/v2.13.0/LICENSE
 curl -L -o CC-BY-SA-4.0.txt       https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt
 ```
