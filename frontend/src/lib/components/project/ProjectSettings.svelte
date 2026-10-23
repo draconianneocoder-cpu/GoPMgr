@@ -9,7 +9,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   //
   // The Launchpad sets these at creation time; this panel is the
   // canonical "go back and reclassify" entry point. Reuses existing
-  // App.UpdateProjectMeta and App.UpdateProjectIndustry. Calendar choices come
+  // App.UpdateProjectMeta. Calendar choices come
   // from the same Go catalogue used by the Launchpad so both surfaces stay in
   // lockstep as jurisdictions are added.
 
@@ -301,7 +301,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     await loadScenarioSources();
     await loadScenarios();
     await loadEncryptionState();
-    // `updated_at` is server-stamped fresh on every UpdateProjectIndustry
+    // `updated_at` is server-stamped fresh on every UpdateProjectMeta
     // call (internal/db/project.go's UpsertProject), so a snapshot that
     // includes it never matches after even a fully successful save with no
     // further user edits — the shared guard's post-save hasDirty() recheck
@@ -332,28 +332,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   ];
 
   async function save() {
-    if (!draft) return false;
-    // Snapshot what's actually being submitted so both backend calls agree,
-    // and so a later mid-save edit can be detected and preserved rather
-    // than silently overwritten by this save's own response.
+    if (!draft || busy) return false;
+    // Preserve edits made while this snapshot is being saved.
     const savingDraft = { ...draft };
-    let savedMeta: ProjectMeta | null = null;
     busy = true;
     error = '';
     status = '';
     try {
-      // Two calls because UpdateProjectIndustry covers the four
-      // Launchpad columns explicitly; UpdateProjectMeta handles
-      // everything else.
-      savedMeta = normaliseProjectMeta(await window.go.main.App.UpdateProjectMeta(savingDraft));
-      const merged = normaliseProjectMeta(
-        await window.go.main.App.UpdateProjectIndustry(
-          savingDraft.industry,
-          savingDraft.sub_category,
-          savingDraft.methodology,
-          savingDraft.country_code,
-        ),
-      );
+      const merged = normaliseProjectMeta(await window.go.main.App.UpdateProjectMeta(savingDraft));
       const latestDraft = draft;
       original = merged;
       session.project = merged;
@@ -365,13 +351,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       status = 'Saved.';
       return true;
     } catch (err: any) {
-      if (savedMeta) {
-        original = savedMeta;
-        session.project = savedMeta;
-        draft = { ...savedMeta };
-      } else if (original) {
-        draft = { ...original };
-      }
+      // Keep the latest draft for correction/retry, but never display an
+      // unconfirmed reporting currency as the project's persisted currency.
+      if (original) draft.currency_code = original.currency_code;
       error = `Save failed: ${err}`;
       return false;
     } finally {

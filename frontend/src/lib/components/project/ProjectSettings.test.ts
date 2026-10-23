@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/svelte';
 
 import { autosave } from '../../autosave.svelte';
-import { navigation, requestNavigation, saveAndContinueNavigation, session } from '../../session.svelte';
+import { cancelNavigation, navigation, requestNavigation, saveAndContinueNavigation, session } from '../../session.svelte';
 import ProjectSettings from './ProjectSettings.svelte';
 
 async function switchTab(
@@ -35,6 +35,27 @@ const timestampSettings = {
 
 let app: Record<string, ReturnType<typeof vi.fn>>;
 
+function projectMeta(overrides: Partial<ProjectMeta> = {}): ProjectMeta {
+  return {
+    id: 'project-1', name: 'Convergence Project', owner: 'Original owner',
+    description: 'Original description', industry: 'software', sub_category: '',
+    methodology: 'scrum', country_code: 'US', time_zone: 'America/Chicago',
+    status: 'planning', phase: 'planning', start_date: '', end_date: '',
+    budget: '0.00', currency_code: 'USD', created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z', ...overrides,
+  };
+}
+
+function pendingProjectSave() {
+  let resolve!: (value: ProjectMeta) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<ProjectMeta>((resolveSave, rejectSave) => {
+    resolve = resolveSave;
+    reject = rejectSave;
+  });
+  return { promise, resolve, reject };
+}
+
 beforeEach(() => {
   app = {
     ListCalendarPolicies: vi.fn(async () => []),
@@ -62,12 +83,15 @@ beforeEach(() => {
   (window as unknown as { go: unknown }).go = { main: { App: app } };
   session.projectPath = null;
   session.project = null;
+  session.view = 'login';
+  cancelNavigation();
 });
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   autosave.discardAll();
+  cancelNavigation();
 });
 
 describe('project PAdES timestamp settings', () => {
@@ -265,19 +289,6 @@ describe('reporting currency', () => {
       phase: 'planning',
     }));
     app.UpdateProjectMeta = vi.fn(async (p: unknown) => p);
-    app.UpdateProjectIndustry = vi.fn(async () => ({
-      id: 'project-1',
-      name: 'Currency Project',
-      description: '',
-      industry: '',
-      sub_category: '',
-      methodology: '',
-      country_code: 'US',
-      time_zone: 'America/Chicago',
-      status: 'planning',
-      phase: 'planning',
-      currency_code: 'EUR',
-    }));
     const { findByLabelText, findByRole, findByText } = render(ProjectSettings);
 
     const currency = (await findByLabelText(/reporting currency/i)) as HTMLSelectElement;
@@ -332,11 +343,6 @@ describe('legacy Budget decimal transport', () => {
       budget: '90071992547409.91', currency_code: 'USD',
     }));
     app.UpdateProjectMeta = vi.fn(async (p: unknown) => p);
-    app.UpdateProjectIndustry = vi.fn(async () => ({
-      id: 'project-1', name: 'Exact Budget Project', description: '', industry: '', sub_category: '', methodology: '',
-      country_code: 'US', time_zone: 'America/Chicago', status: 'planning', phase: 'planning',
-      budget: '92233720368547758.07', currency_code: 'USD',
-    }));
     const { container, findByRole } = render(ProjectSettings);
     await findByRole('tab', { name: /general/i });
     const budget = container.querySelector('input[inputmode="decimal"]');
@@ -354,7 +360,7 @@ describe('legacy Budget decimal transport', () => {
 });
 
 // Regression coverage for a defect found via packaged-GUI testing on
-// 2026-08-18: UpdateProjectIndustry always returns a fresh server-stamped
+// 2026-08-18: saving metadata returns a fresh server-stamped
 // `updated_at` (internal/db/project.go's UpsertProject). The shared
 // navigation/native-close guard's "Save and continue" button routes through
 // session.svelte's saveAndContinueNavigation -> autosave.saveAll(), which is
@@ -367,29 +373,12 @@ describe('legacy Budget decimal transport', () => {
 // the live reproduction (dirty ProjectSettings -> "<- Dashboard" -> Save and
 // continue, twice, same error both times).
 describe('guarded-navigation save convergence (updated_at exclusion)', () => {
-  function projectMeta(overrides: Record<string, unknown> = {}) {
-    return {
-      id: 'project-1',
-      name: 'Convergence Project',
-      description: 'Original description',
-      industry: 'software',
-      sub_category: '',
-      methodology: 'scrum',
-      country_code: 'US',
-      time_zone: 'America/Chicago',
-      status: 'planning',
-      phase: 'planning',
-      updated_at: '2026-01-01T00:00:00Z',
-      ...overrides,
-    };
-  }
-
   it('reports clean and completes the pending navigation after "Save and continue", despite a fresh updated_at', async () => {
     app.GetProjectMeta = vi.fn(async () => projectMeta());
-    app.UpdateProjectMeta = vi.fn(async (p: unknown) => p);
-    app.UpdateProjectIndustry = vi.fn(async () =>
+    app.UpdateProjectMeta = vi.fn(async () =>
       projectMeta({ description: 'Edited description', updated_at: '2026-01-01T00:00:05Z' }),
     );
+    app.UpdateProjectIndustry = vi.fn();
 
     const registerSpy = vi.spyOn(autosave, 'register');
     const { findByLabelText, findByRole } = render(ProjectSettings);
@@ -410,7 +399,8 @@ describe('guarded-navigation save convergence (updated_at exclusion)', () => {
 
     await saveAndContinueNavigation();
 
-    expect(app.UpdateProjectIndustry).toHaveBeenCalledOnce();
+    expect(app.UpdateProjectMeta).toHaveBeenCalledOnce();
+    expect(app.UpdateProjectIndustry).not.toHaveBeenCalled();
     expect(autosave.hasDirty()).toBe(false);
     expect(navigation.pending).toBeNull();
     expect(navigation.error).toBe('');
@@ -419,14 +409,9 @@ describe('guarded-navigation save convergence (updated_at exclusion)', () => {
 
   it('stays dirty, and leaves navigation pending, if the user edits again while a slow save is in flight', async () => {
     app.GetProjectMeta = vi.fn(async () => projectMeta());
-    app.UpdateProjectMeta = vi.fn(async (p: unknown) => p);
-    let resolveIndustry: (value: unknown) => void = () => {};
-    app.UpdateProjectIndustry = vi.fn(
-      () =>
-        new Promise((resolve) => {
-          resolveIndustry = resolve;
-        }),
-    );
+    const pending = pendingProjectSave();
+    app.UpdateProjectMeta = vi.fn(() => pending.promise);
+    app.UpdateProjectIndustry = vi.fn();
 
     const registerSpy = vi.spyOn(autosave, 'register');
     const { findByLabelText, findByRole } = render(ProjectSettings);
@@ -435,6 +420,8 @@ describe('guarded-navigation save convergence (updated_at exclusion)', () => {
 
     const description = await findByLabelText(/description/i);
     await fireEvent.input(description, { target: { value: 'First edit' } });
+    const budget = await findByLabelText(/^budget/i);
+    await fireEvent.input(budget, { target: { value: '1' } });
     expect(autosave.hasDirty()).toBe(true);
 
     session.view = 'project_settings';
@@ -443,7 +430,7 @@ describe('guarded-navigation save convergence (updated_at exclusion)', () => {
 
     // A further edit lands while the save is still awaiting its response.
     await fireEvent.input(description, { target: { value: 'Second edit, made mid-save' } });
-    resolveIndustry(projectMeta({ description: 'First edit', updated_at: '2026-01-01T00:00:05Z' }));
+    pending.resolve(projectMeta({ description: 'First edit', budget: '1.00', updated_at: '2026-01-01T00:00:05Z' }));
     await continuing;
 
     expect(autosave.hasDirty()).toBe(true);
@@ -453,6 +440,208 @@ describe('guarded-navigation save convergence (updated_at exclusion)', () => {
     // The data-loss assertion proper: the mid-save edit must survive, not
     // be silently overwritten by the first save's (now-stale) response.
     expect(description).toHaveValue('Second edit, made mid-save');
+    expect(budget).toHaveValue('1.00');
+    expect(session.project?.budget).toBe('1.00');
+  });
+});
+
+describe('General Save recovery', () => {
+  beforeEach(() => {
+    app.GetProjectMeta = vi.fn(async () => projectMeta());
+    app.ListCalendarPolicies = vi.fn(async () => [
+      { country_code: 'US', name: 'United States', time_zones: ['America/Chicago'] },
+      { country_code: 'CA', name: 'Canada', time_zones: ['America/Toronto'] },
+    ]);
+    app.UpdateProjectIndustry = vi.fn(async () => {
+      throw new Error('General Save must not perform a second write');
+    });
+    session.project = projectMeta();
+    session.view = 'project_settings';
+  });
+
+  async function readySettings() {
+    const registerSpy = vi.spyOn(autosave, 'register');
+    const view = render(ProjectSettings);
+    await waitFor(() => expect(registerSpy).toHaveBeenCalledOnce());
+    return view;
+  }
+
+  it('saves all General fields once and adopts the canonical response without a classification write', async () => {
+    app.UpdateProjectMeta = vi.fn(async (submitted: ProjectMeta) => ({
+      ...submitted, updated_at: '2026-01-02T00:00:00Z',
+    }));
+    const view = await readySettings();
+    await fireEvent.input(view.getByLabelText(/project name/i), { target: { value: 'Revised project' } });
+    await fireEvent.input(view.getByLabelText(/^owner$/i), { target: { value: 'Revised owner' } });
+    await fireEvent.input(view.getByLabelText(/^description$/i), { target: { value: 'Revised description' } });
+    await fireEvent.change(view.getByLabelText(/^industry$/i), { target: { value: 'construction' } });
+    await fireEvent.input(view.getByLabelText(/sub-category/i), { target: { value: 'Bridge' } });
+    await fireEvent.change(view.getByLabelText(/business calendar policy/i), { target: { value: 'CA' } });
+    await fireEvent.change(view.getByLabelText(/^status$/i), { target: { value: 'active' } });
+    await fireEvent.input(view.getByLabelText(/^budget/i), { target: { value: '92233720368547758.07' } });
+    await fireEvent.change(view.getByLabelText(/reporting currency/i), { target: { value: 'EUR' } });
+    await fireEvent.click(view.getByRole('button', { name: /^save details$/i }));
+
+    await view.findByText('Saved.');
+    expect(app.UpdateProjectMeta).toHaveBeenCalledOnce();
+    expect(app.UpdateProjectIndustry).not.toHaveBeenCalled();
+    expect(app.UpdateProjectMeta).toHaveBeenCalledWith(projectMeta({
+      name: 'Revised project', owner: 'Revised owner', description: 'Revised description',
+      industry: 'construction', sub_category: 'Bridge', methodology: '', country_code: 'CA',
+      time_zone: 'America/Toronto', status: 'active', budget: '92233720368547758.07', currency_code: 'EUR',
+    }));
+    expect(view.getByLabelText(/project name/i)).toHaveValue('Revised project');
+    expect(view.getByRole('button', { name: /^revert details$/i })).toBeDisabled();
+    expect(session.project).toEqual(projectMeta({
+      name: 'Revised project', owner: 'Revised owner', description: 'Revised description',
+      industry: 'construction', sub_category: 'Bridge', methodology: '', country_code: 'CA',
+      time_zone: 'America/Toronto', status: 'active', budget: '92233720368547758.07', currency_code: 'EUR',
+      updated_at: '2026-01-02T00:00:00Z',
+    }));
+  });
+
+  it.each(['storage unavailable', 'project budget: amount is out of range'])(
+    'retains submitted edits and the saved baseline after %s', async (message) => {
+      app.UpdateProjectMeta = vi.fn().mockRejectedValue(new Error(message));
+      const view = await readySettings();
+      await fireEvent.input(view.getByLabelText(/project name/i), { target: { value: 'Keep my project name' } });
+      await fireEvent.input(view.getByLabelText(/^budget/i), { target: { value: '92233720368547758.08' } });
+      await fireEvent.click(view.getByRole('button', { name: /^save details$/i }));
+
+      await view.findByText(`Save failed: Error: ${message}`);
+      expect(view.getByLabelText(/project name/i)).toHaveValue('Keep my project name');
+      expect(view.getByLabelText(/^budget/i)).toHaveValue('92233720368547758.08');
+      expect(view.getByRole('button', { name: /^save details$/i })).toBeEnabled();
+      expect(session.project).toEqual(projectMeta());
+      expect(autosave.hasDirty()).toBe(true);
+      expect(app.UpdateProjectIndustry).not.toHaveBeenCalled();
+      await fireEvent.click(view.getByRole('button', { name: /^revert details$/i }));
+      expect(view.getByLabelText(/project name/i)).toHaveValue('Convergence Project');
+      expect(view.getByLabelText(/^budget/i)).toHaveValue('0.00');
+      expect(autosave.hasDirty()).toBe(false);
+    },
+  );
+
+  it('retains newer edits, including cleared fields, when an in-flight write fails', async () => {
+    const pending = pendingProjectSave();
+    app.UpdateProjectMeta = vi.fn(() => pending.promise);
+    const view = await readySettings();
+    await fireEvent.input(view.getByLabelText(/^description$/i), { target: { value: 'Submitted description' } });
+    await fireEvent.click(view.getByRole('button', { name: /^save details$/i }));
+    try {
+      await fireEvent.input(view.getByLabelText(/project name/i), { target: { value: '' } });
+      await fireEvent.input(view.getByLabelText(/^description$/i), { target: { value: 'Newer description' } });
+      await fireEvent.input(view.getByLabelText(/^owner$/i), { target: { value: '' } });
+      await fireEvent.input(view.getByLabelText(/^budget/i), { target: { value: '90071992547409.91' } });
+      pending.reject(new Error('disk full'));
+      await view.findByText(/save failed:.*disk full/i);
+
+      expect(view.getByLabelText(/project name/i)).toHaveValue('');
+      expect(view.getByLabelText(/^owner$/i)).toHaveValue('');
+      expect(view.getByLabelText(/^description$/i)).toHaveValue('Newer description');
+      expect(view.getByLabelText(/^budget/i)).toHaveValue('90071992547409.91');
+      expect(session.project).toEqual(projectMeta());
+      expect(autosave.hasDirty()).toBe(true);
+    } finally {
+      pending.resolve(projectMeta());
+    }
+  });
+
+  it.each(['USD', 'JPY'])('restores confirmed %s but keeps other edits after a rejected currency change', async (currency) => {
+    app.GetProjectMeta = vi.fn(async () => projectMeta({ currency_code: currency }));
+    session.project = projectMeta({ currency_code: currency });
+    const pending = pendingProjectSave();
+    app.UpdateProjectMeta = vi.fn(() => pending.promise);
+    const view = await readySettings();
+    await fireEvent.change(view.getByLabelText(/reporting currency/i), { target: { value: 'EUR' } });
+    await fireEvent.click(view.getByRole('button', { name: /^save details$/i }));
+    try {
+      await fireEvent.change(view.getByLabelText(/reporting currency/i), { target: { value: 'GBP' } });
+      await fireEvent.input(view.getByLabelText(/^description$/i), { target: { value: 'Keep this newer edit' } });
+      pending.reject(new Error('currency is locked'));
+      await view.findByText(/save failed:.*currency is locked/i);
+
+      expect(view.getByLabelText(/reporting currency/i)).toHaveValue(currency);
+      expect(view.getByLabelText(/^description$/i)).toHaveValue('Keep this newer edit');
+      expect(session.project).toEqual(projectMeta({ currency_code: currency }));
+      expect(autosave.hasDirty()).toBe(true);
+    } finally {
+      pending.resolve(projectMeta());
+    }
+  });
+
+  it('blocks failed navigation, then retries the retained draft and leaves only after success', async () => {
+    app.UpdateProjectMeta = vi.fn()
+      .mockRejectedValueOnce(new Error('database busy'))
+      .mockImplementation(async (submitted: ProjectMeta) => ({ ...submitted, updated_at: '2026-01-02T00:00:00Z' }));
+    const view = await readySettings();
+    await fireEvent.input(view.getByLabelText(/^description$/i), { target: { value: 'Retry this draft' } });
+    requestNavigation('dashboard');
+    await saveAndContinueNavigation();
+
+    expect(view.getByLabelText(/^description$/i)).toHaveValue('Retry this draft');
+    expect(session.project).toEqual(projectMeta());
+    expect(session.view).toBe('project_settings');
+    expect(navigation.pending?.view).toBe('dashboard');
+    expect(navigation.error).not.toBe('');
+    expect(autosave.hasDirty()).toBe(true);
+
+    await saveAndContinueNavigation();
+
+    expect(app.UpdateProjectMeta).toHaveBeenCalledTimes(2);
+    expect(app.UpdateProjectMeta.mock.calls[1][0]).toEqual(projectMeta({ description: 'Retry this draft' }));
+    expect(app.UpdateProjectIndustry).not.toHaveBeenCalled();
+    expect(session.project?.description).toBe('Retry this draft');
+    expect(session.view).toBe('dashboard');
+    expect(navigation.pending).toBeNull();
+    expect(navigation.error).toBe('');
+    expect(autosave.hasDirty()).toBe(false);
+  });
+
+  it('restores the most recently confirmed currency rather than the initial currency after a later failure', async () => {
+    const confirmed = projectMeta({ currency_code: 'EUR', description: 'Confirmed edit', updated_at: '2026-01-02T00:00:00Z' });
+    app.UpdateProjectMeta = vi.fn().mockResolvedValueOnce(confirmed).mockRejectedValueOnce(new Error('later failure'));
+    const view = await readySettings();
+    await fireEvent.change(view.getByLabelText(/reporting currency/i), { target: { value: 'EUR' } });
+    await fireEvent.input(view.getByLabelText(/^description$/i), { target: { value: 'Confirmed edit' } });
+    await fireEvent.click(view.getByRole('button', { name: /^save details$/i }));
+    await view.findByText('Saved.');
+
+    await fireEvent.change(view.getByLabelText(/reporting currency/i), { target: { value: 'GBP' } });
+    await fireEvent.input(view.getByLabelText(/^description$/i), { target: { value: 'Keep the later edit' } });
+    await fireEvent.click(view.getByRole('button', { name: /^save details$/i }));
+    await view.findByText(/save failed:.*later failure/i);
+
+    expect(view.getByLabelText(/reporting currency/i)).toHaveValue('EUR');
+    expect(view.getByLabelText(/^description$/i)).toHaveValue('Keep the later edit');
+    expect(session.project).toEqual(confirmed);
+    await fireEvent.click(view.getByRole('button', { name: /^revert details$/i }));
+    expect(view.getByLabelText(/^description$/i)).toHaveValue('Confirmed edit');
+  });
+
+  it('refuses a guarded save while a manual write is in flight', async () => {
+    const pending = pendingProjectSave();
+    app.UpdateProjectMeta = vi.fn(() => pending.promise);
+    const view = await readySettings();
+    await fireEvent.input(view.getByLabelText(/^description$/i), { target: { value: 'Single in-flight write' } });
+    await fireEvent.click(view.getByRole('button', { name: /^save details$/i }));
+    let continuing: Promise<void> | undefined;
+    try {
+      requestNavigation('dashboard');
+      continuing = saveAndContinueNavigation();
+      expect(app.UpdateProjectMeta).toHaveBeenCalledOnce();
+      await continuing;
+      expect(session.view).toBe('project_settings');
+      expect(navigation.pending?.view).toBe('dashboard');
+      expect(navigation.error).not.toBe('');
+      expect(view.getByRole('button', { name: /saving details/i })).toBeDisabled();
+      pending.resolve(projectMeta({ description: 'Single in-flight write' }));
+      await view.findByText('Saved.');
+      expect(app.UpdateProjectIndustry).not.toHaveBeenCalled();
+    } finally {
+      pending.resolve(projectMeta());
+      await continuing;
+    }
   });
 });
 

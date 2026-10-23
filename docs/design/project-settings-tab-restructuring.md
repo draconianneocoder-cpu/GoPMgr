@@ -7,6 +7,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 Status: implemented 2026-08-18.
 
+Sections 1–8 record the original restructuring. Section 9 records the
+General Save recovery correction made on 2026-10-23.
+
 ## 1. Problem statement
 
 Two findings from the design-critique pass that produced the Dashboard IA
@@ -188,3 +191,32 @@ higher blind-spot risk than `Dashboard.svelte` had going into its own R3/R4
 cycle. Live-verification in a real `wails dev` build is planned as part of
 *this* cycle, not deferred, specifically because static verification alone
 is weaker evidence here.
+
+## 9. General Save recovery
+
+General Save uses `UpdateProjectMeta` once for Identity, Classification,
+and Lifecycle. That existing writer persists all fields and its audit event
+in one transaction. A second `UpdateProjectIndustry` call repeated an already
+complete write and could report failure after the first write committed.
+The separate classification API remains available to other callers.
+
+If the write fails, the confirmed project and session baseline stay unchanged.
+Submitted edits and edits made during the request remain available for
+correction or retry, including cleared fields and exact Budget strings.
+Only reporting currency returns to its last confirmed value, preserving the
+locked-currency and legacy-JPY safeguards. Revert details still explicitly
+discards the draft. There is no automatic retry or durable draft storage.
+
+A busy General Save refuses another General Save request. Successful replies
+still supply backend-owned identifiers and timestamps, while the existing
+rebase preserves newer editable fields. Failed guarded saves leave navigation
+pending; genuine mid-save edits still require another save before leaving.
+The shared navigation API and other tabs are unchanged.
+
+Regression evidence is recorded in `ProjectSettings.test.ts` and
+`app_project_save_test.go`: failed writes, late edits, currency restoration,
+retry, overlapping manual/guarded saves, a single metadata call, and a real
+file-backed transaction with exact money, one audit event, and rollback after
+an injected audit failure. The new component cases fail against the
+previous implementation. A disposable browser fixture also reproduced draft
+loss before the fix; it is not native Wails or real-storage evidence.
