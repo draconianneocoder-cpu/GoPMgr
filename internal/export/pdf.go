@@ -45,11 +45,12 @@ func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 // tests. Production always passes crypto.LoadCertificate through renderPDF;
 // the seam exists solely to prove that signing failures cannot publish a
 // superficially "signed" fallback document.
-// registerPDFABaseline registers the embedded Source Sans 3 faces under the
-// "Helvetica" name every renderer in this package calls SetFont with.
+// registerPDFABaseline registers the embedded fonts.DefaultFamily (IBM Plex
+// Sans) faces under the "Helvetica" name every renderer in this package calls
+// SetFont with.
 //
 // The error is logged rather than returned, and neither half of that is
-// incidental. Source Sans 3 is the PDF/A baseline: if it fails to register,
+// incidental. IBM Plex Sans is the PDF/A baseline: if it fails to register,
 // fpdf silently falls back to its built-in core Helvetica, which is NOT
 // embedded, and the document still goes out labelled PDF/A -- a
 // non-conformant file that looks correct. Dropping the error (`_ =`, as both
@@ -63,7 +64,7 @@ func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 // hard error is a deliberate release-policy call for a maintainer to make, not
 // a default to slip in.
 func registerPDFABaseline(pdf *fpdf.Fpdf) {
-	if err := fonts.NewManager("").RegisterAs(pdf, "Source Sans 3", "Helvetica"); err != nil {
+	if err := fonts.NewManager("").RegisterAs(pdf, fonts.DefaultFamily, "Helvetica"); err != nil {
 		log.Printf("[export] PDF/A baseline font did not register, falling back to a non-embedded core font: %v", err)
 	}
 }

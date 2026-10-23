@@ -423,7 +423,8 @@ func writeSubHeading(pdf *fpdf.Fpdf, label string) {
 
 func writeKVCompact(pdf *fpdf.Fpdf, k, v string) {
 	pdf.SetFont("Helvetica", "B", 9)
-	pdf.CellFormat(36, 4.5, k+":", "", 0, "L", false, 0, "")
+	label := k + ":"
+	pdf.CellFormat(kvLabelWidth(pdf, label, 36), 4.5, label, "", 0, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 9)
 	pdf.MultiCell(0, 4.5, v, "", "L", false)
 }

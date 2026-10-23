@@ -1988,7 +1988,7 @@ reason.
 | `make clean` | Remove build output and generated `frontend/wailsjs/` bindings; does not sweep mixed-purpose `.tmp` or shared caches |
 | `make workspace-hygiene` | Read-only size and ownership classification for `.tmp`; unknown entries and retained evidence are preserved |
 | `make cache-maintenance` | Explicitly clear shared Go build/test cache and verify/garbage-collect npm cache; preserves module dependencies and `node_modules` |
-| `make fonts`, `make icc` | Download the optional font families / refresh the sRGB ICC profile; not needed for a clean build, because the Source Sans 3 baseline and the ICC profile are committed |
+| `make fonts`, `make icc` | Download the optional font families / refresh the sRGB ICC profile; not needed for a clean build, because the IBM Plex and Source Sans 3 fonts and the ICC profile are committed |
 | `make test` | Go test gate over repository-defined Go packages |
 | `make race` | Go race-detector gate |
 | `make verify` | Regular local pre-commit/handoff gate (config, installer/tool pins, Go tests, code-map currency, frontend stability/budget, coverage-ledger currency, and related contract checks — see 14.1) |

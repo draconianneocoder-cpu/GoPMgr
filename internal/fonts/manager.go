@@ -14,11 +14,12 @@ import (
 	"strings"
 )
 
-// assetsFS embeds the tracked Source Sans 3 PDF/A baseline plus any optional
-// families downloaded before compilation. The Manager filters to *.ttf at
-// load time and reports only families whose files are available. Supported
-// release builds always include Source Sans 3; optional families may still
-// fall back to that baseline when their downloaded files are absent.
+// assetsFS embeds the tracked IBM Plex and Source Sans 3 faces plus any
+// optional families downloaded before compilation. The Manager filters to
+// *.ttf at load time and reports only families whose files are available.
+// Every build includes the tracked faces, so DefaultFamily (IBM Plex Sans,
+// the PDF/A baseline) is always available; optional families fall back to it
+// when their downloaded files are absent.
 //
 //go:embed assets
 var assetsFS embed.FS
@@ -286,9 +287,9 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 				//
 				// It must be targeted. --force is catalog-wide: it
 				// re-downloads every family, including the git-tracked,
-				// SHA-256-pinned Source Sans 3 files that are the PDF/A
-				// baseline and that check-required-font-assets.sh
-				// verifies. (When this remedy was written, fetch() also
+				// SHA-256-pinned IBM Plex and Source Sans 3 files that
+				// check-required-font-assets.sh verifies, IBM Plex Sans
+				// among them as the PDF/A baseline. (When this remedy was written, fetch() also
 				// did `rm -f "$dest"` on a failed download, so one offline
 				// run deleted every asset it could not re-fetch; the
 				// script now replaces a file only after a verified

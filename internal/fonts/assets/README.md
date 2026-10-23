@@ -8,19 +8,28 @@ SPDX-License-Identifier: CC0-1.0
 This directory holds the TrueType (`.ttf`) font files that GoPMgr
 embeds in generated PDFs. The `go:embed assets` directive in
 `../manager.go` bundles whatever `.ttf` files are present here into the
-compiled binary.
+compiled binary, along with `FONT-NOTICES.txt`, the copyright notices and
+license text of the committed fonts.
 
-The four Source Sans 3 faces are committed as GoPMgr's release-critical
-PDF/A baseline. Strict archival exports require an embedded TrueType font;
-without these files, a clean build falls back to PDF core Helvetica and fails
-veraPDF. `make required-font-assets` verifies that the baseline is tracked,
-has a valid TrueType signature, and matches the reviewed Adobe release bytes
-(Source Sans 3 version 3.052).
+These faces are committed, so every build bundles them:
+
+- **IBM Plex Sans, Serif, Mono, and Sans Condensed**, four faces each
+  (Regular, SemiBold, Italic, SemiBold Italic). IBM Plex Sans is the default
+  document font and the release-critical PDF/A baseline; IBM Plex Mono sets
+  the recovery-code sheet. The app's own interface uses the matching WOFF2
+  faces in `frontend/public/fonts/ibm-plex/`.
+- **Source Sans 3**, four faces, kept as a document font choice.
+
+Strict archival exports require an embedded TrueType font; without these
+files, PDFs would fall back to the PDF core fonts and fail veraPDF.
+`make required-font-assets` verifies that every committed font file is
+tracked, has a valid signature, and matches its reviewed upstream bytes. See
+`docs/design/typography-ibm-plex.md` for which Plex face serves each role.
 
 The other, larger catalog families are not committed. They keep their own
 upstream licenses and are downloaded on demand from their upstream projects.
 CI and release builds never download them, so release binaries embed only
-Source Sans 3.
+IBM Plex and Source Sans 3.
 
 ## Fetching the fonts
 
@@ -31,7 +40,7 @@ make fonts          # or: bash scripts/fetch-fonts.sh
 This downloads every family listed in `../catalog.go` into this directory.
 Each source is pinned to an immutable upstream commit, tag, or release
 archive, and each download is checked against a SHA-256 recorded in the
-script. Source Sans 3 is fetched from the same commit that
+script. The committed fonts are fetched from the same commits that
 `scripts/check-required-font-assets.sh` verifies; `--force` re-downloads
 files that already exist. After fetching, rebuild with `make build` and the
 fonts are embedded.
@@ -40,13 +49,13 @@ The script downloads font files only, not license files. If you distribute a
 build that embeds an optional family, include that family's upstream license
 file from the table below.
 
-## Graceful degradation
+## Defaults and fallbacks
 
 If an optional family's `.ttf` files are absent at build time, the font
-Manager omits that family from `Available()`. A document export whose chosen
-family is missing keeps fpdf's core Helvetica, which is not embedded. Report
-exports always register Source Sans 3, which supported release builds always
-embed, so archival renderers never reach the core font.
+Manager omits that family from `Available()`. A document whose chosen family
+is missing, or that has no chosen family, uses IBM Plex Sans. Report exports
+always use IBM Plex Sans. No GoPMgr PDF falls back to fpdf's unembedded core
+fonts.
 
 ## Licenses
 
@@ -57,6 +66,10 @@ do not place those documents under the font license.
 
 | Family | Version | License | Upstream copyright notice | License file |
 | ------ | ------- | ------- | ------------------------- | ------------ |
+| IBM Plex Sans (committed) | 3.005 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/1da12f02587b630c07e92692d21492d722f53614/packages/plex-sans/LICENSE.txt) |
+| IBM Plex Serif (committed) | 3.006 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/434af578549afcfdabd281f386e0ff7314fd20b0/packages/plex-serif/LICENSE.txt) |
+| IBM Plex Mono (committed) | 2.005 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/2f9ba1b25957d958db71a849e85d72e3ecfb845a/packages/plex-mono/LICENSE.txt) |
+| IBM Plex Sans Condensed (committed) | 3.000 | `OFL-1.1` | © 2017 IBM Corp., with Reserved Font Name "Plex" | [LICENSE.txt](https://github.com/IBM/plex/blob/bb3ab6404e1881ea286f8742dc839e09057db6dd/packages/plex-sans-condensed/LICENSE.txt) |
 | Source Sans 3 (committed) | 3.052 | `OFL-1.1` | © 2010–2024 Adobe, with Reserved Font Name "Source" | [LICENSE.md](https://github.com/adobe-fonts/source-sans/blob/87b37a2daaed80fcb8e8ccb0085c4d72ddade12e/LICENSE.md) |
 | Liberation Sans, Serif, Mono | 2.1.5 | `OFL-1.1` | © 2010 Google Corporation (digitized data), with Reserved Font Arimo, Tinos and Cousine; © 2012 Red Hat, Inc., with Reserved Font Name Liberation | [LICENSE](https://github.com/liberationfonts/liberation-fonts/blob/2.1.5/LICENSE) |
 | DejaVu Sans | 2.37 | `Bitstream-Vera` | © 2003 Bitstream, Inc.; Arev glyphs © 2006 Tavmjong Bah; DejaVu changes are public domain | [LICENSE](https://github.com/dejavu-fonts/dejavu-fonts/blob/version_2_37/LICENSE) |
@@ -69,6 +82,9 @@ do not place those documents under the font license.
 
 Notes:
 
+- The IBM Plex font files carry IBM Corp. copyright lines from 2017 (Mono),
+  2018 (Sans), 2019 (Sans Condensed), and 2020 (Serif); IBM's license file
+  for every family reads 2017. `REUSE.toml` records the full range.
 - Roboto, Arimo, and Cousine were once distributed under `Apache-2.0`.
   Their current upstream releases, which the fetch script pins, are
   `OFL-1.1`.
@@ -76,31 +92,34 @@ Notes:
   also includes the Arev Fonts license, which applies the same conditions,
   with Tavmjong Bah's name in place of Bitstream's, to the glyphs taken from
   the Arev fonts.
-- The tracked Source Sans 3 faces are accompanied by `LICENSES/OFL-1.1.txt`.
-  The same license identifiers and copyright notices are recorded in
-  `REUSE.toml`; `TestCatalogLicensesMatchREUSE` keeps `../catalog.go` in step
-  with it.
+- The committed faces are accompanied by `LICENSES/OFL-1.1.txt` and by
+  `FONT-NOTICES.txt`; the app's web fonts are accompanied by IBM's license in
+  `frontend/public/fonts/ibm-plex/OFL.txt`. The same license identifiers and
+  copyright notices are recorded in `REUSE.toml`;
+  `TestCatalogLicensesMatchREUSE` keeps `../catalog.go` in step with it.
 - Every font above sets OS/2 `fsType` 0 (installable), so none restricts
   embedding or subsetting. Liberation 2.1.5 was not checked.
 
 ## No proprietary fonts
 
-GoPMgr ships no proprietary fonts. The four Source Sans 3 files are the only
-font files in the repository, in its full Git history, in the release binary,
-and in the frontend bundle. No PDF, SVG, Office file, or data URI in the
-repository embeds a font.
+GoPMgr ships no proprietary fonts. The committed IBM Plex and Source Sans 3
+files are the only font files in the repository, in the release binary, and in
+the frontend bundle. No PDF, SVG, Office file, or data URI in the repository
+embeds a font.
 
 Some outputs name common system fonts without including them, and the viewer
 then uses a font it already has:
 
-- A document PDF whose font is not set, or is not available in the build,
-  uses the PDF standard font Helvetica. The PDF names it but holds no font
-  data; `go-pdf/fpdf` carries only its character widths.
-- Report PDFs embed Source Sans 3 under the internal name `utf8helvetica`,
-  because the renderers select their font through the "Helvetica" family key.
-- DOCX and XLSX exports name Microsoft fonts, such as Calibri, in the default
-  styles of `godocx` and `excelize`. HTML exports and the app's interface use
-  operating-system font stacks.
+- Every GoPMgr PDF embeds its fonts. The embedded faces carry internal names
+  such as `utf8helvetica`, because the renderers select their font through the
+  "Helvetica" family key; the font data is IBM Plex (or the chosen family).
+- DOCX, ODT, XLSX, and HTML exports set their text in IBM Plex. Microsoft
+  font names remain where GoPMgr's text does not use them: the DOCX font table
+  and the DOCX theme's slots for East Asian and other scripts Plex does not
+  cover, and the XLSX theme, which Excel applies only to content a user adds
+  with theme fonts. The app's interface lists operating-system fonts after
+  IBM Plex in its font stacks, as fallbacks for emoji and other characters
+  Plex lacks.
 
 Imported fonts belong to the user. `ImportFont` checks only that a file is a
 TrueType font, not its license or its embedding permissions.

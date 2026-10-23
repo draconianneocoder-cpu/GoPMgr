@@ -27,6 +27,7 @@ func GenerateSigmaReportPDF(
 	controlPlan []domain.ControlPlanItem,
 ) (pdfBytes []byte, filename string, err error) {
 	pdf := fpdf.New("P", "mm", "A4", "")
+	registerPDFABaseline(pdf)
 	pdf.SetTitle("Six Sigma Project Report: "+project.Title, true)
 	pdf.SetAuthor("GoPMgr", true)
 	pdf.SetCreator("GoPMgr Sigma Report Generator", true)

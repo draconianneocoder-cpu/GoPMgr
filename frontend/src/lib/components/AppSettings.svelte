@@ -384,7 +384,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
               bind:value={font}
               class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
             >
-              <option value="">Catalog default</option>
+              <option value="">IBM Plex Sans (default)</option>
               {#each info.fonts as f (f.name)}
                 <option value={f.name}>{f.name}</option>
               {/each}

@@ -93,6 +93,22 @@ temp_snapshot.db
 
 # Downloaded/generated binary inputs
 /internal/fonts/assets/*.ttf
+!/internal/fonts/assets/IBMPlexSans-Regular.ttf
+!/internal/fonts/assets/IBMPlexSans-SemiBold.ttf
+!/internal/fonts/assets/IBMPlexSans-Italic.ttf
+!/internal/fonts/assets/IBMPlexSans-SemiBoldItalic.ttf
+!/internal/fonts/assets/IBMPlexSansCondensed-Regular.ttf
+!/internal/fonts/assets/IBMPlexSansCondensed-SemiBold.ttf
+!/internal/fonts/assets/IBMPlexSansCondensed-Italic.ttf
+!/internal/fonts/assets/IBMPlexSansCondensed-SemiBoldItalic.ttf
+!/internal/fonts/assets/IBMPlexSerif-Regular.ttf
+!/internal/fonts/assets/IBMPlexSerif-SemiBold.ttf
+!/internal/fonts/assets/IBMPlexSerif-Italic.ttf
+!/internal/fonts/assets/IBMPlexSerif-SemiBoldItalic.ttf
+!/internal/fonts/assets/IBMPlexMono-Regular.ttf
+!/internal/fonts/assets/IBMPlexMono-SemiBold.ttf
+!/internal/fonts/assets/IBMPlexMono-Italic.ttf
+!/internal/fonts/assets/IBMPlexMono-SemiBoldItalic.ttf
 !/internal/fonts/assets/SourceSans3-Regular.ttf
 !/internal/fonts/assets/SourceSans3-Bold.ttf
 !/internal/fonts/assets/SourceSans3-It.ttf

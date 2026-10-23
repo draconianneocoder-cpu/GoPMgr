@@ -11,17 +11,20 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"unicode/utf16"
 )
 
 var (
 	pdfStreamPattern = regexp.MustCompile(`(?s)stream\r?\n(.*?)\r?\nendstream`)
 	pdfTextPattern   = regexp.MustCompile(`\(((?:\\.|[^\\)])*)\)\s*Tj`)
 	pdfPagePattern   = regexp.MustCompile(`/Type /Page\b[^s]`)
+	pdfCoreFontName  = regexp.MustCompile(`/BaseFont /(Helvetica|Courier|Times)`)
 )
 
 // recoverySheetText returns the sheet's shown text in page order, joined by
-// spaces. The sheet uses core fonts only, so each string is a literal
-// "(...) Tj" in an inflated content stream.
+// spaces. Each string is a literal "(...) Tj" in an inflated content stream:
+// plain bytes for a core font, or UTF-16BE for an embedded font, which is
+// what the sheet uses.
 func recoverySheetText(t *testing.T, pdf []byte) string {
 	t.Helper()
 	var words []string
@@ -35,11 +38,25 @@ func recoverySheetText(t *testing.T, pdf []byte) string {
 			continue
 		}
 		for _, tj := range pdfTextPattern.FindAllSubmatch(content, -1) {
-			unescaped := strings.NewReplacer(`\(`, "(", `\)`, ")", `\\`, `\`).Replace(string(tj[1]))
-			words = append(words, unescaped)
+			unescaped := strings.NewReplacer(`\(`, "(", `\)`, ")", `\\`, `\`, `\r`, "\r").Replace(string(tj[1]))
+			words = append(words, decodePDFText(unescaped))
 		}
 	}
 	return strings.Join(words, " ")
+}
+
+// decodePDFText decodes fpdf's UTF-16BE strings for embedded fonts. Every
+// character the sheet prints is below U+0100, so those strings start with a
+// zero byte, which a core-font string never does.
+func decodePDFText(s string) string {
+	if len(s) < 2 || len(s)%2 != 0 || s[0] != 0 {
+		return s
+	}
+	units := make([]uint16, len(s)/2)
+	for i := range units {
+		units[i] = uint16(s[2*i])<<8 | uint16(s[2*i+1])
+	}
+	return string(utf16.Decode(units))
 }
 
 func sampleRecoverySheet() RecoverySheet {
@@ -66,6 +83,14 @@ func TestRenderRecoverySheetPDFShowsEveryCodeAndHowToUseThem(t *testing.T) {
 	}
 	if pages := len(pdfPagePattern.FindAll(pdf, -1)); pages != 1 {
 		t.Fatalf("sheet has %d pages, want 1", pages)
+	}
+	// IBM Plex Sans and IBM Plex Mono are embedded; no text falls back to an
+	// unembedded core font.
+	if embedded := bytes.Count(pdf, []byte("/FontFile2")); embedded < 2 {
+		t.Errorf("sheet embeds %d font programs, want at least 2 (Plex Sans text, Plex Mono codes)", embedded)
+	}
+	if m := pdfCoreFontName.Find(pdf); m != nil {
+		t.Errorf("sheet references the unembedded core font %s", m)
 	}
 
 	text := strings.Join(strings.Fields(recoverySheetText(t, pdf)), " ")

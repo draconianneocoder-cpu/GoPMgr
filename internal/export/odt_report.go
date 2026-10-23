@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"sort"
 	"time"
+
+	"gopmgr/internal/fonts"
 )
 
 // renderDocumentODT produces an OpenDocument Text (.odt) file containing the
@@ -48,7 +50,7 @@ func renderDocumentODT(payload ReportPayload, opts ExportOptions) ([]byte, error
 	}{
 		{"META-INF/manifest.xml", odtManifest()},
 		{"meta.xml", odtMeta("GoPMgr CPM Report", opts.Title, now)},
-		{"styles.xml", odtStyles()},
+		{"styles.xml", odtStyles(fonts.DefaultFamily)},
 		{"content.xml", body},
 	}
 	for _, f := range files {

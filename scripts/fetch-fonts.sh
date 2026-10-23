@@ -4,11 +4,12 @@
 #
 # Downloads the bundled TrueType fonts into internal/fonts/assets/.
 #
-# Source Sans 3 is committed as the release-critical PDF/A baseline. This
-# script fetches the remaining optional families and can refresh the baseline
-# from its pinned upstream commit when --force is used. CI and release builds
-# never run it (scripts/release-gate-scope-check.sh enforces that), so the
-# optional families only reach local developer builds.
+# The IBM Plex families and Source Sans 3 are committed; IBM Plex Sans is the
+# default document font and the release-critical PDF/A baseline. This script
+# fetches the remaining optional families and can refresh the committed fonts
+# from their pinned upstream commits when --force is used. CI and release
+# builds never run it (scripts/release-gate-scope-check.sh enforces that), so
+# the optional families only reach local developer builds.
 #
 # Every font fetched here is free for commercial AND personal use. Each one is
 # licensed under the SIL Open Font License 1.1, except DejaVu Sans, which uses
@@ -209,6 +210,39 @@ extract() {
 	fi
 }
 
+# --- IBM Plex (Sans, Serif, Mono, Sans Condensed), SIL OFL 1.1 ----------
+# Committed: the default document font, the PDF/A baseline, and the app's
+# typeface. Each family is pinned to the commit of its IBM release tag; the
+# SHA-256 values match check-required-font-assets.sh. fpdf maps its Bold
+# style to SemiBold (docs/design/typography-ibm-plex.md), so only these four
+# faces per family are bundled.
+# Sans 3.005, tag @ibm/plex-sans@1.1.0
+PLEX_SANS="https://raw.githubusercontent.com/IBM/plex/1da12f02587b630c07e92692d21492d722f53614/packages/plex-sans/fonts/complete/ttf"
+fetch "IBMPlexSans-Regular.ttf" "$PLEX_SANS/IBMPlexSans-Regular.ttf" "975dcda37d80f038dcd143c22e33ca2d97a0cc5a929aace1c749153b0fe1afa5"
+fetch "IBMPlexSans-SemiBold.ttf" "$PLEX_SANS/IBMPlexSans-SemiBold.ttf" "a20caf8286023a6a7a85e40b1d2a4ae9fc3e3b1f9eda8f4c542dd4986af67bb1"
+fetch "IBMPlexSans-Italic.ttf" "$PLEX_SANS/IBMPlexSans-Italic.ttf" "a9c6ef9942c49e49d11e11a6dacc0b3a087978757e9b22a06b8ac22a6400fb15"
+fetch "IBMPlexSans-SemiBoldItalic.ttf" "$PLEX_SANS/IBMPlexSans-SemiBoldItalic.ttf" "147106b619423a82b40f6d64bace074ad5b786e59f48023bda69d63b1755fb82"
+
+# Serif 3.006, tag @ibm/plex-serif@2.0.0
+PLEX_SERIF="https://raw.githubusercontent.com/IBM/plex/434af578549afcfdabd281f386e0ff7314fd20b0/packages/plex-serif/fonts/complete/ttf"
+fetch "IBMPlexSerif-Regular.ttf" "$PLEX_SERIF/IBMPlexSerif-Regular.ttf" "6c490ccd38e856c674e0d163f3f40742a75058b7b935998dbfbc1745ba54e474"
+fetch "IBMPlexSerif-SemiBold.ttf" "$PLEX_SERIF/IBMPlexSerif-SemiBold.ttf" "857edeaaff0f3913f4dfaf6bc0e9c89ef73e475429cf63d6a3cb5d1022a213d5"
+fetch "IBMPlexSerif-Italic.ttf" "$PLEX_SERIF/IBMPlexSerif-Italic.ttf" "d28aa63cf618439712d6b459c5649af1d6d789cb911994f2357f1ce44128f163"
+fetch "IBMPlexSerif-SemiBoldItalic.ttf" "$PLEX_SERIF/IBMPlexSerif-SemiBoldItalic.ttf" "c1bf6e7e5d3fd740916184e171703db25729fefd4d2423ae1b79a6afcf1a34ef"
+
+# Mono 2.005, tag @ibm/plex-mono@2.5.0
+PLEX_MONO="https://raw.githubusercontent.com/IBM/plex/2f9ba1b25957d958db71a849e85d72e3ecfb845a/packages/plex-mono/fonts/complete/ttf"
+fetch "IBMPlexMono-Regular.ttf" "$PLEX_MONO/IBMPlexMono-Regular.ttf" "7c6fbddca4b700be918f5f6183d9bd4464fa427fe435f0b480d77fe2bb8c5a43"
+fetch "IBMPlexMono-SemiBold.ttf" "$PLEX_MONO/IBMPlexMono-SemiBold.ttf" "f04d7c488ddf7d1fa99f2574efc3406ea4cbe17bb1af3a1ab960f84d0c96a172"
+fetch "IBMPlexMono-Italic.ttf" "$PLEX_MONO/IBMPlexMono-Italic.ttf" "a55368deb953f594ac18336a1029009ed820e2d9abbb57ad601f61e22bec072b"
+fetch "IBMPlexMono-SemiBoldItalic.ttf" "$PLEX_MONO/IBMPlexMono-SemiBoldItalic.ttf" "d2039ddfa9236d642fafae5aa46446c54eb7961b3771a1ca3e9bba960172b9bb"
+
+# Sans Condensed 3.000, tag @ibm/plex-sans-condensed@2.0.0
+PLEX_SANS_CONDENSED="https://raw.githubusercontent.com/IBM/plex/bb3ab6404e1881ea286f8742dc839e09057db6dd/packages/plex-sans-condensed/fonts/complete/ttf"
+fetch "IBMPlexSansCondensed-Regular.ttf" "$PLEX_SANS_CONDENSED/IBMPlexSansCondensed-Regular.ttf" "87aaee6ba9d2f80b8a3c1f6669e8c3d478b28b482f1d804917b3894694ccc12b"
+fetch "IBMPlexSansCondensed-SemiBold.ttf" "$PLEX_SANS_CONDENSED/IBMPlexSansCondensed-SemiBold.ttf" "acc2b1e3b9597ee13b08b767f845bd038fe120cbee806859af7c01b60fe6e9e6"
+fetch "IBMPlexSansCondensed-Italic.ttf" "$PLEX_SANS_CONDENSED/IBMPlexSansCondensed-Italic.ttf" "368d896f1cd1dc9f9b926135bd5c3154aa6f3dcd53f2b330bce487968a3a3e4a"
+fetch "IBMPlexSansCondensed-SemiBoldItalic.ttf" "$PLEX_SANS_CONDENSED/IBMPlexSansCondensed-SemiBoldItalic.ttf" "d6dbb283c007854cd5fd56b86f5c9da8fcac497e50aa8e029258de21599ab8f6"
 # --- Liberation 2.1.5 (Sans / Serif / Mono), SIL OFL 1.1 -------------
 # The repository holds only FontForge sources; the TTFs ship in this release
 # archive (linked from the 2.1.5 release page). Its SHA-256 matches the
@@ -311,9 +345,8 @@ if [ "$FAIL_COUNT" -gt 0 ]; then
 fi
 echo "Rebuild with 'make build' to embed the fetched fonts."
 
-# Exit non-zero only if the default family (Liberation Sans) is missing,
-# since that's the one the renderers prefer.
-if [ ! -f "$ASSETS/LiberationSans-Regular.ttf" ]; then
-	echo "WARNING: default family Liberation Sans was not fetched." >&2
+# The default family is committed, so a failed run leaves every build working;
+# still exit non-zero so the caller knows the optional catalog is incomplete.
+if [ "$FAIL_COUNT" -gt 0 ]; then
 	exit 1
 fi
