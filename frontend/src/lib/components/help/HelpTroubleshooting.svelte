@@ -99,12 +99,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Exports have missing or wrong-looking text</h3>
             <p class="text-sm text-slate-300">
-              PDFs embed IBM Plex, which covers Latin, Greek, and Cyrillic text. If characters
-              from another script are missing, such as Chinese, Japanese, or Korean, import a
-              <span class="font-mono text-xs">.ttf</span> font that covers them from Project
-              Settings and select it as the document font. PDF fonts can't show emoji, so each
-              emoji prints as the replacement character, �; the rest of the text is
-              unaffected.
+              IBM Plex Sans covers Latin, Greek, and Cyrillic text. For Japanese, Korean, or
+              Simplified Chinese, choose IBM Plex Sans JP, KR, or SC as the document font in
+              Project Settings. PDFs can't lay out Arabic, Hebrew, Devanagari, or Thai, so
+              export those documents as DOCX or ODT. For Traditional Chinese, import a
+              <span class="font-mono text-xs">.ttf</span> font that covers it. PDF fonts can't show emoji, so each
+              emoji prints as the replacement character, �, or as an empty box in IBM Plex Sans
+              JP, KR, and SC; the rest of the text is unaffected.
             </p>
           </section>
 

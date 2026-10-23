@@ -21,6 +21,13 @@ serves each role and why, so later changes keep the system consistent.
 | IBM Plex Mono | 2.005 | Codes, identifiers, code samples | App (WOFF2) and PDFs (TTF) |
 | IBM Plex Serif | 3.006 | Selectable document font | PDFs (TTF) |
 | IBM Plex Sans Condensed | 3.000 | Selectable document font for dense tables | PDFs (TTF) |
+| IBM Plex Sans JP | 1.004 | Selectable document font for Japanese | PDFs (TTF) |
+| IBM Plex Sans KR | 1.003 | Selectable document font for Korean | PDFs (TTF) |
+| IBM Plex Sans SC | 1.000 | Selectable document font for Simplified Chinese | PDFs (TTF) |
+| IBM Plex Sans Arabic | 1.005 | Arabic text in the app | App (WOFF2) |
+| IBM Plex Sans Hebrew | 1.3 | Hebrew text in the app | App (WOFF2) |
+| IBM Plex Sans Devanagari | 1.2 | Devanagari text in the app | App (WOFF2) |
+| IBM Plex Sans Thai | 1.2 | Thai text in the app | App (WOFF2) |
 
 The files come from IBM's release tags in
 [github.com/IBM/plex](https://github.com/IBM/plex) (TTF) and the matching npm
@@ -29,10 +36,13 @@ map, advance widths, and outlines as its TTF, so the app and its PDFs show the
 same letterforms. `scripts/check-required-font-assets.sh` pins every committed
 file by SHA-256.
 
-The script families (Arabic, Devanagari, Hebrew, Thai, and the Japanese,
-Korean, and Chinese families) are not bundled. The PDF engine cannot shape
-Arabic, Indic, or Thai text or lay out right-to-left lines, and the CJK
-families are several megabytes per weight.
+The PDF engine draws one glyph per character, left to right, so it can use
+the CJK families but not Arabic, Hebrew, Devanagari, or Thai, which need
+shaping or right-to-left layout; those ship only for the app, whose web view
+shapes them. IBM Plex Sans TC is not bundled: its TrueType files leave the
+character map the PDF engine reads empty.
+[ADR-007](ADR-007-ibm-plex-script-coverage.md) records each package's
+decision and the tests behind it.
 
 ## PDF documents and reports
 
@@ -49,7 +59,9 @@ offers four styles per family, mapped as follows.
 | Italic (`"I"`) | Notes, captions, footers | Italic (400) |
 | Bold italic (`"BI"`) | Emphasized notes | SemiBold Italic (600) |
 
-Every Plex family in the catalog uses the same mapping.
+Every Plex family in the catalog uses the same mapping. The CJK families
+have no italics, so their Italic and Bold Italic styles use the Regular and
+SemiBold faces, as CJK typography does.
 
 Why these faces:
 
@@ -97,7 +109,10 @@ utility class resolves to a Plex face without per-component edits.
 | `font-mono`, `<code>`, `<pre>` | Paths, identifiers, hashes, code | Mono Regular, Medium, SemiBold, Bold |
 
 The app uses four weights, so each one gets its own designed face rather than
-a weight the browser synthesizes. Monospace text inherits the weight of the
+a weight the browser synthesizes. IBM Plex Sans Arabic, Hebrew, Devanagari,
+and Thai follow IBM Plex Sans in the font stack, in the same four weights; each
+face's `unicode-range` covers only its script, so the browser loads it only
+when that script appears. Monospace text inherits the weight of the
 label around it, so Mono ships in the same four weights. Charts drawn on canvas
 use Plex Sans explicitly; SVG charts inherit it from the page.
 
