@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderProcurementPlanPDF is the bespoke renderer for the Procurement
@@ -183,7 +183,7 @@ func normaliseContractType(ct string) string {
 	return ""
 }
 
-func drawProcurementLegend(pdf *fpdf.Fpdf) {
+func drawProcurementLegend(pdf *pdfdoc.PDF) {
 	pdf.SetFont("Helvetica", "B", 8)
 	bands := []struct {
 		label string
@@ -213,7 +213,7 @@ func drawProcurementLegend(pdf *fpdf.Fpdf) {
 	pdf.SetDrawColor(0, 0, 0)
 }
 
-func drawProcurementTable(pdf *fpdf.Fpdf, items []procurementItem) {
+func drawProcurementTable(pdf *pdfdoc.PDF, items []procurementItem) {
 	cols := []struct {
 		header string
 		w      float64

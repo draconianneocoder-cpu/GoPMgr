@@ -61,6 +61,8 @@ require_contains build/linux/nfpm.yaml "libwebkit2gtk-4.1-0"
 require_contains build/linux/nfpm.yaml "webkit2gtk4.1"
 require_contains build/linux/nfpm.yaml "./third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt"
 require_contains build/linux/nfpm.yaml "/usr/share/doc/gopmgr/sqlcipher-license.txt"
+require_contains build/linux/nfpm.yaml "./internal/fonts/assets/FONT-NOTICES.txt"
+require_contains build/linux/nfpm.yaml "/usr/share/doc/gopmgr/font-notices.txt"
 require_not_contains build/linux/nfpm.yaml "libwebkit2gtk-4.0-37"
 require_not_contains build/linux/nfpm.yaml "webkit2gtk3"
 

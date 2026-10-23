@@ -323,11 +323,17 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 			if err := validateTrueType(b); err != nil {
 				continue
 			}
+			// A font imported before ImportFont checked embedding
+			// permissions is skipped here too, so documents fall back to
+			// the default family instead of embedding it.
+			if err := checkEmbeddingAllowed(b); err != nil {
+				continue
+			}
 			r.AddUTF8FontFromBytes(regName, style.FpdfStyle(), b)
 			registered++
 		}
 		if registered == 0 {
-			return fmt.Errorf("fonts: user family %q has no readable .ttf files", family)
+			return fmt.Errorf("fonts: user family %q has no readable .ttf files that allow embedding", family)
 		}
 		return nil
 	}
@@ -341,7 +347,9 @@ func (m *Manager) RegisterAs(r FontRegistrar, family, aliasName string) error {
 //
 // Rejects non-TrueType files (OpenType/CFF .otf, WOFF, collections)
 // with a clear error, because fpdf UTF-8 font path parses
-// TrueType tables only.
+// TrueType tables only. Also rejects a font whose license does not allow
+// embedding it in PDFs (ErrEmbeddingNotAllowed), since every document
+// that uses it would embed it.
 func (m *Manager) ImportFont(srcPath string) (FamilyInfo, error) {
 	if m.userDir == "" {
 		return FamilyInfo{}, fmt.Errorf("fonts: no user font directory configured")
@@ -357,6 +365,9 @@ func (m *Manager) ImportFont(srcPath string) (FamilyInfo, error) {
 	}
 	if err := validateTrueType(b); err != nil {
 		return FamilyInfo{}, err
+	}
+	if err := checkEmbeddingAllowed(b); err != nil {
+		return FamilyInfo{}, fmt.Errorf("fonts: %q can't be used in documents: %w; choose a font that allows embedding, such as IBM Plex Sans", filepath.Base(srcPath), err)
 	}
 
 	if err := ensurePrivateDir(m.userDir); err != nil {

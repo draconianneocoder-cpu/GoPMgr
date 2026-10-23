@@ -86,6 +86,12 @@ for marker in "2011 The Go Authors" "2014 Yasuhiro Matsumoto" "2019 G.J.R. Timme
 		exit 1
 	fi
 done
+for marker in "IBM Corp." "Adobe" "SIL OPEN FONT LICENSE"; do
+	if ! grep -Fq "$marker" "$srcfolder/GoPMgr.app/Contents/Resources/Licenses/fonts.txt" 2>/dev/null; then
+		echo "create-dmg stub: app lacks font notices with $marker" >&2
+		exit 1
+	fi
+done
 if [ -d "$srcfolder/Contents" ]; then
 	echo "create-dmg stub: source folder points at app bundle contents: $srcfolder" >&2
 	exit 1
@@ -133,6 +139,12 @@ fi
 for marker in "2011 The Go Authors" "2014 Yasuhiro Matsumoto" "2019 G.J.R. Timmer" "2008, ZETETIC LLC" "2018 segment.com"; do
 	if ! grep -Fq "$marker" "$srcfolder/GoPMgr.app/Contents/Resources/Licenses/go-sqlcipher.txt"; then
 		echo "hdiutil stub: SQLCipher notices lack $marker" >&2
+		exit 1
+	fi
+done
+for marker in "IBM Corp." "Adobe" "SIL OPEN FONT LICENSE"; do
+	if ! grep -Fq "$marker" "$srcfolder/GoPMgr.app/Contents/Resources/Licenses/fonts.txt" 2>/dev/null; then
+		echo "hdiutil stub: app lacks font notices with $marker" >&2
 		exit 1
 	fi
 done

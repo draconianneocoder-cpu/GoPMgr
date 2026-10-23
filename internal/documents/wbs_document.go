@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 // RenderWBSDocumentPDF is the bespoke renderer for the Work Breakdown
@@ -187,7 +187,7 @@ func normalizedDigitRun(s string) string {
 
 // drawWBSChartBanner renders a tinted strip linking back to the WBS
 // chart whose visual structure this document narrates.
-func drawWBSChartBanner(pdf *fpdf.Fpdf, chartRef string) {
+func drawWBSChartBanner(pdf *pdfdoc.PDF, chartRef string) {
 	startY := pdf.GetY()
 	pdf.SetFillColor(239, 246, 255)
 	pdf.SetDrawColor(59, 130, 246)
@@ -211,7 +211,7 @@ func drawWBSChartBanner(pdf *fpdf.Fpdf, chartRef string) {
 // drawWBSNode renders one node in the indented tree. Depth from the
 // dotted WBS code drives the left indent; deeper nodes also use a
 // softer code-chip colour so the hierarchy is visible without lines.
-func drawWBSNode(pdf *fpdf.Fpdf, d deliverable) {
+func drawWBSNode(pdf *pdfdoc.PDF, d deliverable) {
 	depth := wbsDepth(d.Code)
 	indent := 20.0 + float64(depth)*8 // 8mm per level
 	maxWidth := 190.0 - indent

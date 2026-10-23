@@ -16,7 +16,7 @@ GoPMgr is a local-first desktop application for project controls. It
 combines a Go backend, a Wails v2 desktop shell, and a Svelte
 5/TypeScript frontend. The application supports planning, scheduling,
 earned-value management, resource analysis, charts, documents, local
-encrypted project storage, open-format exports, PDF/A-3 output, and
+encrypted project storage, open-format exports, PDF/A-2u output, and
 optional PAdES signing.
 
 This handbook explains how to work on that system safely.
@@ -83,7 +83,7 @@ chapter number, then jump or `rg` directly.
   Repository verification · 15 Debugging and troubleshooting · 16
   Concurrency and resource ownership · 17 Security engineering
 - **Part V — Documents, Export, and Signing**: 18 Export development · 19
-  PDF/A-3 · 20 PAdES signing
+  PDF/A-2u · 20 PAdES signing
 - **Part VI — Maintenance and Release Engineering**: 21 Dependency
   maintenance · 22 Documentation and ADRs · 23 Release engineering · 24
   Vulnerability management · 25 Agent-assisted development
@@ -113,7 +113,7 @@ GoPMgr has four primary runtime concerns:
     information; per-project `.gopmgr` databases store project data and
     may be encrypted with SQLCipher.
 4. **Document and export pipelines** — Go packages generate project
-    reports and open-format exports, including PDF/A-3 and optional
+    reports and open-format exports, including PDF/A-2u and optional
     PAdES-signed PDF output.
 
 The application is intentionally offline-capable. Project data,
@@ -1483,23 +1483,35 @@ limitation explicit.
 
 ------------------------------------------------------------------------
 
-## 19. PDF/A-3
+## 19. PDF/A-2u
+
+GoPMgr's archival PDFs are PDF/A-2u: ISO 19005-2, level U, which adds a
+Unicode mapping for every character to level B's appearance guarantee.
+[ADR-006](design/ADR-006-pdfa-2u-archival-format.md) records why part 2
+rather than part 3.
 
 ### 19.1 Mutation order
 
-PDF/A metadata and output intent must be applied before PAdES signing.
+PDF/A work must be applied before PAdES signing.
 
 Conceptually:
 
 ``` text
-render PDF content
+render PDF content through *pdfdoc.PDF (text passes through SafeText)
     ↓
-apply PDF/A metadata / XMP / output intent
+pdfmeta.TagPDFA: repair fpdf's fonts, then XMP identifier, then output intent
     ↓
 validate appropriate PDF/A invariants
     ↓
-apply PAdES signature as final PDF mutation
+apply PAdES signature as final PDF mutation (it keeps the trailer /ID)
 ```
+
+Renderers take a `*pdfdoc.PDF`, never a bare `*fpdf.Fpdf`;
+`internal/pdfdoc/boundary_test.go` enforces it. fpdf cannot encode
+characters beyond U+FFFF, so `SafeText` draws each emoji as U+FFFD.
+`pdfmeta.RepairFPDFFonts` replaces fpdf's ToUnicode CMaps, which break
+ISO 32000-1 9.10.3 above U+00FF, and names each font after its PostScript
+name.
 
 ### 19.2 Validation
 
@@ -1509,7 +1521,10 @@ Use:
 make check-pdfa
 ```
 
-The gate is strict by default.
+The gate is strict by default. It validates six samples against the
+PDF/A-2u profile, including a PAdES-signed document and one with text in
+several scripts and emoji. Without Docker it installs veraPDF from a
+SHA-256-pinned installer, which needs Java.
 
 If the required validator is unavailable, install it for release
 validation rather than weakening the public conformance claim.
@@ -1997,7 +2012,7 @@ reason.
 | `make frontend-build-budget` | Frontend build and route-split budget enforcement |
 | `make frontend-smoke` | Svelte runtime load/render smoke check |
 | `make check-encrypted-db` | SQLCipher project DB create/open/migration/backup validation |
-| `make check-pdfa` | Strict PDF/A-3 validation |
+| `make check-pdfa` | Strict PDF/A-2u validation, including a signed sample |
 | `make check-pades` | Deterministic local PAdES validation |
 | `make check-pades-external` | External PAdES validators where available |
 | `make check-pades-trusted` | Trusted-source PAdES evidence classification |
@@ -2171,8 +2186,8 @@ encrypted project databases.
 **PAdES** — PDF Advanced Electronic Signatures. In GoPMgr, signing
 must be the final PDF mutation.
 
-**PDF/A-3** — Archival PDF conformance target used by GoPMgr's PDF/A
-export path.
+**PDF/A-2u** — Archival PDF conformance target used by GoPMgr's PDF/A
+export path: ISO 19005-2 with every character mapped to Unicode.
 
 **PHC string** — Standard encoded representation used for password
 hashes such as Argon2id.

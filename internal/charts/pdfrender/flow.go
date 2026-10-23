@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 
 	"github.com/go-pdf/fpdf"
+
+	"gopmgr/internal/pdfdoc"
 )
 
 // flowNode mirrors flow.NodeLayout.
@@ -45,7 +47,7 @@ type flowPayload struct {
 	Height    float64        `json:"height"`
 }
 
-func renderFlow(pdf *fpdf.Fpdf, kind string, body json.RawMessage, frame Frame) error {
+func renderFlow(pdf *pdfdoc.PDF, kind string, body json.RawMessage, frame Frame) error {
 	var layout flowPayload
 	if err := parseBody(body, &layout); err != nil {
 		return err
@@ -122,7 +124,7 @@ func renderFlow(pdf *fpdf.Fpdf, kind string, body json.RawMessage, frame Frame) 
 // drawFlowNode renders one node using the appropriate shape for
 // its `shape` field. This is the PDF equivalent of the SVG
 // shapePath() function used by the frontend editors.
-func drawFlowNode(pdf *fpdf.Fpdf, n flowNode, frame Frame, scale, ox, oy float64) {
+func drawFlowNode(pdf *pdfdoc.PDF, n flowNode, frame Frame, scale, ox, oy float64) {
 	x := frame.X + ox + n.X*scale
 	y := frame.Y + oy + n.Y*scale
 	w := n.Width * scale
@@ -206,7 +208,7 @@ func drawFlowNode(pdf *fpdf.Fpdf, n flowNode, frame Frame, scale, ox, oy float64
 
 // drawPolygon draws a closed filled+stroked polygon, using fpdf's
 // built-in Polygon helper.
-func drawPolygon(pdf *fpdf.Fpdf, pts []fpdf.PointType, _ string) {
+func drawPolygon(pdf *pdfdoc.PDF, pts []fpdf.PointType, _ string) {
 	if len(pts) < 3 {
 		return
 	}

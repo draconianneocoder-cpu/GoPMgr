@@ -61,6 +61,7 @@ done
 [[ "$identity" == dev.gopmgr.GoPMgr && "$version" == 7.8.9 && "$location" == /Applications ]]
 [[ "$output" == build/packages/.gopmgr-pkg.*/installer.pkg ]]
 [[ -s "$root/gopmgr.app/Contents/Resources/Licenses/go-sqlcipher.txt" ]]
+grep -Fq "SIL OPEN FONT LICENSE" "$root/gopmgr.app/Contents/Resources/Licenses/fonts.txt"
 [[ "$(/usr/bin/xmllint --nonet --xpath 'count(/plist/array/dict)' "$policy")" == 1 ]]
 [[ "$(plutil -extract 0.RootRelativeBundlePath raw -expect string -o - "$policy")" == gopmgr.app ]]
 [[ "$(plutil -extract 0.BundleIsVersionChecked raw -expect bool -o - "$policy")" == true ]]
@@ -136,10 +137,11 @@ run_case() {
 	local name="$1" expected_stage="$2" expected_error="$3"
 	local repo="$work/repo with spaces 'quote'-$name"
 	local output status final events
-	mkdir -p "$repo/scripts" "$repo/build/darwin" "$repo/build/packages" "$repo/tmp" "$repo/third_party/go-sqlcipher"
+	mkdir -p "$repo/scripts" "$repo/build/darwin" "$repo/build/packages" "$repo/tmp" "$repo/third_party/go-sqlcipher" "$repo/internal/fonts/assets"
 	cp "$ROOT/scripts/package-macos-installer.sh" "$ROOT/scripts/package-version-lib.sh" "$repo/scripts/"
 	cp "$ROOT/build/darwin/installer-components.plist" "$repo/build/darwin/"
 	cp "$ROOT/third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt" "$repo/third_party/go-sqlcipher/"
+	cp "$ROOT/internal/fonts/assets/FONT-NOTICES.txt" "$repo/internal/fonts/assets/"
 	# Wails pinning has its own regressions. This matrix owns installer behavior.
 	printf '#!/bin/bash\nexit 0\n' > "$repo/scripts/check-wails-version.sh"
 	printf 'prior good package\n' > "$repo/prior.pkg"

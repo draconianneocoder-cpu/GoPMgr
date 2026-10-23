@@ -22,9 +22,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/go-pdf/fpdf"
-
 	"gopmgr/internal/charts"
+	"gopmgr/internal/pdfdoc"
 )
 
 // Frame is the bounding box a renderer paints into. Coordinates are
@@ -45,7 +44,7 @@ type Frame struct {
 // Returns ErrUnsupportedKind if the kind has no PDF renderer yet
 // (currently every kind in the V2 taxonomy has one); the caller can
 // choose to fall through to a textual placeholder.
-func RenderChartToPDF(pdf *fpdf.Fpdf, kind string, data string, title string, frame Frame) error {
+func RenderChartToPDF(pdf *pdfdoc.PDF, kind string, data string, title string, frame Frame) error {
 	result, err := charts.Layout(charts.Kind(kind), data)
 	if err != nil && !isEngineNotImpl(err) {
 		return fmt.Errorf("pdfrender: layout %s: %w", kind, err)
@@ -96,7 +95,7 @@ func isEngineNotImpl(err error) bool {
 	return errors.Is(err, charts.ErrEngineNotImplemented)
 }
 
-func drawTitle(pdf *fpdf.Fpdf, x, y, w, h float64, sectionLabel, chartKindName string) {
+func drawTitle(pdf *pdfdoc.PDF, x, y, w, h float64, sectionLabel, chartKindName string) {
 	pdf.SetXY(x, y)
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetTextColor(0, 80, 130)

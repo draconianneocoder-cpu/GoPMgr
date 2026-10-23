@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 var (
@@ -139,7 +139,7 @@ func RenderFinancialReportPDF(report FinancialReport) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func financialHeading(pdf *fpdf.Fpdf, title string) {
+func financialHeading(pdf *pdfdoc.PDF, title string) {
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(15, 23, 42)
 	pdf.Cell(0, 8, title)
@@ -147,7 +147,7 @@ func financialHeading(pdf *fpdf.Fpdf, title string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func financialNote(pdf *fpdf.Fpdf, note string) {
+func financialNote(pdf *pdfdoc.PDF, note string) {
 	pdf.SetFont("Helvetica", "", 8)
 	pdf.SetTextColor(80, 80, 80)
 	pdf.Cell(0, 5, note)
@@ -155,7 +155,7 @@ func financialNote(pdf *fpdf.Fpdf, note string) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func financialKeyValues(pdf *fpdf.Fpdf, currency string, values [][2]string) {
+func financialKeyValues(pdf *pdfdoc.PDF, currency string, values [][2]string) {
 	pdf.SetFont("Helvetica", "", 9)
 	for _, row := range values {
 		pdf.CellFormat(48, 6, row[0], "1", 0, "L", false, 0, "")
@@ -165,7 +165,7 @@ func financialKeyValues(pdf *fpdf.Fpdf, currency string, values [][2]string) {
 	pdf.Ln(4)
 }
 
-func financialTable(pdf *fpdf.Fpdf, headers []string, widths []float64, rows [][]string) {
+func financialTable(pdf *pdfdoc.PDF, headers []string, widths []float64, rows [][]string) {
 	pdf.SetFont("Helvetica", "B", 8)
 	pdf.SetFillColor(30, 41, 59)
 	pdf.SetTextColor(241, 245, 249)
@@ -187,7 +187,7 @@ func financialTable(pdf *fpdf.Fpdf, headers []string, widths []float64, rows [][
 // financialCellText fits untrusted project data within the visible bounds of
 // an fpdf table cell. CellFormat does not clip overflowing text, so a
 // character-count cap alone can let a wide string paint into the next column.
-func financialCellText(pdf *fpdf.Fpdf, width float64, value string) string {
+func financialCellText(pdf *pdfdoc.PDF, width float64, value string) string {
 	const suffix = "..."
 	available := width - 2*pdf.GetCellMargin()
 	if available <= 0 {

@@ -92,6 +92,12 @@ func TestRenderRecoverySheetPDFShowsEveryCodeAndHowToUseThem(t *testing.T) {
 	if m := pdfCoreFontName.Find(pdf); m != nil {
 		t.Errorf("sheet references the unembedded core font %s", m)
 	}
+	// The font repair names each embedded subset after its font.
+	for _, want := range []string{"IBMPlexSans", "IBMPlexMono"} {
+		if !regexp.MustCompile(`/BaseFont /[A-Z]{6}\+` + want + `\b`).Match(pdf) {
+			t.Errorf("sheet has no embedded font named <TAG>+%s", want)
+		}
+	}
 
 	text := strings.Join(strings.Fields(recoverySheetText(t, pdf)), " ")
 	for _, want := range append([]string{

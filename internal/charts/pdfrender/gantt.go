@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 
 	"github.com/go-pdf/fpdf"
+
+	"gopmgr/internal/pdfdoc"
 )
 
 // ganttRow / ganttLayout mirror dag.GanttRow / dag.GanttLayout (wire
@@ -52,7 +54,7 @@ type ganttLayout struct {
 // renderGantt draws schedule bars over a day-scaled axis: label
 // column, critical bars in red, progress as a darker inner bar,
 // milestones as diamonds, anchored dates beside the bars.
-func renderGantt(pdf *fpdf.Fpdf, body json.RawMessage, frame Frame) error {
+func renderGantt(pdf *pdfdoc.PDF, body json.RawMessage, frame Frame) error {
 	// The body is the wrapped {layout, doc} form.
 	var wrapped struct {
 		Layout ganttLayout `json:"layout"`

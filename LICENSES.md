@@ -42,7 +42,7 @@ license file. Roboto, Arimo, and Cousine were once `Apache-2.0`; the pinned
 upstream releases are `OFL-1.1`. DejaVu's upstream `LICENSE` also contains the
 Arev Fonts license, which applies the same conditions as `Bitstream-Vera` to
 its Arev glyphs. The compact sRGB ICC profile used for
-PDF/A-3 OutputIntent embedding is likewise committed because the Go embed
+PDF/A OutputIntent embedding is likewise committed because the Go embed
 directive needs it in clean checkouts.
 
 Run the following after adding a new SPDX identifier:

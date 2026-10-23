@@ -10,9 +10,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/go-pdf/fpdf"
-
 	"gopmgr/internal/kernel"
+	"gopmgr/internal/pdfdoc"
 )
 
 // MonteCarloRiskReportSpec describes the static Monte Carlo schedule-risk
@@ -24,7 +23,7 @@ type MonteCarloRiskReportSpec struct {
 	GeneratedAt time.Time
 }
 
-// GenerateMonteCarloRiskReport renders a PDF/A-3-tagged Monte Carlo schedule
+// GenerateMonteCarloRiskReport renders a PDF/A-2u Monte Carlo schedule
 // risk report with finish percentiles, an S-curve, and tornado risk drivers.
 func GenerateMonteCarloRiskReport(spec MonteCarloRiskReportSpec) ([]byte, error) {
 	if !spec.Result.Valid {
@@ -46,7 +45,7 @@ func GenerateMonteCarloRiskReport(spec MonteCarloRiskReportSpec) ([]byte, error)
 		spec.GeneratedAt = time.Now().UTC()
 	}
 
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfdoc.New("P", "mm", "A4", "")
 	pdf.SetCompression(false)
 	registerPDFABaseline(pdf)
 	reportTitle := "Monte Carlo Risk Report - " + spec.ProjectName + " - " + spec.ChartTitle
@@ -74,20 +73,10 @@ func GenerateMonteCarloRiskReport(spec MonteCarloRiskReportSpec) ([]byte, error)
 		Subject:     fmt.Sprintf("Monte Carlo schedule risk report with P50 %s, P80 %s, P90 %s, Finish Probability S-curve, and Tornado Risk Drivers", daysLabel(spec.Result.P50), daysLabel(spec.Result.P80), daysLabel(spec.Result.P90)),
 		CreatorTool: "GoPMgr " + exportVersion(),
 	}
-	if icc := defaultICCProfile(); len(icc) > 0 {
-		if tagged, err := MakePDFA3(out, xmp, icc); err == nil {
-			return tagged, nil
-		}
-	}
-	if packet := BuildXMPPacket(xmp); len(packet) > 0 {
-		if tagged, err := InjectXMPStream(out, packet); err == nil {
-			return tagged, nil
-		}
-	}
-	return out, nil
+	return tagPDFA(out, xmp), nil
 }
 
-func drawMonteCarloReportHeader(pdf *fpdf.Fpdf, spec MonteCarloRiskReportSpec) {
+func drawMonteCarloReportHeader(pdf *pdfdoc.PDF, spec MonteCarloRiskReportSpec) {
 	pdf.SetFillColor(15, 23, 42)
 	pdf.Rect(0, 0, 210, 38, "F")
 	pdf.SetTextColor(241, 245, 249)
@@ -104,7 +93,7 @@ func drawMonteCarloReportHeader(pdf *fpdf.Fpdf, spec MonteCarloRiskReportSpec) {
 	pdf.SetY(46)
 }
 
-func drawMonteCarloSummaryCards(pdf *fpdf.Fpdf, result kernel.SimResult) {
+func drawMonteCarloSummaryCards(pdf *pdfdoc.PDF, result kernel.SimResult) {
 	cards := []struct {
 		label string
 		value string
@@ -136,7 +125,7 @@ func drawMonteCarloSummaryCards(pdf *fpdf.Fpdf, result kernel.SimResult) {
 	pdf.SetY(y + h + 10)
 }
 
-func drawMonteCarloSCurve(pdf *fpdf.Fpdf, result kernel.SimResult) {
+func drawMonteCarloSCurve(pdf *pdfdoc.PDF, result kernel.SimResult) {
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(15, 23, 42)
 	pdf.Cell(0, 7, "Finish Probability S-curve")
@@ -181,7 +170,7 @@ func drawMonteCarloSCurve(pdf *fpdf.Fpdf, result kernel.SimResult) {
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func drawMonteCarloMarker(pdf *fpdf.Fpdf, label string, day, probability, minDay, maxDay, x, y, w, h float64) {
+func drawMonteCarloMarker(pdf *pdfdoc.PDF, label string, day, probability, minDay, maxDay, x, y, w, h float64) {
 	px := x + ((day - minDay) / (maxDay - minDay) * w)
 	py := y + h - clamp01(probability)*h
 	pdf.SetDrawColor(185, 28, 28)
@@ -195,7 +184,7 @@ func drawMonteCarloMarker(pdf *fpdf.Fpdf, label string, day, probability, minDay
 	pdf.SetTextColor(0, 0, 0)
 }
 
-func drawMonteCarloTornado(pdf *fpdf.Fpdf, result kernel.SimResult) {
+func drawMonteCarloTornado(pdf *pdfdoc.PDF, result kernel.SimResult) {
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(15, 23, 42)
 	pdf.Cell(0, 7, "Tornado Risk Drivers")
@@ -243,7 +232,7 @@ func drawMonteCarloTornado(pdf *fpdf.Fpdf, result kernel.SimResult) {
 	pdf.Ln(4)
 }
 
-func drawMonteCarloNarrative(pdf *fpdf.Fpdf, result kernel.SimResult) {
+func drawMonteCarloNarrative(pdf *pdfdoc.PDF, result kernel.SimResult) {
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.SetTextColor(15, 23, 42)
 	pdf.Cell(0, 7, "Narrative Summary")

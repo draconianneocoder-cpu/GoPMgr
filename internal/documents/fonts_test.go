@@ -12,9 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-pdf/fpdf"
-
 	"gopmgr/internal/fonts"
+	"gopmgr/internal/pdfdoc"
 )
 
 // fontSample mixes letters, tabular figures, and punctuation, so faces with
@@ -53,7 +52,7 @@ func documentFontWidth(t *testing.T, style, s string) float64 {
 // bundledFamilyWidth measures s in a bundled family registered directly.
 func bundledFamilyWidth(t *testing.T, family, style, s string) float64 {
 	t.Helper()
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfdoc.New("P", "mm", "A4", "")
 	if err := fonts.NewManager("").RegisterAs(pdf, family, "Probe"); err != nil {
 		t.Fatalf("register %s: %v", family, err)
 	}
@@ -63,7 +62,7 @@ func bundledFamilyWidth(t *testing.T, family, style, s string) float64 {
 }
 
 func coreHelveticaWidth(style, s string) float64 {
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfdoc.New("P", "mm", "A4", "")
 	pdf.AddPage()
 	pdf.SetFont("Helvetica", style, 10)
 	return pdf.GetStringWidth(s)
@@ -194,9 +193,9 @@ func textX(t *testing.T, pdf []byte, s string) float64 {
 // IBM Plex Serif SemiBold overflowed it, so the budget label covered its
 // first digit.
 func TestKeyValueLabels_NeverOverlapTheirValues(t *testing.T) {
-	const label, value = "High-level budget (USD)", "1284500.00"
+	const label, value = "High-level budget (USD)", "1,284,500.00"
 	writers := map[string]struct {
-		write func(*fpdf.Fpdf, string, string)
+		write func(*pdfdoc.PDF, string, string)
 		size  float64
 	}{
 		"writeKV":        {writeKV, 10},
@@ -234,5 +233,47 @@ func TestKVLabelWidth_KeepsTheColumnForShortLabels(t *testing.T) {
 	pdf.SetFont("Helvetica", "B", 10)
 	if got := kvLabelWidth(pdf, "Sponsor:", 40); got != 40 {
 		t.Errorf("kvLabelWidth(short label) = %v, want the 40 mm column", got)
+	}
+}
+
+var subsetPlexName = regexp.MustCompile(`/BaseFont /[A-Z]{6}\+(IBMPlex[A-Za-z-]+)`)
+
+// TestRender_ProducesPDFA2UWithNamedPlexFonts renders a charter in the
+// production font state and checks the archival result end to end: the
+// file declares PDF/A-2u, and its fonts carry their real subset names
+// rather than fpdf's "utf8helvetica" key.
+func TestRender_ProducesPDFA2UWithNamedPlexFonts(t *testing.T) {
+	withDefaultDocumentFont(t)
+	content := `{"project_name":"Atlas","purpose":"“Approved” — budget € 1,250 • phase 2","objectives":["Ship"]}`
+	pdf, err := Render(KindProjectCharterWord, content, "Atlas")
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	for _, want := range []string{"<pdfaid:part>2</pdfaid:part>", "<pdfaid:conformance>U</pdfaid:conformance>"} {
+		if !bytes.Contains(pdf, []byte(want)) {
+			t.Errorf("charter is missing %s", want)
+		}
+	}
+	names := map[string]bool{}
+	for _, m := range subsetPlexName.FindAllSubmatch(pdf, -1) {
+		names[string(m[1])] = true
+	}
+	if !names["IBMPlexSans"] || !names["IBMPlexSans-SmBld"] {
+		t.Fatalf("charter fonts are not named after IBM Plex Sans Regular and SemiBold; found %v", names)
+	}
+}
+
+// TestRender_AcceptsEmojiInDocumentFields is the regression for emoji in a
+// document: wrapped fields failed the export, and single-line fields
+// crashed fpdf while it wrote the file.
+func TestRender_AcceptsEmojiInDocumentFields(t *testing.T) {
+	withDefaultDocumentFont(t)
+	content := `{"project_name":"Atlas 🚀","sponsor":"Ops 👩\u200D💻","purpose":"Ship it 🎉 on time","objectives":["Go live 🇺🇸"]}`
+	pdf, err := Render(KindProjectCharterWord, content, "Atlas 🚀")
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	if !bytes.Contains(pdf, []byte("<pdfaid:part>2</pdfaid:part>")) {
+		t.Fatal("charter with emoji is not PDF/A-2u")
 	}
 }

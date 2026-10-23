@@ -12,12 +12,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-pdf/fpdf"
 	"github.com/xuri/excelize/v2"
 
 	"gopmgr/internal/documents"
 	"gopmgr/internal/fonts"
 	"gopmgr/internal/kernel"
+	"gopmgr/internal/pdfdoc"
 	"gopmgr/internal/sigma/domain"
 )
 
@@ -206,15 +206,15 @@ func TestRenderHTML_UsesIBMPlexSans(t *testing.T) {
 // instead of naming core fonts.
 func TestReportPDFs_EmbedIBMPlexSans(t *testing.T) {
 	const sample = "Earned value 1,284,500.00 — Phase 2 (WBS 1.2.3)"
-	measure := func(register func(*fpdf.Fpdf), family string) float64 {
-		pdf := fpdf.New("P", "mm", "A4", "")
+	measure := func(register func(*pdfdoc.PDF), family string) float64 {
+		pdf := pdfdoc.New("P", "mm", "A4", "")
 		register(pdf)
 		pdf.AddPage()
 		pdf.SetFont(family, "B", 10)
 		return pdf.GetStringWidth(sample)
 	}
 	baseline := measure(registerPDFABaseline, "Helvetica")
-	plex := measure(func(pdf *fpdf.Fpdf) {
+	plex := measure(func(pdf *pdfdoc.PDF) {
 		if err := fonts.NewManager("").RegisterAs(pdf, fonts.DefaultFamily, "Probe"); err != nil {
 			t.Fatalf("register %s: %v", fonts.DefaultFamily, err)
 		}

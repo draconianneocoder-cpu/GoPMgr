@@ -6,11 +6,11 @@ package pdfrender
 import (
 	"testing"
 
-	"github.com/go-pdf/fpdf"
+	"gopmgr/internal/pdfdoc"
 )
 
 func TestRenderChartToPDF_Gantt(t *testing.T) {
-	pdf := fpdf.New("L", "mm", "A4", "")
+	pdf := pdfdoc.New("L", "mm", "A4", "")
 	pdf.AddPage()
 
 	data := `{
@@ -37,7 +37,7 @@ func TestRenderChartToPDF_Gantt(t *testing.T) {
 // TestRenderChartToPDF_GanttSplit renders a task carrying split work_segments
 // and confirms the interrupted-bar path draws without error.
 func TestRenderChartToPDF_GanttSplit(t *testing.T) {
-	pdf := fpdf.New("L", "mm", "A4", "")
+	pdf := pdfdoc.New("L", "mm", "A4", "")
 	pdf.AddPage()
 
 	// S is a 3-day task interrupted across relative days 0,2,4.
@@ -58,7 +58,7 @@ func TestRenderChartToPDF_GanttSplit(t *testing.T) {
 }
 
 func TestRenderChartToPDF_GanttEmpty(t *testing.T) {
-	pdf := fpdf.New("L", "mm", "A4", "")
+	pdf := pdfdoc.New("L", "mm", "A4", "")
 	pdf.AddPage()
 	frame := Frame{X: 10, Y: 10, W: 260, H: 180}
 

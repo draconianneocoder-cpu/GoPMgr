@@ -7,9 +7,9 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/go-pdf/fpdf"
-
 	"gopmgr/internal/fonts"
+	"gopmgr/internal/pdfdoc"
+	"gopmgr/internal/pdfmeta"
 )
 
 // RecoverySheet is a printable page of one account's recovery codes.
@@ -44,7 +44,7 @@ func RenderRecoverySheetPDF(sheet RecoverySheet) ([]byte, error) {
 	if len(sheet.Codes) == 0 {
 		return nil, errors.New("recovery sheet needs at least one code")
 	}
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := pdfdoc.New("P", "mm", "A4", "")
 	// Best-effort, like registerDocumentFont: every build embeds both
 	// families, and a failure leaves fpdf's core fonts, which still print.
 	bundled := fonts.NewManager("")
@@ -91,5 +91,7 @@ func RenderRecoverySheetPDF(sheet RecoverySheet) ([]byte, error) {
 	if err := pdf.Output(&out); err != nil {
 		return nil, err
 	}
-	return out.Bytes(), nil
+	// The sheet is not PDF/A, but its codes must still copy and read back
+	// correctly, so it gets the same font repair as archival documents.
+	return pdfmeta.RepairFPDFFonts(out.Bytes())
 }

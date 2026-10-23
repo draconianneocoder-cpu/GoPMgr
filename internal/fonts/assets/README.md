@@ -110,9 +110,10 @@ embeds a font.
 Some outputs name common system fonts without including them, and the viewer
 then uses a font it already has:
 
-- Every GoPMgr PDF embeds its fonts. The embedded faces carry internal names
-  such as `utf8helvetica`, because the renderers select their font through the
-  "Helvetica" family key; the font data is IBM Plex (or the chosen family).
+- Every GoPMgr PDF embeds its fonts, named after the embedded face with a
+  subset tag, such as `PVUUJE+IBMPlexSans`. The renderers select fonts
+  through fpdf's "Helvetica" family key, and `pdfmeta.RepairFPDFFonts`
+  replaces the internal name fpdf derives from it (`utf8helvetica`).
 - DOCX, ODT, XLSX, and HTML exports set their text in IBM Plex. Microsoft
   font names remain where GoPMgr's text does not use them: the DOCX font table
   and the DOCX theme's slots for East Asian and other scripts Plex does not
@@ -121,5 +122,7 @@ then uses a font it already has:
   IBM Plex in its font stacks, as fallbacks for emoji and other characters
   Plex lacks.
 
-Imported fonts belong to the user. `ImportFont` checks only that a file is a
-TrueType font, not its license or its embedding permissions.
+Imported fonts belong to the user. `ImportFont` checks that a file is a
+TrueType font and refuses one whose OS/2 `fsType` forbids the way GoPMgr
+embeds fonts: marked restricted-license, not to be subset, or bitmap-only.
+It does not check the font's license itself.
