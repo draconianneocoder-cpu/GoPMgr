@@ -206,22 +206,22 @@ if [ -f scripts/validate-encrypted-db.sh ]; then
     echo "Encrypted database validation gate passed."
 fi
 
-# --- 9. PDF/A-3 validation gate (hard) ----------------------------------
+# --- 9. PDF/A-2u validation gate (hard) ---------------------------------
 # Strict: a missing validator/ICC/sample set fails the release rather than
-# certifying PDF/A-3 conformance we could not actually verify.
+# certifying PDF/A-2u conformance we could not actually verify.
 if [ -f scripts/validate-pdfa.sh ]; then
     # Run the hermetic helper/container-contract regression before invoking the
     # installed validator. This catches mutable image tags and output-parser
     # regressions even when the current machine takes only the CLI branch.
     if ! bash scripts/validate-pdfa-lib_test.sh; then
-        echo "PDF/A-3 harness regression failed. Run 'bash scripts/validate-pdfa-lib_test.sh' for details."
+        echo "PDF/A harness regression failed. Run 'bash scripts/validate-pdfa-lib_test.sh' for details."
         exit 1
     fi
     if ! GOPMGR_PDFA_STRICT=1 bash scripts/validate-pdfa.sh; then
-        echo "PDF/A-3 validation gate failed. Run 'make check-pdfa' for details."
+        echo "PDF/A-2u validation gate failed. Run 'make check-pdfa' for details."
         exit 1
     fi
-    echo "PDF/A-3 harness and validation gates passed."
+    echo "PDF/A harness and PDF/A-2u validation gates passed."
 fi
 
 # --- 10. PAdES harness regression gate -------------------------------

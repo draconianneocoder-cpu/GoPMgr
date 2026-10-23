@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Refreshes the compact sRGB ICC profile used for PDF/A-3 OutputIntent.
+# Refreshes the compact sRGB ICC profile used for the PDF/A OutputIntent.
 #
 # The profile is committed because it is a small build input required by
 # go:embed in clean checkouts. It is sourced from Compact ICC Profiles,
@@ -35,7 +35,7 @@ done
 
 mkdir -p "$ASSETS"
 
-# Stable compact sRGB profile suitable for PDF/A-3 OutputIntent.
+# Stable compact sRGB profile suitable for the PDF/A OutputIntent.
 URL="https://raw.githubusercontent.com/saucecontrol/Compact-ICC-Profiles/master/profiles/sRGB-v2-magic.icc"
 DEST="$ASSETS/sRGB.icc"
 
@@ -64,7 +64,7 @@ if [ -s "$DEST" ]; then
 	# Basic sanity: ICC profiles start with "acsp" at offset 36
 	if head -c 40 "$DEST" | tail -c 4 | grep -q "acsp"; then
 		echo "ok     sRGB.icc"
-		echo "Rebuild with 'make build' to embed the ICC profile for PDF/A-3."
+		echo "Rebuild with 'make build' to embed the ICC profile for PDF/A."
 		exit 0
 	else
 		echo "FAIL   sRGB.icc (not a valid ICC profile)"
