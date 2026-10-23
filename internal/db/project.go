@@ -88,10 +88,33 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 	if p.TimeZone == "" {
 		p.TimeZone = "America/New_York"
 	}
+	scale := money.ExponentForCurrency(p.CurrencyCode)
 	if p.BudgetMinorUnits == 0 && p.Budget != 0 {
-		p.BudgetMinorUnits = money.FromMajorFloat(p.Budget).MinorUnits
+		// Convert the legacy float using the project's currency scale so
+		// JPY stores whole yen and other currencies store cents.
+		multiplier := 1.0
+		for i := 0; i < scale; i++ {
+			multiplier *= 10
+		}
+		scaled := p.Budget * multiplier
+		switch {
+		case scaled >= float64(1<<63-1):
+			p.BudgetMinorUnits = 1<<63 - 1
+		case scaled <= float64(-1<<63):
+			p.BudgetMinorUnits = -1 << 63
+		default:
+			p.BudgetMinorUnits = int64(scaled + 0.5) // simple half-up for the float boundary
+			if scaled < 0 {
+				p.BudgetMinorUnits = int64(scaled - 0.5)
+			}
+		}
 	}
-	p.Budget = money.Amount{MinorUnits: p.BudgetMinorUnits}.MajorFloat()
+	// Reconstruct the display float using the same scale.
+	divisor := 1.0
+	for i := 0; i < scale; i++ {
+		divisor *= 10
+	}
+	p.Budget = float64(p.BudgetMinorUnits) / divisor
 	now := captureTimestamp()
 
 	tx, err := db.Conn.Begin()
@@ -106,9 +129,6 @@ func (db *Database) UpsertProject(p Project) (Project, error) {
 		isCreate = true
 	} else if err != nil {
 		return Project{}, err
-	}
-	if p.CurrencyCode == "JPY" && (isCreate || before.CurrencyCode != "JPY") {
-		return Project{}, errors.New("JPY is retained only for legacy projects because Cost Control uses a fixed two-decimal amount convention")
 	}
 	if !isCreate && before.CurrencyCode != p.CurrencyCode {
 		var count, reserveCount, baselineCount int
@@ -241,10 +261,30 @@ func scanProject(row interface {
 	if p.TimeZone == "" {
 		p.TimeZone = "America/New_York"
 	}
+	scale := money.ExponentForCurrency(p.CurrencyCode)
 	if p.BudgetMinorUnits == 0 && p.Budget != 0 {
-		p.BudgetMinorUnits = money.FromMajorFloat(p.Budget).MinorUnits
+		multiplier := 1.0
+		for i := 0; i < scale; i++ {
+			multiplier *= 10
+		}
+		scaled := p.Budget * multiplier
+		switch {
+		case scaled >= float64(1<<63-1):
+			p.BudgetMinorUnits = 1<<63 - 1
+		case scaled <= float64(-1<<63):
+			p.BudgetMinorUnits = -1 << 63
+		default:
+			p.BudgetMinorUnits = int64(scaled + 0.5)
+			if scaled < 0 {
+				p.BudgetMinorUnits = int64(scaled - 0.5)
+			}
+		}
 	} else {
-		p.Budget = money.Amount{MinorUnits: p.BudgetMinorUnits}.MajorFloat()
+		divisor := 1.0
+		for i := 0; i < scale; i++ {
+			divisor *= 10
+		}
+		p.Budget = float64(p.BudgetMinorUnits) / divisor
 	}
 	return p, nil
 }
