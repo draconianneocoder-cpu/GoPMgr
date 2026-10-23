@@ -182,7 +182,7 @@ func TestExportChartMonteCarloRiskReportWritesPrivatePDF(t *testing.T) {
 	if !bytes.HasPrefix(raw, []byte("%PDF-")) {
 		t.Fatalf("exported report is not PDF")
 	}
-	if !bytes.Contains(raw, []byte("<pdfaid:part>3</pdfaid:part>")) {
+	if !bytes.Contains(raw, []byte("<pdfaid:part>2</pdfaid:part>")) {
 		t.Fatalf("exported report missing PDF/A metadata")
 	}
 }

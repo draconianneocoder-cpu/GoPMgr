@@ -16,7 +16,7 @@ func TestSchedulePDFHasNoPostEOFData(t *testing.T) {
 			"A": {ID: "A", Title: "Task A", Duration: 5, ES: 0, EF: 5, LS: 0, LF: 5, Float: 0, IsCritical: true},
 			"B": {ID: "B", Title: "Task B", Duration: 3, ES: 5, EF: 8, LS: 5, LF: 8, Float: 0, IsCritical: true},
 		},
-	}, ExportOptions{Format: FormatPDF, Title: "PDF/A-3 Test Schedule"})
+	}, ExportOptions{Format: FormatPDF, Title: "PDF/A-2u Test Schedule"})
 	if err != nil {
 		t.Fatalf("GenerateArchivalReport(pdf): %v", err)
 	}

@@ -24,7 +24,7 @@ type MonteCarloRiskReportSpec struct {
 	GeneratedAt time.Time
 }
 
-// GenerateMonteCarloRiskReport renders a PDF/A-3-tagged Monte Carlo schedule
+// GenerateMonteCarloRiskReport renders a PDF/A-2u Monte Carlo schedule
 // risk report with finish percentiles, an S-curve, and tornado risk drivers.
 func GenerateMonteCarloRiskReport(spec MonteCarloRiskReportSpec) ([]byte, error) {
 	if !spec.Result.Valid {
@@ -74,17 +74,7 @@ func GenerateMonteCarloRiskReport(spec MonteCarloRiskReportSpec) ([]byte, error)
 		Subject:     fmt.Sprintf("Monte Carlo schedule risk report with P50 %s, P80 %s, P90 %s, Finish Probability S-curve, and Tornado Risk Drivers", daysLabel(spec.Result.P50), daysLabel(spec.Result.P80), daysLabel(spec.Result.P90)),
 		CreatorTool: "GoPMgr " + exportVersion(),
 	}
-	if icc := defaultICCProfile(); len(icc) > 0 {
-		if tagged, err := MakePDFA3(out, xmp, icc); err == nil {
-			return tagged, nil
-		}
-	}
-	if packet := BuildXMPPacket(xmp); len(packet) > 0 {
-		if tagged, err := InjectXMPStream(out, packet); err == nil {
-			return tagged, nil
-		}
-	}
-	return out, nil
+	return tagPDFA(out, xmp), nil
 }
 
 func drawMonteCarloReportHeader(pdf *fpdf.Fpdf, spec MonteCarloRiskReportSpec) {

@@ -239,23 +239,13 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 	}
 	raw := buf.Bytes()
 
-	// Apply PDF/A-3 XMP + OutputIntent to combined reports as well.
-	xspec := pdfmeta.XMPSpec{
+	// Combined reports are PDF/A-2u like single documents.
+	return tagPDFA(raw, pdfmeta.XMPSpec{
 		Title:       spec.ReportTitle,
 		Author:      spec.Author,
 		Subject:     "GoPMgr Combined Report",
 		CreatorTool: "GoPMgr",
-	}
-	if icc := pdfmeta.DefaultICCProfile(); len(icc) > 0 {
-		if tagged, err := pdfmeta.MakePDFA3(raw, xspec, icc); err == nil {
-			return tagged, nil
-		}
-	} else if xmp := pdfmeta.BuildXMPPacket(xspec); len(xmp) > 0 {
-		if tagged, err := pdfmeta.InjectXMPStream(raw, xmp); err == nil {
-			return tagged, nil
-		}
-	}
-	return raw, nil
+	}), nil
 }
 
 // evmSummaryLines renders the earned-value block shared by document

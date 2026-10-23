@@ -9,7 +9,7 @@ import _ "embed"
 var sRGBICC []byte
 
 // DefaultICCProfile returns the embedded compact sRGB ICC profile used for
-// PDF/A-3 OutputIntent metadata.
+// PDF/A OutputIntent metadata.
 func DefaultICCProfile() []byte {
 	// Not tested: sRGBICC is populated by a //go:embed directive at
 	// compile time. The asset is checked into the repo (assets/sRGB.icc),

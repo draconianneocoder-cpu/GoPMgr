@@ -11,7 +11,7 @@
 //
 // fpdf's built-in core fonts (Helvetica, Times, Courier) are NOT
 // embedded in the PDF and are NOT permitted by strict PDF/A. To move
-// toward PDF/A-3 conformance — and to give users real typographic
+// toward PDF/A conformance — and to give users real typographic
 // choice — GoPMgr embeds TrueType fonts via fpdf's
 // AddUTF8FontFromBytes. This package owns the catalog of bundled
 // fonts, the runtime registration, and user-supplied font import.

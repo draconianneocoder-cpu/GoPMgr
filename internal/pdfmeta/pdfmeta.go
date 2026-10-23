@@ -14,10 +14,15 @@
 //
 // What this package provides
 //
+//   - MakePDFA turns a rendered PDF into PDF/A-2u: it repairs the fonts
+//     go-pdf/fpdf embeds (RepairFPDFFonts), then adds the XMP identifier
+//     and the sRGB OutputIntent, each as an incremental update.
 //   - BuildXMPPacket constructs the XMP RDF/XML packet identifying a
-//     PDF as GoPMgr-generated PDF/A-3 level B.
+//     PDF as GoPMgr-generated PDF/A-2 level U.
 //   - InjectXMPStream appends the packet as an incremental update,
 //     adding a /Metadata reference to the Catalog dictionary.
+//   - InjectPAdESSignature signs the finished PDF/A file as its last
+//     incremental update.
 //
 // Fonts are embedded (internal/fonts, registered by every renderer),
 // the sRGB ICC profile is committed and embedded at build time
@@ -49,8 +54,9 @@ type XMPSpec struct {
 }
 
 // BuildXMPPacket returns the canonical XMP RDF/XML GoPMgr embeds in
-// generated PDFs. The packet declares PDF/A-3 level B conformance and
-// tags GoPMgr as the producer.
+// generated PDFs. The packet declares PDF/A-2 level U conformance and
+// tags GoPMgr as the producer. Level U requires every character to map
+// to Unicode, which RepairFPDFFonts provides for fpdf's fonts.
 //
 // The output is wrapped in the standard XMP packet markers so
 // downstream tooling (pdfcpu, ExifTool, veraPDF) can parse it.
@@ -88,8 +94,8 @@ func BuildXMPPacket(spec XMPSpec) []byte {
 	fmt.Fprintf(&buf, "      <xmp:CreateDate>%s</xmp:CreateDate>\n", spec.CreateDate.Format(time.RFC3339))
 	fmt.Fprintf(&buf, "      <xmp:CreatorTool>%s</xmp:CreatorTool>\n", xmlEscape(spec.CreatorTool))
 	fmt.Fprintln(&buf, `      <pdf:Producer>GoPMgr</pdf:Producer>`)
-	fmt.Fprintln(&buf, `      <pdfaid:part>3</pdfaid:part>`)
-	fmt.Fprintln(&buf, `      <pdfaid:conformance>B</pdfaid:conformance>`)
+	fmt.Fprintln(&buf, `      <pdfaid:part>2</pdfaid:part>`)
+	fmt.Fprintln(&buf, `      <pdfaid:conformance>U</pdfaid:conformance>`)
 	fmt.Fprintln(&buf, `    </rdf:Description>`)
 	fmt.Fprintln(&buf, `  </rdf:RDF>`)
 	fmt.Fprintln(&buf, `</x:xmpmeta>`)
@@ -389,10 +395,11 @@ func readDictRef(block []byte, key string) (id, gen int, err error) {
 	return id, gen, nil
 }
 
-// findObjectBody locates the object body between `<id> <gen> obj` and
-// `endobj`. The marker must be preceded by start-of-file or a newline
-// so a substring inside a content stream doesn't match.
-func findObjectBody(b []byte, id, gen int) ([]byte, error) {
+// findObjectStart returns the offset just past the last `<id> <gen> obj`
+// marker, which belongs to the object's latest revision. The marker must
+// be preceded by start-of-file or a newline so a substring inside a
+// content stream doesn't match.
+func findObjectStart(b []byte, id, gen int) (int, error) {
 	marker := fmt.Sprintf("%d %d obj", id, gen)
 	idx := -1
 	start := 0
@@ -408,9 +415,18 @@ func findObjectBody(b []byte, id, gen int) ([]byte, error) {
 		start = abs + len(marker)
 	}
 	if idx < 0 {
-		return nil, fmt.Errorf("object %d %d obj not found", id, gen)
+		return 0, fmt.Errorf("object %d %d obj not found", id, gen)
 	}
-	bodyStart := idx + len(marker)
+	return idx + len(marker), nil
+}
+
+// findObjectBody locates the body of the latest revision of an object,
+// between `<id> <gen> obj` and `endobj`.
+func findObjectBody(b []byte, id, gen int) ([]byte, error) {
+	bodyStart, err := findObjectStart(b, id, gen)
+	if err != nil {
+		return nil, err
+	}
 	for bodyStart < len(b) && (b[bodyStart] == '\n' || b[bodyStart] == '\r') {
 		bodyStart++
 	}
@@ -500,7 +516,7 @@ func xmlEscape(s string) string {
 }
 
 // =============================================================================
-// PDF/A-3 OutputIntent + ICC profile support (V3 milestone)
+// PDF/A OutputIntent + ICC profile support
 // =============================================================================
 
 // InjectOutputIntent appends an OutputIntent dictionary and an ICC profile
@@ -509,7 +525,7 @@ func xmlEscape(s string) string {
 // The resulting PDF will contain a /OutputIntents array in the Catalog
 // pointing to a /OutputIntent object whose /DestOutputProfile references
 // an ICCBased color space stream. This is the missing piece for full
-// PDF/A-3 conformance (in addition to the XMP metadata already provided
+// PDF/A-2 conformance (in addition to the XMP metadata already provided
 // by InjectXMPStream).
 //
 // iccProfile should be the raw bytes of a valid ICC profile (commonly
@@ -718,19 +734,26 @@ func insertOutputIntentsReference(catalogBody []byte, oiID int) []byte {
 	return rebuilt
 }
 
-// MakePDFA3 performs both the XMP metadata injection (PDF/A identifier)
-// and the OutputIntent + ICC profile injection in a single call,
-// returning a PDF that claims PDF/A-3b conformance.
+// MakePDFA turns a rendered PDF into PDF/A-2u in four steps: it adds the
+// binary header comment, repairs fpdf's embedded fonts (RepairFPDFFonts),
+// then appends the XMP identifier and the OutputIntent with its ICC
+// profile. Any PAdES signature must be applied afterwards, as the final
+// mutation.
 //
-// This is the recommended high-level entry point for renderers that
-// want full archival PDF/A-3 output.
-func MakePDFA3(pdfBytes []byte, spec XMPSpec, iccProfile []byte) ([]byte, error) {
+// This is the entry point for renderers that want archival output; most
+// call TagPDFA, which supplies the embedded sRGB profile.
+func MakePDFA(pdfBytes []byte, spec XMPSpec, iccProfile []byte) ([]byte, error) {
 	base, err := ensureBinaryHeaderComment(pdfBytes)
 	if err != nil {
 		return nil, fmt.Errorf("pdfmeta: binary header comment: %w", err)
 	}
 
-	// First inject XMP (this does one incremental update)
+	base, err = RepairFPDFFonts(base)
+	if err != nil {
+		return nil, fmt.Errorf("pdfmeta: font repair: %w", err)
+	}
+
+	// Then inject XMP (one incremental update)
 	withXMP, err := InjectXMPStream(base, BuildXMPPacket(spec))
 	if err != nil {
 		return nil, fmt.Errorf("pdfmeta: xmp injection: %w", err)
@@ -742,6 +765,19 @@ func MakePDFA3(pdfBytes []byte, spec XMPSpec, iccProfile []byte) ([]byte, error)
 		return nil, fmt.Errorf("pdfmeta: outputintent injection: %w", err)
 	}
 	return withOI, nil
+}
+
+// TagPDFA applies MakePDFA with the embedded sRGB profile. When tagging
+// fails it returns the rendered PDF unchanged together with the error, so
+// the caller still has a readable document and decides how to report the
+// failure. It never returns a file that claims PDF/A without its
+// OutputIntent.
+func TagPDFA(pdfBytes []byte, spec XMPSpec) ([]byte, error) {
+	tagged, err := MakePDFA(pdfBytes, spec, DefaultICCProfile())
+	if err != nil {
+		return pdfBytes, err
+	}
+	return tagged, nil
 }
 
 func streamPayload(data []byte) []byte {
@@ -1101,6 +1137,9 @@ func InjectPAdESSignature(pdfBytes []byte, signRanges func([]byte) ([]byte, erro
 	fmt.Fprintf(&appended, "/Size %d\n", trailerSize+2)
 	fmt.Fprintf(&appended, "/Root %d %d R\n", catalogID, catalogGen)
 	fmt.Fprintf(&appended, "/Prev %d\n", xrefOffset)
+	// PDF/A (ISO 19005-2, 6.1.3) requires /ID in the last trailer, so a
+	// signed PDF/A file must keep the identifier of the file it signs.
+	appended.WriteString(trailerIDEntry(pdfBytes, xrefOffset))
 	appended.WriteString(">>\n")
 	fmt.Fprintf(&appended, "startxref\n%d\n%%%%EOF\n", newXrefOffset)
 
@@ -1445,7 +1484,7 @@ func findArrayEnd(b []byte, start int) (int, error) {
 }
 
 // ApplyPDFAMetadata sets the standard PDF metadata fields on a fpdf
-// instance in a way that is friendly to PDF/A-3 (Title, Author, Subject,
+// instance in a way that is friendly to PDF/A (Title, Author, Subject,
 // Creator, Keywords). It is safe to call with a nil pdf.
 //
 // This is the canonical home for the helper so both document renderers

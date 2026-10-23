@@ -60,8 +60,8 @@ func TestGenerateMonteCarloRiskReportProducesPDFAReport(t *testing.T) {
 		[]byte("P50"),
 		[]byte("Finish Probability S-curve"),
 		[]byte("Tornado Risk Drivers"),
-		[]byte("<pdfaid:part>3</pdfaid:part>"),
-		[]byte("<pdfaid:conformance>B</pdfaid:conformance>"),
+		[]byte("<pdfaid:part>2</pdfaid:part>"),
+		[]byte("<pdfaid:conformance>U</pdfaid:conformance>"),
 	} {
 		if !bytes.Contains(out, want) {
 			t.Fatalf("report missing %q", want)

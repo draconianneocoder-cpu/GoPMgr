@@ -967,7 +967,7 @@ func TestInsertOutputIntentsReference_HandlesUnterminatedArray(t *testing.T) {
 
 // TestInsertOutputIntentsReference_InsertsFreshEntry covers the "no
 // existing /OutputIntents key" branch (the common case, already exercised
-// indirectly by TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog
+// indirectly by TestMakePDFAPreservesMetadataAndOutputIntentInLatestCatalog
 // below). This is a coverage test, not a guard-presence one: the branch is
 // this function's final statement with no following code, so deleting it
 // is a "missing return" compile error — there's no mutation to run.
@@ -1231,11 +1231,11 @@ func TestInjectXMPStream_SecondEntryRootGenOverflowReturnsError(t *testing.T) {
 	}
 }
 
-func TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog(t *testing.T) {
+func TestMakePDFAPreservesMetadataAndOutputIntentInLatestCatalog(t *testing.T) {
 	pdf := minimalPDFWithoutBinaryComment()
-	out, err := MakePDFA3(pdf, XMPSpec{Title: "PDF/A sample", Author: "GoPMgr"}, []byte("fake-icc-profile"))
+	out, err := MakePDFA(pdf, XMPSpec{Title: "PDF/A sample", Author: "GoPMgr"}, []byte("fake-icc-profile"))
 	if err != nil {
-		t.Fatalf("MakePDFA3: %v", err)
+		t.Fatalf("MakePDFA: %v", err)
 	}
 
 	headerEnd := bytes.IndexByte(out, '\n')
@@ -1269,10 +1269,10 @@ func TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog(t *testing.T) 
 	}
 }
 
-// TestMakePDFA3_PropagatesBinaryHeaderCommentError covers the
+// TestMakePDFA_PropagatesBinaryHeaderCommentError covers the
 // "pdfmeta: binary header comment: %w" wrap around the first stage.
-func TestMakePDFA3_PropagatesBinaryHeaderCommentError(t *testing.T) {
-	_, err := MakePDFA3([]byte("not a pdf"), XMPSpec{}, []byte("icc"))
+func TestMakePDFA_PropagatesBinaryHeaderCommentError(t *testing.T) {
+	_, err := MakePDFA([]byte("not a pdf"), XMPSpec{}, []byte("icc"))
 	if err == nil {
 		t.Fatal("expected an error when the input has no PDF header")
 	}
@@ -1281,7 +1281,7 @@ func TestMakePDFA3_PropagatesBinaryHeaderCommentError(t *testing.T) {
 	}
 }
 
-// TestMakePDFA3_PropagatesXMPInjectionError covers the
+// TestMakePDFA_PropagatesXMPInjectionError covers the
 // "pdfmeta: xmp injection: %w" wrap around the second stage. The fixture
 // already carries a valid header and binary comment (so stage 1
 // succeeds via ensureBinaryHeaderComment's early-return path) but has no
@@ -1294,9 +1294,9 @@ func TestMakePDFA3_PropagatesBinaryHeaderCommentError(t *testing.T) {
 // downstream) while still passing this test's wrap-prefix assertion --
 // caught before finalizing by reusing the file's own known-safe filler
 // rather than writing new prose.
-func TestMakePDFA3_PropagatesXMPInjectionError(t *testing.T) {
+func TestMakePDFA_PropagatesXMPInjectionError(t *testing.T) {
 	pdf := []byte("%PDF-1.4\n%\xe2\xe3\xcf\xd3\nnothing relevant appears in this buffer\n")
-	_, err := MakePDFA3(pdf, XMPSpec{}, []byte("icc"))
+	_, err := MakePDFA(pdf, XMPSpec{}, []byte("icc"))
 	if err == nil {
 		t.Fatal("expected an error when the input has no startxref")
 	}
@@ -1305,12 +1305,12 @@ func TestMakePDFA3_PropagatesXMPInjectionError(t *testing.T) {
 	}
 }
 
-// TestMakePDFA3_PropagatesOutputIntentInjectionError covers the
+// TestMakePDFA_PropagatesOutputIntentInjectionError covers the
 // "pdfmeta: outputintent injection: %w" wrap around the third stage.
 // minimalPDF() lets stages 1 and 2 succeed; a nil iccProfile fails only
 // InjectOutputIntent's own "empty ICC profile" guard.
-func TestMakePDFA3_PropagatesOutputIntentInjectionError(t *testing.T) {
-	_, err := MakePDFA3(minimalPDF(), XMPSpec{}, nil)
+func TestMakePDFA_PropagatesOutputIntentInjectionError(t *testing.T) {
+	_, err := MakePDFA(minimalPDF(), XMPSpec{}, nil)
 	if err == nil {
 		t.Fatal("expected an error for a nil ICC profile")
 	}
@@ -1352,7 +1352,7 @@ func TestStreamPayload_EmptyInputReturnsUnchanged(t *testing.T) {
 
 // readTrailerIDValue is tested directly rather than through
 // InjectXMPStream/trailerIDEntry: its happy path is already exercised
-// indirectly via TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog,
+// indirectly via TestMakePDFAPreservesMetadataAndOutputIntentInLatestCatalog,
 // but its five failure guards need malformed trailer text no PDF this
 // app generates would ever produce -- the same rationale as
 // parseTrailerSizeAndRoot and replaceStartxrefValue's direct tests in
@@ -1547,8 +1547,8 @@ func TestEnsureBinaryHeaderComment_PropagatesShiftClassicXrefOffsetsError(t *tes
 
 // TestEnsureBinaryHeaderComment_InsertsCommentAndShiftsOffsets is the
 // direct positive-path test (the indirect happy path is already
-// exercised via TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog,
-// but that only proves the full MakePDFA3 chain works, not this
+// exercised via TestMakePDFAPreservesMetadataAndOutputIntentInLatestCatalog,
+// but that only proves the full MakePDFA chain works, not this
 // function in isolation).
 //
 // Deliberately does NOT rely on findObjectBody to validate the shift:
@@ -1599,7 +1599,7 @@ func TestEnsureBinaryHeaderComment_InsertsCommentAndShiftsOffsets(t *testing.T) 
 
 	// Independently confirm the Catalog is also reachable via the
 	// textual path (parseTrailerSizeAndRoot + findObjectBody), the
-	// same shape TestMakePDFA3PreservesMetadataAndOutputIntentInLatestCatalog
+	// same shape TestMakePDFAPreservesMetadataAndOutputIntentInLatestCatalog
 	// checks — this proves the trailer's /Root reference and the
 	// object body itself are intact, complementary to (not a
 	// substitute for) the offset check above.
@@ -1911,8 +1911,8 @@ func TestBuildXMPPacket_ContainsRequiredFields(t *testing.T) {
 		"<x:xmpmeta",
 		"<dc:title>",
 		"<dc:creator>",
-		"<pdfaid:part>3</pdfaid:part>",
-		"<pdfaid:conformance>B</pdfaid:conformance>",
+		"<pdfaid:part>2</pdfaid:part>",
+		"<pdfaid:conformance>U</pdfaid:conformance>",
 		"Sample",
 		"Sam",
 	} {

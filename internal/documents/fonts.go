@@ -117,7 +117,7 @@ func newDocPDF(orientation string) *fpdf.Fpdf {
 		fn(pdf)
 	}
 
-	// Apply PDF/A-3 metadata setters early. Individual renderers can
+	// Apply PDF/A metadata setters early. Individual renderers can
 	// still override Title/Author/Subject with more specific values.
 	pdfmeta.ApplyPDFAMetadata(pdf, pdfmeta.XMPSpec{
 		Author:      "GoPMgr",

@@ -44,19 +44,11 @@ func GenerateSigmaReportPDF(
 		return nil, "", fmt.Errorf("sigma report: %w", err)
 	}
 
-	pdfBytes = buf.Bytes()
-	if pdfmeta.HasDefaultICC() {
-		icc := pdfmeta.DefaultICCProfile()
-		spec := pdfmeta.XMPSpec{
-			Title:       "Six Sigma Project Report: " + project.Title,
-			Author:      "GoPMgr",
-			CreatorTool: "GoPMgr Sigma Report Generator",
-		}
-		pdfaBytes, err := pdfmeta.MakePDFA3(pdfBytes, spec, icc)
-		if err == nil {
-			pdfBytes = pdfaBytes
-		}
-	}
+	pdfBytes = tagPDFA(buf.Bytes(), pdfmeta.XMPSpec{
+		Title:       "Six Sigma Project Report: " + project.Title,
+		Author:      "GoPMgr",
+		CreatorTool: "GoPMgr Sigma Report Generator",
+	})
 
 	filename = fmt.Sprintf("sigma_report_%s_%s.pdf", sanitizeFilename(project.Title), time.Now().UTC().Format("20060102_150405"))
 	return pdfBytes, filename, nil

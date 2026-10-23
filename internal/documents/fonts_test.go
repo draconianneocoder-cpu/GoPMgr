@@ -236,3 +236,30 @@ func TestKVLabelWidth_KeepsTheColumnForShortLabels(t *testing.T) {
 		t.Errorf("kvLabelWidth(short label) = %v, want the 40 mm column", got)
 	}
 }
+
+var subsetPlexName = regexp.MustCompile(`/BaseFont /[A-Z]{6}\+(IBMPlex[A-Za-z-]+)`)
+
+// TestRender_ProducesPDFA2UWithNamedPlexFonts renders a charter in the
+// production font state and checks the archival result end to end: the
+// file declares PDF/A-2u, and its fonts carry their real subset names
+// rather than fpdf's "utf8helvetica" key.
+func TestRender_ProducesPDFA2UWithNamedPlexFonts(t *testing.T) {
+	withDefaultDocumentFont(t)
+	content := `{"project_name":"Atlas","purpose":"“Approved” — budget € 1,250 • phase 2","objectives":["Ship"]}`
+	pdf, err := Render(KindProjectCharterWord, content, "Atlas")
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	for _, want := range []string{"<pdfaid:part>2</pdfaid:part>", "<pdfaid:conformance>U</pdfaid:conformance>"} {
+		if !bytes.Contains(pdf, []byte(want)) {
+			t.Errorf("charter is missing %s", want)
+		}
+	}
+	names := map[string]bool{}
+	for _, m := range subsetPlexName.FindAllSubmatch(pdf, -1) {
+		names[string(m[1])] = true
+	}
+	if !names["IBMPlexSans"] || !names["IBMPlexSans-SmBld"] {
+		t.Fatalf("charter fonts are not named after IBM Plex Sans Regular and SemiBold; found %v", names)
+	}
+}

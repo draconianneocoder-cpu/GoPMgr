@@ -16,6 +16,7 @@ import (
 
 	"gopmgr/internal/crypto"
 	"gopmgr/internal/fonts"
+	"gopmgr/internal/pdfmeta"
 	"gopmgr/internal/signing"
 )
 
@@ -31,12 +32,9 @@ import (
 // failure returns an error and no bytes; nonstandard comment-marker signatures
 // are deliberately unsupported.
 //
-// The generated PDF receives PDF/A-3 XMP metadata (pdfaid:part=3,
-// conformance=B) via the shared pdfmeta package. Full strict PDF/A-3
-// also requires an embedded ICC profile via OutputIntent (see
-// pdfmeta.InjectOutputIntent and MakePDFA3). When an ICC profile is
-// available the renderer will use MakePDFA3 for the strongest claim
-// possible.
+// The generated PDF is made PDF/A-2u (pdfaid:part=2, conformance=U) by
+// pdfmeta.TagPDFA: font repair, XMP identification, and an sRGB
+// OutputIntent, before any signature.
 func renderPDF(payload ReportPayload, opts ExportOptions) ([]byte, error) {
 	return renderPDFWithSignerLoader(payload, opts, crypto.LoadCertificate)
 }
@@ -154,25 +152,14 @@ func renderPDFWithSignerLoader(
 	}
 	out := buf.Bytes()
 
-	// Apply PDF/A-3 XMP metadata (and OutputIntent + ICC when available)
-	// before any optional digital signature. PAdES signs exact byte ranges,
-	// so signing must be the final incremental update.
-	spec := XMPSpec{
+	// Make the file PDF/A-2u before any optional digital signature. PAdES
+	// signs exact byte ranges, so signing must be the final incremental
+	// update.
+	out = tagPDFA(out, XMPSpec{
 		Title:   opts.Title,
 		Author:  "GoPMgr",
 		Subject: "Critical Path Method Schedule Report",
-	}
-	// First try the full MakePDFA3 path (XMP + OutputIntent) if we have an ICC.
-	// When no ICC is bundled yet we fall back to XMP-only (still a big win).
-	if icc := defaultICCProfile(); len(icc) > 0 {
-		if tagged, err := MakePDFA3(out, spec, icc); err == nil {
-			out = tagged
-		}
-	} else if xmp := BuildXMPPacket(spec); len(xmp) > 0 {
-		if tagged, err := InjectXMPStream(out, xmp); err == nil {
-			out = tagged
-		}
-	}
+	})
 
 	// Optional Baseline B signature. The archive export API predates project
 	// TSA settings, so it deliberately requests no timestamp here; application
@@ -212,10 +199,13 @@ var exportVersion = func() string { return "1.x" }
 // metadata. Called once at startup from the root main.go.
 func SetVersion(v string) { exportVersion = func() string { return v } }
 
-// defaultICCProfile returns the sRGB ICC profile for PDF/A-3 OutputIntent
-// if it has been fetched via `make icc`. Returns nil otherwise (the
-// renderer will then only inject XMP metadata, which is still a strong
-// PDF/A-3 claim but without the color profile).
-func defaultICCProfile() []byte {
-	return DefaultICCProfile()
+// tagPDFA makes a rendered report PDF/A-2u. If tagging fails, the report
+// still goes out, untagged, and the failure is logged: a readable report is
+// more useful than none, and the file never claims PDF/A it lacks.
+func tagPDFA(raw []byte, spec XMPSpec) []byte {
+	tagged, err := pdfmeta.TagPDFA(raw, spec)
+	if err != nil {
+		log.Printf("[export] PDF/A tagging failed, exporting an untagged PDF: %v", err)
+	}
+	return tagged
 }

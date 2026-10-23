@@ -386,20 +386,7 @@ func Render(kind Kind, contentJSON, projectName string) ([]byte, error) {
 		CreatorTool: "GoPMgr",
 	}
 
-	// Prefer full PDF/A-3 (XMP + OutputIntent + ICC) when the profile
-	// has been fetched via `make icc`. Fall back to XMP-only otherwise.
-	if icc := pdfmeta.DefaultICCProfile(); len(icc) > 0 {
-		if tagged, err := pdfmeta.MakePDFA3(raw, spec, icc); err == nil {
-			return tagged, nil
-		}
-	} else if xmp := pdfmeta.BuildXMPPacket(spec); len(xmp) > 0 {
-		if tagged, err := pdfmeta.InjectXMPStream(raw, xmp); err == nil {
-			return tagged, nil
-		}
-	}
-
-	// Fail-soft: return the valid but minimally-tagged PDF.
-	return raw, nil
+	return tagPDFA(raw, spec), nil
 }
 
 // renderRaw dispatches to the kind-specific PDF renderer, or falls
