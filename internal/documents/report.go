@@ -30,10 +30,13 @@ type ReportSection struct {
 // keyed by chart ID; missing entries fall back to a text line.
 // Pre-resolution keeps this package free of database dependencies.
 type ReportSpec struct {
-	ReportTitle    string                       `json:"report_title"`
-	Subtitle       string                       `json:"subtitle"`
-	Author         string                       `json:"author"`
-	ProjectName    string                       `json:"project_name"`
+	ReportTitle string `json:"report_title"`
+	Subtitle    string `json:"subtitle"`
+	Author      string `json:"author"`
+	ProjectName string `json:"project_name"`
+	// Currency is the project's reporting currency, which labels amounts.
+	// The server sets it from the project, never from the caller's JSON.
+	Currency       string                       `json:"-"`
 	Sections       []ReportSection              `json:"sections"`
 	ResolvedCharts map[string]ResolvedChart     `json:"-"`
 	ResolvedEVM    map[string]*kernel.EVMetrics `json:"-"`
@@ -193,7 +196,7 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 		// no embed-PDF support), we replay the generic field-walking
 		// directly here, with reduced heading sizes so it nests
 		// visually inside the report's outer structure.
-		chartRefs, err := renderSectionBody(pdf, s)
+		chartRefs, err := renderSectionBody(pdf, s, spec.Currency)
 		if err != nil {
 			return nil, fmt.Errorf("render section %s: %w", s.Section.DocumentID, err)
 		}
@@ -306,7 +309,7 @@ type chartRefMention struct {
 // Returns the list of chart_ref field values encountered, in walk
 // order, so the caller can embed the corresponding chart
 // visualisations on their own pages.
-func renderSectionBody(pdf *pdfdoc.PDF, s ResolvedSection) ([]chartRefMention, error) {
+func renderSectionBody(pdf *pdfdoc.PDF, s ResolvedSection, currency string) ([]chartRefMention, error) {
 	def, ok := Get(s.Kind)
 	if !ok {
 		return nil, fmt.Errorf("unknown kind %q", s.Kind)
@@ -352,7 +355,7 @@ func renderSectionBody(pdf *pdfdoc.PDF, s ResolvedSection) ([]chartRefMention, e
 				continue
 			}
 			writeSubHeading(pdf, f.Label)
-			renderObjectArray(pdf, f, objs)
+			renderObjectArray(pdf, f, objs, currency)
 		case FieldText:
 			body := toString(v)
 			if body == "" {
@@ -364,7 +367,7 @@ func renderSectionBody(pdf *pdfdoc.PDF, s ResolvedSection) ([]chartRefMention, e
 			pdf.Ln(1)
 		case FieldNumber:
 			if n, ok := v.(float64); ok && n != 0 {
-				writeKVCompact(pdf, f.Label, fmt.Sprintf("%.2f", n))
+				writeKVCompact(pdf, f.LabelIn(currency), FormatNumberField(f, n))
 			}
 		case FieldBool:
 			if b, ok := v.(bool); ok {

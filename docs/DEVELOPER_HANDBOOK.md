@@ -980,6 +980,11 @@ A new kind should normally include:
 - round-trip coverage;
 - invalid-input coverage.
 
+Mark amount fields `Money` and leave the currency out of their labels.
+Renderers print the project's code with `currencyOf(content)` or
+`Field.LabelIn`; `TestTemplates_LabelsNameNoCurrency` rejects a label that
+names a currency.
+
 Keep bespoke renderers self-contained. Share primitives after
 demonstrated reuse, not in anticipation of hypothetical reuse.
 

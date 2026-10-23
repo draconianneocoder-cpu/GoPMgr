@@ -187,7 +187,8 @@ The Dashboard exposes:
   select USD, EUR, GBP, CAD, AUD, or CHF only while the project has no
   Budget value, Cost Control entry, non-zero reserve balance, or approved Cost
   Control baseline. It cannot change while any of those values exists because
-  Phase 1 has no FX conversion. The dashboard shows
+  Phase 1 has no FX conversion. Documents, their DOCX and ODT exports, and
+  combined reports label amounts in this currency. The dashboard shows
   its separate legacy Budget rollup for context, then the Cost Control base
   plan, contingency reserve, cost baseline, management reserve, authorised
   funding, commitments, and actuals. The legacy Budget rollup does not feed

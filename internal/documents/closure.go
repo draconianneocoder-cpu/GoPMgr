@@ -66,7 +66,7 @@ func RenderProjectClosurePDF(content map[string]interface{}, projectName string)
 		pdf.Cell(50, 6, "Final budget (actual):")
 		pdf.SetFont("Helvetica", "", 10)
 		pdf.SetTextColor(0, 0, 0)
-		pdf.Cell(0, 6, formatMoney(budget))
+		pdf.Cell(0, 6, currencyOf(content)+" "+formatMoney(budget))
 		pdf.Ln(6)
 	}
 

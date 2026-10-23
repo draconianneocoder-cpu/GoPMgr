@@ -73,7 +73,7 @@ func RenderChangeRequestPDF(content map[string]interface{}, projectName string) 
 	costImpact, _ := content["cost_impact"].(float64)
 	if scope != "" || schedule != "" || risk != "" || costImpact != 0 {
 		crHeading(pdf, "Impact Analysis")
-		drawCRImpactGrid(pdf, scope, schedule, costImpact, risk)
+		drawCRImpactGrid(pdf, scope, schedule, costImpact, currencyOf(content), risk)
 	}
 
 	// Decision block
@@ -194,7 +194,7 @@ func crSection(pdf *pdfdoc.PDF, heading, body string) {
 // drawCRImpactGrid renders the four impact dimensions in a 2x2 grid.
 // Each cell shows a small heading + body text; the cost cell uses a
 // formatted money value instead of free text.
-func drawCRImpactGrid(pdf *pdfdoc.PDF, scope, schedule string, cost float64, risk string) {
+func drawCRImpactGrid(pdf *pdfdoc.PDF, scope, schedule string, cost float64, currency, risk string) {
 	cellW := 85.0
 	cellH := 24.0
 	startX := 20.0
@@ -202,7 +202,7 @@ func drawCRImpactGrid(pdf *pdfdoc.PDF, scope, schedule string, cost float64, ris
 
 	costStr := ""
 	if cost != 0 {
-		costStr = fmt.Sprintf("USD %s", formatMoney(cost))
+		costStr = currency + " " + formatMoney(cost)
 	}
 
 	cells := []struct {

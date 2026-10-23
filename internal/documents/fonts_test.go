@@ -248,7 +248,7 @@ var subsetPlexName = regexp.MustCompile(`/BaseFont /[A-Z]{6}\+(IBMPlex[A-Za-z-]+
 func TestRender_ProducesPDFA2UWithNamedPlexFonts(t *testing.T) {
 	withDefaultDocumentFont(t)
 	content := `{"project_name":"Atlas","purpose":"“Approved” — budget € 1,250 • phase 2","objectives":["Ship"]}`
-	pdf, err := Render(KindProjectCharterWord, content, "Atlas")
+	pdf, err := Render(KindProjectCharterWord, content, "Atlas", "USD")
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -272,7 +272,7 @@ func TestRender_ProducesPDFA2UWithNamedPlexFonts(t *testing.T) {
 func TestRender_AcceptsEmojiInDocumentFields(t *testing.T) {
 	withDefaultDocumentFont(t)
 	content := `{"project_name":"Atlas 🚀","sponsor":"Ops 👩\u200D💻","purpose":"Ship it 🎉 on time","objectives":["Go live 🇺🇸"]}`
-	pdf, err := Render(KindProjectCharterWord, content, "Atlas 🚀")
+	pdf, err := Render(KindProjectCharterWord, content, "Atlas 🚀", "USD")
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -327,7 +327,7 @@ func TestRender_CJKFamiliesPrintTheirScripts(t *testing.T) {
 			withDefaultDocumentFont(t)
 			UseFont(nil, family)
 			content := fmt.Sprintf(`{"project_name":%q,"purpose":%q,"objectives":[%q]}`, text, text, text)
-			pdf, err := Render(KindProjectCharterWord, content, text)
+			pdf, err := Render(KindProjectCharterWord, content, text, "USD")
 			if err != nil {
 				t.Fatalf("Render: %v", err)
 			}
