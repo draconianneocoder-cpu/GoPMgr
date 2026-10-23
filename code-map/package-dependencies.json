@@ -194,7 +194,8 @@
         "gopmgr/internal/documents"
       ],
       "imports_internal": [
-        "gopmgr/internal/charts"
+        "gopmgr/internal/charts",
+        "gopmgr/internal/pdfdoc"
       ],
       "notable_external_deps": [
         "github.com/go-pdf/fpdf"
@@ -296,11 +297,10 @@
         "gopmgr/internal/charts/pdfrender",
         "gopmgr/internal/fonts",
         "gopmgr/internal/kernel",
+        "gopmgr/internal/pdfdoc",
         "gopmgr/internal/pdfmeta"
       ],
-      "notable_external_deps": [
-        "github.com/go-pdf/fpdf"
-      ]
+      "notable_external_deps": []
     },
     "gopmgr/internal/export": {
       "dir": "internal/export",
@@ -315,12 +315,12 @@
         "gopmgr/internal/exportsafe",
         "gopmgr/internal/fonts",
         "gopmgr/internal/kernel",
+        "gopmgr/internal/pdfdoc",
         "gopmgr/internal/pdfmeta",
         "gopmgr/internal/sigma/domain",
         "gopmgr/internal/signing"
       ],
       "notable_external_deps": [
-        "github.com/go-pdf/fpdf",
         "github.com/gomutex/godocx",
         "github.com/gomutex/godocx/docx",
         "github.com/xuri/excelize/v2"
@@ -381,6 +381,18 @@
       ],
       "imports_internal": [],
       "notable_external_deps": []
+    },
+    "gopmgr/internal/pdfdoc": {
+      "dir": "internal/pdfdoc",
+      "imported_by_internal": [
+        "gopmgr/internal/charts/pdfrender",
+        "gopmgr/internal/documents",
+        "gopmgr/internal/export"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": [
+        "github.com/go-pdf/fpdf"
+      ]
     },
     "gopmgr/internal/pdfmeta": {
       "dir": "internal/pdfmeta",

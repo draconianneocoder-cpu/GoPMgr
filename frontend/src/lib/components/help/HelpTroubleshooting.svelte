@@ -102,7 +102,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
               PDFs embed IBM Plex, which covers Latin, Greek, and Cyrillic text. If characters
               from another script are missing, such as Chinese, Japanese, or Korean, import a
               <span class="font-mono text-xs">.ttf</span> font that covers them from Project
-              Settings and select it as the document font.
+              Settings and select it as the document font. PDF fonts can't show emoji, so each
+              emoji prints as the replacement character, �; the rest of the text is
+              unaffected.
             </p>
           </section>
 

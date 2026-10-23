@@ -21,7 +21,7 @@ instructions and platform limitations are in [docs/INSTALL.md](docs/INSTALL.md).
 - Project charts, documents, combined reports, and open-format exports.
 - Local accounts, SQLCipher-encrypted per-user `.gopmgr` project databases,
   recovery codes, and tamper-evident audit records.
-- PDF/A-3 export and optional PAdES digital signing.
+- PDF/A-2u archival export and optional PAdES digital signing.
 
 See [VISION.md](docs/VISION.md) for product principles and [ROADMAP.md](docs/ROADMAP.md)
 for planned work.

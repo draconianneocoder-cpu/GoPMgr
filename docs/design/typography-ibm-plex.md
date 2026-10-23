@@ -38,8 +38,9 @@ families are several megabytes per weight.
 
 Renderers select a font by family key: `"Helvetica"` for all text and
 `"Courier"` for the recovery-code sheet. GoPMgr registers Plex faces under those
-keys, so no renderer names a font itself. The engine offers four styles per
-family, mapped as follows.
+keys, so no renderer names a font itself. The finished PDF names each font
+after its face, such as `PVUUJE+IBMPlexSans-SmBld`, not the key. The engine
+offers four styles per family, mapped as follows.
 
 | Renderer style | Use in GoPMgr PDFs | Plex face |
 | --- | --- | --- |
@@ -77,6 +78,9 @@ Defaults:
   Sans, which is also the PDF/A baseline.
 - The recovery-code sheet uses IBM Plex Sans for text and IBM Plex Mono for the
   codes.
+- PDF fonts cannot show emoji, because the PDF engine encodes text as 16-bit
+  codes. Each emoji prints as U+FFFD, which every Plex face draws (see
+  `internal/pdfdoc`).
 
 ## The app
 

@@ -24,7 +24,7 @@ user-initiated.
 
 **Security by default, not by configuration.**
 New projects are encrypted. Authentication uses Argon2id. PDFs are
-validated against PDF/A-3. Digital signatures follow PAdES. None of these
+validated against PDF/A-2u. Digital signatures follow PAdES. None of these
 require the user to opt in.
 
 **Professional tools, not enterprise complexity.**
@@ -46,7 +46,7 @@ in the production build. CGO is permitted only where a pure-Go alternative
 does not exist with equivalent correctness and performance.
 
 **Exports are first-class citizens.**
-PDF/A-3, DOCX, XLSX, MSPDI, iCal, and ODT outputs must be correctly
+PDF/A-2u, DOCX, XLSX, MSPDI, iCal, and ODT outputs must be correctly
 formed, interoperable, and generated without a hosted service. Validation
 gates (veraPDF for PDF/A, PAdES for signing) are required — not optional.
 

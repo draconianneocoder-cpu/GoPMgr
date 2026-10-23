@@ -382,6 +382,11 @@ From Project Settings, GoPMgr exports the current schedule to:
 | CSV | `.csv` | Spreadsheet task lists |
 | HTML | `.html` | Browser viewing or publishing |
 
+PDFs are PDF/A-2u, the archival format the US National Archives prefers for
+documents. Each file embeds its fonts and color profile, and its text copies,
+searches, and reads aloud correctly. A PAdES signature keeps the file
+PDF/A-2u.
+
 GoPMgr imports Microsoft Project XML (MSPDI, `.xml`) directly. Binary or
 serialized formats such as `.mpp`, `.pod`, and `.mpx` should be resaved as
 Microsoft Project XML from the source application before import.
@@ -529,7 +534,11 @@ IBM Plex Serif suits long documents meant for printing, and IBM Plex Sans
 Condensed fits more text in dense tables. The choice applies to the project's
 documents exported as PDF, DOCX, or ODT; schedule reports always use IBM Plex
 Sans. You can also import a `.ttf` font there. Imported fonts are stored in
-your GoPMgr data area and can be selected for document exports.
+your GoPMgr data area and can be selected for document exports. GoPMgr refuses
+a font whose license doesn't allow embedding it in documents.
+
+PDF fonts can't show emoji. In a PDF, each emoji prints as �, so a reader can
+tell something was there; the app itself shows emoji normally.
 
 DOCX, ODT, XLSX, and HTML files name their font but do not include it. Someone
 who opens them without IBM Plex installed sees a similar font chosen by their

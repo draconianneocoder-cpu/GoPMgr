@@ -153,7 +153,8 @@ path, and replace the pseudo-version only through compatibility verification.
 Some gates use optional or required tools outside Go/npm:
 
 - `reuse`: REUSE/SPDX license checks.
-- `veraPDF` or Docker with the veraPDF image: strict PDF/A-3 validation.
+- `veraPDF`, Docker with the veraPDF image, or Java to run the SHA-256-pinned
+  veraPDF installer the gate downloads: strict PDF/A-2u validation.
 - `qpdf`: PDF syntax validation in external PAdES checks.
 - `pdfsig`: Poppler signature validation in external PAdES checks.
 - `openssl`: CMS ASN.1 and detached signature verification.
