@@ -248,7 +248,7 @@ when exponent-aware amounts are planned.
 | Layout | Pseudo-language (accented, 35 percent longer) and each real catalog on key screens in Chromium; clipped buttons or labels fail | browser smoke |
 | CJK text | Under `lang="ja"` and `lang="ko"`, no text is smaller than 12px, and 日本語 and 한국어 render in IBM Plex | browser smoke |
 | Input methods | A keydown handler ignores Enter while `isComposing` is true | component |
-| Formats | `fr-FR` uses U+202F grouping, `de-CH` uses ’, `de-DE` uses `.` and `,`, `ja-JP` dates read 2026/10/23; dates per locale | table-driven |
+| Formats | `fr-FR` uses U+202F grouping, `de-CH` an apostrophe (’ or ', by ICU version), `de-DE` uses `.` and `,`, `ja-JP` dates read 2026/10/23; dates per locale | table-driven |
 | Setup | The picker defaults from the system, persists to the new account, and sets `<html lang>`; keyboard-only operation works | component |
 | Documents | Each kind renders in each document language with every glyph mapped; Japanese lines never start with closing punctuation; one PDF/A-2u gate sample per wave-1 language | Go unit, veraPDF |
 | Help | Each section exists per language or shows the fallback notice; the help-guide check runs per language | script |

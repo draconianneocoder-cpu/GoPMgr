@@ -133,19 +133,22 @@ describe('system language tags', () => {
 });
 
 // ADR-008 test plan: formats follow the format locale. Short numeric
-// dates and grouped numbers are stable across ICU versions; the time check
-// allows either space before PM, since newer ICU uses U+202F there.
+// dates and grouped numbers are stable across ICU versions, with two
+// exceptions the checks allow for: newer ICU data groups de-CH with ' rather
+// than ’, and puts U+202F rather than a space before PM.
 describe('formats per locale', () => {
   it.each([
     ['en-US', '1,284,500.5', '10/23/2026'],
     ['en-GB', '1,284,500.5', '23/10/2026'],
     ['de-DE', '1.284.500,5', '23.10.2026'],
-    ['de-CH', '1’284’500.5', '23.10.2026'],
+    ['de-CH', /^1['’]284['’]500\.5$/u, '23.10.2026'],
     ['fr-FR', '1\u202f284\u202f500,5', '23/10/2026'],
     ['ja-JP', '1,284,500.5', '2026/10/23'],
   ])('%s formats numbers as %s and dates as %s', (tag, number, date) => {
     applyLanguage('', [tag]);
-    expect(formatNumber(1284500.5)).toBe(number);
+    const formatted = formatNumber(1284500.5);
+    if (typeof number === 'string') expect(formatted).toBe(number);
+    else expect(formatted).toMatch(number);
     expect(formatDate(oct23, { timeZone: 'UTC' })).toBe(date);
   });
 
