@@ -54,16 +54,32 @@ export function resolveLocale(
   return SOURCE_LOCALE;
 }
 
+// canonicalTag returns tag as a BCP 47 tag that Intl accepts, or null.
+// POSIX-style tags become BCP 47 ("de_CH.UTF-8" becomes "de-CH"), and "C",
+// "POSIX", and malformed tags return null. Intl throws a RangeError for a
+// tag it rejects, which would break every date and number on screen.
+export function canonicalTag(tag: string): string | null {
+  const cleaned = tag.trim().replace(/[.@].*$/, '').replace(/_/g, '-');
+  if (!cleaned || /^(c|posix)$/i.test(cleaned)) return null;
+  try {
+    return Intl.getCanonicalLocales(cleaned)[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // formatLocaleFor picks the locale for dates and numbers. With no choice
 // (automatic), formats follow the system's first language, as they always
 // have. With a choice, they follow it, keeping the system's region when the
 // system speaks the same language, so English in Britain formats as en-GB.
+// The result is always a tag Intl accepts.
 export function formatLocaleFor(
   choice: string | null | undefined,
   locale: LocaleCode,
   preferred: readonly string[],
 ): string {
-  if (!choice) return preferred.find((tag) => tag.trim() !== '') ?? locale;
-  const sameLanguage = preferred.find((tag) => baseLanguage(tag) === baseLanguage(locale));
+  const tags = preferred.map(canonicalTag).filter((tag): tag is string => tag !== null);
+  if (!choice) return tags[0] ?? locale;
+  const sameLanguage = tags.find((tag) => baseLanguage(tag) === baseLanguage(locale));
   return sameLanguage ?? locale;
 }

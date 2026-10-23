@@ -95,6 +95,55 @@ describe('application appearance settings', () => {
   });
 });
 
+describe('default document font', () => {
+  const font = (name: string, description: string) => ({
+    name,
+    category: 'sans',
+    description,
+    license: 'OFL-1.1',
+    origin: 'bundled',
+    styles: ['Regular', 'Bold'],
+  });
+
+  beforeEach(() => {
+    app.GetAppInfo = vi.fn(async () => ({
+      ...appInfo,
+      fonts: [
+        font('IBM Plex Sans', 'Latin, Greek, and Cyrillic.'),
+        font('IBM Plex Sans JP', 'Japanese, with Latin.'),
+        font('My Font', ''),
+      ],
+    }));
+  });
+
+  it('describes the selected font to sighted and screen-reader users', async () => {
+    const { findByRole } = render(AppSettings);
+    const picker = await findByRole('combobox', { name: /default document font/i });
+
+    // An empty choice is IBM Plex Sans, so its description shows first.
+    expect(picker).toHaveAccessibleDescription('Latin, Greek, and Cyrillic.');
+
+    await fireEvent.change(picker, { target: { value: 'IBM Plex Sans JP' } });
+    expect(picker).toHaveAccessibleDescription('Japanese, with Latin.');
+
+    await fireEvent.change(picker, { target: { value: 'My Font' } });
+    expect(picker).not.toHaveAttribute('aria-describedby');
+    expect(document.getElementById('app-default-font-description')).toBeNull();
+  });
+
+  it('saves the chosen font', async () => {
+    const { findByRole, getByRole } = render(AppSettings);
+    const picker = await findByRole('combobox', { name: /default document font/i });
+    await fireEvent.change(picker, { target: { value: 'IBM Plex Sans JP' } });
+
+    await fireEvent.click(getByRole('button', { name: /save settings/i }));
+
+    await waitFor(() =>
+      expect(app.SaveAppSettings).toHaveBeenCalledWith(expect.objectContaining({ default_font: 'IBM Plex Sans JP' })),
+    );
+  });
+});
+
 describe('automatic update checking and installation', () => {
   it('saves the auto-check-updates preference', async () => {
     const { findByRole, getByRole } = render(AppSettings);

@@ -161,3 +161,50 @@ func TestRegisterAs_SkipsUserFontsThatForbidEmbedding(t *testing.T) {
 		t.Fatalf("RegisterAs err = %v, want an error that names embedding", err)
 	}
 }
+
+// os2Font builds the smallest font layout os2FsType reads: a table
+// directory holding one OS/2 table with the given fsType.
+func os2Font(fsType uint16) []byte {
+	b := make([]byte, 12+16+10)
+	binary.BigEndian.PutUint32(b[0:], 0x00010000)
+	binary.BigEndian.PutUint16(b[4:], 1)
+	copy(b[12:], "OS/2")
+	binary.BigEndian.PutUint32(b[12+8:], 12+16)
+	binary.BigEndian.PutUint32(b[12+12:], 10)
+	binary.BigEndian.PutUint16(b[12+16+8:], fsType)
+	return b
+}
+
+// checkEmbeddingAllowed reads the fsType of a font a user imports. For any
+// bytes it must not panic, must never allow a restricted-license font, and
+// refuses only with ErrEmbeddingNotAllowed.
+func FuzzCheckEmbeddingAllowed(f *testing.F) {
+	for _, fsType := range []uint16{0, fsTypeRestricted, fsTypeRestricted | fsTypeEditable, fsTypeNoSubsetting, fsTypeBitmapOnly, 0xffff} {
+		f.Add(os2Font(fsType))
+	}
+	f.Add([]byte{})
+	f.Add(fakeTTF())
+	f.Add(os2Font(fsTypeRestricted)[:30])
+	// A directory that claims a second table record past the end.
+	truncated := os2Font(fsTypeRestricted)
+	copy(truncated[12:], "head")
+	binary.BigEndian.PutUint16(truncated[4:], 2)
+	f.Add(truncated)
+	f.Fuzz(func(t *testing.T, b []byte) {
+		err := checkEmbeddingAllowed(b)
+		if err != nil && !errors.Is(err, ErrEmbeddingNotAllowed) {
+			t.Fatalf("error %v does not wrap ErrEmbeddingNotAllowed", err)
+		}
+		fsType, ok := os2FsType(b)
+		if !ok {
+			if err != nil {
+				t.Fatalf("refused a font with no readable fsType: %v", err)
+			}
+			return
+		}
+		restricted := fsType&fsTypeRestricted != 0 && fsType&(fsTypePreviewPrint|fsTypeEditable) == 0
+		if restricted && err == nil {
+			t.Fatalf("allowed a restricted-license font (fsType %#04x)", fsType)
+		}
+	})
+}

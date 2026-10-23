@@ -23,7 +23,7 @@ import (
 
 // renderPlexPDF renders text in IBM Plex Sans Regular and SemiBold through
 // the same registration path the renderers use, returning fpdf's raw output.
-func renderPlexPDF(t *testing.T, text string) []byte {
+func renderPlexPDF(t testing.TB, text string) []byte {
 	t.Helper()
 	pdf := fpdf.New("P", "mm", "A4", "")
 	if err := fonts.NewManager("").RegisterAs(pdf, fonts.DefaultFamily, "Helvetica"); err != nil {
@@ -770,4 +770,37 @@ func TestTrueTypePostScriptName_TruncatedTables(t *testing.T) {
 			t.Errorf("%s: read %q", name, got)
 		}
 	}
+}
+
+// trueTypePostScriptName reads a name from a font program, which can come
+// from a user-imported font, and the name is written into the PDF. For any
+// bytes it must not panic, and a name it returns is a safe PDF font name.
+func FuzzTrueTypePostScriptName(f *testing.F) {
+	f.Add(fontWithNameTable(nameRecord{3, 1, 6, utf16be("IBMPlexSans")}))
+	f.Add(fontWithNameTable(nameRecord{1, 0, 6, []byte("Mac-Name")}, nameRecord{3, 1, 6, utf16be("Bad Name/")}))
+	f.Add(fontWithNameTable(nameRecord{3, 1, 6, []byte{0xd8, 0x00}}))
+	f.Add([]byte{})
+	f.Fuzz(func(t *testing.T, b []byte) {
+		name, ok := trueTypePostScriptName(b)
+		if ok != (name != "") || (ok && !isPostScriptName(name)) {
+			t.Fatalf("trueTypePostScriptName = %q, %v; want a safe PDF font name or nothing", name, ok)
+		}
+	})
+}
+
+// RepairFPDFFonts appends an incremental update. For any input it must not
+// panic, and a result keeps the original bytes as its prefix, so the repair
+// never rewrites what was already in the file.
+func FuzzRepairFPDFFonts(f *testing.F) {
+	f.Add(minimalPDF())
+	f.Add(renderPlexPDF(f, "Plex Ω"))
+	f.Fuzz(func(t *testing.T, in []byte) {
+		out, err := RepairFPDFFonts(in)
+		if err != nil {
+			return
+		}
+		if !bytes.HasPrefix(out, in) {
+			t.Fatalf("RepairFPDFFonts rewrote the original revision (%d bytes in, %d out)", len(in), len(out))
+		}
+	})
 }

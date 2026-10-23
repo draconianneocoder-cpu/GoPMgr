@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gomutex/godocx"
+	"github.com/gomutex/godocx/docx"
 	"github.com/xuri/excelize/v2"
 
 	"gopmgr/internal/documents"
@@ -232,5 +234,77 @@ func TestReportPDFs_EmbedIBMPlexSans(t *testing.T) {
 	}
 	if regexp.MustCompile(`/BaseFont /(Helvetica|Courier|Times)`).Match(sigma) {
 		t.Error("Six Sigma report references an unembedded core font")
+	}
+}
+
+// applyDOCXFont edits godocx's built-in template. If a godocx upgrade
+// changes that template, the export fails with a clear error instead of
+// shipping a document in the wrong font.
+func TestApplyDOCXFont_RejectsAnUnexpectedTemplate(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(doc *docx.RootDoc)
+		want   string
+	}{
+		{"no theme", func(doc *docx.RootDoc) { doc.FileMap.Delete(docxThemePart) }, "no theme part"},
+		{"theme not bytes", func(doc *docx.RootDoc) { doc.FileMap.Store(docxThemePart, "<a:theme/>") }, "theme part is not XML bytes"},
+		{"one theme font", func(doc *docx.RootDoc) {
+			doc.FileMap.Store(docxThemePart, []byte(`<a:majorFont><a:latin typeface="Calibri Light"/></a:majorFont>`))
+		}, "has 1 Latin heading/body fonts, want 2"},
+		{"no font table", func(doc *docx.RootDoc) { doc.FileMap.Delete(docxFontTablePart) }, "no font table"},
+		{"font table not bytes", func(doc *docx.RootDoc) { doc.FileMap.Store(docxFontTablePart, 42) }, "font table is not XML bytes"},
+		{"unclosed font table", func(doc *docx.RootDoc) { doc.FileMap.Store(docxFontTablePart, []byte(`<w:fonts>`)) }, "no closing </w:fonts>"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			doc, err := godocx.NewDocument()
+			if err != nil {
+				t.Fatal(err)
+			}
+			c.mutate(doc)
+			err = applyDOCXFont(doc, fonts.DefaultFamily)
+			if err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("applyDOCXFont error = %v, want %q", err, c.want)
+			}
+		})
+	}
+}
+
+// An imported font's name is user data: it is escaped into the theme and
+// font table, and applying a font twice lists it once.
+func TestApplyDOCXFont_EscapesNamesAndListsEachFontOnce(t *testing.T) {
+	doc, err := godocx.NewDocument()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const name = `Acme & "Co" <Sans>`
+	for i := 0; i < 2; i++ {
+		if err := applyDOCXFont(doc, name); err != nil {
+			t.Fatalf("applyDOCXFont #%d: %v", i+1, err)
+		}
+	}
+	for _, part := range []string{docxThemePart, docxFontTablePart} {
+		raw, _ := doc.FileMap.Load(part)
+		body, _ := raw.([]byte)
+		dec := xml.NewDecoder(bytes.NewReader(body))
+		for {
+			if _, err := dec.Token(); err == io.EOF {
+				break
+			} else if err != nil {
+				t.Fatalf("%s is not well-formed XML after applying %q: %v", part, name, err)
+			}
+		}
+		if bytes.Contains(body, []byte(name)) {
+			t.Errorf("%s holds the raw name %q", part, name)
+		}
+	}
+	raw, _ := doc.FileMap.Load(docxFontTablePart)
+	table, _ := raw.([]byte)
+	escaped := `w:name="` + xmlEscape(name) + `"`
+	if n := bytes.Count(table, []byte(escaped)); n != 1 {
+		t.Errorf("font table lists %q %d times, want once", name, n)
+	}
+	if n := bytes.Count(table, []byte(`w:name="`+fonts.MonoFamily+`"`)); n != 1 {
+		t.Errorf("font table lists %s %d times, want once", fonts.MonoFamily, n)
 	}
 }

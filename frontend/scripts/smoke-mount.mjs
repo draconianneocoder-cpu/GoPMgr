@@ -43,6 +43,13 @@ try {
     throw new Error('App.svelte did not export a component as default');
   }
 
+  // main.ts sets the interface language before mounting App. Run that call
+  // here too, against this runtime's own navigator languages.
+  const { applyLanguage } = await server.ssrLoadModule('/src/lib/i18n/i18n.svelte.ts');
+  const locale = applyLanguage();
+  if (typeof locale !== 'string' || locale === '') {
+    throw new Error(`applyLanguage() returned ${JSON.stringify(locale)}`);
+  }
   // Rendering runs the component's synchronous setup. With no Wails
   // bindings present the router falls to its loading branch, which must
   // still produce markup.
