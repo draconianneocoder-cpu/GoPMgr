@@ -92,7 +92,14 @@ hundredths. The branch also did not compile.
   switches both ways, and the lock once ledger data exists.
 - `TestWiresShowYenAsWholeNumbers`: project budget, budget rollup, and
   portfolio wires.
+- `TestCostReservesReadInTheProjectCurrency`: a saved and a listed reserve
+  read `2000000` for yen and `2000000.00` for dollars; an older fraction
+  reads `123.45`.
+- `TestFinancialReportSnapshotShowsYenAsWholeNumbers`: totals, ledger rows,
+  and reserves in the financial report.
 - Documents and DOCX/ODT exports print `1,284,500` for yen and never
-  `1,284,500.00`.
+  `1,284,500.00`, including table cells in combined reports.
+  `TestFormatMoneyIn` checks that documents print the same digits as the
+  screens.
 - Project Settings offers Japanese yen, saves it, and restores it after a
   rejected change.

@@ -144,6 +144,54 @@ func TestLegacyJPYCostControlKeepsValuesAndAcceptsEdits(t *testing.T) {
 	}
 }
 
+// Reserves read like entries: whole yen for a yen project, two decimals
+// otherwise, and an older fractional value exactly as stored (ADR-009).
+func TestCostReservesReadInTheProjectCurrency(t *testing.T) {
+	for _, c := range []struct{ currency, saved, legacy string }{
+		{"JPY", "2000000", "123.45"},
+		{"USD", "2000000.00", "123.45"},
+	} {
+		t.Run(c.currency, func(t *testing.T) {
+			app := newEncryptionProjectTestApp(t)
+			if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+				t.Fatalf("CreateAccount: %v", err)
+			}
+			mustOpenProject(t, app, "Reserves "+c.currency)
+			d := app.requireDB()
+			p, err := d.GetProject()
+			if err != nil {
+				t.Fatalf("GetProject: %v", err)
+			}
+			if _, err = d.Conn.Exec(`UPDATE project SET currency_code=? WHERE id=?`, c.currency, p.ID); err != nil {
+				t.Fatalf("set currency: %v", err)
+			}
+			if _, err = d.SaveCostReserve(db.CostReserve{ProjectID: p.ID, Kind: "contingency", AmountMinorUnits: 12_345, Description: "Older reserve"}); err != nil {
+				t.Fatalf("seed reserve: %v", err)
+			}
+
+			saved, err := app.SaveCostReserve(CostReserveWire{Kind: "management", Amount: "2000000", Description: "Management reserve"})
+			if err != nil {
+				t.Fatalf("SaveCostReserve: %v", err)
+			}
+			if saved.Amount != c.saved {
+				t.Errorf("saved reserve = %q, want %q", saved.Amount, c.saved)
+			}
+
+			reserves, err := app.ListCostReserves()
+			if err != nil {
+				t.Fatalf("ListCostReserves: %v", err)
+			}
+			got := map[string]string{}
+			for _, r := range reserves {
+				got[r.Kind] = r.Amount
+			}
+			if got["management"] != c.saved || got["contingency"] != c.legacy {
+				t.Errorf("reserves = %v, want management %q and contingency %q", got, c.saved, c.legacy)
+			}
+		})
+	}
+}
+
 func countCostControlRows(t *testing.T, d *db.Database) (entries, reserves, baselines, auditEvents int) {
 	t.Helper()
 	if err := d.Conn.QueryRow(`SELECT COUNT(*) FROM cost_entries`).Scan(&entries); err != nil {

@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"gopmgr/internal/money"
 )
 
 // projectCurrencies are the reporting currencies a new project can use
@@ -153,6 +155,79 @@ func TestField_LabelIn(t *testing.T) {
 		if got := c.field.LabelIn(c.currency); got != c.want {
 			t.Errorf("LabelIn(%q) = %q, want %q", c.currency, got, c.want)
 		}
+	}
+}
+
+// formatMoneyIn prints document amounts the way money.DecimalFor prints
+// them on screen, with thousands separators: whole yen without decimals, a
+// fraction of a yen with both digits, other currencies with two decimals.
+func TestFormatMoneyIn(t *testing.T) {
+	cases := []struct {
+		v        float64
+		currency string
+		want     string
+	}{
+		{1284500, "JPY", "1,284,500"},
+		{1284500, "jpy", "1,284,500"},
+		{1234.5, "JPY", "1,234.50"},
+		{-1500, "JPY", "-1,500"},
+		{0, "JPY", "0"},
+		{-0.001, "JPY", "0"},
+		{1284500, "EUR", "1,284,500.00"},
+		{1234.5, "USD", "1,234.50"},
+		{-0.001, "GBP", "0.00"},
+		{999, "", "999.00"},
+	}
+	for _, c := range cases {
+		got := formatMoneyIn(c.v, c.currency)
+		if got != c.want {
+			t.Errorf("formatMoneyIn(%v, %q) = %q, want %q", c.v, c.currency, got, c.want)
+		}
+		// Documents and screens agree on the digits.
+		if c.currency == "" {
+			continue
+		}
+		screen := money.FromMajorFloat(c.v).DecimalFor(c.currency)
+		if strings.ReplaceAll(got, ",", "") != screen {
+			t.Errorf("formatMoneyIn(%v, %q) = %q, but screens show %q", c.v, c.currency, got, screen)
+		}
+	}
+}
+
+// A combined report prints a plan's table through the generic renderer;
+// its amount column takes the report's currency, header and cells.
+func TestBuildCombinedReport_TableAmountsUseTheReportCurrency(t *testing.T) {
+	for _, c := range []struct{ currency, want string }{
+		{"CHF", "1,284,500.00"},
+		{"JPY", "1,284,500"},
+	} {
+		t.Run(c.currency, func(t *testing.T) {
+			pdf, err := BuildCombinedReport(ReportSpec{
+				ReportTitle: "Quarterly report",
+				ProjectName: "Atlas",
+				Currency:    c.currency,
+				Sections:    []ReportSection{{DocumentID: "doc-1", Title: "Procurement"}},
+			}, []ResolvedSection{{
+				Section: ReportSection{DocumentID: "doc-1", Title: "Procurement"},
+				Kind:    KindProcurementPlan,
+				Content: `{"items":[{"item":"Servers","budget":1284500}]}`,
+				Version: 1,
+				Status:  "approved",
+			}})
+			if err != nil {
+				t.Fatalf("BuildCombinedReport: %v", err)
+			}
+			text := streamText(t, pdf)
+			if !strings.Contains(text, "Budget \\("+c.currency+"\\)") {
+				t.Errorf("the table header lacks Budget (%s)", c.currency)
+			}
+			if !strings.Contains(text, c.want) {
+				t.Errorf("the table lacks %s", c.want)
+			}
+			if c.currency == "JPY" && strings.Contains(text, "1,284,500.00") {
+				t.Errorf("a yen table cell printed decimals")
+			}
+		})
 	}
 }
 

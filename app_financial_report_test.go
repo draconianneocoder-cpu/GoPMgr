@@ -59,6 +59,53 @@ func TestFinancialReportSnapshotSeparatesLegacyBudgetFromCostControl(t *testing.
 	}
 }
 
+// The financial report shows a yen project's amounts as whole yen, from the
+// same stored hundredths as every other currency (ADR-009).
+func TestFinancialReportSnapshotShowsYenAsWholeNumbers(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatal(err)
+	}
+	mustOpenProject(t, app, "Yen Financial Report")
+	project, err := app.GetProjectMeta()
+	if err != nil {
+		t.Fatal(err)
+	}
+	project.CurrencyCode = "JPY"
+	project.Budget = "5000000"
+	if _, err := app.UpdateProjectMeta(project); err != nil {
+		t.Fatalf("switch the empty project to yen: %v", err)
+	}
+	types, err := app.ListCostTypes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.SaveCostEntry(CostEntryWire{CostTypeID: types[0].ID, Kind: "planned", CostDate: "2026-10-23", Description: "Venue", Amount: "1500000"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.SaveCostReserve(CostReserveWire{Kind: "contingency", Amount: "300000", Description: "Known risk"}); err != nil {
+		t.Fatal(err)
+	}
+
+	report, err := buildFinancialReportSnapshot(app.requireDB(), time.Date(2026, 10, 23, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.CurrencyCode != "JPY" || report.Legacy.Budget != "5000000" {
+		t.Errorf("report currency %q, legacy budget %q; want JPY and 5000000", report.CurrencyCode, report.Legacy.Budget)
+	}
+	cc := report.CostControl
+	if cc.Planned != "1500000" || cc.Contingency != "300000" || cc.CostBaseline != "1800000" || cc.Actual != "0" {
+		t.Errorf("cost control = %+v, want whole yen", cc)
+	}
+	if len(cc.Entries) != 1 || cc.Entries[0].Amount != "1500000" {
+		t.Errorf("entries = %+v", cc.Entries)
+	}
+	if len(cc.Reserves) != 1 || cc.Reserves[0].Amount != "300000" {
+		t.Errorf("reserves = %+v", cc.Reserves)
+	}
+}
+
 func TestFinancialReportSnapshotCarriesProcurementDetailAndQuantityAggregates(t *testing.T) {
 	app := newEncryptionProjectTestApp(t)
 	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
