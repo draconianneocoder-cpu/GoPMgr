@@ -3,7 +3,11 @@
 
 import { mount } from 'svelte';
 import App from './App.svelte';
+import { applyLanguage } from './lib/i18n/i18n.svelte';
 import './app.css';
+
+// Set the interface language and <html lang> before the first frame.
+applyLanguage();
 
 const target = document.getElementById('app');
 if (!target) {

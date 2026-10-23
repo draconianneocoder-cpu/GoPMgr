@@ -6,6 +6,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import Logo from '../Logo.svelte';
+  import { t } from '../../i18n/i18n.svelte';
 
   // After a recovery reset, sign in as the account just reset: the name is
   // filled in once and the cursor waits in the password field.
@@ -56,8 +57,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // wrong. The disabled message is only sent after the password
       // matched, so it reveals nothing to someone who does not know it.
       error = String(err?.message ?? err).includes('account is disabled')
-        ? 'This account is disabled. Ask your administrator to enable it.'
-        : 'Invalid username or password.';
+        ? t('login.error.disabled')
+        : t('login.error.invalid');
     } finally {
       busy = false;
     }
@@ -71,21 +72,21 @@ SPDX-License-Identifier: GPL-3.0-or-later
   >
     <div class="space-y-2 text-center">
       <Logo class="h-32 w-auto mx-auto" />
-      <p class="text-xs text-slate-500">Local-first project controls</p>
+      <p class="text-xs text-slate-500">{t('login.tagline')}</p>
     </div>
 
     {#if setupChecked && setup && !setup.has_accounts}
       <div class="bg-slate-800/60 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-300">
-        No accounts yet. The first account you create becomes this computer's GoPMgr administrator.
+        {t('login.noAccounts')}
       </div>
     {:else if setupChecked && setup && !setup.has_admin}
       <div class="bg-amber-950/40 border border-amber-700/50 rounded-lg p-2.5 text-xs text-amber-300">
-        No administrator is configured. Sign in, then use Become administrator in App Settings.
+        {t('login.noAdmin')}
       </div>
     {/if}
 
     <div>
-      <label for="lg-username" class="block text-xs font-semibold text-slate-500 uppercase">Username</label>
+      <label for="lg-username" class="block text-xs font-semibold text-slate-500 uppercase">{t('common.username')}</label>
       <input
         id="lg-username"
         type="text"
@@ -97,7 +98,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     </div>
 
     <div>
-      <label for="lg-password" class="block text-xs font-semibold text-slate-500 uppercase">Password</label>
+      <label for="lg-password" class="block text-xs font-semibold text-slate-500 uppercase">{t('common.password')}</label>
       <div class="relative mt-1">
         <input
           id="lg-password"
@@ -110,7 +111,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         <button
           type="button"
           onclick={() => (showPassword = !showPassword)}
-          aria-label={showPassword ? 'Hide password' : 'Show password'}
+          aria-label={showPassword ? t('common.password.hide') : t('common.password.show')}
           aria-pressed={showPassword}
           class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-300 rounded-r"
         >
@@ -138,7 +139,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       disabled={busy || !username || !password}
       class="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
     >
-      {busy ? 'Signing in…' : 'SIGN IN'}
+      {busy ? t('login.submitting') : t('login.submit')}
     </button>
 
     {#if setupChecked}
@@ -148,11 +149,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
           onclick={() => goto('create_account')}
           class="w-full text-xs text-cyan-400 hover:text-cyan-300 underline"
         >
-          Create a new account
+          {t('login.createAccount')}
         </button>
       {:else if setup.has_admin}
         <p class="text-center text-xs text-slate-500">
-          Contact your administrator to create an account on this machine.
+          {t('login.contactAdmin')}
         </p>
       {/if}
     {/if}
@@ -162,7 +163,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       onclick={() => goto('recovery_reset')}
       class="w-full text-xs text-slate-500 hover:text-slate-300 underline"
     >
-      Forgot password? Use a recovery code
+      {t('login.forgotPassword')}
     </button>
   </form>
 </div>
