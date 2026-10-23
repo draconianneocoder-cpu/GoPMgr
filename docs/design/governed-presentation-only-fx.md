@@ -43,7 +43,7 @@ features are not needed to eliminate a false mixed-currency total.
 | Portfolio Analytics opens each project with the session DEK, derives metrics in Go, and aggregates in in-memory DuckDB. | FX is a separate Go orchestration workflow before aggregation, never DuckDB or project storage. |
 | The existing API explicitly refuses mixed currencies. | Preserve it; FX is an explicit new workflow, not an implicit fallback. |
 | Money crosses Wails as canonical decimal strings; the money kernel uses signed int64 minor units. | Source, rate, converted values, and totals never cross Wails as JavaScript money numbers. |
-| Money is fixed at 100 minor units per major unit; new JPY use is legacy/read-only. | FX supports only USD, EUR, GBP, CAD, AUD, and CHF. JPY and generic exponent support are excluded. |
+| Money is fixed at 100 minor units per major unit for every currency; since ADR-009, JPY is a reporting currency that reads as whole yen. | FX supports only USD, EUR, GBP, CAD, AUD, and CHF. JPY and generic exponent support are excluded. |
 | The project Financial Report uses one local read transaction. | The governed path reads each project's input in one consistent snapshot. It does not claim a cross-database transaction. |
 | Project audit chains are project-local; Cost Control authority remains proposed. | FX v1 adds neither project audit events nor a competing portfolio authority model. Evidence is in sealed rate-set files and export manifests. |
 

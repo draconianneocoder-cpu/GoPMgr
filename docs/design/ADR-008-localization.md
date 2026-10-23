@@ -184,11 +184,10 @@ Translation report ──► issue template ──► fix + mark reviewed ──
   - **Today:** No handler checks it, but the current Enter handlers act on
     buttons, a password field, or Ctrl/⌘+Enter, so the risk is low.
 - **Currency.**
-  - **The limit:** Japanese and Korean users cannot report in yen or won.
-    Both have no minor unit, and Cost Control assumes two decimals. JPY is
-    read-only for legacy projects, and KRW is not offered.
-  - **Today:** They can use any of the six currencies.
-  - **Next:** Exponent-aware amounts are a separate decision.
+  - **Yen:** Japanese teams can report in yen ([ADR-009](ADR-009-yen-reporting-currency.md)),
+    which reads as whole numbers.
+  - **Won:** not offered yet. It has no minor unit either, so it can follow
+    ADR-009's pattern once the maintainer adds it.
 - **Plurals.** Japanese and Korean have one plural category, so their
   messages need only `other`.
 - **Style.** Japanese uses です・ます; Korean uses 합니다체. Each has its own
@@ -232,8 +231,8 @@ Translation report ──► issue template ──► fix + mark reviewed ──
   system font.
 
 Revisit when a requested language needs shaping or right-to-left layout:
-that needs a PDF text-shaping engine first (see ADR-007). Revisit yen and won
-when exponent-aware amounts are planned.
+that needs a PDF text-shaping engine first (see ADR-007). Revisit won
+alongside a Korean release.
 
 ## Test plan
 

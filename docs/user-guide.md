@@ -184,7 +184,7 @@ The Dashboard exposes:
   entries use exact decimal-string amounts in the project's locked reporting
   currency (USD by default for new and legacy projects). The Cost Control
   amount boundary uses a fixed two-decimal convention. Project Settings can
-  select USD, EUR, GBP, CAD, AUD, or CHF only while the project has no
+  select USD, EUR, GBP, CAD, AUD, CHF, or JPY only while the project has no
   Budget value, Cost Control entry, non-zero reserve balance, or approved Cost
   Control baseline. It cannot change while any of those values exists because
   Phase 1 has no FX conversion. Documents, their DOCX and ODT exports, and
@@ -198,13 +198,10 @@ The Dashboard exposes:
   Contingency and management reserves are separate records and do not count as
   commitments or actual costs. Phase 1 does not yet provide reserve drawdowns,
   foreign exchange, time-phased cash flow, or
-  automatic EVM integration. JPY cannot be selected for a new project or a
-  currency change. Existing JPY projects remain readable, and their historical
-  Cost Control values retain the original fixed two-decimal convention without
-  conversion. Cost Control is read-only for those legacy JPY projects so a
-  displayed value cannot be silently given new semantics. A future
-  exponent-aware JPY delivery requires an explicit storage, migration, and
-  interoperability design before GoPMgr claims that support.
+  automatic EVM integration. Yen amounts show as whole numbers, such as
+  JPY 150000. An older JPY project keeps every value exactly as recorded, so
+  an amount entered with fractions of a yen still shows them, such as
+  JPY 123.45; nothing is converted, and its Cost Control is editable again.
 
 Each Cost Control entry inherits three cost-type classifications: direct or
 indirect attribution, fixed or variable behavior, and CapEx, OpEx, or not
