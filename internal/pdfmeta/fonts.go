@@ -34,14 +34,9 @@ var fpdfType0Font = regexp.MustCompile(`(?m)^(\d+) 0 obj\n<</Type /Font\n/Subtyp
 
 // maxEmbeddedFontBytes bounds how much of an embedded font program
 // RepairFPDFFonts decompresses to read its name. GoPMgr's own fonts are a few
-// hundred kilobytes; the cap only guards against a malformed stream.
-const maxEmbeddedFontBytes = 64 << 20
-
-var (
-	identityCMapOnce sync.Once
-	identityCMap     []byte
-	identityCMapErr  error
-)
+// hundred kilobytes; the cap only guards against a malformed stream. It is a
+// variable so tests can shrink it.
+var maxEmbeddedFontBytes int64 = 64 << 20
 
 // RepairFPDFFonts fixes two defects in the UTF-8 TrueType fonts go-pdf/fpdf
 // embeds, through one incremental update:
@@ -65,10 +60,7 @@ func RepairFPDFFonts(pdfBytes []byte) ([]byte, error) {
 		return pdfBytes, nil
 	}
 
-	cmapBody, err := identityCMapObjectBody()
-	if err != nil {
-		return nil, fmt.Errorf("pdfmeta: build ToUnicode CMap: %w", err)
-	}
+	cmapBody := identityCMapObjectBody()
 
 	replacements := make(map[int][]byte)
 	usedTags := make(map[string]bool)
@@ -175,58 +167,47 @@ func isPDFNameTerminator(c byte) bool {
 // the encoding fpdf uses for its UTF-8 fonts. The map is split into one
 // bfrange per high byte, as ISO 32000-1 9.10.3 requires, and leaves out the
 // codes that are never valid PDF/A-2 mappings: U+0000, the UTF-16 surrogates,
-// U+FEFF, and the noncharacters U+FFFE and U+FFFF.
-func identityCMapObjectBody() ([]byte, error) {
-	identityCMapOnce.Do(func() {
-		var ranges []string
-		for hi := 0x00; hi <= 0xFF; hi++ {
-			if hi >= 0xD8 && hi <= 0xDF {
-				continue
-			}
-			lo, last := 0x00, 0xFF
-			switch hi {
-			case 0x00:
-				lo = 0x01
-			case 0xFE:
-				last = 0xFE
-			case 0xFF:
-				last = 0xFD
-			}
-			ranges = append(ranges, fmt.Sprintf("<%02X%02X> <%02X%02X> <%02X%02X>", hi, lo, hi, last, hi, lo))
+// U+FEFF, and the noncharacters U+FFFE and U+FFFF. It is built once.
+var identityCMapObjectBody = sync.OnceValue(func() []byte {
+	var ranges []string
+	for hi := 0x00; hi <= 0xFF; hi++ {
+		if hi >= 0xD8 && hi <= 0xDF {
+			continue
 		}
+		lo, last := 0x00, 0xFF
+		switch hi {
+		case 0x00:
+			lo = 0x01
+		case 0xFE:
+			last = 0xFE
+		case 0xFF:
+			last = 0xFD
+		}
+		ranges = append(ranges, fmt.Sprintf("<%02X%02X> <%02X%02X> <%02X%02X>", hi, lo, hi, last, hi, lo))
+	}
 
-		var cmap bytes.Buffer
-		cmap.WriteString("/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo\n<</Registry (Adobe)\n/Ordering (UCS)\n/Supplement 0\n>> def\n/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n")
-		// A CMap block may hold at most 100 entries.
-		for start := 0; start < len(ranges); start += 100 {
-			end := min(start+100, len(ranges))
-			fmt.Fprintf(&cmap, "%d beginbfrange\n%s\nendbfrange\n", end-start, strings.Join(ranges[start:end], "\n"))
-		}
-		cmap.WriteString("endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend")
+	var cmap bytes.Buffer
+	cmap.WriteString("/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo\n<</Registry (Adobe)\n/Ordering (UCS)\n/Supplement 0\n>> def\n/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n")
+	// A CMap block may hold at most 100 entries.
+	for start := 0; start < len(ranges); start += 100 {
+		end := min(start+100, len(ranges))
+		fmt.Fprintf(&cmap, "%d beginbfrange\n%s\nendbfrange\n", end-start, strings.Join(ranges[start:end], "\n"))
+	}
+	cmap.WriteString("endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend")
 
-		var compressed bytes.Buffer
-		zw, err := zlib.NewWriterLevel(&compressed, zlib.BestCompression)
-		if err != nil {
-			identityCMapErr = err
-			return
-		}
-		if _, err := zw.Write(cmap.Bytes()); err != nil {
-			identityCMapErr = err
-			return
-		}
-		if err := zw.Close(); err != nil {
-			identityCMapErr = err
-			return
-		}
+	// Compressing into a bytes.Buffer cannot fail: the buffer never
+	// returns a write error, and zlib reports only its writer's errors.
+	var compressed bytes.Buffer
+	zw := zlib.NewWriter(&compressed)
+	_, _ = zw.Write(cmap.Bytes())
+	_ = zw.Close()
 
-		var body bytes.Buffer
-		fmt.Fprintf(&body, "<</Length %d /Filter /FlateDecode>>\nstream\n", compressed.Len())
-		body.Write(compressed.Bytes())
-		body.WriteString("\nendstream")
-		identityCMap = body.Bytes()
-	})
-	return identityCMap, identityCMapErr
-}
+	var body bytes.Buffer
+	fmt.Fprintf(&body, "<</Length %d /Filter /FlateDecode>>\nstream\n", compressed.Len())
+	body.Write(compressed.Bytes())
+	body.WriteString("\nendstream")
+	return body.Bytes()
+})
 
 // readFontProgram returns the decompressed bytes of an embedded FontFile2
 // stream. fpdf compresses font programs with FlateDecode.
@@ -250,7 +231,7 @@ func readFontProgram(pdfBytes []byte, id int) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("font file %d: %w", id, err)
 	}
-	if len(program) > maxEmbeddedFontBytes {
+	if int64(len(program)) > maxEmbeddedFontBytes {
 		return nil, fmt.Errorf("font file %d is larger than %d bytes", id, maxEmbeddedFontBytes)
 	}
 	return program, nil

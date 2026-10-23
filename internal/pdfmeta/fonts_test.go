@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -288,10 +289,7 @@ func TestRepairFPDFFonts_KeepsNameWhenFontProgramIsUnreadable(t *testing.T) {
 }
 
 func TestIdentityCMapObjectBody_BlocksHoldAtMost100Ranges(t *testing.T) {
-	body, err := identityCMapObjectBody()
-	if err != nil {
-		t.Fatal(err)
-	}
+	body := identityCMapObjectBody()
 	i := bytes.Index(body, []byte("stream\n"))
 	end := bytes.LastIndex(body, []byte("\nendstream"))
 	if i < 0 || end < 0 {
@@ -453,6 +451,7 @@ func TestReadStreamObject_Errors(t *testing.T) {
 		{"no end-of-line after stream", "<< /Length 3 >>\nstreamabc\nendstream", "end-of-line"},
 		{"length past end of file", "<< /Length 999 >>\nstream\nabc\nendstream", "runs past the end"},
 		{"no length", "<< /Filter /FlateDecode >>\nstream\nabc\nendstream", "/Length not present"},
+		{"not a dictionary", "[1 2 3]", "does not start with <<"},
 	} {
 		pdf := []byte("%PDF-1.4\n5 0 obj\n" + tc.obj + "\n")
 		if _, _, err := readStreamObject(pdf, 5); err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -566,5 +565,209 @@ func TestInjectPAdESSignature_KeepsTrailerID(t *testing.T) {
 	}
 	if gotID != wantID {
 		t.Fatalf("signed trailer /ID = %s, want the signed file's %s", gotID, wantID)
+	}
+}
+
+// synthFont describes one font laid out exactly as fpdf writes it, with
+// each link in the lookup chain breakable on its own.
+type synthFont struct {
+	type0ID         string // object number text; fpdf writes small integers
+	descriptorRef   bool   // CIDFont names its /FontDescriptor
+	descriptor      bool   // the descriptor object exists
+	fontFileRef     bool   // descriptor names its /FontFile2
+	fontFile        bool   // the font file object exists
+	filter          string // font file /Filter entry, "" for none
+	program         []byte // font file stream data
+	endsWithNewline bool
+	omitStartxref   bool
+}
+
+func defaultSynthFont() synthFont {
+	return synthFont{
+		type0ID: "1", descriptorRef: true, descriptor: true, fontFileRef: true, fontFile: true,
+		program:         fontWithNameTable(nameRecord{3, 1, 6, utf16be("Synthetic-Regular")}),
+		endsWithNewline: true,
+	}
+}
+
+func (f synthFont) build() []byte {
+	var b bytes.Buffer
+	b.WriteString("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+	offsets := map[int]int{}
+	obj := func(id int, body string) {
+		offsets[id] = b.Len()
+		b.WriteString(strconv.Itoa(id) + " 0 obj\n" + body + "\nendobj\n")
+	}
+	b.WriteString(f.type0ID + " 0 obj\n<</Type /Font\n/Subtype /Type0\n/BaseFont /utf8synth\n/Encoding /Identity-H\n/DescendantFonts [2 0 R]\n/ToUnicode 3 0 R>>\nendobj\n")
+	cid := "<</Type /Font\n/Subtype /CIDFontType2\n/BaseFont /utf8synth\n"
+	if f.descriptorRef {
+		cid += "/FontDescriptor 4 0 R"
+	}
+	obj(2, cid+">>")
+	obj(3, "<</Length "+strconv.Itoa(len(fpdfToUnicodeCMap))+">>\nstream\n"+fpdfToUnicodeCMap+"\nendstream")
+	if f.descriptor {
+		desc := "<</Type /FontDescriptor /FontName /utf8synth\n /Ascent 1000"
+		if f.fontFileRef {
+			desc += "/FontFile2 5 0 R"
+		}
+		obj(4, desc+">>")
+	}
+	if f.fontFile {
+		dict := "<</Length " + strconv.Itoa(len(f.program))
+		if f.filter != "" {
+			dict += "\n/Filter " + f.filter
+		}
+		obj(5, dict+">>\nstream\n"+string(f.program)+"\nendstream")
+	}
+	obj(6, "<< /Type /Catalog >>")
+	if f.omitStartxref {
+		return b.Bytes()
+	}
+	xref := b.Len()
+	b.WriteString("xref\n0 1\n0000000000 65535 f \n")
+	for id := 2; id <= 6; id++ {
+		if off, ok := offsets[id]; ok {
+			fmt.Fprintf(&b, "%d 1\n%010d 00000 n \n", id, off)
+		}
+	}
+	fmt.Fprintf(&b, "trailer\n<< /Size 7 /Root 6 0 R >>\nstartxref\n%d\n%%%%EOF", xref)
+	if f.endsWithNewline {
+		b.WriteByte('\n')
+	}
+	return b.Bytes()
+}
+
+func baseFontOf(t *testing.T, pdf []byte, id int) string {
+	t.Helper()
+	body, err := findObjectBody(pdf, id, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pdfNameAfter(t, body, "/BaseFont /")
+}
+
+// TestRepairFPDFFonts_RenamesOnlyWhenTheWholeChainResolves breaks each link
+// from the CIDFont to the embedded program in turn. The CMap is always
+// repaired; the font is renamed only when its PostScript name is readable.
+func TestRepairFPDFFonts_RenamesOnlyWhenTheWholeChainResolves(t *testing.T) {
+	compressed := func(data []byte) []byte {
+		var b bytes.Buffer
+		zw := zlib.NewWriter(&b)
+		_, _ = zw.Write(data)
+		_ = zw.Close()
+		return b.Bytes()
+	}
+	for _, tc := range []struct {
+		name    string
+		modify  func(*synthFont)
+		renamed bool
+	}{
+		{"uncompressed program", func(*synthFont) {}, true},
+		{"FlateDecode program", func(f *synthFont) {
+			f.filter, f.program = "/FlateDecode", compressed(f.program)
+		}, true},
+		{"no /FontDescriptor", func(f *synthFont) { f.descriptorRef = false }, false},
+		{"missing descriptor object", func(f *synthFont) { f.descriptor = false }, false},
+		{"no /FontFile2", func(f *synthFont) { f.fontFileRef = false }, false},
+		{"missing font file object", func(f *synthFont) { f.fontFile = false }, false},
+		{"unsupported filter", func(f *synthFont) { f.filter = "/LZWDecode" }, false},
+		{"corrupt FlateDecode data", func(f *synthFont) { f.filter = "/FlateDecode" }, false},
+		{"program without a PostScript name", func(f *synthFont) { f.program = fontWithNameTable() }, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := defaultSynthFont()
+			tc.modify(&f)
+			out, err := RepairFPDFFonts(f.build())
+			if err != nil {
+				t.Fatalf("RepairFPDFFonts: %v", err)
+			}
+			if dict, _, err := readStreamObject(out, 3); err != nil || !bytes.Contains(dict, []byte("/FlateDecode")) {
+				t.Fatalf("CMap not repaired (err %v)", err)
+			}
+			name := baseFontOf(t, out, 1)
+			if tc.renamed && !regexp.MustCompile(`^[A-Z]{6}\+Synthetic-Regular$`).MatchString(name) {
+				t.Fatalf("BaseFont = %q, want <TAG>+Synthetic-Regular", name)
+			}
+			if !tc.renamed && name != "utf8synth" {
+				t.Fatalf("BaseFont = %q, want fpdf's name kept", name)
+			}
+		})
+	}
+}
+
+func TestRepairFPDFFonts_RejectsOversizedFontPrograms(t *testing.T) {
+	prev := maxEmbeddedFontBytes
+	maxEmbeddedFontBytes = 16
+	t.Cleanup(func() { maxEmbeddedFontBytes = prev })
+	f := defaultSynthFont()
+	var b bytes.Buffer
+	zw := zlib.NewWriter(&b)
+	_, _ = zw.Write(f.program)
+	_ = zw.Close()
+	f.filter, f.program = "/FlateDecode", b.Bytes()
+	if _, err := readFontProgram(f.build(), 5); err == nil || !strings.Contains(err.Error(), "larger than 16 bytes") {
+		t.Fatalf("readFontProgram err = %v, want the size cap", err)
+	}
+}
+
+func TestRepairFPDFFonts_SkipsObjectNumbersThatOverflow(t *testing.T) {
+	f := defaultSynthFont()
+	f.type0ID = strings.Repeat("9", 30)
+	in := f.build()
+	out, err := RepairFPDFFonts(in)
+	if err != nil {
+		t.Fatalf("RepairFPDFFonts: %v", err)
+	}
+	if !bytes.Equal(in, out) {
+		t.Fatal("a font whose object number overflows int was repaired")
+	}
+}
+
+func TestRepairFPDFFonts_AddsNewlineBeforeAppendedRevision(t *testing.T) {
+	f := defaultSynthFont()
+	f.endsWithNewline = false
+	out, err := RepairFPDFFonts(f.build())
+	if err != nil {
+		t.Fatalf("RepairFPDFFonts: %v", err)
+	}
+	if !bytes.Contains(out, []byte("%%EOF\n3 0 obj")) && !bytes.Contains(out, []byte("%%EOF\n1 0 obj")) {
+		t.Fatalf("appended revision does not start on a new line: %q", out[bytes.LastIndex(out, []byte("%%EOF")):][:24])
+	}
+}
+
+func TestAppendObjectRevisions_PropagatesTrailerErrors(t *testing.T) {
+	f := defaultSynthFont()
+	f.omitStartxref = true
+	if _, err := RepairFPDFFonts(f.build()); err == nil || !strings.Contains(err.Error(), "locate startxref") {
+		t.Fatalf("missing startxref: err = %v", err)
+	}
+	if _, err := appendObjectRevisions([]byte("%PDF-1.4\nxref\n0 1\n0000000000 65535 f \nstartxref\n9\n%%EOF\n"), map[int][]byte{1: []byte("<<>>")}); err == nil || !strings.Contains(err.Error(), "parse trailer") {
+		t.Fatalf("unparseable trailer: err = %v", err)
+	}
+}
+
+func TestMakePDFA_PropagatesFontRepairError(t *testing.T) {
+	f := defaultSynthFont()
+	f.omitStartxref = true
+	if _, err := MakePDFA(f.build(), XMPSpec{}, []byte("icc")); err == nil || !strings.Contains(err.Error(), "pdfmeta: font repair:") {
+		t.Fatalf("MakePDFA err = %v, want the font-repair wrap", err)
+	}
+}
+
+func TestTrueTypePostScriptName_TruncatedTables(t *testing.T) {
+	noName := fontWithNameTable(nameRecord{3, 1, 6, utf16be("X")})
+	copy(noName[12:16], "cmap") // the only table is no longer "name"
+	short := fontWithNameTable()
+	binary.BigEndian.PutUint32(short[12+12:], 4) // name table shorter than its header
+	truncated := fontWithNameTable(nameRecord{3, 1, 6, utf16be("X")})
+	binary.BigEndian.PutUint16(truncated[12+16+2:], 5) // count promises more records than exist
+	for name, program := range map[string][]byte{"no name table": noName, "short name table": short, "truncated records": truncated} {
+		if got, ok := trueTypePostScriptName(program); name == "truncated records" {
+			if !ok || got != "X" {
+				t.Errorf("%s: got %q, %v; want the one complete record", name, got, ok)
+			}
+		} else if ok {
+			t.Errorf("%s: read %q", name, got)
+		}
 	}
 }
