@@ -87,6 +87,12 @@ SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
+path = "frontend/src/lib/i18n/hardcoded-text-baseline.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
 path = "frontend/tsconfig.json"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"

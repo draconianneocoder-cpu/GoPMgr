@@ -74,8 +74,14 @@ The maintainer decided:
    language picker, and App Settings has the same control. The default is the
    first operating-system language GoPMgr ships, else English. The choice sets
    `<html lang>`, every interface string, and date and number formats.
-2. **Formats follow the interface language.** Amounts always show the ISO
-   code, never only a symbol, because `$` is USD, CAD, and AUD.
+2. **Formats follow the interface language.**
+   - With a chosen language, formats keep the system's region when the
+     system speaks that language, so English in Britain formats as en-GB.
+   - In automatic mode, formats follow the system locale, as they always
+     have. So a German system shows German dates even while the text is
+     English.
+   - Amounts always show the ISO code, never only a symbol, because `$` is
+     USD, CAD, and AUD.
 3. **Document language is a per-project setting**, defaulting to the
    creator's interface language. Documents are for the project's stakeholders,
    who may not share the user's language. Renderers take the document language
@@ -301,6 +307,10 @@ recovery-code step. A picker fits in its header without changing that.
    - Locale-aware formats in the app and documents.
    - The catalog code and its checks.
    - English extraction, screen by screen, behind the hard-coded-text ratchet.
+
+   Slice 1 is done: the catalog code and its checks, `t()`, the format
+   helpers, `<html lang>`, the hard-coded-text ratchet, and the sign-in and
+   account-creation screens.
 5. [ ] Phase 2: ship the wave 1 languages.
    - Interface translations for wave 1, plus the picker.
    - IBM Plex Sans JP and KR WOFF2, with the CJK text size and line-breaking
