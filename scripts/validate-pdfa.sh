@@ -6,9 +6,10 @@
 #
 # This gate ensures that the PDFs we claim are PDF/A-2u really are.
 # It generates representative samples from the live renderers, including a
-# PAdES-signed document and one with Greek, Cyrillic, Vietnamese, symbols,
-# and emoji, and validates each with veraPDF (2u profile). Exit 1 on any
-# non-compliant PDF.
+# PAdES-signed document, one with Greek, Cyrillic, Vietnamese, symbols, and
+# emoji, and one each in Japanese, Korean, and Simplified Chinese set in IBM
+# Plex Sans JP, KR, and SC, and validates each with veraPDF (2u profile).
+# Exit 1 on any non-compliant PDF.
 #
 # Hard gate. By default (GOPMGR_PDFA_STRICT=1) a missing validator, a missing
 # ICC profile, or a missing sample set is a FAILURE, not a silent skip: the
@@ -78,6 +79,9 @@ SAMPLES=(
     schedule.pdf
     document-charter.pdf
     document-multilingual.pdf
+    document-japanese.pdf
+    document-korean.pdf
+    document-chinese.pdf
     combined-report.pdf
     monte-carlo-risk-report.pdf
     signed-document.pdf
@@ -287,6 +291,37 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("Generated document-multilingual.pdf")
+
+	// One document per bundled CJK family, set in that family.
+	mgr := fonts.NewManager("")
+	for _, doc := range []struct{ family, file, name, text string }{
+		{"IBM Plex Sans JP", "document-japanese.pdf", "プロジェクト憲章", "このプロジェクト憲章は、範囲、予算、日程を定めます。"},
+		{"IBM Plex Sans KR", "document-korean.pdf", "프로젝트 헌장", "이 프로젝트 헌장은 범위, 예산, 일정을 정합니다."},
+		{"IBM Plex Sans SC", "document-chinese.pdf", "项目章程", "本项目章程确定范围、预算和进度。"},
+	} {
+		documents.UseFont(mgr, doc.family)
+		cjkJSON, err := json.Marshal(map[string]interface{}{
+			"project_name":      doc.name,
+			"purpose":           doc.text,
+			"objectives":        []string{doc.text},
+			"high_level_budget": 1284500.0,
+		})
+		if err != nil {
+			fmt.Println("ERROR encoding", doc.family, "content:", err)
+			os.Exit(1)
+		}
+		cjkPDF, err := documents.Render(documents.KindProjectCharterWord, string(cjkJSON), doc.name)
+		if err != nil {
+			fmt.Println("ERROR generating", doc.file+":", err)
+			os.Exit(1)
+		}
+		if err := os.WriteFile(".tmp/gopmgr-pdfa-test/"+doc.file, cjkPDF, 0o644); err != nil {
+			fmt.Println("ERROR writing", doc.file+":", err)
+			os.Exit(1)
+		}
+		fmt.Println("Generated", doc.file)
+	}
+	documents.UseFont(mgr, fonts.DefaultFamily)
 
 	scopeContent := map[string]interface{}{
 		"project_name":        "PDF/A Validation Project",

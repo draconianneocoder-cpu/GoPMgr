@@ -78,7 +78,7 @@ native-isolation-launch-tests: ## Verify the macOS isolated native-launch harnes
 icc: ## Download the sRGB ICC profile for the PDF/A OutputIntent.
 	@bash scripts/fetch-icc.sh
 
-check-pdfa: ## Validate generated PDFs, including a signed one, for PDF/A-2u conformance using veraPDF (hard gate; GOPMGR_PDFA_STRICT=0 to skip locally).
+check-pdfa: ## Validate generated PDFs, including signed and CJK ones, for PDF/A-2u conformance using veraPDF (hard gate; GOPMGR_PDFA_STRICT=0 to skip locally).
 	@bash scripts/validate-pdfa.sh
 
 check-pades: ## Generate and locally verify an embedded PAdES signed PDF sample.
