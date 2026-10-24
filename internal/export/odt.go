@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"sort"
 	"time"
 
 	"gopmgr/internal/documents"
@@ -193,53 +194,59 @@ func renderODTBody(_ documents.Kind, def documents.Definition, content map[strin
 		if !present {
 			continue
 		}
-		switch f.Type {
-		case documents.FieldStringArr:
-			arr := toStringSliceLocal(v)
-			if len(arr) == 0 {
-				continue
-			}
-			writeODTPara(&buf, "Heading_2", f.Label)
-			for _, item := range arr {
-				writeODTPara(&buf, "Bullet", "• "+item)
-			}
-		case documents.FieldObjectArr:
-			objs := toObjectSliceLocal(v)
-			if len(objs) == 0 {
-				continue
-			}
-			writeODTPara(&buf, "Heading_2", f.Label)
-			writeODTTable(&buf, f, objs, currency)
-		case documents.FieldText:
-			body := toStringLocal(v)
-			if body == "" {
-				continue
-			}
-			writeODTPara(&buf, "Heading_2", f.Label)
-			writeODTPara(&buf, "Standard", body)
-		case documents.FieldNumber:
-			if n, ok := v.(float64); ok && n != 0 {
-				writeODTPara(&buf, "Standard", f.LabelIn(currency)+": "+documents.FormatNumberField(f, n, currency))
-			}
-		case documents.FieldBool:
-			if b, ok := v.(bool); ok {
-				writeODTPara(&buf, "Standard", f.Label+": "+fmt.Sprintf("%t", b))
-			}
-		case documents.FieldChartRef:
-			if id := toStringLocal(v); id != "" {
-				writeODTPara(&buf, "Standard", f.Label+": (chart "+id+")")
-			}
-		default:
-			if s := toStringLocal(v); s != "" {
-				writeODTPara(&buf, "Standard", f.Label+": "+s)
-			}
-		}
+		writeODTField(&buf, f, v, currency)
 	}
 
 	buf.WriteString(`  </office:text></office:body>
 </office:document-content>
 `)
 	return buf.String(), nil
+}
+
+// writeODTField writes one field's value in the form its type calls for.
+// An empty or mistyped value writes nothing.
+func writeODTField(buf *bytes.Buffer, f documents.Field, v interface{}, currency string) {
+	switch f.Type {
+	case documents.FieldStringArr:
+		arr := toStringSliceLocal(v)
+		if len(arr) == 0 {
+			return
+		}
+		writeODTPara(buf, "Heading_2", f.Label)
+		for _, item := range arr {
+			writeODTPara(buf, "Bullet", "• "+item)
+		}
+	case documents.FieldObjectArr:
+		objs := toObjectSliceLocal(v)
+		if len(objs) == 0 {
+			return
+		}
+		writeODTPara(buf, "Heading_2", f.Label)
+		writeODTTable(buf, f, objs, currency)
+	case documents.FieldText:
+		body := toStringLocal(v)
+		if body == "" {
+			return
+		}
+		writeODTPara(buf, "Heading_2", f.Label)
+		writeODTPara(buf, "Standard", body)
+	case documents.FieldNumber:
+		if n, ok := v.(float64); ok && n != 0 {
+			writeODTPara(buf, "Standard", f.LabelIn(currency)+": "+documents.FormatNumberField(f, n, currency))
+		}
+	case documents.FieldBool:
+		if b, ok := v.(bool); ok {
+			writeODTPara(buf, "Standard", f.Label+": "+fmt.Sprintf("%t", b))
+		}
+	case documents.FieldChartRef:
+		if id := toStringLocal(v); id != "" {
+			writeODTPara(buf, "Standard", f.Label+": (chart "+id+")")
+		}
+	default:
+		if s := toStringLocal(v); s != "" {
+			writeODTPara(buf, "Standard", f.Label+": "+s)
+		}
+	}
 }
 
 func writeODTPara(buf *bytes.Buffer, style, text string) {
@@ -252,10 +259,17 @@ func writeODTPara(buf *bytes.Buffer, style, text string) {
 func writeODTTable(buf *bytes.Buffer, f documents.Field, objs []map[string]interface{}, currency string) {
 	if len(f.ObjectShape) == 0 {
 		// Fall back to bullet rows.
+		// Keys in sorted order, as the DOCX export writes them, so the
+		// same object reads the same in every export.
 		for _, obj := range objs {
+			keys := make([]string, 0, len(obj))
+			for k := range obj {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
 			line := ""
-			for k, v := range obj {
-				line += fmt.Sprintf("%s: %v; ", k, v)
+			for _, k := range keys {
+				line += fmt.Sprintf("%s: %v; ", k, obj[k])
 			}
 			writeODTPara(buf, "Bullet", "• "+line)
 		}

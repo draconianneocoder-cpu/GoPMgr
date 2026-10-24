@@ -6,6 +6,7 @@ package export
 import (
 	"bytes"
 	"encoding/xml"
+	"math"
 	"sort"
 	"time"
 
@@ -129,8 +130,9 @@ func ToMSPDI(title string, tasks map[string]*kernel.Task) ([]byte, error) {
 			task.Predecessors = append(task.Predecessors, mspdiLink{
 				PredecessorUID: l.Pred,
 				Type:           mspdiLinkType(l.Type),
-				// Days -> tenths of a minute at 8 h/day.
-				LinkLag: int(l.Lag*8*60*10 + 0.5),
+				// Days -> tenths of a minute at 8 h/day, rounded to the
+				// nearest, so a lead (negative lag) rounds as a lag does.
+				LinkLag: int(math.Round(l.Lag * 8 * 60 * 10)),
 			})
 		}
 		project.Tasks = append(project.Tasks, task)
