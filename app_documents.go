@@ -866,7 +866,7 @@ func (a *App) exportScheduleReportAs(format export.ExportFormat) (string, error)
 		scheduleProjectTasks(proj, kernelTasks)
 	}
 
-	payload := export.ReportPayload{Tasks: kernelTasks}
+	payload := export.ReportPayload{Tasks: kernelTasks, Currency: proj.CurrencyCode}
 
 	// Earned-value summary at today's status date — only when the
 	// project is anchored (offsets map to dates); renderers further

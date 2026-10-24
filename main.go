@@ -629,7 +629,7 @@ func runHeadlessExport(cfg *cli.Config, d *db.Database) error {
 	if len(tasks) > 0 {
 		scheduleProjectTasks(proj, tasks)
 	}
-	payload := export.ReportPayload{Tasks: tasks}
+	payload := export.ReportPayload{Tasks: tasks, Currency: proj.CurrencyCode}
 	if start, ok := parseProjectDate(proj.StartDate); ok && len(tasks) > 0 {
 		cal := calendar.For(proj.CountryCode)
 		if day, dok := kernel.DayOffset(start, time.Now().UTC(), cal.IsWorkday); dok {

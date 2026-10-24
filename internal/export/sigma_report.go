@@ -6,6 +6,7 @@ package export
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"time"
 
 	"gopmgr/internal/documents"
@@ -71,8 +72,8 @@ func generateReportCover(pdf *pdfdoc.PDF, project domain.Project) {
 	pdf.Ln(20)
 
 	pdf.SetFont("Helvetica", "", 16)
-	pdf.Cell(0, 10, project.Title)
-	pdf.Ln(12)
+	pdf.MultiCell(0, 10, project.Title, "", "L", false)
+	pdf.Ln(2)
 
 	pdf.SetFont("Helvetica", "", 12)
 	pdf.SetTextColor(100, 100, 100)
@@ -131,8 +132,8 @@ func generateCharterSection(pdf *pdfdoc.PDF, charter *domain.Charter) {
 
 	if charter.Sponsor != "" {
 		pdf.SetFont("Helvetica", "B", 11)
-		pdf.Cell(0, 8, fmt.Sprintf("Sponsor: %s", charter.Sponsor))
-		pdf.Ln(10)
+		pdf.MultiCell(0, 8, fmt.Sprintf("Sponsor: %s", charter.Sponsor), "", "L", false)
+		pdf.Ln(2)
 	}
 
 	if len(charter.ScopeIn) > 0 {
@@ -141,9 +142,8 @@ func generateCharterSection(pdf *pdfdoc.PDF, charter *domain.Charter) {
 		pdf.Ln(7)
 		pdf.SetFont("Helvetica", "", 10)
 		for _, item := range charter.ScopeIn {
-			pdf.Cell(5, 5, "- ")
-			pdf.Cell(0, 5, item)
-			pdf.Ln(6)
+			bulletItem(pdf, "- ", 5, 5, item)
+			pdf.Ln(1)
 		}
 	}
 }
@@ -162,8 +162,7 @@ func generateSIPOCSection(pdf *pdfdoc.PDF, sipoc *domain.SIPOCData) {
 
 	if sipoc.ProcessName != "" {
 		pdf.SetFont("Helvetica", "B", 11)
-		pdf.Cell(0, 8, fmt.Sprintf("Process: %s", sipoc.ProcessName))
-		pdf.Ln(8)
+		pdf.MultiCell(0, 8, fmt.Sprintf("Process: %s", sipoc.ProcessName), "", "L", false)
 	}
 
 	categories := []string{"supplier", "input", "process", "output", "customer"}
@@ -189,13 +188,12 @@ func generateSIPOCSection(pdf *pdfdoc.PDF, sipoc *domain.SIPOCData) {
 
 		pdf.SetFont("Helvetica", "B", 11)
 		pdf.SetFillColor(240, 240, 240)
-		pdf.CellFormat(0, 8, labels[cat], "1", 1, "L", true, 0, "")
+		pdf.MultiCell(0, 8, labels[cat], "1", "L", true)
 
 		pdf.SetFont("Helvetica", "", 10)
 		for _, item := range items {
-			pdf.Cell(5, 6, "- ")
-			pdf.Cell(0, 6, item.Description)
-			pdf.Ln(7)
+			bulletItem(pdf, "- ", 5, 6, item.Description)
+			pdf.Ln(1)
 		}
 		pdf.Ln(2)
 	}
@@ -240,21 +238,20 @@ func generateFishboneSection(pdf *pdfdoc.PDF, fishbone *domain.FishboneData) {
 
 		pdf.SetFont("Helvetica", "B", 11)
 		pdf.SetFillColor(240, 240, 240)
-		pdf.CellFormat(0, 8, branch.Category, "1", 1, "L", true, 0, "")
+		pdf.MultiCell(0, 8, branch.Category, "1", "L", true)
 
 		pdf.SetFont("Helvetica", "", 10)
 		for _, cause := range branch.Causes {
-			pdf.Cell(5, 6, "- ")
-			pdf.Cell(0, 6, cause.Description)
-			pdf.Ln(7)
+			bulletItem(pdf, "- ", 5, 6, cause.Description)
+			pdf.Ln(1)
 
 			if len(cause.FiveWhys) > 0 {
 				pdf.SetFont("Helvetica", "I", 9)
 				pdf.SetTextColor(100, 100, 100)
 				for i, why := range cause.FiveWhys {
-					pdf.Cell(10, 5, fmt.Sprintf("  Why %d:", i+1))
-					pdf.Cell(0, 5, why)
-					pdf.Ln(6)
+					label := fmt.Sprintf("  Why %d:", i+1)
+					bulletItem(pdf, label, max(10, pdf.GetStringWidth(label)+2*pdf.GetCellMargin()), 5, why)
+					pdf.Ln(1)
 				}
 				pdf.SetTextColor(0, 0, 0)
 				pdf.SetFont("Helvetica", "", 10)
@@ -276,23 +273,16 @@ func generateSolutionSection(pdf *pdfdoc.PDF, solutions []domain.Solution, curre
 	pdf.Ln(12)
 	pdf.SetTextColor(0, 0, 0)
 
-	headers := sigmaSolutionHeaders(currency)
-	widths := []float64{45, 20, 20, 20, 30, 25, 20}
-
-	pdf.SetFont("Helvetica", "B", 9)
-	pdf.SetFillColor(220, 220, 220)
-	for i, h := range headers {
-		pdf.CellFormat(widths[i], 7, h, "1", 0, "C", true, 0, "")
+	table := sigmaTable{
+		headers:  sigmaSolutionHeaders(currency),
+		widths:   []float64{45, 20, 20, 20, 30, 25, 20},
+		aligns:   []string{"L", "C", "C", "C", "C", "C", "C"},
+		fontSize: 9,
+		lineH:    6,
 	}
-	pdf.Ln(-1)
-
-	pdf.SetFont("Helvetica", "", 9)
+	table.drawHeader(pdf)
 	for _, sol := range solutions {
-		row := sigmaSolutionRow(sol, currency)
-		for i, val := range row {
-			pdf.CellFormat(widths[i], 6, val, "1", 0, "C", false, 0, "")
-		}
-		pdf.Ln(-1)
+		table.drawRow(pdf, sigmaSolutionRow(sol, currency))
 	}
 }
 
@@ -332,42 +322,140 @@ func generateControlPlanSection(pdf *pdfdoc.PDF, controlPlan []domain.ControlPla
 	pdf.Ln(12)
 	pdf.SetTextColor(0, 0, 0)
 
-	headers := []string{"Process Step", "Metric", "Spec", "Frequency", "Owner", "Response Plan"}
-	widths := []float64{35, 30, 25, 25, 30, 45}
-
-	pdf.SetFont("Helvetica", "B", 9)
-	pdf.SetFillColor(220, 220, 220)
-	for i, h := range headers {
-		pdf.CellFormat(widths[i], 7, h, "1", 0, "C", true, 0, "")
+	table := sigmaTable{
+		headers:  []string{"Process Step", "Metric", "Spec", "Frequency", "Owner", "Response Plan"},
+		widths:   []float64{35, 30, 25, 25, 30, 45},
+		aligns:   []string{"L", "L", "L", "L", "L", "L"},
+		fontSize: 8,
+		lineH:    5,
 	}
-	pdf.Ln(-1)
-
-	pdf.SetFont("Helvetica", "", 8)
+	table.drawHeader(pdf)
 	for _, item := range controlPlan {
-		row := []string{
+		table.drawRow(pdf, []string{
 			item.ProcessStep,
 			item.Metric,
 			item.Specification,
 			item.Frequency,
 			item.Owner,
 			item.ResponsePlan,
+		})
+	}
+}
+
+// sigmaTable is one of the report's ruled tables. Each cell wraps inside
+// its own column and a row is as tall as its tallest cell. A row that
+// would cross the bottom margin starts a new page under a repeated header.
+type sigmaTable struct {
+	headers  []string
+	widths   []float64 // mm, one per column
+	aligns   []string  // "L" or "C", one per column
+	fontSize float64   // body text, in points
+	lineH    float64   // mm per wrapped line
+}
+
+// sigmaTableHeaderH is the header row's height in mm.
+const sigmaTableHeaderH = 7
+
+func (t sigmaTable) drawHeader(pdf *pdfdoc.PDF) {
+	pdf.SetFont("Helvetica", "B", 9)
+	pdf.SetFillColor(220, 220, 220)
+	for i, h := range t.headers {
+		pdf.CellFormat(t.widths[i], sigmaTableHeaderH, h, "1", 0, "C", true, 0, "")
+	}
+	pdf.Ln(-1)
+}
+
+func (t sigmaTable) drawRow(pdf *pdfdoc.PDF, cells []string) {
+	pdf.SetFont("Helvetica", "", t.fontSize)
+	_, pageH := pdf.GetPageSize()
+	_, bottom := pdf.GetAutoPageBreak()
+	left, top, _, _ := pdf.GetMargins()
+	// A row never runs taller than a page; a longer cell ends in an ellipsis.
+	maxLines := max(1, int((pageH-bottom-top-sigmaTableHeaderH)/t.lineH))
+
+	lines := make([][]string, len(cells))
+	n := 1
+	for i, c := range cells {
+		lines[i] = wrapCellText(pdf, c, t.widths[i])
+		if len(lines[i]) > maxLines {
+			kept := lines[i][:maxLines]
+			kept[maxLines-1] = withEllipsis(pdf, kept[maxLines-1], t.widths[i])
+			lines[i] = kept
 		}
-		yStart := pdf.GetY()
-		maxLines := 1
-		for _, val := range row {
-			lines := pdf.SplitLines([]byte(val), widths[0]-4)
-			if len(lines) > maxLines {
-				maxLines = len(lines)
+		n = max(n, len(lines[i]))
+	}
+	h := float64(n) * t.lineH
+
+	if pdf.GetY()+h > pageH-bottom {
+		pdf.AddPage()
+		t.drawHeader(pdf)
+		pdf.SetFont("Helvetica", "", t.fontSize)
+	}
+	x, y := left, pdf.GetY()
+	for i := range cells {
+		pdf.Rect(x, y, t.widths[i], h, "D")
+		for j, line := range lines[i] {
+			pdf.SetXY(x, y+float64(j)*t.lineH)
+			pdf.CellFormat(t.widths[i], t.lineH, line, "", 0, t.aligns[i], false, 0, "")
+		}
+		x += t.widths[i]
+	}
+	pdf.SetXY(left, y+h)
+}
+
+// wrapCellText splits text into lines that fit a cell of width mm in the
+// current font, breaking at spaces and at line breaks. A word wider than
+// the cell breaks between characters. It always returns at least one line.
+func wrapCellText(pdf *pdfdoc.PDF, text string, width float64) []string {
+	avail := width - 2*pdf.GetCellMargin()
+	var lines []string
+	for _, para := range strings.Split(pdfdoc.SafeText(strings.TrimSpace(text)), "\n") {
+		line := ""
+		for _, word := range strings.Fields(para) {
+			candidate := word
+			if line != "" {
+				candidate = line + " " + word
+			}
+			if pdf.GetStringWidth(candidate) <= avail {
+				line = candidate
+				continue
+			}
+			if line != "" {
+				lines = append(lines, line)
+			}
+			line = ""
+			for _, r := range word {
+				if line != "" && pdf.GetStringWidth(line+string(r)) > avail {
+					lines = append(lines, line)
+					line = ""
+				}
+				line += string(r)
 			}
 		}
-		rowHeight := float64(maxLines) * 5
-
-		for i, val := range row {
-			pdf.MultiCell(widths[i], 5, val, "1", "L", false)
-			pdf.SetXY(pdf.GetX()+widths[i], yStart)
-		}
-		pdf.SetY(yStart + rowHeight)
+		lines = append(lines, line)
 	}
+	return lines
+}
+
+// withEllipsis shortens line until it and a trailing ellipsis fit width mm.
+func withEllipsis(pdf *pdfdoc.PDF, line string, width float64) string {
+	avail := width - 2*pdf.GetCellMargin()
+	runes := []rune(line)
+	for len(runes) > 0 && pdf.GetStringWidth(string(runes)+"…") > avail {
+		runes = runes[:len(runes)-1]
+	}
+	return strings.TrimRight(string(runes), " ") + "…"
+}
+
+// bulletItem prints marker, then text wrapped under itself rather than
+// under the marker, so a long item stays inside the margins. MultiCell
+// starts each wrapped line at the x it began from, on a new page too, and
+// ends back at the left margin.
+func bulletItem(pdf *pdfdoc.PDF, marker string, markerW, lineH float64, text string) {
+	left, _, _, _ := pdf.GetMargins()
+	pdf.SetX(left)
+	pdf.Cell(markerW, lineH, marker)
+	pdf.MultiCell(0, lineH, text, "", "L", false)
 }
 
 func sanitizeFilename(name string) string {
