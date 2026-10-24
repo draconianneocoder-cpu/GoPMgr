@@ -159,11 +159,14 @@ func main() {
 	locations := []struct{ name, path string }{
 		{"temp", os.TempDir()},
 		{"home", home},
-		{"default-data-root (nearest existing: " + root + ")", nearestExisting(root)},
+		{"default-data-root", nearestExisting(root)},
 	}
 	for _, loc := range locations {
 		r := probe(loc.name, loc.path)
 		r.SourceHead = *head
+		if loc.name == "default-data-root" && loc.path != root {
+			r.Notes = append(r.Notes, "default data root "+root+" does not exist yet; probed its nearest existing parent")
+		}
 		line, _ := json.Marshal(r)
 		_, _ = f.Write(append(line, '\n'))
 		b, _ := json.Marshal(r.Checks)
