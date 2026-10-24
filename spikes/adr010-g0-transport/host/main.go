@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
@@ -157,10 +158,28 @@ func main() {
 		fmt.Fprintln(os.Stderr, "g0probe: -java and -jar are required")
 		os.Exit(2)
 	}
+	// The worker runs in a private scratch directory, so relative paths
+	// would resolve from there; make both absolute and check they exist.
+	javaPath, err := exec.LookPath(*java)
+	if err == nil {
+		javaPath, err = filepath.Abs(javaPath)
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "g0probe: java:", err)
+		os.Exit(2)
+	}
+	jarPath, err := filepath.Abs(*jar)
+	if err == nil {
+		_, err = os.Stat(jarPath)
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "g0probe: jar:", err)
+		os.Exit(2)
+	}
 	runInfo.head = *head
 	runInfo.os = osVersion()
 	runInfo.versions = moduleVersions()
-	cfg := config{java: *java, jar: *jar, sourceHead: *head}
+	cfg := config{java: javaPath, jar: jarPath, sourceHead: *head}
 
 	f, err := os.OpenFile(*out, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
