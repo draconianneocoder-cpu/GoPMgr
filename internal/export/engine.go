@@ -17,6 +17,7 @@ import (
 
 	"gopmgr/internal/crypto"
 	"gopmgr/internal/debug"
+	"gopmgr/internal/documents"
 	"gopmgr/internal/kernel"
 )
 
@@ -51,39 +52,28 @@ type ExportOptions struct {
 // optionally, earned-value metrics computed at export time. EVM is
 // nil when the project lacks a start date or the caller skipped it;
 // renderers also suppress the section when BAC is zero (no cost data
-// means the numbers would be noise). Future Packs can grow this
-// struct with additional fields.
+// means the numbers would be noise). Currency is the project's reporting
+// currency, in which the earned-value amounts print. Future Packs can grow
+// this struct with additional fields.
 type ReportPayload struct {
-	Tasks map[string]*kernel.Task
-	EVM   *kernel.EVMetrics
+	Tasks    map[string]*kernel.Task
+	EVM      *kernel.EVMetrics
+	Currency string
 }
 
-// evmSummaryLines renders the earned-value block shared by the DOCX,
-// ODT, and PDF schedule reports: one "label: value" line per metric.
-// Returns nil when the section should be suppressed.
-func evmSummaryLines(m *kernel.EVMetrics) []string {
-	if m == nil || m.BAC <= 0 {
-		return nil
+// evmSummaryLines renders the earned-value block shared by the DOCX, ODT,
+// HTML, and PDF schedule reports, with amounts in the payload's reporting
+// currency, as combined reports print them. It returns nil when the section
+// is suppressed, and an error for a malformed currency, as documents do.
+func evmSummaryLines(payload ReportPayload) ([]string, error) {
+	lines := documents.EVMSummaryLines(payload.EVM, payload.Currency)
+	if lines == nil {
+		return nil, nil
 	}
-	idx := func(v float64) string {
-		if v <= 0 {
-			return "n/a"
-		}
-		return fmt.Sprintf("%.2f", v)
+	if !documents.IsCurrencyCode(payload.Currency) {
+		return nil, fmt.Errorf("export: invalid reporting currency %q for the earned-value summary", payload.Currency)
 	}
-	return []string{
-		fmt.Sprintf("Budget at completion (BAC): %.2f", m.BAC),
-		fmt.Sprintf("Planned value (PV): %.2f", m.PV),
-		fmt.Sprintf("Earned value (EV): %.2f", m.EV),
-		fmt.Sprintf("Actual cost (AC): %.2f", m.AC),
-		fmt.Sprintf("Schedule variance (SV): %.2f", m.SV),
-		fmt.Sprintf("Cost variance (CV): %.2f", m.CV),
-		"Schedule performance index (SPI): " + idx(m.SPI),
-		"Cost performance index (CPI): " + idx(m.CPI),
-		fmt.Sprintf("Estimate at completion (EAC): %.2f", m.EAC),
-		fmt.Sprintf("Estimate to complete (ETC): %.2f", m.ETC),
-		fmt.Sprintf("Variance at completion (VAC): %.2f", m.VAC),
-	}
+	return lines, nil
 }
 
 // GenerateArchivalReport renders payload into the chosen format and

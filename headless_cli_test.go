@@ -120,6 +120,39 @@ func TestRunHeadlessExportPropagatesEVMOverflow(t *testing.T) {
 	}
 }
 
+// TestRunHeadlessExportPrintsEarnedValueInTheProjectCurrency covers the
+// --export path's own call site: earned value reads in the project's
+// reporting currency, with thousands separators.
+func TestRunHeadlessExportPrintsEarnedValueInTheProjectCurrency(t *testing.T) {
+	d := seedHeadlessProject(t)
+	proj, err := d.GetProject()
+	if err != nil {
+		t.Fatalf("GetProject: %v", err)
+	}
+	proj.CurrencyCode, proj.StartDate, proj.CountryCode = "EUR", "2026-06-01", "US"
+	if _, err := d.UpsertProject(proj); err != nil {
+		t.Fatalf("UpsertProject: %v", err)
+	}
+	if _, err := d.SaveChart(db.Chart{ProjectID: proj.ID, Kind: "cpm", Title: "Schedule", Data: `{"nodes":[
+		{"id":"A","label":"Design","duration":4,"budgeted_cost":642250,"actual_cost":700000,"percent_complete":100},
+		{"id":"B","label":"Build","duration":4,"budgeted_cost":642250}
+	],"edges":[{"from":"A","to":"B"}]}`}); err != nil {
+		t.Fatalf("SaveChart: %v", err)
+	}
+
+	out := filepath.Join(t.TempDir(), "schedule.html")
+	if err := runHeadlessExport(&cli.Config{ExportPath: out, ExportFormat: "html"}, d); err != nil {
+		t.Fatalf("runHeadlessExport: %v", err)
+	}
+	raw, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatalf("read the export: %v", err)
+	}
+	if want := "Budget at completion (BAC): 1,284,500.00"; !strings.Contains(string(raw), want) {
+		t.Errorf("headless schedule report is missing %q", want)
+	}
+}
+
 func TestRunHeadlessExportEncrypts(t *testing.T) {
 	d := seedHeadlessProject(t)
 	out := filepath.Join(t.TempDir(), "schedule.csv.enc")

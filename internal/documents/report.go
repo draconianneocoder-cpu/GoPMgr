@@ -250,10 +250,11 @@ func BuildCombinedReport(spec ReportSpec, sections []ResolvedSection) ([]byte, e
 	}), nil
 }
 
-// evmSummaryLines renders the earned-value block shared by document
-// report paths. Returns nil when cost data is absent, matching the
-// schedule-report suppression rule.
-func evmSummaryLines(m *kernel.EVMetrics, currency string) []string {
+// EVMSummaryLines renders the earned-value block of combined reports and
+// of the schedule reports in internal/export: one "label: value" line per
+// metric, amounts in currency (whole yen for JPY). It returns nil when
+// there is no cost data, so the section is left out.
+func EVMSummaryLines(m *kernel.EVMetrics, currency string) []string {
 	if m == nil || m.BAC <= 0 {
 		return nil
 	}
@@ -279,7 +280,7 @@ func evmSummaryLines(m *kernel.EVMetrics, currency string) []string {
 }
 
 func renderEVMSection(pdf *pdfdoc.PDF, m *kernel.EVMetrics, currency string) {
-	lines := evmSummaryLines(m, currency)
+	lines := EVMSummaryLines(m, currency)
 	if len(lines) == 0 {
 		return
 	}

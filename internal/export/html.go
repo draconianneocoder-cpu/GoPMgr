@@ -89,10 +89,14 @@ h2 { font-size: 1.05rem; font-weight: 600; margin: 1.75rem 0 .5rem; }
 	}
 	b.WriteString(`</tbody></table>` + "\n")
 
-	if lines := evmSummaryLines(payload.EVM); len(lines) > 0 {
+	evmLines, err := evmSummaryLines(payload)
+	if err != nil {
+		return nil, err
+	}
+	if len(evmLines) > 0 {
 		b.WriteString(`<h2>Earned Value (status date: today)</h2>` + "\n")
 		b.WriteString(`<div class="evm">` + "\n")
-		for _, l := range lines {
+		for _, l := range evmLines {
 			b.WriteString(`<div>` + esc(l) + `</div>` + "\n")
 		}
 		b.WriteString(`</div>` + "\n")

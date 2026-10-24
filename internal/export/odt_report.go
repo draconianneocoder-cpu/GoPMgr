@@ -120,10 +120,14 @@ func renderODTReportBody(payload ReportPayload, title string) (string, error) {
 	writeODTTableRows(&buf, tableData)
 
 	// Earned-value summary (suppressed without cost data).
-	if lines := evmSummaryLines(payload.EVM); lines != nil {
+	evmLines, err := evmSummaryLines(payload)
+	if err != nil {
+		return "", err
+	}
+	if evmLines != nil {
 		writeODTPara(&buf, "Standard", "")
 		writeODTPara(&buf, "Heading_2", "Earned Value (status date: today)")
-		for _, line := range lines {
+		for _, line := range evmLines {
 			writeODTPara(&buf, "Standard", line)
 		}
 	}

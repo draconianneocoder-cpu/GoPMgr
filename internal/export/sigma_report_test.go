@@ -88,19 +88,24 @@ func sigmaPDFText(t *testing.T, pdf []byte) string {
 			continue
 		}
 		for _, tj := range sigmaPDFTj.FindAllSubmatch(content, -1) {
-			raw := strings.NewReplacer(`\(`, "(", `\)`, ")", `\\`, `\`, `\r`, "\r").Replace(string(tj[1]))
-			if len(raw)%2 != 0 {
-				shown = append(shown, raw)
-				continue
-			}
-			units := make([]uint16, len(raw)/2)
-			for i := range units {
-				units[i] = uint16(raw[2*i])<<8 | uint16(raw[2*i+1])
-			}
-			shown = append(shown, string(utf16.Decode(units)))
+			shown = append(shown, decodePDFString(tj[1]))
 		}
 	}
 	return strings.Join(shown, " ")
+}
+
+// decodePDFString decodes a "(...)" string operand: UTF-16BE for the
+// embedded IBM Plex fonts, or the bytes as written otherwise.
+func decodePDFString(operand []byte) string {
+	raw := strings.NewReplacer(`\(`, "(", `\)`, ")", `\\`, `\`, `\r`, "\r").Replace(string(operand))
+	if len(raw)%2 != 0 {
+		return raw
+	}
+	units := make([]uint16, len(raw)/2)
+	for i := range units {
+		units[i] = uint16(raw[2*i])<<8 | uint16(raw[2*i+1])
+	}
+	return string(utf16.Decode(units))
 }
 
 func TestGenerateSigmaReportPDF_PrintsCostsInTheReportingCurrency(t *testing.T) {

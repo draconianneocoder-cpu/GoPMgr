@@ -189,7 +189,9 @@ The Dashboard exposes:
   Control baseline. It cannot change while any of those values exists because
   Phase 1 has no FX conversion. Documents, their DOCX and ODT exports,
   combined reports, and Six Sigma solution costs (the Solution Matrix and the
-  Six Sigma report) label amounts in this currency. The dashboard shows
+  Six Sigma report) label amounts in this currency. Schedule reports print
+  earned value in it too, with thousands separators and whole yen for JPY.
+  The dashboard shows
   its separate legacy Budget rollup for context, then the Cost Control base
   plan, contingency reserve, cost baseline, management reserve, authorised
   funding, commitments, and actuals. The legacy Budget rollup does not feed

@@ -50,6 +50,8 @@ hundredths. The branch also did not compile.
    - The financial report.
    - PDF, DOCX, and ODT documents, and combined reports.
    - The Six Sigma report's solution costs (since 2026-10-24).
+   - Earned value in schedule reports: PDF, DOCX, ODT, and HTML (since
+     2026-10-24).
 3. **Input is unchanged.** Amounts parse as before, a whole number or up to
    two decimals, so whole yen parses exactly, and an older entry with a
    fraction can still be edited and saved.
@@ -78,8 +80,10 @@ hundredths. The branch also did not compile.
   until the maintainer decides to add it.
 - The FX design (`governed-presentation-only-fx.md`) still excludes JPY.
   Converting to or from yen is FX work, not part of this decision.
-- Schedule reports (`internal/export`) print earned value with two decimals;
-  their payload carries no currency yet.
+- Schedule reports (`internal/export`) carry the project's reporting
+  currency and print earned value with the lines combined reports use
+  (`documents.EVMSummaryLines`). A malformed currency fails the export when
+  that section prints; formats without it (CSV, XLSX, MSPDI) need none.
 
 ## Verification
 
