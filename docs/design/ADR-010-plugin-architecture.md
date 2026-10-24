@@ -5,14 +5,14 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010: Local-first interoperable worker architecture, scalable project interchange, and future extension boundaries
 
-**Status:** PROPOSED, v2.2 — design only; **not implemented, tested, or accepted**.  
-**Date:** 2026-10-24.  
-**Decider:** GoPMgr maintainer.  
-**Repository evidence:** GoPMgr `main` at `28a758d154795bb2a20f3cbeb63a12e9130a88ea`; agent's v2.1 document branch `claude/adr-010-plugin-architecture` at `49ac2bf756e3369ac3e90755f3656bfd13c9659c`. Re-check against HEAD before making changes.  
-**Supersedes for new decisions:** proposed ADR-010 v2.1, **if and only if the maintainer accepts this revision**. No earlier accepted ADR is implicitly overridden.  
-**Implementation companion:** [ADR-010 implementation plan](adr-010-implementation-plan.md).  
-**Assurance companion:** [ADR-010 test and acceptance strategy](../testing/adr-010-test-strategy.md).  
-**Agent controls:** [Architecture preservation and execution prompt](../agent/ADR-010-architecture-preservation-agent-prompt.md).  
+**Status:** PROPOSED, v2.2 — design only; **not implemented, tested, or accepted**.\
+**Date:** 2026-10-24.\
+**Decider:** GoPMgr maintainer.\
+**Repository evidence:** GoPMgr `main` at `28a758d154795bb2a20f3cbeb63a12e9130a88ea`; agent's v2.1 document branch `claude/adr-010-plugin-architecture` at `49ac2bf756e3369ac3e90755f3656bfd13c9659c`. Re-check against HEAD before making changes.\
+**Supersedes for new decisions:** proposed ADR-010 v2.1, **if and only if the maintainer accepts this revision**. No earlier accepted ADR is implicitly overridden.\
+**Implementation companion:** [ADR-010 implementation plan](adr-010-implementation-plan.md).\
+**Assurance companion:** [ADR-010 test and acceptance strategy](../testing/adr-010-test-strategy.md).\
+**Agent controls:** [Architecture preservation and execution prompt](../agent/ADR-010-architecture-preservation-agent-prompt.md).\
 **Detailed review:** [v2.1 → v2.2 change audit](../review/ADR-010-v2.2-review-and-traceability.md).
 
 > **Decision discipline.** “Proposed”, “specified”, “demonstrated”, “implemented”, “tested”, and “released” are distinct states. No document statement or test case should be interpreted as proof that code exists or passed a gate. The maintainer must approve any change to the binding objectives, quality thresholds, security posture, user control, or scope.
@@ -123,7 +123,7 @@ Never send whole 50,000-task schedules through Wails or render every row as DOM/
 
 ### D-15 — Usability is a release-quality requirement
 
-G2/G3 provide a five-stage accessible import assistant (Choose → Inspect → Map → Review → Commit), format/version and capability explanations, material-loss summary, explicit essential-field selection, memory/disk estimates labeled as estimates, import receipt/history, job center (progress counters, retry, cancellation boundary, recovery), Plugin Center (bundled module status + read/write asymmetry), simple Quick Chart Import explanation and recoverable errors. G4/S5 provide large-schedule search, sticky columns, breadcrumb, dependency jumps, saved views, minimap, source-vs-calculated date toggle, virtualized Gantt and keyboard/IME behavior, all under ADR-008 localization and release accessibility checks. S6 provides side-by-side compare, filtered selections, visible off-screen counts, conflict explanation and scoped apply preview. Do not make inaccessible virtualization a performance shortcut.
+G2/G3 provide a five-stage accessible import assistant (Choose → Inspect → Map → Review → Import), format/version and capability explanations, material-loss summary, explicit essential-field selection, memory/disk estimates labeled as estimates, import receipt/history, job center (progress counters, retry, cancellation boundary, recovery), Plugin Center (bundled module status + read/write asymmetry), simple Quick Chart Import explanation and recoverable errors. G4/S5 provide large-schedule search, sticky columns, breadcrumb, dependency jumps, saved views, minimap, source-vs-calculated date toggle, virtualized Gantt and keyboard/IME behavior, all under ADR-008 localization and release accessibility checks. S6 provides side-by-side compare, filtered selections, visible off-screen counts, conflict explanation and scoped apply preview. Do not make inaccessible virtualization a performance shortcut.
 
 ### D-16 — Future AI/MCP and community extensions stay governed, not eliminated
 
@@ -198,4 +198,13 @@ None of these open decisions authorizes reducing the stated requirement. A faile
 - Java AF_UNIX JEP 380: https://openjdk.org/jeps/380
 - SQLite WAL/foreign keys/PRAGMA documentation: https://www.sqlite.org/wal.html ; https://www.sqlite.org/foreignkeys.html ; https://www.sqlite.org/pragma.html
 - GoPMgr source and existing ADRs: https://github.com/draconianneocoder-cpu/GoPMgr
+
+## 8. Document history
+
+| Date | Version | Change |
+|---|---|---|
+| 2026-10-23 | v1, v2.0, addendum | External planning bundle; kept unchanged in [`adr-010/`](adr-010/README.md) |
+| 2026-10-24 | v2.1 | Agent consolidation (`49ac2bf`); kept unchanged in [`adr-010/v2.1/`](adr-010/v2.1/ADR-010-plugin-architecture.md) |
+| 2026-10-24 | v2.2 | Maintainer bundle: gRPC over local IPC, internal registry, project-owned evidence, QI-01…QI-15, D-01…D-19 |
+| 2026-10-24 | v2.2 integrated | Verified against `28a758d`; corrections listed in the [integration review](../review/ADR-010-v2.2-integration-review.md). No requirement weakened; status stays PROPOSED |
 

@@ -1,0 +1,111 @@
+existing_id,existing_description,defined_in,v22_ids,gate,disposition,reason,owner_approval
+PLG-001,All plugins disabled,docs/design/adr-010/v2.0-plan.md,,G1,retained,Matches the G1 go/no-go rule 'no regressions worker-disabled' (plan §8.3). No v2.2 ID covers this; the ID stays active at its gate.,pending
+PLG-002,Tamper manifest/binary after install,docs/design/adr-010/v2.0-plan.md,TPT-017,G1,retained,Same assertion.,pending
+PLG-003,Unknown protocol major / wrong plugin ID,docs/design/adr-010/v2.0-plan.md,TPT-010; TPT-014; TPT-018,G1,retained,Negotiation and rejection now run over gRPC.,pending
+PLG-004,"Corrupt input, expansion bomb, malformed chunks",docs/design/adr-010/v2.0-plan.md,FID-003,G2,retained,Same assertion.,pending
+PLG-005,Java process killed mid-import,docs/design/adr-010/v2.0-plan.md,TPT-013; TPT-014; PUB-001,G1,retained,Crash cleanup in G1; no partial project in G3.,pending
+PLG-006,Cancel while worker parsing,docs/design/adr-010/v2.0-plan.md,TPT-012; TPT-013; PUB-014,G1,retained,Same assertion.,pending
+PLG-007,Sign out/change account after preview,docs/design/adr-010/v2.0-plan.md,PUB-004; PUB-005,G3,strengthened,v2.2 also requires fresh approval after a new sign-in (D-10).,pending
+PLG-008,Switch project after preview,docs/design/adr-010/v2.0-plan.md,PUB-005,G3,retained,Same assertion.,pending
+PLG-009,Source file replaced/modified during ingest,docs/design/adr-010/v2.0-plan.md,,G2,retained,Plan §6.2 step 1 hashes the stream as it is read. No v2.2 ID covers this; the ID stays active at its gate.,pending
+PLG-010,Duplicate import command/replayed receipt,docs/design/adr-010/v2.0-plan.md,PUB-007; PUB-013,G3,retained,Same assertion.,pending
+PLG-011,Import file with 11 baselines + custom fields + timephased data,docs/design/adr-010/v2.0-plan.md,FID-014; FID-018,S4,retained,Same assertion.,pending
+PLG-012,"Negative cost, unusual currencies, legacy JPY fraction",docs/design/adr-010/v2.0-plan.md,FID-013,S4,retained,Same assertion.,pending
+PLG-013,P6 calendar inheritance and holiday exceptions,docs/design/adr-010/v2.0-plan.md,FID-011,S4,retained,FID-011 covers working-time rules; this ID keeps the P6 calendar-inheritance case.,pending
+PLG-014,Unresolved external predecessor,docs/design/adr-010/v2.0-plan.md,FID-015,S4,retained,Same assertion.,pending
+PLG-015,Import exceeding WBS 8 MiB or 10k nodes,docs/design/adr-010/v2.0-plan.md,DB-006,S3,retained,Same assertion.,pending
+PLG-016,Disk full inside new-project import,docs/design/adr-010/v2.0-plan.md,PUB-010,G3,retained,Same assertion.,pending
+PLG-017,Export validation fails / destination exists,docs/design/adr-010/v2.0-plan.md,,G4,retained,Export publication safety. No v2.2 ID covers this; the ID stays active at its gate.,pending
+PLG-018,Request .mpp export,docs/design/adr-010/v2.0-plan.md,FID-020; TPT-016,G4,retained,Same assertion.,pending
+PLG-019,Malicious worker tries unauthorized DB/API access,docs/design/adr-010/v2.0-plan.md,TPT-011; TPT-019,G1,retained,No protocol message reaches the database (QI-02).,pending
+PLG-020,Plugin writes sensitive notes to stderr,docs/design/adr-010/v2.0-plan.md,TPT-021,G1,retained,TPT-021 added in integration for the log rule in plan §3.4.,pending
+PLG-021,"Two projects/accounts, overlapping requests",docs/design/adr-010/v2.0-plan.md,PUB-005,G3,retained,Same assertion.,pending
+PLG-022,MCP tool access after sign-out (G5),docs/design/adr-010/v2.0-plan.md,AIQ-001,G5,retained,Same assertion.,pending
+PLG-023,LLM tries to approve its own edit (G6),docs/design/adr-010/v2.0-plan.md,AIQ-002,G6,retained,Same assertion.,pending
+PLG-024,Upgrade from prior release with MPXJ absent,docs/design/adr-010/v2.0-plan.md,,G1,retained,Upgrade with the worker absent. No v2.2 ID covers this; the ID stays active at its gate.,pending
+PLG-025,Plugin package removed while app running,docs/design/adr-010/v2.0-plan.md,TPT-014,G1,retained,Same assertion.,pending
+PLG-026,Crash after commit but before UI receipt,docs/design/adr-010/v2.0-plan.md,PUB-013,G3,retained,Same assertion.,pending
+PLG-027,Plugin returns success before final frame/digest,docs/design/adr-010/v2.0-plan.md,TPT-014,G1,retained,Missing completion and digest mismatch.,pending
+PLG-028,Untrusted source names try path traversal/formula injection,docs/design/adr-010/v2.0-plan.md,,G2,retained,Path-traversal and formula-injection sanitizing. No v2.2 ID covers this; the ID stays active at its gate.,pending
+PLG-029,Reimport same source into existing WBS (future),docs/design/adr-010/v2.0-plan.md,FID-009; DB-020,S6,retained,Same assertion.,pending
+PLG-030,Untrusted community plugin (G7 only) accesses adjacent files/network,docs/design/adr-010/v2.0-plan.md,AIQ-004,G7,retained,Same assertion.,pending
+SCALE-001,"ImportTabular with 10,001 rows",docs/design/adr-010/v2.0-plan.md,DB-013,S7A,retained,Same assertion.,pending
+SCALE-002,">50,000 source activities",docs/design/adr-010/v2.0-plan.md,DB-005,S3,retained,Same assertion.,pending
+SCALE-003,8 MiB / 10k WBS boundary,docs/design/adr-010/v2.0-plan.md,DB-006,S3,retained,Same assertion.,pending
+SCALE-004,Full MSPDI summary/null rows,docs/design/adr-010/v2.0-plan.md,FID-004,S4,retained,Same assertion.,pending
+SCALE-005,12h/6h day and custom project calendars,docs/design/adr-010/v2.0-plan.md,FID-011,S4,retained,Same assertion.,pending
+SCALE-006,ProjectLibre files,docs/design/adr-010/v2.0-plan.md,FID-002; FID-017,G2,retained,Same assertion.,pending
+SCALE-007,Native MPP without Microsoft Project installed,docs/design/adr-010/v2.0-plan.md,FID-002,G2,retained,Needs an installed offline package (test layer L3).,pending
+SCALE-008,Multi-format field parity,docs/design/adr-010/v2.0-plan.md,FID-017; FID-018,S4,retained,Same assertion.,pending
+SCALE-009,Unknown source field,docs/design/adr-010/v2.0-plan.md,FID-007,S4,strengthened,v2.2 separates fields the reader knows it can't read from fields nobody can enumerate.,pending
+SCALE-010,Two-way compare,docs/design/adr-010/v2.0-plan.md,UXQ-009,S6,retained,Same assertion.,pending
+SCALE-011,Three-way conflicting edit,docs/design/adr-010/v2.0-plan.md,UXQ-009; DB-020,S6,retained,Same assertion.,pending
+SCALE-012,Selected merge,docs/design/adr-010/v2.0-plan.md,UXQ-010; DB-020,S6,retained,Same assertion.,pending
+SCALE-013,Cross-project/copy/session authorization,docs/design/adr-010/v2.0-plan.md,PUB-005; DB-015,S3,retained,Same assertion.,pending
+SCALE-014,Gantt at 50k tasks,docs/design/adr-010/v2.0-plan.md,UXQ-008; DB-010,S5,retained,Same assertion.,pending
+SCALE-015,Edit one activity in 50k task plan,docs/design/adr-010/v2.0-plan.md,DB-012,S5,retained,Same assertion.,pending
+SCALE-016,Persist 11 baselines + irregular timephased,docs/design/adr-010/v2.0-plan.md,FID-014,S4,retained,Same assertion.,pending
+SCALE-017,Exact monetary semantics,docs/design/adr-010/v2.0-plan.md,FID-013,S4,retained,Same assertion.,pending
+SCALE-018,Resource names collide,docs/design/adr-010/v2.0-plan.md,FID-015,S4,retained,Same assertion.,pending
+SCALE-019,Audit old/new coexistence,docs/design/adr-010/v2.0-plan.md,DB-016,S7B,retained,Same assertion.,pending
+SCALE-020,Audit checkpoint/evidence deleted or tampered,docs/design/adr-010/v2.0-plan.md,DB-018,S7B,retained,Same assertion.,pending
+SCALE-021,Large import crash/mid-WAL failure,docs/design/adr-010/v2.0-plan.md,PUB-010,G3,retained,Fault boundary B06.,pending
+SCALE-022,Exact import and comparison idempotency,docs/design/adr-010/v2.0-plan.md,PUB-007; PUB-013,G3,retained,Same assertion.,pending
+SCALE-023,"Source task nesting, duplicate IDs, external links",docs/design/adr-010/v2.0-plan.md,FID-004; FID-015,S4,retained,Same assertion.,pending
+SCALE-024,UI filter/sort/pagination stability,docs/design/adr-010/v2.0-plan.md,DB-008,S5,retained,Same assertion.,pending
+SCALE-025,Query authorization,docs/design/adr-010/v2.0-plan.md,DB-015,S7A,retained,Same assertion.,pending
+SCALE-026,Deterministic analytics,docs/design/adr-010/v2.0-plan.md,DB-014,S7A,retained,Same assertion.,pending
+SCALE-027,Dataset bounds,docs/design/adr-010/v2.0-plan.md,DB-013,S7A,retained,"DB-013 covers truncation honesty; this ID keeps the memory, size, row and query budgets.",pending
+SCALE-028,Upgrade/downgrade,docs/design/adr-010/v2.0-plan.md,DB-001; DB-002; DB-003,S2,changed,"Only gate-enabled builds can refuse a newer file; pre-gate builds get a documented warning (D-12, A-14).",pending
+SCALE-029,Offline installer,docs/design/adr-010/v2.0-plan.md,TPT-001; TPT-002,G4,retained,Installed offline packages on each OS (test layer L3).,pending
+SCALE-030,Full user feature acceptance,docs/design/adr-010/v2.0-plan.md,UXQ-001; UXQ-010,S6,changed,End-to-end compare acceptance moves from G4 to S6 (test strategy §10).,pending
+REVIEW-001,Reimport same logical project after one source byte changes,docs/design/adr-010/v2-critical-review-addendum.md,FID-008,S4,retained,Same assertion.,pending
+REVIEW-002,Clone project with identical UID space,docs/design/adr-010/v2-critical-review-addendum.md,FID-009,S4,retained,Same assertion.,pending
+REVIEW-003,Process crash immediately after staged DB commit/before project publication,docs/design/adr-010/v2-critical-review-addendum.md,PUB-007,G3,retained,Fault boundaries B07-B11.,pending
+REVIEW-004,Crash after rename but before catalog registration,docs/design/adr-010/v2-critical-review-addendum.md,PUB-007,G3,changed,GoPMgr has no catalog step; the case checks a crash after the rename and before the journal update (boundary B12).,pending
+REVIEW-005,T2 MPP Java import with seekable scratch,docs/design/adr-010/v2-critical-review-addendum.md,TPT-013,G2,retained,Heap and memory measurement in plan §4 step 8.,pending
+REVIEW-006,Timephased actual/cost data in JSON/MSPDI export,docs/design/adr-010/v2-critical-review-addendum.md,FID-020,G4,retained,Same assertion.,pending
+REVIEW-007,MCP connect during logout/project switch,docs/design/adr-010/v2-critical-review-addendum.md,AIQ-001,G5,retained,Same assertion.,pending
+REVIEW-008,Cursor across interleaved writes,docs/design/adr-010/v2-critical-review-addendum.md,DB-008,S5,retained,Same assertion.,pending
+REVIEW-009,Slow paged reader and active imports,docs/design/adr-010/v2-critical-review-addendum.md,DB-009,S5,retained,Same assertion.,pending
+REVIEW-010,Real 50k schedule per-field edit,docs/design/adr-010/v2-critical-review-addendum.md,DB-011; DB-012,S5,retained,Same assertion.,pending
+REVIEW-011,Old executable opens new schema project,docs/design/adr-010/v2-critical-review-addendum.md,DB-001; DB-002,S2,changed,"Only gate-enabled builds can refuse; pre-gate builds get a documented warning (D-12, A-14).",pending
+REVIEW-012,Existing audit and new typed numeric delta,docs/design/adr-010/v2-critical-review-addendum.md,DB-016; DB-017,S7B,retained,Same assertion.,pending
+REVIEW-013,2-way/3-way comparison with filter and offscreen selections,docs/design/adr-010/v2-critical-review-addendum.md,UXQ-009,S6,retained,Same assertion.,pending
+REVIEW-014,Screen reader and keyboard on 50k tree,docs/design/adr-010/v2-critical-review-addendum.md,UXQ-007,S5,retained,Same assertion.,pending
+REVIEW-015,Project source fields not understood by MPXJ,docs/design/adr-010/v2-critical-review-addendum.md,FID-007,S4,retained,Same assertion.,pending
+REVIEW-016,Resource exhaustion mid-import/restore,docs/design/adr-010/v2-critical-review-addendum.md,PUB-010,G3,retained,Same assertion.,pending
+REVIEW-017,"Plugin unavailable, disabled or incompatibly upgraded",docs/design/adr-010/v2-critical-review-addendum.md,TPT-005; UXQ-002,G1,retained,Same assertion.,pending
+REVIEW-018,User cancels at every job transition,docs/design/adr-010/v2-critical-review-addendum.md,PUB-014,G3,retained,Same assertion.,pending
+REVIEW-019,Portfolio query across encrypted user projects,docs/design/adr-010/v2-critical-review-addendum.md,DB-015,S7A,retained,Same assertion.,pending
+REVIEW-020,Gantt compares imported dates vs native recompute,docs/design/adr-010/v2-critical-review-addendum.md,FID-016,S4,retained,Source values are kept at S4; the comparison view arrives with S6.,pending
+ADR10-001,A library prints to System.out during parsing,docs/design/adr-010/v2.1/adr-010-test-strategy.md,TPT-021; TPT-012,G1,changed,"gRPC carries the data, so stdout no longer holds frames; the case becomes stray output staying out of the RPC stream and out of persistent logs.",pending
+ADR10-002,Random and mutated frames,docs/design/adr-010/v2.1/adr-010-test-strategy.md,TPT-010; TPT-011,G1,changed,gRPC owns framing; fuzzing moves to record decoding and host validators.,pending
+ADR10-003,Lock file on disk replaced,docs/design/adr-010/v2.1/adr-010-test-strategy.md,TPT-017,G1,retained,Same assertion.,pending
+ADR10-004,"Symlink, extra file, or missing file in the worker folder",docs/design/adr-010/v2.1/adr-010-test-strategy.md,TPT-017,G1,retained,Same assertion.,pending
+ADR10-005,"JAVA_TOOL_OPTIONS, _JAVA_OPTIONS, or CLASSPATH set in the user's environment",docs/design/adr-010/v2.1/adr-010-test-strategy.md,TPT-017,G1,retained,Plan §3.4 adds LD_PRELOAD and loader paths.,pending
+ADR10-006,Two jobs in a row; a worker that starts a child process,docs/design/adr-010/v2.1/adr-010-test-strategy.md,TPT-013,G1,retained,Same assertion.,pending
+ADR10-007,Handshake never answered,docs/design/adr-010/v2.1/adr-010-test-strategy.md,TPT-014,G1,retained,Same assertion.,pending
+ADR10-008,"Frame over 4 MiB, sequence gap, duplicate, or completion with wrong counts",docs/design/adr-010/v2.1/adr-010-test-strategy.md,TPT-014,G1,changed,Message size and sequence limits now apply to gRPC messages (plan §3.3).,pending
+ADR10-009,Worker opens a network listener,docs/design/adr-010/v2.1/adr-010-test-strategy.md,TPT-020; TPT-001,G1,retained,Same assertion.,pending
+ADR10-010,Every error code,docs/design/adr-010/v2.1/adr-010-test-strategy.md,UXQ-006; UXQ-011,G2,retained,UXQ-011 added in integration for the code-to-key mapping.,pending
+ADR10-011,Wrong extension; empty file,docs/design/adr-010/v2.1/adr-010-test-strategy.md,FID-002; FID-003,G2,retained,Same assertion.,pending
+ADR10-012,XML with external entities,docs/design/adr-010/v2.1/adr-010-test-strategy.md,FID-003,G2,retained,FID-003 does not name XML external entities; this ID keeps that case.,pending
+ADR10-013,Password-protected MPP,docs/design/adr-010/v2.1/adr-010-test-strategy.md,FID-003,G2,retained,Same assertion.,pending
+ADR10-014,Estimate exceeds free memory or disk,docs/design/adr-010/v2.1/adr-010-test-strategy.md,,G2,retained,Plan §4 step 8 requires the refusal. No v2.2 ID covers this; the ID stays active at its gate.,pending
+ADR10-015,Inspection of every fixture,docs/design/adr-010/v2.1/adr-010-test-strategy.md,FID-001,G2,retained,FID-001 covers no writes; this ID keeps counts equal to MPXJ's own.,pending
+ADR10-016,Staging on a different volume from projects/,docs/design/adr-010/v2.1/adr-010-test-strategy.md,PUB-009,G3,retained,Same assertion.,pending
+ADR10-017,"Journal found in each phase (plan §6.3), and a folder with no journal",docs/design/adr-010/v2.1/adr-010-test-strategy.md,PUB-006; PUB-007,G3,changed,"Recovery covers only the staging namespace, needs fresh approval, and drops the 30-day deletion (A-12, A-13, plan §6.3).",pending
+ADR10-018,ListProjects during an import,docs/design/adr-010/v2.1/adr-010-test-strategy.md,PUB-001,G3,retained,Same assertion.,pending
+ADR10-019,"Folder name taken at publication, including an empty folder created just before the rename",docs/design/adr-010/v2.1/adr-010-test-strategy.md,PUB-008,G3,retained,Same assertion.,pending
+ADR10-020,Cancel from RECHECK on,docs/design/adr-010/v2.1/adr-010-test-strategy.md,PUB-014,G3,retained,Same assertion.,pending
+ADR10-021,Receipt v2,docs/design/adr-010/v2.1/adr-010-test-strategy.md,,G3,retained,Compatibility with today's MSPDIImportReceipt fields. No v2.2 ID covers this; the ID stays active at its gate.,pending
+ADR10-022,Counts above 2^53 in a receipt,docs/design/adr-010/v2.1/adr-010-test-strategy.md,DB-017,G3,retained,DB-017 covers audit events; this ID keeps exact counts in import receipts.,pending
+ADR10-023,"Date-only values; unset, null, zero, and unsupported values",docs/design/adr-010/v2.1/adr-010-test-strategy.md,FID-012,S4,retained,FID-012 covers dates; this ID keeps the four missing-value states (plan §3.2).,pending
+ADR10-024,Format gate,docs/design/adr-010/v2.1/adr-010-test-strategy.md,DB-001; DB-002,S2,changed,The gate protects only gate-enabled builds (D-12).,pending
+ADR10-025,Saved import report,docs/design/adr-010/v2.1/adr-010-test-strategy.md,UXQ-005,G3,retained,Same assertion.,pending
+ADR10-026,Source scratch copy,docs/design/adr-010/v2.1/adr-010-test-strategy.md,,G2,retained,Scratch-copy cleanup from plan §4 step 5. No v2.2 ID covers this; the ID stays active at its gate.,pending
+ADR10-027,"Cursor tampered with, expired, or used on another project",docs/design/adr-010/v2.1/adr-010-test-strategy.md,DB-008,S5,retained,"DB-008 covers stale cursors; this ID keeps tampered, expired and cross-project cursors.",pending
+ADR10-028,"Focus after paging, sorting, or folding",docs/design/adr-010/v2.1/adr-010-test-strategy.md,UXQ-007,S5,retained,Same assertion.,pending
+ADR10-029,"Legacy result above 10,000 rows",docs/design/adr-010/v2.1/adr-010-test-strategy.md,DB-013,S7A,retained,Same assertion.,pending
+ADR10-030,"Receipt, undo, and audit retention",docs/design/adr-010/v2.1/adr-010-test-strategy.md,DB-019,S7B,retained,Same assertion.,pending

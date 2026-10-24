@@ -5,8 +5,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010 v2.2 — Test strategy, quality gates and traceable acceptance matrix
 
-**Status:** PROPOSED, no tests executed or claimed PASS. **Date:** 2026-10-24.  
-**Normative references:** [ADR-010 v2.2](../design/ADR-010-plugin-architecture.md) and [implementation plan](../design/adr-010-implementation-plan.md).  
+**Status:** PROPOSED, no tests executed or claimed PASS. **Date:** 2026-10-24.\
+**Normative references:** [ADR-010 v2.2](../design/ADR-010-plugin-architecture.md) and [implementation plan](../design/adr-010-implementation-plan.md).\
 **Important:** The earlier PLG, SCALE, REVIEW and ADR10 test inventories remain in the archived v2.0 and agent v2.1 drafts. **Retain those IDs in the agent's implementation ledger; do not erase or rename them to hide work.** The tests here add/update explicit v2.2 criteria. Existing cases need a machine-readable crosswalk before implementation.
 
 ## 1. Evidence discipline
@@ -55,8 +55,9 @@ Fixture manifest `testdata/interop/fixtures.json` (proposed) MUST define: fixtur
 | TPT-016 | D-02 | G1 | Read vs write capability claim differs; unsupported native MPP export never advertised |
 | TPT-017 | D-17 | G1 | Invalid signature/digest, symlinked/extra files, untrusted library injection and startup env injection refuse launch |
 | TPT-018 | D-05 | G1 | Unauthorized process and endpoint impersonation attempts rejected before business payloads |
-| TPT-019 | D-13 | G1 | Worker not labeled sandboxed; OS-enforced restrictions distinguished from absent/observed controls |
+| TPT-019 | D-07 | G1 | Worker not labeled sandboxed; OS-enforced restrictions distinguished from absent/observed controls |
 | TPT-020 | D-03 | G1 | No custom project-data stdio protocol or stealth TCP endpoint in launched worker; bootstrap one-shot only |
+| TPT-021 | D-06 | G1 | Worker stdout/stderr is untrusted diagnostics: capped, sanitized, never mixed into the RPC stream and never persisted raw by default; opt-in debug logs are scoped, redacted, encrypted and time-limited (plan §3.4). A fixture whose parser prints task notes leaves no note text in any log |
 
 ## 5. Parsing, field fidelity, and provenance
 
@@ -154,13 +155,13 @@ For every B01–B16 inject: crash at process boundary, selected `EIO`, disk full
 | DB-017 | D-13 | S7B | Compact event exact decimal and large revision survives canonicalization/roundtrip |
 | DB-018 | D-13 | S7B | Evidence object missing/tampered detected by digests; snapshots/replay reconstruct approved state |
 | DB-019 | D-13 | S7B | Undo, receipts, immutable audit and evidence retention differ correctly; no accidental 256-limit reuse |
-| DB-020 | D-14 | S6 | Shadow generation merge does not expose any partial schedule; stale revision/epoch rejects |
+| DB-020 | D-11 | S6 | Shadow generation merge does not expose any partial schedule; stale revision/epoch rejects |
 
 ## 8. UX, accessibility, comparison, AI and governance
 
 | Test ID | Requirement | Gate | Test / expected evidence |
 |---|---|---|---|
-| UXQ-001 | D-15 | G2 | Choose→Inspect→Map→Review→Import flow accessible and truthful; cannot approve unseen material loss |
+| UXQ-001 | D-15 | G3 | Choose→Inspect→Map→Review→Import flow accessible and truthful; cannot approve unseen material loss. G2 runs the Choose and Inspect stages |
 | UXQ-002 | D-15 | G2 | Plugin Center reports tested read/write formats accurately and worker missing/incompatible states |
 | UXQ-003 | D-15 | G3 | Job center distinguishes queued, parsing, staged, approved, publishing, recovered and failed |
 | UXQ-004 | D-15 | G3 | 'Quick chart import' warns of skipped summary/assumption/limited project import; no deceptive parity |
@@ -170,6 +171,7 @@ For every B01–B16 inject: crash at process boundary, selected `EIO`, disk full
 | UXQ-008 | D-15 | S5 | 50k Gantt viewport no all-row SVG/DOM; minimap and dependency jumps work without disorientation |
 | UXQ-009 | D-15 | S6 | Compare includes identity-confidence, hidden selected counts and nonautomatic conflicts; no source-wins |
 | UXQ-010 | D-15 | S6 | Selective merge summary matches actual committed changes; unapproved rows unchanged |
+| UXQ-011 | D-15 | G2 | Every `interop.*` error code, job state and recovery state maps to a catalog key in `messages/en.ts` with matching placeholders and plural forms (plan Appendix B); new components start at zero in `hardcoded-text.test.ts` |
 | AIQ-001 | D-16 | G5 | Revoked MCP grant rejects subsequent and in-flight tools after session/project/copy changes |
 | AIQ-002 | D-16 | G6 | AI output is a proposal, never an autonomous direct schedule or money write |
 | AIQ-003 | D-16 | G6 | Cloud providers optional, consented, off by default; local core works without them |
@@ -190,8 +192,8 @@ Initial *proposed* UI budgets on owner-approved recommended hardware: warm 200-r
 | Gate | Dependencies | Acceptance criterion |
 |---|---|---|
 | G0 | Read-only research/evidence | TPT-001–005 and licensing, Java native runtime, packaged feasibility, explicit Windows outcome |
-| G1 | G0 acceptable candidate per shipping OS | TPT-006–020, fake workers, protocol compatibility, neutral registry, no DB mutation |
-| G2 | G1 | FID-001–003, malformed format corpus, accurate inspect counts and privacy |
+| G1 | G0 acceptable candidate per shipping OS | TPT-006–021, fake workers, protocol compatibility, neutral registry, no DB mutation |
+| G2 | G1 | FID-001–003, UXQ-001 (Choose and Inspect stages), UXQ-002, UXQ-011, malformed format corpus, accurate inspect counts and privacy |
 | S0/S1 | Baselines + owner-approved ADR-011 | Schema DDL, format gate/old-version warning, migration plan, hardware profiles |
 | S2 | S1 | DB-001/002; format gate shipped/tested before new format writes |
 | S3 | S2 | DB-003–007, staging infrastructure, reproducible 50k typed records |
@@ -208,7 +210,7 @@ Initial *proposed* UI budgets on owner-approved recommended hardware: warm 200-r
 
 ## 11. Crosswalk to existing v2.1 acceptance IDs
 
-During P00/P01 build `docs/testing/adr-010-case-crosswalk.csv` with columns: existing ID (`PLG-*`, `SCALE-*`, `REVIEW-*`, `ADR10-*`), existing description, v2.2 corresponding IDs, owner gate, retained/strengthened/changed, reason and owner approval. **Never delete a prior high-quality assertion because it is inconvenient.** Where v2.1 case wording was impossible (unknown fields a parser cannot enumerate; no listener observed ≠ network blocked), strengthen it to truthful precise semantics and link to the old ID. Additional test IDs in v2.2 are additive and do not imply historical tests have passed.
+Built in P00 as [`adr-010-case-crosswalk.csv`](adr-010-case-crosswalk.csv): all 110 earlier IDs, each with owner approval `pending`. The original instruction: during P00/P01 build `docs/testing/adr-010-case-crosswalk.csv` with columns: existing ID (`PLG-*`, `SCALE-*`, `REVIEW-*`, `ADR10-*`), existing description, v2.2 corresponding IDs, owner gate, retained/strengthened/changed, reason and owner approval. **Never delete a prior high-quality assertion because it is inconvenient.** Where v2.1 case wording was impossible (unknown fields a parser cannot enumerate; no listener observed ≠ network blocked), strengthen it to truthful precise semantics and link to the old ID. Additional test IDs in v2.2 are additive and do not imply historical tests have passed.
 
 ## 12. Test-report template
 

@@ -5,8 +5,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010 v2.2 — Detailed engineering blueprint and phased implementation plan
 
-**Status:** PROPOSED; no code changes authorized solely by this document. **Companion:** [binding ADR](ADR-010-plugin-architecture.md), [test strategy](../testing/adr-010-test-strategy.md), [agent prompt](../agent/ADR-010-architecture-preservation-agent-prompt.md).  
-**Repository baseline:** `main@28a758d` and agent's `claude/adr-010-plugin-architecture@49ac2bf` as of 2026-10-24. Rebase, re-census, and resolve conflicts before coding.  
+**Status:** PROPOSED; no code changes authorized solely by this document. **Companion:** [binding ADR](ADR-010-plugin-architecture.md), [test strategy](../testing/adr-010-test-strategy.md), [agent prompt](../agent/ADR-010-architecture-preservation-agent-prompt.md).\
+**Repository baseline:** `main@28a758d` and agent's `claude/adr-010-plugin-architecture@49ac2bf` as of 2026-10-24. Rebase, re-census, and resolve conflicts before coding.\
 **Plan owners:** maintainer approves contracts; implementation agents propose narrowly scoped PRs with independent verification.
 
 ## 0. Engineering precedence and completion definitions
@@ -28,7 +28,7 @@ This plan operationalizes **QI-01…QI-15** and **D-01…D-19** from the compani
 | Account/session/epoch + project copy/handle + permission checks           |
 |  internal/interop/registry    internal/interop/supervisor                 |
 |  internal/interop/ipc         internal/interop/job                        |
-|  internal/interop/contract    internal/interop/import                     |
+|  internal/interop/contract    internal/interop/importjob                  |
 |  internal/interop/evidence   internal/interop/publish                    |
 |  internal/interop/fidelity   internal/interop/mapping                    |
 |  project services / SQLCipher / scheduler / exact money / audit           |
@@ -67,7 +67,7 @@ separate controlled gateway, NOT the underlying plugin transport.
 
 ```text
 internal/interop/
-  contract/           # protobuf source/descriptor and generated Go
+  contract/           # generated Go code and descriptor set (sources: proto/)
   registry/           # capability registry, manifests and compatibility
   supervisor/         # host process tree + start/stop resource policies
   ipc/                # transport-neutral RPC client/server adapter
@@ -104,11 +104,17 @@ Do **not** create a monolithic `plugin.go`, global service locator, universal JS
 
 The Windows named-pipe Java binding must use a maintained transport API where possible. If custom Netty Channel / JNA / JNI or a carefully isolated Windows transport shim is necessary, profile maintenance, ABI, code signing, security and testing cost. Reject speculative “it should work”. A Go↔Java gRPC handshake, unary RPC, server/client/bidirectional streaming, deadlines, cancellation and authentication must actually run on the configured Windows CI/test machine. Native AF_UNIX availability at OS/JDK level **does not establish grpc-java integration**. Document supported minimum Windows build and JDK.
 
+**Verified leads for G0 (read from upstream source on 2026-10-24; hypotheses, not proofs):**
+
+- grpc-java's built-in `unix:` channel provider (`UdsNettyChannelProvider`) is available only when Netty epoll loads, so it covers Linux alone. macOS needs an explicitly configured `KQueueDomainSocketChannel`.
+- Netty 4.1 and 4.2 ship `NioDomainSocketChannel`, which uses the JDK's own Unix-domain sockets (JEP 380, Java 16+) without JNI. `NettyChannelBuilder.channelType(channelType, transportSocketType)` accepts a non-IP address type. Together these are a candidate JNI-free transport on Linux, macOS and Windows 10/Server 2019 or later, and Go's `net` package already listens on `unix` sockets on Windows. G0 must prove it end to end (TPT-001, TPT-002, TPT-004) before anyone relies on it.
+- Socket paths are limited to about 104 bytes on macOS and 108 on Linux, so endpoints live in a short private runtime directory, never under the data root.
+
 **No automatic fallback:** If native IPC cannot be demonstrated for Windows, mark G0 Windows **BLOCKED**. Offer owner a separate ACR evaluating (a) funded named-pipe adapter, (b) tested Windows UDS variant, (c) explicit, authenticated localhost gRPC exception, or (d) deferring *Windows worker support* while keeping core GoPMgr Windows functionality. The agent cannot substitute stdio or TCP independently.
 
 ### 2.2 Orientation and bootstrap
 
-- **Recommended orientation:** Go host creates restricted IPC listener; worker connects as gRPC client and opens authenticated bidirectional `RunJob` stream. Host is service authority and job controller. If a real Java transport requires reverse orientation, document the security and lifecycle implications; keep semantics unchanged.
+- **Recommended orientation:** Go host creates restricted IPC listener; worker connects as gRPC client and opens the authenticated bidirectional `WorkerSession.Connect` stream (§3.2). Host is service authority and job controller. If a real Java transport requires reverse orientation, document the security and lifecycle implications; keep semantics unchanged.
 - Bootstrap includes worker ID, protocol range, endpoint descriptor, operation ID and an unpredictable single-use credential. Transmit secret via a reviewed inherited one-time descriptor or equivalent protected OS mechanism; not command line, persistent env, manifest, logs, crash reports or Java system properties. Limited stdio **bootstrap metadata** may be investigated with the owner's approval; never business data.
 - Connection may serve only one authenticated launch; reject second clients, replay, downgrade, wrong user/copy/worker digest. Use OS credentials/ACLs and protocol-level proof. UDS socket owner/mode and Windows pipe ACLs are enforced, with symlink/squat/restart adversarial tests.
 - Host can cancel active RPC, escalate to kill process tree, reap and clean IPC artifact, with bounded deadlines. A stale worker cannot publish anything because it has no authoritative write API.
@@ -300,7 +306,7 @@ Every source field has the multidimensional ledger described in D-09. For fields
     ...                               # only operation-owned failed artifacts
 ```
 
-Use the repo's **actual account directory model**, not guessed folders. The sample layout must be reconciled with `users.DefaultRootDir`, session/account ownership and `enumerateProjects`. Project-owned evidence may instead live as encrypted `evidence_chunks` *inside* `.gopmgr`; adopt an encrypted sidecar only after comparative backup/restore performance and recovery tests. If source retention is explicitly declined, the receipt records `source_bytes_retained=false` and the mapping ledger still states what is and is not recoverable. No source plaintext copied into long-lived sidecars or logs.
+Use the repo's **actual account directory model**, not guessed folders. The sample layout must be reconciled with `users.DefaultRootDir`, session/account ownership and `enumerateProjects`. Verified at `28a758d`: the data root is `users.DefaultRootDir()` (`$XDG_DATA_HOME/GoPMgr` when set, otherwise `~/Library/Application Support/GoPMgr` on macOS and `~/Documents/GoPMgr` on Linux and Windows); each account's `DataDir` is `<root>/<username>` (`internal/users/store.go:694`); projects are `<DataDir>/projects/<folder>/` (`app_projects.go:94`). So `<account-data>` above is `<root>/<username>`, and staging and quarantine sit beside `projects/` on the same volume. On Linux and Windows the root is under `~/Documents`, which a sync client (for example OneDrive folder redirection) may manage; G3 must test publication and recovery in such a folder or state a supported-location rule. Project-owned evidence may instead live as encrypted `evidence_chunks` *inside* `.gopmgr`; adopt an encrypted sidecar only after comparative backup/restore performance and recovery tests. If source retention is explicitly declined, the receipt records `source_bytes_retained=false` and the mapping ledger still states what is and is not recoverable. No source plaintext copied into long-lived sidecars or logs.
 
 ### 6.2 Transaction and state machine
 
@@ -313,6 +319,16 @@ NEW → INSPECTING → REVIEW_REQUIRED → APPROVED → PREPARED → BUILDING
 
 The host controls transitions with an operation ID and strictly monotonic **durable intent journal**. *Publish* becomes the non-cancellable, brief commit boundary, not the entire import job. Explicit events/receipts allow the UI to recover after crash. A successful worker `Complete` is necessary but not sufficient for project success.
 
+The durable journal stores the five states named in ADR D-10; the other job states live in memory only:
+
+| Journal state | Written when the job reaches | Meaning after a crash |
+|---|---|---|
+| `PREPARED` | PREPARED (kept through BUILDING and VALIDATING) | Candidate may be incomplete; never publish |
+| `SEALED` | SEALED | Candidate is complete; publishing needs fresh approval |
+| `PUBLISHING` | PUBLISHING, before the rename | The rename may or may not have happened; check both locations |
+| `PUBLISHED` | PUBLISHED, after the rename and directory sync | Read back and verify |
+| `RECONCILED` | COMPLETE | Nothing left to do; staging may be removed |
+
 **Step-by-step commit design:**
 
 1. Authenticate user, capture principal incarnation/session epoch and explicit user-selected source. Hash stream *as it is read*; bind worker digest, options and target user. Choose provisional project ID and create exclusive staging operation and journal.
@@ -320,7 +336,7 @@ The host controls transitions with an operation ID and strictly monotonic **dura
 3. Open an **encrypted** staged candidate project under its authorized owner. Ingest typed records in bounded invisible transactions. Retain source and field evidence in candidate. Validate references after stream completion; do not invent missing activities or silently drop source records.
 4. Check source and staged counts, logical digest, exact money/units, foreign keys, full/cipher integrity, baseline/timephased rows, readback/semantic mapping and audit chain. Write import receipt and audit event before sealing. Check every retained evidence hash against its referencing record. Fail closed or explain reviewed loss.
 5. Checkpoint WAL, switch journal mode using existing verified helpers where appropriate; close DB, remove sidecars only after safe checkpoint, ensure private modes, sync DB, evidence, candidate folders and intent journal as supported. Seal manifest lists DB and evidence digests, schema version, operation ID and approval digest. Seal/state must be durable before rename.
-6. Refresh authentication binding and **fresh user approval if recovering from another session**. Choose collision-resistant final folder name, verify same-volume constraints, use OS-specific **atomic no-replace** directory rename (Linux `renameat2(..., RENAME_NOREPLACE)` where available; Darwin no-replace alternative verified; Windows MoveFileEx without replace or equivalent). No check-then-rename. On unsupported filesystem, fail closed with actionable error.
+6. Refresh authentication binding and **fresh user approval if recovering from another session**. Choose collision-resistant final folder name, verify same-volume constraints, use OS-specific **atomic no-replace** directory rename (Linux `unix.Renameat2` with `RENAME_NOREPLACE`; macOS `unix.RenamexNp` with `RENAME_EXCL`; Windows `windows.MoveFileEx` without `MOVEFILE_REPLACE_EXISTING`; all in `golang.org/x/sys` v0.49.0, already a direct dependency. Go's `os.Rename` is not acceptable: it always replaces a file, guards an existing folder on Unix only with a separate `Lstat`, and passes `MOVEFILE_REPLACE_EXISTING` on Windows). No check-then-rename. On unsupported filesystem, fail closed with actionable error.
 7. Sync containing directory where supported. Record `PUBLISHED`, read back the same sealed artifact, verify count/receipt/metadata and presentation. Record `RECONCILED`, clean operation-owned staging and only then show durable success.
 8. If crash occurs, reconcile on next authorized login from staged operation namespace only; classify journal/rename states deterministically, never scan old projects looking for nonexistent journals or delete user-owned folders without authenticated operation provenance.
 
@@ -381,14 +397,14 @@ Typed domain events should record changed fields and/or immutable evidence hashe
 
 | Milestone | Required user-visible workflows | Accessibility / privacy |
 |---|---|---|
-| G2 | Choose source → Inspect capability and format counts → Estimate costs | Keyboard, screen reader, source inspection disclosure |
+| G2 | Choose source → Inspect capability and format counts → Estimate costs; Plugin Center shows the bundled worker's status and tested read formats (D-15) | Keyboard, screen reader, source inspection disclosure |
 | G3 | Map essential fields → Preview loss and source identities → Review retention → Import → Receipt | No fake 100% progress, explain blocked options, recovery states |
-| G4 | Import/export direction labels, Plugin Center, run diagnostics, signed bundle status | No claim of sandboxing or MPP writing |
+| G4 | Import/export direction labels, Plugin Center export directions, run diagnostics, signed bundle status | No claim of sandboxing or MPP writing |
 | S5 | Large schedule tree, Gantt viewport, search, task navigation, saved view, minimap | Virtual treegrid focus/ARIA/IME, keyboard alternate to canvas |
 | S6 | Compare two/three-way revisions, select conflict changes, impact preview, confirm | Counts of selected hidden rows, revision conflicts visible |
 | G5/G6 | AI permissions, provider opt-in, proposals, audit | No background network egress or auto-approval |
 
-All text in ADR-008 catalog; typed error `code` → locale key; never select behavior by comparing English strings. Preserve dense professional desktop workflows; avoid intrusive dialogs for safe, reversible navigation.
+All text in ADR-008 catalog; typed error `code` → locale key; never select behavior by comparing English strings. Preserve dense professional desktop workflows; avoid intrusive dialogs for safe, reversible navigation. Interface components are specified in [Appendix A](#appendix-a-interface-components) and the catalog copy, including every error code, in [Appendix B](#appendix-b-interface-copy-and-catalog-keys).
 
 ## 8. Delivery sequencing and PR breakdown
 
@@ -473,6 +489,7 @@ Each PR states exact HEAD, changed files, invariant IDs, new tests, raw pass/blo
 | OWN-08 | Existing file version gate and prior-version disclosure | Yes, ADR-011 required | OPEN |
 | OWN-09 | MPXJ LTS/JDK/Notarization/license/replacement policy | G0 investigation + legal review | OPEN |
 | OWN-10 | Minimum/recommended hardware and latency/throughput budgets | Decide after S0 measurements | OPEN |
+| OWN-11 | New Go dependencies: `google.golang.org/grpc`, `google.golang.org/protobuf` and, for Windows named pipes, `github.com/Microsoft/go-winio` (none is in `go.mod` today) | Approve at G1 with a `docs/DEPENDENCIES.md` record, after G0 picks the transport | OPEN |
 
 Document owner decisions in an accepted ADR and test strategy. An agent must not mark `OPEN` as `APPROVED` through interpretation, code edits or “the test passes.”
 
@@ -488,3 +505,213 @@ External primary sources and caveats:
 - https://openjdk.org/jeps/380 (Java AF_UNIX API, **not** grpc-java support proof)
 - https://www.sqlite.org/wal.html ; https://www.sqlite.org/foreignkeys.html ; https://www.sqlite.org/pragma.html
 
+## Appendix A. Interface components
+
+These components extend GoPMgr's existing Svelte primitives (`Button` variants, `Card`, `Tabs`, `Input`, `Select`, `ConfirmDialog`, `ToastContainer`, `Spinner`) in the slate and cyan palette with IBM Plex. None adds a UI dependency. Every component has loading, empty, error, disabled and read-only states, and all of its text comes from the catalog (Appendix B).
+
+| Component | Built from | Used by | Accessibility |
+|---|---|---|---|
+| `Stepper` | `Tabs` styling, `Button` | Import assistant: Choose file, Inspect, Map and check, Review, Import | `nav` with `aria-label`; `aria-current="step"`; a blocked stage says why |
+| `DataGrid` | New; native table semantics | Fidelity inspector, job history, Plugin Center formats | `role="grid"`, roving tabindex, sortable headers with `aria-sort`, `aria-rowcount`; shows loaded and total rows |
+| `TreeGrid` | `DataGrid` plus an outline model | S5 large-schedule outline | `role="treegrid"`, `aria-level`, `aria-expanded`, `aria-rowindex` and `aria-rowcount` while virtualized; focus anchored across paging (UXQ-007) |
+| `FidelityTags` | `StatusBadge` | One inspector cell per field: the D-09 dimensions | Each dimension is a text tag; a screen reader hears, for example, "In the file: present. Kept: exactly. Stored: as a GoPMgr field. Editable. Exportable." |
+| `StatusBadge` | Existing badge classes | Worker, job, recovery and disposition states | Text label always; colour only adds meaning |
+| `PhaseProgress` | `Spinner` and a list | Job center | `aria-live="polite"` for phase changes only; shows counters, never a percentage without a measured total |
+| `ResourceEstimate` | `Card` | Inspect stage | Values labelled as estimates; numbers and units through `formatNumber` |
+| `RetentionChoice` | Radio group with `Input` styles | Map and check stage (OWN-05) | `fieldset` and `legend`; each option's consequence linked with `aria-describedby` |
+
+**Status colours**, mapped to classes the frontend already uses:
+
+| Meaning | Colour | Example classes |
+|---|---|---|
+| Kept exactly, Ready, Done | emerald | `text-emerald-300`, `bg-emerald-950/40` |
+| Converted, Running | cyan | `text-cyan-300` |
+| Changed in conversion, Needs attention, Finishing | amber | `text-amber-300`, `border-amber-700/50` |
+| Not stored, Off, Cancelled | slate | `text-slate-400` |
+| Failed, Can't start, Files don't match | red | `text-red-300`, `bg-red-950/40` |
+
+## Appendix B. Interface copy and catalog keys
+
+Keys follow `frontend/src/lib/i18n/messages/en.ts`: flat dotted keys, `{placeholders}` and `{one, other}` plural forms. Errors say what happened, why, and what to do. Product names (Microsoft Project, Primavera P6, ProjectLibre) and file extensions stay untranslated. "MPXJ", "gRPC" and "worker" appear only in diagnostics.
+
+### B.1 Terms
+
+| Term | Use for | Never |
+|---|---|---|
+| Import a project | The full MPXJ import into a new project | "Commit", "ingest" |
+| Quick chart import | The legacy MS Project XML chart importer (D-12) | Implying it imports a whole project |
+| Plugin | A bundled worker, as listed on the Plugins page | "Worker", "bridge", "sandboxed" |
+| Original file | The source file the user chose | "Source artifact" |
+| Import report | The receipt and field report together | "Receipt", "ledger" |
+| Strict, Reviewed, Inspect only | The three fidelity modes (D-09) | Other names for the same modes |
+
+### B.2 Import assistant
+
+| Key | English |
+|---|---|
+| `interop.import.title` | Import a project |
+| `interop.step.choose` | Choose file |
+| `interop.step.inspect` | Inspect |
+| `interop.step.map` | Map and check |
+| `interop.step.review` | Review |
+| `interop.step.import` | Import |
+| `interop.step.blocked` | Finish {step} first. |
+| `interop.choose.formats` | Supported: Microsoft Project (.mpp, .xml) and Primavera P6 (.xer, .xml). The Plugins page lists every tested format. |
+| `interop.inspect.nothingSaved` | Inspecting reads the file only. Nothing is saved. |
+| `interop.inspect.estimate` | Estimated need: {memory} of memory, {disk} of disk space, about {time}. |
+| `interop.mode.strict` | Strict: stop if any essential field can't be kept exactly. |
+| `interop.mode.reviewed` | Reviewed: import what can be kept, and review every field that changes or can't be kept. |
+| `interop.mode.inspectOnly` | Inspect only: show what the file holds. Nothing is saved. |
+| `interop.lineage.new` | Treat this as a new project |
+| `interop.lineage.match` | This is a newer copy of {project} |
+| `interop.lineage.copyWarning` | This file uses the same task IDs as {project}, but its history is different, so it may be a copy. GoPMgr won't combine them automatically. |
+| `interop.review.attention` | `{one: "{count} field needs your attention before you import.", other: "{count} fields need your attention before you import."}` |
+| `interop.import.asNew` | Import as new project |
+| `interop.import.cancel` | Cancel import |
+| `interop.import.finishing` | Finishing. This can't be cancelled now. The project appears when it's ready. |
+| `interop.import.done` | {project} was imported. {kept} of {total} fields were kept exactly. |
+
+### B.3 Keeping the original file
+
+| Key | English |
+|---|---|
+| `interop.retention.legend` | Keep the original file? |
+| `interop.retention.keep` | Keep a copy inside the project |
+| `interop.retention.keepHelp` | The copy is encrypted with the project and included in its backups. It uses about {size} of disk space. |
+| `interop.retention.discard` | Don't keep a copy |
+| `interop.retention.discardHelp` | GoPMgr keeps the import report but can't re-read the original file later. Keep your own copy if you might need it. |
+
+### B.4 Fidelity inspector
+
+| Key | English |
+|---|---|
+| `interop.fidelity.column.field` | Field |
+| `interop.fidelity.column.records` | Records |
+| `interop.fidelity.column.inFile` | In the file |
+| `interop.fidelity.column.kept` | Kept |
+| `interop.fidelity.column.stored` | Stored as |
+| `interop.fidelity.column.edit` | Editable |
+| `interop.fidelity.column.export` | Exportable |
+| `interop.fidelity.presence.present` | Present |
+| `interop.fidelity.presence.absent` | Not in this file |
+| `interop.fidelity.presence.unreadable` | Can't be read |
+| `interop.fidelity.presence.unknown` | Unknown |
+| `interop.fidelity.transform.exact` | Exactly |
+| `interop.fidelity.transform.lossless` | Converted without loss |
+| `interop.fidelity.transform.approximate` | Changed in conversion |
+| `interop.fidelity.transform.derived` | Worked out from other fields |
+| `interop.fidelity.store.native` | A GoPMgr field |
+| `interop.fidelity.store.typedExtension` | An extra field |
+| `interop.fidelity.store.opaque` | Original data, read-only |
+| `interop.fidelity.store.notStored` | Not stored |
+| `interop.filter.attention` | Needs attention |
+| `interop.filter.exact` | Kept exactly |
+| `interop.filter.converted` | Converted |
+| `interop.filter.readOnly` | Kept read-only |
+| `interop.filter.notStored` | Not stored |
+| `interop.filter.unknown` | Unknown |
+| `interop.fidelity.empty` | No fields match this filter. Clear the filter to see every field. |
+| `interop.report.save` | Save import report |
+| `interop.report.privacy` | The report leaves out notes, file locations and field values unless you include them. |
+
+### B.5 Job center
+
+| Key | English |
+|---|---|
+| `interop.job.title` | Imports and exports |
+| `interop.job.empty` | No imports yet. Imports you start appear here, with their reports. |
+| `interop.job.queued` | Waiting to start |
+| `interop.job.reading` | Reading the file |
+| `interop.job.staging` | Preparing the project |
+| `interop.job.review` | Waiting for your review |
+| `interop.job.finishing` | Finishing |
+| `interop.job.done` | Done |
+| `interop.job.recovered` | Finished after an interruption |
+| `interop.job.failed` | Didn't finish |
+| `interop.job.cancelled` | Cancelled |
+| `interop.job.counter` | `{one: "{count} task checked", other: "{count} tasks checked"}` |
+| `interop.job.details` | View details |
+| `interop.job.retry` | Try again |
+
+### B.6 Plugins page
+
+| Key | English |
+|---|---|
+| `interop.plugins.title` | Plugins |
+| `interop.plugins.intro` | Plugins add file formats to GoPMgr. They come with GoPMgr and run on this computer. |
+| `interop.plugins.reads` | Reads: {formats} |
+| `interop.plugins.writes` | Writes: {formats} |
+| `interop.plugins.writesNone` | Writes: none yet |
+| `interop.plugins.status.ready` | Ready |
+| `interop.plugins.status.off` | Off |
+| `interop.plugins.status.unavailable` | Not available on this computer |
+| `interop.plugins.status.mismatch` | Files don't match this release |
+| `interop.plugins.notSandboxed` | Runs as a separate program that comes with GoPMgr. It isn't sandboxed, so it has the same access to your files as GoPMgr. |
+| `interop.plugins.diagnostics` | Run diagnostics |
+
+### B.7 Recovery after an interruption
+
+One message for each row of §6.3. The last row of §6.3, an existing project with no import journal, shows nothing.
+
+| Key | English | Button (key) |
+|---|---|---|
+| `interop.recovery.unfinished` | An import didn't finish. Nothing was added to your projects. | View details (`interop.job.details`) |
+| `interop.recovery.ready` | An import of {project} is ready, but it wasn't added. Review it before adding it. | Review import (`interop.recovery.reviewImport`) |
+| `interop.recovery.addedChecked` | {project} was added. GoPMgr finished checking it. | Open project (`interop.recovery.openProject`) |
+| `interop.recovery.completed` | {project} was imported. GoPMgr finished the import after an interruption. | Open project (`interop.recovery.openProject`) |
+| `interop.recovery.files` | Files from an unfinished import need your review. GoPMgr hasn't deleted them. | Review files (`interop.recovery.reviewFiles`) |
+| `interop.recovery.suspect` | An import needs a recovery check before GoPMgr can use it. Nothing in your projects was changed. | View details (`interop.job.details`) |
+
+### B.8 Quick chart import and partial datasets
+
+| Key | English |
+|---|---|
+| `interop.legacy.quickChart` | Quick chart import (MS Project XML) |
+| `interop.legacy.quickChartHelp` | Reads tasks and links from an MS Project XML file into one chart. It skips summary tasks and assumes an 8-hour day. To keep everything in the file, use Import a project. |
+| `analytics.dataset.truncated` | Showing the first {shown} of {total} rows. The rest of the file wasn't imported. |
+| `analytics.dataset.complete` | All {total} rows were imported. |
+
+### B.9 Error codes
+
+Every typed error code (§3.3) maps to one key. The host never shows worker or Java exception text.
+
+| Code | Meaning | Host action | Key | English |
+|---|---|---|---|---|
+| `PLUGIN_NOT_INSTALLED` | Worker files are absent | Offer Quick chart import | `interop.error.notInstalled` | The plugin for Microsoft Project and Primavera files isn't installed. You can still use Quick chart import for MS Project XML files. |
+| `PLUGIN_SIGNATURE_INVALID` | Digest or signature mismatch | Refuse to launch; log a security event | `interop.error.signature` | GoPMgr didn't start the plugin because its files don't match this release. Reinstall GoPMgr to restore them. |
+| `PLUGIN_INCOMPATIBLE` | Protocol major or manifest mismatch | Disable the worker | `interop.error.incompatible` | This plugin doesn't work with this version of GoPMgr. Reinstall GoPMgr to get a matching version. |
+| `PLUGIN_START_FAILED` | JVM, handshake or authentication failure | One bounded retry | `interop.error.startFailed` | The plugin couldn't start. Try again. If it keeps failing, run diagnostics on the Plugins page. |
+| `PLUGIN_UNHEALTHY` | Crash, hang or protocol violation | Kill the process tree; commit nothing | `interop.error.unhealthy` | The plugin stopped responding, so the import stopped. Nothing was saved. Try again. |
+| `TRANSPORT_UNAVAILABLE` | No proven local IPC on this OS (D-03) | Mark the worker blocked; never fall back | `interop.error.transport` | This plugin isn't available on this computer yet. GoPMgr's other features work as usual. |
+| `INPUT_UNSUPPORTED` | Format or version not tested | List tested formats | `interop.error.unsupported` | GoPMgr can't import this kind of file yet. It can import: {formats}. |
+| `INPUT_INVALID` | Corrupt or malformed file | Keep the original untouched | `interop.error.invalid` | This file couldn't be read. It may be damaged or not a {format} file. Open it in the program that made it, save a new copy, and try again. |
+| `INPUT_PROTECTED` | Password-protected file | Never log the secret | `interop.error.protected` | This file is password-protected. Remove the password in the program that made it, then import that copy. |
+| `RESOURCE_LIMIT` | A memory, disk, time or expansion cap was reached | Offer inspect-only | `interop.error.resourceLimit` | This file needs more {resource} than GoPMgr can use for an import on this computer ({needed} needed, {available} available). You can still inspect it. |
+| `DATA_UNMAPPED` | An essential field can't meet Strict mode | Block publication | `interop.error.unmapped` | `{one: "{count} essential field can't be kept exactly, so Strict mode stopped the import. Switch to Reviewed to import the rest.", other: "{count} essential fields can't be kept exactly, so Strict mode stopped the import. Switch to Reviewed to import the rest."}` |
+| `STALE_SESSION` | Epoch, account or project changed | Discard the staged import | `interop.error.staleSession` | You signed out or switched accounts, so the import stopped. Nothing was saved. Sign in and start again. |
+| `APPROVAL_REQUIRED` | A sealed import found after a new sign-in (D-10) | Ask for fresh approval | `interop.error.approvalRequired` | You signed in again, so review this import before GoPMgr adds it. |
+| `PUBLISH_UNSUPPORTED` | No no-replace rename, or a different volume (PUB-009) | Fail closed; keep staging | `interop.error.publishUnsupported` | GoPMgr can't add the project safely in the folder that holds your GoPMgr data, so nothing was added. See Help for supported locations. |
+| `REVISION_CONFLICT` | Destination changed after review | Review again | `interop.error.revisionConflict` | The project changed after you reviewed these changes. Review them again before applying them. |
+| `USER_CANCELLED` | The user cancelled | Clean up | `interop.status.cancelled` | Import cancelled. Nothing was saved. |
+| `EXPORT_UNSUPPORTED` | `.mpp` or an untested export | Suggest MS Project XML | `interop.error.exportUnsupported` | GoPMgr can't save .mpp files. Microsoft Project opens MS Project XML (.xml) files, so export that instead. |
+| `INTERNAL` | Anything else | Show a sanitized error ID | `interop.error.internal` | Something went wrong, so nothing was saved. Error ID: {id}. |
+
+### B.10 Alternatives, rationale and localization
+
+**Main button on the Review step:**
+
+| Option | Copy | Tone | Best for |
+|---|---|---|---|
+| A (chosen) | Import as new project | Plain, outcome first | v1, and later beside "Import into {project}" for S6 |
+| B | Create project | Plain | Hides that the data comes from the file |
+| C | Commit | Technical | Reads as a developer term; D-15's stage name is shown to users as "Import" |
+
+**Rationale.** Labels start with a verb and name the result. Errors reassure first ("Nothing was saved") and then give one action. Recovery copy never says a project is lost, because §6.3 never deletes user content. The Plugins page states the trust model in plain words (QI-13).
+
+**Localization notes for translators:**
+
+- `{resource}` is a catalog value ("memory", "disk space" or "time"), never free text.
+- `{needed}`, `{available}`, `{memory}`, `{disk}` and `{size}` are numbers with units, formatted by `formatNumber`.
+- `{formats}` and `{format}` are product names and extensions; don't translate them.
+- `interop.review.attention`, `interop.error.unmapped` and `interop.job.counter` take plural forms.
+- Avoid idioms. German and French run 30 to 40 percent longer, so buttons wrap instead of truncating.
