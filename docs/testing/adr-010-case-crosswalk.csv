@@ -8,7 +8,7 @@ PLG-006,Cancel while worker parsing,docs/design/adr-010/v2.0-plan.md,TPT-012; TP
 PLG-007,Sign out/change account after preview,docs/design/adr-010/v2.0-plan.md,PUB-004; PUB-005,G3,strengthened,v2.2 also requires fresh approval after a new sign-in (D-10).,pending
 PLG-008,Switch project after preview,docs/design/adr-010/v2.0-plan.md,PUB-005,G3,retained,Same assertion.,pending
 PLG-009,Source file replaced/modified during ingest,docs/design/adr-010/v2.0-plan.md,,G2,retained,Plan §6.2 step 1 hashes the stream as it is read. No v2.2 ID covers this; the ID stays active at its gate.,pending
-PLG-010,Duplicate import command/replayed receipt,docs/design/adr-010/v2.0-plan.md,PUB-007; PUB-013,G3,retained,Same assertion.,pending
+PLG-010,Duplicate import command/replayed receipt,docs/design/adr-010/v2.0-plan.md,PUB-007; PUB-013; PUB-024,G3,retained,Same assertion.,pending
 PLG-011,Import file with 11 baselines + custom fields + timephased data,docs/design/adr-010/v2.0-plan.md,FID-014; FID-018,S4,retained,Same assertion.,pending
 PLG-012,"Negative cost, unusual currencies, legacy JPY fraction",docs/design/adr-010/v2.0-plan.md,FID-013,S4,retained,Same assertion.,pending
 PLG-013,P6 calendar inheritance and holiday exceptions,docs/design/adr-010/v2.0-plan.md,FID-011,S4,retained,FID-011 covers working-time rules; this ID keeps the P6 calendar-inheritance case.,pending
@@ -50,7 +50,7 @@ SCALE-018,Resource names collide,docs/design/adr-010/v2.0-plan.md,FID-015,S4,ret
 SCALE-019,Audit old/new coexistence,docs/design/adr-010/v2.0-plan.md,DB-016,S7B,retained,Same assertion.,pending
 SCALE-020,Audit checkpoint/evidence deleted or tampered,docs/design/adr-010/v2.0-plan.md,DB-018,S7B,retained,Same assertion.,pending
 SCALE-021,Large import crash/mid-WAL failure,docs/design/adr-010/v2.0-plan.md,PUB-010,G3,retained,Fault boundary B06.,pending
-SCALE-022,Exact import and comparison idempotency,docs/design/adr-010/v2.0-plan.md,PUB-007; PUB-013,G3,retained,Same assertion.,pending
+SCALE-022,Exact import and comparison idempotency,docs/design/adr-010/v2.0-plan.md,PUB-007; PUB-013; PUB-024,G3,retained,Same assertion.,pending
 SCALE-023,"Source task nesting, duplicate IDs, external links",docs/design/adr-010/v2.0-plan.md,FID-004; FID-015,S4,retained,Same assertion.,pending
 SCALE-024,UI filter/sort/pagination stability,docs/design/adr-010/v2.0-plan.md,DB-008,S5,retained,Same assertion.,pending
 SCALE-025,Query authorization,docs/design/adr-010/v2.0-plan.md,DB-015,S7A,retained,Same assertion.,pending
@@ -61,7 +61,7 @@ SCALE-029,Offline installer,docs/design/adr-010/v2.0-plan.md,TPT-001; TPT-002,G4
 SCALE-030,Full user feature acceptance,docs/design/adr-010/v2.0-plan.md,UXQ-001; UXQ-010,S6,changed,End-to-end compare acceptance moves from G4 to S6 (test strategy §10).,pending
 REVIEW-001,Reimport same logical project after one source byte changes,docs/design/adr-010/v2-critical-review-addendum.md,FID-008,S4,retained,Same assertion.,pending
 REVIEW-002,Clone project with identical UID space,docs/design/adr-010/v2-critical-review-addendum.md,FID-009,S4,retained,Same assertion.,pending
-REVIEW-003,Process crash immediately after staged DB commit/before project publication,docs/design/adr-010/v2-critical-review-addendum.md,PUB-007,G3,retained,Fault boundaries B07-B11.,pending
+REVIEW-003,Process crash immediately after staged DB commit/before project publication,docs/design/adr-010/v2-critical-review-addendum.md,PUB-007; PUB-025,G3,retained,Fault boundaries B07-B11.,pending
 REVIEW-004,Crash after rename but before catalog registration,docs/design/adr-010/v2-critical-review-addendum.md,PUB-007,G3,changed,GoPMgr has no catalog step; the case checks a crash after the rename and before the journal update (boundary B12).,pending
 REVIEW-005,T2 MPP Java import with seekable scratch,docs/design/adr-010/v2-critical-review-addendum.md,TPT-013,G2,retained,Heap and memory measurement in plan §4 step 8.,pending
 REVIEW-006,Timephased actual/cost data in JSON/MSPDI export,docs/design/adr-010/v2-critical-review-addendum.md,FID-020,G4,retained,Same assertion.,pending
@@ -95,7 +95,7 @@ ADR10-013,Password-protected MPP,docs/design/adr-010/v2.1/adr-010-test-strategy.
 ADR10-014,Estimate exceeds free memory or disk,docs/design/adr-010/v2.1/adr-010-test-strategy.md,,G2,retained,Plan §4 step 8 requires the refusal. No v2.2 ID covers this; the ID stays active at its gate.,pending
 ADR10-015,Inspection of every fixture,docs/design/adr-010/v2.1/adr-010-test-strategy.md,FID-001,G2,retained,FID-001 covers no writes; this ID keeps counts equal to MPXJ's own.,pending
 ADR10-016,Staging on a different volume from projects/,docs/design/adr-010/v2.1/adr-010-test-strategy.md,PUB-009,G3,retained,Same assertion.,pending
-ADR10-017,"Journal found in each phase (plan §6.3), and a folder with no journal",docs/design/adr-010/v2.1/adr-010-test-strategy.md,PUB-006; PUB-007,G3,changed,"Recovery covers only the staging namespace, needs fresh approval, and drops the 30-day deletion (A-12, A-13, plan §6.3).",pending
+ADR10-017,"Journal found in each phase (plan §6.3), and a folder with no journal",docs/design/adr-010/v2.1/adr-010-test-strategy.md,PUB-006; PUB-007; PUB-021; PUB-025,G3,changed,"Recovery covers only the staging namespace, needs fresh approval, and drops the 30-day deletion (A-12, A-13, plan §6.3). INT-01 adds HMAC-authenticated journals (PUB-021, PUB-025).",pending
 ADR10-018,ListProjects during an import,docs/design/adr-010/v2.1/adr-010-test-strategy.md,PUB-001,G3,retained,Same assertion.,pending
 ADR10-019,"Folder name taken at publication, including an empty folder created just before the rename",docs/design/adr-010/v2.1/adr-010-test-strategy.md,PUB-008,G3,retained,Same assertion.,pending
 ADR10-020,Cancel from RECHECK on,docs/design/adr-010/v2.1/adr-010-test-strategy.md,PUB-014,G3,retained,Same assertion.,pending

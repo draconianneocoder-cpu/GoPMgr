@@ -5,11 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010: Local-first interoperable worker architecture, scalable project interchange, and future extension boundaries
 
-**Status:** PROPOSED, v2.2 — design only; **not implemented, tested, or accepted**.\
+**Status:** ACCEPTED — architecture only, v2.2. The maintainer accepted it on 2026-10-24 ([decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md)). **Not implemented or tested.** Only P00, P01/G0 and P02/S0 are authorized.\
 **Date:** 2026-10-24.\
 **Decider:** GoPMgr maintainer.\
 **Repository evidence:** GoPMgr `main` at `28a758d154795bb2a20f3cbeb63a12e9130a88ea`; agent's v2.1 document branch `claude/adr-010-plugin-architecture` at `49ac2bf756e3369ac3e90755f3656bfd13c9659c`. Re-check against HEAD before making changes.\
-**Supersedes for new decisions:** proposed ADR-010 v2.1, **if and only if the maintainer accepts this revision**. No earlier accepted ADR is implicitly overridden.\
+**Supersedes:** proposed ADR-010 v2.1 for architectural direction (INT-04, accepted 2026-10-24). v2.1 is kept unchanged in [`adr-010/v2.1/`](adr-010/v2.1/ADR-010-plugin-architecture.md). No earlier accepted ADR is implicitly overridden.\
 **Implementation companion:** [ADR-010 implementation plan](adr-010-implementation-plan.md).\
 **Assurance companion:** [ADR-010 test and acceptance strategy](../testing/adr-010-test-strategy.md).\
 **Agent controls:** [Architecture preservation and execution prompt](../agent/ADR-010-architecture-preservation-agent-prompt.md).\
@@ -184,7 +184,7 @@ None of these open decisions authorizes reducing the stated requirement. A faile
 ## 7. Normative source and precedence
 
 1. Approved GoPMgr ADRs and security/release invariants applicable to their scope.
-2. Maintainer-accepted ADR-010 v2.2 decisions (if accepted), followed by accepted ADR-011, AI ADR, and later supplemental decisions within their scope.
+2. Maintainer-accepted ADR-010 v2.2 decisions (accepted 2026-10-24, with the clarifications in the [decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md)), followed by accepted ADR-011, AI ADR, and later supplemental decisions within their scope.
 3. This ADR's implementation and test companions; the more restrictive applicable security/data-integrity rule prevails until the maintainer resolves a conflict.
 4. Current repository code and reproducible tests establish **implemented behavior**, not authority to weaken an approved goal.
 5. Archived earlier v1/v2.0/addendum and agent v2.1 drafts document context. Their binding requirements remain unless explicitly superseded in an accepted decision record.
@@ -207,4 +207,28 @@ None of these open decisions authorizes reducing the stated requirement. A faile
 | 2026-10-24 | v2.1 | Agent consolidation (`49ac2bf`); kept unchanged in [`adr-010/v2.1/`](adr-010/v2.1/ADR-010-plugin-architecture.md) |
 | 2026-10-24 | v2.2 | Maintainer bundle: gRPC over local IPC, internal registry, project-owned evidence, QI-01…QI-15, D-01…D-19 |
 | 2026-10-24 | v2.2 integrated | Verified against `28a758d`; corrections listed in the [integration review](../review/ADR-010-v2.2-integration-review.md). No requirement weakened; status stays PROPOSED |
+| 2026-10-24 | v2.2 accepted | The maintainer accepted D-01…D-19, QI-01…QI-15, OWN-01…OWN-11 and INT-01…INT-04 ([decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md)). Architecture only: P00, P01/G0 and P02/S0 authorized; nothing implemented. Earlier versions kept unchanged |
 
+## 9. Maintainer acceptance
+
+On 2026-10-24 the maintainer accepted D-01…D-19 and QI-01…QI-15 as the binding target architecture. The [decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md) is authoritative; this section summarizes it. **Acceptance is architecture only.** It is not evidence that any implementation, transport, licence position, performance target or test has been met.
+
+| ID | Disposition | What it binds |
+|---|---|---|
+| OWN-01 | Approved: target design | D-01…D-19 and QI-01…QI-15, with the record's clarifications; no unapproved downgrade |
+| OWN-02 | Approved: transport policy | gRPC/HTTP/2 and typed Protocol Buffers over private UDS (Linux, macOS); Windows restricted named pipes primary, proven Windows AF_UNIX acceptable; real Go↔Java interoperability on each advertised OS is a G0 gate |
+| OWN-03 | Approved: no implicit fallback | No protobuf-over-stdio business protocol, no silent loopback TCP; TCP only through an accepted ACR |
+| OWN-04 | Approved | Minimal language-neutral internal registry from G1; MPXJ only at first; no public SDK or marketplace before G7 |
+| OWN-05 | Approved | Evidence and reports retained with the project, encrypted and restorable; keeping the original file is the recommended default, with a visible opt-out |
+| OWN-06 | Approved | A SEALED import found in a new session needs re-authentication, ownership and integrity checks, and fresh approval |
+| OWN-07 | Approved: phased delivery | First release is Inspect → Review → Import as new project; S6, S7A and S7B stay mandatory program deliverables |
+| OWN-08 | Approved | ADR-011 defines and validates writer gates, normalized storage, encrypted migrations, legacy paths and downgrade disclosures |
+| OWN-09 | Approved for G0 investigation; final choices reserved | MPXJ 16.10.0, Java LTS and jlink, native transports, signing, SBOM and LGPL distribution are assessed; release pins need evidence, legal review and approval |
+| OWN-10 | Approved: goal and method; budgets reserved | Usable, editable 50,000-task schedules (T2) and T3 stress; hardware profiles and numeric budgets follow S0 |
+| OWN-11 | Approved for P01 experiments only | grpc-go, Protocol Buffers and go-winio may be evaluated in isolated spikes; adding them to `go.mod` needs G0 results, a `docs/DEPENDENCIES.md` review and an authorized G1 slice |
+| INT-01 | Approved | The intent journal and seal manifest are HMAC-authenticated and verified before recovery may authorize publication. A valid MAC is not freshness, so rollback is detected or handled by independent state checks. The algorithm, key derivation and anti-rollback design are reserved for a security-reviewed G3 contract |
+| INT-02 | Approved as a G0 candidate | A parent-owned, private, one-shot stdin pipe may carry the bootstrap credential and bounded endpoint metadata; business data still uses gRPC over local IPC |
+| INT-03 | Approved: evidence-based, non-destructive storage policy | Live SQLCipher/WAL storage is not declared safe on unvalidated sync-managed or network filesystems. Existing locations are never relocated, deleted or blocked from reading by heuristic; only new publication may warn or block, under an approved policy. A default-root change needs its own migration decision |
+| INT-04 | Approved | v2.2 is the authoritative accepted architecture; v2.1 is superseded and preserved unchanged |
+
+**Authorized now:** P00 documentation, P01/G0 isolated feasibility, and P02/S0 evidence (record §5.1). **Not authorized:** G1 onward, production dependencies, ADR-011 implementation or migrations, publication, a default-root change, signed releases, and G5–G7 (record §5.2).

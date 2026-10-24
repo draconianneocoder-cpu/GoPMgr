@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010 v2.2 — Test strategy, quality gates and traceable acceptance matrix
 
-**Status:** PROPOSED, no tests executed or claimed PASS. **Date:** 2026-10-24.\
+**Status:** ACCEPTED test strategy (maintainer, 2026-10-24; [decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md)); **no tests executed or claimed PASS**. **Date:** 2026-10-24.\
 **Normative references:** [ADR-010 v2.2](../design/ADR-010-plugin-architecture.md) and [implementation plan](../design/adr-010-implementation-plan.md).\
 **Important:** The earlier PLG, SCALE, REVIEW and ADR10 test inventories remain in the archived v2.0 and agent v2.1 drafts. **Retain those IDs in the agent's implementation ledger; do not erase or rename them to hide work.** The tests here add/update explicit v2.2 criteria. Existing cases need a machine-readable crosswalk before implementation.
 
@@ -42,6 +42,7 @@ Fixture manifest `testdata/interop/fixtures.json` (proposed) MUST define: fixtur
 | TPT-003 | D-03 | G0 | Real Java gRPC HTTP/2 client connects to Go named-pipe listener on Windows; bidirectional streamed messages and cancellation; **must not PASS based only on go-winio server** |
 | TPT-004 | D-03 | G0 | Windows AF_UNIX alternative passes identical real Java client tests, or marked BLOCKED/FAIL with evidence |
 | TPT-005 | D-03 | G0 | When native IPC not proven, no silent TCP or stdio fallback; UI truthful, OS worker marked blocked |
+| TPT-022 | D-05 | G0 | INT-02 stdin bootstrap: one-shot, versioned and length-bounded; expires; pipe closed after one read; no project data on stdio; credential absent from argv, environment, logs and crash reports; hostile child, replay and endpoint squat rejected; run on Linux, macOS and Windows |
 | TPT-006 | D-05 | G1 | Per-job endpoint is private and fresh; stale socket/pipe, symlink replacement, collision, squatting and cleanup cannot admit worker |
 | TPT-007 | D-05 | G1 | Per-launch credential bootstrap not in argv/env/manifest/log; reused/stolen nonce and duplicate connection rejected |
 | TPT-008 | D-05 | G1 | Linux/macOS parent directory permission, ownership and cleanup checks; no deleting another app's socket |
@@ -94,7 +95,7 @@ Fixture manifest `testdata/interop/fixtures.json` (proposed) MUST define: fixtur
 | PUB-004 | D-10 | G3 | Fresh login and seal-only staging require fresh publication approval; expired epoch receipt cannot authorize publish |
 | PUB-005 | D-10 | G3 | Account switch, sign-out, project switch, delete/recreate user, administrator escrow and key rotation cannot publish wrong account's project |
 | PUB-006 | D-10 | G3 | Orphan reconciliation inspects only authorized staging namespace; legacy project folders with no import journal remain untouched |
-| PUB-007 | D-10 | G3 | Signed journal/physical state after `PUBLISHING` crash reconciles once; destination never duplicated |
+| PUB-007 | D-10 | G3 | HMAC-authenticated journal (INT-01) and physical state after `PUBLISHING` crash reconcile once; destination never duplicated |
 | PUB-008 | D-10 | G3 | No-replace race with an existing empty/nonempty folder never overwrites on each supported OS |
 | PUB-009 | D-10 | G3 | Cross-volume filesystem or missing atomic primitive stops publication; no unsafe `os.Rename` fallback |
 | PUB-010 | D-10 | G3 | `SQLITE_FULL`, `EIO`, WAL checkpoint failure, sidecar persistence and interrupted fsync prevent partial visible project |
@@ -108,6 +109,12 @@ Fixture manifest `testdata/interop/fixtures.json` (proposed) MUST define: fixtur
 | PUB-018 | D-10 | G3 | Existing CreateProject and RestoreProjectArchive folders are not considered interop orphans |
 | PUB-019 | D-10 | G3 | Integrity, cipher where available, foreign key, audit hash, exact count and source checksums verified before seal |
 | PUB-020 | D-10 | G3 | On Windows/macOS/Linux actual crash/restart boundary tests; power-loss limitations explicitly documented |
+| PUB-021 | D-10 | G3 | INT-01 tamper: any changed field in the journal or seal manifest fails HMAC verification; no publication is authorized and nothing is destroyed; operation-owned staging is quarantined for authenticated review |
+| PUB-022 | D-10 | G3 | INT-01 rollback: an older, validly authenticated journal restored over newer state is detected or handled safely through the receipt marker, physical state and seal digests; a valid MAC is never treated as freshness |
+| PUB-023 | D-10 | G3 | INT-01 key lifecycle: after a password change (DEK re-wrap), recovery-code reset and escrow rotation, the owner's legitimate recovery still verifies; another user cannot verify or publish |
+| PUB-024 | D-10 | G3 | INT-01 replay: re-presenting a journal, approval or seal for an operation already published never publishes twice |
+| PUB-025 | D-10 | G3 | INT-01 crash states: an interrupted journal fsync or a missing seal manifest leaves the import unpublished and recoverable; a crash at each journal-state write classifies deterministically |
+| PUB-026 | D-10 | G3 | INT-03: a sync-managed, network or otherwise unsupported location never causes deletion, relocation or blocked reads of existing projects; new publication warns or blocks only under the approved supported-location policy, with relocation and backup guidance; no claim of perfect sync-client detection |
 
 ### 6.1 Fault-injection boundary schedule
 
@@ -156,6 +163,7 @@ For every B01–B16 inject: crash at process boundary, selected `EIO`, disk full
 | DB-018 | D-13 | S7B | Evidence object missing/tampered detected by digests; snapshots/replay reconstruct approved state |
 | DB-019 | D-13 | S7B | Undo, receipts, immutable audit and evidence retention differ correctly; no accidental 256-limit reuse |
 | DB-020 | D-11 | S6 | Shadow generation merge does not expose any partial schedule; stale revision/epoch rejects |
+| DB-021 | D-12 | S0 | INT-03 evidence: on each OS's default data root and on representative redirected or sync-managed folders, record locking, same-volume no-replace rename, WAL and checkpoint behavior, case, path and ACL behavior, and durability; evidence only, no data moved |
 
 ## 8. UX, accessibility, comparison, AI and governance
 
@@ -191,14 +199,14 @@ Initial *proposed* UI budgets on owner-approved recommended hardware: warm 200-r
 
 | Gate | Dependencies | Acceptance criterion |
 |---|---|---|
-| G0 | Read-only research/evidence | TPT-001–005 and licensing, Java native runtime, packaged feasibility, explicit Windows outcome |
+| G0 | Read-only research/evidence | TPT-001–005, TPT-022 and licensing, Java native runtime, packaged feasibility, explicit Windows outcome |
 | G1 | G0 acceptable candidate per shipping OS | TPT-006–021, fake workers, protocol compatibility, neutral registry, no DB mutation |
 | G2 | G1 | FID-001–003, UXQ-001 (Choose and Inspect stages), UXQ-002, UXQ-011, malformed format corpus, accurate inspect counts and privacy |
-| S0/S1 | Baselines + owner-approved ADR-011 | Schema DDL, format gate/old-version warning, migration plan, hardware profiles |
+| S0/S1 | Baselines + owner-approved ADR-011 | DB-021 (S0), schema DDL, format gate/old-version warning, migration plan, hardware profiles |
 | S2 | S1 | DB-001/002; format gate shipped/tested before new format writes |
 | S3 | S2 | DB-003–007, staging infrastructure, reproducible 50k typed records |
 | S4 | S3+G2 | FID-004–018, source evidence, typed mapping, deterministic receipts |
-| G3 | S4+G2 | PUB-001–020, all fault boundaries, UXQ-001/003–006, authenticated new-project import |
+| G3 | S4+G2 | PUB-001–026, all fault boundaries, UXQ-001/003–006, authenticated new-project import |
 | S5 | S3 | DB-008–012, UXQ-007/008, package UI performance and accessibility |
 | G4 | G3+S5 for full-scale claims | FID-019/020, tested formats/OS, export and package/sign/license tests |
 | S6 | S3/S4/S5 | DB-020, UXQ-009/010, three-way conflict/rollback tests |

@@ -30,8 +30,9 @@ automated engineering work.
 - For ADR-010 or ADR-011 work (plugins, MPXJ, worker IPC, large
   schedules, or AI/MCP), load
   `docs/agent/ADR-010-architecture-preservation-agent-prompt.md` first
-  and follow it. Its documents stay PROPOSED until the maintainer
-  accepts them.
+  and follow it. The architecture was accepted on 2026-10-24; only the
+  work slices authorized in
+  `docs/review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md` may proceed.
 - Use repository patterns instead of inventing new architecture.
 - Read existing files before editing. Do not guess APIs, versions,
   flags, commit SHAs, or package names; verify by reading code or

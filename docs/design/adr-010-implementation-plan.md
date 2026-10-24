@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010 v2.2 — Detailed engineering blueprint and phased implementation plan
 
-**Status:** PROPOSED; no code changes authorized solely by this document. **Companion:** [binding ADR](ADR-010-plugin-architecture.md), [test strategy](../testing/adr-010-test-strategy.md), [agent prompt](../agent/ADR-010-architecture-preservation-agent-prompt.md).\
+**Status:** ACCEPTED target architecture (maintainer, 2026-10-24; [decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md)). Only P00, P01/G0 and P02/S0 are authorized (§8.2); no production code or schema change is authorized. **Companion:** [binding ADR](ADR-010-plugin-architecture.md), [test strategy](../testing/adr-010-test-strategy.md), [agent prompt](../agent/ADR-010-architecture-preservation-agent-prompt.md).\
 **Repository baseline:** `main@28a758d` and agent's `claude/adr-010-plugin-architecture@49ac2bf` as of 2026-10-24. Rebase, re-census, and resolve conflicts before coding.\
 **Plan owners:** maintainer approves contracts; implementation agents propose narrowly scoped PRs with independent verification.
 
@@ -115,7 +115,7 @@ The Windows named-pipe Java binding must use a maintained transport API where po
 ### 2.2 Orientation and bootstrap
 
 - **Recommended orientation:** Go host creates restricted IPC listener; worker connects as gRPC client and opens the authenticated bidirectional `WorkerSession.Connect` stream (§3.2). Host is service authority and job controller. If a real Java transport requires reverse orientation, document the security and lifecycle implications; keep semantics unchanged.
-- Bootstrap includes worker ID, protocol range, endpoint descriptor, operation ID and an unpredictable single-use credential. Transmit secret via a reviewed inherited one-time descriptor or equivalent protected OS mechanism; not command line, persistent env, manifest, logs, crash reports or Java system properties. Limited stdio **bootstrap metadata** may be investigated with the owner's approval; never business data.
+- Bootstrap includes worker ID, protocol range, endpoint descriptor, operation ID and an unpredictable single-use credential. Transmit secret via a reviewed inherited one-time descriptor or equivalent protected OS mechanism; not command line, persistent env, manifest, logs, crash reports or Java system properties. INT-02 approves a parent-owned, private, one-shot **stdin pipe** as the G0 candidate for the credential and bounded endpoint metadata; never business data. It must be versioned and length-bounded, expire, resist replay, and close after one read; G0 proves it on each OS (TPT-022).
 - Connection may serve only one authenticated launch; reject second clients, replay, downgrade, wrong user/copy/worker digest. Use OS credentials/ACLs and protocol-level proof. UDS socket owner/mode and Windows pipe ACLs are enforced, with symlink/squat/restart adversarial tests.
 - Host can cancel active RPC, escalate to kill process tree, reap and clean IPC artifact, with bounded deadlines. A stale worker cannot publish anything because it has no authoritative write API.
 - Demonstrate transport across packaged signed builds; the Java Netty native dependencies and `jlink` image must run offline.
@@ -306,7 +306,7 @@ Every source field has the multidimensional ledger described in D-09. For fields
     ...                               # only operation-owned failed artifacts
 ```
 
-Use the repo's **actual account directory model**, not guessed folders. The sample layout must be reconciled with `users.DefaultRootDir`, session/account ownership and `enumerateProjects`. Verified at `28a758d`: the data root is `users.DefaultRootDir()` (`$XDG_DATA_HOME/GoPMgr` when set, otherwise `~/Library/Application Support/GoPMgr` on macOS and `~/Documents/GoPMgr` on Linux and Windows); each account's `DataDir` is `<root>/<username>` (`internal/users/store.go:694`); projects are `<DataDir>/projects/<folder>/` (`app_projects.go:94`). So `<account-data>` above is `<root>/<username>`, and staging and quarantine sit beside `projects/` on the same volume. On Linux and Windows the root is under `~/Documents`, which a sync client (for example OneDrive folder redirection) may manage; G3 must test publication and recovery in such a folder or state a supported-location rule. Project-owned evidence may instead live as encrypted `evidence_chunks` *inside* `.gopmgr`; adopt an encrypted sidecar only after comparative backup/restore performance and recovery tests. If source retention is explicitly declined, the receipt records `source_bytes_retained=false` and the mapping ledger still states what is and is not recoverable. No source plaintext copied into long-lived sidecars or logs.
+Use the repo's **actual account directory model**, not guessed folders. The sample layout must be reconciled with `users.DefaultRootDir`, session/account ownership and `enumerateProjects`. Verified at `28a758d`: the data root is `users.DefaultRootDir()` (`$XDG_DATA_HOME/GoPMgr` when set, otherwise `~/Library/Application Support/GoPMgr` on macOS and `~/Documents/GoPMgr` on Linux and Windows); each account's `DataDir` is `<root>/<username>` (`internal/users/store.go:694`); projects are `<DataDir>/projects/<folder>/` (`app_projects.go:94`). So `<account-data>` above is `<root>/<username>`, and staging and quarantine sit beside `projects/` on the same volume. On Linux and Windows the root is under `~/Documents`, which a sync client (for example OneDrive folder redirection) may manage. INT-03 sets the policy: live SQLCipher/WAL storage is not declared safe on unvalidated sync-managed or network filesystems; existing locations are compatibility inputs and are never relocated, deleted or blocked from reading by heuristic; only new publication may warn or block, under an approved supported-location policy with relocation and backup guidance; a default-root change needs its own migration decision. S0 measures the filesystem properties (DB-021) and G3 tests the policy (PUB-026). Project-owned evidence may instead live as encrypted `evidence_chunks` *inside* `.gopmgr`; adopt an encrypted sidecar only after comparative backup/restore performance and recovery tests. If source retention is explicitly declined, the receipt records `source_bytes_retained=false` and the mapping ledger still states what is and is not recoverable. No source plaintext copied into long-lived sidecars or logs.
 
 ### 6.2 Transaction and state machine
 
@@ -328,6 +328,8 @@ The durable journal stores the five states named in ADR D-10; the other job stat
 | `PUBLISHING` | PUBLISHING, before the rename | The rename may or may not have happened; check both locations |
 | `PUBLISHED` | PUBLISHED, after the rename and directory sync | Read back and verify |
 | `RECONCILED` | COMPLETE | Nothing left to do; staging may be removed |
+
+INT-01: the journal and the seal manifest are **HMAC-authenticated** over a canonical, versioned encoding (operation ID, principal incarnation, intended project identity, candidate and seal digests, evidence manifest reference, state, final target). Recovery verifies them before it may authorize publication. A valid MAC proves integrity, not freshness: a rolled-back journal still verifies, so recovery also checks the authoritative receipt marker, the physical state and the seal digests. The key must survive restart and follow GoPMgr's DEK re-wrap, recovery-code, password-reset, escrow and deletion rules, and is never stored usable in the journal. The algorithm, key derivation and anti-rollback design are reserved for a security-reviewed G3 publication contract (tests PUB-021…PUB-025).
 
 **Step-by-step commit design:**
 
@@ -353,6 +355,7 @@ The durable journal stores the five states named in ADR D-10; the other job stat
 | Orphan **within operation-owned stage**, no valid journal | unknown contents | Quarantine; explain and never auto-delete valuable source | “Unfinished import files need review” |
 | Existing legacy `projects/` folder without ADR-010 journal | normal existing project | **Never quarantine by this protocol** | No special warning |
 | Inconsistent digest or foreign ownership | suspect evidence | Stop and quarantine only what provenance authorizes; security log with no content | “Import requires recovery review” |
+| Journal missing, invalid or failing HMAC verification (INT-01) | operation-owned staging only | Quarantine for authenticated review; never authorize publication or destructive cleanup | “Unfinished import files need review” |
 
 Quarantine deletion/retention is a separate consent/retention decision, not an arbitrary “30 days then delete” default for valuable source material. Do not retain plaintext or hidden sensitive logs for automatic support collection.
 
@@ -451,6 +454,8 @@ Separate third-party ADR + OS sandbox proof -> G7
 | P17 | S7B compact audit, checkpoints, replay and export | Rewrite old audit records |
 | P18+ | G5/G6/G7 under their own approved ADRs | Unscoped AI/third-party code |
 
+**Authorization (2026-10-24):** P00, P01 and P02 are authorized as separate small PRs (decision record §5.1). P03 onward needs its own accepted work slice; P01 code must not become a production worker, and P02 must not migrate any project.
+
 Each PR states exact HEAD, changed files, invariant IDs, new tests, raw pass/blocked results, source/fixture hashes, performance change, threat/law/license change, migration/rollback and scope exclusions. Stop if old/source behavior differs materially from baseline.
 
 ### 8.3 Go/no-go gates
@@ -479,19 +484,19 @@ Each PR states exact HEAD, changed files, invariant IDs, new tests, raw pass/blo
 
 | ID | Item | Proposed default | State |
 |---|---|---|---|
-| OWN-01 | Accept ADR-010 v2.2 D-01…D-19 | Yes, subject to owner review | OPEN |
-| OWN-02 | Native gRPC IPC policy: UDS Unix / named pipes Windows | Bind as design, require G0 proof | OPEN |
-| OWN-03 | Explicit TCP fallback policy | No fallback without ACR and approval | OPEN |
-| OWN-04 | Internal registry from first implementation | Yes, bundled-only initially | OPEN |
-| OWN-05 | Project-contained encrypted evidence | Yes; measure DB vs encrypted sidecars | OPEN |
-| OWN-06 | Fresh approval for SEALED after new sign-in | Yes | OPEN |
-| OWN-07 | New project only first release; S6 tracked separately | Yes, program scope preserved | OPEN |
-| OWN-08 | Existing file version gate and prior-version disclosure | Yes, ADR-011 required | OPEN |
-| OWN-09 | MPXJ LTS/JDK/Notarization/license/replacement policy | G0 investigation + legal review | OPEN |
-| OWN-10 | Minimum/recommended hardware and latency/throughput budgets | Decide after S0 measurements | OPEN |
-| OWN-11 | New Go dependencies: `google.golang.org/grpc`, `google.golang.org/protobuf` and, for Windows named pipes, `github.com/Microsoft/go-winio` (none is in `go.mod` today) | Approve at G1 with a `docs/DEPENDENCIES.md` record, after G0 picks the transport | OPEN |
+| OWN-01 | Accept ADR-010 v2.2 D-01…D-19 | Yes, subject to owner review | APPROVED — target design |
+| OWN-02 | Native gRPC IPC policy: UDS Unix / named pipes Windows | Bind as design, require G0 proof | APPROVED — transport policy; G0 proof still required |
+| OWN-03 | Explicit TCP fallback policy | No fallback without ACR and approval | APPROVED — no implicit fallback |
+| OWN-04 | Internal registry from first implementation | Yes, bundled-only initially | APPROVED |
+| OWN-05 | Project-contained encrypted evidence | Yes; measure DB vs encrypted sidecars | APPROVED — keeping the original file is the recommended default, with opt-out |
+| OWN-06 | Fresh approval for SEALED after new sign-in | Yes | APPROVED |
+| OWN-07 | New project only first release; S6 tracked separately | Yes, program scope preserved | APPROVED — phased delivery |
+| OWN-08 | Existing file version gate and prior-version disclosure | Yes, ADR-011 required | APPROVED |
+| OWN-09 | MPXJ LTS/JDK/Notarization/license/replacement policy | G0 investigation + legal review | APPROVED FOR G0 INVESTIGATION; final choices reserved |
+| OWN-10 | Minimum/recommended hardware and latency/throughput budgets | Decide after S0 measurements | APPROVED — goal and method; budgets reserved for after S0 |
+| OWN-11 | New Go dependencies: `google.golang.org/grpc`, `google.golang.org/protobuf` and, for Windows named pipes, `github.com/Microsoft/go-winio` (none is in `go.mod` today) | Approve at G1 with a `docs/DEPENDENCIES.md` record, after G0 picks the transport | APPROVED FOR P01 EXPERIMENTS; G1 production dependencies not yet authorized |
 
-Document owner decisions in an accepted ADR and test strategy. An agent must not mark `OPEN` as `APPROVED` through interpretation, code edits or “the test passes.”
+Document owner decisions in an accepted ADR and test strategy. An agent must not mark `OPEN` as `APPROVED` through interpretation, code edits or “the test passes.” The maintainer approved all eleven on 2026-10-24; the State column copies the dispositions in the [decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md) §2, which governs their conditions.
 
 ## 11. Primary references and exact-file evidence
 

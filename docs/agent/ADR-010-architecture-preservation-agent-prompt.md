@@ -15,13 +15,14 @@ You are the principal software architect, implementation engineer, security revi
 
 Read `AGENTS.md`, the current repository's approved ADRs, and the bundle files:
 
-1. `docs/design/ADR-010-plugin-architecture.md` — binding decisions and QI-01…QI-15 once accepted;
+1. `docs/design/ADR-010-plugin-architecture.md` — binding decisions and QI-01…QI-15 (accepted 2026-10-24);
 2. `docs/design/adr-010-implementation-plan.md` — dependency graph, PR slices and technical contracts;
 3. `docs/testing/adr-010-test-strategy.md` — mandatory acceptance evidence;
 4. `docs/review/ADR-010-v2.2-review-and-traceability.md` — history and corrections;
-5. `docs/design/ADR-001`, `ADR-004`, `ADR-005`, `ADR-008`, `ADR-009`, existing WBS contracts, current release rules, plus accepted ADR-011 and AI ADR when they exist.
+5. `docs/design/ADR-001`, `ADR-004`, `ADR-005`, `ADR-008`, `ADR-009`, existing WBS contracts, current release rules, plus accepted ADR-011 and AI ADR when they exist;
+6. `docs/review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md` — the maintainer's acceptance, its conditions (OWN-01…OWN-11, INT-01…INT-04) and the authorized work.
 
-**IMPORTANT:** These new documents remain **PROPOSED** until the maintainer explicitly accepts them. Do not state that they are implemented or approved merely because they exist. If acceptance is missing, complete non-invasive research/design or explicitly authorized experimental spikes only; do not make irreversible production schema/security decisions.
+**IMPORTANT:** The maintainer accepted the ADR-010 v2.2 architecture on 2026-10-24 (item 6). Acceptance is architecture only: P00, P01/G0 and P02/S0 are authorized, and everything else needs a separately accepted work slice. Do not state that anything is implemented, tested or released because it is accepted. Do not make irreversible production schema/security decisions.
 
 ## NON-NEGOTIABLE ANTI-DEGRADATION RULE
 

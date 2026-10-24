@@ -6,10 +6,14 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # ADR-010 reference documents
 
 This folder keeps every earlier ADR-010 plan unchanged. These files are
-reference material, not the current proposal.
+reference material, not the current architecture.
 
-**The current proposal is v2.2. Read it in this order:**
+**The current architecture is v2.2, accepted by the maintainer on 2026-10-24.
+Read it in this order:**
 
+0. [Acceptance record](../../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md):
+   the binding decisions OWN-01 to OWN-11 and INT-01 to INT-04, and the work
+   authorized now.
 1. [ADR-010](../ADR-010-plugin-architecture.md): quality invariants QI-01 to
    QI-15 and decisions D-01 to D-19.
 2. [v2.2 review and traceability](../../review/ADR-010-v2.2-review-and-traceability.md):
@@ -24,7 +28,8 @@ reference material, not the current proposal.
    what was verified and corrected when v2.2 entered the repository, and the
    baseline conformance report.
 
-All of them are PROPOSED until the maintainer accepts them.
+Acceptance is architecture only: nothing is implemented yet, and only P00,
+P01/G0 and P02/S0 are authorized.
 
 ## Files in this folder
 
@@ -33,7 +38,7 @@ All of them are PROPOSED until the maintainer accepts them.
 | [`v1-original-plan.md`](v1-original-plan.md) | The first ADR-010 plan | Reference |
 | [`v2.0-plan.md`](v2.0-plan.md) | v2.0: workers, MPXJ, normalized storage, scale | Reference; defines PLG and SCALE tests |
 | [`v2-critical-review-addendum.md`](v2-critical-review-addendum.md) | Critical review of v2.0 | Reference; defines REVIEW tests |
-| [`v2.1/`](v2.1/ADR-010-plugin-architecture.md) | The agent's v2.1 ADR, plan and test strategy (`49ac2bf`) | Reference; defines ADR10 tests. Superseded by v2.2 only if the maintainer accepts v2.2 |
+| [`v2.1/`](v2.1/ADR-010-plugin-architecture.md) | The agent's v2.1 ADR, plan and test strategy (`49ac2bf`) | Reference; defines ADR10 tests. Superseded by v2.2 on 2026-10-24 (INT-04) |
 
 **Rules for these files:**
 
@@ -66,6 +71,15 @@ as received, and the next commit holds every integration edit.
 **Reference copies.** The bundle's three reference files are byte-identical
 to `v1-original-plan.md`, `v2.0-plan.md` and `v2-critical-review-addendum.md`
 here.
+
+**Acceptance.** The maintainer's acceptance bundle was received on 2026-10-24,
+and every file matched its `SHA256SUMS.txt`. Commit `ad0212b` adds the
+decision record and agent handoff byte-for-byte:
+
+| File | SHA-256 |
+| --- | --- |
+| `docs/review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md` | `cf9f5b07d87eb397a0be3916974e02a3075d8663e4e11fc4f9d3c08a73370afa` |
+| `docs/agent/ADR-010-v2.2-AGENT-HANDOFF.md` | `fde65c6e30e4e1009917e3955b3aeec973375fe56e60f43c397591fa37126e17` |
 
 **Not copied.** The bundle's own README was left out, because its links
 assume the bundle's layout. Its reading order and integration steps are
