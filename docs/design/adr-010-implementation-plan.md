@@ -3,1165 +3,488 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
-# ADR-010 implementation plan (v2.1)
+# ADR-010 v2.2 — Detailed engineering blueprint and phased implementation plan
 
-**Status:** Proposed. This plan describes design, not implemented behavior.
-**Decision record:** [ADR-010](ADR-010-plugin-architecture.md)
-**Test strategy:** [`docs/testing/adr-010-test-strategy.md`](../testing/adr-010-test-strategy.md)
-**Sources:** v2.0 (primary) and its critical review addendum (applied),
-stored unchanged in [`adr-010/`](adr-010/README.md). Section numbers in
-brackets, such as [v2 §9.2] or [P0-02], point to those originals.
+**Status:** PROPOSED; no code changes authorized solely by this document. **Companion:** [binding ADR](ADR-010-plugin-architecture.md), [test strategy](../testing/adr-010-test-strategy.md), [agent prompt](../agent/ADR-010-architecture-preservation-agent-prompt.md).  
+**Repository baseline:** `main@28a758d` and agent's `claude/adr-010-plugin-architecture@49ac2bf` as of 2026-10-24. Rebase, re-census, and resolve conflicts before coding.  
+**Plan owners:** maintainer approves contracts; implementation agents propose narrowly scoped PRs with independent verification.
 
-**Rule for every phase:** a phase that passes gives permission to *propose*
-the next one, nothing more. No phase may weaken an existing invariant.
+## 0. Engineering precedence and completion definitions
 
-If the plan conflicts with an accepted ADR or with code, stop. Write down the
-conflict, then use this order to decide:
+This plan operationalizes **QI-01…QI-15** and **D-01…D-19** from the companion ADR. All hard requirements are traceable in the test strategy. On conflict, do not choose a simpler solution silently: halt the affected work package, document the conflict and raise an Architecture Change Request (ACR). Follow repository `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/DEPENDENCIES.md`, `docs/VISION.md`, `docs/ROADMAP.md`, ADR-001, ADR-004/005, ADR-008/009, the unified WBS contract, and release gates. Existing source behavior is evidence, not permission to delete requirements.
 
-1. maintainer decisions;
-2. accepted ADRs and the code at `HEAD`;
-3. upstream documentation;
-4. this plan;
-5. its illustrations.
+**Explicit scope boundaries:** G0/G1/G2 establish *inspection* capability and IPC; G3 imports complete validated new projects; G4 packages/export-tests; S1–S7 make >10,000 editable entities and analytics real; G5–G7 are separately accepted extension capabilities. No phase is called finished merely because its document or fake-worker tests exist.
 
-## Contents
-
-1. [Architecture and ownership](#1-architecture-and-ownership)
-2. [Worker MVP](#2-worker-mvp)
-3. [Security](#3-security)
-4. [Interchange model](#4-interchange-model)
-5. [MPXJ worker](#5-mpxj-worker)
-6. [Publication and recovery](#6-publication-and-recovery)
-7. [Storage and scale](#7-storage-and-scale-inputs-to-adr-011)
-8. [AI and MCP boundary](#8-ai-and-mcp-boundary)
-9. [Interface design](#9-interface-design)
-10. [Delivery plan](#10-delivery-plan)
-11. [Release, migration, and rollback](#11-release-migration-and-rollback)
-12. [Risks](#12-risks)
-13. [Brief for coding agents](#13-brief-for-coding-agents)
-14. [Documentation plan](#14-documentation-plan)
-
-## 1. Architecture and ownership
+## 1. High-level architecture and boundaries
 
 ```text
-+---------------------------------------------------------------+
-| Svelte 5 interface (Wails v2)                                 |
-|   Import assistant, fidelity inspector, job center,           |
-|   import tools (settings), paged outline and timeline         |
-+-------------------------------+-------------------------------+
-                                | Wails bound methods only
-+-------------------------------v-------------------------------+
-| Go host: App + internal/interop/...                           |
-|   worker supervisor   job runner   capability check           |
-|   resource budgets    receipts     intent journal             |
-|   staging builder     validators   publish + reconcile        |
-+---------------+----------------------------------+------------+
-                | stdin/stdout frames (D-4 a)      | SQL through
-                | one job per process (D-5)        | internal/sqlitedriver
-+---------------v---------------+      +-----------v-------------+
-| MPXJ worker (Java)            |      | staging/<op>/project    |
-|   reads the selected source   |      | (encrypted, not listed) |
-|   emits typed records         |      +-----------+-------------+
-|   no DB, no keys, no network  |                  | one rename after seal
-+-------------------------------+      +-----------v-------------+
-                                       | projects/<folder>/      |
-                                       | (discovered by scan)    |
-                                       +-------------------------+
++--------------------------------------------------------------------------+
+| Wails v2 / Svelte 5: Import Assistant, Plugin Center, Job Center,        |
+| Fidelity Inspector, virtualized Outline + Gantt, future AI workspace     |
++--------------------------------------+-----------------------------------+
+                                       | typed, bounded Wails methods
++--------------------------------------v-----------------------------------+
+| GoPMgr HOST (authoritative)                                               |
+| Account/session/epoch + project copy/handle + permission checks           |
+|  internal/interop/registry    internal/interop/supervisor                 |
+|  internal/interop/ipc         internal/interop/job                        |
+|  internal/interop/contract    internal/interop/import                     |
+|  internal/interop/evidence   internal/interop/publish                    |
+|  internal/interop/fidelity   internal/interop/mapping                    |
+|  project services / SQLCipher / scheduler / exact money / audit           |
++--------------------+----------------------+------------------------------+
+                     | gRPC/HTTP2            | authorized SQL transactions
+                     | UDS / named pipe      v
++--------------------v---------+   +--------------------------------------+
+| Bundled MPXJ Java Worker     |   | Encrypted staging project folder     |
+| Reads selected source,       |   | DB + receipts + source evidence      |
+| emits typed entities,        |   | (project-owned; no published partial) |
+| no .gopmgr / key / host RPC   |   +------------------+-------------------+
++------------------------------+                      | verified atomic no-replace
+                                                     v
+                                        projects/<folder>/project.gopmgr
+                                        (normal folder scan, no catalog)
+
+Future bounded workers: Rust analytics / other adapters; AI/MCP is a
+separate controlled gateway, NOT the underlying plugin transport.
 ```
 
-| Information | Authority | Never |
-| --- | --- | --- |
-| Account, session, epoch, project copy | Host session services | Claimed by a worker |
-| Schedule activities and outline | Normalized tables after ADR-011; `charts.data` until then | Two writable copies |
-| WBS scope | WBS v2 contract (`docs/design/wbs-unified-model-contract.md`) | Built automatically from a source outline |
-| Calendars, resources, assignments | Host normalized records | Resource names used as keys |
-| Money and currency | `internal/db` and `internal/money` (ADR-009) | Float values from the source written as money |
-| Source facts and unsupported fields | Immutable source snapshot and receipt | Silently discarded |
-| Imported schedule results | Kept as source facts | Recomputed during import |
-| Audit and receipts | Host audit chain | Written by a worker |
+### 1.1 Owner-by-domain table
 
-**Packages (proposed, inspect namespaces first):**
+| Domain | Authority | Worker-visible form | Additional rule |
+|---|---|---|---|
+| Accounts/DEK/session | Host `internal/users`, `session_state.go` | None | Epoch and incarnation checked again at publish |
+| SQLCipher/schema/format version | Host `internal/db`, ADR-011 | Typed records only | No DB handle, password, raw SQL or project path |
+| Source identity | Host `interop/mapping` | Source-native UIDs in emitted records | Never use task name/path as identity |
+| Source evidence | Host encrypted project evidence store | Worker may read selected source stream | Source-retention choice explicit |
+| Scheduling/EVM/money | Existing Go kernels | Source factual dates/numbers only | No re-scheduling during import |
+| Scope/WBS | WBS v2, eventual ADR-011 | Source outline separate | Import must not bypass WBS limits |
+| Audit | Host append-only chain | Sanitized structured diagnostics only | Existing hashes invariant |
+| UI and localization | Wails/Svelte + ADR-008 catalog | No raw worker message to UI | No English string matching |
+| AI | Future permissioned host services | Read-only MCP initially | Model output untrusted; user-controlled proposals |
 
-| Package | Role |
-| --- | --- |
-| `internal/interop/worker` | Supervisor, launch, lifecycle |
-| `internal/interop/protocol` | `.proto` files, generated code, framing |
-| `internal/interop/importer` | Staging, validation, receipts |
-| `internal/interop/publish` | Intent journal, seal, rename, reconcile |
-| `workers/mpxj-bridge/` | Java bridge (Gradle or Maven, pinned) |
+### 1.2 Concrete proposed paths, subject to repo naming review
 
-The original `internal/plugin/*` names [v2 §4.1] are replaced, because there
-is no general plugin registry in the MVP (D-3).
+```text
+internal/interop/
+  contract/           # protobuf source/descriptor and generated Go
+  registry/           # capability registry, manifests and compatibility
+  supervisor/         # host process tree + start/stop resource policies
+  ipc/                # transport-neutral RPC client/server adapter
+    unix/             # UDS for linux/darwin
+    windows/          # named pipes, pending proof
+  job/                # lifecycle, cancellation, phase reporting
+  importjob/          # parsing orchestration and bounded staging
+  mapping/            # identities, conversions, record mappings
+  fidelity/           # field-ledger and format evidence
+  evidence/           # encrypted source/field report and retention
+  publish/            # intent journal and crash-safe publication
+workers/mpxj-bridge/  # Java project and verified native grpc transports
+proto/gopmgr/interop/v1/ # authoritative .proto sources, no ad hoc copies
+frontend/src/...       # follow existing Svelte naming and component conventions
 
-## 2. Worker MVP
+# Future, only with separately approved ADRs:
+internal/schedule/     # normalized schedule kernel/storage adapters
+internal/ai/           # model providers / MCP authorization gateway
+```
 
-### 2.1 Trust chain, on one page
+Do **not** create a monolithic `plugin.go`, global service locator, universal JSON serializer, or direct Wails bindings for every worker method. The host's existing project domain APIs remain the only access route.
 
-1. The release pipeline builds the bridge JAR and a jlink-trimmed Java
-   runtime for each OS. It pins MPXJ 16.10.0 and its dependency tree by
-   checksum, and writes `workers/lock.json`:
-   - worker ID and version;
-   - protocol major and minor version;
-   - the SHA-256 of every file;
-   - the MPXJ version.
-2. The lock file is embedded in the GoPMgr binary at build time, so a
-   replaced lock file on disk is never trusted. The worker files sit inside
-   the signed, notarized app bundle.
-3. Before each launch, the host walks the worker folder. It rejects symlinks
-   and unexpected or missing files, and checks every digest against the
-   embedded lock. Any mismatch returns `PLUGIN_SIGNATURE_INVALID` and nothing
-   runs.
-4. The host starts the bundled `java` executable with a fixed argument list:
-   no shell, no `sh -c`, and no values taken from a manifest. It uses a clean
-   environment, a scratch folder as the working directory, and stdin, stdout,
-   and stderr as its only inherited handles. The one exception is the
-   read-only source handle of strategy (b) in §5.6, where G2 approves it.
-5. Handshake: the host writes `Hello{protocol, nonce, expected_worker_digest}`.
-   The worker must answer `Hello{protocol, nonce, worker_id, version,
-   capabilities}` within a deadline. A version mismatch returns
-   `PLUGIN_INCOMPATIBLE`.
-6. The job runs. When it ends, or on cancel, the host closes stdin, waits a
-   short grace period, then kills and reaps the whole process tree.
+## 2. G0: platform gRPC IPC feasibility — first mandatory gate
 
-Turning the worker off must leave the core app fully usable, including Quick
-chart import [REVIEW-017].
+**Goal:** select an actual Go↔Java **gRPC/HTTP2 over local OS IPC** implementation on *every advertised platform* before finalizing the worker launch protocol or shipping it. Cross-language interoperability is a **technical test**, not a literature-based assertion. G0 is intentionally disposable: no application data or product migrations.
 
-### 2.2 Framing for transport (a)
+### 2.1 Candidate transports and test matrix
 
-- **Frames.** Each frame is a uvarint length followed by one protobuf `Frame`
-  message. A frame is at most 4 MiB, and at most 4 frames are in flight; G0
-  confirms both by measurement.
-- **Ordering.** `Frame` carries a monotonic `sequence`, a `job_id`, and one
-  `oneof` body. Anything out of order, duplicated, or longer than the limit
-  ends the job with `INPUT_INVALID` or `PLUGIN_UNHEALTHY`.
-- **Stdout is frames only.** The bridge must capture the real stdout
-  descriptor for frames and point `System.out` at stderr *before* MPXJ or any
-  dependency loads, so a stray library print cannot corrupt the stream.
-- **Stderr.** It is a log channel, capped in size and scrubbed by the host. It
-  never contains project content [PLG-020].
-- **Fuzzing.** The framing code is fuzz-tested on both sides (a G1 exit
-  criterion).
+| Platform | Primary experiment | Secondary experiment | Cannot assume |
+|---|---|---|---|
+| Linux x86_64/arm64 where supported | Go `net.Listen("unix",...)` ↔ grpc-java Netty epoll domain socket | Java client or server orientation, same contract | Java grpc-java defaults support UDS without native setup |
+| macOS arm64 and amd64 where supported | Go UDS ↔ grpc-java Netty kqueue domain socket | Alternative native Java transport packaging | Working on one architecture proves the other |
+| Windows amd64/arm64 where supported | Go `go-winio` restricted named pipe ↔ **real Java grpc HTTP/2** named-pipe transport | Windows AF_UNIX in selected JDK + Java gRPC transport | Go `go-winio` or .NET docs prove Java named-pipe support |
 
-### 2.3 Messages (typed, no opaque payloads)
+The Windows named-pipe Java binding must use a maintained transport API where possible. If custom Netty Channel / JNA / JNI or a carefully isolated Windows transport shim is necessary, profile maintenance, ABI, code signing, security and testing cost. Reject speculative “it should work”. A Go↔Java gRPC handshake, unary RPC, server/client/bidirectional streaming, deadlines, cancellation and authentication must actually run on the configured Windows CI/test machine. Native AF_UNIX availability at OS/JDK level **does not establish grpc-java integration**. Document supported minimum Windows build and JDK.
+
+**No automatic fallback:** If native IPC cannot be demonstrated for Windows, mark G0 Windows **BLOCKED**. Offer owner a separate ACR evaluating (a) funded named-pipe adapter, (b) tested Windows UDS variant, (c) explicit, authenticated localhost gRPC exception, or (d) deferring *Windows worker support* while keeping core GoPMgr Windows functionality. The agent cannot substitute stdio or TCP independently.
+
+### 2.2 Orientation and bootstrap
+
+- **Recommended orientation:** Go host creates restricted IPC listener; worker connects as gRPC client and opens authenticated bidirectional `RunJob` stream. Host is service authority and job controller. If a real Java transport requires reverse orientation, document the security and lifecycle implications; keep semantics unchanged.
+- Bootstrap includes worker ID, protocol range, endpoint descriptor, operation ID and an unpredictable single-use credential. Transmit secret via a reviewed inherited one-time descriptor or equivalent protected OS mechanism; not command line, persistent env, manifest, logs, crash reports or Java system properties. Limited stdio **bootstrap metadata** may be investigated with the owner's approval; never business data.
+- Connection may serve only one authenticated launch; reject second clients, replay, downgrade, wrong user/copy/worker digest. Use OS credentials/ACLs and protocol-level proof. UDS socket owner/mode and Windows pipe ACLs are enforced, with symlink/squat/restart adversarial tests.
+- Host can cancel active RPC, escalate to kill process tree, reap and clean IPC artifact, with bounded deadlines. A stale worker cannot publish anything because it has no authoritative write API.
+- Demonstrate transport across packaged signed builds; the Java Netty native dependencies and `jlink` image must run offline.
+
+### 2.3 Required G0 metrics and artifacts
+
+Create `docs/testing/adr-010-g0-evidence.md`, `docs/interoperability/transport-matrix.md`, a pinned **experimental** Go/Java project and a source-linked dependency/SBOM/licensing report. Capture platform and arch, Java/JDK version, grpc-go/grpc-java/Netty versions, native library names/hashes, codegen version, latency (cold/warm), bandwidth, memory, CPU, startup/termination, cancellation p95, access-denied behavior and packaged signing. Run five coarse startup samples; for a statistical p95 of interactive requests, run substantially more, documenting sample count and variance. An unrun target is BLOCKED, not PASS.
+
+## 3. G1: versioned RPC, capabilities, process supervision
+
+### 3.1 Minimal general registry schema
+
+Worker manifest (a **proposed schema**, not currently supported YAML):
+
+```yaml
+api_version: gopmgr.plugin/v1
+id: org.gopmgr.mpxj
+name_key: plugin.mpxj.title
+vendor: GoPMgr / MPXJ upstream
+version: 0.1.0
+protocol:
+  min_major: 1
+  max_major: 1
+  min_minor: 0
+capabilities:
+  - id: schedule.inspect
+    formats: [mpp, mspdi, xer, pmxml, pod]
+    direction: read
+  - id: schedule.import
+    formats: [mpp, mspdi, xer, pmxml, pod]
+    direction: read
+runtime:
+  kind: subprocess
+  executable_id: java-runtime
+  platform_ipc: {linux: grpc+uds, darwin: grpc+uds, windows: grpc+npipe}
+permissions:
+  selected_source_only: true
+  host_database: false
+  host_write_api: false
+  network: not_enforced_for_bundled_worker
+```
+
+Advertised formats **must be filtered by tested version family and direction**, not blanket declared for all releases. Manifest trusted digests/permissions are embedded or verified against the signed host release, not read from a mutable self-authorizing plugin directory. Reject unknown mandatory manifest schema or protocol major; negotiate optional capability/minor versions. Use language-neutral IDs and typed error codes.
+
+### 3.2 Proposed protobuf RPC shape
+
+**Illustrative IDL — must be made compilable, reviewed, and generated before G1 implementation.** Never ship placeholder `bytes arbitrary_project` or protobuf `Any` for authoritative records.
 
 ```proto
 syntax = "proto3";
 package gopmgr.interop.v1;
+option go_package = "gopmgr/internal/interop/contract/interopv1";
 
-message Frame {
-  uint64 sequence = 1;
-  string job_id = 2;              // host-issued, opaque
-  oneof body {
-    Hello hello = 10;  Cancel cancel = 11;  Health health = 12;
-    SourceBegin source_begin = 20;  SourceChunk source_chunk = 21;
-    SourceEnd source_end = 22;
-    ProjectHeader project = 30;  Calendar calendar = 31;
-    Task task = 32;  Relation relation = 33;  Resource resource = 34;
-    Assignment assignment = 35;  BaselineValue baseline = 36;
-    TimephasedSegment timephased = 37;  CustomFieldDefinition custom_def = 38;
-    CustomFieldValue custom_value = 39;  FieldNote field_note = 40;
-    Diagnostic diagnostic = 50;  Progress progress = 51;
-    Completion completion = 52;  Failure failure = 53;
+service WorkerSession {
+  rpc Connect(stream WorkerEvent) returns (stream HostCommand);
+}
+
+message WorkerEvent {
+  string job_id = 1;
+  uint64 sequence = 2;
+  oneof event {
+    WorkerHello hello = 10;
+    HealthResponse health = 11;
+    ProjectHeader project = 12;
+    TaskRecord task = 13;
+    RelationshipRecord relationship = 14;
+    ResourceRecord resource = 15;
+    AssignmentRecord assignment = 16;
+    CalendarRecord calendar = 17;
+    TimephasedRecord timephased = 18;
+    CustomFieldRecord custom_field = 19;
+    FidelityNote fidelity_note = 20;
+    JobProgress progress = 21;
+    JobCompleted completed = 22;
+    JobFailed failed = 23;
   }
 }
-```
-
-The other message bodies are written in G1, with golden encoding fixtures.
-Their rules:
-
-- **Values.** Durations and work use exact integers with an explicit unit.
-  Money uses a decimal string, an ISO code, and the source's scale. Dates use
-  the raw source text, its zone or offset, and an interpreted instant where
-  one is known.
-- **Field state.** `FieldNote` reports one field's disposition (ADR-010 D-9)
-  and the reason for it.
-- **Completion.** `Completion` reports counts for each record type, plus a
-  digest of the canonical logical stream. The host recounts and checks
-  references itself before trusting it.
-- **Evolution.** Protobuf field numbers are never reused; removed ones are
-  reserved. A change in meaning gets a new message or a new major version.
-
-### 2.4 Lifecycle
-
-Each worker process runs exactly one job, so worker states and job states can
-be tracked separately:
-
-```text
-Worker:  VERIFYING -> STARTING -> HANDSHAKE -> RUNNING -> EXITED
-                 \-> REFUSED (digest)   \-> FAILED (timeout, crash, protocol)
-```
-
-On sign-out, an account switch, or a project switch, the host cancels the
-job, kills the worker, and refuses to commit. No application-wide mutex is
-held while a worker runs or while a user is reviewing.
-
-### 2.5 Error codes and interface keys
-
-Codes are stable and typed. The interface maps each one to a catalog key, so
-no screen matches English text from the backend (ADR-008). The copy is in
-§9.4.
-
-| Code | Meaning | Host action | Catalog key |
-| --- | --- | --- | --- |
-| `PLUGIN_NOT_INSTALLED` | Worker files absent | Offer Quick chart import | `interop.error.notInstalled` |
-| `PLUGIN_SIGNATURE_INVALID` | Digest mismatch | Refuse to run; log a security event | `interop.error.signature` |
-| `PLUGIN_INCOMPATIBLE` | Protocol mismatch | Disable the worker | `interop.error.incompatible` |
-| `PLUGIN_START_FAILED` | JVM or launch failure | One bounded retry | `interop.error.startFailed` |
-| `PLUGIN_UNHEALTHY` | Hang, crash, or bad frames | Kill; commit nothing | `interop.error.unhealthy` |
-| `INPUT_UNSUPPORTED` | Format not supported | List supported formats | `interop.error.unsupported` |
-| `INPUT_INVALID` | Corrupt or malformed file | Keep the original untouched | `interop.error.invalid` |
-| `INPUT_PROTECTED` | Password-protected file | Never log the secret | `interop.error.protected` |
-| `RESOURCE_LIMIT` | Memory, disk, time, or expansion cap reached | Offer inspect-only | `interop.error.resourceLimit` |
-| `DATA_UNMAPPED` | Essential field cannot be kept (strict mode) | Block commit | `interop.error.unmapped` |
-| `STALE_SESSION` | Epoch, account, or project changed | Discard the staged import | `interop.error.staleSession` |
-| `REVISION_CONFLICT` | Destination changed after review | Review again (future merge) | `interop.error.revisionConflict` |
-| `USER_CANCELLED` | User cancelled | Clean up | `interop.status.cancelled` |
-| `EXPORT_UNSUPPORTED` | Asked for `.mpp` output | Suggest MS Project XML | `interop.error.exportUnsupported` |
-| `INTERNAL` | Anything else | Show a sanitized error ID | `interop.error.internal` |
-
-### 2.6 Streaming rules
-
-These follow [v2 §6.5]:
-
-- **Sequence.** Sequence numbers are monotonic. Duplicates, gaps, a digest or
-  count mismatch, an early end of file, or completion before every record
-  arrives each fail the job.
-- **Totals.** Total limits apply to source bytes, decompressed size, records
-  of each type, nesting depth, string length, calendar exceptions, and
-  timephased segments. A limit on each message alone is not enough.
-- **Backpressure.** It runs from the staging writer back to the parser, so a
-  slow host never makes the worker buffer the whole project.
-- **References.** They are resolved only after all records arrive. A dangling
-  reference stays an explicit unresolved external reference; GoPMgr never
-  invents a task for it.
-
-## 3. Security
-
-This section condenses [v2 §7] and adds the per-job process.
-
-**Threats.** A malicious or corrupt `.mpp`, `.xer`, or XML file. A modified
-worker bundle. A buggy or compromised worker. A session change partway
-through an import. Plaintext leaking through temporary files or logs. A worker
-running as the same OS user can read that user's files; SQLCipher does not
-protect plaintext inside a signed-in session.
-
-| Capability | Default | Enforced by |
-| --- | --- | --- |
-| Launch a worker | Bundled worker whose digests match the lock | Host check before every launch |
-| Read the source | Only the file the user picked, for this job | The host streams it, or passes a proven read-only handle |
-| Read or write a project | Never | No protocol message carries either |
-| Keys, credentials, DB handles | Never | No wire field |
-| Write output files | Host only | The host's export path rules |
-| Network | Not needed | **Not enforced** for the bundled worker; the documentation says so |
-| Third-party workers | Off | A separate ADR (G7) and an OS-confinement gate on each OS |
-
-**Authorization for each operation.** Each job binds:
-
-- the account and its incarnation, and the session epoch;
-- the project copy, the target (a new project), and the source digest;
-- the worker digest and the options;
-- the expected revision, the deadline, and the resource budget.
-
-Immediately before publication, the host re-reads the session, re-checks
-every binding, and verifies the staged checksum against the approval digest
-[v2 §7.3].
-
-**Temporary files.**
-
-- Staging databases are SQLCipher-encrypted with the user's key. An
-  unencrypted staging database is forbidden.
-- A worker scratch copy holds *only* the source file. It is private (0600 in a
-  0700 folder) and is deleted on every exit path.
-- The documentation says that deletion on an SSD is not secure erasure.
-- Users can refuse disk spooling for sensitive files, which makes some
-  formats inspect-only [v2 §7.4].
-
-## 4. Interchange model
-
-### 4.1 Identity (P0-01)
-
-| Table (logical) | Key | Holds |
-| --- | --- | --- |
-| `source_artifacts` | `artifact_id` | SHA-256, size, format, reader and version, import time, retention policy |
-| `source_lineages` | `lineage_id` | Native project GUID or UID if present, producer and application version, who confirmed it and when, confidence |
-| `source_entity_keys` | `(lineage_id, record_type, source_uid)` | Task ID and ordinal kept *separately*; first and last artifact seen |
-| `entity_links` | `link_id` | Source key → GoPMgr entity ID; `valid_from` and `valid_to` artifacts; mapping version; confidence (`native_uid`, `user_confirmed`, `unresolved`); override note |
-
-**Matching rules:**
-
-- **New lineage.** A new file is a new lineage unless the user confirms
-  otherwise. GoPMgr may *suggest* an existing lineage when a native GUID
-  matches.
-- **No name matching.** Names, paths, and WBS display codes never decide a
-  match.
-- **Reused identifiers.** A copied project reuses UIDs, so when the GUID
-  matches but the content history diverges, the files are flagged for the
-  user and not merged.
-- **Moves and deletions.** Re-parenting, deletion, and UID reuse inside a
-  lineage are detected and shown. Links are retired, never rewritten.
-
-### 4.2 Fidelity (P0-06 with the v2.0 vocabulary)
-
-The modes and dispositions are in ADR-010 D-9. The receipt extends today's
-`MSPDIImportReceipt`, whose `imported_fields`, `excluded_fields`, and
-`transformations` keep their meaning:
-
-```json
-{
-  "receipt_schema": 2,
-  "operation_id": "host-issued",
-  "mode": "reviewed_best_effort",
-  "worker": {"id": "org.gopmgr.mpxj", "version": "1.0.0", "digest": "sha256:…", "mpxj": "16.10.0"},
-  "source": {"artifact_id": "…", "format": "mpp", "sha256": "…", "bytes": "18874368"},
-  "lineage": {"lineage_id": "…", "basis": "native_guid", "confirmed": true},
-  "counts": {"tasks": {"source": "52310", "stored": "52310"}, "relations": {"source": "…", "stored": "…"}},
-  "dispositions": {"exact": "…", "converted_exact": "…", "converted_approximate": "…", "derived": "…",
-                   "preserved_read_only": "…", "unsupported_by_reader": "…", "not_modeled": "…",
-                   "excluded_by_user": "…", "source_absent": "…", "failed": "0"},
-  "imported_fields": [], "excluded_fields": [], "transformations": [],
-  "field_report": "evidence object id (encrypted, paged)",
-  "project_id": "host-issued, known before staging",
-  "audit_reference": "…"
+message HostCommand {
+  string job_id = 1;
+  uint64 sequence = 2;
+  oneof command {
+    HostHello hello = 10;
+    SourceBlock source = 11;
+    ExecuteCommand execute = 12;
+    CancelCommand cancel = 13;
+  }
 }
+message WorkerHello { string worker_id = 1; uint32 protocol_major = 2; uint32 protocol_minor = 3; bytes auth_proof = 4; }
+message HostHello { bytes challenge = 1; string operation_id = 2; }
+message HealthResponse { string state = 1; }
+message ProjectHeader { string source_id = 1; string producer = 2; string format = 3; }
+message TaskRecord { string uid = 1; string parent_uid = 2; string name = 3; }
+message RelationshipRecord { string predecessor_uid = 1; string successor_uid = 2; }
+message ResourceRecord { string uid = 1; string name = 2; }
+message AssignmentRecord { string uid = 1; string task_uid = 2; string resource_uid = 3; }
+message CalendarRecord { string uid = 1; }
+message TimephasedRecord { string owner_uid = 1; string start = 2; string end = 3; string exact_value = 4; }
+message CustomFieldRecord { string owner_uid = 1; string definition_uid = 2; string encoded_value = 3; }
+message FidelityNote { string source_field = 1; string outcome = 2; string reason_code = 3; }
+message JobProgress { string phase = 1; uint64 processed = 2; }
+message JobCompleted { string logical_digest = 1; uint64 task_count = 2; }
+message JobFailed { string code = 1; }
+message SourceBlock { bytes chunk = 1; bool last = 2; }
+message ExecuteCommand { string capability = 1; string source_artifact_id = 2; }
+message CancelCommand { string reason = 1; }
 ```
 
-Counts are decimal strings, so large values survive JSON exactly. A field
-report lists one row for each field path and record group, with its
-disposition, reason, severity, and export handling. It is stored as encrypted
-evidence and read in pages.
+The **final** IDL must include every canonical record group, source type/units, calendar and timezone semantics, nullable/absent/unreadable values, raw/typed custom fields, baselines, cost fields, task constraints, predecessor lag and resource assignments, per-field fidelity dimensions, source/worker digests, negotiated limits, idempotency/correlation IDs, schema version, timestamps, and typed errors. The illustrative minimal record definitions above are intentionally **not sufficient for production import**. G1 freezes the complete required schema through separate proto review and golden fixtures; every removed field number reserved, fields never renumbered. `proto3 optional`/`oneof` used where presence matters; absent, explicit null, unsupported and zero are not conflated.
 
-**Evidence matrix.** Every format and version family gets its own matrix,
-covering: metadata, outline, tasks, relations, calendars, resources,
-assignments, costs, constraints, baselines 0-10, timephased data, custom
-fields, and notes. Each entry records:
+### 3.3 Flow control and state safety
 
-- the source counts, and counts as MPXJ reads them;
-- counts on the wire, in staging, and on read-back;
-- counts on export, where export exists.
+- gRPC HTTP/2 transports and native stream flow control are used; impose explicit application credit/accounting so a parser can never unboundedly queue records while the host is validating/writing.
+- Per-message max (candidate <= 4 MiB), per-stream max, total source uncompressed bytes, nesting, tasks, series and scratch caps. Limits set by G0/G2 measurement, not guesses.
+- Worker can emit progress while receiving source blocks; prove full-duplex no-deadlock behavior with blocked receivers, huge source, stderr bursts, cancellation and process crash. Never rely on synchronous send loops that cause both sides to stop reading.
+- Logical record digest must have a **canonical, versioned serialization contract** independent of wire reorderings; sort/order conventions and duplicate detection specified for every record group. Hash input should include schema version and record-type boundary to avoid ambiguity. Host recomputes independently on staging readback.
+- Map gRPC status to stable GoPMgr `interop.*` codes and ADR-008 translation keys; never render arbitrary Java exception text. Establish retry policy by idempotency and phase; never retry non-idempotent publication blindly.
 
-Nothing is marked "complete" without this matrix [P0-06 acceptance].
+### 3.4 Lifecycle, integrity, package constraints
 
-### 4.3 Value rules
+Process tree and named IPC endpoint belong to `supervisor`. Worker identity and version locked to built release provenance; host checks exact worker assets before each launch. Determine link/symlink security and macOS code-signing semantics; do not assume digest-only checks protect a mutable signed bundle. Do not depend on shell quoting. Path resolution must remain within verified worker directory. Strip dangerous inherited environment variables (`JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS`, `CLASSPATH`, `LD_PRELOAD`, dynamic loader paths, proxy configuration if needed, etc.), preserving only necessary runtime values under review. Security cannot depend solely on clearing environment. Standard out/err are treated as **potentially sensitive unstructured diagnostics**, capped and not persisted raw by default. Debug logging opt-in is explicitly scoped, redacted and time-bound.
 
-These follow [v2 §8.3]:
+## 4. G2: MPXJ inspect-only bridge and fidelity instrument
 
-- **Dates.** Keep the raw source text, its zone or offset, and the
-  interpreted instant. Date-only values stay date-only; they are never
-  converted to midnight UTC.
-- **Durations, work, and lags.** Use exact units together with the source's
-  calendar settings. The 8-hour assumption applies only to the legacy chart
-  importer.
-- **Money.** Keep the source's decimal precision and ISO code as typed
-  source values. Convert only at the `internal/money` boundary, with checked
-  rounding (ADR-009).
-- **Missing values.** `unset`, `null`, zero, and `unsupported` are four
-  different states.
+1. Pin candidate MPXJ **16.10.0** and a reviewed upstream release; enumerate all transitive build/runtime dependencies, native libraries and licenses. Make a `jlink` runtime with a supported LTS JDK **after** testing class/path/native module requirements; do not equate MPXJ Java 8 compilation target with JDK packaging choice.
+2. Implement format detectors and real readers using **inspected MPXJ API methods**; map parser exceptions to stable codes. Do not guess API signatures or “supported versions.”
+3. Parse real-world and synthetic `.mpp`, MSPDI XML, P6 `.xer`/`.pmxml`, and ProjectLibre `.pod` fixtures. Each format/version requires fixture IDs and a verified reader capability; unsupported export directions remain hidden.
+4. Do not use MPXJ JSON output as a proxy for full fidelity. MPXJ's JSON writer defaults to omitting timephased data. Bridge emits typed records directly; required source fields missing from MPXJ are `unreadable` or `unknown` with accurate evidence, not fabricated.
+5. Use a host-read source stream by default; seek-required formats may spool to restricted worker scratch storage **subject to user policy, caps and cleanup**. Scratch plaintext threat disclosure required; delete is not secure SSD erasure. Do not require system-wide Java installed or network download.
+6. Capture independent `inspect` counts, source metadata, format/version confidence, memory/disk estimate and warning categories; use worker-declared values as untrusted until validated.
+7. Inspect-only must never create or modify a `.gopmgr` project; cache/report should be ephemeral or explicitly user-consented encrypted metadata.
+8. Measure JVM heap (`-Xmx`), native memory (Netty, direct buffers), process RSS, OS process tree, temp disk, parse durations; verify cancellation and anti-zip/XML bomb defenses. If a format exceeds a cap, return `RESOURCE_LIMIT` with clear partial-inspection status; never claim a complete inspection.
+9. MPXJ must not open a network connection as a workflow requirement. The bundled worker may have OS privileges unless actual sandboxing is deployed; this is **not equivalent** to OS-enforced no-network.
 
-### 4.4 Scheduling interpretation
+**G2 output:** `docs/interoperability/mpxj-field-mapping.md` (source accessor, typed wire, canonical destination, unit/precision/null rules, fixture, round-trip claim); `docs/interoperability/mpxj-format-support.md` (read/write per version); `docs/interoperability/mpxj-dependency-inventory.md`, signed packaging proof and G2 test evidence.
 
-The source's computed dates, float, and critical flags are stored as source
-facts. GoPMgr's kernel recalculates only when the user asks, through
-**Recalculate with GoPMgr**, which shows a before-and-after preview [UX-07].
-A compare-only view explains any differences: calendar exceptions, lags,
-scheduling modes, and time zones.
+## 5. Data model contract before G3 (ADR-011; S0–S4)
 
-### 4.5 Field mapping deliverable
+### 5.1 Logical entity families
 
-Before any production import, `docs/interoperability/mpxj-field-mapping.md`
-must exist [v2 §8.6]. It has one row per mapping, with these columns:
+Define typed normalized records for projects/schedule generations, source artifacts and lineages, source field observations, source hierarchy (including summaries, null/source placeholders where meaningful), work packages and activities, calendars/exceptions, constraints, logic relationships, resource definitions and calendars, resource assignments and work rates, costs, progress, baselines and snapshots, sparse timephased intervals, custom field definitions/values, notes, external relations, format-specific opaque evidence, scheduling results and provenance/receipts. A normalized schedule outline is **not automatically** the user's governance WBS tree. Existing WBS v2 retains 10,000-node / 8 MiB restrictions until its own reviewed migration.
 
-- source format;
-- MPXJ accessor;
-- source type and units;
-- wire message;
-- GoPMgr destination;
-- conversion rule and null rule;
-- precision and round-trip claim;
-- fixture and limitations.
+### 5.2 Reference physical data design (not migration-ready SQL)
 
-It is generated from the pinned MPXJ API and from fixtures. Field names are
-never guessed.
+| Entity/table family | Hot access paths and indexes | Identity/lifecycle |
+|---|---|---|
+| `schedule_generations` | `(project_id, active, revision)` | Exactly one active editable generation per schedule owner |
+| `schedule_activities` | `(generation_id, parent_id, ordinal, id)`, `(generation_id, source_uid)` | Stable host IDs; source UID separately scoped |
+| `schedule_links` | `(generation_id, predecessor_id)`, `(generation_id, successor_id)` | Preserve dangling external references explicitly |
+| `schedule_calendars`, `calendar_exceptions` | `(generation_id, calendar_id, start)` | Intrinsic schedule work time, exceptions and timezone |
+| `schedule_resources`, `assignments` | `(generation_id, resource_id)` and `(generation_id, activity_id)` | IDs not names; preserve resource naming collisions |
+| `schedule_baselines`, `baseline_values` | `(generation_id, baseline_id, activity_id)` | All supported source baselines, no “baseline 0 only” shortcut |
+| `timephased_series`, `timephased_segments` | `(series_id, start, end)` | Native intervals, units and precision; no eager minute/day explosion |
+| `custom_field_definitions`, `custom_field_values` | `(generation_id, definition_id, owner_id)` | Source type vs modeled type, versioned metadata |
+| `source_artifacts`, `source_lineages`, `source_entity_keys`, `entity_link_events` | Artifact digest; lineage/key typed uniqueness | Append-only observations, confirmed/rejected matches |
+| `import_receipts`, `field_fidelity_events`, `evidence_chunks` | Operation ID / field index / content digest | Encrypted, project-owned, retention-aware |
+| `schedule_domain_events` or audit bridge | `(project_id, logical_command_id)` | Existing audit hash chain remains authoritative |
 
-### 4.6 Create, compare, and apply
+The real ADR-011 must supply *exact* column types, check constraints, FK/cascade/deferred behavior, numerical unit schema, deterministic sort/index design, migration scripts, feature flags, query benchmarks and `EXPLAIN QUERY PLAN`. SQLite 3.33.0 constraints remain until the approved SQLCipher upgrade; do not use `STRICT`, modern `RETURNING`, JSON1/FTS5 or `DROP COLUMN` without verifying compile/runtime support. `PRAGMA foreign_keys` changes must occur outside transactions as SQLite requires; after migration, run foreign-key and cipher integrity checks. Choose `WITHOUT ROWID` only when a specific measured access pattern supports it.
 
-These follow [v2 §8.7]:
+### 5.3 Format gate and legacy project support
 
-| Operation | Phase | Writes |
-| --- | --- | --- |
-| Create from import | G3 | A new project only (§6) |
-| Compare two projects or snapshots | S6, read-only | None |
-| Apply selected differences | S6, writes; separate approval | Needs a shadow generation (ADR-010 D-8). No automatic "source wins". |
+- Introduce an authoritative min-writer/project-format gate that is **checked before every writer** and for any restore/import/repair/admin path, with explicit version negotiation and read-only rejection.
+- A gate release cannot cause older *pre-gate* binaries to refuse; document unsafe historical versions, backup and compatibility workflows. No promise of unconditional binary rollback after migrations.
+- Existing `.gopmgr` files remain encrypted and readable through supported migration; decryption/plaintext working copy is not an ordinary migration strategy. Rehearse recovery codes and administrator escrow.
+- Normalize and activate only under one source of truth: immutable source and a single current normalized generation; charts are generated projections and existing chart mutators refuse normalized authority.
+- Keep small/legacy charts and legacy MSPDI Quick Chart Import functional and explicitly labeled incomplete, without bypassing new data rules.
 
-Conflicts use the v2.0 taxonomy, such as `IDENTITY_AMBIGUOUS` and
-`DESTINATION_EDITED`. Any selection must show how many rows are off screen
-[REVIEW-013].
+### 5.4 Data and audit loss controls
 
-## 5. MPXJ worker
+Every source field has the multidimensional ledger described in D-09. For fields not natively modeled, preserve safely as opaque project-owned evidence *when feasible*, noting edit/export limitations. A reader's failure to enumerate unknown fields must be stated as unknown, not “preserved”. No silent conversion to an eight-hour day, no float-based money conversion, no loss of time zone semantics, and no ID reuse masquerading as entity continuity. Existing hash chain uses canonical JSON with generic-number caveats; preserve strings for exact numbers, and test mixed event chains. Receipts must distinguish accepted, discarded, partially inspected and blocked sources; no false `success` for a truncated dataset.
 
-### 5.1 Formats (verified against mpxj.org on 2026-10-24)
+## 6. G3: durable new-project import and recovery protocol
 
-| Format | MPXJ reads | MPXJ writes | GoPMgr v1 intent | Evidence gate |
-| --- | --- | --- | --- | --- |
-| Microsoft Project `.mpp` (Project 98 on) | Yes | **No** | Inspect, then import | Real MPP fixtures across versions |
-| Microsoft Project `.mpt` templates | Yes | No | Candidate | Fixture |
-| MSPDI `.xml` | Yes | Yes | Import; export later | Compare with Quick chart import |
-| MPX | Yes | Yes | Candidate | Fixture |
-| Primavera P6 `.xer` and PMXML | Yes | Yes | Import; export later | P6 calendar, resource, and baseline fixtures |
-| P6 SQLite databases | Yes | No | Out of v1 (avoids sqlite-jdbc native libraries) | Separate decision |
-| ProjectLibre `.pod` (ProjectLibre 1.5.5 on) | Yes (`ProjectLibreReader`) | No | Candidate | Fixture before advertising |
-| Planner, SDEF, and others | Varies | Varies | Not listed until tested | Fixture |
-
-Formats are detected by signature and a parse check, never by extension
-alone. XML parsing disables external entities.
-
-### 5.2 Import workflow
-
-This revises [v2 §9.2]:
-
-1. **Choose the file.** The user picks a file in the import assistant. The
-   host requires a signed-in session and checks the file:
-   - it must be a regular file under the size and quota limits;
-   - its content signature is sniffed;
-   - its SHA-256 is computed from the handle that was opened, never by
-     opening the path again.
-2. **Bind the job.** The host binds it to the account, epoch, source digest,
-   worker digest, options, and budget (§3).
-3. **Launch and inspect.** The host verifies and launches the worker (§2.1)
-   and runs an inspection: format, producer and version, counts,
-   relationships, calendars, baselines, timephased data, and custom fields.
-   It also estimates the memory, disk, and time needed (§5.6). Nothing is
-   written.
-4. **Choose options.** The user picks a mode and a lineage (§4.1). An
-   essential-field profile is optional. A saved mapping profile is offered
-   only for the same producer and version family.
-5. **Import into staging.** A second worker job runs the import. Records go
-   into the encrypted staging database in `staging/<op>/`, in bounded
-   transactions with backpressure.
-6. **Validate staging.** The host checks:
-   - every reference;
-   - the counts against `Completion` and its own recount;
-   - units, dates, and money;
-   - the WBS boundary;
-   - strict-mode essential fields.
-
-   It builds the receipt and the field report.
-7. **Review.** The user sees the impact summary and the fidelity inspector,
-   then confirms **Import as new project**. That confirmation binds the
-   staged checksum.
-8. **Seal, recheck, and publish.** The host follows §6. It writes the
-   receipt and the import audit event into the staged project, seals it,
-   rechecks the session bindings, and renames it into `projects/`. The
-   project is complete the moment it becomes visible.
-9. **Read back.** The host reads the published project back and checks its
-   counts. Only then does it report success. A completed worker job alone
-   never counts as success [v2 §9.2 step 13].
-
-### 5.3 Import job states
+### 6.1 Project-contained sealed artifacts
 
 ```text
-CREATED -> SOURCE_CHECKED -> INSPECTING -> INSPECTED -> OPTIONS_SET
-   -> STAGING -> VALIDATING -> READY_FOR_REVIEW -> APPROVED
-   -> SEALING -> RECHECK -> PUBLISHING -> PUBLISHED -> VERIFIED
-
-Before RECHECK:     cancel, timeout, crash, stale session, or invalid
-                    -> CLEANUP -> CANCELLED or FAILED
-                       (no project appears; staging is removed, or left
-                       for reconciliation after a crash, §6.3)
-From RECHECK on:    cancel is refused. The interface says the import is
-                    finishing (§6.4). A stale session found at RECHECK
-                    still stops the import before the rename.
+<data-root>/
+  <account-data>/projects/<published-folder>/
+    project.gopmgr                     # SQLCipher encrypted authoritative DB
+    evidence/                         # only encrypted source/field evidence
+      ...                              # optional, project-owned, authenticated
+  <account-data>/staging/<operation-id>/
+    intent.json                        # minimal non-sensitive metadata, atomic+fsynced
+    candidate-project/                # EXACT entire folder to publish
+      project.gopmgr
+      evidence/                       # moves WITH project, never discarded
+  <account-data>/quarantine/<operation-id>/
+    ...                               # only operation-owned failed artifacts
 ```
 
-Only the host moves a job to `APPROVED`, and only after a real user action. A
-job publishes at most once; a duplicate request returns the existing receipt.
+Use the repo's **actual account directory model**, not guessed folders. The sample layout must be reconciled with `users.DefaultRootDir`, session/account ownership and `enumerateProjects`. Project-owned evidence may instead live as encrypted `evidence_chunks` *inside* `.gopmgr`; adopt an encrypted sidecar only after comparative backup/restore performance and recovery tests. If source retention is explicitly declined, the receipt records `source_bytes_retained=false` and the mapping ledger still states what is and is not recoverable. No source plaintext copied into long-lived sidecars or logs.
 
-### 5.4 Export (G4, after import is proven)
+### 6.2 Transaction and state machine
 
-This follows [v2 §9.4]. Only formats MPXJ actually writes are offered (§5.1),
-and `.mpp` never is. The host:
+```
+NEW → INSPECTING → REVIEW_REQUIRED → APPROVED → PREPARED → BUILDING
+    → VALIDATING → SEALING → SEALED → RECHECKING → PUBLISHING
+    → PUBLISHED → RECONCILING → COMPLETE
+                          \ → FAILED / CANCELLED / QUARANTINED
+```
 
-1. snapshots the authorized data;
-2. reports the risk of loss *before* writing;
-3. lets the worker stream the output;
-4. checks the output, optionally by re-reading it with MPXJ;
-5. publishes the file atomically with a no-replace rename (§6.4), never
-   overwriting unless the user asked;
-6. records an export receipt.
+The host controls transitions with an operation ID and strictly monotonic **durable intent journal**. *Publish* becomes the non-cancellable, brief commit boundary, not the entire import job. Explicit events/receipts allow the UI to recover after crash. A successful worker `Complete` is necessary but not sufficient for project success.
 
-### 5.5 Versions, licences, and dependencies
+**Step-by-step commit design:**
 
-- **Pin everything.** Pin MPXJ 16.10.0, its dependency tree with checksums,
-  the protobuf-java version, and the JDK used for jlink. Upgrades are
-  deliberate and run the full fixture regression [R-17].
-- **Runtime dependencies (verified from the pom).** POI, sqlite-jdbc,
-  jgoodies-binding, rtfparserkit, the JAXB API and runtime, jackcess, jsoup,
-  and Jackson. G0 checks each against the readers v1 needs:
-  - sqlite-jdbc (native code; P6 SQLite only) is excluded if those databases
-    stay out of scope;
-  - jgoodies-binding (Swing binding, used by MPXJ's explorer) is excluded if
-    no reader needs it.
-- **Java runtime.** MPXJ targets Java 8 (`<source>1.8</source>`). The bundled
-  runtime is a jlink image of a supported LTS JDK, and G0 tests it with the
-  pinned MPXJ.
-- **Licences (ADR-010 D-16).** Ship the notices, SBOM, and REUSE
-  annotations, and offer the corresponding source for MPXJ. Get a legal review
-  before the first release that includes the worker.
+1. Authenticate user, capture principal incarnation/session epoch and explicit user-selected source. Hash stream *as it is read*; bind worker digest, options and target user. Choose provisional project ID and create exclusive staging operation and journal.
+2. Inspect format/record counts and generate fidelity preview. Prompt user to select strict or reviewed mode, required fields, evidence retention and any source lineage mapping; produce a canonical approval digest of all material choices.
+3. Open an **encrypted** staged candidate project under its authorized owner. Ingest typed records in bounded invisible transactions. Retain source and field evidence in candidate. Validate references after stream completion; do not invent missing activities or silently drop source records.
+4. Check source and staged counts, logical digest, exact money/units, foreign keys, full/cipher integrity, baseline/timephased rows, readback/semantic mapping and audit chain. Write import receipt and audit event before sealing. Check every retained evidence hash against its referencing record. Fail closed or explain reviewed loss.
+5. Checkpoint WAL, switch journal mode using existing verified helpers where appropriate; close DB, remove sidecars only after safe checkpoint, ensure private modes, sync DB, evidence, candidate folders and intent journal as supported. Seal manifest lists DB and evidence digests, schema version, operation ID and approval digest. Seal/state must be durable before rename.
+6. Refresh authentication binding and **fresh user approval if recovering from another session**. Choose collision-resistant final folder name, verify same-volume constraints, use OS-specific **atomic no-replace** directory rename (Linux `renameat2(..., RENAME_NOREPLACE)` where available; Darwin no-replace alternative verified; Windows MoveFileEx without replace or equivalent). No check-then-rename. On unsupported filesystem, fail closed with actionable error.
+7. Sync containing directory where supported. Record `PUBLISHED`, read back the same sealed artifact, verify count/receipt/metadata and presentation. Record `RECONCILED`, clean operation-owned staging and only then show durable success.
+8. If crash occurs, reconcile on next authorized login from staged operation namespace only; classify journal/rename states deterministically, never scan old projects looking for nonexistent journals or delete user-owned folders without authenticated operation provenance.
 
-### 5.6 Resource model (P0-03)
+**Atomicity caveat:** folder renames are atomic namespace operations on suitable local filesystems when supported; durability after sudden power loss is OS/filesystem-dependent. Do not claim universal zero-loss or recovery success until real target testing. Journal and publication failure handling must distinguish `source intact`, `staged sealed`, `published pending reconciliation`, `quarantined`, and `complete`.
 
-| Budget | Initial setting | Set from |
-| --- | --- | --- |
-| JVM heap (`-Xmx`) | One per format family, measured | G0 and G2 heap profiles on T1 and T2 fixtures |
-| OS memory limit | cgroups (Linux) and Job Objects (Windows) where available; macOS relies on `-Xmx` plus a watchdog on resident memory | G0 |
-| CPU and wall-clock deadline | Measured, with headroom | G2 |
-| Scratch bytes | Source size plus margin | §5.7 |
-| Timephased segments | Capped; above the cap, inspect-only | G2 and S4 |
-| Host plus worker resident memory | Reported together in every benchmark | P1-09 |
+### 6.3 Recovery decision table
 
-**Source strategies.** Each reader gets one of two, with its threat model
-written down:
+| Evidence state | Durable files | Action on next authenticated session | User message |
+|---|---|---|---|
+| Partial staging, valid PREPARED journal | candidate may be incomplete | Quarantine only operation-owned stage; never publish | “Import did not complete; no new project was added” |
+| SEALED; candidate present; no final published folder | seal/receipt valid | Reinspect integrity and ownership, require **new approval**, then publish | “Import prepared; review before adding” |
+| SEALED; candidate moved; final exists | candidate absent, final digest matches, owner matches | Reconcile as already published without issuing a second project | “Project was added; final verification completed” |
+| PUBLISHED; project exists | receipt and evidence verified | Complete idempotently; do not reimport | “Import completed; recovered after interruption” |
+| Orphan **within operation-owned stage**, no valid journal | unknown contents | Quarantine; explain and never auto-delete valuable source | “Unfinished import files need review” |
+| Existing legacy `projects/` folder without ADR-010 journal | normal existing project | **Never quarantine by this protocol** | No special warning |
+| Inconsistent digest or foreign ownership | suspect evidence | Stop and quarantine only what provenance authorizes; security log with no content | “Import requires recovery review” |
 
-- **(a) Streamed bytes.** The worker writes the streamed bytes to a private
-  scratch copy that it can seek in. This is the default.
-- **(b) Read-only handle.** The host passes an already-open, read-only handle
-  instead. This is allowed only where G2 proves that handle inheritance works
-  on all three OSes and that the reader accepts a stream or channel.
+Quarantine deletion/retention is a separate consent/retention decision, not an arbitrary “30 days then delete” default for valuable source material. Do not retain plaintext or hidden sensitive logs for automatic support collection.
 
-Workers are never given a user path they could resolve themselves.
+### 6.4 Existing-project merge, future S6
 
-**Refusal.** Before parsing, the host compares its estimate with free memory,
-free disk, and the budgets. If the import cannot fit, it refuses with
-`RESOURCE_LIMIT` and keeps inspect-only available.
+Do not write imported changes directly into an active schedule. Compare source revisions and the approved target generation, classify conflicts, create a shadow generation or rigorously transactional equivalent, validate changes (including graph scheduling and money), then switch generation pointer atomically under expected revision. Preserve original source/lineage and explicit decisions for every selected conflict. No automatic merge of copied projects on coincident UID; no partial commits to visible charts.
 
-### 5.7 Cost of copies
+## 7. S5–S7: scale, UX, analytics and audit optimization
 
-A large import can touch the bytes several times:
+### 7.1 Query patterns
 
-- the source is read for its hash;
-- the worker writes a scratch copy;
-- the staging database is written;
-- the evidence copy is written, if the source is kept;
-- the published project is written.
+Host endpoints (illustrative, not current exported methods):
 
-G2 measures each step. The plan reuses the stream that computes the hash to
-fill the scratch copy, so the source is read only once.
+```
+ListOutlineRows(project_handle, schedule_id, cursor, limit, sort, filter, expansion)
+  -> bounded rows, revision, next_cursor, count{value,exactness}
+GetTimelineViewport(project_handle, generation_id, row_window, time_window, scale)
+  -> bounded bars, clipped links, density/holiday hints, revision
+GetTaskDetails(project_handle, task_id, tabs)
+  -> typed data for chosen tab; no whole-project materialization
+ApplyTaskPatch(project_handle, expected_revision, command_id, typed_patch)
+  -> new_revision, audit_id, affected_task_ids, validation messages
+GetFidelityReportPage(import_id, filter, cursor) -> bounded entries
+GetJobStatus(job_id) -> phase/counters/ETA confidence/cancel state
+```
 
-## 6. Publication and recovery
+Use bounded read transactions, deterministic keyset ordering with stable tie-breakers, HMAC-bound opaque cursor including principal/copy/generation/revision/filter/sort/expiry, no readers held across UI calls. When revision changes, signal `revision_changed` and reanchor on the selected task, not silent duplicate/skip. Render only viewport rows/time intervals, preserve accessibility of virtualized treegrid and IME composition, test on real devices and assistive technology.
 
-This applies P0-02 to GoPMgr's real layout.
+### 7.2 Storage and derived query performance
 
-### 6.1 Layout
+Indexes for `(generation_id, parent_id, ordinal, id)` and both relationship directions are baseline candidates. Benchmark materialized flat outline views only when recursion becomes costly; maintain invalidation by revision/generation. Use sparse typed timephased segments and query zoom-level aggregates, never explode every assignment into per-minute rows. Run `ANALYZE` after bulk import and capture plans; measure index build cost vs import speed. Optional FTS5 and SQLite JSON functions require **build/compatibility review** in current SQLCipher. Change-impact/incremental CPM is an optimization that may become authoritative only after differential tests prove exact equivalence to full recomputation on cycles, lags, calendars and constraints.
+
+### 7.3 Analytics neutrality
+
+Domain queries and exact-money aggregation go through Go host with enforceable account/project scope. Build paged durable dataset import/query API distinct from materialized 10,000-row `ImportTabular`. Existing `maxImportRows` stays safe until replacement; explicitly report `truncated` and `fully_ingested` separately. Evaluate DataFusion/Arrow/Iceberg as candidate analytical implementations with measured CPU, throughput, cold-start, memory, license, complexity and local/offline behavior; **neither this plugin ADR nor the agent is authorized to choose a replacement unilaterally**. Heavy risk/Monte Carlo/portfolio jobs are cancellable, ordered and audited where they change stored projections.
+
+### 7.4 Compact audit and replay
+
+Typed domain events should record changed fields and/or immutable evidence hashes, not entire 50,000-row chart objects. Preserve canonical hash-chain logic for old events and validate mixed-chain verifier. Follow checkpoints with a bounded replay plan, protected evidence and explicit retention/undo scope. Do not confuse audit with undo; recomputation is independent of source fidelity. Quantify per-edit CPU, bytes written, WAL growth, event size, forensic reconstruction and backup/restore performance.
+
+### 7.5 Usability and localization
+
+| Milestone | Required user-visible workflows | Accessibility / privacy |
+|---|---|---|
+| G2 | Choose source → Inspect capability and format counts → Estimate costs | Keyboard, screen reader, source inspection disclosure |
+| G3 | Map essential fields → Preview loss and source identities → Review retention → Import → Receipt | No fake 100% progress, explain blocked options, recovery states |
+| G4 | Import/export direction labels, Plugin Center, run diagnostics, signed bundle status | No claim of sandboxing or MPP writing |
+| S5 | Large schedule tree, Gantt viewport, search, task navigation, saved view, minimap | Virtual treegrid focus/ARIA/IME, keyboard alternate to canvas |
+| S6 | Compare two/three-way revisions, select conflict changes, impact preview, confirm | Counts of selected hidden rows, revision conflicts visible |
+| G5/G6 | AI permissions, provider opt-in, proposals, audit | No background network egress or auto-approval |
+
+All text in ADR-008 catalog; typed error `code` → locale key; never select behavior by comparing English strings. Preserve dense professional desktop workflows; avoid intrusive dialogs for safe, reversible navigation.
+
+## 8. Delivery sequencing and PR breakdown
+
+### 8.1 Dependency graph (binding)
 
 ```text
-<DataDir>/
-  projects/<folder>/project.gopmgr    discovered by enumerateProjects
-  staging/<operation-id>/             never scanned; same volume as projects/
-    journal.json                      phase record (no project content)
-    project/project.gopmgr            staged encrypted database
-    evidence/                         encrypted source copy and field report, if kept
-  quarantine/<operation-id>/          interrupted or failed imports kept for the user
+D0 docs + review
+  ├── G0 transport/Java/legal/platform feasibility (no product behavior)
+  └── S0 repository/limits/hardware/performance census
+          └── S1 ADR-011 (schema/format gate/authority/migration)
+                  └── S2 gate release -> additive normalized schema
+                          └── S3 host transactional query/command staging
+                                  └── S4 identity/fidelity/mapping/readback
+G0 -> G1 grpc worker contract+registry -> G2 MPXJ inspect-only
+S2 + S3 + S4 + G2 -> G3 durable new-project publication
+S3 -> S5 scalable UI; G3 + S5 -> G4 packaged import/export readiness
+S3/S4/S5 -> S6 compare / merge
+S3 -> S7A analytics; S3 + audit design -> S7B audit modernization
+G4 + separate AI ADR -> G5 then G6
+Separate third-party ADR + OS sandbox proof -> G7
 ```
 
-The staged folder is created exclusively, as `reserveProjectFolder` does
-for new projects today. The project ID is issued before staging starts. The
-final folder name in `projects/` is chosen at publication and written to the
-journal *before* the rename. If the name is taken, the rename fails (§6.4) and
-another name is chosen.
+### 8.2 Incremental PR slices (do not collapse into a mega-PR)
+
+| PR | Deliverable | Cannot include |
+|---|---|---|
+| P00 | v2.2 ADR/plan/test strategy/agent prompt; owner decisions | Production code |
+| P01 | G0 native Go↔Java gRPC IPC PoC + signed packaging notes | Host project reads/writes |
+| P02 | S0 exact source census, representative fixtures/hardware budgets | Hidden schema change |
+| P03 | S1 ADR-011, SQLCipher compatibility and normalized DDL review | Migration code |
+| P04 | G1 `.proto`, generated clients, fake worker, registry, supervisor, ACL/auth tests | MPXJ parsing; project writes |
+| P05 | G2 inspect-only MPXJ adapter, real fixture matrix, sanitized diagnostics | Publication, merge |
+| P06 | S2 gate release with every writer guarded | Normalized schema activation |
+| P07 | S2 additive encrypted storage + schema upgrade tests | Unreviewed import activation |
+| P08 | S3 staging/transactional record and query APIs | Direct UI edits to incomplete schema |
+| P09 | S4 identity/fidelity/mapping, evidence and read-back; protobuf completeness | Publication |
+| P10 | G3 durable project-contained evidence, journal, no-replace rename, cross-OS recovery | Import into existing project |
+| P11 | G3 guided import assistant, field inspector, job center | Large-project UI giant JSON |
+| P12 | S5 virtualized outline/Gantt and scoped edits | WBS aggregate cap changes |
+| P13 | G4 MSPDI then validated format exports and signed packages | Native MPP writing claims |
+| P14 | S6 read-only project comparison | Merge publication |
+| P15 | S6 selectable merge with shadow generation and audited writes | Auto merge or AI approval |
+| P16 | S7A engine-neutral domain/portfolio analytics and paged datasets | Unapproved mandatory DuckDB/DataFusion decision |
+| P17 | S7B compact audit, checkpoints, replay and export | Rewrite old audit records |
+| P18+ | G5/G6/G7 under their own approved ADRs | Unscoped AI/third-party code |
+
+Each PR states exact HEAD, changed files, invariant IDs, new tests, raw pass/blocked results, source/fixture hashes, performance change, threat/law/license change, migration/rollback and scope exclusions. Stop if old/source behavior differs materially from baseline.
+
+### 8.3 Go/no-go gates
+
+- **G0**: viable Go↔Java gRPC local transport per target; if Windows impossible, no Windows worker claim. Security bootstrap and packet/stream test works. Native build signing planned/verified.
+- **G1**: fake worker/registry and all lifecycle/auth tests; no regressions worker-disabled; all supported platforms.
+- **G2**: per-format/version read-only fixtures, mapped fields, parser cap, no DB writes, verified packaging.
+- **S1/S2**: accepted storage ADR, full writer format-gate, immutable rollback reference fixtures, supported-version matrix.
+- **S3/S4**: full transactional schema, typed readback, identity/fidelity, source evidence and auditors, no limits bypass.
+- **G3**: complete sealed project + evidence + crash fault matrix, no partial results, signed-in authorization, legacy unaffected.
+- **S5/G4**: 50k real-user navigation/readback, viewport/render memory, validated export direction, full release checks.
+- **S6**: conflict-deterministic compare/merge, explicit approved changes, shadow generation atomicity.
+- **S7A/S7B**: semantic analytics parity, audit chain/replay proofs and measured performance.
+- **G5/G6/G7**: separate accepted ADRs and release tests; do not consider implemented from placeholder future methods.
+
+## 9. Release packaging and rollback
+
+- Worker belongs in platform app package, pinned by embedded digest inventory and code-signing/notarization. Installers remain valid and use existing release pipelines. Any optional runtime/JNI/native helpers require architecture-specific signatures and SBOM.
+- Keep worker off by default until G1/G2 pass; enable inspect-only then import-publication separately, with feature flags that do not weaken DB version checks.
+- Reject unknown/newer project format **before write** across CLI, Wails, repair, admin, archive and migration; pre-gate application risk documented.
+- If new schema is present, rolling back the binary may be unsafe; recovery uses approved backups or a compatible previous binary only. No fictitious reversible migration claim.
+- On critical incident (key leakage, cross-user leak, unsigned worker execution, partial publication, lineage corruption, bad audit hash, unbounded parsing, severe accessibility regression), stop rollout; disable worker and preserve evidence, not user project content in general logs.
+- Installer support includes macOS codesigning/notarization, Windows signing/ACL, Linux packaging and offline runtime launch. Run actual package-install smoke tests, not only build unit tests.
+
+## 10. Owner decision register (must remain visible)
+
+| ID | Item | Proposed default | State |
+|---|---|---|---|
+| OWN-01 | Accept ADR-010 v2.2 D-01…D-19 | Yes, subject to owner review | OPEN |
+| OWN-02 | Native gRPC IPC policy: UDS Unix / named pipes Windows | Bind as design, require G0 proof | OPEN |
+| OWN-03 | Explicit TCP fallback policy | No fallback without ACR and approval | OPEN |
+| OWN-04 | Internal registry from first implementation | Yes, bundled-only initially | OPEN |
+| OWN-05 | Project-contained encrypted evidence | Yes; measure DB vs encrypted sidecars | OPEN |
+| OWN-06 | Fresh approval for SEALED after new sign-in | Yes | OPEN |
+| OWN-07 | New project only first release; S6 tracked separately | Yes, program scope preserved | OPEN |
+| OWN-08 | Existing file version gate and prior-version disclosure | Yes, ADR-011 required | OPEN |
+| OWN-09 | MPXJ LTS/JDK/Notarization/license/replacement policy | G0 investigation + legal review | OPEN |
+| OWN-10 | Minimum/recommended hardware and latency/throughput budgets | Decide after S0 measurements | OPEN |
+
+Document owner decisions in an accepted ADR and test strategy. An agent must not mark `OPEN` as `APPROVED` through interpretation, code edits or “the test passes.”
+
+## 11. Primary references and exact-file evidence
+
+Existing files to check on HEAD: `go.mod`, `main.go`, `app_projects.go`, `app_charts.go`, `internal/export/mspdi_import.go`, `internal/analytics/duckdb.go`, `internal/db/charts.go`, `internal/db/audit.go`, `internal/db/wbs_store.go`, `internal/db/sqlite.go`, `internal/db/encryption.go`, `internal/wbs/model.go`, `session_state.go`, `docs/design/wbs-unified-model-contract.md`, `docs/DEPENDENCIES.md`, `docs/ARCHITECTURE.md`, `docs/TESTING.md`, `.github/workflows/{ci,release}.yml`, and `AGENTS.md`. Every relevant claim is retested on the PR HEAD.
+
+External primary sources and caveats:
+
+- https://github.com/joniles/mpxj ; https://github.com/joniles/mpxj/releases
+- https://github.com/grpc/grpc-java ; Windows named-pipe feature request: https://github.com/grpc/grpc-java/issues/12027 (closed without published production Java pipe adapter)
+- https://github.com/microsoft/go-winio (Go Windows pipes, **not** Java proof)
+- https://openjdk.org/jeps/380 (Java AF_UNIX API, **not** grpc-java support proof)
+- https://www.sqlite.org/wal.html ; https://www.sqlite.org/foreignkeys.html ; https://www.sqlite.org/pragma.html
 
-### 6.2 Phases and the helpers they reuse
-
-| Phase | Work | Existing code to reuse |
-| --- | --- | --- |
-| PREPARED | Create `staging/<op>` and write `journal.json` (operation ID, project ID, account, source and worker digests). Create the encrypted database. Import in bounded transactions. After approval, write the receipt and the import audit event into the staged database | `db.InitEncryptedDB`, the session DEK, the existing audit append |
-| SEALED | Validate integrity, foreign keys, counts, and the audit chain; checkpoint the WAL and switch to the DELETE journal; close; remove sidecars; set private modes; fsync the file and folder; record the seal digest in the journal | `requireEncryptedIntegrity`, `prepareForRename`, `removeSQLiteSidecars`, `ensurePrivateSQLiteFiles` |
-| PUBLISHED | Re-check the session bindings; write the chosen folder name to the journal; rename `staging/<op>/project` to `projects/<folder>` without replacing anything (§6.4); fsync `projects/`; mark the journal PUBLISHED | (new) |
-| DONE | Read back and verify the counts; remove `staging/<op>` | (new) |
-
-No write reaches the project after the rename, so the published project is
-always the sealed one.
-
-### 6.3 Reconciliation
-
-Reconciliation runs at sign-in, for that user's `staging/` folder only:
-
-| Journal phase found | State on disk | Action | What the user sees |
-| --- | --- | --- | --- |
-| PREPARED | Staging database, maybe partial | Move to `quarantine/`; delete after 30 days (the source file is untouched) | "An import didn't finish. Nothing was added to your projects." |
-| SEALED | Staged project still present | Verify the seal digest. If it matches, ask whether to publish; otherwise quarantine | "An import was ready but not added. Add it now?" |
-| SEALED | Staged project gone; the journal's folder is in `projects/` | The rename finished before the journal update. If the seal digest matches, mark PUBLISHED and continue; otherwise stop and report | "An import finished while GoPMgr was closing." |
-| PUBLISHED | Project in `projects/`, staging left over | Read back, verify, remove staging | "An import finished while GoPMgr was closing." |
-| No journal | Unknown folder | Quarantine; never delete | Shown in Settings → Import tools |
-
-### 6.4 Platform notes and the cancel boundary
-
-**Platforms:**
-
-- **Never replace.** Go's `os.Rename` is not enough here:
-  - On Linux and macOS it refuses an existing target folder, but only
-    through an `Lstat` check made before `rename(2)`. An empty folder
-    created between the two steps is still replaced.
-  - On Windows it passes `MOVEFILE_REPLACE_EXISTING`.
-
-  Publication instead uses the no-replace forms from `golang.org/x/sys`
-  (already a direct dependency, v0.49.0), which check and rename in one step:
-  - `unix.Renameat2` with `RENAME_NOREPLACE` on Linux;
-  - `unix.RenamexNp` with `RENAME_EXCL` on macOS;
-  - `windows.MoveFileEx` without the replace flag on Windows.
-
-  If a file system refuses the no-replace call, publication fails rather
-  than falling back.
-- A rename within one volume is atomic on all three OSes.
-- Windows cannot fsync a directory, so recovery relies on the journal there.
-  On macOS, closing the file is followed by an `F_FULLFSYNC` check where G3
-  shows it is needed.
-- Disk-full and power-loss faults are injected at every boundary, as listed in
-  the test strategy.
-
-**Cancel boundary:** cancelling is allowed through `SEALING`. From `RECHECK`
-on, the interface shows "Finishing — can't cancel now" [UX-06].
-
-**Follow-up outside this ADR:** `CreateProject` and `RestoreProjectArchive`
-should adopt the same protocol. Today they write inside `projects/`.
-
-## 7. Storage and scale (inputs to ADR-011)
-
-This section collects the requirements that the storage ADR must settle. It is
-*not* a migration [P0-07].
-
-### 7.1 Constraints
-
-| Constraint | Source | Consequence |
-| --- | --- | --- |
-| SQLite 3.33.0 | `sqlite3.h:126` | No `STRICT`, `RETURNING`, `DROP COLUMN`, or `unixepoch()`. Generated columns, UPSERT, window functions, and `WITHOUT ROWID` are available. |
-| No JSON1 or FTS5 in releases | Build tags (`Makefile:19`) | No SQL JSON functions. Search uses indexed `LIKE` or prefix keys unless a tag change is approved. |
-| Foreign keys on per connection | DSN (`sqlite.go:64-75`) | Keep it. Run `foreign_key_check` after migrations that disable foreign keys. |
-| WAL, with `synchronous=NORMAL` | DSN | Single writer; checkpoint policy in §7.6 |
-| No format gate | `user_version` never set | The gate release ships first (ADR-010 D-11) |
-| Schema grows by `IF NOT EXISTS` and `ADD COLUMN` | `internal/db/sqlite.go` | New tables are additive; rollback cannot rely on `DROP COLUMN` |
-
-### 7.2 Data layers
-
-These follow [v2 §11.2]:
-
-1. the source bytes (evidence);
-2. the interchange snapshot (what was read);
-3. normalized records (the authority);
-4. WBS scope (its own contract);
-5. derived projections, which can be rebuilt.
-
-Charts become views, not storage, for large schedules.
-
-### 7.3 Physical schema plan (P1-01)
-
-- **Keys.** Use integer surrogate keys for heavy tables, with scoped unique
-  constraints on business IDs. Avoid long composite text keys on hot paths.
-- **Hierarchy.** Store `parent_task_id` and an ordinal for the outline. Add a
-  separately measured flattened `visible_outline_index` for each schedule
-  generation only if it beats recursive queries (§7.8).
-- **Relations.** Index relations both ways, by predecessor and by successor.
-- **Timephased data.** Index `(series_id, start, end)`; see §7.7.
-- **Custom fields.** Store sparse typed custom values, keyed by definition.
-- **Statistics.** Run `ANALYZE` after a bulk load. Keep the
-  `EXPLAIN QUERY PLAN` output for every hot query.
-- **`WITHOUT ROWID`.** Benchmark it only for small composite-key tables; it
-  is not assumed faster in general.
-
-### 7.4 Paging and cursors (P1-02)
-
-- **Short reads.** Each page is a short read transaction. A long-lived reader
-  across Wails calls would stop WAL checkpoints [REVIEW-009].
-- **Keyset paging.** Pages use a keyset on `(sort key, stable surrogate ID)`.
-- **Cursors.** Cursors are opaque and host-authenticated with an HMAC. Each is
-  bound to the account, project copy, schedule generation, filter, and sort,
-  and has an expiry.
-- **Revision changes.** If the revision changes, the next page reports
-  `revision_changed`. The interface then re-anchors on the selected task ID
-  and does not silently skip or repeat rows [REVIEW-008].
-- **Counts.** Each count is marked as `exact`, `estimated`, or `unknown`.
-
-### 7.5 Derived computations (P1-03)
-
-- **Cache keys.** Each cache is keyed by `(project copy, schedule generation,
-  algorithm version, calendar revision, options digest)`.
-- **Change impact.** A change-impact graph covers task edits, relations,
-  assignments, calendars, WBS links, EVM, and risk.
-- **Incremental CPM.** It becomes the authority only after it is proven equal
-  to a full recompute on fixtures.
-- **Expensive work.** Monte Carlo, levelling, and portfolio rollups run as
-  cancellable jobs in the job center. A single save never waits for them.
-
-### 7.6 Write volume and WAL (P1-04)
-
-- **Bulk import.** Use prepared statements, bounded batches, and indexes
-  built after the load where measured faster.
-- **Checkpoints.** Use an explicit checkpoint policy after an import, and
-  track the size of the WAL file.
-- **Disk-full faults.** `SQLITE_FULL` is injected during staging, sealing, and
-  normal edits.
-- **Staging in memory.** Compared against encrypted staging by measured size.
-  Plaintext must never spill to disk.
-
-### 7.7 Timephased data (P1-05)
-
-- Keep irregular segments and their original units. Never expand them into
-  minute or day rows at import.
-- Aggregate lazily to the zoom level the timeline asks for, and cache short
-  ranges.
-- Benchmark one million points with both sparse and dense contours.
-
-### 7.8 Outline and timeline APIs (P1-06)
-
-```text
-ListOutlineRows(handle, schedule, cursor, limit, filter, sort, expanded)
-  -> rows[], next_cursor, revision, count{value, kind}
-GetTimelineViewport(handle, schedule, row_range, time_range, px_per_day)
-  -> bars[], links[] (clipped), calendar_hints[], density_bins[]
-GetActivityDetails(handle, schedule, task_id) -> typed entity, bounded tabs
-ApplyActivityChange(expected_revision, operation_id, typed_patch)
-  -> new_revision, audit_id, affected_ids, warnings
-```
-
-- Focus and selection survive sort, filter, folding, zoom, and refresh.
-- Expanding everything at 100,000 rows is a background job, not a mass mount.
-- Canvas is used for dense bars only if benchmarks show the gain. Visible rows
-  keep DOM and ARIA semantics.
-
-### 7.9 Analytics (S7A, P1-07)
-
-- **Domain queries first.** Define them with exact-money aggregation over
-  indexed SQLCipher records.
-- **Larger imports.** `ImportTabularToDataset` and `QueryDatasetPage` handle
-  large files. The legacy 10,000-row result cap stays, and reports
-  `result_truncated` separately from `dataset_fully_imported`.
-- **Engines.** No engine (DataFusion, Arrow, Iceberg) is chosen here.
-  Results must match the GoPMgr kernel and `internal/money`.
-- **Portfolio rollups.** They use only the snapshots the user approved. A
-  user's account isolation is never bypassed [REVIEW-019].
-
-### 7.10 Audit (S7B, P1-08)
-
-- **Old events stay valid.** Old events keep their bytes; `eventHash` and
-  `canonicalJSON` do not change.
-- **New events.** New schedule commands write
-  `{"schema":"gopmgr.audit.delta.v1", …}` inside the existing before and after
-  fields. Numbers that need exactness (money, large integers, revisions) are
-  strings, because the canonicalizer decodes generic JSON [P1-08].
-- **Checkpoints.** They are triggered by either the edit count or the
-  evidence bytes. Replay is checked against recorded per-record hashes.
-- **Separation.** Receipts (idempotency), undo history, and audit evidence
-  have separate retention rules. The 256-receipt WBS limit applies to WBS
-  only.
-
-### 7.11 Performance objectives (P1-09)
-
-- **Hardware.** Publish two profiles: minimum supported and recommended. The
-  owner decides them at S0.
-- **Measure each stage separately:**
-  - cold open, conversion, staging, seal and publish;
-  - first viewport, scroll p95, indexed search, and a single edit;
-  - dependency recalculation and a risk run;
-  - export, snapshot, and restore;
-  - worst-case host plus JVM memory, and scratch use.
-- **Workload tiers [v2 §11.11]:**
-  - T0: 100-500 tasks;
-  - T1: 10,000;
-  - T2: 50,000, the design target;
-  - T3: 100,000 tasks and one million timephased points, a stress target.
-- **Budgets are proposals until measured.** Proposed T2 budgets on the
-  recommended profile: a page of up to 200 rows within 250 ms p95 when warm,
-  and a foreground command within 500 ms p95.
-
-## 8. AI and MCP boundary
-
-The future AI ADR must decide the following, and nothing ships before it
-does [P0-04]:
-
-- **Where the server runs.** MCP is embedded in the running, signed-in app.
-  A separate broker is out.
-- **Client grants.** A grant names an account, project, and copy. It is
-  read-only, short-lived, and revocable. Its token never appears on command
-  lines, in logs, or in permanent configuration.
-- **Revocation.** Grants are revoked on sign-out, project switch, account
-  switch, GUI exit, administrator switch, and worker restart, and when a tool
-  call outlives its grant [REVIEW-007].
-- **Remote use.** Remote clients need a separate decision. Any HTTP transport
-  validates `Origin`.
-- **Tools and model output.** Tools read through the same paged query
-  services as the interface. Model output is untrusted data. Writes come only
-  as proposals that a user approves [v2 §10.3].
-
-## 9. Interface design
-
-### 9.1 Principles
-
-- **Fit the existing app.** Dense, operational desktop screens in the
-  existing slate and cyan palette, set in IBM Plex. Reuse `Button` variants,
-  `Card`, `Tabs`, `Input`, `Select`, `ConfirmDialog`, `ToastContainer`, and
-  `Spinner`.
-- **Translatable.** All text goes in `messages/en.ts` as full sentences with
-  `{placeholders}` and plural forms (ADR-008). The hardcoded-text ratchet
-  covers every new component.
-- **Keyboard first.** Every flow works without a mouse. Enter handlers ignore
-  `isComposing`. Focus is visible and stays put across paging.
-- **Honest status.** No "100%" during long validation, no "sandboxed" badge,
-  and no success message before read-back verification.
-- **Accessible and colour-independent.** Status always has a text label as
-  well as a colour.
-- **Consistent with the plan.** The work follows
-  `docs/design/accessibility-remaining-work-plan.md` where it overlaps.
-
-### 9.2 Screens
-
-**Import assistant** (UX-01, G2 for inspection, G3 for import). It is a
-five-step stepper:
-
-1. **Choose file.** One file picker; supported formats are listed with
-   read-only formats marked as such.
-2. **Inspect.** Format, producer and version (with how sure GoPMgr is), size,
-   and counts of summary and leaf tasks, relationships, calendars, resources,
-   assignments, baselines, timephased data, and custom fields. It also shows
-   the estimated memory, disk, and time, and any limits.
-3. **Map and check.** Choose a mode (Strict, Reviewed, or Inspect only),
-   whether this is a new lineage or matches an existing one, and an optional
-   list of essential fields.
-4. **Review.** An impact summary and the fidelity inspector.
-5. **Import.** The **Import as new project** button. Merging is not offered
-   in v1.
-
-The stepper stays inspectable even when scale limits block the import.
-
-**Fidelity inspector** (UX-02). A searchable grid with these columns:
-
-- field and group;
-- records affected;
-- source form and GoPMgr form;
-- what happens (the disposition);
-- severity;
-- whether it is editable or exportable.
-
-Filters: Needs attention, Not supported, Kept read-only, Converted, Exact.
-**Save import report** writes a report that leaves out notes, local paths,
-and field values unless the user ticks them in. A PDF report uses the ADR-006
-PDF/A-2u pipeline.
-
-**Job center** (UX-06). One panel that lists running and recent jobs. Each
-shows its phase, meaningful counters (bytes read, tasks checked, records
-staged), and states that tell queued and running apart. Cancel is offered
-only before the boundary in §6.4. A failed job keeps its receipt and offers
-**View details**, and **Try again** where the operation can safely be
-repeated.
-
-**Import tools** (UX-05, Settings). Shows the bundled worker only:
-
-- status, version, and supported formats, with read and write listed
-  separately;
-- whether it is on or off, its disk use, and its last self-test;
-- release provenance, and a **Run diagnostics** button.
-
-It states plainly that the worker runs as a separate program and is not
-sandboxed. There is no install button.
-
-**Imported versus recalculated** (UX-07). A toggle between source values and
-GoPMgr's values. Differences are highlighted, each with a reason.
-**Recalculate with GoPMgr** shows a preview first.
-
-**Large schedules** (UX-04, S5):
-
-- **Finding tasks:** search by ID, UID, WBS path, or text; jump to a task; a
-  breadcrumb trail.
-- **Navigating:** **Expand this branch** instead of expand-all, a sticky name
-  column, keyboard moves to the parent, predecessor, and successor.
-- **Overview:** a minimap and zoom to selection.
-- **Counts:** loaded, total, and estimated rows.
-- **Screen readers:** the row position is announced.
-
-**History** (UX-08). Four distinct actions: Undo an unsaved edit, Revert a
-saved change (which is a new audited change), Restore a backup, and Re-import
-the original.
-
-**Compare** (UX-03, S6) and **AI** (UX-09, the future ADR) are specified
-there, not here.
-
-### 9.3 Design system additions
-
-Each addition extends an existing primitive. None brings a new UI dependency.
-
-| Component | Built from | Purpose | Accessibility |
-| --- | --- | --- | --- |
-| `Stepper` | `Tabs` styling, `Button` | The five assistant steps; step state is complete, current, upcoming, or blocked | `nav` with `aria-label`; `aria-current="step"`; blocked steps explain why |
-| `DataGrid` | New; table semantics | Fidelity inspector, job history, field reports | `role="grid"`, roving tabindex, sortable headers with `aria-sort`, paged with a loaded/total count |
-| `TreeGrid` | `DataGrid` and an outline model | Large-schedule outline (S5), virtualized | `role="treegrid"`, `aria-level`, `aria-expanded`, `aria-rowindex` and `aria-rowcount` while virtualized |
-| `StatusBadge` | Existing badge classes | One status vocabulary for workers, jobs, and dispositions | Text label always; colour only adds meaning |
-| `PhaseProgress` | `Spinner` and a list | Job phases with counters; no fake percentages | `aria-live="polite"` for phase changes only |
-| `ResourceEstimate` | `Card` | Memory, disk, and time needed versus available | Values as text, with units formatted through `formatNumber` |
-
-**Status colour tokens**, mapped to classes already in use:
-
-| Status | Colour | Example classes |
-| --- | --- | --- |
-| Exact, Ready, Done | emerald | `text-emerald-300`, `bg-emerald-950/40` |
-| Converted, Running | cyan | `text-cyan-300` |
-| Converted with loss, Needs attention, Finishing | amber | `text-amber-300`, `border-amber-700/50` |
-| Not supported, Off, Cancelled | slate | `text-slate-400` |
-| Failed, Can't start, Signature mismatch | red | `text-red-300`, `bg-red-950/40` |
-
-**Every component has these states:** loading, empty, error, disabled, and
-read-only. The empty and error states use the copy in §9.4.
-
-### 9.4 Copy (catalog keys and English text)
-
-Errors follow this pattern: what happened, why, and what to do. Product names
-(Microsoft Project, Primavera P6, ProjectLibre) and file extensions are not
-translated. "MPXJ" appears only in diagnostics.
-
-| Key | English |
-| --- | --- |
-| `interop.import.title` | Import a project |
-| `interop.step.choose` | Choose file |
-| `interop.step.inspect` | Inspect |
-| `interop.step.map` | Map and check |
-| `interop.step.review` | Review |
-| `interop.step.import` | Import |
-| `interop.choose.formats` | Supported: Microsoft Project (.mpp, .xml) and Primavera P6 (.xer, .xml). Settings → Import tools lists every format. |
-| `interop.inspect.nothingSaved` | Inspecting reads the file only. Nothing is saved. |
-| `interop.mode.strict` | Strict: stop if any essential field can't be kept exactly. |
-| `interop.mode.reviewed` | Reviewed: import what can be kept, and review every field that changes or can't be kept. |
-| `interop.mode.inspectOnly` | Inspect only: show what the file holds. Nothing is saved. |
-| `interop.lineage.new` | Treat this as a new project |
-| `interop.lineage.match` | This is a newer copy of {project} |
-| `interop.lineage.copyWarning` | This file uses the same task IDs as {project} but its history is different, so it may be a copy. GoPMgr won't merge them automatically. |
-| `interop.review.attention` | `{one: "{count} field needs your attention.", other: "{count} fields need your attention."}` |
-| `interop.import.asNew` | Import as new project |
-| `interop.import.cancel` | Cancel import |
-| `interop.import.finishing` | Finishing — can't cancel now. The project will appear when it's ready. |
-| `interop.import.done` | {project} was imported. {kept} of {total} fields were kept exactly. |
-| `interop.filter.attention` | Needs attention |
-| `interop.filter.unsupported` | Not supported |
-| `interop.filter.readOnly` | Kept, read-only |
-| `interop.filter.converted` | Converted |
-| `interop.filter.exact` | Exact |
-| `interop.report.save` | Save import report |
-| `interop.report.privacy` | The report leaves out notes, file locations, and field values unless you include them. |
-| `interop.tools.notSandboxed` | Runs as a separate program bundled with GoPMgr. It isn't sandboxed. |
-| `interop.tools.diagnostics` | Run diagnostics |
-| `interop.recovery.unfinished` | An import didn't finish last time. Nothing was added to your projects. |
-| `interop.recovery.ready` | An import of {project} was ready but not added. Add it now? |
-| `interop.recovery.finished` | An import of {project} finished while GoPMgr was closing. It's in your projects. |
-| `interop.legacy.quickChart` | Quick chart import (MS Project XML) |
-| `interop.error.notInstalled` | The import tool for Microsoft Project and Primavera files isn't installed. You can still use Quick chart import for MS Project XML files. |
-| `interop.error.signature` | GoPMgr didn't start the import tool because its files don't match this release. Reinstall GoPMgr to restore them. |
-| `interop.error.incompatible` | This import tool doesn't work with this version of GoPMgr. Reinstall GoPMgr to get a matching version. |
-| `interop.error.startFailed` | The import tool couldn't start. Try again. If it keeps failing, run diagnostics in Settings → Import tools. |
-| `interop.error.unhealthy` | The import tool stopped responding, so the import was cancelled. Nothing was saved. Try again. |
-| `interop.error.unsupported` | GoPMgr can't import {format} files. It can import: {formats}. |
-| `interop.error.invalid` | This file couldn't be read. It may be damaged or not a {format} file. Open it in the program that made it, save a new copy, and try again. |
-| `interop.error.protected` | This file is password-protected. Remove the password in the program that made it, then import that copy. |
-| `interop.error.resourceLimit` | This file needs more {resource} than GoPMgr can use for an import on this computer ({needed} needed, {available} available). You can still inspect it. |
-| `interop.error.unmapped` | `{one: "{count} essential field can't be kept exactly, so Strict mode stopped the import. Switch to Reviewed to import the rest.", other: "{count} essential fields can't be kept exactly, so Strict mode stopped the import. Switch to Reviewed to import the rest."}` |
-| `interop.error.staleSession` | You signed out or switched accounts, so the import stopped. Nothing was saved. Sign in and start again. |
-| `interop.error.revisionConflict` | The project changed after you reviewed these changes. Review them again before applying. |
-| `interop.status.cancelled` | Import cancelled. Nothing was saved. |
-| `interop.error.exportUnsupported` | GoPMgr can't save .mpp files. Microsoft Project opens MS Project XML (.xml), so export that instead. |
-| `interop.error.internal` | Something went wrong, so nothing was saved. Error ID: {id}. |
-
-**Translator notes:**
-
-- `{resource}` is a catalog value ("memory", "disk space", or "time"), not
-  free text.
-- `{needed}` and `{available}` are formatted numbers with units.
-- `interop.error.unmapped` takes a plural form.
-- Avoid idioms; German and French text runs 30-40% longer, so buttons wrap
-  rather than truncate.
-
-**Alternatives considered for the main button:**
-
-| Option | Copy | Notes |
-| --- | --- | --- |
-| A (chosen) | Import as new project | States the outcome; leaves room for "Import into…" later |
-| B | Create project | Hides that the data comes from the file |
-| C | Import | Ambiguous once merge exists |
-
-## 10. Delivery plan
-
-### 10.1 Phases (G)
-
-| Phase | Goal | Exit gate (summary) |
-| --- | --- | --- |
-| **G0** Feasibility | Transport A against B with the same `Hello`; JVM start-up, heap, and memory; MPXJ 16.10.0 dependency, licence, and SBOM draft; jlink size per OS; signing and notarization of the runtime; fixture corpus plan; baselines for current imports | One transport chosen with evidence; launch, reap, and cancel work offline on Windows, macOS, and Linux; no blocker on licence or packaging |
-| **G1** Worker MVP | `.proto` plus code generation; framing; supervisor; digest lock; fake worker; error codes; fuzzing; settings page that is read-only | No regressions with the worker off; no leaked processes or descriptors; no listener; golden protocol tests |
-| **G2** Inspect-only MPXJ | Java bridge; streamed source and scratch; format detection; inspect counts; resource budgets; malformed, oversized, and protected fixtures | No database writes; counts match MPXJ directly; limits enforced; clean logs |
-| **G3** New-project import | Typed records, field ledger, identity (§4.1), encrypted staging, publication (§6), assistant and inspector | Requires S0-S4 and the format gate; every failure injected leaves no partial project; read-back matches; honest labels |
-| **G4** Export, scale, release | MSPDI export first; S5 interface; benchmarks; installers; notices | `make check-release` plus worker gates on supported targets |
-| **G5** Read-only MCP | Only after the AI ADR | Grants revoked correctly; no writes; no data leaves the computer without consent |
-| **G6** AI proposals | Separate approval | No self-approval; stale proposals do nothing |
-| **G7** Third-party workers | Separate ADR | OS confinement proven on each target |
-
-### 10.2 Scale workstream (S)
-
-| Gate | Deliverable | Depends on |
-| --- | --- | --- |
-| **S0** | Census and baselines with file and line references (§7.1); hardware profiles | G0 |
-| **S1** | ADR-011 storage design: DDL, format gate, migration and rollback | S0 |
-| **S2** | Format gate release, then the additive schema behind a flag | S1 |
-| **S3** | Typed commands and queries; encrypted staging; receipts; idempotency | S2, G1 |
-| **S4** | Field completeness, ledger, and read-back | S3, G2 |
-| **S5** | Virtualized outline and timeline | S3 |
-| **S6** | Compare (read-only), then apply with separate approval | S3, S4 (S5 for the interface) |
-| **S7A** | Analytics: dataset ingest, paging, deterministic aggregates | S3 |
-| **S7B** | Compact audit events, mixed-chain verifier, replay | S3, and the audit design accepted |
-
-### 10.3 Addendum amendment order
-
-| Patch | Content | Status in v2.1 |
-| --- | --- | --- |
-| A0 | Numbering and decision inventory | Done (ADR-010) |
-| A1 | Lineage and identity | Designed (§4.1); built in G3 |
-| A2 | Publication journal | Designed (§6); built in G3 |
-| A3 | Typed protocol and resource probe | Outlined (§2.3, §5.6); G1 and G2 |
-| A4 | Strict modes and field matrix | Designed (§4.2); G3 |
-| A5 | MCP grants | Requirements (§8); AI ADR |
-| A6 | Physical schema and paging | Requirements (§7.3-7.4); ADR-011 |
-| A7 | Incremental computation | Requirements (§7.5); ADR-011 and S7A |
-| A8 | Audit semantics | Requirements (§7.10); S7B |
-| A9 | Import, job, navigation, and compare UX | Designed (§9); G2-G4 and S5-S6 |
-
-### 10.4 Pull-request slices
-
-Each slice is its own pull request. Never combine G1-G3, or a schema change
-with an importer.
-
-| PR | Scope | Must not include |
-| --- | --- | --- |
-| P0 | This documentation (ADR, plan, test strategy, sources) | Code |
-| P1 | G0 evidence and S0 census (documentation and throwaway spikes outside the product) | Production code paths |
-| P2 | `.proto`, framing, fake worker, supervisor (G1) | MPXJ, database writes |
-| P3 | Bridge inspect-only and packaging (G2) | Staging, commit |
-| P4 | ADR-011 (S1) | Schema code |
-| P5 | Format-gate release (S2 part 1) | New tables |
-| P6 | Additive schema behind a flag (S2 part 2) | Import activation |
-| P7 | Commands, queries, and staging (S3) | Interface |
-| P8 | Field ledger and identity (S4, G3 part 1) | Publication |
-| P9 | Publication and reconciliation (G3 part 2) | Merge |
-| P10 | Assistant, inspector, and job center (G3 part 3) | Large views |
-| P11 | Virtualized outline and timeline (S5) | All-row rendering |
-| P12 | MSPDI export (G4) | `.mpp` writing |
-
-Each pull request records:
-
-- the HEAD it was built on;
-- the contracts and invariants it touches;
-- its fixtures, and the tests run, blocked, or skipped;
-- the performance change;
-- its effect on licences and the SBOM;
-- how to roll it back;
-- what users will see change.
-
-## 11. Release, migration, and rollback
-
-This condenses [v2 §15].
-
-- **Flags.** One flag enables the worker supervisor. A separate flag enables
-  import publication. Inspection can be on by itself.
-- **Order:**
-  1. documentation;
-  2. G1 with the worker off;
-  3. inspection for testers;
-  4. the format-gate release;
-  5. new-project import for testers;
-  6. export formats, one at a time;
-  7. AI, only after its ADR.
-- **Stop at once if any of these happens:**
-  - a digest bypass;
-  - a leak across users or projects;
-  - a key exposure;
-  - a partial project published;
-  - a commit from a stale session;
-  - a leaked JVM;
-  - an unbounded parse;
-  - loss of a core flow.
-- **Response:** turn the flag off, cancel jobs, keep the evidence without any
-  project content, and ship the previous signed build.
-- **Schema caveat.** Rolling back the binary does not roll back a schema.
-  ADR-011 defines backups, read-only rules for older builds, and forward
-  repair.
-
-## 12. Risks
-
-These are the v2.0 risks R-01 to R-20 and R-S01 to R-S12, with additions:
-
-| ID | Risk | Severity | Mitigation |
-| --- | --- | --- | --- |
-| R-N01 | An old build writes the legacy chart of a normalized schedule | Critical | Format gate ships first (D-11); old charts become read-only projections |
-| R-N02 | A stray library print corrupts the stdout frame stream | High | Capture stdout before loading; fuzzed framing; strict decoding |
-| R-N03 | Staging and `projects/` are on different volumes, so the rename is not atomic | High | Both under `DataDir`; check that the device IDs are equal; refuse otherwise |
-| R-N04 | Notarization rejects native code in sqlite-jdbc | Medium | Exclude it from v1, or sign the extracted libraries |
-| R-N05 | JVM start-up per job is slow on low-end machines | Medium | Measured in G0; session-scoped fallback (D-5) |
-| R-N06 | Reconciliation deletes user data | High | Never delete a folder without a journal; keep interrupted imports in quarantine for 30 days and tell the user |
-| R-N09 | Publication replaces an existing folder | High | No-replace rename on every OS (§6.4); no fallback to `os.Rename` |
-| R-N07 | New screens are not translatable | Medium | ADR-008 ratchet in place before G2 interface work |
-| R-N08 | SQLite 3.33.0 blocks a needed feature | Medium | Design within it, or upgrade SQLCipher under the dependency rules |
-
-Retained and still critical:
-
-- R-01: treating a separate process as a sandbox;
-- R-02: a stale session committing;
-- R-03: claiming a full import based only on charts;
-- R-04: exceeding the WBS caps;
-- R-05: currency and date corruption;
-- R-S02: compacting the audit chain in a way that changes its hashes.
-
-## 13. Brief for coding agents
-
-This condenses [v2 §18], with its numbering fixed.
-
-1. **Start-up.** Run `pwd`, `git status --short`, `git log -1`, and read
-   `AGENTS.md`. Protect unrelated work; never reset, stash blindly, or stage
-   broadly.
-2. **Compare against this plan.** Check HEAD against §7.1 and the ADR's
-   evidence table, and report any difference before writing anything.
-3. **Do the smallest next slice** in §10.4 that the owner has approved. Write
-   its mini-plan: files, tests, and rollback.
-4. **Verify external facts** (versions, APIs, licences) from primary sources.
-   Never guess package names, flags, or field names.
-5. **Respect boundaries.** For anything touching schema, encryption,
-   accounts, WBS, audit, or signing, cite the accepted ADR and stop if a
-   decision is missing.
-6. **Follow the work cycle:**
-   1. inspect;
-   2. state the invariants and negative cases;
-   3. write tests that fail;
-   4. make the smallest change;
-   5. format, then run targeted, race, and fuzz tests;
-   6. run the broader gates;
-   7. review the diff adversarially;
-   8. stage by path;
-   9. record the evidence.
-7. **Forbidden:**
-   - database or key access from a worker;
-   - building shell commands from manifest values;
-   - claiming a permission is enforced when the OS does not enforce it;
-   - unbounded processes or listeners;
-   - promising `.mpp` export;
-   - guessing field mappings;
-   - silently converting precision;
-   - recalculating during import;
-   - success messages before read-back;
-   - bypassing epoch, revision, or audit checks;
-   - automatic AI approval;
-   - a marketplace;
-   - migrations hidden inside importers;
-   - claiming PASS for skipped fixtures.
-
-## 14. Documentation plan
-
-| Document | When | Notes |
-| --- | --- | --- |
-| ADR-010 (decisions) | Now | Accepted only by the owner |
-| This plan | Now; updated at each gate | Status of each phase recorded here |
-| Test strategy | Now; evidence added per gate | `docs/testing/adr-010-test-strategy.md` |
-| `docs/interoperability/mpxj-field-mapping.md` | Before G3 | Generated from the API and fixtures |
-| ADR-011 storage | S1 | Includes the format gate |
-| AI and MCP ADR | Before G5 | Grants and transport |
-| `docs/user-guide.md` and in-app Help | Each user-visible phase | Supported formats and limits, translated through ADR-008 |
-| `docs/DEPENDENCIES.md` | G0 and G2 | Java runtime, MPXJ, protobuf, licences |
-| `docs/TEST_COVERAGE_LEDGER.md` | Each code PR | New test files and headings |
