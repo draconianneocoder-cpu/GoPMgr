@@ -52,6 +52,9 @@ export const en = {
     "If you forget your password, a recovery code is the only way to reset it and keep your encrypted projects. Save them somewhere safe — you won't be shown them again.",
   'recoveryCodes.saved': 'I have saved my recovery codes somewhere safe.',
   'recoveryCodes.continue': 'CONTINUE TO GOPMGR',
+
+  'sigma.solutions.cost': 'Cost',
+  'sigma.solutions.costIn': 'Cost ({currency})',
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

@@ -4,6 +4,9 @@
 package main
 
 import (
+	"bytes"
+	"os"
+	"strings"
 	"testing"
 
 	"gopmgr/internal/sigma/domain"
@@ -180,5 +183,53 @@ func TestSigmaListProjects_AppLayerScopesToOpenProject(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].Title != "Own Sigma Project" {
 		t.Fatalf("SigmaListProjects() = %+v, want exactly [Own Sigma Project] -- the foreign row's Sigma project must not appear", got)
+	}
+}
+
+// The Six Sigma report takes the open project's reporting currency: a euro
+// project exports, and a stored code the report would refuse fails the
+// export, so a fixed currency passed in its place fails this test.
+// internal/export's tests check how the currency prints.
+func TestSigmaExportProjectReportUsesTheProjectCurrency(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatalf("CreateAccount: %v", err)
+	}
+	mustOpenProject(t, app, "Euro Line")
+	meta, err := app.GetProjectMeta()
+	if err != nil {
+		t.Fatal(err)
+	}
+	meta.CurrencyCode = "EUR"
+	if _, err := app.UpdateProjectMeta(meta); err != nil {
+		t.Fatalf("switch the empty project to EUR: %v", err)
+	}
+	sigma, err := app.SigmaCreateProject("Line 3 scrap", "", "green_belt")
+	if err != nil {
+		t.Fatalf("SigmaCreateProject: %v", err)
+	}
+	if err := app.SigmaSaveSolutions(sigma.ID, []domain.Solution{{Title: "New fixture", Impact: 8, Effort: 3, Risk: 2, Cost: 1284500, Status: "pilot"}}); err != nil {
+		t.Fatalf("SigmaSaveSolutions: %v", err)
+	}
+
+	path, err := app.SigmaExportProjectReport(sigma.ID)
+	if err != nil {
+		t.Fatalf("SigmaExportProjectReport in EUR: %v", err)
+	}
+	pdf, err := os.ReadFile(path)
+	if err != nil || !bytes.HasPrefix(pdf, []byte("%PDF-")) {
+		t.Fatalf("exported report at %s is not a PDF: %v", path, err)
+	}
+	// The next export may reuse this name within the same second.
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+
+	d := app.requireDB()
+	if _, err := d.Conn.Exec(`UPDATE project SET currency_code='eur' WHERE id=?`, sigma.GopmgrProjectID); err != nil {
+		t.Fatalf("store a malformed code: %v", err)
+	}
+	if _, err := app.SigmaExportProjectReport(sigma.ID); err == nil || !strings.Contains(err.Error(), "reporting currency") {
+		t.Fatalf("export with a malformed stored currency: error = %v, want a reporting currency error", err)
 	}
 }

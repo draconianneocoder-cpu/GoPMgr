@@ -8,23 +8,33 @@ import (
 	"fmt"
 	"time"
 
+	"gopmgr/internal/documents"
 	"gopmgr/internal/pdfdoc"
 	"gopmgr/internal/pdfmeta"
 	"gopmgr/internal/sigma/domain"
 )
 
+// sigmaCostField describes the solution matrix's Cost column, an amount in
+// the project's reporting currency.
+var sigmaCostField = documents.Field{Label: "Cost", Money: true}
+
 // GenerateSigmaReportPDF renders the Six Sigma phase deliverables report to
 // PDF bytes and a suggested filename, with no filesystem access -- the
 // caller chooses the destination (typically via a save dialog) and
-// publishes the bytes itself.
+// publishes the bytes itself. currency is the project's reporting currency,
+// which labels and formats solution costs.
 func GenerateSigmaReportPDF(
 	project domain.Project,
+	currency string,
 	charter *domain.Charter,
 	sipoc *domain.SIPOCData,
 	fishbone *domain.FishboneData,
 	solutions []domain.Solution,
 	controlPlan []domain.ControlPlanItem,
 ) (pdfBytes []byte, filename string, err error) {
+	if !documents.IsCurrencyCode(currency) {
+		return nil, "", fmt.Errorf("sigma report: invalid reporting currency %q", currency)
+	}
 	pdf := pdfdoc.New("P", "mm", "A4", "")
 	registerPDFABaseline(pdf)
 	pdf.SetTitle("Six Sigma Project Report: "+project.Title, true)
@@ -35,7 +45,7 @@ func GenerateSigmaReportPDF(
 	generateCharterSection(pdf, charter)
 	generateSIPOCSection(pdf, sipoc)
 	generateFishboneSection(pdf, fishbone)
-	generateSolutionSection(pdf, solutions)
+	generateSolutionSection(pdf, solutions, currency)
 	generateControlPlanSection(pdf, controlPlan)
 
 	var buf bytes.Buffer
@@ -254,7 +264,7 @@ func generateFishboneSection(pdf *pdfdoc.PDF, fishbone *domain.FishboneData) {
 	}
 }
 
-func generateSolutionSection(pdf *pdfdoc.PDF, solutions []domain.Solution) {
+func generateSolutionSection(pdf *pdfdoc.PDF, solutions []domain.Solution, currency string) {
 	if len(solutions) == 0 {
 		return
 	}
@@ -266,8 +276,8 @@ func generateSolutionSection(pdf *pdfdoc.PDF, solutions []domain.Solution) {
 	pdf.Ln(12)
 	pdf.SetTextColor(0, 0, 0)
 
-	headers := []string{"Solution", "Impact", "Effort", "Risk", "Cost", "Status", "Selected"}
-	widths := []float64{50, 20, 20, 20, 25, 25, 20}
+	headers := sigmaSolutionHeaders(currency)
+	widths := []float64{45, 20, 20, 20, 30, 25, 20}
 
 	pdf.SetFont("Helvetica", "B", 9)
 	pdf.SetFillColor(220, 220, 220)
@@ -278,23 +288,35 @@ func generateSolutionSection(pdf *pdfdoc.PDF, solutions []domain.Solution) {
 
 	pdf.SetFont("Helvetica", "", 9)
 	for _, sol := range solutions {
-		selected := ""
-		if sol.Selected {
-			selected = "YES"
-		}
-		row := []string{
-			sol.Title,
-			fmt.Sprintf("%d", sol.Impact),
-			fmt.Sprintf("%d", sol.Effort),
-			fmt.Sprintf("%d", sol.Risk),
-			fmt.Sprintf("$%.2f", sol.Cost),
-			sol.Status,
-			selected,
-		}
+		row := sigmaSolutionRow(sol, currency)
 		for i, val := range row {
 			pdf.CellFormat(widths[i], 6, val, "1", 0, "C", false, 0, "")
 		}
 		pdf.Ln(-1)
+	}
+}
+
+// sigmaSolutionHeaders names the solution matrix columns; the Cost column
+// names the reporting currency, as document amount labels do.
+func sigmaSolutionHeaders(currency string) []string {
+	return []string{"Solution", "Impact", "Effort", "Risk", sigmaCostField.LabelIn(currency), "Status", "Selected"}
+}
+
+// sigmaSolutionRow is one solution's matrix cells. Its cost prints with
+// thousands separators in the reporting currency (whole yen for JPY).
+func sigmaSolutionRow(sol domain.Solution, currency string) []string {
+	selected := ""
+	if sol.Selected {
+		selected = "YES"
+	}
+	return []string{
+		sol.Title,
+		fmt.Sprintf("%d", sol.Impact),
+		fmt.Sprintf("%d", sol.Effort),
+		fmt.Sprintf("%d", sol.Risk),
+		documents.FormatNumberField(sigmaCostField, sol.Cost, currency),
+		sol.Status,
+		selected,
 	}
 }
 

@@ -325,8 +325,17 @@ func (a *App) SigmaExportProjectReport(projectID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	d := a.requireDB()
+	if d == nil {
+		return "", fmt.Errorf("sigma: no project open")
+	}
+	// Solution costs are in the open project's reporting currency.
+	owner, err := d.GetProject()
+	if err != nil {
+		return "", fmt.Errorf("sigma: read the project's reporting currency: %w", err)
+	}
 
-	pdfBytes, filename, err := export.GenerateSigmaReportPDF(project, charter, sipoc, fishbone, solutions, controlPlan)
+	pdfBytes, filename, err := export.GenerateSigmaReportPDF(project, owner.CurrencyCode, charter, sipoc, fishbone, solutions, controlPlan)
 	if err != nil {
 		return "", err
 	}
