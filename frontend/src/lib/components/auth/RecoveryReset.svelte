@@ -14,6 +14,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount } from 'svelte';
   import { session, goto } from '../../session.svelte';
   import Logo from '../Logo.svelte';
+  import { t } from '../../i18n/i18n.svelte';
+
+  // A sample code, shown as the field's placeholder; it is not text.
+  const SAMPLE_CODE = 'JBSWY3DP-EHPK3PXP';
 
   let username = $state('');
   let code = $state('');
@@ -39,15 +43,15 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
 
     if (!username || !code || !password) {
-      error = 'All fields are required.';
+      error = t('recoveryReset.error.required');
       return;
     }
     if (password.length < 8) {
-      error = 'New password must be at least 8 characters.';
+      error = t('recoveryReset.error.length');
       return;
     }
     if (password !== confirm) {
-      error = 'Passwords do not match.';
+      error = t('common.password.error.mismatch');
       return;
     }
 
@@ -62,10 +66,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // Everything else stays generic: unknown user and wrong code
       // look the same to avoid enumeration.
       if (String(err?.message ?? err).includes('older version of GoPMgr')) {
-        error =
-          "This recovery code is from an older version of GoPMgr and can't unlock your encryption key, so nothing was changed and your projects are safe. Sign in with your password if you remember it.";
+        error = t('recoveryReset.error.legacy');
       } else {
-        error = 'Invalid username or recovery code.';
+        error = t('recoveryReset.error.invalid');
       }
     } finally {
       busy = false;
@@ -80,29 +83,25 @@ SPDX-License-Identifier: GPL-3.0-or-later
   >
     <div class="space-y-2 text-center">
       <Logo class="h-32 w-auto mx-auto" />
-      <h1 class="text-sm font-bold text-slate-300 tracking-widest uppercase">Reset password</h1>
-      <p class="text-xs text-slate-500">
-        Enter one of the recovery codes you saved when the account was created.
-      </p>
-      <p class="text-xs text-slate-500">
-        This changes only your password. Your encrypted projects stay readable.
-      </p>
+      <h1 class="text-sm font-bold text-slate-300 tracking-widest uppercase">{t('recoveryReset.title')}</h1>
+      <p class="text-xs text-slate-500">{t('recoveryReset.intro')}</p>
+      <p class="text-xs text-slate-500">{t('recoveryReset.passwordOnly')}</p>
     </div>
 
     {#if done}
       <p class="text-center text-sm text-emerald-300" role="status" aria-live="polite">
-        Password reset. Your projects are unchanged. Sign in with your new password.
+        {t('recoveryReset.done')}
       </p>
       <button
         type="button"
         onclick={() => goto('login')}
         class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded transition-colors"
       >
-        BACK TO SIGN IN
+        {t('recoveryReset.done.back')}
       </button>
     {:else}
       <div>
-        <label for="rr-username" class="block text-xs font-semibold text-slate-500 uppercase">Username</label>
+        <label for="rr-username" class="block text-xs font-semibold text-slate-500 uppercase">{t('common.username')}</label>
         <input
           id="rr-username"
           type="text"
@@ -114,18 +113,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
       </div>
 
       <div>
-        <label for="rr-code" class="block text-xs font-semibold text-slate-500 uppercase">Recovery code</label>
+        <label for="rr-code" class="block text-xs font-semibold text-slate-500 uppercase">{t('recoveryReset.code')}</label>
         <input
           id="rr-code"
           type="text"
           bind:value={code}
-          placeholder="JBSWY3DP-EHPK3PXP"
+          placeholder={SAMPLE_CODE}
           class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none font-mono"
         />
       </div>
 
       <div>
-        <label for="rr-password" class="block text-xs font-semibold text-slate-500 uppercase">New password</label>
+        <label for="rr-password" class="block text-xs font-semibold text-slate-500 uppercase">{t('common.password.new')}</label>
         <div class="relative mt-1">
           <input
             id="rr-password"
@@ -138,7 +137,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <button
             type="button"
             onclick={() => (showPassword = !showPassword)}
-            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            aria-label={showPassword ? t('common.password.hide') : t('common.password.show')}
             aria-pressed={showPassword}
             class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-300 rounded-r"
           >
@@ -156,12 +155,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </button>
         </div>
         <p id="rr-password-hint" class="text-[10px] mt-1 {password.length === 0 ? 'text-slate-500' : passwordLongEnough ? 'text-emerald-400' : 'text-amber-400'}">
-          {passwordLongEnough ? '✓ ' : ''}At least 8 characters
+          {passwordLongEnough ? '✓ ' : ''}{t('common.password.minLength')}
         </p>
       </div>
 
       <div>
-        <label for="rr-confirm" class="block text-xs font-semibold text-slate-500 uppercase">Confirm new password</label>
+        <label for="rr-confirm" class="block text-xs font-semibold text-slate-500 uppercase">{t('common.password.confirmNew')}</label>
         <div class="relative mt-1">
           <input
             id="rr-confirm"
@@ -175,7 +174,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <button
             type="button"
             onclick={() => (showConfirm = !showConfirm)}
-            aria-label={showConfirm ? 'Hide password' : 'Show password'}
+            aria-label={showConfirm ? t('common.password.hide') : t('common.password.show')}
             aria-pressed={showConfirm}
             class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-300 rounded-r"
           >
@@ -193,7 +192,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </button>
         </div>
         <p id="rr-confirm-hint" class="text-[10px] mt-1 {passwordsMatch ? 'text-emerald-400' : 'text-amber-400'}" class:hidden={confirm.length === 0}>
-          {passwordsMatch ? '✓ Passwords match' : 'Passwords don’t match yet'}
+          {passwordsMatch ? t('common.password.match') : t('common.password.mismatch')}
         </p>
       </div>
 
@@ -206,7 +205,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         disabled={!canSubmit}
         class="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
       >
-        {busy ? 'Resetting…' : 'RESET PASSWORD'}
+        {busy ? t('recoveryReset.submitting') : t('recoveryReset.submit')}
       </button>
 
       <button
@@ -214,7 +213,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         onclick={() => goto('login')}
         class="w-full text-xs text-cyan-400 hover:text-cyan-300 underline"
       >
-        Back to sign in
+        {t('common.backToSignIn')}
       </button>
     {/if}
   </form>

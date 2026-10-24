@@ -35,6 +35,16 @@ describe('AccessNotice', () => {
     expect(region.textContent).toContain('read only');
   });
 
+  // The sentence is one catalog message; only the {actor} part is bold, so
+  // a translation can put the name anywhere and it stays emphasized.
+  it('bolds the administrator’s name inside the sentence', async () => {
+    const utils = render(AccessNotice);
+    const region = await utils.findByRole('region', { name: 'Administrators opened your data' });
+    const names = [...region.querySelectorAll('li > span.font-semibold')].map((s) => s.textContent);
+    expect(names).toEqual(['alice', 'alice']);
+    expect(region.querySelector('li')?.textContent).toMatch(/^\s*alice opened your data on .+\.\s*Reason: Ticket 7\s*$/s);
+  });
+
   it('acknowledges only what it showed, then disappears', async () => {
     app.MyDataAccessNotices.mockResolvedValueOnce([access(7, 'Ticket 7'), access(4, 'Ticket 4')]).mockResolvedValueOnce([]);
     const utils = render(AccessNotice);

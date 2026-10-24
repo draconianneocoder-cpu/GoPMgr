@@ -17,23 +17,57 @@ export function placeholders(text: string): Set<string> {
   return new Set(Array.from(text.matchAll(PLACEHOLDER), (m) => m[1]));
 }
 
-// render picks the plural form, if any, and fills its placeholders. A number
-// is formatted for the format locale; a placeholder with no value stays as
-// written, so a missing parameter is visible rather than silently blank.
-export function render(message: Message, params: MessageParams | undefined, locale: string, formatLocale: string): string {
-  let text: string;
-  if (typeof message === 'string') {
-    text = message;
-  } else {
-    const category = new Intl.PluralRules(locale).select(Number(params?.count ?? 0));
-    text = message[category] ?? message.other;
+// One piece of a rendered message: literal text, or the value of the
+// placeholder named by param.
+export interface MessagePart {
+  text: string;
+  param?: string;
+}
+
+// pick returns the text for the plural category of params.count, if the
+// message has plural forms.
+function pick(message: Message, params: MessageParams | undefined, locale: string): string {
+  if (typeof message === 'string') return message;
+  const category = new Intl.PluralRules(locale).select(Number(params?.count ?? 0));
+  return message[category] ?? message.other;
+}
+
+// renderParts picks the plural form, if any, and splits the text at each
+// filled placeholder. A component can then style one value, such as a
+// person's name, wherever a translation places it, without joining
+// sentence fragments or rendering HTML. A number is formatted for the
+// format locale; a placeholder with no value stays as written, so a missing
+// parameter is visible rather than silently blank.
+export function renderParts(
+  message: Message,
+  params: MessageParams | undefined,
+  locale: string,
+  formatLocale: string,
+): MessagePart[] {
+  const text = pick(message, params, locale);
+  const parts: MessagePart[] = [];
+  let literal = '';
+  let last = 0;
+  for (const match of text.matchAll(PLACEHOLDER)) {
+    const name = match[1];
+    const value = params?.[name];
+    if (value === undefined) continue;
+    literal += text.slice(last, match.index);
+    if (literal) parts.push({ text: literal });
+    literal = '';
+    parts.push({ text: typeof value === 'number' ? new Intl.NumberFormat(formatLocale).format(value) : value, param: name });
+    last = match.index + match[0].length;
   }
-  if (!params) return text;
-  return text.replace(PLACEHOLDER, (whole, name: string) => {
-    const value = params[name];
-    if (value === undefined) return whole;
-    return typeof value === 'number' ? new Intl.NumberFormat(formatLocale).format(value) : value;
-  });
+  literal += text.slice(last);
+  if (literal) parts.push({ text: literal });
+  return parts;
+}
+
+// render is renderParts joined into one string.
+export function render(message: Message, params: MessageParams | undefined, locale: string, formatLocale: string): string {
+  return renderParts(message, params, locale, formatLocale)
+    .map((part) => part.text)
+    .join('');
 }
 
 export interface CatalogProblem {

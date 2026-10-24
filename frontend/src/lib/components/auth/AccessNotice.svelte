@@ -10,20 +10,17 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // advice, it never hides itself when it can't load: the user is told the
   // check failed.
   import { onMount } from 'svelte';
+  import { formatDateTime, t, tParts } from '../../i18n/i18n.svelte';
 
   let notices = $state<AccountEvent[]>([]);
   const accesses = $derived(notices.filter((n) => n.action !== 'escrow_key_new'));
   const newKeys = $derived(notices.filter((n) => n.action === 'escrow_key_new'));
   const heading = $derived(
     newKeys.length === 0
-      ? accesses.length === 1
-        ? 'An administrator opened your data'
-        : 'Administrators opened your data'
+      ? t('adminAccess.notice.openedTitle', { count: accesses.length })
       : accesses.length === 0
-        ? newKeys.length === 1
-          ? 'A new administrator key was made'
-          : 'New administrator keys were made'
-        : 'Administrator access to your data'
+        ? t('adminAccess.notice.newKeyTitle', { count: newKeys.length })
+        : t('adminAccess.title')
   );
   let loadError = $state('');
   let acknowledging = $state(false);
@@ -50,7 +47,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       await window.go.main.App.AcknowledgeDataAccessNotices(throughID);
       await load();
     } catch (err: any) {
-      ackError = `Could not save that you've read this: ${String(err?.message ?? err)}`;
+      ackError = t('adminAccess.notice.ackFailed', { error: String(err?.message ?? err) });
     } finally {
       acknowledging = false;
     }
@@ -58,7 +55,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   function formatTime(value: string): string {
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+    return Number.isNaN(date.getTime()) ? value : formatDateTime(date);
   }
 </script>
 
@@ -68,12 +65,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     class="mb-6 p-4 bg-red-950/30 border border-red-800/60 rounded-lg space-y-2"
   >
     <h2 id="access-notice-heading" class="text-xs font-bold uppercase tracking-widest text-red-300">
-      Administrator access to your data
+      {t('adminAccess.title')}
     </h2>
     <p class="text-xs text-slate-300" role="alert">
-      GoPMgr couldn't check whether an administrator opened your data: {loadError}
+      {t('adminAccess.notice.checkFailed', { error: loadError })}
     </p>
-    <button type="button" onclick={load} class="text-xs text-slate-300 hover:text-white underline">Try again</button>
+    <button type="button" onclick={load} class="text-xs text-slate-300 hover:text-white underline">{t('common.tryAgain')}</button>
   </section>
 {:else if notices.length > 0}
   <section
@@ -84,30 +81,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
       {heading}
     </h2>
     {#if accesses.length > 0}
-      <p class="text-xs text-slate-300">
-        They could see your projects read only and could not change anything. App Settings, under Account,
-        lists every time this has happened.
-      </p>
+      <p class="text-xs text-slate-300">{t('adminAccess.notice.readOnly')}</p>
       <ul class="text-xs text-slate-200 space-y-2">
         {#each accesses as n (n.id)}
           <li>
-            <span class="font-semibold">{n.actor}</span> opened your data on {formatTime(n.occurred_at)}.
-            <span class="block text-slate-400">Reason: {n.detail}</span>
+            {#each tParts('adminAccess.notice.opened', { actor: n.actor, time: formatTime(n.occurred_at) }) as part}{#if part.param === 'actor'}<span class="font-semibold">{part.text}</span>{:else}{part.text}{/if}{/each}
+            <span class="block text-slate-400">{t('adminAccess.reason', { reason: n.detail })}</span>
           </li>
         {/each}
       </ul>
     {/if}
     {#if newKeys.length > 0}
-      <p class="text-xs text-slate-300">
-        The administrator key lets the super administrator open your data. Nobody could open the old one, so a
-        new one was made, and your data is moved to it when you sign in. You're told here each time an
-        administrator opens your data with it.
-      </p>
+      <p class="text-xs text-slate-300">{t('adminAccess.notice.newKeyBody')}</p>
       <ul class="text-xs text-slate-200 space-y-2">
         {#each newKeys as n (n.id)}
           <li>
-            <span class="font-semibold">{n.actor}</span> made a new administrator key on {formatTime(n.occurred_at)}.
-            <span class="block text-slate-400">Reason: {n.detail}</span>
+            {#each tParts('adminAccess.notice.newKey', { actor: n.actor, time: formatTime(n.occurred_at) }) as part}{#if part.param === 'actor'}<span class="font-semibold">{part.text}</span>{:else}{part.text}{/if}{/each}
+            <span class="block text-slate-400">{t('adminAccess.reason', { reason: n.detail })}</span>
           </li>
         {/each}
       </ul>
@@ -121,7 +111,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       disabled={acknowledging}
       class="bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded"
     >
-      {acknowledging ? 'Saving…' : "I've read this"}
+      {acknowledging ? t('common.saving') : t('adminAccess.notice.acknowledge')}
     </button>
   </section>
 {/if}

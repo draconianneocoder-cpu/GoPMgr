@@ -64,7 +64,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return;
     }
     if (password !== confirm) {
-      error = t('createAccount.error.mismatch');
+      error = t('common.password.error.mismatch');
       return;
     }
 
@@ -178,7 +178,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </button>
       </div>
       <p id="ca-password-hint" class="text-[10px] mt-1 {password.length === 0 ? 'text-slate-500' : passwordLongEnough ? 'text-emerald-400' : 'text-amber-400'}">
-        {passwordLongEnough ? '✓ ' : ''}{t('createAccount.password.hint')}
+        {passwordLongEnough ? '✓ ' : ''}{t('common.password.minLength')}
       </p>
     </div>
 
@@ -215,7 +215,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         </button>
       </div>
       <p id="ca-confirm-hint" class="text-[10px] mt-1 {passwordsMatch ? 'text-emerald-400' : 'text-amber-400'}" class:hidden={confirm.length === 0}>
-        {passwordsMatch ? t('createAccount.confirm.match') : t('createAccount.confirm.mismatch')}
+        {passwordsMatch ? t('common.password.match') : t('common.password.mismatch')}
       </p>
     </div>
 
@@ -236,7 +236,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       onclick={() => goto('login')}
       class="w-full text-xs text-cyan-400 hover:text-cyan-300 underline"
     >
-      {t('createAccount.back')}
+      {t('common.backToSignIn')}
     </button>
   </form>
   {:else}

@@ -7,6 +7,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { session } from '../../session.svelte';
   import { showToast } from '../../toast.svelte';
   import RecoveryCodeList from './RecoveryCodeList.svelte';
+  import { t } from '../../i18n/i18n.svelte';
 
   // onrenewed runs after new codes are saved, once the panel has returned
   // to its idle step (Project Settings uses it to allow encryption again).
@@ -50,9 +51,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   });
 
   function unusedFileWarning(files: string[]): string {
-    return files.length === 1
-      ? `The codes saved to ${files[0]} were never put in use and won't work. Delete that file and any copy you printed.`
-      : `The codes saved to ${files.join(', ')} were never put in use and won't work. Delete those files and any copies you printed.`;
+    return t('recoveryPanel.unusedFiles', { count: files.length, files: files.join(', ') });
   }
 
   function dropSavedFiles() {
@@ -65,7 +64,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       status = await window.go.main.App.RecoveryCodeStatus();
     } catch (err: any) {
-      statusError = `Could not check your recovery codes: ${err?.message ?? err}`;
+      statusError = t('recoveryPanel.statusFailed', { error: String(err?.message ?? err) });
     }
   }
 
@@ -100,7 +99,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     try {
       await window.go.main.App.ConfirmRecoveryCodes();
-      showToast('New recovery codes are in use. Your old codes no longer work.', 'success');
+      showToast(t('recoveryPanel.renewed'), 'success');
       finish();
       renewed = true;
     } catch (err: any) {
@@ -134,25 +133,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
 </script>
 
 <div class="space-y-3" aria-labelledby="recovery-codes-heading" role="group">
-  <h3 id="recovery-codes-heading" class="text-xs font-semibold text-slate-300">Recovery codes</h3>
+  <h3 id="recovery-codes-heading" class="text-xs font-semibold text-slate-300">{t('recoveryPanel.title')}</h3>
 
   {#if statusError}
     <p class="text-xs text-red-400" role="alert">{statusError}</p>
   {:else if status}
-    <p class="text-xs text-slate-400">{status.unused} of {status.total} recovery codes unused.</p>
+    <p class="text-xs text-slate-400">{t('recoveryPanel.unused', { unused: status.unused, count: status.total })}</p>
     {#if status.legacy}
       <p class="text-xs text-amber-300 bg-amber-950/40 border border-amber-700/50 rounded p-2" role="status">
-        Your recovery codes are from an older version of GoPMgr and can't recover encrypted projects.
-        Create new ones.
+        {t('recoveryPanel.legacy')}
       </p>
     {:else if status.unused === 0}
       <p class="text-xs text-red-300 bg-red-950/40 border border-red-800/60 rounded p-2" role="status">
-        You have no unused recovery codes. If you forget your password, you can't get back into your
-        encrypted projects. Create new ones now.
+        {t('recoveryPanel.none')}
       </p>
     {:else if status.unused === 1}
       <p class="text-xs text-amber-300 bg-amber-950/40 border border-amber-700/50 rounded p-2" role="status">
-        Only one recovery code is left. Create new ones before you need it.
+        {t('recoveryPanel.oneLeft')}
       </p>
     {/if}
   {/if}
@@ -168,13 +165,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
       type="button"
       onclick={start}
       class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs px-4 py-2 rounded"
-    >Create new recovery codes</button>
+    >{t('recoveryPanel.create')}</button>
   {:else if step === 'password'}
     <form class="space-y-2" onsubmit={prepare}>
-      <p class="text-xs text-slate-400">
-        Your current codes keep working until you use the new ones.
-      </p>
-      <label for="rc-password" class="block text-[11px] font-semibold text-slate-500 uppercase">Current password</label>
+      <p class="text-xs text-slate-400">{t('recoveryPanel.keepWorking')}</p>
+      <label for="rc-password" class="block text-[11px] font-semibold text-slate-500 uppercase">{t('common.password.current')}</label>
       <input
         id="rc-password"
         type="password"
@@ -187,26 +182,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
           type="submit"
           disabled={busy || !password}
           class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2 rounded"
-        >{busy ? 'Creating…' : 'Create codes'}</button>
-        <button type="button" onclick={cancel} class="text-xs text-slate-400 hover:text-slate-200 underline">Cancel</button>
+        >{busy ? t('common.creating') : t('recoveryPanel.createCodes')}</button>
+        <button type="button" onclick={cancel} class="text-xs text-slate-400 hover:text-slate-200 underline">{t('common.cancel')}</button>
       </div>
     </form>
   {:else}
     <div class="space-y-2">
-      <p class="text-xs text-slate-300">
-        Save these codes somewhere safe, such as a password manager or a printed copy. Each works
-        once, and they are shown only now. Your current codes keep working until you choose
-        “Use the new codes”.
-      </p>
+      <p class="text-xs text-slate-300">{t('recoveryPanel.saveThese', { action: t('recoveryPanel.useNew') })}</p>
       <RecoveryCodeList
         username={session.user?.username ?? ''}
         {codes}
-        savedHint="These codes start working only when you choose “Use the new codes”."
+        savedHint={t('recoveryPanel.savedHint', { action: t('recoveryPanel.useNew') })}
         onsaved={(path) => (savedFiles = [...savedFiles, path])}
       />
       <label class="flex items-start gap-2 text-xs text-slate-300 select-none">
         <input type="checkbox" bind:checked={saved} class="mt-0.5 accent-cyan-500" />
-        I have saved these codes somewhere safe.
+        {t('recoveryPanel.savedCheck')}
       </label>
       <div class="flex items-center gap-2">
         <button
@@ -214,8 +205,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
           onclick={confirm}
           disabled={busy || !saved}
           class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2 rounded"
-        >{busy ? 'Saving…' : 'Use the new codes'}</button>
-        <button type="button" onclick={cancel} class="text-xs text-slate-400 hover:text-slate-200 underline">Keep my current codes</button>
+        >{busy ? t('common.saving') : t('recoveryPanel.useNew')}</button>
+        <button type="button" onclick={cancel} class="text-xs text-slate-400 hover:text-slate-200 underline">{t('recoveryPanel.keepCurrent')}</button>
       </div>
     </div>
   {/if}

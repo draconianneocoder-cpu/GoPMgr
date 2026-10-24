@@ -4,7 +4,7 @@
 // Interface language: the active catalog, t() for text, and the format
 // locale for dates and numbers. See docs/design/ADR-008-localization.md.
 
-import { render, type Catalog, type MessageParams } from './catalog';
+import { render, renderParts, type Catalog, type MessagePart, type MessageParams } from './catalog';
 import { LOCALES, SOURCE_LOCALE, formatLocaleFor, resolveLocale, type LocaleCode } from './locales';
 import { en, type MessageKey } from './messages/en';
 
@@ -48,13 +48,25 @@ export function t(key: MessageKey, params?: MessageParams): string {
   return render(message, params, i18n.locale, i18n.formatLocale);
 }
 
-// formatDate, formatTime, and formatNumber format in the format locale.
+// tParts is t split at each filled placeholder (see renderParts), for text
+// that styles a value inside a full sentence.
+export function tParts(key: MessageKey, params?: MessageParams): MessagePart[] {
+  const message = catalogs[i18n.locale]?.[key] ?? en[key];
+  return renderParts(message, params, i18n.locale, i18n.formatLocale);
+}
+
+// formatDate, formatTime, formatDateTime, and formatNumber format in the
+// format locale.
 export function formatDate(value: Date | number | string, options?: Intl.DateTimeFormatOptions): string {
   return new Date(value).toLocaleDateString(i18n.formatLocale, options);
 }
 
 export function formatTime(value: Date | number | string, options?: Intl.DateTimeFormatOptions): string {
   return new Date(value).toLocaleTimeString(i18n.formatLocale, options);
+}
+
+export function formatDateTime(value: Date | number | string, options?: Intl.DateTimeFormatOptions): string {
+  return new Date(value).toLocaleString(i18n.formatLocale, options);
 }
 
 export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {

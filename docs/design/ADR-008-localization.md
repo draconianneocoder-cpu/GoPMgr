@@ -310,6 +310,10 @@ recovery-code step. A picker fits in its header without changing that.
    Slice 1 is done: the catalog code and its checks, `t()`, the format
    helpers, `<html lang>`, the hard-coded-text ratchet, and the sign-in and
    account-creation screens.
+   Slice 2 is done: the rest of the account screens (recovery codes,
+   password change and reset, and the administrator-access notices), plus
+   `tParts`, which keeps a full sentence in the catalog while a component
+   styles one placeholder's value, such as a bold name.
 5. [ ] Phase 2: ship the wave 1 languages.
    - Interface translations for wave 1, plus the picker.
    - IBM Plex Sans JP and KR WOFF2, with the CJK text size and line-breaking
