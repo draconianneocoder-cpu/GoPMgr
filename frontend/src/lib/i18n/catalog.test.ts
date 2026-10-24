@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { checkCatalog, render, type Catalog } from './catalog';
+import { checkCatalog, render, renderParts, type Catalog, type Message } from './catalog';
 import { registeredCatalogs } from './i18n.svelte';
 import { en } from './messages/en';
 
@@ -18,6 +18,50 @@ describe('render', () => {
     expect(render(source.files, { count: 1 }, 'en', 'en')).toBe('1 file');
     expect(render(source.files, { count: 1284 }, 'en', 'de-DE')).toBe('1.284 files');
     expect(render({ other: '{count} 件' }, { count: 1 }, 'ja', 'ja')).toBe('1 件');
+  });
+});
+
+describe('renderParts', () => {
+  it('marks each filled placeholder, so a component can style it in place', () => {
+    expect(renderParts('{actor} opened your data on {time}.', { actor: 'alice', time: '23/10/2026' }, 'en', 'en')).toEqual([
+      { text: 'alice', param: 'actor' },
+      { text: ' opened your data on ' },
+      { text: '23/10/2026', param: 'time' },
+      { text: '.' },
+    ]);
+  });
+
+  it('follows the order a translation puts the placeholders in', () => {
+    const ja = '{time}に{actor}があなたのデータを開きました。';
+    expect(renderParts(ja, { actor: 'alice', time: '2026/10/23' }, 'ja', 'ja').map((p) => p.param ?? '')).toEqual([
+      'time',
+      '',
+      'actor',
+      '',
+    ]);
+  });
+
+  it('keeps a placeholder with no value as literal text and formats numbers', () => {
+    expect(renderParts('{unused} of {count} left ({error})', { unused: 1284, count: 2 }, 'en', 'de-DE')).toEqual([
+      { text: '1.284', param: 'unused' },
+      { text: ' of ' },
+      { text: '2', param: 'count' },
+      { text: ' left ({error})' },
+    ]);
+  });
+
+  it('joins to exactly what render returns, plural forms included', () => {
+    const cases: [Message, Record<string, string | number>][] = [
+      [source.files, { count: 1 }],
+      [source.files, { count: 7 }],
+      ['{a}{b}', { a: 'x', b: 'y' }],
+      ['no placeholders', {}],
+      ['{missing} stays', {}],
+    ];
+    for (const [message, params] of cases) {
+      const joined = renderParts(message, params, 'en', 'en').map((p) => p.text).join('');
+      expect(joined).toBe(render(message, params, 'en', 'en'));
+    }
   });
 });
 

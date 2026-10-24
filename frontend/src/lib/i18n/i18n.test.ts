@@ -4,7 +4,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { render } from './catalog';
-import { applyLanguage, formatDate, formatNumber, formatTime, i18n, offeredLocales, systemLanguages, t } from './i18n.svelte';
+import { applyLanguage, formatDate, formatDateTime, formatNumber, formatTime, i18n, offeredLocales, systemLanguages, t, tParts } from './i18n.svelte';
 import { canonicalTag, formatLocaleFor, matchLocale, resolveLocale, type LocaleCode } from './locales';
 
 const wave1: LocaleCode[] = ['en', 'fr', 'de', 'es', 'it', 'pt-PT', 'nl', 'ja', 'ko'];
@@ -68,6 +68,12 @@ describe('t', () => {
   it('returns the English text and fills placeholders', () => {
     expect(t('createAccount.title')).toBe('Create your account');
     expect(t('recoveryCodes.failed.body', { error: 'disk full' })).toContain('(disk full)');
+  });
+
+  it('splits a message at its placeholders with tParts', () => {
+    expect(tParts('recoveryCodes.failed.body', { error: 'disk full' }).filter((p) => p.param)).toEqual([
+      { text: 'disk full', param: 'error' },
+    ]);
   });
 
   it('leaves a placeholder with no value visible', () => {
@@ -150,6 +156,13 @@ describe('formats per locale', () => {
     if (typeof number === 'string') expect(formatted).toBe(number);
     else expect(formatted).toMatch(number);
     expect(formatDate(oct23, { timeZone: 'UTC' })).toBe(date);
+  });
+
+  it('formats a date and time together in the format locale', () => {
+    applyLanguage('', ['en-GB']);
+    expect(formatDateTime(oct23, { timeZone: 'UTC' })).toBe('23/10/2026, 15:04:00');
+    applyLanguage('', ['de-DE']);
+    expect(formatDateTime(oct23, { timeZone: 'UTC' })).toBe('23.10.2026, 15:04:00');
   });
 
   it('formats times in the format locale', () => {

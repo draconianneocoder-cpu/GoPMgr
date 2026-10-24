@@ -4,6 +4,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 -->
 <script lang="ts">
   import { showToast } from '../../toast.svelte';
+  import { t } from '../../i18n/i18n.svelte';
 
   // Its own <form>, separate from App Settings' Save, so Enter changes the
   // password rather than saving settings. The fields are cleared after a
@@ -29,7 +30,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       current = '';
       next = '';
       confirm = '';
-      showToast('Password changed. Your projects and recovery codes are unaffected.', 'success');
+      showToast(t('changePassword.changed'), 'success');
     } catch (err: any) {
       const message = String(err?.message ?? err);
       error = message.charAt(0).toUpperCase() + message.slice(1) + '.';
@@ -40,10 +41,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 </script>
 
 <form class="space-y-3" onsubmit={submit} aria-labelledby="change-password-heading">
-  <h3 id="change-password-heading" class="text-xs font-semibold text-slate-300">Change password</h3>
+  <h3 id="change-password-heading" class="text-xs font-semibold text-slate-300">{t('changePassword.title')}</h3>
 
   <div>
-    <label for="cp-current" class="block text-[11px] font-semibold text-slate-500 uppercase">Current password</label>
+    <label for="cp-current" class="block text-[11px] font-semibold text-slate-500 uppercase">{t('common.password.current')}</label>
     <input
       id="cp-current"
       type={showPasswords ? 'text' : 'password'}
@@ -54,7 +55,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   </div>
 
   <div>
-    <label for="cp-new" class="block text-[11px] font-semibold text-slate-500 uppercase">New password</label>
+    <label for="cp-new" class="block text-[11px] font-semibold text-slate-500 uppercase">{t('common.password.new')}</label>
     <input
       id="cp-new"
       type={showPasswords ? 'text' : 'password'}
@@ -64,12 +65,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
       class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
     />
     <p id="cp-new-hint" class="text-[10px] mt-1 {next.length === 0 ? 'text-slate-500' : longEnough ? 'text-emerald-400' : 'text-amber-400'}">
-      {longEnough ? '✓ ' : ''}At least 8 characters
+      {longEnough ? '✓ ' : ''}{t('common.password.minLength')}
     </p>
   </div>
 
   <div>
-    <label for="cp-confirm" class="block text-[11px] font-semibold text-slate-500 uppercase">Confirm new password</label>
+    <label for="cp-confirm" class="block text-[11px] font-semibold text-slate-500 uppercase">{t('common.password.confirmNew')}</label>
     <input
       id="cp-confirm"
       type={showPasswords ? 'text' : 'password'}
@@ -79,13 +80,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
       class="w-full mt-1 bg-slate-950 border border-slate-800 p-2 rounded focus:border-cyan-500 outline-none"
     />
     <p id="cp-confirm-hint" class="text-[10px] mt-1 {matches ? 'text-emerald-400' : 'text-amber-400'}" class:hidden={confirm.length === 0}>
-      {matches ? '✓ Passwords match' : 'Passwords don’t match yet'}
+      {matches ? t('common.password.match') : t('common.password.mismatch')}
     </p>
   </div>
 
   <label class="flex items-center gap-2 text-[11px] text-slate-400 select-none">
     <input type="checkbox" bind:checked={showPasswords} class="accent-cyan-500" />
-    Show passwords
+    {t('changePassword.showPasswords')}
   </label>
 
   {#if error}
@@ -97,6 +98,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
     disabled={!canSubmit}
     class="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded"
   >
-    {busy ? 'Changing…' : 'Change password'}
+    {busy ? t('changePassword.submitting') : t('changePassword.submit')}
   </button>
 </form>

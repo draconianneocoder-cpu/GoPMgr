@@ -6,6 +6,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount } from 'svelte';
   import { session } from '../../session.svelte';
   import RecoveryCodesPanel from './RecoveryCodesPanel.svelte';
+  import { t } from '../../i18n/i18n.svelte';
 
   // Shown on the first screen after sign-in while the account has one or no
   // unused recovery codes, or codes from an older version of GoPMgr. Those
@@ -42,10 +43,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   >
     <div class="flex items-start justify-between gap-4">
       <h2 id="recovery-reminder-heading" class="text-xs font-bold uppercase tracking-widest text-amber-400">
-        Keep a way back into your account
+        {t('recoveryReminder.title')}
       </h2>
       <button type="button" onclick={notNow} class="text-xs text-slate-400 hover:text-slate-200 underline">
-        Not now
+        {t('recoveryReminder.notNow')}
       </button>
     </div>
     <RecoveryCodesPanel onrenewed={() => (needed = false)} />
