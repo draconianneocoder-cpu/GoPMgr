@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-009: Yen as a reporting currency
 
-**Status:** Proposed; accepted when the maintainer merges it
+**Status:** Implemented (merged in #131, 2026-10-23)
 **Date:** 2026-10-23
 **Deciders:** GoPMgr maintainer
 
@@ -49,6 +49,7 @@ hundredths. The branch also did not compile.
    - Portfolio totals.
    - The financial report.
    - PDF, DOCX, and ODT documents, and combined reports.
+   - The Six Sigma report's solution costs (since 2026-10-24).
 3. **Input is unchanged.** Amounts parse as before, a whole number or up to
    two decimals, so whole yen parses exactly, and an older entry with a
    fraction can still be edited and saved.

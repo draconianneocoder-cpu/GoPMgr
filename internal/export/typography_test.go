@@ -225,7 +225,7 @@ func TestReportPDFs_EmbedIBMPlexSans(t *testing.T) {
 		t.Errorf("report bold text measures %.3f mm, want IBM Plex Sans SemiBold %.3f mm", baseline, plex)
 	}
 
-	sigma, _, err := GenerateSigmaReportPDF(domain.Project{Title: "Line 3", BeltLevel: domain.BeltGreen, Phase: domain.PhaseDefine, Status: domain.StatusActive}, nil, nil, nil, nil, nil)
+	sigma, _, err := GenerateSigmaReportPDF(domain.Project{Title: "Line 3", BeltLevel: domain.BeltGreen, Phase: domain.PhaseDefine, Status: domain.StatusActive}, "USD", nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateSigmaReportPDF: %v", err)
 	}

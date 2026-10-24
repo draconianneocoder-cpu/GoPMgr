@@ -7,6 +7,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import { onMount } from 'svelte';
   import { showToast } from '../../toast.svelte';
   import Button from '../Button.svelte';
+  import { t } from '../../i18n/i18n.svelte';
 
   let {
     projectID,
@@ -18,10 +19,23 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   let solutions = $state<SigmaSolution[]>([]);
   let loading = $state(false);
+  // Costs are in the project's reporting currency.
+  let currency = $state('');
 
   onMount(async () => {
+    void loadCurrency();
     await loadSolutions();
   });
+
+  async function loadCurrency() {
+    try {
+      const meta = await window.go.main.App.GetProjectMeta();
+      currency = meta.currency_code ?? '';
+    } catch {
+      // The Cost header then names no currency; editing is unaffected.
+      currency = '';
+    }
+  }
 
   async function loadSolutions() {
     loading = true;
@@ -98,7 +112,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <th>Impact (1-10)</th>
             <th>Effort (1-10)</th>
             <th>Risk (1-10)</th>
-            <th>Cost ($)</th>
+            <th>{currency ? t('sigma.solutions.costIn', { currency }) : t('sigma.solutions.cost')}</th>
             <th>Priority Score</th>
             <th>Select</th>
             <th>Status</th>

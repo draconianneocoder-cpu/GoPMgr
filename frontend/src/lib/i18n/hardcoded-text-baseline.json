@@ -80,7 +80,7 @@
   "lib/components/sigma/SigmaParetoChart.svelte": 3,
   "lib/components/sigma/SigmaProjectView.svelte": 36,
   "lib/components/sigma/SigmaSIPOC.svelte": 15,
-  "lib/components/sigma/SigmaSolutionMatrix.svelte": 19,
+  "lib/components/sigma/SigmaSolutionMatrix.svelte": 18,
   "lib/components/sigma/SigmaVoCCTQ.svelte": 20,
   "lib/components/sigma/SigmaWorkspace.svelte": 12,
   "lib/components/sigma/TollgateChecklist.svelte": 3
