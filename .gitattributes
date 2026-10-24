@@ -11,3 +11,6 @@ docs/design/adr-010/v2.0-plan.md -whitespace
 docs/design/adr-010/v2-critical-review-addendum.md -whitespace
 # The maintainer's acceptance record is kept byte-for-byte as received.
 docs/review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md -whitespace
+
+# protoc output for the ADR-010 G0 spike is kept exactly as generated.
+spikes/adr010-g0-transport/worker/src/main/java/org/gopmgr/g0spike/pb/** -whitespace

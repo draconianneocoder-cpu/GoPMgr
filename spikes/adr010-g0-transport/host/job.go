@@ -1,0 +1,231 @@
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package main
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"sync"
+	"time"
+
+	"gopmgr-g0spike/host/g0pb"
+)
+
+// config is fixed for a whole run.
+type config struct {
+	java, jar  string
+	sourceHead string
+}
+
+// jobOptions shape one worker launch.
+type jobOptions struct {
+	transport       string
+	drive           func(r *jobRun, stream g0pb.WorkerSession_ConnectServer) error
+	wrongCredential bool          // give the worker a credential the host won't accept
+	rawBootstrap    []byte        // write these bytes instead of a valid bootstrap
+	expires         time.Time     // zero means 60 s from launch
+	workerEndpoint  string        // tell the worker this endpoint instead of the real one
+	acceptMany      bool          // keep the listener open after the first connection
+	timeout         time.Duration // whole job; zero means 120 s
+	javaPath        string        // override cfg.java
+	beforeConnect   func(r *jobRun)
+}
+
+// jobRun is what a scenario can see and record about one job.
+type jobRun struct {
+	ep        *endpoint
+	sess      *session
+	pl        *peerListener
+	w         *worker
+	hello     *g0pb.WorkerHello
+	coldStart time.Duration
+	secrets   [][]byte
+	mu        sync.Mutex
+	metrics   map[string]any
+	exitCode  int
+	driveErr  error
+	connected bool
+}
+
+func (r *jobRun) set(k string, v any) {
+	r.mu.Lock()
+	r.metrics[k] = v
+	r.mu.Unlock()
+}
+
+// inspect records what the OS shows about the live worker: secrets in its
+// command line or environment, TCP sockets it owns, and its memory.
+func (r *jobRun) inspect() {
+	how, leaked := leakCheck(r.w.pid, r.secrets)
+	r.set("credential_leak_check", how)
+	r.set("credential_leaked", leaked)
+	n, method, err := tcpSocketCount(r.w.pid)
+	if err != nil {
+		r.set("tcp_sockets", "error: "+err.Error())
+	} else {
+		r.set("tcp_sockets", n)
+		r.set("tcp_socket_method", method)
+	}
+}
+
+func (r *jobRun) sampleRSS() {
+	v, how := peakRSS(r.w.pid)
+	r.set("worker_rss_bytes", v)
+	r.set("worker_rss_method", how)
+}
+
+var errNoConnection = errors.New("worker never completed a session")
+
+// runJob launches one worker for one job against a fresh endpoint.
+func runJob(cfg config, o jobOptions) (*jobRun, error) {
+	if o.timeout == 0 {
+		o.timeout = 120 * time.Second
+	}
+	ep, err := listen(o.transport)
+	if err != nil {
+		return nil, fmt.Errorf("listen: %w", err)
+	}
+	defer ep.cleanup()
+
+	cred, err := newCredential()
+	if err != nil {
+		return nil, err
+	}
+	opID, err := randomID()
+	if err != nil {
+		return nil, err
+	}
+	workerID := "org.gopmgr.g0spike"
+	r := &jobRun{ep: ep, metrics: map[string]any{}, exitCode: stillRunning}
+	r.secrets = [][]byte{cred, []byte(fmt.Sprintf("%x", cred))}
+
+	done := make(chan error, 1)
+	r.sess = &session{proof: expectedProof(cred, opID, workerID)}
+	r.sess.drive = func(stream g0pb.WorkerSession_ConnectServer) error {
+		ev, err := stream.Recv()
+		if err != nil {
+			done <- fmt.Errorf("receive hello: %w", err)
+			return err
+		}
+		if ev.GetHello() == nil {
+			err := fmt.Errorf("first event was %T, want hello", ev.GetEvent())
+			done <- err
+			return err
+		}
+		r.hello = ev.GetHello()
+		r.coldStart = time.Since(r.w.started)
+		r.connected = true
+		r.inspect()
+		var derr error
+		if o.drive != nil {
+			derr = o.drive(r, stream)
+		}
+		done <- derr
+		return derr
+	}
+	r.pl = &peerListener{Listener: ep.ln, once: !o.acceptMany}
+	srv := newServer(r.sess)
+	go func() { _ = srv.Serve(r.pl) }()
+	defer srv.Stop()
+
+	scratch, err := os.MkdirTemp("", "gopmgr-g0-scratch-")
+	if err != nil {
+		return nil, fmt.Errorf("scratch dir: %w", err)
+	}
+	defer os.RemoveAll(scratch)
+
+	given := cred
+	if o.wrongCredential {
+		if given, err = newCredential(); err != nil {
+			return nil, err
+		}
+	}
+	expires := o.expires
+	if expires.IsZero() {
+		expires = time.Now().Add(60 * time.Second)
+	}
+	workerEP := ep.addr
+	if o.workerEndpoint != "" {
+		workerEP = o.workerEndpoint
+	}
+	java := cfg.java
+	if o.javaPath != "" {
+		java = o.javaPath
+	}
+	r.w, err = start(launchSpec{
+		java: java, jar: cfg.jar, transport: o.transport, endpoint: workerEP,
+		credential: given, expires: expires, bootstrap: o.rawBootstrap, scratch: scratch,
+		onStarted: func(pid int) { r.pl.setExpected(pid) },
+	}, opID, workerID)
+	if err != nil {
+		return r, err
+	}
+	if o.beforeConnect != nil {
+		o.beforeConnect(r)
+	}
+
+	select {
+	case r.driveErr = <-done:
+	case <-r.w.exited:
+		r.driveErr = errNoConnection
+		// A session may still be finishing; give it a moment to report.
+		select {
+		case derr := <-done:
+			r.driveErr = derr
+		case <-time.After(2 * time.Second):
+		}
+	case <-time.After(o.timeout):
+		r.driveErr = fmt.Errorf("job timed out after %v", o.timeout)
+	}
+
+	r.exitCode = r.w.exitCode(15 * time.Second)
+	if r.exitCode == stillRunning {
+		r.set("killed_after_timeout", true)
+		r.w.kill()
+		r.exitCode = r.w.exitCode(5 * time.Second)
+	}
+	out, outDropped := r.w.stdout.snapshot()
+	errText, errDropped := r.w.stderr.snapshot()
+	r.set("stdout_kept_bytes", len(out))
+	r.set("stdout_dropped_bytes", outDropped)
+	r.set("stderr_kept_bytes", len(errText))
+	r.set("stderr_dropped_bytes", errDropped)
+	r.set("stderr_head", firstLines(errText, 6))
+	r.set("listener_refused", r.pl.refused.Load())
+	r.set("listener_admitted", r.pl.admitted.Load())
+	r.set("peer_check", r.pl.peerCheck)
+	r.set("proof_rejected", r.sess.rejected.Load())
+	r.set("proof_accepted", r.sess.handled.Load())
+	return r, nil
+}
+
+func firstLines(s string, n int) string {
+	out := ""
+	for i, line := range splitLines(s) {
+		if i == n {
+			break
+		}
+		if len(line) > 200 {
+			line = line[:200] + "…"
+		}
+		out += line + "\n"
+	}
+	return out
+}
+
+func splitLines(s string) []string {
+	var lines []string
+	start := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\n' {
+			lines = append(lines, s[start:i])
+			start = i + 1
+		}
+	}
+	if start < len(s) {
+		lines = append(lines, s[start:])
+	}
+	return lines
+}

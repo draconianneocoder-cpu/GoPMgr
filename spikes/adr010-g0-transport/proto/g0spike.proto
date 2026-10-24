@@ -1,0 +1,106 @@
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// ADR-010 G0 transport spike contract. NOT the production worker contract:
+// it is the minimum needed to measure gRPC/HTTP2 over local IPC between a
+// Go host and a Java worker (plan §2, §3.2). The production IDL is frozen
+// in G1 after its own review.
+syntax = "proto3";
+
+package gopmgr.g0spike.v1;
+
+option go_package = "gopmgr-g0spike/host/g0pb";
+option java_package = "org.gopmgr.g0spike.pb";
+option java_multiple_files = true;
+
+// Bootstrap is written once on the child's stdin as a uvarint length
+// followed by these bytes, then stdin is closed (INT-02). It never carries
+// project data.
+message Bootstrap {
+  uint32 version = 1;
+  string operation_id = 2;
+  string worker_id = 3;
+  // uds-epoll, uds-kqueue, uds-nio, npipe, npipe-dual.
+  string transport = 4;
+  // Socket path, or named-pipe name.
+  string endpoint = 5;
+  // 32 random bytes; proves the caller is the launched child, once.
+  bytes credential = 6;
+  int64 expires_unix_ms = 7;
+}
+
+// The Go host is the gRPC server; the worker connects as the client and
+// opens one bidirectional stream (plan §2.2).
+service WorkerSession {
+  rpc Connect(stream WorkerEvent) returns (stream HostCommand);
+}
+
+message WorkerEvent {
+  uint64 sequence = 1;
+  oneof event {
+    WorkerHello hello = 10;
+    Record record = 11;
+    Completed completed = 12;
+    Pong pong = 13;
+  }
+}
+
+message HostCommand {
+  uint64 sequence = 1;
+  oneof command {
+    Execute execute = 10;
+    SourceBlock source = 11;
+    Ping ping = 12;
+    Finish finish = 13;
+  }
+}
+
+message WorkerHello {
+  string worker_id = 1;
+  uint32 protocol_major = 2;
+  uint32 protocol_minor = 3;
+  int64 pid = 4;
+  string java_version = 5;
+  string transport = 6;
+  // Names (not values) of the environment variables the worker received.
+  repeated string env_names = 7;
+}
+
+message Execute {
+  // duplex: stream records while receiving source blocks.
+  // flood: stream records as fast as flow control allows.
+  // noise: print to stdout and stderr, then behave like duplex.
+  string scenario = 1;
+  uint64 records = 2;
+  uint32 record_bytes = 3;
+}
+
+message SourceBlock {
+  bytes chunk = 1;
+  bool last = 2;
+}
+
+message Record {
+  uint64 index = 1;
+  bytes payload = 2;
+}
+
+message Completed {
+  uint64 records_sent = 1;
+  uint64 source_bytes = 2;
+  bytes source_sha256 = 3;
+  bytes records_sha256 = 4;
+  // Times the worker waited because the stream was not ready (flow control).
+  uint64 not_ready_waits = 5;
+  int64 max_heap_used_bytes = 6;
+}
+
+message Ping {
+  uint64 seq = 1;
+}
+
+message Pong {
+  uint64 seq = 1;
+}
+
+message Finish {}

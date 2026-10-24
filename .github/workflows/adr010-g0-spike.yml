@@ -1,0 +1,77 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# ADR-010 G0 transport evidence (P01, authorized 2026-10-24). This is not a
+# release gate and builds nothing GoPMgr ships. It runs the isolated spike
+# in spikes/adr010-g0-transport on real Linux, macOS and Windows runners and
+# uploads the evidence file. The job reports; the evidence file records
+# PASS, FAIL or BLOCKED for each scenario. It runs only when the spike or
+# this file changes.
+name: ADR-010 G0 spike
+
+on:
+  pull_request:
+    paths:
+      - "spikes/adr010-g0-transport/**"
+      - ".github/workflows/adr010-g0-spike.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: adr010-g0-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evidence:
+    name: G0 evidence, not a gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-15, macos-15-intel, windows-2025]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: spikes/adr010-g0-transport/host/go.mod
+          cache: false
+
+      - name: Select the runner's preinstalled JDK 21
+        run: |
+          jdk="${JAVA_HOME_21_X64:-${JAVA_HOME_21_arm64:-${JAVA_HOME_21_ARM64:-}}}"
+          if [ -z "$jdk" ]; then
+            echo "No JDK 21 on this runner; available:" >&2
+            env | grep '^JAVA_HOME' >&2 || true
+            exit 1
+          fi
+          echo "JAVA_HOME=$jdk" >> "$GITHUB_ENV"
+          "$jdk/bin/java" -version
+
+      - name: Build the worker
+        run: mvn -B -q -f spikes/adr010-g0-transport/worker/pom.xml -DskipTests package
+
+      - name: Run the probe
+        working-directory: spikes/adr010-g0-transport/host
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVIDENCE: ${{ runner.temp }}/g0-${{ matrix.os }}.jsonl
+        run: go run . -java "$JAVA_HOME/bin/java" -jar ../worker/target/g0-worker.jar -head "$HEAD_SHA" -out "$EVIDENCE"
+
+      - name: Show the evidence
+        if: always()
+        env:
+          EVIDENCE: ${{ runner.temp }}/g0-${{ matrix.os }}.jsonl
+        run: cat "$EVIDENCE" || true
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: g0-evidence-${{ matrix.os }}
+          path: ${{ runner.temp }}/g0-${{ matrix.os }}.jsonl
+          if-no-files-found: warn
