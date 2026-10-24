@@ -12,6 +12,7 @@ import (
 	"testing"
 	"unicode/utf16"
 
+	"gopmgr/internal/pdfdoc"
 	"gopmgr/internal/sigma/domain"
 )
 
@@ -142,5 +143,68 @@ func TestGenerateSigmaReportPDF_RejectsAMalformedCurrency(t *testing.T) {
 		if _, _, err := GenerateSigmaReportPDF(domain.Project{Title: "Line 3"}, code, nil, nil, nil, nil, nil); err == nil || !strings.Contains(err.Error(), "reporting currency") {
 			t.Errorf("GenerateSigmaReportPDF(currency %q) error = %v, want a reporting currency error", code, err)
 		}
+	}
+}
+
+// Every charter and fishbone section the user filled in prints, and a
+// fishbone category with no causes is left out.
+func TestGenerateSigmaReportPDF_PrintsEverySection(t *testing.T) {
+	pdf, _, err := GenerateSigmaReportPDF(
+		domain.Project{Title: "Line 3", Description: "Stamping scrap pilot"}, "USD",
+		&domain.Charter{ProblemStatement: "Scrap is 8%.", BusinessCase: "Saves 40 hours a month.", GoalStatement: "Scrap under 3% by Q4."},
+		nil,
+		&domain.FishboneData{ProblemStatement: "Why is scrap high?", Branches: []domain.FishboneBranch{
+			{Category: "Material"},
+			{Category: "Machine", Causes: []domain.Cause{{Description: "Worn die"}}},
+		}},
+		nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateSigmaReportPDF: %v", err)
+	}
+	text := sigmaPDFText(t, pdf)
+	for _, want := range []string{
+		"Stamping scrap pilot",
+		"Business Case:", "Saves 40 hours a month.",
+		"Goal Statement:", "Scrap under 3% by Q4.",
+		"Problem:", "Why is scrap high?",
+		"Machine", "Worn die",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("report is missing %q", want)
+		}
+	}
+	if strings.Contains(text, "Material") {
+		t.Error("report prints a fishbone category that has no causes")
+	}
+}
+
+// A fishbone with categories but no causes gets no page at all.
+func TestGenerateSigmaReportPDF_SkipsAnEmptyFishbone(t *testing.T) {
+	pdf, _, err := GenerateSigmaReportPDF(domain.Project{Title: "Line 3"}, "USD", nil, nil,
+		&domain.FishboneData{ProblemStatement: "Why?", Branches: []domain.FishboneBranch{{Category: "Method"}}}, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateSigmaReportPDF: %v", err)
+	}
+	if text := sigmaPDFText(t, pdf); strings.Contains(text, "Fishbone Diagram") {
+		t.Error("report draws a fishbone page with no causes")
+	}
+}
+
+// withEllipsis shortens a full line so the line and its ellipsis still
+// fit the cell.
+func TestWithEllipsisKeepsTheLineInsideTheCell(t *testing.T) {
+	pdf := pdfdoc.New("P", "mm", "A4", "")
+	registerPDFABaseline(pdf)
+	pdf.AddPage()
+	pdf.SetFont("Helvetica", "", 8)
+	const width = 30.0
+	avail := width - 2*pdf.GetCellMargin()
+	full := wrapCellText(pdf, strings.Repeat("Escalate to the plant manager ", 4), width)[0]
+	got := withEllipsis(pdf, full, width)
+	if !strings.HasSuffix(got, "…") || pdf.GetStringWidth(got) > avail || len(got) >= len(full)+len("…") {
+		t.Errorf("withEllipsis(%q) = %q (%.1f of %.1f mm)", full, got, pdf.GetStringWidth(got), avail)
+	}
+	if got := withEllipsis(pdf, "", width); got != "…" {
+		t.Errorf("withEllipsis(\"\") = %q, want a lone ellipsis", got)
 	}
 }

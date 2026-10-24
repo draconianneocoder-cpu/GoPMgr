@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gopmgr/internal/calendar"
 )
@@ -124,36 +125,38 @@ func (w *icalWriter) kv(key, value string) {
 }
 
 func (w *icalWriter) write(s string) {
-	// Fold any line exceeding 75 octets with CRLF + a single space.
+	// Fold at 75 octets per line, a continuation's leading space included,
+	// and never inside a UTF-8 character (RFC 5545 section 3.1), so each
+	// line stays valid UTF-8. Invalid UTF-8 has no boundary and is cut at
+	// the limit.
 	const limit = 75
-	if len(s) <= limit {
-		w.buf.WriteString(s)
-		w.buf.WriteString("\r\n")
-		return
-	}
-	first := s[:limit]
-	rest := s[limit:]
-	w.buf.WriteString(first)
-	w.buf.WriteString("\r\n")
-	for len(rest) > 0 {
-		// Folded continuation lines are at most 75 octets INCLUDING
-		// the leading space.
-		n := limit - 1
-		if n > len(rest) {
-			n = len(rest)
+	room := limit
+	for len(s) > room {
+		cut := room
+		for cut > 0 && !utf8.RuneStart(s[cut]) {
+			cut--
 		}
-		w.buf.WriteByte(' ')
-		w.buf.WriteString(rest[:n])
-		w.buf.WriteString("\r\n")
-		rest = rest[n:]
+		if cut == 0 {
+			cut = room
+		}
+		w.buf.WriteString(s[:cut])
+		w.buf.WriteString("\r\n ")
+		s = s[cut:]
+		room = limit - 1
 	}
+	w.buf.WriteString(s)
+	w.buf.WriteString("\r\n")
 }
 
 func escapeText(s string) string {
+	// A Windows or classic Mac line break is one escaped newline too; a
+	// bare CR would end the content line early.
 	r := strings.NewReplacer(
 		`\`, `\\`,
 		`;`, `\;`,
 		`,`, `\,`,
+		"\r\n", `\n`,
+		"\r", `\n`,
 		"\n", `\n`,
 	)
 	return r.Replace(s)

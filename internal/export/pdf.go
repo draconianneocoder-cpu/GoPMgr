@@ -186,11 +186,15 @@ func renderPDFWithSignerLoader(
 	return out, nil
 }
 
+// truncate shortens s to n characters, the last an ellipsis. It counts
+// characters, not bytes, so a Japanese or Korean title is cut between
+// characters rather than inside one.
 func truncate(s string, n int) string {
-	if len(s) <= n {
+	r := []rune(s)
+	if len(r) <= n {
 		return s
 	}
-	return s[:n-1] + "…"
+	return string(r[:n-1]) + "…"
 }
 
 // exportVersion is a small indirection so the PDF metadata block can

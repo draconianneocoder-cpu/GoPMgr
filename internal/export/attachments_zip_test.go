@@ -113,6 +113,7 @@ func TestWriteAttachmentsZIPRejectsInvalidIntegrityMetadataBeforeWritingEntry(t 
 	}{
 		{"missing hash", func(row *AttachmentManifestRow) { row.SHA256 = "" }, content},
 		{"malformed hash", func(row *AttachmentManifestRow) { row.SHA256 = "not-a-sha256" }, content},
+		{"hash of the right length that is not hex", func(row *AttachmentManifestRow) { row.SHA256 = strings.Repeat("zz", sha256.Size) }, content},
 		{"negative size", func(row *AttachmentManifestRow) { row.SizeBytes = -1 }, content},
 		{"manifest archive name differs", func(row *AttachmentManifestRow) { row.ZipEntryName = "attachments/other.txt" }, content},
 		{"size mismatch", func(row *AttachmentManifestRow) { row.SizeBytes++ }, content},

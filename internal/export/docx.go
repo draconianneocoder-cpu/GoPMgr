@@ -73,64 +73,73 @@ func RenderDocumentDOCX(kind documents.Kind, contentJSON, projectName, currency 
 		if !present {
 			continue
 		}
-		switch f.Type {
-		case documents.FieldStringArr:
-			arr := toStringSliceLocal(v)
-			if len(arr) == 0 {
-				continue
-			}
-			if err := addHeadingDOCX(doc, f.Label, 2); err != nil {
-				return nil, err
-			}
-			for _, item := range arr {
-				doc.AddParagraph("• " + item)
-			}
-		case documents.FieldObjectArr:
-			objs := toObjectSliceLocal(v)
-			if len(objs) == 0 {
-				continue
-			}
-			if err := addHeadingDOCX(doc, f.Label, 2); err != nil {
-				return nil, err
-			}
-			renderObjectArrayDOCX(doc, f, objs, currency)
-		case documents.FieldText:
-			body := toStringLocal(v)
-			if body == "" {
-				continue
-			}
-			if err := addHeadingDOCX(doc, f.Label, 2); err != nil {
-				return nil, err
-			}
-			doc.AddParagraph(body)
-		case documents.FieldNumber:
-			if n, ok := v.(float64); ok && n != 0 {
-				p := doc.AddParagraph("")
-				p.AddText(f.LabelIn(currency) + ": ").Bold(true)
-				p.AddText(documents.FormatNumberField(f, n, currency))
-			}
-		case documents.FieldBool:
-			if b, ok := v.(bool); ok {
-				p := doc.AddParagraph("")
-				p.AddText(f.Label + ": ").Bold(true)
-				p.AddText(fmt.Sprintf("%t", b))
-			}
-		case documents.FieldChartRef:
-			if id := toStringLocal(v); id != "" {
-				p := doc.AddParagraph("")
-				p.AddText(f.Label + ": ").Bold(true)
-				p.AddText("(chart " + id + ")")
-			}
-		default:
-			if s := toStringLocal(v); s != "" {
-				p := doc.AddParagraph("")
-				p.AddText(f.Label + ": ").Bold(true)
-				p.AddText(s)
-			}
+		if err := writeDOCXField(doc, f, v, currency); err != nil {
+			return nil, err
 		}
 	}
 
 	return renderDOCXToBytes(doc, "gopmgr-docx")
+}
+
+// writeDOCXField writes one field's value in the form its type calls for.
+// An empty or mistyped value writes nothing.
+func writeDOCXField(doc *docx.RootDoc, f documents.Field, v interface{}, currency string) error {
+	switch f.Type {
+	case documents.FieldStringArr:
+		arr := toStringSliceLocal(v)
+		if len(arr) == 0 {
+			return nil
+		}
+		if err := addHeadingDOCX(doc, f.Label, 2); err != nil {
+			return err
+		}
+		for _, item := range arr {
+			doc.AddParagraph("• " + item)
+		}
+	case documents.FieldObjectArr:
+		objs := toObjectSliceLocal(v)
+		if len(objs) == 0 {
+			return nil
+		}
+		if err := addHeadingDOCX(doc, f.Label, 2); err != nil {
+			return err
+		}
+		renderObjectArrayDOCX(doc, f, objs, currency)
+	case documents.FieldText:
+		body := toStringLocal(v)
+		if body == "" {
+			return nil
+		}
+		if err := addHeadingDOCX(doc, f.Label, 2); err != nil {
+			return err
+		}
+		doc.AddParagraph(body)
+	case documents.FieldNumber:
+		if n, ok := v.(float64); ok && n != 0 {
+			p := doc.AddParagraph("")
+			p.AddText(f.LabelIn(currency) + ": ").Bold(true)
+			p.AddText(documents.FormatNumberField(f, n, currency))
+		}
+	case documents.FieldBool:
+		if b, ok := v.(bool); ok {
+			p := doc.AddParagraph("")
+			p.AddText(f.Label + ": ").Bold(true)
+			p.AddText(fmt.Sprintf("%t", b))
+		}
+	case documents.FieldChartRef:
+		if id := toStringLocal(v); id != "" {
+			p := doc.AddParagraph("")
+			p.AddText(f.Label + ": ").Bold(true)
+			p.AddText("(chart " + id + ")")
+		}
+	default:
+		if s := toStringLocal(v); s != "" {
+			p := doc.AddParagraph("")
+			p.AddText(f.Label + ": ").Bold(true)
+			p.AddText(s)
+		}
+	}
+	return nil
 }
 
 func addHeadingDOCX(doc *docx.RootDoc, text string, level uint) error {
