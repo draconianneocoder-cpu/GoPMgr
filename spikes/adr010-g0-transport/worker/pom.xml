@@ -72,12 +72,6 @@ so the native transports and protobuf runtime match those exactly.
       <version>${netty.version}</version>
       <classifier>osx-aarch_64</classifier>
     </dependency>
-    <!-- grpc-java's generated stub is annotated with javax.annotation.Generated. -->
-    <dependency>
-      <groupId>javax.annotation</groupId>
-      <artifactId>javax.annotation-api</artifactId>
-      <version>1.3.2</version>
-    </dependency>
   </dependencies>
 
   <build>
