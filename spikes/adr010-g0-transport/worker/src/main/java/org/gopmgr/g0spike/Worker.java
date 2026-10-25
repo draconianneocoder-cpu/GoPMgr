@@ -424,8 +424,14 @@ public final class Worker {
               .eventLoopGroup(g), g, null);
         }
         case "npipe":
-        case "npipe-dual": {
-          PipeBridge bridge = PipeBridge.start(endpoint, "npipe-dual".equals(kind));
+        case "npipe-dual":
+        case "npipe-async": {
+          PipeBridge.Mode mode = switch (kind) {
+            case "npipe-dual" -> PipeBridge.Mode.SYNC_DUAL;
+            case "npipe-async" -> PipeBridge.Mode.ASYNC_SINGLE;
+            default -> PipeBridge.Mode.SYNC_SINGLE;
+          };
+          PipeBridge bridge = PipeBridge.start(endpoint, mode);
           return new Transport(NettyChannelBuilder.forAddress(bridge.address())
               .channelType(io.netty.channel.local.LocalChannel.class, io.netty.channel.local.LocalAddress.class)
               .eventLoopGroup(bridge.group()), null, bridge);

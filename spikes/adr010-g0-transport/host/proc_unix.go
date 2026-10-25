@@ -27,6 +27,3 @@ func killTree(cmd *exec.Cmd) {
 	}
 	_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 }
-
-// sleeper is a short-lived process whose command line ends with a secret.
-var sleeper = []string{"sh", "-c", "sleep 5", "g0-self-check"}

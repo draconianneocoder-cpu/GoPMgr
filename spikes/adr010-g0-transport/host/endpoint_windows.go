@@ -27,7 +27,7 @@ type endpoint struct {
 	cleanup func() error
 }
 
-func transportsForOS() []string { return []string{"uds-nio", "npipe", "npipe-dual"} }
+func transportsForOS() []string { return []string{"uds-nio", "npipe", "npipe-dual", "npipe-async"} }
 
 // listen creates the endpoint for one transport. Named pipes get an
 // explicit DACL for the current user only; go-winio creates the first
@@ -55,7 +55,7 @@ func listen(transport string) (*endpoint, error) {
 			return err
 		}
 		return ep, nil
-	case "npipe", "npipe-dual":
+	case "npipe", "npipe-dual", "npipe-async":
 		id, err := randomID()
 		if err != nil {
 			return nil, err
@@ -244,7 +244,7 @@ func dialEndpoint(addr, transport string) (net.Conn, error) {
 	switch transport {
 	case "uds-nio":
 		return net.Dial("unix", addr)
-	case "npipe":
+	case "npipe", "npipe-async":
 		return winio.DialPipe(addr, &timeout)
 	case "npipe-dual":
 		up, err := winio.DialPipe(addr, &timeout)

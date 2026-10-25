@@ -33,6 +33,3 @@ func killTree(cmd *exec.Cmd) {
 		_ = cmd.Process.Kill()
 	}
 }
-
-// sleeper is a short-lived process whose command line ends with a secret.
-var sleeper = []string{"cmd", "/c", "ping -n 6 127.0.0.1 >nul"}

@@ -146,7 +146,15 @@ func moduleVersions() map[string]string {
 	return v
 }
 
+// sleeperFlag makes the probe sleep briefly and exit. The detector
+// self-check starts the probe this way with a secret in its arguments.
+const sleeperFlag = "-g0-sleeper"
+
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == sleeperFlag {
+		time.Sleep(5 * time.Second)
+		return
+	}
 	java := flag.String("java", "", "path to the java executable")
 	jar := flag.String("jar", "", "path to worker/target/g0-worker.jar")
 	out := flag.String("out", "g0-evidence.jsonl", "evidence file to append to")

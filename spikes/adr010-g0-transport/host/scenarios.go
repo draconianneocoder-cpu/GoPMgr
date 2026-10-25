@@ -597,7 +597,15 @@ func scenarioSelfCheck(transport string) *evidence {
 		ev.fail(err.Error())
 		return ev
 	}
-	cmd := exec.Command(sleeper[0], append(sleeper[1:], secret)...)
+	// The probe re-runs itself as the planted process. A shell would be
+	// fragile here: macOS bash replaces itself with the last command,
+	// dropping the secret, and Windows cmd hands it to the child.
+	self, err := os.Executable()
+	if err != nil {
+		ev.block("cannot find the probe executable: " + err.Error())
+		return ev
+	}
+	cmd := exec.Command(self, sleeperFlag, secret)
 	if err := cmd.Start(); err != nil {
 		ev.block("cannot start the sleeper process: " + err.Error())
 		return ev

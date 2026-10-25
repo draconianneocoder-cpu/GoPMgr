@@ -95,8 +95,9 @@ connects as the client and opens one bidirectional `Connect` stream (plan
 | `uds-epoll` | Linux Netty native epoll |
 | `uds-kqueue` | macOS Netty native kqueue |
 | `uds-nio` | Netty's `NioDomainSocketChannel`: JDK Unix-domain sockets (Java 16+), with no native library, on all three OSes |
-| `npipe` | One Windows pipe handle, bridged to gRPC through an in-JVM `LocalChannel` |
-| `npipe-dual` | Two pipe connections, one per direction, so reads and writes never share a synchronous handle |
+| `npipe` | One synchronous Windows pipe handle (`RandomAccessFile`), bridged to gRPC through an in-JVM `LocalChannel` |
+| `npipe-dual` | Two synchronous pipe connections, one per direction, so reads and writes never share a handle |
+| `npipe-async` | One pipe connection opened through `AsynchronousFileChannel`, which the JDK opens for overlapped I/O, so a pending read does not block a write |
 
 ## Scenarios
 
@@ -114,7 +115,7 @@ connects as the client and opens one bidirectional `Connect` stream (plan
 | `bootstrap-*` | Oversized, garbage, empty and expired bootstraps are refused without connecting | TPT-022 |
 | `handshake-timeout`, `missing-jvm` | Wrong endpoint or missing JVM fails cleanly and on time | TPT-014 |
 | `squat` | A pre-placed socket path, file or pipe name is refused | TPT-006, TPT-008 or TPT-009 |
-| `detector-self-check` | The leak and TCP detectors catch a planted secret and a real listener, so their "none found" results mean something | TPT-007, TPT-020 |
+| `detector-self-check` | The leak and TCP detectors catch a planted secret and a real listener, so their "none found" results mean something. The planted process is the probe itself, re-run with `-g0-sleeper <secret>`, so no shell can rewrite its command line | TPT-007, TPT-020 |
 
 These results are **G0 evidence about the spike code**. They are not PASS
 results for the G1 gates: G1 requires the production implementation.
