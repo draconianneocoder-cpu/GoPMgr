@@ -18,6 +18,7 @@ The findings are written up in
 | --- | --- |
 | `cmd/s0bench` | Builds a seeded synthetic schedule at four sizes (500, 10,000, 50,000 and 100,000 tasks), then times CPM, Gantt layout, chart JSON, MSPDI export and import, encrypted storage, one-field edits and audit-chain checks. |
 | `cmd/s0fs` | Probes the temp folder, the home folder and the default project root for file-system behavior that ADR-010 storage depends on: no-replace rename, case sensitivity, exclusive locks, folder fsync and long paths. |
+| `cmd/s0sql` | Opens a fresh encrypted project database the way the app does and records the engine version, effective pragmas, compile options and which SQL features work (JSON, FTS5, `RETURNING`, `STRICT`, `DROP COLUMN` and others). |
 | `evidence/` | JSON Lines output from recorded runs. Each record names the commit, OS, CPU and Go version. |
 
 ## Run it
@@ -29,6 +30,7 @@ project's SQLCipher driver.
 cd spikes/adr010-s0-baseline
 head=$(git rev-parse --short HEAD)
 go run ./cmd/s0fs -head "$head" -out evidence/<platform>-fs.jsonl
+go run ./cmd/s0sql -head "$head" -out evidence/<platform>-sql.jsonl
 go run ./cmd/s0bench -head "$head" -out evidence/<platform>-bench.jsonl
 ```
 
@@ -38,9 +40,9 @@ Useful `s0bench` flags:
 - `-cpuprofile s0.prof` writes a CPU profile; read it with
   `go tool pprof -top s0.prof`.
 
-A full run on a 4-core container takes about 20 minutes and needs about
-2 GB of free disk for the temporary encrypted databases, which are
-deleted afterwards.
+A full run on a 4-core container took 11 minutes and needed about
+1 GB of free disk for the temporary encrypted databases, which are
+deleted afterwards. Most of the time is the 100,000-task Gantt layout.
 
 ## Reading the results
 
