@@ -65,7 +65,7 @@ Keep the first *installable* scope narrow: **one bundled, authenticated MPXJ wor
 |---|---|---|
 | Linux | UDS | G0 proof with Go + bundled Java runtime / grpc-java, permissions and cleanup |
 | macOS (Intel + Apple Silicon as supported) | UDS | G0 native Netty/Java runtime, architecture signing/notarization and cleanup |
-| Windows | Windows named pipes | **Candidate, not demonstrated**: Go `go-winio` can use pipes as `net` transport, but Java grpc-java compatible named-pipe HTTP/2 transport must be proven |
+| Windows | Windows named pipes | **Feasible on Windows Server 2025 amd64 only** (G0; [maintainer decision 2026-10-25](../review/ADR-010-G0-windows-transport-decision.md)). A single overlapped pipe is the preferred G1 candidate, conditionally; not production-accepted. Windows 10/11, offline `jlink` and signed execution remain unverified |
 | Windows alternative | AF_UNIX / UDS | Only if demonstrated with the selected JDK, Java gRPC transport and supported Windows versions |
 | Exception | Authenticated loopback gRPC | **Not approved as default**; written owner-approved exception with compensating controls and product-support disclosure, only after native paths fail evidence-based gates |
 
@@ -208,6 +208,7 @@ None of these open decisions authorizes reducing the stated requirement. A faile
 | 2026-10-24 | v2.2 | Maintainer bundle: gRPC over local IPC, internal registry, project-owned evidence, QI-01…QI-15, D-01…D-19 |
 | 2026-10-24 | v2.2 integrated | Verified against `28a758d`; corrections listed in the [integration review](../review/ADR-010-v2.2-integration-review.md). No requirement weakened; status stays PROPOSED |
 | 2026-10-24 | v2.2 accepted | The maintainer accepted D-01…D-19, QI-01…QI-15, OWN-01…OWN-11 and INT-01…INT-04 ([decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md)). Architecture only: P00, P01/G0 and P02/S0 authorized; nothing implemented. Earlier versions kept unchanged |
+| 2026-10-25 | G0 Windows transport decision | The maintainer accepted named-pipe feasibility on Windows Server 2025 amd64 and made a single overlapped pipe the conditional G1 candidate ([record](../review/ADR-010-G0-windows-transport-decision.md)). OWN-02 order unchanged; more G0 diagnostics and transport-neutral G1 design authorized |
 
 ## 9. Maintainer acceptance
 
@@ -232,3 +233,27 @@ On 2026-10-24 the maintainer accepted D-01…D-19 and QI-01…QI-15 as the bindi
 | INT-04 | Approved | v2.2 is the authoritative accepted architecture; v2.1 is superseded and preserved unchanged |
 
 **Authorized now:** P00 documentation, P01/G0 isolated feasibility, and P02/S0 evidence (record §5.1). **Not authorized:** G1 onward, production dependencies, ADR-011 implementation or migrations, publication, a default-root change, signed releases, and G5–G7 (record §5.2).
+
+## 10. G0 Windows transport decision (2026-10-25)
+
+The maintainer's [decision record](../review/ADR-010-G0-windows-transport-decision.md)
+is authoritative; this section summarizes it.
+
+- Named-pipe gRPC between Go and Java is accepted as **feasible on the
+  tested Windows Server 2025 amd64 environment only**.
+- A single overlapped named pipe (`npipe-async`) is the **preferred G1
+  candidate, conditionally**. Its cancel-to-exit delay must be diagnosed by
+  measurement and fixed without fragile workarounds. The Java pipe bridge
+  must be corrected for event-loop blocking, queue saturation, shutdown
+  signaling and pending-I/O cleanup.
+- Two pipe connections (`npipe-dual`) stay a tested alternative; its
+  pairing timeout and denial-of-service risks must be addressed first.
+- Windows AF_UNIX stays a verified alternative. OWN-02's order does not
+  change without an accepted architecture change.
+- Windows 10/11, offline `jlink` packaging and signed execution must be
+  validated before any general Windows compatibility or release claim.
+- OWN-03 is unchanged: no stdio business protocol and no automatic TCP
+  fallback.
+- **Authorized:** more G0 diagnostics and transport-neutral G1 design work.
+  **Not authorized:** finalizing the production Windows transport before the
+  open issues have documented fixes and passing regression tests.

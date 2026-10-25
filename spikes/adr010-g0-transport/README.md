@@ -83,8 +83,16 @@ connects as the client and opens one bidirectional `Connect` stream (plan
   `SystemRoot`, `TEMP` and `TMP`. `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS` and
   `CLASSPATH` never pass.
 - **Private working directory.**
-- **JVM flags:** `-Xmx128m` and `-XX:+DisableAttachMechanism`.
-- **Own process group on Unix,** so the whole tree can be killed.
+- **JVM flags:** `-Xmx128m`, `-XX:+DisableAttachMechanism` and
+  `-XX:+ExitOnOutOfMemoryError` (an out-of-memory worker exits at once
+  with code 3 instead of limping on).
+- **Process tree:**
+  - **Unix:** the worker leads its own process group; the host ends the
+    tree with `kill(-pgid, SIGKILL)`.
+  - **Windows:** the worker starts suspended, joins a Job Object with
+    kill-on-close, and only then resumes. A child it starts is in the job
+    from its first instruction. If the job cannot be set up, the launch
+    fails; the worker never runs outside the job.
 - **Capped capture.** The host keeps at most 64 KiB of the child's stdout
   and of its stderr, and persists none of it.
 
@@ -96,8 +104,24 @@ connects as the client and opens one bidirectional `Connect` stream (plan
 | `uds-kqueue` | macOS Netty native kqueue |
 | `uds-nio` | Netty's `NioDomainSocketChannel`: JDK Unix-domain sockets (Java 16+), with no native library, on all three OSes |
 | `npipe` | One synchronous Windows pipe handle (`RandomAccessFile`), bridged to gRPC through an in-JVM `LocalChannel` |
-| `npipe-dual` | Two synchronous pipe connections, one per direction, so reads and writes never share a handle |
-| `npipe-async` | One pipe connection opened through `AsynchronousFileChannel`, which the JDK opens for overlapped I/O, so a pending read does not block a write |
+| `npipe-dual` | Two synchronous pipe connections, one per direction, so reads and writes never share a handle. The host pairs them in `host/pairing.go`: each half is peer-checked when it is accepted, and a half whose partner does not arrive within 3 s is dropped |
+| `npipe-async` | One pipe connection opened through `AsynchronousFileChannel`, which the JDK opens for overlapped I/O, so a pending read does not block a write. The channel gets its own executor, closed with the channel (see below) |
+| `npipe-async-default` | **Diagnostic control only, not a candidate.** The same, on the JDK's default completion-port thread. It reproduces the exit delay the fix removes |
+
+**The pipe bridge** (`worker/.../PipeBridge.java`) connects a pipe to
+gRPC through an in-JVM `LocalChannel`. Its rules:
+
+- Nothing blocks the Netty event loop. The pipe opens before gRPC
+  connects, with a bounded retry (5 ms rising to 200 ms, 5 s in total).
+- At most one read is in flight. The next read starts only when gRPC has
+  taken the last one.
+- Writes queue on the event loop. Above 1 MiB queued, the bridge stops
+  reading from gRPC; below 256 KiB it starts again. HTTP/2 flow control
+  then holds the sender.
+- It serves one gRPC connection; a second is closed at once.
+- `close()` is idempotent and bounded: it closes the connection, the pipe
+  and the event loop, waits at most 2 s, and releases every buffer it
+  held, including one whose I/O completes after close.
 
 ## Scenarios
 
@@ -116,13 +140,35 @@ connects as the client and opens one bidirectional `Connect` stream (plan
 | `handshake-timeout`, `missing-jvm` | Wrong endpoint or missing JVM fails cleanly and on time | TPT-014 |
 | `squat` | A pre-placed socket path, file or pipe name is refused | TPT-006, TPT-008 or TPT-009 |
 | `detector-self-check` | The leak and TCP detectors catch a planted secret and a real listener, so their "none found" results mean something. The planted process is the probe itself, re-run with `-g0-sleeper <secret>`, so no shell can rewrite its command line | TPT-007, TPT-020 |
+| `cancel-backpressure` | Cancel while the host has stopped reading for 1 s and the worker's sends wait on flow control | TPT-012, TPT-013 |
+| `oversize` | The worker sends one 5 MiB message; the host's 4 MiB limit refuses it with `RESOURCE_EXHAUSTED` | TPT-013, TPT-014 |
+| `concurrent` | Four sessions at once, each with its own endpoint and full-duplex traffic; no session sees another's data | TPT-012, TPT-013, TPT-018 |
+| `connect-flood` | A process other than the worker (the probe itself) opens 50 connections while the worker starts; all are refused and the session still succeeds | TPT-006, TPT-018 |
+| `bridge-selftest` | The pipe bridge's own tests, in memory, on every OS: 16 MiB each way, bounded buffering, close with I/O pending, second connection refused | TPT-012, TPT-013 |
+| `tree-kill` | The worker starts a grandchild; the host ends the tree; both are gone | TPT-013, TPT-014 |
+| `crash` | The worker starts a grandchild, then halts mid-stream; the stream fails and no orphan remains | TPT-013, TPT-014 |
+| `oom` | The worker exhausts its heap; it exits with code 3 and the stream fails | TPT-013, TPT-014 |
+
+**Worker exit codes:** 0 done, 20 bootstrap refused, 21 cancelled, 22
+rejected, 23 error, 24 bootstrap expired, 70 crash (the `crash` scenario's
+deliberate halt). The JVM's own out-of-memory exit is 3.
+
+**Cancel timing.** The `cancel` evidence splits the delay into phases:
+host cancel to connection end, connection end to process exit, and the
+worker's own marks (stream error, exit call, shutdown hook). At exit the
+worker also lists any thread still in native code. That list is how the
+Windows exit delay was traced (see
+`docs/testing/adr-010-g0-windows-transport-report.md`).
 
 These results are **G0 evidence about the spike code**. They are not PASS
 results for the G1 gates: G1 requires the production implementation.
 
 ## Run it
 
-You need JDK 17 or later, Maven 3.9 and Go 1.27.3.
+You need JDK 17 or later, Maven 3.9 and Go 1.27.3. CI uses a pinned
+toolchain: `scripts/toolchain.sh <platform> <dir>` fetches Temurin
+jdk-21.0.12.1+1 and Maven 3.9.11, checks the publishers' checksums and
+prints the JDK home.
 
 ```sh
 mvn -B -q -f worker/pom.xml -DskipTests package
@@ -131,9 +177,25 @@ go run . -java "$JAVA_HOME/bin/java" -jar ../worker/target/g0-worker.jar \
   -head "$(git rev-parse HEAD)" -out ../evidence/my-run.jsonl
 ```
 
-`.github/workflows/adr010-g0-spike.yml` runs the same command on Linux,
-macOS (Apple silicon and Intel) and Windows runners when this folder
-changes, and uploads the evidence. That workflow is not a gate: it reports,
+Useful flags:
+
+- `-scenarios cancel,tree-kill` runs only those (the handshake always runs);
+- `-transports npipe-async` runs only that transport;
+- `-cancel-runs 30` sets the cancel repetitions;
+- `-runtime jlink` labels the record when `-java` is a jlink image.
+
+To run on a minimal runtime, as CI does:
+
+```sh
+mods="$(jdeps --ignore-missing-deps --multi-release 21 --print-module-deps worker/target/g0-worker.jar)"
+jlink --add-modules "$mods" --strip-debug --no-header-files --no-man-pages --output /tmp/g0-runtime
+```
+
+`.github/workflows/adr010-g0-spike.yml` runs the probe on a jlink runtime
+on six runners when this folder changes: Linux x64 and Arm, macOS Apple
+silicon and Intel, Windows Server 2025 x64 and Windows 11 Arm. On Linux
+it runs a second time inside an empty network namespace (`unshare -rn`)
+to show the worker needs no network. It uploads the evidence. That workflow is not a gate: it reports,
 and the evidence file records PASS, FAIL or BLOCKED for each scenario.
 
 ## Pinned versions
@@ -151,6 +213,8 @@ and the evidence file records PASS, FAIL or BLOCKED for each scenario.
 | protoc-gen-go | v1.36.12 |
 | protoc-gen-go-grpc | v1.6.2 |
 | protoc-gen-grpc-java | 1.85.1 |
+| JDK (CI) | Eclipse Temurin 21.0.12.1+1 |
+| Maven (CI) | 3.9.11 |
 
 The OWN-11 limit still applies: these dependencies exist only in this
 spike. Adding any of them to GoPMgr's `go.mod` needs G0 results, a

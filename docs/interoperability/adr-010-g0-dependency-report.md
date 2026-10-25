@@ -75,6 +75,26 @@ packaging spike must test it (TPT-002, BLOCKED). A transport that needs no
 native library (Netty NIO with JDK Unix sockets) passed on every OS
 tested, so the native libraries are optional for G1.
 
+### 2.2 Build toolchain and runtime image (CI only, not shipped)
+
+The G0 workflow now fetches a pinned toolchain with
+`spikes/adr010-g0-transport/scripts/toolchain.sh`, which checks each
+download against the publisher's checksum before unpacking it.
+
+| Item | Version | Checksum source |
+|---|---|---|
+| Eclipse Temurin JDK | 21.0.12.1+1 (six packages: Linux, macOS and Windows, x64 and aarch64) | SHA-256 per package from the Adoptium API (`api.adoptium.net/v3/assets/release_name/eclipse/jdk-21.0.12.1+1`) |
+| Apache Maven | 3.9.11 | SHA-512 from `archive.apache.org` |
+
+The probe runs the worker on a **jlink image**, not the full JDK.
+`jdeps --print-module-deps` on `g0-worker.jar` gives
+`java.base,java.naming,java.sql,jdk.jfr,jdk.unsupported`. jlink adds what
+those require (`java.logging`, `java.security.sasl`,
+`java.transaction.xa`, `java.xml`), nine modules in all. The image built
+with `--strip-debug --no-header-files --no-man-pages` is 65 MB on Linux
+x64. Nothing from this image ships; it is the shape a G1 packaging slice
+would test.
+
 ## 3. MPXJ 16.10.0 (future worker, not bundled in G0)
 
 Source: `https://repo1.maven.org/maven2/net/sf/mpxj/mpxj/16.10.0/mpxj-16.10.0.pom`,
@@ -107,3 +127,4 @@ Declared compile dependencies (their own licenses not yet resolved):
 | L3 | MPXJ is LGPL-2.1-or-later. | GoPMgr is GPL-3.0-or-later and the worker runs as a separate process. Obligations must be confirmed by legal review, not assumed here. | Legal/package review before G2 ships MPXJ. |
 | L4 | MPXJ pulls `sqlite-jdbc`, which ships native libraries, and POI, Jackcess, JAXB and Jackson. | More native code to sign and notarize, and a much larger attack surface for parsing hostile files. | Resolve the full MPXJ dependency tree and its licenses in G2; decide whether the MPXJ worker may exclude formats that need `sqlite-jdbc`. |
 | L5 | No machine-readable SBOM yet. | The plan asks for an SBOM. | Generate SPDX or CycloneDX in the G1 packaging slice. No SBOM tool is added now, to avoid a new dependency. |
+| L6 | A shipped worker would bundle a jlink image of the JDK. OpenJDK is published under GPL-2.0 with the Classpath Exception, with third-party notices in the image's `legal/` folder. | Redistribution terms and notices for a bundled runtime. | Legal/package review in the G1 packaging slice. Keep `legal/` in any image (no `--strip` option removes it today). Not asserted compliant here. |
