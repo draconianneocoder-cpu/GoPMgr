@@ -235,8 +235,10 @@ final class PipeBridge implements AutoCloseable {
   private final class Pump extends ChannelInboundHandlerAdapter {
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
+      Timing.mark("bridge_child_active");
       Duplex p = openDuplex();
       pipe = p;
+      Timing.mark("bridge_pipe_opened");
       Channel ch = ctx.channel();
       Thread reader = new Thread(() -> {
         byte[] buf = new byte[64 * 1024];
@@ -248,6 +250,7 @@ final class PipeBridge implements AutoCloseable {
         } catch (IOException ignored) {
           // The pipe closed; the channel close below ends the call.
         }
+        Timing.mark("bridge_reader_exit");
         ch.close();
       }, "g0-pipe-reader");
       Thread writer = new Thread(() -> {
@@ -259,6 +262,7 @@ final class PipeBridge implements AutoCloseable {
         } catch (IOException | InterruptedException ignored) {
           // The pipe or the bridge closed.
         }
+        Timing.mark("bridge_writer_exit");
         ch.close();
       }, "g0-pipe-writer");
       reader.setDaemon(true);
@@ -282,21 +286,23 @@ final class PipeBridge implements AutoCloseable {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
-      outbound.offer(STOP);
+      Timing.mark(outbound.offer(STOP) ? "bridge_child_inactive" : "bridge_child_inactive_stop_dropped");
       ctx.fireChannelInactive();
     }
   }
 
   @Override
   public void close() throws Exception {
-    outbound.offer(STOP);
+    Timing.mark(outbound.offer(STOP) ? "bridge_close" : "bridge_close_stop_dropped");
     if (server != null) {
       server.close().sync();
     }
+    Timing.mark("bridge_server_closed");
     Duplex p = pipe;
     if (p != null) {
       p.close();
     }
+    Timing.mark("bridge_pipe_closed");
     group.shutdownGracefully(0, 1, TimeUnit.SECONDS);
   }
 }

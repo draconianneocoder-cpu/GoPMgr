@@ -47,6 +47,7 @@ type jobRun struct {
 	exitCode  int
 	driveErr  error
 	connected bool
+	stderr    string // the worker's captured stderr, for diagnostics
 }
 
 func (r *jobRun) set(k string, v any) {
@@ -188,6 +189,7 @@ func runJob(cfg config, o jobOptions) (*jobRun, error) {
 	}
 	out, outDropped := r.w.stdout.snapshot()
 	errText, errDropped := r.w.stderr.snapshot()
+	r.stderr = errText
 	r.set("stdout_kept_bytes", len(out))
 	r.set("stdout_dropped_bytes", outDropped)
 	r.set("stderr_kept_bytes", len(errText))

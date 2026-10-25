@@ -10,6 +10,7 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -88,6 +89,34 @@ type peerListener struct {
 	refused   atomic.Int64
 	admitted  atomic.Int64
 	once      bool // stop accepting after the first admitted connection
+	conn      *timedConn
+}
+
+// timedConn records when the admitted connection first failed a read,
+// which is when the worker closed its end. Diagnostic only.
+type timedConn struct {
+	net.Conn
+	mu      sync.Mutex
+	readErr time.Time
+}
+
+func (c *timedConn) Read(p []byte) (int, error) {
+	n, err := c.Conn.Read(p)
+	if err != nil {
+		c.mu.Lock()
+		if c.readErr.IsZero() {
+			c.readErr = time.Now()
+		}
+		c.mu.Unlock()
+	}
+	return n, err
+}
+
+// closedAt is when the peer's close was first seen, or zero.
+func (c *timedConn) closedAt() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.readErr
 }
 
 func (l *peerListener) setExpected(pid int) {
@@ -127,7 +156,13 @@ func (l *peerListener) Accept() (net.Conn, error) {
 			// One authenticated launch per endpoint: refuse anything after it.
 			_ = l.Listener.Close()
 		}
-		return c, nil
+		tc := &timedConn{Conn: c}
+		l.mu.Lock()
+		if l.conn == nil {
+			l.conn = tc
+		}
+		l.mu.Unlock()
+		return tc, nil
 	}
 }
 

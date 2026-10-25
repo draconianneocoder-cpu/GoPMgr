@@ -279,7 +279,9 @@ func scenarioBackpressure(cfg config, transport string) *evidence {
 
 func scenarioCancel(cfg config, transport string, runs int) *evidence {
 	ev := newEvidence("cancel", transport, append(transportTestIDs(transport), "TPT-012", "TPT-013"))
-	var latencies, starts []time.Duration
+	var latencies, starts, toEOF, eofToExit []time.Duration
+	phases := map[string][]time.Duration{}
+	var example string
 	codesSeen := map[int]int{}
 	for i := 0; i < runs; i++ {
 		var t0 time.Time
@@ -304,6 +306,24 @@ func scenarioCancel(cfg config, transport string, runs int) *evidence {
 		<-r.w.exited
 		latencies = append(latencies, r.w.exitedAt.Sub(t0))
 		starts = append(starts, r.coldStart)
+		if r.pl.conn != nil {
+			if eof := r.pl.conn.closedAt(); !eof.IsZero() {
+				toEOF = append(toEOF, eof.Sub(t0))
+				eofToExit = append(eofToExit, r.w.exitedAt.Sub(eof))
+			}
+		}
+		if line, marks := workerTiming(r.stderr); marks != nil {
+			if example == "" {
+				example = line
+			}
+			if base, ok := marks["stream_error"]; ok {
+				for label, at := range marks {
+					if at >= base {
+						phases[label] = append(phases[label], at-base)
+					}
+				}
+			}
+		}
 		codesSeen[r.exitCode]++
 		if r.exitCode != exitCancelled {
 			ev.fail(fmt.Sprintf("run %d: worker exit code %d, want %d", i, r.exitCode, exitCancelled))
@@ -314,9 +334,48 @@ func scenarioCancel(cfg config, transport string, runs int) *evidence {
 	}
 	ev.Metrics["runs"] = runs
 	ev.Metrics["cancel_to_exit_ms"] = summarize(latencies, time.Millisecond)
+	// Diagnostics: where the time between the host's cancel and the
+	// worker's exit goes. Host clock: cancel to the worker closing its end
+	// of the connection, then to the process exit. Worker clock: each
+	// shutdown step, relative to the worker seeing the stream end.
+	ev.Metrics["host_cancel_to_conn_eof_ms"] = summarize(toEOF, time.Millisecond)
+	ev.Metrics["host_conn_eof_to_exit_ms"] = summarize(eofToExit, time.Millisecond)
+	worker := map[string]any{}
+	for label, ds := range phases {
+		worker[label] = summarize(ds, time.Millisecond)
+	}
+	ev.Metrics["worker_phase_ms_after_stream_error"] = worker
+	if example != "" {
+		ev.Metrics["worker_timing_example"] = example
+	}
 	ev.Metrics["cold_start_ms"] = summarize(starts, time.Millisecond)
 	ev.Metrics["exit_codes"] = codesSeen
 	return ev
+}
+
+// workerTiming finds the worker's g0-timing line in its stderr and parses
+// it into label -> time since the worker started.
+func workerTiming(stderr string) (string, map[string]time.Duration) {
+	for _, line := range splitLines(stderr) {
+		line = strings.TrimRight(line, "\r")
+		rest, ok := strings.CutPrefix(line, "g0-timing: ")
+		if !ok {
+			continue
+		}
+		marks := map[string]time.Duration{}
+		for _, kv := range strings.Split(rest, ",") {
+			k, v, ok := strings.Cut(kv, "=")
+			if !ok {
+				continue
+			}
+			var us int64
+			if _, err := fmt.Sscan(v, &us); err == nil {
+				marks[k] = time.Duration(us) * time.Microsecond
+			}
+		}
+		return line, marks
+	}
+	return "", nil
 }
 
 func scenarioKill(cfg config, transport string) *evidence {

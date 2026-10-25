@@ -67,6 +67,7 @@ public final class Worker {
   private Worker() {}
 
   public static void main(String[] args) {
+    Timing.mark("main");
     Bootstrap boot;
     try {
       boot = readBootstrap(System.in);
@@ -92,6 +93,7 @@ public final class Worker {
       System.err.println("worker error: " + e.getClass().getName() + ": " + e.getMessage());
       code = EXIT_ERROR;
     }
+    Timing.mark("exit_call");
     System.exit(code);
   }
 
@@ -200,11 +202,15 @@ public final class Worker {
           System.err.println("worker: session timed out");
           return EXIT_ERROR;
         }
+        Timing.mark("main_wake");
         return exitCode.get();
       } finally {
         channel.shutdownNow();
-        channel.awaitTermination(5, TimeUnit.SECONDS);
+        Timing.mark("channel_shutdown_now");
+        boolean terminated = channel.awaitTermination(5, TimeUnit.SECONDS);
+        Timing.mark(terminated ? "channel_terminated" : "channel_not_terminated");
         t.close();
+        Timing.mark("transport_closed");
       }
     }
 
@@ -373,6 +379,7 @@ public final class Worker {
 
     @Override
     public void onError(Throwable t) {
+      Timing.mark("stream_error");
       Status s = Status.fromThrowable(t);
       switch (s.getCode()) {
         case CANCELLED -> exitCode.set(EXIT_CANCELLED);
@@ -385,6 +392,7 @@ public final class Worker {
 
     @Override
     public void onCompleted() {
+      Timing.mark("stream_completed");
       exitCode.set(EXIT_OK);
       done.countDown();
     }
