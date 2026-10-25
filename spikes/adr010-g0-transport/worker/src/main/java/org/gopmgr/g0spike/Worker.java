@@ -353,6 +353,7 @@ public final class Worker {
               .build();
           CountDownLatch answered = new CountDownLatch(1);
           String[] code = {"NO_ANSWER"};
+          String[] detail = {""};
           StreamObserver<WorkerEvent> req = WorkerSessionGrpc.newStub(ch2).connect(new StreamObserver<HostCommand>() {
             @Override
             public void onNext(HostCommand value) {
@@ -362,7 +363,9 @@ public final class Worker {
 
             @Override
             public void onError(Throwable e) {
-              code[0] = Status.fromThrowable(e).getCode().name();
+              Status st = Status.fromThrowable(e);
+              code[0] = st.getCode().name();
+              detail[0] = describe(st);
               answered.countDown();
             }
 
@@ -375,7 +378,8 @@ public final class Worker {
           req.onNext(WorkerEvent.newBuilder().setSequence(1)
               .setHello(WorkerHello.newBuilder().setWorkerId("replay")).build());
           answered.await(10, TimeUnit.SECONDS);
-          result = "replay:" + code[0];
+          // The host compares the code before '|'; the rest is diagnostics.
+          result = "replay:" + code[0] + "|" + detail[0];
           ch2.shutdownNow();
         } catch (Exception e) {
           result = "replay:ERROR " + e.getClass().getSimpleName();
@@ -387,6 +391,25 @@ public final class Worker {
       }, "g0-replay");
       t.setDaemon(true);
       t.start();
+    }
+
+    /**
+     * A short, bounded description of a gRPC failure for the evidence: the
+     * status description and the first cause's class and message. Neither
+     * carries the credential or the proof.
+     */
+    static String describe(Status st) {
+      StringBuilder b = new StringBuilder();
+      if (st.getDescription() != null) {
+        b.append(st.getDescription());
+      }
+      if (st.getCause() != null) {
+        b.append(" cause=").append(st.getCause().getClass().getName());
+        if (st.getCause().getMessage() != null) {
+          b.append(": ").append(st.getCause().getMessage());
+        }
+      }
+      return b.length() > 300 ? b.substring(0, 300) : b.toString();
     }
 
     /**

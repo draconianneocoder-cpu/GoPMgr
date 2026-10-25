@@ -132,7 +132,7 @@ gRPC through an in-JVM `LocalChannel`. Its rules:
 | `backpressure` | The host stops reading for 3 s while the worker floods; the worker waits on flow control and its heap stays bounded | TPT-012 |
 | `noise` | The worker prints 1 MiB to stdout and stderr; the stream is unaffected and the capture stays capped | TPT-021 |
 | `bad-credential` | A wrong proof is refused before any handler runs | TPT-007, TPT-018 |
-| `replay` | The worker presents the same proof again from its own process; it is refused | TPT-007 |
+| `replay` | The worker presents the same proof again from its own process, 10 times; every attempt must be refused as `UNAUTHENTICATED`. Any other outcome is recorded with its gRPC detail | TPT-007 |
 | `impersonate` | Another local process with the stolen credential connects first; the peer check refuses it | TPT-018 |
 | `kill` | The host kills the worker mid-stream; the stream fails promptly and the process is reaped | TPT-013, TPT-014 |
 | `cancel` | 30 runs of a host cancel mid-stream; the worker exits with its cancel code; latency distribution | TPT-012, TPT-013 |
@@ -145,9 +145,13 @@ gRPC through an in-JVM `LocalChannel`. Its rules:
 | `concurrent` | Four sessions at once, each with its own endpoint and full-duplex traffic; no session sees another's data | TPT-012, TPT-013, TPT-018 |
 | `connect-flood` | A process other than the worker (the probe itself) opens 50 connections while the worker starts; all are refused and the session still succeeds | TPT-006, TPT-018 |
 | `bridge-selftest` | The pipe bridge's own tests, in memory, on every OS: 16 MiB each way, bounded buffering, close with I/O pending, second connection refused | TPT-012, TPT-013 |
-| `tree-kill` | The worker starts a grandchild; the host ends the tree; both are gone | TPT-013, TPT-014 |
-| `crash` | The worker starts a grandchild, then halts mid-stream; the stream fails and no orphan remains | TPT-013, TPT-014 |
-| `oom` | The worker exhausts its heap; it exits with code 3 and the stream fails | TPT-013, TPT-014 |
+| `tree-kill` | On every transport: the worker starts a grandchild; the host ends the tree; both are gone | TPT-013, TPT-014 |
+| `crash` | On every transport: the worker starts a grandchild, then halts mid-stream; the stream fails and no orphan remains | TPT-013, TPT-014 |
+| `oom` | On every transport: the worker exhausts its heap; it exits with code 3 and the stream fails | TPT-013, TPT-014 |
+
+**Every scenario** also fails if the worker's stderr reports a thread
+ended by an uncaught exception (`Exception in thread ...`), even when the
+session itself succeeded.
 
 **Worker exit codes:** 0 done, 20 bootstrap refused, 21 cancelled, 22
 rejected, 23 error, 24 bootstrap expired, 70 crash (the `crash` scenario's

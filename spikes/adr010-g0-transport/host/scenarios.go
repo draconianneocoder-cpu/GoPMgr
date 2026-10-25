@@ -304,6 +304,7 @@ func scenarioCancel(cfg config, transport string, runs int, name string, stall t
 	nativeRuns := 0
 	var example, nativeExample string
 	peakPending := int64(0)
+	uncaught := 0
 	codesSeen := map[int]int{}
 	for i := 0; i < runs; i++ {
 		var t0 time.Time
@@ -355,6 +356,10 @@ func scenarioCancel(cfg config, transport string, runs int, name string, stall t
 			}
 		}
 		peakPending = max(peakPending, d.stats["bridge_peak_pending_bytes"])
+		if n := uncaughtExceptions(r.stderr); n > 0 {
+			uncaught += n
+			ev.fail(fmt.Sprintf("run %d: the worker reported %d uncaught exception(s) on stderr", i, n))
+		}
 		codesSeen[r.exitCode]++
 		if r.exitCode != exitCancelled {
 			ev.fail(fmt.Sprintf("run %d: worker exit code %d, want %d", i, r.exitCode, exitCancelled))
@@ -396,6 +401,7 @@ func scenarioCancel(cfg config, transport string, runs int, name string, stall t
 	}
 	ev.Metrics["cold_start_ms"] = summarize(starts, time.Millisecond)
 	ev.Metrics["exit_codes"] = codesSeen
+	ev.Metrics["worker_uncaught_exceptions"] = uncaught
 	return ev
 }
 
@@ -502,8 +508,35 @@ func scenarioBadCredential(cfg config, transport string) *evidence {
 	return ev
 }
 
-func scenarioReplay(cfg config, transport string) *evidence {
+// scenarioReplay: the worker presents its proof again on a second
+// connection from its own process; the host must refuse it as
+// UNAUTHENTICATED every time (TPT-007). It repeats, because one
+// G0 run on Windows 11 arm64 saw UNAVAILABLE once instead.
+func scenarioReplay(cfg config, transport string, runs int) *evidence {
 	ev := newEvidence("replay", transport, []string{"TPT-007"})
+	outcomes := map[string]int{}
+	for i := 0; i < runs; i++ {
+		r, report, err := replayOnce(cfg, transport)
+		ev.absorb(r, err)
+		if r == nil || !r.connected {
+			break
+		}
+		// The worker reports "replay:<gRPC code>|<diagnostic detail>".
+		code, _, _ := strings.Cut(report, "|")
+		outcomes[code]++
+		if code != "replay:UNAUTHENTICATED" {
+			ev.fail(fmt.Sprintf("run %d: the reused proof was not refused as UNAUTHENTICATED: %s", i, report))
+			if _, seen := ev.Metrics["first_other_outcome"]; !seen {
+				ev.Metrics["first_other_outcome"] = report
+			}
+		}
+	}
+	ev.Metrics["runs"] = runs
+	ev.Metrics["worker_second_call_outcomes"] = outcomes
+	return ev
+}
+
+func replayOnce(cfg config, transport string) (*jobRun, string, error) {
 	var report string
 	r, err := runJob(cfg, jobOptions{transport: transport, acceptMany: true, timeout: 60 * time.Second,
 		drive: func(r *jobRun, stream g0pb.WorkerSession_ConnectServer) error {
@@ -534,14 +567,7 @@ func scenarioReplay(cfg config, transport string) *evidence {
 			}
 			return finish(stream, &seq)
 		}})
-	ev.absorb(r, err)
-	if r != nil && r.connected {
-		ev.Metrics["worker_second_call"] = report
-		if report != "replay:UNAUTHENTICATED" {
-			ev.fail("the reused proof was not refused as UNAUTHENTICATED: " + report)
-		}
-	}
-	return ev
+	return r, report, err
 }
 
 func scenarioImpersonate(cfg config, transport string) *evidence {
@@ -582,9 +608,15 @@ func scenarioImpersonate(cfg config, transport string) *evidence {
 	if r.sess.handled.Load() > 1 {
 		ev.fail("an impersonating process reached the handler")
 	}
+	// Two layers can refuse: npipe-dual's pairing listener checks each half
+	// as it is accepted, and the peer listener checks every connection that
+	// reaches it. A refusal at either layer counts; none at all is a FAIL.
+	halves, _ := r.metrics["pair_refused_halves"].(int64)
+	refused := r.pl.refused.Load() + halves
+	ev.Metrics["refused_total"] = refused
 	if pc, _ := r.metrics["peer_check"].(string); strings.HasPrefix(pc, "unavailable") {
 		ev.block("the OS gave no peer process ID, so a process holding a stolen credential cannot be told apart: " + pc)
-	} else if r.pl.refused.Load() == 0 {
+	} else if refused == 0 {
 		ev.fail("the listener admitted the impersonator")
 	}
 	return ev

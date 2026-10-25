@@ -532,62 +532,101 @@ final class PipeBridge implements AutoCloseable {
     private final AsynchronousFileChannel ch;
     private final ExecutorService pool;
     private final AtomicBoolean closed = new AtomicBoolean();
+    /** Reads and write chains issued and not yet finished. Guarded by this. */
+    private int outstanding;
 
     AsyncDuplex(AsynchronousFileChannel ch, ExecutorService pool) {
       this.ch = ch;
       this.pool = pool;
     }
 
+    private synchronized void begin() {
+      outstanding++;
+    }
+
+    private synchronized void end() {
+      if (--outstanding == 0) {
+        notifyAll();
+      }
+    }
+
+    /**
+     * Waits until every issued operation has delivered its completion, for at
+     * most {@code timeoutMs}. Woken by the last completion; no polling.
+     */
+    private synchronized boolean awaitIdle(long timeoutMs) throws InterruptedException {
+      long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+      while (outstanding > 0) {
+        long left = deadline - System.nanoTime();
+        if (left <= 0) {
+          return false;
+        }
+        TimeUnit.NANOSECONDS.timedWait(this, left);
+      }
+      return true;
+    }
+
     @Override
     public void read(ByteBuffer dst, Callback cb) {
+      begin();
       try {
         ch.read(dst, 0, null, new CompletionHandler<Integer, Void>() {
           @Override
           public void completed(Integer n, Void a) {
+            end();
             cb.completed(n);
           }
 
           @Override
           public void failed(Throwable t, Void a) {
+            end();
             cb.failed(t);
           }
         });
       } catch (RuntimeException e) {
+        end();
         cb.failed(e);
       }
     }
 
+    /** One chain of writes until {@code src} is empty; counted as one operation. */
     @Override
     public void write(ByteBuffer src, Callback cb) {
+      begin();
       CompletionHandler<Integer, Void> h = new CompletionHandler<>() {
         private int total;
 
         @Override
         public void completed(Integer n, Void a) {
           if (n <= 0) {
+            end();
             cb.failed(new IOException("pipe write made no progress"));
             return;
           }
           total += n;
           if (!src.hasRemaining()) {
+            end();
             cb.completed(total);
             return;
           }
           try {
             ch.write(src, 0, null, this);
           } catch (RuntimeException e) {
+            end();
             cb.failed(e);
           }
         }
 
         @Override
         public void failed(Throwable t, Void a) {
+          end();
           cb.failed(t);
         }
       };
       try {
         ch.write(src, 0, null, h);
       } catch (RuntimeException e) {
+        end();
         cb.failed(e);
       }
     }
@@ -595,7 +634,15 @@ final class PipeBridge implements AutoCloseable {
     /**
      * Closing the channel fails pending operations and, for a private
      * executor, detaches the channel's completion port so its handler thread
-     * leaves native code. The executor is then shut down with a bounded wait.
+     * leaves native code.
+     *
+     * <p>The JDK hands the failure of each aborted operation to the executor
+     * from its completion-port thread, after {@code close} may already have
+     * returned. Shutting the executor down first makes that hand-off fail
+     * with {@code ShutdownChannelGroupException} on the JDK's thread, and the
+     * operation's handler (and any buffer it releases) never runs. So this
+     * waits, bounded, until every issued operation has completed, then shuts
+     * the executor down with a bounded wait.
      */
     @Override
     public void close() {
@@ -606,8 +653,11 @@ final class PipeBridge implements AutoCloseable {
       if (pool == null) {
         return;
       }
-      pool.shutdown();
       try {
+        if (!awaitIdle(CLOSE_WAIT_MS)) {
+          Timing.count("bridge_pending_io_abandoned", 1);
+        }
+        pool.shutdown();
         if (!pool.awaitTermination(CLOSE_WAIT_MS, TimeUnit.MILLISECONDS)) {
           Timing.count("bridge_pool_forced", 1);
           pool.shutdownNow();

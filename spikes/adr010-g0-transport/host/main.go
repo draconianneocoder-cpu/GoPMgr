@@ -99,11 +99,24 @@ func (e *evidence) absorb(r *jobRun, err error) {
 		e.Metrics[k] = v
 	}
 	e.Metrics["worker_exit_code"] = r.exitCode
+	// A thread that died of an exception is a defect even when the session
+	// looked fine (G0 found one in the overlapped pipe's close path).
+	n := uncaughtExceptions(r.stderr)
+	e.Metrics["worker_uncaught_exceptions"] = n
+	if n > 0 {
+		e.fail(fmt.Sprintf("the worker reported %d uncaught exception(s) on stderr", n))
+	}
 	if !r.connected {
 		e.fail("the worker never completed the handshake")
 	} else if r.driveErr != nil {
 		e.fail("session: " + r.driveErr.Error())
 	}
+}
+
+// uncaughtExceptions counts the JVM's reports of a thread ended by an
+// exception ("Exception in thread ..."). A clean worker prints none.
+func uncaughtExceptions(stderr string) int {
+	return strings.Count(stderr, `Exception in thread "`)
 }
 
 // summarize reports a latency distribution in the given unit.
@@ -251,7 +264,7 @@ func main() {
 			{"backpressure", func() *evidence { return scenarioBackpressure(cfg, t) }},
 			{"noise", func() *evidence { return scenarioNoise(cfg, t) }},
 			{"bad-credential", func() *evidence { return scenarioBadCredential(cfg, t) }},
-			{"replay", func() *evidence { return scenarioReplay(cfg, t) }},
+			{"replay", func() *evidence { return scenarioReplay(cfg, t, 10) }},
 			{"impersonate", func() *evidence { return scenarioImpersonate(cfg, t) }},
 			{"kill", func() *evidence { return scenarioKill(cfg, t) }},
 			{"cancel", func() *evidence { return scenarioCancel(cfg, t, *cancelRuns, "cancel", 0) }},
@@ -261,6 +274,11 @@ func main() {
 			{"oversize", func() *evidence { return scenarioOversize(cfg, t) }},
 			{"concurrent", func() *evidence { return scenarioConcurrent(cfg, t, 4) }},
 			{"connect-flood", func() *evidence { return scenarioConnectFlood(cfg, t) }},
+			// Abnormal endings, on every transport: the host must see the
+			// stream fail and leave nothing behind, whatever carries it.
+			{"tree-kill", func() *evidence { return scenarioTreeKill(cfg, t) }},
+			{"crash", func() *evidence { return scenarioCrash(cfg, t) }},
+			{"oom", func() *evidence { return scenarioOOM(cfg, t) }},
 		}
 		for _, st := range perTransport {
 			if !want(st.name) {
@@ -290,9 +308,6 @@ func main() {
 			{"squat", func() *evidence { return scenarioSquat(t) }},
 			{"detector-self-check", func() *evidence { return scenarioSelfCheck(t) }},
 			{"bridge-selftest", func() *evidence { return scenarioBridgeSelfTest(cfg) }},
-			{"tree-kill", func() *evidence { return scenarioTreeKill(cfg, t) }},
-			{"crash", func() *evidence { return scenarioCrash(cfg, t) }},
-			{"oom", func() *evidence { return scenarioOOM(cfg, t) }},
 		}
 		for _, st := range perOS {
 			if want(st.name) {
