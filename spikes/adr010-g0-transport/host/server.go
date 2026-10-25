@@ -123,6 +123,10 @@ func (l *peerListener) setExpected(pid int) {
 	l.mu.Lock()
 	l.expect = pid
 	l.mu.Unlock()
+	// A pairing listener checks each half itself, before pairing.
+	if inner, ok := l.Listener.(interface{ setExpected(int) }); ok {
+		inner.setExpected(pid)
+	}
 }
 
 func (l *peerListener) Accept() (net.Conn, error) {
@@ -144,7 +148,8 @@ func (l *peerListener) Accept() (net.Conn, error) {
 				_ = c.Close()
 				continue
 			}
-		case pid != expect:
+		case expect == 0 || pid != expect:
+			// No worker yet, or another process: refuse.
 			l.refused.Add(1)
 			_ = c.Close()
 			continue

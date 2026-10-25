@@ -59,3 +59,26 @@ func osVersion() string {
 	v, _ := run(10, "sw_vers", "-productVersion")
 	return "macOS " + strings.TrimSpace(string(v))
 }
+
+// groupMembers counts live (non-zombie) processes in a process group.
+func groupMembers(pgid int) (int, string) {
+	out, err := run(10, "ps", "-A", "-o", "pgid=,stat=")
+	if err != nil {
+		return -1, "ps failed: " + err.Error()
+	}
+	n := 0
+	for _, line := range strings.Split(string(out), "\n") {
+		f := strings.Fields(line)
+		if len(f) == 2 && f[0] == strconv.Itoa(pgid) && !strings.HasPrefix(f[1], "Z") {
+			n++
+		}
+	}
+	return n, "ps process groups, zombies excluded"
+}
+
+// processAlive reports whether pid is a live (non-zombie) process.
+func processAlive(pid int) bool {
+	out, err := run(10, "ps", "-o", "stat=", "-p", strconv.Itoa(pid))
+	s := strings.TrimSpace(string(out))
+	return err == nil && s != "" && !strings.HasPrefix(s, "Z")
+}

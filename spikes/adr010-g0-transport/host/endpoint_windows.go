@@ -29,6 +29,10 @@ type endpoint struct {
 
 func transportsForOS() []string { return []string{"uds-nio", "npipe", "npipe-dual", "npipe-async"} }
 
+// diagnosticTransports run only the cancel scenario, as controls. The
+// default-pool overlapped pipe reproduces G0 finding W2 for comparison.
+func diagnosticTransports() []string { return []string{"npipe-async-default"} }
+
 // listen creates the endpoint for one transport. Named pipes get an
 // explicit DACL for the current user only; go-winio creates the first
 // instance with FILE_CREATE (refusing an existing name) and sets
@@ -55,7 +59,7 @@ func listen(transport string) (*endpoint, error) {
 			return err
 		}
 		return ep, nil
-	case "npipe", "npipe-dual", "npipe-async":
+	case "npipe", "npipe-dual", "npipe-async", "npipe-async-default":
 		id, err := randomID()
 		if err != nil {
 			return nil, err
@@ -66,7 +70,7 @@ func listen(transport string) (*endpoint, error) {
 			return nil, err
 		}
 		if transport == "npipe-dual" {
-			ln = &dualListener{Listener: ln}
+			ln = newPairListener(ln, peerPID, pairTimeout)
 		}
 		return &endpoint{addr: name, ln: ln, cleanup: ln.Close}, nil
 	}
@@ -205,46 +209,13 @@ func afUnixPeerPID(c *net.UnixConn) (int, error) {
 	return int(pid), nil
 }
 
-// dualListener pairs two pipe connections from one client into one duplex
-// connection: the client writes on the first and reads from the second.
-type dualListener struct{ net.Listener }
-
-func (l *dualListener) Accept() (net.Conn, error) {
-	up, err := l.Listener.Accept()
-	if err != nil {
-		return nil, err
-	}
-	down, err := l.Listener.Accept()
-	if err != nil {
-		_ = up.Close()
-		return nil, err
-	}
-	return &dualConn{up: up, down: down}, nil
-}
-
-type dualConn struct{ up, down net.Conn }
-
-func (c *dualConn) Read(p []byte) (int, error)  { return c.up.Read(p) }
-func (c *dualConn) Write(p []byte) (int, error) { return c.down.Write(p) }
-func (c *dualConn) Close() error {
-	e1, e2 := c.up.Close(), c.down.Close()
-	return errors.Join(e1, e2)
-}
-func (c *dualConn) LocalAddr() net.Addr  { return c.up.LocalAddr() }
-func (c *dualConn) RemoteAddr() net.Addr { return c.up.RemoteAddr() }
-func (c *dualConn) SetDeadline(t time.Time) error {
-	return errors.Join(c.up.SetDeadline(t), c.down.SetDeadline(t))
-}
-func (c *dualConn) SetReadDeadline(t time.Time) error  { return c.up.SetReadDeadline(t) }
-func (c *dualConn) SetWriteDeadline(t time.Time) error { return c.down.SetWriteDeadline(t) }
-
 // dialEndpoint connects the way a foreign local process would (TPT-018).
 func dialEndpoint(addr, transport string) (net.Conn, error) {
 	timeout := 5 * time.Second
 	switch transport {
 	case "uds-nio":
 		return net.Dial("unix", addr)
-	case "npipe", "npipe-async":
+	case "npipe", "npipe-async", "npipe-async-default":
 		return winio.DialPipe(addr, &timeout)
 	case "npipe-dual":
 		up, err := winio.DialPipe(addr, &timeout)

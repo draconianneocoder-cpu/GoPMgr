@@ -78,6 +78,7 @@ type worker struct {
 	exitErr  error
 	started  time.Time
 	exitedAt time.Time
+	tree     *processTree // the worker and every process it starts
 }
 
 // stillRunning is what exitCode returns when the worker has not exited.
@@ -126,6 +127,9 @@ func start(spec launchSpec, operationID, workerID string) (*worker, error) {
 		"-Xmx128m",
 		"-XX:+UseSerialGC",
 		"-XX:+DisableAttachMechanism",
+		// A worker that runs out of heap exits at once with code 3,
+		// instead of limping on in an unknown state.
+		"-XX:+ExitOnOutOfMemoryError",
 		"-jar", spec.jar)
 	cmd.Env = cleanEnv()
 	cmd.Dir = spec.scratch
@@ -142,6 +146,16 @@ func start(spec launchSpec, operationID, workerID string) (*worker, error) {
 		return nil, fmt.Errorf("start worker: %w", err)
 	}
 	w.pid = cmd.Process.Pid
+	// Put the worker's whole future process tree under the host's
+	// control before it runs (on Windows it starts suspended). Fail
+	// closed: a worker the host cannot contain is killed, not used.
+	tree, err := attachTree(w.pid)
+	if err != nil {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		return nil, fmt.Errorf("contain worker: %w", err)
+	}
+	w.tree = tree
 	if spec.onStarted != nil {
 		spec.onStarted(w.pid)
 	}
@@ -198,8 +212,17 @@ func (w *worker) exitCode(d time.Duration) int {
 
 // kill ends the worker's process tree and reaps it.
 func (w *worker) kill() {
-	killTree(w.cmd)
+	w.tree.kill()
 	<-w.exited
+}
+
+// cpuTime is the worker JVM's user plus system CPU time, once it exited.
+func (w *worker) cpuTime() time.Duration {
+	ps := w.cmd.ProcessState
+	if ps == nil {
+		return -1
+	}
+	return ps.UserTime() + ps.SystemTime()
 }
 
 func (w *worker) alive() bool {

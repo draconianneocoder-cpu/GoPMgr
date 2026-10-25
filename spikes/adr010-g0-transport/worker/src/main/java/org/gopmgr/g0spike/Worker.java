@@ -48,12 +48,19 @@ import org.gopmgr.g0spike.pb.WorkerSessionGrpc;
  * requested local IPC transport, and runs the scenario the host sends.
  */
 public final class Worker {
+  // Worker exit codes stay clear of the JVM's own: 1 (uncaught error),
+  // 3 (-XX:+ExitOnOutOfMemoryError) and 134 (abort).
   static final int EXIT_OK = 0;
-  static final int EXIT_BOOTSTRAP = 2;
-  static final int EXIT_CANCELLED = 3;
-  static final int EXIT_REJECTED = 4;
-  static final int EXIT_ERROR = 5;
-  static final int EXIT_EXPIRED = 6;
+  static final int EXIT_BOOTSTRAP = 20;
+  static final int EXIT_CANCELLED = 21;
+  static final int EXIT_REJECTED = 22;
+  static final int EXIT_ERROR = 23;
+  static final int EXIT_EXPIRED = 24;
+  /** Used only by the crash scenario, which halts the JVM on purpose. */
+  static final int EXIT_CRASH = 70;
+
+  /** Record index that reports the grandchild's process ID. */
+  static final long SPAWN_SENTINEL = -2L;
 
   /** Largest bootstrap the worker accepts, in bytes. */
   static final int MAX_BOOTSTRAP = 4096;
@@ -94,6 +101,7 @@ public final class Worker {
       code = EXIT_ERROR;
     }
     Timing.mark("exit_call");
+    Timing.snapshotNativeThreads();
     System.exit(code);
   }
 
@@ -296,6 +304,22 @@ public final class Worker {
           if ("reconnect".equals(cmd.getExecute().getScenario())) {
             replayProof();
           }
+          switch (cmd.getExecute().getScenario()) {
+            case "spawn" -> spawnGrandchild();
+            case "crash" -> {
+              spawnGrandchild();
+              haltSoon();
+            }
+            case "oom" -> exhaustHeap();
+            case "oversize" -> {
+              // One message larger than the host accepts (resource limit).
+              send(WorkerEvent.newBuilder().setRecord(Record.newBuilder()
+                  .setIndex(0)
+                  .setPayload(ByteString.copyFrom(new byte[recordBytes]))));
+              recordsWanted = 0;
+            }
+            default -> { }
+          }
           pump();
         }
         case SOURCE -> {
@@ -363,6 +387,53 @@ public final class Worker {
       }, "g0-replay");
       t.setDaemon(true);
       t.start();
+    }
+
+    /**
+     * Starts a grandchild process (a sleeping JVM) and reports its process
+     * ID, so the host can check that ending the tree ends it too (TPT-013).
+     */
+    private void spawnGrandchild() {
+      String report;
+      try {
+        String javaExe = ProcessHandle.current().info().command().orElseThrow();
+        String jar = java.nio.file.Path.of(
+            Worker.class.getProtectionDomain().getCodeSource().getLocation().toURI()).toString();
+        Process p = new ProcessBuilder(javaExe, "-Xmx16m", "-XX:+UseSerialGC",
+            "-cp", jar, "org.gopmgr.g0spike.Sleeper", "120")
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .start();
+        p.getOutputStream().close();
+        report = "pid:" + p.pid();
+      } catch (Exception e) {
+        report = "spawn-error:" + e.getClass().getSimpleName();
+      }
+      send(WorkerEvent.newBuilder().setRecord(Record.newBuilder()
+          .setIndex(SPAWN_SENTINEL)
+          .setPayload(ByteString.copyFromUtf8(report))));
+    }
+
+    /** Ends the JVM abruptly, mid-stream, leaving the grandchild behind. */
+    private static void haltSoon() {
+      Thread t = new Thread(() -> {
+        try {
+          Thread.sleep(300);
+        } catch (InterruptedException ignored) {
+          // Halt anyway.
+        }
+        Runtime.getRuntime().halt(EXIT_CRASH);
+      }, "g0-crash");
+      t.setDaemon(true);
+      t.start();
+    }
+
+    /** Allocates until the heap is exhausted; the JVM exits on the error. */
+    private static void exhaustHeap() {
+      List<byte[]> hog = new ArrayList<>();
+      while (true) {
+        hog.add(new byte[1 << 20]);
+      }
     }
 
     /** Simulates a chatty library: 1 MiB on stdout and on stderr (TPT-021). */
@@ -433,10 +504,13 @@ public final class Worker {
         }
         case "npipe":
         case "npipe-dual":
-        case "npipe-async": {
+        case "npipe-async":
+        case "npipe-async-default": {
           PipeBridge.Mode mode = switch (kind) {
             case "npipe-dual" -> PipeBridge.Mode.SYNC_DUAL;
             case "npipe-async" -> PipeBridge.Mode.ASYNC_SINGLE;
+            // Diagnostic control for G0 finding W2 only.
+            case "npipe-async-default" -> PipeBridge.Mode.ASYNC_DEFAULT_POOL;
             default -> PipeBridge.Mode.SYNC_SINGLE;
           };
           PipeBridge bridge = PipeBridge.start(endpoint, mode);
@@ -452,7 +526,9 @@ public final class Worker {
     @Override
     public void close() throws Exception {
       if (group != null) {
-        group.shutdownGracefully(0, 1, TimeUnit.SECONDS);
+        // Bounded: an event loop left in a native select would delay JVM exit.
+        boolean down = group.shutdownGracefully(0, 1, TimeUnit.SECONDS).awaitUninterruptibly(2_000);
+        Timing.mark(down ? "group_terminated" : "group_not_terminated");
       }
       if (extra != null) {
         extra.close();

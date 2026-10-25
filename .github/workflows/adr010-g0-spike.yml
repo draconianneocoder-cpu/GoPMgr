@@ -1,12 +1,13 @@
 # SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# ADR-010 G0 transport evidence (P01, authorized 2026-10-24). This is not a
-# release gate and builds nothing GoPMgr ships. It runs the isolated spike
-# in spikes/adr010-g0-transport on real Linux, macOS and Windows runners and
-# uploads the evidence file. The job reports; the evidence file records
-# PASS, FAIL or BLOCKED for each scenario. It runs only when the spike or
-# this file changes.
+# ADR-010 G0 transport evidence (P01, authorized 2026-10-24; Windows
+# diagnostics authorized 2026-10-25). This is not a release gate and builds
+# nothing GoPMgr ships. It runs the isolated spike in
+# spikes/adr010-g0-transport on real Linux, macOS and Windows runners, x64
+# and Arm, and uploads the evidence. The job reports; the evidence file
+# records PASS, FAIL or BLOCKED for each scenario. It runs only when the
+# spike or this file changes.
 name: ADR-010 G0 spike
 
 on:
@@ -26,11 +27,17 @@ jobs:
   evidence:
     name: G0 evidence, not a gate (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-26.04, macos-15, macos-15-intel, windows-2025]
+        include:
+          - { os: ubuntu-26.04, jdk: linux-x64 }
+          - { os: ubuntu-24.04-arm, jdk: linux-aarch64 }
+          - { os: macos-15, jdk: mac-aarch64 }
+          - { os: macos-15-intel, jdk: mac-x64 }
+          - { os: windows-2025, jdk: windows-x64 }
+          - { os: windows-11-arm, jdk: windows-aarch64 }
     defaults:
       run:
         shell: bash
@@ -42,36 +49,85 @@ jobs:
           go-version-file: spikes/adr010-g0-transport/host/go.mod
           cache: false
 
-      - name: Select the runner's preinstalled JDK 21
+      - name: Name the evidence files
         run: |
-          jdk="${JAVA_HOME_21_X64:-${JAVA_HOME_21_arm64:-${JAVA_HOME_21_ARM64:-}}}"
-          if [ -z "$jdk" ]; then
-            echo "No JDK 21 on this runner; available:" >&2
-            env | grep '^JAVA_HOME' >&2 || true
-            exit 1
+          echo "EVIDENCE=$RUNNER_TEMP/g0-${{ matrix.os }}.jsonl" >> "$GITHUB_ENV"
+          echo "OFFLINE_EVIDENCE=$RUNNER_TEMP/g0-${{ matrix.os }}-offline.jsonl" >> "$GITHUB_ENV"
+
+      - name: Fetch the pinned JDK and Maven (checksums verified)
+        run: |
+          out="$(bash spikes/adr010-g0-transport/scripts/toolchain.sh "${{ matrix.jdk }}" "$RUNNER_TEMP/toolchain")"
+          jdk="$(echo "$out" | sed -n 's/^JDK_HOME=//p')"
+          mvnbin="$(echo "$out" | sed -n 's/^MAVEN_BIN=//p')"
+          if [ "$RUNNER_OS" = Windows ]; then
+            jdk="$(cygpath -m "$jdk")"
+            mvnbin="$(cygpath -w "$mvnbin")"
           fi
           echo "JAVA_HOME=$jdk" >> "$GITHUB_ENV"
+          echo "$mvnbin" >> "$GITHUB_PATH"
           "$jdk/bin/java" -version
 
       - name: Build the worker
         run: mvn -B -q -f spikes/adr010-g0-transport/worker/pom.xml -DskipTests package
 
-      - name: Run the probe
+      - name: Build a jlink runtime for the worker
+        run: |
+          jar=spikes/adr010-g0-transport/worker/target/g0-worker.jar
+          mods="$("$JAVA_HOME/bin/jdeps" --ignore-missing-deps --multi-release 21 --print-module-deps "$jar")"
+          echo "modules: $mods"
+          rt="$RUNNER_TEMP/g0-runtime"
+          if [ "$RUNNER_OS" = Windows ]; then
+            rt="$(cygpath -m "$rt")"
+          fi
+          "$JAVA_HOME/bin/jlink" --add-modules "$mods" --strip-debug --no-header-files --no-man-pages --output "$rt"
+          echo "G0_RUNTIME=$rt" >> "$GITHUB_ENV"
+          du -sh "$rt" || true
+
+      - name: Unit tests (host)
         working-directory: spikes/adr010-g0-transport/host
+        run: go test ./...
+
+      - name: Build the probe
+        working-directory: spikes/adr010-g0-transport/host
+        run: |
+          exe=""
+          if [ "$RUNNER_OS" = Windows ]; then exe=".exe"; fi
+          go build -o "$RUNNER_TEMP/g0probe$exe" .
+          echo "G0_PROBE=$RUNNER_TEMP/g0probe$exe" >> "$GITHUB_ENV"
+
+      - name: Run the probe on the jlink runtime
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          EVIDENCE: ${{ runner.temp }}/g0-${{ matrix.os }}.jsonl
-        run: go run . -java "$JAVA_HOME/bin/java" -jar ../worker/target/g0-worker.jar -head "$HEAD_SHA" -out "$EVIDENCE"
+        run: |
+          "$G0_PROBE" -java "$G0_RUNTIME/bin/java" -runtime jlink \
+            -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar \
+            -head "$HEAD_SHA" -out "$EVIDENCE"
+
+      - name: Offline run (Linux, empty network namespace)
+        if: runner.os == 'Linux'
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Unprivileged user namespaces may be restricted by AppArmor.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          if unshare -rn true; then
+            unshare -rn "$G0_PROBE" -java "$G0_RUNTIME/bin/java" -runtime jlink-offline \
+              -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar \
+              -scenarios handshake,duplex,cancel,tree-kill,bridge-selftest -cancel-runs 10 \
+              -head "$HEAD_SHA" -out "$OFFLINE_EVIDENCE"
+          else
+            echo "BLOCKED: no unprivileged network namespace on this runner" | tee "$OFFLINE_EVIDENCE"
+          fi
 
       - name: Show the evidence
         if: always()
-        env:
-          EVIDENCE: ${{ runner.temp }}/g0-${{ matrix.os }}.jsonl
-        run: cat "$EVIDENCE" || true
+        run: |
+          cat "$EVIDENCE" || true
+          cat "$OFFLINE_EVIDENCE" 2>/dev/null || true
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
           name: g0-evidence-${{ matrix.os }}
-          path: ${{ runner.temp }}/g0-${{ matrix.os }}.jsonl
+          path: ${{ runner.temp }}/g0-${{ matrix.os }}*.jsonl
           if-no-files-found: warn

@@ -101,3 +101,50 @@ func osVersion() string {
 	}
 	return name + ", kernel " + strings.TrimSpace(string(rel))
 }
+
+// procState reads a process's state letter and process group from
+// /proc/<pid>/stat. The command name is in parentheses and may contain
+// spaces, so parsing starts after the last ')'.
+func procState(pid string) (state byte, pgrp int, ok bool) {
+	data, err := os.ReadFile("/proc/" + pid + "/stat")
+	if err != nil {
+		return 0, 0, false
+	}
+	i := bytes.LastIndexByte(data, ')')
+	if i < 0 {
+		return 0, 0, false
+	}
+	f := strings.Fields(string(data[i+1:]))
+	if len(f) < 3 {
+		return 0, 0, false
+	}
+	g, err := strconv.Atoi(f[2])
+	if err != nil {
+		return 0, 0, false
+	}
+	return f[0][0], g, true
+}
+
+// groupMembers counts live (non-zombie) processes in a process group.
+func groupMembers(pgid int) (int, string) {
+	entries, err := os.ReadDir("/proc")
+	if err != nil {
+		return -1, "unreadable /proc: " + err.Error()
+	}
+	n := 0
+	for _, e := range entries {
+		if _, err := strconv.Atoi(e.Name()); err != nil {
+			continue
+		}
+		if st, g, ok := procState(e.Name()); ok && g == pgid && st != 'Z' {
+			n++
+		}
+	}
+	return n, "/proc process groups, zombies excluded"
+}
+
+// processAlive reports whether pid is a live (non-zombie) process.
+func processAlive(pid int) bool {
+	st, _, ok := procState(strconv.Itoa(pid))
+	return ok && st != 'Z'
+}

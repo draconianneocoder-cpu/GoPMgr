@@ -30,6 +30,9 @@ type endpoint struct {
 	cleanup func() error
 }
 
+// diagnosticTransports run only the cancel scenario, as controls.
+func diagnosticTransports() []string { return nil }
+
 // transportsForOS lists the worker transports this OS can attempt.
 func transportsForOS() []string {
 	if runtimeGOOS == "darwin" {

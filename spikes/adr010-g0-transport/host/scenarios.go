@@ -27,12 +27,17 @@ import (
 	"gopmgr-g0spike/host/g0pb"
 )
 
+// Worker exit codes (Worker.java). They avoid the JVM's own codes: 1 for
+// an uncaught error, 3 for -XX:+ExitOnOutOfMemoryError, 134 for abort.
 const (
 	exitOK        = 0
-	exitBootstrap = 2
-	exitCancelled = 3
-	exitRejected  = 4
-	exitExpired   = 6
+	exitJVMOOM    = 3
+	exitBootstrap = 20
+	exitCancelled = 21
+	exitRejected  = 22
+	exitError     = 23
+	exitExpired   = 24
+	exitCrash     = 70
 )
 
 // replaySentinel is the record index the worker uses to report its replay.
@@ -145,86 +150,98 @@ func scenarioHandshake(cfg config, transport string) *evidence {
 	return ev
 }
 
+// duplexOutcome is what one full-duplex session measured.
+type duplexOutcome struct {
+	elapsed  time.Duration
+	mismatch []string
+}
+
+// duplexDrive sends sourceBytes to the worker while it streams `records`
+// records back, at the same time, and checks SHA-256 digests both ways.
+func duplexDrive(records uint64, size uint32, sourceBytes int, out *duplexOutcome) func(*jobRun, g0pb.WorkerSession_ConnectServer) error {
+	const block = 64 << 10
+	return func(r *jobRun, stream g0pb.WorkerSession_ConnectServer) error {
+		var seq uint64
+		t0 := time.Now()
+		if err := execute(stream, &seq, "duplex", records, size); err != nil {
+			return err
+		}
+		srcSum := sha256.New()
+		sendErr := make(chan error, 1)
+		go func() {
+			// Sends source blocks while the main goroutine receives records:
+			// both directions run at once (full duplex).
+			buf := make([]byte, block)
+			for sent := 0; sent < sourceBytes; sent += block {
+				for i := range buf {
+					buf[i] = byte((sent + i) * 7)
+				}
+				srcSum.Write(buf)
+				chunk := append([]byte(nil), buf...)
+				if err := send(stream, &seq, &g0pb.HostCommand{Command: &g0pb.HostCommand_Source{Source: &g0pb.SourceBlock{
+					Chunk: chunk, Last: sent+block >= sourceBytes}}}); err != nil {
+					sendErr <- err
+					return
+				}
+			}
+			sendErr <- nil
+		}()
+		recSum := sha256.New()
+		var got uint64
+		var done *g0pb.Completed
+		for done == nil {
+			evt, err := stream.Recv()
+			if err != nil {
+				return fmt.Errorf("receive: %w", err)
+			}
+			if rec := evt.GetRecord(); rec != nil {
+				var idx [8]byte
+				binary.BigEndian.PutUint64(idx[:], rec.Index)
+				recSum.Write(idx[:])
+				recSum.Write(rec.Payload)
+				if !bytes.Equal(rec.Payload, payload(rec.Index, size)) {
+					out.mismatch = append(out.mismatch, fmt.Sprintf("record %d payload differs", rec.Index))
+				}
+				got++
+			}
+			done = evt.GetCompleted()
+		}
+		if err := <-sendErr; err != nil {
+			return fmt.Errorf("send source: %w", err)
+		}
+		out.elapsed = time.Since(t0)
+		if got != records || done.RecordsSent != records {
+			out.mismatch = append(out.mismatch, fmt.Sprintf("records host %d worker %d want %d", got, done.RecordsSent, records))
+		}
+		if done.SourceBytes != uint64(sourceBytes) || !bytes.Equal(done.SourceSha256, srcSum.Sum(nil)) {
+			out.mismatch = append(out.mismatch, "source digest or size differs")
+		}
+		if !bytes.Equal(done.RecordsSha256, recSum.Sum(nil)) {
+			out.mismatch = append(out.mismatch, "records digest differs")
+		}
+		r.set("worker_max_heap_used_bytes", done.MaxHeapUsedBytes)
+		r.sampleRSS()
+		return finish(stream, &seq)
+	}
+}
+
 func scenarioDuplex(cfg config, transport string) *evidence {
 	ev := newEvidence("duplex", transport, append(transportTestIDs(transport), "TPT-012"))
 	const records, size = 100_000, 256
-	const sourceBytes, block = 64 << 20, 64 << 10
-	var elapsed time.Duration
-	var mismatch []string
+	const sourceBytes = 64 << 20
+	var out duplexOutcome
 	r, err := runJob(cfg, jobOptions{transport: transport, timeout: 180 * time.Second,
-		drive: func(r *jobRun, stream g0pb.WorkerSession_ConnectServer) error {
-			var seq uint64
-			t0 := time.Now()
-			if err := execute(stream, &seq, "duplex", records, size); err != nil {
-				return err
-			}
-			srcSum := sha256.New()
-			sendErr := make(chan error, 1)
-			go func() {
-				// Sends source blocks while the main goroutine receives records:
-				// both directions run at once (full duplex).
-				buf := make([]byte, block)
-				for sent := 0; sent < sourceBytes; sent += block {
-					for i := range buf {
-						buf[i] = byte((sent + i) * 7)
-					}
-					srcSum.Write(buf)
-					chunk := append([]byte(nil), buf...)
-					if err := send(stream, &seq, &g0pb.HostCommand{Command: &g0pb.HostCommand_Source{Source: &g0pb.SourceBlock{
-						Chunk: chunk, Last: sent+block >= sourceBytes}}}); err != nil {
-						sendErr <- err
-						return
-					}
-				}
-				sendErr <- nil
-			}()
-			recSum := sha256.New()
-			var got uint64
-			var done *g0pb.Completed
-			for done == nil {
-				evt, err := stream.Recv()
-				if err != nil {
-					return fmt.Errorf("receive: %w", err)
-				}
-				if rec := evt.GetRecord(); rec != nil {
-					var idx [8]byte
-					binary.BigEndian.PutUint64(idx[:], rec.Index)
-					recSum.Write(idx[:])
-					recSum.Write(rec.Payload)
-					if !bytes.Equal(rec.Payload, payload(rec.Index, size)) {
-						mismatch = append(mismatch, fmt.Sprintf("record %d payload differs", rec.Index))
-					}
-					got++
-				}
-				done = evt.GetCompleted()
-			}
-			if err := <-sendErr; err != nil {
-				return fmt.Errorf("send source: %w", err)
-			}
-			elapsed = time.Since(t0)
-			if got != records || done.RecordsSent != records {
-				mismatch = append(mismatch, fmt.Sprintf("records host %d worker %d want %d", got, done.RecordsSent, records))
-			}
-			if done.SourceBytes != sourceBytes || !bytes.Equal(done.SourceSha256, srcSum.Sum(nil)) {
-				mismatch = append(mismatch, "source digest or size differs")
-			}
-			if !bytes.Equal(done.RecordsSha256, recSum.Sum(nil)) {
-				mismatch = append(mismatch, "records digest differs")
-			}
-			r.set("worker_max_heap_used_bytes", done.MaxHeapUsedBytes)
-			r.sampleRSS()
-			return finish(stream, &seq)
-		}})
+		drive: duplexDrive(records, size, sourceBytes, &out)})
 	ev.absorb(r, err)
-	for _, m := range mismatch {
+	for _, m := range out.mismatch {
 		ev.fail(m)
 	}
-	if r != nil && r.connected && elapsed > 0 {
+	if r != nil && r.connected && out.elapsed > 0 {
 		total := float64(sourceBytes + records*size)
-		ev.Metrics["elapsed_ms"] = elapsed.Milliseconds()
+		ev.Metrics["elapsed_ms"] = out.elapsed.Milliseconds()
 		ev.Metrics["host_to_worker_bytes"] = sourceBytes
 		ev.Metrics["worker_to_host_bytes"] = records * size
-		ev.Metrics["combined_mib_per_s"] = round2(total / (1 << 20) / elapsed.Seconds())
+		ev.Metrics["combined_mib_per_s"] = round2(total / (1 << 20) / out.elapsed.Seconds())
 		commonChecks(r, ev)
 	}
 	return ev
@@ -277,11 +294,16 @@ func scenarioBackpressure(cfg config, transport string) *evidence {
 	return ev
 }
 
-func scenarioCancel(cfg config, transport string, runs int) *evidence {
-	ev := newEvidence("cancel", transport, append(transportTestIDs(transport), "TPT-012", "TPT-013"))
+// scenarioCancel runs the host-cancel case `runs` times. With a stall, the
+// host stops reading for that long first, so the worker's buffers and the
+// pipe are full when the cancel arrives (cancel under backpressure).
+func scenarioCancel(cfg config, transport string, runs int, name string, stall time.Duration) *evidence {
+	ev := newEvidence(name, transport, append(transportTestIDs(transport), "TPT-012", "TPT-013"))
 	var latencies, starts, toEOF, eofToExit []time.Duration
 	phases := map[string][]time.Duration{}
-	var example string
+	nativeRuns := 0
+	var example, nativeExample string
+	peakPending := int64(0)
 	codesSeen := map[int]int{}
 	for i := 0; i < runs; i++ {
 		var t0 time.Time
@@ -295,6 +317,9 @@ func scenarioCancel(cfg config, transport string, runs int) *evidence {
 					if _, err := stream.Recv(); err != nil {
 						return err
 					}
+				}
+				if stall > 0 {
+					time.Sleep(stall)
 				}
 				t0 = time.Now()
 				return status.Error(codes.Canceled, "host cancelled the job")
@@ -312,18 +337,24 @@ func scenarioCancel(cfg config, transport string, runs int) *evidence {
 				eofToExit = append(eofToExit, r.w.exitedAt.Sub(eof))
 			}
 		}
-		if line, marks := workerTiming(r.stderr); marks != nil {
-			if example == "" {
-				example = line
-			}
-			if base, ok := marks["stream_error"]; ok {
-				for label, at := range marks {
-					if at >= base {
-						phases[label] = append(phases[label], at-base)
-					}
+		d := parseWorkerDiag(r.stderr)
+		if d.timingLine != "" && example == "" {
+			example = d.timingLine
+		}
+		if base, ok := d.marks["stream_error"]; ok {
+			for label, at := range d.marks {
+				if at >= base {
+					phases[label] = append(phases[label], at-base)
 				}
 			}
 		}
+		if len(d.native) > 0 {
+			nativeRuns++
+			if nativeExample == "" {
+				nativeExample = strings.Join(d.native, ";")
+			}
+		}
+		peakPending = max(peakPending, d.stats["bridge_peak_pending_bytes"])
 		codesSeen[r.exitCode]++
 		if r.exitCode != exitCancelled {
 			ev.fail(fmt.Sprintf("run %d: worker exit code %d, want %d", i, r.exitCode, exitCancelled))
@@ -331,8 +362,14 @@ func scenarioCancel(cfg config, transport string, runs int) *evidence {
 		if r.w.alive() {
 			ev.fail(fmt.Sprintf("run %d: worker still running after cancel", i))
 		}
+		if n, _ := r.metrics["tree_left_after_exit"].(int); n > 0 {
+			ev.fail(fmt.Sprintf("run %d: %d processes left in the worker's tree after exit", i, n))
+		}
 	}
 	ev.Metrics["runs"] = runs
+	if stall > 0 {
+		ev.Metrics["host_stall_ms"] = stall.Milliseconds()
+	}
 	ev.Metrics["cancel_to_exit_ms"] = summarize(latencies, time.Millisecond)
 	// Diagnostics: where the time between the host's cancel and the
 	// worker's exit goes. Host clock: cancel to the worker closing its end
@@ -348,34 +385,67 @@ func scenarioCancel(cfg config, transport string, runs int) *evidence {
 	if example != "" {
 		ev.Metrics["worker_timing_example"] = example
 	}
+	// Threads still in a native wait when the worker called System.exit;
+	// HotSpot waits for them before the process ends.
+	ev.Metrics["runs_with_native_threads_at_exit"] = nativeRuns
+	if nativeExample != "" {
+		ev.Metrics["native_threads_at_exit_example"] = nativeExample
+	}
+	if peakPending > 0 {
+		ev.Metrics["bridge_peak_pending_bytes"] = peakPending
+	}
 	ev.Metrics["cold_start_ms"] = summarize(starts, time.Millisecond)
 	ev.Metrics["exit_codes"] = codesSeen
 	return ev
 }
 
-// workerTiming finds the worker's g0-timing line in its stderr and parses
-// it into label -> time since the worker started.
-func workerTiming(stderr string) (string, map[string]time.Duration) {
+// workerDiag is what the worker's diagnostic lines report (Timing.java).
+type workerDiag struct {
+	timingLine string
+	marks      map[string]time.Duration // label -> time since the worker started
+	stats      map[string]int64
+	native     []string // thread@frame in a native wait at exit
+}
+
+// parseWorkerDiag reads the g0-timing, g0-stats and g0-native-at-exit
+// lines from the worker's stderr. Unknown or malformed parts are skipped.
+func parseWorkerDiag(stderr string) workerDiag {
+	d := workerDiag{marks: map[string]time.Duration{}, stats: map[string]int64{}}
 	for _, line := range splitLines(stderr) {
 		line = strings.TrimRight(line, "\r")
-		rest, ok := strings.CutPrefix(line, "g0-timing: ")
+		if rest, ok := strings.CutPrefix(line, "g0-timing: "); ok {
+			d.timingLine = line
+			for k, v := range keyValues(rest) {
+				d.marks[k] = time.Duration(v) * time.Microsecond
+			}
+		} else if rest, ok := strings.CutPrefix(line, "g0-stats: "); ok {
+			for k, v := range keyValues(rest) {
+				d.stats[k] = v
+			}
+		} else if rest, ok := strings.CutPrefix(line, "g0-native-at-exit:"); ok {
+			for _, t := range strings.Split(strings.TrimSpace(rest), ";") {
+				if t != "" {
+					d.native = append(d.native, t)
+				}
+			}
+		}
+	}
+	return d
+}
+
+func keyValues(s string) map[string]int64 {
+	out := map[string]int64{}
+	for _, kv := range strings.Split(s, ",") {
+		k, v, ok := strings.Cut(kv, "=")
 		if !ok {
 			continue
 		}
-		marks := map[string]time.Duration{}
-		for _, kv := range strings.Split(rest, ",") {
-			k, v, ok := strings.Cut(kv, "=")
-			if !ok {
-				continue
-			}
-			var us int64
-			if _, err := fmt.Sscan(v, &us); err == nil {
-				marks[k] = time.Duration(us) * time.Microsecond
-			}
+		var n int64
+		if _, err := fmt.Sscan(v, &n); err == nil {
+			out[k] = n
 		}
-		return line, marks
 	}
-	return "", nil
+	return out
 }
 
 func scenarioKill(cfg config, transport string) *evidence {
@@ -393,7 +463,7 @@ func scenarioKill(cfg config, transport string) *evidence {
 				}
 			}
 			t0 := time.Now()
-			killTree(r.w.cmd)
+			r.w.tree.kill()
 			for {
 				if _, err := stream.Recv(); err != nil {
 					detect = time.Since(t0)

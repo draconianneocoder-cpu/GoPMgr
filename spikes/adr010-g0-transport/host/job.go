@@ -48,6 +48,7 @@ type jobRun struct {
 	driveErr  error
 	connected bool
 	stderr    string // the worker's captured stderr, for diagnostics
+	stdout    string // the worker's captured stdout, for diagnostics
 }
 
 func (r *jobRun) set(k string, v any) {
@@ -187,7 +188,15 @@ func runJob(cfg config, o jobOptions) (*jobRun, error) {
 		r.w.kill()
 		r.exitCode = r.w.exitCode(5 * time.Second)
 	}
+	// No orphans (TPT-013): count what the worker left behind, then end
+	// the whole tree whatever the exit path was.
+	left, how := r.w.tree.members()
+	r.set("tree_left_after_exit", left)
+	r.set("tree_method", how)
+	r.w.tree.release()
+	r.set("worker_cpu_ms", r.w.cpuTime().Milliseconds())
 	out, outDropped := r.w.stdout.snapshot()
+	r.stdout = out
 	errText, errDropped := r.w.stderr.snapshot()
 	r.stderr = errText
 	r.set("stdout_kept_bytes", len(out))
@@ -195,6 +204,11 @@ func runJob(cfg config, o jobOptions) (*jobRun, error) {
 	r.set("stderr_kept_bytes", len(errText))
 	r.set("stderr_dropped_bytes", errDropped)
 	r.set("stderr_head", firstLines(errText, 6))
+	if ps, ok := r.ep.ln.(interface{ pairStats() (int64, int64) }); ok {
+		refused, timeouts := ps.pairStats()
+		r.set("pair_refused_halves", refused)
+		r.set("pair_timeouts", timeouts)
+	}
 	r.set("listener_refused", r.pl.refused.Load())
 	r.set("listener_admitted", r.pl.admitted.Load())
 	r.set("peer_check", r.pl.peerCheck)

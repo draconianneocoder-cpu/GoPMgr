@@ -12,6 +12,7 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -133,6 +134,24 @@ func missingJava() string {
 	return filepath.Join(os.TempDir(), "gopmgr-g0-no-such-dir", "java")
 }
 
+// describeInterfaces lists the host's network interfaces and whether each
+// is up, so a run inside an empty network namespace shows it.
+func describeInterfaces() string {
+	ifs, err := net.Interfaces()
+	if err != nil {
+		return "unknown: " + err.Error()
+	}
+	var parts []string
+	for _, it := range ifs {
+		state := "down"
+		if it.Flags&net.FlagUp != 0 {
+			state = "up"
+		}
+		parts = append(parts, it.Name+"("+state+")")
+	}
+	return strings.Join(parts, ",")
+}
+
 func moduleVersions() map[string]string {
 	v := map[string]string{"go": runtime.Version(), "java_stack": javaStack}
 	if bi, ok := debug.ReadBuildInfo(); ok {
@@ -160,6 +179,8 @@ func main() {
 	out := flag.String("out", "g0-evidence.jsonl", "evidence file to append to")
 	head := flag.String("head", "unknown", "source commit the run was built from")
 	only := flag.String("transports", "", "comma-separated transports (default: all for this OS)")
+	pick := flag.String("scenarios", "", "comma-separated scenarios to run (default: all); handshake always runs")
+	runtimeLabel := flag.String("runtime", "jdk", "what -java is, for the record: jdk or jlink")
 	cancelRuns := flag.Int("cancel-runs", 30, "cancel scenario repetitions")
 	flag.Parse()
 	if *java == "" || *jar == "" {
@@ -187,6 +208,8 @@ func main() {
 	runInfo.head = *head
 	runInfo.os = osVersion()
 	runInfo.versions = moduleVersions()
+	runInfo.versions["java_runtime"] = *runtimeLabel
+	runInfo.versions["net_interfaces"] = describeInterfaces()
 	cfg := config{java: javaPath, jar: jarPath, sourceHead: *head}
 
 	f, err := os.OpenFile(*out, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
@@ -204,6 +227,18 @@ func main() {
 		fmt.Printf("%-8s %-44s %s\n", e.Status, e.ID, strings.Join(e.Notes, "; "))
 	}
 
+	selected := map[string]bool{}
+	for _, name := range strings.Split(*pick, ",") {
+		if name = strings.TrimSpace(name); name != "" {
+			selected[name] = true
+		}
+	}
+	want := func(name string) bool { return len(selected) == 0 || selected[name] }
+
+	type step struct {
+		name string
+		run  func() *evidence
+	}
 	transports := transportsForOS()
 	if *only != "" {
 		transports = strings.Split(*only, ",")
@@ -211,34 +246,66 @@ func main() {
 	for i, t := range transports {
 		hs := scenarioHandshake(cfg, t)
 		emit(hs)
-		rest := []func() *evidence{
-			func() *evidence { return scenarioDuplex(cfg, t) },
-			func() *evidence { return scenarioBackpressure(cfg, t) },
-			func() *evidence { return scenarioNoise(cfg, t) },
-			func() *evidence { return scenarioBadCredential(cfg, t) },
-			func() *evidence { return scenarioReplay(cfg, t) },
-			func() *evidence { return scenarioImpersonate(cfg, t) },
-			func() *evidence { return scenarioKill(cfg, t) },
-			func() *evidence { return scenarioCancel(cfg, t, *cancelRuns) },
+		perTransport := []step{
+			{"duplex", func() *evidence { return scenarioDuplex(cfg, t) }},
+			{"backpressure", func() *evidence { return scenarioBackpressure(cfg, t) }},
+			{"noise", func() *evidence { return scenarioNoise(cfg, t) }},
+			{"bad-credential", func() *evidence { return scenarioBadCredential(cfg, t) }},
+			{"replay", func() *evidence { return scenarioReplay(cfg, t) }},
+			{"impersonate", func() *evidence { return scenarioImpersonate(cfg, t) }},
+			{"kill", func() *evidence { return scenarioKill(cfg, t) }},
+			{"cancel", func() *evidence { return scenarioCancel(cfg, t, *cancelRuns, "cancel", 0) }},
+			{"cancel-backpressure", func() *evidence {
+				return scenarioCancel(cfg, t, max(*cancelRuns/3, 5), "cancel-backpressure", time.Second)
+			}},
+			{"oversize", func() *evidence { return scenarioOversize(cfg, t) }},
+			{"concurrent", func() *evidence { return scenarioConcurrent(cfg, t, 4) }},
+			{"connect-flood", func() *evidence { return scenarioConnectFlood(cfg, t) }},
 		}
-		names := []string{"duplex", "backpressure", "noise", "bad-credential", "replay", "impersonate", "kill", "cancel"}
-		for j, run := range rest {
+		for _, st := range perTransport {
+			if !want(st.name) {
+				continue
+			}
 			if hs.Status != statusPass {
-				e := newEvidence(names[j], t, transportTestIDs(t))
+				e := newEvidence(st.name, t, transportTestIDs(t))
 				e.block("not run: the handshake did not pass on this transport")
 				emit(e)
 				continue
 			}
-			emit(run())
+			emit(st.run())
 		}
-		if i == 0 {
+		if i != 0 {
+			continue
+		}
+		// Once per OS: they test the launch, the process or the detectors,
+		// not the transport.
+		if want("bootstrap") {
 			for _, e := range scenarioBootstrap(cfg, t) {
 				emit(e)
 			}
-			emit(scenarioHandshakeTimeout(cfg, t))
-			emit(scenarioMissingJVM(cfg, t))
-			emit(scenarioSquat(t))
-			emit(scenarioSelfCheck(t))
+		}
+		perOS := []step{
+			{"handshake-timeout", func() *evidence { return scenarioHandshakeTimeout(cfg, t) }},
+			{"missing-jvm", func() *evidence { return scenarioMissingJVM(cfg, t) }},
+			{"squat", func() *evidence { return scenarioSquat(t) }},
+			{"detector-self-check", func() *evidence { return scenarioSelfCheck(t) }},
+			{"bridge-selftest", func() *evidence { return scenarioBridgeSelfTest(cfg) }},
+			{"tree-kill", func() *evidence { return scenarioTreeKill(cfg, t) }},
+			{"crash", func() *evidence { return scenarioCrash(cfg, t) }},
+			{"oom", func() *evidence { return scenarioOOM(cfg, t) }},
+		}
+		for _, st := range perOS {
+			if want(st.name) {
+				emit(st.run())
+			}
+		}
+	}
+	// Diagnostic controls: the cancel case only, for comparison.
+	if *only == "" && want("cancel") {
+		for _, t := range diagnosticTransports() {
+			e := scenarioCancel(cfg, t, *cancelRuns, "cancel", 0)
+			e.Notes = append(e.Notes, "diagnostic control, not a candidate transport")
+			emit(e)
 		}
 	}
 
