@@ -5,10 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010 transport matrix
 
-**Status:** G0 evidence, 2026-10-25. Spike code only: these results are not
-G1 gate passes. Each row names the commit and evidence file it comes from.
-An unrun target is **BLOCKED**, never PASS.\
-**Details:** [G0 evidence report](../testing/adr-010-g0-evidence.md).
+**Status:** G0 evidence, updated 2026-10-26. Spike code only: these results
+are not G1 gate passes. Each row names the commit and evidence file it
+comes from. An unrun target is **BLOCKED**, never PASS.\
+**Details:** [G0 Windows transport report](../testing/adr-010-g0-windows-transport-report.md)
+(latest) and [G0 evidence report](../testing/adr-010-g0-evidence.md) (`7d67cae`).
 **Harness:** [`spikes/adr010-g0-transport`](../../spikes/adr010-g0-transport/README.md).
 
 Every PASS row means a real grpc-go server and a real grpc-java client
@@ -22,7 +23,35 @@ these conditions:
 - on a run whose detector self-check proved the leak and TCP detectors
   can see what they look for.
 
-## Results at `7d67cae`
+## Results at `473708f` (latest)
+
+Since `7d67cae`, the suite has gained abnormal-ending, resource,
+concurrency, flood and repeated-connection scenarios, run on every
+transport. The worker now runs on a jlink image. The
+[Windows transport report](../testing/adr-010-g0-windows-transport-report.md)
+covers the fixes behind these results.
+
+| OS / arch | Version tested | Transport | Result | Evidence |
+|---|---|---|---|---|
+| Linux amd64 | Ubuntu 26.04.1, kernel 7.0 (CI) | UDS epoll, UDS NIO | **PASS** 43/43; offline (empty network namespace) 9/9 | `ci-473708f-linux-amd64*.jsonl` |
+| Linux arm64 | Ubuntu 24.04.5 (CI) | UDS epoll, UDS NIO | **PASS** 43/43; offline 9/9 | `ci-473708f-linux-arm64*.jsonl` |
+| macOS arm64 | 15.7.9 (CI) | UDS kqueue, UDS NIO | **PASS** 43/43 | `ci-473708f-darwin-arm64.jsonl` |
+| macOS Intel | 15.7.9 (CI) | UDS kqueue, UDS NIO | **PASS** 43/43 | `ci-473708f-darwin-amd64.jsonl` |
+| Windows amd64 | Server 2025, build 26100 (CI) | AF_UNIX (NIO), `npipe-dual`, `npipe-async` | **PASS**: every scenario on all three | `ci-473708f-windows-amd64.jsonl` |
+| Windows arm64 | Windows 11, build 26200 (CI) | AF_UNIX (NIO), `npipe-dual`, `npipe-async` | **PASS**: every scenario on all three | `ci-473708f-windows-arm64.jsonl` |
+| Windows, both | as above | `npipe` (one synchronous handle) | **FAIL**: deadlock; 16 dependents BLOCKED. Not a candidate | same |
+| Windows 10 / 11 x64 desktop | — | — | **BLOCKED** (not run) | — |
+| Packaged, signed app; offline jlink on Windows and macOS | — | — | **BLOCKED** (not run) | — |
+
+Cancel to exit, p50 / p95 ms, 30 runs, `473708f`:
+
+| Runner | AF_UNIX | `npipe-dual` | `npipe-async` | Old overlapped behavior (control) |
+|---|---|---|---|---|
+| Windows Server 2025 x64 | 47 / 63 | 33 / 56 | 37 / 58 | 501 / 524 |
+| Windows 11 arm64 | 30 / 56 | 32 / 47 | 29 / 33 | 525 / 537 |
+| Linux x64 (epoll / NIO) | 26 / 39 · 29 / 37 | — | — | — |
+
+## Results at `7d67cae` (history)
 
 | OS / arch | Version tested | Transport | Result | Test IDs | Evidence |
 |---|---|---|---|---|---|
@@ -68,3 +97,11 @@ OWN-02 makes restricted named pipes the primary Windows transport and
 accepts proven AF_UNIX. Both now have a working candidate on Windows Server
 2025 amd64. The single synchronous pipe does not work. Choosing the Windows
 transport for G1 is an owner decision; see the evidence report, §7.
+
+**Update, 2026-10-26.** The maintainer chose `npipe-async` as the preferred
+G1 candidate, conditionally
+([decision](../review/ADR-010-G0-windows-transport-decision.md)). Its exit
+delay is fixed. At `473708f` it passes every scenario on Server 2025 x64
+and Windows 11 arm64. The priority is unchanged. The transport is not
+final: Windows 10 and 11 x64 desktop, signed execution and offline packaged
+runs remain BLOCKED.

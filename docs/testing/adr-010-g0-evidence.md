@@ -17,6 +17,15 @@ Results come from `7d67cae`. The next commit only removes an unused Java
 dependency (`javax.annotation-api`; dependency report, L1). It does not
 change transport code, and CI re-runs every platform on it.
 
+> **Later the same day:** after the [maintainer's Windows transport
+> decision](../review/ADR-010-G0-windows-transport-decision.md), a
+> diagnostic round traced and fixed W2 and fixed the `npipe-dual` pairing
+> risk (W3). It added robustness scenarios, a jlink image, an offline
+> Linux run and Arm runners. The results are in the
+> [G0 Windows transport report](adr-010-g0-windows-transport-report.md)
+> and the [transport matrix](../interoperability/transport-matrix.md).
+> This report keeps the `7d67cae` record; §6 and §8 note what changed.
+
 ## 1. Outcome
 
 - **Linux and macOS:** real grpc-go ↔ grpc-java over a private Unix-domain
@@ -143,7 +152,9 @@ from `76facf1` on macOS and Windows should be disregarded; those from
 |---|---|---|---|
 | W1 | One synchronous pipe handle deadlocks: the worker's blocked `ReadFile` stalls its first write, so the HTTP/2 preface never leaves. The host times out after 75 s. | A plain `RandomAccessFile` pipe cannot carry gRPC. | `windows-amd64/npipe/handshake` |
 | W2 | `npipe-async` exits about 500 ms after a cancel (p50 500, p95 524, n=30), against about 40 ms for the other transports. All 30 runs exit with the cancel code. | Not a correctness failure, but unexplained. Hypothesis: closing an `AsynchronousFileChannel` with a read pending waits for the JDK to cancel that I/O. Needs a diagnostic run before this variant is chosen. | `windows-amd64/npipe-async/cancel` |
+| | **Resolved later.** The hypothesis was wrong. The JDK's default completion-port thread stays in native code, and HotSpot's exit waits about 480 ms for it. A private executor per channel fixes it: p50 26 ms. | | [Windows transport report](adr-010-g0-windows-transport-report.md) §3 |
 | W3 | `npipe-dual` pairs two pipe connections. The host checks the peer process on both halves and rejects a mismatch. | Another local process that connects between the halves causes a refused session (denial of service), not impersonation. | `endpoint_windows.go` `peerPID` |
+| | **Fixed later.** Each half is checked when accepted, a lone half is dropped after 3 s, and connections are refused until the worker's PID is known. | | Windows transport report §5 |
 | W4 | On Windows the leak detector reads only the worker's command line; another process's environment cannot be read. | The environment is controlled by construction (three names only), and the worker reports its own variable names. | `worker_env_names` |
 | N1 | Netty logs "Unknown channel option 'SO_KEEPALIVE'" for domain sockets and `LocalChannel`. | Harmless. G1 should not set the option on these channels. | `stderr_head` |
 | N2 | macOS adds `__CF_USER_TEXT_ENCODING` to every process environment. | Not a leak; set by the OS. | `worker_env_names` |
@@ -174,11 +185,11 @@ pipes work.
 | Item | State | Needed |
 |---|---|---|
 | Packaged, signed app; Netty natives load under macOS hardened runtime; Windows signing | **BLOCKED** | Owner signing identities and a packaging spike slice |
-| `jlink` image runs offline | **BLOCKED (not run)** | A follow-up spike round; no new authority needed |
-| Linux arm64, Windows arm64 | **BLOCKED (not run)** | Runners for those architectures |
-| Windows 10 / 11 desktop editions | **BLOCKED (not run)** | Runners or the owner's machines |
-| CPU cost per transport | **Not measured** | Add process CPU time to the evidence records |
-| W2 diagnosis | **Open** | One instrumented Windows run |
+| `jlink` image runs offline | Later: jlink image on all six runners; offline (empty network namespace) on Linux x64 and arm64 | Packaged-app offline run stays with the packaging slice |
+| Linux arm64, Windows arm64 | Later: run on `ubuntu-24.04-arm` and `windows-11-arm` | — |
+| Windows 10 / 11 desktop editions | Later: Windows 11 arm64 run. **x64 desktop editions remain BLOCKED** | The owner's machines or VMs |
+| CPU cost per transport | Later: measured (`worker_cpu_ms`) | — |
+| W2 diagnosis | Later: done; see W2 | — |
 
 ## 9. Reproduce
 
