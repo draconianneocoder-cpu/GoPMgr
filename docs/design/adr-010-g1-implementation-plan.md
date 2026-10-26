@@ -109,11 +109,11 @@ G1 must therefore:
 2. **have the host prove the credential to the worker** before the worker
    acts on any command. This is mutual authentication: today only the
    worker proves itself;
-3. **pass the G0 `second-instance` scenario.** It is expected to FAIL with
-   go-winio's listener. The G0 variant `npipe-async-single` prototypes the
-   fix: one instance, held by the host, with foreign clients disconnected
-   from it rather than closed. CI shows the two side by side from the
-   round after `2813546`;
+3. **pass the G0 `second-instance` scenario.** At `d37425a` it FAILs with
+   go-winio's listener on all three Windows runners. It PASSes on the G0
+   prototype `npipe-async-single`: one instance, held by the host, with
+   foreign clients disconnected from it rather than closed. Latency,
+   `impersonate`, `connect-flood` and `connect-repeat` are unchanged;
 4. **test an elevated host** with a non-elevated same-user intruder on
    Windows 11 x64, to confirm what mandatory integrity control allows
    there.
@@ -222,3 +222,11 @@ ratchet applies.
    preferred (G1-Q3), propose reading it as "the selected UDS runtime".
    That is an ACR-level wording change, not a weakening: the
    signed-installed-app check still applies in full.
+8. **How G1 shows TPT-007 replay on a one-instance pipe.** On the prototype
+   a second connection cannot open, so the G0 `replay` scenario cannot
+   reach the server's single-use check. It FAILs there, and G0 keeps that
+   FAIL. Proposed for G1:
+   - test the server's check on a test-only listener that accepts many
+     connections;
+   - test the production listener for "second connection refused".
+   This adds a test layer and drops none.

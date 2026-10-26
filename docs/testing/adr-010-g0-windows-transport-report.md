@@ -74,6 +74,13 @@ transport is not finalized.**\
      impersonation.
    - The harness defects are fixed. The pipe gap gets a regression test
      (`second-instance`) and two proposed G1 rules.
+   - **At `d37425a`, on all three Windows runners:**
+     - `second-instance` FAILs on the go-winio listeners;
+     - it PASSes on a single-instance prototype, `npipe-async-single`, with
+       the same latency;
+     - that prototype's one new FAIL is `replay`. A second connection
+       cannot open at all, so the test's server check is never reached
+       (§14.3).
 
 ## 2. What ran
 
@@ -318,7 +325,7 @@ dials.
 | Windows 10 / 11 x64 desktop | — | **BLOCKED** | **BLOCKED** | **BLOCKED** |
 | Signed, installed application | — | **BLOCKED** | **BLOCKED** | **BLOCKED** |
 | jlink image, offline | Linux `unshare -rn`; Windows firewall rules; macOS `sandbox-exec` | jlink: PASS on every runner. Offline at `3cf2aa0`: Linux and Windows PASS; macOS PASS except `tree-kill` BLOCKED by the harness (§14.2, C2) | Windows offline PASS | Windows offline PASS |
-| Second pipe instance | `second-instance` (from `2813546`) | — | Expected **FAIL** on the spike (§14.3) | Expected **FAIL** on the spike |
+| Second pipe instance | `second-instance` (from `2813546`) | — | **FAIL** at `d37425a`: the intruder's instance was created | **FAIL** on go-winio's listener; **PASS** on `npipe-async-single` (§14.3) |
 
 ## 9. Cancellation latency distributions (`473708f`, 30 runs each)
 
@@ -452,7 +459,7 @@ not attributed. These are hosted runners, not owner profiles (R6).
 | R8 | The bridge is spike code. G1 must re-implement it under BR-1 to BR-8, including BR-6a and BR-7a, and pass the design's §8 tests | — | G1 scope |
 | R9 | Notices and OpenJDK license terms for a bundled jlink runtime | Release | Legal/package review (dependency report L6) |
 | R10 | B8 and B9 were found only by real Windows runs. The bridge has more JDK and Netty edge cases than an in-memory test can reach | Medium | Kept the stderr exception check, the `g0-note` reasons, `connect-repeat` and the B9 self-test. G1 should run the same matrix on every change to the bridge |
-| R11 | A same-user process can add an instance to the worker's pipe before admission (go-winio: unlimited instances; DACL: generic access). The worker's open may reach it (§14.3) | Medium: denial of service and the worker's token; the host's peer check still refuses the intruder's own connection | `second-instance` test added. G1 rules 6 and 7 proposed (design §3.3) |
+| R11 | A same-user process can add an instance to the worker's pipe before admission (go-winio: unlimited instances; DACL: generic access). The worker's open may reach it (§14.3) | Medium: denial of service and the worker's token; the host's peer check still refuses the intruder's own connection | **Confirmed** at `d37425a` on all three Windows runners. The single-instance prototype closes it. G1 rules 6 and 7 proposed (design §3.3) |
 | R12 | The JDK opens pipes without `SECURITY_SQOS_PRESENT`, so a pipe server can impersonate the worker at `SecurityImpersonation` (§14.3) | Medium, higher if GoPMgr runs elevated | Mitigated by R11's rules; elevated-host test planned for Windows 11 x64 (BLOCKED) |
 | R13 | Harness checks that could not run were counted as PASS (§14.2, C1) | — | Fixed: they are BLOCKED. A unit test covers it. G1 keeps the rule |
 
@@ -655,9 +662,37 @@ worker side of `npipe-async` and replaces only the host's listener
 - the worker's connection is handed out once and wrapped with go-winio's
   `NewOpenFile` for overlapped I/O.
 
-`second-instance` should PASS on it and FAIL on the go-winio transports. A
-cost to watch: with one instance, a client being refused briefly holds
-the only slot, so the worker's open retries (`connect-flood`).
+**Result at `d37425a`** (code at `fb4c170`; the same on Server 2025,
+Server 2022 and Windows 11 arm64):
+
+| Scenario | `npipe-async` (go-winio) | `npipe-async-single` |
+|---|---|---|
+| `second-instance` | **FAIL**: the intruder's `CreateNamedPipe` succeeded | **PASS**: "All pipe instances are busy" |
+| `impersonate` | PASS | PASS; refused at the single-instance layer |
+| `connect-flood` (50 dials) | PASS | PASS; 37–43 clients refused on the one instance, and the worker still connected |
+| `connect-repeat` (50 launches) | PASS | PASS |
+| `replay` (10 runs) | PASS (UNAUTHENTICATED) | **FAIL**: the worker's second connection could not open (`FileSystemException`, every pipe instance busy) |
+| Every other scenario | PASS | PASS |
+| Cancel → exit p50 / p99 ms, Server 2025 | 31.7 / 56.6 | 28.3 / 65.4 |
+| Cancel → exit p50 / p99 ms, Windows 11 arm64 | 30.9 / 42.8 | 30.0 / 41.8 |
+
+The race detector found no race on Windows x64 with the prototype in the
+run. The `npipe-dual` listener still FAILs `second-instance`, as expected.
+
+**Why `replay` fails on the prototype.**
+
+- The scenario keeps the endpoint accepting (`acceptMany`), so the worker
+  can open a second connection and present the same proof. The server's
+  single-use check should then answer UNAUTHENTICATED.
+- With one instance, that second connection cannot exist: the OS refuses
+  it before any byte reaches gRPC. The replayed proof gets no session. The
+  property holds, but at a lower layer, so the server's check is never
+  reached on this transport.
+- **The G0 test expectation is not changed:** the result stays FAIL.
+- Proposed for G1: test the server's single-use proof on a test-only
+  listener that accepts many connections, and test the production listener
+  for "second connection refused". Both are needed for TPT-007 (G1
+  implementation plan, decision 8).
 
 **Proposed for G1** (design §3.3, rules 6 and 7):
 

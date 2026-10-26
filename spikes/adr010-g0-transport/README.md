@@ -160,7 +160,7 @@ gRPC through an in-JVM `LocalChannel`. Its rules:
 | `tree-kill` | On every transport: the worker starts a grandchild; the host ends the tree; both are gone | TPT-013, TPT-014 |
 | `crash` | On every transport: the worker starts a grandchild, then halts mid-stream; the stream fails and no orphan remains | TPT-013, TPT-014 |
 | `oom` | On every transport: the worker exhausts its heap; it exits with code 3 and the stream fails | TPT-013, TPT-014 |
-| `second-instance` | Named pipes only. Once the host has created the worker's pipe, a separate same-user process (the probe re-run with `-g0-intruder <name>`) tries to add an instance of the same name. If it can, the worker's open could reach that process instead of the host. **Expected to FAIL on the spike:** go-winio creates pipes with unlimited instances (see the G0 report) | TPT-009, TPT-018 |
+| `second-instance` | Named pipes only. Once the host has created the worker's pipe, a separate same-user process (the probe re-run with `-g0-intruder <name>`) tries to add an instance of the same name. If it can, the worker's open could reach that process instead of the host. FAILs with go-winio's listener, which creates unlimited instances; PASSes on `npipe-async-single` (see the G0 report §14.3). On `npipe-async-single`, `replay` FAILs by design: a second connection cannot open, so the server's proof check is not reached | TPT-009, TPT-018 |
 
 **Every scenario** also fails if the worker's stderr reports a thread
 ended by an uncaught exception (`Exception in thread ...`), even when the

@@ -41,7 +41,8 @@ details, and §14.2 lists the harness fixes made after this round
 | Windows arm64 | Windows 11 (26200) (CI) | same | **PASS**: every scenario on all three | `ci-3cf2aa0-windows-11-arm.jsonl` |
 | Windows, all three | firewall rules block the worker's IP traffic | same | **PASS** 13/13 each | `…-offline-firewall.jsonl` |
 | Windows, all | as above | `npipe` | **FAIL**: deadlock; 16 dependents BLOCKED. Not a candidate | same |
-| Windows, pipes | from `2813546` | `second-instance` | Expected **FAIL** on the spike (report §14.3) | next round |
+| Windows, all three runners at `d37425a` | go-winio listener | `second-instance` | **FAIL**: a same-user process added an instance (report §14.3) | `ci-d37425a-windows-*.jsonl` |
+| Windows, all three runners at `d37425a` | `npipe-async-single` (one instance, prototype) | every scenario | **PASS**, including `second-instance`, except `replay`: **FAIL**, because a second connection cannot open, so the server's proof check is not reached (report §14.3) | same |
 | Windows 10 / 11 x64 desktop, macOS 13 | — | — | **BLOCKED** (no hosted image) | — |
 | Developer-ID or Authenticode signed, installed app | — | — | **BLOCKED** | — |
 

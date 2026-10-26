@@ -145,7 +145,9 @@ interface WorkerTransport {
      worker's open may then reach that process.
    - The JDK opens pipes without `SECURITY_SQOS_PRESENT`, so such a server
      could also impersonate the worker at `SecurityImpersonation` level.
-   - The G0 `second-instance` scenario tests this.
+   - The G0 `second-instance` scenario tests this. At `d37425a` it FAILs
+     with go-winio's listener and PASSes with the one-instance prototype
+     `npipe-async-single` on all three Windows runners (G0 report §14.3).
 7. **Host proves itself (proposed).** Before the worker acts on any
    command, the host proves knowledge of the credential to the worker:
    an HMAC over a worker nonce, the operation ID and a host label.
