@@ -193,7 +193,8 @@ def main():
         try:
             out.update(read_parquet(path) if e["format"] == "parquet" else read_json(path))
         except Exception as err:  # noqa: BLE001 -- recorded, compared with the case's Accept
-            out["error"] = type(err).__name__ + ": " + str(err)[:200]
+            # Keep the message, not the machine-specific corpus path.
+            out["error"] = type(err).__name__ + ": " + str(err).replace(corpus, "<corpus>")[:200]
         print(json.dumps(out, ensure_ascii=False))
 
 
