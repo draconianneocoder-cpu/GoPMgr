@@ -82,7 +82,7 @@ run "a missing module" 1 "  example.com/a v1.0.0" "$binary" "$work/notices.txt"
 notices "Module: std" "Module: example.com/a v1.0.1" "Module: example.com/c/v4 v4.4.2"
 run "a version mismatch" 1 "  example.com/a v1.0.0" "$binary" "$work/notices.txt"
 
-notices "Module: std" "Module: example.com/a v1.0.0-rc.1" "Module: example.com/c/v4 v4.4.2"
+notices "Module: std" "Module: example.com/a v1.0.0-20260101000000-abcdef123456" "Module: example.com/c/v4 v4.4.2"
 run "a version with the same prefix" 1 "  example.com/a v1.0.0" "$binary" "$work/notices.txt"
 
 notices "Module: std" "Module: example.com/a" "Module: example.com/c/v4 v4.4.2"
