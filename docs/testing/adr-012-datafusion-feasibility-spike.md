@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-012 / DF0: DataFusion-for-DuckDB replacement feasibility spike — v0.2
 
-**Status:** PROPOSED — evidence-only, requires DF-OWN-02 authorization.  
+**Status:** ACCEPTED by the maintainer on 2026-10-26 ([acceptance record](../review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)); DF0 (DF-OWN-02) is AUTHORIZED, evidence-only. Results: [DF0 evidence](adr-012-df0-evidence.md).  
 **Date:** 2026-10-26 · **Revision:** 0.2; original DF-001–DF-060 retained; additional DF-061–DF-065  
 **Parent:** [ADR-012](../design/ADR-012-datafusion-analytics-replacement.md)  
 **Source baseline:** GoPMgr `main` `28a758d`; ADR-010 accepted target on its P00 branch and G0 transport evidence in PR #141.  
