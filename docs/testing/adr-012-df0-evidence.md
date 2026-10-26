@@ -212,7 +212,8 @@ recorded for the comparison.
 | DataFusion features | `parquet`, `compression`, `sql`, `recursive_protection`, `nested_expressions`. Default features off; no avro, remote object stores or encryption |
 | Toolchain | rustc 1.97.0 (pinned in `rust-toolchain.toml`; MSRV 1.94) |
 | Release binary | 139.5 MB unstripped, Linux amd64. Size work is DF0-F |
-| Reproduce | `cd rust && cargo build --release --locked`, then `go run ./cmd/df0-candidates -corpus DIR` |
+| Evidence stamp | `environment.json` records source commit 9a386a1 with a clean worktree. A rerun from that commit reproduced every verdict and value; only timings differ |
+| Reproduce | `spikes/adr012-datafusion/scripts/run-df0b.sh` (needs `rustup`; builds outside the repository) |
 
 ### Portfolio (DF-002 to DF-009, DF-054, DF-061)
 

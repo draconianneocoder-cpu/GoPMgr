@@ -1,0 +1,48 @@
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-empty","provider":"B","legacy_parity":"pass","wall_ns":11404316}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-empty","provider":"C","legacy_parity":"pass","wall_ns":957}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-one","provider":"B","legacy_parity":"pass","wall_ns":10432858}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-one","provider":"C","legacy_parity":"pass","wall_ns":1194}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-evm-mixed","provider":"B","legacy_parity":"pass","wall_ns":9055915}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-evm-mixed","provider":"C","legacy_parity":"pass","wall_ns":1757}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-evm-zero","provider":"B","legacy_parity":"pass","wall_ns":8706357}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-evm-zero","provider":"C","legacy_parity":"pass","wall_ns":925}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-spi-undefined","provider":"B","legacy_parity":"pass","wall_ns":8421021}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-spi-undefined","provider":"C","legacy_parity":"pass","wall_ns":1068}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-cpi-undefined","provider":"B","legacy_parity":"pass","wall_ns":9366776}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-cpi-undefined","provider":"C","legacy_parity":"pass","wall_ns":808}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-all-evm-unavailable","provider":"B","legacy_parity":"pass","wall_ns":8575874}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-all-evm-unavailable","provider":"C","legacy_parity":"pass","wall_ns":1508}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-negative","provider":"B","legacy_parity":"pass","wall_ns":8895489}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-negative","provider":"C","legacy_parity":"pass","wall_ns":1176}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-large-exact","provider":"B","legacy_parity":"pass","wall_ns":9152156}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-large-exact","provider":"C","legacy_parity":"pass","wall_ns":1218}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-overflow-positive","provider":"B","oracle_error":"overflow","error":"overflow: budget total 9223372036854775808 is outside int64","legacy_parity":"pass","wall_ns":8126528}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-overflow-positive","provider":"C","oracle_error":"overflow","error":"portfolio total exceeds int64 minor units: budgeted_cost","legacy_parity":"pass","wall_ns":16828}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-overflow-negative","provider":"B","oracle_error":"overflow","error":"overflow: committed total -9223372036854775809 is outside int64","legacy_parity":"pass","wall_ns":12442522}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-overflow-negative","provider":"C","oracle_error":"overflow","error":"portfolio total exceeds int64 minor units: committed_cost","legacy_parity":"pass","wall_ns":7011}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-overflow-evm-excluded","provider":"B","legacy_parity":"pass","wall_ns":7911203}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-overflow-evm-excluded","provider":"C","legacy_parity":"pass","wall_ns":1505}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-float-fallback","provider":"B","legacy_parity":"pass","wall_ns":9611454}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-float-fallback","provider":"C","legacy_parity":"pass","wall_ns":806}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-minor-preferred","provider":"B","legacy_parity":"pass","wall_ns":9833968}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-minor-preferred","provider":"C","legacy_parity":"pass","wall_ns":726}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-zero-ambiguity","provider":"B","legacy_parity":"pass","wall_ns":8325112}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-zero-ambiguity","provider":"C","legacy_parity":"pass","wall_ns":942}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-float-rounding","provider":"B","legacy_parity":"pass","wall_ns":7918589}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-float-rounding","provider":"C","legacy_parity":"pass","wall_ns":1685}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-float-nonfinite","provider":"B","legacy_parity":"pass","wall_ns":8931487}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-float-nonfinite","provider":"C","legacy_parity":"pass","wall_ns":796}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-float-saturating","provider":"B","oracle_error":"overflow","error":"overflow: budget total 18446744073709551614 is outside int64","legacy_parity":"pass","wall_ns":8038440}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-float-saturating","provider":"C","oracle_error":"overflow","error":"portfolio total exceeds int64 minor units: budgeted_cost","legacy_parity":"pass","wall_ns":27772}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-names","provider":"B","legacy_parity":"pass","wall_ns":10633150}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-names","provider":"C","legacy_parity":"pass","wall_ns":1697}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-scale-10","provider":"B","legacy_parity":"pass","wall_ns":12305800}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-scale-10","provider":"C","legacy_parity":"pass","wall_ns":9351}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-scale-100","provider":"B","legacy_parity":"pass","wall_ns":8622541}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-scale-100","provider":"C","legacy_parity":"pass","wall_ns":22094}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-scale-1000","provider":"B","legacy_parity":"pass","wall_ns":9800333}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-scale-1000","provider":"C","legacy_parity":"pass","wall_ns":103970}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-scale-10000","provider":"B","legacy_parity":"pass","wall_ns":30274156}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-scale-10000","provider":"C","legacy_parity":"pass","wall_ns":779297}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-scale-50000","provider":"B","legacy_parity":"pass","wall_ns":66342481}
+{"test_ids":["DF-002","DF-003","DF-004","DF-005","DF-006","DF-008","DF-009","DF-054","DF-061"],"case_id":"portfolio-scale-50000","provider":"C","legacy_parity":"pass","wall_ns":2954408}

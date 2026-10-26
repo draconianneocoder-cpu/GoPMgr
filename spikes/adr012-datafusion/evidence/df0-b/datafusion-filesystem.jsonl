@@ -1,0 +1,4 @@
+{"case_id":"fs-glob-star","note":"selected file named *.csv beside a.csv and b.csv","rows":0,"error":"Arrow error: Csv error: incorrect number of fields for line 1, expected 2 got 1"}
+{"case_id":"fs-glob-question","note":"selected file q?.csv beside q1.csv","rows":2,"finding":"the path was expanded as a glob: 2 rows from files the user did not select"}
+{"case_id":"fs-quote-in-name","note":"a single quote in the file name","rows":1}
+{"case_id":"fs-missing","note":"a path that does not exist","rows":0,"error":"read: No such file or directory (os error 2)"}
