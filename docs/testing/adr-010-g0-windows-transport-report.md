@@ -13,7 +13,10 @@ transport is not finalized.**\
 
 - Baseline: `31e7066`.
 - Rounds since: `d4e392b`, `70a304c`, `da6d459`.
-- Final run: `473708f`. All six CI runners plus a cloud container.
+- Final run of the Windows diagnostics: `473708f`. All six CI runners plus a
+  cloud container.
+- Platform evidence for the G1 decisions (2026-10-26): `3cf2aa0` on seven
+  runners, then the code-review fixes at `2813546` (§14).
 
 **Related:** [G1 transport design (proposed)](../design/adr-010-g1-transport-design.md),
 [transport matrix](../interoperability/transport-matrix.md),
@@ -55,6 +58,22 @@ transport is not finalized.**\
 6. **Recommendation (§12):** keep `npipe-async` as the preferred G1
    candidate and the approved priority unchanged. It is not production-ready
    until the §11 BLOCKED items pass.
+7. **Platform evidence at `3cf2aa0` (§14):**
+   - **Offline:** shown on Windows (firewall) and macOS (sandbox), where it
+     had been BLOCKED. Windows passes 13/13 on all three runners.
+   - **macOS signing:** an ad-hoc hardened-runtime signed jlink image
+     passes 11/11 on macOS 14 and 15 with only `allow-jit`.
+   - **New runners:** Windows Server 2022 matches Server 2025, and
+     Fedora 44 passes 17/17.
+8. **Code review (§14.2)** found these problems in the harness:
+   - a check that could not run was counted as PASS;
+   - a data race;
+   - four reachable HTTP/2 advisories in a dependency.
+   - **A new Windows gap:** a same-user process can add an instance to the
+     worker's pipe. The JDK also opens pipes without restricting
+     impersonation.
+   - The harness defects are fixed. The pipe gap gets a regression test
+     (`second-instance`) and two proposed G1 rules.
 
 ## 2. What ran
 
@@ -280,6 +299,7 @@ dials.
 | `70a304c` | 57 / 2 / 15 | 58 / 1 / 15 | all PASS | B8 fixed; `impersonate` check fixed. One control handshake failed (B9, cause not yet known) |
 | `da6d459` | 61 / 2 / 16 | 61 / 2 / 16 | all PASS | Diagnostics named B9: `replay` misses 3/10 (x64), 1/10 (arm64); `connect-repeat` 50/50 |
 | **`473708f`** | **62 PASS, 1 FAIL, 16 BLOCKED** | **62 / 1 / 16** | **Linux x64 and arm64 43/43 + 9/9 offline; macOS arm64 and Intel 43/43; container 43/43 + 9/9** | B9 fixed. The only FAIL is `npipe` (known deadlock); the 16 BLOCKED are its dependents |
+| `3cf2aa0` | Server 2025 and Server 2022: 62 / 1 / 16 each; offline (firewall) 13/13 | 62 / 1 / 16; offline 13/13 | Linux x64 and arm64 43/43 + 9/9; Fedora 44 17/17; macOS 15 and 14 43/43, signed 11/11 × 2, sandbox offline 7 PASS + 2 BLOCKED | Platform evidence (§14). The sandbox's 2 BLOCKED were a harness limit (§14.2, C2) |
 
 ## 8. Required test areas (decision item 7), final run, both Windows runners
 
@@ -297,7 +317,8 @@ dials.
 | Bridge internals | `bridge-selftest`, 5 tests, every OS | — | PASS | PASS |
 | Windows 10 / 11 x64 desktop | — | **BLOCKED** | **BLOCKED** | **BLOCKED** |
 | Signed, installed application | — | **BLOCKED** | **BLOCKED** | **BLOCKED** |
-| jlink image, offline | Linux only (`unshare -rn`) | jlink: PASS on all six runners. Offline: PASS on Linux x64 and arm64. **Windows and macOS offline: BLOCKED** | | |
+| jlink image, offline | Linux `unshare -rn`; Windows firewall rules; macOS `sandbox-exec` | jlink: PASS on every runner. Offline at `3cf2aa0`: Linux and Windows PASS; macOS PASS except `tree-kill` BLOCKED by the harness (§14.2, C2) | Windows offline PASS | Windows offline PASS |
+| Second pipe instance | `second-instance` (from `2813546`) | — | Expected **FAIL** on the spike (§14.3) | Expected **FAIL** on the spike |
 
 ## 9. Cancellation latency distributions (`473708f`, 30 runs each)
 
@@ -319,6 +340,50 @@ dials.
 | darwin/arm64 | `uds-nio` | 28.29 / 99.88 / 109.18 / 109.18 | 6.15 / 16.5 | 23.64 / 94.17 | 0/30 |
 | darwin/amd64 | `uds-kqueue` | 69.12 / 202.4 / 204.17 / 204.17 | 38.24 / 168.88 | 28.78 / 70.86 | 3/30 (transient `Thread.start0`) |
 | darwin/amd64 | `uds-nio` | 60.23 / 132.02 / 136.74 / 136.74 | 19.5 / 39.72 | 31.35 / 104.37 | 3/30 (transient `Thread.start0`) |
+
+### 9.1 JDK NIO against Netty native on Linux and macOS, all rounds (G1-Q3)
+
+Recorded G0 rounds on hosted runners (n = 30 cancels and 200 pings each):
+
+| Platform | Round | Ping RTT p50 µs, native / NIO | Ping RTT p95 µs, native / NIO | Duplex MiB/s, native / NIO | Cancel → exit p50 ms, native / NIO | Cancel → exit p99 ms, native / NIO |
+|---|---|---|---|---|---|---|
+| Linux x64 | `7d67cae` | 412 / 458 | 637 / 683 | 100 / 99 | 33 / 31 | 42 / 43 |
+| Linux x64 | `d4e392b` | 628 / 641 | 1,018 / 899 | 79 / 70 | 37 / 44 | 56 / 57 |
+| Linux x64 | `70a304c` | 343 / 374 | 575 / 590 | 121 / 131 | 23 / 30 | 45 / 48 |
+| Linux x64 | `da6d459` | 417 / 453 | 623 / 638 | 104 / 104 | 29 / 34 | 46 / 51 |
+| Linux x64 | `473708f` | 362 / 400 | 618 / 696 | 125 / 118 | 26 / 29 | 42 / 48 |
+| Linux x64 | `3cf2aa0` | 568 / 628 | 809 / 906 | 76 / 74 | 39 / 35 | 54 / 61 |
+| Linux arm64 | `d4e392b` | 623 / 646 | 927 / 884 | 112 / 108 | 31 / 26 | 143 / 46 |
+| Linux arm64 | `70a304c` | 583 / 693 | 890 / 982 | 106 / 108 | 26 / 27 | 39 / 39 |
+| Linux arm64 | `da6d459` | 722 / 673 | 1,641 / 1,117 | 107 / 107 | 32 / 27 | 53 / 44 |
+| Linux arm64 | `473708f` | 595 / 617 | 999 / 863 | 113 / 110 | 25 / 25 | 102 / 44 |
+| Linux arm64 | `3cf2aa0` | 622 / 656 | 920 / 1,008 | 109 / 108 | 29 / 25 | 116 / 39 |
+| macOS arm64 | `7d67cae` | 697 / 844 | 1,333 / 1,903 | 63 / 74 | 23 / 63 | 116 / 109 |
+| macOS arm64 | `d4e392b` | 430 / 351 | 749 / 719 | 102 / 73 | 24 / 38 | 121 / 114 |
+| macOS arm64 | `70a304c` | 515 / 430 | 826 / 974 | 97 / 90 | 21 / 34 | 70 / 104 |
+| macOS arm64 | `da6d459` | 457 / 502 | 1,155 / 1,058 | 93 / 83 | 24 / 42 | 88 / 112 |
+| macOS arm64 | `473708f` | 316 / 307 | 436 / 649 | 119 / 129 | 14 / 28 | 69 / 109 |
+| macOS 15 arm64 | `3cf2aa0` | 372 / 474 | 584 / 936 | 100 / 85 | 20 / 30 | 74 / 106 |
+| macOS 14 arm64 | `3cf2aa0` | 533 / 374 | 1,223 / 953 | 66 / 83 | 30 / 25 | 78 / 111 |
+
+The values come from each round's `handshake` (ping RTT), `duplex` and
+`cancel` records in `spikes/adr010-g0-transport/evidence/`.
+
+**Reading:**
+
+- **Linux x64.** NIO's ping p50 is 2–12 % above epoll in every round, and
+  p95, duplex and cancel are within about 12 %.
+- **Linux arm64.** NIO matches epoll. Its cancel p99 is steadier: 39–46 ms,
+  where native reached 102–143 ms in three rounds.
+- **macOS arm64.** The runners are noisy: native ping p95 alone ranges
+  from 436 to 1,333 µs between rounds. NIO's p95 is worse in four of eight
+  rounds and better in three. NIO's cancel p50 is higher, by 5 to 40 ms,
+  and its p99 holds at 104–114 ms; both are far inside G = 1 s.
+- **Conclusion.** Correctness and security match on every runner. On
+  performance, Linux would meet the proposed 20 % budget (design §4.1).
+  macOS ping p95 would not in half the hosted rounds, and hosted noise is
+  too large to decide. **Final Q3 selection stays BLOCKED on approved
+  hardware (OWN-10).**
 
 Cancel while the host had stopped reading for 1 s and the worker's sends
 waited on flow control (10 runs, p50 / p95 / max ms):
@@ -377,9 +442,9 @@ not attributed. These are hosted runners, not owner profiles (R6).
 
 | # | Risk | Severity | Status |
 |---|---|---|---|
-| R1 | Windows 10 and 11 **x64** desktop not tested. Windows 11 is covered on arm64 (CI) only; Windows 10 not at all | High for any Windows claim | **BLOCKED**: needs owner-provided machines or VMs (design Q4) |
-| R2 | Signed, installed application not tested | High for release | **BLOCKED**: needs owner signing identities and the G1 packaging slice |
-| R3 | Offline jlink runs only on Linux (network namespace). Windows and macOS offline not shown | Medium | **BLOCKED** for Windows and macOS; the packaging slice should run the installed app with networking disabled |
+| R1 | Windows 10 and 11 **x64** desktop not tested. Windows 11 is covered on arm64 (CI) only; Windows 10 not at all. Server 2022 (build 20348) added at `3cf2aa0`; it is not a client edition | High for any Windows claim | **BLOCKED**: needs owner-provided machines or VMs (G1-Q4; §15) |
+| R2 | Signed, installed application not tested. macOS: an ad-hoc hardened-runtime signature passes (§14.1); Team-ID library validation, notarization and Gatekeeper are not shown. Windows: no signature tested | High for release | **BLOCKED**: needs a test Developer ID, an Authenticode test-signing service and the G1 packaging slice (§15) |
+| R3 | Offline jlink runs | Medium | **Shown at `3cf2aa0`** on Linux (namespace), Windows (firewall) and macOS (sandbox; `tree-kill` BLOCKED by the harness, fixed at `2813546`). The installed app offline remains for the packaging slice |
 | R4 | Same-user processes can deny service by flooding or killing the worker (§5) | Low; inherent to same-user local IPC | Accepted residual; reported as `PLUGIN_START_FAILED` |
 | R5 | Unix process-group escape via `setsid` | Low: the worker starts no children in normal use | Design Q2 |
 | R6 | Hosted-runner timings vary (§10) and are not owner profiles | Medium for the grace-period budget G | Design Q5; re-measure on OWN-10 profiles |
@@ -387,6 +452,9 @@ not attributed. These are hosted runners, not owner profiles (R6).
 | R8 | The bridge is spike code. G1 must re-implement it under BR-1 to BR-8, including BR-6a and BR-7a, and pass the design's §8 tests | — | G1 scope |
 | R9 | Notices and OpenJDK license terms for a bundled jlink runtime | Release | Legal/package review (dependency report L6) |
 | R10 | B8 and B9 were found only by real Windows runs. The bridge has more JDK and Netty edge cases than an in-memory test can reach | Medium | Kept the stderr exception check, the `g0-note` reasons, `connect-repeat` and the B9 self-test. G1 should run the same matrix on every change to the bridge |
+| R11 | A same-user process can add an instance to the worker's pipe before admission (go-winio: unlimited instances; DACL: generic access). The worker's open may reach it (§14.3) | Medium: denial of service and the worker's token; the host's peer check still refuses the intruder's own connection | `second-instance` test added. G1 rules 6 and 7 proposed (design §3.3) |
+| R12 | The JDK opens pipes without `SECURITY_SQOS_PRESENT`, so a pipe server can impersonate the worker at `SecurityImpersonation` (§14.3) | Medium, higher if GoPMgr runs elevated | Mitigated by R11's rules; elevated-host test planned for Windows 11 x64 (BLOCKED) |
+| R13 | Harness checks that could not run were counted as PASS (§14.2, C1) | — | Fixed: they are BLOCKED. A unit test covers it. G1 keeps the rule |
 
 ## 12. Transport recommendation
 
@@ -447,3 +515,178 @@ with:
 ```sh
 java -cp worker/target/g0-worker.jar org.gopmgr.g0spike.BridgeSelfTest
 ```
+
+## 14. Platform evidence and code review (2026-10-26)
+
+Authorized by the maintainer's
+[direction on the G1 open questions](../review/ADR-010-G1-open-questions-decision.md),
+action 2.
+
+### 14.1 Round `3cf2aa0`, seven runners
+
+| Runner | Main run | Extra runs |
+|---|---|---|
+| ubuntu-26.04 (x64, kernel 7.0) | 43/43 | Offline (namespace) 9/9. Fedora 44 container, pinned by digest: 17/17 in the log. Its file was not uploaded because the container wrote it as root; fixed at `2813546` |
+| ubuntu-24.04-arm | 43/43 | Offline 9/9 |
+| macos-15 (15.7.9) | 43/43 | Signed, `allow-jit` only: 11/11. Signed, plus `disable-library-validation`: 11/11. Offline (sandbox): 7 PASS, 2 BLOCKED |
+| macos-14 (14.8.9) | 43/43 | Same as macos-15: 11/11, 11/11, 7 PASS + 2 BLOCKED |
+| windows-2025 (build 26100) | 62 PASS, 1 FAIL, 16 BLOCKED | Offline (firewall): 13/13 |
+| windows-2022 (build 20348) | 62 / 1 / 16 | Offline (firewall): 13/13 |
+| windows-11-arm (build 26200) | 62 / 1 / 16 | Offline (firewall): 13/13 |
+
+The FAIL and the 16 BLOCKED are the known `npipe` deadlock and its
+dependents on every Windows runner. Evidence files:
+`ci-3cf2aa0-<runner>[-run].jsonl`.
+
+**How the offline runs were proved:**
+
+- Before each one, `scripts/NetCheck.java`, run by the worker's own
+  `java`, connected to `github.com:443` without the block, and failed with
+  it.
+- Windows: `SocketException: Permission denied`. macOS:
+  `SocketException: Operation not permitted`.
+- The firewall rules block only the worker's `java.exe`. AF_UNIX passed
+  under them, so the rules do not touch Unix-domain sockets.
+
+**Signing.**
+
+- Every Mach-O file in a copy of the jlink image was signed ad hoc with
+  `--options runtime` (flags `0x10002(adhoc,runtime)`, no Team ID). No key
+  or identity was used.
+- HotSpot needed only `com.apple.security.cs.allow-jit`.
+- Both UDS implementations passed, including Netty kqueue's extracted
+  native library.
+- An ad-hoc signature has no Team ID, so this does **not** show Team-ID
+  library validation, notarization or Gatekeeper. Those stay BLOCKED (R2).
+
+**Cancel → exit p99 at `3cf2aa0`:**
+
+- `npipe-async`: 63, 70 and 71 ms (Server 2025, Server 2022, Windows 11
+  arm64);
+- the old-behavior control: 521–573 ms;
+- the highest anywhere: 117 ms (macOS 15, NIO, signed image).
+
+G stays at its 1 s minimum (design §5.1).
+
+### 14.2 Code review of the spike
+
+| # | Finding | Where | Effect | Fix |
+|---|---|---|---|---|
+| C1 | A check that could not run was counted as PASS: a failed leak check ("ps failed"), an `lsof` failure read as zero TCP sockets, an uncountable process tree read as empty | `job.go`, `scenarios.go`, `inspect_*.go` | False PASS wherever the OS tools fail. Seen in the macOS sandbox, where the handshake PASSed with "ps failed" | The scenario is now BLOCKED with the reason. Table test `TestCommonChecksUnrunChecksBlock` |
+| C2 | macOS process checks ran `ps`, which is setuid root; a sandboxed process may not run it | `inspect_darwin.go` | `tree-kill` BLOCKED under `sandbox-exec`, and C1 there | `sysctl` (`kern.procargs2`, `kern.proc.pgrp`, `kern.proc.pid`) instead; no program is run |
+| C3 | Data race: gRPC session code read the worker handle before the launching goroutine had published it. The worker can connect before `start` returns, so the handle could even be nil | `job.go`, `scenarios*.go` | 15 races under `-race` in one full run; a possible nil dereference | The handle is published under a lock and read through `worker()`. The server waits for its handlers on Stop. Full run under `-race`: 43/43, no race |
+| C4 | `golang.org/x/net` v0.57.0 (indirect): GO-2026-6603, -6611, -6612 and -6617 reachable through `grpc.Server.Serve`; also GO-2026-6610, and GO-2026-6629 in x/text v0.40.0 | `host/go.mod` | Known HTTP/2 server defects in the spike | x/net v0.61.0, x/text v0.43.0; govulncheck clean on linux, darwin and windows |
+| C5 | The overlapped pipe accepted I/O issued after `close()`; its completion would go to an executor that may be shut down | `PipeBridge.AsyncDuplex` | A possible `ShutdownChannelGroupException` on a JDK thread (B8's family) | Refused with `ClosedChannelException`, counted as `bridge_ops_after_close` |
+| C6 | The leak check looked for the raw credential and lower-case hex only | `job.go` | A worker that printed base64 would pass | Upper-case hex and both base64 forms added |
+| C7 | Second pipe instance and impersonation | §14.3 | R11, R12 | `second-instance` scenario; G1 rules 6 and 7 proposed |
+
+**Reviewed with no defect found:**
+
+- the `npipe-dual` pairing listener: one Accept goroutine with a clean
+  exit, per-half peer checks, a bounded partner wait, and floods that take
+  no slot;
+- the Windows Job Object: created suspended, then assigned, then resumed;
+  fails closed; no breakaway; non-inheritable handle;
+- the bridge's buffer ownership and its BR-1 to BR-8 rules.
+
+**Lessons for G1** (folded into the
+[G1 implementation plan](../design/adr-010-g1-implementation-plan.md) §2
+and §5):
+
+- a check that cannot run is an error;
+- session state has one owner;
+- run the race detector in CI;
+- run govulncheck on every OS build.
+
+**Round `e2b92b9` (code at `2813546`), Linux and macOS 15:**
+
+| Runner | Main | Race detector | Extra runs |
+|---|---|---|---|
+| ubuntu-26.04 | 43/43 | 18/18, **0 races** | Offline 10/10; Fedora 44 18/18, now uploaded |
+| ubuntu-24.04-arm | 43/43 | 18/18, 0 races | Offline 10/10 |
+| macos-15 | 43/43 | 18/18, 0 races | Signed 12/12 × 2. Sandbox: 9 PASS. `tree-kill` now PASSes through `sysctl`. 1 BLOCKED: the detector self-check cannot open its test TCP listener in a sandbox that denies IP, which confirms the sandbox |
+
+The Windows jobs of that round were superseded by `fb4c170`, which adds
+the single-instance listener (§14.3). Evidence: `ci-e2b92b9-*.jsonl`.
+
+### 14.3 Windows: second pipe instance and client impersonation
+
+**Facts, from source:**
+
+- go-winio v0.6.4 creates every pipe instance with `maxInstances`
+  `0xffffffff` (`pipe.go`).
+- The spike's DACL is `D:P(A;;GA;;;<user SID>)`. Generic access includes
+  `FILE_CREATE_PIPE_INSTANCE`, so any process of the same user may create
+  further instances.
+- Pipe names are listed under `\\.\pipe\`, so the random name is not
+  secret from local processes.
+- The JDK opens a pipe with `CreateFileW` and no `SECURITY_SQOS_PRESENT`
+  flag (`WindowsChannelFactory.java` and `io_util_md.c` in JDK 21u).
+  Windows then lets the pipe server impersonate the client at
+  `SecurityImpersonation` level.
+
+**Consequence.** After the host creates the worker's pipe, another process
+of the same user can add an instance. The worker's open may reach that
+process instead of the host. That process can then:
+
+- stop the session (denial of service, as in R4);
+- impersonate the worker's token. That is the same user, so it gains no
+  new rights unless GoPMgr runs elevated, where mandatory integrity
+  control still limits it. This is untested;
+- feed the worker crafted input.
+
+It cannot reach the host as the worker, because the host's peer check
+refuses its connection.
+
+**What G0 adds:** the `second-instance` scenario, from `2813546`. A
+separate same-user process tries to add an instance after the host has
+created the pipe. Expected result on the spike: **FAIL** on `npipe`,
+`npipe-dual` and `npipe-async`.
+
+**Prototype in G0.** The transport variant `npipe-async-single` keeps the
+worker side of `npipe-async` and replaces only the host's listener
+(`host/pipe_single_windows.go`):
+
+- the name allows one instance (`nMaxInstances` = 1), created with
+  `FILE_FLAG_FIRST_PIPE_INSTANCE` and remote-client rejection;
+- a client from any process but the worker is disconnected from that same
+  instance (`DisconnectNamedPipe`), which then waits again. The slot is
+  never free;
+- the worker's connection is handed out once and wrapped with go-winio's
+  `NewOpenFile` for overlapped I/O.
+
+`second-instance` should PASS on it and FAIL on the go-winio transports. A
+cost to watch: with one instance, a client being refused briefly holds
+the only slot, so the worker's open retries (`connect-flood`).
+
+**Proposed for G1** (design §3.3, rules 6 and 7):
+
+- create the pipe with the instance limit its transport needs;
+- have the host prove the credential to the worker;
+- test an elevated host on Windows 11 x64.
+
+## 15. Test environments and resources (G1-Q4)
+
+Checked 2026-10-26 against GitHub's runner documentation and the
+repository's support matrix (`docs/INSTALL.md`, `release.yml`).
+
+| Platform | Advertised | Hosted CI today | Gap | Resource needed |
+|---|---|---|---|---|
+| Windows 11 x64 desktop | Yes ("Windows 10/11 x86-64") | **None** on standard runners; only Windows Server images | Required before any broad Windows desktop claim | One of: a larger runner with the partner "Windows 11 desktop" image (paid; plan eligibility not stated in the docs); a self-hosted runner; an Azure VM; an owner device |
+| Windows 10 x64 | Yes | **None** | Required while advertised | A VM or device, or a maintainer decision to drop it from the matrix (not done silently) |
+| Windows 11 arm64 | No | `windows-11-arm` | Covered, though not advertised | — |
+| Windows Server x64 | No | `windows-2025`, `windows-2022` | Proxies only | — |
+| macOS 13 arm64 (stated minimum) | Yes | **None**; the oldest hosted image is macOS 14 | Minimum version untested | An owner device |
+| macOS 14 and 15 arm64 | Yes | `macos-14`, `macos-15` | Covered | — |
+| macOS Intel | No | Dropped by the maintainer | — | — |
+| Linux x64 (deb, rpm) | Yes | `ubuntu-26.04`; Fedora 44 container | Covered on hosted kernels | — |
+| Linux arm64 | No | `ubuntu-24.04-arm` | Covered, not advertised | — |
+
+**Signing.** Development uses controlled test-signing only (G1-Q4):
+
+| Need | Shows | Resource | Status |
+|---|---|---|---|
+| macOS ad-hoc, hardened runtime | Hardened runtime and JIT entitlements | None (no key) | **Done** at `3cf2aa0` |
+| macOS test Developer ID | Team-ID library validation; notarization rehearsal | A test identity held in a signing service or CI secret store. Never in the repository, fixtures, logs or chat | **BLOCKED** |
+| Windows Authenticode test signing | Signed execution; SmartScreen and WDAC behavior | A test-signing service, plus a WDAC test VM | **BLOCKED** |
+| Production signing and notarization | Release | Separately authorized credentials | Out of G0 and G1 |

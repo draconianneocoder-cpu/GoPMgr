@@ -498,6 +498,17 @@ Each PR states exact HEAD, changed files, invariant IDs, new tests, raw pass/blo
 
 Document owner decisions in an accepted ADR and test strategy. An agent must not mark `OPEN` as `APPROVED` through interpretation, code edits or “the test passes.” The maintainer approved all eleven on 2026-10-24; the State column copies the dispositions in the [decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md) §2, which governs their conditions.
 
+**G1 design decisions (2026-10-26).** These answer the G1 transport design's open questions under OWN-02, OWN-03 and OWN-11. They change none of the states above. The [decision record](../review/ADR-010-G1-open-questions-decision.md) governs their wording.
+
+| ID | Item | State | Applied in |
+|---|---|---|---|
+| G1-Q1 | Transport fallback | APPROVED — one explicitly selected, validated transport per platform and release; no silent fallback | [G1 design](adr-010-g1-transport-design.md) §4 |
+| G1-Q2 | Unix process containment | CONDITIONALLY APPROVED — process groups for the trusted bundled worker; `setsid` residual documented; no containment claim | G1 design §6 |
+| G1-Q3 | Unix gRPC implementation | APPROVED DIRECTION — prefer JDK NIO; final selection after the target-hardware comparison | G1 design §4.1 |
+| G1-Q4 | Windows and signing validation | APPROVED TEST POLICY; RESOURCES PENDING | G1 design §8 |
+| G1-Q5 | Worker shutdown grace | APPROVED DIRECTION — provisional minimum 1 s; final value from p99 on approved hardware | G1 design §5.1 |
+| G1-W | Windows transport | RETAINED — `npipe-async` preferred, conditionally; `npipe-dual` and AF_UNIX never automatic fallbacks | G1 design §4, §8 |
+
 ## 11. Primary references and exact-file evidence
 
 Existing files to check on HEAD: `go.mod`, `main.go`, `app_projects.go`, `app_charts.go`, `internal/export/mspdi_import.go`, `internal/analytics/duckdb.go`, `internal/db/charts.go`, `internal/db/audit.go`, `internal/db/wbs_store.go`, `internal/db/sqlite.go`, `internal/db/encryption.go`, `internal/wbs/model.go`, `session_state.go`, `docs/design/wbs-unified-model-contract.md`, `docs/DEPENDENCIES.md`, `docs/ARCHITECTURE.md`, `docs/TESTING.md`, `.github/workflows/{ci,release}.yml`, and `AGENTS.md`. Every relevant claim is retested on the PR HEAD.

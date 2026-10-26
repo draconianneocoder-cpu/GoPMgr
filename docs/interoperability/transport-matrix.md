@@ -9,7 +9,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 are not G1 gate passes. Each row names the commit and evidence file it
 comes from. An unrun target is **BLOCKED**, never PASS.\
 **Details:** [G0 Windows transport report](../testing/adr-010-g0-windows-transport-report.md)
-(latest) and [G0 evidence report](../testing/adr-010-g0-evidence.md) (`7d67cae`).
+(latest, §14 for `3cf2aa0`) and [G0 evidence report](../testing/adr-010-g0-evidence.md) (`7d67cae`).
 **Harness:** [`spikes/adr010-g0-transport`](../../spikes/adr010-g0-transport/README.md).
 
 Every PASS row means a real grpc-go server and a real grpc-java client
@@ -23,7 +23,29 @@ these conditions:
 - on a run whose detector self-check proved the leak and TCP detectors
   can see what they look for.
 
-## Results at `473708f` (latest)
+## Results at `3cf2aa0` (latest)
+
+Platform evidence for the maintainer's G1 decisions. Report §14 has the
+details, and §14.2 lists the harness fixes made after this round
+(`2813546`).
+
+| OS / arch | Version tested | Transport | Result | Evidence |
+|---|---|---|---|---|
+| Linux amd64 | Ubuntu 26.04.1, kernel 7.0 (CI) | UDS epoll, UDS NIO | **PASS** 43/43; offline 9/9 | `ci-3cf2aa0-ubuntu-26.04*.jsonl` |
+| Linux amd64 | Fedora 44 container on that kernel | UDS epoll, UDS NIO | **PASS** 17/17 (job log; file not uploaded, fixed) | — |
+| Linux arm64 | Ubuntu 24.04.5 (CI) | UDS epoll, UDS NIO | **PASS** 43/43; offline 9/9 | `ci-3cf2aa0-ubuntu-24.04-arm*.jsonl` |
+| macOS arm64 | 15.7.9 and 14.8.9 (CI) | UDS kqueue, UDS NIO | **PASS** 43/43 each | `ci-3cf2aa0-macos-1{4,5}.jsonl` |
+| macOS arm64 | same, jlink image ad-hoc signed, hardened runtime | UDS kqueue, UDS NIO | **PASS** 11/11 with `allow-jit` only; 11/11 with library validation disabled | `…-signed-jit*.jsonl` |
+| macOS arm64 | same, under `sandbox-exec` (no IP) | UDS kqueue, UDS NIO | **PASS** 7; `tree-kill` **BLOCKED** (harness could not run `ps` there; fixed) | `…-offline-sandbox.jsonl` |
+| Windows amd64 | Server 2025 (26100) and Server 2022 (20348) (CI) | AF_UNIX, `npipe-dual`, `npipe-async` | **PASS**: every scenario on all three | `ci-3cf2aa0-windows-20{25,22}.jsonl` |
+| Windows arm64 | Windows 11 (26200) (CI) | same | **PASS**: every scenario on all three | `ci-3cf2aa0-windows-11-arm.jsonl` |
+| Windows, all three | firewall rules block the worker's IP traffic | same | **PASS** 13/13 each | `…-offline-firewall.jsonl` |
+| Windows, all | as above | `npipe` | **FAIL**: deadlock; 16 dependents BLOCKED. Not a candidate | same |
+| Windows, pipes | from `2813546` | `second-instance` | Expected **FAIL** on the spike (report §14.3) | next round |
+| Windows 10 / 11 x64 desktop, macOS 13 | — | — | **BLOCKED** (no hosted image) | — |
+| Developer-ID or Authenticode signed, installed app | — | — | **BLOCKED** | — |
+
+## Results at `473708f` (previous)
 
 Since `7d67cae`, the suite has gained abnormal-ending, resource,
 concurrency, flood and repeated-connection scenarios, run on every

@@ -5,9 +5,16 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010 G1 worker connection design (transport-neutral)
 
-**Status:** PROPOSED, design only. Date: 2026-10-25.\
-**Authority:** the [maintainer's G0 Windows transport decision](../review/ADR-010-G0-windows-transport-decision.md)
-authorizes transport-neutral G1 *design* work.\
+**Status:** PROPOSED, design only. Date: 2026-10-25; updated 2026-10-26
+with the maintainer's answers to Q1–Q5 (§9).\
+**Authority:**
+
+- the [maintainer's G0 Windows transport decision](../review/ADR-010-G0-windows-transport-decision.md)
+  authorizes transport-neutral G1 *design* work;
+- the [maintainer's direction on the G1 open questions](../review/ADR-010-G1-open-questions-decision.md)
+  answers Q1–Q5 and keeps `npipe-async` as the preferred Windows
+  candidate.
+
 **Not authorized by this document:**
 
 - G1 production code (slice P04 needs its own authorization);
@@ -128,6 +135,26 @@ interface WorkerTransport {
 5. **Pairing deadline (`npipe-dual` only).** A half whose partner does not
    arrive within the deadline is dropped (G0: 3 s). Refusals and timeouts
    are counted and reported.
+6. **Instance limit (Windows; proposed, from the G0 code review).** The host
+   creates the pipe with exactly the instances its transport needs (1 for
+   `npipe-async`, 2 for `npipe-dual`), with first-instance creation and
+   remote-client rejection.
+   - Rule 2 closes the listener only *after* admission. Before that,
+     go-winio's unlimited instances and a DACL that grants the user generic
+     access let any same-user process add an instance of the name. The
+     worker's open may then reach that process.
+   - The JDK opens pipes without `SECURITY_SQOS_PRESENT`, so such a server
+     could also impersonate the worker at `SecurityImpersonation` level.
+   - The G0 `second-instance` scenario tests this.
+7. **Host proves itself (proposed).** Before the worker acts on any
+   command, the host proves knowledge of the credential to the worker:
+   an HMAC over a worker nonce, the operation ID and a host label.
+   Today only the worker proves itself. With this rule, a server that is
+   not the host learns nothing and can drive nothing.
+
+Rules 6 and 7 add to the accepted design and remove nothing. They need the
+maintainer's approval (see the
+[G1 implementation plan](adr-010-g1-implementation-plan.md) §3 and §8).
 
 ## 4. Transport selection
 
@@ -138,16 +165,57 @@ interface WorkerTransport {
   `PLUGIN_START_FAILED` (one bounded retry, plan B.9). A platform with no
   accepted transport is `TRANSPORT_UNAVAILABLE`. GoPMgr's other features
   are unaffected.
-- **Why no fallback between native transports:** a fallback doubles the
-  security surface on every machine and hides real failures. It would also
-  make support reports depend on which path happened to run. It is not
-  forbidden by OWN-03, so it is listed as open question Q1.
+- **No fallback (G1-Q1, APPROVED).** Each platform and release uses
+  exactly one explicitly selected, validated transport. There is no silent
+  fallback to another native transport, to loopback TCP, or to a stdio
+  business protocol. A fallback would double the security surface on every
+  machine, hide real failures, and make support reports depend on which
+  path happened to run.
+- **Changing a transport** needs an evidence-backed decision by the
+  maintainer: the §8 tests on the new transport, and an ACR when the change
+  departs from OWN-02's order.
 
 | Platform | Approved order (unchanged) | G1 status |
 |---|---|---|
-| Linux x64, arm64 | UDS | Choose Netty epoll or JDK NIO in G1 (Q3) |
-| macOS arm64, x64 | UDS | Choose Netty kqueue or JDK NIO in G1 (Q3). NIO avoids extracting native libraries, which interacts with signing (dependency report §2.1) |
-| Windows | 1. named pipe; 2. AF_UNIX | `npipe-async` preferred, conditionally. Not final until §8's tests pass on the platforms the release claims |
+| Linux x64 | UDS | **JDK NIO preferred** (G1-Q3). Final selection after the §4.1 comparison with Netty epoll |
+| macOS arm64 | UDS | **JDK NIO preferred** (G1-Q3). Final selection after the §4.1 comparison with Netty kqueue. NIO extracts no native library, so nothing extra to sign or notarize (dependency report §2.1) |
+| Windows x64 | 1. named pipe; 2. AF_UNIX | **`npipe-async` preferred**, conditionally (retained 2026-10-26). `npipe-dual` and AF_UNIX are evaluated alternatives, never automatic fallbacks. Not final until §8's tests pass on the platforms the release claims |
+
+These are the platforms `docs/INSTALL.md` advertises. Linux arm64 and
+Windows arm64 are tested in G0 but not advertised; macOS on Intel is
+neither (dropped from G0 on 2026-10-26).
+
+### 4.1 Final selection on Linux and macOS (G1-Q3)
+
+JDK NIO is the approved direction because it removes native-library
+packaging, signing and maintenance. Final selection needs evidence on the
+approved hardware profiles (OWN-10) that NIO is equivalent to Netty
+epoll/kqueue on three counts:
+
+| Count | Evidence required | G0 status (hosted runners) |
+|---|---|---|
+| Correctness | Every §8 row passes with each implementation, on the jlink image, offline | Both pass every G0 scenario on Linux x64, Linux arm64 and macOS arm64 |
+| Security | Same admission rules (§3.3) and peer checks. The host owns the socket and checks the peer, so the Java side changes only how it connects. NIO removes one surface: native transports extract a `.so` or `.dylib` to a temporary directory and load it | Admission scenarios pass on both. At `3cf2aa0`, both pass on a jlink image ad-hoc signed with the hardened runtime and only `allow-jit`, on macOS 14 and 15. An ad-hoc signature has no Team ID, so Team-ID library validation stays **BLOCKED** on a test Developer ID |
+| Performance | Within the budgets below on each profile | See the G0 report §9 and §10 |
+
+**Proposed "acceptable performance" budgets** (for approval):
+
+- cancel → exit p99 within G (§5);
+- handshake p99 within the handshake deadline;
+- duplex throughput and ping RTT p95 no worse than 20 % of the native
+  transport's, on the same profile;
+- worker RSS within the D-06 memory policy.
+
+At `473708f` on hosted runners, NIO meets these with one exception:
+
+- Duplex: Linux x64 118 against 125 MiB/s; macOS arm64 129 against
+  119 MiB/s.
+- The exception is macOS arm64 ping RTT p95: 649 against 436 µs, 49 %
+  worse. The p50 values are equal (307 against 316 µs).
+
+The comparison across rounds is in the G0 report §9.1. Hosted runners are
+not the approved profiles, so final selection stays **BLOCKED** until
+OWN-10 names them.
 
 ## 5. Lifecycle
 
@@ -177,10 +245,49 @@ The D-06 states, with the transport events that move between them:
 There is one escalation step, with no retries and no open-ended waits. The
 spike's 15 s grace is a test bound, not a proposal.
 
-**Proposed G:** at least 4 × the worst p99 cancel-to-exit measured on the
-release's hardware profiles, and no less than 1 s. The G0 Windows fix
-brings cancel-to-exit to the same range as the other transports (see the
-report). Hardware profiles are owner decisions (OWN-10), so G is Q5.
+### 5.1 Grace period, escalation and shutdown bound (G1-Q5)
+
+The maintainer approved a bounded grace period with a provisional minimum
+of 1 s. The final value comes from representative p99 measurements on the
+approved hardware.
+
+| Bound | Rule | Provisional value | Status |
+|---|---|---|---|
+| G, grace period | max(1 s, 4 × worst p99 cancel → exit) | 1 s. The worst G0 p99 so far is 117 ms (macOS 15, NIO, signed jlink image, `3cf2aa0`); 4 × that is under 1 s | Minimum approved. Final value **BLOCKED** on OWN-10 profiles |
+| K, kill → reap | max(1 s, 4 × worst p99 kill → reap) | 1 s. G0 measured 7–16 ms on every runner | **Proposed**, for approval |
+| M, maximum shutdown | G + K | 2 s | **Proposed**, for approval |
+
+**Escalation policy** (proposed). One timer per worker, started at
+cancellation; no retries:
+
+1. **t = 0.** The host cancels the stream, and the worker enters
+   DRAINING.
+2. **Exit before G.** This is the normal end. The supervisor records the
+   cancel → exit latency.
+3. **At G.** The supervisor ends the owned tree: `TerminateJobObject` on
+   Windows, `kill(-pgid, SIGKILL)` on Unix. It records a
+   `shutdown_escalated` diagnostic with the session's counters.
+4. **Reap within K.** The supervisor waits on the process handle, or
+   `wait`, never a sleep loop. It then closes the endpoint and removes
+   scratch files.
+5. **Not reaped by M.** The supervisor fails closed. It reports
+   `PLUGIN_UNHEALTHY` and refuses new launches of that plugin until the
+   process is reaped. The supervisor keeps waiting for the reap; it owns
+   that wait, and the wait ends when the process does. On Windows the job
+   handle stays open, so kill-on-close still ends the tree when GoPMgr
+   exits.
+
+**When GoPMgr quits,** every running worker gets this sequence at once, so
+quitting waits at most M.
+
+**No hidden slowness:**
+
+- G changes only through a recorded decision that cites p99 on the approved
+  profiles.
+- An escalation in the §8 cancel test fails the test. Raising G to make it
+  pass is not allowed.
+- In production, escalations and both latencies go into diagnostics, so a
+  slow worker is visible rather than waited out.
 
 **Exit codes** (worker contract):
 
@@ -208,17 +315,20 @@ report). Hardware profiles are owner decisions (OWN-10), so G is Q5.
 - The job can also carry memory and active-process limits. These are
   candidates for D-06 resource policy, set from G2 measurement.
 
-**Unix:**
+**Unix (G1-Q2, CONDITIONALLY APPROVED):**
 
-- The worker leads its own process group, and the host ends the tree with
-  `kill(-pgid, SIGKILL)`.
-- **Residual risk:** a process that calls `setsid` leaves the group. The
-  worker starts no children in normal operation, so a child at all means
-  the worker is misbehaving. G1 options:
-  - Linux: a cgroup v2 scope;
-  - macOS: no equivalent;
-  - both: report the residual.
-- This is Q2.
+- For the **trusted bundled worker**, G1 uses a process group and
+  deterministic termination. The worker leads its own group, and the host
+  ends the tree with `kill(-pgid, SIGKILL)`.
+- **Documented residual:** a descendant that calls `setsid` leaves the
+  group, so the group kill misses it. The bundled worker starts no children
+  in normal operation, so any child means the worker is misbehaving.
+- **No containment claim.** G1 documentation, release notes and UI must not
+  describe this as process containment or sandboxing.
+- **Later security work** evaluates Linux cgroup v2 confinement and other
+  OS controls, for example making the host a child subreaper.
+- **Third-party workers** must pass their own sandbox and containment
+  gates before release. This decision does not cover them.
 
 **JVM flags:**
 
@@ -273,35 +383,51 @@ spike.
 |---|---|---|
 | Handshake, duplex, ping | `handshake`, `duplex`, `connect-repeat` (50 fresh connections, zero failures) | TPT-003, TPT-004, TPT-012 |
 | Backpressure | `backpressure`, `cancel-backpressure`, `bridge-selftest` | TPT-012 |
-| Cancellation latency | `cancel`, at least 30 runs, with p50/p95/p99 within the G budget. The at-exit thread list must name no thread blocked in a native wait. The list samples stack tops, so a thread caught for an instant in a native intrinsic (an `Unsafe` CAS) can appear; G0 saw that once in about 40 Linux runs, with no exit delay | TPT-012, TPT-013 |
+| Bridge regressions | The `bridge-selftest` empty-buffer test (B9); the stderr uncaught-exception check (B8); the at-exit native-wait check and the `npipe-async-default` control (W2) | TPT-012, TPT-013 |
+| Cancellation latency | `cancel`, at least 30 runs, with p50/p95/p99 within the G budget and no escalation (§5.1). The at-exit thread list must name no thread blocked in a native wait. The list samples stack tops, so a thread caught for an instant in a native intrinsic (an `Unsafe` CAS) can appear; G0 saw that once in about 40 Linux runs, with no exit delay | TPT-012, TPT-013 |
 | Process tree | `tree-kill`, `crash` (a grandchild must not survive) | TPT-013, TPT-014 |
 | Abnormal JVM exit | `kill`, `crash`, `oom` | TPT-013, TPT-014 |
 | Peer identity | `impersonate`, `connect-flood`, pairing unit tests | TPT-018 |
 | Credential protection | `bad-credential`, `replay`, leak detector with self-check | TPT-007, TPT-020 |
-| Endpoint squatting | `squat` | TPT-008, TPT-009 |
+| Endpoint squatting | `squat`, `second-instance` (rule 6) | TPT-008, TPT-009 |
 | Resource exhaustion | `oversize`, `oom`, `connect-flood` | TPT-013 |
 | Concurrency | `concurrent` (four sessions) | TPT-012, TPT-018 |
 | Bootstrap | `bootstrap-*`, `handshake-timeout`, `missing-jvm` | TPT-022, TPT-014 |
 | Packaging | All of the above on the release's jlink image, offline | Plan §2.2 |
-| Signed execution | All of the above from the signed, installed app | TPT-002 (signed-app clause) |
-| Platform coverage | Windows 10 and 11 x64, and Windows 11 arm64 if claimed | TPT-003, TPT-004 |
+| Signed execution | All of the above from the signed, installed app. Development uses controlled test-signing. Production signing and notarization need separately authorized credentials (G1-Q4) | TPT-002 (signed-app clause) |
+| Platform coverage (G1-Q4) | Windows 11 x64 desktop, required before any broad Windows desktop claim. Windows 10 x64 while it stays in the support matrix (it does today). Windows 11 arm64 wherever arm64 is advertised (it is not today). Unavailable coverage is reported BLOCKED; no supported platform is dropped silently | TPT-003, TPT-004 |
 
 Current status per platform is in the [G0 Windows transport report](../testing/adr-010-g0-windows-transport-report.md).
 Every unrun row is BLOCKED.
 
-## 9. Open questions for the maintainer
+## 9. Maintainer decisions on the open questions (2026-10-26)
 
-| # | Question | Recommendation |
-|---|---|---|
-| Q1 | May the supervisor fall back from one native transport to another at run time (for example, named pipe to AF_UNIX)? | No. One transport per platform per release (§4). |
-| Q2 | Is the Unix `setsid` escape an accepted residual for G1, or must G1 add a Linux cgroup scope? | Accept and report for G1; revisit with the G2 sandboxing review. |
-| Q3 | On Linux and macOS, Netty native (epoll, kqueue) or JDK NIO Unix sockets? | JDK NIO: no native libraries to extract, sign or notarize. Both passed G0, with similar numbers on CI. |
-| Q4 | Which Windows 10 and 11 x64 machines, and which signing identities, serve as validation profiles? | Needed for the BLOCKED rows in §8; owner-provided. |
-| Q5 | Grace period G before the tree kill? | 4 × the worst measured p99, at least 1 s, on the approved hardware profiles (§5). |
+Recorded in [ADR-010-G1-open-questions-decision.md](../review/ADR-010-G1-open-questions-decision.md).
+
+| # | Question | Decision | Applied in |
+|---|---|---|---|
+| Q1 | May the supervisor fall back from one native transport to another at run time? | **APPROVED:** no. Exactly one explicitly selected, validated transport per platform and release. No fallback to another native transport, loopback TCP or stdio | §4 |
+| Q2 | Is the Unix `setsid` escape an accepted residual for G1? | **CONDITIONALLY APPROVED** for the trusted bundled worker, with no containment claim. cgroup v2 and stronger controls in later security work. Third-party workers need their own gates | §6 |
+| Q3 | Netty native (epoll, kqueue) or JDK NIO on Linux and macOS? | **APPROVED DIRECTION:** prefer JDK NIO. Final selection after a correctness, security and performance comparison on target hardware | §4, §4.1 |
+| Q4 | Which machines and signing identities serve as validation profiles? | **APPROVED TEST POLICY; RESOURCES PENDING.** Windows 11 x64 desktop required; Windows 10 x64 while supported; Windows 11 arm64 where advertised. Missing coverage is BLOCKED. Controlled test-signing for development | §8 |
+| Q5 | Grace period G before the tree kill? | **APPROVED DIRECTION:** bounded, provisional minimum 1 s, final value from p99 on approved hardware, with an escalation policy and a maximum shutdown bound | §5.1 |
+
+**Still open, for the maintainer:**
+
+- the approved hardware profiles (OWN-10), which fix G, K and the §4.1
+  comparison;
+- the §4.1 performance budgets and the K and M values in §5.1, proposed
+  here;
+- whether Windows 10 x64 stays in the support matrix;
+- the Windows and macOS validation machines and the test-signing service
+  (see the G0 report);
+- authorization of slice P04 and the OWN-11 dependency slice (see the
+  [G1 implementation plan](adr-010-g1-implementation-plan.md)).
 
 ## 10. What stays out of G1
 
 - No new transport beyond those evaluated in G0.
+- No run-time fallback between transports (G1-Q1).
 - No TCP, and no stdio business protocol.
 - No change to the Windows priority.
 - No production dependency without its OWN-11 slice and a

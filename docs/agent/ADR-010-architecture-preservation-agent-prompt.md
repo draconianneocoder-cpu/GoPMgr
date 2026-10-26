@@ -22,6 +22,7 @@ Read `AGENTS.md`, the current repository's approved ADRs, and the bundle files:
 5. `docs/design/ADR-001`, `ADR-004`, `ADR-005`, `ADR-008`, `ADR-009`, existing WBS contracts, current release rules, plus accepted ADR-011 and AI ADR when they exist;
 6. `docs/review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md` — the maintainer's acceptance, its conditions (OWN-01…OWN-11, INT-01…INT-04) and the authorized work.
 7. `docs/review/ADR-010-G0-windows-transport-decision.md` — the maintainer's G0 Windows transport decision (2026-10-25): the conditional G1 candidate, the conditions on it, and what stays unauthorized.
+8. `docs/review/ADR-010-G1-open-questions-decision.md` — the maintainer's direction on G1 questions Q1–Q5 (2026-10-26): no transport fallback, Unix process groups without a containment claim, JDK NIO preferred on Unix, the Windows and signing test policy, and the bounded shutdown grace. It also keeps `npipe-async` preferred and G1 code unauthorized.
 
 **IMPORTANT:** The maintainer accepted the ADR-010 v2.2 architecture on 2026-10-24 (item 6). Acceptance is architecture only: P00, P01/G0 and P02/S0 are authorized, and everything else needs a separately accepted work slice. Do not state that anything is implemented, tested or released because it is accepted. Do not make irreversible production schema/security decisions.
 

@@ -209,6 +209,7 @@ None of these open decisions authorizes reducing the stated requirement. A faile
 | 2026-10-24 | v2.2 integrated | Verified against `28a758d`; corrections listed in the [integration review](../review/ADR-010-v2.2-integration-review.md). No requirement weakened; status stays PROPOSED |
 | 2026-10-24 | v2.2 accepted | The maintainer accepted D-01…D-19, QI-01…QI-15, OWN-01…OWN-11 and INT-01…INT-04 ([decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md)). Architecture only: P00, P01/G0 and P02/S0 authorized; nothing implemented. Earlier versions kept unchanged |
 | 2026-10-25 | G0 Windows transport decision | The maintainer accepted named-pipe feasibility on Windows Server 2025 amd64 and made a single overlapped pipe the conditional G1 candidate ([record](../review/ADR-010-G0-windows-transport-decision.md)). OWN-02 order unchanged; more G0 diagnostics and transport-neutral G1 design authorized |
+| 2026-10-26 | G1 open questions | The maintainer answered G1 design questions Q1–Q5 and kept `npipe-async` as the preferred Windows candidate ([record](../review/ADR-010-G1-open-questions-decision.md)). Design directions only; G1 code, production dependencies and release integration stay unauthorized |
 
 ## 9. Maintainer acceptance
 
@@ -257,3 +258,53 @@ is authoritative; this section summarizes it.
 - **Authorized:** more G0 diagnostics and transport-neutral G1 design work.
   **Not authorized:** finalizing the production Windows transport before the
   open issues have documented fixes and passing regression tests.
+
+## 11. G1 open questions decision (2026-10-26)
+
+The maintainer's [decision record](../review/ADR-010-G1-open-questions-decision.md)
+is authoritative; this section summarizes it. The
+[G1 transport design](adr-010-g1-transport-design.md) §9 shows where each
+decision applies.
+
+- **Q1, APPROVED.** One explicitly selected, validated local-IPC
+  transport per platform and release. No silent fallback to another native
+  transport, loopback TCP or a stdio business protocol. Changing a
+  transport needs an evidence-backed decision.
+- **Q2, CONDITIONALLY APPROVED.** Process groups and deterministic
+  termination for the trusted bundled worker on Unix. The `setsid` escape
+  is a documented residual. This is not a claim of containment or
+  sandboxing. Linux cgroup v2 and stronger controls come in later security
+  work. Third-party workers keep their own sandbox and containment gates.
+- **Q3, APPROVED DIRECTION.** Prefer JDK NIO Unix-domain sockets on Linux
+  and macOS. Final selection needs equivalent correctness, security and
+  acceptable performance against Netty epoll/kqueue on target hardware.
+- **Q4, APPROVED TEST POLICY; RESOURCES PENDING.**
+  - Windows 11 x64 desktop validation comes before any broad Windows
+    desktop claim.
+  - Windows 11 arm64 is validated wherever arm64 is advertised.
+  - Windows 10 x64 is validated while it stays in the support matrix.
+  - Unavailable coverage is reported as BLOCKED, and no supported platform
+    is removed silently.
+  - Development uses controlled test-signing. Production signing and
+    notarization need separately authorized credentials.
+  - No private signing key goes into source, fixtures, logs or chat.
+- **Q5, APPROVED DIRECTION.** A bounded cancellation grace period, with a
+  provisional minimum of 1 s. The final value comes from p99 on approved
+  hardware, with an escalation policy and a maximum shutdown bound. Past
+  the grace period, the host terminates and reaps the owned tree. Slow
+  shutdown is never hidden behind longer delays.
+- **Windows.**
+  - `npipe-async` stays the preferred candidate.
+  - The W2, B8 and B9 regression tests are kept.
+  - `npipe-dual` and AF_UNIX are evaluated alternatives, never automatic
+    fallbacks.
+  - Production stays conditional on the integration, desktop, security,
+    packaging and signed-execution checks.
+- **Authorized:**
+  - recording these decisions;
+  - finishing G0 evidence within the scope already authorized;
+  - preparing the G1 implementation plan and dependency review for
+    separate approval.
+- **Not authorized:** production G1 code, production dependencies and
+  release integration. A conflict with an accepted requirement goes to an
+  ACR.
