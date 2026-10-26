@@ -54,6 +54,13 @@ connects as the client and opens one bidirectional `Connect` stream (plan
   104 bytes.
 - **Named pipes:** a random name, a DACL for the current user only, and
   first-instance creation, which refuses a squatted name.
+  - `npipe`, `npipe-dual` and `npipe-async` use go-winio's listener, whose
+    instances are unlimited.
+  - `npipe-async-single` is the same overlapped pipe behind a host
+    listener with exactly one instance, held for the endpoint's life.
+    Foreign clients are disconnected from that instance, which then waits
+    again, so no slot is ever free for another process. It prototypes G1
+    admission rule 6 (`host/pipe_single_windows.go`).
 - **Windows AF_UNIX:** a private directory under `%TEMP%`.
 
 **Bootstrap (INT-02).**

@@ -171,7 +171,7 @@ func start(spec launchSpec, operationID, workerID string) (*worker, error) {
 			Version:       1,
 			OperationId:   operationID,
 			WorkerId:      workerID,
-			Transport:     spec.transport,
+			Transport:     workerTransport(spec.transport),
 			Endpoint:      spec.endpoint,
 			Credential:    spec.credential,
 			ExpiresUnixMs: spec.expires.UnixMilli(),
@@ -232,4 +232,13 @@ func (w *worker) alive() bool {
 	default:
 		return true
 	}
+}
+
+// workerTransport is the transport ID the worker is told. Host-only
+// variants share the worker side of the transport they vary.
+func workerTransport(t string) string {
+	if t == "npipe-async-single" {
+		return "npipe-async"
+	}
+	return t
 }

@@ -27,16 +27,23 @@ type endpoint struct {
 	cleanup func() error
 }
 
-func transportsForOS() []string { return []string{"uds-nio", "npipe", "npipe-dual", "npipe-async"} }
+func transportsForOS() []string {
+	return []string{"uds-nio", "npipe", "npipe-dual", "npipe-async", "npipe-async-single"}
+}
 
 // diagnosticTransports run only the cancel scenario, as controls. The
 // default-pool overlapped pipe reproduces G0 finding W2 for comparison.
 func diagnosticTransports() []string { return []string{"npipe-async-default"} }
 
 // listen creates the endpoint for one transport. Named pipes get an
-// explicit DACL for the current user only; go-winio creates the first
-// instance with FILE_CREATE (refusing an existing name) and sets
-// FILE_PIPE_REJECT_REMOTE_CLIENTS.
+// explicit DACL for the current user only, first-instance creation
+// (refusing an existing name) and remote-client rejection.
+//
+// npipe-async-single is npipe-async with a singlePipeListener: one
+// instance, held by the host for the endpoint's life (G1 rule 6
+// prototype). The worker side is the same overlapped pipe. The other pipe
+// transports keep go-winio's listener, whose instances are unlimited (G0
+// report §14.3), so the two can be compared in one run.
 func listen(transport string) (*endpoint, error) {
 	switch transport {
 	case "uds-nio":
@@ -59,12 +66,19 @@ func listen(transport string) (*endpoint, error) {
 			return err
 		}
 		return ep, nil
-	case "npipe", "npipe-dual", "npipe-async", "npipe-async-default":
+	case "npipe", "npipe-dual", "npipe-async", "npipe-async-default", "npipe-async-single":
 		id, err := randomID()
 		if err != nil {
 			return nil, err
 		}
 		name := `\\.\pipe\gopmgr-g0-` + id
+		if transport == "npipe-async-single" {
+			ln, err := listenSinglePipe(name)
+			if err != nil {
+				return nil, err
+			}
+			return &endpoint{addr: name, ln: ln, cleanup: ln.Close}, nil
+		}
 		ln, err := listenPipe(name)
 		if err != nil {
 			return nil, err
@@ -127,12 +141,25 @@ func squatEndpoint() (bool, string) {
 	}
 	defer squatter.Close()
 	pipeRefused := false
+	// Both host listeners must refuse the squatted name.
 	pipeDetail := "host created a second instance of a squatted pipe name"
+	winioErr := "accepted"
 	if ln, err := listenPipe(name); err != nil {
-		pipeRefused = true
-		pipeDetail = "pipe: " + err.Error()
+		winioErr = err.Error()
 	} else {
 		_ = ln.Close()
+	}
+	singleErr := "accepted"
+	if ln, err := listenSinglePipe(name); err != nil {
+		singleErr = err.Error()
+	} else {
+		_ = ln.Close()
+	}
+	if winioErr != "accepted" && singleErr != "accepted" {
+		pipeRefused = true
+		pipeDetail = "pipe: go-winio: " + winioErr + "; single-instance: " + singleErr
+	} else {
+		pipeDetail += " (go-winio: " + winioErr + "; single-instance: " + singleErr + ")"
 	}
 
 	dir, err := os.MkdirTemp("", "gopmgr-g0-squat-")
@@ -215,7 +242,7 @@ func dialEndpoint(addr, transport string) (net.Conn, error) {
 	switch transport {
 	case "uds-nio":
 		return net.Dial("unix", addr)
-	case "npipe", "npipe-async", "npipe-async-default":
+	case "npipe", "npipe-async", "npipe-async-default", "npipe-async-single":
 		return winio.DialPipe(addr, &timeout)
 	case "npipe-dual":
 		up, err := winio.DialPipe(addr, &timeout)
