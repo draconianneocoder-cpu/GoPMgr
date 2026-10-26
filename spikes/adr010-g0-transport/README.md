@@ -119,6 +119,10 @@ gRPC through an in-JVM `LocalChannel`. Its rules:
   reading from gRPC; below 256 KiB it starts again. HTTP/2 flow control
   then holds the sender.
 - It serves one gRPC connection; a second is closed at once.
+- It drops empty buffers. grpc-netty writes one when a client transport
+  starts. Read alone, it became a zero-length overlapped write, which the
+  JDK completes with 0 bytes, and the bridge then closed the connection
+  (G0 finding B9).
 - `close()` is idempotent and bounded: it closes the connection, the pipe
   and the event loop, waits at most 2 s, and releases every buffer it
   held, including one whose I/O completes after close.

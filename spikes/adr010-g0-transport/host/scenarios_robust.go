@@ -374,14 +374,16 @@ func scenarioBridgeSelfTest(cfg config) *evidence {
 
 // scenarioConnectRepeat starts the worker many times and only completes
 // the handshake, to measure how often a connection fails before the
-// session begins. G0 saw such a failure once on Windows 11 arm64
-// (npipe-async, d4e392b) and once on Server 2025 x64 (the default-pool
-// control, 70a304c). Every failure is recorded with the worker's notes
-// and the host's gRPC log lines; any failure is a FAIL.
+// session begins. It was added to trace intermittent early failures on
+// the overlapped pipe; the cause was G0 finding B9 (an empty gRPC buffer
+// read alone became a zero-length pipe write). Every failure is recorded
+// with the worker's notes and the host's gRPC log lines; any failure is a
+// FAIL. Runs where the bridge dropped an empty buffer are counted, to show
+// that path was exercised.
 func scenarioConnectRepeat(cfg config, transport string, runs int) *evidence {
 	ev := newEvidence("connect-repeat", transport, transportTestIDs(transport))
 	var starts []time.Duration
-	failures := 0
+	failures, emptyRuns := 0, 0
 	var details []string
 	for i := 0; i < runs; i++ {
 		r, err := runJob(cfg, jobOptions{transport: transport, timeout: 60 * time.Second,
@@ -389,6 +391,9 @@ func scenarioConnectRepeat(cfg config, transport string, runs int) *evidence {
 				var seq uint64
 				return finish(stream, &seq)
 			}})
+		if r != nil && parseWorkerDiag(r.stderr).stats["bridge_empty_buffers"] > 0 {
+			emptyRuns++
+		}
 		if err == nil && r != nil && r.connected && r.driveErr == nil &&
 			r.exitCode == exitOK && uncaughtExceptions(r.stderr) == 0 {
 			starts = append(starts, r.coldStart)
@@ -401,6 +406,7 @@ func scenarioConnectRepeat(cfg config, transport string, runs int) *evidence {
 	}
 	ev.Metrics["runs"] = runs
 	ev.Metrics["failures"] = failures
+	ev.Metrics["runs_with_empty_buffer_dropped"] = emptyRuns
 	ev.Metrics["cold_start_ms"] = summarize(starts, time.Millisecond)
 	if len(details) > 0 {
 		ev.Metrics["failure_details"] = details

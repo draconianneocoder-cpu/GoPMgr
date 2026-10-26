@@ -14,6 +14,7 @@ import io.netty.channel.local.LocalChannel;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.Pipe;
 import java.security.MessageDigest;
@@ -56,6 +57,40 @@ public final class BridgeSelfTest {
     void close() {
       PipeBridge.closeQuietly(in);
       PipeBridge.closeQuietly(out);
+    }
+  }
+
+  /**
+   * Fails any zero-length write. The JDK's overlapped channel completes one
+   * at once with 0 bytes, which a pipe writer cannot tell from a write that
+   * made no progress; the bridge must never issue one.
+   */
+  private static final class StrictDuplex implements PipeBridge.Duplex {
+    final PipeBridge.Duplex inner;
+    final AtomicLong emptyWrites = new AtomicLong();
+
+    StrictDuplex(PipeBridge.Duplex inner) {
+      this.inner = inner;
+    }
+
+    @Override
+    public void read(ByteBuffer dst, PipeBridge.Callback cb) {
+      inner.read(dst, cb);
+    }
+
+    @Override
+    public void write(ByteBuffer src, PipeBridge.Callback cb) {
+      if (!src.hasRemaining()) {
+        emptyWrites.incrementAndGet();
+        cb.failed(new IOException("zero-length write reached the pipe"));
+        return;
+      }
+      inner.write(src, cb);
+    }
+
+    @Override
+    public void close() {
+      inner.close();
     }
   }
 
@@ -277,15 +312,82 @@ public final class BridgeSelfTest {
         "second_closed=" + closed + " first_alive=" + firstAlive + " refused=" + refused);
   }
 
+  /**
+   * grpc-netty writes an empty buffer when a client transport starts
+   * (NettyClientHandler's no-op message). LocalChannel merges it into the
+   * next buffer only if both are queued when the bridge reads; read alone,
+   * it reached the overlapped pipe as a zero-length write, which completed
+   * with 0 bytes and closed the connection (G0 finding B9). The bridge must
+   * drop it, and the bytes after it must still arrive.
+   */
+  static void emptyBuffer() throws Exception {
+    Remote remote = new Remote();
+    StrictDuplex strict = new StrictDuplex(remote.duplex());
+    PipeBridge bridge = PipeBridge.start(strict);
+    Client client = new Client();
+    Channel ch = connect(bridge, client);
+    long droppedBefore = statOf("bridge_empty_buffers");
+    ch.writeAndFlush(Unpooled.EMPTY_BUFFER).sync();
+    Thread.sleep(100); // let the bridge read it alone, as in the failing runs
+    byte[] data = block(3, 1024);
+    // The old bridge closed the connection on the empty buffer, so this
+    // write failed; report that instead of throwing.
+    boolean written = ch.writeAndFlush(Unpooled.wrappedBuffer(data)).await(5, TimeUnit.SECONDS)
+        && ch.isActive();
+    byte[] got = new byte[data.length];
+    int[] off = {0};
+    Thread reader = new Thread(() -> {
+      try {
+        while (off[0] < got.length) {
+          int n = remote.in.read(got, off[0], got.length - off[0]);
+          if (n < 0) {
+            return;
+          }
+          off[0] += n;
+        }
+      } catch (IOException ignored) {
+        // Reported as missing bytes.
+      }
+    });
+    reader.setDaemon(true);
+    reader.start();
+    if (written) {
+      reader.join(5_000);
+    }
+    boolean delivered = off[0] == got.length && Arrays.equals(data, got);
+    boolean alive = ch.isActive();
+    long dropped = statOf("bridge_empty_buffers") - droppedBefore;
+    ch.close().awaitUninterruptibly(5, TimeUnit.SECONDS);
+    bridge.close();
+    remote.close();
+    boolean ok = strict.emptyWrites.get() == 0 && dropped >= 1 && delivered && alive;
+    report("empty-buffer", ok, "zero_length_pipe_writes=" + strict.emptyWrites.get() + " dropped=" + dropped
+        + " delivered=" + delivered + " connection_alive=" + alive);
+  }
+
   private static long statOf(String key) {
     return Timing.stat(key);
   }
 
-  public static void main(String[] args) throws Exception {
-    integrity();
-    backpressure();
-    closeWithPendingIo();
-    secondChildRefused();
+  /** One self-test; an exception is a FAIL, never a hang or a crash. */
+  private interface Check {
+    void run() throws Exception;
+  }
+
+  private static void guarded(String name, Check c) {
+    try {
+      c.run();
+    } catch (Throwable t) {
+      report(name, false, "threw " + t);
+    }
+  }
+
+  public static void main(String[] args) {
+    guarded("integrity", BridgeSelfTest::integrity);
+    guarded("backpressure", BridgeSelfTest::backpressure);
+    guarded("close-with-pending-io", BridgeSelfTest::closeWithPendingIo);
+    guarded("second-child-refused", BridgeSelfTest::secondChildRefused);
+    guarded("empty-buffer", BridgeSelfTest::emptyBuffer);
     System.out.println("g0-selftest: summary=" + (FAILURES.isEmpty() ? "PASS" : "FAIL " + FAILURES));
     System.out.flush();
     System.exit(FAILURES.isEmpty() ? 0 : 1);

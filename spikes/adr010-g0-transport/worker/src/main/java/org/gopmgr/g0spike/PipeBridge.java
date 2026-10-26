@@ -326,6 +326,15 @@ final class PipeBridge implements AutoCloseable {
         ReferenceCountUtil.release(msg);
         return;
       }
+      if (!b.isReadable()) {
+        // grpc-netty writes an empty buffer when a client transport starts.
+        // LocalChannel merges it into the next buffer only when both are
+        // queued at read time; read alone, it must not become a zero-length
+        // pipe write (G0 finding B9).
+        Timing.count("bridge_empty_buffers", 1);
+        b.release();
+        return;
+      }
       pending.add(b);
       pendingBytes += b.readableBytes();
       Timing.peak("bridge_peak_pending_bytes", pendingBytes);
@@ -591,9 +600,18 @@ final class PipeBridge implements AutoCloseable {
       }
     }
 
-    /** One chain of writes until {@code src} is empty; counted as one operation. */
+    /**
+     * One chain of writes until {@code src} is empty; counted as one
+     * operation. An empty {@code src} completes at once with no I/O: the JDK
+     * would complete it with 0 bytes, which reads as a write that made no
+     * progress.
+     */
     @Override
     public void write(ByteBuffer src, Callback cb) {
+      if (!src.hasRemaining()) {
+        cb.completed(0);
+        return;
+      }
       begin();
       CompletionHandler<Integer, Void> h = new CompletionHandler<>() {
         private int total;
@@ -602,7 +620,8 @@ final class PipeBridge implements AutoCloseable {
         public void completed(Integer n, Void a) {
           if (n <= 0) {
             end();
-            cb.failed(new IOException("pipe write made no progress"));
+            cb.failed(new IOException("pipe write made no progress (" + n + " of "
+                + (total + src.remaining()) + " bytes written in this call chain)"));
             return;
           }
           total += n;

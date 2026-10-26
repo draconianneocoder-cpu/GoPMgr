@@ -521,16 +521,22 @@ func scenarioBadCredential(cfg config, transport string) *evidence {
 
 // scenarioReplay: the worker presents its proof again on a second
 // connection from its own process; the host must refuse it as
-// UNAUTHENTICATED every time (TPT-007). It repeats, because one
-// G0 run on Windows 11 arm64 saw UNAVAILABLE once instead.
+// UNAUTHENTICATED every time (TPT-007). It repeats 10 times: on the
+// overlapped pipe the second connection sometimes failed with UNAVAILABLE
+// instead (G0 finding B9, an empty gRPC buffer read alone became a
+// zero-length pipe write).
 func scenarioReplay(cfg config, transport string, runs int) *evidence {
 	ev := newEvidence("replay", transport, []string{"TPT-007"})
 	outcomes := map[string]int{}
+	emptyRuns := 0
 	for i := 0; i < runs; i++ {
 		r, report, err := replayOnce(cfg, transport)
 		ev.absorb(r, err)
 		if r == nil || !r.connected {
 			break
+		}
+		if parseWorkerDiag(r.stderr).stats["bridge_empty_buffers"] > 0 {
+			emptyRuns++
 		}
 		// The worker reports "replay:<gRPC code>|<diagnostic detail>".
 		code, _, _ := strings.Cut(report, "|")
@@ -544,6 +550,7 @@ func scenarioReplay(cfg config, transport string, runs int) *evidence {
 	}
 	ev.Metrics["runs"] = runs
 	ev.Metrics["worker_second_call_outcomes"] = outcomes
+	ev.Metrics["runs_with_empty_buffer_dropped"] = emptyRuns
 	return ev
 }
 
