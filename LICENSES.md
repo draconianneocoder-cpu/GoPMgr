@@ -137,11 +137,6 @@ and some of them carry their own SPDX tags. `REUSE.toml` therefore annotates
 it with `precedence = "override"` and `LicenseRef-Third-Party-Notices`, which
 says that each reproduced text keeps its own terms.
 
-### Not covered yet
-
-- The frontend's npm packages, bundled into `frontend/dist` and embedded in
-  the binary, have no generated notices file yet.
-
 ## DuckDB native library notices
 
 The DuckDB binding modules (`github.com/duckdb/duckdb-go-bindings/lib/*`) ship
@@ -214,3 +209,50 @@ and on export. Clause 8 says merged code stays subject to the agreement.
 Whether that is compatible with distributing GoPMgr under GPL-3.0-or-later
 is an open question for the maintainer and legal review. GoPMgr's own code
 does not call these extensions.
+
+## Frontend package notices
+
+The interface is a Vite bundle (`frontend/dist`) embedded in the binary.
+`third_party/FRONTEND-NOTICES.txt` reproduces the license and notice files of
+every npm package whose code is in that bundle. It ships next to the other
+notices:
+
+- `LICENSES/frontend.txt` in the tarball;
+- `/usr/share/doc/gopmgr/frontend-notices.txt` in the Linux packages;
+- `Contents/Resources/Licenses/frontend.txt` in the macOS app;
+- `licenses\frontend.txt` on Windows.
+
+### How the file is made
+
+`frontend/scripts/bundle-notices.mjs` runs the real production build
+(`vite.config.ts`) in memory, without writing `dist/`. It takes the package
+set from three places, so dev-only tooling that leaves no code behind is not
+listed:
+
+- the bundle's own module graph;
+- the helper modules Vite injects;
+- license banners in generated assets, such as Tailwind's in the stylesheet.
+
+It fails on a module it cannot place, an unknown injected module, or a
+package with no license file. It needs only Node and the frontend's existing
+dev dependencies.
+
+Two reviewed exceptions are recorded in `frontend/scripts/bundle-notices-lib.mjs`:
+
+- **`worker-f`**, a dependency of read-excel-file, ships no license file.
+  Neither does its source at the published tag. Its `package.json` declares
+  MIT and names its author. The file therefore gives the standard MIT terms
+  with that author as copyright holder, and says so. The entry is pinned to
+  the reviewed version.
+- **Vite's `LICENSE.md`** also lists the dependencies bundled into Vite's
+  own Node.js build. Only its core license covers the two helpers Vite
+  injects into the bundle, so the file keeps that section and says why.
+
+### When to regenerate
+
+- Run `make frontend-notices` after `npm ci` whenever `frontend/package-lock.json`
+  changes, or when the app starts importing a new package. Commit the result.
+- `make frontend-notices-check`, part of `make verify`, fails when the file no
+  longer matches the bundle.
+- `make frontend-notices-tests` unit-tests the generator with Node's built-in
+  test runner.

@@ -277,6 +277,10 @@ if command -v ar >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
 		tar -xOf "$data_tar" ./usr/share/doc/gopmgr/duckdb-native-notices.txt 2>/dev/null || true; } >"$backup_root/duckdb-native-notices.txt"
 	cmp -s "$backup_root/duckdb-native-notices.txt" third_party/DUCKDB-NATIVE-NOTICES.txt ||
 		fail ".deb lacks an exact copy of third_party/DUCKDB-NATIVE-NOTICES.txt at /usr/share/doc/gopmgr/duckdb-native-notices.txt"
+	{ tar -xOf "$data_tar" -C "$extract_dir" ./usr/share/doc/gopmgr/frontend-notices.txt 2>/dev/null ||
+		tar -xOf "$data_tar" ./usr/share/doc/gopmgr/frontend-notices.txt 2>/dev/null || true; } >"$backup_root/frontend-notices.txt"
+	cmp -s "$backup_root/frontend-notices.txt" third_party/FRONTEND-NOTICES.txt ||
+		fail ".deb lacks an exact copy of third_party/FRONTEND-NOTICES.txt at /usr/share/doc/gopmgr/frontend-notices.txt"
 	# nfpm sanitizes VERSION for the package's own internal metadata field
 	# (Debian version syntax forbids an unescaped "-" before the upstream
 	# version's final component): the first hyphen becomes "~", matching
@@ -321,6 +325,7 @@ cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt \
 cp internal/fonts/assets/FONT-NOTICES.txt "$fake_repo/internal/fonts/assets/FONT-NOTICES.txt"
 cp third_party/GO-MODULE-NOTICES.txt "$fake_repo/third_party/GO-MODULE-NOTICES.txt"
 cp third_party/DUCKDB-NATIVE-NOTICES.txt "$fake_repo/third_party/DUCKDB-NATIVE-NOTICES.txt"
+cp third_party/FRONTEND-NOTICES.txt "$fake_repo/third_party/FRONTEND-NOTICES.txt"
 cp "$gopmgr_elf_amd64" "$fake_repo/build/bin/gopmgr"
 chmod +x "$fake_repo/build/bin/gopmgr"
 (

@@ -43,6 +43,7 @@ done
 cp "$ROOT/internal/fonts/assets/FONT-NOTICES.txt" "$TEST_ROOT/internal/fonts/assets/FONT-NOTICES.txt"
 cp "$ROOT/third_party/GO-MODULE-NOTICES.txt" "$TEST_ROOT/third_party/GO-MODULE-NOTICES.txt"
 cp "$ROOT/third_party/DUCKDB-NATIVE-NOTICES.txt" "$TEST_ROOT/third_party/DUCKDB-NATIVE-NOTICES.txt"
+cp "$ROOT/third_party/FRONTEND-NOTICES.txt" "$TEST_ROOT/third_party/FRONTEND-NOTICES.txt"
 
 # Resolve the same Wails project fields used by the real build. Range blocks
 # are empty because GoPMgr currently declares no file associations/protocols.

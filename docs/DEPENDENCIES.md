@@ -205,6 +205,10 @@ weakening the release claim.
    and the third-party code inside them. `make verify` fails until the
    DuckDB native notices are reviewed for the new release; see
    [LICENSES.md](../LICENSES.md#duckdb-native-library-notices).
+9. After a frontend dependency change, or a new import of an npm package,
+   run `make frontend-notices` and commit the regenerated
+   `third_party/FRONTEND-NOTICES.txt`; `make verify` fails until it is
+   current. See [LICENSES.md](../LICENSES.md#frontend-package-notices).
 
 For SQLCipher specifically, remember that the selected driver owns the
 SQLite implementation in the binary. Driver changes need encryption

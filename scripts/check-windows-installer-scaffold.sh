@@ -56,6 +56,8 @@ require_literal "$PROJECT_NSI" 'File /oname=go-modules.txt "..\..\..\third_party
 	"project.nsi must install the license notices of the Go modules linked into GoPMgr."
 require_literal "$PROJECT_NSI" 'File /oname=duckdb-native.txt "..\..\..\third_party\DUCKDB-NATIVE-NOTICES.txt"' \
 	"project.nsi must install the notices of the third-party code in DuckDB's native libraries."
+require_literal "$PROJECT_NSI" 'File /oname=frontend.txt "..\..\..\third_party\FRONTEND-NOTICES.txt"' \
+	"project.nsi must install the notices of the npm packages in the embedded frontend bundle."
 require_literal "$PROJECT_NSI" '!insertmacro wails.writeUninstaller' \
 	"project.nsi must register an uninstaller."
 require_literal "$PROJECT_NSI" "project databases live in the user's Documents\\GoPMgr tree" \

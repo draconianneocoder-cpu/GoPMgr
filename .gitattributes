@@ -8,3 +8,4 @@ third_party/go-sqlcipher/** -whitespace
 # byte-for-byte, so keep LF endings on every checkout, Windows included.
 third_party/GO-MODULE-NOTICES.txt text eol=lf
 third_party/DUCKDB-NATIVE-NOTICES.txt text eol=lf
+third_party/FRONTEND-NOTICES.txt text eol=lf

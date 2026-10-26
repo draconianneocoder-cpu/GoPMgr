@@ -19,6 +19,7 @@ override_dh_auto_install:
 	install -D -m 0644 third_party/GO-MODULE-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/go-module-notices.txt
 	install -D -m 0644 internal/fonts/assets/FONT-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/font-notices.txt
 	install -D -m 0644 third_party/DUCKDB-NATIVE-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/duckdb-native-notices.txt
+	install -D -m 0644 third_party/FRONTEND-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/frontend-notices.txt
 
 override_dh_auto_clean:
 	rm -rf build/ppa
