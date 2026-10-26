@@ -25,16 +25,15 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	"gopmgr/internal/analytics"
-	"gopmgr/internal/money"
 	"gopmgr/spikes/adr012-datafusion/internal/canon"
 	"gopmgr/spikes/adr012-datafusion/internal/fixtures"
 	"gopmgr/spikes/adr012-datafusion/internal/gorollup"
 	"gopmgr/spikes/adr012-datafusion/internal/oracle"
+	"gopmgr/spikes/adr012-datafusion/internal/rollupwire"
 )
 
 func main() {
@@ -97,16 +96,6 @@ func runCLI(cli string, args ...string) ([]byte, time.Duration, error) {
 
 // --- portfolio ---
 
-type rustRollup struct {
-	ProjectCount               int      `json:"project_count"`
-	EVMProjectCount            int      `json:"evm_project_count"`
-	EVMUnavailableProjectCount int      `json:"evm_unavailable_project_count"`
-	Totals                     []string `json:"totals"`
-	SPI                        float64  `json:"spi"`
-	CPI                        float64  `json:"cpi"`
-	Error                      string   `json:"error"`
-}
-
 type portfolioRecord struct {
 	TestIDs  []string `json:"test_ids"`
 	CaseID   string   `json:"case_id"`
@@ -116,23 +105,6 @@ type portfolioRecord struct {
 	Parity   string   `json:"legacy_parity"`
 	Issues   []string `json:"mismatches,omitempty"`
 	WallNS   int64    `json:"wall_ns"`
-}
-
-func normalise(p fixtures.Project) map[string]any {
-	leg := func(minor int64, major float64) string {
-		if minor == 0 && major != 0 {
-			return strconv.FormatInt(money.FromMajorFloat(major).MinorUnits, 10)
-		}
-		return strconv.FormatInt(minor, 10)
-	}
-	return map[string]any{
-		"budgeted_cost_minor_units":  leg(p.BudgetedCostMinorUnits, p.BudgetedCost),
-		"committed_cost_minor_units": leg(p.CommittedCostMinorUnits, p.CommittedCost),
-		"actual_cost_minor_units":    leg(p.ActualCostMinorUnits, p.ActualCost),
-		"earned_value_minor_units":   leg(p.EarnedValueMinorUnits, p.EarnedValue),
-		"planned_value_minor_units":  leg(p.PlannedValueMinorUnits, p.PlannedValue),
-		"evm_available":              p.EVMAvailable,
-	}
 }
 
 func metrics(ps []fixtures.Project) []analytics.ProjectMetrics {
@@ -194,7 +166,7 @@ func portfolio(corpus, cli, path string) error {
 		// B: DataFusion, with host-normalized minor units.
 		norm := make([]map[string]any, len(pc.Projects))
 		for i, p := range pc.Projects {
-			norm[i] = normalise(p)
+			norm[i] = rollupwire.Normalise(p)
 		}
 		in := filepath.Join(tmp, c.ID+".json")
 		nb, _ := json.Marshal(norm)
@@ -204,7 +176,7 @@ func portfolio(corpus, cli, path string) error {
 		recB := portfolioRecord{TestIDs: ids, CaseID: c.ID, Provider: "B"}
 		outB, wall, err := runCLI(cli, "rollup", in)
 		recB.WallNS = wall.Nanoseconds()
-		var rr rustRollup
+		var rr rollupwire.Result
 		if err == nil {
 			err = json.Unmarshal(outB, &rr)
 		}
@@ -216,7 +188,7 @@ func portfolio(corpus, cli, path string) error {
 		case rr.Error != "":
 			errB = errors.New(rr.Error)
 		default:
-			gotB, errB = summaryFrom(rr)
+			gotB, errB = rollupwire.Summary(rr)
 		}
 		score(&recB, gotB, errB, want)
 
@@ -237,30 +209,6 @@ func portfolio(corpus, cli, path string) error {
 	}
 	fmt.Printf("df0-candidates: portfolio: B %d of %d, C %d of %d match the legacy oracle\n", pass["B"], total, pass["C"], total)
 	return nil
-}
-
-// summaryFrom builds the analytics summary the host would return from the
-// Rust totals: display floats as minor/100, indices as computed by Rust.
-func summaryFrom(r rustRollup) (analytics.PortfolioSummary, error) {
-	if len(r.Totals) != 5 {
-		return analytics.PortfolioSummary{}, fmt.Errorf("want 5 totals, got %d", len(r.Totals))
-	}
-	var t [5]int64
-	for i, s := range r.Totals {
-		v, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			return analytics.PortfolioSummary{}, fmt.Errorf("total %d: %w", i, err)
-		}
-		t[i] = v
-	}
-	f := func(m int64) float64 { return money.Amount{MinorUnits: m}.MajorFloat() }
-	return analytics.PortfolioSummary{
-		ProjectCount: r.ProjectCount, EVMProjectCount: r.EVMProjectCount, EVMUnavailableProjectCount: r.EVMUnavailableProjectCount,
-		TotalBudgetedCostMinorUnits: t[0], TotalCommittedCostMinorUnits: t[1], TotalActualCostMinorUnits: t[2],
-		TotalEarnedValueMinorUnits: t[3], TotalPlannedValueMinorUnits: t[4],
-		TotalBudgetedCost: f(t[0]), TotalCommittedCost: f(t[1]), TotalActualCost: f(t[2]), TotalEarnedValue: f(t[3]), TotalPlannedValue: f(t[4]),
-		SchedulePerformanceIndex: r.SPI, CostPerformanceIndex: r.CPI,
-	}, nil
 }
 
 // --- tabular ---

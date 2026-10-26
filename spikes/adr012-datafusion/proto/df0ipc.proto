@@ -1,0 +1,114 @@
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// ADR-012 DF0-C spike contract between the Go host and the Rust DataFusion
+// worker. It is NOT the production worker contract, which G1 freezes after
+// its own review. It follows the ADR-010 G0/G1 shape: the host is the gRPC
+// server on a private local endpoint; the worker is the client and opens
+// one bidirectional stream.
+syntax = "proto3";
+
+package gopmgr.df0ipc.v1;
+
+option go_package = "gopmgr/spikes/adr012-datafusion/internal/df0pb";
+
+// Bootstrap is written once on the worker's stdin as a uvarint length and
+// these bytes; then stdin is closed. It never carries project data and is
+// not a business transport.
+message Bootstrap {
+  uint32 version = 1;
+  string operation_id = 2;
+  // Unix socket path.
+  string endpoint = 3;
+  // 32 random bytes. The worker proves it is the launched child by sending
+  // them, hex-encoded, as x-df0-proof metadata. The host accepts them once.
+  bytes credential = 4;
+  int64 expires_unix_ms = 5;
+  // gRPC message cap, both directions.
+  uint32 max_frame_bytes = 6;
+}
+
+service AnalyticsSession {
+  rpc Connect(stream WorkerEvent) returns (stream HostCommand);
+}
+
+// Sequence numbers start at 1 and rise by exactly 1 in each direction. A
+// gap or a repeat is a protocol error.
+message WorkerEvent {
+  uint64 sequence = 1;
+  oneof event {
+    Hello hello = 10;
+    Batch batch = 11;
+    Completed completed = 12;
+    Failed failed = 13;
+  }
+}
+
+message HostCommand {
+  uint64 sequence = 1;
+  oneof command {
+    Execute execute = 10;
+    SourceChunk source = 11;
+    Cancel cancel = 12;
+    Finish finish = 13;
+  }
+}
+
+message Hello {
+  uint32 protocol_major = 1;
+  uint32 protocol_minor = 2;
+  int64 pid = 3;
+  string engine = 4;
+  // Names, never values, of the environment variables the worker received.
+  repeated string env_names = 5;
+}
+
+message Execute {
+  // generate: stream rows from a DataFusion plan.
+  // duplex:   generate while receiving and hashing SourceChunks.
+  // rollup:   run the portfolio rollup over JSON received as SourceChunks.
+  string operation = 1;
+  uint64 rows = 2;
+  uint32 batch_rows = 3;
+  uint32 payload_bytes = 4;
+  // Test-only fault injection: "", gap, duplicate, bad_schema, bad_hash,
+  // exit_mid_stream, hang.
+  string fault = 5;
+}
+
+message SourceChunk {
+  bytes data = 1;
+  bool last = 2;
+}
+
+message Cancel {}
+
+message Finish {}
+
+// One Arrow IPC stream (schema, one record batch, end-of-stream marker).
+message Batch {
+  uint64 index = 1;
+  uint64 rows = 2;
+  bytes arrow_ipc = 3;
+}
+
+message Completed {
+  uint64 batches = 1;
+  uint64 rows = 2;
+  // SHA-256 over every Batch.arrow_ipc in order.
+  bytes batches_sha256 = 3;
+  uint64 source_bytes = 4;
+  bytes source_sha256 = 5;
+  // rollup: the result as JSON.
+  string result_json = 6;
+  // Times the worker's outbound queue was full (flow control).
+  uint64 send_waits = 7;
+  // Peak resident set from /proc/self/status VmHWM, or 0 when unknown.
+  uint64 peak_rss_bytes = 8;
+}
+
+message Failed {
+  // USER_CANCELLED, INPUT_INVALID, RESOURCE_LIMIT, INTERNAL.
+  string code = 1;
+  string message = 2;
+}

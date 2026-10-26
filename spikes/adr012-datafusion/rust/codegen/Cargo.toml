@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# One-shot code generator for the worker's protobuf code. It is outside the
+# worker workspace, so its build-only crates never enter the worker's
+# Cargo.lock. Run it through scripts/generate-df0ipc.sh.
+[package]
+name = "df0-codegen"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.94"
+license = "GPL-3.0-or-later"
+publish = false
+
+[workspace]
+
+[dependencies]
+tonic-prost-build = { version = "=0.14.6", default-features = false }

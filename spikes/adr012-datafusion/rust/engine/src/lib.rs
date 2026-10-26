@@ -66,6 +66,30 @@ fn read_only() -> SQLOptions {
         .with_allow_statements(false)
 }
 
+/// DF0-C transport load: a DataFusion plan that streams `rows`
+/// deterministic rows `(i, v)` with `v = i * 7919 mod 1000003`, in batches
+/// of at most `batch_rows`. The host recomputes every value independently.
+/// The plan streams, so the worker never holds all rows at once.
+pub async fn generate(
+    rows: u64,
+    batch_rows: usize,
+) -> Result<datafusion::physical_plan::SendableRecordBatchStream, String> {
+    let config = SessionConfig::new()
+        .with_target_partitions(1)
+        .with_information_schema(false)
+        .with_batch_size(batch_rows.max(1));
+    let ctx = SessionContext::new_with_config(config);
+    // `rows` is an integer, so the statement text cannot be injected.
+    let sql = format!("SELECT value AS i, (value * 7919) % 1000003 AS v FROM range(0, {rows})");
+    let df = ctx
+        .sql_with_options(&sql, read_only())
+        .await
+        .map_err(|e| format!("plan: {e}"))?;
+    df.execute_stream()
+        .await
+        .map_err(|e| format!("execute: {e}"))
+}
+
 fn extension(path: &str) -> String {
     match path.rfind('.') {
         Some(i) if !path[i..].contains('/') => path[i..].to_string(),
@@ -438,5 +462,29 @@ mod order_tests {
             "{:?}",
             out.error
         );
+    }
+
+    #[tokio::test]
+    async fn generate_streams_bounded_batches_of_exact_values() {
+        use datafusion::arrow::array::AsArray;
+        use datafusion::arrow::datatypes::Int64Type;
+        use tokio_stream::StreamExt;
+
+        let mut stream = generate(10, 4).await.expect("plan");
+        let mut sizes = Vec::new();
+        let mut next = 0i64;
+        while let Some(batch) = stream.next().await {
+            let batch = batch.expect("batch");
+            sizes.push(batch.num_rows());
+            let i = batch.column(0).as_primitive::<Int64Type>();
+            let v = batch.column(1).as_primitive::<Int64Type>();
+            for r in 0..batch.num_rows() {
+                assert_eq!(i.value(r), next);
+                assert_eq!(v.value(r), next * 7919 % 1_000_003);
+                next += 1;
+            }
+        }
+        assert_eq!(next, 10);
+        assert!(sizes.iter().all(|&n| n <= 4), "{sizes:?}");
     }
 }
