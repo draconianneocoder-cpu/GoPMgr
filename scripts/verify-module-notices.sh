@@ -11,6 +11,10 @@
 # (github.com/duckdb/duckdb-go-bindings/lib/*) also needs the DuckDB native
 # notices to cover that exact module version.
 #
+# Every binary must also be free of the native code GoPMgr excludes, the
+# TPC-H and TPC-DS generators (scripts/verify-excluded-native-code.sh), so
+# each packaging path that runs this check also runs that one.
+#
 # Usage: scripts/verify-module-notices.sh <binary> [notices-file] [duckdb-native-notices-file]
 # Relative paths are relative to the current directory. The files default to
 # the repository's third_party/GO-MODULE-NOTICES.txt (`make module-notices`)
@@ -85,6 +89,11 @@ if [ -n "$native_deps" ]; then
 			exit 1
 		fi
 	done <<< "$native_deps"
+fi
+
+# Release-blocking (docs/review/TPC-benchmark-exclusion-decision.md).
+if ! bash "$root/scripts/verify-excluded-native-code.sh" "$binary"; then
+	exit 1
 fi
 
 echo "verify-module-notices: $notices covers the Go standard library and all $count modules linked into $binary"

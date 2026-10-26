@@ -100,6 +100,13 @@ run "an empty notices file" 1 "notices file missing or empty" "$binary" "$work/e
 run "a missing binary" 1 "binary not found" "$work/absent-binary" "$work/notices.txt"
 run "no arguments" 2 "usage:"
 
+# Complete notices do not excuse linked TPC code: the exclusion check runs
+# on every binary this script accepts.
+run "a clean binary passes the exclusion check" 0 "contains none of the 8 excluded-code markers" \
+	"$binary" "$work/notices.txt"
+printf 'ELF\0N6duckdb13TpchExtensionE\0' > "$work/tpc-binary"
+run "a binary carrying excluded TPC code" 1 "contains excluded code" "$work/tpc-binary" "$work/notices.txt"
+
 # A binary linking a DuckDB native library module also needs the DuckDB
 # native notices to cover that module at that version.
 printf '%s\n' "$(cat "$work/metadata.txt")" \
