@@ -3,19 +3,27 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
-# ADR-010 G1 implementation plan (for approval)
+# ADR-010 G1 implementation plan
 
-**Status:** PROPOSED, 2026-10-26. This plan asks the maintainer to
-authorize two things:
+**Status:** **APPROVED** by the maintainer on 2026-10-26, under the
+conditions in the [P04 authorization](../review/ADR-010-G1-P04-authorization-decision.md), decisions
+P04-D1 to P04-D8. It authorizes two things:
 
 - **slice P04**, the G1 worker contract, registry and supervisor
-  ([implementation plan](adr-010-implementation-plan.md) §8.2);
-- **the OWN-11 dependency slice**, per the
+  ([implementation plan](adr-010-implementation-plan.md) §8.2), as slices
+  G1-1 to G1-9 in order;
+- **the OWN-11 dependencies**, conditionally, per the
   [G1 dependency review](../interoperability/adr-010-g1-dependency-review.md).
 
-**Until the maintainer approves it,** no G1 production code is written,
-no dependency is added to `go.mod`, and nothing is integrated into a
-release.
+**Still not authorized:**
+
+- MPXJ import;
+- project database migrations;
+- broader architectural changes;
+- release-readiness claims.
+
+The [BLOCKED list](../testing/adr-010-g1-blocked.md) tracks hardware,
+signing and platform tests, with the resource plan for each.
 
 **Basis:**
 
@@ -23,7 +31,7 @@ release.
   maintainer's [answers to Q1–Q5](../review/ADR-010-G1-open-questions-decision.md);
 - the [G0 Windows transport report](../testing/adr-010-g0-windows-transport-report.md);
 - the [test strategy](../testing/adr-010-test-strategy.md), test IDs
-  TPT-006 to TPT-021.
+  TPT-006 to TPT-021 and TPT-023 to TPT-026 (added by P04-D3 and P04-D8).
 
 ## 1. What G1 delivers, and what it does not
 
@@ -118,8 +126,19 @@ G1 must therefore:
    Windows 11 x64, to confirm what mandatory integrity control allows
    there.
 
-Items 1 and 2 add to design §3.3 and change no accepted requirement. They
-need the maintainer's approval as design changes (§8).
+Items 1 and 2 add to design §3.3 and change no accepted requirement. The
+maintainer made both **mandatory** (P04-D3).
+
+They are tested against:
+
+- same-user malicious processes;
+- pipe impersonation;
+- unauthorized second instances;
+- replay;
+- privileged and unprivileged process interactions (TPT-023 to TPT-026).
+
+A design where worker-to-host authentication succeeds over an
+unauthenticated host-to-worker channel is not accepted.
 
 ## 4. PR slices
 
@@ -207,7 +226,23 @@ ratchet applies.
 | Approved hardware profiles (OWN-10) | Final G, K and M; design §4.1 | Owner decision after S0 | **BLOCKED** |
 | Production signing and notarization | Release only | Separately authorized credentials | Out of G1 |
 
-## 8. Decisions requested
+## 8. Decisions (answered 2026-10-26)
+
+The maintainer's dispositions are in the
+[P04 authorization](../review/ADR-010-G1-P04-authorization-decision.md):
+
+| # | Decision | Disposition |
+|---|---|---|
+| 1 | P04 slices | **APPROVED**, in order, small PRs |
+| 2 | OWN-11 dependencies | **CONDITIONALLY APPROVED**: security, licensing, compatibility and reproducible-build checks; patched x/net and x/text; full graph in `docs/DEPENDENCIES.md` |
+| 3 | Windows admission additions | **APPROVED, mandatory** |
+| 4 | G, K, M and the 20 % threshold | **PROVISIONALLY APPROVED** for engineering and measurement. Finalized only on representative hardware. An unreaped process stays unhealthy, and M is no OS guarantee. Results over the threshold are investigated |
+| 5 | Windows 10 x64 | **RETAINED** in the support target. Its tests stay BLOCKED until run |
+| 6 | Resources | **PENDING AVAILABILITY**: see the [BLOCKED list](../testing/adr-010-g1-blocked.md) |
+| 7 | TPT-002 wording | **APPROVED**: "selected UDS runtime"; no coverage reduced |
+| 8 | Replay testing | **APPROVED**: two required tests, TPT-023 and TPT-024 |
+
+The questions as asked:
 
 1. **Authorize slice P04** as planned in §4, in that order.
 2. **Approve the OWN-11 dependency slice** per the dependency review.

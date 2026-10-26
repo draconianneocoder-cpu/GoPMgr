@@ -5,8 +5,13 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010 G1 worker connection design (transport-neutral)
 
-**Status:** PROPOSED, design only. Date: 2026-10-25; updated 2026-10-26
-with the maintainer's answers to Q1–Q5 (§9).\
+**Status:** the basis for G1 implementation. Dated 2026-10-25 and
+updated 2026-10-26 with:
+
+- the maintainer's answers to Q1–Q5 (§9);
+- the [P04 authorization](../review/ADR-010-G1-P04-authorization-decision.md).
+
+Rules 6 and 7 are mandatory. §5.1's bounds are provisional.\
 **Authority:**
 
 - the [maintainer's G0 Windows transport decision](../review/ADR-010-G0-windows-transport-decision.md)
@@ -15,11 +20,16 @@ with the maintainer's answers to Q1–Q5 (§9).\
   answers Q1–Q5 and keeps `npipe-async` as the preferred Windows
   candidate.
 
-**Not authorized by this document:**
+**Authorized since 2026-10-26:** G1 slices G1-1 to G1-9 and the OWN-11
+dependencies, under conditions (P04-D1, P04-D2).
 
-- G1 production code (slice P04 needs its own authorization);
-- production dependencies (OWN-11);
-- finalizing the Windows transport.
+**Still not authorized:**
+
+- finalizing the Windows transport, which still needs §8 on the claimed
+  platforms;
+- MPXJ import;
+- database migrations;
+- release-readiness claims.
 
 **Evidence:** the [G0 Windows transport report](../testing/adr-010-g0-windows-transport-report.md),
 the [transport matrix](../interoperability/transport-matrix.md) and the
@@ -135,7 +145,7 @@ interface WorkerTransport {
 5. **Pairing deadline (`npipe-dual` only).** A half whose partner does not
    arrive within the deadline is dropped (G0: 3 s). Refusals and timeouts
    are counted and reported.
-6. **Instance limit (Windows; proposed, from the G0 code review).** The host
+6. **Instance limit (Windows; mandatory, P04-D3).** The host
    creates the pipe with exactly the instances its transport needs (1 for
    `npipe-async`, 2 for `npipe-dual`), with first-instance creation and
    remote-client rejection.
@@ -148,15 +158,26 @@ interface WorkerTransport {
    - The G0 `second-instance` scenario tests this. At `d37425a` it FAILs
      with go-winio's listener and PASSes with the one-instance prototype
      `npipe-async-single` on all three Windows runners (G0 report §14.3).
-7. **Host proves itself (proposed).** Before the worker acts on any
+7. **Host proves itself (mandatory, P04-D3).** Before the worker acts on any
    command, the host proves knowledge of the credential to the worker:
    an HMAC over a worker nonce, the operation ID and a host label.
    Today only the worker proves itself. With this rule, a server that is
    not the host learns nothing and can drive nothing.
 
-Rules 6 and 7 add to the accepted design and remove nothing. They need the
-maintainer's approval (see the
-[G1 implementation plan](adr-010-g1-implementation-plan.md) §3 and §8).
+Rules 6 and 7 add to the accepted design and remove nothing. The
+maintainer made both mandatory (P04-D3).
+
+- A worker-to-host authentication that succeeds over an unauthenticated
+  host-to-worker channel is not accepted.
+- **Why a production listener refuses before the protocol layer** (P04-D8):
+  - rule 6 leaves exactly one pipe instance, and the host holds it, so a
+    second client cannot connect at all;
+  - rule 1 refuses a foreign peer at accept time, before any byte reaches
+    HTTP/2.
+- So the server's single-use proof check (rule 3) cannot be reached
+  through the production listener. It is tested separately on a test-only
+  listener that admits many connections (TPT-024). The refusal itself is
+  tested on the production listener (TPT-023).
 
 ## 4. Transport selection
 
@@ -200,7 +221,8 @@ epoll/kqueue on three counts:
 | Security | Same admission rules (§3.3) and peer checks. The host owns the socket and checks the peer, so the Java side changes only how it connects. NIO removes one surface: native transports extract a `.so` or `.dylib` to a temporary directory and load it | Admission scenarios pass on both. At `3cf2aa0`, both pass on a jlink image ad-hoc signed with the hardened runtime and only `allow-jit`, on macOS 14 and 15. An ad-hoc signature has no Team ID, so Team-ID library validation stays **BLOCKED** on a test Developer ID |
 | Performance | Within the budgets below on each profile | See the G0 report §9 and §10 |
 
-**Proposed "acceptable performance" budgets** (for approval):
+**"Acceptable performance" budgets** (provisionally approved, P04-D4; a
+result over a budget is investigated, never waived):
 
 - cancel → exit p99 within G (§5);
 - handshake p99 within the handshake deadline;
@@ -256,10 +278,10 @@ approved hardware.
 | Bound | Rule | Provisional value | Status |
 |---|---|---|---|
 | G, grace period | max(1 s, 4 × worst p99 cancel → exit) | 1 s. The worst G0 p99 so far is 117 ms (macOS 15, NIO, signed jlink image, `3cf2aa0`); 4 × that is under 1 s | Minimum approved. Final value **BLOCKED** on OWN-10 profiles |
-| K, kill → reap | max(1 s, 4 × worst p99 kill → reap) | 1 s. G0 measured 7–16 ms on every runner | **Proposed**, for approval |
-| M, maximum shutdown | G + K | 2 s | **Proposed**, for approval |
+| K, kill → reap | max(1 s, 4 × worst p99 kill → reap) | 1 s. G0 measured 7–16 ms on every runner | **Provisionally approved** (P04-D4). Final value **BLOCKED** on OWN-10 profiles |
+| M, maximum shutdown | G + K | 2 s | **Provisionally approved** (P04-D4). It bounds how long GoPMgr waits, not when the OS ends the process |
 
-**Escalation policy** (proposed). One timer per worker, started at
+**Escalation policy** (approved for engineering, P04-D4). One timer per worker, started at
 cancellation; no retries:
 
 1. **t = 0.** The host cancels the stream, and the worker enters
@@ -280,7 +302,14 @@ cancellation; no retries:
    exits.
 
 **When GoPMgr quits,** every running worker gets this sequence at once, so
-quitting waits at most M.
+GoPMgr stops waiting after M.
+
+- M is **not** a guarantee that the operating system has ended the
+  process.
+- A worker not reaped by M is reported as unhealthy, and that is recorded
+  in diagnostics.
+- On Windows, closing the job handle still ends the tree when GoPMgr
+  exits.
 
 **No hidden slowness:**
 
@@ -397,7 +426,7 @@ spike.
 | Bootstrap | `bootstrap-*`, `handshake-timeout`, `missing-jvm` | TPT-022, TPT-014 |
 | Packaging | All of the above on the release's jlink image, offline | Plan §2.2 |
 | Signed execution | All of the above from the signed, installed app. Development uses controlled test-signing. Production signing and notarization need separately authorized credentials (G1-Q4) | TPT-002 (signed-app clause) |
-| Platform coverage (G1-Q4) | Windows 11 x64 desktop, required before any broad Windows desktop claim. Windows 10 x64 while it stays in the support matrix (it does today). Windows 11 arm64 wherever arm64 is advertised (it is not today). Unavailable coverage is reported BLOCKED; no supported platform is dropped silently | TPT-003, TPT-004 |
+| Platform coverage (G1-Q4, P04-D5) | Windows 11 x64 desktop, required before any broad Windows desktop claim. Windows 10 x64, retained in the support target (P04-D5); its tests stay BLOCKED until run. Windows 11 arm64 wherever arm64 is advertised (it is not today). Unavailable coverage is reported BLOCKED; no supported platform is dropped silently | TPT-003, TPT-004 |
 
 Current status per platform is in the [G0 Windows transport report](../testing/adr-010-g0-windows-transport-report.md).
 Every unrun row is BLOCKED.
@@ -414,17 +443,19 @@ Recorded in [ADR-010-G1-open-questions-decision.md](../review/ADR-010-G1-open-qu
 | Q4 | Which machines and signing identities serve as validation profiles? | **APPROVED TEST POLICY; RESOURCES PENDING.** Windows 11 x64 desktop required; Windows 10 x64 while supported; Windows 11 arm64 where advertised. Missing coverage is BLOCKED. Controlled test-signing for development | §8 |
 | Q5 | Grace period G before the tree kill? | **APPROVED DIRECTION:** bounded, provisional minimum 1 s, final value from p99 on approved hardware, with an escalation policy and a maximum shutdown bound | §5.1 |
 
-**Still open, for the maintainer:**
+**Answered on 2026-10-26** ([P04 authorization](../review/ADR-010-G1-P04-authorization-decision.md)):
+
+- K and M, and the §4.1 budgets: provisionally approved;
+- Windows 10 x64: retained;
+- P04 and OWN-11: approved, with conditions;
+- rules 6 and 7: mandatory.
+
+**Still open:**
 
 - the approved hardware profiles (OWN-10), which fix G, K and the §4.1
   comparison;
-- the §4.1 performance budgets and the K and M values in §5.1, proposed
-  here;
-- whether Windows 10 x64 stays in the support matrix;
-- the Windows and macOS validation machines and the test-signing service
-  (see the G0 report);
-- authorization of slice P04 and the OWN-11 dependency slice (see the
-  [G1 implementation plan](adr-010-g1-implementation-plan.md)).
+- the validation machines and signing services
+  ([BLOCKED list](../testing/adr-010-g1-blocked.md)).
 
 ## 10. What stays out of G1
 

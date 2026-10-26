@@ -209,6 +209,7 @@ None of these open decisions authorizes reducing the stated requirement. A faile
 | 2026-10-24 | v2.2 integrated | Verified against `28a758d`; corrections listed in the [integration review](../review/ADR-010-v2.2-integration-review.md). No requirement weakened; status stays PROPOSED |
 | 2026-10-24 | v2.2 accepted | The maintainer accepted D-01…D-19, QI-01…QI-15, OWN-01…OWN-11 and INT-01…INT-04 ([decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md)). Architecture only: P00, P01/G0 and P02/S0 authorized; nothing implemented. Earlier versions kept unchanged |
 | 2026-10-25 | G0 Windows transport decision | The maintainer accepted named-pipe feasibility on Windows Server 2025 amd64 and made a single overlapped pipe the conditional G1 candidate ([record](../review/ADR-010-G0-windows-transport-decision.md)). OWN-02 order unchanged; more G0 diagnostics and transport-neutral G1 design authorized |
+| 2026-10-26 | G1/P04 authorization | The maintainer authorized slices G1-1 to G1-9 and, conditionally, the OWN-11 dependencies. Pipe instance limits and mutual authentication are mandatory, the bounds G, K and M are provisional, Windows 10 x64 is retained, and TPT-002's wording is clarified. Replay is tested in two layers ([record](../review/ADR-010-G1-P04-authorization-decision.md)). Still unauthorized: MPXJ import, migrations, broader architectural change and release-readiness claims |
 | 2026-10-26 | G1 open questions | The maintainer answered G1 design questions Q1–Q5 and kept `npipe-async` as the preferred Windows candidate ([record](../review/ADR-010-G1-open-questions-decision.md)). Design directions only; G1 code, production dependencies and release integration stay unauthorized |
 
 ## 9. Maintainer acceptance
@@ -308,3 +309,43 @@ decision applies.
 - **Not authorized:** production G1 code, production dependencies and
   release integration. A conflict with an accepted requirement goes to an
   ACR.
+
+## 12. G1/P04 authorization (2026-10-26)
+
+The maintainer's [decision record](../review/ADR-010-G1-P04-authorization-decision.md)
+is authoritative; this section summarizes it.
+
+- **Authorized:**
+  - G1 slices G1-1 to G1-9, in order, as small reviewable PRs. Each passes
+    its tests and security review before dependent work merges;
+  - the OWN-11 dependencies, subject to security, licensing, compatibility
+    and reproducible-build verification. Patched x/net and x/text are
+    kept, and the full graph is recorded in `docs/DEPENDENCIES.md`.
+- **Windows admission is mandatory:**
+  - pipe instance limits, first-instance ownership, remote rejection and
+    OS peer identity;
+  - mutual authentication, with the host proving itself before the worker
+    accepts operational commands.
+- **Bounds:** G = 1 s, K = 1 s and M = 2 s, provisional until measured on
+  representative hardware. M is not an OS termination guarantee. The
+  20 % comparison threshold is provisional, and results above it are
+  investigated.
+- **Platforms:** Windows 10 x64 stays in the support target, and its
+  unrun tests stay BLOCKED. Test resources are pending
+  ([BLOCKED list](../testing/adr-010-g1-blocked.md)). No key or secret
+  goes into repositories, prompts, logs or fixtures.
+- **Tests:**
+  - TPT-002 now reads "selected UDS runtime", with no coverage reduced;
+  - replay is verified by two required tests, TPT-023 and TPT-024;
+  - mutual authentication is TPT-025;
+  - privilege interactions are TPT-026.
+- **Unchanged safeguards:**
+  - native gRPC over local IPC;
+  - `npipe-async` preferred, with no TCP or stdio fallback;
+  - the internal capability registry;
+  - GoPMgr's exclusive authority over encryption, authentication,
+    scheduling, audit and project persistence;
+  - no weakened tests;
+  - ACRs for any conflict.
+- **Not authorized:** MPXJ import, project database migrations, broader
+  architectural changes and release-readiness claims.

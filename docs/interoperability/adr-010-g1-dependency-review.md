@@ -5,9 +5,15 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-010 G1 dependency review (for approval)
 
-**Status:** PROPOSED, 2026-10-26. This document asks the maintainer to
-approve the OWN-11 dependency slice. **Nothing here is added to GoPMgr's
-`go.mod`, release or installers** until the maintainer approves it.
+**Status:** **CONDITIONALLY APPROVED** by the maintainer on 2026-10-26
+([P04-D2](../review/ADR-010-G1-P04-authorization-decision.md)). The
+conditions:
+
+- security, licensing, compatibility and reproducible-build verification;
+- the patched x/net and x/text versions kept;
+- the complete dependency graph recorded in `docs/DEPENDENCIES.md`.
+
+The verification and the `go.mod` change are slice G1-1.
 
 **Basis:**
 

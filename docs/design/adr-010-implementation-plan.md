@@ -456,6 +456,8 @@ Separate third-party ADR + OS sandbox proof -> G7
 
 **Authorization (2026-10-24):** P00, P01 and P02 are authorized as separate small PRs (decision record §5.1). P03 onward needs its own accepted work slice; P01 code must not become a production worker, and P02 must not migrate any project.
 
+**Authorization (2026-10-26):** P04 (G1) is authorized as slices G1-1 to G1-9 ([P04 authorization](../review/ADR-010-G1-P04-authorization-decision.md)). MPXJ import, project database migrations and release-readiness claims stay unauthorized.
+
 Each PR states exact HEAD, changed files, invariant IDs, new tests, raw pass/blocked results, source/fixture hashes, performance change, threat/law/license change, migration/rollback and scope exclusions. Stop if old/source behavior differs materially from baseline.
 
 ### 8.3 Go/no-go gates
@@ -494,7 +496,7 @@ Each PR states exact HEAD, changed files, invariant IDs, new tests, raw pass/blo
 | OWN-08 | Existing file version gate and prior-version disclosure | Yes, ADR-011 required | APPROVED |
 | OWN-09 | MPXJ LTS/JDK/Notarization/license/replacement policy | G0 investigation + legal review | APPROVED FOR G0 INVESTIGATION; final choices reserved |
 | OWN-10 | Minimum/recommended hardware and latency/throughput budgets | Decide after S0 measurements | APPROVED — goal and method; budgets reserved for after S0 |
-| OWN-11 | New Go dependencies: `google.golang.org/grpc`, `google.golang.org/protobuf` and, for Windows named pipes, `github.com/Microsoft/go-winio` (none is in `go.mod` today) | Approve at G1 with a `docs/DEPENDENCIES.md` record, after G0 picks the transport | APPROVED FOR P01 EXPERIMENTS; G1 production dependencies not yet authorized |
+| OWN-11 | New Go dependencies: `google.golang.org/grpc`, `google.golang.org/protobuf` and, for Windows named pipes, `github.com/Microsoft/go-winio` | Approve at G1 with a `docs/DEPENDENCIES.md` record, after G0 picks the transport | APPROVED FOR P01 EXPERIMENTS; **CONDITIONALLY APPROVED FOR G1 (2026-10-26, P04-D2)**: security, licensing, compatibility and reproducible-build verification; patched x/net and x/text; full graph in `docs/DEPENDENCIES.md` |
 
 Document owner decisions in an accepted ADR and test strategy. An agent must not mark `OPEN` as `APPROVED` through interpretation, code edits or “the test passes.” The maintainer approved all eleven on 2026-10-24; the State column copies the dispositions in the [decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md) §2, which governs their conditions.
 
@@ -508,6 +510,7 @@ Document owner decisions in an accepted ADR and test strategy. An agent must not
 | G1-Q4 | Windows and signing validation | APPROVED TEST POLICY; RESOURCES PENDING | G1 design §8 |
 | G1-Q5 | Worker shutdown grace | APPROVED DIRECTION — provisional minimum 1 s; final value from p99 on approved hardware | G1 design §5.1 |
 | G1-W | Windows transport | RETAINED — `npipe-async` preferred, conditionally; `npipe-dual` and AF_UNIX never automatic fallbacks | G1 design §4, §8 |
+| P04 | G1 slices G1-1 to G1-9 | APPROVED (2026-10-26) — in order, small PRs; conditions in the [P04 authorization](../review/ADR-010-G1-P04-authorization-decision.md) | [G1 implementation plan](adr-010-g1-implementation-plan.md) |
 
 ## 11. Primary references and exact-file evidence
 
