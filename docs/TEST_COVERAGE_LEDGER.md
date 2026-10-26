@@ -1298,6 +1298,19 @@ to `*.test.ts`/`*.spec.ts` files.
 
 ---
 
+## Isolated spike modules (outside the GoPMgr build)
+
+These modules have their own `go.mod` under `spikes/`. They are not part of
+`go test . ./internal/... ./tools/...`, and their results are evidence in
+the spike's own records. They are listed here so every test file is
+accounted for.
+
+| File | Tests | Covers | How | Why |
+| --- | --- | --- | --- | --- |
+| `spikes/adr012-datafusion/internal/oracle/portfolio_test.go` (added 2026-10-26) | 5 | The ADR-012 DF0 portfolio oracle: the legacy float-fallback rule, hand-computed totals and indices, overflow, EVM exclusion, correctness flags, ULP distance | unit, table-driven, differential | The oracle judges every analytics engine, so it is checked by hand-computed cases and by a 200,000-input differential test against the production `money.FromMajorFloat`. The test found that 2.675 rounds to 268 legacy minor units, not 267. |
+| `spikes/adr012-datafusion/internal/canon/compare_test.go` (added 2026-10-26) | 2 (41 subtests) | The engine-neutral cell comparator: every parity class and case verdict | unit, table-driven | A comparator that scores a changed value as a note would hide engine defects, for example an integer above 2^53 rounded by a float. |
+| `spikes/adr012-datafusion/internal/fixtures/corpus_test.go` (added 2026-10-26) | 3 | The DF0 corpus: the committed manifest matches a fresh generation byte for byte, portfolio files round-trip exactly (NaN included), and IDs and files are unique | unit, fixture | The fixtures are the truth for every engine. Their independent-reader check is `cmd/df0-selfcheck` (69 of 69 reproduced). |
+
 ## Known gaps (cross-reference)
 
 This ledger records existing coverage, not a work plan. The one package row

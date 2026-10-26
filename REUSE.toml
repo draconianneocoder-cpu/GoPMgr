@@ -313,3 +313,11 @@ SPDX-FileCopyrightText = [
     "The LibTomCrypt contributors",
 ]
 SPDX-License-Identifier = "MIT AND BSD-3-Clause AND blessing AND Unlicense"
+
+# ADR-012 DF0 spike: the generated fixture manifest, the JSONL evidence
+# records and Go's module checksum file.
+[[annotations]]
+path = ["spikes/adr012-datafusion/fixtures/**", "spikes/adr012-datafusion/evidence/**", "spikes/adr012-datafusion/go.sum"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "CC0-1.0"

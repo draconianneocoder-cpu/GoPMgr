@@ -1,0 +1,11 @@
+{"test_ids":["DF-017"],"case_id":"fs-missing","note":"a path that does not exist","status":"observed","error":"analytics: not a readable file: \u003cdir\u003e/missing.csv","rows":0}
+{"test_ids":["DF-017"],"case_id":"fs-directory","note":"a directory named like a CSV file","status":"observed","error":"analytics: not a readable file: \u003cdir\u003e/folder.csv","rows":0}
+{"test_ids":["DF-017"],"case_id":"fs-unsupported-extension","note":".xlsx (handled by the frontend reader, not ImportTabular)","status":"observed","error":"analytics: unsupported file type \".xlsx\" (want .csv/.tsv/.parquet/.json)","rows":0}
+{"test_ids":["DF-017"],"case_id":"fs-no-extension","note":"no extension","status":"observed","error":"analytics: unsupported file type \"\" (want .csv/.tsv/.parquet/.json)","rows":0}
+{"test_ids":["DF-017"],"case_id":"fs-glob-star","note":"selected file named *.csv beside a.csv and b.csv","status":"observed","columns":["id","src"],"rows":3,"finding":"the path was expanded as a glob: 3 rows from files the user did not select"}
+{"test_ids":["DF-017"],"case_id":"fs-glob-doublestar","note":"selected file named **.csv beside a subdirectory","status":"observed","columns":["id","src"],"rows":4,"finding":"the path was expanded as a glob: 4 rows"}
+{"test_ids":["DF-017"],"case_id":"fs-glob-question","note":"selected file q?.csv beside q1.csv","status":"observed","columns":["id","src"],"rows":2,"finding":"the path was expanded as a glob: 2 rows"}
+{"test_ids":["DF-017"],"case_id":"fs-quote-in-name","note":"a single quote in the file name (SQL string escaping)","status":"observed","columns":["id"],"rows":1}
+{"test_ids":["DF-017"],"case_id":"fs-symlink-outside","note":"selected symlink pointing outside its directory","status":"observed","columns":["id","secret"],"rows":1,"finding":"a symlink to a file outside the selected directory is followed; allowed_directories does not confine it"}
+{"test_ids":["DF-017"],"case_id":"fs-unreadable","note":"mode 000 file","status":"blocked","columns":["id"],"rows":1,"finding":"running as root, which bypasses file permissions; needs an unprivileged run"}
+{"test_ids":["DF-020"],"case_id":"fs-source-unchanged","note":"bytes and modification time before and after import","status":"observed","rows":0,"original_unchanged":"unchanged"}
