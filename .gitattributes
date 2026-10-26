@@ -3,3 +3,12 @@
 
 # Preserve the hash-pinned upstream SQLCipher runtime snapshot byte-for-byte.
 third_party/go-sqlcipher/** -whitespace
+
+# The maintainer-supplied ADR-012 v0.2 package, kept byte-for-byte so it
+# still matches the archive's SHA256SUMS.txt (Markdown hard line breaks).
+docs/design/ADR-012-datafusion-analytics-replacement.md -whitespace
+docs/testing/adr-012-datafusion-feasibility-spike.md -whitespace
+docs/agent/adr-012-coding-agent-instructions.md -whitespace
+docs/agent/adr-012-owner-prompt-to-paste.md -whitespace
+docs/review/adr-012-v0.2-improvements-and-traceability.md -whitespace
+docs/design/adr-012/** -whitespace
