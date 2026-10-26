@@ -71,7 +71,9 @@ a **jlink image** of nine modules (65 MB on Linux x64), not the full JDK.
 | macos-15-intel | macOS 15.7.9 | x64 | same | `ci-473708f-darwin-amd64.jsonl` |
 | Cloud container | Ubuntu 24.04.5, kernel 6.18 | x64 | same as Linux | `container-473708f-linux-amd64*.jsonl` |
 
-None of these is an owner-approved hardware profile (OWN-10).
+None of these is an owner-approved hardware profile (OWN-10). The
+maintainer dropped macOS Intel from CI on 2026-10-26. Its results here are
+its last.
 
 ## 3. Root cause of the ≈ 500 ms exit delay (finding W2)
 
@@ -437,8 +439,9 @@ go run . -java "$JAVA_HOME/bin/java" -runtime jdk -jar ../worker/target/g0-worke
   -head "$(git rev-parse HEAD)" -out /tmp/g0.jsonl
 ```
 
-CI runs the same probe on all six runners, on a jlink image, through
-`.github/workflows/adr010-g0-spike.yml`. The bridge self-test runs alone
+CI runs the same probe on five runners, on a jlink image, through
+`.github/workflows/adr010-g0-spike.yml`. macOS Intel was dropped on
+2026-10-26. The bridge self-test runs alone
 with:
 
 ```sh

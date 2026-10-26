@@ -209,8 +209,9 @@ jlink --add-modules "$mods" --strip-debug --no-header-files --no-man-pages --out
 ```
 
 `.github/workflows/adr010-g0-spike.yml` runs the probe on a jlink runtime
-on six runners when this folder changes: Linux x64 and Arm, macOS Apple
-silicon and Intel, Windows Server 2025 x64 and Windows 11 Arm. On Linux
+on five runners when this folder changes: Linux x64 and Arm, macOS Apple
+silicon, Windows Server 2025 x64 and Windows 11 Arm. The maintainer dropped
+macOS Intel on 2026-10-26; its earlier results stay in `evidence/`. On Linux
 it runs a second time inside an empty network namespace (`unshare -rn`)
 to show the worker needs no network. It uploads the evidence. That workflow is not a gate: it reports,
 and the evidence file records PASS, FAIL or BLOCKED for each scenario.

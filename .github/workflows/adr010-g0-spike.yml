@@ -35,7 +35,6 @@ jobs:
           - { os: ubuntu-26.04, jdk: linux-x64 }
           - { os: ubuntu-24.04-arm, jdk: linux-aarch64 }
           - { os: macos-15, jdk: mac-aarch64 }
-          - { os: macos-15-intel, jdk: mac-x64 }
           - { os: windows-2025, jdk: windows-x64 }
           - { os: windows-11-arm, jdk: windows-aarch64 }
     defaults:

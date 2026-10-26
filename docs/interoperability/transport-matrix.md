@@ -36,12 +36,16 @@ covers the fixes behind these results.
 | Linux amd64 | Ubuntu 26.04.1, kernel 7.0 (CI) | UDS epoll, UDS NIO | **PASS** 43/43; offline (empty network namespace) 9/9 | `ci-473708f-linux-amd64*.jsonl` |
 | Linux arm64 | Ubuntu 24.04.5 (CI) | UDS epoll, UDS NIO | **PASS** 43/43; offline 9/9 | `ci-473708f-linux-arm64*.jsonl` |
 | macOS arm64 | 15.7.9 (CI) | UDS kqueue, UDS NIO | **PASS** 43/43 | `ci-473708f-darwin-arm64.jsonl` |
-| macOS Intel | 15.7.9 (CI) | UDS kqueue, UDS NIO | **PASS** 43/43 | `ci-473708f-darwin-amd64.jsonl` |
+| macOS Intel | 15.7.9 (CI) | UDS kqueue, UDS NIO | **PASS** 43/43 (last run; see note) | `ci-473708f-darwin-amd64.jsonl` |
 | Windows amd64 | Server 2025, build 26100 (CI) | AF_UNIX (NIO), `npipe-dual`, `npipe-async` | **PASS**: every scenario on all three | `ci-473708f-windows-amd64.jsonl` |
 | Windows arm64 | Windows 11, build 26200 (CI) | AF_UNIX (NIO), `npipe-dual`, `npipe-async` | **PASS**: every scenario on all three | `ci-473708f-windows-arm64.jsonl` |
 | Windows, both | as above | `npipe` (one synchronous handle) | **FAIL**: deadlock; 16 dependents BLOCKED. Not a candidate | same |
 | Windows 10 / 11 x64 desktop | — | — | **BLOCKED** (not run) | — |
 | Packaged, signed app; offline jlink on Windows and macOS | — | — | **BLOCKED** (not run) | — |
+
+**macOS Intel** was dropped from CI on 2026-10-26 at the maintainer's
+direction. `473708f` is its last result. Any Intel macOS claim rests on
+that record alone and is not re-tested.
 
 Cancel to exit, p50 / p95 ms, 30 runs, `473708f`:
 
