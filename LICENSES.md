@@ -139,10 +139,78 @@ says that each reproduced text keeps its own terms.
 
 ### Not covered yet
 
-- Native libraries that a Go module ships in compiled form can carry notices
-  of their own that the module does not include. The DuckDB binding modules
-  (`github.com/duckdb/duckdb-go-bindings/lib/*`) are the known case: their
-  static libraries bundle code such as ICU, RE2, zstd and Parquet components,
-  and the module ships only DuckDB's MIT license.
 - The frontend's npm packages, bundled into `frontend/dist` and embedded in
   the binary, have no generated notices file yet.
+
+## DuckDB native library notices
+
+The DuckDB binding modules (`github.com/duckdb/duckdb-go-bindings/lib/*`) ship
+DuckDB as prebuilt static libraries, and the module itself carries only
+DuckDB's MIT license. The libraries also contain third-party code: ICU, RE2,
+Zstandard, Mbed TLS, the Parquet stack (Thrift, Snappy, Brotli, LZ4), the
+TPC-H and TPC-DS data generators, and more. `third_party/DUCKDB-NATIVE-NOTICES.txt`
+reproduces their license and notice texts. It ships next to the Go module
+notices: `LICENSES/duckdb-native.txt` in the tarball,
+`/usr/share/doc/gopmgr/duckdb-native-notices.txt` in the Linux packages,
+`Contents/Resources/Licenses/duckdb-native.txt` in the macOS app, and
+`licenses\duckdb-native.txt` on Windows.
+
+### How the file is made
+
+`tools/duckdb-notices` holds a reviewed list of the components. Each entry
+names the linked library that contains it and the license file, or the
+license comment lines, in the DuckDB source. The tool reads those texts from
+the DuckDB source the libraries were built from. It checks the checkout's
+commit against its pin first.
+
+The pins for duckdb-go-bindings v0.10506.0:
+
+- the module's `Makefile` builds DuckDB v1.5.6;
+- the tag is commit `069cc9f9b5be802405797faecc284961b07c70ef`, which matches
+  the source ID compiled into `libduckdb_static.a`;
+- robin-hood-hashing 3.11.5 supplies the MIT text that DuckDB credits in
+  `src/common/checksum.cpp` but does not carry.
+
+The list was built from the symbols of every linked library on all three
+platforms (`llvm-nm`, matched against each component's namespace), plus a
+scan of DuckDB's own sources for embedded third-party code (nanoarrow and
+ADBC, ALP, the merge-sort tree, MD5, robin-hood-hashing). Every component is
+linked on all three platforms, except jemalloc, which is built into the Linux
+library only. Snowball, Catch and the IMDB data are in the DuckDB tree but
+not in the linked libraries, so they are not listed.
+
+### When to update
+
+- `make duckdb-notices-check`, part of `make verify`, works offline. It fails
+  when `go.mod` selects any duckdb-go-bindings module at a version other than
+  the reviewed one, or when the file no longer matches the pins and component
+  list.
+- On a DuckDB update, repeat the review for the new release: link flags,
+  library symbols, and new `third_party` directories. Then update the pins and
+  the component list in `tools/duckdb-notices`, and run `make duckdb-notices`.
+  That target clones the pinned sources and rewrites the file. Its unit test
+  also fails if a linked library is not accounted for.
+- `scripts/verify-module-notices.sh` refuses to package a binary that links a
+  DuckDB library module the file does not name at that exact version.
+
+### TPC-H and TPC-DS generators: open licensing question
+
+The `tpch` and `tpcds` extensions are linked on every platform. The TPC-H
+generator (`dbgen`) is under the TPC End User License Agreement 2.2, not an
+open-source license. DuckDB's copy of the TPC-DS generator (`dsdgen`) has no
+license file; its sources carry a TPC legal notice.
+
+The agreement's clause 9 allows redistribution on these conditions:
+
+- a complete copy of the agreement is included;
+- the legend "THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC." appears
+  at the top of the label and license;
+- the copyright notices are kept;
+- no fee is charged.
+
+The notices file carries the full agreement and puts the legend at its top.
+Other clauses add restrictions, including on publishing performance results
+and on export. Clause 8 says merged code stays subject to the agreement.
+Whether that is compatible with distributing GoPMgr under GPL-3.0-or-later
+is an open question for the maintainer and legal review. GoPMgr's own code
+does not call these extensions.

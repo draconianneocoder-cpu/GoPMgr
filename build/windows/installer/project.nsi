@@ -83,6 +83,7 @@ Section "GoPMgr" SEC_GOPMGR
   File /oname=go-sqlcipher.txt "..\..\..\third_party\go-sqlcipher\THIRD_PARTY_NOTICES.txt"
   File /oname=fonts.txt "..\..\..\internal\fonts\assets\FONT-NOTICES.txt"
   File /oname=go-modules.txt "..\..\..\third_party\GO-MODULE-NOTICES.txt"
+  File /oname=duckdb-native.txt "..\..\..\third_party\DUCKDB-NATIVE-NOTICES.txt"
   SetOutPath "$INSTDIR"
 
   CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"

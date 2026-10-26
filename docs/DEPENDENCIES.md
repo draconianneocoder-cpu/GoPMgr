@@ -201,6 +201,10 @@ weakening the release claim.
    `third_party/GO-MODULE-NOTICES.txt`. Its diff shows every license text
    that changes. `make verify` fails until the file is current; see
    [LICENSES.md](../LICENSES.md#go-module-notices-in-release-packages).
+8. A duckdb-go-bindings update also changes the prebuilt DuckDB libraries
+   and the third-party code inside them. `make verify` fails until the
+   DuckDB native notices are reviewed for the new release; see
+   [LICENSES.md](../LICENSES.md#duckdb-native-library-notices).
 
 For SQLCipher specifically, remember that the selected driver owns the
 SQLite implementation in the binary. Driver changes need encryption

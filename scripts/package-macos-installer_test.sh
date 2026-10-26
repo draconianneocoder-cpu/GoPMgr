@@ -76,6 +76,7 @@ done
 [[ -s "$root/gopmgr.app/Contents/Resources/Licenses/go-sqlcipher.txt" ]]
 grep -Fq "SIL OPEN FONT LICENSE" "$root/gopmgr.app/Contents/Resources/Licenses/fonts.txt"
 cmp -s "$root/gopmgr.app/Contents/Resources/Licenses/go-modules.txt" third_party/GO-MODULE-NOTICES.txt
+cmp -s "$root/gopmgr.app/Contents/Resources/Licenses/duckdb-native.txt" third_party/DUCKDB-NATIVE-NOTICES.txt
 [[ "$(/usr/bin/xmllint --nonet --xpath 'count(/plist/array/dict)' "$policy")" == 1 ]]
 [[ "$(plutil -extract 0.RootRelativeBundlePath raw -expect string -o - "$policy")" == gopmgr.app ]]
 [[ "$(plutil -extract 0.BundleIsVersionChecked raw -expect bool -o - "$policy")" == true ]]
@@ -159,6 +160,7 @@ run_case() {
 	cp "$ROOT/internal/fonts/assets/FONT-NOTICES.txt" "$repo/internal/fonts/assets/"
 	printf '%s\n' 'Go module notices fixture' '' 'Module: std' 'Module: example.com/fixture v1.0.0' \
 		> "$repo/third_party/GO-MODULE-NOTICES.txt"
+	cp "$ROOT/third_party/DUCKDB-NATIVE-NOTICES.txt" "$repo/third_party/"
 	# Wails pinning has its own regressions. This matrix owns installer behavior.
 	printf '#!/bin/bash\nexit 0\n' > "$repo/scripts/check-wails-version.sh"
 	printf 'prior good package\n' > "$repo/prior.pkg"
