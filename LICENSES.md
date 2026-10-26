@@ -147,9 +147,10 @@ says that each reproduced text keeps its own terms.
 The DuckDB binding modules (`github.com/duckdb/duckdb-go-bindings/lib/*`) ship
 DuckDB as prebuilt static libraries, and the module itself carries only
 DuckDB's MIT license. The libraries also contain third-party code: ICU, RE2,
-Zstandard, Mbed TLS, the Parquet stack (Thrift, Snappy, Brotli, LZ4), the
-TPC-H and TPC-DS data generators, and more. `third_party/DUCKDB-NATIVE-NOTICES.txt`
-reproduces their license and notice texts. It ships next to the Go module
+Zstandard, Mbed TLS, the Parquet stack (Thrift, Snappy, Brotli, LZ4), and
+more. `third_party/DUCKDB-NATIVE-NOTICES.txt` reproduces their license and
+notice texts. The TPC-H and TPC-DS generators the modules also carry are
+excluded from GoPMgr; see [below](#excluded-the-tpc-h-and-tpc-ds-generators). It ships next to the Go module
 notices: `LICENSES/duckdb-native.txt` in the tarball,
 `/usr/share/doc/gopmgr/duckdb-native-notices.txt` in the Linux packages,
 `Contents/Resources/Licenses/duckdb-native.txt` in the macOS app, and
@@ -181,10 +182,11 @@ not in the linked libraries, so they are not listed.
 
 ### When to update
 
-- `make duckdb-notices-check`, part of `make verify`, works offline. It fails
-  when `go.mod` selects any duckdb-go-bindings module at a version other than
-  the reviewed one, or when the file no longer matches the pins and component
-  list.
+- `make duckdb-notices-check`, part of `make verify`, works offline once the
+  modules are downloaded. It fails when `go.mod` selects any
+  duckdb-go-bindings module at a version other than the reviewed one, when
+  the file no longer matches the pins and component list, or when the
+  excluded TPC code could be linked (see below).
 - On a DuckDB update, repeat the review for the new release: link flags,
   library symbols, and new `third_party` directories. Then update the pins and
   the component list in `tools/duckdb-notices`, and run `make duckdb-notices`.
@@ -193,24 +195,46 @@ not in the linked libraries, so they are not listed.
 - `scripts/verify-module-notices.sh` refuses to package a binary that links a
   DuckDB library module the file does not name at that exact version.
 
-### TPC-H and TPC-DS generators: open licensing question
+### Excluded: the TPC-H and TPC-DS generators
 
-The `tpch` and `tpcds` extensions are linked on every platform. The TPC-H
-generator (`dbgen`) is under the TPC End User License Agreement 2.2, not an
-open-source license. DuckDB's copy of the TPC-DS generator (`dsdgen`) has no
-license file; its sources carry a TPC legal notice.
+Each platform module also ships DuckDB's TPC-H and TPC-DS data generators as
+separate archives, `libtpch_extension.a` and `libtpcds_extension.a`, and
+names them on its link line. The TPC-H generator (`dbgen`) is under the TPC
+End User License Agreement 2.2, not an open-source license. DuckDB's copy of
+the TPC-DS generator (`dsdgen`) has no license file; its sources carry a TPC
+legal notice. Whether that code can be distributed with GoPMgr under
+GPL-3.0-or-later has not had a qualified legal review, so the maintainer has
+excluded it from every GoPMgr distribution, on all platforms and in all
+formats (decision of 2026-10-26; see
+[the decision record](docs/review/TPC-benchmark-exclusion-decision.md)).
 
-The agreement's clause 9 allows redistribution on these conditions:
+The prebuilt libraries already keep this code out of linked binaries. DuckDB
+builds both extensions with `DONT_LINK`, so its generated extension loader
+does not reference them, and no other linked library or cgo call does. A
+static linker takes an archive member only to resolve an undefined symbol,
+so neither archive adds code. Audits of the 1.1.0-alpha.2 release binaries
+and of a current Linux build found no TPC code; the decision record has the
+method and results. DuckDB core keeps a table of extension names for
+autoloading, so binaries do contain strings such as `dbgen`, `dsdgen`,
+`tpch` and `tpcds`. That table is data and holds no generator code.
 
-- a complete copy of the agreement is included;
-- the legend "THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC." appears
-  at the top of the label and license;
-- the copyright notices are kept;
-- no fee is charged.
+The exclusion is enforced, and each check is release-blocking:
 
-The notices file carries the full agreement and puts the legend at its top.
-Other clauses add restrictions, including on publishing performance results
-and on export. Clause 8 says merged code stays subject to the agreement.
-Whether that is compatible with distributing GoPMgr under GPL-3.0-or-later
-is an open question for the maintainer and legal review. GoPMgr's own code
-does not call these extensions.
+- `third_party/EXCLUDED-NATIVE-CODE.txt` lists the two archives and eight
+  strings found only in their code (class names and error messages), which
+  survive symbol stripping.
+- `make duckdb-notices-check` audits every DuckDB platform module `go.mod`
+  requires. It fails if another linked library or a cgo call in the Go
+  bindings references a symbol the archives define, if a marker is missing
+  from the archives, or if a marker appears in any other linked library.
+- `scripts/verify-excluded-native-code.sh` fails on a binary that contains
+  any marker. `scripts/verify-module-notices.sh` runs it, so every packaging
+  path (tarball, `.deb` and `.rpm`, macOS app and installer, Windows
+  installer, Debian source build) checks the binary it ships.
+- `debian/rules` runs it with `--tree vendor` before building. `go mod
+  vendor` copies the excluded archives into `vendor/`, so a plain vendored
+  Debian source package fails by design: publishing it would distribute the
+  TPC object code. No vendored layout without them is approved yet.
+
+Because the code is not shipped, the notices file no longer reproduces the
+TPC agreement.
