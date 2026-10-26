@@ -390,6 +390,7 @@ final class PipeBridge implements AutoCloseable {
         return;
       }
       Timing.count("bridge_" + what + "_failed", 1);
+      Timing.note("bridge " + what + " failed: " + t);
       ctx.close();
     }
 
@@ -415,6 +416,7 @@ final class PipeBridge implements AutoCloseable {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
       Timing.count("bridge_exception", 1);
+      Timing.note("bridge exception: " + cause);
       ctx.close();
     }
   }

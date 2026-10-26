@@ -49,6 +49,8 @@ type jobRun struct {
 	connected bool
 	stderr    string // the worker's captured stderr, for diagnostics
 	stdout    string // the worker's captured stdout, for diagnostics
+	startedAt time.Time
+	endedAt   time.Time
 }
 
 func (r *jobRun) set(k string, v any) {
@@ -100,7 +102,7 @@ func runJob(cfg config, o jobOptions) (*jobRun, error) {
 		return nil, err
 	}
 	workerID := "org.gopmgr.g0spike"
-	r := &jobRun{ep: ep, metrics: map[string]any{}, exitCode: stillRunning}
+	r := &jobRun{ep: ep, metrics: map[string]any{}, exitCode: stillRunning, startedAt: time.Now()}
 	r.secrets = [][]byte{cred, []byte(fmt.Sprintf("%x", cred))}
 
 	done := make(chan error, 1)
@@ -214,6 +216,7 @@ func runJob(cfg config, o jobOptions) (*jobRun, error) {
 	r.set("peer_check", r.pl.peerCheck)
 	r.set("proof_rejected", r.sess.rejected.Load())
 	r.set("proof_accepted", r.sess.handled.Load())
+	r.endedAt = time.Now()
 	return r, nil
 }
 

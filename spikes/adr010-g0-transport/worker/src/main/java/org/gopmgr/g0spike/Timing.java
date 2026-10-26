@@ -32,6 +32,8 @@ final class Timing {
   private static final Queue<String> MARKS = new ConcurrentLinkedQueue<>();
   private static final Map<String, Long> STATS = new ConcurrentHashMap<>();
   private static volatile String nativeAtExit = "";
+  private static final int MAX_NOTES = 5;
+  private static final Queue<String> NOTES = new ConcurrentLinkedQueue<>();
 
   /** Native methods in which a thread waits inside the VM, not in native code. */
   private static final Set<String> VM_WAITS = Set.of(
@@ -50,6 +52,9 @@ final class Timing {
       System.err.println("g0-timing: " + String.join(",", MARKS));
       System.err.println("g0-stats: " + stats);
       System.err.println("g0-native-at-exit: " + nativeAtExit);
+      for (String n : NOTES) {
+        System.err.println("g0-note: " + n);
+      }
       System.err.flush();
     }, "g0-timing"));
   }
@@ -69,6 +74,19 @@ final class Timing {
   /** Keeps the largest {@code value} seen for {@code key}. */
   static void peak(String key, long value) {
     STATS.merge(key, value, Math::max);
+  }
+
+  /**
+   * Keeps a short diagnostic text (at most {@value #MAX_NOTES}, each one line
+   * of at most 200 characters), printed at exit. For failure reasons such as
+   * an I/O exception's class and message; never for secrets.
+   */
+  static void note(String text) {
+    if (NOTES.size() >= MAX_NOTES) {
+      return;
+    }
+    String one = text.replace('\r', ' ').replace('\n', ' ');
+    NOTES.add(one.length() > 200 ? one.substring(0, 200) : one);
   }
 
   /** Current value of counter {@code key}, or 0. */

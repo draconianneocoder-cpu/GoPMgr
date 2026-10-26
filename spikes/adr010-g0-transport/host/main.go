@@ -103,6 +103,9 @@ func (e *evidence) absorb(r *jobRun, err error) {
 	// looked fine (G0 found one in the overlapped pipe's close path).
 	n := uncaughtExceptions(r.stderr)
 	e.Metrics["worker_uncaught_exceptions"] = n
+	if notes := parseWorkerDiag(r.stderr).notes; len(notes) > 0 {
+		e.Metrics["worker_notes"] = notes
+	}
 	if n > 0 {
 		e.fail(fmt.Sprintf("the worker reported %d uncaught exception(s) on stderr", n))
 	}
@@ -110,6 +113,11 @@ func (e *evidence) absorb(r *jobRun, err error) {
 		e.fail("the worker never completed the handshake")
 	} else if r.driveErr != nil {
 		e.fail("session: " + r.driveErr.Error())
+	}
+	if !r.connected || r.driveErr != nil {
+		if lines := hostGRPCLog.failureLines(r.startedAt, r.endedAt, 5); len(lines) > 0 {
+			e.Metrics["host_grpc_log"] = lines
+		}
 	}
 }
 
@@ -196,6 +204,7 @@ func main() {
 	runtimeLabel := flag.String("runtime", "jdk", "what -java is, for the record: jdk or jlink")
 	cancelRuns := flag.Int("cancel-runs", 30, "cancel scenario repetitions")
 	flag.Parse()
+	captureGRPCLogs()
 	if *java == "" || *jar == "" {
 		fmt.Fprintln(os.Stderr, "g0probe: -java and -jar are required")
 		os.Exit(2)
@@ -274,6 +283,7 @@ func main() {
 			{"oversize", func() *evidence { return scenarioOversize(cfg, t) }},
 			{"concurrent", func() *evidence { return scenarioConcurrent(cfg, t, 4) }},
 			{"connect-flood", func() *evidence { return scenarioConnectFlood(cfg, t) }},
+			{"connect-repeat", func() *evidence { return scenarioConnectRepeat(cfg, t, 50) }},
 			// Abnormal endings, on every transport: the host must see the
 			// stream fail and leave nothing behind, whatever carries it.
 			{"tree-kill", func() *evidence { return scenarioTreeKill(cfg, t) }},
@@ -315,12 +325,19 @@ func main() {
 			}
 		}
 	}
-	// Diagnostic controls: the cancel case only, for comparison.
-	if *only == "" && want("cancel") {
+	// Diagnostic controls, for comparison only.
+	if *only == "" {
 		for _, t := range diagnosticTransports() {
-			e := scenarioCancel(cfg, t, *cancelRuns, "cancel", 0)
-			e.Notes = append(e.Notes, "diagnostic control, not a candidate transport")
-			emit(e)
+			if want("cancel") {
+				e := scenarioCancel(cfg, t, *cancelRuns, "cancel", 0)
+				e.Notes = append(e.Notes, "diagnostic control, not a candidate transport")
+				emit(e)
+			}
+			if want("connect-repeat") {
+				e := scenarioConnectRepeat(cfg, t, 50)
+				e.Notes = append(e.Notes, "diagnostic control, not a candidate transport")
+				emit(e)
+			}
 		}
 	}
 

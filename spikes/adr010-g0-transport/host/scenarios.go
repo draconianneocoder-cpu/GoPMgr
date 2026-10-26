@@ -305,6 +305,7 @@ func scenarioCancel(cfg config, transport string, runs int, name string, stall t
 	var example, nativeExample string
 	peakPending := int64(0)
 	uncaught := 0
+	var notes []string
 	codesSeen := map[int]int{}
 	for i := 0; i < runs; i++ {
 		var t0 time.Time
@@ -356,6 +357,9 @@ func scenarioCancel(cfg config, transport string, runs int, name string, stall t
 			}
 		}
 		peakPending = max(peakPending, d.stats["bridge_peak_pending_bytes"])
+		if len(d.notes) > 0 && len(notes) < 5 {
+			notes = append(notes, fmt.Sprintf("run %d: %s", i, strings.Join(d.notes, " | ")))
+		}
 		if n := uncaughtExceptions(r.stderr); n > 0 {
 			uncaught += n
 			ev.fail(fmt.Sprintf("run %d: the worker reported %d uncaught exception(s) on stderr", i, n))
@@ -402,6 +406,9 @@ func scenarioCancel(cfg config, transport string, runs int, name string, stall t
 	ev.Metrics["cold_start_ms"] = summarize(starts, time.Millisecond)
 	ev.Metrics["exit_codes"] = codesSeen
 	ev.Metrics["worker_uncaught_exceptions"] = uncaught
+	if len(notes) > 0 {
+		ev.Metrics["worker_notes"] = notes
+	}
 	return ev
 }
 
@@ -411,10 +418,12 @@ type workerDiag struct {
 	marks      map[string]time.Duration // label -> time since the worker started
 	stats      map[string]int64
 	native     []string // thread@frame in a native wait at exit
+	notes      []string // failure reasons the worker kept (Timing.note)
 }
 
-// parseWorkerDiag reads the g0-timing, g0-stats and g0-native-at-exit
-// lines from the worker's stderr. Unknown or malformed parts are skipped.
+// parseWorkerDiag reads the g0-timing, g0-stats, g0-native-at-exit and
+// g0-note lines from the worker's stderr. Unknown or malformed parts are
+// skipped.
 func parseWorkerDiag(stderr string) workerDiag {
 	d := workerDiag{marks: map[string]time.Duration{}, stats: map[string]int64{}}
 	for _, line := range splitLines(stderr) {
@@ -434,6 +443,8 @@ func parseWorkerDiag(stderr string) workerDiag {
 					d.native = append(d.native, t)
 				}
 			}
+		} else if rest, ok := strings.CutPrefix(line, "g0-note: "); ok {
+			d.notes = append(d.notes, rest)
 		}
 	}
 	return d
@@ -527,7 +538,7 @@ func scenarioReplay(cfg config, transport string, runs int) *evidence {
 		if code != "replay:UNAUTHENTICATED" {
 			ev.fail(fmt.Sprintf("run %d: the reused proof was not refused as UNAUTHENTICATED: %s", i, report))
 			if _, seen := ev.Metrics["first_other_outcome"]; !seen {
-				ev.Metrics["first_other_outcome"] = report
+				ev.Metrics["first_other_outcome"] = describeRunFailure(i, r, nil) + " report=" + report
 			}
 		}
 	}

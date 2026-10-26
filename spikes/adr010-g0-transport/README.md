@@ -144,6 +144,7 @@ gRPC through an in-JVM `LocalChannel`. Its rules:
 | `oversize` | The worker sends one 5 MiB message; the host's 4 MiB limit refuses it with `RESOURCE_EXHAUSTED` | TPT-013, TPT-014 |
 | `concurrent` | Four sessions at once, each with its own endpoint and full-duplex traffic; no session sees another's data | TPT-012, TPT-013, TPT-018 |
 | `connect-flood` | A process other than the worker (the probe itself) opens 50 connections while the worker starts; all are refused and the session still succeeds | TPT-006, TPT-018 |
+| `connect-repeat` | 50 fresh launches that only complete the handshake; any failure is recorded with the worker's notes and the host's gRPC log lines, and FAILs the scenario | TPT-003, TPT-004 (by transport) |
 | `bridge-selftest` | The pipe bridge's own tests, in memory, on every OS: 16 MiB each way, bounded buffering, close with I/O pending, second connection refused | TPT-012, TPT-013 |
 | `tree-kill` | On every transport: the worker starts a grandchild; the host ends the tree; both are gone | TPT-013, TPT-014 |
 | `crash` | On every transport: the worker starts a grandchild, then halts mid-stream; the stream fails and no orphan remains | TPT-013, TPT-014 |
@@ -152,6 +153,14 @@ gRPC through an in-JVM `LocalChannel`. Its rules:
 **Every scenario** also fails if the worker's stderr reports a thread
 ended by an uncaught exception (`Exception in thread ...`), even when the
 session itself succeeded.
+
+**Diagnostics on failure.**
+
+- **Worker:** the pipe bridge records the exception behind any I/O failure
+  (`g0-note:` lines on stderr).
+- **Host:** the probe keeps grpc-go's own log. A job whose session failed
+  carries the matching lines in its evidence (`host_grpc_log`).
+- **Content:** neither source records the credential or the proof.
 
 **Worker exit codes:** 0 done, 20 bootstrap refused, 21 cancelled, 22
 rejected, 23 error, 24 bootstrap expired, 70 crash (the `crash` scenario's

@@ -371,3 +371,69 @@ func scenarioBridgeSelfTest(cfg config) *evidence {
 	}
 	return ev
 }
+
+// scenarioConnectRepeat starts the worker many times and only completes
+// the handshake, to measure how often a connection fails before the
+// session begins. G0 saw such a failure once on Windows 11 arm64
+// (npipe-async, d4e392b) and once on Server 2025 x64 (the default-pool
+// control, 70a304c). Every failure is recorded with the worker's notes
+// and the host's gRPC log lines; any failure is a FAIL.
+func scenarioConnectRepeat(cfg config, transport string, runs int) *evidence {
+	ev := newEvidence("connect-repeat", transport, transportTestIDs(transport))
+	var starts []time.Duration
+	failures := 0
+	var details []string
+	for i := 0; i < runs; i++ {
+		r, err := runJob(cfg, jobOptions{transport: transport, timeout: 60 * time.Second,
+			drive: func(r *jobRun, stream g0pb.WorkerSession_ConnectServer) error {
+				var seq uint64
+				return finish(stream, &seq)
+			}})
+		if err == nil && r != nil && r.connected && r.driveErr == nil &&
+			r.exitCode == exitOK && uncaughtExceptions(r.stderr) == 0 {
+			starts = append(starts, r.coldStart)
+			continue
+		}
+		failures++
+		if len(details) < 5 {
+			details = append(details, describeRunFailure(i, r, err))
+		}
+	}
+	ev.Metrics["runs"] = runs
+	ev.Metrics["failures"] = failures
+	ev.Metrics["cold_start_ms"] = summarize(starts, time.Millisecond)
+	if len(details) > 0 {
+		ev.Metrics["failure_details"] = details
+	}
+	if failures > 0 {
+		ev.fail(fmt.Sprintf("%d of %d connections failed", failures, runs))
+	}
+	return ev
+}
+
+// describeRunFailure summarizes one failed run for the evidence: the
+// error, the session state, the worker's notes and the host's gRPC log.
+func describeRunFailure(i int, r *jobRun, err error) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "run %d:", i)
+	if err != nil {
+		fmt.Fprintf(&b, " error=%v", err)
+	}
+	if r == nil {
+		return b.String()
+	}
+	fmt.Fprintf(&b, " connected=%t exit=%d", r.connected, r.exitCode)
+	if r.driveErr != nil {
+		fmt.Fprintf(&b, " session=%v", r.driveErr)
+	}
+	if n := uncaughtExceptions(r.stderr); n > 0 {
+		fmt.Fprintf(&b, " uncaught_exceptions=%d", n)
+	}
+	if notes := parseWorkerDiag(r.stderr).notes; len(notes) > 0 {
+		fmt.Fprintf(&b, " worker=%q", strings.Join(notes, " | "))
+	}
+	if lines := hostGRPCLog.failureLines(r.startedAt, r.endedAt, 3); len(lines) > 0 {
+		fmt.Fprintf(&b, " host_grpc=%q", strings.Join(lines, " | "))
+	}
+	return b.String()
+}
