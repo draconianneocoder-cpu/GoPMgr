@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-012: Replace DuckDB analytics with an Apache DataFusion/Arrow worker
 
-**Status:** PROPOSED — requires explicit maintainer acceptance; no production implementation is authorized by this draft.  
+**Status:** ACCEPTED by the maintainer on 2026-10-26 ([acceptance record](../review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)) as the binding target architecture, subject to its feasibility gates and reserved owner decisions. The DF0 feasibility spike is authorized; production integration, mandatory dependency changes, SQLCipher migrations, DuckDB removal and release packaging changes are not. ADR-002 stays implemented until a verified cutover. Verification notes: [repository verification](../review/adr-012-repository-verification.md).  
 **Draft:** 0.2 · **Date:** 2026-10-26 · **Supersedes:** proposed draft v0.1 (preserved under `reference/v0.1/`)  
 **Decider:** GoPMgr maintainer  
 **Repository evidence baseline:** `main` at `28a758d154795bb2a20f3cbeb63a12e9130a88ea`, cross-checked against ADR-010 v2.2 on P00 branch `3d00f53` and P02/S0 PR #142. Reconfirm HEAD before execution.  

@@ -5,7 +5,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # Coding-agent directive: ADR-012 v0.2 DataFusion feasibility without architectural compromise
 
-**Status:** Proposed agent instruction; becomes binding only when accepted by the GoPMgr maintainer.  
+**Status:** Binding agent instruction, ACCEPTED by the maintainer on 2026-10-26 ([acceptance record](../review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)).  
 **Parent:** [ADR-012](../design/ADR-012-datafusion-analytics-replacement.md)  
 **Test plan:** [DF0 feasibility specification](../testing/adr-012-datafusion-feasibility-spike.md)  
 **Inherited:** ADR-010 v2.2 architecture-preservation agent prompt, repository `AGENTS.md`, `docs/DEPENDENCIES.md`, `docs/TESTING.md`, release gates and current platform support matrix.

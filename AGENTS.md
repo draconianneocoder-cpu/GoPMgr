@@ -27,6 +27,12 @@ automated engineering work.
 
 - Plan first for any multi-file change. Keep the plan scoped to a
   reviewable slice.
+- For ADR-012 work (replacing DuckDB analytics, DataFusion, the Rust
+  analytics worker, or `internal/analytics`), load
+  `docs/agent/adr-012-coding-agent-instructions.md` first and follow it.
+  ADR-012 v0.2 was accepted on 2026-10-26; only the isolated DF0 spike under
+  `spikes/adr012-datafusion/` is authorized (see
+  `docs/review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md`).
 - Use repository patterns instead of inventing new architecture.
 - Read existing files before editing. Do not guess APIs, versions,
   flags, commit SHAs, or package names; verify by reading code or
