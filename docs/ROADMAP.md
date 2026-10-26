@@ -30,6 +30,39 @@ near-term priority is making those workflows dependable for wider testing.
    builds, which today ship with the update channel disabled by design.
 4. Improve keyboard and assistive-technology coverage before broad release.
 
+## Strategic direction: professional scheduling
+
+On 2026-10-26 the maintainer approved a strategic direction: GoPMgr is to
+exceed ProjectLibre Desktop in scheduling correctness, project controls,
+interoperability, usability, security, documentation and analysis
+([decision record](review/PS-professional-scheduling-ACCEPTED-OWNER-DECISION.md)).
+The [modernization plan](design/professional-scheduling-modernization-plan.md)
+is the canonical plan. It keeps the accepted architecture (ADR-010, ADR-011's
+reserved decisions, ADR-012's gates) and changes none of it.
+
+Approved priority order, with today's status from the
+[capability matrix](review/PS-capability-matrix.md):
+
+| Work package | Priority | Status |
+| --- | --- | --- |
+| PS-00 Verified baseline | Immediate | Partial: budgets (OWN-10) open |
+| PS-01 Normalized connected model (ADR-011, ADR-010 S1–S4) | Critical, foundational | Proposed |
+| PS-02 Schedule-quality audit | High, early parallel | Proposed: [specification](testing/PS-02-schedule-quality-audit-spec.md) |
+| PS-03 File inspection and interoperability (ADR-010 G1–G4) | Critical | Partial |
+| PS-04 Large-schedule storage, audit and Gantt | Critical | Blocked by architecture (S0 F1–F3) |
+| PS-05 Connected scheduling workspace | High | Proposed |
+| PS-06 Task and Resource Usage | High | Proposed |
+| PS-07 Resource and financial planning | High, after PS-01 and PS-06 | Partial |
+| PS-08 Advanced scheduling | Medium | Partial |
+| PS-09 Analysis, comparison and reporting (ADR-012) | High, parallel | Partial |
+| PS-10 Advanced local-first capabilities | Later, separate approval | Proposed |
+
+Nothing in this table is a release promise. Schema activation, migrations,
+financial authority, mandatory dependencies, scheduling-semantic changes and
+release or signing policy each need separate approval. The proposed next
+implementation slice is PS-02 slice 1, a read-only audit, which also awaits
+authorization.
+
 ## Planned product work
 
 ### Scheduling and controls
