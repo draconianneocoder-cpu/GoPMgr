@@ -19,18 +19,19 @@ func powershell(script string) ([]byte, error) {
 
 // leakCheck looks for any secret in the worker's command line. Windows
 // gives no supported way to read another process's environment, so that
-// half is reported as not checked.
-func leakCheck(pid int, secrets [][]byte) (string, bool) {
+// half is reported as not checked. An error means the check did not run.
+func leakCheck(pid int, secrets [][]byte) (string, bool, error) {
+	const how = "command line (environment not readable)"
 	out, err := powershell(fmt.Sprintf(`(Get-CimInstance Win32_Process -Filter "ProcessId=%d").CommandLine`, pid))
 	if err != nil {
-		return "command line unreadable: " + err.Error(), false
+		return how, false, fmt.Errorf("read the command line: %w", err)
 	}
 	for _, s := range secrets {
 		if bytes.Contains(out, s) {
-			return "command line (environment not readable)", true
+			return how, true, nil
 		}
 	}
-	return "command line (environment not readable)", false
+	return how, false, nil
 }
 
 // tcpSocketCount counts TCP sockets of any state the worker owns.

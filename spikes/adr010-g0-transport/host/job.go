@@ -4,6 +4,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -51,6 +52,24 @@ type jobRun struct {
 	stdout    string // the worker's captured stdout, for diagnostics
 	startedAt time.Time
 	endedAt   time.Time
+	// live is the worker as the session goroutine sees it. The worker can
+	// connect before start returns and the main goroutine sets w, so code
+	// that runs in the session (drive functions) must use worker(), not w.
+	// The race detector found the unsynchronized reads.
+	live *worker
+}
+
+func (r *jobRun) setWorker(w *worker) {
+	r.mu.Lock()
+	r.live = w
+	r.mu.Unlock()
+}
+
+// worker returns the launched worker for code running in the session.
+func (r *jobRun) worker() *worker {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.live
 }
 
 func (r *jobRun) set(k string, v any) {
@@ -61,21 +80,25 @@ func (r *jobRun) set(k string, v any) {
 
 // inspect records what the OS shows about the live worker: secrets in its
 // command line or environment, TCP sockets it owns, and its memory.
-func (r *jobRun) inspect() {
-	how, leaked := leakCheck(r.w.pid, r.secrets)
+func (r *jobRun) inspect(pid int) {
+	how, leaked, err := leakCheck(pid, r.secrets)
 	r.set("credential_leak_check", how)
-	r.set("credential_leaked", leaked)
-	n, method, err := tcpSocketCount(r.w.pid)
 	if err != nil {
-		r.set("tcp_sockets", "error: "+err.Error())
+		r.set("credential_leak_check_error", err.Error())
+	} else {
+		r.set("credential_leaked", leaked)
+	}
+	n, method, err := tcpSocketCount(pid)
+	r.set("tcp_socket_method", method)
+	if err != nil {
+		r.set("tcp_socket_check_error", err.Error())
 	} else {
 		r.set("tcp_sockets", n)
-		r.set("tcp_socket_method", method)
 	}
 }
 
 func (r *jobRun) sampleRSS() {
-	v, how := peakRSS(r.w.pid)
+	v, how := peakRSS(r.worker().pid)
 	r.set("worker_rss_bytes", v)
 	r.set("worker_rss_method", how)
 }
@@ -103,7 +126,9 @@ func runJob(cfg config, o jobOptions) (*jobRun, error) {
 	}
 	workerID := "org.gopmgr.g0spike"
 	r := &jobRun{ep: ep, metrics: map[string]any{}, exitCode: stillRunning, startedAt: time.Now()}
-	r.secrets = [][]byte{cred, []byte(fmt.Sprintf("%x", cred))}
+	// The credential in every encoding a careless worker might print.
+	r.secrets = [][]byte{cred, []byte(fmt.Sprintf("%x", cred)), []byte(fmt.Sprintf("%X", cred)),
+		[]byte(base64.StdEncoding.EncodeToString(cred)), []byte(base64.RawURLEncoding.EncodeToString(cred))}
 
 	done := make(chan error, 1)
 	r.sess = &session{proof: expectedProof(cred, opID, workerID)}
@@ -118,10 +143,11 @@ func runJob(cfg config, o jobOptions) (*jobRun, error) {
 			done <- err
 			return err
 		}
+		w := r.worker()
 		r.hello = ev.GetHello()
-		r.coldStart = time.Since(r.w.started)
+		r.coldStart = time.Since(w.started)
 		r.connected = true
-		r.inspect()
+		r.inspect(w.pid)
 		var derr error
 		if o.drive != nil {
 			derr = o.drive(r, stream)
@@ -161,7 +187,10 @@ func runJob(cfg config, o jobOptions) (*jobRun, error) {
 	r.w, err = start(launchSpec{
 		java: java, jar: cfg.jar, transport: o.transport, endpoint: workerEP,
 		credential: given, expires: expires, bootstrap: o.rawBootstrap, scratch: scratch,
-		onStarted: func(pid int) { r.pl.setExpected(pid) },
+		onStarted: func(w *worker) {
+			r.setWorker(w)
+			r.pl.setExpected(w.pid)
+		},
 	}, opID, workerID)
 	if err != nil {
 		return r, err

@@ -65,7 +65,7 @@ type launchSpec struct {
 	expires    time.Time
 	bootstrap  []byte // when set, written instead of a well-formed bootstrap
 	scratch    string
-	onStarted  func(pid int) // runs after the process starts, before the bootstrap
+	onStarted  func(w *worker) // runs once the worker is contained, before the bootstrap
 }
 
 // worker is a running child process.
@@ -157,7 +157,7 @@ func start(spec launchSpec, operationID, workerID string) (*worker, error) {
 	}
 	w.tree = tree
 	if spec.onStarted != nil {
-		spec.onStarted(w.pid)
+		spec.onStarted(w)
 	}
 	go func() {
 		w.exitErr = cmd.Wait()

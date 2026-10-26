@@ -79,3 +79,29 @@ func TestGRPCLogCaptureIsBounded(t *testing.T) {
 		t.Fatalf("kept %d lines, want %d", len(c.lines), grpcLogLimit)
 	}
 }
+
+// A check that could not run must leave the scenario BLOCKED, never PASS,
+// and a real finding must still FAIL.
+func TestCommonChecksUnrunChecksBlock(t *testing.T) {
+	cases := []struct {
+		name    string
+		metrics map[string]any
+		want    string
+	}{
+		{"clean", map[string]any{"credential_leaked": false, "tcp_sockets": 0}, statusPass},
+		{"leak found", map[string]any{"credential_leaked": true, "tcp_sockets": 0}, statusFail},
+		{"tcp found", map[string]any{"credential_leaked": false, "tcp_sockets": 2}, statusFail},
+		{"leak check did not run", map[string]any{"credential_leak_check_error": "fork/exec /bin/ps: operation not permitted", "tcp_sockets": 0}, statusBlocked},
+		{"tcp check did not run", map[string]any{"credential_leaked": false, "tcp_socket_check_error": "lsof: exit status 2"}, statusBlocked},
+		{"fail outranks blocked", map[string]any{"credential_leaked": true, "tcp_socket_check_error": "lsof: exit status 2"}, statusFail},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ev := newEvidence("handshake", "test", nil)
+			commonChecks(&jobRun{metrics: c.metrics}, ev)
+			if ev.Status != c.want {
+				t.Fatalf("status = %s, want %s (notes %q)", ev.Status, c.want, ev.Notes)
+			}
+		})
+	}
+}

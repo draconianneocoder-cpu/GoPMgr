@@ -96,12 +96,21 @@ func lastSource(stream g0pb.WorkerSession_ConnectServer, seq *uint64) error {
 }
 
 // commonChecks are the conditions every successful session must meet.
+//
+// A check that could not run makes the scenario BLOCKED, never PASS: "no
+// leak found" means nothing unless the leak check actually looked.
 func commonChecks(r *jobRun, ev *evidence) {
 	if r.metrics["credential_leaked"] == true {
 		ev.fail("the credential appeared in the worker's command line or environment")
 	}
+	if e, ok := r.metrics["credential_leak_check_error"].(string); ok {
+		ev.block("the credential leak check did not run: " + e)
+	}
 	if n, ok := r.metrics["tcp_sockets"].(int); ok && n != 0 {
 		ev.fail(fmt.Sprintf("worker owns %d TCP sockets; no TCP is allowed", n))
+	}
+	if e, ok := r.metrics["tcp_socket_check_error"].(string); ok {
+		ev.block("the TCP socket check did not run: " + e)
 	}
 	if r.hello != nil {
 		if slices.Contains(r.hello.EnvNames, "JAVA_TOOL_OPTIONS") || slices.Contains(r.hello.EnvNames, "_JAVA_OPTIONS") || slices.Contains(r.hello.EnvNames, "CLASSPATH") {
@@ -371,8 +380,11 @@ func scenarioCancel(cfg config, transport string, runs int, name string, stall t
 		if r.w.alive() {
 			ev.fail(fmt.Sprintf("run %d: worker still running after cancel", i))
 		}
-		if n, _ := r.metrics["tree_left_after_exit"].(int); n > 0 {
+		switch n, _ := r.metrics["tree_left_after_exit"].(int); {
+		case n > 0:
 			ev.fail(fmt.Sprintf("run %d: %d processes left in the worker's tree after exit", i, n))
+		case n < 0:
+			ev.block(fmt.Sprintf("run %d: the worker's tree could not be counted after exit (%v)", i, r.metrics["tree_method"]))
 		}
 	}
 	ev.Metrics["runs"] = runs
@@ -480,7 +492,7 @@ func scenarioKill(cfg config, transport string) *evidence {
 				}
 			}
 			t0 := time.Now()
-			r.w.tree.kill()
+			r.worker().tree.kill()
 			for {
 				if _, err := stream.Recv(); err != nil {
 					detect = time.Since(t0)
@@ -755,6 +767,37 @@ func scenarioSquat(transport string) *evidence {
 	return ev
 }
 
+// scenarioSecondInstance: once the host has created the worker's pipe, a
+// separate same-user process tries to add an instance of the same name. If
+// it can, the worker's open may reach that process instead of the host.
+// The JDK opens a pipe without SECURITY_SQOS_PRESENT, so such a server
+// could also impersonate the worker (TPT-009, TPT-018).
+func scenarioSecondInstance(transport string) *evidence {
+	ev := newEvidence("second-instance", transport, []string{"TPT-009", "TPT-018"})
+	ep, err := listen(transport)
+	if err != nil {
+		ev.block("listen: " + err.Error())
+		return ev
+	}
+	defer ep.cleanup()
+	self, err := os.Executable()
+	if err != nil {
+		ev.block("cannot find the probe executable: " + err.Error())
+		return ev
+	}
+	out, _ := run(10, self, intruderFlag, ep.addr)
+	result := strings.TrimSpace(string(out))
+	ev.Metrics["intruder_result"] = result
+	switch {
+	case strings.HasPrefix(result, "CREATED"):
+		ev.fail("a separate same-user process added an instance to the worker's pipe, so the worker's open could reach it instead of the host")
+	case strings.HasPrefix(result, "REFUSED"):
+	default:
+		ev.block("the intruder process gave no result: " + result)
+	}
+	return ev
+}
+
 // scenarioSelfCheck proves the leak and TCP detectors find real positives,
 // so their "none found" results elsewhere mean something.
 func scenarioSelfCheck(transport string) *evidence {
@@ -767,8 +810,11 @@ func scenarioSelfCheck(transport string) *evidence {
 		_ = ln.Close()
 		ev.Metrics["tcp_detector_method"] = method
 		ev.Metrics["tcp_detector_found"] = n
-		if cerr != nil || n < 1 {
-			ev.fail(fmt.Sprintf("the TCP detector missed a real listener (found %d, err %v)", n, cerr))
+		switch {
+		case cerr != nil:
+			ev.block("the TCP detector could not run: " + cerr.Error())
+		case n < 1:
+			ev.fail(fmt.Sprintf("the TCP detector missed a real listener (found %d)", n))
 		}
 	}
 	secret, err := randomID()
@@ -790,12 +836,15 @@ func scenarioSelfCheck(transport string) *evidence {
 		return ev
 	}
 	time.Sleep(500 * time.Millisecond)
-	how, leaked := leakCheck(cmd.Process.Pid, [][]byte{[]byte(secret)})
+	how, leaked, lerr := leakCheck(cmd.Process.Pid, [][]byte{[]byte(secret)})
 	_ = cmd.Process.Kill()
 	_ = cmd.Wait()
 	ev.Metrics["leak_detector_method"] = how
 	ev.Metrics["leak_detector_found"] = leaked
-	if !leaked {
+	switch {
+	case lerr != nil:
+		ev.block("the leak detector could not run: " + lerr.Error())
+	case !leaked:
 		ev.fail("the leak detector missed a secret placed in a command line")
 	}
 	return ev

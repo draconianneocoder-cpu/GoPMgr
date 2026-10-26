@@ -190,10 +190,17 @@ func moduleVersions() map[string]string {
 // self-check starts the probe this way with a secret in its arguments.
 const sleeperFlag = "-g0-sleeper"
 
+// intruderFlag makes the probe try to add an instance to a named pipe, as
+// a separate same-user process (the second-instance scenario).
+const intruderFlag = "-g0-intruder"
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == sleeperFlag {
 		time.Sleep(5 * time.Second)
 		return
+	}
+	if len(os.Args) > 2 && os.Args[1] == intruderFlag {
+		os.Exit(intrude(os.Args[2]))
 	}
 	java := flag.String("java", "", "path to the java executable")
 	jar := flag.String("jar", "", "path to worker/target/g0-worker.jar")
@@ -289,6 +296,9 @@ func main() {
 			{"tree-kill", func() *evidence { return scenarioTreeKill(cfg, t) }},
 			{"crash", func() *evidence { return scenarioCrash(cfg, t) }},
 			{"oom", func() *evidence { return scenarioOOM(cfg, t) }},
+		}
+		if strings.HasPrefix(t, "npipe") {
+			perTransport = append(perTransport, step{"second-instance", func() *evidence { return scenarioSecondInstance(t) }})
 		}
 		for _, st := range perTransport {
 			if !want(st.name) {

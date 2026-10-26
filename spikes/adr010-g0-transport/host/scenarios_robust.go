@@ -83,11 +83,12 @@ func scenarioTreeKill(cfg config, transport string) *evidence {
 			}
 			// Give the grandchild JVM a moment to be fully started.
 			_, aliveBefore = waitFor(5*time.Second, 20*time.Millisecond, func() bool { return processAlive(gpid) })
-			members, _ = r.w.tree.members()
+			w := r.worker()
+			members, _ = w.tree.members()
 			t0 := time.Now()
-			r.w.tree.kill()
+			w.tree.kill()
 			select {
-			case <-r.w.exited:
+			case <-w.exited:
 				killToExit = time.Since(t0)
 			case <-time.After(10 * time.Second):
 				return errors.New("worker still running 10 s after the tree kill")

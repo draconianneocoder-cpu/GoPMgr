@@ -107,6 +107,34 @@ jobs:
             -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar \
             -head "$HEAD_SHA" -out "$EVIDENCE"
 
+      - name: Race-detector run (host concurrency)
+        # Go's race detector on the probe's own goroutines: session
+        # handlers, the pairing listener and the job lifecycle. Timings from
+        # this run are not used. Windows on Arm has no race detector.
+        if: matrix.os != 'windows-11-arm'
+        working-directory: spikes/adr010-g0-transport/host
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          out="$RUNNER_TEMP/g0-${{ matrix.os }}-race.jsonl"
+          log="$RUNNER_TEMP/g0-race.log"
+          exe=""
+          if [ "$RUNNER_OS" = Windows ]; then exe=".exe"; fi
+          if ! CGO_ENABLED=1 go build -race -o "$RUNNER_TEMP/g0probe-race$exe" . 2>"$log"; then
+            echo "BLOCKED: the race detector could not be built here: $(tail -3 "$log" | tr '\n' ' ')" | tee "$out"
+            exit 0
+          fi
+          "$RUNNER_TEMP/g0probe-race$exe" -java "$G0_RUNTIME/bin/java" -runtime jlink-race \
+            -jar "$GITHUB_WORKSPACE/spikes/adr010-g0-transport/worker/target/g0-worker.jar" \
+            -scenarios handshake,duplex,cancel,replay,impersonate,connect-flood,concurrent,tree-kill,kill,second-instance \
+            -cancel-runs 5 -head "$HEAD_SHA" -out "$out" 2>"$log" || true
+          races="$(grep -c 'WARNING: DATA RACE' "$log" || true)"
+          echo "race detector: ${races:-0} data race(s)"
+          if [ "${races:-0}" != 0 ]; then
+            echo "FAIL: the race detector found $races data race(s) in the probe host" | tee -a "$out"
+            grep -A24 'WARNING: DATA RACE' "$log" | head -150
+          fi
+
       - name: Offline run (Linux, empty network namespace)
         if: runner.os == 'Linux'
         env:
@@ -117,7 +145,7 @@ jobs:
           if unshare -rn true; then
             unshare -rn "$G0_PROBE" -java "$G0_RUNTIME/bin/java" -runtime jlink-offline \
               -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar \
-              -scenarios handshake,duplex,cancel,tree-kill,bridge-selftest -cancel-runs 10 \
+              -scenarios handshake,duplex,cancel,tree-kill,bridge-selftest,detector-self-check -cancel-runs 10 \
               -head "$HEAD_SHA" -out "$OFFLINE_EVIDENCE"
           else
             echo "BLOCKED: no unprivileged network namespace on this runner" | tee "$OFFLINE_EVIDENCE"
@@ -128,6 +156,8 @@ jobs:
         # runner; this checks the host binary and the jlink image on a
         # Fedora userland. The image is pinned by digest. --init gives the
         # container a real PID 1, so orphans are reaped as on a desktop.
+        # The runner's own user runs it, as a desktop user would, and so
+        # the evidence file stays readable for the upload.
         if: matrix.os == 'ubuntu-26.04'
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -138,11 +168,12 @@ jobs:
             echo "BLOCKED: no docker on this runner" | tee "$out"
             exit 0
           fi
-          docker run --rm --init -v "$RUNNER_TEMP:$RUNNER_TEMP" -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+          docker run --rm --init --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "$RUNNER_TEMP:$RUNNER_TEMP" -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
             -w "$GITHUB_WORKSPACE" "$FEDORA_IMAGE" \
             "$G0_PROBE" -java "$G0_RUNTIME/bin/java" -runtime jlink-fedora44 \
             -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar \
-            -scenarios handshake,duplex,cancel,tree-kill,crash,oom,impersonate,replay,bridge-selftest \
+            -scenarios handshake,duplex,cancel,tree-kill,crash,oom,impersonate,replay,bridge-selftest,detector-self-check \
             -cancel-runs 10 -head "$HEAD_SHA" -out "$out"
 
       - name: Build the network check (macOS, Windows)
@@ -197,7 +228,7 @@ jobs:
             codesign -dv "$rt/bin/java" 2>&1 | grep -E 'flags|Signature|TeamIdentifier' || true
             "$G0_PROBE" -java "$rt/bin/java" -runtime "jlink-adhoc-hardened-$variant" \
               -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar \
-              -scenarios handshake,duplex,cancel,tree-kill,crash,bridge-selftest -cancel-runs 10 \
+              -scenarios handshake,duplex,cancel,tree-kill,crash,bridge-selftest,detector-self-check -cancel-runs 10 \
               -head "$HEAD_SHA" -out "$out" || echo "probe exited $?"
           done
 
@@ -222,7 +253,7 @@ jobs:
           else
             sandbox-exec -p "$prof" "$G0_PROBE" -java "$G0_RUNTIME/bin/java" -runtime jlink-offline-sandbox \
               -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar \
-              -scenarios handshake,duplex,cancel,tree-kill,bridge-selftest -cancel-runs 10 \
+              -scenarios handshake,duplex,cancel,tree-kill,bridge-selftest,detector-self-check -cancel-runs 10 \
               -head "$HEAD_SHA" -out "$OFFLINE_EVIDENCE"
           fi
 
@@ -259,7 +290,7 @@ jobs:
             & $env:G0_PROBE -java $rtJava -runtime jlink-offline-firewall `
               -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar `
               -transports uds-nio,npipe-dual,npipe-async `
-              -scenarios handshake,duplex,cancel,tree-kill,bridge-selftest -cancel-runs 10 `
+              -scenarios handshake,duplex,cancel,tree-kill,bridge-selftest,detector-self-check -cancel-runs 10 `
               -head $env:HEAD_SHA -out $env:OFFLINE_EVIDENCE
           } finally {
             $rules | Remove-NetFirewallRule

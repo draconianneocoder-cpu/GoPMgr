@@ -71,6 +71,9 @@ func (s *session) Connect(stream g0pb.WorkerSession_ConnectServer) error {
 
 func newServer(s *session) *grpc.Server {
 	srv := grpc.NewServer(
+		// Stop waits for running handlers, so a job's results are read
+		// only after its session goroutine has finished writing them.
+		grpc.WaitForHandlers(true),
 		grpc.StreamInterceptor(s.authorize),
 		grpc.MaxRecvMsgSize(4<<20),
 		grpc.MaxSendMsgSize(4<<20),

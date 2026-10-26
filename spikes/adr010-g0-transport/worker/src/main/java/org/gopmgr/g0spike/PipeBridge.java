@@ -577,8 +577,25 @@ final class PipeBridge implements AutoCloseable {
       return true;
     }
 
+    /**
+     * Refuses an operation issued after {@link #close()}. Its completion would
+     * go to an executor that may already be shut down, and the JDK would then
+     * fail on its own thread instead of calling the handler.
+     */
+    private boolean refuseIfClosed(Callback cb) {
+      if (!closed.get()) {
+        return false;
+      }
+      Timing.count("bridge_ops_after_close", 1);
+      cb.failed(new java.nio.channels.ClosedChannelException());
+      return true;
+    }
+
     @Override
     public void read(ByteBuffer dst, Callback cb) {
+      if (refuseIfClosed(cb)) {
+        return;
+      }
       begin();
       try {
         ch.read(dst, 0, null, new CompletionHandler<Integer, Void>() {
@@ -610,6 +627,9 @@ final class PipeBridge implements AutoCloseable {
     public void write(ByteBuffer src, Callback cb) {
       if (!src.hasRemaining()) {
         cb.completed(0);
+        return;
+      }
+      if (refuseIfClosed(cb)) {
         return;
       }
       begin();

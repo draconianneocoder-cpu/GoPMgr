@@ -153,10 +153,17 @@ gRPC through an in-JVM `LocalChannel`. Its rules:
 | `tree-kill` | On every transport: the worker starts a grandchild; the host ends the tree; both are gone | TPT-013, TPT-014 |
 | `crash` | On every transport: the worker starts a grandchild, then halts mid-stream; the stream fails and no orphan remains | TPT-013, TPT-014 |
 | `oom` | On every transport: the worker exhausts its heap; it exits with code 3 and the stream fails | TPT-013, TPT-014 |
+| `second-instance` | Named pipes only. Once the host has created the worker's pipe, a separate same-user process (the probe re-run with `-g0-intruder <name>`) tries to add an instance of the same name. If it can, the worker's open could reach that process instead of the host. **Expected to FAIL on the spike:** go-winio creates pipes with unlimited instances (see the G0 report) | TPT-009, TPT-018 |
 
 **Every scenario** also fails if the worker's stderr reports a thread
 ended by an uncaught exception (`Exception in thread ...`), even when the
 session itself succeeded.
+
+**A check that cannot run is BLOCKED, never PASS.** If the credential leak
+check, the TCP socket check or the process-tree count cannot read the
+worker, the scenario is BLOCKED with the reason. On macOS these checks ask
+the kernel through `sysctl` rather than running `ps`, which a sandboxed
+process may not run.
 
 **Diagnostics on failure.**
 
@@ -209,12 +216,35 @@ jlink --add-modules "$mods" --strip-debug --no-header-files --no-man-pages --out
 ```
 
 `.github/workflows/adr010-g0-spike.yml` runs the probe on a jlink runtime
-on five runners when this folder changes: Linux x64 and Arm, macOS Apple
-silicon, Windows Server 2025 x64 and Windows 11 Arm. The maintainer dropped
-macOS Intel on 2026-10-26; its earlier results stay in `evidence/`. On Linux
-it runs a second time inside an empty network namespace (`unshare -rn`)
-to show the worker needs no network. It uploads the evidence. That workflow is not a gate: it reports,
-and the evidence file records PASS, FAIL or BLOCKED for each scenario.
+when this folder changes, on seven runners:
+
+- Linux x64 (Ubuntu 26.04) and Arm (Ubuntu 24.04);
+- macOS Apple silicon: macOS 15, and macOS 14, the closest hosted image to
+  GoPMgr's macOS 13 minimum;
+- Windows Server 2025 x64, Windows Server 2022 x64 (an older build, not a
+  Windows 10 substitute) and Windows 11 Arm.
+
+The maintainer dropped macOS Intel on 2026-10-26; its earlier results stay
+in `evidence/`. Each runner also does some extra runs:
+
+| Run | Where | What it shows |
+|---|---|---|
+| Race detector | all but Windows on Arm | The probe built with `-race`; any data race is recorded as a FAIL. Its timings are not used |
+| Offline, `unshare -rn` | Linux | The worker needs no network |
+| Fedora 44 userland | Linux x64, container pinned by digest | The host and the jlink image on the RPM distribution family |
+| Signed, ad-hoc, hardened runtime | macOS | Two entitlement sets: `allow-jit` only, and also `disable-library-validation`. No key or identity is used |
+| Offline, `sandbox-exec` | macOS | A profile that denies IP traffic |
+| Offline, firewall | Windows | Block rules for the worker's `java.exe` |
+
+Before each offline run, `scripts/NetCheck.java`, run by the worker's own
+`java`, must connect without the block and fail with it. Otherwise the run
+is BLOCKED. The workflow uploads the evidence. It is not a gate: it
+reports, and the evidence file records PASS, FAIL or BLOCKED for each
+scenario.
+
+Evidence files are named `<source>-<commit>-<platform or runner>[-run].jsonl`.
+From `3cf2aa0` on, CI files carry the runner name, because two runners
+share a platform.
 
 ## Pinned versions
 

@@ -15,13 +15,14 @@ import (
 )
 
 // leakCheck looks for any secret in the worker's command line and
-// environment (TPT-007).
-func leakCheck(pid int, secrets [][]byte) (string, bool) {
+// environment (TPT-007). An error means the check did not run.
+func leakCheck(pid int, secrets [][]byte) (string, bool, error) {
+	const how = "/proc cmdline and environ"
 	var leaked bool
 	for _, f := range []string{"cmdline", "environ"} {
 		data, err := os.ReadFile(fmt.Sprintf("/proc/%d/%s", pid, f))
 		if err != nil {
-			return "unreadable: " + err.Error(), false
+			return how, false, fmt.Errorf("read %s: %w", f, err)
 		}
 		for _, s := range secrets {
 			if bytes.Contains(data, s) {
@@ -29,7 +30,7 @@ func leakCheck(pid int, secrets [][]byte) (string, bool) {
 			}
 		}
 	}
-	return "/proc cmdline and environ", leaked
+	return how, leaked, nil
 }
 
 // tcpSocketCount counts TCP sockets of any state the worker owns
