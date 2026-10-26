@@ -209,7 +209,7 @@ func portfolioCase(ctx context.Context, corpus string, c fixtures.PortfolioCase)
 		rec.LegacyParity = "fail"
 		rec.Mismatches = append(rec.Mismatches, fmt.Sprintf("duckdb error %q, oracle error %q", rec.DuckDBError, want.Err))
 	default:
-		rec.Mismatches = compareSummary(got, want.Summary)
+		rec.Mismatches = oracle.CompareSummary(got, want.Summary)
 		rec.LegacyParity = map[bool]string{true: "pass", false: "fail"}[len(rec.Mismatches) == 0]
 		rec.Totals = map[string]string{}
 		for f, name := range oracle.FieldNames {
@@ -224,46 +224,6 @@ func portfolioCase(ctx context.Context, corpus string, c fixtures.PortfolioCase)
 		}
 	}
 	return rec, rec.LegacyParity == "pass", nil
-}
-
-// compareSummary checks every field exactly, except the two ratios, which
-// the legacy code computes from float64 major units: they must be within
-// 2 ULP of the exact ratio's nearest float64 (the documented tolerance).
-func compareSummary(got analytics.PortfolioSummary, want *oracle.Summary) []string {
-	var out []string
-	eqInt := func(name string, g int, w int) {
-		if g != w {
-			out = append(out, fmt.Sprintf("%s: got %d, want %d", name, g, w))
-		}
-	}
-	eqInt("project_count", got.ProjectCount, want.ProjectCount)
-	eqInt("evm_project_count", got.EVMProjectCount, want.EVMProjectCount)
-	eqInt("evm_unavailable_project_count", got.EVMUnavailableProjectCount, want.EVMUnavailableProjectCount)
-	gm := [5]int64{got.TotalBudgetedCostMinorUnits, got.TotalCommittedCostMinorUnits, got.TotalActualCostMinorUnits, got.TotalEarnedValueMinorUnits, got.TotalPlannedValueMinorUnits}
-	gf := [5]float64{got.TotalBudgetedCost, got.TotalCommittedCost, got.TotalActualCost, got.TotalEarnedValue, got.TotalPlannedValue}
-	for f, name := range oracle.FieldNames {
-		if big.NewInt(gm[f]).Cmp(want.Totals[f]) != 0 {
-			out = append(out, fmt.Sprintf("%s_minor_units: got %d, want %s", name, gm[f], want.Totals[f]))
-		}
-		// The display float is minor/100 in float64.
-		if wf := float64(want.Totals[f].Int64()) / 100; gf[f] != wf {
-			out = append(out, fmt.Sprintf("%s: got %v, want %v", name, gf[f], wf))
-		}
-	}
-	ratio := func(name string, g, w float64, defined bool) {
-		if !defined {
-			if g != 0 {
-				out = append(out, fmt.Sprintf("%s: got %v, want 0 (n/a)", name, g))
-			}
-			return
-		}
-		if d := oracle.ULPDistance(g, w); d > 2 {
-			out = append(out, fmt.Sprintf("%s: got %v, want %v (%d ULP)", name, g, w, d))
-		}
-	}
-	ratio("spi", got.SchedulePerformanceIndex, want.SPI, want.SPIDefined)
-	ratio("cpi", got.CostPerformanceIndex, want.CPI, want.CPIDefined)
-	return out
 }
 
 // --- tabular ---
@@ -317,7 +277,7 @@ func tabularCase(ctx context.Context, path string, c fixtures.TabularCase) tabul
 	}
 	if err != nil {
 		// Paths are environment-specific; keep only the message shape.
-		err = errors.New(strings.ReplaceAll(err.Error(), filepath.Dir(path), "<corpus>"))
+		err = errors.New(fixtures.RedactDir(err.Error(), filepath.Dir(path)))
 	}
 	res := canon.Compare(c, ds.Columns, colTypes, rows, err)
 	rec := tabularRecord{TestIDs: testIDs(c.Format), Class: c.Class, Format: c.Format, Result: res, ElapsedNS: elapsed}

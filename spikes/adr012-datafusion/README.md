@@ -37,6 +37,9 @@ Results are recorded in
 | `tools/independent_read.py` | Reads Parquet with pyarrow and JSON with Python's `json` module, for the fixture self-check |
 | `cmd/df0-selfcheck` | Proves every fixture against an independent reader before any engine is judged |
 | `cmd/df0-baseline` | Runs the shipped DuckDB engine (A) over the corpus |
+| `rust/` | Candidate B: a DataFusion 55.2.0 engine (`engine`) and its one-shot CLI (`cli`). Crate versions are locked in `Cargo.lock`; the toolchain in `rust-toolchain.toml` |
+| `internal/gorollup` | Candidate C: the portfolio rollup in Go with checked 64-bit sums |
+| `cmd/df0-candidates` | Runs candidates B and C over the corpus, next to engine A's verdicts |
 | `evidence/` | JSONL evidence, synthetic only. It contains no user paths or data |
 
 ## Reproduce DF0-A
@@ -48,3 +51,14 @@ PYTHON=/tmp/df0-venv/bin/python spikes/adr012-datafusion/scripts/run-df0a.sh
 
 The run needs Go 1.27.3 with CGO, as for GoPMgr, and network access the
 first time, to download modules.
+
+## Reproduce DF0-B
+
+```sh
+spikes/adr012-datafusion/scripts/run-df0b.sh
+```
+
+This needs `rustup`; it installs the pinned toolchain on first use. Cargo
+builds into `CARGO_TARGET_DIR`, which defaults to a directory outside the
+repository. Do not build into `rust/target`: `reuse lint` scans that
+directory even though git ignores it.

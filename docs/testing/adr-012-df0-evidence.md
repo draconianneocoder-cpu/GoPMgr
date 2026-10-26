@@ -28,7 +28,7 @@ DataFusion is C.
 |---|---|
 | DF0-A baseline freeze | **Done on Linux amd64.** macOS arm64 and Windows x64 are BLOCKED: no native host here |
 | DF0-A2 money oracle | **Done** |
-| DF0-B / B2 DataFusion and Go candidates | NOT-RUN (next) |
+| DF0-B / B2 DataFusion and Go candidates | **Done on Linux amd64** (standalone engine; no IPC yet). macOS and Windows: BLOCKED |
 | DF0-C Go↔Rust gRPC local IPC | NOT-RUN |
 | DF0-C2 host-mediated Parquet `ReadAt` | NOT-RUN |
 | DF0-D / D2 security, no-spill, admission | NOT-RUN |
@@ -169,12 +169,12 @@ recorded for the comparison.
 | Test | A (DuckDB) | B | C |
 |---|---|---|---|
 | DF-001 shipped tests reproduced | **PASS** (Linux amd64); macOS/Windows **BLOCKED** | — | — |
-| DF-002, 003, 004, 005, 006, 008, 009, 054, 061 portfolio semantics | characterized; equals the legacy oracle on 24 of 24 | NOT-RUN | NOT-RUN |
+| DF-002, 003, 004, 005, 006, 008, 009, 054, 061 portfolio semantics | characterized; equals the legacy oracle on 24 of 24 | **PASS** 24 of 24 (DF0-B, standalone) | **PASS** 24 of 24 |
 | DF-007, 010 currency and reporting date | host behavior characterized (F-2) | NOT-RUN | NOT-RUN |
-| DF-011, 012, 013, 014 formats | characterized: 69 cases with verdicts | NOT-RUN | NOT-RUN |
-| DF-015, 016 truncation | characterized: no flag (LD-9) | NOT-RUN | NOT-RUN |
-| DF-017 typed errors | characterized; LD-5 and LD-6 found; one case BLOCKED (root) | NOT-RUN | NOT-RUN |
-| DF-018 ordering | file order is preserved in every match case | NOT-RUN | NOT-RUN |
+| DF-011, 012, 013, 014 formats | characterized: 69 cases with verdicts | **FAIL**: 3 valid files rejected (G-1 to G-3) and 1 silent accept; better than A on 7 cases | same as B (C uses B's importer) |
+| DF-015, 016 truncation | characterized: no flag (LD-9) | **PASS**: the truncation flag is correct on 54 of 54 applicable cases | same as B |
+| DF-017 typed errors | characterized; LD-5 and LD-6 found; one case BLOCKED (root) | **FAIL**: glob expansion (`q?.csv`) as in A; otherwise typed errors | same as B |
+| DF-018 ordering | file order is preserved in every match case | **PASS** after a fix: one partition, and NDJSON columns in file order (F-B1, F-B2) | same as B |
 | DF-020 source file unchanged | observed: unchanged | NOT-RUN | NOT-RUN |
 | All others (DF-019, DF-021 to DF-053, DF-055 to DF-060, DF-062 to DF-065) | — | NOT-RUN | NOT-RUN |
 
@@ -192,3 +192,90 @@ recorded for the comparison.
 3. For the replacement, the parity target for each LD item is either "keep
    legacy" or "correct, with approval". The evidence supports correcting all
    of them.
+
+## DF0-B / B2 — candidates B and C, standalone (Linux amd64)
+
+**What runs:**
+- **B** is a Rust DataFusion engine (`spikes/adr012-datafusion/rust`) called
+  as a CLI per operation. It reads files from paths; the host-mediated
+  design (DF-09, DF-A07) comes in DF0-C2.
+- **C** is the native Go rollup (`internal/gorollup`) plus B's importer.
+- The host applies the shipped money normalization before B sees minor
+  units (DF-06).
+- Both are scored by the same oracle and comparator as A.
+- Evidence: `evidence/df0-b/` (`portfolio.jsonl`, `datafusion-tabular.jsonl`,
+  `datafusion-filesystem.jsonl`, `environment.json`).
+
+| Item | Value |
+|---|---|
+| Crates (Cargo.lock) | DataFusion 55.2.0, arrow and parquet 59.3.2, tokio 1.54.1, serde_json 1.0.154 (`raw_value`, `preserve_order`); 264 crates in total |
+| DataFusion features | `parquet`, `compression`, `sql`, `recursive_protection`, `nested_expressions`. Default features off; no avro, remote object stores or encryption |
+| Toolchain | rustc 1.97.0 (pinned in `rust-toolchain.toml`; MSRV 1.94) |
+| Release binary | 139.5 MB unstripped, Linux amd64. Size work is DF0-F |
+| Reproduce | `cd rust && cargo build --release --locked`, then `go run ./cmd/df0-candidates -corpus DIR` |
+
+### Portfolio (DF-002 to DF-009, DF-054, DF-061)
+
+**B and C both match the legacy oracle on 24 of 24 cases**, overflow
+included. Both return a typed overflow error instead of a scan failure.
+
+**Finding F-B0, critical for any DataFusion money path.** A plain DataFusion
+`SUM` over `BIGINT` **wraps silently**: `9223372036854775807 + 1` returns
+`-9223372036854775808` with no error (`environment.json`
+`datafusion_bigint_sum_overflow`). Candidate B avoids this by summing over
+`DECIMAL(38,0)` and range-checking the result. Any production DataFusion
+money aggregation must follow the same rule, with a test.
+
+Single-run wall times (spawn included; DF0-E will measure properly):
+- 50,000 projects: B 62 ms, C 3.7 ms.
+- The overflow case: B 7.6 ms, C 0.013 ms.
+
+These are observations, not performance results.
+
+### Tabular formats (DF-011 to DF-018)
+
+| Verdict | A (DuckDB) | B / C (DataFusion) |
+|---|---|---|
+| match | 38 | 39 |
+| match with notes | 15 | 14 |
+| loss | 5 | **1** |
+| silent accept | 3 | **1** |
+| valid file rejected | 0 | **3** |
+| rejected (correct) | 2 | 4 |
+| degenerate ok | 5 | 6 |
+| ambiguous | 1 | 1 |
+
+**Where B is better than A:**
+- LD-1 is fixed: decimal256 is read exactly.
+- LD-2 is fixed for CSV: big integers are kept exact as text.
+- LD-4 is fixed: an empty CSV gives no phantom column.
+- LD-5 is fixed for ragged CSV and invalid JSON: both are rejected.
+- The truncation flag is correct in all 54 applicable cases.
+
+**Parity gaps in B.** Each needs a fix or your approval before DF1:
+
+| ID | Gap | Case | Possible fix |
+|---|---|---|---|
+| G-1 | A CSV header with duplicate names is rejected. DuckDB renames them `a`, `a_1` | `csv-duplicate-names` | Rename in the host or worker before inference |
+| G-2 | A JSON field holding mixed types (int, string, float, bool) is rejected; arrow-json cannot decode it | `json-mixed-types` | Read such columns as JSON text |
+| G-3 | One JSON number beyond binary64 (`1e400`) rejects the whole file. DuckDB reads `+Inf`, which is LD-3 | `json-decimals` | Decide: reject with a clear message (safer), or read the column as text |
+| G-4 | An unterminated CSV quote is accepted silently, as in A | `csv-malformed-quote` | Strict quote checking in the reader |
+| G-5 | A JSON integer beyond 2^53 in a float column loses precision, as in A (LD-2) | `json-big-int` | Infer DECIMAL or text for out-of-range integers |
+| G-6 | Zero-padded codes need the spike's sniffer to stay text; DuckDB keeps them by default | `csv-leading-zeros` | Kept in the candidate (`zero_padded_columns`) |
+| G-7 | DataFusion detects neither the CSV delimiter nor the header; the spike adds a dialect sniffer (`sniff.rs`). That is code GoPMgr would own | `.txt`, `semicolon.csv`, `noheader.csv` | Keep the sniffer, with its tests |
+| G-8 | **A path with glob characters is expanded (`q?.csv` reads `q1.csv`), as in A (LD-6).** DataFusion's listing table treats `*`, `?` and `[` as patterns | `datafusion-filesystem.jsonl` | Host-mediated reads (DF-09) remove paths entirely |
+
+**Configuration findings in B, fixed in the candidate:**
+- **F-B1.** With more than one partition, `SELECT * … LIMIT` returned
+  row groups in any order, so the preview was not the first 10,000 file
+  rows. The candidate uses one partition for previews.
+- **F-B2.** DataFusion's JSON schema inference returns columns in
+  alphabetical order. arrow-json keeps file order only when serde_json's
+  `preserve_order` feature is on. The candidate enables it and passes the
+  schema in.
+
+**Not yet evaluated:**
+- Go↔Rust gRPC, DF0-C. DF-021 to DF-029 and DF-039/040 are NOT-RUN.
+- Security and no-spill, DF0-D. DF-030 to DF-038 and DF-062/064 are NOT-RUN.
+- Performance, DF0-E. DF-041 to DF-045, DF-050 and DF-065 are NOT-RUN.
+- Packaging and licensing, DF0-F. DF-046 to DF-049 are NOT-RUN.
