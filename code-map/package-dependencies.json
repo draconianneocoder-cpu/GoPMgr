@@ -592,6 +592,12 @@
       "imports_internal": [],
       "notable_external_deps": []
     },
+    "gopmgr/tools/module-notices": {
+      "dir": "tools/module-notices",
+      "imported_by_internal": [],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
     "gopmgr/tools/update-manifest": {
       "dir": "tools/update-manifest",
       "imported_by_internal": [],

@@ -36,6 +36,8 @@ contents:
     dst: /usr/share/pixmaps/gopmgr.png
   - src: ./third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt
     dst: /usr/share/doc/gopmgr/sqlcipher-license.txt
+  - src: ./third_party/GO-MODULE-NOTICES.txt
+    dst: /usr/share/doc/gopmgr/go-module-notices.txt
   - src: ./internal/fonts/assets/FONT-NOTICES.txt
     dst: /usr/share/doc/gopmgr/font-notices.txt
 

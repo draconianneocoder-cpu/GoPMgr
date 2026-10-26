@@ -215,6 +215,9 @@ jobs:
           # The Windows command previously omitted duckdb while other package
           # legs embedded it. Verify metadata before publishing the installer.
           bash scripts/verify-duckdb-linked.sh build/bin/gopmgr.exe
+          # project.nsi installs third_party/GO-MODULE-NOTICES.txt; it must
+          # cover every Go module this binary links.
+          bash scripts/verify-module-notices.sh build/bin/gopmgr.exe
 
       - name: Reclaim macOS packaging space
         if: runner.os == 'macOS'
