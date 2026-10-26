@@ -58,6 +58,7 @@ if [ -d LICENSES ]; then
 fi
 cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt "$staging/$archive_base/LICENSES/go-sqlcipher.txt"
 cp third_party/GO-MODULE-NOTICES.txt "$staging/$archive_base/LICENSES/go-modules.txt"
+cp internal/fonts/assets/FONT-NOTICES.txt "$staging/$archive_base/LICENSES/fonts.txt"
 if [ -f LICENSE ]; then
 	cp LICENSE "$staging/$archive_base/"
 fi
@@ -67,5 +68,7 @@ tar -xOf "$archive" "$archive_base/LICENSES/go-sqlcipher.txt" |
 	cmp - third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt
 tar -xOf "$archive" "$archive_base/LICENSES/go-modules.txt" |
 	cmp - third_party/GO-MODULE-NOTICES.txt
+tar -xOf "$archive" "$archive_base/LICENSES/fonts.txt" |
+	cmp - internal/fonts/assets/FONT-NOTICES.txt
 
 echo "$archive"
