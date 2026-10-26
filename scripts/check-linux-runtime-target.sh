@@ -77,6 +77,8 @@ require_contains debian/rules "third_party/GO-MODULE-NOTICES.txt debian/gopmgr/u
 require_contains debian/rules "third_party/DUCKDB-NATIVE-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/duckdb-native-notices.txt"
 require_contains debian/rules "third_party/FRONTEND-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/frontend-notices.txt"
 require_contains debian/rules "bash scripts/verify-module-notices.sh build/ppa/gopmgr"
+# A vendored Debian source build must not carry the excluded TPC archives.
+require_contains debian/rules "bash scripts/verify-excluded-native-code.sh --tree vendor"
 require_not_contains build/linux/nfpm.yaml "libwebkit2gtk-4.0-37"
 require_not_contains build/linux/nfpm.yaml "webkit2gtk3"
 

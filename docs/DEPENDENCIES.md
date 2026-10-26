@@ -204,7 +204,11 @@ weakening the release claim.
 8. A duckdb-go-bindings update also changes the prebuilt DuckDB libraries
    and the third-party code inside them. `make verify` fails until the
    DuckDB native notices are reviewed for the new release; see
-   [LICENSES.md](../LICENSES.md#duckdb-native-library-notices).
+   [LICENSES.md](../LICENSES.md#duckdb-native-library-notices). It also
+   fails if the release could link the excluded TPC-H or TPC-DS code; never
+   remove an entry from `third_party/EXCLUDED-NATIVE-CODE.txt` to get past
+   that (see
+   [LICENSES.md](../LICENSES.md#excluded-the-tpc-h-and-tpc-ds-generators)).
 9. After a frontend dependency change, or a new import of an npm package,
    run `make frontend-notices` and commit the regenerated
    `third_party/FRONTEND-NOTICES.txt`; `make verify` fails until it is

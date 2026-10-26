@@ -57,6 +57,16 @@ func TestComponentsCoverTheLinkedLibraries(t *testing.T) {
 		"libduckdb_generated_extension_loader": true,
 		"libautocomplete_extension":            true,
 	}
+	// Archives on the link line that GoPMgr excludes; TestExclusionsHold
+	// proves they stay unlinked.
+	ex, err := readExclusions(filepath.Join("..", "..", exclusionsFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	excluded := map[string]bool{}
+	for _, a := range ex.Archives {
+		excluded[a] = true
+	}
 	named := map[string]bool{}
 	for _, c := range components {
 		for _, l := range c.Libraries {
@@ -94,7 +104,7 @@ func TestComponentsCoverTheLinkedLibraries(t *testing.T) {
 			}
 		}
 		for l := range linked {
-			if !named[l] && !duckdbOwn[l] {
+			if !named[l] && !duckdbOwn[l] && !excluded[l+".a"] {
 				t.Errorf("%s: %s is linked but no component covers it; review its contents", p.Name, l)
 			}
 		}
@@ -187,8 +197,11 @@ func TestGenerate(t *testing.T) {
 	}
 	text := string(first)
 	lines := strings.Split(text, "\n")
-	if lines[3] != tpcLegend {
-		t.Fatalf("line 4 = %q, want the TPC legend at the top of the file", lines[3])
+	if strings.Contains(text, "THE TPC SOFTWARE") || strings.Contains(text, "Component: TPC") {
+		t.Fatal("output still carries TPC sections; the TPC generators are excluded, not shipped")
+	}
+	if !strings.Contains(text, "GoPMgr\nexcludes them: nothing it links references them") {
+		t.Fatalf("output lacks the exclusion statement:\n%s", strings.Join(lines[:24], "\n"))
 	}
 	for _, want := range headerLines() {
 		if !strings.Contains(text, "\n"+want+"\n") {

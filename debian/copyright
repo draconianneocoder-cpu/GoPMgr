@@ -39,6 +39,9 @@ License: other
 Files: vendor/**
 Copyright: individual upstream contributors
 License: see individual files
+Comment: The vendored tree must not contain DuckDB's libtpch_extension.a or
+ libtpcds_extension.a; debian/rules fails the build if it does (see
+ LICENSES.md, "Excluded: the TPC-H and TPC-DS generators").
  The vendored dependency graph retains each upstream component's licensing and
  copyright notices in its source tree.
 

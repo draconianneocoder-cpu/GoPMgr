@@ -89,11 +89,12 @@ func lines(path string, from, to int) part {
 	return part{Source: "duckdb", Path: path, From: from, To: to}
 }
 
-const tpcLegend = "THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC."
-
 // components lists every third-party work found in the linked libraries.
-// Not listed because not linked: jemalloc's separate archive on macOS and
-// Windows, Snowball (the fts extension), Catch (tests) and the IMDB data
+// The TPC-H and TPC-DS generators are on the link line but excluded and
+// provably never linked (third_party/EXCLUDED-NATIVE-CODE.txt, checked by
+// checkExclusions). Not listed either, because not linked: jemalloc's
+// separate archive on macOS and Windows, Snowball (the fts extension),
+// Catch (tests) and the IMDB data
 // (benchmarks).
 var components = []component{
 	{Name: "Apache Arrow ADBC and nanoarrow", Libraries: []string{"libduckdb_static"},
@@ -158,12 +159,6 @@ var components = []component{
 		Parts: []part{file("third_party/tdigest/LICENSE"), file("third_party/tdigest/NOTICES")}},
 	{Name: "Apache Thrift", Libraries: []string{"libparquet_extension"},
 		Parts: []part{file("third_party/thrift/thrift/LICENSE")}},
-	{Name: "TPC-DS data generator (dsdgen)", Libraries: []string{"libtpcds_extension"},
-		Note:  tpcLegend + " DuckDB's copy of dsdgen has no separate license file; its sources carry the legal notice below.",
-		Parts: []part{lines("extension/tpcds/dsdgen/include/dsdgen-c/decimal.h", 1, 35)}},
-	{Name: "TPC-H data generator (dbgen)", Libraries: []string{"libtpch_extension"},
-		Note:  tpcLegend,
-		Parts: []part{file("extension/tpch/dbgen/LICENSE")}},
 	{Name: "utf8proc", Libraries: []string{"libduckdb_utf8proc"},
 		Parts: []part{file("third_party/utf8proc/LICENSE")}},
 	{Name: "vergesort", Libraries: []string{"libduckdb_static"},
@@ -189,6 +184,11 @@ func main() {
 
 func run(output string, check, fetch bool, dirs map[string]string) error {
 	if err := checkModuleVersions(moduleVersion); err != nil {
+		return err
+	}
+	// Release-blocking: the excluded TPC code must stay provably unlinked
+	// on every platform (maintainer decision of 2026-10-26).
+	if err := checkExclusions(moduleDir); err != nil {
 		return err
 	}
 	if fetch {
@@ -365,8 +365,6 @@ func preamble() []string {
 		"DuckDB native library notices for GoPMgr",
 		"========================================",
 		"",
-		tpcLegend,
-		"",
 		"GoPMgr's release binaries embed DuckDB through the Go module",
 		bindingsModule + ", whose platform modules ship DuckDB as",
 		"prebuilt static libraries. Besides DuckDB itself, whose MIT license is in",
@@ -374,6 +372,11 @@ func preamble() []string {
 		"below. Each section reproduces that code's license and notice texts,",
 		"unchanged except for line endings and trailing spaces, from the DuckDB",
 		"source the libraries were built from.",
+		"",
+		"The platform modules also carry the TPC-H and TPC-DS data generators as",
+		"separate archives (libtpch_extension.a, libtpcds_extension.a). GoPMgr",
+		"excludes them: nothing it links references them, so they are not in its",
+		"binaries, and its release checks fail if they ever are.",
 		"",
 	}
 	out = append(out, headerLines()...)
