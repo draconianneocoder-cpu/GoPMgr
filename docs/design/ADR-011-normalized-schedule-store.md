@@ -276,3 +276,20 @@ Each slice needs its own approval. The test IDs are PS04-DATA-003's (ST, AT, MT,
 **Kept unchanged:**
 - SQLCipher settings and the vendored driver. A driver or engine upgrade is a separate decision and never shares a migration with a schema change.
 - WBS v2, cost control, the audit chain's history, `.pmba` v1 and v2, and the legacy chart path for unmigrated schedules.
+
+## Amendment 1 (2026-10-27): maintainer architecture directive
+
+The maintainer's [architecture directive](../review/architecture-directive-2026-10-27.md) settles parts of this draft. The text above is kept as drafted; where they differ, this amendment governs.
+
+- **O-2, decided.** New authoritative records get cryptographically generated 128-bit IDs (UUIDv4 preferred, or an equivalent with verified properties), with database-enforced uniqueness and no fallback to short IDs. Existing IDs and their references are kept. This replaces the 16-byte `newID` proposal in §8.
+- **O-13, decided: layered protection.**
+  - A distinct next-generation format and extension.
+  - An isolated storage location older builds do not traverse (illustratively `projects_v2/.../project.gopmgr2`).
+  - The format and minimum-writer gate of §5.
+  - Explicit migration only.
+  - Verified encrypted recovery copies.
+  - Positive evidence that older builds cannot modify migrated projects.
+
+  New builds discover and manage both formats.
+- **§5.2, changed.** Read-only operations stop migrating, legacy files included. The draft's "legacy files keep today's open" sentence no longer applies. The read paths in §5.3 move to a non-mutating inspection mode whose readers tolerate missing additive columns.
+- **Implementation** of this ADR is authorized in small, gated slices: B (read paths), C (IDs), E (format gate) and F (migration, inactive until qualified). No migration is activated before its acceptance and recovery gates pass, and the ADR stays Proposed until reviewed.
