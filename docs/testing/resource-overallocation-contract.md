@@ -8,21 +8,29 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 ## Scope
 
 These tests pin what `ResourceUsage`, `DetectOverallocations` and
-`DetectOverallocationsWithPlan` return today. They are the compatibility
-reference for a faster detector. Production code is unchanged.
+`DetectOverallocationsWithPlan` return. They were written against the
+original detector and are the compatibility reference for any faster one.
+Since RES-A-1 (2026-10-27) the detector finds each breach's participants
+through an index built once per call instead of rescanning every task. Its
+output, flags, demand and capacity resolution are unchanged, and every test
+below passes against it unmodified.
 
 - **Pinned source:** `internal/kernel/resources.go` at git blob
   `0826dfc62755a0b7eb50c06680c59650809edad2` (main `28a758d`).
-- **Why now:** Gantt layout is roughly quadratic in schedule size because
-  every overallocated resource-day rescans every task (`tasksOnDay`; ADR-010
-  S0 finding F3, [PR #142](https://github.com/draconianneocoder-cpu/GoPMgr/pull/142)).
-  Removing that rescan (PS-04 slice RES-A) needs a reference that does not
+- **Why:** Gantt layout was roughly quadratic in schedule size because
+  every overallocated resource-day rescanned every task (`tasksOnDay`;
+  ADR-010 S0 finding F3,
+  [PR #142](https://github.com/draconianneocoder-cpu/GoPMgr/pull/142)).
+  Removing that rescan (PS-04 slice RES-A) needed a reference that does not
   move with the code under change.
 - **Authorization:** the maintainer's 2026-10-26 professional-scheduling
   decision ([PR #152](https://github.com/draconianneocoder-cpu/GoPMgr/pull/152),
   not yet merged) approves "developing independent fixtures, reference
-  oracles, benchmarks and isolated feasibility prototypes". The RES-A
-  production change itself still needs its own approval (decision DEC-02).
+  oracles, benchmarks and isolated feasibility prototypes". The maintainer
+  approved the RES-A-1 production change on 2026-10-27 (DEC-09, carrying
+  DEC-02; [owner decisions](../review/PS-04-owner-decisions-2026-10-27.md)),
+  limited to a compatibility-preserving change with no RES-B redesign and no
+  scheduling-semantic change.
 - **Design sources:** the PS-04 design package received 2026-10-27, which is
   not in this repository. This page uses its IDs (RES-C, RES-A, F-xx).
 
@@ -87,7 +95,8 @@ approved behavior change with its own tests.
 | Hand oracle (OR-01) | `internal/kernel/overallocation_contract_test.go` | Hand-computed records, flags and usage. It covers F-01 to F-11 and F-15 to F-21, plus five supplementary cases (OR-01-S1 to S5). It also includes the F-07 threshold, a 16-day capacity-resolution probe (OR-01-S3) and the F-17 horizon, all run against both production and the frozen copy. The JSON-shape, repeated-call and two-sided F-09 tests run against production only; the frozen copy has no capacity-map wrapper or leveler. |
 | Frozen legacy reference (OR-02) | `internal/kernel/overallocation_legacy_ref_test.go` | A copy of the detection path at the pinned blob, written as free functions. |
 | Differential test | `internal/kernel/overallocation_differential_test.go` | Production and the frozen copy agree on 2,000 seeded random schedules, and production leaves its inputs unchanged. A parser guard allows the copy to call only its own functions, builtins, `math` and `sort`. A hash pin fails when the copy changes. |
-| Baseline benchmark | `internal/kernel/overallocation_bench_test.go` | Timing and allocations of the unchanged detector. |
+| Participant index | `internal/kernel/overallocation_index_test.go` | A contiguous span is one membership run however long; split days become sorted, deduplicated, merged runs; repeated assignments and aliased keys give one run per entry and resource. Also T2 and T3 benchmarks. |
+| Benchmarks | `internal/kernel/overallocation_bench_test.go` | Timing and allocations at T0 and T1, run before and after RES-A-1. |
 
 The frozen copy's SHA-256, with CRLF normalized to LF, is
 `68807af1bde66fe8805827809be5fcab9e723f40825acb01967706776905dc88`.
@@ -117,28 +126,56 @@ implemented here.
 
 ## Requirement status
 
-Run locally on darwin/arm64 with Go 1.27.3 at base `28a758d`. "Pinned"
-means the legacy behavior is captured and the tests pass against the
-current code. The RES-A requirements themselves are parity checks on an
-implementation that does not exist yet, so each one is `PENDING_IMPL`.
+"Pinned" means the legacy behavior is captured by the tests named. The
+RES-A-1 column is the result of running those tests, unchanged, against
+the new detector locally on darwin/arm64 with Go 1.27.3, at base
+`31cac48`. A local run is not a release PASS (PS04-EXEC-006 §6.3); CI runs
+the same tests on Linux.
 
-| ID | Legacy behavior pinned by | RES-A parity |
+| ID | Legacy behavior pinned by | RES-A-1 |
 | --- | --- | --- |
-| RES-A01 API, JSON and nil shape | Signature pins, `TestOverallocationJSONShape`, F-16 (empty and nil maps) | PENDING_IMPL |
-| RES-A02 ordering and flag clearing | F-01, F-08, OR-01-S2, `TestOverallocationRepeatCallClearsFlags` | PENDING_IMPL |
-| RES-A03 repeated assignments, identity, demand summation | F-02, F-15, OR-01-S5 | PENDING_IMPL |
-| RES-A04 effective units | F-03 (both cases) | PENDING_IMPL |
-| RES-A05 split gaps, duplicates, clipping | F-04, OR-01-S1 (unsorted days), F-10, F-11, F-16 (empty list) | PENDING_IMPL |
-| RES-A06 capacity resolution | F-05, F-06, F-09, OR-01-S3 | PENDING_IMPL |
-| RES-A07 threshold | `TestOverallocationThresholdIsLiteral` (F-07) | PENDING_IMPL |
-| RES-A08 performance | Baseline benchmark at T0 and T1 only | T2, T3 and RSS NOT RUN; budgets BLOCKED (OWN-10) |
-| RES-A09 aliases, unassigned horizon, rounding | F-17, F-19, F-20, OR-01-S4 | PENDING_IMPL |
-| RES-A10 literal comparison, zero demand | F-18, F-21 | PENDING_IMPL |
+| RES-A01 API, JSON and nil shape | Signature pins, `TestOverallocationJSONShape`, F-16 (empty and nil maps) | Passing locally |
+| RES-A02 ordering and flag clearing | F-01, F-08, OR-01-S2, `TestOverallocationRepeatCallClearsFlags` | Passing locally |
+| RES-A03 repeated assignments, identity, demand summation | F-02, F-15, OR-01-S5 | Passing locally |
+| RES-A04 effective units | F-03 (both cases) | Passing locally |
+| RES-A05 split gaps, duplicates, clipping | F-04, OR-01-S1 (unsorted days), F-10, F-11, F-16 (empty list) | Passing locally |
+| RES-A06 capacity resolution | F-05, F-06, F-09, OR-01-S3 | Passing locally |
+| RES-A07 threshold | `TestOverallocationThresholdIsLiteral` (F-07) | Passing locally |
+| RES-A08 performance | Paired before-and-after benchmarks at T0 and T1; T2 and T3 for the new detector | Measured (see Benchmarks). RSS and the old detector's T2 and T3 NOT RUN; budgets BLOCKED (OWN-10) |
+| RES-A09 aliases, unassigned horizon, rounding | F-17, F-19, F-20, OR-01-S4 | Passing locally |
+| RES-A10 literal comparison, zero demand | F-18, F-21 | Passing locally |
 
 ## Sensitivity
 
 Each seed changed one thing in a disposable worktree, ran the tests, and
 was restored byte for byte.
+
+### Seeds against the participant index (RES-A-1)
+
+All 14 seeds were caught by the full suite.
+
+- **Membership runs:**
+  - split days not deduplicated;
+  - adjacent split days not merged;
+  - a span ending one day early;
+  - `WorkDays != nil` in place of `len(WorkDays) > 0`.
+- **Entries and identity:**
+  - entries collapsed by printed ID;
+  - entries ordered by key instead of printed ID.
+- **Membership and output:**
+  - membership given for resources the task is not assigned to;
+  - membership applied one day late;
+  - the active set not reset between resources;
+  - participants left unsorted;
+  - flags not set.
+- **Run with the differential test alone, five times each:**
+  - the missing adjacency merge, which only the differential test catches;
+  - the missing deduplication.
+- **Negative split days not clipped:** caught only by
+  `TestOccupiedRuns`. It is equivalent at the detector's output, because a
+  run before day 0 enters and leaves before day 0 is examined.
+
+### Seeds against the original detector
 
 **Production mutations: 27 distinct, all caught by the full suite.**
 
@@ -195,13 +232,13 @@ run. Five were caught:
 - the stale cache, by `TestDetectOverallocations`, but only on its second
   run in one process.
 
-## Baseline benchmark (indicative)
+## Benchmarks (indicative)
 
 ```sh
 go test -run '^$' -bench 'ResourceUsage|DetectOverallocations' -benchmem ./internal/kernel/
 ```
 
-The fixture is the benchmark file's own seeded schedule:
+The fixture is the benchmark files' own seeded schedule:
 
 - Tasks of 1 to 15 days spread over 400 days, with one resource per 40
   tasks.
@@ -210,19 +247,27 @@ The fixture is the benchmark file's own seeded schedule:
 
 It is not the S0 generator, and these numbers are not comparable with S0's.
 
-Measured on an Apple M4 (darwin/arm64) with Go 1.27.3, over three runs of
-three iterations each. The ranges are the spread of those runs, not a
-distribution, and a cold run can fall outside them. Breach counts, task
-references, bytes and allocations are deterministic for the fixture.
+**Setup:** an Apple M4 (darwin/arm64) with Go 1.27.3, on 2026-10-27.
+- The before and after runs alternated six times. The "before" side was a
+  worktree of `main` at `31cac48`.
+- Times are benchstat medians with the spread around them, n=6.
+- Breaches, task references and allocations are deterministic for the
+  fixture, and are identical before and after.
 
-| Tier | `ResourceUsage` | Detector | Breaches | Task references | Detector memory |
+| Tier | Detector before | Detector after | Change | Bytes per call, after | Allocations, after |
 | --- | --- | --- | --- | --- | --- |
-| T0, 500 tasks | 39–56 µs | 4.5–4.8 ms | 1,029 | 2,420 | 480 KB, 7,289 allocs |
-| T1, 10,000 tasks | 0.83–1.16 ms | 2.13–2.21 s | 19,569 | 47,785 | 11.1 MB, 141,954 allocs |
+| T0, 500 tasks | 4.77 ms ± 4% | 0.233 ms ± 2% | −95.1% | 474 KiB (+1.1%) | 5,173 (−29%) |
+| T1, 10,000 tasks | 2.05 s ± 2% | 6.16 ms ± 1% | −99.7% | 10.7 MiB (+0.9%) | 100,814 (−29%) |
+| T2, 50,000 tasks | not run | 45.9 ms ± 2% | | 55.8 MiB | 503,705 |
+| T3, 100,000 tasks | not run | 99.4 ms ± 1% | | 111 MiB | 1,006,482 |
 
-At T1, detection takes about 2,000 times as long as building the demand
-profiles it reads. That gap is the rescan RES-A targets. These figures
-guide design only; they are not budgets.
+- T0 has 1,029 breaches and 2,420 task references; T1 has 19,569 and
+  47,785; T2 has 97,759 and 238,540; T3 has 194,586 and 477,841.
+- `ResourceUsage` is unchanged (T1 about 0.74 ms both sides).
+- The remaining cost follows the dense demand profiles and the size of the
+  output, which are RES-B's subject.
+- Peak RSS was not measured, and the old detector was not run at T2 or T3.
+- These figures guide design only; they are not budgets.
 
 ## Changing these tests
 
@@ -230,5 +275,5 @@ guide design only; they are not budgets.
   output is meant to change, record the decision here, update the hand
   oracle row by row, and update the hash pin in the same change.
 - A faster detector passes only if every test here passes unchanged, the
-  differential test included. The guard does not require `tasksOnDay` or
-  `occupiesDay` to survive.
+  differential test included. RES-A-1 did: it removed `tasksOnDay` and
+  `occupiesDay` from production, and the frozen copy keeps its own versions.
