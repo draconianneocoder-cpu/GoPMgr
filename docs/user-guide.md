@@ -594,6 +594,13 @@ for a project created before the August 2026 rename — as the final argument:
   `docx`, `odt`, `xlsx`, `csv`, `html`, `mspdi`). Add `--encrypt` to write
   the bytes AES-256-GCM encrypted with the `--password-env` password.
 
+`--check`, `--schema-dump`, `--stats`, `--export-audit` and `--export` only
+read the project; they never upgrade or otherwise change it. A project last
+saved by an older GoPMgr can still be checked and its schema dumped, but
+`--stats`, `--export-audit` and `--export` stop with an error until the
+project has been opened once in GoPMgr, which upgrades it. `--repair` and
+`--vacuum` write to the project and upgrade it as before.
+
 For an **encrypted** project, pass credentials so the database can be
 unlocked: `--username <name>` and `--password-env <ENVVAR>`, where the
 named environment variable holds that account's password (the password is

@@ -21,14 +21,14 @@ import (
 // for an account without recovery codes, as a user can after ticking "I
 // understand" (App.AcceptEncryptionWithoutRecoveryCodes). Tests of that
 // rule itself do not use it.
-func acceptNoRecoveryCodes(t *testing.T, app *App) {
+func acceptNoRecoveryCodes(t testing.TB, app *App) {
 	t.Helper()
 	if err := app.AcceptEncryptionWithoutRecoveryCodes(); err != nil {
 		t.Fatalf("AcceptEncryptionWithoutRecoveryCodes: %v", err)
 	}
 }
 
-func newEncryptionProjectTestApp(t *testing.T) *App {
+func newEncryptionProjectTestApp(t testing.TB) *App {
 	t.Helper()
 	store, err := users.Open(filepath.Join(t.TempDir(), "root"))
 	if err != nil {

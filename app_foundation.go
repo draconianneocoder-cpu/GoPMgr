@@ -919,10 +919,21 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 	asOf := time.Now().UTC()
 	metrics := make([]analytics.ProjectMetrics, 0, len(entries))
 	portfolioCurrency := ""
+	var needUpgrade, newerFormat []string
 	for _, e := range entries {
-		d, derr := db.InitEncryptedDB(e.Path, dek)
+		// Read-only: analytics never migrates or writes a project.
+		d, state, derr := db.OpenEncryptedReadOnly(e.Path, dek)
+		if errors.Is(derr, db.ErrUnsupportedProjectFormat) {
+			newerFormat = append(newerFormat, e.Name)
+			continue
+		}
 		if derr != nil {
-			continue // unreadable project: skip, matching ProjectsOverview
+			continue // unreadable project: skipped, as before
+		}
+		if state != db.SchemaCurrent {
+			_ = d.Close()
+			needUpgrade = append(needUpgrade, e.Name)
+			continue
 		}
 		p, perr := d.GetProject()
 		if perr != nil {
@@ -947,6 +958,10 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 		metrics = append(metrics, projectMetrics)
 	}
 
+	if err := portfolioFormatError(needUpgrade, newerFormat); err != nil {
+		return PortfolioSummaryWire{}, err
+	}
+
 	summary, err := eng.PortfolioRollup(a.ctx, metrics)
 	if err != nil {
 		return PortfolioSummaryWire{}, err
@@ -957,6 +972,24 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 	// dates count as working days for each schedule.
 	summary.AsOfDate = asOf.Format(kernel.DateLayout)
 	return portfolioSummaryWire(summary, portfolioCurrency)
+}
+
+// portfolioFormatError names every project analytics could not read
+// because of its file format, so the user can deal with them in one pass
+// rather than one failed run at a time. Projects with an older format are
+// not upgraded here; opening each in GoPMgr does that.
+func portfolioFormatError(needUpgrade, newerFormat []string) error {
+	var errs []error
+	if len(needUpgrade) > 0 {
+		errs = append(errs, fmt.Errorf("%w: %s", db.ErrProjectNeedsUpgrade, strings.Join(needUpgrade, ", ")))
+	}
+	if len(newerFormat) > 0 {
+		errs = append(errs, fmt.Errorf("%w: %s", db.ErrUnsupportedProjectFormat, strings.Join(newerFormat, ", ")))
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return fmt.Errorf("portfolio analytics cannot include every project: %w", errors.Join(errs...))
 }
 
 // portfolioMixedCurrencyError prevents exact arithmetic from producing a

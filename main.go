@@ -464,13 +464,34 @@ func runHeadlessRepair(d *db.Database, projectPath string, w io.Writer) (damaged
 	return result.Snapshot != "", nil
 }
 
+// headlessWrites reports whether the requested command changes the project.
+// Every other command opens it read-only.
+func headlessWrites(cfg *cli.Config) bool {
+	return cfg.Repair || cfg.Vacuum
+}
+
+// headlessReadsAnySchema reports whether a read-only command works on a
+// project with an older schema: the integrity check and the schema dump
+// look at structure only. The others read current-schema columns.
+func headlessReadsAnySchema(cfg *cli.Config) bool {
+	return cfg.CheckOnly || cfg.SchemaDump
+}
+
+// openHeadlessDB opens the project for the command in cfg. Repair and vacuum
+// open it for writing, which also migrates it; every other command opens it
+// read-only and never changes it.
 func openHeadlessDB(cfg *cli.Config) (*db.Database, error) {
 	encrypted, err := db.IsEncryptedFile(cfg.ProjectPath)
 	if err != nil {
 		return nil, fmt.Errorf("inspect project encryption: %w", err)
 	}
 	if !encrypted {
-		return db.InitDB(cfg.ProjectPath)
+		if headlessWrites(cfg) {
+			return db.InitDB(cfg.ProjectPath)
+		}
+		return headlessReadOnly(cfg, func() (*db.Database, db.SchemaState, error) {
+			return db.OpenReadOnly(cfg.ProjectPath)
+		})
 	}
 	if strings.TrimSpace(cfg.Username) == "" {
 		return nil, errors.New("--username is required for encrypted project maintenance")
@@ -495,7 +516,26 @@ func openHeadlessDB(cfg *cli.Config) (*db.Database, error) {
 	if err != nil {
 		return nil, fmt.Errorf("authenticate headless user: %w", err)
 	}
-	return db.InitEncryptedDB(cfg.ProjectPath, dek)
+	if headlessWrites(cfg) {
+		return db.InitEncryptedDB(cfg.ProjectPath, dek)
+	}
+	return headlessReadOnly(cfg, func() (*db.Database, db.SchemaState, error) {
+		return db.OpenEncryptedReadOnly(cfg.ProjectPath, dek)
+	})
+}
+
+// headlessReadOnly opens the project read-only and refuses an older schema
+// for commands that need the current one, rather than upgrading it.
+func headlessReadOnly(cfg *cli.Config, open func() (*db.Database, db.SchemaState, error)) (*db.Database, error) {
+	d, state, err := open()
+	if err != nil {
+		return nil, err
+	}
+	if state != db.SchemaCurrent && !headlessReadsAnySchema(cfg) {
+		_ = d.Close()
+		return nil, db.ErrProjectNeedsUpgrade
+	}
+	return d, nil
 }
 
 func inferHeadlessRootDir(projectPath, username string) (string, error) {

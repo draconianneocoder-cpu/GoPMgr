@@ -523,12 +523,13 @@ func (a *App) projectDeletionRequest(s sessionRef, path, projectsDir string) (de
 		return deletionlog.Request{}, err
 	}
 	defer zeroBytes(dek)
-	d, err := db.InitEncryptedDB(path, dek)
+	// Read-only: preparing a deletion record never migrates the project.
+	d, _, err := db.OpenEncryptedReadOnly(path, dek)
 	if err != nil {
 		return deletionlog.Request{}, err
 	}
 	defer func() { _ = d.Close() }()
-	project, err := d.GetProject()
+	project, err := d.ReadProjectOverview()
 	if errors.Is(err, db.ErrNoProject) {
 		req.ProjectName = deletedProjectDisplayName(path, projectsDir)
 		return req, nil
@@ -536,7 +537,7 @@ func (a *App) projectDeletionRequest(s sessionRef, path, projectsDir string) (de
 	if err != nil {
 		return deletionlog.Request{}, err
 	}
-	chain, err := d.VerifyAuditChain(project.ID)
+	chain, err := d.VerifyAuditChainIfPresent(project.ID)
 	if err != nil {
 		return deletionlog.Request{}, fmt.Errorf("read audit chain before deletion: %w", err)
 	}
@@ -901,14 +902,19 @@ type ProjectSummary struct {
 	Charts    int    `json:"charts"`
 	Documents int    `json:"documents"`
 	Readable  bool   `json:"readable"` // false if the file could not be opened/decrypted
+	// UnreadableReason says why Readable is false: not_found, unreadable
+	// (wrong key or not a project), damaged, busy, inaccessible,
+	// unsupported_format, no_project or error. Empty when Readable is true.
+	UnreadableReason string `json:"unreadable_reason,omitempty"`
 }
 
 // ProjectsOverview returns a portfolio snapshot of every project in the
 // signed-in user's folder: each project's status / phase / dates plus chart
-// and document counts. Each project database is opened with the session DEK
-// and closed again, so the app's active project is left untouched. A project
-// that cannot be opened is still listed (Readable=false) so nothing silently
-// disappears from the overview.
+// and document counts. Each project database is opened read-only with the
+// session DEK and closed again: listing projects never migrates or writes
+// them, and the app's active project is left untouched. A project that
+// cannot be read is still listed (Readable=false, with UnreadableReason) so
+// nothing silently disappears from the overview.
 func (a *App) ProjectsOverview() ([]ProjectSummary, error) {
 	s := a.currentSession()
 	user := s.user
@@ -927,28 +933,53 @@ func (a *App) ProjectsOverview() ([]ProjectSummary, error) {
 	out := make([]ProjectSummary, 0, len(entries))
 	for _, e := range entries {
 		sum := ProjectSummary{Path: e.Path, Name: e.Name, Modified: e.Modified}
-		if d, derr := db.InitEncryptedDB(e.Path, dek); derr == nil {
-			if p, perr := d.GetProject(); perr == nil {
-				if strings.TrimSpace(p.Name) != "" {
-					sum.Name = p.Name // prefer the real (typed) project name
-				}
-				sum.Status = p.Status
-				sum.Phase = p.Phase
-				sum.StartDate = p.StartDate
-				sum.EndDate = p.EndDate
-				if cs, cerr := d.ListCharts(p.ID, ""); cerr == nil {
-					sum.Charts = len(cs)
-				}
-				if ds, dderr := d.ListDocuments(p.ID, ""); dderr == nil {
-					sum.Documents = len(ds)
-				}
-				sum.Readable = true
-			}
-			_ = d.Close()
+		d, _, derr := db.OpenEncryptedReadOnly(e.Path, dek)
+		if derr != nil {
+			sum.UnreadableReason = projectUnreadableReason(derr)
+			out = append(out, sum)
+			continue
 		}
+		ov, oerr := d.ReadProjectOverview()
+		_ = d.Close()
+		if oerr != nil {
+			sum.UnreadableReason = projectUnreadableReason(oerr)
+			out = append(out, sum)
+			continue
+		}
+		if strings.TrimSpace(ov.Name) != "" {
+			sum.Name = ov.Name // prefer the real (typed) project name
+		}
+		sum.Status = ov.Status
+		sum.Phase = ov.Phase
+		sum.StartDate = ov.StartDate
+		sum.EndDate = ov.EndDate
+		sum.Charts = ov.Charts
+		sum.Documents = ov.Documents
+		sum.Readable = true
 		out = append(out, sum)
 	}
 	return out, nil
+}
+
+// projectUnreadableReason is ProjectSummary.UnreadableReason for err.
+func projectUnreadableReason(err error) string {
+	switch {
+	case errors.Is(err, db.ErrProjectNotFound):
+		return "not_found"
+	case errors.Is(err, db.ErrProjectUnreadable):
+		return "unreadable"
+	case errors.Is(err, db.ErrProjectDamaged):
+		return "damaged"
+	case errors.Is(err, db.ErrProjectBusy):
+		return "busy"
+	case errors.Is(err, db.ErrProjectInaccessible):
+		return "inaccessible"
+	case errors.Is(err, db.ErrUnsupportedProjectFormat):
+		return "unsupported_format"
+	case errors.Is(err, db.ErrNoProject):
+		return "no_project"
+	}
+	return "error"
 }
 
 // AppSettings holds per-user, app-level preferences that apply across all

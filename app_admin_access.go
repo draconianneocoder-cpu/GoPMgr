@@ -227,6 +227,9 @@ func openProjectCopy(src, dst string, dek []byte) (*db.Database, db.Project, err
 	if errors.Is(err, db.ErrCopyDamaged) {
 		return nil, db.Project{}, errors.New("the copy of this project could not be read cleanly, perhaps because its owner was changing it; try again")
 	}
+	if errors.Is(err, db.ErrProjectNeedsUpgrade) {
+		return nil, db.Project{}, errors.New("this project uses an older file format; its owner needs to open it once in GoPMgr before an administrator can view it")
+	}
 	if err != nil {
 		return nil, db.Project{}, fmt.Errorf("open the project copy: %w", err)
 	}
