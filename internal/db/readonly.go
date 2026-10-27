@@ -139,10 +139,10 @@ func readOnlyDSN(path string) (string, error) {
 func (db *Database) inspectFormat() (SchemaState, error) {
 	var userVersion int64
 	if err := db.Conn.QueryRow("PRAGMA user_version").Scan(&userVersion); err != nil {
-		return 0, classifyOpenError(err)
+		return 0, classifySQLiteError(err)
 	}
 	if _, err := db.Conn.Exec("SELECT count(*) FROM sqlite_master"); err != nil {
-		return 0, classifyOpenError(err)
+		return 0, classifySQLiteError(err)
 	}
 	if userVersion != 0 {
 		return 0, fmt.Errorf("%w (format stamp %d)", ErrUnsupportedProjectFormat, userVersion)
@@ -153,7 +153,7 @@ func (db *Database) inspectFormat() (SchemaState, error) {
 	}
 	have, err := db.tableColumns()
 	if err != nil {
-		return 0, classifyOpenError(err)
+		return 0, classifySQLiteError(err)
 	}
 	for table, columns := range expected {
 		got, ok := have[table]
@@ -169,9 +169,10 @@ func (db *Database) inspectFormat() (SchemaState, error) {
 	return SchemaCurrent, nil
 }
 
-// classifyOpenError maps SQLite result codes to the typed errors above,
-// keeping the original error wrapped.
-func classifyOpenError(err error) error {
+// classifySQLiteError maps SQLite result codes to the typed errors above,
+// keeping the original error wrapped. It applies to reads after the open
+// too: a damaged page is found only when a query reads it.
+func classifySQLiteError(err error) error {
 	switch sqlitedriver.Classify(err) {
 	case sqlitedriver.FailureNotADatabase:
 		return fmt.Errorf("%w: %w", ErrProjectUnreadable, err)
@@ -180,7 +181,7 @@ func classifyOpenError(err error) error {
 	case sqlitedriver.FailureBusy:
 		return fmt.Errorf("%w: %w", ErrProjectBusy, err)
 	case sqlitedriver.FailureCantOpen, sqlitedriver.FailureReadOnly:
-		// Lstat found the file, so this is not "missing". A read-only
+		// The file exists, so this is not "missing". A read-only
 		// connection that only reads gets SQLITE_READONLY only when SQLite
 		// cannot create a WAL's -shm beside the file.
 		return fmt.Errorf("%w: %w", ErrProjectInaccessible, err)
@@ -269,8 +270,16 @@ type ProjectOverview struct {
 // its charts and documents without loading them. It needs only the tables
 // and columns every supported schema has, so it works on an Older file
 // opened read-only. It returns ErrNoProject when there is no project row,
-// as GetProject does.
+// as GetProject does, and the typed errors above for a damaged or busy file.
 func (db *Database) ReadProjectOverview() (ProjectOverview, error) {
+	ov, err := db.readProjectOverview()
+	if err != nil && !errors.Is(err, ErrNoProject) {
+		return ProjectOverview{}, classifySQLiteError(err)
+	}
+	return ov, err
+}
+
+func (db *Database) readProjectOverview() (ProjectOverview, error) {
 	var ov ProjectOverview
 	ok, err := db.hasTable("project")
 	if err != nil {
@@ -311,14 +320,19 @@ func (db *Database) countRows(table, projectID string) (int, error) {
 
 // VerifyAuditChainIfPresent is VerifyAuditChain for a file that may predate
 // the audit_events table. Without the table the chain is empty and valid,
-// which is what Migrate would create.
+// which is what Migrate would create. A broken chain is Valid=false, not an
+// error; read failures come back as the typed errors above.
 func (db *Database) VerifyAuditChainIfPresent(projectID string) (AuditVerification, error) {
 	ok, err := db.hasTable("audit_events")
 	if err != nil {
-		return AuditVerification{}, err
+		return AuditVerification{}, classifySQLiteError(err)
 	}
 	if !ok {
 		return AuditVerification{ProjectID: projectID, Valid: true}, nil
 	}
-	return db.VerifyAuditChain(projectID)
+	v, err := db.VerifyAuditChain(projectID)
+	if err != nil {
+		return v, classifySQLiteError(err)
+	}
+	return v, nil
 }

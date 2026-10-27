@@ -58,7 +58,7 @@ Before returning, it:
 | --- | --- |
 | `ErrProjectNotFound` | No file at the path |
 | `ErrProjectUnreadable` | Wrong key, or not a SQLite database. SQLCipher reports both as `SQLITE_NOTADB` |
-| `ErrProjectDamaged` | `SQLITE_CORRUPT` |
+| `ErrProjectDamaged` | `SQLITE_CORRUPT`, from the open or from a later read by `ReadProjectOverview` or `VerifyAuditChainIfPresent` |
 | `ErrProjectBusy` | Locked past the busy timeout |
 | `ErrProjectInaccessible` | The file exists, but SQLite cannot open it or a file it needs beside it: a mode-000 file (`SQLITE_CANTOPEN`), or a WAL-mode file with no `-shm` in a folder the reader cannot write (`SQLITE_READONLY`). Both were observed on macOS |
 | `ErrUnsupportedProjectFormat` | A format stamp this build does not know |
@@ -95,7 +95,7 @@ Run locally on darwin/arm64 with Go 1.27.3 at the base above. Linux runs in CI o
 | B-06 | A missing file is not created | `TestOpenReadOnlyTypedFailures/missing_file` | PASS |
 | B-07 | A wrong key gives a typed error and no change | `…/wrong_key`, and the other-key project in the overview test | PASS |
 | B-08 | A newer format is refused safely | `…/future_format_stamp`, plus the overview, deletion and portfolio tests | PASS |
-| B-09 | A damaged file triggers no repair or migration | `…/damaged_pages` (`ErrCopyDamaged`, file unchanged) | PASS |
+| B-09 | A damaged file triggers no repair or migration | `…/damaged_pages` (`ErrCopyDamaged`, file unchanged); `TestReadProjectOverviewReportsDamage` and `TestProjectsOverviewReportsADamagedProject`: a damaged `project` page opens, the read reports `ErrProjectDamaged`, the list shows `damaged` beside the healthy project, and the file is unchanged | PASS |
 | B-10 | Audit chains stay verifiable | Deletion test: the current project's terminal hash and count match `VerifyAuditChain` | PASS |
 | B-11 | Older schemas stay readable where required | Overview and deletion read the older fixture | PASS |
 | B-12 | Metadata and counts match an independent count | Literal counts in the fixtures, including a stray chart of another project id that must not count | PASS |
@@ -111,7 +111,7 @@ Run locally on darwin/arm64 with Go 1.27.3 at the base above. Linux runs in CI o
 | — | `-race` | Slice B tests under `-race` | PASS |
 | — | The key stays out of error text and file names | `TestOpenReadOnlyKeepsTheKeyOutOfErrorsAndNames` (`PRAGMA database_list` and typed errors) | PASS |
 
-**Fault seeding.** Each seed was applied to a disposable worktree, run against the tests above, and restored. All 18 were caught:
+**Fault seeding.** Each seed was applied to a disposable worktree, run against the tests above, and restored. All 20 were caught:
 - each call site switched back to the writable open: overview, deletion, portfolio, administrator copy and headless;
 - `mode=ro` removed from the URI;
 - the symlink check removed;
@@ -124,7 +124,9 @@ Run locally on darwin/arm64 with Go 1.27.3 at the base above. Linux runs in CI o
 - the copy's integrity check removed;
 - the copy accepting Older schemas;
 - the administrator copy switched back to the writable open, against the live-WAL test;
-- `SQLITE_CANTOPEN` reported as "not found".
+- `SQLITE_CANTOPEN` reported as "not found";
+- errors from the overview read left unclassified;
+- the overview's read-error branch dropping the reason.
 
 ## 6. Performance
 
@@ -144,6 +146,7 @@ Most of the gain comes from counting rows instead of loading every chart and doc
 ## 7. Limits and follow-ups
 
 - **"Current" checks tables and columns only.** A `Migrate()` interrupted after adding columns but before its timestamp or money retrofits is not detected; such a file reads with its values as stored.
+- **The project list finds damage only on pages it reads.** A damaged `charts` page did not show, because the count was answered without reading it. The list is not an integrity check.
 - **Wrong key and a damaged header** both surface as `ErrProjectUnreadable`. An administrator copy torn at page 1 therefore reads as unreadable, not as "copied while changing".
 - **The format stamp is not checked on writable opens.** Refusing a stamped file before `Migrate()` on those paths is the format gate, Slice E.
 - **Unreadable projects** are still skipped silently by portfolio analytics (§4).

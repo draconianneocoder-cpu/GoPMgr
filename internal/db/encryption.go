@@ -57,7 +57,7 @@ func OpenEncryptedCopyReadOnly(path string, dek []byte) (*Database, error) {
 	ok, err := checkIntegrity(d.Conn)
 	if err != nil || !ok {
 		_ = d.Close()
-		if err != nil && !errors.Is(classifyOpenError(err), ErrProjectDamaged) {
+		if err != nil && !errors.Is(classifySQLiteError(err), ErrProjectDamaged) {
 			return nil, fmt.Errorf("db: check project copy: %w", err)
 		}
 		return nil, ErrCopyDamaged

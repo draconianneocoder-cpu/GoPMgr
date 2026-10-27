@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -430,5 +431,104 @@ func TestAdminProjectCopyOfALiveWALProject(t *testing.T) { // B-04, B-13
 	}
 	if sha256.Sum256(copied) != sha256.Sum256(srcMain) {
 		t.Error("viewing the copy changed its main file (it was checkpointed or migrated)")
+	}
+}
+
+// A project whose project-table page is damaged opens, then fails on the
+// read; the list must still say "damaged", list the healthy project, and
+// leave the damaged file as it was.
+func TestProjectsOverviewReportsADamagedProject(t *testing.T) { // B-09
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("alice", "Alice", "correct horse battery staple", false); err != nil {
+		t.Fatal(err)
+	}
+	acceptNoRecoveryCodes(t, app)
+	dek, err := app.sessionDEK(app.currentSession())
+	if err != nil {
+		t.Fatal(err)
+	}
+	healthy, err := app.CreateProject("Healthy", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	damaged, err := app.CreateProject("Damaged", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := app.CloseProject(); err != nil {
+		t.Fatal(err)
+	}
+	toDeleteMode(t, healthy.Path, dek, 0)
+	toDeleteMode(t, damaged.Path, dek, 0)
+
+	d, _, err := db.OpenEncryptedReadOnly(damaged.Path, dek)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var root, pageSize int
+	err = d.Conn.QueryRow("SELECT rootpage FROM sqlite_master WHERE type = 'table' AND name = 'project'").Scan(&root)
+	if err == nil {
+		err = d.Conn.QueryRow("PRAGMA page_size").Scan(&pageSize)
+	}
+	_ = d.Close()
+	if err != nil || root < 2 {
+		t.Fatalf("project root page: %d %v", root, err)
+	}
+	raw, err := os.ReadFile(damaged.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := (root-1)*pageSize + 100; i < (root-1)*pageSize+200; i++ {
+		raw[i] ^= 0xA5
+	}
+	if err := os.WriteFile(damaged.Path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	before := sha256.Sum256(raw)
+
+	list, err := app.ProjectsOverview()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]ProjectSummary{}
+	for _, s := range list {
+		got[s.Path] = s
+	}
+	if s := got[damaged.Path]; s.Readable || s.UnreadableReason != "damaged" {
+		t.Errorf("damaged project: readable=%v reason=%q, want unreadable with reason \"damaged\"", s.Readable, s.UnreadableReason)
+	}
+	if s := got[healthy.Path]; !s.Readable || s.Name != "Healthy" || s.UnreadableReason != "" {
+		t.Errorf("healthy project: %+v, want it listed as readable", s)
+	}
+	after, err := os.ReadFile(damaged.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sha256.Sum256(after) != before {
+		t.Error("listing projects changed the damaged file")
+	}
+}
+
+// unreadable_reason is read by the frontend, so its values are a wire
+// contract.
+func TestProjectUnreadableReason(t *testing.T) {
+	cases := []struct {
+		err  error
+		want string
+	}{
+		{db.ErrProjectNotFound, "not_found"},
+		{db.ErrProjectUnreadable, "unreadable"},
+		{db.ErrProjectDamaged, "damaged"},
+		{db.ErrProjectBusy, "busy"},
+		{db.ErrProjectInaccessible, "inaccessible"},
+		{db.ErrUnsupportedProjectFormat, "unsupported_format"},
+		{db.ErrNoProject, "no_project"},
+		{errors.New("something else"), "error"},
+	}
+	for _, c := range cases {
+		wrapped := fmt.Errorf("open %s: %w", "p.gopmgr", c.err)
+		if got := projectUnreadableReason(wrapped); got != c.want {
+			t.Errorf("projectUnreadableReason(%v) = %q, want %q", c.err, got, c.want)
+		}
 	}
 }

@@ -15,6 +15,8 @@ import (
 	"sync"
 	"testing"
 
+	sqlite3 "github.com/mutecomm/go-sqlcipher/v4"
+
 	"gopmgr/internal/crypto"
 	"gopmgr/internal/sqlitedriver"
 )
@@ -787,5 +789,96 @@ func TestOpenReadOnlyKeepsTheKeyOutOfErrorsAndNames(t *testing.T) {
 		if _, _, err := OpenEncryptedReadOnly(p, dek); err != nil && strings.Contains(err.Error(), hexKey) {
 			t.Errorf("error %q contains the key", err)
 		}
+	}
+}
+
+// corruptTableRoot flips bytes inside the root page of table, past the page
+// header, so the file still opens and the damage is found only when that
+// table is read.
+func corruptTableRoot(t *testing.T, path string, dek []byte, table string) {
+	t.Helper()
+	d, _, err := OpenEncryptedReadOnly(path, dek)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var root, pageSize int
+	err = d.Conn.QueryRow("SELECT rootpage FROM sqlite_master WHERE type = 'table' AND name = ?", table).Scan(&root)
+	if err == nil {
+		err = d.Conn.QueryRow("PRAGMA page_size").Scan(&pageSize)
+	}
+	_ = d.Close()
+	if err != nil || root < 2 {
+		t.Fatalf("root page of %s: %d %v", table, root, err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	off := (root - 1) * pageSize
+	for i := off + 100; i < off+200; i++ {
+		raw[i] ^= 0xA5
+	}
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Damage the open does not reach is found by the read that does, and is
+// still reported as damage, not as an untyped error.
+func TestReadProjectOverviewReportsDamage(t *testing.T) { // B-09
+	dek := roTestKey(33)
+	path := filepath.Join(t.TempDir(), "p.gopmgr")
+	writeCurrentProject(t, path, dek, true)
+	corruptTableRoot(t, path, dek, "project")
+	before := fileDigest(t, path)
+
+	d, state, err := OpenEncryptedReadOnly(path, dek)
+	if err != nil {
+		t.Fatalf("open: %v (the damage is past the schema, so the open should succeed)", err)
+	}
+	defer func() { _ = d.Close() }()
+	if state != SchemaCurrent {
+		t.Errorf("state = %v, want SchemaCurrent", state)
+	}
+	if _, err := d.ReadProjectOverview(); !errors.Is(err, ErrProjectDamaged) {
+		t.Fatalf("ReadProjectOverview err = %v, want ErrProjectDamaged", err)
+	}
+	if _, err := d.VerifyAuditChainIfPresent("prj_x"); err != nil && !errors.Is(err, ErrProjectDamaged) {
+		t.Errorf("VerifyAuditChainIfPresent err = %v, want nil or ErrProjectDamaged", err)
+	}
+	if fileDigest(t, path) != before {
+		t.Error("reading a damaged project changed it")
+	}
+}
+
+func TestClassifySQLiteError(t *testing.T) {
+	plain := errors.New("not from SQLite")
+	cases := []struct {
+		code sqlite3.ErrNo
+		want error
+	}{
+		{sqlite3.ErrNotADB, ErrProjectUnreadable},
+		{sqlite3.ErrCorrupt, ErrProjectDamaged},
+		{sqlite3.ErrBusy, ErrProjectBusy},
+		{sqlite3.ErrLocked, ErrProjectBusy},
+		{sqlite3.ErrCantOpen, ErrProjectInaccessible},
+		{sqlite3.ErrReadonly, ErrProjectInaccessible},
+	}
+	for _, c := range cases {
+		src := sqlite3.Error{Code: c.code}
+		got := classifySQLiteError(src)
+		if !errors.Is(got, c.want) {
+			t.Errorf("code %d: got %v, want %v", c.code, got, c.want)
+		}
+		var keep sqlite3.Error
+		if !errors.As(got, &keep) || keep.Code != c.code {
+			t.Errorf("code %d: the SQLite error is not kept wrapped: %v", c.code, got)
+		}
+	}
+	if got := classifySQLiteError(plain); got != plain {
+		t.Errorf("an unrelated error changed: %v", got)
+	}
+	if got := classifySQLiteError(sqlite3.Error{Code: sqlite3.ErrConstraint}); errors.Is(got, ErrProjectDamaged) || errors.Is(got, ErrProjectBusy) {
+		t.Errorf("a constraint error was given a typed open error: %v", got)
 	}
 }
