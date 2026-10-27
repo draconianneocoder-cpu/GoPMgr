@@ -293,3 +293,4 @@ The maintainer's [architecture directive](../review/architecture-directive-2026-
   New builds discover and manage both formats.
 - **§5.2, changed.** Read-only operations stop migrating, legacy files included. The draft's "legacy files keep today's open" sentence no longer applies. The read paths in §5.3 move to a non-mutating inspection mode whose readers tolerate missing additive columns.
 - **Implementation** of this ADR is authorized in small, gated slices: B (read paths), C (IDs), E (format gate) and F (migration, inactive until qualified). No migration is activated before its acceptance and recovery gates pass, and the ADR stays Proposed until reviewed.
+- **Slice B status (2026-10-27):** the read paths in §5.3 now open read-only and never migrate ([evidence](../testing/read-only-project-access.md)). Writable opens are unchanged; refusing a stamped file before `Migrate()` on them is Slice E.
