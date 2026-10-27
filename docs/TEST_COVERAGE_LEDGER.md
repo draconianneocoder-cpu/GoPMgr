@@ -37,17 +37,19 @@ were rechecked with Go 1.27.3 on 2026-10-22 and remain unchanged. Since
 tests (for example `internal/documents`, 78.2% to 69.5%). Per-file
 percentages in rows written before then were measured with the older count.
 
-**Baseline refresh (2026-10-23):** `coverage-baseline.json` now records
-16990/21133 (Go default, 80.40%), 17105/21231 (Go duckdb, 80.57%), and
-11406/18207 (frontend, 62.65%). The Go marks were last set at 15,039
-statements. The code has grown by about 6,100 statements since, so the
-uncovered count rose from 3,605 to 4,143 while coverage rose from 76.0% to
-80.4%. The maintainer chose to reset the Go marks to the current state
-rather than keep marks no commit could meet; the frontend mark is an
-ordinary ratchet improvement. They were measured in a Linux container as
-root, where three test files skip their permission checks, so the Go marks
-may be slightly looser than a developer machine's; `make
-coverage-ratchet-update` run as a regular user tightens them.
+**Baseline refresh (2026-10-27):** `coverage-baseline.json` now records
+17474/21196 (Go default, 82.44%), 17589/21294 (Go duckdb, 82.60%), and
+11883/18547 (frontend, 64.07%). Since the 2026-10-23 refresh, uncovered
+statements fell from 4,143 to 3,722 (Go default), 4,126 to 3,705 (Go
+duckdb) and 6,801 to 6,664 (frontend). These are ordinary ratchet
+improvements from tests merged since then. The Go figures may also include
+statements that only run for a regular user: the 2026-10-23 marks were taken
+as root in a Linux container, where three test files skip their permission
+checks. That share was not measured separately. This refresh ran on macOS
+(Go 1.27.3), the platform the ledger headings use, and three runs gave
+identical counts. The 2026-10-23 refresh itself reset the Go marks by
+maintainer decision after the code had grown by about 6,100 statements; its
+details are in Git history (commit `40cae79`).
 
 `scripts/check-coverage-ledger-drift.sh` (2026-08-10; widened 2026-08-11;
 run via `make coverage-ledger-drift` and the failing-on-error macOS CI assurance job,
@@ -1155,7 +1157,7 @@ map used for repository orientation.
 ---
 
 
-## Frontend (`frontend/src`) — 62.65% of statements
+## Frontend (`frontend/src`) — 64.07% of statements
 
 Vitest + `@testing-library/svelte`. Coverage here is intentionally
 lower than Go because most of the
