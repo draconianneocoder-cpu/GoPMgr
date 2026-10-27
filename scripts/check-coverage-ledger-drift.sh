@@ -157,7 +157,7 @@ FRONTEND_HEADING_PREFIX = "Frontend (`frontend/src`)"
 # Packages whose heading is known, by inspection, not to be a bare "NN.N%"
 # -- each gets its own explicit parsing rule below. A heading NOT in this
 # set and NOT matching the bare-percent fallback is an error, not a skip.
-NO_STATEMENTS = {"internal/sigma/domain", "internal/sqlitedriver"}
+NO_STATEMENTS = {"internal/sigma/domain"}
 DUAL_BUILD = {"internal/analytics"}
 # internal/applog's heading leads with a per-FILE claim ("100% of
 # applog.go") before the package-level number in parens; only the

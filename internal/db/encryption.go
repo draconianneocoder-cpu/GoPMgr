@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"gopmgr/internal/crypto"
-	"gopmgr/internal/sqlitedriver"
 )
 
 const sqliteHeader = "SQLite format 3\x00"
@@ -43,38 +42,31 @@ var ErrCopyDamaged = errors.New("db: project copy fails its integrity check")
 
 // OpenEncryptedCopyReadOnly opens a copy of an encrypted project for
 // reading only (ADR-004 administrator access). path must be the copy, never
-// the owner's file: the copy's schema is migrated first, as any open does,
-// then its integrity is checked, and it is reopened with query_only set on
-// every pooled connection, so nothing read through the result can change
-// it.
+// the owner's file. The copy is opened read-only and never migrated: its
+// integrity is checked first, then its schema must be current, so the
+// administrator view reads what the owner's file holds. A copy with an older
+// schema returns ErrProjectNeedsUpgrade.
 func OpenEncryptedCopyReadOnly(path string, dek []byte) (*Database, error) {
-	d, err := InitEncryptedDB(path, dek)
+	d, state, err := OpenEncryptedReadOnly(path, dek)
+	if errors.Is(err, ErrProjectDamaged) {
+		return nil, ErrCopyDamaged
+	}
 	if err != nil {
 		return nil, err
 	}
 	ok, err := checkIntegrity(d.Conn)
-	if closeErr := d.Close(); err == nil {
-		err = closeErr
-	}
-	if err != nil {
-		return nil, fmt.Errorf("db: check project copy: %w", err)
-	}
-	if !ok {
+	if err != nil || !ok {
+		_ = d.Close()
+		if err != nil && !errors.Is(classifyOpenError(err), ErrProjectDamaged) {
+			return nil, fmt.Errorf("db: check project copy: %w", err)
+		}
 		return nil, ErrCopyDamaged
 	}
-	dsn, err := encryptedDSN(path, dek)
-	if err != nil {
-		return nil, err
+	if state != SchemaCurrent {
+		_ = d.Close()
+		return nil, ErrProjectNeedsUpgrade
 	}
-	conn, err := sql.Open(sqlitedriver.Name, withConnPragmas(dsn)+"&_query_only=1")
-	if err != nil {
-		return nil, fmt.Errorf("sql.Open: %w", err)
-	}
-	if err := applyStandardPragmas(conn); err != nil {
-		_ = conn.Close()
-		return nil, err
-	}
-	return &Database{Conn: conn, Path: path}, nil
+	return d, nil
 }
 
 // IsEncryptedFile reports whether path does not expose SQLite's
