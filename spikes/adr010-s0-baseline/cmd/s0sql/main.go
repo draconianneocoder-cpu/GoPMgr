@@ -197,11 +197,13 @@ func appendRecord(path string, r *record) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 	b, err := json.Marshal(r)
-	if err != nil {
-		return err
+	if err == nil {
+		_, err = f.Write(append(b, '\n'))
 	}
-	_, err = f.Write(append(b, '\n'))
+	// A failed close can lose buffered data, so it is an error too.
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
 	return err
 }

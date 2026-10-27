@@ -205,12 +205,24 @@ func main() {
 		fmt.Fprintln(os.Stderr, "s0bench:", err)
 		os.Exit(1)
 	}
-	defer f.Close()
+	// fail stops the run: an evidence record that cannot be written must
+	// not be reported as a completed run. os.Exit skips deferred calls, so
+	// the profile is stopped here (a no-op when none is running).
+	fail := func(err error) {
+		pprof.StopCPUProfile()
+		fmt.Fprintln(os.Stderr, "s0bench:", err)
+		os.Exit(1)
+	}
 	host := hostInfo()
 	emit := func(rec *record) {
 		rec.SourceHead, rec.Host = *head, host
-		line, _ := json.Marshal(rec)
-		_, _ = f.Write(append(line, '\n'))
+		line, err := json.Marshal(rec)
+		if err == nil {
+			_, err = f.Write(append(line, '\n'))
+		}
+		if err != nil {
+			fail(fmt.Errorf("write evidence %s: %w", *out, err))
+		}
 		fmt.Printf("%-6s %-26s %s\n", rec.Status, rec.ID, compact(rec.Metrics))
 	}
 
@@ -302,6 +314,9 @@ func main() {
 		rec.Metrics["process_peak_rss_bytes"] = peakRSS()
 		emit(rec)
 	}
+	if err := f.Close(); err != nil {
+		fail(fmt.Errorf("close evidence %s: %w", *out, err))
+	}
 }
 
 // benchStorage stores the schedule as one chart in a throwaway encrypted
@@ -371,9 +386,16 @@ func benchStorage(rec *record, doc dag.LayeredDocument, blob []byte, edits int) 
 	t0 = time.Now()
 	v, err := d.VerifyAuditChain(p.ID)
 	rec.Metrics["verify_audit_chain_ms"] = time.Since(t0).Milliseconds()
-	if err != nil {
+	switch {
+	case err != nil:
+		// Integrity could not be checked, so the record cannot pass.
+		rec.Status = "FAIL"
 		rec.Notes = append(rec.Notes, "verify: "+err.Error())
-	} else {
+	case !v.Valid:
+		rec.Status = "FAIL"
+		rec.Metrics["audit_chain"] = fmt.Sprintf("%+v", v)
+		rec.Notes = append(rec.Notes, fmt.Sprintf("audit chain invalid at sequence %d: %s", v.FirstInvalidSequence, v.FirstInvalidReason))
+	default:
 		rec.Metrics["audit_chain"] = fmt.Sprintf("%+v", v)
 	}
 	rec.Metrics["db_bytes"] = fileSize(path)
