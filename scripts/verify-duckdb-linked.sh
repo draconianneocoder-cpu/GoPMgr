@@ -26,8 +26,11 @@ if ! printf '%s\n' "$metadata" | grep -Fq $'\tdep\tgithub.com/duckdb/duckdb-go/v
 	echo "verify-duckdb-linked: $binary does not link github.com/duckdb/duckdb-go/v2." >&2
 	exit 1
 fi
-if ! printf '%s\n' "$metadata" | grep -Fq $'\tdep\tgithub.com/duckdb/duckdb-go-bindings/lib/'; then
-	echo "verify-duckdb-linked: $binary does not link a platform DuckDB binding library." >&2
+# duckdb-go v2.20000 (DuckDB 2.0) moved the per-platform native libraries from
+# github.com/duckdb/duckdb-go-bindings/lib/<platform> to
+# go.duckdb.org/libduckdb/<platform>.
+if ! printf '%s\n' "$metadata" | grep -Fq $'\tdep\tgo.duckdb.org/libduckdb/'; then
+	echo "verify-duckdb-linked: $binary does not link a platform DuckDB library (go.duckdb.org/libduckdb/<platform>)." >&2
 	exit 1
 fi
 
