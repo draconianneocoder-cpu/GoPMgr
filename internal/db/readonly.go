@@ -48,6 +48,9 @@ var (
 	// it or a file it needs beside it, for example for lack of permission or
 	// because a WAL file's -shm cannot be created in a read-only folder.
 	ErrProjectInaccessible = errors.New("project file exists but cannot be opened (check its permissions and its folder's)")
+	// ErrProjectNeedsRecovery means a writer crashed and left a hot journal
+	// or WAL that only a writable open can roll back.
+	ErrProjectNeedsRecovery = errors.New("project was left mid-save; open it in GoPMgr to recover it")
 	// ErrUnsupportedProjectFormat means the file carries a format stamp
 	// this build does not know (ADR-011 §5.1: any nonzero user_version).
 	ErrUnsupportedProjectFormat = errors.New("project uses a newer format than this version of GoPMgr supports")
@@ -81,15 +84,27 @@ func OpenEncryptedReadOnly(path string, dek []byte) (*Database, SchemaState, err
 	if err != nil {
 		return nil, 0, err
 	}
-	return openReadOnly(path, "&_pragma_key=x'"+hexKey+"'")
+	return openReadOnly(path, "&_pragma_key=x'"+hexKey+"'", true)
+}
+
+// InspectEncryptedReadOnly is OpenEncryptedReadOnly without the schema
+// classification, for readers such as ReadProjectOverview that work on any
+// supported schema. It still proves the key and refuses a format stamp.
+func InspectEncryptedReadOnly(path string, dek []byte) (*Database, error) {
+	hexKey, err := crypto.KeyspecHex(dek)
+	if err != nil {
+		return nil, err
+	}
+	d, _, err := openReadOnly(path, "&_pragma_key=x'"+hexKey+"'", false)
+	return d, err
 }
 
 // OpenReadOnly is OpenEncryptedReadOnly for an unencrypted (legacy) file.
 func OpenReadOnly(path string) (*Database, SchemaState, error) {
-	return openReadOnly(path, "")
+	return openReadOnly(path, "", true)
 }
 
-func openReadOnly(path, keyParam string) (*Database, SchemaState, error) {
+func openReadOnly(path, keyParam string, classify bool) (*Database, SchemaState, error) {
 	dsn, err := readOnlyDSN(path)
 	if err != nil {
 		return nil, 0, err
@@ -109,7 +124,7 @@ func openReadOnly(path, keyParam string) (*Database, SchemaState, error) {
 		return nil, 0, err
 	}
 	d := &Database{Conn: conn, Path: path}
-	state, err := d.inspectFormat()
+	state, err := d.inspectFormat(classify)
 	if err != nil {
 		_ = conn.Close()
 		return nil, 0, err
@@ -134,18 +149,19 @@ func readOnlyDSN(path string) (string, error) {
 	return "file:" + p + "?mode=ro&_query_only=1&_busy_timeout=5000", nil
 }
 
-// inspectFormat proves the key, refuses a future format stamp and
-// classifies the schema. It only reads.
-func (db *Database) inspectFormat() (SchemaState, error) {
+// inspectFormat proves the key (reading user_version decrypts page 1),
+// refuses a future format stamp and, when asked, classifies the schema. It
+// only reads.
+func (db *Database) inspectFormat(classify bool) (SchemaState, error) {
 	var userVersion int64
 	if err := db.Conn.QueryRow("PRAGMA user_version").Scan(&userVersion); err != nil {
 		return 0, classifySQLiteError(err)
 	}
-	if _, err := db.Conn.Exec("SELECT count(*) FROM sqlite_master"); err != nil {
-		return 0, classifySQLiteError(err)
-	}
 	if userVersion != 0 {
 		return 0, fmt.Errorf("%w (format stamp %d)", ErrUnsupportedProjectFormat, userVersion)
+	}
+	if !classify {
+		return SchemaCurrent, nil
 	}
 	expected, err := currentSchema()
 	if err != nil {
@@ -180,6 +196,8 @@ func classifySQLiteError(err error) error {
 		return fmt.Errorf("%w: %w", ErrProjectDamaged, err)
 	case sqlitedriver.FailureBusy:
 		return fmt.Errorf("%w: %w", ErrProjectBusy, err)
+	case sqlitedriver.FailureNeedsRecovery:
+		return fmt.Errorf("%w: %w", ErrProjectNeedsRecovery, err)
 	case sqlitedriver.FailureCantOpen, sqlitedriver.FailureReadOnly:
 		// The file exists, so this is not "missing". A read-only
 		// connection that only reads gets SQLITE_READONLY only when SQLite
@@ -219,32 +237,42 @@ func (db *Database) tableColumns() (map[string]map[string]struct{}, error) {
 }
 
 var current struct {
-	once   sync.Once
+	mu     sync.Mutex
 	schema map[string]map[string]struct{}
-	err    error
 }
 
 // currentSchema is the set of tables and columns Migrate creates, taken by
 // running Migrate on an empty in-memory database, so it cannot drift from
-// Migrate itself.
+// Migrate itself. Only a successful result is kept, so a failure is retried
+// on the next open.
 func currentSchema() (map[string]map[string]struct{}, error) {
-	current.once.Do(func() {
-		conn, err := sql.Open(sqlitedriver.Name, ":memory:")
-		if err != nil {
-			current.err = err
-			return
-		}
-		defer func() { _ = conn.Close() }()
-		// Each connection to :memory: is its own database.
-		conn.SetMaxOpenConns(1)
-		d := &Database{Conn: conn}
-		if err := d.Migrate(); err != nil {
-			current.err = fmt.Errorf("db: build the current schema: %w", err)
-			return
-		}
-		current.schema, current.err = d.tableColumns()
-	})
-	return current.schema, current.err
+	current.mu.Lock()
+	defer current.mu.Unlock()
+	if current.schema != nil {
+		return current.schema, nil
+	}
+	schema, err := buildCurrentSchema()
+	if err != nil {
+		return nil, err
+	}
+	current.schema = schema
+	return schema, nil
+}
+
+// buildCurrentSchema is a variable so a test can make one build fail.
+var buildCurrentSchema = func() (map[string]map[string]struct{}, error) {
+	conn, err := sql.Open(sqlitedriver.Name, ":memory:")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = conn.Close() }()
+	// Each connection to :memory: is its own database.
+	conn.SetMaxOpenConns(1)
+	d := &Database{Conn: conn}
+	if err := d.Migrate(); err != nil {
+		return nil, fmt.Errorf("db: build the current schema: %w", err)
+	}
+	return d.tableColumns()
 }
 
 // hasTable reports whether the database has the named table.

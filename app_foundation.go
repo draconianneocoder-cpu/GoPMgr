@@ -920,6 +920,9 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 	metrics := make([]analytics.ProjectMetrics, 0, len(entries))
 	portfolioCurrency := ""
 	var needUpgrade, newerFormat []string
+	// The first currency or metrics error is kept, not returned at once, so
+	// every format problem in the folder is still reported with it.
+	var rollupErr error
 	for _, e := range entries {
 		// Read-only: analytics never migrates or writes a project.
 		d, state, derr := db.OpenEncryptedReadOnly(e.Path, dek)
@@ -935,6 +938,10 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 			needUpgrade = append(needUpgrade, e.Name)
 			continue
 		}
+		if rollupErr != nil {
+			_ = d.Close()
+			continue
+		}
 		p, perr := d.GetProject()
 		if perr != nil {
 			_ = d.Close()
@@ -943,22 +950,25 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 		currencyCode, currencyErr := db.CanonicalProjectCurrency(p.CurrencyCode)
 		if currencyErr != nil {
 			_ = d.Close()
-			return PortfolioSummaryWire{}, fmt.Errorf("portfolio project %q: %w", e.Name, currencyErr)
+			rollupErr = fmt.Errorf("portfolio project %q: %w", e.Name, currencyErr)
+			continue
 		}
 		if portfolioCurrency != "" && portfolioCurrency != currencyCode {
 			_ = d.Close()
-			return PortfolioSummaryWire{}, portfolioMixedCurrencyError(portfolioCurrency, currencyCode)
+			rollupErr = portfolioMixedCurrencyError(portfolioCurrency, currencyCode)
+			continue
 		}
 		portfolioCurrency = currencyCode
 		projectMetrics, metricsErr := portfolioProjectMetrics(d, p, e.Name, asOf)
 		_ = d.Close()
 		if metricsErr != nil {
-			return PortfolioSummaryWire{}, fmt.Errorf("portfolio project %q: %w", e.Name, metricsErr)
+			rollupErr = fmt.Errorf("portfolio project %q: %w", e.Name, metricsErr)
+			continue
 		}
 		metrics = append(metrics, projectMetrics)
 	}
 
-	if err := portfolioFormatError(needUpgrade, newerFormat); err != nil {
+	if err := errors.Join(portfolioFormatError(needUpgrade, newerFormat), rollupErr); err != nil {
 		return PortfolioSummaryWire{}, err
 	}
 

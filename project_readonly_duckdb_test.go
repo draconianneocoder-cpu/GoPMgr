@@ -7,12 +7,14 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"os"
 	"strings"
 	"testing"
 
 	"gopmgr/internal/db"
+	"gopmgr/internal/sqlitedriver"
 )
 
 // Portfolio analytics reads every project read-only (Slice B). A project
@@ -52,4 +54,37 @@ func TestRunPortfolioAnalyticsNeverWritesProjects(t *testing.T) { // B-03
 	delete(before, f.future)
 	f.older, f.future = f.current, f.current
 	f.requireUnchanged(t, before)
+}
+
+// A currency problem found during the loop must not hide the format
+// problems: the error names both.
+func TestRunPortfolioAnalyticsReportsFormatAndCurrencyTogether(t *testing.T) { // B-03
+	f := newReadOnlyFixture(t)
+	f.app.ctx = context.Background()
+	euro, err := f.app.CreateProject("Euro", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.app.CloseProject(); err != nil {
+		t.Fatal(err)
+	}
+	conn, err := sql.Open(sqlitedriver.Name, keyDSN(t, euro.Path, f.dek))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec("UPDATE project SET currency_code = 'EUR'"); err != nil {
+		t.Fatal(err)
+	}
+	_ = conn.Close()
+
+	_, err = f.app.RunPortfolioAnalytics()
+	if !errors.Is(err, db.ErrProjectNeedsUpgrade) || !errors.Is(err, db.ErrUnsupportedProjectFormat) {
+		t.Fatalf("err = %v, want the format errors", err)
+	}
+	if err == nil || !strings.Contains(err.Error(), "cannot combine EUR and USD") {
+		t.Errorf("err = %v, want the mixed-currency error as well", err)
+	}
+	if !strings.Contains(err.Error(), f.olderName) {
+		t.Errorf("err = %v, does not name %s", err, f.olderName)
+	}
 }

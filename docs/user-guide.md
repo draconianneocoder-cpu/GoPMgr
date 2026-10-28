@@ -601,6 +601,11 @@ saved by an older GoPMgr can still be checked and its schema dumped, but
 project has been opened once in GoPMgr, which upgrades it. `--repair` and
 `--vacuum` write to the project and upgrade it as before.
 
+Every maintenance command refuses a project path that is a symbolic link;
+pass the real file instead. If GoPMgr closed in the middle of saving, the
+read commands report that the project needs recovery: open it once in
+GoPMgr to finish recovering it.
+
 For an **encrypted** project, pass credentials so the database can be
 unlocked: `--username <name>` and `--password-env <ENVVAR>`, where the
 named environment variable holds that account's password (the password is

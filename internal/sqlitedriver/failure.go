@@ -30,6 +30,10 @@ const (
 	// not. On a read-only connection that only reads, this means a file it
 	// needs beside the database, such as a WAL's -shm, cannot be created.
 	FailureReadOnly
+	// FailureNeedsRecovery is SQLITE_READONLY_ROLLBACK or
+	// SQLITE_READONLY_RECOVERY: a crashed writer left a hot journal or WAL
+	// that only a writable connection can recover.
+	FailureNeedsRecovery
 )
 
 // Classify returns the kind of SQLite failure behind err.
@@ -37,6 +41,10 @@ func Classify(err error) Failure {
 	var se sqlite3.Error
 	if !errors.As(err, &se) {
 		return FailureOther
+	}
+	switch se.ExtendedCode {
+	case sqlite3.ErrReadonlyRollback, sqlite3.ErrReadonlyRecovery:
+		return FailureNeedsRecovery
 	}
 	switch se.Code {
 	case sqlite3.ErrNotADB:

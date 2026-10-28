@@ -28,6 +28,8 @@ func TestClassify(t *testing.T) {
 		{"locked", sqlite3.Error{Code: sqlite3.ErrLocked}, FailureBusy},
 		{"cannot open", sqlite3.Error{Code: sqlite3.ErrCantOpen}, FailureCantOpen},
 		{"read-only", sqlite3.Error{Code: sqlite3.ErrReadonly}, FailureReadOnly},
+		{"hot rollback journal", sqlite3.Error{Code: sqlite3.ErrReadonly, ExtendedCode: sqlite3.ErrReadonlyRollback}, FailureNeedsRecovery},
+		{"WAL needs recovery", sqlite3.Error{Code: sqlite3.ErrReadonly, ExtendedCode: sqlite3.ErrReadonlyRecovery}, FailureNeedsRecovery},
 		{"wrapped", fmt.Errorf("open: %w", sqlite3.Error{Code: sqlite3.ErrBusy}), FailureBusy},
 		{"constraint", sqlite3.Error{Code: sqlite3.ErrConstraint}, FailureOther},
 	}

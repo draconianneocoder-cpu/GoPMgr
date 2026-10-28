@@ -521,6 +521,7 @@ func TestProjectUnreadableReason(t *testing.T) {
 		{db.ErrProjectDamaged, "damaged"},
 		{db.ErrProjectBusy, "busy"},
 		{db.ErrProjectInaccessible, "inaccessible"},
+		{db.ErrProjectNeedsRecovery, "needs_recovery"},
 		{db.ErrUnsupportedProjectFormat, "unsupported_format"},
 		{db.ErrNoProject, "no_project"},
 		{errors.New("something else"), "error"},
@@ -530,5 +531,44 @@ func TestProjectUnreadableReason(t *testing.T) {
 		if got := projectUnreadableReason(wrapped); got != c.want {
 			t.Errorf("projectUnreadableReason(%v) = %q, want %q", c.err, got, c.want)
 		}
+	}
+}
+
+// Every headless command, the writing ones included, refuses a symlinked
+// project path and leaves the target untouched.
+func TestHeadlessCommandsRefuseASymlinkedProject(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "plain.gopmgr")
+	writeOlderProjectFile(t, target)
+	link := filepath.Join(dir, "link.gopmgr")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := sha256.Sum256(b)
+	for _, cfg := range []*cli.Config{
+		{ProjectPath: link, CheckOnly: true},
+		{ProjectPath: link, SchemaDump: true},
+		{ProjectPath: link, ShowStats: true},
+		{ProjectPath: link, Repair: true},
+		{ProjectPath: link, Vacuum: true},
+	} {
+		d, err := openHeadlessDB(cfg)
+		if d != nil {
+			_ = d.Close()
+		}
+		if err == nil || !strings.Contains(err.Error(), "not a regular file") {
+			t.Errorf("%+v: err = %v, want a refusal of the symlink", cfg, err)
+		}
+	}
+	after, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sha256.Sum256(after) != before {
+		t.Error("a headless command wrote through the symlink")
 	}
 }

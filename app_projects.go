@@ -524,7 +524,7 @@ func (a *App) projectDeletionRequest(s sessionRef, path, projectsDir string) (de
 	}
 	defer zeroBytes(dek)
 	// Read-only: preparing a deletion record never migrates the project.
-	d, _, err := db.OpenEncryptedReadOnly(path, dek)
+	d, err := db.InspectEncryptedReadOnly(path, dek)
 	if err != nil {
 		return deletionlog.Request{}, err
 	}
@@ -933,7 +933,7 @@ func (a *App) ProjectsOverview() ([]ProjectSummary, error) {
 	out := make([]ProjectSummary, 0, len(entries))
 	for _, e := range entries {
 		sum := ProjectSummary{Path: e.Path, Name: e.Name, Modified: e.Modified}
-		d, _, derr := db.OpenEncryptedReadOnly(e.Path, dek)
+		d, derr := db.InspectEncryptedReadOnly(e.Path, dek)
 		if derr != nil {
 			sum.UnreadableReason = projectUnreadableReason(derr)
 			out = append(out, sum)
@@ -974,6 +974,8 @@ func projectUnreadableReason(err error) string {
 		return "busy"
 	case errors.Is(err, db.ErrProjectInaccessible):
 		return "inaccessible"
+	case errors.Is(err, db.ErrProjectNeedsRecovery):
+		return "needs_recovery"
 	case errors.Is(err, db.ErrUnsupportedProjectFormat):
 		return "unsupported_format"
 	case errors.Is(err, db.ErrNoProject):

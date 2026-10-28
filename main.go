@@ -481,6 +481,15 @@ func headlessReadsAnySchema(cfg *cli.Config) bool {
 // open it for writing, which also migrates it; every other command opens it
 // read-only and never changes it.
 func openHeadlessDB(cfg *cli.Config) (*db.Database, error) {
+	// Every headless command, reading or writing, refuses a symlink or other
+	// non-regular path, as the read-only open does.
+	info, err := os.Lstat(cfg.ProjectPath)
+	if err != nil {
+		return nil, fmt.Errorf("inspect project file: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("project path %s is not a regular file", cfg.ProjectPath)
+	}
 	encrypted, err := db.IsEncryptedFile(cfg.ProjectPath)
 	if err != nil {
 		return nil, fmt.Errorf("inspect project encryption: %w", err)

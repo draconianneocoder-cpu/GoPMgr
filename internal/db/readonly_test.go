@@ -864,6 +864,12 @@ func TestClassifySQLiteError(t *testing.T) {
 		{sqlite3.ErrCantOpen, ErrProjectInaccessible},
 		{sqlite3.ErrReadonly, ErrProjectInaccessible},
 	}
+	for _, ext := range []sqlite3.ErrNoExtended{sqlite3.ErrReadonlyRollback, sqlite3.ErrReadonlyRecovery} {
+		got := classifySQLiteError(sqlite3.Error{Code: sqlite3.ErrReadonly, ExtendedCode: ext})
+		if !errors.Is(got, ErrProjectNeedsRecovery) || errors.Is(got, ErrProjectInaccessible) {
+			t.Errorf("extended code %d: got %v, want ErrProjectNeedsRecovery only", ext, got)
+		}
+	}
 	for _, c := range cases {
 		src := sqlite3.Error{Code: c.code}
 		got := classifySQLiteError(src)
@@ -880,5 +886,131 @@ func TestClassifySQLiteError(t *testing.T) {
 	}
 	if got := classifySQLiteError(sqlite3.Error{Code: sqlite3.ErrConstraint}); errors.Is(got, ErrProjectDamaged) || errors.Is(got, ErrProjectBusy) {
 		t.Errorf("a constraint error was given a typed open error: %v", got)
+	}
+}
+
+// A writer that dies mid-transaction leaves a hot rollback journal. A
+// read-only open cannot roll it back; it must say so, not blame permissions,
+// and leave both files as they were.
+func TestOpenReadOnlyHotJournal(t *testing.T) {
+	dek := roTestKey(40)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "p.gopmgr")
+	writeCurrentProject(t, path, dek, true)
+	conn, err := sql.Open(sqlitedriver.Name, roRawDSN(t, path, dek, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn.SetMaxOpenConns(1)
+	t.Cleanup(func() { _ = conn.Close() })
+	tx, err := conn.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{
+		"PRAGMA cache_size = 1",
+		"CREATE TABLE junk(x)",
+		"INSERT INTO junk SELECT randomblob(2000) FROM (WITH RECURSIVE c(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM c WHERE i < 2000) SELECT i FROM c)",
+	} {
+		if _, err := tx.Exec(stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+	// Copy the file and its journal mid-transaction: the copy is what a
+	// crash leaves behind.
+	crash := filepath.Join(dir, "crash.gopmgr")
+	for _, side := range []string{"", "-journal"} {
+		b, err := os.ReadFile(path + side)
+		if err != nil {
+			t.Fatalf("read %q: %v", side, err)
+		}
+		if err := os.WriteFile(crash+side, b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = tx.Rollback()
+	before, journal := fileDigest(t, crash), fileDigest(t, crash+"-journal")
+
+	d, _, err := OpenEncryptedReadOnly(crash, dek)
+	if d != nil {
+		_ = d.Close()
+	}
+	if !errors.Is(err, ErrProjectNeedsRecovery) || errors.Is(err, ErrProjectInaccessible) {
+		t.Fatalf("err = %v, want ErrProjectNeedsRecovery", err)
+	}
+	if fileDigest(t, crash) != before || fileDigest(t, crash+"-journal") != journal {
+		t.Error("the read-only open changed the file or its journal")
+	}
+}
+
+// A failure while building the reference schema must not be kept: the next
+// open retries and succeeds.
+func TestCurrentSchemaRetriesAfterAFailure(t *testing.T) {
+	saved := buildCurrentSchema
+	current.mu.Lock()
+	cached := current.schema
+	current.schema = nil
+	current.mu.Unlock()
+	t.Cleanup(func() {
+		buildCurrentSchema = saved
+		current.mu.Lock()
+		current.schema = cached
+		current.mu.Unlock()
+	})
+
+	path := filepath.Join(t.TempDir(), "p.gopmgr")
+	dek := roTestKey(41)
+	writeCurrentProject(t, path, dek, true)
+
+	boom := errors.New("transient")
+	buildCurrentSchema = func() (map[string]map[string]struct{}, error) { return nil, boom }
+	if _, _, err := OpenEncryptedReadOnly(path, dek); !errors.Is(err, boom) {
+		t.Fatalf("first open: err = %v, want the injected failure", err)
+	}
+	buildCurrentSchema = saved
+	d, state, err := OpenEncryptedReadOnly(path, dek)
+	if err != nil {
+		t.Fatalf("second open after the failure cleared: %v", err)
+	}
+	_ = d.Close()
+	if state != SchemaCurrent {
+		t.Errorf("state = %v, want SchemaCurrent", state)
+	}
+}
+
+// InspectEncryptedReadOnly skips the schema comparison but not the key or
+// format checks.
+func TestInspectEncryptedReadOnly(t *testing.T) {
+	dir := t.TempDir()
+	dek := roTestKey(42)
+	older := filepath.Join(dir, "older.gopmgr")
+	writeOlderProject(t, older, dek)
+	before := fileDigest(t, older)
+	d, err := InspectEncryptedReadOnly(older, dek)
+	if err != nil {
+		t.Fatalf("older project: %v", err)
+	}
+	if _, err := d.ReadProjectOverview(); err != nil {
+		t.Errorf("overview of an older project: %v", err)
+	}
+	_ = d.Close()
+	if fileDigest(t, older) != before {
+		t.Error("inspecting an older project changed it")
+	}
+	if _, err := InspectEncryptedReadOnly(older, roTestKey(43)); !errors.Is(err, ErrProjectUnreadable) {
+		t.Errorf("wrong key: err = %v, want ErrProjectUnreadable", err)
+	}
+	future := filepath.Join(dir, "future.gopmgr")
+	writeCurrentProject(t, future, dek, true)
+	conn, err := sql.Open(sqlitedriver.Name, roRawDSN(t, future, dek, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec("PRAGMA user_version = 3"); err != nil {
+		t.Fatal(err)
+	}
+	_ = conn.Close()
+	if _, err := InspectEncryptedReadOnly(future, dek); !errors.Is(err, ErrUnsupportedProjectFormat) {
+		t.Errorf("future stamp: err = %v, want ErrUnsupportedProjectFormat", err)
 	}
 }
