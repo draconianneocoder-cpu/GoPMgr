@@ -176,6 +176,22 @@ SPDX-License-Identifier: GPL-3.0-or-later
           </section>
 
           <section class="mb-6">
+            <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">What the commands change</h3>
+            <p class="text-sm text-slate-300">
+              <span class="font-mono text-xs">--check</span>, <span class="font-mono text-xs">--schema-dump</span>,
+              <span class="font-mono text-xs">--stats</span>, <span class="font-mono text-xs">--export-audit</span> and
+              <span class="font-mono text-xs">--export</span> only read the project; they never upgrade or change it.
+              A project last saved by an older GoPMgr can still be checked, but
+              <span class="font-mono text-xs">--stats</span>, <span class="font-mono text-xs">--export-audit</span> and
+              <span class="font-mono text-xs">--export</span> stop until you open it once in GoPMgr, which upgrades it.
+              If GoPMgr closed in the middle of saving, they report that the project needs recovery: open it
+              once in GoPMgr to finish. <span class="font-mono text-xs">--repair</span> and
+              <span class="font-mono text-xs">--vacuum</span> write to the project. Every command refuses a
+              project path that is a symbolic link; pass the real file instead.
+            </p>
+          </section>
+
+          <section class="mb-6">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Encrypted projects</h3>
             <p class="text-sm text-slate-300">
               Pass <span class="font-mono text-xs">--username &lt;name&gt;</span> and
