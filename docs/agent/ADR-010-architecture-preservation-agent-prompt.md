@@ -24,6 +24,12 @@ Read `AGENTS.md`, the current repository's approved ADRs, and the bundle files:
 
 **IMPORTANT:** The maintainer accepted the ADR-010 v2.2 architecture on 2026-10-24 (item 6). Acceptance is architecture only: P00, P01/G0 and P02/S0 are authorized, and everything else needs a separately accepted work slice. Do not state that anything is implemented, tested or released because it is accepted. Do not make irreversible production schema/security decisions.
 
+**Later G1 authorization (2026-10-28):** the [maintainer clarification](../review/ADR-010-G1-authorization-clarification-2026-10-28.md)
+supersedes the historical G1 permission limit above. Apply all P04-D1
+through P04-D8 conditions, the shared language-neutral foundation and
+independent Java/Rust qualification. Permission is not proof of prerequisite
+completion, dependency acceptance, merge readiness or release readiness.
+
 ## NON-NEGOTIABLE ANTI-DEGRADATION RULE
 
 **You do not have authority to change, remove, reduce, reclassify, defer indefinitely, or silently reinterpret any accepted architectural requirement, supported-format goal, security/fidelity guarantee, quality gate, platform-support commitment, data-recovery guarantee, or previously approved user-facing function to make implementation easier.** You must not alter the documentation or tests to transform a known failure into success.
