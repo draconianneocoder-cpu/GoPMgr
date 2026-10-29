@@ -107,7 +107,6 @@ func (db *Database) GetProject() (Project, error) {
 	if len(names) == 0 {
 		return Project{}, ErrNoProject
 	}
-	// names is a fixed allowlist intersected with table_info, never external SQL.
 	query := "SELECT " + strings.Join(names, ", ") + " FROM project LIMIT 1" // #nosec G201 -- allowlisted column names only.
 	err = db.Conn.QueryRow(query).Scan(dest...)
 	if err == sql.ErrNoRows {
