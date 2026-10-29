@@ -46,6 +46,7 @@ if [ ! -f "$binary" ]; then
 	echo "package: expected built binary missing: $binary" >&2
 	exit 1
 fi
+bash scripts/verify-module-notices.sh "$binary"
 
 staging="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-package.XXXXXX")"
 trap 'rm -rf "$staging"' EXIT
@@ -56,6 +57,7 @@ if [ -d LICENSES ]; then
 	cp -R LICENSES "$staging/$archive_base/"
 fi
 cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt "$staging/$archive_base/LICENSES/go-sqlcipher.txt"
+cp third_party/GO-MODULE-NOTICES.txt "$staging/$archive_base/LICENSES/go-modules.txt"
 if [ -f LICENSE ]; then
 	cp LICENSE "$staging/$archive_base/"
 fi
@@ -63,5 +65,7 @@ fi
 (cd "$staging" && tar -czf "$repo_root/$archive" "$archive_base")
 tar -xOf "$archive" "$archive_base/LICENSES/go-sqlcipher.txt" |
 	cmp - third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt
+tar -xOf "$archive" "$archive_base/LICENSES/go-modules.txt" |
+	cmp - third_party/GO-MODULE-NOTICES.txt
 
 echo "$archive"

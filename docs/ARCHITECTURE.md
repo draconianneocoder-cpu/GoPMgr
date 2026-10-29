@@ -172,3 +172,25 @@ PDF/A-2u validation, and local PAdES validation.
 
 Generated embed output under `frontend/dist` (repo root) is build output
 embedded by the root `main.go`. `wails build` regenerates it as needed.
+
+## Proposed directions
+
+Two 2026-10-28 designs are recorded here as proposals. The maintainer
+approved each direction in principle. Implementation has not started. The
+test plans have not been run.
+
+Tiered hardware security keys would add optional FIDO2 USB sign-in for local
+users, and a separate administrator-enforced FIPS 140-3 key requirement. The
+capability belongs to the trusted host. Accepted
+[ADR-001](design/ADR-001-database-encryption-at-rest.md),
+[ADR-004](design/ADR-004-administrator-access-to-user-data.md), and
+[ADR-005](design/ADR-005-super-administrator-and-succession.md) remain the
+authority for current storage, escrow, and succession. See the
+[proposed ADR](design/ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md).
+
+A provider-neutral integration framework would add an opt-in connection layer
+for external work-management systems. SQLCipher remains the authoritative
+store. The Go calculation kernel remains the calculation authority. ADR-011
+gates remain in force. DuckDB remains until Slice J, and only after DF0.
+C-00 stays design review. C-01 and later packages are not authorized. See the
+[proposed ADR](design/ADR-TBD-provider-neutral-integration-framework.md).

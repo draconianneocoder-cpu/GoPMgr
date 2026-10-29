@@ -37,7 +37,8 @@ export CC
         installer-tool-pins windows-installer-scaffold required-font-assets reset-clean-test clean-test-reset-tests native-isolation-launch-tests macos-installer-tests \
         code-map code-map-current brand-assets coverage-ledger-current coverage-ledger-drift coverage-ratchet \
         coverage-ratchet-update coverage-go-cleanup-tests workspace-hygiene workspace-hygiene-tests cache-maintenance \
-        pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests
+        pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests \
+        module-notices module-notices-check module-notices-tests
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -115,7 +116,7 @@ race: ## Run Go tests with the race detector (concurrency gate).
 	# Bound package overlap, not t.Parallel or application goroutines. Always execute tests.
 	$(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map contracts + Go tests + frontend checks.
+verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check module-notices-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/native-launch/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
@@ -228,6 +229,15 @@ lint-frontend: ## Lint Svelte + TS with the npm lint script.
 lint-all: lint-go lint-frontend ## Run both linters.
 
 lint: lint-all ## Alias for lint-all.
+
+module-notices: ## Regenerate third_party/GO-MODULE-NOTICES.txt from the Go modules linked into release builds (run after changing go.mod).
+	$(GO) run ./tools/module-notices
+
+module-notices-check: ## Fail if third_party/GO-MODULE-NOTICES.txt no longer matches the modules release builds link.
+	$(GO) run ./tools/module-notices -check
+
+module-notices-tests: ## Verify the packaging check that compares a built binary with the Go module notices.
+	@bash scripts/verify-module-notices_test.sh
 
 license-check: ## Verify REUSE/SPDX compliance.
 	find . -name .DS_Store -delete

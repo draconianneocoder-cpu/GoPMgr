@@ -82,6 +82,7 @@ Section "GoPMgr" SEC_GOPMGR
   SetOutPath "$INSTDIR\licenses"
   File /oname=go-sqlcipher.txt "..\..\..\third_party\go-sqlcipher\THIRD_PARTY_NOTICES.txt"
   File /oname=fonts.txt "..\..\..\internal\fonts\assets\FONT-NOTICES.txt"
+  File /oname=go-modules.txt "..\..\..\third_party\GO-MODULE-NOTICES.txt"
   SetOutPath "$INSTDIR"
 
   CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
