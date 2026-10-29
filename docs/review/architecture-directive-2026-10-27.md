@@ -15,6 +15,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 Historical ADR text stays as written. §1 lists the amendments this directive makes.
 
+**Later G1 authorization (2026-10-28):** see [§5](#5-g1-authorization-clarification-2026-10-28).
+The recorded baseline and verbatim directive remain unchanged.
+
 ## 1. Amendments to existing records
 
 | Record | Amendment | Effect |
@@ -69,6 +72,10 @@ These must not be treated as production:
 - the DF0 spikes, including the Rust worker (PRs #151, #153 and #154).
 
 ### 2.5 Open PRs and their dependencies
+
+**Historical baseline:** the OWN-11 permission assertion below is superseded
+by the [2026-10-28 clarification](ADR-010-G1-authorization-clarification-2026-10-28.md).
+Conditional engineering permission is not qualification or merge approval.
 
 | Stack | Order, base first | Notes |
 | --- | --- | --- |
@@ -584,3 +591,13 @@ Advance through the remaining slices only as their dependencies and acceptance g
 The objective is not merely to replace DuckDB. The objective is to make GoPMgr a dependable, secure, performant, maintainable, local-first professional project-management application capable of handling large schedules without sacrificing existing correctness or functionality.
 Preserve architectural quality, mathematical correctness, project-data integrity, historical compatibility, security, and independently verifiable evidence above implementation speed.
 ```
+
+## 5. G1 authorization clarification, 2026-10-28
+
+The maintainer reaffirmed conditional G1 / P04 approval after reviewing
+the conflict between the 2026-10-26 P04 record and §2.5's OWN-11 assertion.
+The [dated clarification](ADR-010-G1-authorization-clarification-2026-10-28.md)
+governs G1 permission only, including the shared language-neutral foundation
+and independent Java/Rust qualification. All P04 conditions, this directive's
+gates and the qualified Slice J cutover remain binding. No PR is approved
+for merge by this notice. §4 is preserved verbatim.
