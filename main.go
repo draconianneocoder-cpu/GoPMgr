@@ -495,7 +495,12 @@ func openHeadlessDB(cfg *cli.Config) (*db.Database, error) {
 	if err != nil {
 		return nil, fmt.Errorf("authenticate headless user: %w", err)
 	}
-	return db.InitEncryptedDB(cfg.ProjectPath, dek)
+	// Repair and vacuum write. Every other headless command only reads,
+	// so it must not migrate the file or switch its journal mode.
+	if cfg.Repair || cfg.Vacuum {
+		return db.InitEncryptedDB(cfg.ProjectPath, dek)
+	}
+	return db.OpenEncryptedReadOnly(cfg.ProjectPath, dek)
 }
 
 func inferHeadlessRootDir(projectPath, username string) (string, error) {

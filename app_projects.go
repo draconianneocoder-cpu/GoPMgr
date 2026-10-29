@@ -523,7 +523,7 @@ func (a *App) projectDeletionRequest(s sessionRef, path, projectsDir string) (de
 		return deletionlog.Request{}, err
 	}
 	defer zeroBytes(dek)
-	d, err := db.InitEncryptedDB(path, dek)
+	d, err := db.OpenEncryptedReadOnly(path, dek)
 	if err != nil {
 		return deletionlog.Request{}, err
 	}
@@ -536,7 +536,7 @@ func (a *App) projectDeletionRequest(s sessionRef, path, projectsDir string) (de
 	if err != nil {
 		return deletionlog.Request{}, err
 	}
-	chain, err := d.VerifyAuditChain(project.ID)
+	chain, err := d.ReadAuditChain(project.ID)
 	if err != nil {
 		return deletionlog.Request{}, fmt.Errorf("read audit chain before deletion: %w", err)
 	}
@@ -905,10 +905,10 @@ type ProjectSummary struct {
 
 // ProjectsOverview returns a portfolio snapshot of every project in the
 // signed-in user's folder: each project's status / phase / dates plus chart
-// and document counts. Each project database is opened with the session DEK
-// and closed again, so the app's active project is left untouched. A project
-// that cannot be opened is still listed (Readable=false) so nothing silently
-// disappears from the overview.
+// and document counts. Each project database is opened read-only with the
+// session DEK and closed again, so the file is not migrated and the app's
+// active project is left untouched. A project that cannot be opened is
+// still listed (Readable=false) so nothing silently disappears from the overview.
 func (a *App) ProjectsOverview() ([]ProjectSummary, error) {
 	s := a.currentSession()
 	user := s.user
@@ -919,6 +919,7 @@ func (a *App) ProjectsOverview() ([]ProjectSummary, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer zeroBytes(dek)
 	dir := filepath.Join(user.DataDir, "projects")
 	entries, err := enumerateProjects(dir)
 	if err != nil {
@@ -927,7 +928,7 @@ func (a *App) ProjectsOverview() ([]ProjectSummary, error) {
 	out := make([]ProjectSummary, 0, len(entries))
 	for _, e := range entries {
 		sum := ProjectSummary{Path: e.Path, Name: e.Name, Modified: e.Modified}
-		if d, derr := db.InitEncryptedDB(e.Path, dek); derr == nil {
+		if d, derr := db.OpenEncryptedReadOnly(e.Path, dek); derr == nil {
 			if p, perr := d.GetProject(); perr == nil {
 				if strings.TrimSpace(p.Name) != "" {
 					sum.Name = p.Name // prefer the real (typed) project name
@@ -936,11 +937,11 @@ func (a *App) ProjectsOverview() ([]ProjectSummary, error) {
 				sum.Phase = p.Phase
 				sum.StartDate = p.StartDate
 				sum.EndDate = p.EndDate
-				if cs, cerr := d.ListCharts(p.ID, ""); cerr == nil {
-					sum.Charts = len(cs)
+				if n, cerr := d.CountProjectRecords("charts", p.ID); cerr == nil {
+					sum.Charts = n
 				}
-				if ds, dderr := d.ListDocuments(p.ID, ""); dderr == nil {
-					sum.Documents = len(ds)
+				if n, dderr := d.CountProjectRecords("documents", p.ID); dderr == nil {
+					sum.Documents = n
 				}
 				sum.Readable = true
 			}

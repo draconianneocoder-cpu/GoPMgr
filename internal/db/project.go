@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+
 	"gopmgr/internal/money"
 )
 
@@ -56,15 +58,65 @@ var ValidStatuses = []string{"planning", "active", "on_hold", "complete", "cance
 var ErrNoProject = errors.New("db: no project initialised in this file")
 
 // GetProject returns the single project stored in this .pmforge file
-// (the model is one-project-per-file for now).
+// (the model is one-project-per-file for now). Columns an older file does
+// not have yet are left at the same in-memory defaults a writable migration
+// would store. The file is not altered. Names in the SELECT are a fixed
+// allowlist intersected with PRAGMA table_info, never names taken from the
+// file as SQL text.
 func (db *Database) GetProject() (Project, error) {
-	row := db.Conn.QueryRow(
-		`SELECT id, name, description, status, phase, start_date, end_date,
-		        budget, budget_minor_units, currency_code, owner, industry, sub_category, methodology, country_code, time_zone,
-		        created_at, updated_at
-		 FROM project LIMIT 1`,
-	)
-	return scanProject(row)
+	present, err := db.columnSet("project")
+	if err != nil {
+		return Project{}, err
+	}
+	if len(present) == 0 {
+		return Project{}, ErrNoProject
+	}
+	var p Project
+	fields := []struct {
+		name string
+		dest any
+	}{
+		{"id", &p.ID},
+		{"name", &p.Name},
+		{"description", &p.Description},
+		{"status", &p.Status},
+		{"phase", &p.Phase},
+		{"start_date", &p.StartDate},
+		{"end_date", &p.EndDate},
+		{"budget", &p.Budget},
+		{"budget_minor_units", &p.BudgetMinorUnits},
+		{"currency_code", &p.CurrencyCode},
+		{"owner", &p.Owner},
+		{"industry", &p.Industry},
+		{"sub_category", &p.SubCategory},
+		{"methodology", &p.Methodology},
+		{"country_code", &p.CountryCode},
+		{"time_zone", &p.TimeZone},
+		{"created_at", &p.CreatedAt},
+		{"updated_at", &p.UpdatedAt},
+	}
+	names := make([]string, 0, len(fields))
+	dest := make([]any, 0, len(fields))
+	for _, field := range fields {
+		if _, ok := present[field.name]; !ok {
+			continue
+		}
+		names = append(names, field.name)
+		dest = append(dest, field.dest)
+	}
+	if len(names) == 0 {
+		return Project{}, ErrNoProject
+	}
+	// names is a fixed allowlist intersected with table_info, never external SQL.
+	query := "SELECT " + strings.Join(names, ", ") + " FROM project LIMIT 1" // #nosec G201 -- allowlisted column names only.
+	err = db.Conn.QueryRow(query).Scan(dest...)
+	if err == sql.ErrNoRows {
+		return Project{}, ErrNoProject
+	}
+	if err != nil {
+		return Project{}, err
+	}
+	return normalizeProject(p), nil
 }
 
 // UpsertProject inserts or updates the project row. If p.ID is empty,
@@ -229,6 +281,10 @@ func scanProject(row interface {
 	}
 	p.CreatedAt = created
 	p.UpdatedAt = updated
+	return normalizeProject(p), nil
+}
+
+func normalizeProject(p Project) Project {
 	if p.CountryCode == "" {
 		p.CountryCode = "US"
 	}
@@ -243,5 +299,5 @@ func scanProject(row interface {
 	} else {
 		p.Budget = money.Amount{MinorUnits: p.BudgetMinorUnits}.MajorFloat()
 	}
-	return p, nil
+	return p
 }

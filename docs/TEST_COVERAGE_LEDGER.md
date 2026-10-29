@@ -95,7 +95,7 @@ needs the same update here.
 
 ---
 
-## Root package (`gopmgr`, package `main`) — 72.2%
+## Root package (`gopmgr`, package `main`) — 72.6%
 
 The Wails desktop app entry point, App struct (bound to the frontend via
 `window.go.main.App`), and CLI/headless dispatch. Most of this package's
@@ -380,7 +380,7 @@ destination file instead of buffering it fully in memory first). See
 `app_export_destination_test.go`/`exportfs_test.go`'s row above for
 detail.
 
-## `internal/db` — 78.4%
+## `internal/db` — 78.5%
 
 `wbs_store_test.go` adds nine file-backed transactional storage tests: plaintext
 and SQLCipher replay/reopen, competing independent handles, receipt 257 and
@@ -602,7 +602,7 @@ this connection pool's public surface.
 | `conn_pragmas_test.go` | 2 | SQLite pragma consistency across the connection pool | fixture | `PRAGMA foreign_keys=ON` must apply to every pooled connection, not just the one that set it — a per-connection setting that silently doesn't propagate would let orphaned rows slip through undetected. |
 | `documents_read_test.go` | 10 | `GetDocument`, `ListDocuments` (both previously 0%, never referenced by any test), `SaveDocument`'s version-bump sequence, `DeleteDocument` (previously only exercised incidentally as fixture setup in `audit_events_test.go`, which never asserted on `DeleteDocument`'s own contract) | fixture, fault-injection, table-driven | `ListDocuments`'s kind filter and both of its `WHERE project_id = ?` predicates (the kind-empty and kind-filtered branches are separate queries) are each fault-seeded independently. **Pins the genuine, verified RFC3339Nano ordering hazard** described in the package summary above — first identified here, then found to also affect `ListCharts` and others, and since fixed structurally. This test's own assertion is deliberately left loose (both rows survive, either order), since its premise — a raw-SQL-injected value bypassing the save path and any migration — remains a real, narrower scenario the fix doesn't reach until the next database open. `DeleteDocument` (an irreversible operation): its actual row removal, its no-op-not-error contract for a missing ID (asserted as a prohibited-effect check — zero new `audit_events` rows, not merely "returns nil"), and its audit event's forensic content (the deleted document's title/content must survive in `BeforeCanonicalJSON`; `AfterCanonicalJSON` must be `"null"`) are each fault-seeded. |
 | `encryption_test.go` | 9 | `InitEncryptedDB`, plaintext→encrypted migration | fixture, fault-injection | Opening an encrypted DB with the wrong key must fail cleanly (not corrupt or silently open with garbage data). Migration success proves an independent private plaintext backup, encrypted live copy, integrity, and no temporary artifacts. Injected backup-preparation and replacement failures prove the canonical plaintext source remains readable, no published backup blocks retry, and publication receives the still-live canonical path exactly once. This is synchronous/process-structure evidence; power-loss durability and native Windows replacement remain unverified. |
-| `encryption_readonly_test.go` (added 2026-10-02) | 2 | `OpenEncryptedCopyReadOnly` (ADR-004 administrator viewing) | integration, fault seeding | A copy reopened read-only reads its data and refuses writes on two pooled connections held at once and on a schema change (`_query_only` is a DSN option, so every connection the pool opens gets it); a damaged copy is refused. Seeds dropping `_query_only` or the integrity check each fail. |
+| `encryption_readonly_test.go` (added 2026-10-02, extended 2026-10-29) | 13 | `OpenEncryptedReadOnly` and `OpenEncryptedCopyReadOnly` (ADR-004 administrator viewing) | integration, fault seeding | A read-only open does not create a missing file, does not open a directory, reads a mode 0444 file that `InitEncryptedDB` cannot write, refuses an insert on a writable-mode file, and leaves bytes unchanged. A missing `currency_code` stays missing and reads as USD. A writable open still adds that column. The administrator copy is not migrated. A missing `audit_events` table stays missing. A symlink open does not change the target. A wrong key and a short key change nothing. A damaged copy is refused. Counts and column probes treat a missing table as absent, and an unknown count table is refused. The original two-connection write refusal still holds. |
 | `ids_test.go` | 2 | Project/entity ID generation | fault-injection | Same class as `internal/agile/ids_test.go`: ID generation must fail loudly under starved entropy. |
 | `introspect_test.go` | 1 | Schema introspection (`DumpSchema`) | fixture | Used by `--schema-dump`; must enumerate every real table. |
 | `money_columns_test.go` | 4 | Minor-units money columns, project timezone round-trip | round-trip | Money must round-trip through SQLite as exact minor units (cents), never floating point — a lossy round-trip here is a silent financial-accuracy bug. |

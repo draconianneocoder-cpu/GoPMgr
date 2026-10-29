@@ -909,6 +909,7 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 	if err != nil {
 		return PortfolioSummaryWire{}, err
 	}
+	defer zeroBytes(dek)
 
 	dir := filepath.Join(user.DataDir, "projects")
 	entries, err := enumerateProjects(dir)
@@ -920,7 +921,7 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 	metrics := make([]analytics.ProjectMetrics, 0, len(entries))
 	portfolioCurrency := ""
 	for _, e := range entries {
-		d, derr := db.InitEncryptedDB(e.Path, dek)
+		d, derr := db.OpenEncryptedReadOnly(e.Path, dek)
 		if derr != nil {
 			continue // unreadable project: skip, matching ProjectsOverview
 		}
@@ -968,6 +969,51 @@ func portfolioMixedCurrencyError(first, second string) error {
 	return fmt.Errorf("portfolio analytics cannot combine %s and %s reporting currencies because foreign exchange conversion is not implemented", currencies[0], currencies[1])
 }
 
+// portfolioStakeholders reads the stakeholder rows portfolio committed cost
+// needs. An older file that lacks one of those columns contributes no
+// stakeholder cost and is not migrated. A current file still returns a
+// query error instead of an empty list.
+func portfolioStakeholders(d *db.Database, projectID string) ([]db.Stakeholder, error) {
+	ready, err := d.HasTableColumns("stakeholders",
+		"id", "project_id", "name", "role", "organisation", "email", "phone",
+		"category", "hourly_rate", "hourly_rate_minor_units",
+		"contract_value", "contract_value_minor_units",
+		"availability", "notes", "created_at", "updated_at",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list stakeholders for committed cost: %w", err)
+	}
+	if !ready {
+		return nil, nil
+	}
+	stakeholders, err := d.ListStakeholders(projectID, "")
+	if err != nil {
+		return nil, fmt.Errorf("list stakeholders for committed cost: %w", err)
+	}
+	return stakeholders, nil
+}
+
+// portfolioWorkItems reads agile work items for committed cost. A missing
+// table or additive column contributes nothing and is not created.
+func portfolioWorkItems(d *db.Database, projectID string) ([]agile.WorkItem, error) {
+	ready, err := d.HasTableColumns("agile_work_items",
+		"id", "project_id", "type", "title", "description", "state", "points",
+		"assignee", "sprint_id", "priority", "order_idx",
+		"created_at", "updated_at", "closed_at",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list work items for committed cost: %w", err)
+	}
+	if !ready {
+		return nil, nil
+	}
+	workItems, err := agile.NewStore(d.Conn, projectID).ListWorkItems("", "", "")
+	if err != nil {
+		return nil, fmt.Errorf("list work items for committed cost: %w", err)
+	}
+	return workItems, nil
+}
+
 // portfolioProjectMetrics builds the trusted hand-off row passed to DuckDB.
 // It deliberately performs all SQLCipher reads and scheduling in Go so the
 // analytics engine remains an ephemeral aggregator, never a second system of
@@ -990,13 +1036,13 @@ func portfolioProjectMetrics(
 		BudgetedCostMinorUnits: p.BudgetMinorUnits,
 	}
 
-	stakeholders, err := d.ListStakeholders(p.ID, "")
+	stakeholders, err := portfolioStakeholders(d, p.ID)
 	if err != nil {
-		return analytics.ProjectMetrics{}, fmt.Errorf("list stakeholders for committed cost: %w", err)
+		return analytics.ProjectMetrics{}, err
 	}
-	workItems, err := agile.NewStore(d.Conn, p.ID).ListWorkItems("", "", "")
+	workItems, err := portfolioWorkItems(d, p.ID)
 	if err != nil {
-		return analytics.ProjectMetrics{}, fmt.Errorf("list work items for committed cost: %w", err)
+		return analytics.ProjectMetrics{}, err
 	}
 	committed, err := budget.Compute(p, stakeholders, workItems)
 	if err != nil {

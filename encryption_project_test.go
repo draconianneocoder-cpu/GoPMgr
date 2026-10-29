@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -535,4 +536,246 @@ func TestCreateProjectUsesTheLaunchpadCalendarDefaults(t *testing.T) {
 		t.Fatalf("blank project calendar = %q/%q, Launchpad default = %q/%q; want the same, non-empty",
 			blankMeta.CountryCode, blankMeta.TimeZone, wizard.Project.CountryCode, wizard.Project.TimeZone)
 	}
+}
+
+func TestProjectsOverviewLeavesACurrentWALProjectUnchanged(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("ada", "Ada", "ada-strong-password", false); err != nil {
+		t.Fatal(err)
+	}
+	acceptNoRecoveryCodes(t, app)
+	project, err := app.CreateProject("Current", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := stampAppDBFile(t, project.Path)
+	overview, err := app.ProjectsOverview()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(overview) != 1 || !overview[0].Readable || overview[0].Name != "Current" {
+		t.Fatalf("overview = %+v", overview)
+	}
+	after := stampAppDBFile(t, project.Path)
+	if !bytes.Equal(before.Data, after.Data) || before.Perm != after.Perm {
+		t.Fatalf("current project changed: perm %v/%v bytes equal %v",
+			before.Perm, after.Perm, bytes.Equal(before.Data, after.Data))
+	}
+	if before.Wal && !after.Wal {
+		t.Fatal("the read removed an existing wal sidecar")
+	}
+	// A database already in WAL mode can gain a header-only sidecar when
+	// the previous one was checkpointed away. A sidecar with frames would
+	// mean the read wrote database pages.
+	if info, err := os.Stat(project.Path + "-wal"); err == nil && info.Size() > 32 {
+		t.Fatalf("read wrote a wal sidecar of %d bytes", info.Size())
+	}
+	s := app.currentSession()
+	dek, err := app.sessionDEK(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer zeroBytes(dek)
+	ro, err := db.OpenEncryptedReadOnly(project.Path, dek)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ro.Close() }()
+	var mode string
+	if err := ro.Conn.QueryRow(`PRAGMA journal_mode`).Scan(&mode); err != nil {
+		t.Fatal(err)
+	}
+	if mode != "wal" {
+		t.Fatalf("journal_mode = %s, want wal", mode)
+	}
+}
+
+func TestReadPathsDoNotUpgradeAProject(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	if _, err := app.CreateAccount("ada", "Ada", "ada-strong-password", false); err != nil {
+		t.Fatal(err)
+	}
+	acceptNoRecoveryCodes(t, app)
+	project, err := app.CreateProject("Legacy Name", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := app.currentSession()
+	dek, err := app.sessionDEK(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer zeroBytes(dek)
+	d, err := db.InitEncryptedDB(project.Path, dek)
+	if err != nil {
+		t.Fatal(err)
+	}
+	omitAppSQLiteColumn(t, d, "project", "currency_code")
+	if _, err := d.Conn.Exec(`PRAGMA foreign_keys = OFF`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Conn.Exec(`DROP TABLE audit_events`); err != nil {
+		t.Fatal(err)
+	}
+	freezeAppDeleteJournal(t, d)
+	if err := d.Close(); err != nil {
+		t.Fatal(err)
+	}
+	removeAppSQLiteSidecars(t, project.Path)
+	before := stampAppDBFile(t, project.Path)
+
+	overview, err := app.ProjectsOverview()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(overview) != 1 || !overview[0].Readable || overview[0].Name != "Legacy Name" {
+		t.Fatalf("overview = %+v", overview)
+	}
+	req, err := app.projectDeletionRequest(s, project.Path, filepath.Join(s.user.DataDir, "projects"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if req.ProjectName != "Legacy Name" || !req.AuditValid || req.AuditEvents != 0 {
+		t.Fatalf("deletion request = %+v", req)
+	}
+	after := stampAppDBFile(t, project.Path)
+	if !reflect.DeepEqual(before, after) {
+		t.Fatalf("read paths changed the file: perm %v/%v wal %v/%v shm %v/%v bytes %d/%d",
+			before.Perm, after.Perm, before.Wal, after.Wal, before.Shm, after.Shm, len(before.Data), len(after.Data))
+	}
+	ro, err := db.OpenEncryptedReadOnly(project.Path, dek)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ro.Close() }()
+	var currency, audit int
+	if err := ro.Conn.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('project') WHERE name = 'currency_code'`).Scan(&currency); err != nil {
+		t.Fatal(err)
+	}
+	if currency != 0 {
+		t.Fatal("currency_code was added")
+	}
+	if err := ro.Conn.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'audit_events'`).Scan(&audit); err != nil {
+		t.Fatal(err)
+	}
+	if audit != 0 {
+		t.Fatal("audit_events was created")
+	}
+}
+
+type appDBStamp struct {
+	Data []byte
+	Perm os.FileMode
+	Wal  bool
+	Shm  bool
+}
+
+func stampAppDBFile(t *testing.T, path string) appDBStamp {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, walErr := os.Lstat(path + "-wal")
+	_, shmErr := os.Lstat(path + "-shm")
+	return appDBStamp{Data: data, Perm: info.Mode().Perm(), Wal: walErr == nil, Shm: shmErr == nil}
+}
+
+func freezeAppDeleteJournal(t *testing.T, d *db.Database) {
+	t.Helper()
+	if _, err := d.Conn.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`); err != nil {
+		t.Fatal(err)
+	}
+	var mode string
+	if err := d.Conn.QueryRow(`PRAGMA journal_mode = DELETE`).Scan(&mode); err != nil {
+		t.Fatal(err)
+	}
+	if mode != "delete" {
+		t.Fatalf("journal_mode = %s", mode)
+	}
+}
+
+func removeAppSQLiteSidecars(t *testing.T, path string) {
+	t.Helper()
+	for _, suffix := range []string{"-wal", "-shm"} {
+		if err := os.Remove(path + suffix); err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+	}
+}
+
+func omitAppSQLiteColumn(t *testing.T, d *db.Database, table, drop string) {
+	t.Helper()
+	if _, err := d.Conn.Exec(`PRAGMA foreign_keys = OFF`); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = d.Conn.Exec(`PRAGMA foreign_keys = ON`) }()
+	var info string
+	switch table {
+	case "project":
+		info = `PRAGMA table_info(project)`
+	case "stakeholders":
+		info = `PRAGMA table_info(stakeholders)`
+	default:
+		t.Fatalf("unsupported table %s", table)
+	}
+	rows, err := d.Conn.Query(info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for rows.Next() {
+		var cid, notnull, pk int
+		var name, ctype string
+		var dflt interface{}
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			t.Fatal(err)
+		}
+		if name == drop {
+			continue
+		}
+		names = append(names, appSQLIdent(t, name))
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := rows.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if len(names) == 0 {
+		t.Fatal("no columns left")
+	}
+	keep := appSQLIdent(t, table+"_keep")
+	quotedTable := appSQLIdent(t, table)
+	list := names[0]
+	for _, name := range names[1:] {
+		list += ", " + name
+	}
+	if _, err := d.Conn.Exec(`CREATE TABLE ` + keep + ` AS SELECT ` + list + ` FROM ` + quotedTable); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Conn.Exec(`DROP TABLE ` + quotedTable); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Conn.Exec(`ALTER TABLE ` + keep + ` RENAME TO ` + quotedTable); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func appSQLIdent(t *testing.T, name string) string {
+	t.Helper()
+	if name == "" {
+		t.Fatal("empty identifier")
+	}
+	for _, r := range name {
+		ok := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
+		if !ok {
+			t.Fatalf("refusing identifier %q", name)
+		}
+	}
+	return `"` + name + `"`
 }

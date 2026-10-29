@@ -187,6 +187,21 @@ func appendAuditEventTx(tx *sql.Tx, in AuditEventInput) (AuditEvent, error) {
 	return event, nil
 }
 
+// ReadAuditChain verifies the chain when audit_events exists. A file that
+// predates that table has no events. That is an empty valid chain, not an
+// error, and this method does not create the table. VerifyAuditChain stays
+// strict for writable opens.
+func (db *Database) ReadAuditChain(projectID string) (AuditVerification, error) {
+	ok, err := db.tableExists("audit_events")
+	if err != nil {
+		return AuditVerification{}, err
+	}
+	if !ok {
+		return AuditVerification{ProjectID: projectID, Valid: true}, nil
+	}
+	return db.VerifyAuditChain(projectID)
+}
+
 // VerifyAuditChain recomputes every event hash for a project and
 // checks the previous-hash links and sequence continuity.
 func (db *Database) VerifyAuditChain(projectID string) (AuditVerification, error) {
