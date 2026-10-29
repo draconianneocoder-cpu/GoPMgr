@@ -13,13 +13,13 @@ Contents
 --------
 
   @kurkle/color 0.3.4
-  chart.js 4.5.1
+  chart.js 4.6.1
   clsx 2.1.1
   fflate 0.8.3
   read-excel-file 9.3.12
   svelte 5.57.2
   tailwindcss 4.3.3
-  vite 8.3.4
+  vite 8.3.5
   worker-f 0.1.16
 
 ================================================================================
@@ -40,7 +40,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
-Package: chart.js 4.5.1
+Package: chart.js 4.6.1
 License (package.json): MIT
 Included as: JavaScript modules in the bundle
 
@@ -176,7 +176,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-Package: vite 8.3.4
+Package: vite 8.3.5
 License (package.json): MIT
 Included as: build helpers that Vite injects into the bundle
 Note: Only the Vite core license applies: the rest of Vite's LICENSE.md covers dependencies bundled into Vite's own Node.js build, not into this bundle.
