@@ -5,6 +5,7 @@ package main
 
 import (
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -81,5 +82,81 @@ func TestOpenHeadlessDBEncryptedProjectRequiresCredentials(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "--username") {
 		t.Fatalf("openHeadlessDB error = %v, want username requirement", err)
+	}
+}
+
+func TestHeadlessCheckDoesNotAddAMissingColumnAndVacuumDoes(t *testing.T) {
+	projectPath, password := createHeadlessEncryptedProject(t)
+	t.Setenv("GOPMGR_HEADLESS_PASSWORD", password)
+	root := filepath.Dir(filepath.Dir(filepath.Dir(projectPath)))
+	store, err := users.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, dek, err := store.SignInHeadless("alice", password)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := db.InitEncryptedDB(projectPath, dek)
+	if err != nil {
+		t.Fatal(err)
+	}
+	omitAppSQLiteColumn(t, d, "project", "currency_code")
+	freezeAppDeleteJournal(t, d)
+	if err := d.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	removeAppSQLiteSidecars(t, projectPath)
+	before := stampAppDBFile(t, projectPath)
+
+	checked, err := openHeadlessDB(&cli.Config{
+		CheckOnly:   true,
+		ProjectPath: projectPath,
+		Username:    "alice",
+		PasswordEnv: "GOPMGR_HEADLESS_PASSWORD",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := checked.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(before, stampAppDBFile(t, projectPath)) {
+		t.Fatal("headless check changed the project file")
+	}
+	ro, err := db.OpenEncryptedReadOnly(projectPath, dek)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var absent int
+	if err := ro.Conn.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('project') WHERE name = 'currency_code'`).Scan(&absent); err != nil {
+		t.Fatal(err)
+	}
+	if err := ro.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if absent != 0 {
+		t.Fatal("headless check added currency_code")
+	}
+
+	vacuumed, err := openHeadlessDB(&cli.Config{
+		Vacuum:      true,
+		ProjectPath: projectPath,
+		Username:    "alice",
+		PasswordEnv: "GOPMGR_HEADLESS_PASSWORD",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = vacuumed.Close() }()
+	var present int
+	if err := vacuumed.Conn.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('project') WHERE name = 'currency_code'`).Scan(&present); err != nil {
+		t.Fatal(err)
+	}
+	if present != 1 {
+		t.Fatal("writable headless open left currency_code missing")
 	}
 }
