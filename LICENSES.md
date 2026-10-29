@@ -30,6 +30,7 @@ identifiers used in this project are:
 | `Bitstream-Vera`     | Optional downloaded DejaVu Sans font      | https://raw.githubusercontent.com/spdx/license-list-data/main/text/Bitstream-Vera.txt |
 | `MIT`                | Wails-derived Windows installer templates; vendored `go-sqlcipher` Go code (`third_party/go-sqlcipher/`) | https://github.com/wailsapp/wails/blob/v2.13.0/LICENSE                                             |
 | `BSD-3-Clause`, `blessing`, `Unlicense` | Other vendored code in `third_party/go-sqlcipher/` (SQLCipher and SQLite sources, LibTomCrypt, one Go Authors file) | SPDX License List, via `reuse download` |
+| `LicenseRef-Third-Party-Notices` | The generated `third_party/GO-MODULE-NOTICES.txt`, whose sections keep their own terms (see [Go module notices](#go-module-notices-in-release-packages)) | Written for GoPMgr; `LICENSES/LicenseRef-Third-Party-Notices.txt` |
 
 The IBM Plex fonts (the default typeface and PDF/A baseline), Source Sans 3,
 and their `OFL-1.1` license text are committed because clean release builds
@@ -78,3 +79,70 @@ ever matters.
 License text files that correspond to committed assets should be tracked so
 `reuse lint` can run without network access. License texts for ignored local
 downloads can be regenerated locally when those assets are audited.
+
+## Go module notices in release packages
+
+Every release binary links the Go standard library and dozens of Go modules.
+Their licenses (MIT, BSD, Apache-2.0, ISC and others) require the copyright
+notice and license text to travel with the binary. GoPMgr collects them in one
+generated file, `third_party/GO-MODULE-NOTICES.txt`, and every package ships
+it:
+
+| Package | Built by | Installed as |
+| --- | --- | --- |
+| Tarball | `scripts/package.sh` | `LICENSES/go-modules.txt` |
+| `.deb` and `.rpm` | `scripts/package-linux.sh`, `build/linux/nfpm.yaml` | `/usr/share/doc/gopmgr/go-module-notices.txt` |
+| Debian source package | `debian/rules` | `/usr/share/doc/gopmgr/go-module-notices.txt` |
+| macOS `.dmg` and `.pkg` | `scripts/package-macos.sh`, `scripts/package-macos-installer.sh` | `Contents/Resources/Licenses/go-modules.txt` inside the app |
+| Windows installer | `build/windows/installer/project.nsi` | `licenses\go-modules.txt` in the install directory |
+
+### How the file is made
+
+`tools/module-notices` runs `go list -deps` on the root package for each
+release target in `.github/workflows/release.yml` (darwin/arm64, linux/amd64,
+windows/amd64), with the tags `wails build` uses. For every linked module it
+copies the license-like files (`LICENSE*`, `COPYING*`, `NOTICE*`, `PATENTS`
+and similar) from the module root and from each directory between the root and
+a linked package. Those are the places `go mod vendor` takes license
+metadata from. It also copies the files of a `THIRD_PARTY_LICENSES` or
+`LICENSES` directory found there. The texts come unchanged from the module
+cache or from a local replacement such as `third_party/go-sqlcipher`; only line
+endings and trailing spaces are normalized. The tool fails on a module with no
+license file, so a new dependency without one cannot ship unnoticed. It needs
+only the Go standard library.
+
+### When to regenerate
+
+Run `make module-notices` and commit the result whenever `go.mod` changes,
+including Dependabot updates. Review the diff: a changed license text is a
+license change.
+
+Three checks keep the file honest:
+
+- `make module-notices-check`, part of `make verify`, fails when the file no
+  longer matches what the release targets link.
+- `scripts/verify-module-notices.sh` runs at packaging time on the binary that
+  ships. It reads the binary's own module list (`go version -m`) and fails
+  unless the file has a section for the standard library and for every module
+  at the exact version linked. `make module-notices-tests` covers it.
+- The packaging tests check that each package carries an exact copy:
+  `scripts/package-linux_test.sh`, `scripts/package-macos_test.sh`,
+  `scripts/package-macos-installer_test.sh` and
+  `scripts/validate-windows-nsis-template.sh`.
+
+### REUSE metadata
+
+The file reproduces third-party texts whose terms differ section by section,
+and some of them carry their own SPDX tags. `REUSE.toml` therefore annotates
+it with `precedence = "override"` and `LicenseRef-Third-Party-Notices`, which
+says that each reproduced text keeps its own terms.
+
+### Not covered yet
+
+- Native libraries that a Go module ships in compiled form can carry notices
+  of their own that the module does not include. The DuckDB binding modules
+  (`github.com/duckdb/duckdb-go-bindings/lib/*`) are the known case: their
+  static libraries bundle code such as ICU, RE2, zstd and Parquet components,
+  and the module ships only DuckDB's MIT license.
+- The frontend's npm packages, bundled into `frontend/dist` and embedded in
+  the binary, have no generated notices file yet.

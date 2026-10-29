@@ -62,6 +62,12 @@ if [ ! -d "$app_dir" ] || [ -L "$app_dir" ]; then
 	exit 1
 fi
 app_name="$(basename "$app_dir" .app)"
+app_binary="$app_dir/Contents/MacOS/$app_name"
+if [ ! -f "$app_binary" ]; then
+	echo "package-macos-installer: expected the app executable at $app_binary." >&2
+	exit 1
+fi
+bash scripts/verify-module-notices.sh "$app_binary"
 
 # Filename version: same derivation as package-macos.sh (see
 # package-version-lib.sh), so the .dmg and .pkg from one build always agree.
@@ -97,6 +103,7 @@ cp -R "$app_dir" "$staged_app"
 mkdir -p "$staged_app/Contents/Resources/Licenses"
 cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt "$staged_app/Contents/Resources/Licenses/go-sqlcipher.txt"
 cp internal/fonts/assets/FONT-NOTICES.txt "$staged_app/Contents/Resources/Licenses/fonts.txt"
+cp third_party/GO-MODULE-NOTICES.txt "$staged_app/Contents/Resources/Licenses/go-modules.txt"
 
 if command -v xattr >/dev/null 2>&1; then
 	xattr -cr "$staged_app"

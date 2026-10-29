@@ -269,6 +269,10 @@ if command -v ar >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
 		*) fail ".deb font notices lack $marker" ;;
 		esac
 	done
+	{ tar -xOf "$data_tar" -C "$extract_dir" ./usr/share/doc/gopmgr/go-module-notices.txt 2>/dev/null ||
+		tar -xOf "$data_tar" ./usr/share/doc/gopmgr/go-module-notices.txt 2>/dev/null || true; } >"$backup_root/go-module-notices.txt"
+	cmp -s "$backup_root/go-module-notices.txt" third_party/GO-MODULE-NOTICES.txt ||
+		fail ".deb lacks an exact copy of third_party/GO-MODULE-NOTICES.txt at /usr/share/doc/gopmgr/go-module-notices.txt"
 	# nfpm sanitizes VERSION for the package's own internal metadata field
 	# (Debian version syntax forbids an unescaped "-" before the upstream
 	# version's final component): the first hyphen becomes "~", matching
@@ -304,12 +308,14 @@ fi
 fake_repo="$backup_root/fake-repo"
 mkdir -p "$fake_repo/scripts" "$fake_repo/build/linux" "$fake_repo/build/bin" \
 	"$fake_repo/third_party/go-sqlcipher" "$fake_repo/internal/fonts/assets"
-cp scripts/package-linux.sh scripts/package-version-lib.sh scripts/release-tool-versions.env "$fake_repo/scripts/"
+cp scripts/package-linux.sh scripts/package-version-lib.sh scripts/release-tool-versions.env \
+	scripts/verify-module-notices.sh "$fake_repo/scripts/"
 cp build/linux/nfpm.yaml build/linux/gopmgr.desktop "$fake_repo/build/linux/"
 cp build/appicon.png "$fake_repo/build/"
 cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt \
 	"$fake_repo/third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt"
 cp internal/fonts/assets/FONT-NOTICES.txt "$fake_repo/internal/fonts/assets/FONT-NOTICES.txt"
+cp third_party/GO-MODULE-NOTICES.txt "$fake_repo/third_party/GO-MODULE-NOTICES.txt"
 cp "$gopmgr_elf_amd64" "$fake_repo/build/bin/gopmgr"
 chmod +x "$fake_repo/build/bin/gopmgr"
 (
@@ -324,6 +330,27 @@ chmod +x "$fake_repo/build/bin/gopmgr"
 	git add file.txt
 	git commit -q -m "second commit, past the tag"
 )
+
+# R8: notices that do not cover the binary must stop packaging before nfpm
+# runs. scripts/verify-module-notices_test.sh covers the module comparison
+# itself; this proves package-linux.sh enforces it. The fixture binary links
+# no modules, so a notices file without the standard library stands in.
+grep -vx 'Module: std' third_party/GO-MODULE-NOTICES.txt >"$fake_repo/third_party/GO-MODULE-NOTICES.txt"
+r8_output="$(cd "$fake_repo" && env -u VERSION bash scripts/package-linux.sh 2>&1)" && {
+	printf '%s\n' "$r8_output" >&2
+	fail "R8: package-linux.sh should fail when the Go module notices do not cover the binary, but it succeeded"
+}
+case "$r8_output" in
+*"verify-module-notices: "*"no Go standard library section"*) ;;
+*)
+	printf '%s\n' "$r8_output" >&2
+	fail "R8: package-linux.sh's incomplete-notices error did not come from verify-module-notices"
+	;;
+esac
+if ls "$fake_repo"/build/packages/*.deb "$fake_repo"/build/packages/*.rpm >/dev/null 2>&1; then
+	fail "R8: package-linux.sh built a package despite incomplete Go module notices"
+fi
+cp third_party/GO-MODULE-NOTICES.txt "$fake_repo/third_party/GO-MODULE-NOTICES.txt"
 
 fallback_output="$(cd "$fake_repo" && env -u VERSION bash scripts/package-linux.sh 2>&1)" || {
 	printf '%s\n' "$fallback_output" >&2
