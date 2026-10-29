@@ -153,7 +153,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, "s0fs:", err)
 		os.Exit(1)
 	}
-	defer f.Close()
 	home, _ := os.UserHomeDir()
 	root := defaultRoot()
 	locations := []struct{ name, path string }{
@@ -167,9 +166,20 @@ func main() {
 		if loc.name == "default-data-root" && loc.path != root {
 			r.Notes = append(r.Notes, "default data root "+root+" does not exist yet; probed its nearest existing parent")
 		}
-		line, _ := json.Marshal(r)
-		_, _ = f.Write(append(line, '\n'))
+		line, err := json.Marshal(r)
+		if err == nil {
+			_, err = f.Write(append(line, '\n'))
+		}
+		if err != nil {
+			// A record that cannot be written must not be reported as done.
+			fmt.Fprintf(os.Stderr, "s0fs: write evidence %s: %v\n", *out, err)
+			os.Exit(1)
+		}
 		b, _ := json.Marshal(r.Checks)
 		fmt.Printf("%-7s %-30s %s\n", r.Status, r.ID, b)
+	}
+	if err := f.Close(); err != nil {
+		fmt.Fprintf(os.Stderr, "s0fs: close evidence %s: %v\n", *out, err)
+		os.Exit(1)
 	}
 }

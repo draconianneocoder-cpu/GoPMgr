@@ -65,6 +65,49 @@ authorization.
 
 ## Planned product work
 
+### Authentication and account security — tiered hardware security keys
+
+- **Tier 1: user-optional FIDO2 USB security keys.** Make an optional, offline-capable, device-bound FIDO2/passkey security-key sign-in capability available to all local users. Enabling key-first passwordless access requires a primary and a separately enrolled backup physical key, independent hardware-mediated unwrap of the user's existing SQLCipher DEK, verified user presence and verification, and preservation of password, recovery codes and administrator escrow. FIDO2 authentication-only devices may support a separately labelled password-plus-key MFA mode, not passwordless project unlock.
+- **Tier 2: administrator-enforced FIPS 140-3.** An authorized administrator may turn on a higher security-key requirement. Installation-wide policy is owned by the existing super administrator (ADR-005); subordinate administrators may only apply an already approved policy to authorized standard accounts under explicit delegation. Two independently verified qualifying keys are provisioned before enforcement. Each token must match an **issued NIST CMVP FIPS 140-3** module certificate, hardware/firmware variant, initialization/approved mode, cryptographic service and actual FIDO2+DEK-unlock profile. A password remains available for approved restricted recovery, **not to bypass enforced routine login**.
+- **Reliability and recoverability.** Keep the original per-user DEK, encrypted project files, password-derived wrap, recovery codes, authenticated account incarnation, audit and administrator escrow/succession. Require transactional enrollment, no-bypass policy evaluation for GUI/CLI/restore, crash-safe key rotation, independently tested backup key and accessible offline recovery/reenrollment. Disallow synced software passkeys in the initial physical-key profiles. No FIPS/AAL3 full-product claim from a hardware certificate.
+- **Roadmap placement.** Define and review architecture, cryptographic profiles, policy scopes, real device/OS proof and risk assessment first (A-00–A-03). Follow with account version gates, Tier-1 enrollment/login (A-04–A-06), then mandatory FIPS policy, privileged recovery and production certification/packaging gates (A-07–A-09). Design/POCs may proceed without disrupting current beta P0 work. Security-key authentication is a trusted host capability, not an ADR-010 plugin, and does not block Jira, MPXJ, scheduling or analytics.
+
+**Companion decisions:** proposed `ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md` and the A-00–A-09 roadmap; accepted ADR-001, ADR-004 and ADR-005 retain their current authority. Design-in-principle approval is **not** source code implementation approval.
+
+Approved in principle on 2026-10-28. Tests have not been run. Recorded proposal:
+
+- [ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md](design/ADR-TBD-TIERED-SECURITY-KEY-POLICY-v4.md)
+- [POLICY-AND-ENROLLMENT-STATE-MACHINE.md](design/POLICY-AND-ENROLLMENT-STATE-MACHINE.md)
+- [CRYPTO-AND-STORAGE-CONTRACT.md](design/CRYPTO-AND-STORAGE-CONTRACT.md)
+- [ROADMAP-TIERED-SECURITY-KEYS.md](design/ROADMAP-TIERED-SECURITY-KEYS.md)
+- [TEST-TIERED-SECURITY-KEYS.md](design/TEST-TIERED-SECURITY-KEYS.md)
+- [CRITICAL-REVIEW-AND-DECISION-DELTA.md](review/CRITICAL-REVIEW-AND-DECISION-DELTA.md)
+
+### Provider-neutral integrations
+
+The provider-neutral integration framework was approved in principle on
+2026-10-28. The supplemental ADR, contract, staged roadmap, and test plan
+are proposed. No implementation work is authorized. The tests have not been
+run. C-00 stays design review. C-01 and later packages in the linked roadmap
+stay unauthorized.
+
+Current focus and beta P0 release work stay on their current list, ahead of
+any Jira connector. A larger-schedule or cloud change to the product vision
+needs its own maintainer decision.
+
+SQLCipher remains the authoritative project store. The Go calculation kernel
+remains the calculation authority. ADR-011 gates remain in force. DuckDB
+stays until Slice J, and only after DF0. Accepted ADR-001, ADR-004, and
+ADR-005 remain the authority for current storage, escrow, and succession.
+
+Recorded proposal:
+
+- [ADR-TBD-provider-neutral-integration-framework.md](design/ADR-TBD-provider-neutral-integration-framework.md)
+- [CONTRACT-AND-RECOVERY-REFERENCE.md](design/CONTRACT-AND-RECOVERY-REFERENCE.md)
+- [ROADMAP-provider-integrations.md](design/ROADMAP-provider-integrations.md)
+- [TEST-provider-integrations.md](design/TEST-provider-integrations.md)
+- [CRITICAL-REVIEW-and-DECISIONS.md](review/CRITICAL-REVIEW-and-DECISIONS.md)
+
 ### Scheduling and controls
 
 - Deeper cost forecasting and formal rebaselining workflows.
