@@ -1,0 +1,110 @@
+<!--
+SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+SPDX-License-Identifier: GFDL-1.3-or-later
+-->
+
+# ADR-TBD — Tiered local FIDO2 hardware authentication, FIPS 140-3 administrative enforcement, and encrypted-project unlock (v4)
+
+**Decision status:** POLICY DIRECTION APPROVED BY MAINTAINER IN PRINCIPLE, 2026-10-28. Detailed implementation ADR, security review, cryptographic construction, device profiles, migrations, and release gates remain **PROPOSED, NOT IMPLEMENTED OR TESTED**. This decision **replaces the previous blanket FIPS-for-all-users assumption** in the v3 security-key ADR and modifies its FIDO2 addendum; it does **not** replace accepted ADR-001, ADR-004, ADR-005 or alter proposed ADR-010/011. The previous v3 guarantees of offline use, unchanged per-user DEK, independent backup key, preservation of password/recovery/escrow, and host-only authority survive.
+
+**Repository baseline inspected:** `draconianneocoder-cpu/GoPMgr`, `docs/ROADMAP.md` SHA `7130f1547e5216904e206f60e7e2eecfd8695f20`; `internal/users/credentials.go` SHA `fc66108048921bbb75cfba86fd9fbbfddf7d865d`; `docs/design/ADR-005-super-administrator-and-succession.md` SHA `8b22bfeb90aa648ee791d7864bd20fb7a5b113a3`. Revalidate actual HEAD before implementation. See companion `POLICY-AND-ENROLLMENT-STATE-MACHINE.md`, `CRYPTO-AND-STORAGE-CONTRACT.md`, `ROADMAP-TIERED-SECURITY-KEYS.md`, and `TEST-TIERED-SECURITY-KEYS.md`.
+
+## 1. Outcome and terminology
+
+The feature is a **trusted GoPMgr host authentication capability**, not a provider-neutral plugin. Ordinary users may optionally enroll modern USB FIDO2 hardware security keys that store device-bound passkey credentials, while an authorized administrator may impose a separate, **higher-assurance FIPS 140-3 minimum** on selected accounts or a managed local installation. Neither tier needs Internet access for routine sign-in. FIPS refers to the precisely identified **NIST CMVP-validated cryptographic module and its approved operating mode**, not to a marketing product name, FIDO certification, the entire GoPMgr app, or a claimed NIST AAL level.
+
+A **passkey** is an authentication credential, not a synonym for a USB device. A **roaming USB security key** is hardware capable of storing credentials. A synced/cloud passkey or a platform-only passkey is not admitted to the physical-USB policy in this release. Tier 1 is offered to **all account types** by default; it is not an unconditional promise that every FIDO2-compatible key has the optional key-derivation primitives necessary for password-free encrypted project unlock.
+
+**At least two physically distinct enrolled keys**—one labelled primary, one independent backup—are necessary before enabling key-first sign-in in either tier. A user normally uses **one** of those keys per sign-in. Device uniqueness must be assessed honestly: two credential IDs do not prove two physical devices. Distinct attested models or verified enterprise/device-unique evidence can strengthen the proof; otherwise supervise separate removal/reinsertion and explicitly record the lower strength of the evidence. The Tier-2 device inventory/uniqueness threshold is an explicit release policy choice, not a promise of perfect cryptographic uniqueness where vendors do not supply it.
+
+## 2. Policy profiles (normative)
+
+| Profile | Default | User action | Admin action | Daily admission condition | Password role |
+|---|---|---|---|---|---|
+| `PASSWORD_COMPAT` | Existing accounts | Keep password | None | Existing password + authenticating DEK unwrap | Normal login, unchanged |
+| `FIDO2_OPTIONAL` (Tier 1) | Offered to **all enabled users** | Opt in and independently enroll 2 qualified USB security keys | Only existing account-management rules apply | Eligible enrolled device + verified FIDO assertion + verified **hardware-mediated DEK unwrap** | Explicit alternate login; recovery codes preserved |
+| `FIPS1403_REQUIRED` (Tier 2) | **Off** | Enroll 2 approved devices and accept policy | Authorized admin explicitly enables policy within their jurisdiction, following provisioning gates | Qualifying enrolled FIPS device + approved-mode checks + approved cryptographic operation + DEK unwrap | **Recovery-only**, not unrestricted routine session admission |
+| `RECOVERY_RESTRICTED` | Temporary exception state | Perform authorized recovery and re-enrollment | Approval where required | No normal project session; scoped recovery capabilities only | Backup for recovery, not a Tier-2 bypass |
+| `ENFORCEMENT_PENDING` | During managed rollout | Provision qualifying devices | Stage target scope and prepare recovery | Existing approved mode until individual readiness; no claim Tier 2 is enforced | Existing method until transition |
+
+**No hidden downgrade:** If a Tier-2 key cannot be presented, a password may unlock the original DEK in the *separate, purpose-limited recovery ceremony* only, subject to the stated recovery authorization. No automatic `FIPS1403_REQUIRED -> FIDO2_OPTIONAL/PASSWORD_COMPAT` on driver, device, certificate, firmware, network, or power failure. A Tier-1 key lacking approved DEK-unlock support may be registered only for **password-plus-FIDO2 authentication** in a clearly distinct `FIDO2_MFA_ONLY` capability; never advertise it as passwordless, and never count it toward the two-key unlock readiness gate.
+
+**Policy precedence:** `emergency recovery restrictions > installed administrator-enforced FIPS floor > account opt-in preference > password compatibility`. A user may voluntarily enroll stronger keys but may not lower a managed FIPS floor. Where policy is global to this installation, all new accounts enter restricted provisioning until ready. Installation-global policy **does not propagate across other independent installations**, and the local threat boundary does not magically resist an attacker who controls OS administrative privileges and the plaintext `system.db`.
+
+## 3. Administration, authority and delegation
+
+1. Existing ADR-005 establishes **one super administrator**, with subordinate administrators limited to standard-account management. The **super administrator alone** controls installation-wide FIPS enforcement, permitted-vendor/module policy, account-class coverage, supervised emergency exceptions, and any delegation to subordinate administrators. No new parallel admin hierarchy is introduced.
+2. A subordinate administrator may manage assigned standard accounts *within a fixed super-administrator policy* only where an explicit, recorded delegation permits it. They may not weaken the FIPS floor, create an exception for themselves, manage the super administrator's credentials, relax proof requirements, or authorize project DEK access merely by setting a status field.
+3. The account holder must be present and explicitly consent to enrollment. An admin cannot silently substitute a key or enroll a device for another person's account. Provisioning/rotation uses fresh step-up beyond possession of an open GUI; all high-risk changes are audited with immutable account incarnation, auth generation, policy revision, event ID, operator and intent.
+4. The super administrator's own Tier-2 account is covered by the same two-key and recovery rules. Account succession and escrow access remain governed by ADR-004/005; security-key status does not grant escrow rights, substitute for escrow-key recovery codes, or permit the administrator to impersonate the owner of a project.
+5. All global policy changes require a **preview of covered accounts and readiness**, named rollback/recovery operator, recorded approval, and policy epoch increment. No global switch can declare `ENFORCED` while any in-scope account lacks verified enrolled keys and a tested recovery path. Accounts unable to meet the policy remain explicitly `PENDING` or `BLOCKED`, not silently exempt or retroactively enforced.
+6. An approved exception is a **limited recovery authorization**, not a general password-only account downgrade. If the maintainer later authorizes emergency production project access without a token, that is a separate high-risk, time-scoped, prominently logged exception with its own ADR, not part of this baseline.
+
+## 4. Identity, authentication, and actual key release
+
+Existing GoPMgr has one random **32-byte account DEK** protected by Argon2id password wrapping, recovery-code wraps, and administrator escrow; project SQLCipher encryption uses that same account DEK (ADR-001). `internal/users/credentials.go` verifies credentials against a snapshot of immutable account incarnation, password hash, wrap and authorization generation; sign-in re-checks before admitting a session. Preserve this transaction and session-epoch model, the existing password-only path, and all authenticated opener/backup/repair flows.
+
+**FIDO2 signatures alone are not DEK-unlock operations.** The trusted Go host needs an independently proven, hardware-dependent route to unwrap exactly the **existing** DEK. Candidate profiles, negotiated **before** enrollment:
+
+- `fido2-hmac-secret-v1`: CTAP2 `hmac-secret` (or documented WebAuthn PRF bridge) returns a credential- and salt-specific secret in a verified, user-verified assertion. Host derives a domain-separated KEK and AEAD-unwraps that account's own per-device DEK envelope. Qualification is separately required **per authenticator, firmware, API, OS, credential type and policy tier**.
+- `fido2-and-piv-v1`: real FIDO2 assertion followed by a distinct PIV hardware private-key operation that unwraps the same DEK. Candidate for qualifying FIPS keys when the FIDO2 HMAC approved-service scope or API availability fails. No assumption that the same PIN/UV authorizes both applets.
+- `piv-only-v1`: prior proposal retained as a compatibility/recovery prototype, **not sufficient to satisfy the new Tier-2 `FIDO2` requirement unless the maintainer explicitly approves a profile change**.
+- `fido2-mfa-only-v1`: FIDO assertion without hardware unsealing, usable with a password and clearly labelled **not key-only sign-in**. Excluded from either tier's two-key readiness calculation.
+
+Tier 1 allows a qualified non-FIPS key for the first two profiles after proving actual key-unwrap support. Tier 2 additionally requires exact CMVP qualification and evidence that **the cryptographic operation used to authenticate and release/unwrap the DEK is permitted in the module's approved mode**. No service may be assumed covered merely because its algorithm family is approved.
+
+All cryptographic assertions are verified: fresh challenge, RP/verifier identifier, public key, signature, credential ID, authenticator flags including **UP and UV**, authenticators' supported algorithms and extension output; signature counters are interpreted per authenticators' documented semantics (zero/non-monotonic counters are not automatically replay proof). In a native desktop CTAP2 profile do **not** claim browser-provided origin verification or guaranteed web phishing resistance, because no browser origin is established by the native app. No PIN/PRF/derived KEK/raw DEK, or other secret may traverse Svelte/Wails, plugin RPC, logs, command line, diagnostic bundles or browser pages. PIN input must use a vetted trusted-native path or device-owned input. The host may hold the raw DEK in volatile memory during an authenticated session under the already documented current GoPMgr model; full malware resistance is not claimed.
+
+## 5. Two-device enrollment and activation
+
+- `PASSWORD_COMPAT -> ENROLLING`: start from a fresh, eligible authenticated session, validate correct account incarnation/role, unlock and verify existing DEK. Detect and reject legacy account states that do not have an existing valid DEK; do not create a fresh DEK for already encrypted projects.
+- `PRIMARY_PREPARED`: collect attestation/model/firmware, supported extensions or PIV service, and independent per-device wrap, then actually unlock original DEK with it in a fresh signed challenge. Keep staged enrollment invisible to login.
+- `BACKUP_PREPARED`: physically remove first device; enroll and test second. Track evidence of distinct physical device and any uncertainty. Store separate per-device wrap and public-key proof.
+- `ACTIVATION_REVIEW`: test complete clean-session, DB reopen and offline unlock with **each** key, including wrong-key negatives. Preserve password and recovery code paths.
+- `ACTIVATED_TIER1`: one transactional revision-checked change promotes both staged credentials and the optional user preference. Interrupted/crashed stages remain password-compatible and can be resumed/reviewed; duplicate retries are idempotent by operation ID.
+- `FIPS_POLICY_READY`: both keys additionally pass current local FIPS qualification and admin-controlled approved-mode policy. Only an authorized administrator may transition an account to `ACTIVATED_TIER2`; readiness is not itself enforcement.
+- If primary/backup key is lost after activation, ordinary Tier-1 access may use the surviving key, but replacement of the lost key must be initiated promptly. In Tier 2, a surviving qualified key may continue sign-in while a replacement is provisioned under an explicit administrator-approved grace/replacement policy; the two-key **enrollment invariant is required for activation** and a durable warning + remediation state is mandatory on later loss. An unauthorized downgrade is never permitted.
+
+## 6. FIPS 140-3 eligibility and lifecycle
+
+**Minimum:** an issued **FIPS 140-3 CMVP** certificate (not FIPS 140-2, FIDO certification or CMVP Modules-in-Process); exact cryptographic module version/physical product/firmware/hardware variant; certificate status and security policy; approved mode provisioning and required activation factors; demonstrated approved **FIDO2** operations and hardware-mediated DEK-unlock method. Pin the evidence package to a signed, offline-verifiable allowlist/version; reject unknown products and unknown proof without auto-approving a manufacturer's whole family. Re-evaluate on enrollment, user-initiated replacement and device/firmware/security-policy change. Administrative certificate-catalog updates are reviewed and signed; an offline machine uses pinned evidence with an explicit freshness state, rather than assuming a live NIST check is possible. A status change requires a documented response (hold new enrollments, review affected devices, phased replacement), not automatic destructive loss of account data.
+
+**Candidate, not approved production profile:** NIST CMVP `#5291` is the YubiKey 5 Cryptographic Module, with FIPS 140-3 validation *when operated and initialized as its security policy specifies*; Yubico identifies the 5 FIPS 5.7.4 profile and describes FIDO2 approved-mode initialization. This does not by itself prove that a particular `hmac-secret` operation meets every Tier-2 service constraint. Hirsch's supplied *uTrust FIDO2 Solutions* guide documents USB/NFC and passwordless functionality but does **not** provide an exact NIST CMVP certificate or approved `hmac-secret` service. Treat such models as Tier-1 candidates pending their FIDO2+DEK-unlock validation, and as **Tier-2 blocked** until the missing evidence exists.
+
+Tier 2 rejects synced/exportable passkeys, unsupported BLE/hybrid credentials, unsigned model claims, unapproved firmware and ambiguous authenticator attestation. Tier 1 likewise starts with directly connected, device-bound USB keys; synced/platform passkeys require a separately approved future profile. Device attestation is not always uniquely identifying: ordinary AAGUIDs identify a model, not an individual token. Privacy-sensitive enterprise attestation and serial evidence must be consented to and secured.
+
+## 7. Recovery model and password backup without policy bypass
+
+**Tier 1:** The password can still authenticate and unlock the existing DEK. Recovery codes retain their current meaning. A lost primary uses the backup; a lost backup is replaced while the primary remains available. Key resets may destroy credential secrets and must be treated as key loss.
+
+**Tier 2:** The password remains a **backup for recovery**, not an alternate everyday sign-in. If no qualified FIPS key is available, initiate `RECOVERY_RESTRICTED` using the legitimate account password plus an additional independently held recovery credential (e.g., an unspent existing recovery code) or an explicitly authorized super-administrator-controlled recovery ceremony consistent with ADR-004/005. This grants a constrained, time-limited *re-enrollment session*; it may unwrap the account DEK in trusted host memory to create replacement key envelopes, but may not open normal project/edit/export/API access. Successful re-enrollment and independent tests of two qualified devices are necessary before normal access resumes. Recovery attempts are audited without storing secrets. Unavailability of required factors can cause intentional lockout: do not invent an insecure administrative bypass or guarantee recovery under all loss scenarios.
+
+Password-only login for an enforced Tier-2 account must return `RECOVERY_AVAILABLE` (where applicable) rather than a full authenticated project session. Any administrator temporary exemption, role-based takeover, disabled-account recovery, admin escrow key recovery, or account restoration must re-check the exact authority and record a distinct reason and lifecycle. A super administrator must have a designated, offline-recoverable succession procedure before globally enforcing Tier 2. Account passwords and recovery-code wraps remaining on disk **limit the assurance of at-rest compromise**; an attacker obtaining those plus the relevant secret may still obtain the DEK even if routine sign-in policy says FIPS-only. State this openly.
+
+## 8. Account storage, compatibility, and transaction boundary
+
+Host owns the tables `security_policy_epochs`, `account_auth_preferences`, `hardware_credentials`, `hardware_credential_dek_wraps`, `auth_enrollment_operations`, `auth_recovery_operations`, and a versioned account audit/receipt bridge (names provisional; exact DDL is a separate gated deliverable). Store public FIDO credential metadata and **encrypted** per-device DEK wrappers in `system.db`, never plaintext DEKs. Every credential row binds immutable account incarnation, policy revision, hash of credential ID, trusted profile version, attestation/evidence digest, approval state, auth generation, and retirement lifecycle. Record no raw PIN, PRF/KEK or secret. Use explicit cryptographic AAD and domain separation, separate extension salt and HKDF salt, checked nonces and versioned wraps. See `CRYPTO-AND-STORAGE-CONTRACT.md`.
+
+Every enrollment/policy write, reauthorization, revocation, or recovery completion checks account identity, role and disabled flag, credential generation, policy epoch and expected revision **inside the write transaction**, then commits policy state, audit event and idempotency receipt atomically. Cryptographic hardware work is outside DB locks and invalidated if state changes before commit. Sign-in re-reads current policy and credentials before issuing ordinary `Principal`/session; GUI/headless/CLI/background and restore paths must not bypass the policy. A historical pre-gate binary cannot be assumed to reject future schema: create explicit min-writer gates and publish downgrade/backup limitations without claiming universal protection.
+
+Existing ADR-001 password and recovery wraps, ADR-004 escrow/pins and ADR-005 succession/grants must remain readable and correct. Avoid adding unreviewed mandatory cloud dependencies or routing authentication through ADR-010 IPC workers. No arbitrary plugin may request privileged key operations or read the DEK. Cross-platform native support is a **measured, target-specific release gate**, not a requirement to weaken the host threat boundary.
+
+## 9. Governance, release and stop conditions
+
+- Formal owner approval of this policy ADR and exact protected-account scope is separate from design-in-principle acceptance; no production code migration is authorized by this document alone.
+- Preserve current beta P0 and independently implemented core functions; A-series security architecture can be prototyped in isolation. Cloud plugins/Jira/MPXJ/Arrow/DataFusion remain independent.
+- Ship Tier 1 only after independently proving a working offline full encrypted-project unlock and the two-key enrollment/recovery matrix. **Do not ship a signature-only login while calling it passwordless DEK unlock.**
+- Ship Tier 2 only after real hardware+CMVP+approved-service proof, policy/role enforcement, no-bypass tests for every entry point, and live-machine recovery drills. Unverified platform/profile combinations remain unavailable.
+- No broad FIPS compliance, AAL3 or guaranteed native WebAuthn phishing-resistance claim without its own end-to-end assessment.
+- No coding agent may weaken a test, change policy semantics, remove recovery, treat blocked tests as passed, or silently change the administrator/super-administrator boundary. Deviations require a maintainer-approved Architecture Change Request.
+
+## 10. Primary reference anchors (verified 2026-10-28)
+
+- NIST CMVP certificate #5291: https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5291
+- NIST CMVP validation scope: https://csrc.nist.gov/projects/cryptographic-module-validation-program/validated-modules
+- NIST SP 800-63B-4: https://pages.nist.gov/800-63-4/sp800-63b.html
+- FIDO CTAP 2.2 hmac-secret: https://fidoalliance.org/specs/fido-v2.2-ps-20250714/fido-client-to-authenticator-protocol-v2.2-ps-20250714.html
+- WebAuthn Level 3 backup eligibility/state: https://www.w3.org/TR/webauthn-3/
+- FIDO attestation and device identity: https://fidoalliance.org/fido-attestation-enhancing-trust-privacy-and-interoperability-in-passwordless-authentication/
+- Yubico FIPS 5.7.x approved mode: https://docs.yubico.com/hardware/yubikey/yk-tech-manual/yk5-fips-140-3.html
+- Existing GoPMgr ADRs, source and roadmap: https://github.com/draconianneocoder-cpu/GoPMgr
