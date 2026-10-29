@@ -9,6 +9,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 **Repository baseline:** `main@28a758d` and agent's `claude/adr-010-plugin-architecture@49ac2bf` as of 2026-10-24. Rebase, re-census, and resolve conflicts before coding.\
 **Plan owners:** maintainer approves contracts; implementation agents propose narrowly scoped PRs with independent verification.
 
+**Later G1 authorization (2026-10-28):** the [maintainer clarification](../review/ADR-010-G1-authorization-clarification-2026-10-28.md)
+supersedes the opening historical limit for G1 permission only. Bounded P04
+engineering and OWN-11 dependencies are conditionally approved; applicable
+prerequisite, qualification, merge and release gates remain binding.
+
 ## 0. Engineering precedence and completion definitions
 
 This plan operationalizes **QI-01…QI-15** and **D-01…D-19** from the companion ADR. All hard requirements are traceable in the test strategy. On conflict, do not choose a simpler solution silently: halt the affected work package, document the conflict and raise an Architecture Change Request (ACR). Follow repository `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/DEPENDENCIES.md`, `docs/VISION.md`, `docs/ROADMAP.md`, ADR-001, ADR-004/005, ADR-008/009, the unified WBS contract, and release gates. Existing source behavior is evidence, not permission to delete requirements.
@@ -432,6 +437,11 @@ Separate third-party ADR + OS sandbox proof -> G7
 
 ### 8.2 Incremental PR slices (do not collapse into a mega-PR)
 
+**P04 authorization:** the [2026-10-28 clarification](../review/ADR-010-G1-authorization-clarification-2026-10-28.md)
+reaffirms G1-1 through G1-9 in their documented dependency order, with tests
+and security review before dependent merges. It does not authorize later
+phases or combine these slices into one PR.
+
 | PR | Deliverable | Cannot include |
 |---|---|---|
 | P00 | v2.2 ADR/plan/test strategy/agent prompt; owner decisions | Production code |
@@ -496,9 +506,9 @@ Each PR states exact HEAD, changed files, invariant IDs, new tests, raw pass/blo
 | OWN-08 | Existing file version gate and prior-version disclosure | Yes, ADR-011 required | APPROVED |
 | OWN-09 | MPXJ LTS/JDK/Notarization/license/replacement policy | G0 investigation + legal review | APPROVED FOR G0 INVESTIGATION; final choices reserved |
 | OWN-10 | Minimum/recommended hardware and latency/throughput budgets | Decide after S0 measurements | APPROVED — goal and method; budgets reserved for after S0 |
-| OWN-11 | New Go dependencies: `google.golang.org/grpc`, `google.golang.org/protobuf` and, for Windows named pipes, `github.com/Microsoft/go-winio` | Approve at G1 with a `docs/DEPENDENCIES.md` record, after G0 picks the transport | APPROVED FOR P01 EXPERIMENTS; **CONDITIONALLY APPROVED FOR G1 (2026-10-26, P04-D2)**: security, licensing, compatibility and reproducible-build verification; patched x/net and x/text; full graph in `docs/DEPENDENCIES.md` |
+| OWN-11 | New Go dependencies: `google.golang.org/grpc`, `google.golang.org/protobuf` and, for Windows named pipes, `github.com/Microsoft/go-winio` | At G1, verify security, licensing, compatibility and reproducible builds; review the full graph, preserve patched x/net/x/text and record additions in `docs/DEPENDENCIES.md` | CONDITIONALLY APPROVED for bounded G1 engineering; reaffirmed [2026-10-28](../review/ADR-010-G1-authorization-clarification-2026-10-28.md); qualification still required |
 
-Document owner decisions in an accepted ADR and test strategy. An agent must not mark `OPEN` as `APPROVED` through interpretation, code edits or “the test passes.” The maintainer approved all eleven on 2026-10-24; the State column copies the dispositions in the [decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md) §2, which governs their conditions.
+Document owner decisions in an accepted ADR and test strategy. An agent must not mark `OPEN` as `APPROVED` through interpretation, code edits or “the test passes.” OWN-01 through OWN-10 copy the 2026-10-24 dispositions in the [decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md) §2. OWN-11 reflects the later [2026-10-28 clarification](../review/ADR-010-G1-authorization-clarification-2026-10-28.md), which governs G1 permission only. All associated conditions remain binding.
 
 **G1 design decisions (2026-10-26).** These answer the G1 transport design's open questions under OWN-02, OWN-03 and OWN-11. They change none of the states above. The [decision record](../review/ADR-010-G1-open-questions-decision.md) governs their wording.
 

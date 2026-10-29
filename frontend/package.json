@@ -18,7 +18,7 @@
     "test:project-settings-encryption": "node scripts/project-settings-encryption-check.mjs"
   },
   "dependencies": {
-    "chart.js": "^4.4.6",
+    "chart.js": "^4.6.1",
     "read-excel-file": "^9.3.12"
   },
   "devDependencies": {
@@ -39,7 +39,7 @@
     "tailwindcss": "^4.3.3",
     "tslib": "^2.8.0",
     "typescript": "^6.0.3",
-    "vite": "^8.3.4",
+    "vite": "^8.3.5",
     "vitest": "^5.0.0"
   }
 }
