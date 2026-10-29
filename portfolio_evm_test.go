@@ -71,15 +71,15 @@ func mustPortfolioProjectMetrics(
 	return got
 }
 
-func TestPortfolioProjectMetricsSkipsAMissingStakeholderColumnWithoutAddingIt(t *testing.T) {
+func TestPortfolioProjectMetricsPreservesCostsWithoutAddingAMissingStakeholderColumn(t *testing.T) {
 	d, project := newPortfolioEVMTestProject(t, "2026-01-05")
 	omitAppSQLiteColumn(t, d, "stakeholders", "hourly_rate_minor_units")
 	got, err := portfolioProjectMetrics(d, project, "", time.Date(2026, 1, 12, 12, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.CommittedCostMinorUnits != 0 {
-		t.Fatalf("CommittedCostMinorUnits = %d, want 0 when the column is absent", got.CommittedCostMinorUnits)
+	if got.CommittedCostMinorUnits != 20_000 {
+		t.Fatalf("CommittedCostMinorUnits = %d, want the existing 20000-unit contract", got.CommittedCostMinorUnits)
 	}
 	var n int
 	if err := d.Conn.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('stakeholders') WHERE name = 'hourly_rate_minor_units'`).Scan(&n); err != nil {

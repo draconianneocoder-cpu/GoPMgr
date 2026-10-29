@@ -969,38 +969,10 @@ func portfolioMixedCurrencyError(first, second string) error {
 	return fmt.Errorf("portfolio analytics cannot combine %s and %s reporting currencies because foreign exchange conversion is not implemented", currencies[0], currencies[1])
 }
 
-// portfolioStakeholders reads the stakeholder rows portfolio committed cost
-// needs. An older file that lacks one of those columns contributes no
-// stakeholder cost and is not migrated. A current file still returns a
-// query error instead of an empty list.
-func portfolioStakeholders(d *db.Database, projectID string) ([]db.Stakeholder, error) {
-	ready, err := d.HasTableColumns("stakeholders",
-		"id", "project_id", "name", "role", "organisation", "email", "phone",
-		"category", "hourly_rate", "hourly_rate_minor_units",
-		"contract_value", "contract_value_minor_units",
-		"availability", "notes", "created_at", "updated_at",
-	)
-	if err != nil {
-		return nil, fmt.Errorf("list stakeholders for committed cost: %w", err)
-	}
-	if !ready {
-		return nil, nil
-	}
-	stakeholders, err := d.ListStakeholders(projectID, "")
-	if err != nil {
-		return nil, fmt.Errorf("list stakeholders for committed cost: %w", err)
-	}
-	return stakeholders, nil
-}
-
-// portfolioWorkItems reads agile work items for committed cost. A missing
-// table or additive column contributes nothing and is not created.
+// Work items did not exist in pre-agile projects. An absent table is empty;
+// a present table with missing required columns must return its query error.
 func portfolioWorkItems(d *db.Database, projectID string) ([]agile.WorkItem, error) {
-	ready, err := d.HasTableColumns("agile_work_items",
-		"id", "project_id", "type", "title", "description", "state", "points",
-		"assignee", "sprint_id", "priority", "order_idx",
-		"created_at", "updated_at", "closed_at",
-	)
+	ready, err := d.HasTableColumns("agile_work_items")
 	if err != nil {
 		return nil, fmt.Errorf("list work items for committed cost: %w", err)
 	}
@@ -1036,9 +1008,9 @@ func portfolioProjectMetrics(
 		BudgetedCostMinorUnits: p.BudgetMinorUnits,
 	}
 
-	stakeholders, err := portfolioStakeholders(d, p.ID)
+	stakeholders, err := d.ListStakeholders(p.ID, "")
 	if err != nil {
-		return analytics.ProjectMetrics{}, err
+		return analytics.ProjectMetrics{}, fmt.Errorf("list stakeholders for committed cost: %w", err)
 	}
 	workItems, err := portfolioWorkItems(d, p.ID)
 	if err != nil {
@@ -1084,7 +1056,10 @@ func portfolioScheduleEVM(
 		return kernel.EVMetrics{}, false, nil
 	}
 	tasks, err := loadCurrentProjectSchedule(d, p.ID)
-	if err != nil || len(tasks) == 0 {
+	if err != nil {
+		return kernel.EVMetrics{}, false, err
+	}
+	if len(tasks) == 0 {
 		return kernel.EVMetrics{}, false, nil
 	}
 	if !scheduleProjectTasks(p, tasks) {

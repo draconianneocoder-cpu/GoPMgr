@@ -65,6 +65,10 @@ if [ "$actual_nfpm_version" != "$NFPM_VERSION" ]; then
 	exit 1
 fi
 
+# Every Go module linked into the binary must have its notices in the
+# package (build/linux/nfpm.yaml ships third_party/GO-MODULE-NOTICES.txt).
+bash scripts/verify-module-notices.sh build/bin/gopmgr
+
 mkdir -p build/packages
 
 echo "package-linux: building .deb and .rpm (version $VERSION) ..."

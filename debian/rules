@@ -15,6 +15,9 @@ override_dh_auto_install:
 	install -D -m 0644 build/linux/gopmgr.desktop debian/gopmgr/usr/share/applications/gopmgr.desktop
 	install -D -m 0644 build/appicon.png debian/gopmgr/usr/share/pixmaps/gopmgr.png
 	install -D -m 0644 third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/sqlcipher-license.txt
+	bash scripts/verify-module-notices.sh build/ppa/gopmgr
+	install -D -m 0644 third_party/GO-MODULE-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/go-module-notices.txt
+	install -D -m 0644 internal/fonts/assets/FONT-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/font-notices.txt
 
 override_dh_auto_clean:
 	rm -rf build/ppa

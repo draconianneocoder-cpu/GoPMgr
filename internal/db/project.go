@@ -58,11 +58,11 @@ var ValidStatuses = []string{"planning", "active", "on_hold", "complete", "cance
 var ErrNoProject = errors.New("db: no project initialised in this file")
 
 // GetProject returns the single project stored in this .pmforge file
-// (the model is one-project-per-file for now). Columns an older file does
-// not have yet are left at the same in-memory defaults a writable migration
-// would store. The file is not altered. Names in the SELECT are a fixed
-// allowlist intersected with PRAGMA table_info, never names taken from the
-// file as SQL text.
+// (the model is one-project-per-file for now). Known additive columns an older
+// file does not have yet use the same in-memory defaults a writable migration
+// would store. Missing original columns return an error. The file is not
+// altered. Names in the SELECT are a fixed allowlist intersected with
+// PRAGMA table_info, never names taken from the file as SQL text.
 func (db *Database) GetProject() (Project, error) {
 	present, err := db.columnSet("project")
 	if err != nil {
@@ -99,13 +99,15 @@ func (db *Database) GetProject() (Project, error) {
 	dest := make([]any, 0, len(fields))
 	for _, field := range fields {
 		if _, ok := present[field.name]; !ok {
-			continue
+			switch field.name {
+			case "industry", "sub_category", "methodology", "country_code", "time_zone", "budget_minor_units", "currency_code":
+				continue // Only migrateLegacyColumns additions may be absent.
+			default:
+				return Project{}, fmt.Errorf("db: project is missing required column %s", field.name)
+			}
 		}
 		names = append(names, field.name)
 		dest = append(dest, field.dest)
-	}
-	if len(names) == 0 {
-		return Project{}, ErrNoProject
 	}
 	query := "SELECT " + strings.Join(names, ", ") + " FROM project LIMIT 1" // #nosec G201 -- allowlisted column names only.
 	err = db.Conn.QueryRow(query).Scan(dest...)

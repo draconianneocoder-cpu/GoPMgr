@@ -497,6 +497,10 @@ func omitSQLiteColumnDB(t *testing.T, d *Database, table, drop string) {
 		info = `PRAGMA table_info(project)`
 	case "stakeholders":
 		info = `PRAGMA table_info(stakeholders)`
+	case "charts":
+		info = `PRAGMA table_info(charts)`
+	case "documents":
+		info = `PRAGMA table_info(documents)`
 	default:
 		t.Fatalf("unsupported table %s", table)
 	}

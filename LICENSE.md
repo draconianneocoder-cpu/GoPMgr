@@ -73,8 +73,9 @@ The full text of every license that applies to a committed file, including
 notices and license also ship inside the app, in
 `internal/fonts/assets/FONT-NOTICES.txt` and next to the app's web fonts, and
 every release package installs `FONT-NOTICES.txt` as a separate file
-(`/usr/share/doc/gopmgr/font-notices.txt` on Linux, `licenses\fonts.txt` on
-Windows, `Contents/Resources/Licenses/fonts.txt` in the macOS app). The
+(`/usr/share/doc/gopmgr/font-notices.txt` in the Linux packages,
+`LICENSES/fonts.txt` in the tarball, `licenses\fonts.txt` on Windows,
+`Contents/Resources/Licenses/fonts.txt` in the macOS app). The
 other font families are optional: `scripts/fetch-fonts.sh` (`make fonts`)
 downloads them for local builds, they are **not committed**, and CI and
 release builds never download them, so release binaries embed only IBM Plex

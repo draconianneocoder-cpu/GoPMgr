@@ -196,6 +196,17 @@ weakening the release claim.
 5. Run `go mod tidy` or npm install only when dependency metadata should
    actually change.
 6. Verify with focused tests plus the relevant release gates.
+7. After any `go.mod` change, including Dependabot updates, run
+   `make module-notices` and commit the regenerated
+   `third_party/GO-MODULE-NOTICES.txt`. Its diff shows every license text
+   that changes. `make verify` fails until the file is current; see
+   [LICENSES.md](../LICENSES.md#go-module-notices-in-release-packages).
+
+The notices generator reads Go's LICENSE and PATENTS from `GOROOT`. For a
+Homebrew-style `libexec` GOROOT, a missing file may be read from that same
+installation's parent directory. Existing root files take precedence;
+unreadable, empty or invalid text remains an error rather than triggering
+fallback. License selection does not change the linked-module inventory.
 
 For SQLCipher specifically, remember that the selected driver owns the
 SQLite implementation in the binary. Driver changes need encryption
