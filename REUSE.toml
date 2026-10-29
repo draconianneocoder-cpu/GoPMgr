@@ -314,6 +314,12 @@ SPDX-FileCopyrightText = [
 ]
 SPDX-License-Identifier = "MIT AND BSD-3-Clause AND blessing AND Unlicense"
 
+[[annotations]]
+path = "docs/testing/adr-010-case-crosswalk.csv"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "GFDL-1.3-or-later"
+
 # ADR-012 DF0 spike: the generated fixture manifest, the JSONL evidence
 # records and Go's module checksum file.
 [[annotations]]
