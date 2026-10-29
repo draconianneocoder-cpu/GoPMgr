@@ -4,7 +4,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 # Proposed GoPMgr roadmap insertion — provider-neutral integrations
 
-**Status:** framework approved **in principle** on 2026-10-28; proposed staged roadmap, not merged into `docs/ROADMAP.md`, no implementation work authorized, delivery dates uncommitted.
+**Status:** framework approved **in principle** on 2026-10-28. A short summary is now in `docs/ROADMAP.md`. The C-00 through C-09 table was not copied into that summary. No implementation work is authorized, and delivery dates are uncommitted.
 
 **Normative architecture:** `ADR-TBD-provider-neutral-integration-framework.md` and accepted ADR-010/ADR-011 after maintainer approval. This plan does not turn proposed gates into completed ones.
 
@@ -65,7 +65,7 @@ flowchart TD
 
 **Sequencing detail:** C-00 can be reviewed now without waiting for G1; C-01 follows demonstrated G1 transport/protocol, and C-02 requires ADR-011 schema approval before any persistence PR. The C-08 test is independent of any outbound-write release: the read-only framework MUST prove a second real provider before it is advertised as generally extensible. If only Jira is shipped, label it **Jira-only, built on candidate neutral interfaces**, not a proven universal connector platform. No C-04 release is allowed to bypass G4/S4/S5; a scope reduction needs a maintainer ACR with independent evidence.
 
- `C-00` and *neutral* C-01 contract work can occur early because they preserve future options without feature creep. A Jira Cloud real-data production integration cannot ship until **G4 + S4 + S5 + C-03** are satisfied. C-06 cannot start production code until S6 is actually ready. The merge and controlled write tracks are **not** release promises or license to weaken earlier gates.
+`C-00` stays design review. C-01 onward stays unauthorized, matching `docs/ROADMAP.md` and `docs/review/CRITICAL-REVIEW-and-DECISIONS.md`. A Jira Cloud real-data production integration cannot ship until **G4 + S4 + S5 + C-03** are satisfied. C-06 cannot start production code until S6 is actually ready. The merge and controlled write tracks are **not** release promises or license to weaken earlier gates.
 
 ## 4. Quality thresholds (proposed until approved hardware/fixtures)
 
