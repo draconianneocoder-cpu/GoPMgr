@@ -6,6 +6,7 @@ package kernel
 import (
 	"errors"
 	"math"
+	"slices"
 	"sort"
 )
 
@@ -204,21 +205,6 @@ func occupiedDays(t *Task) []int {
 	return out
 }
 
-// occupiesDay reports whether a task consumes resources on the given day,
-// honouring an explicit split (WorkDays) when present.
-func occupiesDay(t *Task, day int) bool {
-	if len(t.WorkDays) > 0 {
-		for _, d := range t.WorkDays {
-			if d == day {
-				return true
-			}
-		}
-		return false
-	}
-	first, last, ok := taskSpan(t)
-	return ok && day >= first && day <= last
-}
-
 // taskSpan is the inclusive integer day range a task occupies, using
 // the same convention as AnchorSchedule (start = round(ES), last day
 // = ceil(EF)-1; zero-duration tasks occupy no days).
@@ -329,6 +315,8 @@ func DetectOverallocationsWithPlan(tasks map[string]*Task, plan ResourceCapacity
 	}
 
 	usage := ResourceUsage(tasks)
+	entries := overallocationEntries(tasks)
+	runs := overallocationMembershipRuns(entries, usage)
 
 	resources := make([]string, 0, len(usage))
 	for r := range usage {
@@ -337,8 +325,11 @@ func DetectOverallocationsWithPlan(tasks map[string]*Task, plan ResourceCapacity
 	sort.Strings(resources)
 
 	var out []Overallocation
+	members := newOverallocationMembers(len(entries))
 	for _, r := range resources {
+		members.start(runs[r])
 		for day, demand := range usage[r] {
+			members.advanceTo(day)
 			capacity := plan.capacityFor(r, day)
 			if demand <= capacity+1e-9 {
 				continue
@@ -349,9 +340,9 @@ func DetectOverallocationsWithPlan(tasks map[string]*Task, plan ResourceCapacity
 				Demand:   demand,
 				Capacity: capacity,
 			}
-			for _, t := range tasksOnDay(tasks, r, day) {
-				breach.TaskIDs = append(breach.TaskIDs, t.ID)
-				t.Overallocated = true
+			for _, i := range members.sorted() {
+				breach.TaskIDs = append(breach.TaskIDs, entries[i].task.ID)
+				entries[i].task.Overallocated = true
 			}
 			out = append(out, breach)
 		}
@@ -359,22 +350,161 @@ func DetectOverallocationsWithPlan(tasks map[string]*Task, plan ResourceCapacity
 	return out
 }
 
-// tasksOnDay returns the tasks assigned to resource r that occupy the
-// given day, sorted by ID for determinism.
-func tasksOnDay(tasks map[string]*Task, r string, day int) []*Task {
-	var out []*Task
-	for _, t := range tasks {
-		if !occupiesDay(t, day) {
-			continue
+// The participant index below replaces a scan of every task on every
+// overallocated day (ADR-010 S0 finding F3). It reports exactly the
+// participants that scan did; docs/testing/resource-overallocation-contract.md
+// records that contract and the tests that hold it.
+
+// overallocationEntry is one input map entry. Participants are tracked per
+// entry, not per *Task or printed ID: a task referenced by two map keys is
+// listed twice, as it always has been.
+type overallocationEntry struct {
+	key  string
+	task *Task
+}
+
+// overallocationEntries returns the map's entries ordered by printed ID and
+// then key, so a breach lists its participants by sorting entry indexes.
+func overallocationEntries(tasks map[string]*Task) []overallocationEntry {
+	entries := make([]overallocationEntry, 0, len(tasks))
+	for key, t := range tasks {
+		entries = append(entries, overallocationEntry{key: key, task: t})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].task.ID != entries[j].task.ID {
+			return entries[i].task.ID < entries[j].task.ID
 		}
-		for _, a := range t.Assignments {
-			if a.Resource == r {
-				out = append(out, t)
-				break
+		return entries[i].key < entries[j].key
+	})
+	return entries
+}
+
+// overallocationRun is a half-open range of days [start, end) on which one
+// entry occupies a resource.
+type overallocationRun struct {
+	start, end, entry int
+}
+
+// overallocationMembershipRuns returns, per resource with a usage profile,
+// the runs of days each entry occupies it. An entry takes part when it has
+// an assignment to the resource and occupies the day: a non-empty WorkDays
+// list names the exact days, otherwise the task's span does. Runs are
+// clipped to the resource's profile, the only days detection examines.
+func overallocationMembershipRuns(entries []overallocationEntry, usage map[string][]float64) map[string][]overallocationRun {
+	runs := make(map[string][]overallocationRun, len(usage))
+	for i, e := range entries {
+		var resources []string
+		for _, a := range e.task.Assignments {
+			if _, ok := usage[a.Resource]; ok && !slices.Contains(resources, a.Resource) {
+				resources = append(resources, a.Resource)
+			}
+		}
+		for _, r := range resources {
+			for _, run := range occupiedRuns(e.task, len(usage[r])) {
+				runs[r] = append(runs[r], overallocationRun{start: run[0], end: run[1], entry: i})
 			}
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return runs
+}
+
+// occupiedRuns returns the days in [0, limit) a task occupies as sorted,
+// disjoint, non-adjacent half-open runs. A contiguous span is one run however
+// long it is. Split days are deduplicated and adjacent days merged, so an
+// entry never leaves and re-enters on the same day.
+func occupiedRuns(t *Task, limit int) [][2]int {
+	if len(t.WorkDays) == 0 {
+		first, last, ok := taskSpan(t)
+		if !ok {
+			return nil
+		}
+		start, end := max(first, 0), min(last+1, limit)
+		if start >= end {
+			return nil
+		}
+		return [][2]int{{start, end}}
+	}
+	days := make([]int, 0, len(t.WorkDays))
+	for _, d := range t.WorkDays {
+		if d >= 0 && d < limit {
+			days = append(days, d)
+		}
+	}
+	slices.Sort(days)
+	var runs [][2]int
+	for _, d := range days {
+		if n := len(runs); n > 0 && d <= runs[n-1][1] {
+			runs[n-1][1] = max(runs[n-1][1], d+1)
+			continue
+		}
+		runs = append(runs, [2]int{d, d + 1})
+	}
+	return runs
+}
+
+// overallocationMembers tracks which entries occupy one resource on the day
+// being examined, moving forward one day at a time. Its buffers are reused
+// across resources.
+type overallocationMembers struct {
+	events []overallocationEvent
+	next   int
+	active []int // entry indexes
+	pos    []int // pos[entry] is the entry's index in active, or -1
+}
+
+type overallocationEvent struct {
+	day, entry int
+	enter      bool
+}
+
+func newOverallocationMembers(entries int) *overallocationMembers {
+	pos := make([]int, entries)
+	for i := range pos {
+		pos[i] = -1
+	}
+	return &overallocationMembers{pos: pos}
+}
+
+// start resets the tracker for a resource whose membership runs are given.
+func (m *overallocationMembers) start(runs []overallocationRun) {
+	for _, e := range m.active {
+		m.pos[e] = -1
+	}
+	m.active = m.active[:0]
+	m.events = m.events[:0]
+	for _, r := range runs {
+		m.events = append(m.events,
+			overallocationEvent{day: r.start, entry: r.entry, enter: true},
+			overallocationEvent{day: r.end, entry: r.entry})
+	}
+	// Order within a day does not matter: one entry's runs never share a
+	// boundary, and different entries are independent.
+	slices.SortFunc(m.events, func(a, b overallocationEvent) int { return a.day - b.day })
+	m.next = 0
+}
+
+// advanceTo applies every membership change up to and including day.
+func (m *overallocationMembers) advanceTo(day int) {
+	for ; m.next < len(m.events) && m.events[m.next].day <= day; m.next++ {
+		ev := m.events[m.next]
+		if ev.enter {
+			m.pos[ev.entry] = len(m.active)
+			m.active = append(m.active, ev.entry)
+			continue
+		}
+		i := m.pos[ev.entry]
+		last := m.active[len(m.active)-1]
+		m.active[i] = last
+		m.pos[last] = i
+		m.active = m.active[:len(m.active)-1]
+		m.pos[ev.entry] = -1
+	}
+}
+
+// sorted returns the current members in entry order.
+func (m *overallocationMembers) sorted() []int {
+	out := slices.Clone(m.active)
+	slices.Sort(out)
 	return out
 }
 

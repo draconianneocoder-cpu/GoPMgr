@@ -173,7 +173,7 @@ func (a *App) shutdown(_ context.Context) {
 // shouldPreventNativeClose, and beforeClose together intercept every native
 // quit trigger and hand the frontend a chance to block it on unsaved editor
 // state. Two facts about the invocation model, traced against the vendored
-// github.com/wailsapp/wails/v2@v2.16.0 module source rather than assumed:
+// github.com/wailsapp/wails/v2@v2.17.0 module source rather than assumed:
 //
 //   - Every quit trigger funnels through the same path. The native
 //     window-close button (WindowDelegate.m windowShouldClose:, all
