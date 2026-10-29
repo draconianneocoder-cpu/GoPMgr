@@ -24,6 +24,7 @@ Contents
   github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.10506.0
   github.com/duckdb/duckdb-go-bindings/lib/windows-amd64 v0.10506.0
   github.com/duckdb/duckdb-go/v2 v2.10506.0
+  github.com/gabriel-vasile/mimetype v1.4.16
   github.com/go-ole/go-ole v1.3.0
   github.com/go-pdf/fpdf v0.9.0
   github.com/go-viper/mapstructure/v2 v2.5.0
@@ -48,8 +49,7 @@ Contents
   github.com/tiendc/go-deepcopy v1.7.2
   github.com/tkrajina/go-reflector v0.5.8
   github.com/wailsapp/go-webview2 v1.0.22
-  github.com/wailsapp/mimetype v1.4.1
-  github.com/wailsapp/wails/v2 v2.16.0
+  github.com/wailsapp/wails/v2 v2.17.0
   github.com/xuri/efp v0.0.2
   github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2
   github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9
@@ -346,6 +346,34 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+================================================================================
+Module: github.com/gabriel-vasile/mimetype v1.4.16
+Linked into: darwin/arm64, linux/amd64, windows/amd64
+
+----- LICENSE -----
+
+MIT License
+
+Copyright (c) 2018 Gabriel Vasile
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 ================================================================================
 Module: github.com/go-ole/go-ole v1.3.0
@@ -1803,35 +1831,7 @@ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
-Module: github.com/wailsapp/mimetype v1.4.1
-Linked into: darwin/arm64, linux/amd64, windows/amd64
-
------ LICENSE -----
-
-MIT License
-
-Copyright (c) 2018-2020 Gabriel Vasile
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-================================================================================
-Module: github.com/wailsapp/wails/v2 v2.16.0
+Module: github.com/wailsapp/wails/v2 v2.17.0
 Linked into: darwin/arm64, linux/amd64, windows/amd64
 
 ----- LICENSE -----

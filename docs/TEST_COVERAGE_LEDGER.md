@@ -37,17 +37,19 @@ were rechecked with Go 1.27.3 on 2026-10-22 and remain unchanged. Since
 tests (for example `internal/documents`, 78.2% to 69.5%). Per-file
 percentages in rows written before then were measured with the older count.
 
-**Baseline refresh (2026-10-23):** `coverage-baseline.json` now records
-16990/21133 (Go default, 80.40%), 17105/21231 (Go duckdb, 80.57%), and
-11406/18207 (frontend, 62.65%). The Go marks were last set at 15,039
-statements. The code has grown by about 6,100 statements since, so the
-uncovered count rose from 3,605 to 4,143 while coverage rose from 76.0% to
-80.4%. The maintainer chose to reset the Go marks to the current state
-rather than keep marks no commit could meet; the frontend mark is an
-ordinary ratchet improvement. They were measured in a Linux container as
-root, where three test files skip their permission checks, so the Go marks
-may be slightly looser than a developer machine's; `make
-coverage-ratchet-update` run as a regular user tightens them.
+**Baseline refresh (2026-10-27):** `coverage-baseline.json` now records
+17474/21196 (Go default, 82.44%), 17589/21294 (Go duckdb, 82.60%), and
+11883/18547 (frontend, 64.07%). Since the 2026-10-23 refresh, uncovered
+statements fell from 4,143 to 3,722 (Go default), 4,126 to 3,705 (Go
+duckdb) and 6,801 to 6,664 (frontend). These are ordinary ratchet
+improvements from tests merged since then. The Go figures may also include
+statements that only run for a regular user: the 2026-10-23 marks were taken
+as root in a Linux container, where three test files skip their permission
+checks. That share was not measured separately. This refresh ran on macOS
+(Go 1.27.3), the platform the ledger headings use, and three runs gave
+identical counts. The 2026-10-23 refresh itself reset the Go marks by
+maintainer decision after the code had grown by about 6,100 statements; its
+details are in Git history (commit `40cae79`).
 
 `scripts/check-coverage-ledger-drift.sh` (2026-08-10; widened 2026-08-11;
 run via `make coverage-ledger-drift` and the failing-on-error macOS CI assurance job,
@@ -908,7 +910,7 @@ have on disk. Verified by measuring the package both ways: 87.7% with all
 | `embedding_test.go` (added 2026-10-23) | 7, and 1 fuzz target | `checkEmbeddingAllowed` over every OS/2 `fsType` combination that matters (installable, preview-and-print, editable, restricted, restricted plus a less restrictive bit, no-subsetting, bitmap-only), fonts without or with a truncated OS/2 table, every bundled font, `ImportFont` refusing and accepting, and `RegisterAs` skipping a restricted face already in the user directory; `FuzzCheckEmbeddingAllowed` (any bytes: no panic, refusals wrap `ErrEmbeddingNotAllowed`, a font without a readable fsType is allowed, a restricted-license fsType is never allowed) | unit, table-driven, fault seeding, fuzz | GoPMgr embeds a subset of every document font, so a font whose license forbids that must never be imported or registered. Fixtures patch the fsType of real IBM Plex Sans bytes, so the table layout is real. Disabling either check fails its test. |
 | `cmap_test.go` (added 2026-10-23) | 1 (one subtest per committed face) | Every committed `.ttf` read the way fpdf reads it, through the cmap format 4 subtable only, mapping a sample of each script it is bundled for (Latin for every face; Greek and Cyrillic for IBM Plex Sans; kana and kanji for JP; Hangul for KR; Simplified Chinese for SC) to a real glyph | unit, fixture, fault seeding | fpdf v0.9.0 ignores the format 12 table, so a face whose format 4 table is empty draws every character as a box while passing every other check. That is IBM Plex Sans TC as IBM ships it; the test fails on that file, which is why TC is not bundled (see ADR-007). |
 
-## `internal/kernel` — 92.1%
+## `internal/kernel` — 94.0%
 
 Scheduling math core: Critical Path Method, resource leveling, EVM, Monte Carlo simulation.
 
@@ -921,6 +923,9 @@ Scheduling math core: Critical Path Method, resource leveling, EVM, Monte Carlo 
 | `leveling_options_test.go`, `leveling_helpers_test.go` (helpers added 2026-09-29) | 11 | `LevelResourcesWithOptions` (strategy, horizon, splitting) | table-driven | A leveling horizon that's exceeded, or a leveling cycle, must return an explicit sentinel rather than silently truncating results — the caller needs to know leveling didn't fully succeed. |
 | `links_test.go` | 10 | CPM dependency link types (FS/SS/FF/SF, lag/lead), cycle detection | table-driven | Negative lag/lead must clamp at the project start (can't schedule before day one); legacy untyped "precedents" must still work for backward compatibility with older project files. |
 | `montecarlo_test.go` | 8 | `RunMonteCarlo` (finish-date distribution, tornado chart drivers) | property, table-driven | Results must be worker-count-independent (same simulation, different parallelism, same statistical output) — a determinism property, not a fixed expected value, since the simulation is inherently probabilistic. |
+| `overallocation_contract_test.go`, `overallocation_legacy_ref_test.go`, `overallocation_differential_test.go` (added 2026-10-27) | 10 | `ResourceUsage`, `DetectOverallocations`, `DetectOverallocationsWithPlan` and capacity resolution, pinned at blob `0826dfc6` as the legacy contract for a faster detector (PS-04 RES-A); a frozen test-only copy of that detection path; the leveler's opposite reading of `Assignment.CalendarID` | hand oracle over the PS-04 fixtures F-01–F-11 and F-15–F-21 plus five supplementary cases, with the binary64 threshold boundary and a 16-day capacity probe, run against both production and the frozen copy; JSON shape, repeated calls and the leveler side of F-09 against production only; seeded differential against the frozen copy (2,000 cases, input-unchanged check, coverage floors); `go/parser` call guard and SHA-256 pin on the frozen copy; fault seeding | A faster detector must return the same records, flags and usage, legacy anomalies included (F-11 drops split days past the span horizon; F-18 emits an unmarshallable NaN record). Each of 27 distinct production mutations was run ten times against the original kernel tests, and 22 passed every run; the full suite catches all 27, and four further seeds check the oracle and frozen copy themselves. Evidence and the anomaly table: [resource-overallocation-contract.md](testing/resource-overallocation-contract.md). |
+| `overallocation_bench_test.go` (added 2026-10-27) | 2 benchmarks | `ResourceUsage` and `DetectOverallocationsWithPlan` at 500 and 10,000 tasks | `testing.B.Loop`, allocation and breach/task-reference metrics | Same-machine comparison for detector changes. RES-A-1 took T1 detection from 2.05 s to 6.16 ms with identical output (paired benchstat, n=6). Diagnostic only, not a budget. |
+| `overallocation_index_test.go` (added 2026-10-27) | 2, and 1 benchmark | `occupiedRuns`, `overallocationMembershipRuns` and the entry order of RES-A-1's participant index; T2 and T3 detector benchmarks | table-driven, structural, fault seeding | The index must stay proportional to runs of days, not days: a million-day span is one run, split days are deduplicated and merged when adjacent, and repeated assignments or aliased keys give one run per entry and resource. Without the adjacency merge, a task could leave and re-enter on the same day and drop out of a breach. Only the differential test catches that, and these tests pin the rule directly. |
 | `resources_test.go` | 15 | Resource usage profiles, overallocation detection, contention-based leveling | table-driven, fixture | Overallocation detection must honor per-resource calendar overrides (a resource unavailable Tuesdays isn't "overallocated" for not working Tuesday); leveling must serialize genuinely contending assignments without touching unrelated ones. These tests level through `levelResources`/`levelResourcesWithPlan` in `leveling_helpers_test.go`, which wrap `LevelResourcesWithOptions` since the unused exported wrappers were removed (2026-09-29). |
 | `scheduler_test.go` | 10 | `CalculateCPM`, topological sort | table-driven | Diamond-shaped and parallel-equal-path dependency graphs are specifically tested since they're the classic cases naive CPM implementations get wrong (picking the wrong critical path). |
 
@@ -1165,7 +1170,7 @@ and notice files of every Go module linked into the release binaries (added
 ---
 
 
-## Frontend (`frontend/src`) — 62.65% of statements
+## Frontend (`frontend/src`) — 64.07% of statements
 
 Vitest + `@testing-library/svelte`. Coverage here is intentionally
 lower than Go because most of the
