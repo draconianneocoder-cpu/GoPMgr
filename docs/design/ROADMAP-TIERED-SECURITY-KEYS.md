@@ -49,4 +49,4 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 ## Proposed exact repository insert
 
-Add a new **`### Authentication and account security`** subsection under `## Planned product work` in `docs/ROADMAP.md`. Keep the prior `## Current focus` section unchanged. A proposed insertion snippet accompanies this package; **it has not been committed**.
+The proposed insertion is now in `docs/ROADMAP.md` as the **`### Authentication and account security — tiered hardware security keys`** subsection under `## Planned product work`. The prior `## Current focus` section is unchanged. The work stays proposed; tests have not been run.
