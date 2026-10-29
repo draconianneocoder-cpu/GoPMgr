@@ -3,3 +3,11 @@
 
 # Preserve the hash-pinned upstream SQLCipher runtime snapshot byte-for-byte.
 third_party/go-sqlcipher/** -whitespace
+
+# Keep the ADR-010 source documents byte-for-byte as received; they use
+# trailing double spaces as Markdown line breaks.
+docs/design/adr-010/v1-original-plan.md -whitespace
+docs/design/adr-010/v2.0-plan.md -whitespace
+docs/design/adr-010/v2-critical-review-addendum.md -whitespace
+# The maintainer's acceptance record is kept byte-for-byte as received.
+docs/review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md -whitespace
