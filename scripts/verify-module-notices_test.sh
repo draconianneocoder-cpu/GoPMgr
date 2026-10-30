@@ -100,6 +100,35 @@ run "an empty notices file" 1 "notices file missing or empty" "$binary" "$work/e
 run "a missing binary" 1 "binary not found" "$work/absent-binary" "$work/notices.txt"
 run "no arguments" 2 "usage:"
 
+# Complete notices do not excuse linked TPC code: the exclusion check runs
+# on every binary this script accepts.
+run "a clean binary passes the exclusion check" 0 "contains none of the 8 excluded-code markers" \
+	"$binary" "$work/notices.txt"
+printf 'ELF\0N6duckdb13TpchExtensionE\0' > "$work/tpc-binary"
+run "a binary carrying excluded TPC code" 1 "contains excluded code" "$work/tpc-binary" "$work/notices.txt"
+
+# A binary linking a DuckDB native library module also needs the DuckDB
+# native notices to cover that module at that version.
+printf '%s\n' "$(cat "$work/metadata.txt")" \
+	$'\tdep\tgithub.com/duckdb/duckdb-go-bindings/lib/linux-amd64\tv0.10506.0\th1:d=' > "$work/metadata-duckdb.txt"
+notices "Module: std" "Module: example.com/a v1.0.0" "Module: example.com/c/v4 v4.4.2" \
+	"Module: github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.10506.0"
+printf '%s\n' "DuckDB native library notices" \
+	"Covers: github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.10506.0" > "$work/native.txt"
+FAKE="$work/metadata-duckdb.txt" run "DuckDB native notices that cover the library" 0 \
+	"covers DuckDB's native libraries (github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.10506.0)" \
+	"$binary" "$work/notices.txt" "$work/native.txt"
+printf '%s\n' "DuckDB native library notices" \
+	"Covers: github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.10505.0" > "$work/native.txt"
+FAKE="$work/metadata-duckdb.txt" run "DuckDB native notices for another version" 1 \
+	"does not cover github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.10506.0" \
+	"$binary" "$work/notices.txt" "$work/native.txt"
+FAKE="$work/metadata-duckdb.txt" run "no DuckDB native notices" 1 \
+	"links DuckDB's native libraries, but" "$binary" "$work/notices.txt" "$work/absent-native.txt"
+notices "Module: std" "Module: example.com/a v1.0.0" "Module: example.com/c/v4 v4.4.2"
+run "no DuckDB library, no native notices needed" 0 "all 2 modules linked" \
+	"$binary" "$work/notices.txt" "$work/absent-native.txt"
+
 # A real Go binary checked against the committed notices file, with the real
 # `go version -m`: proves the parsing matches the toolchain's actual format.
 mkdir -p "$work/src"
