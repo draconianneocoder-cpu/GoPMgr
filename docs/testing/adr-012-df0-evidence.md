@@ -149,6 +149,7 @@ needs your approval (directive §4.1).
 | LD-7 | **Parquet decimals and nested values reach the UI as JSON objects.** `json.Marshal(duckdb.Decimal)` is `{"Width":…,"Scale":…,"Value":…}`, and `Portfolio.svelte` renders cells with `String(cell)`. So every Parquet DECIMAL cell, a common type for money, displays as `[object Object]`. That is 10,000 of 30,000 preview cells in `pq-rows-100000`. Found by measuring the wire bytes and reading the code; not exercised in the running app | `duckdb-tabular.jsonl` `wire.object_cells` |
 | LD-8 | Integers above 2^53 cross the Wails JSON boundary as numbers that JavaScript rounds (DF-065 legacy). Here they were already doubles because of LD-2 | `wire.js_unsafe_numbers` |
 | LD-9 | The preview reports "10000 rows" for larger files (verification F-4) | `csv-rows-50000`: 10,000 rows of 50,000, with no truncation flag in the API |
+| LD-10 | **A NaN or infinite cell makes the import unencodable, and Wails then exits the app.** `json.Marshal(Dataset)` fails with `unsupported value: NaN` (or `+Inf`). Wails v2.17.0 marshals every call result with `encoding/json`, and on failure calls `Logger.Fatal`, which runs `os.Exit(1)` (`internal/frontend/dispatcher/calls.go`). `App.ImportDatasetForAnalysis` (`app_foundation.go`) returns the Dataset as is. So importing such a file should close GoPMgr with no message. Found by recording the marshal error (Codex review of #151) and reading Wails' code; not exercised in the running app | `duckdb-tabular.jsonl` `wire.error`: `pq-scalars`, `pq-scalars-nulls` (NaN), `json-decimals` (`+Inf`, from LD-3) |
 
 Other observed behavior:
 - A symlink to a file outside the folder is followed. `allowed_directories`
@@ -176,13 +177,16 @@ recorded for the comparison.
 | DF-017 typed errors | characterized; LD-5 and LD-6 found; one case BLOCKED (root) | NOT-RUN | NOT-RUN |
 | DF-018 ordering | file order is preserved in every match case | NOT-RUN | NOT-RUN |
 | DF-020 source file unchanged | observed: unchanged | NOT-RUN | NOT-RUN |
-| All others (DF-019, DF-021 to DF-053, DF-055 to DF-060, DF-062 to DF-065) | — | NOT-RUN | NOT-RUN |
+| DF-065 wire and UI numeric contract | characterized: LD-7, LD-8; 3 of 69 Datasets cannot be JSON-encoded (LD-10) | NOT-RUN | NOT-RUN |
+| All others (DF-019, DF-021 to DF-053, DF-055 to DF-060, DF-062 to DF-064) | — | NOT-RUN | NOT-RUN |
 
 ### Decisions this raises for the maintainer (not needed until DF1)
 
-1. **LD-1, LD-5 and LD-6** are defects in the shipped app, independent of
-   ADR-012. I propose small production fixes, each needing its own
-   authorization:
+1. **LD-1, LD-5, LD-6 and LD-10** are defects in the shipped app,
+   independent of ADR-012. LD-10 is the most severe: it closes the app. I
+   propose small production fixes, each needing its own authorization:
+   - convert NaN and infinite cells to strings or nulls (with a flag)
+     before the Dataset leaves Go;
    - escape glob characters, or open the file in Go and pass the reader;
    - turn off lenient CSV/JSON error handling, or surface the rejected-row
      count;
