@@ -47,6 +47,8 @@ mkdir -p "$staged_app/Contents/Resources/Licenses"
 cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt "$staged_app/Contents/Resources/Licenses/go-sqlcipher.txt"
 cp internal/fonts/assets/FONT-NOTICES.txt "$staged_app/Contents/Resources/Licenses/fonts.txt"
 cp third_party/GO-MODULE-NOTICES.txt "$staged_app/Contents/Resources/Licenses/go-modules.txt"
+cp third_party/DUCKDB-NATIVE-NOTICES.txt "$staged_app/Contents/Resources/Licenses/duckdb-native.txt"
+cp third_party/FRONTEND-NOTICES.txt "$staged_app/Contents/Resources/Licenses/frontend.txt"
 
 if command -v xattr >/dev/null 2>&1; then
 	xattr -cr "$staged_app"

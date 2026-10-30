@@ -137,12 +137,146 @@ and some of them carry their own SPDX tags. `REUSE.toml` therefore annotates
 it with `precedence = "override"` and `LicenseRef-Third-Party-Notices`, which
 says that each reproduced text keeps its own terms.
 
-### Not covered yet
+## DuckDB native library notices
 
-- Native libraries that a Go module ships in compiled form can carry notices
-  of their own that the module does not include. The DuckDB binding modules
-  (`github.com/duckdb/duckdb-go-bindings/lib/*`) are the known case: their
-  static libraries bundle code such as ICU, RE2, zstd and Parquet components,
-  and the module ships only DuckDB's MIT license.
-- The frontend's npm packages, bundled into `frontend/dist` and embedded in
-  the binary, have no generated notices file yet.
+The DuckDB binding modules (`github.com/duckdb/duckdb-go-bindings/lib/*`) ship
+DuckDB as prebuilt static libraries, and the module itself carries only
+DuckDB's MIT license. The libraries also contain third-party code: ICU, RE2,
+Zstandard, Mbed TLS, the Parquet stack (Thrift, Snappy, Brotli, LZ4), and
+more. `third_party/DUCKDB-NATIVE-NOTICES.txt` reproduces their license and
+notice texts. The TPC-H and TPC-DS generators the modules also carry are
+excluded from GoPMgr; see [below](#excluded-the-tpc-h-and-tpc-ds-generators). It ships next to the Go module
+notices: `LICENSES/duckdb-native.txt` in the tarball,
+`/usr/share/doc/gopmgr/duckdb-native-notices.txt` in the Linux packages,
+`Contents/Resources/Licenses/duckdb-native.txt` in the macOS app, and
+`licenses\duckdb-native.txt` on Windows.
+
+### How the file is made
+
+`tools/duckdb-notices` holds a reviewed list of the components. Each entry
+names the linked library that contains it and the license file, or the
+license comment lines, in the DuckDB source. The tool reads those texts from
+the DuckDB source the libraries were built from. It checks the checkout's
+commit against its pin first.
+
+The pins for duckdb-go-bindings v0.10506.0:
+
+- the module's `Makefile` builds DuckDB v1.5.6;
+- the tag is commit `069cc9f9b5be802405797faecc284961b07c70ef`, which matches
+  the source ID compiled into `libduckdb_static.a`;
+- robin-hood-hashing 3.11.5 supplies the MIT text that DuckDB credits in
+  `src/common/checksum.cpp` but does not carry.
+
+The list was built from the symbols of every linked library on all three
+platforms (`llvm-nm`, matched against each component's namespace), plus a
+scan of DuckDB's own sources for embedded third-party code (nanoarrow and
+ADBC, ALP, the merge-sort tree, MD5, robin-hood-hashing). Every component is
+linked on all three platforms, except jemalloc, which is built into the Linux
+library only. Snowball, Catch and the IMDB data are in the DuckDB tree but
+not in the linked libraries, so they are not listed.
+
+### When to update
+
+- `make duckdb-notices-check`, part of `make verify`, works offline once the
+  modules are downloaded. It fails when `go.mod` selects any
+  duckdb-go-bindings module at a version other than the reviewed one, when
+  the file no longer matches the pins and component list, or when the
+  excluded TPC code could be linked (see below).
+- On a DuckDB update, repeat the review for the new release: link flags,
+  library symbols, and new `third_party` directories. Then update the pins and
+  the component list in `tools/duckdb-notices`, and run `make duckdb-notices`.
+  That target clones the pinned sources and rewrites the file. Its unit test
+  also fails if a linked library is not accounted for.
+- `scripts/verify-module-notices.sh` refuses to package a binary that links a
+  DuckDB library module the file does not name at that exact version.
+
+### Excluded: the TPC-H and TPC-DS generators
+
+Each platform module also ships DuckDB's TPC-H and TPC-DS data generators as
+separate archives, `libtpch_extension.a` and `libtpcds_extension.a`, and
+names them on its link line. The TPC-H generator (`dbgen`) is under the TPC
+End User License Agreement 2.2, not an open-source license. DuckDB's copy of
+the TPC-DS generator (`dsdgen`) has no license file; its sources carry a TPC
+legal notice. Whether that code can be distributed with GoPMgr under
+GPL-3.0-or-later has not had a qualified legal review, so the maintainer has
+excluded it from every GoPMgr distribution, on all platforms and in all
+formats (decision of 2026-10-26; see
+[the decision record](docs/review/TPC-benchmark-exclusion-decision.md)).
+
+The prebuilt libraries already keep this code out of linked binaries. DuckDB
+builds both extensions with `DONT_LINK`, so its generated extension loader
+does not reference them, and no other linked library or cgo call does. A
+static linker takes an archive member only to resolve an undefined symbol,
+so neither archive adds code. Audits of the 1.1.0-alpha.2 release binaries
+and of a current Linux build found no TPC code; the decision record has the
+method and results. DuckDB core keeps a table of extension names for
+autoloading, so binaries do contain strings such as `dbgen`, `dsdgen`,
+`tpch` and `tpcds`. That table is data and holds no generator code.
+
+The exclusion is enforced, and each check is release-blocking:
+
+- `third_party/EXCLUDED-NATIVE-CODE.txt` lists the two archives and eight
+  strings found only in their code (class names and error messages), which
+  survive symbol stripping.
+- `make duckdb-notices-check` audits every DuckDB platform module `go.mod`
+  requires. It fails if another linked library or a cgo call in the Go
+  bindings references a symbol the archives define, if a marker is missing
+  from the archives, or if a marker appears in any other linked library.
+- `scripts/verify-excluded-native-code.sh` fails on a binary that contains
+  any marker. `scripts/verify-module-notices.sh` runs it, so every packaging
+  path (tarball, `.deb` and `.rpm`, macOS app and installer, Windows
+  installer, Debian source build) checks the binary it ships.
+- `debian/rules` runs it with `--tree vendor` before building. `go mod
+  vendor` copies the excluded archives into `vendor/`, so a plain vendored
+  Debian source package fails by design: publishing it would distribute the
+  TPC object code. No vendored layout without them is approved yet.
+
+Because the code is not shipped, the notices file no longer reproduces the
+TPC agreement.
+
+## Frontend package notices
+
+The interface is a Vite bundle (`frontend/dist`) embedded in the binary.
+`third_party/FRONTEND-NOTICES.txt` reproduces the license and notice files of
+every npm package whose code is in that bundle. It ships next to the other
+notices:
+
+- `LICENSES/frontend.txt` in the tarball;
+- `/usr/share/doc/gopmgr/frontend-notices.txt` in the Linux packages;
+- `Contents/Resources/Licenses/frontend.txt` in the macOS app;
+- `licenses\frontend.txt` on Windows.
+
+### How the file is made
+
+`frontend/scripts/bundle-notices.mjs` runs the real production build
+(`vite.config.ts`) in memory, without writing `dist/`. It takes the package
+set from three places, so dev-only tooling that leaves no code behind is not
+listed:
+
+- the bundle's own module graph;
+- the helper modules Vite injects;
+- license banners in generated assets, such as Tailwind's in the stylesheet.
+
+It fails on a module it cannot place, an unknown injected module, or a
+package with no license file. It needs only Node and the frontend's existing
+dev dependencies.
+
+Two reviewed exceptions are recorded in `frontend/scripts/bundle-notices-lib.mjs`:
+
+- **`worker-f`**, a dependency of read-excel-file, ships no license file.
+  Neither does its source at the published tag. Its `package.json` declares
+  MIT and names its author. The file therefore gives the standard MIT terms
+  with that author as copyright holder, and says so. The entry is pinned to
+  the reviewed version.
+- **Vite's `LICENSE.md`** also lists the dependencies bundled into Vite's
+  own Node.js build. Only its core license covers the two helpers Vite
+  injects into the bundle, so the file keeps that section and says why.
+
+### When to regenerate
+
+- Run `make frontend-notices` after `npm ci` whenever `frontend/package-lock.json`
+  changes, or when the app starts importing a new package. Commit the result.
+- `make frontend-notices-check`, part of `make verify`, fails when the file no
+  longer matches the bundle.
+- `make frontend-notices-tests` unit-tests the generator with Node's built-in
+  test runner.
