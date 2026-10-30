@@ -592,6 +592,12 @@
       "imports_internal": [],
       "notable_external_deps": []
     },
+    "gopmgr/tools/duckdb-notices": {
+      "dir": "tools/duckdb-notices",
+      "imported_by_internal": [],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
     "gopmgr/tools/module-notices": {
       "dir": "tools/module-notices",
       "imported_by_internal": [],
