@@ -1,0 +1,19 @@
+{
+  "cli_bytes": 139514232,
+  "cpus": 4,
+  "crates": [
+    "arrow 59.3.2",
+    "datafusion 55.2.0",
+    "parquet 59.3.2",
+    "serde_json 1.0.154",
+    "tokio 1.54.1"
+  ],
+  "datafusion_bigint_sum_overflow": "returned -9223372036854775808",
+  "go_version": "go1.27.3",
+  "goarch": "amd64",
+  "goos": "linux",
+  "run_at": "2026-10-30T02:55:55Z",
+  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+  "source_commit": "5d238a5a43b2bcfb22561b6b962e095b89accd20",
+  "worktree_dirty": false
+}

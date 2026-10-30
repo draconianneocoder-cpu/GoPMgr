@@ -122,6 +122,12 @@ func Compare(c fixtures.TabularCase, cols []string, types []string, rows [][]Cel
 		ok := equalStrings(c.Columns, cols)
 		r.ColumnsMatch = &ok
 		switch {
+		case !ok && sameSet(c.Columns, cols):
+			// The same columns in another order: compare by name, and keep
+			// the reordering visible as a note.
+			notes = true
+			r.Examples["columns_reordered"] = fmt.Sprintf("got %q, file order %q", cols, c.Columns)
+			rows = reorder(rows, cols, c.Columns)
 		case !ok && c.NamesAdvisory && len(cols) == len(c.Columns):
 			notes = true
 			r.Examples["columns_renamed"] = fmt.Sprintf("got %q, file has %q", cols, c.Columns)
@@ -164,6 +170,43 @@ func Compare(c fixtures.TabularCase, cols []string, types []string, rows [][]Cel
 		r.Verdict = VDegenerateOK
 	}
 	return r
+}
+
+func sameSet(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	seen := map[string]int{}
+	for _, s := range a {
+		seen[s]++
+	}
+	for _, s := range b {
+		if seen[s] == 0 {
+			return false
+		}
+		seen[s]--
+	}
+	return true
+}
+
+// reorder permutes each row from the order in have to the order in want.
+// Names are unique here: sameSet holds and duplicate names never reach it.
+func reorder(rows [][]Cell, have, want []string) [][]Cell {
+	pos := map[string]int{}
+	for i, n := range have {
+		pos[n] = i
+	}
+	out := make([][]Cell, len(rows))
+	for i, r := range rows {
+		nr := make([]Cell, len(want))
+		for j, n := range want {
+			if k, ok := pos[n]; ok && k < len(r) {
+				nr[j] = r[k]
+			}
+		}
+		out[i] = nr
+	}
+	return out
 }
 
 func allOK(m map[Class]int) bool {

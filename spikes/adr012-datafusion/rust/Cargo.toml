@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# ADR-012 DF0 Rust workspace. Isolated from the GoPMgr build. Versions are
+# pinned exactly here and by the committed Cargo.lock (DF-A13).
+
+[workspace]
+resolver = "3"
+members = ["engine", "cli"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.94"
+license = "GPL-3.0-or-later"
+publish = false
+
+[workspace.dependencies]
+# Only the features GoPMgr's formats need: no avro, no remote object stores,
+# no encryption, no backtraces.
+datafusion = { version = "=55.2.0", default-features = false, features = ["parquet", "compression", "sql", "recursive_protection", "nested_expressions"] }
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["raw_value", "preserve_order"] }
+
+[profile.release]
+debug = 0
+lto = "thin"
+codegen-units = 4
