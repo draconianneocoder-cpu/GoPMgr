@@ -12,9 +12,19 @@ authorization (decision §8). Nothing here is implemented.
 ## 1. Scope of slice 1
 
 - A **read-only** audit of one chart schedule.
-- It takes the `[]kernel.Task` that the existing loader produces
-  (`loadCurrentProjectSchedule`, as `RunPortfolioAnalytics` uses it).
-- It runs `CalculateCPM` on **a copy**.
+- It loads **exactly the chart named by `chartID`**, checks that the chart
+  belongs to the open project, and records the chart's revision. It does
+  not use `loadCurrentProjectSchedule`. That portfolio helper takes a
+  project ID, picks the newest CPM chart (`chs[0]`) and can fall back to the
+  legacy tasks table, so it could audit a different schedule from the one
+  the findings name.
+- On **a copy** of that chart's tasks, it arms date constraints with
+  `kernel.ApplyConstraintDates` (the project start date and the country work
+  calendar) and then runs `CalculateCPM`, as `scheduleProjectTasks` does for
+  reports. Loading alone leaves SNET, FNLT and MFO dates inactive
+  (`ConstraintArmed` stays false), which would hide SQ-09 violations and give
+  SQ-10 and SQ-11 the wrong float. Without a parseable project start date,
+  SQ-08's binding report and SQ-09 to SQ-11 are reported **not evaluated**.
 - It returns findings. It never writes, repairs or reorders anything.
 - No schema change, no new dependency, no calculation change.
 
@@ -72,10 +82,13 @@ its values.
 | SQ-18 | Reporting context | Missing project start date, missing reporting date, or no baseline available | info | — |
 
 **Notes on the rules:**
-- "First" and "last" in SQ-01 and SQ-02 mean the schedule's start and finish
-  anchors: tasks with ES 0 and tasks with EF equal to the project finish. A
-  schedule where *every* task is an anchor is itself reported (SQ-01/02
-  summary).
+- "First" and "last" in SQ-01 and SQ-02 mean **designated** start and finish
+  anchors: task IDs that the profile or the chart names explicitly, such as
+  the project-start and project-finish milestones. They are never derived
+  from computed dates. In an unconstrained schedule, `CalculateCPM` gives
+  ES 0 to every task without a predecessor, so an ES-based exemption would
+  excuse exactly the tasks SQ-01 must find. With no designated anchor, every
+  start and end of every chain is reported.
 - SQ-15 depends on today's dates. Its finding states the reporting date it
   used.
 - When SQ-04 finds a cycle, CPM-based rules (SQ-09 to SQ-11, SQ-15) do not
@@ -113,9 +126,12 @@ Percentage metrics are reported with numerator and denominator.
 - **Determinism.** Two runs give byte-identical results, including under
   `-race` with concurrent calls.
 - **Scale.** At T2 (50,000 tasks, the S0 fixture), every rule except SQ-16
-  must be O(tasks + links). SQ-16 reuses the existing detector, so its S0 F3
-  cost is reported, not hidden. The audit can be cancelled through
-  `context`.
+  must be O(tasks + links). SQ-16 reuses the existing detector. Since RES-A-1
+  (2026-10-27), that detector finds breach participants through an index
+  instead of the S0 F3 rescan: 45.9 ms at T2 in the
+  [overallocation contract](resource-overallocation-contract.md) benchmarks.
+  Its remaining cost follows the dense demand profiles (RES-B) and is
+  reported, not hidden. The audit can be cancelled through `context`.
 
 ## 6. Test IDs
 
@@ -130,14 +146,17 @@ Percentage metrics are reported with numerator and denominator.
 | SQA-024 | T2 runtime and memory are recorded against the S0 hardware profile. The budget comes from OWN-10; none is invented here |
 | SQA-025 | Cancellation stops the audit within a bounded time |
 | SQA-026 | Labels: no output text claims DCMA certification |
+| SQA-027 | A schedule with a second, disconnected chain (A→B→C plus D→E), with A and E designated as anchors, reports D under SQ-01 and C under SQ-02, although CPM gives D ES 0. With no anchors designated, it reports A and D, then C and E |
+| SQA-028 | A violated SNET, FNLT or MFO date is reported by SQ-09, and float in SQ-10 and SQ-11 reflects the armed constraints; without a project start date those rules read "not evaluated" |
+| SQA-029 | Auditing an older chart of a project with several CPM charts audits that chart, and the findings carry its ID and revision |
 
 ## 7. PR breakdown (each needs authorization)
 
 1. **PS-02a:** the `internal/schedaudit` package (rules, profiles, finding
-   type) with SQA-001 to 023 and 026. No App or UI change.
+   type) with SQA-001 to 023 and 026 to 028. No App or UI change.
 2. **PS-02b:** the read-only `App.AuditSchedule(chartID, reportingDate,
-   profile)` method, with tests on a real encrypted project (SQA-020) and the
-   T2 measurement (SQA-024, 025).
+   profile)` method, with tests on a real encrypted project (SQA-020), chart
+   selection (SQA-029) and the T2 measurement (SQA-024, 025).
 3. **PS-02c:** a read-only findings panel with keyboard navigation and screen
    reader semantics, and an export of the findings into the existing report
    composer.
@@ -149,6 +168,7 @@ Percentage metrics are reported with numerator and denominator.
 | False positives erode trust | The clean fixture; the false-positive review in the exit gate; info severity for judgment rules (SQ-06, 10, 12, 17) |
 | Thresholds treated as universal | Named profiles; values shown in every finding |
 | A certification claim implied | SQA-026; "DCMA-style" wording only |
-| SQ-16 inherits the S0 F3 cost | Reported separately. The F3 fix is the runner-up slice |
+| SQ-16 inherits the detector's remaining cost | Reported separately. RES-A-1 removed the S0 F3 rescan; the dense-profile cost is RES-B's subject |
+| The wrong schedule or inactive constraints are audited | Load the named chart only (SQA-029); arm constraints before CPM (SQA-028) |
 | The flat schedule hides summary-level issues | Recorded as a known limit until S1/S3 adds hierarchy |
 | Dates depend on calendars | Use the kernel's `DayOffset` and country calendars only. No second calendar implementation (AP-03) |

@@ -49,7 +49,7 @@ Approved priority order, with today's status from the
 | PS-01 Normalized connected model (ADR-011, ADR-010 S1–S4) | Critical, foundational | Proposed |
 | PS-02 Schedule-quality audit | High, early parallel | Proposed: [specification](testing/PS-02-schedule-quality-audit-spec.md) |
 | PS-03 File inspection and interoperability (ADR-010 G1–G4) | Critical | Partial |
-| PS-04 Large-schedule storage, audit and Gantt | Critical | Blocked by architecture (S0 F1–F3) |
+| PS-04 Large-schedule storage, audit and Gantt | Critical | Blocked by architecture (S0 F1, F2); F3 fixed by RES-A-1 |
 | PS-05 Connected scheduling workspace | High | Proposed |
 | PS-06 Task and Resource Usage | High | Proposed |
 | PS-07 Resource and financial planning | High, after PS-01 and PS-06 | Partial |
