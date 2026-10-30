@@ -909,6 +909,7 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 	if err != nil {
 		return PortfolioSummaryWire{}, err
 	}
+	defer zeroBytes(dek)
 
 	dir := filepath.Join(user.DataDir, "projects")
 	entries, err := enumerateProjects(dir)
@@ -920,7 +921,7 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 	metrics := make([]analytics.ProjectMetrics, 0, len(entries))
 	portfolioCurrency := ""
 	for _, e := range entries {
-		d, derr := db.InitEncryptedDB(e.Path, dek)
+		d, derr := db.OpenEncryptedReadOnly(e.Path, dek)
 		if derr != nil {
 			continue // unreadable project: skip, matching ProjectsOverview
 		}
@@ -968,6 +969,23 @@ func portfolioMixedCurrencyError(first, second string) error {
 	return fmt.Errorf("portfolio analytics cannot combine %s and %s reporting currencies because foreign exchange conversion is not implemented", currencies[0], currencies[1])
 }
 
+// Work items did not exist in pre-agile projects. An absent table is empty;
+// a present table with missing required columns must return its query error.
+func portfolioWorkItems(d *db.Database, projectID string) ([]agile.WorkItem, error) {
+	ready, err := d.HasTableColumns("agile_work_items")
+	if err != nil {
+		return nil, fmt.Errorf("list work items for committed cost: %w", err)
+	}
+	if !ready {
+		return nil, nil
+	}
+	workItems, err := agile.NewStore(d.Conn, projectID).ListWorkItems("", "", "")
+	if err != nil {
+		return nil, fmt.Errorf("list work items for committed cost: %w", err)
+	}
+	return workItems, nil
+}
+
 // portfolioProjectMetrics builds the trusted hand-off row passed to DuckDB.
 // It deliberately performs all SQLCipher reads and scheduling in Go so the
 // analytics engine remains an ephemeral aggregator, never a second system of
@@ -994,9 +1012,9 @@ func portfolioProjectMetrics(
 	if err != nil {
 		return analytics.ProjectMetrics{}, fmt.Errorf("list stakeholders for committed cost: %w", err)
 	}
-	workItems, err := agile.NewStore(d.Conn, p.ID).ListWorkItems("", "", "")
+	workItems, err := portfolioWorkItems(d, p.ID)
 	if err != nil {
-		return analytics.ProjectMetrics{}, fmt.Errorf("list work items for committed cost: %w", err)
+		return analytics.ProjectMetrics{}, err
 	}
 	committed, err := budget.Compute(p, stakeholders, workItems)
 	if err != nil {
@@ -1038,7 +1056,10 @@ func portfolioScheduleEVM(
 		return kernel.EVMetrics{}, false, nil
 	}
 	tasks, err := loadCurrentProjectSchedule(d, p.ID)
-	if err != nil || len(tasks) == 0 {
+	if err != nil {
+		return kernel.EVMetrics{}, false, err
+	}
+	if len(tasks) == 0 {
 		return kernel.EVMetrics{}, false, nil
 	}
 	if !scheduleProjectTasks(p, tasks) {

@@ -289,6 +289,10 @@ func standardLibrarySection(goroot string, targets []target) (section, error) {
 	sort.Strings(s.Targets)
 	for _, name := range []string{"LICENSE", "PATENTS"} {
 		text, err := readNoticeText(filepath.Join(goroot, name))
+		// Homebrew relocates LICENSE above its libexec GOROOT.
+		if errors.Is(err, os.ErrNotExist) && filepath.Base(filepath.Clean(goroot)) == "libexec" {
+			text, err = readNoticeText(filepath.Join(filepath.Dir(goroot), name))
+		}
 		if err != nil {
 			return section{}, fmt.Errorf("Go standard library: %w", err)
 		}
