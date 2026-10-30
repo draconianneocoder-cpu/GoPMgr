@@ -6,7 +6,7 @@
 # Successor to the retired GitLab pipeline:
 #   verify   -> `make verify` (config + Wails pin + code-map + Go tests + frontend checks): pre-merge gate.
 #   build    -> `wails build -platform linux/amd64` smoke build + artifact (GitLab "build" stage).
-#   lint     -> golangci-lint + `npm run lint`, non-blocking (GitLab allow_failure: true).
+#   lint     -> golangci-lint + `npm run lint`, blocking.
 #   security -> `make memory-scan` (go vet + safety scans), non-blocking (GitLab placeholder stage).
 #
 # GoPMgr also runs a blocking PAdES generator/evidence-harness regression job

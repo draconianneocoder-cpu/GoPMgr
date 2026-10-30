@@ -3,12 +3,18 @@ SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 SPDX-License-Identifier: GFDL-1.3-or-later
 -->
 
-# Read-only project access: candidate evidence
+# Read-only project access: implementation and evidence
 
-**Status: local validation and review passed; publication pending.**
-This describes the BL-1 corrections reviewed on 2026-10-29, based on PR #166
-(`3077ab2`) and `main` at `475ceba`. It is not a merged implementation or
-release claim. DuckDB replacement is outside this slice.
+**Status: merged through [PR #166](https://github.com/draconianneocoder-cpu/GoPMgr/pull/166)
+on 2026-10-29.** The reviewed head was
+`d7f770002eef6d9685e3c95d994682e6869bec91`; the merge commit is
+`14c921d8dc1dda70fbd71e02346a5d45e75c47fe`. Their Git trees are identical.
+All eight checks passed at the reviewed head in
+[CI run 40928365729](https://github.com/draconianneocoder-cpu/GoPMgr/actions/runs/40928365729).
+This establishes source qualification, not a packaged release or DuckDB
+replacement. The local evidence below records the pre-publication validation
+of the corrections based on the original PR head (`3077ab2`) and `main`
+at `475ceba`; those checks are not claimed to have been rerun by this status update.
 
 ## Requirements and verification
 
@@ -62,7 +68,7 @@ The required-project-column regression failed in all 22 cases before the
 correction. Known additive omissions already passed, so the correction is
 limited to rejecting malformed schemas. Post-correction focused project,
 legacy ordering and live-WAL tests passed. Race checks for the corrected
-export aliases and malformed stats tables passed. These focused results do
+export aliases and malformed stats tables passed. These focused results
 preceded the approved coordination-only contract. Four additional export cases
 reproduced a path-resolution bypass before correction: cleaning `..` before
 following a symlink made the guard inspect a different missing destination
@@ -108,9 +114,10 @@ without merging on 2026-10-29: Wails 2.17.0 is already on main, and the
 remaining DuckDB 2.0 upgrade is outside the qualified retirement sequence.
 DuckDB remains at the existing version until the separate Slice J cutover.
 
-[PR #163](https://github.com/draconianneocoder-cpu/GoPMgr/pull/163) remains
-open until the corrected #166 candidate qualifies. Its immutable head
-`4e4fda007067972d6b79e29dec7d731f6caa326d` retains additional hot-journal,
+[PR #163](https://github.com/draconianneocoder-cpu/GoPMgr/pull/163) was closed
+without merging on 2026-10-29, superseded by #166. Its branch
+`claude/slice-b-readonly-access` remains available at immutable head
+`4e4fda007067972d6b79e29dec7d731f6caa326d`, preserving additional hot-journal,
 descriptor-cleanup, cancellation, damage and administrator live-WAL-copy
 fixtures in `internal/db/readonly_test.go` and `project_readonly_test.go`.
 Those fixtures and their original evidence remain inspectable; their entire
@@ -120,7 +127,9 @@ interface. Preserve useful fixture coverage separately before deleting its
 branch; a superseded implementation is not evidence that its unique tests
 are unnecessary.
 
-Native Windows/Linux and signed installed-app checks have not run for this
-candidate. Existing npm audit output identifies the low-severity deepmerge
+The exact-head CI run includes Linux source tests and a Wails Linux build.
+Native Windows and signed installed-app lifecycle checks remain unverified;
+the Linux CI build is not installation or upgrade evidence. The recorded npm
+audit output identified the low-severity deepmerge
 advisory through the Svelte plugin with no available fix; this slice does not
 change dependencies or suppress that advisory.

@@ -207,24 +207,49 @@ func sqlSingleQuote(s string) string { return strings.ReplaceAll(s, "'", "''") }
 
 // ImportTabular reads a single local CSV/Parquet/JSON file (an explicit,
 // user-chosen path) into an in-memory Dataset. It never installs an
-// extension from the network (harden), scopes file access to the file's
-// directory as defense-in-depth, and caps the row count. `.xlsx` is not
-// handled here — that stays on the frontend `read-excel-file` reader.
+// extension from the network (harden), rejects glob-bearing paths, and caps
+// the row count. `.xlsx` stays on the frontend `read-excel-file` reader.
 func (e *duckEngine) ImportTabular(ctx context.Context, path string) (Dataset, error) {
 	if e.initErr != nil {
 		return Dataset{}, e.initErr
 	}
 
-	abs, err := filepath.Abs(path)
+	if strings.ContainsAny(path, "*?[") {
+		return Dataset{}, ErrAmbiguousImportPath
+	}
+	// Resolve before Abs cleans symlink/.., so validation and the reader select
+	// the same source. Keep format selection tied to the user's chosen name.
+	resolved, err := filepath.EvalSymlinks(path)
 	if err != nil {
 		return Dataset{}, fmt.Errorf("analytics: resolve path: %w", err)
 	}
-	if fi, statErr := os.Stat(abs); statErr != nil || fi.IsDir() {
+	abs, err := filepath.Abs(resolved)
+	if err != nil {
+		return Dataset{}, fmt.Errorf("analytics: resolve path: %w", err)
+	}
+	if strings.ContainsAny(abs, "*?[") {
+		return Dataset{}, ErrAmbiguousImportPath
+	}
+	sourceInfo, statErr := os.Stat(abs)
+	if statErr != nil || sourceInfo.IsDir() {
 		return Dataset{}, fmt.Errorf("analytics: not a readable file: %s", abs)
 	}
-	reader, ok := tabularReader(filepath.Ext(abs))
+	readerPath, err := filepath.Abs(path)
+	if err != nil {
+		return Dataset{}, fmt.Errorf("analytics: resolve path: %w", err)
+	}
+	if strings.ContainsAny(readerPath, "*?[") {
+		return Dataset{}, ErrAmbiguousImportPath
+	}
+	// Preserve selected-path partition inference only when source identity is
+	// confirmed. Cleaning symlink/.. may select another file or a missing one;
+	// an identity mismatch or unavailable identity uses the canonical source.
+	if selected, err := os.Stat(readerPath); err != nil || !os.SameFile(sourceInfo, selected) {
+		readerPath = abs
+	}
+	reader, ok := tabularReader(filepath.Ext(path))
 	if !ok {
-		return Dataset{}, fmt.Errorf("analytics: unsupported file type %q (want .csv/.tsv/.parquet/.json)", filepath.Ext(abs))
+		return Dataset{}, fmt.Errorf("analytics: unsupported file type %q (want .csv/.tsv/.parquet/.json)", filepath.Ext(path))
 	}
 
 	conn, err := e.db.Conn(ctx)
@@ -236,13 +261,11 @@ func (e *duckEngine) ImportTabular(ctx context.Context, path string) (Dataset, e
 	if err := harden(ctx, conn); err != nil {
 		return Dataset{}, err
 	}
-	// Defense-in-depth: scope file access to the chosen file's directory.
-	// Best-effort (the exact option name/semantics vary by DuckDB version);
-	// the hard guarantees are that only `abs` is ever read, no network
-	// extension can install (harden), and the database is in-memory.
+	// Retain the best-effort setting, but it does not enforce confinement while
+	// external access is enabled. The path checks above prevent glob expansion.
 	_, _ = conn.ExecContext(ctx, fmt.Sprintf("SET allowed_directories=['%s']", sqlSingleQuote(filepath.Dir(abs))))
 
-	q := fmt.Sprintf("SELECT * FROM %s('%s') LIMIT %d", reader, sqlSingleQuote(abs), maxImportRows)
+	q := fmt.Sprintf("SELECT * FROM %s('%s') LIMIT %d", reader, sqlSingleQuote(readerPath), maxImportRows)
 	rows, err := conn.QueryContext(ctx, q)
 	if err != nil {
 		return Dataset{}, fmt.Errorf("analytics: read file: %w", err)

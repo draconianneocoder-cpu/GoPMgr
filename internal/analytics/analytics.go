@@ -26,6 +26,10 @@ import (
 // Callers should treat it as "feature not installed", not as a failure.
 var ErrAnalyticsUnavailable = errors.New("analytics: engine not built in (rebuild with -tags duckdb)")
 
+// ErrAmbiguousImportPath rejects glob-bearing filenames or folders until the
+// replacement reader can preserve literal paths without expanding selection.
+var ErrAmbiguousImportPath = errors.New("analytics: selected path contains glob characters (*, ?, [); rename the file or folder before importing")
+
 // ProjectMetrics is one project's pre-computed figures, supplied by the
 // caller. The engine never reads these from disk — the app loads them
 // from SQLCipher and passes them in.
@@ -90,7 +94,8 @@ type Engine interface {
 	// ImportTabular reads a single local CSV/Parquet/JSON file (an explicit,
 	// user-chosen path) into a Dataset. Implementations must restrict file
 	// access to that path and must not enable network or extension
-	// auto-install. .xlsx is intentionally not handled here (see the
+	// auto-install. DuckDB temporarily rejects glob-bearing paths with
+	// ErrAmbiguousImportPath. .xlsx is intentionally not handled here (see the
 	// file-import evaluation in the design doc).
 	ImportTabular(ctx context.Context, path string) (Dataset, error)
 
