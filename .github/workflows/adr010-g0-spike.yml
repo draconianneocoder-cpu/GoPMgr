@@ -1,0 +1,309 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# ADR-010 G0 transport evidence (P01, authorized 2026-10-24; Windows
+# diagnostics authorized 2026-10-25). This is not a release gate and builds
+# nothing GoPMgr ships. It runs the isolated spike in
+# spikes/adr010-g0-transport on real Linux, macOS and Windows runners, x64
+# and Arm, and uploads the evidence. The job reports; the evidence file
+# records PASS, FAIL or BLOCKED for each scenario. It runs only when the
+# spike or this file changes.
+name: ADR-010 G0 spike
+
+on:
+  pull_request:
+    paths:
+      - "spikes/adr010-g0-transport/**"
+      - ".github/workflows/adr010-g0-spike.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: adr010-g0-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evidence:
+    name: G0 evidence, not a gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-26.04, jdk: linux-x64 }
+          - { os: ubuntu-24.04-arm, jdk: linux-aarch64 }
+          - { os: macos-15, jdk: mac-aarch64 }
+          # Closest hosted image to GoPMgr's macOS 13 minimum (Apple silicon).
+          - { os: macos-14, jdk: mac-aarch64 }
+          - { os: windows-2025, jdk: windows-x64 }
+          # Older Windows build (20348). Not a substitute for Windows 10 or
+          # 11 client validation, which needs owner-provided machines.
+          - { os: windows-2022, jdk: windows-x64 }
+          - { os: windows-11-arm, jdk: windows-aarch64 }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: spikes/adr010-g0-transport/host/go.mod
+          cache: false
+
+      - name: Name the evidence files
+        run: |
+          echo "EVIDENCE=$RUNNER_TEMP/g0-${{ matrix.os }}.jsonl" >> "$GITHUB_ENV"
+          echo "OFFLINE_EVIDENCE=$RUNNER_TEMP/g0-${{ matrix.os }}-offline.jsonl" >> "$GITHUB_ENV"
+
+      - name: Fetch the pinned JDK and Maven (checksums verified)
+        run: |
+          out="$(bash spikes/adr010-g0-transport/scripts/toolchain.sh "${{ matrix.jdk }}" "$RUNNER_TEMP/toolchain")"
+          jdk="$(echo "$out" | sed -n 's/^JDK_HOME=//p')"
+          mvnbin="$(echo "$out" | sed -n 's/^MAVEN_BIN=//p')"
+          if [ "$RUNNER_OS" = Windows ]; then
+            jdk="$(cygpath -m "$jdk")"
+            mvnbin="$(cygpath -w "$mvnbin")"
+          fi
+          echo "JAVA_HOME=$jdk" >> "$GITHUB_ENV"
+          echo "$mvnbin" >> "$GITHUB_PATH"
+          "$jdk/bin/java" -version
+
+      - name: Build the worker
+        run: mvn -B -q -f spikes/adr010-g0-transport/worker/pom.xml -DskipTests package
+
+      - name: Build a jlink runtime for the worker
+        run: |
+          jar=spikes/adr010-g0-transport/worker/target/g0-worker.jar
+          mods="$("$JAVA_HOME/bin/jdeps" --ignore-missing-deps --multi-release 21 --print-module-deps "$jar")"
+          echo "modules: $mods"
+          rt="$RUNNER_TEMP/g0-runtime"
+          if [ "$RUNNER_OS" = Windows ]; then
+            rt="$(cygpath -m "$rt")"
+          fi
+          "$JAVA_HOME/bin/jlink" --add-modules "$mods" --strip-debug --no-header-files --no-man-pages --output "$rt"
+          echo "G0_RUNTIME=$rt" >> "$GITHUB_ENV"
+          du -sh "$rt" || true
+
+      - name: Unit tests (host)
+        working-directory: spikes/adr010-g0-transport/host
+        run: go test ./...
+
+      - name: Build the probe
+        working-directory: spikes/adr010-g0-transport/host
+        run: |
+          exe=""
+          if [ "$RUNNER_OS" = Windows ]; then exe=".exe"; fi
+          go build -o "$RUNNER_TEMP/g0probe$exe" .
+          echo "G0_PROBE=$RUNNER_TEMP/g0probe$exe" >> "$GITHUB_ENV"
+
+      - name: Run the probe on the jlink runtime
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          "$G0_PROBE" -java "$G0_RUNTIME/bin/java" -runtime jlink \
+            -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar \
+            -head "$HEAD_SHA" -out "$EVIDENCE"
+
+      - name: Race-detector run (host concurrency)
+        # Go's race detector on the probe's own goroutines: session
+        # handlers, the pairing listener and the job lifecycle. Timings from
+        # this run are not used. Windows on Arm has no race detector.
+        if: matrix.os != 'windows-11-arm'
+        working-directory: spikes/adr010-g0-transport/host
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          out="$RUNNER_TEMP/g0-${{ matrix.os }}-race.jsonl"
+          log="$RUNNER_TEMP/g0-race.log"
+          exe=""
+          if [ "$RUNNER_OS" = Windows ]; then exe=".exe"; fi
+          if ! CGO_ENABLED=1 go build -race -o "$RUNNER_TEMP/g0probe-race$exe" . 2>"$log"; then
+            echo "BLOCKED: the race detector could not be built here: $(tail -3 "$log" | tr '\n' ' ')" | tee "$out"
+            exit 0
+          fi
+          "$RUNNER_TEMP/g0probe-race$exe" -java "$G0_RUNTIME/bin/java" -runtime jlink-race \
+            -jar "$GITHUB_WORKSPACE/spikes/adr010-g0-transport/worker/target/g0-worker.jar" \
+            -scenarios handshake,duplex,cancel,replay,impersonate,connect-flood,concurrent,tree-kill,kill,second-instance \
+            -cancel-runs 5 -head "$HEAD_SHA" -out "$out" 2>"$log" || true
+          races="$(grep -c 'WARNING: DATA RACE' "$log" || true)"
+          echo "race detector: ${races:-0} data race(s)"
+          if [ "${races:-0}" != 0 ]; then
+            echo "FAIL: the race detector found $races data race(s) in the probe host" | tee -a "$out"
+            grep -A24 'WARNING: DATA RACE' "$log" | head -150
+          fi
+
+      - name: Offline run (Linux, empty network namespace)
+        if: runner.os == 'Linux'
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Unprivileged user namespaces may be restricted by AppArmor.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          if unshare -rn true; then
+            unshare -rn "$G0_PROBE" -java "$G0_RUNTIME/bin/java" -runtime jlink-offline \
+              -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar \
+              -scenarios handshake,duplex,cancel,tree-kill,bridge-selftest,detector-self-check -cancel-runs 10 \
+              -head "$HEAD_SHA" -out "$OFFLINE_EVIDENCE"
+          else
+            echo "BLOCKED: no unprivileged network namespace on this runner" | tee "$OFFLINE_EVIDENCE"
+          fi
+
+      - name: Fedora userland run (Linux x64, container)
+        # GoPMgr ships an RPM for Fedora/RHEL/openSUSE. Same kernel as the
+        # runner; this checks the host binary and the jlink image on a
+        # Fedora userland. The image is pinned by digest. --init gives the
+        # container a real PID 1, so orphans are reaped as on a desktop.
+        # The runner's own user runs it, as a desktop user would, and so
+        # the evidence file stays readable for the upload.
+        if: matrix.os == 'ubuntu-26.04'
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          FEDORA_IMAGE: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+        run: |
+          out="$RUNNER_TEMP/g0-${{ matrix.os }}-fedora.jsonl"
+          if ! command -v docker >/dev/null 2>&1; then
+            echo "BLOCKED: no docker on this runner" | tee "$out"
+            exit 0
+          fi
+          docker run --rm --init --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "$RUNNER_TEMP:$RUNNER_TEMP" -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+            -w "$GITHUB_WORKSPACE" "$FEDORA_IMAGE" \
+            "$G0_PROBE" -java "$G0_RUNTIME/bin/java" -runtime jlink-fedora44 \
+            -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar \
+            -scenarios handshake,duplex,cancel,tree-kill,crash,oom,impersonate,replay,bridge-selftest,detector-self-check \
+            -cancel-runs 10 -head "$HEAD_SHA" -out "$out"
+
+      - name: Build the network check (macOS, Windows)
+        if: runner.os != 'Linux'
+        run: |
+          "$JAVA_HOME/bin/javac" -d "$RUNNER_TEMP/netcheck" spikes/adr010-g0-transport/scripts/NetCheck.java
+          echo "G0_NETCHECK=$RUNNER_TEMP/netcheck" >> "$GITHUB_ENV"
+
+      - name: Signed run (macOS, ad-hoc signature with hardened runtime)
+        # Test signing only (ADR-010 G1-Q4). An ad-hoc signature needs no
+        # key or identity. It turns on the hardened runtime, as a Developer
+        # ID build would. Variant "jit" grants only allow-jit, the minimum
+        # HotSpot needs. Variant "jit-dlv" also disables library
+        # validation. Limit: an ad-hoc signature has no Team ID, so this
+        # cannot show Team ID library validation; that needs a test
+        # Developer ID identity.
+        if: runner.os == 'macOS'
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          plist() {
+            printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' \
+              '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+              '<plist version="1.0"><dict>'
+            for k in "$@"; do printf '<key>%s</key><true/>\n' "$k"; done
+            printf '%s\n' '</dict></plist>'
+          }
+          plist com.apple.security.cs.allow-jit > "$RUNNER_TEMP/ent-jit.plist"
+          plist com.apple.security.cs.allow-jit com.apple.security.cs.disable-library-validation > "$RUNNER_TEMP/ent-jit-dlv.plist"
+          # Sign every Mach-O file with the hardened runtime: executables
+          # with the entitlements, libraries without.
+          sign_tree() {
+            find "$1" -type f -print0 | while IFS= read -r -d '' f; do
+              case "$(file -b "$f")" in
+                *Mach-O*executable*)
+                  codesign --force --sign - --options runtime --entitlements "$2" "$f" || exit 1 ;;
+                *Mach-O*)
+                  codesign --force --sign - --options runtime "$f" || exit 1 ;;
+              esac
+            done
+          }
+          for variant in jit jit-dlv; do
+            rt="$RUNNER_TEMP/g0-runtime-$variant"
+            out="$RUNNER_TEMP/g0-${{ matrix.os }}-signed-$variant.jsonl"
+            rm -rf "$rt"
+            if ! cp -R "$G0_RUNTIME" "$rt" || ! sign_tree "$rt" "$RUNNER_TEMP/ent-$variant.plist" \
+              || ! codesign --verify --strict --verbose=2 "$rt/bin/java"; then
+              echo "BLOCKED: ad-hoc signing ($variant) failed" | tee "$out"
+              continue
+            fi
+            codesign -d --entitlements - "$rt/bin/java" || true
+            codesign -dv "$rt/bin/java" 2>&1 | grep -E 'flags|Signature|TeamIdentifier' || true
+            "$G0_PROBE" -java "$rt/bin/java" -runtime "jlink-adhoc-hardened-$variant" \
+              -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar \
+              -scenarios handshake,duplex,cancel,tree-kill,crash,bridge-selftest,detector-self-check -cancel-runs 10 \
+              -head "$HEAD_SHA" -out "$out" || echo "probe exited $?"
+          done
+
+      - name: Offline run (macOS, sandbox denies IP networking)
+        # No unprivileged network namespace on macOS. sandbox-exec denies
+        # IP traffic to the probe and to the worker it starts; Unix-domain
+        # sockets stay allowed. The profile is checked first with the
+        # worker's own java: it must connect outside the sandbox and fail
+        # inside it.
+        if: runner.os == 'macOS'
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          prof='(version 1)(allow default)(deny network-outbound (remote ip "*:*"))(deny network-inbound (local ip "*:*"))'
+          check=("$G0_RUNTIME/bin/java" -cp "$G0_NETCHECK" NetCheck)
+          if ! "${check[@]}"; then
+            echo "BLOCKED: no network outside the sandbox, so the check proves nothing" | tee "$OFFLINE_EVIDENCE"
+          elif ! sandbox-exec -p "$prof" /usr/bin/true; then
+            echo "BLOCKED: sandbox-exec did not accept the profile" | tee "$OFFLINE_EVIDENCE"
+          elif sandbox-exec -p "$prof" "${check[@]}"; then
+            echo "BLOCKED: the sandbox profile did not stop an IP connection" | tee "$OFFLINE_EVIDENCE"
+          else
+            sandbox-exec -p "$prof" "$G0_PROBE" -java "$G0_RUNTIME/bin/java" -runtime jlink-offline-sandbox \
+              -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar \
+              -scenarios handshake,duplex,cancel,tree-kill,bridge-selftest,detector-self-check -cancel-runs 10 \
+              -head "$HEAD_SHA" -out "$OFFLINE_EVIDENCE"
+          fi
+
+      - name: Offline run (Windows, firewall blocks the worker's IP traffic)
+        # Windows Firewall rules block inbound and outbound IP traffic for
+        # the jlink java.exe that runs the worker. Named pipes are not IP
+        # traffic; AF_UNIX results show whether the rule touches it. The
+        # rule is checked first with that same java.exe: it must connect
+        # without the rule and fail with it.
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $rtJava = [IO.Path]::GetFullPath((Join-Path $env:G0_RUNTIME 'bin/java.exe'))
+          $netcheck = [IO.Path]::GetFullPath($env:G0_NETCHECK)
+          $before = (& $rtJava -cp $netcheck NetCheck 2>&1 | Out-String).Trim()
+          Write-Output "without the rule: $before"
+          if ($LASTEXITCODE -ne 0) {
+            "BLOCKED: no network without the rule, so the check proves nothing" | Tee-Object -FilePath $env:OFFLINE_EVIDENCE
+            exit 0
+          }
+          Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True
+          $rules = foreach ($dir in 'Outbound', 'Inbound') {
+            New-NetFirewallRule -DisplayName "g0-offline-$dir" -Direction $dir -Program $rtJava -Action Block
+          }
+          try {
+            $after = (& $rtJava -cp $netcheck NetCheck 2>&1 | Out-String).Trim()
+            Write-Output "with the rule: $after"
+            if ($LASTEXITCODE -eq 0) {
+              "BLOCKED: the firewall rule did not stop an IP connection" | Tee-Object -FilePath $env:OFFLINE_EVIDENCE
+              exit 0
+            }
+            & $env:G0_PROBE -java $rtJava -runtime jlink-offline-firewall `
+              -jar spikes/adr010-g0-transport/worker/target/g0-worker.jar `
+              -transports uds-nio,npipe-dual,npipe-async `
+              -scenarios handshake,duplex,cancel,tree-kill,bridge-selftest,detector-self-check -cancel-runs 10 `
+              -head $env:HEAD_SHA -out $env:OFFLINE_EVIDENCE
+          } finally {
+            $rules | Remove-NetFirewallRule
+          }
+
+      - name: Show the evidence
+        if: always()
+        run: |
+          cat "$RUNNER_TEMP"/g0-${{ matrix.os }}*.jsonl 2>/dev/null || true
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: g0-evidence-${{ matrix.os }}
+          path: ${{ runner.temp }}/g0-${{ matrix.os }}*.jsonl
+          if-no-files-found: warn

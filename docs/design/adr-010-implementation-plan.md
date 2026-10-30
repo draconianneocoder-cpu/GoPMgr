@@ -466,6 +466,8 @@ phases or combine these slices into one PR.
 
 **Authorization (2026-10-24):** P00, P01 and P02 are authorized as separate small PRs (decision record §5.1). P03 onward needs its own accepted work slice; P01 code must not become a production worker, and P02 must not migrate any project.
 
+**Authorization (2026-10-26):** P04 (G1) is authorized as slices G1-1 to G1-9 ([P04 authorization](../review/ADR-010-G1-P04-authorization-decision.md)). MPXJ import, project database migrations and release-readiness claims stay unauthorized.
+
 Each PR states exact HEAD, changed files, invariant IDs, new tests, raw pass/blocked results, source/fixture hashes, performance change, threat/law/license change, migration/rollback and scope exclusions. Stop if old/source behavior differs materially from baseline.
 
 ### 8.3 Go/no-go gates
@@ -507,6 +509,18 @@ Each PR states exact HEAD, changed files, invariant IDs, new tests, raw pass/blo
 | OWN-11 | New Go dependencies: `google.golang.org/grpc`, `google.golang.org/protobuf` and, for Windows named pipes, `github.com/Microsoft/go-winio` | At G1, verify security, licensing, compatibility and reproducible builds; review the full graph, preserve patched x/net/x/text and record additions in `docs/DEPENDENCIES.md` | CONDITIONALLY APPROVED for bounded G1 engineering; reaffirmed [2026-10-28](../review/ADR-010-G1-authorization-clarification-2026-10-28.md); qualification still required |
 
 Document owner decisions in an accepted ADR and test strategy. An agent must not mark `OPEN` as `APPROVED` through interpretation, code edits or “the test passes.” OWN-01 through OWN-10 copy the 2026-10-24 dispositions in the [decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md) §2. OWN-11 reflects the later [2026-10-28 clarification](../review/ADR-010-G1-authorization-clarification-2026-10-28.md), which governs G1 permission only. All associated conditions remain binding.
+
+**G1 design decisions (2026-10-26).** These answer the G1 transport design's open questions under OWN-02, OWN-03 and OWN-11. They change none of the states above. The [decision record](../review/ADR-010-G1-open-questions-decision.md) governs their wording.
+
+| ID | Item | State | Applied in |
+|---|---|---|---|
+| G1-Q1 | Transport fallback | APPROVED — one explicitly selected, validated transport per platform and release; no silent fallback | [G1 design](adr-010-g1-transport-design.md) §4 |
+| G1-Q2 | Unix process containment | CONDITIONALLY APPROVED — process groups for the trusted bundled worker; `setsid` residual documented; no containment claim | G1 design §6 |
+| G1-Q3 | Unix gRPC implementation | APPROVED DIRECTION — prefer JDK NIO; final selection after the target-hardware comparison | G1 design §4.1 |
+| G1-Q4 | Windows and signing validation | APPROVED TEST POLICY; RESOURCES PENDING | G1 design §8 |
+| G1-Q5 | Worker shutdown grace | APPROVED DIRECTION — provisional minimum 1 s; final value from p99 on approved hardware | G1 design §5.1 |
+| G1-W | Windows transport | RETAINED — `npipe-async` preferred, conditionally; `npipe-dual` and AF_UNIX never automatic fallbacks | G1 design §4, §8 |
+| P04 | G1 slices G1-1 to G1-9 | APPROVED (2026-10-26) — in order, small PRs; conditions in the [P04 authorization](../review/ADR-010-G1-P04-authorization-decision.md) | [G1 implementation plan](adr-010-g1-implementation-plan.md) |
 
 ## 11. Primary references and exact-file evidence
 
