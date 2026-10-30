@@ -254,6 +254,68 @@ func TestModuleSectionRequiresANotice(t *testing.T) {
 	}
 }
 
+func TestStandardLibrarySectionFindsPackagedNoticesWithoutMaskingErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name, rootName, primary, parent, want string
+		directory, wantError                  bool
+	}{
+		{name: "upstream root wins", primary: "root license", parent: "other license", want: "root license\n"},
+		{name: "Homebrew relocated license", parent: "parent license", want: "parent license\n"},
+		{name: "missing both", wantError: true},
+		{name: "unrelated parent", rootName: "goroot", parent: "parent license", wantError: true},
+		{name: "primary directory", directory: true, parent: "parent license", wantError: true},
+		{name: "primary empty", primary: "\n\n", parent: "parent license", wantError: true},
+		{name: "primary invalid UTF8", primary: "\xff", parent: "parent license", wantError: true},
+		{name: "parent invalid UTF8", parent: "\xff", wantError: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			parent := t.TempDir()
+			rootName := tc.rootName
+			if rootName == "" {
+				rootName = "libexec"
+			}
+			root := filepath.Join(parent, rootName)
+			if err := os.Mkdir(root, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			files := map[string]string{
+				filepath.Join(root, "PATENTS"):   "root patents",
+				filepath.Join(parent, "PATENTS"): "other patents",
+			}
+			if tc.primary != "" {
+				files[filepath.Join(root, "LICENSE")] = tc.primary
+			}
+			if tc.parent != "" {
+				files[filepath.Join(parent, "LICENSE")] = tc.parent
+			}
+			for path, content := range files {
+				if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.directory {
+				if err := os.Mkdir(filepath.Join(root, "LICENSE"), 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			got, err := standardLibrarySection(root, nil)
+			if tc.wantError {
+				if err == nil {
+					t.Fatal("invalid or missing license was accepted")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := []noticeFile{{Name: "LICENSE", Text: tc.want}, {Name: "PATENTS", Text: "root patents\n"}}
+			if !reflect.DeepEqual(got.Files, want) {
+				t.Fatalf("notices = %+v, want %+v", got.Files, want)
+			}
+		})
+	}
+}
+
 func TestRenderIsDeterministic(t *testing.T) {
 	targets := []target{{GOOS: "windows", GOARCH: "amd64"}, {GOOS: "linux", GOARCH: "amd64"}}
 	std := section{Heading: "std", Description: "the Go standard library and runtime",

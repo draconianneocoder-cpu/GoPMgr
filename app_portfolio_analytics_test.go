@@ -7,8 +7,11 @@ package main
 
 import (
 	"context"
+	"reflect"
 	"strings"
 	"testing"
+
+	"gopmgr/internal/db"
 )
 
 func TestRunPortfolioAnalyticsRequiresOneReportingCurrency(t *testing.T) {
@@ -43,6 +46,47 @@ func TestRunPortfolioAnalyticsRequiresOneReportingCurrency(t *testing.T) {
 	}
 	if got.TotalBudgetedCost != "0.00" || got.TotalCommittedCost != "0.00" {
 		t.Fatalf("USD-only money = budget %q committed %q, want 0.00/0.00", got.TotalBudgetedCost, got.TotalCommittedCost)
+	}
+}
+
+func TestRunPortfolioAnalyticsDoesNotUpgradeAProject(t *testing.T) {
+	app := newEncryptionProjectTestApp(t)
+	app.ctx = context.Background()
+	if _, err := app.CreateAccount("ada", "Ada", "ada-strong-password", false); err != nil {
+		t.Fatal(err)
+	}
+	acceptNoRecoveryCodes(t, app)
+	project, err := app.CreateProject("Legacy Portfolio", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := app.currentSession()
+	dek, err := app.sessionDEK(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer zeroBytes(dek)
+	d, err := db.InitEncryptedDB(project.Path, dek)
+	if err != nil {
+		t.Fatal(err)
+	}
+	omitAppSQLiteColumn(t, d, "stakeholders", "hourly_rate_minor_units")
+	freezeAppDeleteJournal(t, d)
+	if err := d.Close(); err != nil {
+		t.Fatal(err)
+	}
+	removeAppSQLiteSidecars(t, project.Path)
+	before := stampAppDBFile(t, project.Path)
+
+	got, err := app.RunPortfolioAnalytics()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ProjectCount != 1 {
+		t.Fatalf("rollup = %+v", got)
+	}
+	if !reflect.DeepEqual(before, stampAppDBFile(t, project.Path)) {
+		t.Fatal("portfolio analytics changed the project file")
 	}
 }
 

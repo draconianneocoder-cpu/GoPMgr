@@ -325,6 +325,15 @@ jobs:
     runs-on: ubuntu-latest
     steps: []
 `),
+		".github/workflows/adr010-g0-spike.yml": []byte(`
+name: ADR-010 G0 spike
+on:
+  pull_request: {}
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    steps: []
+`),
 		".golangci.yml": []byte(`
 version: "2"
 linters: {}

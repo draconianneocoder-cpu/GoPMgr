@@ -95,7 +95,7 @@ needs the same update here.
 
 ---
 
-## Root package (`gopmgr`, package `main`) — 72.2%
+## Root package (`gopmgr`, package `main`) — 72.8%
 
 The Wails desktop app entry point, App struct (bound to the frontend via
 `window.go.main.App`), and CLI/headless dispatch. Most of this package's
@@ -106,6 +106,7 @@ on real outcomes rather than mocking collaborators.
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
+| `readonly_legacy_test.go` | 9 | Non-mutating plaintext reads, source-path identity, legacy financial values, schedule/export integrity, administrator costs, stats and audit export | file-backed integration | Literal money totals plus migrated-copy parity, timestamp counterexamples, malformed empty tables, source/target symlink traversal, export destination aliases and unchanged source/copy bytes; qualification evidence is recorded in `docs/testing/read-only-project-access.md`. |
 | `app_project_save_test.go` | 1 | Complete General metadata save, exact Budget, classification, audit atomicity and retry | integration, fault-injection | Uses the real file-backed App writer to prove every General field persists through one metadata call with one audit event. An audit-insert refusal rolls back all fields, returns no success data, leaves the event count unchanged, and permits a retry with a valid audit chain. |
 | `main_test.go` (extended 2026-08-18, extended again 2026-09-01) | 16 | `logTail`, `GenerateBugReport` (incl. its `debug.RecentReports()` section), `App.SecureArchive`'s `debug.Capture` wiring, `buildAppMenu` (darwin + non-darwin), `buildAppOptions`, native-close guard state (sequential and concurrent), `headlessProjectMode` | unit, fixture, table-driven, concurrency/race, integration | **2026-09-01**: `TestGenerateBugReport_IncludesRecentStructuredReports` proves `debug.RecentReports()` content reaches the bug-report file (marker-based assertion, not exact buffer contents — `internal/debug`'s ring buffer is process-global package state shared with other tests in this binary). `TestSecureArchive_CapturesReportForBugReport` is the end-to-end proof for the whole feature: creates and opens a real encrypted project, closes `a.db` to force the real `ARCHIVE_SETTINGS_LOAD_FAILED` failure through the actual Wails-bound `App.SecureArchive` (the same method `ProjectSettings.svelte`'s `createBackup` calls), then confirms `App.GenerateBugReport` surfaces it — proving the producer (`debug.Wrap`) → App boundary (`debug.Capture`) → consumer (`GenerateBugReport`) pipeline end-to-end through production code, not just through `internal/debug`'s and `internal/admin`'s unit tests in isolation. The native-close tests prove the Go state machine allows a documented pre-ready close, blocks every ready close without a frontend decision, invokes Wails quit only through the guarded completion path, and consumes exactly one permit before blocking again. Event delivery and OS-level veto behavior remain packaged-app acceptance work tracked in `docs/beta-release-backlog.md`. `TestHeadlessProjectMode` covers each of the function's seven independent OR-clauses individually plus the all-false case — a dropped clause would silently route a CLI invocation into the wrong startup path (GUI vs. headless maintenance mode). **Concurrency**: the original native-close tests only ran sequentially, so a clean `-race` run wasn't proof the mutex actually prevented concurrent corruption. `TestNativeCloseGuard_ConcurrentAccessRaceFree` runs 200 iterations × 3 goroutines against one `*App` under `-race`; removing `shouldPreventNativeClose`'s lock reproduced three distinct data races (on `nativeClosePermit` and `nativeCloseGuardReady` in `main.go`, plus a self-race inside the function's own read-then-write), all of which disappeared once the lock was restored — confirming the test is load-bearing, not just coverage. `TestNativeCloseGuard_ConcurrentEnableRevokesPermits_Observation` demonstrates a real TOCTOU gap: because `EnableNativeCloseGuard`, `completeNativeClose`, and `shouldPreventNativeClose` are three independent critical sections, a concurrent `EnableNativeCloseGuard` call can revoke a permit `completeNativeClose` just granted before its own quit callback consumes it (observed in roughly a third of 500 concurrent trials). This isn't asserted as a bug — the split is scheduler-dependent and a future fix that closes the gap should still pass — so only `granted != 0` is a hard assertion; the ratio is logged for a human reader. The gap is confirmed unreachable from the current frontend: `frontend/src/lib/native-close.ts` calls `EnableNativeCloseGuard` once at startup and otherwise only sequentially after `CompleteNativeClose` has already rejected, and both of `completeNativeClose`'s Go-side error returns happen before the permit is ever set — so the frontend never has an in-flight granted permit for a concurrent call to revoke. `main.go` gained a doc comment recording two facts traced against the vendored `wailsapp/wails/v2@v2.13.0` module: every quit trigger (native window-close on all three platforms, macOS Cmd+Q/App-menu Quit, and this file's own non-darwin Quit menu item) funnels through the same dispatcher `case 'Q': sender.Quit()` path into `beforeClose`; and darwin/linux invoke `OnBeforeClose` in a goroutine Wails spawns, while Windows invokes it synchronously on the calling path (`windows/frontend.go:460`). This work proves the state machine is race-free and documents its invocation model — it does not exercise any GUI path; the backlog's broader native-close GUI scope (Cmd+Q, sign-out, project-close/navigation-away, and the editor's own native-close paths) is unchanged. |
 | `migration_e2e_test.go` | 1 | `users.DefaultRootDir`, `users.MigrateLegacyRoot`, `App.Login`, `App.ListProjects` | e2e | Proves a pre-rename ("PMForge") install is fully *usable* after migration — not just that files got copied — including deleting the old root first to simulate real post-migration cleanup. Guards the `f1a5501` data-loss class of bug (stale `DataDir` pointing at a deleted root). |
@@ -380,7 +381,16 @@ destination file instead of buffering it fully in memory first). See
 `app_export_destination_test.go`/`exportfs_test.go`'s row above for
 detail.
 
-## `internal/db` — 78.4%
+## `internal/db` — 77.6%
+
+Candidate additions: `readonly_legacy_test.go` has six file-backed tests for
+required project columns, additive defaults, legacy timestamp ordering,
+independent pooled read-only enforcement and live WAL access.
+The closed-WAL test permits only the owner-approved coordination files while
+checking main bytes, permissions, journal mode and absence of WAL frames.
+The live-WAL test compares persisted main/WAL bytes through reads and close.
+See
+[`read-only-project-access.md`](testing/read-only-project-access.md).
 
 `wbs_store_test.go` adds nine file-backed transactional storage tests: plaintext
 and SQLCipher replay/reopen, competing independent handles, receipt 257 and
@@ -602,7 +612,7 @@ this connection pool's public surface.
 | `conn_pragmas_test.go` | 2 | SQLite pragma consistency across the connection pool | fixture | `PRAGMA foreign_keys=ON` must apply to every pooled connection, not just the one that set it — a per-connection setting that silently doesn't propagate would let orphaned rows slip through undetected. |
 | `documents_read_test.go` | 10 | `GetDocument`, `ListDocuments` (both previously 0%, never referenced by any test), `SaveDocument`'s version-bump sequence, `DeleteDocument` (previously only exercised incidentally as fixture setup in `audit_events_test.go`, which never asserted on `DeleteDocument`'s own contract) | fixture, fault-injection, table-driven | `ListDocuments`'s kind filter and both of its `WHERE project_id = ?` predicates (the kind-empty and kind-filtered branches are separate queries) are each fault-seeded independently. **Pins the genuine, verified RFC3339Nano ordering hazard** described in the package summary above — first identified here, then found to also affect `ListCharts` and others, and since fixed structurally. This test's own assertion is deliberately left loose (both rows survive, either order), since its premise — a raw-SQL-injected value bypassing the save path and any migration — remains a real, narrower scenario the fix doesn't reach until the next database open. `DeleteDocument` (an irreversible operation): its actual row removal, its no-op-not-error contract for a missing ID (asserted as a prohibited-effect check — zero new `audit_events` rows, not merely "returns nil"), and its audit event's forensic content (the deleted document's title/content must survive in `BeforeCanonicalJSON`; `AfterCanonicalJSON` must be `"null"`) are each fault-seeded. |
 | `encryption_test.go` | 9 | `InitEncryptedDB`, plaintext→encrypted migration | fixture, fault-injection | Opening an encrypted DB with the wrong key must fail cleanly (not corrupt or silently open with garbage data). Migration success proves an independent private plaintext backup, encrypted live copy, integrity, and no temporary artifacts. Injected backup-preparation and replacement failures prove the canonical plaintext source remains readable, no published backup blocks retry, and publication receives the still-live canonical path exactly once. This is synchronous/process-structure evidence; power-loss durability and native Windows replacement remain unverified. |
-| `encryption_readonly_test.go` (added 2026-10-02) | 2 | `OpenEncryptedCopyReadOnly` (ADR-004 administrator viewing) | integration, fault seeding | A copy reopened read-only reads its data and refuses writes on two pooled connections held at once and on a schema change (`_query_only` is a DSN option, so every connection the pool opens gets it); a damaged copy is refused. Seeds dropping `_query_only` or the integrity check each fail. |
+| `encryption_readonly_test.go` (added 2026-10-02, extended 2026-10-29) | 13 | `OpenEncryptedReadOnly` and `OpenEncryptedCopyReadOnly` (ADR-004 administrator viewing) | integration, fault seeding | A read-only open does not create a missing file, does not open a directory, reads a mode 0444 file that `InitEncryptedDB` cannot write, refuses an insert on a writable-mode file, and leaves bytes unchanged. A missing `currency_code` stays missing and reads as USD. A writable open still adds that column. The administrator copy is not migrated. A missing `audit_events` table stays missing. A symlink open does not change the target. A wrong key and a short key change nothing. A damaged copy is refused. Counts and column probes treat a missing table as absent, and an unknown count table is refused. The original two-connection write refusal still holds. |
 | `ids_test.go` | 2 | Project/entity ID generation | fault-injection | Same class as `internal/agile/ids_test.go`: ID generation must fail loudly under starved entropy. |
 | `introspect_test.go` | 1 | Schema introspection (`DumpSchema`) | fixture | Used by `--schema-dump`; must enumerate every real table. |
 | `money_columns_test.go` | 4 | Minor-units money columns, project timezone round-trip | round-trip | Money must round-trip through SQLite as exact minor units (cents), never floating point — a lossy round-trip here is a silent financial-accuracy bug. |
@@ -1157,7 +1167,7 @@ map used for repository orientation.
 
 **2026-08-28 ledger refresh**: this heading previously claimed 77.9% with no code change to `main.go`/`main_test.go` since 2026-08-08, so a drop to a stable, reproducible 73.0% was investigated rather than assumed stale-in-the-safe-direction. Per-function coverage (`go tool cover -func`) shows every uncovered statement is a standard `if err != nil { return ... }` guard around OS/subprocess failures in `run`/`generate`/`listPackages` (`filepath.Abs`, `os.ReadFile`, `os.MkdirAll`, `os.WriteFile`, `go list` failing, malformed JSON) — none reachable without mocking the filesystem or `os/exec`, and none touched by any commit in this window. The 77.9% figure itself was not reproducible against the current, unchanged source; it is treated as inaccurate at the time it was written rather than as a regression, and not chased further given this package's low criticality (a maintainer-only dependency-map generator, not user-facing or security-relevant).
 
-## `tools/module-notices` — 64.5%
+## `tools/module-notices` — 71.3%
 
 Maintainer tool that writes `third_party/GO-MODULE-NOTICES.txt`, the license
 and notice files of every Go module linked into the release binaries (added
@@ -1165,7 +1175,7 @@ and notice files of every Go module linked into the release binaries (added
 
 | File | Tests | Covers | How | Why |
 | --- | --- | --- | --- | --- |
-| `main_test.go` | 8 | Notice-file naming, whitespace normalization, module grouping and `go list` error handling, the directory walk, output determinism, drift detection, release-target parity with `release.yml` | unit, table-driven, fixture | A license file that is skipped, or a module accepted without one, would ship a binary without its required notices. Uncovered statements are the `go list` and `go env` subprocess paths and file writes; `make module-notices-check` runs those against the real module graph on every `make verify`. |
+| `main_test.go` | 9 | Notice-file naming, whitespace normalization, module grouping and `go list` error handling, the directory walk, output determinism, drift detection, release-target parity with `release.yml`, packaged Go license locations | unit, table-driven, fixture | The standard-library cases preserve root precedence and test Homebrew's relocated LICENSE with root PATENTS; missing, empty, invalid UTF-8 and directory inputs remain failures. A skipped license or module accepted without one would ship incomplete notices. Uncovered statements include `go list`/`go env` subprocesses and file writes; `make module-notices-check` runs those against the real graph on every `make verify`. |
 
 ---
 
@@ -1314,6 +1324,18 @@ to `*.test.ts`/`*.spec.ts` files.
 | `ProjectSettings.test.ts` and `CostControlPanel.test.ts` (2026-10-23 yen changes) | 2 rewritten cases each file, counts unchanged | Project Settings offering Japanese yen as an ordinary option, saving it, and restoring a locked JPY currency after a rejected change, with no legacy read-only option; Cost Control still disabling every change when the backend reports a read-only reason, now with a generic reason | component | ADR-009 made legacy JPY editable, so the old containment cases would describe a state that no longer exists; the read-only mechanism itself stays covered. |
 
 ---
+
+## Isolated spike modules (outside the GoPMgr build)
+
+These modules have their own `go.mod` under `spikes/`. They are not part of
+`go test . ./internal/... ./tools/...`, and their results are evidence in
+the spike's own records. They are listed here so every test file is
+accounted for.
+
+| File | Tests | Covers | How | Why |
+| --- | --- | --- | --- | --- |
+| `spikes/adr010-g0-transport/host/pairing_test.go` (added 2026-10-25) | 3 (4 subtests) | The ADR-010 G0 `npipe-dual` pairing listener: which connections it pairs, refuses or times out, closing while a half waits for its partner, and refusal before the worker's PID is known | unit, table-driven, fake listener | The dual-pipe alternative pairs two connections into one stream. A wrong pairing or a hang there is a denial of service or a cross-session leak, so each refusal path is pinned. |
+| `spikes/adr010-g0-transport/host/diag_test.go` (added 2026-10-25) | 5 (10 subtests) | G0 evidence diagnostics: counting uncaught Java exceptions, parsing worker timing notes, extracting and bounding captured gRPC log failures, and marking checks that did not run as BLOCKED | unit, table-driven | The G0 report must not call a run clean when the worker threw, and a check that never ran must read BLOCKED, never PASS. |
 
 ## Known gaps (cross-reference)
 

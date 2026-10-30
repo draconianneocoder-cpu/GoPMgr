@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 )
 
 // Chart is one entry in the unified `charts` table. The semantic
@@ -149,21 +150,21 @@ func (db *Database) GetChart(id string) (Chart, error) {
 // ListCharts returns every chart belonging to a project, ordered by
 // updated_at descending. Pass kind == "" to list all kinds.
 func (db *Database) ListCharts(projectID, kind string) ([]Chart, error) {
-	var (
-		rows *sql.Rows
-		err  error
-	)
-	if kind == "" {
-		rows, err = db.Conn.Query(`
-			SELECT id, project_id, kind, title, data, config, template_id, created_at, updated_at
-			FROM charts WHERE project_id = ? ORDER BY updated_at_unixnano DESC
-		`, projectID)
-	} else {
-		rows, err = db.Conn.Query(`
-			SELECT id, project_id, kind, title, data, config, template_id, created_at, updated_at
-			FROM charts WHERE project_id = ? AND kind = ? ORDER BY updated_at_unixnano DESC
-		`, projectID, kind)
+	present, err := db.columnSet("charts")
+	if err != nil || len(present) == 0 {
+		return nil, err
 	}
+	query := `SELECT id, project_id, kind, title, data, config, template_id, created_at, updated_at FROM charts WHERE project_id = ?`
+	args := []any{projectID}
+	if kind != "" {
+		query += " AND kind = ?"
+		args = append(args, kind)
+	}
+	_, numericOrder := present["updated_at_unixnano"]
+	if numericOrder {
+		query += " ORDER BY updated_at_unixnano DESC"
+	}
+	rows, err := db.Conn.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +178,15 @@ func (db *Database) ListCharts(projectID, kind string) ([]Chart, error) {
 		}
 		out = append(out, c)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if !numericOrder {
+		sort.SliceStable(out, func(i, j int) bool {
+			return legacyTimestampUnixNano(out[i].UpdatedAt) > legacyTimestampUnixNano(out[j].UpdatedAt)
+		})
+	}
+	return out, nil
 }
 
 // DeleteChart removes a chart by ID.

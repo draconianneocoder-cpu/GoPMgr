@@ -35,6 +35,16 @@ import (
 // identically.
 const timestampLayout = "2006-01-02T15:04:05.000000000Z07:00"
 
+// Match migration's numeric key, including its zero sentinel for malformed
+// timestamps, without normalizing or backfilling the source file.
+func legacyTimestampUnixNano(value string) int64 {
+	instant, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil {
+		return 0
+	}
+	return instant.UnixNano()
+}
+
 // nowTimestamp returns the current UTC time formatted with
 // timestampLayout. Use this everywhere a value is needed for JSON/audit
 // payloads that are never ORDER BY'd (e.g. an embedded approval-checkpoint

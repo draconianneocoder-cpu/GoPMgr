@@ -151,27 +151,21 @@ func (db *Database) GetStakeholder(id string) (Stakeholder, error) {
 // ListStakeholders returns every stakeholder for the project. Pass
 // a non-empty category to filter.
 func (db *Database) ListStakeholders(projectID, category string) ([]Stakeholder, error) {
-	var (
-		rows *sql.Rows
-		err  error
-	)
-	if category == "" {
-		rows, err = db.Conn.Query(`
-			SELECT id, project_id, name, role, organisation, email, phone,
-			       category, hourly_rate, hourly_rate_minor_units,
-			       contract_value, contract_value_minor_units,
-			       availability, notes, created_at, updated_at
-			FROM stakeholders WHERE project_id = ? ORDER BY name ASC
-		`, projectID)
-	} else {
-		rows, err = db.Conn.Query(`
-			SELECT id, project_id, name, role, organisation, email, phone,
-			       category, hourly_rate, hourly_rate_minor_units,
-			       contract_value, contract_value_minor_units,
-			       availability, notes, created_at, updated_at
-			FROM stakeholders WHERE project_id = ? AND category = ? ORDER BY name ASC
-		`, projectID, category)
+	present, err := db.columnSet("stakeholders")
+	if err != nil || len(present) == 0 {
+		return nil, err
 	}
+	columns := legacyReadColumns(present,
+		"id,project_id,name,role,organisation,email,phone,category,hourly_rate,hourly_rate_minor_units,contract_value,contract_value_minor_units,availability,notes,created_at,updated_at",
+		map[string]string{"hourly_rate_minor_units": "0", "contract_value_minor_units": "0", "availability": "1"})
+	query := "SELECT " + columns + " FROM stakeholders WHERE project_id = ?"
+	args := []any{projectID}
+	if category != "" {
+		query += " AND category = ?"
+		args = append(args, category)
+	}
+	query += " ORDER BY name ASC"
+	rows, err := db.Conn.Query(query, args...) // #nosec G201 -- fixed columns and migration defaults only; values are bound.
 	if err != nil {
 		return nil, err
 	}

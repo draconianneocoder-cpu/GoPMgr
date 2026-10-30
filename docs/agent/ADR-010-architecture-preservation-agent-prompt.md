@@ -21,8 +21,11 @@ Read `AGENTS.md`, the current repository's approved ADRs, and the bundle files:
 4. `docs/review/ADR-010-v2.2-review-and-traceability.md` — history and corrections;
 5. `docs/design/ADR-001`, `ADR-004`, `ADR-005`, `ADR-008`, `ADR-009`, existing WBS contracts, current release rules, plus accepted ADR-011 and AI ADR when they exist;
 6. `docs/review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md` — the maintainer's acceptance, its conditions (OWN-01…OWN-11, INT-01…INT-04) and the authorized work.
+7. `docs/review/ADR-010-G0-windows-transport-decision.md` — the maintainer's G0 Windows transport decision (2026-10-25): the conditional G1 candidate, the conditions on it, and what stays unauthorized.
+8. `docs/review/ADR-010-G1-open-questions-decision.md` — the maintainer's direction on G1 questions Q1–Q5 (2026-10-26): no transport fallback, Unix process groups without a containment claim, JDK NIO preferred on Unix, the Windows and signing test policy, and the bounded shutdown grace. It also keeps `npipe-async` preferred and G1 code unauthorized.
+9. `docs/review/ADR-010-G1-P04-authorization-decision.md` — the maintainer's P04/G1 authorization (2026-10-26): G1-1 to G1-9 in order, OWN-11 conditionally, mandatory pipe instance limits and mutual authentication, provisional G/K/M, Windows 10 retained, TPT-002 clarified, TPT-023 to TPT-026 added. Keep `docs/testing/adr-010-g1-blocked.md` current.
 
-**IMPORTANT:** The maintainer accepted the ADR-010 v2.2 architecture on 2026-10-24 (item 6). Acceptance is architecture only: P00, P01/G0 and P02/S0 are authorized, and everything else needs a separately accepted work slice. Do not state that anything is implemented, tested or released because it is accepted. Do not make irreversible production schema/security decisions.
+**IMPORTANT:** The maintainer accepted the ADR-010 v2.2 architecture on 2026-10-24 (item 6). Acceptance is architecture only: P00, P01/G0 and P02/S0 are authorized, and everything else needs a separately accepted work slice. On 2026-10-26 the maintainer authorized P04/G1, slices G1-1 to G1-9 (item 9); MPXJ import, migrations and release-readiness claims remain unauthorized. Do not state that anything is implemented, tested or released because it is accepted. Do not make irreversible production schema/security decisions.
 
 **Later G1 authorization (2026-10-28):** the [maintainer clarification](../review/ADR-010-G1-authorization-clarification-2026-10-28.md)
 supersedes the historical G1 permission limit above. Apply all P04-D1
