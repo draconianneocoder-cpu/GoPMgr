@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Regression cases for scripts/verify-module-notices.sh. A stub `go` serves
-# canned `go version -m` output, so the cases need no network and no real
-# GoPMgr build; one case uses a real Go binary and the committed notices file.
+# canned `go version -m` output. Native cases run the real reviewed-input gate
+# against cached pinned modules; one case uses a real Go binary.
 
 set -euo pipefail
 
@@ -105,7 +105,7 @@ run "no arguments" 2 "usage:"
 run "a clean binary passes the exclusion check" 0 "contains none of the 8 excluded-code markers" \
 	"$binary" "$work/notices.txt"
 printf 'ELF\0N6duckdb13TpchExtensionE\0' > "$work/tpc-binary"
-run "a binary carrying excluded TPC code" 1 "contains excluded code" "$work/tpc-binary" "$work/notices.txt"
+run "a binary carrying excluded TPC code" 1 "matches excluded code markers" "$work/tpc-binary" "$work/notices.txt"
 
 # A binary linking a DuckDB native library module also needs the DuckDB
 # native notices to cover that module at that version.
@@ -115,9 +115,17 @@ notices "Module: std" "Module: example.com/a v1.0.0" "Module: example.com/c/v4 v
 	"Module: github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.10506.0"
 printf '%s\n' "DuckDB native library notices" \
 	"Covers: github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.10506.0" > "$work/native.txt"
+FAKE="$work/metadata-duckdb.txt" run "headers alone cannot qualify native notices" 1 \
+	"failed the reviewed-file check" "$binary" "$work/notices.txt" "$work/native.txt"
+cp "$ROOT/third_party/DUCKDB-NATIVE-NOTICES.txt" "$work/native.txt"
 FAKE="$work/metadata-duckdb.txt" run "DuckDB native notices that cover the library" 0 \
 	"covers DuckDB's native libraries (github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.10506.0)" \
 	"$binary" "$work/notices.txt" "$work/native.txt"
+(cd "$work" && FAKE="$work/metadata-duckdb.txt" run "caller-relative native notice path" 0 \
+	"covers DuckDB's native libraries" gopmgr notices.txt native.txt)
+printf 'unreviewed body change\n' >> "$work/native.txt"
+FAKE="$work/metadata-duckdb.txt" run "native body change with intact headers" 1 \
+	"notice content digest differs" "$binary" "$work/notices.txt" "$work/native.txt"
 printf '%s\n' "DuckDB native library notices" \
 	"Covers: github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.10505.0" > "$work/native.txt"
 FAKE="$work/metadata-duckdb.txt" run "DuckDB native notices for another version" 1 \
@@ -128,6 +136,24 @@ FAKE="$work/metadata-duckdb.txt" run "no DuckDB native notices" 1 \
 notices "Module: std" "Module: example.com/a v1.0.0" "Module: example.com/c/v4 v4.4.2"
 run "no DuckDB library, no native notices needed" 0 "all 2 modules linked" \
 	"$binary" "$work/notices.txt" "$work/absent-native.txt"
+
+# A failed grep, even with plausible partial output, is not no native deps.
+cat > "$work/bin/grep" <<'STUB'
+#!/bin/bash
+if [ "${1:-}" = '^github\.com/duckdb/duckdb-go-bindings/lib/' ]; then
+	if [ "${FAKE_GREP_OUTPUT:-}" = partial ]; then
+		printf 'github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.10506.0\n'
+	fi
+	exit 2
+fi
+exec /usr/bin/grep "$@"
+STUB
+chmod +x "$work/bin/grep"
+for mode in empty partial; do
+	FAKE_GREP_OUTPUT="$mode" run "native dependency scan failure ($mode output)" 1 \
+		"native dependency detection failed" "$binary" "$work/notices.txt"
+done
+rm "$work/bin/grep"
 
 # A real Go binary checked against the committed notices file, with the real
 # `go version -m`: proves the parsing matches the toolchain's actual format.

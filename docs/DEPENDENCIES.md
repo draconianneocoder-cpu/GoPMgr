@@ -66,8 +66,10 @@ platform/publication limits are recorded in
 - `github.com/gorules/zen-go`: JDM launchpad template-seeding rules.
 - `gonum.org/v1/gonum`: Numerical/statistical support.
 - `gopkg.in/yaml.v3` and `github.com/pelletier/go-toml/v2`: build-time
-  configuration parsing for `make config-check`. They are imported only by
-  the `scripts` command and are not linked into the GoPMgr desktop binary.
+  configuration parsing for `make config-check`. The isolated DF0 Cargo and
+  Rust toolchain files are included in that syntax inventory; Cargo retains
+  responsibility for their build semantics. These parser packages are imported
+  only by the `scripts` command and are not linked into the GoPMgr desktop binary.
 - `github.com/duckdb/duckdb-go/v2`: in-memory DuckDB analytics engine
   (ADR-002 decision), compiled under the `duckdb` build tag
   (`internal/analytics`). Production/package builds enable that tag so
@@ -318,8 +320,8 @@ weakening the release claim.
    and the third-party code inside them. `make verify` fails until the
    DuckDB native notices are reviewed for the new release; see
    [LICENSES.md](../LICENSES.md#duckdb-native-library-notices). It also
-   fails if the release could link the excluded TPC-H or TPC-DS code; never
-   remove an entry from `third_party/EXCLUDED-NATIVE-CODE.txt` to get past
+   fails if reviewed native inputs change or the TPC exclusion audit cannot
+   complete; never remove an entry from `third_party/EXCLUDED-NATIVE-CODE.txt` to get past
    that (see
    [LICENSES.md](../LICENSES.md#excluded-the-tpc-h-and-tpc-ds-generators)).
 9. After a frontend dependency change, or a new import of an npm package,

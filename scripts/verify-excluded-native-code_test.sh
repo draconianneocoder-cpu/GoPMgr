@@ -76,6 +76,32 @@ run "a list without markers fails" 1 "names no marker or no archive" --list "$wo
 run "a missing list fails" 1 "exclusion list missing or empty" --list "$work/none.txt" "$clean"
 run "--list without a file" 2 "usage:" --list
 
+# Tool failures must not turn incomplete scans into clean results.
+printf 'archive liba.a\nmarker m\nunknown value\n' > "$work/malformed.txt"
+run "malformed exclusion entry" 1 "invalid exclusion entry" --list "$work/malformed.txt" "$clean"
+mkdir -p "$work/fail-grep" "$work/partial-grep" "$work/fail-find" "$work/fail-sort"
+for mode in fail-grep partial-grep; do
+	cat > "$work/$mode/grep" <<'MOCK'
+#!/bin/bash
+if [ "${1:-}" = -a ]; then
+	case "$0" in *partial*) printf 'partial output\n' ;; esac
+	exit 2
+fi
+exec /usr/bin/grep "$@"
+MOCK
+	chmod +x "$work/$mode/grep"
+done
+printf '#!/bin/bash\nexit 1\n' > "$work/fail-find/find"
+printf '#!/bin/bash\nprintf "partial output\\n"\nexit 2\n' > "$work/fail-sort/sort"
+chmod +x "$work/fail-find/find" "$work/fail-sort/sort"
+PATH="$work/fail-grep:$PATH" run "binary scan error" 1 "scan failed" "$clean"
+PATH="$work/partial-grep:$PATH" run "binary scan error after partial output" 1 "scan failed" "$clean"
+PATH="$work/fail-find:$PATH" run "tree traversal error" 1 "tree traversal failed" --tree "$work/tree"
+PATH="$work/fail-sort:$PATH" run "sort failure after partial output" 1 "sorting scan results failed" "$clean"
+ln -s "$clean" "$tree/link"
+run "linked tree entry is not silently skipped" 1 "nonregular tree entry" --tree "$tree"
+rm "$tree/link"
+
 # Positive control: the real excluded archive in the pinned module.
 module="github.com/duckdb/duckdb-go-bindings/lib/linux-amd64"
 dir="$(cd "$ROOT" && go mod download -json "$module" | sed -n 's/^[[:space:]]*"Dir": "\(.*\)",$/\1/p')"

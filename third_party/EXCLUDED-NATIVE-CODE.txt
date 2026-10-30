@@ -9,12 +9,15 @@
 #   archive <file>   an archive that must stay unreferenced at link time and
 #                    must not appear in a vendored or packaged source tree
 #   marker <text>    a string that only the excluded code contains; its
-#                    presence in a binary means that code was linked
+#                    presence in a binary blocks distribution pending investigation
 #
-# tools/duckdb-notices -check proves, for every release platform, that no
+# tools/duckdb-notices -check verifies the reviewed module inventories and
+# checks, for each pinned platform, that no
 # other linked library references a symbol the archives define, that each
 # marker is in the archives, and that no marker is in any other linked
-# library. scripts/verify-excluded-native-code.sh checks binaries and trees.
+# library. scripts/verify-excluded-native-code.sh checks binaries and trees,
+# failing on scan errors. Marker absence is not a universal code-absence
+# proof or a legal conclusion.
 # The name table DuckDB core keeps for extension autoloading ("dbgen",
 # "dsdgen", "tpch_queries") is deliberately not a marker: it is data in the
 # core library, present whether or not the extensions are linked.

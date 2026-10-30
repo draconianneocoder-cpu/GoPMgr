@@ -120,9 +120,9 @@ describe('moduleFile', () => {
 
 describe('parseBanners', () => {
   it('reads tool license banners', () => {
-    assert.deepEqual(parseBanners('a/*! tailwindcss v4.3.3 | MIT License | https://tailwindcss.com */b/*! @x/y v1.2.3-rc.1 | ISC */'), [
+    assert.deepEqual(parseBanners('a/*! tailwindcss v4.3.3 | MIT License | https://tailwindcss.com */b/*! @x/y v1.2.3-beta.1 | ISC */'), [
       { name: 'tailwindcss', version: '4.3.3' },
-      { name: '@x/y', version: '1.2.3-rc.1' },
+      { name: '@x/y', version: '1.2.3-beta.1' },
     ]);
     assert.deepEqual(parseBanners('/* plain comment */ /*! no version here */'), []);
   });

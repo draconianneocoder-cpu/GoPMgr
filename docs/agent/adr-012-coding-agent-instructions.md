@@ -12,7 +12,7 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 ## Governing interpretation
 
-This document **does not grant permission to implement**; the owner must accept ADR-012 and separately authorize DF0. The authoritative v0.2 plan supersedes the *draft* v0.1 text; preserved reference copies are historical. Every earlier DF-001–DF-060 test remains valid, and DF-061–DF-065 are added. Treat LC-GATE (distribution licensing) as independent of DF-G0–DF-G6 (technical/functional migration).
+The owner accepted ADR-012 v0.2 and authorized isolated DF0 on 2026-10-26; the [acceptance record](../review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md) defines that authority. Production implementation and cutover remain unapproved. The authoritative v0.2 plan supersedes the *draft* v0.1 text; preserved reference copies are historical. Every earlier DF-001–DF-060 test remains valid, and DF-061–DF-065 are added. Treat LC-GATE (distribution licensing) as independent of DF-G0–DF-G6 (technical/functional migration).
 
 ## Mission
 
@@ -48,7 +48,7 @@ You may work on an isolated DF0 prototype **only after the owner explicitly auth
 
 ## Binding v0.2 safeguards
 
-1. **Release licensing:** PR #146 reports TPC-H/TPC-DS compiled into DuckDB static libraries. Do not declare the current DuckDB artifact redistributable because a notice exists; do not silently ship it or remove analytics to evade compliance. Produce separate LC-GATE evidence and qualified-review requests.
+1. **Release licensing:** The pinned DuckDB platform modules carry separate TPC-H/TPC-DS archives; PR #146 audits references and listed markers, not universal code absence. Do not declare the current DuckDB artifact redistributable because a notice exists; do not silently ship it or remove analytics to evade compliance. Produce separate LC-GATE evidence and qualified-review requests.
 2. **Go rollup candidate:** A clean, checked Go minor-unit aggregator is an equal candidate for existing `PortfolioRollup`. Do not force small math through Rust to satisfy a preconceived “all DataFusion” architecture. Select methods only after owner review.
 3. **Money:** Preserve the actual legacy float-to-minor fallback in parity evidence, but separately establish correct explicit-zero and presence semantics; independent oracle is essential.
 4. **Confidentiality:** The `SENSITIVE_MEMORY_ONLY` profile is the default. DataFusion’s configured memory pool is *not* sufficient proof that no plaintext spills to disk. Force a spill scenario and monitor filesystem/OS behavior. If not proved, fail/block.
@@ -83,4 +83,4 @@ If a requested requirement conflicts with actual technical capabilities, submit 
 - Explicit owner decisions and strictly scoped next PR instructions.
 - Confirmation that no production DuckDB behavior, SQLCipher file, build tag, installer or database migration changed in the feasibility PR.
 
-**Proposed immediate step:** request owner acceptance of ADR-012 direction and DF-OWN-02 DF0-only authorization. Once authorized, run baseline freeze (DF0-A) and independent Rust/IPC feasibility (DF0-B/C), not a mass migration.
+**Authorized remaining work:** continue the isolated DF0 evidence matrix, including host-mediated reads (DF0-C2), security/no-spill (DF0-D), comparative performance and numeric fidelity (DF0-E), packaging/licensing (DF0-F), and the report (DF0-G). The [evidence record](../testing/adr-012-df0-evidence.md) reports Linux A/B/C results and remaining native-platform gaps; those measurements do not authorize production migration.

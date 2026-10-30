@@ -75,7 +75,12 @@ fi
 
 # DuckDB's prebuilt libraries carry third-party code their module's license
 # does not cover; the native notices must name each linked library module.
-native_deps="$(grep '^github\.com/duckdb/duckdb-go-bindings/lib/' <<< "$deps" || true)"
+native_status=0
+native_deps="$(grep '^github\.com/duckdb/duckdb-go-bindings/lib/' <<< "$deps")" || native_status=$?
+if [ "$native_status" -gt 1 ]; then
+	echo "verify-module-notices: native dependency detection failed." >&2
+	exit 1
+fi
 if [ -n "$native_deps" ]; then
 	if [ ! -s "$native_notices" ]; then
 		echo "verify-module-notices: $binary links DuckDB's native libraries, but $native_notices is missing or empty (run 'make duckdb-notices')." >&2
@@ -89,6 +94,16 @@ if [ -n "$native_deps" ]; then
 			exit 1
 		fi
 	done <<< "$native_deps"
+	# Reuse the authoritative full-file digest and reviewed-input audit rather
+	# than trusting the coverage header or duplicating its approved checksum.
+	case "$native_notices" in
+		/*) native_path="$native_notices" ;;
+		*) native_path="$PWD/$native_notices" ;;
+	esac
+	if ! (cd "$root" && go run ./tools/duckdb-notices -check -o "$native_path"); then
+		echo "verify-module-notices: native notices failed the reviewed-file check." >&2
+		exit 1
+	fi
 fi
 
 # Release-blocking (docs/review/TPC-benchmark-exclusion-decision.md).

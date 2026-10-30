@@ -9,7 +9,8 @@ export CGO_ENABLED := 1
 
 # The vendored tree must not carry the excluded TPC-H/TPC-DS archives
 # (docs/review/TPC-benchmark-exclusion-decision.md); `go mod vendor` copies
-# them, so a plain vendored source package fails here by design.
+# them, so building that vendored tree fails here by design. This does not
+# intercept source-only archive creation; do not publish archives carrying them.
 override_dh_auto_build:
 	bash scripts/verify-excluded-native-code.sh --tree vendor
 	go build -buildmode=pie -buildvcs=false -mod=vendor -trimpath -tags "desktop,production,duckdb,webkit2_41" -ldflags "-s -w" -o build/ppa/gopmgr .

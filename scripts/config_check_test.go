@@ -273,6 +273,37 @@ func TestTrackedConfigPathsUsesPresentVersionControlCandidates(t *testing.T) {
 	}
 }
 
+func TestDF0RustConfigInventory(t *testing.T) {
+	paths := []string{
+		"spikes/adr012-datafusion/rust/Cargo.toml",
+		"spikes/adr012-datafusion/rust/cli/Cargo.toml",
+		"spikes/adr012-datafusion/rust/codegen/Cargo.toml",
+		"spikes/adr012-datafusion/rust/engine/Cargo.toml",
+		"spikes/adr012-datafusion/rust/worker/Cargo.toml",
+		"spikes/adr012-datafusion/rust/rust-toolchain.toml",
+	}
+	files, tracked := validConfigFixture()
+	for _, path := range paths {
+		if !containsPath(tracked, path) {
+			tracked = append(tracked, path)
+		}
+	}
+	if errs := validateRepositoryConfigs(files, tracked); len(errs) != 0 {
+		t.Fatalf("DF0 configurations rejected: %v", errs)
+	}
+	for _, path := range paths {
+		t.Run(path, func(t *testing.T) {
+			original := files[path]
+			files[path] = []byte("[broken\n")
+			defer func() { files[path] = original }()
+			errs := validateRepositoryConfigs(files, tracked)
+			if len(errs) != 1 || !strings.Contains(errs[0].Error(), path+": parse TOML") {
+				t.Fatalf("malformed spike config: %v", errs)
+			}
+		})
+	}
+}
+
 func validConfigFixture() (map[string][]byte, []string) {
 	files := map[string][]byte{
 		".github/dependabot.yml": []byte(`
@@ -367,6 +398,18 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 `),
+	}
+	files["spikes/adr012-datafusion/rust/Cargo.toml"] = []byte(`[workspace]
+members = ["engine", "cli", "worker"]
+`)
+	files["spikes/adr012-datafusion/rust/rust-toolchain.toml"] = []byte(`[toolchain]
+channel = "1.97.0"
+`)
+	for _, member := range []string{"engine", "cli", "worker", "codegen"} {
+		files["spikes/adr012-datafusion/rust/"+member+"/Cargo.toml"] = []byte(`[package]
+name = "df0-` + member + `"
+version = "0.0.0"
+`)
 	}
 	tracked := make([]string, 0, len(files))
 	for _, spec := range supportedConfigs {
