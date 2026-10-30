@@ -9,9 +9,18 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 **Repository state when recorded:** `main` at `b6570e1`.
 
-**Relation to earlier records:** this refines, and does not replace:
+**Consolidation update, 2026-10-29:** §2 and §3 below retain the recorded
+baseline, not the current PR queue. ADR-010 and ADR-012 are now on `main`.
+BL-1 / Slice B merged through #166 as `14c921d`; #163 closed unmerged with
+its evidence branch retained. #147 closed unmerged: Wails 2.17.0 is already
+on `main`, and the DuckDB 2.0 upgrade was not adopted. See the
+[read-only implementation evidence](../testing/read-only-project-access.md)
+for exact revisions and validation limits. DuckDB remains in production;
+the DF0, integration and separate Slice J cutover gates still apply.
+
+**Relation to earlier records at the recorded baseline:** this refines, and does not replace:
 - the [PS-04 owner decisions](PS-04-owner-decisions-2026-10-27.md) from earlier the same day;
-- ADR-010 v2.2 and ADR-012 v0.2 with their accepted owner decisions, on [PR #140](https://github.com/draconianneocoder-cpu/GoPMgr/pull/140) and [PR #150](https://github.com/draconianneocoder-cpu/GoPMgr/pull/150), both unmerged.
+- ADR-010 v2.2 and ADR-012 v0.2 with their accepted owner decisions, on [PR #140](https://github.com/draconianneocoder-cpu/GoPMgr/pull/140) and [PR #150](https://github.com/draconianneocoder-cpu/GoPMgr/pull/150), both unmerged at that baseline.
 
 Historical ADR text stays as written. §1 lists the amendments this directive makes.
 
@@ -629,3 +638,23 @@ writer is idle; verify journal mode and pooled write refusal. Test plaintext
 and encrypted files, including read-only main-file permissions with a
 writable parent directory. This decision changes the contract, not the
 qualification status of any PR. The historical baseline and §4 remain intact.
+
+## 7. Temporary tabular-import filename restriction, 2026-10-29
+
+For LD-6 the maintainer selected: **"Reject glob-bearing paths temporarily;
+document the limitation and test fail-closed recovery (Recommended)."**
+
+The importer must reject `*`, `?`, or `[` in the supplied path or resolved
+reader path before invoking DuckDB's reader, returning an explicit error and
+no dataset. This includes containing folders and symlink targets. Users may
+rename the file or folder and retry. Resolve symlinks before cleaning parent
+traversal; retain reader selection from the chosen filename's extension.
+Preserve all six supported formats and verify ordinary imports and recovery
+on the same engine after rejection. This intentional temporary filename
+compatibility restriction corrects glob expansion without introducing new
+reader infrastructure in the engine being retired.
+
+Revisit the restriction when literal selected-file access qualifies in the
+replacement. It does not authorize a DuckDB upgrade, replacement cutover or
+a claim of protection against concurrent filesystem replacement. §4 remains
+unchanged. See [implementation and verification](../testing/tabular-import-paths.md).
