@@ -70,7 +70,7 @@ Keep the first *installable* scope narrow: **one bundled, authenticated MPXJ wor
 |---|---|---|
 | Linux | UDS | G0 proof with Go + bundled Java runtime / grpc-java, permissions and cleanup |
 | macOS (Intel + Apple Silicon as supported) | UDS | G0 native Netty/Java runtime, architecture signing/notarization and cleanup |
-| Windows | Windows named pipes | **Candidate, not demonstrated**: Go `go-winio` can use pipes as `net` transport, but Java grpc-java compatible named-pipe HTTP/2 transport must be proven |
+| Windows | Windows named pipes | **Feasible on Windows Server 2025 amd64 only** (G0; [maintainer decision 2026-10-25](../review/ADR-010-G0-windows-transport-decision.md)). A single overlapped pipe is the preferred G1 candidate, conditionally; not production-accepted. Windows 10/11, offline `jlink` and signed execution remain unverified |
 | Windows alternative | AF_UNIX / UDS | Only if demonstrated with the selected JDK, Java gRPC transport and supported Windows versions |
 | Exception | Authenticated loopback gRPC | **Not approved as default**; written owner-approved exception with compensating controls and product-support disclosure, only after native paths fail evidence-based gates |
 
@@ -213,6 +213,9 @@ None of these open decisions authorizes reducing the stated requirement. A faile
 | 2026-10-24 | v2.2 | Maintainer bundle: gRPC over local IPC, internal registry, project-owned evidence, QI-01…QI-15, D-01…D-19 |
 | 2026-10-24 | v2.2 integrated | Verified against `28a758d`; corrections listed in the [integration review](../review/ADR-010-v2.2-integration-review.md). No requirement weakened; status stays PROPOSED |
 | 2026-10-24 | v2.2 accepted | The maintainer accepted D-01…D-19, QI-01…QI-15, OWN-01…OWN-11 and INT-01…INT-04 ([decision record](../review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md)). Architecture only: P00, P01/G0 and P02/S0 authorized; nothing implemented. Earlier versions kept unchanged |
+| 2026-10-25 | G0 Windows transport decision | The maintainer accepted named-pipe feasibility on Windows Server 2025 amd64 and made a single overlapped pipe the conditional G1 candidate ([record](../review/ADR-010-G0-windows-transport-decision.md)). OWN-02 order unchanged; more G0 diagnostics and transport-neutral G1 design authorized |
+| 2026-10-26 | G1/P04 authorization | The maintainer authorized slices G1-1 to G1-9 and, conditionally, the OWN-11 dependencies. Pipe instance limits and mutual authentication are mandatory, the bounds G, K and M are provisional, Windows 10 x64 is retained, and TPT-002's wording is clarified. Replay is tested in two layers ([record](../review/ADR-010-G1-P04-authorization-decision.md)). Still unauthorized: MPXJ import, migrations, broader architectural change and release-readiness claims |
+| 2026-10-26 | G1 open questions | The maintainer answered G1 design questions Q1–Q5 and kept `npipe-async` as the preferred Windows candidate ([record](../review/ADR-010-G1-open-questions-decision.md)). Design directions only; G1 code, production dependencies and release integration stay unauthorized |
 
 ## 9. Maintainer acceptance
 
@@ -241,3 +244,117 @@ On 2026-10-24 the maintainer accepted D-01…D-19 and QI-01…QI-15 as the bindi
 **Later G1 authorization (2026-10-28):** for G1 permission only, apply the
 [maintainer clarification](../review/ADR-010-G1-authorization-clarification-2026-10-28.md)
 instead of the historical G1 limit above. Other requirements and gates remain binding.
+
+## 10. G0 Windows transport decision (2026-10-25)
+
+The maintainer's [decision record](../review/ADR-010-G0-windows-transport-decision.md)
+is authoritative; this section summarizes it.
+
+- Named-pipe gRPC between Go and Java is accepted as **feasible on the
+  tested Windows Server 2025 amd64 environment only**.
+- A single overlapped named pipe (`npipe-async`) is the **preferred G1
+  candidate, conditionally**. Its cancel-to-exit delay must be diagnosed by
+  measurement and fixed without fragile workarounds. The Java pipe bridge
+  must be corrected for event-loop blocking, queue saturation, shutdown
+  signaling and pending-I/O cleanup.
+- Two pipe connections (`npipe-dual`) stay a tested alternative; its
+  pairing timeout and denial-of-service risks must be addressed first.
+- Windows AF_UNIX stays a verified alternative. OWN-02's order does not
+  change without an accepted architecture change.
+- Windows 10/11, offline `jlink` packaging and signed execution must be
+  validated before any general Windows compatibility or release claim.
+- OWN-03 is unchanged: no stdio business protocol and no automatic TCP
+  fallback.
+- **Authorized:** more G0 diagnostics and transport-neutral G1 design work.
+  **Not authorized:** finalizing the production Windows transport before the
+  open issues have documented fixes and passing regression tests.
+
+## 11. G1 open questions decision (2026-10-26)
+
+The maintainer's [decision record](../review/ADR-010-G1-open-questions-decision.md)
+is authoritative; this section summarizes it. The
+[G1 transport design](adr-010-g1-transport-design.md) §9 shows where each
+decision applies.
+
+- **Q1, APPROVED.** One explicitly selected, validated local-IPC
+  transport per platform and release. No silent fallback to another native
+  transport, loopback TCP or a stdio business protocol. Changing a
+  transport needs an evidence-backed decision.
+- **Q2, CONDITIONALLY APPROVED.** Process groups and deterministic
+  termination for the trusted bundled worker on Unix. The `setsid` escape
+  is a documented residual. This is not a claim of containment or
+  sandboxing. Linux cgroup v2 and stronger controls come in later security
+  work. Third-party workers keep their own sandbox and containment gates.
+- **Q3, APPROVED DIRECTION.** Prefer JDK NIO Unix-domain sockets on Linux
+  and macOS. Final selection needs equivalent correctness, security and
+  acceptable performance against Netty epoll/kqueue on target hardware.
+- **Q4, APPROVED TEST POLICY; RESOURCES PENDING.**
+  - Windows 11 x64 desktop validation comes before any broad Windows
+    desktop claim.
+  - Windows 11 arm64 is validated wherever arm64 is advertised.
+  - Windows 10 x64 is validated while it stays in the support matrix.
+  - Unavailable coverage is reported as BLOCKED, and no supported platform
+    is removed silently.
+  - Development uses controlled test-signing. Production signing and
+    notarization need separately authorized credentials.
+  - No private signing key goes into source, fixtures, logs or chat.
+- **Q5, APPROVED DIRECTION.** A bounded cancellation grace period, with a
+  provisional minimum of 1 s. The final value comes from p99 on approved
+  hardware, with an escalation policy and a maximum shutdown bound. Past
+  the grace period, the host terminates and reaps the owned tree. Slow
+  shutdown is never hidden behind longer delays.
+- **Windows.**
+  - `npipe-async` stays the preferred candidate.
+  - The W2, B8 and B9 regression tests are kept.
+  - `npipe-dual` and AF_UNIX are evaluated alternatives, never automatic
+    fallbacks.
+  - Production stays conditional on the integration, desktop, security,
+    packaging and signed-execution checks.
+- **Authorized:**
+  - recording these decisions;
+  - finishing G0 evidence within the scope already authorized;
+  - preparing the G1 implementation plan and dependency review for
+    separate approval.
+- **Not authorized:** production G1 code, production dependencies and
+  release integration. A conflict with an accepted requirement goes to an
+  ACR.
+
+## 12. G1/P04 authorization (2026-10-26)
+
+The maintainer's [decision record](../review/ADR-010-G1-P04-authorization-decision.md)
+is authoritative; this section summarizes it.
+
+- **Authorized:**
+  - G1 slices G1-1 to G1-9, in order, as small reviewable PRs. Each passes
+    its tests and security review before dependent work merges;
+  - the OWN-11 dependencies, subject to security, licensing, compatibility
+    and reproducible-build verification. Patched x/net and x/text are
+    kept, and the full graph is recorded in `docs/DEPENDENCIES.md`.
+- **Windows admission is mandatory:**
+  - pipe instance limits, first-instance ownership, remote rejection and
+    OS peer identity;
+  - mutual authentication, with the host proving itself before the worker
+    accepts operational commands.
+- **Bounds:** G = 1 s, K = 1 s and M = 2 s, provisional until measured on
+  representative hardware. M is not an OS termination guarantee. The
+  20 % comparison threshold is provisional, and results above it are
+  investigated.
+- **Platforms:** Windows 10 x64 stays in the support target, and its
+  unrun tests stay BLOCKED. Test resources are pending
+  ([BLOCKED list](../testing/adr-010-g1-blocked.md)). No key or secret
+  goes into repositories, prompts, logs or fixtures.
+- **Tests:**
+  - TPT-002 now reads "selected UDS runtime", with no coverage reduced;
+  - replay is verified by two required tests, TPT-023 and TPT-024;
+  - mutual authentication is TPT-025;
+  - privilege interactions are TPT-026.
+- **Unchanged safeguards:**
+  - native gRPC over local IPC;
+  - `npipe-async` preferred, with no TCP or stdio fallback;
+  - the internal capability registry;
+  - GoPMgr's exclusive authority over encryption, authentication,
+    scheduling, audit and project persistence;
+  - no weakened tests;
+  - ACRs for any conflict.
+- **Not authorized:** MPXJ import, project database migrations, broader
+  architectural changes and release-readiness claims.

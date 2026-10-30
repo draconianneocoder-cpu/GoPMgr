@@ -38,7 +38,7 @@ Fixture manifest `testdata/interop/fixtures.json` (proposed) MUST define: fixtur
 | Test ID | Requirement | Gate | Test / expected evidence |
 |---|---|---|---|
 | TPT-001 | D-03 | G0 | Real grpc-go server + grpc-java client transfer health over UDS on each advertised Linux build/arch; no TCP listener |
-| TPT-002 | D-03 | G0 | Same over UDS on supported macOS Intel/Apple Silicon; native Netty runtime loads in installed signed app |
+| TPT-002 | D-03 | G0 | Same over UDS on supported macOS Intel/Apple Silicon; selected UDS runtime loads in installed signed app (wording clarified 2026-10-26, P04-D7: every security, signing, installed-application, runtime and cross-platform requirement stays) |
 | TPT-003 | D-03 | G0 | Real Java gRPC HTTP/2 client connects to Go named-pipe listener on Windows; bidirectional streamed messages and cancellation; **must not PASS based only on go-winio server** |
 | TPT-004 | D-03 | G0 | Windows AF_UNIX alternative passes identical real Java client tests, or marked BLOCKED/FAIL with evidence |
 | TPT-005 | D-03 | G0 | When native IPC not proven, no silent TCP or stdio fallback; UI truthful, OS worker marked blocked |
@@ -59,6 +59,10 @@ Fixture manifest `testdata/interop/fixtures.json` (proposed) MUST define: fixtur
 | TPT-019 | D-07 | G1 | Worker not labeled sandboxed; OS-enforced restrictions distinguished from absent/observed controls |
 | TPT-020 | D-03 | G1 | No custom project-data stdio protocol or stealth TCP endpoint in launched worker; bootstrap one-shot only |
 | TPT-021 | D-06 | G1 | Worker stdout/stderr is untrusted diagnostics: capped, sanitized, never mixed into the RPC stream and never persisted raw by default; opt-in debug logs are scoped, redacted, encrypted and time-limited (plan §3.4). A fixture whose parser prints task notes leaves no note text in any log |
+| TPT-023 | D-05 | G1 | Transport admission (P04-D3, P04-D8 test 1). The production Windows listener holds the endpoint's only pipe instance (first-instance creation, remote clients rejected). A separate same-user process can neither add an instance nor take the connection slot. A second client while the admitted one is live is refused before any byte reaches HTTP/2. Evidence records why the refusal happens below the protocol layer |
+| TPT-024 | D-05 | G1 | Protocol authentication replay (P04-D8 test 2). A controlled test-only listener admits several connections only to exercise the server. A replayed, stolen or reused credential proof is refused UNAUTHENTICATED before any handler runs. The test-only listener cannot be built into or enabled in a release. TPT-023 and TPT-024 are both required; neither substitutes for the other |
+| TPT-025 | D-05 | G1 | Mutual authentication (P04-D3). The worker accepts no operational command until the host has proved knowledge of the launch credential, bound to the worker's nonce, the operation and the direction. A server that cannot prove it gets nothing beyond the hello, and the worker exits with its authentication code. A successful worker-to-host proof never stands in for the host-to-worker proof |
+| TPT-026 | D-05 | G1 | Windows privilege interactions (P04-D3). With an elevated host and a non-elevated same-user intruder, and the reverse, on Windows 10 and 11 x64 desktops: second instance, connect-first, client impersonation and connection hijack all fail. Integrity-level outcomes are recorded. BLOCKED until the desktops exist (BLK-03) |
 
 ## 5. Parsing, field fidelity, and provenance
 
@@ -200,7 +204,7 @@ Initial *proposed* UI budgets on owner-approved recommended hardware: warm 200-r
 | Gate | Dependencies | Acceptance criterion |
 |---|---|---|
 | G0 | Read-only research/evidence | TPT-001–005, TPT-022 and licensing, Java native runtime, packaged feasibility, explicit Windows outcome |
-| G1 | G0 acceptable candidate per shipping OS | TPT-006–021, fake workers, protocol compatibility, neutral registry, no DB mutation |
+| G1 | G0 acceptable candidate per shipping OS | TPT-006–021, TPT-023–026, fake workers, protocol compatibility, neutral registry, no DB mutation |
 | G2 | G1 | FID-001–003, UXQ-001 (Choose and Inspect stages), UXQ-002, UXQ-011, malformed format corpus, accurate inspect counts and privacy |
 | S0/S1 | Baselines + owner-approved ADR-011 | DB-021 (S0), schema DDL, format gate/old-version warning, migration plan, hardware profiles |
 | S2 | S1 | DB-001/002; format gate shipped/tested before new format writes |
