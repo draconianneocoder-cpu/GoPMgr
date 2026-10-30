@@ -1,0 +1,11 @@
+Third-party notices
+
+A file under this identifier reproduces, unchanged except for whitespace, the
+license and notice texts of third-party software that GoPMgr redistributes.
+
+Each reproduced text is the license of the software it accompanies, applies
+to that software only, and keeps its own terms. GoPMgr does not relicense
+those texts or the software they cover.
+
+The headings, index and explanatory sentences that GoPMgr adds around the
+reproduced texts are dedicated to the public domain under CC0-1.0.

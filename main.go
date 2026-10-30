@@ -173,7 +173,7 @@ func (a *App) shutdown(_ context.Context) {
 // shouldPreventNativeClose, and beforeClose together intercept every native
 // quit trigger and hand the frontend a chance to block it on unsaved editor
 // state. Two facts about the invocation model, traced against the vendored
-// github.com/wailsapp/wails/v2@v2.16.0 module source rather than assumed:
+// github.com/wailsapp/wails/v2@v2.17.0 module source rather than assumed:
 //
 //   - Every quit trigger funnels through the same path. The native
 //     window-close button (WindowDelegate.m windowShouldClose:, all
@@ -470,7 +470,10 @@ func openHeadlessDB(cfg *cli.Config) (*db.Database, error) {
 		return nil, fmt.Errorf("inspect project encryption: %w", err)
 	}
 	if !encrypted {
-		return db.InitDB(cfg.ProjectPath)
+		if cfg.Repair || cfg.Vacuum {
+			return db.InitDB(cfg.ProjectPath)
+		}
+		return db.OpenReadOnly(cfg.ProjectPath)
 	}
 	if strings.TrimSpace(cfg.Username) == "" {
 		return nil, errors.New("--username is required for encrypted project maintenance")
@@ -495,7 +498,13 @@ func openHeadlessDB(cfg *cli.Config) (*db.Database, error) {
 	if err != nil {
 		return nil, fmt.Errorf("authenticate headless user: %w", err)
 	}
-	return db.InitEncryptedDB(cfg.ProjectPath, dek)
+	defer zeroBytes(dek)
+	// Repair and vacuum write. Every other headless command only reads,
+	// so it must not migrate the file or switch its journal mode.
+	if cfg.Repair || cfg.Vacuum {
+		return db.InitEncryptedDB(cfg.ProjectPath, dek)
+	}
+	return db.OpenEncryptedReadOnly(cfg.ProjectPath, dek)
 }
 
 func inferHeadlessRootDir(projectPath, username string) (string, error) {
@@ -581,19 +590,19 @@ func printHeadlessStats(d *db.Database) error {
 	if err != nil {
 		return err
 	}
-	charts, err := d.ListCharts(proj.ID, "")
+	charts, err := d.CountProjectRecords("charts", proj.ID)
 	if err != nil {
 		return err
 	}
-	docs, err := d.ListDocuments(proj.ID, "")
+	docs, err := d.CountProjectRecords("documents", proj.ID)
 	if err != nil {
 		return err
 	}
-	stakeholders, err := d.ListStakeholders(proj.ID, "")
+	stakeholders, err := d.CountProjectRecords("stakeholders", proj.ID)
 	if err != nil {
 		return err
 	}
-	auditEvents, err := d.ListAuditEvents(proj.ID)
+	auditEvents, err := d.CountProjectRecords("audit_events", proj.ID)
 	if err != nil {
 		return err
 	}
@@ -602,10 +611,10 @@ func printHeadlessStats(d *db.Database) error {
 	fmt.Printf("Status:       %s\n", proj.Status)
 	fmt.Printf("Phase:        %s\n", proj.Phase)
 	fmt.Printf("Methodology:  %s\n", proj.Methodology)
-	fmt.Printf("Charts:       %d\n", len(charts))
-	fmt.Printf("Documents:    %d\n", len(docs))
-	fmt.Printf("Stakeholders: %d\n", len(stakeholders))
-	fmt.Printf("Audit events: %d\n", len(auditEvents))
+	fmt.Printf("Charts:       %d\n", charts)
+	fmt.Printf("Documents:    %d\n", docs)
+	fmt.Printf("Stakeholders: %d\n", stakeholders)
+	fmt.Printf("Audit events: %d\n", auditEvents)
 	return nil
 }
 
@@ -624,7 +633,7 @@ func runHeadlessExport(cfg *cli.Config, d *db.Database) error {
 	}
 	tasks, err := loadCurrentProjectSchedule(d, proj.ID)
 	if err != nil {
-		tasks = make(map[string]*kernel.Task)
+		return fmt.Errorf("load schedule for export: %w", err)
 	}
 	if len(tasks) > 0 {
 		scheduleProjectTasks(proj, tasks)
@@ -651,6 +660,9 @@ func runHeadlessExport(cfg *cli.Config, d *db.Database) error {
 	}
 	raw, err := export.GenerateArchivalReport(payload, opts)
 	if err != nil {
+		return err
+	}
+	if err := d.CheckExportDestination(cfg.ExportPath); err != nil {
 		return err
 	}
 	if err := os.WriteFile(cfg.ExportPath, raw, 0o600); err != nil { // #nosec G306 -- exports are owner-private.

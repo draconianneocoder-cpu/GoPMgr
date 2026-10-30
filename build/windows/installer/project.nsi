@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: MIT
 #
-# GoPMgr-owned Wails v2.16 NSIS entrypoint. Wails regenerates
+# GoPMgr-owned Wails v2.17 NSIS entrypoint. Wails regenerates
 # wails_tools.nsh from its pinned embedded template on every build; keeping
 # project.nsi here prevents fallback to Wails' generic installer entrypoint.
 
@@ -82,6 +82,7 @@ Section "GoPMgr" SEC_GOPMGR
   SetOutPath "$INSTDIR\licenses"
   File /oname=go-sqlcipher.txt "..\..\..\third_party\go-sqlcipher\THIRD_PARTY_NOTICES.txt"
   File /oname=fonts.txt "..\..\..\internal\fonts\assets\FONT-NOTICES.txt"
+  File /oname=go-modules.txt "..\..\..\third_party\GO-MODULE-NOTICES.txt"
   SetOutPath "$INSTDIR"
 
   CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"

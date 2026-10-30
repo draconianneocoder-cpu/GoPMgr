@@ -27,6 +27,12 @@ automated engineering work.
 
 - Plan first for any multi-file change. Keep the plan scoped to a
   reviewable slice.
+- For ADR-010 or ADR-011 work (plugins, MPXJ, worker IPC, large
+  schedules, or AI/MCP), load
+  `docs/agent/ADR-010-architecture-preservation-agent-prompt.md` first
+  and follow it. The architecture was accepted on 2026-10-24; only the
+  work slices authorized in
+  `docs/review/ADR-010-v2.2-ACCEPTED-OWNER-DECISIONS.md` may proceed.
 - For ADR-012 work (replacing DuckDB analytics, DataFusion, the Rust
   analytics worker, or `internal/analytics`), load
   `docs/agent/adr-012-coding-agent-instructions.md` first and follow it.
@@ -77,7 +83,7 @@ automated engineering work.
 
 ## Project Invariants
 
-- `go.mod` requires Go 1.27.3 or later and pins Wails v2.16.0. CGO is required.
+- `go.mod` requires Go 1.27.3 or later and pins Wails v2.17.0. CGO is required.
 - The main package is the root `main.go` (required by `wails build`). The
   production build embeds the repo-root `frontend/dist` through `go:embed`.
   `make build` runs `wails build`, which builds `frontend/dist`, injects the

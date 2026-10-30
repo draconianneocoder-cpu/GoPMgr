@@ -29,6 +29,7 @@ if [ -z "$app_binary" ] || [ ! -f "$app_binary" ]; then
 fi
 if [ "${GOPMGR_PACKAGE_LAYOUT_TEST:-0}" != "1" ]; then
 	scripts/verify-duckdb-linked.sh "$app_binary"
+	bash scripts/verify-module-notices.sh "$app_binary"
 fi
 product_name="$(grep -oE '"productName" *: *"[^"]+"' wails.json | sed -E 's/.*"([^"]+)"$/\1/' || true)"
 product_name="${product_name:-$(basename "$app" .app)}"
@@ -45,6 +46,7 @@ cp -R "$app" "$staged_app"
 mkdir -p "$staged_app/Contents/Resources/Licenses"
 cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt "$staged_app/Contents/Resources/Licenses/go-sqlcipher.txt"
 cp internal/fonts/assets/FONT-NOTICES.txt "$staged_app/Contents/Resources/Licenses/fonts.txt"
+cp third_party/GO-MODULE-NOTICES.txt "$staged_app/Contents/Resources/Licenses/go-modules.txt"
 
 if command -v xattr >/dev/null 2>&1; then
 	xattr -cr "$staged_app"

@@ -22,9 +22,22 @@ cat > "$work/source.app/Contents/Info.plist" <<'PLIST'
 PLIST
 printf 'fixture app\n' > "$work/source.app/Contents/MacOS/gopmgr"
 
+# `go version -m` reports the fixture app's linked modules for
+# verify-module-notices.sh; the missing-module-notice case adds one that the
+# fixture notices file lacks.
 cat > "$bin/go" <<'STUB'
 #!/bin/bash
-case "$*" in 'env GOOS') echo darwin ;; 'env GOARCH') echo arm64 ;; *) exit 2 ;; esac
+case "$*" in
+	'env GOOS') echo darwin ;;
+	'env GOARCH') echo arm64 ;;
+	'version -m '*)
+		printf '%s: go1.27.3\n\tpath\tgopmgr\n\tdep\texample.com/fixture\tv1.0.0\th1:x=\n' "$3"
+		if [ "$PKG_TEST_CASE" = missing-module-notice ]; then
+			printf '\tdep\texample.com/unlisted\tv2.0.0\th1:y=\n'
+		fi
+		;;
+	*) exit 2 ;;
+esac
 STUB
 cat > "$bin/wails" <<'STUB'
 #!/bin/bash
@@ -62,6 +75,7 @@ done
 [[ "$output" == build/packages/.gopmgr-pkg.*/installer.pkg ]]
 [[ -s "$root/gopmgr.app/Contents/Resources/Licenses/go-sqlcipher.txt" ]]
 grep -Fq "SIL OPEN FONT LICENSE" "$root/gopmgr.app/Contents/Resources/Licenses/fonts.txt"
+cmp -s "$root/gopmgr.app/Contents/Resources/Licenses/go-modules.txt" third_party/GO-MODULE-NOTICES.txt
 [[ "$(/usr/bin/xmllint --nonet --xpath 'count(/plist/array/dict)' "$policy")" == 1 ]]
 [[ "$(plutil -extract 0.RootRelativeBundlePath raw -expect string -o - "$policy")" == gopmgr.app ]]
 [[ "$(plutil -extract 0.BundleIsVersionChecked raw -expect bool -o - "$policy")" == true ]]
@@ -138,10 +152,13 @@ run_case() {
 	local repo="$work/repo with spaces 'quote'-$name"
 	local output status final events
 	mkdir -p "$repo/scripts" "$repo/build/darwin" "$repo/build/packages" "$repo/tmp" "$repo/third_party/go-sqlcipher" "$repo/internal/fonts/assets"
-	cp "$ROOT/scripts/package-macos-installer.sh" "$ROOT/scripts/package-version-lib.sh" "$repo/scripts/"
+	cp "$ROOT/scripts/package-macos-installer.sh" "$ROOT/scripts/package-version-lib.sh" \
+		"$ROOT/scripts/verify-module-notices.sh" "$repo/scripts/"
 	cp "$ROOT/build/darwin/installer-components.plist" "$repo/build/darwin/"
 	cp "$ROOT/third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt" "$repo/third_party/go-sqlcipher/"
 	cp "$ROOT/internal/fonts/assets/FONT-NOTICES.txt" "$repo/internal/fonts/assets/"
+	printf '%s\n' 'Go module notices fixture' '' 'Module: std' 'Module: example.com/fixture v1.0.0' \
+		> "$repo/third_party/GO-MODULE-NOTICES.txt"
 	# Wails pinning has its own regressions. This matrix owns installer behavior.
 	printf '#!/bin/bash\nexit 0\n' > "$repo/scripts/check-wails-version.sh"
 	printf 'prior good package\n' > "$repo/prior.pkg"
@@ -182,6 +199,7 @@ run_case() {
 				[[ -L "$final" && "$(cat "$repo/prior.pkg")" == 'prior good package' ]] || fail "$name changed symlink or referent"
 			fi
 			case "$expected_stage" in
+				build) [[ "$events" == build ]] || fail "$name proceeded past the notices check" ;;
 				package) [[ "$events" == $'build\npackage' ]] || fail "$name proceeded past packaging failure" ;;
 				expand) [[ "$events" == $'build\npackage\nexpand' ]] || fail "$name proceeded past expansion failure" ;;
 				scripts) [[ "$events" == $'build\npackage\nexpand' ]] || fail "$name parsed/published a scripted package" ;;
@@ -209,6 +227,7 @@ run_case version-parser-failure parse 'version does not match the app'
 run_case symlink-target parse 'refusing to replace a non-regular package target'
 run_case directory-target parse 'refusing to replace a non-regular package target'
 run_case scripts scripts 'contains installer scripts'
+run_case missing-module-notice build 'lacks notices for 1 module(s)'
 run_case package-failure package injected
 run_case expansion-failure expand injected
 run_case publication-failure publish injected
