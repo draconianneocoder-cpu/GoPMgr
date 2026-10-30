@@ -85,12 +85,16 @@ func run(corpus, out string) error {
 	}
 	defer tf.Close()
 	verdicts := map[string]int{}
+	var wireFailures []string
 	for _, c := range fixtures.TabularCases() {
 		if c.Large {
 			continue
 		}
 		rec := tabularCase(ctx, filepath.Join(corpus, "tabular", c.File), c)
 		verdicts[rec.Result.Verdict]++
+		if rec.Wire.Error != "" {
+			wireFailures = append(wireFailures, c.ID)
+		}
 		if err := writeJSONL(tf, rec); err != nil {
 			return err
 		}
@@ -103,6 +107,9 @@ func run(corpus, out string) error {
 	for _, k := range keys {
 		fmt.Printf("df0-baseline: tabular %s: %d\n", k, verdicts[k])
 	}
+	// The verdict compares engine values with the fixture; the wire is a
+	// separate check (DF-065), so a matching case can still fail here.
+	fmt.Printf("df0-baseline: tabular wire failures (Dataset not JSON-encodable): %d %v\n", len(wireFailures), wireFailures)
 
 	ff, err := os.Create(filepath.Join(out, "duckdb-filesystem.jsonl"))
 	if err != nil {
@@ -286,6 +293,13 @@ type wireStats struct {
 	// ObjectCells counts cells sent as JSON objects (for example a DuckDB
 	// Decimal struct), which the UI renders as text "[object Object]".
 	ObjectCells int `json:"object_cells"`
+	// Error is set when the Dataset cannot cross the JSON boundary at all,
+	// for example a NaN or infinite float64 cell. Wails marshals call results
+	// with encoding/json and calls os.Exit(1) when that fails
+	// (internal/frontend/dispatcher/calls.go, Wails v2.17.0), so this is a
+	// failed import in the app, not a measurement gap. The counts above are
+	// zero when Error is set.
+	Error string `json:"error,omitempty"`
 }
 
 func testIDs(format string) []string {
@@ -433,13 +447,14 @@ func jsonable(v any) any {
 func measureWire(ds analytics.Dataset) wireStats {
 	b, err := json.Marshal(ds)
 	if err != nil {
-		return wireStats{}
+		return wireStats{Error: "json.Marshal: " + err.Error()}
 	}
 	ws := wireStats{Bytes: len(b)}
 	var decoded struct {
 		Rows [][]json.RawMessage `json:"rows"`
 	}
 	if err := json.Unmarshal(b, &decoded); err != nil {
+		ws.Error = "json.Unmarshal: " + err.Error()
 		return ws
 	}
 	for _, r := range decoded.Rows {
