@@ -73,8 +73,121 @@ platform/publication limits are recorded in
   (`internal/analytics`). Production/package builds enable that tag so
   installers include the analytics engine; untagged developer builds link the
   stub. See `docs/design/duckdb-analytics-engine.md`.
+- `google.golang.org/grpc`: gRPC server for the ADR-010 worker connection
+  (`internal/interop/ipc`, from G1-3). It uses local IPC only:
+  Unix-domain sockets on Linux and macOS, and one named pipe on Windows
+  (OWN-02). There is no TCP listener and no fallback (OWN-03, G1-Q1).
+- `google.golang.org/protobuf`: runtime for the generated worker contract
+  (`internal/interop/contract`, from G1-2). The generated code is
+  committed, and CI checks it for drift.
+- `github.com/Microsoft/go-winio`: overlapped I/O for the Windows named
+  pipe (`internal/interop/ipc`, Windows build, from G1-4). G1-4's
+  listener creates the pipe itself, with one instance, first-instance
+  ownership and remote clients rejected (design §3.3 rule 6). It must not
+  use go-winio's unlimited-instance `ListenPipe`.
 
 Check `go.mod` for the authoritative version list.
+
+### ADR-010 worker interop dependencies (G1-1, 2026-10-26)
+
+Approved by the maintainer under OWN-11, with conditions
+([P04-D2](review/ADR-010-G1-P04-authorization-decision.md)).
+The full review is in
+[adr-010-g1-dependency-review.md](interoperability/adr-010-g1-dependency-review.md).
+
+**Not yet compiled into GoPMgr.** Until G1-2 imports them, the modules
+are pinned by `internal/interop/deps_pin.go`. Its build tag
+(`interop_deps_pin`) is never set. GoPMgr's compiled package set is
+identical with and without this change, test builds included: Linux,
+macOS and Windows, untagged and with `duckdb`, `webkit2_41`,
+`desktop,production` and their combinations.
+
+**Modules a G1 build will compile** (the same on Linux, macOS and Windows):
+
+| Module | Version | License | Status |
+|---|---|---|---|
+| `google.golang.org/grpc` | v1.84.0 | Apache-2.0, with `NOTICE.txt` | New direct |
+| `google.golang.org/protobuf` | v1.36.12 | BSD-3-Clause | New direct |
+| `github.com/Microsoft/go-winio` | v0.6.4 | MIT | New direct |
+| `google.golang.org/genproto/googleapis/rpc` | v0.0.0-20260706201446-f0a921348800 | Apache-2.0 | New indirect (`google.rpc.Status`) |
+| `golang.org/x/net` | v0.60.0 | BSD-3-Clause | Existing. **Keep at v0.60.0 or later** (GO-2026-6603, -6610, -6611, -6612, -6617) |
+| `golang.org/x/text` | v0.43.0 | BSD-3-Clause | Existing. **Keep at v0.41.0 or later** (GO-2026-6629) |
+| `golang.org/x/sys` | v0.49.0 | BSD-3-Clause | Existing |
+
+**Versions raised in the module graph.** These modules were already in
+GoPMgr's graph, declared by `arrow-go` (through DuckDB) and by Wails, but
+no GoPMgr package compiled them:
+
+- go-winio: v0.6.2 → v0.6.4;
+- grpc: v1.78.0 → v1.84.0;
+- protobuf: v1.36.11 → v1.36.12;
+- genproto/googleapis/rpc: 2025-10-29 → 2026-07-06;
+- go-cmp: v0.6.0 → v0.7.0, needed only by grpc's own tests. GoPMgr's code
+  still uses no go-cmp.
+
+**Graph-only additions.** gRPC's `go.mod` declares 32 more modules that
+GoPMgr never compiles, for xDS, OpenTelemetry, OAuth2 and Google Cloud.
+They are in the module graph only, recorded in `go.sum` where Go needs
+their `go.mod` hashes:
+
+- `cel.dev/expr`;
+- `cloud.google.com/go/auth`, `cloud.google.com/go/compute/metadata`;
+- `github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp`;
+- `github.com/cncf/xds/go`;
+- `github.com/envoyproxy/go-control-plane` (with `/envoy` and
+  `/ratelimit`), `github.com/envoyproxy/protoc-gen-validate`;
+- `github.com/felixge/httpsnoop`, `github.com/go-jose/go-jose/v4`;
+- `github.com/go-logr/logr`, `github.com/go-logr/stdr`,
+  `github.com/golang/glog`;
+- `github.com/golang/protobuf` (grpc's tests only);
+- `github.com/google/s2a-go`;
+- `github.com/googleapis/enterprise-certificate-proxy`,
+  `github.com/googleapis/gax-go/v2`;
+- `github.com/planetscale/vtprotobuf`, `github.com/sirupsen/logrus`,
+  `github.com/spiffe/go-spiffe/v2`;
+- `go.opentelemetry.io/auto/sdk`, `go.opentelemetry.io/contrib/...` (two
+  modules), `go.opentelemetry.io/otel` (with `/metric`, `/sdk`,
+  `/sdk/metric` and `/trace`);
+- `golang.org/x/oauth2`;
+- `google.golang.org/api`, `google.golang.org/genproto/googleapis/api`.
+
+A G1 package that would start compiling any of these needs a new review.
+
+**Verification at G1-1:**
+
+- `go mod verify` passes.
+- All 12 new `go.sum` lines match `sum.golang.org`.
+- govulncheck v1.9.0 (symbol scan):
+  - the pinned set, for linux, darwin and windows: none;
+  - the default build (`-tags webkit2_41`): none in GoPMgr's code;
+  - `-tags duckdb,webkit2_41`: none.
+- govulncheck module scan: one advisory, GO-2026-5932 (`x/crypto/openpgp`
+  is unmaintained). It predates this change, and GoPMgr does not call it.
+- A program that links grpc, protobuf and go-winio builds bit-for-bit
+  identically from two cold caches with `-trimpath`. Checked for
+  linux/amd64, linux/arm64, darwin/arm64, windows/amd64 and windows/arm64.
+- `reuse lint`: compliant.
+
+**Release notices.**
+
+- gRPC and genproto are Apache-2.0, and gRPC ships a `NOTICE.txt`.
+- The release packages today bundle third-party notices only for
+  go-sqlcipher.
+- Before any G1 code ships, the packaging slice must add the license
+  texts and notices of every linked Go module (G0 dependency report L2,
+  L5). That predates G1 for the other Go modules too.
+- Release integration is not authorized yet.
+
+**Java worker (approved for G1-8; nothing is in the repository yet):**
+
+- grpc-java 1.85.1;
+- Netty, the latest 4.2.x patch when G1-8 starts. NIO only, with no
+  epoll, kqueue or unix-common native libraries;
+- protobuf-java 3.25.x;
+- Temurin 21 LTS for jlink, and Maven 3.9.x, both pinned and
+  checksum-verified as in the G0 toolchain script.
+
+The dependency review §3 lists the artifacts.
 
 ## Frontend Dependencies
 

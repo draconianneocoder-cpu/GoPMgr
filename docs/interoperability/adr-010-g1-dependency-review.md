@@ -15,6 +15,20 @@ conditions:
 
 The verification and the `go.mod` change are slice G1-1.
 
+**G1-1 results (2026-10-26).** All passed:
+
+- `go mod verify`;
+- all 12 new `go.sum` lines match `sum.golang.org`;
+- govulncheck, symbol scan (pinned set on linux, darwin and windows; the
+  default build; the DuckDB build);
+- reproducible cold-cache builds on five targets;
+- GoPMgr's compiled package set unchanged, across 3 OSes × 6 tag sets,
+  test builds included;
+- `reuse lint`.
+
+The compiled set, the graph changes and the license table are in
+`docs/DEPENDENCIES.md` under "ADR-010 worker interop dependencies".
+
 **Basis:**
 
 - the [G0 dependency, native-code and license inventory](adr-010-g0-dependency-report.md),
