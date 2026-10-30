@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: CC0-1.0
+#
+# Native code GoPMgr must never ship. The maintainer's decision of 2026-10-26
+# (docs/review/TPC-benchmark-exclusion-decision.md) excludes the TPC-H and
+# TPC-DS benchmark generators that DuckDB's prebuilt libraries bundle as
+# separate archives.
+#
+#   archive <file>   an archive that must stay unreferenced at link time and
+#                    must not appear in a vendored or packaged source tree
+#   marker <text>    a string that only the excluded code contains; its
+#                    presence in a binary means that code was linked
+#
+# tools/duckdb-notices -check proves, for every release platform, that no
+# other linked library references a symbol the archives define, that each
+# marker is in the archives, and that no marker is in any other linked
+# library. scripts/verify-excluded-native-code.sh checks binaries and trees.
+# The name table DuckDB core keeps for extension autoloading ("dbgen",
+# "dsdgen", "tpch_queries") is deliberately not a marker: it is data in the
+# core library, present whether or not the extensions are linked.
+
+archive libtpch_extension.a
+archive libtpcds_extension.a
+
+marker N6duckdb13TpchExtensionE
+marker N6duckdb14TpcdsExtensionE
+marker N6duckdb17DBGenFunctionDataE
+marker N6duckdb18DSDGenFunctionDataE
+marker dbgen is only supported for DuckDB database files
+marker dsdgen is only supported for DuckDB database files
+marker Transaction Processing Performance Council (TPC)
+marker s_catalog_order_lineitem

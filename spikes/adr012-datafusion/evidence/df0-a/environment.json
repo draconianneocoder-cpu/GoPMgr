@@ -1,0 +1,18 @@
+{
+  "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "cpus": 4,
+  "engine": "gopmgr/internal/analytics (duckdb build tag), unmodified",
+  "engine_modules": [
+    "github.com/duckdb/duckdb-go-bindings v0.10506.0",
+    "github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.10506.0",
+    "github.com/duckdb/duckdb-go/v2 v2.10506.0",
+    "github.com/go-viper/mapstructure/v2 v2.5.0",
+    "github.com/google/uuid v1.6.0"
+  ],
+  "go_version": "go1.27.3",
+  "goarch": "amd64",
+  "goos": "linux",
+  "run_at": "2026-10-30T02:36:57Z",
+  "source_commit": "b8f76bedeaed6d79f7533defdce90487e9ab4729",
+  "worktree_dirty": false
+}

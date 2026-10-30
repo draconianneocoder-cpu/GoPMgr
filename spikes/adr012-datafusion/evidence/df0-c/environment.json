@@ -1,0 +1,27 @@
+{
+  "cpus": 4,
+  "crates": [
+    "arrow 59.3.2",
+    "datafusion 55.2.0",
+    "h2 0.4.20",
+    "hyper 1.12.0",
+    "hyper-util 0.1.21",
+    "prost 0.14.4",
+    "tokio 1.54.1",
+    "tonic 0.14.6",
+    "tower 0.5.3"
+  ],
+  "go_version": "go1.27.3",
+  "goarch": "amd64",
+  "goos": "linux",
+  "inspection": "/proc: fd links matched against net/{unix,tcp,tcp6,udp,udp6}; cmdline, environ, status",
+  "kernel": "6.18.44-fc-v185",
+  "max_frame_bytes": 4194304,
+  "run_at": "2026-10-30T03:14:26Z",
+  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+  "source_commit": "f29f10c7dddba29984c3239bfd439f9cbd1ac798",
+  "transport": "gRPC over a Unix socket; host is the server, worker the client",
+  "worker_bytes": 141226432,
+  "worker_sha256": "df6538bdb23d62494d300b4c075d419e9991d729c4fe99e8d2a08053d2902287",
+  "worktree_dirty": false
+}

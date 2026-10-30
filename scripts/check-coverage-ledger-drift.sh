@@ -151,6 +151,9 @@ generic_pkg_re = re.compile(r'^## `([a-zA-Z0-9_/.-]+)`(?:\s*\([^)]*\))?\s*—\s*
 # pattern rather than fitting generic_pkg_re.
 root_re = re.compile(r'^## Root package \(`gopmgr`, package `main`\) — (.+)$', re.M)
 
+# "Isolated spike modules" lists test files of modules outside the GoPMgr
+# build (their own go.mod under spikes/); their coverage is recorded in the
+# spike's evidence, not checked here.
 NON_PACKAGE_HEADINGS = {"Purpose", "Known gaps (cross-reference)", "Isolated spike modules (outside the GoPMgr build)"}
 FRONTEND_HEADING_PREFIX = "Frontend (`frontend/src`)"
 

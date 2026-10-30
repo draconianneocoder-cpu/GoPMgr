@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+[package]
+name = "df0-worker"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+df0-engine = { path = "../engine" }
+datafusion.workspace = true
+tokio = { workspace = true, features = ["net", "io-util", "io-std", "sync", "time"] }
+tonic.workspace = true
+tonic-prost.workspace = true
+prost.workspace = true
+hyper-util.workspace = true
+tower.workspace = true
+tokio-stream.workspace = true
+sha2.workspace = true
+hex.workspace = true
+libc.workspace = true
+serde_json.workspace = true
