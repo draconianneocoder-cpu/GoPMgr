@@ -133,6 +133,14 @@ export function parseBanners(text) {
   return [...text.matchAll(BANNER)].map((m) => ({ name: m[1], version: m[2] }));
 }
 
+// moduleFile turns a Vite module ID into a native file path. Vite writes IDs
+// with forward slashes on every platform (C:/work/... on Windows), so the
+// containment checks below would never match backslash prefixes without
+// this. The query string (?v=..., ?inline) is dropped.
+export function moduleFile(id, pathApi = path) {
+  return pathApi.normalize(id.split('?')[0]);
+}
+
 // collectPackages maps the bundle's module IDs and generated asset texts to
 // the npm packages they come from. Anything it cannot place is an error, so
 // unknown code never ships without a review.
@@ -155,7 +163,7 @@ export function collectPackages({ moduleIds, assetTexts, frontendDir, nodeModule
       add(packageRoot(path.join(nodeModules, v.pkg, 'package.json'), nodeModules), v.role);
       continue;
     }
-    const file = raw.split('?')[0];
+    const file = moduleFile(raw);
     if (file.startsWith(nodeModules + path.sep)) {
       add(packageRoot(file, nodeModules), 'JavaScript modules in the bundle');
       continue;

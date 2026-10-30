@@ -17,6 +17,7 @@ import {
   collectPackages,
   firstDifference,
   isNoticeName,
+  moduleFile,
   normalizeText,
   packageRoot,
   parseBanners,
@@ -96,6 +97,24 @@ describe('packageRoot', () => {
   });
   it('rejects a path outside node_modules', () => {
     assert.throws(() => packageRoot(src, nodeModules), /not inside/);
+  });
+});
+
+describe('moduleFile', () => {
+  // Vite writes module IDs with forward slashes on every platform. path.win32
+  // stands in for a Windows host so the CI on Linux covers that form too.
+  const cases = [
+    ['Windows ID with query', path.win32, 'C:/work/GoPMgr/frontend/src/main.ts?v=1', 'C:\\work\\GoPMgr\\frontend\\src\\main.ts'],
+    ['Windows node_modules ID', path.win32, 'C:/work/GoPMgr/frontend/node_modules/@scope/beta/dist/beta.js', 'C:\\work\\GoPMgr\\frontend\\node_modules\\@scope\\beta\\dist\\beta.js'],
+    ['POSIX ID with query', path.posix, '/work/GoPMgr/frontend/src/main.ts?inline', '/work/GoPMgr/frontend/src/main.ts'],
+    ['POSIX ID with redundant segments', path.posix, '/work/GoPMgr/frontend//src/./main.ts', '/work/GoPMgr/frontend/src/main.ts'],
+  ];
+  for (const [name, api, id, want] of cases) {
+    it(name, () => assert.equal(moduleFile(id, api), want));
+  }
+  it('makes a Windows ID match the native frontend prefix', () => {
+    const dir = 'C:\\work\\GoPMgr\\frontend';
+    assert.ok(moduleFile('C:/work/GoPMgr/frontend/src/main.ts', path.win32).startsWith(dir + path.win32.sep));
   });
 });
 
