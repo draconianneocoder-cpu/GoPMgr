@@ -10,6 +10,7 @@ go 1.27.3
 replace github.com/mutecomm/go-sqlcipher/v4 => ./third_party/go-sqlcipher
 
 require (
+	github.com/Microsoft/go-winio v0.6.4
 	github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c
 	github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea
 	github.com/duckdb/duckdb-go/v2 v2.10506.0
@@ -35,6 +36,8 @@ require (
 	golang.org/x/mod v0.42.0
 	golang.org/x/sys v0.49.0
 	gonum.org/v1/gonum v0.17.0
+	google.golang.org/grpc v1.84.0
+	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -92,4 +95,5 @@ require (
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/tools v0.51.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
 )

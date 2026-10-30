@@ -151,7 +151,7 @@ generic_pkg_re = re.compile(r'^## `([a-zA-Z0-9_/.-]+)`(?:\s*\([^)]*\))?\s*—\s*
 # pattern rather than fitting generic_pkg_re.
 root_re = re.compile(r'^## Root package \(`gopmgr`, package `main`\) — (.+)$', re.M)
 
-NON_PACKAGE_HEADINGS = {"Purpose", "Known gaps (cross-reference)"}
+NON_PACKAGE_HEADINGS = {"Purpose", "Known gaps (cross-reference)", "Isolated spike modules (outside the GoPMgr build)"}
 FRONTEND_HEADING_PREFIX = "Frontend (`frontend/src`)"
 
 # Packages whose heading is known, by inspection, not to be a bare "NN.N%"

@@ -1325,6 +1325,18 @@ to `*.test.ts`/`*.spec.ts` files.
 
 ---
 
+## Isolated spike modules (outside the GoPMgr build)
+
+These modules have their own `go.mod` under `spikes/`. They are not part of
+`go test . ./internal/... ./tools/...`, and their results are evidence in
+the spike's own records. They are listed here so every test file is
+accounted for.
+
+| File | Tests | Covers | How | Why |
+| --- | --- | --- | --- | --- |
+| `spikes/adr010-g0-transport/host/pairing_test.go` (added 2026-10-25) | 3 (4 subtests) | The ADR-010 G0 `npipe-dual` pairing listener: which connections it pairs, refuses or times out, closing while a half waits for its partner, and refusal before the worker's PID is known | unit, table-driven, fake listener | The dual-pipe alternative pairs two connections into one stream. A wrong pairing or a hang there is a denial of service or a cross-session leak, so each refusal path is pinned. |
+| `spikes/adr010-g0-transport/host/diag_test.go` (added 2026-10-25) | 5 (10 subtests) | G0 evidence diagnostics: counting uncaught Java exceptions, parsing worker timing notes, extracting and bounding captured gRPC log failures, and marking checks that did not run as BLOCKED | unit, table-driven | The G0 report must not call a run clean when the worker threw, and a check that never ran must read BLOCKED, never PASS. |
+
 ## Known gaps (cross-reference)
 
 This ledger records existing coverage, not a work plan. The one package row
