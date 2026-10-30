@@ -47,7 +47,7 @@ Project file compatibility.
 | Finish-anchored or backward project scheduling | **Proposed** (only task-level ALAP exists) | — | Not stated | PS-08 |
 | Activity splitting | **Partial**: `AllowSplitting` in leveling and persisted `PlannedWorkSegments`; no manual split or resume | `scheduler.go` `WorkSegment`; `kernel/resources.go` | Not stated | PS-08 |
 | Resource leveling | **Implemented** (kernel and App method); correctness against real projects **Unverified** (the existing ROADMAP says so) | `kernel/resources.go` `LevelResourcesWithOptions`; `App.LevelChartResources` | Leveling stated | PS-06 |
-| Overallocation detection | **Implemented, but does not scale**: S0 F3 found it roughly quadratic (Gantt layout 61 s at 50k tasks) | `DetectOverallocations*`; S0 §6.1 | Stated | PS-04 |
+| Overallocation detection | **Implemented.** S0 F3 found it roughly quadratic (Gantt layout 61 s at 50k tasks). RES-A-1 (2026-10-27) removed that rescan with unchanged output: T1 detection 2.05 s → 6.16 ms, T2 45.9 ms. Dense demand profiles remain (RES-B) | `DetectOverallocations*`; S0 §6.1; [overallocation contract](../testing/resource-overallocation-contract.md) | Stated | PS-04 |
 | Effort-driven, fixed-work, fixed-units and fixed-duration policies | **Proposed** | — | Not stated | PS-07, PS-08 |
 | Monte Carlo schedule risk | **Implemented**, with a report export | `kernel/montecarlo.go`; `App.ExportChartMonteCarloRiskReport` | Not stated | PS-09 |
 
@@ -77,13 +77,13 @@ Project file compatibility.
 
 | Requirement | GoPMgr status | Evidence | ProjectLibre (vendor-stated) | Work package |
 |---|---|---|---|---|
-| Gantt chart | **Implemented** as a chart editor; slow at T2 (S0 F3) | `charts/GanttEditor.svelte`, `GanttBars.svelte` | Stated | PS-04, PS-05 |
+| Gantt chart | **Implemented** as a chart editor. S0 measured a 61 s layout at T2, mostly the F3 rescan, which RES-A-1 removed; the layout has not been re-measured at T2 | `charts/GanttEditor.svelte`, `GanttBars.svelte` | Stated | PS-04, PS-05 |
 | Network, CPM and PERT diagrams | **Implemented** as separate chart editors | `charts/NetworkEditor.svelte`, `CPMEditor.svelte`, `PERTEditor.svelte` | Stated | PS-05 |
 | One connected workspace with synchronized selection | **Proposed**. The views are separate chart documents today | — | Not stated | PS-05 |
 | Saved views, filter, group, sort | **Proposed** for the schedule | — | Not stated | PS-05 |
 | Revision-aware undo and redo for schedule edits | **Proposed**. Only toast-level undo exists | `ToastContainer.svelte` | Not stated | PS-05 |
 | Schedule-quality audit (DCMA-style profile) | **Proposed**. The building blocks (CPM, cycles, constraint violations, overallocations) exist | See §1 | Not stated | **PS-02** |
-| 50,000-task editable schedule (T2) | **Blocked** by architecture: 2.5 s p50 per edit, 35.5 MB of audit per edit, 61 s layout (S0 F1–F3) | S0 baseline | Not stated | PS-04 (with ADR-011) |
+| 50,000-task editable schedule (T2) | **Blocked** by architecture: 2.5 s p50 per edit and 35.5 MB of audit per edit (S0 F1, F2). The 61 s layout (F3) was largely the overallocation rescan, removed by RES-A-1 | S0 baseline | Not stated | PS-04 (with ADR-011) |
 
 ## 5. Interoperability and reporting
 

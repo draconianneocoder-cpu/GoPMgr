@@ -49,7 +49,7 @@ Status uses the capability matrix's words.
 | **PS-01** Normalized connected model | Critical, foundational | ADR-011 (reserved) = ADR-010 S1 (P03) → S2 gate and storage (P06, P07) → S3 APIs (P08) → S4 mapping (P09) | PS-00 | **Proposed.** The [domain model](professional-scheduling-domain-model.md) lists the open ADR-011 decisions | ADR-011 draft (P03) |
 | **PS-02** Schedule-quality audit | High, early parallel | Read-only use of `internal/kernel`. Later history needs S3 | None for the snapshot version | **Proposed**: [specification](../testing/PS-02-schedule-quality-audit-spec.md) | `internal/schedaudit`, read-only, over a bounded chart snapshot (§6) |
 | **PS-03** File inspection and interoperability | Critical | ADR-010 G1 (P04) → G2 inspect (P05) → G3 import (P10, P11) → G4 export (P13) | G0 evidence; G1; S4 for full import | **Partial.** MSPDI Quick Chart Import and export are on `main` but drop major fields (matrix §5). G0 and G1 are on branches | Continue G1 slices (G1-2 contract is paused) |
-| **PS-04** Large-schedule storage, audit, Gantt | Critical | ADR-010 S3 (P08), S5 (P12), S7B (P17). S0 F1–F3 are the baseline | PS-01 (S2/S3) | **Blocked by architecture** (S0 F1–F3) | After S3: scoped `ApplyTaskPatch`. **Possible before S3:** the F3 overallocation rescan fix (see §6) |
+| **PS-04** Large-schedule storage, audit, Gantt | Critical | ADR-010 S3 (P08), S5 (P12), S7B (P17). S0 F1–F3 are the baseline | PS-01 (S2/S3) | **Blocked by architecture** (S0 F1, F2). F3 was fixed by RES-A-1 on 2026-10-27 (see §6) | After S3: scoped `ApplyTaskPatch` |
 | **PS-05** Connected scheduling workspace | High | ADR-010 S5 (P12) and appendix A components | PS-01 S3 query APIs | **Proposed** | Read-only linked outline and Gantt over S3 queries |
 | **PS-06** Task and Resource Usage | High | Extends `kernel.ResourceUsage` and capacity plans. Needs S1/S3 assignments and timephased segments | PS-01, PS-05 | **Proposed**; the kernel computes usage | Read-only usage views |
 | **PS-07** Resource and financial planning | High, after PS-01/PS-06 | Cost-control domain (`internal/budget`); ADR-009 currency rules | PS-01, PS-06 | **Partial** (hourly rate to committed cost) | Rate-table contract and checked-money tests |
@@ -111,12 +111,14 @@ today's chart schedules.
 - It needs its own implementation authorization (decision §8: "proposing ...
   as a separately reviewable, read-only implementation slice").
 
-**Runner-up: the S0 F3 fix.** `DetectOverallocations` rescans every task for
-each overallocated resource-day. It can be made linear without changing
-results, proven by differential testing against the current implementation
-(the rule in PS-04). It is also read-only in effect. It is smaller than PS-02
-but less visible to users, and it changes a production hot path, so it needs
-the same authorization.
+**The S0 F3 fix is done.** `DetectOverallocations` used to rescan every task
+for each overallocated resource-day. RES-A-1 replaced the rescan with a
+participant index, approved and implemented on 2026-10-27 (DEC-09; see the
+[overallocation contract](../testing/resource-overallocation-contract.md)).
+Its output is unchanged, and T1 detection went from 2.05 s to 6.16 ms. The
+S0 figure stays the historical baseline. What remains, the dense demand
+profiles, is RES-B and needs its own decision. DEC-09 put RES-A-1 before
+PS-02, so PS-02 slice 1 is next.
 
 ## 7. Open items
 
@@ -126,4 +128,4 @@ the same authorization.
 3. ADR-011 drafting (P03), and the open decisions in the domain model.
 4. The ProjectLibre hands-on comparison needs a documented ProjectLibre
    version and representative workflows (QG-06).
-5. Authorization for PS-02 slice 1, or for the F3 fix.
+5. Authorization for PS-02 slice 1.
