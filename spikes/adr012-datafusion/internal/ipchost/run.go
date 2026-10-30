@@ -51,12 +51,15 @@ type Job struct {
 	Worker  string
 	Execute *df0pb.Execute
 	// Source is sent as SourceChunks after Execute.
-	Source       []byte
-	ChunkBytes   int
-	MaxFrame     int
-	Timeout      time.Duration
-	CancelAfter  int           // send Cancel after this many batches; 0: never
-	SlowPerBatch time.Duration // host pause per batch, to apply backpressure
+	Source      []byte
+	ChunkBytes  int
+	MaxFrame    int
+	Timeout     time.Duration
+	CancelAfter int // send Cancel after this many batches; 0: never
+	// StallSourceAfter stops the upload after this many chunks, never
+	// sending the last one: a host that cancels mid-upload (fault test).
+	StallSourceAfter int
+	SlowPerBatch     time.Duration // host pause per batch, to apply backpressure
 	// Verify checks one batch's Arrow IPC bytes and returns its row count.
 	Verify func([]byte) (int, error)
 
@@ -64,8 +67,9 @@ type Job struct {
 	CorruptProof bool // the bootstrap carries a credential the host does not expect
 	Expired      bool // the bootstrap has already expired
 	Intruder     bool // another process (the host itself) dials the endpoint first
-	// OnSpawn, when set, is called with the worker's PID after launch.
-	OnSpawn func(pid int)
+	// OnSpawn, when set, is called with the worker's PID and this job's
+	// private endpoint directory after launch.
+	OnSpawn func(pid int, endpointDir string)
 }
 
 // Result is what the host observed. Durations are nanoseconds; -1 means
@@ -284,7 +288,7 @@ func Run(job Job) (res Result) {
 	res.WorkerPID = pid
 	pl.setExpected(pid)
 	if job.OnSpawn != nil {
-		job.OnSpawn(pid)
+		job.OnSpawn(pid, ep.Dir)
 	}
 	_, werr := stdin.Write(framed)
 	cerr := stdin.Close()
@@ -458,7 +462,10 @@ func Run(job Job) (res Result) {
 			if job.Source != nil {
 				go func() {
 					src := job.Source
-					for {
+					for sent := 0; ; sent++ {
+						if job.StallSourceAfter > 0 && sent == job.StallSourceAfter {
+							return
+						}
 						n := min(job.ChunkBytes, len(src))
 						last := n == len(src)
 						if !send(&df0pb.HostCommand{Command: &df0pb.HostCommand_Source{Source: &df0pb.SourceChunk{Data: src[:n], Last: last}}}) || last {

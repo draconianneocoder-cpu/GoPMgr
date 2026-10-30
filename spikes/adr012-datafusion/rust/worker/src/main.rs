@@ -360,7 +360,7 @@ async fn execute(
     let r = match ex.operation.as_str() {
         "generate" => generate(&ex, &mut out, None, &ctl, cap).await,
         "duplex" => generate(&ex, &mut out, Some(src), &ctl, cap).await,
-        "rollup" => rollup(&mut out, src).await,
+        "rollup" => rollup(&mut out, src, &ctl).await,
         other => Err(("INPUT_INVALID", format!("unknown operation {other:?}"))),
     };
     match r {
@@ -511,8 +511,26 @@ async fn generate(
             rows += n as u64;
         }
     }
+    // The source upload can outlast the generated rows (duplex). Waiting
+    // for its digest must still honor Cancel, and must not need the rest
+    // of the upload to arrive.
     let (source_bytes, source_sha256) = match hasher {
-        Some(h) => h.await.map_err(|e| internal(e.to_string()))?,
+        Some(mut h) => {
+            let cancelled = ctl.notify.notified();
+            tokio::pin!(cancelled);
+            cancelled.as_mut().enable(); // registered before the check below
+            if ctl.cancelled() {
+                h.abort();
+                return Err(("USER_CANCELLED", "cancelled by the host".into()));
+            }
+            tokio::select! {
+                r = &mut h => r.map_err(|e| internal(e.to_string()))?,
+                _ = &mut cancelled => {
+                    h.abort();
+                    return Err(("USER_CANCELLED", "cancelled by the host".into()));
+                }
+            }
+        }
         None => (0, Vec::new()),
     };
     let mut sum = digest.finalize().to_vec();
@@ -534,9 +552,21 @@ async fn generate(
     .map_err(|Exit(_, m)| ("INTERNAL", m))
 }
 
-async fn rollup(out: &mut Out, mut src: mpsc::Receiver<Vec<u8>>) -> OpResult {
+async fn rollup(out: &mut Out, mut src: mpsc::Receiver<Vec<u8>>, ctl: &Control) -> OpResult {
     let mut buf = Vec::new();
-    while let Some(chunk) = src.recv().await {
+    loop {
+        // Cancel must not wait for the rest of the upload.
+        let cancelled = ctl.notify.notified();
+        tokio::pin!(cancelled);
+        cancelled.as_mut().enable();
+        if ctl.cancelled() {
+            return Err(("USER_CANCELLED", "cancelled by the host".into()));
+        }
+        let chunk = tokio::select! {
+            c = src.recv() => c,
+            _ = &mut cancelled => return Err(("USER_CANCELLED", "cancelled by the host".into())),
+        };
+        let Some(chunk) = chunk else { break };
         if buf.len() + chunk.len() > MAX_ROLLUP_SOURCE {
             return Err(("RESOURCE_LIMIT", "rollup input over 64 MiB".into()));
         }

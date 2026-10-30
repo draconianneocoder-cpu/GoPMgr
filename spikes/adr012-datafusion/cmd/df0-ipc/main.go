@@ -28,6 +28,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -168,7 +169,9 @@ func run(worker, corpus, out string) error {
 	}
 	fmt.Printf("df0-ipc: %d PASS, %d FAIL\n", r.counts["PASS"], r.counts["FAIL"])
 	if len(r.failed) > 0 {
-		fmt.Printf("df0-ipc: failed: %s\n", strings.Join(r.failed, ", "))
+		// The evidence is written first; the error makes callers such as
+		// run-df0c.sh fail instead of reporting a regression as success.
+		return fmt.Errorf("%d scenario(s) failed: %s", len(r.failed), strings.Join(r.failed, ", "))
 	}
 	return nil
 }
@@ -247,6 +250,22 @@ func (r *runner) duplex() error {
 	if res.Outcome != "completed" || res.SourceMatch == nil || !*res.SourceMatch || g.Next != 20_000 {
 		rec.Why = append(rec.Why, fmt.Sprintf("outcome %s %s, source match %v, rows %d", res.Outcome, res.Detail, res.SourceMatch, g.Next))
 	}
+	if err := r.write(rec); err != nil {
+		return err
+	}
+
+	// The rows finish before the upload, the host stops uploading and
+	// cancels: the worker must not wait for the rest of the source.
+	job, _ = genJob("duplex-cancel-while-awaiting-source", r.worker, 1000, 500, 64)
+	job.Execute.Operation = "duplex"
+	job.Source = src
+	job.StallSourceAfter = 4
+	job.CancelAfter = 2
+	job.Timeout = 10 * time.Second
+	res = ipchost.Run(job)
+	rec = record{TestIDs: []string{"DF-039", "DF-021"}, Scenario: job.Name,
+		Expect: "failed USER_CANCELLED although the upload never finished; clean exit within 2 s", Result: res}
+	rec.Why = append(invariants(res, true), cancelChecks(res)...)
 	return r.write(rec)
 }
 
@@ -280,6 +299,10 @@ func (r *runner) rollups() error {
 		var got analytics.PortfolioSummary
 		var gerr error
 		var rr rollupwire.Result
+		// typedOverflow is true only for a completed run whose result is
+		// the worker's overflow error. A transport, protocol or decoding
+		// failure never counts as the expected overflow.
+		typedOverflow := false
 		switch {
 		case res.Outcome != "completed":
 			gerr = errors.New(res.Outcome + ": " + res.Detail)
@@ -287,11 +310,12 @@ func (r *runner) rollups() error {
 			gerr = errors.New("result is not JSON")
 		case rr.Error != "":
 			gerr = errors.New(rr.Error)
+			typedOverflow = strings.HasPrefix(rr.Error, "overflow:")
 		default:
 			got, gerr = rollupwire.Summary(rr)
 		}
 		switch {
-		case gerr != nil && want.Err != "":
+		case want.Err == "overflow" && typedOverflow:
 		case gerr != nil || want.Err != "":
 			rec.Why = append(rec.Why, fmt.Sprintf("error %v, oracle error %q", gerr, want.Err))
 		default:
@@ -475,13 +499,33 @@ func (r *runner) orphan() error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	line, err := bufio.NewReader(stdout).ReadString('\n')
-	if err != nil {
+	// The helper prints "PID DIR" at spawn, then "ready" after its first
+	// verified batch, so the kill lands during an active job. The timer
+	// bounds the wait if the helper never gets that far.
+	stuck := time.AfterFunc(30*time.Second, func() { _ = cmd.Process.Kill() })
+	rd := bufio.NewReader(stdout)
+	spawn, err1 := rd.ReadString('\n')
+	ready, err2 := rd.ReadString('\n')
+	stuck.Stop()
+	var pid int
+	var dir string
+	if f := strings.Fields(spawn); len(f) == 2 {
+		pid, _ = strconv.Atoi(f[0])
+		dir = f[1]
+	}
+	if err1 != nil || err2 != nil || pid <= 0 || strings.TrimSpace(ready) != "ready" {
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
-		return fmt.Errorf("orphan host: %w", err)
+		if pid > 0 {
+			_ = syscall.Kill(pid, syscall.SIGKILL)
+		}
+		if strings.HasPrefix(dir, filepath.Join(ipchost.EndpointBase, "gopmgr-df0-")) {
+			_ = os.RemoveAll(dir)
+		}
+		rec.Outcome, rec.WorkerExit, rec.EndpointRemoved = "not reached", "n/a", true
+		rec.Why = []string{fmt.Sprintf("the helper host did not reach an active job (spawn %q, ready %q)", strings.TrimSpace(spawn), strings.TrimSpace(ready))}
+		return r.write(rec)
 	}
-	pid, _ := strconv.Atoi(strings.TrimSpace(line))
 	killedAt := time.Now()
 	_ = cmd.Process.Signal(syscall.SIGKILL)
 	_ = cmd.Wait()
@@ -499,12 +543,14 @@ func (r *runner) orphan() error {
 		rec.Why = []string{"worker outlived its host"}
 		_ = syscall.Kill(pid, syscall.SIGKILL)
 	}
-	// A killed host cannot run its cleanup: record what it left behind.
-	left, _ := filepath.Glob(filepath.Join(ipchost.EndpointBase, "gopmgr-df0-*"))
-	rec.Detail = fmt.Sprintf("host SIGKILL to worker dead: %v; endpoint dirs left by the killed host: %d (a supervisor sweeps them at start)",
-		took.Round(time.Microsecond), len(left))
-	for _, d := range left {
-		_ = os.RemoveAll(d)
+	// A killed host cannot run its cleanup: record what it left behind, and
+	// remove only that directory, never another job's.
+	_, statErr := os.Lstat(dir)
+	left := statErr == nil
+	rec.Detail = fmt.Sprintf("killed after the first verified batch; host SIGKILL to worker dead: %v; the killed host's endpoint dir left behind: %v (a supervisor sweeps it at start)",
+		took.Round(time.Microsecond), left)
+	if left && strings.HasPrefix(dir, filepath.Join(ipchost.EndpointBase, "gopmgr-df0-")) {
+		_ = os.RemoveAll(dir)
 	}
 	rec.EndpointRemoved = true
 	return r.write(rec)
@@ -513,7 +559,16 @@ func (r *runner) orphan() error {
 func orphanHostMain(worker string) {
 	job, _ := genJob("orphan", worker, 100_000_000, 100, 64)
 	job.SlowPerBatch = 10 * time.Millisecond
-	job.OnSpawn = func(pid int) { fmt.Println(pid) }
+	job.OnSpawn = func(pid int, dir string) { fmt.Println(pid, dir) }
+	verify := job.Verify
+	var once sync.Once
+	job.Verify = func(b []byte) (int, error) {
+		n, err := verify(b)
+		if err == nil {
+			once.Do(func() { fmt.Println("ready") })
+		}
+		return n, err
+	}
 	ipchost.Run(job)
 }
 
