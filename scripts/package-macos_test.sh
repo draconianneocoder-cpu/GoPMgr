@@ -100,6 +100,10 @@ if ! cmp -s "$srcfolder/GoPMgr.app/Contents/Resources/Licenses/duckdb-native.txt
 	echo "create-dmg stub: app lacks an exact copy of the DuckDB native notices" >&2
 	exit 1
 fi
+if ! cmp -s "$srcfolder/GoPMgr.app/Contents/Resources/Licenses/frontend.txt" "${FRONTEND_NOTICES:?}"; then
+	echo "create-dmg stub: app lacks an exact copy of the frontend package notices" >&2
+	exit 1
+fi
 if [ -d "$srcfolder/Contents" ]; then
 	echo "create-dmg stub: source folder points at app bundle contents: $srcfolder" >&2
 	exit 1
@@ -164,6 +168,10 @@ if ! cmp -s "$srcfolder/GoPMgr.app/Contents/Resources/Licenses/duckdb-native.txt
 	echo "hdiutil stub: app lacks an exact copy of the DuckDB native notices" >&2
 	exit 1
 fi
+if ! cmp -s "$srcfolder/GoPMgr.app/Contents/Resources/Licenses/frontend.txt" "${FRONTEND_NOTICES:?}"; then
+	echo "hdiutil stub: app lacks an exact copy of the frontend package notices" >&2
+	exit 1
+fi
 if [ ! -L "$srcfolder/Applications" ]; then
 	echo "hdiutil stub: DMG root lacks Applications symlink: $srcfolder" >&2
 	exit 1
@@ -183,7 +191,7 @@ sentinel="$backup_root/create-dmg-called"
 # Case 1: default (no GOPMGR_FANCY_DMG). hdiutil is used even though a working
 # create-dmg is on PATH; create-dmg must NOT be invoked.
 rm -f "$sentinel"
-output="$(PATH="$stub_bin:$PATH" CREATE_DMG_SENTINEL="$sentinel" GO_MODULE_NOTICES="$ROOT/third_party/GO-MODULE-NOTICES.txt" DUCKDB_NATIVE_NOTICES="$ROOT/third_party/DUCKDB-NATIVE-NOTICES.txt" GOPMGR_PACKAGE_LAYOUT_TEST=1 VERSION=test-default bash scripts/package-macos.sh 2>&1)" || {
+output="$(PATH="$stub_bin:$PATH" CREATE_DMG_SENTINEL="$sentinel" GO_MODULE_NOTICES="$ROOT/third_party/GO-MODULE-NOTICES.txt" DUCKDB_NATIVE_NOTICES="$ROOT/third_party/DUCKDB-NATIVE-NOTICES.txt" FRONTEND_NOTICES="$ROOT/third_party/FRONTEND-NOTICES.txt" GOPMGR_PACKAGE_LAYOUT_TEST=1 VERSION=test-default bash scripts/package-macos.sh 2>&1)" || {
 	printf '%s\n' "$output" >&2
 	fail "package-macos default (hdiutil) layout failed"
 }
@@ -203,7 +211,7 @@ fi
 
 # Case 2: opt-in fancy layout uses create-dmg when it succeeds.
 rm -f "$sentinel"
-output="$(PATH="$stub_bin:$PATH" CREATE_DMG_SENTINEL="$sentinel" GOPMGR_FANCY_DMG=1 GO_MODULE_NOTICES="$ROOT/third_party/GO-MODULE-NOTICES.txt" DUCKDB_NATIVE_NOTICES="$ROOT/third_party/DUCKDB-NATIVE-NOTICES.txt" GOPMGR_PACKAGE_LAYOUT_TEST=1 VERSION=test-create-dmg bash scripts/package-macos.sh 2>&1)" || {
+output="$(PATH="$stub_bin:$PATH" CREATE_DMG_SENTINEL="$sentinel" GOPMGR_FANCY_DMG=1 GO_MODULE_NOTICES="$ROOT/third_party/GO-MODULE-NOTICES.txt" DUCKDB_NATIVE_NOTICES="$ROOT/third_party/DUCKDB-NATIVE-NOTICES.txt" FRONTEND_NOTICES="$ROOT/third_party/FRONTEND-NOTICES.txt" GOPMGR_PACKAGE_LAYOUT_TEST=1 VERSION=test-create-dmg bash scripts/package-macos.sh 2>&1)" || {
 	printf '%s\n' "$output" >&2
 	fail "package-macos create-dmg layout failed"
 }
@@ -228,7 +236,7 @@ exit 127
 STUB
 chmod +x "$stub_bin/create-dmg"
 
-output="$(PATH="$stub_bin:$PATH" GOPMGR_FANCY_DMG=1 GO_MODULE_NOTICES="$ROOT/third_party/GO-MODULE-NOTICES.txt" DUCKDB_NATIVE_NOTICES="$ROOT/third_party/DUCKDB-NATIVE-NOTICES.txt" GOPMGR_PACKAGE_LAYOUT_TEST=1 VERSION=test-fallback bash scripts/package-macos.sh 2>&1)" || {
+output="$(PATH="$stub_bin:$PATH" GOPMGR_FANCY_DMG=1 GO_MODULE_NOTICES="$ROOT/third_party/GO-MODULE-NOTICES.txt" DUCKDB_NATIVE_NOTICES="$ROOT/third_party/DUCKDB-NATIVE-NOTICES.txt" FRONTEND_NOTICES="$ROOT/third_party/FRONTEND-NOTICES.txt" GOPMGR_PACKAGE_LAYOUT_TEST=1 VERSION=test-fallback bash scripts/package-macos.sh 2>&1)" || {
 	printf '%s\n' "$output" >&2
 	fail "package-macos fallback layout failed"
 }

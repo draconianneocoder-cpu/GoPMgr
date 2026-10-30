@@ -40,6 +40,8 @@ contents:
     dst: /usr/share/doc/gopmgr/go-module-notices.txt
   - src: ./third_party/DUCKDB-NATIVE-NOTICES.txt
     dst: /usr/share/doc/gopmgr/duckdb-native-notices.txt
+  - src: ./third_party/FRONTEND-NOTICES.txt
+    dst: /usr/share/doc/gopmgr/frontend-notices.txt
   - src: ./internal/fonts/assets/FONT-NOTICES.txt
     dst: /usr/share/doc/gopmgr/font-notices.txt
 

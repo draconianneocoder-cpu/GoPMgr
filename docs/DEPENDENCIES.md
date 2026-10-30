@@ -209,6 +209,10 @@ weakening the release claim.
    remove an entry from `third_party/EXCLUDED-NATIVE-CODE.txt` to get past
    that (see
    [LICENSES.md](../LICENSES.md#excluded-the-tpc-h-and-tpc-ds-generators)).
+9. After a frontend dependency change, or a new import of an npm package,
+   run `make frontend-notices` and commit the regenerated
+   `third_party/FRONTEND-NOTICES.txt`; `make verify` fails until it is
+   current. See [LICENSES.md](../LICENSES.md#frontend-package-notices).
 
 For SQLCipher specifically, remember that the selected driver owns the
 SQLite implementation in the binary. Driver changes need encryption

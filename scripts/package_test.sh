@@ -26,7 +26,7 @@ cp scripts/package.sh scripts/verify-module-notices.sh scripts/verify-excluded-n
 cp README.md "$repo/"
 cp -R LICENSES "$repo/"
 cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt "$repo/third_party/go-sqlcipher/"
-cp third_party/GO-MODULE-NOTICES.txt third_party/DUCKDB-NATIVE-NOTICES.txt third_party/EXCLUDED-NATIVE-CODE.txt "$repo/third_party/"
+cp third_party/GO-MODULE-NOTICES.txt third_party/DUCKDB-NATIVE-NOTICES.txt third_party/FRONTEND-NOTICES.txt third_party/EXCLUDED-NATIVE-CODE.txt "$repo/third_party/"
 cp internal/fonts/assets/FONT-NOTICES.txt "$repo/internal/fonts/assets/"
 
 # A real Go binary, so verify-module-notices.sh checks it for real.
@@ -71,6 +71,7 @@ check_member LICENSES/go-sqlcipher.txt third_party/go-sqlcipher/THIRD_PARTY_NOTI
 check_member LICENSES/fonts.txt internal/fonts/assets/FONT-NOTICES.txt
 check_member LICENSES/go-modules.txt third_party/GO-MODULE-NOTICES.txt
 check_member LICENSES/duckdb-native.txt third_party/DUCKDB-NATIVE-NOTICES.txt
+check_member LICENSES/frontend.txt third_party/FRONTEND-NOTICES.txt
 
 # Notices that do not cover the binary stop packaging before any archive is
 # written. The fixture links no modules, so a file without the standard
