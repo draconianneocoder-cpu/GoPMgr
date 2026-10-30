@@ -1,5 +1,5 @@
 {
-  "cli_bytes": 139513456,
+  "cli_bytes": 139514232,
   "cpus": 4,
   "crates": [
     "arrow 59.3.2",
@@ -12,8 +12,8 @@
   "go_version": "go1.27.3",
   "goarch": "amd64",
   "goos": "linux",
-  "run_at": "2026-10-26T21:46:57Z",
+  "run_at": "2026-10-30T02:55:55Z",
   "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
-  "source_commit": "9a386a102fd40ee0a20f320cc3f95d8df31a247d",
+  "source_commit": "5d238a5a43b2bcfb22561b6b962e095b89accd20",
   "worktree_dirty": false
 }

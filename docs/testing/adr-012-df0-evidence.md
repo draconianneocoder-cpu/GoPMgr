@@ -216,13 +216,25 @@ recorded for the comparison.
 | DataFusion features | `parquet`, `compression`, `sql`, `recursive_protection`, `nested_expressions`. Default features off; no avro, remote object stores or encryption |
 | Toolchain | rustc 1.97.0 (pinned in `rust-toolchain.toml`; MSRV 1.94) |
 | Release binary | 139.5 MB unstripped, Linux amd64. Size work is DF0-F |
-| Evidence stamp | `environment.json` records source commit 9a386a1 with a clean worktree. A rerun from that commit reproduced every verdict and value; only timings differ |
+| Evidence stamp | `environment.json` records source commit 5d238a5 with a clean worktree (the Codex review fixes below). Compared with the first run, at 9a386a1, every verdict and value is the same; only timings and the new `error_class` field differ |
 | Reproduce | `spikes/adr012-datafusion/scripts/run-df0b.sh` (needs `rustup`; builds outside the repository) |
 
 ### Portfolio (DF-002 to DF-009, DF-054, DF-061)
 
 **B and C both match the legacy oracle on 24 of 24 cases**, overflow
 included. Both return a typed overflow error instead of a scan failure.
+
+**Codex review fixes (2026-10-30):**
+- **Overflow checks only the final total.** C used to reject a running
+  total outside int64 even when the final total fit, so `[MaxInt64, 1, -1]`
+  failed or passed depending on project order. C now sums exactly in
+  128 bits and checks only the final totals, as the oracle and DuckDB's
+  `HUGEINT` SUM do. B already did. No corpus case had cancelling amounts
+  that large, so the scores did not change; unit tests now pin it.
+- **Scoring separates overflow from failure.** Any error used to pass an
+  overflow case, including a crashed or timed-out CLI run or malformed
+  output. Records now carry `error_class`, and only `overflow` matches. All
+  six overflow passes are typed overflow results.
 
 **Finding F-B0, critical for any DataFusion money path.** A plain DataFusion
 `SUM` over `BIGINT` **wraps silently**: `9223372036854775807 + 1` returns
@@ -267,7 +279,7 @@ These are observations, not performance results.
 | G-4 | An unterminated CSV quote is accepted silently, as in A | `csv-malformed-quote` | Strict quote checking in the reader |
 | G-5 | A JSON integer beyond 2^53 in a float column loses precision, as in A (LD-2) | `json-big-int` | Infer DECIMAL or text for out-of-range integers |
 | G-6 | Zero-padded codes need the spike's sniffer to stay text; DuckDB keeps them by default | `csv-leading-zeros` | Kept in the candidate (`zero_padded_columns`) |
-| G-7 | DataFusion detects neither the CSV delimiter nor the header; the spike adds a dialect sniffer (`sniff.rs`). That is code GoPMgr would own | `.txt`, `semicolon.csv`, `noheader.csv` | Keep the sniffer, with its tests |
+| G-7 | DataFusion detects neither the CSV delimiter nor the header; the spike adds a dialect sniffer (`sniff.rs`). That is code GoPMgr would own. The first version called any first record with a text field a header, so a headerless `1,Alpha,10.50` file lost its first row (Codex review). It now compares the first record with later records column by column, as DuckDB does. No corpus file has headerless mixed text and numbers, so the verdicts did not change; a corpus case should be added at DF1 | `.txt`, `semicolon.csv`, `noheader.csv` | Keep the sniffer, with its tests |
 | G-8 | **A path with glob characters is expanded (`q?.csv` reads `q1.csv`), as in A (LD-6).** DataFusion's listing table treats `*`, `?` and `[` as patterns | `datafusion-filesystem.jsonl` | Host-mediated reads (DF-09) remove paths entirely |
 
 **Configuration findings in B, fixed in the candidate:**
