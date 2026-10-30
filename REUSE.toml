@@ -339,6 +339,14 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GFDL-1.3-or-later"
 
+# ADR-012 DF0 spike: the generated fixture manifest, the JSONL evidence
+# records and Go's module checksum file.
+[[annotations]]
+path = ["spikes/adr012-datafusion/fixtures/**", "spikes/adr012-datafusion/evidence/**", "spikes/adr012-datafusion/go.sum"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
 # ADR-010 G0 spike: files that cannot carry an inline header (go.sum,
 # protoc-generated Java) and the recorded evidence.
 [[annotations]]
