@@ -18,6 +18,9 @@ Historical ADR text stays as written. §1 lists the amendments this directive ma
 **Later G1 authorization (2026-10-28):** see [§5](#5-g1-authorization-clarification-2026-10-28).
 The recorded baseline and verbatim directive remain unchanged.
 
+**Later read-only coordination decision (2026-10-29):** see
+[§6](#6-read-only-sqlite-coordination-2026-10-29) for the narrow WAL/SHM exception.
+
 ## 1. Amendments to existing records
 
 | Record | Amendment | Effect |
@@ -601,3 +604,28 @@ governs G1 permission only, including the shared language-neutral foundation
 and independent Java/Rust qualification. All P04 conditions, this directive's
 gates and the qualified Slice J cutover remain binding. No PR is approved
 for merge by this notice. §4 is preserved verbatim.
+
+## 6. Read-only SQLite coordination, 2026-10-29
+
+The maintainer approved: **"Allow SQLite coordination files only."** This
+amends §4's read-only file-creation restriction solely for SQLite-owned
+WAL/SHM coordination. An existing WAL-mode database may need an empty or
+header-only `-wal` and a `-shm` coordination index to read committed data.
+SQLite may create and maintain that coordination state; this does not permit
+new database frames or changes to existing WAL data.
+
+Read-only project operations must still use an existing-file read-only
+connection. They must not create or replace the main database, change main
+bytes or schema, migrate, chmod, switch journal mode, checkpoint, or append,
+rewrite, reset or truncate existing WAL data. Do not use immutable mode on a
+changing database. A reader must see committed live-WAL data and leave the
+writer usable. If coordination cannot be established, return the error
+without retrying through a writable or migrating open.
+
+Verification must distinguish coordination from persisted data: compare main
+bytes and permissions before, during and after reading; exclude database
+frames in newly created WAL files; compare existing WAL bytes while the
+writer is idle; verify journal mode and pooled write refusal. Test plaintext
+and encrypted files, including read-only main-file permissions with a
+writable parent directory. This decision changes the contract, not the
+qualification status of any PR. The historical baseline and §4 remain intact.

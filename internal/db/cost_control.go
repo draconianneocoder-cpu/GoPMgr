@@ -244,7 +244,15 @@ func scanCostEntry(row interface{ Scan(...any) error }) (CostEntry, error) {
 }
 
 func (db *Database) ListCostEntries(projectID string) ([]CostEntry, error) {
-	rows, err := db.Conn.Query(`SELECT `+costEntrySelectColumns+` FROM cost_entries WHERE project_id=? ORDER BY cost_date DESC, created_at DESC`, projectID) // timestamp-order-guard-exempt: Cost Control tables are new in this schema and write created_at only through captureTimestamp's fixed-width UTC timestampLayout; lexicographic order is chronological. See timestamps.go.
+	present, err := db.columnSet("cost_entries")
+	if err != nil || len(present) == 0 {
+		return nil, err
+	}
+	columns := legacyReadColumns(present, costEntrySelectColumns, map[string]string{
+		"quantity_milli_units": "0", "unit": "''", "item_name": "''",
+		"sku": "''", "supplier_name": "''", "invoice_reference": "''",
+	})
+	rows, err := db.Conn.Query(`SELECT `+columns+` FROM cost_entries WHERE project_id=? ORDER BY cost_date DESC, created_at DESC`, projectID) // timestamp-order-guard-exempt: Cost Control tables write created_at only through captureTimestamp's fixed-width UTC timestampLayout. Columns/defaults are fixed allowlists, never SQL from the file.
 	if err != nil {
 		return nil, err
 	}
@@ -548,6 +556,10 @@ func (db *Database) ApproveCostBaseline(projectID, actor, note string) (CostBase
 }
 
 func (db *Database) ListCostBaselines(projectID string) ([]CostBaselineSnapshot, error) {
+	present, err := db.tableExists("cost_baseline_snapshots")
+	if err != nil || !present {
+		return nil, err
+	}
 	rows, err := db.Conn.Query(`SELECT id,project_id,version,currency_code,planned_minor_units,contingency_minor_units,management_reserve_minor_units,approved_by,approval_note,approved_at FROM cost_baseline_snapshots WHERE project_id=? ORDER BY version DESC`, projectID)
 	if err != nil {
 		return nil, err

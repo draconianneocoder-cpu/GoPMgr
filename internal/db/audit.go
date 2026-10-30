@@ -187,6 +187,21 @@ func appendAuditEventTx(tx *sql.Tx, in AuditEventInput) (AuditEvent, error) {
 	return event, nil
 }
 
+// ReadAuditChain verifies the chain when audit_events exists. A file that
+// predates that table has no events. That is an empty valid chain, not an
+// error, and this method does not create the table. VerifyAuditChain stays
+// strict for writable opens.
+func (db *Database) ReadAuditChain(projectID string) (AuditVerification, error) {
+	ok, err := db.tableExists("audit_events")
+	if err != nil {
+		return AuditVerification{}, err
+	}
+	if !ok {
+		return AuditVerification{ProjectID: projectID, Valid: true}, nil
+	}
+	return db.VerifyAuditChain(projectID)
+}
+
 // VerifyAuditChain recomputes every event hash for a project and
 // checks the previous-hash links and sequence continuity.
 func (db *Database) VerifyAuditChain(projectID string) (AuditVerification, error) {
@@ -341,18 +356,26 @@ func eventHash(event AuditEvent) string {
 // ExportAuditCSV dumps the audit_log table to a CSV file at the given
 // path. Used by the `--export-audit` CLI flag.
 func (db *Database) ExportAuditCSV(path string) (err error) {
-	rows, err := db.Conn.Query(
-		`SELECT id, ts, actor, action, target_id, details FROM audit_log ORDER BY id ASC`,
-	)
+	present, err := db.tableExists("audit_log")
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if closeErr := rows.Close(); err == nil && closeErr != nil {
-			err = closeErr
+	var rows *sql.Rows
+	if present {
+		rows, err = db.Conn.Query(`SELECT id, ts, actor, action, target_id, details FROM audit_log ORDER BY id ASC`)
+		if err != nil {
+			return err
 		}
-	}()
+		defer func() {
+			if closeErr := rows.Close(); err == nil && closeErr != nil {
+				err = closeErr
+			}
+		}()
+	}
 
+	if err := db.CheckExportDestination(path); err != nil {
+		return err
+	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600) // #nosec G304 -- CLI/user-selected audit export destination.
 	if err != nil {
 		return err
@@ -369,7 +392,7 @@ func (db *Database) ExportAuditCSV(path string) (err error) {
 		return err
 	}
 
-	for rows.Next() {
+	for rows != nil && rows.Next() {
 		var (
 			id                                 int64
 			ts, actor, action, target, details string
@@ -388,8 +411,10 @@ func (db *Database) ExportAuditCSV(path string) (err error) {
 			return err
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return err
+	if rows != nil {
+		if err := rows.Err(); err != nil {
+			return err
+		}
 	}
 	w.Flush()
 	if err := w.Error(); err != nil {
