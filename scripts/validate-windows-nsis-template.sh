@@ -26,7 +26,7 @@ TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/gopmgr-nsis-template.XXXXXX")"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 INSTALLER_DIR="$TEST_ROOT/build/windows/installer"
 mkdir -p "$INSTALLER_DIR/tmp" "$TEST_ROOT/build/bin" "$TEST_ROOT/LICENSES" \
-	"$TEST_ROOT/third_party/go-sqlcipher"
+	"$TEST_ROOT/third_party/go-sqlcipher" "$TEST_ROOT/internal/fonts/assets"
 
 cp "$ROOT/build/windows/installer/project.nsi" "$INSTALLER_DIR/project.nsi"
 cp "$WAILS_WINDOWS/icon.ico" "$TEST_ROOT/build/windows/icon.ico"
@@ -39,6 +39,9 @@ for marker in "2011 The Go Authors" "2014 Yasuhiro Matsumoto" "2019 G.J.R. Timme
 		exit 1
 	fi
 done
+# project.nsi installs these notices too; makensis refuses a missing File.
+cp "$ROOT/internal/fonts/assets/FONT-NOTICES.txt" "$TEST_ROOT/internal/fonts/assets/FONT-NOTICES.txt"
+cp "$ROOT/third_party/GO-MODULE-NOTICES.txt" "$TEST_ROOT/third_party/GO-MODULE-NOTICES.txt"
 
 # Resolve the same Wails project fields used by the real build. Range blocks
 # are empty because GoPMgr currently declares no file associations/protocols.

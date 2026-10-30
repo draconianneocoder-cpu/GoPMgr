@@ -37,17 +37,19 @@ were rechecked with Go 1.27.3 on 2026-10-22 and remain unchanged. Since
 tests (for example `internal/documents`, 78.2% to 69.5%). Per-file
 percentages in rows written before then were measured with the older count.
 
-**Baseline refresh (2026-10-23):** `coverage-baseline.json` now records
-16990/21133 (Go default, 80.40%), 17105/21231 (Go duckdb, 80.57%), and
-11406/18207 (frontend, 62.65%). The Go marks were last set at 15,039
-statements. The code has grown by about 6,100 statements since, so the
-uncovered count rose from 3,605 to 4,143 while coverage rose from 76.0% to
-80.4%. The maintainer chose to reset the Go marks to the current state
-rather than keep marks no commit could meet; the frontend mark is an
-ordinary ratchet improvement. They were measured in a Linux container as
-root, where three test files skip their permission checks, so the Go marks
-may be slightly looser than a developer machine's; `make
-coverage-ratchet-update` run as a regular user tightens them.
+**Baseline refresh (2026-10-27):** `coverage-baseline.json` now records
+17474/21196 (Go default, 82.44%), 17589/21294 (Go duckdb, 82.60%), and
+11883/18547 (frontend, 64.07%). Since the 2026-10-23 refresh, uncovered
+statements fell from 4,143 to 3,722 (Go default), 4,126 to 3,705 (Go
+duckdb) and 6,801 to 6,664 (frontend). These are ordinary ratchet
+improvements from tests merged since then. The Go figures may also include
+statements that only run for a regular user: the 2026-10-23 marks were taken
+as root in a Linux container, where three test files skip their permission
+checks. That share was not measured separately. This refresh ran on macOS
+(Go 1.27.3), the platform the ledger headings use, and three runs gave
+identical counts. The 2026-10-23 refresh itself reset the Go marks by
+maintainer decision after the code had grown by about 6,100 statements; its
+details are in Git history (commit `40cae79`).
 
 `scripts/check-coverage-ledger-drift.sh` (2026-08-10; widened 2026-08-11;
 run via `make coverage-ledger-drift` and the failing-on-error macOS CI assurance job,
@@ -908,7 +910,7 @@ have on disk. Verified by measuring the package both ways: 87.7% with all
 | `embedding_test.go` (added 2026-10-23) | 7, and 1 fuzz target | `checkEmbeddingAllowed` over every OS/2 `fsType` combination that matters (installable, preview-and-print, editable, restricted, restricted plus a less restrictive bit, no-subsetting, bitmap-only), fonts without or with a truncated OS/2 table, every bundled font, `ImportFont` refusing and accepting, and `RegisterAs` skipping a restricted face already in the user directory; `FuzzCheckEmbeddingAllowed` (any bytes: no panic, refusals wrap `ErrEmbeddingNotAllowed`, a font without a readable fsType is allowed, a restricted-license fsType is never allowed) | unit, table-driven, fault seeding, fuzz | GoPMgr embeds a subset of every document font, so a font whose license forbids that must never be imported or registered. Fixtures patch the fsType of real IBM Plex Sans bytes, so the table layout is real. Disabling either check fails its test. |
 | `cmap_test.go` (added 2026-10-23) | 1 (one subtest per committed face) | Every committed `.ttf` read the way fpdf reads it, through the cmap format 4 subtable only, mapping a sample of each script it is bundled for (Latin for every face; Greek and Cyrillic for IBM Plex Sans; kana and kanji for JP; Hangul for KR; Simplified Chinese for SC) to a real glyph | unit, fixture, fault seeding | fpdf v0.9.0 ignores the format 12 table, so a face whose format 4 table is empty draws every character as a box while passing every other check. That is IBM Plex Sans TC as IBM ships it; the test fails on that file, which is why TC is not bundled (see ADR-007). |
 
-## `internal/kernel` — 92.1%
+## `internal/kernel` — 94.0%
 
 Scheduling math core: Critical Path Method, resource leveling, EVM, Monte Carlo simulation.
 
@@ -921,6 +923,9 @@ Scheduling math core: Critical Path Method, resource leveling, EVM, Monte Carlo 
 | `leveling_options_test.go`, `leveling_helpers_test.go` (helpers added 2026-09-29) | 11 | `LevelResourcesWithOptions` (strategy, horizon, splitting) | table-driven | A leveling horizon that's exceeded, or a leveling cycle, must return an explicit sentinel rather than silently truncating results — the caller needs to know leveling didn't fully succeed. |
 | `links_test.go` | 10 | CPM dependency link types (FS/SS/FF/SF, lag/lead), cycle detection | table-driven | Negative lag/lead must clamp at the project start (can't schedule before day one); legacy untyped "precedents" must still work for backward compatibility with older project files. |
 | `montecarlo_test.go` | 8 | `RunMonteCarlo` (finish-date distribution, tornado chart drivers) | property, table-driven | Results must be worker-count-independent (same simulation, different parallelism, same statistical output) — a determinism property, not a fixed expected value, since the simulation is inherently probabilistic. |
+| `overallocation_contract_test.go`, `overallocation_legacy_ref_test.go`, `overallocation_differential_test.go` (added 2026-10-27) | 10 | `ResourceUsage`, `DetectOverallocations`, `DetectOverallocationsWithPlan` and capacity resolution, pinned at blob `0826dfc6` as the legacy contract for a faster detector (PS-04 RES-A); a frozen test-only copy of that detection path; the leveler's opposite reading of `Assignment.CalendarID` | hand oracle over the PS-04 fixtures F-01–F-11 and F-15–F-21 plus five supplementary cases, with the binary64 threshold boundary and a 16-day capacity probe, run against both production and the frozen copy; JSON shape, repeated calls and the leveler side of F-09 against production only; seeded differential against the frozen copy (2,000 cases, input-unchanged check, coverage floors); `go/parser` call guard and SHA-256 pin on the frozen copy; fault seeding | A faster detector must return the same records, flags and usage, legacy anomalies included (F-11 drops split days past the span horizon; F-18 emits an unmarshallable NaN record). Each of 27 distinct production mutations was run ten times against the original kernel tests, and 22 passed every run; the full suite catches all 27, and four further seeds check the oracle and frozen copy themselves. Evidence and the anomaly table: [resource-overallocation-contract.md](testing/resource-overallocation-contract.md). |
+| `overallocation_bench_test.go` (added 2026-10-27) | 2 benchmarks | `ResourceUsage` and `DetectOverallocationsWithPlan` at 500 and 10,000 tasks | `testing.B.Loop`, allocation and breach/task-reference metrics | Same-machine comparison for detector changes. RES-A-1 took T1 detection from 2.05 s to 6.16 ms with identical output (paired benchstat, n=6). Diagnostic only, not a budget. |
+| `overallocation_index_test.go` (added 2026-10-27) | 2, and 1 benchmark | `occupiedRuns`, `overallocationMembershipRuns` and the entry order of RES-A-1's participant index; T2 and T3 detector benchmarks | table-driven, structural, fault seeding | The index must stay proportional to runs of days, not days: a million-day span is one run, split days are deduplicated and merged when adjacent, and repeated assignments or aliased keys give one run per entry and resource. Without the adjacency merge, a task could leave and re-enter on the same day and drop out of a breach. Only the differential test catches that, and these tests pin the rule directly. |
 | `resources_test.go` | 15 | Resource usage profiles, overallocation detection, contention-based leveling | table-driven, fixture | Overallocation detection must honor per-resource calendar overrides (a resource unavailable Tuesdays isn't "overallocated" for not working Tuesday); leveling must serialize genuinely contending assignments without touching unrelated ones. These tests level through `levelResources`/`levelResourcesWithPlan` in `leveling_helpers_test.go`, which wrap `LevelResourcesWithOptions` since the unused exported wrappers were removed (2026-09-29). |
 | `scheduler_test.go` | 10 | `CalculateCPM`, topological sort | table-driven | Diamond-shaped and parallel-equal-path dependency graphs are specifically tested since they're the classic cases naive CPM implementations get wrong (picking the wrong critical path). |
 
@@ -1129,7 +1134,9 @@ Local multi-user account system: Argon2id-backed accounts, ADR-001 DEK hierarchy
 | `scripts/validate-pades-cleanup_test.sh` | 1 shell matrix | PAdES scratch-root confinement, failed-generation retention under an inherited lock, and successful alternate-root publication | fixture, fake tool, prohibited-effects | Rejects outside, symlinked, and traversal-style scratch locations without mutation; a nested failure must retain its generator diagnostics and caller-owned lock; a successful repository-contained override must publish and report the actual sample path. |
 | `scripts/coverage-go-cleanup_test.sh` | 1 shell matrix | Producer-owned successful-run cleanup and failed-run diagnostic retention for `coverage-go.sh` | fixture, fake tool, fault-injection | Successful coverage runs must not accumulate profiles/package lists unless the caller explicitly names an output profile. A failed Go test must preserve its exact exit status, package inventory, and captured stdout/stderr while reporting the retained diagnostic location. |
 | `scripts/workspace-hygiene_test.sh` | 1 shell matrix | Read-only `.tmp` inventory confinement, classification, and incomplete-report signaling | fixture, fake tools, prohibited-effects | Proves the report changes no file content, preserves unknown and newline-containing entries, identifies retained evidence/cache, rejects unrelated or symlinked roots, continues after a disappearing entry, and returns nonzero when sizing or enumeration is incomplete. |
-| `scripts/package-macos-installer_test.sh` | 21 shell cases | Explicit non-relocation, bundle-derived receipt metadata, app-only staging, validation and failure-safe publication | isolated tool doubles, native plist/XML parsers, fault injection | Simulates both builder relocation defaults; rejects missing/true policy, malformed or unexpected metadata, parser failures even with plausible stdout, installer scripts, version mismatch and non-regular output targets. Packaging/expansion/publication failures preserve prior bytes; all cases check private staging cleanup. Separate real-package evidence and unverified native/older-builder boundaries are recorded in [installer policy](testing/macos-installer-policy.md). |
+| `scripts/package-macos-installer_test.sh` | 22 shell cases | Explicit non-relocation, bundle-derived receipt metadata, app-only staging, validation and failure-safe publication | isolated tool doubles, native plist/XML parsers, fault injection | Simulates both builder relocation defaults; rejects missing/true policy, malformed or unexpected metadata, parser failures even with plausible stdout, installer scripts, version mismatch and non-regular output targets. Packaging/expansion/publication failures preserve prior bytes; all cases check private staging cleanup. Separate real-package evidence and unverified native/older-builder boundaries are recorded in [installer policy](testing/macos-installer-policy.md). A module missing from the Go module notices stops the build before packaging (added 2026-10-26). |
+| `scripts/package_test.sh` (added 2026-10-26) | 1 shell matrix | The tarball path, `scripts/package.sh` | isolated copy, stub `make`, real Go binary | Every file the tarball must carry (binary, README, license texts, go-sqlcipher, font and Go module notices) must be an exact copy, and incomplete Go module notices must stop packaging before any archive exists. |
+| `scripts/verify-module-notices_test.sh` (added 2026-10-26) | 13 shell cases | The packaging check that a built binary's linked modules (`go version -m`) all have Go module notices | stub `go`, real Go binary | A missing module, a different version, a version sharing only a prefix, a missing version or standard-library section, no build information, and a missing or empty notices file must each fail; CRLF endings must pass. A real binary checked against the committed file proves the parsing matches the toolchain's actual output. |
 
 ## `tools/update-manifest` — 42.4%
 
@@ -1150,10 +1157,20 @@ map used for repository orientation.
 
 **2026-08-28 ledger refresh**: this heading previously claimed 77.9% with no code change to `main.go`/`main_test.go` since 2026-08-08, so a drop to a stable, reproducible 73.0% was investigated rather than assumed stale-in-the-safe-direction. Per-function coverage (`go tool cover -func`) shows every uncovered statement is a standard `if err != nil { return ... }` guard around OS/subprocess failures in `run`/`generate`/`listPackages` (`filepath.Abs`, `os.ReadFile`, `os.MkdirAll`, `os.WriteFile`, `go list` failing, malformed JSON) — none reachable without mocking the filesystem or `os/exec`, and none touched by any commit in this window. The 77.9% figure itself was not reproducible against the current, unchanged source; it is treated as inaccurate at the time it was written rather than as a regression, and not chased further given this package's low criticality (a maintainer-only dependency-map generator, not user-facing or security-relevant).
 
+## `tools/module-notices` — 64.5%
+
+Maintainer tool that writes `third_party/GO-MODULE-NOTICES.txt`, the license
+and notice files of every Go module linked into the release binaries (added
+2026-10-26).
+
+| File | Tests | Covers | How | Why |
+| --- | --- | --- | --- | --- |
+| `main_test.go` | 8 | Notice-file naming, whitespace normalization, module grouping and `go list` error handling, the directory walk, output determinism, drift detection, release-target parity with `release.yml` | unit, table-driven, fixture | A license file that is skipped, or a module accepted without one, would ship a binary without its required notices. Uncovered statements are the `go list` and `go env` subprocess paths and file writes; `make module-notices-check` runs those against the real module graph on every `make verify`. |
+
 ---
 
 
-## Frontend (`frontend/src`) — 62.65% of statements
+## Frontend (`frontend/src`) — 64.07% of statements
 
 Vitest + `@testing-library/svelte`. Coverage here is intentionally
 lower than Go because most of the
@@ -1297,6 +1314,18 @@ to `*.test.ts`/`*.spec.ts` files.
 | `ProjectSettings.test.ts` and `CostControlPanel.test.ts` (2026-10-23 yen changes) | 2 rewritten cases each file, counts unchanged | Project Settings offering Japanese yen as an ordinary option, saving it, and restoring a locked JPY currency after a rejected change, with no legacy read-only option; Cost Control still disabling every change when the backend reports a read-only reason, now with a generic reason | component | ADR-009 made legacy JPY editable, so the old containment cases would describe a state that no longer exists; the read-only mechanism itself stays covered. |
 
 ---
+
+## Isolated spike modules (outside the GoPMgr build)
+
+These modules have their own `go.mod` under `spikes/`. They are not part of
+`go test . ./internal/... ./tools/...`, and their results are evidence in
+the spike's own records. They are listed here so every test file is
+accounted for.
+
+| File | Tests | Covers | How | Why |
+| --- | --- | --- | --- | --- |
+| `spikes/adr010-g0-transport/host/pairing_test.go` (added 2026-10-25) | 3 (4 subtests) | The ADR-010 G0 `npipe-dual` pairing listener: which connections it pairs, refuses or times out, closing while a half waits for its partner, and refusal before the worker's PID is known | unit, table-driven, fake listener | The dual-pipe alternative pairs two connections into one stream. A wrong pairing or a hang there is a denial of service or a cross-session leak, so each refusal path is pinned. |
+| `spikes/adr010-g0-transport/host/diag_test.go` (added 2026-10-25) | 5 (10 subtests) | G0 evidence diagnostics: counting uncaught Java exceptions, parsing worker timing notes, extracting and bounding captured gRPC log failures, and marking checks that did not run as BLOCKED | unit, table-driven | The G0 report must not call a run clean when the worker threw, and a check that never ran must read BLOCKED, never PASS. |
 
 ## Known gaps (cross-reference)
 

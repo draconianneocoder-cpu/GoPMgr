@@ -52,6 +52,8 @@ require_literal "$PROJECT_NSI" 'File /oname=go-sqlcipher.txt "..\..\..\third_par
 	"project.nsi must install SQLCipher's complete upstream notices."
 require_literal "$PROJECT_NSI" 'File /oname=fonts.txt "..\..\..\internal\fonts\assets\FONT-NOTICES.txt"' \
 	"project.nsi must install the bundled fonts' copyright notices and license."
+require_literal "$PROJECT_NSI" 'File /oname=go-modules.txt "..\..\..\third_party\GO-MODULE-NOTICES.txt"' \
+	"project.nsi must install the license notices of the Go modules linked into GoPMgr."
 require_literal "$PROJECT_NSI" '!insertmacro wails.writeUninstaller' \
 	"project.nsi must register an uninstaller."
 require_literal "$PROJECT_NSI" "project databases live in the user's Documents\\GoPMgr tree" \

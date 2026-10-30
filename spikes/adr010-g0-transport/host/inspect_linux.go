@@ -8,6 +8,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -49,21 +50,37 @@ func tcpSocketCount(pid int) (int, string, error) {
 	}
 	count := 0
 	for _, table := range []string{"tcp", "tcp6"} {
-		f, err := os.Open(fmt.Sprintf("/proc/%d/net/%s", pid, table))
+		n, err := countTableSockets(fmt.Sprintf("/proc/%d/net/%s", pid, table), inodes)
+		if errors.Is(err, os.ErrNotExist) {
+			continue // no such table (for example tcp6 without IPv6): no such socket
+		}
 		if err != nil {
-			continue
+			// A table we could not read would undercount: report, do not pass.
+			return 0, "", fmt.Errorf("read net/%s: %w", table, err)
 		}
-		sc := bufio.NewScanner(f)
-		sc.Scan() // header
-		for sc.Scan() {
-			fields := strings.Fields(sc.Text())
-			if len(fields) > 9 && inodes[fields[9]] {
-				count++
-			}
-		}
-		_ = f.Close()
+		count += n
 	}
 	return count, "/proc fd inodes against net/tcp and net/tcp6", nil
+}
+
+// countTableSockets counts rows of one /proc/net table whose inode is in
+// inodes.
+func countTableSockets(path string, inodes map[string]bool) (int, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	count := 0
+	sc := bufio.NewScanner(f)
+	sc.Scan() // header
+	for sc.Scan() {
+		fields := strings.Fields(sc.Text())
+		if len(fields) > 9 && inodes[fields[9]] {
+			count++
+		}
+	}
+	return count, sc.Err()
 }
 
 // peakRSS reads the kernel's high-water mark for resident memory.

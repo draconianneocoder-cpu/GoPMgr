@@ -15,6 +15,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 **Agent controls:** [Architecture preservation and execution prompt](../agent/ADR-010-architecture-preservation-agent-prompt.md).\
 **Detailed review:** [v2.1 → v2.2 change audit](../review/ADR-010-v2.2-review-and-traceability.md).
 
+**Later G1 authorization (2026-10-28):** the [maintainer clarification](../review/ADR-010-G1-authorization-clarification-2026-10-28.md)
+governs G1 permission only. The opening status and §9 register retain the
+2026-10-24 authorization state; conditional P04 engineering approval is
+now reaffirmed without waiving prerequisites, qualification or release gates.
+
 > **Decision discipline.** “Proposed”, “specified”, “demonstrated”, “implemented”, “tested”, and “released” are distinct states. No document statement or test case should be interpreted as proof that code exists or passed a gate. The maintainer must approve any change to the binding objectives, quality thresholds, security posture, user control, or scope.
 
 ## 1. Problem and mission
@@ -235,6 +240,10 @@ On 2026-10-24 the maintainer accepted D-01…D-19 and QI-01…QI-15 as the bindi
 | INT-04 | Approved | v2.2 is the authoritative accepted architecture; v2.1 is superseded and preserved unchanged |
 
 **Authorized now:** P00 documentation, P01/G0 isolated feasibility, and P02/S0 evidence (record §5.1). **Not authorized:** G1 onward, production dependencies, ADR-011 implementation or migrations, publication, a default-root change, signed releases, and G5–G7 (record §5.2).
+
+**Later G1 authorization (2026-10-28):** for G1 permission only, apply the
+[maintainer clarification](../review/ADR-010-G1-authorization-clarification-2026-10-28.md)
+instead of the historical G1 limit above. Other requirements and gates remain binding.
 
 ## 10. G0 Windows transport decision (2026-10-25)
 
