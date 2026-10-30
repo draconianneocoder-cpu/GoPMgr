@@ -72,8 +72,7 @@ fn looks_numeric(s: &str) -> bool {
 }
 
 /// Choose the delimiter that splits the sample into the most consistent,
-/// widest records; then call the first record a header unless every one of
-/// its fields is numeric while some later field is not.
+/// widest records; then decide the header with [`first_is_header`].
 pub fn dialect(sample: &[u8], format: &str) -> Dialect {
     let sample = sample.strip_prefix(b"\xef\xbb\xbf").unwrap_or(sample);
     let candidates: &[u8] = if format == "tsv" { b"\t" } else { b",\t;|" };
@@ -96,14 +95,45 @@ pub fn dialect(sample: &[u8], format: &str) -> Dialect {
         best.0
     };
     let recs = records(sample, delimiter);
-    let has_header = match recs.first() {
-        None => true,
-        Some(first) => !(first.iter().all(|f| looks_numeric(f)) && !first.is_empty()),
-    };
+    let has_header = first_is_header(&recs);
     Dialect {
         delimiter,
         has_header,
     }
+}
+
+/// Decide whether the first record is a header by comparing it with the
+/// records after it, column by column, as DuckDB's sniffer does: a column
+/// whose later values are all numeric marks the first record as a header
+/// when the first record's value there is not numeric. So `1,Alpha,10.50`
+/// followed by `2,Beta,20.00` is data, while `id,name` followed by `1,a` is
+/// a header. With no numeric column to compare, or a single record, the
+/// first record is a header unless all of its fields are numeric.
+fn first_is_header(recs: &[Vec<String>]) -> bool {
+    let Some(first) = recs.first() else {
+        return true;
+    };
+    let all_numeric = !first.is_empty() && first.iter().all(|f| looks_numeric(f));
+    let later: Vec<&Vec<String>> = recs.iter().skip(1).take(1000).collect();
+    let mut numeric_columns = 0;
+    for (j, head) in first.iter().enumerate() {
+        let mut values = later
+            .iter()
+            .filter_map(|r| r.get(j))
+            .filter(|v| !v.trim().is_empty())
+            .peekable();
+        if values.peek().is_none() || !values.all(|v| looks_numeric(v)) {
+            continue; // text, or no data to compare
+        }
+        numeric_columns += 1;
+        if !head.trim().is_empty() && !looks_numeric(head) {
+            return true; // a name above a numeric column
+        }
+    }
+    if numeric_columns > 0 {
+        return false; // the first record fits every numeric column
+    }
+    !all_numeric
 }
 
 /// Columns whose sampled values include a zero-padded integer such as
@@ -146,6 +176,18 @@ mod tests {
         assert_eq!(d.delimiter, b',');
         let d = dialect(b"\xef\xbb\xbfid,name\n1,a\n", "csv");
         assert!(d.has_header);
+        // Headerless records that mix text and numbers stay data (Codex
+        // review of #153); a header above numeric columns is still found.
+        let d = dialect(b"1,Alpha,10.50\n2,Beta,20.00\n", "csv");
+        assert_eq!((d.delimiter, d.has_header), (b',', false));
+        let d = dialect(b"id,name,amount\n1,Alpha,10.50\n2,Beta,20.00\n", "csv");
+        assert!(d.has_header);
+        // Only text columns: keep treating the first record as a header.
+        let d = dialect(b"name,city\nBob,Paris\nAda,Rome\n", "csv");
+        assert!(d.has_header);
+        // A single record falls back to the all-numeric rule.
+        assert!(!dialect(b"1,2,3\n", "csv").has_header);
+        assert!(dialect(b"id,name\n", "csv").has_header);
         let s = b"code,qty,neg\n007,1,-05\n12,2,3\n";
         let d = dialect(s, "csv");
         assert_eq!(zero_padded_columns(s, &d), vec![0, 2]);

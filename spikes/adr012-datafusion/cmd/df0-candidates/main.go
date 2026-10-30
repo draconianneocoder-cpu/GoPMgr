@@ -113,9 +113,14 @@ type portfolioRecord struct {
 	Provider string   `json:"provider"` // B (DataFusion) or C (Go)
 	Oracle   string   `json:"oracle_error,omitempty"`
 	Error    string   `json:"error,omitempty"`
-	Parity   string   `json:"legacy_parity"`
-	Issues   []string `json:"mismatches,omitempty"`
-	WallNS   int64    `json:"wall_ns"`
+	// ErrorClass is "overflow" for the typed overflow result and
+	// "execution" for anything else: a crashed or timed-out CLI, malformed
+	// output, an unparsable total. Only "overflow" can match an oracle
+	// overflow.
+	ErrorClass string   `json:"error_class,omitempty"`
+	Parity     string   `json:"legacy_parity"`
+	Issues     []string `json:"mismatches,omitempty"`
+	WallNS     int64    `json:"wall_ns"`
 }
 
 func normalise(p fixtures.Project) map[string]any {
@@ -148,13 +153,29 @@ func metrics(ps []fixtures.Project) []analytics.ProjectMetrics {
 	return out
 }
 
+// errOverflow marks a provider's typed overflow result, as opposed to an
+// execution or protocol failure.
+var errOverflow = errors.New("overflow")
+
+// overflowResult marks err as a typed overflow result while keeping the
+// provider's own message in the evidence.
+type overflowResult struct{ err error }
+
+func (o overflowResult) Error() string        { return o.err.Error() }
+func (o overflowResult) Unwrap() error        { return o.err }
+func (o overflowResult) Is(target error) bool { return target == errOverflow }
+
 func score(rec *portfolioRecord, got analytics.PortfolioSummary, gerr error, want oracle.Outcome) {
 	if gerr != nil {
 		rec.Error = gerr.Error()
+		rec.ErrorClass = "execution"
+		if errors.Is(gerr, errOverflow) {
+			rec.ErrorClass = "overflow"
+		}
 	}
 	rec.Oracle = want.Err
 	switch {
-	case gerr != nil && want.Err != "":
+	case want.Err == "overflow" && rec.ErrorClass == "overflow":
 		rec.Parity = "pass"
 	case gerr != nil || want.Err != "":
 		rec.Parity = "fail"
@@ -213,6 +234,8 @@ func portfolio(corpus, cli, path string) error {
 		switch {
 		case err != nil:
 			errB = err
+		case strings.HasPrefix(rr.Error, "overflow:"):
+			errB = overflowResult{errors.New(rr.Error)}
 		case rr.Error != "":
 			errB = errors.New(rr.Error)
 		default:
@@ -225,6 +248,9 @@ func portfolio(corpus, cli, path string) error {
 		start := time.Now()
 		gotC, errC := gorollup.Rollup(metrics(pc.Projects))
 		recC.WallNS = time.Since(start).Nanoseconds()
+		if errors.Is(errC, gorollup.ErrOverflow) {
+			errC = overflowResult{errC}
+		}
 		score(&recC, gotC, errC, want)
 		for _, r := range []portfolioRecord{recB, recC} {
 			if r.Parity == "pass" {
