@@ -157,7 +157,8 @@ notices: `LICENSES/duckdb-native.txt` in the tarball,
 names the linked library that contains it and the license file, or the
 license comment lines, in the DuckDB source. The tool reads those texts from
 the DuckDB source the libraries were built from. It checks the checkout's
-commit against its pin first.
+commit against its pin and checks both tracked working files and the index
+for modifications first.
 
 The pins for duckdb-go-bindings v0.10506.0:
 
@@ -180,15 +181,17 @@ not in the linked libraries, so they are not listed.
 - `make duckdb-notices-check`, part of `make verify`, works offline once the
   modules are downloaded. It fails when `go.mod` selects any
   duckdb-go-bindings module at a version other than the reviewed one, when
-  the file no longer matches the pins and component list, or when the
-  excluded TPC code could be linked (see below).
+  the full notice-file digest differs, a reviewed module inventory changes,
+  or the exclusion audit cannot complete (see below).
 - On a DuckDB update, repeat the review for the new release: link flags,
   library symbols, and new `third_party` directories. Then update the pins and
   the component list in `tools/duckdb-notices`, and run `make duckdb-notices`.
   That target clones the pinned sources and rewrites the file. Its unit test
   also fails if a linked library is not accounted for.
 - `scripts/verify-module-notices.sh` refuses to package a binary that links a
-  DuckDB library module the file does not name at that exact version.
+  DuckDB library module the file does not name at that exact version. It also
+  invokes the native input/digest check; coverage headers alone do not qualify
+  a notice file.
 
 ### Excluded: the TPC-H and TPC-DS generators
 
@@ -203,36 +206,38 @@ excluded it from every GoPMgr distribution, on all platforms and in all
 formats (decision of 2026-10-26; see
 [the decision record](docs/review/TPC-benchmark-exclusion-decision.md)).
 
-The prebuilt libraries already keep this code out of linked binaries. DuckDB
-builds both extensions with `DONT_LINK`, so its generated extension loader
-does not reference them, and no other linked library or cgo call does. A
-static linker takes an archive member only to resolve an undefined symbol,
-so neither archive adds code. Audits of the 1.1.0-alpha.2 release binaries
-and of a current Linux build found no TPC code; the decision record has the
-method and results. DuckDB core keeps a table of extension names for
-autoloading, so binaries do contain strings such as `dbgen`, `dsdgen`,
-`tpch` and `tpcds`. That table is data and holds no generator code.
+The reviewed prebuilt libraries configure both extensions with `DONT_LINK`.
+The fixed-input audit finds no references to their externally defined symbols
+in other linked archives or Go cgo selectors. This supports normal static-link
+exclusion but is not a universal absence proof. Historical marker-scan results
+and their limits are preserved in the decision record. Bare autoload names
+such as `dbgen`, `dsdgen`, `tpch` and `tpcds` are not exclusion markers.
 
 The exclusion is enforced, and each check is release-blocking:
 
 - `third_party/EXCLUDED-NATIVE-CODE.txt` lists the two archives and eight
-  strings found only in their code (class names and error messages), which
-  survive symbol stripping.
+  reviewed marker strings (class names and error messages). Absence of those
+  markers is bounded evidence for the reviewed inputs.
 - `make duckdb-notices-check` audits every DuckDB platform module `go.mod`
   requires. It fails if another linked library or a cgo call in the Go
-  bindings references a symbol the archives define, if a marker is missing
-  from the archives, or if a marker appears in any other linked library.
+  bindings references a symbol the archives define, if inputs or supported
+  link flags differ from the review, if required symbol evidence is missing,
+  if a marker is missing from the archives, or if a marker appears in any other linked library.
 - `scripts/verify-excluded-native-code.sh` fails on a binary that contains
-  any marker. `scripts/verify-module-notices.sh` runs it, so every packaging
-  path (tarball, `.deb` and `.rpm`, macOS app and installer, Windows
+  any marker, or on scan/tool errors. `scripts/verify-module-notices.sh` runs
+  it, so every packaging path (tarball, `.deb` and `.rpm`, macOS app and installer, Windows
   installer, Debian source build) checks the binary it ships.
 - `debian/rules` runs it with `--tree vendor` before building. `go mod
   vendor` copies the excluded archives into `vendor/`, so a plain vendored
-  Debian source package fails by design: publishing it would distribute the
-  TPC object code. No vendored layout without them is approved yet.
+  Debian build fails by design. This build hook does not prevent source-only
+  archive creation (`dpkg-source -b`); publishing such an archive would
+  distribute the TPC object code and remains prohibited. No vendored layout
+  without them or source-publication workflow is approved here.
 
-Because the code is not shipped, the notices file no longer reproduces the
-TPC agreement.
+The notices file omits the TPC agreement under the exclusion policy. Passing
+these technical checks does not establish license compliance or authorize a
+release. See the [qualification procedure](docs/testing/duckdb-notices-qualification.md)
+for reviewed input pins, full-source reproduction and evidence limits.
 
 ## Frontend package notices
 

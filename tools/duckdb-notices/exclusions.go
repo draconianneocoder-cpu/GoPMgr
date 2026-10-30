@@ -12,6 +12,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -74,16 +77,42 @@ func linkedArchives(moduleDir string) ([]string, error) {
 		return nil, fmt.Errorf("read link flags: %w", err)
 	}
 	var libs []string
-	flag := regexp.MustCompile(`-l(\w+)`)
+	library := regexp.MustCompile(`^-l([A-Za-z0-9_]+)$`)
+	system := map[string]bool{"-lc++": true, "-lstdc++": true, "-lm": true, "-ldl": true, "-lws2_32": true, "-lwsock32": true, "-lrstrtmgr": true}
 	for _, line := range strings.Split(string(src), "\n") {
-		if !strings.Contains(line, "#cgo LDFLAGS:") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "#cgo ") || !strings.Contains(line, "LDFLAGS:") {
 			continue
 		}
-		for _, m := range flag.FindAllStringSubmatch(line, -1) {
-			name := "lib" + m[1] + ".a"
-			if _, err := os.Stat(filepath.Join(moduleDir, name)); err == nil {
-				libs = append(libs, name)
+		const prefix = "#cgo LDFLAGS:"
+		if !strings.HasPrefix(line, prefix) {
+			return nil, fmt.Errorf("unreviewed conditional link flags: %s", line)
+		}
+		for _, flag := range strings.Fields(strings.TrimPrefix(line, prefix)) {
+			switch flag {
+			case "-rdynamic", "--static", "-L${SRCDIR}":
+				continue
 			}
+			m := library.FindStringSubmatch(flag)
+			if system[flag] {
+				name := "lib" + strings.TrimPrefix(flag, "-l") + ".a"
+				if _, err := os.Lstat(filepath.Join(moduleDir, name)); !errors.Is(err, os.ErrNotExist) {
+					return nil, fmt.Errorf("system library %s may be shadowed in module: %v", flag, err)
+				}
+				continue
+			}
+			if m == nil {
+				return nil, fmt.Errorf("unreviewed link flag %q", flag)
+			}
+			name := "lib" + m[1] + ".a"
+			info, err := os.Lstat(filepath.Join(moduleDir, name))
+			if err != nil {
+				return nil, fmt.Errorf("stat required archive %s: %w", name, err)
+			}
+			if !info.Mode().IsRegular() {
+				return nil, fmt.Errorf("required archive %s is not regular", name)
+			}
+			libs = append(libs, name)
 		}
 	}
 	if len(libs) == 0 {
@@ -139,12 +168,18 @@ func arMembers(data []byte) ([]arMember, error) {
 			return nil, fmt.Errorf("bad member header at offset %d", off)
 		}
 		size, err := strconv.Atoi(strings.TrimSpace(string(hdr[48:58])))
-		if err != nil || size < 0 || off+60+size > len(data) {
+		if err != nil || size < 0 || size > len(data)-off-60 {
 			return nil, fmt.Errorf("bad member size at offset %d", off)
 		}
 		name := strings.TrimRight(string(hdr[0:16]), " ")
 		body := data[off+60 : off+60+size]
-		next := off + 60 + size + size%2
+		next := off + 60 + size
+		if size%2 != 0 {
+			if next >= len(data) || data[next] != '\n' {
+				return nil, fmt.Errorf("missing or invalid archive padding at offset %d", next)
+			}
+			next++
+		}
 		switch {
 		case name == "//": // GNU long-name table
 			longNames = body
@@ -152,7 +187,7 @@ func arMembers(data []byte) ([]arMember, error) {
 			// symbol index
 		case strings.HasPrefix(name, "#1/"): // BSD: the name opens the body
 			n, err := strconv.Atoi(name[3:])
-			if err != nil || n > len(body) {
+			if err != nil || n < 0 || n > len(body) {
 				return nil, fmt.Errorf("bad BSD long name at offset %d", off)
 			}
 			realName := strings.TrimRight(string(body[:n]), "\x00")
@@ -161,7 +196,7 @@ func arMembers(data []byte) ([]arMember, error) {
 			}
 		case strings.HasPrefix(name, "/") && len(name) > 1: // GNU: offset into the long-name table
 			i, err := strconv.Atoi(name[1:])
-			if err != nil || i >= len(longNames) {
+			if err != nil || i < 0 || i >= len(longNames) {
 				return nil, fmt.Errorf("bad long-name reference %q", name)
 			}
 			end := bytes.IndexAny(longNames[i:], "/\n")
@@ -186,7 +221,7 @@ func objectSymbols(obj []byte, sets symbolSets) error {
 			return err
 		}
 		syms, err := f.Symbols()
-		if err != nil && !errors.Is(err, elf.ErrNoSymbols) {
+		if err != nil {
 			return err
 		}
 		for _, s := range syms {
@@ -207,7 +242,7 @@ func objectSymbols(obj []byte, sets symbolSets) error {
 			return err
 		}
 		if f.Symtab == nil {
-			return nil
+			return errors.New("Mach-O member has no symbol table")
 		}
 		const nExt, nType, nUndf = 0x01, 0x0e, 0x00
 		for _, s := range f.Symtab.Syms {
@@ -226,6 +261,9 @@ func objectSymbols(obj []byte, sets symbolSets) error {
 		if err != nil {
 			return err
 		}
+		if len(f.Symbols) == 0 {
+			return errors.New("COFF member has no symbol table")
+		}
 		const classExternal, classWeakExternal = 2, 105
 		for _, s := range f.Symbols {
 			if s.Name == "" || (s.StorageClass != classExternal && s.StorageClass != classWeakExternal) {
@@ -239,7 +277,7 @@ func objectSymbols(obj []byte, sets symbolSets) error {
 		}
 		return nil
 	}
-	return nil // not an object file this audit reads (for example a resource)
+	return errors.New("unsupported archive member format")
 }
 
 // exclusionReport is the result of auditing one platform module.
@@ -296,6 +334,9 @@ func auditExclusions(platform, moduleDir string, ex exclusions, cgo map[string]b
 			return rep, err
 		}
 		if excluded[lib] {
+			if len(sets.Defined) == 0 {
+				return rep, fmt.Errorf("excluded archive %s has no external definitions", lib)
+			}
 			for s := range sets.Defined {
 				excludedDefs[s] = true
 			}
@@ -353,7 +394,6 @@ func libModules(gomod []byte) []string {
 
 // cgoNames collects the C identifiers (C.name) that the Go files in dirs use.
 func cgoNames(dirs []string) (map[string]bool, error) {
-	ref := regexp.MustCompile(`\bC\.(\w+)`)
 	names := map[string]bool{}
 	for _, dir := range dirs {
 		files, err := filepath.Glob(filepath.Join(dir, "*.go"))
@@ -361,16 +401,25 @@ func cgoNames(dirs []string) (map[string]bool, error) {
 			return nil, fmt.Errorf("list %s: %w", dir, err)
 		}
 		for _, f := range files {
-			src, err := os.ReadFile(f) // #nosec G304 -- a file in the module cache.
+			tree, err := parser.ParseFile(token.NewFileSet(), f, nil, 0)
 			if err != nil {
-				return nil, fmt.Errorf("read %s: %w", f, err)
+				return nil, fmt.Errorf("parse %s: %w", f, err)
 			}
-			if !bytes.Contains(src, []byte(`import "C"`)) {
+			cgo := false
+			for _, imp := range tree.Imports {
+				cgo = cgo || imp.Path.Value == `"C"`
+			}
+			if !cgo {
 				continue
 			}
-			for _, m := range ref.FindAllSubmatch(src, -1) {
-				names[string(m[1])] = true
-			}
+			ast.Inspect(tree, func(n ast.Node) bool {
+				if sel, ok := n.(*ast.SelectorExpr); ok {
+					if id, ok := sel.X.(*ast.Ident); ok && id.Name == "C" {
+						names[sel.Sel.Name] = true
+					}
+				}
+				return true
+			})
 		}
 	}
 	if len(names) == 0 {
@@ -399,6 +448,9 @@ func checkExclusions(moduleDir func(string) (string, error)) error {
 		if err != nil {
 			return err
 		}
+		if err := verifyModuleInputs(m, dir); err != nil {
+			return err
+		}
 		cgoDirs = append(cgoDirs, dir)
 	}
 	cgo, err := cgoNames(cgoDirs)
@@ -409,6 +461,9 @@ func checkExclusions(moduleDir func(string) (string, error)) error {
 	for _, m := range mods {
 		dir, err := moduleDir(m)
 		if err != nil {
+			return err
+		}
+		if err := verifyModuleInputs(m, dir); err != nil {
 			return err
 		}
 		name := strings.TrimPrefix(m, bindingsModule+"/lib/")
@@ -422,7 +477,7 @@ func checkExclusions(moduleDir func(string) (string, error)) error {
 		}
 	}
 	if len(problems) > 0 {
-		return fmt.Errorf("excluded native code (%s) is not provably unlinked:\n  %s", exclusionsFile, strings.Join(problems, "\n  "))
+		return fmt.Errorf("excluded native code (%s) failed its reviewed-input audit:\n  %s", exclusionsFile, strings.Join(problems, "\n  "))
 	}
 	return nil
 }

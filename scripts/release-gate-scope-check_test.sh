@@ -30,6 +30,7 @@ new_fixture() {
 	cp "$ROOT/scripts/check-release-publication-mode_test.sh" "$fixture/scripts/check-release-publication-mode_test.sh"
 	cp "$ROOT/scripts/release-publication-flag.sh" "$fixture/scripts/release-publication-flag.sh"
 	cp "$ROOT/scripts/release-update-channel.sh" "$fixture/scripts/release-update-channel.sh"
+	cp "$ROOT/frontend/scripts/bundle-notices.test.mjs" "$fixture/frontend/scripts/bundle-notices.test.mjs"
 	mkdir -p "$fixture/frontend/dist"
 	: >"$fixture/frontend/dist/index.html"
 	printf '%s\n' "$fixture"

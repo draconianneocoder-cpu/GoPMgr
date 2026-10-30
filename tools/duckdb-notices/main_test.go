@@ -200,7 +200,7 @@ func TestGenerate(t *testing.T) {
 	if strings.Contains(text, "THE TPC SOFTWARE") || strings.Contains(text, "Component: TPC") {
 		t.Fatal("output still carries TPC sections; the TPC generators are excluded, not shipped")
 	}
-	if !strings.Contains(text, "GoPMgr\nexcludes them: nothing it links references them") {
+	if !strings.Contains(text, "checks the reviewed pinned archive and binding inputs") {
 		t.Fatalf("output lacks the exclusion statement:\n%s", strings.Join(lines[:24], "\n"))
 	}
 	for _, want := range headerLines() {
@@ -224,8 +224,8 @@ func TestGenerate(t *testing.T) {
 			t.Fatalf("line %d has trailing whitespace: %q", i+1, l)
 		}
 	}
-	if err := checkPinsText(t, first); err != nil {
-		t.Fatalf("checkPins on generated output: %v", err)
+	if err := checkPinsText(t, first); err == nil || !strings.Contains(err.Error(), "digest") {
+		t.Fatalf("synthetic license bodies must not pass the reviewed artifact pin: %v", err)
 	}
 }
 
@@ -239,7 +239,7 @@ func checkPinsText(t *testing.T, content []byte) error {
 }
 
 func TestCheckPins(t *testing.T) {
-	good, err := generate(fakeSources(t))
+	good, err := os.ReadFile(filepath.Join("..", "..", defaultOutput))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,6 +249,12 @@ func TestCheckPins(t *testing.T) {
 		wantErr string
 	}{
 		{name: "current", mutate: func(s string) string { return s }},
+		{name: "body changed", mutate: func(s string) string { return s + "modified notice\n" }, wantErr: "digest"},
+		{name: "last body removed", mutate: func(s string) string {
+			i := strings.LastIndex(s, "Component: ")
+			end := i + strings.IndexByte(s[i:], '\n') + 1
+			return s[:end]
+		}, wantErr: "digest"},
 		{
 			name:    "an older bindings version",
 			mutate:  func(s string) string { return strings.ReplaceAll(s, bindingsVersion, "v0.10505.0") },
@@ -343,11 +349,33 @@ func TestVerifyCheckout(t *testing.T) {
 		return strings.TrimSpace(string(out))
 	}
 	gitRun("init", "-q")
-	gitRun("commit", "-q", "--allow-empty", "-m", "pin")
+	if err := os.WriteFile(filepath.Join(dir, "LICENSE"), []byte("original\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitRun("add", "LICENSE")
+	gitRun("commit", "-q", "-m", "pin")
 	head := gitRun("rev-parse", "HEAD")
 
 	if err := verifyCheckout(source{Name: "x", Tag: "v1", Commit: head}, dir); err != nil {
 		t.Fatalf("verifyCheckout at the pinned commit: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "LICENSE"), []byte("modified\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, staged := range []bool{false, true} {
+		if staged {
+			gitRun("add", "LICENSE")
+		}
+		if err := verifyCheckout(source{Name: "x", Tag: "v1", Commit: head}, dir); err == nil || !strings.Contains(err.Error(), "modified tracked") {
+			t.Fatalf("dirty source staged=%v accepted: %v", staged, err)
+		}
+	}
+	// A clean working copy must not conceal changes retained in the index.
+	if err := os.WriteFile(filepath.Join(dir, "LICENSE"), []byte("original\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyCheckout(source{Name: "x", Tag: "v1", Commit: head}, dir); err == nil || !strings.Contains(err.Error(), "modified tracked") {
+		t.Fatalf("staged change hidden by restored working copy accepted: %v", err)
 	}
 	err := verifyCheckout(source{Name: "x", Tag: "v1", Commit: strings.Repeat("0", 40)}, dir)
 	if err == nil || !strings.Contains(err.Error(), head) {

@@ -11,8 +11,10 @@ source the libraries were built from.
 
 The platform modules also carry the TPC-H and TPC-DS data generators as
 separate archives (libtpch_extension.a, libtpcds_extension.a). GoPMgr
-excludes them: nothing it links references them, so they are not in its
-binaries, and its release checks fail if they ever are.
+checks the reviewed pinned archive and binding inputs for references to
+the excluded archive symbols and for the listed code markers. Artifact
+checks report marker matches; these are bounded technical checks, not
+an unconditional absence proof or a legal conclusion.
 
 Reviewed for: github.com/duckdb/duckdb-go-bindings v0.10506.0
 DuckDB source: https://github.com/duckdb/duckdb v1.5.6, commit 069cc9f9b5be802405797faecc284961b07c70ef

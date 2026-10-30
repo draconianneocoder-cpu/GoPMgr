@@ -23,6 +23,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"flag"
 	"fmt"
@@ -37,8 +38,9 @@ import (
 const (
 	defaultOutput = "third_party/DUCKDB-NATIVE-NOTICES.txt"
 
-	bindingsModule  = "github.com/duckdb/duckdb-go-bindings"
-	bindingsVersion = "v0.10506.0"
+	bindingsModule       = "github.com/duckdb/duckdb-go-bindings"
+	bindingsVersion      = "v0.10506.0"
+	reviewedNoticeDigest = "5266556ac6554631b768ec7bb4f5d554b374f36584bdd7c0b568bab4aed61473"
 )
 
 // source is one pinned upstream checkout the texts come from.
@@ -91,7 +93,7 @@ func lines(path string, from, to int) part {
 
 // components lists every third-party work found in the linked libraries.
 // The TPC-H and TPC-DS generators are on the link line but excluded and
-// provably never linked (third_party/EXCLUDED-NATIVE-CODE.txt, checked by
+// checked against the reviewed inputs (third_party/EXCLUDED-NATIVE-CODE.txt, by
 // checkExclusions). Not listed either, because not linked: jemalloc's
 // separate archive on macOS and Windows, Snowball (the fts extension),
 // Catch (tests) and the IMDB data
@@ -186,8 +188,8 @@ func run(output string, check, fetch bool, dirs map[string]string) error {
 	if err := checkModuleVersions(moduleVersion); err != nil {
 		return err
 	}
-	// Release-blocking: the excluded TPC code must stay provably unlinked
-	// on every platform (maintainer decision of 2026-10-26).
+	// Release-blocking: require complete evidence for the reviewed inputs
+	// (maintainer decision of 2026-10-26).
 	if err := checkExclusions(moduleDir); err != nil {
 		return err
 	}
@@ -294,6 +296,9 @@ func checkPins(output string) error {
 	if len(missing) > 0 {
 		return fmt.Errorf("%s is stale; it lacks %q; run `make duckdb-notices`", output, missing)
 	}
+	if got := fmt.Sprintf("%x", sha256.Sum256(have)); got != reviewedNoticeDigest {
+		return fmt.Errorf("%s notice content digest differs from the reviewed artifact; regenerate from verified sources and review the texts", output)
+	}
 	fmt.Printf("duckdb-notices: %s matches the pins for %s %s\n", output, bindingsModule, bindingsVersion)
 	return nil
 }
@@ -317,6 +322,11 @@ func verifyCheckout(src source, dir string) error {
 	}
 	if got := strings.TrimSpace(string(out)); got != src.Commit {
 		return fmt.Errorf("%s is at %s; %s %s is %s", dir, got, src.Name, src.Tag, src.Commit)
+	}
+	for _, args := range [][]string{{"diff", "--quiet", "--"}, {"diff", "--cached", "--quiet", "HEAD", "--"}} {
+		if out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput(); err != nil {
+			return fmt.Errorf("%s has modified tracked source inputs or could not be checked: %w: %s", src.Name, err, strings.TrimSpace(string(out)))
+		}
 	}
 	return nil
 }
@@ -375,8 +385,10 @@ func preamble() []string {
 		"",
 		"The platform modules also carry the TPC-H and TPC-DS data generators as",
 		"separate archives (libtpch_extension.a, libtpcds_extension.a). GoPMgr",
-		"excludes them: nothing it links references them, so they are not in its",
-		"binaries, and its release checks fail if they ever are.",
+		"checks the reviewed pinned archive and binding inputs for references to",
+		"the excluded archive symbols and for the listed code markers. Artifact",
+		"checks report marker matches; these are bounded technical checks, not",
+		"an unconditional absence proof or a legal conclusion.",
 		"",
 	}
 	out = append(out, headerLines()...)
