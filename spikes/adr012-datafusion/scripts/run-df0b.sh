@@ -18,8 +18,8 @@ target="${CARGO_TARGET_DIR:-${TMPDIR:-/tmp}/df0-rust-target}"
 corpus="$(mktemp -d "${TMPDIR:-/tmp}/df0-corpus.XXXXXX")"
 trap 'rm -rf "$corpus"' EXIT
 
-(cd rust && CARGO_TARGET_DIR="$target" cargo test --locked --release)
-(cd rust && CARGO_TARGET_DIR="$target" cargo build --locked --release -p df0-cli)
+(cd rust && CARGO_TARGET_DIR="$target" bash ../scripts/with-rust-toolchain.sh cargo test --locked --release)
+(cd rust && CARGO_TARGET_DIR="$target" bash ../scripts/with-rust-toolchain.sh cargo build --locked --release -p df0-cli)
 go test -count=1 ./internal/...
 go run ./cmd/df0-fixtures -out "$corpus" -check
-go run ./cmd/df0-candidates -corpus "$corpus" -cli "$target/release/df0-cli" -out evidence/df0-b
+bash scripts/with-rust-toolchain.sh go run ./cmd/df0-candidates -corpus "$corpus" -cli "$target/release/df0-cli" -out evidence/df0-b

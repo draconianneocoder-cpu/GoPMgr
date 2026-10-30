@@ -53,7 +53,7 @@ func run(corpus, cli, baseline, out string) error {
 		return errors.New("-corpus is required")
 	}
 	if _, err := os.Stat(cli); err != nil {
-		return fmt.Errorf("candidate binary: %w (build with: cd rust && cargo build --release --locked)", err)
+		return fmt.Errorf("candidate binary: %w (see README.md: Reproduce DF0-B for the pinned build)", err)
 	}
 	if err := os.MkdirAll(out, 0o755); err != nil { // #nosec G301 -- evidence directory.
 		return err
