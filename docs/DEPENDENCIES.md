@@ -314,6 +314,18 @@ weakening the release claim.
    `third_party/GO-MODULE-NOTICES.txt`. Its diff shows every license text
    that changes. `make verify` fails until the file is current; see
    [LICENSES.md](../LICENSES.md#go-module-notices-in-release-packages).
+8. A duckdb-go-bindings update also changes the prebuilt DuckDB libraries
+   and the third-party code inside them. `make verify` fails until the
+   DuckDB native notices are reviewed for the new release; see
+   [LICENSES.md](../LICENSES.md#duckdb-native-library-notices). It also
+   fails if the release could link the excluded TPC-H or TPC-DS code; never
+   remove an entry from `third_party/EXCLUDED-NATIVE-CODE.txt` to get past
+   that (see
+   [LICENSES.md](../LICENSES.md#excluded-the-tpc-h-and-tpc-ds-generators)).
+9. After a frontend dependency change, or a new import of an npm package,
+   run `make frontend-notices` and commit the regenerated
+   `third_party/FRONTEND-NOTICES.txt`; `make verify` fails until it is
+   current. See [LICENSES.md](../LICENSES.md#frontend-package-notices).
 
 The notices generator reads Go's LICENSE and PATENTS from `GOROOT`. For a
 Homebrew-style `libexec` GOROOT, a missing file may be read from that same

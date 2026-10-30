@@ -38,7 +38,8 @@ export CC
         code-map code-map-current brand-assets coverage-ledger-current coverage-ledger-drift coverage-ratchet \
         coverage-ratchet-update coverage-go-cleanup-tests workspace-hygiene workspace-hygiene-tests cache-maintenance \
         pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests \
-        module-notices module-notices-check module-notices-tests package-tarball-tests
+        module-notices module-notices-check module-notices-tests package-tarball-tests \
+        duckdb-notices duckdb-notices-check frontend-notices frontend-notices-check frontend-notices-tests excluded-native-code-tests
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -116,7 +117,7 @@ race: ## Run Go tests with the race detector (concurrency gate).
 	# Bound package overlap, not t.Parallel or application goroutines. Always execute tests.
 	$(GO) test -race -p=1 -count=1 -tags "$(GO_TEST_TAGS)" $(GO_PACKAGES)
 
-verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check module-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
+verify: config-check installer-tool-pins windows-installer-scaffold required-font-assets clean-test-reset-tests native-isolation-launch-tests wails-version package-version-lib-test brand-assets coverage-go-cleanup-tests workspace-hygiene-tests pades-publish-test module-notices-check module-notices-tests duckdb-notices-check excluded-native-code-tests frontend-notices-check frontend-notices-tests package-tarball-tests test code-map-current frontend-stability frontend-build-budget coverage-ledger-current no-text-timestamp-ordering no-raw-import-in-tests ## Fast pre-commit gate: config + packaging/toolchain/font/native-launch/reset/cleanup/code-map/notices contracts + Go tests + frontend checks.
 	@echo "verify: configuration, packaging/Wails/font/native-launch/reset/code-map contracts, Go tests, svelte-check, and frontend build all passed."
 
 code-map: ## Regenerate the portable first-party Go package dependency map.
@@ -235,6 +236,24 @@ module-notices: ## Regenerate third_party/GO-MODULE-NOTICES.txt from the Go modu
 
 module-notices-check: ## Fail if third_party/GO-MODULE-NOTICES.txt no longer matches the modules release builds link.
 	$(GO) run ./tools/module-notices -check
+
+duckdb-notices: ## Regenerate third_party/DUCKDB-NATIVE-NOTICES.txt from the pinned DuckDB sources (clones them; needs network).
+	$(GO) run ./tools/duckdb-notices -fetch
+
+duckdb-notices-check: ## Fail if go.mod's duckdb-go-bindings version no longer matches the reviewed DuckDB native notices, or the excluded TPC code could be linked.
+	$(GO) run ./tools/duckdb-notices -check
+
+frontend-notices: ## Regenerate third_party/FRONTEND-NOTICES.txt from the production frontend bundle (needs npm ci).
+	cd frontend && node scripts/bundle-notices.mjs
+
+frontend-notices-check: ## Fail if third_party/FRONTEND-NOTICES.txt no longer matches the npm packages in the production bundle.
+	cd frontend && node scripts/bundle-notices.mjs --check
+
+frontend-notices-tests: ## Unit-test the frontend notices generator.
+	@node --test frontend/scripts/bundle-notices.test.mjs
+
+excluded-native-code-tests: ## Verify the check that keeps the excluded TPC-H/TPC-DS code out of binaries and source trees.
+	@bash scripts/verify-excluded-native-code_test.sh
 
 module-notices-tests: ## Verify the packaging check that compares a built binary with the Go module notices.
 	@bash scripts/verify-module-notices_test.sh

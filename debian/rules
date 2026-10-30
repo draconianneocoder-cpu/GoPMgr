@@ -7,7 +7,11 @@ export CGO_ENABLED := 1
 %:
 	dh $@
 
+# The vendored tree must not carry the excluded TPC-H/TPC-DS archives
+# (docs/review/TPC-benchmark-exclusion-decision.md); `go mod vendor` copies
+# them, so a plain vendored source package fails here by design.
 override_dh_auto_build:
+	bash scripts/verify-excluded-native-code.sh --tree vendor
 	go build -buildmode=pie -buildvcs=false -mod=vendor -trimpath -tags "desktop,production,duckdb,webkit2_41" -ldflags "-s -w" -o build/ppa/gopmgr .
 
 override_dh_auto_install:
@@ -18,6 +22,8 @@ override_dh_auto_install:
 	bash scripts/verify-module-notices.sh build/ppa/gopmgr
 	install -D -m 0644 third_party/GO-MODULE-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/go-module-notices.txt
 	install -D -m 0644 internal/fonts/assets/FONT-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/font-notices.txt
+	install -D -m 0644 third_party/DUCKDB-NATIVE-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/duckdb-native-notices.txt
+	install -D -m 0644 third_party/FRONTEND-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/frontend-notices.txt
 
 override_dh_auto_clean:
 	rm -rf build/ppa
