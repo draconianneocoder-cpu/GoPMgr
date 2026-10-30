@@ -16,6 +16,10 @@ import (
 // bob, who has one project with a schedule, a cost entry, and a document,
 // and that project's path.
 func viewerFixtureApp(t *testing.T) (*App, string) {
+	return viewerFixtureAppWithPreparation(t, nil)
+}
+
+func viewerFixtureAppWithPreparation(t *testing.T, prepare func(*db.Database)) (*App, string) {
 	t.Helper()
 	app, path := adminAccessApp(t)
 	switchUser(t, app, "bob")
@@ -60,6 +64,9 @@ func viewerFixtureApp(t *testing.T) (*App, string) {
 	doc.Content = `{"body":"the secret terms"}`
 	if _, err := app.SaveDocument(doc); err != nil {
 		t.Fatalf("SaveDocument: %v", err)
+	}
+	if prepare != nil {
+		prepare(app.db)
 	}
 	if err := app.CloseProject(); err != nil {
 		t.Fatalf("CloseProject: %v", err)
