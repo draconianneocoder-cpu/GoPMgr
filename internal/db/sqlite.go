@@ -280,8 +280,8 @@ func (db *Database) Migrate() error {
 	-- For projects created before V2.x, ALTER columns into place.
 	-- SQLite ignores duplicate ADD COLUMN; wrapping in idempotent
 	-- pragmas keeps migration safe to re-run.
-	-- (Older files will silently gain the four new columns on next
-	-- open; defaults match the table definition above.)
+	-- (A writable open adds any of these columns that are missing.
+	-- A read-only open does not. Defaults match the table definition above.)
 
 	-- Charts table. ` + "`kind`" + ` is one of the 22 chart types defined in
 	-- internal/charts/registry.go. ` + "`data`" + ` and ` + "`config`" + ` are JSON whose

@@ -40,6 +40,7 @@ var supportedConfigs = []configSpec{
 	{path: ".github/dependabot.yml", format: formatYAML, validate: validateDependabot},
 	{path: ".github/workflows/ci.yml", format: formatYAML, validate: validateCIAssuranceWorkflow},
 	{path: ".github/workflows/release.yml", format: formatYAML, validate: validateWorkflow},
+	{path: ".github/workflows/adr010-g0-spike.yml", format: formatYAML, validate: validateWorkflow},
 	{path: ".golangci.yml", format: formatYAML, validate: validateGolangCI},
 	{path: "build/linux/nfpm.yaml", format: formatYAML, validate: validateNFPM},
 	{path: ".gitleaks.toml", format: formatTOML, validate: validateGitleaks},

@@ -11,7 +11,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -1033,10 +1032,6 @@ func loadCurrentProjectSchedule(d *db.Database, projectID string) (map[string]*k
 		return nil, fmt.Errorf("list current CPM charts: %w", err)
 	}
 	if len(chs) > 0 {
-		// Most recently updated
-		// UpdatedAt is an RFC3339Nano string; lexicographic order matches
-		// chronological order, so ">" yields most-recent-first.
-		sort.Slice(chs, func(i, j int) bool { return chs[i].UpdatedAt > chs[j].UpdatedAt })
 		tasks, err := cpmChartDataToKernelTasks(chs[0].Data)
 		if err != nil {
 			// A malformed current chart must not silently fall back to a

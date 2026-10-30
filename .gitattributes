@@ -27,3 +27,6 @@ docs/design/adr-012/** -whitespace
 third_party/GO-MODULE-NOTICES.txt text eol=lf
 third_party/DUCKDB-NATIVE-NOTICES.txt text eol=lf
 third_party/FRONTEND-NOTICES.txt text eol=lf
+
+# protoc output for the ADR-010 G0 spike is kept exactly as generated.
+spikes/adr010-g0-transport/worker/src/main/java/org/gopmgr/g0spike/pb/** -whitespace
