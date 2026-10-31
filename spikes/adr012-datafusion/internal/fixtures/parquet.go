@@ -398,3 +398,19 @@ func parquetCases() []TabularCase {
 		Note: "CSV text with a .parquet extension", Accept: AcceptError, write: raw([]byte("id,name\n1,a\n"))}
 	return append(cases, truncated, notParquet)
 }
+
+// ReadAtRows is the bounded DF0-C2 comparison corpus, separate from DF0-A.
+const ReadAtRows = 2048
+const ReadAtGroupRows = 256
+const ReadAtFirstID int64 = 1<<53 + 1
+
+// WriteReadAtParquet writes eight sorted row groups and an unprojected payload.
+// The oracle is these generator values, never a second Parquet reader.
+func WriteReadAtParquet(w io.Writer) error {
+	cols := []pqColumn{
+		int64Col("id", func(i int) int64 { return ReadAtFirstID + int64(i) }),
+		int64Col("value", func(i int) int64 { return int64(i)*137 - 500000 }),
+		strCol("payload", func(i int) string { return strings.Repeat(fmt.Sprintf("%08x", i*7919), 128) }),
+	}
+	return writeParquet(w, ReadAtRows, cols, pqOptions{codec: compress.Codecs.Uncompressed, rowGroupLen: ReadAtGroupRows, dictionary: false})
+}

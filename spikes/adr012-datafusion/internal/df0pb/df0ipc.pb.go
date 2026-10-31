@@ -132,6 +132,7 @@ type WorkerEvent struct {
 	//	*WorkerEvent_Batch
 	//	*WorkerEvent_Completed
 	//	*WorkerEvent_Failed
+	//	*WorkerEvent_ReadAt
 	Event         isWorkerEvent_Event `protobuf_oneof:"event"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -217,6 +218,15 @@ func (x *WorkerEvent) GetFailed() *Failed {
 	return nil
 }
 
+func (x *WorkerEvent) GetReadAt() *SourceReadRequest {
+	if x != nil {
+		if x, ok := x.Event.(*WorkerEvent_ReadAt); ok {
+			return x.ReadAt
+		}
+	}
+	return nil
+}
+
 type isWorkerEvent_Event interface {
 	isWorkerEvent_Event()
 }
@@ -237,6 +247,10 @@ type WorkerEvent_Failed struct {
 	Failed *Failed `protobuf:"bytes,13,opt,name=failed,proto3,oneof"`
 }
 
+type WorkerEvent_ReadAt struct {
+	ReadAt *SourceReadRequest `protobuf:"bytes,14,opt,name=read_at,json=readAt,proto3,oneof"`
+}
+
 func (*WorkerEvent_Hello) isWorkerEvent_Event() {}
 
 func (*WorkerEvent_Batch) isWorkerEvent_Event() {}
@@ -244,6 +258,8 @@ func (*WorkerEvent_Batch) isWorkerEvent_Event() {}
 func (*WorkerEvent_Completed) isWorkerEvent_Event() {}
 
 func (*WorkerEvent_Failed) isWorkerEvent_Event() {}
+
+func (*WorkerEvent_ReadAt) isWorkerEvent_Event() {}
 
 type HostCommand struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
@@ -254,6 +270,7 @@ type HostCommand struct {
 	//	*HostCommand_Source
 	//	*HostCommand_Cancel
 	//	*HostCommand_Finish
+	//	*HostCommand_ReadAt
 	Command       isHostCommand_Command `protobuf_oneof:"command"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -339,6 +356,15 @@ func (x *HostCommand) GetFinish() *Finish {
 	return nil
 }
 
+func (x *HostCommand) GetReadAt() *SourceReadResponse {
+	if x != nil {
+		if x, ok := x.Command.(*HostCommand_ReadAt); ok {
+			return x.ReadAt
+		}
+	}
+	return nil
+}
+
 type isHostCommand_Command interface {
 	isHostCommand_Command()
 }
@@ -359,6 +385,10 @@ type HostCommand_Finish struct {
 	Finish *Finish `protobuf:"bytes,13,opt,name=finish,proto3,oneof"`
 }
 
+type HostCommand_ReadAt struct {
+	ReadAt *SourceReadResponse `protobuf:"bytes,14,opt,name=read_at,json=readAt,proto3,oneof"`
+}
+
 func (*HostCommand_Execute) isHostCommand_Command() {}
 
 func (*HostCommand_Source) isHostCommand_Command() {}
@@ -366,6 +396,8 @@ func (*HostCommand_Source) isHostCommand_Command() {}
 func (*HostCommand_Cancel) isHostCommand_Command() {}
 
 func (*HostCommand_Finish) isHostCommand_Command() {}
+
+func (*HostCommand_ReadAt) isHostCommand_Command() {}
 
 type Hello struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -455,7 +487,14 @@ type Execute struct {
 	PayloadBytes uint32 `protobuf:"varint,4,opt,name=payload_bytes,json=payloadBytes,proto3" json:"payload_bytes,omitempty"`
 	// Test-only fault injection: "", gap, duplicate, bad_schema, bad_hash,
 	// exit_mid_stream, hang.
-	Fault         string `protobuf:"bytes,5,opt,name=fault,proto3" json:"fault,omitempty"`
+	Fault string `protobuf:"bytes,5,opt,name=fault,proto3" json:"fault,omitempty"`
+	// parquet_range / parquet_stream: one immutable, job-scoped source.
+	SourceDescriptor *SourceDescriptor `protobuf:"bytes,6,opt,name=source_descriptor,json=sourceDescriptor,proto3" json:"source_descriptor,omitempty"`
+	// DF0-C2 fixture predicate, expressed as values rather than caller SQL.
+	FilterId      bool     `protobuf:"varint,7,opt,name=filter_id,json=filterId,proto3" json:"filter_id,omitempty"`
+	LowerId       int64    `protobuf:"varint,8,opt,name=lower_id,json=lowerId,proto3" json:"lower_id,omitempty"`
+	UpperId       int64    `protobuf:"varint,9,opt,name=upper_id,json=upperId,proto3" json:"upper_id,omitempty"`
+	Projection    []string `protobuf:"bytes,10,rep,name=projection,proto3" json:"projection,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -525,6 +564,293 @@ func (x *Execute) GetFault() string {
 	return ""
 }
 
+func (x *Execute) GetSourceDescriptor() *SourceDescriptor {
+	if x != nil {
+		return x.SourceDescriptor
+	}
+	return nil
+}
+
+func (x *Execute) GetFilterId() bool {
+	if x != nil {
+		return x.FilterId
+	}
+	return false
+}
+
+func (x *Execute) GetLowerId() int64 {
+	if x != nil {
+		return x.LowerId
+	}
+	return 0
+}
+
+func (x *Execute) GetUpperId() int64 {
+	if x != nil {
+		return x.UpperId
+	}
+	return 0
+}
+
+func (x *Execute) GetProjection() []string {
+	if x != nil {
+		return x.Projection
+	}
+	return nil
+}
+
+type SourceDescriptor struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SourceId      string                 `protobuf:"bytes,1,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Size          uint64                 `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
+	Sha256        []byte                 `protobuf:"bytes,4,opt,name=sha256,proto3" json:"sha256,omitempty"`
+	ExpiresUnixMs int64                  `protobuf:"varint,5,opt,name=expires_unix_ms,json=expiresUnixMs,proto3" json:"expires_unix_ms,omitempty"`
+	MaxReadBytes  uint32                 `protobuf:"varint,6,opt,name=max_read_bytes,json=maxReadBytes,proto3" json:"max_read_bytes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SourceDescriptor) Reset() {
+	*x = SourceDescriptor{}
+	mi := &file_df0ipc_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SourceDescriptor) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SourceDescriptor) ProtoMessage() {}
+
+func (x *SourceDescriptor) ProtoReflect() protoreflect.Message {
+	mi := &file_df0ipc_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SourceDescriptor.ProtoReflect.Descriptor instead.
+func (*SourceDescriptor) Descriptor() ([]byte, []int) {
+	return file_df0ipc_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *SourceDescriptor) GetSourceId() string {
+	if x != nil {
+		return x.SourceId
+	}
+	return ""
+}
+
+func (x *SourceDescriptor) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *SourceDescriptor) GetSize() uint64 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
+func (x *SourceDescriptor) GetSha256() []byte {
+	if x != nil {
+		return x.Sha256
+	}
+	return nil
+}
+
+func (x *SourceDescriptor) GetExpiresUnixMs() int64 {
+	if x != nil {
+		return x.ExpiresUnixMs
+	}
+	return 0
+}
+
+func (x *SourceDescriptor) GetMaxReadBytes() uint32 {
+	if x != nil {
+		return x.MaxReadBytes
+	}
+	return 0
+}
+
+type SourceReadRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OperationId   string                 `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	SourceId      string                 `protobuf:"bytes,2,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	Version       string                 `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
+	RequestId     uint64                 `protobuf:"varint,4,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Offset        uint64                 `protobuf:"varint,5,opt,name=offset,proto3" json:"offset,omitempty"`
+	Length        uint32                 `protobuf:"varint,6,opt,name=length,proto3" json:"length,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SourceReadRequest) Reset() {
+	*x = SourceReadRequest{}
+	mi := &file_df0ipc_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SourceReadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SourceReadRequest) ProtoMessage() {}
+
+func (x *SourceReadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_df0ipc_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SourceReadRequest.ProtoReflect.Descriptor instead.
+func (*SourceReadRequest) Descriptor() ([]byte, []int) {
+	return file_df0ipc_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *SourceReadRequest) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *SourceReadRequest) GetSourceId() string {
+	if x != nil {
+		return x.SourceId
+	}
+	return ""
+}
+
+func (x *SourceReadRequest) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *SourceReadRequest) GetRequestId() uint64 {
+	if x != nil {
+		return x.RequestId
+	}
+	return 0
+}
+
+func (x *SourceReadRequest) GetOffset() uint64 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+func (x *SourceReadRequest) GetLength() uint32 {
+	if x != nil {
+		return x.Length
+	}
+	return 0
+}
+
+type SourceReadResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     uint64                 `protobuf:"varint,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SourceId      string                 `protobuf:"bytes,2,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	Version       string                 `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
+	Offset        uint64                 `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
+	Data          []byte                 `protobuf:"bytes,5,opt,name=data,proto3" json:"data,omitempty"`
+	DataSha256    []byte                 `protobuf:"bytes,6,opt,name=data_sha256,json=dataSha256,proto3" json:"data_sha256,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SourceReadResponse) Reset() {
+	*x = SourceReadResponse{}
+	mi := &file_df0ipc_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SourceReadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SourceReadResponse) ProtoMessage() {}
+
+func (x *SourceReadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_df0ipc_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SourceReadResponse.ProtoReflect.Descriptor instead.
+func (*SourceReadResponse) Descriptor() ([]byte, []int) {
+	return file_df0ipc_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SourceReadResponse) GetRequestId() uint64 {
+	if x != nil {
+		return x.RequestId
+	}
+	return 0
+}
+
+func (x *SourceReadResponse) GetSourceId() string {
+	if x != nil {
+		return x.SourceId
+	}
+	return ""
+}
+
+func (x *SourceReadResponse) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *SourceReadResponse) GetOffset() uint64 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+func (x *SourceReadResponse) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+func (x *SourceReadResponse) GetDataSha256() []byte {
+	if x != nil {
+		return x.DataSha256
+	}
+	return nil
+}
+
 type SourceChunk struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Data          []byte                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
@@ -535,7 +861,7 @@ type SourceChunk struct {
 
 func (x *SourceChunk) Reset() {
 	*x = SourceChunk{}
-	mi := &file_df0ipc_proto_msgTypes[5]
+	mi := &file_df0ipc_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -547,7 +873,7 @@ func (x *SourceChunk) String() string {
 func (*SourceChunk) ProtoMessage() {}
 
 func (x *SourceChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_df0ipc_proto_msgTypes[5]
+	mi := &file_df0ipc_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -560,7 +886,7 @@ func (x *SourceChunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SourceChunk.ProtoReflect.Descriptor instead.
 func (*SourceChunk) Descriptor() ([]byte, []int) {
-	return file_df0ipc_proto_rawDescGZIP(), []int{5}
+	return file_df0ipc_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SourceChunk) GetData() []byte {
@@ -585,7 +911,7 @@ type Cancel struct {
 
 func (x *Cancel) Reset() {
 	*x = Cancel{}
-	mi := &file_df0ipc_proto_msgTypes[6]
+	mi := &file_df0ipc_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -597,7 +923,7 @@ func (x *Cancel) String() string {
 func (*Cancel) ProtoMessage() {}
 
 func (x *Cancel) ProtoReflect() protoreflect.Message {
-	mi := &file_df0ipc_proto_msgTypes[6]
+	mi := &file_df0ipc_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -610,7 +936,7 @@ func (x *Cancel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Cancel.ProtoReflect.Descriptor instead.
 func (*Cancel) Descriptor() ([]byte, []int) {
-	return file_df0ipc_proto_rawDescGZIP(), []int{6}
+	return file_df0ipc_proto_rawDescGZIP(), []int{9}
 }
 
 type Finish struct {
@@ -621,7 +947,7 @@ type Finish struct {
 
 func (x *Finish) Reset() {
 	*x = Finish{}
-	mi := &file_df0ipc_proto_msgTypes[7]
+	mi := &file_df0ipc_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -633,7 +959,7 @@ func (x *Finish) String() string {
 func (*Finish) ProtoMessage() {}
 
 func (x *Finish) ProtoReflect() protoreflect.Message {
-	mi := &file_df0ipc_proto_msgTypes[7]
+	mi := &file_df0ipc_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -646,7 +972,7 @@ func (x *Finish) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Finish.ProtoReflect.Descriptor instead.
 func (*Finish) Descriptor() ([]byte, []int) {
-	return file_df0ipc_proto_rawDescGZIP(), []int{7}
+	return file_df0ipc_proto_rawDescGZIP(), []int{10}
 }
 
 // One Arrow IPC stream (schema, one record batch, end-of-stream marker).
@@ -661,7 +987,7 @@ type Batch struct {
 
 func (x *Batch) Reset() {
 	*x = Batch{}
-	mi := &file_df0ipc_proto_msgTypes[8]
+	mi := &file_df0ipc_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -673,7 +999,7 @@ func (x *Batch) String() string {
 func (*Batch) ProtoMessage() {}
 
 func (x *Batch) ProtoReflect() protoreflect.Message {
-	mi := &file_df0ipc_proto_msgTypes[8]
+	mi := &file_df0ipc_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -686,7 +1012,7 @@ func (x *Batch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Batch.ProtoReflect.Descriptor instead.
 func (*Batch) Descriptor() ([]byte, []int) {
-	return file_df0ipc_proto_rawDescGZIP(), []int{8}
+	return file_df0ipc_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *Batch) GetIndex() uint64 {
@@ -723,14 +1049,17 @@ type Completed struct {
 	// Times the worker's outbound queue was full (flow control).
 	SendWaits uint64 `protobuf:"varint,7,opt,name=send_waits,json=sendWaits,proto3" json:"send_waits,omitempty"`
 	// Peak resident set from /proc/self/status VmHWM, or 0 when unknown.
-	PeakRssBytes  uint64 `protobuf:"varint,8,opt,name=peak_rss_bytes,json=peakRssBytes,proto3" json:"peak_rss_bytes,omitempty"`
+	PeakRssBytes uint64 `protobuf:"varint,8,opt,name=peak_rss_bytes,json=peakRssBytes,proto3" json:"peak_rss_bytes,omitempty"`
+	// Range jobs echo the granted immutable identity. source_sha256 hashes
+	// received response payloads in request order, not unread source bytes.
+	SourceVersion string `protobuf:"bytes,9,opt,name=source_version,json=sourceVersion,proto3" json:"source_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Completed) Reset() {
 	*x = Completed{}
-	mi := &file_df0ipc_proto_msgTypes[9]
+	mi := &file_df0ipc_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -742,7 +1071,7 @@ func (x *Completed) String() string {
 func (*Completed) ProtoMessage() {}
 
 func (x *Completed) ProtoReflect() protoreflect.Message {
-	mi := &file_df0ipc_proto_msgTypes[9]
+	mi := &file_df0ipc_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -755,7 +1084,7 @@ func (x *Completed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Completed.ProtoReflect.Descriptor instead.
 func (*Completed) Descriptor() ([]byte, []int) {
-	return file_df0ipc_proto_rawDescGZIP(), []int{9}
+	return file_df0ipc_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *Completed) GetBatches() uint64 {
@@ -814,6 +1143,13 @@ func (x *Completed) GetPeakRssBytes() uint64 {
 	return 0
 }
 
+func (x *Completed) GetSourceVersion() string {
+	if x != nil {
+		return x.SourceVersion
+	}
+	return ""
+}
+
 type Failed struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// USER_CANCELLED, INPUT_INVALID, RESOURCE_LIMIT, INTERNAL.
@@ -825,7 +1161,7 @@ type Failed struct {
 
 func (x *Failed) Reset() {
 	*x = Failed{}
-	mi := &file_df0ipc_proto_msgTypes[10]
+	mi := &file_df0ipc_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -837,7 +1173,7 @@ func (x *Failed) String() string {
 func (*Failed) ProtoMessage() {}
 
 func (x *Failed) ProtoReflect() protoreflect.Message {
-	mi := &file_df0ipc_proto_msgTypes[10]
+	mi := &file_df0ipc_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -850,7 +1186,7 @@ func (x *Failed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Failed.ProtoReflect.Descriptor instead.
 func (*Failed) Descriptor() ([]byte, []int) {
-	return file_df0ipc_proto_rawDescGZIP(), []int{10}
+	return file_df0ipc_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Failed) GetCode() string {
@@ -880,36 +1216,70 @@ const file_df0ipc_proto_rawDesc = "" +
 	"credential\x18\x04 \x01(\fR\n" +
 	"credential\x12&\n" +
 	"\x0fexpires_unix_ms\x18\x05 \x01(\x03R\rexpiresUnixMs\x12&\n" +
-	"\x0fmax_frame_bytes\x18\x06 \x01(\rR\rmaxFrameBytes\"\x85\x02\n" +
+	"\x0fmax_frame_bytes\x18\x06 \x01(\rR\rmaxFrameBytes\"\xc5\x02\n" +
 	"\vWorkerEvent\x12\x1a\n" +
 	"\bsequence\x18\x01 \x01(\x04R\bsequence\x12/\n" +
 	"\x05hello\x18\n" +
 	" \x01(\v2\x17.gopmgr.df0ipc.v1.HelloH\x00R\x05hello\x12/\n" +
 	"\x05batch\x18\v \x01(\v2\x17.gopmgr.df0ipc.v1.BatchH\x00R\x05batch\x12;\n" +
 	"\tcompleted\x18\f \x01(\v2\x1b.gopmgr.df0ipc.v1.CompletedH\x00R\tcompleted\x122\n" +
-	"\x06failed\x18\r \x01(\v2\x18.gopmgr.df0ipc.v1.FailedH\x00R\x06failedB\a\n" +
-	"\x05event\"\x8c\x02\n" +
+	"\x06failed\x18\r \x01(\v2\x18.gopmgr.df0ipc.v1.FailedH\x00R\x06failed\x12>\n" +
+	"\aread_at\x18\x0e \x01(\v2#.gopmgr.df0ipc.v1.SourceReadRequestH\x00R\x06readAtB\a\n" +
+	"\x05event\"\xcd\x02\n" +
 	"\vHostCommand\x12\x1a\n" +
 	"\bsequence\x18\x01 \x01(\x04R\bsequence\x125\n" +
 	"\aexecute\x18\n" +
 	" \x01(\v2\x19.gopmgr.df0ipc.v1.ExecuteH\x00R\aexecute\x127\n" +
 	"\x06source\x18\v \x01(\v2\x1d.gopmgr.df0ipc.v1.SourceChunkH\x00R\x06source\x122\n" +
 	"\x06cancel\x18\f \x01(\v2\x18.gopmgr.df0ipc.v1.CancelH\x00R\x06cancel\x122\n" +
-	"\x06finish\x18\r \x01(\v2\x18.gopmgr.df0ipc.v1.FinishH\x00R\x06finishB\t\n" +
+	"\x06finish\x18\r \x01(\v2\x18.gopmgr.df0ipc.v1.FinishH\x00R\x06finish\x12?\n" +
+	"\aread_at\x18\x0e \x01(\v2$.gopmgr.df0ipc.v1.SourceReadResponseH\x00R\x06readAtB\t\n" +
 	"\acommand\"\x9c\x01\n" +
 	"\x05Hello\x12%\n" +
 	"\x0eprotocol_major\x18\x01 \x01(\rR\rprotocolMajor\x12%\n" +
 	"\x0eprotocol_minor\x18\x02 \x01(\rR\rprotocolMinor\x12\x10\n" +
 	"\x03pid\x18\x03 \x01(\x03R\x03pid\x12\x16\n" +
 	"\x06engine\x18\x04 \x01(\tR\x06engine\x12\x1b\n" +
-	"\tenv_names\x18\x05 \x03(\tR\benvNames\"\x95\x01\n" +
+	"\tenv_names\x18\x05 \x03(\tR\benvNames\"\xd9\x02\n" +
 	"\aExecute\x12\x1c\n" +
 	"\toperation\x18\x01 \x01(\tR\toperation\x12\x12\n" +
 	"\x04rows\x18\x02 \x01(\x04R\x04rows\x12\x1d\n" +
 	"\n" +
 	"batch_rows\x18\x03 \x01(\rR\tbatchRows\x12#\n" +
 	"\rpayload_bytes\x18\x04 \x01(\rR\fpayloadBytes\x12\x14\n" +
-	"\x05fault\x18\x05 \x01(\tR\x05fault\"5\n" +
+	"\x05fault\x18\x05 \x01(\tR\x05fault\x12O\n" +
+	"\x11source_descriptor\x18\x06 \x01(\v2\".gopmgr.df0ipc.v1.SourceDescriptorR\x10sourceDescriptor\x12\x1b\n" +
+	"\tfilter_id\x18\a \x01(\bR\bfilterId\x12\x19\n" +
+	"\blower_id\x18\b \x01(\x03R\alowerId\x12\x19\n" +
+	"\bupper_id\x18\t \x01(\x03R\aupperId\x12\x1e\n" +
+	"\n" +
+	"projection\x18\n" +
+	" \x03(\tR\n" +
+	"projection\"\xc3\x01\n" +
+	"\x10SourceDescriptor\x12\x1b\n" +
+	"\tsource_id\x18\x01 \x01(\tR\bsourceId\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\x12\x12\n" +
+	"\x04size\x18\x03 \x01(\x04R\x04size\x12\x16\n" +
+	"\x06sha256\x18\x04 \x01(\fR\x06sha256\x12&\n" +
+	"\x0fexpires_unix_ms\x18\x05 \x01(\x03R\rexpiresUnixMs\x12$\n" +
+	"\x0emax_read_bytes\x18\x06 \x01(\rR\fmaxReadBytes\"\xbc\x01\n" +
+	"\x11SourceReadRequest\x12!\n" +
+	"\foperation_id\x18\x01 \x01(\tR\voperationId\x12\x1b\n" +
+	"\tsource_id\x18\x02 \x01(\tR\bsourceId\x12\x18\n" +
+	"\aversion\x18\x03 \x01(\tR\aversion\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x04 \x01(\x04R\trequestId\x12\x16\n" +
+	"\x06offset\x18\x05 \x01(\x04R\x06offset\x12\x16\n" +
+	"\x06length\x18\x06 \x01(\rR\x06length\"\xb7\x01\n" +
+	"\x12SourceReadResponse\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\x04R\trequestId\x12\x1b\n" +
+	"\tsource_id\x18\x02 \x01(\tR\bsourceId\x12\x18\n" +
+	"\aversion\x18\x03 \x01(\tR\aversion\x12\x16\n" +
+	"\x06offset\x18\x04 \x01(\x04R\x06offset\x12\x12\n" +
+	"\x04data\x18\x05 \x01(\fR\x04data\x12\x1f\n" +
+	"\vdata_sha256\x18\x06 \x01(\fR\n" +
+	"dataSha256\"5\n" +
 	"\vSourceChunk\x12\x12\n" +
 	"\x04data\x18\x01 \x01(\fR\x04data\x12\x12\n" +
 	"\x04last\x18\x02 \x01(\bR\x04last\"\b\n" +
@@ -918,7 +1288,7 @@ const file_df0ipc_proto_rawDesc = "" +
 	"\x05Batch\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x04R\x05index\x12\x12\n" +
 	"\x04rows\x18\x02 \x01(\x04R\x04rows\x12\x1b\n" +
-	"\tarrow_ipc\x18\x03 \x01(\fR\barrowIpc\"\x8e\x02\n" +
+	"\tarrow_ipc\x18\x03 \x01(\fR\barrowIpc\"\xb5\x02\n" +
 	"\tCompleted\x12\x18\n" +
 	"\abatches\x18\x01 \x01(\x04R\abatches\x12\x12\n" +
 	"\x04rows\x18\x02 \x01(\x04R\x04rows\x12%\n" +
@@ -929,7 +1299,8 @@ const file_df0ipc_proto_rawDesc = "" +
 	"resultJson\x12\x1d\n" +
 	"\n" +
 	"send_waits\x18\a \x01(\x04R\tsendWaits\x12$\n" +
-	"\x0epeak_rss_bytes\x18\b \x01(\x04R\fpeakRssBytes\"6\n" +
+	"\x0epeak_rss_bytes\x18\b \x01(\x04R\fpeakRssBytes\x12%\n" +
+	"\x0esource_version\x18\t \x01(\tR\rsourceVersion\"6\n" +
 	"\x06Failed\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage2_\n" +
@@ -948,36 +1319,42 @@ func file_df0ipc_proto_rawDescGZIP() []byte {
 	return file_df0ipc_proto_rawDescData
 }
 
-var file_df0ipc_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_df0ipc_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_df0ipc_proto_goTypes = []any{
-	(*Bootstrap)(nil),   // 0: gopmgr.df0ipc.v1.Bootstrap
-	(*WorkerEvent)(nil), // 1: gopmgr.df0ipc.v1.WorkerEvent
-	(*HostCommand)(nil), // 2: gopmgr.df0ipc.v1.HostCommand
-	(*Hello)(nil),       // 3: gopmgr.df0ipc.v1.Hello
-	(*Execute)(nil),     // 4: gopmgr.df0ipc.v1.Execute
-	(*SourceChunk)(nil), // 5: gopmgr.df0ipc.v1.SourceChunk
-	(*Cancel)(nil),      // 6: gopmgr.df0ipc.v1.Cancel
-	(*Finish)(nil),      // 7: gopmgr.df0ipc.v1.Finish
-	(*Batch)(nil),       // 8: gopmgr.df0ipc.v1.Batch
-	(*Completed)(nil),   // 9: gopmgr.df0ipc.v1.Completed
-	(*Failed)(nil),      // 10: gopmgr.df0ipc.v1.Failed
+	(*Bootstrap)(nil),          // 0: gopmgr.df0ipc.v1.Bootstrap
+	(*WorkerEvent)(nil),        // 1: gopmgr.df0ipc.v1.WorkerEvent
+	(*HostCommand)(nil),        // 2: gopmgr.df0ipc.v1.HostCommand
+	(*Hello)(nil),              // 3: gopmgr.df0ipc.v1.Hello
+	(*Execute)(nil),            // 4: gopmgr.df0ipc.v1.Execute
+	(*SourceDescriptor)(nil),   // 5: gopmgr.df0ipc.v1.SourceDescriptor
+	(*SourceReadRequest)(nil),  // 6: gopmgr.df0ipc.v1.SourceReadRequest
+	(*SourceReadResponse)(nil), // 7: gopmgr.df0ipc.v1.SourceReadResponse
+	(*SourceChunk)(nil),        // 8: gopmgr.df0ipc.v1.SourceChunk
+	(*Cancel)(nil),             // 9: gopmgr.df0ipc.v1.Cancel
+	(*Finish)(nil),             // 10: gopmgr.df0ipc.v1.Finish
+	(*Batch)(nil),              // 11: gopmgr.df0ipc.v1.Batch
+	(*Completed)(nil),          // 12: gopmgr.df0ipc.v1.Completed
+	(*Failed)(nil),             // 13: gopmgr.df0ipc.v1.Failed
 }
 var file_df0ipc_proto_depIdxs = []int32{
 	3,  // 0: gopmgr.df0ipc.v1.WorkerEvent.hello:type_name -> gopmgr.df0ipc.v1.Hello
-	8,  // 1: gopmgr.df0ipc.v1.WorkerEvent.batch:type_name -> gopmgr.df0ipc.v1.Batch
-	9,  // 2: gopmgr.df0ipc.v1.WorkerEvent.completed:type_name -> gopmgr.df0ipc.v1.Completed
-	10, // 3: gopmgr.df0ipc.v1.WorkerEvent.failed:type_name -> gopmgr.df0ipc.v1.Failed
-	4,  // 4: gopmgr.df0ipc.v1.HostCommand.execute:type_name -> gopmgr.df0ipc.v1.Execute
-	5,  // 5: gopmgr.df0ipc.v1.HostCommand.source:type_name -> gopmgr.df0ipc.v1.SourceChunk
-	6,  // 6: gopmgr.df0ipc.v1.HostCommand.cancel:type_name -> gopmgr.df0ipc.v1.Cancel
-	7,  // 7: gopmgr.df0ipc.v1.HostCommand.finish:type_name -> gopmgr.df0ipc.v1.Finish
-	1,  // 8: gopmgr.df0ipc.v1.AnalyticsSession.Connect:input_type -> gopmgr.df0ipc.v1.WorkerEvent
-	2,  // 9: gopmgr.df0ipc.v1.AnalyticsSession.Connect:output_type -> gopmgr.df0ipc.v1.HostCommand
-	9,  // [9:10] is the sub-list for method output_type
-	8,  // [8:9] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	11, // 1: gopmgr.df0ipc.v1.WorkerEvent.batch:type_name -> gopmgr.df0ipc.v1.Batch
+	12, // 2: gopmgr.df0ipc.v1.WorkerEvent.completed:type_name -> gopmgr.df0ipc.v1.Completed
+	13, // 3: gopmgr.df0ipc.v1.WorkerEvent.failed:type_name -> gopmgr.df0ipc.v1.Failed
+	6,  // 4: gopmgr.df0ipc.v1.WorkerEvent.read_at:type_name -> gopmgr.df0ipc.v1.SourceReadRequest
+	4,  // 5: gopmgr.df0ipc.v1.HostCommand.execute:type_name -> gopmgr.df0ipc.v1.Execute
+	8,  // 6: gopmgr.df0ipc.v1.HostCommand.source:type_name -> gopmgr.df0ipc.v1.SourceChunk
+	9,  // 7: gopmgr.df0ipc.v1.HostCommand.cancel:type_name -> gopmgr.df0ipc.v1.Cancel
+	10, // 8: gopmgr.df0ipc.v1.HostCommand.finish:type_name -> gopmgr.df0ipc.v1.Finish
+	7,  // 9: gopmgr.df0ipc.v1.HostCommand.read_at:type_name -> gopmgr.df0ipc.v1.SourceReadResponse
+	5,  // 10: gopmgr.df0ipc.v1.Execute.source_descriptor:type_name -> gopmgr.df0ipc.v1.SourceDescriptor
+	1,  // 11: gopmgr.df0ipc.v1.AnalyticsSession.Connect:input_type -> gopmgr.df0ipc.v1.WorkerEvent
+	2,  // 12: gopmgr.df0ipc.v1.AnalyticsSession.Connect:output_type -> gopmgr.df0ipc.v1.HostCommand
+	12, // [12:13] is the sub-list for method output_type
+	11, // [11:12] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_df0ipc_proto_init() }
@@ -990,12 +1367,14 @@ func file_df0ipc_proto_init() {
 		(*WorkerEvent_Batch)(nil),
 		(*WorkerEvent_Completed)(nil),
 		(*WorkerEvent_Failed)(nil),
+		(*WorkerEvent_ReadAt)(nil),
 	}
 	file_df0ipc_proto_msgTypes[2].OneofWrappers = []any{
 		(*HostCommand_Execute)(nil),
 		(*HostCommand_Source)(nil),
 		(*HostCommand_Cancel)(nil),
 		(*HostCommand_Finish)(nil),
+		(*HostCommand_ReadAt)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1003,7 +1382,7 @@ func file_df0ipc_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_df0ipc_proto_rawDesc), len(file_df0ipc_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

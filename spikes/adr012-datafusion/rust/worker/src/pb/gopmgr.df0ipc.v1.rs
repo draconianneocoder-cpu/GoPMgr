@@ -27,7 +27,7 @@ pub struct Bootstrap {
 pub struct WorkerEvent {
     #[prost(uint64, tag = "1")]
     pub sequence: u64,
-    #[prost(oneof = "worker_event::Event", tags = "10, 11, 12, 13")]
+    #[prost(oneof = "worker_event::Event", tags = "10, 11, 12, 13, 14")]
     pub event: ::core::option::Option<worker_event::Event>,
 }
 /// Nested message and enum types in `WorkerEvent`.
@@ -42,13 +42,15 @@ pub mod worker_event {
         Completed(super::Completed),
         #[prost(message, tag = "13")]
         Failed(super::Failed),
+        #[prost(message, tag = "14")]
+        ReadAt(super::SourceReadRequest),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HostCommand {
     #[prost(uint64, tag = "1")]
     pub sequence: u64,
-    #[prost(oneof = "host_command::Command", tags = "10, 11, 12, 13")]
+    #[prost(oneof = "host_command::Command", tags = "10, 11, 12, 13, 14")]
     pub command: ::core::option::Option<host_command::Command>,
 }
 /// Nested message and enum types in `HostCommand`.
@@ -63,6 +65,8 @@ pub mod host_command {
         Cancel(super::Cancel),
         #[prost(message, tag = "13")]
         Finish(super::Finish),
+        #[prost(message, tag = "14")]
+        ReadAt(super::SourceReadResponse),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -96,6 +100,63 @@ pub struct Execute {
     /// exit_mid_stream, hang.
     #[prost(string, tag = "5")]
     pub fault: ::prost::alloc::string::String,
+    /// parquet_range / parquet_stream: one immutable, job-scoped source.
+    #[prost(message, optional, tag = "6")]
+    pub source_descriptor: ::core::option::Option<SourceDescriptor>,
+    /// DF0-C2 fixture predicate, expressed as values rather than caller SQL.
+    #[prost(bool, tag = "7")]
+    pub filter_id: bool,
+    #[prost(int64, tag = "8")]
+    pub lower_id: i64,
+    #[prost(int64, tag = "9")]
+    pub upper_id: i64,
+    #[prost(string, repeated, tag = "10")]
+    pub projection: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SourceDescriptor {
+    #[prost(string, tag = "1")]
+    pub source_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub version: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "3")]
+    pub size: u64,
+    #[prost(bytes = "vec", tag = "4")]
+    pub sha256: ::prost::alloc::vec::Vec<u8>,
+    #[prost(int64, tag = "5")]
+    pub expires_unix_ms: i64,
+    #[prost(uint32, tag = "6")]
+    pub max_read_bytes: u32,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SourceReadRequest {
+    #[prost(string, tag = "1")]
+    pub operation_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub source_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub version: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "4")]
+    pub request_id: u64,
+    #[prost(uint64, tag = "5")]
+    pub offset: u64,
+    #[prost(uint32, tag = "6")]
+    pub length: u32,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SourceReadResponse {
+    #[prost(uint64, tag = "1")]
+    pub request_id: u64,
+    #[prost(string, tag = "2")]
+    pub source_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub version: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "4")]
+    pub offset: u64,
+    #[prost(bytes = "vec", tag = "5")]
+    pub data: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", tag = "6")]
+    pub data_sha256: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SourceChunk {
@@ -140,6 +201,10 @@ pub struct Completed {
     /// Peak resident set from /proc/self/status VmHWM, or 0 when unknown.
     #[prost(uint64, tag = "8")]
     pub peak_rss_bytes: u64,
+    /// Range jobs echo the granted immutable identity. source_sha256 hashes
+    /// received response payloads in request order, not unread source bytes.
+    #[prost(string, tag = "9")]
+    pub source_version: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Failed {

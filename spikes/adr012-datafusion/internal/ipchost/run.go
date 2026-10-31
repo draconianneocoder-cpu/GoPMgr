@@ -12,6 +12,7 @@ package ipchost
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
@@ -32,6 +33,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"gopmgr/spikes/adr012-datafusion/internal/df0pb"
+	"gopmgr/spikes/adr012-datafusion/internal/source"
 )
 
 const (
@@ -51,11 +53,15 @@ type Job struct {
 	Worker  string
 	Execute *df0pb.Execute
 	// Source is sent as SourceChunks after Execute.
-	Source      []byte
-	ChunkBytes  int
-	MaxFrame    int
-	Timeout     time.Duration
-	CancelAfter int // send Cancel after this many batches; 0: never
+	Source              []byte
+	ReadSource          *source.Snapshot
+	ReadLimits          *source.Limits
+	CancelAfterRead     uint64
+	CorruptReadResponse string
+	ChunkBytes          int
+	MaxFrame            int
+	Timeout             time.Duration
+	CancelAfter         int // send Cancel after this many batches; 0: never
 	// StallSourceAfter stops the upload after this many chunks, never
 	// sending the last one: a host that cancels mid-upload (fault test).
 	StallSourceAfter int
@@ -83,10 +89,12 @@ type Result struct {
 	IPCBytes int64  `json:"ipc_bytes"`
 	MaxBatch int    `json:"max_batch_bytes"`
 
-	DigestMatch *bool  `json:"digest_match,omitempty"`
-	SourceMatch *bool  `json:"source_match,omitempty"`
-	ResultJSON  string `json:"result_json,omitempty"`
-	FailedCode  string `json:"failed_code,omitempty"`
+	DigestMatch *bool         `json:"digest_match,omitempty"`
+	SourceMatch *bool         `json:"source_match,omitempty"`
+	SourceIO    *source.Stats `json:"source_io,omitempty"`
+	SourceReads []SourceRead  `json:"source_reads,omitempty"`
+	ResultJSON  string        `json:"result_json,omitempty"`
+	FailedCode  string        `json:"failed_code,omitempty"`
 
 	WorkerPID      int    `json:"-"`
 	WorkerExit     string `json:"worker_exit"`
@@ -116,6 +124,17 @@ type Result struct {
 	WallNS           int64 `json:"wall_ns"`
 
 	WorkerDiag string `json:"-"`
+}
+
+type SourceRead struct {
+	Request uint64 `json:"request"`
+	Offset  uint64 `json:"offset"`
+	Length  uint32 `json:"length"`
+}
+
+type queuedCommand struct {
+	command *df0pb.HostCommand
+	result  chan error
 }
 
 // EncodeBootstrap frames a bootstrap as a uvarint length and the bytes.
@@ -196,6 +215,27 @@ func Run(job Job) (res Result) {
 	start := time.Now()
 	deadline := start.Add(job.Timeout)
 	defer func() { res.WallNS = time.Since(start).Nanoseconds() }()
+	var grant *source.Grant
+	if job.ReadSource != nil {
+		if job.Source != nil || job.Execute == nil || (job.Execute.Operation != "parquet_range" && job.Execute.Operation != "parquet_stream") || job.MaxFrame <= 1024 {
+			res.Outcome, res.Detail = "setup_failed", "invalid source job"
+			return res
+		}
+		limits := source.Limits{ReadBytes: uint32(min(defaultChunk, job.MaxFrame-1024)), TotalBytes: 16 * source.MaxSourceBytes, Requests: 8192, InFlight: 1}
+		if job.ReadLimits != nil {
+			limits = *job.ReadLimits
+		}
+		var err error
+		grant, err = job.ReadSource.Bind(job.Name, deadline, limits)
+		if err != nil {
+			res.Outcome, res.Detail = "setup_failed", err.Error()
+			return res
+		}
+		defer func() { s := grant.Stats(); res.SourceIO = &s; grant.Close() }()
+		d := grant.Descriptor()
+		job.Execute = proto.Clone(job.Execute).(*df0pb.Execute)
+		job.Execute.SourceDescriptor = &df0pb.SourceDescriptor{SourceId: d.SourceID, Version: d.Version, Size: d.Size, Sha256: d.SHA256[:], ExpiresUnixMs: d.Expires.UnixMilli(), MaxReadBytes: d.ReadBytes}
+	}
 
 	ep, err := Listen()
 	if err != nil {
@@ -229,11 +269,20 @@ func Run(job Job) (res Result) {
 		close(served)
 	}()
 	var releaseOnce sync.Once
+	var stop, recvDone, sendDone, uploadDone chan struct{}
 	release := func() { releaseOnce.Do(func() { close(sess.done) }) }
 	defer func() {
 		release()
+		if stop != nil {
+			close(stop)
+		}
 		srv.Stop()
 		<-served
+		for _, done := range []chan struct{}{recvDone, sendDone, uploadDone} {
+			if done != nil {
+				<-done
+			}
+		}
 		res.ListenerRefused = pl.refused.Load()
 		res.SessionRefused = sess.refused.Load()
 		res.Refusals = append(pl.refusals(), sess.refusals()...)
@@ -340,10 +389,11 @@ func Run(job Job) (res Result) {
 
 	// One goroutine reads and one writes: a gRPC stream allows one of each.
 	// stop ends both, and every producer, when Run returns.
-	stop := make(chan struct{})
-	defer close(stop)
+	stop = make(chan struct{})
+	recvDone = make(chan struct{})
 	recv := make(chan recvItem, 4)
 	go func() {
+		defer close(recvDone)
 		for {
 			ev, err := stream.Recv()
 			select {
@@ -356,20 +406,27 @@ func Run(job Job) (res Result) {
 			}
 		}
 	}()
-	sendQ := make(chan *df0pb.HostCommand, 16)
+	sendQ := make(chan queuedCommand, 16)
 	sendErr := make(chan error, 1)
+	sendDone = make(chan struct{})
 	go func() {
+		defer close(sendDone)
 		var seq uint64
 		for {
-			var cmd *df0pb.HostCommand
+			var queued queuedCommand
 			select {
-			case cmd = <-sendQ:
+			case queued = <-sendQ:
 			case <-stop:
 				return
 			}
 			seq++
+			cmd := queued.command
 			cmd.Sequence = seq
-			if err := stream.Send(cmd); err != nil {
+			err := stream.Send(cmd)
+			if queued.result != nil {
+				queued.result <- err
+			}
+			if err != nil {
 				sendErr <- err
 				return
 			}
@@ -379,7 +436,7 @@ func Run(job Job) (res Result) {
 	// passes, so a frozen worker cannot block the host.
 	send := func(c *df0pb.HostCommand) bool {
 		select {
-		case sendQ <- c:
+		case sendQ <- queuedCommand{command: c}:
 			return true
 		case <-stop:
 			return false
@@ -387,6 +444,33 @@ func Run(job Job) (res Result) {
 			return false
 		}
 	}
+	// Source credit lasts until the transport send returns, not just enqueue.
+	sendSource := func(c *df0pb.HostCommand) error {
+		ack := make(chan error, 1)
+		timer := time.NewTimer(time.Until(deadline))
+		defer timer.Stop()
+		select {
+		case sendQ <- queuedCommand{command: c, result: ack}:
+		case <-stop:
+			return errors.New("source stopped")
+		case <-timer.C:
+			return errors.New("source deadline")
+		}
+		select {
+		case err := <-ack:
+			return err
+		case <-stop:
+			<-sendDone
+			return errors.New("source stopped")
+		case <-timer.C:
+			// Stop unblocks an active Send before its lease is released.
+			srv.Stop()
+			<-sendDone
+			return errors.New("source deadline")
+		}
+	}
+	sourceErr := make(chan error, 1)
+	readSum := sha256.New()
 
 	var (
 		want     uint64 = 1
@@ -404,6 +488,9 @@ func Run(job Job) (res Result) {
 		case it = <-recv:
 		case err := <-sendErr:
 			fail("send_failed", err.Error())
+			continue
+		case err := <-sourceErr:
+			fail("source_failed", err.Error())
 			continue
 		case <-timeout.C:
 			fail("timeout", fmt.Sprintf("no completion within %v", job.Timeout))
@@ -444,6 +531,10 @@ func Run(job Job) (res Result) {
 				fail("rejected_protocol", fmt.Sprintf("protocol %d, pid %d", e.Hello.GetProtocolMajor(), e.Hello.GetPid()))
 				continue
 			}
+			if grant != nil && e.Hello.GetProtocolMinor() < 1 {
+				fail("rejected_protocol", "worker lacks source reads")
+				continue
+			}
 			if s, err := InspectSockets(pid); err == nil {
 				res.WorkerSockets = &s
 			} else {
@@ -460,7 +551,9 @@ func Run(job Job) (res Result) {
 				continue
 			}
 			if job.Source != nil {
+				uploadDone = make(chan struct{})
 				go func() {
+					defer close(uploadDone)
 					src := job.Source
 					for sent := 0; ; sent++ {
 						if job.StallSourceAfter > 0 && sent == job.StallSourceAfter {
@@ -474,6 +567,74 @@ func Run(job Job) (res Result) {
 						src = src[n:]
 					}
 				}()
+			}
+			if grant != nil && job.Execute.Operation == "parquet_stream" {
+				uploadDone = make(chan struct{})
+				go func() {
+					defer close(uploadDone)
+					d := grant.Descriptor()
+					for offset, request := uint64(0), uint64(1); ; request++ {
+						n := uint32(min(uint64(d.ReadBytes), d.Size-offset))
+						lease, err := grant.Read(context.Background(), d.JobID, d.SourceID, d.Version, request, offset, n)
+						if err != nil {
+							sourceErr <- err
+							return
+						}
+						last := offset+uint64(n) == d.Size
+						err = sendSource(&df0pb.HostCommand{Command: &df0pb.HostCommand_Source{Source: &df0pb.SourceChunk{Data: lease.Data, Last: last}}})
+						lease.Close()
+						if err != nil {
+							sourceErr <- err
+							return
+						}
+						if last {
+							return
+						}
+						offset += uint64(n)
+					}
+				}()
+			}
+		case *df0pb.WorkerEvent_ReadAt:
+			if want == 2 || grant == nil || job.Execute.Operation != "parquet_range" {
+				fail("rejected_protocol", "unexpected source request")
+				continue
+			}
+			r := e.ReadAt
+			if r == nil {
+				fail("rejected_protocol", "empty source request")
+				continue
+			}
+			lease, err := grant.Read(context.Background(), r.OperationId, r.SourceId, r.Version, r.RequestId, r.Offset, r.Length)
+			if err != nil {
+				fail("rejected_source", err.Error())
+				continue
+			}
+			res.SourceReads = append(res.SourceReads, SourceRead{r.RequestId, r.Offset, r.Length})
+			if job.CancelAfterRead > 0 && uint64(len(res.SourceReads)) == job.CancelAfterRead {
+				cancelAt = time.Now()
+				send(&df0pb.HostCommand{Command: &df0pb.HostCommand_Cancel{Cancel: &df0pb.Cancel{}}})
+				lease.Close()
+				continue
+			}
+			digest := sha256.Sum256(lease.Data)
+			response := &df0pb.SourceReadResponse{RequestId: r.RequestId, SourceId: r.SourceId, Version: r.Version, Offset: r.Offset, Data: lease.Data, DataSha256: digest[:]}
+			switch job.CorruptReadResponse {
+			case "version":
+				response.Version = "wrong"
+			case "hash":
+				response.DataSha256 = []byte("wrong")
+			case "offset":
+				response.Offset++
+			case "request_id":
+				response.RequestId++
+			}
+			err = sendSource(&df0pb.HostCommand{Command: &df0pb.HostCommand_ReadAt{ReadAt: response}})
+			if err == nil {
+				readSum.Write(lease.Data)
+			}
+			lease.Close()
+			if err != nil {
+				fail("send_failed", err.Error())
 			}
 		case *df0pb.WorkerEvent_Batch:
 			if want == 2 {
@@ -510,6 +671,10 @@ func Run(job Job) (res Result) {
 				}
 			}
 		case *df0pb.WorkerEvent_Completed:
+			if want == 2 {
+				fail("rejected_protocol", "completion before Hello")
+				continue
+			}
 			c := e.Completed
 			res.SendWaits = c.GetSendWaits()
 			res.WorkerPeakRSS = int64(c.GetPeakRssBytes())
@@ -519,8 +684,16 @@ func Run(job Job) (res Result) {
 				srcSum := sha256.Sum256(job.Source)
 				res.SourceMatch = boolp(bytes.Equal(c.GetSourceSha256(), srcSum[:]) && c.GetSourceBytes() == uint64(len(job.Source)))
 			}
+			if grant != nil {
+				d := grant.Descriptor()
+				digest := readSum.Sum(nil)
+				if job.Execute.Operation == "parquet_stream" {
+					digest = d.SHA256[:]
+				}
+				res.SourceMatch = boolp(c.GetSourceVersion() == d.Version && c.GetSourceBytes() == grant.Stats().ActualBytes && bytes.Equal(c.GetSourceSha256(), digest))
+			}
 			switch {
-			case c.GetBatches() != res.Batches || (c.GetBatches() > 0 && c.GetRows() != res.Rows):
+			case c.GetBatches() != res.Batches || ((c.GetBatches() > 0 || grant != nil) && c.GetRows() != res.Rows):
 				fail("rejected_counts", fmt.Sprintf("worker says %d batches %d rows, host saw %d and %d", c.GetBatches(), c.GetRows(), res.Batches, res.Rows))
 			case !*res.DigestMatch:
 				fail("rejected_digest", "batch digest differs from the bytes received")

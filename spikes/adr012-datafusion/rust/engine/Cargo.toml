@@ -13,6 +13,10 @@ datafusion.workspace = true
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+async-trait = { version = "=0.1.92", default-features = false }
+bytes = { version = "=1.12.1", default-features = false }
+futures = { version = "=0.3.34", default-features = false, features = ["std", "async-await"] }
+url = { version = "=2.5.8", default-features = false }
 
 [dev-dependencies]
 tokio-stream.workspace = true
