@@ -87,6 +87,13 @@ an empty environment and its credential on stdin, never in argv.
 
 ## Toolchain evidence
 
+The maintainer approved four temporary, spike-only dependency overrides on
+2026-10-31 to remove the vulnerable Zstd branch. See
+[provenance, licensing and removal](third_party/GOPMGR.md) and the
+[assessment](../../docs/testing/adr-012-df0-zstd-assessment.md). The source
+guards run in the root `make config-check`; workspace tests include interrupted
+Zstd context reuse. The production Go graph and DuckDB are unchanged.
+
 The current pin is Rust 1.99.1; the declared MSRV remains 1.94. Historical
 DF0-B/C records retain their original compiler observations. A collector's
 `rustc --version` field describes the compiler visible to that process, not

@@ -281,6 +281,10 @@ func TestDF0RustConfigInventory(t *testing.T) {
 		"spikes/adr012-datafusion/rust/engine/Cargo.toml",
 		"spikes/adr012-datafusion/rust/worker/Cargo.toml",
 		"spikes/adr012-datafusion/rust/rust-toolchain.toml",
+		"spikes/adr012-datafusion/third_party/arrow-ipc-59.3.2/Cargo.toml",
+		"spikes/adr012-datafusion/third_party/parquet-59.3.2/Cargo.toml",
+		"spikes/adr012-datafusion/third_party/datafusion-55.2.0/Cargo.toml",
+		"spikes/adr012-datafusion/third_party/datafusion-datasource-55.2.0/Cargo.toml",
 	}
 	files, tracked := validConfigFixture()
 	for _, path := range paths {
@@ -410,6 +414,9 @@ channel = "1.99.1"
 name = "df0-` + member + `"
 version = "0.0.0"
 `)
+	}
+	for _, crate := range []string{"arrow-ipc-59.3.2", "parquet-59.3.2", "datafusion-55.2.0", "datafusion-datasource-55.2.0"} {
+		files["spikes/adr012-datafusion/third_party/"+crate+"/Cargo.toml"] = []byte("[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n")
 	}
 	tracked := make([]string, 0, len(files))
 	for _, spec := range supportedConfigs {

@@ -28,5 +28,11 @@ third_party/GO-MODULE-NOTICES.txt text eol=lf
 third_party/DUCKDB-NATIVE-NOTICES.txt text eol=lf
 third_party/FRONTEND-NOTICES.txt text eol=lf
 
+# Keep the DF0-only source pins byte-for-byte, including upstream whitespace.
+spikes/adr012-datafusion/third_party/arrow-ipc-59.3.2/** -text -whitespace
+spikes/adr012-datafusion/third_party/parquet-59.3.2/** -text -whitespace
+spikes/adr012-datafusion/third_party/datafusion-55.2.0/** -text -whitespace
+spikes/adr012-datafusion/third_party/datafusion-datasource-55.2.0/** -text -whitespace
+
 # protoc output for the ADR-010 G0 spike is kept exactly as generated.
 spikes/adr010-g0-transport/worker/src/main/java/org/gopmgr/g0spike/pb/** -whitespace

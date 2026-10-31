@@ -12,6 +12,9 @@ inputs and its evidence file. Historical environment records are observations
 from those runs, not current toolchain declarations. The current pin and fresh
 build evidence are recorded in [Rust 1.99.1 verification](adr-012-rust-1.99.1.md);
 those compiler changes do not rerun or supersede the Linux DF0-A/B/C measurements.
+The later [Zstd override assessment](adr-012-df0-zstd-assessment.md) records
+the 2026-10-31 spike-only dependency remediation separately. It does not close
+the remaining DF0-C2/D/E/F/G or native-platform gates.
 
 - Code: [`spikes/adr012-datafusion/`](../../spikes/adr012-datafusion/README.md).
 - Raw records: `spikes/adr012-datafusion/evidence/`.
