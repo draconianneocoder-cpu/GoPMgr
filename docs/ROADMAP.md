@@ -17,18 +17,64 @@ GoPMgr already provides local project storage, scheduling, earned-value
 analysis, charts, documents, export, SQLCipher support, and PDF signing. The
 near-term priority is making those workflows dependable for wider testing.
 
-1. Prevent data loss in stateful editors and verify save, discard, and cancel
+1. Expedite the qualified DuckDB replacement on macOS first, Linux second,
+   through the isolated DF0 work below. Production cutover remains a separate
+   owner decision.
+2. Prevent data loss in stateful editors and verify save, discard, and cancel
    behavior in native application workflows.
-2. Complete real-target installation and upgrade evidence for every advertised
+3. Complete real-target installation and upgrade evidence for every advertised
    package format.
-3. Establish trustworthy distribution: code signing, notarization where
+4. Establish trustworthy distribution: code signing, notarization where
    applicable, and release-certificate PAdES evidence. The Ed25519 signed
    update-manifest mechanism itself (`internal/update`, `tools/update-manifest`)
    is already built and tested end-to-end; what remains is standing up a live
    channel — generating and provisioning the signing keypair as CI secrets so
    `ManifestURL`/`UpdateChannelPublicKey` are actually populated in release
    builds, which today ship with the update channel disabled by design.
-4. Improve keyboard and assistive-technology coverage before broad release.
+5. Improve keyboard and assistive-technology coverage before broad release.
+
+## DuckDB replacement: current delivery sequence
+
+Status checked against main `6102a28` on 2026-10-31. DuckDB remains the shipped
+analytics engine. The accepted [ADR-012 authority](review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)
+authorizes the isolated feasibility spike; it does not authorize production
+integration, a release-package change or removal of the legacy engine. Do not
+upgrade DuckDB as part of its retirement.
+
+1. **Complete macOS containment qualification.** Host-mediated Parquet reads,
+   forced no-spill controls, per-child kernel resource accounting and pre-launch
+   reservation checks are implemented in the spike (PRs #173–#175). Reservations
+   are not actual memory or CPU caps. The [native limit probes](testing/adr-012-df0-macos-limits.md)
+   demonstrate why address-space limits, per-process CPU time and process groups
+   cannot be substituted for combined RSS/CPU/process-tree enforcement. DF-033
+   and full DF-064 remain unqualified; full DF-062 is BLOCKED on independent
+   OS-wide filesystem observation and still lacks other required controls. Resolve
+   the [containment decision request](review/ADR-012-macos-containment-ACR.md)
+   without weakening accepted guarantees by implication.
+2. **Finish the remaining DF0 evidence.** Close the security matrix; compare
+   DuckDB, DataFusion and Go exact-rollup plus DataFusion fairly (DF0-E), verify
+   complete numeric/wire fidelity (E2), and qualify packaging, dependencies and
+   licensing separately (F/F2 and LC-GATE). The
+   [evidence record](testing/adr-012-df0-evidence.md) distinguishes completed
+   experiments from NOT-RUN and BLOCKED gates. macOS is the execution priority,
+   Linux follows; Windows execution is deferred, not silently removed from the
+   accepted platform requirements. Minimum-version and signed-app evidence stay
+   separate from development-machine tests.
+3. **Obtain the production decision.** Submit DF0-G's go/no-go report and the
+   required owner decisions, including budgets and production G1-compatible
+   integration. Then implement and qualify Slice J in reviewable stages, with
+   rollback and exact behavior/format compatibility. Only after those gates and
+   an explicit cutover decision remove DuckDB code, bindings, build tags,
+   release paths and obsolete documentation together. Preserve SQLCipher storage
+   authority and the Go calculation kernel.
+
+At the GitHub snapshot above there were no open PRs. The sole remote feature
+branch, `claude/slice-b-readonly-access`, belongs to closed, unmerged PR #163.
+Review and selectively port useful missing read-only regression fixtures before
+retiring it; do not merge its rejected strict-schema/refusal interface wholesale.
+Local backup refs and active worktrees need a separate content/ownership check
+before deletion. A closed PR or a different test name alone does not establish
+that all useful work has been superseded.
 
 ## Strategic direction: professional scheduling
 
@@ -59,9 +105,10 @@ Approved priority order, with today's status from the
 
 Nothing in this table is a release promise. Schema activation, migrations,
 financial authority, mandatory dependencies, scheduling-semantic changes and
-release or signing policy each need separate approval. The proposed next
-implementation slice is PS-02 slice 1, a read-only audit, which also awaits
-authorization.
+release or signing policy each need separate approval. Within the scheduling
+stream, the proposed next implementation slice is
+PS-02 slice 1, a read-only audit, which also awaits authorization. The authorized
+DF0 priority above does not grant that scheduling implementation authority.
 
 ## Planned product work
 

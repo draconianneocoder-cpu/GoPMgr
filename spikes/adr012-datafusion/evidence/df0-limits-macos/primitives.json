@@ -1,0 +1,37 @@
+[
+  {
+    "mode": "allocation-control",
+    "peak_before_bytes": 43696128,
+    "peak_after_bytes": 177913856
+  },
+  {
+    "mode": "as-growth",
+    "vm_before_bytes": 502172434432,
+    "address_space_limit_bytes": 502180823040,
+    "peak_before_bytes": 44040192,
+    "peak_after_bytes": 44744704,
+    "allocation_error": "cannot allocate memory"
+  },
+  {
+    "mode": "as-resident",
+    "vm_before_bytes": 502306734080,
+    "address_space_limit_bytes": 502315122688,
+    "peak_before_bytes": 44089344,
+    "peak_after_bytes": 178962432
+  },
+  {
+    "mode": "cpu-limit",
+    "cpu_soft_seconds": 1,
+    "cpu_hard_seconds": 2,
+    "workload": "POSIX shell builtin loop, default signal dispositions",
+    "signal": "cputime limit exceeded"
+  },
+  {
+    "mode": "cpu-tree",
+    "cpu_soft_seconds": 1,
+    "cpu_hard_seconds": 2,
+    "checksum": 6828855615170805760,
+    "cpu_time_ns": 602978000,
+    "child_cpu_time_ns": 600657000
+  }
+]

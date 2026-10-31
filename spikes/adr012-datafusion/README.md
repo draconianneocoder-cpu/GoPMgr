@@ -148,3 +148,17 @@ DF0-B/C records retain their original compiler observations. A collector's
 proof of an earlier binary's build. Associate fresh build logs, source and lock
 hashes, compiler identity and artifact hashes for current qualification.
 See [Rust 1.99.1 verification](../../docs/testing/adr-012-rust-1.99.1.md).
+
+## Native macOS limit primitives
+
+From this spike directory:
+
+```sh
+go test -race -count=1 -v ./internal/ipchost \
+  -run 'TestMacOS(LimitPrimitives|ProcessGroupMemberCanEscape)$'
+```
+
+These bounded synthetic subprocess probes require no DataFusion worker. They
+qualify the distinctions between address-space and resident memory, per-process
+CPU time and aggregate quotas, and process groups and containment. They do not
+establish production enforcement. See the [measurements and limits](../../docs/testing/adr-012-df0-macos-limits.md).

@@ -1,0 +1,65 @@
+{
+  "recorded_utc": "2026-10-31T18:05:47.453313+00:00",
+  "baseline_commit": "6102a28c23145be205113df4e891a870a302aa63",
+  "scope": "Synthetic native capability probes only; not DataFusion, aggregate quota or release qualification",
+  "platform": {
+    "os": "macOS",
+    "version": "27.2",
+    "kernel_release": "27.2.0",
+    "architecture": "arm64",
+    "cpu": "Apple M4",
+    "memory_bytes": 34359738368,
+    "sdk_version": "27.2"
+  },
+  "go": "go version go1.27.3 darwin/arm64",
+  "clang": "Apple clang version 21.0.0 (clang-2100.4.1.1)",
+  "source_sha256": {
+    "spikes/adr012-datafusion/internal/ipchost/limits_darwin_test.go": "00aaf1f8ffea025b9bbe3f14c89613920c19157deb0ae192e0a78cf6ec8240e6",
+    "spikes/adr012-datafusion/internal/ipchost/proc_darwin.go": "6a406604ff9919c835c22beade0992630bfa2a1cebf5f163044f4ed8dc542329",
+    "spikes/adr012-datafusion/internal/ipchost/proc_linux.go": "3fe09aba64f524729770175faba7e5cce7b6af5c6b6fe4d56e24cc9638add87e",
+    "spikes/adr012-datafusion/tools/macos_footprint_probe.c": "0c82831f276cca6a0095c29f01cff451932119cb466f790f9587c4989fd375df"
+  },
+  "evidence_sha256": {
+    "footprint.json": "b89d37cd567a6718d765cb7698b7771c7ec120736c9f7ba19aebc870febec10c",
+    "primitives.json": "4e3babf69c4450e0eacebddc8110ef174c0ce76e1e68ad569ecec3da81fa7533",
+    "process-group.json": "399111e2a09374e9950008d7ca087cf4234a1ff334ba801663b0af109eab5419"
+  },
+  "footprint_probe_binary_sha256": "1968937af0637a96d484321476faa57be9a7e2a0805979b98258f71a8ebf0a69",
+  "upstream_context": {
+    "repository": "apple-oss-distributions/xnu",
+    "revision": "f6217f891ac0bb64f3d375211650a4c1ff8ca1ea",
+    "installed_kernel_provenance": false,
+    "source_sha256": {
+      "bsd/kern/kern_resource.c": "ffd547faab964b7860476a3b1e1c82525389666450b08eda19f9f5229eddd054",
+      "bsd/kern/kern_memorystatus.c": "d6c27445f00c811232320e968013d82898b54b86326d95310436d6515a3c719c",
+      "libsyscall/wrappers/libproc/libproc.c": "5c8a771427e04c5e1d55c4cdf5a077f3b52c5be4a091683b970084bfdda76df2",
+      "osfmk/kern/task.c": "f5ea4822b15aca636c4d940679e878904729b88acf312821d2ebacbf69312f71",
+      "osfmk/mach/task.defs": "f5c7269165d61c377164ee322da38a56493cdfc165bd16b1dc0706b9aff16ad7"
+    }
+  },
+  "commands": {
+    "native": "DF0_LIMIT_EVIDENCE=<path> DF0_GROUP_EVIDENCE=<path> go test -race -count=1 -v ./internal/ipchost -run 'TestMacOS(LimitPrimitives|ProcessGroupMemberCanEscape)$'",
+    "standalone_c": "xcrun clang -std=c11 -Wall -Wextra -Werror tools/macos_footprint_probe.c -o <path>; <path>",
+    "group_final": "DF0_GROUP_EVIDENCE=<path> go test -race -count=1 -v ./internal/ipchost -run '^TestMacOSProcessGroupMemberCanEscape$'",
+    "full_regression": "DF0_WORKER=<unchanged-reviewed-worker> DF0_LIMIT_EVIDENCE=<path> DF0_GROUP_EVIDENCE=<path> go test -race -count=1 -v ./internal/... ./cmd/..."
+  },
+  "full_spike_regression_worker": {
+    "rebuilt": false,
+    "source_changed": false,
+    "sha256": "337b43a96713b9111266dfd624d8a7c715e9445ce9e64c45cc8b46b2f5a10204"
+  },
+  "limits": [
+    "No product budget or OS policy adopted",
+    "No root/private entitlement requested",
+    "Footprint is not automatically RSS",
+    "Native Linux/Windows and minimum-OS/signed-app execution not performed",
+    "Independent reviewer unavailable; disclosed structured self-review fallback"
+  ],
+  "adversarial_controls": [
+    "omit AS installation: detected",
+    "omit resident touching: detected",
+    "omit CPU-limit installation: detected, timeout not accepted",
+    "omit setsid: detected, repeated with SIGKILL control",
+    "inject SIGXCPU into below-limit Go process: detected"
+  ]
+}
