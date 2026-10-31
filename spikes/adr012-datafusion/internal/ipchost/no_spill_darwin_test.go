@@ -142,6 +142,10 @@ func TestNativeNoSpillPressure(t *testing.T) {
 		QueryMemoryBytes        uint64 `json:"query_memory_bytes"`
 	}
 	var evidence []observation
+	admission, err := NewAdmission(Budget{Jobs: 1, MemoryBytes: 64 << 20, CPUSlots: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, mode := range []string{"spill_control", "unauthorized_spill", "memory_only", "os_denial", "normal_guarded", "cancel_guarded", "kill_guarded", "recovery_guarded"} {
 		t.Run(mode, func(t *testing.T) {
 			snap, err := source.Capture(path)
@@ -209,7 +213,10 @@ func TestNativeNoSpillPressure(t *testing.T) {
 				}
 				return rows, rd.Err()
 			}
-			r := Run(job)
+			r := admission.Run(job, Claim{MemoryBytes: 64 << 20, CPUSlots: 1})
+			if admission.InUse() != (Budget{}) {
+				t.Fatalf("lifecycle stranded reservation: %+v", admission.InUse())
+			}
 			if r.WorkerPeakRSS <= 0 || r.WorkerUserNS < 0 || r.WorkerSystemNS < 0 || r.WorkerResourceMethod != "host wait4 child rusage" {
 				t.Fatalf("missing post-reap child accounting: %+v", r)
 			}

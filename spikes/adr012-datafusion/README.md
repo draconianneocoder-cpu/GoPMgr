@@ -124,6 +124,15 @@ measurements, not simultaneous host-wide memory, CPU quotas or process-tree sums
 See the [resource accounting record](../../docs/testing/adr-012-df0-resources.md)
 for native 2/4/8-worker checks, reproduction and remaining admission work.
 
+## Pre-launch reservations (macOS first)
+
+`internal/ipchost.Admission` coordinates declared job, memory and CPU-slot
+reservations before launch and holds them until cleanup completes. Native
+2/4/8-worker cohorts reject excess claims and then recover capacity. See the
+[admission record](../../docs/testing/adr-012-df0-admission.md) for reproduction,
+fault controls and limitations. Reservations do not enforce actual RSS, CPU
+rate or descendant processes; raw baseline `Run` remains outside this controller.
+
 ## Toolchain evidence
 
 The maintainer approved four temporary, spike-only dependency overrides on
