@@ -1,0 +1,51 @@
+{
+  "recorded_utc": "2026-10-31T22:32:04.390951+00:00",
+  "baseline_commit": "702639400cc57aad27505de84db543da67bc390d",
+  "scope": "existing isolated native macOS arm64 worker; not a package or LC-GATE clearance",
+  "worker_sha256": "337b43a96713b9111266dfd624d8a7c715e9445ce9e64c45cc8b46b2f5a10204",
+  "worker_bytes": 120839344,
+  "worker_rebuilt": false,
+  "dynamic_libraries": [
+    "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation (compatibility version 150.0.0, current version 5027.1.8)",
+    "/usr/lib/libiconv.2.dylib (compatibility version 7.0.0, current version 7.0.0)",
+    "/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1359.40.3)"
+  ],
+  "load_command": {
+    "platform_code": 1,
+    "minimum_os_declared": "11.0",
+    "sdk_declared": "27.2"
+  },
+  "rpaths_observed": [],
+  "signature_properties": [
+    "Identifier=df0_worker-13a6f76832c0ab98",
+    "Format=Mach-O thin (arm64)",
+    "CodeDirectory v=20400 size=936888 flags=0x20002(adhoc,linker-signed) hashes=29274+0 location=embedded",
+    "Signature=adhoc",
+    "Info.plist=not bound",
+    "TeamIdentifier=not set",
+    "Sealed Resources=none",
+    "Internal requirements=none"
+  ],
+  "strict_signature_verification_exit": 0,
+  "symbol_scan": {
+    "command": "nm <reviewed-worker>",
+    "exit_code": 0,
+    "raw_output_sha256": "402e2b80fe311e2d1d9ffaa73fb63141d4b71fadbd61a8c1eb111d7a74b74ada",
+    "lines": 221495,
+    "df0_worker_lines": 9848,
+    "literal_name_matches": {
+      "duckdb": 133,
+      "tpch": 0,
+      "tpcds": 0
+    },
+    "limit": "name scan and dependency graph do not prove absence of embedded implementations or complete licensing",
+    "duckdb_name_lines_containing_sqlparser": 133,
+    "interpretation": "All 133 DuckDB-name matches contain sqlparser; checked sqlparser 0.62.0 DuckDbDialect/AST/parser definitions. These names are not evidence of a bundled DuckDB engine. No absence-of-code proof is inferred."
+  },
+  "limits": [
+    "No installed-app, Developer ID, notarization, minimum-OS execution or update/rollback qualification",
+    "No release package or production pipeline changed",
+    "Ad-hoc signature integrity is not publisher trust",
+    "Dynamic linkage and named symbols are observations, not a complete static archive/code audit"
+  ]
+}

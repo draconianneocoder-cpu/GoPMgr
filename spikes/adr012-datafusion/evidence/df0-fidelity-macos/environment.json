@@ -1,0 +1,76 @@
+{
+  "recorded_utc": "2026-10-31T21:30:13.292785+00:00",
+  "baseline_commit": "bbccc5aca05347dc026419b278012082508c1e1e",
+  "scope": "Partial DF0-E2 native typed-cell harness; not production Wails/renderer or nested semantic decoding",
+  "platform": {
+    "os": "macOS",
+    "version": "27.2",
+    "kernel": "27.2.0",
+    "arch": "arm64"
+  },
+  "go": "go version go1.27.3 darwin/arm64",
+  "node": "v24.18.0",
+  "rust_worker": {
+    "rebuilt": false,
+    "source_changed": false,
+    "sha256": "337b43a96713b9111266dfd624d8a7c715e9445ce9e64c45cc8b46b2f5a10204",
+    "prior_build_record": "docs/testing/adr-012-df0-no-spill.md"
+  },
+  "source_sha256": {
+    "spikes/adr012-datafusion/internal/ipchost/numeric_fidelity_unix_test.go": "57ff5ade37b89f8d0a249887c803ab7849acb571dd05a31377b377842e1992ab",
+    "spikes/adr012-datafusion/tools/check_wire_fidelity.mjs": "be950af18da36c0a4db37a9e8e3e146dc0c6314a35fcc1b221a2b2d9932b26bb",
+    "spikes/adr012-datafusion/internal/fixtures/parquet.go": "4a41514abbaf3fd7c61085b868517d05823b73ac0b23140900127256d9cff8d4",
+    "spikes/adr012-datafusion/internal/fixtures/cell.go": "1f727c6ef6dd1a9e0713c9452d6fb698da130d49d5e2eef4c0768735767265cd",
+    "spikes/adr012-datafusion/proto/df0ipc.proto": "0d1224d2b79ec925132a548921c03ce34d71cfb21e9416bb82867e31f5a5ab0f",
+    "spikes/adr012-datafusion/rust/worker/src/main.rs": "94b42b76324e25aa4a503bc580b8a2a536d227284e664023a6202231fafb2c79",
+    "spikes/adr012-datafusion/rust/worker/src/read_source.rs": "82489d083d538b28b167ba8dfadfd57664c9f32bf9575f127cc3f2d4437d3d66"
+  },
+  "native_evidence_sha256": "fd2fbc08d63a14702b16bd3e4089077a2c605a65c49bd0761c13299af958c04f",
+  "observations": {
+    "jobs": 10,
+    "rows": 60,
+    "batches": 30,
+    "javascript_loss_controls": 8,
+    "full_spike_rust_worker_jobs": 70
+  },
+  "fault_controls": [
+    {
+      "fault": "baseline",
+      "exit_code": 0,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "decimal-scale",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "timestamp-milliseconds",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "drop-js-comparison",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "drop-duplicate-map-guard",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true
+    }
+  ],
+  "limits": [
+    "Existing typed-cell fixture representation, not a proposed production DTO",
+    "Nested JSON remains opaque text; reparsing through JS numbers is unqualified",
+    "Native Linux/Windows and signed/minimum-OS/renderer qualification not performed",
+    "No performance or full DF-065 qualification",
+    "Independent reviewer unavailable; disclosed self-review fallback"
+  ],
+  "reproduce": "DF0_WORKER=<reviewed-worker> DF0_FIDELITY_EVIDENCE=<path> go test -race -count=1 -v ./internal/ipchost -run '^(TestNativeNumericWireFidelity|TestNumericWireJavaScriptRejectsLoss|TestNumericWireRejectsDuplicateMapKeys)$'"
+}

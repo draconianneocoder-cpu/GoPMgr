@@ -10,8 +10,8 @@ import "syscall"
 // wait4 reports ru_maxrss in bytes on Darwin.
 const rusageRSSScale int64 = 1
 
-// sysProcAttr puts the worker in its own process group, so the host can
-// kill the whole tree. macOS has no parent-death signal.
+// sysProcAttr gives the host a worker process group to signal. Members can
+// leave it; this is not process-tree containment. macOS has no parent-death signal.
 func sysProcAttr() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{Setpgid: true}
 }

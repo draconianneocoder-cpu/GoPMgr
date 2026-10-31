@@ -1,0 +1,85 @@
+{
+  "recorded_utc": "2026-10-31T22:37:21.979175+00:00",
+  "baseline_commit": "702639400cc57aad27505de84db543da67bc390d",
+  "platform": {
+    "os": "macOS",
+    "version": "27.2",
+    "kernel": "27.2.0",
+    "arch": "arm64"
+  },
+  "go": "go version go1.27.3 darwin/arm64",
+  "rustc_probe": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: aarch64-apple-darwin\nrelease: 1.99.1\nLLVM version: 23.1.1",
+  "rustc_probe_limit": "Installed pinned compiler verified; existing worker was reused, not rebuilt in this slice",
+  "cargo_audit": "cargo-audit 0.22.2",
+  "metadata_command": "with-rust-toolchain.sh cargo metadata --manifest-path spikes/adr012-datafusion/rust/Cargo.toml --locked --offline --filter-platform aarch64-apple-darwin --format-version 1",
+  "feature_tree_command": "with-rust-toolchain.sh cargo tree --manifest-path spikes/adr012-datafusion/rust/Cargo.toml --locked --offline --target aarch64-apple-darwin -p df0-worker -e features",
+  "feature_tree_repo_redacted_sha256": "66692e77022f63d6d68005b3d49cb974e56c6760f6f90c5e29270966c9cb6cd2",
+  "feature_tree_lines": 2385,
+  "source_sha256": {
+    "spikes/adr012-datafusion/cmd/df0-inventory/main.go": "afb96586b3c4ea6eded4a794b3cadb4e57268c1c3e0ebe39a8e9dc5e6e40423a",
+    "spikes/adr012-datafusion/cmd/df0-inventory/main_test.go": "88dbc0f807e1df47954f80ede480e281b019b5e8efc8e2161ab055bb95bd45ca",
+    "spikes/adr012-datafusion/rust/Cargo.toml": "134d1ec1e332fc55e9f5fafd3aa5b2cb0cbc919e4d50b87d9683fcc67fee5e48",
+    "spikes/adr012-datafusion/rust/Cargo.lock": "f8f77209f012c17b92b396519e2681c1755187088a2f39b2042749b042f9a3a6",
+    "spikes/adr012-datafusion/rust/rust-toolchain.toml": "f89219dc72f55c723ee4bca193dbec9277c5a322eac1aa5328584575f0afdbd2",
+    "spikes/adr012-datafusion/scripts/with-rust-toolchain.sh": "49306b5ae5fe5267209e5ced6419f4febad7b41d14495e15bb5e3a277a866cf6",
+    "spikes/adr012-datafusion/third_party/GOPMGR.md": "1ed08f1fed3a56cde44512fa9acfa3feb652c830f3a78ba1e267486567c8cf71"
+  },
+  "artifact_sha256": {
+    "cargo-audit.json": "b329342cae5bc1a78448b2ce60bf86f49ecce7688aa6149e83111b700aa13ff7",
+    "dependencies.json": "ca92f370033fcf1d559a335953f0b0bfdebe506db5aa62e4c594ab3361ecaeb0",
+    "native-worker.json": "30eb644e340c350abf2ad9b350a138160fe94a5833d034298b551e372fe9e455"
+  },
+  "fault_controls": [
+    {
+      "fault": "baseline",
+      "exit_code": 0,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "include-dev",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "invent-license",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "skip-parent-boundary",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "ignore-file-content",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "ignore-missing-node",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "ignore-local-source-boundary",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true,
+      "survived_before_test_repair": true
+    }
+  ],
+  "independent_check": "Python reconstructed worker closure/relationships and checked every license declaration, feature list, declared target kind, manifest and notice hash",
+  "limits": [
+    "Workspace-resolved macOS non-dev worker closure, not exact linked runtime composition or a complete SBOM",
+    "Declaration/available-notice inventory only; no per-crate legal conclusion, archive-code audit or LC-GATE clearance",
+    "Registry/native bundled code, compiler standard library and system-library licensing require further review",
+    "No new Rust build, package, installed-app, Developer ID, notarization, minimum-OS, upgrade/rollback or native Linux/Windows qualification",
+    "Structured self-review fallback; independent reviewer quota unavailable"
+  ]
+}

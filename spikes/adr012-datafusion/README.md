@@ -47,7 +47,7 @@ Results are recorded in
 | `internal/rollupwire` | Host-side money normalization and result conversion for B's rollup, shared by the CLI and gRPC runs |
 | `rust/worker` | DF0-C worker: a gRPC client over the Unix socket only. It checks that the socket is served by its parent before sending anything |
 | `cmd/df0-ipc` | Runs every DF0-C scenario against the real worker |
-| `evidence/` | JSONL evidence, synthetic only. It contains no user paths or data |
+| `evidence/` | JSON and JSONL evidence, synthetic only. It contains no user paths or data |
 
 ## Reproduce DF0-A
 
@@ -84,8 +84,9 @@ directory even though git ignores it.
 spikes/adr012-datafusion/scripts/run-df0c.sh
 ```
 
-Every scenario launches a fresh worker on a fresh endpoint. The worker gets
-an empty environment and its credential on stdin, never in argv.
+Every scenario launches a fresh worker on a fresh endpoint. The host supplies
+an empty launch environment; native runtimes may add variables, whose names
+Hello reports. The credential travels on stdin, never in argv.
 
 ## Reproduce DF0-C2 (native macOS or Linux)
 
@@ -148,3 +149,67 @@ DF0-B/C records retain their original compiler observations. A collector's
 proof of an earlier binary's build. Associate fresh build logs, source and lock
 hashes, compiler identity and artifact hashes for current qualification.
 See [Rust 1.99.1 verification](../../docs/testing/adr-012-rust-1.99.1.md).
+
+## Native macOS limit primitives
+
+From this spike directory:
+
+```sh
+go test -race -count=1 -v ./internal/ipchost \
+  -run 'TestMacOS(LimitPrimitives|ProcessGroupMemberCanEscape)$'
+```
+
+These bounded synthetic subprocess probes require no DataFusion worker. They
+qualify the distinctions between address-space and resident memory, per-process
+CPU time and aggregate quotas, and process groups and containment. They do not
+establish production enforcement. See the [measurements and limits](../../docs/testing/adr-012-df0-macos-limits.md).
+
+## Numeric wire-fidelity experiment (macOS)
+
+From this spike directory, using the reviewed native worker and existing Node:
+
+```sh
+DF0_WORKER=/absolute/path/to/df0-worker \
+DF0_FIDELITY_EVIDENCE=/absolute/path/to/native.json \
+  go test -race -count=1 -v ./internal/ipchost \
+  -run '^(TestNativeNumericWireFidelity|TestNumericWireJavaScriptRejectsLoss|TestNumericWireRejectsDuplicateMapKeys)$'
+```
+
+Five literal-golden Parquet fixtures traverse the real Rust/Arrow/protobuf/Go
+path in both source modes, then JSON/JavaScript using the existing typed-cell
+fixture representation. See [results and limitations](../../docs/testing/adr-012-df0-numeric-fidelity.md).
+This is partial DF-065 evidence, not a production Wails DTO or renderer claim;
+nested JSON remains opaque text. No new Node dependency is needed.
+
+## DF0-E: portfolio backend characterization
+
+```sh
+go build -tags duckdb -o /absolute/path/to/df0-performance ./cmd/df0-performance
+/absolute/path/to/df0-performance -worker /absolute/path/to/df0-worker \
+  -samples 30 > /absolute/path/to/portfolio.jsonl
+```
+
+Uses the same synthetic 0/100/1,000-project fixtures for the shipped DuckDB
+engine, fresh Rust/DataFusion gRPC worker and existing Go exact rollup. Every
+result is oracle-checked, including cleanup before counting worker timings.
+See [method, results and proof limits](../../docs/testing/adr-012-df0-portfolio-performance.md).
+These are partial backend observations; controlled cold/warm, credible p99,
+aggregate RSS, native UI, packaging and production acceptance remain unqualified.
+
+## DF0-F/F2: dependency and binary review input
+
+From the repository root, generate locked offline Cargo metadata for
+`aarch64-apple-darwin` with the pinned toolchain launcher. From this directory:
+
+```sh
+go run ./cmd/df0-inventory -repo-root ../.. -target aarch64-apple-darwin \
+  < /absolute/path/to/metadata.json > /absolute/path/to/dependencies.json
+go test -race -count=1 ./cmd/df0-inventory
+```
+
+The sorted manifest retains the worker-reachable non-dev graph, declared
+licenses/features/target kinds, source identities and available notice hashes.
+It removes private checkout paths and refuses incomplete graphs or notice-path
+escapes. See [commands, native observations and remaining gates](../../docs/interoperability/adr-012-rust-dependency-security-sbom.md).
+This is a review input, not a complete SBOM, license conclusion, installed-app
+qualification or LC-GATE clearance. The production DuckDB path is unchanged.

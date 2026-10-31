@@ -1,0 +1,81 @@
+{
+  "recorded_utc": "2026-10-31T21:56:12.462542+00:00",
+  "baseline_commit": "8d1205534af8fc567576a08672a4854c9d7a53a8",
+  "platform": {
+    "os": "macOS",
+    "version": "27.2",
+    "kernel": "27.2.0",
+    "arch": "arm64",
+    "hardware": "Mac16,10",
+    "memory_bytes": 34359738368,
+    "logical_cpus": 10,
+    "cpu": "Apple M4"
+  },
+  "go": "go version go1.27.3 darwin/arm64",
+  "power_after_run": "Now drawing from 'AC Power'",
+  "thermal_after_run": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded",
+  "load_after_run": "{ 3.54 3.06 2.36 }",
+  "runner_sha256": "055aa89a027dd6764895f68a805d64d8a19f9437ba9be08aa7a2dddb7bf3067c",
+  "worker_sha256": "337b43a96713b9111266dfd624d8a7c715e9445ce9e64c45cc8b46b2f5a10204",
+  "worker_rebuilt": false,
+  "source_sha256": {
+    "spikes/adr012-datafusion/cmd/df0-performance/main.go": "4f850a2b92240137f4991719e84aa3a57783afb156a64f94afe38ca832b82fd4",
+    "spikes/adr012-datafusion/cmd/df0-performance/main_test.go": "7b08425b65db6eb1758d01dabc306d71150c176fd7a77b1a9251a9cd808fe992",
+    "spikes/adr012-datafusion/internal/fixtures/portfolio.go": "d014017a7aa3e95d1dade05c769258f8a429b60c69e2b361f1bc51288699efe5",
+    "spikes/adr012-datafusion/internal/oracle/portfolio.go": "e945744e82b8bc0e999f2961e9f70a0b4c9d853c2ad46cdbc100fe1cf197a1af",
+    "spikes/adr012-datafusion/internal/oracle/compare.go": "1f5a6a482c9cc7458b053d1172566f46679c39ec9ed8e3483a887799a7784712",
+    "spikes/adr012-datafusion/internal/gorollup/rollup.go": "6e4a0d1ac14e2fdb2a55c74d331232cc8830539fdf36f9583c2e621184658693",
+    "spikes/adr012-datafusion/internal/rollupwire/rollupwire.go": "30ca10b1bf563d1a2d8bd9867254d9d2ca3eb5d27785dca0b8975d0fc2cd2c70",
+    "spikes/adr012-datafusion/internal/ipchost/run.go": "0054e7205a454c2e84b18b8d85e437d99f3e5407f11227ee6956c820cbddd07a",
+    "spikes/adr012-datafusion/rust/engine/src/lib.rs": "202b0f687e8a73f334b92aac8ed55197f9126887cd3d8c322515dbf4173ac489",
+    "spikes/adr012-datafusion/rust/worker/src/main.rs": "94b42b76324e25aa4a503bc580b8a2a536d227284e664023a6202231fafb2c79",
+    "internal/analytics/duckdb.go": "9cb92396aad12a3a3d636999d6ffe663df7cc7e7833d0cb76f778f6f9f5fb6a7",
+    "spikes/adr012-datafusion/go.mod": "64329dda44b31209b7ddee867074a9b609d7a34a210cb7825ae4dc681577480a",
+    "spikes/adr012-datafusion/go.sum": "0df4b8e1bd607c394b54f004fdf74c8c30efc5ab09fc9f81bd588778f495fa3f",
+    "spikes/adr012-datafusion/rust/Cargo.lock": "f8f77209f012c17b92b396519e2681c1755187088a2f39b2042749b042f9a3a6",
+    "go.mod": "63d07fa59a5411d374c6ef42639831d55ef1275f738f8c2785665b8247a91077"
+  },
+  "raw_sha256": "7559799f6b8d148351aea635764fd94530e5c83c1cc8fc3cbc42349b6bc6412c",
+  "fault_controls": [
+    {
+      "fault": "baseline",
+      "exit_code": 0,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "wrong-p95",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "ignore-cleanup",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "ignore-oracle",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true
+    },
+    {
+      "fault": "missing-fixture",
+      "exit_code": 1,
+      "compiled": true,
+      "intended_result": true
+    }
+  ],
+  "independent_statistics_check": "Python nearest-rank, mean, population variance; all 9 groups, 306 samples validated",
+  "limits": [
+    "Development machine, AC power; no controlled thermal/power settings or dedicated reference hardware",
+    "Caches neither purged nor measured; first observation is not a cold-filesystem claim",
+    "Fresh engine/worker each call; no persistent warm-worker measurement",
+    "30 measured samples per group in one shared host, not the required 1000-sample/multi-process acceptance study; p99 unestimated",
+    "Shared Go host links DuckDB for every candidate; lifetime host RSS cannot be attributed to a provider or summed with child peaks",
+    "No project-vault reads, production Wails wire/UI, packaging, performance acceptance or actual resource-limit qualification"
+  ],
+  "reproduce": "go build -tags duckdb -o <runner> ./cmd/df0-performance; <runner> -worker <reviewed-worker> -samples 30 > portfolio.jsonl"
+}
