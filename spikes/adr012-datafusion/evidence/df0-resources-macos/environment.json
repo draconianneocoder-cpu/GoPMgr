@@ -1,0 +1,47 @@
+{
+  "scope": "isolated per-child post-reap resource accounting; not DF-064 admission or full DF-062",
+  "source_base": "c1d589bea035d69d4947826cb4ac9c47be13c399",
+  "source_sha256": {
+    "spikes/adr012-datafusion/internal/ipchost/run.go": "93878a0bed85b5f0e425f0d6ac3b1e38370e517172c9274cfe5a298b5c1d0249",
+    "spikes/adr012-datafusion/internal/ipchost/proc_darwin.go": "e0bc4efc34732c4fa0fc72b911efe4d05fbaff327fad674330593c81583df81c",
+    "spikes/adr012-datafusion/internal/ipchost/proc_linux.go": "d80e402db239495954168435d181b77f4f06479e3db4442c897263aa574ebfba",
+    "spikes/adr012-datafusion/internal/ipchost/resources_unix.go": "d503c47766ae6d87401bfe063a403f5301a0ef32830989d091a4db52e11d4d95",
+    "spikes/adr012-datafusion/internal/ipchost/resources_unix_test.go": "db4b272a32423cfcc94a42695232c3bfa2c68814e8b336a6899f99860e386829",
+    "spikes/adr012-datafusion/internal/ipchost/resources_native_unix_test.go": "49c0a45e4bbae0e2bdcdea0b7bd1bcc53d346275e5a351753c44e9654c8df419",
+    "spikes/adr012-datafusion/internal/ipchost/no_spill_darwin_test.go": "cfdf1121d649ce6219a4aae93228fde963902755a263ce83ec2c12cb89da2840"
+  },
+  "worker_sha256": "337b43a96713b9111266dfd624d8a7c715e9445ce9e64c45cc8b46b2f5a10204",
+  "worker_build_record": "../df0-d2-macos/environment.json",
+  "host": {
+    "system": "Darwin",
+    "release": "27.2.0",
+    "architecture": "arm64"
+  },
+  "go": "go version go1.27.3 darwin/arm64",
+  "records_sha256": {
+    "lifecycle.json": "0b2b4da471d59630cc253c6fdfb628f9a8f0b8f031bd4440b4ffeb69951c511f",
+    "concurrent.json": "790a9d237a09522f8f047b3e33e85159ca9118bf915a45648444e979006231f5"
+  },
+  "native_lifecycle_scenarios": 8,
+  "other_native_regressions": 21,
+  "concurrent_accounting_cohorts": [
+    2,
+    4,
+    8
+  ],
+  "measurement": "per-child wait4 lifetime peak RSS normalized to bytes; user/system CPU ns, including startup/shutdown",
+  "not_measured": [
+    "simultaneous host-wide RSS",
+    "process-tree totals",
+    "CPU rate or enforcement",
+    "aggregate admission/oversubscription",
+    "OS-wide filesystem effects"
+  ],
+  "faults_detected": [
+    "omitted final accounting: native lifecycle assertion",
+    "wrong Darwin 1024x scale: touched-allocation bound"
+  ],
+  "linux": "test package cross-compiled, native execution NOT-RUN",
+  "windows": "execution deferred by current maintainer priority, no qualification claim",
+  "independent_review": "quota unavailable; structured self-review fallback"
+}

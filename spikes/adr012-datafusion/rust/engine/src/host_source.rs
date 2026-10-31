@@ -9,6 +9,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use bytes::Bytes;
+use datafusion::arrow::compute::SortOptions;
+use datafusion::common::DataFusionError;
 use datafusion::execution::disk_manager::{DiskManagerBuilder, DiskManagerMode};
 use datafusion::execution::object_store::{DefaultObjectStoreRegistry, ObjectStoreRegistry};
 use datafusion::execution::runtime_env::RuntimeEnvBuilder;
@@ -17,10 +19,13 @@ use datafusion::object_store::{
     Attributes, CopyOptions, GetOptions, GetResult, GetResultPayload, ListResult, MultipartUpload,
     ObjectMeta, ObjectStore, PutMultipartOptions, PutOptions, PutPayload, PutResult,
 };
-use datafusion::physical_plan::SendableRecordBatchStream;
+use datafusion::physical_expr::{PhysicalSortExpr, expressions::col as physical_col};
+use datafusion::physical_plan::sorts::sort::SortExec;
+use datafusion::physical_plan::{ExecutionPlan, SendableRecordBatchStream, execute_stream};
 use datafusion::prelude::{ParquetReadOptions, SessionConfig, SessionContext, col, lit};
 use futures::StreamExt;
 use futures::stream::{self, BoxStream};
+use serde::Serialize;
 use url::Url;
 
 const OBJECT: &str = "source.parquet";
@@ -199,24 +204,47 @@ impl ObjectStore for SourceStore {
     }
 }
 
-fn session(store: Arc<dyn ObjectStore>, batch_rows: usize) -> Result<SessionContext, String> {
+const DEFAULT_QUERY_MEMORY: usize = 64 << 20;
+
+fn session(store: Arc<dyn ObjectStore>, query: &Query) -> Result<SessionContext, DataFusionError> {
+    let memory = if query.memory_bytes == 0 {
+        DEFAULT_QUERY_MEMORY
+    } else {
+        query.memory_bytes
+    };
+    if !((64 << 10)..=DEFAULT_QUERY_MEMORY).contains(&memory) {
+        return Err(DataFusionError::Plan(
+            "invalid source query memory budget".into(),
+        ));
+    }
     let registry = DefaultObjectStoreRegistry::default();
-    registry
-        .deregister_store(&Url::parse("file:///").map_err(|e| e.to_string())?)
-        .map_err(|e| e.to_string())?;
-    registry.register_store(&Url::parse(STORE).map_err(|e| e.to_string())?, store);
+    let url = |value| {
+        Url::parse(value)
+            .map_err(|_| DataFusionError::Internal("invalid built-in store URL".into()))
+    };
+    registry.deregister_store(&url("file:///")?)?;
+    registry.register_store(&url(STORE)?, store);
+    // A spill directory is only used by the synthetic DF0 positive control.
+    let mode = match &query.spill_control_directory {
+        Some(path) => DiskManagerMode::Directories(vec![path.clone()]),
+        None => DiskManagerMode::Disabled,
+    };
     let runtime = RuntimeEnvBuilder::new()
         .with_object_store_registry(Arc::new(registry))
         .with_disk_manager_builder(
-            DiskManagerBuilder::default().with_mode(DiskManagerMode::Disabled),
+            DiskManagerBuilder::default()
+                .with_mode(mode)
+                .with_max_temp_directory_size(64 << 20)
+                .with_max_spill_merge_fan_in(2),
         )
-        .with_memory_limit(64 << 20, 1.0)
-        .build()
-        .map_err(|e| e.to_string())?;
-    let config = SessionConfig::new()
+        .with_memory_limit(memory, 1.0)
+        .build()?;
+    let mut config = SessionConfig::new()
         .with_target_partitions(1)
         .with_information_schema(false)
-        .with_batch_size(batch_rows.clamp(1, 8192));
+        .with_batch_size(query.batch_rows.clamp(1, 8192));
+    // The pressure fixture needs room to merge within its small pool.
+    config.options_mut().execution.sort_spill_reservation_bytes = memory.min(64 << 10);
     Ok(SessionContext::new_with_config_rt(
         config,
         Arc::new(runtime),
@@ -228,38 +256,86 @@ pub struct Query {
     pub projection: Vec<String>,
     pub id_range: Option<Range<i64>>,
     pub batch_rows: usize,
+    pub memory_bytes: usize,
+    pub sort_source: bool,
+    /// Synthetic positive-control directory; never used by the default profile.
+    pub spill_control_directory: Option<std::path::PathBuf>,
 }
 
-pub async fn parquet(
-    source: HostSource,
-    query: Query,
-) -> Result<SendableRecordBatchStream, String> {
-    let ctx = session(Arc::new(SourceStore(source)), query.batch_rows)?;
+#[derive(Debug, Default, Serialize)]
+pub struct QueryMetrics {
+    pub spill_count: usize,
+    pub spilled_bytes: usize,
+    pub pool_reserved_after_bytes: usize,
+}
+
+pub struct QueryExecution {
+    pub stream: SendableRecordBatchStream,
+    plan: Arc<dyn ExecutionPlan>,
+    runtime: Arc<datafusion::execution::runtime_env::RuntimeEnv>,
+}
+
+impl QueryExecution {
+    pub fn metrics(&self) -> QueryMetrics {
+        fn spills(plan: &Arc<dyn ExecutionPlan>, out: &mut QueryMetrics) {
+            if let Some(metrics) = plan.metrics() {
+                out.spill_count += metrics.spill_count().unwrap_or(0);
+                out.spilled_bytes += metrics.spilled_bytes().unwrap_or(0);
+            }
+            for child in plan.children() {
+                spills(child, out);
+            }
+        }
+        let mut result = QueryMetrics {
+            pool_reserved_after_bytes: self.runtime.memory_pool.reserved(),
+            ..Default::default()
+        };
+        spills(&self.plan, &mut result);
+        result
+    }
+}
+
+pub async fn parquet(source: HostSource, query: Query) -> Result<QueryExecution, DataFusionError> {
+    let ctx = session(Arc::new(SourceStore(source)), &query)?;
     let mut df = ctx
         .read_parquet(SOURCE_URL, ParquetReadOptions::default())
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
     if let Some(range) = query.id_range {
         if range.start > range.end {
-            return Err("invalid ID range".into());
+            return Err(DataFusionError::Plan("invalid ID range".into()));
         }
-        df = df
-            .filter(
-                col("id")
-                    .gt_eq(lit(range.start))
-                    .and(col("id").lt(lit(range.end))),
-            )
-            .map_err(|e| e.to_string())?;
+        df = df.filter(
+            col("id")
+                .gt_eq(lit(range.start))
+                .and(col("id").lt(lit(range.end))),
+        )?;
     }
     if !query.projection.is_empty() {
         let columns: Vec<&str> = query.projection.iter().map(String::as_str).collect();
-        df = df.select_columns(&columns).map_err(|e| e.to_string())?;
+        df = df.select_columns(&columns)?;
     }
-    df.limit(0, Some(crate::PREVIEW_ROWS + 1))
-        .map_err(|e| e.to_string())?
-        .execute_stream()
-        .await
-        .map_err(|e| e.to_string())
+    df = df.limit(0, Some(crate::PREVIEW_ROWS + 1))?;
+    let context = Arc::new(df.task_ctx());
+    let mut plan = df.create_physical_plan().await?;
+    if query.sort_source {
+        // Attach the bounded pressure fixture after optimization: an inferred
+        // TopK fetch is not spill-capable and would invalidate the control.
+        let ordering = [PhysicalSortExpr {
+            expr: physical_col("id", &plan.schema())?,
+            options: SortOptions {
+                descending: true,
+                nulls_first: false,
+            },
+        }]
+        .into();
+        plan = Arc::new(SortExec::new(ordering, plan));
+    }
+    let stream = execute_stream(plan.clone(), context)?;
+    Ok(QueryExecution {
+        stream,
+        plan,
+        runtime: ctx.runtime_env(),
+    })
 }
 
 pub struct MemoryReadAt(pub Bytes);
@@ -364,7 +440,14 @@ mod tests {
             short: true,
         })));
         assert!(store.get_range(&Path::from(OBJECT), 0..2).await.is_err());
-        let ctx = session(store, 128).unwrap();
+        let ctx = session(
+            store,
+            &Query {
+                batch_rows: 128,
+                ..Default::default()
+            },
+        )
+        .unwrap();
         for url in [
             "file:///tmp/private.parquet",
             "https://example.invalid/data.parquet",
@@ -392,5 +475,111 @@ mod tests {
         assert!(!format!("{a:?}").contains("secret"));
         assert!(HostSource::new(Arc::new(a), MAX_SOURCE + 1, "a".repeat(64), 1).is_err());
         assert!(HostSource::new(Arc::new(b), 7, "a".repeat(64), 0).is_err());
+    }
+    #[test]
+    fn source_query_pool_bounds_are_explicit() {
+        for memory_bytes in [1, (64 << 10) - 1, DEFAULT_QUERY_MEMORY + 1, usize::MAX] {
+            let store = Arc::new(store(Arc::new(MemoryReadAt(Bytes::new()))));
+            assert!(matches!(
+                session(
+                    store,
+                    &Query {
+                        memory_bytes,
+                        ..Default::default()
+                    }
+                ),
+                Err(DataFusionError::Plan(_))
+            ));
+        }
+        for memory_bytes in [0, 64 << 10, DEFAULT_QUERY_MEMORY] {
+            let store = Arc::new(store(Arc::new(MemoryReadAt(Bytes::new()))));
+            assert!(
+                session(
+                    store,
+                    &Query {
+                        memory_bytes,
+                        ..Default::default()
+                    }
+                )
+                .is_ok()
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn source_sort_exhaustion_is_typed_and_spill_control_really_spills() {
+        use datafusion::arrow::array::{ArrayRef, Int64Array, RecordBatch, StringArray};
+        use datafusion::parquet::arrow::ArrowWriter;
+        use datafusion::parquet::file::properties::WriterProperties;
+        struct Scratch(std::path::PathBuf);
+        impl Drop for Scratch {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+        let path = std::env::temp_dir().join(format!(
+            "df0-sort-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir(&path).unwrap();
+        let scratch = Scratch(path);
+        let ids: ArrayRef = Arc::new(Int64Array::from_iter_values(0..4096));
+        let values: ArrayRef = Arc::new(StringArray::from_iter_values(
+            (0..4096).map(|i| format!("synthetic-{i:08}").repeat(80)),
+        ));
+        let batch = RecordBatch::try_from_iter(vec![("id", ids), ("payload", values)]).unwrap();
+        let props = WriterProperties::builder()
+            .set_max_row_group_row_count(Some(256))
+            .build();
+        let mut writer = ArrowWriter::try_new(Vec::new(), batch.schema(), Some(props)).unwrap();
+        writer.write(&batch).unwrap();
+        let data = Bytes::from(writer.into_inner().unwrap());
+        for spill in [false, true] {
+            let source = HostSource::new(
+                Arc::new(MemoryReadAt(data.clone())),
+                data.len() as u64,
+                "a".repeat(64),
+                1 << 20,
+            )
+            .unwrap();
+            let query = Query {
+                memory_bytes: 1 << 20,
+                sort_source: true,
+                batch_rows: 64,
+                spill_control_directory: spill.then(|| scratch.0.clone()),
+                ..Default::default()
+            };
+            let mut execution = parquet(source, query).await.unwrap();
+            let mut rows = 0;
+            let mut failed = None;
+            while let Some(batch) = execution.stream.next().await {
+                match batch {
+                    Ok(batch) => rows += batch.num_rows(),
+                    Err(error) => {
+                        failed = Some(error);
+                        break;
+                    }
+                }
+            }
+            if spill {
+                assert!(failed.is_none(), "spill control failed: {failed:?}");
+                assert_eq!(rows, 4096);
+                assert!(
+                    execution.metrics().spill_count > 0,
+                    "control did not spill: {:?}",
+                    execution.metrics()
+                );
+            } else {
+                let error = failed.expect("memory-only sort unexpectedly succeeded");
+                assert!(
+                    matches!(error.find_root(), DataFusionError::ResourcesExhausted(_)),
+                    "wrong error: {error:?}"
+                );
+            }
+        }
     }
 }

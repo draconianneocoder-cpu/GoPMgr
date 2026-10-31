@@ -112,6 +112,14 @@ pub struct Execute {
     pub upper_id: i64,
     #[prost(string, repeated, tag = "10")]
     pub projection: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// DF0-D2 pressure fixture: 0 preserves the 64 MiB pool default.
+    #[prost(uint64, tag = "11")]
+    pub query_memory_bytes: u64,
+    #[prost(bool, tag = "12")]
+    pub sort_source: bool,
+    /// Synthetic positive control only, with fault = source_spill_control.
+    #[prost(string, tag = "13")]
+    pub spill_control_directory: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SourceDescriptor {

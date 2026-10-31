@@ -45,7 +45,7 @@ use pb::{
 };
 
 const PROTOCOL_MAJOR: u32 = 1;
-const PROTOCOL_MINOR: u32 = 1;
+const PROTOCOL_MINOR: u32 = 2;
 const BOOTSTRAP_VERSION: u32 = 1;
 const MAX_BOOTSTRAP_BYTES: usize = 64 << 10;
 const MIN_FRAME: u32 = 64 << 10;
@@ -441,28 +441,120 @@ fn with_payload(batch: &RecordBatch, width: usize) -> Result<RecordBatch, String
 }
 
 fn ipc_bytes(batch: &RecordBatch) -> Result<Vec<u8>, String> {
+    // View slices retain whole backing buffers. Compact visible values so a
+    // small row cannot inherit an unrelated multi-megabyte transport payload.
+    let compacted;
+    let batch = if batch
+        .columns()
+        .iter()
+        .any(|c| matches!(c.data_type(), DataType::Utf8View | DataType::BinaryView))
+    {
+        let columns: Vec<ArrayRef> = batch
+            .columns()
+            .iter()
+            .map(|c| match c.data_type() {
+                DataType::Utf8View => Arc::new(c.as_string_view().gc()) as ArrayRef,
+                DataType::BinaryView => Arc::new(c.as_binary_view().gc()) as ArrayRef,
+                _ => c.clone(),
+            })
+            .collect();
+        compacted = RecordBatch::try_new(batch.schema(), columns).map_err(|e| e.to_string())?;
+        &compacted
+    } else {
+        batch
+    };
     let mut w = StreamWriter::try_new(Vec::new(), &batch.schema()).map_err(|e| e.to_string())?;
     w.write(batch).map_err(|e| e.to_string())?;
     w.finish().map_err(|e| e.to_string())?;
     w.into_inner().map_err(|e| e.to_string())
 }
 
-/// Splits a batch until each Arrow IPC frame fits under the gRPC cap.
-fn frames(batch: &RecordBatch, cap: usize) -> Result<Vec<(usize, Vec<u8>)>, String> {
-    let bytes = ipc_bytes(batch)?;
-    if bytes.len() + FRAME_OVERHEAD <= cap {
-        return Ok(vec![(batch.num_rows(), bytes)]);
+/// Encodes one frame at a time, retaining only cheap batch slices between sends.
+struct Frames {
+    pending: Vec<RecordBatch>,
+    cap: usize,
+    #[cfg(test)]
+    largest_compacted_view_bytes: usize,
+}
+
+fn view_payload_bytes(batch: &RecordBatch) -> usize {
+    let mut bytes = 0usize;
+    for column in batch.columns() {
+        match column.data_type() {
+            DataType::Utf8View => {
+                let values = column.as_string_view();
+                for i in 0..column.len() {
+                    if !column.is_null(i) {
+                        bytes = bytes.saturating_add(values.value(i).len());
+                    }
+                }
+            }
+            DataType::BinaryView => {
+                let values = column.as_binary_view();
+                for i in 0..column.len() {
+                    if !column.is_null(i) {
+                        bytes = bytes.saturating_add(values.value(i).len());
+                    }
+                }
+            }
+            _ => {}
+        }
     }
-    if batch.num_rows() <= 1 {
-        return Err(format!(
-            "one row needs {} bytes, over the frame cap",
-            bytes.len()
-        ));
+    bytes
+}
+
+impl Iterator for Frames {
+    type Item = Result<(usize, Vec<u8>), String>;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(batch) = self.pending.pop() {
+            let visible = view_payload_bytes(&batch);
+            // Preflight before GC: shared views can expand far beyond their
+            // physical backing allocation when materialized.
+            let bytes = if visible <= self.cap.saturating_sub(FRAME_OVERHEAD) {
+                #[cfg(test)]
+                {
+                    self.largest_compacted_view_bytes =
+                        self.largest_compacted_view_bytes.max(visible);
+                }
+                match ipc_bytes(&batch) {
+                    Ok(bytes) => Some(bytes),
+                    Err(error) => {
+                        self.pending.clear();
+                        return Some(Err(error));
+                    }
+                }
+            } else {
+                None
+            };
+            if bytes
+                .as_ref()
+                .is_some_and(|b| b.len().saturating_add(FRAME_OVERHEAD) <= self.cap)
+            {
+                return Some(Ok((batch.num_rows(), bytes.expect("frame checked above"))));
+            }
+            if batch.num_rows() <= 1 {
+                self.pending.clear();
+                return Some(Err(format!(
+                    "one row needs at least {} bytes, over the frame cap",
+                    bytes.as_ref().map_or(visible, Vec::len)
+                )));
+            }
+            let half = batch.num_rows() / 2;
+            self.pending
+                .push(batch.slice(half, batch.num_rows() - half));
+            self.pending.push(batch.slice(0, half));
+        }
+        None
     }
-    let half = batch.num_rows() / 2;
-    let mut v = frames(&batch.slice(0, half), cap)?;
-    v.extend(frames(&batch.slice(half, batch.num_rows() - half), cap)?);
-    Ok(v)
+}
+
+fn frames(batch: &RecordBatch, cap: usize) -> Frames {
+    Frames {
+        pending: vec![batch.clone()],
+        cap,
+        #[cfg(test)]
+        largest_compacted_view_bytes: 0,
+    }
 }
 
 fn peak_rss() -> u64 {
@@ -513,7 +605,11 @@ async fn generate(
         let Some(batch) = next else { break };
         let batch =
             with_payload(&batch.map_err(|e| internal(e.to_string()))?, width).map_err(internal)?;
-        for (n, mut bytes) in frames(&batch, cap).map_err(|e| ("RESOURCE_LIMIT", e))? {
+        for frame in frames(&batch, cap) {
+            if ctl.cancelled() {
+                return Err(("USER_CANCELLED", "cancelled by the host".into()));
+            }
+            let (n, mut bytes) = frame.map_err(|e| ("RESOURCE_LIMIT", e))?;
             match ex.fault.as_str() {
                 "bad_schema" if batches == 1 => {
                     let alt = RecordBatch::try_new(
@@ -716,10 +812,73 @@ mod tests {
         let base = RecordBatch::try_from_iter(vec![("i", i.clone()), ("v", i)]).unwrap();
         let batch = with_payload(&base, 1000).unwrap();
         let cap = 128 << 10;
-        let fs = frames(&batch, cap).unwrap();
+        let fs = frames(&batch, cap).collect::<Result<Vec<_>, _>>().unwrap();
         assert!(fs.len() > 1);
         assert_eq!(fs.iter().map(|(n, _)| *n).sum::<usize>(), rows as usize);
         assert!(fs.iter().all(|(_, b)| b.len() + FRAME_OVERHEAD <= cap));
+    }
+
+    #[test]
+    fn frames_compact_sliced_views_without_changing_values_or_types() {
+        use datafusion::arrow::array::{BinaryViewBuilder, StringViewBuilder};
+        use datafusion::arrow::ipc::reader::StreamReader;
+        let visible = "selected".repeat(128);
+        let other = "unselected".repeat(256 << 10);
+        let mut strings = StringViewBuilder::new();
+        strings.append_value(&visible);
+        strings.append_value(&other);
+        let mut binary = BinaryViewBuilder::new();
+        binary.append_value(visible.as_bytes());
+        binary.append_value(other.as_bytes());
+        let s: ArrayRef = Arc::new(strings.finish());
+        let b: ArrayRef = Arc::new(binary.finish());
+        let batch =
+            RecordBatch::try_from_iter(vec![("s", s.slice(0, 1)), ("b", b.slice(0, 1))]).unwrap();
+        let cap = 64 << 10;
+        let output = frames(&batch, cap).collect::<Result<Vec<_>, _>>().unwrap();
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0].0, 1);
+        assert!(output[0].1.len() + FRAME_OVERHEAD <= cap);
+        assert!(
+            !output[0]
+                .1
+                .windows(b"unselected".len())
+                .any(|w| w == b"unselected")
+        );
+        let mut reader = StreamReader::try_new(std::io::Cursor::new(&output[0].1), None).unwrap();
+        let decoded = reader.next().unwrap().unwrap();
+        assert_eq!(decoded.schema(), batch.schema());
+        assert_eq!(decoded.column(0).as_string_view().value(0), visible);
+        assert_eq!(
+            decoded.column(1).as_binary_view().value(0),
+            visible.as_bytes()
+        );
+        assert!(reader.next().is_none());
+    }
+
+    #[test]
+    fn frames_preflight_shared_view_expansion_and_yield_incrementally() {
+        use datafusion::arrow::array::{StringViewBuilder, UInt32Array};
+        use datafusion::arrow::compute::take;
+        let value = "v".repeat(64 << 10);
+        let mut builder = StringViewBuilder::new();
+        builder.append_value(&value);
+        let shared = take(&builder.finish(), &UInt32Array::from(vec![0; 128]), None).unwrap();
+        assert!(shared.get_buffer_memory_size() < 128 << 10);
+        let batch = RecordBatch::try_from_iter(vec![("view", shared)]).unwrap();
+        assert_eq!(view_payload_bytes(&batch), 128 * value.len());
+        let mut output = frames(&batch, 128 << 10);
+        let (rows, first) = output.next().unwrap().unwrap();
+        assert_eq!(rows, 1);
+        assert!(first.len() + FRAME_OVERHEAD <= 128 << 10);
+        assert!(output.pending.len() <= 8);
+        assert!(
+            output.largest_compacted_view_bytes > 0
+                && output.largest_compacted_view_bytes <= (128 << 10)
+        );
+        let (rows, second) = output.next().unwrap().unwrap();
+        assert_eq!(rows, 1);
+        assert!(second.len() + FRAME_OVERHEAD <= 128 << 10);
     }
 
     #[test]

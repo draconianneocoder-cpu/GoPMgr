@@ -491,12 +491,17 @@ type Execute struct {
 	// parquet_range / parquet_stream: one immutable, job-scoped source.
 	SourceDescriptor *SourceDescriptor `protobuf:"bytes,6,opt,name=source_descriptor,json=sourceDescriptor,proto3" json:"source_descriptor,omitempty"`
 	// DF0-C2 fixture predicate, expressed as values rather than caller SQL.
-	FilterId      bool     `protobuf:"varint,7,opt,name=filter_id,json=filterId,proto3" json:"filter_id,omitempty"`
-	LowerId       int64    `protobuf:"varint,8,opt,name=lower_id,json=lowerId,proto3" json:"lower_id,omitempty"`
-	UpperId       int64    `protobuf:"varint,9,opt,name=upper_id,json=upperId,proto3" json:"upper_id,omitempty"`
-	Projection    []string `protobuf:"bytes,10,rep,name=projection,proto3" json:"projection,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	FilterId   bool     `protobuf:"varint,7,opt,name=filter_id,json=filterId,proto3" json:"filter_id,omitempty"`
+	LowerId    int64    `protobuf:"varint,8,opt,name=lower_id,json=lowerId,proto3" json:"lower_id,omitempty"`
+	UpperId    int64    `protobuf:"varint,9,opt,name=upper_id,json=upperId,proto3" json:"upper_id,omitempty"`
+	Projection []string `protobuf:"bytes,10,rep,name=projection,proto3" json:"projection,omitempty"`
+	// DF0-D2 pressure fixture: 0 preserves the 64 MiB pool default.
+	QueryMemoryBytes uint64 `protobuf:"varint,11,opt,name=query_memory_bytes,json=queryMemoryBytes,proto3" json:"query_memory_bytes,omitempty"`
+	SortSource       bool   `protobuf:"varint,12,opt,name=sort_source,json=sortSource,proto3" json:"sort_source,omitempty"`
+	// Synthetic positive control only, with fault = source_spill_control.
+	SpillControlDirectory string `protobuf:"bytes,13,opt,name=spill_control_directory,json=spillControlDirectory,proto3" json:"spill_control_directory,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Execute) Reset() {
@@ -597,6 +602,27 @@ func (x *Execute) GetProjection() []string {
 		return x.Projection
 	}
 	return nil
+}
+
+func (x *Execute) GetQueryMemoryBytes() uint64 {
+	if x != nil {
+		return x.QueryMemoryBytes
+	}
+	return 0
+}
+
+func (x *Execute) GetSortSource() bool {
+	if x != nil {
+		return x.SortSource
+	}
+	return false
+}
+
+func (x *Execute) GetSpillControlDirectory() string {
+	if x != nil {
+		return x.SpillControlDirectory
+	}
+	return ""
 }
 
 type SourceDescriptor struct {
@@ -1240,7 +1266,7 @@ const file_df0ipc_proto_rawDesc = "" +
 	"\x0eprotocol_minor\x18\x02 \x01(\rR\rprotocolMinor\x12\x10\n" +
 	"\x03pid\x18\x03 \x01(\x03R\x03pid\x12\x16\n" +
 	"\x06engine\x18\x04 \x01(\tR\x06engine\x12\x1b\n" +
-	"\tenv_names\x18\x05 \x03(\tR\benvNames\"\xd9\x02\n" +
+	"\tenv_names\x18\x05 \x03(\tR\benvNames\"\xe0\x03\n" +
 	"\aExecute\x12\x1c\n" +
 	"\toperation\x18\x01 \x01(\tR\toperation\x12\x12\n" +
 	"\x04rows\x18\x02 \x01(\x04R\x04rows\x12\x1d\n" +
@@ -1255,7 +1281,11 @@ const file_df0ipc_proto_rawDesc = "" +
 	"\n" +
 	"projection\x18\n" +
 	" \x03(\tR\n" +
-	"projection\"\xc3\x01\n" +
+	"projection\x12,\n" +
+	"\x12query_memory_bytes\x18\v \x01(\x04R\x10queryMemoryBytes\x12\x1f\n" +
+	"\vsort_source\x18\f \x01(\bR\n" +
+	"sortSource\x126\n" +
+	"\x17spill_control_directory\x18\r \x01(\tR\x15spillControlDirectory\"\xc3\x01\n" +
 	"\x10SourceDescriptor\x12\x1b\n" +
 	"\tsource_id\x18\x01 \x01(\tR\bsourceId\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x12\n" +
