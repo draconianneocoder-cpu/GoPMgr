@@ -1,0 +1,56 @@
+{
+  "scope": "native macOS arm64 DF0-C2 synthetic evidence; no production cutover qualification",
+  "source_base": "05b17958508e145f5463cbb2f7d0ac664dee8e15",
+  "source_sha256": {
+    "spikes/adr012-datafusion/internal/df0pb/df0ipc.pb.go": "a65fcfc421fce65ec0e426635f98f62482cac1d92d79092f4c13f7ef21f4f588",
+    "spikes/adr012-datafusion/internal/fixtures/parquet.go": "7f7b3b3558053bae5959d5182a57948f6bf686e50b355671a27bb1e434eb5753",
+    "spikes/adr012-datafusion/internal/ipchost/readat_test.go": "902fa2adef53439b32f627eef079c812ee1f875c7e4a1973a7c61f1177ee0ace",
+    "spikes/adr012-datafusion/internal/ipchost/run.go": "e68db932051d1baafe496e1f343a26cdd569983752641ab88fd5d0deff78358a",
+    "spikes/adr012-datafusion/internal/source/capture_unix.go": "2f26d91a732c7c885f237f3a1f27789cca896b023562a22af5d2c7282a118f99",
+    "spikes/adr012-datafusion/internal/source/source.go": "d35dc646710a194f555c7b3764815e889db837bea233df58909df6ad5f36e377",
+    "spikes/adr012-datafusion/internal/source/source_test.go": "2577471ed42bd279e2192d10136e9cec65e02776e2ee05176369fff88bb7a722",
+    "spikes/adr012-datafusion/proto/df0ipc.proto": "264db6a485624daae87a9bf9bea36b0057093c6015352e8d7ae53a5b78e28719",
+    "spikes/adr012-datafusion/rust/Cargo.lock": "f8f77209f012c17b92b396519e2681c1755187088a2f39b2042749b042f9a3a6",
+    "spikes/adr012-datafusion/rust/engine/Cargo.toml": "2a0283a88af0971915794ba1e7cfbda612f77d22585522c11e20a9c266e83e60",
+    "spikes/adr012-datafusion/rust/engine/src/host_source.rs": "22ea71928cbe88c4d80c0a9e53e8be080affe9ef919d1d079a1c2e592249cdc4",
+    "spikes/adr012-datafusion/rust/engine/src/lib.rs": "202b0f687e8a73f334b92aac8ed55197f9126887cd3d8c322515dbf4173ac489",
+    "spikes/adr012-datafusion/rust/worker/Cargo.toml": "70a3569546edbf557e7f76c67ee4ab1a71df48b6d9fbabe6bf085736d7cd97e4",
+    "spikes/adr012-datafusion/rust/worker/src/main.rs": "ecd730dbcd4510b435374e5a0fac22115e5b09cb7f2aac8d690eaec577226967",
+    "spikes/adr012-datafusion/rust/worker/src/pb/gopmgr.df0ipc.v1.rs": "934f60a2a213c14bd8331494a5f9f252a2a162018e3175975bd8094538237afc",
+    "spikes/adr012-datafusion/rust/worker/src/read_source.rs": "9afaca3a9a3f2589cb2c5190f072ba32f83a0677db2c959bef6a85c791766fcc",
+    "spikes/adr012-datafusion/scripts/run-df0c2.sh": "9233c75e5854fae4d58813f085a112b74dbb15922cd9ba181c4894dca8af2d89"
+  },
+  "host": {
+    "system": "Darwin",
+    "release": "27.2.0",
+    "architecture": "arm64"
+  },
+  "go": "go version go1.27.3 darwin/arm64",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: aarch64-apple-darwin\nrelease: 1.99.1\nLLVM version: 23.1.1",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "worker_sha256": "d18a504691d82ba86d376edb0f6d008000f2892684714cab3b5ce5d8df91f10e",
+  "cli_sha256": "a2536fe02d1e6f14290759a1c1bec77d5d663db26def68ebbe0810121e091cf0",
+  "records_sha256": "7c2f93291ef96165c146ee1acd7ac170cc5eb7752b151d74086a2814d5d61427",
+  "package_version_changes": [],
+  "resolved_feature_changes": [],
+  "cargo_audit": {
+    "vulnerabilities": 0,
+    "warnings": 0
+  },
+  "prior_functional_records_unchanged": 121,
+  "prior_comparison_excludes": [
+    "wall_ns"
+  ],
+  "native_scenarios": 18,
+  "existing_operation_regressions": 3,
+  "independent_review": "unavailable; structured self-review fallback",
+  "unqualified": [
+    "full security/no-spill",
+    "host-wide admission",
+    "comparative performance",
+    "native Linux C2",
+    "Windows worker/transport",
+    "signed or packaged artifacts",
+    "production cutover"
+  ]
+}

@@ -16,6 +16,7 @@
 mod pb {
     include!("pb/gopmgr.df0ipc.v1.rs");
 }
+mod read_source;
 
 use std::io::Read;
 use std::path::PathBuf;
@@ -44,7 +45,7 @@ use pb::{
 };
 
 const PROTOCOL_MAJOR: u32 = 1;
-const PROTOCOL_MINOR: u32 = 0;
+const PROTOCOL_MINOR: u32 = 1;
 const BOOTSTRAP_VERSION: u32 = 1;
 const MAX_BOOTSTRAP_BYTES: usize = 64 << 10;
 const MIN_FRAME: u32 = 64 << 10;
@@ -233,6 +234,18 @@ impl Control {
     fn cancelled(&self) -> bool {
         self.cancel.load(Ordering::SeqCst)
     }
+
+    async fn wait_cancel(&self) {
+        loop {
+            let notified = self.notify.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
+            if self.cancelled() {
+                return;
+            }
+            notified.await;
+        }
+    }
 }
 
 async fn run(boot: Bootstrap) -> Result<(), Exit> {
@@ -278,6 +291,7 @@ async fn run(boot: Bootstrap) -> Result<(), Exit> {
     let proof = MetadataValue::try_from(hex::encode(&boot.credential))
         .map_err(|e| Exit(2, format!("proof: {e}")))?;
     req.metadata_mut().insert("x-df0-proof", proof);
+    let operation_id = boot.operation_id.clone();
     drop(boot);
     let mut inbound = client
         .connect(req)
@@ -292,75 +306,101 @@ async fn run(boot: Bootstrap) -> Result<(), Exit> {
     });
     let mut out = Some(out);
     let mut src_tx: Option<mpsc::Sender<Vec<u8>>> = None;
-    let mut op: Option<tokio::task::JoinHandle<Result<(), Exit>>> = None;
-    let mut want = 1u64;
-    loop {
-        let cmd: HostCommand = match inbound.message().await {
-            Ok(Some(c)) => c,
-            Ok(None) => return Err(Exit(3, "host closed the stream before Finish".into())),
-            Err(e) => return Err(Exit(3, format!("receive: {} {}", e.code(), e.message()))),
-        };
-        if cmd.sequence != want {
-            return Err(Exit(
-                4,
-                format!("host sequence {} where {want} was due", cmd.sequence),
-            ));
-        }
-        want += 1;
-        if ctl.deaf.load(Ordering::SeqCst) {
-            continue;
-        }
-        match cmd.command {
-            Some(host_command::Command::Execute(ex)) => {
-                let Some(o) = out.take() else {
-                    return Err(Exit(4, "second Execute".into()));
-                };
-                let (stx, srx) = mpsc::channel(4);
-                src_tx = Some(stx);
-                op = Some(tokio::spawn(execute(ex, o, srx, ctl.clone(), cap)));
+    let mut read_tx: Option<mpsc::Sender<pb::SourceReadResponse>> = None;
+    let mut ops = tokio::task::JoinSet::new();
+    let result = async {
+        let mut want = 1u64;
+        loop {
+            let cmd: HostCommand = match inbound.message().await {
+                Ok(Some(c)) => c,
+                Ok(None) => return Err(Exit(3, "host closed the stream before Finish".into())),
+                Err(e) => return Err(Exit(3, format!("receive: {} {}", e.code(), e.message()))),
+            };
+            if cmd.sequence != want {
+                return Err(Exit(
+                    4,
+                    format!("host sequence {} where {want} was due", cmd.sequence),
+                ));
             }
-            Some(host_command::Command::Source(chunk)) => {
-                let Some(stx) = src_tx.as_ref() else {
-                    return Err(Exit(4, "source before Execute".into()));
-                };
-                let last = chunk.last;
-                // A full channel holds the host back through flow control.
-                let _ = stx.send(chunk.data).await;
-                if last {
-                    src_tx = None;
+            want += 1;
+            if ctl.deaf.load(Ordering::SeqCst) {
+                continue;
+            }
+            match cmd.command {
+                Some(host_command::Command::Execute(ex)) => {
+                    let Some(o) = out.take() else {
+                        return Err(Exit(4, "second Execute".into()));
+                    };
+                    let (stx, srx) = mpsc::channel(4);
+                    let (rtx, rrx) = mpsc::channel(1);
+                    src_tx = Some(stx);
+                    read_tx = Some(rtx);
+                    let inputs = read_source::Inputs {
+                        chunks: srx,
+                        replies: rrx,
+                        operation_id: operation_id.clone(),
+                    };
+                    ops.spawn(execute(ex, o, inputs, ctl.clone(), cap));
                 }
+                Some(host_command::Command::Source(chunk)) => {
+                    let Some(stx) = src_tx.as_ref() else {
+                        return Err(Exit(4, "source before Execute".into()));
+                    };
+                    let last = chunk.last;
+                    // A full channel holds the host back through flow control.
+                    let _ = stx.send(chunk.data).await;
+                    if last {
+                        src_tx = None;
+                    }
+                }
+                Some(host_command::Command::Cancel(_)) => {
+                    ctl.cancel.store(true, Ordering::SeqCst);
+                    ctl.notify.notify_waiters();
+                }
+                Some(host_command::Command::ReadAt(response)) => {
+                    let Some(tx) = read_tx.as_ref() else {
+                        return Err(Exit(4, "source response before Execute".into()));
+                    };
+                    tx.try_send(response)
+                        .map_err(|_| Exit(4, "unsolicited or excess source response".into()))?;
+                }
+                Some(host_command::Command::Finish(_)) => break,
+                None => return Err(Exit(4, "empty command".into())),
             }
-            Some(host_command::Command::Cancel(_)) => {
-                ctl.cancel.store(true, Ordering::SeqCst);
-                ctl.notify.notify_waiters();
+        }
+        drop(src_tx);
+        if !ops.is_empty() {
+            ctl.cancel.store(true, Ordering::SeqCst);
+            ctl.notify.notify_waiters();
+            match ops.join_next().await {
+                Some(Ok(r)) => r?,
+                Some(Err(e)) => return Err(Exit(3, format!("operation task: {e}"))),
+                None => return Err(Exit(3, "operation task missing".into())),
             }
-            Some(host_command::Command::Finish(_)) => break,
-            None => return Err(Exit(4, "empty command".into())),
         }
+        Ok(())
     }
-    drop(src_tx);
-    if let Some(h) = op {
-        ctl.cancel.store(true, Ordering::SeqCst);
-        ctl.notify.notify_waiters();
-        match h.await {
-            Ok(r) => r?,
-            Err(e) => return Err(Exit(3, format!("operation task: {e}"))),
-        }
-    }
-    Ok(())
+    .await;
+    ctl.cancel.store(true, Ordering::SeqCst);
+    ctl.notify.notify_waiters();
+    ops.shutdown().await;
+    result
 }
 
 async fn execute(
     ex: Execute,
     mut out: Out,
-    src: mpsc::Receiver<Vec<u8>>,
+    src: read_source::Inputs,
     ctl: Arc<Control>,
     cap: usize,
 ) -> Result<(), Exit> {
     let r = match ex.operation.as_str() {
         "generate" => generate(&ex, &mut out, None, &ctl, cap).await,
-        "duplex" => generate(&ex, &mut out, Some(src), &ctl, cap).await,
-        "rollup" => rollup(&mut out, src, &ctl).await,
+        "duplex" => generate(&ex, &mut out, Some(src.chunks), &ctl, cap).await,
+        "rollup" => rollup(&mut out, src.chunks, &ctl).await,
+        "parquet_range" | "parquet_stream" => {
+            read_source::execute(&ex, &mut out, src, &ctl, cap).await
+        }
         other => Err(("INPUT_INVALID", format!("unknown operation {other:?}"))),
     };
     match r {
@@ -547,6 +587,7 @@ async fn generate(
         result_json: String::new(),
         send_waits: waits,
         peak_rss_bytes: peak_rss(),
+        source_version: String::new(),
     }))
     .await
     .map_err(|Exit(_, m)| ("INTERNAL", m))
@@ -587,6 +628,7 @@ async fn rollup(out: &mut Out, mut src: mpsc::Receiver<Vec<u8>>, ctl: &Control) 
         result_json: json,
         send_waits: waits,
         peak_rss_bytes: peak_rss(),
+        source_version: String::new(),
     }))
     .await
     .map_err(|Exit(_, m)| ("INTERNAL", m))

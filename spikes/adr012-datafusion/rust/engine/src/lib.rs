@@ -10,6 +10,7 @@
 //! production design (DF-09, DF-A07) has the host stream bytes instead.
 
 mod cells;
+pub mod host_source;
 mod sniff;
 
 use std::io::Cursor;

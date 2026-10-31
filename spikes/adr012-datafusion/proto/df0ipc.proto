@@ -41,6 +41,7 @@ message WorkerEvent {
     Batch batch = 11;
     Completed completed = 12;
     Failed failed = 13;
+    SourceReadRequest read_at = 14;
   }
 }
 
@@ -51,6 +52,7 @@ message HostCommand {
     SourceChunk source = 11;
     Cancel cancel = 12;
     Finish finish = 13;
+    SourceReadResponse read_at = 14;
   }
 }
 
@@ -74,6 +76,40 @@ message Execute {
   // Test-only fault injection: "", gap, duplicate, bad_schema, bad_hash,
   // exit_mid_stream, hang.
   string fault = 5;
+  // parquet_range / parquet_stream: one immutable, job-scoped source.
+  SourceDescriptor source_descriptor = 6;
+  // DF0-C2 fixture predicate, expressed as values rather than caller SQL.
+  bool filter_id = 7;
+  int64 lower_id = 8;
+  int64 upper_id = 9;
+  repeated string projection = 10;
+}
+
+message SourceDescriptor {
+  string source_id = 1;
+  string version = 2;
+  uint64 size = 3;
+  bytes sha256 = 4;
+  int64 expires_unix_ms = 5;
+  uint32 max_read_bytes = 6;
+}
+
+message SourceReadRequest {
+  string operation_id = 1;
+  string source_id = 2;
+  string version = 3;
+  uint64 request_id = 4;
+  uint64 offset = 5;
+  uint32 length = 6;
+}
+
+message SourceReadResponse {
+  uint64 request_id = 1;
+  string source_id = 2;
+  string version = 3;
+  uint64 offset = 4;
+  bytes data = 5;
+  bytes data_sha256 = 6;
 }
 
 message SourceChunk {
@@ -105,6 +141,9 @@ message Completed {
   uint64 send_waits = 7;
   // Peak resident set from /proc/self/status VmHWM, or 0 when unknown.
   uint64 peak_rss_bytes = 8;
+  // Range jobs echo the granted immutable identity. source_sha256 hashes
+  // received response payloads in request order, not unread source bytes.
+  string source_version = 9;
 }
 
 message Failed {
