@@ -102,6 +102,19 @@ reads and end-to-end time are reported separately. These single-run observations
 are not the DF0-E performance qualification. See the
 [DF0-C2 record](../../docs/testing/adr-012-df0-c2.md) for guarantees and limits.
 
+## Reproduce the DF0-D2 no-spill experiment (native macOS)
+
+```sh
+DF0_NO_SPILL_EVIDENCE=/absolute/path/to/no-spill.json \
+  bash spikes/adr012-datafusion/scripts/run-df0d2-no-spill.sh
+```
+
+This runs eight synthetic spill/denial/lifecycle scenarios, the OS denial
+self-test and the 21 existing native regressions. See the
+[scope and proof limits](../../docs/testing/adr-012-df0-no-spill.md).
+It does not complete host-wide admission, OS-wide observation or production
+containment qualification. Linux refuses the experimental denial mode.
+
 ## Toolchain evidence
 
 The maintainer approved four temporary, spike-only dependency overrides on

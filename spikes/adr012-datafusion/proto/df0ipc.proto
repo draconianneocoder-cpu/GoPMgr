@@ -83,6 +83,11 @@ message Execute {
   int64 lower_id = 8;
   int64 upper_id = 9;
   repeated string projection = 10;
+  // DF0-D2 pressure fixture: 0 preserves the 64 MiB pool default.
+  uint64 query_memory_bytes = 11;
+  bool sort_source = 12;
+  // Synthetic positive control only, with fault = source_spill_control.
+  string spill_control_directory = 13;
 }
 
 message SourceDescriptor {

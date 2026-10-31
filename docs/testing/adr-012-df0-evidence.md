@@ -37,7 +37,7 @@ DataFusion is C.
 | DF0-B / B2 DataFusion and Go candidates | **Done on Linux amd64** (standalone engine; no IPC yet). The [macOS Rust 1.99.1 functional rerun](adr-012-rust-1.99.1.md) matches; performance qualification NOT-RUN. Windows: BLOCKED (no native host) |
 | DF0-C Go↔Rust gRPC local IPC | **Done on Linux amd64** (Unix socket): 97 of 97 scenarios PASS. macOS: full suite NOT-RUN; socket/secret inspection remains BLOCKED because the Darwin inspector is unimplemented. Windows named pipes: BLOCKED (no host; endpoint not yet written) |
 | DF0-C2 host-mediated Parquet `ReadAt` | **PASS for the native macOS arm64 experiment:** 18 C2 scenarios plus 3 existing-operation regressions. [Scope, IO accounting and limits](adr-012-df0-c2.md). Linux C2: NOT-RUN in this slice; Windows: BLOCKED (no worker transport/native host) |
-| DF0-D / D2 security, no-spill, admission | NOT-RUN |
+| DF0-D / D2 security, no-spill, admission | **Partial native macOS experiment:** [no-spill controls and limits](adr-012-df0-no-spill.md). Full DF-062 remains BLOCKED on OS-wide tracing and incomplete aggregate admission; remaining security/platform work is NOT-RUN or independently BLOCKED |
 | DF0-E / E2 performance, numeric fidelity | NOT-RUN |
 | DF0-F / F2 packaging, licensing | NOT-RUN |
 | DF0-G report | NOT-RUN |

@@ -22,7 +22,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"os/exec"
 	"runtime/metrics"
 	"sync"
 	"syscall"
@@ -49,14 +48,17 @@ const (
 
 // Job is one worker launch.
 type Job struct {
-	Name    string
-	Worker  string
-	Execute *df0pb.Execute
+	Name   string
+	Worker string
+	// NoFileWrites requests the Darwin-only experimental OS write-denial profile.
+	NoFileWrites bool
+	Execute      *df0pb.Execute
 	// Source is sent as SourceChunks after Execute.
 	Source              []byte
 	ReadSource          *source.Snapshot
 	ReadLimits          *source.Limits
 	CancelAfterRead     uint64
+	KillAfterRead       uint64
 	CorruptReadResponse string
 	ChunkBytes          int
 	MaxFrame            int
@@ -96,14 +98,15 @@ type Result struct {
 	ResultJSON  string        `json:"result_json,omitempty"`
 	FailedCode  string        `json:"failed_code,omitempty"`
 
-	WorkerPID      int    `json:"-"`
-	WorkerExit     string `json:"worker_exit"`
-	Killed         bool   `json:"killed"`
-	Engine         string `json:"engine,omitempty"`
-	WorkerEnvNames int    `json:"worker_env_names"`
-	SendWaits      uint64 `json:"worker_send_waits"`
-	WorkerPeakRSS  int64  `json:"worker_peak_rss_bytes"`
-	HostHeapPeak   uint64 `json:"host_heap_peak_bytes"`
+	WorkerPID      int      `json:"-"`
+	WorkerExit     string   `json:"worker_exit"`
+	Killed         bool     `json:"killed"`
+	Engine         string   `json:"engine,omitempty"`
+	WorkerEnvNames int      `json:"worker_env_names"`
+	WorkerEnvKeys  []string `json:"worker_env_keys,omitempty"`
+	SendWaits      uint64   `json:"worker_send_waits"`
+	WorkerPeakRSS  int64    `json:"worker_peak_rss_bytes"`
+	HostHeapPeak   uint64   `json:"host_heap_peak_bytes"`
 
 	WorkerSockets  *Sockets `json:"worker_sockets,omitempty"`
 	HostSockets    *Sockets `json:"host_sockets,omitempty"`
@@ -318,7 +321,11 @@ func Run(job Job) (res Result) {
 	}
 
 	diag := &capWriter{n: diagCap}
-	cmd := exec.Command(job.Worker)
+	cmd, err := workerCommand(job)
+	if err != nil {
+		res.Outcome, res.Detail = "setup_failed", err.Error()
+		return res
+	}
 	cmd.Env = []string{} // the worker inherits nothing (DF-036)
 	cmd.Dir = "/"
 	cmd.Stdout, cmd.Stderr = diag, diag
@@ -527,13 +534,20 @@ func Run(job Job) (res Result) {
 			res.SpawnToHelloNS = it.at.Sub(spawned).Nanoseconds()
 			res.Engine = e.Hello.GetEngine()
 			res.WorkerEnvNames = len(e.Hello.GetEnvNames())
+			res.WorkerEnvKeys = append([]string(nil), e.Hello.GetEnvNames()...)
 			if e.Hello.GetProtocolMajor() != 1 || e.Hello.GetPid() != int64(pid) {
 				fail("rejected_protocol", fmt.Sprintf("protocol %d, pid %d", e.Hello.GetProtocolMajor(), e.Hello.GetPid()))
 				continue
 			}
-			if grant != nil && e.Hello.GetProtocolMinor() < 1 {
-				fail("rejected_protocol", "worker lacks source reads")
-				continue
+			if grant != nil {
+				requiredMinor := uint32(1)
+				if job.Execute.QueryMemoryBytes != 0 || job.Execute.SortSource || job.Execute.SpillControlDirectory != "" {
+					requiredMinor = 2
+				}
+				if e.Hello.GetProtocolMinor() < requiredMinor {
+					fail("rejected_protocol", "worker lacks requested source query features")
+					continue
+				}
 			}
 			if s, err := InspectSockets(pid); err == nil {
 				res.WorkerSockets = &s
@@ -610,6 +624,11 @@ func Run(job Job) (res Result) {
 				continue
 			}
 			res.SourceReads = append(res.SourceReads, SourceRead{r.RequestId, r.Offset, r.Length})
+			if job.KillAfterRead > 0 && uint64(len(res.SourceReads)) == job.KillAfterRead {
+				lease.Close()
+				fail("fault_killed", "controlled source-read interruption")
+				continue
+			}
 			if job.CancelAfterRead > 0 && uint64(len(res.SourceReads)) == job.CancelAfterRead {
 				cancelAt = time.Now()
 				send(&df0pb.HostCommand{Command: &df0pb.HostCommand_Cancel{Cancel: &df0pb.Cancel{}}})

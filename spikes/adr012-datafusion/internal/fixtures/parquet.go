@@ -414,3 +414,15 @@ func WriteReadAtParquet(w io.Writer) error {
 	}
 	return writeParquet(w, ReadAtRows, cols, pqOptions{codec: compress.Codecs.Uncompressed, rowGroupLen: ReadAtGroupRows, dictionary: false})
 }
+
+// NoSpillSentinel is synthetic data used only by the DF0-D2 detector controls.
+const NoSpillSentinel = "DF0-SYNTHETIC-NO-SPILL-20261031"
+const NoSpillRows = 4096
+
+func WriteNoSpillParquet(w io.Writer) error {
+	cols := []pqColumn{
+		int64Col("id", func(i int) int64 { return ReadAtFirstID + int64(i) }),
+		strCol("payload", func(i int) string { return strings.Repeat(fmt.Sprintf("%s:%08d", NoSpillSentinel, i), 32) }),
+	}
+	return writeParquet(w, NoSpillRows, cols, pqOptions{codec: compress.Codecs.Uncompressed, rowGroupLen: 256, dictionary: false})
+}
