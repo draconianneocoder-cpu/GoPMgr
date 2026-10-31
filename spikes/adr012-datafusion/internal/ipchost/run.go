@@ -338,6 +338,7 @@ func Run(job Job) (res Result) {
 		res.Outcome, res.Detail = "setup_failed", err.Error()
 		return res
 	}
+	defer stdin.Close() // also closes bootstrap input when a launch hook panics
 	spawned := time.Now()
 	if err := cmd.Start(); err != nil {
 		res.Outcome, res.Detail = "setup_failed", "start worker: "+err.Error()
@@ -346,11 +347,6 @@ func Run(job Job) (res Result) {
 	pid := cmd.Process.Pid
 	res.WorkerPID = pid
 	pl.setExpected(pid)
-	if job.OnSpawn != nil {
-		job.OnSpawn(pid, ep.Dir)
-	}
-	_, werr := stdin.Write(framed)
-	cerr := stdin.Close()
 	exited := make(chan struct{})
 	var exitedAt time.Time
 	go func() {
@@ -373,6 +369,11 @@ func Run(job Job) (res Result) {
 		recordProcessResources(&res, cmd.ProcessState)
 		res.WorkerDiag = diag.String()
 	}()
+	if job.OnSpawn != nil {
+		job.OnSpawn(pid, ep.Dir)
+	}
+	_, werr := stdin.Write(framed)
+	cerr := stdin.Close()
 	if werr != nil || cerr != nil {
 		res.Outcome, res.Detail = "setup_failed", fmt.Sprintf("bootstrap write: %v %v", werr, cerr)
 		return res

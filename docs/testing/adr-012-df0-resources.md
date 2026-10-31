@@ -71,8 +71,9 @@ A lifetime per-child peak is not instantaneous RSS, a sum across processes,
 process-tree accounting, CPU rate, OS enforcement, an admission reservation or
 an application memory budget. Summing independent peaks would not establish a
 simultaneous host-wide peak. DF-033's aggregate limits and DF-064 remain
-unqualified. The next resource step is admission before launch plus native
-combined host/worker measurements and over-quota/crash/recovery checks.
+unqualified. A later [reservation admission slice](adr-012-df0-admission.md)
+adds pre-launch claim rejection and cleanup/recovery evidence. Actual combined
+host/worker limits and native measurements remain necessary.
 
 Full DF-062 still needs independent OS-wide filesystem observation and the
 remaining security controls. Existing no-spill and C2 raw records are preserved

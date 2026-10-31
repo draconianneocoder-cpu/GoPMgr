@@ -1,0 +1,62 @@
+{
+  "scope": "isolated declared reservation admission; full DF-033/DF-064 not qualified",
+  "source_base": "e9e3d7497b50c2affc8a7bbd6141ec089fd052d2",
+  "source_sha256": {
+    "spikes/adr012-datafusion/internal/ipchost/admission.go": "89694728cd037c8de245e5571b979da5da6bde41e710d09d7dae2dd6ce435232",
+    "spikes/adr012-datafusion/internal/ipchost/admission_unix_test.go": "6fa0924f17f1e0d513fbfcdf06bdc6c4e7892dbdfb0139dacf172dda36537d1c",
+    "spikes/adr012-datafusion/internal/ipchost/admission_native_unix_test.go": "27b7bd42f26ee3981725e8b7b28f001025824aaf20c4e55b8289a6caf37a667e",
+    "spikes/adr012-datafusion/internal/ipchost/run.go": "0054e7205a454c2e84b18b8d85e437d99f3e5407f11227ee6956c820cbddd07a",
+    "spikes/adr012-datafusion/internal/ipchost/no_spill_darwin_test.go": "9b786e0430a3a55308ac709be00f87590952f964dec3dfe0d95fcb4a54348c64",
+    "spikes/adr012-datafusion/internal/ipchost/resources_unix.go": "d503c47766ae6d87401bfe063a403f5301a0ef32830989d091a4db52e11d4d95",
+    "spikes/adr012-datafusion/internal/ipchost/proc_darwin.go": "e0bc4efc34732c4fa0fc72b911efe4d05fbaff327fad674330593c81583df81c",
+    "spikes/adr012-datafusion/internal/ipchost/proc_linux.go": "d80e402db239495954168435d181b77f4f06479e3db4442c897263aa574ebfba"
+  },
+  "worker_sha256": "337b43a96713b9111266dfd624d8a7c715e9445ce9e64c45cc8b46b2f5a10204",
+  "worker_build_record": "../df0-d2-macos/environment.json",
+  "host": {
+    "system": "Darwin",
+    "release": "27.2.0",
+    "architecture": "arm64"
+  },
+  "go": "go version go1.27.3 darwin/arm64",
+  "records_sha256": {
+    "cohorts.json": "94c33dcfd2851af4a52ee61769ce349022ab398da39e4e51f781a91c194adfc3",
+    "lifecycle.json": "98b7d23e54b9e7c939d1a8f68db1054957d9e3c485abc67aeeb8edb3ab3f411a"
+  },
+  "admission_cohorts": [
+    2,
+    4,
+    8
+  ],
+  "admitted_workers": 14,
+  "recovery_workers": 3,
+  "prelaunch_refusals": 3,
+  "lifecycle_scenarios": 8,
+  "other_native_regressions": 35,
+  "native_rust_worker_jobs_total": 60,
+  "claim_per_job": {
+    "memory_bytes": 67108864,
+    "cpu_slots": 1
+  },
+  "claim_scope": "fixture settings, not product defaults or OS resource enforcement",
+  "faults_detected": [
+    "job quota bypass",
+    "memory quota bypass",
+    "CPU-slot quota bypass",
+    "omitted release",
+    "removed reservation mutex (race detected)",
+    "launch hook before cleanup registration"
+  ],
+  "independent_review": "quota unavailable; structured self-review fallback",
+  "linux": "host test package cross-compiled; native execution NOT-RUN",
+  "windows": "execution deferred by current maintainer priority",
+  "unqualified": [
+    "actual simultaneous host-wide RSS/CPU enforcement",
+    "process-tree limits",
+    "source allocation before admission",
+    "all raw Run callers and separately constructed controllers",
+    "global OS file observation and remaining security",
+    "performance/numeric fidelity",
+    "packaging/licensing/final recommendation and production cutover"
+  ]
+}

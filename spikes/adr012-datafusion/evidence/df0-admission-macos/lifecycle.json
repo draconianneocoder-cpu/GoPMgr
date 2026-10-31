@@ -1,0 +1,731 @@
+[
+  {
+    "name": "spill_control",
+    "outcome": "completed",
+    "batches": 64,
+    "rows": 4096,
+    "ipc_bytes": 5370368,
+    "max_batch_bytes": 83912,
+    "digest_match": true,
+    "source_match": true,
+    "source_io": {
+      "requests": 17,
+      "rejected": 0,
+      "requested_bytes": 5858880,
+      "actual_bytes": 5858880,
+      "physical_bytes": 5378594,
+      "peak_in_flight": 1
+    },
+    "source_reads": [
+      {
+        "request": 1,
+        "offset": 4854306,
+        "length": 524288
+      },
+      {
+        "request": 2,
+        "offset": 4,
+        "length": 333412
+      },
+      {
+        "request": 3,
+        "offset": 333416,
+        "length": 333412
+      },
+      {
+        "request": 4,
+        "offset": 666828,
+        "length": 333412
+      },
+      {
+        "request": 5,
+        "offset": 1000240,
+        "length": 333412
+      },
+      {
+        "request": 6,
+        "offset": 1333652,
+        "length": 333412
+      },
+      {
+        "request": 7,
+        "offset": 1667064,
+        "length": 333412
+      },
+      {
+        "request": 8,
+        "offset": 2000476,
+        "length": 333412
+      },
+      {
+        "request": 9,
+        "offset": 2333888,
+        "length": 333412
+      },
+      {
+        "request": 10,
+        "offset": 2667300,
+        "length": 333412
+      },
+      {
+        "request": 11,
+        "offset": 3000712,
+        "length": 333412
+      },
+      {
+        "request": 12,
+        "offset": 3334124,
+        "length": 333412
+      },
+      {
+        "request": 13,
+        "offset": 3667536,
+        "length": 333412
+      },
+      {
+        "request": 14,
+        "offset": 4000948,
+        "length": 333412
+      },
+      {
+        "request": 15,
+        "offset": 4334360,
+        "length": 333412
+      },
+      {
+        "request": 16,
+        "offset": 4667772,
+        "length": 333412
+      },
+      {
+        "request": 17,
+        "offset": 5001184,
+        "length": 333412
+      }
+    ],
+    "result_json": "{\"spill_count\":126,\"spilled_bytes\":32162448,\"pool_reserved_after_bytes\":0}",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 53,
+    "worker_peak_rss_bytes": 34324480,
+    "worker_user_cpu_ns": 54756000,
+    "worker_system_cpu_ns": 55940000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 20553888,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 10570166,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 200254250,
+    "write_denial_requested": false,
+    "sentinel_observed_in_spill": true,
+    "scratch_files_after": 0,
+    "query_memory_bytes": 1048576
+  },
+  {
+    "name": "unauthorized_spill",
+    "outcome": "failed",
+    "detail": "spill directory requires synthetic positive control",
+    "batches": 0,
+    "rows": 0,
+    "ipc_bytes": 0,
+    "max_batch_bytes": 0,
+    "source_io": {
+      "requests": 0,
+      "rejected": 0,
+      "requested_bytes": 0,
+      "actual_bytes": 0,
+      "physical_bytes": 5378594,
+      "peak_in_flight": 0
+    },
+    "failed_code": "INPUT_INVALID",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 11517952,
+    "worker_user_cpu_ns": 3926000,
+    "worker_system_cpu_ns": 3843000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 18101944,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 11518875,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 13373125,
+    "write_denial_requested": false,
+    "sentinel_observed_in_spill": false,
+    "scratch_files_after": 0,
+    "query_memory_bytes": 1048576
+  },
+  {
+    "name": "memory_only",
+    "outcome": "failed",
+    "detail": "source query resource limit exceeded",
+    "batches": 0,
+    "rows": 0,
+    "ipc_bytes": 0,
+    "max_batch_bytes": 0,
+    "source_io": {
+      "requests": 2,
+      "rejected": 0,
+      "requested_bytes": 857700,
+      "actual_bytes": 857700,
+      "physical_bytes": 5378594,
+      "peak_in_flight": 1
+    },
+    "source_reads": [
+      {
+        "request": 1,
+        "offset": 4854306,
+        "length": 524288
+      },
+      {
+        "request": 2,
+        "offset": 4,
+        "length": 333412
+      }
+    ],
+    "failed_code": "RESOURCE_LIMIT",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 29622272,
+    "worker_user_cpu_ns": 16049000,
+    "worker_system_cpu_ns": 7280000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 21278272,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 19367084,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 33842458,
+    "write_denial_requested": true,
+    "sentinel_observed_in_spill": false,
+    "scratch_files_after": 0,
+    "query_memory_bytes": 1048576
+  },
+  {
+    "name": "os_denial",
+    "outcome": "failed",
+    "detail": "source query file access denied",
+    "batches": 0,
+    "rows": 0,
+    "ipc_bytes": 0,
+    "max_batch_bytes": 0,
+    "source_io": {
+      "requests": 0,
+      "rejected": 0,
+      "requested_bytes": 0,
+      "actual_bytes": 0,
+      "physical_bytes": 5378594,
+      "peak_in_flight": 0
+    },
+    "failed_code": "RESOURCE_LIMIT",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 12222464,
+    "worker_user_cpu_ns": 7954000,
+    "worker_system_cpu_ns": 4011000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 18110112,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 15911458,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 17587542,
+    "write_denial_requested": true,
+    "sentinel_observed_in_spill": false,
+    "scratch_files_after": 0,
+    "query_memory_bytes": 1048576
+  },
+  {
+    "name": "normal_guarded",
+    "outcome": "completed",
+    "batches": 64,
+    "rows": 4096,
+    "ipc_bytes": 5370368,
+    "max_batch_bytes": 83912,
+    "digest_match": true,
+    "source_match": true,
+    "source_io": {
+      "requests": 17,
+      "rejected": 0,
+      "requested_bytes": 5858880,
+      "actual_bytes": 5858880,
+      "physical_bytes": 5378594,
+      "peak_in_flight": 1
+    },
+    "source_reads": [
+      {
+        "request": 1,
+        "offset": 4854306,
+        "length": 524288
+      },
+      {
+        "request": 2,
+        "offset": 4,
+        "length": 333412
+      },
+      {
+        "request": 3,
+        "offset": 333416,
+        "length": 333412
+      },
+      {
+        "request": 4,
+        "offset": 666828,
+        "length": 333412
+      },
+      {
+        "request": 5,
+        "offset": 1000240,
+        "length": 333412
+      },
+      {
+        "request": 6,
+        "offset": 1333652,
+        "length": 333412
+      },
+      {
+        "request": 7,
+        "offset": 1667064,
+        "length": 333412
+      },
+      {
+        "request": 8,
+        "offset": 2000476,
+        "length": 333412
+      },
+      {
+        "request": 9,
+        "offset": 2333888,
+        "length": 333412
+      },
+      {
+        "request": 10,
+        "offset": 2667300,
+        "length": 333412
+      },
+      {
+        "request": 11,
+        "offset": 3000712,
+        "length": 333412
+      },
+      {
+        "request": 12,
+        "offset": 3334124,
+        "length": 333412
+      },
+      {
+        "request": 13,
+        "offset": 3667536,
+        "length": 333412
+      },
+      {
+        "request": 14,
+        "offset": 4000948,
+        "length": 333412
+      },
+      {
+        "request": 15,
+        "offset": 4334360,
+        "length": 333412
+      },
+      {
+        "request": 16,
+        "offset": 4667772,
+        "length": 333412
+      },
+      {
+        "request": 17,
+        "offset": 5001184,
+        "length": 333412
+      }
+    ],
+    "result_json": "{\"spill_count\":0,\"spilled_bytes\":0,\"pool_reserved_after_bytes\":0}",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 51,
+    "worker_peak_rss_bytes": 37699584,
+    "worker_user_cpu_ns": 47264000,
+    "worker_system_cpu_ns": 15127000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 21634128,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 15786625,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 89904791,
+    "write_denial_requested": true,
+    "sentinel_observed_in_spill": false,
+    "scratch_files_after": 0,
+    "query_memory_bytes": 67108864
+  },
+  {
+    "name": "cancel_guarded",
+    "outcome": "failed",
+    "detail": "cancelled by the host",
+    "batches": 6,
+    "rows": 384,
+    "ipc_bytes": 503472,
+    "max_batch_bytes": 83912,
+    "source_io": {
+      "requests": 17,
+      "rejected": 0,
+      "requested_bytes": 5858880,
+      "actual_bytes": 5858880,
+      "physical_bytes": 5378594,
+      "peak_in_flight": 1
+    },
+    "source_reads": [
+      {
+        "request": 1,
+        "offset": 4854306,
+        "length": 524288
+      },
+      {
+        "request": 2,
+        "offset": 4,
+        "length": 333412
+      },
+      {
+        "request": 3,
+        "offset": 333416,
+        "length": 333412
+      },
+      {
+        "request": 4,
+        "offset": 666828,
+        "length": 333412
+      },
+      {
+        "request": 5,
+        "offset": 1000240,
+        "length": 333412
+      },
+      {
+        "request": 6,
+        "offset": 1333652,
+        "length": 333412
+      },
+      {
+        "request": 7,
+        "offset": 1667064,
+        "length": 333412
+      },
+      {
+        "request": 8,
+        "offset": 2000476,
+        "length": 333412
+      },
+      {
+        "request": 9,
+        "offset": 2333888,
+        "length": 333412
+      },
+      {
+        "request": 10,
+        "offset": 2667300,
+        "length": 333412
+      },
+      {
+        "request": 11,
+        "offset": 3000712,
+        "length": 333412
+      },
+      {
+        "request": 12,
+        "offset": 3334124,
+        "length": 333412
+      },
+      {
+        "request": 13,
+        "offset": 3667536,
+        "length": 333412
+      },
+      {
+        "request": 14,
+        "offset": 4000948,
+        "length": 333412
+      },
+      {
+        "request": 15,
+        "offset": 4334360,
+        "length": 333412
+      },
+      {
+        "request": 16,
+        "offset": 4667772,
+        "length": 333412
+      },
+      {
+        "request": 17,
+        "offset": 5001184,
+        "length": 333412
+      }
+    ],
+    "failed_code": "USER_CANCELLED",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 36913152,
+    "worker_user_cpu_ns": 33496000,
+    "worker_system_cpu_ns": 9393000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 12994296,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 15128625,
+    "cancel_to_failed_ns": 2309792,
+    "cancel_to_exit_ns": 3549084,
+    "wall_ns": 67745875,
+    "write_denial_requested": true,
+    "sentinel_observed_in_spill": false,
+    "scratch_files_after": 0,
+    "query_memory_bytes": 67108864
+  },
+  {
+    "name": "kill_guarded",
+    "outcome": "fault_killed",
+    "detail": "controlled source-read interruption",
+    "batches": 0,
+    "rows": 0,
+    "ipc_bytes": 0,
+    "max_batch_bytes": 0,
+    "source_io": {
+      "requests": 1,
+      "rejected": 0,
+      "requested_bytes": 524288,
+      "actual_bytes": 524288,
+      "physical_bytes": 5378594,
+      "peak_in_flight": 1
+    },
+    "source_reads": [
+      {
+        "request": 1,
+        "offset": 4854306,
+        "length": 524288
+      }
+    ],
+    "worker_exit": "signal killed",
+    "killed": true,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 16482304,
+    "worker_user_cpu_ns": 9064000,
+    "worker_system_cpu_ns": 3985000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 18644832,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 16714917,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 19031209,
+    "write_denial_requested": true,
+    "sentinel_observed_in_spill": false,
+    "scratch_files_after": 0,
+    "query_memory_bytes": 1048576
+  },
+  {
+    "name": "recovery_guarded",
+    "outcome": "completed",
+    "batches": 64,
+    "rows": 4096,
+    "ipc_bytes": 5370368,
+    "max_batch_bytes": 83912,
+    "digest_match": true,
+    "source_match": true,
+    "source_io": {
+      "requests": 17,
+      "rejected": 0,
+      "requested_bytes": 5858880,
+      "actual_bytes": 5858880,
+      "physical_bytes": 5378594,
+      "peak_in_flight": 1
+    },
+    "source_reads": [
+      {
+        "request": 1,
+        "offset": 4854306,
+        "length": 524288
+      },
+      {
+        "request": 2,
+        "offset": 4,
+        "length": 333412
+      },
+      {
+        "request": 3,
+        "offset": 333416,
+        "length": 333412
+      },
+      {
+        "request": 4,
+        "offset": 666828,
+        "length": 333412
+      },
+      {
+        "request": 5,
+        "offset": 1000240,
+        "length": 333412
+      },
+      {
+        "request": 6,
+        "offset": 1333652,
+        "length": 333412
+      },
+      {
+        "request": 7,
+        "offset": 1667064,
+        "length": 333412
+      },
+      {
+        "request": 8,
+        "offset": 2000476,
+        "length": 333412
+      },
+      {
+        "request": 9,
+        "offset": 2333888,
+        "length": 333412
+      },
+      {
+        "request": 10,
+        "offset": 2667300,
+        "length": 333412
+      },
+      {
+        "request": 11,
+        "offset": 3000712,
+        "length": 333412
+      },
+      {
+        "request": 12,
+        "offset": 3334124,
+        "length": 333412
+      },
+      {
+        "request": 13,
+        "offset": 3667536,
+        "length": 333412
+      },
+      {
+        "request": 14,
+        "offset": 4000948,
+        "length": 333412
+      },
+      {
+        "request": 15,
+        "offset": 4334360,
+        "length": 333412
+      },
+      {
+        "request": 16,
+        "offset": 4667772,
+        "length": 333412
+      },
+      {
+        "request": 17,
+        "offset": 5001184,
+        "length": 333412
+      }
+    ],
+    "result_json": "{\"spill_count\":0,\"spilled_bytes\":0,\"pool_reserved_after_bytes\":0}",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 54,
+    "worker_peak_rss_bytes": 38125568,
+    "worker_user_cpu_ns": 47262000,
+    "worker_system_cpu_ns": 13919000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 20609104,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 15332375,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 90612417,
+    "write_denial_requested": true,
+    "sentinel_observed_in_spill": false,
+    "scratch_files_after": 0,
+    "query_memory_bytes": 67108864
+  }
+]
