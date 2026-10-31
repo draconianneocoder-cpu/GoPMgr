@@ -59,7 +59,13 @@ upgrade DuckDB as part of its retirement.
    [macOS E2 typed-cell harness](testing/adr-012-df0-numeric-fidelity.md) now
    checks 10 jobs/60 rows, including JavaScript decoding and decimal-scale
    preservation. Production DTO/renderer use and semantic decoding of nested
-   numbers remain unqualified; this is partial E2 evidence. The
+   numbers remain unqualified; this is partial E2 evidence. A first
+   [macOS portfolio backend characterization](testing/adr-012-df0-portfolio-performance.md)
+   checks identical 0/100/1,000-project fixtures across all three candidates,
+   including fresh-worker startup and cleanup. All 306 calls match the oracle;
+   30 measured calls per provider/size are descriptive evidence, not the required
+   controlled cold/warm or ≥1,000-sample/multi-process performance qualification.
+   The Go rollup observations justify further qualification, not cutover. The
    [evidence record](testing/adr-012-df0-evidence.md) distinguishes completed
    experiments from NOT-RUN and BLOCKED gates. macOS is the execution priority,
    Linux follows; Windows execution is deferred, not silently removed from the
@@ -75,8 +81,11 @@ upgrade DuckDB as part of its retirement.
 
 At the GitHub snapshot above there were no open PRs. The qualification branch
 `new-merge/df0-macos-limit-qualification` and its successor
-`new-merge/df0-numeric-fidelity` hold the current additive evidence slices.
-Review/integrate that work and remove both refs only after a verified merge.
+`new-merge/df0-numeric-fidelity`, followed by
+`new-merge/df0-portfolio-characterization`, hold the current additive evidence
+slices. Review/integrate that work and remove the three refs only after a
+verified merge. The first two published commits await their scoped PR/hosted-CI
+approval; branch publication alone does not qualify them for merge.
 The retained legacy branch `claude/slice-b-readonly-access` belongs to closed,
 unmerged PR #163.
 Review and selectively port useful missing read-only regression fixtures before

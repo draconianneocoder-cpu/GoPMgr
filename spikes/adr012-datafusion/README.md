@@ -180,3 +180,18 @@ path in both source modes, then JSON/JavaScript using the existing typed-cell
 fixture representation. See [results and limitations](../../docs/testing/adr-012-df0-numeric-fidelity.md).
 This is partial DF-065 evidence, not a production Wails DTO or renderer claim;
 nested JSON remains opaque text. No new Node dependency is needed.
+
+## DF0-E: portfolio backend characterization
+
+```sh
+go build -tags duckdb -o /absolute/path/to/df0-performance ./cmd/df0-performance
+/absolute/path/to/df0-performance -worker /absolute/path/to/df0-worker \
+  -samples 30 > /absolute/path/to/portfolio.jsonl
+```
+
+Uses the same synthetic 0/100/1,000-project fixtures for the shipped DuckDB
+engine, fresh Rust/DataFusion gRPC worker and existing Go exact rollup. Every
+result is oracle-checked, including cleanup before counting worker timings.
+See [method, results and proof limits](../../docs/testing/adr-012-df0-portfolio-performance.md).
+These are partial backend observations; controlled cold/warm, credible p99,
+aggregate RSS, native UI, packaging and production acceptance remain unqualified.
