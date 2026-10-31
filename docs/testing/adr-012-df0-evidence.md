@@ -46,7 +46,7 @@ make a blocked platform pass.
 | DF0-C2 host-mediated Parquet `ReadAt` | **PASS for the native macOS arm64 experiment:** 18 C2 scenarios plus 3 existing-operation regressions. [Scope, IO accounting and limits](adr-012-df0-c2.md). Linux C2: NOT-RUN in this slice; Windows: BLOCKED (no worker transport/native host) |
 | DF0-D / D2 security, no-spill, admission | **Partial native macOS experiment:** [no-spill controls and limits](adr-012-df0-no-spill.md). [Per-child resource accounting](adr-012-df0-resources.md) now covers native 2/4/8-worker cohorts. DF-062 remains BLOCKED on OS-wide tracing; [pre-launch reservation admission](adr-012-df0-admission.md) passes scoped native cohort checks; full DF-064 remains unqualified because actual aggregate RSS/CPU enforcement is not established. [Native macOS limit counterexamples](adr-012-df0-macos-limits.md) now qualify why ordinary per-process limits and process groups are insufficient; the [containment ACR](../review/ADR-012-macos-containment-ACR.md) remains unapproved. Remaining security/platform work is NOT-RUN or independently BLOCKED |
 | DF0-E / E2 performance, numeric fidelity | E: [partial macOS portfolio backend characterization](adr-012-df0-portfolio-performance.md), 306 oracle-checked calls across three providers and three sizes; controlled cold/warm, ≥1,000-sample/multi-process, scale and acceptance qualification NOT-RUN. E2: [partial native macOS typed-cell harness](adr-012-df0-numeric-fidelity.md), 10 jobs/60 rows across two source modes, exact integer/decimal/time/null/nested-text checks and JavaScript loss controls. Full DF-065, production DTO/renderer and nested semantic decoding remain unqualified |
-| DF0-F / F2 packaging, licensing | NOT-RUN |
+| DF0-F / F2 packaging, licensing | [Partial macOS dependency/native-binary inventory](../interoperability/adr-012-rust-dependency-security-sbom.md): 268 reachable packages, source/notice hashes, fresh unfiltered Cargo advisory scan with zero findings/warnings, existing worker linkage/signature/symbol observations. Complete artifact SBOM, license/native-code audit, installed/signed/minimum-OS/update qualification and LC-GATE remain unqualified |
 | DF0-G report | NOT-RUN |
 
 ## DF0-A — baseline freeze (Linux amd64)
@@ -309,7 +309,8 @@ These are observations, not performance results.
 - Security and no-spill, DF0-D. DF-030 to DF-038 and DF-062/064 are NOT-RUN.
 - Performance, DF0-E: see the current partial characterization above; full
   DF-041–DF-045/DF-050 remain unqualified. DF-065 has partial E2 evidence above.
-- Packaging and licensing, DF0-F. DF-046 to DF-049 are NOT-RUN.
+- Packaging and licensing, DF0-F: see the current partial inventory above;
+  full DF-046–DF-049 and LC-GATE remain unqualified.
 
 ## DF0-C — Go↔Rust gRPC local IPC (Linux amd64)
 

@@ -56,6 +56,11 @@ upgrade DuckDB as part of its retirement.
    DuckDB, DataFusion and Go exact-rollup plus DataFusion fairly (DF0-E), verify
    complete numeric/wire fidelity (E2), and qualify packaging, dependencies and
    licensing separately (F/F2 and LC-GATE). The first
+   [macOS dependency/binary inventory](interoperability/adr-012-rust-dependency-security-sbom.md)
+   now records 268 worker-reachable packages, source/notice hashes, a clean
+   version-scoped Cargo audit and existing native binary properties. It is a
+   review input; complete license/SBOM, installed-app and release-clearance
+   gates remain open. The first
    [macOS E2 typed-cell harness](testing/adr-012-df0-numeric-fidelity.md) now
    checks 10 jobs/60 rows, including JavaScript decoding and decimal-scale
    preservation. Production DTO/renderer use and semantic decoding of nested
@@ -82,10 +87,11 @@ upgrade DuckDB as part of its retirement.
 At the GitHub snapshot above there were no open PRs. The qualification branch
 `new-merge/df0-macos-limit-qualification` and its successor
 `new-merge/df0-numeric-fidelity`, followed by
-`new-merge/df0-portfolio-characterization`, hold the current additive evidence
-slices. Review/integrate that work and remove the three refs only after a
-verified merge. The first two published commits await their scoped PR/hosted-CI
-approval; branch publication alone does not qualify them for merge.
+`new-merge/df0-portfolio-characterization`, and the subsequent
+`new-merge/df0-macos-dependency-inventory` hold the additive evidence slices.
+Review/integrate that work and remove the four refs only after a
+verified merge. Scoped PR/hosted-CI approval remains pending; branch publication
+alone does not qualify this work for merge.
 The retained legacy branch `claude/slice-b-readonly-access` belongs to closed,
 unmerged PR #163.
 Review and selectively port useful missing read-only regression fixtures before

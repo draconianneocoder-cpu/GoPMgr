@@ -195,3 +195,21 @@ result is oracle-checked, including cleanup before counting worker timings.
 See [method, results and proof limits](../../docs/testing/adr-012-df0-portfolio-performance.md).
 These are partial backend observations; controlled cold/warm, credible p99,
 aggregate RSS, native UI, packaging and production acceptance remain unqualified.
+
+## DF0-F/F2: dependency and binary review input
+
+From the repository root, generate locked offline Cargo metadata for
+`aarch64-apple-darwin` with the pinned toolchain launcher. From this directory:
+
+```sh
+go run ./cmd/df0-inventory -repo-root ../.. -target aarch64-apple-darwin \
+  < /absolute/path/to/metadata.json > /absolute/path/to/dependencies.json
+go test -race -count=1 ./cmd/df0-inventory
+```
+
+The sorted manifest retains the worker-reachable non-dev graph, declared
+licenses/features/target kinds, source identities and available notice hashes.
+It removes private checkout paths and refuses incomplete graphs or notice-path
+escapes. See [commands, native observations and remaining gates](../../docs/interoperability/adr-012-rust-dependency-security-sbom.md).
+This is a review input, not a complete SBOM, license conclusion, installed-app
+qualification or LC-GATE clearance. The production DuckDB path is unchanged.
