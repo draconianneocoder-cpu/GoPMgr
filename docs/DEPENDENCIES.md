@@ -75,18 +75,13 @@ platform/publication limits are recorded in
   (`internal/analytics`). Production/package builds enable that tag so
   installers include the analytics engine; untagged developer builds link the
   stub. See `docs/design/duckdb-analytics-engine.md`.
-- `google.golang.org/grpc`: gRPC server for the ADR-010 worker connection
-  (`internal/interop/ipc`, from G1-3). It uses local IPC only:
-  Unix-domain sockets on Linux and macOS, and one named pipe on Windows
-  (OWN-02). There is no TCP listener and no fallback (OWN-03, G1-Q1).
-- `google.golang.org/protobuf`: runtime for the generated worker contract
-  (`internal/interop/contract`, from G1-2). The generated code is
-  committed, and CI checks it for drift.
-- `github.com/Microsoft/go-winio`: overlapped I/O for the Windows named
-  pipe (`internal/interop/ipc`, Windows build, from G1-4). G1-4's
-  listener creates the pipe itself, with one instance, first-instance
-  ownership and remote clients rejected (design §3.3 rule 6). It must not
-  use go-winio's unlimited-instance `ListenPipe`.
+- `google.golang.org/grpc`, `google.golang.org/protobuf`, and
+  `github.com/Microsoft/go-winio`: approved ADR-010 G1 dependency pins in
+  `internal/interop/deps_pin.go`, behind the unused `interop_deps_pin` tag.
+  Production G1 contract generation and transport implementation are still
+  pending. The approved transport requires native Unix sockets or Windows
+  named pipes, with no TCP fallback. The separate ADR-010 and ADR-012 spikes
+  are not production G1 implementations.
 
 Check `go.mod` for the authoritative version list.
 
@@ -170,17 +165,19 @@ A G1 package that would start compiling any of these needs a new review.
   linux/amd64, linux/arm64, darwin/arm64, windows/amd64 and windows/arm64.
 - `reuse lint`: compliant.
 
-**Release notices.**
+**Release notices (current packaging).**
 
 - gRPC and genproto are Apache-2.0, and gRPC ships a `NOTICE.txt`.
-- The release packages today bundle third-party notices only for
-  go-sqlcipher.
-- Before any G1 code ships, the packaging slice must add the license
-  texts and notices of every linked Go module (G0 dependency report L2,
-  L5). That predates G1 for the other Go modules too.
-- Release integration is not authorized yet.
+- Package scripts now copy SQLCipher, font, Go-module, DuckDB-native and
+  frontend notices. `scripts/verify-module-notices.sh` checks the binary's
+  linked modules before packaging; the native notices have an additional
+  reviewed-input check. See [LICENSES.md](../LICENSES.md).
+- Before G1 ships, regenerate the Go-module notices for the resulting linked
+  package set and qualify its native packages. Notices do not themselves
+  authorize redistribution or satisfy the independent LC-GATE.
+- Production G1 worker release integration is still pending.
 
-**Java worker (approved for G1-8; nothing is in the repository yet):**
+**Production Java worker dependencies approved for G1-8 (not yet integrated):**
 
 - grpc-java 1.85.1;
 - Netty, the latest 4.2.x patch when G1-8 starts. NIO only, with no
@@ -190,6 +187,19 @@ A G1 package that would start compiling any of these needs a new review.
   checksum-verified as in the G0 toolchain script.
 
 The dependency review §3 lists the artifacts.
+`spikes/adr010-g0-transport/worker/pom.xml` belongs to the isolated transport
+proof, not a shipped worker.
+
+### ADR-012 isolated Rust dependency security gate
+
+The DF0 workspace is outside the application build. Its four temporary source
+overrides select `zstd` 0.14.3 and `zstd-safe` 8.2.0 without retaining the old
+vulnerable pair. The upstream edits are five dependency constraints and marked
+modification notices; Rust code and features are preserved. The [maintenance record](../spikes/adr012-datafusion/third_party/GOPMGR.md)
+records origin checksums, licensing, source guards, ownership and removal.
+The [Zstd assessment](testing/adr-012-df0-zstd-assessment.md) distinguishes the
+earlier vulnerable baseline from adoption evidence. This is spike-only
+authorization, not a dependency waiver or production replacement approval.
 
 ## Frontend Dependencies
 

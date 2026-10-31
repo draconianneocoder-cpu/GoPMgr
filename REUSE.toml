@@ -356,6 +356,20 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
+# Unchanged Apache crate sources plus marked DF0 Cargo constraint edits.
+# Keep upstream LICENSE.txt/NOTICE.txt verbatim; see third_party/GOPMGR.md.
+[[annotations]]
+path = ["spikes/adr012-datafusion/third_party/arrow-ipc-59.3.2/**", "spikes/adr012-datafusion/third_party/parquet-59.3.2/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2016-2026 The Apache Software Foundation"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = ["spikes/adr012-datafusion/third_party/datafusion-55.2.0/**", "spikes/adr012-datafusion/third_party/datafusion-datasource-55.2.0/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2019-2026 The Apache Software Foundation"
+SPDX-License-Identifier = "Apache-2.0"
+
 # ADR-010 G0 spike: files that cannot carry an inline header (go.sum,
 # protoc-generated Java) and the recorded evidence.
 [[annotations]]

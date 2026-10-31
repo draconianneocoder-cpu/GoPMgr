@@ -29,6 +29,7 @@ identifiers used in this project are:
 | `OFL-1.1`            | Committed IBM Plex fonts (Sans, Serif, Mono, Sans Condensed, Sans JP, KR, SC, Arabic, Hebrew, Devanagari, Thai) and Source Sans 3; optional downloaded fonts (Liberation, Noto Sans, JetBrains Mono, Roboto, Arimo, Cousine, Ledger) | https://raw.githubusercontent.com/spdx/license-list-data/main/text/OFL-1.1.txt |
 | `Bitstream-Vera`     | Optional downloaded DejaVu Sans font      | https://raw.githubusercontent.com/spdx/license-list-data/main/text/Bitstream-Vera.txt |
 | `MIT`                | Wails-derived Windows installer templates; vendored `go-sqlcipher` Go code (`third_party/go-sqlcipher/`) | https://github.com/wailsapp/wails/blob/v2.13.0/LICENSE                                             |
+| `Apache-2.0`         | Four temporary DF0 Rust source overrides (`spikes/adr012-datafusion/third_party/`) | Upstream `LICENSE.txt` and `NOTICE.txt` in each crate; [provenance and removal](spikes/adr012-datafusion/third_party/GOPMGR.md) |
 | `BSD-3-Clause`, `blessing`, `Unlicense` | Other vendored code in `third_party/go-sqlcipher/` (SQLCipher and SQLite sources, LibTomCrypt, one Go Authors file) | SPDX License List, via `reuse download` |
 | `LicenseRef-Third-Party-Notices` | The generated `third_party/GO-MODULE-NOTICES.txt`, whose sections keep their own terms (see [Go module notices](#go-module-notices-in-release-packages)) | Written for GoPMgr; `LICENSES/LicenseRef-Third-Party-Notices.txt` |
 
@@ -81,6 +82,12 @@ License text files that correspond to committed assets should be tracked so
 downloads can be regenerated locally when those assets are audited.
 
 ## Go module notices in release packages
+
+The isolated DF0 source overrides are not linked into the Go application or
+included in its Go-module notice inventory. Their upstream license and notice
+files remain beside the source, with `REUSE.toml` annotations and a root
+`LICENSES/Apache-2.0.txt`. This source-copy accounting does not qualify a future
+Rust worker package; DF0-F and the independent LC-GATE remain required.
 
 Every release binary links the Go standard library and dozens of Go modules.
 Their licenses (MIT, BSD, Apache-2.0, ISC and others) require the copyright

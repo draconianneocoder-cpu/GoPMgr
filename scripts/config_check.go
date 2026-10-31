@@ -52,6 +52,10 @@ var supportedConfigs = []configSpec{
 	{path: "spikes/adr012-datafusion/rust/engine/Cargo.toml", format: formatTOML},
 	{path: "spikes/adr012-datafusion/rust/worker/Cargo.toml", format: formatTOML},
 	{path: "spikes/adr012-datafusion/rust/rust-toolchain.toml", format: formatTOML},
+	{path: "spikes/adr012-datafusion/third_party/arrow-ipc-59.3.2/Cargo.toml", format: formatTOML},
+	{path: "spikes/adr012-datafusion/third_party/parquet-59.3.2/Cargo.toml", format: formatTOML},
+	{path: "spikes/adr012-datafusion/third_party/datafusion-55.2.0/Cargo.toml", format: formatTOML},
+	{path: "spikes/adr012-datafusion/third_party/datafusion-datasource-55.2.0/Cargo.toml", format: formatTOML},
 }
 
 func main() {

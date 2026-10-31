@@ -38,3 +38,10 @@ serde_json = { version = "1", features = ["raw_value", "preserve_order"] }
 debug = 0
 lto = "thin"
 codegen-units = 4
+
+# Temporary DF0-only source overrides; provenance/removal: ../third_party/GOPMGR.md.
+[patch.crates-io]
+datafusion = { path = "../third_party/datafusion-55.2.0" }
+datafusion-datasource = { path = "../third_party/datafusion-datasource-55.2.0" }
+arrow-ipc = { path = "../third_party/arrow-ipc-59.3.2" }
+parquet = { path = "../third_party/parquet-59.3.2" }

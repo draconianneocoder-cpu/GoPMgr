@@ -9,6 +9,9 @@ The maintainer directed active Rust tooling to use 1.99.1 on 2026-10-30.
 This updates the isolated DF0 spike, not the production application. The
 workspace and code generator retain MSRV 1.94 and their existing dependency,
 feature and lockfile selections. No minimum-compiler test is implied.
+This records the compiler slice before the later, separately approved
+[Zstd remediation](adr-012-df0-zstd-assessment.md); current dependency results
+are recorded there rather than substituted into these historical measurements.
 
 ## Selection contract
 
@@ -153,11 +156,13 @@ No newly stabilized API or unsafe operation is introduced by this update.
 
 ## Dependency audit
 
+At toolchain qualification,
 `cargo-audit audit --file spikes/adr012-datafusion/rust/Cargo.lock --json`
-**fails** with three vulnerabilities: RUSTSEC-2026-0391 in `zstd` 0.13.3 and
-RUSTSEC-2026-0403 / RUSTSEC-2026-0398 in `zstd-safe` 7.3.0. It also reports ten
+**failed** with three vulnerabilities: RUSTSEC-2026-0391 in `zstd` 0.13.3 and
+RUSTSEC-2026-0403 / RUSTSEC-2026-0398 in `zstd-safe` 7.3.0. It also reported ten
 unsoundness warnings in that old wrapper. The standalone generator lockfile's
-audit passes with no warnings. Neither lockfile was changed or filtered.
+audit passed with no warnings. Neither lockfile was changed or filtered by
+the compiler slice.
 
 These findings predate this toolchain change. Locked metadata enables only
 `std` in the old `zstd-safe` and shared `zstd-sys`, without `experimental`,
@@ -167,15 +172,19 @@ read decoder. No borrowed-stream-context, dictionary-training or mixed
 stream/one-shot call was found in the owned sources or these callers. This
 bounded inspection does not establish exploitability or security clearance.
 
-Keep the audit findings open for a separate dependency disposition before
+The findings were left open for a separate dependency disposition before
 qualifying the reader for production or advancing its security acceptance.
-Changing dependency baselines or disabling supported codecs would require a
-separate reviewed slice, not an undocumented compiler-update side effect.
+Changing dependency baselines or disabling supported codecs required a
+separate reviewed slice, rather than an undocumented compiler-update side effect.
+The follow-up [Zstd assessment](adr-012-df0-zstd-assessment.md) records the
+subsequently approved temporary spike-only overrides and active graph's audit.
+The vulnerable baseline above remains historical evidence, not the current
+dependency selection.
 
 ## Remaining gates
 
-Resolve the old Zstd advisory disposition before DF0-C2 bounded host-mediated
-reads, which remains NOT-RUN. This toolchain update does
+The separate Zstd remediation permits isolated DF0-C2 bounded host-mediated
+read work to resume; that phase remains NOT-RUN. This toolchain update does
 not qualify the replacement, change SQLCipher authority, remove DuckDB, or
 satisfy native-platform, no-spill, packaging/licensing or production-cutover
 gates. Native Linux/Windows execution, MSRV compilation and the complete
