@@ -1,0 +1,1992 @@
+[
+  {
+    "name": "pq-scalars/parquet_range",
+    "outcome": "completed",
+    "batches": 3,
+    "rows": 6,
+    "ipc_bytes": 4248,
+    "max_batch_bytes": 1416,
+    "digest_match": true,
+    "source_match": true,
+    "source_io": {
+      "requests": 2,
+      "rejected": 0,
+      "requested_bytes": 2611,
+      "actual_bytes": 2611,
+      "physical_bytes": 1954,
+      "peak_in_flight": 1
+    },
+    "source_reads": [
+      {
+        "request": 1,
+        "offset": 0,
+        "length": 1954
+      },
+      {
+        "request": 2,
+        "offset": 4,
+        "length": 657
+      }
+    ],
+    "result_json": "{\"spill_count\":0,\"spilled_bytes\":0,\"pool_reserved_after_bytes\":0}",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 27508736,
+    "worker_user_cpu_ns": 3490000,
+    "worker_system_cpu_ns": 3459000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 42380040,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 9246208,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 13061833,
+    "fixture_sha256": "e10ef783971c171d0852ce05db77df9bb1b0d0a4a2bfa338c8f1a056559a40f3",
+    "arrow_types": [
+      "int64",
+      "int32",
+      "uint64",
+      "float64",
+      "bool",
+      "string_view",
+      "binary_view"
+    ],
+    "javascript_verified_table": {
+      "columns": [
+        "i64",
+        "i32",
+        "u64",
+        "f64",
+        "flag",
+        "s",
+        "bin"
+      ],
+      "rows": [
+        [
+          {
+            "k": "int",
+            "v": "0"
+          },
+          {
+            "k": "int",
+            "v": "0"
+          },
+          {
+            "k": "int",
+            "v": "0"
+          },
+          {
+            "k": "float",
+            "v": "0.1"
+          },
+          {
+            "k": "bool",
+            "v": "true"
+          },
+          {
+            "k": "str",
+            "v": "Alpha"
+          },
+          {
+            "k": "bytes",
+            "v": "00"
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "1"
+          },
+          {
+            "k": "int",
+            "v": "2147483647"
+          },
+          {
+            "k": "int",
+            "v": "1"
+          },
+          {
+            "k": "float",
+            "v": "-2.5"
+          },
+          {
+            "k": "bool",
+            "v": "false"
+          },
+          {
+            "k": "str",
+            "v": "Café"
+          },
+          {
+            "k": "bytes",
+            "v": "fffe"
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "-1"
+          },
+          {
+            "k": "int",
+            "v": "-2147483648"
+          },
+          {
+            "k": "int",
+            "v": "18446744073709551615"
+          },
+          {
+            "k": "float",
+            "v": "NaN"
+          },
+          {
+            "k": "bool",
+            "v": "true"
+          },
+          {
+            "k": "str",
+            "v": "项目"
+          },
+          {
+            "k": "bytes",
+            "v": "616263"
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "9223372036854775807"
+          },
+          {
+            "k": "int",
+            "v": "5"
+          },
+          {
+            "k": "int",
+            "v": "9223372036854775808"
+          },
+          {
+            "k": "float",
+            "v": "+Inf"
+          },
+          {
+            "k": "bool",
+            "v": "false"
+          },
+          {
+            "k": "str",
+            "v": "🚀"
+          },
+          {
+            "k": "bytes",
+            "v": ""
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "-9223372036854775808"
+          },
+          {
+            "k": "int",
+            "v": "-5"
+          },
+          {
+            "k": "int",
+            "v": "42"
+          },
+          {
+            "k": "float",
+            "v": "-Inf"
+          },
+          {
+            "k": "bool",
+            "v": "true"
+          },
+          {
+            "k": "str",
+            "v": ""
+          },
+          {
+            "k": "bytes",
+            "v": "80"
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "9007199254740993"
+          },
+          {
+            "k": "int",
+            "v": "9"
+          },
+          {
+            "k": "int",
+            "v": "7"
+          },
+          {
+            "k": "float",
+            "v": "-0"
+          },
+          {
+            "k": "bool",
+            "v": "false"
+          },
+          {
+            "k": "str",
+            "v": "tab\tnew\nline"
+          },
+          {
+            "k": "bytes",
+            "v": "5a5a5a"
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "pq-scalars/parquet_stream",
+    "outcome": "completed",
+    "batches": 3,
+    "rows": 6,
+    "ipc_bytes": 4248,
+    "max_batch_bytes": 1416,
+    "digest_match": true,
+    "source_match": true,
+    "source_io": {
+      "requests": 1,
+      "rejected": 0,
+      "requested_bytes": 1954,
+      "actual_bytes": 1954,
+      "physical_bytes": 1954,
+      "peak_in_flight": 1
+    },
+    "result_json": "{\"spill_count\":0,\"spilled_bytes\":0,\"pool_reserved_after_bytes\":0}",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 27525120,
+    "worker_user_cpu_ns": 3284000,
+    "worker_system_cpu_ns": 3034000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 24826928,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 8755875,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 11677250,
+    "fixture_sha256": "e10ef783971c171d0852ce05db77df9bb1b0d0a4a2bfa338c8f1a056559a40f3",
+    "arrow_types": [
+      "int64",
+      "int32",
+      "uint64",
+      "float64",
+      "bool",
+      "string_view",
+      "binary_view"
+    ],
+    "javascript_verified_table": {
+      "columns": [
+        "i64",
+        "i32",
+        "u64",
+        "f64",
+        "flag",
+        "s",
+        "bin"
+      ],
+      "rows": [
+        [
+          {
+            "k": "int",
+            "v": "0"
+          },
+          {
+            "k": "int",
+            "v": "0"
+          },
+          {
+            "k": "int",
+            "v": "0"
+          },
+          {
+            "k": "float",
+            "v": "0.1"
+          },
+          {
+            "k": "bool",
+            "v": "true"
+          },
+          {
+            "k": "str",
+            "v": "Alpha"
+          },
+          {
+            "k": "bytes",
+            "v": "00"
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "1"
+          },
+          {
+            "k": "int",
+            "v": "2147483647"
+          },
+          {
+            "k": "int",
+            "v": "1"
+          },
+          {
+            "k": "float",
+            "v": "-2.5"
+          },
+          {
+            "k": "bool",
+            "v": "false"
+          },
+          {
+            "k": "str",
+            "v": "Café"
+          },
+          {
+            "k": "bytes",
+            "v": "fffe"
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "-1"
+          },
+          {
+            "k": "int",
+            "v": "-2147483648"
+          },
+          {
+            "k": "int",
+            "v": "18446744073709551615"
+          },
+          {
+            "k": "float",
+            "v": "NaN"
+          },
+          {
+            "k": "bool",
+            "v": "true"
+          },
+          {
+            "k": "str",
+            "v": "项目"
+          },
+          {
+            "k": "bytes",
+            "v": "616263"
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "9223372036854775807"
+          },
+          {
+            "k": "int",
+            "v": "5"
+          },
+          {
+            "k": "int",
+            "v": "9223372036854775808"
+          },
+          {
+            "k": "float",
+            "v": "+Inf"
+          },
+          {
+            "k": "bool",
+            "v": "false"
+          },
+          {
+            "k": "str",
+            "v": "🚀"
+          },
+          {
+            "k": "bytes",
+            "v": ""
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "-9223372036854775808"
+          },
+          {
+            "k": "int",
+            "v": "-5"
+          },
+          {
+            "k": "int",
+            "v": "42"
+          },
+          {
+            "k": "float",
+            "v": "-Inf"
+          },
+          {
+            "k": "bool",
+            "v": "true"
+          },
+          {
+            "k": "str",
+            "v": ""
+          },
+          {
+            "k": "bytes",
+            "v": "80"
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "9007199254740993"
+          },
+          {
+            "k": "int",
+            "v": "9"
+          },
+          {
+            "k": "int",
+            "v": "7"
+          },
+          {
+            "k": "float",
+            "v": "-0"
+          },
+          {
+            "k": "bool",
+            "v": "false"
+          },
+          {
+            "k": "str",
+            "v": "tab\tnew\nline"
+          },
+          {
+            "k": "bytes",
+            "v": "5a5a5a"
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "pq-scalars-nulls/parquet_range",
+    "outcome": "completed",
+    "batches": 3,
+    "rows": 6,
+    "ipc_bytes": 5144,
+    "max_batch_bytes": 1864,
+    "digest_match": true,
+    "source_match": true,
+    "source_io": {
+      "requests": 2,
+      "rejected": 0,
+      "requested_bytes": 2587,
+      "actual_bytes": 2587,
+      "physical_bytes": 1945,
+      "peak_in_flight": 1
+    },
+    "source_reads": [
+      {
+        "request": 1,
+        "offset": 0,
+        "length": 1945
+      },
+      {
+        "request": 2,
+        "offset": 4,
+        "length": 642
+      }
+    ],
+    "result_json": "{\"spill_count\":0,\"spilled_bytes\":0,\"pool_reserved_after_bytes\":0}",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 27508736,
+    "worker_user_cpu_ns": 3262000,
+    "worker_system_cpu_ns": 2888000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 25214752,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 8129167,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 11908833,
+    "fixture_sha256": "7a39102a80dc1d2163912d254b71ffbe53ebd9434e1df532d2ce4b2ff78d0848",
+    "arrow_types": [
+      "int64",
+      "int32",
+      "uint64",
+      "float64",
+      "bool",
+      "string_view",
+      "binary_view"
+    ],
+    "javascript_verified_table": {
+      "columns": [
+        "i64",
+        "i32",
+        "u64",
+        "f64",
+        "flag",
+        "s",
+        "bin"
+      ],
+      "rows": [
+        [
+          {
+            "k": "int",
+            "v": "0"
+          },
+          {
+            "k": "int",
+            "v": "0"
+          },
+          {
+            "k": "int",
+            "v": "0"
+          },
+          {
+            "k": "float",
+            "v": "0.1"
+          },
+          {
+            "k": "bool",
+            "v": "true"
+          },
+          {
+            "k": "str",
+            "v": "Alpha"
+          },
+          {
+            "k": "bytes",
+            "v": "00"
+          }
+        ],
+        [
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "-1"
+          },
+          {
+            "k": "int",
+            "v": "-2147483648"
+          },
+          {
+            "k": "int",
+            "v": "18446744073709551615"
+          },
+          {
+            "k": "float",
+            "v": "NaN"
+          },
+          {
+            "k": "bool",
+            "v": "true"
+          },
+          {
+            "k": "str",
+            "v": "项目"
+          },
+          {
+            "k": "bytes",
+            "v": "616263"
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "9223372036854775807"
+          },
+          {
+            "k": "int",
+            "v": "5"
+          },
+          {
+            "k": "int",
+            "v": "9223372036854775808"
+          },
+          {
+            "k": "float",
+            "v": "+Inf"
+          },
+          {
+            "k": "bool",
+            "v": "false"
+          },
+          {
+            "k": "str",
+            "v": "🚀"
+          },
+          {
+            "k": "bytes",
+            "v": ""
+          }
+        ],
+        [
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "9007199254740993"
+          },
+          {
+            "k": "int",
+            "v": "9"
+          },
+          {
+            "k": "int",
+            "v": "7"
+          },
+          {
+            "k": "float",
+            "v": "-0"
+          },
+          {
+            "k": "bool",
+            "v": "false"
+          },
+          {
+            "k": "str",
+            "v": "tab\tnew\nline"
+          },
+          {
+            "k": "bytes",
+            "v": "5a5a5a"
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "pq-scalars-nulls/parquet_stream",
+    "outcome": "completed",
+    "batches": 3,
+    "rows": 6,
+    "ipc_bytes": 5144,
+    "max_batch_bytes": 1864,
+    "digest_match": true,
+    "source_match": true,
+    "source_io": {
+      "requests": 1,
+      "rejected": 0,
+      "requested_bytes": 1945,
+      "actual_bytes": 1945,
+      "physical_bytes": 1945,
+      "peak_in_flight": 1
+    },
+    "result_json": "{\"spill_count\":0,\"spilled_bytes\":0,\"pool_reserved_after_bytes\":0}",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 27475968,
+    "worker_user_cpu_ns": 3198000,
+    "worker_system_cpu_ns": 2510000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 25533024,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 7381417,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 10383417,
+    "fixture_sha256": "7a39102a80dc1d2163912d254b71ffbe53ebd9434e1df532d2ce4b2ff78d0848",
+    "arrow_types": [
+      "int64",
+      "int32",
+      "uint64",
+      "float64",
+      "bool",
+      "string_view",
+      "binary_view"
+    ],
+    "javascript_verified_table": {
+      "columns": [
+        "i64",
+        "i32",
+        "u64",
+        "f64",
+        "flag",
+        "s",
+        "bin"
+      ],
+      "rows": [
+        [
+          {
+            "k": "int",
+            "v": "0"
+          },
+          {
+            "k": "int",
+            "v": "0"
+          },
+          {
+            "k": "int",
+            "v": "0"
+          },
+          {
+            "k": "float",
+            "v": "0.1"
+          },
+          {
+            "k": "bool",
+            "v": "true"
+          },
+          {
+            "k": "str",
+            "v": "Alpha"
+          },
+          {
+            "k": "bytes",
+            "v": "00"
+          }
+        ],
+        [
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "-1"
+          },
+          {
+            "k": "int",
+            "v": "-2147483648"
+          },
+          {
+            "k": "int",
+            "v": "18446744073709551615"
+          },
+          {
+            "k": "float",
+            "v": "NaN"
+          },
+          {
+            "k": "bool",
+            "v": "true"
+          },
+          {
+            "k": "str",
+            "v": "项目"
+          },
+          {
+            "k": "bytes",
+            "v": "616263"
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "9223372036854775807"
+          },
+          {
+            "k": "int",
+            "v": "5"
+          },
+          {
+            "k": "int",
+            "v": "9223372036854775808"
+          },
+          {
+            "k": "float",
+            "v": "+Inf"
+          },
+          {
+            "k": "bool",
+            "v": "false"
+          },
+          {
+            "k": "str",
+            "v": "🚀"
+          },
+          {
+            "k": "bytes",
+            "v": ""
+          }
+        ],
+        [
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          },
+          {
+            "k": "null",
+            "v": ""
+          }
+        ],
+        [
+          {
+            "k": "int",
+            "v": "9007199254740993"
+          },
+          {
+            "k": "int",
+            "v": "9"
+          },
+          {
+            "k": "int",
+            "v": "7"
+          },
+          {
+            "k": "float",
+            "v": "-0"
+          },
+          {
+            "k": "bool",
+            "v": "false"
+          },
+          {
+            "k": "str",
+            "v": "tab\tnew\nline"
+          },
+          {
+            "k": "bytes",
+            "v": "5a5a5a"
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "pq-decimals/parquet_range",
+    "outcome": "completed",
+    "batches": 3,
+    "rows": 6,
+    "ipc_bytes": 2136,
+    "max_batch_bytes": 712,
+    "digest_match": true,
+    "source_match": true,
+    "source_io": {
+      "requests": 2,
+      "rejected": 0,
+      "requested_bytes": 1898,
+      "actual_bytes": 1898,
+      "physical_bytes": 1408,
+      "peak_in_flight": 1
+    },
+    "source_reads": [
+      {
+        "request": 1,
+        "offset": 0,
+        "length": 1408
+      },
+      {
+        "request": 2,
+        "offset": 4,
+        "length": 490
+      }
+    ],
+    "result_json": "{\"spill_count\":0,\"spilled_bytes\":0,\"pool_reserved_after_bytes\":0}",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 26935296,
+    "worker_user_cpu_ns": 3139000,
+    "worker_system_cpu_ns": 2960000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 25843896,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 8178916,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 11202708,
+    "fixture_sha256": "d64f0d223f2957a50d6209f780453fc67a0219a0b3bf8fc7a597a503c5dafd9e",
+    "arrow_types": [
+      "decimal(38, 4)",
+      "decimal(9, 2)",
+      "decimal256(60, 10)"
+    ],
+    "javascript_verified_table": {
+      "columns": [
+        "d38_4",
+        "d9_2",
+        "d60_10"
+      ],
+      "rows": [
+        [
+          {
+            "k": "dec",
+            "v": "12345.6789"
+          },
+          {
+            "k": "dec",
+            "v": "1.23"
+          },
+          {
+            "k": "dec",
+            "v": "12345678901234567890123456789012345678901234567890.1234567890"
+          }
+        ],
+        [
+          {
+            "k": "dec",
+            "v": "-0.0001"
+          },
+          {
+            "k": "dec",
+            "v": "-1.23"
+          },
+          {
+            "k": "dec",
+            "v": "-1.0000000000"
+          }
+        ],
+        [
+          {
+            "k": "dec",
+            "v": "9999999999999999999999999999999999.9999"
+          },
+          {
+            "k": "dec",
+            "v": "9999999.99"
+          },
+          {
+            "k": "dec",
+            "v": "0.0000000001"
+          }
+        ],
+        [
+          {
+            "k": "dec",
+            "v": "0.0000"
+          },
+          {
+            "k": "dec",
+            "v": "0.00"
+          },
+          {
+            "k": "dec",
+            "v": "0.0000000000"
+          }
+        ],
+        [
+          {
+            "k": "dec",
+            "v": "-42.5000"
+          },
+          {
+            "k": "dec",
+            "v": "0.01"
+          },
+          {
+            "k": "dec",
+            "v": "7.0000000000"
+          }
+        ],
+        [
+          {
+            "k": "dec",
+            "v": "1.0000"
+          },
+          {
+            "k": "dec",
+            "v": "-0.01"
+          },
+          {
+            "k": "dec",
+            "v": "-7.5000000000"
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "pq-decimals/parquet_stream",
+    "outcome": "completed",
+    "batches": 3,
+    "rows": 6,
+    "ipc_bytes": 2136,
+    "max_batch_bytes": 712,
+    "digest_match": true,
+    "source_match": true,
+    "source_io": {
+      "requests": 1,
+      "rejected": 0,
+      "requested_bytes": 1408,
+      "actual_bytes": 1408,
+      "physical_bytes": 1408,
+      "peak_in_flight": 1
+    },
+    "result_json": "{\"spill_count\":0,\"spilled_bytes\":0,\"pool_reserved_after_bytes\":0}",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 26935296,
+    "worker_user_cpu_ns": 3067000,
+    "worker_system_cpu_ns": 2840000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 26030568,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 8114042,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 11076875,
+    "fixture_sha256": "d64f0d223f2957a50d6209f780453fc67a0219a0b3bf8fc7a597a503c5dafd9e",
+    "arrow_types": [
+      "decimal(38, 4)",
+      "decimal(9, 2)",
+      "decimal256(60, 10)"
+    ],
+    "javascript_verified_table": {
+      "columns": [
+        "d38_4",
+        "d9_2",
+        "d60_10"
+      ],
+      "rows": [
+        [
+          {
+            "k": "dec",
+            "v": "12345.6789"
+          },
+          {
+            "k": "dec",
+            "v": "1.23"
+          },
+          {
+            "k": "dec",
+            "v": "12345678901234567890123456789012345678901234567890.1234567890"
+          }
+        ],
+        [
+          {
+            "k": "dec",
+            "v": "-0.0001"
+          },
+          {
+            "k": "dec",
+            "v": "-1.23"
+          },
+          {
+            "k": "dec",
+            "v": "-1.0000000000"
+          }
+        ],
+        [
+          {
+            "k": "dec",
+            "v": "9999999999999999999999999999999999.9999"
+          },
+          {
+            "k": "dec",
+            "v": "9999999.99"
+          },
+          {
+            "k": "dec",
+            "v": "0.0000000001"
+          }
+        ],
+        [
+          {
+            "k": "dec",
+            "v": "0.0000"
+          },
+          {
+            "k": "dec",
+            "v": "0.00"
+          },
+          {
+            "k": "dec",
+            "v": "0.0000000000"
+          }
+        ],
+        [
+          {
+            "k": "dec",
+            "v": "-42.5000"
+          },
+          {
+            "k": "dec",
+            "v": "0.01"
+          },
+          {
+            "k": "dec",
+            "v": "7.0000000000"
+          }
+        ],
+        [
+          {
+            "k": "dec",
+            "v": "1.0000"
+          },
+          {
+            "k": "dec",
+            "v": "-0.01"
+          },
+          {
+            "k": "dec",
+            "v": "-7.5000000000"
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "pq-timestamps/parquet_range",
+    "outcome": "completed",
+    "batches": 3,
+    "rows": 6,
+    "ipc_bytes": 2904,
+    "max_batch_bytes": 968,
+    "digest_match": true,
+    "source_match": true,
+    "source_io": {
+      "requests": 2,
+      "rejected": 0,
+      "requested_bytes": 1984,
+      "actual_bytes": 1984,
+      "physical_bytes": 1509,
+      "peak_in_flight": 1
+    },
+    "source_reads": [
+      {
+        "request": 1,
+        "offset": 0,
+        "length": 1509
+      },
+      {
+        "request": 2,
+        "offset": 4,
+        "length": 475
+      }
+    ],
+    "result_json": "{\"spill_count\":0,\"spilled_bytes\":0,\"pool_reserved_after_bytes\":0}",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 27066368,
+    "worker_user_cpu_ns": 3224000,
+    "worker_system_cpu_ns": 2982000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 26322648,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 8252583,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 11207667,
+    "fixture_sha256": "2f6942858c691f2d6a76a3cc8c9eb2344dde9e0e66c88b23980987cc6bcf20e3",
+    "arrow_types": [
+      "timestamp[us, tz=UTC]",
+      "timestamp[ns]",
+      "timestamp[ms, tz=America/New_York]",
+      "date32"
+    ],
+    "javascript_verified_table": {
+      "columns": [
+        "ts_us_utc",
+        "ts_ns_naive",
+        "ts_ms_ny",
+        "day"
+      ],
+      "rows": [
+        [
+          {
+            "k": "time",
+            "v": "2026-01-02T03:04:05.123456Z"
+          },
+          {
+            "k": "time",
+            "v": "2026-01-02T03:04:05.123456789"
+          },
+          {
+            "k": "time",
+            "v": "2026-01-02T03:04:05.123Z"
+          },
+          {
+            "k": "date",
+            "v": "2026-01-02"
+          }
+        ],
+        [
+          {
+            "k": "time",
+            "v": "2026-03-08T06:59:59Z"
+          },
+          {
+            "k": "time",
+            "v": "2026-03-08T06:59:59"
+          },
+          {
+            "k": "time",
+            "v": "2026-03-08T06:59:59Z"
+          },
+          {
+            "k": "date",
+            "v": "2026-03-08"
+          }
+        ],
+        [
+          {
+            "k": "time",
+            "v": "2026-03-08T07:00:00Z"
+          },
+          {
+            "k": "time",
+            "v": "2026-03-08T07:00:00"
+          },
+          {
+            "k": "time",
+            "v": "2026-03-08T07:00:00Z"
+          },
+          {
+            "k": "date",
+            "v": "2026-03-08"
+          }
+        ],
+        [
+          {
+            "k": "time",
+            "v": "1969-12-31T23:59:59Z"
+          },
+          {
+            "k": "time",
+            "v": "1969-12-31T23:59:59"
+          },
+          {
+            "k": "time",
+            "v": "1969-12-31T23:59:59Z"
+          },
+          {
+            "k": "date",
+            "v": "1969-12-31"
+          }
+        ],
+        [
+          {
+            "k": "time",
+            "v": "2262-04-11T00:00:00Z"
+          },
+          {
+            "k": "time",
+            "v": "2262-04-11T23:47:16.854775807"
+          },
+          {
+            "k": "time",
+            "v": "2262-04-11T00:00:00Z"
+          },
+          {
+            "k": "date",
+            "v": "2262-04-11"
+          }
+        ],
+        [
+          {
+            "k": "time",
+            "v": "0001-01-01T00:00:00Z"
+          },
+          {
+            "k": "time",
+            "v": "1677-09-21T00:12:43.145224192"
+          },
+          {
+            "k": "time",
+            "v": "0001-01-01T00:00:00Z"
+          },
+          {
+            "k": "date",
+            "v": "0001-01-01"
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "pq-timestamps/parquet_stream",
+    "outcome": "completed",
+    "batches": 3,
+    "rows": 6,
+    "ipc_bytes": 2904,
+    "max_batch_bytes": 968,
+    "digest_match": true,
+    "source_match": true,
+    "source_io": {
+      "requests": 1,
+      "rejected": 0,
+      "requested_bytes": 1509,
+      "actual_bytes": 1509,
+      "physical_bytes": 1509,
+      "peak_in_flight": 1
+    },
+    "result_json": "{\"spill_count\":0,\"spilled_bytes\":0,\"pool_reserved_after_bytes\":0}",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 27017216,
+    "worker_user_cpu_ns": 3300000,
+    "worker_system_cpu_ns": 2805000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 26590296,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 7933584,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 10772458,
+    "fixture_sha256": "2f6942858c691f2d6a76a3cc8c9eb2344dde9e0e66c88b23980987cc6bcf20e3",
+    "arrow_types": [
+      "timestamp[us, tz=UTC]",
+      "timestamp[ns]",
+      "timestamp[ms, tz=America/New_York]",
+      "date32"
+    ],
+    "javascript_verified_table": {
+      "columns": [
+        "ts_us_utc",
+        "ts_ns_naive",
+        "ts_ms_ny",
+        "day"
+      ],
+      "rows": [
+        [
+          {
+            "k": "time",
+            "v": "2026-01-02T03:04:05.123456Z"
+          },
+          {
+            "k": "time",
+            "v": "2026-01-02T03:04:05.123456789"
+          },
+          {
+            "k": "time",
+            "v": "2026-01-02T03:04:05.123Z"
+          },
+          {
+            "k": "date",
+            "v": "2026-01-02"
+          }
+        ],
+        [
+          {
+            "k": "time",
+            "v": "2026-03-08T06:59:59Z"
+          },
+          {
+            "k": "time",
+            "v": "2026-03-08T06:59:59"
+          },
+          {
+            "k": "time",
+            "v": "2026-03-08T06:59:59Z"
+          },
+          {
+            "k": "date",
+            "v": "2026-03-08"
+          }
+        ],
+        [
+          {
+            "k": "time",
+            "v": "2026-03-08T07:00:00Z"
+          },
+          {
+            "k": "time",
+            "v": "2026-03-08T07:00:00"
+          },
+          {
+            "k": "time",
+            "v": "2026-03-08T07:00:00Z"
+          },
+          {
+            "k": "date",
+            "v": "2026-03-08"
+          }
+        ],
+        [
+          {
+            "k": "time",
+            "v": "1969-12-31T23:59:59Z"
+          },
+          {
+            "k": "time",
+            "v": "1969-12-31T23:59:59"
+          },
+          {
+            "k": "time",
+            "v": "1969-12-31T23:59:59Z"
+          },
+          {
+            "k": "date",
+            "v": "1969-12-31"
+          }
+        ],
+        [
+          {
+            "k": "time",
+            "v": "2262-04-11T00:00:00Z"
+          },
+          {
+            "k": "time",
+            "v": "2262-04-11T23:47:16.854775807"
+          },
+          {
+            "k": "time",
+            "v": "2262-04-11T00:00:00Z"
+          },
+          {
+            "k": "date",
+            "v": "2262-04-11"
+          }
+        ],
+        [
+          {
+            "k": "time",
+            "v": "0001-01-01T00:00:00Z"
+          },
+          {
+            "k": "time",
+            "v": "1677-09-21T00:12:43.145224192"
+          },
+          {
+            "k": "time",
+            "v": "0001-01-01T00:00:00Z"
+          },
+          {
+            "k": "date",
+            "v": "0001-01-01"
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "pq-nested/parquet_range",
+    "outcome": "completed",
+    "batches": 3,
+    "rows": 6,
+    "ipc_bytes": 6552,
+    "max_batch_bytes": 2184,
+    "digest_match": true,
+    "source_match": true,
+    "source_io": {
+      "requests": 2,
+      "rejected": 0,
+      "requested_bytes": 3132,
+      "actual_bytes": 3132,
+      "physical_bytes": 2455,
+      "peak_in_flight": 1
+    },
+    "source_reads": [
+      {
+        "request": 1,
+        "offset": 0,
+        "length": 2455
+      },
+      {
+        "request": 2,
+        "offset": 4,
+        "length": 677
+      }
+    ],
+    "result_json": "{\"spill_count\":0,\"spilled_bytes\":0,\"pool_reserved_after_bytes\":0}",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 27721728,
+    "worker_user_cpu_ns": 3368000,
+    "worker_system_cpu_ns": 3212000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 27123864,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 8485791,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 13703833,
+    "fixture_sha256": "f2ab3a6bf7dea76a3adefa91def28623660da40ad2c58183dc0df5c8fbab86e7",
+    "arrow_types": [
+      "list\u003celement: int64, nullable\u003e",
+      "struct\u003ca: int64, b: utf8\u003e",
+      "map\u003cutf8, int64, items_nullable\u003e",
+      "list\u003celement: list\u003celement: utf8, nullable\u003e, nullable\u003e"
+    ],
+    "javascript_verified_table": {
+      "columns": [
+        "ints",
+        "rec",
+        "kv",
+        "nested"
+      ],
+      "rows": [
+        [
+          {
+            "k": "json",
+            "v": "[1,2,3]"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":1,\"b\":\"x\"}"
+          },
+          {
+            "k": "json",
+            "v": "{\"k1\":1,\"k2\":2}"
+          },
+          {
+            "k": "json",
+            "v": "[[\"a\"],[\"b\",\"c\"]]"
+          }
+        ],
+        [
+          {
+            "k": "json",
+            "v": "[]"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":2,\"b\":\"y\"}"
+          },
+          {
+            "k": "json",
+            "v": "{}"
+          },
+          {
+            "k": "json",
+            "v": "[]"
+          }
+        ],
+        [
+          {
+            "k": "json",
+            "v": "[-1]"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":0,\"b\":\"\"}"
+          },
+          {
+            "k": "json",
+            "v": "{\"only\":-5}"
+          },
+          {
+            "k": "json",
+            "v": "[[]]"
+          }
+        ],
+        [
+          {
+            "k": "json",
+            "v": "[9223372036854775807]"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":-3,\"b\":\"z\"}"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":0}"
+          },
+          {
+            "k": "json",
+            "v": "[[\"x\"]]"
+          }
+        ],
+        [
+          {
+            "k": "json",
+            "v": "[0,0]"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":4,\"b\":\"é\"}"
+          },
+          {
+            "k": "json",
+            "v": "{\"b\":9,\"c\":10}"
+          },
+          {
+            "k": "json",
+            "v": "[[\"y\",\"z\"]]"
+          }
+        ],
+        [
+          {
+            "k": "json",
+            "v": "[7]"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":5,\"b\":\"🚀\"}"
+          },
+          {
+            "k": "json",
+            "v": "{\"z\":1}"
+          },
+          {
+            "k": "json",
+            "v": "[[\"é\"]]"
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "pq-nested/parquet_stream",
+    "outcome": "completed",
+    "batches": 3,
+    "rows": 6,
+    "ipc_bytes": 6552,
+    "max_batch_bytes": 2184,
+    "digest_match": true,
+    "source_match": true,
+    "source_io": {
+      "requests": 1,
+      "rejected": 0,
+      "requested_bytes": 2455,
+      "actual_bytes": 2455,
+      "physical_bytes": 2455,
+      "peak_in_flight": 1
+    },
+    "result_json": "{\"spill_count\":0,\"spilled_bytes\":0,\"pool_reserved_after_bytes\":0}",
+    "worker_exit": "exit 0",
+    "killed": false,
+    "engine": "datafusion 55.2.0",
+    "worker_env_names": 1,
+    "worker_env_keys": [
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "worker_send_waits": 0,
+    "worker_peak_rss_bytes": 27688960,
+    "worker_user_cpu_ns": 3292000,
+    "worker_system_cpu_ns": 2722000,
+    "worker_resource_method": "host wait4 child rusage",
+    "host_heap_peak_bytes": 27643528,
+    "inspect_error": "process inspection not implemented on darwin",
+    "endpoint_dir_mode": "-rwx------",
+    "endpoint_socket_mode": "-rw-------",
+    "endpoint_removed": true,
+    "listener_refused": 0,
+    "session_refused": 0,
+    "spawn_to_hello_ns": 8014500,
+    "cancel_to_failed_ns": -1,
+    "cancel_to_exit_ns": -1,
+    "wall_ns": 11626583,
+    "fixture_sha256": "f2ab3a6bf7dea76a3adefa91def28623660da40ad2c58183dc0df5c8fbab86e7",
+    "arrow_types": [
+      "list\u003celement: int64, nullable\u003e",
+      "struct\u003ca: int64, b: utf8\u003e",
+      "map\u003cutf8, int64, items_nullable\u003e",
+      "list\u003celement: list\u003celement: utf8, nullable\u003e, nullable\u003e"
+    ],
+    "javascript_verified_table": {
+      "columns": [
+        "ints",
+        "rec",
+        "kv",
+        "nested"
+      ],
+      "rows": [
+        [
+          {
+            "k": "json",
+            "v": "[1,2,3]"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":1,\"b\":\"x\"}"
+          },
+          {
+            "k": "json",
+            "v": "{\"k1\":1,\"k2\":2}"
+          },
+          {
+            "k": "json",
+            "v": "[[\"a\"],[\"b\",\"c\"]]"
+          }
+        ],
+        [
+          {
+            "k": "json",
+            "v": "[]"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":2,\"b\":\"y\"}"
+          },
+          {
+            "k": "json",
+            "v": "{}"
+          },
+          {
+            "k": "json",
+            "v": "[]"
+          }
+        ],
+        [
+          {
+            "k": "json",
+            "v": "[-1]"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":0,\"b\":\"\"}"
+          },
+          {
+            "k": "json",
+            "v": "{\"only\":-5}"
+          },
+          {
+            "k": "json",
+            "v": "[[]]"
+          }
+        ],
+        [
+          {
+            "k": "json",
+            "v": "[9223372036854775807]"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":-3,\"b\":\"z\"}"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":0}"
+          },
+          {
+            "k": "json",
+            "v": "[[\"x\"]]"
+          }
+        ],
+        [
+          {
+            "k": "json",
+            "v": "[0,0]"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":4,\"b\":\"é\"}"
+          },
+          {
+            "k": "json",
+            "v": "{\"b\":9,\"c\":10}"
+          },
+          {
+            "k": "json",
+            "v": "[[\"y\",\"z\"]]"
+          }
+        ],
+        [
+          {
+            "k": "json",
+            "v": "[7]"
+          },
+          {
+            "k": "json",
+            "v": "{\"a\":5,\"b\":\"🚀\"}"
+          },
+          {
+            "k": "json",
+            "v": "{\"z\":1}"
+          },
+          {
+            "k": "json",
+            "v": "[[\"é\"]]"
+          }
+        ]
+      ]
+    }
+  }
+]

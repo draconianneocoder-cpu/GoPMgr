@@ -47,7 +47,7 @@ Results are recorded in
 | `internal/rollupwire` | Host-side money normalization and result conversion for B's rollup, shared by the CLI and gRPC runs |
 | `rust/worker` | DF0-C worker: a gRPC client over the Unix socket only. It checks that the socket is served by its parent before sending anything |
 | `cmd/df0-ipc` | Runs every DF0-C scenario against the real worker |
-| `evidence/` | JSONL evidence, synthetic only. It contains no user paths or data |
+| `evidence/` | JSON and JSONL evidence, synthetic only. It contains no user paths or data |
 
 ## Reproduce DF0-A
 
@@ -84,8 +84,9 @@ directory even though git ignores it.
 spikes/adr012-datafusion/scripts/run-df0c.sh
 ```
 
-Every scenario launches a fresh worker on a fresh endpoint. The worker gets
-an empty environment and its credential on stdin, never in argv.
+Every scenario launches a fresh worker on a fresh endpoint. The host supplies
+an empty launch environment; native runtimes may add variables, whose names
+Hello reports. The credential travels on stdin, never in argv.
 
 ## Reproduce DF0-C2 (native macOS or Linux)
 
@@ -162,3 +163,20 @@ These bounded synthetic subprocess probes require no DataFusion worker. They
 qualify the distinctions between address-space and resident memory, per-process
 CPU time and aggregate quotas, and process groups and containment. They do not
 establish production enforcement. See the [measurements and limits](../../docs/testing/adr-012-df0-macos-limits.md).
+
+## Numeric wire-fidelity experiment (macOS)
+
+From this spike directory, using the reviewed native worker and existing Node:
+
+```sh
+DF0_WORKER=/absolute/path/to/df0-worker \
+DF0_FIDELITY_EVIDENCE=/absolute/path/to/native.json \
+  go test -race -count=1 -v ./internal/ipchost \
+  -run '^(TestNativeNumericWireFidelity|TestNumericWireJavaScriptRejectsLoss|TestNumericWireRejectsDuplicateMapKeys)$'
+```
+
+Five literal-golden Parquet fixtures traverse the real Rust/Arrow/protobuf/Go
+path in both source modes, then JSON/JavaScript using the existing typed-cell
+fixture representation. See [results and limitations](../../docs/testing/adr-012-df0-numeric-fidelity.md).
+This is partial DF-065 evidence, not a production Wails DTO or renderer claim;
+nested JSON remains opaque text. No new Node dependency is needed.

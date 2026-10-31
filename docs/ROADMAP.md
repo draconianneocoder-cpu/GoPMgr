@@ -35,8 +35,9 @@ near-term priority is making those workflows dependable for wider testing.
 
 ## DuckDB replacement: current delivery sequence
 
-Status checked against main `6102a28` on 2026-10-31. DuckDB remains the shipped
-analytics engine. The accepted [ADR-012 authority](review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)
+Snapshot baseline: main `6102a28` on 2026-10-31. Linked DF0 records also cover
+isolated branch work; that does not mean production integration. DuckDB remains
+the shipped analytics engine. The accepted [ADR-012 authority](review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)
 authorizes the isolated feasibility spike; it does not authorize production
 integration, a release-package change or removal of the legacy engine. Do not
 upgrade DuckDB as part of its retirement.
@@ -54,7 +55,11 @@ upgrade DuckDB as part of its retirement.
 2. **Finish the remaining DF0 evidence.** Close the security matrix; compare
    DuckDB, DataFusion and Go exact-rollup plus DataFusion fairly (DF0-E), verify
    complete numeric/wire fidelity (E2), and qualify packaging, dependencies and
-   licensing separately (F/F2 and LC-GATE). The
+   licensing separately (F/F2 and LC-GATE). The first
+   [macOS E2 typed-cell harness](testing/adr-012-df0-numeric-fidelity.md) now
+   checks 10 jobs/60 rows, including JavaScript decoding and decimal-scale
+   preservation. Production DTO/renderer use and semantic decoding of nested
+   numbers remain unqualified; this is partial E2 evidence. The
    [evidence record](testing/adr-012-df0-evidence.md) distinguishes completed
    experiments from NOT-RUN and BLOCKED gates. macOS is the execution priority,
    Linux follows; Windows execution is deferred, not silently removed from the
@@ -68,8 +73,12 @@ upgrade DuckDB as part of its retirement.
    release paths and obsolete documentation together. Preserve SQLCipher storage
    authority and the Go calculation kernel.
 
-At the GitHub snapshot above there were no open PRs. The sole remote feature
-branch, `claude/slice-b-readonly-access`, belongs to closed, unmerged PR #163.
+At the GitHub snapshot above there were no open PRs. The qualification branch
+`new-merge/df0-macos-limit-qualification` and its successor
+`new-merge/df0-numeric-fidelity` hold the current additive evidence slices.
+Review/integrate that work and remove both refs only after a verified merge.
+The retained legacy branch `claude/slice-b-readonly-access` belongs to closed,
+unmerged PR #163.
 Review and selectively port useful missing read-only regression fixtures before
 retiring it; do not merge its rejected strict-schema/refusal interface wholesale.
 Local backup refs and active worktrees need a separate content/ownership check
