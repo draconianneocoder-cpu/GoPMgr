@@ -14,6 +14,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_server(false)
         .build_client(true)
         .out_dir(out_dir)
-        .compile_protos(&[format!("{proto_dir}/df0ipc.proto")], &[proto_dir.clone()])?;
+        .compile_protos(
+            &[format!("{proto_dir}/df0ipc.proto")],
+            std::slice::from_ref(proto_dir),
+        )?;
     Ok(())
 }

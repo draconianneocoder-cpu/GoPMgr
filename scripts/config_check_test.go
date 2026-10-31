@@ -403,7 +403,7 @@ SPDX-License-Identifier = "GPL-3.0-or-later"
 members = ["engine", "cli", "worker"]
 `)
 	files["spikes/adr012-datafusion/rust/rust-toolchain.toml"] = []byte(`[toolchain]
-channel = "1.97.0"
+channel = "1.99.1"
 `)
 	for _, member := range []string{"engine", "cli", "worker", "codegen"} {
 		files["spikes/adr012-datafusion/rust/"+member+"/Cargo.toml"] = []byte(`[package]

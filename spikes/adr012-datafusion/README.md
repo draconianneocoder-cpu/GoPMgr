@@ -63,8 +63,16 @@ first time, to download modules.
 spikes/adr012-datafusion/scripts/run-df0b.sh
 ```
 
-This needs `rustup`; it installs the pinned toolchain on first use. Cargo
-builds into `CARGO_TARGET_DIR`, which defaults to a directory outside the
+This needs the installed Rust 1.99.1 toolchain managed by `rustup`.
+Install it explicitly if absent (`rustup toolchain install 1.99.1 --profile minimal`).
+The reproduction and code-generation scripts use `scripts/with-rust-toolchain.sh`
+to select its Cargo, compiler and rustdoc even when Homebrew shadows rustup
+proxies. Dispatch through `rustup run` preserves rustup's runtime library setup
+as well. Missing selected tools fail without automatic installation or fallback.
+The launcher changes only its child environment; it does not change rustup's
+global default. Existing compiler wrappers are not neutralized.
+
+Cargo builds into `CARGO_TARGET_DIR`, which defaults to a directory outside the
 repository. Do not build into `rust/target`: `reuse lint` scans that
 directory even though git ignores it.
 
@@ -76,3 +84,12 @@ spikes/adr012-datafusion/scripts/run-df0c.sh
 
 Every scenario launches a fresh worker on a fresh endpoint. The worker gets
 an empty environment and its credential on stdin, never in argv.
+
+## Toolchain evidence
+
+The current pin is Rust 1.99.1; the declared MSRV remains 1.94. Historical
+DF0-B/C records retain their original compiler observations. A collector's
+`rustc --version` field describes the compiler visible to that process, not
+proof of an earlier binary's build. Associate fresh build logs, source and lock
+hashes, compiler identity and artifact hashes for current qualification.
+See [Rust 1.99.1 verification](../../docs/testing/adr-012-rust-1.99.1.md).

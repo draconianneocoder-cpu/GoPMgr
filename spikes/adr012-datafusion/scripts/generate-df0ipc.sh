@@ -33,5 +33,5 @@ PATH="$bin:$PATH" "$bin/protoc" -I proto \
 	--go-grpc_out=internal/df0pb --go-grpc_opt=paths=source_relative \
 	proto/df0ipc.proto
 (cd rust/codegen && PROTOC="$bin/protoc" CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-${TMPDIR:-/tmp}/df0-codegen-target}" \
-	cargo run --locked --release -q -- ../../proto ../worker/src/pb)
+	bash ../../scripts/with-rust-toolchain.sh cargo run --locked --release -q -- ../../proto ../worker/src/pb)
 echo "generate-df0ipc: wrote internal/df0pb and rust/worker/src/pb"

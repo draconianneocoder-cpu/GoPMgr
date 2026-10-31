@@ -8,7 +8,10 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 DF0 is authorized and evidence-only
 ([acceptance record](../review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)).
 This file records results phase by phase. Every result names its command, its
-inputs and its evidence file.
+inputs and its evidence file. Historical environment records are observations
+from those runs, not current toolchain declarations. The current pin and fresh
+build evidence are recorded in [Rust 1.99.1 verification](adr-012-rust-1.99.1.md);
+those compiler changes do not rerun or supersede the Linux DF0-A/B/C measurements.
 
 - Code: [`spikes/adr012-datafusion/`](../../spikes/adr012-datafusion/README.md).
 - Raw records: `spikes/adr012-datafusion/evidence/`.
@@ -26,10 +29,10 @@ DataFusion is C.
 
 | Phase | Status |
 |---|---|
-| DF0-A baseline freeze | **Done on Linux amd64.** macOS arm64 and Windows x64 are BLOCKED: no native host here |
+| DF0-A baseline freeze | **Done on Linux amd64.** Native macOS engine-A baseline NOT-RUN in the current compiler slice. Windows x64: BLOCKED (no native host) |
 | DF0-A2 money oracle | **Done** |
-| DF0-B / B2 DataFusion and Go candidates | **Done on Linux amd64** (standalone engine; no IPC yet). macOS and Windows: BLOCKED |
-| DF0-C Go↔Rust gRPC local IPC | **Done on Linux amd64** (Unix socket): 97 of 97 scenarios PASS. macOS: BLOCKED (code builds; no host). Windows named pipes: BLOCKED (no host; endpoint not yet written) |
+| DF0-B / B2 DataFusion and Go candidates | **Done on Linux amd64** (standalone engine; no IPC yet). The [macOS Rust 1.99.1 functional rerun](adr-012-rust-1.99.1.md) matches; performance qualification NOT-RUN. Windows: BLOCKED (no native host) |
+| DF0-C Go↔Rust gRPC local IPC | **Done on Linux amd64** (Unix socket): 97 of 97 scenarios PASS. macOS: full suite NOT-RUN; socket/secret inspection remains BLOCKED because the Darwin inspector is unimplemented. Windows named pipes: BLOCKED (no host; endpoint not yet written) |
 | DF0-C2 host-mediated Parquet `ReadAt` | NOT-RUN |
 | DF0-D / D2 security, no-spill, admission | NOT-RUN |
 | DF0-E / E2 performance, numeric fidelity | NOT-RUN |
@@ -214,7 +217,7 @@ recorded for the comparison.
 |---|---|
 | Crates (Cargo.lock) | DataFusion 55.2.0, arrow and parquet 59.3.2, tokio 1.54.1, serde_json 1.0.154 (`raw_value`, `preserve_order`); 264 crates in total |
 | DataFusion features | `parquet`, `compression`, `sql`, `recursive_protection`, `nested_expressions`. Default features off; no avro, remote object stores or encryption |
-| Toolchain | rustc 1.97.0 (pinned in `rust-toolchain.toml`; MSRV 1.94) |
+| Toolchain recorded for this run | rustc 1.97.0; MSRV 1.94. The current build pin is 1.99.1; see [toolchain verification](adr-012-rust-1.99.1.md). |
 | Release binary | 139.5 MB unstripped, Linux amd64. Size work is DF0-F |
 | Evidence stamp | `environment.json` records source commit 5d238a5 with a clean worktree (the Codex review fixes below). Compared with the first run, at 9a386a1, every verdict and value is the same; only timings and the new `error_class` field differ |
 | Reproduce | `spikes/adr012-datafusion/scripts/run-df0b.sh` (needs `rustup`; builds outside the repository) |
