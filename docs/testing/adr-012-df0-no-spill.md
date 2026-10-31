@@ -117,8 +117,11 @@ Go module or dependency versions/features are changed.
 The [machine-readable record](../../spikes/adr012-datafusion/evidence/df0-d2-macos/environment.json)
 binds the source, worker, toolchain and eight scenario results by SHA-256.
 The [raw scenario observations](../../spikes/adr012-datafusion/evidence/df0-d2-macos/no-spill.json)
-retain unavailable process inspection explicitly; zero or negative RSS fields
-are not measurements or proof of a memory bound.
+retain the original unavailable process inspection explicitly; their zero or
+negative RSS fields are not measurements or proof of a memory bound. A later
+[host-accounting correction](adr-012-df0-resources.md) records real per-child
+memory/CPU on macOS without rewriting these historical observations. Socket,
+secret and OS-wide filesystem inspection gaps remain open.
 
 Acceptance criteria for this slice passed:
 

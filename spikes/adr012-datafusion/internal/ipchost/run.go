@@ -98,15 +98,18 @@ type Result struct {
 	ResultJSON  string        `json:"result_json,omitempty"`
 	FailedCode  string        `json:"failed_code,omitempty"`
 
-	WorkerPID      int      `json:"-"`
-	WorkerExit     string   `json:"worker_exit"`
-	Killed         bool     `json:"killed"`
-	Engine         string   `json:"engine,omitempty"`
-	WorkerEnvNames int      `json:"worker_env_names"`
-	WorkerEnvKeys  []string `json:"worker_env_keys,omitempty"`
-	SendWaits      uint64   `json:"worker_send_waits"`
-	WorkerPeakRSS  int64    `json:"worker_peak_rss_bytes"`
-	HostHeapPeak   uint64   `json:"host_heap_peak_bytes"`
+	WorkerPID            int      `json:"-"`
+	WorkerExit           string   `json:"worker_exit"`
+	Killed               bool     `json:"killed"`
+	Engine               string   `json:"engine,omitempty"`
+	WorkerEnvNames       int      `json:"worker_env_names"`
+	WorkerEnvKeys        []string `json:"worker_env_keys,omitempty"`
+	SendWaits            uint64   `json:"worker_send_waits"`
+	WorkerPeakRSS        int64    `json:"worker_peak_rss_bytes"`
+	WorkerUserNS         int64    `json:"worker_user_cpu_ns"`
+	WorkerSystemNS       int64    `json:"worker_system_cpu_ns"`
+	WorkerResourceMethod string   `json:"worker_resource_method,omitempty"`
+	HostHeapPeak         uint64   `json:"host_heap_peak_bytes"`
 
 	WorkerSockets  *Sockets `json:"worker_sockets,omitempty"`
 	HostSockets    *Sockets `json:"host_sockets,omitempty"`
@@ -199,7 +202,7 @@ type recvItem struct {
 
 // NewResult returns a Result with every measurement marked not measured.
 func NewResult(name string) Result {
-	return Result{Name: name, SpawnToHelloNS: -1, CancelToFailedNS: -1, CancelToExitNS: -1, WorkerPeakRSS: -1, WallNS: -1}
+	return Result{Name: name, SpawnToHelloNS: -1, CancelToFailedNS: -1, CancelToExitNS: -1, WorkerPeakRSS: -1, WorkerUserNS: -1, WorkerSystemNS: -1, WallNS: -1}
 }
 
 // Run launches the worker and drives one job. It always cleans up: the
@@ -367,6 +370,7 @@ func Run(job Job) (res Result) {
 			<-exited
 		}
 		res.WorkerExit = exitText(cmd.ProcessState)
+		recordProcessResources(&res, cmd.ProcessState)
 		res.WorkerDiag = diag.String()
 	}()
 	if werr != nil || cerr != nil {
@@ -696,7 +700,6 @@ func Run(job Job) (res Result) {
 			}
 			c := e.Completed
 			res.SendWaits = c.GetSendWaits()
-			res.WorkerPeakRSS = int64(c.GetPeakRssBytes())
 			res.ResultJSON = c.GetResultJson()
 			res.DigestMatch = boolp(bytes.Equal(c.GetBatchesSha256(), sum.Sum(nil)) || c.GetBatches() == 0 && len(c.GetBatchesSha256()) == 0)
 			if job.Source != nil {
@@ -734,7 +737,6 @@ func Run(job Job) (res Result) {
 	}
 	res.HostHeapPeak = max(peak, heapBytes())
 	if res.Outcome == "completed" || res.Outcome == "failed" {
-		res.WorkerPeakRSS = max(res.WorkerPeakRSS, PeakRSS(pid))
 		send(&df0pb.HostCommand{Command: &df0pb.HostCommand_Finish{Finish: &df0pb.Finish{}}})
 		select {
 		case <-exited:

@@ -210,6 +210,9 @@ func TestNativeNoSpillPressure(t *testing.T) {
 				return rows, rd.Err()
 			}
 			r := Run(job)
+			if r.WorkerPeakRSS <= 0 || r.WorkerUserNS < 0 || r.WorkerSystemNS < 0 || r.WorkerResourceMethod != "host wait4 child rusage" {
+				t.Fatalf("missing post-reap child accounting: %+v", r)
+			}
 			if !r.EndpointRemoved || r.WorkerExit == "" {
 				t.Fatalf("cleanup failed: %+v", r)
 			}
