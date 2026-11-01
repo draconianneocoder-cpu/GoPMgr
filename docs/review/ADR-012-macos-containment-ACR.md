@@ -27,6 +27,15 @@ header declaration, per-child lifetime peak or sampling monitor is insufficient
 proof. CPU rate, sampling intervals, budgets and RSS/footprint accounting
 semantics also need explicit definition before production qualification.
 
+A later [pre-exec follow-up](../testing/adr-012-df0-macos-limits.md#absolute-limits-across-exec-and-child-creation-follow-up)
+found a narrower building block: non-root child-local `RLIMIT_NPROC=0` survived
+exec and refused direct fork/spawn, while an authenticated Rust generation job
+still completed. Practical absolute AS ceilings were refused because the
+launcher image's virtual size was already about 500 GB. A larger AS control
+survived exec and denied a mapping, establishing VM control rather than an RSS
+cap. These findings reduce design uncertainty without qualifying aggregate
+RSS/CPU, delegated-process restrictions or the full sandbox contract.
+
 ## Alternatives
 
 | Option | Impact and limits | Approval and verification |

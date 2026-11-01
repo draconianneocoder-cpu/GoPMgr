@@ -164,6 +164,22 @@ qualify the distinctions between address-space and resident memory, per-process
 CPU time and aggregate quotas, and process groups and containment. They do not
 establish production enforcement. See the [measurements and limits](../../docs/testing/adr-012-df0-macos-limits.md).
 
+The later pre-exec probes distinguish installed limits from actual effects:
+
+```sh
+DF0_WORKER=/absolute/path/to/reviewed/df0-worker \
+DF0_EXEC_LIMIT_EVIDENCE=/absolute/path/to/existing-directory \
+  go test -race -count=1 -v ./internal/ipchost \
+  -run '^TestMacOS(AbsoluteExecLimits|ChildCreationLimit|NativeWorkerExecLimits)$'
+```
+
+The synthetic tests compile a standalone C probe with existing `xcrun clang`.
+The native-worker test skips without `DF0_WORKER`; NPROC checks skip as root.
+Direct fork/spawn refusal survived exec and a Rust generation job completed,
+but practical AS ceilings were refused. A successful larger AS control denied
+a mapping without establishing an RSS cap. See the
+[follow-up evidence and proof limits](../../docs/testing/adr-012-df0-macos-limits.md#absolute-limits-across-exec-and-child-creation-follow-up).
+
 ## Numeric wire-fidelity experiment (macOS)
 
 From this spike directory, using the reviewed native worker and existing Node:

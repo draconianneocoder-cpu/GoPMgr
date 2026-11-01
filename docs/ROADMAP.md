@@ -47,7 +47,10 @@ upgrade DuckDB as part of its retirement.
    reservation checks are implemented in the spike (PRs #173–#175). Reservations
    are not actual memory or CPU caps. The [native limit probes](testing/adr-012-df0-macos-limits.md)
    demonstrate why address-space limits, per-process CPU time and process groups
-   cannot be substituted for combined RSS/CPU/process-tree enforcement. DF-033
+   cannot be substituted for combined RSS/CPU/process-tree enforcement. A later
+   pre-exec follow-up found direct child-creation refusal compatible with a Rust
+   generation job, but practical AS caps failed installation and a larger
+   successful AS control still did not establish RSS enforcement. DF-033
    and full DF-064 remain unqualified; full DF-062 is BLOCKED on independent
    OS-wide filesystem observation and still lacks other required controls. Resolve
    the [containment decision request](review/ADR-012-macos-containment-ACR.md)
@@ -99,8 +102,12 @@ were removed locally and remotely after merge/ancestry and worktree checks.
 [PR #177](https://github.com/draconianneocoder-cpu/GoPMgr/pull/177) then merged
 the build-input SBOM. All eight PR checks passed at `eac7cfe`, and all eight
 main checks passed at `0468ad9`; its feature branch was removed locally and
-remotely. The native-source notice review is subsequent isolated work, separate
-from that frozen baseline.
+remotely. The native-source notice review and pre-exec limit follow-up are
+subsequent isolated work consolidated on `new-merge/df0-macos-exec-limits` for
+one PR, separate from that frozen baseline. The already-published
+`new-merge/df0-native-source-notices` branch is retained until the combined
+work is merged and verified; it should not produce a duplicate PR. Hosted CI
+and merge for the combined head require their own scoped approval.
 The retained legacy branch `claude/slice-b-readonly-access` belongs to closed,
 unmerged PR #163.
 Review and selectively port useful missing read-only regression fixtures before

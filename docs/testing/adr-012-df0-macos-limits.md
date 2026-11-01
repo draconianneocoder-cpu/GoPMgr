@@ -45,6 +45,72 @@ parent-timeout `SIGKILL`. This does not establish the Rust worker's signal
 behavior, nor prove fatal hard-limit behavior for a process that handles the
 soft-limit signal. No timeout was relabelled as successful enforcement.
 
+## Absolute limits across exec and child-creation follow-up
+
+The 2026-11-01 follow-up uses a standalone C image before a fresh `exec`,
+avoiding Go runtime signal/mapping assumptions. The
+[environment, source hashes and fault results](../../spikes/adr012-datafusion/evidence/df0-exec-limits-macos/environment.json)
+identify the run on macOS 27.2 arm64, the unchanged reviewed Rust worker and
+the source baseline. This is development-machine evidence, not minimum-OS or
+installed-app qualification.
+
+| Probe | Observed effect | Limit of the evidence |
+| --- | --- | --- |
+| 128 MiB allocation control | Every 4 KiB position was written/read, checksum 2,949,120; peak RSS exceeded 128 MiB | Detects actual touching rather than only virtual reservation |
+| Absolute AS ceilings of 64 MiB, 512 MiB and 8 GiB | Each setter returned `EINVAL`; the C image already had about 500 GB of virtual address space with about 1.7 MB RSS | Those requested ceilings were not installed; no enforcement success or Rust execution follows |
+| AS ceiling at current VM + 64 MiB | Soft/hard readback survived exec; the new 128 MiB mapping failed with `ENOMEM` | A useful VM-mapping control, with a roughly 500 GB absolute ceiling; not an economical RSS cap |
+| Child-local hard/soft `RLIMIT_NPROC=0` | Both values survived exec; direct `fork` and `posix_spawn` returned `EAGAIN` (35). Both succeeded and were reaped in the unrestricted control | Direct creation by this non-root real UID only; no delegated XPC, privilege-transition or arbitrary descendant-tree guarantee |
+| Real authenticated Rust worker under NPROC=0 | Generated and independently verified all 128 rows; exit 0, positive child RSS and endpoint cleanup | Launcher readback plus successful Rust execution; the worker does not itself report its inherited NPROC limit. Other query/parser operations are not qualified by this job |
+| Real-worker launch requesting 8 GiB AS, alone or combined | Setup failed before Rust exec: exit 78, zero rows, host outcome `worker_exit_before_stream`, endpoint removed | Local setup refusal, not typed gRPC `RESOURCE_LIMIT`. The combined case stops at AS failure and does not establish both controls |
+| Subsequent unrestricted Rust job | All 128 rows verified, exit 0 and cleanup | Demonstrates recovery after these setup refusals |
+
+Raw records: [AS](../../spikes/adr012-datafusion/evidence/df0-exec-limits-macos/absolute-exec.json),
+[child creation](../../spikes/adr012-datafusion/evidence/df0-exec-limits-macos/child-creation.json),
+[Rust jobs](../../spikes/adr012-datafusion/evidence/df0-exec-limits-macos/native-worker.json).
+Parent AS/NPROC limits remained unchanged in the corresponding synthetic tests.
+These numbers are observations, not approved product budgets. A different OS
+result must be investigated rather than relabelled as equivalent enforcement.
+
+Reproduce from the spike directory, with an existing absolute evidence directory:
+
+```sh
+DF0_WORKER=/absolute/path/to/reviewed/df0-worker \
+DF0_EXEC_LIMIT_EVIDENCE=/absolute/path/to/existing-directory \
+  go test -race -count=1 -v ./internal/ipchost \
+  -run '^TestMacOS(AbsoluteExecLimits|ChildCreationLimit|NativeWorkerExecLimits)$'
+```
+
+Without `DF0_WORKER`, the native-worker test explicitly skips; the two synthetic
+tests still run. NPROC tests skip as root because that would test a different
+privilege contract. Each probe is compiled with the existing `xcrun clang`,
+`-std=c11 -Wall -Wextra -Werror`. The C source is neither cgo nor linked into
+Rust. Its fixed 128 MiB mapping is checked before access and unmapped once;
+volatile bounded byte accesses make touching observable. A forked child only
+calls `_exit`; the parent waits for exact owned children, retrying interrupted
+waits. Probe groups have a ten-second timeout, which bounds these controlled,
+non-escaping fixtures rather than containing arbitrary process trees. Core
+dumps are disabled only in the child. The test launcher preserves the worker
+PID and authenticated stdin; it does not change the production launch path.
+The existing macOS allowance for `__CF_USER_TEXT_ENCODING` remains the only
+permitted environment key.
+
+Targeted checks and the full native spike Go race suite passed with the
+hash-bound, cached worker. Vet, source-pin guards, native-source tool tests,
+the existing default/DuckDB analytics tests and repository hygiene gates also
+passed. Seven compiling faults in disposable copies were rejected by the
+intended assertions: omit AS installation, corrupt resident values, request a
+wrong fixed budget, omit NPROC installation, skip fork, skip spawn, and execute
+Rust after setup refusal. Clean and restored controls passed, and fault copies
+were removed. Structured mid-work review added exact-budget checks and NPROC
+readback/effect after exec, rather than accepting configuration alone.
+
+Rust was not rebuilt; no Rust source, dependencies, unsafe surface or FFI changed.
+Linux native execution, Windows, minimum-OS/signed-app, production packaging,
+PDF and UI gates were not run for this isolated follow-up. Independent review
+remains unavailable; structured plan/mid/final self-review is the disclosed
+fallback. No sampling, RSS, CPU-rate, aggregate enforcement or confidentiality
+gate is closed by these tests. The current containment ACR remains unresolved.
+
 ## SDK and upstream cross-check
 
 The installed SDK aliases `RLIMIT_RSS` to `RLIMIT_AS`. Its `libproc.h`
@@ -66,7 +132,11 @@ For context, Apple XNU revision
 `f6217f891ac0bb64f3d375211650a4c1ff8ca1ea`:
 
 - [Address-space implementation](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/kern/kern_resource.c)
-  sets the VM-map size limit.
+  sets the VM-map size limit and refuses an invalid bound.
+- [Exec implementation](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/kern/kern_exec.c)
+  applies the process AS limit to the new map.
+- [Fork/spawn implementation](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/kern/kern_fork.c)
+  checks the non-root real-UID count against the calling process's NPROC limit.
 - [Footprint-limit implementation](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/osfmk/kern/task.c)
   checks privilege before setting the limit.
 - [Memorystatus implementation](https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/kern/kern_memorystatus.c)
