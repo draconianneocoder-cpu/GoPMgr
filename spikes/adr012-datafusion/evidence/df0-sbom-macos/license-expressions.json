@@ -1,0 +1,34 @@
+{
+  "validator": "license-expression",
+  "version": "30.4.4",
+  "expressions": [
+    "(MIT OR Apache-2.0) AND Unicode-3.0",
+    "0BSD OR MIT OR Apache-2.0",
+    "Apache-2.0",
+    "Apache-2.0 AND MIT",
+    "Apache-2.0 OR BSL-1.0",
+    "Apache-2.0 OR MIT",
+    "Apache-2.0 WITH LLVM-exception",
+    "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
+    "BSD-2-Clause OR Apache-2.0 OR MIT",
+    "BSD-3-Clause",
+    "BSD-3-Clause AND MIT",
+    "BSD-3-Clause OR MIT",
+    "CC0-1.0",
+    "GPL-3.0-or-later",
+    "MIT",
+    "MIT OR Apache-2.0",
+    "MIT OR Zlib OR Apache-2.0",
+    "Unicode-3.0",
+    "Unlicense OR MIT",
+    "Zlib",
+    "bzip2-1.0.6"
+  ],
+  "accepted": true,
+  "invalid_identifier_control": {
+    "expression": "Invented-License",
+    "rejected": true,
+    "error": "ExpressionError"
+  },
+  "limit": "Expression grammar and known SPDX identifiers only; no legal conclusion or license compatibility clearance."
+}

@@ -35,8 +35,9 @@ near-term priority is making those workflows dependable for wider testing.
 
 ## DuckDB replacement: current delivery sequence
 
-Snapshot baseline: main `6102a28` on 2026-10-31. Linked DF0 records also cover
-isolated branch work; that does not mean production integration. DuckDB remains
+Snapshot baseline: main `8746d38` on 2026-11-01 UTC, after merged PR #176.
+Linked DF0 records also cover isolated spike work; that does not mean production
+integration. DuckDB remains
 the shipped analytics engine. The accepted [ADR-012 authority](review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)
 authorizes the isolated feasibility spike; it does not authorize production
 integration, a release-package change or removal of the legacy engine. Do not
@@ -59,8 +60,11 @@ upgrade DuckDB as part of its retirement.
    [macOS dependency/binary inventory](interoperability/adr-012-rust-dependency-security-sbom.md)
    now records 268 worker-reachable packages, source/notice hashes, a clean
    version-scoped Cargo audit and existing native binary properties. It is a
-   review input; complete license/SBOM, installed-app and release-clearance
-   gates remain open. The first
+   review input. A subsequent isolated slice adds an artifact-bound SPDX 3.0.1
+   build-input SBOM with official schema/SHACL validation, 263 observed Cargo
+   packages and three hashed native archives. All compiler artifacts in that
+   observation were cached; complete native-source/compiler/SDK/installed-app
+   composition, license and release-clearance gates remain open. The first
    [macOS E2 typed-cell harness](testing/adr-012-df0-numeric-fidelity.md) now
    checks 10 jobs/60 rows, including JavaScript decoding and decimal-scale
    preservation. Production DTO/renderer use and semantic decoding of nested
@@ -84,14 +88,13 @@ upgrade DuckDB as part of its retirement.
    release paths and obsolete documentation together. Preserve SQLCipher storage
    authority and the Go calculation kernel.
 
-At the GitHub snapshot above there were no open PRs. The qualification branch
-`new-merge/df0-macos-limit-qualification` and its successor
-`new-merge/df0-numeric-fidelity`, followed by
-`new-merge/df0-portfolio-characterization`, and the subsequent
-`new-merge/df0-macos-dependency-inventory` hold the additive evidence slices.
-Review/integrate that work and remove the four refs only after a
-verified merge. Scoped PR/hosted-CI approval remains pending; branch publication
-alone does not qualify this work for merge.
+At the GitHub snapshot above there were no open PRs. [PR #176](https://github.com/draconianneocoder-cpu/GoPMgr/pull/176)
+merged the four macOS limit, numeric-fidelity, portfolio-characterization and
+dependency-inventory commits. Its eight hosted checks passed at head `9ff61b1`;
+the eight main checks also passed at `8746d38`. The four qualification branches
+were removed locally and remotely after merge/ancestry and worktree checks.
+The build-input SBOM slice is subsequent isolated work; its evidence is separate
+from that merged snapshot.
 The retained legacy branch `claude/slice-b-readonly-access` belongs to closed,
 unmerged PR #163.
 Review and selectively port useful missing read-only regression fixtures before

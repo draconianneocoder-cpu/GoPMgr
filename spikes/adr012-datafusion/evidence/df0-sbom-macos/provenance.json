@@ -1,0 +1,138 @@
+{
+  "recorded_utc": "2026-11-01T02:54:15Z",
+  "source_snapshot": "8746d3820fc6b49cbd234c99bbcbc6215a51654f",
+  "target": "aarch64-apple-darwin",
+  "worker_sha256": "337b43a96713b9111266dfd624d8a7c715e9445ce9e64c45cc8b46b2f5a10204",
+  "cargo_build_command": "with-rust-toolchain.sh cargo build --manifest-path spikes/adr012-datafusion/rust/Cargo.toml --locked --offline --release -p df0-worker --message-format=json (CARGO_TARGET_DIR set to existing reviewed cache)",
+  "raw_private_build_log_sha256": "0c19e61e389f2cd86cd67f6500fc722e37a4a79c8cfb0aad7760ae7b2e57b3fc",
+  "raw_private_metadata_sha256": "a92323f3970ff7df109b6cfd9af4b3af5168102139ec802ddf3e8319910a4757",
+  "compiler_artifact_events": 301,
+  "fresh_cached_events": 301,
+  "observed_packages": 263,
+  "build_script_events": 34,
+  "resolved_worker_packages": 268,
+  "resolved_but_unobserved": [
+    {
+      "name": "const-random-macro",
+      "version": "0.1.16"
+    },
+    {
+      "name": "const-random",
+      "version": "0.1.18"
+    },
+    {
+      "name": "crunchy",
+      "version": "0.2.4"
+    },
+    {
+      "name": "getrandom",
+      "version": "0.2.17"
+    },
+    {
+      "name": "tiny-keccak",
+      "version": "2.0.2"
+    }
+  ],
+  "fault_controls": [
+    {
+      "fault": "baseline",
+      "exit_code": 0,
+      "compiled": true,
+      "expected_result": true,
+      "test": "TestSBOM"
+    },
+    {
+      "fault": "unobserved-input",
+      "exit_code": 1,
+      "compiled": true,
+      "expected_result": true,
+      "test": "TestSBOMBuildInputsAndArtifactBinding"
+    },
+    {
+      "fault": "skip-worker-hash",
+      "exit_code": 1,
+      "compiled": true,
+      "expected_result": true,
+      "test": "TestSBOMRejectsFailedOrUnboundBuild/wrong-worker-hash"
+    },
+    {
+      "fault": "skip-output-path",
+      "exit_code": 1,
+      "compiled": true,
+      "expected_result": true,
+      "test": "TestSBOMRejectsFailedOrUnboundBuild/wrong-executable"
+    },
+    {
+      "fault": "invent-conclusion",
+      "exit_code": 1,
+      "compiled": true,
+      "expected_result": true,
+      "test": "TestSBOMBuildInputsAndArtifactBinding"
+    },
+    {
+      "fault": "skip-archive-conflict",
+      "exit_code": 1,
+      "compiled": true,
+      "expected_result": true,
+      "test": "TestSBOMRepeatedAndConflictingNativeInputs"
+    }
+  ],
+  "validation_environment": [
+    "attrs==26.1.0",
+    "html5rdf==1.2.1",
+    "jsonschema==4.26.0",
+    "jsonschema-specifications==2025.9.1",
+    "owlrl==7.6.2",
+    "packaging==26.3",
+    "prettytable==3.18.0",
+    "pyparsing==3.3.3",
+    "pyshacl==0.40.2",
+    "rdflib==7.6.0",
+    "referencing==0.37.0",
+    "rpds-py==2026.9.1",
+    "wcwidth==0.9.4"
+  ],
+  "source_sha256": {
+    "spikes/adr012-datafusion/cmd/df0-inventory/main.go": "01c9e830c17b06265368afcd2c79fb98db7ca2ff17eee3c3ff4c9e0109b9fe2f",
+    "spikes/adr012-datafusion/cmd/df0-inventory/main_test.go": "88dbc0f807e1df47954f80ede480e281b019b5e8efc8e2161ab055bb95bd45ca",
+    "spikes/adr012-datafusion/cmd/df0-inventory/sbom.go": "5774f722de126830f87298c17a54524a84691848301cc9d72423e706416859bc",
+    "spikes/adr012-datafusion/cmd/df0-inventory/sbom_test.go": "f50308182a524b325ae30738c142fcd09bf76b8103cbb2437f0524666af2664a",
+    "spikes/adr012-datafusion/tools/validate_spdx3.py": "44b413c4706308919230998c125200c04d38e86be19a314961948daab3aa7c63",
+    "spikes/adr012-datafusion/rust/Cargo.lock": "f8f77209f012c17b92b396519e2681c1755187088a2f39b2042749b042f9a3a6"
+  },
+  "limits": [
+    "Trusted Cargo output and stable source/cache required; no concurrent hostile filesystem claim.",
+    "All compiler artifacts were cached; no clean rebuild or reproducibility qualification.",
+    "Observed packages/archives are build inputs, not complete retained linker contents.",
+    "Compiler standard library, SDK and full nested/native source licensing are not exhaustively inventoried.",
+    "No installed/signed package, minimum-OS, native Linux/Windows, production integration or LC-GATE clearance.",
+    "Independent reviewer quota unavailable; structured plan, mid-work and final self-review fallback."
+  ],
+  "artifact_sha256": {
+    "build-observations.json": "49e8265d6f36cf068b2512aad686d8259582d2f88e79458a9aab70f802da01b7",
+    "license-expressions.json": "b4383d2eb7e96617c4458af9c800c4e41a9fd4083bedc50c7a41cd6486f8ca4b",
+    "native-inputs.json": "ebd36939b43f2ddd2a266097af65f52e223dc583cabd1f960834110574dd5b69",
+    "upstream-notices.json": "2b30371787b26a8a702cd6e35aa69e9e91bbd110f08fc7fd380dc4eaa0e8f168",
+    "validation.json": "100d260a1edc8dfb2697da2bd069fd199cd1babc52396fa6aef03e37c8cfb6da",
+    "worker.spdx.json": "9dd13a345a5017e9009b576fd820965a0295220a60d0208718020e63f81bc31b"
+  },
+  "verification": [
+    "Targeted inventory/SBOM race tests passed (11 test functions including 5 new SBOM tests).",
+    "DF0_WORKER=<reviewed worker> go test -race -count=1 ./... passed in isolated spike module.",
+    "go vet ./... passed in isolated spike module; command rechecked after final contextual-error edits.",
+    "Default inventory is byte-identical to prior dependencies.json; repeated CLI SPDX output is byte-identical.",
+    "Wrong hash-bound native input makes CLI exit nonzero with empty stdout and specific artifact-binding error.",
+    "Official JSON schema, identity checks and SHACL passed with four negative controls.",
+    "21 license expressions validated; invented license ID rejected.",
+    "Five compiling Go mutations detected; clean control passed.",
+    "Independent Python graph/input/hash/redaction check passed after refreshing completed captures.",
+    "Source override integrity, REUSE 3.3, coverage-ledger and release-scope checks passed.",
+    "Inventory tool cross-compiled for Linux amd64; native Linux execution not performed.",
+    "Existing production analytics stub and duckdb-tag tests both passed locally."
+  ],
+  "not_run": [
+    "Fresh Rust rebuild/reproducibility, full embedded-source legal audit, signed/installed package and minimum-OS qualification are outside this partial evidence slice.",
+    "No Svelte/UI, PDF/A/PAdES or full root application release validation: no production application, dependency, format or packaging changes.",
+    "No hosted CI or independent review for this new slice yet; prior hosted approval covered PR #176."
+  ]
+}

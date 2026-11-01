@@ -213,3 +213,57 @@ It removes private checkout paths and refuses incomplete graphs or notice-path
 escapes. See [commands, native observations and remaining gates](../../docs/interoperability/adr-012-rust-dependency-security-sbom.md).
 This is a review input, not a complete SBOM, license conclusion, installed-app
 qualification or LC-GATE clearance. The production DuckDB path is unchanged.
+
+### Artifact-bound SPDX build-input export
+
+The default inventory output remains unchanged. The optional `-format spdx3`
+uses a successful Cargo JSON worker build log and hash-bound native observations.
+From the repository root, capture a build with the same reviewed target cache:
+
+```sh
+CARGO_TARGET_DIR=/absolute/path/to/reviewed-target-cache \
+  bash spikes/adr012-datafusion/scripts/with-rust-toolchain.sh cargo build \
+  --manifest-path spikes/adr012-datafusion/rust/Cargo.toml --locked --offline \
+  --release -p df0-worker --message-format=json > /absolute/path/to/build.jsonl
+```
+
+From this directory, using the locked metadata generated above:
+
+```sh
+go run ./cmd/df0-inventory -repo-root ../.. -target aarch64-apple-darwin \
+  -format spdx3 -build-log /absolute/path/to/build.jsonl \
+  -worker /absolute/path/to/reviewed-target-cache/release/df0-worker \
+  -native-evidence evidence/df0-f-macos/native-worker.json \
+  -created YOUR_RFC3339_OBSERVATION_TIME -revision YOUR_FULL_SOURCE_SNAPSHOT_SHA \
+  < /absolute/path/to/metadata.json > /absolute/path/to/worker.spdx.json
+```
+
+A new worker hash requires new native observations; an old native evidence file
+is rejected. `created` and `revision` are explicit operator observations, not
+inferred build provenance. Stable inputs produce stable output. The recorded
+worker was cached, not cleanly rebuilt; the source snapshot and build inputs
+do not establish reproducibility or exact final linker contents.
+
+Validate in a task-only Python environment with `jsonschema==4.26.0`,
+`pyshacl==0.40.2` and `rdflib==7.6.0`. The complete captured environment is in
+[evidence provenance](evidence/df0-sbom-macos/provenance.json). Obtain these
+versioned official resources and retain them locally:
+
+- [JSON schema](https://spdx.org/schema/3.0.1/spdx-json-schema.json)
+- [JSON-LD context](https://spdx.org/rdf/3.0.1/spdx-context.jsonld)
+- [SHACL model](https://spdx.org/rdf/3.0.1/spdx-model.ttl)
+
+```sh
+/absolute/path/to/task-venv/bin/python tools/validate_spdx3.py \
+  /absolute/path/to/worker.spdx.json --schema /absolute/path/to/schema.json \
+  --context /absolute/path/to/context.json --model /absolute/path/to/model.ttl \
+  --negative-controls
+```
+
+The validator refuses resource hashes other than its pinned official bytes,
+checks identity uniqueness and runs schema plus SHACL without external context
+fetches or added RDFS inference. It is scoped to this generated document.
+Declared SPDX expression syntax/identifiers were checked separately using the
+existing `license-expression 30.4.4` validator; that is not a legal conclusion.
+The [build SBOM and bounded source/notice review](../../docs/interoperability/adr-012-rust-dependency-security-sbom.md#artifact-bound-spdx-build-input-sbom)
+remain partial F/F2 evidence, with no production integration or LC-GATE pass.
