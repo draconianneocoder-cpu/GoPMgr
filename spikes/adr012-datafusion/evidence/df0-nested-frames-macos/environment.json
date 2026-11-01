@@ -1,0 +1,165 @@
+{
+  "recorded_utc": "2026-11-01T21:49:54.397802+00:00",
+  "source_baseline_commit": "79e6797d059c22f961c5ed2cdb3901a5600f6a74",
+  "scope": "Isolated worker serializer correctness; no production cutover or complete nested/RSS/sandbox qualification",
+  "platform": {
+    "os": "macOS",
+    "version": "27.2",
+    "architecture": "arm64"
+  },
+  "go": "go version go1.27.3 darwin/arm64",
+  "worker": {
+    "worker_sha256": "0c4f92d2e2ad8f6c0570487236c516658b99a76b2c324507068639d9adb18b63",
+    "worker_source_sha256": "839cd5360c52532adebdc8e3bec50a45414734ac65abfcb5436f7c5a8231acc8",
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13) (Homebrew)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: aarch64-apple-darwin\nrelease: 1.99.1\nLLVM version: 23.1.3\n",
+    "cargo": "cargo 1.99.1 (5f94df478 2026-08-27) (Homebrew)",
+    "rebuilt": true,
+    "compiler_artifact_fresh": false,
+    "dependencies_clean_rebuilt": false
+  },
+  "source_sha256": {
+    "spikes/adr012-datafusion/rust/worker/src/main.rs": "839cd5360c52532adebdc8e3bec50a45414734ac65abfcb5436f7c5a8231acc8",
+    "spikes/adr012-datafusion/internal/ipchost/nested_frames_unix_test.go": "49a0d8ed459cc8d1038fbe303bc6d8a053b9e7e34a0f2955dc5d2e95b92fd35f",
+    "spikes/adr012-datafusion/rust/Cargo.lock": "f8f77209f012c17b92b396519e2681c1755187088a2f39b2042749b042f9a3a6",
+    "spikes/adr012-datafusion/rust/Cargo.toml": "134d1ec1e332fc55e9f5fafd3aa5b2cb0cbc919e4d50b87d9683fcc67fee5e48",
+    "spikes/adr012-datafusion/rust/worker/Cargo.toml": "70a3569546edbf557e7f76c67ee4ab1a71df48b6d9fbabe6bf085736d7cd97e4",
+    "spikes/adr012-datafusion/rust/rust-toolchain.toml": "f89219dc72f55c723ee4bca193dbec9277c5a322eac1aa5328584575f0afdbd2"
+  },
+  "evidence_sha256": {
+    "native.json": "e5fa73317120b8b0add0cd8b53df0b65f751cb0bb880fa873aca2fed8b67ba1d"
+  },
+  "regressions_before_fix": [
+    {
+      "case": "selected nested view row",
+      "exit_code": 101,
+      "failure": "one row needs at least 6817160 bytes, over the frame cap"
+    },
+    {
+      "case": "populated views behind null mask",
+      "exit_code": 101,
+      "failure": "one row needs at least 164680 bytes, over the frame cap"
+    },
+    {
+      "case": "child payload behind null container",
+      "exit_code": 101,
+      "failure": "one row needs at least 2883584 bytes, over the frame cap"
+    }
+  ],
+  "fault_controls": [
+    {
+      "case": "baseline",
+      "test_filter": "frames_",
+      "exit_code": 0,
+      "expected_failure": null,
+      "detected": false
+    },
+    {
+      "case": "omit-struct-traversal",
+      "test_filter": "frames_compact_nested_sliced_views",
+      "exit_code": 101,
+      "expected_failure": "one row needs at least",
+      "detected": true
+    },
+    {
+      "case": "omit-list-child-trim",
+      "test_filter": "frames_compact_nested_sliced_views",
+      "exit_code": 101,
+      "expected_failure": "one row needs at least",
+      "detected": true
+    },
+    {
+      "case": "top-level-only-preflight",
+      "test_filter": "frames_preflight_nested_shared_views_and_refuse_oversize_rows",
+      "exit_code": 101,
+      "expected_failure": "right: 6815744",
+      "detected": true
+    },
+    {
+      "case": "omit-string-compaction",
+      "test_filter": "frames_compact_nested_sliced_views",
+      "exit_code": 101,
+      "expected_failure": "one row needs at least",
+      "detected": true
+    },
+    {
+      "case": "omit-binary-compaction",
+      "test_filter": "frames_preserve_nested_container_slices_and_nulls",
+      "exit_code": 101,
+      "expected_failure": "one row needs at least",
+      "detected": true
+    },
+    {
+      "case": "copy-null-hidden-views",
+      "test_filter": "frames_do_not_materialize_view_values_hidden_by_nulls",
+      "exit_code": 101,
+      "expected_failure": "one row needs at least",
+      "detected": true
+    },
+    {
+      "case": "lose-struct-null-mask",
+      "test_filter": "frames_preserve_nested_container_slices_and_nulls",
+      "exit_code": 101,
+      "expected_failure": "failed: struct",
+      "detected": true
+    },
+    {
+      "case": "omit-parent-null-propagation",
+      "test_filter": "frames_discard_payloads_hidden_by_null_containers",
+      "exit_code": 101,
+      "expected_failure": "one row needs at least",
+      "detected": true
+    },
+    {
+      "case": "keep-null-list-child-spans",
+      "test_filter": "frames_discard_payloads_hidden_by_null_containers",
+      "exit_code": 101,
+      "expected_failure": "one row needs at least",
+      "detected": true
+    },
+    {
+      "case": "restored",
+      "test_filter": "frames_",
+      "exit_code": 0,
+      "expected_failure": null,
+      "detected": false
+    }
+  ],
+  "validation": {
+    "rust_format": "cargo fmt --all -- --check",
+    "rust_workspace": "cargo test --workspace --locked --offline",
+    "rust_clippy": "cargo clippy --workspace --all-targets --locked --offline -- -D warnings",
+    "rust_release_tests": "cargo test --locked --offline --release -p df0-worker",
+    "rust_worker_tests_passed": 14,
+    "release_build": "cargo build --locked --offline --release -p df0-worker --message-format=json",
+    "go_race": "DF0_WORKER=<rebuilt-worker> DF0_NESTED_FRAME_EVIDENCE=<path> go test -race -count=1 -v ./internal/... ./cmd/...",
+    "go_vet": "go vet ./internal/... ./cmd/...",
+    "linux_cross_compile": "GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go test -c ./internal/ipchost -o <temporary-binary>",
+    "root_guards": "go test ./scripts -run 'TestDF0|TestConfig' -count=1",
+    "baseline_analytics": [
+      "go test ./internal/analytics -count=1",
+      "go test -tags duckdb ./internal/analytics -count=1"
+    ],
+    "cargo_audit": "cargo audit --json",
+    "final_native_targeted": "DF0_WORKER=<rebuilt-worker> DF0_NESTED_FRAME_EVIDENCE=<path> go test -race -count=1 -v ./internal/ipchost -run '^TestNativeNestedFrameRecovery$'"
+  },
+  "warning": "Development engine test emitted pre-existing large __eh_frame linker warning; not suppressed; worker release tests and build passed",
+  "review": "Independent reviewer capacity unavailable; structured plan/mid/final self-review fallback",
+  "limits": [
+    "Five targeted common nested container kinds only; other containers unchanged and unqualified",
+    "Null leaf and parent-container view payloads normalized for targeted kinds; unsupported kinds remain unqualified",
+    "Frame payload preflight is not an RSS/metadata/scratch/CPU bound",
+    "Native Parquet fixture leaf is ordinary Utf8 and initially passed old worker; not evidence of real DataFusion nested-view execution",
+    "No native Linux/Windows, minimum-OS/signed-app, full production/PDF/UI or hosted CI",
+    "Historical SBOM/native inventory bind older binary; final artifact needs refreshed binding and release qualification"
+  ],
+  "cargo_audit": {
+    "exit_code": 0,
+    "vulnerabilities": 0,
+    "warnings": {},
+    "database": {
+      "advisory-count": 1395,
+      "last-commit": "2295466c4e9df26647fd67d8fa1c705ac2fc7f81",
+      "last-updated": "2026-10-30T12:12:39+01:00"
+    }
+  }
+}

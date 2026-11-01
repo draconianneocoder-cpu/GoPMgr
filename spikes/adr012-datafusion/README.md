@@ -116,6 +116,12 @@ self-test and the 21 existing native regressions. See the
 It does not complete host-wide admission, OS-wide observation or production
 containment qualification. Linux refuses the experimental denial mode.
 
+The later [nested frame repair](../../docs/testing/adr-012-df0-nested-frames.md)
+qualifies selected child spans and null-aware view compaction in five common
+containers. Its Rust regressions exercise actual views; five real-worker jobs
+separately check ordinary nested-string compatibility, refusal and recovery.
+This does not complete nested-schema, containment or production qualification.
+
 ## Resource accounting (macOS first)
 
 The host records per-child peak RSS and user/system CPU time after reaping each

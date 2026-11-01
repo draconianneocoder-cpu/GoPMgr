@@ -25,7 +25,13 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use datafusion::arrow::array::{ArrayRef, AsArray, RecordBatch, StringBuilder};
+use datafusion::arrow::array::{
+    Array, ArrayRef, AsArray, BinaryViewArray, FixedSizeListArray, GenericListArray, MapArray,
+    OffsetSizeTrait, RecordBatch, RecordBatchOptions, StringBuilder, StringViewArray, StructArray,
+    make_array,
+};
+use datafusion::arrow::buffer::{NullBuffer, OffsetBuffer};
+use datafusion::arrow::compute::concat;
 use datafusion::arrow::datatypes::{DataType, Field, Int64Type, Schema};
 use datafusion::arrow::ipc::writer::StreamWriter;
 use hyper_util::rt::TokioIo;
@@ -440,31 +446,158 @@ fn with_payload(batch: &RecordBatch, width: usize) -> Result<RecordBatch, String
     RecordBatch::try_new(schema, cols).map_err(|e| e.to_string())
 }
 
+fn selected_list_values<O: OffsetSizeTrait>(
+    offsets: OffsetBuffer<O>,
+    values: &ArrayRef,
+    nulls: Option<&NullBuffer>,
+) -> Result<(OffsetBuffer<O>, ArrayRef), String> {
+    let first = offsets[0];
+    if !nulls.is_some_and(|n| n.null_count() > 0) {
+        let start = first.as_usize();
+        let end = offsets[offsets.len() - 1].as_usize();
+        return Ok((
+            OffsetBuffer::new(
+                offsets
+                    .iter()
+                    .map(|v| *v - first)
+                    .collect::<Vec<_>>()
+                    .into(),
+            ),
+            values.slice(start, end - start),
+        ));
+    }
+    let mut selected = Vec::new();
+    let mut rebased = Vec::with_capacity(offsets.len());
+    let mut end = O::default();
+    rebased.push(end);
+    for i in 0..offsets.len() - 1 {
+        if !nulls.is_some_and(|n| n.is_null(i)) {
+            let len = offsets[i + 1] - offsets[i];
+            if len.as_usize() != 0 {
+                selected.push(values.slice(offsets[i].as_usize(), len.as_usize()));
+                end += len;
+            }
+        }
+        rebased.push(end);
+    }
+    let values = match selected.as_slice() {
+        [] => values.slice(0, 0),
+        [only] => only.clone(),
+        slices => concat(&slices.iter().map(|a| a.as_ref()).collect::<Vec<_>>())
+            .map_err(|e| e.to_string())?,
+    };
+    Ok((OffsetBuffer::new(rebased.into()), values))
+}
+
+fn mask_parent_nulls(column: &ArrayRef, parent: Option<&NullBuffer>) -> Result<ArrayRef, String> {
+    if !parent.is_some_and(|n| n.null_count() > 0)
+        || matches!(
+            column.data_type(),
+            DataType::Null | DataType::Union(_, _) | DataType::RunEndEncoded(_, _)
+        )
+    {
+        return Ok(column.clone());
+    }
+    let data = column
+        .to_data()
+        .into_builder()
+        .nulls(NullBuffer::union(column.nulls(), parent))
+        .build()
+        .map_err(|e| e.to_string())?;
+    Ok(make_array(data))
+}
+
+fn map_list_views<O: OffsetSizeTrait>(
+    list: &GenericListArray<O>,
+    map: &mut impl FnMut(&ArrayRef) -> ArrayRef,
+) -> Result<ArrayRef, String> {
+    let (field, offsets, values, nulls) = list.clone().into_parts();
+    let (offsets, selected) = selected_list_values(offsets, &values, nulls.as_ref())?;
+    let values = map_view_arrays(&selected, map)?;
+    GenericListArray::<O>::try_new(field, offsets, values, nulls)
+        .map(|a| Arc::new(a) as ArrayRef)
+        .map_err(|e| e.to_string())
+}
+
+// Preflight and compaction must traverse the same physical child spans. List
+// slices retain values outside their selected offsets; trim those before copying.
+fn map_view_arrays(
+    column: &ArrayRef,
+    map: &mut impl FnMut(&ArrayRef) -> ArrayRef,
+) -> Result<ArrayRef, String> {
+    let mapped: ArrayRef = match column.data_type() {
+        DataType::Utf8View | DataType::BinaryView => map(column),
+        DataType::Struct(_) => {
+            let a = column.as_struct();
+            let children = a
+                .columns()
+                .iter()
+                .map(|c| map_view_arrays(&mask_parent_nulls(c, a.nulls())?, map))
+                .collect::<Result<Vec<_>, _>>()?;
+            Arc::new(
+                StructArray::try_new_with_length(
+                    a.fields().clone(),
+                    children,
+                    a.nulls().cloned(),
+                    a.len(),
+                )
+                .map_err(|e| e.to_string())?,
+            )
+        }
+        DataType::List(_) => return map_list_views(column.as_list::<i32>(), map),
+        DataType::LargeList(_) => return map_list_views(column.as_list::<i64>(), map),
+        DataType::FixedSizeList(_, _) => {
+            let a = column.as_fixed_size_list();
+            let (field, size, values, nulls) = a.clone().into_parts();
+            let expanded = nulls.as_ref().map(|n| n.expand(size as usize));
+            let values = map_view_arrays(&mask_parent_nulls(&values, expanded.as_ref())?, map)?;
+            Arc::new(
+                FixedSizeListArray::try_new_with_length(field, size, values, nulls, a.len())
+                    .map_err(|e| e.to_string())?,
+            )
+        }
+        DataType::Map(_, _) => {
+            let a = column.as_map();
+            let (field, offsets, entries, nulls, ordered) = a.clone().into_parts();
+            let entries: ArrayRef = Arc::new(entries);
+            let (offsets, selected) = selected_list_values(offsets, &entries, nulls.as_ref())?;
+            let entries = map_view_arrays(&selected, map)?;
+            Arc::new(
+                MapArray::try_new(field, offsets, entries.as_struct().clone(), nulls, ordered)
+                    .map_err(|e| e.to_string())?,
+            )
+        }
+        _ => column.clone(),
+    };
+    Ok(mapped)
+}
+
 fn ipc_bytes(batch: &RecordBatch) -> Result<Vec<u8>, String> {
-    // View slices retain whole backing buffers. Compact visible values so a
-    // small row cannot inherit an unrelated multi-megabyte transport payload.
-    let compacted;
-    let batch = if batch
+    let columns = batch
         .columns()
         .iter()
-        .any(|c| matches!(c.data_type(), DataType::Utf8View | DataType::BinaryView))
-    {
-        let columns: Vec<ArrayRef> = batch
-            .columns()
-            .iter()
-            .map(|c| match c.data_type() {
-                DataType::Utf8View => Arc::new(c.as_string_view().gc()) as ArrayRef,
-                DataType::BinaryView => Arc::new(c.as_binary_view().gc()) as ArrayRef,
-                _ => c.clone(),
+        .map(|c| {
+            map_view_arrays(c, &mut |view| match view.data_type() {
+                // Rebuild only logical values: gc also copies descriptors hidden
+                // by nulls, which would bypass the non-null payload preflight.
+                DataType::Utf8View => {
+                    Arc::new(StringViewArray::from_iter(view.as_string_view().iter())) as ArrayRef
+                }
+                DataType::BinaryView => {
+                    Arc::new(BinaryViewArray::from_iter(view.as_binary_view().iter())) as ArrayRef
+                }
+                _ => unreachable!("mapper receives only view leaves"),
             })
-            .collect();
-        compacted = RecordBatch::try_new(batch.schema(), columns).map_err(|e| e.to_string())?;
-        &compacted
-    } else {
-        batch
-    };
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let batch = RecordBatch::try_new_with_options(
+        batch.schema(),
+        columns,
+        &RecordBatchOptions::new().with_row_count(Some(batch.num_rows())),
+    )
+    .map_err(|e| e.to_string())?;
     let mut w = StreamWriter::try_new(Vec::new(), &batch.schema()).map_err(|e| e.to_string())?;
-    w.write(batch).map_err(|e| e.to_string())?;
+    w.write(&batch).map_err(|e| e.to_string())?;
     w.finish().map_err(|e| e.to_string())?;
     w.into_inner().map_err(|e| e.to_string())
 }
@@ -477,38 +610,47 @@ struct Frames {
     largest_compacted_view_bytes: usize,
 }
 
-fn view_payload_bytes(batch: &RecordBatch) -> usize {
+fn view_payload_bytes(batch: &RecordBatch) -> Result<usize, String> {
     let mut bytes = 0usize;
     for column in batch.columns() {
-        match column.data_type() {
-            DataType::Utf8View => {
-                let values = column.as_string_view();
-                for i in 0..column.len() {
-                    if !column.is_null(i) {
-                        bytes = bytes.saturating_add(values.value(i).len());
+        map_view_arrays(column, &mut |column| {
+            match column.data_type() {
+                DataType::Utf8View => {
+                    let values = column.as_string_view();
+                    for i in 0..column.len() {
+                        if !column.is_null(i) {
+                            bytes = bytes.saturating_add(values.value(i).len());
+                        }
                     }
                 }
-            }
-            DataType::BinaryView => {
-                let values = column.as_binary_view();
-                for i in 0..column.len() {
-                    if !column.is_null(i) {
-                        bytes = bytes.saturating_add(values.value(i).len());
+                DataType::BinaryView => {
+                    let values = column.as_binary_view();
+                    for i in 0..column.len() {
+                        if !column.is_null(i) {
+                            bytes = bytes.saturating_add(values.value(i).len());
+                        }
                     }
                 }
+                _ => unreachable!("mapper receives only view leaves"),
             }
-            _ => {}
-        }
+            column.clone()
+        })?;
     }
-    bytes
+    Ok(bytes)
 }
 
 impl Iterator for Frames {
     type Item = Result<(usize, Vec<u8>), String>;
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(batch) = self.pending.pop() {
-            let visible = view_payload_bytes(&batch);
-            // Preflight before GC: shared views can expand far beyond their
+            let visible = match view_payload_bytes(&batch) {
+                Ok(visible) => visible,
+                Err(error) => {
+                    self.pending.clear();
+                    return Some(Err(error));
+                }
+            };
+            // Preflight before copying: shared views can expand far beyond their
             // physical backing allocation when materialized.
             let bytes = if visible <= self.cap.saturating_sub(FRAME_OVERHEAD) {
                 #[cfg(test)]
@@ -857,6 +999,384 @@ mod tests {
     }
 
     #[test]
+    fn frames_compact_nested_sliced_views() {
+        use datafusion::arrow::array::{Array, ListArray, StringViewBuilder, StructArray};
+        use datafusion::arrow::buffer::OffsetBuffer;
+        use datafusion::arrow::ipc::reader::StreamReader;
+
+        let selected = "selected nested value".repeat(32);
+        let unselected = "UNSELECTED_NESTED_SENTINEL".repeat(128 << 10);
+        let mut strings = StringViewBuilder::new();
+        strings.append_value(&unselected);
+        strings.append_value(&selected);
+        strings.append_value(&unselected);
+        let values: ArrayRef = Arc::new(strings.finish());
+        let list: ArrayRef = Arc::new(ListArray::new(
+            Arc::new(Field::new("item", DataType::Utf8View, true)),
+            OffsetBuffer::new(vec![0i32, 1, 2, 3].into()),
+            values,
+            None,
+        ));
+        let nested: ArrayRef = Arc::new(StructArray::from(vec![(
+            Arc::new(Field::new("list", list.data_type().clone(), true)),
+            list,
+        )]));
+        let batch = RecordBatch::try_from_iter(vec![("nested", nested.slice(1, 1))]).unwrap();
+        let output = frames(&batch, 64 << 10)
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0].0, 1);
+        assert!(output[0].1.len() + FRAME_OVERHEAD <= 64 << 10);
+        assert!(
+            !output[0]
+                .1
+                .windows(26)
+                .any(|w| w == b"UNSELECTED_NESTED_SENTINEL")
+        );
+        let mut reader = StreamReader::try_new(std::io::Cursor::new(&output[0].1), None).unwrap();
+        let decoded = reader.next().unwrap().unwrap();
+        assert_eq!(decoded.schema(), batch.schema());
+        let list = decoded.column(0).as_struct().column(0).as_list::<i32>();
+        assert_eq!(list.value(0).as_string_view().value(0), selected);
+        assert!(reader.next().is_none());
+    }
+
+    #[test]
+    fn frames_preserve_nested_container_slices_and_nulls() {
+        use datafusion::arrow::array::{BinaryViewBuilder, StringArray, StringViewBuilder};
+        use datafusion::arrow::buffer::NullBuffer;
+        use datafusion::arrow::ipc::reader::StreamReader;
+
+        let needle = b"UNSELECTED_NESTED_SENTINEL";
+        let hidden = "UNSELECTED_NESTED_SENTINEL".repeat(128 << 10);
+        let selected = "selected \u{96ea}".repeat(32);
+        let mut strings = StringViewBuilder::new();
+        strings.append_value(&hidden);
+        strings.append_value(&selected);
+        strings.append_null();
+        strings.append_value(&hidden);
+        let strings: ArrayRef = Arc::new(strings.finish());
+        let mut binary = BinaryViewBuilder::new();
+        let bytes = [selected.as_bytes(), &[0, 255]].concat();
+        binary.append_value(hidden.as_bytes());
+        binary.append_value(&bytes);
+        binary.append_null();
+        binary.append_value(hidden.as_bytes());
+        let binary: ArrayRef = Arc::new(binary.finish());
+        let field = Arc::new(Field::new("item", DataType::Utf8View, true).with_metadata(
+            std::collections::HashMap::from([("origin".into(), "fixture".into())]),
+        ));
+        let nulls = Some(NullBuffer::from(vec![true, true, false, true, true]));
+        let list: ArrayRef = Arc::new(GenericListArray::<i32>::new(
+            field.clone(),
+            OffsetBuffer::new(vec![0, 1, 2, 3, 3, 4].into()),
+            strings.clone(),
+            nulls.clone(),
+        ));
+        let large: ArrayRef = Arc::new(GenericListArray::<i64>::new(
+            field.clone(),
+            OffsetBuffer::new(vec![0, 1, 2, 3, 3, 4].into()),
+            strings.clone(),
+            nulls.clone(),
+        ));
+        let fixed: ArrayRef = Arc::new(FixedSizeListArray::new(
+            field,
+            1,
+            strings.clone(),
+            Some(NullBuffer::from(vec![true, true, false, true])),
+        ));
+        let structure: ArrayRef = Arc::new(StructArray::new(
+            vec![
+                Arc::new(Field::new("s", DataType::Utf8View, true)),
+                Arc::new(Field::new("b", DataType::BinaryView, true)),
+            ]
+            .into(),
+            vec![strings, binary],
+            Some(NullBuffer::from(vec![true, true, false, true])),
+        ));
+        let entries = StructArray::from(vec![
+            (
+                Arc::new(Field::new("key", DataType::Utf8, false)),
+                Arc::new(StringArray::from(vec!["old", "keep", "null", "old"])) as ArrayRef,
+            ),
+            (
+                Arc::new(Field::new("value", DataType::BinaryView, true)),
+                structure.as_struct().column(1).clone(),
+            ),
+        ]);
+        let map: ArrayRef = Arc::new(MapArray::new(
+            Arc::new(Field::new("entries", entries.data_type().clone(), false)),
+            OffsetBuffer::new(vec![0, 1, 2, 3, 3, 4].into()),
+            entries,
+            nulls,
+            true,
+        ));
+        for (name, array, count) in [
+            ("struct", structure, 2),
+            ("list", list, 3),
+            ("large-list", large, 3),
+            ("fixed-list", fixed, 2),
+            ("map", map, 3),
+        ] {
+            let schema = Arc::new(Schema::new_with_metadata(
+                vec![Field::new(name, array.data_type().clone(), true)],
+                std::collections::HashMap::from([("source".into(), "literal fixture".into())]),
+            ));
+            let batch = RecordBatch::try_new(schema, vec![array.slice(1, count)]).unwrap();
+            let output = frames(&batch, 64 << 10)
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            assert_eq!(output.len(), 1, "{name}");
+            assert_eq!(output[0].0, count, "{name}");
+            assert!(output[0].1.len() + FRAME_OVERHEAD <= 64 << 10, "{name}");
+            assert!(
+                !output[0].1.windows(needle.len()).any(|w| w == needle),
+                "{name}"
+            );
+            let mut reader =
+                StreamReader::try_new(std::io::Cursor::new(&output[0].1), None).unwrap();
+            let decoded = reader.next().unwrap().unwrap();
+            assert_eq!(decoded, batch, "{name}");
+            assert!(reader.next().is_none(), "{name}");
+        }
+    }
+
+    #[test]
+    fn frames_preflight_nested_shared_views_and_refuse_oversize_rows() {
+        use datafusion::arrow::array::{Int64Array, StringViewBuilder, UInt32Array};
+        use datafusion::arrow::compute::take;
+        use datafusion::arrow::ipc::reader::StreamReader;
+        let text = "nested shared".repeat(4096);
+        let mut builder = StringViewBuilder::new();
+        builder.append_value(&text);
+        let shared = take(&builder.finish(), &UInt32Array::from(vec![0; 128]), None).unwrap();
+        let list: ArrayRef = Arc::new(GenericListArray::<i32>::new(
+            Arc::new(Field::new("item", DataType::Utf8View, false)),
+            OffsetBuffer::new((0i32..=128).collect::<Vec<_>>().into()),
+            shared,
+            None,
+        ));
+        let ids: ArrayRef = Arc::new(Int64Array::from_iter_values(0..128));
+        let batch = RecordBatch::try_from_iter(vec![("id", ids), ("nested", list)]).unwrap();
+        assert_eq!(view_payload_bytes(&batch).unwrap(), 128 * text.len());
+        let cap = 64 << 10;
+        let mut output = frames(&batch, cap);
+        let mut expected_id = 0;
+        for (rows, bytes) in output.by_ref().map(Result::unwrap) {
+            assert_eq!(rows, 1);
+            assert!(bytes.len() + FRAME_OVERHEAD <= cap);
+            let mut reader = StreamReader::try_new(std::io::Cursor::new(bytes), None).unwrap();
+            let decoded = reader.next().unwrap().unwrap();
+            assert_eq!(
+                decoded.column(0).as_primitive::<Int64Type>().value(0),
+                expected_id
+            );
+            assert_eq!(
+                decoded
+                    .column(1)
+                    .as_list::<i32>()
+                    .value(0)
+                    .as_string_view()
+                    .value(0),
+                text
+            );
+            expected_id += 1;
+        }
+        assert_eq!(expected_id, 128);
+        assert!(
+            output.largest_compacted_view_bytes > 0
+                && output.largest_compacted_view_bytes <= cap - FRAME_OVERHEAD
+        );
+        let mut builder = StringViewBuilder::new();
+        builder.append_value("x".repeat(cap));
+        let child: ArrayRef = Arc::new(builder.finish());
+        let nested: ArrayRef = Arc::new(StructArray::from(vec![(
+            Arc::new(Field::new("value", DataType::Utf8View, false)),
+            child,
+        )]));
+        let oversized = RecordBatch::try_from_iter(vec![("nested", nested)]).unwrap();
+        let mut output = frames(&oversized, cap);
+        assert!(
+            output
+                .next()
+                .unwrap()
+                .unwrap_err()
+                .contains("one row needs at least")
+        );
+        assert_eq!(
+            output.largest_compacted_view_bytes, 0,
+            "oversize row compacted before preflight"
+        );
+        assert!(output.next().is_none());
+    }
+
+    #[test]
+    fn frames_do_not_materialize_view_values_hidden_by_nulls() {
+        use datafusion::arrow::array::{BinaryViewArray, StringViewArray};
+        use datafusion::arrow::buffer::NullBuffer;
+        use datafusion::arrow::ipc::reader::StreamReader;
+
+        let hidden = "HIDDEN_NULL_SENTINEL".repeat(4096);
+        let strings = StringViewArray::from(vec![hidden.as_str(); 128]);
+        let strings: ArrayRef = Arc::new(
+            StringViewArray::try_new(
+                strings.views().clone(),
+                strings.data_buffers().to_vec(),
+                Some(NullBuffer::from(vec![false; 128])),
+            )
+            .unwrap(),
+        );
+        let binary = BinaryViewArray::from_iter_values(vec![hidden.as_bytes(); 128]);
+        let binary: ArrayRef = Arc::new(
+            BinaryViewArray::try_new(
+                binary.views().clone(),
+                binary.data_buffers().to_vec(),
+                Some(NullBuffer::from(vec![false; 128])),
+            )
+            .unwrap(),
+        );
+        let nested: ArrayRef = Arc::new(StructArray::from(vec![
+            (Arc::new(Field::new("s", DataType::Utf8View, true)), strings),
+            (
+                Arc::new(Field::new("b", DataType::BinaryView, true)),
+                binary,
+            ),
+        ]));
+        let batch = RecordBatch::try_from_iter(vec![("nested", nested)]).unwrap();
+        assert_eq!(view_payload_bytes(&batch).unwrap(), 0);
+        let output = frames(&batch, 64 << 10)
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(
+            output.len(),
+            1,
+            "null views must not be expanded into hidden payloads and split"
+        );
+        assert_eq!(output[0].0, 128);
+        assert!(
+            !output[0]
+                .1
+                .windows(b"HIDDEN_NULL_SENTINEL".len())
+                .any(|w| w == b"HIDDEN_NULL_SENTINEL")
+        );
+        let mut reader = StreamReader::try_new(std::io::Cursor::new(&output[0].1), None).unwrap();
+        assert_eq!(reader.next().unwrap().unwrap(), batch);
+    }
+
+    #[test]
+    fn frames_discard_payloads_hidden_by_null_containers() {
+        use datafusion::arrow::array::StringArray;
+        use datafusion::arrow::buffer::NullBuffer;
+        use datafusion::arrow::ipc::reader::StreamReader;
+
+        let hidden = "HIDDEN_PARENT_SENTINEL".repeat(128 << 10);
+        let values: ArrayRef = Arc::new(StringViewArray::from(vec![
+            "first selected value",
+            hidden.as_str(),
+            "last selected value",
+        ]));
+        let nulls = Some(NullBuffer::from(vec![true, false, true]));
+        let field = Arc::new(Field::new("item", DataType::Utf8View, false));
+        let list: ArrayRef = Arc::new(GenericListArray::<i32>::new(
+            field.clone(),
+            OffsetBuffer::new(vec![0, 1, 2, 3].into()),
+            values.clone(),
+            nulls.clone(),
+        ));
+        let large: ArrayRef = Arc::new(GenericListArray::<i64>::new(
+            field.clone(),
+            OffsetBuffer::new(vec![0, 1, 2, 3].into()),
+            values.clone(),
+            nulls.clone(),
+        ));
+        let fixed: ArrayRef = Arc::new(FixedSizeListArray::new(
+            field.clone(),
+            1,
+            values.clone(),
+            nulls.clone(),
+        ));
+        let structure: ArrayRef = Arc::new(StructArray::new(
+            vec![field].into(),
+            vec![values.clone()],
+            nulls.clone(),
+        ));
+        let entries = StructArray::from(vec![
+            (
+                Arc::new(Field::new("key", DataType::Utf8, false)),
+                Arc::new(StringArray::from(vec!["a", "b", "c"])) as ArrayRef,
+            ),
+            (
+                Arc::new(Field::new("value", DataType::Utf8View, false)),
+                values,
+            ),
+        ]);
+        let map: ArrayRef = Arc::new(MapArray::new(
+            Arc::new(Field::new("entries", entries.data_type().clone(), false)),
+            OffsetBuffer::new(vec![0, 1, 2, 3].into()),
+            entries,
+            nulls,
+            false,
+        ));
+        for (name, array) in [
+            ("struct", structure),
+            ("list", list),
+            ("large-list", large),
+            ("fixed-list", fixed),
+            ("map", map),
+        ] {
+            let batch = RecordBatch::try_from_iter(vec![(name, array)]).unwrap();
+            let output = frames(&batch, 64 << 10)
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            assert_eq!(output.len(), 1, "{name}");
+            assert_eq!(output[0].0, 3, "{name}");
+            assert!(
+                !output[0]
+                    .1
+                    .windows(b"HIDDEN_PARENT_SENTINEL".len())
+                    .any(|w| w == b"HIDDEN_PARENT_SENTINEL"),
+                "{name}"
+            );
+            let mut reader =
+                StreamReader::try_new(std::io::Cursor::new(&output[0].1), None).unwrap();
+            assert_eq!(reader.next().unwrap().unwrap(), batch, "{name}");
+        }
+    }
+
+    #[test]
+    fn frames_preserve_degenerate_nested_lengths() {
+        use datafusion::arrow::array::StringViewArray;
+        use datafusion::arrow::ipc::reader::StreamReader;
+        let empty: ArrayRef = Arc::new(StringViewArray::from(Vec::<&str>::new()));
+        let zero_width: ArrayRef = Arc::new(
+            FixedSizeListArray::try_new_with_length(
+                Arc::new(Field::new("item", DataType::Utf8View, true)),
+                0,
+                empty,
+                None,
+                3,
+            )
+            .unwrap(),
+        );
+        let empty_struct: ArrayRef = Arc::new(
+            StructArray::try_new_with_length(Vec::<Field>::new().into(), Vec::new(), None, 3)
+                .unwrap(),
+        );
+        let batch = RecordBatch::try_from_iter(vec![
+            ("zero_width", zero_width),
+            ("empty_struct", empty_struct),
+        ])
+        .unwrap();
+        let output = frames(&batch, 64 << 10)
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(output[0].0, 3);
+        let mut reader = StreamReader::try_new(std::io::Cursor::new(&output[0].1), None).unwrap();
+        assert_eq!(reader.next().unwrap().unwrap(), batch);
+    }
+
+    #[test]
     fn frames_preflight_shared_view_expansion_and_yield_incrementally() {
         use datafusion::arrow::array::{StringViewBuilder, UInt32Array};
         use datafusion::arrow::compute::take;
@@ -866,7 +1386,7 @@ mod tests {
         let shared = take(&builder.finish(), &UInt32Array::from(vec![0; 128]), None).unwrap();
         assert!(shared.get_buffer_memory_size() < 128 << 10);
         let batch = RecordBatch::try_from_iter(vec![("view", shared)]).unwrap();
-        assert_eq!(view_payload_bytes(&batch), 128 * value.len());
+        assert_eq!(view_payload_bytes(&batch).unwrap(), 128 * value.len());
         let mut output = frames(&batch, 128 << 10);
         let (rows, first) = output.next().unwrap().unwrap();
         assert_eq!(rows, 1);

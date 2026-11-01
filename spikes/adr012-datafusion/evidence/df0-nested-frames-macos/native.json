@@ -1,0 +1,60 @@
+[
+  {
+    "name": "range",
+    "outcome": "completed",
+    "rows": 1,
+    "digest_match": true,
+    "source_match": true,
+    "worker_exit": "exit 0",
+    "endpoint_removed": true,
+    "killed": false,
+    "max_arrow_bytes": 1544,
+    "nested_leaf_type": "utf8"
+  },
+  {
+    "name": "stream",
+    "outcome": "completed",
+    "rows": 1,
+    "digest_match": true,
+    "source_match": true,
+    "worker_exit": "exit 0",
+    "endpoint_removed": true,
+    "killed": false,
+    "max_arrow_bytes": 1544,
+    "nested_leaf_type": "utf8"
+  },
+  {
+    "name": "range_oversize",
+    "outcome": "failed",
+    "failed_code": "RESOURCE_LIMIT",
+    "detail": "one row needs at least 3408712 bytes, over the frame cap",
+    "rows": 0,
+    "worker_exit": "exit 0",
+    "endpoint_removed": true,
+    "killed": false,
+    "max_arrow_bytes": 0
+  },
+  {
+    "name": "stream_oversize",
+    "outcome": "failed",
+    "failed_code": "RESOURCE_LIMIT",
+    "detail": "one row needs at least 3408712 bytes, over the frame cap",
+    "rows": 0,
+    "worker_exit": "exit 0",
+    "endpoint_removed": true,
+    "killed": false,
+    "max_arrow_bytes": 0
+  },
+  {
+    "name": "recovery",
+    "outcome": "completed",
+    "rows": 1,
+    "digest_match": true,
+    "source_match": true,
+    "worker_exit": "exit 0",
+    "endpoint_removed": true,
+    "killed": false,
+    "max_arrow_bytes": 1544,
+    "nested_leaf_type": "utf8"
+  }
+]

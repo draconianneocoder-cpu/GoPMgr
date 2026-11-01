@@ -73,7 +73,10 @@ upgrade DuckDB as part of its retirement.
    gates remain open. The first
    [macOS E2 typed-cell harness](testing/adr-012-df0-numeric-fidelity.md) now
    checks 10 jobs/60 rows, including JavaScript decoding and decimal-scale
-   preservation. Production DTO/renderer use and semantic decoding of nested
+   preservation. A subsequent [nested-frame repair](testing/adr-012-df0-nested-frames.md)
+   fixes retained backing data and hidden-null materialization in common
+   Arrow containers; its native compatibility jobs are separate from the direct
+   Rust view regressions. Production DTO/renderer use and semantic decoding of nested
    numbers remain unqualified; this is partial E2 evidence. A first
    [macOS portfolio backend characterization](testing/adr-012-df0-portfolio-performance.md)
    checks identical 0/100/1,000-project fixtures across all three candidates,

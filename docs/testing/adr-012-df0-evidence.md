@@ -49,6 +49,11 @@ make a blocked platform pass.
 | DF0-F / F2 packaging, licensing | [Partial macOS dependency/native-binary inventory](../interoperability/adr-012-rust-dependency-security-sbom.md): 268 reachable packages, source/notice hashes, fresh unfiltered Cargo advisory scan with zero findings/warnings, existing worker linkage/signature/symbol observations. Subsequent partial SPDX 3.0.1 build-input SBOM passes official schema/SHACL checks for 263 observed packages, three static archives and the hash-bound worker; all compiler artifacts were cached. A subsequent source review verifies 609 published files and 103 candidate source matches, with 13 verbatim native notice texts; attribution and legal scope remain explicitly limited. Complete composition, license/native-code audit, installed/signed/minimum-OS/update qualification and LC-GATE remain unqualified |
 | DF0-G report | NOT-RUN |
 
+A subsequent [nested-frame repair](adr-012-df0-nested-frames.md) fixes selected
+child-span and hidden-null payload handling in the isolated serializer. Direct
+Rust view regressions and ordinary nested-string native compatibility jobs have
+separate proof limits; this does not complete a security, fidelity or cutover gate.
+
 ## DF0-A — baseline freeze (Linux amd64)
 
 ### Environment
