@@ -54,13 +54,16 @@ upgrade DuckDB as part of its retirement.
    and full DF-064 remain unqualified; full DF-062 is BLOCKED on independent
    OS-wide filesystem observation and still lacks other required controls. Resolve
    the [containment decision request](review/ADR-012-macos-containment-ACR.md)
-   before selecting the next containment implementation. Its 2026-11-01
-   refresh separates accepted actual bounds from undefined accounting windows
-   and budgets; it does not approve sampled compliance. The owner must choose
-   between retaining the current gate, considering a native monitoring policy
-   with explicit exhaustion risk, or authorizing stronger-isolation feasibility.
-   No helper or VM has been qualified. Further independent test slices do not
-   resolve this policy decision. Keep accepted guarantees until it is recorded.
+   before production adoption. On 2026-11-01 the owner authorized native
+   monitoring design/measurement and stronger isolation experiments. The
+   [unprivileged App Sandbox/observer prototype](testing/adr-012-df0-observer-sandbox.md)
+   now demonstrates private-file/TCP restrictions, direct-fork refusal and
+   authenticated native IPC with generation and host-mediated Parquet. It also
+   demonstrates missed memory bursts and permitted own-container writes; neither
+   hard quotas nor full memory-only confidentiality is qualified. Next qualify
+   job-bound observation, failure recovery and filesystem policy, then obtain
+   explicit accounting/budget and adoption decisions. Keep accepted guarantees
+   until changed explicitly; no privileged helper or VM is selected.
 2. **Finish the remaining DF0 evidence.** Close the security matrix; compare
    DuckDB, DataFusion and Go exact-rollup plus DataFusion fairly (DF0-E), verify
    complete numeric/wire fidelity (E2), and qualify packaging, dependencies and

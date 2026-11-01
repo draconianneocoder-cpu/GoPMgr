@@ -1,0 +1,79 @@
+[
+  {
+    "mode": "rss",
+    "before": {
+      "pid": 33777,
+      "start_ticks": 8616914168170,
+      "rss_bytes": 1736704,
+      "footprint_bytes": 1163624,
+      "user_ns": 614375,
+      "system_ns": 1098375,
+      "before_ns": 359033748685000,
+      "after_ns": 359033748687000
+    },
+    "observed": {
+      "pid": 33777,
+      "start_ticks": 8616914168170,
+      "rss_bytes": 35291136,
+      "footprint_bytes": 34734464,
+      "user_ns": 885541,
+      "system_ns": 2546166,
+      "before_ns": 359033778260000,
+      "after_ns": 359033778261000
+    },
+    "ready_to_observed_ns": 27971250,
+    "observation_to_reaped_ns": 507625,
+    "wait4_peak_rss_bytes": 35291136,
+    "wait4_cpu_ns": 3431000,
+    "interval_cpu_cores": 0.058121961115807266,
+    "identity_mismatch_refused": false
+  },
+  {
+    "mode": "cpu",
+    "before": {
+      "pid": 33792,
+      "start_ticks": 8616915473998,
+      "rss_bytes": 1736704,
+      "footprint_bytes": 1163624,
+      "user_ns": 428583,
+      "system_ns": 862750,
+      "before_ns": 359033787009000,
+      "after_ns": 359033787011000
+    },
+    "observed": {
+      "pid": 33792,
+      "start_ticks": 8616915473998,
+      "rss_bytes": 1736704,
+      "footprint_bytes": 1163624,
+      "user_ns": 14632500,
+      "system_ns": 36678250,
+      "before_ns": 359033867340000,
+      "after_ns": 359033867343000
+    },
+    "ready_to_observed_ns": 30190458,
+    "observation_to_reaped_ns": 313250,
+    "wait4_peak_rss_bytes": 1736704,
+    "wait4_cpu_ns": 51310000,
+    "interval_cpu_cores": 0.6226664301452739,
+    "identity_mismatch_refused": false
+  },
+  {
+    "mode": "identity_failure",
+    "before": {
+      "pid": 33808,
+      "start_ticks": 8616917584569,
+      "rss_bytes": 1736704,
+      "footprint_bytes": 1163624,
+      "user_ns": 447125,
+      "system_ns": 811250,
+      "before_ns": 359033877082000,
+      "after_ns": 359033877084000
+    },
+    "ready_to_observed_ns": 29986083,
+    "observation_to_reaped_ns": 576625,
+    "wait4_peak_rss_bytes": 35291136,
+    "wait4_cpu_ns": 2963000,
+    "interval_cpu_cores": 0,
+    "identity_mismatch_refused": true
+  }
+]

@@ -1,0 +1,85 @@
+{
+  "jobs": [
+    {
+      "name": "app-sandbox-generate",
+      "outcome": "completed",
+      "rows": 128,
+      "digest_match": true,
+      "worker_exit": "exit 0",
+      "endpoint_removed": true,
+      "launcher_configuration": [
+        {
+          "mode": "worker",
+          "stage": "preexec",
+          "requested_as_bytes": 0,
+          "install_errno": 0,
+          "read_errno": 0,
+          "as_soft_bytes": 9223372036854775807,
+          "as_hard_bytes": 9223372036854775807,
+          "nproc_soft": 0,
+          "nproc_hard": 0,
+          "virtual_bytes": 500511670272,
+          "peak_rss_bytes": 1720320,
+          "mapping_errno": 0,
+          "checksum": 0,
+          "fork_errno": 0,
+          "spawn_errno": 0,
+          "wait_ok": true
+        }
+      ]
+    },
+    {
+      "name": "app-sandbox-parquet",
+      "outcome": "completed",
+      "rows": 2048,
+      "digest_match": true,
+      "source_match": true,
+      "worker_exit": "exit 0",
+      "endpoint_removed": true,
+      "launcher_configuration": [
+        {
+          "mode": "worker",
+          "stage": "preexec",
+          "requested_as_bytes": 0,
+          "install_errno": 0,
+          "read_errno": 0,
+          "as_soft_bytes": 9223372036854775807,
+          "as_hard_bytes": 9223372036854775807,
+          "nproc_soft": 0,
+          "nproc_hard": 0,
+          "virtual_bytes": 500512014336,
+          "peak_rss_bytes": 1720320,
+          "mapping_errno": 0,
+          "checksum": 0,
+          "fork_errno": 0,
+          "spawn_errno": 0,
+          "wait_ok": true
+        }
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "pid": 33879,
+      "start_ticks": 8616955256528,
+      "rss_bytes": 32768,
+      "footprint_bytes": 81992,
+      "user_ns": 43333,
+      "system_ns": 312208,
+      "before_ns": 359035466538000,
+      "after_ns": 359035466540000
+    },
+    {
+      "pid": 33879,
+      "start_ticks": 8616955256528,
+      "rss_bytes": 28360704,
+      "footprint_bytes": 6439416,
+      "user_ns": 4616083,
+      "system_ns": 15913583,
+      "before_ns": 359037029320000,
+      "after_ns": 359037029323000
+    }
+  ],
+  "input_worker_sha256": "0c4f92d2e2ad8f6c0570487236c516658b99a76b2c324507068639d9adb18b63",
+  "signed_copy_sha256": "006a8054d68e20aa35ce5250288ea9ab987ea7f846157396a676784550d0d0f1"
+}

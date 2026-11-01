@@ -6,9 +6,16 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # ADR-012 ACR: macOS containment implementation gap
 
 **Status: proposed, NOT APPROVED.** No acceptance criterion changes here.
-**Owner approval:** pending. No privilege, new production dependency, transport
+**Owner approval:** resource-policy changes and production adoption pending.
+No privilege, new production dependency, transport
 change or resource-policy relaxation is authorized by this document.
-**Decision packet reviewed:** 2026-11-01 against integration head `7cb56af`.
+**Decision packet updated:** 2026-11-01 against integration baseline `298f6b9`.
+
+**Investigation scope authorized, 2026-11-01:** the owner selected native
+monitoring/termination evaluation before deciding adoption, then requested
+stronger isolation as well. The [unprivileged observation/App Sandbox prototype](../testing/adr-012-df0-observer-sandbox.md)
+implements those isolated experiments. This is not approval of weaker resource
+guarantees, final budgets, privileged/VM deployment or production entitlements.
 
 ## Requirement and evidence
 
@@ -54,18 +61,19 @@ RSS/CPU, delegated-process restrictions or the full sandbox contract.
 | Option | Impact and limits | Approval and verification |
 | --- | --- | --- |
 | **1. Preserve accepted requirements; defer cutover (governing interim position)** | Preserves current production analytics behavior and keeps the replacement's accepted security/resource requirements unchanged. Native containment remains a blocker. Further isolated evidence can reduce other gaps, but does not resolve this decision or clear current DuckDB licensing/distribution restrictions | Already within isolated DF0 authority. Define the resource accounting and qualify an enforcement mechanism before claiming DF-033/064. No production shipping or release clearance follows |
-| **2. Design and measure a native monitoring/termination policy for macOS** | Admission, bounded query/transport allocations and an external observer could reduce resource exhaustion and stop detected overuse without adding a privileged service or VM. Sampling can miss bursts; a starved observer may not run before host exhaustion. This is not a hard ceiling or a hostile-process containment boundary | Owner must explicitly authorize any relaxation of actual bounds. First approve a design/measurement scope, then review measured overshoot, detection/termination delay and failure behavior against proposed numeric budgets. Sampling alone cannot prove a worst-case overshoot bound. No DF-033/064 PASS or production adoption follows from permission to investigate |
-| **3. Evaluate a stronger OS isolation or privileged-containment architecture** | May offer stronger controls, but no candidate is qualified here. A helper/VM or new entitlement introduces deployment, trust, maintenance, licensing, signing and IPC-compatibility costs. A VM transport cannot silently replace accepted native gRPC/UDS. Do not assume root or a footprint-limit call alone gives aggregate RSS enforcement | Separate design/authority review before adoption, supported API and entitlement proof, per-target threat model, explicit RSS/CPU semantics and aggregate/process-escape tests, packaging and rollback evidence. No new helper, VM, entitlement or transport is selected here |
+| **2. Design and measure a native monitoring/termination policy for macOS** | Admission, bounded query/transport allocations and an external observer could reduce resource exhaustion and stop detected overuse without adding a privileged service or VM. Sampling can miss bursts; a starved observer may not run before host exhaustion. This is not a hard ceiling or a hostile-process containment boundary | Owner must explicitly authorize any relaxation of actual bounds. Design/measurement is authorized; review measured overshoot, detection/termination delay and failure behavior against proposed numeric budgets before adoption. Sampling alone cannot prove a worst-case overshoot bound. No DF-033/064 PASS or production adoption follows from permission to investigate |
+| **3. Evaluate a stronger OS isolation or privileged-containment architecture** | May offer stronger controls, but no complete containment candidate is qualified here. A helper/VM or new entitlement introduces deployment, trust, maintenance, licensing, signing and IPC-compatibility costs. A VM transport cannot silently replace accepted native gRPC/UDS. Do not assume root or a footprint-limit call alone gives aggregate RSS enforcement | Separate design/authority review before adoption, supported API and entitlement proof, per-target threat model, explicit RSS/CPU semantics and aggregate/process-escape tests, packaging and rollback evidence. No production helper, VM, entitlement or transport is selected here |
 
 Retaining DuckDB in option 1 is a temporary compatibility position, not release
 licensing approval. None of these options authorizes a DuckDB upgrade.
 
 ## Decision needed before selecting an implementation
 
-Choose the policy direction separately from implementation and production
-approval. Option 1 remains in force until the owner records a different
-decision. An instruction to expedite replacement is not approval of option 2
-or 3. Permission to investigate either is not acceptance of its residual risks.
+The owner has authorized design and measurement for option 2 and an isolated
+stronger-isolation prototype under option 3. Option 1's accepted resource
+requirements remain in force until an explicit contract decision changes them.
+Permission to investigate is not acceptance of residual risks or production
+approval. The accounting and acceptance decisions below remain open.
 
 | Contract field | Decision and evidence required |
 | --- | --- |
@@ -105,16 +113,17 @@ documentation supplies further constraints, checked on 2026-11-01:
 
 ## Recommendation and adversarial critique
 
-Resolve the policy direction now instead of repeating independent qualification
-slices while this blocker remains. Keep option 1 as the interim position. For
-an ordinary unprivileged desktop deployment, option 2 is the smallest candidate
-design to measure, **if the owner is willing to consider its weaker exhaustion
-protection**. This is a conditional engineering recommendation, not evidence
-that the residual risk is acceptable or that its tests will pass. If never
+Continue the two authorized investigation tracks. The standard App Sandbox
+prototype demonstrates access restrictions and compatible native IPC without
+a privileged service, but permits own-container writes. Observation and
+termination remain a separate resource layer, with a demonstrated missed burst.
+Qualify a job-bound observer, failure recovery and memory-only filesystem
+policy before proposing adoption and final budgets. Keep accepted requirements
+in force. If never
 exceeding the configured aggregate limits is required even under hostile
 allocation or observer starvation, sampling cannot meet that requirement;
-choose option 3's separately authorized feasibility work or keep cutover
-blocked. No qualified stronger mechanism is currently identified.
+a separately approved resource-enforcement design or continued cutover block
+is necessary. No mechanism enforcing those complete bounds is qualified here.
 
 Challenges: option 1 delays removal and retains legacy licensing exposure;
 option 2 may exhaust memory before its observer acts and is not equivalent
@@ -131,7 +140,7 @@ to relax it or adopt a new production architecture must be explicit.
 
 ## Required proof before qualification or cutover
 
-- After a policy direction is approved, first specify a minimal mechanism,
+- Before qualifying an investigated mechanism, specify its minimal design,
   resource-accounting definitions and independent oracle. Stop if required APIs
   or entitlements are unavailable, measurement cannot distinguish admitted
   capacity from actual usage, or the mechanism cannot meet the chosen policy.

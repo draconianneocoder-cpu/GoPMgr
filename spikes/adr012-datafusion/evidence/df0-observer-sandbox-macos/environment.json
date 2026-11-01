@@ -1,0 +1,138 @@
+{
+  "recorded_utc": "2026-11-01T22:40:28.380826+00:00",
+  "source_baseline_commit": "298f6b977342e3c0966c08eb17a87a76f34f266e",
+  "scope": "Isolated native macOS observation/termination and unprivileged App Sandbox feasibility; not production adoption or hard aggregate quotas",
+  "authority": "Owner authorized native monitoring design/measurement and additionally requested stronger isolation implementation on 2026-11-01; budgets, policy relaxation, privileged/VM design and production remain separate",
+  "platform": {
+    "os": "macOS",
+    "version": "27.2",
+    "kernel": "27.2.0",
+    "arch": "arm64",
+    "unprivileged": true,
+    "sdk": "27.2"
+  },
+  "go": "go version go1.27.3 darwin/arm64",
+  "clang": "Apple clang version 21.0.0 (clang-2100.4.1.1)",
+  "source_sha256": {
+    "spikes/adr012-datafusion/tools/macos_observer_probe.c": "59d943c045bcb67bd8800bd0ed5a12bd91d25cdcf972825136a7ef421b6dc7c8",
+    "spikes/adr012-datafusion/internal/ipchost/observer_darwin_test.go": "c0fb8f15d86f14f0eb4b17006b65262b998f122fe17be581756ebdb6b3091d22",
+    "spikes/adr012-datafusion/internal/ipchost/sandbox_darwin_test.go": "a94f0ff10ae5cb10399907987e826f6e8ca71f4290a9478391f8929c2ca3f115",
+    "spikes/adr012-datafusion/tools/macos_exec_limits_probe.c": "b125b19eae043fbdf84e7da455b94427c67d8ad60ad181a7a054535e04817443"
+  },
+  "sdk_sha256": {
+    "usr/include/libproc.h": "246d87709fc6b9157ce5cf3c475656ac48e0e1ae8bbdc46cf45acd34294448cd",
+    "usr/include/sys/resource.h": "1067178025c5fd88c9a1b8206a07c2695ef94dd471fe2783f06c512995382961",
+    "usr/include/mach/mach_time.h": "d690e304ea595ca216ed51e20aa9747e0b3bcb07446d996abe0080a231c7065f"
+  },
+  "application_profile_sha256": "5e582e4ff82c462f4195740b918a6e63bd716cae3cb4921987351159e5bc1194",
+  "upstream_context": {
+    "repository": "apple-oss-distributions/xnu",
+    "revision": "f6217f891ac0bb64f3d375211650a4c1ff8ca1ea",
+    "installed_kernel_provenance": false,
+    "source_sha256": {
+      "bsd/kern/kern_resource.c": "ffd547faab964b7860476a3b1e1c82525389666450b08eda19f9f5229eddd054",
+      "osfmk/kern/bsd_kern.c": "670dcdf6feb73845b102965c8dfab6175f87893bf0b7ca9fa450f38cc83ba19c"
+    }
+  },
+  "evidence_sha256": {
+    "cohorts.json": "070bf51636edbbccad3532f5d9a2376d7e1ed6f95325cc06125fc3b532471a05",
+    "termination.json": "360b43a70fa7b250eb19f00d246df8ae8531888a60fa7348e7043d3ac04fe7c6",
+    "missed-burst.json": "264d3fe96db955ee7c19b8a922100895b21373b3d6326d66fbb6a7d034ff427a",
+    "sandbox-access.json": "21401c53e44ff10395a190f6a8f0f002643a05d4a80070d48bb9963c4f233207",
+    "sandbox-native.json": "9a86785902f9ab23710212619f62f39bed6e5a9345d9315c0078475793d676d2"
+  },
+  "input_worker_sha256": "0c4f92d2e2ad8f6c0570487236c516658b99a76b2c324507068639d9adb18b63",
+  "worker_rebuilt": false,
+  "signing": "Task-only copies, ad-hoc hardened-runtime signature, only App Sandbox entitlement; no release/Developer ID/notarization claim. Unique new containers removed by tests.",
+  "measurement_limits": [
+    "Sequential per-PID observations, not an atomic aggregate snapshot or independent OS-wide trace",
+    "C fixture cohorts are 2/4/8 children, not 2/4/8 DataFusion queries; host/source/observer overhead and descendants are excluded",
+    "CPU times converted from Mach ticks; interval utilization is an observation, not a rate quota",
+    "Intentional 25ms observer postponement, not an achieved maximum scheduling delay",
+    "A resident burst occurred above the fixture trigger between both below-trigger samples",
+    "App Sandbox permits own-container writes; private-canary, symlink, IPv4 TCP, UDS and direct-fork checks are a subset of the security matrix",
+    "NPROC readback is in the native pre-exec launcher; the Rust worker does not report its inherited limit"
+  ],
+  "initial_failure_and_correction": "The first native CPU test failed because raw Mach ticks were labelled nanoseconds; conversion uses mach_timebase_info and widened checked arithmetic, with CLOCK_PROCESS_CPUTIME_ID/getrusage calibration.",
+  "fault_controls": [
+    {
+      "case": "baseline",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "detected": false
+    },
+    {
+      "case": "raw-cpu-ticks",
+      "exit_code": 1,
+      "expected_assertion": "fixture did not exceed observation trigger",
+      "detected": true
+    },
+    {
+      "case": "omit-resident-touch",
+      "exit_code": 1,
+      "expected_assertion": "current usage did not observe held resident growth",
+      "detected": true
+    },
+    {
+      "case": "ignore-identity",
+      "exit_code": 1,
+      "expected_assertion": "identity mismatch accepted as a usable sample",
+      "detected": true
+    },
+    {
+      "case": "normal-exit-instead-of-kill",
+      "exit_code": 1,
+      "expected_assertion": "payload exit kill=true",
+      "detected": true
+    },
+    {
+      "case": "omit-app-sandbox",
+      "exit_code": 1,
+      "expected_assertion": "OS access/child restrictions not enforced",
+      "detected": true
+    },
+    {
+      "case": "allow-network-client",
+      "exit_code": 1,
+      "expected_assertion": "OS access/child restrictions not enforced",
+      "detected": true
+    },
+    {
+      "case": "omit-fork-limit",
+      "exit_code": 1,
+      "expected_assertion": "OS access/child restrictions not enforced",
+      "detected": true
+    },
+    {
+      "case": "omit-native-fork-limit",
+      "exit_code": 1,
+      "expected_assertion": "native child-denial configuration missing",
+      "detected": true
+    },
+    {
+      "case": "restored",
+      "exit_code": 0,
+      "expected_assertion": null,
+      "detected": false
+    }
+  ],
+  "commands": {
+    "targeted": "DF0_WORKER=<existing-worker> DF0_OBSERVER_EVIDENCE=<existing-directory> go test -race -count=1 -v ./internal/ipchost -run '^TestMacOS(CurrentUsageCohorts|ObservedTermination|ObserverCanMissResidentBurst|AppSandboxAccess)$'",
+    "native_regression": "DF0_WORKER=<existing-worker> go test -race -count=1 ./internal/... ./cmd/...",
+    "vet": "go vet ./internal/... ./cmd/...",
+    "additional_negative_test": "go test -race -count=1 -v ./internal/ipchost -run ^TestMacOSObservedTermination$",
+    "source_guards_from_repo_root": "go test ./scripts -run 'TestDF0|TestConfig' -count=1",
+    "static_analysis_from_repo_root": "xcrun clang --analyze -std=c11 -Wall -Wextra -Werror spikes/adr012-datafusion/tools/macos_observer_probe.c -o <temporary-file>",
+    "linux_host_cross_compile": "GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go test -c ./internal/ipchost -o <temporary-binary>"
+  },
+  "review": "Structured plan/mid/final self-review fallback; independent reviewer unavailable, not independent approval",
+  "unqualified": [
+    "DF-033 actual complete RSS bound",
+    "DF-064 actual host-wide CPU/RSS/jobs enforcement",
+    "DF-062 complete no-spill and independent OS observation",
+    "IPv6/UDP/DNS, delegated services, arbitrary descendants, host death and observer starvation/kill failure",
+    "Linux native, Windows, minimum macOS and installed Developer ID/notarized packaging",
+    "Owner budgets, approved policy relaxation and production cutover"
+  ],
+  "additional_control": "The helper is required to emit a valid first record before failing on the reaped PID; the sampler rejects that partial cohort and a subsequent allocation succeeds."
+}

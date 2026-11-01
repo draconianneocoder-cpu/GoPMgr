@@ -1,0 +1,24 @@
+{
+  "before": {
+    "pid": 33824,
+    "start_ticks": 8616920225101,
+    "rss_bytes": 1736704,
+    "footprint_bytes": 1163624,
+    "user_ns": 598125,
+    "system_ns": 1183875,
+    "before_ns": 359034009274000,
+    "after_ns": 359034009276000
+  },
+  "after": {
+    "pid": 33824,
+    "start_ticks": 8616920225101,
+    "rss_bytes": 1736704,
+    "footprint_bytes": 1163624,
+    "user_ns": 842750,
+    "system_ns": 2767458,
+    "before_ns": 359034013663000,
+    "after_ns": 359034013665000
+  },
+  "fixture_trigger_bytes": 18513920,
+  "wait4_peak_rss_bytes": 35291136
+}

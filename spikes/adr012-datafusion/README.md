@@ -116,6 +116,12 @@ self-test and the 21 existing native regressions. See the
 It does not complete host-wide admission, OS-wide observation or production
 containment qualification. Linux refuses the experimental denial mode.
 
+The [native observer and App Sandbox experiment](../../docs/testing/adr-012-df0-observer-sandbox.md)
+measures current usage, missed bursts and controlled termination, and runs signed
+Rust copies over native UDS with OS access restrictions. Own-container writes
+remain allowed. This is isolated feasibility, not hard quotas, memory-only
+confidentiality or production adoption. See its exact reproduction and limits.
+
 The later [nested frame repair](../../docs/testing/adr-012-df0-nested-frames.md)
 qualifies selected child spans and null-aware view compaction in five common
 containers. Its Rust regressions exercise actual views; five real-worker jobs
