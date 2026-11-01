@@ -103,11 +103,19 @@ were removed locally and remotely after merge/ancestry and worktree checks.
 the build-input SBOM. All eight PR checks passed at `eac7cfe`, and all eight
 main checks passed at `0468ad9`; its feature branch was removed locally and
 remotely. The native-source notice review and pre-exec limit follow-up are
-subsequent isolated work consolidated on `new-merge/df0-macos-exec-limits` for
-one PR, separate from that frozen baseline. The already-published
-`new-merge/df0-native-source-notices` branch is retained until the combined
-work is merged and verified; it should not produce a duplicate PR. Hosted CI
-and merge for the combined head require their own scoped approval.
+subsequent isolated work committed on `new-merge/df0-macos-exec-limits`, separate
+from that frozen baseline. On 2026-11-01 the owner directed that remaining
+replacement work accumulate as reviewed commits on the integration branch,
+with local macOS verification first and local Ubuntu verification when available.
+The target is one final PR after replacement, removal, documentation and relevant
+local qualification are ready, subject to the production decisions above.
+Do not open intermediate PRs or trigger hosted CI for incremental slices; the
+pending intermediate-PR approval request is withdrawn. The existing workflow
+triggers hosted checks for both the final PR and its merge to main, so one PR
+does not imply one workflow run. Defer hosted verification to that final stage.
+The already-published `new-merge/df0-native-source-notices` branch is retained
+until its work is merged and ancestry verified; it should not produce a duplicate
+PR.
 The retained legacy branch `claude/slice-b-readonly-access` belongs to closed,
 unmerged PR #163.
 Review and selectively port useful missing read-only regression fixtures before
