@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Command df0-inventory summarizes trusted, locked Cargo metadata and available
-// notice files. It produces a review input, not a license conclusion or SBOM.
+// notice files. Its optional SPDX build-input export is not a license conclusion.
 package main
 
 import (
@@ -52,6 +52,7 @@ type fileHash struct {
 	SHA256 string `json:"sha256"`
 }
 type entry struct {
+	cargoID         string
 	ID              string     `json:"id"`
 	Name            string     `json:"name"`
 	Version         string     `json:"version"`
@@ -78,33 +79,52 @@ type report struct {
 func main() {
 	root := flag.String("repo-root", "", "repository root for local source redaction (required)")
 	target := flag.String("target", "", "target used for cargo metadata --filter-platform (required)")
+	format := flag.String("format", "inventory", "inventory or spdx3")
+	buildLog := flag.String("build-log", "", "Cargo JSON release build output for spdx3")
+	worker := flag.String("worker", "", "worker executable described by the build log")
+	native := flag.String("native-evidence", "", "hash-bound native-worker.json observations")
+	created := flag.String("created", "", "UTC observation time for spdx3 (RFC3339)")
+	revision := flag.String("revision", "", "source revision for spdx3 (40 hex characters)")
 	flag.Parse()
-	if err := run(os.Stdin, os.Stdout, *root, *target); err != nil {
+	var err error
+	switch *format {
+	case "inventory":
+		err = run(os.Stdin, os.Stdout, *root, *target)
+	case "spdx3":
+		err = runSPDX(os.Stdin, os.Stdout, *root, *target, *buildLog, *worker, *native, *created, *revision)
+	default:
+		err = errors.New("unknown output format")
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "df0-inventory:", err)
 		os.Exit(1)
 	}
 }
 
 func run(in io.Reader, out io.Writer, root, target string) error {
-	if root == "" || target == "" {
-		return errors.New("-repo-root and -target are required")
-	}
-	var m metadata
-	d := json.NewDecoder(in)
-	if err := d.Decode(&m); err != nil {
-		return fmt.Errorf("decode metadata: %w", err)
-	}
-	var extra any
-	if err := d.Decode(&extra); err != io.EOF {
-		return errors.New("expected exactly one metadata document")
-	}
-	r, err := inventory(m, root, target)
+	r, err := readInventory(in, root, target)
 	if err != nil {
 		return err
 	}
 	e := json.NewEncoder(out)
 	e.SetIndent("", "  ")
 	return e.Encode(r)
+}
+
+func readInventory(in io.Reader, root, target string) (report, error) {
+	if root == "" || target == "" {
+		return report{}, errors.New("-repo-root and -target are required")
+	}
+	var m metadata
+	d := json.NewDecoder(in)
+	if err := d.Decode(&m); err != nil {
+		return report{}, fmt.Errorf("decode metadata: %w", err)
+	}
+	var extra any
+	if err := d.Decode(&extra); err != io.EOF {
+		return report{}, errors.New("expected exactly one metadata document")
+	}
+	return inventory(m, root, target)
 }
 
 func inventory(m metadata, root, target string) (report, error) {
@@ -212,7 +232,7 @@ func inventory(m metadata, root, target string) (report, error) {
 }
 
 func describe(p cargoPackage, n node, root string) (entry, error) {
-	e := entry{Name: p.Name, Version: p.Version, DeclaredLicense: p.License, Features: slices.Clone(n.Features), Notices: []fileHash{}}
+	e := entry{cargoID: p.ID, Name: p.Name, Version: p.Version, DeclaredLicense: p.License, Features: slices.Clone(n.Features), Notices: []fileHash{}}
 	dir, err := filepath.EvalSymlinks(filepath.Dir(p.ManifestPath))
 	if err != nil {
 		return e, err

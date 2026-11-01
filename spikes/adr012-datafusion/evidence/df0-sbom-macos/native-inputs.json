@@ -1,0 +1,218 @@
+{
+  "scope": "Observed static archive inputs, object member lists and bounded source/notice inspection; not complete executable composition or LC-GATE clearance.",
+  "archives": [
+    {
+      "package": "zstd-sys",
+      "version": "2.1.2+zstd.1.5.7",
+      "raw_declared_license": "BSD-3-Clause",
+      "archive": "libzstd.a",
+      "sha256": "c13d211fe38e06512954e350155f8331b7689a1dbb8d28055c78bdb04e735b96",
+      "object_members": [
+        "__.SYMDEF SORTED",
+        "4f97f2375d6aa471-debug.o",
+        "4f97f2375d6aa471-entropy_common.o",
+        "4f97f2375d6aa471-error_private.o",
+        "4f97f2375d6aa471-fse_decompress.o",
+        "4f97f2375d6aa471-pool.o",
+        "4f97f2375d6aa471-threading.o",
+        "4f97f2375d6aa471-zstd_common.o",
+        "7c9960efb53c0b35-fse_compress.o",
+        "7c9960efb53c0b35-hist.o",
+        "7c9960efb53c0b35-huf_compress.o",
+        "7c9960efb53c0b35-zstd_compress.o",
+        "7c9960efb53c0b35-zstd_compress_literals.o",
+        "7c9960efb53c0b35-zstd_compress_sequences.o",
+        "7c9960efb53c0b35-zstd_compress_superblock.o",
+        "7c9960efb53c0b35-zstd_double_fast.o",
+        "7c9960efb53c0b35-zstd_fast.o",
+        "7c9960efb53c0b35-zstd_lazy.o",
+        "7c9960efb53c0b35-zstd_ldm.o",
+        "7c9960efb53c0b35-zstd_opt.o",
+        "7c9960efb53c0b35-zstd_preSplit.o",
+        "7c9960efb53c0b35-zstdmt_compress.o",
+        "865a32d3ef5dbaad-huf_decompress.o",
+        "865a32d3ef5dbaad-zstd_ddict.o",
+        "865a32d3ef5dbaad-zstd_decompress.o",
+        "865a32d3ef5dbaad-zstd_decompress_block.o"
+      ],
+      "source_and_notice_hashes": [
+        {
+          "path": "LICENSE",
+          "sha256": "ce4868c8e4ebe47a7d4b3c93dbf6b802033e5ae2fa7638098173f80836daac60"
+        },
+        {
+          "path": "LICENSE.BSD-3-Clause",
+          "sha256": "bf7017a73a95ea63bf3716b13ec2bcd79c92942356e3408c6fb66332bad6d977"
+        },
+        {
+          "path": "build.rs",
+          "sha256": "ff97fca52b72ba76c2c71f0d4ca3475d5fa746e184e7d01c6085f9efee360171"
+        },
+        {
+          "path": "zstd/LICENSE",
+          "sha256": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8"
+        },
+        {
+          "path": "zstd/COPYING",
+          "sha256": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505"
+        }
+      ],
+      "source_review": "Crate declares BSD-3-Clause. Root notice and nested zstd/LICENSE have distinct copyright scopes. zstd/COPYING records an alternative GPL license; no license choice or full bundled-source audit is concluded.",
+      "status": "partial; distribution clearance not asserted"
+    },
+    {
+      "package": "psm",
+      "version": "0.1.32",
+      "raw_declared_license": "MIT OR Apache-2.0",
+      "archive": "libpsm_s.a",
+      "sha256": "69856a91607f52f1cd86c33c9a9af8539850e608ee5a6d73853d86c3bc1e0e8d",
+      "object_members": [
+        "__.SYMDEF SORTED",
+        "2759c6e58623ef3d-aarch_aapcs64.o"
+      ],
+      "source_and_notice_hashes": [
+        {
+          "path": "LICENSE-MIT",
+          "sha256": "3e3714aa69bd874601741fd7d7ad5298740cece37778e279fc1ab4451c5a11af"
+        },
+        {
+          "path": "LICENSE-APACHE",
+          "sha256": "965a63a81d9a2fbeb5f9096954dabb49690f9dffcdac9825f675b25c807252a2"
+        },
+        {
+          "path": "build.rs",
+          "sha256": "c9bae07a7bf7a1760798fc4307accd306fcce93a766f399d99978b6a022341d6"
+        },
+        {
+          "path": "src/arch/aarch_aapcs64.s",
+          "sha256": "b3bee30c8c7ba9df981c2adc313249b8ce27d94925a1c1322e5b80c994ae14ee"
+        }
+      ],
+      "source_review": "aarch64 build-script arm selects src/arch/aarch_aapcs64.s; wrapper declares MIT OR Apache-2.0. Selected assembly and root notice hashes recorded, without a complete source audit.",
+      "status": "partial; distribution clearance not asserted"
+    },
+    {
+      "package": "liblzma-sys",
+      "version": "0.4.9",
+      "raw_declared_license": "MIT OR Apache-2.0",
+      "archive": "liblzma.a",
+      "sha256": "b67b3ee0c274ad5f33ca5c07f46259e9bbb4a382ce948c4b2025fc5fc68e40b9",
+      "object_members": [
+        "__.SYMDEF SORTED",
+        "f7b4a139159c5de1-tuklib_cpucores.o",
+        "f7b4a139159c5de1-tuklib_physmem.o",
+        "96f5876ed4ac742d-check.o",
+        "96f5876ed4ac742d-crc32_fast.o",
+        "96f5876ed4ac742d-crc64_fast.o",
+        "96f5876ed4ac742d-sha256.o",
+        "92abe79cc5886ee3-alone_decoder.o",
+        "92abe79cc5886ee3-alone_encoder.o",
+        "92abe79cc5886ee3-auto_decoder.o",
+        "92abe79cc5886ee3-block_buffer_decoder.o",
+        "92abe79cc5886ee3-block_buffer_encoder.o",
+        "92abe79cc5886ee3-block_decoder.o",
+        "92abe79cc5886ee3-block_encoder.o",
+        "92abe79cc5886ee3-block_header_decoder.o",
+        "92abe79cc5886ee3-block_header_encoder.o",
+        "92abe79cc5886ee3-block_util.o",
+        "92abe79cc5886ee3-common.o",
+        "92abe79cc5886ee3-easy_buffer_encoder.o",
+        "92abe79cc5886ee3-easy_decoder_memusage.o",
+        "92abe79cc5886ee3-easy_encoder.o",
+        "92abe79cc5886ee3-easy_encoder_memusage.o",
+        "92abe79cc5886ee3-easy_preset.o",
+        "92abe79cc5886ee3-file_info.o",
+        "92abe79cc5886ee3-filter_buffer_decoder.o",
+        "92abe79cc5886ee3-filter_buffer_encoder.o",
+        "92abe79cc5886ee3-filter_common.o",
+        "92abe79cc5886ee3-filter_decoder.o",
+        "92abe79cc5886ee3-filter_encoder.o",
+        "92abe79cc5886ee3-filter_flags_decoder.o",
+        "92abe79cc5886ee3-filter_flags_encoder.o",
+        "92abe79cc5886ee3-hardware_cputhreads.o",
+        "92abe79cc5886ee3-hardware_physmem.o",
+        "92abe79cc5886ee3-index.o",
+        "92abe79cc5886ee3-index_decoder.o",
+        "92abe79cc5886ee3-index_encoder.o",
+        "92abe79cc5886ee3-index_hash.o",
+        "92abe79cc5886ee3-lzip_decoder.o",
+        "92abe79cc5886ee3-microlzma_decoder.o",
+        "92abe79cc5886ee3-microlzma_encoder.o",
+        "92abe79cc5886ee3-outqueue.o",
+        "92abe79cc5886ee3-stream_buffer_decoder.o",
+        "92abe79cc5886ee3-stream_buffer_encoder.o",
+        "92abe79cc5886ee3-stream_decoder.o",
+        "92abe79cc5886ee3-stream_encoder.o",
+        "92abe79cc5886ee3-stream_flags_common.o",
+        "92abe79cc5886ee3-stream_flags_decoder.o",
+        "92abe79cc5886ee3-stream_flags_encoder.o",
+        "92abe79cc5886ee3-string_conversion.o",
+        "92abe79cc5886ee3-vli_decoder.o",
+        "92abe79cc5886ee3-vli_encoder.o",
+        "92abe79cc5886ee3-vli_size.o",
+        "e7427fe972e16092-delta_common.o",
+        "e7427fe972e16092-delta_decoder.o",
+        "e7427fe972e16092-delta_encoder.o",
+        "6bab8f37f7bce94b-lz_decoder.o",
+        "6bab8f37f7bce94b-lz_encoder.o",
+        "6bab8f37f7bce94b-lz_encoder_mf.o",
+        "af4092bdb2139301-fastpos_table.o",
+        "af4092bdb2139301-lzma2_decoder.o",
+        "af4092bdb2139301-lzma2_encoder.o",
+        "af4092bdb2139301-lzma_decoder.o",
+        "af4092bdb2139301-lzma_encoder.o",
+        "af4092bdb2139301-lzma_encoder_optimum_fast.o",
+        "af4092bdb2139301-lzma_encoder_optimum_normal.o",
+        "af4092bdb2139301-lzma_encoder_presets.o",
+        "6922984dcea6aee9-price_table.o",
+        "d5bab16dd3c20bc5-arm.o",
+        "d5bab16dd3c20bc5-arm64.o",
+        "d5bab16dd3c20bc5-armthumb.o",
+        "d5bab16dd3c20bc5-ia64.o",
+        "d5bab16dd3c20bc5-powerpc.o",
+        "d5bab16dd3c20bc5-riscv.o",
+        "d5bab16dd3c20bc5-simple_coder.o",
+        "d5bab16dd3c20bc5-simple_decoder.o",
+        "d5bab16dd3c20bc5-simple_encoder.o",
+        "d5bab16dd3c20bc5-sparc.o",
+        "d5bab16dd3c20bc5-x86.o"
+      ],
+      "source_and_notice_hashes": [
+        {
+          "path": "LICENSE-MIT",
+          "sha256": "a90e2da47bdc152cfb89e1fb09972143056c417ddbf86122babc83d0a8ad81d1"
+        },
+        {
+          "path": "LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        },
+        {
+          "path": "build.rs",
+          "sha256": "3e5bdf12ef4821e5dae560dd0e838ba6f34b95305eaf52210cb8b8a6af4417f9"
+        },
+        {
+          "path": "xz/COPYING",
+          "sha256": "616a3ad264ce29b8f1cb97e53037b139d406899ca8d1f799651e17bfa09830b8"
+        },
+        {
+          "path": "xz/COPYING.0BSD",
+          "sha256": "0b01625d853911cd0e2e088dcfb743261034a091bb379246cb25a14cc4c74bf1"
+        },
+        {
+          "path": "xz/COPYING.LGPLv2.1",
+          "sha256": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95"
+        },
+        {
+          "path": "xz/COPYING.GPLv2",
+          "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+        },
+        {
+          "path": "xz/COPYING.GPLv3",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        }
+      ],
+      "source_review": "Wrapper declares MIT OR Apache-2.0; bundled xz/COPYING separately identifies liblzma as 0BSD. Build script selects liblzma directories plus two tuklib common C files, rather than XZ command-line tools or GNU getopt. Per-source and preprocessor/linker validation remains open.",
+      "status": "partial; distribution clearance not asserted"
+    }
+  ]
+}

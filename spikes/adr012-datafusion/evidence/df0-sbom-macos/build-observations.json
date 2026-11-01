@@ -1,0 +1,3989 @@
+{
+  "scope": "Redacted Cargo observations for the cached worker build; target paths/executables omitted. Not a linker map or proof of clean compilation.",
+  "compiler_artifacts": [
+    {
+      "package": "proc-macro2",
+      "version": "1.0.107",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "default",
+        "proc-macro"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "quote",
+      "version": "1.0.47",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "default",
+        "proc-macro"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "unicode-ident",
+      "version": "1.0.27",
+      "target": "unicode_ident",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "libc",
+      "version": "0.2.191",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "cfg-if",
+      "version": "1.0.5",
+      "target": "cfg_if",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "memchr",
+      "version": "2.8.3",
+      "target": "memchr",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "bytes",
+      "version": "1.12.1",
+      "target": "bytes",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "autocfg",
+      "version": "1.5.1",
+      "target": "autocfg",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "libm",
+      "version": "0.2.16",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "arch",
+        "default"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "itoa",
+      "version": "1.0.18",
+      "target": "itoa",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "proc-macro2",
+      "version": "1.0.107",
+      "target": "proc_macro2",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "proc-macro"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "num-traits",
+      "version": "0.2.19",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "default",
+        "i128",
+        "libm",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "foldhash",
+      "version": "0.2.0",
+      "target": "foldhash",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "once_cell",
+      "version": "1.21.4",
+      "target": "once_cell",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "race",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "allocator-api2",
+      "version": "0.2.21",
+      "target": "allocator_api2",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "equivalent",
+      "version": "1.0.3",
+      "target": "equivalent",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "quote",
+      "version": "1.0.47",
+      "target": "quote",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "proc-macro"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "libc",
+      "version": "0.2.191",
+      "target": "libc",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "libm",
+      "version": "0.2.16",
+      "target": "libm",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "arch",
+        "default"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "libc",
+      "version": "0.2.191",
+      "target": "libc",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "hashbrown",
+      "version": "0.17.1",
+      "target": "hashbrown",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "allocator-api2",
+        "default",
+        "default-hasher",
+        "equivalent",
+        "inline-more",
+        "raw-entry"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "shlex",
+      "version": "2.0.1",
+      "target": "shlex",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "find-msvc-tools",
+      "version": "0.1.15",
+      "target": "find_msvc_tools",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "version_check",
+      "version": "0.9.5",
+      "target": "version_check",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "zerocopy",
+      "version": "0.8.63",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "derive",
+        "simd",
+        "zerocopy-derive"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "syn",
+      "version": "3.0.9",
+      "target": "syn",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "clone-impls",
+        "default",
+        "derive",
+        "extra-traits",
+        "fold",
+        "full",
+        "parsing",
+        "printing",
+        "proc-macro",
+        "visit",
+        "visit-mut"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "syn",
+      "version": "2.0.119",
+      "target": "syn",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "clone-impls",
+        "default",
+        "derive",
+        "extra-traits",
+        "full",
+        "parsing",
+        "printing",
+        "proc-macro",
+        "visit-mut"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "num-traits",
+      "version": "0.2.19",
+      "target": "num_traits",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "i128",
+        "libm",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "jobserver",
+      "version": "0.1.35",
+      "target": "jobserver",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "indexmap",
+      "version": "2.14.2",
+      "target": "indexmap",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "pin-project-lite",
+      "version": "0.2.17",
+      "target": "pin_project_lite",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "serde_core",
+      "version": "1.0.229",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "rc",
+        "result",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "getrandom",
+      "version": "0.3.4",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "zmij",
+      "version": "1.0.23",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "cc",
+      "version": "1.10.0",
+      "target": "cc",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "parallel"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "zerocopy-derive",
+      "version": "0.8.63",
+      "target": "zerocopy_derive",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "synstructure",
+      "version": "0.14.0",
+      "target": "synstructure",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "proc-macro"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "num-integer",
+      "version": "0.1.47",
+      "target": "num_integer",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "i128",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "futures-core",
+      "version": "0.3.34",
+      "target": "futures_core",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "serde_json",
+      "version": "1.0.154",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "indexmap",
+        "preserve_order",
+        "raw_value",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "futures-sink",
+      "version": "0.3.34",
+      "target": "futures_sink",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "zerocopy",
+      "version": "0.8.63",
+      "target": "zerocopy",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "derive",
+        "simd",
+        "zerocopy-derive"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "serde_core",
+      "version": "1.0.229",
+      "target": "serde_core",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "rc",
+        "result",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "zerofrom-derive",
+      "version": "0.1.8",
+      "target": "zerofrom_derive",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "getrandom",
+      "version": "0.3.4",
+      "target": "getrandom",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "core-foundation-sys",
+      "version": "0.8.7",
+      "target": "core_foundation_sys",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "link"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "zmij",
+      "version": "1.0.23",
+      "target": "zmij",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "yoke-derive",
+      "version": "0.8.4",
+      "target": "yoke_derive",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "siphasher",
+      "version": "1.0.4",
+      "target": "siphasher",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "pkg-config",
+      "version": "0.3.34",
+      "target": "pkg_config",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "zerofrom",
+      "version": "0.1.8",
+      "target": "zerofrom",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "derive"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "iana-time-zone",
+      "version": "0.1.65",
+      "target": "iana_time_zone",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "fallback"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "stable_deref_trait",
+      "version": "1.2.1",
+      "target": "stable_deref_trait",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "half",
+      "version": "2.7.1",
+      "target": "half",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "num-traits"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "serde_json",
+      "version": "1.0.154",
+      "target": "serde_json",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "indexmap",
+        "preserve_order",
+        "raw_value",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "phf_shared",
+      "version": "0.12.1",
+      "target": "phf_shared",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "num-bigint",
+      "version": "0.5.1",
+      "target": "num_bigint",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "tokio-macros",
+      "version": "2.7.2",
+      "target": "tokio_macros",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "ahash",
+      "version": "0.8.12",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "getrandom",
+        "runtime-rng"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "mio",
+      "version": "1.2.4",
+      "target": "mio",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "net",
+        "os-ext",
+        "os-poll"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "chrono",
+      "version": "0.4.45",
+      "target": "chrono",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "clock",
+        "iana-time-zone",
+        "now",
+        "std",
+        "winapi",
+        "windows-link"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "yoke",
+      "version": "0.8.4",
+      "target": "yoke",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "derive",
+        "zerofrom"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "socket2",
+      "version": "0.6.5",
+      "target": "socket2",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "all"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "smallvec",
+      "version": "1.16.4",
+      "target": "smallvec",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "const_generics",
+        "const_new"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "chrono-tz",
+      "version": "0.10.4",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "arrow-schema",
+      "version": "59.3.2",
+      "target": "arrow_schema",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "canonical_extension_types"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "arrow-buffer",
+      "version": "59.3.2",
+      "target": "arrow_buffer",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "phf",
+      "version": "0.12.1",
+      "target": "phf",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "zerovec-derive",
+      "version": "0.11.7",
+      "target": "zerovec_derive",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "tokio",
+      "version": "1.54.1",
+      "target": "tokio",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "bytes",
+        "default",
+        "fs",
+        "io-std",
+        "io-util",
+        "libc",
+        "macros",
+        "mio",
+        "net",
+        "rt",
+        "rt-multi-thread",
+        "socket2",
+        "sync",
+        "time",
+        "tokio-macros"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "slab",
+      "version": "0.4.12",
+      "target": "slab",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "zerovec",
+      "version": "0.11.9",
+      "target": "zerovec",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "derive",
+        "yoke"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "arrow-data",
+      "version": "59.3.2",
+      "target": "arrow_data",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "ahash",
+      "version": "0.8.12",
+      "target": "ahash",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "getrandom",
+        "runtime-rng"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "futures-channel",
+      "version": "0.3.34",
+      "target": "futures_channel",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "futures-sink",
+        "sink",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "displaydoc",
+      "version": "0.2.7",
+      "target": "displaydoc",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "num-complex",
+      "version": "0.4.6",
+      "target": "num_complex",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "futures-macro",
+      "version": "0.3.34",
+      "target": "futures_macro",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "chrono-tz",
+      "version": "0.10.4",
+      "target": "chrono_tz",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "futures-io",
+      "version": "0.3.34",
+      "target": "futures_io",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "futures-task",
+      "version": "0.3.34",
+      "target": "futures_task",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "zstd-sys",
+      "version": "2.1.2+zstd.1.5.7",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "tracing-attributes",
+      "version": "0.1.31",
+      "target": "tracing_attributes",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "tracing-core",
+      "version": "0.1.36",
+      "target": "tracing_core",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "once_cell",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "http",
+      "version": "1.5.0",
+      "target": "http",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "tinystr",
+      "version": "0.8.5",
+      "target": "tinystr",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "zerovec"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "litemap",
+      "version": "0.8.3",
+      "target": "litemap",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "object",
+      "version": "0.39.1",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "archive",
+        "coff",
+        "elf",
+        "macho",
+        "pe",
+        "read",
+        "read_core",
+        "std",
+        "xcoff"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "arrow-array",
+      "version": "59.3.2",
+      "target": "arrow_array",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "chrono-tz"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "futures-util",
+      "version": "0.3.34",
+      "target": "futures_util",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "async-await",
+        "async-await-macro",
+        "channel",
+        "default",
+        "futures-channel",
+        "futures-io",
+        "futures-macro",
+        "futures-sink",
+        "io",
+        "memchr",
+        "sink",
+        "slab",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "tracing",
+      "version": "0.1.44",
+      "target": "tracing",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "attributes",
+        "default",
+        "std",
+        "tracing-attributes"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "lexical-util",
+      "version": "1.0.7",
+      "target": "lexical_util",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "parse-floats",
+        "parse-integers",
+        "write-floats",
+        "write-integers"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "writeable",
+      "version": "0.6.4",
+      "target": "writeable",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "zerotrie",
+      "version": "0.2.5",
+      "target": "zerotrie",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "yoke",
+        "zerofrom"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "potential_utf",
+      "version": "0.1.6",
+      "target": "potential_utf",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "zerovec"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "icu_properties_data",
+      "version": "2.4.0",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "arrow-select",
+      "version": "59.3.2",
+      "target": "arrow_select",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "icu_locale_core",
+      "version": "2.4.0",
+      "target": "icu_locale_core",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "zerovec"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "zstd-safe",
+      "version": "8.2.0",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "utf8_iter",
+      "version": "1.0.4",
+      "target": "utf8_iter",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "icu_normalizer_data",
+      "version": "2.4.0",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "memchr",
+      "version": "2.8.3",
+      "target": "memchr",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "zstd-sys",
+      "version": "2.1.2+zstd.1.5.7",
+      "target": "zstd_sys",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "semver",
+      "version": "1.0.28",
+      "target": "semver",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "lexical-parse-integer",
+      "version": "1.0.6",
+      "target": "lexical_parse_integer",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "icu_collections",
+      "version": "2.4.0",
+      "target": "icu_collections",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "object",
+      "version": "0.39.1",
+      "target": "object",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "archive",
+        "coff",
+        "elf",
+        "macho",
+        "pe",
+        "read",
+        "read_core",
+        "std",
+        "xcoff"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "icu_provider",
+      "version": "2.4.0",
+      "target": "icu_provider",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "baked"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "icu_properties_data",
+      "version": "2.4.0",
+      "target": "icu_properties_data",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "rustc_version",
+      "version": "0.4.1",
+      "target": "rustc_version",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "lexical-write-integer",
+      "version": "1.0.6",
+      "target": "lexical_write_integer",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "parking_lot_core",
+      "version": "0.9.12",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "bitflags",
+      "version": "2.13.2",
+      "target": "bitflags",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "icu_normalizer_data",
+      "version": "2.4.0",
+      "target": "icu_normalizer_data",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "zstd-safe",
+      "version": "8.2.0",
+      "target": "zstd_safe",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "ar_archive_writer",
+      "version": "0.5.3",
+      "target": "ar_archive_writer",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "percent-encoding",
+      "version": "2.3.2",
+      "target": "percent_encoding",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "crc32fast",
+      "version": "1.5.3",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "icu_properties",
+      "version": "2.4.0",
+      "target": "icu_properties",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "compiled_data"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "lexical-write-float",
+      "version": "1.0.6",
+      "target": "lexical_write_float",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "flatbuffers",
+      "version": "25.12.19",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "lexical-parse-float",
+      "version": "1.0.6",
+      "target": "lexical_parse_float",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "zstd",
+      "version": "0.14.3",
+      "target": "zstd",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "psm",
+      "version": "0.1.32",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "icu_normalizer",
+      "version": "2.4.0",
+      "target": "icu_normalizer",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "compiled_data"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "aho-corasick",
+      "version": "1.1.5",
+      "target": "aho_corasick",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "perf-literal",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "unicode-segmentation",
+      "version": "1.13.3",
+      "target": "unicode_segmentation",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "adler2",
+      "version": "2.0.1",
+      "target": "adler2",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "scopeguard",
+      "version": "1.2.0",
+      "target": "scopeguard",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "base64",
+      "version": "0.23.1",
+      "target": "base64",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "simd-unsafe",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "regex-syntax",
+      "version": "0.8.11",
+      "target": "regex_syntax",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std",
+        "unicode",
+        "unicode-age",
+        "unicode-bool",
+        "unicode-case",
+        "unicode-gencat",
+        "unicode-perl",
+        "unicode-script",
+        "unicode-segment"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "ryu",
+      "version": "1.0.23",
+      "target": "ryu",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "unicode-width",
+      "version": "0.2.2",
+      "target": "unicode_width",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "cjk",
+        "default"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "simd-adler32",
+      "version": "0.3.10",
+      "target": "simd_adler32",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "lock_api",
+      "version": "0.4.14",
+      "target": "lock_api",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "atomic_usize",
+        "default"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "regex-automata",
+      "version": "0.4.18",
+      "target": "regex_automata",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "dfa-onepass",
+        "hybrid",
+        "meta",
+        "nfa-backtrack",
+        "nfa-pikevm",
+        "nfa-thompson",
+        "perf-inline",
+        "perf-literal",
+        "perf-literal-multisubstring",
+        "perf-literal-substring",
+        "std",
+        "syntax",
+        "unicode",
+        "unicode-age",
+        "unicode-bool",
+        "unicode-case",
+        "unicode-gencat",
+        "unicode-perl",
+        "unicode-script",
+        "unicode-segment",
+        "unicode-word-boundary"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "crc32fast",
+      "version": "1.5.3",
+      "target": "crc32fast",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "idna_adapter",
+      "version": "1.2.2",
+      "target": "idna_adapter",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "compiled_data"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "lexical-core",
+      "version": "1.0.6",
+      "target": "lexical_core",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "lexical-parse-float",
+        "lexical-parse-integer",
+        "lexical-write-float",
+        "lexical-write-integer",
+        "parse-floats",
+        "parse-integers",
+        "write-floats",
+        "write-integers"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "comfy-table",
+      "version": "7.2.2",
+      "target": "comfy_table",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "miniz_oxide",
+      "version": "0.9.1",
+      "target": "miniz_oxide",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "simd",
+        "simd-adler32",
+        "with-alloc"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "parking_lot_core",
+      "version": "0.9.12",
+      "target": "parking_lot_core",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "arrow-ord",
+      "version": "59.3.2",
+      "target": "arrow_ord",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "stacker",
+      "version": "0.1.25",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "async-trait",
+      "version": "0.1.92",
+      "target": "async_trait",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "atoi",
+      "version": "2.0.0",
+      "target": "atoi",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "getrandom",
+      "version": "0.4.3",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "twox-hash",
+      "version": "2.1.5",
+      "target": "twox_hash",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "xxhash32",
+        "xxhash64"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "either",
+      "version": "1.19.0",
+      "target": "either",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std",
+        "use_std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "thiserror",
+      "version": "2.0.21",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "alloc-no-stdlib",
+      "version": "2.0.4",
+      "target": "alloc_no_stdlib",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "zlib-rs",
+      "version": "0.6.8",
+      "target": "zlib_rs",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "rust-allocator",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "arrow-cast",
+      "version": "59.3.2",
+      "target": "arrow_cast",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "comfy-table",
+        "prettyprint"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "lz4_flex",
+      "version": "0.14.0",
+      "target": "lz4_flex",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "frame",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "regex",
+      "version": "1.13.1",
+      "target": "regex",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "perf",
+        "perf-backtrack",
+        "perf-cache",
+        "perf-dfa",
+        "perf-inline",
+        "perf-literal",
+        "perf-onepass",
+        "std",
+        "unicode",
+        "unicode-age",
+        "unicode-bool",
+        "unicode-case",
+        "unicode-gencat",
+        "unicode-perl",
+        "unicode-script",
+        "unicode-segment"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "flatbuffers",
+      "version": "25.12.19",
+      "target": "flatbuffers",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "idna",
+      "version": "1.1.0",
+      "target": "idna",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "compiled_data",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "alloc-stdlib",
+      "version": "0.2.4",
+      "target": "alloc_stdlib",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "flate2",
+      "version": "1.1.10",
+      "target": "flate2",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "any_impl",
+        "any_zlib",
+        "default",
+        "miniz_oxide",
+        "runtime_detection",
+        "rust_backend",
+        "zlib-rs"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "psm",
+      "version": "0.1.32",
+      "target": "psm",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "form_urlencoded",
+      "version": "1.2.2",
+      "target": "form_urlencoded",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "futures-executor",
+      "version": "0.3.34",
+      "target": "futures_executor",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "thiserror-impl",
+      "version": "2.0.21",
+      "target": "thiserror_impl",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "csv-core",
+      "version": "0.1.13",
+      "target": "csv_core",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "same-file",
+      "version": "1.0.6",
+      "target": "same_file",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "simdutf8",
+      "version": "0.1.5",
+      "target": "simdutf8",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "snap",
+      "version": "1.1.2",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "csv",
+      "version": "1.4.0",
+      "target": "csv",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "thiserror",
+      "version": "2.0.21",
+      "target": "thiserror",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "url",
+      "version": "2.5.8",
+      "target": "url",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "futures",
+      "version": "0.3.34",
+      "target": "futures",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "async-await",
+        "default",
+        "executor",
+        "futures-executor",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "stacker",
+      "version": "0.1.25",
+      "target": "stacker",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "brotli-decompressor",
+      "version": "5.0.3",
+      "target": "brotli_decompressor",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc-stdlib",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "walkdir",
+      "version": "2.5.0",
+      "target": "walkdir",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "getrandom",
+      "version": "0.4.3",
+      "target": "getrandom",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "arrow-ipc",
+      "version": "59.3.2",
+      "target": "arrow_ipc",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "lz4",
+        "lz4_flex",
+        "zstd"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "parking_lot",
+      "version": "0.12.5",
+      "target": "parking_lot",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "itertools",
+      "version": "0.14.0",
+      "target": "itertools",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "use_alloc",
+        "use_std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "recursive-proc-macro-impl",
+      "version": "0.1.1",
+      "target": "recursive_proc_macro_impl",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "humantime",
+      "version": "2.4.0",
+      "target": "humantime",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "log",
+      "version": "0.4.34",
+      "target": "log",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "brotli",
+      "version": "8.0.4",
+      "target": "brotli",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc-stdlib",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "arrow-csv",
+      "version": "59.3.2",
+      "target": "arrow_csv",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "arrow-json",
+      "version": "59.3.2",
+      "target": "arrow_json",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "arrow-string",
+      "version": "59.3.2",
+      "target": "arrow_string",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "snap",
+      "version": "1.1.2",
+      "target": "snap",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "recursive",
+      "version": "0.1.1",
+      "target": "recursive",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "object_store",
+      "version": "0.13.2",
+      "target": "object_store",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "fs",
+        "tokio",
+        "walkdir"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "arrow-row",
+      "version": "59.3.2",
+      "target": "arrow_row",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "arrow-arith",
+      "version": "59.3.2",
+      "target": "arrow_arith",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "sqlparser_derive",
+      "version": "0.5.0",
+      "target": "sqlparser_derive",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "pin-project-internal",
+      "version": "1.1.13",
+      "target": "pin_project_internal",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "seq-macro",
+      "version": "0.3.6",
+      "target": "seq_macro",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "uuid",
+      "version": "1.29.0",
+      "target": "uuid",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "js",
+        "rng",
+        "std",
+        "v4"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "itertools",
+      "version": "0.15.0",
+      "target": "itertools",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "use_alloc",
+        "use_std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "pin-project",
+      "version": "1.1.13",
+      "target": "pin_project",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "arrow",
+      "version": "59.3.2",
+      "target": "arrow",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "arrow-csv",
+        "arrow-ipc",
+        "arrow-json",
+        "canonical_extension_types",
+        "chrono-tz",
+        "csv",
+        "default",
+        "ipc",
+        "json",
+        "prettyprint"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "sqlparser",
+      "version": "0.62.0",
+      "target": "sqlparser",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "recursive",
+        "recursive-protection",
+        "sqlparser_derive",
+        "std",
+        "visitor"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "parquet",
+      "version": "59.3.2",
+      "target": "parquet",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "arrow",
+        "arrow-array",
+        "arrow-buffer",
+        "arrow-data",
+        "arrow-ipc",
+        "arrow-schema",
+        "arrow-select",
+        "async",
+        "base64",
+        "brotli",
+        "default",
+        "flate2",
+        "flate2-zlib-rs",
+        "futures",
+        "lz4",
+        "lz4_flex",
+        "object_store",
+        "simdutf8",
+        "snap",
+        "tokio",
+        "zstd"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "tokio-util",
+      "version": "0.7.20",
+      "target": "tokio_util",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "codec",
+        "default",
+        "io",
+        "libc"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "serde",
+      "version": "1.0.229",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "default",
+        "derive",
+        "serde_derive",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "serde_derive",
+      "version": "1.0.229",
+      "target": "serde_derive",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [
+        "default"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-doc",
+      "version": "55.2.0",
+      "target": "datafusion_doc",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "foldhash",
+      "version": "0.1.5",
+      "target": "foldhash",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "crossbeam-utils",
+      "version": "0.8.23",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-common",
+      "version": "55.2.0",
+      "target": "datafusion_common",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "object_store",
+        "parquet",
+        "recursive_protection",
+        "sql",
+        "sqlparser"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "rustix",
+      "version": "1.1.5",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "fs",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "hashbrown",
+      "version": "0.15.5",
+      "target": "hashbrown",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default-hasher",
+        "inline-more"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "rand_core",
+      "version": "0.9.5",
+      "target": "rand_core",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "os_rng",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "ppv-lite86",
+      "version": "0.2.21",
+      "target": "ppv_lite86",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "simd",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "errno",
+      "version": "0.3.14",
+      "target": "errno",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "fixedbitset",
+      "version": "0.5.7",
+      "target": "fixedbitset",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "fastrand",
+      "version": "2.5.0",
+      "target": "fastrand",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-expr-common",
+      "version": "55.2.0",
+      "target": "datafusion_expr_common",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "serde",
+      "version": "1.0.229",
+      "target": "serde",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "derive",
+        "serde_derive",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "crossbeam-utils",
+      "version": "0.8.23",
+      "target": "crossbeam_utils",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "rand_chacha",
+      "version": "0.9.0",
+      "target": "rand_chacha",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "petgraph",
+      "version": "0.8.3",
+      "target": "petgraph",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "graphmap",
+        "matrix_graph",
+        "stable_graph",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-doc",
+      "version": "55.2.0",
+      "target": "datafusion_doc",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "hashbrown",
+      "version": "0.14.5",
+      "target": "hashbrown",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "raw"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "hex",
+      "version": "0.4.3",
+      "target": "hex",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "liblzma-sys",
+      "version": "0.4.9",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "bindgen",
+        "static"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-physical-expr-common",
+      "version": "55.2.0",
+      "target": "datafusion_physical_expr_common",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "rustix",
+      "version": "1.1.5",
+      "target": "rustix",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "fs",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-macros",
+      "version": "55.2.0",
+      "target": "datafusion_macros",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "dashmap",
+      "version": "6.2.1",
+      "target": "dashmap",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "rand",
+      "version": "0.9.5",
+      "target": "rand",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "os_rng",
+        "small_rng",
+        "std",
+        "std_rng",
+        "thread_rng"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "libbz2-rs-sys",
+      "version": "0.2.5",
+      "target": "libbz2_rs_sys",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "rust-allocator"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-common-runtime",
+      "version": "55.2.0",
+      "target": "datafusion_common_runtime",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "compression-core",
+      "version": "0.4.34",
+      "target": "compression_core",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "glob",
+      "version": "0.3.4",
+      "target": "glob",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-functions-window-common",
+      "version": "55.2.0",
+      "target": "datafusion_functions_window_common",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-functions-aggregate-common",
+      "version": "55.2.0",
+      "target": "datafusion_functions_aggregate_common",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "tempfile",
+      "version": "3.27.0",
+      "target": "tempfile",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "getrandom"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "liblzma-sys",
+      "version": "0.4.9",
+      "target": "liblzma_sys",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "bindgen",
+        "static"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "bzip2",
+      "version": "0.6.1",
+      "target": "bzip2",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "httparse",
+      "version": "1.10.1",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "http-body",
+      "version": "1.1.0",
+      "target": "http_body",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "generic-array",
+      "version": "0.14.7",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "more_lengths"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "fnv",
+      "version": "1.0.7",
+      "target": "fnv",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "atomic-waker",
+      "version": "1.1.2",
+      "target": "atomic_waker",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-expr",
+      "version": "55.2.0",
+      "target": "datafusion_expr",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "recursive_protection",
+        "sql",
+        "sqlparser"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "liblzma",
+      "version": "0.4.9",
+      "target": "liblzma",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "bindgen",
+        "default",
+        "static"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "try-lock",
+      "version": "0.2.5",
+      "target": "try_lock",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "h2",
+      "version": "0.4.20",
+      "target": "h2",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "tokio-stream",
+      "version": "0.1.19",
+      "target": "tokio_stream",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "sync",
+        "time",
+        "tokio-util"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "bigdecimal",
+      "version": "0.4.11",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "tower-service",
+      "version": "0.3.3",
+      "target": "tower_service",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "typenum",
+      "version": "1.20.1",
+      "target": "typenum",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-physical-expr",
+      "version": "55.2.0",
+      "target": "datafusion_physical_expr",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "recursive_protection"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-execution",
+      "version": "55.2.0",
+      "target": "datafusion_execution",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "compression-codecs",
+      "version": "0.4.46",
+      "target": "compression_codecs",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "bzip2",
+        "flate2",
+        "gzip",
+        "libzstd",
+        "lzma",
+        "memchr",
+        "xz",
+        "zstd",
+        "zstd-safe"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "want",
+      "version": "0.3.2",
+      "target": "want",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "httparse",
+      "version": "1.10.1",
+      "target": "httparse",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "anyhow",
+      "version": "1.0.104",
+      "target": "build-script-build",
+      "target_kinds": [
+        "custom-build"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "generic-array",
+      "version": "0.14.7",
+      "target": "generic_array",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "more_lengths"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "num-bigint",
+      "version": "0.4.8",
+      "target": "num_bigint",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "either",
+      "version": "1.19.0",
+      "target": "either",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "std",
+        "use_std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-functions",
+      "version": "55.2.0",
+      "target": "datafusion_functions",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "base64",
+        "chrono-tz",
+        "datetime_expressions",
+        "default",
+        "encoding_expressions",
+        "hex",
+        "math_expressions",
+        "regex",
+        "regex_expressions",
+        "string_expressions",
+        "unicode_expressions",
+        "uuid"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "async-compression",
+      "version": "0.4.51",
+      "target": "async_compression",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "bzip2",
+        "gzip",
+        "lzma",
+        "tokio",
+        "xz",
+        "zstd"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "hyper",
+      "version": "1.12.0",
+      "target": "hyper",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "client",
+        "default",
+        "http1",
+        "http2"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-functions-aggregate",
+      "version": "55.2.0",
+      "target": "datafusion_functions_aggregate",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "bigdecimal",
+      "version": "0.4.11",
+      "target": "bigdecimal",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "itertools",
+      "version": "0.14.0",
+      "target": "itertools",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "use_alloc",
+        "use_std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "tower-layer",
+      "version": "0.3.3",
+      "target": "tower_layer",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "sync_wrapper",
+      "version": "1.0.2",
+      "target": "sync_wrapper",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-optimizer",
+      "version": "55.2.0",
+      "target": "datafusion_optimizer",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "recursive_protection"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-physical-plan",
+      "version": "55.2.0",
+      "target": "datafusion_physical_plan",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-physical-expr-adapter",
+      "version": "55.2.0",
+      "target": "datafusion_physical_expr_adapter",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "hyper-util",
+      "version": "0.1.21",
+      "target": "hyper_util",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "client",
+        "client-legacy",
+        "default",
+        "http1",
+        "tokio"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-functions-nested",
+      "version": "55.2.0",
+      "target": "datafusion_functions_nested",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "sql"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "anyhow",
+      "version": "1.0.104",
+      "target": "anyhow",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "tower",
+      "version": "0.5.3",
+      "target": "tower",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "balance",
+        "buffer",
+        "discover",
+        "futures-core",
+        "futures-util",
+        "indexmap",
+        "limit",
+        "load",
+        "load-shed",
+        "make",
+        "pin-project-lite",
+        "ready-cache",
+        "slab",
+        "sync_wrapper",
+        "tokio",
+        "tokio-util",
+        "tracing",
+        "util"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "crypto-common",
+      "version": "0.1.7",
+      "target": "crypto_common",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-functions-window",
+      "version": "55.2.0",
+      "target": "datafusion_functions_window",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "block-buffer",
+      "version": "0.10.4",
+      "target": "block_buffer",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "http-body-util",
+      "version": "0.1.5",
+      "target": "http_body_util",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-session",
+      "version": "55.2.0",
+      "target": "datafusion_session",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-sql",
+      "version": "55.2.0",
+      "target": "datafusion_sql",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "recursive_protection",
+        "unicode_expressions",
+        "unparser"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "prost-derive",
+      "version": "0.14.4",
+      "target": "prost_derive",
+      "target_kinds": [
+        "proc-macro"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "hyper-timeout",
+      "version": "0.5.2",
+      "target": "hyper_timeout",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "base64",
+      "version": "0.22.1",
+      "target": "base64",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "alloc",
+        "default",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "digest",
+      "version": "0.10.7",
+      "target": "digest",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "block-buffer",
+        "core-api",
+        "default"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "cpufeatures",
+      "version": "0.2.17",
+      "target": "cpufeatures",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-datasource",
+      "version": "55.2.0",
+      "target": "datafusion_datasource",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "async-compression",
+        "bzip2",
+        "compression",
+        "flate2",
+        "liblzma",
+        "tokio-util",
+        "zstd"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "prost",
+      "version": "0.14.4",
+      "target": "prost",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "default",
+        "derive",
+        "std"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "tonic",
+      "version": "0.14.6",
+      "target": "tonic",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "channel",
+        "codegen"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "sha2",
+      "version": "0.10.9",
+      "target": "sha2",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-catalog",
+      "version": "55.2.0",
+      "target": "datafusion_catalog",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-pruning",
+      "version": "55.2.0",
+      "target": "datafusion_pruning",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-datasource-csv",
+      "version": "55.2.0",
+      "target": "datafusion_datasource_csv",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-datasource-arrow",
+      "version": "55.2.0",
+      "target": "datafusion_datasource_arrow",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "compression"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-datasource-json",
+      "version": "55.2.0",
+      "target": "datafusion_datasource_json",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "tonic-prost",
+      "version": "0.14.6",
+      "target": "tonic_prost",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-datasource-parquet",
+      "version": "55.2.0",
+      "target": "datafusion_datasource_parquet",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-functions-table",
+      "version": "55.2.0",
+      "target": "datafusion_functions_table",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-physical-optimizer",
+      "version": "55.2.0",
+      "target": "datafusion_physical_optimizer",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "recursive_protection"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "datafusion-catalog-listing",
+      "version": "55.2.0",
+      "target": "datafusion_catalog_listing",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "datafusion",
+      "version": "55.2.0",
+      "target": "datafusion",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [
+        "bzip2",
+        "compression",
+        "datafusion-datasource-parquet",
+        "datafusion-functions-nested",
+        "datafusion-sql",
+        "flate2",
+        "liblzma",
+        "nested_expressions",
+        "parquet",
+        "recursive_protection",
+        "sql",
+        "sqlparser",
+        "zstd"
+      ],
+      "fresh": true
+    },
+    {
+      "package": "df0-engine",
+      "version": "0.0.0",
+      "target": "df0_engine",
+      "target_kinds": [
+        "lib"
+      ],
+      "features": [],
+      "fresh": true
+    },
+    {
+      "package": "df0-worker",
+      "version": "0.0.0",
+      "target": "df0-worker",
+      "target_kinds": [
+        "bin"
+      ],
+      "features": [],
+      "fresh": true
+    }
+  ],
+  "build_scripts": [
+    {
+      "package": "proc-macro2",
+      "version": "1.0.107",
+      "linked_libs": []
+    },
+    {
+      "package": "quote",
+      "version": "1.0.47",
+      "linked_libs": []
+    },
+    {
+      "package": "libc",
+      "version": "0.2.191",
+      "linked_libs": []
+    },
+    {
+      "package": "libm",
+      "version": "0.2.16",
+      "linked_libs": []
+    },
+    {
+      "package": "libc",
+      "version": "0.2.191",
+      "linked_libs": []
+    },
+    {
+      "package": "num-traits",
+      "version": "0.2.19",
+      "linked_libs": []
+    },
+    {
+      "package": "zerocopy",
+      "version": "0.8.63",
+      "linked_libs": []
+    },
+    {
+      "package": "serde_core",
+      "version": "1.0.229",
+      "linked_libs": []
+    },
+    {
+      "package": "getrandom",
+      "version": "0.3.4",
+      "linked_libs": []
+    },
+    {
+      "package": "zmij",
+      "version": "1.0.23",
+      "linked_libs": []
+    },
+    {
+      "package": "serde_json",
+      "version": "1.0.154",
+      "linked_libs": []
+    },
+    {
+      "package": "ahash",
+      "version": "0.8.12",
+      "linked_libs": []
+    },
+    {
+      "package": "chrono-tz",
+      "version": "0.10.4",
+      "linked_libs": []
+    },
+    {
+      "package": "zstd-sys",
+      "version": "2.1.2+zstd.1.5.7",
+      "linked_libs": [
+        "static=zstd"
+      ]
+    },
+    {
+      "package": "object",
+      "version": "0.39.1",
+      "linked_libs": []
+    },
+    {
+      "package": "icu_properties_data",
+      "version": "2.4.0",
+      "linked_libs": []
+    },
+    {
+      "package": "icu_normalizer_data",
+      "version": "2.4.0",
+      "linked_libs": []
+    },
+    {
+      "package": "zstd-safe",
+      "version": "8.2.0",
+      "linked_libs": []
+    },
+    {
+      "package": "parking_lot_core",
+      "version": "0.9.12",
+      "linked_libs": []
+    },
+    {
+      "package": "crc32fast",
+      "version": "1.5.3",
+      "linked_libs": []
+    },
+    {
+      "package": "psm",
+      "version": "0.1.32",
+      "linked_libs": [
+        "static=psm_s"
+      ]
+    },
+    {
+      "package": "flatbuffers",
+      "version": "25.12.19",
+      "linked_libs": []
+    },
+    {
+      "package": "stacker",
+      "version": "0.1.25",
+      "linked_libs": []
+    },
+    {
+      "package": "getrandom",
+      "version": "0.4.3",
+      "linked_libs": []
+    },
+    {
+      "package": "thiserror",
+      "version": "2.0.21",
+      "linked_libs": []
+    },
+    {
+      "package": "snap",
+      "version": "1.1.2",
+      "linked_libs": []
+    },
+    {
+      "package": "serde",
+      "version": "1.0.229",
+      "linked_libs": []
+    },
+    {
+      "package": "crossbeam-utils",
+      "version": "0.8.23",
+      "linked_libs": []
+    },
+    {
+      "package": "rustix",
+      "version": "1.1.5",
+      "linked_libs": []
+    },
+    {
+      "package": "liblzma-sys",
+      "version": "0.4.9",
+      "linked_libs": [
+        "static=lzma"
+      ]
+    },
+    {
+      "package": "httparse",
+      "version": "1.10.1",
+      "linked_libs": []
+    },
+    {
+      "package": "generic-array",
+      "version": "0.14.7",
+      "linked_libs": []
+    },
+    {
+      "package": "bigdecimal",
+      "version": "0.4.11",
+      "linked_libs": []
+    },
+    {
+      "package": "anyhow",
+      "version": "1.0.104",
+      "linked_libs": []
+    }
+  ],
+  "resolved_but_not_observed": [
+    {
+      "name": "const-random-macro",
+      "version": "0.1.16"
+    },
+    {
+      "name": "const-random",
+      "version": "0.1.18"
+    },
+    {
+      "name": "crunchy",
+      "version": "0.2.4"
+    },
+    {
+      "name": "getrandom",
+      "version": "0.2.17"
+    },
+    {
+      "name": "tiny-keccak",
+      "version": "2.0.2"
+    }
+  ]
+}
