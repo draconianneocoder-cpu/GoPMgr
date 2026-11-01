@@ -121,6 +121,66 @@ installed/signed application composition remain incomplete. F2, DF-049 and
 LC-GATE therefore remain unqualified. Structured self-review substitutes for
 unavailable independent reviewer quota; it is not independent review.
 
+## Native-source provenance and notice review bundle
+
+The [source review manifest](../../spikes/adr012-datafusion/evidence/df0-native-source-macos/source-review.json)
+verifies all **609 published files** in `zstd-sys 2.1.2+zstd.1.5.7`,
+`liblzma-sys 0.4.9` and `psm 0.1.32` against their locked `.crate` checksums
+and extracted cache bytes. This includes Rust/build code, native sources,
+headers, tests and documentation, not just files compiled for macOS.
+Cargo extraction metadata is excluded explicitly. This check does not rely on
+`.cargo-checksum.json` as an adversarial integrity mechanism; see the
+[Cargo source documentation](https://doc.rust-lang.org/cargo/reference/source-replacement.html).
+
+The same completed build log, worker hash and three native archive hashes
+are reconciled with actual `ar -t` member lists. The manifest records **103
+candidate object/source matches**: 25 for Zstd, 77 for liblzma and one for psm.
+A unique basename match is supporting provenance only, not compiler/preprocessor
+proof or a final-linker map. Missing or ambiguous candidates fail; no first-match
+fallback is used. Full-package file hashes also retain potential header/source
+inputs beyond those candidates.
+
+The [13-text review bundle](../../spikes/adr012-datafusion/notices/NATIVE-REVIEW-NOTICES.txt)
+preserves the discovered license/copying texts byte for byte within labeled
+sections. Its hash is bound into the manifest. It lives outside the blanket
+CC0 evidence directory and follows the repository's `LicenseRef-Third-Party-Notices`
+annotation. Each text keeps its original scope and terms. All alternatives and
+package-wide copying summaries remain available for review; their presence is
+not an assertion that every text governs the worker or that distribution is
+cleared. The source tool `xz/build-aux/license-check.sh` is inventoried as source,
+not misclassified as a notice or executed.
+
+All 77 liblzma candidate C files carry an explicit `0BSD` declaration. Nine
+other published native files carry `LGPL-2.1-or-later` declarations and one
+carries `GPL-2.0-or-later`; none is one of those 77 candidates. These file-level
+facts explain why package-wide license totals cannot be applied to the linked
+library. They do not establish the complete preprocessor/header closure.
+The psm and Zstd native sources in this scan lack SPDX markers; their raw crate
+declarations and notice texts are retained, with no invented file-level license.
+`spdx_declarations: null` means the file is outside the C/header/assembly/include
+scan; an empty array means no marker matched within that scan. Neither means
+that a file is unlicensed.
+
+The generator uses Python's standard library and existing `ar`; tests compile
+a tiny trusted C fixture with the existing compiler. No Cargo build scripts,
+third-party inspection scripts or native dependency rebuilds are executed.
+Archive contents are read without extraction. It rejects mismatched crates,
+changed/missing/added cached files, symlinks, path traversal, duplicate archive
+members, wrong native/worker hashes, incomplete/failed build logs, unaccounted
+native inputs and ambiguous candidates before publishing an output directory.
+An existing output is preserved. Temporary output is removed after an injected
+write failure. Inputs are trusted local Cargo records and a stable source/cache;
+this is not a concurrent hostile-filesystem or arbitrary-archive service.
+
+[Validation evidence](../../spikes/adr012-datafusion/evidence/df0-native-source-macos/verification.json)
+records five tests, fourteen source/build refusal cases, three malformed-archive
+cases, interrupted-output cleanup, existing-output preservation and seven
+executed controlled faults in disposable copies. It also records independent
+source/notice hash comparisons and deterministic regeneration. The source
+package audit trail and review bundle are now reproducible; full per-source
+licensing dispositions, compiler/SDK constituents and installed-package notice
+assembly remain open. This is not DF-049 or LC-GATE PASS.
+
 ## Advisory scan
 
 The [unfiltered Cargo audit](../../spikes/adr012-datafusion/evidence/df0-f-macos/cargo-audit.json)

@@ -35,10 +35,9 @@ near-term priority is making those workflows dependable for wider testing.
 
 ## DuckDB replacement: current delivery sequence
 
-Snapshot baseline: main `8746d38` on 2026-11-01 UTC, after merged PR #176.
+Snapshot baseline: main `0468ad9` on 2026-11-01 UTC, after merged PR #177.
 Linked DF0 records also cover isolated spike work; that does not mean production
-integration. DuckDB remains
-the shipped analytics engine. The accepted [ADR-012 authority](review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)
+integration. DuckDB remains the shipped analytics engine. The accepted [ADR-012 authority](review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)
 authorizes the isolated feasibility spike; it does not authorize production
 integration, a release-package change or removal of the legacy engine. Do not
 upgrade DuckDB as part of its retirement.
@@ -63,8 +62,12 @@ upgrade DuckDB as part of its retirement.
    review input. A subsequent isolated slice adds an artifact-bound SPDX 3.0.1
    build-input SBOM with official schema/SHACL validation, 263 observed Cargo
    packages and three hashed native archives. All compiler artifacts in that
-   observation were cached; complete native-source/compiler/SDK/installed-app
-   composition, license and release-clearance gates remain open. The first
+   observation were cached. A subsequent native-source review verifies 609
+   published package files, records 103 candidate object/source matches and
+   assembles 13 verbatim notice texts for the three archive inputs. Candidate
+   matches do not establish final linker composition. Complete per-source
+   licensing, compiler/SDK/installed-app composition and release-clearance
+   gates remain open. The first
    [macOS E2 typed-cell harness](testing/adr-012-df0-numeric-fidelity.md) now
    checks 10 jobs/60 rows, including JavaScript decoding and decimal-scale
    preservation. Production DTO/renderer use and semantic decoding of nested
@@ -93,8 +96,11 @@ merged the four macOS limit, numeric-fidelity, portfolio-characterization and
 dependency-inventory commits. Its eight hosted checks passed at head `9ff61b1`;
 the eight main checks also passed at `8746d38`. The four qualification branches
 were removed locally and remotely after merge/ancestry and worktree checks.
-The build-input SBOM slice is subsequent isolated work; its evidence is separate
-from that merged snapshot.
+[PR #177](https://github.com/draconianneocoder-cpu/GoPMgr/pull/177) then merged
+the build-input SBOM. All eight PR checks passed at `eac7cfe`, and all eight
+main checks passed at `0468ad9`; its feature branch was removed locally and
+remotely. The native-source notice review is subsequent isolated work, separate
+from that frozen baseline.
 The retained legacy branch `claude/slice-b-readonly-access` belongs to closed,
 unmerged PR #163.
 Review and selectively port useful missing read-only regression fixtures before

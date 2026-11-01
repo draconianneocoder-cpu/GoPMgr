@@ -267,3 +267,40 @@ Declared SPDX expression syntax/identifiers were checked separately using the
 existing `license-expression 30.4.4` validator; that is not a legal conclusion.
 The [build SBOM and bounded source/notice review](../../docs/interoperability/adr-012-rust-dependency-security-sbom.md#artifact-bound-spdx-build-input-sbom)
 remain partial F/F2 evidence, with no production integration or LC-GATE pass.
+
+### Native-source and notice review inputs
+
+`tools/native_review.py` uses Python 3.11+ standard-library modules and the
+existing `ar` tool. From the repository root, use the same locked metadata,
+completed Cargo JSON build log and reviewed worker as the SBOM export above:
+
+```sh
+python3 spikes/adr012-datafusion/tools/native_review.py \
+  --metadata /absolute/path/to/metadata.json \
+  --lock spikes/adr012-datafusion/rust/Cargo.lock \
+  --build-log /absolute/path/to/build.jsonl \
+  --native-inputs spikes/adr012-datafusion/evidence/df0-sbom-macos/native-inputs.json \
+  --worker /absolute/path/to/reviewed-target-cache/release/df0-worker \
+  --worker-evidence spikes/adr012-datafusion/evidence/df0-f-macos/native-worker.json \
+  --crate-cache /absolute/path/to/cargo/registry/cache \
+  --output-dir /absolute/path/to/new-review-directory
+
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+  -s spikes/adr012-datafusion/tools -p native_review_test.py
+```
+
+Tests require the existing C compiler (`cc`) and `ar`. The generator runs no
+build scripts and fetches nothing. Output must be a new directory; input
+validation and assembly finish before it is published. Its `source-review.json`
+is evidence metadata; `NATIVE-REVIEW-NOTICES.txt` contains third-party texts and
+must keep `LicenseRef-Third-Party-Notices` treatment rather than CC0. The recorded
+copies live under `evidence/df0-native-source-macos/` and `notices/` respectively.
+Compare both generated files byte for byte with those copies before updating
+review evidence; do not replace old output in place.
+
+File hashes cover entire published native-wrapper packages. Object/source
+matches are unique candidates, not proof of compiler flags, include closure or
+retained executable bytes. Raw C/header/assembly/include SPDX markers are
+recorded without legal conclusions; unscanned files and absent markers remain
+distinct. See the [native source review](../../docs/interoperability/adr-012-rust-dependency-security-sbom.md#native-source-provenance-and-notice-review-bundle)
+for counts, licensing distinctions, refusal controls and remaining gates.

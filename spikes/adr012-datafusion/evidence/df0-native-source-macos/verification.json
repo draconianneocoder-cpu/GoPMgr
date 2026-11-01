@@ -1,0 +1,104 @@
+{
+  "recorded_utc": "2026-11-01T16:27:38.433185+00:00",
+  "source_baseline": "0468ad98b01ab7a1e3be17513f2c7b97dc4d0d1d",
+  "python": "3.15.2",
+  "platform": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "macos": "27.2"
+  },
+  "fixture_compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)",
+  "archive_inspector": "Existing system ar -t; all actual member lists matched pinned native-inputs.json",
+  "source_sha256": {
+    "spikes/adr012-datafusion/tools/native_review.py": "c16d7f27a20ad87519dea5613c9d73da58bd78397343fef111097c3fc7149e0a",
+    "spikes/adr012-datafusion/tools/native_review_test.py": "e858817ec54690938d1d2949698a3650d84a27bcc5d82fde97250a345750d344"
+  },
+  "artifact_sha256": {
+    "source-review.json": "0c3ddfa51a33817ea9709ca5ff6eb3cf094a079d69b4cea2570aacb0275411eb",
+    "../../notices/NATIVE-REVIEW-NOTICES.txt": "ea346afff42d8da3f0ca2ba7d0c3403bb2fcdd3aec2c2bb395b5bcfca435b6bb"
+  },
+  "independent_comparison": {
+    "accepted": true,
+    "packages": {
+      "liblzma-sys": {
+        "published_files": 435,
+        "source_candidates": 77,
+        "notice_texts": 7
+      },
+      "psm": {
+        "published_files": 45,
+        "source_candidates": 1,
+        "notice_texts": 2
+      },
+      "zstd-sys": {
+        "published_files": 129,
+        "source_candidates": 25,
+        "notice_texts": 4
+      }
+    },
+    "method": "Independent tar/checksum/cache/notice-byte comparison with an explicit 13-path oracle, no generator imports"
+  },
+  "test_functions": 5,
+  "refusal_cases": 14,
+  "malformed_archive_cases": 3,
+  "fault_controls": [
+    {
+      "fault": "baseline",
+      "exit_code": 0,
+      "expected_result": true
+    },
+    {
+      "fault": "skip-crate-checksum",
+      "exit_code": 1,
+      "expected_result": true
+    },
+    {
+      "fault": "skip-cache-comparison",
+      "exit_code": 1,
+      "expected_result": true
+    },
+    {
+      "fault": "skip-native-hash",
+      "exit_code": 1,
+      "expected_result": true
+    },
+    {
+      "fault": "choose-ambiguous-source",
+      "exit_code": 1,
+      "expected_result": true
+    },
+    {
+      "fault": "strip-copyright",
+      "exit_code": 1,
+      "expected_result": true
+    },
+    {
+      "fault": "ignore-added-source",
+      "exit_code": 1,
+      "expected_result": true
+    },
+    {
+      "fault": "ignore-incomplete-build",
+      "exit_code": 1,
+      "expected_result": true
+    }
+  ],
+  "verification": [
+    "Python unittest discover: five tests passed, using a real tiny C object and system ar, no third-party script execution.",
+    "Controlled faults: seven assertion failures for intended defects, clean control passed; interpreter/setup failures did not count as detection.",
+    "Independent tar/checksum/cache/file hash and explicit 13-notice-path/byte comparison passed.",
+    "Generator run repeatedly: notice bytes stable; source report stable for fixed generator/input bytes.",
+    "Existing inventory race baseline, production analytics stub and duckdb-tag tests passed.",
+    "REUSE 3.3 passed after splitting parser/fixture marker literals to avoid lexical false classification.",
+    "Configuration parser, source-override integrity tests (scripts), coverage ledger and release scope passed."
+  ],
+  "limitations": [
+    "Source-file hashes cover published packages, including unbuilt files; not the full final executable composition.",
+    "Unique object filename matches are candidate attribution only, without compiler flags/preprocessor/include or retained linker proof.",
+    "All native source/license declarations retained; no legal choice, full per-source audit, installed-package notice set, DF-049 PASS or LC-GATE clearance.",
+    "Worker and archive inputs reused from approved cached build; no fresh Rust/native dependency build or reproducibility qualification.",
+    "Executed on macOS arm64 only; native Linux/Windows, minimum-OS, installed/signed package and production integration not tested.",
+    "No Rust, Go runtime, Svelte/UI, project data, dependency pins, release packaging or CI changes; unrelated full application/PDF release gates not rerun.",
+    "Independent reviewer quota unavailable until Nov4; plan, mid-work and final structured self-review fallback disclosed."
+  ]
+}
