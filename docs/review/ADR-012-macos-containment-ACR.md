@@ -141,8 +141,10 @@ to relax it or adopt a new production architecture must be explicit.
 
 ## Memory-only filesystem finding (2026-11-02)
 
-**Status: owner decision recorded 2026-11-02.** (d) governs; (a) is approved
-as the target under the five conditions below and is not adopted. Evidence:
+**Status: owner decisions recorded 2026-11-02.** (d) governs; (a) is approved
+as the target under the five conditions below and is not adopted. The owner
+chose how to resolve conditions 2–5; work remains on 2, 3 and 5, and 4 waits
+for release qualification. Evidence:
 [memory-only filesystem experiment](../testing/adr-012-df0-memory-only.md).
 
 **Requirement:** ADR-012 binding safeguard 4 makes `SENSITIVE_MEMORY_ONLY` the
@@ -184,11 +186,11 @@ then.
 
 | # | Condition set by the owner | Status |
 | --- | --- | --- |
-| 1 | Report a blocked spill as `RESOURCE_LIMIT` instead of `INPUT_INVALID` | **Reported passed (2026-11-02), awaiting owner confirmation:** the native forced spill returns `RESOURCE_LIMIT` with a constant detail; a reverted mapping is caught natively and in Rust |
-| 2 | Give each job a fresh, empty folder and wipe it afterwards, so names and attributes cannot build up between jobs | **Reported passed within one host process, one job at a time (2026-11-02), awaiting owner confirmation.** A cross-process lock is needed before two app instances can share the container. `Container.Do` gives each job a fresh folder and sweeps the whole `Data` tree back to its baseline after every outcome. All workers share one container, so concurrent jobs (DF-064 cohorts) need an owner choice: serialize, separate signed identities per job, or per-job folder removal with sweeps only when idle |
-| 3 | Decide how crash reports are handled, since ReportCrash writes them outside the sandbox | **Owner choice needed.** Reports carry register values (a few dozen bytes of in-flight data) and submission is on here; a handler that exits first avoids them. Options (i)–(iv) are in the [evidence](../testing/adr-012-df0-memory-only.md#owner-conditions-for-option-a) |
-| 4 | Repeat the tests on a signed, installed app on the oldest supported macOS | **BLOCKED:** this machine has no code-signing identity (no Developer ID) and no macOS 13 host |
-| 5 | Try an unprivileged volume-wide file-change watch as a stand-in for OS-wide tracing | **Reported passed as an experiment (2026-11-02), awaiting owner judgement:** an unprivileged stream on the boot volume saw writes in system temp, user temp, home and the container, dropped nothing under load, and reported drops under a stalled consumer. It shows paths, not processes, and covers one volume |
+| 1 | Report a blocked spill as `RESOURCE_LIMIT` instead of `INPUT_INVALID` | **Passed (2026-11-02).** The native forced spill returns `RESOURCE_LIMIT` with a constant detail; a reverted mapping is caught natively and in Rust. Reported to the owner with the choices below; no objection raised |
+| 2 | Give each job a fresh, empty folder and wipe it afterwards, so names and attributes cannot build up between jobs | **Passed within one host process, one job at a time (2026-11-02).** `Container.Do` gives each job a fresh folder and sweeps the whole `Data` tree back to its baseline after every outcome. **Owner choice (2026-11-02): one signed worker copy per concurrency slot**, each with its own bundle identifier and therefore its own container and sweep, so DF-064 2/4/8 cohorts run in parallel. **Open work:** per-slot signing and entitlements, a cross-process lock per container, and native cohort tests showing that no slot sees another's files |
+| 3 | Decide how crash reports are handled, since ReportCrash writes them outside the sandbox | **Owner choice (2026-11-02): a Rust panic hook plus deployment guidance.** The safe-Rust hook exits before macOS writes a report, which covers panics. Native faults still produce reports and keep their diagnostics; guidance tells administrators how to turn off automatic submission. **Open work:** the hook, a native test showing no report after a panic and a report after a native fault (control), and the guidance text. Residual: a native-fault report can carry a few dozen bytes of register data |
+| 4 | Repeat the tests on a signed, installed app on the oldest supported macOS | **Deferred to release qualification (owner choice, 2026-11-02).** This machine has no code-signing identity and no macOS 13 host. (a) cannot be adopted until this passes; (d) stays in force |
+| 5 | Try an unprivileged volume-wide file-change watch as a stand-in for OS-wide tracing | **Experiment passed (2026-11-02). Owner choice: accept it in place of OS-wide tracing after one more test**, in which the worker makes a macOS helper write outside the container and the watch must see it. An unprivileged stream on the boot volume saw writes in system temp, user temp, home and the container, dropped nothing under load, and reported drops under a stalled consumer. Recorded limits: paths, not processes; closely spaced events can merge; one volume |
 
 ## Required proof before qualification or cutover
 

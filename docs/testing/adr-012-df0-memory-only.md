@@ -186,7 +186,8 @@ own name:
   for a name that had crashed many times, so deleting reports afterwards is
   neither complete nor timely when submission is on.
 
-Options for the owner, none implemented in the worker:
+Options for the owner. The owner chose (ii) with (iv); see
+[Owner decision](#owner-decision).
 
 | Option | What it does | Cost |
 | --- | --- | --- |
@@ -235,6 +236,20 @@ The options were:
 - **(c)** design separate-user, privileged or VM isolation, which needs new
   authority;
 - **(d)** stay BLOCKED and defer cutover.
+
+**Choices for the conditions (2026-11-02).** None is implemented yet.
+
+- **Condition 2:** one signed worker copy per concurrency slot, each with its
+  own bundle identifier, so each slot gets its own container and sweep. DF-064
+  cohorts then run in parallel. Each container still needs a cross-process
+  lock.
+- **Condition 3:** option (ii), a panic hook in safe Rust, plus (iv),
+  deployment guidance. Native faults keep producing reports.
+- **Condition 4:** deferred to release qualification. (a) cannot be adopted
+  before it passes.
+- **Condition 5:** the watch replaces OS-wide tracing once one more test shows
+  it sees a write that a macOS helper makes outside the container on the
+  worker's behalf.
 
 
 ## Verification
