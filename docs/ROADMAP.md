@@ -60,9 +60,13 @@ upgrade DuckDB as part of its retirement.
    now demonstrates private-file/TCP restrictions, direct-fork refusal and
    authenticated native IPC with generation and host-mediated Parquet. It also
    demonstrates missed memory bursts and permitted own-container writes; neither
-   hard quotas nor full memory-only confidentiality is qualified. Next qualify
-   job-bound observation, failure recovery and filesystem policy, then obtain
-   explicit accounting/budget and adoption decisions. Keep accepted guarantees
+   hard quotas nor full memory-only confidentiality is qualified. The
+   [memory-only filesystem experiment](testing/adr-012-df0-memory-only.md) found
+   that App Sandbox plus a zero file-size limit stops file content, including a
+   forced spill, but not names, attributes or writes other processes make for
+   the worker; DF-062 stays BLOCKED pending the owner decision in the ACR. Next
+   qualify job-bound observation and failure recovery, then obtain explicit
+   accounting/budget, confidentiality-policy and adoption decisions. Keep accepted guarantees
    until changed explicitly; no privileged helper or VM is selected.
 2. **Finish the remaining DF0 evidence.** Close the security matrix; compare
    DuckDB, DataFusion and Go exact-rollup plus DataFusion fairly (DF0-E), verify

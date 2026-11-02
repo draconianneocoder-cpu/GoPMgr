@@ -1,0 +1,153 @@
+[
+  {
+    "name": "app_sandbox_only",
+    "started": true,
+    "fsize_soft_bytes": 9223372036854775807,
+    "sigxfsz_ignored": false,
+    "create_errno": 0,
+    "write_errno": 0,
+    "ftruncate_errno": 0,
+    "setxattr_errno": 0,
+    "rename_errno": 0,
+    "mkdir_errno": 0,
+    "stat_errno": 0,
+    "final_size": 4096,
+    "container_scan": {
+      "non_empty_files": [
+        ".com.apple.containermanagerd.metadata.plist",
+        "Data/tmp/growth-DF0GROWTH60BF5FF898BC"
+      ],
+      "sentinel_in_content": [
+        "Data/tmp/growth-DF0GROWTH60BF5FF898BC"
+      ],
+      "sentinel_in_xattr": [
+        "Data/tmp/growth-DF0GROWTH60BF5FF898BC"
+      ],
+      "sentinel_in_name": [
+        "Data/tmp/growth-DF0GROWTH60BF5FF898BC"
+      ]
+    },
+    "fsevents": {
+      "events": 14,
+      "files_created": [
+        ".com.apple.containermanagerd.metadata.plist.atomic.Xz9qfz",
+        ".com.apple.containermanagerd.metadata.plist.atomic.ZHOU4M",
+        "Data/tmp/growth-file"
+      ],
+      "files_modified": [
+        ".com.apple.containermanagerd.metadata.plist.atomic.Xz9qfz",
+        ".com.apple.containermanagerd.metadata.plist.atomic.ZHOU4M",
+        "Data/tmp/growth-file"
+      ],
+      "xattr_changed": [
+        ".",
+        "Data/tmp/growth-file",
+        "Data/tmp/growth-dir"
+      ],
+      "files_renamed": [
+        ".com.apple.containermanagerd.metadata.plist",
+        ".com.apple.containermanagerd.metadata.plist.atomic.Xz9qfz",
+        ".com.apple.containermanagerd.metadata.plist.atomic.ZHOU4M",
+        "Data/tmp/growth-file",
+        "Data/tmp/growth-DF0GROWTH60BF5FF898BC"
+      ],
+      "dirs_created": [
+        "Data/tmp/growth-dir"
+      ],
+      "files_removed": [
+        ".com.apple.containermanagerd.metadata.plist.atomic.Xz9qfz",
+        ".com.apple.containermanagerd.metadata.plist.atomic.ZHOU4M"
+      ]
+    }
+  },
+  {
+    "name": "app_sandbox_fsize_zero",
+    "started": true,
+    "fsize_soft_bytes": 0,
+    "sigxfsz_ignored": true,
+    "create_errno": 0,
+    "write_errno": 27,
+    "ftruncate_errno": 27,
+    "setxattr_errno": 0,
+    "rename_errno": 0,
+    "mkdir_errno": 0,
+    "stat_errno": 0,
+    "final_size": 0,
+    "container_scan": {
+      "non_empty_files": [
+        ".com.apple.containermanagerd.metadata.plist"
+      ],
+      "sentinel_in_content": null,
+      "sentinel_in_xattr": [
+        "Data/tmp/growth-DF0GROWTH60BF5FF898BC"
+      ],
+      "sentinel_in_name": [
+        "Data/tmp/growth-DF0GROWTH60BF5FF898BC"
+      ]
+    },
+    "fsevents": {
+      "events": 5,
+      "files_created": [
+        "Data/tmp/growth-file"
+      ],
+      "files_modified": null,
+      "xattr_changed": [
+        "Data/tmp/growth-file",
+        "Data/tmp/growth-dir"
+      ],
+      "files_renamed": [
+        "Data/tmp/growth-file",
+        "Data/tmp/growth-DF0GROWTH60BF5FF898BC"
+      ],
+      "dirs_created": [
+        "Data/tmp/growth-dir"
+      ],
+      "files_removed": null
+    }
+  },
+  {
+    "name": "sandbox_exec_then_app_sandbox",
+    "started": false,
+    "fsize_soft_bytes": 0,
+    "sigxfsz_ignored": false,
+    "create_errno": 0,
+    "write_errno": 0,
+    "ftruncate_errno": 0,
+    "setxattr_errno": 0,
+    "rename_errno": 0,
+    "mkdir_errno": 0,
+    "stat_errno": 0,
+    "final_size": 0,
+    "exit_signal": "trace/BPT trap",
+    "container_scan": {
+      "non_empty_files": [
+        ".com.apple.containermanagerd.metadata.plist",
+        "Data/Library/Application Support/CrashReporter/probe_881A1103-A9F1-583C-B186-EF9D18E7A36E.plist"
+      ],
+      "sentinel_in_content": null,
+      "sentinel_in_xattr": null,
+      "sentinel_in_name": null
+    },
+    "fsevents": {
+      "events": 4,
+      "files_created": [
+        "Data/Library/Application Support/CrashReporter/probe_881A1103-A9F1-583C-B186-EF9D18E7A36E.plist"
+      ],
+      "files_modified": [
+        "Data/Library/Application Support/CrashReporter/probe_881A1103-A9F1-583C-B186-EF9D18E7A36E.plist"
+      ],
+      "xattr_changed": null,
+      "files_renamed": null,
+      "dirs_created": [
+        "Data/Library/Application Support/CrashReporter"
+      ],
+      "files_removed": null
+    },
+    "crash_report": {
+      "observed": true,
+      "sentinel_found": false,
+      "mentions_container": false,
+      "bytes": 10101
+    }
+  }
+]

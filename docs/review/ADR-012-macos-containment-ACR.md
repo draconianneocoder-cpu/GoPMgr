@@ -9,7 +9,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 **Owner approval:** resource-policy changes and production adoption pending.
 No privilege, new production dependency, transport
 change or resource-policy relaxation is authorized by this document.
-**Decision packet updated:** 2026-11-01 against integration baseline `298f6b9`.
+**Decision packet updated:** 2026-11-01 against integration baseline `298f6b9`;
+memory-only filesystem finding added 2026-11-02 against `e31e225`.
 
 **Investigation scope authorized, 2026-11-01:** the owner selected native
 monitoring/termination evaluation before deciding adoption, then requested
@@ -137,6 +138,45 @@ does not select an implementation.
 structured self-review above is a disclosed fallback, not independent approval.
 No ACR approval is required to preserve the accepted resource contract. A decision
 to relax it or adopt a new production architecture must be explicit.
+
+## Memory-only filesystem finding (2026-11-02)
+
+**Status: decision requested, NOT APPROVED.** Evidence:
+[memory-only filesystem experiment](../testing/adr-012-df0-memory-only.md).
+
+**Requirement:** ADR-012 binding safeguard 4 makes `SENSITIVE_MEMORY_ONLY` the
+default and requires proof that no plaintext reaches disk (DF-062 / DF0-D2).
+
+**Conflict:** no supported, unprivileged mechanism tested on macOS 27.2 gives
+the App Sandbox worker a memory-only filesystem:
+
+- App Sandbox always permits writes inside the worker's own container.
+- Adding child-local `RLIMIT_FSIZE=0` with `SIGXFSZ` ignored stops file
+  **content**, including a forced DataFusion spill. It does not stop file and
+  directory creation, renames or extended attributes, and those can hold data.
+- Writes made on the worker's behalf by other processes (ReportCrash,
+  `containermanagerd`, potentially `cfprefsd`) are outside any limit set on
+  the worker.
+- The deprecated `sandbox-exec` write-denial profile cannot be stacked with
+  App Sandbox; the sandboxed process stops with `SIGTRAP`.
+
+| Option | Effect | Needs |
+| --- | --- | --- |
+| **(a) Content-only protection for the trusted worker** | App Sandbox plus the zero file-size limit blocks accidental plaintext spill by engine code. Names, empty files, attributes and delegated writes remain; a worker that deliberately encodes data is not contained | Explicit owner approval as a recorded relaxation of safeguard 4; the `INPUT_INVALID` spill code corrected to `RESOURCE_LIMIT`; signed/installed-app and minimum-OS qualification |
+| **(b) Custom profile instead of App Sandbox** | A `sandbox-exec`-style profile can deny every write, but the tool is deprecated and gives none of App Sandbox's read/network restrictions unless they are written by hand | Acceptance of an unsupported mechanism; a full hand-written read/network profile and its qualification |
+| **(c) Separate user, privileged helper or VM** | Could move the worker outside the user's writable files entirely | New authority under option 3 above, its own threat model, packaging and IPC compatibility evidence |
+| **(d) Stay BLOCKED; defer cutover** | Keeps safeguard 4 as written; DuckDB stays the production engine | Already within current authority; does not resolve DuckDB licensing |
+
+**Recommendation:** (d) is the governing interim position, because no approval
+means no downgrade. Choosing (a) over (d) is not a technical question: it is a
+confidentiality-policy decision about whether trusted engine code needs
+containment against deliberate encoding. Until it is made, DF-062 stays
+BLOCKED and the accepted requirement stays in force.
+
+**Independent adversarial critique:** pending reviewer availability. A
+structured self-review and an advisor review were the disclosed fallback.
+
+**Owner decision:** _pending_ (option, date, scope, and any conditions).
 
 ## Required proof before qualification or cutover
 

@@ -43,9 +43,21 @@ type execLimitObservation struct {
 	ForkErrno    int    `json:"fork_errno"`
 	SpawnErrno   int    `json:"spawn_errno"`
 	WaitOK       bool   `json:"wait_ok"`
+	FSize        uint64 `json:"fsize_soft_bytes"`
+	FSizeHard    uint64 `json:"fsize_hard_bytes"`
+	Core         uint64 `json:"core_soft_bytes"`
+	CoreHard     uint64 `json:"core_hard_bytes"`
+	XFSZIgnored  bool   `json:"sigxfsz_ignored"`
 }
 
-func compileExecLimitProbe(t *testing.T, worker string, asMiB int, denyChildren bool) string {
+// launcherLimits selects the pre-exec controls compiled into a worker launcher.
+type launcherLimits struct {
+	ASMiB          int
+	DenyChildren   bool
+	DenyFileGrowth bool
+}
+
+func compileExecLimitProbe(t *testing.T, worker string, limits launcherLimits) string {
 	t.Helper()
 	src, err := filepath.Abs("../../tools/macos_exec_limits_probe.c")
 	if err != nil {
@@ -54,9 +66,12 @@ func compileExecLimitProbe(t *testing.T, worker string, asMiB int, denyChildren 
 	out := filepath.Join(t.TempDir(), "exec-limit-probe")
 	args := []string{"clang", "-std=c11", "-Wall", "-Wextra", "-Werror", src, "-o", out}
 	if worker != "" {
-		args = append(args, "-DDF0_WORKER="+strconv.Quote(worker), fmt.Sprintf("-DDF0_AS_MIB=%d", asMiB))
-		if denyChildren {
+		args = append(args, "-DDF0_WORKER="+strconv.Quote(worker), fmt.Sprintf("-DDF0_AS_MIB=%d", limits.ASMiB))
+		if limits.DenyChildren {
 			args = append(args, "-DDF0_DENY_CHILDREN=1")
+		}
+		if limits.DenyFileGrowth {
+			args = append(args, "-DDF0_DENY_FILE_GROWTH=1")
 		}
 	}
 	cmd := exec.Command("xcrun", args...)
@@ -113,7 +128,7 @@ func TestMacOSAbsoluteExecLimits(t *testing.T) {
 	if err := unix.Getrlimit(unix.RLIMIT_AS, &before); err != nil {
 		t.Fatal(err)
 	}
-	probe := compileExecLimitProbe(t, "", 0, false)
+	probe := compileExecLimitProbe(t, "", launcherLimits{})
 	var all [][]execLimitObservation
 	for _, tc := range []struct {
 		mode  string
@@ -179,7 +194,7 @@ func TestMacOSChildCreationLimit(t *testing.T) {
 	if err := unix.Getrlimit(unix.RLIMIT_NPROC, &before); err != nil {
 		t.Fatal(err)
 	}
-	probe := compileExecLimitProbe(t, "", 0, false)
+	probe := compileExecLimitProbe(t, "", launcherLimits{})
 	control := runExecLimitProbe(t, probe, "spawn-control")
 	denied := runExecLimitProbe(t, probe, "spawn-deny")
 	if len(control) != 1 || control[0].ForkErrno != 0 || control[0].SpawnErrno != 0 || !control[0].WaitOK {
@@ -236,7 +251,7 @@ func TestMacOSNativeWorkerExecLimits(t *testing.T) {
 	}{{"control", 0, false}, {"nproc", 0, true}, {"as8192", 8192, false}, {"combined", 8192, true}, {"recovery", 0, false}} {
 		path := worker
 		if tc.name != "control" && tc.name != "recovery" {
-			path = compileExecLimitProbe(t, worker, tc.asMiB, tc.deny)
+			path = compileExecLimitProbe(t, worker, launcherLimits{ASMiB: tc.asMiB, DenyChildren: tc.deny})
 		}
 		v := &GenVerifier{Width: 32}
 		r := Run(Job{Name: "exec-limits-" + tc.name, Worker: path, Timeout: 10 * time.Second, Verify: v.Check, Execute: &df0pb.Execute{Operation: "generate", Rows: 128, BatchRows: 32, PayloadBytes: 32}})

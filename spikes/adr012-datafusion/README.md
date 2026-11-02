@@ -122,6 +122,11 @@ Rust copies over native UDS with OS access restrictions. Own-container writes
 remain allowed. This is isolated feasibility, not hard quotas, memory-only
 confidentiality or production adoption. See its exact reproduction and limits.
 
+The [memory-only filesystem experiment](../../docs/testing/adr-012-df0-memory-only.md)
+adds a zero file-size limit to the sandboxed worker and watches its container
+with FSEvents. File content is stopped, including a forced spill; names,
+attributes and writes made on the worker's behalf are not. DF-062 stays BLOCKED.
+
 The later [nested frame repair](../../docs/testing/adr-012-df0-nested-frames.md)
 qualifies selected child spans and null-aware view compaction in five common
 containers. Its Rust regressions exercise actual views; five real-worker jobs

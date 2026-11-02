@@ -9,14 +9,17 @@
 #include <libproc.h>
 #include <limits.h>
 #include <mach/mach_time.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/wait.h>
+#include <sys/xattr.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -139,11 +142,58 @@ static int access_probe(char **argv) {
     return fflush(stdout) == 0 ? 0 : 1;
 }
 
+// Tries each way of putting data on disk inside dir and reports the errno of
+// each. It never stops early, so every channel is reported.
+static int growth_probe(const char *dir, const char *marker) {
+    char file[PATH_MAX], renamed[PATH_MAX], sub[PATH_MAX];
+    if (snprintf(file, sizeof file, "%s/growth-file", dir) >= (int)sizeof file ||
+        snprintf(renamed, sizeof renamed, "%s/growth-%s", dir, marker) >= (int)sizeof renamed ||
+        snprintf(sub, sizeof sub, "%s/growth-dir", dir) >= (int)sizeof sub) return 2;
+    struct rlimit fsize = {0};
+    struct sigaction xfsz = {0};
+    if (getrlimit(RLIMIT_FSIZE, &fsize) != 0 || sigaction(SIGXFSZ, NULL, &xfsz) != 0) return 1;
+    size_t length = strlen(marker);
+    int fd = open(file, O_RDWR | O_CREAT | O_EXCL, 0600);
+    int create_error = fd < 0 ? errno : 0, write_error = 0, truncate_error = 0;
+    if (fd >= 0) {
+        ssize_t n = write(fd, marker, length);
+        write_error = n == (ssize_t)length ? 0 : (n < 0 ? errno : EIO);
+        truncate_error = ftruncate(fd, 4096) == 0 ? 0 : errno;
+        if (close(fd) != 0) return 1;
+    }
+    int xattr_error = setxattr(file, "org.gopmgr.df0.growth", marker, length, 0, 0) == 0 ? 0 : errno;
+    int rename_error = rename(file, renamed) == 0 ? 0 : errno;
+    int mkdir_error = mkdir(sub, 0700) == 0 ? 0 : errno;
+    struct stat st = {0};
+    int stat_error = stat(rename_error == 0 ? renamed : file, &st) == 0 ? 0 : errno;
+    printf("{\"started\":true,\"fsize_soft_bytes\":%llu,\"sigxfsz_ignored\":%s,"
+           "\"create_errno\":%d,\"write_errno\":%d,\"ftruncate_errno\":%d,"
+           "\"setxattr_errno\":%d,\"rename_errno\":%d,\"mkdir_errno\":%d,"
+           "\"stat_errno\":%d,\"final_size\":%lld}\n",
+           (unsigned long long)fsize.rlim_cur, xfsz.sa_handler == SIG_IGN ? "true" : "false",
+           create_error, write_error, truncate_error, xattr_error, rename_error, mkdir_error,
+           stat_error, (long long)st.st_size);
+    return fflush(stdout) == 0 ? 0 : 1;
+}
+
+// Installs the zero file-size limit and ignores SIGXFSZ, then execs a signed
+// copy of this probe in growth mode. Both settings survive exec.
+static int growth_launch(char **argv) {
+    const struct rlimit zero = {0, 0};
+    if (setrlimit(RLIMIT_FSIZE, &zero) != 0 || signal(SIGXFSZ, SIG_IGN) == SIG_ERR) return 1;
+    char *const args[] = {argv[2], "growth", argv[3], argv[4], NULL};
+    char *const env[] = {NULL};
+    execve(argv[2], args, env);
+    return 79;
+}
+
 int main(int argc, char **argv) {
     const struct rlimit core = {0, 0};
     if (setrlimit(RLIMIT_CORE, &core) != 0) return 1;
     if (argc >= 3 && strcmp(argv[1], "sample") == 0) return sample(argc, argv);
     if (argc == 2 && strcmp(argv[1], "payload") == 0) return payload();
     if (argc == 7 && strcmp(argv[1], "access") == 0) return access_probe(argv);
+    if (argc == 4 && strcmp(argv[1], "growth") == 0) return growth_probe(argv[2], argv[3]);
+    if (argc == 5 && strcmp(argv[1], "growth-launch") == 0) return growth_launch(argv);
     return 2;
 }

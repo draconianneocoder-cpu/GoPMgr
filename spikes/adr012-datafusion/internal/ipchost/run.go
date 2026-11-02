@@ -54,11 +54,15 @@ type Job struct {
 	NoFileWrites bool
 	Execute      *df0pb.Execute
 	// Source is sent as SourceChunks after Execute.
-	Source              []byte
-	ReadSource          *source.Snapshot
-	ReadLimits          *source.Limits
-	CancelAfterRead     uint64
-	KillAfterRead       uint64
+	Source          []byte
+	ReadSource      *source.Snapshot
+	ReadLimits      *source.Limits
+	CancelAfterRead uint64
+	KillAfterRead   uint64
+	// CrashAfterRead sends SIGABRT to the worker process itself after this
+	// many granted source reads, so the OS treats it as a crash rather than
+	// a host kill. Test-only; 0 never crashes.
+	CrashAfterRead      uint64
 	CorruptReadResponse string
 	ChunkBytes          int
 	MaxFrame            int
@@ -632,6 +636,11 @@ func Run(job Job) (res Result) {
 			if job.KillAfterRead > 0 && uint64(len(res.SourceReads)) == job.KillAfterRead {
 				lease.Close()
 				fail("fault_killed", "controlled source-read interruption")
+				continue
+			}
+			if job.CrashAfterRead > 0 && uint64(len(res.SourceReads)) == job.CrashAfterRead {
+				lease.Close()
+				_ = syscall.Kill(res.WorkerPID, syscall.SIGABRT)
 				continue
 			}
 			if job.CancelAfterRead > 0 && uint64(len(res.SourceReads)) == job.CancelAfterRead {

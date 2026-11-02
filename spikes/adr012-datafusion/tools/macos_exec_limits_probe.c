@@ -4,6 +4,7 @@
 // Standalone, child-only DF0 experiment. Not linked into Go or Rust.
 #include <errno.h>
 #include <mach/mach.h>
+#include <signal.h>
 #include <spawn.h>
 #include <stdio.h>
 #include <string.h>
@@ -18,17 +19,23 @@
 #ifndef DF0_DENY_CHILDREN
 #define DF0_DENY_CHILDREN 0
 #endif
+#ifndef DF0_DENY_FILE_GROWTH
+#define DF0_DENY_FILE_GROWTH 0
+#endif
 
 static FILE *output;
 
 static int observe(const char *mode, const char *stage, rlim_t requested,
                    int install_error, int mapping_error, unsigned long long checksum,
                    int fork_error, int spawn_error, int wait_ok) {
-    struct rlimit as = {0}, nproc = {0};
+    struct rlimit as = {0}, nproc = {0}, fsize = {0}, core = {0};
     struct rusage usage = {0};
+    struct sigaction xfsz = {0};
     task_basic_info_64_data_t info = {0};
     mach_msg_type_number_t count = TASK_BASIC_INFO_64_COUNT;
     if (getrlimit(RLIMIT_AS, &as) != 0 || getrlimit(RLIMIT_NPROC, &nproc) != 0 ||
+        getrlimit(RLIMIT_FSIZE, &fsize) != 0 || getrlimit(RLIMIT_CORE, &core) != 0 ||
+        sigaction(SIGXFSZ, NULL, &xfsz) != 0 ||
         getrusage(RUSAGE_SELF, &usage) != 0 ||
         task_info(mach_task_self(), TASK_BASIC_INFO_64, (task_info_t)&info, &count) != KERN_SUCCESS) {
         return 1;
@@ -38,12 +45,17 @@ static int observe(const char *mode, const char *stage, rlim_t requested,
         "\"install_errno\":%d,\"read_errno\":0,\"as_soft_bytes\":%llu,\"as_hard_bytes\":%llu,"
         "\"nproc_soft\":%llu,\"nproc_hard\":%llu,\"virtual_bytes\":%llu,"
         "\"peak_rss_bytes\":%lld,\"mapping_errno\":%d,\"checksum\":%llu,"
-        "\"fork_errno\":%d,\"spawn_errno\":%d,\"wait_ok\":%s}\n",
+        "\"fork_errno\":%d,\"spawn_errno\":%d,\"wait_ok\":%s,"
+        "\"fsize_soft_bytes\":%llu,\"fsize_hard_bytes\":%llu,"
+        "\"core_soft_bytes\":%llu,\"core_hard_bytes\":%llu,\"sigxfsz_ignored\":%s}\n",
         mode, stage, (unsigned long long)requested, install_error,
         (unsigned long long)as.rlim_cur, (unsigned long long)as.rlim_max,
         (unsigned long long)nproc.rlim_cur, (unsigned long long)nproc.rlim_max,
         (unsigned long long)info.virtual_size, (long long)usage.ru_maxrss,
-        mapping_error, checksum, fork_error, spawn_error, wait_ok ? "true" : "false") < 0 ||
+        mapping_error, checksum, fork_error, spawn_error, wait_ok ? "true" : "false",
+        (unsigned long long)fsize.rlim_cur, (unsigned long long)fsize.rlim_max,
+        (unsigned long long)core.rlim_cur, (unsigned long long)core.rlim_max,
+        xfsz.sa_handler == SIG_IGN ? "true" : "false") < 0 ||
         fflush(output) != 0) {
         return 1;
     }
@@ -125,6 +137,16 @@ int main(int argc, char **argv) {
                 return 2;
             }
             error = install(RLIMIT_NPROC, 0);
+        }
+        if (error == 0 && DF0_DENY_FILE_GROWTH) {
+            // Regular-file content may not grow past zero bytes. An ignored
+            // SIGXFSZ survives exec, so a write fails with EFBIG instead of
+            // killing the worker. Names, empty files, directories and
+            // extended attributes are not limited by this control.
+            error = install(RLIMIT_FSIZE, 0);
+            if (error == 0 && signal(SIGXFSZ, SIG_IGN) == SIG_ERR) {
+                error = errno;
+            }
         }
         if (observe("worker", error ? "installation" : "preexec", requested,
                     error, 0, 0, 0, 0, 1) != 0) {

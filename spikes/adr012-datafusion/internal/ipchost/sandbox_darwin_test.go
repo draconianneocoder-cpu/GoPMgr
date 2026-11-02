@@ -231,7 +231,7 @@ func TestMacOSAppSandboxAccess(t *testing.T) {
 		signedWorker := signedProbeApp(t, worker, identifier, true)
 		originalHash := sandboxArtifactHash(t, worker)
 		signedHash := sandboxArtifactHash(t, signedWorker)
-		launcher := compileExecLimitProbe(t, signedWorker, 0, true)
+		launcher := compileExecLimitProbe(t, signedWorker, launcherLimits{DenyChildren: true})
 		before := EndpointBase
 		EndpointBase = inside
 		t.Cleanup(func() { EndpointBase = before })
