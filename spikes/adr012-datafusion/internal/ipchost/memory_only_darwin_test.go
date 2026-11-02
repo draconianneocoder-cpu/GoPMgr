@@ -422,9 +422,9 @@ type crashReport struct {
 }
 
 // takeCrashReport waits a bounded time for the crash report ReportCrash writes
-// for pid, scans it, and deletes it. Only a probe-*.ips report newer than
-// since that names pid is touched; absence is recorded, never treated as proof.
-func takeCrashReport(t *testing.T, pid int, since time.Time, container string, sentinel []byte) crashReport {
+// for pid, scans it, and deletes it. Only an <executable>-*.ips report newer
+// than since that names pid is touched; absence is recorded, never proof.
+func takeCrashReport(t *testing.T, executable string, pid int, since time.Time, container string, sentinel []byte) crashReport {
 	t.Helper()
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -440,7 +440,7 @@ func takeCrashReport(t *testing.T, pid int, since time.Time, container string, s
 		}
 		for _, e := range entries {
 			name := e.Name()
-			if !strings.HasPrefix(name, "probe-") || !strings.HasSuffix(name, ".ips") {
+			if !strings.HasPrefix(name, executable+"-") || !strings.HasSuffix(name, ".ips") {
 				continue
 			}
 			info, err := e.Info()
@@ -540,7 +540,7 @@ func TestMacOSFileGrowthLimitChannels(t *testing.T) {
 		if errors.As(err, &exit) {
 			if ws, ok := exit.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
 				o.ExitSignal = ws.Signal().String()
-				r := takeCrashReport(t, cmd.Process.Pid, since, root, []byte(marker))
+				r := takeCrashReport(t, appExecutable(identifier), cmd.Process.Pid, since, root, []byte(marker))
 				o.CrashReports = &r
 			} else {
 				t.Fatalf("%s exited %d", name, exit.ExitCode())
@@ -747,7 +747,7 @@ func TestMacOSMemoryOnlyWorker(t *testing.T) {
 				}
 			}
 			if sc.crashRead > 0 {
-				report := takeCrashReport(t, r.WorkerPID, started, root, sentinel)
+				report := takeCrashReport(t, appExecutable(identifier), r.WorkerPID, started, root, sentinel)
 				o.CrashReport = &report
 			}
 			o.ScanAfter = scanContainer(t, root, sentinel)
@@ -788,9 +788,9 @@ func TestMacOSMemoryOnlyWorker(t *testing.T) {
 			}
 			switch sc.name {
 			case "spill_under_policy":
-				// The worker reports EFBIG as INPUT_INVALID, not RESOURCE_LIMIT.
-				// That is recorded as a finding; fixing it needs a Rust change.
-				if r.Outcome != "failed" || r.FailedCode != "INPUT_INVALID" || !strings.Contains(r.Detail, "os error 27") || r.Rows != 0 || strings.HasPrefix(r.WorkerExit, "signal") || len(o.FSEvents.FilesCreated) == 0 {
+				// A refused spill write is a resource limit with a constant
+				// detail; no OS error text reaches the host.
+				if r.Outcome != "failed" || r.FailedCode != "RESOURCE_LIMIT" || r.Detail != "source query file writes are not permitted" || r.Rows != 0 || strings.HasPrefix(r.WorkerExit, "signal") || len(o.FSEvents.FilesCreated) == 0 {
 					t.Fatalf("spill under the policy should fail as a typed error, not kill the worker: %+v diag=%s", o, r.WorkerDiag)
 				}
 			case "memory_only_pressure":

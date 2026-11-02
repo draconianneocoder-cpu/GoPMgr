@@ -46,7 +46,7 @@ launcher, over the 4096-row sentinel fixture:
 | Scenario | Policy | Observed |
 | --- | --- | --- |
 | Spill positive control | App Sandbox only | Completed; 126 spills, 32,162,448 bytes; sentinel found in spill files during the run; FSEvents saw the files modified |
-| Forced spill | Policy | Failed after 2 of 17 source reads; one empty spill file created and removed; no content |
+| Forced spill | Policy | `RESOURCE_LIMIT` ("source query file writes are not permitted") after 2 of 17 source reads; one empty spill file created and removed; no content |
 | Memory pressure, spill off | Policy | `RESOURCE_LIMIT`, no files |
 | Normal, cancel, recovery | Policy | Exact 4096 descending rows; `USER_CANCELLED`; exact rows again |
 | Kill after 15 of 17 source reads | Policy | `SIGKILL`, no files |
@@ -79,6 +79,10 @@ These are why the policy is content-only, not memory-only:
   the helper stored its marker in an attribute value and in a file name.
   DataFusion's failed spill created and removed an empty temporary file, and
   created a directory whose persistence was not observed.
+- **Crash reports are not guaranteed.** ReportCrash stopped writing reports
+  for a process name that had crashed many times this session; naming each
+  test's executable uniquely made all 8 later crashes report. A production
+  worker with a fixed name would be throttled the same way.
 - **Writes other processes make on the worker's behalf.** ReportCrash wrote
   the crash report and the in-container plist. Crash reports hold backtraces,
   not heap, so finding no sentinel in one is a weak check; they can also leave
@@ -88,9 +92,13 @@ These are why the policy is content-only, not memory-only:
   log were not observed. FSEvents watched only the container; an
   unprivileged volume-wide watch, as a possible stand-in for the OS-wide
   observer DF-062 lacks, was not tested.
-- **The wrong error code.** The worker reports the `EFBIG` spill failure as
-  `INPUT_INVALID` ("File too large (os error 27)"), not `RESOURCE_LIMIT`.
-  Correcting it needs a Rust change, which is not made here.
+- **The error code (fixed, owner condition 1).** The first build reported the
+  `EFBIG` spill failure as `INPUT_INVALID` with the OS error text. The OS error
+  sits inside an `io::Error` whose `source()` skips the wrapped error, so the
+  worker now walks the chain with `get_ref()` and reports `RESOURCE_LIMIT` with
+  a constant detail. A Rust unit test models the exact native shape; the
+  native forced-spill run confirms it, and reverting the mapping is caught by
+  both.
 
 The threat each closes is different. Content denial covers an accidental
 plaintext spill by trusted engine code. It does not contain a worker that

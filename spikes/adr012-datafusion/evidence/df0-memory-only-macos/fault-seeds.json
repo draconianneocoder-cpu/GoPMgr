@@ -49,6 +49,11 @@
       "seed": "S1b launcher drops RLIMIT_FSIZE and the readback check is disabled",
       "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/spill_under_policy",
       "first_assertion": "file content was written under the policy: {Name:spill_under_policy Policy:app_sandbox_fsize_zero Outcome:completed FailedCode: Detail: SourceReads:17 Rows:4096"
+    },
+    {
+      "seed": "S10 worker maps EFBIG back to INPUT_INVALID (rebuilt worker)",
+      "result": "CAUGHT by TestMacOSMemoryOnlyWorker/spill_under_policy and Rust os_write_refusals_are_resource_limits_with_constant_details",
+      "first_assertion": "spill under the policy should fail as a typed error, not kill the worker"
     }
   ],
   "not_counted_as_detection": [

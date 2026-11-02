@@ -33,15 +33,23 @@ import (
 	"gopmgr/spikes/adr012-datafusion/internal/source"
 )
 
+// appExecutable names a test app's executable after its unique identifier.
+// macOS crash reporting can stop writing reports for a process name that
+// crashed many times, so a fixed name makes crash observations unreliable.
+func appExecutable(identifier string) string {
+	return "df0-" + strings.ReplaceAll(identifier, ".", "-")
+}
+
 func signedProbeApp(t *testing.T, binary, identifier string, sandbox bool) string {
 	t.Helper()
+	name := appExecutable(identifier)
 	app := filepath.Join(t.TempDir(), "Probe.app")
 	contents := filepath.Join(app, "Contents")
 	macos := filepath.Join(contents, "MacOS")
 	if err := os.MkdirAll(macos, 0700); err != nil {
 		t.Fatal(err)
 	}
-	info := fmt.Sprintf(`<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>%s</string><key>CFBundleExecutable</key><string>probe</string><key>CFBundlePackageType</key><string>APPL</string></dict></plist>`, identifier)
+	info := fmt.Sprintf(`<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>%s</string><key>CFBundleExecutable</key><string>%s</string><key>CFBundlePackageType</key><string>APPL</string></dict></plist>`, identifier, name)
 	if err := os.WriteFile(filepath.Join(contents, "Info.plist"), []byte(info), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +58,7 @@ func signedProbeApp(t *testing.T, binary, identifier string, sandbox bool) strin
 		t.Fatal(err)
 	}
 	defer src.Close()
-	exe := filepath.Join(macos, "probe")
+	exe := filepath.Join(macos, name)
 	dst, err := os.OpenFile(exe, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0700)
 	if err != nil {
 		t.Fatal(err)

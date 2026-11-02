@@ -1,5 +1,5 @@
 {
-  "recorded_utc": "2026-11-02T13:05:18.719482+00:00",
+  "recorded_utc": "2026-11-02T14:01:37.776719+00:00",
   "source_baseline_commit": "e31e225052fe7f7728b12079997cf1bb038d08d6",
   "scope": "Isolated native macOS memory-only filesystem feasibility for the App Sandbox worker; not production adoption, a DF-062 PASS or a resource-policy decision",
   "authority": "Handoff of 2026-11-01 names this as the next authorized isolated containment task; no new privilege, entitlement, service, VM, transport or tool installation is used",
@@ -22,13 +22,14 @@
     "Bounded wait for the ReportCrash report naming the crashed PID"
   ],
   "source_sha256": {
-    "spikes/adr012-datafusion/internal/ipchost/memory_only_darwin_test.go": "e988e4e2b6d8909b802fa729e71ac1714a3a91abc3fb79e53516d15685b397e2",
+    "spikes/adr012-datafusion/internal/ipchost/memory_only_darwin_test.go": "9d6c0afb738a4a44376ff08227b9240f6c9787644b620ab0511ecac409990ec5",
     "spikes/adr012-datafusion/internal/ipchost/exec_limits_darwin_test.go": "a236a0e80d582bae8e769d95b52d4a0d34146d32b24b205e3b147dd2d4cf1774",
-    "spikes/adr012-datafusion/internal/ipchost/sandbox_darwin_test.go": "8796a1dce6f2e98cbcb71bd1d749fa5bb9f08f0a55ab0331c9e9e6e34c61e33f",
+    "spikes/adr012-datafusion/internal/ipchost/sandbox_darwin_test.go": "df1db0579a5715aeed14594c6585984397dc7a901d1d681684f8e8aa86eda118",
     "spikes/adr012-datafusion/internal/ipchost/run.go": "19c3683558a47ffcc27b095a1b8e8d3965a5b75c5865e5e7af3e3103e93813bd",
     "spikes/adr012-datafusion/tools/macos_exec_limits_probe.c": "2c44e9d766b6f57ff604021094a1b6b5356020b059de5bbd5122c1a81d365978",
     "spikes/adr012-datafusion/tools/macos_observer_probe.c": "841f53f44ed18b7791281b3fff5c5a0afbb5f53b750f32c29ced404569f3ed29",
-    "spikes/adr012-datafusion/tools/macos_fsevents_probe.c": "aa8d7ddd9a06c0a4daad0f3fb0b902ee857d660610117f087a5df0288f490aa1"
+    "spikes/adr012-datafusion/tools/macos_fsevents_probe.c": "aa8d7ddd9a06c0a4daad0f3fb0b902ee857d660610117f087a5df0288f490aa1",
+    "spikes/adr012-datafusion/rust/worker/src/read_source.rs": "562527f52614c7dcbab3b10a2ebb590819ad88cbf47e8365d16cb2593263903d"
   },
   "sources_changed_since_previous_manifest": "tools/macos_exec_limits_probe.c gained the optional file-growth limit and FSIZE/CORE/SIGXFSZ readback; tools/macos_observer_probe.c gained the growth and growth-launch helper modes; sandbox_darwin_test.go only adopts the launcherLimits signature. The observer-sandbox tests still pass on these sources in the full spike race suite; their committed evidence and manifest were not regenerated and still bind the earlier versions.",
   "sdk_sha256": {
@@ -38,19 +39,19 @@
     "usr/include/sys/signal.h": "46001a703a66591b9adc873dcdfe4a545bb26cd5fc52b31ede9e0cda9ddbac7a"
   },
   "evidence_sha256": {
-    "growth-channels.json": "ed76048f4614bb741b5fa07e732be7c7e44a18549df942fc5244a9911d982186",
-    "memory-only-worker.json": "7e9528dd9cd3d3e038adf969380814a5a7441398bf1a1563d30fb6dbae102d7f",
-    "fault-seeds.json": "c863bcba8f0f9e2b8bcc5b0fd6b83f45d44a17296982fcf97ca7ea999cb7498b"
+    "growth-channels.json": "a07bf1eaf98a574a05993f2fc6678e4fce15161f9ff3dd23b5e4ec5e5dbc4f4d",
+    "memory-only-worker.json": "45a312d8bf88b62e78ed1d58e939b01c3b74b297185dbb3ad0250e25a37b6bf8",
+    "fault-seeds.json": "f20a3c81d41c0957274cbaf093a53a1164b078c431db7b8879f4179037fc3694"
   },
-  "input_worker_sha256": "5f9a57d3614d58e528dfe83f74479d076a62bf6270a94aca7db1b79406880081",
-  "signed_copy_sha256": "513d5397db2ecd4f100563d81c0dfeb216f347d666faec8d5459ec084ce8e51f",
+  "input_worker_sha256": "a30a95f5a2801330239fe8a122f551833fac224dcd8a8e42d1feffc2088f3d0a",
+  "signed_copy_sha256": "ac29206b7e84ce913af69cc0fcacee1b6aad810cfe9ab9164d7296718c66131e",
   "worker_rebuilt": true,
-  "worker_build": "cargo build --locked --release -p df0-worker with the pinned toolchain and CARGO_TARGET_DIR outside the repository; a fresh build, not either earlier recorded hash",
+  "worker_build": "cargo build --locked --release -p df0-worker with the pinned toolchain and CARGO_TARGET_DIR outside the repository, after the condition 1 error-mapping fix; rebuilding the restored source after the mapping seed reproduced the same hash",
   "signing": "Task-only copies, ad-hoc hardened-runtime signature, only the App Sandbox entitlement; no Developer ID, notarization or installed-app claim. Unique new containers and the task's own crash reports are removed by the tests.",
   "findings": [
     "App Sandbox alone lets the worker write file content inside its own container (positive control: 126 DataFusion spill files, sentinel present)",
     "RLIMIT_FSIZE=0 with SIGXFSZ ignored stops file content: write and ftruncate return EFBIG; a forced DataFusion spill fails after creating and removing one empty file",
-    "The worker reports that EFBIG spill failure as INPUT_INVALID ('File too large (os error 27)'), not RESOURCE_LIMIT; correcting it needs a Rust change and is not made here",
+    "A refused spill write is reported as RESOURCE_LIMIT with a constant detail (owner condition 1). An earlier build reported INPUT_INVALID with the OS error text, because the OS error sits inside an io::Error that io::Error::source() skips",
     "File and directory creation, renames and extended attributes stay open under the limit; names and xattr values can hold data",
     "ReportCrash writes on the worker's behalf: a crash report outside the container and a CrashReporter plist inside it. Neither held the sentinel in these runs",
     "The deprecated sandbox-exec write-denial profile cannot be combined with App Sandbox: the sandboxed process stops with SIGTRAP before running",
@@ -63,7 +64,8 @@
     "One synthetic 4096-row fixture and one development machine; not the full DF-062 matrix, minimum macOS, signed/installed app or Linux",
     "Kill and crash fire after 15 of 17 source reads; which column chunks those reads carried is not checked",
     "FSEvents watched only the container; an unprivileged volume-wide watch was not tested",
-    "Crash reports hold backtraces, not heap, so no sentinel in one is a weak check; reports can leave the machine if analytics sharing is on"
+    "Crash reports hold backtraces, not heap, so no sentinel in one is a weak check; reports can leave the machine if analytics sharing is on",
+    "ReportCrash stopped writing reports for a process name that had crashed many times (2 misses in about 4 runs with the fixed name 'probe'; 8 of 8 observed after naming each test's executable uniquely). Test apps now use unique names; a production worker with a fixed name would get the same throttling"
   ],
   "fault_seed_source_note": "Fault seeds ran before a comment-only edit to memory_only_darwin_test.go; the observations here were regenerated on the final source"
 }
