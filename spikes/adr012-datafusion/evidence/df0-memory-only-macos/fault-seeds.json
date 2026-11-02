@@ -54,6 +54,41 @@
       "seed": "S10 worker maps EFBIG back to INPUT_INVALID (rebuilt worker)",
       "result": "CAUGHT by TestMacOSMemoryOnlyWorker/spill_under_policy and Rust os_write_refusals_are_resource_limits_with_constant_details",
       "first_assertion": "spill under the policy should fail as a typed error, not kill the worker"
+    },
+    {
+      "seed": "C1 sweep skips attribute removal",
+      "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
+      "first_assertion": "sweep did not restore the baseline: &{EntriesRemoved:9 XattrsRemoved:2 ModesRestored:1 FlagsCleared:1 BaselineChanged:0 Clean:false Failure:}"
+    },
+    {
+      "seed": "C2 sweep follows symlinks",
+      "result": "CAUGHT by TestContainerSweepRestoresTheBaseline",
+      "first_assertion": "sweep deleted through a symlinked directory: open <tmp>: no such fil"
+    },
+    {
+      "seed": "C3 sweep runs only after a completed job",
+      "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/cancel, TestMacOSMemoryOnlyWorker/crash, TestMacOSMemoryOnlyWorker/kill, TestMacOSMemoryOnlyWorker/memory_only_pressure, TestMacOSMemoryOnlyWorker/spill_under_policy",
+      "first_assertion": "container sweep: <nil>"
+    },
+    {
+      "seed": "C5 failure text carries the path",
+      "result": "CAUGHT by TestContainerSweepFailureNamesNothing",
+      "first_assertion": "sweep failure text names a path: \"lstat <tmp>: no such file or di"
+    },
+    {
+      "seed": "C6 baseline modes not restored",
+      "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
+      "first_assertion": "sweep did not restore the baseline: &{EntriesRemoved:6 XattrsRemoved:1 ModesRestored:0 FlagsCleared:0 BaselineChanged:0 Clean:false Failure:permission denied}"
+    },
+    {
+      "seed": "C7 immutable flags not cleared",
+      "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
+      "first_assertion": "sweep did not restore the baseline: &{EntriesRemoved:8 XattrsRemoved:2 ModesRestored:1 FlagsCleared:0 BaselineChanged:0 Clean:false Failure:operation not permitted}"
+    },
+    {
+      "seed": "C4 clean verdict forced",
+      "result": "CAUGHT by TestContainerRefusesJobsAfterAChangedBaseline, TestContainerRefusesJobsAfterAChangedBaseline/changed_attribute_value, TestContainerRefusesJobsAfterAChangedBaseline/changed_file_content, TestContainerRefusesJobsAfterAChangedBaseline/removed_baseline_directory, TestContainerRefusesJobsAfterAChangedBaseline/retargeted_symlink, TestContainerSweepFailureNamesNothing",
+      "first_assertion": "a changed baseline entry was not reported: &{EntriesRemoved:1 XattrsRemoved:0 ModesRestored:0 FlagsCleared:0 BaselineChanged:1 Clean:true Failure:}"
     }
   ],
   "not_counted_as_detection": [
@@ -66,6 +101,11 @@
       "seed": "S9 growth launcher drops RLIMIT_FSIZE (first form)",
       "result": "DID NOT COMPILE",
       "disposition": "clang -Werror rejected an unused variable; replaced by a compiling form, which was caught"
+    },
+    {
+      "seed": "C4 clean verdict forced (first form)",
+      "result": "DID NOT COMPILE",
+      "disposition": "Go rejected unused variables; replaced by a compiling form, which was caught"
     }
   ]
 }

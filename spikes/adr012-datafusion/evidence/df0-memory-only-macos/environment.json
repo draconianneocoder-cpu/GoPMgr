@@ -1,5 +1,5 @@
 {
-  "recorded_utc": "2026-11-02T14:01:37.776719+00:00",
+  "recorded_utc": "2026-11-02T14:08:31.137981+00:00",
   "source_baseline_commit": "e31e225052fe7f7728b12079997cf1bb038d08d6",
   "scope": "Isolated native macOS memory-only filesystem feasibility for the App Sandbox worker; not production adoption, a DF-062 PASS or a resource-policy decision",
   "authority": "Handoff of 2026-11-01 names this as the next authorized isolated containment task; no new privilege, entitlement, service, VM, transport or tool installation is used",
@@ -22,14 +22,18 @@
     "Bounded wait for the ReportCrash report naming the crashed PID"
   ],
   "source_sha256": {
-    "spikes/adr012-datafusion/internal/ipchost/memory_only_darwin_test.go": "9d6c0afb738a4a44376ff08227b9240f6c9787644b620ab0511ecac409990ec5",
+    "spikes/adr012-datafusion/internal/ipchost/memory_only_darwin_test.go": "8a4733acaa84a66ca5dceeb360cac894164ee84cbf2e120b05d251418c4c493f",
     "spikes/adr012-datafusion/internal/ipchost/exec_limits_darwin_test.go": "a236a0e80d582bae8e769d95b52d4a0d34146d32b24b205e3b147dd2d4cf1774",
     "spikes/adr012-datafusion/internal/ipchost/sandbox_darwin_test.go": "df1db0579a5715aeed14594c6585984397dc7a901d1d681684f8e8aa86eda118",
-    "spikes/adr012-datafusion/internal/ipchost/run.go": "19c3683558a47ffcc27b095a1b8e8d3965a5b75c5865e5e7af3e3103e93813bd",
+    "spikes/adr012-datafusion/internal/ipchost/run.go": "090f95bbed64383a766a277a649ad44d60b740d4e49d457a3019501d42757463",
     "spikes/adr012-datafusion/tools/macos_exec_limits_probe.c": "2c44e9d766b6f57ff604021094a1b6b5356020b059de5bbd5122c1a81d365978",
     "spikes/adr012-datafusion/tools/macos_observer_probe.c": "841f53f44ed18b7791281b3fff5c5a0afbb5f53b750f32c29ced404569f3ed29",
     "spikes/adr012-datafusion/tools/macos_fsevents_probe.c": "aa8d7ddd9a06c0a4daad0f3fb0b902ee857d660610117f087a5df0288f490aa1",
-    "spikes/adr012-datafusion/rust/worker/src/read_source.rs": "562527f52614c7dcbab3b10a2ebb590819ad88cbf47e8365d16cb2593263903d"
+    "spikes/adr012-datafusion/rust/worker/src/read_source.rs": "562527f52614c7dcbab3b10a2ebb590819ad88cbf47e8365d16cb2593263903d",
+    "spikes/adr012-datafusion/internal/ipchost/container.go": "838802ce1e938921bd6262a36f4f9a5295ae5c5afc238862c9dffdccb8eee22e",
+    "spikes/adr012-datafusion/internal/ipchost/container_flags_darwin.go": "faf3faa7c5e22d2adc888c9be7816a0044c2d963057b8162ac207876fcb466f0",
+    "spikes/adr012-datafusion/internal/ipchost/container_flags_linux.go": "8e32882575f89009df6fa29bd8f331ae80c355ef905c5d4b901538de3ea709be",
+    "spikes/adr012-datafusion/internal/ipchost/container_darwin_test.go": "71119adc657b99780082936903008f67c6ed13f575a68a8cbaff054bbf5116c8"
   },
   "sources_changed_since_previous_manifest": "tools/macos_exec_limits_probe.c gained the optional file-growth limit and FSIZE/CORE/SIGXFSZ readback; tools/macos_observer_probe.c gained the growth and growth-launch helper modes; sandbox_darwin_test.go only adopts the launcherLimits signature. The observer-sandbox tests still pass on these sources in the full spike race suite; their committed evidence and manifest were not regenerated and still bind the earlier versions.",
   "sdk_sha256": {
@@ -39,12 +43,12 @@
     "usr/include/sys/signal.h": "46001a703a66591b9adc873dcdfe4a545bb26cd5fc52b31ede9e0cda9ddbac7a"
   },
   "evidence_sha256": {
-    "growth-channels.json": "a07bf1eaf98a574a05993f2fc6678e4fce15161f9ff3dd23b5e4ec5e5dbc4f4d",
-    "memory-only-worker.json": "45a312d8bf88b62e78ed1d58e939b01c3b74b297185dbb3ad0250e25a37b6bf8",
-    "fault-seeds.json": "f20a3c81d41c0957274cbaf093a53a1164b078c431db7b8879f4179037fc3694"
+    "growth-channels.json": "b62a3a2280eb96a490f814db6a224e36024668ceba80467fbc403edf08d92f50",
+    "memory-only-worker.json": "ec94307ed450f556511b645451560f4d9aed1b918ba1698782286424fc547b2d",
+    "fault-seeds.json": "7f789e4da1fa4101b5dcc285978d73830530bbe9a84d134ef03e90fdb1692fb0"
   },
   "input_worker_sha256": "a30a95f5a2801330239fe8a122f551833fac224dcd8a8e42d1feffc2088f3d0a",
-  "signed_copy_sha256": "ac29206b7e84ce913af69cc0fcacee1b6aad810cfe9ab9164d7296718c66131e",
+  "signed_copy_sha256": "3de7eb3d3ee0bcdffa58bc344b620f9dd7607b3b7f7c7923c4e017396b09aba0",
   "worker_rebuilt": true,
   "worker_build": "cargo build --locked --release -p df0-worker with the pinned toolchain and CARGO_TARGET_DIR outside the repository, after the condition 1 error-mapping fix; rebuilding the restored source after the mapping seed reproduced the same hash",
   "signing": "Task-only copies, ad-hoc hardened-runtime signature, only the App Sandbox entitlement; no Developer ID, notarization or installed-app claim. Unique new containers and the task's own crash reports are removed by the tests.",
@@ -55,7 +59,9 @@
     "File and directory creation, renames and extended attributes stay open under the limit; names and xattr values can hold data",
     "ReportCrash writes on the worker's behalf: a crash report outside the container and a CrashReporter plist inside it. Neither held the sentinel in these runs",
     "The deprecated sandbox-exec write-denial profile cannot be combined with App Sandbox: the sandboxed process stops with SIGTRAP before running",
-    "Under the zero file-size limit, stdout and stderr must be pipes; a regular-file stderr makes the launcher's own readback fail"
+    "Under the zero file-size limit, stdout and stderr must be pipes; a regular-file stderr makes the launcher's own readback fail",
+    "Owner condition 2: Container.Do gives each job a fresh, empty folder and, after the worker is reaped on every outcome, sweeps the whole Data tree back to its baseline: added entries and attributes removed, modes restored, immutable flags cleared, symlinks never followed. A sweep that cannot restore the baseline marks the container unclean and refuses further jobs; reports carry counts, never names",
+    "All workers signed with one bundle identifier share one container, so jobs on it run one at a time. That conflicts with concurrent 2/4/8-worker cohorts (DF-064) and needs an owner decision"
   ],
   "measurement_limits": [
     "FSEvents shows that a path changed, not its content or the acting process; flags are merged per path",

@@ -104,6 +104,58 @@ The threat each closes is different. Content denial covers an accidental
 plaintext spill by trusted engine code. It does not contain a worker that
 deliberately encodes data into names or attributes.
 
+## Owner conditions for option (a)
+
+On 2026-11-02 the owner kept (d) in force and approved (a) as the target once
+five conditions pass. Status is tracked in the
+[ACR](../review/ADR-012-macos-containment-ACR.md#memory-only-filesystem-finding-2026-11-02).
+
+**Condition 2: fresh folder per job, wiped afterwards.** `Container.Do`
+records a baseline of the container's `Data` tree:
+- entry types and permissions;
+- symlink targets;
+- file content digests;
+- attribute names with value digests.
+
+It runs each job alone in a fresh, empty job folder. After the worker has
+exited, on every outcome, it sweeps the whole tree back to the baseline:
+- removes added entries and attributes, anywhere under `Data`, not only in the
+  job folder;
+- restores modes and clears immutable flags;
+- never follows a symlink.
+
+It then compares the result with the baseline. A container it cannot restore
+is marked unclean, and further jobs are refused. Reports hold counts and the
+system error only; names could carry data.
+
+- **Reach:** a sandboxed helper could create entries in `Data`, and create,
+  tag and `chmod` entries below it. It could not touch the container root or
+  tag `Data` itself. The sweep therefore covers `Data`.
+- **Native:** every worker scenario ran through `Container.Do`, and every sweep
+  was clean. After the zero file-size helper run, the names and attribute
+  values carrying its marker were gone. After the crash, the next sweep
+  removed the delegated CrashReporter plist.
+- **Unit:** the sweep restored the baseline after names, attribute values, a
+  `chmod 000` directory, an immutable file, a mode change on a baseline
+  directory, and symlinks to an outside file and an outside directory. The
+  outside entries were left untouched. Further tests cover a changed
+  baseline, which refuses the next job; a host that died mid-job, which is
+  swept from a saved baseline; jobs running one at a time; and failure text
+  that names nothing.
+- **Seeds:** seven compiling faults were each caught. One first form that did
+  not compile was replaced. The seeds skipped attribute removal, followed
+  symlinks, swept only after a completed job, forced the clean verdict, put
+  the path in the failure text, and skipped mode restoration or flag
+  clearing.
+- **Constraint for the owner:** every worker signed with one bundle identifier
+  shares one container, so jobs on it run one at a time. That conflicts with
+  DF-064's concurrent 2/4/8-worker cohorts. The options are:
+  - serialize jobs;
+  - give each concurrent job a separately signed identity and container, which
+    is not a deployable design today;
+  - accept per-job-folder removal while jobs overlap, and sweep only when none
+    is in flight.
+
 ## Decision for the owner
 
 Recorded in the [ACR addendum](../review/ADR-012-macos-containment-ACR.md#memory-only-filesystem-finding-2026-11-02).

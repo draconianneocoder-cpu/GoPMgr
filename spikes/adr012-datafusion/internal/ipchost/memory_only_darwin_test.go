@@ -490,6 +490,8 @@ type growthObservation struct {
 	Stat         int            `json:"stat_errno"`
 	FinalSize    int64          `json:"final_size"`
 	ExitSignal   string         `json:"exit_signal,omitempty"`
+	Sweep        SweepReport    `json:"sweep"`
+	AfterSweep   containerScan  `json:"container_scan_after_sweep"`
 	Scan         containerScan  `json:"container_scan"`
 	FSEvents     fsEventSummary `json:"fsevents"`
 	CrashReports *crashReport   `json:"crash_report,omitempty"`
@@ -507,6 +509,10 @@ func TestMacOSFileGrowthLimitChannels(t *testing.T) {
 	fsevents := compileFSEventsProbe(t)
 	identifier, root := testContainer(t, observer)
 	guarded := signedProbeApp(t, observer, identifier, true)
+	cont, err := NewContainer(filepath.Join(root, "Data"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	var entropy [6]byte
 	if _, err := io.ReadFull(rand.Reader, entropy[:]); err != nil {
 		t.Fatal(err)
@@ -553,6 +559,13 @@ func TestMacOSFileGrowthLimitChannels(t *testing.T) {
 		o.Name = name
 		o.FSEvents = w.stop()
 		o.Scan = scanContainer(t, root, []byte(marker))
+		// Condition 2: the sweep removes what the run left, names and
+		// attribute values included.
+		o.Sweep = cont.Sweep()
+		o.AfterSweep = scanContainer(t, root, []byte(marker))
+		if !o.Sweep.Clean || len(o.AfterSweep.SentinelInContent)+len(o.AfterSweep.SentinelInXattr)+len(o.AfterSweep.SentinelInName) != 0 {
+			t.Fatalf("%s: sweep did not restore the container: %+v %+v", name, o.Sweep, o.AfterSweep)
+		}
 		return o
 	}
 	var observations []growthObservation
@@ -570,7 +583,7 @@ func TestMacOSFileGrowthLimitChannels(t *testing.T) {
 	}
 	// These channels stay open under the limit. The test records them so a
 	// change in OS behavior is noticed rather than assumed.
-	if limited.Xattr != 0 || limited.Rename != 0 || limited.Mkdir != 0 || len(limited.Scan.SentinelInXattr) != 1 || len(limited.Scan.SentinelInName) != 1 || len(limited.FSEvents.DirsCreated) == 0 || len(limited.FSEvents.FilesCreated) == 0 {
+	if limited.Xattr != 0 || limited.Rename != 0 || limited.Mkdir != 0 || len(limited.Scan.SentinelInXattr) != 1 || len(limited.Scan.SentinelInName) != 1 || len(limited.FSEvents.DirsCreated) == 0 || len(limited.FSEvents.FilesCreated) == 0 || limited.Sweep.EntriesRemoved == 0 {
 		t.Fatalf("metadata channels behaved differently than recorded: %+v", limited)
 	}
 	observations = append(observations, limited)
@@ -603,6 +616,7 @@ type memoryOnlyObservation struct {
 	FSEvents       fsEventSummary         `json:"fsevents"`
 	ScanBefore     containerScan          `json:"container_scan_before"`
 	ScanAfter      containerScan          `json:"container_scan_after"`
+	Sweep          SweepReport            `json:"sweep"`
 	CrashReport    *crashReport           `json:"crash_report,omitempty"`
 }
 
@@ -621,6 +635,10 @@ func TestMacOSMemoryOnlyWorker(t *testing.T) {
 	observer := compileObserverProbe(t)
 	fsevents := compileFSEventsProbe(t)
 	identifier, root := testContainer(t, observer)
+	cont, err := NewContainer(filepath.Join(root, "Data"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	signedWorker := signedProbeApp(t, worker, identifier, true)
 	originalHash := sandboxArtifactHash(t, worker)
 	signedHash := sandboxArtifactHash(t, signedWorker)
@@ -677,14 +695,7 @@ func TestMacOSMemoryOnlyWorker(t *testing.T) {
 				t.Fatal(err)
 			}
 			ex := &df0pb.Execute{Operation: "parquet_range", BatchRows: 64, SortSource: true, QueryMemoryBytes: sc.pool}
-			spillDir := filepath.Join(inside, "spill-"+sc.name)
-			if sc.spill {
-				if err := os.Mkdir(spillDir, 0700); err != nil {
-					t.Fatal(err)
-				}
-				ex.SpillControlDirectory = spillDir
-				ex.Fault = "source_spill_control"
-			}
+			var spillDir string
 			job := Job{Name: sc.name, Worker: launchers[sc.policy], ReadSource: snap, Execute: ex, Timeout: 30 * time.Second,
 				CancelAfter: sc.cancel, KillAfterRead: sc.killRead, CrashAfterRead: sc.crashRead}
 			next := fixtures.NoSpillRows - 1
@@ -727,8 +738,20 @@ func TestMacOSMemoryOnlyWorker(t *testing.T) {
 			}
 			w := watchContainer(t, fsevents, root)
 			started := time.Now()
-			r := Run(job)
+			// Condition 2: each job gets a fresh, empty folder in the
+			// container, and the container is swept after the worker exits.
+			r := cont.Do(sc.name, func(folder string) Result {
+				if sc.spill {
+					spillDir = folder
+					ex.SpillControlDirectory = folder
+					ex.Fault = "source_spill_control"
+				}
+				return Run(job)
+			})
 			o.FSEvents = w.stop()
+			if r.ContainerSweep != nil {
+				o.Sweep = *r.ContainerSweep
+			}
 			o.Outcome, o.FailedCode, o.Rows, o.WorkerExit, o.Killed, o.EndpointGone = r.Outcome, r.FailedCode, r.Rows, r.WorkerExit, r.Killed, r.EndpointRemoved
 			o.SourceReads = len(r.SourceReads)
 			o.SentinelInDiag = bytes.Contains([]byte(r.Detail+r.WorkerDiag), sentinel)
@@ -751,12 +774,13 @@ func TestMacOSMemoryOnlyWorker(t *testing.T) {
 				o.CrashReport = &report
 			}
 			o.ScanAfter = scanContainer(t, root, sentinel)
-			if sc.spill {
-				if err := os.RemoveAll(spillDir); err != nil {
-					t.Fatal(err)
-				}
-			}
 			evidence = append(evidence, o)
+			if r.ContainerSweep == nil || !r.ContainerSweep.Clean {
+				t.Fatalf("container sweep: %+v", r.ContainerSweep)
+			}
+			if _, err := os.Lstat(spillDir); sc.spill && !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("job folder survived the sweep: %v", err)
+			}
 
 			cfg := o.Launcher
 			if len(cfg) != 1 || cfg[0].Stage != "preexec" || cfg[0].InstallErrno != 0 || cfg[0].NProc != 0 || cfg[0].NProcHard != 0 || cfg[0].Core != 0 || cfg[0].CoreHard != 0 {
