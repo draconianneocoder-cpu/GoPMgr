@@ -66,8 +66,9 @@ upgrade DuckDB as part of its retirement.
    forced spill, but not names, attributes or writes other processes make for
    the worker. The owner kept (d) and approved (a) as the target under five
    conditions, tracked in the ACR; DF-062 stays BLOCKED until they pass. Next
-   implement the owner's choices for conditions 2, 3 and 5: a signed worker
-   copy per concurrency slot, a panic hook, and one delegated-write watch test.
+   implement the owner's choices for conditions 2 and 5: a signed worker copy
+   per concurrency slot and one delegated-write watch test. Condition 3's panic
+   hook is in place.
    Condition 4 waits for release qualification. Then qualify job-bound observation and failure recovery, then obtain explicit
    accounting/budget, confidentiality-policy and adoption decisions. Keep accepted guarantees
    until changed explicitly; no privileged helper or VM is selected.

@@ -708,6 +708,7 @@ func TestMacOSMemoryOnlyWorker(t *testing.T) {
 		cancel       int
 		killRead     uint64
 		crashRead    uint64
+		fault        string
 	}
 	scenarios := []scenario{
 		{name: "spill_control", policy: "app_sandbox", spill: true, pool: 1 << 20},
@@ -719,6 +720,14 @@ func TestMacOSMemoryOnlyWorker(t *testing.T) {
 		// been served. Which column chunks each read carried is not checked.
 		{name: "kill", policy: "app_sandbox_fsize_zero", pool: 64 << 20, killRead: 16},
 		{name: "crash", policy: "app_sandbox_fsize_zero", pool: 64 << 20, crashRead: 16},
+		// Condition 3: a panic ends the worker through its panic hook before
+		// unwinding. source_panic_abort would abort (and be reported) without
+		// the hook. Both panic messages carry a row holding the sentinel.
+		{name: "panic", policy: "app_sandbox_fsize_zero", pool: 64 << 20, fault: "source_panic"},
+		{name: "panic_abort", policy: "app_sandbox_fsize_zero", pool: 64 << 20, fault: "source_panic_abort"},
+		// The same native fault after the panics: reports for this worker's
+		// name are still written, so their absence above is not throttling.
+		{name: "crash_trailing", policy: "app_sandbox_fsize_zero", pool: 64 << 20, crashRead: 16},
 		{name: "recovery", policy: "app_sandbox_fsize_zero", pool: 64 << 20},
 	}
 	var evidence []memoryOnlyObservation
@@ -734,7 +743,7 @@ func TestMacOSMemoryOnlyWorker(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			ex := &df0pb.Execute{Operation: "parquet_range", BatchRows: 64, SortSource: true, QueryMemoryBytes: sc.pool}
+			ex := &df0pb.Execute{Operation: "parquet_range", BatchRows: 64, SortSource: true, QueryMemoryBytes: sc.pool, Fault: sc.fault}
 			var spillDir string
 			job := Job{Name: sc.name, Worker: launchers[sc.policy], ReadSource: snap, Execute: ex, Timeout: 30 * time.Second,
 				CancelAfter: sc.cancel, KillAfterRead: sc.killRead, CrashAfterRead: sc.crashRead}
@@ -809,7 +818,7 @@ func TestMacOSMemoryOnlyWorker(t *testing.T) {
 					o.SpillCount, o.SpilledBytes = m.SpillCount, m.SpilledBytes
 				}
 			}
-			if sc.crashRead > 0 {
+			if sc.crashRead > 0 || sc.fault != "" {
 				report := takeCrashReport(t, appExecutable(identifier), r.WorkerPID, started, root, sentinel)
 				o.CrashReport = &report
 			}
@@ -869,7 +878,16 @@ func TestMacOSMemoryOnlyWorker(t *testing.T) {
 				if r.Outcome != "fault_killed" || !r.Killed || r.Rows != 0 || o.SourceReads != 16 {
 					t.Fatalf("kill: %+v", o)
 				}
-			case "crash":
+			case "panic", "panic_abort":
+				// The hook exits with 70 before any abort; the panic message,
+				// which holds a row with the sentinel, reaches no output.
+				if r.Outcome != "stream_ended" || r.WorkerExit != "exit 70" || r.Rows != 0 || !strings.Contains(r.WorkerDiag, "df0-worker: panic at ") {
+					t.Fatalf("%s: %+v diag=%q", sc.name, o, r.WorkerDiag)
+				}
+				if o.CrashReport.Observed {
+					t.Fatalf("%s: a panic produced a crash report: %+v", sc.name, o.CrashReport)
+				}
+			case "crash", "crash_trailing":
 				if r.Outcome == "completed" || r.WorkerExit != "signal "+syscall.SIGABRT.String() || o.SourceReads != 16 {
 					t.Fatalf("crash: %+v", o)
 				}

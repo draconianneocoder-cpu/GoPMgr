@@ -196,6 +196,62 @@ Options for the owner. The owner chose (ii) with (iv); see
 | (iii) (ii) plus a fatal-signal handler | Exit before any fatal signal can produce a report | Needs `unsafe` async-signal-safe code in the worker and its own review; guard and resource exceptions and memory-pressure kills are not covered |
 | (iv) Deployment guidance | Ask managed deployments to turn off crash-report submission | Outside the app's control |
 
+**Condition 3 implemented: panic hook and deployment guidance.** At start-up
+the worker installs a panic hook (safe Rust, in `main.rs`). At the first panic
+it prints one line with the source location and exits with status 70, before
+unwinding starts. It never prints the panic message, which can hold row
+values. A second thread that panics meanwhile waits for the exit.
+
+`TestMacOSMemoryOnlyWorker` checks it against the signed, sandboxed worker
+with test-only faults inside the query task. Each fault panics with a row
+holding the sentinel in its message:
+
+- `panic`, an ordinary panic, and `panic_abort`, a panic whose unwinding
+  runs a destructor that panics again, each ended with exit 70, no crash
+  report, and no sentinel in anything the host received.
+- A host-sent SIGABRT to the same worker name produced a report both before
+  (`crash`) and after (`crash_trailing`) the panic runs, so the missing
+  reports are not throttling. Native faults keep reporting, as chosen.
+- **Without the hook** (seed P1), `panic_abort` died by SIGABRT and an
+  instrumented run observed a crash report for its PID. The plain panic
+  reached the host as an `INTERNAL` failure whose text included the panic
+  message, a path to the host that the hook also closes.
+- Seeds that print the message (P2) or return without exiting (P3) were also
+  caught. No seed reaches the "no crash report" assertion on its own: each
+  one that lets the abort happen first changes the exit status or leaks the
+  message. The instrumented P1 run is the evidence that the abort path
+  reports.
+
+Limits: the hook covers panics only. Allocation failure, stack overflow and
+other native faults abort without running it and still produce reports. The
+hook exits through `std::process::exit`, which runs C `atexit` handlers while
+other threads keep running; a crash during that teardown would be reported.
+None was seen. With the hook, the destructor's second panic never runs,
+because the first panic exits before unwinding. The location line names the source
+file: for a panic inside a dependency crate that is an absolute path on the
+build machine, including its home folder, unless release builds remap source
+paths.
+
+Draft deployment guidance, to move into `docs/INSTALL.md` when the
+DataFusion worker ships:
+
+> If the analytics worker crashes from a native fault, macOS writes a crash
+> report to `~/Library/Logs/DiagnosticReports`. The report can include a
+> few dozen bytes of the data the worker was handling. If macOS is set to
+> share analytics with Apple, the report is sent automatically. On managed
+> Macs, turn off automatic submission with a Restrictions profile
+> (`com.apple.applicationaccess`) that sets `allowDiagnosticSubmission` to
+> `false` (macOS 10.13 and later). On an unmanaged Mac, turn off
+> **Share Mac Analytics** and **Share with app developers** in System
+> Settings > Privacy & Security > Analytics & Improvements. These settings
+> stop sending; reports are still written locally.
+
+Sources, checked 2026-11-02: the managed-profile key, its default (`true`) and
+platform support are from
+[Apple's Restrictions payload reference](https://developer.apple.com/documentation/devicemanagement/restrictions);
+the System Settings path is from
+[Share analytics information from your Mac with Apple](https://support.apple.com/guide/mac-help/share-analytics-information-mac-apple-mh27990/mac).
+
 **Condition 4: signed, installed app on the oldest supported macOS.**
 **BLOCKED.** This machine has no code-signing identity (no Developer ID
 certificate) and no macOS 13 host. Ad-hoc signed bundles in a temporary
@@ -237,7 +293,8 @@ The options were:
   authority;
 - **(d)** stay BLOCKED and defer cutover.
 
-**Choices for the conditions (2026-11-02).** None is implemented yet.
+**Choices for the conditions (2026-11-02).** Condition 3 is implemented, as
+described below; the others are not.
 
 - **Condition 2:** one signed worker copy per concurrency slot, each with its
   own bundle identifier, so each slot gets its own container and sweep. DF-064
@@ -267,7 +324,7 @@ The full spike race suite and `go vet` passed with the same worker. The tests
 skip as root and skip the worker scenarios without `DF0_WORKER`; neither is
 qualification.
 
-Twenty-three compiling seeds were each caught by a named assertion; three
+Twenty-six compiling seeds were each caught by a named assertion; three
 first forms that did not compile were replaced and are recorded as not
 counted. The seed record states which source version each group ran against. One seed
 removed the file-size limit **and** disabled the launcher's readback check:

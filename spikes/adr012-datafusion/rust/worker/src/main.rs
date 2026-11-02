@@ -11,14 +11,14 @@
 //! business channel.
 //!
 //! Exit codes: 0 finished, 2 bad bootstrap, 3 transport failure,
-//! 4 protocol violation by the host, 9 injected exit.
+//! 4 protocol violation by the host, 9 injected exit, 70 panic.
 
 mod pb {
     include!("pb/gopmgr.df0ipc.v1.rs");
 }
 mod read_source;
 
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::Arc;
@@ -65,6 +65,7 @@ const MAX_ROLLUP_SOURCE: usize = 64 << 20;
 const OUT_QUEUE: usize = 4;
 
 fn main() -> ExitCode {
+    exit_on_panic();
     die_with_parent();
     let boot = match read_bootstrap(std::io::stdin().lock()) {
         Ok(b) => b,
@@ -92,6 +93,38 @@ fn main() -> ExitCode {
             ExitCode::from(code)
         }
     }
+}
+
+/// Exit status after a panic (EX_SOFTWARE).
+const PANIC_EXIT: i32 = 70;
+
+/// Ends the worker at its first panic, before unwinding starts.
+///
+/// A panic that turns into an abort (for example one raised by a destructor
+/// while another panic unwinds) makes macOS write a crash report outside the
+/// App Sandbox, and the report holds register values from the job. Exiting
+/// here prevents that. Native faults and signals do not run this hook and
+/// still produce reports (owner condition 3).
+///
+/// The panic message is never printed: it can hold query values, and a
+/// panic caught by the runtime would otherwise reach the host as error text.
+/// Only the source location is reported. The first panicking thread exits;
+/// any other thread that panics meanwhile waits for the exit.
+fn exit_on_panic() {
+    static PANICKED: AtomicBool = AtomicBool::new(false);
+    std::panic::set_hook(Box::new(|info| {
+        if PANICKED.swap(true, Ordering::SeqCst) {
+            loop {
+                std::thread::park();
+            }
+        }
+        let mut err = std::io::stderr().lock();
+        let _ = match info.location() {
+            Some(at) => writeln!(err, "df0-worker: panic at {}:{}", at.file(), at.line()),
+            None => writeln!(err, "df0-worker: panic"),
+        };
+        std::process::exit(PANIC_EXIT);
+    }));
 }
 
 /// Ask the kernel to kill this process if the host dies, so a crashed host

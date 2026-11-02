@@ -22,20 +22,21 @@
     "Bounded wait for the ReportCrash report naming the crashed PID"
   ],
   "source_sha256": {
-    "spikes/adr012-datafusion/internal/ipchost/memory_only_darwin_test.go": "ecf94f4b1823b41ffcdfba12d386cc1f7318fd21d16a5e404c6fd4ebbfb77770",
+    "spikes/adr012-datafusion/internal/ipchost/memory_only_darwin_test.go": "194699f4df12bd2b2516680801f7fc923b1f81904d1b8df6e6d52855f2b7be27",
     "spikes/adr012-datafusion/internal/ipchost/exec_limits_darwin_test.go": "a236a0e80d582bae8e769d95b52d4a0d34146d32b24b205e3b147dd2d4cf1774",
     "spikes/adr012-datafusion/internal/ipchost/sandbox_darwin_test.go": "df1db0579a5715aeed14594c6585984397dc7a901d1d681684f8e8aa86eda118",
     "spikes/adr012-datafusion/internal/ipchost/run.go": "090f95bbed64383a766a277a649ad44d60b740d4e49d457a3019501d42757463",
     "spikes/adr012-datafusion/tools/macos_exec_limits_probe.c": "2c44e9d766b6f57ff604021094a1b6b5356020b059de5bbd5122c1a81d365978",
     "spikes/adr012-datafusion/tools/macos_observer_probe.c": "1bf9c68f9824938d4f446b66aa744355dfa7bd42068302a45581d76967666619",
     "spikes/adr012-datafusion/tools/macos_fsevents_probe.c": "9c17d5b2dff639739a082888b7a4d2ed3bc81eb38a88cb8da1c6af320b3754e4",
-    "spikes/adr012-datafusion/rust/worker/src/read_source.rs": "562527f52614c7dcbab3b10a2ebb590819ad88cbf47e8365d16cb2593263903d",
+    "spikes/adr012-datafusion/rust/worker/src/read_source.rs": "6cb24457d5de0aaf6297765dbb2c16ca6aca391cff49553650f454c55da9e8ea",
     "spikes/adr012-datafusion/internal/ipchost/container.go": "838802ce1e938921bd6262a36f4f9a5295ae5c5afc238862c9dffdccb8eee22e",
     "spikes/adr012-datafusion/internal/ipchost/container_flags_darwin.go": "faf3faa7c5e22d2adc888c9be7816a0044c2d963057b8162ac207876fcb466f0",
     "spikes/adr012-datafusion/internal/ipchost/container_flags_linux.go": "8e32882575f89009df6fa29bd8f331ae80c355ef905c5d4b901538de3ea709be",
-    "spikes/adr012-datafusion/internal/ipchost/container_darwin_test.go": "71119adc657b99780082936903008f67c6ed13f575a68a8cbaff054bbf5116c8"
+    "spikes/adr012-datafusion/internal/ipchost/container_darwin_test.go": "71119adc657b99780082936903008f67c6ed13f575a68a8cbaff054bbf5116c8",
+    "spikes/adr012-datafusion/rust/worker/src/main.rs": "08b013feea162c02fc3aaa1024f08cfbfd903ae5d4e4123966f10a8fdf35a0c5"
   },
-  "sources_changed_since_previous_manifest": "tools/macos_exec_limits_probe.c gained the optional file-growth limit and FSIZE/CORE/SIGXFSZ readback; tools/macos_observer_probe.c gained the growth and growth-launch helper modes; sandbox_darwin_test.go only adopts the launcherLimits signature. The observer-sandbox tests still pass on these sources in the full spike race suite; their committed evidence and manifest were not regenerated and still bind the earlier versions.",
+  "sources_changed_since_previous_manifest": "tools/macos_exec_limits_probe.c gained the optional file-growth limit and FSIZE/CORE/SIGXFSZ readback; tools/macos_observer_probe.c gained the growth and growth-launch helper modes; sandbox_darwin_test.go only adopts the launcherLimits signature. The observer-sandbox tests still pass on these sources in the full spike race suite; their committed evidence and manifest were not regenerated and still bind the earlier versions. Condition 3 update: worker main.rs gained the panic hook, read_source.rs the test-only source_panic and source_panic_abort faults, and the memory-only test the panic, panic_abort and crash_trailing scenarios; memory-only-worker.json and fault-seeds.json were regenerated, the other observations still bind 5b434f0 sources",
   "sdk_sha256": {
     "System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Headers/FSEvents.h": "493ab211ffd5683e83b3ec77b9924730a7df44a39738b560b8a28465b1c48a90",
     "usr/include/sys/resource.h": "1067178025c5fd88c9a1b8206a07c2695ef94dd471fe2783f06c512995382961",
@@ -44,15 +45,15 @@
   },
   "evidence_sha256": {
     "crash-reports.json": "5110f33e73c4727c1aa66976319912ec0a361b9a16ea5743f45f34d571c8c3a3",
-    "fault-seeds.json": "2186469afd74af386ece7256513e1a888bed24331aec1071587588c735e90581",
+    "fault-seeds.json": "326e7abec58e89658b3836305c79cce17371c3362a94bdb01c622441131df391",
     "growth-channels.json": "ff98194d65f67cbb3d07f3eb13fd47c95c98b6cd73107148c46d901728c88889",
-    "memory-only-worker.json": "e3b3cd1bd3f395e0e5d7ccaef7eee2a232b9f20c9c342c4cbf560979523ee19a",
+    "memory-only-worker.json": "09704cd3a8846175775ed9056ed09e85fdd11271e38c3cf6be50b58ea6e14a81",
     "volume-watch.json": "5b425af10db3355366789427e215c34ddcdb8bb33a23f0e58fc46c1ead888556"
   },
-  "input_worker_sha256": "a30a95f5a2801330239fe8a122f551833fac224dcd8a8e42d1feffc2088f3d0a",
-  "signed_copy_sha256": "9e03cba49a806edfcf4a4014618f1e750462418a859595bbc008f38c42e04b47",
+  "input_worker_sha256": "1f353a111f6b207aa1990ae797cf614b8f988b0f67990745876c31da2d0758c2",
+  "signed_copy_sha256": "fbb00d1922e4d7c8065274898350364c4bfd36944b38e5d1db2c73de76d4c20b",
   "worker_rebuilt": true,
-  "worker_build": "cargo build --locked --release -p df0-worker with the pinned toolchain and CARGO_TARGET_DIR outside the repository, after the condition 1 error-mapping fix; rebuilding the restored source after the mapping seed reproduced the same hash",
+  "worker_build": "cargo build --locked --offline --release -p df0-worker with the pinned toolchain and CARGO_TARGET_DIR outside the repository, after the condition 3 panic hook; condition 1's mapping fix is included",
   "signing": "Task-only copies, ad-hoc hardened-runtime signature, only the App Sandbox entitlement; no Developer ID, notarization or installed-app claim. Unique new containers and the task's own crash reports are removed by the tests.",
   "findings": [
     "App Sandbox alone lets the worker write file content inside its own container (positive control: 126 DataFusion spill files, sentinel present)",
@@ -63,10 +64,11 @@
     "The deprecated sandbox-exec write-denial profile cannot be combined with App Sandbox: the sandboxed process stops with SIGTRAP before running",
     "Under the zero file-size limit, stdout and stderr must be pipes; a regular-file stderr makes the launcher's own readback fail",
     "Owner condition 2: Container.Do gives each job a fresh, empty folder and, after the worker is reaped on every outcome, sweeps the whole Data tree back to its baseline: added entries and attributes removed, modes restored, immutable flags cleared, symlinks never followed. A sweep that cannot restore the baseline marks the container unclean and refuses further jobs; reports carry counts, never names",
-    "All workers signed with one bundle identifier share one container, so jobs on it run one at a time. That conflicts with concurrent 2/4/8-worker cohorts (DF-064) and needs an owner decision",
-    "Owner condition 3 evidence: a crash report carries the crashing thread's register values (a known 8-byte pattern in ten registers appeared in the report), so a crash can leak a register set of in-flight data (ten registers checked; arm64 has up to 29 general-purpose registers of 8 bytes); this machine has automatic crash-report submission on. A process whose fatal-signal handler exits first produced no report for either a trap or an abort, with plain crashes reported both before and after. The worker is unchanged; the choice is the owner's",
-    "Owner condition 4: BLOCKED. This machine has no code-signing identity (no Developer ID) and no macOS 13 host",
-    "Owner condition 5 evidence: an unprivileged FSEvents stream on the boot volume saw marker writes in /private/tmp, the user temp folder, the home folder and the sandboxed container; it dropped nothing under 20,000 create/delete pairs elsewhere on the volume; a stalled consumer made fseventsd drop events and the observer reported it"
+    "All workers signed with one bundle identifier share one container, so jobs on it run one at a time. The owner chose one signed worker copy per concurrency slot for DF-064 cohorts; not implemented",
+    "Owner condition 3 evidence: a crash report carries the crashing thread's register values (a known 8-byte pattern in ten registers appeared in the report), so a crash can leak a register set of in-flight data (ten registers checked; arm64 has up to 29 general-purpose registers of 8 bytes); this machine has automatic crash-report submission on. A process whose fatal-signal handler exits first produced no report for either a trap or an abort, with plain crashes reported both before and after.",
+    "Owner condition 4: deferred to release qualification by the owner. This machine has no code-signing identity (no Developer ID) and no macOS 13 host",
+    "Owner condition 5 evidence: an unprivileged FSEvents stream on the boot volume saw marker writes in /private/tmp, the user temp folder, the home folder and the sandboxed container; it dropped nothing under 20,000 create/delete pairs elsewhere on the volume; a stalled consumer made fseventsd drop events and the observer reported it",
+    "Owner condition 3, chosen option (ii) with (iv): the worker's panic hook exits with status 70 at the first panic, printing only the source location. A panic that would abort (one raised during unwinding) then produced no crash report, while a host-sent SIGABRT to the same worker produced one both before and after. Without the hook, the same panic aborted and was reported. Before the hook, a panic in the query task reached the host as INTERNAL failure text that included the panic message, which can hold row values"
   ],
   "measurement_limits": [
     "FSEvents shows that a path changed, not its content or the acting process; flags are merged per path",
@@ -81,7 +83,12 @@
     "Drops did not occur in these load runs; a busier machine could drop, and the observer then fails the observation rather than passing it",
     "Container.Do serializes jobs with an in-process lock; two host processes sharing one container (one bundle identifier) are not serialized, so a cross-process exclusive lock is needed before adoption",
     "ReportCrash writes the in-container CrashReporter plist asynchronously; if it lands between a sweep's walk and its re-check, the container is marked unclean and refuses jobs until it is swept again (an availability limit; the comparison stays strict)",
-    "Condition 5's positive controls are direct writes; a delegated write outside the container, such as ReportCrash's report, was not checked through the volume-wide stream"
+    "Condition 5's positive controls are direct writes; a delegated write outside the container, such as ReportCrash's report, was not checked through the volume-wide stream",
+    "The panic hook covers panics only. Allocation failure, stack overflow and other native faults abort without running it and still produce reports, by the owner's choice",
+    "The hook calls std::process::exit, which runs C atexit handlers while other worker threads keep running; a crash during that teardown would still be reported. None was seen",
+    "Deployment guidance (iv) relies on administrators setting allowDiagnosticSubmission = false; it stops automatic submission to Apple, not the local report",
+    "The hook's location line names the source file; for a panic inside a dependency crate that is the build machine's absolute registry path, including its home folder, unless release builds remap source paths"
   ],
-  "fault_seed_provenance": "fault-seeds.json states, per group, which source version each seed ran against; the observations in this folder were regenerated on the final sources"
+  "fault_seed_provenance": "fault-seeds.json states, per group, which source version each seed ran against; the observations in this folder were regenerated on the final sources",
+  "updated_utc": "2026-11-02T18:25:18.226693+00:00"
 }

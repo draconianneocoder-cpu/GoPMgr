@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use bytes::Bytes;
+use datafusion::arrow::array::RecordBatch;
 use datafusion::common::DataFusionError;
 use df0_engine::host_source::{HostSource, MAX_SOURCE, MemoryReadAt, Query, ReadAt};
 use sha2::{Digest, Sha256};
@@ -131,12 +132,15 @@ pub(super) async fn execute(
             .then(|| ex.spill_control_directory.clone().into()),
     };
     let (batch_tx, mut batch_rx) = mpsc::channel(1);
+    let fault = ex.fault.clone();
     let mut tasks = JoinSet::new();
     tasks.spawn(async move {
         let mut execution = df0_engine::host_source::parquet(source, query).await?;
         while let Some(batch) = execution.stream.next().await {
+            let batch = batch?;
+            panic_fault(&fault, &batch);
             batch_tx
-                .send(batch?)
+                .send(batch)
                 .await
                 .map_err(|_| DataFusionError::Execution("query receiver closed".into()))?;
         }
@@ -296,6 +300,31 @@ fn validate_reply(
         return Err("source response identity, bounds or digest mismatch".into());
     }
     Ok(())
+}
+
+/// Test-only panic faults inside the query task, carrying a row's values in
+/// the panic message the way an engine assertion can:
+/// - `source_panic`: an ordinary panic, which the runtime would catch;
+/// - `source_panic_abort`: a panic whose unwinding runs a destructor that
+///   panics again, which aborts the process when the panic hook does not
+///   exit first.
+fn panic_fault(fault: &str, batch: &RecordBatch) {
+    struct PanicDuringUnwind;
+    impl Drop for PanicDuringUnwind {
+        fn drop(&mut self) {
+            if std::thread::panicking() {
+                panic!("source panic fault: second panic during unwinding");
+            }
+        }
+    }
+    if !matches!(fault, "source_panic" | "source_panic_abort") || batch.num_columns() == 0 {
+        return;
+    }
+    let _guard = (fault == "source_panic_abort").then_some(PanicDuringUnwind);
+    let row = batch
+        .column(batch.num_columns() - 1)
+        .slice(0, 1.min(batch.num_rows()));
+    panic!("source panic fault: {row:?}");
 }
 
 #[cfg(test)]

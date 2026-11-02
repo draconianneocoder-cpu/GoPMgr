@@ -1,9 +1,9 @@
 {
-  "counted_total": 23,
+  "counted_total": 26,
   "groups": [
     {
       "group": "S1-S9, S1b (memory-only policy, observers, scans)",
-      "ran_against": "final sources of this record",
+      "ran_against": "commit 5b434f0 sources. The memory-only test later gained the condition 3 panic and trailing-crash scenarios without changing the assertions these seeds hit",
       "seeds": [
         {
           "seed": "S1 launcher drops RLIMIT_FSIZE",
@@ -132,7 +132,7 @@
     },
     {
       "group": "K1-K2 (crash reports)",
-      "ran_against": "final sources of this record, including the trailing control",
+      "ran_against": "commit 5b434f0 sources; TestMacOSCrashReportOptions and the observer probe are unchanged since",
       "seeds": [
         {
           "seed": "K1 fatal-signal handler not installed",
@@ -145,6 +145,30 @@
           "first_assertion": "register values no longer appear in the crash report: {Mode:crash-registers ExitStatus:0 Signal:trace/BPT trap ReportWritten:true PatternFound:false ReportBytes:7645}"
         }
       ]
+    },
+    {
+      "group": "P1-P3 (worker panic hook, owner condition 3)",
+      "ran_against": "this record's sources, with a seeded release worker rebuilt for each seed; the restored source was rebuilt for the passing run",
+      "seeds": [
+        {
+          "seed": "P1 panic hook not installed",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker/panic and TestMacOSMemoryOnlyWorker/panic_abort",
+          "first_assertion": "diagnostics or endpoint cleanup: the default hook printed the panic message, which holds the sentinel row",
+          "observed": "panic: Failed INTERNAL, exit 0. panic_abort: signal abort trap, and an instrumented run observed a crash report (17959 bytes) for the worker PID. Without the hook the abort path does produce a report"
+        },
+        {
+          "seed": "P2 hook prints the panic message",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker/panic and TestMacOSMemoryOnlyWorker/panic_abort",
+          "first_assertion": "diagnostics or endpoint cleanup: sentinel in worker diagnostics (exit 70)"
+        },
+        {
+          "seed": "P3 hook returns without exiting",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker/panic and TestMacOSMemoryOnlyWorker/panic_abort",
+          "first_assertion": "panic: Failed INTERNAL with the runtime's panic text (sentinel in diagnostics); panic_abort: the second panic waits in the hook, so the job timed out and was killed",
+          "observed": "no crash report in the instrumented panic_abort run"
+        }
+      ],
+      "limit": "No seed reaches the 'no crash report' assertion alone: every seed that lets the abort happen also changes the exit status or leaks the message first. The instrumented P1 run is the evidence that the abort path reports"
     }
   ],
   "not_counted_as_detection": [
