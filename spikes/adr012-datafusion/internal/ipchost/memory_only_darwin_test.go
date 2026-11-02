@@ -1156,11 +1156,18 @@ func TestMacOSCrashReportOptions(t *testing.T) {
 			t.Errorf("%s: a handler that exits first should avoid the report: %+v", o.Mode, o)
 		}
 	}
+	// Trailing control: reporting still works for this name after the
+	// handled runs, so their missing reports are not throttling.
+	after := run("crash-registers")
+	if after.Signal != syscall.SIGTRAP.String() || !after.ReportWritten {
+		t.Fatalf("trailing control: a crash should still produce a report: %+v", after)
+	}
 	// Recorded behaviour, so an OS change is noticed: the report carries the
-	// crashing thread's register values, so a crash can leak a few bytes of
-	// whatever the worker was handling.
+	// crashing thread's register values (ten were checked; arm64 has up to 29
+	// general-purpose registers of 8 bytes), so a crash can leak a register
+	// set of whatever the worker was handling.
 	if !plain.PatternFound {
 		t.Fatalf("register values no longer appear in the crash report: %+v", plain)
 	}
-	saveMemoryOnlyEvidence(t, "crash-reports.json", []crashObservation{plain, handled, aborted})
+	saveMemoryOnlyEvidence(t, "crash-reports.json", []crashObservation{plain, handled, aborted, after})
 }

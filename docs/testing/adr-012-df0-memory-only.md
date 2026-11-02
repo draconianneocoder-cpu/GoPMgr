@@ -75,10 +75,11 @@ which binds sources, SDK headers and the worker by SHA-256.
 
 These are why the policy is content-only, not memory-only:
 
-- **Names, empty files, directories and extended attributes.** Under the limit
-  the helper stored its marker in an attribute value and in a file name.
-  DataFusion's failed spill created and removed an empty temporary file, and
-  created a directory whose persistence was not observed.
+- **Names, empty files, directories and extended attributes, during a job.**
+  Under the limit the helper stored its marker in an attribute value and in a
+  file name. DataFusion's failed spill created and removed an empty temporary
+  file and created a directory. The condition 2 sweep removes all of these
+  after each job; they persist until the next start only if the host dies.
 - **Crash reports hold register values** (condition 3 above), so the "no
   sentinel in the report" check is weak in both directions.
 - **Crash reports are not guaranteed.** ReportCrash stopped writing reports
@@ -149,6 +150,14 @@ system error only; names could carry data.
   symlinks, swept only after a completed job, forced the clean verdict, put
   the path in the failure text, and skipped mode restoration or flag
   clearing.
+- **Limits:** `Container.Do` serializes jobs with an in-process lock. Two host
+  processes, such as two app instances, share one container and are not
+  serialized, so one could sweep the other's live job folder. A cross-process
+  exclusive lock, for example `flock` on a file outside the container, is
+  needed before adoption. ReportCrash writes its in-container plist
+  asynchronously. If that write lands between a sweep's walk and its
+  re-check, the container is marked unclean and refuses jobs until it is
+  swept again. That is an availability limit; the comparison stays strict.
 - **Constraint for the owner:** every worker signed with one bundle identifier
   shares one container, so jobs on it run one at a time. That conflicts with
   DF-064's concurrent 2/4/8-worker cohorts. The options are:
@@ -165,12 +174,14 @@ holds and whether a process can avoid one, using a sandboxed helper with its
 own name:
 
 - **Reports carry register values.** A known 8-byte pattern loaded into ten
-  registers before a trap appeared in the report. A crash can therefore leak a
-  few dozen bytes of whatever the worker was handling, beyond the backtrace.
+  registers before a trap appeared in the report. The report holds the
+  crashing thread's register set (up to 29 general-purpose registers of 8
+  bytes on arm64), so a crash can leak that much of whatever the worker was
+  handling, beyond the backtrace.
 - **A process can avoid the report.** With fatal-signal handlers that call
   `_exit` first, a trap and an abort each ended with status 70 and no report.
-  A plain crash under the same name, just before, was reported, so the absence
-  is not throttling.
+  Plain crashes under the same name were reported both before and after these
+  runs, so the absence is not throttling.
 - **Reports are not reliable either way.** ReportCrash stopped writing reports
   for a name that had crashed many times, so deleting reports afterwards is
   neither complete nor timely when submission is on.
@@ -205,12 +216,18 @@ application's paths are recorded.
 
 It is a candidate stand-in for the root-only tracing DF-062 lacks, not a
 replacement verdict. It shows paths, not processes or contents. It covers one
-volume, and fseventsd keeps its own history of names.
+volume, and fseventsd keeps its own history of names. Its positive controls are
+direct writes. A write another process makes on the worker's behalf outside
+the container, such as ReportCrash's report, was not checked through it.
 
-## Decision for the owner
+## Owner decision
 
-Recorded in the [ACR addendum](../review/ADR-012-macos-containment-ACR.md#memory-only-filesystem-finding-2026-11-02).
-In short:
+**Decided 2026-11-02:** (d) stays in force now, and (a) is approved as the
+target once the [five conditions](#owner-conditions-for-option-a) pass. (a)
+is not adopted, and DF-062 stays BLOCKED until the owner confirms that the
+conditions have passed. Recorded in the
+[ACR addendum](../review/ADR-012-macos-containment-ACR.md#memory-only-filesystem-finding-2026-11-02).
+The options were:
 
 - **(a)** accept content-only protection for the trusted worker as an
   explicit, recorded relaxation;
@@ -219,7 +236,6 @@ In short:
   authority;
 - **(d)** stay BLOCKED and defer cutover.
 
-Accepted requirements stay in force until the owner chooses.
 
 ## Verification
 
@@ -229,15 +245,16 @@ From `spikes/adr012-datafusion`, with a worker built from this revision:
 DF0_WORKER=/absolute/path/to/df0-worker \
 DF0_MEMORY_ONLY_EVIDENCE=/absolute/path/to/existing-directory \
   go test -race -count=1 -v ./internal/ipchost \
-  -run '^(TestMacOSFileGrowthLimitChannels|TestMacOSMemoryOnlyWorker|TestFSEventsDropFlagsFailTheObservation)$'
+  -run '^(TestMacOSFileGrowthLimitChannels|TestMacOSMemoryOnlyWorker|TestFSEventsDropFlagsFailTheObservation|TestMacOSVolumeWideFSEvents|TestMacOSCrashReportOptions|TestContainer.*)$'
 ```
 
 The full spike race suite and `go vet` passed with the same worker. The tests
 skip as root and skip the worker scenarios without `DF0_WORKER`; neither is
 qualification.
 
-Ten compiling seeds were each caught by a named assertion; two first forms
-that did not compile were replaced and are recorded as not counted. One seed
+Twenty-three compiling seeds were each caught by a named assertion; three
+first forms that did not compile were replaced and are recorded as not
+counted. The seed record states which source version each group ran against. One seed
 removed the file-size limit **and** disabled the launcher's readback check:
 the content check alone still failed the forced-spill run, so detection does
 not rest on the worker's own report.

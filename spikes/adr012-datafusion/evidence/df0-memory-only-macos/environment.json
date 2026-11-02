@@ -1,5 +1,5 @@
 {
-  "recorded_utc": "2026-11-02T14:17:17.321069+00:00",
+  "recorded_utc": "2026-11-02T14:28:36.320351+00:00",
   "source_baseline_commit": "e31e225052fe7f7728b12079997cf1bb038d08d6",
   "scope": "Isolated native macOS memory-only filesystem feasibility for the App Sandbox worker; not production adoption, a DF-062 PASS or a resource-policy decision",
   "authority": "Handoff of 2026-11-01 names this as the next authorized isolated containment task; no new privilege, entitlement, service, VM, transport or tool installation is used",
@@ -22,7 +22,7 @@
     "Bounded wait for the ReportCrash report naming the crashed PID"
   ],
   "source_sha256": {
-    "spikes/adr012-datafusion/internal/ipchost/memory_only_darwin_test.go": "4cedf776fa9d4ae1722ed221a3b4c02f3695b4dc98a3e0a2b04446de68f7490e",
+    "spikes/adr012-datafusion/internal/ipchost/memory_only_darwin_test.go": "ecf94f4b1823b41ffcdfba12d386cc1f7318fd21d16a5e404c6fd4ebbfb77770",
     "spikes/adr012-datafusion/internal/ipchost/exec_limits_darwin_test.go": "a236a0e80d582bae8e769d95b52d4a0d34146d32b24b205e3b147dd2d4cf1774",
     "spikes/adr012-datafusion/internal/ipchost/sandbox_darwin_test.go": "df1db0579a5715aeed14594c6585984397dc7a901d1d681684f8e8aa86eda118",
     "spikes/adr012-datafusion/internal/ipchost/run.go": "090f95bbed64383a766a277a649ad44d60b740d4e49d457a3019501d42757463",
@@ -43,14 +43,14 @@
     "usr/include/sys/signal.h": "46001a703a66591b9adc873dcdfe4a545bb26cd5fc52b31ede9e0cda9ddbac7a"
   },
   "evidence_sha256": {
-    "crash-reports.json": "38b864410c96960b6d7cdbfb3db7a0b4aa254e854391a6362b0ec5f6226b38e2",
-    "fault-seeds.json": "64d9a7d9c75808020b3c635a512b2cdeb6141e81f6dbd892a2a9c2aa34b06b4a",
-    "growth-channels.json": "cb8ba6f7289ba0a74ec0fd9ed1b946cdb33153fdc6dc28c1796cb859d821b097",
-    "memory-only-worker.json": "8e76d3cceed16ecd01bb9a1e07bdfbb5ce72825c6a215720bb396a5f849c8c63",
-    "volume-watch.json": "0ea6db9b3cc8ead4f22d038f61a5ba2ce56ff25ba5de1bc83307c703ee64d2d9"
+    "crash-reports.json": "5110f33e73c4727c1aa66976319912ec0a361b9a16ea5743f45f34d571c8c3a3",
+    "fault-seeds.json": "2186469afd74af386ece7256513e1a888bed24331aec1071587588c735e90581",
+    "growth-channels.json": "ff98194d65f67cbb3d07f3eb13fd47c95c98b6cd73107148c46d901728c88889",
+    "memory-only-worker.json": "e3b3cd1bd3f395e0e5d7ccaef7eee2a232b9f20c9c342c4cbf560979523ee19a",
+    "volume-watch.json": "5b425af10db3355366789427e215c34ddcdb8bb33a23f0e58fc46c1ead888556"
   },
   "input_worker_sha256": "a30a95f5a2801330239fe8a122f551833fac224dcd8a8e42d1feffc2088f3d0a",
-  "signed_copy_sha256": "d51c3069ac38d127ee8889f594dc27e0a4264ae1c18624b493b74bb0ae1b56d9",
+  "signed_copy_sha256": "9e03cba49a806edfcf4a4014618f1e750462418a859595bbc008f38c42e04b47",
   "worker_rebuilt": true,
   "worker_build": "cargo build --locked --release -p df0-worker with the pinned toolchain and CARGO_TARGET_DIR outside the repository, after the condition 1 error-mapping fix; rebuilding the restored source after the mapping seed reproduced the same hash",
   "signing": "Task-only copies, ad-hoc hardened-runtime signature, only the App Sandbox entitlement; no Developer ID, notarization or installed-app claim. Unique new containers and the task's own crash reports are removed by the tests.",
@@ -64,7 +64,7 @@
     "Under the zero file-size limit, stdout and stderr must be pipes; a regular-file stderr makes the launcher's own readback fail",
     "Owner condition 2: Container.Do gives each job a fresh, empty folder and, after the worker is reaped on every outcome, sweeps the whole Data tree back to its baseline: added entries and attributes removed, modes restored, immutable flags cleared, symlinks never followed. A sweep that cannot restore the baseline marks the container unclean and refuses further jobs; reports carry counts, never names",
     "All workers signed with one bundle identifier share one container, so jobs on it run one at a time. That conflicts with concurrent 2/4/8-worker cohorts (DF-064) and needs an owner decision",
-    "Owner condition 3 evidence: a crash report carries the crashing thread's register values (a known 8-byte pattern in ten registers appeared in the report), so a crash can leak a few dozen bytes of in-flight data; this machine has automatic crash-report submission on. A process whose fatal-signal handler exits first produced no report for either a trap or an abort. The worker is unchanged; the choice is the owner's",
+    "Owner condition 3 evidence: a crash report carries the crashing thread's register values (a known 8-byte pattern in ten registers appeared in the report), so a crash can leak a register set of in-flight data (ten registers checked; arm64 has up to 29 general-purpose registers of 8 bytes); this machine has automatic crash-report submission on. A process whose fatal-signal handler exits first produced no report for either a trap or an abort, with plain crashes reported both before and after. The worker is unchanged; the choice is the owner's",
     "Owner condition 4: BLOCKED. This machine has no code-signing identity (no Developer ID) and no macOS 13 host",
     "Owner condition 5 evidence: an unprivileged FSEvents stream on the boot volume saw marker writes in /private/tmp, the user temp folder, the home folder and the sandboxed container; it dropped nothing under 20,000 create/delete pairs elsewhere on the volume; a stalled consumer made fseventsd drop events and the observer reported it"
   ],
@@ -78,7 +78,10 @@
     "Crash reports hold backtraces, not heap, so no sentinel in one is a weak check; reports can leave the machine if analytics sharing is on",
     "ReportCrash stopped writing reports for a process name that had crashed many times (2 misses in about 4 runs with the fixed name 'probe'; 8 of 8 observed after naming each test's executable uniquely). Test apps now use unique names; a production worker with a fixed name would get the same throttling",
     "The volume-wide stream covers the boot volume only, reports paths not processes or contents, and keeps no record of files written and removed between two of its own events on the same path beyond merged flags",
-    "Drops did not occur in these load runs; a busier machine could drop, and the observer then fails the observation rather than passing it"
+    "Drops did not occur in these load runs; a busier machine could drop, and the observer then fails the observation rather than passing it",
+    "Container.Do serializes jobs with an in-process lock; two host processes sharing one container (one bundle identifier) are not serialized, so a cross-process exclusive lock is needed before adoption",
+    "ReportCrash writes the in-container CrashReporter plist asynchronously; if it lands between a sweep's walk and its re-check, the container is marked unclean and refuses jobs until it is swept again (an availability limit; the comparison stays strict)",
+    "Condition 5's positive controls are direct writes; a delegated write outside the container, such as ReportCrash's report, was not checked through the volume-wide stream"
   ],
-  "fault_seed_source_note": "Fault seeds ran before a comment-only edit to memory_only_darwin_test.go; the observations here were regenerated on the final source"
+  "fault_seed_provenance": "fault-seeds.json states, per group, which source version each seed ran against; the observations in this folder were regenerated on the final sources"
 }

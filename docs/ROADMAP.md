@@ -64,7 +64,8 @@ upgrade DuckDB as part of its retirement.
    [memory-only filesystem experiment](testing/adr-012-df0-memory-only.md) found
    that App Sandbox plus a zero file-size limit stops file content, including a
    forced spill, but not names, attributes or writes other processes make for
-   the worker; DF-062 stays BLOCKED pending the owner decision in the ACR. Next
+   the worker. The owner kept (d) and approved (a) as the target under five
+   conditions, tracked in the ACR; DF-062 stays BLOCKED until they pass. Next
    qualify job-bound observation and failure recovery, then obtain explicit
    accounting/budget, confidentiality-policy and adoption decisions. Keep accepted guarantees
    until changed explicitly; no privileged helper or VM is selected.

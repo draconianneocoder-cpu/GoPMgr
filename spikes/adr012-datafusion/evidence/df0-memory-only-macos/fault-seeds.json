@@ -1,119 +1,150 @@
 {
-  "counted": [
+  "counted_total": 23,
+  "groups": [
     {
-      "seed": "S1 launcher drops RLIMIT_FSIZE",
-      "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/cancel, TestMacOSMemoryOnlyWorker/crash, TestMacOSMemoryOnlyWorker/kill, TestMacOSMemoryOnlyWorker/memory_only_pressure, TestMacOSMemoryOnlyWorker/normal, TestMacOSMemoryOnlyWorker/recovery, TestMacOSMemoryOnlyWorker/spill_under_policy",
-      "first_assertion": "file-growth limit readback does not match the policy: {Mode:worker Stage:preexec RequestedAS:0 InstallErrno:0 ReadErrno:0 AS:9223372036854775807 ASHard:92233720"
+      "group": "S1-S9, S1b (memory-only policy, observers, scans)",
+      "ran_against": "final sources of this record",
+      "seeds": [
+        {
+          "seed": "S1 launcher drops RLIMIT_FSIZE",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/cancel, TestMacOSMemoryOnlyWorker/crash, TestMacOSMemoryOnlyWorker/kill, TestMacOSMemoryOnlyWorker/memory_only_pressure, TestMacOSMemoryOnlyWorker/normal, TestMacOSMemoryOnlyWorker/recovery, TestMacOSMemoryOnlyWorker/spill_under_policy",
+          "first_assertion": "file-growth limit readback does not match the policy: {Mode:worker Stage:preexec RequestedAS:0 InstallErrno:0 ReadErrno:0 AS:9223372036854775807 ASHard:9223372036854775807 NProc:0 "
+        },
+        {
+          "seed": "S2 launcher leaves SIGXFSZ at default",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/cancel, TestMacOSMemoryOnlyWorker/crash, TestMacOSMemoryOnlyWorker/kill, TestMacOSMemoryOnlyWorker/memory_only_pressure, TestMacOSMemoryOnlyWorker/normal, TestMacOSMemoryOnlyWorker/recovery, TestMacOSMemoryOnlyWorker/spill_under_policy",
+          "first_assertion": "file-growth limit readback does not match the policy: {Mode:worker Stage:preexec RequestedAS:0 InstallErrno:0 ReadErrno:0 AS:9223372036854775807 ASHard:9223372036854775807 NProc:0 "
+        },
+        {
+          "seed": "S3 detector ignores Modified",
+          "result": "CAUGHT by TestMacOSFileGrowthLimitChannels, TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/spill_control",
+          "first_assertion": "positive control: App Sandbox should allow own-container content: {Name:app_sandbox_only Started:true FSize:9223372036854775807 XFSZIgnored:false Create:0 Write:0 Truncate:0 Xattr:"
+        },
+        {
+          "seed": "S4 dropped-event flags ignored",
+          "result": "CAUGHT by TestFSEventsDropFlagsFailTheObservation",
+          "first_assertion": "eventsDropped(0x1) = false, want true"
+        },
+        {
+          "seed": "S5 scan skips extended attributes",
+          "result": "CAUGHT by TestMacOSFileGrowthLimitChannels",
+          "first_assertion": "metadata channels behaved differently than recorded: {Name:app_sandbox_fsize_zero Started:true FSize:0 XFSZIgnored:true Create:0 Write:27 Truncate:27 Xattr:0 Rename:0 Mkdir:0 Stat:"
+        },
+        {
+          "seed": "S6 crash report never matched",
+          "result": "CAUGHT by TestMacOSFileGrowthLimitChannels, TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/crash",
+          "first_assertion": "expected App Sandbox to refuse an already-sandboxed process: {Name:sandbox_exec_then_app_sandbox Started:false FSize:0 XFSZIgnored:false Create:0 Write:0 Truncate:0 Xattr:0 Rename:"
+        },
+        {
+          "seed": "S7 crash hook does not signal",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/crash",
+          "first_assertion": "crash: {Name:crash Policy:app_sandbox_fsize_zero Outcome:timeout FailedCode: Detail:no completion within 30s SourceReads:16 Rows:0 WorkerExit:signal killed Killed:true EndpointGone"
+        },
+        {
+          "seed": "S8 content scan needle broken",
+          "result": "CAUGHT by TestMacOSFileGrowthLimitChannels",
+          "first_assertion": "positive control: App Sandbox should allow own-container content: {Name:app_sandbox_only Started:true FSize:9223372036854775807 XFSZIgnored:false Create:0 Write:0 Truncate:0 Xattr:"
+        },
+        {
+          "seed": "S9 growth launcher drops RLIMIT_FSIZE",
+          "result": "CAUGHT by TestMacOSFileGrowthLimitChannels",
+          "first_assertion": "zero file-size limit did not stop file content: {Name:app_sandbox_fsize_zero Started:true FSize:9223372036854775807 XFSZIgnored:true Create:0 Write:0 Truncate:0 Xattr:0 Rename:0 Mk"
+        },
+        {
+          "seed": "S1b launcher drops RLIMIT_FSIZE and the readback check is disabled",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/spill_under_policy",
+          "first_assertion": "file content was written under the policy: {Name:spill_under_policy Policy:app_sandbox_fsize_zero Outcome:completed FailedCode: Detail: SourceReads:17 Rows:4096 WorkerExit:exit 0 K"
+        }
+      ]
     },
     {
-      "seed": "S2 launcher leaves SIGXFSZ at default",
-      "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/cancel, TestMacOSMemoryOnlyWorker/crash, TestMacOSMemoryOnlyWorker/kill, TestMacOSMemoryOnlyWorker/memory_only_pressure, TestMacOSMemoryOnlyWorker/normal, TestMacOSMemoryOnlyWorker/recovery, TestMacOSMemoryOnlyWorker/spill_under_policy",
-      "first_assertion": "file-growth limit readback does not match the policy: {Mode:worker Stage:preexec RequestedAS:0 InstallErrno:0 ReadErrno:0 AS:9223372036854775807 ASHard:92233720"
+      "group": "S10 (worker error mapping)",
+      "ran_against": "commit 21ba941, with a seeded worker rebuild; the mapping is unchanged since",
+      "seeds": [
+        {
+          "seed": "S10 worker maps EFBIG back to INPUT_INVALID (rebuilt worker)",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker/spill_under_policy and Rust os_write_refusals_are_resource_limits_with_constant_details",
+          "first_assertion": "spill under the policy should fail as a typed error, not kill the worker"
+        }
+      ]
     },
     {
-      "seed": "S3 detector ignores Modified",
-      "result": "CAUGHT by TestMacOSFileGrowthLimitChannels, TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/spill_control",
-      "first_assertion": "positive control: App Sandbox should allow own-container content: {Name:app_sandbox_only Started:true FSize:9223372036854775807 XFSZIgnored:false Create:0 Write"
+      "group": "C1-C7 (container sweep)",
+      "ran_against": "commit 7544eca; container.go, its flag helpers and its unit test are unchanged since",
+      "seeds": [
+        {
+          "seed": "C1 sweep skips attribute removal",
+          "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "sweep did not restore the baseline: &{EntriesRemoved:9 XattrsRemoved:2 ModesRestored:1 FlagsCleared:1 BaselineChanged:0 Clean:false Failure:}"
+        },
+        {
+          "seed": "C2 sweep follows symlinks",
+          "result": "CAUGHT by TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "sweep deleted through a symlinked directory: open <tmp>: no such fil"
+        },
+        {
+          "seed": "C3 sweep runs only after a completed job",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/cancel, TestMacOSMemoryOnlyWorker/crash, TestMacOSMemoryOnlyWorker/kill, TestMacOSMemoryOnlyWorker/memory_only_pressure, TestMacOSMemoryOnlyWorker/spill_under_policy",
+          "first_assertion": "container sweep: <nil>"
+        },
+        {
+          "seed": "C5 failure text carries the path",
+          "result": "CAUGHT by TestContainerSweepFailureNamesNothing",
+          "first_assertion": "sweep failure text names a path: \"lstat <tmp>: no such file or di"
+        },
+        {
+          "seed": "C6 baseline modes not restored",
+          "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "sweep did not restore the baseline: &{EntriesRemoved:6 XattrsRemoved:1 ModesRestored:0 FlagsCleared:0 BaselineChanged:0 Clean:false Failure:permission denied}"
+        },
+        {
+          "seed": "C7 immutable flags not cleared",
+          "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "sweep did not restore the baseline: &{EntriesRemoved:8 XattrsRemoved:2 ModesRestored:1 FlagsCleared:0 BaselineChanged:0 Clean:false Failure:operation not permitted}"
+        },
+        {
+          "seed": "C4 clean verdict forced",
+          "result": "CAUGHT by TestContainerRefusesJobsAfterAChangedBaseline, TestContainerRefusesJobsAfterAChangedBaseline/changed_attribute_value, TestContainerRefusesJobsAfterAChangedBaseline/changed_file_content, TestContainerRefusesJobsAfterAChangedBaseline/removed_baseline_directory, TestContainerRefusesJobsAfterAChangedBaseline/retargeted_symlink, TestContainerSweepFailureNamesNothing",
+          "first_assertion": "a changed baseline entry was not reported: &{EntriesRemoved:1 XattrsRemoved:0 ModesRestored:0 FlagsCleared:0 BaselineChanged:1 Clean:true Failure:}"
+        }
+      ]
     },
     {
-      "seed": "S4 dropped-event flags ignored",
-      "result": "CAUGHT by TestFSEventsDropFlagsFailTheObservation",
-      "first_assertion": "eventsDropped(0x1) = false, want true"
+      "group": "V1-V3 (volume-wide watch)",
+      "ran_against": "commit 8ab0f18; the FSEvents probe and the volume test are unchanged since",
+      "seeds": [
+        {
+          "seed": "V1 probe ignores dropped-event flags",
+          "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
+          "first_assertion": "a stalled consumer produced no dropped-event report; drop detection is unproven"
+        },
+        {
+          "seed": "V2 prefix filter passes every path",
+          "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
+          "first_assertion": "marker after the load was not seen"
+        },
+        {
+          "seed": "V3 counter records full paths",
+          "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
+          "first_assertion": "the load was not observed: map[<tmp>:1 <tmp>/f00000:1 <tmp>/f00001:1 <tmp>"
+        }
+      ]
     },
     {
-      "seed": "S5 scan skips extended attributes",
-      "result": "CAUGHT by TestMacOSFileGrowthLimitChannels",
-      "first_assertion": "metadata channels behaved differently than recorded: {Name:app_sandbox_fsize_zero Started:true FSize:0 XFSZIgnored:true Create:0 Write:27 Truncate:27 Xattr:0 Re"
-    },
-    {
-      "seed": "S7 crash hook does not signal",
-      "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/crash",
-      "first_assertion": "crash: {Name:crash Policy:app_sandbox_fsize_zero Outcome:timeout FailedCode: Detail:no completion within 30s SourceReads:16 Rows:0 WorkerExit:signal killed Kill"
-    },
-    {
-      "seed": "S8 content scan needle broken",
-      "result": "CAUGHT by TestMacOSFileGrowthLimitChannels",
-      "first_assertion": "positive control: App Sandbox should allow own-container content: {Name:app_sandbox_only Started:true FSize:9223372036854775807 XFSZIgnored:false Create:0 Write"
-    },
-    {
-      "seed": "S6 crash report never matched",
-      "result": "CAUGHT by TestMacOSFileGrowthLimitChannels, TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/crash",
-      "first_assertion": "expected App Sandbox to refuse an already-sandboxed process: {Name:sandbox_exec_then_app_sandbox Started:false FSize:0 XFSZIgnored:false Create:0 Write:0 Trunca"
-    },
-    {
-      "seed": "S9 growth launcher drops RLIMIT_FSIZE",
-      "result": "CAUGHT by TestMacOSFileGrowthLimitChannels",
-      "first_assertion": "zero file-size limit did not stop file content: {Name:app_sandbox_fsize_zero Started:true FSize:9223372036854775807 XFSZIgnored:true Create:0 Write:0 Truncate:0"
-    },
-    {
-      "seed": "S1b launcher drops RLIMIT_FSIZE and the readback check is disabled",
-      "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/spill_under_policy",
-      "first_assertion": "file content was written under the policy: {Name:spill_under_policy Policy:app_sandbox_fsize_zero Outcome:completed FailedCode: Detail: SourceReads:17 Rows:4096"
-    },
-    {
-      "seed": "S10 worker maps EFBIG back to INPUT_INVALID (rebuilt worker)",
-      "result": "CAUGHT by TestMacOSMemoryOnlyWorker/spill_under_policy and Rust os_write_refusals_are_resource_limits_with_constant_details",
-      "first_assertion": "spill under the policy should fail as a typed error, not kill the worker"
-    },
-    {
-      "seed": "C1 sweep skips attribute removal",
-      "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
-      "first_assertion": "sweep did not restore the baseline: &{EntriesRemoved:9 XattrsRemoved:2 ModesRestored:1 FlagsCleared:1 BaselineChanged:0 Clean:false Failure:}"
-    },
-    {
-      "seed": "C2 sweep follows symlinks",
-      "result": "CAUGHT by TestContainerSweepRestoresTheBaseline",
-      "first_assertion": "sweep deleted through a symlinked directory: open <tmp>: no such fil"
-    },
-    {
-      "seed": "C3 sweep runs only after a completed job",
-      "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/cancel, TestMacOSMemoryOnlyWorker/crash, TestMacOSMemoryOnlyWorker/kill, TestMacOSMemoryOnlyWorker/memory_only_pressure, TestMacOSMemoryOnlyWorker/spill_under_policy",
-      "first_assertion": "container sweep: <nil>"
-    },
-    {
-      "seed": "C5 failure text carries the path",
-      "result": "CAUGHT by TestContainerSweepFailureNamesNothing",
-      "first_assertion": "sweep failure text names a path: \"lstat <tmp>: no such file or di"
-    },
-    {
-      "seed": "C6 baseline modes not restored",
-      "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
-      "first_assertion": "sweep did not restore the baseline: &{EntriesRemoved:6 XattrsRemoved:1 ModesRestored:0 FlagsCleared:0 BaselineChanged:0 Clean:false Failure:permission denied}"
-    },
-    {
-      "seed": "C7 immutable flags not cleared",
-      "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
-      "first_assertion": "sweep did not restore the baseline: &{EntriesRemoved:8 XattrsRemoved:2 ModesRestored:1 FlagsCleared:0 BaselineChanged:0 Clean:false Failure:operation not permitted}"
-    },
-    {
-      "seed": "C4 clean verdict forced",
-      "result": "CAUGHT by TestContainerRefusesJobsAfterAChangedBaseline, TestContainerRefusesJobsAfterAChangedBaseline/changed_attribute_value, TestContainerRefusesJobsAfterAChangedBaseline/changed_file_content, TestContainerRefusesJobsAfterAChangedBaseline/removed_baseline_directory, TestContainerRefusesJobsAfterAChangedBaseline/retargeted_symlink, TestContainerSweepFailureNamesNothing",
-      "first_assertion": "a changed baseline entry was not reported: &{EntriesRemoved:1 XattrsRemoved:0 ModesRestored:0 FlagsCleared:0 BaselineChanged:1 Clean:true Failure:}"
-    },
-    {
-      "seed": "V1 probe ignores dropped-event flags",
-      "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
-      "first_assertion": "a stalled consumer produced no dropped-event report; drop detection is unproven"
-    },
-    {
-      "seed": "V2 prefix filter passes every path",
-      "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
-      "first_assertion": "marker after the load was not seen"
-    },
-    {
-      "seed": "V3 counter records full paths",
-      "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
-      "first_assertion": "the load was not observed: map[<tmp>:1 <tmp>/f00000:1 <tmp>/f00001:1 <tmp>"
-    },
-    {
-      "seed": "K1 fatal-signal handler not installed",
-      "result": "CAUGHT by TestMacOSCrashReportOptions",
-      "first_assertion": "crash-handled: a handler that exits first should avoid the report: {Mode:crash-handled ExitStatus:0 Signal:trace/BPT trap ReportWritten:true PatternFound:true ReportBytes:7626}"
-    },
-    {
-      "seed": "K2 register pattern searched wrongly",
-      "result": "CAUGHT by TestMacOSCrashReportOptions",
-      "first_assertion": "register values no longer appear in the crash report: {Mode:crash-registers ExitStatus:0 Signal:trace/BPT trap ReportWritten:true PatternFound:false ReportBytes:7644}"
+      "group": "K1-K2 (crash reports)",
+      "ran_against": "final sources of this record, including the trailing control",
+      "seeds": [
+        {
+          "seed": "K1 fatal-signal handler not installed",
+          "result": "CAUGHT by TestMacOSCrashReportOptions",
+          "first_assertion": "crash-handled: a handler that exits first should avoid the report: {Mode:crash-handled ExitStatus:0 Signal:trace/BPT trap ReportWritten:true PatternFound:true ReportBytes:7626}"
+        },
+        {
+          "seed": "K2 register pattern searched wrongly",
+          "result": "CAUGHT by TestMacOSCrashReportOptions",
+          "first_assertion": "register values no longer appear in the crash report: {Mode:crash-registers ExitStatus:0 Signal:trace/BPT trap ReportWritten:true PatternFound:false ReportBytes:7645}"
+        }
+      ]
     }
   ],
   "not_counted_as_detection": [

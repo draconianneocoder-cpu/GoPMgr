@@ -125,7 +125,9 @@ confidentiality or production adoption. See its exact reproduction and limits.
 The [memory-only filesystem experiment](../../docs/testing/adr-012-df0-memory-only.md)
 adds a zero file-size limit to the sandboxed worker and watches its container
 with FSEvents. File content is stopped, including a forced spill; names,
-attributes and writes made on the worker's behalf are not. DF-062 stays BLOCKED.
+attributes and writes made on the worker's behalf are not; a container sweep
+removes names and attributes after each job. DF-062 stays BLOCKED until the
+owner's five conditions pass.
 
 The later [nested frame repair](../../docs/testing/adr-012-df0-nested-frames.md)
 qualifies selected child spans and null-aware view compaction in five common
