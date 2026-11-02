@@ -41,6 +41,9 @@ func TestMain(m *testing.M) {
 	if len(os.Args) == 3 && os.Args[1] == fakeFlag {
 		os.Exit(fakeWorker(os.Args[2]))
 	}
+	if code, ok := treeFixture(os.Args); ok {
+		os.Exit(code)
+	}
 	os.Exit(m.Run())
 }
 

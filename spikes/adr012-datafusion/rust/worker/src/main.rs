@@ -11,7 +11,8 @@
 //! business channel.
 //!
 //! Exit codes: 0 finished, 2 bad bootstrap, 3 transport failure,
-//! 4 protocol violation by the host, 9 injected exit, 70 panic.
+//! 4 protocol violation by the host, 5 could not give up the right to
+//! create processes, 9 injected exit, 70 panic.
 
 mod pb {
     include!("pb/gopmgr.df0ipc.v1.rs");
@@ -66,6 +67,10 @@ const OUT_QUEUE: usize = 4;
 
 fn main() -> ExitCode {
     exit_on_panic();
+    if let Err(e) = drop_fork_rights() {
+        eprintln!("df0-worker: drop fork rights: {e}");
+        return ExitCode::from(5);
+    }
     die_with_parent();
     let boot = match read_bootstrap(std::io::stdin().lock()) {
         Ok(b) => b,
@@ -125,6 +130,46 @@ fn exit_on_panic() {
         };
         std::process::exit(PANIC_EXIT);
     }));
+}
+
+/// Give up the right to create processes before reading any input (SEC-002).
+/// The host can kill only processes it can find; a child that leaves the
+/// worker's process group would outlive the job. On macOS RLIMIT_NPROC
+/// counts processes, so 0 refuses fork and posix_spawn, and a process that
+/// is not root cannot raise its hard limit again. Root ignores the limit.
+/// On Linux the limit also counts threads, which tokio needs, so Linux
+/// relies on the host's teardown alone.
+fn drop_fork_rights() -> std::io::Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        let none = libc::rlimit {
+            rlim_cur: 0,
+            rlim_max: 0,
+        };
+        // SAFETY: setrlimit reads one rlimit value that lives for the call.
+        if unsafe { libc::setrlimit(libc::RLIMIT_NPROC, &none) } != 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+    }
+    Ok(())
+}
+
+/// Test fault: try to start a child that leaves the worker's process group,
+/// and report the outcome on stderr. The child holds none of the worker's
+/// output pipes.
+fn spawn_fault() {
+    use std::os::unix::process::CommandExt;
+    let child = std::process::Command::new("/bin/sleep")
+        .arg("30")
+        .process_group(0)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn();
+    match child {
+        Ok(c) => eprintln!("df0-worker: spawn fault: spawned pid {}", c.id()),
+        Err(e) => eprintln!("df0-worker: spawn fault: refused: {e}"),
+    }
 }
 
 /// Ask the kernel to kill this process if the host dies, so a crashed host
@@ -797,6 +842,7 @@ async fn generate(
                     bytes = ipc_bytes(&alt).map_err(internal)?;
                 }
                 "exit_mid_stream" if batches == 3 => std::process::exit(9),
+                "spawn_child" if batches == 1 => spawn_fault(),
                 "hang" if batches == 2 => {
                     ctl.deaf.store(true, Ordering::SeqCst);
                     std::future::pending::<()>().await;

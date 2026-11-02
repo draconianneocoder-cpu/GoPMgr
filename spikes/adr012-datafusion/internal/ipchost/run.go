@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 	"runtime/metrics"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -102,9 +103,15 @@ type Result struct {
 	ResultJSON  string        `json:"result_json,omitempty"`
 	FailedCode  string        `json:"failed_code,omitempty"`
 
-	WorkerPID            int      `json:"-"`
-	WorkerExit           string   `json:"worker_exit"`
-	Killed               bool     `json:"killed"`
+	WorkerPID  int    `json:"-"`
+	WorkerExit string `json:"worker_exit"`
+	Killed     bool   `json:"killed"`
+	// WorkerForked is set when the worker created a process. Darwin only:
+	// Linux has no unprivileged fork notification.
+	WorkerForked bool `json:"worker_forked,omitempty"`
+	// DescendantsKilled counts the worker's descendants that a teardown
+	// kill found and killed.
+	DescendantsKilled    int      `json:"descendants_killed,omitempty"`
 	Engine               string   `json:"engine,omitempty"`
 	WorkerEnvNames       int      `json:"worker_env_names"`
 	WorkerEnvKeys        []string `json:"worker_env_keys,omitempty"`
@@ -338,6 +345,9 @@ func Run(job Job) (res Result) {
 	cmd.Env = []string{} // the worker inherits nothing (DF-036)
 	cmd.Dir = "/"
 	cmd.Stdout, cmd.Stderr = diag, diag
+	// A process that outlives the worker and holds its output pipe would
+	// otherwise keep Wait, and so Run, from returning.
+	cmd.WaitDelay = finishGrace
 	cmd.SysProcAttr = sysProcAttr()
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -352,17 +362,45 @@ func Run(job Job) (res Result) {
 	}
 	pid := cmd.Process.Pid
 	res.WorkerPID = pid
+	// Registered before the bootstrap is written, so before the worker has
+	// read any input.
+	watch, err := newExitWatch(pid)
+	if err != nil {
+		_ = syscall.Kill(-pid, syscall.SIGKILL)
+		_ = cmd.Wait()
+		res.Outcome, res.Detail = "setup_failed", err.Error()
+		return res
+	}
 	pl.setExpected(pid)
 	exited := make(chan struct{})
 	var exitedAt time.Time
+	var forked bool
+	// reap is held while the worker is signalled or reaped. Until Wait
+	// reaps it, the worker's process ID and group ID cannot be reused.
+	var reap sync.Mutex
+	reaped := false
 	go func() {
+		f, ok := watch.wait()
+		reap.Lock()
+		if ok {
+			// The worker has exited but is not reaped, so its group ID still
+			// names its own group: end anything it left there (SEC-002).
+			_ = syscall.Kill(-pid, syscall.SIGKILL)
+		}
 		_ = cmd.Wait()
+		reaped = true
+		reap.Unlock()
+		forked = f
 		exitedAt = time.Now()
 		close(exited)
 	}()
 	kill := func() {
 		res.Killed = true
-		_ = syscall.Kill(-pid, syscall.SIGKILL)
+		reap.Lock()
+		defer reap.Unlock()
+		if !reaped {
+			res.DescendantsKilled += killTree(cmd.Process, pid)
+		}
 	}
 	defer func() {
 		select {
@@ -374,6 +412,12 @@ func Run(job Job) (res Result) {
 		res.WorkerExit = exitText(cmd.ProcessState)
 		recordProcessResources(&res, cmd.ProcessState)
 		res.WorkerDiag = diag.String()
+		res.WorkerForked = forked
+		if forked || res.DescendantsKilled > 0 {
+			// The worker must never create a process: fail closed.
+			res.Detail = strings.TrimSpace(fmt.Sprintf("worker created a process (%d descendants killed); outcome was %s %s", res.DescendantsKilled, res.Outcome, res.Detail))
+			res.Outcome = "worker_forked"
+		}
 	}()
 	if job.OnSpawn != nil {
 		job.OnSpawn(pid, ep.Dir)
