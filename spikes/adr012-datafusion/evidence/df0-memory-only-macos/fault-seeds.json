@@ -89,6 +89,31 @@
       "seed": "C4 clean verdict forced",
       "result": "CAUGHT by TestContainerRefusesJobsAfterAChangedBaseline, TestContainerRefusesJobsAfterAChangedBaseline/changed_attribute_value, TestContainerRefusesJobsAfterAChangedBaseline/changed_file_content, TestContainerRefusesJobsAfterAChangedBaseline/removed_baseline_directory, TestContainerRefusesJobsAfterAChangedBaseline/retargeted_symlink, TestContainerSweepFailureNamesNothing",
       "first_assertion": "a changed baseline entry was not reported: &{EntriesRemoved:1 XattrsRemoved:0 ModesRestored:0 FlagsCleared:0 BaselineChanged:1 Clean:true Failure:}"
+    },
+    {
+      "seed": "V1 probe ignores dropped-event flags",
+      "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
+      "first_assertion": "a stalled consumer produced no dropped-event report; drop detection is unproven"
+    },
+    {
+      "seed": "V2 prefix filter passes every path",
+      "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
+      "first_assertion": "marker after the load was not seen"
+    },
+    {
+      "seed": "V3 counter records full paths",
+      "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
+      "first_assertion": "the load was not observed: map[<tmp>:1 <tmp>/f00000:1 <tmp>/f00001:1 <tmp>"
+    },
+    {
+      "seed": "K1 fatal-signal handler not installed",
+      "result": "CAUGHT by TestMacOSCrashReportOptions",
+      "first_assertion": "crash-handled: a handler that exits first should avoid the report: {Mode:crash-handled ExitStatus:0 Signal:trace/BPT trap ReportWritten:true PatternFound:true ReportBytes:7626}"
+    },
+    {
+      "seed": "K2 register pattern searched wrongly",
+      "result": "CAUGHT by TestMacOSCrashReportOptions",
+      "first_assertion": "register values no longer appear in the crash report: {Mode:crash-registers ExitStatus:0 Signal:trace/BPT trap ReportWritten:true PatternFound:false ReportBytes:7644}"
     }
   ],
   "not_counted_as_detection": [

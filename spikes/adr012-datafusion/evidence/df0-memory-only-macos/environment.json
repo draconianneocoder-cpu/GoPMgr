@@ -1,5 +1,5 @@
 {
-  "recorded_utc": "2026-11-02T14:08:31.137981+00:00",
+  "recorded_utc": "2026-11-02T14:17:17.321069+00:00",
   "source_baseline_commit": "e31e225052fe7f7728b12079997cf1bb038d08d6",
   "scope": "Isolated native macOS memory-only filesystem feasibility for the App Sandbox worker; not production adoption, a DF-062 PASS or a resource-policy decision",
   "authority": "Handoff of 2026-11-01 names this as the next authorized isolated containment task; no new privilege, entitlement, service, VM, transport or tool installation is used",
@@ -22,13 +22,13 @@
     "Bounded wait for the ReportCrash report naming the crashed PID"
   ],
   "source_sha256": {
-    "spikes/adr012-datafusion/internal/ipchost/memory_only_darwin_test.go": "8a4733acaa84a66ca5dceeb360cac894164ee84cbf2e120b05d251418c4c493f",
+    "spikes/adr012-datafusion/internal/ipchost/memory_only_darwin_test.go": "4cedf776fa9d4ae1722ed221a3b4c02f3695b4dc98a3e0a2b04446de68f7490e",
     "spikes/adr012-datafusion/internal/ipchost/exec_limits_darwin_test.go": "a236a0e80d582bae8e769d95b52d4a0d34146d32b24b205e3b147dd2d4cf1774",
     "spikes/adr012-datafusion/internal/ipchost/sandbox_darwin_test.go": "df1db0579a5715aeed14594c6585984397dc7a901d1d681684f8e8aa86eda118",
     "spikes/adr012-datafusion/internal/ipchost/run.go": "090f95bbed64383a766a277a649ad44d60b740d4e49d457a3019501d42757463",
     "spikes/adr012-datafusion/tools/macos_exec_limits_probe.c": "2c44e9d766b6f57ff604021094a1b6b5356020b059de5bbd5122c1a81d365978",
-    "spikes/adr012-datafusion/tools/macos_observer_probe.c": "841f53f44ed18b7791281b3fff5c5a0afbb5f53b750f32c29ced404569f3ed29",
-    "spikes/adr012-datafusion/tools/macos_fsevents_probe.c": "aa8d7ddd9a06c0a4daad0f3fb0b902ee857d660610117f087a5df0288f490aa1",
+    "spikes/adr012-datafusion/tools/macos_observer_probe.c": "1bf9c68f9824938d4f446b66aa744355dfa7bd42068302a45581d76967666619",
+    "spikes/adr012-datafusion/tools/macos_fsevents_probe.c": "9c17d5b2dff639739a082888b7a4d2ed3bc81eb38a88cb8da1c6af320b3754e4",
     "spikes/adr012-datafusion/rust/worker/src/read_source.rs": "562527f52614c7dcbab3b10a2ebb590819ad88cbf47e8365d16cb2593263903d",
     "spikes/adr012-datafusion/internal/ipchost/container.go": "838802ce1e938921bd6262a36f4f9a5295ae5c5afc238862c9dffdccb8eee22e",
     "spikes/adr012-datafusion/internal/ipchost/container_flags_darwin.go": "faf3faa7c5e22d2adc888c9be7816a0044c2d963057b8162ac207876fcb466f0",
@@ -43,12 +43,14 @@
     "usr/include/sys/signal.h": "46001a703a66591b9adc873dcdfe4a545bb26cd5fc52b31ede9e0cda9ddbac7a"
   },
   "evidence_sha256": {
-    "growth-channels.json": "b62a3a2280eb96a490f814db6a224e36024668ceba80467fbc403edf08d92f50",
-    "memory-only-worker.json": "ec94307ed450f556511b645451560f4d9aed1b918ba1698782286424fc547b2d",
-    "fault-seeds.json": "7f789e4da1fa4101b5dcc285978d73830530bbe9a84d134ef03e90fdb1692fb0"
+    "crash-reports.json": "38b864410c96960b6d7cdbfb3db7a0b4aa254e854391a6362b0ec5f6226b38e2",
+    "fault-seeds.json": "64d9a7d9c75808020b3c635a512b2cdeb6141e81f6dbd892a2a9c2aa34b06b4a",
+    "growth-channels.json": "cb8ba6f7289ba0a74ec0fd9ed1b946cdb33153fdc6dc28c1796cb859d821b097",
+    "memory-only-worker.json": "8e76d3cceed16ecd01bb9a1e07bdfbb5ce72825c6a215720bb396a5f849c8c63",
+    "volume-watch.json": "0ea6db9b3cc8ead4f22d038f61a5ba2ce56ff25ba5de1bc83307c703ee64d2d9"
   },
   "input_worker_sha256": "a30a95f5a2801330239fe8a122f551833fac224dcd8a8e42d1feffc2088f3d0a",
-  "signed_copy_sha256": "3de7eb3d3ee0bcdffa58bc344b620f9dd7607b3b7f7c7923c4e017396b09aba0",
+  "signed_copy_sha256": "d51c3069ac38d127ee8889f594dc27e0a4264ae1c18624b493b74bb0ae1b56d9",
   "worker_rebuilt": true,
   "worker_build": "cargo build --locked --release -p df0-worker with the pinned toolchain and CARGO_TARGET_DIR outside the repository, after the condition 1 error-mapping fix; rebuilding the restored source after the mapping seed reproduced the same hash",
   "signing": "Task-only copies, ad-hoc hardened-runtime signature, only the App Sandbox entitlement; no Developer ID, notarization or installed-app claim. Unique new containers and the task's own crash reports are removed by the tests.",
@@ -61,7 +63,10 @@
     "The deprecated sandbox-exec write-denial profile cannot be combined with App Sandbox: the sandboxed process stops with SIGTRAP before running",
     "Under the zero file-size limit, stdout and stderr must be pipes; a regular-file stderr makes the launcher's own readback fail",
     "Owner condition 2: Container.Do gives each job a fresh, empty folder and, after the worker is reaped on every outcome, sweeps the whole Data tree back to its baseline: added entries and attributes removed, modes restored, immutable flags cleared, symlinks never followed. A sweep that cannot restore the baseline marks the container unclean and refuses further jobs; reports carry counts, never names",
-    "All workers signed with one bundle identifier share one container, so jobs on it run one at a time. That conflicts with concurrent 2/4/8-worker cohorts (DF-064) and needs an owner decision"
+    "All workers signed with one bundle identifier share one container, so jobs on it run one at a time. That conflicts with concurrent 2/4/8-worker cohorts (DF-064) and needs an owner decision",
+    "Owner condition 3 evidence: a crash report carries the crashing thread's register values (a known 8-byte pattern in ten registers appeared in the report), so a crash can leak a few dozen bytes of in-flight data; this machine has automatic crash-report submission on. A process whose fatal-signal handler exits first produced no report for either a trap or an abort. The worker is unchanged; the choice is the owner's",
+    "Owner condition 4: BLOCKED. This machine has no code-signing identity (no Developer ID) and no macOS 13 host",
+    "Owner condition 5 evidence: an unprivileged FSEvents stream on the boot volume saw marker writes in /private/tmp, the user temp folder, the home folder and the sandboxed container; it dropped nothing under 20,000 create/delete pairs elsewhere on the volume; a stalled consumer made fseventsd drop events and the observer reported it"
   ],
   "measurement_limits": [
     "FSEvents shows that a path changed, not its content or the acting process; flags are merged per path",
@@ -71,7 +76,9 @@
     "Kill and crash fire after 15 of 17 source reads; which column chunks those reads carried is not checked",
     "FSEvents watched only the container; an unprivileged volume-wide watch was not tested",
     "Crash reports hold backtraces, not heap, so no sentinel in one is a weak check; reports can leave the machine if analytics sharing is on",
-    "ReportCrash stopped writing reports for a process name that had crashed many times (2 misses in about 4 runs with the fixed name 'probe'; 8 of 8 observed after naming each test's executable uniquely). Test apps now use unique names; a production worker with a fixed name would get the same throttling"
+    "ReportCrash stopped writing reports for a process name that had crashed many times (2 misses in about 4 runs with the fixed name 'probe'; 8 of 8 observed after naming each test's executable uniquely). Test apps now use unique names; a production worker with a fixed name would get the same throttling",
+    "The volume-wide stream covers the boot volume only, reports paths not processes or contents, and keeps no record of files written and removed between two of its own events on the same path beyond merged flags",
+    "Drops did not occur in these load runs; a busier machine could drop, and the observer then fails the observation rather than passing it"
   ],
   "fault_seed_source_note": "Fault seeds ran before a comment-only edit to memory_only_darwin_test.go; the observations here were regenerated on the final source"
 }

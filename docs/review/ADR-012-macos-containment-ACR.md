@@ -185,9 +185,9 @@ then.
 | --- | --- | --- |
 | 1 | Report a blocked spill as `RESOURCE_LIMIT` instead of `INPUT_INVALID` | **Reported passed (2026-11-02), awaiting owner confirmation:** the native forced spill returns `RESOURCE_LIMIT` with a constant detail; a reverted mapping is caught natively and in Rust |
 | 2 | Give each job a fresh, empty folder and wipe it afterwards, so names and attributes cannot build up between jobs | **Reported passed for one job at a time (2026-11-02), awaiting owner confirmation.** `Container.Do` gives each job a fresh folder and sweeps the whole `Data` tree back to its baseline after every outcome. All workers share one container, so concurrent jobs (DF-064 cohorts) need an owner choice: serialize, separate signed identities per job, or per-job folder removal with sweeps only when idle |
-| 3 | Decide how crash reports are handled, since ReportCrash writes them outside the sandbox | Evidence and options to be presented; owner choice needed |
+| 3 | Decide how crash reports are handled, since ReportCrash writes them outside the sandbox | **Owner choice needed.** Reports carry register values (a few dozen bytes of in-flight data) and submission is on here; a handler that exits first avoids them. Options (i)–(iv) are in the [evidence](../testing/adr-012-df0-memory-only.md#owner-conditions-for-option-a) |
 | 4 | Repeat the tests on a signed, installed app on the oldest supported macOS | **BLOCKED:** this machine has no code-signing identity (no Developer ID) and no macOS 13 host |
-| 5 | Try an unprivileged volume-wide file-change watch as a stand-in for OS-wide tracing | Experiment in progress; the owner judges whether it substitutes for root-only tracing |
+| 5 | Try an unprivileged volume-wide file-change watch as a stand-in for OS-wide tracing | **Reported passed as an experiment (2026-11-02), awaiting owner judgement:** an unprivileged stream on the boot volume saw writes in system temp, user temp, home and the container, dropped nothing under load, and reported drops under a stalled consumer. It shows paths, not processes, and covers one volume |
 
 ## Required proof before qualification or cutover
 

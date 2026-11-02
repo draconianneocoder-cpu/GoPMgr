@@ -79,6 +79,8 @@ These are why the policy is content-only, not memory-only:
   the helper stored its marker in an attribute value and in a file name.
   DataFusion's failed spill created and removed an empty temporary file, and
   created a directory whose persistence was not observed.
+- **Crash reports hold register values** (condition 3 above), so the "no
+  sentinel in the report" check is weak in both directions.
 - **Crash reports are not guaranteed.** ReportCrash stopped writing reports
   for a process name that had crashed many times this session; naming each
   test's executable uniquely made all 8 later crashes report. A production
@@ -155,6 +157,55 @@ system error only; names could carry data.
     is not a deployable design today;
   - accept per-job-folder removal while jobs overlap, and sweep only when none
     is in flight.
+
+**Condition 3: crash reports.** ReportCrash writes a report outside the sandbox
+for any process that dies from a fatal signal. Automatic submission to Apple
+is on for this machine. `TestMacOSCrashReportOptions` measured what a report
+holds and whether a process can avoid one, using a sandboxed helper with its
+own name:
+
+- **Reports carry register values.** A known 8-byte pattern loaded into ten
+  registers before a trap appeared in the report. A crash can therefore leak a
+  few dozen bytes of whatever the worker was handling, beyond the backtrace.
+- **A process can avoid the report.** With fatal-signal handlers that call
+  `_exit` first, a trap and an abort each ended with status 70 and no report.
+  A plain crash under the same name, just before, was reported, so the absence
+  is not throttling.
+- **Reports are not reliable either way.** ReportCrash stopped writing reports
+  for a name that had crashed many times, so deleting reports afterwards is
+  neither complete nor timely when submission is on.
+
+Options for the owner, none implemented in the worker:
+
+| Option | What it does | Cost |
+| --- | --- | --- |
+| (i) Accept reports | Keep the default and record the register-sized residual | Reports may leave the machine with submission on |
+| (ii) Panic hook in safe Rust | Exit the worker on a Rust panic before it aborts | Covers panics only; native faults still crash |
+| (iii) (ii) plus a fatal-signal handler | Exit before any fatal signal can produce a report | Needs `unsafe` async-signal-safe code in the worker and its own review; guard and resource exceptions and memory-pressure kills are not covered |
+| (iv) Deployment guidance | Ask managed deployments to turn off crash-report submission | Outside the app's control |
+
+**Condition 4: signed, installed app on the oldest supported macOS.**
+**BLOCKED.** This machine has no code-signing identity (no Developer ID
+certificate) and no macOS 13 host. Ad-hoc signed bundles in a temporary
+folder are not an installed app, and a cross-compile is not a target run.
+
+**Condition 5: volume-wide watch without admin rights.**
+`TestMacOSVolumeWideFSEvents` watches the whole boot volume with an
+unprivileged FSEvents stream. Events under task-owned folders are reported in
+full. Everything else is counted by its first path component only, so no other
+application's paths are recorded.
+
+- It saw marker writes in `/private/tmp`, the user temp folder, the home folder
+  and the sandboxed container, with nothing dropped.
+- Under 20,000 create/delete pairs elsewhere on the volume in about 1.3
+  seconds, it dropped nothing and still saw a marker written afterwards.
+- A consumer that stopped reading made fseventsd drop events, and the observer
+  reported it. This is the positive control for drop detection. A dropped
+  event fails any observation that relies on the stream.
+
+It is a candidate stand-in for the root-only tracing DF-062 lacks, not a
+replacement verdict. It shows paths, not processes or contents. It covers one
+volume, and fseventsd keeps its own history of names.
 
 ## Decision for the owner
 

@@ -1,0 +1,43 @@
+[
+  {
+    "name": "positive_controls",
+    "marker_seen": {
+      "container": true,
+      "home": true,
+      "system_tmp": true,
+      "user_tmp": true
+    },
+    "dropped_events": 0,
+    "events_under_prefixes": 9,
+    "other_counts_by_first_component": {
+      "/Users": 8
+    }
+  },
+  {
+    "name": "load_outside_prefixes",
+    "marker_seen": {
+      "system_tmp": true
+    },
+    "dropped_events": 0,
+    "events_under_prefixes": 3,
+    "other_counts_by_first_component": {
+      "/Users": 7,
+      "/private": 20001
+    },
+    "load_files": 20000,
+    "load_seconds": 1.352907166
+  },
+  {
+    "name": "stalled_consumer_drop_control",
+    "marker_seen": {},
+    "dropped_events": 1,
+    "events_under_prefixes": 5223,
+    "other_counts_by_first_component": {
+      "/": 1,
+      "/Users": 6,
+      "/private": 1
+    },
+    "load_files": 150000,
+    "load_seconds": 7.873601375
+  }
+]

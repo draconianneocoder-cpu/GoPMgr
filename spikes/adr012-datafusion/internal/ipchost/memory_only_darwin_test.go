@@ -20,6 +20,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"sort"
 	"strings"
 	"syscall"
 	"testing"
@@ -141,24 +143,45 @@ type fsEventSummary struct {
 	FilesRenamed  []string `json:"files_renamed"`
 	DirsCreated   []string `json:"dirs_created"`
 	FilesRemoved  []string `json:"files_removed"`
+	// Dropped counts events anywhere under the watched root that carried a
+	// dropped-event flag; OtherCounts counts events outside the reported
+	// prefixes by first path component only.
+	Dropped     uint64            `json:"dropped_events"`
+	OtherCounts map[string]uint64 `json:"other_counts,omitempty"`
 }
 
 type fsWatch struct {
-	t       *testing.T
-	root    string
-	cmd     *exec.Cmd
-	stdin   io.WriteCloser
-	lines   chan string
-	scanErr chan error
-	flags   map[string]uint32
-	order   []string
-	count   int
+	t          *testing.T
+	root       string
+	barrierDir string
+	// allowDrops records dropped events instead of failing; only a load
+	// characterization uses it.
+	allowDrops bool
+	// Set from the observer's final record.
+	dropped     uint64
+	otherCounts map[string]uint64
+	cmd         *exec.Cmd
+	stdin       io.WriteCloser
+	lines       chan string
+	scanErr     chan error
+	flags       map[string]uint32
+	order       []string
+	count       int
 }
 
-// watchContainer starts FSEvents on root and returns once the stream is live.
+// watchContainer starts FSEvents on a container root and returns once the
+// stream is live.
 func watchContainer(t *testing.T, probe, root string) *fsWatch {
 	t.Helper()
-	cmd := exec.Command(probe, root)
+	return watchTree(t, probe, root, filepath.Join(root, "Data", "tmp"), nil)
+}
+
+// watchTree starts FSEvents on root. Only events under prefixes (or under root
+// when there are none) are reported; the rest are counted by first path
+// component. Barrier files are written in barrierDir.
+func watchTree(t *testing.T, probe, root, barrierDir string, prefixes []string) *fsWatch {
+	t.Helper()
+	cmd := exec.Command(probe, append([]string{root}, prefixes...)...)
 	cmd.Env = []string{}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -171,7 +194,7 @@ func watchContainer(t *testing.T, probe, root string) *fsWatch {
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	w := &fsWatch{t: t, root: root, cmd: cmd, stdin: stdin, lines: make(chan string, 4096), scanErr: make(chan error, 1), flags: map[string]uint32{}}
+	w := &fsWatch{t: t, root: root, barrierDir: barrierDir, cmd: cmd, stdin: stdin, lines: make(chan string, 4096), scanErr: make(chan error, 1), flags: map[string]uint32{}}
 	go func() {
 		s := bufio.NewScanner(stdout)
 		s.Buffer(make([]byte, 64<<10), 1<<20)
@@ -206,21 +229,31 @@ func watchContainer(t *testing.T, probe, root string) *fsWatch {
 // dropped without being kept, so no other application's names are recorded.
 func (w *fsWatch) record(line string) (string, bool) {
 	var e struct {
-		PathHex string `json:"path_hex"`
-		Flags   uint32 `json:"flags"`
-		Done    bool   `json:"done"`
+		PathHex string            `json:"path_hex"`
+		Flags   uint32            `json:"flags"`
+		Done    bool              `json:"done"`
+		Dropped uint64            `json:"dropped_events"`
+		Other   map[string]uint64 `json:"other_counts"`
 	}
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
 		w.t.Fatalf("FSEvents record: %v", err)
 	}
 	if e.Done {
+		w.dropped, w.otherCounts = e.Dropped, map[string]uint64{}
+		for key, n := range e.Other {
+			name, err := hex.DecodeString(key)
+			if err != nil {
+				w.t.Fatalf("FSEvents component: %v", err)
+			}
+			w.otherCounts[string(name)] = n
+		}
 		return "", true
 	}
 	raw, err := hex.DecodeString(e.PathHex)
 	if err != nil {
 		w.t.Fatalf("FSEvents path: %v", err)
 	}
-	if eventsDropped(e.Flags) {
+	if eventsDropped(e.Flags) && !w.allowDrops {
 		w.t.Fatalf("FSEvents dropped events (flags %#x): the observation is incomplete", e.Flags)
 	}
 	path := string(raw)
@@ -236,8 +269,9 @@ func (w *fsWatch) record(line string) (string, bool) {
 	return rel, false
 }
 
-// barrierPrefix names the empty files the host writes to order events.
-var barrierPrefix = filepath.Join("Data", "tmp", "df0-barrier-")
+// barrierName starts the name of the empty files the host writes to order
+// events.
+const barrierName = "df0-barrier-"
 
 // barrier writes an empty host-owned file and consumes events until FSEvents
 // reports it. FSEvents delivers events in event-ID order, so every event the
@@ -248,8 +282,11 @@ func (w *fsWatch) barrier() {
 	if _, err := io.ReadFull(rand.Reader, entropy[:]); err != nil {
 		w.t.Fatal(err)
 	}
-	rel := barrierPrefix + hex.EncodeToString(entropy[:])
-	path := filepath.Join(w.root, rel)
+	path := filepath.Join(w.barrierDir, barrierName+hex.EncodeToString(entropy[:]))
+	rel, err := filepath.Rel(w.root, path)
+	if err != nil {
+		w.t.Fatal(err)
+	}
 	if err := os.WriteFile(path, nil, 0600); err != nil {
 		w.t.Fatal(err)
 	}
@@ -293,11 +330,14 @@ func (w *fsWatch) stop() fsEventSummary {
 	if err := w.cmd.Wait(); err != nil {
 		w.t.Fatalf("FSEvents observer exit: %v", err)
 	}
+	if w.dropped > 0 && !w.allowDrops {
+		w.t.Fatalf("FSEvents dropped %d events: the observation is incomplete", w.dropped)
+	}
 	var s fsEventSummary
-	s.Events = w.count
+	s.Events, s.Dropped, s.OtherCounts = w.count, w.dropped, w.otherCounts
 	for _, rel := range w.order {
 		f := w.flags[rel]
-		if strings.HasPrefix(rel, barrierPrefix) {
+		if strings.HasPrefix(filepath.Base(rel), barrierName) {
 			continue
 		}
 		add := func(list *[]string, mask uint32) {
@@ -855,4 +895,272 @@ func TestMacOSMemoryOnlyWorker(t *testing.T) {
 		InputWorker  string                  `json:"input_worker_sha256"`
 		SignedWorker string                  `json:"signed_copy_sha256"`
 	}{evidence, originalHash, signedHash})
+}
+
+// TestMacOSVolumeWideFSEvents checks owner condition 5: whether an unprivileged
+// FSEvents stream on the whole boot volume can stand in for the root-only
+// OS-wide file tracing DF-062 lacks. It shows paths, not processes or
+// contents, and covers one volume.
+func TestMacOSVolumeWideFSEvents(t *testing.T) {
+	if os.Getuid() == 0 || os.Geteuid() == 0 {
+		t.Skip("the question is what an unprivileged observer sees")
+	}
+	observer := compileObserverProbe(t)
+	fsevents := compileFSEventsProbe(t)
+	identifier, root := testContainer(t, observer)
+	guarded := signedProbeApp(t, observer, identifier, true)
+	real := func(path string) string {
+		t.Helper()
+		resolved, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return resolved
+	}
+	mkTemp := func(dir, pattern string) string {
+		t.Helper()
+		d, err := os.MkdirTemp(dir, pattern)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.RemoveAll(d) })
+		return real(d)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	locations := map[string]string{
+		"system_tmp": mkTemp("/private/tmp", "df0-vol-"),
+		"user_tmp":   real(t.TempDir()),
+		"home":       mkTemp(filepath.Join(home, "Library", "Caches"), "df0-vol-"),
+		"container":  real(filepath.Join(root, "Data")),
+	}
+	prefixes := make([]string, 0, len(locations))
+	for _, p := range locations {
+		prefixes = append(prefixes, p)
+	}
+	sort.Strings(prefixes)
+	type volumePhase struct {
+		Name        string            `json:"name"`
+		Seen        map[string]bool   `json:"marker_seen"`
+		Dropped     uint64            `json:"dropped_events"`
+		Events      int               `json:"events_under_prefixes"`
+		OtherCounts map[string]uint64 `json:"other_counts_by_first_component"`
+		LoadFiles   int               `json:"load_files,omitempty"`
+		LoadSeconds float64           `json:"load_seconds,omitempty"`
+	}
+	modified := func(s fsEventSummary, path string) bool {
+		rel, err := filepath.Rel("/", path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range s.FilesModified {
+			if f == rel {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Phase 1: one marker per location, the container one written by a
+	// sandboxed process.
+	w := watchTree(t, fsevents, "/", locations["system_tmp"], prefixes)
+	for name, dir := range locations {
+		if name == "container" {
+			continue
+		}
+		if err := os.WriteFile(filepath.Join(dir, "marker"), []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	containerTmp := filepath.Join(locations["container"], "tmp")
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	cmd := exec.CommandContext(ctx, guarded, "growth", containerTmp, "DF0VOLUME")
+	cmd.Env = []string{}
+	if out, err := cmd.Output(); err != nil {
+		cancel()
+		t.Fatalf("sandboxed writer: %v: %s", err, out)
+	}
+	cancel()
+	s := w.stop()
+	positive := volumePhase{Name: "positive_controls", Seen: map[string]bool{}, Dropped: s.Dropped, Events: s.Events, OtherCounts: s.OtherCounts}
+	for name, dir := range locations {
+		target := filepath.Join(dir, "marker")
+		if name == "container" {
+			target = filepath.Join(containerTmp, "growth-file")
+		}
+		positive.Seen[name] = modified(s, target)
+		if !positive.Seen[name] {
+			t.Errorf("volume-wide stream missed the %s marker", name)
+		}
+	}
+
+	// Phase 2: heavy activity outside the reported prefixes, so only the C
+	// probe's counters see it, then one more marker. Drops are recorded, not
+	// failed: the point is whether fseventsd keeps up.
+	loadDir := mkTemp("/private/tmp", "df0-load-")
+	w2 := watchTree(t, fsevents, "/", locations["system_tmp"], prefixes)
+	w2.allowDrops = true
+	const loadFiles = 20000
+	began := time.Now()
+	for i := range loadFiles {
+		f := filepath.Join(loadDir, fmt.Sprintf("f%05d", i))
+		if err := os.WriteFile(f, []byte("load"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(f); err != nil {
+			t.Fatal(err)
+		}
+	}
+	elapsed := time.Since(began).Seconds()
+	after := filepath.Join(locations["system_tmp"], "marker-after-load")
+	if err := os.WriteFile(after, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s2 := w2.stop()
+	load := volumePhase{Name: "load_outside_prefixes", Seen: map[string]bool{"system_tmp": modified(s2, after)}, Dropped: s2.Dropped, Events: s2.Events, OtherCounts: s2.OtherCounts, LoadFiles: loadFiles, LoadSeconds: elapsed}
+	if !load.Seen["system_tmp"] {
+		t.Errorf("marker after the load was not seen")
+	}
+	if load.OtherCounts["/private"] < loadFiles {
+		t.Errorf("the load was not observed: %v", load.OtherCounts)
+	}
+	t.Logf("load: %d files in %.1fs, dropped events %d", loadFiles, elapsed, load.Dropped)
+
+	// Phase 3, positive control for drop detection: a consumer that stops
+	// reading while events pour in under a reported prefix makes fseventsd
+	// drop events, and the observer must say so.
+	stallDir := mkTemp("/private/tmp", "df0-stall-")
+	w3 := watchTree(t, fsevents, "/", stallDir, []string{stallDir})
+	w3.allowDrops = true
+	const stallFiles = 150000
+	began = time.Now()
+	for i := range stallFiles {
+		f := filepath.Join(stallDir, fmt.Sprintf("f%06d", i))
+		if err := os.WriteFile(f, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(f); err != nil {
+			t.Fatal(err)
+		}
+	}
+	stallElapsed := time.Since(began).Seconds()
+	s3 := w3.stop()
+	stall := volumePhase{Name: "stalled_consumer_drop_control", Seen: map[string]bool{}, Dropped: s3.Dropped, Events: s3.Events, OtherCounts: s3.OtherCounts, LoadFiles: stallFiles, LoadSeconds: stallElapsed}
+	if stall.Dropped == 0 {
+		t.Errorf("a stalled consumer produced no dropped-event report; drop detection is unproven")
+	}
+	// Privacy: events outside the task-owned prefixes are only counted, by a
+	// single first path component.
+	for _, ph := range []volumePhase{positive, load, stall} {
+		for key := range ph.OtherCounts {
+			if !strings.HasPrefix(key, "/") || strings.Contains(key[1:], "/") {
+				t.Errorf("%s: a counted-only key is more than a first component: %q", ph.Name, key)
+			}
+		}
+	}
+	saveMemoryOnlyEvidence(t, "volume-watch.json", []volumePhase{positive, load, stall})
+}
+
+// TestMacOSCrashReportOptions gathers evidence for owner condition 3. A
+// crash report is written by ReportCrash outside the sandbox, and this
+// machine may submit reports to Apple. The test measures what a report holds
+// and whether a process can avoid one; it does not choose an option.
+func TestMacOSCrashReportOptions(t *testing.T) {
+	if runtime.GOARCH != "arm64" {
+		t.Skip("the register pattern is arm64 assembly")
+	}
+	if os.Getuid() == 0 || os.Geteuid() == 0 {
+		t.Skip("App Sandbox experiment requires non-root")
+	}
+	observer := compileObserverProbe(t)
+	identifier, _ := testContainer(t, observer)
+	guarded := signedProbeApp(t, observer, identifier, true)
+	const pattern = 0x4446304653454e54
+	needles := [][]byte{
+		[]byte(fmt.Sprintf("%d", uint64(pattern))),
+		[]byte(fmt.Sprintf("%x", uint64(pattern))),
+		[]byte(fmt.Sprintf("%X", uint64(pattern))),
+	}
+	type crashObservation struct {
+		Mode          string `json:"mode"`
+		ExitStatus    int    `json:"exit_status"`
+		Signal        string `json:"signal,omitempty"`
+		ReportWritten bool   `json:"report_written"`
+		PatternFound  bool   `json:"register_pattern_in_report"`
+		ReportBytes   int    `json:"report_bytes"`
+	}
+	run := func(mode string) crashObservation {
+		t.Helper()
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		started := time.Now()
+		cmd := exec.CommandContext(ctx, guarded, mode)
+		cmd.Env = []string{}
+		err := cmd.Run()
+		o := crashObservation{Mode: mode}
+		var exit *exec.ExitError
+		if !errors.As(err, &exit) {
+			t.Fatalf("%s: expected an abnormal exit, got %v", mode, err)
+		}
+		if ws, ok := exit.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
+			o.Signal = ws.Signal().String()
+		} else {
+			o.ExitStatus = exit.ExitCode()
+		}
+		// takeCrashReport scans for one needle; scan the raw report for all.
+		home, _ := os.UserHomeDir()
+		dir := filepath.Join(home, "Library", "Logs", "DiagnosticReports")
+		pidPattern := regexp.MustCompile(fmt.Sprintf(`"pid"\s*:\s*%d\b`, cmd.Process.Pid))
+		deadline := time.Now().Add(15 * time.Second)
+		for time.Now().Before(deadline) && !o.ReportWritten {
+			entries, _ := os.ReadDir(dir)
+			for _, e := range entries {
+				if !strings.HasPrefix(e.Name(), appExecutable(identifier)+"-") || !strings.HasSuffix(e.Name(), ".ips") {
+					continue
+				}
+				info, err := e.Info()
+				if err != nil || info.ModTime().Before(started.Add(-time.Second)) {
+					continue
+				}
+				path := filepath.Join(dir, e.Name())
+				data, err := os.ReadFile(path)
+				if err != nil || !pidPattern.Match(data) {
+					continue
+				}
+				o.ReportWritten, o.ReportBytes = true, len(data)
+				for _, n := range needles {
+					o.PatternFound = o.PatternFound || bytes.Contains(data, n)
+				}
+				if err := os.Remove(path); err != nil {
+					t.Errorf("remove task-owned crash report: %v", err)
+				}
+			}
+			if !o.ReportWritten {
+				time.Sleep(250 * time.Millisecond)
+			}
+		}
+		return o
+	}
+	// Positive control first: an ordinary crash under this name is reported,
+	// so a later absence is not explained by throttling.
+	plain := run("crash-registers")
+	if plain.Signal != syscall.SIGTRAP.String() || !plain.ReportWritten {
+		t.Fatalf("positive control: a crash should produce a report: %+v", plain)
+	}
+	handled := run("crash-handled")
+	aborted := run("abort-handled")
+	for _, o := range []crashObservation{handled, aborted} {
+		if o.ExitStatus != 70 || o.Signal != "" || o.ReportWritten {
+			t.Errorf("%s: a handler that exits first should avoid the report: %+v", o.Mode, o)
+		}
+	}
+	// Recorded behaviour, so an OS change is noticed: the report carries the
+	// crashing thread's register values, so a crash can leak a few bytes of
+	// whatever the worker was handling.
+	if !plain.PatternFound {
+		t.Fatalf("register values no longer appear in the crash report: %+v", plain)
+	}
+	saveMemoryOnlyEvidence(t, "crash-reports.json", []crashObservation{plain, handled, aborted})
 }

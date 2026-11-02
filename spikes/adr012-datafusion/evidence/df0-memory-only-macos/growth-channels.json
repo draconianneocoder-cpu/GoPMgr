@@ -31,28 +31,28 @@
     "container_scan": {
       "non_empty_files": [
         ".com.apple.containermanagerd.metadata.plist",
-        "Data/tmp/growth-DF0GROWTH59A1C0BA2FA1"
+        "Data/tmp/growth-DF0GROWTH6364A75086BE"
       ],
       "sentinel_in_content": [
-        "Data/tmp/growth-DF0GROWTH59A1C0BA2FA1"
+        "Data/tmp/growth-DF0GROWTH6364A75086BE"
       ],
       "sentinel_in_xattr": [
-        "Data/tmp/growth-DF0GROWTH59A1C0BA2FA1"
+        "Data/tmp/growth-DF0GROWTH6364A75086BE"
       ],
       "sentinel_in_name": [
-        "Data/tmp/growth-DF0GROWTH59A1C0BA2FA1"
+        "Data/tmp/growth-DF0GROWTH6364A75086BE"
       ]
     },
     "fsevents": {
-      "events": 16,
+      "events": 14,
       "files_created": [
-        ".com.apple.containermanagerd.metadata.plist.atomic.nFnheJ",
-        ".com.apple.containermanagerd.metadata.plist.atomic.KPj8Ci",
+        ".com.apple.containermanagerd.metadata.plist.atomic.oLlvPt",
+        ".com.apple.containermanagerd.metadata.plist.atomic.f8gJgY",
         "Data/tmp/growth-file"
       ],
       "files_modified": [
-        ".com.apple.containermanagerd.metadata.plist.atomic.nFnheJ",
-        ".com.apple.containermanagerd.metadata.plist.atomic.KPj8Ci",
+        ".com.apple.containermanagerd.metadata.plist.atomic.oLlvPt",
+        ".com.apple.containermanagerd.metadata.plist.atomic.f8gJgY",
         "Data/tmp/growth-file"
       ],
       "xattr_changed": [
@@ -62,18 +62,19 @@
       ],
       "files_renamed": [
         ".com.apple.containermanagerd.metadata.plist",
-        ".com.apple.containermanagerd.metadata.plist.atomic.nFnheJ",
-        ".com.apple.containermanagerd.metadata.plist.atomic.KPj8Ci",
+        ".com.apple.containermanagerd.metadata.plist.atomic.oLlvPt",
+        ".com.apple.containermanagerd.metadata.plist.atomic.f8gJgY",
         "Data/tmp/growth-file",
-        "Data/tmp/growth-DF0GROWTH59A1C0BA2FA1"
+        "Data/tmp/growth-DF0GROWTH6364A75086BE"
       ],
       "dirs_created": [
         "Data/tmp/growth-dir"
       ],
       "files_removed": [
-        ".com.apple.containermanagerd.metadata.plist.atomic.nFnheJ",
-        ".com.apple.containermanagerd.metadata.plist.atomic.KPj8Ci"
-      ]
+        ".com.apple.containermanagerd.metadata.plist.atomic.oLlvPt",
+        ".com.apple.containermanagerd.metadata.plist.atomic.f8gJgY"
+      ],
+      "dropped_events": 0
     }
   },
   {
@@ -111,10 +112,10 @@
       ],
       "sentinel_in_content": null,
       "sentinel_in_xattr": [
-        "Data/tmp/growth-DF0GROWTH59A1C0BA2FA1"
+        "Data/tmp/growth-DF0GROWTH6364A75086BE"
       ],
       "sentinel_in_name": [
-        "Data/tmp/growth-DF0GROWTH59A1C0BA2FA1"
+        "Data/tmp/growth-DF0GROWTH6364A75086BE"
       ]
     },
     "fsevents": {
@@ -129,12 +130,13 @@
       ],
       "files_renamed": [
         "Data/tmp/growth-file",
-        "Data/tmp/growth-DF0GROWTH59A1C0BA2FA1"
+        "Data/tmp/growth-DF0GROWTH6364A75086BE"
       ],
       "dirs_created": [
         "Data/tmp/growth-dir"
       ],
-      "files_removed": null
+      "files_removed": null,
+      "dropped_events": 0
     }
   },
   {
@@ -170,7 +172,7 @@
     "container_scan": {
       "non_empty_files": [
         ".com.apple.containermanagerd.metadata.plist",
-        "Data/Library/Application Support/CrashReporter/df0-d0-mem-feb70239_881A1103-A9F1-583C-B186-EF9D18E7A36E.plist"
+        "Data/Library/Application Support/CrashReporter/df0-d0-mem-65221800_881A1103-A9F1-583C-B186-EF9D18E7A36E.plist"
       ],
       "sentinel_in_content": null,
       "sentinel_in_xattr": null,
@@ -179,17 +181,18 @@
     "fsevents": {
       "events": 4,
       "files_created": [
-        "Data/Library/Application Support/CrashReporter/df0-d0-mem-feb70239_881A1103-A9F1-583C-B186-EF9D18E7A36E.plist"
+        "Data/Library/Application Support/CrashReporter/df0-d0-mem-65221800_881A1103-A9F1-583C-B186-EF9D18E7A36E.plist"
       ],
       "files_modified": [
-        "Data/Library/Application Support/CrashReporter/df0-d0-mem-feb70239_881A1103-A9F1-583C-B186-EF9D18E7A36E.plist"
+        "Data/Library/Application Support/CrashReporter/df0-d0-mem-65221800_881A1103-A9F1-583C-B186-EF9D18E7A36E.plist"
       ],
       "xattr_changed": null,
       "files_renamed": null,
       "dirs_created": [
         "Data/Library/Application Support/CrashReporter"
       ],
-      "files_removed": null
+      "files_removed": null,
+      "dropped_events": 0
     },
     "crash_report": {
       "observed": true,

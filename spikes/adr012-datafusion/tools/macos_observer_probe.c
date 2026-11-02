@@ -187,6 +187,46 @@ static int growth_launch(char **argv) {
     return 79;
 }
 
+#if defined(__aarch64__)
+// Crash with a known pattern in ten callee-saved registers, so the crash
+// report's thread state can be searched for it. The pattern is set and the
+// trap raised in one asm block, so the compiler cannot reuse the registers.
+static void crash_with_pattern(void) {
+    __asm__ volatile(
+        "movz x19, #0x4e54\n movk x19, #0x5345, lsl #16\n"
+        "movk x19, #0x3046, lsl #32\n movk x19, #0x4446, lsl #48\n"
+        "mov x20, x19\n mov x21, x19\n mov x22, x19\n mov x23, x19\n"
+        "mov x24, x19\n mov x25, x19\n mov x26, x19\n mov x27, x19\n mov x28, x19\n"
+        "brk #1\n" ::: "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "memory");
+}
+#endif
+
+// Exits with status 70 from a fatal signal before the signal can end the
+// process, which is the mechanism a "no crash report" option would rely on.
+static void exit_on_fatal(int sig) {
+    (void)sig;
+    _exit(70);
+}
+
+static int crash_probe(const char *mode) {
+    if (strcmp(mode, "crash-handled") == 0 || strcmp(mode, "abort-handled") == 0) {
+        struct sigaction action = {0};
+        action.sa_handler = exit_on_fatal;
+        sigemptyset(&action.sa_mask);
+        int fatal[] = {SIGTRAP, SIGABRT, SIGSEGV, SIGBUS, SIGILL, SIGFPE};
+        for (size_t i = 0; i < sizeof fatal / sizeof fatal[0]; i++) {
+            if (sigaction(fatal[i], &action, NULL) != 0) return 1;
+        }
+    }
+    if (strcmp(mode, "abort-handled") == 0) {
+        abort();
+    }
+#if defined(__aarch64__)
+    crash_with_pattern();
+#endif
+    return 3;
+}
+
 int main(int argc, char **argv) {
     const struct rlimit core = {0, 0};
     if (setrlimit(RLIMIT_CORE, &core) != 0) return 1;
@@ -195,5 +235,7 @@ int main(int argc, char **argv) {
     if (argc == 7 && strcmp(argv[1], "access") == 0) return access_probe(argv);
     if (argc == 4 && strcmp(argv[1], "growth") == 0) return growth_probe(argv[2], argv[3]);
     if (argc == 5 && strcmp(argv[1], "growth-launch") == 0) return growth_launch(argv);
+    if (argc == 2 && (strcmp(argv[1], "crash-registers") == 0 || strcmp(argv[1], "crash-handled") == 0 ||
+                      strcmp(argv[1], "abort-handled") == 0)) return crash_probe(argv[1]);
     return 2;
 }
