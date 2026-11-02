@@ -13,7 +13,8 @@ mod cells;
 pub mod host_source;
 mod sniff;
 
-use std::io::Cursor;
+use std::fs::File;
+use std::io::{Cursor, Read};
 use std::sync::Arc;
 
 use datafusion::arrow::array::{ArrayRef, BooleanArray, Int64Array, RecordBatch};
@@ -33,7 +34,8 @@ pub use cells::Cell;
 pub const PREVIEW_ROWS: usize = 10_000;
 
 /// Largest file this spike will load into memory for the JSON-array adapter.
-const MAX_JSON_ARRAY_BYTES: usize = 256 << 20;
+/// The JSON paths read the whole file into memory; larger files are refused.
+const MAX_JSON_BYTES: u64 = 256 << 20;
 
 #[derive(Debug, Serialize)]
 pub struct ImportOutput {
@@ -118,12 +120,32 @@ pub async fn import(path: &str, format: &str) -> ImportOutput {
     out
 }
 
+/// Opens an import source only if it is a regular file. Opening a FIFO
+/// blocks until a writer appears, so the path is checked before the open,
+/// and the opened handle is checked again in case the path changed between
+/// the two. DataFusion reopens CSV and Parquet sources by path; that second
+/// open is not covered (SEC-004).
+fn open_source(path: &str) -> Result<File, String> {
+    let regular = |m: std::fs::Metadata| {
+        if m.is_file() {
+            Ok(())
+        } else {
+            Err("not a regular file".to_string())
+        }
+    };
+    regular(std::fs::metadata(path).map_err(|e| format!("read: {e}"))?)?;
+    let file = File::open(path).map_err(|e| format!("read: {e}"))?;
+    regular(file.metadata().map_err(|e| format!("read: {e}"))?)?;
+    Ok(file)
+}
+
 async fn import_inner(path: &str, format: &str, out: &mut ImportOutput) -> Result<(), String> {
     let ctx = session();
     let ext = extension(path);
+    let file = open_source(path)?;
     match format {
         "csv" | "tsv" | "txt" => {
-            let sample = sniff::read_prefix(path, 64 << 10).map_err(|e| format!("read: {e}"))?;
+            let sample = sniff::read_prefix(&file, 64 << 10).map_err(|e| format!("read: {e}"))?;
             let dialect = sniff::dialect(&sample, format);
             out.reader = format!(
                 "datafusion csv (delimiter {:?}, header {}) after the spike's dialect sniffer",
@@ -171,7 +193,14 @@ async fn import_inner(path: &str, format: &str, out: &mut ImportOutput) -> Resul
             }
         }
         "json" | "ndjson" => {
-            let bytes = std::fs::read(path).map_err(|e| format!("read: {e}"))?;
+            let mut bytes = Vec::new();
+            (&file)
+                .take(MAX_JSON_BYTES + 1)
+                .read_to_end(&mut bytes)
+                .map_err(|e| format!("read: {e}"))?;
+            if bytes.len() as u64 > MAX_JSON_BYTES {
+                return Err("json file larger than the spike's import limit".into());
+            }
             let first = bytes.iter().find(|b| !b" \t\r\n".contains(b)).copied();
             let adapter = std::env::var("DF0_JSON_ARRAY").as_deref() == Ok("adapter");
             if first == Some(b'[') && !adapter {
@@ -187,9 +216,6 @@ async fn import_inner(path: &str, format: &str, out: &mut ImportOutput) -> Resul
                 // Comparison path: split the array with serde_json RawValue,
                 // keeping each element's text (numbers are not reformatted).
                 out.reader = "json-array adapter (serde_json RawValue) then arrow-json".into();
-                if bytes.len() > MAX_JSON_ARRAY_BYTES {
-                    return Err("json array larger than the spike's adapter limit".into());
-                }
                 let items: Vec<Box<serde_json::value::RawValue>> =
                     serde_json::from_slice(&bytes).map_err(|e| format!("json: {e}"))?;
                 let mut ndjson = Vec::with_capacity(bytes.len());
@@ -487,5 +513,74 @@ mod order_tests {
         }
         assert_eq!(next, 10);
         assert!(sizes.iter().all(|&n| n <= 4), "{sizes:?}");
+    }
+}
+
+#[cfg(test)]
+mod source_tests {
+    use super::*;
+    use std::path::{Path, PathBuf};
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    struct TempDir(PathBuf);
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    fn temp_dir(name: &str) -> TempDir {
+        let dir = std::env::temp_dir().join(format!("df0-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir(&dir).unwrap();
+        TempDir(dir)
+    }
+
+    /// Runs one import on its own thread: a regression that blocks in open
+    /// fails here after the timeout instead of hanging the test run.
+    fn import_with_timeout(path: &Path, format: &'static str) -> ImportOutput {
+        let (tx, rx) = mpsc::channel();
+        let path = path.to_str().unwrap().to_owned();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .build()
+                .unwrap();
+            let _ = tx.send(rt.block_on(import(&path, format)));
+        });
+        rx.recv_timeout(Duration::from_secs(10))
+            .expect("import blocked on a non-regular file")
+    }
+
+    // SEC-004: an import path that names a FIFO, a directory or an
+    // oversized JSON file is refused without blocking or reading it all.
+    #[test]
+    fn import_refuses_sources_that_are_not_bounded_regular_files() {
+        let dir = temp_dir("sources");
+        let fifo = dir.0.join("pipe.csv");
+        let made = std::process::Command::new("mkfifo")
+            .arg(&fifo)
+            .status()
+            .unwrap();
+        assert!(made.success(), "mkfifo failed");
+        let big = dir.0.join("big.json");
+        File::create(&big)
+            .unwrap()
+            .set_len(MAX_JSON_BYTES + 1)
+            .unwrap();
+        let cases: [(&Path, &'static str, &str); 5] = [
+            (&fifo, "csv", "not a regular file"),
+            (&fifo, "json", "not a regular file"),
+            (&fifo, "parquet", "not a regular file"),
+            (&dir.0, "csv", "not a regular file"),
+            (&big, "json", "larger than"),
+        ];
+        for (path, format, want) in cases {
+            let out = import_with_timeout(path, format);
+            let err = out.error.unwrap_or_default();
+            assert!(
+                err.contains(want),
+                "{format} {path:?}: {err:?}, want {want:?}"
+            );
+        }
     }
 }
