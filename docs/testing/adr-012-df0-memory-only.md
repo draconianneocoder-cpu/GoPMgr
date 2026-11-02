@@ -327,21 +327,57 @@ The options were:
   authority;
 - **(d)** stay BLOCKED and defer cutover.
 
-**Choices for the conditions (2026-11-02).** Condition 3 is implemented, as
-described below; the others are not.
+**Choices for the conditions (2026-11-02).** Conditions 1 and 3 have passed;
+the owner accepted condition 3 after it was implemented, as described below.
 
 - **Condition 2:** one signed worker copy per concurrency slot, each with its
   own bundle identifier, so each slot gets its own container and sweep. DF-064
   cohorts then run in parallel. Each container still needs a cross-process
-  lock.
+  lock: an `flock` on one lock file per slot in the host's own Application
+  Support folder, which the kernel releases if the app crashes and the worker
+  cannot reach. Not built yet.
 - **Condition 3:** option (ii), a panic hook in safe Rust, plus (iv),
   deployment guidance. Native faults keep producing reports.
 - **Condition 4:** deferred to release qualification. (a) cannot be adopted
   before it passes.
 - **Condition 5:** the watch replaces OS-wide tracing once one more test shows
   it sees a write that a macOS helper makes outside the container on the
-  worker's behalf.
+  worker's behalf. That test uses a separate test-only helper signed with the
+  worker's exact entitlements, which asks `cfprefsd` and then Launch Services
+  to write for it, so the shipped worker gains no code. Not built yet.
 
+## Hardening after the security scan (2026-11-02)
+
+A scan of the spike found no Critical or High issues. Its five Low findings
+are fixed; SEC-001 is described above.
+
+- **SEC-002, processes outliving the job.** On macOS the worker now sets
+  `RLIMIT_NPROC` to 0 itself, before it reads input, so the limit no longer
+  depends on the test launcher. Teardown stops and kills the worker's
+  descendants while it runs, kills its group before reaping it when it exits on
+  its own, and a kqueue watch reports any process it created (including through
+  `posix_spawn`). Either case fails the job as `worker_forked`. A child that
+  left the group and outlived the worker is reported on macOS but not killed.
+  On Linux it is neither found nor reported, and the Linux paths were compiled
+  but not run.
+- **SEC-003, decompression on the host.** The Arrow verifier decodes through an
+  allocator capped at 64 MiB, because a compressed buffer states its own decoded
+  size and the decoder allocates that much first.
+- **SEC-004, the DF0-B import.** Non-regular files are refused before they are
+  opened, and JSON is read with a 256 MiB cap. DataFusion still reopens CSV and
+  Parquet sources by path.
+- **SEC-005.** `golang.org/x/net` is now v0.62.0 in the app and the spike.
+
+The worker built with these changes has SHA-256
+`d4da6f3759a29c8ce706fddc076d179b0fafe362165195054468c1dc872be9b9`. The
+evidence files above came from earlier builds and were not regenerated; the
+full race suite passed with the new worker. The build SBOM still describes
+source snapshot `8746d38`.
+
+`TestMacOSVolumeWideFSEvents` failed in three of four full race runs, each
+time at the stalled-consumer phase: under load the closing barrier event can
+be dropped along with the rest. It passed both times it ran alone. It first
+failed before any change to code it runs, so it is an existing flake.
 
 ## Verification
 
