@@ -230,7 +230,7 @@ Options for the owner. The owner chose (ii) with (iv); see
 | (iii) (ii) plus a fatal-signal handler | Exit before any fatal signal can produce a report | Needs `unsafe` async-signal-safe code in the worker and its own review; guard and resource exceptions and memory-pressure kills are not covered |
 | (iv) Deployment guidance | Ask managed deployments to turn off crash-report submission | Outside the app's control |
 
-**Condition 3 implemented: panic hook and deployment guidance.** At start-up
+**Condition 3 passed (accepted by the owner 2026-11-02): panic hook and deployment guidance.** At start-up
 the worker installs a panic hook (safe Rust, in `main.rs`). At the first panic
 it prints one line with the source location and exits with status 70, before
 unwinding starts. It never prints the panic message, which can hold row
@@ -394,7 +394,9 @@ The full spike race suite and `go vet` passed with the same worker. The tests
 skip as root and skip the worker scenarios without `DF0_WORKER`; neither is
 qualification.
 
-Thirty-two compiling seeds were each caught by a named assertion; three
+For the memory-only and container work, thirty-two compiling seeds were each
+caught by a named assertion (the SEC-002 to SEC-005 seeds are recorded in their
+commit messages); three
 first forms that did not compile were replaced and are recorded as not
 counted. The seed record states which source version each group ran against. One seed
 removed the file-size limit **and** disabled the launcher's readback check:
