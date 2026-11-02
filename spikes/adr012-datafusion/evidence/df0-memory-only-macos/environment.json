@@ -30,13 +30,12 @@
     "spikes/adr012-datafusion/tools/macos_observer_probe.c": "1bf9c68f9824938d4f446b66aa744355dfa7bd42068302a45581d76967666619",
     "spikes/adr012-datafusion/tools/macos_fsevents_probe.c": "9c17d5b2dff639739a082888b7a4d2ed3bc81eb38a88cb8da1c6af320b3754e4",
     "spikes/adr012-datafusion/rust/worker/src/read_source.rs": "6cb24457d5de0aaf6297765dbb2c16ca6aca391cff49553650f454c55da9e8ea",
-    "spikes/adr012-datafusion/internal/ipchost/container.go": "838802ce1e938921bd6262a36f4f9a5295ae5c5afc238862c9dffdccb8eee22e",
-    "spikes/adr012-datafusion/internal/ipchost/container_flags_darwin.go": "faf3faa7c5e22d2adc888c9be7816a0044c2d963057b8162ac207876fcb466f0",
-    "spikes/adr012-datafusion/internal/ipchost/container_flags_linux.go": "8e32882575f89009df6fa29bd8f331ae80c355ef905c5d4b901538de3ea709be",
-    "spikes/adr012-datafusion/internal/ipchost/container_darwin_test.go": "71119adc657b99780082936903008f67c6ed13f575a68a8cbaff054bbf5116c8",
-    "spikes/adr012-datafusion/rust/worker/src/main.rs": "08b013feea162c02fc3aaa1024f08cfbfd903ae5d4e4123966f10a8fdf35a0c5"
+    "spikes/adr012-datafusion/internal/ipchost/container.go": "97d915b658b41e83b873b8908ab58b01f75b65cb0d270fda0c3d4d64d7c12239",
+    "spikes/adr012-datafusion/internal/ipchost/container_darwin_test.go": "216145b30f46c3d1addc0f8d91d15f6798520c6ca4b501cd105c576496d2d0bb",
+    "spikes/adr012-datafusion/rust/worker/src/main.rs": "08b013feea162c02fc3aaa1024f08cfbfd903ae5d4e4123966f10a8fdf35a0c5",
+    "spikes/adr012-datafusion/internal/ipchost/container_report.go": "1d54057f32a16bba31261dcaac569434aa8a38ffb7a3e564d4cbfc5858279ef4"
   },
-  "sources_changed_since_previous_manifest": "tools/macos_exec_limits_probe.c gained the optional file-growth limit and FSIZE/CORE/SIGXFSZ readback; tools/macos_observer_probe.c gained the growth and growth-launch helper modes; sandbox_darwin_test.go only adopts the launcherLimits signature. The observer-sandbox tests still pass on these sources in the full spike race suite; their committed evidence and manifest were not regenerated and still bind the earlier versions. Condition 3 update: worker main.rs gained the panic hook, read_source.rs the test-only source_panic and source_panic_abort faults, and the memory-only test the panic, panic_abort and crash_trailing scenarios; memory-only-worker.json and fault-seeds.json were regenerated, the other observations still bind 5b434f0 sources",
+  "sources_changed_since_previous_manifest": "tools/macos_exec_limits_probe.c gained the optional file-growth limit and FSIZE/CORE/SIGXFSZ readback; tools/macos_observer_probe.c gained the growth and growth-launch helper modes; sandbox_darwin_test.go only adopts the launcherLimits signature. The observer-sandbox tests still pass on these sources in the full spike race suite; their committed evidence and manifest were not regenerated and still bind the earlier versions. Condition 3 update: worker main.rs gained the panic hook, read_source.rs the test-only source_panic and source_panic_abort faults, and the memory-only test the panic, panic_abort and crash_trailing scenarios; memory-only-worker.json and fault-seeds.json were regenerated, the other observations still bind 5b434f0 sources SEC-001 update: container.go now sweeps through directory handles (macOS only), container_report.go carries the portable report type, the two flag-helper files were removed, and container_darwin_test.go gained the swap, hard-link, fail-closed and depth tests; memory-only-worker.json and growth-channels.json were regenerated with the same worker, and their sweep counts match the earlier run",
   "sdk_sha256": {
     "System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Headers/FSEvents.h": "493ab211ffd5683e83b3ec77b9924730a7df44a39738b560b8a28465b1c48a90",
     "usr/include/sys/resource.h": "1067178025c5fd88c9a1b8206a07c2695ef94dd471fe2783f06c512995382961",
@@ -45,9 +44,9 @@
   },
   "evidence_sha256": {
     "crash-reports.json": "5110f33e73c4727c1aa66976319912ec0a361b9a16ea5743f45f34d571c8c3a3",
-    "fault-seeds.json": "326e7abec58e89658b3836305c79cce17371c3362a94bdb01c622441131df391",
-    "growth-channels.json": "ff98194d65f67cbb3d07f3eb13fd47c95c98b6cd73107148c46d901728c88889",
-    "memory-only-worker.json": "09704cd3a8846175775ed9056ed09e85fdd11271e38c3cf6be50b58ea6e14a81",
+    "fault-seeds.json": "15c8dc349a3a3dfa80dca32a84a4a0ffa44ca5108f299751180cea541e999884",
+    "growth-channels.json": "b7719418e18e6529e1adc0e8b16451816cfe2a4a2ddf71bec0329c46acd79da2",
+    "memory-only-worker.json": "3217d35c7b471926c5f49d973a648eecb75ee30b0656ea5c1fa683f909db4fbd",
     "volume-watch.json": "5b425af10db3355366789427e215c34ddcdb8bb33a23f0e58fc46c1ead888556"
   },
   "input_worker_sha256": "1f353a111f6b207aa1990ae797cf614b8f988b0f67990745876c31da2d0758c2",
@@ -68,7 +67,8 @@
     "Owner condition 3 evidence: a crash report carries the crashing thread's register values (a known 8-byte pattern in ten registers appeared in the report), so a crash can leak a register set of in-flight data (ten registers checked; arm64 has up to 29 general-purpose registers of 8 bytes); this machine has automatic crash-report submission on. A process whose fatal-signal handler exits first produced no report for either a trap or an abort, with plain crashes reported both before and after.",
     "Owner condition 4: deferred to release qualification by the owner. This machine has no code-signing identity (no Developer ID) and no macOS 13 host",
     "Owner condition 5 evidence: an unprivileged FSEvents stream on the boot volume saw marker writes in /private/tmp, the user temp folder, the home folder and the sandboxed container; it dropped nothing under 20,000 create/delete pairs elsewhere on the volume; a stalled consumer made fseventsd drop events and the observer reported it",
-    "Owner condition 3, chosen option (ii) with (iv): the worker's panic hook exits with status 70 at the first panic, printing only the source location. A panic that would abort (one raised during unwinding) then produced no crash report, while a host-sent SIGABRT to the same worker produced one both before and after. Without the hook, the same panic aborted and was reported. Before the hook, a panic in the query task reached the host as INTERNAL failure text that included the panic message, which can hold row values"
+    "Owner condition 3, chosen option (ii) with (iv): the worker's panic hook exits with status 70 at the first panic, printing only the source location. A panic that would abort (one raised during unwinding) then produced no crash report, while a host-sent SIGABRT to the same worker produced one both before and after. Without the hook, the same panic aborted and was reported. Before the hook, a panic in the query task reached the host as INTERNAL failure text that included the panic message, which can hold row values",
+    "SEC-001 (security scan, 2026-11-02): the path-based sweep could be redirected outside the container by a process still running in it. The sweep now walks directory handles opened without following symlinks, changes entries only through handles or *at calls that cannot follow, restores a closed directory's permissions by name only with a trailing slash and AT_SYMLINK_NOFOLLOW_ANY (so a hard link or symlink swapped in is refused), opens entries with O_NONBLOCK, checks a baseline entry's inode on root's current device before changing it, and fails closed on what it cannot handle that way or past 64 levels or 131,072 entries"
   ],
   "measurement_limits": [
     "FSEvents shows that a path changed, not its content or the acting process; flags are merged per path",
@@ -87,8 +87,11 @@
     "The panic hook covers panics only. Allocation failure, stack overflow and other native faults abort without running it and still produce reports, by the owner's choice",
     "The hook calls std::process::exit, which runs C atexit handlers while other worker threads keep running; a crash during that teardown would still be reported. None was seen",
     "Deployment guidance (iv) relies on administrators setting allowDiagnosticSubmission = false; it stops automatic submission to Apple, not the local report",
-    "The hook's location line names the source file; for a panic inside a dependency crate that is the build machine's absolute registry path, including its home folder, unless release builds remap source paths"
+    "The hook's location line names the source file; for a panic inside a dependency crate that is the build machine's absolute registry path, including its home folder, unless release builds remap source paths",
+    "The handle-based sweep fails closed on a file the worker made unreadable and immutable, and on a baseline file it made unreadable; each marks the container unclean, an availability cost",
+    "AT_SYMLINK_NOFOLLOW_ANY (0x0800, from the macOS 27.2 SDK header, which carries no availability note) is verified only on macOS 27.2; on a kernel that rejects it, restoring a closed directory fails and the sweep fails closed. Condition 4's macOS 13 run should cover it",
+    "Identity is the inode on root's current device, so a saved baseline stays valid if the volume's device number changes across a reboot; that case was not run"
   ],
   "fault_seed_provenance": "fault-seeds.json states, per group, which source version each seed ran against; the observations in this folder were regenerated on the final sources",
-  "updated_utc": "2026-11-02T18:25:18.226693+00:00"
+  "updated_utc": "2026-11-02T20:08:55.662886+00:00"
 }

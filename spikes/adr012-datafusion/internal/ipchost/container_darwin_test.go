@@ -7,6 +7,7 @@ package ipchost
 
 import (
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,10 +52,10 @@ func fakeContainer(t *testing.T) (root, outside string) {
 		t.Fatal(err)
 	}
 	// Clear any flags and modes the test left, so TempDir cleanup works even
-	// after a failure mid-test.
+	// after a failure mid-test. WalkDir opens a directory up before reading it.
 	t.Cleanup(func() {
-		_ = filepath.Walk(dir, func(p string, fi os.FileInfo, err error) error {
-			if err == nil && fi.Mode().Type() != os.ModeSymlink {
+		_ = filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+			if d != nil && d.Type()&fs.ModeSymlink == 0 {
 				_ = unix.Chflags(p, 0)
 				_ = os.Chmod(p, 0o700)
 			}
@@ -284,5 +285,247 @@ func TestContainerSweepFailureNamesNothing(t *testing.T) {
 	}
 	if strings.Contains(rep.Failure, sweepMarker) || strings.Contains(rep.Failure, dir) {
 		t.Fatalf("sweep failure text names a path: %q", rep.Failure)
+	}
+}
+
+// outsideUntouched checks the host-owned directory next to the container that
+// fakeContainer made: same mode, same file, same content.
+func outsideUntouched(t *testing.T, outside string) {
+	t.Helper()
+	dir := filepath.Join(filepath.Dir(outside), "outside-dir")
+	if fi, err := os.Lstat(dir); err != nil || fi.Mode().Perm() != 0o750 {
+		t.Fatalf("the sweep changed a directory outside the container: %v", err)
+	}
+	if b, err := os.ReadFile(filepath.Join(dir, "keep")); err != nil || string(b) != "host dir file" {
+		t.Fatalf("the sweep deleted outside the container: %v", err)
+	}
+}
+
+// SEC-001: a process still running in the container swaps a directory for a
+// symlink to an outside directory between the sweep's look at the entry and
+// its next step. The sweep must not follow it, on either the removal path (a
+// directory the job added) or the restore path (a baseline directory).
+func TestContainerSweepIgnoresASwappedDirectory(t *testing.T) {
+	for _, tc := range []struct {
+		name, rel string
+		closed    bool // the worker made the directory unreadable first
+	}{
+		{"added directory", "job/a", false},
+		{"baseline directory", "Library/Caches", false},
+		{"unreadable added directory", "job/a", true},
+		{"unreadable baseline directory", "Library/Caches", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, outside := fakeContainer(t)
+			c, err := NewContainer(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			nested := filepath.Join(root, "job", "a", "b")
+			if err := os.MkdirAll(nested, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(nested, "spill"), []byte(sweepMarker), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if tc.closed {
+				if err := os.Chmod(filepath.Join(root, tc.rel), 0); err != nil {
+					t.Fatal(err)
+				}
+			}
+			outsideDir := filepath.Join(filepath.Dir(outside), "outside-dir")
+			swapped := false
+			c.beforeChange = func(rel string) {
+				if rel != tc.rel || swapped {
+					return
+				}
+				swapped = true
+				p := filepath.Join(root, rel)
+				if err := os.Rename(p, p+"-moved"); err != nil {
+					t.Error(err)
+				}
+				if err := os.Symlink(outsideDir, p); err != nil {
+					t.Error(err)
+				}
+			}
+			rep := c.Sweep()
+			if !swapped {
+				t.Fatal("the swap never ran")
+			}
+			outsideUntouched(t, outside)
+			if rep.Clean {
+				t.Fatalf("a swapped entry left the container clean: %+v", rep)
+			}
+			if strings.Contains(rep.Failure, sweepMarker) || strings.Contains(rep.Failure, root) {
+				t.Fatalf("failure text names a path: %q", rep.Failure)
+			}
+		})
+	}
+}
+
+// SEC-001: the worker replaces a baseline file with a hard link to a file
+// outside the container, with another mode and an extra attribute. The sweep
+// must report the change and leave the outside file as it was.
+func TestContainerSweepLeavesAHardLinkedOutsideFile(t *testing.T) {
+	root, outside := fakeContainer(t)
+	c, err := NewContainer(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(outside, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := unix.Lsetxattr(outside, "org.gopmgr.host", []byte("host"), 0); err != nil {
+		t.Fatal(err)
+	}
+	pref := filepath.Join(root, "Library", "pref")
+	if err := os.Remove(pref); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link(outside, pref); err != nil {
+		t.Fatal(err)
+	}
+	rep := c.Sweep()
+	if rep.Clean || rep.BaselineChanged == 0 {
+		t.Fatalf("a replaced baseline file was not reported: %+v", rep)
+	}
+	fi, err := os.Lstat(outside)
+	if err != nil || fi.Mode().Perm() != 0o640 {
+		t.Fatalf("the sweep changed the outside file's mode: %v %v", fi.Mode(), err)
+	}
+	if size, err := unix.Lgetxattr(outside, "org.gopmgr.host", nil); err != nil || size != 4 {
+		t.Fatalf("the sweep removed the outside file's attribute: %v", err)
+	}
+}
+
+// A file the worker made unreadable and immutable cannot be opened to clear
+// its flag without resolving a path, so the sweep fails closed.
+func TestContainerSweepFailsClosedOnAnUnreadableImmutableFile(t *testing.T) {
+	root, _ := fakeContainer(t)
+	c, err := NewContainer(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	locked := filepath.Join(root, "tmp", "locked-"+sweepMarker)
+	if err := os.WriteFile(locked, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(locked, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := unix.Chflags(locked, unix.UF_IMMUTABLE); err != nil {
+		t.Fatal(err)
+	}
+	rep := c.Sweep()
+	if rep.Clean || rep.Failure == "" || strings.Contains(rep.Failure, sweepMarker) {
+		t.Fatalf("an unreadable immutable file did not fail the sweep closed: %+v", rep)
+	}
+	ran := false
+	if res := c.Do("refused", func(string) Result { ran = true; return NewResult("refused") }); ran || res.Detail != ErrContainerUnclean.Error() {
+		t.Fatalf("an unclean container accepted a job: %+v", res)
+	}
+}
+
+// The worker shapes the tree, so the sweep bounds its depth and fails closed
+// past the bound instead of recursing without limit.
+func TestContainerSweepBoundsTreeDepth(t *testing.T) {
+	root, _ := fakeContainer(t)
+	c, err := NewContainer(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deep := filepath.Join(root, "tmp")
+	for range maxSweepDepth + 2 {
+		deep = filepath.Join(deep, "d")
+	}
+	if err := os.MkdirAll(deep, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	rep := c.Sweep()
+	if rep.Clean || rep.Failure != sweepLimit {
+		t.Fatalf("a tree past the depth bound did not fail the sweep: %+v", rep)
+	}
+}
+
+// SEC-001: the sweep must restore permissions on a directory the worker made
+// unreadable before it can open it. A process still running in the container
+// swaps that directory for a hard link to an outside file in between; the
+// outside file's mode must not change.
+func TestContainerSweepUnreadableDirectorySwappedForAHardLink(t *testing.T) {
+	for _, tc := range []struct{ name, rel string }{
+		{"added directory", "job/a"},
+		{"baseline directory", "Library/Caches"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, outside := fakeContainer(t)
+			c, err := NewContainer(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(root, "job", "a"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			target := filepath.Join(root, tc.rel)
+			if err := os.Chmod(target, 0); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chmod(outside, 0o640); err != nil {
+				t.Fatal(err)
+			}
+			swapped := false
+			c.beforeChange = func(rel string) {
+				if rel != tc.rel || swapped {
+					return
+				}
+				swapped = true
+				if err := os.Rename(target, target+"-moved"); err != nil {
+					t.Error(err)
+				}
+				if err := os.Link(outside, target); err != nil {
+					t.Error(err)
+				}
+			}
+			rep := c.Sweep()
+			if !swapped {
+				t.Fatal("the swap never ran")
+			}
+			if fi, err := os.Lstat(outside); err != nil || fi.Mode().Perm() != 0o640 {
+				t.Fatalf("the sweep changed the outside file's mode through a hard link: %v %v", fi.Mode(), err)
+			}
+			if rep.Clean {
+				t.Fatalf("a swapped entry left the container clean: %+v", rep)
+			}
+		})
+	}
+}
+
+// A FIFO the worker made and flagged immutable must not hang the sweep while
+// it holds the container lock.
+func TestContainerSweepDoesNotBlockOnAFIFO(t *testing.T) {
+	root, _ := fakeContainer(t)
+	c, err := NewContainer(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fifo := filepath.Join(root, "tmp", "pipe")
+	if err := unix.Mkfifo(fifo, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := unix.Chflags(fifo, unix.UF_IMMUTABLE); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan SweepReport, 1)
+	go func() { done <- c.Sweep() }()
+	select {
+	case rep := <-done:
+		if !rep.Clean || rep.FlagsCleared != 1 {
+			t.Fatalf("FIFO sweep: %+v", rep)
+		}
+	case <-time.After(10 * time.Second):
+		// Unblock the sweep so the test binary can finish.
+		if w, err := os.OpenFile(fifo, os.O_WRONLY, 0); err == nil {
+			w.Close()
+		}
+		t.Fatal("the sweep blocked opening a FIFO")
 	}
 }

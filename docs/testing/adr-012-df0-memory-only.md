@@ -125,7 +125,14 @@ exited, on every outcome, it sweeps the whole tree back to the baseline:
 - removes added entries and attributes, anywhere under `Data`, not only in the
   job folder;
 - restores modes and clears immutable flags;
-- never follows a symlink.
+- never follows a symlink. It walks directory handles opened without following
+  symlinks and changes or removes entries only through handles, so a process
+  still running in the container cannot redirect it outside `Data` (SEC-001).
+  Restoring a closed directory's permissions by name uses a trailing slash
+  and `AT_SYMLINK_NOFOLLOW_ANY`, so a hard link or symlink swapped in is
+  refused; entries open with `O_NONBLOCK`, so a FIFO cannot block the host.
+  A baseline entry is changed only after its inode matches the baseline on
+  root's current device.
 
 It then compares the result with the baseline. A container it cannot restore
 is marked unclean, and further jobs are refused. Reports hold counts and the
@@ -145,7 +152,23 @@ system error only; names could carry data.
   baseline, which refuses the next job; a host that died mid-job, which is
   swept from a saved baseline; jobs running one at a time; and failure text
   that names nothing.
-- **Seeds:** seven compiling faults were each caught. One first form that did
+- **SEC-001 hardening:** tests swap an added and a baseline directory for a
+  symlink to an outside directory between the sweep's look at the entry and
+  its next step; replace a baseline file with a hard link to an outside file
+  that has another mode and an extra attribute; swap an unreadable directory
+  for a hard link or a symlink; leave an immutable FIFO; leave a file the
+  worker made unreadable and immutable; and nest folders past the depth
+  bound (64). The outside entries stay untouched, the FIFO does not block,
+  and the last two fail closed. The earlier
+  path-based sweep deleted outside files through the swap, changed the
+  outside file's mode through the hard link, and had neither fail-closed
+  limit. The no-follow opens and the identity checks each stop the swap
+  alone; seeds that removed one showed the other catching it, and removing
+  both was caught. On the real container the native sweeps reported the same
+  counts as before.
+- **Seeds:** seven compiling faults were each caught against the earlier
+  path-based sweep; five were re-run against the handle-based sweep and
+  caught again (see the seed record). One first form that did
   not compile was replaced. The seeds skipped attribute removal, followed
   symlinks, swept only after a completed job, forced the clean verdict, put
   the path in the failure text, and skipped mode restoration or flag
@@ -158,6 +181,17 @@ system error only; names could carry data.
   asynchronously. If that write lands between a sweep's walk and its
   re-check, the container is marked unclean and refuses jobs until it is
   swept again. That is an availability limit; the comparison stays strict.
+  The sweep fails closed, and so marks the container unclean, on an entry it
+  cannot handle through a handle: a file the worker made unreadable and
+  immutable, a baseline file it made unreadable, or a tree deeper than 64
+  levels or larger than 131,072 entries (the entry cap is untested).
+  `AT_SYMLINK_NOFOLLOW_ANY` is verified only on macOS 27.2; a kernel that
+  ignored the flag instead of rejecting it would follow a swapped symlink,
+  so condition 4's macOS 13 run must include
+  `TestContainerSweepIgnoresASwappedDirectory`. Identity now includes the
+  inode, so a system service that rewrites a baseline file atomically, even
+  with the same content, marks the container unclean; the native runs did
+  not hit this.
 - **Constraint for the owner:** every worker signed with one bundle identifier
   shares one container, so jobs on it run one at a time. That conflicts with
   DF-064's concurrent 2/4/8-worker cohorts. The options are:
@@ -324,7 +358,7 @@ The full spike race suite and `go vet` passed with the same worker. The tests
 skip as root and skip the worker scenarios without `DF0_WORKER`; neither is
 qualification.
 
-Twenty-six compiling seeds were each caught by a named assertion; three
+Thirty-two compiling seeds were each caught by a named assertion; three
 first forms that did not compile were replaced and are recorded as not
 counted. The seed record states which source version each group ran against. One seed
 removed the file-size limit **and** disabled the launcher's readback check:

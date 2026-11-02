@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//go:build linux || darwin
+//go:build darwin
 
 package ipchost
 
@@ -27,9 +27,21 @@ import (
 // Data directory) in the state recorded by its baseline. Each job runs with
 // exclusive use of the directory in a fresh job folder. Afterwards Sweep
 // removes everything the job added (entries, extended attributes, permission
-// and flag changes) without following symlinks, then compares the result with
-// the baseline. A container that cannot be restored is marked unclean and
-// refuses further jobs.
+// and flag changes), then compares the result with the baseline. A container
+// that cannot be restored is marked unclean and refuses further jobs.
+//
+// The sweep never resolves a path below root. It walks directory handles
+// opened without following symlinks, and it changes or removes entries only
+// through those handles or through a handle on the entry itself. A process
+// still running in the container therefore cannot redirect the sweep outside
+// root by swapping an entry for a symlink, a hard link or a FIFO, or by
+// renaming directories. The one change made by name, restoring permissions on
+// a directory too closed to open, succeeds only on a directory: the name ends
+// in a slash and no symlink may be resolved. A baseline entry is changed only
+// after its inode matches the baseline on root's device, so a hard link to an
+// outside file is reported, not modified. An entry the sweep cannot handle
+// this way (for example a file the worker made unreadable and immutable)
+// fails the sweep.
 //
 // Every worker signed with the same bundle identifier shares one container,
 // so jobs on a container run one at a time. Sweep reports carry counts only:
@@ -39,29 +51,43 @@ type Container struct {
 	root    string
 	base    map[string]containerEntry
 	unclean bool
+	// beforeChange, set only by tests, runs after the sweep has looked at the
+	// entry at rel and before it opens, changes or removes it.
+	beforeChange func(rel string)
 }
 
+// containerEntry records one entry. Device numbers can change across a
+// reboot, so identity is the inode on root's current device.
 type containerEntry struct {
 	Mode   fs.FileMode       `json:"mode"`
+	Ino    uint64            `json:"ino"`
 	Link   string            `json:"link,omitempty"`
 	Data   string            `json:"data,omitempty"`
 	Xattrs map[string]string `json:"xattrs,omitempty"`
 }
 
-// SweepReport says what a sweep undid. It never names an entry.
-type SweepReport struct {
-	EntriesRemoved  int    `json:"entries_removed"`
-	XattrsRemoved   int    `json:"xattrs_removed"`
-	ModesRestored   int    `json:"modes_restored"`
-	FlagsCleared    int    `json:"flags_cleared"`
-	BaselineChanged int    `json:"baseline_entries_changed"`
-	Clean           bool   `json:"clean"`
-	Failure         string `json:"failure,omitempty"`
-}
+const (
+	// maxSweepDepth and maxSweepEntries bound the host's work for a tree the
+	// worker shapes. A tree beyond them fails the sweep.
+	maxSweepDepth   = 64
+	maxSweepEntries = 1 << 17
 
-// ErrContainerUnclean is the setup failure for a job refused because an
-// earlier sweep could not restore the container.
-var ErrContainerUnclean = errors.New("worker container is not clean")
+	dirOpen = unix.O_RDONLY | unix.O_DIRECTORY | unix.O_NOFOLLOW | unix.O_CLOEXEC
+	// entryOpen opens any entry for metadata changes. O_SYMLINK opens a
+	// symlink itself, so the last component is never followed either.
+	// O_NONBLOCK keeps a FIFO from blocking the open.
+	entryOpen = unix.O_EVTONLY | unix.O_SYMLINK | unix.O_NONBLOCK | unix.O_CLOEXEC
+	// atSymlinkNofollowAny is AT_SYMLINK_NOFOLLOW_ANY from <sys/fcntl.h>,
+	// which x/sys/unix does not define: no symlink anywhere in the path.
+	atSymlinkNofollowAny = 0x0800
+	userFlags            = unix.UF_IMMUTABLE | unix.UF_APPEND
+	sweepLimit           = "container tree exceeds the sweep limits"
+)
+
+var (
+	errSweepLimit = errors.New(sweepLimit)
+	errEntryMoved = errors.New("container entry changed during the sweep")
+)
 
 // NewContainer records the baseline of root, which must exist.
 func NewContainer(root string) (*Container, error) {
@@ -100,8 +126,13 @@ func LoadContainer(path string) (*Container, error) {
 		return nil, err
 	}
 	var s savedContainer
-	if err := json.Unmarshal(b, &s); err != nil || s.Root == "" || s.Entries == nil {
+	if err := json.Unmarshal(b, &s); err != nil || !filepath.IsAbs(s.Root) || s.Entries == nil {
 		return nil, errors.New("container baseline is invalid")
+	}
+	for _, e := range s.Entries {
+		if e.Ino == 0 {
+			return nil, errors.New("container baseline is invalid")
+		}
 	}
 	return &Container{root: s.Root, base: s.Entries}, nil
 }
@@ -144,180 +175,375 @@ func (c *Container) Sweep() SweepReport {
 	return c.sweepLocked()
 }
 
-func (c *Container) sweepLocked() SweepReport {
-	var rep SweepReport
-	fail := func(err error) {
-		if rep.Failure == "" {
-			rep.Failure = errnoText(err)
-		}
+// sweep is the state of one sweepLocked call.
+type sweep struct {
+	c       *Container
+	dev     int32 // root's device
+	rep     SweepReport
+	seen    map[string]bool
+	entries int
+}
+
+func (s *sweep) fail(err error) {
+	if s.rep.Failure == "" {
+		s.rep.Failure = errnoText(err)
 	}
-	seen := map[string]bool{}
-	c.restore(".", seen, &rep, fail)
+}
+
+// visit counts one entry and reports whether the walk may go on.
+func (s *sweep) visit(depth int) bool {
+	s.entries++
+	if depth > maxSweepDepth || s.entries > maxSweepEntries {
+		s.fail(errSweepLimit)
+		return false
+	}
+	return true
+}
+
+func (s *sweep) hook(rel string) {
+	if s.c.beforeChange != nil {
+		s.c.beforeChange(rel)
+	}
+}
+
+func (c *Container) sweepLocked() SweepReport {
+	s := &sweep{c: c, seen: map[string]bool{}}
+	if root, err := unix.Open(c.root, dirOpen, 0); err != nil {
+		s.fail(err)
+	} else {
+		if st, err := fstat(root); err != nil {
+			s.fail(err)
+		} else {
+			s.dev = st.Dev
+			s.restoreDir(root, ".", c.base["."], 0)
+		}
+		unix.Close(root)
+	}
 	for rel := range c.base {
-		if !seen[rel] {
-			rep.BaselineChanged++
+		if !s.seen[rel] {
+			s.rep.BaselineChanged++
 		}
 	}
 	after, err := snapshotTree(c.root)
 	if err != nil {
-		fail(err)
+		s.fail(err)
 	}
-	rep.Clean = rep.Failure == "" && rep.BaselineChanged == 0 && err == nil && sameTree(after, c.base)
-	c.unclean = !rep.Clean
-	return rep
+	s.rep.Clean = s.rep.Failure == "" && s.rep.BaselineChanged == 0 && err == nil && sameTree(after, c.base)
+	c.unclean = !s.rep.Clean
+	return s.rep
 }
 
-func (c *Container) restore(rel string, seen map[string]bool, rep *SweepReport, fail func(error)) {
-	path := filepath.Join(c.root, rel)
-	fi, err := os.Lstat(path)
+// restoreDir restores the baseline directory open as fd, then everything
+// in it. The caller closes fd.
+func (s *sweep) restoreDir(fd int, rel string, b containerEntry, depth int) {
+	st, err := fstat(fd)
 	if err != nil {
-		fail(err)
+		s.fail(err)
 		return
 	}
-	b, inBase := c.base[rel]
+	if !sameIdentity(st, b, s.dev) {
+		s.rep.BaselineChanged++
+		return
+	}
+	s.seen[rel] = true
+	s.restoreMeta(fd, st, b)
+	names, err := dirNames(fd)
+	if err != nil {
+		s.fail(err)
+		return
+	}
+	for _, name := range names {
+		s.entry(fd, name, filepath.Join(rel, name), depth+1)
+	}
+}
+
+// entry restores or removes the entry name in the directory open as dirfd.
+func (s *sweep) entry(dirfd int, name, rel string, depth int) {
+	if !s.visit(depth) {
+		return
+	}
+	st, err := lstatAt(dirfd, name)
+	if err != nil {
+		s.fail(err)
+		return
+	}
+	s.hook(rel)
+	b, inBase := s.c.base[rel]
 	if !inBase {
-		removeEntry(path, rep, fail)
+		s.remove(dirfd, name, rel, st, depth)
 		return
 	}
-	seen[rel] = true
-	if fi.Mode().Type() != b.Mode.Type() {
-		rep.BaselineChanged++
+	if fileMode(st).Type() != b.Mode.Type() || !sameIdentity(st, b, s.dev) {
+		s.rep.BaselineChanged++
 		return
 	}
-	if fi.Mode().Type() == fs.ModeSymlink {
-		if link, err := os.Readlink(path); err != nil || link != b.Link {
-			rep.BaselineChanged++
-		}
-	} else {
-		if cleared, err := clearUserFlags(path, fi); err != nil {
-			fail(err)
-		} else if cleared {
-			rep.FlagsCleared++
-		}
-		if fi.Mode().Perm() != b.Mode.Perm() {
-			// Lstat shows a non-symlink and no worker is running, so chmod
-			// cannot be redirected through a link.
-			if err := os.Chmod(path, b.Mode.Perm()); err != nil {
-				fail(err)
-			} else {
-				rep.ModesRestored++
+	if st.Mode&unix.S_IFMT == unix.S_IFDIR {
+		if st.Mode&0o500 != 0o500 {
+			mode := b.Mode.Perm() | 0o500
+			if err := chmodDirAt(dirfd, name, mode); err != nil {
+				s.fail(err)
+				return
+			}
+			if mode == b.Mode.Perm() {
+				s.rep.ModesRestored++
 			}
 		}
-		if fi.Mode().IsRegular() {
-			if sum, err := fileDigest(path); err != nil || sum != b.Data {
-				rep.BaselineChanged++
-			}
+		fd, err := unix.Openat(dirfd, name, dirOpen, 0)
+		if err != nil {
+			s.fail(err)
+			return
 		}
+		defer unix.Close(fd)
+		s.restoreDir(fd, rel, b, depth)
+		return
 	}
-	current, err := xattrDigests(path)
+	s.seen[rel] = true
+	fd, err := unix.Openat(dirfd, name, entryOpen, 0)
 	if err != nil {
-		fail(err)
+		s.fail(err)
+		return
+	}
+	defer unix.Close(fd)
+	cur, err := fstat(fd)
+	if err != nil {
+		s.fail(err)
+		return
+	}
+	if !sameIdentity(cur, b, s.dev) {
+		s.rep.BaselineChanged++
+		return
+	}
+	s.restoreMeta(fd, cur, b)
+	switch cur.Mode & unix.S_IFMT {
+	case unix.S_IFLNK:
+		if link, err := readlinkAt(dirfd, name); err != nil || link != b.Link {
+			s.rep.BaselineChanged++
+		}
+	case unix.S_IFREG:
+		if sum, err := digestAt(dirfd, name, b, s.dev); err != nil || sum != b.Data {
+			s.rep.BaselineChanged++
+		}
+	}
+}
+
+// restoreMeta clears user flags, restores the permission bits and removes
+// added extended attributes on the baseline entry open as fd, whose identity
+// the caller has checked.
+func (s *sweep) restoreMeta(fd int, st unix.Stat_t, b containerEntry) {
+	if st.Flags&userFlags != 0 {
+		if err := unix.Fchflags(fd, int(st.Flags&^userFlags)); err != nil {
+			s.fail(err)
+		} else {
+			s.rep.FlagsCleared++
+		}
+	}
+	if st.Mode&unix.S_IFMT != unix.S_IFLNK && fs.FileMode(st.Mode&0o777) != b.Mode.Perm() {
+		if err := unix.Fchmod(fd, uint32(b.Mode.Perm())); err != nil {
+			s.fail(err)
+		} else {
+			s.rep.ModesRestored++
+		}
+	}
+	current, err := xattrDigests(fd)
+	if err != nil {
+		s.fail(err)
 	}
 	for name, sum := range current {
 		want, ok := b.Xattrs[name]
 		switch {
 		case !ok:
-			if err := unix.Lremovexattr(path, name); err != nil {
-				fail(err)
+			if err := unix.Fremovexattr(fd, name); err != nil {
+				s.fail(err)
 			} else {
-				rep.XattrsRemoved++
+				s.rep.XattrsRemoved++
 			}
 		case want != sum:
-			rep.BaselineChanged++
+			s.rep.BaselineChanged++
 		}
-	}
-	if !fi.IsDir() {
-		return
-	}
-	children, err := os.ReadDir(path)
-	if err != nil {
-		fail(err)
-		return
-	}
-	for _, child := range children {
-		c.restore(filepath.Join(rel, child.Name()), seen, rep, fail)
 	}
 }
 
-// removeEntry deletes path and everything under it. Symlinks are removed,
-// never followed. Directories the worker made unreadable and files it made
-// immutable are opened up first, since the host owns them.
-func removeEntry(path string, rep *SweepReport, fail func(error)) {
-	fi, err := os.Lstat(path)
-	if err != nil {
-		fail(err)
+// remove deletes the entry name, which the worker added, and everything
+// under it. Directories the worker made unreadable are opened up and flags
+// cleared first; a regular file is never chmod-ed, since it may be a hard
+// link to a file outside root.
+func (s *sweep) remove(dirfd int, name, rel string, st unix.Stat_t, depth int) {
+	if st.Mode&unix.S_IFMT == unix.S_IFDIR {
+		s.removeDir(dirfd, name, rel, st, depth)
 		return
 	}
-	if fi.Mode().Type() != fs.ModeSymlink {
-		if cleared, err := clearUserFlags(path, fi); err != nil {
-			fail(err)
-		} else if cleared {
-			rep.FlagsCleared++
-		}
-	}
-	if fi.IsDir() {
-		if fi.Mode().Perm()&0o700 != 0o700 {
-			if err := os.Chmod(path, 0o700); err != nil {
-				fail(err)
-			}
-		}
-		children, err := os.ReadDir(path)
+	if st.Flags&userFlags != 0 {
+		fd, err := unix.Openat(dirfd, name, entryOpen, 0)
 		if err != nil {
-			fail(err)
+			s.fail(err)
+			return
 		}
-		for _, child := range children {
-			removeEntry(filepath.Join(path, child.Name()), rep, fail)
+		cur, err := fstat(fd)
+		if err == nil && (cur.Dev != st.Dev || cur.Ino != st.Ino) {
+			err = errEntryMoved
 		}
+		if err == nil {
+			err = unix.Fchflags(fd, int(cur.Flags&^userFlags))
+		}
+		unix.Close(fd)
+		if err != nil {
+			s.fail(err)
+			return
+		}
+		s.rep.FlagsCleared++
 	}
-	if err := os.Remove(path); err != nil {
-		fail(err)
+	if err := unix.Unlinkat(dirfd, name, 0); err != nil {
+		s.fail(err)
 		return
 	}
-	rep.EntriesRemoved++
+	s.rep.EntriesRemoved++
 }
 
+func (s *sweep) removeDir(dirfd int, name, rel string, st unix.Stat_t, depth int) {
+	if st.Mode&0o500 != 0o500 {
+		if err := chmodDirAt(dirfd, name, 0o700); err != nil {
+			s.fail(err)
+			return
+		}
+	}
+	fd, err := unix.Openat(dirfd, name, dirOpen, 0)
+	if err != nil {
+		s.fail(err)
+		return
+	}
+	cur, err := fstat(fd)
+	if err == nil && (cur.Dev != st.Dev || cur.Ino != st.Ino) {
+		err = errEntryMoved
+	}
+	if err == nil && cur.Flags&userFlags != 0 {
+		if err = unix.Fchflags(fd, int(cur.Flags&^userFlags)); err == nil {
+			s.rep.FlagsCleared++
+		}
+	}
+	if err == nil && cur.Mode&0o700 != 0o700 {
+		err = unix.Fchmod(fd, 0o700)
+	}
+	var names []string
+	if err == nil {
+		names, err = dirNames(fd)
+	}
+	if err != nil {
+		unix.Close(fd)
+		s.fail(err)
+		return
+	}
+	for _, child := range names {
+		if !s.visit(depth + 1) {
+			break
+		}
+		cst, err := lstatAt(fd, child)
+		if err != nil {
+			s.fail(err)
+			continue
+		}
+		crel := filepath.Join(rel, child)
+		s.hook(crel)
+		s.remove(fd, child, crel, cst, depth+1)
+	}
+	unix.Close(fd)
+	if err := unix.Unlinkat(dirfd, name, unix.AT_REMOVEDIR); err != nil {
+		s.fail(err)
+		return
+	}
+	s.rep.EntriesRemoved++
+}
+
+// snapshotTree records root's tree through directory handles, without
+// following symlinks.
 func snapshotTree(root string) (map[string]containerEntry, error) {
-	out := map[string]containerEntry{}
-	var walk func(rel string) error
-	walk = func(rel string) error {
-		path := filepath.Join(root, rel)
-		fi, err := os.Lstat(path)
-		if err != nil {
-			return err
-		}
-		e := containerEntry{Mode: fi.Mode().Type() | fi.Mode().Perm()}
-		switch {
-		case fi.Mode().Type() == fs.ModeSymlink:
-			if e.Link, err = os.Readlink(path); err != nil {
-				return err
-			}
-		case fi.Mode().IsRegular():
-			if e.Data, err = fileDigest(path); err != nil {
-				return err
-			}
-		}
-		if e.Xattrs, err = xattrDigests(path); err != nil {
-			return err
-		}
-		out[rel] = e
-		if !fi.IsDir() {
-			return nil
-		}
-		children, err := os.ReadDir(path)
-		if err != nil {
-			return err
-		}
-		for _, child := range children {
-			if err := walk(filepath.Join(rel, child.Name())); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	if err := walk("."); err != nil {
+	fd, err := unix.Open(root, dirOpen, 0)
+	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	defer unix.Close(fd)
+	st, err := fstat(fd)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]containerEntry{}
+	count := 0
+	return out, snapshotDir(fd, ".", st, st.Dev, out, 0, &count)
+}
+
+func snapshotDir(fd int, rel string, st unix.Stat_t, dev int32, out map[string]containerEntry, depth int, count *int) error {
+	e := entryFor(st)
+	var err error
+	if e.Xattrs, err = xattrDigests(fd); err != nil {
+		return err
+	}
+	out[rel] = e
+	names, err := dirNames(fd)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		*count++
+		if depth+1 > maxSweepDepth || *count > maxSweepEntries {
+			return errSweepLimit
+		}
+		if err := snapshotEntry(fd, name, filepath.Join(rel, name), dev, out, depth+1, count); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func snapshotEntry(dirfd int, name, rel string, dev int32, out map[string]containerEntry, depth int, count *int) error {
+	st, err := lstatAt(dirfd, name)
+	if err != nil {
+		return err
+	}
+	if st.Dev != dev {
+		return errEntryMoved
+	}
+	if st.Mode&unix.S_IFMT == unix.S_IFDIR {
+		fd, err := unix.Openat(dirfd, name, dirOpen, 0)
+		if err != nil {
+			return err
+		}
+		defer unix.Close(fd)
+		cur, err := fstat(fd)
+		if err != nil {
+			return err
+		}
+		if cur.Dev != st.Dev || cur.Ino != st.Ino {
+			return errEntryMoved
+		}
+		return snapshotDir(fd, rel, cur, dev, out, depth, count)
+	}
+	e := entryFor(st)
+	switch st.Mode & unix.S_IFMT {
+	case unix.S_IFLNK:
+		if e.Link, err = readlinkAt(dirfd, name); err != nil {
+			return err
+		}
+	case unix.S_IFREG:
+		if e.Data, err = digestAt(dirfd, name, e, dev); err != nil {
+			return err
+		}
+	}
+	fd, err := unix.Openat(dirfd, name, entryOpen, 0)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(fd)
+	cur, err := fstat(fd)
+	if err != nil {
+		return err
+	}
+	if !sameIdentity(cur, e, dev) {
+		return errEntryMoved
+	}
+	if e.Xattrs, err = xattrDigests(fd); err != nil {
+		return err
+	}
+	out[rel] = e
+	return nil
 }
 
 func sameTree(a, b map[string]containerEntry) bool {
@@ -326,7 +552,7 @@ func sameTree(a, b map[string]containerEntry) bool {
 	}
 	for rel, x := range a {
 		y, ok := b[rel]
-		if !ok || x.Mode != y.Mode || x.Link != y.Link || x.Data != y.Data || len(x.Xattrs) != len(y.Xattrs) {
+		if !ok || x.Mode != y.Mode || x.Ino != y.Ino || x.Link != y.Link || x.Data != y.Data || len(x.Xattrs) != len(y.Xattrs) {
 			return false
 		}
 		for name, sum := range x.Xattrs {
@@ -338,12 +564,90 @@ func sameTree(a, b map[string]containerEntry) bool {
 	return true
 }
 
-func fileDigest(path string) (string, error) {
-	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+func entryFor(st unix.Stat_t) containerEntry {
+	return containerEntry{Mode: fileMode(st), Ino: st.Ino}
+}
+
+// sameIdentity reports whether st is the recorded entry e on root's device.
+func sameIdentity(st unix.Stat_t, e containerEntry, dev int32) bool {
+	return st.Dev == dev && st.Ino == e.Ino
+}
+
+// chmodDirAt sets the permissions of the directory name. The trailing slash
+// makes anything but a directory fail (a hard link to a file is refused with
+// ENOTDIR), and atSymlinkNofollowAny refuses a symlink, which the slash would
+// otherwise resolve.
+func chmodDirAt(dirfd int, name string, mode fs.FileMode) error {
+	return unix.Fchmodat(dirfd, name+"/", uint32(mode), atSymlinkNofollowAny)
+}
+
+func fileMode(st unix.Stat_t) fs.FileMode {
+	m := fs.FileMode(st.Mode & 0o777)
+	switch st.Mode & unix.S_IFMT {
+	case unix.S_IFDIR:
+		m |= fs.ModeDir
+	case unix.S_IFLNK:
+		m |= fs.ModeSymlink
+	case unix.S_IFIFO:
+		m |= fs.ModeNamedPipe
+	case unix.S_IFSOCK:
+		m |= fs.ModeSocket
+	case unix.S_IFCHR:
+		m |= fs.ModeDevice | fs.ModeCharDevice
+	case unix.S_IFBLK:
+		m |= fs.ModeDevice
+	}
+	return m
+}
+
+func fstat(fd int) (unix.Stat_t, error) {
+	var st unix.Stat_t
+	err := unix.Fstat(fd, &st)
+	return st, err
+}
+
+func lstatAt(dirfd int, name string) (unix.Stat_t, error) {
+	var st unix.Stat_t
+	err := unix.Fstatat(dirfd, name, &st, unix.AT_SYMLINK_NOFOLLOW)
+	return st, err
+}
+
+// dirNames lists the directory open as fd without consuming fd.
+func dirNames(fd int) ([]string, error) {
+	dup, err := unix.Dup(fd)
+	if err != nil {
+		return nil, err
+	}
+	f := os.NewFile(uintptr(dup), "")
+	defer f.Close()
+	return f.Readdirnames(-1)
+}
+
+func readlinkAt(dirfd int, name string) (string, error) {
+	buf := make([]byte, unix.PathMax)
+	n, err := unix.Readlinkat(dirfd, name, buf)
 	if err != nil {
 		return "", err
 	}
+	return string(buf[:n]), nil
+}
+
+// digestAt hashes the regular file name, which must still be the entry e.
+// O_NONBLOCK keeps a FIFO swapped in from blocking the open.
+func digestAt(dirfd int, name string, e containerEntry, dev int32) (string, error) {
+	fd, err := unix.Openat(dirfd, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return "", err
+	}
+	f := os.NewFile(uintptr(fd), "")
 	defer f.Close()
+	st, err := fstat(fd)
+	if err != nil {
+		return "", err
+	}
+	if !sameIdentity(st, e, dev) {
+		return "", errEntryMoved
+	}
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err
@@ -351,26 +655,26 @@ func fileDigest(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// xattrDigests returns each extended attribute name with a digest of its
-// value, without following a symlink.
-func xattrDigests(path string) (map[string]string, error) {
-	size, err := unix.Llistxattr(path, nil)
+// xattrDigests returns each extended attribute name of the entry open as fd
+// with a digest of its value.
+func xattrDigests(fd int) (map[string]string, error) {
+	size, err := unix.Flistxattr(fd, nil)
 	if err != nil || size == 0 {
 		return nil, err
 	}
 	buf := make([]byte, size)
-	n, err := unix.Llistxattr(path, buf)
+	n, err := unix.Flistxattr(fd, buf)
 	if err != nil {
 		return nil, err
 	}
 	out := map[string]string{}
 	for _, name := range strings.Split(strings.TrimRight(string(buf[:n]), "\x00"), "\x00") {
-		vsize, err := unix.Lgetxattr(path, name, nil)
+		vsize, err := unix.Fgetxattr(fd, name, nil)
 		if err != nil {
 			return nil, err
 		}
 		value := make([]byte, vsize)
-		if _, err := unix.Lgetxattr(path, name, value); err != nil {
+		if _, err := unix.Fgetxattr(fd, name, value); err != nil {
 			return nil, err
 		}
 		sum := sha256.Sum256(value)
@@ -379,12 +683,16 @@ func xattrDigests(path string) (map[string]string, error) {
 	return out, nil
 }
 
-// errnoText reports only the system error, never the path it was about:
-// paths inside the container are names the worker chose.
+// errnoText reports only the system error or a constant sweep error, never
+// the path it was about: paths inside the container are names the worker
+// chose.
 func errnoText(err error) string {
 	var errno syscall.Errno
-	if errors.As(err, &errno) {
+	switch {
+	case errors.As(err, &errno):
 		return errno.Error()
+	case errors.Is(err, errSweepLimit), errors.Is(err, errEntryMoved):
+		return err.Error()
 	}
 	return "container sweep failed"
 }

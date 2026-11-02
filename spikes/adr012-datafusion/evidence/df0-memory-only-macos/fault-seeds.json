@@ -1,5 +1,5 @@
 {
-  "counted_total": 26,
+  "counted_total": 32,
   "groups": [
     {
       "group": "S1-S9, S1b (memory-only policy, observers, scans)",
@@ -70,7 +70,7 @@
     },
     {
       "group": "C1-C7 (container sweep)",
-      "ran_against": "commit 7544eca; container.go, its flag helpers and its unit test are unchanged since",
+      "ran_against": "C1-C7 first ran at commit 7544eca against the path-based sweep. C1, C4, C5, C6 and C7 were re-run against the handle-based sweep of the SEC-001 commit and caught again (C5 reformulated: the new sweep's system errors carry no path, so the seed writes the root path into the failure text). C2 is superseded by N3. C3 targets Container.Do, which SEC-001 left unchanged",
       "seeds": [
         {
           "seed": "C1 sweep skips attribute removal",
@@ -106,6 +106,33 @@
           "seed": "C4 clean verdict forced",
           "result": "CAUGHT by TestContainerRefusesJobsAfterAChangedBaseline, TestContainerRefusesJobsAfterAChangedBaseline/changed_attribute_value, TestContainerRefusesJobsAfterAChangedBaseline/changed_file_content, TestContainerRefusesJobsAfterAChangedBaseline/removed_baseline_directory, TestContainerRefusesJobsAfterAChangedBaseline/retargeted_symlink, TestContainerSweepFailureNamesNothing",
           "first_assertion": "a changed baseline entry was not reported: &{EntriesRemoved:1 XattrsRemoved:0 ModesRestored:0 FlagsCleared:0 BaselineChanged:1 Clean:true Failure:}"
+        }
+      ],
+      "rerun_sec001": [
+        {
+          "seed": "C1 sweep skips attribute removal",
+          "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "container_darwin_test.go:117: sweep did not restore the baseline: &{EntriesRemoved:9 XattrsRemoved:0 ModesRestored:1 FlagsCleared:1 BaselineChanged:2 Clean:false Failure:}"
+        },
+        {
+          "seed": "C4 clean verdict forced",
+          "result": "CAUGHT by TestContainerRefusesJobsAfterAChangedBaseline, TestContainerRefusesJobsAfterAChangedBaseline/changed_attribute_value, TestContainerRefusesJobsAfterAChangedBaseline/changed_file_content, TestContainerRefusesJobsAfterAChangedBaseline/removed_baseline_directory, TestContainerRefusesJobsAfterAChangedBaseline/retargeted_symlink, TestContainerSweepBoundsTreeDepth, TestContainerSweepFailsClosedOnAnUnreadableImmutableFile, TestContainerSweepFailureNamesNothing, TestContainerSweepIgnoresASwappedDirectory, TestContainerSweepIgnoresASwappedDirectory/added_directory, TestContainerSweepIgnoresASwappedDirectory/baseline_directory, TestContainerSweepIgnoresASwappedDirectory/unreadable_added_directory, TestContainerSweepIgnoresASwappedDirectory/unreadable_baseline_directory, TestContainerSweepLeavesAHardLinkedOutsideFile, TestContainerSweepUnreadableDirectorySwappedForAHardLink, TestContainerSweepUnreadableDirectorySwappedForAHardLink/added_directory, TestContainerSweepUnreadableDirectorySwappedForAHardLink/baseline_directory",
+          "first_assertion": "container_darwin_test.go:184: a changed baseline entry was not reported: &{EntriesRemoved:1 XattrsRemoved:0 ModesRestored:0 FlagsCleared:0 BaselineChanged:2 Clean:true Failure:}"
+        },
+        {
+          "seed": "C5 failure text carries the root path",
+          "result": "CAUGHT by TestContainerSweepFailureNamesNothing",
+          "first_assertion": "container_darwin_test.go:287: sweep failure text names a path: \"<tmp> no such file or directory\""
+        },
+        {
+          "seed": "C6 baseline modes not restored",
+          "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "container_darwin_test.go:117: sweep did not restore the baseline: &{EntriesRemoved:6 XattrsRemoved:1 ModesRestored:1 FlagsCleared:0 BaselineChanged:1 Clean:false Failure:permission denied}"
+        },
+        {
+          "seed": "C7 immutable flags not cleared",
+          "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepDoesNotBlockOnAFIFO, TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "container_darwin_test.go:117: sweep did not restore the baseline: &{EntriesRemoved:8 XattrsRemoved:2 ModesRestored:1 FlagsCleared:1 BaselineChanged:0 Clean:false Failure:operation not permitted}"
         }
       ]
     },
@@ -169,6 +196,79 @@
         }
       ],
       "limit": "No seed reaches the 'no crash report' assertion alone: every seed that lets the abort happen also changes the exit status or leaks the message first. The instrumented P1 run is the evidence that the abort path reports"
+    },
+    {
+      "group": "N1-N8 (handle-based container sweep, SEC-001)",
+      "ran_against": "the final SEC-001 sources (amended commit)",
+      "seeds": [
+        {
+          "seed": "N3 directory opens follow symlinks and both identity checks skipped",
+          "result": "CAUGHT by TestContainerSweepIgnoresASwappedDirectory, TestContainerSweepIgnoresASwappedDirectory/added_directory, TestContainerSweepIgnoresASwappedDirectory/baseline_dire",
+          "first_assertion": "container_darwin_test.go:356: the sweep deleted outside the container: open <tmp> no such file or directory"
+        },
+        {
+          "seed": "N4 baseline identity always matches",
+          "result": "CAUGHT by TestContainerSweepLeavesAHardLinkedOutsideFile",
+          "first_assertion": "container_darwin_test.go:395: the sweep changed the outside file's mode: -rw------- <nil>"
+        },
+        {
+          "seed": "N5 depth check removed",
+          "result": "CAUGHT by TestContainerSweepBoundsTreeDepth",
+          "first_assertion": "container_darwin_test.go:447: a tree past the depth bound did not fail the sweep: {EntriesRemoved:66 XattrsRemoved:0 ModesRestored:0 FlagsCleared:0 Ba"
+        },
+        {
+          "seed": "N6 directory chmod by name without the trailing slash",
+          "result": "CAUGHT by TestContainerSweepUnreadableDirectorySwappedForAHardLink, TestContainerSweepUnreadableDirectorySwappedForAHardLink/added_directory, TestContainerSweepUnreadable",
+          "first_assertion": "container_darwin_test.go:494: the sweep changed the outside file's mode through a hard link: -rwx------ <nil>"
+        },
+        {
+          "seed": "N7 directory chmod by name without AT_SYMLINK_NOFOLLOW_ANY",
+          "result": "CAUGHT by TestContainerSweepIgnoresASwappedDirectory, TestContainerSweepIgnoresASwappedDirectory/unreadable_added_directory, TestContainerSweepIgnoresASwappedDirectory/un",
+          "first_assertion": "container_darwin_test.go:356: the sweep changed a directory outside the container: <nil>"
+        },
+        {
+          "seed": "N8 entry open without O_NONBLOCK",
+          "result": "CAUGHT by TestContainerSweepDoesNotBlockOnAFIFO",
+          "first_assertion": "container_darwin_test.go:529: the sweep blocked opening a FIFO"
+        }
+      ],
+      "layer_isolation": [
+        {
+          "seed": "N1 directory opens follow symlinks, identity checks kept",
+          "result": "NOT CAUGHT, as designed (guard-layer isolation)",
+          "instrumented": "['added directory failure=\"container entry changed during the sweep\" changed=0', 'baseline directory failure=\"\" changed=2', 'unreadable added directory failure=\"too many levels of symbolic links\" changed=0', 'unreadable baseline directory failure=\"too many levels of symbolic links\" changed=1']"
+        },
+        {
+          "seed": "N2 removal identity check skipped, no-follow kept",
+          "result": "NOT CAUGHT, as designed (guard-layer isolation)",
+          "instrumented": "['added directory failure=\"not a directory\" changed=0', 'baseline directory failure=\"not a directory\" changed=1', 'unreadable added directory failure=\"too many levels of symbolic links\" changed=0', 'unreadable baseline directory failure=\"too many levels of symbolic links\" changed=1']"
+        },
+        {
+          "seed": "N2b both identity checks skipped, no-follow kept",
+          "result": "NOT CAUGHT, as designed (guard-layer isolation)",
+          "instrumented": "['added directory failure=\"not a directory\" changed=0', 'baseline directory failure=\"not a directory\" changed=1', 'unreadable added directory failure=\"too many levels of symbolic links\" changed=0', 'unreadable baseline directory failure=\"too many levels of symbolic links\" changed=1']"
+        }
+      ],
+      "against_the_old_code": [
+        {
+          "test": "TestContainerSweepIgnoresASwappedDirectory (added and baseline readable directories), hook placed right after the old sweep's Lstat",
+          "result": "FAILED on the path-based sweep of commit f148920: the sweep deleted outside the container"
+        },
+        {
+          "test": "TestContainerSweepLeavesAHardLinkedOutsideFile",
+          "result": "FAILED on the path-based sweep: the outside file's mode became 0600"
+        },
+        {
+          "test": "TestContainerSweepFailsClosedOnAnUnreadableImmutableFile and TestContainerSweepBoundsTreeDepth",
+          "result": "FAILED on the path-based sweep: it cleared the flag by path and had no depth bound"
+        },
+        {
+          "test": "TestContainerSweepUnreadableDirectorySwappedForAHardLink and TestContainerSweepDoesNotBlockOnAFIFO",
+          "result": "FAILED on the first handle-based version, which restored directory permissions by plain name and opened entries without O_NONBLOCK: the outside file became 0700 and the sweep blocked"
+        }
+      ],
+      "seed_design_fixes": "A first N5 form raised the depth constant, which the test also uses to build its tree, and hung; replaced by removing the depth check. A first N8 pattern did not match after gofmt realigned the constant; rerun with the exact text. Neither is counted",
+      "untested": "The 131,072-entry cap has no test or seed"
     }
   ],
   "not_counted_as_detection": [
@@ -187,5 +287,6 @@
       "result": "DID NOT COMPILE",
       "disposition": "Go rejected unused variables; replaced by a compiling form, which was caught"
     }
-  ]
+  ],
+  "counting_rule": "Each distinct fault counts once; re-runs of an earlier seed against changed sources re-verify it and are not added again"
 }
