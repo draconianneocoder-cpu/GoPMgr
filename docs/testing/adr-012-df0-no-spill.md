@@ -87,16 +87,19 @@ other processes or privileged services.
 
 The pressure fixture exposed an existing IPC defect: sliced Arrow string/binary
 views retained unselected multi-megabyte backing buffers. A small selected row
-could fail the frame cap. Before serialization, the worker now compacts visible
-top-level Utf8View/BinaryView values through Arrow's safe `gc` API. Types, schema
+could fail the frame cap. The initial correction compacted visible top-level
+Utf8View/BinaryView values through Arrow's safe `gc` API. Types, schema
 and selected values are unchanged. The regression first failed with a roughly
 5 MiB one-row frame; after correction it fits 64 KiB and contains no unselected
 payload. Visible view bytes are preflighted before copying; oversized batches
 are split first and frames are encoded lazily through the existing send path.
 This avoids expanding a whole shared-view batch or collecting all encoded
 frames before backpressure. The shared-buffer regression also observes the
-actual compaction call sizes. Nested view framing remains unqualified; this is
-not a claim of complete nested-schema transport coverage.
+actual compaction call sizes. A later [nested-frame correction](adr-012-df0-nested-frames.md)
+extends preparation to five common nested containers and replaces `gc` with
+null-aware rebuilding after a hidden-null payload regression. Other nested
+types and complete nested-schema transport remain unqualified. The earlier
+measurements below retain their original source/artifact scope.
 
 ## Reproduction
 

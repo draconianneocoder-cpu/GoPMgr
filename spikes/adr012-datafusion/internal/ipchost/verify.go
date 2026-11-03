@@ -5,7 +5,9 @@ package ipchost
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -26,18 +28,39 @@ var GenSchema = arrow.NewSchema([]arrow.Field{
 type GenVerifier struct {
 	Width int
 	Next  int64
+	// MaxDecodedBytes caps the memory the decoder may hold at once for one
+	// Check; 0 means DefaultMaxDecodedBytes. A compressed buffer states its
+	// own decoded size and the decoder allocates that much before it
+	// decompresses, so a small frame could otherwise claim gigabytes.
+	MaxDecodedBytes int64
 }
+
+// DefaultMaxDecodedBytes is 16 times the default frame limit. The worker
+// never compresses, so a real batch decodes to about its frame size.
+const DefaultMaxDecodedBytes = 16 * DefaultMaxFrame
+
+// ErrDecodeLimit reports a batch that would decode past MaxDecodedBytes.
+var ErrDecodeLimit = errors.New("arrow batch decodes past the verifier's memory limit")
 
 // Check decodes one Arrow IPC stream and verifies every row. It returns
 // the row count. A panic in the decoder is returned as an error: the bytes
 // came from another process.
 func (g *GenVerifier) Check(b []byte) (rows int, err error) {
+	limit := g.MaxDecodedBytes
+	if limit <= 0 {
+		limit = DefaultMaxDecodedBytes
+	}
 	defer func() {
 		if r := recover(); r != nil {
+			if e, ok := r.(error); ok && errors.Is(e, ErrDecodeLimit) {
+				err = e
+				return
+			}
 			err = fmt.Errorf("arrow decode panicked: %v", r)
 		}
 	}()
-	rd, err := ipc.NewReader(bytes.NewReader(b), ipc.WithAllocator(memory.DefaultAllocator))
+	mem := &cappedAllocator{limit: limit}
+	rd, err := ipc.NewReader(bytes.NewReader(b), ipc.WithAllocator(mem))
 	if err != nil {
 		return 0, fmt.Errorf("arrow stream: %w", err)
 	}
@@ -99,4 +122,38 @@ func (g *GenVerifier) checkBatch(rec arrow.RecordBatch) (int, error) {
 		g.Next++
 	}
 	return n, nil
+}
+
+// cappedAllocator refuses, by panicking with ErrDecodeLimit, any allocation
+// that would take the bytes it holds past limit. Check recovers the panic.
+// The decoder offers no error path from an allocator, and returning a short
+// buffer would corrupt memory instead of failing.
+type cappedAllocator struct {
+	live  atomic.Int64
+	limit int64
+}
+
+func (a *cappedAllocator) reserve(n int64) {
+	if n < 0 || a.live.Add(n) > a.limit {
+		panic(ErrDecodeLimit)
+	}
+}
+
+func (a *cappedAllocator) Allocate(size int) []byte {
+	a.reserve(int64(size))
+	return memory.DefaultAllocator.Allocate(size)
+}
+
+func (a *cappedAllocator) Reallocate(size int, b []byte) []byte {
+	if grow := int64(size) - int64(len(b)); grow > 0 {
+		a.reserve(grow)
+	} else {
+		a.live.Add(grow)
+	}
+	return memory.DefaultAllocator.Reallocate(size, b)
+}
+
+func (a *cappedAllocator) Free(b []byte) {
+	a.live.Add(-int64(len(b)))
+	memory.DefaultAllocator.Free(b)
 }

@@ -1,0 +1,713 @@
+{
+  "comment": "Reviewed SBOM metadata for tools/sbom. Licenses are as declared in each component's own license files, not legal conclusions. A producer is the copyright holder that the component's license file names; an empty producer means none is named, and the SBOM says the producer is unknown. Native and embedded entries apply only while their parent module is linked or their files are embedded; `go run ./tools/sbom check` fails on an entry nothing uses and on anything shipped that has no entry.",
+  "author": "James L. Burns and The GoPMgr Contributors",
+  "app": {
+    "name": "GoPMgr",
+    "producer": "James L. Burns and The GoPMgr Contributors",
+    "license": "GPL-3.0-or-later",
+    "purl_base": "pkg:github/draconianneocoder-cpu/gopmgr",
+    "repository": "https://github.com/draconianneocoder-cpu/GoPMgr"
+  },
+  "go_stdlib": {
+    "license": "BSD-3-Clause",
+    "producer": "The Go Authors"
+  },
+  "go_modules": {
+    "git.sr.ht/~jackmordaunt/go-toast/v2": {
+      "license": "MIT",
+      "producer": "Jack Mordaunt"
+    },
+    "github.com/bep/debounce": {
+      "license": "MIT",
+      "producer": "Bjørn Erik Pedersen"
+    },
+    "github.com/digitorus/pkcs7": {
+      "license": "MIT",
+      "producer": "Andrew Smith"
+    },
+    "github.com/digitorus/timestamp": {
+      "license": "BSD-2-Clause",
+      "producer": "Digitorus B.V."
+    },
+    "github.com/duckdb/duckdb-go-bindings": {
+      "license": "MIT",
+      "producer": "Stichting DuckDB Foundation"
+    },
+    "github.com/duckdb/duckdb-go-bindings/lib/darwin-arm64": {
+      "license": "MIT",
+      "producer": "Stichting DuckDB Foundation"
+    },
+    "github.com/duckdb/duckdb-go-bindings/lib/linux-amd64": {
+      "license": "MIT",
+      "producer": "Stichting DuckDB Foundation"
+    },
+    "github.com/duckdb/duckdb-go-bindings/lib/windows-amd64": {
+      "license": "MIT",
+      "producer": "Stichting DuckDB Foundation"
+    },
+    "github.com/duckdb/duckdb-go/v2": {
+      "license": "MIT",
+      "producer": "Marc Boeker"
+    },
+    "github.com/gabriel-vasile/mimetype": {
+      "license": "MIT",
+      "producer": "Gabriel Vasile"
+    },
+    "github.com/go-ole/go-ole": {
+      "license": "MIT",
+      "producer": "Yasuhiro Matsumoto"
+    },
+    "github.com/go-pdf/fpdf": {
+      "license": "MIT",
+      "producer": "The Go-PDF authors"
+    },
+    "github.com/go-viper/mapstructure/v2": {
+      "license": "MIT",
+      "producer": "Mitchell Hashimoto"
+    },
+    "github.com/godbus/dbus/v5": {
+      "license": "BSD-2-Clause",
+      "producer": "Georg Reinke"
+    },
+    "github.com/gomutex/godocx": {
+      "license": "MIT",
+      "producer": "gomutex"
+    },
+    "github.com/google/uuid": {
+      "license": "BSD-3-Clause",
+      "producer": "Google Inc."
+    },
+    "github.com/gorules/zen-go": {
+      "license": "MIT",
+      "producer": "GoRules.io"
+    },
+    "github.com/leaanthony/go-ansi-parser": {
+      "license": "MIT",
+      "producer": "Lea Anthony"
+    },
+    "github.com/leaanthony/slicer": {
+      "license": "MIT",
+      "producer": "Lea Anthony"
+    },
+    "github.com/leaanthony/u": {
+      "license": "MIT",
+      "producer": "Lea Anthony"
+    },
+    "github.com/mutecomm/go-sqlcipher/v4": {
+      "license": "MIT AND BSD-3-Clause AND blessing AND Unlicense",
+      "producer": "Yasuhiro Matsumoto",
+      "local_note": "Built from the repository copy in third_party/go-sqlcipher (published v4.4.2 plus GoPMgr corrections); see third_party/go-sqlcipher/GOPMGR.md"
+    },
+    "github.com/pkg/browser": {
+      "license": "BSD-2-Clause",
+      "producer": "Dave Cheney"
+    },
+    "github.com/pkg/errors": {
+      "license": "BSD-2-Clause",
+      "producer": "Dave Cheney"
+    },
+    "github.com/richardlehane/mscfb": {
+      "license": "Apache-2.0",
+      "producer": ""
+    },
+    "github.com/richardlehane/msoleps": {
+      "license": "Apache-2.0",
+      "producer": ""
+    },
+    "github.com/rickar/cal/v2": {
+      "license": "BSD-3-Clause",
+      "producer": "Rick Arnold"
+    },
+    "github.com/rivo/uniseg": {
+      "license": "MIT",
+      "producer": "Oliver Kuederle"
+    },
+    "github.com/samber/lo": {
+      "license": "MIT",
+      "producer": "Samuel Berthe"
+    },
+    "github.com/tidwall/gjson": {
+      "license": "MIT",
+      "producer": "Josh Baker"
+    },
+    "github.com/tidwall/match": {
+      "license": "MIT",
+      "producer": "Josh Baker"
+    },
+    "github.com/tidwall/pretty": {
+      "license": "MIT",
+      "producer": "Josh Baker"
+    },
+    "github.com/tiendc/go-deepcopy": {
+      "license": "MIT",
+      "producer": "tiendc"
+    },
+    "github.com/tkrajina/go-reflector": {
+      "license": "Apache-2.0",
+      "producer": ""
+    },
+    "github.com/wailsapp/go-webview2": {
+      "license": "MIT",
+      "producer": "John Chadwick"
+    },
+    "github.com/wailsapp/wails/v2": {
+      "license": "MIT",
+      "producer": "Lea Anthony"
+    },
+    "github.com/xuri/efp": {
+      "license": "BSD-3-Clause",
+      "producer": "Ri Xu"
+    },
+    "github.com/xuri/excelize/v2": {
+      "license": "BSD-3-Clause",
+      "producer": "The excelize Authors"
+    },
+    "github.com/xuri/nfp": {
+      "license": "BSD-3-Clause",
+      "producer": "Ri Xu"
+    },
+    "golang.org/x/crypto": {
+      "license": "BSD-3-Clause",
+      "producer": "The Go Authors"
+    },
+    "golang.org/x/mod": {
+      "license": "BSD-3-Clause",
+      "producer": "The Go Authors"
+    },
+    "golang.org/x/net": {
+      "license": "BSD-3-Clause",
+      "producer": "The Go Authors"
+    },
+    "golang.org/x/sys": {
+      "license": "BSD-3-Clause",
+      "producer": "The Go Authors"
+    },
+    "golang.org/x/text": {
+      "license": "BSD-3-Clause",
+      "producer": "The Go Authors"
+    },
+    "gonum.org/v1/gonum": {
+      "license": "BSD-3-Clause",
+      "producer": "The Gonum Authors"
+    }
+  },
+  "native": [
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings/lib/darwin-arm64",
+      "name": "DuckDB",
+      "version": "1.5.6",
+      "producer": "Stichting DuckDB Foundation",
+      "license": "MIT",
+      "purl": "pkg:github/duckdb/duckdb@v1.5.6",
+      "commit": "069cc9f9b5be802405797faecc284961b07c70ef",
+      "note": "Prebuilt static library inside the Go module; the code it bundles from other projects is listed in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings/lib/linux-amd64",
+      "name": "DuckDB",
+      "version": "1.5.6",
+      "producer": "Stichting DuckDB Foundation",
+      "license": "MIT",
+      "purl": "pkg:github/duckdb/duckdb@v1.5.6",
+      "commit": "069cc9f9b5be802405797faecc284961b07c70ef",
+      "note": "Prebuilt static library inside the Go module; the code it bundles from other projects is listed in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings/lib/windows-amd64",
+      "name": "DuckDB",
+      "version": "1.5.6",
+      "producer": "Stichting DuckDB Foundation",
+      "license": "MIT",
+      "purl": "pkg:github/duckdb/duckdb@v1.5.6",
+      "commit": "069cc9f9b5be802405797faecc284961b07c70ef",
+      "note": "Prebuilt static library inside the Go module; the code it bundles from other projects is listed in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/mutecomm/go-sqlcipher/v4",
+      "name": "SQLite",
+      "version": "3.33.0",
+      "producer": "",
+      "license": "blessing",
+      "cpe": "cpe:2.3:a:sqlite:sqlite:3.33.0:*:*:*:*:*:*:*",
+      "note": "Compiled from the amalgamation in third_party/go-sqlcipher, with a WAL-reset correction backported from SQLite fe57e14b49f9189b56da8233ab3415ce5ff6b1ff; the SQLite authors dedicate the code to the public domain and name no copyright holder"
+    },
+    {
+      "parent_module": "github.com/mutecomm/go-sqlcipher/v4",
+      "name": "SQLCipher",
+      "version": "4.4.2",
+      "producer": "Zetetic LLC",
+      "license": "BSD-3-Clause",
+      "cpe": "cpe:2.3:a:zetetic:sqlcipher:4.4.2:*:*:*:*:*:*:*",
+      "note": "Codec compiled from third_party/go-sqlcipher"
+    },
+    {
+      "parent_module": "github.com/wailsapp/wails/v2",
+      "parent_package": "github.com/wailsapp/wails/v2/internal/webview2runtime",
+      "module_file": "internal/webview2runtime/MicrosoftEdgeWebview2Setup.exe",
+      "in_installer": true,
+      "name": "Microsoft Edge WebView2 Runtime Evergreen Bootstrapper",
+      "version": "",
+      "producer": "Microsoft Corporation",
+      "license_note": "Microsoft distributes the bootstrapper under its own terms, which have no SPDX identifier; see https://developer.microsoft.com/microsoft-edge/webview2/",
+      "note": "Windows only. Embedded in the executable by Wails and also carried by the NSIS installer, which runs it when the WebView2 Runtime is missing; it downloads and installs the runtime"
+    },
+    {
+      "parent_module": "github.com/mutecomm/go-sqlcipher/v4",
+      "name": "LibTomCrypt",
+      "version": "",
+      "producer": "",
+      "license": "Unlicense",
+      "note": "Crypto provider compiled from third_party/go-sqlcipher; the copy carries no release version, and its notice names contributors, not a producer"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "ALP and ALP-RD compression",
+      "version": "",
+      "producer": "CWI, Azim Afroozeh, Leonardo Xavier Kuffo Rivero",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "Apache Arrow ADBC and nanoarrow",
+      "version": "",
+      "producer": "The Apache Software Foundation",
+      "license": "Apache-2.0",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "Apache Parquet",
+      "version": "",
+      "producer": "The Apache Software Foundation",
+      "license": "Apache-2.0",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "Apache Thrift",
+      "version": "",
+      "producer": "The Apache Software Foundation",
+      "license": "Apache-2.0",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "Brotli",
+      "version": "",
+      "producer": "The Brotli Authors",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "concurrentqueue",
+      "version": "",
+      "producer": "Cameron Desrochers",
+      "license": "BSD-2-Clause OR BSL-1.0",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "cpp-httplib",
+      "version": "",
+      "producer": "yhirose",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "fast_float",
+      "version": "",
+      "producer": "",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "FastPFor",
+      "version": "",
+      "producer": "Daniel Lemire",
+      "license": "Apache-2.0",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "FSST",
+      "version": "",
+      "producer": "CWI, TU Munich, FSU Jena",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "HyperLogLog",
+      "version": "",
+      "producer": "Art.sy, Inc.",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "ICU",
+      "version": "",
+      "producer": "Unicode, Inc.",
+      "license": "Unicode-DFS-2016 AND ICU AND BSD-3-Clause",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt. The ICU notice also reproduces the licenses of code ICU itself bundles"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "jaro_winkler",
+      "version": "",
+      "producer": "Max Bachmann",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "jemalloc",
+      "version": "",
+      "producer": "Jason Evans",
+      "license": "BSD-2-Clause",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "libpg_query",
+      "version": "",
+      "producer": "Lukas Fittl",
+      "license": "BSD-3-Clause",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "LZ4",
+      "version": "",
+      "producer": "Yann Collet",
+      "license": "BSD-2-Clause",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "Mbed TLS",
+      "version": "",
+      "producer": "",
+      "license": "Apache-2.0 OR GPL-2.0-or-later",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "MD5",
+      "version": "",
+      "producer": "Colin Plumb",
+      "license_note": "the code is in the public domain (its author claims no copyright), which has no SPDX identifier",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "Merge sort tree",
+      "version": "",
+      "producer": "salesforce.com, inc.",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "miniz",
+      "version": "",
+      "producer": "RAD Game Tools and Valve Software",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "PCG random number generation",
+      "version": "",
+      "producer": "Melissa O'Neill and PCG Project contributors",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "pdqsort",
+      "version": "",
+      "producer": "Orson Peters",
+      "license": "Zlib",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "RE2",
+      "version": "",
+      "producer": "The RE2 Authors",
+      "license": "BSD-3-Clause",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "robin-hood-hashing",
+      "version": "",
+      "producer": "Martin Ankerl",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "ska_sort",
+      "version": "",
+      "producer": "Malte Skarupke",
+      "license": "BSL-1.0",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "skiplist",
+      "version": "",
+      "producer": "Paul Ross",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "Snappy",
+      "version": "",
+      "producer": "Google Inc.",
+      "license": "BSD-3-Clause",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "t-digest",
+      "version": "",
+      "producer": "",
+      "license": "Apache-2.0",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "utf8proc",
+      "version": "",
+      "producer": "Steven G. Johnson, Jiahao Chen, Tony Kelman, Jonas Fonseca, and other contributors",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt. Its Unicode data files carry Unicode, Inc.'s 1991-2007 permission notice, which has no SPDX identifier matched here"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "vergesort",
+      "version": "",
+      "producer": "Morwenn",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "yyjson",
+      "version": "",
+      "producer": "YaoYuan",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "Zstandard",
+      "version": "",
+      "producer": "Facebook, Inc.",
+      "license": "BSD-3-Clause",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    },
+    {
+      "parent_module": "github.com/duckdb/duckdb-go-bindings",
+      "within": "DuckDB",
+      "name": "{fmt}",
+      "version": "",
+      "producer": "Victor Zverovich",
+      "license": "MIT",
+      "note": "Bundled in the DuckDB 1.5.6 static libraries; vendored in the DuckDB source, which does not record its upstream release. Its notice is in third_party/DUCKDB-NATIVE-NOTICES.txt"
+    }
+  ],
+  "embedded": [
+    {
+      "pattern": "internal/fonts/assets/IBMPlexSans-*.ttf",
+      "name": "IBM Plex Sans",
+      "version": "3.005",
+      "producer": "IBM Corp.",
+      "license": "OFL-1.1"
+    },
+    {
+      "pattern": "internal/fonts/assets/IBMPlexSerif-*.ttf",
+      "name": "IBM Plex Serif",
+      "version": "3.006",
+      "producer": "IBM Corp.",
+      "license": "OFL-1.1"
+    },
+    {
+      "pattern": "internal/fonts/assets/IBMPlexMono-*.ttf",
+      "name": "IBM Plex Mono",
+      "version": "2.005",
+      "producer": "IBM Corp.",
+      "license": "OFL-1.1"
+    },
+    {
+      "pattern": "internal/fonts/assets/IBMPlexSansCondensed-*.ttf",
+      "name": "IBM Plex Sans Condensed",
+      "version": "3.000",
+      "producer": "IBM Corp.",
+      "license": "OFL-1.1"
+    },
+    {
+      "pattern": "internal/fonts/assets/IBMPlexSansJP-*.ttf",
+      "name": "IBM Plex Sans JP",
+      "version": "1.004",
+      "producer": "IBM Corp.",
+      "license": "OFL-1.1"
+    },
+    {
+      "pattern": "internal/fonts/assets/IBMPlexSansKR-*.ttf",
+      "name": "IBM Plex Sans KR",
+      "version": "1.003",
+      "producer": "IBM Corp.",
+      "license": "OFL-1.1"
+    },
+    {
+      "pattern": "internal/fonts/assets/IBMPlexSansSC-*.ttf",
+      "name": "IBM Plex Sans SC",
+      "version": "1.000",
+      "producer": "IBM Corp.",
+      "license": "OFL-1.1"
+    },
+    {
+      "pattern": "internal/fonts/assets/SourceSans3-*.ttf",
+      "name": "Source Sans 3",
+      "version": "3.052",
+      "producer": "Adobe",
+      "license": "OFL-1.1"
+    },
+    {
+      "pattern": "internal/pdfmeta/assets/sRGB.icc",
+      "name": "Compact ICC Profiles sRGB profile",
+      "version": "",
+      "producer": "The Compact ICC Profiles contributors",
+      "license": "CC0-1.0"
+    },
+    {
+      "pattern": "frontend/public/fonts/ibm-plex/IBMPlexSansArabic-*.woff2",
+      "name": "IBM Plex Sans Arabic",
+      "version": "1.005",
+      "producer": "IBM Corp.",
+      "license": "OFL-1.1"
+    },
+    {
+      "pattern": "frontend/public/fonts/ibm-plex/IBMPlexSansHebrew-*.woff2",
+      "name": "IBM Plex Sans Hebrew",
+      "version": "1.3",
+      "producer": "IBM Corp.",
+      "license": "OFL-1.1"
+    },
+    {
+      "pattern": "frontend/public/fonts/ibm-plex/IBMPlexSansDevanagari-*.woff2",
+      "name": "IBM Plex Sans Devanagari",
+      "version": "1.2",
+      "producer": "IBM Corp.",
+      "license": "OFL-1.1"
+    },
+    {
+      "pattern": "frontend/public/fonts/ibm-plex/IBMPlexSansThai-*.woff2",
+      "name": "IBM Plex Sans Thai",
+      "version": "1.2",
+      "producer": "IBM Corp.",
+      "license": "OFL-1.1"
+    },
+    {
+      "pattern": "frontend/public/fonts/ibm-plex/IBMPlexSans-*.woff2",
+      "name": "IBM Plex Sans (web font)",
+      "version": "",
+      "producer": "IBM Corp.",
+      "license": "OFL-1.1"
+    },
+    {
+      "pattern": "frontend/public/fonts/ibm-plex/IBMPlexMono-*.woff2",
+      "name": "IBM Plex Mono (web font)",
+      "version": "",
+      "producer": "IBM Corp.",
+      "license": "OFL-1.1"
+    }
+  ],
+  "embedded_roots": [
+    "internal/fonts/assets",
+    "internal/pdfmeta/assets",
+    "frontend/public/fonts"
+  ],
+  "embedded_ignore": [
+    "*.md",
+    "*.txt"
+  ],
+  "first_party_embedded": [
+    "frontend/dist",
+    "internal/templates"
+  ],
+  "npm": {},
+  "platform": {
+    "darwin": [
+      {
+        "name": "WebKit (WKWebView)",
+        "producer": "Apple Inc.",
+        "purl": "pkg:generic/apple/webkit",
+        "note": "Provided by macOS; the version depends on the installed macOS"
+      }
+    ],
+    "linux": [
+      {
+        "name": "WebKitGTK 4.1 (libwebkit2gtk-4.1-0 / webkit2gtk4.1)",
+        "producer": "The WebKitGTK Project",
+        "purl": "pkg:generic/webkitgtk/webkit2gtk-4.1",
+        "note": "Installed by the distribution's package manager as a declared package dependency"
+      },
+      {
+        "name": "GTK 3 (libgtk-3-0 / gtk3)",
+        "producer": "The GTK Team",
+        "purl": "pkg:generic/gnome/gtk3",
+        "note": "Installed by the distribution's package manager as a declared package dependency"
+      }
+    ],
+    "windows": [
+      {
+        "name": "Microsoft Edge WebView2 Runtime",
+        "producer": "Microsoft Corporation",
+        "purl": "pkg:generic/microsoft/edge-webview2-runtime",
+        "note": "Provided by Windows or installed separately; the version depends on the machine"
+      }
+    ]
+  }
+}

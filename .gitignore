@@ -57,6 +57,9 @@
 /frontend/coverage/
 frontend/package.json.md5
 
+# Python bytecode from the isolated DF0 review tools
+/spikes/adr012-datafusion/tools/__pycache__/
+
 # Local validation scratch space
 /.tmp/
 

@@ -1,0 +1,374 @@
+{
+  "counted_total": 44,
+  "groups": [
+    {
+      "group": "S1-S9, S1b (memory-only policy, observers, scans)",
+      "ran_against": "commit 5b434f0 sources. The memory-only test later gained the condition 3 panic and trailing-crash scenarios without changing the assertions these seeds hit",
+      "seeds": [
+        {
+          "seed": "S1 launcher drops RLIMIT_FSIZE",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/cancel, TestMacOSMemoryOnlyWorker/crash, TestMacOSMemoryOnlyWorker/kill, TestMacOSMemoryOnlyWorker/memory_only_pressure, TestMacOSMemoryOnlyWorker/normal, TestMacOSMemoryOnlyWorker/recovery, TestMacOSMemoryOnlyWorker/spill_under_policy",
+          "first_assertion": "file-growth limit readback does not match the policy: {Mode:worker Stage:preexec RequestedAS:0 InstallErrno:0 ReadErrno:0 AS:9223372036854775807 ASHard:9223372036854775807 NProc:0 "
+        },
+        {
+          "seed": "S2 launcher leaves SIGXFSZ at default",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/cancel, TestMacOSMemoryOnlyWorker/crash, TestMacOSMemoryOnlyWorker/kill, TestMacOSMemoryOnlyWorker/memory_only_pressure, TestMacOSMemoryOnlyWorker/normal, TestMacOSMemoryOnlyWorker/recovery, TestMacOSMemoryOnlyWorker/spill_under_policy",
+          "first_assertion": "file-growth limit readback does not match the policy: {Mode:worker Stage:preexec RequestedAS:0 InstallErrno:0 ReadErrno:0 AS:9223372036854775807 ASHard:9223372036854775807 NProc:0 "
+        },
+        {
+          "seed": "S3 detector ignores Modified",
+          "result": "CAUGHT by TestMacOSFileGrowthLimitChannels, TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/spill_control",
+          "first_assertion": "positive control: App Sandbox should allow own-container content: {Name:app_sandbox_only Started:true FSize:9223372036854775807 XFSZIgnored:false Create:0 Write:0 Truncate:0 Xattr:"
+        },
+        {
+          "seed": "S4 dropped-event flags ignored",
+          "result": "CAUGHT by TestFSEventsDropFlagsFailTheObservation",
+          "first_assertion": "eventsDropped(0x1) = false, want true"
+        },
+        {
+          "seed": "S5 scan skips extended attributes",
+          "result": "CAUGHT by TestMacOSFileGrowthLimitChannels",
+          "first_assertion": "metadata channels behaved differently than recorded: {Name:app_sandbox_fsize_zero Started:true FSize:0 XFSZIgnored:true Create:0 Write:27 Truncate:27 Xattr:0 Rename:0 Mkdir:0 Stat:"
+        },
+        {
+          "seed": "S6 crash report never matched",
+          "result": "CAUGHT by TestMacOSFileGrowthLimitChannels, TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/crash",
+          "first_assertion": "expected App Sandbox to refuse an already-sandboxed process: {Name:sandbox_exec_then_app_sandbox Started:false FSize:0 XFSZIgnored:false Create:0 Write:0 Truncate:0 Xattr:0 Rename:"
+        },
+        {
+          "seed": "S7 crash hook does not signal",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/crash",
+          "first_assertion": "crash: {Name:crash Policy:app_sandbox_fsize_zero Outcome:timeout FailedCode: Detail:no completion within 30s SourceReads:16 Rows:0 WorkerExit:signal killed Killed:true EndpointGone"
+        },
+        {
+          "seed": "S8 content scan needle broken",
+          "result": "CAUGHT by TestMacOSFileGrowthLimitChannels",
+          "first_assertion": "positive control: App Sandbox should allow own-container content: {Name:app_sandbox_only Started:true FSize:9223372036854775807 XFSZIgnored:false Create:0 Write:0 Truncate:0 Xattr:"
+        },
+        {
+          "seed": "S9 growth launcher drops RLIMIT_FSIZE",
+          "result": "CAUGHT by TestMacOSFileGrowthLimitChannels",
+          "first_assertion": "zero file-size limit did not stop file content: {Name:app_sandbox_fsize_zero Started:true FSize:9223372036854775807 XFSZIgnored:true Create:0 Write:0 Truncate:0 Xattr:0 Rename:0 Mk"
+        },
+        {
+          "seed": "S1b launcher drops RLIMIT_FSIZE and the readback check is disabled",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/spill_under_policy",
+          "first_assertion": "file content was written under the policy: {Name:spill_under_policy Policy:app_sandbox_fsize_zero Outcome:completed FailedCode: Detail: SourceReads:17 Rows:4096 WorkerExit:exit 0 K"
+        }
+      ]
+    },
+    {
+      "group": "S10 (worker error mapping)",
+      "ran_against": "commit 21ba941, with a seeded worker rebuild; the mapping is unchanged since",
+      "seeds": [
+        {
+          "seed": "S10 worker maps EFBIG back to INPUT_INVALID (rebuilt worker)",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker/spill_under_policy and Rust os_write_refusals_are_resource_limits_with_constant_details",
+          "first_assertion": "spill under the policy should fail as a typed error, not kill the worker"
+        }
+      ]
+    },
+    {
+      "group": "C1-C7 (container sweep)",
+      "ran_against": "C1-C7 first ran at commit 7544eca against the path-based sweep. C1, C4, C5, C6 and C7 were re-run against the handle-based sweep of the SEC-001 commit and caught again (C5 reformulated: the new sweep's system errors carry no path, so the seed writes the root path into the failure text). C2 is superseded by N3. C3 targets Container.Do, which SEC-001 left unchanged",
+      "seeds": [
+        {
+          "seed": "C1 sweep skips attribute removal",
+          "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "sweep did not restore the baseline: &{EntriesRemoved:9 XattrsRemoved:2 ModesRestored:1 FlagsCleared:1 BaselineChanged:0 Clean:false Failure:}"
+        },
+        {
+          "seed": "C2 sweep follows symlinks",
+          "result": "CAUGHT by TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "sweep deleted through a symlinked directory: open <tmp>: no such fil"
+        },
+        {
+          "seed": "C3 sweep runs only after a completed job",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker, TestMacOSMemoryOnlyWorker/cancel, TestMacOSMemoryOnlyWorker/crash, TestMacOSMemoryOnlyWorker/kill, TestMacOSMemoryOnlyWorker/memory_only_pressure, TestMacOSMemoryOnlyWorker/spill_under_policy",
+          "first_assertion": "container sweep: <nil>"
+        },
+        {
+          "seed": "C5 failure text carries the path",
+          "result": "CAUGHT by TestContainerSweepFailureNamesNothing",
+          "first_assertion": "sweep failure text names a path: \"lstat <tmp>: no such file or di"
+        },
+        {
+          "seed": "C6 baseline modes not restored",
+          "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "sweep did not restore the baseline: &{EntriesRemoved:6 XattrsRemoved:1 ModesRestored:0 FlagsCleared:0 BaselineChanged:0 Clean:false Failure:permission denied}"
+        },
+        {
+          "seed": "C7 immutable flags not cleared",
+          "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "sweep did not restore the baseline: &{EntriesRemoved:8 XattrsRemoved:2 ModesRestored:1 FlagsCleared:0 BaselineChanged:0 Clean:false Failure:operation not permitted}"
+        },
+        {
+          "seed": "C4 clean verdict forced",
+          "result": "CAUGHT by TestContainerRefusesJobsAfterAChangedBaseline, TestContainerRefusesJobsAfterAChangedBaseline/changed_attribute_value, TestContainerRefusesJobsAfterAChangedBaseline/changed_file_content, TestContainerRefusesJobsAfterAChangedBaseline/removed_baseline_directory, TestContainerRefusesJobsAfterAChangedBaseline/retargeted_symlink, TestContainerSweepFailureNamesNothing",
+          "first_assertion": "a changed baseline entry was not reported: &{EntriesRemoved:1 XattrsRemoved:0 ModesRestored:0 FlagsCleared:0 BaselineChanged:1 Clean:true Failure:}"
+        }
+      ],
+      "rerun_sec001": [
+        {
+          "seed": "C1 sweep skips attribute removal",
+          "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "container_darwin_test.go:117: sweep did not restore the baseline: &{EntriesRemoved:9 XattrsRemoved:0 ModesRestored:1 FlagsCleared:1 BaselineChanged:2 Clean:false Failure:}"
+        },
+        {
+          "seed": "C4 clean verdict forced",
+          "result": "CAUGHT by TestContainerRefusesJobsAfterAChangedBaseline, TestContainerRefusesJobsAfterAChangedBaseline/changed_attribute_value, TestContainerRefusesJobsAfterAChangedBaseline/changed_file_content, TestContainerRefusesJobsAfterAChangedBaseline/removed_baseline_directory, TestContainerRefusesJobsAfterAChangedBaseline/retargeted_symlink, TestContainerSweepBoundsTreeDepth, TestContainerSweepFailsClosedOnAnUnreadableImmutableFile, TestContainerSweepFailureNamesNothing, TestContainerSweepIgnoresASwappedDirectory, TestContainerSweepIgnoresASwappedDirectory/added_directory, TestContainerSweepIgnoresASwappedDirectory/baseline_directory, TestContainerSweepIgnoresASwappedDirectory/unreadable_added_directory, TestContainerSweepIgnoresASwappedDirectory/unreadable_baseline_directory, TestContainerSweepLeavesAHardLinkedOutsideFile, TestContainerSweepUnreadableDirectorySwappedForAHardLink, TestContainerSweepUnreadableDirectorySwappedForAHardLink/added_directory, TestContainerSweepUnreadableDirectorySwappedForAHardLink/baseline_directory",
+          "first_assertion": "container_darwin_test.go:184: a changed baseline entry was not reported: &{EntriesRemoved:1 XattrsRemoved:0 ModesRestored:0 FlagsCleared:0 BaselineChanged:2 Clean:true Failure:}"
+        },
+        {
+          "seed": "C5 failure text carries the root path",
+          "result": "CAUGHT by TestContainerSweepFailureNamesNothing",
+          "first_assertion": "container_darwin_test.go:287: sweep failure text names a path: \"<tmp> no such file or directory\""
+        },
+        {
+          "seed": "C6 baseline modes not restored",
+          "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "container_darwin_test.go:117: sweep did not restore the baseline: &{EntriesRemoved:6 XattrsRemoved:1 ModesRestored:1 FlagsCleared:0 BaselineChanged:1 Clean:false Failure:permission denied}"
+        },
+        {
+          "seed": "C7 immutable flags not cleared",
+          "result": "CAUGHT by TestContainerSweepAfterHostDeath, TestContainerSweepDoesNotBlockOnAFIFO, TestContainerSweepRestoresTheBaseline",
+          "first_assertion": "container_darwin_test.go:117: sweep did not restore the baseline: &{EntriesRemoved:8 XattrsRemoved:2 ModesRestored:1 FlagsCleared:1 BaselineChanged:0 Clean:false Failure:operation not permitted}"
+        }
+      ]
+    },
+    {
+      "group": "V1-V3 (volume-wide watch)",
+      "ran_against": "the drop-aware probe and volume test (path-free drop notice, barrier retry after a reported drop, per-event prefix check), with every CPU core busy; first run against commit 8ab0f18",
+      "seeds": [
+        {
+          "seed": "V1 probe ignores dropped-event flags",
+          "result": "CAUGHT by TestMacOSVolumeWideFSEvents (both runs)",
+          "first_assertion": "a stalled consumer produced no dropped-event report; drop detection is unproven (run 2: FSEvents barrier was not observed (attempts 1, drop reported false))"
+        },
+        {
+          "seed": "V2 prefix filter passes every path",
+          "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
+          "first_assertion": "FSEvents observer reported a path outside its prefixes"
+        },
+        {
+          "seed": "V3 counter records full paths",
+          "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
+          "first_assertion": "the load was not fully observed, and no drop was reported: map[<tmp>/f00000:1 <tmp>/f00001:1 ..."
+        }
+      ]
+    },
+    {
+      "group": "K1-K2 (crash reports)",
+      "ran_against": "commit 5b434f0 sources; TestMacOSCrashReportOptions and the observer probe are unchanged since",
+      "seeds": [
+        {
+          "seed": "K1 fatal-signal handler not installed",
+          "result": "CAUGHT by TestMacOSCrashReportOptions",
+          "first_assertion": "crash-handled: a handler that exits first should avoid the report: {Mode:crash-handled ExitStatus:0 Signal:trace/BPT trap ReportWritten:true PatternFound:true ReportBytes:7626}"
+        },
+        {
+          "seed": "K2 register pattern searched wrongly",
+          "result": "CAUGHT by TestMacOSCrashReportOptions",
+          "first_assertion": "register values no longer appear in the crash report: {Mode:crash-registers ExitStatus:0 Signal:trace/BPT trap ReportWritten:true PatternFound:false ReportBytes:7645}"
+        }
+      ]
+    },
+    {
+      "group": "P1-P3 (worker panic hook, owner condition 3)",
+      "ran_against": "this record's sources, with a seeded release worker rebuilt for each seed; the restored source was rebuilt for the passing run",
+      "seeds": [
+        {
+          "seed": "P1 panic hook not installed",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker/panic and TestMacOSMemoryOnlyWorker/panic_abort",
+          "first_assertion": "diagnostics or endpoint cleanup: the default hook printed the panic message, which holds the sentinel row",
+          "observed": "panic: Failed INTERNAL, exit 0. panic_abort: signal abort trap, and an instrumented run observed a crash report (17959 bytes) for the worker PID. Without the hook the abort path does produce a report"
+        },
+        {
+          "seed": "P2 hook prints the panic message",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker/panic and TestMacOSMemoryOnlyWorker/panic_abort",
+          "first_assertion": "diagnostics or endpoint cleanup: sentinel in worker diagnostics (exit 70)"
+        },
+        {
+          "seed": "P3 hook returns without exiting",
+          "result": "CAUGHT by TestMacOSMemoryOnlyWorker/panic and TestMacOSMemoryOnlyWorker/panic_abort",
+          "first_assertion": "panic: Failed INTERNAL with the runtime's panic text (sentinel in diagnostics); panic_abort: the second panic waits in the hook, so the job timed out and was killed",
+          "observed": "no crash report in the instrumented panic_abort run"
+        }
+      ],
+      "limit": "No seed reaches the 'no crash report' assertion alone: every seed that lets the abort happen also changes the exit status or leaks the message first. The instrumented P1 run is the evidence that the abort path reports"
+    },
+    {
+      "group": "N1-N8 (handle-based container sweep, SEC-001)",
+      "ran_against": "the final SEC-001 sources (amended commit)",
+      "seeds": [
+        {
+          "seed": "N3 directory opens follow symlinks and both identity checks skipped",
+          "result": "CAUGHT by TestContainerSweepIgnoresASwappedDirectory, TestContainerSweepIgnoresASwappedDirectory/added_directory, TestContainerSweepIgnoresASwappedDirectory/baseline_dire",
+          "first_assertion": "container_darwin_test.go:356: the sweep deleted outside the container: open <tmp> no such file or directory"
+        },
+        {
+          "seed": "N4 baseline identity always matches",
+          "result": "CAUGHT by TestContainerSweepLeavesAHardLinkedOutsideFile",
+          "first_assertion": "container_darwin_test.go:395: the sweep changed the outside file's mode: -rw------- <nil>"
+        },
+        {
+          "seed": "N5 depth check removed",
+          "result": "CAUGHT by TestContainerSweepBoundsTreeDepth",
+          "first_assertion": "container_darwin_test.go:447: a tree past the depth bound did not fail the sweep: {EntriesRemoved:66 XattrsRemoved:0 ModesRestored:0 FlagsCleared:0 Ba"
+        },
+        {
+          "seed": "N6 directory chmod by name without the trailing slash",
+          "result": "CAUGHT by TestContainerSweepUnreadableDirectorySwappedForAHardLink, TestContainerSweepUnreadableDirectorySwappedForAHardLink/added_directory, TestContainerSweepUnreadable",
+          "first_assertion": "container_darwin_test.go:494: the sweep changed the outside file's mode through a hard link: -rwx------ <nil>"
+        },
+        {
+          "seed": "N7 directory chmod by name without AT_SYMLINK_NOFOLLOW_ANY",
+          "result": "CAUGHT by TestContainerSweepIgnoresASwappedDirectory, TestContainerSweepIgnoresASwappedDirectory/unreadable_added_directory, TestContainerSweepIgnoresASwappedDirectory/un",
+          "first_assertion": "container_darwin_test.go:356: the sweep changed a directory outside the container: <nil>"
+        },
+        {
+          "seed": "N8 entry open without O_NONBLOCK",
+          "result": "CAUGHT by TestContainerSweepDoesNotBlockOnAFIFO",
+          "first_assertion": "container_darwin_test.go:529: the sweep blocked opening a FIFO"
+        }
+      ],
+      "layer_isolation": [
+        {
+          "seed": "N1 directory opens follow symlinks, identity checks kept",
+          "result": "NOT CAUGHT, as designed (guard-layer isolation)",
+          "instrumented": "['added directory failure=\"container entry changed during the sweep\" changed=0', 'baseline directory failure=\"\" changed=2', 'unreadable added directory failure=\"too many levels of symbolic links\" changed=0', 'unreadable baseline directory failure=\"too many levels of symbolic links\" changed=1']"
+        },
+        {
+          "seed": "N2 removal identity check skipped, no-follow kept",
+          "result": "NOT CAUGHT, as designed (guard-layer isolation)",
+          "instrumented": "['added directory failure=\"not a directory\" changed=0', 'baseline directory failure=\"not a directory\" changed=1', 'unreadable added directory failure=\"too many levels of symbolic links\" changed=0', 'unreadable baseline directory failure=\"too many levels of symbolic links\" changed=1']"
+        },
+        {
+          "seed": "N2b both identity checks skipped, no-follow kept",
+          "result": "NOT CAUGHT, as designed (guard-layer isolation)",
+          "instrumented": "['added directory failure=\"not a directory\" changed=0', 'baseline directory failure=\"not a directory\" changed=1', 'unreadable added directory failure=\"too many levels of symbolic links\" changed=0', 'unreadable baseline directory failure=\"too many levels of symbolic links\" changed=1']"
+        }
+      ],
+      "against_the_old_code": [
+        {
+          "test": "TestContainerSweepIgnoresASwappedDirectory (added and baseline readable directories), hook placed right after the old sweep's Lstat",
+          "result": "FAILED on the path-based sweep of commit f148920: the sweep deleted outside the container"
+        },
+        {
+          "test": "TestContainerSweepLeavesAHardLinkedOutsideFile",
+          "result": "FAILED on the path-based sweep: the outside file's mode became 0600"
+        },
+        {
+          "test": "TestContainerSweepFailsClosedOnAnUnreadableImmutableFile and TestContainerSweepBoundsTreeDepth",
+          "result": "FAILED on the path-based sweep: it cleared the flag by path and had no depth bound"
+        },
+        {
+          "test": "TestContainerSweepUnreadableDirectorySwappedForAHardLink and TestContainerSweepDoesNotBlockOnAFIFO",
+          "result": "FAILED on the first handle-based version, which restored directory permissions by plain name and opened entries without O_NONBLOCK: the outside file became 0700 and the sweep blocked"
+        }
+      ],
+      "seed_design_fixes": "A first N5 form raised the depth constant, which the test also uses to build its tree, and hung; replaced by removing the depth check. A first N8 pattern did not match after gofmt realigned the constant; rerun with the exact text. Neither is counted",
+      "untested": "The 131,072-entry cap has no test or seed"
+    },
+    {
+      "group": "G1-G3 (observer record of drop notices and prefixes)",
+      "ran_against": "the same drop-aware sources",
+      "seeds": [
+        {
+          "seed": "G1 record ignores the path-free drop notice",
+          "result": "CAUGHT by TestFSEventsObserverRecordsDropNotices",
+          "first_assertion": "failed = true (\"FSEvents observer reported a path outside its prefixes\"), want false"
+        },
+        {
+          "seed": "G2 every path counts as reportable",
+          "result": "CAUGHT by TestFSEventsObserverRecordsDropNotices (2 cases)",
+          "first_assertion": "failed = false (\"\"), want true"
+        },
+        {
+          "seed": "G3 prefix match without the separator",
+          "result": "CAUGHT by TestFSEventsObserverRecordsDropNotices (sibling case)",
+          "first_assertion": "failed = false (\"\"), want true"
+        }
+      ]
+    },
+    {
+      "group": "L1-L9 (cross-process container slot lock, owner condition 2)",
+      "ran_against": "the slot-lock sources of this commit",
+      "seeds": [
+        {
+          "seed": "L1 flock skipped",
+          "result": "CAUGHT by TestContainerSlotRefusesAnotherProcessThenRecoversAfterItsDeath, TestContainerSlotIsHeldThroughTheHoldersSweep",
+          "first_assertion": "container_lock_darwin_test.go: a job on a held slot: ran=true"
+        },
+        {
+          "seed": "L2 shared lock (LOCK_SH)",
+          "result": "CAUGHT by the same two tests",
+          "first_assertion": "container_lock_darwin_test.go: a job on a held slot: ran=true"
+        },
+        {
+          "seed": "L3 lock released before the sweep",
+          "result": "CAUGHT by TestContainerSlotIsHeldThroughTheHoldersSweep",
+          "first_assertion": "container_lock_darwin_test.go: a job on a held slot: ran=true"
+        },
+        {
+          "seed": "L4 fcntl write lock (O_RDWR, F_WRLCK) instead of flock",
+          "result": "CAUGHT by TestContainerSlotExcludesASecondContainerInTheSameProcess only; both cross-process tests passed",
+          "first_assertion": "container_lock_darwin_test.go: a job on a held slot: ran=true"
+        },
+        {
+          "seed": "L5 no sweep before the job",
+          "result": "CAUGHT by TestContainerSlotRefusesAnotherProcessThenRecoversAfterItsDeath",
+          "first_assertion": "container_lock_darwin_test.go: the dead holder's job folder was still there when the next job ran"
+        },
+        {
+          "seed": "L6 a busy sweep marks the container unclean",
+          "result": "CAUGHT by the two cross-process tests",
+          "first_assertion": "container_lock_darwin_test.go: a held slot marked the container unclean"
+        },
+        {
+          "seed": "L7 lock opened without O_NOFOLLOW",
+          "result": "CAUGHT by TestContainerSlotLockMustBeAPrivateRegularFile/lock_file_is_a_symlink",
+          "first_assertion": "container_lock_darwin_test.go: job with a symlink lock: ran=true"
+        },
+        {
+          "seed": "L8 lock opened without O_CLOEXEC",
+          "result": "CAUGHT by TestContainerSlotLockIsNotInheritedByTheJobsChildren",
+          "first_assertion": "container_lock_darwin_test.go: a child the job started kept the slot locked"
+        },
+        {
+          "seed": "L9 regular-file and owner check after open removed",
+          "result": "CAUGHT by TestContainerSlotLockMustBeAPrivateRegularFile/lock_file_is_a_directory; the FIFO case still passed, because flock itself refuses a FIFO",
+          "first_assertion": "container_lock_darwin_test.go: job with a directory lock: ran=true"
+        }
+      ]
+    }
+  ],
+  "not_counted_as_detection": [
+    {
+      "seed": "S6 crash report never matched (first form)",
+      "result": "DID NOT COMPILE",
+      "disposition": "Go rejected an unused variable; replaced by a compiling form, which was caught"
+    },
+    {
+      "seed": "S9 growth launcher drops RLIMIT_FSIZE (first form)",
+      "result": "DID NOT COMPILE",
+      "disposition": "clang -Werror rejected an unused variable; replaced by a compiling form, which was caught"
+    },
+    {
+      "seed": "C4 clean verdict forced (first form)",
+      "result": "DID NOT COMPILE",
+      "disposition": "Go rejected unused variables; replaced by a compiling form, which was caught"
+    },
+    {
+      "seed": "V1 probe ignores dropped-event flags (first form, rerun)",
+      "result": "DID NOT COMPILE",
+      "disposition": "a one-line sed edit split the two-line DROP_FLAGS macro; replaced by an exact replacement, which was caught"
+    },
+    {
+      "seed": "L4 fcntl lock (first form, shared F_RDLCK)",
+      "result": "CAUGHT, not counted",
+      "disposition": "a shared read lock duplicated L2 rather than testing fcntl's per-process semantics; replaced by the F_WRLCK form"
+    }
+  ],
+  "counting_rule": "Each distinct fault counts once; re-runs of an earlier seed against changed sources re-verify it and are not added again"
+}

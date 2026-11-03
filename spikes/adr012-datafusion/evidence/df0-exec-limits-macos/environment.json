@@ -1,0 +1,129 @@
+{
+  "recorded_utc": "2026-11-01T16:58:24.173715+00:00",
+  "source_baseline_commit": "590e8b5852e57ce9c6fc34cc363585385ee34dcc",
+  "main_snapshot_commit": "0468ad98b01ab7a1e3be17513f2c7b97dc4d0d1d",
+  "scope": "Isolated unprivileged macOS capability and native-worker feasibility; not RSS/CPU-rate/aggregate or release qualification",
+  "platform": {
+    "os": "macOS",
+    "version": "27.2",
+    "build": "26B123",
+    "kernel_release": "27.2.0",
+    "architecture": "arm64",
+    "model": "Mac16,10",
+    "memory_bytes": 34359738368,
+    "page_bytes": 16384,
+    "sdk_version": "27.2",
+    "unprivileged": true
+  },
+  "go": "go version go1.27.3 darwin/arm64",
+  "clang": "Apple clang version 21.0.0 (clang-2100.4.1.1)",
+  "source_sha256": {
+    "spikes/adr012-datafusion/tools/macos_exec_limits_probe.c": "b125b19eae043fbdf84e7da455b94427c67d8ad60ad181a7a054535e04817443",
+    "spikes/adr012-datafusion/internal/ipchost/exec_limits_darwin_test.go": "f47088a89d6765a33346aafc1f02e0a93340a0ed105854ade9b116631aa8198d",
+    "spikes/adr012-datafusion/internal/ipchost/run.go": "0054e7205a454c2e84b18b8d85e437d99f3e5407f11227ee6956c820cbddd07a",
+    "spikes/adr012-datafusion/internal/ipchost/verify.go": "06fa986dd19d7a1b7e8581ddc3b4474e50a8092eab4a8b7154d9d895f6bdf11f",
+    "spikes/adr012-datafusion/internal/ipchost/launch_darwin.go": "3f096b579bc76a3014e592713ab032f04b32a3ef3396c52df54c9602b4f7f3fc"
+  },
+  "evidence_sha256": {
+    "absolute-exec.json": "e477fd0aad82ce0d15bbb9b7ba667da1493c59128ec05edd43d85f14e1914468",
+    "child-creation.json": "313daa476b696e557de7548c38ec389e0bfa94aa9b8e7b2a0a71819049923f86",
+    "native-worker.json": "9bf15ffd5ecb5d6abe04d75b7b66fbf95c7c9e66bc77cb1923ae48b84d0adaa7"
+  },
+  "worker": {
+    "sha256": "337b43a96713b9111266dfd624d8a7c715e9445ce9e64c45cc8b46b2f5a10204",
+    "rebuilt": false,
+    "rust_source_or_dependencies_changed": false
+  },
+  "upstream_context": {
+    "repository": "apple-oss-distributions/xnu",
+    "revision": "f6217f891ac0bb64f3d375211650a4c1ff8ca1ea",
+    "installed_kernel_provenance": false,
+    "source_sha256": {
+      "bsd/kern/kern_exec.c": "89531d33618b8361064236189212c3c96be1b32e098690b17802b6b15d932d1a",
+      "bsd/kern/kern_fork.c": "73b578159deebc71434185d3638ab1468f995a19c882e1902d001994bb0391c3",
+      "bsd/kern/kern_resource.c": "ffd547faab964b7860476a3b1e1c82525389666450b08eda19f9f5229eddd054"
+    }
+  },
+  "commands": {
+    "recorded_native": "DF0_WORKER=<reviewed-worker> DF0_EXEC_LIMIT_EVIDENCE=<existing-directory> go test -race -count=1 -v ./internal/... ./cmd/...",
+    "targeted": "DF0_WORKER=<reviewed-worker> go test -count=1 -v ./internal/ipchost -run '^TestMacOS(AbsoluteExecLimits|ChildCreationLimit|NativeWorkerExecLimits)$'",
+    "vet": "go vet ./internal/... ./cmd/...",
+    "linux_cross_compile": "GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go test -c ./internal/ipchost -o <temporary-binary>",
+    "source_guards": "go test ./scripts -run 'TestDF0|TestConfig' -count=1",
+    "native_notice_tests": "python3 -m unittest discover -s spikes/adr012-datafusion/tools -p '*_test.py' -v",
+    "baseline_analytics": [
+      "go test ./internal/analytics -count=1",
+      "go test -tags duckdb ./internal/analytics -count=1"
+    ]
+  },
+  "fault_controls": [
+    {
+      "case": "baseline",
+      "exit_code": 0,
+      "expected_failure": null,
+      "detected": false
+    },
+    {
+      "case": "omit-AS-install",
+      "exit_code": 1,
+      "expected_failure": "limit did not survive exec",
+      "detected": true
+    },
+    {
+      "case": "omit-resident-value",
+      "exit_code": 1,
+      "expected_failure": "allocation control ineffective",
+      "detected": true
+    },
+    {
+      "case": "wrong-fixed-budget",
+      "exit_code": 1,
+      "expected_failure": "probe mode mismatch",
+      "detected": true
+    },
+    {
+      "case": "omit-NPROC-install",
+      "exit_code": 1,
+      "expected_failure": "direct fork/spawn refusal failed",
+      "detected": true
+    },
+    {
+      "case": "omit-fork-attempt",
+      "exit_code": 1,
+      "expected_failure": "process-creation positive control failed",
+      "detected": true
+    },
+    {
+      "case": "omit-spawn-attempt",
+      "exit_code": 1,
+      "expected_failure": "process-creation positive control failed",
+      "detected": true
+    },
+    {
+      "case": "bypass-setup-refusal",
+      "exit_code": 1,
+      "expected_failure": "setup refusal misclassified",
+      "detected": true
+    },
+    {
+      "case": "restored",
+      "exit_code": 0,
+      "expected_failure": null,
+      "detected": false
+    }
+  ],
+  "review": {
+    "independent": false,
+    "limitation": "Reviewer capacity unavailable; structured plan/mid/final self-review fallback"
+  },
+  "limits": [
+    "AS is not RSS; observed roughly 500 GB virtual image and practical absolute AS setup refusals",
+    "NPROC covers direct non-root fork/spawn, not delegation/privilege transitions or complete sandboxing",
+    "Combined native case refused AS before NPROC installation; no combined enforcement claim",
+    "Native NPROC evidence checks launcher configuration and completed generate job, not worker-side limit readback or all operations",
+    "Local setup exit78 is not typed gRPC RESOURCE_LIMIT",
+    "Unchanged parent limits checked by synthetic tests; no policy adopted",
+    "Linux cross-compile only; no Linux/Windows execution or minimum-OS/signed-app/production packaging qualification",
+    "No Rust rebuild or fresh artifact provenance claim; same reviewed cached worker"
+  ]
+}

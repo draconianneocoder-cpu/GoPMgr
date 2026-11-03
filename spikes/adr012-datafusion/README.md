@@ -116,6 +116,25 @@ self-test and the 21 existing native regressions. See the
 It does not complete host-wide admission, OS-wide observation or production
 containment qualification. Linux refuses the experimental denial mode.
 
+The [native observer and App Sandbox experiment](../../docs/testing/adr-012-df0-observer-sandbox.md)
+measures current usage, missed bursts and controlled termination, and runs signed
+Rust copies over native UDS with OS access restrictions. Own-container writes
+remain allowed. This is isolated feasibility, not hard quotas, memory-only
+confidentiality or production adoption. See its exact reproduction and limits.
+
+The [memory-only filesystem experiment](../../docs/testing/adr-012-df0-memory-only.md)
+adds a zero file-size limit to the sandboxed worker and watches its container
+with FSEvents. File content is stopped, including a forced spill; names,
+attributes and writes made on the worker's behalf are not; a container sweep
+removes names and attributes after each job. DF-062 stays BLOCKED until the
+owner's five conditions pass.
+
+The later [nested frame repair](../../docs/testing/adr-012-df0-nested-frames.md)
+qualifies selected child spans and null-aware view compaction in five common
+containers. Its Rust regressions exercise actual views; five real-worker jobs
+separately check ordinary nested-string compatibility, refusal and recovery.
+This does not complete nested-schema, containment or production qualification.
+
 ## Resource accounting (macOS first)
 
 The host records per-child peak RSS and user/system CPU time after reaping each
@@ -163,6 +182,22 @@ These bounded synthetic subprocess probes require no DataFusion worker. They
 qualify the distinctions between address-space and resident memory, per-process
 CPU time and aggregate quotas, and process groups and containment. They do not
 establish production enforcement. See the [measurements and limits](../../docs/testing/adr-012-df0-macos-limits.md).
+
+The later pre-exec probes distinguish installed limits from actual effects:
+
+```sh
+DF0_WORKER=/absolute/path/to/reviewed/df0-worker \
+DF0_EXEC_LIMIT_EVIDENCE=/absolute/path/to/existing-directory \
+  go test -race -count=1 -v ./internal/ipchost \
+  -run '^TestMacOS(AbsoluteExecLimits|ChildCreationLimit|NativeWorkerExecLimits)$'
+```
+
+The synthetic tests compile a standalone C probe with existing `xcrun clang`.
+The native-worker test skips without `DF0_WORKER`; NPROC checks skip as root.
+Direct fork/spawn refusal survived exec and a Rust generation job completed,
+but practical AS ceilings were refused. A successful larger AS control denied
+a mapping without establishing an RSS cap. See the
+[follow-up evidence and proof limits](../../docs/testing/adr-012-df0-macos-limits.md#absolute-limits-across-exec-and-child-creation-follow-up).
 
 ## Numeric wire-fidelity experiment (macOS)
 
@@ -267,3 +302,40 @@ Declared SPDX expression syntax/identifiers were checked separately using the
 existing `license-expression 30.4.4` validator; that is not a legal conclusion.
 The [build SBOM and bounded source/notice review](../../docs/interoperability/adr-012-rust-dependency-security-sbom.md#artifact-bound-spdx-build-input-sbom)
 remain partial F/F2 evidence, with no production integration or LC-GATE pass.
+
+### Native-source and notice review inputs
+
+`tools/native_review.py` uses Python 3.11+ standard-library modules and the
+existing `ar` tool. From the repository root, use the same locked metadata,
+completed Cargo JSON build log and reviewed worker as the SBOM export above:
+
+```sh
+python3 spikes/adr012-datafusion/tools/native_review.py \
+  --metadata /absolute/path/to/metadata.json \
+  --lock spikes/adr012-datafusion/rust/Cargo.lock \
+  --build-log /absolute/path/to/build.jsonl \
+  --native-inputs spikes/adr012-datafusion/evidence/df0-sbom-macos/native-inputs.json \
+  --worker /absolute/path/to/reviewed-target-cache/release/df0-worker \
+  --worker-evidence spikes/adr012-datafusion/evidence/df0-f-macos/native-worker.json \
+  --crate-cache /absolute/path/to/cargo/registry/cache \
+  --output-dir /absolute/path/to/new-review-directory
+
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+  -s spikes/adr012-datafusion/tools -p native_review_test.py
+```
+
+Tests require the existing C compiler (`cc`) and `ar`. The generator runs no
+build scripts and fetches nothing. Output must be a new directory; input
+validation and assembly finish before it is published. Its `source-review.json`
+is evidence metadata; `NATIVE-REVIEW-NOTICES.txt` contains third-party texts and
+must keep `LicenseRef-Third-Party-Notices` treatment rather than CC0. The recorded
+copies live under `evidence/df0-native-source-macos/` and `notices/` respectively.
+Compare both generated files byte for byte with those copies before updating
+review evidence; do not replace old output in place.
+
+File hashes cover entire published native-wrapper packages. Object/source
+matches are unique candidates, not proof of compiler flags, include closure or
+retained executable bytes. Raw C/header/assembly/include SPDX markers are
+recorded without legal conclusions; unscanned files and absent markers remain
+distinct. See the [native source review](../../docs/interoperability/adr-012-rust-dependency-security-sbom.md#native-source-provenance-and-notice-review-bundle)
+for counts, licensing distinctions, refusal controls and remaining gates.

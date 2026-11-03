@@ -62,7 +62,7 @@ and windows.
 | `google.golang.org/protobuf` | v1.36.12 | v1.36.12 | Generated contract runtime | all | BSD-3-Clause | Direct |
 | `github.com/Microsoft/go-winio` | v0.6.4 | v0.6.4 | Named-pipe listener with an explicit DACL, first-instance creation and remote-client rejection | Windows only | MIT | Direct. Needed only while a named pipe is the selected Windows transport |
 | `golang.org/x/sys` | v0.49.0 (already in `go.mod`) | v0.49.0 | Job Objects, process creation, peer credentials | all | BSD-3-Clause | Existing direct dependency |
-| `golang.org/x/net` | **≥ v0.60.0** (main module has v0.60.0) | v0.61.0 | HTTP/2 framing under grpc-go | all | BSD-3-Clause | Indirect. See §2.1 |
+| `golang.org/x/net` | **≥ v0.60.0** (main module had v0.60.0; v0.62.0 since 2026-11-02) | v0.61.0 | HTTP/2 framing under grpc-go | all | BSD-3-Clause | Indirect. See §2.1 |
 | `golang.org/x/text` | **≥ v0.41.0** (main module has v0.43.0) | v0.43.0 | Indirect via x/net | all | BSD-3-Clause | Indirect. See §2.1 |
 | `google.golang.org/genproto/googleapis/rpc` | as grpc-go requires | — | `google.rpc.Status` | all | Apache-2.0 | Indirect |
 
@@ -89,10 +89,11 @@ and `golang.org/x/text` v0.40.0 as indirect dependencies:
 | GO-2026-6610 | HTTP/2 transport accepts malformed framing headers | Package imported, not called | x/net v0.60.0 |
 | GO-2026-6629 | Panic parsing crafted input in `x/text/secure/precis` | Module only | x/text v0.41.0 |
 
-The spike now pins x/net v0.61.0 and x/text v0.43.0, and govulncheck
-reports no vulnerabilities on linux, darwin or windows. GoPMgr's own
-`go.mod` already has x/net v0.60.0 and x/text v0.43.0. **G1 must keep both
-at or above the fixed versions.** The existing govulncheck CI job then
+The spike then pinned x/net v0.61.0 and x/text v0.43.0, and govulncheck
+reported no vulnerabilities on linux, darwin or windows. GoPMgr's own
+`go.mod` already had x/net v0.60.0 and x/text v0.43.0. **G1 must keep both
+at or above the fixed versions.** On 2026-11-02 the main module and this
+spike moved to x/net v0.62.0 for GO-2026-6860 and GO-2026-6866. The existing govulncheck CI job then
 covers the new modules.
 
 ### 2.2 Code generation (build time only, not linked)

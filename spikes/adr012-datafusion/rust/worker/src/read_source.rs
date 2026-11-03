@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use bytes::Bytes;
+use datafusion::arrow::array::RecordBatch;
 use datafusion::common::DataFusionError;
 use df0_engine::host_source::{HostSource, MAX_SOURCE, MemoryReadAt, Query, ReadAt};
 use sha2::{Digest, Sha256};
@@ -131,12 +132,15 @@ pub(super) async fn execute(
             .then(|| ex.spill_control_directory.clone().into()),
     };
     let (batch_tx, mut batch_rx) = mpsc::channel(1);
+    let fault = ex.fault.clone();
     let mut tasks = JoinSet::new();
     tasks.spawn(async move {
         let mut execution = df0_engine::host_source::parquet(source, query).await?;
         while let Some(batch) = execution.stream.next().await {
+            let batch = batch?;
+            panic_fault(&fault, &batch);
             batch_tx
-                .send(batch?)
+                .send(batch)
                 .await
                 .map_err(|_| DataFusionError::Execution("query receiver closed".into()))?;
         }
@@ -234,15 +238,46 @@ pub(super) async fn execute(
     .map_err(|super::Exit(_, s)| ("INTERNAL", s))
 }
 
+/// Finds an operating-system refusal anywhere in the error chain. A refused
+/// spill write arrives as an Arrow I/O error wrapping an io::Error that itself
+/// wraps DataFusion's I/O error, so the chain is walked, unwrapping each
+/// io::Error with get_ref (its source() skips the wrapped error itself).
+fn os_refusal(error: &DataFusionError) -> Option<std::io::ErrorKind> {
+    use std::io::ErrorKind::{FileTooLarge, PermissionDenied};
+    let mut current: Option<&(dyn std::error::Error + 'static)> = Some(error);
+    for _ in 0..32 {
+        let Some(e) = current else { break };
+        if let Some(io) = e.downcast_ref::<std::io::Error>() {
+            if matches!(io.kind(), FileTooLarge | PermissionDenied) {
+                return Some(io.kind());
+            }
+            if let Some(inner) = io.get_ref() {
+                current = Some(inner);
+                continue;
+            }
+        }
+        current = e.source();
+    }
+    None
+}
+
 fn query_error(error: DataFusionError) -> (&'static str, String) {
-    match error.find_root() {
-        DataFusionError::ResourcesExhausted(_) => (
+    if let DataFusionError::ResourcesExhausted(_) = error.find_root() {
+        return (
             "RESOURCE_LIMIT",
             "source query resource limit exceeded".into(),
-        ),
-        DataFusionError::IoError(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+        );
+    }
+    // OS controls that stop the worker writing to disk are resource limits,
+    // not bad input. The details stay constant so no path or OS text leaks.
+    match os_refusal(&error) {
+        Some(std::io::ErrorKind::PermissionDenied) => {
             ("RESOURCE_LIMIT", "source query file access denied".into())
         }
+        Some(std::io::ErrorKind::FileTooLarge) => (
+            "RESOURCE_LIMIT",
+            "source query file writes are not permitted".into(),
+        ),
         _ => ("INPUT_INVALID", error.to_string()),
     }
 }
@@ -267,9 +302,35 @@ fn validate_reply(
     Ok(())
 }
 
+/// Test-only panic faults inside the query task, carrying a row's values in
+/// the panic message the way an engine assertion can:
+/// - `source_panic`: an ordinary panic, which the runtime would catch;
+/// - `source_panic_abort`: a panic whose unwinding runs a destructor that
+///   panics again, which aborts the process when the panic hook does not
+///   exit first.
+fn panic_fault(fault: &str, batch: &RecordBatch) {
+    struct PanicDuringUnwind;
+    impl Drop for PanicDuringUnwind {
+        fn drop(&mut self) {
+            if std::thread::panicking() {
+                panic!("source panic fault: second panic during unwinding");
+            }
+        }
+    }
+    if !matches!(fault, "source_panic" | "source_panic_abort") || batch.num_columns() == 0 {
+        return;
+    }
+    let _guard = (fault == "source_panic_abort").then_some(PanicDuringUnwind);
+    let row = batch
+        .column(batch.num_columns() - 1)
+        .slice(0, 1.min(batch.num_rows()));
+    panic!("source panic fault: {row:?}");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use datafusion::arrow::error::ArrowError;
     #[test]
     fn query_resource_errors_keep_their_type_and_redact_details() {
         let exhausted = DataFusionError::ResourcesExhausted("private synthetic detail".into());
@@ -284,6 +345,44 @@ mod tests {
             query_error(DataFusionError::Plan("invalid column".into())).0,
             "INPUT_INVALID"
         );
+    }
+
+    // The shape a spill write takes when a zero file-size limit refuses it:
+    // an EFBIG io::Error inside an Arrow IoError inside DataFusion's Arrow
+    // variant, sometimes behind context.
+    fn wrapped_io(kind: std::io::ErrorKind, context: bool) -> DataFusionError {
+        // Matches the native message "Arrow error: Io error: IO error: File
+        // too large (os error 27)": DataFusion's I/O error inside a new
+        // io::Error inside Arrow's I/O error.
+        let os = std::io::Error::new(kind, "private /secret/path detail");
+        let io = std::io::Error::other(DataFusionError::IoError(os));
+        let arrow = ArrowError::IoError(io.to_string(), io);
+        let error = DataFusionError::ArrowError(Box::new(arrow), None);
+        if context {
+            DataFusionError::Context("spill".into(), Box::new(error))
+        } else {
+            error
+        }
+    }
+
+    #[test]
+    fn os_write_refusals_are_resource_limits_with_constant_details() {
+        for context in [false, true] {
+            for kind in [
+                std::io::ErrorKind::FileTooLarge,
+                std::io::ErrorKind::PermissionDenied,
+            ] {
+                let (code, detail) = query_error(wrapped_io(kind, context));
+                assert_eq!(code, "RESOURCE_LIMIT", "{kind:?} context={context}");
+                assert!(!detail.contains("private") && !detail.contains("/secret"));
+            }
+            assert_eq!(
+                query_error(wrapped_io(std::io::ErrorKind::InvalidData, context)).0,
+                "INPUT_INVALID"
+            );
+        }
+        let bare = DataFusionError::IoError(std::io::Error::from_raw_os_error(27));
+        assert_eq!(query_error(bare).0, "RESOURCE_LIMIT");
     }
 
     #[test]

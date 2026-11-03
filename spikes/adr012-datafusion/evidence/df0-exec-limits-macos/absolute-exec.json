@@ -1,0 +1,120 @@
+[
+  [
+    {
+      "mode": "control",
+      "stage": "payload",
+      "requested_as_bytes": 0,
+      "install_errno": 0,
+      "read_errno": 0,
+      "as_soft_bytes": 9223372036854775807,
+      "as_hard_bytes": 9223372036854775807,
+      "nproc_soft": 5333,
+      "nproc_hard": 8000,
+      "virtual_bytes": 500646772736,
+      "peak_rss_bytes": 135921664,
+      "mapping_errno": 0,
+      "checksum": 2949120,
+      "fork_errno": 0,
+      "spawn_errno": 0,
+      "wait_ok": true
+    }
+  ],
+  [
+    {
+      "mode": "as64",
+      "stage": "installation",
+      "requested_as_bytes": 67108864,
+      "install_errno": 22,
+      "read_errno": 0,
+      "as_soft_bytes": 9223372036854775807,
+      "as_hard_bytes": 9223372036854775807,
+      "nproc_soft": 5333,
+      "nproc_hard": 8000,
+      "virtual_bytes": 500511850496,
+      "peak_rss_bytes": 1703936,
+      "mapping_errno": 0,
+      "checksum": 0,
+      "fork_errno": 0,
+      "spawn_errno": 0,
+      "wait_ok": true
+    }
+  ],
+  [
+    {
+      "mode": "as512",
+      "stage": "installation",
+      "requested_as_bytes": 536870912,
+      "install_errno": 22,
+      "read_errno": 0,
+      "as_soft_bytes": 9223372036854775807,
+      "as_hard_bytes": 9223372036854775807,
+      "nproc_soft": 5333,
+      "nproc_hard": 8000,
+      "virtual_bytes": 500511703040,
+      "peak_rss_bytes": 1703936,
+      "mapping_errno": 0,
+      "checksum": 0,
+      "fork_errno": 0,
+      "spawn_errno": 0,
+      "wait_ok": true
+    }
+  ],
+  [
+    {
+      "mode": "as8192",
+      "stage": "installation",
+      "requested_as_bytes": 8589934592,
+      "install_errno": 22,
+      "read_errno": 0,
+      "as_soft_bytes": 9223372036854775807,
+      "as_hard_bytes": 9223372036854775807,
+      "nproc_soft": 5333,
+      "nproc_hard": 8000,
+      "virtual_bytes": 500511670272,
+      "peak_rss_bytes": 1703936,
+      "mapping_errno": 0,
+      "checksum": 0,
+      "fork_errno": 0,
+      "spawn_errno": 0,
+      "wait_ok": true
+    }
+  ],
+  [
+    {
+      "mode": "as-headroom",
+      "stage": "preexec",
+      "requested_as_bytes": 500579221504,
+      "install_errno": 0,
+      "read_errno": 0,
+      "as_soft_bytes": 500579221504,
+      "as_hard_bytes": 500579221504,
+      "nproc_soft": 5333,
+      "nproc_hard": 8000,
+      "virtual_bytes": 500512112640,
+      "peak_rss_bytes": 1703936,
+      "mapping_errno": 0,
+      "checksum": 0,
+      "fork_errno": 0,
+      "spawn_errno": 0,
+      "wait_ok": true
+    },
+    {
+      "mode": "payload",
+      "stage": "payload",
+      "requested_as_bytes": 0,
+      "install_errno": 0,
+      "read_errno": 0,
+      "as_soft_bytes": 500579221504,
+      "as_hard_bytes": 500579221504,
+      "nproc_soft": 5333,
+      "nproc_hard": 8000,
+      "virtual_bytes": 500511703040,
+      "peak_rss_bytes": 1703936,
+      "mapping_errno": 12,
+      "checksum": 0,
+      "fork_errno": 0,
+      "spawn_errno": 0,
+      "wait_ok": true
+    }
+  ]
+]

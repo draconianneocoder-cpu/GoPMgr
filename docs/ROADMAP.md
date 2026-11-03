@@ -35,10 +35,9 @@ near-term priority is making those workflows dependable for wider testing.
 
 ## DuckDB replacement: current delivery sequence
 
-Snapshot baseline: main `8746d38` on 2026-11-01 UTC, after merged PR #176.
+Snapshot baseline: main `0468ad9` on 2026-11-01 UTC, after merged PR #177.
 Linked DF0 records also cover isolated spike work; that does not mean production
-integration. DuckDB remains
-the shipped analytics engine. The accepted [ADR-012 authority](review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)
+integration. DuckDB remains the shipped analytics engine. The accepted [ADR-012 authority](review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)
 authorizes the isolated feasibility spike; it does not authorize production
 integration, a release-package change or removal of the legacy engine. Do not
 upgrade DuckDB as part of its retirement.
@@ -48,11 +47,32 @@ upgrade DuckDB as part of its retirement.
    reservation checks are implemented in the spike (PRs #173–#175). Reservations
    are not actual memory or CPU caps. The [native limit probes](testing/adr-012-df0-macos-limits.md)
    demonstrate why address-space limits, per-process CPU time and process groups
-   cannot be substituted for combined RSS/CPU/process-tree enforcement. DF-033
+   cannot be substituted for combined RSS/CPU/process-tree enforcement. A later
+   pre-exec follow-up found direct child-creation refusal compatible with a Rust
+   generation job, but practical AS caps failed installation and a larger
+   successful AS control still did not establish RSS enforcement. DF-033
    and full DF-064 remain unqualified; full DF-062 is BLOCKED on independent
    OS-wide filesystem observation and still lacks other required controls. Resolve
    the [containment decision request](review/ADR-012-macos-containment-ACR.md)
-   without weakening accepted guarantees by implication.
+   before production adoption. On 2026-11-01 the owner authorized native
+   monitoring design/measurement and stronger isolation experiments. The
+   [unprivileged App Sandbox/observer prototype](testing/adr-012-df0-observer-sandbox.md)
+   now demonstrates private-file/TCP restrictions, direct-fork refusal and
+   authenticated native IPC with generation and host-mediated Parquet. It also
+   demonstrates missed memory bursts and permitted own-container writes; neither
+   hard quotas nor full memory-only confidentiality is qualified. The
+   [memory-only filesystem experiment](testing/adr-012-df0-memory-only.md) found
+   that App Sandbox plus a zero file-size limit stops file content, including a
+   forced spill, but not names, attributes or writes other processes make for
+   the worker. The owner kept (d) and approved (a) as the target under five
+   conditions, tracked in the ACR; DF-062 stays BLOCKED until they pass. Next
+   implement the owner's choices for conditions 2 and 5: a signed worker copy
+   per concurrency slot (its `flock` slot lock is built), and one
+   delegated-write watch test through a separate signed helper. Conditions 1
+   and 3 have passed.
+   Condition 4 waits for release qualification. Then qualify job-bound observation and failure recovery, then obtain explicit
+   accounting/budget, confidentiality-policy and adoption decisions. Keep accepted guarantees
+   until changed explicitly; no privileged helper or VM is selected.
 2. **Finish the remaining DF0 evidence.** Close the security matrix; compare
    DuckDB, DataFusion and Go exact-rollup plus DataFusion fairly (DF0-E), verify
    complete numeric/wire fidelity (E2), and qualify packaging, dependencies and
@@ -63,11 +83,18 @@ upgrade DuckDB as part of its retirement.
    review input. A subsequent isolated slice adds an artifact-bound SPDX 3.0.1
    build-input SBOM with official schema/SHACL validation, 263 observed Cargo
    packages and three hashed native archives. All compiler artifacts in that
-   observation were cached; complete native-source/compiler/SDK/installed-app
-   composition, license and release-clearance gates remain open. The first
+   observation were cached. A subsequent native-source review verifies 609
+   published package files, records 103 candidate object/source matches and
+   assembles 13 verbatim notice texts for the three archive inputs. Candidate
+   matches do not establish final linker composition. Complete per-source
+   licensing, compiler/SDK/installed-app composition and release-clearance
+   gates remain open. The first
    [macOS E2 typed-cell harness](testing/adr-012-df0-numeric-fidelity.md) now
    checks 10 jobs/60 rows, including JavaScript decoding and decimal-scale
-   preservation. Production DTO/renderer use and semantic decoding of nested
+   preservation. A subsequent [nested-frame repair](testing/adr-012-df0-nested-frames.md)
+   fixes retained backing data and hidden-null materialization in common
+   Arrow containers; its native compatibility jobs are separate from the direct
+   Rust view regressions. Production DTO/renderer use and semantic decoding of nested
    numbers remain unqualified; this is partial E2 evidence. A first
    [macOS portfolio backend characterization](testing/adr-012-df0-portfolio-performance.md)
    checks identical 0/100/1,000-project fixtures across all three candidates,
@@ -93,8 +120,23 @@ merged the four macOS limit, numeric-fidelity, portfolio-characterization and
 dependency-inventory commits. Its eight hosted checks passed at head `9ff61b1`;
 the eight main checks also passed at `8746d38`. The four qualification branches
 were removed locally and remotely after merge/ancestry and worktree checks.
-The build-input SBOM slice is subsequent isolated work; its evidence is separate
-from that merged snapshot.
+[PR #177](https://github.com/draconianneocoder-cpu/GoPMgr/pull/177) then merged
+the build-input SBOM. All eight PR checks passed at `eac7cfe`, and all eight
+main checks passed at `0468ad9`; its feature branch was removed locally and
+remotely. The native-source notice review and pre-exec limit follow-up are
+subsequent isolated work committed on `new-merge/df0-macos-exec-limits`, separate
+from that frozen baseline. On 2026-11-01 the owner directed that remaining
+replacement work accumulate as reviewed commits on the integration branch,
+with local macOS verification first and local Ubuntu verification when available.
+The target is one final PR after replacement, removal, documentation and relevant
+local qualification are ready, subject to the production decisions above.
+Do not open intermediate PRs or trigger hosted CI for incremental slices; the
+pending intermediate-PR approval request is withdrawn. The existing workflow
+triggers hosted checks for both the final PR and its merge to main, so one PR
+does not imply one workflow run. Defer hosted verification to that final stage.
+The already-published `new-merge/df0-native-source-notices` branch is retained
+until its work is merged and ancestry verified; it should not produce a duplicate
+PR.
 The retained legacy branch `claude/slice-b-readonly-access` belongs to closed,
 unmerged PR #163.
 Review and selectively port useful missing read-only regression fixtures before

@@ -11,7 +11,8 @@ import "syscall"
 const rusageRSSScale int64 = 1024
 
 // sysProcAttr gives the host a worker process group to signal. Members can
-// leave it; this is not process-tree containment. Pdeathsig covers the direct worker.
+// leave it; killTree also walks the worker's descendants while the worker
+// runs. Pdeathsig covers the direct worker.
 func sysProcAttr() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{Setpgid: true, Pdeathsig: syscall.SIGKILL}
 }

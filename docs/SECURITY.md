@@ -306,6 +306,10 @@ make check-release
 `make release-scope` protects important public claims such as PDF/A,
 PAdES, and encryption status from drifting away from supported behavior.
 
+Each release package ships with CycloneDX and SPDX SBOMs, written by the
+release workflow and checked by `make sbom-check`; see [SBOM.md](SBOM.md).
+They are unsigned until the SBOM signing key is published.
+
 ### Known upstream advisories
 
 - [GO-2026-5932](https://pkg.go.dev/vuln/GO-2026-5932)

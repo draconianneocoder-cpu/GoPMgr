@@ -1,0 +1,52 @@
+[
+  {
+    "name": "unrestricted_control",
+    "started": true,
+    "read_errno": 0,
+    "read_byte": 90,
+    "write_errno": 0,
+    "unix_errno": 0,
+    "tcp_errno": 0,
+    "fork_errno": 0
+  },
+  {
+    "name": "outside_private",
+    "started": true,
+    "read_errno": 1,
+    "read_byte": 0,
+    "write_errno": 1,
+    "unix_errno": 1,
+    "tcp_errno": 1,
+    "fork_errno": 35
+  },
+  {
+    "name": "outside_symlink",
+    "started": true,
+    "read_errno": 1,
+    "read_byte": 0,
+    "write_errno": 1,
+    "unix_errno": 1,
+    "tcp_errno": 1,
+    "fork_errno": 35
+  },
+  {
+    "name": "own_container_write_and_unix",
+    "started": true,
+    "read_errno": 1,
+    "read_byte": 0,
+    "write_errno": 0,
+    "unix_errno": 0,
+    "tcp_errno": 1,
+    "fork_errno": 35
+  },
+  {
+    "name": "host_only_parquet",
+    "started": true,
+    "read_errno": 1,
+    "read_byte": 0,
+    "write_errno": 1,
+    "unix_errno": 1,
+    "tcp_errno": 1,
+    "fork_errno": 35
+  }
+]

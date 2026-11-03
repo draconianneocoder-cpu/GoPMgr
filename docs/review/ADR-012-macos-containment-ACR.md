@@ -5,9 +5,18 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-012 ACR: macOS containment implementation gap
 
-**Status: proposed, NOT APPROVED.** No acceptance criterion changes in this PR.
-**Owner approval:** pending. No privilege, new production dependency, transport
+**Status: proposed, NOT APPROVED.** No acceptance criterion changes here.
+**Owner approval:** resource-policy changes and production adoption pending.
+No privilege, new production dependency, transport
 change or resource-policy relaxation is authorized by this document.
+**Decision packet updated:** 2026-11-01 against integration baseline `298f6b9`;
+memory-only filesystem finding added 2026-11-02 against `e31e225`.
+
+**Investigation scope authorized, 2026-11-01:** the owner selected native
+monitoring/termination evaluation before deciding adoption, then requested
+stronger isolation as well. The [unprivileged observation/App Sandbox prototype](../testing/adr-012-df0-observer-sandbox.md)
+implements those isolated experiments. This is not approval of weaker resource
+guarantees, final budgets, privileged/VM deployment or production entitlements.
 
 ## Requirement and evidence
 
@@ -16,6 +25,18 @@ and DF-064 / DF0-D2 (combined host-wide RSS/CPU/jobs with 2/4/8 workers,
 pre-launch rejection and clean crash/over-quota recovery). ADR-010 permits
 Unix process groups without a containment claim. The spike has reservation
 admission and per-child final accounting, not the required actual bounds.
+
+The [accepted architecture](../design/ADR-012-datafusion-analytics-replacement.md#df-10--memorycpuspill-and-cancellation)
+requires OS process limits as well as query-pool limits. The
+[DF-064 criterion](../testing/adr-012-datafusion-feasibility-spike.md)
+requires host-wide peak RSS/CPU/jobs within configured limits or early typed
+rejection. Neither document defines an instantaneous CPU-rate ceiling, a
+measurement window, or final numeric budgets. The previous version of this ACR
+described a strict instantaneous ceiling as if those details were settled.
+They are not. This correction does not make sampled compliance sufficient or
+change the requirement to enforce actual bounds. Clarification must preserve
+that requirement; any proposed allowance for exceeding it needs explicit
+approval as a contract change.
 
 The [reproducible native evidence](../testing/adr-012-df0-macos-limits.md)
 shows that the examined AS, CPU-time and process-group primitives do not
@@ -27,41 +48,157 @@ header declaration, per-child lifetime peak or sampling monitor is insufficient
 proof. CPU rate, sampling intervals, budgets and RSS/footprint accounting
 semantics also need explicit definition before production qualification.
 
+A later [pre-exec follow-up](../testing/adr-012-df0-macos-limits.md#absolute-limits-across-exec-and-child-creation-follow-up)
+found a narrower building block: non-root child-local `RLIMIT_NPROC=0` survived
+exec and refused direct fork/spawn, while an authenticated Rust generation job
+still completed. Practical absolute AS ceilings were refused because the
+launcher image's virtual size was already about 500 GB. A larger AS control
+survived exec and denied a mapping, establishing VM control rather than an RSS
+cap. These findings reduce design uncertainty without qualifying aggregate
+RSS/CPU, delegated-process restrictions or the full sandbox contract.
+
 ## Alternatives
 
 | Option | Impact and limits | Approval and verification |
 | --- | --- | --- |
-| **1. Preserve the strict contract; defer cutover while completing authorized DF0 work (recommended)** | Preserves current production analytics behavior and keeps the replacement's accepted security/resource requirements unchanged. Native containment remains a blocker. Independent E/E2 and F/F2 work can reduce the rest of the critical path; current DuckDB licensing/distribution restrictions remain in force | Already within the isolated DF0 authority. Research a supported containment implementation; do not claim it exists. No production shipping or release clearance follows |
-| **2. Propose a measured monitoring/termination contract for macOS** | Admission plus independent current-resource sampling could detect and stop overuse, but permits bursts, observer delay and possible descendant escape. It cannot guarantee a strict instantaneous aggregate ceiling. Lower adoption cost does not remove confidentiality, availability or exhaustion risk | Separate owner-approved relaxation with explicit overshoot/latency limits, fail-closed observer failure, minimum-OS tests, hostile burst/fork/escape cases, crash and recovery. It does not satisfy the current DF-033/064 contract |
-| **3. Evaluate a stronger OS isolation or privileged-containment architecture** | May offer stronger controls, but no candidate is qualified here. A helper/VM or new entitlement introduces deployment, trust, maintenance, licensing, signing and IPC-compatibility costs. A VM transport cannot silently replace accepted native gRPC/UDS. Do not assume root or a footprint-limit call alone gives aggregate RSS enforcement | Separate design/authority review before adoption, supported API and entitlement proof, per-target threat model, explicit RSS/CPU semantics and aggregate/process-escape tests, packaging and rollback evidence. No new helper, VM, entitlement or transport is selected here |
+| **1. Preserve accepted requirements; defer cutover (governing interim position)** | Preserves current production analytics behavior and keeps the replacement's accepted security/resource requirements unchanged. Native containment remains a blocker. Further isolated evidence can reduce other gaps, but does not resolve this decision or clear current DuckDB licensing/distribution restrictions | Already within isolated DF0 authority. Define the resource accounting and qualify an enforcement mechanism before claiming DF-033/064. No production shipping or release clearance follows |
+| **2. Design and measure a native monitoring/termination policy for macOS** | Admission, bounded query/transport allocations and an external observer could reduce resource exhaustion and stop detected overuse without adding a privileged service or VM. Sampling can miss bursts; a starved observer may not run before host exhaustion. This is not a hard ceiling or a hostile-process containment boundary | Owner must explicitly authorize any relaxation of actual bounds. Design/measurement is authorized; review measured overshoot, detection/termination delay and failure behavior against proposed numeric budgets before adoption. Sampling alone cannot prove a worst-case overshoot bound. No DF-033/064 PASS or production adoption follows from permission to investigate |
+| **3. Evaluate a stronger OS isolation or privileged-containment architecture** | May offer stronger controls, but no complete containment candidate is qualified here. A helper/VM or new entitlement introduces deployment, trust, maintenance, licensing, signing and IPC-compatibility costs. A VM transport cannot silently replace accepted native gRPC/UDS. Do not assume root or a footprint-limit call alone gives aggregate RSS enforcement | Separate design/authority review before adoption, supported API and entitlement proof, per-target threat model, explicit RSS/CPU semantics and aggregate/process-escape tests, packaging and rollback evidence. No production helper, VM, entitlement or transport is selected here |
 
 Retaining DuckDB in option 1 is a temporary compatibility position, not release
 licensing approval. None of these options authorizes a DuckDB upgrade.
 
+## Decision needed before selecting an implementation
+
+The owner has authorized design and measurement for option 2 and an isolated
+stronger-isolation prototype under option 3. Option 1's accepted resource
+requirements remain in force until an explicit contract decision changes them.
+Permission to investigate is not acceptance of residual risks or production
+approval. The accounting and acceptance decisions below remain open.
+
+| Contract field | Decision and evidence required |
+| --- | --- |
+| Accounted scope | Define the analytics budget across host source/Arrow/gRPC buffers, workers and descendants, and whether unrelated UI/host allocations are included. Specify whether multiple app instances share a machine budget. A controller for one Go host is not machine-wide enforcement |
+| Memory | Choose current RSS or physical footprint and how shared pages are charged; report both when needed for comparison. Define the aggregate budget and whether any exceedance is permitted. Simultaneous usage cannot be reconstructed by adding independent lifetime peaks |
+| CPU | Define cumulative CPU time, utilization over a stated window, or both, including units and aggregation. Reserved `CPUSlots`, worker thread count and `RLIMIT_CPU` are different controls; none by itself establishes a shared utilization ceiling |
+| Reaction and failure | For option 2, propose detection/termination objectives and permitted exceedance from measurements, then request owner approval. Refuse new jobs on missing/stale measurements; specify who detects observer failure and how already running work ends. Record starvation and kill failure, rather than promising a sampling interval proves a maximum |
+| Process ownership | Define direct and delegated child creation, session escape, PID reuse, host death and restart. Qualify identity/cleanup without trusting worker-reported usage or assuming process-group membership is permanent |
+| Supported delivery | Qualify macOS 13+ Apple Silicon from the installed/signed app, with Linux next. Development evidence on macOS 27.2 is narrower. Windows execution is deferred; changing its advertised support or acceptance gate is a separate decision |
+
+Final budgets remain reserved under DF-OWN-05. Synthetic fixture limits are
+not product defaults. These fields do not authorize protected spill, broader
+file/network access, new privileges, a different transport or shipping a
+partially qualified worker. DF-062 and the remaining security matrix stay
+independent of the resource-policy decision.
+
+## Supported building blocks and limits of the sources
+
+The native probes above establish effects on this development machine. They
+do not qualify a deployable macOS containment architecture. Official Apple
+documentation supplies further constraints, checked on 2026-11-01:
+
+- Virtualization's [memorySize](https://developer.apple.com/documentation/virtualization/vzvirtualmachineconfiguration/memorysize)
+  describes guest physical memory backed by a reserved host virtual-memory
+  region. Its [cpuCount](https://developer.apple.com/documentation/virtualization/vzvirtualmachineconfiguration/cpucount)
+  configures guest CPUs. These properties do not document a combined host-side
+  RSS or CPU-rate ceiling for GoPMgr and its workers. Treat such a ceiling as
+  unproved, not implied by choosing a VM.
+- A [VM configuration](https://developer.apple.com/documentation/virtualization/vzvirtualmachineconfiguration)
+  requires the virtualization entitlement. Image/kernel updates, native IPC,
+  offline packaging, host overhead and rollback would need a separate design.
+- [XPC](https://developer.apple.com/documentation/xpc) provides helper lifecycle
+  and privilege isolation. That documentation does not establish the resource
+  enforcement needed here. A helper needs a supported control mechanism and
+  its own authorization, failure and release evidence; replacing analytics
+  gRPC with XPC is not proposed.
+
 ## Recommendation and adversarial critique
 
-Keep option 1 as the governing position while the strict contract is unresolved;
-expedite independent feasibility evidence rather than adopting a weaker cap by
-implication. Pursue supported OS containment inside DF0 where existing authority
-permits. Request a specific design decision before adding privileges or changing
-an accepted guarantee. Do not install a privileged service merely to make the
-spike pass.
+Continue the two authorized investigation tracks. The standard App Sandbox
+prototype demonstrates access restrictions and compatible native IPC without
+a privileged service, but permits own-container writes. Observation and
+termination remain a separate resource layer, with a demonstrated missed burst.
+Qualify a job-bound observer, failure recovery and memory-only filesystem
+policy before proposing adoption and final budgets. Keep accepted requirements
+in force. If never
+exceeding the configured aggregate limits is required even under hostile
+allocation or observer starvation, sampling cannot meet that requirement;
+a separately approved resource-enforcement design or continued cutover block
+is necessary. No mechanism enforcing those complete bounds is qualified here.
 
-Challenges to the recommendation: it delays removal and retains legacy native
-licensing exposure; parallel work could be wasted if containment cannot be
-qualified. Mitigation: keep experiments isolated, finish reusable numeric and
-format oracles, and retain explicit stop/go criteria. Option 2 expedites
-integration only by accepting a different contract. Option 3 might fail on the
-advertised minimum OS, require unavailable entitlements, or move rather than
-solve the resource boundary. The evidence does not select an implementation.
+Challenges: option 1 delays removal and retains legacy licensing exposure;
+option 2 may exhaust memory before its observer acts and is not equivalent
+protection. Mitigation: preserve blocked gates and require a separate decision
+on measured limits and residual risk before adoption, with no automatic fallback.
+Option 3 might fail on the advertised minimum OS, require unavailable
+entitlements, or move rather than solve the resource boundary. The evidence
+does not select an implementation.
 
 **Independent adversarial critique: pending reviewer availability.** The
 structured self-review above is a disclosed fallback, not independent approval.
-No ACR approval is required to preserve the existing strict contract. A decision
+No ACR approval is required to preserve the accepted resource contract. A decision
 to relax it or adopt a new production architecture must be explicit.
+
+## Memory-only filesystem finding (2026-11-02)
+
+**Status: owner decisions recorded 2026-11-02.** (d) governs; (a) is approved
+as the target under the five conditions below and is not adopted. The owner
+chose how to resolve conditions 2–5; work remains on 2, 3 and 5, and 4 waits
+for release qualification. Evidence:
+[memory-only filesystem experiment](../testing/adr-012-df0-memory-only.md).
+
+**Requirement:** ADR-012 binding safeguard 4 makes `SENSITIVE_MEMORY_ONLY` the
+default and requires proof that no plaintext reaches disk (DF-062 / DF0-D2).
+
+**Conflict:** no supported, unprivileged mechanism tested on macOS 27.2 gives
+the App Sandbox worker a memory-only filesystem:
+
+- App Sandbox always permits writes inside the worker's own container.
+- Adding child-local `RLIMIT_FSIZE=0` with `SIGXFSZ` ignored stops file
+  **content**, including a forced DataFusion spill. It does not stop file and
+  directory creation, renames or extended attributes, and those can hold data.
+- Writes made on the worker's behalf by other processes (ReportCrash,
+  `containermanagerd`, potentially `cfprefsd`) are outside any limit set on
+  the worker.
+- The deprecated `sandbox-exec` write-denial profile cannot be stacked with
+  App Sandbox; the sandboxed process stops with `SIGTRAP`.
+
+| Option | Effect | Needs |
+| --- | --- | --- |
+| **(a) Content-only protection for the trusted worker** | App Sandbox plus the zero file-size limit blocks accidental plaintext spill by engine code. Names, empty files, attributes and delegated writes remain; a worker that deliberately encodes data is not contained | Explicit owner approval as a recorded relaxation of safeguard 4; the `INPUT_INVALID` spill code corrected to `RESOURCE_LIMIT`; signed/installed-app and minimum-OS qualification |
+| **(b) Custom profile instead of App Sandbox** | A `sandbox-exec`-style profile can deny every write, but the tool is deprecated and gives none of App Sandbox's read/network restrictions unless they are written by hand | Acceptance of an unsupported mechanism; a full hand-written read/network profile and its qualification |
+| **(c) Separate user, privileged helper or VM** | Could move the worker outside the user's writable files entirely | New authority under option 3 above, its own threat model, packaging and IPC compatibility evidence |
+| **(d) Stay BLOCKED; defer cutover** | Keeps safeguard 4 as written; DuckDB stays the production engine | Already within current authority; does not resolve DuckDB licensing |
+
+**Recommendation:** (d) is the governing interim position, because no approval
+means no downgrade. Choosing (a) over (d) is not a technical question: it is a
+confidentiality-policy decision about whether trusted engine code needs
+containment against deliberate encoding. Until it is made, DF-062 stays
+BLOCKED and the accepted requirement stays in force.
+
+**Independent adversarial critique:** pending reviewer availability. A
+structured self-review and an advisor review were the disclosed fallback.
+
+**Owner decision (2026-11-02):** "keep (d) in force now, and approve (a) as the
+target once these conditions pass." Option (d) governs until every condition
+below is reported as passed and the owner confirms. DF-062 stays BLOCKED until
+then.
+
+| # | Condition set by the owner | Status |
+| --- | --- | --- |
+| 1 | Report a blocked spill as `RESOURCE_LIMIT` instead of `INPUT_INVALID` | **Passed (2026-11-02).** The native forced spill returns `RESOURCE_LIMIT` with a constant detail; a reverted mapping is caught natively and in Rust. Reported to the owner with the choices below; the owner kept it as passed (2026-11-02) |
+| 2 | Give each job a fresh, empty folder and wipe it afterwards, so names and attributes cannot build up between jobs | **Passed within one host process, one job at a time (2026-11-02).** `Container.Do` gives each job a fresh folder and sweeps the whole `Data` tree back to its baseline after every outcome. **Owner choice (2026-11-02): one signed worker copy per concurrency slot**, each with its own bundle identifier and therefore its own container and sweep, so DF-064 2/4/8 cohorts run in parallel. **Owner choice (2026-11-02): the cross-process lock is an `flock` on one lock file per slot in the host's own Application Support folder**, held while that slot runs. The kernel releases it if the app crashes, and the worker cannot reach it. **Lock built (2026-11-02):** `Container.Do` and `Sweep` hold an exclusive `flock` (`LOCK_EX|LOCK_NB`) on the slot's lock file from before the job folder is made until the sweep ends. **Chosen behaviour: hosts never queue on another host's slot;** a held slot is refused at once as "in use by another process", and that refusal never marks the container unclean. Under the lock, a container an earlier holder left changed (for example, a host killed before its sweep) is swept before the next job. Tested with a second host process holding the slot during its job and during its sweep, a holder killed by SIGKILL, two lock holders in one process, a child of the job not inheriting the lock, and private-folder and regular-file checks; nine seeds were caught. **Residual:** the lock lasts as long as the host's descriptor, so if a host dies while its worker still runs, another host can start a job beside the orphaned worker until it exits. Letting the worker inherit the locked descriptor would close that window but hands the sandboxed worker a descriptor from outside its container; that is an owner decision. `flock` on a network home folder is untested. **Open work:** per-slot signing and entitlements, and native cohort tests showing that no slot sees another's files |
+| 3 | Decide how crash reports are handled, since ReportCrash writes them outside the sandbox | **Owner choice (2026-11-02): a Rust panic hook plus deployment guidance. Passed: implemented and accepted by the owner (2026-11-02).** The safe-Rust hook exits with status 70 at the first panic. A panic that aborts without it (seeded and observed) produced no report with it, while a native fault on the same worker was reported before and after. The panic message, which could reach the host as failure text before, is no longer printed. Draft guidance names Apple's `allowDiagnosticSubmission` restriction. Residual: native faults, allocation failure and stack overflow still produce reports holding a few dozen bytes of register data, by the owner's choice |
+| 4 | Repeat the tests on a signed, installed app on the oldest supported macOS | **Deferred to release qualification (owner choice, 2026-11-02).** This machine has no code-signing identity and no macOS 13 host. (a) cannot be adopted until this passes; (d) stays in force |
+| 5 | Try an unprivileged volume-wide file-change watch as a stand-in for OS-wide tracing | **Experiment passed (2026-11-02). Owner choice: accept it in place of OS-wide tracing after one more test**, in which the worker makes a macOS helper write outside the container and the watch must see it. **Owner choice for that test (2026-11-02): a separate test-only helper signed with the worker's exact entitlements** asks system services (preferences through `cfprefsd`, then Launch Services) to write for it, so the shipped worker gains no code. An unprivileged stream on the boot volume saw writes in system temp, user temp, home and the container, dropped nothing under load on an idle machine (one or two reported drops per load with every CPU core busy), and reported drops under a stalled consumer. Recorded limits: paths, not processes; closely spaced events can merge; one volume |
 
 ## Required proof before qualification or cutover
 
+- Before qualifying an investigated mechanism, specify its minimal design,
+  resource-accounting definitions and independent oracle. Stop if required APIs
+  or entitlements are unavailable, measurement cannot distinguish admitted
+  capacity from actual usage, or the mechanism cannot meet the chosen policy.
+  Do not replace a failed enforcement test with a reservation-only assertion.
 - Define current/simultaneous RSS versus physical footprint, CPU-rate versus
   lifetime CPU-time accounting, included host/source buffers and descendants,
   and owner-approved budgets. Never sum independent lifetime peaks as if they

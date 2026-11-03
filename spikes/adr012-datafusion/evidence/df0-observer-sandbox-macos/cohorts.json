@@ -1,0 +1,303 @@
+[
+  {
+    "workers": 2,
+    "before": [
+      {
+        "pid": 33751,
+        "start_ticks": 8616909595153,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 583833,
+        "system_ns": 1001041,
+        "before_ns": 359033559012000,
+        "after_ns": 359033559014000
+      },
+      {
+        "pid": 33752,
+        "start_ticks": 8616909999480,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 494208,
+        "system_ns": 862416,
+        "before_ns": 359033559017000,
+        "after_ns": 359033559018000
+      }
+    ],
+    "held": [
+      {
+        "pid": 33751,
+        "start_ticks": 8616909595153,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 831041,
+        "system_ns": 2390791,
+        "before_ns": 359033567027000,
+        "after_ns": 359033567029000
+      },
+      {
+        "pid": 33752,
+        "start_ticks": 8616909999480,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 826958,
+        "system_ns": 2378875,
+        "before_ns": 359033567032000,
+        "after_ns": 359033567033000
+      }
+    ]
+  },
+  {
+    "workers": 4,
+    "before": [
+      {
+        "pid": 33755,
+        "start_ticks": 8616910338566,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 443125,
+        "system_ns": 703041,
+        "before_ns": 359033579142000,
+        "after_ns": 359033579144000
+      },
+      {
+        "pid": 33756,
+        "start_ticks": 8616910387831,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 474875,
+        "system_ns": 849291,
+        "before_ns": 359033579147000,
+        "after_ns": 359033579148000
+      },
+      {
+        "pid": 33757,
+        "start_ticks": 8616910439112,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 423666,
+        "system_ns": 772500,
+        "before_ns": 359033579148000,
+        "after_ns": 359033579149000
+      },
+      {
+        "pid": 33758,
+        "start_ticks": 8616910492146,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 433125,
+        "system_ns": 691750,
+        "before_ns": 359033579149000,
+        "after_ns": 359033579149000
+      }
+    ],
+    "held": [
+      {
+        "pid": 33755,
+        "start_ticks": 8616910338566,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 687958,
+        "system_ns": 2232500,
+        "before_ns": 359033594177000,
+        "after_ns": 359033594179000
+      },
+      {
+        "pid": 33756,
+        "start_ticks": 8616910387831,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 719000,
+        "system_ns": 2230958,
+        "before_ns": 359033594181000,
+        "after_ns": 359033594182000
+      },
+      {
+        "pid": 33757,
+        "start_ticks": 8616910439112,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 764125,
+        "system_ns": 2479541,
+        "before_ns": 359033594183000,
+        "after_ns": 359033594183000
+      },
+      {
+        "pid": 33758,
+        "start_ticks": 8616910492146,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 790166,
+        "system_ns": 2532958,
+        "before_ns": 359033594183000,
+        "after_ns": 359033594184000
+      }
+    ]
+  },
+  {
+    "workers": 8,
+    "before": [
+      {
+        "pid": 33761,
+        "start_ticks": 8616911039665,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 466500,
+        "system_ns": 756833,
+        "before_ns": 359033620506000,
+        "after_ns": 359033620511000
+      },
+      {
+        "pid": 33762,
+        "start_ticks": 8616911096041,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 410875,
+        "system_ns": 738833,
+        "before_ns": 359033620514000,
+        "after_ns": 359033620516000
+      },
+      {
+        "pid": 33763,
+        "start_ticks": 8616911146727,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 507541,
+        "system_ns": 1188750,
+        "before_ns": 359033620517000,
+        "after_ns": 359033620519000
+      },
+      {
+        "pid": 33764,
+        "start_ticks": 8616911210659,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 468916,
+        "system_ns": 1007666,
+        "before_ns": 359033620520000,
+        "after_ns": 359033620522000
+      },
+      {
+        "pid": 33765,
+        "start_ticks": 8616911273796,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 476500,
+        "system_ns": 1022833,
+        "before_ns": 359033620522000,
+        "after_ns": 359033620524000
+      },
+      {
+        "pid": 33766,
+        "start_ticks": 8616911336345,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 450208,
+        "system_ns": 1045416,
+        "before_ns": 359033620524000,
+        "after_ns": 359033620526000
+      },
+      {
+        "pid": 33767,
+        "start_ticks": 8616911396349,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 473208,
+        "system_ns": 961500,
+        "before_ns": 359033620526000,
+        "after_ns": 359033620527000
+      },
+      {
+        "pid": 33768,
+        "start_ticks": 8616911458790,
+        "rss_bytes": 1736704,
+        "footprint_bytes": 1163624,
+        "user_ns": 439291,
+        "system_ns": 990708,
+        "before_ns": 359033620527000,
+        "after_ns": 359033620528000
+      }
+    ],
+    "held": [
+      {
+        "pid": 33761,
+        "start_ticks": 8616911039665,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 725208,
+        "system_ns": 2288333,
+        "before_ns": 359033655386000,
+        "after_ns": 359033655389000
+      },
+      {
+        "pid": 33762,
+        "start_ticks": 8616911096041,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 672500,
+        "system_ns": 2080291,
+        "before_ns": 359033655392000,
+        "after_ns": 359033655393000
+      },
+      {
+        "pid": 33763,
+        "start_ticks": 8616911146727,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 765208,
+        "system_ns": 2518458,
+        "before_ns": 359033655394000,
+        "after_ns": 359033655395000
+      },
+      {
+        "pid": 33764,
+        "start_ticks": 8616911210659,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 824041,
+        "system_ns": 2710166,
+        "before_ns": 359033655396000,
+        "after_ns": 359033655397000
+      },
+      {
+        "pid": 33765,
+        "start_ticks": 8616911273796,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 855291,
+        "system_ns": 3120166,
+        "before_ns": 359033655397000,
+        "after_ns": 359033655398000
+      },
+      {
+        "pid": 33766,
+        "start_ticks": 8616911336345,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 829041,
+        "system_ns": 2865666,
+        "before_ns": 359033655398000,
+        "after_ns": 359033655400000
+      },
+      {
+        "pid": 33767,
+        "start_ticks": 8616911396349,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 838041,
+        "system_ns": 2850458,
+        "before_ns": 359033655400000,
+        "after_ns": 359033655400000
+      },
+      {
+        "pid": 33768,
+        "start_ticks": 8616911458790,
+        "rss_bytes": 35291136,
+        "footprint_bytes": 34734464,
+        "user_ns": 795500,
+        "system_ns": 2843083,
+        "before_ns": 359033655401000,
+        "after_ns": 359033655402000
+      }
+    ]
+  }
+]

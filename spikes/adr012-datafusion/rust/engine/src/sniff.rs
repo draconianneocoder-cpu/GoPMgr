@@ -6,7 +6,6 @@
 //! which DuckDB's `read_csv_auto` detects. Without this, `.txt` files and
 //! headerless files would not import as they do today.
 
-use std::fs::File;
 use std::io::Read;
 
 pub struct Dialect {
@@ -14,8 +13,7 @@ pub struct Dialect {
     pub has_header: bool,
 }
 
-pub fn read_prefix(path: &str, limit: usize) -> std::io::Result<Vec<u8>> {
-    let mut f = File::open(path)?;
+pub fn read_prefix(mut f: impl Read, limit: usize) -> std::io::Result<Vec<u8>> {
     let mut buf = vec![0u8; limit];
     let n = f.read(&mut buf)?;
     buf.truncate(n);
