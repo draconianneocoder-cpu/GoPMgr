@@ -43,15 +43,22 @@ The DF0 evidence record lists ten defects in the DuckDB engine
 | Defect | Go engine | Test |
 |---|---|---|
 | LD-1: a wide Parquet decimal read as an unrelated float | Exact decimal text | `TestDecimal256KeepsExactDigits` |
-| LD-2: one huge integer turns a column into rounded floats | Each value is judged alone; integers beyond 2^53 stay exact as text | `bigint.csv`, `numbers.json` |
+| LD-2: one huge integer turns a column into rounded floats | Integer tokens outside JavaScript's safe range stay exact as text, including columns containing fractional values | `bigint.csv`, `numbers.json`, `TestImportDelimitedMixedNumbersKeepIntegerDigits` |
 | LD-3: JSON `1e400` read as +Inf | Kept as the text `1e400` | `TestCellsAlwaysEncode` |
 | LD-4: an empty CSV gives a phantom `column0` | Error | `empty.csv` |
 | LD-5: malformed CSV and JSON accepted silently | Error, and no data | `TestImportTabularFailures`, `ragged.csv` |
 | LD-6: the path is a glob, so unselected files are read | Only the selected file is read; `*`, `?` and `[` are ordinary characters | `TestImportTabularReadsLiteralNames` |
 | LD-7: decimals and nested values shown as `[object Object]` | Text | `nested.json`, `types-*.parquet` |
-| LD-8: integers beyond 2^53 rounded by JavaScript | Text | `bigint.csv`, `numbers.json` |
+| LD-8: integers beyond 2^53 rounded by JavaScript | Text outside ±(2^53−1) | `bigint.csv`, `numbers.json`, `TestImportDelimitedMixedNumbersKeepIntegerDigits` |
 | LD-9: a larger file reported as 10,000 rows | `truncated` is set, and the Portfolio page says only the first 10,000 rows were read | `TestImportTabularTruncationIsExact` |
 | LD-10: NaN or infinity makes the result unencodable, and Wails exits | Kept as text (`NaN`, `+Inf`, `-Inf`) | `TestCellsAlwaysEncode` |
+
+The 2026-11-03 mixed-column regression closes a gap in the initial Go
+replacement: a fractional value promoted the column to float and rounded
+integer cells before their JSON return. Integer tokens outside ±(2^53−1)
+now remain text even in those columns. Safe integers in a float column remain
+numbers, and empty cells remain null. Decimal and exponent tokens retain their
+existing float semantics; this is not an exact-decimal arithmetic guarantee.
 
 ## Other behaviour
 

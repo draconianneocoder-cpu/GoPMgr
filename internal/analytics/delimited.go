@@ -243,6 +243,11 @@ func textCell(v string, t colType) any {
 		n, _ := parseInt(v)
 		return intCell(n)
 	case typeFloat:
+		// A fractional value elsewhere in this column must not round an
+		// integer that JavaScript cannot carry safely as a number.
+		if n, ok := parseInt(v); ok && (n > maxExactJSInteger || n < -maxExactJSInteger) {
+			return intCell(n)
+		}
 		f, _ := parseFloat(v)
 		return floatCell(f)
 	}
