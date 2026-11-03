@@ -86,8 +86,11 @@ automated engineering work.
 ## Project Invariants
 
 - `go.mod` requires Go 1.27.3 or later and pins Wails v2.17.0. CGO is required.
-- The main package is the root `main.go` (required by `wails build`). The
-  production build embeds the repo-root `frontend/dist` through `go:embed`.
+- The main package is the root `main.go` (required by `wails build`). It
+  only embeds the repo-root `frontend/dist` through `go:embed` and calls
+  `desktop.Main`. The Wails-bound `App` lives in `internal/desktop`; every
+  exported `App` method is frontend API (`window.go.desktop.App`), listed in
+  `code-map/app-api.json`.
   `make build` runs `wails build`, which builds `frontend/dist`, injects the
   `desktop,production` tags, and links the platform frameworks.
 - `system.db` stores local account metadata. Per-project `.gopmgr`

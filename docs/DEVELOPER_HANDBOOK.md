@@ -106,7 +106,7 @@ GoPMgr has four primary runtime concerns:
 
 1. **Desktop/UI boundary** — Wails exposes Go application methods to
     the Svelte frontend.
-2. **Application and domain logic** — root `app_*.go` files
+2. **Application and domain logic** — `internal/desktop/app_*.go` files
     coordinate UI-facing operations while reusable domain logic lives
     under `internal/`.
 3. **Local persistence** — `system.db` stores account/bootstrap
@@ -230,7 +230,7 @@ make build
 
 The production build runs the repository's Wails build wrapper. Wails
 builds the frontend, generates required bindings, embeds `frontend/dist`
-through the root `main.go`, applies the desktop/production build
+through the root `main.go` (which then calls `internal/desktop`), applies the desktop/production build
 context, links required platform frameworks, and compiles the
 CGO-enabled backend.
 
@@ -257,23 +257,29 @@ A successful `make verify` is not equivalent to the full release gate.
 ### 3.1 Top-level structure
 
 ``` text
-main.go                 Wails entry point, application object, frontend embed
-app_*.go                UI-facing adapters and application orchestration
+main.go                 Embeds frontend/dist and calls desktop.Main (nothing else)
+internal/desktop/       Wails-bound App, window/menu/lifecycle, CLI/headless modes
 internal/               Domain and infrastructure packages
 frontend/               Svelte 5 + TypeScript desktop UI
 docs/                   User, design, release, and supporting documentation
-scripts/                Validation, packaging, release, and repository checks
-tools/                  Repository development tools
+scripts/                Shell validation, packaging, release, and repository checks
+tools/                  Go development tools (code-map, config-check, sbom, notices, ...)
 code-map/               Generated/checked architectural and API maps
 build/                  Platform packaging inputs and build configuration
 ```
 
-### 3.2 Root application package
+### 3.2 Application package (`internal/desktop`)
 
-The main Go package lives at the repository root because the Wails build
-expects the main package there.
+The main Go package stays at the repository root because the Wails build
+expects it there and `go:embed` cannot reach `frontend/dist` from a
+subdirectory. It contains only `main.go`, which embeds the frontend and
+calls `desktop.Main`. Everything else moved to `internal/desktop` on
+2026-11-03.
 
-Root `app_*.go` files form the Wails-facing application layer. They may:
+`internal/desktop/app_*.go` files form the Wails-facing application
+layer. Every exported `App` method is frontend API
+(`window.go.desktop.App.<Method>`), listed in `code-map/app-api.json`;
+keep helpers unexported or package-level. These files may:
 
 - validate bridge input;
 - obtain the current authenticated user or project state;
@@ -415,7 +421,8 @@ enforce security and persistence invariants.
 
 ### 4.3 Bridge declarations: hand-written vs. generated
 
-Wails exposes backend methods through `window.go.main.App`. Two
+Wails exposes backend methods through `window.go.desktop.App` (the Go
+package name of the bound `App`). Two
 independent artifacts describe that surface, and they are not the same
 thing:
 
@@ -1108,7 +1115,7 @@ The repository uses:
 - jsdom;
 - direct component tests;
 - pure TypeScript helper tests;
-- mocked `window.go.main.App` for selected interaction tests.
+- mocked `window.go.desktop.App` for selected interaction tests.
 
 When fixing a frontend regression, add the narrowest test that
 reproduces the original failure class and retain runtime smoke coverage
@@ -1208,7 +1215,7 @@ unrelated files were not accidentally changed.
 
 ### 15.1 Go tests fail because `frontend/dist` is missing
 
-The root Go package embeds `frontend/dist`.
+The root `main.go` embeds `frontend/dist`.
 
 If direct Go tests need the embedded output and it is absent, build the
 frontend first:
@@ -2044,7 +2051,8 @@ targets; this table curates the ones a developer needs most often.
 These are high-value rules that should remain easy to find.
 
 1. The root main package remains compatible with the Wails build
-    layout.
+    layout, and holds only the frontend embed and the call into
+    `internal/desktop`.
 2. Wails-bound methods remain thin adapters/orchestrators rather than a
     replacement domain layer.
 3. `internal/sqlitedriver` owns SQLite/SQLCipher driver registration.
@@ -2226,11 +2234,12 @@ Read these focused documents when working in the corresponding area:
 - `TEST_COVERAGE_LEDGER.md` — test coverage inventory and assurance
     tracking.
 - `code-map/` — architectural/API maps. `make code-map` regenerates
-    `package-dependencies.json` (first-party import graph), and
-    `make verify` fails when it is stale. `callgraph.json`,
-    `public-api-map.json` and `symbols.json` are refreshed by hand with
-    the command in each file's `description`, and `recent-decisions.md`
-    is a hand-maintained index.
+    `package-dependencies.json` (first-party import graph) and
+    `app-api.json` (every exported method of the Wails-bound App in
+    `internal/desktop`, with its file, line, signature and the internal
+    packages it uses), and `make verify` fails when either is stale.
+    For a package's exported symbols, run `go doc -short ./internal/<pkg>`.
+    `recent-decisions.md` is a hand-maintained index.
 - `docs/design/` — ADRs (`ADR-NNN-title.md`) and other
     subsystem-specific design proposals, side by side in one directory.
 - `Makefile` — authoritative local command orchestration.

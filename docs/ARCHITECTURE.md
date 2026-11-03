@@ -71,11 +71,16 @@ returned only after commit. This save operation is not a calendar-transfer API.
 
 ## Important Packages
 
-- `main.go` (repo root): Wails app object entry point, CLI dispatch, and
-  frontend embed. Lives at the root because `wails build` requires the main
-  package there; the ~30 `app_*.go` files alongside it (also root package
-  `main`) implement account/session flow, project lifecycle, and export
-  entry points.
+- `main.go` (repo root): embeds `frontend/dist` and calls `desktop.Main`.
+  It stays at the root because `wails build` requires the main package
+  there and `go:embed` cannot reach a parent directory; it holds nothing
+  else.
+- `internal/desktop`: the Wails-bound `App` (window, menu, lifecycle) and
+  the CLI/headless modes. Its `app_*.go` files group the frontend API by
+  domain: account/session flow, project lifecycle, documents, charts, cost
+  control, export, administration. They authorize, translate wire formats
+  and delegate to the other `internal/` packages. `code-map/app-api.json`
+  lists every exported method.
 - `internal/users`: Local account store, Argon2id authentication,
   recovery codes, and wrapped DEK handling.
 - `internal/db`: Project database schema, migrations, CRUD, backup,
@@ -152,7 +157,8 @@ database only after integrity checks pass.
 
 The frontend is a desktop application UI, not a marketing site. It
 should remain dense, utilitarian, and optimized for repeated project
-management work. Wails injects `window.go.main.App`; keep
+management work. Wails injects `window.go.desktop.App` (the package name of the bound
+`App`); keep
 `frontend/src/wails-window.d.ts` aligned whenever backend methods are
 added or changed.
 
