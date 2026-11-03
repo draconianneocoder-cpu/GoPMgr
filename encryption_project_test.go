@@ -638,6 +638,15 @@ func TestReadPathsDoNotUpgradeAProject(t *testing.T) {
 	if req.ProjectName != "Legacy Name" || !req.AuditValid || req.AuditEvents != 0 {
 		t.Fatalf("deletion request = %+v", req)
 	}
+	// Portfolio analytics reads every project too (ported from the retired
+	// Slice B branch, whose version measured the DuckDB engine).
+	summary, err := app.RunPortfolioAnalytics()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.ProjectCount != 1 || summary.CurrencyCode != "USD" {
+		t.Fatalf("portfolio summary = %+v", summary)
+	}
 	after := stampAppDBFile(t, project.Path)
 	if !reflect.DeepEqual(before, after) {
 		t.Fatalf("read paths changed the file: perm %v/%v wal %v/%v shm %v/%v bytes %d/%d",
