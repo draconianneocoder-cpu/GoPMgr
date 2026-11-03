@@ -36,10 +36,13 @@ func readDelimited(ctx context.Context, r io.Reader, tsv bool) (Dataset, error) 
 	}
 	delim := sniffDelimiter(sample, tsv, len(sample) < sniffBytes)
 
-	limiter := &recordLimiter{r: br}
+	// The record cap counts from where the current logical record began.
+	// cr.InputOffset advances with every physical line, even inside a quoted
+	// field that spans many lines, so it cannot be the limiter's start.
+	var recStart int64
+	limiter := &recordLimiter{r: br, rowStart: func() int64 { return recStart }}
 	cr := csv.NewReader(limiter)
 	cr.Comma = delim
-	limiter.rowStart = cr.InputOffset
 	var rows [][]string
 	for len(rows) < MaxImportRows+2 { // a header, the cap, and one more to detect truncation
 		if len(rows)%1024 == 0 {
@@ -47,12 +50,12 @@ func readDelimited(ctx context.Context, r io.Reader, tsv bool) (Dataset, error) 
 				return Dataset{}, err
 			}
 		}
-		start := cr.InputOffset()
+		recStart = cr.InputOffset()
 		rec, err := cr.Read()
 		if errors.Is(err, io.EOF) {
 			break
 		}
-		if cr.InputOffset()-start > maxRecordBytes {
+		if cr.InputOffset()-recStart > maxRecordBytes {
 			return Dataset{}, ErrRecordTooLarge
 		}
 		if err != nil {
@@ -107,10 +110,12 @@ func delimiterName(d rune) string {
 	return "CSV"
 }
 
-// sniffDelimiter picks the candidate that splits every sampled record into
-// the same number of fields, preferring more fields. With no consistent
-// multi-field candidate it returns a comma, so the reader reports a ragged
-// file or reads a single column.
+// sniffDelimiter picks the candidate that parses the sample without error and
+// splits every sampled record into the same number of fields, preferring more
+// fields. A parse error that runs to the end of a truncated sample is the
+// sample's cut, not the file's fault. With no consistent multi-field candidate
+// it returns a comma, so the reader reports a ragged file or reads a single
+// column.
 func sniffDelimiter(sample []byte, tsv, complete bool) rune {
 	if !complete {
 		if i := bytes.LastIndexByte(sample, '\n'); i > 0 {
@@ -130,6 +135,9 @@ func sniffDelimiter(sample []byte, tsv, complete bool) rune {
 		for n < 100 {
 			rec, err := cr.Read()
 			if err != nil {
+				if !errors.Is(err, io.EOF) && (complete || cr.InputOffset() < int64(len(sample))) {
+					consistent = false
+				}
 				break
 			}
 			n++

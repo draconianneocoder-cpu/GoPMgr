@@ -31,10 +31,10 @@ func readJSON(ctx context.Context, r io.Reader, ndjson bool) (Dataset, error) {
 	if err != nil {
 		return Dataset{}, fmt.Errorf("analytics: read file: %w", err)
 	}
-	limiter := &recordLimiter{r: br}
+	var rowStart int64 // where the value being decoded began
+	limiter := &recordLimiter{r: br, rowStart: func() int64 { return rowStart }}
 	dec := json.NewDecoder(limiter)
 	dec.UseNumber()
-	limiter.rowStart = dec.InputOffset
 	array := first == '[' && !ndjson
 	if array {
 		if _, err := dec.Token(); err != nil {
@@ -55,6 +55,7 @@ func readJSON(ctx context.Context, r io.Reader, ndjson bool) (Dataset, error) {
 		}
 		var raw json.RawMessage
 		start := dec.InputOffset()
+		rowStart = start
 		if err := dec.Decode(&raw); errors.Is(err, io.EOF) && !array {
 			break
 		} else if err != nil {

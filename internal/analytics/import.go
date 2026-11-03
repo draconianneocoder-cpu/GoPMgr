@@ -263,8 +263,14 @@ type recordLimiter struct {
 }
 
 func (l *recordLimiter) Read(p []byte) (int, error) {
-	if l.read-l.rowStart() > maxRecordBytes {
+	used := l.read - l.rowStart()
+	if used > maxRecordBytes {
 		return 0, ErrRecordTooLarge
+	}
+	// Readers grow their buffers (json.Decoder doubles), so one Read can ask
+	// for many megabytes. Never hand out more than one byte past the cap.
+	if room := maxRecordBytes - used + 1; int64(len(p)) > room {
+		p = p[:room]
 	}
 	n, err := l.r.Read(p)
 	l.read += int64(n)
