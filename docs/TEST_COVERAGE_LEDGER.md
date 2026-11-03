@@ -1164,7 +1164,7 @@ Standalone CLI that produces the signed release manifest consumed by `internal/u
 | --- | --- | --- | --- | --- |
 | `main_test.go` | 1 | `run` (manifest generation + signing) | fixture/golden | Confirms a generated manifest is actually verifiable — round-trips through the same signature-checking logic `internal/update` uses on the client side, so manifest-generation and manifest-verification can't silently drift apart. |
 
-## `tools/sbom` — 63.2%
+## `tools/sbom` — 62.7%
 
 Release SBOM generator (CISA 2026 minimum elements, CycloneDX 1.7 and SPDX 3.0.1); see `docs/SBOM.md`.
 
