@@ -44,13 +44,24 @@ import (
 // fails the sweep.
 //
 // Every worker signed with the same bundle identifier shares one container,
-// so jobs on a container run one at a time. Sweep reports carry counts only:
+// so jobs on a container run one at a time, also across host processes: Do
+// and Sweep hold an exclusive flock on the container's lock file (one per
+// worker slot, in a folder only the host's user can reach) from before the
+// job folder is made until the sweep ends. A host never queues on a slot
+// another process holds; Do and Sweep refuse with ErrContainerBusy. Under
+// the lock, a tree that differs from the baseline (a holder killed before it
+// could sweep) is swept before the job runs. Sweep reports carry counts only:
 // names and attribute values may hold data the worker wrote.
+//
+// The lock lasts as long as the host's descriptor. If a host dies while its
+// worker still runs, the lock is released and another host may start a job
+// beside the orphaned worker until that worker exits.
 type Container struct {
-	mu      sync.Mutex
-	root    string
-	base    map[string]containerEntry
-	unclean bool
+	mu       sync.Mutex
+	root     string
+	lockPath string
+	base     map[string]containerEntry
+	unclean  bool
 	// beforeChange, set only by tests, runs after the sweep has looked at the
 	// entry at rel and before it opens, changes or removes it.
 	beforeChange func(rel string)
@@ -89,13 +100,63 @@ var (
 	errEntryMoved = errors.New("container entry changed during the sweep")
 )
 
-// NewContainer records the baseline of root, which must exist.
-func NewContainer(root string) (*Container, error) {
+// NewContainer records the baseline of root, which must exist. lockPath is
+// the slot's lock file; see checkLockFolder for what its folder must be.
+func NewContainer(root, lockPath string) (*Container, error) {
+	if err := checkLockFolder(lockPath); err != nil {
+		return nil, err
+	}
 	base, err := snapshotTree(root)
 	if err != nil {
 		return nil, fmt.Errorf("container baseline: %s", errnoText(err))
 	}
-	return &Container{root: root, base: base}, nil
+	return &Container{root: root, lockPath: lockPath, base: base}, nil
+}
+
+// checkLockFolder requires lockPath's folder to be a directory (not a
+// symlink) owned by this user with no group or other permissions, so no
+// other user can remove or replace the lock file. The lock file is never
+// removed: removing it while held would let a second holder lock a new file.
+// The check runs once, at construction; a later change to the folder by the
+// same user is outside it.
+func checkLockFolder(lockPath string) error {
+	if !filepath.IsAbs(lockPath) {
+		return errors.New("container lock: path is not absolute")
+	}
+	var st unix.Stat_t
+	if err := unix.Lstat(filepath.Dir(lockPath), &st); err != nil {
+		return fmt.Errorf("container lock folder: %s", errnoText(err))
+	}
+	if st.Mode&unix.S_IFMT != unix.S_IFDIR || int(st.Uid) != os.Geteuid() || st.Mode&0o077 != 0 {
+		return errors.New("container lock folder must be a directory owned by this user with no group or other access")
+	}
+	return nil
+}
+
+// lockSlot takes the slot's exclusive lock without waiting. The returned
+// function releases it. A lock held by another open file description, in
+// this process or another, gives ErrContainerBusy.
+func (c *Container) lockSlot() (func(), error) {
+	fd, err := unix.Open(c.lockPath, unix.O_RDONLY|unix.O_CREAT|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("container lock: %s", errnoText(err))
+	}
+	st, err := fstat(fd)
+	if err == nil && (st.Mode&unix.S_IFMT != unix.S_IFREG || int(st.Uid) != os.Geteuid()) {
+		err = errors.New("not a regular file owned by this user")
+	}
+	if err == nil {
+		err = unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB)
+		if errors.Is(err, unix.EWOULDBLOCK) {
+			unix.Close(fd)
+			return nil, ErrContainerBusy
+		}
+	}
+	if err != nil {
+		unix.Close(fd)
+		return nil, fmt.Errorf("container lock: %s", errnoText(err))
+	}
+	return func() { unix.Close(fd) }, nil
 }
 
 type savedContainer struct {
@@ -119,8 +180,12 @@ func (c *Container) Save(path string) error {
 	return os.Rename(tmp, path)
 }
 
-// LoadContainer reads a baseline written by Save.
-func LoadContainer(path string) (*Container, error) {
+// LoadContainer reads a baseline written by Save. lockPath is as for
+// NewContainer.
+func LoadContainer(path, lockPath string) (*Container, error) {
+	if err := checkLockFolder(lockPath); err != nil {
+		return nil, err
+	}
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -134,24 +199,44 @@ func LoadContainer(path string) (*Container, error) {
 			return nil, errors.New("container baseline is invalid")
 		}
 	}
-	return &Container{root: s.Root, base: s.Entries}, nil
+	return &Container{root: s.Root, lockPath: lockPath, base: s.Entries}, nil
 }
 
 // Do runs one job with exclusive use of the container. run receives a fresh,
 // empty job folder. The sweep runs after run returns, which for Run means
-// after the worker has been reaped, whatever the outcome.
+// after the worker has been reaped, whatever the outcome. The slot lock is
+// held throughout; a container left changed by an earlier holder is swept
+// first, and the job is refused if that sweep is not clean.
 func (c *Container) Do(name string, run func(folder string) Result) Result {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.unclean {
+	refuse := func(detail string) Result {
 		res := NewResult(name)
-		res.Outcome, res.Detail = "setup_failed", ErrContainerUnclean.Error()
+		res.Outcome, res.Detail = "setup_failed", detail
 		return res
+	}
+	if c.unclean {
+		return refuse(ErrContainerUnclean.Error())
+	}
+	unlock, err := c.lockSlot()
+	if err != nil {
+		return refuse(err.Error())
+	}
+	defer unlock()
+	var pre *SweepReport
+	if now, err := snapshotTree(c.root); err != nil || !sameTree(now, c.base) {
+		report := c.sweepLocked()
+		pre = &report
+		if !report.Clean {
+			res := refuse(ErrContainerUnclean.Error())
+			res.ContainerPreSweep = pre
+			return res
+		}
 	}
 	var entropy [8]byte
 	if _, err := io.ReadFull(rand.Reader, entropy[:]); err != nil {
-		res := NewResult(name)
-		res.Outcome, res.Detail = "setup_failed", "job folder: entropy unavailable"
+		res := refuse("job folder: entropy unavailable")
+		res.ContainerPreSweep = pre
 		return res
 	}
 	folder := filepath.Join(c.root, "df0-job-"+hex.EncodeToString(entropy[:]))
@@ -163,15 +248,23 @@ func (c *Container) Do(name string, run func(folder string) Result) Result {
 		res = run(folder)
 	}
 	report := c.sweepLocked()
+	res.ContainerPreSweep = pre
 	res.ContainerSweep = &report
 	return res
 }
 
 // Sweep restores the container without running a job, for example when a
-// host starts after a previous host died mid-job.
+// host starts after a previous host died mid-job. A slot another process
+// holds is not swept; the report says so and the container is not marked
+// unclean.
 func (c *Container) Sweep() SweepReport {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	unlock, err := c.lockSlot()
+	if err != nil {
+		return SweepReport{Failure: err.Error()}
+	}
+	defer unlock()
 	return c.sweepLocked()
 }
 

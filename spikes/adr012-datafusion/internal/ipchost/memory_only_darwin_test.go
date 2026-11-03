@@ -674,7 +674,7 @@ func TestMacOSFileGrowthLimitChannels(t *testing.T) {
 	fsevents := compileFSEventsProbe(t)
 	identifier, root := testContainer(t, observer)
 	guarded := signedProbeApp(t, observer, identifier, true)
-	cont, err := NewContainer(filepath.Join(root, "Data"))
+	cont, err := NewContainer(filepath.Join(root, "Data"), testLock(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -800,7 +800,7 @@ func TestMacOSMemoryOnlyWorker(t *testing.T) {
 	observer := compileObserverProbe(t)
 	fsevents := compileFSEventsProbe(t)
 	identifier, root := testContainer(t, observer)
-	cont, err := NewContainer(filepath.Join(root, "Data"))
+	cont, err := NewContainer(filepath.Join(root, "Data"), testLock(t))
 	if err != nil {
 		t.Fatal(err)
 	}

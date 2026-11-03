@@ -21,3 +21,7 @@ type SweepReport struct {
 // ErrContainerUnclean is the setup failure for a job refused because an
 // earlier sweep could not restore the container.
 var ErrContainerUnclean = errors.New("worker container is not clean")
+
+// ErrContainerBusy refuses a job or sweep because another process holds the
+// container's slot lock. Hosts never queue on another host's slot.
+var ErrContainerBusy = errors.New("worker container is in use by another process")

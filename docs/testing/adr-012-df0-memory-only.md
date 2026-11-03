@@ -173,14 +173,21 @@ system error only; names could carry data.
   symlinks, swept only after a completed job, forced the clean verdict, put
   the path in the failure text, and skipped mode restoration or flag
   clearing.
-- **Limits:** `Container.Do` serializes jobs with an in-process lock. Two host
-  processes, such as two app instances, share one container and are not
-  serialized, so one could sweep the other's live job folder. A cross-process
-  exclusive lock, for example `flock` on a file outside the container, is
-  needed before adoption. ReportCrash writes its in-container plist
-  asynchronously. If that write lands between a sweep's walk and its
-  re-check, the container is marked unclean and refuses jobs until it is
-  swept again. That is an availability limit; the comparison stays strict.
+- **Cross-process lock (added later the same day).** Two host processes,
+  such as two app instances, share one container. `Container.Do` and `Sweep`
+  now hold an exclusive `flock` on the slot's lock file, in a folder only the
+  host's user can reach, from before the job folder is made until the sweep
+  ends. A slot another process holds is refused at once and never marked
+  unclean. Under the lock, a container left changed by an earlier holder is
+  swept before the job, and the result reports that sweep's counts.
+- **Limits:** the lock lasts as long as the host's descriptor, so a host that
+  dies while its worker runs releases it, and another host can start a job
+  beside the orphaned worker until that worker exits. ReportCrash writes its
+  in-container plist asynchronously. If that write lands between a sweep's
+  walk and its re-check, the container is marked unclean and refuses jobs
+  until it is swept again; a plist that lands after the sweep is now swept
+  before the next job. That is an availability limit; the comparison stays
+  strict.
   The sweep fails closed, and so marks the container unclean, on an entry it
   cannot handle through a handle: a file the worker made unreadable and
   immutable, a baseline file it made unreadable, or a tree deeper than 64
@@ -338,7 +345,8 @@ the owner accepted condition 3 after it was implemented, as described below.
   cohorts then run in parallel. Each container still needs a cross-process
   lock: an `flock` on one lock file per slot in the host's own Application
   Support folder, which the kernel releases if the app crashes and the worker
-  cannot reach. Not built yet.
+  cannot reach. The lock is built and tested; the per-slot signed copies and
+  native cohort tests are not.
 - **Condition 3:** option (ii), a panic hook in safe Rust, plus (iv),
   deployment guidance. Native faults keep producing reports.
 - **Condition 4:** deferred to release qualification. (a) cannot be adopted
@@ -404,14 +412,14 @@ From `spikes/adr012-datafusion`, with a worker built from this revision:
 DF0_WORKER=/absolute/path/to/df0-worker \
 DF0_MEMORY_ONLY_EVIDENCE=/absolute/path/to/existing-directory \
   go test -race -count=1 -v ./internal/ipchost \
-  -run '^(TestMacOSFileGrowthLimitChannels|TestMacOSMemoryOnlyWorker|TestFSEventsDropFlagsFailTheObservation|TestMacOSVolumeWideFSEvents|TestMacOSCrashReportOptions|TestContainer.*)$'
+  -run '^(TestMacOSFileGrowthLimitChannels|TestMacOSMemoryOnlyWorker|TestFSEventsDropFlagsFailTheObservation|TestFSEventsObserverRecordsDropNotices|TestMacOSVolumeWideFSEvents|TestMacOSCrashReportOptions|TestContainer.*)$'
 ```
 
 The full spike race suite and `go vet` passed with the same worker. The tests
 skip as root and skip the worker scenarios without `DF0_WORKER`; neither is
 qualification.
 
-For the memory-only and container work, thirty-five compiling seeds were each
+For the memory-only and container work, forty-two compiling seeds were each
 caught by a named assertion (the SEC-002 to SEC-005 seeds are recorded in their
 commit messages); four
 first forms that did not compile were replaced and are recorded as not

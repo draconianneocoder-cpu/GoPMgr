@@ -1,5 +1,5 @@
 {
-  "counted_total": 35,
+  "counted_total": 42,
   "groups": [
     {
       "group": "S1-S9, S1b (memory-only policy, observers, scans)",
@@ -290,6 +290,47 @@
           "first_assertion": "failed = false (\"\"), want true"
         }
       ]
+    },
+    {
+      "group": "L1-L7 (cross-process container slot lock, owner condition 2)",
+      "ran_against": "the slot-lock sources of this commit",
+      "seeds": [
+        {
+          "seed": "L1 flock skipped",
+          "result": "CAUGHT by TestContainerSlotRefusesAnotherProcessThenRecoversAfterItsDeath, TestContainerSlotIsHeldThroughTheHoldersSweep",
+          "first_assertion": "container_lock_darwin_test.go: a job on a held slot: ran=true"
+        },
+        {
+          "seed": "L2 shared lock (LOCK_SH)",
+          "result": "CAUGHT by the same two tests",
+          "first_assertion": "container_lock_darwin_test.go: a job on a held slot: ran=true"
+        },
+        {
+          "seed": "L3 lock released before the sweep",
+          "result": "CAUGHT by TestContainerSlotIsHeldThroughTheHoldersSweep",
+          "first_assertion": "container_lock_darwin_test.go: a job on a held slot: ran=true"
+        },
+        {
+          "seed": "L4 fcntl write lock (O_RDWR, F_WRLCK) instead of flock",
+          "result": "CAUGHT by TestContainerSlotExcludesASecondContainerInTheSameProcess only; both cross-process tests passed",
+          "first_assertion": "container_lock_darwin_test.go: a job on a held slot: ran=true"
+        },
+        {
+          "seed": "L5 no sweep before the job",
+          "result": "CAUGHT by TestContainerSlotRefusesAnotherProcessThenRecoversAfterItsDeath",
+          "first_assertion": "container_lock_darwin_test.go: the dead holder's job folder was still there when the next job ran"
+        },
+        {
+          "seed": "L6 a busy sweep marks the container unclean",
+          "result": "CAUGHT by the two cross-process tests",
+          "first_assertion": "container_lock_darwin_test.go: a held slot marked the container unclean"
+        },
+        {
+          "seed": "L7 lock opened without O_NOFOLLOW",
+          "result": "CAUGHT by TestContainerSlotLockMustBeAPrivateRegularFile/lock_file_is_a_symlink",
+          "first_assertion": "container_lock_darwin_test.go: job with a symlink lock: ran=true"
+        }
+      ]
     }
   ],
   "not_counted_as_detection": [
@@ -312,6 +353,11 @@
       "seed": "V1 probe ignores dropped-event flags (first form, rerun)",
       "result": "DID NOT COMPILE",
       "disposition": "a one-line sed edit split the two-line DROP_FLAGS macro; replaced by an exact replacement, which was caught"
+    },
+    {
+      "seed": "L4 fcntl lock (first form, shared F_RDLCK)",
+      "result": "CAUGHT, not counted",
+      "disposition": "a shared read lock duplicated L2 rather than testing fcntl's per-process semantics; replaced by the F_WRLCK form"
     }
   ],
   "counting_rule": "Each distinct fault counts once; re-runs of an earlier seed against changed sources re-verify it and are not added again"

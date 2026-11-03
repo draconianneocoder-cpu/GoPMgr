@@ -130,12 +130,15 @@ type Result struct {
 	DirMode         string `json:"endpoint_dir_mode"`
 	SocketMode      string `json:"endpoint_socket_mode"`
 	EndpointRemoved bool   `json:"endpoint_removed"`
-	// ContainerSweep is set by Container.Do after the job's sweep.
-	ContainerSweep  *SweepReport `json:"container_sweep,omitempty"`
-	ListenerRefused int64        `json:"listener_refused"`
-	SessionRefused  int64        `json:"session_refused"`
-	Refusals        []string     `json:"refusals,omitempty"`
-	IntruderData    *bool        `json:"intruder_received_data,omitempty"`
+	// ContainerSweep is set by Container.Do after the job's sweep, and
+	// ContainerPreSweep when Do first had to restore a container an earlier
+	// holder left changed.
+	ContainerSweep    *SweepReport `json:"container_sweep,omitempty"`
+	ContainerPreSweep *SweepReport `json:"container_pre_sweep,omitempty"`
+	ListenerRefused   int64        `json:"listener_refused"`
+	SessionRefused    int64        `json:"session_refused"`
+	Refusals          []string     `json:"refusals,omitempty"`
+	IntruderData      *bool        `json:"intruder_received_data,omitempty"`
 
 	SpawnToHelloNS   int64 `json:"spawn_to_hello_ns"`
 	CancelToFailedNS int64 `json:"cancel_to_failed_ns"`

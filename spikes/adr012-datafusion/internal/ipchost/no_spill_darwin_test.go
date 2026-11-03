@@ -28,6 +28,9 @@ func TestMain(m *testing.M) {
 	if code, ok := treeFixture(os.Args); ok {
 		os.Exit(code)
 	}
+	if code, ok := slotHolderFixture(os.Args); ok {
+		os.Exit(code)
+	}
 	if len(os.Args) == 3 && os.Args[1] == "-df0-write-probe" {
 		err := os.WriteFile(os.Args[2], []byte(fixtures.NoSpillSentinel), 0600)
 		if err == nil {

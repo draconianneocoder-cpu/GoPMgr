@@ -27,6 +27,6 @@
     "signal": "trace/BPT trap",
     "report_written": true,
     "register_pattern_in_report": true,
-    "report_bytes": 7646
+    "report_bytes": 7647
   }
 ]

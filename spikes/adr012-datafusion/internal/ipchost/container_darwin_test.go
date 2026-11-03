@@ -23,6 +23,17 @@ const sweepMarker = "DF0SWEEPSECRET"
 
 // fakeContainer builds a small tree shaped like an App Sandbox Data
 // directory, with a symlink to a file outside it.
+// testLock returns a slot lock path in a fresh folder only this user can
+// reach.
+func testLock(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return filepath.Join(dir, "slot.lock")
+}
+
 func fakeContainer(t *testing.T) (root, outside string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -99,7 +110,7 @@ func dirty(t *testing.T, root, folder, outside string) {
 
 func TestContainerSweepRestoresTheBaseline(t *testing.T) {
 	root, outside := fakeContainer(t)
-	c, err := NewContainer(root)
+	c, err := NewContainer(root, testLock(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +181,7 @@ func TestContainerRefusesJobsAfterAChangedBaseline(t *testing.T) {
 	} {
 		t.Run(change.name, func(t *testing.T) {
 			root, outside := fakeContainer(t)
-			c, err := NewContainer(root)
+			c, err := NewContainer(root, testLock(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -196,7 +207,7 @@ func TestContainerRefusesJobsAfterAChangedBaseline(t *testing.T) {
 // the saved baseline and sweeps before running anything.
 func TestContainerSweepAfterHostDeath(t *testing.T) {
 	root, outside := fakeContainer(t)
-	c, err := NewContainer(root)
+	c, err := NewContainer(root, testLock(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +220,7 @@ func TestContainerSweepAfterHostDeath(t *testing.T) {
 		t.Fatal(err)
 	}
 	dirty(t, root, folder, outside)
-	restarted, err := LoadContainer(saved)
+	restarted, err := LoadContainer(saved, testLock(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +236,7 @@ func TestContainerSweepAfterHostDeath(t *testing.T) {
 // on it is in flight.
 func TestContainerRunsJobsOneAtATime(t *testing.T) {
 	root, _ := fakeContainer(t)
-	c, err := NewContainer(root)
+	c, err := NewContainer(root, testLock(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +283,7 @@ func TestContainerSweepFailureNamesNothing(t *testing.T) {
 	if err := os.Mkdir(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	c, err := NewContainer(root)
+	c, err := NewContainer(root, testLock(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,7 +328,7 @@ func TestContainerSweepIgnoresASwappedDirectory(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, outside := fakeContainer(t)
-			c, err := NewContainer(root)
+			c, err := NewContainer(root, testLock(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -368,7 +379,7 @@ func TestContainerSweepIgnoresASwappedDirectory(t *testing.T) {
 // must report the change and leave the outside file as it was.
 func TestContainerSweepLeavesAHardLinkedOutsideFile(t *testing.T) {
 	root, outside := fakeContainer(t)
-	c, err := NewContainer(root)
+	c, err := NewContainer(root, testLock(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -402,7 +413,7 @@ func TestContainerSweepLeavesAHardLinkedOutsideFile(t *testing.T) {
 // its flag without resolving a path, so the sweep fails closed.
 func TestContainerSweepFailsClosedOnAnUnreadableImmutableFile(t *testing.T) {
 	root, _ := fakeContainer(t)
-	c, err := NewContainer(root)
+	c, err := NewContainer(root, testLock(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -430,7 +441,7 @@ func TestContainerSweepFailsClosedOnAnUnreadableImmutableFile(t *testing.T) {
 // past the bound instead of recursing without limit.
 func TestContainerSweepBoundsTreeDepth(t *testing.T) {
 	root, _ := fakeContainer(t)
-	c, err := NewContainer(root)
+	c, err := NewContainer(root, testLock(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,7 +469,7 @@ func TestContainerSweepUnreadableDirectorySwappedForAHardLink(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, outside := fakeContainer(t)
-			c, err := NewContainer(root)
+			c, err := NewContainer(root, testLock(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -503,7 +514,7 @@ func TestContainerSweepUnreadableDirectorySwappedForAHardLink(t *testing.T) {
 // it holds the container lock.
 func TestContainerSweepDoesNotBlockOnAFIFO(t *testing.T) {
 	root, _ := fakeContainer(t)
-	c, err := NewContainer(root)
+	c, err := NewContainer(root, testLock(t))
 	if err != nil {
 		t.Fatal(err)
 	}

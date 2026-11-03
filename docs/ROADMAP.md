@@ -67,7 +67,7 @@ upgrade DuckDB as part of its retirement.
    the worker. The owner kept (d) and approved (a) as the target under five
    conditions, tracked in the ACR; DF-062 stays BLOCKED until they pass. Next
    implement the owner's choices for conditions 2 and 5: a signed worker copy
-   per concurrency slot with an `flock` per slot in the host's folder, and one
+   per concurrency slot (its `flock` slot lock is built), and one
    delegated-write watch test through a separate signed helper. Conditions 1
    and 3 have passed.
    Condition 4 waits for release qualification. Then qualify job-bound observation and failure recovery, then obtain explicit
