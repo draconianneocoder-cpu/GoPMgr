@@ -31,7 +31,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     busy = true;
     error = '';
     try {
-      await window.go.main.App.AcceptEncryptionWithoutRecoveryCodes();
+      await window.go.desktop.App.AcceptEncryptionWithoutRecoveryCodes();
       onready();
     } catch (err: any) {
       error = t('recoveryGate.error', { error: String(err?.message ?? err) });

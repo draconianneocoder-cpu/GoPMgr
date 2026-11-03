@@ -28,12 +28,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function refresh() {
     try {
-      projects = (await window.go.main.App.ListProjects()) ?? [];
+      projects = (await window.go.desktop.App.ListProjects()) ?? [];
     } catch (err: any) {
       error = `Could not list projects: ${err}`;
     }
     try {
-      deletions = (await window.go.main.App.ListProjectDeletions()) ?? [];
+      deletions = (await window.go.desktop.App.ListProjectDeletions()) ?? [];
       deletionsError = '';
     } catch (err: any) {
       deletionsError = `Could not load deleted projects: ${err}`;
@@ -48,7 +48,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function open(p: ProjectFile) {
     error = '';
     try {
-      const meta = await window.go.main.App.OpenProject(p.path);
+      const meta = await window.go.desktop.App.OpenProject(p.path);
       session.project = meta;
       session.projectPath = p.path;
       goto('dashboard');
@@ -61,7 +61,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     busyPath = p.path;
     try {
-      await window.go.main.App.CloneProject(p.path);
+      await window.go.desktop.App.CloneProject(p.path);
       await refresh();
     } catch (err: any) {
       error = `Clone failed: ${err}`;
@@ -74,7 +74,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     busyPath = p.path;
     try {
-      await window.go.main.App.DeleteProject(p.path);
+      await window.go.desktop.App.DeleteProject(p.path);
       confirmingDelete = null;
       // If the deleted project was the open one, drop it from the session.
       if (session.projectPath === p.path) {
@@ -93,7 +93,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     restoring = true;
     try {
-      await window.go.main.App.RestoreProjectArchive();
+      await window.go.desktop.App.RestoreProjectArchive();
       await refresh();
     } catch (err: any) {
       const message = String(err?.message ?? err);

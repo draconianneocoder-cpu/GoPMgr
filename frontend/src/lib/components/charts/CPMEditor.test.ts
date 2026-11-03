@@ -44,7 +44,7 @@ function installApp(overrides: Partial<AppMock> = {}): AppMock {
     ListStakeholders: vi.fn(async () => []),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
   return app;
 }
 

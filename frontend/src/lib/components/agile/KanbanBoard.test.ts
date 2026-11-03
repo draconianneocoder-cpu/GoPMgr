@@ -58,7 +58,7 @@ beforeEach(() => {
     DeleteWorkItem: vi.fn(async () => undefined),
     GetWorkItem: vi.fn(async (id: string) => items.find((i) => i.id === id)),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
 });
 
 afterEach(() => {

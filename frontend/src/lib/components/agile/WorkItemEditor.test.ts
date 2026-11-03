@@ -42,7 +42,7 @@ beforeEach(() => {
     SaveWorkItem: vi.fn(async (wi: AgileWorkItem) => wi),
     DeleteWorkItem: vi.fn(async () => undefined),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
 });
 
 afterEach(() => {

@@ -37,9 +37,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     try {
-      const all = (await window.go.main.App.ListDocuments('')) ?? [];
+      const all = (await window.go.desktop.App.ListDocuments('')) ?? [];
       available = all;
-	  profiles = (await window.go.main.App.ListReportProfiles()) ?? [];
+	  profiles = (await window.go.desktop.App.ListReportProfiles()) ?? [];
     } catch (err: any) {
       status = `Could not load documents: ${err}`;
     }
@@ -102,7 +102,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return;
     }
     try {
-      preflight = await window.go.main.App.PreflightCombinedReport(buildSections(), reportOptions());
+      preflight = await window.go.desktop.App.PreflightCombinedReport(buildSections(), reportOptions());
       status = preflight.ready
         ? 'Preflight complete. No blocking findings for this report mode.'
         : 'Preflight found blocking findings. Review them before a certified export.';
@@ -119,7 +119,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     exporting = true;
     status = '';
     try {
-      const path = await window.go.main.App.ExportCombinedReportWithOptions(
+      const path = await window.go.desktop.App.ExportCombinedReportWithOptions(
         reportTitle,
         subtitle,
         buildSections(),
@@ -143,7 +143,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     let gpgKeyID = '';
     let method: SignatureMethod = 'pades';
     try {
-      const s = await window.go.main.App.GetSettings();
+      const s = await window.go.desktop.App.GetSettings();
       if (s?.cert_path) certPath = s.cert_path;
       if (s?.gpg_key_id) gpgKeyID = s.gpg_key_id;
       if (s?.signature_method) method = s.signature_method;
@@ -161,7 +161,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     status = '';
     try {
       if (options.method === 'pades') {
-        const path = await window.go.main.App.ExportCombinedReportSigned(
+        const path = await window.go.desktop.App.ExportCombinedReportSigned(
           reportTitle,
           subtitle,
           buildSections(),
@@ -171,7 +171,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         status = `PAdES signed report exported to ${path}`;
         showToast('PAdES signed combined report exported successfully', 'success');
       } else if (options.method === 'gpg') {
-        const result = await window.go.main.App.ExportCombinedReportGnuPG(
+        const result = await window.go.desktop.App.ExportCombinedReportGnuPG(
           reportTitle,
           subtitle,
           buildSections(),
@@ -180,7 +180,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         status = `Report exported to ${result.pdf_path}; GnuPG signature exported to ${result.signature_path}`;
         showToast('GnuPG detached report signature exported successfully', 'success');
       } else {
-        const path = await window.go.main.App.ExportCombinedReport(
+        const path = await window.go.desktop.App.ExportCombinedReport(
           reportTitle,
           subtitle,
           buildSections(),

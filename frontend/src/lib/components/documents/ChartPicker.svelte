@@ -39,7 +39,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // The backend's ListCharts(projectID, kind) filters server-side
       // when kind is non-empty. The Wails binding takes only `kind`
       // because the currently-open project is on the Go side.
-      const all = (await window.go.main.App.ListCharts(chartKind || '')) ?? [];
+      const all = (await window.go.desktop.App.ListCharts(chartKind || '')) ?? [];
       charts = all;
     } catch (err: any) {
       error = String(err?.message ?? err);

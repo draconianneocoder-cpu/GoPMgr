@@ -76,7 +76,7 @@ JSON.stringified back to db.charts.data.
     window.addEventListener('keydown', handleKeyDown);
     if (!session.editingId) return;
     try {
-      chart = await window.go.main.App.GetChart(session.editingId);
+      chart = await window.go.desktop.App.GetChart(session.editingId);
     } catch (err: any) {
       loadError = `Could not load this chart: ${err?.message ?? err}`;
       return;
@@ -99,13 +99,13 @@ JSON.stringified back to db.charts.data.
     if (!chart) return;
     layoutError = '';
     try {
-      const updated = await window.go.main.App.SaveChart({
+      const updated = await window.go.desktop.App.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });
       chart = updated;
       lastSavedAt = new Date();
-      const res = await window.go.main.App.LayoutChart(updated.id);
+      const res = await window.go.desktop.App.LayoutChart(updated.id);
       layout = res.body as StatsLayout;
     } catch (err: any) {
       layoutError = String(err?.message ?? err);
@@ -117,7 +117,7 @@ JSON.stringified back to db.charts.data.
     saving = true;
     status = '';
     try {
-      const updated = await window.go.main.App.SaveChart({
+      const updated = await window.go.desktop.App.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });

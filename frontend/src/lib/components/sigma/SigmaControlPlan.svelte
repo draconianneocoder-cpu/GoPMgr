@@ -26,7 +26,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadControlPlan() {
     loading = true;
     try {
-      items = await window.go.main.App.SigmaGetControlPlan(projectID);
+      items = await window.go.desktop.App.SigmaGetControlPlan(projectID);
     } catch (e) {
       showToast('Failed to load control plan', 'error');
     } finally {
@@ -36,7 +36,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function saveControlPlan() {
     try {
-      await window.go.main.App.SigmaSaveControlPlan(projectID, items);
+      await window.go.desktop.App.SigmaSaveControlPlan(projectID, items);
       showToast('Control Plan saved', 'success');
       void onSaved?.();
     } catch (e) {

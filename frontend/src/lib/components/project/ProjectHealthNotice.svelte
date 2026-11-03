@@ -14,7 +14,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     try {
-      check = await window.go.main.App.CheckOpenProject();
+      check = await window.go.desktop.App.CheckOpenProject();
     } catch {
       // The check is advice: a failed read shows nothing rather than an
       // error on the Dashboard. Check and repair remains in Project Settings.
@@ -30,7 +30,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function dismiss() {
     check = null;
     try {
-      await window.go.main.App.DismissOpenProjectCheck();
+      await window.go.desktop.App.DismissOpenProjectCheck();
     } catch {
       // Hidden for this visit either way; it may show again on the next one.
     }

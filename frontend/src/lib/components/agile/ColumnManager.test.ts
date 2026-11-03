@@ -23,7 +23,7 @@ beforeEach(() => {
     DeleteColumn: vi.fn(async () => undefined),
     EnsureDefaultBoard: vi.fn(async () => ({ board: { id: 'board-1' }, columns: initial })),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
 });
 
 afterEach(() => {

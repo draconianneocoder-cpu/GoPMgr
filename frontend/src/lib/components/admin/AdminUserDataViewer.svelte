@@ -40,7 +40,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     try {
-      projects = (await window.go.main.App.AdminListUserProjects()) ?? [];
+      projects = (await window.go.desktop.App.AdminListUserProjects()) ?? [];
     } catch (err: any) {
       error = `Could not list ${username}'s projects: ${err}`;
     } finally {
@@ -52,7 +52,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     tabError = '';
     try {
-      view = await window.go.main.App.AdminViewUserProject(p.path);
+      view = await window.go.desktop.App.AdminViewUserProject(p.path);
       openPath = p.path;
       tab = 'summary';
       schedules = null;
@@ -69,11 +69,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
     tabLoading = true;
     try {
       if (next === 'schedule' && schedules === null) {
-        schedules = (await window.go.main.App.AdminViewSchedule()) ?? [];
+        schedules = (await window.go.desktop.App.AdminViewSchedule()) ?? [];
       } else if (next === 'costs' && costs === null) {
-        costs = await window.go.main.App.AdminViewCosts();
+        costs = await window.go.desktop.App.AdminViewCosts();
       } else if (next === 'documents' && documents === null) {
-        documents = (await window.go.main.App.AdminViewDocuments()) ?? [];
+        documents = (await window.go.desktop.App.AdminViewDocuments()) ?? [];
       }
     } catch (err: any) {
       tabError = `Could not load this view: ${err}`;
@@ -85,7 +85,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function stop() {
     stopping = true;
     try {
-      await window.go.main.App.AdminStopUserData();
+      await window.go.desktop.App.AdminStopUserData();
     } catch (err: any) {
       error = `Could not stop viewing: ${err}`;
       stopping = false;
@@ -99,7 +99,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onDestroy(() => {
     if (!stopped) {
       stopped = true;
-      void window.go.main.App.AdminStopUserData().catch(() => {});
+      void window.go.desktop.App.AdminStopUserData().catch(() => {});
     }
   });
 

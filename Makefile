@@ -182,8 +182,8 @@ release-scope: ## Verify release gates target GoPMgr-owned source only.
 config-check: ## Parse tracked YAML/TOML and enforce each tool's supported format.
 	# Run controlled malformed/duplicate-key cases before trusting the live
 	# repository result; both commands use the same parser implementation.
-	@$(GO) test ./scripts
-	@$(GO) run ./scripts
+	@$(GO) test ./tools/config-check
+	@$(GO) run ./tools/config-check
 
 installer-tool-pins: ## Reject mutable or mismatched native installer tool selections.
 	# Exercise drift cases in isolated fixtures before checking the live release

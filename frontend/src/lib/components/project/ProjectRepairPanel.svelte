@@ -23,7 +23,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     result = null;
     error = '';
     try {
-      result = await window.go.main.App.RepairAndSwap();
+      result = await window.go.desktop.App.RepairAndSwap();
     } catch (err: any) {
       error = String(err?.message ?? err);
       if (error.includes('the project was closed')) {

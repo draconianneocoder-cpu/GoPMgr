@@ -5,6 +5,258 @@
       "dir": ".",
       "imported_by_internal": [],
       "imports_internal": [
+        "gopmgr/internal/desktop"
+      ],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/admin": {
+      "dir": "internal/admin",
+      "imported_by_internal": [
+        "gopmgr/internal/desktop"
+      ],
+      "imports_internal": [
+        "gopmgr/internal/db",
+        "gopmgr/internal/debug"
+      ],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/agile": {
+      "dir": "internal/agile",
+      "imported_by_internal": [
+        "gopmgr/internal/budget",
+        "gopmgr/internal/desktop",
+        "gopmgr/internal/templates",
+        "gopmgr/internal/timeline"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/analytics": {
+      "dir": "internal/analytics",
+      "imported_by_internal": [
+        "gopmgr/internal/desktop"
+      ],
+      "imports_internal": [
+        "gopmgr/internal/money"
+      ],
+      "notable_external_deps": [
+        "github.com/apache/arrow-go/v18/arrow",
+        "github.com/apache/arrow-go/v18/arrow/array",
+        "github.com/apache/arrow-go/v18/arrow/memory",
+        "github.com/apache/arrow-go/v18/parquet",
+        "github.com/apache/arrow-go/v18/parquet/file",
+        "github.com/apache/arrow-go/v18/parquet/pqarrow"
+      ]
+    },
+    "gopmgr/internal/applog": {
+      "dir": "internal/applog",
+      "imported_by_internal": [
+        "gopmgr/internal/desktop"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/auth": {
+      "dir": "internal/auth",
+      "imported_by_internal": [
+        "gopmgr/internal/desktop",
+        "gopmgr/internal/users"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": [
+        "golang.org/x/crypto/argon2"
+      ]
+    },
+    "gopmgr/internal/budget": {
+      "dir": "internal/budget",
+      "imported_by_internal": [
+        "gopmgr/internal/desktop"
+      ],
+      "imports_internal": [
+        "gopmgr/internal/agile",
+        "gopmgr/internal/db",
+        "gopmgr/internal/money"
+      ],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/calendar": {
+      "dir": "internal/calendar",
+      "imported_by_internal": [
+        "gopmgr/internal/desktop",
+        "gopmgr/internal/export"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": [
+        "github.com/rickar/cal/v2",
+        "github.com/rickar/cal/v2/aa",
+        "github.com/rickar/cal/v2/au",
+        "github.com/rickar/cal/v2/be",
+        "github.com/rickar/cal/v2/ca",
+        "github.com/rickar/cal/v2/de",
+        "github.com/rickar/cal/v2/fr",
+        "github.com/rickar/cal/v2/gb",
+        "github.com/rickar/cal/v2/jp",
+        "github.com/rickar/cal/v2/nl",
+        "github.com/rickar/cal/v2/us"
+      ]
+    },
+    "gopmgr/internal/catalog": {
+      "dir": "internal/catalog",
+      "imported_by_internal": [
+        "gopmgr/internal/desktop"
+      ],
+      "imports_internal": [
+        "gopmgr/internal/crypto",
+        "gopmgr/internal/sqlitedriver"
+      ],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/charts": {
+      "dir": "internal/charts",
+      "imported_by_internal": [
+        "gopmgr/internal/charts/pdfrender",
+        "gopmgr/internal/desktop"
+      ],
+      "imports_internal": [
+        "gopmgr/internal/charts/dag",
+        "gopmgr/internal/charts/flow",
+        "gopmgr/internal/charts/matrix",
+        "gopmgr/internal/charts/stats",
+        "gopmgr/internal/kernel"
+      ],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/charts/dag": {
+      "dir": "internal/charts/dag",
+      "imported_by_internal": [
+        "gopmgr/internal/charts",
+        "gopmgr/internal/desktop"
+      ],
+      "imports_internal": [
+        "gopmgr/internal/kernel"
+      ],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/charts/flow": {
+      "dir": "internal/charts/flow",
+      "imported_by_internal": [
+        "gopmgr/internal/charts"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/charts/matrix": {
+      "dir": "internal/charts/matrix",
+      "imported_by_internal": [
+        "gopmgr/internal/charts",
+        "gopmgr/internal/desktop"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/charts/pdfrender": {
+      "dir": "internal/charts/pdfrender",
+      "imported_by_internal": [
+        "gopmgr/internal/documents"
+      ],
+      "imports_internal": [
+        "gopmgr/internal/charts",
+        "gopmgr/internal/pdfdoc"
+      ],
+      "notable_external_deps": [
+        "github.com/go-pdf/fpdf"
+      ]
+    },
+    "gopmgr/internal/charts/stats": {
+      "dir": "internal/charts/stats",
+      "imported_by_internal": [
+        "gopmgr/internal/charts",
+        "gopmgr/internal/desktop"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/cli": {
+      "dir": "internal/cli",
+      "imported_by_internal": [
+        "gopmgr/internal/db",
+        "gopmgr/internal/desktop",
+        "gopmgr/internal/update"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/crypto": {
+      "dir": "internal/crypto",
+      "imported_by_internal": [
+        "gopmgr/internal/catalog",
+        "gopmgr/internal/db",
+        "gopmgr/internal/deletionlog",
+        "gopmgr/internal/desktop",
+        "gopmgr/internal/export",
+        "gopmgr/internal/signing",
+        "gopmgr/internal/users"
+      ],
+      "imports_internal": [
+        "gopmgr/internal/rfc3161"
+      ],
+      "notable_external_deps": [
+        "github.com/digitorus/pkcs7",
+        "golang.org/x/crypto/argon2",
+        "golang.org/x/crypto/pkcs12"
+      ]
+    },
+    "gopmgr/internal/db": {
+      "dir": "internal/db",
+      "imported_by_internal": [
+        "gopmgr/internal/admin",
+        "gopmgr/internal/budget",
+        "gopmgr/internal/desktop",
+        "gopmgr/internal/reporting",
+        "gopmgr/internal/sigma/service",
+        "gopmgr/internal/templates",
+        "gopmgr/internal/timeline"
+      ],
+      "imports_internal": [
+        "gopmgr/internal/cli",
+        "gopmgr/internal/crypto",
+        "gopmgr/internal/debug",
+        "gopmgr/internal/exportsafe",
+        "gopmgr/internal/money",
+        "gopmgr/internal/sigma/domain",
+        "gopmgr/internal/sqlitedriver",
+        "gopmgr/internal/wbs"
+      ],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/debug": {
+      "dir": "internal/debug",
+      "imported_by_internal": [
+        "gopmgr/internal/admin",
+        "gopmgr/internal/db",
+        "gopmgr/internal/desktop",
+        "gopmgr/internal/export"
+      ],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/deletionlog": {
+      "dir": "internal/deletionlog",
+      "imported_by_internal": [
+        "gopmgr/internal/desktop"
+      ],
+      "imports_internal": [
+        "gopmgr/internal/crypto",
+        "gopmgr/internal/sqlitedriver"
+      ],
+      "notable_external_deps": []
+    },
+    "gopmgr/internal/desktop": {
+      "dir": "internal/desktop",
+      "imported_by_internal": [
+        "gopmgr"
+      ],
+      "imports_internal": [
         "gopmgr/internal/admin",
         "gopmgr/internal/agile",
         "gopmgr/internal/analytics",
@@ -52,252 +304,10 @@
         "github.com/wailsapp/wails/v2/pkg/runtime"
       ]
     },
-    "gopmgr/internal/admin": {
-      "dir": "internal/admin",
-      "imported_by_internal": [
-        "gopmgr"
-      ],
-      "imports_internal": [
-        "gopmgr/internal/db",
-        "gopmgr/internal/debug"
-      ],
-      "notable_external_deps": []
-    },
-    "gopmgr/internal/agile": {
-      "dir": "internal/agile",
-      "imported_by_internal": [
-        "gopmgr",
-        "gopmgr/internal/budget",
-        "gopmgr/internal/templates",
-        "gopmgr/internal/timeline"
-      ],
-      "imports_internal": [],
-      "notable_external_deps": []
-    },
-    "gopmgr/internal/analytics": {
-      "dir": "internal/analytics",
-      "imported_by_internal": [
-        "gopmgr"
-      ],
-      "imports_internal": [
-        "gopmgr/internal/money"
-      ],
-      "notable_external_deps": [
-        "github.com/apache/arrow-go/v18/arrow",
-        "github.com/apache/arrow-go/v18/arrow/array",
-        "github.com/apache/arrow-go/v18/arrow/memory",
-        "github.com/apache/arrow-go/v18/parquet",
-        "github.com/apache/arrow-go/v18/parquet/file",
-        "github.com/apache/arrow-go/v18/parquet/pqarrow"
-      ]
-    },
-    "gopmgr/internal/applog": {
-      "dir": "internal/applog",
-      "imported_by_internal": [
-        "gopmgr"
-      ],
-      "imports_internal": [],
-      "notable_external_deps": []
-    },
-    "gopmgr/internal/auth": {
-      "dir": "internal/auth",
-      "imported_by_internal": [
-        "gopmgr",
-        "gopmgr/internal/users"
-      ],
-      "imports_internal": [],
-      "notable_external_deps": [
-        "golang.org/x/crypto/argon2"
-      ]
-    },
-    "gopmgr/internal/budget": {
-      "dir": "internal/budget",
-      "imported_by_internal": [
-        "gopmgr"
-      ],
-      "imports_internal": [
-        "gopmgr/internal/agile",
-        "gopmgr/internal/db",
-        "gopmgr/internal/money"
-      ],
-      "notable_external_deps": []
-    },
-    "gopmgr/internal/calendar": {
-      "dir": "internal/calendar",
-      "imported_by_internal": [
-        "gopmgr",
-        "gopmgr/internal/export"
-      ],
-      "imports_internal": [],
-      "notable_external_deps": [
-        "github.com/rickar/cal/v2",
-        "github.com/rickar/cal/v2/aa",
-        "github.com/rickar/cal/v2/au",
-        "github.com/rickar/cal/v2/be",
-        "github.com/rickar/cal/v2/ca",
-        "github.com/rickar/cal/v2/de",
-        "github.com/rickar/cal/v2/fr",
-        "github.com/rickar/cal/v2/gb",
-        "github.com/rickar/cal/v2/jp",
-        "github.com/rickar/cal/v2/nl",
-        "github.com/rickar/cal/v2/us"
-      ]
-    },
-    "gopmgr/internal/catalog": {
-      "dir": "internal/catalog",
-      "imported_by_internal": [
-        "gopmgr"
-      ],
-      "imports_internal": [
-        "gopmgr/internal/crypto",
-        "gopmgr/internal/sqlitedriver"
-      ],
-      "notable_external_deps": []
-    },
-    "gopmgr/internal/charts": {
-      "dir": "internal/charts",
-      "imported_by_internal": [
-        "gopmgr",
-        "gopmgr/internal/charts/pdfrender"
-      ],
-      "imports_internal": [
-        "gopmgr/internal/charts/dag",
-        "gopmgr/internal/charts/flow",
-        "gopmgr/internal/charts/matrix",
-        "gopmgr/internal/charts/stats",
-        "gopmgr/internal/kernel"
-      ],
-      "notable_external_deps": []
-    },
-    "gopmgr/internal/charts/dag": {
-      "dir": "internal/charts/dag",
-      "imported_by_internal": [
-        "gopmgr",
-        "gopmgr/internal/charts"
-      ],
-      "imports_internal": [
-        "gopmgr/internal/kernel"
-      ],
-      "notable_external_deps": []
-    },
-    "gopmgr/internal/charts/flow": {
-      "dir": "internal/charts/flow",
-      "imported_by_internal": [
-        "gopmgr/internal/charts"
-      ],
-      "imports_internal": [],
-      "notable_external_deps": []
-    },
-    "gopmgr/internal/charts/matrix": {
-      "dir": "internal/charts/matrix",
-      "imported_by_internal": [
-        "gopmgr",
-        "gopmgr/internal/charts"
-      ],
-      "imports_internal": [],
-      "notable_external_deps": []
-    },
-    "gopmgr/internal/charts/pdfrender": {
-      "dir": "internal/charts/pdfrender",
-      "imported_by_internal": [
-        "gopmgr/internal/documents"
-      ],
-      "imports_internal": [
-        "gopmgr/internal/charts",
-        "gopmgr/internal/pdfdoc"
-      ],
-      "notable_external_deps": [
-        "github.com/go-pdf/fpdf"
-      ]
-    },
-    "gopmgr/internal/charts/stats": {
-      "dir": "internal/charts/stats",
-      "imported_by_internal": [
-        "gopmgr",
-        "gopmgr/internal/charts"
-      ],
-      "imports_internal": [],
-      "notable_external_deps": []
-    },
-    "gopmgr/internal/cli": {
-      "dir": "internal/cli",
-      "imported_by_internal": [
-        "gopmgr",
-        "gopmgr/internal/db",
-        "gopmgr/internal/update"
-      ],
-      "imports_internal": [],
-      "notable_external_deps": []
-    },
-    "gopmgr/internal/crypto": {
-      "dir": "internal/crypto",
-      "imported_by_internal": [
-        "gopmgr",
-        "gopmgr/internal/catalog",
-        "gopmgr/internal/db",
-        "gopmgr/internal/deletionlog",
-        "gopmgr/internal/export",
-        "gopmgr/internal/signing",
-        "gopmgr/internal/users"
-      ],
-      "imports_internal": [
-        "gopmgr/internal/rfc3161"
-      ],
-      "notable_external_deps": [
-        "github.com/digitorus/pkcs7",
-        "golang.org/x/crypto/argon2",
-        "golang.org/x/crypto/pkcs12"
-      ]
-    },
-    "gopmgr/internal/db": {
-      "dir": "internal/db",
-      "imported_by_internal": [
-        "gopmgr",
-        "gopmgr/internal/admin",
-        "gopmgr/internal/budget",
-        "gopmgr/internal/reporting",
-        "gopmgr/internal/sigma/service",
-        "gopmgr/internal/templates",
-        "gopmgr/internal/timeline"
-      ],
-      "imports_internal": [
-        "gopmgr/internal/cli",
-        "gopmgr/internal/crypto",
-        "gopmgr/internal/debug",
-        "gopmgr/internal/exportsafe",
-        "gopmgr/internal/money",
-        "gopmgr/internal/sigma/domain",
-        "gopmgr/internal/sqlitedriver",
-        "gopmgr/internal/wbs"
-      ],
-      "notable_external_deps": []
-    },
-    "gopmgr/internal/debug": {
-      "dir": "internal/debug",
-      "imported_by_internal": [
-        "gopmgr",
-        "gopmgr/internal/admin",
-        "gopmgr/internal/db",
-        "gopmgr/internal/export"
-      ],
-      "imports_internal": [],
-      "notable_external_deps": []
-    },
-    "gopmgr/internal/deletionlog": {
-      "dir": "internal/deletionlog",
-      "imported_by_internal": [
-        "gopmgr"
-      ],
-      "imports_internal": [
-        "gopmgr/internal/crypto",
-        "gopmgr/internal/sqlitedriver"
-      ],
-      "notable_external_deps": []
-    },
     "gopmgr/internal/documents": {
       "dir": "internal/documents",
       "imported_by_internal": [
-        "gopmgr",
+        "gopmgr/internal/desktop",
         "gopmgr/internal/export",
         "gopmgr/internal/reporting",
         "gopmgr/internal/templates"
@@ -315,7 +325,7 @@
     "gopmgr/internal/export": {
       "dir": "internal/export",
       "imported_by_internal": [
-        "gopmgr"
+        "gopmgr/internal/desktop"
       ],
       "imports_internal": [
         "gopmgr/internal/calendar",
@@ -339,7 +349,7 @@
     "gopmgr/internal/exportfs": {
       "dir": "internal/exportfs",
       "imported_by_internal": [
-        "gopmgr",
+        "gopmgr/internal/desktop",
         "gopmgr/internal/reporting"
       ],
       "imports_internal": [],
@@ -357,7 +367,7 @@
     "gopmgr/internal/fonts": {
       "dir": "internal/fonts",
       "imported_by_internal": [
-        "gopmgr",
+        "gopmgr/internal/desktop",
         "gopmgr/internal/documents",
         "gopmgr/internal/export"
       ],
@@ -367,9 +377,9 @@
     "gopmgr/internal/kernel": {
       "dir": "internal/kernel",
       "imported_by_internal": [
-        "gopmgr",
         "gopmgr/internal/charts",
         "gopmgr/internal/charts/dag",
+        "gopmgr/internal/desktop",
         "gopmgr/internal/documents",
         "gopmgr/internal/export",
         "gopmgr/internal/reporting"
@@ -384,10 +394,10 @@
     "gopmgr/internal/money": {
       "dir": "internal/money",
       "imported_by_internal": [
-        "gopmgr",
         "gopmgr/internal/analytics",
         "gopmgr/internal/budget",
         "gopmgr/internal/db",
+        "gopmgr/internal/desktop",
         "gopmgr/internal/documents",
         "gopmgr/internal/kernel"
       ],
@@ -421,7 +431,7 @@
     "gopmgr/internal/printing": {
       "dir": "internal/printing",
       "imported_by_internal": [
-        "gopmgr"
+        "gopmgr/internal/desktop"
       ],
       "imports_internal": [],
       "notable_external_deps": []
@@ -429,7 +439,7 @@
     "gopmgr/internal/reporting": {
       "dir": "internal/reporting",
       "imported_by_internal": [
-        "gopmgr"
+        "gopmgr/internal/desktop"
       ],
       "imports_internal": [
         "gopmgr/internal/db",
@@ -442,8 +452,8 @@
     "gopmgr/internal/rfc3161": {
       "dir": "internal/rfc3161",
       "imported_by_internal": [
-        "gopmgr",
         "gopmgr/internal/crypto",
+        "gopmgr/internal/desktop",
         "gopmgr/internal/signing"
       ],
       "imports_internal": [],
@@ -455,7 +465,7 @@
     "gopmgr/internal/sigma/charts": {
       "dir": "internal/sigma/charts",
       "imported_by_internal": [
-        "gopmgr"
+        "gopmgr/internal/desktop"
       ],
       "imports_internal": [],
       "notable_external_deps": []
@@ -463,8 +473,8 @@
     "gopmgr/internal/sigma/domain": {
       "dir": "internal/sigma/domain",
       "imported_by_internal": [
-        "gopmgr",
         "gopmgr/internal/db",
+        "gopmgr/internal/desktop",
         "gopmgr/internal/export",
         "gopmgr/internal/sigma/service",
         "gopmgr/internal/sigma/tollgate"
@@ -475,7 +485,7 @@
     "gopmgr/internal/sigma/service": {
       "dir": "internal/sigma/service",
       "imported_by_internal": [
-        "gopmgr"
+        "gopmgr/internal/desktop"
       ],
       "imports_internal": [
         "gopmgr/internal/db",
@@ -486,7 +496,7 @@
     "gopmgr/internal/sigma/stats": {
       "dir": "internal/sigma/stats",
       "imported_by_internal": [
-        "gopmgr"
+        "gopmgr/internal/desktop"
       ],
       "imports_internal": [],
       "notable_external_deps": [
@@ -496,7 +506,7 @@
     "gopmgr/internal/sigma/tollgate": {
       "dir": "internal/sigma/tollgate",
       "imported_by_internal": [
-        "gopmgr"
+        "gopmgr/internal/desktop"
       ],
       "imports_internal": [
         "gopmgr/internal/sigma/domain"
@@ -506,7 +516,7 @@
     "gopmgr/internal/signing": {
       "dir": "internal/signing",
       "imported_by_internal": [
-        "gopmgr",
+        "gopmgr/internal/desktop",
         "gopmgr/internal/export"
       ],
       "imports_internal": [
@@ -532,7 +542,7 @@
     "gopmgr/internal/templates": {
       "dir": "internal/templates",
       "imported_by_internal": [
-        "gopmgr"
+        "gopmgr/internal/desktop"
       ],
       "imports_internal": [
         "gopmgr/internal/agile",
@@ -546,7 +556,7 @@
     "gopmgr/internal/timeline": {
       "dir": "internal/timeline",
       "imported_by_internal": [
-        "gopmgr"
+        "gopmgr/internal/desktop"
       ],
       "imports_internal": [
         "gopmgr/internal/agile",
@@ -557,7 +567,7 @@
     "gopmgr/internal/update": {
       "dir": "internal/update",
       "imported_by_internal": [
-        "gopmgr",
+        "gopmgr/internal/desktop",
         "gopmgr/tools/update-manifest"
       ],
       "imports_internal": [
@@ -570,7 +580,7 @@
     "gopmgr/internal/users": {
       "dir": "internal/users",
       "imported_by_internal": [
-        "gopmgr"
+        "gopmgr/internal/desktop"
       ],
       "imports_internal": [
         "gopmgr/internal/auth",
@@ -587,20 +597,20 @@
       "imports_internal": [],
       "notable_external_deps": []
     },
-    "gopmgr/scripts": {
-      "dir": "scripts",
+    "gopmgr/tools/code-map": {
+      "dir": "tools/code-map",
+      "imported_by_internal": [],
+      "imports_internal": [],
+      "notable_external_deps": []
+    },
+    "gopmgr/tools/config-check": {
+      "dir": "tools/config-check",
       "imported_by_internal": [],
       "imports_internal": [],
       "notable_external_deps": [
         "github.com/pelletier/go-toml/v2",
         "gopkg.in/yaml.v3"
       ]
-    },
-    "gopmgr/tools/code-map": {
-      "dir": "tools/code-map",
-      "imported_by_internal": [],
-      "imports_internal": [],
-      "notable_external_deps": []
     },
     "gopmgr/tools/module-notices": {
       "dir": "tools/module-notices",

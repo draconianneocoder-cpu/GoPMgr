@@ -12,7 +12,7 @@ function installApp() {
     SaveCatalogVendor: vi.fn(async (vendor) => ({ ...vendor, id: vendor.id || 'vendor-2', version: 1 })),
     SaveCatalogItem: vi.fn(async (item) => ({ ...item, id: item.id || 'item-2', version: 1 })),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
   return app;
 }
 

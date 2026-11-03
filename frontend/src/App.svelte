@@ -35,7 +35,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       const cachedTheme = readCachedTheme(session.user.username);
       if (cachedTheme) applyTheme(cachedTheme);
 
-      const p = window.go?.main?.App?.GetAppInfo?.();
+      const p = window.go?.desktop?.App?.GetAppInfo?.();
       if (p) {
         p.then((info) => {
           const theme = applyTheme(info?.settings?.app_theme);
@@ -50,7 +50,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
           // separate, explicit click.
           if (shouldAutoCheckForUpdates(info?.settings, autoUpdateCheckedThisSession)) {
             autoUpdateCheckedThisSession = true;
-            window.go?.main?.App?.CheckLatestVersion?.()
+            window.go?.desktop?.App?.CheckLatestVersion?.()
               ?.then((status) => {
                 session.updateStatus = status;
                 if (status?.update_available && !status.error) {
@@ -273,7 +273,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         if (!session.project) return;
         requestNavigation('portfolio', null, async () => {
           try {
-            await window.go.main.App.CloseProject();
+            await window.go.desktop.App.CloseProject();
             session.project = null;
             session.projectPath = null;
             return true;
@@ -292,7 +292,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       stopEvents.push(rt.EventsOn('menu:help', () => {
         if (session.user) goto('help');
       }));
-      const app = window.go?.main?.App;
+      const app = window.go?.desktop?.App;
       if (app) {
         nativeClose = new NativeCloseController({
           app,
@@ -305,8 +305,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       }
     }
 
-    if (window.go?.main?.App?.CurrentUser) {
-      void window.go.main.App.CurrentUser().then((u) => {
+    if (window.go?.desktop?.App?.CurrentUser) {
+      void window.go.desktop.App.CurrentUser().then((u) => {
         if (u) {
           session.user = u;
           goto('portfolio');

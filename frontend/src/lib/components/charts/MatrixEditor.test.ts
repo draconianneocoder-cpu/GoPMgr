@@ -45,7 +45,7 @@ function installApp(overrides: Partial<AppMock> = {}): AppMock {
     SaveChart: vi.fn(async (c: unknown) => c),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
   return app;
 }
 

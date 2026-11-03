@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Type declarations for the Wails-injected `window.go.main.App` bridge.
+// Type declarations for the Wails-injected `window.go.desktop.App` bridge.
 // `wails dev` regenerates strongly-typed bindings under
 // frontend/wailsjs/; this file provides the same surface so Svelte
 // components type-check before that generation has run.
@@ -11,7 +11,7 @@ export {};
 declare global {
   interface Window {
     go: {
-      main: {
+      desktop: {
         App: {
           // ----- V1 -----
           GetSettings: () => Promise<UserSettings>;

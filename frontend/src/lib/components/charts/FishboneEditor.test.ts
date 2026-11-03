@@ -17,7 +17,7 @@ type AppMock = Record<string, ReturnType<typeof vi.fn>>;
 
 const emptyLayout = { nodes: [], edges: [], width: 0, height: 0 };
 
-// installApp wires a mock Wails bridge onto window.go.main.App. `data` is
+// installApp wires a mock Wails bridge onto window.go.desktop.App. `data` is
 // the chart's stored FishboneDoc JSON, so tests can start from either an
 // empty or a populated categories list.
 function installApp(data: string): AppMock {
@@ -27,7 +27,7 @@ function installApp(data: string): AppMock {
     SaveChart: vi.fn(async (c: unknown) => c),
     LayoutChart: vi.fn(async () => ({ body: emptyLayout })),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
   return app;
 }
 
@@ -182,7 +182,7 @@ describe('FishboneEditor migrated load-error "Back to dashboard" button', () => 
       SaveChart: vi.fn(async (c: unknown) => c),
       LayoutChart: vi.fn(async () => ({ body: emptyLayout })),
     };
-    (window as unknown as { go: unknown }).go = { main: { App: app } };
+    (window as unknown as { go: unknown }).go = { desktop: { App: app } };
     const { findByText } = render(FishboneEditor);
 
     const btn = await findByText('Back to dashboard');

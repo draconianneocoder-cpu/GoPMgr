@@ -30,7 +30,7 @@ beforeEach(() => {
     AdminPurgeUser: vi.fn(async () => undefined),
     AdminRoles: vi.fn(async () => ({ super: 'alice' })),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
   session.user = account('alice', { is_admin: true });
 });
 

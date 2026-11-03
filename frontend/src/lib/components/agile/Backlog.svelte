@@ -34,7 +34,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       // Use EnsureDefaultBoard to learn the columns; we need the
       // first column ID for "Start work".
-      const res = await window.go.main.App.EnsureDefaultBoard();
+      const res = await window.go.desktop.App.EnsureDefaultBoard();
       columns = res.columns;
       await refresh();
     } catch (err: any) {
@@ -46,8 +46,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function refresh() {
     const [its, sps] = await Promise.all([
-      window.go.main.App.ListWorkItems('', 'backlog', ''),
-      window.go.main.App.ListSprints(),
+      window.go.desktop.App.ListWorkItems('', 'backlog', ''),
+      window.go.desktop.App.ListSprints(),
     ]);
     items = (its ?? []).sort((a, b) => a.order_idx - b.order_idx);
     sprints = sps ?? [];
@@ -80,7 +80,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     opening = true;
     error = '';
     try {
-      editing = await window.go.main.App.GetWorkItem(item.id);
+      editing = await window.go.desktop.App.GetWorkItem(item.id);
     } catch {
       error = 'That work item no longer exists. The list has been refreshed.';
       await refresh();
@@ -107,7 +107,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function assignSprint(item: AgileWorkItem, sprintID: string) {
     try {
-      const saved = await window.go.main.App.SaveWorkItem({ ...item, sprint_id: sprintID });
+      const saved = await window.go.desktop.App.SaveWorkItem({ ...item, sprint_id: sprintID });
       const idx = items.findIndex((i) => i.id === saved.id);
       if (idx >= 0) items[idx] = saved;
     } catch (err: any) {
@@ -121,7 +121,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return;
     }
     try {
-      await window.go.main.App.MoveWorkItem(item.id, columns[0].id, 0);
+      await window.go.desktop.App.MoveWorkItem(item.id, columns[0].id, 0);
       items = items.filter((i) => i.id !== item.id);
     } catch (err: any) {
       error = `Could not start work: ${err}`;
@@ -160,7 +160,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // Save each item that changed. Cheap because the backlog is
       // typically dozens, not thousands, of items.
       for (const it of items) {
-        await window.go.main.App.SaveWorkItem(it);
+        await window.go.desktop.App.SaveWorkItem(it);
       }
     } catch (err: any) {
       error = `Could not persist order: ${err}`;

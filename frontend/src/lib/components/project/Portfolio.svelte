@@ -28,7 +28,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     loading = true;
     loadError = '';
     try {
-      projects = (await window.go.main.App.ProjectsOverview()) ?? [];
+      projects = (await window.go.desktop.App.ProjectsOverview()) ?? [];
     } catch (err: any) {
       loadError = `Could not load projects: ${err}`;
     } finally {
@@ -77,7 +77,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function open(p: ProjectSummary) {
     error = '';
     try {
-      const meta = await window.go.main.App.OpenProject(p.path);
+      const meta = await window.go.desktop.App.OpenProject(p.path);
       session.project = meta;
       session.projectPath = p.path;
       goto('dashboard');
@@ -95,7 +95,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     rollupLoading = true;
     rollupErr = '';
     try {
-      rollup = await window.go.main.App.RunPortfolioAnalytics();
+      rollup = await window.go.desktop.App.RunPortfolioAnalytics();
     } catch (err: any) {
       rollup = null;
       rollupErr = String(err?.message ?? err);
@@ -122,7 +122,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     importing = true;
     importErr = '';
     try {
-      const ds = await window.go.main.App.ImportDatasetForAnalysis();
+      const ds = await window.go.desktop.App.ImportDatasetForAnalysis();
       // An empty result means the user cancelled the file picker.
       dataset = ds && ds.columns && ds.columns.length ? ds : null;
     } catch (err: any) {

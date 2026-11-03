@@ -26,8 +26,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     loading = true; error = '';
     try {
       [vendors, items] = await Promise.all([
-        window.go.main.App.ListCatalogVendors(query, includeArchived),
-        window.go.main.App.ListCatalogItems(query, includeArchived),
+        window.go.desktop.App.ListCatalogVendors(query, includeArchived),
+        window.go.desktop.App.ListCatalogItems(query, includeArchived),
       ]);
     } catch (err) { error = String(err); }
     finally { loading = false; }
@@ -37,13 +37,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function saveVendor() {
     if (!vendor || !vendor.name.trim() || saving) return;
     saving = true; error = '';
-    try { await window.go.main.App.SaveCatalogVendor(vendor); vendor = null; await refresh(); }
+    try { await window.go.desktop.App.SaveCatalogVendor(vendor); vendor = null; await refresh(); }
     catch (err) { error = String(err); } finally { saving = false; }
   }
   async function saveItem() {
     if (!item || !item.name.trim() || saving) return;
     saving = true; error = '';
-    try { await window.go.main.App.SaveCatalogItem(item); item = null; await refresh(); }
+    try { await window.go.desktop.App.SaveCatalogItem(item); item = null; await refresh(); }
     catch (err) { error = String(err); } finally { saving = false; }
   }
 </script>

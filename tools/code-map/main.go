@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Command code-map generates the first-party Go package dependency map.
-// It deliberately lists only tracked Go source roots so ignored frontend
+// Command code-map generates the first-party Go package dependency map and
+// the map of the Wails-bound App's frontend API (app-api.json, written beside
+// it). It deliberately lists only tracked Go source roots so ignored frontend
 // dependencies cannot leak host-specific packages into repository metadata.
 package main
 
@@ -63,24 +64,44 @@ func run(root, output string, check bool) error {
 	if err != nil {
 		return err
 	}
+	api, err := generateAppAPI(absRoot)
+	if err != nil {
+		return err
+	}
 	if !filepath.IsAbs(output) {
 		output = filepath.Join(absRoot, output)
 	}
+	outputs := []struct {
+		path string
+		data []byte
+	}{
+		{output, data},
+		{filepath.Join(filepath.Dir(output), "app-api.json"), api},
+	}
+	for _, o := range outputs {
+		if err := writeOrCheck(o.path, o.data, check); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeOrCheck(path string, data []byte, check bool) error {
 	if check {
-		current, err := os.ReadFile(output)
+		current, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("read generated map: %w", err)
 		}
 		if !bytes.Equal(current, data) {
-			return fmt.Errorf("%s is stale; run make code-map", filepath.ToSlash(output))
+			return fmt.Errorf("%s is stale; run make code-map", filepath.ToSlash(path))
 		}
 		return nil
 	}
-	if err := os.MkdirAll(filepath.Dir(output), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("create output directory: %w", err)
 	}
-	if err := os.WriteFile(output, data, 0o644); err != nil {
-		return fmt.Errorf("write package map: %w", err)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", filepath.Base(path), err)
 	}
 	return nil
 }
@@ -104,7 +125,7 @@ func generate(root string) ([]byte, error) {
 func listPackages(root string) ([]listedPackage, error) {
 	// Do not use ./... here: installed frontend dependencies occasionally
 	// contain Go examples, which are not part of this repository's product.
-	cmd := exec.Command("go", "list", "-json", ".", "./internal/...", "./scripts", "./tools/...")
+	cmd := exec.Command("go", "list", "-json", ".", "./internal/...", "./tools/...")
 	cmd.Dir = root
 	data, err := cmd.CombinedOutput()
 	if err != nil {

@@ -31,7 +31,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function load() {
     loadError = '';
     try {
-      notices = (await window.go.main.App.MyDataAccessNotices()) ?? [];
+      notices = (await window.go.desktop.App.MyDataAccessNotices()) ?? [];
     } catch (err: any) {
       loadError = String(err?.message ?? err);
     }
@@ -44,7 +44,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     // Acknowledge only what was shown: an access recorded since stays unread.
     const throughID = Math.max(...notices.map((n) => n.id));
     try {
-      await window.go.main.App.AcknowledgeDataAccessNotices(throughID);
+      await window.go.desktop.App.AcknowledgeDataAccessNotices(throughID);
       await load();
     } catch (err: any) {
       ackError = t('adminAccess.notice.ackFailed', { error: String(err?.message ?? err) });

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { recoveryGateNeeded } from './recovery-gate';
 
 function install(status: () => Promise<unknown>) {
-  (window as unknown as { go: unknown }).go = { main: { App: { RecoveryCodeStatus: vi.fn(status) } } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: { RecoveryCodeStatus: vi.fn(status) } } };
 }
 
 afterEach(() => vi.restoreAllMocks());

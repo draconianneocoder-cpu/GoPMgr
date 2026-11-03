@@ -13,7 +13,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     try {
-      history = (await window.go.main.App.MyDataAccessHistory()) ?? [];
+      history = (await window.go.desktop.App.MyDataAccessHistory()) ?? [];
     } catch (err: any) {
       error = t('adminAccess.history.loadFailed', { error: String(err?.message ?? err) });
     }

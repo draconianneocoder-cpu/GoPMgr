@@ -41,7 +41,7 @@ beforeEach(() => {
     SaveAppSettings: vi.fn(async () => undefined),
     CheckLatestVersion: vi.fn(async () => upToDateStatus),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
   window.localStorage.clear();
   document.documentElement.dataset.theme = 'dark';
   session.updateStatus = null;

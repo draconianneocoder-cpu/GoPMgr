@@ -22,7 +22,7 @@ import { session } from '../../session.svelte';
 // closes that specifically, mirroring _layered_editor_shell.test.ts's
 // NetworkEditor-based test exactly, substituting PERTEditor as the mount
 // target: same installApp/mountLoaded pattern (GetChart/SaveChart/
-// LayoutChart on window.go.main.App are the shell's only 3 backend calls,
+// LayoutChart on window.go.desktop.App are the shell's only 3 backend calls,
 // confirmed via grep — PERTEditor itself has no onMount/backend calls of its
 // own, only its nodeContent/nodeDetailPanel snippets, which never execute
 // with an empty node list on initial mount). Does not cover PERTEditor's own
@@ -46,7 +46,7 @@ function installApp(overrides: Partial<AppMock> = {}): AppMock {
     LayoutChart: vi.fn(async () => ({ body: { layout: { nodes: [], edges: [], width: 0, height: 0 } } })),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
   return app;
 }
 

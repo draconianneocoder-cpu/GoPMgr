@@ -74,10 +74,10 @@ import Button from '../Button.svelte';
     loading = true;
     loadError = '';
     try {
-      chartKinds = (await window.go.main.App.ListChartKinds()) ?? [];
-      docKinds = (await window.go.main.App.ListDocumentKinds()) ?? [];
-      charts = (await window.go.main.App.ListCharts('')) ?? [];
-      docs = (await window.go.main.App.ListDocuments('')) ?? [];
+      chartKinds = (await window.go.desktop.App.ListChartKinds()) ?? [];
+      docKinds = (await window.go.desktop.App.ListDocumentKinds()) ?? [];
+      charts = (await window.go.desktop.App.ListCharts('')) ?? [];
+      docs = (await window.go.desktop.App.ListDocuments('')) ?? [];
       // One-time default (matches ChartCatalog/DocumentCatalog's own prior
       // initiallyExpanded contract): an empty project's catalog opens
       // automatically. Setting it here, once per successful load, rather
@@ -90,7 +90,7 @@ import Button from '../Button.svelte';
       chartsExpanded = charts.length === 0;
       docsExpanded = docs.length === 0;
       try {
-        agileEnabled = await window.go.main.App.AgileEnabled();
+        agileEnabled = await window.go.desktop.App.AgileEnabled();
       } catch {
         // Older binary without the Agile bindings — feature stays hidden.
         agileEnabled = false;
@@ -116,7 +116,7 @@ import Button from '../Button.svelte';
 
     if (!signatureSettingsLoaded) {
       try {
-        const s = await window.go.main.App.GetSettings();
+        const s = await window.go.desktop.App.GetSettings();
         if (s?.cert_path) signCertPath = s.cert_path;
         if (s?.signature_method) preferredSignatureMethod = s.signature_method;
         if (s?.gpg_key_id) signGPGKeyID = s.gpg_key_id;
@@ -139,20 +139,20 @@ import Button from '../Button.svelte';
     (async () => {
       try {
         if (options.method === 'pades') {
-          const path = await window.go.main.App.ExportDocumentPDFSigned(
+          const path = await window.go.desktop.App.ExportDocumentPDFSigned(
             pendingDocForSign!.id,
             options.cert_path,
             options.cert_password,
           );
           showToast(`PAdES signed PDF exported to: ${path}`, 'success');
         } else if (options.method === 'gpg') {
-          const result = await window.go.main.App.ExportDocumentPDFGnuPG(
+          const result = await window.go.desktop.App.ExportDocumentPDFGnuPG(
             pendingDocForSign!.id,
             options.gpg_key_id,
           );
           showToast(`PDF exported to: ${result.pdf_path}; GnuPG signature: ${result.signature_path}`, 'success');
         } else {
-          const path = await window.go.main.App.ExportDocumentPDF(pendingDocForSign!.id);
+          const path = await window.go.desktop.App.ExportDocumentPDF(pendingDocForSign!.id);
           showToast(`PDF exported without digital signature to: ${path}`, 'success');
         }
       } catch (e: any) {
@@ -180,7 +180,7 @@ import Button from '../Button.svelte';
     if (loading) return;
     const next = !agileEnabled;
     try {
-      await window.go.main.App.SetAgileEnabled(next);
+      await window.go.desktop.App.SetAgileEnabled(next);
       agileEnabled = next;
     } catch {
       // Binding missing; do nothing.
@@ -189,7 +189,7 @@ import Button from '../Button.svelte';
 
   async function confirmDeleteChart(id: string) {
     try {
-      await window.go.main.App.DeleteChart(id);
+      await window.go.desktop.App.DeleteChart(id);
       charts = charts.filter((c) => c.id !== id);
     } catch (err: any) {
       showToast(`Delete failed: ${err}`, 'error');
@@ -200,7 +200,7 @@ import Button from '../Button.svelte';
 
   async function confirmDeleteDoc(id: string) {
     try {
-      await window.go.main.App.DeleteDocument(id);
+      await window.go.desktop.App.DeleteDocument(id);
       docs = docs.filter((d) => d.id !== id);
     } catch (err: any) {
       showToast(`Delete failed: ${err}`, 'error');
@@ -272,7 +272,7 @@ import Button from '../Button.svelte';
   async function newChart(kind: string, title: string) {
     try {
       const starter = chartStarters[kind]?.() ?? {};
-      const c = await window.go.main.App.SaveChart({
+      const c = await window.go.desktop.App.SaveChart({
         id: '',
         project_id: session.project!.id,
         kind,
@@ -297,7 +297,7 @@ import Button from '../Button.svelte';
   async function importMSPDI() {
     importMsg = '';
     try {
-      const c = await window.go.main.App.ImportMSPDIChartWithOptions({
+      const c = await window.go.desktop.App.ImportMSPDIChartWithOptions({
         include_dependencies: importDependencies,
         include_progress: importProgress,
         include_assignments: importAssignments,
@@ -311,7 +311,7 @@ import Button from '../Button.svelte';
 
   async function newDocument(kind: string, defaultTitle: string) {
     try {
-      const d = await window.go.main.App.NewDocument(kind, defaultTitle);
+      const d = await window.go.desktop.App.NewDocument(kind, defaultTitle);
       // Both routes use the structured document editor today, but retaining
       // the charter route preserves its specific screen-reader route label.
       goto(kind.startsWith('charter') ? 'charter' : 'documents', d.id);
@@ -330,7 +330,7 @@ import Button from '../Button.svelte';
     // 2026-08-18 as a latent ordering trap, not a live defect, so it isn't
     // rediscovered as a mystery if this component grows its own dirty
     // state later.
-    await window.go.main.App.CloseProject();
+    await window.go.desktop.App.CloseProject();
     session.project = null;
     session.projectPath = null;
     goto('portfolio');

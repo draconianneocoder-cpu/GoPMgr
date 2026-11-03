@@ -61,7 +61,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     if (!session.editingId) return;
     try {
-      chart = await window.go.main.App.GetChart(session.editingId);
+      chart = await window.go.desktop.App.GetChart(session.editingId);
     } catch (err: any) {
       loadError = `Could not load this chart: ${err?.message ?? err}`;
       return;
@@ -93,13 +93,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function refreshLayout() {
     if (!chart) return;
     try {
-      const updated = await window.go.main.App.SaveChart({
+      const updated = await window.go.desktop.App.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });
       chart = updated;
       lastSavedAt = new Date();
-      const res = await window.go.main.App.LayoutChart(updated.id);
+      const res = await window.go.desktop.App.LayoutChart(updated.id);
       layout = res.body as SWOTLayout;
     } catch (err: any) {
       status = `Layout failed: ${err}`;
@@ -174,7 +174,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = true;
     status = '';
     try {
-      const updated = await window.go.main.App.SaveChart({
+      const updated = await window.go.desktop.App.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });

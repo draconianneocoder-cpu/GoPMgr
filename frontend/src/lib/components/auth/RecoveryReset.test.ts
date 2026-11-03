@@ -15,7 +15,7 @@ let app: Record<string, ReturnType<typeof vi.fn>>;
 
 beforeEach(() => {
   app = { ResetWithRecoveryCode: vi.fn(async () => undefined) };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
 });
 
 afterEach(() => {

@@ -124,7 +124,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         updated_at: savingDraft.updated_at === '' ? zeroTime : savingDraft.updated_at,
       };
       if (payload.closed_at === '') payload.closed_at = zeroTime;
-      const saved = await window.go.main.App.SaveWorkItem(payload);
+      const saved = await window.go.desktop.App.SaveWorkItem(payload);
       // Mark clean before the callbacks run: `onSaved` can trigger a
       // parent refresh that awaits before this modal actually unmounts,
       // and a stale `original` would make a post-save `requestClose`
@@ -201,7 +201,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     confirmingDelete = false;
     status = 'deleting';
     try {
-      await window.go.main.App.DeleteWorkItem(deletingID);
+      await window.go.desktop.App.DeleteWorkItem(deletingID);
       onDeleted(deletingID);
       onClose();
     } catch (err: any) {

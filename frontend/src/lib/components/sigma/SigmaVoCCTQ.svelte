@@ -33,7 +33,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadVoC() {
     loading = true;
     try {
-      const data = await window.go.main.App.SigmaGetVoC(projectID);
+      const data = await window.go.desktop.App.SigmaGetVoC(projectID);
       vocData = data;
     } catch (e) {
       showToast('Failed to load VoC data', 'error');
@@ -44,7 +44,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function saveVoC() {
     try {
-      await window.go.main.App.SigmaSaveVoC(projectID, vocData);
+      await window.go.desktop.App.SigmaSaveVoC(projectID, vocData);
       showToast('VoC data saved', 'success');
       void onSaved?.();
     } catch (e) {

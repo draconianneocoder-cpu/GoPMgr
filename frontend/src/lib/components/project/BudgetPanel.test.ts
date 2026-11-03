@@ -13,7 +13,7 @@ afterEach(() => {
 
 function installBudget(summary: BudgetSummary) {
   const app = { ComputeBudget: vi.fn(async () => summary) };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
   return app;
 }
 

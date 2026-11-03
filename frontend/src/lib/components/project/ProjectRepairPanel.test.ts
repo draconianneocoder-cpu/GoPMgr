@@ -17,7 +17,7 @@ let app: Record<string, ReturnType<typeof vi.fn>>;
 beforeEach(() => {
   goto.mockReset();
   app = { RepairAndSwap: vi.fn() };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
 });
 
 afterEach(() => {

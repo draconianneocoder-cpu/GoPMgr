@@ -49,7 +49,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     window.addEventListener('keydown', handleKeyDown);
     if (!session.editingId) return;
     try {
-      const loaded = await window.go.main.App.GetDocument(session.editingId);
+      const loaded = await window.go.desktop.App.GetDocument(session.editingId);
       if (!active) return;
       doc = loaded;
       try {
@@ -58,7 +58,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         content = {};
       }
       lastSavedSnapshot = snapshot();
-      const all = await window.go.main.App.ListDocumentKinds();
+      const all = await window.go.desktop.App.ListDocumentKinds();
       if (!active) return;
       definition = all.find((d) => d.kind === loaded.kind) ?? null;
       // charter_excel and plan_excel carry empty fields; borrow the paired _word schema.
@@ -68,7 +68,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       }
       stopAutosave = autosave.register(snapshot, persist);
       try {
-        const meta = await window.go.main.App.GetProjectMeta();
+        const meta = await window.go.desktop.App.GetProjectMeta();
         if (active) currency = meta.currency_code ?? '';
       } catch {
         // Amount labels then name no currency; editing is unaffected.
@@ -96,7 +96,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = true;
     status = '';
     try {
-      const updated = await window.go.main.App.SaveDocument(submission);
+      const updated = await window.go.desktop.App.SaveDocument(submission);
       if (!active) return false;
       const acknowledgedContent = JSON.parse(updated.content);
       doc = rebaseEditableChanges(updated, submission, { ...doc, content: JSON.stringify(content) },
@@ -119,7 +119,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!(await save())) return;
     syncingRiskMatrix = true;
     try {
-      const chart = await window.go.main.App.SyncRiskRegisterToMatrix(doc.id);
+      const chart = await window.go.desktop.App.SyncRiskRegisterToMatrix(doc.id);
       status = `Risk Matrix “${chart.title}” refreshed from this register.`;
       showToast('Linked Risk Matrix refreshed', 'success');
     } catch (err: any) {
@@ -134,7 +134,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     status = '';
     try {
       if (!(await save())) return;
-      const path = await window.go.main.App.ExportDocumentPDF(doc.id);
+      const path = await window.go.desktop.App.ExportDocumentPDF(doc.id);
       status = `Exported to ${path}`;
     } catch (err: any) {
       if (String(err).includes('export cancelled')) return;
@@ -147,7 +147,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     status = '';
     try {
       if (!(await save())) return;
-      const path = await window.go.main.App.ExportDocumentDOCX(doc.id);
+      const path = await window.go.desktop.App.ExportDocumentDOCX(doc.id);
       status = `Exported to ${path}`;
     } catch (err: any) {
       if (String(err).includes('export cancelled')) return;
@@ -160,7 +160,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     status = '';
     try {
       if (!(await save())) return;
-      const path = await window.go.main.App.ExportDocumentODT(doc.id);
+      const path = await window.go.desktop.App.ExportDocumentODT(doc.id);
       status = `Exported to ${path}`;
     } catch (err: any) {
       if (String(err).includes('export cancelled')) return;
@@ -190,7 +190,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
       if (!signatureSettingsLoaded) {
         try {
-          const s = await window.go.main.App.GetSettings();
+          const s = await window.go.desktop.App.GetSettings();
           if (s?.cert_path) certPathForSign = s.cert_path;
           if (s?.signature_method) preferredSignatureMethod = s.signature_method;
           if (s?.gpg_key_id) gpgKeyIDForSign = s.gpg_key_id;
@@ -219,7 +219,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     (async () => {
       try {
         if (options.method === 'pades') {
-          const path = await window.go.main.App.ExportDocumentPDFSigned(
+          const path = await window.go.desktop.App.ExportDocumentPDFSigned(
             doc.id,
             options.cert_path,
             options.cert_password,
@@ -227,14 +227,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
           status = `PAdES signed PDF exported to ${path}`;
           showToast(`PAdES signed PDF exported successfully`, 'success');
         } else if (options.method === 'gpg') {
-          const result = await window.go.main.App.ExportDocumentPDFGnuPG(
+          const result = await window.go.desktop.App.ExportDocumentPDFGnuPG(
             doc.id,
             options.gpg_key_id,
           );
           status = `PDF exported to ${result.pdf_path}; GnuPG signature exported to ${result.signature_path}`;
           showToast(`GnuPG detached signature exported successfully`, 'success');
         } else {
-          const path = await window.go.main.App.ExportDocumentPDF(doc.id);
+          const path = await window.go.desktop.App.ExportDocumentPDF(doc.id);
           status = `PDF exported without digital signature to ${path}`;
           showToast(`PDF exported without digital signature`, 'success');
         }

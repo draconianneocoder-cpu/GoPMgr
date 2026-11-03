@@ -28,7 +28,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     loading = true;
     error = '';
     try {
-      baselines = (await window.go.main.App.ListScheduleBaselines(chartId)) ?? [];
+      baselines = (await window.go.desktop.App.ListScheduleBaselines(chartId)) ?? [];
     } catch (err: any) {
       error = `Could not load baselines: ${err?.message ?? err}`;
     } finally {
@@ -46,7 +46,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     deleting = true;
     error = '';
     try {
-      await window.go.main.App.DeleteScheduleBaseline(pending.id);
+      await window.go.desktop.App.DeleteScheduleBaseline(pending.id);
       pending = null;
       await load();
       onchange?.();

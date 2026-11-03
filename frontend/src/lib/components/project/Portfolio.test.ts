@@ -18,7 +18,7 @@ function setApp(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
     RecoveryCodeStatus: vi.fn(async () => ({ unused: 8, total: 8, legacy: false, encryption_ready: true })),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
   return app;
 }
 

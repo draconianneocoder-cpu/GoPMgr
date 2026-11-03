@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # TEST_COVERAGE_LEDGER.md's package-coverage headings ("## `internal/X` —
-# NN.N%", the root "## Root package (`gopmgr`, ...)", "## `scripts` (...)",
-# "## `tools/X`") are hand-written and nothing previously checked them
+# NN.N%", the root "## Root package (`gopmgr`, ...)" when the root
+# has tests, "## `tools/X`") are hand-written and nothing previously checked them
 # against reality. check-coverage-ledger-current.sh only verifies a
 # *_test.go file is *mentioned* somewhere in the ledger -- it says nothing
 # about whether a heading's claimed percentage still matches the package's
@@ -60,9 +60,9 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "check-coverage-ledger-drift: running go test -cover . ./internal/... ./scripts ./tools/... (default build)..." >&2
-if ! go test -cover . ./internal/... ./scripts ./tools/... >"$default_log" 2>&1; then
-	echo "check-coverage-ledger-drift: go test -cover . ./internal/... ./scripts ./tools/... failed:" >&2
+echo "check-coverage-ledger-drift: running go test -cover . ./internal/... ./tools/... (default build)..." >&2
+if ! go test -cover . ./internal/... ./tools/... >"$default_log" 2>&1; then
+	echo "check-coverage-ledger-drift: go test -cover . ./internal/... ./tools/... failed:" >&2
 	cat "$default_log" >&2
 	exit 1
 fi
@@ -109,7 +109,7 @@ live_default = parse_live(default_out)
 
 # Every "## ..." heading in the ledger is classified into exactly one of:
 #  (a) a package-coverage heading this script checks against live `go
-#      test` output -- `internal/*`, the root `gopmgr` package, `scripts`,
+#      test` output -- `internal/*`, the root `gopmgr` package,
 #      `tools/*`;
 #  (b) a non-package prose section (Purpose, Known gaps) -- listed by
 #      exact heading text in NON_PACKAGE_HEADINGS; renaming one of those
@@ -125,15 +125,15 @@ live_default = parse_live(default_out)
 # original internal/*-only heading_re, which silently never looked at any
 # other heading at all -- itself an instance of the same gap.
 all_heading_re = re.compile(r'^## (.+)$', re.M)
-# `<path>`[ (parenthetical)] — <rest>. The optional parenthetical covers
-# `scripts`, whose heading has one between the package name and the
-# percentage ("`scripts` (package `scripts`, config-check helper) —
-# 63.4%"); `internal/*` and `tools/*` headings have no such parenthetical
-# and match with it empty.
+# `<path>`[ (parenthetical)] — <rest>. The optional parenthetical allows a
+# short note between the package name and the percentage; most headings
+# have none and match with it empty.
 generic_pkg_re = re.compile(r'^## `([a-zA-Z0-9_/.-]+)`(?:\s*\([^)]*\))?\s*—\s*(.+)$', re.M)
 # The root package heading doesn't lead with a backtick at all ("## Root
 # package (`gopmgr`, package `main`) — 62.4%"), so it needs its own literal
-# pattern rather than fitting generic_pkg_re.
+# pattern rather than fitting generic_pkg_re. Since 2026-11-03 the root
+# package has no tests (the App moved to internal/desktop), so the real
+# ledger has no such heading; this keeps one required if root tests return.
 root_re = re.compile(r'^## Root package \(`gopmgr`, package `main`\) — (.+)$', re.M)
 
 # "Isolated spike modules" lists test files of modules outside the GoPMgr
@@ -213,11 +213,11 @@ for heading_text in all_heading_re.findall(content):
 # same pass-by-omission failure mode this script exists to close, just at
 # the section level instead of the row level. Scoped to the explicit universe
 # this script's first-party `go test` command covers: internal/*, the root
-# `gopmgr` package, `scripts`, and `tools/*`. Frontend coverage is a
+# `gopmgr` package, and `tools/*`. Frontend coverage is a
 # different tool's output (vitest, not `go test`) and is out of scope
 # here by design (see coverage-frontend.sh), not omission.
 def in_scope(pkg):
-    return pkg == "gopmgr" or pkg.startswith("internal/") or pkg == "scripts" or pkg.startswith("tools/")
+    return pkg == "gopmgr" or pkg.startswith("internal/") or pkg.startswith("tools/")
 
 missing_headings = sorted(pkg for pkg in live_default if in_scope(pkg) and pkg not in seen_headings)
 for pkg in missing_headings:

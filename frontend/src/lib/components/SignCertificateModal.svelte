@@ -112,7 +112,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function chooseCert() {
     chooseError = '';
     try {
-      const picked = await window.go.main.App.ChooseCertFile();
+      const picked = await window.go.desktop.App.ChooseCertFile();
       if (picked) chosenPath = picked;
     } catch (err: any) {
       chooseError = `Could not choose certificate: ${err}`;

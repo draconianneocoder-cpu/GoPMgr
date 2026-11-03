@@ -69,7 +69,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function saveAll() {
     saving = true;
     try {
-      await window.go.main.App.SigmaSaveFishbone(projectId, data);
+      await window.go.desktop.App.SigmaSaveFishbone(projectId, data);
       showToast('Fishbone diagram saved', 'success');
     } catch (err: any) {
       showToast(`Save failed: ${err}`, 'error');

@@ -57,7 +57,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
     busy = true;
     try {
-      await window.go.main.App.ResetWithRecoveryCode(username, code, password);
+      await window.go.desktop.App.ResetWithRecoveryCode(username, code, password);
       session.signInUsername = username;
       done = true;
     } catch (err: any) {

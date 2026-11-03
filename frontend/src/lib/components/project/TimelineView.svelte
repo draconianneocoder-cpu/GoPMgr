@@ -52,7 +52,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadTimeline(showLoading: boolean) {
     if (showLoading) loading = true;
     try {
-      entries = (await window.go.main.App.BuildTimeline()) ?? [];
+      entries = (await window.go.desktop.App.BuildTimeline()) ?? [];
       await refreshHolidays(entries);
     } catch (err: any) {
       error = `Could not load timeline: ${err}`;
@@ -77,7 +77,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     const maxDateMS = timelineMax(nextEntries);
     const from = new Date(minDateMS - 30 * 86400 * 1000).toISOString().slice(0, 10);
     const to = new Date(maxDateMS + 30 * 86400 * 1000).toISOString().slice(0, 10);
-    holidays = (await window.go.main.App.ListHolidays(from, to)) ?? [];
+    holidays = (await window.go.desktop.App.ListHolidays(from, to)) ?? [];
   }
 
   // Domain bounds. Pad 5% each side so events don't kiss the edge.
@@ -196,7 +196,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     movingKey = key;
     moveStatus = '';
     try {
-      entries = (await window.go.main.App.MoveTimelineEntry(kind, sourceID, dateISO)) ?? [];
+      entries = (await window.go.desktop.App.MoveTimelineEntry(kind, sourceID, dateISO)) ?? [];
       await refreshHolidays(entries);
       moveStatus = `Saved ${dateISO}.`;
     } catch (err: any) {
@@ -258,7 +258,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     exporting = true;
     exportStatus = '';
     try {
-      const path = await window.go.main.App.ExportProjectICS(includeHolidays);
+      const path = await window.go.desktop.App.ExportProjectICS(includeHolidays);
       exportStatus = `Exported to ${path}`;
     } catch (err: any) {
       if (!String(err).includes('export cancelled')) exportStatus = `Export failed: ${err}`;
