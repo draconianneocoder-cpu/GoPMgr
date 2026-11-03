@@ -430,7 +430,7 @@ thing:
     TypeScript declaration. It lets Svelte components type-check before
     `wails dev`/`wails build` has run, and it is what most frontend code
     actually compiles against.
-- `frontend/wailsjs/` (`go/main/App.d.ts`, `go/models.ts`,
+- `frontend/wailsjs/` (`go/desktop/App.d.ts`, `go/models.ts`,
     `runtime/runtime.d.ts`) — **generated** by the Wails CLI from the
     current Go method set on every `wails dev`/`wails build`.
 
