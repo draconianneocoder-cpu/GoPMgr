@@ -4,12 +4,15 @@
 package db
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 
 	"gopmgr/internal/crypto"
@@ -603,4 +606,175 @@ func tablePresent(t *testing.T, path string, dek []byte, table string) bool {
 		t.Fatal(err)
 	}
 	return n > 0
+}
+
+// The read-only DSN carries the key as hex (_pragma_key), so no error and no
+// file name SQLite reports may contain it, for the right key or a wrong one.
+// Ported from the retired Slice B branch (claude/slice-b-readonly-access).
+func TestReadOnlyOpensKeepTheKeyOutOfErrorsAndNames(t *testing.T) {
+	path, dek := sealedProjectMissingColumn(t, "currency_code")
+	wrong := testDEK(t, 0x5a)
+	var hexKeys []string
+	for _, k := range [][]byte{dek, wrong} {
+		h, err := crypto.KeyspecHex(k)
+		if err != nil {
+			t.Fatal(err)
+		}
+		hexKeys = append(hexKeys, h)
+	}
+	leaks := func(s string) bool {
+		for _, h := range hexKeys {
+			if strings.Contains(strings.ToLower(s), strings.ToLower(h)) {
+				return true
+			}
+		}
+		return false
+	}
+
+	d, err := OpenEncryptedReadOnly(path, dek)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := d.Conn.Query("PRAGMA database_list")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var seq int
+		var name, file string
+		if err := rows.Scan(&seq, &name, &file); err != nil {
+			t.Fatal(err)
+		}
+		if leaks(file) {
+			t.Errorf("database_list file %q contains a key", file)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	_ = rows.Close()
+	_ = d.Close()
+
+	dir := t.TempDir()
+	cases := map[string]func() error{
+		"wrong key": func() error { _, err := OpenEncryptedReadOnly(path, wrong); return err },
+		"missing file": func() error {
+			_, err := OpenEncryptedReadOnly(filepath.Join(dir, "missing.gopmgr"), dek)
+			return err
+		},
+		"directory":         func() error { _, err := OpenEncryptedReadOnly(dir, dek); return err },
+		"illegal character": func() error { _, err := readOnlyEncryptedDSN(filepath.Join(dir, "a?b.gopmgr"), dek); return err },
+		"copy, wrong key":   func() error { _, err := OpenEncryptedCopyReadOnly(path, wrong); return err },
+	}
+	for name, open := range cases {
+		err := open()
+		if err == nil {
+			t.Errorf("%s: no error", name)
+			continue
+		}
+		if leaks(err.Error()) {
+			t.Errorf("%s: error %q contains a key", name, err)
+		}
+	}
+}
+
+// Repeated read-only opens, including wrong-key failures, must not leak file
+// descriptors: the overview and portfolio open every project on each call.
+// Ported from the retired Slice B branch.
+func TestReadOnlyOpensCloseTheirFiles(t *testing.T) {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		t.Skip("counts open descriptors through /dev/fd")
+	}
+	path, dek := sealedProjectMissingColumn(t, "currency_code")
+	wrong := testDEK(t, 0x08)
+	countFDs := func() int {
+		entries, err := os.ReadDir("/dev/fd")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(entries)
+	}
+	// Warm up the driver first.
+	if d, err := OpenEncryptedReadOnly(path, dek); err == nil {
+		_ = d.Close()
+	}
+	start := countFDs()
+	for i := 0; i < 100; i++ {
+		if d, err := OpenEncryptedReadOnly(path, dek); err == nil {
+			_, _ = d.GetProject()
+			_ = d.Close()
+		}
+		if d, err := OpenEncryptedReadOnly(path, wrong); err == nil {
+			_ = d.Close()
+		}
+	}
+	if end := countFDs(); end > start+2 {
+		t.Errorf("open descriptors grew from %d to %d over 200 opens", start, end)
+	}
+}
+
+// A crash can leave a project mid-transaction with its rollback journal
+// beside it. Reading it must not change the file or the journal, which is
+// what recovers the data; an error is acceptable, a modification is not.
+// Ported from the retired Slice B branch.
+func TestReadOnlyOpenLeavesAHotJournalAlone(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "p.gopmgr")
+	dek := testDEK(t, 0x28)
+	d, err := InitEncryptedDB(path, dek)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	d.Conn.SetMaxOpenConns(1)
+	if _, err := d.Conn.Exec("PRAGMA journal_mode = DELETE"); err != nil {
+		t.Fatal(err)
+	}
+	tx, err := d.Conn.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{
+		"PRAGMA cache_size = 1",
+		"CREATE TABLE junk(x)",
+		"INSERT INTO junk SELECT randomblob(2000) FROM (WITH RECURSIVE c(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM c WHERE i < 2000) SELECT i FROM c)",
+	} {
+		if _, err := tx.Exec(stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+	// Copy the file and its journal mid-transaction: the copy is what a crash
+	// leaves behind.
+	crash := filepath.Join(dir, "crash.gopmgr")
+	for _, side := range []string{"", "-journal"} {
+		b, err := os.ReadFile(path + side)
+		if err != nil {
+			t.Fatalf("read %q: %v", side, err)
+		}
+		if err := os.WriteFile(crash+side, b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = tx.Rollback()
+	readBoth := func() (main, journal []byte) {
+		t.Helper()
+		var err error
+		if main, err = os.ReadFile(crash); err != nil {
+			t.Fatal(err)
+		}
+		if journal, err = os.ReadFile(crash + "-journal"); err != nil {
+			t.Fatalf("journal gone after a read-only open: %v", err)
+		}
+		return main, journal
+	}
+	mainBefore, journalBefore := readBoth()
+
+	if ro, err := OpenEncryptedReadOnly(crash, dek); err == nil {
+		_, _ = ro.GetProject()
+		_ = ro.Close()
+	}
+	mainAfter, journalAfter := readBoth()
+	if !bytes.Equal(mainBefore, mainAfter) || !bytes.Equal(journalBefore, journalAfter) {
+		t.Error("a read-only open changed the crashed project or its journal")
+	}
 }
