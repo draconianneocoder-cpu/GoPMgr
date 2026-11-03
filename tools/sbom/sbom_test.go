@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -541,18 +542,70 @@ func TestEmbeddedFilesNeedExactlyOneEntry(t *testing.T) {
 	write("assets/A.ttf")
 	write("assets/README.md")
 	r := fixtureReviewedValue(t)
-	files, err := embeddedFiles(repo, r)
+	files, err := embeddedFiles(repo, r, nil)
 	if err != nil || len(files) != 1 || files[0].Rel != "assets/A.ttf" {
 		t.Fatalf("embeddedFiles = %v, %v", files, err)
 	}
 	write("assets/unreviewed.woff2")
-	if _, err := embeddedFiles(repo, r); err == nil || !strings.Contains(err.Error(), "unreviewed.woff2 has no reviewed entry") {
+	if _, err := embeddedFiles(repo, r, nil); err == nil || !strings.Contains(err.Error(), "unreviewed.woff2 has no reviewed entry") {
 		t.Fatalf("an unreviewed file was accepted: %v", err)
 	}
 	os.Remove(filepath.Join(repo, "assets", "unreviewed.woff2"))
 	r.Embedded = append(r.Embedded, r.Embedded[0])
-	if _, err := embeddedFiles(repo, r); err == nil || !strings.Contains(err.Error(), "matches two reviewed entries") {
+	if _, err := embeddedFiles(repo, r, nil); err == nil || !strings.Contains(err.Error(), "matches two reviewed entries") {
 		t.Fatalf("a doubly matched file was accepted: %v", err)
+	}
+}
+
+// check reviews what a release ships: the tracked files. An ignored local
+// download in an embedded folder (an optional font from `make fonts`) must
+// not fail it, while generate, which describes an actual build, must still
+// refuse that file.
+func TestCheckReviewsOnlyTrackedEmbeddedFiles(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	repo := t.TempDir()
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", repo}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	write := func(rel string) {
+		t.Helper()
+		p := filepath.Join(repo, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(rel), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git("init", "-q")
+	write("assets/A.ttf")
+	write(".gitignore")
+	if err := os.WriteFile(filepath.Join(repo, ".gitignore"), []byte("/assets/Optional-*.woff2\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "assets/A.ttf", ".gitignore")
+	write("assets/Optional-Bold.woff2")
+	r := fixtureReviewedValue(t)
+
+	tracked, err := trackedFiles(repo, r.EmbeddedRoots)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := embeddedFiles(repo, r, func(rel string) bool { return tracked[rel] })
+	if err != nil || len(files) != 1 || files[0].Rel != "assets/A.ttf" {
+		t.Fatalf("check view = %v, %v; want only the tracked assets/A.ttf", files, err)
+	}
+	if _, err := embeddedFiles(repo, r, nil); err == nil || !strings.Contains(err.Error(), "Optional-Bold.woff2 has no reviewed entry") {
+		t.Fatalf("generate view accepted the unreviewed local font: %v", err)
+	}
+	if _, err := trackedFiles(filepath.Join(repo, "missing"), r.EmbeddedRoots); err == nil {
+		t.Fatal("trackedFiles outside a Git checkout returned no error")
 	}
 }
 

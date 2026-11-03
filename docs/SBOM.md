@@ -187,6 +187,10 @@ go run ./tools/sbom generate -target darwin/arm64 \
 - Run `make sbom-check` after changing `go.mod`, the frontend dependencies or
   the embedded assets. Add or remove entries in `tools/sbom/components.json`
   to match.
+- `sbom-check` reviews the embedded files Git tracks, because releases build
+  from a clean checkout. `generate` describes an actual build, so it refuses
+  a build that embedded an unreviewed local file, such as an optional font
+  from `make fonts`. Build release SBOMs from a clean checkout.
 - Native code is listed under the module that links it. When a module
   leaves `go.mod`, its native entries become stale and `sbom-check` says so;
   delete them then. A native entry compiled into another native component

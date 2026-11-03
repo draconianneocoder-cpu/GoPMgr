@@ -105,10 +105,12 @@ func generateKey(privateOut string) (string, error) {
 		return "", err
 	}
 	if _, err := f.WriteString(base64.StdEncoding.EncodeToString(priv) + "\n"); err != nil {
-		f.Close()
+		_ = f.Close()
+		_ = os.Remove(privateOut) // a partial key would block a retry (O_EXCL)
 		return "", err
 	}
 	if err := f.Close(); err != nil {
+		_ = os.Remove(privateOut)
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(pub) + "\n", nil
