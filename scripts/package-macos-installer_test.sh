@@ -78,6 +78,7 @@ grep -Fq "SIL OPEN FONT LICENSE" "$root/gopmgr.app/Contents/Resources/Licenses/f
 cmp -s "$root/gopmgr.app/Contents/Resources/Licenses/go-modules.txt" third_party/GO-MODULE-NOTICES.txt
 [[ ! -e "$root/gopmgr.app/Contents/Resources/Licenses/duckdb-native.txt" ]] # DuckDB is retired
 cmp -s "$root/gopmgr.app/Contents/Resources/Licenses/frontend.txt" third_party/FRONTEND-NOTICES.txt
+cmp -s "$root/gopmgr.app/Contents/Resources/Licenses/GoPMgr.txt" LICENSES/GPL-3.0-or-later.txt
 [[ "$(/usr/bin/xmllint --nonet --xpath 'count(/plist/array/dict)' "$policy")" == 1 ]]
 [[ "$(plutil -extract 0.RootRelativeBundlePath raw -expect string -o - "$policy")" == gopmgr.app ]]
 [[ "$(plutil -extract 0.BundleIsVersionChecked raw -expect bool -o - "$policy")" == true ]]
@@ -153,7 +154,7 @@ run_case() {
 	local name="$1" expected_stage="$2" expected_error="$3"
 	local repo="$work/repo with spaces 'quote'-$name"
 	local output status final events
-	mkdir -p "$repo/scripts" "$repo/build/darwin" "$repo/build/packages" "$repo/tmp" "$repo/third_party/go-sqlcipher" "$repo/internal/fonts/assets"
+	mkdir -p "$repo/scripts" "$repo/build/darwin" "$repo/build/packages" "$repo/tmp" "$repo/third_party/go-sqlcipher" "$repo/internal/fonts/assets" "$repo/LICENSES"
 	cp "$ROOT/scripts/package-macos-installer.sh" "$ROOT/scripts/package-version-lib.sh" \
 		"$ROOT/scripts/verify-module-notices.sh" "$repo/scripts/"
 	cp "$ROOT/build/darwin/installer-components.plist" "$repo/build/darwin/"
@@ -162,6 +163,7 @@ run_case() {
 	printf '%s\n' 'Go module notices fixture' '' 'Module: std' 'Module: example.com/fixture v1.0.0' \
 		> "$repo/third_party/GO-MODULE-NOTICES.txt"
 	cp "$ROOT/third_party/FRONTEND-NOTICES.txt" "$repo/third_party/"
+	cp "$ROOT/LICENSES/GPL-3.0-or-later.txt" "$repo/LICENSES/"
 	# Wails pinning has its own regressions. This matrix owns installer behavior.
 	printf '#!/bin/bash\nexit 0\n' > "$repo/scripts/check-wails-version.sh"
 	printf 'prior good package\n' > "$repo/prior.pkg"

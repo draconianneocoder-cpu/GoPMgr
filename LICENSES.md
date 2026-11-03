@@ -81,6 +81,23 @@ License text files that correspond to committed assets should be tracked so
 `reuse lint` can run without network access. License texts for ignored local
 downloads can be regenerated locally when those assets are audited.
 
+## GoPMgr's own license in release packages
+
+GoPMgr is GPL-3.0-or-later, and the GPL requires its text to travel with the
+program. Every package carries it:
+
+| Package | Built by | Installed as |
+| --- | --- | --- |
+| Tarball | `scripts/package.sh` | `LICENSES/GPL-3.0-or-later.txt` |
+| `.deb` and `.rpm` | `scripts/package-linux.sh`, `build/linux/nfpm.yaml` | `/usr/share/doc/gopmgr/LICENSE` |
+| Debian source package | `debian/rules`, `debian/copyright` | `/usr/share/doc/gopmgr/copyright`, which points to the system's `/usr/share/common-licenses/GPL-3` |
+| macOS `.dmg` and `.pkg` | `scripts/package-macos.sh`, `scripts/package-macos-installer.sh` | `Contents/Resources/Licenses/GoPMgr.txt` inside the app |
+| Windows installer | `build/windows/installer/project.nsi` | the installer's license page |
+
+The `.deb`/`.rpm` and macOS copies were added on 2026-11-03; earlier packages
+carried only third-party notices. The package tests require an exact copy of
+`LICENSES/GPL-3.0-or-later.txt`.
+
 ## Go module notices in release packages
 
 The isolated DF0 source overrides are not linked into the Go application or

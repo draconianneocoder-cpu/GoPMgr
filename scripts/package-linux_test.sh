@@ -277,6 +277,10 @@ if command -v ar >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
 		tar -xOf "$data_tar" ./usr/share/doc/gopmgr/frontend-notices.txt 2>/dev/null || true; } >"$backup_root/frontend-notices.txt"
 	cmp -s "$backup_root/frontend-notices.txt" third_party/FRONTEND-NOTICES.txt ||
 		fail ".deb lacks an exact copy of third_party/FRONTEND-NOTICES.txt at /usr/share/doc/gopmgr/frontend-notices.txt"
+	{ tar -xOf "$data_tar" -C "$extract_dir" ./usr/share/doc/gopmgr/LICENSE 2>/dev/null ||
+		tar -xOf "$data_tar" ./usr/share/doc/gopmgr/LICENSE 2>/dev/null || true; } >"$backup_root/LICENSE"
+	cmp -s "$backup_root/LICENSE" LICENSES/GPL-3.0-or-later.txt ||
+		fail ".deb lacks an exact copy of GoPMgr's own license (LICENSES/GPL-3.0-or-later.txt) at /usr/share/doc/gopmgr/LICENSE"
 	# nfpm sanitizes VERSION for the package's own internal metadata field
 	# (Debian version syntax forbids an unescaped "-" before the upstream
 	# version's final component): the first hyphen becomes "~", matching
