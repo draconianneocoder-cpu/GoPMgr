@@ -80,6 +80,69 @@ func TestFSEventsDropFlagsFailTheObservation(t *testing.T) {
 	}
 }
 
+// TestFSEventsObserverRecordsDropNotices drives record with the probe's
+// line shapes. A path-free drop notice must fail a strict watch, and in a
+// load watch must mark the drop without recording an event; a path outside
+// the reported prefixes must always fail.
+func TestFSEventsObserverRecordsDropNotices(t *testing.T) {
+	const prefix = "/private/tmp/df0-unit"
+	event := func(path string, flags uint32) string {
+		return fmt.Sprintf(`{"path_hex":%q,"flags":%d,"id":1}`, hex.EncodeToString([]byte(path)), flags)
+	}
+	notice := fmt.Sprintf(`{"drop_flags":%d}`, fsevMustScanSubDirs|fsevUserDropped)
+	for _, tc := range []struct {
+		name       string
+		line       string
+		allowDrops bool
+		wantFail   bool
+		wantDrop   bool
+		wantCount  int
+	}{
+		{"drop notice fails a strict watch", notice, false, true, false, 0},
+		{"drop notice marks a load watch and records nothing", notice, true, false, true, 0},
+		{"event under a prefix is recorded", event(prefix+"/a", fsevCreated|fsevIsFile), false, false, false, 1},
+		{"dropped event under a prefix marks a load watch", event(prefix+"/a", fsevKernelDropped|fsevModified), true, false, true, 1},
+		{"path outside the prefixes fails", event("/Users/someone/secret", fsevCreated|fsevIsFile), true, true, false, 0},
+		{"sibling sharing the prefix's name fails", event(prefix+"-other/a", fsevCreated|fsevIsFile), true, true, false, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := &recordingTB{TB: t}
+			w := &fsWatch{t: rec, root: "/", prefixes: []string{prefix}, allowDrops: tc.allowDrops, flags: map[string]uint32{}}
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				w.record(tc.line)
+			}()
+			<-done
+			if failed := rec.failure != ""; failed != tc.wantFail {
+				t.Fatalf("failed = %t (%q), want %t", failed, rec.failure, tc.wantFail)
+			}
+			if w.sawDrop != tc.wantDrop || w.count != tc.wantCount {
+				t.Fatalf("sawDrop = %t, count = %d; want %t, %d", w.sawDrop, w.count, tc.wantDrop, tc.wantCount)
+			}
+		})
+	}
+}
+
+// recordingTB captures a fatal failure instead of failing the test, and ends
+// the calling goroutine the way testing.T does.
+type recordingTB struct {
+	testing.TB
+	failure string
+}
+
+func (r *recordingTB) Helper() {}
+
+func (r *recordingTB) Fatal(args ...any) {
+	r.failure = fmt.Sprint(args...)
+	runtime.Goexit()
+}
+
+func (r *recordingTB) Fatalf(format string, args ...any) {
+	r.failure = fmt.Sprintf(format, args...)
+	runtime.Goexit()
+}
+
 func compileFSEventsProbe(t *testing.T) string {
 	t.Helper()
 	src, err := filepath.Abs("../../tools/macos_fsevents_probe.c")
@@ -151,12 +214,18 @@ type fsEventSummary struct {
 }
 
 type fsWatch struct {
-	t          *testing.T
+	t          testing.TB
 	root       string
 	barrierDir string
+	// prefixes are the folders the observer may report by path; nil means
+	// everything under root.
+	prefixes []string
 	// allowDrops records dropped events instead of failing; only a load
 	// characterization uses it.
 	allowDrops bool
+	// sawDrop is set once the observer reports a dropped-event flag. A drop
+	// can take a barrier's own event with it, so barrier then writes another.
+	sawDrop bool
 	// Set from the observer's final record.
 	dropped     uint64
 	otherCounts map[string]uint64
@@ -194,7 +263,7 @@ func watchTree(t *testing.T, probe, root, barrierDir string, prefixes []string) 
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	w := &fsWatch{t: t, root: root, barrierDir: barrierDir, cmd: cmd, stdin: stdin, lines: make(chan string, 4096), scanErr: make(chan error, 1), flags: map[string]uint32{}}
+	w := &fsWatch{t: t, root: root, barrierDir: barrierDir, prefixes: prefixes, cmd: cmd, stdin: stdin, lines: make(chan string, 4096), scanErr: make(chan error, 1), flags: map[string]uint32{}}
 	go func() {
 		s := bufio.NewScanner(stdout)
 		s.Buffer(make([]byte, 64<<10), 1<<20)
@@ -229,11 +298,12 @@ func watchTree(t *testing.T, probe, root, barrierDir string, prefixes []string) 
 // dropped without being kept, so no other application's names are recorded.
 func (w *fsWatch) record(line string) (string, bool) {
 	var e struct {
-		PathHex string            `json:"path_hex"`
-		Flags   uint32            `json:"flags"`
-		Done    bool              `json:"done"`
-		Dropped uint64            `json:"dropped_events"`
-		Other   map[string]uint64 `json:"other_counts"`
+		PathHex   string            `json:"path_hex"`
+		Flags     uint32            `json:"flags"`
+		DropFlags uint32            `json:"drop_flags"`
+		Done      bool              `json:"done"`
+		Dropped   uint64            `json:"dropped_events"`
+		Other     map[string]uint64 `json:"other_counts"`
 	}
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
 		w.t.Fatalf("FSEvents record: %v", err)
@@ -249,14 +319,26 @@ func (w *fsWatch) record(line string) (string, bool) {
 		}
 		return "", true
 	}
+	if eventsDropped(e.Flags | e.DropFlags) {
+		if !w.allowDrops {
+			w.t.Fatalf("FSEvents dropped events (flags %#x): the observation is incomplete", e.Flags|e.DropFlags)
+		}
+		w.sawDrop = true
+	}
+	if e.DropFlags != 0 {
+		// A drop outside the reported prefixes, announced without its path.
+		return "", false
+	}
 	raw, err := hex.DecodeString(e.PathHex)
 	if err != nil {
 		w.t.Fatalf("FSEvents path: %v", err)
 	}
-	if eventsDropped(e.Flags) && !w.allowDrops {
-		w.t.Fatalf("FSEvents dropped events (flags %#x): the observation is incomplete", e.Flags)
-	}
 	path := string(raw)
+	if !w.reportable(path) {
+		// The probe must only count such events; a path here leaks another
+		// application's file names. Checked per event, so drops cannot hide it.
+		w.t.Fatal("FSEvents observer reported a path outside its prefixes")
+	}
 	rel, err := filepath.Rel(w.root, path)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, "../") {
 		return "", false
@@ -269,42 +351,85 @@ func (w *fsWatch) record(line string) (string, bool) {
 	return rel, false
 }
 
+// reportable mirrors the probe's prefix rule: a prefix itself or anything
+// below it.
+func (w *fsWatch) reportable(path string) bool {
+	if len(w.prefixes) == 0 {
+		return true
+	}
+	for _, p := range w.prefixes {
+		if path == p || strings.HasPrefix(path, strings.TrimSuffix(p, "/")+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 // barrierName starts the name of the empty files the host writes to order
 // events.
 const barrierName = "df0-barrier-"
 
 // barrier writes an empty host-owned file and consumes events until FSEvents
 // reports it. FSEvents delivers events in event-ID order, so every event the
-// kernel recorded before the barrier has then been read.
+// kernel recorded before the barrier has then been read, or was reported as
+// dropped. A drop can remove the barrier's own event, so after the observer
+// has reported one, an unseen barrier is followed by a fresh one; seeing any
+// of them proves the same ordering. Without a reported drop, one missing
+// barrier fails the test.
 func (w *fsWatch) barrier() {
 	w.t.Helper()
-	var entropy [4]byte
-	if _, err := io.ReadFull(rand.Reader, entropy[:]); err != nil {
-		w.t.Fatal(err)
+	const attempts = 6
+	written := map[string]string{}
+	defer func() {
+		for path := range written {
+			if err := os.Remove(path); err != nil {
+				w.t.Error(err)
+			}
+		}
+	}()
+	for attempt := 1; ; attempt++ {
+		var entropy [4]byte
+		if _, err := io.ReadFull(rand.Reader, entropy[:]); err != nil {
+			w.t.Fatal(err)
+		}
+		path := filepath.Join(w.barrierDir, barrierName+hex.EncodeToString(entropy[:]))
+		rel, err := filepath.Rel(w.root, path)
+		if err != nil {
+			w.t.Fatal(err)
+		}
+		if err := os.WriteFile(path, nil, 0600); err != nil {
+			w.t.Fatal(err)
+		}
+		written[path] = rel
+		if w.awaitBarrier(written) {
+			return
+		}
+		if !w.sawDrop || attempt == attempts {
+			w.t.Fatalf("FSEvents barrier was not observed (attempts %d, drop reported %t)", attempt, w.sawDrop)
+		}
 	}
-	path := filepath.Join(w.barrierDir, barrierName+hex.EncodeToString(entropy[:]))
-	rel, err := filepath.Rel(w.root, path)
-	if err != nil {
-		w.t.Fatal(err)
-	}
-	if err := os.WriteFile(path, nil, 0600); err != nil {
-		w.t.Fatal(err)
-	}
+}
+
+// awaitBarrier reads events for up to ten seconds and reports whether one of
+// the written barriers arrived.
+func (w *fsWatch) awaitBarrier(written map[string]string) bool {
+	w.t.Helper()
 	deadline := time.After(10 * time.Second)
-	for seen := false; !seen; {
+	for {
 		select {
 		case line, ok := <-w.lines:
 			if !ok {
 				w.t.Fatalf("FSEvents observer ended early: %v", <-w.scanErr)
 			}
 			got, _ := w.record(line)
-			seen = got == rel
+			for _, rel := range written {
+				if got == rel {
+					return true
+				}
+			}
 		case <-deadline:
-			w.t.Fatal("FSEvents barrier was not observed")
+			return false
 		}
-	}
-	if err := os.Remove(path); err != nil {
-		w.t.Fatal(err)
 	}
 }
 
@@ -1038,11 +1163,16 @@ func TestMacOSVolumeWideFSEvents(t *testing.T) {
 	}
 	s2 := w2.stop()
 	load := volumePhase{Name: "load_outside_prefixes", Seen: map[string]bool{"system_tmp": modified(s2, after)}, Dropped: s2.Dropped, Events: s2.Events, OtherCounts: s2.OtherCounts, LoadFiles: loadFiles, LoadSeconds: elapsed}
-	if !load.Seen["system_tmp"] {
-		t.Errorf("marker after the load was not seen")
-	}
-	if load.OtherCounts["/private"] < loadFiles {
-		t.Errorf("the load was not observed: %v", load.OtherCounts)
+	// The requirement is that nothing is lost silently: either every event
+	// arrived, or the observer reported a drop. Whether fseventsd keeps up is
+	// recorded, not required; it drops under CPU load.
+	if load.Dropped == 0 {
+		if !load.Seen["system_tmp"] {
+			t.Errorf("marker after the load was not seen, and no drop was reported")
+		}
+		if load.OtherCounts["/private"] < loadFiles {
+			t.Errorf("the load was not fully observed, and no drop was reported: %v", load.OtherCounts)
+		}
 	}
 	t.Logf("load: %d files in %.1fs, dropped events %d", loadFiles, elapsed, load.Dropped)
 

@@ -22,20 +22,20 @@
     "Bounded wait for the ReportCrash report naming the crashed PID"
   ],
   "source_sha256": {
-    "spikes/adr012-datafusion/internal/ipchost/memory_only_darwin_test.go": "194699f4df12bd2b2516680801f7fc923b1f81904d1b8df6e6d52855f2b7be27",
+    "spikes/adr012-datafusion/internal/ipchost/memory_only_darwin_test.go": "e95d92109b6a83bc3f98d7245623f55c79a543390e2255a448236819f1dc7e99",
     "spikes/adr012-datafusion/internal/ipchost/exec_limits_darwin_test.go": "a236a0e80d582bae8e769d95b52d4a0d34146d32b24b205e3b147dd2d4cf1774",
     "spikes/adr012-datafusion/internal/ipchost/sandbox_darwin_test.go": "df1db0579a5715aeed14594c6585984397dc7a901d1d681684f8e8aa86eda118",
-    "spikes/adr012-datafusion/internal/ipchost/run.go": "090f95bbed64383a766a277a649ad44d60b740d4e49d457a3019501d42757463",
+    "spikes/adr012-datafusion/internal/ipchost/run.go": "7599adf03a115fc2fa30acce5d2a185661f2c58c8fefa39867b666bb6a44f508",
     "spikes/adr012-datafusion/tools/macos_exec_limits_probe.c": "2c44e9d766b6f57ff604021094a1b6b5356020b059de5bbd5122c1a81d365978",
     "spikes/adr012-datafusion/tools/macos_observer_probe.c": "1bf9c68f9824938d4f446b66aa744355dfa7bd42068302a45581d76967666619",
-    "spikes/adr012-datafusion/tools/macos_fsevents_probe.c": "9c17d5b2dff639739a082888b7a4d2ed3bc81eb38a88cb8da1c6af320b3754e4",
+    "spikes/adr012-datafusion/tools/macos_fsevents_probe.c": "24e86af4784c1f1ef83d0526d82f583b206954ab2b6ca49a9ffff4884e5b2fe8",
     "spikes/adr012-datafusion/rust/worker/src/read_source.rs": "6cb24457d5de0aaf6297765dbb2c16ca6aca391cff49553650f454c55da9e8ea",
     "spikes/adr012-datafusion/internal/ipchost/container.go": "97d915b658b41e83b873b8908ab58b01f75b65cb0d270fda0c3d4d64d7c12239",
     "spikes/adr012-datafusion/internal/ipchost/container_darwin_test.go": "216145b30f46c3d1addc0f8d91d15f6798520c6ca4b501cd105c576496d2d0bb",
-    "spikes/adr012-datafusion/rust/worker/src/main.rs": "08b013feea162c02fc3aaa1024f08cfbfd903ae5d4e4123966f10a8fdf35a0c5",
+    "spikes/adr012-datafusion/rust/worker/src/main.rs": "f5a6c8048bcefab7dc0961f981c0a083f43e17ab119692ae20cf330acf4c318a",
     "spikes/adr012-datafusion/internal/ipchost/container_report.go": "1d54057f32a16bba31261dcaac569434aa8a38ffb7a3e564d4cbfc5858279ef4"
   },
-  "sources_changed_since_previous_manifest": "tools/macos_exec_limits_probe.c gained the optional file-growth limit and FSIZE/CORE/SIGXFSZ readback; tools/macos_observer_probe.c gained the growth and growth-launch helper modes; sandbox_darwin_test.go only adopts the launcherLimits signature. The observer-sandbox tests still pass on these sources in the full spike race suite; their committed evidence and manifest were not regenerated and still bind the earlier versions. Condition 3 update: worker main.rs gained the panic hook, read_source.rs the test-only source_panic and source_panic_abort faults, and the memory-only test the panic, panic_abort and crash_trailing scenarios; memory-only-worker.json and fault-seeds.json were regenerated, the other observations still bind 5b434f0 sources SEC-001 update: container.go now sweeps through directory handles (macOS only), container_report.go carries the portable report type, the two flag-helper files were removed, and container_darwin_test.go gained the swap, hard-link, fail-closed and depth tests; memory-only-worker.json and growth-channels.json were regenerated with the same worker, and their sweep counts match the earlier run",
+  "sources_changed_since_previous_manifest": "tools/macos_exec_limits_probe.c gained the optional file-growth limit and FSIZE/CORE/SIGXFSZ readback; tools/macos_observer_probe.c gained the growth and growth-launch helper modes; sandbox_darwin_test.go only adopts the launcherLimits signature. The observer-sandbox tests still pass on these sources in the full spike race suite; their committed evidence and manifest were not regenerated and still bind the earlier versions. Condition 3 update: worker main.rs gained the panic hook, read_source.rs the test-only source_panic and source_panic_abort faults, and the memory-only test the panic, panic_abort and crash_trailing scenarios; memory-only-worker.json and fault-seeds.json were regenerated, the other observations still bind 5b434f0 sources SEC-001 update: container.go now sweeps through directory handles (macOS only), container_report.go carries the portable report type, the two flag-helper files were removed, and container_darwin_test.go gained the swap, hard-link, fail-closed and depth tests; memory-only-worker.json and growth-channels.json were regenerated with the same worker, and their sweep counts match the earlier run SEC-002..005 and flake update (2026-11-02): every source hash was refreshed; run.go and worker main.rs changed for SEC-002 (process-tree teardown, RLIMIT_NPROC); the FSEvents probe now announces a drop outside the reported folders without its path, and the volume test retries a barrier only after a reported drop, requires the full load only when no drop was reported, and fails on any reported path outside its prefixes. All four observation files were regenerated with worker d4da6f37; outcomes match the earlier run (the cancel scenario's row count before cancellation is timing-dependent)",
   "sdk_sha256": {
     "System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Headers/FSEvents.h": "493ab211ffd5683e83b3ec77b9924730a7df44a39738b560b8a28465b1c48a90",
     "usr/include/sys/resource.h": "1067178025c5fd88c9a1b8206a07c2695ef94dd471fe2783f06c512995382961",
@@ -43,14 +43,14 @@
     "usr/include/sys/signal.h": "46001a703a66591b9adc873dcdfe4a545bb26cd5fc52b31ede9e0cda9ddbac7a"
   },
   "evidence_sha256": {
-    "crash-reports.json": "5110f33e73c4727c1aa66976319912ec0a361b9a16ea5743f45f34d571c8c3a3",
-    "fault-seeds.json": "15c8dc349a3a3dfa80dca32a84a4a0ffa44ca5108f299751180cea541e999884",
-    "growth-channels.json": "b7719418e18e6529e1adc0e8b16451816cfe2a4a2ddf71bec0329c46acd79da2",
-    "memory-only-worker.json": "3217d35c7b471926c5f49d973a648eecb75ee30b0656ea5c1fa683f909db4fbd",
-    "volume-watch.json": "5b425af10db3355366789427e215c34ddcdb8bb33a23f0e58fc46c1ead888556"
+    "crash-reports.json": "090ce890a2f38a3e8919338d0be6b579f6d008acc514807e3d12cd04d9d7589f",
+    "fault-seeds.json": "60897bd81bfa7b5a29ea62d9ca55678c87806d5d15a998ed55911a50948c69b8",
+    "growth-channels.json": "07b57b44342aa4b381ff61971ee75954f477f338a5047a4d1ab704d87a0c5342",
+    "memory-only-worker.json": "6bfcf171ee67aa7036baeec1f37f894beca4ceed01b1891050b22bc2f894ed97",
+    "volume-watch.json": "ad077d90cb6058208b21a5b967ee49bba2ef7f027758a9bed442e2e7f2be5e52"
   },
-  "input_worker_sha256": "1f353a111f6b207aa1990ae797cf614b8f988b0f67990745876c31da2d0758c2",
-  "signed_copy_sha256": "fbb00d1922e4d7c8065274898350364c4bfd36944b38e5d1db2c73de76d4c20b",
+  "input_worker_sha256": "d4da6f3759a29c8ce706fddc076d179b0fafe362165195054468c1dc872be9b9",
+  "signed_copy_sha256": "f9d3de8e4c677114c594c2d7632e18feb3034adf8548ad5c9e5eeffa484f2dda",
   "worker_rebuilt": true,
   "worker_build": "cargo build --locked --offline --release -p df0-worker with the pinned toolchain and CARGO_TARGET_DIR outside the repository, after the condition 3 panic hook; condition 1's mapping fix is included",
   "signing": "Task-only copies, ad-hoc hardened-runtime signature, only the App Sandbox entitlement; no Developer ID, notarization or installed-app claim. Unique new containers and the task's own crash reports are removed by the tests.",
@@ -66,7 +66,7 @@
     "All workers signed with one bundle identifier share one container, so jobs on it run one at a time. The owner chose one signed worker copy per concurrency slot for DF-064 cohorts; not implemented",
     "Owner condition 3 evidence: a crash report carries the crashing thread's register values (a known 8-byte pattern in ten registers appeared in the report), so a crash can leak a register set of in-flight data (ten registers checked; arm64 has up to 29 general-purpose registers of 8 bytes); this machine has automatic crash-report submission on. A process whose fatal-signal handler exits first produced no report for either a trap or an abort, with plain crashes reported both before and after.",
     "Owner condition 4: deferred to release qualification by the owner. This machine has no code-signing identity (no Developer ID) and no macOS 13 host",
-    "Owner condition 5 evidence: an unprivileged FSEvents stream on the boot volume saw marker writes in /private/tmp, the user temp folder, the home folder and the sandboxed container; it dropped nothing under 20,000 create/delete pairs elsewhere on the volume; a stalled consumer made fseventsd drop events and the observer reported it",
+    "Owner condition 5 evidence: an unprivileged FSEvents stream on the boot volume saw marker writes in /private/tmp, the user temp folder, the home folder and the sandboxed container; a stalled consumer made fseventsd drop events and the observer reported it. On an idle machine 20,000 create/delete pairs elsewhere on the volume produced no drop; with every CPU core busy, fseventsd dropped one or two events in most such runs, each reported by the observer",
     "Owner condition 3, chosen option (ii) with (iv): the worker's panic hook exits with status 70 at the first panic, printing only the source location. A panic that would abort (one raised during unwinding) then produced no crash report, while a host-sent SIGABRT to the same worker produced one both before and after. Without the hook, the same panic aborted and was reported. Before the hook, a panic in the query task reached the host as INTERNAL failure text that included the panic message, which can hold row values",
     "SEC-001 (security scan, 2026-11-02): the path-based sweep could be redirected outside the container by a process still running in it. The sweep now walks directory handles opened without following symlinks, changes entries only through handles or *at calls that cannot follow, restores a closed directory's permissions by name only with a trailing slash and AT_SYMLINK_NOFOLLOW_ANY (so a hard link or symlink swapped in is refused), opens entries with O_NONBLOCK, checks a baseline entry's inode on root's current device before changing it, and fails closed on what it cannot handle that way or past 64 levels or 131,072 entries"
   ],
@@ -80,7 +80,7 @@
     "Crash reports hold backtraces, not heap, so no sentinel in one is a weak check; reports can leave the machine if analytics sharing is on",
     "ReportCrash stopped writing reports for a process name that had crashed many times (2 misses in about 4 runs with the fixed name 'probe'; 8 of 8 observed after naming each test's executable uniquely). Test apps now use unique names; a production worker with a fixed name would get the same throttling",
     "The volume-wide stream covers the boot volume only, reports paths not processes or contents, and keeps no record of files written and removed between two of its own events on the same path beyond merged flags",
-    "Drops did not occur in these load runs; a busier machine could drop, and the observer then fails the observation rather than passing it",
+    "Drops occur under CPU load (one or two per 20,000-pair load with every core busy). The observer reports every drop, so nothing is lost silently, but a production observation that fails on any drop would fail jobs on a busy machine",
     "Container.Do serializes jobs with an in-process lock; two host processes sharing one container (one bundle identifier) are not serialized, so a cross-process exclusive lock is needed before adoption",
     "ReportCrash writes the in-container CrashReporter plist asynchronously; if it lands between a sweep's walk and its re-check, the container is marked unclean and refuses jobs until it is swept again (an availability limit; the comparison stays strict)",
     "Condition 5's positive controls are direct writes; a delegated write outside the container, such as ReportCrash's report, was not checked through the volume-wide stream",
@@ -93,5 +93,5 @@
     "Identity is the inode on root's current device, so a saved baseline stays valid if the volume's device number changes across a reboot; that case was not run"
   ],
   "fault_seed_provenance": "fault-seeds.json states, per group, which source version each seed ran against; the observations in this folder were regenerated on the final sources",
-  "updated_utc": "2026-11-02T20:08:55.662886+00:00"
+  "updated_utc": "2026-11-03T00:21:19.342005+00:00"
 }

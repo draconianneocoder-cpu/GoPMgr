@@ -5,7 +5,7 @@
     "signal": "trace/BPT trap",
     "report_written": true,
     "register_pattern_in_report": true,
-    "report_bytes": 7655
+    "report_bytes": 7646
   },
   {
     "mode": "crash-handled",
@@ -27,6 +27,6 @@
     "signal": "trace/BPT trap",
     "report_written": true,
     "register_pattern_in_report": true,
-    "report_bytes": 7644
+    "report_bytes": 7646
   }
 ]

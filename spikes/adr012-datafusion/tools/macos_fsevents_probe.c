@@ -11,7 +11,9 @@
 // full, one JSON line each. Every other event is only counted, by its first
 // path component, so a volume-wide watch never prints another application's
 // paths. Events carrying a dropped-event flag are counted wherever they are,
-// so the caller can fail an incomplete observation.
+// so the caller can fail an incomplete observation; one outside every prefix
+// is also announced at once as {"drop_flags":N}, without its path, because a
+// drop can remove the very event the caller is waiting for.
 //
 // fseventsd records events in the kernel's order, so this observer sees files
 // that were created and removed before anyone listed the directory. It does
@@ -85,6 +87,9 @@ static void callback(ConstFSEventStreamRef stream, void *info, size_t count, voi
             dropped_events++;
         }
         if (!under_prefix(names[i])) {
+            if (flags[i] & DROP_FLAGS) {
+                printf("{\"drop_flags\":%u}\n", (unsigned)flags[i]);
+            }
             count_other(names[i]);
             continue;
         }

@@ -299,8 +299,11 @@ application's paths are recorded.
 
 - It saw marker writes in `/private/tmp`, the user temp folder, the home folder
   and the sandboxed container, with nothing dropped.
-- Under 20,000 create/delete pairs elsewhere on the volume in about 1.3
-  seconds, it dropped nothing and still saw a marker written afterwards.
+- On an idle machine, 20,000 create/delete pairs elsewhere on the volume in
+  about 1.3 seconds caused no drop, and a marker written afterwards was seen.
+  With every CPU core busy, fseventsd dropped one or two events in most such
+  runs, and the observer reported each drop. **For the owner:** a production
+  observation that fails on any drop would then fail jobs on a busy machine.
 - A consumer that stopped reading made fseventsd drop events, and the observer
   reported it. This is the positive control for drop detection. A dropped
   event fails any observation that relies on the stream.
@@ -369,15 +372,29 @@ are fixed; SEC-001 is described above.
 - **SEC-005.** `golang.org/x/net` is now v0.62.0 in the app and the spike.
 
 The worker built with these changes has SHA-256
-`d4da6f3759a29c8ce706fddc076d179b0fafe362165195054468c1dc872be9b9`. The
-evidence files above came from earlier builds and were not regenerated; the
-full race suite passed with the new worker. The build SBOM still describes
-source snapshot `8746d38`.
+`d4da6f3759a29c8ce706fddc076d179b0fafe362165195054468c1dc872be9b9`. The four
+observation files were regenerated with it, after the flake fix below, and
+their outcomes match the earlier run. The full race suite passed four times in
+a row with it. The build SBOM still describes source snapshot `8746d38`:
+regenerating it needs the pinned validator environment and SPDX resources,
+which are not on this machine and would need the owner's approval to install.
 
-`TestMacOSVolumeWideFSEvents` failed in three of four full race runs, each
-time at the stalled-consumer phase: under load the closing barrier event can
-be dropped along with the rest. It passed both times it ran alone. It first
-failed before any change to code it runs, so it is an existing flake.
+`TestMacOSVolumeWideFSEvents` failed in three of four full race runs. With
+every CPU core busy it failed in three of four runs alone, for two reasons:
+
+- The load phase allows drops but still required every event, and fseventsd
+  dropped one or two events whenever the machine was saturated.
+- When the stalled-consumer phase made fseventsd drop events, the drop was
+  reported on an event outside the reported folders. The probe only counted
+  such events, so a lost closing barrier looked like silent loss.
+
+The probe now announces such a drop at once, without its path. A barrier
+that is not seen after a reported drop is followed by a fresh one, and the
+load phase requires every event only when no drop was reported. Each event
+that arrives with a path outside the reported folders now fails the test,
+whether or not drops occurred. With every core busy, six of six runs passed.
+The retry only after a reported drop has no fast test (its wait is ten
+seconds); a probe that hides drops still fails at the barrier.
 
 ## Verification
 
@@ -394,9 +411,9 @@ The full spike race suite and `go vet` passed with the same worker. The tests
 skip as root and skip the worker scenarios without `DF0_WORKER`; neither is
 qualification.
 
-For the memory-only and container work, thirty-two compiling seeds were each
+For the memory-only and container work, thirty-five compiling seeds were each
 caught by a named assertion (the SEC-002 to SEC-005 seeds are recorded in their
-commit messages); three
+commit messages); four
 first forms that did not compile were replaced and are recorded as not
 counted. The seed record states which source version each group ran against. One seed
 removed the file-size limit **and** disabled the launcher's readback check:

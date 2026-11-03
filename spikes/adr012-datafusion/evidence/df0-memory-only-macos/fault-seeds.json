@@ -1,5 +1,5 @@
 {
-  "counted_total": 32,
+  "counted_total": 35,
   "groups": [
     {
       "group": "S1-S9, S1b (memory-only policy, observers, scans)",
@@ -138,22 +138,22 @@
     },
     {
       "group": "V1-V3 (volume-wide watch)",
-      "ran_against": "commit 8ab0f18; the FSEvents probe and the volume test are unchanged since",
+      "ran_against": "the drop-aware probe and volume test (path-free drop notice, barrier retry after a reported drop, per-event prefix check), with every CPU core busy; first run against commit 8ab0f18",
       "seeds": [
         {
           "seed": "V1 probe ignores dropped-event flags",
-          "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
-          "first_assertion": "a stalled consumer produced no dropped-event report; drop detection is unproven"
+          "result": "CAUGHT by TestMacOSVolumeWideFSEvents (both runs)",
+          "first_assertion": "a stalled consumer produced no dropped-event report; drop detection is unproven (run 2: FSEvents barrier was not observed (attempts 1, drop reported false))"
         },
         {
           "seed": "V2 prefix filter passes every path",
           "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
-          "first_assertion": "marker after the load was not seen"
+          "first_assertion": "FSEvents observer reported a path outside its prefixes"
         },
         {
           "seed": "V3 counter records full paths",
           "result": "CAUGHT by TestMacOSVolumeWideFSEvents",
-          "first_assertion": "the load was not observed: map[<tmp>:1 <tmp>/f00000:1 <tmp>/f00001:1 <tmp>"
+          "first_assertion": "the load was not fully observed, and no drop was reported: map[<tmp>/f00000:1 <tmp>/f00001:1 ..."
         }
       ]
     },
@@ -269,6 +269,27 @@
       ],
       "seed_design_fixes": "A first N5 form raised the depth constant, which the test also uses to build its tree, and hung; replaced by removing the depth check. A first N8 pattern did not match after gofmt realigned the constant; rerun with the exact text. Neither is counted",
       "untested": "The 131,072-entry cap has no test or seed"
+    },
+    {
+      "group": "G1-G3 (observer record of drop notices and prefixes)",
+      "ran_against": "the same drop-aware sources",
+      "seeds": [
+        {
+          "seed": "G1 record ignores the path-free drop notice",
+          "result": "CAUGHT by TestFSEventsObserverRecordsDropNotices",
+          "first_assertion": "failed = true (\"FSEvents observer reported a path outside its prefixes\"), want false"
+        },
+        {
+          "seed": "G2 every path counts as reportable",
+          "result": "CAUGHT by TestFSEventsObserverRecordsDropNotices (2 cases)",
+          "first_assertion": "failed = false (\"\"), want true"
+        },
+        {
+          "seed": "G3 prefix match without the separator",
+          "result": "CAUGHT by TestFSEventsObserverRecordsDropNotices (sibling case)",
+          "first_assertion": "failed = false (\"\"), want true"
+        }
+      ]
     }
   ],
   "not_counted_as_detection": [
@@ -286,6 +307,11 @@
       "seed": "C4 clean verdict forced (first form)",
       "result": "DID NOT COMPILE",
       "disposition": "Go rejected unused variables; replaced by a compiling form, which was caught"
+    },
+    {
+      "seed": "V1 probe ignores dropped-event flags (first form, rerun)",
+      "result": "DID NOT COMPILE",
+      "disposition": "a one-line sed edit split the two-line DROP_FLAGS macro; replaced by an exact replacement, which was caught"
     }
   ],
   "counting_rule": "Each distinct fault counts once; re-runs of an earlier seed against changed sources re-verify it and are not added again"
