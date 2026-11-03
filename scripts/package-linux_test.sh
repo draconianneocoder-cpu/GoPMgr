@@ -277,6 +277,10 @@ if command -v ar >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
 		tar -xOf "$data_tar" ./usr/share/doc/gopmgr/frontend-notices.txt 2>/dev/null || true; } >"$backup_root/frontend-notices.txt"
 	cmp -s "$backup_root/frontend-notices.txt" third_party/FRONTEND-NOTICES.txt ||
 		fail ".deb lacks an exact copy of third_party/FRONTEND-NOTICES.txt at /usr/share/doc/gopmgr/frontend-notices.txt"
+	{ tar -xOf "$data_tar" -C "$extract_dir" ./usr/share/doc/gopmgr/LICENSE 2>/dev/null ||
+		tar -xOf "$data_tar" ./usr/share/doc/gopmgr/LICENSE 2>/dev/null || true; } >"$backup_root/LICENSE"
+	cmp -s "$backup_root/LICENSE" LICENSES/GPL-3.0-or-later.txt ||
+		fail ".deb lacks an exact copy of GoPMgr's own license (LICENSES/GPL-3.0-or-later.txt) at /usr/share/doc/gopmgr/LICENSE"
 	# nfpm sanitizes VERSION for the package's own internal metadata field
 	# (Debian version syntax forbids an unescaped "-" before the upstream
 	# version's final component): the first hyphen becomes "~", matching
@@ -311,7 +315,7 @@ fi
 # technique one level up the call stack.
 fake_repo="$backup_root/fake-repo"
 mkdir -p "$fake_repo/scripts" "$fake_repo/build/linux" "$fake_repo/build/bin" \
-	"$fake_repo/third_party/go-sqlcipher" "$fake_repo/internal/fonts/assets"
+	"$fake_repo/third_party/go-sqlcipher" "$fake_repo/internal/fonts/assets" "$fake_repo/LICENSES"
 cp scripts/package-linux.sh scripts/package-version-lib.sh scripts/release-tool-versions.env \
 	scripts/verify-module-notices.sh "$fake_repo/scripts/"
 cp build/linux/nfpm.yaml build/linux/gopmgr.desktop "$fake_repo/build/linux/"
@@ -321,6 +325,7 @@ cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt \
 cp internal/fonts/assets/FONT-NOTICES.txt "$fake_repo/internal/fonts/assets/FONT-NOTICES.txt"
 cp third_party/GO-MODULE-NOTICES.txt "$fake_repo/third_party/GO-MODULE-NOTICES.txt"
 cp third_party/FRONTEND-NOTICES.txt "$fake_repo/third_party/FRONTEND-NOTICES.txt"
+cp LICENSES/GPL-3.0-or-later.txt "$fake_repo/LICENSES/GPL-3.0-or-later.txt"
 cp "$gopmgr_elf_amd64" "$fake_repo/build/bin/gopmgr"
 chmod +x "$fake_repo/build/bin/gopmgr"
 (

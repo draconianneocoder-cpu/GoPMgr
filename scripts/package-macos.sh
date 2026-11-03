@@ -43,6 +43,7 @@ trap 'rm -rf "$staging"' EXIT
 staged_app="$staging/$visible_app"
 cp -R "$app" "$staged_app"
 mkdir -p "$staged_app/Contents/Resources/Licenses"
+cp LICENSES/GPL-3.0-or-later.txt "$staged_app/Contents/Resources/Licenses/GoPMgr.txt"
 cp third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt "$staged_app/Contents/Resources/Licenses/go-sqlcipher.txt"
 cp internal/fonts/assets/FONT-NOTICES.txt "$staged_app/Contents/Resources/Licenses/fonts.txt"
 cp third_party/GO-MODULE-NOTICES.txt "$staged_app/Contents/Resources/Licenses/go-modules.txt"
