@@ -604,6 +604,14 @@
       "imports_internal": [],
       "notable_external_deps": []
     },
+    "gopmgr/tools/sbom": {
+      "dir": "tools/sbom",
+      "imported_by_internal": [],
+      "imports_internal": [],
+      "notable_external_deps": [
+        "golang.org/x/mod/sumdb/dirhash"
+      ]
+    },
     "gopmgr/tools/update-manifest": {
       "dir": "tools/update-manifest",
       "imported_by_internal": [],

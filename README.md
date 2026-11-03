@@ -93,6 +93,8 @@ making trust claims.
   extension guidance.
 - [TESTING.md](docs/TESTING.md): test and release gates.
 - [DEPENDENCIES.md](docs/DEPENDENCIES.md): dependency and tool policy.
+- [docs/SBOM.md](docs/SBOM.md): the SBOMs published with each release, how to
+  verify them, and how they meet CISA's 2026 minimum elements.
 - [docs/user-guide.md](docs/user-guide.md): user workflows.
 - [docs/branding.md](docs/branding.md): Bobby Beaver identity, asset placement, platform behavior, and attribution.
 - [docs/INSTALL.md](docs/INSTALL.md): installation and source-run guidance.

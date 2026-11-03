@@ -338,6 +338,11 @@ weakening the release claim.
    run `make frontend-notices` and commit the regenerated
    `third_party/FRONTEND-NOTICES.txt`; `make verify` fails until it is
    current. See [LICENSES.md](../LICENSES.md#frontend-package-notices).
+10. After any change to `go.mod`, the bundled npm packages or the embedded
+    fonts and colour profile, run `make sbom-check`. Add or remove the
+    matching reviewed entries in `tools/sbom/components.json` (license as
+    declared, producer as the license file names it); `make verify` fails
+    until they match. See [SBOM.md](SBOM.md).
 
 The notices generator reads Go's LICENSE and PATENTS from `GOROOT`. For a
 Homebrew-style `libexec` GOROOT, a missing file may be read from that same

@@ -219,6 +219,23 @@ jobs:
           # cover every Go module this binary links.
           bash scripts/verify-module-notices.sh build/bin/gopmgr.exe
 
+      - name: Record SBOM inventory
+        # Before the macOS cache cleanup below: the inventory reads the module
+        # cache and `go list`. The tool is built now so later steps run offline.
+        shell: bash
+        run: |
+          tool="build/sbom-tool$(go env GOEXE)"
+          go build -o "$tool" ./tools/sbom
+          case "${{ matrix.platform }}" in
+            darwin/arm64) exe="$(ls -d build/bin/*.app | head -1)/Contents/MacOS/gopmgr" ;;
+            linux/amd64) exe=build/bin/gopmgr ;;
+            windows/amd64) exe=build/bin/gopmgr.exe ;;
+          esac
+          "$tool" generate -target "${{ matrix.platform }}" -binary "$exe" \
+            -version "${GITHUB_REF_NAME#v}" -commit "$GITHUB_SHA" -inventory-out build/sbom-inventory.json
+          echo "GOPMGR_SBOM_TOOL=$tool" >> "$GITHUB_ENV"
+          echo "GOPMGR_SBOM_EXE=$exe" >> "$GITHUB_ENV"
+
       - name: Reclaim macOS packaging space
         if: runner.os == 'macOS'
         run: |
@@ -255,6 +272,29 @@ jobs:
           fi
           cp "$installer" "build/packages/GoPMgr-${GITHUB_REF_NAME#v}-amd64-setup.exe"
 
+      - name: Write SBOMs
+        # One CycloneDX and one SPDX SBOM per package (docs/SBOM.md). On macOS
+        # the executable is read from inside the .dmg, so its hash is that of
+        # the shipped bytes; render refuses an executable whose build
+        # information differs from the recorded inventory.
+        shell: bash
+        run: |
+          shopt -s nullglob
+          packages=(build/packages/*.deb build/packages/*.rpm build/packages/*.dmg build/packages/*.exe)
+          test "${#packages[@]}" -gt 0
+          for pkg in "${packages[@]}"; do
+            exe="$GOPMGR_SBOM_EXE"
+            mounted=""
+            if [ "${pkg##*.}" = dmg ]; then
+              mounted="$(hdiutil attach -nobrowse -readonly -noverify "$pkg" | awk -F'\t' '/\/Volumes\//{print $NF}')"
+              exe="$(ls -d "$mounted"/*.app | head -1)/Contents/MacOS/gopmgr"
+            fi
+            status=0
+            "$GOPMGR_SBOM_TOOL" render -inventory build/sbom-inventory.json -binary "$exe" -artifact "$pkg" -out-dir build/packages || status=$?
+            if [ -n "$mounted" ]; then hdiutil detach "$mounted" -quiet; fi
+            test "$status" -eq 0
+          done
+
       - name: Upload installers
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
@@ -285,6 +325,23 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+
+      - name: Sign SBOMs
+        # Fails closed once a public key is committed: a missing secret or a
+        # key that does not match tools/sbom/signing-key.pub stops the release.
+        env:
+          GOPMGR_SBOM_PRIVATE_KEY: ${{ secrets.GOPMGR_SBOM_PRIVATE_KEY }}
+        run: |
+          shopt -s nullglob
+          sboms=(dist/*.cdx.json dist/*.spdx.json)
+          test "${#sboms[@]}" -gt 0
+          if [ -f tools/sbom/signing-key.pub ]; then
+            test -n "$GOPMGR_SBOM_PRIVATE_KEY"
+            go run ./tools/sbom sign "${sboms[@]}"
+            go run ./tools/sbom verify "${sboms[@]}"
+          else
+            echo "::warning::No SBOM signing key is published (tools/sbom/signing-key.pub); the SBOMs are attached unsigned."
+          fi
 
       - name: Create / update GitHub Release
         env:
