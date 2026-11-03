@@ -5,6 +5,12 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # Tabular import: selected-path verification
 
+> **2026-11-02:** Superseded. DuckDB was retired, and the Go engine reads the
+> selected file by name, so `*`, `?` and `[` are ordinary characters and
+> `ErrAmbiguousImportPath` no longer exists. `TestImportTabularReadsLiteralNames`
+> now covers LD-6; see the [parity record](duckdb-retirement-parity.md). This
+> record is kept as history.
+
 LD-6 correction, qualified against `main` at `6844d16`. The maintainer approved the
 [temporary filename restriction](../review/architecture-directive-2026-10-27.md#7-temporary-tabular-import-filename-restriction-2026-10-29)
 on 2026-10-29. This is an interim correction in the existing engine, not

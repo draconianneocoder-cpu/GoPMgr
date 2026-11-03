@@ -5,9 +5,10 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # DuckDB analytics engine
 
-**Status:** Implemented for production and package builds; retirement is
-approved through the gated [2026-10-27 directive](../review/architecture-directive-2026-10-27.md).
-The replacement has not qualified for production cutover.
+**Status:** Retired 2026-11-02. A Go-native engine replaced DuckDB; see the
+[owner decision](../review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md) and
+the [parity record](../testing/duckdb-retirement-parity.md). This document is
+kept as history and no longer describes the code.
 **Decision record:** [ADR-002](ADR-002-duckdb-vs-sqlcipher-evaluation.md)
 
 ## Boundary

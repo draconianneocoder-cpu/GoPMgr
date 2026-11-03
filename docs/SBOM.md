@@ -68,7 +68,7 @@ SPDX `sha256`.
 | Practice | How GoPMgr meets it |
 |---|---|
 | Machine-Processable Data | Both widely used open formats, each checked against its official schema (below) |
-| Coverage | Every Go module linked into the shipped executable, the Go standard library, native code inside those modules (including the WebView2 bootstrapper that the Windows executable and installer carry, and the 33 third-party libraries compiled into DuckDB's static libraries, each with a dependency from DuckDB), every npm package in the embedded web bundle, every embedded third-party file, and the platform components the app needs but does not ship |
+| Coverage | Every Go module linked into the shipped executable, the Go standard library, native code inside those modules (including the WebView2 bootstrapper that the Windows executable and installer carry), every npm package in the embedded web bundle, every embedded third-party file, and the platform components the app needs but does not ship |
 | Frequency | The release workflow writes the SBOMs for every package of every release |
 | Distribution and Delivery | Attached to the public GitHub release beside each package |
 | Explicitly Identifying Unknown Information | Every missing field is marked unknown with a reason. The SBOM author withholds nothing, and each SBOM says so (`gopmgr:withheld`) |
@@ -130,7 +130,6 @@ In the macOS SBOM of 2026-11-02 the unknowns are:
   Mono web fonts, and WebKit.
 - **Hash:** the Go standard library; the local SQLCipher module and the
   SQLite, SQLCipher and LibTomCrypt code compiled from it in the repository;
-  DuckDB's native library, which its parent module's archive hash covers;
   and WebKit.
 - **License:** WebKit, which GoPMgr does not ship.
 
@@ -188,9 +187,10 @@ go run ./tools/sbom generate -target darwin/arm64 \
 - Run `make sbom-check` after changing `go.mod`, the frontend dependencies or
   the embedded assets. Add or remove entries in `tools/sbom/components.json`
   to match.
-- Native code is listed under the module that links it. When DuckDB is
-  removed from `go.mod`, its native entries become stale and `sbom-check`
-  says so; delete them then.
+- Native code is listed under the module that links it. When a module
+  leaves `go.mod`, its native entries become stale and `sbom-check` says so;
+  delete them then. A native entry compiled into another native component
+  names it in `within`.
 
 ## Verification evidence (2026-11-02)
 

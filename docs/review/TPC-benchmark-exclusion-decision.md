@@ -5,9 +5,14 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # TPC-H and TPC-DS exclusion: decision, evidence, and options
 
-**Status:** exclusion decision recorded 2026-10-26; qualification corrections
-recorded 2026-10-29. DuckDB retirement remains subject to the accepted ADR-012
-feasibility and owner gates. This record does not authorize distribution.
+**Status:** CLOSED 2026-11-02. GoPMgr no longer links DuckDB
+([retirement decision](ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md)), so no
+release can carry the TPC generators that came with DuckDB's binding modules,
+and the exclusion list and checks were removed. `scripts/verify-module-notices.sh`
+fails any release binary that links a DuckDB module. The record below is kept
+as written: the exclusion decision recorded 2026-10-26, with qualification
+corrections recorded 2026-10-29. It did not authorize distribution, and closing
+it says nothing about releases made before the retirement.
 **Scope:** every GoPMgr production binary, installer, and source package, on
 all platforms.
 **Not legal advice.** This record states technical facts. It does not say

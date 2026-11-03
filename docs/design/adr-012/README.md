@@ -5,6 +5,11 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-012 document set
 
+> **2026-11-02:** DuckDB is retired. The maintainer chose a Go-native engine
+> for both analytics operations instead of the DataFusion worker; see the
+> [retirement decision](../../review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md). This record is kept as history and as evidence
+> for possible future columnar analytics.
+
 ADR-012 v0.2 was **accepted on 2026-10-26** as the binding target
 architecture for replacing DuckDB analytics. Only the DF0 feasibility spike is
 authorized. See the

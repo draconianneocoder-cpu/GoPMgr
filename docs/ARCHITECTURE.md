@@ -103,8 +103,9 @@ returned only after commit. This save operation is not a calendar-transfer API.
   (`math/big.Rat` for rate x quantity and `math/big.Int` for aggregates),
   with explicit range errors on checked arithmetic and aggregates; legacy
   conversion helpers retain their documented sign-preserving saturation.
-- `internal/analytics`: DuckDB-backed in-memory portfolio rollups and
-  CSV/TSV/Parquet/JSON data import (behind the `duckdb` build tag).
+- `internal/analytics`: in-memory portfolio rollups with exact minor-unit
+  totals, and bounded CSV/TSV/TXT/JSON/NDJSON/Parquet data import, in Go
+  (DuckDB was retired on 2026-11-02).
 - `internal/export`: PDF, PDF/A, DOCX, ODT, XLSX, iCal, MSPDI, and Monte
   Carlo risk-report export paths.
 - `internal/reporting`: application-level combined-report preflight, PDF
@@ -191,6 +192,6 @@ authority for current storage, escrow, and succession. See the
 A provider-neutral integration framework would add an opt-in connection layer
 for external work-management systems. SQLCipher remains the authoritative
 store. The Go calculation kernel remains the calculation authority. ADR-011
-gates remain in force. DuckDB remains until Slice J, and only after DF0.
+gates remain in force. DuckDB was retired on 2026-11-02.
 C-00 stays design review. C-01 and later packages are not authorized. See the
 [proposed ADR](design/ADR-TBD-provider-neutral-integration-framework.md).

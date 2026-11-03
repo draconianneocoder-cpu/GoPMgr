@@ -5,6 +5,14 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-012 DF0 evidence
 
+> **2026-11-02:** DuckDB is retired. The maintainer chose a Go-native engine
+> for both analytics operations instead of the DataFusion worker; see the
+> [retirement decision](../review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md). This record is kept as history and as evidence
+> for possible future columnar analytics.
+
+> The legacy defects LD-1 to LD-10 below describe DuckDB. The
+> [parity record](duckdb-retirement-parity.md) says how the Go engine handles each.
+
 DF0 is authorized and evidence-only
 ([acceptance record](../review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)).
 This file records results phase by phase. Every result names its command, its
