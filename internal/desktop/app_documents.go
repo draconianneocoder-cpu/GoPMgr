@@ -1,0 +1,1405 @@
+// SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package desktop
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"math"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"gopmgr/internal/admin"
+	"gopmgr/internal/calendar"
+	"gopmgr/internal/charts"
+	"gopmgr/internal/charts/dag"
+	"gopmgr/internal/charts/matrix"
+	"gopmgr/internal/crypto"
+	"gopmgr/internal/db"
+	"gopmgr/internal/documents"
+	"gopmgr/internal/export"
+	"gopmgr/internal/kernel"
+	"gopmgr/internal/reporting"
+	"gopmgr/internal/rfc3161"
+	"gopmgr/internal/sigma/service"
+	"gopmgr/internal/signing"
+	"gopmgr/internal/users"
+)
+
+// =========================================================
+// Documents
+// =========================================================
+
+// padesExportRuntime contains only the environment-bound operations needed by
+// application-level PAdES exports. It is passed per call instead of stored on
+// App so concurrent Wails requests cannot mutate or observe test hooks.
+type padesExportRuntime struct {
+	loadCertificate  func(path, password string) (*crypto.Signer, error)
+	prepareTimestamp func(*db.Database) (*signing.PreparedTimestamp, error)
+}
+
+func productionPAdESExportRuntime() padesExportRuntime {
+	return padesExportRuntime{
+		loadCertificate:  crypto.LoadCertificate,
+		prepareTimestamp: prepareProjectTimestamp,
+	}
+}
+
+func (runtime padesExportRuntime) signer(path, password string) (*crypto.Signer, error) {
+	if runtime.loadCertificate == nil {
+		return nil, errors.New("PAdES export certificate loader is required")
+	}
+	return runtime.loadCertificate(path, password)
+}
+
+func (runtime padesExportRuntime) timestamp(database *db.Database) (*signing.PreparedTimestamp, error) {
+	if runtime.prepareTimestamp == nil {
+		return nil, errors.New("PAdES export timestamp preparer is required")
+	}
+	return runtime.prepareTimestamp(database)
+}
+
+func (a *App) ListDocumentKinds() []documents.Definition { return documents.All() }
+
+func (a *App) ListDocuments(kind string) ([]db.Document, error) {
+	d := a.requireDB()
+	if d == nil {
+		return nil, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return nil, err
+	}
+	return d.ListDocuments(p.ID, kind)
+}
+
+func documentForProject(d *db.Database, projectID, documentID string) (db.Document, error) {
+	doc, err := d.GetDocument(documentID)
+	if err != nil {
+		return db.Document{}, err
+	}
+	if doc.ProjectID != projectID {
+		return db.Document{}, db.ErrNoDocument
+	}
+	return doc, nil
+}
+
+func (a *App) GetDocument(id string) (db.Document, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Document{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Document{}, err
+	}
+	return documentForProject(d, p.ID, id)
+}
+
+// NewDocument creates a fresh document with default content for the
+// requested kind.
+func (a *App) NewDocument(kind, title string) (db.Document, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Document{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Document{}, err
+	}
+	def, ok := documents.Get(documents.Kind(kind))
+	if !ok {
+		return db.Document{}, fmt.Errorf("unknown document kind %q", kind)
+	}
+	if title == "" {
+		title = def.Name
+	}
+	return d.SaveDocument(db.Document{
+		ProjectID: p.ID,
+		Kind:      kind,
+		Title:     title,
+		Content:   documents.DefaultContent(documents.Kind(kind)),
+		Version:   1,
+		Status:    "draft",
+	})
+}
+
+func (a *App) SaveDocument(doc db.Document) (db.Document, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Document{}, errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return db.Document{}, err
+	}
+	if doc.ID != "" {
+		if _, err := documentForProject(d, p.ID, doc.ID); err != nil {
+			return db.Document{}, err
+		}
+	}
+	doc.ProjectID = p.ID
+	if _, ok := documents.Get(documents.Kind(doc.Kind)); !ok {
+		return db.Document{}, fmt.Errorf("unknown document kind %q", doc.Kind)
+	}
+	if doc.Content == "" {
+		doc.Content = "{}"
+	}
+	if !json.Valid([]byte(doc.Content)) {
+		return db.Document{}, errors.New("document content must be valid JSON")
+	}
+	// Drafts may be intentionally incomplete, but a document moving into
+	// review or approval must meet its required schema fields.
+	if doc.Status == "review" || doc.Status == "approved" {
+		if err := documents.Validate(documents.Kind(doc.Kind), doc.Content); err != nil {
+			return db.Document{}, err
+		}
+	}
+	return d.SaveDocument(doc)
+}
+
+// SyncRiskRegisterToMatrix explicitly replaces the linked Risk Matrix's items
+// with rows from a persisted Risk Register document. Synchronization is
+// intentionally user-invoked and one-way: automatic cross-artifact writes
+// would make it unclear whether the document editor or chart editor owns a
+// conflicting change.
+func (a *App) SyncRiskRegisterToMatrix(documentID string) (db.Chart, error) {
+	d := a.requireDB()
+	if d == nil {
+		return db.Chart{}, errors.New("no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return db.Chart{}, err
+	}
+	doc, err := documentForProject(d, proj.ID, documentID)
+	if err != nil {
+		return db.Chart{}, err
+	}
+	if doc.Kind != string(documents.KindRiskRegister) {
+		return db.Chart{}, fmt.Errorf("document %q is not a risk register", documentID)
+	}
+
+	var content struct {
+		RiskMatrixRef string `json:"risk_matrix_ref"`
+		Risks         []struct {
+			ID          string `json:"id"`
+			Description string `json:"description"`
+			Kind        string `json:"kind"`
+			Probability int    `json:"probability"`
+			Impact      int    `json:"impact"`
+			Owner       string `json:"owner"`
+			Status      string `json:"status"`
+			Mitigation  string `json:"mitigation"`
+			LinkedTask  string `json:"linked_task"`
+		} `json:"risks"`
+	}
+	if err := json.Unmarshal([]byte(doc.Content), &content); err != nil {
+		return db.Chart{}, fmt.Errorf("decode risk register: %w", err)
+	}
+	chartID := strings.TrimSpace(content.RiskMatrixRef)
+	if chartID == "" {
+		return db.Chart{}, errors.New("risk register has no linked Risk Matrix")
+	}
+	chart, err := chartForProject(d, proj.ID, chartID)
+	if err != nil {
+		return db.Chart{}, fmt.Errorf("load linked Risk Matrix: %w", err)
+	}
+	if chart.Kind != string(charts.KindRiskMatrix) {
+		return db.Chart{}, fmt.Errorf("linked chart %q has kind %q, want %q", chart.ID, chart.Kind, charts.KindRiskMatrix)
+	}
+
+	mapped := matrix.RiskMatrixDocument{Items: make([]matrix.RiskItem, 0, len(content.Risks))}
+	for _, row := range content.Risks {
+		kind := strings.ToLower(strings.TrimSpace(row.Kind))
+		if kind == "" {
+			kind = "risk"
+		}
+		mapped.Items = append(mapped.Items, matrix.RiskItem{
+			ID:          row.ID,
+			Title:       row.Description,
+			Kind:        kind,
+			Probability: row.Probability,
+			Impact:      row.Impact,
+			Owner:       row.Owner,
+			Status:      row.Status,
+			Mitigation:  row.Mitigation,
+			LinkedTask:  row.LinkedTask,
+		})
+	}
+	layout := matrix.LayoutRiskMatrix(mapped)
+	if layout.Validation.ErrorCount > 0 {
+		return db.Chart{}, fmt.Errorf("risk register cannot be synchronized: %s", strings.Join(layout.Validation.Issues, " "))
+	}
+	data, err := json.Marshal(mapped)
+	if err != nil {
+		return db.Chart{}, fmt.Errorf("encode Risk Matrix: %w", err)
+	}
+	chart.Data = string(data)
+
+	// Database SaveChart appends the same tamper-evident chart.update event as
+	// an ordinary editor save, preserving provenance for the derived write.
+	return d.SaveChart(chart)
+}
+
+// CombinedReportOptions makes profile intent explicit without breaking the
+// original Wails method used by existing clients.
+type CombinedReportOptions struct {
+	ProfileID string               `json:"profile_id"`
+	Mode      documents.ReportMode `json:"mode"`
+}
+
+func (a *App) ListReportProfiles() []documents.ReportProfile { return documents.ReportProfiles() }
+
+// PreflightCombinedReport exposes quality findings before a user exports. A
+// custom selection intentionally has no required-kind policy, so users can
+// tailor an industry baseline rather than being locked into it.
+func (a *App) PreflightCombinedReport(sections []documents.ReportSection, options CombinedReportOptions) (documents.ReportPreflight, error) {
+	d := a.requireDB()
+	if d == nil {
+		return documents.ReportPreflight{}, errors.New("no project open")
+	}
+	return reporting.Service{Database: d}.Preflight(sections, reporting.Options{
+		ProfileID: options.ProfileID,
+		Mode:      options.Mode,
+	})
+}
+
+func (a *App) DeleteDocument(id string) error {
+	d := a.requireDB()
+	if d == nil {
+		return errors.New("no project open")
+	}
+	p, err := d.GetProject()
+	if err != nil {
+		return err
+	}
+	if _, err := documentForProject(d, p.ID, id); err != nil {
+		if errors.Is(err, db.ErrNoDocument) {
+			return nil
+		}
+		return err
+	}
+	actor := "unknown"
+	if u := a.requireUser(); u != nil {
+		actor = u.Username
+	}
+	_ = d.LogAction(actor, "delete_document", id, "")
+	return d.DeleteDocument(id)
+}
+
+// ExportCombinedReport assembles a draft report using the project-derived
+// profile. New callers can choose a profile and report mode explicitly with
+// ExportCombinedReportWithOptions.
+func (a *App) ExportCombinedReport(reportTitle, subtitle string, sections []documents.ReportSection) (string, error) {
+	return a.ExportCombinedReportWithOptions(reportTitle, subtitle, sections, CombinedReportOptions{Mode: documents.ReportModeDraft})
+}
+
+// ExportCombinedReportWithOptions assembles multiple documents into one PDF.
+// `sections` is an ordered list of {document_id, title, description}
+// tuples — the report renders sections in that order. Desktop callers choose
+// a new PDF path; direct/headless callers retain the private exports fallback.
+func (a *App) ExportCombinedReportWithOptions(reportTitle, subtitle string, sections []documents.ReportSection, options CombinedReportOptions) (string, error) {
+	d := a.requireDB()
+	u := a.requireUser()
+	if d == nil || u == nil {
+		return "", errors.New("not signed in or no project open")
+	}
+	defaultDirectory := filepath.Join(u.DataDir, "exports")
+	defaultFilename := fmt.Sprintf("%s-%s.pdf", sanitizeFilename(reportTitle), time.Now().UTC().Format("20060102-150405"))
+	outputPath, err := a.selectExportDestination(defaultDirectory, defaultFilename, ".pdf", "Export combined report")
+	if err != nil {
+		return "", err
+	}
+	if err := ensureExportDestinationsAvailable(outputPath, outputPath+".manifest.json"); err != nil {
+		return "", err
+	}
+	return a.exportCombinedReportToPath(d, u, reportTitle, subtitle, sections, options, outputPath)
+}
+
+func (a *App) exportCombinedReportToPath(d *db.Database, u *users.Account, reportTitle, subtitle string, sections []documents.ReportSection, options CombinedReportOptions, outputPath string) (string, error) {
+	return reporting.Service{Database: d, ResolveEVM: resolvedEVMForCharts}.Export(reporting.ExportRequest{
+		ReportTitle: reportTitle,
+		Subtitle:    subtitle,
+		Sections:    sections,
+		Options: reporting.Options{
+			ProfileID: options.ProfileID,
+			Mode:      options.Mode,
+		},
+		Author:     u.DisplayName,
+		ExportsDir: filepath.Dir(outputPath),
+		FileStem:   sanitizeFilename(reportTitle),
+		OutputPath: outputPath,
+	})
+}
+
+// ExportCombinedReportSigned is like ExportCombinedReport but applies the
+// configured PAdES signature level using the supplied certificate. RFC 3161
+// timestamping is fail-closed: when enabled, a TSA failure produces no export
+// instead of silently returning a Baseline B document.
+func (a *App) ExportCombinedReportSigned(reportTitle, subtitle string, sections []documents.ReportSection, certPath, certPassword string) (string, error) {
+	return a.exportCombinedReportSignedWithRuntime(
+		reportTitle,
+		subtitle,
+		sections,
+		certPath,
+		certPassword,
+		productionPAdESExportRuntime(),
+	)
+}
+
+// exportCombinedReportSignedWithRuntime is the deterministic orchestration
+// seam behind ExportCombinedReportSigned. Tests replace only certificate and
+// TSA setup; report rendering, PAdES mutation, file permissions, and audit
+// writes remain the same production path.
+func (a *App) exportCombinedReportSignedWithRuntime(
+	reportTitle, subtitle string,
+	sections []documents.ReportSection,
+	certPath, certPassword string,
+	runtime padesExportRuntime,
+) (string, error) {
+	d := a.requireDB()
+	u := a.requireUser()
+	if d == nil || u == nil {
+		return "", errors.New("not signed in or no project open")
+	}
+	if len(sections) == 0 {
+		return "", errors.New("report has no sections")
+	}
+
+	proj, err := d.GetProject()
+	if err != nil {
+		return "", err
+	}
+	reportID := combinedReportCheckpointID(proj.ID, reportTitle, subtitle, sections)
+	stamp := time.Now().UTC().Format("20060102-150405")
+	outPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), fmt.Sprintf("%s-%s-signed.pdf", sanitizeFilename(reportTitle), stamp), ".pdf", "Export signed combined report")
+	if err != nil {
+		return "", err
+	}
+	if err := ensureExportDestinationsAvailable(outPath); err != nil {
+		return "", err
+	}
+	timestampConfig, err := runtime.timestamp(d)
+	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("timestamp settings: %v", err), "")
+		return "", fmt.Errorf("timestamp settings: %w", err)
+	}
+
+	// Resolve sections + charts (same logic as unsigned version)
+	resolved := make([]documents.ResolvedSection, 0, len(sections))
+	chartIDs := make(map[string]struct{})
+	for _, s := range sections {
+		doc, err := documentForProject(d, proj.ID, s.DocumentID)
+		if err != nil {
+			logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("section %s: %v", s.DocumentID, err), "")
+			return "", fmt.Errorf("section %s: %w", s.DocumentID, err)
+		}
+		if s.Title == "" {
+			s.Title = doc.Title
+		}
+		resolved = append(resolved, documents.ResolvedSection{
+			Section: s,
+			Kind:    documents.Kind(doc.Kind),
+			Content: doc.Content,
+			Version: doc.Version,
+			Status:  doc.Status,
+		})
+		for _, id := range reporting.ChartReferences(doc.Content, documents.EffectiveFields(documents.Kind(doc.Kind))) {
+			chartIDs[id] = struct{}{}
+		}
+	}
+
+	resolvedCharts := make(map[string]documents.ResolvedChart, len(chartIDs))
+	for id := range chartIDs {
+		c, err := chartForProject(d, proj.ID, id)
+		if err != nil {
+			continue
+		}
+		resolvedCharts[id] = documents.ResolvedChart{Kind: c.Kind, Title: c.Title, Data: c.Data}
+	}
+
+	resolvedEVM, err := resolvedEVMForCharts(proj, resolvedCharts, time.Now().UTC())
+	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("resolve EVM: %v", err), "")
+		return "", fmt.Errorf("resolve report EVM: %w", err)
+	}
+
+	bytes, err := documents.BuildCombinedReport(documents.ReportSpec{
+		ReportTitle:       reportTitle,
+		Subtitle:          subtitle,
+		Author:            u.DisplayName,
+		ProjectName:       proj.Name,
+		Currency:          proj.CurrencyCode,
+		Sections:          sections,
+		ResolvedCharts:    resolvedCharts,
+		ResolvedEVM:       resolvedEVM,
+		AddSignatureBlock: true,
+	}, resolved)
+	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("build report: %v", err), "")
+		return "", err
+	}
+
+	// The timestamp-aware signing pipeline is the final PDF mutation. Keeping
+	// the TSA request inside InjectPAdESSignature's callback ensures the token
+	// binds the exact CMS signature that covers the declared PDF ByteRange.
+	signer, err := runtime.signer(certPath, certPassword)
+	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("load certificate: %v", err), "")
+		return "", fmt.Errorf("load certificate: %w", err)
+	}
+
+	signedBytes, padesResult, err := signing.ApplyPAdES(a.signingContext(), bytes, signer, timestampConfig)
+	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("pades embedding: %v", err), "")
+		return "", fmt.Errorf("pades embedding: %w", err)
+	}
+
+	if err := writeNewPrivateExport(outPath, signedBytes); err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("write signed report: %v", err), "")
+		return "", err
+	}
+	signatureStatus, details := padesAuditOutcome(padesResult)
+	logCombinedReportSignatureEventWithStatus(
+		d,
+		proj.ID,
+		reportID,
+		reportTitle,
+		subtitle,
+		sections,
+		signatureStatus,
+		details,
+		exportArtifactName(outPath),
+	)
+	return outPath, nil
+}
+
+// ExportCombinedReportGnuPG writes an unsigned combined PDF plus a detached
+// ASCII-armored GnuPG signature sidecar.
+func (a *App) ExportCombinedReportGnuPG(reportTitle, subtitle string, sections []documents.ReportSection, keyID string) (GnuPGExportResult, error) {
+	d := a.requireDB()
+	u := a.requireUser()
+	if d == nil || u == nil {
+		return GnuPGExportResult{}, errors.New("no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return GnuPGExportResult{}, err
+	}
+	reportID := combinedReportCheckpointID(proj.ID, reportTitle, subtitle, sections)
+
+	pdfPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), fmt.Sprintf("%s-%s.pdf", sanitizeFilename(reportTitle), time.Now().UTC().Format("20060102-150405")), ".pdf", "Export GnuPG-signed combined report")
+	if err != nil {
+		return GnuPGExportResult{}, err
+	}
+	sigPath := pdfPath + ".asc"
+	if err := ensureExportDestinationsAvailable(pdfPath, pdfPath+".manifest.json", sigPath); err != nil {
+		return GnuPGExportResult{}, err
+	}
+	pdfPath, err = a.exportCombinedReportToPath(d, u, reportTitle, subtitle, sections, CombinedReportOptions{Mode: documents.ReportModeDraft}, pdfPath)
+	if err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("build report: %v", err), "")
+		return GnuPGExportResult{}, err
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(sigPath), ".gopmgr-signature-*")
+	if err != nil {
+		return GnuPGExportResult{}, fmt.Errorf("create temporary GnuPG signature path: %w", err)
+	}
+	temporaryPath := temporary.Name()
+	if err := temporary.Close(); err != nil {
+		_ = os.Remove(temporaryPath)
+		return GnuPGExportResult{}, fmt.Errorf("close temporary GnuPG signature path: %w", err)
+	}
+	if err := os.Remove(temporaryPath); err != nil {
+		return GnuPGExportResult{}, fmt.Errorf("prepare temporary GnuPG signature path: %w", err)
+	}
+	defer func() { _ = os.Remove(temporaryPath) }()
+	if err := a.signFileWithGnuPG(pdfPath, temporaryPath, keyID); err != nil {
+		logCombinedReportSignatureEvent(d, proj.ID, reportID, reportTitle, subtitle, sections, false, fmt.Sprintf("gpg detached signature: %v", err), "")
+		return GnuPGExportResult{}, err
+	}
+	signatureBytes, err := os.ReadFile(temporaryPath)
+	if err != nil {
+		return GnuPGExportResult{}, fmt.Errorf("read temporary GnuPG signature: %w", err)
+	}
+	if err := writeNewPrivateExport(sigPath, signatureBytes); err != nil {
+		return GnuPGExportResult{}, err
+	}
+	logCombinedReportSignatureEventWithStatus(d, proj.ID, reportID, reportTitle, subtitle, sections, "gpg_signed", "Detached GnuPG signature written.", exportArtifactName(sigPath))
+	return GnuPGExportResult{PDFPath: pdfPath, SignaturePath: sigPath, Method: db.SignatureMethodGnuPG}, nil
+}
+
+// afterRepairHeal runs between RepairAndSwap's heal and its swap. It is a
+// no-op except in tests, which use it to try another call at that moment.
+var afterRepairHeal = func() {}
+
+// swapSnapshot swaps RepairAndSwap's healed snapshot into place. Tests
+// replace it to make the swap fail after it has closed the live handle.
+// The plaintext branch is defensive and not reachable today: every GoPMgr
+// project is SQLCipher-encrypted (see
+// TestCreateProjectEncryptsAndReopensWithSessionDEK); it is kept for the day
+// a plaintext-project migration path is reintroduced.
+var swapSnapshot = func(d *db.Database, path string, dek []byte, encrypted bool) (*db.Database, error) {
+	if encrypted {
+		return d.SwapInEncryptedSnapshot(path, dek)
+	}
+	return d.SwapInSnapshot(path)
+}
+
+// OpenProjectCheck is the result of the integrity check a project gets once
+// per open while its "Check this project for damage when it opens" setting
+// (db.UserSettings.AutoRepair) is on. Checked is false when the setting is
+// off. Damaged covers a check that itself fails, since a malformed file is
+// what makes it fail. Dismissed is set once the user dismisses the notice.
+type OpenProjectCheck struct {
+	Checked   bool `json:"checked"`
+	Damaged   bool `json:"damaged"`
+	Dismissed bool `json:"dismissed"`
+}
+
+type openProjectCheck struct {
+	db     *db.Database
+	result OpenProjectCheck
+}
+
+// beforeOpenCheckStored runs between CheckOpenProject's check and storing
+// its result. It is a no-op except in tests.
+var beforeOpenCheckStored = func() {}
+
+// CheckOpenProject runs PRAGMA integrity_check on the open project once per
+// open, when the project's setting asks for it, and returns the result on
+// later calls. It runs without holding the lock, so a large project doesn't
+// block other calls, and stores the result only if the same database handle
+// is still open: a project closed, reopened, or repaired meanwhile has a new
+// handle, so a result read from the old file is discarded.
+func (a *App) CheckOpenProject() (OpenProjectCheck, error) {
+	a.mu.RLock()
+	d := a.db
+	cached := a.openCheck
+	a.mu.RUnlock()
+	if d == nil {
+		return OpenProjectCheck{}, errors.New("no project open")
+	}
+	if cached != nil && cached.db == d {
+		return cached.result, nil
+	}
+	settings, err := d.GetSettings()
+	if err != nil {
+		return OpenProjectCheck{}, fmt.Errorf("read project settings: %w", err)
+	}
+	if !settings.AutoRepair {
+		return OpenProjectCheck{}, nil
+	}
+	// Not tested: err != nil. Both corruption fixtures make integrity_check
+	// report damage in its result rows rather than fail outright.
+	ok, err := d.CheckIntegrity()
+	result := OpenProjectCheck{Checked: true, Damaged: err != nil || !ok}
+	beforeOpenCheckStored()
+	a.mu.Lock()
+	if a.db == d {
+		a.openCheck = &openProjectCheck{db: d, result: result}
+	}
+	a.mu.Unlock()
+	return result, nil
+}
+
+// DismissOpenProjectCheck hides the damage notice for the rest of this open.
+func (a *App) DismissOpenProjectCheck() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.openCheck != nil && a.openCheck.db == a.db {
+		a.openCheck.result.Dismissed = true
+	}
+}
+
+// ErrRepairClosedProject is returned when a repair's swap failed after
+// closing the project's database and the project file could not be
+// reopened, so the project was closed rather than left on a closed handle.
+// The text is shown to the user; ProjectRepairPanel.svelte matches "the
+// project was closed" (docs/ERROR_HANDLING.md).
+var ErrRepairClosedProject = errors.New("The repair could not finish, so the project was closed. Reopen it from the project list.")
+
+// RepairAndSwap runs InformativeSelfHeal and, when it wrote a healed
+// snapshot, swaps that snapshot into place and refreshes `a.db`. It holds
+// the write lock throughout, so no call can open another project or read
+// the handle mid-swap. A leftover .bak from an earlier run is never swapped
+// in: it is an older copy of the project, and swapping it over a healthy
+// database would silently roll the project back.
+func (a *App) RepairAndSwap() (db.RepairResult, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	d := a.db
+	path := a.dbPath
+	dek := a.dek
+	if d == nil {
+		return db.RepairResult{}, errors.New("no project open")
+	}
+
+	result, err := d.InformativeSelfHeal(path)
+	if err != nil || !result.Success || result.Snapshot == "" {
+		if err == nil && result.Success {
+			// Healthy now: the next CheckOpenProject re-checks.
+			a.openCheck = nil
+		}
+		return result, err
+	}
+	afterRepairHeal()
+	// db.IsEncryptedFile's own error branch here (os.Open failing on
+	// the live path, which InformativeSelfHeal above just proved
+	// readable) needs a permission-based fixture this repo has
+	// already judged too fragile for its test suite for the same
+	// class of branch (see repair_selfheal_test.go's documented
+	// deferral of the non-IsNotExist stat-live branch: root bypasses
+	// permission checks, a mid-test panic leaves an unremovable temp
+	// directory, and no other test in this repo uses this technique).
+	// Left untested for the same reason, not chased with a fragile
+	// fixture just to close this one line.
+	encrypted, err := db.IsEncryptedFile(path)
+	if err != nil {
+		result.Log = append(result.Log, "Swap failed: "+err.Error())
+		return result, err
+	}
+	var fresh *db.Database
+	if encrypted {
+		// Defensive, not reachable today: every write site for a.dek
+		// (grep -n "a\.dek = \|a\.dek\[" *.go — CreateAccount, Login,
+		// Logout, shutdown) either sets it to a fresh, full-length DEK
+		// or clears it to nil/zero-length in the same locked section
+		// that also nils a.db. No code path leaves a.db non-nil with
+		// a.dek short or absent, so this guard cannot fire through any
+		// current App method. Kept in case a future session-teardown
+		// path breaks that invariant; no test reaches it under the
+		// current one, matching this codebase's convention for
+		// similarly-proven-unreachable branches (e.g. ComputeEVM's VAC
+		// subtraction in internal/kernel/evm.go).
+		if len(dek) != crypto.DEKSize {
+			err := errors.New("database key is locked; sign in again")
+			result.Log = append(result.Log, "Swap failed: "+err.Error())
+			return result, err
+		}
+	}
+	fresh, err = swapSnapshot(d, path, dek, encrypted)
+	if err != nil {
+		result.Log = append(result.Log, "Swap failed: "+err.Error())
+		return result, a.recoverFromFailedSwapLocked(d, path, dek, encrypted, &result, err)
+	}
+	a.db = fresh
+	a.adminSvc = admin.NewService(fresh)
+	a.sigmaSvc = service.NewProjectService(fresh)
+	result.Swapped = true
+	result.DamagedCopy = path + ".corrupt"
+	result.Log = append(result.Log, "Checked the rebuilt copy and swapped it in. The damaged file is kept as "+result.DamagedCopy+".")
+	return result, nil
+}
+
+// recoverFromFailedSwapLocked leaves the App on a working database after a
+// failed swap. A swap can fail after it has closed the live handle (a
+// rename, or reopening the swapped-in file), which used to leave a.db
+// pointing at the closed handle so every later call failed. If the handle
+// still answers, it is kept. Otherwise the file now at path is reopened;
+// if there is no file there (a rename failed and so did its rollback; the
+// data is at <path>.corrupt) or it will not open, the project is closed as
+// CloseProject would, and ErrRepairClosedProject is returned. A missing
+// file is never reopened, since opening creates an empty project. Must be
+// called with a.mu held for writing.
+func (a *App) recoverFromFailedSwapLocked(d *db.Database, path string, dek []byte, encrypted bool, result *db.RepairResult, swapErr error) error {
+	if d.Conn.Ping() == nil {
+		return swapErr
+	}
+	_ = d.Close()
+	var reopened *db.Database
+	var openErr error
+	if info, statErr := os.Stat(path); statErr != nil || !info.Mode().IsRegular() {
+		openErr = fmt.Errorf("no project file at %s", path)
+	} else if encrypted {
+		reopened, openErr = db.InitEncryptedDB(path, dek)
+	} else {
+		reopened, openErr = db.InitDB(path)
+	}
+	if openErr != nil {
+		a.db = nil
+		a.dbPath = ""
+		a.adminSvc = nil
+		a.sigmaSvc = nil
+		documents.UseFont(nil, "")
+		result.Log = append(result.Log, "Could not reopen the project: "+openErr.Error())
+		return fmt.Errorf("%w (%v)", ErrRepairClosedProject, swapErr)
+	}
+	a.db = reopened
+	a.adminSvc = admin.NewService(reopened)
+	a.sigmaSvc = service.NewProjectService(reopened)
+	result.Log = append(result.Log, "Reopened the project file after the failed swap.")
+	return swapErr
+}
+
+// ExportDocumentDOCX renders the document to a Microsoft Word file at a
+// desktop-user-selected location and returns the absolute path written. Uses
+// gomutex/godocx under the hood.
+func (a *App) ExportDocumentDOCX(id string) (string, error) {
+	return a.exportDocumentAs(id, ".docx", func(kind documents.Kind, content, projectName, currency string) ([]byte, error) {
+		return export.RenderDocumentDOCX(kind, content, projectName, currency)
+	})
+}
+
+// ExportDocumentODT renders the document to an OpenDocument Text
+// file. Sibling to ExportDocumentDOCX; uses the hand-built ODT
+// generator in internal/export/odt.go.
+func (a *App) ExportDocumentODT(id string) (string, error) {
+	return a.exportDocumentAs(id, ".odt", func(kind documents.Kind, content, projectName, currency string) ([]byte, error) {
+		return export.RenderDocumentODT(kind, content, projectName, currency)
+	})
+}
+
+// ExportScheduleReportDOCX generates a Microsoft Word report of the
+// current project's CPM schedule (tasks with full ES/EF/LS/LF/Float/
+// Critical data) and prompts for a destination.
+func (a *App) ExportScheduleReportDOCX() (string, error) {
+	return a.exportScheduleReportAs(export.FormatDOCX)
+}
+
+// ExportScheduleReportODT generates an OpenDocument Text report of the
+// current project's CPM schedule and prompts for a destination.
+func (a *App) ExportScheduleReportODT() (string, error) {
+	return a.exportScheduleReportAs(export.FormatODT)
+}
+
+// ExportScheduleReportPDF generates a PDF report of the current project's
+// CPM schedule (for completeness with the other formats).
+func (a *App) ExportScheduleReportPDF() (string, error) {
+	return a.exportScheduleReportAs(export.FormatPDF)
+}
+
+// ExportScheduleReportCSV writes the current project's schedule (tasks with
+// CPM fields) as a UTF-8 CSV for spreadsheets (Excel, Google Sheets).
+func (a *App) ExportScheduleReportCSV() (string, error) {
+	return a.exportScheduleReportAs(export.FormatCSV)
+}
+
+// ExportScheduleReportHTML writes a self-contained, printable HTML report of
+// the current project's schedule for publishing or viewing in a browser.
+func (a *App) ExportScheduleReportHTML() (string, error) {
+	return a.exportScheduleReportAs(export.FormatHTML)
+}
+
+// ExportScheduleReportMSPDI writes the current project's schedule as Microsoft
+// Project MSPDI XML (.xml) for interchange with MS Project, GanttProject,
+// ProjectLibre, and other tools that read the MSPDI schema.
+func (a *App) ExportScheduleReportMSPDI() (string, error) {
+	return a.exportScheduleReportAs(export.FormatMSPDI)
+}
+
+// exportDocumentAs is the shared body of every per-format export
+// method on App: fetch the document, call the format-specific renderer, then
+// write to a desktop-user-selected location (or the private fallback in a
+// direct/headless caller).
+func (a *App) exportDocumentAs(
+	id, extension string,
+	renderer func(kind documents.Kind, content, projectName, currency string) ([]byte, error),
+) (string, error) {
+	d := a.requireDB()
+	u := a.requireUser()
+	if d == nil || u == nil {
+		return "", errors.New("not signed in or no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return "", err
+	}
+	doc, err := documentForProject(d, proj.ID, id)
+	if err != nil {
+		return "", err
+	}
+	bytes, err := renderer(documents.Kind(doc.Kind), doc.Content, proj.Name, proj.CurrencyCode)
+	if err != nil {
+		return "", err
+	}
+	defaultFilename := fmt.Sprintf("%s-%s%s",
+		sanitizeFilename(doc.Title),
+		time.Now().UTC().Format("20060102-150405"),
+		extension,
+	)
+	outPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), defaultFilename, extension, "Export document")
+	if err != nil {
+		return "", err
+	}
+	if err := writeNewPrivateExport(outPath, bytes); err != nil {
+		return "", err
+	}
+	return outPath, nil
+}
+
+// exportScheduleReportAs is the shared implementation for exporting
+// the current project's CPM schedule (Administrative Pack report) in
+// DOCX or ODT.
+func (a *App) exportScheduleReportAs(format export.ExportFormat) (string, error) {
+	d := a.requireDB()
+	u := a.requireUser()
+	if d == nil || u == nil {
+		return "", errors.New("not signed in or no project open")
+	}
+
+	proj, err := d.GetProject()
+	if err != nil {
+		return "", err
+	}
+
+	// Best-effort load of current schedule data.
+	// V2 priority: active CPM chart (the one the user is actually maintaining).
+	// Fallback: legacy V1 tasks table (for old projects).
+	kernelTasks, err := loadCurrentProjectSchedule(d, proj.ID)
+	if err != nil {
+		// Non-fatal for export — we can still produce an empty report.
+		kernelTasks = make(map[string]*kernel.Task)
+	}
+
+	if len(kernelTasks) > 0 {
+		// Full scheduling pipeline: arm date constraints, run CPM,
+		// anchor onto real dates (the latter two steps only when the
+		// project has a parseable start date).
+		scheduleProjectTasks(proj, kernelTasks)
+	}
+
+	payload := export.ReportPayload{Tasks: kernelTasks, Currency: proj.CurrencyCode}
+
+	// Earned-value summary at today's status date — only when the
+	// project is anchored (offsets map to dates); renderers further
+	// suppress the section when there is no cost data.
+	if start, ok := parseProjectDate(proj.StartDate); ok && len(kernelTasks) > 0 {
+		cal := calendar.For(proj.CountryCode)
+		if day, dok := kernel.DayOffset(start, time.Now().UTC(), cal.IsWorkday); dok {
+			m, err := kernel.ComputeEVM(kernelTasks, day)
+			if err != nil {
+				return "", fmt.Errorf("compute schedule EVM: %w", err)
+			}
+			payload.EVM = &m
+		}
+	}
+
+	opts := export.ExportOptions{
+		Format: format,
+		Title:  proj.Name,
+	}
+
+	raw, err := export.GenerateArchivalReport(payload, opts)
+	if err != nil {
+		return "", err
+	}
+
+	var ext string
+	switch format {
+	case export.FormatODT:
+		ext = ".odt"
+	case export.FormatPDF:
+		ext = ".pdf"
+	case export.FormatCSV:
+		ext = ".csv"
+	case export.FormatHTML:
+		ext = ".html"
+	case export.FormatMSPDI:
+		ext = ".xml"
+	default:
+		ext = ".docx"
+	}
+
+	defaultFilename := fmt.Sprintf("Schedule-Report-%s%s",
+		time.Now().UTC().Format("20060102-150405"),
+		ext,
+	)
+	outPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), defaultFilename, ext, "Export schedule report")
+	if err != nil {
+		return "", err
+	}
+
+	if err := writeNewPrivateExport(outPath, raw); err != nil {
+		return "", err
+	}
+
+	// Best-effort audit (the audit table exists; we log via a simple insert if the helper is available in future).
+	// For now we rely on the command_log + file presence for traceability.
+
+	return outPath, nil
+}
+
+// stakeholderCapacities builds the resource-capacity map the kernel's
+// overallocation detection and levelling consume: stakeholder name →
+// availability in units (1.0 = full-time). Assignments naming
+// resources that are not stakeholders fall back to the kernel's 1.0
+// default. Best-effort: a lookup failure returns nil (default
+// capacities) rather than blocking scheduling.
+func stakeholderCapacities(d *db.Database, projectID string) map[string]float64 {
+	list, err := d.ListStakeholders(projectID, "")
+	if err != nil || len(list) == 0 {
+		return nil
+	}
+	out := make(map[string]float64, len(list))
+	for _, s := range list {
+		if s.Name != "" && s.Availability > 0 {
+			out[s.Name] = s.Availability
+		}
+	}
+	return out
+}
+
+func resourceCapacityPlan(d *db.Database, projectID string) kernel.ResourceCapacityPlan {
+	plan := kernel.ResourceCapacityPlan{
+		DefaultCapacity: 1,
+		Capacities:      stakeholderCapacities(d, projectID),
+	}
+	calendars, err := d.ListResourceCalendars(projectID)
+	if err != nil || len(calendars) == 0 {
+		return plan
+	}
+	plan.Calendars = make(map[string]kernel.ResourceCalendar, len(calendars))
+	for _, c := range calendars {
+		cal := kernel.ResourceCalendar{
+			ID:              c.ID,
+			Resource:        c.Resource,
+			DefaultCapacity: c.DefaultCapacity,
+			Overrides:       c.Overrides,
+			WeeklyCapacity:  c.WeeklyCapacity,
+			Notes:           c.Notes,
+			SkillTags:       c.SkillTags,
+		}
+		if c.Resource != "" {
+			plan.Calendars[c.Resource] = cal
+		}
+		if c.ID != "" {
+			plan.Calendars[c.ID] = cal
+		}
+		if c.Name != "" {
+			plan.Calendars[c.Name] = cal
+		}
+	}
+	return plan
+}
+
+// scheduleProjectTasks runs the full scheduling pipeline on a kernel
+// task map: date constraints are armed against the project start date
+// and country work calendar, CPM computes the schedule, and the
+// offsets are anchored onto real dates. Projects without a parseable
+// start date still get plain CPM (date constraints stay dormant and
+// no calendar dates are emitted), preserving legacy behaviour. The
+// boolean reports whether CPM completed; callers producing analytical
+// evidence can refuse cyclic graphs while display-only callers may ignore it.
+func scheduleProjectTasks(proj db.Project, tasks map[string]*kernel.Task) bool {
+	if len(tasks) == 0 {
+		return false
+	}
+	start, ok := parseProjectDate(proj.StartDate)
+	if !ok {
+		return kernel.CalculateCPM(tasks)
+	}
+	c := calendar.For(proj.CountryCode)
+	kernel.ApplyConstraintDates(tasks, start, c.IsWorkday)
+	if !kernel.CalculateCPM(tasks) {
+		return false
+	}
+	kernel.AnchorSchedule(tasks, start, c.IsWorkday)
+	return true
+}
+
+// parseProjectDate accepts the two date shapes stored in
+// project.start_date: plain YYYY-MM-DD and full RFC3339.
+func parseProjectDate(s string) (time.Time, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}, false
+	}
+	if t, err := time.Parse("2006-01-02", s); err == nil {
+		return t, true
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t, true
+	}
+	return time.Time{}, false
+}
+
+// loadCurrentProjectSchedule returns the best available schedule data
+// as a kernel.Task map (with CPM fields computed).
+//
+// V2 path: newest CPM chart for the project.
+// V1 fallback: legacy tasks table.
+func loadCurrentProjectSchedule(d *db.Database, projectID string) (map[string]*kernel.Task, error) {
+	// 1. Try current V2 CPM chart (preferred)
+	chs, err := d.ListCharts(projectID, string(charts.KindCPM))
+	if err != nil {
+		return nil, fmt.Errorf("list current CPM charts: %w", err)
+	}
+	if len(chs) > 0 {
+		tasks, err := cpmChartDataToKernelTasks(chs[0].Data)
+		if err != nil {
+			// A malformed current chart must not silently fall back to a
+			// potentially stale V1 schedule: reports should fail explicitly
+			// rather than present internally consistent but incorrect metrics.
+			return nil, fmt.Errorf("parse current CPM chart %q: %w", chs[0].Title, err)
+		}
+		if len(tasks) > 0 {
+			return tasks, nil
+		}
+	}
+
+	// 2. Fallback to V1 tasks table
+	return loadV1TasksAsKernel(d)
+}
+
+func cpmChartDataToKernelTasks(dataJSON string) (map[string]*kernel.Task, error) {
+	if dataJSON == "" {
+		return nil, nil
+	}
+	var doc struct {
+		Nodes []struct {
+			ID                     string                  `json:"id"`
+			Label                  string                  `json:"label"`
+			Duration               float64                 `json:"duration"`
+			DurationEstimate       kernel.DurationEstimate `json:"duration_estimate"`
+			Constraint             string                  `json:"constraint"`
+			ConstraintDate         string                  `json:"constraint_date"`
+			PercentComplete        float64                 `json:"percent_complete"`
+			Milestone              bool                    `json:"milestone"`
+			ActualStart            string                  `json:"actual_start"`
+			ActualFinish           string                  `json:"actual_finish"`
+			BudgetedCost           float64                 `json:"budgeted_cost"`
+			BudgetedCostMinorUnits int64                   `json:"budgeted_cost_minor_units"`
+			ActualCost             float64                 `json:"actual_cost"`
+			ActualCostMinorUnits   int64                   `json:"actual_cost_minor_units"`
+			WorkSegments           []kernel.WorkSegment    `json:"work_segments"`
+			Assignments            []struct {
+				Resource   string   `json:"resource"`
+				Units      float64  `json:"units"`
+				CalendarID string   `json:"calendar_id"`
+				SkillTags  []string `json:"skill_tags"`
+				MaxUnits   float64  `json:"max_units"`
+			} `json:"assignments"`
+		} `json:"nodes"`
+		Edges []struct {
+			From  string `json:"from"`
+			To    string `json:"to"`
+			Label string `json:"label"`
+		} `json:"edges"`
+	}
+	if err := json.Unmarshal([]byte(dataJSON), &doc); err != nil {
+		return nil, err
+	}
+
+	tasks := make(map[string]*kernel.Task, len(doc.Nodes))
+	for _, n := range doc.Nodes {
+		t := &kernel.Task{
+			ID:                     n.ID,
+			Title:                  n.Label,
+			Duration:               n.Duration,
+			DurationEstimate:       n.DurationEstimate,
+			Constraint:             kernel.ConstraintType(strings.ToUpper(strings.TrimSpace(n.Constraint))),
+			ConstraintDate:         n.ConstraintDate,
+			PercentComplete:        n.PercentComplete,
+			Milestone:              n.Milestone,
+			ActualStart:            n.ActualStart,
+			ActualFinish:           n.ActualFinish,
+			BudgetedCost:           n.BudgetedCost,
+			BudgetedCostMinorUnits: n.BudgetedCostMinorUnits,
+			ActualCost:             n.ActualCost,
+			ActualCostMinorUnits:   n.ActualCostMinorUnits,
+			PlannedWorkSegments:    n.WorkSegments,
+		}
+		if err := validatePlannedWorkSegments(n.ID, n.WorkSegments); err != nil {
+			return nil, err
+		}
+		for _, a := range n.Assignments {
+			t.Assignments = append(t.Assignments, kernel.Assignment{
+				Resource:   a.Resource,
+				Units:      a.Units,
+				CalendarID: a.CalendarID,
+				SkillTags:  a.SkillTags,
+				MaxUnits:   a.MaxUnits,
+			})
+		}
+		tasks[n.ID] = t
+	}
+	for _, e := range doc.Edges {
+		if t, ok := tasks[e.To]; ok {
+			typ, lag := dag.ParseLinkLabel(e.Label)
+			t.Links = append(t.Links, kernel.Link{Pred: e.From, Type: typ, Lag: lag})
+		}
+	}
+	return tasks, nil
+}
+
+// validatePlannedWorkSegments protects every schedule/report adapter that
+// shares cpmChartDataToKernelTasks. Silently accepting a malformed persisted
+// split would double-count or reverse planned work and make EVM reports look
+// precise while being wrong.
+func validatePlannedWorkSegments(taskID string, segments []kernel.WorkSegment) error {
+	var previousEnd float64
+	for i, segment := range segments {
+		switch {
+		case math.IsNaN(segment.Start) || math.IsInf(segment.Start, 0) ||
+			math.IsNaN(segment.End) || math.IsInf(segment.End, 0):
+			return fmt.Errorf("task %q work_segments[%d] must contain finite offsets", taskID, i)
+		case segment.Start < 0:
+			return fmt.Errorf("task %q work_segments[%d] starts before the task", taskID, i)
+		case segment.End <= segment.Start:
+			return fmt.Errorf("task %q work_segments[%d] must end after it starts", taskID, i)
+		case i > 0 && segment.Start < previousEnd:
+			return fmt.Errorf("task %q work_segments[%d] overlaps the preceding segment", taskID, i)
+		}
+		previousEnd = segment.End
+	}
+	return nil
+}
+
+func loadV1TasksAsKernel(d *db.Database) (map[string]*kernel.Task, error) {
+	rows, err := d.Conn.Query(`SELECT id, title, duration, precedents FROM tasks ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	tasks := make(map[string]*kernel.Task)
+	for rows.Next() {
+		var id, title, precJSON string
+		var duration float64
+		if err := rows.Scan(&id, &title, &duration, &precJSON); err != nil {
+			// A Scan failure is data corruption, not a row to skip:
+			// silently dropping tasks would corrupt CPM/EVM results.
+			return nil, fmt.Errorf("scan v1 task: %w", err)
+		}
+		var precedents []string
+		_ = json.Unmarshal([]byte(precJSON), &precedents)
+
+		tasks[id] = &kernel.Task{
+			ID:         id,
+			Title:      title,
+			Duration:   duration,
+			Precedents: precedents,
+		}
+	}
+	// A mid-iteration error ends the loop silently; without this check a
+	// partial task map would be treated as the complete schedule.
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return tasks, nil
+}
+
+// ExportDocumentPDF renders the document to PDF at a desktop-user-selected
+// location and returns the absolute path written.
+func (a *App) ExportDocumentPDF(id string) (string, error) {
+	d := a.requireDB()
+	u := a.requireUser()
+	if d == nil || u == nil {
+		return "", errors.New("not signed in or no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return "", err
+	}
+	doc, err := documentForProject(d, proj.ID, id)
+	if err != nil {
+		return "", err
+	}
+	bytes, err := documents.Render(documents.Kind(doc.Kind), doc.Content, proj.Name, proj.CurrencyCode)
+	if err != nil {
+		return "", err
+	}
+	defaultFilename := fmt.Sprintf("%s-%s.pdf",
+		sanitizeFilename(doc.Title), time.Now().UTC().Format("20060102-150405"))
+	outPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), defaultFilename, ".pdf", "Export document PDF")
+	if err != nil {
+		return "", err
+	}
+	if err := writeNewPrivateExport(outPath, bytes); err != nil {
+		return "", err
+	}
+	return outPath, nil
+}
+
+type GnuPGExportResult struct {
+	PDFPath       string `json:"pdf_path"`
+	SignaturePath string `json:"signature_path"`
+	Method        string `json:"method"`
+}
+
+func prepareProjectTimestamp(d *db.Database) (*signing.PreparedTimestamp, error) {
+	settings, err := d.GetSettings()
+	if err != nil {
+		return nil, fmt.Errorf("load project signing settings: %w", err)
+	}
+	return signing.PrepareTimestamp(timestampConfigForSettings(settings))
+}
+
+func (a *App) signingContext() context.Context {
+	if a.ctx != nil {
+		return a.ctx
+	}
+	// Headless commands and unit tests do not start Wails, but signing still
+	// needs a non-nil context for cancellation-aware TSA transports.
+	return context.Background()
+}
+
+func padesAuditOutcome(result signing.PAdESResult) (string, string) {
+	if result.Format == signing.PAdESBaselineT {
+		generatedAt := result.TimestampGeneratedAt.UTC().Format(time.RFC3339Nano)
+		if result.TrustStatus == rfc3161.TrustVerified {
+			return "pades_t_verified", fmt.Sprintf(
+				"PAdES Baseline T signature applied; timestamp trust verified at %s.",
+				generatedAt,
+			)
+		}
+		return "pades_t_not_evaluated", fmt.Sprintf(
+			"PAdES Baseline T signature applied at %s; no TSA trust root was configured.",
+			generatedAt,
+		)
+	}
+	return "pades_b_signed", "PAdES Baseline B signature applied without RFC 3161 timestamping."
+}
+
+// ExportDocumentPDFGnuPG renders the document as a plain PDF and writes a
+// detached ASCII-armored GnuPG signature sidecar. The PDF bytes are not
+// modified, so PDF/A validation and print-and-wet-sign workflows remain intact.
+func (a *App) ExportDocumentPDFGnuPG(id, keyID string) (GnuPGExportResult, error) {
+	d := a.requireDB()
+	u := a.requireUser()
+	if d == nil || u == nil {
+		return GnuPGExportResult{}, errors.New("no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return GnuPGExportResult{}, err
+	}
+	doc, err := documentForProject(d, proj.ID, id)
+	if err != nil {
+		return GnuPGExportResult{}, err
+	}
+	pdfPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), fmt.Sprintf("%s-%s.pdf", sanitizeFilename(doc.Title), time.Now().UTC().Format("20060102-150405")), ".pdf", "Export GnuPG-signed document PDF")
+	if err != nil {
+		return GnuPGExportResult{}, err
+	}
+	sigPath := pdfPath + ".asc"
+	if err := ensureExportDestinationsAvailable(pdfPath, sigPath); err != nil {
+		return GnuPGExportResult{}, err
+	}
+	bytes, err := documents.Render(documents.Kind(doc.Kind), doc.Content, proj.Name, proj.CurrencyCode)
+	if err != nil {
+		return GnuPGExportResult{}, err
+	}
+	if err := writeNewPrivateExport(pdfPath, bytes); err != nil {
+		return GnuPGExportResult{}, err
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(sigPath), ".gopmgr-signature-*")
+	if err != nil {
+		return GnuPGExportResult{}, fmt.Errorf("create temporary GnuPG signature path: %w", err)
+	}
+	temporaryPath := temporary.Name()
+	if err := temporary.Close(); err != nil {
+		_ = os.Remove(temporaryPath)
+		return GnuPGExportResult{}, fmt.Errorf("close temporary GnuPG signature path: %w", err)
+	}
+	if err := os.Remove(temporaryPath); err != nil {
+		return GnuPGExportResult{}, fmt.Errorf("prepare temporary GnuPG signature path: %w", err)
+	}
+	defer func() { _ = os.Remove(temporaryPath) }()
+	if err := a.signFileWithGnuPG(pdfPath, temporaryPath, keyID); err != nil {
+		admin.NewService(d).LogSignatureEvent(id, false, err)
+		return GnuPGExportResult{}, err
+	}
+	signatureBytes, err := os.ReadFile(temporaryPath)
+	if err != nil {
+		return GnuPGExportResult{}, fmt.Errorf("read temporary GnuPG signature: %w", err)
+	}
+	if err := writeNewPrivateExport(sigPath, signatureBytes); err != nil {
+		return GnuPGExportResult{}, err
+	}
+	admin.NewService(d).LogDocumentSignatureOutcome(id, "gpg_signed", "Detached GnuPG signature written.", exportArtifactName(sigPath))
+	return GnuPGExportResult{PDFPath: pdfPath, SignaturePath: sigPath, Method: db.SignatureMethodGnuPG}, nil
+}
+
+// ExportDocumentPDFSigned is like ExportDocumentPDF but applies the configured
+// PAdES Baseline B or Baseline T signature using the provided certificate.
+func (a *App) ExportDocumentPDFSigned(id, certPath, certPassword string) (string, error) {
+	return a.exportDocumentPDFSignedWithRuntime(
+		id,
+		certPath,
+		certPassword,
+		productionPAdESExportRuntime(),
+	)
+}
+
+// exportDocumentPDFSignedWithRuntime mirrors the combined-report seam above.
+// Keeping the runtime argument private prevents the Wails API from exposing
+// dependency injection while allowing tests to exercise the full file and
+// audit orchestration without a live certificate store or TSA.
+func (a *App) exportDocumentPDFSignedWithRuntime(
+	id, certPath, certPassword string,
+	runtime padesExportRuntime,
+) (string, error) {
+	d := a.requireDB()
+	u := a.requireUser()
+	if d == nil || u == nil {
+		return "", errors.New("not signed in or no project open")
+	}
+	proj, err := d.GetProject()
+	if err != nil {
+		return "", err
+	}
+	doc, err := documentForProject(d, proj.ID, id)
+	if err != nil {
+		return "", err
+	}
+	outPath, err := a.selectExportDestination(filepath.Join(u.DataDir, "exports"), fmt.Sprintf("%s-%s-signed.pdf", sanitizeFilename(doc.Title), time.Now().UTC().Format("20060102-150405")), ".pdf", "Export signed document PDF")
+	if err != nil {
+		return "", err
+	}
+	if err := ensureExportDestinationsAvailable(outPath); err != nil {
+		return "", err
+	}
+
+	timestampConfig, err := runtime.timestamp(d)
+	if err != nil {
+		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
+		return "", fmt.Errorf("timestamp settings: %w", err)
+	}
+	bytes, err := documents.Render(documents.Kind(doc.Kind), doc.Content, proj.Name, proj.CurrencyCode)
+	if err != nil {
+		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
+		return "", err
+	}
+	signer, err := runtime.signer(certPath, certPassword)
+	if err != nil {
+		err = fmt.Errorf("documents: load certificate for signing: %w", err)
+		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
+		return "", err
+	}
+	signedBytes, padesResult, err := signing.ApplyPAdES(
+		a.signingContext(),
+		bytes,
+		signer,
+		timestampConfig,
+	)
+	if err != nil {
+		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
+		return "", err
+	}
+
+	if err := writeNewPrivateExport(outPath, signedBytes); err != nil {
+		admin.NewService(d).LogSignatureEvent(doc.ID, false, err)
+		return "", err
+	}
+	signatureStatus, details := padesAuditOutcome(padesResult)
+	admin.NewService(d).LogDocumentSignatureOutcome(doc.ID, signatureStatus, details, exportArtifactName(outPath))
+	return outPath, nil
+}
+
+func (a *App) signFileWithGnuPG(inputPath, signaturePath, keyID string) error {
+	base := a.ctx
+	if base == nil {
+		base = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(base, 2*time.Minute)
+	defer cancel()
+	return signing.SignDetachedASCIIArmored(ctx, signing.ExecCommandRunner, inputPath, signaturePath, strings.TrimSpace(keyID))
+}

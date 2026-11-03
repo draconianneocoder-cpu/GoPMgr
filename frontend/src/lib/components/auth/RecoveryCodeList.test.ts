@@ -14,7 +14,7 @@ beforeEach(() => {
     SaveRecoveryCodesFile: vi.fn(async () => '/Users/alice/codes.txt'),
     SaveRecoverySheetPDF: vi.fn(async () => '/Users/alice/sheet.pdf'),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
 });
 
 afterEach(() => {

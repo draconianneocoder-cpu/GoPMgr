@@ -42,7 +42,7 @@ fi
 # Scope: only scan GoPMgr's own source tree. Other directories
 # (vendored libraries, sibling repos accidentally cloned at the root)
 # are explicitly excluded so the scan stays focused.
-PMF_DIRS="./main.go ./internal ./scripts"
+PMF_DIRS="./main.go ./internal ./tools"
 GO_PACKAGES=". ./internal/... ./tools/update-manifest"
 GO_TAGS="${GOPMGR_GO_TAGS:-webkit2_41}"
 

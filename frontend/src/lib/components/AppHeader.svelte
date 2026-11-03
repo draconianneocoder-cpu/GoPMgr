@@ -29,7 +29,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function logout() {
     requestNavigation('login', null, async () => {
       try {
-        await window.go.main.App.Logout();
+        await window.go.desktop.App.Logout();
       } catch {
         return false;
       }

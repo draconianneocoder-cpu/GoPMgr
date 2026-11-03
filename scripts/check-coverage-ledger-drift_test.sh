@@ -7,8 +7,8 @@
 # the pattern this follows), a broken heading regex here fails silently --
 # it just never flags real drift, rather than erroring loudly. That's
 # exactly the failure mode a 2026-08-11 fix closed (the original regex
-# only recognized `internal/*` headings; the root `gopmgr`, `scripts`, and
-# `tools/*` headings were never checked against reality at all) -- so this
+# only recognized `internal/*` headings; the root `gopmgr`, `scripts` (since
+# moved to `tools/config-check`), and `tools/*` headings were never checked against reality at all) -- so this
 # test exists to keep that fix from silently regressing.
 #
 # Runs the real checker against a throwaway Go module via
@@ -31,13 +31,14 @@ fail() {
 # test` package paths, so a differently-named fixture module would make
 # every package fail to match for the wrong reason. One package stands in
 # for each real-ledger heading shape: the root package, a plain
-# `internal/*` package, `internal/analytics`, `scripts`, and `tools/thing`. Every package has exactly one function fully exercised by
+# `internal/*` package, `internal/analytics`, `tools/noted` (a heading with a
+# parenthetical note), and `tools/thing`. Every package has exactly one function fully exercised by
 # one test, so `go test -cover` reports a deterministic 100.0% -- the
 # coverage arithmetic itself is not what this test is checking.
 
 make_fixture() {
 	local root=$1
-	mkdir -p "$root/internal/foo" "$root/internal/analytics" "$root/scripts" "$root/tools/thing" \
+	mkdir -p "$root/internal/foo" "$root/internal/analytics" "$root/tools/noted" "$root/tools/thing" \
 		"$root/frontend/node_modules/thirdparty" "$root/docs"
 
 	cat >"$root/go.mod" <<'EOF'
@@ -99,13 +100,13 @@ func TestSum(t *testing.T) {
 }
 EOF
 
-	cat >"$root/scripts/scripts.go" <<'EOF'
-package scripts
+	cat >"$root/tools/noted/noted.go" <<'EOF'
+package noted
 
 func Triple(n int) int { return n * 3 }
 EOF
-	cat >"$root/scripts/scripts_test.go" <<'EOF'
-package scripts
+	cat >"$root/tools/noted/noted_test.go" <<'EOF'
+package noted
 
 import "testing"
 
@@ -165,7 +166,7 @@ Fixture ledger for check-coverage-ledger-drift_test.sh, not the real repo's.
 
 ## `internal/analytics` — 100.0%
 
-## `scripts` (package `scripts`, config-check helper) — 100.0%
+## `tools/noted` (package `noted`, a helper) — 100.0%
 
 ## `tools/thing` — 100.0%
 
@@ -189,8 +190,8 @@ expect_failure() {
 	fi
 }
 
-# --- happy path: every heading shape (root, internal/*, `scripts` with its
-# interposed parenthetical, `tools/*`) matches live coverage, and the
+# --- happy path: every heading shape (root, internal/*, `tools/noted` with
+# its interposed parenthetical, `tools/*`) matches live coverage, and the
 # non-package/externally-tracked headings (Purpose, Frontend, Known gaps)
 # don't trip the unrecognized-heading catch-all.
 happy="$test_root/happy"
@@ -222,14 +223,14 @@ if ! find "$root_drift/.tmp" -mindepth 1 -maxdepth 1 -type d -name 'coverage-led
 	fail "drift failure did not retain diagnostics"
 fi
 
-# --- `scripts` heading drift: exercises the parenthetical-before-em-dash
+# --- parenthetical heading drift: exercises the parenthetical-before-em-dash
 # format specifically, another heading shape the pre-fix script never
 # looked at.
-scripts_drift="$test_root/scripts-drift"
-make_fixture "$scripts_drift"
-perl -0pi -e 's/config-check helper\) — 100\.0%/config-check helper) — 50.0%/' \
-	"$scripts_drift/docs/TEST_COVERAGE_LEDGER.md"
-expect_failure "$scripts_drift" "scripts: heading claims 50.0%"
+noted_drift="$test_root/noted-drift"
+make_fixture "$noted_drift"
+perl -0pi -e 's/a helper\) — 100\.0%/a helper) — 50.0%/' \
+	"$noted_drift/docs/TEST_COVERAGE_LEDGER.md"
+expect_failure "$noted_drift" "tools/noted: heading claims 50.0%"
 
 # --- missing heading: a package with live coverage (`tools/thing`) but no
 # ledger heading at all must fail, not pass by omission.

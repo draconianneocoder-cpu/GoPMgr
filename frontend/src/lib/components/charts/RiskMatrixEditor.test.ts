@@ -43,7 +43,7 @@ function installApp(overrides: Partial<AppMock> = {}): AppMock {
     LayoutChart: vi.fn(async () => ({ body: { cells: [], validation: { error_count: 0 } } })),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
   return app;
 }
 

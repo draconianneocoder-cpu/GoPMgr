@@ -44,8 +44,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function refresh() {
     try {
       const [d, list] = await Promise.all([
-        window.go.main.App.ComputeDORA(windowDays),
-        window.go.main.App.ListDeployments(''),
+        window.go.desktop.App.ComputeDORA(windowDays),
+        window.go.desktop.App.ListDeployments(''),
       ]);
       dora = d;
       deploys = (list ?? []).slice(0, 50); // show most recent 50
@@ -60,7 +60,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return;
     }
     try {
-      await window.go.main.App.SaveDeployment({
+      await window.go.desktop.App.SaveDeployment({
         id: '',
         project_id: session.project!.id,
         ts: new Date().toISOString(),
@@ -103,7 +103,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     const id = deletingDeployment.id;
     deleteDeploymentBusy = true;
     try {
-      await window.go.main.App.DeleteDeployment(id);
+      await window.go.desktop.App.DeleteDeployment(id);
       deletingDeployment = null;
       await refresh();
     } catch (err: any) {

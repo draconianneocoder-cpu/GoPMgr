@@ -26,7 +26,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     busy = true;
     error = '';
     try {
-      await window.go.main.App.ChangePassword(current, next);
+      await window.go.desktop.App.ChangePassword(current, next);
       current = '';
       next = '';
       confirm = '';

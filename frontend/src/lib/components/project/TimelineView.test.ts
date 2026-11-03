@@ -49,7 +49,7 @@ beforeEach(() => {
     BuildTimeline: vi.fn(async () => []),
     ListHolidays: vi.fn(async () => []),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
 });
 
 afterEach(() => {

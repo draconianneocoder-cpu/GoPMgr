@@ -7,7 +7,7 @@ import { cleanup, render } from '@testing-library/svelte';
 import AccessHistory from './AccessHistory.svelte';
 
 function setApp(history: () => Promise<AccountEvent[]>) {
-  (window as unknown as { go: unknown }).go = { main: { App: { MyDataAccessHistory: vi.fn(history) } } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: { MyDataAccessHistory: vi.fn(history) } } };
 }
 
 afterEach(() => {

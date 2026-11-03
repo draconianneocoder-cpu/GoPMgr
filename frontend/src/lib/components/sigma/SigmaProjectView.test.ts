@@ -41,7 +41,7 @@ beforeEach(() => {
     SigmaGetFishbone: vi.fn(async () => ({ problem_statement: '', branches: [] })),
     SigmaGetToolStatus: vi.fn(async () => ({ phase: 'define', tools: [] })),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
 });
 
 afterEach(() => {

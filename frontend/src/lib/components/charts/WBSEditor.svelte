@@ -71,7 +71,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     if (!session.editingId) return;
     try {
-      const loaded = await window.go.main.App.GetChart(session.editingId);
+      const loaded = await window.go.desktop.App.GetChart(session.editingId);
       if (!active) return;
       chart = loaded;
     } catch (err: any) {
@@ -198,13 +198,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = true;
     status = '';
     try {
-      const updated = await window.go.main.App.SaveChart(submission);
+      const updated = await window.go.desktop.App.SaveChart(submission);
       if (!active) return true;
       chart = updated;
       lastSavedAt = new Date();
       status = `Saved. Version updated at ${new Date().toLocaleTimeString()}.`;
       try {
-        const res = await window.go.main.App.LayoutChart(updated.id);
+        const res = await window.go.desktop.App.LayoutChart(updated.id);
         if (active) layout = (res.body as unknown) as Layout;
       } catch (err: unknown) {
         if (active) status = `Saved, but layout failed: ${err}`;

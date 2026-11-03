@@ -109,7 +109,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     try {
-      calendarPolicies = (await window.go.main.App.ListCalendarPolicies()) ?? [];
+      calendarPolicies = (await window.go.desktop.App.ListCalendarPolicies()) ?? [];
       const current = calendarPolicies.find((policy) => policy.country_code === countryCode);
       if (current) {
         timeZone = current.time_zones[0] ?? 'UTC';
@@ -141,7 +141,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     busy = true;
     error = '';
     try {
-      const seeds = (await window.go.main.App.LaunchpadEvaluate(industry, methodology)) ?? [];
+      const seeds = (await window.go.desktop.App.LaunchpadEvaluate(industry, methodology)) ?? [];
       suggestedSeeds = seeds;
       const next: Record<string, boolean> = {};
       for (const s of seeds) next[s] = true;
@@ -164,7 +164,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
     try {
       const seeds = suggestedSeeds.filter((s) => seedsChecked[s]);
-      const res = await window.go.main.App.CreateProjectFromLaunchpad(
+      const res = await window.go.desktop.App.CreateProjectFromLaunchpad(
         name,
         description,
         industry,
@@ -200,7 +200,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
     let file: ProjectFile;
     try {
-      file = await window.go.main.App.CreateProject(name.trim(), description);
+      file = await window.go.desktop.App.CreateProject(name.trim(), description);
     } catch (err: any) {
       // The backend refuses when codes changed since the check; ask again.
       gate = await recoveryGateNeeded();
@@ -211,7 +211,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     // The project exists now, so a failure from here on must not offer to
     // create it again (a retry would make a second copy).
     try {
-      const project = await window.go.main.App.OpenProject(file.path);
+      const project = await window.go.desktop.App.OpenProject(file.path);
       onCreated(project, file.path);
     } catch (err: any) {
       created = true;

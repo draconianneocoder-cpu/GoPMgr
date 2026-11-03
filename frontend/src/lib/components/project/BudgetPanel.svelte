@@ -19,7 +19,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     try {
-      summary = await window.go.main.App.ComputeBudget();
+      summary = await window.go.desktop.App.ComputeBudget();
     } catch (err: any) {
       error = String(err);
     }

@@ -118,14 +118,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     loading = true;
     error = '';
     try {
-      allUsers = await window.go.main.App.AdminListUsers();
+      allUsers = await window.go.desktop.App.AdminListUsers();
     } catch (err: any) {
       error = `Could not load users: ${err}`;
     } finally {
       loading = false;
     }
     try {
-      const roles = await window.go.main.App.AdminRoles();
+      const roles = await window.go.desktop.App.AdminRoles();
       superAdmin = roles.super;
       standby = roles.standby ?? '';
       standbyHoldsKey = roles.standby_holds_key ?? false;
@@ -160,7 +160,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!accessReason.trim() || accessReason.length > maxReasonLength || openingAccess) return;
     openingAccess = true;
     try {
-      await window.go.main.App.AdminOpenUserData(username, accessReason);
+      await window.go.desktop.App.AdminOpenUserData(username, accessReason);
       accessTarget = null;
       accessReason = '';
       viewing = username;
@@ -185,7 +185,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
     handingOver = true;
     try {
-      const result = await window.go.main.App.AdminHandOverSuper(username);
+      const result = await window.go.desktop.App.AdminHandOverSuper(username);
       // Any data this administrator had open was closed with the role.
       viewing = null;
       showToast(
@@ -207,7 +207,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (passingKey || !standby) return;
     passingKey = true;
     try {
-      const result = await window.go.main.App.AdminSetStandby(standby, takeoverDays);
+      const result = await window.go.desktop.App.AdminSetStandby(standby, takeoverDays);
       showToast(
         result.key_passed
           ? `${standby} holds the administrator key again.`
@@ -226,11 +226,11 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (makingCode) return;
     makingCode = true;
     try {
-      shownCode = await window.go.main.App.AdminCreateEscrowRecoveryCode();
+      shownCode = await window.go.desktop.App.AdminCreateEscrowRecoveryCode();
       typedBack = '';
       pendingNewCode = false;
       try {
-        printerList = (await window.go.main.App.AdminPrinters()) ?? [];
+        printerList = (await window.go.desktop.App.AdminPrinters()) ?? [];
       } catch {
         printerList = [];
       }
@@ -247,7 +247,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (printingCode || !shownCode || !chosenPrinter) return;
     printingCode = true;
     try {
-      await window.go.main.App.AdminPrintEscrowRecoveryCode(shownCode, chosenPrinter);
+      await window.go.desktop.App.AdminPrintEscrowRecoveryCode(shownCode, chosenPrinter);
       showToast(`Sent to ${chosenPrinter}. Check that it printed, then type the code back below.`, 'success');
     } catch (err: any) {
       showToast(`Could not print: ${err}. Write the code down instead.`, 'error');
@@ -260,7 +260,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (confirmingCode || !typedBack.trim()) return;
     confirmingCode = true;
     try {
-      await window.go.main.App.AdminConfirmEscrowRecoveryCode(typedBack);
+      await window.go.desktop.App.AdminConfirmEscrowRecoveryCode(typedBack);
       shownCode = '';
       typedBack = '';
       showToast('Recovery code confirmed. Keep the paper somewhere safe.', 'success');
@@ -282,7 +282,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     restoring = true;
     const replaced = rotationPending;
     try {
-      await window.go.main.App.AdminRecoverEscrowKey(restoreCode);
+      await window.go.desktop.App.AdminRecoverEscrowKey(restoreCode);
       restoreCode = '';
       showToast(
         replaced
@@ -302,7 +302,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (makingNewKey || !newKeyValid) return;
     makingNewKey = true;
     try {
-      const moved = await window.go.main.App.AdminCreateNewEscrowKey(newKeyReason.trim());
+      const moved = await window.go.desktop.App.AdminCreateNewEscrowKey(newKeyReason.trim());
       pendingNewKey = false;
       newKeyReason = '';
       showToast(
@@ -321,7 +321,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (replacing) return;
     replacing = true;
     try {
-      const result = await window.go.main.App.AdminReplaceEscrowKey(standby && keepStandby ? standby : '');
+      const result = await window.go.desktop.App.AdminReplaceEscrowKey(standby && keepStandby ? standby : '');
       const later = result.reenroll > 0 ? ` ${result.reenroll} will be moved when they next sign in.` : '';
       showToast(`Administrator key replaced. ${result.resealed} accounts moved to the new key.${later}`, 'success');
       pendingReplace = false;
@@ -344,7 +344,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     savingStandby = true;
     const chosen = standbyChoice;
     try {
-      const result = await window.go.main.App.AdminSetStandby(chosen, days);
+      const result = await window.go.desktop.App.AdminSetStandby(chosen, days);
       if (!chosen) {
         showToast(`No standby. If you don't sign in for ${days} days, any administrator can become the super administrator.`, 'success');
       } else if (result.key_passed) {
@@ -373,7 +373,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!takeoverValid || takingOver) return;
     takingOver = true;
     try {
-      const result = await window.go.main.App.AdminTakeOverSuper(takeoverReason, takeoverNote.trim());
+      const result = await window.go.desktop.App.AdminTakeOverSuper(takeoverReason, takeoverNote.trim());
       showToast(
         result.key_held
           ? "You're now the super administrator."
@@ -392,7 +392,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadEvents() {
     eventsError = '';
     try {
-      events = (await window.go.main.App.AdminListAccountEvents()) ?? [];
+      events = (await window.go.desktop.App.AdminListAccountEvents()) ?? [];
     } catch (err: any) {
       eventsError = `Could not load account history: ${err}`;
     }
@@ -412,12 +412,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     const uname = newUsername;
     const pw = newPassword;
     try {
-      await window.go.main.App.CreateAccount(uname, newDisplayName || uname, pw, newIsAdmin);
+      await window.go.desktop.App.CreateAccount(uname, newDisplayName || uname, pw, newIsAdmin);
       // Issue recovery codes for the new account (same footing as a
       // self-registered user). Non-fatal: the account exists even if this
       // fails, and the user can create codes in App Settings, under Account.
       try {
-        createdCodes = (await window.go.main.App.AdminIssueRecoveryCodes(uname, pw)) ?? [];
+        createdCodes = (await window.go.desktop.App.AdminIssueRecoveryCodes(uname, pw)) ?? [];
         createdFor = uname;
       } catch (err: any) {
         showToast(`Account created, but recovery codes could not be generated: ${err}. The user can create them in App Settings, under Account.`, 'error');
@@ -450,7 +450,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     pendingDisable = null;
     const disable = !user.disabled;
     try {
-      await window.go.main.App.AdminSetUserDisabled(user.username, disable);
+      await window.go.desktop.App.AdminSetUserDisabled(user.username, disable);
       showToast(
         disable
           ? `${user.username} is disabled. Their projects are kept.`
@@ -473,7 +473,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (purgeTyped !== username || purging) return;
     purging = true;
     try {
-      await window.go.main.App.AdminPurgeUser(username, purgeTyped);
+      await window.go.desktop.App.AdminPurgeUser(username, purgeTyped);
       showToast(`${username} and their folder were permanently deleted.`, 'success');
       purgeTarget = null;
       purgeTyped = '';
@@ -502,7 +502,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     pendingRoleChange = null;
     const newRole = !user.is_admin;
     try {
-      await window.go.main.App.AdminSetUserRole(user.username, newRole);
+      await window.go.desktop.App.AdminSetUserRole(user.username, newRole);
       showToast(
         `${user.username} is now ${newRole ? 'an administrator' : 'a standard user'}.`,
         'success'

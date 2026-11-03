@@ -21,6 +21,6 @@ go test -count=1 ./internal/sqlitedriver
 
 go test -count=1 -run 'Test(InitEncryptedDBCreatesEncryptedDatabase|InitEncryptedDBRejectsWrongKey|MigratePlaintextToEncryptedPreservesData|OpenEncryptedDBRejectsBadDEKLength|SwapInEncryptedSnapshotPreservesEncryptionAndReopensWithDEK|CreateArchivalBundlePreservesEncryptedProjectBytes)$' ./internal/db
 
-go test -count=1 -run 'Test(CreateProjectEncryptsAndReopensWithSessionDEK|CreateProjectFromLaunchpadEncryptsProject|OpenProjectRejectsDifferentUsersDEK|OpenProjectPlaintextRequiresMigration|EncryptProjectAtRest|OpenHeadlessDB)' .
+go test -count=1 -run 'Test(CreateProjectEncryptsAndReopensWithSessionDEK|CreateProjectFromLaunchpadEncryptsProject|OpenProjectRejectsDifferentUsersDEK|OpenProjectPlaintextRequiresMigration|EncryptProjectAtRest|OpenHeadlessDB)' ./internal/desktop
 
 echo "Encrypted database validation gate PASSED."

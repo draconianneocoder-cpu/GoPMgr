@@ -70,14 +70,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       // ListCostTypes seeds a new project's taxonomy transactionally. Finish
       // that one-time write before the concurrent read models inspect it.
-      types = await window.go.main.App.ListCostTypes();
+      types = await window.go.desktop.App.ListCostTypes();
       [entries, reserves, summary, classifications, baselines, quantityAggregates] = await Promise.all([
-        query ? window.go.main.App.SearchCostEntries(query) : window.go.main.App.ListCostEntries(),
-        window.go.main.App.ListCostReserves(),
-        window.go.main.App.ComputeCostSummary(),
-        window.go.main.App.ComputeCostClassificationSummary(),
-        window.go.main.App.ListCostBaselines(),
-        window.go.main.App.AggregateCostEntryQuantities(),
+        query ? window.go.desktop.App.SearchCostEntries(query) : window.go.desktop.App.ListCostEntries(),
+        window.go.desktop.App.ListCostReserves(),
+        window.go.desktop.App.ComputeCostSummary(),
+        window.go.desktop.App.ComputeCostClassificationSummary(),
+        window.go.desktop.App.ListCostBaselines(),
+        window.go.desktop.App.AggregateCostEntryQuantities(),
       ]);
       appliedSearchQuery = query.trim();
       if (!activeTypes.some((type) => type.id === typeID)) typeID = activeTypes[0]?.id ?? '';
@@ -89,7 +89,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (searching) return;
     searching = true; error = '';
     const query = searchQuery;
-    try { entries = await window.go.main.App.SearchCostEntries(query); appliedSearchQuery = query.trim(); }
+    try { entries = await window.go.desktop.App.SearchCostEntries(query); appliedSearchQuery = query.trim(); }
     catch (err) { error = String(err); } finally { searching = false; }
   }
 
@@ -97,7 +97,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (expandedEntryID === entryID) { expandedEntryID = null; return; }
     expandedEntryID = entryID;
     if (attachmentsByEntry[entryID]) return;
-    try { attachmentsByEntry = { ...attachmentsByEntry, [entryID]: await window.go.main.App.ListCostEntryAttachments(entryID) }; }
+    try { attachmentsByEntry = { ...attachmentsByEntry, [entryID]: await window.go.desktop.App.ListCostEntryAttachments(entryID) }; }
     catch (err) { error = String(err); }
   }
 
@@ -105,8 +105,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (attachingEntryID || mutationDisabled) return;
     attachingEntryID = entryID; error = '';
     try {
-      await window.go.main.App.AttachCostEntryFile(entryID);
-      attachmentsByEntry = { ...attachmentsByEntry, [entryID]: await window.go.main.App.ListCostEntryAttachments(entryID) };
+      await window.go.desktop.App.AttachCostEntryFile(entryID);
+      attachmentsByEntry = { ...attachmentsByEntry, [entryID]: await window.go.desktop.App.ListCostEntryAttachments(entryID) };
     } catch (err) { if (!String(err).includes('export cancelled')) error = String(err); }
     finally { attachingEntryID = null; }
   }
@@ -114,14 +114,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function exportAttachmentsZip() {
     if (exportingAttachments) return;
     exportingAttachments = true; error = '';
-    try { await window.go.main.App.ExportCostEntryAttachmentsZip(); }
+    try { await window.go.desktop.App.ExportCostEntryAttachmentsZip(); }
     catch (err) { if (!String(err).includes('export cancelled')) error = String(err); }
     finally { exportingAttachments = false; }
   }
   async function approveBaseline() {
 	if (saving || mutationDisabled || !approvalNote.trim()) return;
     saving = true; error = '';
-    try { await window.go.main.App.ApproveCostBaseline(approvalNote.trim()); approvalNote = ''; await load(); }
+    try { await window.go.desktop.App.ApproveCostBaseline(approvalNote.trim()); approvalNote = ''; await load(); }
     catch (err) { error = String(err); } finally { saving = false; approvalConfirmOpen = false; }
   }
 
@@ -129,7 +129,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 	if (saving || mutationDisabled) return;
     saving = true; error = '';
     try {
-      await window.go.main.App.SaveCostReserve({ kind: reserveKind, amount: reserveAmount, description: reserveDescription });
+      await window.go.desktop.App.SaveCostReserve({ kind: reserveKind, amount: reserveAmount, description: reserveDescription });
       reserveAmount = ''; reserveDescription = ''; await load();
     } catch (err) { error = String(err); } finally { saving = false; }
   }
@@ -147,7 +147,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     catalogItemSearching = true;
     catalogItemInFlightQuery = query;
     try {
-      const rows = await window.go.main.App.ListCatalogItems(query, false);
+      const rows = await window.go.desktop.App.ListCatalogItems(query, false);
       if (request !== catalogItemRequest) return;
       catalogItemOptions = rows
         .filter((row) => !row.archived)
@@ -177,7 +177,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     catalogSupplierSearching = true;
     catalogSupplierInFlightQuery = query;
     try {
-      const rows = await window.go.main.App.ListCatalogVendors(query, false);
+      const rows = await window.go.desktop.App.ListCatalogVendors(query, false);
       if (request !== catalogSupplierRequest) return;
       catalogSupplierOptions = rows
         .filter((row) => !row.archived)
@@ -234,14 +234,14 @@ SPDX-License-Identifier: GPL-3.0-or-later
 	if (!typeID || saving || mutationDisabled) return;
     saving = true; error = '';
     try {
-      await window.go.main.App.SaveCostEntry({ id: '', cost_type_id: typeID, kind, amount, description, cost_date: costDate, quantity, unit, item_name: itemName, sku, supplier_name: supplierName, invoice_reference: invoiceReference });
+      await window.go.desktop.App.SaveCostEntry({ id: '', cost_type_id: typeID, kind, amount, description, cost_date: costDate, quantity, unit, item_name: itemName, sku, supplier_name: supplierName, invoice_reference: invoiceReference });
       amount = ''; description = ''; quantity = ''; unit = ''; itemName = ''; sku = ''; supplierName = ''; invoiceReference = ''; clearCatalogSelections(); await load();
     } catch (err) { error = String(err); } finally { saving = false; }
   }
   async function exportFinancialReport() {
     if (exporting) return;
     exporting = true; error = '';
-    try { await window.go.main.App.ExportFinancialReportPDF(); }
+    try { await window.go.desktop.App.ExportFinancialReportPDF(); }
     catch (err) { if (!String(err).includes('export cancelled')) error = String(err); }
     finally { exporting = false; }
   }

@@ -17,7 +17,7 @@ beforeEach(() => {
     MyDataAccessNotices: vi.fn(async () => [access(7, 'Ticket 7'), access(4, 'Ticket 4')]),
     AcknowledgeDataAccessNotices: vi.fn(async () => undefined),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
 });
 
 afterEach(() => {

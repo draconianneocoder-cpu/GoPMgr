@@ -52,7 +52,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     try {
       if (!session.editingId) throw new Error('No scenario chart selected');
-      const loaded = await window.go.main.App.GetScenarioChart(session.editingId);
+      const loaded = await window.go.desktop.App.GetScenarioChart(session.editingId);
       chart = loaded;
       title = loaded.title;
       data = pretty(loaded.data);
@@ -69,7 +69,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // editor still works when it cannot be read.
   async function loadScenario(id: string) {
     try {
-      scenario = await window.go.main.App.GetScenario(id);
+      scenario = await window.go.desktop.App.GetScenario(id);
     } catch {
       scenario = null;
     }
@@ -83,7 +83,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       assertJSON('Scenario chart data', data);
       assertJSON('Scenario chart config', config);
-      const saved = await window.go.main.App.SaveScenarioChart({
+      const saved = await window.go.desktop.App.SaveScenarioChart({
         ...chart,
         title: title.trim() || chart.title,
         data,
@@ -109,7 +109,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     status = '';
     error = '';
     try {
-      variances = await window.go.main.App.CompareScenarioChart(chart.id);
+      variances = await window.go.desktop.App.CompareScenarioChart(chart.id);
       comparisonLoaded = true;
       status = 'Comparison refreshed.';
     } catch (err: any) {
@@ -127,7 +127,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       const name = baselineName.trim();
       if (!name) throw new Error('Baseline name is required');
-      const promoted = await window.go.main.App.PromoteScenarioChartToBaseline(chart.id, name);
+      const promoted = await window.go.desktop.App.PromoteScenarioChartToBaseline(chart.id, name);
       baselineName = '';
       status = `Promoted ${promoted.name}.`;
     } catch (err: any) {

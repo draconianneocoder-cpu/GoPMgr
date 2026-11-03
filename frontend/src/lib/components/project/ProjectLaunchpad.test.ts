@@ -32,7 +32,7 @@ beforeEach(() => {
     })),
     RecoveryCodeStatus: vi.fn(async () => ({ unused: 8, total: 8, legacy: false, encryption_ready: true })),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
 });
 
 async function reachSetup(onCreated = vi.fn()) {

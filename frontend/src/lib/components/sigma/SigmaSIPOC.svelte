@@ -45,7 +45,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadSIPOC() {
     loading = true;
     try {
-      const data = await window.go.main.App.SigmaGetSIPOC(projectID);
+      const data = await window.go.desktop.App.SigmaGetSIPOC(projectID);
       sipocData = data;
     } catch (e) {
       showToast('Failed to load SIPOC', 'error');
@@ -56,7 +56,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function saveSIPOC() {
     try {
-      await window.go.main.App.SigmaSaveSIPOC(projectID, sipocData);
+      await window.go.desktop.App.SigmaSaveSIPOC(projectID, sipocData);
       showToast('SIPOC saved', 'success');
       void onSaved?.();
     } catch (e) {

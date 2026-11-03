@@ -15,7 +15,7 @@ import { session } from '../../session.svelte';
 
 type AppMock = Record<string, ReturnType<typeof vi.fn>>;
 
-// installApp wires a mock Wails bridge onto window.go.main.App and returns it
+// installApp wires a mock Wails bridge onto window.go.desktop.App and returns it
 // for assertions. Overrides replace individual methods (e.g. to reject).
 function installApp(overrides: Partial<AppMock> = {}): AppMock {
   const chart = {
@@ -37,7 +37,7 @@ function installApp(overrides: Partial<AppMock> = {}): AppMock {
     SetScheduleBaseline: vi.fn(async () => undefined),
     ...overrides,
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
   return app;
 }
 

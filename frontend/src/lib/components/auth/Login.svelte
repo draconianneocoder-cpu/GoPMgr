@@ -35,7 +35,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     (prefilled ? passwordEl : usernameEl)?.focus();
     try {
-      setup = await window.go.main.App.AccountSetup();
+      setup = await window.go.desktop.App.AccountSetup();
     } catch {
       setup = null; // unknown → keep the create path open
     } finally {
@@ -49,7 +49,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     busy = true;
     try {
-      const acc = await window.go.main.App.Login(username, password);
+      const acc = await window.go.desktop.App.Login(username, password);
       session.user = acc;
       goto('portfolio');
     } catch (err: any) {

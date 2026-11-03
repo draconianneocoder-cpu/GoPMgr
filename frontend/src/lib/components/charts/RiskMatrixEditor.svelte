@@ -56,7 +56,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     if (!session.editingId) return;
     try {
-      chart = await window.go.main.App.GetChart(session.editingId);
+      chart = await window.go.desktop.App.GetChart(session.editingId);
       const parsed = JSON.parse(chart.data) as RiskDocument;
       doc = { items: parsed.items ?? [] };
       await refreshLayout();
@@ -68,10 +68,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function persistAndLayout(showSavedStatus = false) {
     if (!chart) return;
-    const updated = await window.go.main.App.SaveChart({ ...chart, data: JSON.stringify(doc) });
+    const updated = await window.go.desktop.App.SaveChart({ ...chart, data: JSON.stringify(doc) });
     chart = updated;
     lastSavedAt = new Date();
-    const result = await window.go.main.App.LayoutChart(updated.id);
+    const result = await window.go.desktop.App.LayoutChart(updated.id);
     layout = result.body as RiskLayout;
     if (showSavedStatus) status = `Saved at ${lastSavedAt.toLocaleTimeString()}.`;
   }

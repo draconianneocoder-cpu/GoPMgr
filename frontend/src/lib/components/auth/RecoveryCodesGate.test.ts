@@ -16,7 +16,7 @@ beforeEach(() => {
     DiscardRecoveryCodes: vi.fn(async () => undefined),
     AcceptEncryptionWithoutRecoveryCodes: vi.fn(async () => undefined),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
 });
 
 afterEach(() => {

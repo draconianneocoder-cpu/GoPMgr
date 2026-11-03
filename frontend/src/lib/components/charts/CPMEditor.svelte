@@ -34,10 +34,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function refreshBaseline() {
     if (!session.editingId) return;
     try {
-      const list = await window.go.main.App.ListScheduleBaselines(session.editingId);
+      const list = await window.go.desktop.App.ListScheduleBaselines(session.editingId);
       baselineCount = list?.length ?? 0;
       variances = baselineCount > 0
-        ? await window.go.main.App.CompareScheduleBaseline(session.editingId, '')
+        ? await window.go.desktop.App.CompareScheduleBaseline(session.editingId, '')
         : {};
     } catch {
       // Baseline data is auxiliary; never block the editor on it.
@@ -51,7 +51,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     baselineBusy = true;
     baselineMsg = '';
     try {
-      await window.go.main.App.SetScheduleBaseline(session.editingId, '');
+      await window.go.desktop.App.SetScheduleBaseline(session.editingId, '');
       await refreshBaseline();
       baselineMsg = 'Baseline set';
       if (baselineMsgTimer) clearTimeout(baselineMsgTimer);
@@ -79,7 +79,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     evmBusy = true;
     evmError = '';
     try {
-      evm = await window.go.main.App.ComputeScheduleEVM(session.editingId, evmAsOf);
+      evm = await window.go.desktop.App.ComputeScheduleEVM(session.editingId, evmAsOf);
     } catch (err: any) {
       evm = null;
       evmError = String(err?.message ?? err);
@@ -180,7 +180,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       await shellRef?.save();
       const iterations = Math.max(100, Math.min(10000, Math.floor(Number(monteCarloIterations) || 1000)));
       monteCarloIterations = iterations;
-      monteCarlo = await window.go.main.App.RunChartMonteCarlo(session.editingId, iterations, 0);
+      monteCarlo = await window.go.desktop.App.RunChartMonteCarlo(session.editingId, iterations, 0);
     } catch (err: any) {
       monteCarloError = String(err?.message ?? err);
     } finally {
@@ -197,7 +197,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       await shellRef?.save();
       const iterations = Math.max(100, Math.min(10000, Math.floor(Number(monteCarloIterations) || 1000)));
       monteCarloIterations = iterations;
-      const path = await window.go.main.App.ExportChartMonteCarloRiskReport(session.editingId, iterations, 0);
+      const path = await window.go.desktop.App.ExportChartMonteCarloRiskReport(session.editingId, iterations, 0);
       monteCarloReportStatus = `Exported to: ${path}`;
     } catch (err: any) {
       if (!String(err?.message ?? err).includes('export cancelled')) monteCarloReportError = `Export failed: ${String(err?.message ?? err)}`;
@@ -236,7 +236,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function loadStakeholders() {
     try {
-      stakeholders = (await window.go.main.App.ListStakeholders('')) ?? [];
+      stakeholders = (await window.go.desktop.App.ListStakeholders('')) ?? [];
     } catch {
       stakeholders = []; // suggestions only; free text still works
     }
@@ -283,7 +283,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     resourceWarn = '';
     resourceWarnTitle = '';
     try {
-      const res = await window.go.main.App.LevelChartResources(
+      const res = await window.go.desktop.App.LevelChartResources(
         session.editingId,
         levelStrategy,
         priorityCritical,
@@ -315,7 +315,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     splitPreviewMsg = '';
     splitPreviewTitle = '';
     try {
-      const p = await window.go.main.App.PreviewSplitLeveling(session.editingId);
+      const p = await window.go.desktop.App.PreviewSplitLeveling(session.editingId);
       const m = splitPreviewMessage(p);
       splitPreviewMsg = m.msg;
       splitPreviewTitle = m.title;
@@ -330,7 +330,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!session.editingId || resourceBusy) return;
     resourceBusy = true;
     try {
-      const chart = await window.go.main.App.GenerateResourceHistogram(session.editingId);
+      const chart = await window.go.desktop.App.GenerateResourceHistogram(session.editingId);
       flashResourceMsg(`Histogram saved: ${chart.title}`);
     } catch (err: any) {
       flashResourceMsg(String(err?.message ?? err));

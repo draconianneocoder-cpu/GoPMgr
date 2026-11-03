@@ -29,7 +29,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function loadCurrency() {
     try {
-      const meta = await window.go.main.App.GetProjectMeta();
+      const meta = await window.go.desktop.App.GetProjectMeta();
       currency = meta.currency_code ?? '';
     } catch {
       // The Cost header then names no currency; editing is unaffected.
@@ -40,7 +40,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadSolutions() {
     loading = true;
     try {
-      solutions = await window.go.main.App.SigmaGetSolutions(projectID);
+      solutions = await window.go.desktop.App.SigmaGetSolutions(projectID);
     } catch (e) {
       showToast('Failed to load solutions', 'error');
     } finally {
@@ -50,7 +50,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function saveSolutions() {
     try {
-      await window.go.main.App.SigmaSaveSolutions(projectID, solutions);
+      await window.go.desktop.App.SigmaSaveSolutions(projectID, solutions);
       showToast('Solutions saved', 'success');
       void onSaved?.();
     } catch (e) {

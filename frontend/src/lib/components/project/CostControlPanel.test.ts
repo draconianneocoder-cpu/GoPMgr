@@ -38,7 +38,7 @@ function installApp({ baselines = [], types = [{ id: 'labor', project_id: 'p', c
     ListCatalogItems: vi.fn(async () => catalogItems),
     ListCatalogVendors: vi.fn(async () => catalogVendors),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
   return app;
 }
 

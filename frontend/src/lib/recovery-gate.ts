@@ -17,7 +17,7 @@ export type RecoveryGate = 'none' | 'legacy';
 
 export async function recoveryGateNeeded(): Promise<RecoveryGate | null> {
   try {
-    const status = await window.go.main.App.RecoveryCodeStatus();
+    const status = await window.go.desktop.App.RecoveryCodeStatus();
     if (status.encryption_ready) return null;
     return status.legacy ? 'legacy' : 'none';
   } catch {

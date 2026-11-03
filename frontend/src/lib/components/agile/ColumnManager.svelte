@@ -59,7 +59,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   }
 
   async function reload() {
-    const res = await window.go.main.App.EnsureDefaultBoard();
+    const res = await window.go.desktop.App.EnsureDefaultBoard();
     rows = toRows(res.columns);
     saved = toRows(res.columns);
     onchange(res.columns);
@@ -79,7 +79,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     busy = true;
     try {
       for (const [i, r] of rows.entries()) {
-        await window.go.main.App.SaveColumn({
+        await window.go.desktop.App.SaveColumn({
           id: r.id,
           board_id: boardId,
           name: r.name.trim(),
@@ -104,7 +104,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     busy = true;
     error = '';
     try {
-      await window.go.main.App.DeleteColumn(pendingDelete.id);
+      await window.go.desktop.App.DeleteColumn(pendingDelete.id);
       await reload();
     } catch (err: any) {
       error = String(err?.message ?? err);

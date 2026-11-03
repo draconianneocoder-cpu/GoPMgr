@@ -260,7 +260,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     try {
-      calendarPolicies = (await window.go.main.App.ListCalendarPolicies()) ?? [];
+      calendarPolicies = (await window.go.desktop.App.ListCalendarPolicies()) ?? [];
       if (calendarPolicies.length === 0) {
         calendarPolicyError = 'No business-calendar policies are available.';
       }
@@ -268,7 +268,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       calendarPolicyError = `Could not load business-calendar policies: ${err}`;
     }
     try {
-      const p = await window.go.main.App.GetProjectMeta();
+      const p = await window.go.desktop.App.GetProjectMeta();
       // db.Project's industry/methodology fields have no `omitempty`
       // (internal/db/project.go), so a real GetProjectMeta response always
       // includes them even when empty -- this coercion is defensive
@@ -283,7 +283,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       error = `Could not load project: ${err}`;
     }
     try {
-      const s = await window.go.main.App.GetSettings();
+      const s = await window.go.desktop.App.GetSettings();
       exportTheme = s.export_theme;
       autoRepair = s.auto_repair;
       certPath = s.cert_path ?? '';
@@ -298,8 +298,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
       // non-fatal; leave defaults
     }
     try {
-      fonts = (await window.go.main.App.ListFonts()) ?? [];
-      defaultFont = (await window.go.main.App.GetDefaultFont()) ?? '';
+      fonts = (await window.go.desktop.App.ListFonts()) ?? [];
+      defaultFont = (await window.go.desktop.App.GetDefaultFont()) ?? '';
     } catch {
       // non-fatal
     }
@@ -345,7 +345,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     error = '';
     status = '';
     try {
-      const merged = normaliseProjectMeta(await window.go.main.App.UpdateProjectMeta(savingDraft));
+      const merged = normaliseProjectMeta(await window.go.desktop.App.UpdateProjectMeta(savingDraft));
       const latestDraft = draft;
       original = merged;
       session.project = merged;
@@ -376,8 +376,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
     settingsStatus = '';
     settingsError = '';
     try {
-      const current = await window.go.main.App.GetSettings();
-      await window.go.main.App.SaveSettings({
+      const current = await window.go.desktop.App.GetSettings();
+      await window.go.desktop.App.SaveSettings({
         ...current,
         export_theme: exportTheme,
         auto_repair: autoRepair,
@@ -406,7 +406,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     settingsStatus = '';
     settingsError = '';
     try {
-      const defaults = await window.go.main.App.ResetProjectSettings();
+      const defaults = await window.go.desktop.App.ResetProjectSettings();
       exportTheme = (defaults.export_theme || 'modern') as 'modern' | 'classic' | 'archival';
       autoRepair = defaults.auto_repair;
       certPath = defaults.cert_path ?? '';
@@ -434,7 +434,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     auditReportStatus = '';
     auditReportError = '';
     try {
-      const path = await window.go.main.App.ExportAuditVerificationReport();
+      const path = await window.go.desktop.App.ExportAuditVerificationReport();
       auditReportStatus = `Audit verification report exported to: ${path}`;
     } catch (err: any) {
       if (!String(err).includes('export cancelled')) auditReportError = `Audit verification report failed: ${err}`;
@@ -448,7 +448,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     auditRepairStatus = '';
     auditRepairError = '';
     try {
-      const path = await window.go.main.App.ExportAuditRepairEvidence();
+      const path = await window.go.desktop.App.ExportAuditRepairEvidence();
       auditRepairStatus = `Audit repair evidence exported to: ${path}`;
     } catch (err: any) {
       if (!String(err).includes('export cancelled')) auditRepairError = `Audit repair evidence failed: ${err}`;
@@ -467,7 +467,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return;
     }
     try {
-      const encrypted = await window.go.main.App.IsProjectEncrypted(session.projectPath);
+      const encrypted = await window.go.desktop.App.IsProjectEncrypted(session.projectPath);
       encryptionState = encrypted ? 'encrypted' : 'plaintext';
     } catch (err: any) {
       encryptionState = 'unknown';
@@ -496,7 +496,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return;
     }
     try {
-      const backupPath = await window.go.main.App.EncryptProjectAtRest(session.projectPath);
+      const backupPath = await window.go.desktop.App.EncryptProjectAtRest(session.projectPath);
       encryptionBackupPath = backupPath;
       encryptionState = 'encrypted';
       encryptionStatus = 'Database encrypted.';
@@ -523,7 +523,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     archiveStatus = '';
     archiveError = '';
     try {
-      archiveStatus = await window.go.main.App.SecureArchive(session.projectPath);
+      archiveStatus = await window.go.desktop.App.SecureArchive(session.projectPath);
     } catch (err: any) {
       archiveError = `Backup failed: ${err?.message ?? err}`;
     } finally {
@@ -548,7 +548,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function chooseCert() {
     try {
-      const p = await window.go.main.App.ChooseCertFile();
+      const p = await window.go.desktop.App.ChooseCertFile();
       if (p) certPath = p;
     } catch {
       // user cancelled
@@ -557,7 +557,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function chooseTSARootCert() {
     try {
-      const path = await window.go.main.App.ChooseTSARootCertFile();
+      const path = await window.go.desktop.App.ChooseTSARootCertFile();
       if (path) tsaRootCertPath = path;
     } catch {
       // Closing a native file picker is not an actionable settings error.
@@ -570,7 +570,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     fontStatus = '';
     fontError = '';
     try {
-      await window.go.main.App.SetDefaultFont(defaultFont);
+      await window.go.desktop.App.SetDefaultFont(defaultFont);
       fontStatus = `This project's documents now use ${defaultFont}.`;
     } catch (err: any) {
       fontError = `Couldn't change the document font: ${err}`;
@@ -584,7 +584,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     fontStatus = '';
     fontError = '';
     try {
-      const fi = await window.go.main.App.ImportFont();
+      const fi = await window.go.desktop.App.ImportFont();
       fonts = [...fonts.filter((f) => f.name !== fi.name), fi];
       defaultFont = fi.name;
       fontStatus = `Imported "${fi.name}" and selected it. Choose Apply font to use it.`;
@@ -604,12 +604,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
     exportError = false;
 
     const exporters: Record<ScheduleExportFormat, () => Promise<string>> = {
-      pdf: () => window.go.main.App.ExportScheduleReportPDF(),
-      docx: () => window.go.main.App.ExportScheduleReportDOCX(),
-      odt: () => window.go.main.App.ExportScheduleReportODT(),
-      csv: () => window.go.main.App.ExportScheduleReportCSV(),
-      html: () => window.go.main.App.ExportScheduleReportHTML(),
-      mspdi: () => window.go.main.App.ExportScheduleReportMSPDI(),
+      pdf: () => window.go.desktop.App.ExportScheduleReportPDF(),
+      docx: () => window.go.desktop.App.ExportScheduleReportDOCX(),
+      odt: () => window.go.desktop.App.ExportScheduleReportODT(),
+      csv: () => window.go.desktop.App.ExportScheduleReportCSV(),
+      html: () => window.go.desktop.App.ExportScheduleReportHTML(),
+      mspdi: () => window.go.desktop.App.ExportScheduleReportMSPDI(),
     };
 
     try {
@@ -682,7 +682,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadResourceCalendars() {
     resourceCalendarError = '';
     try {
-      resourceCalendars = (await window.go.main.App.ListResourceCalendars()) ?? [];
+      resourceCalendars = (await window.go.desktop.App.ListResourceCalendars()) ?? [];
     } catch (err: any) {
       resourceCalendarError = `Could not load resource calendars: ${err}`;
     }
@@ -718,7 +718,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       if (!Number.isFinite(defaultCapacity) || defaultCapacity <= 0) {
         throw new Error('Default capacity must be greater than zero');
       }
-      const saved = await window.go.main.App.SaveResourceCalendar({
+      const saved = await window.go.desktop.App.SaveResourceCalendar({
         id: resourceCalendarDraft.id,
         project_id: '',
         name: resourceCalendarDraft.name.trim(),
@@ -756,7 +756,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     resourceCalendarStatus = '';
     resourceCalendarError = '';
     try {
-      await window.go.main.App.DeleteResourceCalendar(id);
+      await window.go.desktop.App.DeleteResourceCalendar(id);
       resourceCalendars = resourceCalendars.filter((c) => c.id !== id);
       if (resourceCalendarDraft.id === id) resourceCalendarDraft = emptyResourceCalendarDraft();
       resourceCalendarStatus = 'Deleted.';
@@ -770,7 +770,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadScenarios() {
     scenarioError = '';
     try {
-      const loaded = (await window.go.main.App.ListScenarios()) ?? [];
+      const loaded = (await window.go.desktop.App.ListScenarios()) ?? [];
       scenarios = loaded;
       normalizeScenarioCopyDraft(loaded, scenarioSourceCharts);
       await loadScenarioChartCopies(loaded);
@@ -782,7 +782,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadScenarioSources() {
     scenarioCopyError = '';
     try {
-      const loaded = (await window.go.main.App.ListCharts('')) ?? [];
+      const loaded = (await window.go.desktop.App.ListCharts('')) ?? [];
       scenarioSourceCharts = loaded;
       normalizeScenarioCopyDraft(scenarios, loaded);
       await loadScenarioBaselines(scenarioCopyDraft.chart_id);
@@ -798,7 +798,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return;
     }
     try {
-      const loaded = (await window.go.main.App.ListScheduleBaselines(chartID)) ?? [];
+      const loaded = (await window.go.desktop.App.ListScheduleBaselines(chartID)) ?? [];
       scenarioBaselines = loaded;
       if (scenarioCopyDraft.baseline_id && !loaded.some((b) => b.id === scenarioCopyDraft.baseline_id)) {
         scenarioCopyDraft = { ...scenarioCopyDraft, baseline_id: '' };
@@ -813,7 +813,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadScenarioChartCopies(items: Scenario[] = scenarios) {
     const next: Record<string, ScenarioChart[]> = {};
     for (const scenario of items) {
-      next[scenario.id] = (await window.go.main.App.ListScenarioCharts(scenario.id)) ?? [];
+      next[scenario.id] = (await window.go.desktop.App.ListScenarioCharts(scenario.id)) ?? [];
     }
     scenarioChartCopies = next;
   }
@@ -871,7 +871,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       const name = scenarioDraft.name.trim();
       if (!name) throw new Error('Scenario name is required');
-      const saved = await window.go.main.App.SaveScenario({
+      const saved = await window.go.desktop.App.SaveScenario({
         id: scenarioDraft.id,
         project_id: '',
         name,
@@ -907,7 +907,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     scenarioStatus = '';
     scenarioError = '';
     try {
-      await window.go.main.App.DeleteScenario(id);
+      await window.go.desktop.App.DeleteScenario(id);
       scenarios = scenarios.filter((s) => s.id !== id);
       const remainingCopies = { ...scenarioChartCopies };
       delete remainingCopies[id];
@@ -929,7 +929,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       if (!scenarioCopyDraft.scenario_id) throw new Error('Select a scenario');
       if (!scenarioCopyDraft.chart_id) throw new Error('Select a source chart');
-      const copied = await window.go.main.App.BranchScenarioChart(
+      const copied = await window.go.desktop.App.BranchScenarioChart(
         scenarioCopyDraft.scenario_id,
         scenarioCopyDraft.chart_id,
         scenarioCopyDraft.baseline_id,
@@ -976,7 +976,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
         .flat()
         .find((chart) => chart.id === scenarioChartDraft.id);
       if (!current) throw new Error('Scenario chart copy is no longer loaded');
-      const saved = await window.go.main.App.SaveScenarioChart({
+      const saved = await window.go.desktop.App.SaveScenarioChart({
         ...current,
         title: scenarioChartDraft.title.trim() || current.title,
         data: scenarioChartDraft.data.trim() || '{}',
@@ -1008,7 +1008,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     try {
       const name = scenarioPromotionName.trim();
       if (!name) throw new Error('Baseline name is required');
-      const promoted = await window.go.main.App.PromoteScenarioChartToBaseline(chart.id, name);
+      const promoted = await window.go.desktop.App.PromoteScenarioChartToBaseline(chart.id, name);
       scenarioPromotionName = '';
       scenarioPromotionStatus = `Promoted ${promoted.name}.`;
       if (scenarioCopyDraft.chart_id === promoted.chart_id) {
@@ -1036,7 +1036,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     scenarioCompareBusy = chart.id;
     scenarioCompareError = '';
     try {
-      const variances = await window.go.main.App.CompareScenarioChart(chart.id);
+      const variances = await window.go.desktop.App.CompareScenarioChart(chart.id);
       scenarioComparisons = { ...scenarioComparisons, [chart.id]: variances ?? {} };
     } catch (err: any) {
       scenarioCompareError = `Comparison failed: ${err?.message ?? err}`;

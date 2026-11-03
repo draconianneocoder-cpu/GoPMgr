@@ -32,7 +32,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       return;
     }
     try {
-      chart = await window.go.main.App.GetChart(id);
+      chart = await window.go.desktop.App.GetChart(id);
     } catch {
       // The chart still exists -- only this lookup failed. Fall back to
       // generic copy below rather than claiming something went wrong with

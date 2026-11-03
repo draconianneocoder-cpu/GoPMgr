@@ -59,7 +59,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadChart() {
     if (!session.editingId) return;
     try {
-      chart = await window.go.main.App.GetChart(session.editingId);
+      chart = await window.go.desktop.App.GetChart(session.editingId);
     } catch (err: any) {
       loadError = `Could not load this chart: ${err?.message ?? err}`;
       return;
@@ -79,13 +79,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!chart) return false;
     status = '';
     try {
-      const updated = await window.go.main.App.SaveChart({
+      const updated = await window.go.desktop.App.SaveChart({
         ...chart,
         data: JSON.stringify(doc),
       });
       chart = updated;
       lastSavedAt = new Date();
-      const res = await window.go.main.App.LayoutChart(updated.id);
+      const res = await window.go.desktop.App.LayoutChart(updated.id);
       const body = res.body as { layout?: GanttLayout } | GanttLayout;
       layout = (body as any).layout ?? (body as GanttLayout);
       return true;
@@ -98,9 +98,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function refreshBaseline() {
     if (!session.editingId) return;
     try {
-      const list = await window.go.main.App.ListScheduleBaselines(session.editingId);
+      const list = await window.go.desktop.App.ListScheduleBaselines(session.editingId);
       variances = (list?.length ?? 0) > 0
-        ? await window.go.main.App.CompareScheduleBaseline(session.editingId, '')
+        ? await window.go.desktop.App.CompareScheduleBaseline(session.editingId, '')
         : {};
     } catch {
       variances = {};
@@ -121,7 +121,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function setBaseline() {
     if (!session.editingId) return;
     try {
-      await window.go.main.App.SetScheduleBaseline(session.editingId, '');
+      await window.go.desktop.App.SetScheduleBaseline(session.editingId, '');
       await refreshBaseline();
       status = 'Baseline set';
       clearStatusAfter(2000);
@@ -138,7 +138,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = true;
     status = '';
     try {
-      const p = await window.go.main.App.PreviewSplitLeveling(session.editingId);
+      const p = await window.go.desktop.App.PreviewSplitLeveling(session.editingId);
       status = splitPreviewMessage(p).msg;
       clearStatusAfter(4000);
     } catch (err: any) {
@@ -156,13 +156,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
     saving = true;
     status = '';
     try {
-      const res = await window.go.main.App.LevelChartResources(
+      const res = await window.go.desktop.App.LevelChartResources(
         session.editingId,
         'ltf',
         false,
         true // allow splitting
       );
-      chart = await window.go.main.App.GetChart(session.editingId);
+      chart = await window.go.desktop.App.GetChart(session.editingId);
       doc = JSON.parse(chart.data) as GDoc;
       await refreshLayout();
       status = splitLevelStatus(res);

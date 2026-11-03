@@ -43,7 +43,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   });
   onDestroy(() => {
     if (step === 'codes') {
-      void window.go.main.App.DiscardRecoveryCodes();
+      void window.go.desktop.App.DiscardRecoveryCodes();
       // The panel is gone, so only a toast can still reach the user.
       if (savedFiles.length > 0) showToast(unusedFileWarning(savedFiles), 'error');
     }
@@ -62,7 +62,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function loadStatus() {
     statusError = '';
     try {
-      status = await window.go.main.App.RecoveryCodeStatus();
+      status = await window.go.desktop.App.RecoveryCodeStatus();
     } catch (err: any) {
       statusError = t('recoveryPanel.statusFailed', { error: String(err?.message ?? err) });
     }
@@ -80,7 +80,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     busy = true;
     error = '';
     try {
-      codes = (await window.go.main.App.PrepareRecoveryCodes(password)) ?? [];
+      codes = (await window.go.desktop.App.PrepareRecoveryCodes(password)) ?? [];
       password = '';
       saved = false;
       step = 'codes';
@@ -98,7 +98,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     busy = true;
     error = '';
     try {
-      await window.go.main.App.ConfirmRecoveryCodes();
+      await window.go.desktop.App.ConfirmRecoveryCodes();
       showToast(t('recoveryPanel.renewed'), 'success');
       finish();
       renewed = true;
@@ -117,7 +117,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   async function cancel() {
     if (step === 'codes') {
-      await window.go.main.App.DiscardRecoveryCodes();
+      await window.go.desktop.App.DiscardRecoveryCodes();
       dropSavedFiles();
     }
     finish();

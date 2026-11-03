@@ -20,8 +20,9 @@ changed.
 ## Go
 
 - Keep domain logic in `internal/...` packages and Wails orchestration in
-  the root `main.go` (the main package must live at the repo root for
-  `wails build`).
+  `internal/desktop` (the bound `App`). The root `main.go` only embeds the
+  frontend and calls `desktop.Main`; the main package must live at the repo
+  root for `wails build`.
 - Return contextual errors with `%w` where callers can use wrapping.
 - Keep database writes transactional when multiple records or files must
   change together.

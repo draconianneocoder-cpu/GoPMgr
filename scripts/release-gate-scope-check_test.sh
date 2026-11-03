@@ -73,12 +73,12 @@ printf '%s\n' 'govulncheck ./...' >>"$unscoped_coverage_script/scripts/check-cov
 expect_failure "$unscoped_coverage_script" "Go quality gates must use explicit first-party package roots"
 
 unscoped_ledger_test="$(new_fixture unscoped-ledger-test-trailing-cover)"
-perl -0pi -e 's/if ! go test -cover \. \.\/internal\/\.\.\. \.\/scripts \.\/tools\/\.\.\./if ! go test .\/... -cover/' \
+perl -0pi -e 's/if ! go test -cover \. \.\/internal\/\.\.\. \.\/tools\/\.\.\./if ! go test .\/... -cover/' \
 	"$unscoped_ledger_test/scripts/check-coverage-ledger-drift.sh"
 expect_failure "$unscoped_ledger_test" "Go quality gates must use explicit first-party package roots"
 
 unscoped_ledger_test="$(new_fixture unscoped-ledger-test-leading-cover)"
-perl -0pi -e 's/if ! go test -cover \. \.\/internal\/\.\.\. \.\/scripts \.\/tools\/\.\.\./if ! go test -cover .\/.../' \
+perl -0pi -e 's/if ! go test -cover \. \.\/internal\/\.\.\. \.\/tools\/\.\.\./if ! go test -cover .\/.../' \
 	"$unscoped_ledger_test/scripts/check-coverage-ledger-drift.sh"
 expect_failure "$unscoped_ledger_test" "Go quality gates must use explicit first-party package roots"
 

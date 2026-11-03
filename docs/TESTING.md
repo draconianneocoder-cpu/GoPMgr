@@ -106,7 +106,7 @@ Vitest + `@testing-library/svelte` (jsdom). Presentational components (e.g.
 directly in tests; pure geometry and action message-builders live in sibling
 modules (`*_geometry.ts`, `leveling_messages.ts`) with fast unit tests. Async
 handler glue is covered by mounting the real editor against a mocked
-`window.go.main.App` (see `GanttEditor.test.ts`): click an action, assert the
+`window.go.desktop.App` (see `GanttEditor.test.ts`): click an action, assert the
 bridge result reaches the status DOM. `make frontend-stability` runs the Vitest suite, so it
 is part of `make verify` and `make check-release`. Test files
 (`*.test.ts` / `*.spec.ts`) are excluded from the app `svelte-check`.
@@ -169,7 +169,7 @@ The failing-on-error `assurance` job in `.github/workflows/ci.yml` runs `make
 license-check` and `make coverage-ledger-drift` on the pinned `macos-15` runner,
 matching the Darwin/macOS coverage baseline recorded by the ledger. It installs
 the pinned `reuse[charset-normalizer]==6.2.0` tool, derives its binary directory
-from `pipx`, and builds `frontend/dist` for the root package's `go:embed`. The
+from `pipx`, and builds `frontend/dist` for the root `main.go`'s `go:embed`. The
 `charset-normalizer` extra is required, not optional: `reuse` aborts at import
 time unless an encoding module loads, and macOS runners have no `libmagic` for
 its mandatory `python-magic` dependency to bind. `config-check` asserts the

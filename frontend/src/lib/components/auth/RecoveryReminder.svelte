@@ -22,7 +22,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
   onMount(async () => {
     try {
-      const status = await window.go.main.App.RecoveryCodeStatus();
+      const status = await window.go.desktop.App.RecoveryCodeStatus();
       needed = status.legacy || status.unused <= 1;
     } catch {
       // The reminder is advice; App Settings still shows the codes, so a

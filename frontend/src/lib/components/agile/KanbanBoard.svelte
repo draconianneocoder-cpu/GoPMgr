@@ -43,7 +43,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   onMount(async () => {
     loading = true;
     try {
-      const res = await window.go.main.App.EnsureDefaultBoard();
+      const res = await window.go.desktop.App.EnsureDefaultBoard();
       board = res.board;
       columns = res.columns;
       await refresh();
@@ -57,9 +57,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
   async function refresh() {
     if (!board) return;
     const [its, sps, wips] = await Promise.all([
-      window.go.main.App.ListWorkItems('', '', ''),
-      window.go.main.App.ListSprints(),
-      window.go.main.App.WIPCounts(),
+      window.go.desktop.App.ListWorkItems('', '', ''),
+      window.go.desktop.App.ListSprints(),
+      window.go.desktop.App.WIPCounts(),
     ]);
     // Items shown on the board: everything that is NOT in the backlog.
     items = (its ?? []).filter((i) => i.state !== 'backlog');
@@ -101,7 +101,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     opening = true;
     error = '';
     try {
-      editing = await window.go.main.App.GetWorkItem(item.id);
+      editing = await window.go.desktop.App.GetWorkItem(item.id);
     } catch {
       error = 'That work item no longer exists. The list has been refreshed.';
       await refresh();
@@ -145,7 +145,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     // New order_idx: append at the end of the target column.
     const newOrder = itemsInColumn(targetCol).length;
     try {
-      await window.go.main.App.MoveWorkItem(id, targetCol, newOrder);
+      await window.go.desktop.App.MoveWorkItem(id, targetCol, newOrder);
       // Optimistic update.
       item.state = targetCol;
       item.order_idx = newOrder;

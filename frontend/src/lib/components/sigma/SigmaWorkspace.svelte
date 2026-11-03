@@ -25,7 +25,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     loading = true;
     loadError = '';
     try {
-      projects = await window.go.main.App.SigmaListProjects();
+      projects = await window.go.desktop.App.SigmaListProjects();
     } catch (err: any) {
       loadError = `Could not load projects: ${err}`;
     } finally {
@@ -37,7 +37,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     if (!newTitle.trim()) return;
     creating = true;
     try {
-      const p = await window.go.main.App.SigmaCreateProject(newTitle, '', newBelt);
+      const p = await window.go.desktop.App.SigmaCreateProject(newTitle, '', newBelt);
       showToast(`Project "${p.title}" created`, 'success');
       newTitle = '';
       await loadProjects();

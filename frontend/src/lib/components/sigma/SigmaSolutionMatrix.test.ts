@@ -24,7 +24,7 @@ beforeEach(() => {
     SigmaGetSolutions: vi.fn(async () => [{ ...solution }]),
     GetProjectMeta: vi.fn(async () => ({ currency_code: 'EUR' })),
   };
-  (window as unknown as { go: unknown }).go = { main: { App: app } };
+  (window as unknown as { go: unknown }).go = { desktop: { App: app } };
 });
 
 // Costs are in the project's reporting currency; the column used to say
