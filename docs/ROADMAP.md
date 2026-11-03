@@ -66,9 +66,17 @@ frozen as history.
 
 Remaining follow-ups:
 
-1. Linux verification of the Go engine on a real Ubuntu host. On macOS the
-   engine is verified by tests and by a packaged build that starts and exits
-   cleanly; hosted CI covers Linux builds and tests.
+1. **Linux: verified on a real host on 2026-11-03.** On Ubuntu 26.04
+   (x86_64), `make build` and `make package-linux-nfpm` at `72a16cc` built
+   the app and its `.deb`/`.rpm`. The packages depend only on GTK 3 and
+   WebKitGTK 4.1 and contain nothing from DuckDB. The unpacked `.deb` binary
+   started under Xvfb with an isolated home, created its account database,
+   rendered through WebKitGTK, and on SIGINT and on SIGTERM logged "exited
+   cleanly" with status 0. That host's Xvfb crashes unless started with
+   `-extension GLX`; `xvfb-run` alone fails there. The check found that
+   the `.deb`, `.rpm` and macOS app did not carry GoPMgr's own GPL text;
+   they now do (see `LICENSES.md`). A real import through the native file
+   dialog was not exercised on either platform.
 2. The retained branch `claude/slice-b-readonly-access` belongs to closed,
    unmerged PR #163. Review and selectively port useful read-only regression
    fixtures before retiring it; do not merge its rejected strict-schema
