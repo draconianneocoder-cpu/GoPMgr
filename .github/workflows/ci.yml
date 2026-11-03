@@ -251,11 +251,11 @@ jobs:
           mkdir -p frontend/dist
           printf '<!doctype html>\n' > frontend/dist/index.html
 
-      - name: "golangci-lint (scope: . ./internal/...)"
+      - name: "golangci-lint (scope: . ./internal/... ./scripts/... ./tools/...)"
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
           version: v2.14.0
-          args: --build-tags=webkit2_41 . ./internal/...
+          args: --build-tags=webkit2_41 . ./internal/... ./scripts/... ./tools/...
 
       - name: Install frontend dependencies
         working-directory: frontend

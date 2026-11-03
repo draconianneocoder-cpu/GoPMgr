@@ -223,7 +223,7 @@ func fileSHA256(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only: a close error loses nothing
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", fmt.Errorf("hash %s: %w", name, err)
@@ -373,8 +373,9 @@ type embeddedFile struct {
 }
 
 // embeddedFiles walks the reviewed roots and assigns every file to exactly
-// one reviewed entry.
-func embeddedFiles(repo string, r *reviewed) ([]embeddedFile, error) {
+// one reviewed entry. A non-nil include limits the walk to the files it
+// accepts (repository-relative, slash-separated); nil includes every file.
+func embeddedFiles(repo string, r *reviewed, include func(rel string) bool) ([]embeddedFile, error) {
 	var out []embeddedFile
 	for _, root := range r.EmbeddedRoots {
 		err := filepath.WalkDir(filepath.Join(repo, filepath.FromSlash(root)), func(p string, d os.DirEntry, err error) error {
@@ -389,6 +390,9 @@ func embeddedFiles(repo string, r *reviewed) ([]embeddedFile, error) {
 				return err
 			}
 			rel = filepath.ToSlash(rel)
+			if include != nil && !include(rel) {
+				return nil
+			}
 			for _, pat := range r.EmbeddedIgnore {
 				if ok, _ := path.Match(pat, path.Base(rel)); ok {
 					return nil
@@ -415,6 +419,24 @@ func embeddedFiles(repo string, r *reviewed) ([]embeddedFile, error) {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Rel < out[j].Rel })
 	return out, nil
+}
+
+// trackedFiles returns the files Git tracks under roots. Release builds start
+// from a clean checkout, so these are the embedded files a release ships; an
+// ignored local download (such as an optional font from `make fonts`) is not.
+func trackedFiles(repo string, roots []string) (map[string]bool, error) {
+	args := append([]string{"-C", repo, "ls-files", "-z", "--"}, roots...)
+	out, err := exec.Command("git", args...).Output()
+	if err != nil {
+		return nil, fmt.Errorf("list tracked embedded files with git: %w", err)
+	}
+	tracked := map[string]bool{}
+	for _, f := range strings.Split(string(out), "\x00") {
+		if f != "" {
+			tracked[f] = true
+		}
+	}
+	return tracked, nil
 }
 
 // readBinary returns the build information Go records in an executable.

@@ -111,7 +111,13 @@ func runCheck(args []string, stdout io.Writer) error {
 	if len(embeddedBinaries) > 0 {
 		return errors.New("tools/sbom/components.json does not review these embedded files:\n  " + strings.Join(embeddedBinaries, "\n  "))
 	}
-	embedded, err := embeddedFiles(*repo, r)
+	// check reviews what a release ships, which is what Git tracks; generate
+	// (below) describes an actual build and so sees every file on disk.
+	tracked, err := trackedFiles(*repo, r.EmbeddedRoots)
+	if err != nil {
+		return err
+	}
+	embedded, err := embeddedFiles(*repo, r, func(rel string) bool { return tracked[rel] })
 	if err != nil {
 		return err
 	}
@@ -126,7 +132,9 @@ func runCheck(args []string, stdout io.Writer) error {
 	if err := checkReviewed(r, listings, linkedPackages, embedded, frontend, lock); err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "sbom: reviewed metadata covers every release target (%d targets, %d embedded files, %d bundled npm packages)\n", len(releaseTargets), len(embedded), len(frontend))
+	if _, err := fmt.Fprintf(stdout, "sbom: reviewed metadata covers every release target (%d targets, %d embedded files, %d bundled npm packages)\n", len(releaseTargets), len(embedded), len(frontend)); err != nil {
+		return fmt.Errorf("write output: %w", err)
+	}
 	return nil
 }
 
@@ -250,7 +258,7 @@ func runGenerate(args []string, stdout io.Writer) error {
 	if in.Lock, err = readLock(*repo); err != nil {
 		return err
 	}
-	if in.Embedded, err = embeddedFiles(*repo, r); err != nil {
+	if in.Embedded, err = embeddedFiles(*repo, r, nil); err != nil {
 		return err
 	}
 	in.EmbeddedHex = map[string]string{}
@@ -274,7 +282,9 @@ func runGenerate(args []string, stdout io.Writer) error {
 		if err := os.WriteFile(*inventoryOut, append(b, '\n'), 0o644); err != nil {
 			return err
 		}
-		fmt.Fprintln(stdout, "sbom: wrote inventory", *inventoryOut)
+		if _, err := fmt.Fprintln(stdout, "sbom: wrote inventory", *inventoryOut); err != nil {
+			return fmt.Errorf("write output: %w", err)
+		}
 		return nil
 	}
 	return writeSBOMs(inv, sbomOptions{SBOMVersion: *sbomVersion, Timestamp: *timestamp, ToolVersion: *toolVersion,
@@ -389,7 +399,9 @@ func writeSBOMs(inv *inventory, o sbomOptions, stdout io.Writer) error {
 		if err := os.WriteFile(filepath.Join(o.OutDir, out.name), out.b, 0o644); err != nil {
 			return err
 		}
-		fmt.Fprintln(stdout, "sbom: wrote", filepath.Join(o.OutDir, out.name))
+		if _, err := fmt.Fprintln(stdout, "sbom: wrote", filepath.Join(o.OutDir, out.name)); err != nil {
+			return fmt.Errorf("write output: %w", err)
+		}
 	}
 	return nil
 }
@@ -479,7 +491,9 @@ func runVerify(args []string, stdout io.Writer) error {
 	if err := verifyFiles(pub, fs.Args()); err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "sbom: %d signatures verify with key %s\n", fs.NArg(), keyID(pub))
+	if _, err := fmt.Fprintf(stdout, "sbom: %d signatures verify with key %s\n", fs.NArg(), keyID(pub)); err != nil {
+		return fmt.Errorf("write output: %w", err)
+	}
 	return nil
 }
 
@@ -496,6 +510,8 @@ func runKeygen(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "%s", pub)
+	if _, err := fmt.Fprintf(stdout, "%s", pub); err != nil {
+		return fmt.Errorf("write output: %w", err)
+	}
 	return nil
 }
