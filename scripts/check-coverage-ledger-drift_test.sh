@@ -31,20 +31,10 @@ fail() {
 # test` package paths, so a differently-named fixture module would make
 # every package fail to match for the wrong reason. One package stands in
 # for each real-ledger heading shape: the root package, a plain
-# `internal/*` package, `internal/analytics` (needed because the checker
-# unconditionally runs a second, -tags duckdb pass against it -- an empty
-# or missing package there would fail that pass and abort before the
-# Python classification logic under test ever runs), `scripts`, and
-# `tools/thing`. Every package has exactly one function fully exercised by
+# `internal/*` package, `internal/analytics`, `scripts`, and `tools/thing`. Every package has exactly one function fully exercised by
 # one test, so `go test -cover` reports a deterministic 100.0% -- the
 # coverage arithmetic itself is not what this test is checking.
-#
-# The checker's DUAL_BUILD set hardcodes the literal package name
-# "internal/analytics" (matching the real repo, where it's the only
-# package with a second -tags duckdb number) -- since this fixture's
-# analytics package sits at that same path for the reason above, its
-# ledger heading below must use the dual-build format too, or
-# check_pkg_heading rejects it as an unrecognized dual-build heading.
+
 make_fixture() {
 	local root=$1
 	mkdir -p "$root/internal/foo" "$root/internal/analytics" "$root/scripts" "$root/tools/thing" \
@@ -173,7 +163,7 @@ Fixture ledger for check-coverage-ledger-drift_test.sh, not the real repo's.
 
 ## `internal/foo` — 100.0%
 
-## `internal/analytics` — 100.0% (default build) / 100.0% (`-tags duckdb`)
+## `internal/analytics` — 100.0%
 
 ## `scripts` (package `scripts`, config-check helper) — 100.0%
 

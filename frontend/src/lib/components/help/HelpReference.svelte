@@ -474,7 +474,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
             <ul class="text-sm text-slate-300 space-y-1 list-disc pl-5">
               <li>In <code>frontend/</code>, run <code>npm ci</code> — use <code>npm ci</code>, <strong>not</strong> <code>npm install</code>.</li>
               <li>On Ubuntu 24.04+ Linux hosts, install <code>libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config</code>. GoPMgr builds with the Wails <code>webkit2_41</code> tag; GTK4/WebKitGTK 6.0 support requires a future Wails migration.</li>
-              <li><code>make build</code> — produce the desktop binary/app with DuckDB analytics and the current Linux WebKit tag.</li>
+              <li><code>make build</code> — produce the desktop binary/app with the current Linux WebKit tag.</li>
               <li><code>make dev</code> — hot-reload development mode.</li>
             </ul>
             <p class="text-xs text-slate-500 mt-2">

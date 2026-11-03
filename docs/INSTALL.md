@@ -135,9 +135,7 @@ make dev
 > `npm install` resolves a newer Svelte that breaks the pinned Vite plugin and
 > fails the build (`svelte-check` still passes, which hides it).
 >
-> `make build` is the production path and includes the embedded DuckDB
-> analytics engine. Explicit untagged developer builds are possible, but those
-> builds show the analytics-unavailable fallback and are not release artifacts.
+> `make build` is the production path.
 
 ## Build the installers yourself
 
@@ -151,7 +149,7 @@ On the matching OS, after `make build`:
   (uses the built-in `hdiutil` image path with an Applications shortcut;
   `GOPMGR_FANCY_DMG=1` opts into a locally installed `create-dmg`).
 - **Windows** (`.exe`): run `make windows-installer-scaffold`, then
-  `wails build -platform windows/amd64 -tags duckdb -nsis` (requires NSIS
+  `wails build -platform windows/amd64 -nsis` (requires NSIS
   3.12.0 for parity with the release workflow).
 
 The release workflow (`.github/workflows/release.yml`) runs all of these on

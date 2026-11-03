@@ -47,7 +47,6 @@ fi
 mkdir -p "$ROOT/.tmp"
 run_dir="$(mktemp -d "$ROOT/.tmp/coverage-ledger-drift.XXXXXX")"
 default_log="$run_dir/default.log"
-duckdb_analytics_log="$run_dir/duckdb-analytics.log"
 
 cleanup() {
 	status=$?
@@ -68,27 +67,14 @@ if ! go test -cover . ./internal/... ./scripts ./tools/... >"$default_log" 2>&1;
 	exit 1
 fi
 
-# internal/analytics is the only heading with a second, -tags duckdb
-# number, so only that package is re-run under the duckdb tag rather than
-# paying for a full second suite run here (coverage-ratchet.sh already
-# covers the full duckdb build when run manually).
-echo "check-coverage-ledger-drift: running go test -tags duckdb ./internal/analytics/... -cover..." >&2
-if ! go test -tags duckdb ./internal/analytics/... -cover >"$duckdb_analytics_log" 2>&1; then
-	echo "check-coverage-ledger-drift: go test -tags duckdb ./internal/analytics/... -cover failed:" >&2
-	cat "$duckdb_analytics_log" >&2
-	exit 1
-fi
-
-python3 - "$ledger" "$default_log" "$duckdb_analytics_log" <<'PY'
+python3 - "$ledger" "$default_log" <<'PY'
 import re
 import sys
 
-ledger_path, default_log_path, duckdb_analytics_log_path = sys.argv[1:4]
+ledger_path, default_log_path = sys.argv[1:3]
 
 with open(default_log_path) as f:
     default_out = f.read()
-with open(duckdb_analytics_log_path) as f:
-    duckdb_analytics_out = f.read()
 with open(ledger_path) as f:
     content = f.read()
 
@@ -120,7 +106,6 @@ def parse_live(text):
     return live
 
 live_default = parse_live(default_out)
-live_duckdb_analytics = parse_live(duckdb_analytics_out)
 
 # Every "## ..." heading in the ledger is classified into exactly one of:
 #  (a) a package-coverage heading this script checks against live `go
@@ -161,7 +146,6 @@ FRONTEND_HEADING_PREFIX = "Frontend (`frontend/src`)"
 # -- each gets its own explicit parsing rule below. A heading NOT in this
 # set and NOT matching the bare-percent fallback is an error, not a skip.
 NO_STATEMENTS = {"internal/sigma/domain", "internal/sqlitedriver"}
-DUAL_BUILD = {"internal/analytics"}
 # internal/applog's heading leads with a per-FILE claim ("100% of
 # applog.go") before the package-level number in parens; only the
 # package-level number is checked here. The per-file claim is not
@@ -181,22 +165,6 @@ def check_pkg_heading(pkg, heading):
         live = live_default.get(pkg, "MISSING")
         if live is not None:
             failures.append(f"{pkg}: heading claims 'no statements' but go test reports {live!r} -- package gained testable statements, update the heading")
-        return
-
-    if pkg in DUAL_BUILD:
-        m_default = re.search(r'([\d.]+)% \(default build\)', heading)
-        m_duckdb = re.search(r'([\d.]+)% \(`-tags duckdb`\)', heading)
-        if not (m_default and m_duckdb):
-            failures.append(f"{pkg}: dual-build heading format not recognized: {heading!r}")
-            return
-        claimed_default = float(m_default.group(1))
-        claimed_duckdb = float(m_duckdb.group(1))
-        live_d = live_default.get(pkg)
-        live_k = live_duckdb_analytics.get(pkg)
-        if live_d is None or abs(live_d - claimed_default) > 0.05:
-            failures.append(f"{pkg}: heading claims {claimed_default}% (default build), go test reports {live_d}")
-        if live_k is None or abs(live_k - claimed_duckdb) > 0.05:
-            failures.append(f"{pkg}: heading claims {claimed_duckdb}% (-tags duckdb), go test reports {live_k}")
         return
 
     m_of_package = OF_PACKAGE_PATTERN.search(heading)

@@ -34,9 +34,9 @@ type target struct {
 func (t target) String() string { return t.GOOS + "/" + t.GOARCH }
 
 var releaseTargets = []target{
-	{GOOS: "darwin", GOARCH: "arm64", Tags: "desktop,production,duckdb"},
-	{GOOS: "linux", GOARCH: "amd64", Tags: "desktop,production,duckdb,webkit2_41"},
-	{GOOS: "windows", GOARCH: "amd64", Tags: "desktop,production,duckdb"},
+	{GOOS: "darwin", GOARCH: "arm64", Tags: "desktop,production"},
+	{GOOS: "linux", GOARCH: "amd64", Tags: "desktop,production,webkit2_41"},
+	{GOOS: "windows", GOARCH: "amd64", Tags: "desktop,production"},
 }
 
 func findTarget(name string) (target, error) {

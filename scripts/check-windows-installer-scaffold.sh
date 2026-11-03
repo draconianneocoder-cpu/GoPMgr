@@ -54,8 +54,6 @@ require_literal "$PROJECT_NSI" 'File /oname=fonts.txt "..\..\..\internal\fonts\a
 	"project.nsi must install the bundled fonts' copyright notices and license."
 require_literal "$PROJECT_NSI" 'File /oname=go-modules.txt "..\..\..\third_party\GO-MODULE-NOTICES.txt"' \
 	"project.nsi must install the license notices of the Go modules linked into GoPMgr."
-require_literal "$PROJECT_NSI" 'File /oname=duckdb-native.txt "..\..\..\third_party\DUCKDB-NATIVE-NOTICES.txt"' \
-	"project.nsi must install the notices of the third-party code in DuckDB's native libraries."
 require_literal "$PROJECT_NSI" 'File /oname=frontend.txt "..\..\..\third_party\FRONTEND-NOTICES.txt"' \
 	"project.nsi must install the notices of the npm packages in the embedded frontend bundle."
 require_literal "$PROJECT_NSI" '!insertmacro wails.writeUninstaller' \
@@ -96,26 +94,26 @@ require_literal "$WORKFLOW" 'bash scripts/check-windows-installer-scaffold.sh' \
 	"Windows release job must validate the scaffold before Wails packaging."
 require_literal "$WORKFLOW" 'bash scripts/validate-windows-nsis-template.sh' \
 	"Windows release job must compile the NSIS template fixture before Wails packaging."
-require_literal "$WORKFLOW" 'wails build -platform windows/amd64 -tags duckdb' \
-	"Windows installer must embed DuckDB analytics."
+require_literal "$WORKFLOW" 'wails build -platform windows/amd64 -ldflags' \
+	"Windows installer must be built by the reviewed wails command."
 require_literal "$WORKFLOW" '-ldflags "$GOPMGR_RELEASE_LDFLAGS" -nsis' \
 	"Windows installer must embed the reviewed release identity before NSIS packaging."
-require_literal "$WORKFLOW" 'bash scripts/verify-duckdb-linked.sh build/bin/gopmgr.exe' \
-	"Windows release job must verify DuckDB linkage before upload."
+require_literal "$WORKFLOW" 'bash scripts/verify-module-notices.sh build/bin/gopmgr.exe' \
+	"Windows release job must verify the binary's module notices (and that it links no DuckDB) before upload."
 
 # GITHUB Actions executes the run block in source order. Guard that ordering so
 # a future edit cannot leave validation present but move it after packaging.
 check_line="$(awk '/bash scripts\/check-windows-installer-scaffold\.sh/ { print NR; exit }' "$WORKFLOW")"
 validate_line="$(awk '/bash scripts\/validate-windows-nsis-template\.sh/ { print NR; exit }' "$WORKFLOW")"
-build_line="$(awk '/wails build -platform windows\/amd64 -tags duckdb/ { print NR; exit }' "$WORKFLOW")"
-link_line="$(awk '/bash scripts\/verify-duckdb-linked\.sh build\/bin\/gopmgr\.exe/ { print NR; exit }' "$WORKFLOW")"
+build_line="$(awk '/wails build -platform windows\/amd64 -ldflags/ { print NR; exit }' "$WORKFLOW")"
+link_line="$(awk '/bash scripts\/verify-module-notices\.sh build\/bin\/gopmgr\.exe/ { print NR; exit }' "$WORKFLOW")"
 if [ -n "$check_line" ] && [ -n "$validate_line" ] && [ -n "$build_line" ] && [ -n "$link_line" ] &&
 	{
 		[ "$check_line" -ge "$validate_line" ] ||
 			[ "$validate_line" -ge "$build_line" ] ||
 			[ "$build_line" -ge "$link_line" ]
 	}; then
-	echo "windows-installer-scaffold: workflow order must be scaffold check, NSIS fixture, build, then DuckDB verification." >&2
+	echo "windows-installer-scaffold: workflow order must be scaffold check, NSIS fixture, build, then module-notice verification." >&2
 	fail=1
 fi
 

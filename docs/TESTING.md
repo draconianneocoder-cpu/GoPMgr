@@ -175,8 +175,7 @@ time unless an encoding module loads, and macOS runners have no `libmagic` for
 its mandatory `python-magic` dependency to bind. `config-check` asserts the
 extra, not just the version. The ledger
 checker targets the repository's explicit first-party Go package roots, excluding
-incidental Go packages in `frontend/node_modules`, and separately runs the
-DuckDB-tagged analytics coverage pass. The assurance job must not declare
+incidental Go packages in `frontend/node_modules`. The assurance job must not declare
 `needs`; neither check may use `continue-on-error`, a conditional skip, or a
 custom shell that discards its command. Branch
 protection must require the assurance status if it should block merges; hosted
@@ -193,9 +192,10 @@ prerelease evidence.
 
 `make windows-installer-scaffold` verifies the GoPMgr-owned NSIS entrypoint,
 Windows version resources, DPI manifest, generated-file ignore boundary,
-workflow ordering, DuckDB build tag, and post-build linkage check. Isolated
-fixtures cover missing branding, destructive uninstall behavior, analytics
-stub drift, and bypassed checks. When `makensis` is installed, the target also
+workflow ordering, reviewed build command, and post-build module-notice
+check (which also fails a binary that links DuckDB). Isolated fixtures cover
+missing branding, destructive uninstall behavior, a changed build command,
+and bypassed checks. When `makensis` is installed, the target also
 compiles a harmless fixture installer against the pinned Wails macro template.
 This proves NSIS syntax, not Windows binary linkage or installed-app behavior.
 If `makensis` crashes rather than rejecting the template (some Homebrew
@@ -214,7 +214,7 @@ toolchain/CLI version check, version consistency, configuration format
 policy, native installer tool pins, required font assets, the Windows
 installer scaffold, the Linux runtime target, REUSE/SPDX, frontend build
 budget, release-scope guards, frontend stability, frontend runtime smoke,
-memory-safety scan, Go race tests, production build, DuckDB linkage,
+memory-safety scan, Go race tests, production build,
 encrypted-database validation, PDF/A-2u validation, and the PAdES harness
 regression target. Pre-merge GitHub CI also runs `make pades-harness-tests`
 in a dedicated job with `qpdf` and `pdfsig` installed.

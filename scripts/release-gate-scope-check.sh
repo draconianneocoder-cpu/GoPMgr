@@ -235,7 +235,7 @@ if rg -q '(fetch-fonts\.sh|make fonts)' .github/workflows; then
 	fail=1
 fi
 
-# The macOS DuckDB build can fill the hosted runner with disposable Go caches
+# The macOS CGO build can fill the hosted runner with disposable Go caches
 # before hdiutil stages the app. Preserve the post-build reclamation contract;
 # it is runner-only and must not be moved into the developer packaging script.
 if ! rg -Fq 'name: Reclaim macOS packaging space' .github/workflows/release.yml ||

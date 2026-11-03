@@ -56,7 +56,7 @@ type reviewedNative struct {
 	// License, which must then be empty.
 	LicenseNote string `json:"license_note"`
 	// Within names another native entry this code is compiled into (for
-	// example a library bundled in DuckDB's static archives). The entry is
+	// example a library compiled into another component's static archives). The entry is
 	// listed, with a dependency from that component, wherever it is listed.
 	Within string `json:"within"`
 	reviewedEntry

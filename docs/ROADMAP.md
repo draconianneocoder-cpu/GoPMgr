@@ -17,9 +17,8 @@ GoPMgr already provides local project storage, scheduling, earned-value
 analysis, charts, documents, export, SQLCipher support, and PDF signing. The
 near-term priority is making those workflows dependable for wider testing.
 
-1. Expedite the qualified DuckDB replacement on macOS first, Linux second,
-   through the isolated DF0 work below. Production cutover remains a separate
-   owner decision.
+1. Verify the Go-native analytics engine that replaced DuckDB on Linux
+   (see below).
 2. Prevent data loss in stateful editors and verify save, discard, and cancel
    behavior in native application workflows.
 3. Complete real-target installation and upgrade evidence for every advertised
@@ -33,117 +32,47 @@ near-term priority is making those workflows dependable for wider testing.
    builds, which today ship with the update channel disabled by design.
 5. Improve keyboard and assistive-technology coverage before broad release.
 
-## DuckDB replacement: current delivery sequence
+## DuckDB retirement (2026-11-02)
 
-Snapshot baseline: main `0468ad9` on 2026-11-01 UTC, after merged PR #177.
-Linked DF0 records also cover isolated spike work; that does not mean production
-integration. DuckDB remains the shipped analytics engine. The accepted [ADR-012 authority](review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)
-authorizes the isolated feasibility spike; it does not authorize production
-integration, a release-package change or removal of the legacy engine. Do not
-upgrade DuckDB as part of its retirement.
+DuckDB is retired. On 2026-11-02 the maintainer directed its immediate
+replacement (macOS first, Linux second, Windows not a priority) and chose a
+Go-native engine for both analytics operations; see the
+[owner decision](review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md).
 
-1. **Complete macOS containment qualification.** Host-mediated Parquet reads,
-   forced no-spill controls, per-child kernel resource accounting and pre-launch
-   reservation checks are implemented in the spike (PRs #173–#175). Reservations
-   are not actual memory or CPU caps. The [native limit probes](testing/adr-012-df0-macos-limits.md)
-   demonstrate why address-space limits, per-process CPU time and process groups
-   cannot be substituted for combined RSS/CPU/process-tree enforcement. A later
-   pre-exec follow-up found direct child-creation refusal compatible with a Rust
-   generation job, but practical AS caps failed installation and a larger
-   successful AS control still did not establish RSS enforcement. DF-033
-   and full DF-064 remain unqualified; full DF-062 is BLOCKED on independent
-   OS-wide filesystem observation and still lacks other required controls. Resolve
-   the [containment decision request](review/ADR-012-macos-containment-ACR.md)
-   before production adoption. On 2026-11-01 the owner authorized native
-   monitoring design/measurement and stronger isolation experiments. The
-   [unprivileged App Sandbox/observer prototype](testing/adr-012-df0-observer-sandbox.md)
-   now demonstrates private-file/TCP restrictions, direct-fork refusal and
-   authenticated native IPC with generation and host-mediated Parquet. It also
-   demonstrates missed memory bursts and permitted own-container writes; neither
-   hard quotas nor full memory-only confidentiality is qualified. The
-   [memory-only filesystem experiment](testing/adr-012-df0-memory-only.md) found
-   that App Sandbox plus a zero file-size limit stops file content, including a
-   forced spill, but not names, attributes or writes other processes make for
-   the worker. The owner kept (d) and approved (a) as the target under five
-   conditions, tracked in the ACR; DF-062 stays BLOCKED until they pass. Next
-   implement the owner's choices for conditions 2 and 5: a signed worker copy
-   per concurrency slot (its `flock` slot lock is built), and one
-   delegated-write watch test through a separate signed helper. Conditions 1
-   and 3 have passed.
-   Condition 4 waits for release qualification. Then qualify job-bound observation and failure recovery, then obtain explicit
-   accounting/budget, confidentiality-policy and adoption decisions. Keep accepted guarantees
-   until changed explicitly; no privileged helper or VM is selected.
-2. **Finish the remaining DF0 evidence.** Close the security matrix; compare
-   DuckDB, DataFusion and Go exact-rollup plus DataFusion fairly (DF0-E), verify
-   complete numeric/wire fidelity (E2), and qualify packaging, dependencies and
-   licensing separately (F/F2 and LC-GATE). The first
-   [macOS dependency/binary inventory](interoperability/adr-012-rust-dependency-security-sbom.md)
-   now records 268 worker-reachable packages, source/notice hashes, a clean
-   version-scoped Cargo audit and existing native binary properties. It is a
-   review input. A subsequent isolated slice adds an artifact-bound SPDX 3.0.1
-   build-input SBOM with official schema/SHACL validation, 263 observed Cargo
-   packages and three hashed native archives. All compiler artifacts in that
-   observation were cached. A subsequent native-source review verifies 609
-   published package files, records 103 candidate object/source matches and
-   assembles 13 verbatim notice texts for the three archive inputs. Candidate
-   matches do not establish final linker composition. Complete per-source
-   licensing, compiler/SDK/installed-app composition and release-clearance
-   gates remain open. The first
-   [macOS E2 typed-cell harness](testing/adr-012-df0-numeric-fidelity.md) now
-   checks 10 jobs/60 rows, including JavaScript decoding and decimal-scale
-   preservation. A subsequent [nested-frame repair](testing/adr-012-df0-nested-frames.md)
-   fixes retained backing data and hidden-null materialization in common
-   Arrow containers; its native compatibility jobs are separate from the direct
-   Rust view regressions. Production DTO/renderer use and semantic decoding of nested
-   numbers remain unqualified; this is partial E2 evidence. A first
-   [macOS portfolio backend characterization](testing/adr-012-df0-portfolio-performance.md)
-   checks identical 0/100/1,000-project fixtures across all three candidates,
-   including fresh-worker startup and cleanup. All 306 calls match the oracle;
-   30 measured calls per provider/size are descriptive evidence, not the required
-   controlled cold/warm or ≥1,000-sample/multi-process performance qualification.
-   The Go rollup observations justify further qualification, not cutover. The
-   [evidence record](testing/adr-012-df0-evidence.md) distinguishes completed
-   experiments from NOT-RUN and BLOCKED gates. macOS is the execution priority,
-   Linux follows; Windows execution is deferred, not silently removed from the
-   accepted platform requirements. Minimum-version and signed-app evidence stay
-   separate from development-machine tests.
-3. **Obtain the production decision.** Submit DF0-G's go/no-go report and the
-   required owner decisions, including budgets and production G1-compatible
-   integration. Then implement and qualify Slice J in reviewable stages, with
-   rollback and exact behavior/format compatibility. Only after those gates and
-   an explicit cutover decision remove DuckDB code, bindings, build tags,
-   release paths and obsolete documentation together. Preserve SQLCipher storage
-   authority and the Go calculation kernel.
+- `PortfolioRollup` sums exact minor units in Go with checked 128-bit
+  accumulation and refuses a total that does not fit.
+- `ImportTabular` reads CSV, TSV, TXT, JSON and NDJSON with the Go standard
+  library, and Parquet with Apache Arrow for Go. It keeps the 10,000-row cap
+  and now reports a larger file as truncated instead of omitting rows silently.
+- Every difference from DuckDB's output is recorded with its reason in the
+  [parity record](testing/duckdb-retirement-parity.md), against goldens
+  captured from DuckDB before removal.
+- The DuckDB module, build tag, native libraries, notices, TPC-exclusion
+  checks and packaging steps are gone. `scripts/verify-module-notices.sh`
+  now fails any binary that links a DuckDB module.
 
-At the GitHub snapshot above there were no open PRs. [PR #176](https://github.com/draconianneocoder-cpu/GoPMgr/pull/176)
-merged the four macOS limit, numeric-fidelity, portfolio-characterization and
-dependency-inventory commits. Its eight hosted checks passed at head `9ff61b1`;
-the eight main checks also passed at `8746d38`. The four qualification branches
-were removed locally and remotely after merge/ancestry and worktree checks.
-[PR #177](https://github.com/draconianneocoder-cpu/GoPMgr/pull/177) then merged
-the build-input SBOM. All eight PR checks passed at `eac7cfe`, and all eight
-main checks passed at `0468ad9`; its feature branch was removed locally and
-remotely. The native-source notice review and pre-exec limit follow-up are
-subsequent isolated work committed on `new-merge/df0-macos-exec-limits`, separate
-from that frozen baseline. On 2026-11-01 the owner directed that remaining
-replacement work accumulate as reviewed commits on the integration branch,
-with local macOS verification first and local Ubuntu verification when available.
-The target is one final PR after replacement, removal, documentation and relevant
-local qualification are ready, subject to the production decisions above.
-Do not open intermediate PRs or trigger hosted CI for incremental slices; the
-pending intermediate-PR approval request is withdrawn. The existing workflow
-triggers hosted checks for both the final PR and its merge to main, so one PR
-does not imply one workflow run. Defer hosted verification to that final stage.
-The already-published `new-merge/df0-native-source-notices` branch is retained
-until its work is merged and ancestry verified; it should not produce a duplicate
-PR.
-The retained legacy branch `claude/slice-b-readonly-access` belongs to closed,
-unmerged PR #163.
-Review and selectively port useful missing read-only regression fixtures before
-retiring it; do not merge its rejected strict-schema/refusal interface wholesale.
-Local backup refs and active worktrees need a separate content/ownership check
-before deletion. A closed PR or a different test name alone does not establish
-that all useful work has been superseded.
+For the DF0 branch, the maintainer chose on 2026-11-02 to push it, open its
+PR and merge it when checks pass, instead of holding all replacement work for
+one final PR as the 2026-11-01 instruction said.
+
+The DataFusion spike under `spikes/adr012-datafusion/` stays as isolated
+evidence for possible future columnar analytics. Its macOS containment work
+(the [containment decision request](review/ADR-012-macos-containment-ACR.md),
+[observer sandbox](testing/adr-012-df0-observer-sandbox.md) and
+[memory-only experiment](testing/adr-012-df0-memory-only.md)) and its
+[evidence record](testing/adr-012-df0-evidence.md) remain valid as records,
+but none of it gates a release any more. Its DuckDB measurement commands are
+frozen as history.
+
+Remaining follow-ups:
+
+1. Linux verification of the Go engine on a real Ubuntu host. On macOS the
+   engine is verified by tests and by a packaged build that starts and exits
+   cleanly; hosted CI covers Linux builds and tests.
+2. The retained branch `claude/slice-b-readonly-access` belongs to closed,
+   unmerged PR #163. Review and selectively port useful read-only regression
+   fixtures before retiring it; do not merge its rejected strict-schema
+   interface wholesale.
 
 ## Strategic direction: professional scheduling
 
@@ -212,8 +141,8 @@ any Jira connector. A larger-schedule or cloud change to the product vision
 needs its own maintainer decision.
 
 SQLCipher remains the authoritative project store. The Go calculation kernel
-remains the calculation authority. ADR-011 gates remain in force. DuckDB
-stays until Slice J, and only after DF0. Accepted ADR-001, ADR-004, and
+remains the calculation authority. ADR-011 gates remain in force. DuckDB was
+retired on 2026-11-02. Accepted ADR-001, ADR-004, and
 ADR-005 remain the authority for current storage, escrow, and succession.
 
 Recorded proposal:
@@ -258,7 +187,7 @@ Recorded proposal:
 | ADR | Decision | Status |
 | --- | --- | --- |
 | [ADR-001](design/ADR-001-database-encryption-at-rest.md) | Per-user database encryption at rest | Implemented |
-| [ADR-002](design/ADR-002-duckdb-vs-sqlcipher-evaluation.md) | DuckDB analytics and SQLCipher project storage | Implemented |
+| [ADR-002](design/ADR-002-duckdb-vs-sqlcipher-evaluation.md) | DuckDB analytics and SQLCipher project storage | SQLCipher implemented; DuckDB retired 2026-11-02 |
 | [ADR-003](design/ADR-003-gofpdf-to-go-pdf-fpdf-migration.md) | PDF library migration | Implemented |
 
 ## Not planned

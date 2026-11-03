@@ -79,8 +79,17 @@
       "imported_by_internal": [
         "gopmgr"
       ],
-      "imports_internal": [],
-      "notable_external_deps": []
+      "imports_internal": [
+        "gopmgr/internal/money"
+      ],
+      "notable_external_deps": [
+        "github.com/apache/arrow-go/v18/arrow",
+        "github.com/apache/arrow-go/v18/arrow/array",
+        "github.com/apache/arrow-go/v18/arrow/memory",
+        "github.com/apache/arrow-go/v18/parquet",
+        "github.com/apache/arrow-go/v18/parquet/file",
+        "github.com/apache/arrow-go/v18/parquet/pqarrow"
+      ]
     },
     "gopmgr/internal/applog": {
       "dir": "internal/applog",
@@ -376,6 +385,7 @@
       "dir": "internal/money",
       "imported_by_internal": [
         "gopmgr",
+        "gopmgr/internal/analytics",
         "gopmgr/internal/budget",
         "gopmgr/internal/db",
         "gopmgr/internal/documents",
@@ -588,12 +598,6 @@
     },
     "gopmgr/tools/code-map": {
       "dir": "tools/code-map",
-      "imported_by_internal": [],
-      "imports_internal": [],
-      "notable_external_deps": []
-    },
-    "gopmgr/tools/duckdb-notices": {
-      "dir": "tools/duckdb-notices",
       "imported_by_internal": [],
       "imports_internal": [],
       "notable_external_deps": []

@@ -6,9 +6,5 @@
   "go_default": {
     "covered": 17474,
     "total": 21196
-  },
-  "go_duckdb": {
-    "covered": 17589,
-    "total": 21294
   }
 }

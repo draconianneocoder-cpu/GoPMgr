@@ -387,9 +387,11 @@ func TestReleaseTargetsMatchWorkflow(t *testing.T) {
 	var tool []string
 	for _, tg := range releaseTargets {
 		tool = append(tool, tg.String())
-		if !strings.Contains(","+tg.Tags+",", ",desktop,") || !strings.Contains(","+tg.Tags+",", ",production,") ||
-			!strings.Contains(","+tg.Tags+",", ",duckdb,") {
-			t.Errorf("%s tags %q lack desktop, production or duckdb", tg, tg.Tags)
+		if !strings.Contains(","+tg.Tags+",", ",desktop,") || !strings.Contains(","+tg.Tags+",", ",production,") {
+			t.Errorf("%s tags %q lack desktop or production", tg, tg.Tags)
+		}
+		if strings.Contains(","+tg.Tags+",", ",duckdb,") {
+			t.Errorf("%s tags %q still build DuckDB, which GoPMgr retired", tg, tg.Tags)
 		}
 	}
 	sort.Strings(tool)

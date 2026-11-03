@@ -5,6 +5,13 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-012 DF0 spike
 
+> **2026-11-02:** DuckDB is retired from GoPMgr
+> ([decision](../../docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md)).
+> `cmd/df0-baseline` and `cmd/df0-performance` measured it as engine A and are
+> now excluded from the build (`//go:build ignore`) and kept as history; the
+> commands below that use `-tags duckdb` no longer run. The rest of the spike
+> still builds.
+
 This is the isolated feasibility spike authorized by the maintainer on
 2026-10-26
 ([acceptance record](../../docs/review/ADR-012-v0.2-ACCEPTED-OWNER-DECISIONS.md)).

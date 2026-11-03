@@ -1,30 +1,15 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//go:build duckdb
-
-// Tests for the DuckDB-backed engine. Run with: go test -tags duckdb ./internal/analytics/...
 package analytics
 
 import (
-	"context"
+	"errors"
 	"math"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
-func TestDuckEngineAvailable(t *testing.T) {
-	e := New()
-	t.Cleanup(func() { _ = e.Close() })
-	if !e.Available() {
-		t.Fatal("duckdb build: Available() should be true")
-	}
-}
-
 func TestPortfolioRollupAggregates(t *testing.T) {
-	e := New()
-	t.Cleanup(func() { _ = e.Close() })
 
 	in := []ProjectMetrics{
 		{
@@ -43,7 +28,7 @@ func TestPortfolioRollupAggregates(t *testing.T) {
 		},
 	}
 
-	got, err := e.PortfolioRollup(context.Background(), in)
+	got, err := PortfolioRollup(in)
 	if err != nil {
 		t.Fatalf("PortfolioRollup: %v", err)
 	}
@@ -94,10 +79,8 @@ func TestPortfolioRollupAggregates(t *testing.T) {
 }
 
 func TestPortfolioRollupPrefersMinorUnits(t *testing.T) {
-	e := New()
-	t.Cleanup(func() { _ = e.Close() })
 
-	got, err := e.PortfolioRollup(context.Background(), []ProjectMetrics{{
+	got, err := PortfolioRollup([]ProjectMetrics{{
 		ProjectID:               "exact",
 		BudgetedCost:            999,
 		BudgetedCostMinorUnits:  12345,
@@ -128,10 +111,8 @@ func TestPortfolioRollupPrefersMinorUnits(t *testing.T) {
 }
 
 func TestPortfolioRollupEmptyIsNeutral(t *testing.T) {
-	e := New()
-	t.Cleanup(func() { _ = e.Close() })
 
-	got, err := e.PortfolioRollup(context.Background(), nil)
+	got, err := PortfolioRollup(nil)
 	if err != nil {
 		t.Fatalf("empty rollup: %v", err)
 	}
@@ -147,14 +128,12 @@ func TestPortfolioRollupEmptyIsNeutral(t *testing.T) {
 // Re-running on the same engine must start fresh (CREATE OR REPLACE), not
 // accumulate rows from the previous call.
 func TestPortfolioRollupIsIdempotentPerCall(t *testing.T) {
-	e := New()
-	t.Cleanup(func() { _ = e.Close() })
 
 	one := []ProjectMetrics{{ProjectID: "a", BudgetedCost: 100}}
-	if _, err := e.PortfolioRollup(context.Background(), one); err != nil {
+	if _, err := PortfolioRollup(one); err != nil {
 		t.Fatalf("first rollup: %v", err)
 	}
-	got, err := e.PortfolioRollup(context.Background(), one)
+	got, err := PortfolioRollup(one)
 	if err != nil {
 		t.Fatalf("second rollup: %v", err)
 	}
@@ -163,45 +142,24 @@ func TestPortfolioRollupIsIdempotentPerCall(t *testing.T) {
 	}
 }
 
-func TestImportTabularCSV(t *testing.T) {
-	dir := t.TempDir()
-	p := filepath.Join(dir, "data.csv")
-	if err := os.WriteFile(p, []byte("a,b\n1,x\n2,y\n"), 0o600); err != nil {
-		t.Fatal(err)
+// TestPortfolioRollupOverflow: a total beyond int64 minor units is an error,
+// not a wrapped number, but sums that pass beyond int64 and come back are
+// exact, because accumulation is 128-bit.
+func TestPortfolioRollupOverflow(t *testing.T) {
+	big := ProjectMetrics{BudgetedCostMinorUnits: math.MaxInt64}
+	if _, err := PortfolioRollup([]ProjectMetrics{big, {BudgetedCostMinorUnits: 1}}); !errors.Is(err, ErrRollupOverflow) {
+		t.Fatalf("overflowing budget total: err = %v, want ErrRollupOverflow", err)
 	}
-
-	e := New()
-	t.Cleanup(func() { _ = e.Close() })
-
-	ds, err := e.ImportTabular(context.Background(), p)
-	if err != nil {
-		t.Fatalf("ImportTabular: %v", err)
+	if _, err := PortfolioRollup([]ProjectMetrics{{CommittedCostMinorUnits: math.MinInt64}, {CommittedCostMinorUnits: -1}}); !errors.Is(err, ErrRollupOverflow) {
+		t.Fatalf("underflowing committed total: err = %v, want ErrRollupOverflow", err)
 	}
-	if len(ds.Columns) != 2 || ds.Columns[0] != "a" || ds.Columns[1] != "b" {
-		t.Errorf("Columns = %v, want [a b]", ds.Columns)
+	got, err := PortfolioRollup([]ProjectMetrics{big, big, {BudgetedCostMinorUnits: -math.MaxInt64}, {BudgetedCostMinorUnits: -math.MaxInt64 + 5}})
+	if err != nil || got.TotalBudgetedCostMinorUnits != 5 {
+		t.Fatalf("intermediate overflow: total = %d, err = %v; want 5", got.TotalBudgetedCostMinorUnits, err)
 	}
-	if len(ds.Rows) != 2 {
-		t.Errorf("Rows = %d, want 2", len(ds.Rows))
-	}
-}
-
-func TestImportTabularRejectsUnsupportedExtension(t *testing.T) {
-	dir := t.TempDir()
-	p := filepath.Join(dir, "data.xlsx")
-	if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	e := New()
-	t.Cleanup(func() { _ = e.Close() })
-	if _, err := e.ImportTabular(context.Background(), p); err == nil {
-		t.Fatal("expected an error for unsupported .xlsx, got nil")
-	}
-}
-
-func TestImportTabularMissingFile(t *testing.T) {
-	e := New()
-	t.Cleanup(func() { _ = e.Close() })
-	if _, err := e.ImportTabular(context.Background(), filepath.Join(t.TempDir(), "nope.csv")); err == nil {
-		t.Fatal("expected an error for a missing file, got nil")
+	// AC/EV/PV of a project without EVM are ignored, even when huge.
+	got, err = PortfolioRollup([]ProjectMetrics{{ActualCostMinorUnits: math.MaxInt64}, {ActualCostMinorUnits: math.MaxInt64}})
+	if err != nil || got.TotalActualCostMinorUnits != 0 || got.EVMUnavailableProjectCount != 2 {
+		t.Fatalf("non-EVM actual cost counted: %+v, %v", got, err)
 	}
 }

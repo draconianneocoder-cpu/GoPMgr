@@ -147,6 +147,10 @@ export const en = {
 
   'sigma.solutions.cost': 'Cost',
   'sigma.solutions.costIn': 'Cost ({currency})',
+
+  'portfolio.analyticsFailed': 'Analytics failed: {error}',
+  'portfolio.importFailed': 'Import failed: {error}',
+  'portfolio.importTruncated': 'The file has more rows than this. Only the first {count} were read.',
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

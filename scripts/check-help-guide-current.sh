@@ -33,7 +33,7 @@ require_not_contains() {
 }
 
 require_contains "integer minor units"
-require_contains "DuckDB-backed"
+require_contains "in-memory portfolio analytics"
 require_contains "Resource Capacity"
 require_contains "weekly capacity and day overrides"
 require_contains "dashed capacity lines"
@@ -58,6 +58,7 @@ require_contains "IBM Plex Sans JP, KR, or SC"
 
 require_not_contains "libwebkit2gtk-4.0-dev"
 require_not_contains "Ubuntu 22.04"
+require_not_contains "DuckDB"
 require_not_contains "WebKit2GTK 4.0"
 
 # ── Route coverage ──────────────────────────────────────────────────────

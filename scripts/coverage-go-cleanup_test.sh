@@ -62,7 +62,7 @@ if find "$FIXTURE/repo/.tmp" -mindepth 1 -maxdepth 1 -print | grep -q .; then
 fi
 
 custom_profile="$FIXTURE/custom profile.out"
-result="$(run_coverage duckdb "$custom_profile")"
+result="$(run_coverage default "$custom_profile")"
 [ "$result" = "1 1" ] || fail "unexpected custom-profile result: $result"
 [ -f "$custom_profile" ] || fail "caller-requested profile was removed"
 grep -Fq 'mode: set' "$custom_profile" || fail "caller-requested profile was corrupted"

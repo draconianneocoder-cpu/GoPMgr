@@ -43,11 +43,14 @@
       "    const WorkItemStory WorkItemType = \"story\" ..."
     ],
     "gopmgr/internal/analytics": [
-      "var ErrAnalyticsUnavailable = errors.New(\"analytics: engine not built in (rebuild with -tags duckdb)\")",
+      "const MaxImportRows = 10000",
+      "var ErrParquetMemory = errors.New(\"analytics: reading the Parquet file needs more than 512 MiB of memory\")",
+      "var ErrRecordTooLarge = errors.New(\"analytics: a single row is larger than 16 MiB\")",
+      "var ErrRollupOverflow = errors.New(\"analytics: portfolio total exceeds the int64 minor-unit range\")",
       "type Dataset struct{ ... }",
-      "type Engine interface{ ... }",
-      "    func New() Engine",
+      "    func ImportTabular(ctx context.Context, path string) (Dataset, error)",
       "type PortfolioSummary struct{ ... }",
+      "    func PortfolioRollup(projects []ProjectMetrics) (PortfolioSummary, error)",
       "type ProjectMetrics struct{ ... }"
     ],
     "gopmgr/internal/applog": [

@@ -5,7 +5,10 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-002: DuckDB analytics and SQLCipher project storage
 
-**Status:** Implemented
+**Status:** Implemented; the DuckDB analytics part was superseded on
+2026-11-02 by a Go-native engine (see the
+[owner decision](../review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md)).
+SQLCipher project storage is unchanged.
 **Decision date:** 2026-06-23
 **Related:** [ADR-001](ADR-001-database-encryption-at-rest.md)
 

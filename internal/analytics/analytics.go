@@ -1,34 +1,18 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package analytics is GoPMgr's optional, in-memory analytical engine.
+// Package analytics is GoPMgr's in-memory analytics engine, written in Go.
 //
-// Design and decision record:
-//   - docs/design/duckdb-analytics-engine.md
-//   - docs/design/ADR-002-duckdb-vs-sqlcipher-evaluation.md
+// It does two things: PortfolioRollup totals per-project figures with exact
+// minor-unit arithmetic, and ImportTabular reads one user-selected CSV, TSV,
+// TXT, JSON, NDJSON or Parquet file into a bounded Dataset for display.
 //
-// SQLCipher remains GoPMgr's system of record. This package never opens
-// the encrypted .pmforge file: callers read rows from SQLCipher (already
-// decrypted in process) and hand them to the Engine, which aggregates
-// them in memory. The real implementation is DuckDB-backed and compiled
-// in under the `duckdb` build tag. Production/package builds set that tag;
-// untagged developer builds link the no-op stub in stub.go so analytics
-// features degrade gracefully during local experiments.
+// SQLCipher remains GoPMgr's system of record. This package never opens the
+// encrypted project file: callers read rows from SQLCipher and pass them in.
+// It replaced the DuckDB engine on 2026-11-02; see
+// docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md and the parity
+// record in docs/testing/duckdb-retirement-parity.md.
 package analytics
-
-import (
-	"context"
-	"errors"
-)
-
-// ErrAnalyticsUnavailable is returned by every Engine method when GoPMgr
-// was built without the DuckDB analytics engine.
-// Callers should treat it as "feature not installed", not as a failure.
-var ErrAnalyticsUnavailable = errors.New("analytics: engine not built in (rebuild with -tags duckdb)")
-
-// ErrAmbiguousImportPath rejects glob-bearing filenames or folders until the
-// replacement reader can preserve literal paths without expanding selection.
-var ErrAmbiguousImportPath = errors.New("analytics: selected path contains glob characters (*, ?, [); rename the file or folder before importing")
 
 // ProjectMetrics is one project's pre-computed figures, supplied by the
 // caller. The engine never reads these from disk — the app loads them
@@ -75,34 +59,14 @@ type PortfolioSummary struct {
 	CostPerformanceIndex         float64 `json:"cost_performance_index"`     // CPI = ΣEV/ΣAC (0 = n/a)
 }
 
-// Dataset is a generic tabular result from a local-file import
-// (CSV / Parquet / JSON). Rows are row-major; cell types follow the
-// engine's inference.
+// Dataset is a tabular result from ImportTabular. Rows are row-major. A
+// cell is nil (empty), a bool, an int64, a float64 or a string; values that
+// JSON or JavaScript cannot carry exactly (integers beyond 2^53, decimals,
+// dates, nested values, NaN) are strings.
 type Dataset struct {
 	Columns []string `json:"columns"`
 	Rows    [][]any  `json:"rows"`
-}
-
-// Engine is GoPMgr's optional analytical backend. Implementations are
-// in-memory and ephemeral; they receive data the app already decrypted
-// and must never open the encrypted .pmforge file. Implementations must
-// be safe to Close once and tolerate Close being called on a stub.
-type Engine interface {
-	// PortfolioRollup aggregates per-project metrics into portfolio totals.
-	PortfolioRollup(ctx context.Context, projects []ProjectMetrics) (PortfolioSummary, error)
-
-	// ImportTabular reads a single local CSV/Parquet/JSON file (an explicit,
-	// user-chosen path) into a Dataset. Implementations must restrict file
-	// access to that path and must not enable network or extension
-	// auto-install. DuckDB temporarily rejects glob-bearing paths with
-	// ErrAmbiguousImportPath. .xlsx is intentionally not handled here (see the
-	// file-import evaluation in the design doc).
-	ImportTabular(ctx context.Context, path string) (Dataset, error)
-
-	// Available reports whether a real engine is compiled in. The UI can
-	// use this to show or hide analytics features without provoking an error.
-	Available() bool
-
-	// Close releases engine resources. Safe to call on the stub.
-	Close() error
+	// Truncated is true when the file holds more than MaxImportRows rows and
+	// only the first MaxImportRows were read.
+	Truncated bool `json:"truncated"`
 }
