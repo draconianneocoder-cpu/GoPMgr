@@ -55,6 +55,10 @@ type reviewedNative struct {
 	// LicenseNote explains a license with no SPDX identifier; it replaces
 	// License, which must then be empty.
 	LicenseNote string `json:"license_note"`
+	// Within names another native entry this code is compiled into (for
+	// example a library bundled in DuckDB's static archives). The entry is
+	// listed, with a dependency from that component, wherever it is listed.
+	Within string `json:"within"`
 	reviewedEntry
 }
 
@@ -111,6 +115,12 @@ func (r *reviewed) validate() error {
 			return err
 		}
 	}
+	natives := map[string]bool{}
+	for _, n := range r.Native {
+		if n.Within == "" {
+			natives[n.Name] = true
+		}
+	}
 	for _, n := range r.Native {
 		if n.ParentModule == "" || n.Name == "" {
 			return errors.New("every native entry needs parent_module and name")
@@ -120,6 +130,9 @@ func (r *reviewed) validate() error {
 		}
 		if err := check(n.Name, n.License, false); err != nil {
 			return err
+		}
+		if n.Within != "" && !natives[n.Within] {
+			return fmt.Errorf("native entry %s is within %q, which is not a native entry without within", n.Name, n.Within)
 		}
 	}
 	for _, e := range r.Embedded {

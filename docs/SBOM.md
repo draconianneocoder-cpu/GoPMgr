@@ -68,7 +68,7 @@ SPDX `sha256`.
 | Practice | How GoPMgr meets it |
 |---|---|
 | Machine-Processable Data | Both widely used open formats, each checked against its official schema (below) |
-| Coverage | Every Go module linked into the shipped executable, the Go standard library, native code inside those modules (including the WebView2 bootstrapper that the Windows executable and installer carry), every npm package in the embedded web bundle, every embedded third-party file, and the platform components the app needs but does not ship |
+| Coverage | Every Go module linked into the shipped executable, the Go standard library, native code inside those modules (including the WebView2 bootstrapper that the Windows executable and installer carry, and the 33 third-party libraries compiled into DuckDB's static libraries, each with a dependency from DuckDB), every npm package in the embedded web bundle, every embedded third-party file, and the platform components the app needs but does not ship |
 | Frequency | The release workflow writes the SBOMs for every package of every release |
 | Distribution and Delivery | Attached to the public GitHub release beside each package |
 | Explicitly Identifying Unknown Information | Every missing field is marked unknown with a reason. The SBOM author withholds nothing, and each SBOM says so (`gopmgr:withheld`) |

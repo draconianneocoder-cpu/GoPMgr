@@ -7,8 +7,10 @@ import (
 	"debug/buildinfo"
 	"errors"
 	"fmt"
+	"maps"
 	"path"
 	"runtime/debug"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -152,47 +154,15 @@ func assemble(in buildInput) (*inventory, error) {
 	for _, p := range in.Packages {
 		packages[p.ImportPath] = true
 	}
-	for _, n := range r.Native {
-		parent, ok := linked[n.ParentModule]
-		if !ok || (n.ParentPackage != "" && !packages[n.ParentPackage]) {
-			continue
-		}
-		c := component{Ref: "native:" + n.ParentModule + ":" + n.Name, Kind: "library", Name: n.Name, Version: n.Version, Producer: n.Producer, License: n.License, Shipped: true, Note: n.Note}
-		if n.LicenseNote != "" {
-			c.unknown("license", n.LicenseNote)
-		}
-		if n.Purl != "" {
-			c.Identifiers = append(c.Identifiers, identifier{"purl", n.Purl})
-		}
-		if n.CPE != "" {
-			c.Identifiers = append(c.Identifiers, identifier{"cpe23", n.CPE})
-		}
-		if n.Commit != "" {
-			c.Identifiers = append(c.Identifiers, identifier{"gitCommit", n.Commit})
-		}
-		if n.Version == "" {
-			c.unknown("version", "the copy GoPMgr builds carries no release version")
-		}
-		if n.Producer == "" {
-			c.unknown("producer", "the component's notice names no single producer")
-		}
-		switch {
-		case n.ModuleFile != "":
-			sum, err := in.ModuleFile(n.ParentModule, parent.Version, n.ModuleFile)
-			if err != nil {
+	nativeRefs := map[string][]string{} // name -> refs listed for this build
+	for pass := 0; pass < 2; pass++ {
+		for _, n := range r.Native {
+			if (pass == 0) != (n.Within == "") {
+				continue
+			}
+			if err := addNative(inv, in, n, linked, packages, nativeRefs); err != nil {
 				return nil, err
 			}
-			c.Hashes = []hash{{"sha-256", sum, hashModuleFile}}
-			c.Identifiers = append(c.Identifiers, identifier{"file", path.Base(n.ModuleFile)})
-		case parent.Replace != nil && isLocalReplacement(parent.Replace):
-			c.unknown("hash", "compiled from the GoPMgr repository's copy of its parent Go module; no separate archive exists")
-		default:
-			c.unknown("hash", "linked as part of its parent Go module, whose archive hash covers it")
-		}
-		inv.add(c)
-		inv.depend(refGo(n.ParentModule, parent.Version), c.Ref)
-		if n.InInstaller {
-			inv.depend(refApp, c.Ref)
 		}
 	}
 
@@ -310,4 +280,67 @@ func sameModules(linked map[string]*debug.Module, listed map[string]string) erro
 // version "(devel)" or none.
 func isLocalReplacement(r *debug.Module) bool {
 	return r.Version == "" || r.Version == "(devel)" || strings.HasPrefix(r.Path, "./") || strings.HasPrefix(r.Path, "../") || strings.HasPrefix(r.Path, "/")
+}
+
+// addNative lists one reviewed native component if this build links it.
+// A component with Within is listed once under each listed component of
+// that name, with a dependency from it, and records no hash of its own.
+func addNative(inv *inventory, in buildInput, n reviewedNative, linked map[string]*debug.Module, packages map[string]bool, nativeRefs map[string][]string) error {
+	parent, ok := linked[n.ParentModule]
+	if !ok || (n.ParentPackage != "" && !packages[n.ParentPackage]) {
+		return nil
+	}
+	base := component{Kind: "library", Name: n.Name, Version: n.Version, Producer: n.Producer, License: n.License, Shipped: true, Note: n.Note}
+	if n.LicenseNote != "" {
+		base.unknown("license", n.LicenseNote)
+	}
+	if n.Purl != "" {
+		base.Identifiers = append(base.Identifiers, identifier{"purl", n.Purl})
+	}
+	if n.CPE != "" {
+		base.Identifiers = append(base.Identifiers, identifier{"cpe23", n.CPE})
+	}
+	if n.Commit != "" {
+		base.Identifiers = append(base.Identifiers, identifier{"gitCommit", n.Commit})
+	}
+	if n.Version == "" {
+		base.unknown("version", "the copy GoPMgr builds carries no release version")
+	}
+	if n.Producer == "" {
+		base.unknown("producer", "the component's notice names no single producer")
+	}
+	if n.Within != "" {
+		for _, owner := range nativeRefs[n.Within] {
+			c := base
+			c.Unknown = maps.Clone(base.Unknown)
+			c.Identifiers = slices.Clone(base.Identifiers)
+			c.Ref = owner + "/" + n.Name
+			c.unknown("hash", "compiled into "+n.Within+"'s libraries; no separate artifact exists")
+			inv.add(c)
+			inv.depend(owner, c.Ref)
+		}
+		return nil
+	}
+	c := base
+	c.Ref = "native:" + n.ParentModule + ":" + n.Name
+	switch {
+	case n.ModuleFile != "":
+		sum, err := in.ModuleFile(n.ParentModule, parent.Version, n.ModuleFile)
+		if err != nil {
+			return err
+		}
+		c.Hashes = []hash{{"sha-256", sum, hashModuleFile}}
+		c.Identifiers = append(c.Identifiers, identifier{"file", path.Base(n.ModuleFile)})
+	case parent.Replace != nil && isLocalReplacement(parent.Replace):
+		c.unknown("hash", "compiled from the GoPMgr repository's copy of its parent Go module; no separate archive exists")
+	default:
+		c.unknown("hash", "linked as part of its parent Go module, whose archive hash covers it")
+	}
+	inv.add(c)
+	inv.depend(refGo(n.ParentModule, parent.Version), c.Ref)
+	if n.InInstaller {
+		inv.depend(refApp, c.Ref)
+	}
+	nativeRefs[n.Name] = append(nativeRefs[n.Name], c.Ref)
+	return nil
 }

@@ -913,3 +913,46 @@ func TestMainModuleEmbedsMustBeReviewed(t *testing.T) {
 		t.Error("a sibling folder counted as inside a reviewed folder")
 	}
 }
+
+// TestBundledNativeComponents: a library compiled into another native
+// component is listed under each listed copy of it, with a dependency from
+// it, and only when that component is listed for the build.
+func TestBundledNativeComponents(t *testing.T) {
+	in := fixtureInput(t)
+	in.Reviewed.Native = append(in.Reviewed.Native, reviewedNative{ParentModule: "example.com/local", Within: "Native Library", reviewedEntry: reviewedEntry{Name: "Bundled Lib", License: "Zlib", Producer: "Lib Authors"}})
+	inv, err := assemble(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner := "native:example.com/local:Native Library"
+	ref := owner + "/Bundled Lib"
+	var found *component
+	for i := range inv.Components {
+		if inv.Components[i].Ref == ref {
+			found = &inv.Components[i]
+		}
+	}
+	if found == nil || found.Unknown["hash"] == "" || found.License != "Zlib" {
+		t.Fatalf("bundled component = %+v", found)
+	}
+	if !slicesContain(inv.Deps[owner], ref) {
+		t.Fatalf("no dependency from %s to the bundled library: %v", owner, inv.Deps[owner])
+	}
+	// Not listed when the component it is bundled in is not.
+	in = fixtureInput(t)
+	in.Reviewed.Native = append(in.Reviewed.Native, reviewedNative{ParentModule: "example.com/known", Within: "Removed Native", reviewedEntry: reviewedEntry{Name: "Orphan", License: "MIT"}})
+	inv, err = assemble(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range inv.Components {
+		if c.Name == "Orphan" {
+			t.Fatal("a library bundled in an unlisted component was listed")
+		}
+	}
+	r := fixtureReviewedValue(t)
+	r.Native = append(r.Native, reviewedNative{ParentModule: "example.com/known", Within: "No Such Component", reviewedEntry: reviewedEntry{Name: "X", License: "MIT"}})
+	if err := r.validate(); err == nil {
+		t.Fatal("within naming no native entry was accepted")
+	}
+}
