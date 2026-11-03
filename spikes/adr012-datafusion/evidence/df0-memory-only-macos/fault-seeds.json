@@ -1,5 +1,5 @@
 {
-  "counted_total": 42,
+  "counted_total": 44,
   "groups": [
     {
       "group": "S1-S9, S1b (memory-only policy, observers, scans)",
@@ -292,7 +292,7 @@
       ]
     },
     {
-      "group": "L1-L7 (cross-process container slot lock, owner condition 2)",
+      "group": "L1-L9 (cross-process container slot lock, owner condition 2)",
       "ran_against": "the slot-lock sources of this commit",
       "seeds": [
         {
@@ -329,6 +329,16 @@
           "seed": "L7 lock opened without O_NOFOLLOW",
           "result": "CAUGHT by TestContainerSlotLockMustBeAPrivateRegularFile/lock_file_is_a_symlink",
           "first_assertion": "container_lock_darwin_test.go: job with a symlink lock: ran=true"
+        },
+        {
+          "seed": "L8 lock opened without O_CLOEXEC",
+          "result": "CAUGHT by TestContainerSlotLockIsNotInheritedByTheJobsChildren",
+          "first_assertion": "container_lock_darwin_test.go: a child the job started kept the slot locked"
+        },
+        {
+          "seed": "L9 regular-file and owner check after open removed",
+          "result": "CAUGHT by TestContainerSlotLockMustBeAPrivateRegularFile/lock_file_is_a_directory; the FIFO case still passed, because flock itself refuses a FIFO",
+          "first_assertion": "container_lock_darwin_test.go: job with a directory lock: ran=true"
         }
       ]
     }

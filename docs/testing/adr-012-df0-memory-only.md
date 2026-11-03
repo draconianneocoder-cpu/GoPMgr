@@ -419,7 +419,7 @@ The full spike race suite and `go vet` passed with the same worker. The tests
 skip as root and skip the worker scenarios without `DF0_WORKER`; neither is
 qualification.
 
-For the memory-only and container work, forty-two compiling seeds were each
+For the memory-only and container work, forty-four compiling seeds were each
 caught by a named assertion (the SEC-002 to SEC-005 seeds are recorded in their
 commit messages); four
 first forms that did not compile were replaced and are recorded as not

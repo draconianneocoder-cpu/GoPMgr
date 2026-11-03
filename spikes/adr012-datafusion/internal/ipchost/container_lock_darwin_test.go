@@ -316,3 +316,35 @@ func TestContainerSlotLockMustBeAPrivateRegularFile(t *testing.T) {
 		})
 	}
 }
+
+// The lock's descriptor must not pass to processes the job starts, such as
+// the worker: a child that outlives the job would otherwise keep the slot
+// locked, and would hold a descriptor from outside its container.
+func TestContainerSlotLockIsNotInheritedByTheJobsChildren(t *testing.T) {
+	first, root, _, lock := savedSlot(t)
+	self, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := first.Do("spawns", func(string) Result {
+		child := exec.Command(self, treeSleeperFlag)
+		if err := child.Start(); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			_ = child.Process.Kill()
+			_ = child.Wait()
+		})
+		return NewResult("spawns")
+	})
+	if res.ContainerSweep == nil || !res.ContainerSweep.Clean {
+		t.Fatalf("job that started a child: %+v", res.ContainerSweep)
+	}
+	second, err := NewContainer(root, lock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := second.Do("after", func(string) Result { return NewResult("after") }); res.Outcome == "setup_failed" {
+		t.Fatalf("a child the job started kept the slot locked: %+v", res)
+	}
+}

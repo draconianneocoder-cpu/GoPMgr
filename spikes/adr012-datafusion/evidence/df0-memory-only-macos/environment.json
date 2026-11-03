@@ -34,7 +34,7 @@
     "spikes/adr012-datafusion/internal/ipchost/container_darwin_test.go": "923a492cb8c3a28d2bedaf2c7062c5f6ac4bf99d3a65850156dc135985d191ac",
     "spikes/adr012-datafusion/rust/worker/src/main.rs": "f5a6c8048bcefab7dc0961f981c0a083f43e17ab119692ae20cf330acf4c318a",
     "spikes/adr012-datafusion/internal/ipchost/container_report.go": "4dd497e971e6a6d829733bf3ec4e605f039eb579ae9d4f9c2d776047ad7cee20",
-    "spikes/adr012-datafusion/internal/ipchost/container_lock_darwin_test.go": "aa48685ed05f43adc2e27bd8bf33fe5e58b6846e7643e2004932c3f683c9ca57"
+    "spikes/adr012-datafusion/internal/ipchost/container_lock_darwin_test.go": "73db1ac58eeb230598bfc11049fe7e64f8c359f51ae7c5c4121d12eb2e9d171d"
   },
   "sources_changed_since_previous_manifest": "tools/macos_exec_limits_probe.c gained the optional file-growth limit and FSIZE/CORE/SIGXFSZ readback; tools/macos_observer_probe.c gained the growth and growth-launch helper modes; sandbox_darwin_test.go only adopts the launcherLimits signature. The observer-sandbox tests still pass on these sources in the full spike race suite; their committed evidence and manifest were not regenerated and still bind the earlier versions. Condition 3 update: worker main.rs gained the panic hook, read_source.rs the test-only source_panic and source_panic_abort faults, and the memory-only test the panic, panic_abort and crash_trailing scenarios; memory-only-worker.json and fault-seeds.json were regenerated, the other observations still bind 5b434f0 sources SEC-001 update: container.go now sweeps through directory handles (macOS only), container_report.go carries the portable report type, the two flag-helper files were removed, and container_darwin_test.go gained the swap, hard-link, fail-closed and depth tests; memory-only-worker.json and growth-channels.json were regenerated with the same worker, and their sweep counts match the earlier run SEC-002..005 and flake update (2026-11-02): every source hash was refreshed; run.go and worker main.rs changed for SEC-002 (process-tree teardown, RLIMIT_NPROC); the FSEvents probe now announces a drop outside the reported folders without its path, and the volume test retries a barrier only after a reported drop, requires the full load only when no drop was reported, and fails on any reported path outside its prefixes. All four observation files were regenerated with worker d4da6f37; outcomes match the earlier run (the cancel scenario's row count before cancellation is timing-dependent) Condition 2 lock update: container.go gained the cross-process slot lock and the pre-job sweep, container_report.go ErrContainerBusy, run.go the container_pre_sweep result field, container_lock_darwin_test.go the lock tests, and the memory-only test passes a lock path; all four observation files were regenerated with the same worker and outcomes match",
   "sdk_sha256": {
@@ -45,7 +45,7 @@
   },
   "evidence_sha256": {
     "crash-reports.json": "1b30a818db241f9a9534c46b6bb428c4f48fb3be7e23a584bcf5523a5e59b5e8",
-    "fault-seeds.json": "39fa111c1d59d712f5287c9c01db450865bb4dfc5bd8a768379e6f02341ca005",
+    "fault-seeds.json": "4318538615217909a0d8d3e3ec953bd2291cfa86e5e818d371064598a869cd8e",
     "growth-channels.json": "9f4d62c14c809860c04cf4428cfdc9dd245317bf62a51702240e6591fbed5fa7",
     "memory-only-worker.json": "95e1cc263d394cb0a951badac375929f9e090c82de645ffcf063e99a34bc7f8e",
     "volume-watch.json": "29cae378e76151a54589d7b67993887dc52f42b2989852165d3b3a0b6b1650d7"
