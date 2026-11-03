@@ -216,7 +216,7 @@ func TestImportTabularParityWithDuckDB(t *testing.T) {
 				}
 				for c, cell := range row {
 					got, _ := json.Marshal(ds.Rows[r][c])
-					if string(got) != cell.Value && !(cell.Value == "null" && ds.Rows[r][c] == nil) && !sameJSONNumber(string(got), cell.Value) {
+					if string(got) != cell.Value && (cell.Value != "null" || ds.Rows[r][c] != nil) && !sameJSONNumber(string(got), cell.Value) {
 						same = false
 					}
 				}

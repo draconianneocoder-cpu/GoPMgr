@@ -61,7 +61,7 @@ func readParquet(ctx context.Context, f *os.File, size int64) (ds Dataset, err e
 	if err != nil {
 		return Dataset{}, fmt.Errorf("analytics: read Parquet: %w", err)
 	}
-	defer pf.Close()
+	defer func() { _ = pf.Close() }()
 	fr, err := pqarrow.NewFileReader(pf, pqarrow.ArrowReadProperties{BatchSize: 1024}, mem)
 	if err != nil {
 		return Dataset{}, fmt.Errorf("analytics: read Parquet: %w", err)

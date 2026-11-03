@@ -18,11 +18,11 @@ func openRegular(path string) (*os.File, os.FileInfo, error) {
 	}
 	info, err := f.Stat()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, nil, fmt.Errorf("analytics: stat %s: %w", path, err)
 	}
 	if !info.Mode().IsRegular() {
-		f.Close()
+		_ = f.Close()
 		return nil, nil, fmt.Errorf("analytics: not a regular file: %s", path)
 	}
 	return f, info, nil

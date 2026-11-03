@@ -5,7 +5,6 @@ package analytics
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -73,7 +72,7 @@ func ImportTabular(ctx context.Context, path string) (Dataset, error) {
 	if err != nil {
 		return Dataset{}, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }() // read-only: a close error loses nothing
 
 	var ds Dataset
 	switch f {
@@ -251,15 +250,6 @@ func floatCell(v float64) any {
 		return strconv.FormatFloat(v, 'g', -1, 64)
 	}
 	return v
-}
-
-// compactJSON renders a nested value as compact JSON text.
-func compactJSON(v any) string {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return fmt.Sprint(v)
-	}
-	return string(b)
 }
 
 // recordLimiter fails once more than maxRecordBytes have been read past the

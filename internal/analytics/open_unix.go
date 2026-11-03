@@ -22,11 +22,11 @@ func openRegular(path string) (*os.File, os.FileInfo, error) {
 	f := os.NewFile(uintptr(fd), path)
 	info, err := f.Stat()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, nil, fmt.Errorf("analytics: stat %s: %w", path, err)
 	}
 	if !info.Mode().IsRegular() {
-		f.Close()
+		_ = f.Close()
 		return nil, nil, fmt.Errorf("analytics: not a regular file: %s", path)
 	}
 	// O_NONBLOCK has no effect on reads from a regular file.
