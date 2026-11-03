@@ -3,14 +3,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Coverage ratchet: fails only if the UNCOVERED statement count rises above
-# the last recorded high-water mark, for any of the three independently-
-# tracked targets (Go default build, Go -tags duckdb build, frontend). It
-# never requires 100% today -- it requires "not worse than the best we've
-# ever measured." Three separate marks are needed instead of one: the
-# default and duckdb Go builds compile different files (stub.go vs
-# duckdb.go), so a single merged percentage can't represent either
-# faithfully and would let one config's regression hide behind the other's
-# improvement.
+# the last recorded high-water mark, for either independently-tracked
+# target (the Go build and the frontend). It never requires 100% today --
+# it requires "not worse than the best we've ever measured." A third mark
+# for a `-tags duckdb` Go build was retired with DuckDB on 2026-11-02.
 #
 # Compares uncovered COUNT, not percentage: deleting statements that were
 # already 100% covered (e.g. removing dead code) shrinks covered and total
@@ -25,7 +21,7 @@
 # (trimmed from this file's public-facing cleanup in commit ebfd971), not
 # reproduced here.
 #
-# coverage-baseline.json (checked into the repo) holds the three marks as
+# coverage-baseline.json (checked into the repo) holds the marks as
 # exact "<covered> <total>" statement counts (uncovered is covered/total's
 # difference, computed at comparison time, not stored separately).
 #
@@ -55,13 +51,12 @@ if [ "${1:-}" = "--update" ]; then
 fi
 
 go_default="$(bash "$ROOT/scripts/coverage-go.sh" default)"
-go_duckdb="$(bash "$ROOT/scripts/coverage-go.sh" duckdb)"
 frontend="$(bash "$ROOT/scripts/coverage-frontend.sh")"
 
-python3 - "$BASELINE" "$UPDATE" "$go_default" "$go_duckdb" "$frontend" <<'PY'
+python3 - "$BASELINE" "$UPDATE" "$go_default" "$frontend" <<'PY'
 import json, os, sys
 
-baseline_path, update, go_default, go_duckdb, frontend = sys.argv[1:6]
+baseline_path, update, go_default, frontend = sys.argv[1:5]
 update = update == "1"
 allow_regression = bool(os.environ.get("GOPMGR_ALLOW_COVERAGE_REGRESSION"))
 
@@ -71,7 +66,6 @@ def parse(pair):
 
 current = {
     "go_default": parse(go_default),
-    "go_duckdb": parse(go_duckdb),
     "frontend": parse(frontend),
 }
 

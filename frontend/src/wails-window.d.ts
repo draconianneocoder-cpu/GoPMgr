@@ -688,6 +688,8 @@ declare global {
   interface Dataset {
     columns: string[];
     rows: unknown[][];
+    /** True when the file holds more rows than were read (the import cap). */
+    truncated: boolean;
   }
 
   interface AppSettings {

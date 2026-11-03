@@ -13,6 +13,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   import RecoveryReminder from '../auth/RecoveryReminder.svelte';
   import AccessNotice from '../auth/AccessNotice.svelte';
   import Spinner from '../Spinner.svelte';
+  import { t } from '../../i18n/i18n.svelte';
 
   let projects = $state<ProjectSummary[]>([]);
   let loading = $state(true);
@@ -85,7 +86,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  // ----- Portfolio analytics (DuckDB in production/package builds) -----
+  // ----- Portfolio analytics -----
   let rollup = $state<PortfolioSummary | null>(null);
   let rollupErr = $state('');
   let rollupLoading = $state(false);
@@ -103,10 +104,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
     }
   }
 
-  function analyticsUnavailableMessage(kind: 'analytics' | 'import'): string {
-    return `DuckDB ${kind} is unavailable in this direct developer build. Use make build for release-like testing.`;
-  }
-
   function fmtAmount(value: string): string {
     const negative = value.startsWith('-');
     const [whole, fraction] = (negative ? value.slice(1) : value).split('.');
@@ -116,7 +113,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
   // value against a non-zero plan/cost is a real 0.00 performance result.
   const fmtIndex = (index: number, denominator: string) => denominator === '0.00' ? 'n/a' : index.toFixed(2);
 
-  // ----- Local data-file import (DuckDB) -----
+  // ----- Local data-file import -----
   let dataset = $state<Dataset | null>(null);
   let importErr = $state('');
   let importing = $state(false);
@@ -166,7 +163,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="min-w-0">
           <h2 class="text-sm font-bold text-slate-200">Portfolio analytics</h2>
-          <p class="text-xs text-slate-500">Cross-project cost rollup, aggregated with DuckDB.</p>
+          <p class="text-xs text-slate-500">Cross-project cost rollup with exact minor-unit totals.</p>
         </div>
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
           <button
@@ -190,9 +187,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
       {#if rollupErr}
         <p class="mt-3 text-xs text-amber-400 break-words" role="status">
-          {rollupErr.includes('not built in')
-            ? analyticsUnavailableMessage('analytics')
-            : `Analytics failed: ${rollupErr}`}
+          {t('portfolio.analyticsFailed', { error: rollupErr })}
         </p>
       {:else if rollup}
         {#if rollup.currency_code}
@@ -291,15 +286,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
       {#if importErr}
         <p class="mt-3 text-xs text-amber-400 break-words" role="status">
-          {importErr.includes('not built in')
-            ? analyticsUnavailableMessage('import')
-            : `Import failed: ${importErr}`}
+          {t('portfolio.importFailed', { error: importErr })}
         </p>
       {:else if dataset}
         <div class="mt-3">
           <p class="text-xs text-slate-500 mb-2">
             {dataset.columns.length} columns × {dataset.rows.length} rows{dataset.rows.length > 50 ? ' (first 50 shown)' : ''}
           </p>
+          {#if dataset.truncated}
+            <p class="text-xs text-amber-400 mb-2" role="status">
+              {t('portfolio.importTruncated', { count: dataset.rows.length })}
+            </p>
+          {/if}
           <div class="overflow-auto max-h-72 border border-slate-800 rounded">
             <table class="w-full text-xs text-slate-300" aria-label="Imported data preview">
               <thead class="sticky top-0 bg-slate-800/70">

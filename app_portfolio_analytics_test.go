@@ -1,8 +1,6 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//go:build duckdb
-
 package main
 
 import (

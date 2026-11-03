@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Runs `go test -cover` for one build configuration ("default" or "duckdb"),
+# Runs `go test -cover` for the Go build configuration ("default"),
 # strips the excluded-file lines listed in scripts/coverage-exclude-go.txt
 # from the resulting profile, and prints "<covered> <total>" statement
 # counts on stdout (not a percentage -- the ratchet needs exact integers to
@@ -13,7 +13,10 @@
 # package list before `go test` ever runs, not just from the profile, so it
 # never counts as either covered or uncovered work.
 #
-# Usage: coverage-go.sh <default|duckdb> [profile-out-path]
+# Usage: coverage-go.sh default [profile-out-path]
+#
+# The "duckdb" variant was removed with DuckDB on 2026-11-02; the variant
+# argument is kept so callers and profile names stay stable.
 
 set -euo pipefail
 
@@ -36,16 +39,15 @@ ROOT="${GOPMGR_REPO_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 # "never write a worse mark" is why a flaked run can't corrupt the
 # baseline; re-run once on an anomalous result before treating it as real.
 cd "$ROOT"
-variant="${1:?usage: coverage-go.sh <default|duckdb> [profile-out-path]}"
+variant="${1:?usage: coverage-go.sh default [profile-out-path]}"
 
 # Plain string, not an array: bash 3.2 (macOS's shipped /bin/bash) treats an
 # empty array expansion as an unbound-variable error under `set -u`.
 tags_arg=""
 case "$variant" in
 default) ;;
-duckdb) tags_arg="-tags duckdb" ;;
 *)
-	echo "coverage-go: unknown variant '$variant' (want default|duckdb)" >&2
+	echo "coverage-go: unknown variant '$variant' (want default)" >&2
 	exit 1
 	;;
 esac

@@ -474,7 +474,7 @@ func TestAssembleRefusesDisagreeingSources(t *testing.T) {
 }
 
 // TestCheckReviewedFindsGaps covers the review gate, including the removal
-// of a module that carries native code (as DuckDB's removal will be): the
+// of a module that carries native code (as DuckDB's removal did): the
 // native entry then becomes stale and the check says so.
 func TestCheckReviewedFindsGaps(t *testing.T) {
 	ok := func() (map[string]map[string]string, []embeddedFile, []frontendPackage, map[string]lockPackage) {

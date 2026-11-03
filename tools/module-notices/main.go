@@ -50,9 +50,9 @@ func (t target) String() string { return t.GOOS + "/" + t.GOARCH }
 // releaseTargets mirrors the package matrix in .github/workflows/release.yml
 // and the tags of its wails build steps. A test keeps the platforms in step.
 var releaseTargets = []target{
-	{GOOS: "darwin", GOARCH: "arm64", Tags: "desktop,production,duckdb"},
-	{GOOS: "linux", GOARCH: "amd64", Tags: "desktop,production,duckdb,webkit2_41"},
-	{GOOS: "windows", GOARCH: "amd64", Tags: "desktop,production,duckdb"},
+	{GOOS: "darwin", GOARCH: "arm64", Tags: "desktop,production"},
+	{GOOS: "linux", GOARCH: "amd64", Tags: "desktop,production,webkit2_41"},
+	{GOOS: "windows", GOARCH: "amd64", Tags: "desktop,production"},
 }
 
 func main() {

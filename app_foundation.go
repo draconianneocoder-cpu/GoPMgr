@@ -880,12 +880,10 @@ func (a *App) ComputeBudget() (BudgetSummaryWire, error) {
 }
 
 // RunPortfolioAnalytics aggregates a cross-project cost and EVM rollup over every
-// readable project in the signed-in user's folder using the embedded
-// DuckDB analytics engine (ADR-002 Option B). The engine is in-memory and
-// ephemeral and never opens the encrypted files: this method reads each
-// project with the session DEK, builds the per-project figures in Go, and
-// passes them in. Production/package builds include the `duckdb` tag; an
-// untagged developer build still returns analytics.ErrAnalyticsUnavailable.
+// readable project in the signed-in user's folder. The analytics engine
+// works in memory and never opens the encrypted files: this method reads each
+// project with the session DEK, builds the per-project figures, and passes
+// them in.
 //
 // Committed cost (vendor contracts + estimated labour) remains separate from
 // EVM actual cost. EV/PV/AC are included only when the current schedule has a
@@ -896,13 +894,6 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 	user := s.user
 	if user == nil {
 		return PortfolioSummaryWire{}, errors.New("not signed in")
-	}
-
-	eng := analytics.New()
-	defer func() { _ = eng.Close() }()
-	if !eng.Available() {
-		// Default build: skip the (expensive) project scan entirely.
-		return PortfolioSummaryWire{}, analytics.ErrAnalyticsUnavailable
 	}
 
 	dek, err := a.sessionDEK(s)
@@ -948,7 +939,7 @@ func (a *App) RunPortfolioAnalytics() (PortfolioSummaryWire, error) {
 		metrics = append(metrics, projectMetrics)
 	}
 
-	summary, err := eng.PortfolioRollup(a.ctx, metrics)
+	summary, err := analytics.PortfolioRollup(metrics)
 	if err != nil {
 		return PortfolioSummaryWire{}, err
 	}
@@ -986,7 +977,7 @@ func portfolioWorkItems(d *db.Database, projectID string) ([]agile.WorkItem, err
 	return workItems, nil
 }
 
-// portfolioProjectMetrics builds the trusted hand-off row passed to DuckDB.
+// portfolioProjectMetrics builds the trusted hand-off row for the portfolio rollup.
 // It deliberately performs all SQLCipher reads and scheduling in Go so the
 // analytics engine remains an ephemeral aggregator, never a second system of
 // record. Missing EVM prerequisites leave EVMAvailable false while preserving
@@ -1084,12 +1075,11 @@ func portfolioScheduleEVM(
 	return evm, true, nil
 }
 
-// ImportDatasetForAnalysis opens a native file picker for a CSV/Parquet/JSON
-// file and reads it into an in-memory Dataset via the DuckDB analytics engine
-// (ADR-002 Option B). Returns an empty Dataset (no error) when the user
-// cancels. Production/package builds include DuckDB; untagged developer builds
-// return analytics.ErrAnalyticsUnavailable. `.xlsx` is not handled here — the
-// Sigma import uses the frontend read-excel-file reader.
+// ImportDatasetForAnalysis opens a native file picker for a CSV, TSV, TXT,
+// JSON, NDJSON or Parquet file and reads its first rows into an in-memory
+// Dataset. Returns an empty Dataset (no error) when the user cancels. `.xlsx`
+// is not handled here: the Sigma import uses the frontend read-excel-file
+// reader.
 func (a *App) ImportDatasetForAnalysis() (analytics.Dataset, error) {
 	if a.requireUser() == nil {
 		return analytics.Dataset{}, errors.New("not signed in")
@@ -1103,8 +1093,8 @@ func (a *App) ImportDatasetForAnalysis() (analytics.Dataset, error) {
 		DefaultDirectory: a.userDir(),
 		Filters: []wailsruntime.FileFilter{
 			{
-				DisplayName: "Data files (*.csv, *.tsv, *.parquet, *.json)",
-				Pattern:     "*.csv;*.tsv;*.parquet;*.json",
+				DisplayName: "Data files (*.csv, *.tsv, *.txt, *.json, *.ndjson, *.parquet)",
+				Pattern:     "*.csv;*.tsv;*.txt;*.json;*.ndjson;*.parquet",
 			},
 		},
 	})
@@ -1115,12 +1105,7 @@ func (a *App) ImportDatasetForAnalysis() (analytics.Dataset, error) {
 		return analytics.Dataset{}, nil // user cancelled the picker
 	}
 
-	eng := analytics.New()
-	defer func() { _ = eng.Close() }()
-	if !eng.Available() {
-		return analytics.Dataset{}, analytics.ErrAnalyticsUnavailable
-	}
-	return eng.ImportTabular(a.ctx, path)
+	return analytics.ImportTabular(a.ctx, path)
 }
 
 // ----- iCal export -----

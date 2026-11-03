@@ -18,8 +18,7 @@ posture, and validator coverage, so keep them intentional and verified.
   code uses `window.localStorage`, and Vitest workers disable Node's
   process-wide Web Storage so jsdom remains the authoritative per-test browser
   environment.
-- CGO: required for the SQLite/SQLCipher driver path and the shipped DuckDB
-  analytics build.
+- CGO: required for the SQLite/SQLCipher driver path.
 
 ### Go security baseline, 2026-10-22
 
@@ -70,11 +69,14 @@ platform/publication limits are recorded in
   Rust toolchain files are included in that syntax inventory; Cargo retains
   responsibility for their build semantics. These parser packages are imported
   only by the `scripts` command and are not linked into the GoPMgr desktop binary.
-- `github.com/duckdb/duckdb-go/v2`: in-memory DuckDB analytics engine
-  (ADR-002 decision), compiled under the `duckdb` build tag
-  (`internal/analytics`). Production/package builds enable that tag so
-  installers include the analytics engine; untagged developer builds link the
-  stub. See `docs/design/duckdb-analytics-engine.md`.
+- `github.com/apache/arrow-go/v18`: the Parquet reader behind the Go-native
+  analytics engine's Parquet import (`internal/analytics`), which replaced
+  DuckDB on 2026-11-02
+  ([decision](review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md)). Apache
+  Software Foundation, Apache-2.0; an indirect dependency before the change,
+  through DuckDB. Making it a direct dependency links 17 modules into
+  release binaries that were not linked before (see
+  [Arrow's linked modules](#arrows-linked-modules-2026-11-02)).
 - `google.golang.org/grpc`, `google.golang.org/protobuf`, and
   `github.com/Microsoft/go-winio`: approved ADR-010 G1 dependency pins in
   `internal/interop/deps_pin.go`, behind the unused `interop_deps_pin` tag.
@@ -92,8 +94,9 @@ Approved by the maintainer under OWN-11, with conditions
 The full review is in
 [adr-010-g1-dependency-review.md](interoperability/adr-010-g1-dependency-review.md).
 
-**Not yet compiled into GoPMgr.** Until G1-2 imports them, the modules
-are pinned by `internal/interop/deps_pin.go`. Its build tag
+**Not yet compiled into GoPMgr** (true when reviewed; see the correction
+below). Until G1-2 imports them, the modules are pinned by
+`internal/interop/deps_pin.go`. Its build tag
 (`interop_deps_pin`) is never set. GoPMgr's compiled package set is
 identical with and without this change, test builds included: Linux,
 macOS and Windows, untagged and with `duckdb`, `webkit2_41`,
@@ -168,10 +171,14 @@ A G1 package that would start compiling any of these needs a new review.
 **Release notices (current packaging).**
 
 - gRPC and genproto are Apache-2.0, and gRPC ships a `NOTICE.txt`.
-- Package scripts now copy SQLCipher, font, Go-module, DuckDB-native and
-  frontend notices. `scripts/verify-module-notices.sh` checks the binary's
-  linked modules before packaging; the native notices have an additional
-  reviewed-input check. See [LICENSES.md](../LICENSES.md).
+- Package scripts copy SQLCipher, font, Go-module and frontend notices.
+  `scripts/verify-module-notices.sh` checks the binary's linked modules
+  before packaging. See [LICENSES.md](../LICENSES.md).
+
+**Correction, 2026-11-02.** grpc, protobuf and genproto/googleapis/rpc are now
+linked into release binaries: Apache Arrow's `parquet/pqarrow` package imports
+`arrow/flight`, which imports them. GoPMgr starts no gRPC server or client
+through that path; the G1 transport work is unchanged.
 - Before G1 ships, regenerate the Go-module notices for the resulting linked
   package set and qualify its native packages. Notices do not themselves
   authorize redistribution or satisfy the independent LC-GATE.
@@ -326,14 +333,9 @@ weakening the release claim.
    `third_party/GO-MODULE-NOTICES.txt`. Its diff shows every license text
    that changes. `make verify` fails until the file is current; see
    [LICENSES.md](../LICENSES.md#go-module-notices-in-release-packages).
-8. A duckdb-go-bindings update also changes the prebuilt DuckDB libraries
-   and the third-party code inside them. `make verify` fails until the
-   DuckDB native notices are reviewed for the new release; see
-   [LICENSES.md](../LICENSES.md#duckdb-native-library-notices). It also
-   fails if reviewed native inputs change or the TPC exclusion audit cannot
-   complete; never remove an entry from `third_party/EXCLUDED-NATIVE-CODE.txt` to get past
-   that (see
-   [LICENSES.md](../LICENSES.md#excluded-the-tpc-h-and-tpc-ds-generators)).
+8. DuckDB was retired on 2026-11-02. Do not add it, or any of its binding
+   modules, back: `scripts/verify-module-notices.sh` fails a release binary
+   that links one (see [LICENSES.md](../LICENSES.md#duckdb-retired)).
 9. After a frontend dependency change, or a new import of an npm package,
    run `make frontend-notices` and commit the regenerated
    `third_party/FRONTEND-NOTICES.txt`; `make verify` fails until it is
@@ -356,3 +358,38 @@ tests, migration tests, build checks, packaging review, and a causal WAL-reset
 regression when the embedded SQLite core changes. Do not remove the local
 replacement until an upstream driver release containing both corrections passes
 the COMMIT/ROLLBACK regressions and the same encrypted-file interchange checks.
+
+## Arrow's linked modules (2026-11-02)
+
+Replacing DuckDB with a Go-native engine made `github.com/apache/arrow-go/v18`
+a direct dependency, for Parquet import only. Its `parquet/pqarrow` package
+links these modules into every release binary; the versions are those in
+`go.mod`. Several (brotli, Thrift, snappy, xxhash and others) were not
+listed in `go.mod` before the change.
+
+| Module | License (as declared) | Linked because |
+|---|---|---|
+| `github.com/apache/arrow-go/v18` | Apache-2.0 | Arrow arrays and the Parquet reader |
+| `github.com/apache/thrift` | Apache-2.0 | Parquet file metadata encoding |
+| `github.com/google/flatbuffers` | Apache-2.0 | Arrow schema encoding |
+| `github.com/klauspost/compress` | BSD-3-Clause AND Apache-2.0 AND MIT | zstd and gzip page codecs |
+| `github.com/klauspost/cpuid/v2` | MIT | CPU feature detection for those codecs |
+| `github.com/golang/snappy` | BSD-3-Clause | Snappy page codec |
+| `github.com/pierrec/lz4/v4` | BSD-3-Clause | LZ4 page codec |
+| `github.com/andybalholm/brotli` | MIT | Brotli page codec |
+| `github.com/cespare/xxhash/v2`, `github.com/zeebo/xxh3` | MIT; BSD-2-Clause | Parquet hashing |
+| `github.com/goccy/go-json` | MIT | Arrow's JSON helpers |
+| `golang.org/x/exp`, `golang.org/x/sync`, `golang.org/x/xerrors` | BSD-3-Clause | Arrow internals |
+| `google.golang.org/grpc`, `google.golang.org/protobuf`, `google.golang.org/genproto/googleapis/rpc` | Apache-2.0; BSD-3-Clause; Apache-2.0 | `arrow/flight`, imported by `pqarrow`; already approved under ADR-010 G1 |
+
+`github.com/go-viper/mapstructure/v2` and the five DuckDB modules left the
+release binaries. Review evidence:
+
+- `govulncheck` v1.1.4 (symbol scan, `-tags webkit2_41`): no vulnerability
+  reachable from GoPMgr's code; the one module-level advisory is the existing
+  GO-2026-5932 in `x/crypto`.
+- Licenses and producers come from each module's own license files and are
+  recorded in `tools/sbom/components.json`; their texts are in
+  `third_party/GO-MODULE-NOTICES.txt` (`make module-notices`).
+- A Parquet file is read only through the handle the import already checked,
+  with a 512 MiB allocator cap that also bounds decompression.

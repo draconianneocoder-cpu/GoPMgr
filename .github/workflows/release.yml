@@ -198,11 +198,11 @@ jobs:
 
       - name: Wails build (Linux)
         if: runner.os == 'Linux'
-        run: wails build -platform ${{ matrix.platform }} -tags duckdb,webkit2_41 -ldflags "$GOPMGR_RELEASE_LDFLAGS"
+        run: wails build -platform ${{ matrix.platform }} -tags webkit2_41 -ldflags "$GOPMGR_RELEASE_LDFLAGS"
 
       - name: Wails build (macOS)
         if: runner.os == 'macOS'
-        run: wails build -platform ${{ matrix.platform }} -tags duckdb -ldflags "$GOPMGR_RELEASE_LDFLAGS"
+        run: wails build -platform ${{ matrix.platform }} -ldflags "$GOPMGR_RELEASE_LDFLAGS"
 
       - name: Wails build + NSIS installer (Windows)
         if: runner.os == 'Windows'
@@ -211,12 +211,9 @@ jobs:
           # user-data preservation boundary has drifted.
           bash scripts/check-windows-installer-scaffold.sh
           bash scripts/validate-windows-nsis-template.sh
-          wails build -platform windows/amd64 -tags duckdb -ldflags "$GOPMGR_RELEASE_LDFLAGS" -nsis
-          # The Windows command previously omitted duckdb while other package
-          # legs embedded it. Verify metadata before publishing the installer.
-          bash scripts/verify-duckdb-linked.sh build/bin/gopmgr.exe
+          wails build -platform windows/amd64 -ldflags "$GOPMGR_RELEASE_LDFLAGS" -nsis
           # project.nsi installs third_party/GO-MODULE-NOTICES.txt; it must
-          # cover every Go module this binary links.
+          # cover every Go module this binary links, and none may be DuckDB.
           bash scripts/verify-module-notices.sh build/bin/gopmgr.exe
 
       - name: Record SBOM inventory
@@ -239,8 +236,7 @@ jobs:
       - name: Reclaim macOS packaging space
         if: runner.os == 'macOS'
         run: |
-          # DuckDB's CGO build leaves multi-gigabyte Go caches on a hosted
-          # runner. The compiled .app no longer needs them, and hdiutil needs
+          # The CGO build leaves large Go caches on a hosted runner. The compiled .app no longer needs them, and hdiutil needs
           # free scratch space to copy and compress the staged application.
           df -h /
           go clean -cache -modcache

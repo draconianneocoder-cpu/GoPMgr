@@ -61,8 +61,8 @@ fi
 echo "Required embedded font assets verified."
 
 # --- 2c. Windows installer source contract ---------------------------
-# Any host can prove that the Windows job will consume reviewed templates,
-# embed DuckDB, and verify the built binary. When makensis is available, the
+# Any host can prove that the Windows job will consume reviewed templates
+# and verify the built binary. When makensis is available, the
 # target also compiles a harmless NSIS fixture without claiming a native build.
 if ! make windows-installer-scaffold >/dev/null; then
     echo "Windows installer scaffold validation failed. Run 'make windows-installer-scaffold' for details."
@@ -188,12 +188,6 @@ fi
 if ! make build >/dev/null; then
     echo "Final build failed (is the pinned 'wails' CLI installed? See 'go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0')."
     exit 1
-fi
-if [ -f scripts/verify-duckdb-linked.sh ]; then
-    if ! bash scripts/verify-duckdb-linked.sh >/dev/null; then
-        echo "DuckDB linkage check failed. Run 'bash scripts/verify-duckdb-linked.sh' for details."
-        exit 1
-    fi
 fi
 echo "Build verified."
 

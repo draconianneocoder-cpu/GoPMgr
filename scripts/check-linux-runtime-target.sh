@@ -55,7 +55,7 @@ require_not_contains .github/workflows/release.yml "libwebkit2gtk-4.0-dev"
 # `os:` pin said.
 require_contains .github/workflows/release.yml "os: ubuntu-24.04"
 
-require_contains Makefile "WAILS_BUILD_TAGS ?= duckdb,webkit2_41"
+require_contains Makefile "WAILS_BUILD_TAGS ?= webkit2_41"
 
 require_contains build/linux/nfpm.yaml "libwebkit2gtk-4.1-0"
 require_contains build/linux/nfpm.yaml "webkit2gtk4.1"
@@ -65,8 +65,6 @@ require_contains build/linux/nfpm.yaml "./internal/fonts/assets/FONT-NOTICES.txt
 require_contains build/linux/nfpm.yaml "/usr/share/doc/gopmgr/font-notices.txt"
 require_contains build/linux/nfpm.yaml "./third_party/GO-MODULE-NOTICES.txt"
 require_contains build/linux/nfpm.yaml "/usr/share/doc/gopmgr/go-module-notices.txt"
-require_contains build/linux/nfpm.yaml "./third_party/DUCKDB-NATIVE-NOTICES.txt"
-require_contains build/linux/nfpm.yaml "/usr/share/doc/gopmgr/duckdb-native-notices.txt"
 require_contains build/linux/nfpm.yaml "./third_party/FRONTEND-NOTICES.txt"
 require_contains build/linux/nfpm.yaml "/usr/share/doc/gopmgr/frontend-notices.txt"
 # The Debian source package (debian/rules) must install the same notices as
@@ -74,11 +72,12 @@ require_contains build/linux/nfpm.yaml "/usr/share/doc/gopmgr/frontend-notices.t
 require_contains debian/rules "third_party/go-sqlcipher/THIRD_PARTY_NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/sqlcipher-license.txt"
 require_contains debian/rules "internal/fonts/assets/FONT-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/font-notices.txt"
 require_contains debian/rules "third_party/GO-MODULE-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/go-module-notices.txt"
-require_contains debian/rules "third_party/DUCKDB-NATIVE-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/duckdb-native-notices.txt"
 require_contains debian/rules "third_party/FRONTEND-NOTICES.txt debian/gopmgr/usr/share/doc/gopmgr/frontend-notices.txt"
 require_contains debian/rules "bash scripts/verify-module-notices.sh build/ppa/gopmgr"
-# A vendored Debian source build must not carry the excluded TPC archives.
-require_contains debian/rules "bash scripts/verify-excluded-native-code.sh --tree vendor"
+# DuckDB is retired: no package may build with its tag or ship its notices.
+require_not_contains Makefile "duckdb"
+require_not_contains debian/rules "duckdb"
+require_not_contains build/linux/nfpm.yaml "duckdb"
 require_not_contains build/linux/nfpm.yaml "libwebkit2gtk-4.0-37"
 require_not_contains build/linux/nfpm.yaml "webkit2gtk3"
 

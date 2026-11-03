@@ -97,4 +97,37 @@ describe('Portfolio', () => {
 		await waitFor(() => expect(getByText(/cannot combine EUR and USD reporting currencies/)).toBeTruthy());
 		expect(queryByText('Reporting currency: USD')).toBeNull();
 	});
+
+  // The import keeps at most 10,000 rows; a larger file must say so rather
+  // than present the first rows as the whole file.
+  it.each([
+    [true, true],
+    [false, false],
+  ])('shows the truncation notice only for a truncated import (truncated=%s)', async (truncated, shown) => {
+    session.user = { username: 'alice', display_name: 'Alice', data_dir: '', created_at: '', last_login: '', is_admin: false };
+    const app = setApp({
+      ImportDatasetForAnalysis: vi.fn(async () => ({ columns: ['a'], rows: [[1], [2]], truncated })),
+    });
+    const { getByRole, findByRole, queryByText } = render(Portfolio);
+    await waitFor(() => expect(app.ProjectsOverview).toHaveBeenCalled());
+    await fireEvent.click(getByRole('button', { name: 'Import data file' }));
+
+    await findByRole('table', { name: 'Imported data preview' });
+    expect(queryByText('The file has more rows than this. Only the first 2 were read.') !== null).toBe(shown);
+  });
+
+  it('shows an import error with no stale preview', async () => {
+    session.user = { username: 'alice', display_name: 'Alice', data_dir: '', created_at: '', last_login: '', is_admin: false };
+    const app = setApp({
+      ImportDatasetForAnalysis: vi.fn(async () => {
+        throw new Error('analytics: line 3 has 3 fields, but the first line has 2');
+      }),
+    });
+    const { getByRole, findByText, queryByRole } = render(Portfolio);
+    await waitFor(() => expect(app.ProjectsOverview).toHaveBeenCalled());
+    await fireEvent.click(getByRole('button', { name: 'Import data file' }));
+
+    await findByText('Import failed: analytics: line 3 has 3 fields, but the first line has 2');
+    expect(queryByRole('table', { name: 'Imported data preview' })).toBeNull();
+  });
 });

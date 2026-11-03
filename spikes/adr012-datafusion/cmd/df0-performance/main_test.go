@@ -1,7 +1,12 @@
 // SPDX-FileCopyrightText: 2026 James L. Burns and The GoPMgr Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//go:build duckdb && (darwin || linux)
+//go:build ignore
+
+// Frozen 2026-11-02: GoPMgr retired the DuckDB engine this command measured
+// (docs/review/ADR-012-DUCKDB-RETIREMENT-OWNER-DECISION.md). It is kept, and
+// excluded from every build, as the record of how its committed evidence was
+// produced; it no longer compiles against the main module.
 
 package main
 

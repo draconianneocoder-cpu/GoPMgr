@@ -133,7 +133,7 @@ export const KEYWORDS: Record<SectionId, string> = {
   pmbok: 'pmi process groups knowledge areas initiating planning executing monitoring closing pmp',
   cpm: 'critical path float slack forward pass backward pass network dependencies es ef ls lf duration schedule',
   'six-sigma-method': 'dmaic define measure analyze improve control defects variation belts quality spc',
-  portfolio: 'dashboard all projects overview rollup analytics duckdb import csv xlsx status filter search cost',
+  portfolio: 'dashboard all projects overview rollup analytics import csv tsv json parquet xlsx status filter search cost',
   'project-dashboard':
     'open project charts documents budget committed contracts labour earned value evm spi cpi new chart export delete',
   'agile-boards':

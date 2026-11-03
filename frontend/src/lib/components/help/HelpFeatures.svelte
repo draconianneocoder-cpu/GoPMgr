@@ -47,8 +47,8 @@ SPDX-License-Identifier: GPL-3.0-or-later
           <section class="mb-5">
             <h3 class="text-sm font-semibold text-cyan-400 uppercase tracking-wide mb-2">Portfolio Analytics</h3>
             <p class="text-sm text-slate-300 mb-2">
-              Production and installer builds include DuckDB-backed in-memory portfolio
-              analytics. Choose <span class="font-medium text-slate-100">Run rollup</span>
+              GoPMgr includes in-memory portfolio analytics with exact minor-unit
+              totals. Choose <span class="font-medium text-slate-100">Run rollup</span>
               for budget, committed cost, Planned Value, Earned Value, Actual Cost, SPI,
               and CPI as of the displayed UTC reporting date.
             </p>
