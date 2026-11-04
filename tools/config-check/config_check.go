@@ -37,6 +37,9 @@ type configSpec struct {
 }
 
 var supportedConfigs = []configSpec{
+	// Python provisioning checks acquisition policy; this registry owns format inventory.
+	{path: "mise.toml", format: formatTOML},
+	{path: "mise.lock", format: formatTOML},
 	{path: "Taskfile.yml", format: formatYAML, validate: validateTaskfile},
 	{path: "build/Taskfile.yml", format: formatYAML, validate: validateTaskfile},
 	{path: "build/darwin/Taskfile.yml", format: formatYAML, validate: validateTaskfile},
@@ -139,7 +142,7 @@ func trackedConfigPaths(root string) ([]string, error) {
 	// Include untracked, non-ignored candidates so a new config is classified
 	// before its first commit, and omit working-tree deletions so intentional
 	// removals can pass verification before they are staged.
-	cmd := exec.Command("git", "-C", root, "ls-files", "--cached", "--others", "--exclude-standard", "--", "*.yml", "*.yaml", "*.toml")
+	cmd := exec.Command("git", "-C", root, "ls-files", "--cached", "--others", "--exclude-standard", "--", "*.yml", "*.yaml", "*.toml", "mise.lock")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("list tracked YAML/TOML files: %w", err)

@@ -21,6 +21,13 @@ func TestValidateRepositoryConfigs(t *testing.T) {
 			name: "accepts the supported format inventory",
 		},
 		{
+			name: "rejects malformed auxiliary lockfile",
+			mutate: func(files map[string][]byte, _ *[]string) {
+				files["mise.lock"] = []byte("[broken\n")
+			},
+			wantErrText: "mise.lock: parse TOML",
+		},
+		{
 			name: "rejects legacy task schema",
 			mutate: func(files map[string][]byte, _ *[]string) {
 				files["Taskfile.yml"] = []byte("version: '2'\ntasks: {build: {}}\n")
@@ -278,6 +285,7 @@ func TestTrackedConfigPathsUsesPresentVersionControlCandidates(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeTestFile(t, root, "extra.toml", "enabled = true\n")
+	writeTestFile(t, root, "mise.lock", "lockfile_version = 3\n")
 
 	paths, err := trackedConfigPaths(root)
 	if err != nil {
@@ -288,6 +296,9 @@ func TestTrackedConfigPathsUsesPresentVersionControlCandidates(t *testing.T) {
 	}
 	if !containsPath(paths, "extra.toml") {
 		t.Fatalf("trackedConfigPaths() = %v, want untracked config candidate", paths)
+	}
+	if !containsPath(paths, "mise.lock") {
+		t.Fatalf("trackedConfigPaths() = %v, want auxiliary lock candidate", paths)
 	}
 	if containsPath(paths, ".gitlab-ci.yml") {
 		t.Fatalf("trackedConfigPaths() = %v, did not want working-tree deletion", paths)
@@ -430,6 +441,8 @@ SPDX-FileCopyrightText = "The GoPMgr Contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 `),
 	}
+	files["mise.toml"] = []byte("[tools]\n")
+	files["mise.lock"] = []byte("lockfile_version = 3\n")
 	files["spikes/adr012-datafusion/rust/Cargo.toml"] = []byte(`[workspace]
 members = ["engine", "cli", "worker"]
 `)

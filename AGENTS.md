@@ -30,7 +30,9 @@ For build-tool provisioning or new shell/workflow assurance gates, read
 [baseline](docs/engineering/adr-013-baseline.md). Make remains canonical;
 Wails' internal Taskfiles are subordinate build details. mise is approved for
 staged auxiliary provisioning only. P0 checkout/performance characterization
-is complete on the recorded macOS/Ubuntu hosts; P1–P9 are not yet implemented.
+is complete on the recorded macOS/Ubuntu hosts. P1 opt-in provisioning is
+implemented; see [setup and proof limits](docs/engineering/adr-013-provisioning.md).
+Maintainer acceptance precedes mandatory lint adoption; P2–P9 remain separate.
 Do not infer new runtime, hosted-CI or release authority from this direction.
 
 - Plan first for any multi-file change. Keep the plan scoped to a

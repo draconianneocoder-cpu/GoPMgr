@@ -7,7 +7,9 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 Date: 2026-11-04. Status: accepted maintainer direction; implementation staged.
 P0 characterization is complete for the source/hosts recorded in the baseline.
-P1–P9 are not implemented or accepted as complete.
+P1 opt-in provisioning is implemented; its [qualification and recovery policy](../engineering/adr-013-provisioning.md)
+records evidence and limits. Maintainer acceptance precedes mandatory lint
+adoption. P2–P9 are not implemented or accepted as complete.
 
 ## Decision and authority
 
@@ -62,7 +64,7 @@ permit a legacy desktop runtime or a GTK backend fallback.
 - No unreviewed hooks, plugins, tasks, environment secrets, shell activation,
   automatic updates, dotfile changes or skills synchronization. Isolate initial
   experiments from the owner's home/config, skills directories and tool caches.
-- `make tools-check` will be read-only and network-free. It must work with exact
+- `make tools-check` is read-only and network-free. It must work with exact
   independently installed binaries when mise is absent. Do not invoke installers,
   `mise exec`, lock generation or source formatting from verification.
 - Preserve current Make semantics until a separately tested correction changes
@@ -123,11 +125,12 @@ passes or permission to delete support.
 
 Official latest-release APIs were read on 2026-11-04: mise v2026.11.0,
 ShellCheck v0.11.0, shfmt v3.14.1, actionlint v1.7.12 and zizmor v1.32.0;
-all reported `prerelease: false`. These are candidates, not installed pins.
-Refresh before P1. GNU Make 4.4.1 from the submission is not a mandate to
+all reported `prerelease: false`. P1 freezes these exact versions in reviewed
+provisioning records and checks declaration/lock/artifact consistency. GNU Make 4.4.1 from the submission is not a mandate to
 replace macOS' system Make. Qualify required behavior before raising its floor.
 Resolve govulncheck independently at P6; the submission explicitly does not
-establish a latest version. No new tool was installed for this integration.
+establish a latest version. P1 installs only auxiliary tools in ignored task-local
+state; it does not alter runtime toolchains.
 
 Primary sources: [mise release](https://github.com/jdx/mise/releases/tag/v2026.11.0),
 [mise lockfile](https://mise.jdx.dev/dev-tools/mise-lock.html),

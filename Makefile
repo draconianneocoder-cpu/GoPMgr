@@ -32,11 +32,27 @@ export CC
         coverage-ratchet-update coverage-go-cleanup-tests workspace-hygiene workspace-hygiene-tests cache-maintenance \
         pades-publish-test no-text-timestamp-ordering no-raw-import-in-tests \
         module-notices module-notices-check sbom-check module-notices-tests package-tarball-tests \
-        frontend-notices frontend-notices-check frontend-notices-tests wails-build-tests
+        frontend-notices frontend-notices-check frontend-notices-tests wails-build-tests \
+        tools-bootstrap tools-install tools-check tools-tests tools-qualify
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+tools-bootstrap: ## Explicitly download and verify task-local mise (network access).
+	@python3 -B scripts/engineering/provision.py bootstrap
+
+tools-install: ## Explicitly install the four locked auxiliary tools (network access).
+	@python3 -B scripts/engineering/provision.py install
+
+tools-check: ## Read-only offline auxiliary binary, policy and host dependency checks.
+	@python3 -B scripts/engineering/provision.py check
+
+tools-tests: ## Run offline provisioning boundary regression tests.
+	@python3 -B scripts/engineering/provision_test.py
+
+tools-qualify: ## Opt-in real trusted/safe mise install qualification (network access).
+	@python3 -B scripts/engineering/provision_integration_test.py
 
 build: ## Build the production app with pinned Wails v3 tasks and native CGO.
 	@bash scripts/wails-build.sh $(WAILS_BUILD_FLAGS)

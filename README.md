@@ -38,7 +38,9 @@ GOBIN="$PWD/.tmp/wails-v3/bin" go install github.com/wailsapp/wails/v3/cmd/wails
 
 Linux source builds require GTK 4 and WebKitGTK 6.0 development packages
 (`libgtk-4-dev`, `libwebkitgtk-6.0-dev`, and `pkg-config` on Debian/Ubuntu).
-The Go runtime, task-local CLI, and npm `@wailsio/runtime` are pinned to 3.1.0.
+The Go Wails module, task-local CLI, and npm `@wailsio/runtime` are pinned to 3.1.0.
+Optional auxiliary-tool provisioning requires Python 3.11+; see the
+[ADR-013 setup and Make-only recovery guide](docs/engineering/adr-013-provisioning.md).
 
 The Wails v3 migration was approved on 2026-11-03. Frontend check/build and
 742 tests pass against the actual 209-method bindings; native macOS bridge

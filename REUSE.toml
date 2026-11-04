@@ -6,6 +6,12 @@
 version = 1
 
 [[annotations]]
+path = ["mise.lock", "tools/engineering/artifacts.json"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
 path = ".claude/settings.local.json"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 James L. Burns and The GoPMgr Contributors"

@@ -58,9 +58,13 @@ with Wails 3.1.0 and the local-CI policy. The
 macOS/Ubuntu hosts: exact-source clean/dirty checkout controls, cold/warm command
 measurements and independent evidence review passed. The failed spaced-TMPDIR
 fixture attempt and advisory scanner findings remain explicit follow-ups.
-P1–P9 remain unimplemented. Next: qualify pinned mise/auxiliary-tool artifacts,
-locked provisioning and Make-only recovery under P1. No mise configuration,
-lockfile, new mandatory static gate or hosted run has been introduced.
+P1 opt-in auxiliary provisioning is implemented with pinned mise, a genuine
+platform lock, isolated installs and Make-only recovery. See the
+[P1 setup and qualification record](engineering/adr-013-provisioning.md), including
+the safe-mode URL limitation and its enforced wrapper mitigation. Maintainer
+acceptance precedes mandatory lint adoption. Next: P2 ShellCheck inventory and
+finding adjudication; P2–P9 remain separate. No mandatory lint gate or hosted
+run has been introduced.
 
 ## DuckDB retirement (2026-11-02)
 

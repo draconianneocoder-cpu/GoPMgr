@@ -189,6 +189,11 @@ GOBIN="$PWD/.tmp/wails-v3/bin" go install github.com/wailsapp/wails/v3/cmd/wails
 Do not use an arbitrary newer Wails CLI. The repository intentionally
 verifies that runtime, CLI, and documentation pins remain synchronized.
 
+Optional auxiliary lint tools use the explicit, task-local
+[ADR-013 provisioning procedure](engineering/adr-013-provisioning.md), which
+requires Python 3.11+. It does not provision runtime toolchains or change the
+Make build/test contract.
+
 ### 2.2 Initial checkout setup
 
 From the repository root:
