@@ -48,6 +48,18 @@ delegated reviewers reached their usage limit. macOS 13 and Ubuntu 24.04 remain
 support targets; their unavailable-host execution checks are mandatory before
 release, as approved by the maintainer. No full v3 release readiness is claimed.
 
+## Engineering build assurance (ADR-013, 2026-11-04)
+
+The owner approved Make-centered build assurance and bounded mise provisioning.
+The [repository ADR](design/ADR-013-engineering-build-assurance.md) reconciles the
+[submitted v0.3 plan](design/adr-013/v0.3-as-submitted/approved-phased-plan.md)
+with Wails 3.1.0 and the local-CI policy. The
+[P0 inventory](engineering/adr-013-baseline.md) is provisional until its remaining
+frozen-baseline and assurance evidence is complete. P1–P9 remain unimplemented.
+No mise configuration, tool lockfile, new mandatory static gate or hosted run
+has been introduced. Next: close the migration's local review/evidence gates,
+then qualify exact auxiliary-tool artifacts and Make-only recovery under P1.
+
 ## DuckDB retirement (2026-11-02)
 
 DuckDB is retired. On 2026-11-02 the maintainer directed its immediate

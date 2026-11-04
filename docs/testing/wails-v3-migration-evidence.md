@@ -277,6 +277,8 @@ Earlier plan and intermediate reviews were independent. Both delegated agents
 hit their usage limit before final integration review. The owner explicitly
 approved a disclosed self-review fallback for the local commit. Final readiness
 therefore uses that fallback and does not claim independent final approval.
+ADR-013 documentation was integrated separately from runtime/build ownership;
+its P0 baseline is provisional, not an implemented provisioning system.
 
 Existing security observations remain: the full production vulnerability scan
 found no reachable/imported vulnerable package, but the unused OpenPGP module
