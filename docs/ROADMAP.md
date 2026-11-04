@@ -17,8 +17,8 @@ GoPMgr already provides local project storage, scheduling, earned-value
 analysis, charts, documents, export, SQLCipher support, and PDF signing. The
 near-term priority is making those workflows dependable for wider testing.
 
-1. Verify the Go-native analytics engine that replaced DuckDB on Linux
-   (see below).
+1. Migrate the desktop runtime to Wails v3 and GTK 4 while preserving native
+   save/recovery, data and binding contracts (see below).
 2. Prevent data loss in stateful editors and verify save, discard, and cancel
    behavior in native application workflows.
 3. Complete real-target installation and upgrade evidence for every advertised
@@ -31,6 +31,17 @@ near-term priority is making those workflows dependable for wider testing.
    `ManifestURL`/`UpdateChannelPublicKey` are actually populated in release
    builds, which today ship with the update channel disabled by design.
 5. Improve keyboard and assistive-technology coverage before broad release.
+
+## Wails v3 and GTK 4 migration (2026-11-03)
+
+The maintainer approved [Wails v3.1.0 and GTK 4 migration](design/wails-v3-migration-design.md)
+with no v2/GTK 3 fallback. The isolated shell's core close/save/recovery and
+resource-lifecycle gate passed on available macOS and Ubuntu hosts; see the
+[evidence and limits](testing/wails-v3-migration-evidence.md).
+Production still uses v2 pending service/209-binding conversion, frontend
+integration and packaging qualification. macOS 13 and Ubuntu 24.04 remain
+support targets; their unavailable-host execution checks are mandatory before
+release, as approved by the maintainer. No full v3 release readiness is claimed.
 
 ## DuckDB retirement (2026-11-02)
 
