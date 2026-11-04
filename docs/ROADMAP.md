@@ -54,11 +54,13 @@ The owner approved Make-centered build assurance and bounded mise provisioning.
 The [repository ADR](design/ADR-013-engineering-build-assurance.md) reconciles the
 [submitted v0.3 plan](design/adr-013/v0.3-as-submitted/approved-phased-plan.md)
 with Wails 3.1.0 and the local-CI policy. The
-[P0 inventory](engineering/adr-013-baseline.md) is provisional until its remaining
-frozen-baseline and assurance evidence is complete. P1–P9 remain unimplemented.
-No mise configuration, tool lockfile, new mandatory static gate or hosted run
-has been introduced. Next: close the migration's local review/evidence gates,
-then qualify exact auxiliary-tool artifacts and Make-only recovery under P1.
+[P0 baseline](engineering/adr-013-baseline.md) is complete for the recorded
+macOS/Ubuntu hosts: exact-source clean/dirty checkout controls, cold/warm command
+measurements and independent evidence review passed. The failed spaced-TMPDIR
+fixture attempt and advisory scanner findings remain explicit follow-ups.
+P1–P9 remain unimplemented. Next: qualify pinned mise/auxiliary-tool artifacts,
+locked provisioning and Make-only recovery under P1. No mise configuration,
+lockfile, new mandatory static gate or hosted run has been introduced.
 
 ## DuckDB retirement (2026-11-02)
 

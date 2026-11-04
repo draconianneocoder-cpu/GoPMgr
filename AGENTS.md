@@ -29,7 +29,8 @@ For build-tool provisioning or new shell/workflow assurance gates, read
 [ADR-013](docs/design/ADR-013-engineering-build-assurance.md) and its
 [baseline](docs/engineering/adr-013-baseline.md). Make remains canonical;
 Wails' internal Taskfiles are subordinate build details. mise is approved for
-staged auxiliary provisioning only; P0 is open and P1–P9 are not yet implemented.
+staged auxiliary provisioning only. P0 checkout/performance characterization
+is complete on the recorded macOS/Ubuntu hosts; P1–P9 are not yet implemented.
 Do not infer new runtime, hosted-CI or release authority from this direction.
 
 - Plan first for any multi-file change. Keep the plan scoped to a

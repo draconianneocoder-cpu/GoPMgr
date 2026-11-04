@@ -5,18 +5,19 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 
 # ADR-013 P0: baseline reconciliation
 
-Recorded 2026-11-04. Status: provisional inventory, P0 exit gate open.
+Recorded 2026-11-04. Status: P0 complete for the source and available hosts
+recorded below; independent final evidence review approved P0 exit.
 No mise/config/lock/static-gate implementation is claimed.
 
 ## Source identity and authority
 
-- Checkout: `migration/wails-v3-gtk4`; production conversion commit
-  `122fa63e803b7e99ef3372bf97820e09b664808e`.
-- The isolated-shell parent is
-  `5c3fefc03bcf0e2189ecc4a1587247c2c22c54e5`. The production conversion is now
-  a separate local commit; its unrelated ancestor import fix is preserved.
-  ADR-013 introduces only documentation/agent guidance in the following commit.
-  Neither commit is published protected main or a qualified release candidate.
+- Observation checkout: `migration/wails-v3-gtk4`, frozen at
+  `bdbdfa3335a3e44ca73df433eaf75bd1856788be`.
+- Production conversion: `122fa63e803b7e99ef3372bf97820e09b664808e`;
+  isolated-shell parent: `5c3fefc03bcf0e2189ecc4a1587247c2c22c54e5`.
+  The unrelated ancestor import fix is preserved. The observation revision adds
+  only ADR-013 documentation/agent guidance to those production build inputs.
+  It is not published main or a qualified release candidate.
 - The owner archive contains one 60,061-byte Markdown file. Its extracted
   SHA-256 is `930313e4001a35dfdd7833c8d341aa5954cc32177ff6f4fa8c4f6776671a6a12`.
   The [archived submission](../design/adr-013/v0.3-as-submitted/approved-phased-plan.md)
@@ -26,7 +27,8 @@ No mise/config/lock/static-gate implementation is claimed.
   The [current ADR](../design/ADR-013-engineering-build-assurance.md)
   governs its repository reconciliation.
 - No unrelated changes are overwritten, staged or committed by ADR integration.
-  The owner authorized a disclosed final self-review fallback for local commits.
+  Earlier Wails work used the owner-authorized self-review fallback; P0 has
+  its own independent plan/evidence review and does not certify Wails release.
 
 ## Current ownership and observable contracts
 
@@ -69,8 +71,9 @@ Read-only version commands on this Mac reported Go 1.27.3, system GNU Make
 24.18.0/npm 12.0.2; an existing Node 26.13.0/npm 12.2.1 installation was selected
 explicitly for the final frontend test/check run. CI declares Node 26; Ubuntu
 package validation used Node 26.8.2/npm 11.19.1. No global versions were changed.
-mise, shfmt and zizmor were not available on the checked PATH; no installation
-or substitute scanner pass is claimed.
+mise, shfmt and zizmor were not available on the checked PATH; no new
+assurance-tool installation or substitute scanner pass is claimed. P0 used
+the existing required Wails CLI, with task-only compilation on Ubuntu.
 
 `actionlint -oneline` initially exited 1 with 10 findings: eight unknown
 `ubuntu-26.04` runner labels and two SC2012 `ls` selections in release SBOM
@@ -81,6 +84,37 @@ verify official hosted-image availability before classifying them as an old
 scanner inventory or an invalid workflow target. Do not add a blanket allowlist
 or change runner policy merely to obtain a pass. No blocking scanner target was
 added, no hosted workflow executed, and no full shell scan is claimed.
+
+## Command scope and Make consumers
+
+The root Makefile's `GO_PACKAGES` is `. ./internal/... ./tools/...`.
+`test` uses those roots with configurable `GO_TEST_TAGS` (empty by default);
+`race` adds `-race -p=1 -count=1`, and `lint-go` passes the same roots to
+`golangci-lint run`. Release and memory-scan scripts instead declare
+`. ./internal/... ./tools/update-manifest`. Memory scan's vet adds the
+`production` tag by default; optional staticcheck/gosec/govulncheck do not use
+that tag argument. CI's separate vulnerability job currently runs
+`govulncheck ./...`. These are observed scope differences, not an assertion that
+all entry points cover the same package set. Review parity in P6 without
+silently narrowing the broader checks. No experimental Rust module is executed by the package commands. Memory-scan
+also has filesystem heuristics: its `os.Open` helper walks the checkout
+recursively (excluding `/vendor/`), so generated/experimental Go text may be
+inspected without compiling its module; other heuristics use `main.go`,
+`internal` and `tools`. Filesystem scope is not package scope.
+
+Direct script consumers include `check-release.sh` (Make gate invocations),
+`package-macos-installer.sh` and `package.sh` (build), and
+`validate-pades-parallel_test.sh` (parallel PAdES gate test). Their fixtures stub
+or exercise those calls. `release-gate-scope-check.sh` parses exact Make target,
+recipe and scope text; `check-linux-runtime-target.sh` checks backend policy;
+`workspace-hygiene.sh` verifies repository identity through the Makefile. Their
+regression scripts copy/mutate those contracts. Do not casually rename targets
+or reformat parsed recipes. Other text matches in font/ICC/PDF/notice scripts
+are operator hints or embedded Go `make(...)`, not recursive GNU Make calls.
+`verify → brand-assets → check-brand-assets.mjs` also copies the Makefile
+into a temporary fixture and invokes `make clean` there, checking preservation
+of the native icon source. The config-check tool separately enforces exact
+workflow gate names/commands.
 
 ## Workflow inventory
 
@@ -94,9 +128,39 @@ added, no hosted workflow executed, and no full shell scan is claimed.
 - `adr010-g0-spike.yml`: path-filtered PR experiment, read-only token, matrix
   native evidence. It must not become a production packaging dependency.
 
-Read actual matrices, action commits and source contracts again at frozen P0
-revision; this inventory does not assert remote branch protection or successful
-hosted execution. Preserve exact job/check names when adding static jobs.
+### Source-derived CI metadata receipt
+
+These are declarations at the observation revision, not executed hosted jobs
+or assurance that branch protection requires their status.
+
+| Workflow / jobs | Ordering and native matrix | Cache and failure behavior | Artifacts / privileges |
+|---|---|---|---|
+| CI `verify`, `assurance`, `pades-harnesses`, `build`, `lint`, `security`, `vuln` | Independent jobs, no `needs`; Ubuntu 26.04 except macOS 15 assurance | Go cache enabled with `go-version-file: go.mod`; frontend jobs use Node 26/npm cache keyed by `frontend/package-lock.json`; no Go cache-dependency-path override; `security` is explicitly nonblocking | `build` uploads `build/bin/`, seven-day retention, missing files error; upload step tolerates failure. Other jobs fail the workflow by default; this is not a required-merge-check claim |
+| Release `preflight` | Ubuntu 26.04; version-tag trigger | Go/npm caches and lockfile declarations as above | Full tag preflight before packaging; root token `contents: read` |
+| Release `build` | `needs: preflight`; `fail-fast: false`; `ubuntu-24.04`/linux-amd64, `macos-latest`/darwin-arm64, `windows-latest`/windows-amd64 | Go/npm caches as above; native packaging and SBOM steps fail on error | `build/packages/*`, seven-day retention, missing artifact error; installer and SBOM outputs consumed by publish |
+| Release `publish` | `needs: build`; Ubuntu latest | Go cache disabled; no npm setup | Downloads merged artifacts into `dist`; requests `contents: write`; signs SBOMs/update manifests through job-step secrets and creates a draft release |
+| ADR-010 `evidence` | Path-filtered PR; seven rows: Ubuntu 26.04 x64, Ubuntu 24.04 Arm, macOS 15/14 Arm, Windows 2025/2022 x64 and Windows 11 Arm; `fail-fast: false`; 60-minute timeout | Go cache disabled; no npm setup; evidence scenarios can report FAIL/BLOCKED and are explicitly not a release gate | Always uploads `runner.temp/g0-*.jsonl`; missing files warn, retention not explicitly set; root token `contents: read` |
+
+All executable actions are commit-pinned in these workflow files:
+
+| Action | SHA |
+|---|---|
+| `actions/checkout` | `3d3c42e5aac5ba805825da76410c181273ba90b1` |
+| `actions/setup-go` | `b7ad1dad31e06c5925ef5d2fc7ad053ef454303e` |
+| `actions/setup-node` | `949feb2413d6458794dcd2491c4babbbce0c15c1` |
+| `actions/upload-artifact` | `cf430e030ddbb5b0abf93d22962f4752f3646cd9` |
+| `actions/download-artifact` | `9000827ccba6bdab643e8b6fd33ac0654aef8333` |
+| `golangci/golangci-lint-action` | `ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a` |
+
+Go lint requests v2.14.0. Go action cache-key details and the lint action's
+own caching follow the pinned actions' defaults, not a custom key declared
+here. Root CI token permissions are unspecified; do not equate that with least
+privilege. Release uses the public `GOPMGR_UPDATE_PUBLIC_KEY` variable for build
+identity, `GOPMGR_SBOM_PRIVATE_KEY` and `GOPMGR_UPDATE_PRIVATE_KEY` only in publish
+steps, and the GitHub token for draft creation. Developer ID/notarization hooks
+are not enabled by these source declarations. No secret values, effective
+repository permissions, ruleset enforcement or hosted job outcomes were read
+or changed. Workflow source hashes below bind this receipt to its inputs.
 
 ## Verified findings and dispositions
 
@@ -110,36 +174,206 @@ hosted execution. Preserve exact job/check names when adding static jobs.
 | Compiler policy (P6-E) | `CC := gcc`; current Apple compiler behavior differs by host | Characterize natively before changing it |
 | Make-only usability | Current canonical targets do not depend on mise | Preserve; no claim for not-yet-created tool checks |
 | Tool bootstrap trust | Latest API metadata only, no downloaded artifact verification | P1 gate, not a verified supply chain |
-| Review availability | Earlier independent migration reviews found/fixed defects; final reviewers hit usage limit; owner approved self-review fallback | Local commit may use disclosed fallback; independent final approval is not claimed |
+| Review scope | Independent P0 plan review passed; inventory corrections incorporated; final evidence review approved P0 exit | P0 review does not replace native Wails release qualification |
 
 ## Review and current execution status
 
-The owner explicitly approved a disclosed self-review fallback for local
-Wails/ADR-013 commits after delegated final review became unavailable. Earlier
-migration reviews were independent; final approval is not represented as
-independent. This exception authorizes neither hosted CI nor publication.
+Independent P0 plan review approved the measurement method. The inventory
+review requested CI metadata, the branding Make consumer and filesystem-scope
+clarifications; all three are incorporated. Independent final evidence review
+approved P0 exit after checking the raw rows, arithmetic, checkout receipts,
+controls and source hashes. This is P0 characterization, not release approval.
+No hosted CI or publication authority is inferred from local review.
 
-The initial actionlint run exited 1 with 10 findings. After the tested SBOM
-path fix it still exits 1 with eight runner-label findings. This is an advisory
-baseline, not a passing mandatory workflow-security check. ShellCheck version
-was inspected, but no standalone whole-repository shell scan was run. Neither
-shfmt nor zizmor was run. No new tools were installed or mandatory gates added.
+P0 ran installed ShellCheck 0.11.0 over all 81 tracked `.sh` files under
+`scripts/`: exit 1, 53 findings (five warnings, 48 information-level findings;
+no error-level findings). The five SC1007 warnings are intentional empty
+`VERSION=`/`GOFLAGS=` assignments in fixtures, verified against the source.
+The information findings comprise SC2016 (27), SC2086 (10), SC2059 (7),
+SC1091 (3) and SC2012 (1). They remain an advisory P2 baseline, not confirmed
+vulnerabilities or approved blanket exceptions. The SC2012 match is a package
+listing for display, not executable/artifact selection. No suppression, autofix
+or new blocking gate was added. Current actionlint 1.7.12 still exits 1 with the
+eight runner-label findings recorded above. Neither shfmt nor zizmor ran.
 
 ## Evidence and proof limits
 
-Current migration positive/negative tests are recorded in the
-[Wails evidence](../testing/wails-v3-migration-evidence.md). Reuse the existing
-release-scope, Wails pin/generator/build, packaging and config fixtures as the
-baseline failure-propagation suite. This document does not claim a new mise or
-scanner negative control has executed. The production source revision is now fixed above. P0 still needs complete
-clean/dirty checkout comparison and repeatable timing/resource measurements;
-independent final review was unavailable and the local fallback is disclosed. No P1 install or mandatory static gate may be claimed
-complete from the inventory alone.
+Migration assurance remains separately recorded in the
+[Wails evidence](../testing/wails-v3-migration-evidence.md). P0 adds current
+checkout, timing/resource and failure-propagation evidence below. It runs the
+canonical build/verify targets, not all 72 targets: destructive maintenance,
+publication and credential-dependent release operations are not benchmarked.
+The controlled race probe does not constitute a new full production race run.
 
 Native macOS 27.2 and Ubuntu 26.04 are available. macOS 13/Ubuntu 24.04 execution,
 Windows installation and trusted distribution remain unverified release gates.
-No tool installation, hosted CI, Git push, release or protected-setting mutation
-was performed for ADR-013.
+No mise/static-tool adoption, hosted CI, Git push, release or protected-setting
+mutation occurred. Build prerequisites use the already-required pinned CLI.
+No P1 implementation is claimed from these observations.
+
+## P0 checkout/performance execution (2026-11-04)
+
+The observation revision is `bdbdfa3335a3e44ca73df433eaf75bd1856788be`.
+Its build inputs match the production revision below; it adds only ADR-013
+integration documentation. The original checkout/index were clean. Independent
+plan review approved the method with four incorporated corrections: separate
+bootstrap cache, cache-equivalent race controls, semantic index comparison, and
+validator-failure provenance plus successful restoration.
+
+A read-only GitHub branch request matched local `main` and `origin/main` at
+`7a2908644d80b9630197930dfc605e19271c0060`. The branch API reported
+`protected: false` and protection disabled. No repository settings were changed;
+this is a branch-endpoint observation, not a complete ruleset/permission audit.
+The measured migration branch is not published main or a release candidate.
+
+### Measurement contract
+
+- Exact-revision disposable clones on macOS 27.2/Apple Silicon and local Ubuntu
+  26.04/amd64; no builds or destructive fixtures in the owner's working checkout.
+- Private Go build cache and HOME/XDG/temp outputs. Existing Go module and npm
+  caches are reused and disclosed. The first build is **empty Go build cache,
+  populated dependency caches**, not a clean machine or cold filesystem benchmark.
+- macOS uses Go 1.27.3, Node 26.13.0/npm 12.2.1, Make 3.81, Xcode 27.2 and Apple
+  Clang 21.0.0, with all four macOS 13 deployment-floor variables. Hardware:
+  10 logical/physical CPUs, 32 GiB RAM. This does not qualify macOS 13 execution.
+- Ubuntu uses Go 1.27.3, Node 26.8.2/npm 11.19.1, Make 4.4.1, GCC 15.2.0,
+  GTK 4.22.4 and WebKitGTK 2.52.6. Hardware: four Intel i5-4570S cores, roughly
+  30.3 GiB RAM. These different hosts/tool patches are not a controlled speed
+  comparison. The system Go installation and package settings remain unchanged.
+- The macOS pinned CLI is copied from the existing task tool and identified by
+  digest. Ubuntu compiles the already-required v3.1.0 CLI using a separate
+  bootstrap cache. The measurement cache is checked empty before build 1.
+- Commands are serial per host, without `make -j`. The two hosts may run in
+  parallel; they share ordinary network availability. This is not an idle lab.
+  `make build` includes generation, `npm ci`, frontend build, compilation and
+  signing where applicable; setup/network effects remain part of its timing.
+- After one build, take three successive warm build samples. Verification's
+  first sample uses the prepared checkout; take three further warm samples and
+  one dirty-state sample. Canonical verification may reuse Go test successes;
+  only the separate race control establishes forced execution.
+- Record elapsed/user/system seconds, command exit and native maximum-RSS
+  counters. Darwin reports RSS bytes; GNU Time reports KiB. Convert to MiB
+  using 1,048,576 or 1,024 respectively. These are the tool's reported maxima,
+  not summed concurrent process-tree memory. Do not sum them or compare host
+  memory as though the collection methods were identical.
+- Publish all attempts and the three successful warm median/range only when all
+  three comparable samples succeed. No p90, improvement claim, performance
+  threshold or tuning decision is inferred from three observations.
+
+### Checkout and failure controls
+
+For the freshly cloned first Mac build, verify clean HEAD before/after;
+for subsequent samples and all Ubuntu samples, compare NUL-delimited Git status and index
+path/mode/blob/stage records plus staged and unstaged binary diffs. Git index
+metadata refresh is not a source-change failure. The dirty variant stages one
+README comment, adds a different unstaged comment, and creates an untracked
+`P0 notes '資料'.txt` sentinel whose content digest must remain unchanged.
+Restore only those owned fixture edits afterward.
+
+The first macOS prepared-verification attempt exited 2 after 17.42 seconds:
+the native-launch fixture substitutes an unquoted stub executable path and
+cannot handle spaces in `TMPDIR`. The test fails before its intended path
+assertion. This is an existing fixture limitation exposed by the chosen
+private temp path, not an application data-loss result. Keep the failed sample;
+use a separate owned, spaceless temporary directory for the remaining verify
+samples. Do not change/disable the test or silently count this as a pass.
+A portable-TMPDIR fixture repair remains a scoped test-maintenance follow-up.
+
+Failure propagation is observed by replacing the first existing verify
+validator in a disposable clone with a unique diagnostic and exit 73. Make
+must fail nonzero with that diagnostic, then the original validator must pass
+after bytes/mode restoration. Cache sensitivity uses a disposable Go test
+that prints a nanosecond receipt: prime a race-enabled cache hit, invoke the
+actual Make race recipe twice, then remove only `-count=1` in the cloned
+Makefile. The unmodified recipe must produce distinct uncached receipts;
+the mutation must replay the primed cached receipt. Package/path/compiler,
+environment, tags and verbosity remain identical. This proves the recipe's
+cache semantics for the fixture, not a new full production race-suite pass.
+
+### Observed samples
+
+All values are native tool observations, rounded as emitted by the timer.
+The failed Mac attempt remains in the table. `verify-portable-*` uses the
+separate spaceless temp directory; the other Mac build samples used the
+original private temp directory. CPU columns are seconds, not CPU percentages.
+
+| Host | Sample | Exit | Wall s | User s | System s | Native max RSS | RSS unit |
+|---|---|---:|---:|---:|---:|---:|---|
+| macos-arm64 | `build-cold` | 0 | 52.86 | 240.43 | 61.21 | 1537392640 | bytes |
+| macos-arm64 | `build-warm-1` | 0 | 9.82 | 12.34 | 5.87 | 1487323136 | bytes |
+| macos-arm64 | `build-warm-2` | 0 | 7.90 | 12.46 | 5.91 | 1506017280 | bytes |
+| macos-arm64 | `build-warm-3` | 0 | 7.83 | 12.46 | 5.81 | 1470349312 | bytes |
+| macos-arm64 | `verify-prepared-first` | 2 | 17.42 | 19.86 | 9.87 | 283115520 | bytes |
+| macos-arm64 | `verify-portable-first` | 0 | 207.29 | 887.85 | 121.98 | 1032912896 | bytes |
+| macos-arm64 | `verify-portable-warm-1` | 0 | 48.51 | 110.55 | 32.68 | 892780544 | bytes |
+| macos-arm64 | `verify-portable-warm-2` | 0 | 49.86 | 106.13 | 34.82 | 914325504 | bytes |
+| macos-arm64 | `verify-portable-warm-3` | 0 | 55.45 | 100.39 | 30.52 | 900136960 | bytes |
+| macos-arm64 | `verify-portable-dirty` | 0 | 47.47 | 105.66 | 32.90 | 876232704 | bytes |
+| ubuntu-amd64 | `build-cold` | 0 | 162.30 | 368.67 | 27.81 | 1558700 | KiB |
+| ubuntu-amd64 | `build-warm-1` | 0 | 45.77 | 54.75 | 3.19 | 1509316 | KiB |
+| ubuntu-amd64 | `build-warm-2` | 0 | 15.72 | 24.42 | 3.01 | 1627140 | KiB |
+| ubuntu-amd64 | `build-warm-3` | 0 | 15.61 | 23.65 | 3.06 | 1586004 | KiB |
+| ubuntu-amd64 | `verify-prepared-first` | 0 | 460.52 | 1131.44 | 162.89 | 1095524 | KiB |
+| ubuntu-amd64 | `verify-warm-1` | 0 | 90.32 | 178.85 | 26.93 | 794008 | KiB |
+| ubuntu-amd64 | `verify-warm-2` | 0 | 90.37 | 178.60 | 27.05 | 802188 | KiB |
+| ubuntu-amd64 | `verify-warm-3` | 0 | 90.39 | 178.50 | 26.90 | 812668 | KiB |
+| ubuntu-amd64 | `verify-dirty` | 0 | 91.58 | 181.30 | 27.60 | 782076 | KiB |
+
+| Host / three successful warm group | Median wall s | Observed range s |
+|---|---:|---|
+| macos-arm64 / `build-warm-*` | 7.90 | 7.83–9.82 |
+| macos-arm64 / `verify-portable-warm-*` | 49.86 | 48.51–55.45 |
+| ubuntu-amd64 / `build-warm-*` | 15.72 | 15.61–45.77 |
+| ubuntu-amd64 / `verify-warm-*` | 90.37 | 90.32–90.39 |
+
+The first Ubuntu warm build is retained at 45.77 s. Its `npm ci` log reports
+35 seconds versus five seconds on the next two runs; generation and frontend
+bundle durations are similar. The difference is concentrated in that install/
+audit phase, but the underlying latency cause was not instrumented. Do not
+exclude the observation, invent a percentile, or attribute a host-to-host speed
+difference to architecture or tooling from these samples.
+
+### Executed assurance and exit disposition
+
+| P0 requirement | Executed evidence | Result |
+|---|---|---|
+| Exact comparable source | Both clones at the observation SHA; build-input hashes unchanged | Passed |
+| Prepared clean-checkout commands | Cold/warm native builds and first/three warm verify runs on each host | Passed under declared setup; failed spaced-TMPDIR attempt retained |
+| Dirty checkout preservation | One full verify per host; semantic index, staged/unstaged patches and quoted/Unicode sentinel digest unchanged | Passed |
+| Essential validator must fail closed | Injected exit 73 with unique marker: Make exited 2; restored validator exited 0 | Passed on both hosts |
+| Race must not reuse cached test success | Primed cache replay; two canonical distinct nonces; removal of only `-count=1` replayed cached nonce and failed the same freshness assertion | Passed on both hosts, scoped probe only |
+| Fault cleanup | Original script/Makefile bytes and modes restored, probe removed, clones clean | Passed |
+| Honest performance interpretation | All 19 attempts recorded; groups of three successful runs checked independently by sorted middle value; native RSS units retained | Passed; no budget/speedup/p90 claim |
+| Inventory/review | Scope, Make consumers, source CI/cache/artifact/privilege metadata and platform limits documented | Independent plan/final evidence reviews passed |
+
+Private reproducibility material is retained under `.tmp/adr-013-p0/`: raw
+per-command output, native time counters/exits/load, before/after Git receipts,
+control logs, source hashes and the temporary analysis drivers. The raw sample
+values above are committed; the private absolute paths and full logs are not.
+The first Mac cold build starts from the freshly checked-out HEAD and is checked
+clean afterward; later Mac samples and all Ubuntu samples have explicit paired
+Git receipts. No baseline source mutation remains in the owner's checkout.
+
+To reproduce, clone the exact revision, prepare the pinned Wails CLI in
+`.tmp/wails-v3/bin/` using a bootstrap cache separate from measurement, select
+Node 26, preserve existing module/npm caches explicitly, and use a new private
+`GOCACHE`, HOME/XDG and conventional spaceless temp directory. On macOS export
+`MACOSX_DEPLOYMENT_TARGET=13.0` and C/C++/linker flags
+`-mmacosx-version-min=13.0`. Example measurement commands after that setup:
+
+```sh
+# macOS; replace build with verify for that sample group.
+/usr/bin/time -lp -o sample.time make build >sample.log 2>&1
+# Ubuntu: GNU Time emits explicit seconds, KiB and command exit status.
+/usr/bin/time -f 'real %e\nuser %U\nsys %S\nmaxrss_kib %M\ncommand_exit %x' -o sample.time make build >sample.log 2>&1
+```
+
+Make is serial. Follow the sample order above; never call `go clean` or delete
+shared caches to manufacture a cold sample.
+
+P0 changes only documentation and agent guidance. No production behavior,
+Make recipe, CI definition, tool pin or supported-platform policy changes.
+Mise provisioning and new mandatory scanners remain P1–P9 work.
 
 ## Frozen build-input identities
 

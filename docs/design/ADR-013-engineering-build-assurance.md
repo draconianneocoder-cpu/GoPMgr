@@ -6,7 +6,8 @@ SPDX-License-Identifier: GFDL-1.3-or-later
 # ADR-013: Make-centered engineering build assurance
 
 Date: 2026-11-04. Status: accepted maintainer direction; implementation staged.
-P0 is in progress. P1–P9 are not implemented or accepted as complete.
+P0 characterization is complete for the source/hosts recorded in the baseline.
+P1–P9 are not implemented or accepted as complete.
 
 ## Decision and authority
 
@@ -92,8 +93,10 @@ control. Do not add a required job before baseline findings are resolved.
 
 The Wails conversion is recorded separately as local commit `122fa63`. Its
 local gates and owner-authorized self-review fallback are disclosed; this is
-not protected main or a qualified release candidate. P0 records that exact
-source revision and the remaining baseline measurements before P1 adoption.
+not protected main or a qualified release candidate. P0 records the exact
+observation revision `bdbdfa3`, checkout controls,
+resource/timing samples and independent evidence review. It is complete within
+that declared scope; P1 must still qualify its own provisioning artifacts.
 Unavailable minimum OS/Windows tests remain named release gates, not inferred
 passes or permission to delete support.
 
